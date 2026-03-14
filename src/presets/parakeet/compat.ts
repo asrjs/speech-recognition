@@ -21,6 +21,57 @@ export { MODELS, DEFAULT_MODEL };
 
 export type ParakeetBackend = 'wasm' | 'webgpu' | 'webgpu-hybrid' | 'webgpu-strict';
 
+export interface ParakeetLocalFileHandleLike {
+  readonly kind?: 'file';
+  getFile(): Promise<File | Blob>;
+}
+
+export interface ParakeetLocalDirectoryHandleLike {
+  readonly kind?: 'directory';
+  readonly name?: string;
+  entries(): AsyncIterable<[string, ParakeetLocalFileHandleLike | ParakeetLocalDirectoryHandleLike]>;
+}
+
+export interface ParakeetLocalEntry {
+  readonly path: string;
+  readonly basename: string;
+  readonly file?: File | Blob;
+  readonly handle?: ParakeetLocalFileHandleLike;
+}
+
+export interface ParakeetLocalInspection {
+  readonly encoderQuantizations: readonly QuantizationMode[];
+  readonly decoderQuantizations: readonly QuantizationMode[];
+  readonly tokenizerNames: readonly string[];
+  readonly preprocessorNames: readonly ('nemo80' | 'nemo128')[];
+}
+
+export interface ResolveParakeetLocalEntriesOptions {
+  readonly modelId?: string;
+  readonly encoderQuant?: QuantizationMode;
+  readonly decoderQuant?: QuantizationMode;
+  readonly tokenizerName?: string;
+  readonly preprocessorName?: 'nemo80' | 'nemo128';
+  readonly preprocessorBackend?: 'js' | 'onnx';
+  readonly backend?: ParakeetBackend;
+  readonly verbose?: boolean;
+  readonly cpuThreads?: number;
+  readonly enableProfiling?: boolean;
+  readonly runtime?: DefaultSpeechRuntime;
+}
+
+export interface ResolvedParakeetLocalArtifacts {
+  readonly config: ParakeetFromUrlsConfig;
+  readonly selection: {
+    readonly encoderName: string;
+    readonly decoderName: string;
+    readonly tokenizerName: string;
+    readonly preprocessorName?: string;
+    readonly encoderQuant: QuantizationMode;
+    readonly decoderQuant: QuantizationMode;
+  };
+}
+
 export interface ParakeetModelUrls {
   readonly urls: {
     readonly encoderUrl: string;
@@ -135,6 +186,110 @@ function getQuantizedModelName(baseName: string, quant: QuantizationMode): strin
   return `${baseName}${QUANT_SUFFIX[quant]}`;
 }
 
+function getBasename(path: string): string {
+  return String(path || '').split('/').pop() || '';
+}
+
+function normalizeRelativePath(path: string): string {
+  return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+function detectLocalQuantModes(entries: readonly ParakeetLocalEntry[], baseName: string): QuantizationMode[] {
+  const names = new Set(entries.map((entry) => entry.basename.toLowerCase()));
+  const out: QuantizationMode[] = [];
+  if (names.has(`${baseName}.onnx`)) out.push('fp32');
+  if (names.has(`${baseName}.fp16.onnx`)) out.push('fp16');
+  if (names.has(`${baseName}.int8.onnx`)) out.push('int8');
+  return out;
+}
+
+function findLocalEntry(entries: readonly ParakeetLocalEntry[], expectedName: string): ParakeetLocalEntry | null {
+  const lower = expectedName.toLowerCase();
+  return entries.find((entry) =>
+    entry.path.toLowerCase() === lower
+    || entry.basename.toLowerCase() === lower
+    || entry.path.toLowerCase().endsWith(`/${lower}`)
+  ) ?? null;
+}
+
+export function createParakeetLocalEntries(files: readonly File[]): ParakeetLocalEntry[] {
+  return files.map((file) => {
+    const path = normalizeRelativePath(file.webkitRelativePath || file.name);
+    return {
+      path,
+      basename: getBasename(path),
+      file
+    };
+  });
+}
+
+export async function collectParakeetLocalEntries(
+  dirHandle: ParakeetLocalDirectoryHandleLike,
+  prefix = ''
+): Promise<ParakeetLocalEntry[]> {
+  const entries: ParakeetLocalEntry[] = [];
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (handle.kind === 'directory' && name === '.git') {
+      continue;
+    }
+
+    const relativePath = prefix ? `${prefix}/${name}` : name;
+    if (handle.kind === 'file') {
+      const path = normalizeRelativePath(relativePath);
+      entries.push({
+        path,
+        basename: getBasename(path),
+        handle
+      });
+      continue;
+    }
+
+    if (handle.kind === 'directory') {
+      const nested = await collectParakeetLocalEntries(handle, relativePath);
+      entries.push(...nested);
+    }
+  }
+
+  return entries;
+}
+
+export async function getParakeetLocalEntryFile(entry: ParakeetLocalEntry): Promise<File | Blob> {
+  if (entry.file) {
+    return entry.file;
+  }
+  if (entry.handle?.kind === 'file') {
+    return entry.handle.getFile();
+  }
+  throw new Error(`Could not access local file entry: ${entry.path || entry.basename || 'unknown'}`);
+}
+
+export function inspectParakeetLocalEntries(entries: readonly ParakeetLocalEntry[]): ParakeetLocalInspection {
+  const encoderQuantizations = detectLocalQuantModes(entries, 'encoder-model');
+  const decoderQuantizations = detectLocalQuantModes(entries, 'decoder_joint-model');
+
+  const tokenizerCandidates: string[] = [];
+  if (findLocalEntry(entries, 'vocab.txt')) tokenizerCandidates.push('vocab.txt');
+  if (findLocalEntry(entries, 'tokens.txt')) tokenizerCandidates.push('tokens.txt');
+  if (!tokenizerCandidates.length) {
+    for (const entry of entries) {
+      if (entry.basename.toLowerCase().endsWith('.txt')) {
+        tokenizerCandidates.push(entry.basename);
+      }
+    }
+  }
+
+  const preprocessorCandidates: Array<'nemo80' | 'nemo128'> = [];
+  if (findLocalEntry(entries, 'nemo128.onnx')) preprocessorCandidates.push('nemo128');
+  if (findLocalEntry(entries, 'nemo80.onnx')) preprocessorCandidates.push('nemo80');
+
+  return {
+    encoderQuantizations,
+    decoderQuantizations,
+    tokenizerNames: [...new Set(tokenizerCandidates)],
+    preprocessorNames: [...new Set(preprocessorCandidates)]
+  };
+}
+
 function normalizeBackendId(backend: ParakeetBackend | undefined): 'webgpu' | 'wasm' {
   return String(backend || 'webgpu-hybrid').startsWith('webgpu') ? 'webgpu' : 'wasm';
 }
@@ -166,6 +321,27 @@ function revokeBlobUrls(urls: Record<string, unknown>): void {
       URL.revokeObjectURL(value);
     }
   }
+}
+
+function collectBlobUrlsFromConfig(config: ParakeetFromUrlsConfig): string[] {
+  return [
+    config.encoderUrl,
+    config.decoderUrl,
+    config.tokenizerUrl,
+    config.preprocessorUrl,
+    config.encoderDataUrl ?? undefined,
+    config.decoderDataUrl ?? undefined
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.startsWith('blob:'))
+    .filter((value, index, array) => array.indexOf(value) === index);
+}
+
+function createBlobUrlCleanup(urls: readonly string[]): () => void {
+  return () => {
+    for (const url of urls) {
+      URL.revokeObjectURL(url);
+    }
+  };
 }
 
 function toFromUrlsConfig(modelUrls: ParakeetModelUrls, options: GetParakeetModelOptions = {}): ParakeetFromUrlsConfig {
@@ -393,11 +569,124 @@ export async function loadParakeetModelWithFallback(
   });
 }
 
+export async function resolveParakeetLocalEntries(
+  entries: readonly ParakeetLocalEntry[],
+  options: ResolveParakeetLocalEntriesOptions = {}
+): Promise<ResolvedParakeetLocalArtifacts> {
+  if (entries.length === 0) {
+    throw new Error('Pick a local model folder first.');
+  }
+
+  const inspection = inspectParakeetLocalEntries(entries);
+  const encoderQuant = options.encoderQuant
+    ?? pickPreferredQuant(
+      inspection.encoderQuantizations.length > 0 ? inspection.encoderQuantizations : ['fp32'],
+      options.backend ?? 'webgpu-hybrid',
+      'encoder'
+    );
+  const decoderQuant = options.decoderQuant
+    ?? pickPreferredQuant(
+      inspection.decoderQuantizations.length > 0 ? inspection.decoderQuantizations : ['fp32'],
+      options.backend ?? 'webgpu-hybrid',
+      'decoder'
+    );
+  const encoderName = getQuantizedModelName('encoder-model', encoderQuant);
+  const decoderName = getQuantizedModelName('decoder_joint-model', decoderQuant);
+  const tokenizerName = options.tokenizerName ?? inspection.tokenizerNames[0];
+  const preprocessorBackend = options.preprocessorBackend ?? 'js';
+  const preprocessorName = preprocessorBackend === 'onnx'
+    ? `${options.preprocessorName ?? inspection.preprocessorNames[0] ?? 'nemo128'}.onnx`
+    : undefined;
+
+  const encoderEntry = findLocalEntry(entries, encoderName);
+  const decoderEntry = findLocalEntry(entries, decoderName);
+  const tokenizerEntry = tokenizerName ? findLocalEntry(entries, tokenizerName) : null;
+
+  if (!encoderEntry) {
+    throw new Error(`Missing encoder file: ${encoderName}`);
+  }
+  if (!decoderEntry) {
+    throw new Error(`Missing decoder file: ${decoderName}`);
+  }
+  if (!tokenizerEntry) {
+    throw new Error(`Missing tokenizer file: ${tokenizerName ?? 'vocab.txt'}`);
+  }
+
+  const blobUrls: string[] = [];
+  const toBlobUrl = async (entry: ParakeetLocalEntry): Promise<string> => {
+    const file = await getParakeetLocalEntryFile(entry);
+    const url = URL.createObjectURL(file);
+    blobUrls.push(url);
+    return url;
+  };
+
+  try {
+    const preprocessorEntry = preprocessorName
+      ? findLocalEntry(entries, preprocessorName)
+      : null;
+    if (preprocessorName && !preprocessorEntry) {
+      throw new Error(`Missing preprocessor file: ${preprocessorName} (switch to JS preprocessor or add file to folder).`);
+    }
+
+    const encoderDataEntry = findLocalEntry(entries, `${encoderEntry.basename}.data`);
+    const decoderDataEntry = findLocalEntry(entries, `${decoderEntry.basename}.data`);
+    const resolvedTokenizerName = tokenizerEntry.basename;
+
+    const config: ParakeetFromUrlsConfig = {
+      modelId: options.modelId,
+      encoderUrl: await toBlobUrl(encoderEntry),
+      decoderUrl: await toBlobUrl(decoderEntry),
+      tokenizerUrl: await toBlobUrl(tokenizerEntry),
+      preprocessorUrl: preprocessorEntry ? await toBlobUrl(preprocessorEntry) : undefined,
+      encoderDataUrl: encoderDataEntry ? await toBlobUrl(encoderDataEntry) : undefined,
+      decoderDataUrl: decoderDataEntry ? await toBlobUrl(decoderDataEntry) : undefined,
+      filenames: {
+        encoder: encoderEntry.basename,
+        decoder: decoderEntry.basename
+      },
+      preprocessorBackend,
+      backend: options.backend,
+      verbose: options.verbose,
+      cpuThreads: options.cpuThreads,
+      enableProfiling: options.enableProfiling,
+      runtime: options.runtime
+    };
+
+    return {
+      config,
+      selection: {
+        encoderName,
+        decoderName,
+        tokenizerName: resolvedTokenizerName,
+        preprocessorName,
+        encoderQuant,
+        decoderQuant
+      }
+    };
+  } catch (error) {
+    createBlobUrlCleanup(blobUrls)();
+    throw error;
+  }
+}
+
+export async function loadParakeetModelFromLocalEntries(
+  entries: readonly ParakeetLocalEntry[],
+  options: ResolveParakeetLocalEntriesOptions = {}
+): Promise<{ model: ParakeetModel; selection: ResolvedParakeetLocalArtifacts['selection'] }> {
+  const resolved = await resolveParakeetLocalEntries(entries, options);
+  const model = await ParakeetModel.fromResolvedLocalArtifacts(resolved);
+  return {
+    model,
+    selection: resolved.selection
+  };
+}
+
 export class ParakeetModel {
   constructor(
     private readonly runtime: DefaultSpeechRuntime,
     private readonly model: SpeechModel<NemoTdtModelOptions, NemoTdtTranscriptionOptions, NemoTdtNativeTranscript>,
-    private readonly session: SpeechSession<NemoTdtTranscriptionOptions, NemoTdtNativeTranscript>
+    private readonly session: SpeechSession<NemoTdtTranscriptionOptions, NemoTdtNativeTranscript>,
+    private readonly onDispose?: () => void | Promise<void>
   ) {}
 
   static async fromUrls(config: ParakeetFromUrlsConfig): Promise<ParakeetModel> {
@@ -435,6 +724,27 @@ export class ParakeetModel {
     return new ParakeetModel(runtime, model, session);
   }
 
+  static async fromLocalEntries(
+    entries: readonly ParakeetLocalEntry[],
+    options: ResolveParakeetLocalEntriesOptions = {}
+  ): Promise<ParakeetModel> {
+    const resolved = await resolveParakeetLocalEntries(entries, options);
+    return ParakeetModel.fromResolvedLocalArtifacts(resolved);
+  }
+
+  static async fromResolvedLocalArtifacts(
+    resolved: ResolvedParakeetLocalArtifacts
+  ): Promise<ParakeetModel> {
+    const blobUrls = collectBlobUrlsFromConfig(resolved.config);
+    const model = await ParakeetModel.fromUrls(resolved.config);
+    return new ParakeetModel(
+      model.runtime,
+      model.model,
+      model.session,
+      createBlobUrlCleanup(blobUrls)
+    );
+  }
+
   static async fromHub(repoIdOrModelKey: string, options: GetParakeetModelOptions = {}): Promise<ParakeetModel> {
     const urls = await getParakeetModel(repoIdOrModelKey, options);
     return ParakeetModel.fromUrls(toFromUrlsConfig(urls, options));
@@ -455,6 +765,7 @@ export class ParakeetModel {
   async dispose(): Promise<void> {
     await this.session.dispose();
     await this.model.dispose();
+    await this.onDispose?.();
     void this.runtime;
   }
 }

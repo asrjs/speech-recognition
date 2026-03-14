@@ -1,13 +1,18 @@
 import {
+  ParakeetModel,
+  createParakeetLocalEntries,
   createBuiltInSpeechRuntime,
   DEFAULT_MODEL,
   formatResolvedQuantization,
   getLanguageName,
   getModelConfig,
   getModelKeyFromRepoId,
+  inspectParakeetLocalEntries,
   listModels,
   loadModelWithFallback,
+  loadParakeetModelFromLocalEntries,
   pickPreferredQuant,
+  resolveParakeetLocalEntries,
   supportsLanguage,
   type GetParakeetModelOptions
 } from 'asr.js';
@@ -104,5 +109,91 @@ describe('Parakeet helpers', () => {
     expect(getParakeetModelFn).toHaveBeenCalledTimes(2);
     expect(fromUrlsFn).toHaveBeenCalledTimes(2);
     expect(fromUrlsFn.mock.calls[1]?.[0]?.filenames?.encoder).toBe('encoder-model.onnx');
+  });
+
+  it('inspects local Parakeet entries and derives local artifact choices', () => {
+    const file = new File(['token-a\ntoken-b\n'], 'vocab.txt', { type: 'text/plain' });
+    const entries = createParakeetLocalEntries([
+      new File(['enc'], 'encoder-model.fp16.onnx'),
+      new File(['dec'], 'decoder_joint-model.int8.onnx'),
+      new File(['prep'], 'nemo128.onnx'),
+      file
+    ]);
+
+    const inspection = inspectParakeetLocalEntries(entries);
+
+    expect(inspection.encoderQuantizations).toEqual(['fp16']);
+    expect(inspection.decoderQuantizations).toEqual(['int8']);
+    expect(inspection.tokenizerNames).toEqual(['vocab.txt']);
+    expect(inspection.preprocessorNames).toEqual(['nemo128']);
+  });
+
+  it('resolves local entries into the same artifact contract as hub loading', async () => {
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation((blob) => `blob:${(blob as Blob).size}:${Math.random()}`);
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    try {
+      const entries = createParakeetLocalEntries([
+        new File(['enc'], 'encoder-model.fp16.onnx'),
+        new File(['enc-data'], 'encoder-model.fp16.onnx.data'),
+        new File(['dec'], 'decoder_joint-model.int8.onnx'),
+        new File(['vocab'], 'vocab.txt')
+      ]);
+
+      const resolved = await resolveParakeetLocalEntries(entries, {
+        encoderQuant: 'fp16',
+        decoderQuant: 'int8',
+        preprocessorBackend: 'js'
+      });
+
+      expect(resolved.selection).toMatchObject({
+        encoderName: 'encoder-model.fp16.onnx',
+        decoderName: 'decoder_joint-model.int8.onnx',
+        tokenizerName: 'vocab.txt',
+        encoderQuant: 'fp16',
+        decoderQuant: 'int8'
+      });
+      expect(resolved.config.encoderUrl.startsWith('blob:')).toBe(true);
+      expect(resolved.config.decoderUrl.startsWith('blob:')).toBe(true);
+      expect(resolved.config.tokenizerUrl.startsWith('blob:')).toBe(true);
+      expect(resolved.config.encoderDataUrl?.startsWith('blob:')).toBe(true);
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+    } finally {
+      createObjectURL.mockRestore();
+      revokeObjectURL.mockRestore();
+    }
+  });
+
+  it('routes local entry loading through the Parakeet local model wrapper', async () => {
+    const fromLocalEntries = vi
+      .spyOn(ParakeetModel, 'fromResolvedLocalArtifacts')
+      .mockResolvedValue({ dispose: vi.fn() } as unknown as ParakeetModel);
+
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation((blob) => `blob:${(blob as Blob).size}:${Math.random()}`);
+
+    try {
+      const entries = createParakeetLocalEntries([
+        new File(['enc'], 'encoder-model.onnx'),
+        new File(['dec'], 'decoder_joint-model.int8.onnx'),
+        new File(['vocab'], 'vocab.txt')
+      ]);
+
+      const result = await loadParakeetModelFromLocalEntries(entries, {
+        encoderQuant: 'fp32',
+        decoderQuant: 'int8',
+        preprocessorBackend: 'js'
+      });
+
+      expect(fromLocalEntries).toHaveBeenCalledTimes(1);
+      expect(result.selection.encoderName).toBe('encoder-model.onnx');
+      expect(result.model).toBeTruthy();
+    } finally {
+      fromLocalEntries.mockRestore();
+      createObjectURL.mockRestore();
+    }
   });
 });

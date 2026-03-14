@@ -29,7 +29,7 @@ src/
 - `src/types`
   - Canonical transcript types, backend capability types, runtime/model/session contracts, and classification metadata.
 - `src/runtime`
-  - Runtime registration, lifecycle, backend selection, errors, logging hooks, and model loading.
+  - Runtime registration, lifecycle, backend selection, errors, logging hooks, model loading, browser-audio helpers, transcript normalization helpers, and app-facing realtime helpers such as ring buffers, window builders, and utterance mergers.
 - `src/processors`
   - PCM normalization, chunking, channel handling, and processor descriptors.
 - `src/tokenizers`
@@ -68,6 +68,27 @@ Implementation code lives under `src/models`, while branded aliases live under `
 - `src/tokenizers/*`
   - Owns tokenizer contracts and implementations directly. Tokenizers are not nested under `inference`.
 
+## Realtime App Helpers
+
+`asr.js` intentionally includes a small helper layer for real apps, not just raw model loading.
+
+- `AudioRingBuffer`
+  - Fixed-size PCM ring buffer with absolute frame addressing and overwrite protection.
+- `VoiceActivityTimeline`
+  - Ring-buffered speech/silence timeline for lightweight VAD-aware windowing and silence-tail checks.
+- `StreamingWindowBuilder`
+  - Cursor-aware window construction for long-running and low-latency transcription loops.
+- `UtteranceTranscriptMerger`
+  - Mature/pending transcript management for direct model outputs with punctuation-based finalization.
+- `RealtimeTranscriptionController`
+  - Thin coordinator for audio ring buffering, optional VAD tracking, window building, and transcript merging.
+- `startMicrophoneCapture`
+  - Browser microphone helper that emits PCM chunks without taking over UI state or worker orchestration.
+- `decodeAudioSourceToMonoPcm`
+  - Shared browser helper for fetching and decoding audio sources into mono PCM before inference.
+
+These helpers are library-grade building blocks extracted from real application needs, but they stop short of pulling UI, worker orchestration, or app-specific state management into the core library.
+
 This split is deliberate: `asr.js` shares semantics and descriptors early, but only extracts executable math after multiple model families prove the code is truly shared.
 
 ## Public API
@@ -81,6 +102,21 @@ import { createSpeechRuntime, createWasmBackend } from 'asr.js';
 ```
 
 The library does not publish segmented workspace-style packages like `@asrjs/core` or `@asrjs/model-nemo-tdt`.
+
+## Transcript Output Model
+
+`asr.js` keeps transcript semantics stable across model families and backends.
+
+- `TranscriptResult`
+  - canonical app-facing JSON with `text`, `warnings`, `meta`, and optional `segments`, `words`, and `tokens`
+- `PartialTranscript`
+  - streaming update shape for partial/final transcript state
+- `TranscriptionEnvelope<TNative>`
+  - canonical transcript plus attached model-native output for power users
+- `responseFlavor: 'canonical' | 'canonical+native' | 'native'`
+  - lets apps choose whether they want stable canonical output, model-native output, or both
+
+`src/runtime/transcripts.ts` provides normalizers so consumers can route different native outputs such as NeMo TDT, HF CTC, Whisper, or legacy Parakeet JSON into the same canonical transcript workflow.
 
 ## Metadata and Stability Rules
 

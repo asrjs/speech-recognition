@@ -28,6 +28,37 @@ tests/
 import { createSpeechRuntime, createWasmBackend } from 'asr.js';
 ```
 
+## Realtime Helpers
+
+`asr.js` also exposes small app-facing helpers for realtime and long-form speech apps:
+
+- `AudioRingBuffer`
+- `VoiceActivityTimeline`
+- `StreamingWindowBuilder`
+- `UtteranceTranscriptMerger`
+- `RealtimeTranscriptionController`
+- `startMicrophoneCapture`
+- `AudioChunker`
+- `LayeredAudioBuffer`
+- `AudioFeatureCache`
+
+It also includes lightweight helpers for benchmark and evaluation apps:
+
+- `summarizeNumericSeries`
+- `benchmarkRunRecordsToCsv`
+- `fetchDatasetSplits`
+- `fetchSequentialRows`
+- `fetchRandomRows`
+- `decodeAudioSourceToMonoPcm`
+
+For transcript handling across different model families, `asr.js` supports:
+
+- canonical transcript results via `TranscriptResult`
+- streaming updates via `PartialTranscript`
+- native-only responses via `responseFlavor: 'native'`
+- dual canonical + native envelopes via `TranscriptionEnvelope<TNative>`
+- model-output normalizers such as `normalizeNemoTdtTranscript`, `normalizeWhisperTranscript`, and `normalizeLegacyParakeetTranscript`
+
 ## Commands
 
 ```bash

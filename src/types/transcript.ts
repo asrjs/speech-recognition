@@ -70,6 +70,11 @@ export interface TranscriptMeta {
   readonly metrics?: TranscriptMetrics;
 }
 
+export interface TranscriptNormalizationContext
+  extends Omit<Partial<TranscriptMeta>, 'detailLevel' | 'isFinal'> {
+  readonly detailLevel?: TranscriptDetailLevel;
+}
+
 export interface TranscriptResult {
   readonly text: string;
   readonly warnings: readonly TranscriptWarning[];
@@ -97,6 +102,12 @@ export interface TranscriptionEnvelope<TNative = unknown> {
   readonly native?: TNative;
 }
 
+export interface TranscriptNormalizer<TNative = unknown> {
+  readonly id: string;
+  toCanonical(native: TNative, context?: TranscriptNormalizationContext): TranscriptResult;
+  toEnvelope(native: TNative, context?: TranscriptNormalizationContext): TranscriptionEnvelope<TNative>;
+}
+
 export type TranscriptResponse<
   TNative = unknown,
   TFlavor extends TranscriptResponseFlavor = 'canonical'
@@ -105,4 +116,3 @@ export type TranscriptResponse<
   : TFlavor extends 'canonical+native'
     ? TranscriptionEnvelope<TNative>
     : TranscriptResult;
-

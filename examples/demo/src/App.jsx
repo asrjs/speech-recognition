@@ -1,5 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ParakeetModel, getParakeetModel, MODELS, LANGUAGE_NAMES } from 'asr.js';
+import {
+  ParakeetModel,
+  collectParakeetLocalEntries,
+  createParakeetLocalEntries,
+  getParakeetModel,
+  inspectParakeetLocalEntries,
+  loadParakeetModelFromLocalEntries,
+  MODELS,
+  LANGUAGE_NAMES
+} from 'asr.js';
 import { fetchRandomSample, hasTestSamples, SPEECH_DATASETS } from './utils/speechDatasets';
 import {
   fetchModelFiles,
@@ -23,78 +32,13 @@ const MODEL_SOURCE_OPTIONS = {
 const isInIframe = (() => {
   try { return window.self !== window.top; } catch { return true; }
 })();
-const QUANT_TO_FILENAME = {
-  fp32: '.onnx',
-  fp16: '.fp16.onnx',
-  int8: '.int8.onnx',
-};
 const MODEL_CANONICAL_REVISIONS = {
   'parakeet-tdt-0.6b-v2': 'feat/fp16-canonical-v2',
   'parakeet-tdt-0.6b-v3': 'feat/fp16-canonical-v3',
 };
 
-function getBasename(path) {
-  return String(path || '').split('/').pop() || '';
-}
-
-function normalizeRelPath(path) {
-  return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
-}
-
-function detectLocalQuantModes(entries, baseName) {
-  const names = new Set(entries.map((entry) => entry.basename.toLowerCase()));
-  const out = [];
-  if (names.has(`${baseName}.onnx`)) out.push('fp32');
-  if (names.has(`${baseName}.fp16.onnx`)) out.push('fp16');
-  if (names.has(`${baseName}.int8.onnx`)) out.push('int8');
-  return out;
-}
-
-function findLocalEntry(entries, expectedName) {
-  const lower = expectedName.toLowerCase();
-  return (
-    entries.find((entry) => entry.path.toLowerCase() === lower) ||
-    entries.find((entry) => entry.basename.toLowerCase() === lower) ||
-    entries.find((entry) => entry.path.toLowerCase().endsWith(`/${lower}`)) ||
-    null
-  );
-}
-
-function quantizedModelName(baseName, quant) {
-  return `${baseName}${QUANT_TO_FILENAME[quant] || '.onnx'}`;
-}
-
 function getCanonicalRevision(modelKey) {
   return MODEL_CANONICAL_REVISIONS[modelKey] || 'main';
-}
-
-async function collectDirectoryFilesRecursive(dirHandle, prefix = '') {
-  const entries = [];
-  for await (const [name, handle] of dirHandle.entries()) {
-    if (handle.kind === 'directory' && name === '.git') {
-      continue;
-    }
-    const relPath = prefix ? `${prefix}/${name}` : name;
-    if (handle.kind === 'file') {
-      entries.push({
-        path: normalizeRelPath(relPath),
-        basename: getBasename(relPath),
-        handle,
-      });
-      continue;
-    }
-    if (handle.kind === 'directory') {
-      const nested = await collectDirectoryFilesRecursive(handle, relPath);
-      entries.push(...nested);
-    }
-  }
-  return entries;
-}
-
-async function getEntryFile(entry) {
-  if (entry.file) return entry.file;
-  if (entry.handle?.kind === 'file') return entry.handle.getFile();
-  throw new Error(`Could not access local file entry: ${entry?.path || entry?.basename || 'unknown'}`);
 }
 
 function supportsDirectoryHandlePersistence() {
@@ -474,7 +418,6 @@ export default function App() {
   const fileInputRef = useRef(null);
   const modelFolderInputRef = useRef(null);
   const audioRef = useRef(null);
-  const localModelBlobUrlsRef = useRef([]);
 
   const isModelReady = modelLoaded;
   const isLoading = isModelLoading;
@@ -578,16 +521,6 @@ export default function App() {
       if (audioUrl) URL.revokeObjectURL(audioUrl);
     };
   }, [audioUrl]);
-
-  // Cleanup model blob URLs only on unmount.
-  useEffect(() => {
-    return () => {
-      for (const url of localModelBlobUrlsRef.current) {
-        URL.revokeObjectURL(url);
-      }
-      localModelBlobUrlsRef.current = [];
-    };
-  }, []);
 
   // Toggle dark mode
   useEffect(() => {
@@ -725,8 +658,9 @@ export default function App() {
     setLocalEntries(entries);
     setLocalFolderName(folderName);
 
-    const encOptions = detectLocalQuantModes(entries, 'encoder-model');
-    const decOptions = detectLocalQuantModes(entries, 'decoder_joint-model');
+    const inspection = inspectParakeetLocalEntries(entries);
+    const encOptions = [...inspection.encoderQuantizations];
+    const decOptions = [...inspection.decoderQuantizations];
     const nextEncOptions = encOptions.length ? encOptions : ['fp32'];
     const nextDecOptions = decOptions.length ? decOptions : ['fp32'];
 
@@ -739,17 +673,7 @@ export default function App() {
       nextDecOptions.includes(current) ? current : pickPreferredQuant(nextDecOptions, backend, 'decoder')
     );
 
-    const tokenizerCandidates = [];
-    if (findLocalEntry(entries, 'vocab.txt')) tokenizerCandidates.push('vocab.txt');
-    if (findLocalEntry(entries, 'tokens.txt')) tokenizerCandidates.push('tokens.txt');
-    if (!tokenizerCandidates.length) {
-      for (const entry of entries) {
-        if (entry.basename.toLowerCase().endsWith('.txt')) {
-          tokenizerCandidates.push(entry.basename);
-        }
-      }
-    }
-    const dedupedTokenizer = [...new Set(tokenizerCandidates)];
+    const dedupedTokenizer = [...inspection.tokenizerNames];
     if (dedupedTokenizer.length) {
       setLocalTokenizerOptions(dedupedTokenizer);
       setLocalTokenizerName((current) => (dedupedTokenizer.includes(current) ? current : dedupedTokenizer[0]));
@@ -758,10 +682,7 @@ export default function App() {
       setLocalTokenizerName('');
     }
 
-    const preprocessorCandidates = [];
-    if (findLocalEntry(entries, 'nemo128.onnx')) preprocessorCandidates.push('nemo128');
-    if (findLocalEntry(entries, 'nemo80.onnx')) preprocessorCandidates.push('nemo80');
-    const dedupedPreprocessor = [...new Set(preprocessorCandidates)];
+    const dedupedPreprocessor = [...inspection.preprocessorNames];
     if (dedupedPreprocessor.length) {
       setLocalPreprocessorOptions(dedupedPreprocessor);
       setPreprocessor((current) => (dedupedPreprocessor.includes(current) ? current : dedupedPreprocessor[0]));
@@ -816,7 +737,7 @@ export default function App() {
       }
 
       console.log('[LocalFolder] Restoring persisted directory handle', { name: dirHandle.name });
-      const entries = await collectDirectoryFilesRecursive(dirHandle);
+      const entries = await collectParakeetLocalEntries(dirHandle);
       applyLocalEntries(entries, dirHandle.name || '');
       setNeedsLocalHandleReconnect(false);
       setStatus(`Restored local folder "${dirHandle.name || ''}"`);
@@ -840,7 +761,7 @@ export default function App() {
       if (typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function') {
         const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
         console.log('[LocalFolder] Directory handle acquired', { name: dirHandle.name });
-        const entries = await collectDirectoryFilesRecursive(dirHandle);
+        const entries = await collectParakeetLocalEntries(dirHandle);
         applyLocalEntries(entries, dirHandle.name || '');
         if (localHandlePersistenceSupported) {
           try {
@@ -873,14 +794,7 @@ export default function App() {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
     console.log('[LocalFolder] Folder input fallback selected files', { count: files.length });
-    const entries = files.map((file) => {
-      const relPath = normalizeRelPath(file.webkitRelativePath || file.name);
-      return {
-        path: relPath,
-        basename: getBasename(relPath),
-        file,
-      };
-    });
+    const entries = createParakeetLocalEntries(files);
     const folderName = entries[0]?.path?.split('/')?.[0] || '';
     applyLocalEntries(entries, folderName);
     if (!localHandlePersistenceSupported) {
@@ -985,12 +899,6 @@ export default function App() {
 
   async function loadModel() {
     const isLocalSource = modelSource === MODEL_SOURCE_OPTIONS.LOCAL;
-    const cleanupLocalBlobUrls = () => {
-      for (const url of localModelBlobUrlsRef.current) {
-        URL.revokeObjectURL(url);
-      }
-      localModelBlobUrlsRef.current = [];
-    };
     setIsModelLoading(true);
     setStatus(isLocalSource ? 'Preparing local model…' : 'Downloading model…');
     setProgressText('');
@@ -998,7 +906,9 @@ export default function App() {
     console.time('LoadModel');
 
     try {
-      cleanupLocalBlobUrls();
+      if (modelRef.current?.dispose) {
+        await modelRef.current.dispose();
+      }
 
       if (isLocalSource) {
         console.log('[LocalFolder] Starting model load from local artifacts');
@@ -1006,78 +916,32 @@ export default function App() {
           throw new Error('Pick a local model folder first.');
         }
 
-        const createdBlobUrls = [];
-        const toBlobUrl = (file) => {
-          const url = URL.createObjectURL(file);
-          createdBlobUrls.push(url);
-          return url;
-        };
+        setStatus('Compiling model…');
+        setProgressText('Compiling local model artifacts');
+        setProgressPct(null);
 
-        try {
-          const encoderName = quantizedModelName('encoder-model', encoderQuant);
-          const decoderName = quantizedModelName('decoder_joint-model', decoderQuant);
-          const encoderEntry = findLocalEntry(localEntries, encoderName);
-          const decoderEntry = findLocalEntry(localEntries, decoderName);
-          const tokenizerEntry = findLocalEntry(localEntries, localTokenizerName);
-          console.log('[LocalFolder] Selected artifacts', {
-            encoder: encoderName,
-            decoder: decoderName,
-            tokenizer: localTokenizerName,
-            preprocessorBackend,
-            preprocessor: preprocessorBackend === 'onnx' ? `${preprocessor}.onnx` : null,
-          });
+        const localLoadResult = await loadParakeetModelFromLocalEntries(localEntries, {
+          modelId: selectedModel,
+          encoderQuant,
+          decoderQuant,
+          tokenizerName: localTokenizerName,
+          preprocessorName: preprocessor,
+          preprocessorBackend,
+          backend,
+          verbose: verboseLog,
+          cpuThreads,
+          enableProfiling
+        });
 
-          if (!encoderEntry) throw new Error(`Missing encoder file: ${encoderName}`);
-          if (!decoderEntry) throw new Error(`Missing decoder file: ${decoderName}`);
-          if (!tokenizerEntry) throw new Error(`Missing tokenizer file: ${localTokenizerName}`);
-
-          const cfg = {
-            modelId: selectedModel,
-            encoderUrl: toBlobUrl(await getEntryFile(encoderEntry)),
-            decoderUrl: toBlobUrl(await getEntryFile(decoderEntry)),
-            tokenizerUrl: toBlobUrl(await getEntryFile(tokenizerEntry)),
-            filenames: {
-              encoder: encoderEntry.basename,
-              decoder: decoderEntry.basename,
-            },
-            preprocessorBackend,
-            backend,
-            verbose: verboseLog,
-            cpuThreads,
-          };
-
-          if (preprocessorBackend === 'onnx') {
-            const preprocessorName = `${preprocessor}.onnx`;
-            const preprocessorEntry = findLocalEntry(localEntries, preprocessorName);
-            if (!preprocessorEntry) {
-              throw new Error(`Missing preprocessor file: ${preprocessorName} (switch to JS preprocessor or add file to folder).`);
-            }
-            cfg.preprocessorUrl = toBlobUrl(await getEntryFile(preprocessorEntry));
-          }
-
-          const encoderDataEntry = findLocalEntry(localEntries, `${encoderEntry.basename}.data`);
-          if (encoderDataEntry) {
-            cfg.encoderDataUrl = toBlobUrl(await getEntryFile(encoderDataEntry));
-          }
-          const decoderDataEntry = findLocalEntry(localEntries, `${decoderEntry.basename}.data`);
-          if (decoderDataEntry) {
-            cfg.decoderDataUrl = toBlobUrl(await getEntryFile(decoderDataEntry));
-          }
-
-          setStatus('Compiling model…');
-          setProgressText('Compiling local model artifacts');
-          setProgressPct(null);
-
-          console.log('[LocalFolder] Calling ParakeetModel.fromUrls with local blob URLs');
-          modelRef.current = await ParakeetModel.fromUrls(cfg);
-          localModelBlobUrlsRef.current = createdBlobUrls;
-          console.log('[LocalFolder] Model sessions created from local artifacts');
-        } catch (localLoadError) {
-          for (const url of createdBlobUrls) {
-            URL.revokeObjectURL(url);
-          }
-          throw localLoadError;
-        }
+        console.log('[LocalFolder] Selected artifacts', {
+          encoder: localLoadResult.selection.encoderName,
+          decoder: localLoadResult.selection.decoderName,
+          tokenizer: localLoadResult.selection.tokenizerName,
+          preprocessorBackend,
+          preprocessor: localLoadResult.selection.preprocessorName ?? null,
+        });
+        modelRef.current = localLoadResult.model;
+        console.log('[LocalFolder] Model sessions created from local artifacts');
       } else {
         console.log('[Hub] Starting model load from HuggingFace');
         const progressCallback = ({ loaded, total, file }) => {
@@ -1170,15 +1034,15 @@ export default function App() {
           console.error(`[App] Verification failed! Expected one of: "${expectedTexts.join('" | "')}", Got: "${utterance_text}"`);
           setStatus('Verification failed');
           setModelLoaded(false);
+          await modelRef.current?.dispose?.();
           modelRef.current = null;
-          if (isLocalSource) cleanupLocalBlobUrls();
         }
       } catch (err) {
         console.error('[App] Warm-up failed', err);
         setStatus('Warm-up failed');
         setModelLoaded(false);
+        await modelRef.current?.dispose?.();
         modelRef.current = null;
-        if (isLocalSource) cleanupLocalBlobUrls();
       }
 
       console.timeEnd('LoadModel');
@@ -1188,6 +1052,7 @@ export default function App() {
       console.error(e);
       setStatus(`Failed: ${e.message}`);
       setModelLoaded(false);
+      await modelRef.current?.dispose?.();
       modelRef.current = null;
     } finally {
       setIsModelLoading(false);
