@@ -4,9 +4,6 @@ import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 
-// Check if we should use local source files instead of npm package
-const useLocalSource = process.env.PARAKEET_LOCAL === 'true';
-
 function readJson(filePath) {
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -28,17 +25,11 @@ function getShortCommitHash(repoRoot) {
 
 const repoRoot = path.resolve(__dirname, '../..');
 const localPkg = readJson(path.resolve(repoRoot, 'package.json'));
-const npmPkg = readJson(path.resolve(__dirname, 'node_modules/parakeet.js/package.json'));
 const localVersion = localPkg?.version;
-const npmVersion = npmPkg?.version;
 
 const shortHash = getShortCommitHash(repoRoot);
-let parakeetVersion = useLocalSource ? localVersion : npmVersion;
-let parakeetSource = useLocalSource ? (shortHash ? `dev-${shortHash}` : 'dev') : 'npm';
-if (!parakeetVersion) {
-  parakeetVersion = localVersion || 'unknown';
-  parakeetSource = localVersion ? (shortHash ? `dev-${shortHash}` : 'dev') : 'unknown';
-}
+const asrVersion = localVersion || 'unknown';
+const asrSource = shortHash ? `dev-${shortHash}` : 'dev';
 
 export default defineConfig({
   plugins: [react()],
@@ -56,14 +47,14 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: useLocalSource ? {
-      // When PARAKEET_LOCAL=true, use local source files instead of npm package
-      'parakeet.js': path.resolve(__dirname, '../../src/index.js'),
-    } : {},
+    alias: {
+      // This demo always exercises the local asr.js source tree.
+      'asr.js': path.resolve(__dirname, '../../src/index.ts'),
+    },
   },
   define: {
     global: 'globalThis',
-    __PARAKEET_VERSION__: JSON.stringify(parakeetVersion),
-    __PARAKEET_SOURCE__: JSON.stringify(parakeetSource),
+    __PARAKEET_VERSION__: JSON.stringify(asrVersion),
+    __PARAKEET_SOURCE__: JSON.stringify(asrSource),
   },
 });

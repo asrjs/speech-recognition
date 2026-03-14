@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ParakeetModel, getParakeetModel, MODELS, LANGUAGE_NAMES } from 'parakeet.js';
+import { ParakeetModel, getParakeetModel, MODELS, LANGUAGE_NAMES } from 'asr.js';
 import { fetchRandomSample, hasTestSamples, SPEECH_DATASETS } from './utils/speechDatasets';
 import {
   fetchModelFiles,
@@ -1032,6 +1032,7 @@ export default function App() {
           if (!tokenizerEntry) throw new Error(`Missing tokenizer file: ${localTokenizerName}`);
 
           const cfg = {
+            modelId: selectedModel,
             encoderUrl: toBlobUrl(await getEntryFile(encoderEntry)),
             decoderUrl: toBlobUrl(await getEntryFile(decoderEntry)),
             tokenizerUrl: toBlobUrl(await getEntryFile(tokenizerEntry)),

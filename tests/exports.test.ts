@@ -17,6 +17,8 @@ describe('public exports', () => {
     expect(module.createWebGpuBackend).toBeTypeOf('function');
     expect(module.createWebNnBackend).toBeTypeOf('function');
     expect(module.createWebGlBackend).toBeTypeOf('function');
+    expect(module.createBuiltInSpeechRuntime).toBeTypeOf('function');
+    expect(module.fetchModelFiles).toBeTypeOf('function');
     expect(module.createModelClassification).toBeTypeOf('function');
     expect(module.AudioFeatureCache).toBeTypeOf('function');
     expect(module.AudioChunker).toBeTypeOf('function');
@@ -29,5 +31,9 @@ describe('public exports', () => {
     expect(module.createParakeetPresetFactory).toBeTypeOf('function');
     expect(module.createMedAsrPresetFactory).toBeTypeOf('function');
     expect(module.createWhisperPresetFactory).toBeTypeOf('function');
+    expect(module.ParakeetModel).toBeTypeOf('function');
+    expect(module.getParakeetModel).toBeTypeOf('function');
+    expect(module.loadParakeetModelWithFallback).toBeTypeOf('function');
+    expect(module.MODELS['parakeet-tdt-0.6b-v2']).toBeTruthy();
   });
 });
