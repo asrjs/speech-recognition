@@ -1,5 +1,5 @@
 import { createHuggingFaceAssetProvider, getDefaultIndexedDbAssetCache } from '../io/index.js';
-import type { AssetRequest, ResolvedAssetHandle } from '../types/index.js';
+import type { AssetRequest, ResolvedAssetHandle, RuntimeLogger } from '../types/index.js';
 
 export const DEFAULT_MODEL_REVISIONS = ['main'] as const;
 export const QUANTIZATION_ORDER = ['fp16', 'int8', 'fp32'] as const;
@@ -150,7 +150,10 @@ function createDefaultHuggingFaceProvider() {
   });
 }
 
-export async function fetchModelRevisions(repoId: string): Promise<readonly string[]> {
+export async function fetchModelRevisions(
+  repoId: string,
+  options: { readonly logger?: RuntimeLogger } = {},
+): Promise<readonly string[]> {
   if (!repoId) {
     return DEFAULT_MODEL_REVISIONS;
   }
@@ -172,7 +175,9 @@ export async function fetchModelRevisions(repoId: string): Promise<readonly stri
     MODEL_REVISIONS_CACHE.set(repoId, revisions);
     return revisions;
   } catch (error) {
-    console.warn(`[huggingface] Failed to fetch revisions for ${repoId}; using defaults.`, error);
+    options.logger?.warn?.(`[huggingface] Failed to fetch revisions for ${repoId}; using defaults.`, {
+      error,
+    });
     return DEFAULT_MODEL_REVISIONS;
   }
 }
@@ -180,6 +185,7 @@ export async function fetchModelRevisions(repoId: string): Promise<readonly stri
 export async function fetchModelFiles(
   repoId: string,
   revision = 'main',
+  options: { readonly logger?: RuntimeLogger } = {},
 ): Promise<readonly string[]> {
   if (!repoId) {
     return [];
@@ -203,9 +209,9 @@ export async function fetchModelFiles(
     MODEL_FILES_CACHE.set(cacheKey, files);
     return files;
   } catch (treeError) {
-    console.warn(
+    options.logger?.warn?.(
       `[huggingface] Tree listing failed for ${repoId}@${revision}; trying metadata.`,
-      treeError,
+      { error: treeError },
     );
   }
 
@@ -218,7 +224,9 @@ export async function fetchModelFiles(
     MODEL_FILES_CACHE.set(cacheKey, files);
     return files;
   } catch (metadataError) {
-    console.warn(`[huggingface] Metadata listing failed for ${repoId}@${revision}.`, metadataError);
+    options.logger?.warn?.(`[huggingface] Metadata listing failed for ${repoId}@${revision}.`, {
+      error: metadataError,
+    });
     return [];
   }
 }

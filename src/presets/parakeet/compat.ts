@@ -527,7 +527,9 @@ export async function getParakeetModel(
   const preprocessor = options.preprocessor ?? modelConfig?.preprocessor ?? 'nemo128';
   const preprocessorBackend = options.preprocessorBackend ?? 'js';
   const backend = options.backend ?? 'webgpu-hybrid';
-  const repoFiles = await fetchModelFiles(repoId, revision);
+  const repoFiles = await fetchModelFiles(repoId, revision, {
+    logger: createConsoleLogger(options.verbose),
+  });
 
   const preferredSetup = getParakeetDefaultWeightSetup(repoIdOrModelKey, backend);
   const encoderAvailable = getAvailableQuantModes(repoFiles, 'encoder-model');
