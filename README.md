@@ -95,17 +95,14 @@ cleanup automatically, use `transcribeSpeech`:
 ```ts
 import { transcribeSpeech, PcmAudioBuffer } from '@asrjs/speech-recognition';
 
-const canonical = await transcribeSpeech(
-  PcmAudioBuffer.fromMono(pcm, 16000),
-  {
-    modelId: 'google/medasr',
-    backend: 'wasm',
-    transcribeOptions: {
-      responseFlavor: 'canonical',
-      detail: 'detailed',
-    },
+const canonical = await transcribeSpeech(PcmAudioBuffer.fromMono(pcm, 16000), {
+  modelId: 'google/medasr',
+  backend: 'wasm',
+  transcribeOptions: {
+    responseFlavor: 'canonical',
+    detail: 'detailed',
   },
-);
+});
 
 console.log(canonical.text);
 ```
@@ -141,7 +138,10 @@ await pipeline.dispose();
 Use the builtins entry for convenience composition:
 
 ```ts
-import { createBuiltInSpeechRuntime, loadBuiltInSpeechModel } from '@asrjs/speech-recognition/builtins';
+import {
+  createBuiltInSpeechRuntime,
+  loadBuiltInSpeechModel,
+} from '@asrjs/speech-recognition/builtins';
 ```
 
 Use `loadBuiltInSpeechModel` when you want the same convenience path but prefer
@@ -227,7 +227,11 @@ import {
 Use the inference entry for shared descriptors, generic math, and shared streaming primitives:
 
 ```ts
-import { FASTCONFORMER_ENCODER, argmax, DefaultStreamingTranscriber } from '@asrjs/speech-recognition/inference';
+import {
+  FASTCONFORMER_ENCODER,
+  argmax,
+  DefaultStreamingTranscriber,
+} from '@asrjs/speech-recognition/inference';
 ```
 
 ### Other subpaths
