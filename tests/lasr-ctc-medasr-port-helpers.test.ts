@@ -114,4 +114,17 @@ describe('MedASR port helper parity', () => {
     expect(sentences[1]?.startTime).toBeCloseTo(0.8, 6);
     expect(sentences[1]?.endTime).toBeCloseTo(1.2, 6);
   });
+
+  test('preserves spacing before bracketed section headers during decode', () => {
+    const tokenizer = new MedAsrTextTokenizer([
+      '<epsilon>',
+      '▁Brain',
+      '▁MRI',
+      '.',
+      '▁[INDICATION]',
+      '▁Monitoring',
+    ]);
+
+    expect(tokenizer.decode([1, 2, 3, 4, 5])).toBe('Brain MRI. [INDICATION] Monitoring');
+  });
 });

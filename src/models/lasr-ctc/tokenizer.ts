@@ -103,7 +103,8 @@ export class MedAsrTextTokenizer implements TextTokenizer {
 
     let text = pieces.join('');
     text = text.replace(/^\s+/, '');
-    text = text.replace(/\s+(?=[^\w\s])/g, '');
+    text = text.replace(/\s+([,.;:!?%)\]\}])/g, '$1');
+    text = text.replace(/([\[\(\{])\s+/g, '$1');
     text = text.replace(/\s+/g, ' ');
     return text.trim();
   }
