@@ -118,6 +118,12 @@ Start with the curated reference set in:
 
 - [reference/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\README.md)
 
+### MedASR porting helpers
+
+- [reference/medasrjs/upstream-tests/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\medasrjs\upstream-tests\README.md)
+- CI-safe helper checks in:
+  - `tests/lasr-ctc-medasr-port-helpers.test.ts`
+
 ## Current Lessons
 
 ### Node-first audio prep debugging is worth it

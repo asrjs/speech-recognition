@@ -80,6 +80,13 @@ export const FASTCONFORMER_ENCODER = createAcousticEncoderDescriptor({
   streaming: true,
 });
 
+export const CONFORMER_ENCODER = createAcousticEncoderDescriptor({
+  kind: 'conformer',
+  sharedModule: 'inference',
+  outputStride: 160,
+  streaming: false,
+});
+
 export const WAV2VEC2_CONFORMER_ENCODER = createAcousticEncoderDescriptor({
   kind: 'wav2vec2-conformer',
   sharedModule: 'inference',

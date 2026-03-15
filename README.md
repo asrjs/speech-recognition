@@ -43,6 +43,8 @@ Use the root entry for runtime-critical surfaces only:
 - transcript/runtime/backend/audio contracts
 - `createSpeechRuntime`
 - `loadSpeechModel`
+- `transcribeSpeech`
+- `createSpeechPipeline`
 - backend factories
 - canonical transcript normalizers
 - `PcmAudioBuffer`
@@ -52,6 +54,8 @@ import {
   createSpeechRuntime,
   createWasmBackend,
   loadSpeechModel,
+  transcribeSpeech,
+  createSpeechPipeline,
   PcmAudioBuffer,
   getCanonicalTranscript,
 } from '@asrjs/speech-recognition';
@@ -81,6 +85,55 @@ const result = await loaded.transcribe(audioBuffer, {
 });
 
 await loaded.dispose();
+```
+
+#### One-shot automatic transcription
+
+If you want a single call that handles model loading, transcription, and
+cleanup automatically, use `transcribeSpeech`:
+
+```ts
+import { transcribeSpeech, PcmAudioBuffer } from '@asrjs/speech-recognition';
+
+const canonical = await transcribeSpeech(
+  PcmAudioBuffer.fromMono(pcm, 16000),
+  {
+    modelId: 'google/medasr',
+    backend: 'wasm',
+    transcribeOptions: {
+      responseFlavor: 'canonical',
+      detail: 'detailed',
+    },
+  },
+);
+
+console.log(canonical.text);
+```
+
+#### Cached model-agnostic pipeline
+
+If you need repeated transcriptions across one or more model families, use
+`createSpeechPipeline` to reuse loaded models automatically:
+
+```ts
+import { createSpeechPipeline, PcmAudioBuffer } from '@asrjs/speech-recognition';
+
+const pipeline = createSpeechPipeline({
+  cacheModels: true,
+});
+
+const med = await pipeline.transcribe(PcmAudioBuffer.fromMono(pcm, 16000), {
+  modelId: 'google/medasr',
+  backend: 'wasm',
+});
+
+const parakeet = await pipeline.transcribe(PcmAudioBuffer.fromMono(pcm, 16000), {
+  modelId: 'parakeet-tdt-0.6b-v3',
+  backend: 'webgpu-hybrid',
+});
+
+console.log(med.text, parakeet.text);
+await pipeline.dispose();
 ```
 
 ### `@asrjs/speech-recognition/builtins`
@@ -131,7 +184,7 @@ Use model-family entry points for technical implementations:
 
 ```ts
 import { createNemoTdtModelFamily } from '@asrjs/speech-recognition/models/nemo-tdt';
-import { createHfCtcModelFamily } from '@asrjs/speech-recognition/models/hf-ctc-common';
+import { createLasrCtcModelFamily } from '@asrjs/speech-recognition/models/lasr-ctc';
 import { createWhisperSeq2SeqModelFamily } from '@asrjs/speech-recognition/models/whisper-seq2seq';
 ```
 
@@ -259,7 +312,7 @@ try {
 
 - model families
   - `nemo-tdt`
-  - `hf-ctc`
+  - `lasr-ctc`
   - `whisper-seq2seq`
 - presets
   - `parakeet`
@@ -399,14 +452,14 @@ Ownership rules:
 Architecture-based implementation families currently present in the repo:
 
 - `nemo-tdt`
-- `hf-ctc`
+- `lasr-ctc`
 - `whisper-seq2seq`
 - `firered-llm`
 
 Built-in runtime registration currently includes:
 
 - `nemo-tdt`
-- `hf-ctc`
+- `lasr-ctc`
 - `whisper-seq2seq`
 
 Current branded presets include:

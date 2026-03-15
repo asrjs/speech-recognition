@@ -1,11 +1,11 @@
 import {
-  createHfCtcTranscriptNormalizer,
+  createLasrCtcTranscriptNormalizer,
   createLegacyParakeetTranscriptNormalizer,
   createNemoTdtTranscriptNormalizer,
   createWhisperTranscriptNormalizer,
   getCanonicalTranscript,
   isTranscriptionEnvelope,
-  type HfCtcNativeTranscript,
+  type LasrCtcNativeTranscript,
   type LegacyParakeetTranscript,
   type NemoTdtNativeTranscript,
   type WhisperNativeTranscript,
@@ -63,8 +63,8 @@ describe('transcript normalization helpers', () => {
     expect(canonical.tokens).toHaveLength(1);
   });
 
-  it('normalizes HF CTC and Whisper native outputs with the same interface', () => {
-    const hfNative: HfCtcNativeTranscript = {
+  it('normalizes LASR CTC and Whisper native outputs with the same interface', () => {
+    const lasrNative: LasrCtcNativeTranscript = {
       utteranceText: 'medical scaffold',
       isFinal: true,
       words: [
@@ -117,15 +117,15 @@ describe('transcript normalization helpers', () => {
       ],
     };
 
-    const hfCanonical = createHfCtcTranscriptNormalizer().toCanonical(hfNative, {
+    const lasrCanonical = createLasrCtcTranscriptNormalizer().toCanonical(lasrNative, {
       detailLevel: 'detailed',
     });
     const whisperCanonical = createWhisperTranscriptNormalizer().toCanonical(whisperNative, {
       detailLevel: 'detailed',
     });
 
-    expect(hfCanonical.meta.modelFamily).toBe('hf-ctc');
-    expect(hfCanonical.tokens?.[0]?.text).toBe('medical');
+    expect(lasrCanonical.meta.modelFamily).toBe('lasr-ctc');
+    expect(lasrCanonical.tokens?.[0]?.text).toBe('medical');
     expect(whisperCanonical.meta.modelFamily).toBe('whisper');
     expect(whisperCanonical.segments?.[0]?.text).toBe('translated whisper scaffold');
   });

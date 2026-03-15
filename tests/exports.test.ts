@@ -8,6 +8,8 @@ describe('public exports', () => {
     expect(module.DefaultSpeechRuntime).toBeTypeOf('function');
     expect(module.createSpeechRuntime).toBeTypeOf('function');
     expect(module.loadSpeechModel).toBeTypeOf('function');
+    expect(module.transcribeSpeech).toBeTypeOf('function');
+    expect(module.createSpeechPipeline).toBeTypeOf('function');
     expect(module.PcmAudioBuffer).toBeTypeOf('function');
     expect(module.createWasmBackend).toBeTypeOf('function');
     expect(module.createWebGpuBackend).toBeTypeOf('function');
@@ -40,7 +42,7 @@ describe('public exports', () => {
     const bench = await import('@asrjs/speech-recognition/bench');
     const datasets = await import('@asrjs/speech-recognition/datasets');
     const nemoTdt = await import('@asrjs/speech-recognition/models/nemo-tdt');
-    const hfCtc = await import('@asrjs/speech-recognition/models/hf-ctc-common');
+    const lasrCtc = await import('@asrjs/speech-recognition/models/lasr-ctc');
     const whisperModel = await import('@asrjs/speech-recognition/models/whisper-seq2seq');
     const parakeetPreset = await import('@asrjs/speech-recognition/presets/parakeet');
     const medasrPreset = await import('@asrjs/speech-recognition/presets/medasr');
@@ -80,7 +82,7 @@ describe('public exports', () => {
     expect(datasets.fetchRandomRows).toBeTypeOf('function');
 
     expect(nemoTdt.createNemoTdtModelFamily).toBeTypeOf('function');
-    expect(hfCtc.createHfCtcModelFamily).toBeTypeOf('function');
+    expect(lasrCtc.createLasrCtcModelFamily).toBeTypeOf('function');
     expect(whisperModel.createWhisperSeq2SeqModelFamily).toBeTypeOf('function');
 
     expect(parakeetPreset.createParakeetPresetFactory).toBeTypeOf('function');

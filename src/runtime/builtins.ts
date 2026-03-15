@@ -5,7 +5,7 @@ import {
   createWasmBackend,
 } from '../inference/index.js';
 import type { AudioInputLike } from '../types/audio.js';
-import { createHfCtcModelFamily } from '../models/hf-ctc-common/index.js';
+import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
 import { createNemoTdtModelFamily } from '../models/nemo-tdt/index.js';
 import { createWhisperSeq2SeqModelFamily } from '../models/whisper-seq2seq/index.js';
 import { createMedAsrPresetFactory } from '../presets/medasr/factory.js';
@@ -232,7 +232,7 @@ export function registerBuiltInBackends(runtime: DefaultSpeechRuntime): DefaultS
 /** Registers the built-in technical model families on an existing runtime. */
 export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): DefaultSpeechRuntime {
   runtime.registerModelFamily(createNemoTdtModelFamily());
-  runtime.registerModelFamily(createHfCtcModelFamily());
+  runtime.registerModelFamily(createLasrCtcModelFamily());
   runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());
   return runtime;
 }

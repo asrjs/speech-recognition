@@ -52,6 +52,7 @@ This is broader than “porting”:
 - quality troubleshooting
 - audio pipeline investigation
 - runtime regression checks
+- model-porting helper suites (including copied MedASR reference tests)
 
 Start with:
 

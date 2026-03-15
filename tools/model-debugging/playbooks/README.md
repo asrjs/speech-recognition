@@ -11,6 +11,8 @@ from a proven path instead of rediscovering the workflow.
   - use when browser and Node disagree, or when resampling seems to change text quality
 - [librivox-domain-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\librivox-domain-parity.md)
   - the concrete `LibriVox.org` case that drove recent WAV and Node-path fixes
+- [model-porting-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\model-porting-parity.md)
+  - workflow for merging reference test suites and keeping CI-safe parity helpers
 
 ## When To Create A New Playbook
 

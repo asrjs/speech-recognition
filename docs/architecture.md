@@ -154,7 +154,7 @@ If shared descriptors become too broad later, the next split should be within `s
 Owns architecture-based implementation families such as:
 
 - `nemo-tdt`
-- `hf-ctc-common`
+- `lasr-ctc`
 - `whisper-seq2seq`
 - `firered-llm`
 
