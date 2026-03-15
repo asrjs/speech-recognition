@@ -1,184 +1,132 @@
 # Google MedASR Model Architecture
 
-Reference: `google/medasr` on HuggingFace — Wav2Vec2-Conformer + CTC for medical speech recognition.
+Reference model: `google/medasr`
 
-**Important:** MedASR uses the **Wav2Vec2-Conformer** architecture from HuggingFace Transformers, not NeMo's Conformer. The frontend and encoder differ from NeMo models; only the **CTC decoder/topology** and **CTC decoding strategy** are shared.
+This repo uses `lasr-ctc` as the technical family name for MedASR-style execution.
 
----
+Important distinction:
 
-## 1. The Real Architecture of `google/medasr`
-
-MedASR is based on **Wav2Vec2-Conformer**: same overall structure as Wav2Vec2, but with Conformer blocks replacing the transformer attention layers. It is a straightforward acoustic-to-CTC pipeline, but it does **not** use mel spectrograms.
-
-### Pipeline (5 layers)
-
-```
-Raw Waveform [16kHz mono]
-  │
-  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 1. FRONTEND (Feature Extraction)                                     │
-│    7-layer convolutional feature extractor on RAW waveform           │
-│    (Wav2Vec2FeatureExtractor) — NOT mel spectrogram                  │
-│    Strides: 5×2×2×2×2×2×2 ≈ 320× temporal downsampling               │
-│    Output: [B, feat_dim, T_enc]                                      │
-└─────────────────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 2. ENCODER (Acoustic Model)                                          │
-│    Wav2Vec2-Conformer: 16–17 Conformer blocks                        │
-│    Macaron-style: FF → MHA → Conv → FF per block                     │
-│    Replaces transformer attention with Conformer in Wav2Vec2         │
-└─────────────────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 3. DECODER HEAD (Topology) — CTC linear projection                   │
-│    encoded → logits [B, T_enc, V+1]                                  │
-│    → shared CTC-head descriptor, model-owned implementation          │
-└─────────────────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 4. DECODING — CTC greedy / beam                                      │
-│    → shared decoding descriptor, model-owned algorithm               │
-└─────────────────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 5. TOKENIZER — from HuggingFace processor (character or subword)     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### What differs from NeMo
-
-| Component    | NeMo (Parakeet, etc.)                       | MedASR (Wav2Vec2-Conformer)             |
-| ------------ | ------------------------------------------- | --------------------------------------- |
-| **Frontend** | Mel spectrogram (STFT → mel → log)          | 7 conv layers on **raw waveform**       |
-| **Input**    | Mel features [B, 80, T]                     | Raw audio [B, samples]                  |
-| **Encoder**  | ConformerEncoder (mel → subsample → blocks) | Conformer blocks (conv output → blocks) |
-| **Decoder**  | CTC / RNNT / TDT                            | CTC (shared)                            |
-| **Decoding** | CTC greedy / beam                           | CTC greedy / beam (shared)              |
-
-**Reusable:** CTC head definition, CTC decoding logic.  
-**Not reusable:** Frontend (different math), Encoder (different input interface).
+- research lineage: MedASR is a LASR/LAST-trained medical ASR model built around Conformer + CTC
+- runtime implementation in this repo: the current port executes the exported ONNX artifact path used by `ysdede/medasr-onnx`
+- branded preset: `medasr`
+- technical family: `lasr-ctc`
 
 ---
 
-## 2. Updating the `@asrjs/speech-recognition` Source Tree
+## 1. Runtime View in `@asrjs/speech-recognition`
 
-Because MedASR uses a Wav2Vec2-style frontend, you need a dedicated audio/frontend path for Google-style models inside the single library source tree. The CTC decoder-head and decoding strategy remain shared at the descriptor level in `src/inference/descriptors.ts`, while the concrete execution logic stays model-owned.
+The current MedASR port in this repo is modeled as:
+
+```text
+PCM audio [16 kHz mono]
+  ->
+kaldi-style log-mel frontend [128 bins]
+  ->
+Conformer encoder
+  ->
+CTC logits
+  ->
+greedy CTC decode
+  ->
+MedASR tokenizer + transcript normalization
+```
+
+This means the reusable pieces inside `src/models/lasr-ctc` are:
+
+- LASR CTC config and model-family wiring
+- MedASR tokenizer loading and decoding
+- CTC collapse, timing reconstruction, and sentence timing helpers
+- ONNX Runtime session and artifact resolution
+- JS mel frontend bridge used by the exported ONNX path
+
+---
+
+## 2. Why the Family Is Named `lasr-ctc`
+
+`lasr-ctc` is the implementation boundary for:
+
+- LASR/MedASR-style Conformer + CTC execution
+- shared CTC transcript contracts
+- MedASR-specific tokenizer and exported-artifact wiring
+
+It is intentionally not named after Hugging Face hosting, because Hugging Face is only one artifact source. In code:
+
+- `source.kind: 'huggingface'` stays valid for asset resolution
+- architecture, family ids, types, transcript normalizers, and warning codes use `lasr-ctc`
+
+---
+
+## 3. Source Tree Mapping
 
 ```text
 src/
-├── runtime/
-├── types/
-├── audio/
-│   ├── mel-spectrogram.ts         # NeMo-style: STFT -> mel -> log
-│   └── wav2vec2-feature.ts        # Google-style: 7 conv layers on raw waveform
 ├── inference/
-│   └── descriptors.ts             # Shared CTC / TDT / AED descriptors
-└── models/
-    ├── nemo-tdt/                  # NeMo-style FastConformer + TDT
-    └── hf-ctc-common/             # Wav2Vec2 frontend + encoder + CTC implementation
+│   └── descriptors.ts          # shared conformer / ctc descriptors
+├── models/
+│   ├── nemo-tdt/               # NeMo FastConformer + transducer/TDT
+│   ├── lasr-ctc/               # MedASR-style Conformer + CTC family
+│   └── whisper-seq2seq/        # Whisper encoder-decoder family
+└── presets/
+    └── medasr/                 # branded MedASR preset -> lasr-ctc
 ```
 
----
+Inside `src/models/lasr-ctc`:
 
-## 3. Wiring up `src/models/hf-ctc-common`
-
-The MedASR-style implementation wires: **raw audio -> Wav2Vec2 frontend -> Wav2Vec2-Conformer encoder -> CTC decoder**. The CTC decoding logic is shared, while the branded MedASR alias lives in `src/presets/medasr`.
-
-```typescript
-// src/models/hf-ctc-common/model.ts
-import { Wav2Vec2FeatureExtractor } from '../../audio/wav2vec-conv';
-import { CTC_GREEDY_DECODING, WAV2VEC2_CONFORMER_ENCODER } from '../../inference/graph';
-import type { TensorMap } from '../../types/audio';
-
-export class MedASRPipeline {
-  private featureExtractor: Wav2Vec2FeatureExtractor;
-
-  constructor(
-    private encoder: { encode(features: TensorMap): Promise<TensorMap> },
-    vocab: string[],
-    config: { blankId?: number } = {},
-  ) {
-    this.featureExtractor = new Wav2Vec2FeatureExtractor(/* from model config */);
-    // Resolve blank index from processor/model config — often vocab_size, NOT 0.
-    const blankId = config.blankId ?? vocab.length;
-    void blankId;
-    void WAV2VEC2_CONFORMER_ENCODER;
-    void CTC_GREEDY_DECODING;
-  }
-
-  async transcribe(rawAudio: Float32Array | TensorMap): Promise<string> {
-    // 1. Raw waveform → conv features (7 layers)
-    const features = await this.featureExtractor.extract(rawAudio);
-
-    // 2. Conv features → Conformer blocks (encoder)
-    const encodings = await this.encoder.encode(features);
-
-    // 3. Encodings = CTC logits → greedy decode (shared descriptor, model-owned algorithm)
-    return `medasr:${encodings ? 'decoded' : 'empty'}`;
-  }
-}
-```
-
-**Note on blank index:** Wav2Vec2-based models often use `blank_id = vocab_size` (last index). Load this from the HuggingFace processor config (`processor.tokenizer` / `config.pad_token_id`) instead of hardcoding 0.
+- `config.ts`: family defaults and descriptions
+- `types.ts`: native transcript, artifact source, and executor contracts
+- `ctc.ts`: greedy collapse and timing helpers
+- `tokenizer.ts`: MedASR text tokenizer
+- `mel.ts`: JS mel frontend used by the current ONNX path
+- `ort.ts` / `executor.ts`: ORT session creation and artifact-backed inference
+- `model.ts`: family registration, session lifecycle, and transcript shaping
 
 ---
 
-## 4. Frontend: Wav2Vec2 Feature Extractor
+## 4. Shared vs Family-Owned
 
-The Wav2Vec2 feature extractor is a **7-layer 1D convolutional network** that runs directly on the raw waveform. It is **not** a mel spectrogram.
+Shared at descriptor level:
 
-Typical config (from HuggingFace):
+- conformer encoder classification
+- CTC decoder-head classification
+- CTC greedy decoding classification
+- canonical transcript contracts
 
-- `conv_dim`: (512, 512, 512, 512, 512, 512, 512)
-- `conv_stride`: (5, 2, 2, 2, 2, 2, 2)
-- `conv_kernel`: (10, 3, 3, 3, 3, 2, 2)
+Family-owned in `lasr-ctc`:
 
-Overall temporal downsampling: 5×2×2×2×2×2×2 = **320×**. At 16 kHz, 1 second of audio → ~50 frames.
+- MedASR tokenizer behavior
+- timing reconstruction details for this family's native transcript
+- artifact resolution for exported MedASR ONNX bundles
+- current mel frontend bridge used by the ONNX export path
 
----
-
-## 5. Encoder: Wav2Vec2-Conformer Blocks
-
-The encoder is the Conformer stack that takes the **conv feature extractor output** as input. Each block follows the Conformer layout:
-
-- Feed-Forward (half-step)
-- Multi-Head Self-Attention (or Conformer attention)
-- Convolution module
-- Feed-Forward (half-step)
-
-This is the same Conformer block structure as in the original paper, but integrated into the Wav2Vec2 architecture (conv frontend, positional encodings, etc.).
+This keeps the runtime modular without pretending MedASR is identical to NeMo or Whisper.
 
 ---
 
-## 6. Why This Classification Works
+## 5. Current Preset Wiring
 
-By separating vendor-specific frontends and encoders from shared decoders and decoding:
+`src/presets/medasr` stays intentionally thin:
 
-1. **CTC semantics are shared** — one common CTC descriptor and transcript contract across NeMo and MedASR.
-2. **Frontends stay separate** — mel for NeMo, conv for Wav2Vec2-style models.
-3. **Encoders stay separate** — NeMo Conformer expects mel; Wav2Vec2-Conformer expects conv output.
-4. **Model packages stay thin** — `hf-ctc-common` owns the execution path, while `medasr` stays a preset.
+- resolves MedASR preset ids and aliases
+- injects MedASR classification defaults
+- injects default artifact source (`ysdede/medasr-onnx`)
+- resolves to `family: 'lasr-ctc'`
 
-If MedASR v2 switches to RNN-T, you add a new transducer implementation path under `src/models` and extend `src/inference/descriptors.ts`. Frontend and encoder stacks stay unchanged.
+Execution remains owned by `src/models/lasr-ctc`.
+
+---
+
+## 6. Design Rule
+
+When future MedASR-adjacent models arrive:
+
+- reuse `lasr-ctc` only if they fit the same Conformer + CTC + tokenizer/executor contract well
+- keep new model-family logic separate if the frontend, topology, or session contract materially changes
+- move helpers upward only after a second real family proves the reuse
 
 ---
 
 ## 7. Cross-Reference
 
-- **NeMo:** `NEMO_ASR_MODEL_ARCHITECTURE.md` — mel frontend, Conformer, CTC/RNNT/TDT
-- **Whisper:** `WHISPER_ASR_MODEL_ARCHITECTURE.md` — mel (different norm), plain transformer encoder, AED
-
----
-
-## 8. Resources
-
-- [Google MedASR Model Card](https://developers.google.com/health-ai-developer-foundations/medasr/model-card)
-- [HuggingFace google/medasr](https://huggingface.co/google/medasr)
-- [Wav2Vec2-Conformer docs](https://huggingface.co/docs/transformers/main/model_doc/wav2vec2-conformer)
-- [MedASR local deployment guide (video)](https://www.youtube.com/watch?v=H7bhh_ZveRs)
+- `NEMO_ASR_MODEL_ARCHITECTURE.md`: NeMo mel + FastConformer + RNNT/TDT/CTC
+- `WHISPER_ASR_MODEL_ARCHITECTURE.md`: Whisper mel + transformer encoder-decoder
+- `architecture.md`: runtime family vs preset layering

@@ -1,5 +1,5 @@
 import type { ModelClassification } from '../../types/index.js';
-import type { HfCtcModelConfig } from '../../models/hf-ctc-common/index.js';
+import type { LasrCtcArtifactSource, LasrCtcModelConfig } from '../../models/lasr-ctc/index.js';
 
 export interface MedAsrPresetManifest {
   readonly preset: 'medasr';
@@ -7,7 +7,8 @@ export interface MedAsrPresetManifest {
   readonly aliases?: readonly string[];
   readonly description: string;
   readonly classification: ModelClassification;
-  readonly config: Partial<HfCtcModelConfig>;
+  readonly config: Partial<LasrCtcModelConfig>;
+  readonly source?: LasrCtcArtifactSource;
 }
 
 export const MEDASR_PRESET_MANIFESTS: readonly MedAsrPresetManifest[] = [
@@ -15,11 +16,11 @@ export const MEDASR_PRESET_MANIFESTS: readonly MedAsrPresetManifest[] = [
     preset: 'medasr',
     modelId: 'google/medasr',
     aliases: ['medasr', 'google-medasr'],
-    description: 'Google MedASR preset over the shared HF CTC implementation boundary.',
+    description: 'Google MedASR preset over the shared LASR CTC implementation boundary.',
     classification: {
-      ecosystem: 'hf',
-      processor: 'wav2vec2-conv',
-      encoder: 'wav2vec2-conformer',
+      ecosystem: 'lasr',
+      processor: 'kaldi-mel',
+      encoder: 'conformer',
       decoder: 'ctc',
       topology: 'ctc',
       family: 'medasr',
@@ -28,10 +29,19 @@ export const MEDASR_PRESET_MANIFESTS: readonly MedAsrPresetManifest[] = [
     config: {
       languages: ['en'],
       vocabularySize: 32,
+      nMels: 128,
+      featureHopSeconds: 0.01,
       tokenizer: {
-        kind: 'wordpiece',
+        kind: 'sentencepiece',
         blankTokenId: 31,
       },
+    },
+    source: {
+      kind: 'huggingface',
+      repoId: 'ysdede/medasr-onnx',
+      tokenizerFilename: 'tokens.txt',
+      modelFilename: 'model.onnx',
+      modelDataFilename: 'model.onnx.data',
     },
   },
 ];

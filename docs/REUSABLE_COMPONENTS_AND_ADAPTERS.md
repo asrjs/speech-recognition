@@ -1,6 +1,6 @@
 # Reusable Components, Data Types, and Adapters
 
-Based on the architectural review of NeMo, Whisper, MedASR, FireRedASR2S, and ONNX models, the `@asrjs/speech-recognition` library should be structured to maximize reuse at the **algorithm and topology level** while strictly isolating vendor-specific feature extraction and projection constraints.
+Based on the architectural review of NeMo, Whisper, MedASR, FireRedASR2S, and ONNX models, the `@asrjs/speech-recognition` library should be structured to maximize reuse at the **algorithm and topology level** while strictly isolating family-specific feature extraction and projection constraints.
 
 This document serves as the implementation guideline for decomposing models into shareable elements. In the current single-package `@asrjs/speech-recognition` layout, reusable architecture descriptors belong in `src/inference/descriptors.ts`, while real encoder and decoder implementations remain inside `src/models/*` until they are proven shared.
 
@@ -32,15 +32,15 @@ Mathematical implementations differ too widely to share logic. They share the bo
 - `audio/nemo-mel.ts`: 80-bin, Slaney norm, per_feature norm (NeMo, Parakeet).
 - `audio/kaldi-mel.ts`: 80-bin, Hann window^0.85 (FireRed, Vosk/Kaldi).
 - `audio/whisper-mel.ts`: 80-bin, log10, clamp max-8, (x+4)/4 (Whisper).
-- `audio/wav2vec-conv.ts`: 7-layer 1D conv directly on `RawAudio` (MedASR).
+- `audio/kaldi-mel.ts`: 128-bin kaldi-style mel frontend used by the current MedASR ONNX path.
 - `audio/identity.ts`: Pass-through raw chunks (T-one).
 
 ### B. Acoustic Encoders
 
 Expects `[B, n_features, T_frames]` and outputs `[B, T_enc, d_model]`.
 
-- Shared classification lives in `src/inference/descriptors.ts` via encoder descriptors like `fastconformer`, `wav2vec2-conformer`, `whisper-transformer`, and `dfsmn`.
-- Concrete implementations stay inside model-family modules such as `src/models/nemo-tdt`, `src/models/hf-ctc-common`, and `src/models/whisper-seq2seq`.
+- Shared classification lives in `src/inference/descriptors.ts` via encoder descriptors like `fastconformer`, `conformer`, `wav2vec2-conformer`, `whisper-transformer`, and `dfsmn`.
+- Concrete implementations stay inside model-family modules such as `src/models/nemo-tdt`, `src/models/lasr-ctc`, and `src/models/whisper-seq2seq`.
 
 ### C. Decoder Topologies (Heads)
 
@@ -72,12 +72,12 @@ Models implemented in `src/models/` should stay focused and readable, but they a
 
 ### Case 1: Standard Wiring Pattern
 
-_Google MedASR_ (`src/models/hf-ctc-common`):
+_Google MedASR_ (`src/models/lasr-ctc`):
 
 ```ts
 // Wires:
-1. wav2vec2-conv.ts (Feature Extraction)
-2. model-owned Wav2Vec2-Conformer encoder
+1. kaldi-mel.ts / family-owned mel bridge (Feature Extraction)
+2. model-owned Conformer encoder path
 3. model-owned CTC head
 4. model-owned CTC search using shared transcript semantics
 ```

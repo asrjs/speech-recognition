@@ -179,12 +179,12 @@ Whisper uses custom generation logic:
 
 | Component            | NeMo                                | MedASR                | Whisper                            |
 | -------------------- | ----------------------------------- | --------------------- | ---------------------------------- |
-| **Frontend**         | Mel (STFT→mel→log→per_feature norm) | 7 conv on raw         | Mel (STFT→mel→log10→clamp→scale)   |
-| **Encoder**          | Conformer (conv block)              | Wav2Vec2-Conformer    | Plain transformer (no conv block)  |
-| **Subsampling**      | 4× or 8× inside encoder             | 320× in conv frontend | 2× in encoder (2 conv layers)      |
+| **Frontend**         | Mel (STFT→mel→log→per_feature norm) | 128-bin kaldi-style mel | Mel (STFT→mel→log10→clamp→scale) |
+| **Encoder**          | Conformer (conv block)              | Conformer             | Plain transformer (no conv block)  |
+| **Subsampling**      | 4× or 8× inside encoder             | 10 ms frame hop path  | 2× in encoder (2 conv layers)      |
 | **Decoder topology** | CTC / RNNT / TDT / AED              | CTC                   | AED (transformer decoder)          |
 | **Decoding**         | CTC greedy/beam, RNNT, etc.         | CTC                   | Autoregressive + logits processors |
-| **Tokenizer**        | SentencePiece / WPE                 | HF processor          | Tiktoken BPE                       |
+| **Tokenizer**        | SentencePiece / WPE                 | MedASR tokenizer      | Tiktoken BPE                       |
 
 **Shared with NeMo:** Nothing at the layer level — different frontend, encoder, and topology.
 **Shared with MedASR:** Nothing — MedASR is CTC; Whisper is encoder-decoder autoregressive.
@@ -198,7 +198,7 @@ src/
 ├── audio/
 │   ├── mel-spectrogram.ts        # NeMo-style (STFT->mel->ln->per_feature)
 │   ├── whisper-mel.ts            # Whisper-style (log10, clamp, scale)
-│   └── wav2vec2-feature.ts       # MedASR (7 conv on raw)
+│   └── kaldi-mel.ts              # MedASR runtime frontend
 ├── inference/
 │   ├── descriptors.ts            # Shared encoder / decoder-head / decoding descriptors
 │   └── streaming/                # Shared overlap and partial/final orchestration
@@ -207,7 +207,7 @@ src/
 │   └── whisper-tiktoken.ts       # Whisper BPE (tiktoken format)
 ├── models/
 │   ├── nemo-tdt/
-│   ├── hf-ctc-common/
+│   ├── lasr-ctc/
 │   └── whisper-seq2seq/
 └── presets/
     ├── parakeet/
@@ -240,6 +240,6 @@ src/
 ## Cross-Reference
 
 - **NeMo:** `NEMO_ASR_MODEL_ARCHITECTURE.md` — CTC/RNNT/TDT, mel frontend, Conformer
-- **MedASR:** `GOOGLE-MEDASR_MODEL_ARCHITECTURE.md` — CTC, Wav2Vec2 conv frontend
+- **MedASR:** `GOOGLE-MEDASR_MODEL_ARCHITECTURE.md` — LASR CTC family, current ONNX path uses mel + Conformer + CTC
 
 The NEMO doc's "Other Vendors" section and recommended module map include Whisper. All three docs share a consistent 6-layer pipeline structure for comparison.

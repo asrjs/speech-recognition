@@ -1,0 +1,917 @@
+{
+  "summary": {
+    "comparedAt": "2026-03-15T16:27:22.694Z",
+    "samples": 20,
+    "datasetDir": "N:/github/ysdede/scribe-ds/data/PARROT_v1.0/07_audio/labels/_30s",
+    "medasrjsRoot": "N:/github/ysdede/medasr.js/medasrjs",
+    "backend": "wasm",
+    "medasrjsAvgWer": 0.1454290131288279,
+    "medasrjsAvgCer": 0.11308064417736252,
+    "asrjsAvgWer": 0.1454290131288279,
+    "asrjsAvgCer": 0.11308064417736252,
+    "crossCer": 0,
+    "exactMatches": 20
+  },
+  "rows": [
+    {
+      "file": "00163df44fc0fd589a6cc4beeaabc01b07a716d43e1a0cfb8abc1bc0dc4a17d9_00.wav",
+      "reference": "Upright abdominal X-ray.PARAGRAPH Multiple air-fluid levels are observed in the loops of the small intestine, a finding suspicious for small bowel obstruction. NEWLINE  In the right upper quadrant, round calcifications are noted, possibly gallstones. NEWLINE  No intra-abdominal calcifications are observed. NEWLINE  Fecal loading of the colon. NEWLINE  No significant findings from the visualized skeleton.",
+      "medasrjs": {
+        "text": "Upright abdominal x-ray. Multiple air-fluid levels are observed in the loops of the small intestine. A finding suspicious for small bowel obstruction. In the right upper quadrant, round calcifications are noted, possibly gallstones. No intra-abdominal calcifications are observed. Fecal loading of the colon. No significant findings from the visualized skeleton.",
+        "wer": 0.08620689655172414,
+        "cer": 0.10632911392405063,
+        "timings": {
+          "preprocess_ms": 84.24580000000014,
+          "transpose_ms": 3.677599999999984,
+          "encoder_ms": 661.8674999999998,
+          "ctc_decode_ms": 17.049699999999575,
+          "infer_total_ms": 679.6884999999997,
+          "total_ms": 768.1859000000004
+        }
+      },
+      "asrjs": {
+        "text": "Upright abdominal x-ray. Multiple air-fluid levels are observed in the loops of the small intestine. A finding suspicious for small bowel obstruction. In the right upper quadrant, round calcifications are noted, possibly gallstones. No intra-abdominal calcifications are observed. Fecal loading of the colon. No significant findings from the visualized skeleton.",
+        "nativeText": "Upright abdominal x-ray. Multiple air-fluid levels are observed in the loops of the small intestine. A finding suspicious for small bowel obstruction. In the right upper quadrant, round calcifications are noted, possibly gallstones. No intra-abdominal calcifications are observed. Fecal loading of the colon. No significant findings from the visualized skeleton.",
+        "wer": 0.08620689655172414,
+        "cer": 0.10632911392405063,
+        "metrics": {
+          "preprocessMs": 116.395,
+          "encodeMs": 3675.536,
+          "decodeMs": 26.056,
+          "postprocessMs": 0,
+          "totalMs": 3815.039,
+          "wallMs": 3815.039,
+          "audioDurationSec": 24.025,
+          "rtf": 0.1588,
+          "rtfx": 6.2974,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 598,
+          "decodeIterations": 598,
+          "emittedTokenCount": 171,
+          "emittedWordCount": 7
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "008599a6b529feb4e96fb7ff92ee235933199a0c08d999114ffdc8045ef2bf33_00.wav",
+      "reference": "Brain MRIPARAGRAPH Indication NEWLINE  Monitoring of a left frontal convexity meningioma.PARAGRAPH Technique NEWLINE  Sagittal T1, axial T2, axial gradient echo T2, diffusion tensor imaging with six directions, 3D Flair, and 3D T1 post-gadolinium injection. NEWLINE  Magnetom Sola 27/01/2023 NEWLINE ",
+      "medasrjs": {
+        "text": "Brain MRI.[INDICATION] Monitoring of a left frontal convexity meningioma.[TECHNIQUE] Sagittal T1, axial T2, axial gradient echo T2 diffusion-tensor imaging with six directions, 3D fLAI and 3DT1 post gadolinium injection. Magnetum sola genuary 272023.",
+        "wer": 0.3023255813953488,
+        "cer": 0.21724137931034482,
+        "timings": {
+          "preprocess_ms": 86.58739999999852,
+          "transpose_ms": 3.3363999999983207,
+          "encoder_ms": 554.6545000000006,
+          "ctc_decode_ms": 10.827299999999013,
+          "infer_total_ms": 565.5839999999989,
+          "total_ms": 655.6444999999985
+        }
+      },
+      "asrjs": {
+        "text": "Brain MRI.[INDICATION] Monitoring of a left frontal convexity meningioma.[TECHNIQUE] Sagittal T1, axial T2, axial gradient echo T2 diffusion-tensor imaging with six directions, 3D fLAI and 3DT1 post gadolinium injection. Magnetum sola genuary 272023.",
+        "nativeText": "Brain MRI.[INDICATION] Monitoring of a left frontal convexity meningioma.[TECHNIQUE] Sagittal T1, axial T2, axial gradient echo T2 diffusion-tensor imaging with six directions, 3D fLAI and 3DT1 post gadolinium injection. Magnetum sola genuary 272023.",
+        "wer": 0.3023255813953488,
+        "cer": 0.21724137931034482,
+        "metrics": {
+          "preprocessMs": 86.458,
+          "encodeMs": 2240.033,
+          "decodeMs": 16.321,
+          "postprocessMs": 0,
+          "totalMs": 2340.047,
+          "wallMs": 2340.047,
+          "audioDurationSec": 22.25,
+          "rtf": 0.1052,
+          "rtfx": 9.5084,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 553,
+          "decodeIterations": 553,
+          "emittedTokenCount": 156,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "008599a6b529feb4e96fb7ff92ee235933199a0c08d999114ffdc8045ef2bf33_01.wav",
+      "reference": "DOTAREM FL INJ 20 ml 13 cc lot no. t100cPARAGRAPH Results NEWLINE  Compared to the previous MRI on 30/07/2021.PARAGRAPH The left pterional meningioma remains stable in size, measuring 19 x 12 x 14 mm  - LxWxH -  and is partially calcified.PARAGRAPH Fazekas grade 1 leukoaraiosis.PARAGRAPH No abnormal diffusion restriction.PARAGRAPH",
+      "medasrjs": {
+        "text": "Do t a r e m FL 20 mL 13 cubic cm lot number T100 c.[RESULTS] Compared to the previous MRI on life 30 of 2021. The left terional meningioma remains stable in size measuring 19x12x14 mm length by width by height and is partially calcified. Aak is grade one leukriosis. No abnormal diffusion restriction.",
+        "wer": 0.5660377358490566,
+        "cer": 0.3746130030959752,
+        "timings": {
+          "preprocess_ms": 99.34939999999915,
+          "transpose_ms": 4.387499999998909,
+          "encoder_ms": 715.6103000000003,
+          "ctc_decode_ms": 11.221799999999348,
+          "infer_total_ms": 727.0321999999996,
+          "total_ms": 830.8834000000006
+        }
+      },
+      "asrjs": {
+        "text": "Do t a r e m FL 20 mL 13 cubic cm lot number T100 c.[RESULTS] Compared to the previous MRI on life 30 of 2021. The left terional meningioma remains stable in size measuring 19x12x14 mm length by width by height and is partially calcified. Aak is grade one leukriosis. No abnormal diffusion restriction.",
+        "nativeText": "Do t a r e m FL 20 mL 13 cubic cm lot number T100 c.[RESULTS] Compared to the previous MRI on life 30 of 2021. The left terional meningioma remains stable in size measuring 19x12x14 mm length by width by height and is partially calcified. Aak is grade one leukriosis. No abnormal diffusion restriction.",
+        "wer": 0.5660377358490566,
+        "cer": 0.3746130030959752,
+        "metrics": {
+          "preprocessMs": 115.501,
+          "encodeMs": 2715.302,
+          "decodeMs": 21.601,
+          "postprocessMs": 0,
+          "totalMs": 2848.401,
+          "wallMs": 2848.401,
+          "audioDurationSec": 26.625,
+          "rtf": 0.107,
+          "rtfx": 9.3473,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 663,
+          "decodeIterations": 663,
+          "emittedTokenCount": 176,
+          "emittedWordCount": 5
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "008599a6b529feb4e96fb7ff92ee235933199a0c08d999114ffdc8045ef2bf33_02.wav",
+      "reference": "No microbleeds.PARAGRAPH No pathological enhancement elsewhere.PARAGRAPH Developmental venous anomaly in the left cingulate region, with peripheral gliosis.PARAGRAPH Good patency of the venous sinuses.PARAGRAPH Conclusion NEWLINE  Stability in the size of the left pterional meningioma.PARAGRAPH",
+      "medasrjs": {
+        "text": "No microbleeds. No pathological enhancement elsewhere. Developmental venous anomaly in the left singulet region with peripheral gliosis. Good patency of the venous sinuses.[CONCLUSION] Stability in the size of the left pteronal meningioma.",
+        "wer": 0.20512820512820512,
+        "cer": 0.21160409556313994,
+        "timings": {
+          "preprocess_ms": 47.97620000000097,
+          "transpose_ms": 0.6993000000002212,
+          "encoder_ms": 418.4315999999999,
+          "ctc_decode_ms": 11.115999999998166,
+          "infer_total_ms": 429.65279999999984,
+          "total_ms": 478.4190000000017
+        }
+      },
+      "asrjs": {
+        "text": "No microbleeds. No pathological enhancement elsewhere. Developmental venous anomaly in the left singulet region with peripheral gliosis. Good patency of the venous sinuses.[CONCLUSION] Stability in the size of the left pteronal meningioma.",
+        "nativeText": "No microbleeds. No pathological enhancement elsewhere. Developmental venous anomaly in the left singulet region with peripheral gliosis. Good patency of the venous sinuses.[CONCLUSION] Stability in the size of the left pteronal meningioma.",
+        "wer": 0.20512820512820512,
+        "cer": 0.21160409556313994,
+        "metrics": {
+          "preprocessMs": 55.004,
+          "encodeMs": 1634.464,
+          "decodeMs": 6.081,
+          "postprocessMs": 0,
+          "totalMs": 1694.882,
+          "wallMs": 1694.882,
+          "audioDurationSec": 16.25,
+          "rtf": 0.1043,
+          "rtfx": 9.5877,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 403,
+          "decodeIterations": 403,
+          "emittedTokenCount": 129,
+          "emittedWordCount": 5
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00938cf9bbea5a871ceda19a5999e999ed46011aff01b20f154214ba98c276f2_00.wav",
+      "reference": "Sequences were performed in T1 in axial and sagittal projections, and T2-weighted sequences in sagittal projection.NEWLINE Additionally, a complementary sequence with T2 technique  - myelographic effect -  in sagittal projection was used.NEWLINE Results:NEWLINE In T1-weighted sequences, the physiological cervical lordosis is preserved.NEWLINE The vertebral bodies and intervertebral spaces maintain their height and signal intensity.NEWLINE",
+      "medasrjs": {
+        "text": "Sequences were performed in T1 and axial and sagittal projections and T2-weighted sequences in sagittal projection. Additionally, a complementary sequence with T2 STAR technique myelographic effect in sagittal projection was used. Results in T1-weighted sequences, the physiological cervical lordosis is preserved. The vertebral bodies and intervertebral spaces maintain their height and signal intensity.",
+        "wer": 0.11864406779661017,
+        "cer": 0.10854503464203233,
+        "timings": {
+          "preprocess_ms": 77.35139999999956,
+          "transpose_ms": 2.53689999999915,
+          "encoder_ms": 692.1029000000017,
+          "ctc_decode_ms": 9.36160000000018,
+          "infer_total_ms": 701.7285999999986,
+          "total_ms": 781.7584999999999
+        }
+      },
+      "asrjs": {
+        "text": "Sequences were performed in T1 and axial and sagittal projections and T2-weighted sequences in sagittal projection. Additionally, a complementary sequence with T2 STAR technique myelographic effect in sagittal projection was used. Results in T1-weighted sequences, the physiological cervical lordosis is preserved. The vertebral bodies and intervertebral spaces maintain their height and signal intensity.",
+        "nativeText": "Sequences were performed in T1 and axial and sagittal projections and T2-weighted sequences in sagittal projection. Additionally, a complementary sequence with T2 STAR technique myelographic effect in sagittal projection was used. Results in T1-weighted sequences, the physiological cervical lordosis is preserved. The vertebral bodies and intervertebral spaces maintain their height and signal intensity.",
+        "wer": 0.11864406779661017,
+        "cer": 0.10854503464203233,
+        "metrics": {
+          "preprocessMs": 87.987,
+          "encodeMs": 2629.814,
+          "decodeMs": 10.03,
+          "postprocessMs": 0,
+          "totalMs": 2725.683,
+          "wallMs": 2725.683,
+          "audioDurationSec": 26,
+          "rtf": 0.1048,
+          "rtfx": 9.5389,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 647,
+          "decodeIterations": 647,
+          "emittedTokenCount": 193,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00938cf9bbea5a871ceda19a5999e999ed46011aff01b20f154214ba98c276f2_01.wav",
+      "reference": "The spinal canal is wide, and the spinal cord follows a normal course and caliber.NEWLINE In T2-weighted sequences, the intervertebral spaces appear hypointense, and a posterior disc protrusion at C6-C7 is evident, which deforms the dura.NEWLINE No changes in signal intensity in the spinal parenchyma are noted.NEWLINE Multiple axial cuts at different levels of the cervical spine confirm the central and posterior disc protrusion at C6-C7.NEWLINE",
+      "medasrjs": {
+        "text": "The spinal canal is wide and the spinal cord follows a normal course and caliber. In T2- weighted sequences, the intervertebral spaces appear hypointense and a posterior disc protrusion at C6 to C7 is evident, which deforms the dura. No changes in signal intensity in the spinal parenchyma are noted. Multiple axial cuts at different levels of the cervical spine confirm the central and posterior disc protrusion at C6 to C7.",
+        "wer": 0.0821917808219178,
+        "cer": 0.08108108108108109,
+        "timings": {
+          "preprocess_ms": 78.57909999999902,
+          "transpose_ms": 2.272000000000844,
+          "encoder_ms": 736.3993999999984,
+          "ctc_decode_ms": 9.728499999997439,
+          "infer_total_ms": 746.3222999999998,
+          "total_ms": 827.2705000000024
+        }
+      },
+      "asrjs": {
+        "text": "The spinal canal is wide and the spinal cord follows a normal course and caliber. In T2- weighted sequences, the intervertebral spaces appear hypointense and a posterior disc protrusion at C6 to C7 is evident, which deforms the dura. No changes in signal intensity in the spinal parenchyma are noted. Multiple axial cuts at different levels of the cervical spine confirm the central and posterior disc protrusion at C6 to C7.",
+        "nativeText": "The spinal canal is wide and the spinal cord follows a normal course and caliber. In T2- weighted sequences, the intervertebral spaces appear hypointense and a posterior disc protrusion at C6 to C7 is evident, which deforms the dura. No changes in signal intensity in the spinal parenchyma are noted. Multiple axial cuts at different levels of the cervical spine confirm the central and posterior disc protrusion at C6 to C7.",
+        "wer": 0.0821917808219178,
+        "cer": 0.08108108108108109,
+        "metrics": {
+          "preprocessMs": 87.021,
+          "encodeMs": 2755.272,
+          "decodeMs": 28.655,
+          "postprocessMs": 0,
+          "totalMs": 2868.915,
+          "wallMs": 2868.915,
+          "audioDurationSec": 26.75,
+          "rtf": 0.1072,
+          "rtfx": 9.3241,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 666,
+          "decodeIterations": 666,
+          "emittedTokenCount": 189,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00938cf9bbea5a871ceda19a5999e999ed46011aff01b20f154214ba98c276f2_02.wav",
+      "reference": "The spinal cord is centrally located. NEWLINE  The intervertebral foramina are wide, and the nerve roots pass freely through them. NEWLINE  The facet joints and yellow ligaments are normal. NEWLINE  Diagnostic impression: NEWLINE  Central and posterior disc protrusion at C6-C7.PARAGRAPH",
+      "medasrjs": {
+        "text": "The spinal cord is centrally located. The intervertebral foramina are wide and the nerve roots pass freely through them. The facet joints and yellow ligaments are normal.[DIAGNOSTIC IMPRESSION] Central and posterior disc protrusion at C6 to C7.",
+        "wer": 0.14285714285714285,
+        "cer": 0.15467625899280577,
+        "timings": {
+          "preprocess_ms": 52.21689999999944,
+          "transpose_ms": 1.0478999999977532,
+          "encoder_ms": 392.03570000000036,
+          "ctc_decode_ms": 5.975800000000163,
+          "infer_total_ms": 398.10989999999947,
+          "total_ms": 451.47279999999955
+        }
+      },
+      "asrjs": {
+        "text": "The spinal cord is centrally located. The intervertebral foramina are wide and the nerve roots pass freely through them. The facet joints and yellow ligaments are normal.[DIAGNOSTIC IMPRESSION] Central and posterior disc protrusion at C6 to C7.",
+        "nativeText": "The spinal cord is centrally located. The intervertebral foramina are wide and the nerve roots pass freely through them. The facet joints and yellow ligaments are normal.[DIAGNOSTIC IMPRESSION] Central and posterior disc protrusion at C6 to C7.",
+        "wer": 0.14285714285714285,
+        "cer": 0.15467625899280577,
+        "metrics": {
+          "preprocessMs": 60.388,
+          "encodeMs": 2153.444,
+          "decodeMs": 7.237,
+          "postprocessMs": 0,
+          "totalMs": 2220.197,
+          "wallMs": 2220.197,
+          "audioDurationSec": 17.6,
+          "rtf": 0.1261,
+          "rtfx": 7.9272,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 437,
+          "decodeIterations": 437,
+          "emittedTokenCount": 110,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "009ac48d53dd7c440704a31afb5959df9c171035baf7f274e1966f10c21cdc03_00.wav",
+      "reference": "CT Scan of the Brain - 12/03/2018 13:14PARAGRAPH No intracranial hemorrhage or infarction. No mass effect. No white matter changes. Bilateral medial temporal lobe atrophy is observed, grade 3 on the right side and grade 2 on the left side.",
+      "medasrjs": {
+        "text": "CT scan of the brain, marge 122018 at 13:14. No intracranial hemorrhage or infarction. No mass effect. No white matter changes. Bilateral medial temporal lobe atrophy is observed, grade three on the right side and grade two on the left side.",
+        "wer": 0.14285714285714285,
+        "cer": 0.11637931034482758,
+        "timings": {
+          "preprocess_ms": 61.7129000000059,
+          "transpose_ms": 1.9020999999993364,
+          "encoder_ms": 512.8450000000012,
+          "ctc_decode_ms": 7.4284999999945285,
+          "infer_total_ms": 520.3708999999944,
+          "total_ms": 584.1215000000011
+        }
+      },
+      "asrjs": {
+        "text": "CT scan of the brain, marge 122018 at 13:14. No intracranial hemorrhage or infarction. No mass effect. No white matter changes. Bilateral medial temporal lobe atrophy is observed, grade three on the right side and grade two on the left side.",
+        "nativeText": "CT scan of the brain, marge 122018 at 13:14. No intracranial hemorrhage or infarction. No mass effect. No white matter changes. Bilateral medial temporal lobe atrophy is observed, grade three on the right side and grade two on the left side.",
+        "wer": 0.14285714285714285,
+        "cer": 0.11637931034482758,
+        "metrics": {
+          "preprocessMs": 66.515,
+          "encodeMs": 2114.115,
+          "decodeMs": 9.822,
+          "postprocessMs": 0,
+          "totalMs": 2188.937,
+          "wallMs": 2188.937,
+          "audioDurationSec": 21.05,
+          "rtf": 0.104,
+          "rtfx": 9.6165,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 523,
+          "decodeIterations": 523,
+          "emittedTokenCount": 113,
+          "emittedWordCount": 5
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "009de5c9f03c1053e65fa07566ad9909551a59a9fe47949a419639692e9ac91b_00.wav",
+      "reference": "Mammography of both breasts in two projections shows dense, mixed-glandular breasts for the age, with heterogeneous and inhomogeneous glandular parenchyma, in which fibrocystic changes are visible.PARAGRAPH In the upper outer quadrant of the left breast, a stellate soft tissue lesion measuring 12-13 mm is observed, which requires further evaluation.PARAGRAPH",
+      "medasrjs": {
+        "text": "Mammography of both breasts in two projections shows dense mixed glandular breasts for the age with heterogeneous and inhomogeneous glandular parenchyma in which fibrocystic changes are visible. In the upper-oter quadrant of the left breast, a stellate soft tissue lesion measuring 12 to 13 mm is observed, which requires further evaluation.",
+        "wer": 0.07547169811320754,
+        "cer": 0.0676056338028169,
+        "timings": {
+          "preprocess_ms": 68.23380000000179,
+          "transpose_ms": 2.143100000001141,
+          "encoder_ms": 579.8777000000046,
+          "ctc_decode_ms": 9.965700000000652,
+          "infer_total_ms": 590.0049999999974,
+          "total_ms": 660.5418000000063
+        }
+      },
+      "asrjs": {
+        "text": "Mammography of both breasts in two projections shows dense mixed glandular breasts for the age with heterogeneous and inhomogeneous glandular parenchyma in which fibrocystic changes are visible. In the upper-oter quadrant of the left breast, a stellate soft tissue lesion measuring 12 to 13 mm is observed, which requires further evaluation.",
+        "nativeText": "Mammography of both breasts in two projections shows dense mixed glandular breasts for the age with heterogeneous and inhomogeneous glandular parenchyma in which fibrocystic changes are visible. In the upper-oter quadrant of the left breast, a stellate soft tissue lesion measuring 12 to 13 mm is observed, which requires further evaluation.",
+        "wer": 0.07547169811320754,
+        "cer": 0.0676056338028169,
+        "metrics": {
+          "preprocessMs": 73.987,
+          "encodeMs": 2427.082,
+          "decodeMs": 14.796,
+          "postprocessMs": 0,
+          "totalMs": 2513.956,
+          "wallMs": 2513.956,
+          "audioDurationSec": 23.25,
+          "rtf": 0.1081,
+          "rtfx": 9.2484,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 578,
+          "decodeIterations": 578,
+          "emittedTokenCount": 161,
+          "emittedWordCount": 2
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "009de5c9f03c1053e65fa07566ad9909551a59a9fe47949a419639692e9ac91b_01.wav",
+      "reference": "In the right breast, there is a centrally located dystrophic calcified fibroadenoma.PARAGRAPH No visible pathological microcalcifications.PARAGRAPH The skin and pectoral muscles appear normal.PARAGRAPH",
+      "medasrjs": {
+        "text": "In the right breast, there is a centrally located dystrophic calcified fibroadenoma. No visible pathological microcalcifications. The skin and pectoral muscles appear normal.",
+        "wer": 0.11538461538461539,
+        "cer": 0.15,
+        "timings": {
+          "preprocess_ms": 36.257400000002235,
+          "transpose_ms": 0.9123000000035972,
+          "encoder_ms": 248.41949999999633,
+          "ctc_decode_ms": 2.937899999997171,
+          "infer_total_ms": 251.42359999999462,
+          "total_ms": 288.6967000000004
+        }
+      },
+      "asrjs": {
+        "text": "In the right breast, there is a centrally located dystrophic calcified fibroadenoma. No visible pathological microcalcifications. The skin and pectoral muscles appear normal.",
+        "nativeText": "In the right breast, there is a centrally located dystrophic calcified fibroadenoma. No visible pathological microcalcifications. The skin and pectoral muscles appear normal.",
+        "wer": 0.11538461538461539,
+        "cer": 0.15,
+        "metrics": {
+          "preprocessMs": 39.734,
+          "encodeMs": 1363.561,
+          "decodeMs": 4.982,
+          "postprocessMs": 0,
+          "totalMs": 1407.622,
+          "wallMs": 1407.622,
+          "audioDurationSec": 12.275,
+          "rtf": 0.1147,
+          "rtfx": 8.7204,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 304,
+          "decodeIterations": 304,
+          "emittedTokenCount": 83,
+          "emittedWordCount": 3
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_00.wav",
+      "reference": "Clinical/Indication: DSA of the left leg vessels. Wound dehiscence and full-thickness necrosis following Achilles tendon refixation. Arterial status assessment prior to plastic repair with a free flap.PARAGRAPH Findings: The patient was thoroughly informed before the procedure.",
+      "medasrjs": {
+        "text": "[CLINICAL INDICATION] DSI of the left leg vessels. Wound dehiscence and full-thickness necrosis following Achilles tendon refixi shunt. Arterial status assessment prior to plastic repair with a free flap.[FINDINGS] The patient was thoroughly informed before the procedure.",
+        "wer": 0.10256410256410256,
+        "cer": 0.06227106227106227,
+        "timings": {
+          "preprocess_ms": 59.77300000000105,
+          "transpose_ms": 1.403599999997823,
+          "encoder_ms": 491.52150000000256,
+          "ctc_decode_ms": 8.9574000000066,
+          "infer_total_ms": 500.54730000000563,
+          "total_ms": 561.8389999999999
+        }
+      },
+      "asrjs": {
+        "text": "[CLINICAL INDICATION] DSI of the left leg vessels. Wound dehiscence and full-thickness necrosis following Achilles tendon refixi shunt. Arterial status assessment prior to plastic repair with a free flap.[FINDINGS] The patient was thoroughly informed before the procedure.",
+        "nativeText": "[CLINICAL INDICATION] DSI of the left leg vessels. Wound dehiscence and full-thickness necrosis following Achilles tendon refixi shunt. Arterial status assessment prior to plastic repair with a free flap.[FINDINGS] The patient was thoroughly informed before the procedure.",
+        "wer": 0.10256410256410256,
+        "cer": 0.06227106227106227,
+        "metrics": {
+          "preprocessMs": 67.108,
+          "encodeMs": 2214.785,
+          "decodeMs": 18.341,
+          "postprocessMs": 0,
+          "totalMs": 2299.214,
+          "wallMs": 2299.214,
+          "audioDurationSec": 20.225,
+          "rtf": 0.1137,
+          "rtfx": 8.7965,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 503,
+          "decodeIterations": 503,
+          "emittedTokenCount": 143,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_01.wav",
+      "reference": "TSH, creatinine, and coagulation parameters were within normal ranges at the time of the examination. The patient was positioned supine on the examination table. Sterile precautions were taken in the left groin area. Comprehensive local anesthesia was administered with 20 ml of 1% Mepivacaine.",
+      "medasrjs": {
+        "text": "TSH, creatinine, and coagulation parameters were within normal ranges at the time of the examination. The patient was positioned supine on the examination table. Sterile precautions were taken in the left groin area. Comprehensive local anesthesia was administered with 20 mL of 1% mepivacaine.",
+        "wer": 0,
+        "cer": 0,
+        "timings": {
+          "preprocess_ms": 69.01060000000143,
+          "transpose_ms": 1.2252000000007683,
+          "encoder_ms": 598.8810000000012,
+          "ctc_decode_ms": 10.39560000000347,
+          "infer_total_ms": 609.3320999999996,
+          "total_ms": 679.6869000000006
+        }
+      },
+      "asrjs": {
+        "text": "TSH, creatinine, and coagulation parameters were within normal ranges at the time of the examination. The patient was positioned supine on the examination table. Sterile precautions were taken in the left groin area. Comprehensive local anesthesia was administered with 20 mL of 1% mepivacaine.",
+        "nativeText": "TSH, creatinine, and coagulation parameters were within normal ranges at the time of the examination. The patient was positioned supine on the examination table. Sterile precautions were taken in the left groin area. Comprehensive local anesthesia was administered with 20 mL of 1% mepivacaine.",
+        "wer": 0,
+        "cer": 0,
+        "metrics": {
+          "preprocessMs": 73.807,
+          "encodeMs": 2382.974,
+          "decodeMs": 11.729,
+          "postprocessMs": 0,
+          "totalMs": 2467.574,
+          "wallMs": 2467.574,
+          "audioDurationSec": 23.7,
+          "rtf": 0.1041,
+          "rtfx": 9.6046,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 589,
+          "decodeIterations": 589,
+          "emittedTokenCount": 133,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_02.wav",
+      "reference": "A retrograde puncture of the left CFA was performed. Using a micropuncture set under ultrasound and fluoroscopy guidance. DSA of the left lower extremity was conducted using Visipaque contrast medium through the puncture sheath. The equipment was removed. Manual compression was applied until hemostasis was achieved.",
+      "medasrjs": {
+        "text": "A retrograde puncture of the left CFI was performed using a micropuncture set under ultrasound and fluoroscopy guidance. DSI of the left lower extremity was conducted using Visipaque contrast medium through the puncture sheath. The equipment was removed. Manual compression was applied until hemostasis was achieved.",
+        "wer": 0.043478260869565216,
+        "cer": 0.00641025641025641,
+        "timings": {
+          "preprocess_ms": 75.30069999999978,
+          "transpose_ms": 1.418599999997241,
+          "encoder_ms": 645.6071999999986,
+          "ctc_decode_ms": 8.97219999999652,
+          "infer_total_ms": 654.625,
+          "total_ms": 731.4366999999984
+        }
+      },
+      "asrjs": {
+        "text": "A retrograde puncture of the left CFI was performed using a micropuncture set under ultrasound and fluoroscopy guidance. DSI of the left lower extremity was conducted using Visipaque contrast medium through the puncture sheath. The equipment was removed. Manual compression was applied until hemostasis was achieved.",
+        "nativeText": "A retrograde puncture of the left CFI was performed using a micropuncture set under ultrasound and fluoroscopy guidance. DSI of the left lower extremity was conducted using Visipaque contrast medium through the puncture sheath. The equipment was removed. Manual compression was applied until hemostasis was achieved.",
+        "wer": 0.043478260869565216,
+        "cer": 0.00641025641025641,
+        "metrics": {
+          "preprocessMs": 80.03,
+          "encodeMs": 2725.959,
+          "decodeMs": 10.116,
+          "postprocessMs": 0,
+          "totalMs": 2814.978,
+          "wallMs": 2814.978,
+          "audioDurationSec": 24.575,
+          "rtf": 0.1145,
+          "rtfx": 8.7301,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 611,
+          "decodeIterations": 611,
+          "emittedTokenCount": 149,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_03.wav",
+      "reference": "Followed by a pressure bandage. There is no significant previous examination available for comparison. The CFA and SFA were observed to be normal up to the popliteal artery. The normal origin of the ATA and the normal appearance of the tibiofibular trunk were noted.",
+      "medasrjs": {
+        "text": "followed by a pressure bandage. There is no significant previous examination available for comparison. The CFI and SFI were observed to be normal up to the popliteal artery. The normal origin of the ITI and the normal appearance of the tibiofibular trunk were noted.",
+        "wer": 0.06818181818181818,
+        "cer": 0.015267175572519083,
+        "timings": {
+          "preprocess_ms": 62.681700000001,
+          "transpose_ms": 1.8160999999963678,
+          "encoder_ms": 543.8584999999948,
+          "ctc_decode_ms": 6.450799999998708,
+          "infer_total_ms": 550.3545999999988,
+          "total_ms": 614.9519
+        }
+      },
+      "asrjs": {
+        "text": "followed by a pressure bandage. There is no significant previous examination available for comparison. The CFI and SFI were observed to be normal up to the popliteal artery. The normal origin of the ITI and the normal appearance of the tibiofibular trunk were noted.",
+        "nativeText": "followed by a pressure bandage. There is no significant previous examination available for comparison. The CFI and SFI were observed to be normal up to the popliteal artery. The normal origin of the ITI and the normal appearance of the tibiofibular trunk were noted.",
+        "wer": 0.06818181818181818,
+        "cer": 0.015267175572519083,
+        "metrics": {
+          "preprocessMs": 70.393,
+          "encodeMs": 2282.479,
+          "decodeMs": 21.543,
+          "postprocessMs": 0,
+          "totalMs": 2374.249,
+          "wallMs": 2374.249,
+          "audioDurationSec": 21.125,
+          "rtf": 0.1124,
+          "rtfx": 8.8976,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 525,
+          "decodeIterations": 525,
+          "emittedTokenCount": 103,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.wav",
+      "reference": "Functionally, the lower leg is supplied by two vessels  - ATP and fibular artery - . There is a significant delay in the flow of the ATA. But no narrowing or stenosis was detected along the vessel. The fibular artery terminates at the OSG. The ATP is patent and traceable up to the plantar arteries. The ATA is poorly contrasted.",
+      "medasrjs": {
+        "text": "Functionally, the lower leg is supplied by two vessels, ITP and fibular artery. There is a significant delay in the flow of the ITI, but no narrowing or stenosis was detected along the vessel. The fibular artery terminates at the OSG. The ITP is patent and tracable up to the plantar arteries. The ITI is poorly contrasted",
+        "wer": 0.08771929824561403,
+        "cer": 0.022151898734177215,
+        "timings": {
+          "preprocess_ms": 90.89860000000044,
+          "transpose_ms": 2.5081999999965774,
+          "encoder_ms": 750.2494000000006,
+          "ctc_decode_ms": 11.636899999997695,
+          "infer_total_ms": 761.9351999999999,
+          "total_ms": 855.4665000000023
+        }
+      },
+      "asrjs": {
+        "text": "Functionally, the lower leg is supplied by two vessels, ITP and fibular artery. There is a significant delay in the flow of the ITI, but no narrowing or stenosis was detected along the vessel. The fibular artery terminates at the OSG. The ITP is patent and tracable up to the plantar arteries. The ITI is poorly contrasted",
+        "nativeText": "Functionally, the lower leg is supplied by two vessels, ITP and fibular artery. There is a significant delay in the flow of the ITI, but no narrowing or stenosis was detected along the vessel. The fibular artery terminates at the OSG. The ITP is patent and tracable up to the plantar arteries. The ITI is poorly contrasted",
+        "wer": 0.08771929824561403,
+        "cer": 0.022151898734177215,
+        "metrics": {
+          "preprocessMs": 90.801,
+          "encodeMs": 2963.753,
+          "decodeMs": 15.067,
+          "postprocessMs": 0,
+          "totalMs": 3067.764,
+          "wallMs": 3067.764,
+          "audioDurationSec": 26.45,
+          "rtf": 0.116,
+          "rtfx": 8.6219,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 658,
+          "decodeIterations": 658,
+          "emittedTokenCount": 148,
+          "emittedWordCount": 5
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_05.wav",
+      "reference": "The plantar arch and dorsalis pedis artery were not visualized.PARAGRAPH Assessment: The DSA of the left lower extremity via the left CFA was primarily uncomplicated and technically successful. There is functional dual vessel supply to the lower leg. No stenosis was detected, and no intervention is required.PARAGRAPH",
+      "medasrjs": {
+        "text": "The plantar arch and dorsalis pedis artery were not visualized.[ASSESSMENT] The DSI of the left lower extremity via the left CFI was primarily uncomplicated and technically successful. There is functional dual-vessel supply to the lower leg. No stenosis was detected and no intervention is required.",
+        "wer": 0.08163265306122448,
+        "cer": 0.07006369426751592,
+        "timings": {
+          "preprocess_ms": 66.9999000000098,
+          "transpose_ms": 1.7774000000063097,
+          "encoder_ms": 559.5124999999971,
+          "ctc_decode_ms": 9.92729999999574,
+          "infer_total_ms": 569.5329000000056,
+          "total_ms": 638.3851000000141
+        }
+      },
+      "asrjs": {
+        "text": "The plantar arch and dorsalis pedis artery were not visualized.[ASSESSMENT] The DSI of the left lower extremity via the left CFI was primarily uncomplicated and technically successful. There is functional dual-vessel supply to the lower leg. No stenosis was detected and no intervention is required.",
+        "nativeText": "The plantar arch and dorsalis pedis artery were not visualized.[ASSESSMENT] The DSI of the left lower extremity via the left CFI was primarily uncomplicated and technically successful. There is functional dual-vessel supply to the lower leg. No stenosis was detected and no intervention is required.",
+        "wer": 0.08163265306122448,
+        "cer": 0.07006369426751592,
+        "metrics": {
+          "preprocessMs": 70.842,
+          "encodeMs": 3421.02,
+          "decodeMs": 11.885,
+          "postprocessMs": 0,
+          "totalMs": 3502.077,
+          "wallMs": 3502.077,
+          "audioDurationSec": 22.95,
+          "rtf": 0.1526,
+          "rtfx": 6.5533,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 571,
+          "decodeIterations": 571,
+          "emittedTokenCount": 145,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_06.wav",
+      "reference": "Recommendation for subsequent procedure: Bed rest and pressure bandage until 18:00 on the day of the procedure. With 4 hours of bed rest.",
+      "medasrjs": {
+        "text": "reecommendation for subsequent procedure, bed rest and pressure bandage until 1800 hours on the day of the procedure with four hours of bedrest.",
+        "wer": 0.25,
+        "cer": 0.09701492537313433,
+        "timings": {
+          "preprocess_ms": 32.48099999999977,
+          "transpose_ms": 0.6716000000014901,
+          "encoder_ms": 217.795100000003,
+          "ctc_decode_ms": 2.7893999999942025,
+          "infer_total_ms": 220.6235999999917,
+          "total_ms": 253.82140000000072
+        }
+      },
+      "asrjs": {
+        "text": "reecommendation for subsequent procedure, bed rest and pressure bandage until 1800 hours on the day of the procedure with four hours of bedrest.",
+        "nativeText": "reecommendation for subsequent procedure, bed rest and pressure bandage until 1800 hours on the day of the procedure with four hours of bedrest.",
+        "wer": 0.25,
+        "cer": 0.09701492537313433,
+        "metrics": {
+          "preprocessMs": 40.995,
+          "encodeMs": 1075.689,
+          "decodeMs": 4.054,
+          "postprocessMs": 0,
+          "totalMs": 1119.878,
+          "wallMs": 1119.878,
+          "audioDurationSec": 11.025,
+          "rtf": 0.1016,
+          "rtfx": 9.8448,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 273,
+          "decodeIterations": 273,
+          "emittedTokenCount": 69,
+          "emittedWordCount": 1
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00aad9f4c93149d6424b7f452d11cd565a1427f13af5b0dd21a7f11ca95670dd_00.wav",
+      "reference": "MRI of the Lumbar Spine - 23/03/2018 14:11PARAGRAPH Since the previous examination on 29/10/2015, the patient has undergone surgery with pedicle screws and rods between L4 and L5, and the vertebral bodies have been stabilized.PARAGRAPH",
+      "medasrjs": {
+        "text": "MRI of the lumbar spine, marched 23, 218, 14,11. Since the previous examination on October 29, 2015, the patient has undergone surgery with pedicle screws and rods between L4 and L5 and the vertebral bodies have been stabilized.",
+        "wer": 0.175,
+        "cer": 0.16017316017316016,
+        "timings": {
+          "preprocess_ms": 45.67269999999553,
+          "transpose_ms": 0.9320000000006985,
+          "encoder_ms": 304.20380000000296,
+          "ctc_decode_ms": 7.4755999999906635,
+          "infer_total_ms": 311.7283999999927,
+          "total_ms": 358.35080000000016
+        }
+      },
+      "asrjs": {
+        "text": "MRI of the lumbar spine, marched 23, 218, 14,11. Since the previous examination on October 29, 2015, the patient has undergone surgery with pedicle screws and rods between L4 and L5 and the vertebral bodies have been stabilized.",
+        "nativeText": "MRI of the lumbar spine, marched 23, 218, 14,11. Since the previous examination on October 29, 2015, the patient has undergone surgery with pedicle screws and rods between L4 and L5 and the vertebral bodies have been stabilized.",
+        "wer": 0.175,
+        "cer": 0.16017316017316016,
+        "metrics": {
+          "preprocessMs": 46.348,
+          "encodeMs": 1059.111,
+          "decodeMs": 5.46,
+          "postprocessMs": 0,
+          "totalMs": 1110.355,
+          "wallMs": 1110.355,
+          "audioDurationSec": 15.5,
+          "rtf": 0.0716,
+          "rtfx": 13.9595,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 384,
+          "decodeIterations": 384,
+          "emittedTokenCount": 119,
+          "emittedWordCount": 2
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00aad9f4c93149d6424b7f452d11cd565a1427f13af5b0dd21a7f11ca95670dd_01.wav",
+      "reference": "There remains a significant anterolisthesis of L4 relative to L5, measuring approximately one centimeter, which predisposes to foraminal impact on the right L5 nerve root and affects the right S1 nerve root in the lateral recess.PARAGRAPH",
+      "medasrjs": {
+        "text": "There remains a significant anterolisthesis of L4 relative to L5 measuring approximately 1 cm, which predisposes to foraminal impact on the right L5 nerve root and affects the right S1 nerve root in the lateral recess.",
+        "wer": 0.08108108108108109,
+        "cer": 0.08898305084745763,
+        "timings": {
+          "preprocess_ms": 38.363400000002,
+          "transpose_ms": 0.6569000000017695,
+          "encoder_ms": 199.48600000000442,
+          "ctc_decode_ms": 3.024199999999837,
+          "infer_total_ms": 202.54830000000948,
+          "total_ms": 241.584400000007
+        }
+      },
+      "asrjs": {
+        "text": "There remains a significant anterolisthesis of L4 relative to L5 measuring approximately 1 cm, which predisposes to foraminal impact on the right L5 nerve root and affects the right S1 nerve root in the lateral recess.",
+        "nativeText": "There remains a significant anterolisthesis of L4 relative to L5 measuring approximately 1 cm, which predisposes to foraminal impact on the right L5 nerve root and affects the right S1 nerve root in the lateral recess.",
+        "wer": 0.08108108108108109,
+        "cer": 0.08898305084745763,
+        "metrics": {
+          "preprocessMs": 38.303,
+          "encodeMs": 997.961,
+          "decodeMs": 5.335,
+          "postprocessMs": 0,
+          "totalMs": 1041.055,
+          "wallMs": 1041.055,
+          "audioDurationSec": 12.85,
+          "rtf": 0.081,
+          "rtfx": 12.3432,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 318,
+          "decodeIterations": 318,
+          "emittedTokenCount": 101,
+          "emittedWordCount": 1
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00c864c334be61ba9fb04dbd366f7340c831e7bcb82df2986bd56b85b820f87f_00.wav",
+      "reference": "Data on the referral: Please perform an examination for pneumothorax.  - after puncturing the right pleural cavity - NEWLINE Chest X-ray PA compared with the examination from 22/02/2022.NEWLINE No radiological signs of pneumothorax were detected.NEWLINE Asymmetry of the diaphragmatic domes.NEWLINE",
+      "medasrjs": {
+        "text": "Data on the referral, please perform an examination for pneumothorax after puncturing the right pleural cavity. Chest x-ray PI compared with the examination from February 2 second, 2022. No radiological signs of pneumothorax were detected. Asymmetry of the diaphragmatic domes.",
+        "wer": 0.18181818181818182,
+        "cer": 0.15120274914089346,
+        "timings": {
+          "preprocess_ms": 76.4655000000057,
+          "transpose_ms": 2.3240000000078,
+          "encoder_ms": 569.6031000000075,
+          "ctc_decode_ms": 9.44419999999809,
+          "infer_total_ms": 579.1542000000045,
+          "total_ms": 657.963499999998
+        }
+      },
+      "asrjs": {
+        "text": "Data on the referral, please perform an examination for pneumothorax after puncturing the right pleural cavity. Chest x-ray PI compared with the examination from February 2 second, 2022. No radiological signs of pneumothorax were detected. Asymmetry of the diaphragmatic domes.",
+        "nativeText": "Data on the referral, please perform an examination for pneumothorax after puncturing the right pleural cavity. Chest x-ray PI compared with the examination from February 2 second, 2022. No radiological signs of pneumothorax were detected. Asymmetry of the diaphragmatic domes.",
+        "wer": 0.18181818181818182,
+        "cer": 0.15120274914089346,
+        "metrics": {
+          "preprocessMs": 80.116,
+          "encodeMs": 1828.008,
+          "decodeMs": 9.379,
+          "postprocessMs": 0,
+          "totalMs": 1915.47,
+          "wallMs": 1915.47,
+          "audioDurationSec": 21.875,
+          "rtf": 0.0876,
+          "rtfx": 11.4202,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 544,
+          "decodeIterations": 544,
+          "emittedTokenCount": 140,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    }
+  ]
+}

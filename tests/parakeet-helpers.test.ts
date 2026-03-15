@@ -75,7 +75,7 @@ describe('Parakeet helpers', () => {
       expect.arrayContaining(['webgpu', 'wasm', 'webnn', 'webgl']),
     );
     expect(runtime.listModelFamilies().map((family) => family.family)).toEqual(
-      expect.arrayContaining(['nemo-tdt', 'hf-ctc', 'whisper-seq2seq']),
+      expect.arrayContaining(['nemo-tdt', 'lasr-ctc', 'whisper-seq2seq']),
     );
     expect(runtime.listPresets().map((preset) => preset.preset)).toEqual(
       expect.arrayContaining(['parakeet', 'medasr', 'whisper']),

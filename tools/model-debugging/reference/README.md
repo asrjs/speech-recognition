@@ -40,6 +40,11 @@ Useful for:
 - runtime compatibility diagnostics
 - benchmark helpers
 - FP16 investigation
+- copied reference tests and fixtures for stage-by-stage MedASR parity troubleshooting
+
+Start with:
+
+- [upstream-tests/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\medasrjs\upstream-tests\README.md)
 
 ## Rule
 

@@ -1,0 +1,9 @@
+{
+  "results": "tools\\data\\results\\medasr-node-parity\\compare-20.json",
+  "samples": 20,
+  "prediction_path": "asrjs.text",
+  "reference_path": "reference",
+  "wer": 0.09142212189616253,
+  "cer": 0.050642201834862385,
+  "normalizer": "open_asr_leaderboard (N:\\github\\ysdede\\medasr.js\\open_asr_leaderboard)"
+}

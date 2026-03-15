@@ -5,8 +5,14 @@ import type {
   TranscriptResult,
   TranscriptionEnvelope,
 } from '@asrjs/speech-recognition';
-import { createHfCtcModelFamily, type HfCtcNativeTranscript } from '@asrjs/speech-recognition/models/hf-ctc-common';
-import { createNemoTdtModelFamily, type NemoTdtNativeTranscript } from '@asrjs/speech-recognition/models/nemo-tdt';
+import {
+  createLasrCtcModelFamily,
+  type LasrCtcNativeTranscript,
+} from '@asrjs/speech-recognition/models/lasr-ctc';
+import {
+  createNemoTdtModelFamily,
+  type NemoTdtNativeTranscript,
+} from '@asrjs/speech-recognition/models/nemo-tdt';
 import {
   createWhisperSeq2SeqModelFamily,
   type WhisperNativeTranscript,
@@ -214,7 +220,7 @@ describe('DefaultSpeechRuntime', () => {
     }
   });
 
-  it('loads an HF-style CTC family without forcing it through NeMo abstractions', async () => {
+  it('loads a LASR-style CTC family without forcing it through NeMo abstractions', async () => {
     const runtime = createSpeechRuntime();
     runtime.registerBackend(
       createStaticBackend({
@@ -233,14 +239,15 @@ describe('DefaultSpeechRuntime', () => {
         notes: [],
       }),
     );
-    runtime.registerModelFamily(createHfCtcModelFamily());
+    runtime.registerModelFamily(createLasrCtcModelFamily());
 
     const model = await runtime.loadModel({
-      family: 'hf-ctc',
-      modelId: 'wav2vec2-conformer-medical-scaffold',
+      family: 'lasr-ctc',
+      modelId: 'medasr-conformer-ctc-scaffold',
       classification: {
-        ecosystem: 'hf',
-        processor: 'wav2vec2-conv',
+        ecosystem: 'lasr',
+        processor: 'kaldi-mel',
+        encoder: 'conformer',
         decoder: 'ctc',
         topology: 'ctc',
         task: 'asr',
@@ -253,11 +260,11 @@ describe('DefaultSpeechRuntime', () => {
       returnTokenIds: true,
     });
 
-    expect(model.info.family).toBe('hf-ctc');
-    expect(model.info.classification.processor).toBe('wav2vec2-conv');
+    expect(model.info.family).toBe('lasr-ctc');
+    expect(model.info.classification.processor).toBe('kaldi-mel');
     expect(model.info.architecture?.decoder.module).toBe('inference');
-    expect(envelope.native?.warnings?.[0]?.code).toBe('hf-ctc.stubbed-decoder');
-    expectTypeOf(envelope).toMatchTypeOf<TranscriptionEnvelope<HfCtcNativeTranscript>>();
+    expect(envelope.native?.warnings?.[0]?.code).toBe('lasr-ctc.stubbed-decoder');
+    expectTypeOf(envelope).toMatchTypeOf<TranscriptionEnvelope<LasrCtcNativeTranscript>>();
   });
 
   it('keeps branded presets downstream for MedASR and Whisper', async () => {
@@ -279,7 +286,7 @@ describe('DefaultSpeechRuntime', () => {
         notes: [],
       }),
     );
-    runtime.registerModelFamily(createHfCtcModelFamily());
+    runtime.registerModelFamily(createLasrCtcModelFamily());
     runtime.registerPreset(createMedAsrPresetFactory());
     runtime.registerPreset(createWhisperPresetFactory());
     runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());
@@ -298,10 +305,14 @@ describe('DefaultSpeechRuntime', () => {
       responseFlavor: 'canonical+native',
     });
 
-    expect(medasr.info.family).toBe('hf-ctc');
+    expect(medasr.info.family).toBe('lasr-ctc');
     expect(medasr.info.preset).toBe('medasr');
     expect(medasr.info.classification.family).toBe('medasr');
     expect(medasr.info.classification.decoder).toBe('ctc');
+    expect(medasr.loadOptions?.source?.kind).toBe('huggingface');
+    if (medasr.loadOptions?.source?.kind === 'huggingface') {
+      expect(medasr.loadOptions.source.repoId).toBe('ysdede/medasr-onnx');
+    }
     expect(whisper.info.family).toBe('whisper-seq2seq');
     expect(whisper.info.preset).toBe('whisper');
     expect(whisper.info.classification.family).toBe('whisper');

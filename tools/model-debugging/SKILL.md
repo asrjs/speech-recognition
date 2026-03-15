@@ -42,6 +42,16 @@ Before touching decoder logic:
 If Node deterministic prep is correct and browser output is not, the issue is
 probably in audio preparation, not the model implementation.
 
+### 2.5. Match the scoring pipeline before calling it a regression
+
+When transcript quality looks worse:
+
+- first compare transcript text against the known-good stack directly
+- then confirm both sides use the same text normalizer for WER/CER
+- only treat the issue as a recognition regression after transcript parity and metric parity disagree
+
+Different normalizers can create false alarms even when the underlying transcripts are the same.
+
 ### 3. Compare stage by stage
 
 Use the reference scripts and `@asrjs/speech-recognition` scripts to compare:
@@ -77,4 +87,5 @@ Then move the same case into the browser demo.
 - [README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\README.md)
 - [librivox-domain-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\librivox-domain-parity.md)
 - [node-asrjs-nemo-inspect.mjs](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\node-asrjs-nemo-inspect.mjs)
-
+- [node-compare-transcript-jsons.mjs](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\node-compare-transcript-jsons.mjs)
+- [reference/medasrjs/upstream-tests/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\medasrjs\upstream-tests\README.md)

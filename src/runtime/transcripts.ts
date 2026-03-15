@@ -13,10 +13,10 @@ import {
   mapNemoNativeToCanonical,
 } from '../models/nemo-common/index.js';
 import {
-  DEFAULT_HF_CTC_CLASSIFICATION,
-  type HfCtcNativeTranscript,
-  mapHfCtcNativeToCanonical,
-} from '../models/hf-ctc-common/index.js';
+  DEFAULT_LASR_CTC_CLASSIFICATION,
+  type LasrCtcNativeTranscript,
+  mapLasrCtcNativeToCanonical,
+} from '../models/lasr-ctc/index.js';
 import {
   DEFAULT_NEMO_TDT_CLASSIFICATION,
   type NemoTdtNativeTranscript,
@@ -111,17 +111,18 @@ export function createNemoTdtTranscriptNormalizer(
   );
 }
 
-export function createHfCtcTranscriptNormalizer(
+export function createLasrCtcTranscriptNormalizer(
   classification: Partial<ModelClassification> = {},
-): TranscriptNormalizer<HfCtcNativeTranscript> {
+): TranscriptNormalizer<LasrCtcNativeTranscript> {
   const normalizedClassification = normalizeClassification(
-    DEFAULT_HF_CTC_CLASSIFICATION,
+    DEFAULT_LASR_CTC_CLASSIFICATION,
     classification,
   );
-  return createTranscriptNormalizer('hf-ctc', (native, context) =>
-    mapHfCtcNativeToCanonical(native, normalizedClassification, {
+  return createTranscriptNormalizer('lasr-ctc', (native, context) =>
+    mapLasrCtcNativeToCanonical(native, normalizedClassification, {
       ...context,
       detailLevel: context.detailLevel ?? 'segments',
+      metrics: native.metrics ?? context.metrics,
     }),
   );
 }
@@ -237,7 +238,7 @@ export function createLegacyParakeetTranscriptNormalizer(): TranscriptNormalizer
 }
 
 export const nemoTdtTranscriptNormalizer = createNemoTdtTranscriptNormalizer();
-export const hfCtcTranscriptNormalizer = createHfCtcTranscriptNormalizer();
+export const lasrCtcTranscriptNormalizer = createLasrCtcTranscriptNormalizer();
 export const whisperTranscriptNormalizer = createWhisperTranscriptNormalizer();
 export const legacyParakeetTranscriptNormalizer = createLegacyParakeetTranscriptNormalizer();
 
@@ -248,11 +249,11 @@ export function normalizeNemoTdtTranscript(
   return nemoTdtTranscriptNormalizer.toCanonical(native, context);
 }
 
-export function normalizeHfCtcTranscript(
-  native: HfCtcNativeTranscript,
+export function normalizeLasrCtcTranscript(
+  native: LasrCtcNativeTranscript,
   context: TranscriptNormalizationContext = {},
 ): TranscriptResult {
-  return hfCtcTranscriptNormalizer.toCanonical(native, context);
+  return lasrCtcTranscriptNormalizer.toCanonical(native, context);
 }
 
 export function normalizeWhisperTranscript(

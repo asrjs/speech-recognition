@@ -1,17 +1,19 @@
 import type { FamilyModelLoadRequest, SpeechPresetFactory } from '../../types/index.js';
 import type {
-  CreateHfCtcModelFamilyOptions,
-  HfCtcModelOptions,
-} from '../../models/hf-ctc-common/index.js';
+  CreateLasrCtcModelFamilyOptions,
+  LasrCtcModelOptions,
+} from '../../models/lasr-ctc/index.js';
 import { resolveMedAsrPresetManifest } from './manifest.js';
 
 export interface CreateMedAsrPresetFactoryOptions {
-  readonly dependencies?: CreateHfCtcModelFamilyOptions['dependencies'];
+  readonly dependencies?: CreateLasrCtcModelFamilyOptions['dependencies'];
 }
 
 export function createMedAsrPresetFactory(
-  _options: CreateMedAsrPresetFactoryOptions = {},
-): SpeechPresetFactory<HfCtcModelOptions, HfCtcModelOptions> {
+  options: CreateMedAsrPresetFactoryOptions = {},
+): SpeechPresetFactory<LasrCtcModelOptions, LasrCtcModelOptions> {
+  void options.dependencies;
+
   return {
     preset: 'medasr',
     supports(modelId?: string): boolean {
@@ -20,12 +22,12 @@ export function createMedAsrPresetFactory(
     async resolveModelRequest(
       request,
       _context,
-    ): Promise<FamilyModelLoadRequest<HfCtcModelOptions>> {
+    ): Promise<FamilyModelLoadRequest<LasrCtcModelOptions>> {
       const modelId = request.modelId ?? 'google/medasr';
       const manifest = resolveMedAsrPresetManifest(modelId);
 
       return {
-        family: 'hf-ctc',
+        family: 'lasr-ctc',
         modelId,
         classification: {
           family: 'medasr',
@@ -38,6 +40,7 @@ export function createMedAsrPresetFactory(
             ...manifest?.config,
             ...request.options?.config,
           },
+          source: request.options?.source ?? manifest?.source,
         },
       };
     },

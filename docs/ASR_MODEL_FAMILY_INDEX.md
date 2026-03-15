@@ -9,7 +9,7 @@ Master reference for designing `@asrjs/speech-recognition` from scratch. Maps al
 | Family                                     | Source            | Frontend            | Encoder             | Topology            | Decoding          | Doc                                                    |
 | ------------------------------------------ | ----------------- | ------------------- | ------------------- | ------------------- | ----------------- | ------------------------------------------------------ |
 | **NeMo (Parakeet, Canary, FastConformer)** | NeMo              | Mel 80/128          | Conformer           | CTC, RNNT, TDT, AED | Greedy, beam, TSD | [NEMO](../NEMO_ASR_MODEL_ARCHITECTURE.md)              |
-| **MedASR**                                 | HF google/medasr  | 7-layer conv (raw)  | Wav2Vec2-Conformer  | CTC                 | CTC greedy/beam   | [MEDASR](../GOOGLE-MEDASR_MODEL_ARCHITECTURE.md)       |
+| **MedASR**                                 | Google Health     | 128-bin kaldi-mel   | Conformer           | CTC                 | CTC greedy/beam   | [MEDASR](../GOOGLE-MEDASR_MODEL_ARCHITECTURE.md)       |
 | **Whisper**                                | HF whisper        | Whisper mel (log10) | 2 conv + Trans      | AED                 | AR generation     | [WHISPER](../WHISPER_ASR_MODEL_ARCHITECTURE.md)        |
 | **Kaldi / Vosk**                           | onnx-asr          | Kaldi mel (80)      | Zipformer           | Stateless RNNT      | Transducer        | [ONNX](./ONNX_ASR_MODEL_ARCHITECTURE.md)               |
 | **GigaAM**                                 | onnx-asr          | GigaAM mel (64)     | Conformer           | CTC, RNNT           | Greedy            | [ONNX](./ONNX_ASR_MODEL_ARCHITECTURE.md)               |
@@ -37,7 +37,8 @@ Master reference for designing `@asrjs/speech-recognition` from scratch. Maps al
 | **Mel (Kaldi)**           | Kaldi/Vosk, FireRedASR2S             | 80 bins, n_fft=512, hop=160, Kaldi mel, Hann^0.85         |
 | **Mel (GigaAM)**          | GigaAM                               | 64 bins, n_fft 400/320, hop=160                           |
 | **Mel (Whisper)**         | Whisper                              | 80 bins, log10, clamp, scale                              |
-| **Raw (7-layer conv)**    | Wav2Vec2, MedASR, Wav2Vec2-Conformer | No mel; conv feature extractor                            |
+| **Raw (7-layer conv)**    | Wav2Vec2, Wav2Vec2-Conformer         | No mel; conv feature extractor                            |
+| **Mel (LASR/MedASR)**     | MedASR runtime family                | 128-bin log-mel / kaldi-style frontend for current ONNX path |
 | **Identity (raw chunks)** | T-one                                | No frontend; raw waveform chunks                          |
 | **Conv subsampler**       | Speech2Text, Moonshine               | 1D conv on mel or raw                                     |
 
@@ -47,7 +48,7 @@ Master reference for designing `@asrjs/speech-recognition` from scratch. Maps al
 
 | Type              | Families                                                           |
 | ----------------- | ------------------------------------------------------------------ |
-| **Conformer**     | NeMo, GigaAM, Parakeet, Wav2Vec2-Conformer, Moonshine, FireRedASR2 |
+| **Conformer**     | NeMo, GigaAM, Parakeet, MedASR, Wav2Vec2-Conformer, Moonshine, FireRedASR2 |
 | **Transformer**   | Whisper, Speech2Text, Qwen2-Audio, Granite Speech                  |
 | **Zipformer**     | Kaldi/Vosk (Icefall)                                               |
 | **Chunk encoder** | T-one (stateful, 2400 samples)                                     |
@@ -77,7 +78,7 @@ Master reference for designing `@asrjs/speech-recognition` from scratch. Maps al
 │   ├── mel-spectrogram.ts      # NeMo, Parakeet, GigaAM variants
 │   ├── kaldi-mel.ts            # Kaldi/Vosk
 │   ├── whisper-mel.ts          # Whisper (log10, clamp, scale)
-│   ├── wav2vec2-conv.ts        # 7-layer conv (raw)
+│   ├── kaldi-mel.ts            # Kaldi-style mel frontend for MedASR / FireRed
 │   └── identity.ts             # T-one passthrough
 ├── inference/
 │   ├── descriptors.ts          # Shared encoder / decoder-head / decoding descriptors
@@ -96,7 +97,7 @@ Master reference for designing `@asrjs/speech-recognition` from scratch. Maps al
 | Document                                                                       | Content                                     |
 | ------------------------------------------------------------------------------ | ------------------------------------------- |
 | [NEMO_ASR_MODEL_ARCHITECTURE.md](../NEMO_ASR_MODEL_ARCHITECTURE.md)            | NeMo pipelines, Conformer, CTC/RNNT/TDT/AED |
-| [GOOGLE-MEDASR_MODEL_ARCHITECTURE.md](../GOOGLE-MEDASR_MODEL_ARCHITECTURE.md)  | MedASR (Wav2Vec2-Conformer + CTC)           |
+| [GOOGLE-MEDASR_MODEL_ARCHITECTURE.md](../GOOGLE-MEDASR_MODEL_ARCHITECTURE.md)  | MedASR / LASR CTC implementation boundary   |
 | [WHISPER_ASR_MODEL_ARCHITECTURE.md](../WHISPER_ASR_MODEL_ARCHITECTURE.md)      | Whisper encoder–decoder                     |
 | [ONNX_ASR_MODEL_ARCHITECTURE.md](./ONNX_ASR_MODEL_ARCHITECTURE.md)             | Kaldi, GigaAM, T-one, NeMo/Whisper ONNX     |
 | [TRANSFORMERS_ASR_SPEECH_LLM_GUIDE.md](./TRANSFORMERS_ASR_SPEECH_LLM_GUIDE.md) | HF transformers ASR & speech LLM families   |

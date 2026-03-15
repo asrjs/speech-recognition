@@ -321,7 +321,7 @@ your-asr-lib/
 │   │                              STFT → mel → log → normalize. Covers all NeMo ASR.
 │   │                              Params: sample_rate, window_size/stride, n_fft, features
 │   ├── whisper-mel.ts           # Whisper: log10, clamp(max-8), (x+4)/4 (different from NeMo)
-│   └── wav2vec2-feature-extractor.ts  # 7 conv layers on raw waveform (Google MedASR)
+│   └── kaldi-mel.ts                   # Kaldi-style mel frontend (MedASR runtime path)
 │
 ├── inference/
 │   ├── descriptors.ts           # Shared encoder / decoder-head / decoding descriptors
@@ -338,7 +338,7 @@ your-asr-lib/
 │
 └── models/                      # Concrete implementation families own real math and wiring
     ├── nemo-tdt/                # FastConformer + transducer/TDT implementation
-    ├── hf-ctc-common/           # Wav2Vec2-Conformer + CTC implementation
+    ├── lasr-ctc/           # MedASR-style Conformer + CTC implementation
     └── whisper-seq2seq/         # Whisper encoder-decoder implementation
 ```
 
@@ -367,7 +367,7 @@ When a new model is added, these are the numbers that wire everything together:
 
 ## Other Vendors
 
-**Google MedASR** (`google/medasr`) uses **Wav2Vec2-Conformer** + CTC. Different frontend (7 conv on raw waveform) and encoder. CTC decoder/decoding shared. See `GOOGLE-MEDASR_MODEL_ARCHITECTURE.md`.
+**Google MedASR** (`google/medasr`) is represented in this repo through the `lasr-ctc` family: kaldi-style mel frontend, Conformer encoder, and CTC decoding over the exported ONNX artifact path. See `GOOGLE-MEDASR_MODEL_ARCHITECTURE.md`.
 
 **OpenAI Whisper** uses **encoder-decoder transformer** + autoregressive generation (AED). Different frontend (mel with log10/clamp/scale), plain transformer encoder (2× conv subsampling), transformer decoder with cross-attention. Nothing shared at layer level. See `WHISPER_ASR_MODEL_ARCHITECTURE.md`.
 

@@ -1,6 +1,6 @@
 {
   "name": "@asrjs/speech-recognition",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Speech-first TypeScript runtime for browser and local Node.js inference",
   "type": "module",
   "sideEffects": false,
@@ -95,7 +95,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.examples.json --noEmit",
     "lint": "node ./node_modules/eslint/bin/eslint.js \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format": "node ./node_modules/prettier/bin/prettier.cjs --write \"src/**/*.ts\" \"tests/**/*.{ts,mjs}\" \"*.{json,md}\" \"docs/**/*.md\"",
