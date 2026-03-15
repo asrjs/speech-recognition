@@ -126,6 +126,7 @@ export interface GetParakeetModelOptions {
   readonly backend?: ParakeetBackend;
   readonly progress?: (progress: ModelFileProgress) => void;
   readonly verbose?: boolean;
+  readonly logger?: RuntimeLogger;
 }
 
 /** Direct-artifact configuration accepted by `ParakeetModel.fromUrls()`. */
@@ -527,7 +528,7 @@ export async function getParakeetModel(
   const preprocessor = options.preprocessor ?? modelConfig?.preprocessor ?? 'nemo128';
   const preprocessorBackend = options.preprocessorBackend ?? 'js';
   const backend = options.backend ?? 'webgpu-hybrid';
-  const repoFiles = await fetchModelFiles(repoId, revision);
+  const repoFiles = await fetchModelFiles(repoId, revision, { logger: options.logger });
 
   const preferredSetup = getParakeetDefaultWeightSetup(repoIdOrModelKey, backend);
   const encoderAvailable = getAvailableQuantModes(repoFiles, 'encoder-model');
