@@ -1,0 +1,173 @@
+{
+  "summary": {
+    "comparedAt": "2026-03-15T16:38:07.649Z",
+    "samples": 3,
+    "datasetDir": "N:/github/ysdede/scribe-ds/data/PARROT_v1.0/07_audio/labels/_30s",
+    "medasrjsRoot": "N:/github/ysdede/medasr.js/medasrjs",
+    "backend": "wasm",
+    "scoring": {
+      "method": "heuristic-lowercase-strip-punctuation",
+      "comparableToLeaderboardMetrics": false,
+      "note": "Use transcript-to-transcript comparison or the Python benchmark scripts when you need leaderboard-comparable WER/CER."
+    },
+    "medasrjsAvgHeuristicWer": 0.3181900712653765,
+    "medasrjsAvgHeuristicCer": 0.23272783211012357,
+    "asrjsAvgHeuristicWer": 0.3181900712653765,
+    "asrjsAvgHeuristicCer": 0.23272783211012357,
+    "medasrjsAvgWer": 0.3181900712653765,
+    "medasrjsAvgCer": 0.23272783211012357,
+    "asrjsAvgWer": 0.3181900712653765,
+    "asrjsAvgCer": 0.23272783211012357,
+    "crossCer": 0,
+    "exactMatches": 3
+  },
+  "rows": [
+    {
+      "file": "00163df44fc0fd589a6cc4beeaabc01b07a716d43e1a0cfb8abc1bc0dc4a17d9_00.wav",
+      "reference": "Upright abdominal X-ray.PARAGRAPH Multiple air-fluid levels are observed in the loops of the small intestine, a finding suspicious for small bowel obstruction. NEWLINE  In the right upper quadrant, round calcifications are noted, possibly gallstones. NEWLINE  No intra-abdominal calcifications are observed. NEWLINE  Fecal loading of the colon. NEWLINE  No significant findings from the visualized skeleton.",
+      "medasrjs": {
+        "text": "Upright abdominal x-ray. Multiple air-fluid levels are observed in the loops of the small intestine. A finding suspicious for small bowel obstruction. In the right upper quadrant, round calcifications are noted, possibly gallstones. No intra-abdominal calcifications are observed. Fecal loading of the colon. No significant findings from the visualized skeleton.",
+        "heuristicWer": 0.08620689655172414,
+        "heuristicCer": 0.10632911392405063,
+        "wer": 0.08620689655172414,
+        "cer": 0.10632911392405063,
+        "timings": {
+          "preprocess_ms": 113.78020000000015,
+          "transpose_ms": 3.8101000000001477,
+          "encoder_ms": 581.0839999999998,
+          "ctc_decode_ms": 12.08350000000064,
+          "infer_total_ms": 593.9667000000004,
+          "total_ms": 711.7891
+        }
+      },
+      "asrjs": {
+        "text": "Upright abdominal x-ray. Multiple air-fluid levels are observed in the loops of the small intestine. A finding suspicious for small bowel obstruction. In the right upper quadrant, round calcifications are noted, possibly gallstones. No intra-abdominal calcifications are observed. Fecal loading of the colon. No significant findings from the visualized skeleton.",
+        "nativeText": "Upright abdominal x-ray. Multiple air-fluid levels are observed in the loops of the small intestine. A finding suspicious for small bowel obstruction. In the right upper quadrant, round calcifications are noted, possibly gallstones. No intra-abdominal calcifications are observed. Fecal loading of the colon. No significant findings from the visualized skeleton.",
+        "heuristicWer": 0.08620689655172414,
+        "heuristicCer": 0.10632911392405063,
+        "wer": 0.08620689655172414,
+        "cer": 0.10632911392405063,
+        "metrics": {
+          "preprocessMs": 90.814,
+          "encodeMs": 2375.554,
+          "decodeMs": 22.757,
+          "postprocessMs": 0,
+          "totalMs": 2486.63,
+          "wallMs": 2486.63,
+          "audioDurationSec": 24.025,
+          "rtf": 0.1035,
+          "rtfx": 9.6617,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 598,
+          "decodeIterations": 598,
+          "emittedTokenCount": 171,
+          "emittedWordCount": 7
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "008599a6b529feb4e96fb7ff92ee235933199a0c08d999114ffdc8045ef2bf33_00.wav",
+      "reference": "Brain MRIPARAGRAPH Indication NEWLINE  Monitoring of a left frontal convexity meningioma.PARAGRAPH Technique NEWLINE  Sagittal T1, axial T2, axial gradient echo T2, diffusion tensor imaging with six directions, 3D Flair, and 3D T1 post-gadolinium injection. NEWLINE  Magnetom Sola 27/01/2023 NEWLINE ",
+      "medasrjs": {
+        "text": "Brain MRI.[INDICATION] Monitoring of a left frontal convexity meningioma.[TECHNIQUE] Sagittal T1, axial T2, axial gradient echo T2 diffusion-tensor imaging with six directions, 3D fLAI and 3DT1 post gadolinium injection. Magnetum sola genuary 272023.",
+        "heuristicWer": 0.3023255813953488,
+        "heuristicCer": 0.21724137931034482,
+        "wer": 0.3023255813953488,
+        "cer": 0.21724137931034482,
+        "timings": {
+          "preprocess_ms": 75.56980000000021,
+          "transpose_ms": 2.8797999999997046,
+          "encoder_ms": 501.7091999999993,
+          "ctc_decode_ms": 7.601699999999255,
+          "infer_total_ms": 509.41849999999977,
+          "total_ms": 587.9661000000006
+        }
+      },
+      "asrjs": {
+        "text": "Brain MRI.[INDICATION] Monitoring of a left frontal convexity meningioma.[TECHNIQUE] Sagittal T1, axial T2, axial gradient echo T2 diffusion-tensor imaging with six directions, 3D fLAI and 3DT1 post gadolinium injection. Magnetum sola genuary 272023.",
+        "nativeText": "Brain MRI.[INDICATION] Monitoring of a left frontal convexity meningioma.[TECHNIQUE] Sagittal T1, axial T2, axial gradient echo T2 diffusion-tensor imaging with six directions, 3D fLAI and 3DT1 post gadolinium injection. Magnetum sola genuary 272023.",
+        "heuristicWer": 0.3023255813953488,
+        "heuristicCer": 0.21724137931034482,
+        "wer": 0.3023255813953488,
+        "cer": 0.21724137931034482,
+        "metrics": {
+          "preprocessMs": 91.653,
+          "encodeMs": 1570.533,
+          "decodeMs": 11.883,
+          "postprocessMs": 0,
+          "totalMs": 1671.304,
+          "wallMs": 1671.304,
+          "audioDurationSec": 22.25,
+          "rtf": 0.0751,
+          "rtfx": 13.313,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 553,
+          "decodeIterations": 553,
+          "emittedTokenCount": 156,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "008599a6b529feb4e96fb7ff92ee235933199a0c08d999114ffdc8045ef2bf33_01.wav",
+      "reference": "DOTAREM FL INJ 20 ml 13 cc lot no. t100cPARAGRAPH Results NEWLINE  Compared to the previous MRI on 30/07/2021.PARAGRAPH The left pterional meningioma remains stable in size, measuring 19 x 12 x 14 mm  - LxWxH -  and is partially calcified.PARAGRAPH Fazekas grade 1 leukoaraiosis.PARAGRAPH No abnormal diffusion restriction.PARAGRAPH",
+      "medasrjs": {
+        "text": "Do t a r e m FL 20 mL 13 cubic cm lot number T100 c.[RESULTS] Compared to the previous MRI on life 30 of 2021. The left terional meningioma remains stable in size measuring 19x12x14 mm length by width by height and is partially calcified. Aak is grade one leukriosis. No abnormal diffusion restriction.",
+        "heuristicWer": 0.5660377358490566,
+        "heuristicCer": 0.3746130030959752,
+        "wer": 0.5660377358490566,
+        "cer": 0.3746130030959752,
+        "timings": {
+          "preprocess_ms": 95.31980000000112,
+          "transpose_ms": 4.8958999999995285,
+          "encoder_ms": 647.8996000000006,
+          "ctc_decode_ms": 13.53690000000097,
+          "infer_total_ms": 661.6195000000007,
+          "total_ms": 761.9242999999988
+        }
+      },
+      "asrjs": {
+        "text": "Do t a r e m FL 20 mL 13 cubic cm lot number T100 c.[RESULTS] Compared to the previous MRI on life 30 of 2021. The left terional meningioma remains stable in size measuring 19x12x14 mm length by width by height and is partially calcified. Aak is grade one leukriosis. No abnormal diffusion restriction.",
+        "nativeText": "Do t a r e m FL 20 mL 13 cubic cm lot number T100 c.[RESULTS] Compared to the previous MRI on life 30 of 2021. The left terional meningioma remains stable in size measuring 19x12x14 mm length by width by height and is partially calcified. Aak is grade one leukriosis. No abnormal diffusion restriction.",
+        "heuristicWer": 0.5660377358490566,
+        "heuristicCer": 0.3746130030959752,
+        "wer": 0.5660377358490566,
+        "cer": 0.3746130030959752,
+        "metrics": {
+          "preprocessMs": 107.178,
+          "encodeMs": 1922.84,
+          "decodeMs": 18.456,
+          "postprocessMs": 0,
+          "totalMs": 2044.497,
+          "wallMs": 2044.497,
+          "audioDurationSec": 26.625,
+          "rtf": 0.0768,
+          "rtfx": 13.0228,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 663,
+          "decodeIterations": 663,
+          "emittedTokenCount": 176,
+          "emittedWordCount": 5
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    }
+  ]
+}

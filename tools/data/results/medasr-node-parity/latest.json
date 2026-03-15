@@ -1,0 +1,242 @@
+{
+  "summary": {
+    "comparedAt": "2026-03-15T16:25:42.417Z",
+    "samples": 5,
+    "datasetDir": "N:/github/ysdede/scribe-ds/data/PARROT_v1.0/07_audio/labels/_30s",
+    "medasrjsRoot": "N:/github/ysdede/medasr.js/medasrjs",
+    "backend": "wasm",
+    "medasrjsAvgWer": 0.25566849734418895,
+    "medasrjsAvgCer": 0.2036665253071086,
+    "asrjsAvgWer": 0.25566849734418895,
+    "asrjsAvgCer": 0.2036665253071086,
+    "crossCer": 0,
+    "exactMatches": 5
+  },
+  "rows": [
+    {
+      "file": "00163df44fc0fd589a6cc4beeaabc01b07a716d43e1a0cfb8abc1bc0dc4a17d9_00.wav",
+      "reference": "Upright abdominal X-ray.PARAGRAPH Multiple air-fluid levels are observed in the loops of the small intestine, a finding suspicious for small bowel obstruction. NEWLINE  In the right upper quadrant, round calcifications are noted, possibly gallstones. NEWLINE  No intra-abdominal calcifications are observed. NEWLINE  Fecal loading of the colon. NEWLINE  No significant findings from the visualized skeleton.",
+      "medasrjs": {
+        "text": "Upright abdominal x-ray. Multiple air-fluid levels are observed in the loops of the small intestine. A finding suspicious for small bowel obstruction. In the right upper quadrant, round calcifications are noted, possibly gallstones. No intra-abdominal calcifications are observed. Fecal loading of the colon. No significant findings from the visualized skeleton.",
+        "wer": 0.08620689655172414,
+        "cer": 0.10632911392405063,
+        "timings": {
+          "preprocess_ms": 85.13590000000022,
+          "transpose_ms": 4.042400000000271,
+          "encoder_ms": 613.6635000000001,
+          "ctc_decode_ms": 16.416000000000167,
+          "infer_total_ms": 630.7975999999999,
+          "total_ms": 720.2116999999998
+        }
+      },
+      "asrjs": {
+        "text": "Upright abdominal x-ray. Multiple air-fluid levels are observed in the loops of the small intestine. A finding suspicious for small bowel obstruction. In the right upper quadrant, round calcifications are noted, possibly gallstones. No intra-abdominal calcifications are observed. Fecal loading of the colon. No significant findings from the visualized skeleton.",
+        "nativeText": "Upright abdominal x-ray. Multiple air-fluid levels are observed in the loops of the small intestine. A finding suspicious for small bowel obstruction. In the right upper quadrant, round calcifications are noted, possibly gallstones. No intra-abdominal calcifications are observed. Fecal loading of the colon. No significant findings from the visualized skeleton.",
+        "wer": 0.08620689655172414,
+        "cer": 0.10632911392405063,
+        "metrics": {
+          "preprocessMs": 106.556,
+          "encodeMs": 2123.494,
+          "decodeMs": 22.613,
+          "postprocessMs": 0,
+          "totalMs": 2250.339,
+          "wallMs": 2250.339,
+          "audioDurationSec": 24.025,
+          "rtf": 0.0937,
+          "rtfx": 10.6762,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 598,
+          "decodeIterations": 598,
+          "emittedTokenCount": 171,
+          "emittedWordCount": 7
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "008599a6b529feb4e96fb7ff92ee235933199a0c08d999114ffdc8045ef2bf33_00.wav",
+      "reference": "Brain MRIPARAGRAPH Indication NEWLINE  Monitoring of a left frontal convexity meningioma.PARAGRAPH Technique NEWLINE  Sagittal T1, axial T2, axial gradient echo T2, diffusion tensor imaging with six directions, 3D Flair, and 3D T1 post-gadolinium injection. NEWLINE  Magnetom Sola 27/01/2023 NEWLINE ",
+      "medasrjs": {
+        "text": "Brain MRI.[INDICATION] Monitoring of a left frontal convexity meningioma.[TECHNIQUE] Sagittal T1, axial T2, axial gradient echo T2 diffusion-tensor imaging with six directions, 3D fLAI and 3DT1 post gadolinium injection. Magnetum sola genuary 272023.",
+        "wer": 0.3023255813953488,
+        "cer": 0.21724137931034482,
+        "timings": {
+          "preprocess_ms": 80.13320000000022,
+          "transpose_ms": 3.4318999999995867,
+          "encoder_ms": 463.2466000000004,
+          "ctc_decode_ms": 7.915299999999661,
+          "infer_total_ms": 471.2574999999997,
+          "total_ms": 554.8784999999998
+        }
+      },
+      "asrjs": {
+        "text": "Brain MRI.[INDICATION] Monitoring of a left frontal convexity meningioma.[TECHNIQUE] Sagittal T1, axial T2, axial gradient echo T2 diffusion-tensor imaging with six directions, 3D fLAI and 3DT1 post gadolinium injection. Magnetum sola genuary 272023.",
+        "nativeText": "Brain MRI.[INDICATION] Monitoring of a left frontal convexity meningioma.[TECHNIQUE] Sagittal T1, axial T2, axial gradient echo T2 diffusion-tensor imaging with six directions, 3D fLAI and 3DT1 post gadolinium injection. Magnetum sola genuary 272023.",
+        "wer": 0.3023255813953488,
+        "cer": 0.21724137931034482,
+        "metrics": {
+          "preprocessMs": 67.14,
+          "encodeMs": 1520.534,
+          "decodeMs": 8.532,
+          "postprocessMs": 0,
+          "totalMs": 1594.62,
+          "wallMs": 1594.62,
+          "audioDurationSec": 22.25,
+          "rtf": 0.0717,
+          "rtfx": 13.9532,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 553,
+          "decodeIterations": 553,
+          "emittedTokenCount": 156,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "008599a6b529feb4e96fb7ff92ee235933199a0c08d999114ffdc8045ef2bf33_01.wav",
+      "reference": "DOTAREM FL INJ 20 ml 13 cc lot no. t100cPARAGRAPH Results NEWLINE  Compared to the previous MRI on 30/07/2021.PARAGRAPH The left pterional meningioma remains stable in size, measuring 19 x 12 x 14 mm  - LxWxH -  and is partially calcified.PARAGRAPH Fazekas grade 1 leukoaraiosis.PARAGRAPH No abnormal diffusion restriction.PARAGRAPH",
+      "medasrjs": {
+        "text": "Do t a r e m FL 20 mL 13 cubic cm lot number T100 c.[RESULTS] Compared to the previous MRI on life 30 of 2021. The left terional meningioma remains stable in size measuring 19x12x14 mm length by width by height and is partially calcified. Aak is grade one leukriosis. No abnormal diffusion restriction.",
+        "wer": 0.5660377358490566,
+        "cer": 0.3746130030959752,
+        "timings": {
+          "preprocess_ms": 102.66020000000026,
+          "transpose_ms": 4.772500000000946,
+          "encoder_ms": 630.8295999999991,
+          "ctc_decode_ms": 11.07719999999972,
+          "infer_total_ms": 642.0193999999992,
+          "total_ms": 749.533300000001
+        }
+      },
+      "asrjs": {
+        "text": "Do t a r e m FL 20 mL 13 cubic cm lot number T100 c.[RESULTS] Compared to the previous MRI on life 30 of 2021. The left terional meningioma remains stable in size measuring 19x12x14 mm length by width by height and is partially calcified. Aak is grade one leukriosis. No abnormal diffusion restriction.",
+        "nativeText": "Do t a r e m FL 20 mL 13 cubic cm lot number T100 c.[RESULTS] Compared to the previous MRI on life 30 of 2021. The left terional meningioma remains stable in size measuring 19x12x14 mm length by width by height and is partially calcified. Aak is grade one leukriosis. No abnormal diffusion restriction.",
+        "wer": 0.5660377358490566,
+        "cer": 0.3746130030959752,
+        "metrics": {
+          "preprocessMs": 102.728,
+          "encodeMs": 1747.95,
+          "decodeMs": 14.61,
+          "postprocessMs": 0,
+          "totalMs": 1862.571,
+          "wallMs": 1862.571,
+          "audioDurationSec": 26.625,
+          "rtf": 0.07,
+          "rtfx": 14.2948,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 663,
+          "decodeIterations": 663,
+          "emittedTokenCount": 176,
+          "emittedWordCount": 5
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "008599a6b529feb4e96fb7ff92ee235933199a0c08d999114ffdc8045ef2bf33_02.wav",
+      "reference": "No microbleeds.PARAGRAPH No pathological enhancement elsewhere.PARAGRAPH Developmental venous anomaly in the left cingulate region, with peripheral gliosis.PARAGRAPH Good patency of the venous sinuses.PARAGRAPH Conclusion NEWLINE  Stability in the size of the left pterional meningioma.PARAGRAPH",
+      "medasrjs": {
+        "text": "No microbleeds. No pathological enhancement elsewhere. Developmental venous anomaly in the left singulet region with peripheral gliosis. Good patency of the venous sinuses.[CONCLUSION] Stability in the size of the left pteronal meningioma.",
+        "wer": 0.20512820512820512,
+        "cer": 0.21160409556313994,
+        "timings": {
+          "preprocess_ms": 48.00380000000041,
+          "transpose_ms": 0.8317999999999302,
+          "encoder_ms": 295.21650000000045,
+          "ctc_decode_ms": 8.137099999999919,
+          "infer_total_ms": 303.54109999999855,
+          "total_ms": 352.46669999999904
+        }
+      },
+      "asrjs": {
+        "text": "No microbleeds. No pathological enhancement elsewhere. Developmental venous anomaly in the left singulet region with peripheral gliosis. Good patency of the venous sinuses.[CONCLUSION] Stability in the size of the left pteronal meningioma.",
+        "nativeText": "No microbleeds. No pathological enhancement elsewhere. Developmental venous anomaly in the left singulet region with peripheral gliosis. Good patency of the venous sinuses.[CONCLUSION] Stability in the size of the left pteronal meningioma.",
+        "wer": 0.20512820512820512,
+        "cer": 0.21160409556313994,
+        "metrics": {
+          "preprocessMs": 68.429,
+          "encodeMs": 1050.159,
+          "decodeMs": 12.715,
+          "postprocessMs": 0,
+          "totalMs": 1128.702,
+          "wallMs": 1128.702,
+          "audioDurationSec": 16.25,
+          "rtf": 0.0695,
+          "rtfx": 14.3971,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 403,
+          "decodeIterations": 403,
+          "emittedTokenCount": 129,
+          "emittedWordCount": 5
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    },
+    {
+      "file": "00938cf9bbea5a871ceda19a5999e999ed46011aff01b20f154214ba98c276f2_00.wav",
+      "reference": "Sequences were performed in T1 in axial and sagittal projections, and T2-weighted sequences in sagittal projection.NEWLINE Additionally, a complementary sequence with T2 technique  - myelographic effect -  in sagittal projection was used.NEWLINE Results:NEWLINE In T1-weighted sequences, the physiological cervical lordosis is preserved.NEWLINE The vertebral bodies and intervertebral spaces maintain their height and signal intensity.NEWLINE",
+      "medasrjs": {
+        "text": "Sequences were performed in T1 and axial and sagittal projections and T2-weighted sequences in sagittal projection. Additionally, a complementary sequence with T2 STAR technique myelographic effect in sagittal projection was used. Results in T1-weighted sequences, the physiological cervical lordosis is preserved. The vertebral bodies and intervertebral spaces maintain their height and signal intensity.",
+        "wer": 0.11864406779661017,
+        "cer": 0.10854503464203233,
+        "timings": {
+          "preprocess_ms": 76.01020000000062,
+          "transpose_ms": 2.368900000001304,
+          "encoder_ms": 590.75,
+          "ctc_decode_ms": 8.409700000000157,
+          "infer_total_ms": 599.3701999999976,
+          "total_ms": 677.8380999999972
+        }
+      },
+      "asrjs": {
+        "text": "Sequences were performed in T1 and axial and sagittal projections and T2-weighted sequences in sagittal projection. Additionally, a complementary sequence with T2 STAR technique myelographic effect in sagittal projection was used. Results in T1-weighted sequences, the physiological cervical lordosis is preserved. The vertebral bodies and intervertebral spaces maintain their height and signal intensity.",
+        "nativeText": "Sequences were performed in T1 and axial and sagittal projections and T2-weighted sequences in sagittal projection. Additionally, a complementary sequence with T2 STAR technique myelographic effect in sagittal projection was used. Results in T1-weighted sequences, the physiological cervical lordosis is preserved. The vertebral bodies and intervertebral spaces maintain their height and signal intensity.",
+        "wer": 0.11864406779661017,
+        "cer": 0.10854503464203233,
+        "metrics": {
+          "preprocessMs": 77.804,
+          "encodeMs": 1838.815,
+          "decodeMs": 10.918,
+          "postprocessMs": 0,
+          "totalMs": 1925.593,
+          "wallMs": 1925.593,
+          "audioDurationSec": 26,
+          "rtf": 0.0741,
+          "rtfx": 13.5023,
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 647,
+          "decodeIterations": 647,
+          "emittedTokenCount": 193,
+          "emittedWordCount": 4
+        },
+        "warnings": []
+      },
+      "diff": {
+        "textCer": 0,
+        "textWer": 0,
+        "exactMatch": true
+      }
+    }
+  ]
+}
