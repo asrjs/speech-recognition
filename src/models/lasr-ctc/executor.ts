@@ -325,6 +325,7 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
   private readonly runtimeHooks?: SpeechRuntimeHooks;
   private readonly preprocessor?: LasrCtcFeaturePreprocessor;
   private readonly assetHandles: ResolvedAssetHandle[] = [];
+  private featuresTxMBuffer?: Float32Array;
 
   constructor(
     private readonly modelId: string,
@@ -560,10 +561,17 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
     const preprocessStart = nowMs();
     const features = state.preprocessor.process(mono);
     const transposeStart = nowMs();
+
+    const requiredBufferSize = features.featureSize * features.frameCount;
+    if (!this.featuresTxMBuffer || this.featuresTxMBuffer.length < requiredBufferSize) {
+      this.featuresTxMBuffer = new Float32Array(requiredBufferSize);
+    }
+
     const featuresTxM = transposeMelToTxM(
       features.features,
       features.featureSize,
       features.frameCount,
+      this.featuresTxMBuffer,
     );
     const transposeMs = nowMs() - transposeStart;
     const preprocessMs = nowMs() - preprocessStart;

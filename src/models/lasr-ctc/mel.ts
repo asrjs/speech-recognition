@@ -233,17 +233,23 @@ export function transposeMelToTxM(
   featuresMxT: Float32Array,
   nMels: number,
   frameCount: number,
+  output?: Float32Array,
 ): Float32Array {
-  const transposed = new Float32Array(frameCount * nMels);
+  const size = frameCount * nMels;
+  let transposed = output;
+  if (!transposed || transposed.length < size) {
+    transposed = new Float32Array(size);
+  }
 
   for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+    const frameOffset = frameIndex * nMels;
     for (let melIndex = 0; melIndex < nMels; melIndex += 1) {
-      transposed[frameIndex * nMels + melIndex] =
+      transposed[frameOffset + melIndex] =
         featuresMxT[melIndex * frameCount + frameIndex] ?? 0;
     }
   }
 
-  return transposed;
+  return transposed.length === size ? transposed : transposed.subarray(0, size);
 }
 
 interface RawMelOutput {
