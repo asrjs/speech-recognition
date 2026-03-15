@@ -1,8 +1,27 @@
 {
-  "name": "asr.js",
+  "name": "@asrjs/speech-recognition",
   "version": "0.1.0",
-  "description": "Speech-first JavaScript runtime library",
+  "description": "Speech-first TypeScript runtime for browser and local Node.js inference",
   "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asrjs/speech-recognition.git"
+  },
+  "keywords": [
+    "asr",
+    "speech-recognition",
+    "speech-to-text",
+    "onnx",
+    "webgpu",
+    "wasm",
+    "nemo",
+    "whisper"
+  ],
+  "bugs": {
+    "url": "https://github.com/asrjs/speech-recognition/issues"
+  },
+  "homepage": "https://github.com/asrjs/speech-recognition#readme",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -10,22 +29,95 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./builtins": {
+      "types": "./dist/builtins.d.ts",
+      "import": "./dist/builtins.js",
+      "default": "./dist/builtins.js"
+    },
+    "./io": {
+      "types": "./dist/io.d.ts",
+      "import": "./dist/io.js",
+      "default": "./dist/io.js"
+    },
+    "./io/node": {
+      "types": "./dist/io-node.d.ts",
+      "import": "./dist/io-node.js",
+      "default": "./dist/io-node.js"
+    },
+    "./inference": {
+      "types": "./dist/inference.d.ts",
+      "import": "./dist/inference.js",
+      "default": "./dist/inference.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js",
+      "default": "./dist/browser.js"
+    },
+    "./realtime": {
+      "types": "./dist/realtime.d.ts",
+      "import": "./dist/realtime.js",
+      "default": "./dist/realtime.js"
+    },
+    "./bench": {
+      "types": "./dist/bench.d.ts",
+      "import": "./dist/bench.js",
+      "default": "./dist/bench.js"
+    },
+    "./datasets": {
+      "types": "./dist/datasets.d.ts",
+      "import": "./dist/datasets.js",
+      "default": "./dist/datasets.js"
+    },
+    "./tokenizers": {
+      "types": "./dist/tokenizers.d.ts",
+      "import": "./dist/tokenizers.js",
+      "default": "./dist/tokenizers.js"
+    },
+    "./models/*": {
+      "types": "./dist/models/*.d.ts",
+      "import": "./dist/models/*.js",
+      "default": "./dist/models/*.js"
+    },
+    "./presets/*": {
+      "types": "./dist/presets/*.d.ts",
+      "import": "./dist/presets/*.js",
+      "default": "./dist/presets/*.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "!**/*.tsbuildinfo"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.examples.json --noEmit",
+    "lint": "node ./node_modules/eslint/bin/eslint.js \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format": "node ./node_modules/prettier/bin/prettier.cjs --write \"src/**/*.ts\" \"tests/**/*.{ts,mjs}\" \"*.{json,md}\" \"docs/**/*.md\"",
+    "format:check": "node ./node_modules/prettier/bin/prettier.cjs --check \"src/**/*.ts\" \"tests/**/*.{ts,mjs}\" \"*.{json,md}\" \"docs/**/*.md\"",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:node-smoke": "npm run build && node tests/smoke/node-import-smoke.mjs",
+    "docs:clean": "node -e \"require('fs').rmSync('.typedoc-site', { recursive: true, force: true })\"",
+    "docs:api": "node ./node_modules/typedoc/bin/typedoc --options typedoc.json",
+    "docs:build": "npm run docs:clean && npm run docs:api"
   },
   "dependencies": {
-    "onnxruntime-web": "1.24.1"
+    "onnxruntime-node": "1.25.0-dev.20260228-6e72d31970",
+    "onnxruntime-web": "1.25.0-dev.20260228-6e72d31970"
   },
   "devDependencies": {
+    "@eslint/js": "^9.22.0",
     "@types/node": "24.1.0",
+    "eslint": "^9.22.0",
+    "prettier": "^3.6.2",
+    "typedoc": "^0.28.17",
+    "typescript-eslint": "^8.26.1",
     "typescript": "5.9.3",
     "vitest": "4.0.18"
   }

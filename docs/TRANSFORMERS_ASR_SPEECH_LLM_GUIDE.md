@@ -1,28 +1,28 @@
 # Hugging Face Transformers: ASR & Speech LLM Model Families
 
-Reference: `N:\github\ysdede\transformers` — Hugging Face Transformers ASR and speech-to-text models.
+Reference: Hugging Face ASR and speech-to-text model families.
 
-This doc maps **transformers** model families to the shared layer taxonomy for designing `asr.js`.
+This doc maps **transformers** model families to the shared layer taxonomy for designing `@asrjs/speech-recognition`.
 
 ---
 
 ## Model Family Overview
 
-| Family | Topology | Frontend | Encoder | Decoder | Notes |
-|--------|----------|----------|---------|---------|-------|
-| **Wav2Vec2 / Conformer** | CTC | Raw (7-layer conv) | Transformer / Conformer | CTC head | No external mel |
-| **Parakeet CTC** | CTC | NeMo-style mel | Conformer (rel pos) | CTC head | NVIDIA Parakeet |
-| **Speech2Text** | AED | External mel (80) | Conv subsampler + Trans | Trans decoder | Fairseq S2T |
-| **Whisper** | AED | Whisper mel | 2 conv + Trans | Trans decoder | See WHISPER doc |
-| **Qwen2-Audio** | AED/Causal LM | Conv + mel in model | Trans encoder | Trans decoder | Alibaba |
-| **Granite Speech** | AED | Projector (queries) | Trans encoder | LLM decoder | IBM |
-| **Moonshine** | AED | Conv subsampler | Conformer (RoPE) | Trans decoder | Streaming |
-| **Voxtral** | AED | — | — | LLM decoder | Mistral + audio |
-| **GLMASR** | AED | — | — | GLM decoder | Zhipu AI |
-| **VibeVoice ASR** | AED | — | — | Decoder | Conditional gen |
-| **Kyutai Speech-to-Text** | AED | — | — | Decoder | Kyutai |
-| **LASR CTC** | CTC | — | — | CTC head | — |
-| **SeamlessM4T** | AED/CTC | — | — | — | Multimodal |
+| Family                    | Topology      | Frontend            | Encoder                 | Decoder       | Notes           |
+| ------------------------- | ------------- | ------------------- | ----------------------- | ------------- | --------------- |
+| **Wav2Vec2 / Conformer**  | CTC           | Raw (7-layer conv)  | Transformer / Conformer | CTC head      | No external mel |
+| **Parakeet CTC**          | CTC           | NeMo-style mel      | Conformer (rel pos)     | CTC head      | NVIDIA Parakeet |
+| **Speech2Text**           | AED           | External mel (80)   | Conv subsampler + Trans | Trans decoder | Fairseq S2T     |
+| **Whisper**               | AED           | Whisper mel         | 2 conv + Trans          | Trans decoder | See WHISPER doc |
+| **Qwen2-Audio**           | AED/Causal LM | Conv + mel in model | Trans encoder           | Trans decoder | Alibaba         |
+| **Granite Speech**        | AED           | Projector (queries) | Trans encoder           | LLM decoder   | IBM             |
+| **Moonshine**             | AED           | Conv subsampler     | Conformer (RoPE)        | Trans decoder | Streaming       |
+| **Voxtral**               | AED           | —                   | —                       | LLM decoder   | Mistral + audio |
+| **GLMASR**                | AED           | —                   | —                       | GLM decoder   | Zhipu AI        |
+| **VibeVoice ASR**         | AED           | —                   | —                       | Decoder       | Conditional gen |
+| **Kyutai Speech-to-Text** | AED           | —                   | —                       | Decoder       | Kyutai          |
+| **LASR CTC**              | CTC           | —                   | —                       | CTC head      | —               |
+| **SeamlessM4T**           | AED/CTC       | —                   | —                       | —             | Multimodal      |
 
 ---
 
@@ -224,42 +224,42 @@ Raw waveform
 
 ## Frontend Summary (Transformers)
 
-| Model | Frontend | Input |
-|-------|----------|-------|
-| Wav2Vec2 | 7-layer conv (in model) | Raw waveform |
-| Wav2Vec2-Conformer | 7-layer conv (in model) | Raw waveform |
-| Parakeet CTC | External mel (80) | Mel spectrogram |
-| Speech2Text | External mel (80) | Log-mel filterbank |
-| Whisper | Whisper mel (80) | WhisperFeatureExtractor |
-| Qwen2-Audio | Conv (in model) | Raw waveform |
-| Granite Speech | Projector + encoder | Raw → encoder → queries |
-| Moonshine | Conv subsampler | Raw waveform |
+| Model              | Frontend                | Input                   |
+| ------------------ | ----------------------- | ----------------------- |
+| Wav2Vec2           | 7-layer conv (in model) | Raw waveform            |
+| Wav2Vec2-Conformer | 7-layer conv (in model) | Raw waveform            |
+| Parakeet CTC       | External mel (80)       | Mel spectrogram         |
+| Speech2Text        | External mel (80)       | Log-mel filterbank      |
+| Whisper            | Whisper mel (80)        | WhisperFeatureExtractor |
+| Qwen2-Audio        | Conv (in model)         | Raw waveform            |
+| Granite Speech     | Projector + encoder     | Raw → encoder → queries |
+| Moonshine          | Conv subsampler         | Raw waveform            |
 
 ---
 
 ## Decoder Topology Summary
 
-| Topology | Models |
-|----------|--------|
-| **CTC** | Wav2Vec2, Wav2Vec2-Conformer, Parakeet CTC, LASR CTC |
+| Topology                  | Models                                                       |
+| ------------------------- | ------------------------------------------------------------ |
+| **CTC**                   | Wav2Vec2, Wav2Vec2-Conformer, Parakeet CTC, LASR CTC         |
 | **AED (encoder–decoder)** | Speech2Text, Whisper, Qwen2-Audio, Granite Speech, Moonshine |
-| **Speech LLM** | Voxtral, GLMASR, VibeVoice ASR, Kyutai S2T |
+| **Speech LLM**            | Voxtral, GLMASR, VibeVoice ASR, Kyutai S2T                   |
 
 ---
 
-## Reusable Module Mapping for asr.js
+## Reusable Module Mapping for @asrjs/speech-recognition
 
-| Transformers Model | asr.js module |
-|-------------------|---------------|
-| Wav2Vec2FeatureEncoder | processors/wav2vec2-conv.ts |
-| WhisperFeatureExtractor | processors/whisper-mel.ts |
-| Parakeet / NeMo mel | processors/mel-spectrogram.ts |
-| Speech2Text Conv1dSubsampler | processors/conv-subsampler.ts |
-| Conformer encoder | `src/inference/graph.ts` descriptor + model-owned implementation |
-| Transformer encoder | `src/inference/graph.ts` descriptor + model-owned implementation |
-| CTC head | `src/inference/graph.ts` descriptor + model-owned implementation |
-| Transducer (RNNT) | `src/inference/graph.ts` descriptor + model-owned implementation |
-| AED decoder | `src/inference/graph.ts` descriptor + model-owned implementation |
+| Transformers Model           | @asrjs/speech-recognition module                                                          |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| Wav2Vec2FeatureEncoder       | audio/wav2vec-conv.ts                                                  |
+| WhisperFeatureExtractor      | audio/whisper-mel.ts                                                   |
+| Parakeet / NeMo mel          | audio/js-mel.ts                                                        |
+| Speech2Text Conv1dSubsampler | audio/conv-subsampler.ts                                               |
+| Conformer encoder            | `src/inference/descriptors.ts` descriptor + model-owned implementation |
+| Transformer encoder          | `src/inference/descriptors.ts` descriptor + model-owned implementation |
+| CTC head                     | `src/inference/descriptors.ts` descriptor + model-owned implementation |
+| Transducer (RNNT)            | `src/inference/descriptors.ts` descriptor + model-owned implementation |
+| AED decoder                  | `src/inference/descriptors.ts` descriptor + model-owned implementation |
 
 ---
 

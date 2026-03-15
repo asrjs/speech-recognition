@@ -30,7 +30,7 @@ export interface VoiceActivityTimelineSnapshot {
 
 function toSpeechFlag(
   observation: Pick<VoiceActivityObservation, 'speechProbability' | 'isSpeech'>,
-  threshold: number
+  threshold: number,
 ): boolean {
   if (typeof observation.isSpeech === 'boolean') {
     return observation.isSpeech;
@@ -60,10 +60,14 @@ export class VoiceActivityTimeline implements StreamingActivityBuffer {
 
   appendObservation(observation: VoiceActivityObservation): VoiceActivitySegment {
     if (!Number.isFinite(observation.startFrame) || observation.startFrame < 0) {
-      throw new RangeError('VoiceActivityTimeline observation startFrame must be a non-negative finite number.');
+      throw new RangeError(
+        'VoiceActivityTimeline observation startFrame must be a non-negative finite number.',
+      );
     }
     if (!Number.isFinite(observation.endFrame) || observation.endFrame <= observation.startFrame) {
-      throw new RangeError('VoiceActivityTimeline observation endFrame must be greater than startFrame.');
+      throw new RangeError(
+        'VoiceActivityTimeline observation endFrame must be greater than startFrame.',
+      );
     }
 
     const segment: VoiceActivitySegment = {
@@ -72,7 +76,7 @@ export class VoiceActivityTimeline implements StreamingActivityBuffer {
       speechProbability: observation.speechProbability,
       isSpeech: toSpeechFlag(observation, this.speechThreshold),
       startTimeSeconds: observation.startFrame / this.sampleRate,
-      endTimeSeconds: observation.endFrame / this.sampleRate
+      endTimeSeconds: observation.endFrame / this.sampleRate,
     };
 
     this.latestFrame = Math.max(this.latestFrame, segment.endFrame);
@@ -85,7 +89,7 @@ export class VoiceActivityTimeline implements StreamingActivityBuffer {
     startFrame: number,
     frameCount: number,
     speechProbability: number,
-    isSpeech?: boolean
+    isSpeech?: boolean,
   ): VoiceActivitySegment {
     if (!Number.isFinite(frameCount) || frameCount <= 0) {
       throw new RangeError('VoiceActivityTimeline frameCount must be a positive finite number.');
@@ -94,14 +98,14 @@ export class VoiceActivityTimeline implements StreamingActivityBuffer {
       startFrame,
       endFrame: startFrame + frameCount,
       speechProbability,
-      isSpeech
+      isSpeech,
     });
   }
 
   appendVoiceActivityEvent(
     event: VoiceActivityEvent,
     defaultStartFrame: number,
-    defaultEndFrame: number
+    defaultEndFrame: number,
   ): VoiceActivitySegment {
     const startFrame = Number.isFinite(event.startTimeSeconds)
       ? Math.max(0, Math.round((event.startTimeSeconds ?? 0) * this.sampleRate))
@@ -114,7 +118,7 @@ export class VoiceActivityTimeline implements StreamingActivityBuffer {
       startFrame,
       endFrame,
       speechProbability: event.speechProbability,
-      isSpeech: event.isSpeech
+      isSpeech: event.isSpeech,
     });
   }
 
@@ -167,11 +171,12 @@ export class VoiceActivityTimeline implements StreamingActivityBuffer {
   }
 
   hasSpeechInRange(startFrame: number, endFrame: number, threshold: number): boolean {
-    return this.segments.some((segment) =>
-      segment.endFrame > startFrame
-      && segment.startFrame < endFrame
-      && segment.speechProbability >= threshold
-      && segment.isSpeech
+    return this.segments.some(
+      (segment) =>
+        segment.endFrame > startFrame &&
+        segment.startFrame < endFrame &&
+        segment.speechProbability >= threshold &&
+        segment.isSpeech,
     );
   }
 
@@ -181,7 +186,7 @@ export class VoiceActivityTimeline implements StreamingActivityBuffer {
       latestFrame: this.latestFrame,
       baseFrame: this.getBaseFrame(),
       trailingSilenceSeconds: this.getSilenceTailDuration(this.speechThreshold) / this.sampleRate,
-      segments: this.segments
+      segments: this.segments,
     };
   }
 
@@ -201,7 +206,7 @@ export class VoiceActivityTimeline implements StreamingActivityBuffer {
         return {
           ...segment,
           startFrame: baseFrame,
-          startTimeSeconds: baseFrame / this.sampleRate
+          startTimeSeconds: baseFrame / this.sampleRate,
         };
       });
   }

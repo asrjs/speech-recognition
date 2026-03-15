@@ -1,0 +1,5482 @@
+{
+  "model": "ysdede/parakeet-tdt-0.6b-v2-onnx-tfjs4",
+  "api": "pipeline",
+  "audio": {
+    "file": "N:\\github\\ysdede\\scribe-ds\\data\\PARROT_v1.0\\07_audio\\labels\\full_reports\\b34b97eebdfb699bab44bfa5e55d375436fb74f18ebc642835d4215f76f1139d.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "source_seconds": 421,
+    "model_seconds": 421
+  },
+  "load": {
+    "transformers_source": "N:\\github\\ysdede\\transformers.js\\packages\\transformers\\src\\transformers.js",
+    "device": {
+      "encoder_model": "cpu",
+      "decoder_model_merged": "cpu"
+    },
+    "dtype": null,
+    "model_type": "nemo-conformer-tdt"
+  },
+  "options": {
+    "return_timestamps": "word"
+  },
+  "elapsed_s": 41.74,
+  "output": {
+    "text": "Body scan. Date March 20th, 2021. Indication. Motorcycle accident, facial trauma. Suspected posterior epistaxis. Pelvic pain. Elevated lactate level at 4. Negative FIST ultrasound. Technique. CT scan performed without contrast on the brain. followed by contrast-enhanced arterial phase imaging of the suprajiortic trunks, chest, and abdomen down to the knees, and portal phase imaging of the abdomen and pelvis. Additional delayed imaging at 8 minutes for the urinary system. Contrast dose. DLP for the brain, milligram centimeter, DLP for the trunk, milligray centimeter. Result. Brain. Small bilateral parietal subarachnoid hemorrhage at the vertex. Right parieto-occipital subarachnoid hemorrhage with small associated hemorrhagic contusions. No cerebral edema or mass effect. No brain herniation or hydrocephalus. No detectable spontaneous hyperdensity within the intracranial vessels. No recent corticosubcortical ischemic area. Fracture of the right petrus bone extending to the tympanic bone with hemotympanum and partial filling of the mastoid cells. Significant facial bone fractures with bilateral lay-fought 3 pattern involving a fracture through the nasal root, displaced comminuted fracture of the nasal bones, bilateral fracture of the laminar paparacea, fractures through the lateral walls of the orbits and zygomatic arches, and bilateral pterygoid fractures. Fracture of all walls of the left maxillary sinus, with depression of the lateral wall and orbital floor, with intracinous bone fragment. Comminuted fracture of the orbital floor involving the left V2 canal. Left orbital fat entrapment without muscle entrapment. Fracture through the left lacrimal canal. Fracture at the level of the left orbital apex. Fracture of the laminar paparaceae and superior wall of the left sphenoid sinus with a small pneumose phallus bubble at the left optic canal, indicating a dural breach. Fracture of the internal, lateral, and superior walls of the right maxillary sinus. Fracture of the right orbital floor without signs of entrapment. Fracture of the right orbital roof with probable dural breach, although no pneumosphallus is visible. Significant bilateral orbital emphysema. No clearly identifiable fracture of the optic nerve canals or right lacrimal canal. Bilateral maxillary and sphenoidal hemisinus. Non-displaced fracture of the left mandibular ramus and left parasymphysal fracture passing between teeth 35 and 36. Significant periorbital and right paramandibular, subcutaneous emphysema. Cervical spine. Satisfactory alignment of the vertebral bodies. No post-traumatic bone lesion, dislocation, joint separation, or abnormal disc widening. No abnormalities of the suprajiortic trunks, particularly no evidence of post-traumatic dissection. Thorax. No detectable hemop pneumothorax. Ground glass opacities, with thickening of the left apical interlobular septa, possibly related to pulmonary contusion. Ventilatory disturbances at the lung bases. Small right apical parazeptal emphysema lesions. Sliding hiatal hernia. Integrity of the mediastinal arterial vessels, particularly the jorta. Abdomenopelvic region. Hemoprotoneum located beneath the bladder above the pubic symphysis, of mild to moderate volume, without identifiable active bleeding, no detectable pelvic fracture. No identifiable ureteral injury on delayed urinary imaging. Incomplete opsification of the bladder on delayed urinary phase, not allowing formal exclusion of a bladder injury. No clearly identifiable bladder wall discontinuity on portal phase with presence of a bladder globe. The prostatic urethra is not accessible in this exam. No hemoprotoneum or pneumoprotoneum. No post-traumatic injury to the liver, spleen, adrenal glands, kidneys, or pancreas. Gall bladder without stones. No identifiable abnormalities in the digestive system, noting the exam was performed without preparation or opsification. No post-traumatic injury to the yorta or visceral arteries. Skeletal. Non-displaced articular fracture of the anterior part of the left medial tibial plateau with associated lipohemarthrosis. No detectable vascular abnormality in the area. Small non-displaced cortical fracture of the left fibular head. No spinal or pelvic fracture. No disjunction of the pubic symphysis or sacroiliac joints. No rib cage fracture. Conclusion. Bilateral parietal subarachnoid hemorrhage at the vertex, right parietooccipital, with small associated hemorrhagic contusions. Right petrus bone fracture extending to the tympanic bone. Significant facial bone fractures, see above report with bilateral Lay Fort 3 pattern, more significant fracture of both orbital floors on the left with orbital fat entrapment, no muscle entrapment, involvement of the left V2 canal, involvement of the left lacrimal canal. Dural breach with fracture of the laminar papyrusia at the left orbital apex with a small pneumosphallus bubble, fracture at the superior part of the right orbit. Bifocal mandibular fracture with left parasymphysal fracture and fracture of the left mandibular ramus. Left apical pulmonary contusion. Hemoprotoneum without active bleeding, no associated pelvic fracture. No formally identifiable ureteral injury on delayed phase. Bladder analysis is incomplete due to incomplete opsification on delayed urinary phase. The exam cannot exclude a prostatic urethral injury. Consider secondary evaluation with cysto-CT or cystoscopy after urological consultation. Non-displaced articular fracture of the left medial tibial plateau with lipohemarthrosis. Small non-displaced cortical fracture of the left fibular head.",
+    "chunks": [
+      {
+        "text": "Body",
+        "timestamp": [
+          0.24,
+          0.72
+        ]
+      },
+      {
+        "text": "scan.",
+        "timestamp": [
+          0.72,
+          1.68
+        ]
+      },
+      {
+        "text": "Date",
+        "timestamp": [
+          1.68,
+          2.16
+        ]
+      },
+      {
+        "text": "March",
+        "timestamp": [
+          2.16,
+          2.56
+        ]
+      },
+      {
+        "text": "20th,",
+        "timestamp": [
+          2.64,
+          3.2
+        ]
+      },
+      {
+        "text": "2021.",
+        "timestamp": [
+          3.28,
+          4.48
+        ]
+      },
+      {
+        "text": "Indication.",
+        "timestamp": [
+          5.12,
+          6.4
+        ]
+      },
+      {
+        "text": "Motorcycle",
+        "timestamp": [
+          6.72,
+          7.6
+        ]
+      },
+      {
+        "text": "accident,",
+        "timestamp": [
+          7.6,
+          8.24
+        ]
+      },
+      {
+        "text": "facial",
+        "timestamp": [
+          8.24,
+          8.72
+        ]
+      },
+      {
+        "text": "trauma.",
+        "timestamp": [
+          8.72,
+          10
+        ]
+      },
+      {
+        "text": "Suspected",
+        "timestamp": [
+          10.32,
+          11.04
+        ]
+      },
+      {
+        "text": "posterior",
+        "timestamp": [
+          11.04,
+          11.68
+        ]
+      },
+      {
+        "text": "epistaxis.",
+        "timestamp": [
+          11.68,
+          13.36
+        ]
+      },
+      {
+        "text": "Pelvic",
+        "timestamp": [
+          13.68,
+          14.56
+        ]
+      },
+      {
+        "text": "pain.",
+        "timestamp": [
+          14.56,
+          15.28
+        ]
+      },
+      {
+        "text": "Elevated",
+        "timestamp": [
+          15.6,
+          16.24
+        ]
+      },
+      {
+        "text": "lactate",
+        "timestamp": [
+          16.24,
+          16.8
+        ]
+      },
+      {
+        "text": "level",
+        "timestamp": [
+          16.8,
+          17.12
+        ]
+      },
+      {
+        "text": "at",
+        "timestamp": [
+          17.12,
+          17.36
+        ]
+      },
+      {
+        "text": "4.",
+        "timestamp": [
+          17.6,
+          18.08
+        ]
+      },
+      {
+        "text": "Negative",
+        "timestamp": [
+          18.72,
+          19.44
+        ]
+      },
+      {
+        "text": "FIST",
+        "timestamp": [
+          19.44,
+          20.48
+        ]
+      },
+      {
+        "text": "ultrasound.",
+        "timestamp": [
+          20.48,
+          21.84
+        ]
+      },
+      {
+        "text": "Technique.",
+        "timestamp": [
+          22.16,
+          23.28
+        ]
+      },
+      {
+        "text": "CT",
+        "timestamp": [
+          23.6,
+          24.16
+        ]
+      },
+      {
+        "text": "scan",
+        "timestamp": [
+          24.16,
+          24.56
+        ]
+      },
+      {
+        "text": "performed",
+        "timestamp": [
+          24.56,
+          24.96
+        ]
+      },
+      {
+        "text": "without",
+        "timestamp": [
+          24.96,
+          25.28
+        ]
+      },
+      {
+        "text": "contrast",
+        "timestamp": [
+          25.28,
+          25.84
+        ]
+      },
+      {
+        "text": "on",
+        "timestamp": [
+          25.84,
+          26
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          26,
+          26.08
+        ]
+      },
+      {
+        "text": "brain.",
+        "timestamp": [
+          26.08,
+          26.8
+        ]
+      },
+      {
+        "text": "followed",
+        "timestamp": [
+          26.8,
+          27.12
+        ]
+      },
+      {
+        "text": "by",
+        "timestamp": [
+          27.12,
+          27.28
+        ]
+      },
+      {
+        "text": "contrast-enhanced",
+        "timestamp": [
+          27.28,
+          28.24
+        ]
+      },
+      {
+        "text": "arterial",
+        "timestamp": [
+          28.24,
+          28.8
+        ]
+      },
+      {
+        "text": "phase",
+        "timestamp": [
+          28.8,
+          29.12
+        ]
+      },
+      {
+        "text": "imaging",
+        "timestamp": [
+          29.12,
+          29.44
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          29.44,
+          29.52
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          29.52,
+          29.6
+        ]
+      },
+      {
+        "text": "suprajiortic",
+        "timestamp": [
+          29.6,
+          30.48
+        ]
+      },
+      {
+        "text": "trunks,",
+        "timestamp": [
+          30.48,
+          31.04
+        ]
+      },
+      {
+        "text": "chest,",
+        "timestamp": [
+          31.04,
+          31.52
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          31.52,
+          31.68
+        ]
+      },
+      {
+        "text": "abdomen",
+        "timestamp": [
+          31.68,
+          32.24
+        ]
+      },
+      {
+        "text": "down",
+        "timestamp": [
+          32.24,
+          32.4
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          32.4,
+          32.56
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          32.56,
+          32.64
+        ]
+      },
+      {
+        "text": "knees,",
+        "timestamp": [
+          32.64,
+          33.2
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          33.2,
+          33.36
+        ]
+      },
+      {
+        "text": "portal",
+        "timestamp": [
+          33.36,
+          33.84
+        ]
+      },
+      {
+        "text": "phase",
+        "timestamp": [
+          33.84,
+          34.16
+        ]
+      },
+      {
+        "text": "imaging",
+        "timestamp": [
+          34.16,
+          34.48
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          34.48,
+          34.56
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          34.56,
+          34.64
+        ]
+      },
+      {
+        "text": "abdomen",
+        "timestamp": [
+          34.64,
+          35.12
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          35.12,
+          35.28
+        ]
+      },
+      {
+        "text": "pelvis.",
+        "timestamp": [
+          35.28,
+          36.4
+        ]
+      },
+      {
+        "text": "Additional",
+        "timestamp": [
+          36.72,
+          37.36
+        ]
+      },
+      {
+        "text": "delayed",
+        "timestamp": [
+          37.36,
+          37.84
+        ]
+      },
+      {
+        "text": "imaging",
+        "timestamp": [
+          37.84,
+          38.24
+        ]
+      },
+      {
+        "text": "at",
+        "timestamp": [
+          38.24,
+          38.48
+        ]
+      },
+      {
+        "text": "8",
+        "timestamp": [
+          38.56,
+          38.72
+        ]
+      },
+      {
+        "text": "minutes",
+        "timestamp": [
+          38.72,
+          39.12
+        ]
+      },
+      {
+        "text": "for",
+        "timestamp": [
+          39.12,
+          39.28
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          39.28,
+          39.36
+        ]
+      },
+      {
+        "text": "urinary",
+        "timestamp": [
+          39.36,
+          40.4
+        ]
+      },
+      {
+        "text": "system.",
+        "timestamp": [
+          40.4,
+          41.04
+        ]
+      },
+      {
+        "text": "Contrast",
+        "timestamp": [
+          41.36,
+          42.16
+        ]
+      },
+      {
+        "text": "dose.",
+        "timestamp": [
+          42.16,
+          42.88
+        ]
+      },
+      {
+        "text": "DLP",
+        "timestamp": [
+          43.2,
+          44
+        ]
+      },
+      {
+        "text": "for",
+        "timestamp": [
+          44,
+          44.16
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          44.16,
+          44.24
+        ]
+      },
+      {
+        "text": "brain,",
+        "timestamp": [
+          44.24,
+          44.72
+        ]
+      },
+      {
+        "text": "milligram",
+        "timestamp": [
+          44.72,
+          45.28
+        ]
+      },
+      {
+        "text": "centimeter,",
+        "timestamp": [
+          45.36,
+          46.08
+        ]
+      },
+      {
+        "text": "DLP",
+        "timestamp": [
+          46.08,
+          46.72
+        ]
+      },
+      {
+        "text": "for",
+        "timestamp": [
+          46.72,
+          46.88
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          46.88,
+          46.96
+        ]
+      },
+      {
+        "text": "trunk,",
+        "timestamp": [
+          46.96,
+          47.52
+        ]
+      },
+      {
+        "text": "milligray",
+        "timestamp": [
+          47.52,
+          48.08
+        ]
+      },
+      {
+        "text": "centimeter.",
+        "timestamp": [
+          48.16,
+          49.44
+        ]
+      },
+      {
+        "text": "Result.",
+        "timestamp": [
+          49.76,
+          50.96
+        ]
+      },
+      {
+        "text": "Brain.",
+        "timestamp": [
+          50.96,
+          51.76
+        ]
+      },
+      {
+        "text": "Small",
+        "timestamp": [
+          52,
+          52.4
+        ]
+      },
+      {
+        "text": "bilateral",
+        "timestamp": [
+          52.4,
+          53.04
+        ]
+      },
+      {
+        "text": "parietal",
+        "timestamp": [
+          53.04,
+          53.6
+        ]
+      },
+      {
+        "text": "subarachnoid",
+        "timestamp": [
+          53.68,
+          54.64
+        ]
+      },
+      {
+        "text": "hemorrhage",
+        "timestamp": [
+          54.64,
+          55.04
+        ]
+      },
+      {
+        "text": "at",
+        "timestamp": [
+          55.12,
+          55.28
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          55.28,
+          55.44
+        ]
+      },
+      {
+        "text": "vertex.",
+        "timestamp": [
+          55.6,
+          56.8
+        ]
+      },
+      {
+        "text": "Right",
+        "timestamp": [
+          57.12,
+          57.44
+        ]
+      },
+      {
+        "text": "parieto-occipital",
+        "timestamp": [
+          57.44,
+          58.64
+        ]
+      },
+      {
+        "text": "subarachnoid",
+        "timestamp": [
+          58.64,
+          59.44
+        ]
+      },
+      {
+        "text": "hemorrhage",
+        "timestamp": [
+          59.44,
+          59.92
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          60.08,
+          60.32
+        ]
+      },
+      {
+        "text": "small",
+        "timestamp": [
+          60.32,
+          60.72
+        ]
+      },
+      {
+        "text": "associated",
+        "timestamp": [
+          60.72,
+          61.36
+        ]
+      },
+      {
+        "text": "hemorrhagic",
+        "timestamp": [
+          61.36,
+          62.16
+        ]
+      },
+      {
+        "text": "contusions.",
+        "timestamp": [
+          62.16,
+          63.44
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          63.76,
+          64.08
+        ]
+      },
+      {
+        "text": "cerebral",
+        "timestamp": [
+          64.08,
+          64.72
+        ]
+      },
+      {
+        "text": "edema",
+        "timestamp": [
+          64.8,
+          65.36
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          65.36,
+          65.44
+        ]
+      },
+      {
+        "text": "mass",
+        "timestamp": [
+          65.44,
+          65.84
+        ]
+      },
+      {
+        "text": "effect.",
+        "timestamp": [
+          66.08,
+          67.04
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          67.36,
+          67.68
+        ]
+      },
+      {
+        "text": "brain",
+        "timestamp": [
+          67.68,
+          68.08
+        ]
+      },
+      {
+        "text": "herniation",
+        "timestamp": [
+          68.08,
+          68.8
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          68.8,
+          68.96
+        ]
+      },
+      {
+        "text": "hydrocephalus.",
+        "timestamp": [
+          68.96,
+          70.8
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          71.12,
+          71.36
+        ]
+      },
+      {
+        "text": "detectable",
+        "timestamp": [
+          71.36,
+          72.16
+        ]
+      },
+      {
+        "text": "spontaneous",
+        "timestamp": [
+          72.16,
+          72.88
+        ]
+      },
+      {
+        "text": "hyperdensity",
+        "timestamp": [
+          72.88,
+          73.84
+        ]
+      },
+      {
+        "text": "within",
+        "timestamp": [
+          73.84,
+          74.16
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          74.16,
+          74.24
+        ]
+      },
+      {
+        "text": "intracranial",
+        "timestamp": [
+          74.24,
+          75.12
+        ]
+      },
+      {
+        "text": "vessels.",
+        "timestamp": [
+          75.12,
+          76.32
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          76.64,
+          76.96
+        ]
+      },
+      {
+        "text": "recent",
+        "timestamp": [
+          76.96,
+          77.44
+        ]
+      },
+      {
+        "text": "corticosubcortical",
+        "timestamp": [
+          77.44,
+          78.8
+        ]
+      },
+      {
+        "text": "ischemic",
+        "timestamp": [
+          78.8,
+          79.6
+        ]
+      },
+      {
+        "text": "area.",
+        "timestamp": [
+          79.6,
+          80.56
+        ]
+      },
+      {
+        "text": "Fracture",
+        "timestamp": [
+          80.88,
+          81.44
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          81.44,
+          81.6
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          81.6,
+          81.68
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          81.68,
+          81.92
+        ]
+      },
+      {
+        "text": "petrus",
+        "timestamp": [
+          81.92,
+          82.56
+        ]
+      },
+      {
+        "text": "bone",
+        "timestamp": [
+          82.56,
+          82.8
+        ]
+      },
+      {
+        "text": "extending",
+        "timestamp": [
+          82.96,
+          83.44
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          83.44,
+          83.52
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          83.52,
+          83.6
+        ]
+      },
+      {
+        "text": "tympanic",
+        "timestamp": [
+          83.6,
+          84.32
+        ]
+      },
+      {
+        "text": "bone",
+        "timestamp": [
+          84.32,
+          84.56
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          84.64,
+          84.8
+        ]
+      },
+      {
+        "text": "hemotympanum",
+        "timestamp": [
+          84.8,
+          85.84
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          85.84,
+          86
+        ]
+      },
+      {
+        "text": "partial",
+        "timestamp": [
+          86,
+          86.32
+        ]
+      },
+      {
+        "text": "filling",
+        "timestamp": [
+          86.32,
+          86.72
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          86.72,
+          86.8
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          86.8,
+          86.88
+        ]
+      },
+      {
+        "text": "mastoid",
+        "timestamp": [
+          86.88,
+          87.6
+        ]
+      },
+      {
+        "text": "cells.",
+        "timestamp": [
+          87.6,
+          88.64
+        ]
+      },
+      {
+        "text": "Significant",
+        "timestamp": [
+          88.96,
+          89.6
+        ]
+      },
+      {
+        "text": "facial",
+        "timestamp": [
+          89.6,
+          90
+        ]
+      },
+      {
+        "text": "bone",
+        "timestamp": [
+          90,
+          90.32
+        ]
+      },
+      {
+        "text": "fractures",
+        "timestamp": [
+          90.32,
+          90.72
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          90.72,
+          90.88
+        ]
+      },
+      {
+        "text": "bilateral",
+        "timestamp": [
+          90.88,
+          91.36
+        ]
+      },
+      {
+        "text": "lay-fought",
+        "timestamp": [
+          91.36,
+          91.92
+        ]
+      },
+      {
+        "text": "3",
+        "timestamp": [
+          92.16,
+          92.24
+        ]
+      },
+      {
+        "text": "pattern",
+        "timestamp": [
+          92.32,
+          92.8
+        ]
+      },
+      {
+        "text": "involving",
+        "timestamp": [
+          92.8,
+          93.12
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          93.12,
+          93.2
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          93.2,
+          93.6
+        ]
+      },
+      {
+        "text": "through",
+        "timestamp": [
+          93.6,
+          93.76
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          93.76,
+          93.92
+        ]
+      },
+      {
+        "text": "nasal",
+        "timestamp": [
+          93.92,
+          94.32
+        ]
+      },
+      {
+        "text": "root,",
+        "timestamp": [
+          94.32,
+          94.88
+        ]
+      },
+      {
+        "text": "displaced",
+        "timestamp": [
+          94.88,
+          95.44
+        ]
+      },
+      {
+        "text": "comminuted",
+        "timestamp": [
+          95.44,
+          96.08
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          96.08,
+          96.48
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          96.48,
+          96.56
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          96.56,
+          96.64
+        ]
+      },
+      {
+        "text": "nasal",
+        "timestamp": [
+          96.64,
+          97.04
+        ]
+      },
+      {
+        "text": "bones,",
+        "timestamp": [
+          97.04,
+          97.68
+        ]
+      },
+      {
+        "text": "bilateral",
+        "timestamp": [
+          97.68,
+          98.24
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          98.24,
+          98.64
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          98.64,
+          98.72
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          98.72,
+          98.8
+        ]
+      },
+      {
+        "text": "laminar",
+        "timestamp": [
+          98.8,
+          99.2
+        ]
+      },
+      {
+        "text": "paparacea,",
+        "timestamp": [
+          99.2,
+          100.24
+        ]
+      },
+      {
+        "text": "fractures",
+        "timestamp": [
+          100.24,
+          100.72
+        ]
+      },
+      {
+        "text": "through",
+        "timestamp": [
+          100.72,
+          100.88
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          100.88,
+          100.96
+        ]
+      },
+      {
+        "text": "lateral",
+        "timestamp": [
+          100.96,
+          101.36
+        ]
+      },
+      {
+        "text": "walls",
+        "timestamp": [
+          101.36,
+          101.6
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          101.6,
+          101.68
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          101.68,
+          101.76
+        ]
+      },
+      {
+        "text": "orbits",
+        "timestamp": [
+          101.76,
+          102.24
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          102.24,
+          102.32
+        ]
+      },
+      {
+        "text": "zygomatic",
+        "timestamp": [
+          102.4,
+          103.12
+        ]
+      },
+      {
+        "text": "arches,",
+        "timestamp": [
+          103.12,
+          103.76
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          103.76,
+          103.92
+        ]
+      },
+      {
+        "text": "bilateral",
+        "timestamp": [
+          103.92,
+          104.4
+        ]
+      },
+      {
+        "text": "pterygoid",
+        "timestamp": [
+          104.4,
+          105.12
+        ]
+      },
+      {
+        "text": "fractures.",
+        "timestamp": [
+          105.12,
+          106.24
+        ]
+      },
+      {
+        "text": "Fracture",
+        "timestamp": [
+          106.56,
+          107.12
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          107.12,
+          107.28
+        ]
+      },
+      {
+        "text": "all",
+        "timestamp": [
+          107.28,
+          107.44
+        ]
+      },
+      {
+        "text": "walls",
+        "timestamp": [
+          107.44,
+          107.76
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          107.76,
+          107.92
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          107.92,
+          108
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          108,
+          108.24
+        ]
+      },
+      {
+        "text": "maxillary",
+        "timestamp": [
+          108.24,
+          108.96
+        ]
+      },
+      {
+        "text": "sinus,",
+        "timestamp": [
+          108.96,
+          109.6
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          109.6,
+          109.84
+        ]
+      },
+      {
+        "text": "depression",
+        "timestamp": [
+          109.84,
+          110.32
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          110.32,
+          110.48
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          110.48,
+          110.56
+        ]
+      },
+      {
+        "text": "lateral",
+        "timestamp": [
+          110.56,
+          110.96
+        ]
+      },
+      {
+        "text": "wall",
+        "timestamp": [
+          110.96,
+          111.36
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          111.36,
+          111.52
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          111.52,
+          112
+        ]
+      },
+      {
+        "text": "floor,",
+        "timestamp": [
+          112,
+          112.48
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          112.48,
+          112.64
+        ]
+      },
+      {
+        "text": "intracinous",
+        "timestamp": [
+          112.64,
+          113.28
+        ]
+      },
+      {
+        "text": "bone",
+        "timestamp": [
+          113.36,
+          113.6
+        ]
+      },
+      {
+        "text": "fragment.",
+        "timestamp": [
+          113.6,
+          114.56
+        ]
+      },
+      {
+        "text": "Comminuted",
+        "timestamp": [
+          114.88,
+          115.76
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          115.76,
+          116.24
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          116.24,
+          116.32
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          116.32,
+          116.4
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          116.4,
+          116.96
+        ]
+      },
+      {
+        "text": "floor",
+        "timestamp": [
+          116.96,
+          117.36
+        ]
+      },
+      {
+        "text": "involving",
+        "timestamp": [
+          117.52,
+          118
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          118,
+          118.08
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          118.08,
+          118.48
+        ]
+      },
+      {
+        "text": "V2",
+        "timestamp": [
+          118.48,
+          118.96
+        ]
+      },
+      {
+        "text": "canal.",
+        "timestamp": [
+          118.96,
+          120
+        ]
+      },
+      {
+        "text": "Left",
+        "timestamp": [
+          120.32,
+          120.8
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          120.8,
+          121.28
+        ]
+      },
+      {
+        "text": "fat",
+        "timestamp": [
+          121.28,
+          121.6
+        ]
+      },
+      {
+        "text": "entrapment",
+        "timestamp": [
+          121.6,
+          122.16
+        ]
+      },
+      {
+        "text": "without",
+        "timestamp": [
+          122.32,
+          122.64
+        ]
+      },
+      {
+        "text": "muscle",
+        "timestamp": [
+          122.64,
+          123.12
+        ]
+      },
+      {
+        "text": "entrapment.",
+        "timestamp": [
+          123.12,
+          124.4
+        ]
+      },
+      {
+        "text": "Fracture",
+        "timestamp": [
+          124.72,
+          125.44
+        ]
+      },
+      {
+        "text": "through",
+        "timestamp": [
+          125.44,
+          125.6
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          125.6,
+          125.68
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          125.68,
+          126
+        ]
+      },
+      {
+        "text": "lacrimal",
+        "timestamp": [
+          126,
+          126.72
+        ]
+      },
+      {
+        "text": "canal.",
+        "timestamp": [
+          126.72,
+          127.68
+        ]
+      },
+      {
+        "text": "Fracture",
+        "timestamp": [
+          128,
+          128.72
+        ]
+      },
+      {
+        "text": "at",
+        "timestamp": [
+          128.72,
+          128.88
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          128.88,
+          128.96
+        ]
+      },
+      {
+        "text": "level",
+        "timestamp": [
+          128.96,
+          129.28
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          129.28,
+          129.44
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          129.44,
+          129.52
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          129.52,
+          129.84
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          129.84,
+          130.48
+        ]
+      },
+      {
+        "text": "apex.",
+        "timestamp": [
+          130.48,
+          131.36
+        ]
+      },
+      {
+        "text": "Fracture",
+        "timestamp": [
+          132,
+          132.56
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          132.56,
+          132.64
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          132.64,
+          132.72
+        ]
+      },
+      {
+        "text": "laminar",
+        "timestamp": [
+          132.72,
+          133.12
+        ]
+      },
+      {
+        "text": "paparaceae",
+        "timestamp": [
+          133.12,
+          133.92
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          133.92,
+          134.08
+        ]
+      },
+      {
+        "text": "superior",
+        "timestamp": [
+          134.08,
+          134.56
+        ]
+      },
+      {
+        "text": "wall",
+        "timestamp": [
+          134.56,
+          134.8
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          134.8,
+          134.88
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          134.88,
+          134.96
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          134.96,
+          135.2
+        ]
+      },
+      {
+        "text": "sphenoid",
+        "timestamp": [
+          135.2,
+          135.92
+        ]
+      },
+      {
+        "text": "sinus",
+        "timestamp": [
+          135.92,
+          136.4
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          136.48,
+          136.72
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          136.72,
+          136.8
+        ]
+      },
+      {
+        "text": "small",
+        "timestamp": [
+          136.8,
+          137.12
+        ]
+      },
+      {
+        "text": "pneumose",
+        "timestamp": [
+          137.12,
+          137.6
+        ]
+      },
+      {
+        "text": "phallus",
+        "timestamp": [
+          137.6,
+          138
+        ]
+      },
+      {
+        "text": "bubble",
+        "timestamp": [
+          138,
+          138.4
+        ]
+      },
+      {
+        "text": "at",
+        "timestamp": [
+          138.48,
+          138.56
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          138.56,
+          138.64
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          138.64,
+          138.88
+        ]
+      },
+      {
+        "text": "optic",
+        "timestamp": [
+          138.88,
+          139.36
+        ]
+      },
+      {
+        "text": "canal,",
+        "timestamp": [
+          139.36,
+          140
+        ]
+      },
+      {
+        "text": "indicating",
+        "timestamp": [
+          140,
+          140.4
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          140.4,
+          140.48
+        ]
+      },
+      {
+        "text": "dural",
+        "timestamp": [
+          140.48,
+          141.04
+        ]
+      },
+      {
+        "text": "breach.",
+        "timestamp": [
+          141.04,
+          142
+        ]
+      },
+      {
+        "text": "Fracture",
+        "timestamp": [
+          142.32,
+          142.88
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          142.88,
+          142.96
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          142.96,
+          143.12
+        ]
+      },
+      {
+        "text": "internal,",
+        "timestamp": [
+          143.12,
+          143.76
+        ]
+      },
+      {
+        "text": "lateral,",
+        "timestamp": [
+          143.76,
+          144.32
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          144.32,
+          144.48
+        ]
+      },
+      {
+        "text": "superior",
+        "timestamp": [
+          144.48,
+          145.04
+        ]
+      },
+      {
+        "text": "walls",
+        "timestamp": [
+          145.04,
+          145.44
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          145.44,
+          145.6
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          145.6,
+          145.76
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          145.76,
+          146
+        ]
+      },
+      {
+        "text": "maxillary",
+        "timestamp": [
+          146,
+          146.72
+        ]
+      },
+      {
+        "text": "sinus.",
+        "timestamp": [
+          146.72,
+          147.92
+        ]
+      },
+      {
+        "text": "Fracture",
+        "timestamp": [
+          148.24,
+          148.8
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          148.8,
+          148.96
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          148.96,
+          149.04
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          149.04,
+          149.28
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          149.28,
+          149.84
+        ]
+      },
+      {
+        "text": "floor",
+        "timestamp": [
+          149.84,
+          150.32
+        ]
+      },
+      {
+        "text": "without",
+        "timestamp": [
+          150.32,
+          150.64
+        ]
+      },
+      {
+        "text": "signs",
+        "timestamp": [
+          150.64,
+          150.96
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          150.96,
+          151.12
+        ]
+      },
+      {
+        "text": "entrapment.",
+        "timestamp": [
+          151.12,
+          152.4
+        ]
+      },
+      {
+        "text": "Fracture",
+        "timestamp": [
+          152.72,
+          153.28
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          153.28,
+          153.44
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          153.44,
+          153.52
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          153.52,
+          153.76
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          153.76,
+          154.24
+        ]
+      },
+      {
+        "text": "roof",
+        "timestamp": [
+          154.24,
+          154.64
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          154.64,
+          154.8
+        ]
+      },
+      {
+        "text": "probable",
+        "timestamp": [
+          154.8,
+          155.2
+        ]
+      },
+      {
+        "text": "dural",
+        "timestamp": [
+          155.2,
+          155.68
+        ]
+      },
+      {
+        "text": "breach,",
+        "timestamp": [
+          155.68,
+          156.32
+        ]
+      },
+      {
+        "text": "although",
+        "timestamp": [
+          156.32,
+          156.56
+        ]
+      },
+      {
+        "text": "no",
+        "timestamp": [
+          156.56,
+          156.72
+        ]
+      },
+      {
+        "text": "pneumosphallus",
+        "timestamp": [
+          156.72,
+          157.68
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          157.68,
+          157.84
+        ]
+      },
+      {
+        "text": "visible.",
+        "timestamp": [
+          157.84,
+          158.8
+        ]
+      },
+      {
+        "text": "Significant",
+        "timestamp": [
+          159.12,
+          159.92
+        ]
+      },
+      {
+        "text": "bilateral",
+        "timestamp": [
+          159.92,
+          160.64
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          160.64,
+          161.2
+        ]
+      },
+      {
+        "text": "emphysema.",
+        "timestamp": [
+          161.2,
+          162.72
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          163.04,
+          163.28
+        ]
+      },
+      {
+        "text": "clearly",
+        "timestamp": [
+          163.28,
+          163.84
+        ]
+      },
+      {
+        "text": "identifiable",
+        "timestamp": [
+          163.84,
+          164.56
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          164.56,
+          165.04
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          165.04,
+          165.2
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          165.2,
+          165.28
+        ]
+      },
+      {
+        "text": "optic",
+        "timestamp": [
+          165.28,
+          165.68
+        ]
+      },
+      {
+        "text": "nerve",
+        "timestamp": [
+          165.68,
+          166
+        ]
+      },
+      {
+        "text": "canals",
+        "timestamp": [
+          166,
+          166.56
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          166.64,
+          166.88
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          166.88,
+          167.12
+        ]
+      },
+      {
+        "text": "lacrimal",
+        "timestamp": [
+          167.12,
+          167.76
+        ]
+      },
+      {
+        "text": "canal.",
+        "timestamp": [
+          167.76,
+          168.72
+        ]
+      },
+      {
+        "text": "Bilateral",
+        "timestamp": [
+          169.04,
+          169.84
+        ]
+      },
+      {
+        "text": "maxillary",
+        "timestamp": [
+          169.84,
+          170.56
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          170.56,
+          170.64
+        ]
+      },
+      {
+        "text": "sphenoidal",
+        "timestamp": [
+          170.64,
+          171.36
+        ]
+      },
+      {
+        "text": "hemisinus.",
+        "timestamp": [
+          171.36,
+          172.72
+        ]
+      },
+      {
+        "text": "Non-displaced",
+        "timestamp": [
+          173.04,
+          174
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          174,
+          174.4
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          174.4,
+          174.48
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          174.48,
+          174.56
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          174.56,
+          174.8
+        ]
+      },
+      {
+        "text": "mandibular",
+        "timestamp": [
+          174.8,
+          175.52
+        ]
+      },
+      {
+        "text": "ramus",
+        "timestamp": [
+          175.52,
+          176.16
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          176.16,
+          176.32
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          176.32,
+          176.56
+        ]
+      },
+      {
+        "text": "parasymphysal",
+        "timestamp": [
+          176.56,
+          177.52
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          177.6,
+          178.08
+        ]
+      },
+      {
+        "text": "passing",
+        "timestamp": [
+          178.24,
+          178.64
+        ]
+      },
+      {
+        "text": "between",
+        "timestamp": [
+          178.64,
+          178.88
+        ]
+      },
+      {
+        "text": "teeth",
+        "timestamp": [
+          178.88,
+          179.36
+        ]
+      },
+      {
+        "text": "35",
+        "timestamp": [
+          179.44,
+          179.92
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          179.92,
+          180.16
+        ]
+      },
+      {
+        "text": "36.",
+        "timestamp": [
+          180.32,
+          181.6
+        ]
+      },
+      {
+        "text": "Significant",
+        "timestamp": [
+          181.92,
+          182.56
+        ]
+      },
+      {
+        "text": "periorbital",
+        "timestamp": [
+          182.56,
+          183.6
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          183.6,
+          183.76
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          183.76,
+          184
+        ]
+      },
+      {
+        "text": "paramandibular,",
+        "timestamp": [
+          184,
+          185.12
+        ]
+      },
+      {
+        "text": "subcutaneous",
+        "timestamp": [
+          185.12,
+          185.92
+        ]
+      },
+      {
+        "text": "emphysema.",
+        "timestamp": [
+          185.92,
+          187.28
+        ]
+      },
+      {
+        "text": "Cervical",
+        "timestamp": [
+          187.6,
+          188.16
+        ]
+      },
+      {
+        "text": "spine.",
+        "timestamp": [
+          188.48,
+          189.36
+        ]
+      },
+      {
+        "text": "Satisfactory",
+        "timestamp": [
+          189.68,
+          190.64
+        ]
+      },
+      {
+        "text": "alignment",
+        "timestamp": [
+          190.64,
+          191.2
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          191.2,
+          191.36
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          191.36,
+          191.44
+        ]
+      },
+      {
+        "text": "vertebral",
+        "timestamp": [
+          191.52,
+          192.16
+        ]
+      },
+      {
+        "text": "bodies.",
+        "timestamp": [
+          192.16,
+          193.28
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          193.6,
+          193.84
+        ]
+      },
+      {
+        "text": "post-traumatic",
+        "timestamp": [
+          193.84,
+          194.72
+        ]
+      },
+      {
+        "text": "bone",
+        "timestamp": [
+          194.72,
+          194.96
+        ]
+      },
+      {
+        "text": "lesion,",
+        "timestamp": [
+          194.96,
+          195.52
+        ]
+      },
+      {
+        "text": "dislocation,",
+        "timestamp": [
+          195.52,
+          196.48
+        ]
+      },
+      {
+        "text": "joint",
+        "timestamp": [
+          196.48,
+          196.88
+        ]
+      },
+      {
+        "text": "separation,",
+        "timestamp": [
+          196.88,
+          197.6
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          197.6,
+          197.76
+        ]
+      },
+      {
+        "text": "abnormal",
+        "timestamp": [
+          197.76,
+          198.32
+        ]
+      },
+      {
+        "text": "disc",
+        "timestamp": [
+          198.32,
+          198.72
+        ]
+      },
+      {
+        "text": "widening.",
+        "timestamp": [
+          198.72,
+          199.92
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          200.24,
+          200.48
+        ]
+      },
+      {
+        "text": "abnormalities",
+        "timestamp": [
+          200.48,
+          201.28
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          201.28,
+          201.36
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          201.36,
+          201.44
+        ]
+      },
+      {
+        "text": "suprajiortic",
+        "timestamp": [
+          201.44,
+          202.4
+        ]
+      },
+      {
+        "text": "trunks,",
+        "timestamp": [
+          202.4,
+          203.04
+        ]
+      },
+      {
+        "text": "particularly",
+        "timestamp": [
+          203.04,
+          203.52
+        ]
+      },
+      {
+        "text": "no",
+        "timestamp": [
+          203.6,
+          203.84
+        ]
+      },
+      {
+        "text": "evidence",
+        "timestamp": [
+          203.84,
+          204.24
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          204.24,
+          204.4
+        ]
+      },
+      {
+        "text": "post-traumatic",
+        "timestamp": [
+          204.4,
+          205.28
+        ]
+      },
+      {
+        "text": "dissection.",
+        "timestamp": [
+          205.28,
+          206.56
+        ]
+      },
+      {
+        "text": "Thorax.",
+        "timestamp": [
+          206.88,
+          208.24
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          208.24,
+          208.48
+        ]
+      },
+      {
+        "text": "detectable",
+        "timestamp": [
+          208.48,
+          209.12
+        ]
+      },
+      {
+        "text": "hemop",
+        "timestamp": [
+          209.12,
+          209.52
+        ]
+      },
+      {
+        "text": "pneumothorax.",
+        "timestamp": [
+          209.6,
+          211.2
+        ]
+      },
+      {
+        "text": "Ground",
+        "timestamp": [
+          211.52,
+          212
+        ]
+      },
+      {
+        "text": "glass",
+        "timestamp": [
+          212,
+          212.4
+        ]
+      },
+      {
+        "text": "opacities,",
+        "timestamp": [
+          212.4,
+          213.28
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          213.28,
+          213.52
+        ]
+      },
+      {
+        "text": "thickening",
+        "timestamp": [
+          213.52,
+          214
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          214,
+          214.08
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          214.08,
+          214.16
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          214.16,
+          214.48
+        ]
+      },
+      {
+        "text": "apical",
+        "timestamp": [
+          214.48,
+          214.88
+        ]
+      },
+      {
+        "text": "interlobular",
+        "timestamp": [
+          215.04,
+          215.68
+        ]
+      },
+      {
+        "text": "septa,",
+        "timestamp": [
+          215.68,
+          216.4
+        ]
+      },
+      {
+        "text": "possibly",
+        "timestamp": [
+          216.4,
+          216.88
+        ]
+      },
+      {
+        "text": "related",
+        "timestamp": [
+          216.88,
+          217.28
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          217.28,
+          217.44
+        ]
+      },
+      {
+        "text": "pulmonary",
+        "timestamp": [
+          217.44,
+          218.16
+        ]
+      },
+      {
+        "text": "contusion.",
+        "timestamp": [
+          218.16,
+          219.36
+        ]
+      },
+      {
+        "text": "Ventilatory",
+        "timestamp": [
+          219.68,
+          220.56
+        ]
+      },
+      {
+        "text": "disturbances",
+        "timestamp": [
+          220.56,
+          221.36
+        ]
+      },
+      {
+        "text": "at",
+        "timestamp": [
+          221.36,
+          221.52
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          221.52,
+          221.68
+        ]
+      },
+      {
+        "text": "lung",
+        "timestamp": [
+          221.68,
+          222.08
+        ]
+      },
+      {
+        "text": "bases.",
+        "timestamp": [
+          222.08,
+          223.36
+        ]
+      },
+      {
+        "text": "Small",
+        "timestamp": [
+          223.68,
+          224.16
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          224.16,
+          224.4
+        ]
+      },
+      {
+        "text": "apical",
+        "timestamp": [
+          224.48,
+          224.8
+        ]
+      },
+      {
+        "text": "parazeptal",
+        "timestamp": [
+          224.96,
+          225.6
+        ]
+      },
+      {
+        "text": "emphysema",
+        "timestamp": [
+          225.68,
+          226.32
+        ]
+      },
+      {
+        "text": "lesions.",
+        "timestamp": [
+          226.32,
+          227.44
+        ]
+      },
+      {
+        "text": "Sliding",
+        "timestamp": [
+          227.76,
+          228.4
+        ]
+      },
+      {
+        "text": "hiatal",
+        "timestamp": [
+          228.4,
+          229.04
+        ]
+      },
+      {
+        "text": "hernia.",
+        "timestamp": [
+          229.04,
+          230.24
+        ]
+      },
+      {
+        "text": "Integrity",
+        "timestamp": [
+          230.56,
+          231.28
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          231.28,
+          231.36
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          231.36,
+          231.44
+        ]
+      },
+      {
+        "text": "mediastinal",
+        "timestamp": [
+          231.44,
+          232.4
+        ]
+      },
+      {
+        "text": "arterial",
+        "timestamp": [
+          232.4,
+          232.96
+        ]
+      },
+      {
+        "text": "vessels,",
+        "timestamp": [
+          232.96,
+          233.68
+        ]
+      },
+      {
+        "text": "particularly",
+        "timestamp": [
+          233.68,
+          234.16
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          234.16,
+          234.32
+        ]
+      },
+      {
+        "text": "jorta.",
+        "timestamp": [
+          234.32,
+          235.6
+        ]
+      },
+      {
+        "text": "Abdomenopelvic",
+        "timestamp": [
+          235.92,
+          237.28
+        ]
+      },
+      {
+        "text": "region.",
+        "timestamp": [
+          237.28,
+          238.16
+        ]
+      },
+      {
+        "text": "Hemoprotoneum",
+        "timestamp": [
+          238.48,
+          239.68
+        ]
+      },
+      {
+        "text": "located",
+        "timestamp": [
+          239.68,
+          240.08
+        ]
+      },
+      {
+        "text": "beneath",
+        "timestamp": [
+          240.08,
+          240.4
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          240.4,
+          240.48
+        ]
+      },
+      {
+        "text": "bladder",
+        "timestamp": [
+          240.48,
+          240.96
+        ]
+      },
+      {
+        "text": "above",
+        "timestamp": [
+          240.96,
+          241.2
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          241.2,
+          241.28
+        ]
+      },
+      {
+        "text": "pubic",
+        "timestamp": [
+          241.28,
+          241.68
+        ]
+      },
+      {
+        "text": "symphysis,",
+        "timestamp": [
+          241.68,
+          242.64
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          242.64,
+          242.8
+        ]
+      },
+      {
+        "text": "mild",
+        "timestamp": [
+          242.8,
+          243.2
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          243.2,
+          243.36
+        ]
+      },
+      {
+        "text": "moderate",
+        "timestamp": [
+          243.36,
+          243.76
+        ]
+      },
+      {
+        "text": "volume,",
+        "timestamp": [
+          243.76,
+          244.4
+        ]
+      },
+      {
+        "text": "without",
+        "timestamp": [
+          244.4,
+          244.8
+        ]
+      },
+      {
+        "text": "identifiable",
+        "timestamp": [
+          244.8,
+          245.52
+        ]
+      },
+      {
+        "text": "active",
+        "timestamp": [
+          245.52,
+          245.92
+        ]
+      },
+      {
+        "text": "bleeding,",
+        "timestamp": [
+          245.92,
+          246.64
+        ]
+      },
+      {
+        "text": "no",
+        "timestamp": [
+          246.64,
+          246.88
+        ]
+      },
+      {
+        "text": "detectable",
+        "timestamp": [
+          246.88,
+          247.44
+        ]
+      },
+      {
+        "text": "pelvic",
+        "timestamp": [
+          247.44,
+          248
+        ]
+      },
+      {
+        "text": "fracture.",
+        "timestamp": [
+          248,
+          249.12
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          249.44,
+          249.68
+        ]
+      },
+      {
+        "text": "identifiable",
+        "timestamp": [
+          249.84,
+          250.72
+        ]
+      },
+      {
+        "text": "ureteral",
+        "timestamp": [
+          250.72,
+          251.36
+        ]
+      },
+      {
+        "text": "injury",
+        "timestamp": [
+          251.36,
+          251.76
+        ]
+      },
+      {
+        "text": "on",
+        "timestamp": [
+          251.84,
+          252.08
+        ]
+      },
+      {
+        "text": "delayed",
+        "timestamp": [
+          252.08,
+          252.56
+        ]
+      },
+      {
+        "text": "urinary",
+        "timestamp": [
+          252.56,
+          253.2
+        ]
+      },
+      {
+        "text": "imaging.",
+        "timestamp": [
+          253.2,
+          254.24
+        ]
+      },
+      {
+        "text": "Incomplete",
+        "timestamp": [
+          254.56,
+          255.28
+        ]
+      },
+      {
+        "text": "opsification",
+        "timestamp": [
+          255.28,
+          256.08
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          256.08,
+          256.16
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          256.16,
+          256.32
+        ]
+      },
+      {
+        "text": "bladder",
+        "timestamp": [
+          256.32,
+          256.72
+        ]
+      },
+      {
+        "text": "on",
+        "timestamp": [
+          256.72,
+          256.96
+        ]
+      },
+      {
+        "text": "delayed",
+        "timestamp": [
+          256.96,
+          257.36
+        ]
+      },
+      {
+        "text": "urinary",
+        "timestamp": [
+          257.36,
+          258
+        ]
+      },
+      {
+        "text": "phase,",
+        "timestamp": [
+          258,
+          258.8
+        ]
+      },
+      {
+        "text": "not",
+        "timestamp": [
+          258.8,
+          258.96
+        ]
+      },
+      {
+        "text": "allowing",
+        "timestamp": [
+          258.96,
+          259.44
+        ]
+      },
+      {
+        "text": "formal",
+        "timestamp": [
+          259.44,
+          259.84
+        ]
+      },
+      {
+        "text": "exclusion",
+        "timestamp": [
+          259.84,
+          260.4
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          260.4,
+          260.56
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          260.56,
+          260.64
+        ]
+      },
+      {
+        "text": "bladder",
+        "timestamp": [
+          260.64,
+          261.12
+        ]
+      },
+      {
+        "text": "injury.",
+        "timestamp": [
+          261.12,
+          262.16
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          262.48,
+          262.72
+        ]
+      },
+      {
+        "text": "clearly",
+        "timestamp": [
+          262.72,
+          263.28
+        ]
+      },
+      {
+        "text": "identifiable",
+        "timestamp": [
+          263.28,
+          264
+        ]
+      },
+      {
+        "text": "bladder",
+        "timestamp": [
+          264,
+          264.4
+        ]
+      },
+      {
+        "text": "wall",
+        "timestamp": [
+          264.4,
+          264.72
+        ]
+      },
+      {
+        "text": "discontinuity",
+        "timestamp": [
+          264.72,
+          265.6
+        ]
+      },
+      {
+        "text": "on",
+        "timestamp": [
+          265.6,
+          265.76
+        ]
+      },
+      {
+        "text": "portal",
+        "timestamp": [
+          265.76,
+          266.32
+        ]
+      },
+      {
+        "text": "phase",
+        "timestamp": [
+          266.32,
+          266.72
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          266.88,
+          267.12
+        ]
+      },
+      {
+        "text": "presence",
+        "timestamp": [
+          267.12,
+          267.52
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          267.52,
+          267.68
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          267.68,
+          267.76
+        ]
+      },
+      {
+        "text": "bladder",
+        "timestamp": [
+          267.76,
+          268.32
+        ]
+      },
+      {
+        "text": "globe.",
+        "timestamp": [
+          268.32,
+          269.44
+        ]
+      },
+      {
+        "text": "The",
+        "timestamp": [
+          269.44,
+          269.68
+        ]
+      },
+      {
+        "text": "prostatic",
+        "timestamp": [
+          269.68,
+          270.24
+        ]
+      },
+      {
+        "text": "urethra",
+        "timestamp": [
+          270.24,
+          271.04
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          271.04,
+          271.2
+        ]
+      },
+      {
+        "text": "not",
+        "timestamp": [
+          271.2,
+          271.44
+        ]
+      },
+      {
+        "text": "accessible",
+        "timestamp": [
+          271.44,
+          272.08
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          272.08,
+          272.4
+        ]
+      },
+      {
+        "text": "this",
+        "timestamp": [
+          272.4,
+          272.72
+        ]
+      },
+      {
+        "text": "exam.",
+        "timestamp": [
+          272.72,
+          273.68
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          273.84,
+          274.08
+        ]
+      },
+      {
+        "text": "hemoprotoneum",
+        "timestamp": [
+          274.08,
+          275.2
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          275.2,
+          275.36
+        ]
+      },
+      {
+        "text": "pneumoprotoneum.",
+        "timestamp": [
+          275.36,
+          277.2
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          277.52,
+          277.76
+        ]
+      },
+      {
+        "text": "post-traumatic",
+        "timestamp": [
+          277.76,
+          278.64
+        ]
+      },
+      {
+        "text": "injury",
+        "timestamp": [
+          278.64,
+          279.04
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          279.04,
+          279.12
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          279.12,
+          279.2
+        ]
+      },
+      {
+        "text": "liver,",
+        "timestamp": [
+          279.2,
+          279.76
+        ]
+      },
+      {
+        "text": "spleen,",
+        "timestamp": [
+          279.76,
+          280.32
+        ]
+      },
+      {
+        "text": "adrenal",
+        "timestamp": [
+          280.32,
+          280.96
+        ]
+      },
+      {
+        "text": "glands,",
+        "timestamp": [
+          280.96,
+          281.36
+        ]
+      },
+      {
+        "text": "kidneys,",
+        "timestamp": [
+          281.36,
+          282
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          282,
+          282.16
+        ]
+      },
+      {
+        "text": "pancreas.",
+        "timestamp": [
+          282.16,
+          283.52
+        ]
+      },
+      {
+        "text": "Gall",
+        "timestamp": [
+          283.84,
+          284.32
+        ]
+      },
+      {
+        "text": "bladder",
+        "timestamp": [
+          284.32,
+          284.72
+        ]
+      },
+      {
+        "text": "without",
+        "timestamp": [
+          284.72,
+          285.12
+        ]
+      },
+      {
+        "text": "stones.",
+        "timestamp": [
+          285.12,
+          286.32
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          286.64,
+          286.96
+        ]
+      },
+      {
+        "text": "identifiable",
+        "timestamp": [
+          286.96,
+          287.84
+        ]
+      },
+      {
+        "text": "abnormalities",
+        "timestamp": [
+          287.84,
+          288.64
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          288.64,
+          288.72
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          288.72,
+          288.88
+        ]
+      },
+      {
+        "text": "digestive",
+        "timestamp": [
+          288.88,
+          289.6
+        ]
+      },
+      {
+        "text": "system,",
+        "timestamp": [
+          289.6,
+          290.24
+        ]
+      },
+      {
+        "text": "noting",
+        "timestamp": [
+          290.24,
+          290.64
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          290.64,
+          290.88
+        ]
+      },
+      {
+        "text": "exam",
+        "timestamp": [
+          290.88,
+          291.2
+        ]
+      },
+      {
+        "text": "was",
+        "timestamp": [
+          291.2,
+          291.44
+        ]
+      },
+      {
+        "text": "performed",
+        "timestamp": [
+          291.44,
+          291.92
+        ]
+      },
+      {
+        "text": "without",
+        "timestamp": [
+          291.92,
+          292.24
+        ]
+      },
+      {
+        "text": "preparation",
+        "timestamp": [
+          292.24,
+          293.04
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          293.04,
+          293.28
+        ]
+      },
+      {
+        "text": "opsification.",
+        "timestamp": [
+          293.28,
+          294.88
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          295.2,
+          295.52
+        ]
+      },
+      {
+        "text": "post-traumatic",
+        "timestamp": [
+          295.52,
+          296.48
+        ]
+      },
+      {
+        "text": "injury",
+        "timestamp": [
+          296.48,
+          296.88
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          296.88,
+          296.96
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          296.96,
+          297.12
+        ]
+      },
+      {
+        "text": "yorta",
+        "timestamp": [
+          297.12,
+          297.76
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          297.76,
+          297.84
+        ]
+      },
+      {
+        "text": "visceral",
+        "timestamp": [
+          297.84,
+          298.4
+        ]
+      },
+      {
+        "text": "arteries.",
+        "timestamp": [
+          298.4,
+          299.6
+        ]
+      },
+      {
+        "text": "Skeletal.",
+        "timestamp": [
+          299.92,
+          301.12
+        ]
+      },
+      {
+        "text": "Non-displaced",
+        "timestamp": [
+          301.12,
+          302.08
+        ]
+      },
+      {
+        "text": "articular",
+        "timestamp": [
+          302.08,
+          302.56
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          302.56,
+          303.12
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          303.12,
+          303.28
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          303.28,
+          303.36
+        ]
+      },
+      {
+        "text": "anterior",
+        "timestamp": [
+          303.36,
+          304.08
+        ]
+      },
+      {
+        "text": "part",
+        "timestamp": [
+          304.08,
+          304.32
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          304.32,
+          304.48
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          304.48,
+          304.56
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          304.56,
+          304.88
+        ]
+      },
+      {
+        "text": "medial",
+        "timestamp": [
+          304.88,
+          305.28
+        ]
+      },
+      {
+        "text": "tibial",
+        "timestamp": [
+          305.28,
+          305.76
+        ]
+      },
+      {
+        "text": "plateau",
+        "timestamp": [
+          305.76,
+          306.24
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          306.4,
+          306.56
+        ]
+      },
+      {
+        "text": "associated",
+        "timestamp": [
+          306.56,
+          307.12
+        ]
+      },
+      {
+        "text": "lipohemarthrosis.",
+        "timestamp": [
+          307.12,
+          309.2
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          309.52,
+          309.76
+        ]
+      },
+      {
+        "text": "detectable",
+        "timestamp": [
+          309.76,
+          310.48
+        ]
+      },
+      {
+        "text": "vascular",
+        "timestamp": [
+          310.48,
+          311.12
+        ]
+      },
+      {
+        "text": "abnormality",
+        "timestamp": [
+          311.12,
+          311.92
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          311.92,
+          312.16
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          312.16,
+          312.48
+        ]
+      },
+      {
+        "text": "area.",
+        "timestamp": [
+          312.48,
+          313.44
+        ]
+      },
+      {
+        "text": "Small",
+        "timestamp": [
+          313.76,
+          314.16
+        ]
+      },
+      {
+        "text": "non-displaced",
+        "timestamp": [
+          314.16,
+          314.96
+        ]
+      },
+      {
+        "text": "cortical",
+        "timestamp": [
+          314.96,
+          315.6
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          315.6,
+          316.16
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          316.16,
+          316.32
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          316.32,
+          316.4
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          316.4,
+          316.64
+        ]
+      },
+      {
+        "text": "fibular",
+        "timestamp": [
+          316.64,
+          317.2
+        ]
+      },
+      {
+        "text": "head.",
+        "timestamp": [
+          317.36,
+          318.16
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          318.48,
+          318.8
+        ]
+      },
+      {
+        "text": "spinal",
+        "timestamp": [
+          318.8,
+          319.44
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          319.44,
+          319.6
+        ]
+      },
+      {
+        "text": "pelvic",
+        "timestamp": [
+          319.6,
+          320.16
+        ]
+      },
+      {
+        "text": "fracture.",
+        "timestamp": [
+          320.16,
+          321.44
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          321.76,
+          322
+        ]
+      },
+      {
+        "text": "disjunction",
+        "timestamp": [
+          322,
+          322.8
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          322.8,
+          322.88
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          322.88,
+          322.96
+        ]
+      },
+      {
+        "text": "pubic",
+        "timestamp": [
+          322.96,
+          323.36
+        ]
+      },
+      {
+        "text": "symphysis",
+        "timestamp": [
+          323.36,
+          324.08
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          324.08,
+          324.24
+        ]
+      },
+      {
+        "text": "sacroiliac",
+        "timestamp": [
+          324.24,
+          325.2
+        ]
+      },
+      {
+        "text": "joints.",
+        "timestamp": [
+          325.2,
+          326.56
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          326.56,
+          326.88
+        ]
+      },
+      {
+        "text": "rib",
+        "timestamp": [
+          326.88,
+          327.28
+        ]
+      },
+      {
+        "text": "cage",
+        "timestamp": [
+          327.28,
+          327.68
+        ]
+      },
+      {
+        "text": "fracture.",
+        "timestamp": [
+          327.68,
+          328.88
+        ]
+      },
+      {
+        "text": "Conclusion.",
+        "timestamp": [
+          329.2,
+          330.8
+        ]
+      },
+      {
+        "text": "Bilateral",
+        "timestamp": [
+          330.8,
+          331.52
+        ]
+      },
+      {
+        "text": "parietal",
+        "timestamp": [
+          331.52,
+          332.16
+        ]
+      },
+      {
+        "text": "subarachnoid",
+        "timestamp": [
+          332.16,
+          333.04
+        ]
+      },
+      {
+        "text": "hemorrhage",
+        "timestamp": [
+          333.04,
+          333.44
+        ]
+      },
+      {
+        "text": "at",
+        "timestamp": [
+          333.52,
+          333.6
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          333.6,
+          333.68
+        ]
+      },
+      {
+        "text": "vertex,",
+        "timestamp": [
+          333.76,
+          334.56
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          334.56,
+          334.88
+        ]
+      },
+      {
+        "text": "parietooccipital,",
+        "timestamp": [
+          334.88,
+          336.24
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          336.24,
+          336.4
+        ]
+      },
+      {
+        "text": "small",
+        "timestamp": [
+          336.4,
+          336.8
+        ]
+      },
+      {
+        "text": "associated",
+        "timestamp": [
+          336.8,
+          337.44
+        ]
+      },
+      {
+        "text": "hemorrhagic",
+        "timestamp": [
+          337.44,
+          338.16
+        ]
+      },
+      {
+        "text": "contusions.",
+        "timestamp": [
+          338.16,
+          339.44
+        ]
+      },
+      {
+        "text": "Right",
+        "timestamp": [
+          339.76,
+          340.08
+        ]
+      },
+      {
+        "text": "petrus",
+        "timestamp": [
+          340.08,
+          340.72
+        ]
+      },
+      {
+        "text": "bone",
+        "timestamp": [
+          340.72,
+          340.96
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          340.96,
+          341.52
+        ]
+      },
+      {
+        "text": "extending",
+        "timestamp": [
+          341.68,
+          342.16
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          342.16,
+          342.24
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          342.24,
+          342.32
+        ]
+      },
+      {
+        "text": "tympanic",
+        "timestamp": [
+          342.32,
+          343.12
+        ]
+      },
+      {
+        "text": "bone.",
+        "timestamp": [
+          343.12,
+          344
+        ]
+      },
+      {
+        "text": "Significant",
+        "timestamp": [
+          344.32,
+          345.04
+        ]
+      },
+      {
+        "text": "facial",
+        "timestamp": [
+          345.04,
+          345.44
+        ]
+      },
+      {
+        "text": "bone",
+        "timestamp": [
+          345.44,
+          345.68
+        ]
+      },
+      {
+        "text": "fractures,",
+        "timestamp": [
+          345.68,
+          346.48
+        ]
+      },
+      {
+        "text": "see",
+        "timestamp": [
+          346.48,
+          346.72
+        ]
+      },
+      {
+        "text": "above",
+        "timestamp": [
+          346.72,
+          347.04
+        ]
+      },
+      {
+        "text": "report",
+        "timestamp": [
+          347.04,
+          347.44
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          347.52,
+          347.68
+        ]
+      },
+      {
+        "text": "bilateral",
+        "timestamp": [
+          347.68,
+          348.16
+        ]
+      },
+      {
+        "text": "Lay",
+        "timestamp": [
+          348.16,
+          348.32
+        ]
+      },
+      {
+        "text": "Fort",
+        "timestamp": [
+          348.56,
+          348.72
+        ]
+      },
+      {
+        "text": "3",
+        "timestamp": [
+          349.04,
+          349.12
+        ]
+      },
+      {
+        "text": "pattern,",
+        "timestamp": [
+          349.2,
+          349.76
+        ]
+      },
+      {
+        "text": "more",
+        "timestamp": [
+          349.76,
+          349.84
+        ]
+      },
+      {
+        "text": "significant",
+        "timestamp": [
+          350.08,
+          350.56
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          350.56,
+          350.96
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          350.96,
+          351.12
+        ]
+      },
+      {
+        "text": "both",
+        "timestamp": [
+          351.12,
+          351.28
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          351.28,
+          351.76
+        ]
+      },
+      {
+        "text": "floors",
+        "timestamp": [
+          351.76,
+          352.16
+        ]
+      },
+      {
+        "text": "on",
+        "timestamp": [
+          352.16,
+          352.24
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          352.24,
+          352.32
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          352.32,
+          352.56
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          352.56,
+          352.72
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          352.72,
+          353.12
+        ]
+      },
+      {
+        "text": "fat",
+        "timestamp": [
+          353.12,
+          353.44
+        ]
+      },
+      {
+        "text": "entrapment,",
+        "timestamp": [
+          353.44,
+          354.32
+        ]
+      },
+      {
+        "text": "no",
+        "timestamp": [
+          354.32,
+          354.48
+        ]
+      },
+      {
+        "text": "muscle",
+        "timestamp": [
+          354.48,
+          354.88
+        ]
+      },
+      {
+        "text": "entrapment,",
+        "timestamp": [
+          354.88,
+          355.6
+        ]
+      },
+      {
+        "text": "involvement",
+        "timestamp": [
+          355.6,
+          356.16
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          356.16,
+          356.24
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          356.24,
+          356.32
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          356.32,
+          356.64
+        ]
+      },
+      {
+        "text": "V2",
+        "timestamp": [
+          356.64,
+          357.12
+        ]
+      },
+      {
+        "text": "canal,",
+        "timestamp": [
+          357.12,
+          357.76
+        ]
+      },
+      {
+        "text": "involvement",
+        "timestamp": [
+          357.76,
+          358.24
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          358.24,
+          358.4
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          358.4,
+          358.48
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          358.48,
+          358.72
+        ]
+      },
+      {
+        "text": "lacrimal",
+        "timestamp": [
+          358.72,
+          359.36
+        ]
+      },
+      {
+        "text": "canal.",
+        "timestamp": [
+          359.36,
+          360.24
+        ]
+      },
+      {
+        "text": "Dural",
+        "timestamp": [
+          360.56,
+          361.04
+        ]
+      },
+      {
+        "text": "breach",
+        "timestamp": [
+          361.04,
+          361.44
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          361.44,
+          361.6
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          361.6,
+          361.92
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          361.92,
+          362
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          362,
+          362.08
+        ]
+      },
+      {
+        "text": "laminar",
+        "timestamp": [
+          362.08,
+          362.56
+        ]
+      },
+      {
+        "text": "papyrusia",
+        "timestamp": [
+          362.56,
+          363.44
+        ]
+      },
+      {
+        "text": "at",
+        "timestamp": [
+          363.52,
+          363.6
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          363.6,
+          363.68
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          363.68,
+          364
+        ]
+      },
+      {
+        "text": "orbital",
+        "timestamp": [
+          364,
+          364.48
+        ]
+      },
+      {
+        "text": "apex",
+        "timestamp": [
+          364.48,
+          364.96
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          365.12,
+          365.28
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          365.28,
+          365.36
+        ]
+      },
+      {
+        "text": "small",
+        "timestamp": [
+          365.36,
+          365.6
+        ]
+      },
+      {
+        "text": "pneumosphallus",
+        "timestamp": [
+          365.6,
+          366.56
+        ]
+      },
+      {
+        "text": "bubble,",
+        "timestamp": [
+          366.56,
+          367.12
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          367.12,
+          367.6
+        ]
+      },
+      {
+        "text": "at",
+        "timestamp": [
+          367.6,
+          367.76
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          367.76,
+          367.84
+        ]
+      },
+      {
+        "text": "superior",
+        "timestamp": [
+          367.84,
+          368.4
+        ]
+      },
+      {
+        "text": "part",
+        "timestamp": [
+          368.4,
+          368.64
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          368.64,
+          368.72
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          368.72,
+          368.88
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          368.88,
+          369.12
+        ]
+      },
+      {
+        "text": "orbit.",
+        "timestamp": [
+          369.12,
+          370.16
+        ]
+      },
+      {
+        "text": "Bifocal",
+        "timestamp": [
+          370.48,
+          371.2
+        ]
+      },
+      {
+        "text": "mandibular",
+        "timestamp": [
+          371.2,
+          371.76
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          371.76,
+          372.32
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          372.32,
+          372.48
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          372.48,
+          372.72
+        ]
+      },
+      {
+        "text": "parasymphysal",
+        "timestamp": [
+          372.72,
+          373.68
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          373.76,
+          374.24
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          374.24,
+          374.4
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          374.4,
+          374.96
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          374.96,
+          375.12
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          375.12,
+          375.2
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          375.2,
+          375.52
+        ]
+      },
+      {
+        "text": "mandibular",
+        "timestamp": [
+          375.52,
+          376.16
+        ]
+      },
+      {
+        "text": "ramus.",
+        "timestamp": [
+          376.16,
+          377.36
+        ]
+      },
+      {
+        "text": "Left",
+        "timestamp": [
+          377.68,
+          378.08
+        ]
+      },
+      {
+        "text": "apical",
+        "timestamp": [
+          378.08,
+          378.56
+        ]
+      },
+      {
+        "text": "pulmonary",
+        "timestamp": [
+          378.72,
+          379.28
+        ]
+      },
+      {
+        "text": "contusion.",
+        "timestamp": [
+          379.28,
+          380.56
+        ]
+      },
+      {
+        "text": "Hemoprotoneum",
+        "timestamp": [
+          380.88,
+          382.08
+        ]
+      },
+      {
+        "text": "without",
+        "timestamp": [
+          382.08,
+          382.32
+        ]
+      },
+      {
+        "text": "active",
+        "timestamp": [
+          382.32,
+          382.64
+        ]
+      },
+      {
+        "text": "bleeding,",
+        "timestamp": [
+          382.64,
+          383.36
+        ]
+      },
+      {
+        "text": "no",
+        "timestamp": [
+          383.36,
+          383.6
+        ]
+      },
+      {
+        "text": "associated",
+        "timestamp": [
+          383.6,
+          384.32
+        ]
+      },
+      {
+        "text": "pelvic",
+        "timestamp": [
+          384.32,
+          384.8
+        ]
+      },
+      {
+        "text": "fracture.",
+        "timestamp": [
+          384.8,
+          386.08
+        ]
+      },
+      {
+        "text": "No",
+        "timestamp": [
+          386.4,
+          386.72
+        ]
+      },
+      {
+        "text": "formally",
+        "timestamp": [
+          386.72,
+          387.28
+        ]
+      },
+      {
+        "text": "identifiable",
+        "timestamp": [
+          387.28,
+          388
+        ]
+      },
+      {
+        "text": "ureteral",
+        "timestamp": [
+          388,
+          388.72
+        ]
+      },
+      {
+        "text": "injury",
+        "timestamp": [
+          388.72,
+          389.12
+        ]
+      },
+      {
+        "text": "on",
+        "timestamp": [
+          389.12,
+          389.36
+        ]
+      },
+      {
+        "text": "delayed",
+        "timestamp": [
+          389.36,
+          389.92
+        ]
+      },
+      {
+        "text": "phase.",
+        "timestamp": [
+          389.92,
+          390.88
+        ]
+      },
+      {
+        "text": "Bladder",
+        "timestamp": [
+          391.2,
+          391.84
+        ]
+      },
+      {
+        "text": "analysis",
+        "timestamp": [
+          391.84,
+          392.4
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          392.4,
+          392.64
+        ]
+      },
+      {
+        "text": "incomplete",
+        "timestamp": [
+          392.64,
+          393.36
+        ]
+      },
+      {
+        "text": "due",
+        "timestamp": [
+          393.36,
+          393.52
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          393.52,
+          393.68
+        ]
+      },
+      {
+        "text": "incomplete",
+        "timestamp": [
+          393.68,
+          394.24
+        ]
+      },
+      {
+        "text": "opsification",
+        "timestamp": [
+          394.24,
+          395.28
+        ]
+      },
+      {
+        "text": "on",
+        "timestamp": [
+          395.36,
+          395.6
+        ]
+      },
+      {
+        "text": "delayed",
+        "timestamp": [
+          395.6,
+          396.08
+        ]
+      },
+      {
+        "text": "urinary",
+        "timestamp": [
+          396.08,
+          396.88
+        ]
+      },
+      {
+        "text": "phase.",
+        "timestamp": [
+          396.88,
+          397.76
+        ]
+      },
+      {
+        "text": "The",
+        "timestamp": [
+          398.08,
+          398.4
+        ]
+      },
+      {
+        "text": "exam",
+        "timestamp": [
+          398.4,
+          398.72
+        ]
+      },
+      {
+        "text": "cannot",
+        "timestamp": [
+          398.88,
+          399.28
+        ]
+      },
+      {
+        "text": "exclude",
+        "timestamp": [
+          399.28,
+          399.76
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          399.76,
+          399.92
+        ]
+      },
+      {
+        "text": "prostatic",
+        "timestamp": [
+          399.92,
+          400.48
+        ]
+      },
+      {
+        "text": "urethral",
+        "timestamp": [
+          400.48,
+          401.2
+        ]
+      },
+      {
+        "text": "injury.",
+        "timestamp": [
+          401.2,
+          402.56
+        ]
+      },
+      {
+        "text": "Consider",
+        "timestamp": [
+          402.56,
+          403.12
+        ]
+      },
+      {
+        "text": "secondary",
+        "timestamp": [
+          403.12,
+          403.76
+        ]
+      },
+      {
+        "text": "evaluation",
+        "timestamp": [
+          403.76,
+          404.48
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          404.48,
+          404.72
+        ]
+      },
+      {
+        "text": "cysto-CT",
+        "timestamp": [
+          404.72,
+          405.76
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          405.84,
+          406.08
+        ]
+      },
+      {
+        "text": "cystoscopy",
+        "timestamp": [
+          406.08,
+          407.04
+        ]
+      },
+      {
+        "text": "after",
+        "timestamp": [
+          407.04,
+          407.36
+        ]
+      },
+      {
+        "text": "urological",
+        "timestamp": [
+          407.36,
+          408.4
+        ]
+      },
+      {
+        "text": "consultation.",
+        "timestamp": [
+          408.4,
+          409.6
+        ]
+      },
+      {
+        "text": "Non-displaced",
+        "timestamp": [
+          409.92,
+          410.88
+        ]
+      },
+      {
+        "text": "articular",
+        "timestamp": [
+          410.88,
+          411.44
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          411.44,
+          412
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          412,
+          412.16
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          412.16,
+          412.24
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          412.24,
+          412.56
+        ]
+      },
+      {
+        "text": "medial",
+        "timestamp": [
+          412.56,
+          412.96
+        ]
+      },
+      {
+        "text": "tibial",
+        "timestamp": [
+          412.96,
+          413.52
+        ]
+      },
+      {
+        "text": "plateau",
+        "timestamp": [
+          413.52,
+          414
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          414,
+          414.16
+        ]
+      },
+      {
+        "text": "lipohemarthrosis.",
+        "timestamp": [
+          414.16,
+          416.16
+        ]
+      },
+      {
+        "text": "Small",
+        "timestamp": [
+          416.48,
+          416.88
+        ]
+      },
+      {
+        "text": "non-displaced",
+        "timestamp": [
+          416.88,
+          417.68
+        ]
+      },
+      {
+        "text": "cortical",
+        "timestamp": [
+          417.68,
+          418.32
+        ]
+      },
+      {
+        "text": "fracture",
+        "timestamp": [
+          418.32,
+          418.88
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          418.88,
+          419.04
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          419.04,
+          419.12
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          419.12,
+          419.36
+        ]
+      },
+      {
+        "text": "fibular",
+        "timestamp": [
+          419.36,
+          420
+        ]
+      },
+      {
+        "text": "head.",
+        "timestamp": [
+          420,
+          420.72
+        ]
+      }
+    ]
+  }
+}

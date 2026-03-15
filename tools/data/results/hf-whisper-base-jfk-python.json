@@ -1,0 +1,3282 @@
+{
+  "meta": {
+    "python": "3.10.12",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "torch": "2.6.0+cu118",
+    "transformers": "4.51.3",
+    "device": "cpu",
+    "audio": "N:\\JFK.wav",
+    "chunk_length_s": 30.0,
+    "stride_length_s": 5.0,
+    "summary_only": false
+  },
+  "models": [
+    {
+      "model": "openai/whisper-base",
+      "audio": {
+        "file": "N:\\JFK.wav",
+        "source_sample_rate": 16000,
+        "model_sample_rate": 16000,
+        "source_seconds": 146.326,
+        "model_seconds": 146.326,
+        "sample_count": 2341216
+      },
+      "results": [
+        {
+          "name": "plain",
+          "options": {},
+          "elapsed_ms": 45,
+          "error": {
+            "type": "ValueError",
+            "message": "You have passed more than 3000 mel input features (> 30 seconds) which automatically enables long-form generation which requires the model to predict timestamp tokens. Please either pass `return_timestamps=True` or make sure to pass no more than 3000 mel input features."
+          }
+        },
+        {
+          "name": "segments_auto",
+          "options": {
+            "return_timestamps": true
+          },
+          "elapsed_ms": 6602,
+          "summary": {
+            "text_length": 1076,
+            "chunk_count": 17,
+            "normalized_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans asked not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. knowing that here on earth God's work must truly be our own.",
+            "normalized_joined_chunk_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans asked not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. knowing that here on earth God's work must truly be our own.",
+            "joined_chunk_text_matches_text": true,
+            "first_chunks": [
+              {
+                "timestamp": [
+                  0.0,
+                  11.24
+                ],
+                "text": " In the long history of the world, only a few generations have been granted the role of"
+              },
+              {
+                "timestamp": [
+                  11.24,
+                  15.92
+                ],
+                "text": " defending freedom in its hour of maximum danger."
+              },
+              {
+                "timestamp": [
+                  15.92,
+                  18.88
+                ],
+                "text": " I do not shrink from this responsibility."
+              }
+            ],
+            "last_chunks": [
+              {
+                "timestamp": [
+                  9.92,
+                  20.76
+                ],
+                "text": " ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help."
+              },
+              {
+                "timestamp": [
+                  20.76,
+                  0.0
+                ],
+                "text": ""
+              },
+              {
+                "timestamp": [
+                  7.0,
+                  null
+                ],
+                "text": " knowing that here on earth God's work must truly be our own."
+              }
+            ]
+          },
+          "output": {
+            "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans asked not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. knowing that here on earth God's work must truly be our own.",
+            "chunks": [
+              {
+                "timestamp": [
+                  0.0,
+                  11.24
+                ],
+                "text": " In the long history of the world, only a few generations have been granted the role of"
+              },
+              {
+                "timestamp": [
+                  11.24,
+                  15.92
+                ],
+                "text": " defending freedom in its hour of maximum danger."
+              },
+              {
+                "timestamp": [
+                  15.92,
+                  18.88
+                ],
+                "text": " I do not shrink from this responsibility."
+              },
+              {
+                "timestamp": [
+                  18.88,
+                  25.2
+                ],
+                "text": " I welcome it."
+              },
+              {
+                "timestamp": [
+                  25.2,
+                  0.0
+                ],
+                "text": ""
+              },
+              {
+                "timestamp": [
+                  7.94,
+                  18.04
+                ],
+                "text": " I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light"
+              },
+              {
+                "timestamp": [
+                  18.04,
+                  21.36
+                ],
+                "text": " our country and all who serve it."
+              },
+              {
+                "timestamp": [
+                  21.36,
+                  27.2
+                ],
+                "text": " And the glow from that fire can truly light the world."
+              },
+              {
+                "timestamp": [
+                  27.2,
+                  0.0
+                ],
+                "text": ""
+              },
+              {
+                "timestamp": [
+                  8.84,
+                  17.32
+                ],
+                "text": " And so my fellow Americans asked not what your country can do for you, ask what you can do for your country."
+              },
+              {
+                "timestamp": [
+                  17.32,
+                  26.52
+                ],
+                "text": " My fellow citizens of the world, if not, what America will do for you, but what together"
+              },
+              {
+                "timestamp": [
+                  26.52,
+                  0.0
+                ],
+                "text": ""
+              },
+              {
+                "timestamp": [
+                  13.2,
+                  23.52
+                ],
+                "text": " we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we"
+              },
+              {
+                "timestamp": [
+                  23.52,
+                  0.0
+                ],
+                "text": ""
+              },
+              {
+                "timestamp": [
+                  9.92,
+                  20.76
+                ],
+                "text": " ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help."
+              },
+              {
+                "timestamp": [
+                  20.76,
+                  0.0
+                ],
+                "text": ""
+              },
+              {
+                "timestamp": [
+                  7.0,
+                  null
+                ],
+                "text": " knowing that here on earth God's work must truly be our own."
+              }
+            ]
+          }
+        },
+        {
+          "name": "words_auto",
+          "options": {
+            "return_timestamps": "word"
+          },
+          "elapsed_ms": 9142,
+          "summary": {
+            "text_length": 1076,
+            "chunk_count": 206,
+            "normalized_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans asked not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. knowing that here on earth God's work must truly be our own.",
+            "normalized_joined_chunk_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans asked not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. knowing that here on earth God's work must truly be our own.",
+            "joined_chunk_text_matches_text": true,
+            "first_chunks": [
+              {
+                "text": " In",
+                "timestamp": [
+                  0.0,
+                  1.38
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  1.38,
+                  2.96
+                ]
+              },
+              {
+                "text": " long",
+                "timestamp": [
+                  2.96,
+                  3.28
+                ]
+              }
+            ],
+            "last_chunks": [
+              {
+                "text": " be",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " own.",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              }
+            ]
+          },
+          "output": {
+            "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans asked not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. knowing that here on earth God's work must truly be our own.",
+            "chunks": [
+              {
+                "text": " In",
+                "timestamp": [
+                  0.0,
+                  1.38
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  1.38,
+                  2.96
+                ]
+              },
+              {
+                "text": " long",
+                "timestamp": [
+                  2.96,
+                  3.28
+                ]
+              },
+              {
+                "text": " history",
+                "timestamp": [
+                  3.28,
+                  4.0
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  4.0,
+                  4.2
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  4.2,
+                  4.3
+                ]
+              },
+              {
+                "text": " world,",
+                "timestamp": [
+                  4.3,
+                  5.28
+                ]
+              },
+              {
+                "text": " only",
+                "timestamp": [
+                  5.28,
+                  6.28
+                ]
+              },
+              {
+                "text": " a",
+                "timestamp": [
+                  6.28,
+                  6.46
+                ]
+              },
+              {
+                "text": " few",
+                "timestamp": [
+                  6.46,
+                  6.72
+                ]
+              },
+              {
+                "text": " generations",
+                "timestamp": [
+                  6.72,
+                  7.44
+                ]
+              },
+              {
+                "text": " have",
+                "timestamp": [
+                  7.44,
+                  8.84
+                ]
+              },
+              {
+                "text": " been",
+                "timestamp": [
+                  8.84,
+                  9.02
+                ]
+              },
+              {
+                "text": " granted",
+                "timestamp": [
+                  9.02,
+                  9.46
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  9.46,
+                  9.7
+                ]
+              },
+              {
+                "text": " role",
+                "timestamp": [
+                  9.7,
+                  9.98
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  9.98,
+                  11.16
+                ]
+              },
+              {
+                "text": " defending",
+                "timestamp": [
+                  11.36,
+                  11.74
+                ]
+              },
+              {
+                "text": " freedom",
+                "timestamp": [
+                  11.74,
+                  12.28
+                ]
+              },
+              {
+                "text": " in",
+                "timestamp": [
+                  12.28,
+                  13.3
+                ]
+              },
+              {
+                "text": " its",
+                "timestamp": [
+                  13.3,
+                  13.52
+                ]
+              },
+              {
+                "text": " hour",
+                "timestamp": [
+                  13.52,
+                  13.72
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  13.72,
+                  13.92
+                ]
+              },
+              {
+                "text": " maximum",
+                "timestamp": [
+                  13.92,
+                  14.32
+                ]
+              },
+              {
+                "text": " danger.",
+                "timestamp": [
+                  14.32,
+                  15.22
+                ]
+              },
+              {
+                "text": " I",
+                "timestamp": [
+                  15.94,
+                  16.24
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  16.24,
+                  16.54
+                ]
+              },
+              {
+                "text": " not",
+                "timestamp": [
+                  16.54,
+                  16.8
+                ]
+              },
+              {
+                "text": " shrink",
+                "timestamp": [
+                  16.8,
+                  17.18
+                ]
+              },
+              {
+                "text": " from",
+                "timestamp": [
+                  17.18,
+                  17.44
+                ]
+              },
+              {
+                "text": " this",
+                "timestamp": [
+                  17.44,
+                  17.62
+                ]
+              },
+              {
+                "text": " responsibility.",
+                "timestamp": [
+                  17.62,
+                  18.96
+                ]
+              },
+              {
+                "text": " I",
+                "timestamp": [
+                  18.96,
+                  19.08
+                ]
+              },
+              {
+                "text": " welcome",
+                "timestamp": [
+                  19.08,
+                  19.54
+                ]
+              },
+              {
+                "text": " it.",
+                "timestamp": [
+                  19.54,
+                  23.5
+                ]
+              },
+              {
+                "text": " I",
+                "timestamp": [
+                  25.2,
+                  25.48
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  25.48,
+                  25.8
+                ]
+              },
+              {
+                "text": " not",
+                "timestamp": [
+                  25.8,
+                  26.0
+                ]
+              },
+              {
+                "text": " believe",
+                "timestamp": [
+                  26.0,
+                  26.46
+                ]
+              },
+              {
+                "text": " that",
+                "timestamp": [
+                  26.46,
+                  27.42
+                ]
+              },
+              {
+                "text": " any",
+                "timestamp": [
+                  27.42,
+                  27.7
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  27.7,
+                  27.86
+                ]
+              },
+              {
+                "text": " us",
+                "timestamp": [
+                  27.86,
+                  28.16
+                ]
+              },
+              {
+                "text": " would",
+                "timestamp": [
+                  28.16,
+                  29.26
+                ]
+              },
+              {
+                "text": " exchange",
+                "timestamp": [
+                  29.26,
+                  29.76
+                ]
+              },
+              {
+                "text": " places",
+                "timestamp": [
+                  29.76,
+                  30.5
+                ]
+              },
+              {
+                "text": " with",
+                "timestamp": [
+                  30.5,
+                  30.78
+                ]
+              },
+              {
+                "text": " any",
+                "timestamp": [
+                  30.78,
+                  31.1
+                ]
+              },
+              {
+                "text": " other",
+                "timestamp": [
+                  31.1,
+                  31.38
+                ]
+              },
+              {
+                "text": " people",
+                "timestamp": [
+                  31.38,
+                  31.76
+                ]
+              },
+              {
+                "text": " or",
+                "timestamp": [
+                  31.76,
+                  32.58
+                ]
+              },
+              {
+                "text": " any",
+                "timestamp": [
+                  32.58,
+                  32.9
+                ]
+              },
+              {
+                "text": " other",
+                "timestamp": [
+                  32.9,
+                  33.16
+                ]
+              },
+              {
+                "text": " generation,",
+                "timestamp": [
+                  33.72,
+                  34.28
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  34.28,
+                  35.26
+                ]
+              },
+              {
+                "text": " energy,",
+                "timestamp": [
+                  35.26,
+                  36.32
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  36.32,
+                  36.42
+                ]
+              },
+              {
+                "text": " faith,",
+                "timestamp": [
+                  36.42,
+                  37.32
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  37.32,
+                  37.48
+                ]
+              },
+              {
+                "text": " devotion",
+                "timestamp": [
+                  37.48,
+                  37.94
+                ]
+              },
+              {
+                "text": " which",
+                "timestamp": [
+                  37.94,
+                  39.16
+                ]
+              },
+              {
+                "text": " we",
+                "timestamp": [
+                  39.16,
+                  39.52
+                ]
+              },
+              {
+                "text": " bring",
+                "timestamp": [
+                  39.52,
+                  40.14
+                ]
+              },
+              {
+                "text": " to",
+                "timestamp": [
+                  40.14,
+                  40.5
+                ]
+              },
+              {
+                "text": " this",
+                "timestamp": [
+                  40.5,
+                  40.84
+                ]
+              },
+              {
+                "text": " endeavor",
+                "timestamp": [
+                  40.84,
+                  41.32
+                ]
+              },
+              {
+                "text": " will",
+                "timestamp": [
+                  41.32,
+                  42.78
+                ]
+              },
+              {
+                "text": " light",
+                "timestamp": [
+                  42.78,
+                  43.2
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  43.4,
+                  43.48
+                ]
+              },
+              {
+                "text": " country",
+                "timestamp": [
+                  43.48,
+                  43.94
+                ]
+              },
+              {
+                "text": " and",
+                "timestamp": [
+                  43.94,
+                  44.18
+                ]
+              },
+              {
+                "text": " all",
+                "timestamp": [
+                  44.18,
+                  44.4
+                ]
+              },
+              {
+                "text": " who",
+                "timestamp": [
+                  44.4,
+                  44.6
+                ]
+              },
+              {
+                "text": " serve",
+                "timestamp": [
+                  44.6,
+                  45.0
+                ]
+              },
+              {
+                "text": " it.",
+                "timestamp": [
+                  45.0,
+                  45.44
+                ]
+              },
+              {
+                "text": " And",
+                "timestamp": [
+                  46.34,
+                  46.54
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  46.54,
+                  46.68
+                ]
+              },
+              {
+                "text": " glow",
+                "timestamp": [
+                  46.68,
+                  47.0
+                ]
+              },
+              {
+                "text": " from",
+                "timestamp": [
+                  47.0,
+                  47.38
+                ]
+              },
+              {
+                "text": " that",
+                "timestamp": [
+                  47.38,
+                  47.68
+                ]
+              },
+              {
+                "text": " fire",
+                "timestamp": [
+                  47.68,
+                  48.14
+                ]
+              },
+              {
+                "text": " can",
+                "timestamp": [
+                  48.14,
+                  49.38
+                ]
+              },
+              {
+                "text": " truly",
+                "timestamp": [
+                  49.38,
+                  49.78
+                ]
+              },
+              {
+                "text": " light",
+                "timestamp": [
+                  49.78,
+                  50.1
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  50.1,
+                  50.34
+                ]
+              },
+              {
+                "text": " world.",
+                "timestamp": [
+                  50.34,
+                  51.34
+                ]
+              },
+              {
+                "text": " And",
+                "timestamp": [
+                  52.4,
+                  52.4
+                ]
+              },
+              {
+                "text": " so",
+                "timestamp": [
+                  52.4,
+                  52.7
+                ]
+              },
+              {
+                "text": " my",
+                "timestamp": [
+                  52.7,
+                  53.02
+                ]
+              },
+              {
+                "text": " fellow",
+                "timestamp": [
+                  53.02,
+                  53.4
+                ]
+              },
+              {
+                "text": " Americans",
+                "timestamp": [
+                  53.4,
+                  53.96
+                ]
+              },
+              {
+                "text": " asked",
+                "timestamp": [
+                  53.96,
+                  55.6
+                ]
+              },
+              {
+                "text": " not",
+                "timestamp": [
+                  55.6,
+                  56.08
+                ]
+              },
+              {
+                "text": " what",
+                "timestamp": [
+                  56.08,
+                  57.38
+                ]
+              },
+              {
+                "text": " your",
+                "timestamp": [
+                  57.38,
+                  57.62
+                ]
+              },
+              {
+                "text": " country",
+                "timestamp": [
+                  57.62,
+                  58.06
+                ]
+              },
+              {
+                "text": " can",
+                "timestamp": [
+                  58.06,
+                  58.48
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  58.48,
+                  58.68
+                ]
+              },
+              {
+                "text": " for",
+                "timestamp": [
+                  58.68,
+                  58.94
+                ]
+              },
+              {
+                "text": " you,",
+                "timestamp": [
+                  58.94,
+                  59.88
+                ]
+              },
+              {
+                "text": " ask",
+                "timestamp": [
+                  59.88,
+                  60.34
+                ]
+              },
+              {
+                "text": " what",
+                "timestamp": [
+                  60.34,
+                  60.6
+                ]
+              },
+              {
+                "text": " you",
+                "timestamp": [
+                  60.6,
+                  60.9
+                ]
+              },
+              {
+                "text": " can",
+                "timestamp": [
+                  60.9,
+                  61.2
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  61.32,
+                  61.44
+                ]
+              },
+              {
+                "text": " for",
+                "timestamp": [
+                  61.44,
+                  61.64
+                ]
+              },
+              {
+                "text": " your",
+                "timestamp": [
+                  61.64,
+                  61.82
+                ]
+              },
+              {
+                "text": " country.",
+                "timestamp": [
+                  61.82,
+                  63.66
+                ]
+              },
+              {
+                "text": " My",
+                "timestamp": [
+                  66.42,
+                  69.88
+                ]
+              },
+              {
+                "text": " fellow",
+                "timestamp": [
+                  69.88,
+                  70.44
+                ]
+              },
+              {
+                "text": " citizens",
+                "timestamp": [
+                  70.44,
+                  71.0
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  71.0,
+                  71.38
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  71.38,
+                  71.52
+                ]
+              },
+              {
+                "text": " world,",
+                "timestamp": [
+                  71.52,
+                  72.46
+                ]
+              },
+              {
+                "text": " if",
+                "timestamp": [
+                  72.46,
+                  73.58
+                ]
+              },
+              {
+                "text": " not,",
+                "timestamp": [
+                  73.58,
+                  74.94
+                ]
+              },
+              {
+                "text": " what",
+                "timestamp": [
+                  74.94,
+                  75.08
+                ]
+              },
+              {
+                "text": " America",
+                "timestamp": [
+                  75.08,
+                  75.5
+                ]
+              },
+              {
+                "text": " will",
+                "timestamp": [
+                  75.5,
+                  75.94
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  75.94,
+                  76.16
+                ]
+              },
+              {
+                "text": " for",
+                "timestamp": [
+                  76.16,
+                  76.4
+                ]
+              },
+              {
+                "text": " you,",
+                "timestamp": [
+                  76.4,
+                  77.28
+                ]
+              },
+              {
+                "text": " but",
+                "timestamp": [
+                  77.28,
+                  78.02
+                ]
+              },
+              {
+                "text": " what",
+                "timestamp": [
+                  78.02,
+                  78.26
+                ]
+              },
+              {
+                "text": " together",
+                "timestamp": [
+                  78.26,
+                  78.8
+                ]
+              },
+              {
+                "text": " we",
+                "timestamp": [
+                  78.92,
+                  79.1
+                ]
+              },
+              {
+                "text": " can",
+                "timestamp": [
+                  79.1,
+                  79.32
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  79.32,
+                  79.58
+                ]
+              },
+              {
+                "text": " for",
+                "timestamp": [
+                  79.58,
+                  80.36
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  80.36,
+                  80.48
+                ]
+              },
+              {
+                "text": " freedom",
+                "timestamp": [
+                  80.48,
+                  80.8
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  80.8,
+                  81.0
+                ]
+              },
+              {
+                "text": " man.",
+                "timestamp": [
+                  81.0,
+                  81.8
+                ]
+              },
+              {
+                "text": " Finally,",
+                "timestamp": [
+                  81.8,
+                  87.04
+                ]
+              },
+              {
+                "text": " whether",
+                "timestamp": [
+                  87.04,
+                  87.4
+                ]
+              },
+              {
+                "text": " you",
+                "timestamp": [
+                  87.4,
+                  87.64
+                ]
+              },
+              {
+                "text": " are",
+                "timestamp": [
+                  87.64,
+                  87.92
+                ]
+              },
+              {
+                "text": " citizens",
+                "timestamp": [
+                  87.92,
+                  89.28
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  89.28,
+                  89.8
+                ]
+              },
+              {
+                "text": " America",
+                "timestamp": [
+                  89.8,
+                  90.14
+                ]
+              },
+              {
+                "text": " or",
+                "timestamp": [
+                  90.14,
+                  91.34
+                ]
+              },
+              {
+                "text": " citizens",
+                "timestamp": [
+                  91.34,
+                  91.86
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  92.16,
+                  92.28
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  92.28,
+                  92.38
+                ]
+              },
+              {
+                "text": " world,",
+                "timestamp": [
+                  92.38,
+                  94.12
+                ]
+              },
+              {
+                "text": " ask",
+                "timestamp": [
+                  94.12,
+                  94.56
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  94.56,
+                  94.78
+                ]
+              },
+              {
+                "text": " us",
+                "timestamp": [
+                  94.78,
+                  95.0
+                ]
+              },
+              {
+                "text": " here",
+                "timestamp": [
+                  95.0,
+                  95.28
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  95.28,
+                  96.52
+                ]
+              },
+              {
+                "text": " same",
+                "timestamp": [
+                  96.52,
+                  97.04
+                ]
+              },
+              {
+                "text": " high",
+                "timestamp": [
+                  97.04,
+                  97.68
+                ]
+              },
+              {
+                "text": " standards",
+                "timestamp": [
+                  97.68,
+                  98.44
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  98.44,
+                  99.52
+                ]
+              },
+              {
+                "text": " strength",
+                "timestamp": [
+                  99.52,
+                  99.96
+                ]
+              },
+              {
+                "text": " and",
+                "timestamp": [
+                  99.96,
+                  100.36
+                ]
+              },
+              {
+                "text": " sacrifice",
+                "timestamp": [
+                  100.36,
+                  101.0
+                ]
+              },
+              {
+                "text": " which",
+                "timestamp": [
+                  101.0,
+                  102.18
+                ]
+              },
+              {
+                "text": " we",
+                "timestamp": [
+                  102.18,
+                  102.48
+                ]
+              },
+              {
+                "text": " ask",
+                "timestamp": [
+                  102.44,
+                  102.8
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  102.8,
+                  103.0
+                ]
+              },
+              {
+                "text": " you.",
+                "timestamp": [
+                  103.0,
+                  104.7
+                ]
+              },
+              {
+                "text": " With",
+                "timestamp": [
+                  104.7,
+                  104.84
+                ]
+              },
+              {
+                "text": " a",
+                "timestamp": [
+                  104.84,
+                  104.96
+                ]
+              },
+              {
+                "text": " good",
+                "timestamp": [
+                  104.96,
+                  105.16
+                ]
+              },
+              {
+                "text": " conscience,",
+                "timestamp": [
+                  105.16,
+                  106.22
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  106.22,
+                  107.12
+                ]
+              },
+              {
+                "text": " only",
+                "timestamp": [
+                  107.12,
+                  107.52
+                ]
+              },
+              {
+                "text": " sure",
+                "timestamp": [
+                  107.52,
+                  107.9
+                ]
+              },
+              {
+                "text": " reward,",
+                "timestamp": [
+                  107.9,
+                  110.3
+                ]
+              },
+              {
+                "text": " with",
+                "timestamp": [
+                  110.3,
+                  110.5
+                ]
+              },
+              {
+                "text": " history",
+                "timestamp": [
+                  110.5,
+                  110.98
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  110.98,
+                  111.36
+                ]
+              },
+              {
+                "text": " final",
+                "timestamp": [
+                  111.36,
+                  111.84
+                ]
+              },
+              {
+                "text": " judge",
+                "timestamp": [
+                  111.84,
+                  112.26
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  112.4,
+                  112.56
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  112.56,
+                  112.72
+                ]
+              },
+              {
+                "text": " deeds,",
+                "timestamp": [
+                  112.72,
+                  113.96
+                ]
+              },
+              {
+                "text": " let",
+                "timestamp": [
+                  113.96,
+                  114.7
+                ]
+              },
+              {
+                "text": " us",
+                "timestamp": [
+                  114.7,
+                  114.94
+                ]
+              },
+              {
+                "text": " go",
+                "timestamp": [
+                  114.94,
+                  115.22
+                ]
+              },
+              {
+                "text": " forth",
+                "timestamp": [
+                  115.22,
+                  115.72
+                ]
+              },
+              {
+                "text": " to",
+                "timestamp": [
+                  115.72,
+                  115.98
+                ]
+              },
+              {
+                "text": " lead",
+                "timestamp": [
+                  115.98,
+                  116.26
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  116.26,
+                  116.52
+                ]
+              },
+              {
+                "text": " land",
+                "timestamp": [
+                  116.52,
+                  116.82
+                ]
+              },
+              {
+                "text": " we",
+                "timestamp": [
+                  116.82,
+                  117.1
+                ]
+              },
+              {
+                "text": " love,",
+                "timestamp": [
+                  117.1,
+                  118.7
+                ]
+              },
+              {
+                "text": " asking",
+                "timestamp": [
+                  118.7,
+                  119.14
+                ]
+              },
+              {
+                "text": " His",
+                "timestamp": [
+                  119.14,
+                  119.56
+                ]
+              },
+              {
+                "text": " blessing",
+                "timestamp": [
+                  119.56,
+                  120.0
+                ]
+              },
+              {
+                "text": " and",
+                "timestamp": [
+                  120.0,
+                  121.12
+                ]
+              },
+              {
+                "text": " His",
+                "timestamp": [
+                  121.12,
+                  121.38
+                ]
+              },
+              {
+                "text": " help.",
+                "timestamp": [
+                  121.38,
+                  122.06
+                ]
+              },
+              {
+                "text": " knowing",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " that",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " here",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " on",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " earth",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " God's",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " work",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " must",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " truly",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " be",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              },
+              {
+                "text": " own.",
+                "timestamp": [
+                  153.02,
+                  153.02
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "plain_chunked",
+          "options": {
+            "chunk_length_s": 30.0,
+            "stride_length_s": 5.0
+          },
+          "elapsed_ms": 10132,
+          "summary": {
+            "text_length": 1085,
+            "chunk_count": 0,
+            "normalized_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help, but knowing that here on earth earth God's work must truly be our own.",
+            "normalized_joined_chunk_text": "",
+            "joined_chunk_text_matches_text": null,
+            "first_chunks": [],
+            "last_chunks": []
+          },
+          "output": {
+            "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help, but knowing that here on earth earth God's work must truly be our own."
+          }
+        },
+        {
+          "name": "segments_chunked",
+          "options": {
+            "return_timestamps": true,
+            "chunk_length_s": 30.0,
+            "stride_length_s": 5.0
+          },
+          "elapsed_ms": 13974,
+          "summary": {
+            "text_length": 1115,
+            "chunk_count": 3,
+            "normalized_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. Ah! Woo! Woo! Woo! Woo! Woo! Woo! My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrificing which we ask of you. With a good conscience, our only sure reward with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. But knowing that here on earth, God's work must truly be our own.",
+            "normalized_joined_chunk_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. Ah! Woo! Woo! Woo! Woo! Woo! Woo! My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrificing which we ask of you. With a good conscience, our only sure reward with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. But knowing that here on earth, God's work must truly be our own.",
+            "joined_chunk_text_matches_text": true,
+            "first_chunks": [
+              {
+                "timestamp": [
+                  0.0,
+                  46.52
+                ],
+                "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it."
+              },
+              {
+                "timestamp": [
+                  46.52,
+                  65.56
+                ],
+                "text": " And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. Ah! Woo! Woo!"
+              },
+              {
+                "timestamp": [
+                  65.56,
+                  129.0
+                ],
+                "text": " Woo! Woo! Woo! Woo! My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrificing which we ask of you. With a good conscience, our only sure reward with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. But knowing that here on earth, God's work must truly be our own."
+              }
+            ],
+            "last_chunks": [
+              {
+                "timestamp": [
+                  0.0,
+                  46.52
+                ],
+                "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it."
+              },
+              {
+                "timestamp": [
+                  46.52,
+                  65.56
+                ],
+                "text": " And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. Ah! Woo! Woo!"
+              },
+              {
+                "timestamp": [
+                  65.56,
+                  129.0
+                ],
+                "text": " Woo! Woo! Woo! Woo! My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrificing which we ask of you. With a good conscience, our only sure reward with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. But knowing that here on earth, God's work must truly be our own."
+              }
+            ]
+          },
+          "output": {
+            "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. Ah! Woo! Woo! Woo! Woo! Woo! Woo! My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrificing which we ask of you. With a good conscience, our only sure reward with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. But knowing that here on earth, God's work must truly be our own.",
+            "chunks": [
+              {
+                "timestamp": [
+                  0.0,
+                  46.52
+                ],
+                "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it."
+              },
+              {
+                "timestamp": [
+                  46.52,
+                  65.56
+                ],
+                "text": " And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. Ah! Woo! Woo!"
+              },
+              {
+                "timestamp": [
+                  65.56,
+                  129.0
+                ],
+                "text": " Woo! Woo! Woo! Woo! My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrificing which we ask of you. With a good conscience, our only sure reward with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. But knowing that here on earth, God's work must truly be our own."
+              }
+            ]
+          }
+        },
+        {
+          "name": "words_chunked",
+          "options": {
+            "return_timestamps": "word",
+            "chunk_length_s": 30.0,
+            "stride_length_s": 5.0
+          },
+          "elapsed_ms": 14844,
+          "summary": {
+            "text_length": 1032,
+            "chunk_count": 197,
+            "normalized_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility, I welcome it with any other people or any other generation, the energy, the faith, the devotion, which we bring to this endeavor, will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking his blessing and his help. But knowing that here on earth earth God's work must truly be our own.",
+            "normalized_joined_chunk_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility, I welcome it with any other people or any other generation, the energy, the faith, the devotion, which we bring to this endeavor, will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking his blessing and his help. But knowing that here on earth earth God's work must truly be our own.",
+            "joined_chunk_text_matches_text": true,
+            "first_chunks": [
+              {
+                "text": " In",
+                "timestamp": [
+                  0.0,
+                  1.38
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  1.38,
+                  2.96
+                ]
+              },
+              {
+                "text": " long",
+                "timestamp": [
+                  2.96,
+                  3.28
+                ]
+              }
+            ],
+            "last_chunks": [
+              {
+                "text": " be",
+                "timestamp": [
+                  128.14,
+                  128.38
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  128.38,
+                  128.64
+                ]
+              },
+              {
+                "text": " own.",
+                "timestamp": [
+                  128.64,
+                  null
+                ]
+              }
+            ]
+          },
+          "output": {
+            "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility, I welcome it with any other people or any other generation, the energy, the faith, the devotion, which we bring to this endeavor, will light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking his blessing and his help. But knowing that here on earth earth God's work must truly be our own.",
+            "chunks": [
+              {
+                "text": " In",
+                "timestamp": [
+                  0.0,
+                  1.38
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  1.38,
+                  2.96
+                ]
+              },
+              {
+                "text": " long",
+                "timestamp": [
+                  2.96,
+                  3.28
+                ]
+              },
+              {
+                "text": " history",
+                "timestamp": [
+                  3.28,
+                  4.0
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  4.0,
+                  4.2
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  4.2,
+                  4.3
+                ]
+              },
+              {
+                "text": " world,",
+                "timestamp": [
+                  4.3,
+                  5.28
+                ]
+              },
+              {
+                "text": " only",
+                "timestamp": [
+                  5.28,
+                  6.28
+                ]
+              },
+              {
+                "text": " a",
+                "timestamp": [
+                  6.28,
+                  6.46
+                ]
+              },
+              {
+                "text": " few",
+                "timestamp": [
+                  6.46,
+                  6.72
+                ]
+              },
+              {
+                "text": " generations",
+                "timestamp": [
+                  6.72,
+                  7.44
+                ]
+              },
+              {
+                "text": " have",
+                "timestamp": [
+                  7.44,
+                  8.84
+                ]
+              },
+              {
+                "text": " been",
+                "timestamp": [
+                  8.84,
+                  9.02
+                ]
+              },
+              {
+                "text": " granted",
+                "timestamp": [
+                  9.02,
+                  9.46
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  9.46,
+                  9.7
+                ]
+              },
+              {
+                "text": " role",
+                "timestamp": [
+                  9.7,
+                  9.98
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  9.98,
+                  11.16
+                ]
+              },
+              {
+                "text": " defending",
+                "timestamp": [
+                  11.16,
+                  11.74
+                ]
+              },
+              {
+                "text": " freedom",
+                "timestamp": [
+                  11.74,
+                  12.28
+                ]
+              },
+              {
+                "text": " in",
+                "timestamp": [
+                  12.28,
+                  13.3
+                ]
+              },
+              {
+                "text": " its",
+                "timestamp": [
+                  13.3,
+                  13.5
+                ]
+              },
+              {
+                "text": " hour",
+                "timestamp": [
+                  13.5,
+                  13.72
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  13.72,
+                  13.9
+                ]
+              },
+              {
+                "text": " maximum",
+                "timestamp": [
+                  13.9,
+                  14.28
+                ]
+              },
+              {
+                "text": " danger.",
+                "timestamp": [
+                  14.28,
+                  15.26
+                ]
+              },
+              {
+                "text": " I",
+                "timestamp": [
+                  15.26,
+                  16.16
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  16.16,
+                  16.52
+                ]
+              },
+              {
+                "text": " not",
+                "timestamp": [
+                  16.52,
+                  16.78
+                ]
+              },
+              {
+                "text": " shrink",
+                "timestamp": [
+                  16.78,
+                  17.18
+                ]
+              },
+              {
+                "text": " from",
+                "timestamp": [
+                  17.18,
+                  17.42
+                ]
+              },
+              {
+                "text": " this",
+                "timestamp": [
+                  17.42,
+                  17.6
+                ]
+              },
+              {
+                "text": " responsibility,",
+                "timestamp": [
+                  17.6,
+                  18.9
+                ]
+              },
+              {
+                "text": " I",
+                "timestamp": [
+                  18.9,
+                  19.06
+                ]
+              },
+              {
+                "text": " welcome",
+                "timestamp": [
+                  19.06,
+                  19.52
+                ]
+              },
+              {
+                "text": " it",
+                "timestamp": [
+                  19.52,
+                  19.72
+                ]
+              },
+              {
+                "text": " with",
+                "timestamp": [
+                  30.5,
+                  30.78
+                ]
+              },
+              {
+                "text": " any",
+                "timestamp": [
+                  30.78,
+                  31.1
+                ]
+              },
+              {
+                "text": " other",
+                "timestamp": [
+                  31.1,
+                  31.38
+                ]
+              },
+              {
+                "text": " people",
+                "timestamp": [
+                  31.38,
+                  31.76
+                ]
+              },
+              {
+                "text": " or",
+                "timestamp": [
+                  31.76,
+                  32.58
+                ]
+              },
+              {
+                "text": " any",
+                "timestamp": [
+                  32.58,
+                  32.9
+                ]
+              },
+              {
+                "text": " other",
+                "timestamp": [
+                  32.9,
+                  33.14
+                ]
+              },
+              {
+                "text": " generation,",
+                "timestamp": [
+                  33.14,
+                  34.22
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  34.22,
+                  35.26
+                ]
+              },
+              {
+                "text": " energy,",
+                "timestamp": [
+                  35.26,
+                  36.32
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  36.32,
+                  36.42
+                ]
+              },
+              {
+                "text": " faith,",
+                "timestamp": [
+                  36.42,
+                  37.32
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  37.32,
+                  37.48
+                ]
+              },
+              {
+                "text": " devotion,",
+                "timestamp": [
+                  37.48,
+                  38.54
+                ]
+              },
+              {
+                "text": " which",
+                "timestamp": [
+                  38.54,
+                  39.18
+                ]
+              },
+              {
+                "text": " we",
+                "timestamp": [
+                  39.18,
+                  39.52
+                ]
+              },
+              {
+                "text": " bring",
+                "timestamp": [
+                  39.52,
+                  40.12
+                ]
+              },
+              {
+                "text": " to",
+                "timestamp": [
+                  40.12,
+                  40.48
+                ]
+              },
+              {
+                "text": " this",
+                "timestamp": [
+                  40.48,
+                  40.84
+                ]
+              },
+              {
+                "text": " endeavor,",
+                "timestamp": [
+                  40.84,
+                  41.84
+                ]
+              },
+              {
+                "text": " will",
+                "timestamp": [
+                  41.84,
+                  42.78
+                ]
+              },
+              {
+                "text": " light",
+                "timestamp": [
+                  42.78,
+                  43.2
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  43.2,
+                  43.46
+                ]
+              },
+              {
+                "text": " country",
+                "timestamp": [
+                  43.46,
+                  43.9
+                ]
+              },
+              {
+                "text": " and",
+                "timestamp": [
+                  43.9,
+                  44.18
+                ]
+              },
+              {
+                "text": " all",
+                "timestamp": [
+                  44.18,
+                  44.4
+                ]
+              },
+              {
+                "text": " who",
+                "timestamp": [
+                  44.4,
+                  44.6
+                ]
+              },
+              {
+                "text": " serve",
+                "timestamp": [
+                  44.6,
+                  44.96
+                ]
+              },
+              {
+                "text": " it.",
+                "timestamp": [
+                  44.96,
+                  45.46
+                ]
+              },
+              {
+                "text": " And",
+                "timestamp": [
+                  45.46,
+                  46.5
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  46.5,
+                  46.68
+                ]
+              },
+              {
+                "text": " glow",
+                "timestamp": [
+                  46.68,
+                  46.98
+                ]
+              },
+              {
+                "text": " from",
+                "timestamp": [
+                  46.98,
+                  47.38
+                ]
+              },
+              {
+                "text": " that",
+                "timestamp": [
+                  47.38,
+                  47.68
+                ]
+              },
+              {
+                "text": " fire",
+                "timestamp": [
+                  47.68,
+                  48.12
+                ]
+              },
+              {
+                "text": " can",
+                "timestamp": [
+                  48.12,
+                  49.34
+                ]
+              },
+              {
+                "text": " truly",
+                "timestamp": [
+                  49.34,
+                  49.76
+                ]
+              },
+              {
+                "text": " light",
+                "timestamp": [
+                  49.76,
+                  50.1
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  50.1,
+                  50.32
+                ]
+              },
+              {
+                "text": " world.",
+                "timestamp": [
+                  50.32,
+                  51.32
+                ]
+              },
+              {
+                "text": " And",
+                "timestamp": [
+                  51.32,
+                  52.36
+                ]
+              },
+              {
+                "text": " so",
+                "timestamp": [
+                  52.36,
+                  52.68
+                ]
+              },
+              {
+                "text": " my",
+                "timestamp": [
+                  52.68,
+                  53.04
+                ]
+              },
+              {
+                "text": " fellow",
+                "timestamp": [
+                  53.04,
+                  53.4
+                ]
+              },
+              {
+                "text": " Americans,",
+                "timestamp": [
+                  53.4,
+                  55.12
+                ]
+              },
+              {
+                "text": " ask",
+                "timestamp": [
+                  55.12,
+                  55.42
+                ]
+              },
+              {
+                "text": " not",
+                "timestamp": [
+                  55.42,
+                  56.06
+                ]
+              },
+              {
+                "text": " what",
+                "timestamp": [
+                  56.06,
+                  57.38
+                ]
+              },
+              {
+                "text": " your",
+                "timestamp": [
+                  57.38,
+                  57.64
+                ]
+              },
+              {
+                "text": " country",
+                "timestamp": [
+                  57.64,
+                  58.06
+                ]
+              },
+              {
+                "text": " can",
+                "timestamp": [
+                  58.06,
+                  58.48
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  58.48,
+                  58.68
+                ]
+              },
+              {
+                "text": " for",
+                "timestamp": [
+                  58.68,
+                  58.92
+                ]
+              },
+              {
+                "text": " you,",
+                "timestamp": [
+                  58.92,
+                  59.94
+                ]
+              },
+              {
+                "text": " ask",
+                "timestamp": [
+                  59.94,
+                  60.32
+                ]
+              },
+              {
+                "text": " what",
+                "timestamp": [
+                  60.32,
+                  60.6
+                ]
+              },
+              {
+                "text": " you",
+                "timestamp": [
+                  60.6,
+                  60.9
+                ]
+              },
+              {
+                "text": " can",
+                "timestamp": [
+                  60.9,
+                  61.2
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  61.2,
+                  61.4
+                ]
+              },
+              {
+                "text": " for",
+                "timestamp": [
+                  61.4,
+                  61.64
+                ]
+              },
+              {
+                "text": " your",
+                "timestamp": [
+                  61.64,
+                  61.82
+                ]
+              },
+              {
+                "text": " country.",
+                "timestamp": [
+                  61.82,
+                  69.52
+                ]
+              },
+              {
+                "text": " My",
+                "timestamp": [
+                  69.52,
+                  69.82
+                ]
+              },
+              {
+                "text": " fellow",
+                "timestamp": [
+                  69.82,
+                  70.44
+                ]
+              },
+              {
+                "text": " citizens",
+                "timestamp": [
+                  70.44,
+                  70.94
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  70.94,
+                  71.38
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  71.38,
+                  71.5
+                ]
+              },
+              {
+                "text": " world,",
+                "timestamp": [
+                  71.5,
+                  72.54
+                ]
+              },
+              {
+                "text": " if",
+                "timestamp": [
+                  72.54,
+                  73.44
+                ]
+              },
+              {
+                "text": " not,",
+                "timestamp": [
+                  73.44,
+                  74.82
+                ]
+              },
+              {
+                "text": " what",
+                "timestamp": [
+                  74.82,
+                  75.08
+                ]
+              },
+              {
+                "text": " America",
+                "timestamp": [
+                  75.08,
+                  75.5
+                ]
+              },
+              {
+                "text": " will",
+                "timestamp": [
+                  75.5,
+                  75.92
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  75.92,
+                  76.16
+                ]
+              },
+              {
+                "text": " for",
+                "timestamp": [
+                  76.16,
+                  76.42
+                ]
+              },
+              {
+                "text": " you,",
+                "timestamp": [
+                  76.42,
+                  77.0
+                ]
+              },
+              {
+                "text": " but",
+                "timestamp": [
+                  77.0,
+                  78.0
+                ]
+              },
+              {
+                "text": " what",
+                "timestamp": [
+                  78.0,
+                  78.26
+                ]
+              },
+              {
+                "text": " together",
+                "timestamp": [
+                  78.26,
+                  78.74
+                ]
+              },
+              {
+                "text": " we",
+                "timestamp": [
+                  78.74,
+                  79.1
+                ]
+              },
+              {
+                "text": " can",
+                "timestamp": [
+                  79.1,
+                  79.3
+                ]
+              },
+              {
+                "text": " do",
+                "timestamp": [
+                  79.3,
+                  79.58
+                ]
+              },
+              {
+                "text": " for",
+                "timestamp": [
+                  79.58,
+                  80.34
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  80.34,
+                  80.48
+                ]
+              },
+              {
+                "text": " freedom",
+                "timestamp": [
+                  80.48,
+                  80.8
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  80.8,
+                  81.0
+                ]
+              },
+              {
+                "text": " man.",
+                "timestamp": [
+                  81.0,
+                  85.2
+                ]
+              },
+              {
+                "text": " Finally,",
+                "timestamp": [
+                  81.5,
+                  87.28
+                ]
+              },
+              {
+                "text": " whether",
+                "timestamp": [
+                  87.28,
+                  87.4
+                ]
+              },
+              {
+                "text": " you",
+                "timestamp": [
+                  87.4,
+                  87.62
+                ]
+              },
+              {
+                "text": " are",
+                "timestamp": [
+                  87.62,
+                  87.92
+                ]
+              },
+              {
+                "text": " citizens",
+                "timestamp": [
+                  87.92,
+                  89.26
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  89.26,
+                  89.8
+                ]
+              },
+              {
+                "text": " America",
+                "timestamp": [
+                  89.8,
+                  90.18
+                ]
+              },
+              {
+                "text": " or",
+                "timestamp": [
+                  90.18,
+                  91.34
+                ]
+              },
+              {
+                "text": " citizens",
+                "timestamp": [
+                  91.34,
+                  91.8
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  91.8,
+                  92.26
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  92.26,
+                  92.36
+                ]
+              },
+              {
+                "text": " world,",
+                "timestamp": [
+                  92.36,
+                  94.14
+                ]
+              },
+              {
+                "text": " ask",
+                "timestamp": [
+                  94.14,
+                  94.5
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  94.5,
+                  94.78
+                ]
+              },
+              {
+                "text": " us",
+                "timestamp": [
+                  94.78,
+                  95.02
+                ]
+              },
+              {
+                "text": " here",
+                "timestamp": [
+                  95.02,
+                  95.24
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  95.24,
+                  96.52
+                ]
+              },
+              {
+                "text": " same",
+                "timestamp": [
+                  96.52,
+                  97.0
+                ]
+              },
+              {
+                "text": " high",
+                "timestamp": [
+                  97.0,
+                  97.66
+                ]
+              },
+              {
+                "text": " standards",
+                "timestamp": [
+                  97.66,
+                  98.42
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  98.42,
+                  99.5
+                ]
+              },
+              {
+                "text": " strength",
+                "timestamp": [
+                  99.5,
+                  100.0
+                ]
+              },
+              {
+                "text": " and",
+                "timestamp": [
+                  100.0,
+                  100.36
+                ]
+              },
+              {
+                "text": " sacrifice",
+                "timestamp": [
+                  100.36,
+                  101.02
+                ]
+              },
+              {
+                "text": " which",
+                "timestamp": [
+                  101.02,
+                  102.18
+                ]
+              },
+              {
+                "text": " we",
+                "timestamp": [
+                  102.18,
+                  102.46
+                ]
+              },
+              {
+                "text": " ask",
+                "timestamp": [
+                  102.46,
+                  102.76
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  102.76,
+                  103.0
+                ]
+              },
+              {
+                "text": " you.",
+                "timestamp": [
+                  103.0,
+                  103.6
+                ]
+              },
+              {
+                "text": " With",
+                "timestamp": [
+                  103.88,
+                  104.82
+                ]
+              },
+              {
+                "text": " a",
+                "timestamp": [
+                  104.82,
+                  104.96
+                ]
+              },
+              {
+                "text": " good",
+                "timestamp": [
+                  104.96,
+                  105.16
+                ]
+              },
+              {
+                "text": " conscience,",
+                "timestamp": [
+                  105.16,
+                  106.7
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  106.7,
+                  107.12
+                ]
+              },
+              {
+                "text": " only",
+                "timestamp": [
+                  107.12,
+                  107.54
+                ]
+              },
+              {
+                "text": " sure",
+                "timestamp": [
+                  107.54,
+                  107.9
+                ]
+              },
+              {
+                "text": " reward,",
+                "timestamp": [
+                  107.9,
+                  108.82
+                ]
+              },
+              {
+                "text": " with",
+                "timestamp": [
+                  110.4,
+                  110.52
+                ]
+              },
+              {
+                "text": " history",
+                "timestamp": [
+                  110.52,
+                  111.0
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  111.0,
+                  111.38
+                ]
+              },
+              {
+                "text": " final",
+                "timestamp": [
+                  111.38,
+                  111.88
+                ]
+              },
+              {
+                "text": " judge",
+                "timestamp": [
+                  111.88,
+                  112.22
+                ]
+              },
+              {
+                "text": " of",
+                "timestamp": [
+                  112.22,
+                  112.54
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  112.54,
+                  112.7
+                ]
+              },
+              {
+                "text": " deeds,",
+                "timestamp": [
+                  112.7,
+                  114.3
+                ]
+              },
+              {
+                "text": " let",
+                "timestamp": [
+                  114.3,
+                  114.68
+                ]
+              },
+              {
+                "text": " us",
+                "timestamp": [
+                  114.68,
+                  114.94
+                ]
+              },
+              {
+                "text": " go",
+                "timestamp": [
+                  114.94,
+                  115.2
+                ]
+              },
+              {
+                "text": " forth",
+                "timestamp": [
+                  115.2,
+                  115.72
+                ]
+              },
+              {
+                "text": " to",
+                "timestamp": [
+                  115.72,
+                  116.0
+                ]
+              },
+              {
+                "text": " lead",
+                "timestamp": [
+                  116.0,
+                  116.26
+                ]
+              },
+              {
+                "text": " the",
+                "timestamp": [
+                  116.26,
+                  116.52
+                ]
+              },
+              {
+                "text": " land",
+                "timestamp": [
+                  116.52,
+                  116.82
+                ]
+              },
+              {
+                "text": " we",
+                "timestamp": [
+                  116.82,
+                  117.1
+                ]
+              },
+              {
+                "text": " love,",
+                "timestamp": [
+                  117.1,
+                  118.44
+                ]
+              },
+              {
+                "text": " asking",
+                "timestamp": [
+                  118.44,
+                  119.14
+                ]
+              },
+              {
+                "text": " his",
+                "timestamp": [
+                  119.46,
+                  119.58
+                ]
+              },
+              {
+                "text": " blessing",
+                "timestamp": [
+                  119.58,
+                  120.02
+                ]
+              },
+              {
+                "text": " and",
+                "timestamp": [
+                  120.02,
+                  121.14
+                ]
+              },
+              {
+                "text": " his",
+                "timestamp": [
+                  121.14,
+                  121.4
+                ]
+              },
+              {
+                "text": " help.",
+                "timestamp": [
+                  121.4,
+                  123.08
+                ]
+              },
+              {
+                "text": " But",
+                "timestamp": [
+                  123.08,
+                  123.22
+                ]
+              },
+              {
+                "text": " knowing",
+                "timestamp": [
+                  123.22,
+                  123.62
+                ]
+              },
+              {
+                "text": " that",
+                "timestamp": [
+                  123.62,
+                  123.92
+                ]
+              },
+              {
+                "text": " here",
+                "timestamp": [
+                  123.92,
+                  124.24
+                ]
+              },
+              {
+                "text": " on",
+                "timestamp": [
+                  124.24,
+                  124.42
+                ]
+              },
+              {
+                "text": " earth",
+                "timestamp": [
+                  124.42,
+                  124.86
+                ]
+              },
+              {
+                "text": " earth",
+                "timestamp": [
+                  124.46,
+                  124.88
+                ]
+              },
+              {
+                "text": " God's",
+                "timestamp": [
+                  124.88,
+                  126.4
+                ]
+              },
+              {
+                "text": " work",
+                "timestamp": [
+                  126.4,
+                  126.68
+                ]
+              },
+              {
+                "text": " must",
+                "timestamp": [
+                  126.68,
+                  127.64
+                ]
+              },
+              {
+                "text": " truly",
+                "timestamp": [
+                  127.64,
+                  128.14
+                ]
+              },
+              {
+                "text": " be",
+                "timestamp": [
+                  128.14,
+                  128.38
+                ]
+              },
+              {
+                "text": " our",
+                "timestamp": [
+                  128.38,
+                  128.64
+                ]
+              },
+              {
+                "text": " own.",
+                "timestamp": [
+                  128.64,
+                  null
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

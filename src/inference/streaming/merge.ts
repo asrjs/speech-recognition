@@ -4,7 +4,7 @@ import type {
   TranscriptSegment,
   TranscriptToken,
   TranscriptWarning,
-  TranscriptWord
+  TranscriptWord,
 } from '../../types/index.js';
 
 function joinTranscriptText(parts: readonly string[]): string {
@@ -19,21 +19,24 @@ function joinTranscriptText(parts: readonly string[]): string {
 function reindexWords(words: readonly TranscriptWord[], offset: number): TranscriptWord[] {
   return words.map((word, index) => ({
     ...word,
-    index: offset + index
+    index: offset + index,
   }));
 }
 
-function reindexSegments(segments: readonly TranscriptSegment[], offset: number): TranscriptSegment[] {
+function reindexSegments(
+  segments: readonly TranscriptSegment[],
+  offset: number,
+): TranscriptSegment[] {
   return segments.map((segment, index) => ({
     ...segment,
-    index: offset + index
+    index: offset + index,
   }));
 }
 
 function reindexTokens(tokens: readonly TranscriptToken[], offset: number): TranscriptToken[] {
   return tokens.map((token, index) => ({
     ...token,
-    index: offset + index
+    index: offset + index,
   }));
 }
 
@@ -66,7 +69,7 @@ function mergeMeta(results: readonly TranscriptResult[]): TranscriptMeta {
     nativeAvailable: last?.meta.nativeAvailable,
     producedAt: last?.meta.producedAt,
     backendNotes: last?.meta.backendNotes,
-    metrics: last?.meta.metrics
+    metrics: last?.meta.metrics,
   };
 }
 
@@ -80,23 +83,29 @@ export function mergeTranscriptResults(results: readonly TranscriptResult[]): Tr
         isFinal: true,
         tokenCount: 0,
         wordCount: 0,
-        segmentCount: 0
-      }
+        segmentCount: 0,
+      },
     };
   }
 
-  const segments = results.flatMap((result, index) => reindexSegments(
-    result.segments ?? [],
-    results.slice(0, index).reduce((sum, previous) => sum + (previous.segments?.length ?? 0), 0)
-  ));
-  const words = results.flatMap((result, index) => reindexWords(
-    result.words ?? [],
-    results.slice(0, index).reduce((sum, previous) => sum + (previous.words?.length ?? 0), 0)
-  ));
-  const tokens = results.flatMap((result, index) => reindexTokens(
-    result.tokens ?? [],
-    results.slice(0, index).reduce((sum, previous) => sum + (previous.tokens?.length ?? 0), 0)
-  ));
+  const segments = results.flatMap((result, index) =>
+    reindexSegments(
+      result.segments ?? [],
+      results.slice(0, index).reduce((sum, previous) => sum + (previous.segments?.length ?? 0), 0),
+    ),
+  );
+  const words = results.flatMap((result, index) =>
+    reindexWords(
+      result.words ?? [],
+      results.slice(0, index).reduce((sum, previous) => sum + (previous.words?.length ?? 0), 0),
+    ),
+  );
+  const tokens = results.flatMap((result, index) =>
+    reindexTokens(
+      result.tokens ?? [],
+      results.slice(0, index).reduce((sum, previous) => sum + (previous.tokens?.length ?? 0), 0),
+    ),
+  );
 
   return {
     text: joinTranscriptText(results.map((result) => result.text)),
@@ -104,7 +113,7 @@ export function mergeTranscriptResults(results: readonly TranscriptResult[]): Tr
     meta: mergeMeta(results),
     segments: segments.length > 0 ? segments : undefined,
     words: words.length > 0 ? words : undefined,
-    tokens: tokens.length > 0 ? tokens : undefined
+    tokens: tokens.length > 0 ? tokens : undefined,
   };
 }
 
@@ -147,11 +156,11 @@ function buildAlignedTokens(
   frameTimeStride: number,
   totalTokens = result.tokenIds.length,
   withVignette = false,
-  vignetteSigmaFactor = 0.25
+  vignetteSigmaFactor = 0.25,
 ): FrameAlignedToken[] {
   return result.tokenIds.map((id, index) => {
     const frameIndex = result.frameIndices[index] ?? 0;
-    const absTime = chunkStartTime + (frameIndex * frameTimeStride);
+    const absTime = chunkStartTime + frameIndex * frameTimeStride;
     const text = result.tokens?.[index]?.text ?? result.tokens?.[index]?.token ?? '';
     if (!withVignette) {
       return {
@@ -159,7 +168,7 @@ function buildAlignedTokens(
         frameIndex,
         absTime,
         logProb: result.logProbs?.[index] ?? 0,
-        text
+        text,
       };
     }
 
@@ -172,7 +181,7 @@ function buildAlignedTokens(
       absTime,
       logProb: result.logProbs?.[index] ?? 0,
       text,
-      vignetteWeight
+      vignetteWeight,
     };
   });
 }
@@ -209,10 +218,11 @@ export class FrameAlignedTokenMerger {
         this.stabilityMap.set(key, count);
 
         if (count >= this.stabilityThreshold) {
-          const alreadyConfirmed = this.confirmedTokens.some((confirmed) => (
-            Math.abs(confirmed.absTime - token.absTime) < this.timeTolerance
-            && confirmed.id === token.id
-          ));
+          const alreadyConfirmed = this.confirmedTokens.some(
+            (confirmed) =>
+              Math.abs(confirmed.absTime - token.absTime) < this.timeTolerance &&
+              confirmed.id === token.id,
+          );
           if (!alreadyConfirmed) {
             this.confirmedTokens.push(token);
           }
@@ -226,7 +236,7 @@ export class FrameAlignedTokenMerger {
       confirmed: this.confirmedTokens.slice(),
       pending: this.pendingTokens.slice(),
       anchorsFound: anchors.length,
-      totalTokens: this.confirmedTokens.length + this.pendingTokens.length
+      totalTokens: this.confirmedTokens.length + this.pendingTokens.length,
     };
   }
 
@@ -237,14 +247,16 @@ export class FrameAlignedTokenMerger {
   }
 
   getAllTokens(): FrameAlignedToken[] {
-    return [...this.confirmedTokens, ...this.pendingTokens].sort((left, right) => left.absTime - right.absTime);
+    return [...this.confirmedTokens, ...this.pendingTokens].sort(
+      (left, right) => left.absTime - right.absTime,
+    );
   }
 
   getState(): { confirmedCount: number; pendingCount: number; stabilityMapSize: number } {
     return {
       confirmedCount: this.confirmedTokens.length,
       pendingCount: this.pendingTokens.length,
-      stabilityMapSize: this.stabilityMap.size
+      stabilityMapSize: this.stabilityMap.size,
     };
   }
 
@@ -257,8 +269,8 @@ export class FrameAlignedTokenMerger {
     for (const newToken of overlapTokens) {
       for (const pendingToken of this.pendingTokens) {
         if (
-          newToken.id === pendingToken.id
-          && Math.abs(newToken.absTime - pendingToken.absTime) < this.timeTolerance
+          newToken.id === pendingToken.id &&
+          Math.abs(newToken.absTime - pendingToken.absTime) < this.timeTolerance
         ) {
           anchors.push(newToken);
           break;
@@ -293,7 +305,7 @@ export class LcsPtfaTokenMerger {
       this.frameTimeStride,
       result.tokenIds.length,
       true,
-      this.vignetteSigmaFactor
+      this.vignetteSigmaFactor,
     );
     const overlapEnd = chunkStartTime + overlapDuration;
     const overlapTokens = tokens.filter((token) => token.absTime < overlapEnd);
@@ -306,7 +318,7 @@ export class LcsPtfaTokenMerger {
         pending: this.pendingTokens.slice(),
         lcsLength: 0,
         anchorValid: false,
-        isFirstChunk: true
+        isFirstChunk: true,
       };
     }
 
@@ -318,7 +330,7 @@ export class LcsPtfaTokenMerger {
     if (lcsLength >= this.sequenceAnchorLength) {
       anchorValid = this.verifyFrameAlignment(
         this.pendingTokens.slice(startX, startX + lcsLength),
-        overlapTokens.slice(startY, startY + lcsLength)
+        overlapTokens.slice(startY, startY + lcsLength),
       );
     }
 
@@ -341,7 +353,7 @@ export class LcsPtfaTokenMerger {
       pending: this.pendingTokens.slice(),
       lcsLength,
       anchorValid,
-      overlapTokenCount: overlapTokens.length
+      overlapTokenCount: overlapTokens.length,
     };
   }
 
@@ -351,17 +363,22 @@ export class LcsPtfaTokenMerger {
   }
 
   getAllTokens(): FrameAlignedToken[] {
-    return [...this.confirmedTokens, ...this.pendingTokens].sort((left, right) => left.absTime - right.absTime);
+    return [...this.confirmedTokens, ...this.pendingTokens].sort(
+      (left, right) => left.absTime - right.absTime,
+    );
   }
 
   getState(): { confirmedCount: number; pendingCount: number } {
     return {
       confirmedCount: this.confirmedTokens.length,
-      pendingCount: this.pendingTokens.length
+      pendingCount: this.pendingTokens.length,
     };
   }
 
-  private findLongestCommonSubstring(left: readonly number[], right: readonly number[]): [number, number, number] {
+  private findLongestCommonSubstring(
+    left: readonly number[],
+    right: readonly number[],
+  ): [number, number, number] {
     if (left.length === 0 || right.length === 0) {
       return [0, 0, 0];
     }
@@ -396,22 +413,38 @@ export class LcsPtfaTokenMerger {
     return [endLeft - maxLength, endRight - maxLength, maxLength];
   }
 
-  private verifyFrameAlignment(left: readonly FrameAlignedToken[], right: readonly FrameAlignedToken[]): boolean {
+  private verifyFrameAlignment(
+    left: readonly FrameAlignedToken[],
+    right: readonly FrameAlignedToken[],
+  ): boolean {
     if (left.length !== right.length) {
       return false;
     }
 
-    return left.every((token, index) => Math.abs(token.absTime - (right[index]?.absTime ?? 0)) <= this.timeTolerance);
+    return left.every(
+      (token, index) =>
+        Math.abs(token.absTime - (right[index]?.absTime ?? 0)) <= this.timeTolerance,
+    );
   }
 
-  private arbitrateByLogProb(pathA: readonly FrameAlignedToken[], pathB: readonly FrameAlignedToken[]): FrameAlignedToken[] {
-    const hasLogProbs = pathA.some((token) => token.logProb !== 0) || pathB.some((token) => token.logProb !== 0);
+  private arbitrateByLogProb(
+    pathA: readonly FrameAlignedToken[],
+    pathB: readonly FrameAlignedToken[],
+  ): FrameAlignedToken[] {
+    const hasLogProbs =
+      pathA.some((token) => token.logProb !== 0) || pathB.some((token) => token.logProb !== 0);
     if (!hasLogProbs) {
       return [...pathA];
     }
 
-    const scoreA = pathA.reduce((sum, token) => sum + (token.logProb * (token.vignetteWeight ?? 1)), 0);
-    const scoreB = pathB.reduce((sum, token) => sum + (token.logProb * (token.vignetteWeight ?? 1)), 0);
+    const scoreA = pathA.reduce(
+      (sum, token) => sum + token.logProb * (token.vignetteWeight ?? 1),
+      0,
+    );
+    const scoreB = pathB.reduce(
+      (sum, token) => sum + token.logProb * (token.vignetteWeight ?? 1),
+      0,
+    );
     return [...(scoreA >= scoreB ? pathA : pathB)];
   }
 }

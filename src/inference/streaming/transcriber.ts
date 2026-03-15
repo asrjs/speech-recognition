@@ -1,4 +1,4 @@
-import { normalizePcmInput } from '../../processors/index.js';
+import { normalizePcmInput } from '../../audio/index.js';
 import type {
   AudioInputLike,
   BaseTranscriptionOptions,
@@ -9,7 +9,7 @@ import type {
   StreamingTranscriberState,
   TranscriptDetailLevel,
   TranscriptResult,
-  VoiceActivityDetector
+  VoiceActivityDetector,
 } from '../../types/index.js';
 import { TranscriptAccumulator } from './accumulator.js';
 import { RollingAudioWindow } from './rolling-window.js';
@@ -20,7 +20,7 @@ export interface DefaultStreamingTranscriberOptions extends StreamingSessionOpti
 
 export class DefaultStreamingTranscriber<
   TOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
-  TNative = unknown
+  TNative = unknown,
 > implements StreamingTranscriber {
   private readonly window: RollingAudioWindow;
   private readonly accumulator = new TranscriptAccumulator();
@@ -34,11 +34,11 @@ export class DefaultStreamingTranscriber<
 
   constructor(
     private readonly session: SpeechSession<TOptions, TNative>,
-    options: DefaultStreamingTranscriberOptions = {}
+    options: DefaultStreamingTranscriberOptions = {},
   ) {
     this.window = new RollingAudioWindow({
       maxWindowMs: options.maxWindowMs,
-      overlapMs: options.overlapMs
+      overlapMs: options.overlapMs,
     });
     this.vad = options.vad;
     this.detail = options.detail ?? 'segments';
@@ -58,7 +58,11 @@ export class DefaultStreamingTranscriber<
       const event = await this.vad.analyze(normalized);
       this.heardSpeech ||= event.isSpeech;
 
-      if (!event.isSpeech && this.heardSpeech && normalized.durationSeconds * 1000 >= this.minFinalSilenceMs) {
+      if (
+        !event.isSpeech &&
+        this.heardSpeech &&
+        normalized.durationSeconds * 1000 >= this.minFinalSilenceMs
+      ) {
         return this.finalize();
       }
     }
@@ -98,15 +102,14 @@ export class DefaultStreamingTranscriber<
       bufferedDurationSeconds: this.window.getBufferedDurationSeconds(),
       committedText: state.committedText,
       previewText: state.previewText,
-      isFinalized: this.isFinalized
+      isFinalized: this.isFinalized,
     };
   }
 
   private async transcribeBuffered(kind: 'partial' | 'final'): Promise<PartialTranscript> {
     const audio = this.window.toPcmAudioBuffer();
-    const canonical = audio.numberOfFrames > 0
-      ? await this.canonicalTranscribe(audio)
-      : this.blankResult();
+    const canonical =
+      audio.numberOfFrames > 0 ? await this.canonicalTranscribe(audio) : this.blankResult();
 
     return this.accumulator.update(canonical, kind);
   }
@@ -114,7 +117,7 @@ export class DefaultStreamingTranscriber<
   private async canonicalTranscribe(input: AudioInputLike): Promise<TranscriptResult> {
     return this.session.transcribe(input, {
       detail: this.detail,
-      responseFlavor: 'canonical'
+      responseFlavor: 'canonical',
     } as TOptions & { readonly responseFlavor: 'canonical' });
   }
 
@@ -125,8 +128,8 @@ export class DefaultStreamingTranscriber<
       meta: {
         detailLevel: this.detail,
         isFinal: false,
-        durationSeconds: this.window.getBufferedDurationSeconds()
-      }
+        durationSeconds: this.window.getBufferedDurationSeconds(),
+      },
     };
   }
 

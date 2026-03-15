@@ -11,13 +11,13 @@ Reference: `N:\github\ysdede\FireRedASR2S` — industrial-grade all-in-one ASR s
 
 FireRedASR2S comprises four modules, all sharing the same frontend (Kaldi fbank):
 
-| Module | Task | Architecture | Output |
-|--------|------|--------------|--------|
+| Module              | Task           | Architecture                            | Output                         |
+| ------------------- | -------------- | --------------------------------------- | ------------------------------ |
 | **FireRedASR2-AED** | Speech-to-text | Conformer encoder + Transformer decoder | Transcription, word timestamps |
-| **FireRedASR2-LLM** | Speech-to-text | Conformer encoder + Adapter + LLM | Transcription |
-| **FireRedVAD** | Voice activity | DFSMN | Speech/non-speech segments |
-| **FireRedLID** | Language ID | Conformer + Transformer decoder | Language label |
-| **FireRedPunc** | Punctuation | BERT | Punctuated text |
+| **FireRedASR2-LLM** | Speech-to-text | Conformer encoder + Adapter + LLM       | Transcription                  |
+| **FireRedVAD**      | Voice activity | DFSMN                                   | Speech/non-speech segments     |
+| **FireRedLID**      | Language ID    | Conformer + Transformer decoder         | Language label                 |
+| **FireRedPunc**     | Punctuation    | BERT                                    | Punctuated text                |
 
 ---
 
@@ -27,14 +27,14 @@ FireRedASR2S comprises four modules, all sharing the same frontend (Kaldi fbank)
 
 All modules use **Kaldi fbank** via `kaldi_native_fbank`:
 
-| Param | Value | Notes |
-|-------|-------|-------|
-| `num_mel_bins` | 80 | Same as NeMo/Kaldi |
-| `frame_length` | 25 ms | |
-| `frame_shift` | 10 ms | 100 fps |
-| `dither` | 0.0 (inference) | 1.0 during training |
-| `snip_edges` | True | Kaldi default |
-| **CMVN** | Optional | Per-utterance cepstral mean/variance norm (Kaldi stats file) |
+| Param          | Value           | Notes                                                        |
+| -------------- | --------------- | ------------------------------------------------------------ |
+| `num_mel_bins` | 80              | Same as NeMo/Kaldi                                           |
+| `frame_length` | 25 ms           |                                                              |
+| `frame_shift`  | 10 ms           | 100 fps                                                      |
+| `dither`       | 0.0 (inference) | 1.0 during training                                          |
+| `snip_edges`   | True            | Kaldi default                                                |
+| **CMVN**       | Optional        | Per-utterance cepstral mean/variance norm (Kaldi stats file) |
 
 **Layout:** `[B, T, 80]` (time × mel).
 
@@ -202,13 +202,13 @@ Not an acoustic model; operates on tokenized text. Uses HuggingFace BERT + token
 
 ## Frontend Comparison with Other Families
 
-| Family | Frontend | n_mels | frame | hop | mel_scale |
-|--------|----------|--------|-------|-----|-----------|
-| **FireRedASR2S** | Kaldi fbank | 80 | 25 ms | 10 ms | Kaldi |
-| NeMo | Mel (Slaney) | 80 | 25 ms | 10 ms | Slaney |
-| Kaldi/Vosk | Kaldi mel | 80 | 25 ms | 10 ms | Kaldi |
-| GigaAM | GigaAM mel | 64 | — | 160 | — |
-| Whisper | Whisper mel | 80 | 25 ms | 10 ms | Slaney, log10 |
+| Family           | Frontend     | n_mels | frame | hop   | mel_scale     |
+| ---------------- | ------------ | ------ | ----- | ----- | ------------- |
+| **FireRedASR2S** | Kaldi fbank  | 80     | 25 ms | 10 ms | Kaldi         |
+| NeMo             | Mel (Slaney) | 80     | 25 ms | 10 ms | Slaney        |
+| Kaldi/Vosk       | Kaldi mel    | 80     | 25 ms | 10 ms | Kaldi         |
+| GigaAM           | GigaAM mel   | 64     | —     | 160   | —             |
+| Whisper          | Whisper mel  | 80     | 25 ms | 10 ms | Slaney, log10 |
 
 ---
 
@@ -233,17 +233,17 @@ Not an acoustic model; operates on tokenized text. Uses HuggingFace BERT + token
 
 ---
 
-## Reusable Module Mapping for asr.js
+## Reusable Module Mapping for @asrjs/speech-recognition
 
-| FireRedASR2S | asr.js module |
-|--------------|---------------|
-| KaldifeatFbank | processors/kaldi-mel.ts |
-| Conv2dSubsampling | model-owned FireRed implementation |
-| ConformerEncoder (RelPos) | model-owned conformer-family implementation |
-| TransformerDecoder | model-owned seq2seq decoder implementation |
-| Adapter (encoder→LLM) | model-owned speech-adapter implementation |
-| CTC (for timestamps) | model-owned CTC head plus shared CTC descriptor |
-| DFSMN | model-owned DFSMN-family implementation |
+| FireRedASR2S              | @asrjs/speech-recognition module                                   |
+| ------------------------- | ----------------------------------------------- |
+| KaldifeatFbank            | audio/kaldi-mel.ts                              |
+| Conv2dSubsampling         | model-owned FireRed implementation              |
+| ConformerEncoder (RelPos) | model-owned conformer-family implementation     |
+| TransformerDecoder        | model-owned seq2seq decoder implementation      |
+| Adapter (encoder→LLM)     | model-owned speech-adapter implementation       |
+| CTC (for timestamps)      | model-owned CTC head plus shared CTC descriptor |
+| DFSMN                     | model-owned DFSMN-family implementation         |
 
 ---
 

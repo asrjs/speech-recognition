@@ -1,0 +1,8 @@
+dist/
+node_modules/
+.typedoc-site/
+coverage/
+examples/**/dist/
+examples/**/node_modules/
+tools/model-porting/reference/
+package-lock.json

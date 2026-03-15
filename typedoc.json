@@ -1,0 +1,23 @@
+{
+  "entryPoints": [
+    "src/index.ts",
+    "src/builtins.ts",
+    "src/io.ts",
+    "src/inference.ts",
+    "src/browser.ts",
+    "src/realtime.ts",
+    "src/bench.ts",
+    "src/datasets.ts",
+    "src/tokenizers.ts",
+    "src/models/nemo-common.ts",
+    "src/models/nemo-tdt.ts",
+    "src/models/hf-ctc-common.ts",
+    "src/models/whisper-seq2seq.ts",
+    "src/presets/parakeet.ts"
+  ],
+  "entryPointStrategy": "resolve",
+  "out": ".typedoc-site",
+  "name": "@asrjs/speech-recognition API",
+  "sort": ["source-order"],
+  "categorizeByGroup": false
+}

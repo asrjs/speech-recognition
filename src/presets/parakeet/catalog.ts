@@ -11,7 +11,7 @@ export const LANGUAGE_NAMES = {
   uk: 'Ukrainian',
   ja: 'Japanese',
   ko: 'Korean',
-  zh: 'Chinese'
+  zh: 'Chinese',
 } as const;
 
 export interface ParakeetModelConfig {
@@ -27,6 +27,14 @@ export interface ParakeetModelConfig {
   readonly predLayers: number;
 }
 
+export interface ParakeetDefaultWeightSetup {
+  readonly encoderDefault: 'fp16' | 'fp32' | 'int8';
+  readonly decoderDefault: 'fp16' | 'fp32' | 'int8';
+  readonly encoderFallback: 'fp16' | 'fp32' | 'int8';
+  readonly encoderPreferred: readonly ('fp16' | 'fp32' | 'int8')[];
+  readonly decoderPreferred: readonly ('fp16' | 'fp32' | 'int8')[];
+}
+
 export const MODELS = {
   'parakeet-tdt-0.6b-v2': {
     repoId: 'ysdede/parakeet-tdt-0.6b-v2-onnx',
@@ -38,20 +46,20 @@ export const MODELS = {
     preprocessor: 'nemo128',
     subsampling: 8,
     predHidden: 640,
-    predLayers: 2
+    predLayers: 2,
   },
   'parakeet-tdt-0.6b-v3': {
     repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
     displayName: 'Parakeet TDT 0.6B v3 (Multilingual)',
     languages: ['en', 'fr', 'de', 'es', 'it', 'pt', 'nl', 'pl', 'ru', 'uk', 'ja', 'ko', 'zh'],
     defaultLanguage: 'en',
-    vocabSize: 4097,
+    vocabSize: 8193,
     featuresSize: 128,
     preprocessor: 'nemo128',
     subsampling: 8,
     predHidden: 640,
-    predLayers: 2
-  }
+    predLayers: 2,
+  },
 } satisfies Record<string, ParakeetModelConfig>;
 
 export const DEFAULT_MODEL = 'parakeet-tdt-0.6b-v2' as const;
@@ -93,4 +101,27 @@ export function listModels(): string[] {
 
 export function getLanguageName(languageCode: string): string {
   return LANGUAGE_NAMES[languageCode.toLowerCase() as keyof typeof LANGUAGE_NAMES] ?? languageCode;
+}
+
+export function getParakeetDefaultWeightSetup(
+  _modelKeyOrRepoId: string,
+  backend = 'webgpu-hybrid',
+): ParakeetDefaultWeightSetup {
+  if (String(backend).startsWith('webgpu')) {
+    return {
+      encoderDefault: 'fp16',
+      decoderDefault: 'int8',
+      encoderFallback: 'fp32',
+      encoderPreferred: ['fp16', 'fp32', 'int8'],
+      decoderPreferred: ['int8', 'fp32', 'fp16'],
+    };
+  }
+
+  return {
+    encoderDefault: 'int8',
+    decoderDefault: 'int8',
+    encoderFallback: 'fp32',
+    encoderPreferred: ['int8', 'fp32', 'fp16'],
+    decoderPreferred: ['int8', 'fp32', 'fp16'],
+  };
 }

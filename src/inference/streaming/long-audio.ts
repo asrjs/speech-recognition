@@ -1,9 +1,9 @@
-import { chunkPcmAudio, normalizePcmInput } from '../../processors/index.js';
+import { chunkPcmAudio, normalizePcmInput } from '../../audio/index.js';
 import type {
   AudioInputLike,
   BaseTranscriptionOptions,
   SpeechSession,
-  TranscriptResult
+  TranscriptResult,
 } from '../../types/index.js';
 import { mergeTranscriptResults } from './merge.js';
 
@@ -14,11 +14,14 @@ export interface LongAudioTranscriptionOptions extends BaseTranscriptionOptions 
 
 export class LongAudioCoordinator<
   TOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
-  TNative = unknown
+  TNative = unknown,
 > {
   constructor(private readonly session: SpeechSession<TOptions, TNative>) {}
 
-  async transcribe(input: AudioInputLike, options: LongAudioTranscriptionOptions = {}): Promise<TranscriptResult> {
+  async transcribe(
+    input: AudioInputLike,
+    options: LongAudioTranscriptionOptions = {},
+  ): Promise<TranscriptResult> {
     const audio = normalizePcmInput(input);
     const chunkLengthSeconds = options.chunkLengthSeconds ?? 0;
     const overlapSeconds = options.overlapSeconds ?? 0;
@@ -26,14 +29,14 @@ export class LongAudioCoordinator<
     if (chunkLengthSeconds <= 0 || audio.durationSeconds <= chunkLengthSeconds) {
       return this.session.transcribe(audio, {
         ...(options as TOptions),
-        responseFlavor: 'canonical'
+        responseFlavor: 'canonical',
       });
     }
 
     const chunks = chunkPcmAudio(
       audio,
       Math.max(1, Math.floor(chunkLengthSeconds * audio.sampleRate)),
-      Math.max(0, Math.floor(overlapSeconds * audio.sampleRate))
+      Math.max(0, Math.floor(overlapSeconds * audio.sampleRate)),
     );
 
     const results: TranscriptResult[] = [];
@@ -41,7 +44,7 @@ export class LongAudioCoordinator<
       const result = await this.session.transcribe(chunk, {
         ...(options as TOptions),
         timeOffsetSeconds: chunk.startTimeSeconds ?? 0,
-        responseFlavor: 'canonical'
+        responseFlavor: 'canonical',
       });
       results.push(result);
     }

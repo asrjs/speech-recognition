@@ -1,0 +1,697 @@
+{
+  "text": "Body scan. Date March 20th, 2021. Indication. Motorcycle accident, facial trauma. Suspected posterior epistaxis. Pelvic pain. Elevated lactate level at 4. Negative FIST ultrasound. Technique. CT scan performed without contrast on the brain, followed by contrast-enhanced arterial phase imaging of the supra.",
+  "first_words": [
+    {
+      "text": "Body",
+      "start_time": 0.24,
+      "end_time": 0.72,
+      "confidence": 0.986456
+    },
+    {
+      "text": "scan.",
+      "start_time": 0.72,
+      "end_time": 1.68,
+      "confidence": 0.839095
+    },
+    {
+      "text": "Date",
+      "start_time": 1.68,
+      "end_time": 2.16,
+      "confidence": 0.999449
+    },
+    {
+      "text": "March20th,2021.",
+      "start_time": 2.16,
+      "end_time": 4.48,
+      "confidence": 0.939873
+    },
+    {
+      "text": "Indication.",
+      "start_time": 5.12,
+      "end_time": 6.4,
+      "confidence": 0.919015
+    },
+    {
+      "text": "Motorcycle",
+      "start_time": 6.72,
+      "end_time": 7.6,
+      "confidence": 0.999879
+    },
+    {
+      "text": "accident,",
+      "start_time": 7.6,
+      "end_time": 8.24,
+      "confidence": 0.962864
+    },
+    {
+      "text": "facial",
+      "start_time": 8.24,
+      "end_time": 8.72,
+      "confidence": 0.99873
+    },
+    {
+      "text": "trauma.",
+      "start_time": 8.72,
+      "end_time": 10,
+      "confidence": 0.989514
+    },
+    {
+      "text": "Suspected",
+      "start_time": 10.32,
+      "end_time": 11.04,
+      "confidence": 0.999863
+    },
+    {
+      "text": "posterior",
+      "start_time": 11.04,
+      "end_time": 11.68,
+      "confidence": 0.999134
+    },
+    {
+      "text": "epistaxis.",
+      "start_time": 11.68,
+      "end_time": 13.36,
+      "confidence": 0.989102
+    },
+    {
+      "text": "Pelvic",
+      "start_time": 13.68,
+      "end_time": 14.48,
+      "confidence": 0.999763
+    },
+    {
+      "text": "pain.",
+      "start_time": 14.48,
+      "end_time": 15.28,
+      "confidence": 0.961236
+    },
+    {
+      "text": "Elevated",
+      "start_time": 15.6,
+      "end_time": 16.24,
+      "confidence": 0.999792
+    },
+    {
+      "text": "lactate",
+      "start_time": 16.24,
+      "end_time": 16.8,
+      "confidence": 0.999794
+    },
+    {
+      "text": "level",
+      "start_time": 16.8,
+      "end_time": 17.12,
+      "confidence": 0.999955
+    },
+    {
+      "text": "at4.",
+      "start_time": 17.12,
+      "end_time": 18.4,
+      "confidence": 0.97176
+    },
+    {
+      "text": "Negative",
+      "start_time": 18.72,
+      "end_time": 19.44,
+      "confidence": 0.999638
+    },
+    {
+      "text": "FIST",
+      "start_time": 19.44,
+      "end_time": 20.48,
+      "confidence": 0.989911
+    },
+    {
+      "text": "ultrasound.",
+      "start_time": 20.48,
+      "end_time": 21.84,
+      "confidence": 0.982764
+    },
+    {
+      "text": "Technique.",
+      "start_time": 22.16,
+      "end_time": 23.28,
+      "confidence": 0.98801
+    },
+    {
+      "text": "CT",
+      "start_time": 23.6,
+      "end_time": 24.16,
+      "confidence": 0.988395
+    },
+    {
+      "text": "scan",
+      "start_time": 24.16,
+      "end_time": 24.56,
+      "confidence": 0.999741
+    },
+    {
+      "text": "performed",
+      "start_time": 24.56,
+      "end_time": 24.96,
+      "confidence": 0.999992
+    }
+  ],
+  "first_tokens": [
+    {
+      "id": 121,
+      "token": "B",
+      "raw_token": "▁B",
+      "is_word_start": true,
+      "start_time": 0.24,
+      "end_time": 0.48,
+      "confidence": 0.97299
+    },
+    {
+      "id": 456,
+      "token": "ody",
+      "raw_token": "ody",
+      "is_word_start": false,
+      "start_time": 0.48,
+      "end_time": 0.72,
+      "confidence": 0.999922
+    },
+    {
+      "id": 499,
+      "token": "sc",
+      "raw_token": "▁sc",
+      "is_word_start": true,
+      "start_time": 0.72,
+      "end_time": 0.88,
+      "confidence": 0.778055
+    },
+    {
+      "id": 25,
+      "token": "an",
+      "raw_token": "an",
+      "is_word_start": false,
+      "start_time": 1.04,
+      "end_time": 1.36,
+      "confidence": 0.999998
+    },
+    {
+      "id": 841,
+      "token": ".",
+      "raw_token": ".",
+      "is_word_start": false,
+      "start_time": 1.36,
+      "end_time": 1.68,
+      "confidence": 0.739231
+    },
+    {
+      "id": 221,
+      "token": "D",
+      "raw_token": "▁D",
+      "is_word_start": true,
+      "start_time": 1.68,
+      "end_time": 1.92,
+      "confidence": 0.999049
+    },
+    {
+      "id": 171,
+      "token": "ate",
+      "raw_token": "ate",
+      "is_word_start": false,
+      "start_time": 1.92,
+      "end_time": 2.16,
+      "confidence": 0.999849
+    },
+    {
+      "id": 164,
+      "token": "M",
+      "raw_token": "▁M",
+      "is_word_start": true,
+      "start_time": 2.16,
+      "end_time": 2.32,
+      "confidence": 0.997385
+    },
+    {
+      "id": 757,
+      "token": "arch",
+      "raw_token": "arch",
+      "is_word_start": false,
+      "start_time": 2.32,
+      "end_time": 2.56,
+      "confidence": 0.999939
+    },
+    {
+      "id": 872,
+      "token": "2",
+      "raw_token": "2",
+      "is_word_start": false,
+      "start_time": 2.64,
+      "end_time": 2.8,
+      "confidence": 0.999994
+    },
+    {
+      "id": 855,
+      "token": "0",
+      "raw_token": "0",
+      "is_word_start": false,
+      "start_time": 2.8,
+      "end_time": 2.96,
+      "confidence": 0.999274
+    },
+    {
+      "id": 100,
+      "token": "th",
+      "raw_token": "th",
+      "is_word_start": false,
+      "start_time": 2.96,
+      "end_time": 3.04,
+      "confidence": 0.66191
+    },
+    {
+      "id": 839,
+      "token": ",",
+      "raw_token": ",",
+      "is_word_start": false,
+      "start_time": 3.04,
+      "end_time": 3.2,
+      "confidence": 0.994163
+    },
+    {
+      "id": 872,
+      "token": "2",
+      "raw_token": "2",
+      "is_word_start": false,
+      "start_time": 3.28,
+      "end_time": 3.36,
+      "confidence": 0.999996
+    },
+    {
+      "id": 855,
+      "token": "0",
+      "raw_token": "0",
+      "is_word_start": false,
+      "start_time": 3.36,
+      "end_time": 3.6,
+      "confidence": 0.999999
+    },
+    {
+      "id": 872,
+      "token": "2",
+      "raw_token": "2",
+      "is_word_start": false,
+      "start_time": 3.6,
+      "end_time": 3.92,
+      "confidence": 0.999998
+    },
+    {
+      "id": 862,
+      "token": "1",
+      "raw_token": "1",
+      "is_word_start": false,
+      "start_time": 3.92,
+      "end_time": 4.24,
+      "confidence": 0.999998
+    },
+    {
+      "id": 841,
+      "token": ".",
+      "raw_token": ".",
+      "is_word_start": false,
+      "start_time": 4.24,
+      "end_time": 4.48,
+      "confidence": 0.685947
+    },
+    {
+      "id": 34,
+      "token": "I",
+      "raw_token": "▁I",
+      "is_word_start": true,
+      "start_time": 5.12,
+      "end_time": 5.28,
+      "confidence": 0.991848
+    },
+    {
+      "id": 13,
+      "token": "nd",
+      "raw_token": "nd",
+      "is_word_start": false,
+      "start_time": 5.28,
+      "end_time": 5.52,
+      "confidence": 0.999916
+    },
+    {
+      "id": 48,
+      "token": "ic",
+      "raw_token": "ic",
+      "is_word_start": false,
+      "start_time": 5.52,
+      "end_time": 5.84,
+      "confidence": 0.999996
+    },
+    {
+      "id": 114,
+      "token": "ation",
+      "raw_token": "ation",
+      "is_word_start": false,
+      "start_time": 5.84,
+      "end_time": 6.16,
+      "confidence": 0.999893
+    },
+    {
+      "id": 841,
+      "token": ".",
+      "raw_token": ".",
+      "is_word_start": false,
+      "start_time": 6.16,
+      "end_time": 6.4,
+      "confidence": 0.603419
+    },
+    {
+      "id": 164,
+      "token": "M",
+      "raw_token": "▁M",
+      "is_word_start": true,
+      "start_time": 6.72,
+      "end_time": 6.88,
+      "confidence": 0.999289
+    },
+    {
+      "id": 57,
+      "token": "ot",
+      "raw_token": "ot",
+      "is_word_start": false,
+      "start_time": 6.88,
+      "end_time": 7.04,
+      "confidence": 0.999999
+    },
+    {
+      "id": 28,
+      "token": "or",
+      "raw_token": "or",
+      "is_word_start": false,
+      "start_time": 7.04,
+      "end_time": 7.2,
+      "confidence": 0.999999
+    },
+    {
+      "id": 787,
+      "token": "cy",
+      "raw_token": "cy",
+      "is_word_start": false,
+      "start_time": 7.2,
+      "end_time": 7.36,
+      "confidence": 0.999992
+    },
+    {
+      "id": 832,
+      "token": "c",
+      "raw_token": "c",
+      "is_word_start": false,
+      "start_time": 7.36,
+      "end_time": 7.44,
+      "confidence": 0.999997
+    },
+    {
+      "id": 54,
+      "token": "le",
+      "raw_token": "le",
+      "is_word_start": false,
+      "start_time": 7.44,
+      "end_time": 7.6,
+      "confidence": 0.999999
+    },
+    {
+      "id": 569,
+      "token": "acc",
+      "raw_token": "▁acc",
+      "is_word_start": true,
+      "start_time": 7.6,
+      "end_time": 7.76,
+      "confidence": 0.981824
+    },
+    {
+      "id": 76,
+      "token": "id",
+      "raw_token": "id",
+      "is_word_start": false,
+      "start_time": 7.76,
+      "end_time": 7.92,
+      "confidence": 0.999992
+    },
+    {
+      "id": 68,
+      "token": "ent",
+      "raw_token": "ent",
+      "is_word_start": false,
+      "start_time": 7.92,
+      "end_time": 8.08,
+      "confidence": 0.999979
+    },
+    {
+      "id": 839,
+      "token": ",",
+      "raw_token": ",",
+      "is_word_start": false,
+      "start_time": 8.08,
+      "end_time": 8.24,
+      "confidence": 0.869659
+    },
+    {
+      "id": 23,
+      "token": "f",
+      "raw_token": "▁f",
+      "is_word_start": true,
+      "start_time": 8.24,
+      "end_time": 8.32,
+      "confidence": 0.996282
+    },
+    {
+      "id": 823,
+      "token": "a",
+      "raw_token": "a",
+      "is_word_start": false,
+      "start_time": 8.32,
+      "end_time": 8.48,
+      "confidence": 0.999907
+    },
+    {
+      "id": 615,
+      "token": "cial",
+      "raw_token": "cial",
+      "is_word_start": false,
+      "start_time": 8.48,
+      "end_time": 8.72,
+      "confidence": 1
+    },
+    {
+      "id": 608,
+      "token": "tra",
+      "raw_token": "▁tra",
+      "is_word_start": true,
+      "start_time": 8.72,
+      "end_time": 9.04,
+      "confidence": 0.999934
+    },
+    {
+      "id": 192,
+      "token": "um",
+      "raw_token": "um",
+      "is_word_start": false,
+      "start_time": 9.04,
+      "end_time": 9.36,
+      "confidence": 0.999998
+    },
+    {
+      "id": 823,
+      "token": "a",
+      "raw_token": "a",
+      "is_word_start": false,
+      "start_time": 9.36,
+      "end_time": 9.68,
+      "confidence": 1
+    },
+    {
+      "id": 841,
+      "token": ".",
+      "raw_token": ".",
+      "is_word_start": false,
+      "start_time": 9.68,
+      "end_time": 10,
+      "confidence": 0.958125
+    },
+    {
+      "id": 71,
+      "token": "S",
+      "raw_token": "▁S",
+      "is_word_start": true,
+      "start_time": 10.32,
+      "end_time": 10.48,
+      "confidence": 0.999488
+    },
+    {
+      "id": 47,
+      "token": "us",
+      "raw_token": "us",
+      "is_word_start": false,
+      "start_time": 10.48,
+      "end_time": 10.64,
+      "confidence": 0.999996
+    },
+    {
+      "id": 649,
+      "token": "pect",
+      "raw_token": "pect",
+      "is_word_start": false,
+      "start_time": 10.64,
+      "end_time": 10.8,
+      "confidence": 1
+    },
+    {
+      "id": 38,
+      "token": "ed",
+      "raw_token": "ed",
+      "is_word_start": false,
+      "start_time": 10.8,
+      "end_time": 11.04,
+      "confidence": 0.999968
+    },
+    {
+      "id": 359,
+      "token": "po",
+      "raw_token": "▁po",
+      "is_word_start": true,
+      "start_time": 11.04,
+      "end_time": 11.12,
+      "confidence": 0.99567
+    },
+    {
+      "id": 87,
+      "token": "st",
+      "raw_token": "st",
+      "is_word_start": false,
+      "start_time": 11.12,
+      "end_time": 11.28,
+      "confidence": 1
+    },
+    {
+      "id": 12,
+      "token": "er",
+      "raw_token": "er",
+      "is_word_start": false,
+      "start_time": 11.28,
+      "end_time": 11.44,
+      "confidence": 0.999999
+    },
+    {
+      "id": 825,
+      "token": "i",
+      "raw_token": "i",
+      "is_word_start": false,
+      "start_time": 11.44,
+      "end_time": 11.52,
+      "confidence": 0.999999
+    },
+    {
+      "id": 28,
+      "token": "or",
+      "raw_token": "or",
+      "is_word_start": false,
+      "start_time": 11.52,
+      "end_time": 11.68,
+      "confidence": 1
+    },
+    {
+      "id": 60,
+      "token": "e",
+      "raw_token": "▁e",
+      "is_word_start": true,
+      "start_time": 11.68,
+      "end_time": 11.84,
+      "confidence": 0.999697
+    },
+    {
+      "id": 838,
+      "token": "p",
+      "raw_token": "p",
+      "is_word_start": false,
+      "start_time": 11.84,
+      "end_time": 12,
+      "confidence": 0.999999
+    },
+    {
+      "id": 181,
+      "token": "ist",
+      "raw_token": "ist",
+      "is_word_start": false,
+      "start_time": 12,
+      "end_time": 12.24,
+      "confidence": 0.985046
+    },
+    {
+      "id": 823,
+      "token": "a",
+      "raw_token": "a",
+      "is_word_start": false,
+      "start_time": 12.24,
+      "end_time": 12.4,
+      "confidence": 0.998555
+    },
+    {
+      "id": 850,
+      "token": "x",
+      "raw_token": "x",
+      "is_word_start": false,
+      "start_time": 12.4,
+      "end_time": 12.72,
+      "confidence": 0.999942
+    },
+    {
+      "id": 37,
+      "token": "is",
+      "raw_token": "is",
+      "is_word_start": false,
+      "start_time": 12.72,
+      "end_time": 13.04,
+      "confidence": 0.99963
+    },
+    {
+      "id": 841,
+      "token": ".",
+      "raw_token": ".",
+      "is_word_start": false,
+      "start_time": 13.04,
+      "end_time": 13.36,
+      "confidence": 0.940844
+    },
+    {
+      "id": 206,
+      "token": "P",
+      "raw_token": "▁P",
+      "is_word_start": true,
+      "start_time": 13.68,
+      "end_time": 13.92,
+      "confidence": 0.999059
+    },
+    {
+      "id": 211,
+      "token": "el",
+      "raw_token": "el",
+      "is_word_start": false,
+      "start_time": 13.92,
+      "end_time": 14.16,
+      "confidence": 0.999997
+    },
+    {
+      "id": 843,
+      "token": "v",
+      "raw_token": "v",
+      "is_word_start": false,
+      "start_time": 14.16,
+      "end_time": 14.32,
+      "confidence": 1
+    },
+    {
+      "id": 48,
+      "token": "ic",
+      "raw_token": "ic",
+      "is_word_start": false,
+      "start_time": 14.32,
+      "end_time": 14.48,
+      "confidence": 0.999997
+    }
+  ]
+}

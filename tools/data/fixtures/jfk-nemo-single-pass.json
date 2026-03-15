@@ -1,0 +1,1270 @@
+{
+  "model": "ysdede/parakeet-tdt-0.6b-v2-onnx-tfjs4",
+  "api": "direct",
+  "mode": "single-pass",
+  "audio": {
+    "file": "N:\\JFK.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "source_seconds": 146.326,
+    "model_seconds": 146.326
+  },
+  "output": {
+    "text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation. The energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so, my fellow Americans, ask not what your country can do for you. Ask what you can do for your country. My fellow citizens of the world, ask not what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking his blessing and his help, but knowing that here on earth, God's work must truly be our own.",
+    "utterance_timestamp": [
+      2.56,
+      129.76
+    ],
+    "utterance_confidence": 0.983032,
+    "confidence_scores": {
+      "token_avg": 0.983032,
+      "word_avg": 0.986483,
+      "overall_log_prob": -0.020414
+    },
+    "word_count": 207,
+    "words": [
+      {
+        "text": "In",
+        "start_time": 2.56,
+        "end_time": 2.88,
+        "confidence": 0.985459
+      },
+      {
+        "text": "the",
+        "start_time": 2.88,
+        "end_time": 3.2,
+        "confidence": 0.999959
+      },
+      {
+        "text": "long",
+        "start_time": 3.2,
+        "end_time": 3.52,
+        "confidence": 0.999818
+      },
+      {
+        "text": "history",
+        "start_time": 3.52,
+        "end_time": 4.16,
+        "confidence": 0.999991
+      },
+      {
+        "text": "of",
+        "start_time": 4.16,
+        "end_time": 4.48,
+        "confidence": 0.999989
+      },
+      {
+        "text": "the",
+        "start_time": 4.48,
+        "end_time": 4.8,
+        "confidence": 0.999985
+      },
+      {
+        "text": "world,",
+        "start_time": 4.8,
+        "end_time": 5.6,
+        "confidence": 0.899076
+      },
+      {
+        "text": "only",
+        "start_time": 5.92,
+        "end_time": 6.08,
+        "confidence": 0.999735
+      },
+      {
+        "text": "a",
+        "start_time": 6.4,
+        "end_time": 6.64,
+        "confidence": 0.999995
+      },
+      {
+        "text": "few",
+        "start_time": 6.64,
+        "end_time": 7.28,
+        "confidence": 1
+      },
+      {
+        "text": "generations",
+        "start_time": 7.28,
+        "end_time": 7.92,
+        "confidence": 0.999989
+      },
+      {
+        "text": "have",
+        "start_time": 8.56,
+        "end_time": 8.88,
+        "confidence": 0.999939
+      },
+      {
+        "text": "been",
+        "start_time": 8.88,
+        "end_time": 9.12,
+        "confidence": 0.999999
+      },
+      {
+        "text": "granted",
+        "start_time": 9.12,
+        "end_time": 9.68,
+        "confidence": 0.999997
+      },
+      {
+        "text": "the",
+        "start_time": 9.68,
+        "end_time": 10,
+        "confidence": 0.999991
+      },
+      {
+        "text": "role",
+        "start_time": 10,
+        "end_time": 10.64,
+        "confidence": 0.999989
+      },
+      {
+        "text": "of",
+        "start_time": 10.88,
+        "end_time": 11.2,
+        "confidence": 0.999989
+      },
+      {
+        "text": "defending",
+        "start_time": 11.2,
+        "end_time": 12,
+        "confidence": 0.999781
+      },
+      {
+        "text": "freedom",
+        "start_time": 12,
+        "end_time": 12.96,
+        "confidence": 0.999773
+      },
+      {
+        "text": "in",
+        "start_time": 12.96,
+        "end_time": 13.28,
+        "confidence": 0.999
+      },
+      {
+        "text": "its",
+        "start_time": 13.28,
+        "end_time": 13.52,
+        "confidence": 0.999972
+      },
+      {
+        "text": "hour",
+        "start_time": 13.52,
+        "end_time": 13.76,
+        "confidence": 0.999964
+      },
+      {
+        "text": "of",
+        "start_time": 13.76,
+        "end_time": 13.92,
+        "confidence": 0.999998
+      },
+      {
+        "text": "maximum",
+        "start_time": 13.92,
+        "end_time": 14.64,
+        "confidence": 0.999996
+      },
+      {
+        "text": "danger.",
+        "start_time": 14.64,
+        "end_time": 15.68,
+        "confidence": 0.986933
+      },
+      {
+        "text": "I",
+        "start_time": 16,
+        "end_time": 16.32,
+        "confidence": 0.999958
+      },
+      {
+        "text": "do",
+        "start_time": 16.32,
+        "end_time": 16.64,
+        "confidence": 0.999428
+      },
+      {
+        "text": "not",
+        "start_time": 16.64,
+        "end_time": 16.8,
+        "confidence": 1
+      },
+      {
+        "text": "shrink",
+        "start_time": 16.8,
+        "end_time": 17.36,
+        "confidence": 0.999998
+      },
+      {
+        "text": "from",
+        "start_time": 17.36,
+        "end_time": 17.52,
+        "confidence": 1
+      },
+      {
+        "text": "this",
+        "start_time": 17.52,
+        "end_time": 17.76,
+        "confidence": 0.999998
+      },
+      {
+        "text": "responsibility.",
+        "start_time": 17.76,
+        "end_time": 18.96,
+        "confidence": 0.998886
+      },
+      {
+        "text": "I",
+        "start_time": 18.96,
+        "end_time": 19.2,
+        "confidence": 0.999994
+      },
+      {
+        "text": "welcome",
+        "start_time": 19.2,
+        "end_time": 20.08,
+        "confidence": 0.99999
+      },
+      {
+        "text": "it.",
+        "start_time": 20.08,
+        "end_time": 20.48,
+        "confidence": 0.921987
+      },
+      {
+        "text": "I",
+        "start_time": 25.28,
+        "end_time": 25.6,
+        "confidence": 0.99904
+      },
+      {
+        "text": "do",
+        "start_time": 25.6,
+        "end_time": 25.92,
+        "confidence": 0.989161
+      },
+      {
+        "text": "not",
+        "start_time": 25.92,
+        "end_time": 26.24,
+        "confidence": 0.99998
+      },
+      {
+        "text": "believe",
+        "start_time": 26.56,
+        "end_time": 27.2,
+        "confidence": 0.999998
+      },
+      {
+        "text": "that",
+        "start_time": 27.2,
+        "end_time": 27.52,
+        "confidence": 0.999593
+      },
+      {
+        "text": "any",
+        "start_time": 27.52,
+        "end_time": 27.84,
+        "confidence": 0.99995
+      },
+      {
+        "text": "of",
+        "start_time": 27.84,
+        "end_time": 28.16,
+        "confidence": 0.999986
+      },
+      {
+        "text": "us",
+        "start_time": 28.16,
+        "end_time": 28.48,
+        "confidence": 0.999987
+      },
+      {
+        "text": "would",
+        "start_time": 29.04,
+        "end_time": 29.36,
+        "confidence": 0.969759
+      },
+      {
+        "text": "exchange",
+        "start_time": 29.36,
+        "end_time": 30.08,
+        "confidence": 0.999043
+      },
+      {
+        "text": "places",
+        "start_time": 30.08,
+        "end_time": 30.8,
+        "confidence": 0.999682
+      },
+      {
+        "text": "with",
+        "start_time": 30.8,
+        "end_time": 31.12,
+        "confidence": 0.999905
+      },
+      {
+        "text": "any",
+        "start_time": 31.12,
+        "end_time": 31.44,
+        "confidence": 0.999871
+      },
+      {
+        "text": "other",
+        "start_time": 31.44,
+        "end_time": 31.76,
+        "confidence": 0.999956
+      },
+      {
+        "text": "people",
+        "start_time": 31.76,
+        "end_time": 32.08,
+        "confidence": 0.999651
+      },
+      {
+        "text": "or",
+        "start_time": 32.4,
+        "end_time": 32.72,
+        "confidence": 0.996127
+      },
+      {
+        "text": "any",
+        "start_time": 32.72,
+        "end_time": 33.04,
+        "confidence": 0.999932
+      },
+      {
+        "text": "other",
+        "start_time": 33.04,
+        "end_time": 33.36,
+        "confidence": 0.999984
+      },
+      {
+        "text": "generation.",
+        "start_time": 33.36,
+        "end_time": 34.72,
+        "confidence": 0.909034
+      },
+      {
+        "text": "The",
+        "start_time": 35.04,
+        "end_time": 35.28,
+        "confidence": 0.999822
+      },
+      {
+        "text": "energy,",
+        "start_time": 35.28,
+        "end_time": 36.24,
+        "confidence": 0.997955
+      },
+      {
+        "text": "the",
+        "start_time": 36.24,
+        "end_time": 36.48,
+        "confidence": 0.999754
+      },
+      {
+        "text": "faith,",
+        "start_time": 36.48,
+        "end_time": 37.36,
+        "confidence": 0.999957
+      },
+      {
+        "text": "the",
+        "start_time": 37.36,
+        "end_time": 37.52,
+        "confidence": 0.999947
+      },
+      {
+        "text": "devotion",
+        "start_time": 37.52,
+        "end_time": 38.72,
+        "confidence": 0.99999
+      },
+      {
+        "text": "which",
+        "start_time": 39.04,
+        "end_time": 39.2,
+        "confidence": 0.970673
+      },
+      {
+        "text": "we",
+        "start_time": 39.52,
+        "end_time": 39.84,
+        "confidence": 0.999836
+      },
+      {
+        "text": "bring",
+        "start_time": 39.84,
+        "end_time": 40.32,
+        "confidence": 0.999967
+      },
+      {
+        "text": "to",
+        "start_time": 40.32,
+        "end_time": 40.64,
+        "confidence": 0.999989
+      },
+      {
+        "text": "this",
+        "start_time": 40.64,
+        "end_time": 40.96,
+        "confidence": 0.999991
+      },
+      {
+        "text": "endeavor",
+        "start_time": 40.96,
+        "end_time": 42.24,
+        "confidence": 0.99688
+      },
+      {
+        "text": "will",
+        "start_time": 42.56,
+        "end_time": 42.72,
+        "confidence": 0.995268
+      },
+      {
+        "text": "light",
+        "start_time": 42.88,
+        "end_time": 43.36,
+        "confidence": 0.999543
+      },
+      {
+        "text": "our",
+        "start_time": 43.36,
+        "end_time": 43.6,
+        "confidence": 0.999925
+      },
+      {
+        "text": "country",
+        "start_time": 43.6,
+        "end_time": 44.08,
+        "confidence": 0.999737
+      },
+      {
+        "text": "and",
+        "start_time": 44.08,
+        "end_time": 44.32,
+        "confidence": 0.999753
+      },
+      {
+        "text": "all",
+        "start_time": 44.32,
+        "end_time": 44.56,
+        "confidence": 0.999964
+      },
+      {
+        "text": "who",
+        "start_time": 44.56,
+        "end_time": 44.8,
+        "confidence": 0.999994
+      },
+      {
+        "text": "serve",
+        "start_time": 44.8,
+        "end_time": 45.36,
+        "confidence": 0.999998
+      },
+      {
+        "text": "it.",
+        "start_time": 45.36,
+        "end_time": 46,
+        "confidence": 0.750554
+      },
+      {
+        "text": "And",
+        "start_time": 46.32,
+        "end_time": 46.48,
+        "confidence": 0.999261
+      },
+      {
+        "text": "the",
+        "start_time": 46.48,
+        "end_time": 46.72,
+        "confidence": 0.999613
+      },
+      {
+        "text": "glow",
+        "start_time": 46.72,
+        "end_time": 47.28,
+        "confidence": 0.999832
+      },
+      {
+        "text": "from",
+        "start_time": 47.28,
+        "end_time": 47.6,
+        "confidence": 0.999996
+      },
+      {
+        "text": "that",
+        "start_time": 47.6,
+        "end_time": 47.92,
+        "confidence": 0.999989
+      },
+      {
+        "text": "fire",
+        "start_time": 47.92,
+        "end_time": 48.56,
+        "confidence": 0.999966
+      },
+      {
+        "text": "can",
+        "start_time": 49.04,
+        "end_time": 49.36,
+        "confidence": 0.990198
+      },
+      {
+        "text": "truly",
+        "start_time": 49.36,
+        "end_time": 50,
+        "confidence": 0.999998
+      },
+      {
+        "text": "light",
+        "start_time": 50,
+        "end_time": 50.64,
+        "confidence": 0.999999
+      },
+      {
+        "text": "the",
+        "start_time": 50.64,
+        "end_time": 50.96,
+        "confidence": 0.999997
+      },
+      {
+        "text": "world.",
+        "start_time": 50.96,
+        "end_time": 51.6,
+        "confidence": 0.876284
+      },
+      {
+        "text": "And",
+        "start_time": 52.24,
+        "end_time": 52.48,
+        "confidence": 0.999279
+      },
+      {
+        "text": "so,",
+        "start_time": 52.48,
+        "end_time": 52.88,
+        "confidence": 0.997755
+      },
+      {
+        "text": "my",
+        "start_time": 52.88,
+        "end_time": 53.12,
+        "confidence": 0.999983
+      },
+      {
+        "text": "fellow",
+        "start_time": 53.12,
+        "end_time": 53.6,
+        "confidence": 0.999822
+      },
+      {
+        "text": "Americans,",
+        "start_time": 53.6,
+        "end_time": 54.88,
+        "confidence": 0.924215
+      },
+      {
+        "text": "ask",
+        "start_time": 55.2,
+        "end_time": 55.52,
+        "confidence": 0.997896
+      },
+      {
+        "text": "not",
+        "start_time": 56.16,
+        "end_time": 56.48,
+        "confidence": 0.999878
+      },
+      {
+        "text": "what",
+        "start_time": 57.12,
+        "end_time": 57.44,
+        "confidence": 0.999087
+      },
+      {
+        "text": "your",
+        "start_time": 57.44,
+        "end_time": 57.76,
+        "confidence": 0.999977
+      },
+      {
+        "text": "country",
+        "start_time": 57.76,
+        "end_time": 58.4,
+        "confidence": 0.999827
+      },
+      {
+        "text": "can",
+        "start_time": 58.4,
+        "end_time": 58.72,
+        "confidence": 0.999999
+      },
+      {
+        "text": "do",
+        "start_time": 58.72,
+        "end_time": 58.96,
+        "confidence": 0.999999
+      },
+      {
+        "text": "for",
+        "start_time": 58.96,
+        "end_time": 59.2,
+        "confidence": 0.999999
+      },
+      {
+        "text": "you.",
+        "start_time": 59.2,
+        "end_time": 59.76,
+        "confidence": 0.962685
+      },
+      {
+        "text": "Ask",
+        "start_time": 60.08,
+        "end_time": 60.56,
+        "confidence": 0.999866
+      },
+      {
+        "text": "what",
+        "start_time": 60.56,
+        "end_time": 60.8,
+        "confidence": 0.999963
+      },
+      {
+        "text": "you",
+        "start_time": 60.8,
+        "end_time": 61.04,
+        "confidence": 0.999946
+      },
+      {
+        "text": "can",
+        "start_time": 61.04,
+        "end_time": 61.28,
+        "confidence": 0.999995
+      },
+      {
+        "text": "do",
+        "start_time": 61.28,
+        "end_time": 61.6,
+        "confidence": 0.999998
+      },
+      {
+        "text": "for",
+        "start_time": 61.6,
+        "end_time": 61.92,
+        "confidence": 0.999996
+      },
+      {
+        "text": "your",
+        "start_time": 61.92,
+        "end_time": 62.16,
+        "confidence": 0.999973
+      },
+      {
+        "text": "country.",
+        "start_time": 62.16,
+        "end_time": 62.96,
+        "confidence": 0.990485
+      },
+      {
+        "text": "My",
+        "start_time": 69.6,
+        "end_time": 70,
+        "confidence": 0.999509
+      },
+      {
+        "text": "fellow",
+        "start_time": 70,
+        "end_time": 70.64,
+        "confidence": 0.999693
+      },
+      {
+        "text": "citizens",
+        "start_time": 70.64,
+        "end_time": 71.36,
+        "confidence": 0.999599
+      },
+      {
+        "text": "of",
+        "start_time": 71.36,
+        "end_time": 71.68,
+        "confidence": 0.999978
+      },
+      {
+        "text": "the",
+        "start_time": 71.68,
+        "end_time": 72,
+        "confidence": 0.999996
+      },
+      {
+        "text": "world,",
+        "start_time": 72,
+        "end_time": 72.88,
+        "confidence": 0.910513
+      },
+      {
+        "text": "ask",
+        "start_time": 73.2,
+        "end_time": 73.52,
+        "confidence": 0.994584
+      },
+      {
+        "text": "not",
+        "start_time": 73.84,
+        "end_time": 74.16,
+        "confidence": 0.999949
+      },
+      {
+        "text": "what",
+        "start_time": 74.8,
+        "end_time": 75.12,
+        "confidence": 0.999326
+      },
+      {
+        "text": "America",
+        "start_time": 75.12,
+        "end_time": 76,
+        "confidence": 0.999772
+      },
+      {
+        "text": "will",
+        "start_time": 76,
+        "end_time": 76.32,
+        "confidence": 0.999993
+      },
+      {
+        "text": "do",
+        "start_time": 76.32,
+        "end_time": 76.64,
+        "confidence": 0.999992
+      },
+      {
+        "text": "for",
+        "start_time": 76.64,
+        "end_time": 76.88,
+        "confidence": 0.999991
+      },
+      {
+        "text": "you,",
+        "start_time": 76.88,
+        "end_time": 77.52,
+        "confidence": 0.867856
+      },
+      {
+        "text": "but",
+        "start_time": 77.84,
+        "end_time": 78.16,
+        "confidence": 0.99989
+      },
+      {
+        "text": "what",
+        "start_time": 78.16,
+        "end_time": 78.4,
+        "confidence": 0.999944
+      },
+      {
+        "text": "together",
+        "start_time": 78.4,
+        "end_time": 79.2,
+        "confidence": 0.999998
+      },
+      {
+        "text": "we",
+        "start_time": 79.2,
+        "end_time": 79.52,
+        "confidence": 0.999973
+      },
+      {
+        "text": "can",
+        "start_time": 79.52,
+        "end_time": 79.76,
+        "confidence": 0.999995
+      },
+      {
+        "text": "do",
+        "start_time": 79.76,
+        "end_time": 80,
+        "confidence": 0.999998
+      },
+      {
+        "text": "for",
+        "start_time": 80,
+        "end_time": 80.32,
+        "confidence": 0.999988
+      },
+      {
+        "text": "the",
+        "start_time": 80.32,
+        "end_time": 80.48,
+        "confidence": 0.999988
+      },
+      {
+        "text": "freedom",
+        "start_time": 80.48,
+        "end_time": 81.2,
+        "confidence": 0.999931
+      },
+      {
+        "text": "of",
+        "start_time": 81.2,
+        "end_time": 81.44,
+        "confidence": 0.999999
+      },
+      {
+        "text": "man.",
+        "start_time": 81.44,
+        "end_time": 82.4,
+        "confidence": 0.755076
+      },
+      {
+        "text": "Finally,",
+        "start_time": 86.48,
+        "end_time": 87.2,
+        "confidence": 0.999735
+      },
+      {
+        "text": "whether",
+        "start_time": 87.2,
+        "end_time": 87.84,
+        "confidence": 0.999704
+      },
+      {
+        "text": "you",
+        "start_time": 87.84,
+        "end_time": 88.16,
+        "confidence": 0.999998
+      },
+      {
+        "text": "are",
+        "start_time": 88.16,
+        "end_time": 88.48,
+        "confidence": 0.999994
+      },
+      {
+        "text": "citizens",
+        "start_time": 88.8,
+        "end_time": 89.68,
+        "confidence": 0.993456
+      },
+      {
+        "text": "of",
+        "start_time": 89.68,
+        "end_time": 89.92,
+        "confidence": 0.999992
+      },
+      {
+        "text": "America",
+        "start_time": 89.92,
+        "end_time": 91.12,
+        "confidence": 0.999871
+      },
+      {
+        "text": "or",
+        "start_time": 91.12,
+        "end_time": 91.44,
+        "confidence": 0.999958
+      },
+      {
+        "text": "citizens",
+        "start_time": 91.44,
+        "end_time": 92.24,
+        "confidence": 0.997273
+      },
+      {
+        "text": "of",
+        "start_time": 92.24,
+        "end_time": 92.56,
+        "confidence": 0.999994
+      },
+      {
+        "text": "the",
+        "start_time": 92.56,
+        "end_time": 92.88,
+        "confidence": 0.999998
+      },
+      {
+        "text": "world,",
+        "start_time": 92.88,
+        "end_time": 93.84,
+        "confidence": 0.964936
+      },
+      {
+        "text": "ask",
+        "start_time": 94.16,
+        "end_time": 94.48,
+        "confidence": 0.998857
+      },
+      {
+        "text": "of",
+        "start_time": 94.72,
+        "end_time": 95.04,
+        "confidence": 0.999965
+      },
+      {
+        "text": "us",
+        "start_time": 95.04,
+        "end_time": 95.36,
+        "confidence": 0.999997
+      },
+      {
+        "text": "here",
+        "start_time": 95.36,
+        "end_time": 95.68,
+        "confidence": 0.999987
+      },
+      {
+        "text": "the",
+        "start_time": 96.56,
+        "end_time": 96.88,
+        "confidence": 0.999964
+      },
+      {
+        "text": "same",
+        "start_time": 96.88,
+        "end_time": 97.2,
+        "confidence": 0.99998
+      },
+      {
+        "text": "high",
+        "start_time": 97.52,
+        "end_time": 97.84,
+        "confidence": 0.999539
+      },
+      {
+        "text": "standards",
+        "start_time": 97.84,
+        "end_time": 98.96,
+        "confidence": 0.998201
+      },
+      {
+        "text": "of",
+        "start_time": 99.28,
+        "end_time": 99.6,
+        "confidence": 0.999857
+      },
+      {
+        "text": "strength",
+        "start_time": 99.6,
+        "end_time": 100.24,
+        "confidence": 0.999815
+      },
+      {
+        "text": "and",
+        "start_time": 100.24,
+        "end_time": 100.48,
+        "confidence": 0.999995
+      },
+      {
+        "text": "sacrifice",
+        "start_time": 100.48,
+        "end_time": 101.76,
+        "confidence": 0.999995
+      },
+      {
+        "text": "which",
+        "start_time": 102.08,
+        "end_time": 102.4,
+        "confidence": 0.994991
+      },
+      {
+        "text": "we",
+        "start_time": 102.4,
+        "end_time": 102.72,
+        "confidence": 0.999986
+      },
+      {
+        "text": "ask",
+        "start_time": 102.72,
+        "end_time": 103.04,
+        "confidence": 1
+      },
+      {
+        "text": "of",
+        "start_time": 103.04,
+        "end_time": 103.36,
+        "confidence": 0.999998
+      },
+      {
+        "text": "you.",
+        "start_time": 103.36,
+        "end_time": 104.32,
+        "confidence": 0.753072
+      },
+      {
+        "text": "With",
+        "start_time": 104.64,
+        "end_time": 104.88,
+        "confidence": 0.999926
+      },
+      {
+        "text": "a",
+        "start_time": 104.88,
+        "end_time": 105.12,
+        "confidence": 0.999973
+      },
+      {
+        "text": "good",
+        "start_time": 105.12,
+        "end_time": 105.44,
+        "confidence": 0.999995
+      },
+      {
+        "text": "conscience,",
+        "start_time": 105.44,
+        "end_time": 106.64,
+        "confidence": 0.93098
+      },
+      {
+        "text": "our",
+        "start_time": 106.96,
+        "end_time": 107.28,
+        "confidence": 0.999352
+      },
+      {
+        "text": "only",
+        "start_time": 107.28,
+        "end_time": 107.6,
+        "confidence": 0.999968
+      },
+      {
+        "text": "sure",
+        "start_time": 107.6,
+        "end_time": 107.92,
+        "confidence": 0.998664
+      },
+      {
+        "text": "reward,",
+        "start_time": 108.16,
+        "end_time": 110.32,
+        "confidence": 0.903772
+      },
+      {
+        "text": "with",
+        "start_time": 110.32,
+        "end_time": 110.48,
+        "confidence": 0.962909
+      },
+      {
+        "text": "history",
+        "start_time": 110.64,
+        "end_time": 111.28,
+        "confidence": 0.913291
+      },
+      {
+        "text": "the",
+        "start_time": 111.28,
+        "end_time": 111.52,
+        "confidence": 0.999986
+      },
+      {
+        "text": "final",
+        "start_time": 111.52,
+        "end_time": 112,
+        "confidence": 0.999989
+      },
+      {
+        "text": "judge",
+        "start_time": 112,
+        "end_time": 112.4,
+        "confidence": 0.999915
+      },
+      {
+        "text": "of",
+        "start_time": 112.4,
+        "end_time": 112.64,
+        "confidence": 0.999995
+      },
+      {
+        "text": "our",
+        "start_time": 112.64,
+        "end_time": 112.96,
+        "confidence": 0.999998
+      },
+      {
+        "text": "deeds,",
+        "start_time": 112.96,
+        "end_time": 114.16,
+        "confidence": 0.982067
+      },
+      {
+        "text": "let",
+        "start_time": 114.48,
+        "end_time": 114.72,
+        "confidence": 0.997779
+      },
+      {
+        "text": "us",
+        "start_time": 114.72,
+        "end_time": 115.04,
+        "confidence": 0.999992
+      },
+      {
+        "text": "go",
+        "start_time": 115.04,
+        "end_time": 115.36,
+        "confidence": 0.999996
+      },
+      {
+        "text": "forth",
+        "start_time": 115.36,
+        "end_time": 115.84,
+        "confidence": 0.999994
+      },
+      {
+        "text": "to",
+        "start_time": 115.84,
+        "end_time": 116.08,
+        "confidence": 0.999981
+      },
+      {
+        "text": "lead",
+        "start_time": 116.08,
+        "end_time": 116.4,
+        "confidence": 0.995384
+      },
+      {
+        "text": "the",
+        "start_time": 116.4,
+        "end_time": 116.64,
+        "confidence": 0.99999
+      },
+      {
+        "text": "land",
+        "start_time": 116.64,
+        "end_time": 117.2,
+        "confidence": 0.999982
+      },
+      {
+        "text": "we",
+        "start_time": 117.2,
+        "end_time": 117.52,
+        "confidence": 0.999993
+      },
+      {
+        "text": "love,",
+        "start_time": 117.52,
+        "end_time": 118.48,
+        "confidence": 0.853421
+      },
+      {
+        "text": "asking",
+        "start_time": 118.8,
+        "end_time": 119.44,
+        "confidence": 0.999617
+      },
+      {
+        "text": "his",
+        "start_time": 119.44,
+        "end_time": 119.6,
+        "confidence": 0.730677
+      },
+      {
+        "text": "blessing",
+        "start_time": 119.84,
+        "end_time": 120.8,
+        "confidence": 0.999986
+      },
+      {
+        "text": "and",
+        "start_time": 120.8,
+        "end_time": 121.12,
+        "confidence": 0.999955
+      },
+      {
+        "text": "his",
+        "start_time": 121.12,
+        "end_time": 121.44,
+        "confidence": 0.979715
+      },
+      {
+        "text": "help,",
+        "start_time": 121.76,
+        "end_time": 122.72,
+        "confidence": 0.947131
+      },
+      {
+        "text": "but",
+        "start_time": 123.04,
+        "end_time": 123.36,
+        "confidence": 0.99989
+      },
+      {
+        "text": "knowing",
+        "start_time": 123.36,
+        "end_time": 123.84,
+        "confidence": 0.99998
+      },
+      {
+        "text": "that",
+        "start_time": 123.84,
+        "end_time": 124.16,
+        "confidence": 0.999998
+      },
+      {
+        "text": "here",
+        "start_time": 124.16,
+        "end_time": 124.48,
+        "confidence": 0.999981
+      },
+      {
+        "text": "on",
+        "start_time": 124.48,
+        "end_time": 124.8,
+        "confidence": 0.999966
+      },
+      {
+        "text": "earth,",
+        "start_time": 124.8,
+        "end_time": 125.84,
+        "confidence": 0.941013
+      },
+      {
+        "text": "God's",
+        "start_time": 125.84,
+        "end_time": 126.72,
+        "confidence": 0.894334
+      },
+      {
+        "text": "work",
+        "start_time": 126.72,
+        "end_time": 127.04,
+        "confidence": 0.999916
+      },
+      {
+        "text": "must",
+        "start_time": 127.28,
+        "end_time": 127.76,
+        "confidence": 0.999895
+      },
+      {
+        "text": "truly",
+        "start_time": 127.76,
+        "end_time": 128.48,
+        "confidence": 0.999996
+      },
+      {
+        "text": "be",
+        "start_time": 128.48,
+        "end_time": 128.8,
+        "confidence": 1
+      },
+      {
+        "text": "our",
+        "start_time": 128.8,
+        "end_time": 129.12,
+        "confidence": 0.999998
+      },
+      {
+        "text": "own.",
+        "start_time": 129.12,
+        "end_time": 129.76,
+        "confidence": 0.852623
+      }
+    ]
+  }
+}

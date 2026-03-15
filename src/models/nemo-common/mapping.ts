@@ -6,12 +6,12 @@ import type {
   TranscriptSegment,
   TranscriptToken,
   TranscriptWord,
-  TranscriptWarning
+  TranscriptWarning,
 } from '../../types/index.js';
 import type {
   NemoConfidenceReconstructor,
   NemoNativeTranscript,
-  NemoTimestampReconstructor
+  NemoTimestampReconstructor,
 } from './types.js';
 
 function buildDefaultSegments(words: readonly TranscriptWord[]): TranscriptSegment[] {
@@ -19,16 +19,21 @@ function buildDefaultSegments(words: readonly TranscriptWord[]): TranscriptSegme
     return [];
   }
 
-  return [{
-    index: 0,
-    text: words.map((word) => word.text).join(' ').trim(),
-    startTime: words[0]!.startTime,
-    endTime: words[words.length - 1]!.endTime,
-    confidence: words.every((word) => typeof word.confidence === 'number')
-      ? words.reduce((sum, word) => sum + (word.confidence ?? 0), 0) / words.length
-      : undefined,
-    wordIndices: words.map((word) => word.index)
-  }];
+  return [
+    {
+      index: 0,
+      text: words
+        .map((word) => word.text)
+        .join(' ')
+        .trim(),
+      startTime: words[0]!.startTime,
+      endTime: words[words.length - 1]!.endTime,
+      confidence: words.every((word) => typeof word.confidence === 'number')
+        ? words.reduce((sum, word) => sum + (word.confidence ?? 0), 0) / words.length
+        : undefined,
+      wordIndices: words.map((word) => word.index),
+    },
+  ];
 }
 
 export const defaultNemoTimestampReconstructor: NemoTimestampReconstructor = {
@@ -41,7 +46,7 @@ export const defaultNemoTimestampReconstructor: NemoTimestampReconstructor = {
       isWordStart: token.isWordStart,
       startTime: token.startTime,
       endTime: token.endTime,
-      confidence: token.confidence
+      confidence: token.confidence,
     }));
 
     const words: TranscriptWord[] = (nativeTranscript.words ?? []).map((word) => ({
@@ -51,8 +56,14 @@ export const defaultNemoTimestampReconstructor: NemoTimestampReconstructor = {
       endTime: word.endTime,
       confidence: word.confidence,
       tokenIndices: tokens
-        .filter((token) => token.startTime !== undefined && token.endTime !== undefined && token.startTime >= word.startTime && token.endTime <= word.endTime)
-        .map((token) => token.index)
+        .filter(
+          (token) =>
+            token.startTime !== undefined &&
+            token.endTime !== undefined &&
+            token.startTime >= word.startTime &&
+            token.endTime <= word.endTime,
+        )
+        .map((token) => token.index),
     }));
 
     const segments = buildDefaultSegments(words);
@@ -66,16 +77,16 @@ export const defaultNemoTimestampReconstructor: NemoTimestampReconstructor = {
     if (detail === 'words') {
       return {
         segments,
-        words
+        words,
       };
     }
 
     return {
       segments,
       words,
-      tokens
+      tokens,
     };
-  }
+  },
 };
 
 export const defaultNemoConfidenceReconstructor: NemoConfidenceReconstructor = {
@@ -83,29 +94,33 @@ export const defaultNemoConfidenceReconstructor: NemoConfidenceReconstructor = {
     return {
       averageConfidence: nativeTranscript.confidence?.utterance,
       averageWordConfidence: nativeTranscript.confidence?.wordAverage,
-      averageTokenConfidence: nativeTranscript.confidence?.tokenAverage
+      averageTokenConfidence: nativeTranscript.confidence?.tokenAverage,
     };
-  }
+  },
 };
 
 function mapWarnings(nativeTranscript: NemoNativeTranscript): TranscriptWarning[] {
   return (nativeTranscript.warnings ?? []).map((warning) => ({
     code: warning.code,
     message: warning.message,
-    recoverable: true
+    recoverable: true,
   }));
 }
 
 function resolveCanonicalFamily(classification: ModelClassification): string {
-  return classification.family ?? `${classification.ecosystem}-${classification.decoder ?? 'model'}`;
+  return (
+    classification.family ?? `${classification.ecosystem}-${classification.decoder ?? 'model'}`
+  );
 }
 
 export function mapNemoNativeToCanonical(
   nativeTranscript: NemoNativeTranscript,
   classification: ModelClassification,
-  meta: Omit<TranscriptMeta, 'detailLevel' | 'isFinal'> & { readonly detailLevel: TranscriptDetailLevel },
+  meta: Omit<TranscriptMeta, 'detailLevel' | 'isFinal'> & {
+    readonly detailLevel: TranscriptDetailLevel;
+  },
   timestampReconstructor: NemoTimestampReconstructor = defaultNemoTimestampReconstructor,
-  confidenceReconstructor: NemoConfidenceReconstructor = defaultNemoConfidenceReconstructor
+  confidenceReconstructor: NemoConfidenceReconstructor = defaultNemoConfidenceReconstructor,
 ): TranscriptResult {
   const detail = meta.detailLevel;
   const warnings = mapWarnings(nativeTranscript);
@@ -121,13 +136,13 @@ export function mapNemoNativeToCanonical(
     tokenCount: reconstructed.tokens?.length,
     wordCount: reconstructed.words?.length,
     segmentCount: reconstructed.segments?.length,
-    nativeAvailable: true
+    nativeAvailable: true,
   };
 
   const result: TranscriptResult = {
     text: nativeTranscript.utteranceText,
     warnings,
-    meta: canonicalMeta
+    meta: canonicalMeta,
   };
 
   if (reconstructed.segments && reconstructed.segments.length > 0) {
@@ -142,4 +157,3 @@ export function mapNemoNativeToCanonical(
 
   return result;
 }
-

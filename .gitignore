@@ -9,3 +9,5 @@ coverage/
 .cache/
 tmp/
 *.tsbuildinfo
+.typedoc-site/
+AGENTS.md

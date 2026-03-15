@@ -3,7 +3,7 @@ import type {
   BackendCapabilities,
   BackendEnvironment,
   BackendExecutionRequest,
-  ExecutionBackend
+  ExecutionBackend,
 } from '../../../types/index.js';
 
 function detectEnvironments(): BackendEnvironment[] {
@@ -12,7 +12,10 @@ function detectEnvironments(): BackendEnvironment[] {
   if (typeof window !== 'undefined') {
     environments.push('browser');
   }
-  if (typeof (globalThis as { importScripts?: unknown }).importScripts === 'function' && typeof window === 'undefined') {
+  if (
+    typeof (globalThis as { importScripts?: unknown }).importScripts === 'function' &&
+    typeof window === 'undefined'
+  ) {
     environments.push('worker');
   }
 
@@ -46,7 +49,7 @@ export async function probeWebGlCapabilities(): Promise<BackendCapabilities> {
     fallbackSuitable: true,
     notes: available
       ? ['Compatibility fallback backend. Lower strategic priority than WebGPU and WASM.']
-      : ['WebGL context creation failed or is unavailable in this environment.']
+      : ['WebGL context creation failed or is unavailable in this environment.'],
   };
 }
 
@@ -62,9 +65,9 @@ export function createWebGlBackend(): ExecutionBackend {
         {
           backendId: 'webgl',
           modelId: request.modelId,
-          capabilities
-        }
+          capabilities,
+        },
       );
-    }
+    },
   };
 }

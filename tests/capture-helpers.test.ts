@@ -1,4 +1,4 @@
-import { startMicrophoneCapture } from 'asr.js';
+import { startMicrophoneCapture } from '@asrjs/speech-recognition/browser';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('microphone capture helpers', () => {
@@ -42,8 +42,8 @@ describe('microphone capture helpers', () => {
           return channel === 0
             ? new Float32Array([1, 0.5, 0, -0.5])
             : new Float32Array([0, 0.5, 1, -0.5]);
-        }
-      }
+        },
+      },
     });
 
     expect(onChunk).toHaveBeenCalledOnce();

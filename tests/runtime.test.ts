@@ -1,16 +1,19 @@
-import { createSpeechRuntime } from 'asr.js';
-import { createHfCtcModelFamily, type HfCtcNativeTranscript } from 'asr.js';
-import { createNemoTdtModelFamily, type NemoTdtNativeTranscript } from 'asr.js';
-import { createWhisperSeq2SeqModelFamily, type WhisperNativeTranscript } from 'asr.js';
-import { createMedAsrPresetFactory } from 'asr.js';
-import { createParakeetPresetFactory } from 'asr.js';
-import { createWhisperPresetFactory } from 'asr.js';
+import { createSpeechRuntime } from '@asrjs/speech-recognition';
 import type {
   BackendCapabilities,
   ExecutionBackend,
   TranscriptResult,
-  TranscriptionEnvelope
-} from 'asr.js';
+  TranscriptionEnvelope,
+} from '@asrjs/speech-recognition';
+import { createHfCtcModelFamily, type HfCtcNativeTranscript } from '@asrjs/speech-recognition/models/hf-ctc-common';
+import { createNemoTdtModelFamily, type NemoTdtNativeTranscript } from '@asrjs/speech-recognition/models/nemo-tdt';
+import {
+  createWhisperSeq2SeqModelFamily,
+  type WhisperNativeTranscript,
+} from '@asrjs/speech-recognition/models/whisper-seq2seq';
+import { createMedAsrPresetFactory } from '@asrjs/speech-recognition/presets/medasr';
+import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/parakeet';
+import { createWhisperPresetFactory } from '@asrjs/speech-recognition/presets/whisper';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 function createStaticBackend(capabilities: BackendCapabilities): ExecutionBackend {
@@ -26,9 +29,9 @@ function createStaticBackend(capabilities: BackendCapabilities): ExecutionBacken
         capabilities,
         dispose() {
           return undefined;
-        }
+        },
       };
-    }
+    },
   };
 }
 
@@ -36,41 +39,45 @@ describe('DefaultSpeechRuntime', () => {
   it('selects the best backend by capability and preference', async () => {
     const runtime = createSpeechRuntime();
 
-    runtime.registerBackend(createStaticBackend({
-      id: 'wasm',
-      displayName: 'WASM',
-      available: true,
-      priority: 60,
-      environments: ['browser', 'node'],
-      acceleration: ['cpu'],
-      supportedPrecisions: ['fp32', 'int8'],
-      supportsFp16: false,
-      supportsInt8: true,
-      supportsSharedArrayBuffer: true,
-      requiresSharedArrayBuffer: false,
-      fallbackSuitable: true,
-      notes: []
-    }));
-    runtime.registerBackend(createStaticBackend({
-      id: 'webgpu',
-      displayName: 'WebGPU',
-      available: true,
-      priority: 100,
-      environments: ['browser'],
-      acceleration: ['gpu'],
-      supportedPrecisions: ['fp32', 'fp16', 'int8'],
-      supportsFp16: true,
-      supportsInt8: true,
-      supportsSharedArrayBuffer: true,
-      requiresSharedArrayBuffer: false,
-      fallbackSuitable: true,
-      notes: []
-    }));
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'webgpu',
+        displayName: 'WebGPU',
+        available: true,
+        priority: 100,
+        environments: ['browser'],
+        acceleration: ['gpu'],
+        supportedPrecisions: ['fp32', 'fp16', 'int8'],
+        supportsFp16: true,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
 
     const backend = await runtime.selectBackend({
       preferredBackendIds: ['webgpu', 'wasm'],
       requiredPrecision: 'fp16',
-      allowExperimental: false
+      allowExperimental: false,
     });
 
     expect(backend.id).toBe('webgpu');
@@ -78,42 +85,45 @@ describe('DefaultSpeechRuntime', () => {
 
   it('loads an architecture-based model family from classification metadata', async () => {
     const runtime = createSpeechRuntime();
-    runtime.registerBackend(createStaticBackend({
-      id: 'wasm',
-      displayName: 'WASM',
-      available: true,
-      priority: 60,
-      environments: ['browser', 'node'],
-      acceleration: ['cpu'],
-      supportedPrecisions: ['fp32', 'int8'],
-      supportsFp16: false,
-      supportsInt8: true,
-      supportsSharedArrayBuffer: true,
-      requiresSharedArrayBuffer: false,
-      fallbackSuitable: true,
-      notes: []
-    }));
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
     runtime.registerModelFamily(createNemoTdtModelFamily());
 
     const model = await runtime.loadModel({
+      family: 'nemo-tdt',
       modelId: 'nemo-fastconformer-tdt-scaffold',
       classification: {
         ecosystem: 'nemo',
         encoder: 'fastconformer',
         decoder: 'tdt',
-        task: 'asr'
-      }
+        task: 'asr',
+      },
     });
     const session = await model.createSession();
 
     const canonical = await session.transcribe(new Float32Array(16000), {
       detail: 'detailed',
-      responseFlavor: 'canonical'
+      responseFlavor: 'canonical',
     });
     const envelope = await session.transcribe(new Float32Array(16000), {
       detail: 'detailed',
       responseFlavor: 'canonical+native',
-      returnFrameIndices: true
+      returnFrameIndices: true,
     });
 
     expect(canonical.meta.backendId).toBe('wasm');
@@ -123,7 +133,7 @@ describe('DefaultSpeechRuntime', () => {
     expect(model.info.classification.processor).toBe('nemo-mel');
     expect(model.info.classification.decoder).toBe('tdt');
     expect(model.info.classification.topology).toBe('tdt');
-    expect(model.info.architecture?.processor.module).toBe('processors');
+    expect(model.info.architecture?.processor.module).toBe('audio');
     expect(model.info.architecture?.decoding.module).toBe('inference');
     expect(model.info.architecture?.tokenizer.module).toBe('inference');
     expect(envelope.canonical.meta.nativeAvailable).toBe(true);
@@ -135,29 +145,33 @@ describe('DefaultSpeechRuntime', () => {
 
   it('allows branded presets to stay thin over architecture-based implementations', async () => {
     const runtime = createSpeechRuntime();
-    runtime.registerBackend(createStaticBackend({
-      id: 'wasm',
-      displayName: 'WASM',
-      available: true,
-      priority: 60,
-      environments: ['browser', 'node'],
-      acceleration: ['cpu'],
-      supportedPrecisions: ['fp32', 'int8'],
-      supportsFp16: false,
-      supportsInt8: true,
-      supportsSharedArrayBuffer: true,
-      requiresSharedArrayBuffer: false,
-      fallbackSuitable: true,
-      notes: []
-    }));
-    runtime.registerModelFamily(createParakeetPresetFactory());
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+    runtime.registerModelFamily(createNemoTdtModelFamily());
+    runtime.registerPreset(createParakeetPresetFactory());
 
     const model = await runtime.loadModel({
-      family: 'parakeet',
-      modelId: 'parakeet-tdt-0.6b-v3'
+      preset: 'parakeet',
+      modelId: 'parakeet-tdt-0.6b-v3',
     });
 
-    expect(model.info.family).toBe('parakeet');
+    expect(model.info.family).toBe('nemo-tdt');
+    expect(model.info.preset).toBe('parakeet');
     expect(model.info.classification.processor).toBe('nemo-mel');
     expect(model.info.classification.family).toBe('parakeet');
     expect(model.info.classification.decoder).toBe('tdt');
@@ -165,28 +179,33 @@ describe('DefaultSpeechRuntime', () => {
 
   it('can inject the built-in Parakeet artifact source without moving brand logic into nemo-tdt', async () => {
     const runtime = createSpeechRuntime();
-    runtime.registerBackend(createStaticBackend({
-      id: 'wasm',
-      displayName: 'WASM',
-      available: true,
-      priority: 60,
-      environments: ['browser', 'node'],
-      acceleration: ['cpu'],
-      supportedPrecisions: ['fp32', 'int8'],
-      supportsFp16: false,
-      supportsInt8: true,
-      supportsSharedArrayBuffer: true,
-      requiresSharedArrayBuffer: false,
-      fallbackSuitable: true,
-      notes: []
-    }));
-    runtime.registerModelFamily(createParakeetPresetFactory({
-      useManifestSource: true
-    }));
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+    runtime.registerModelFamily(createNemoTdtModelFamily());
+    runtime.registerPreset(
+      createParakeetPresetFactory({
+        useManifestSource: true,
+      }),
+    );
 
     const model = await runtime.loadModel({
-      family: 'parakeet',
-      modelId: 'parakeet-tdt-0.6b-v3'
+      preset: 'parakeet',
+      modelId: 'parakeet-tdt-0.6b-v3',
     });
 
     expect(model.loadOptions?.source?.kind).toBe('huggingface');
@@ -197,38 +216,41 @@ describe('DefaultSpeechRuntime', () => {
 
   it('loads an HF-style CTC family without forcing it through NeMo abstractions', async () => {
     const runtime = createSpeechRuntime();
-    runtime.registerBackend(createStaticBackend({
-      id: 'wasm',
-      displayName: 'WASM',
-      available: true,
-      priority: 60,
-      environments: ['browser', 'node'],
-      acceleration: ['cpu'],
-      supportedPrecisions: ['fp32', 'int8'],
-      supportsFp16: false,
-      supportsInt8: true,
-      supportsSharedArrayBuffer: true,
-      requiresSharedArrayBuffer: false,
-      fallbackSuitable: true,
-      notes: []
-    }));
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
     runtime.registerModelFamily(createHfCtcModelFamily());
 
     const model = await runtime.loadModel({
+      family: 'hf-ctc',
       modelId: 'wav2vec2-conformer-medical-scaffold',
       classification: {
         ecosystem: 'hf',
         processor: 'wav2vec2-conv',
         decoder: 'ctc',
         topology: 'ctc',
-        task: 'asr'
-      }
+        task: 'asr',
+      },
     });
     const session = await model.createSession();
     const envelope = await session.transcribe(new Float32Array(16000), {
       detail: 'detailed',
       responseFlavor: 'canonical+native',
-      returnTokenIds: true
+      returnTokenIds: true,
     });
 
     expect(model.info.family).toBe('hf-ctc');
@@ -240,41 +262,48 @@ describe('DefaultSpeechRuntime', () => {
 
   it('keeps branded presets downstream for MedASR and Whisper', async () => {
     const runtime = createSpeechRuntime();
-    runtime.registerBackend(createStaticBackend({
-      id: 'wasm',
-      displayName: 'WASM',
-      available: true,
-      priority: 60,
-      environments: ['browser', 'node'],
-      acceleration: ['cpu'],
-      supportedPrecisions: ['fp32', 'int8'],
-      supportsFp16: false,
-      supportsInt8: true,
-      supportsSharedArrayBuffer: true,
-      requiresSharedArrayBuffer: false,
-      fallbackSuitable: true,
-      notes: []
-    }));
-    runtime.registerModelFamily(createMedAsrPresetFactory());
-    runtime.registerModelFamily(createWhisperPresetFactory());
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+    runtime.registerModelFamily(createHfCtcModelFamily());
+    runtime.registerPreset(createMedAsrPresetFactory());
+    runtime.registerPreset(createWhisperPresetFactory());
     runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());
 
     const medasr = await runtime.loadModel({
-      family: 'medasr',
-      modelId: 'google/medasr'
+      preset: 'medasr',
+      modelId: 'google/medasr',
     });
     const whisper = await runtime.loadModel({
-      family: 'whisper',
-      modelId: 'openai/whisper-base'
+      preset: 'whisper',
+      modelId: 'openai/whisper-base',
     });
     const whisperSession = await whisper.createSession();
     const whisperEnvelope = await whisperSession.transcribe(new Float32Array(16000), {
       detail: 'segments',
-      responseFlavor: 'canonical+native'
+      responseFlavor: 'canonical+native',
     });
 
+    expect(medasr.info.family).toBe('hf-ctc');
+    expect(medasr.info.preset).toBe('medasr');
     expect(medasr.info.classification.family).toBe('medasr');
     expect(medasr.info.classification.decoder).toBe('ctc');
+    expect(whisper.info.family).toBe('whisper-seq2seq');
+    expect(whisper.info.preset).toBe('whisper');
     expect(whisper.info.classification.family).toBe('whisper');
     expect(whisper.info.classification.topology).toBe('aed');
     expect(whisper.info.architecture?.encoder.module).toBe('inference');

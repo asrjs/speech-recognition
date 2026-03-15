@@ -3,7 +3,7 @@ import {
   StreamingWindowBuilder,
   UtteranceTranscriptMerger,
   type TranscriptResult,
-} from 'asr.js';
+} from '@asrjs/speech-recognition/realtime';
 import { describe, expect, it } from 'vitest';
 
 describe('realtime helpers', () => {

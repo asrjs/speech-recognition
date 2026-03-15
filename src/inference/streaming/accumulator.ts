@@ -19,19 +19,20 @@ export class TranscriptAccumulator {
     return {
       kind,
       revision: this.revision,
-      text: kind === 'final'
-        ? this.committedText
-        : joinTranscriptFragments(this.committedText, this.previewText),
+      text:
+        kind === 'final'
+          ? this.committedText
+          : joinTranscriptFragments(this.committedText, this.previewText),
       committedText: this.committedText,
       previewText: this.previewText,
       warnings: result.warnings,
       meta: {
         ...result.meta,
-        isFinal: kind === 'final'
+        isFinal: kind === 'final',
       },
       segments: result.segments,
       words: result.words,
-      tokens: result.tokens
+      tokens: result.tokens,
     };
   }
 
@@ -45,7 +46,7 @@ export class TranscriptAccumulator {
     return {
       revision: this.revision,
       committedText: this.committedText,
-      previewText: this.previewText
+      previewText: this.previewText,
     };
   }
 }

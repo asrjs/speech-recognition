@@ -3,7 +3,7 @@ import type {
   BackendCapabilities,
   BackendEnvironment,
   BackendExecutionRequest,
-  ExecutionBackend
+  ExecutionBackend,
 } from '../../../types/index.js';
 
 interface NavigatorWithMl extends Navigator {
@@ -16,7 +16,10 @@ function detectEnvironments(): BackendEnvironment[] {
   if (typeof window !== 'undefined') {
     environments.push('browser');
   }
-  if (typeof (globalThis as { importScripts?: unknown }).importScripts === 'function' && typeof window === 'undefined') {
+  if (
+    typeof (globalThis as { importScripts?: unknown }).importScripts === 'function' &&
+    typeof window === 'undefined'
+  ) {
     environments.push('worker');
   }
 
@@ -24,7 +27,8 @@ function detectEnvironments(): BackendEnvironment[] {
 }
 
 export async function probeWebNnCapabilities(): Promise<BackendCapabilities> {
-  const navigatorLike = typeof navigator !== 'undefined' ? (navigator as NavigatorWithMl) : undefined;
+  const navigatorLike =
+    typeof navigator !== 'undefined' ? (navigator as NavigatorWithMl) : undefined;
   const available = !!navigatorLike?.ml;
 
   return {
@@ -43,7 +47,7 @@ export async function probeWebNnCapabilities(): Promise<BackendCapabilities> {
     experimental: true,
     notes: available
       ? ['WebNN detected. Treat provider behavior as capability-probed and experimental.']
-      : ['navigator.ml is not available. WebNN should be treated as optional.']
+      : ['navigator.ml is not available. WebNN should be treated as optional.'],
   };
 }
 
@@ -59,9 +63,9 @@ export function createWebNnBackend(): ExecutionBackend {
         {
           backendId: 'webnn',
           modelId: request.modelId,
-          capabilities
-        }
+          capabilities,
+        },
       );
-    }
+    },
   };
 }

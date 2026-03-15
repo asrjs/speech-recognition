@@ -1,4 +1,9 @@
-import type { AudioBufferLike, BaseTranscriptionOptions } from '../../types/index.js';
+import type {
+  AssetProvider,
+  AudioBufferLike,
+  BaseTranscriptionOptions,
+  SpeechRuntimeHooks,
+} from '../../types/index.js';
 import type {
   NemoDecodeContext,
   NemoFeatureExtractor,
@@ -6,7 +11,7 @@ import type {
   NemoModelDependencies,
   NemoModelOptions,
   NemoNativeToken,
-  NemoNativeTranscript
+  NemoNativeTranscript,
 } from '../nemo-common/index.js';
 
 export interface NemoTdtModelConfig extends NemoModelConfig {
@@ -55,9 +60,7 @@ export interface NemoTdtHuggingFaceSource {
   readonly enableProfiling?: boolean;
 }
 
-export type NemoTdtArtifactSource =
-  | NemoTdtDirectArtifactSource
-  | NemoTdtHuggingFaceSource;
+export type NemoTdtArtifactSource = NemoTdtDirectArtifactSource | NemoTdtHuggingFaceSource;
 
 export interface NemoTdtModelOptions extends NemoModelOptions<NemoTdtModelConfig> {
   readonly source?: NemoTdtArtifactSource;
@@ -104,22 +107,28 @@ export interface NemoTdtDecoder {
   decode(
     features: Awaited<ReturnType<NemoFeatureExtractor<NemoTdtModelConfig>['compute']>>,
     options: NemoTdtTranscriptionOptions,
-    context: NemoDecodeContext<NemoTdtModelConfig>
+    context: NemoDecodeContext<NemoTdtModelConfig>,
   ): Promise<NemoTdtNativeTranscript> | NemoTdtNativeTranscript;
 }
 
 export interface NemoTdtExecutor {
+  ready?(): Promise<void> | void;
   transcribe(
     audio: AudioBufferLike,
     options: NemoTdtTranscriptionOptions,
-    context: NemoDecodeContext<NemoTdtModelConfig>
+    context: NemoDecodeContext<NemoTdtModelConfig>,
   ): Promise<NemoTdtNativeTranscript>;
   dispose(): Promise<void> | void;
 }
 
-export interface NemoTdtModelDependencies
-  extends NemoModelDependencies<NemoTdtModelConfig, NemoTdtNativeTranscript, NemoTdtTranscriptionOptions> {
+export interface NemoTdtModelDependencies extends NemoModelDependencies<
+  NemoTdtModelConfig,
+  NemoTdtNativeTranscript,
+  NemoTdtTranscriptionOptions
+> {
   readonly featureExtractor?: NemoFeatureExtractor<NemoTdtModelConfig>;
   readonly decoder?: NemoTdtDecoder;
   readonly executor?: NemoTdtExecutor;
+  readonly assetProvider?: AssetProvider;
+  readonly runtimeHooks?: SpeechRuntimeHooks;
 }

@@ -1,3 +1,6 @@
+import { createHuggingFaceAssetProvider, getDefaultIndexedDbAssetCache } from '../io/index.js';
+import type { AssetRequest, ResolvedAssetHandle } from '../types/index.js';
+
 export const DEFAULT_MODEL_REVISIONS = ['main'] as const;
 export const QUANTIZATION_ORDER = ['fp16', 'int8', 'fp32'] as const;
 
@@ -10,6 +13,69 @@ export interface ModelFileProgress {
   readonly loaded: number;
   readonly total: number;
   readonly file: string;
+  readonly percent?: number;
+  readonly loadedMiB: number;
+  readonly totalMiB?: number;
+  readonly isComplete?: boolean;
+}
+
+const MEBIBYTE = 1024 * 1024;
+
+function bytesToMiB(bytes: number | undefined): number | undefined {
+  return Number.isFinite(bytes) ? (bytes as number) / MEBIBYTE : undefined;
+}
+
+function createProgressMilestoneReporter(
+  filename: string,
+  progress?: (progress: ModelFileProgress) => void,
+):
+  | ((event: { readonly loaded: number; readonly total?: number; readonly done?: boolean }) => void)
+  | undefined {
+  if (!progress) {
+    return undefined;
+  }
+
+  let lastPercent = -1;
+  let lastUnknownMiBFloor = -1;
+  let completed = false;
+
+  return (event) => {
+    const loaded = event.loaded;
+    const total = event.total ?? 0;
+    const percent = total > 0 ? Math.floor((loaded / total) * 100) : undefined;
+    const done = Boolean(event.done) || (total > 0 && loaded >= total);
+
+    if (done && completed) {
+      return;
+    }
+
+    if (percent !== undefined) {
+      if (!done && percent <= lastPercent) {
+        return;
+      }
+      lastPercent = Math.max(lastPercent, percent);
+    } else {
+      const currentMiBFloor = Math.floor(loaded / MEBIBYTE);
+      if (!done && currentMiBFloor <= lastUnknownMiBFloor) {
+        return;
+      }
+      lastUnknownMiBFloor = Math.max(lastUnknownMiBFloor, currentMiBFloor);
+    }
+
+    if (done) {
+      completed = true;
+    }
+
+    progress({
+      loaded,
+      total,
+      file: filename,
+      percent: done ? 100 : percent,
+      loadedMiB: bytesToMiB(loaded) ?? 0,
+      totalMiB: bytesToMiB(total),
+      isComplete: done,
+    });
+  };
 }
 
 export function formatRepoPath(repoId: string): string {
@@ -20,18 +86,27 @@ export function formatRepoPath(repoId: string): string {
 }
 
 function normalizePath(path: string): string {
-  return String(path || '').replace(/^\.\/+/, '').replace(/\\/g, '/');
+  return String(path || '')
+    .replace(/^\.\/+/, '')
+    .replace(/\\/g, '/');
 }
 
 function parseModelFiles(payload: unknown): string[] {
   if (Array.isArray(payload)) {
     return payload
-      .filter((entry) => entry && typeof entry === 'object' && (entry as { type?: unknown }).type === 'file')
+      .filter(
+        (entry) =>
+          entry && typeof entry === 'object' && (entry as { type?: unknown }).type === 'file',
+      )
       .map((entry) => normalizePath((entry as { path?: string }).path ?? ''))
       .filter(Boolean);
   }
 
-  if (payload && typeof payload === 'object' && Array.isArray((payload as { siblings?: unknown[] }).siblings)) {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    Array.isArray((payload as { siblings?: unknown[] }).siblings)
+  ) {
     return (payload as { siblings: Array<{ rfilename?: string }> }).siblings
       .map((entry) => normalizePath(entry?.rfilename ?? ''))
       .filter(Boolean);
@@ -45,71 +120,33 @@ function hasFile(files: readonly string[], filename: string): boolean {
   return files.some((path) => path === target || path.endsWith(`/${target}`));
 }
 
-interface IdbDatabaseLike {
-  readonly objectStoreNames: {
-    contains(name: string): boolean;
+function createModelAssetRequest(
+  repoId: string,
+  filename: string,
+  options: {
+    readonly revision?: string;
+    readonly subfolder?: string;
+    readonly progress?: (progress: ModelFileProgress) => void;
+  } = {},
+): AssetRequest {
+  const { revision = 'main', subfolder = '', progress } = options;
+  const reportProgress = createProgressMilestoneReporter(filename, progress);
+
+  return {
+    id: `${repoId}:${revision}:${subfolder}:${filename}`,
+    provider: 'huggingface',
+    repoId,
+    revision,
+    filename,
+    subfolder,
+    cacheKey: `hf-${repoId}-${revision}-${subfolder}-${filename}`,
+    onProgress: reportProgress,
   };
-  createObjectStore(name: string): unknown;
-  transaction(names: string[], mode: 'readonly' | 'readwrite'): IdbTransactionLike;
-  close?(): void;
 }
 
-interface IdbTransactionLike {
-  objectStore(name: string): IdbObjectStoreLike;
-}
-
-interface IdbObjectStoreLike {
-  get(key: string): { onsuccess: (() => void) | null; onerror: (() => void) | null; result?: Blob };
-  put(blob: Blob, key: string): { onsuccess: (() => void) | null; onerror: (() => void) | null; result?: IDBValidKey };
-}
-
-let dbPromise: Promise<IdbDatabaseLike> | null = null;
-
-function hasIndexedDb(): boolean {
-  return typeof indexedDB !== 'undefined';
-}
-
-async function getDb(): Promise<IdbDatabaseLike> {
-  if (!hasIndexedDb()) {
-    throw new Error('IndexedDB is unavailable in this environment.');
-  }
-
-  if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open('asrjs-cache-db', 1);
-      request.onerror = () => reject(new Error('Error opening IndexedDB.'));
-      request.onsuccess = () => resolve(request.result as unknown as IdbDatabaseLike);
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result as unknown as IdbDatabaseLike;
-        if (!db.objectStoreNames.contains('file-store')) {
-          db.createObjectStore('file-store');
-        }
-      };
-    });
-  }
-
-  return dbPromise;
-}
-
-async function getFileFromDb(key: string): Promise<Blob | undefined> {
-  const db = await getDb();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['file-store'], 'readonly');
-    const store = transaction.objectStore('file-store');
-    const request = store.get(key);
-    request.onerror = () => reject(new Error('Error reading from IndexedDB.'));
-    request.onsuccess = () => resolve(request.result);
-  });
-}
-
-async function saveFileToDb(key: string, blob: Blob): Promise<void> {
-  const db = await getDb();
-  await new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction(['file-store'], 'readwrite');
-    const store = transaction.objectStore('file-store');
-    const request = store.put(blob, key);
-    request.onerror = () => reject(new Error('Error writing to IndexedDB.'));
-    request.onsuccess = () => resolve();
+function createDefaultHuggingFaceProvider() {
+  return createHuggingFaceAssetProvider({
+    cache: getDefaultIndexedDbAssetCache() ?? undefined,
   });
 }
 
@@ -127,9 +164,9 @@ export async function fetchModelRevisions(repoId: string): Promise<readonly stri
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    const payload = await response.json() as { branches?: Array<{ name?: string }> };
+    const payload = (await response.json()) as { branches?: Array<{ name?: string }> };
     const branches = Array.isArray(payload?.branches)
-      ? payload.branches.map((branch) => branch?.name).filter(Boolean) as string[]
+      ? (payload.branches.map((branch) => branch?.name).filter(Boolean) as string[])
       : [];
     const revisions = branches.length > 0 ? branches : [...DEFAULT_MODEL_REVISIONS];
     MODEL_REVISIONS_CACHE.set(repoId, revisions);
@@ -140,7 +177,10 @@ export async function fetchModelRevisions(repoId: string): Promise<readonly stri
   }
 }
 
-export async function fetchModelFiles(repoId: string, revision = 'main'): Promise<readonly string[]> {
+export async function fetchModelFiles(
+  repoId: string,
+  revision = 'main',
+): Promise<readonly string[]> {
   if (!repoId) {
     return [];
   }
@@ -163,7 +203,10 @@ export async function fetchModelFiles(repoId: string, revision = 'main'): Promis
     MODEL_FILES_CACHE.set(cacheKey, files);
     return files;
   } catch (treeError) {
-    console.warn(`[huggingface] Tree listing failed for ${repoId}@${revision}; trying metadata.`, treeError);
+    console.warn(
+      `[huggingface] Tree listing failed for ${repoId}@${revision}; trying metadata.`,
+      treeError,
+    );
   }
 
   try {
@@ -180,7 +223,10 @@ export async function fetchModelFiles(repoId: string, revision = 'main'): Promis
   }
 }
 
-export function getAvailableQuantModes(files: readonly string[], baseName: string): QuantizationMode[] {
+export function getAvailableQuantModes(
+  files: readonly string[],
+  baseName: string,
+): QuantizationMode[] {
   const options = QUANTIZATION_ORDER.filter((quant) => {
     if (quant === 'fp32') {
       return hasFile(files, `${baseName}.onnx`);
@@ -197,15 +243,31 @@ export function getAvailableQuantModes(files: readonly string[], baseName: strin
 export function pickPreferredQuant(
   available: readonly QuantizationMode[],
   currentBackend: string,
-  component: 'encoder' | 'decoder' = 'encoder'
+  component: 'encoder' | 'decoder' = 'encoder',
 ): QuantizationMode {
-  const preferred = component === 'decoder'
-    ? ['int8', 'fp32', 'fp16']
-    : String(currentBackend || '').startsWith('webgpu')
-      ? ['fp16', 'fp32', 'int8']
-      : ['int8', 'fp32', 'fp16'];
+  const preferred =
+    component === 'decoder'
+      ? ['int8', 'fp32', 'fp16']
+      : String(currentBackend || '').startsWith('webgpu')
+        ? ['fp16', 'fp32', 'int8']
+        : ['int8', 'fp32', 'fp16'];
 
-  return (preferred.find((quant) => available.includes(quant as QuantizationMode)) ?? available[0] ?? 'fp32') as QuantizationMode;
+  return (preferred.find((quant) => available.includes(quant as QuantizationMode)) ??
+    available[0] ??
+    'fp32') as QuantizationMode;
+}
+
+export async function getModelAssetHandle(
+  repoId: string,
+  filename: string,
+  options: {
+    readonly revision?: string;
+    readonly subfolder?: string;
+    readonly progress?: (progress: ModelFileProgress) => void;
+  } = {},
+): Promise<ResolvedAssetHandle> {
+  const provider = createDefaultHuggingFaceProvider();
+  return provider.resolve(createModelAssetRequest(repoId, filename, options));
 }
 
 export async function getModelFile(
@@ -215,90 +277,15 @@ export async function getModelFile(
     readonly revision?: string;
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
-  } = {}
+  } = {},
 ): Promise<string> {
-  const { revision = 'main', subfolder = '', progress } = options;
-  const encodedRevision = encodeURIComponent(revision);
-  const encodedSubfolder = subfolder
-    ? subfolder.split('/').map((part) => encodeURIComponent(part)).join('/')
-    : '';
-  const encodedFilename = filename
-    .split('/')
-    .map((part) => encodeURIComponent(part))
-    .join('/');
-
-  const pathParts = [formatRepoPath(repoId), 'resolve', encodedRevision];
-  if (encodedSubfolder) {
-    pathParts.push(encodedSubfolder);
+  const handle = await getModelAssetHandle(repoId, filename, options);
+  const locator = await handle.getLocator('url');
+  if (!locator) {
+    await handle.dispose();
+    throw new Error(`Could not create a URL locator for ${filename}.`);
   }
-  pathParts.push(encodedFilename);
-  const url = `https://huggingface.co/${pathParts.join('/')}`;
-  const cacheKey = `hf-${repoId}-${revision}-${subfolder}-${filename}`;
-
-  if (hasIndexedDb()) {
-    try {
-      const cachedBlob = await getFileFromDb(cacheKey);
-      if (cachedBlob) {
-        return URL.createObjectURL(cachedBlob);
-      }
-    } catch (error) {
-      console.warn('[huggingface] IndexedDB cache check failed.', error);
-    }
-  }
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download ${filename}: ${response.status} ${response.statusText}`);
-  }
-
-  const body = response.body;
-  if (!body || typeof body.getReader !== 'function') {
-    const blob = await response.blob();
-    if (hasIndexedDb()) {
-      try {
-        await saveFileToDb(cacheKey, blob);
-      } catch (error) {
-        console.warn('[huggingface] Failed to cache file in IndexedDB.', error);
-      }
-    }
-    return URL.createObjectURL(blob);
-  }
-
-  const contentLength = response.headers.get('content-length');
-  const total = contentLength ? Number.parseInt(contentLength, 10) : 0;
-  let loaded = 0;
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-
-    if (value) {
-      chunks.push(value);
-      loaded += value.length;
-      if (progress && total > 0) {
-        progress({ loaded, total, file: filename });
-      }
-    }
-  }
-
-  const blobParts: BlobPart[] = chunks.map((chunk) => new Uint8Array(chunk));
-  const blob = new Blob(blobParts, {
-    type: response.headers.get('content-type') || 'application/octet-stream'
-  });
-
-  if (hasIndexedDb()) {
-    try {
-      await saveFileToDb(cacheKey, blob);
-    } catch (error) {
-      console.warn('[huggingface] Failed to cache file in IndexedDB.', error);
-    }
-  }
-
-  return URL.createObjectURL(blob);
+  return locator;
 }
 
 export async function getModelText(
@@ -308,11 +295,12 @@ export async function getModelText(
     readonly revision?: string;
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
-  } = {}
+  } = {},
 ): Promise<string> {
-  const blobUrl = await getModelFile(repoId, filename, options);
-  const response = await fetch(blobUrl);
-  const text = await response.text();
-  URL.revokeObjectURL(blobUrl);
-  return text;
+  const handle = await getModelAssetHandle(repoId, filename, options);
+  try {
+    return await handle.readText();
+  } finally {
+    await handle.dispose();
+  }
 }

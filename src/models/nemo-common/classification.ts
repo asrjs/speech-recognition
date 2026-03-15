@@ -2,11 +2,11 @@ import type { ModelClassification } from '../../types/index.js';
 
 export function createModelClassification(
   base: ModelClassification,
-  override: Partial<ModelClassification> = {}
+  override: Partial<ModelClassification> = {},
 ): ModelClassification {
   return {
     ...base,
-    ...override
+    ...override,
   };
 }
 
@@ -18,7 +18,7 @@ export function describeModelClassification(classification: ModelClassification)
     classification.topology,
     classification.decoder,
     classification.task,
-    classification.family
+    classification.family,
   ].filter((part): part is string => typeof part === 'string' && part.length > 0);
 
   return [...new Set(parts)].join(' / ');

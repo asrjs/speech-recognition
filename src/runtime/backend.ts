@@ -1,7 +1,7 @@
 import type {
   BackendCapabilities,
   BackendSelectionCriteria,
-  ExecutionBackend
+  ExecutionBackend,
 } from '../types/index.js';
 import { BackendUnavailableError, CapabilityMismatchError } from './errors.js';
 
@@ -10,7 +10,10 @@ export interface BackendCandidate {
   readonly capabilities: BackendCapabilities;
 }
 
-function precisionScore(capabilities: BackendCapabilities, criteria: BackendSelectionCriteria): number {
+function precisionScore(
+  capabilities: BackendCapabilities,
+  criteria: BackendSelectionCriteria,
+): number {
   if (!criteria.requiredPrecision) {
     return 0;
   }
@@ -34,7 +37,7 @@ function accelerationScore(capabilities: BackendCapabilities): number {
 
 export function matchesBackendCriteria(
   capabilities: BackendCapabilities,
-  criteria: BackendSelectionCriteria
+  criteria: BackendSelectionCriteria,
 ): boolean {
   if (!capabilities.available) {
     return false;
@@ -44,7 +47,10 @@ export function matchesBackendCriteria(
     return false;
   }
 
-  if (criteria.requiredPrecision && !capabilities.supportedPrecisions.includes(criteria.requiredPrecision)) {
+  if (
+    criteria.requiredPrecision &&
+    !capabilities.supportedPrecisions.includes(criteria.requiredPrecision)
+  ) {
     return false;
   }
 
@@ -61,29 +67,34 @@ export function matchesBackendCriteria(
 
 export function sortBackendCandidates(
   candidates: readonly BackendCandidate[],
-  criteria: BackendSelectionCriteria = {}
+  criteria: BackendSelectionCriteria = {},
 ): BackendCandidate[] {
   const preferAcceleration = criteria.preferAcceleration ?? true;
 
   return [...candidates].sort((left, right) => {
-    const preferredDelta = preferredIndex(left.backend.id, criteria) - preferredIndex(right.backend.id, criteria);
+    const preferredDelta =
+      preferredIndex(left.backend.id, criteria) - preferredIndex(right.backend.id, criteria);
     if (preferredDelta !== 0) {
       return preferredDelta;
     }
 
-    const precisionDelta = precisionScore(left.capabilities, criteria) - precisionScore(right.capabilities, criteria);
+    const precisionDelta =
+      precisionScore(left.capabilities, criteria) - precisionScore(right.capabilities, criteria);
     if (precisionDelta !== 0) {
       return precisionDelta;
     }
 
     if (preferAcceleration) {
-      const accelerationDelta = accelerationScore(left.capabilities) - accelerationScore(right.capabilities);
+      const accelerationDelta =
+        accelerationScore(left.capabilities) - accelerationScore(right.capabilities);
       if (accelerationDelta !== 0) {
         return accelerationDelta;
       }
     }
 
-    if (left.capabilities.requiresSharedArrayBuffer !== right.capabilities.requiresSharedArrayBuffer) {
+    if (
+      left.capabilities.requiresSharedArrayBuffer !== right.capabilities.requiresSharedArrayBuffer
+    ) {
       return left.capabilities.requiresSharedArrayBuffer ? 1 : -1;
     }
 
@@ -97,7 +108,7 @@ export function sortBackendCandidates(
 
 export function ensureAvailableBackendCandidates(
   candidates: readonly BackendCandidate[],
-  criteria: BackendSelectionCriteria = {}
+  criteria: BackendSelectionCriteria = {},
 ): BackendCandidate[] {
   if (candidates.length === 0) {
     throw new BackendUnavailableError('No execution backends are registered in the runtime.');
@@ -106,22 +117,26 @@ export function ensureAvailableBackendCandidates(
   const available = candidates.filter((candidate) => candidate.capabilities.available);
   if (available.length === 0) {
     throw new BackendUnavailableError('No registered execution backend is currently available.', {
-      backendIds: candidates.map((candidate) => candidate.backend.id)
+      backendIds: candidates.map((candidate) => candidate.backend.id),
     });
   }
 
-  const supported = available.filter((candidate) => matchesBackendCriteria(candidate.capabilities, criteria));
+  const supported = available.filter((candidate) =>
+    matchesBackendCriteria(candidate.capabilities, criteria),
+  );
   if (supported.length === 0) {
-    throw new CapabilityMismatchError('No available backend satisfies the requested capabilities.', {
-      criteria,
-      availableBackends: available.map((candidate) => ({
-        id: candidate.backend.id,
-        precisions: candidate.capabilities.supportedPrecisions,
-        requiresSharedArrayBuffer: candidate.capabilities.requiresSharedArrayBuffer
-      }))
-    });
+    throw new CapabilityMismatchError(
+      'No available backend satisfies the requested capabilities.',
+      {
+        criteria,
+        availableBackends: available.map((candidate) => ({
+          id: candidate.backend.id,
+          precisions: candidate.capabilities.supportedPrecisions,
+          requiresSharedArrayBuffer: candidate.capabilities.requiresSharedArrayBuffer,
+        })),
+      },
+    );
   }
 
   return supported;
 }
-

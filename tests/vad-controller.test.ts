@@ -1,8 +1,5 @@
-import {
-  RealtimeTranscriptionController,
-  VoiceActivityTimeline,
-  type TranscriptResult,
-} from 'asr.js';
+import { RealtimeTranscriptionController, VoiceActivityTimeline } from '@asrjs/speech-recognition/realtime';
+import { type TranscriptResult } from '@asrjs/speech-recognition';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('voice activity timeline', () => {
@@ -27,18 +24,20 @@ describe('voice activity timeline', () => {
 
 describe('realtime transcription controller', () => {
   it('coordinates ring buffering, windows, VAD, and transcript finalization', async () => {
-    const transcribe = vi.fn(async (): Promise<TranscriptResult> => ({
-      text: 'hello there',
-      warnings: [],
-      meta: {
-        detailLevel: 'words',
-        isFinal: false,
-      },
-      words: [
-        { index: 0, text: 'hello', startTime: 0, endTime: 0.5 },
-        { index: 1, text: 'there', startTime: 0.5, endTime: 1.0 },
-      ],
-    }));
+    const transcribe = vi.fn(
+      async (): Promise<TranscriptResult> => ({
+        text: 'hello there',
+        warnings: [],
+        meta: {
+          detailLevel: 'words',
+          isFinal: false,
+        },
+        words: [
+          { index: 0, text: 'hello', startTime: 0, endTime: 0.5 },
+          { index: 1, text: 'there', startTime: 0.5, endTime: 1.0 },
+        ],
+      }),
+    );
 
     const controller = new RealtimeTranscriptionController({
       sampleRate: 4,
@@ -59,7 +58,7 @@ describe('realtime transcription controller', () => {
         endFrame: 4,
         speechProbability: 0.95,
         isSpeech: true,
-      }
+      },
     });
 
     expect(partial?.kind).toBe('partial');
@@ -72,7 +71,7 @@ describe('realtime transcription controller', () => {
         endFrame: 8,
         speechProbability: 0.05,
         isSpeech: false,
-      }
+      },
     });
 
     expect(finalized?.kind).toBe('final');

@@ -1,11 +1,11 @@
-import type { AudioProcessor, ProcessorFeatureDescriptor } from '../../processors/index.js';
+import type { AudioProcessor, ProcessorFeatureDescriptor } from '../../audio/index.js';
 import type { TextTokenizer, TokenizerSpec } from '../../tokenizers/index.js';
 import type {
   BaseTranscriptionOptions,
   ModelClassification,
   PrecisionMode,
   TranscriptMeta,
-  TranscriptResult
+  TranscriptResult,
 } from '../../types/index.js';
 
 export interface NemoRuntimeHints {
@@ -69,7 +69,24 @@ export interface NemoNativeTranscriptMetrics {
   readonly decodeMs?: number;
   readonly tokenizeMs?: number;
   readonly totalMs?: number;
+  readonly wallMs?: number;
+  readonly audioDurationSec?: number;
   readonly rtf?: number;
+  readonly rtfx?: number;
+  readonly requestedPreprocessorBackend?: string;
+  readonly preprocessorBackend?: string;
+  readonly decodeAudioMs?: number;
+  readonly downmixMs?: number;
+  readonly resampleMs?: number;
+  readonly audioPreparationMs?: number;
+  readonly inputSampleRate?: number;
+  readonly outputSampleRate?: number;
+  readonly resampler?: string;
+  readonly resamplerQuality?: string | null;
+  readonly encoderFrameCount?: number;
+  readonly decodeIterations?: number;
+  readonly emittedTokenCount?: number;
+  readonly emittedWordCount?: number;
 }
 
 export interface NemoNativeTranscript {
@@ -96,22 +113,26 @@ export interface NemoDecodeContext<TConfig extends NemoModelConfig = NemoModelCo
 
 export interface NemoTimestampReconstructor<
   TNative extends NemoNativeTranscript = NemoNativeTranscript,
-  TOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions
+  TOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
 > {
-  reconstruct(nativeTranscript: TNative, detail: TOptions['detail']): Pick<TranscriptResult, 'segments' | 'words' | 'tokens'>;
+  reconstruct(
+    nativeTranscript: TNative,
+    detail: TOptions['detail'],
+  ): Pick<TranscriptResult, 'segments' | 'words' | 'tokens'>;
 }
 
-export interface NemoConfidenceReconstructor<TNative extends NemoNativeTranscript = NemoNativeTranscript> {
-  summarize(nativeTranscript: TNative): Pick<
-    TranscriptMeta,
-    'averageConfidence' | 'averageWordConfidence' | 'averageTokenConfidence'
-  >;
+export interface NemoConfidenceReconstructor<
+  TNative extends NemoNativeTranscript = NemoNativeTranscript,
+> {
+  summarize(
+    nativeTranscript: TNative,
+  ): Pick<TranscriptMeta, 'averageConfidence' | 'averageWordConfidence' | 'averageTokenConfidence'>;
 }
 
 export interface NemoModelDependencies<
   TConfig extends NemoModelConfig = NemoModelConfig,
   TNative extends NemoNativeTranscript = NemoNativeTranscript,
-  TOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions
+  TOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
 > {
   readonly tokenizer?: NemoTokenizer;
   readonly featureExtractor?: NemoFeatureExtractor<TConfig>;

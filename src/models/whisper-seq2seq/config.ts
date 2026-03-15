@@ -7,7 +7,7 @@ export const DEFAULT_WHISPER_CLASSIFICATION: ModelClassification = {
   encoder: 'whisper-transformer',
   decoder: 'transformer-decoder',
   topology: 'aed',
-  task: 'multitask-asr-translation'
+  task: 'multitask-asr-translation',
 };
 
 const BASE_WHISPER_CONFIG: WhisperSeq2SeqModelConfig = {
@@ -26,28 +26,28 @@ const BASE_WHISPER_CONFIG: WhisperSeq2SeqModelConfig = {
     kind: 'tiktoken',
     bosTokenId: 50257,
     eosTokenId: 50256,
-    padTokenId: 50256
-  }
+    padTokenId: 50256,
+  },
 };
 
 export function parseWhisperSeq2SeqConfig(
   _modelId: string,
-  override: Partial<WhisperSeq2SeqModelConfig> = {}
+  override: Partial<WhisperSeq2SeqModelConfig> = {},
 ): WhisperSeq2SeqModelConfig {
   return {
     ...BASE_WHISPER_CONFIG,
     ...override,
     tokenizer: {
       ...BASE_WHISPER_CONFIG.tokenizer,
-      ...override.tokenizer
-    }
+      ...override.tokenizer,
+    },
   };
 }
 
 export function describeWhisperSeq2SeqModel(
   modelId: string,
   classification: ModelClassification,
-  config: WhisperSeq2SeqModelConfig
+  config: WhisperSeq2SeqModelConfig,
 ): string {
   return `Whisper seq2seq scaffold model for ${modelId} (${classification.processor ?? config.processorArchitecture} -> ${classification.encoder ?? config.encoderArchitecture} -> ${classification.topology ?? 'aed'}).`;
 }

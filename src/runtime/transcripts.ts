@@ -4,42 +4,42 @@ import type {
   TranscriptNormalizer,
   TranscriptResult,
   TranscriptWarning,
-  TranscriptionEnvelope
+  TranscriptionEnvelope,
 } from '../types/index.js';
 import {
   createModelClassification,
   defaultNemoConfidenceReconstructor,
   defaultNemoTimestampReconstructor,
-  mapNemoNativeToCanonical
+  mapNemoNativeToCanonical,
 } from '../models/nemo-common/index.js';
 import {
   DEFAULT_HF_CTC_CLASSIFICATION,
   type HfCtcNativeTranscript,
-  mapHfCtcNativeToCanonical
+  mapHfCtcNativeToCanonical,
 } from '../models/hf-ctc-common/index.js';
 import {
   DEFAULT_NEMO_TDT_CLASSIFICATION,
-  type NemoTdtNativeTranscript
+  type NemoTdtNativeTranscript,
 } from '../models/nemo-tdt/index.js';
 import {
   DEFAULT_WHISPER_CLASSIFICATION,
   type WhisperNativeTranscript,
-  mapWhisperNativeToCanonical
+  mapWhisperNativeToCanonical,
 } from '../models/whisper-seq2seq/index.js';
 import type { LegacyParakeetTranscript } from '../presets/parakeet/index.js';
 
 function withTranscriptDefaults(
-  context: TranscriptNormalizationContext = {}
+  context: TranscriptNormalizationContext = {},
 ): Required<Pick<TranscriptNormalizationContext, 'detailLevel'>> & TranscriptNormalizationContext {
   return {
     detailLevel: context.detailLevel ?? 'segments',
-    ...context
+    ...context,
   };
 }
 
 function createTranscriptNormalizer<TNative>(
   id: string,
-  map: (native: TNative, context: TranscriptNormalizationContext) => TranscriptResult
+  map: (native: TNative, context: TranscriptNormalizationContext) => TranscriptResult,
 ): TranscriptNormalizer<TNative> {
   return {
     id,
@@ -49,23 +49,26 @@ function createTranscriptNormalizer<TNative>(
     toEnvelope(native, context = {}) {
       return {
         canonical: map(native, withTranscriptDefaults(context)),
-        native
+        native,
       };
-    }
+    },
   };
 }
 
 function normalizeClassification(
   base: ModelClassification,
-  override: Partial<ModelClassification> = {}
+  override: Partial<ModelClassification> = {},
 ): ModelClassification {
   return createModelClassification(base, override);
 }
 
 export function createNemoTdtTranscriptNormalizer(
-  classification: Partial<ModelClassification> = {}
+  classification: Partial<ModelClassification> = {},
 ): TranscriptNormalizer<NemoTdtNativeTranscript> {
-  const normalizedClassification = normalizeClassification(DEFAULT_NEMO_TDT_CLASSIFICATION, classification);
+  const normalizedClassification = normalizeClassification(
+    DEFAULT_NEMO_TDT_CLASSIFICATION,
+    classification,
+  );
   return createTranscriptNormalizer('nemo-tdt', (native, context) =>
     mapNemoNativeToCanonical(
       native,
@@ -78,39 +81,63 @@ export function createNemoTdtTranscriptNormalizer(
               preprocessMs: native.metrics.preprocessMs,
               encodeMs: native.metrics.encodeMs,
               decodeMs: native.metrics.decodeMs,
+              tokenizeMs: native.metrics.tokenizeMs,
               postprocessMs: native.metrics.tokenizeMs,
               totalMs: native.metrics.totalMs,
-              rtf: native.metrics.rtf
+              wallMs: native.metrics.wallMs,
+              audioDurationSec: native.metrics.audioDurationSec,
+              rtf: native.metrics.rtf,
+              rtfx: native.metrics.rtfx,
+              requestedPreprocessorBackend: native.metrics.requestedPreprocessorBackend,
+              preprocessorBackend: native.metrics.preprocessorBackend,
+              decodeAudioMs: native.metrics.decodeAudioMs,
+              downmixMs: native.metrics.downmixMs,
+              resampleMs: native.metrics.resampleMs,
+              audioPreparationMs: native.metrics.audioPreparationMs,
+              inputSampleRate: native.metrics.inputSampleRate,
+              outputSampleRate: native.metrics.outputSampleRate,
+              resampler: native.metrics.resampler,
+              resamplerQuality: native.metrics.resamplerQuality,
+              encoderFrameCount: native.metrics.encoderFrameCount,
+              decodeIterations: native.metrics.decodeIterations,
+              emittedTokenCount: native.metrics.emittedTokenCount,
+              emittedWordCount: native.metrics.emittedWordCount,
             }
-          : context.metrics
+          : context.metrics,
       },
       defaultNemoTimestampReconstructor,
-      defaultNemoConfidenceReconstructor
-    )
+      defaultNemoConfidenceReconstructor,
+    ),
   );
 }
 
 export function createHfCtcTranscriptNormalizer(
-  classification: Partial<ModelClassification> = {}
+  classification: Partial<ModelClassification> = {},
 ): TranscriptNormalizer<HfCtcNativeTranscript> {
-  const normalizedClassification = normalizeClassification(DEFAULT_HF_CTC_CLASSIFICATION, classification);
+  const normalizedClassification = normalizeClassification(
+    DEFAULT_HF_CTC_CLASSIFICATION,
+    classification,
+  );
   return createTranscriptNormalizer('hf-ctc', (native, context) =>
     mapHfCtcNativeToCanonical(native, normalizedClassification, {
       ...context,
-      detailLevel: context.detailLevel ?? 'segments'
-    })
+      detailLevel: context.detailLevel ?? 'segments',
+    }),
   );
 }
 
 export function createWhisperTranscriptNormalizer(
-  classification: Partial<ModelClassification> = {}
+  classification: Partial<ModelClassification> = {},
 ): TranscriptNormalizer<WhisperNativeTranscript> {
-  const normalizedClassification = normalizeClassification(DEFAULT_WHISPER_CLASSIFICATION, classification);
+  const normalizedClassification = normalizeClassification(
+    DEFAULT_WHISPER_CLASSIFICATION,
+    classification,
+  );
   return createTranscriptNormalizer('whisper-seq2seq', (native, context) =>
     mapWhisperNativeToCanonical(native, normalizedClassification, {
       ...context,
-      detailLevel: context.detailLevel ?? 'segments'
-    })
+      detailLevel: context.detailLevel ?? 'segments',
+    }),
   );
 }
 
@@ -122,7 +149,7 @@ export function createLegacyParakeetTranscriptNormalizer(): TranscriptNormalizer
       text: word.text,
       startTime: word.start_time,
       endTime: word.end_time,
-      confidence: word.confidence
+      confidence: word.confidence,
     }));
     const tokens = (native.tokens ?? []).map((token, index) => ({
       index,
@@ -134,18 +161,21 @@ export function createLegacyParakeetTranscriptNormalizer(): TranscriptNormalizer
       confidence: token.confidence,
       frameIndex: token.frame_index,
       logProb: token.log_prob,
-      tdtStep: token.tdt_step
+      tdtStep: token.tdt_step,
     }));
-    const segments = words.length > 0
-      ? [{
-          index: 0,
-          text: native.utterance_text,
-          startTime: words[0]!.startTime,
-          endTime: words[words.length - 1]!.endTime,
-          confidence: native.confidence_scores?.utterance ?? undefined,
-          wordIndices: words.map((word) => word.index)
-        }]
-      : undefined;
+    const segments =
+      words.length > 0
+        ? [
+            {
+              index: 0,
+              text: native.utterance_text,
+              startTime: words[0]!.startTime,
+              endTime: words[words.length - 1]!.endTime,
+              confidence: native.confidence_scores?.utterance ?? undefined,
+              wordIndices: words.map((word) => word.index),
+            },
+          ]
+        : undefined;
 
     const result: TranscriptResult = {
       text: native.utterance_text,
@@ -167,12 +197,29 @@ export function createLegacyParakeetTranscriptNormalizer(): TranscriptNormalizer
               preprocessMs: native.metrics.preprocess_ms,
               encodeMs: native.metrics.encode_ms,
               decodeMs: native.metrics.decode_ms,
+              tokenizeMs: native.metrics.tokenize_ms,
               postprocessMs: native.metrics.tokenize_ms,
               totalMs: native.metrics.total_ms,
-              rtf: native.metrics.rtf
+              wallMs: native.metrics.wall_ms,
+              audioDurationSec: native.metrics.audio_duration_sec,
+              rtf: native.metrics.rtf,
+              rtfx: native.metrics.rtfx,
+              preprocessorBackend: native.metrics.preprocessor_backend,
+              decodeAudioMs: native.metrics.audio_decode_ms,
+              downmixMs: native.metrics.downmix_ms,
+              resampleMs: native.metrics.resample_ms,
+              audioPreparationMs: native.metrics.audio_preparation_ms,
+              inputSampleRate: native.metrics.input_sample_rate,
+              outputSampleRate: native.metrics.output_sample_rate,
+              resampler: native.metrics.resampler,
+              resamplerQuality: native.metrics.resampler_quality,
+              encoderFrameCount: native.metrics.encoder_frame_count,
+              decodeIterations: native.metrics.decode_iterations,
+              emittedTokenCount: native.metrics.emitted_token_count,
+              emittedWordCount: native.metrics.emitted_word_count,
             }
-          : context.metrics
-      }
+          : context.metrics,
+      },
     };
 
     if (detail !== 'text' && segments) {
@@ -196,33 +243,35 @@ export const legacyParakeetTranscriptNormalizer = createLegacyParakeetTranscript
 
 export function normalizeNemoTdtTranscript(
   native: NemoTdtNativeTranscript,
-  context: TranscriptNormalizationContext = {}
+  context: TranscriptNormalizationContext = {},
 ): TranscriptResult {
   return nemoTdtTranscriptNormalizer.toCanonical(native, context);
 }
 
 export function normalizeHfCtcTranscript(
   native: HfCtcNativeTranscript,
-  context: TranscriptNormalizationContext = {}
+  context: TranscriptNormalizationContext = {},
 ): TranscriptResult {
   return hfCtcTranscriptNormalizer.toCanonical(native, context);
 }
 
 export function normalizeWhisperTranscript(
   native: WhisperNativeTranscript,
-  context: TranscriptNormalizationContext = {}
+  context: TranscriptNormalizationContext = {},
 ): TranscriptResult {
   return whisperTranscriptNormalizer.toCanonical(native, context);
 }
 
 export function normalizeLegacyParakeetTranscript(
   native: LegacyParakeetTranscript,
-  context: TranscriptNormalizationContext = {}
+  context: TranscriptNormalizationContext = {},
 ): TranscriptResult {
   return legacyParakeetTranscriptNormalizer.toCanonical(native, context);
 }
 
-export function isTranscriptionEnvelope<TNative = unknown>(value: unknown): value is TranscriptionEnvelope<TNative> {
+export function isTranscriptionEnvelope<TNative = unknown>(
+  value: unknown,
+): value is TranscriptionEnvelope<TNative> {
   if (!value || typeof value !== 'object') {
     return false;
   }
@@ -233,14 +282,16 @@ export function isTranscriptionEnvelope<TNative = unknown>(value: unknown): valu
   }
 
   const canonical = candidate.canonical as Record<string, unknown>;
-  return typeof canonical.text === 'string'
-    && Array.isArray(canonical.warnings)
-    && typeof canonical.meta === 'object'
-    && canonical.meta !== null;
+  return (
+    typeof canonical.text === 'string' &&
+    Array.isArray(canonical.warnings) &&
+    typeof canonical.meta === 'object' &&
+    canonical.meta !== null
+  );
 }
 
 export function getCanonicalTranscript<TNative = unknown>(
-  value: TranscriptResult | TranscriptionEnvelope<TNative>
+  value: TranscriptResult | TranscriptionEnvelope<TNative>,
 ): TranscriptResult {
   return isTranscriptionEnvelope<TNative>(value) ? value.canonical : value;
 }

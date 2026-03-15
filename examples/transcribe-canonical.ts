@@ -1,6 +1,6 @@
-import { createSpeechRuntime } from 'asr.js';
-import { createWasmBackend } from 'asr.js';
-import { createNemoTdtModelFamily } from 'asr.js';
+import { createSpeechRuntime } from '@asrjs/speech-recognition';
+import { createWasmBackend } from '@asrjs/speech-recognition';
+import { createNemoTdtModelFamily } from '@asrjs/speech-recognition/models/nemo-tdt';
 
 export async function transcribeCanonicalExample() {
   const runtime = createSpeechRuntime({
@@ -9,6 +9,7 @@ export async function transcribeCanonicalExample() {
   });
 
   const model = await runtime.loadModel({
+    family: 'nemo-tdt',
     modelId: 'nemo-fastconformer-tdt-scaffold',
     classification: {
       ecosystem: 'nemo',

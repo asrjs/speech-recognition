@@ -1,18 +1,18 @@
 # VAD (Voice Activity Detection) Model Architectures
 
-Documentation of VAD model families for asr.js design reference. **Architecture docs only — no implementation.**
+Documentation of VAD model families for @asrjs/speech-recognition design reference. **Architecture docs only — no implementation.**
 
 ---
 
 ## Model Family Overview
 
-| Family | Source | Frontend | Encoder | Output | Runtime |
-|--------|--------|----------|---------|--------|---------|
-| **TEN VAD** | [TEN-framework/ten-vad](https://github.com/TEN-framework/ten-vad) | — | Inference engine (static lib) | prob + flag per frame | WebAssembly |
-| **FireRedVAD** | FireRedASR2S | Kaldi mel (80) | DFSMN | prob per frame | PyTorch / ONNX |
-| **Silero-VAD** | Silero Team | Raw / mel | CNN/LSTM | prob per frame | PyTorch / ONNX |
-| **WebRTC-VAD** | Chromium | Raw (8/16 kHz) | GMM | binary | C |
-| **TEN-VAD (onnx-asr)** | onnx-asr | — | — | segments | ONNX |
+| Family                 | Source                                                            | Frontend       | Encoder                       | Output                | Runtime        |
+| ---------------------- | ----------------------------------------------------------------- | -------------- | ----------------------------- | --------------------- | -------------- |
+| **TEN VAD**            | [TEN-framework/ten-vad](https://github.com/TEN-framework/ten-vad) | —              | Inference engine (static lib) | prob + flag per frame | WebAssembly    |
+| **FireRedVAD**         | FireRedASR2S                                                      | Kaldi mel (80) | DFSMN                         | prob per frame        | PyTorch / ONNX |
+| **Silero-VAD**         | Silero Team                                                       | Raw / mel      | CNN/LSTM                      | prob per frame        | PyTorch / ONNX |
+| **WebRTC-VAD**         | Chromium                                                          | Raw (8/16 kHz) | GMM                           | binary                | C              |
+| **TEN-VAD (onnx-asr)** | onnx-asr                                                          | —              | —                             | segments              | ONNX           |
 
 ---
 
@@ -36,12 +36,12 @@ Raw waveform (int16)
 
 ### API (C / Emscripten)
 
-| Function | Purpose |
-|----------|---------|
-| `ten_vad_create(handlePtr, hopSize, threshold)` | Create instance |
+| Function                                                         | Purpose           |
+| ---------------------------------------------------------------- | ----------------- |
+| `ten_vad_create(handlePtr, hopSize, threshold)`                  | Create instance   |
 | `ten_vad_process(handle, audioPtr, len, outProbPtr, outFlagPtr)` | Process one frame |
-| `ten_vad_destroy(handlePtr)` | Release |
-| `ten_vad_get_version()` | Version string |
+| `ten_vad_destroy(handlePtr)`                                     | Release           |
+| `ten_vad_get_version()`                                          | Version string    |
 
 ### WebAssembly Build
 
@@ -162,22 +162,22 @@ Raw waveform (8 or 16 kHz, 10/20/30 ms frames)
 
 ## Frontend Comparison (VAD)
 
-| Family | Frontend | Input |
-|--------|----------|-------|
-| **TEN VAD** | — (raw in model) | int16, hopSize samples |
-| **FireRedVAD** | Kaldi mel (80) | [B, T, 80] |
-| **Silero-VAD** | Raw or internal | waveform |
-| **WebRTC-VAD** | Raw | 8/16 kHz PCM |
+| Family         | Frontend         | Input                  |
+| -------------- | ---------------- | ---------------------- |
+| **TEN VAD**    | — (raw in model) | int16, hopSize samples |
+| **FireRedVAD** | Kaldi mel (80)   | [B, T, 80]             |
+| **Silero-VAD** | Raw or internal  | waveform               |
+| **WebRTC-VAD** | Raw              | 8/16 kHz PCM           |
 
 ---
 
 ## Output Modes
 
-| Mode | Families | Use case |
-|------|----------|----------|
-| **Frame-level prob** | TEN VAD, FireRedVAD, Silero-VAD | Custom thresholding, streaming |
-| **Frame-level binary** | TEN VAD, WebRTC-VAD | Simple on/off |
-| **Segments** | FireRedVAD, Silero-VAD (postproc) | ASR input chunking |
+| Mode                   | Families                          | Use case                       |
+| ---------------------- | --------------------------------- | ------------------------------ |
+| **Frame-level prob**   | TEN VAD, FireRedVAD, Silero-VAD   | Custom thresholding, streaming |
+| **Frame-level binary** | TEN VAD, WebRTC-VAD               | Simple on/off                  |
+| **Segments**           | FireRedVAD, Silero-VAD (postproc) | ASR input chunking             |
 
 ---
 

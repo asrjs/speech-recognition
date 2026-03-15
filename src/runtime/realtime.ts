@@ -54,7 +54,9 @@ export class AudioRingBuffer {
   readInto(startFrame: number, endFrame: number, destination: Float32Array): number {
     const length = this.validateRange(startFrame, endFrame);
     if (destination.length < length) {
-      throw new RangeError(`Destination buffer too small. Needed ${length}, got ${destination.length}.`);
+      throw new RangeError(
+        `Destination buffer too small. Needed ${length}, got ${destination.length}.`,
+      );
     }
 
     const readPosition = startFrame % this.maxFrames;
@@ -107,10 +109,14 @@ export class AudioRingBuffer {
 
     const baseFrame = this.getBaseFrameOffset();
     if (startFrame < baseFrame) {
-      throw new RangeError(`Requested frame ${startFrame} has been overwritten. Oldest available: ${baseFrame}.`);
+      throw new RangeError(
+        `Requested frame ${startFrame} has been overwritten. Oldest available: ${baseFrame}.`,
+      );
     }
     if (endFrame > this.currentFrame) {
-      throw new RangeError(`Requested frame ${endFrame} is in the future. Latest available: ${this.currentFrame}.`);
+      throw new RangeError(
+        `Requested frame ${endFrame} is in the future. Latest available: ${this.currentFrame}.`,
+      );
     }
 
     return length;
@@ -153,7 +159,7 @@ export class StreamingWindowBuilder {
   constructor(
     ringBuffer: Pick<AudioRingBuffer, 'getCurrentFrame' | 'getBaseFrameOffset'>,
     activityBuffer: StreamingActivityBuffer | null = null,
-    options: StreamingWindowBuilderOptions = {}
+    options: StreamingWindowBuilderOptions = {},
   ) {
     this.ringBuffer = ringBuffer;
     this.activityBuffer = activityBuffer;
@@ -225,13 +231,14 @@ export class StreamingWindowBuilder {
       };
     }
 
-    let startFrame = this.matureCursorFrame > 0
-      ? this.matureCursorFrame
-      : this.sentenceEnds.length >= 2
-        ? this.sentenceEnds[this.sentenceEnds.length - 2]!
-        : this.sentenceEnds.length === 1
-          ? this.sentenceEnds[0]!
-          : baseFrame;
+    let startFrame =
+      this.matureCursorFrame > 0
+        ? this.matureCursorFrame
+        : this.sentenceEnds.length >= 2
+          ? this.sentenceEnds[this.sentenceEnds.length - 2]!
+          : this.sentenceEnds.length === 1
+            ? this.sentenceEnds[0]!
+            : baseFrame;
 
     if (startFrame < baseFrame) {
       startFrame = baseFrame;
@@ -254,7 +261,11 @@ export class StreamingWindowBuilder {
 
     if (this.config.useActivityBoundaries && this.activityBuffer) {
       const searchEnd = Math.min(startFrame + Math.round(this.config.sampleRate * 0.5), endFrame);
-      const boundary = this.activityBuffer.findSilenceBoundary(searchEnd, startFrame, this.config.activityThreshold);
+      const boundary = this.activityBuffer.findSilenceBoundary(
+        searchEnd,
+        startFrame,
+        this.config.activityThreshold,
+      );
       const adjustedFrames = endFrame - boundary;
       if (boundary > startFrame && adjustedFrames >= minFrames) {
         startFrame = boundary;
@@ -287,11 +298,16 @@ export class StreamingWindowBuilder {
       return true;
     }
     const endFrame = this.ringBuffer.getCurrentFrame();
-    const startFrame = this.matureCursorFrame > 0 ? this.matureCursorFrame : this.ringBuffer.getBaseFrameOffset();
+    const startFrame =
+      this.matureCursorFrame > 0 ? this.matureCursorFrame : this.ringBuffer.getBaseFrameOffset();
     if (startFrame >= endFrame) {
       return false;
     }
-    return this.activityBuffer.hasSpeechInRange(startFrame, endFrame, this.config.activityThreshold);
+    return this.activityBuffer.hasSpeechInRange(
+      startFrame,
+      endFrame,
+      this.config.activityThreshold,
+    );
   }
 
   reset(): void {
@@ -353,12 +369,14 @@ function normalizeSentenceKey(text: string): string {
 }
 
 function wordsToInternal(words: readonly TranscriptWord[]): InternalTranscriptWord[] {
-  return words.map((word) => ({
-    text: String(word.text ?? '').trim(),
-    startTime: word.startTime,
-    endTime: word.endTime,
-    confidence: word.confidence,
-  })).filter((word) => word.text.length > 0);
+  return words
+    .map((word) => ({
+      text: String(word.text ?? '').trim(),
+      startTime: word.startTime,
+      endTime: word.endTime,
+      confidence: word.confidence,
+    }))
+    .filter((word) => word.text.length > 0);
 }
 
 function textToInternalWords(text: string): InternalTranscriptWord[] {
@@ -370,7 +388,11 @@ function textToInternalWords(text: string): InternalTranscriptWord[] {
 }
 
 function joinWords(words: readonly InternalTranscriptWord[]): string {
-  return words.map((word) => word.text).join(' ').replace(/\s+/g, ' ').trim();
+  return words
+    .map((word) => word.text)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function splitSentences(text: string): string[] {
@@ -379,7 +401,10 @@ function splitSentences(text: string): string[] {
     .filter((value) => value.length > 0);
 }
 
-function mapSentenceBoundaries(words: readonly InternalTranscriptWord[], sentences: readonly string[]): number[] {
+function mapSentenceBoundaries(
+  words: readonly InternalTranscriptWord[],
+  sentences: readonly string[],
+): number[] {
   const boundaries: number[] = [];
   let wordIndex = 0;
   for (const sentence of sentences) {
@@ -400,7 +425,7 @@ function mapSentenceBoundaries(words: readonly InternalTranscriptWord[], sentenc
 function createSentence(
   id: string,
   words: readonly InternalTranscriptWord[],
-  isCommitted: boolean
+  isCommitted: boolean,
 ): MergedTranscriptSentence | null {
   const text = joinWords(words);
   if (!text) {
@@ -444,9 +469,10 @@ export class UtteranceTranscriptMerger {
   }
 
   process(result: TranscriptResult): UtteranceTranscriptSnapshot {
-    const incomingWords = result.words && result.words.length > 0
-      ? wordsToInternal(result.words)
-      : textToInternalWords(result.text);
+    const incomingWords =
+      result.words && result.words.length > 0
+        ? wordsToInternal(result.words)
+        : textToInternalWords(result.text);
     this.sourceText = result.text;
     this.revision += 1;
 
@@ -477,7 +503,10 @@ export class UtteranceTranscriptMerger {
           this.committedSentences.push(sentence);
           this.finalizedMeta.push({ text: sentence.text, endTime: sentence.endTime });
           newlyCommitted.push(sentence);
-          if (Number.isFinite(sentence.endTime) && (sentence.endTime ?? 0) > this.matureCursorTime) {
+          if (
+            Number.isFinite(sentence.endTime) &&
+            (sentence.endTime ?? 0) > this.matureCursorTime
+          ) {
             this.matureCursorTime = sentence.endTime ?? this.matureCursorTime;
           }
         }
@@ -578,7 +607,9 @@ export class UtteranceTranscriptMerger {
     });
   }
 
-  private createSnapshot(newlyCommittedSentences: readonly MergedTranscriptSentence[]): UtteranceTranscriptSnapshot {
+  private createSnapshot(
+    newlyCommittedSentences: readonly MergedTranscriptSentence[],
+  ): UtteranceTranscriptSnapshot {
     const pendingSentence = createSentence('pending', this.pendingWords, false);
     return {
       committedText: this.getCommittedText(),

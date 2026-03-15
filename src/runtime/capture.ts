@@ -1,4 +1,4 @@
-import { mixAudioBufferChannelsToMono, type AudioBufferLikeForDecode } from './media.js';
+import { mixAudioBufferChannelsToMono } from './media.js';
 
 export interface MicrophoneAudioChunk {
   readonly pcm: Float32Array;
@@ -24,7 +24,11 @@ export interface BrowserAudioContextLike {
   readonly sampleRate: number;
   readonly destination: unknown;
   createMediaStreamSource(stream: MediaStream): MediaStreamSourceNodeLike;
-  createScriptProcessor(bufferSize: number, numberOfInputChannels: number, numberOfOutputChannels: number): ScriptProcessorAudioNodeLike;
+  createScriptProcessor(
+    bufferSize: number,
+    numberOfInputChannels: number,
+    numberOfOutputChannels: number,
+  ): ScriptProcessorAudioNodeLike;
   close(): Promise<void> | void;
 }
 
@@ -52,26 +56,30 @@ function defaultConstraints(): MediaStreamConstraints {
       channelCount: 1,
       echoCancellation: true,
       noiseSuppression: true,
-      autoGainControl: true
-    }
+      autoGainControl: true,
+    },
   };
 }
 
 function resolveGetUserMedia(
-  override?: BrowserMicrophoneCaptureOptions['getUserMedia']
+  override?: BrowserMicrophoneCaptureOptions['getUserMedia'],
 ): (constraints: MediaStreamConstraints) => Promise<MediaStream> {
   if (override) {
     return override;
   }
-  const getUserMedia = globalThis.navigator?.mediaDevices?.getUserMedia?.bind(globalThis.navigator.mediaDevices);
+  const getUserMedia = globalThis.navigator?.mediaDevices?.getUserMedia?.bind(
+    globalThis.navigator.mediaDevices,
+  );
   if (!getUserMedia) {
-    throw new Error('startMicrophoneCapture requires navigator.mediaDevices.getUserMedia in this environment.');
+    throw new Error(
+      'startMicrophoneCapture requires navigator.mediaDevices.getUserMedia in this environment.',
+    );
   }
   return getUserMedia;
 }
 
 function resolveCreateAudioContext(
-  override?: BrowserMicrophoneCaptureOptions['createAudioContext']
+  override?: BrowserMicrophoneCaptureOptions['createAudioContext'],
 ): (sampleRate: number) => BrowserAudioContextLike {
   if (override) {
     return override;
@@ -85,12 +93,14 @@ function resolveCreateAudioContext(
 }
 
 export async function startMicrophoneCapture(
-  options: BrowserMicrophoneCaptureOptions
+  options: BrowserMicrophoneCaptureOptions,
 ): Promise<BrowserMicrophoneCaptureHandle> {
   const bufferSize = options.bufferSize ?? 4096;
   const createAudioContext = resolveCreateAudioContext(options.createAudioContext);
   const ownsStream = !options.stream;
-  const stream = options.stream ?? await resolveGetUserMedia(options.getUserMedia)(options.constraints ?? defaultConstraints());
+  const stream =
+    options.stream ??
+    (await resolveGetUserMedia(options.getUserMedia)(options.constraints ?? defaultConstraints()));
   const audioContext = createAudioContext(options.targetSampleRate ?? 16000);
   const source = audioContext.createMediaStreamSource(stream);
   const processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
@@ -107,7 +117,7 @@ export async function startMicrophoneCapture(
         startFrame,
         endFrame: currentFrame,
         startTimeSeconds: startFrame / audioContext.sampleRate,
-        endTimeSeconds: currentFrame / audioContext.sampleRate
+        endTimeSeconds: currentFrame / audioContext.sampleRate,
       });
     } catch (error) {
       options.onError?.(error);
@@ -131,6 +141,6 @@ export async function startMicrophoneCapture(
           track.stop();
         }
       }
-    }
+    },
   };
 }

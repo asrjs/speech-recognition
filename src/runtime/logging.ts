@@ -4,13 +4,12 @@ export const defaultRuntimeLogger: RuntimeLogger = {
   debug: () => undefined,
   info: () => undefined,
   warn: () => undefined,
-  error: () => undefined
+  error: () => undefined,
 };
 
 export function createRuntimeHooks(hooks?: SpeechRuntimeHooks): Required<SpeechRuntimeHooks> {
   return {
     logger: hooks?.logger ?? defaultRuntimeLogger,
-    onProgress: hooks?.onProgress ?? (() => undefined)
+    onProgress: hooks?.onProgress ?? (() => undefined),
   };
 }
-

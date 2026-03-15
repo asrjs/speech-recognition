@@ -104,7 +104,10 @@ export function normalizeBenchmarkText(value: string | null | undefined): string
     .trim();
 }
 
-export function levenshteinDistance(left: string | null | undefined, right: string | null | undefined): number {
+export function levenshteinDistance(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): number {
   const a = left || '';
   const b = right || '';
   if (a === b) return 0;
@@ -125,7 +128,7 @@ export function levenshteinDistance(left: string | null | undefined, right: stri
       current[column] = Math.min(
         previous[column]! + 1,
         current[column - 1]! + 1,
-        previous[column - 1]! + substitutionCost
+        previous[column - 1]! + substitutionCost,
       );
     }
     for (let column = 0; column <= b.length; column += 1) {
@@ -136,14 +139,17 @@ export function levenshteinDistance(left: string | null | undefined, right: stri
   return previous[b.length]!;
 }
 
-export function textSimilarity(left: string | null | undefined, right: string | null | undefined): number {
+export function textSimilarity(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): number {
   const normalizedLeft = normalizeBenchmarkText(left);
   const normalizedRight = normalizeBenchmarkText(right);
   const maxLength = Math.max(normalizedLeft.length, normalizedRight.length);
   if (maxLength === 0) {
     return 1;
   }
-  return 1 - (levenshteinDistance(normalizedLeft, normalizedRight) / maxLength);
+  return 1 - levenshteinDistance(normalizedLeft, normalizedRight) / maxLength;
 }
 
 export function mean(values: readonly number[]): number | null {
@@ -155,9 +161,7 @@ export function median(values: readonly number[]): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1
-    ? sorted[middle]!
-    : ((sorted[middle - 1]! + sorted[middle]!) / 2);
+  return sorted.length % 2 === 1 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
 }
 
 export function percentile(values: readonly number[], p: number): number | null {
@@ -170,7 +174,7 @@ export function percentile(values: readonly number[], p: number): number | null 
 export function stddev(values: readonly number[]): number {
   if (values.length < 2) return 0;
   const avg = mean(values)!;
-  const variance = values.reduce((sum, value) => sum + ((value - avg) ** 2), 0) / (values.length - 1);
+  const variance = values.reduce((sum, value) => sum + (value - avg) ** 2, 0) / (values.length - 1);
   return Math.sqrt(variance);
 }
 
@@ -204,10 +208,18 @@ export function safeNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function calcRtfx(audioDurationSec: number | null | undefined, stageMs: number | null | undefined): number | null {
+export function calcRtfx(
+  audioDurationSec: number | null | undefined,
+  stageMs: number | null | undefined,
+): number | null {
   const duration = Number(audioDurationSec);
   const latencyMs = Number(stageMs);
-  if (!Number.isFinite(duration) || !Number.isFinite(latencyMs) || duration <= 0 || latencyMs <= 0) {
+  if (
+    !Number.isFinite(duration) ||
+    !Number.isFinite(latencyMs) ||
+    duration <= 0 ||
+    latencyMs <= 0
+  ) {
     return null;
   }
   return (duration * 1000) / latencyMs;
@@ -222,7 +234,10 @@ function escapeCsv(value: unknown): string {
   return text;
 }
 
-export function toCsv(rows: readonly Record<string, unknown>[], columns: readonly string[]): string {
+export function toCsv(
+  rows: readonly Record<string, unknown>[],
+  columns: readonly string[],
+): string {
   const header = columns.join(',');
   const lines = rows.map((row) => columns.map((column) => escapeCsv(row[column])).join(','));
   return [header, ...lines].join('\n');
@@ -277,6 +292,6 @@ export function flattenBenchmarkRunRecord(run: BenchmarkRunRecord): Record<strin
 export function benchmarkRunRecordsToCsv(runs: readonly BenchmarkRunRecord[]): string {
   return toCsv(
     runs.map((run) => flattenBenchmarkRunRecord(run)),
-    [...BENCHMARK_RUN_CSV_COLUMNS]
+    [...BENCHMARK_RUN_CSV_COLUMNS],
   );
 }

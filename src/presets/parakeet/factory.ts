@@ -1,79 +1,52 @@
-import type { ModelClassification, SpeechModelFactory } from '../../types/index.js';
-import {
-  createNemoTdtModelFamily,
-  describeNemoTdtModel,
-  parseNemoTdtConfig,
-  type CreateNemoTdtModelFamilyOptions,
-  type NemoTdtArtifactSource,
-  type NemoTdtModelOptions,
-  type NemoTdtNativeTranscript,
-  type NemoTdtTranscriptionOptions
+import type { FamilyModelLoadRequest, SpeechPresetFactory } from '../../types/index.js';
+import type {
+  CreateNemoTdtModelFamilyOptions,
+  NemoTdtModelOptions,
 } from '../../models/nemo-tdt/index.js';
-import {
-  resolveParakeetArtifactSource,
-  resolveParakeetPresetManifest
-} from './manifest.js';
+import { DEFAULT_MODEL } from './catalog.js';
+import { resolveParakeetArtifactSource, resolveParakeetPresetManifest } from './manifest.js';
 
 export interface CreateParakeetPresetFactoryOptions {
   readonly dependencies?: CreateNemoTdtModelFamilyOptions['dependencies'];
   readonly useManifestSource?: boolean;
 }
 
-function parakeetClassificationFallback(classification: Partial<ModelClassification> = {}): boolean {
-  return classification.family === 'parakeet'
-    || (
-      classification.ecosystem === 'nemo'
-      && classification.decoder === 'tdt'
-      && classification.family === 'parakeet'
-    );
-}
-
 export function createParakeetPresetFactory(
-  options: CreateParakeetPresetFactoryOptions = {}
-): SpeechModelFactory<NemoTdtModelOptions, NemoTdtTranscriptionOptions, NemoTdtNativeTranscript> {
-  const baseFactory = createNemoTdtModelFamily({
-    family: 'parakeet',
-    classification: {
-      family: 'parakeet'
-    },
-    dependencies: options.dependencies,
-    supportsModel(modelId, classification) {
-      return resolveParakeetPresetManifest(modelId) !== undefined || parakeetClassificationFallback(classification);
-    },
-    resolveConfig(modelId, request) {
-      const manifest = resolveParakeetPresetManifest(modelId);
-      return parseNemoTdtConfig(modelId, {
-        ...manifest?.config,
-        ...request.options?.config
-      });
-    },
-    describeModel(modelId, classification, config) {
-      const manifest = resolveParakeetPresetManifest(modelId);
-      return manifest?.description ?? describeNemoTdtModel(modelId, classification, config);
-    }
-  });
-
+  options: CreateParakeetPresetFactoryOptions = {},
+): SpeechPresetFactory<NemoTdtModelOptions, NemoTdtModelOptions> {
   return {
-    ...baseFactory,
-    async createModel(request, context) {
-      const manifestSource: NemoTdtArtifactSource | undefined = options.useManifestSource
-        ? resolveParakeetArtifactSource(request.modelId)
+    preset: 'parakeet',
+    supports(modelId?: string): boolean {
+      return modelId ? resolveParakeetPresetManifest(modelId) !== undefined : true;
+    },
+    async resolveModelRequest(
+      request,
+      _context,
+    ): Promise<FamilyModelLoadRequest<NemoTdtModelOptions>> {
+      const modelId = request.modelId ?? DEFAULT_MODEL;
+      const manifest = resolveParakeetPresetManifest(modelId);
+      const manifestSource = options.useManifestSource
+        ? resolveParakeetArtifactSource(modelId)
         : undefined;
-      const nextOptions: NemoTdtModelOptions | undefined = request.options
-        ? {
-            ...request.options,
-            source: request.options.source ?? manifestSource
-          }
-        : (manifestSource ? { source: manifestSource } : undefined);
 
-      return baseFactory.createModel(
-        {
-          ...request,
-          options: nextOptions
+      return {
+        family: 'nemo-tdt',
+        modelId,
+        classification: {
+          family: 'parakeet',
+          ...request.classification,
         },
-        context
-      );
-    }
+        resolvedPreset: 'parakeet',
+        options: {
+          ...request.options,
+          config: {
+            ...manifest?.config,
+            ...request.options?.config,
+          },
+          source: request.options?.source ?? manifestSource,
+        },
+      };
+    },
   };
 }
 

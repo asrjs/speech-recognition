@@ -1,9 +1,20 @@
 import type { NemoTokenizer } from '../nemo-common/index.js';
+import { importNodeModule, isNodeLikeRuntime } from '../../io/node.js';
 
 async function fetchText(url: string): Promise<string> {
+  if (isNodeLikeRuntime() && /^file:/i.test(url)) {
+    const [{ fileURLToPath }, fs] = await Promise.all([
+      importNodeModule<typeof import('node:url')>('node:url'),
+      importNodeModule<typeof import('node:fs/promises')>('node:fs/promises'),
+    ]);
+    return fs.readFile(fileURLToPath(url), 'utf8');
+  }
+
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Failed to fetch tokenizer vocabulary from ${url}: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to fetch tokenizer vocabulary from ${url}: ${response.status} ${response.statusText}`,
+    );
   }
 
   return response.text();
@@ -17,7 +28,10 @@ export class ParakeetTokenizer implements NemoTokenizer {
 
   constructor(readonly idToToken: readonly string[]) {
     this.vocabSize = idToToken.length;
-    this.blankId = Math.max(0, idToToken.findIndex((token) => token === '<blk>'));
+    this.blankId = Math.max(
+      0,
+      idToToken.findIndex((token) => token === '<blk>'),
+    );
     this.sanitizedTokens = idToToken.map((token) => token.replace(/\u2581/g, ' '));
   }
 

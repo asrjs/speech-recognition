@@ -1,4 +1,5 @@
-export * from './graph.js';
+export * from './descriptors.js';
+export * from './math.js';
 export * from './streaming/index.js';
 export * from './backends/wasm/index.js';
 export * from './backends/webgpu/index.js';

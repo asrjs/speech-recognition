@@ -53,32 +53,32 @@ Raw Waveform [16kHz mono]
 
 ### What differs from NeMo
 
-| Component    | NeMo (Parakeet, etc.)                    | MedASR (Wav2Vec2-Conformer)         |
-|-------------|-------------------------------------------|--------------------------------------|
-| **Frontend** | Mel spectrogram (STFT → mel → log)       | 7 conv layers on **raw waveform**   |
-| **Input**   | Mel features [B, 80, T]                   | Raw audio [B, samples]               |
-| **Encoder** | ConformerEncoder (mel → subsample → blocks) | Conformer blocks (conv output → blocks) |
-| **Decoder** | CTC / RNNT / TDT                          | CTC (shared)                         |
-| **Decoding**| CTC greedy / beam                         | CTC greedy / beam (shared)           |
+| Component    | NeMo (Parakeet, etc.)                       | MedASR (Wav2Vec2-Conformer)             |
+| ------------ | ------------------------------------------- | --------------------------------------- |
+| **Frontend** | Mel spectrogram (STFT → mel → log)          | 7 conv layers on **raw waveform**       |
+| **Input**    | Mel features [B, 80, T]                     | Raw audio [B, samples]                  |
+| **Encoder**  | ConformerEncoder (mel → subsample → blocks) | Conformer blocks (conv output → blocks) |
+| **Decoder**  | CTC / RNNT / TDT                            | CTC (shared)                            |
+| **Decoding** | CTC greedy / beam                           | CTC greedy / beam (shared)              |
 
 **Reusable:** CTC head definition, CTC decoding logic.  
 **Not reusable:** Frontend (different math), Encoder (different input interface).
 
 ---
 
-## 2. Updating the `asr.js` Source Tree
+## 2. Updating the `@asrjs/speech-recognition` Source Tree
 
-Because MedASR uses a Wav2Vec2-style frontend, you need a **separate processor module** for Google-style models inside the single library source tree. The CTC decoder-head and decoding strategy remain shared at the descriptor level in `src/inference/graph.ts`, while the concrete execution logic stays model-owned.
+Because MedASR uses a Wav2Vec2-style frontend, you need a dedicated audio/frontend path for Google-style models inside the single library source tree. The CTC decoder-head and decoding strategy remain shared at the descriptor level in `src/inference/descriptors.ts`, while the concrete execution logic stays model-owned.
 
 ```text
 src/
 ├── runtime/
 ├── types/
-├── processors/
+├── audio/
 │   ├── mel-spectrogram.ts         # NeMo-style: STFT -> mel -> log
 │   └── wav2vec2-feature.ts        # Google-style: 7 conv layers on raw waveform
 ├── inference/
-│   └── graph.ts                   # Shared CTC / TDT / AED descriptors
+│   └── descriptors.ts             # Shared CTC / TDT / AED descriptors
 └── models/
     ├── nemo-tdt/                  # NeMo-style FastConformer + TDT
     └── hf-ctc-common/             # Wav2Vec2 frontend + encoder + CTC implementation
@@ -92,7 +92,7 @@ The MedASR-style implementation wires: **raw audio -> Wav2Vec2 frontend -> Wav2V
 
 ```typescript
 // src/models/hf-ctc-common/model.ts
-import { Wav2Vec2FeatureExtractor } from '../../processors/wav2vec2-feature';
+import { Wav2Vec2FeatureExtractor } from '../../audio/wav2vec-conv';
 import { CTC_GREEDY_DECODING, WAV2VEC2_CONFORMER_ENCODER } from '../../inference/graph';
 import type { TensorMap } from '../../types/audio';
 
@@ -102,7 +102,7 @@ export class MedASRPipeline {
   constructor(
     private encoder: { encode(features: TensorMap): Promise<TensorMap> },
     vocab: string[],
-    config: { blankId?: number } = {}
+    config: { blankId?: number } = {},
   ) {
     this.featureExtractor = new Wav2Vec2FeatureExtractor(/* from model config */);
     // Resolve blank index from processor/model config — often vocab_size, NOT 0.
@@ -165,7 +165,7 @@ By separating vendor-specific frontends and encoders from shared decoders and de
 3. **Encoders stay separate** — NeMo Conformer expects mel; Wav2Vec2-Conformer expects conv output.
 4. **Model packages stay thin** — `hf-ctc-common` owns the execution path, while `medasr` stays a preset.
 
-If MedASR v2 switches to RNN-T, you add a new transducer implementation path under `src/models` and extend `src/inference/graph.ts` descriptors. Frontend and encoder stacks stay unchanged.
+If MedASR v2 switches to RNN-T, you add a new transducer implementation path under `src/models` and extend `src/inference/descriptors.ts`. Frontend and encoder stacks stay unchanged.
 
 ---
 

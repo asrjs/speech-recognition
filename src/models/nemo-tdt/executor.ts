@@ -1,197 +1,36 @@
 import type {
+  AssetProvider,
   AudioBufferLike,
   ModelClassification,
-  TranscriptWarning
+  ResolvedAssetHandle,
+  RuntimeProgressEvent,
+  SpeechRuntimeHooks,
+  TranscriptWarning,
 } from '../../types/index.js';
 import type { NemoDecodeContext } from '../nemo-common/index.js';
-import { createOrtSession, initOrt, resolveNemoTdtArtifacts, type OrtModuleLike, type OrtSessionLike, type OrtTensorLike } from './ort.js';
+import { argmax, confidenceFromLogits } from '../../inference/index.js';
+import { nowMs, roundMetric, roundTimestampSeconds } from '../../runtime/timing.js';
+import type { TranscriptMetrics, TranscriptionProgressEvent } from '../../types/index.js';
+import {
+  createOrtSession,
+  initOrt,
+  resolveNemoTdtArtifacts,
+  type OrtModuleLike,
+  type OrtSessionLike,
+  type OrtTensorLike,
+} from './ort.js';
 import { OnnxNemoPreprocessor } from './preprocessor.js';
 import { ParakeetTokenizer } from './tokenizer.js';
+import { buildEmptyTranscript, buildWordAndTokenDetails } from './transcript-details.js';
+import { getDefaultNemoTdtWeightSetup } from './weights.js';
 import type {
   NemoTdtDecoderStateSnapshot,
   NemoTdtExecutor,
   NemoTdtModelConfig,
   NemoTdtModelOptions,
-  NemoTdtNativeToken,
   NemoTdtNativeTranscript,
-  NemoTdtTranscriptionOptions
+  NemoTdtTranscriptionOptions,
 } from './types.js';
-
-function nowMs(): number {
-  return typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now()
-    : Date.now();
-}
-
-function roundMetric(value: number, digits = 3): number {
-  const factor = 10 ** digits;
-  return Math.round(value * factor) / factor;
-}
-
-function roundTs(value: number): number {
-  return Math.round(value * 1000) / 1000;
-}
-
-function isFiniteNumber(value: number | undefined): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
-function argmax(values: ArrayLike<number>, offset = 0, length = values.length - offset): number {
-  let maxIndex = offset;
-  let maxValue = Number.NEGATIVE_INFINITY;
-  const end = offset + length;
-  for (let index = offset; index < end; index += 1) {
-    const value = values[index] ?? Number.NEGATIVE_INFINITY;
-    if (value > maxValue) {
-      maxValue = value;
-      maxIndex = index;
-    }
-  }
-
-  return maxIndex;
-}
-
-function confidenceFromLogits(logits: Float32Array, tokenId: number, vocabSize: number): { confidence: number; logProb: number } {
-  let maxLogit = Number.NEGATIVE_INFINITY;
-  for (let index = 0; index < vocabSize; index += 1) {
-    const value = logits[index] ?? Number.NEGATIVE_INFINITY;
-    if (value > maxLogit) {
-      maxLogit = value;
-    }
-  }
-
-  let expSum = 0;
-  for (let index = 0; index < vocabSize; index += 1) {
-    expSum += Math.exp((logits[index] ?? 0) - maxLogit);
-  }
-
-  const logSumExp = maxLogit + Math.log(expSum);
-  const logProb = (logits[tokenId] ?? Number.NEGATIVE_INFINITY) - logSumExp;
-
-  return {
-    confidence: Math.exp(logProb),
-    logProb
-  };
-}
-
-function buildWordAndTokenDetails(
-  tokenizer: ParakeetTokenizer,
-  tokenIds: readonly number[],
-  tokenTimestamps: readonly (readonly [number, number])[],
-  tokenConfidences: readonly number[],
-  tokenFrameIndices: readonly number[],
-  tokenLogProbs: readonly number[],
-  tokenTdtSteps: readonly number[]
-): Pick<NemoTdtNativeTranscript, 'words' | 'tokens'> {
-  const rawTokens = tokenizer.idsToTokens(tokenIds);
-  const tokens: NemoTdtNativeToken[] = [];
-  const words: Array<{
-    index: number;
-    text: string;
-    startTime: number;
-    endTime: number;
-    confidence?: number;
-  }> = [];
-
-  let activeWord:
-    | {
-        index: number;
-        parts: string[];
-        startTime: number;
-        endTime: number;
-        confidences: number[];
-      }
-    | undefined;
-
-  for (let index = 0; index < tokenIds.length; index += 1) {
-    const rawToken = rawTokens[index] ?? '';
-    const tokenText = rawToken.replace(/\u2581/g, ' ');
-    const isWordStart = rawToken.startsWith('\u2581') || !activeWord;
-    const [startTime, endTime] = tokenTimestamps[index] ?? [0, 0];
-    const confidence = tokenConfidences[index];
-
-    tokens.push({
-      index,
-      id: tokenIds[index],
-      text: tokenText.trim().length > 0 ? tokenText.trim() : tokenText,
-      rawText: rawToken,
-      isWordStart,
-      startTime,
-      endTime,
-      confidence,
-      frameIndex: tokenFrameIndices[index],
-      logProb: tokenLogProbs[index],
-      tdtStep: tokenTdtSteps[index]
-    });
-
-    if (isWordStart) {
-      if (activeWord) {
-        words.push({
-          index: activeWord.index,
-          text: activeWord.parts.join('').trim(),
-          startTime: activeWord.startTime,
-          endTime: activeWord.endTime,
-          confidence: activeWord.confidences.length > 0
-            ? activeWord.confidences.reduce((sum, value) => sum + value, 0) / activeWord.confidences.length
-            : undefined
-        });
-      }
-
-      activeWord = {
-        index: words.length,
-        parts: [tokenText],
-        startTime,
-        endTime,
-        confidences: isFiniteNumber(confidence) ? [confidence] : []
-      };
-      continue;
-    }
-
-    if (!activeWord) {
-      activeWord = {
-        index: words.length,
-        parts: [tokenText],
-        startTime,
-        endTime,
-        confidences: isFiniteNumber(confidence) ? [confidence] : []
-      };
-      continue;
-    }
-
-    activeWord.parts.push(tokenText);
-    activeWord.endTime = endTime;
-    if (isFiniteNumber(confidence)) {
-      activeWord.confidences.push(confidence);
-    }
-  }
-
-  if (activeWord) {
-    words.push({
-      index: activeWord.index,
-      text: activeWord.parts.join('').trim(),
-      startTime: activeWord.startTime,
-      endTime: activeWord.endTime,
-      confidence: activeWord.confidences.length > 0
-        ? activeWord.confidences.reduce((sum, value) => sum + value, 0) / activeWord.confidences.length
-        : undefined
-    });
-  }
-
-  return {
-    words,
-    tokens
-  };
-}
-
-function buildEmptyTranscript(warnings: readonly TranscriptWarning[]): NemoTdtNativeTranscript {
-  return {
-    utteranceText: '',
-    isFinal: true,
-    words: [],
-    tokens: [],
-    warnings
-  };
-}
 
 interface LoadedExecutorState {
   readonly ort: OrtModuleLike;
@@ -199,24 +38,142 @@ interface LoadedExecutorState {
   readonly encoderSession: OrtSessionLike;
   readonly decoderSession: OrtSessionLike;
   readonly preprocessor: OnnxNemoPreprocessor;
+  readonly preprocessorBackend: string;
   readonly warnings: readonly TranscriptWarning[];
+}
+
+function clampProgress(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
+function estimateRemainingMs(elapsedMs: number, progress: number): number | undefined {
+  if (progress <= 0 || progress >= 1) {
+    return undefined;
+  }
+
+  return roundMetric((elapsedMs / progress) * (1 - progress), 2);
+}
+
+function emitTranscriptionProgress(
+  options: NemoTdtTranscriptionOptions,
+  event: TranscriptionProgressEvent,
+): void {
+  options.onProgress?.(event);
+}
+
+function roundMiB(bytes: number | undefined): number | undefined {
+  if (!Number.isFinite(bytes)) {
+    return undefined;
+  }
+  return roundMetric((bytes as number) / (1024 * 1024), 2);
+}
+
+function createAssetProgressEvent(
+  modelId: string,
+  file: string,
+  event: {
+    readonly loaded: number;
+    readonly total?: number;
+    readonly done?: boolean;
+  },
+): RuntimeProgressEvent {
+  const percent =
+    event.total && event.total > 0
+      ? Math.min(100, Math.round((event.loaded / event.total) * 100))
+      : event.done
+        ? 100
+        : undefined;
+
+  return {
+    phase: 'asset:download',
+    modelId,
+    file,
+    loaded: event.loaded,
+    total: event.total,
+    percent,
+    loadedMiB: roundMiB(event.loaded),
+    totalMiB: roundMiB(event.total),
+    isComplete: event.done,
+    message: event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
+  };
 }
 
 export class OrtNemoTdtExecutor implements NemoTdtExecutor {
   private readonly sourceOptions: NemoTdtModelOptions['source'];
   private readonly loadStatePromise?: Promise<LoadedExecutorState>;
+  private readonly assetProvider?: AssetProvider;
+  private readonly runtimeHooks?: SpeechRuntimeHooks;
+  private readonly assetHandles: ResolvedAssetHandle[] = [];
 
   constructor(
     private readonly modelId: string,
-    private readonly classification: ModelClassification,
+    _classification: ModelClassification,
     private readonly config: NemoTdtModelConfig,
     private readonly backendId: string,
-    private readonly loadOptions: NemoTdtModelOptions | undefined
+    loadOptions: NemoTdtModelOptions | undefined,
+    dependencies: {
+      readonly assetProvider?: AssetProvider;
+      readonly runtimeHooks?: SpeechRuntimeHooks;
+    } = {},
   ) {
     this.sourceOptions = loadOptions?.source;
+    this.assetProvider = dependencies.assetProvider;
+    this.runtimeHooks = dependencies.runtimeHooks;
     if (this.sourceOptions) {
       this.loadStatePromise = this.initialize();
     }
+  }
+
+  private async materializeHuggingFaceArtifacts(
+    artifacts: ReturnType<typeof resolveNemoTdtArtifacts>['artifacts'],
+  ): Promise<typeof artifacts> {
+    const source = this.sourceOptions;
+    if (!this.assetProvider || !source || source.kind !== 'huggingface') {
+      return artifacts;
+    }
+
+    const revision = source.revision ?? 'main';
+    const resolveFile = async (filename: string | undefined): Promise<string | undefined> => {
+      if (!filename) {
+        return undefined;
+      }
+
+      const handle = await this.assetProvider!.resolve({
+        id: `huggingface:${source.repoId}:${revision}:${filename}`,
+        provider: 'huggingface',
+        repoId: source.repoId,
+        revision,
+        filename,
+        cacheKey: `huggingface:${source.repoId}:${revision}:${filename}`,
+        onProgress: (event) => {
+          this.runtimeHooks?.onProgress?.(createAssetProgressEvent(this.modelId, filename, event));
+        },
+      });
+      this.assetHandles.push(handle);
+      const locator = await handle.getLocator('url');
+      if (!locator) {
+        throw new Error(`Could not create a URL locator for "${filename}".`);
+      }
+      return locator;
+    };
+
+    const preprocessorFilename = artifacts.preprocessorUrl
+      ? artifacts.preprocessorUrl.split('/').pop()
+      : undefined;
+
+    return {
+      ...artifacts,
+      encoderUrl: (await resolveFile(artifacts.encoderFilename)) ?? artifacts.encoderUrl,
+      decoderUrl: (await resolveFile(artifacts.decoderFilename)) ?? artifacts.decoderUrl,
+      tokenizerUrl: (await resolveFile('vocab.txt')) ?? artifacts.tokenizerUrl,
+      preprocessorUrl: (await resolveFile(preprocessorFilename)) ?? artifacts.preprocessorUrl,
+      encoderDataUrl: artifacts.encoderDataUrl
+        ? await resolveFile(`${artifacts.encoderFilename}.data`)
+        : artifacts.encoderDataUrl,
+      decoderDataUrl: artifacts.decoderDataUrl
+        ? await resolveFile(`${artifacts.decoderFilename}.data`)
+        : artifacts.decoderDataUrl,
+    };
   }
 
   private async initialize(): Promise<LoadedExecutorState> {
@@ -225,29 +182,85 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     }
 
     const resolved = resolveNemoTdtArtifacts(this.sourceOptions, this.backendId);
-    const { artifacts } = resolved;
+    let artifacts = await this.materializeHuggingFaceArtifacts(resolved.artifacts);
     if (!artifacts.preprocessorUrl) {
-      throw new Error(`The NeMo TDT source for "${this.modelId}" does not provide a preprocessor model.`);
+      throw new Error(
+        `The NeMo TDT source for "${this.modelId}" does not provide a preprocessor model.`,
+      );
     }
 
     const ort = await initOrt(this.backendId, {
       wasmPaths: resolved.wasmPaths,
-      cpuThreads: resolved.cpuThreads
+      cpuThreads: resolved.cpuThreads,
     });
     const tokenizer = await ParakeetTokenizer.fromUrl(artifacts.tokenizerUrl);
-    const encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
-      backendId: resolved.backendForOrt,
-      enableProfiling: resolved.enableProfiling,
-      externalDataUrl: artifacts.encoderDataUrl,
-      externalDataPath: artifacts.encoderFilename ? `${artifacts.encoderFilename}.data` : undefined
-    });
+    const warnings = resolved.warnings.map((warning) => ({
+      ...warning,
+      recoverable: true,
+    }));
+    let encoderSession: OrtSessionLike;
+    try {
+      encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
+        backendId: resolved.backendForOrt,
+        enableProfiling: resolved.enableProfiling,
+        externalDataUrl: artifacts.encoderDataUrl,
+        externalDataPath: artifacts.encoderFilename
+          ? `${artifacts.encoderFilename}.data`
+          : undefined,
+      });
+    } catch (error) {
+      const implicitFp16Encoder =
+        this.sourceOptions.kind === 'huggingface' &&
+        !this.sourceOptions.encoderQuant &&
+        resolved.backendForOrt === 'webgpu' &&
+        getDefaultNemoTdtWeightSetup(resolved.backendForOrt).encoderDefault === 'fp16';
+
+      if (!implicitFp16Encoder) {
+        throw error;
+      }
+
+      const fallbackResolved = resolveNemoTdtArtifacts(
+        {
+          ...this.sourceOptions,
+          encoderQuant: 'fp32',
+        },
+        this.backendId,
+      );
+      const fallbackArtifacts = await this.materializeHuggingFaceArtifacts(
+        fallbackResolved.artifacts,
+      );
+      artifacts = {
+        ...artifacts,
+        encoderUrl: fallbackArtifacts.encoderUrl,
+        encoderDataUrl: fallbackArtifacts.encoderDataUrl,
+        encoderFilename: fallbackArtifacts.encoderFilename,
+      };
+      encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
+        backendId: resolved.backendForOrt,
+        enableProfiling: resolved.enableProfiling,
+        externalDataUrl: artifacts.encoderDataUrl,
+        externalDataPath: artifacts.encoderFilename
+          ? `${artifacts.encoderFilename}.data`
+          : undefined,
+      });
+      warnings.push({
+        code: 'nemo-tdt.encoder-fp16-fallback',
+        message:
+          'Default FP16 encoder weights could not be initialized on this WebGPU setup. Falling back to FP32 encoder weights.',
+        recoverable: true,
+      });
+    }
     const decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
       backendId: 'wasm',
       enableProfiling: resolved.enableProfiling,
       externalDataUrl: artifacts.decoderDataUrl,
-      externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined
+      externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,
     });
-    const preprocessor = new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl, resolved.enableProfiling);
+    const preprocessor = new OnnxNemoPreprocessor(
+      ort,
+      artifacts.preprocessorUrl!,
+      resolved.enableProfiling,
+    );
 
     return {
       ort,
@@ -255,10 +268,8 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       encoderSession,
       decoderSession,
       preprocessor,
-      warnings: resolved.warnings.map((warning) => ({
-        ...warning,
-        recoverable: true
-      }))
+      preprocessorBackend: resolved.preprocessorBackend,
+      warnings,
     };
   }
 
@@ -270,11 +281,15 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     return this.loadStatePromise;
   }
 
+  async ready(): Promise<void> {
+    await this.getLoadedState();
+  }
+
   private snapshotDecoderState(
     state: {
       readonly state1: OrtTensorLike<Float32Array>;
       readonly state2: OrtTensorLike<Float32Array>;
-    } | null
+    } | null,
   ): NemoTdtDecoderStateSnapshot | undefined {
     if (!state) {
       return undefined;
@@ -284,52 +299,108 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       s1: new Float32Array(state.state1.data),
       s2: new Float32Array(state.state2.data),
       dims1: [...state.state1.dims],
-      dims2: [...state.state2.dims]
+      dims2: [...state.state2.dims],
     };
   }
 
   async transcribe(
     audio: AudioBufferLike,
     options: NemoTdtTranscriptionOptions,
-    _context: NemoDecodeContext<NemoTdtModelConfig>
+    _context: NemoDecodeContext<NemoTdtModelConfig>,
   ): Promise<NemoTdtNativeTranscript> {
+    const transcriptionStart = nowMs();
     const loaded = await this.getLoadedState();
     const warnings = [...loaded.warnings];
+    emitTranscriptionProgress(options, {
+      stage: 'start',
+      progress: 0,
+      elapsedMs: 0,
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Starting transcription for ${this.modelId}.`,
+    });
 
     if (audio.sampleRate !== this.config.sampleRate) {
       warnings.push({
         code: 'nemo-tdt.sample-rate-mismatch',
         message: `Expected ${this.config.sampleRate} Hz audio but received ${audio.sampleRate} Hz. No resampler is wired into the restored TDT path yet.`,
-        recoverable: true
+        recoverable: true,
       });
     }
 
     const preprocessStart = nowMs();
     const processed = await loaded.preprocessor.process(audio);
     const preprocessMs = nowMs() - preprocessStart;
+    const preprocessElapsedMs = nowMs() - transcriptionStart;
+    emitTranscriptionProgress(options, {
+      stage: 'preprocess',
+      progress: 0.2,
+      elapsedMs: roundMetric(preprocessElapsedMs),
+      remainingMs: estimateRemainingMs(preprocessElapsedMs, 0.2),
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Prepared audio features for ${this.modelId}.`,
+      metrics: {
+        preprocessMs: roundMetric(preprocessMs),
+      },
+    });
 
     if (processed.features.length === 0 || processed.frameCount === 0) {
+      emitTranscriptionProgress(options, {
+        stage: 'complete',
+        progress: 1,
+        elapsedMs: roundMetric(nowMs() - transcriptionStart),
+        modelId: this.modelId,
+        backendId: this.backendId,
+        message: `Finished transcription for ${this.modelId}.`,
+        metrics: {
+          preprocessMs: roundMetric(preprocessMs),
+          totalMs: roundMetric(nowMs() - transcriptionStart),
+        },
+      });
       return buildEmptyTranscript(warnings);
     }
 
-    const totalStart = nowMs();
-    const inputTensor = new loaded.ort.Tensor('float32', processed.features, [1, this.config.melBins, processed.frameCount]);
-    const encoderLengthTensor = new loaded.ort.Tensor('int64', BigInt64Array.from([BigInt(processed.validLength)]), [1]);
+    const inputTensor = new loaded.ort.Tensor('float32', processed.features, [
+      1,
+      this.config.melBins,
+      processed.frameCount,
+    ]);
+    const encoderLengthTensor = new loaded.ort.Tensor(
+      'int64',
+      BigInt64Array.from([BigInt(processed.validLength)]),
+      [1],
+    );
 
     const encodeStart = nowMs();
     let encoderOutputs: Record<string, OrtTensorLike> | undefined;
     try {
       encoderOutputs = await loaded.encoderSession.run({
         audio_signal: inputTensor,
-        length: encoderLengthTensor
+        length: encoderLengthTensor,
       });
     } finally {
       inputTensor.dispose?.();
       encoderLengthTensor.dispose?.();
     }
     const encodeMs = nowMs() - encodeStart;
+    const encodeElapsedMs = nowMs() - transcriptionStart;
+    emitTranscriptionProgress(options, {
+      stage: 'encode',
+      progress: 0.4,
+      elapsedMs: roundMetric(encodeElapsedMs),
+      remainingMs: estimateRemainingMs(encodeElapsedMs, 0.4),
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Encoded acoustic frames for ${this.modelId}.`,
+      metrics: {
+        preprocessMs: roundMetric(preprocessMs),
+        encodeMs: roundMetric(encodeMs),
+      },
+    });
 
-    const encoderTensor = (encoderOutputs.outputs ?? Object.values(encoderOutputs)[0]) as OrtTensorLike<Float32Array>;
+    const encoderTensor = (encoderOutputs.outputs ??
+      Object.values(encoderOutputs)[0]) as OrtTensorLike<Float32Array>;
     const dims = [...encoderTensor.dims];
     if (dims.length !== 3 || dims[0] !== 1) {
       throw new Error(`Unexpected NeMo TDT encoder output shape: [${dims.join(', ')}].`);
@@ -339,10 +410,21 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     const featureSize = encoderIsBdt ? dims[1]! : dims[2]!;
     const frameCount = encoderIsBdt ? dims[2]! : dims[1]!;
     const frameTime = this.config.frameShiftSeconds * this.config.subsamplingFactor;
-    const vocabSize = this.config.vocabularySize ?? loaded.tokenizer.vocabSize;
+    const vocabSize = loaded.tokenizer.vocabSize;
     const blankId = loaded.tokenizer.blankId ?? this.config.tokenizer.blankTokenId ?? 0;
+    if (this.config.vocabularySize && this.config.vocabularySize !== vocabSize) {
+      warnings.push({
+        code: 'nemo-tdt.vocabulary-size-mismatch',
+        message: `Configured vocabulary size ${this.config.vocabularySize} does not match tokenizer vocabulary size ${vocabSize}. Using tokenizer vocabulary size for decoder output slicing.`,
+        recoverable: true,
+      });
+    }
     const encoderFrameBuffer = new Float32Array(featureSize);
-    const encoderFrameTensor = new loaded.ort.Tensor('float32', encoderFrameBuffer, [1, featureSize, 1]);
+    const encoderFrameTensor = new loaded.ort.Tensor('float32', encoderFrameBuffer, [
+      1,
+      featureSize,
+      1,
+    ]);
     const targetIdBuffer = new Int32Array(1);
     const targetTensor = new loaded.ort.Tensor('int32', targetIdBuffer, [1, 1]);
     const targetLengthTensor = new loaded.ort.Tensor('int32', new Int32Array([1]), [1]);
@@ -356,13 +438,13 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       state1: new loaded.ort.Tensor(
         'float32',
         new Float32Array(predictionLayers * predictionHiddenSize),
-        [predictionLayers, 1, predictionHiddenSize]
+        [predictionLayers, 1, predictionHiddenSize],
       ),
       state2: new loaded.ort.Tensor(
         'float32',
         new Float32Array(predictionLayers * predictionHiddenSize),
-        [predictionLayers, 1, predictionHiddenSize]
-      )
+        [predictionLayers, 1, predictionHiddenSize],
+      ),
     };
 
     const tokenIds: number[] = [];
@@ -373,6 +455,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     const tokenTdtSteps: number[] = [];
     const frameConfidenceStats = new Map<number, { sum: number; count: number }>();
     let emittedOnFrame = 0;
+    let decodeIterations = 0;
 
     const disposeTensor = (tensor: OrtTensorLike | undefined): void => {
       tensor?.dispose?.();
@@ -380,7 +463,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
 
     const disposeDecoderState = (
       state: { state1: OrtTensorLike; state2: OrtTensorLike } | null,
-      keep?: { state1: OrtTensorLike; state2: OrtTensorLike } | null
+      keep?: { state1: OrtTensorLike; state2: OrtTensorLike } | null,
     ): void => {
       if (!state) {
         return;
@@ -395,11 +478,14 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     };
 
     const decoderStart = nowMs();
+    let lastReportedDecodeUnits = -1;
     try {
-      for (let frameIndex = 0; frameIndex < frameCount;) {
+      for (let frameIndex = 0; frameIndex < frameCount; ) {
+        decodeIterations += 1;
         if (encoderIsBdt) {
           for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
-            encoderFrameBuffer[featureIndex] = encoderTensor.data[(featureIndex * frameCount) + frameIndex] ?? 0;
+            encoderFrameBuffer[featureIndex] =
+              encoderTensor.data[featureIndex * frameCount + frameIndex] ?? 0;
           }
         } else {
           const offset = frameIndex * featureSize;
@@ -412,20 +498,27 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
           targets: targetTensor,
           target_length: targetLengthTensor,
           input_states_1: decoderState?.state1,
-          input_states_2: decoderState?.state2
+          input_states_2: decoderState?.state2,
         });
 
         const logits = decoderOutputs.outputs as OrtTensorLike<Float32Array>;
         const nextState = {
           state1: decoderOutputs.output_states_1 as OrtTensorLike<Float32Array>,
-          state2: decoderOutputs.output_states_2 as OrtTensorLike<Float32Array>
+          state2: decoderOutputs.output_states_2 as OrtTensorLike<Float32Array>,
         };
         const logitsData = logits.data;
+        if (logitsData.length < vocabSize) {
+          throw new Error(
+            `NeMo TDT decoder output is too small (${logitsData.length}) for tokenizer vocabulary size ${vocabSize}.`,
+          );
+        }
+        if (logitsData.length === vocabSize) {
+          throw new Error('NeMo TDT decoder output is missing required TDT duration logits.');
+        }
         const tokenId = argmax(logitsData, 0, vocabSize);
         const durationOffset = vocabSize;
-        const step = logitsData.length > durationOffset
-          ? argmax(logitsData, durationOffset, logitsData.length - durationOffset) - durationOffset
-          : 0;
+        const step =
+          argmax(logitsData, durationOffset, logitsData.length - durationOffset) - durationOffset;
         const confidence = confidenceFromLogits(logitsData, tokenId, vocabSize);
 
         const existingFrameConfidence = frameConfidenceStats.get(frameIndex);
@@ -440,8 +533,8 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
           const durationFrames = Math.max(1, step);
           tokenIds.push(tokenId);
           tokenTimestamps.push([
-            roundTs(frameIndex * frameTime),
-            roundTs(Math.min(frameCount, frameIndex + durationFrames) * frameTime)
+            roundTimestampSeconds(frameIndex * frameTime),
+            roundTimestampSeconds(Math.min(frameCount, frameIndex + durationFrames) * frameTime),
           ]);
           tokenConfidences.push(confidence.confidence);
           tokenFrameIndices.push(frameIndex);
@@ -464,6 +557,29 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
           frameIndex += 1;
           emittedOnFrame = 0;
         }
+
+        const completedUnits = Math.min(frameCount, frameIndex);
+        if (completedUnits > lastReportedDecodeUnits) {
+          lastReportedDecodeUnits = completedUnits;
+          const decodeProgress = clampProgress(0.4 + (completedUnits / frameCount) * 0.5);
+          const decodeElapsedMs = nowMs() - transcriptionStart;
+          emitTranscriptionProgress(options, {
+            stage: 'decode',
+            progress: decodeProgress,
+            elapsedMs: roundMetric(decodeElapsedMs),
+            remainingMs: estimateRemainingMs(decodeElapsedMs, decodeProgress),
+            completedUnits,
+            totalUnits: frameCount,
+            modelId: this.modelId,
+            backendId: this.backendId,
+            message: `Decoded ${completedUnits}/${frameCount} encoder frames for ${this.modelId}.`,
+            metrics: {
+              preprocessMs: roundMetric(preprocessMs),
+              encodeMs: roundMetric(encodeMs),
+              decodeMs: roundMetric(nowMs() - decoderStart),
+            },
+          });
+        }
       }
     } finally {
       disposeTensor(encoderTensor);
@@ -482,22 +598,63 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       tokenConfidences,
       tokenFrameIndices,
       tokenLogProbs,
-      tokenTdtSteps
+      tokenTdtSteps,
     );
     const tokenizeMs = nowMs() - tokenizeStart;
+    const postprocessElapsedMs = nowMs() - transcriptionStart;
+    emitTranscriptionProgress(options, {
+      stage: 'postprocess',
+      progress: 0.95,
+      elapsedMs: roundMetric(postprocessElapsedMs),
+      remainingMs: estimateRemainingMs(postprocessElapsedMs, 0.95),
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Built transcript details for ${this.modelId}.`,
+      metrics: {
+        preprocessMs: roundMetric(preprocessMs),
+        encodeMs: roundMetric(encodeMs),
+        decodeMs: roundMetric(decodeMs),
+        postprocessMs: roundMetric(tokenizeMs),
+      },
+    });
 
-    const frameConfidences = [...frameConfidenceStats.values()].map((entry) => entry.sum / entry.count);
-    const utteranceConfidence = tokenConfidences.length > 0
-      ? tokenConfidences.reduce((sum, value) => sum + value, 0) / tokenConfidences.length
-      : undefined;
-    const wordAverage = details.words && details.words.length > 0
-      ? details.words.reduce((sum, word) => sum + (word.confidence ?? 0), 0) / details.words.length
-      : undefined;
-    const tokenAverage = tokenConfidences.length > 0
-      ? tokenConfidences.reduce((sum, value) => sum + value, 0) / tokenConfidences.length
-      : undefined;
-    const totalMs = nowMs() - totalStart;
+    const frameConfidences = [...frameConfidenceStats.values()].map(
+      (entry) => entry.sum / entry.count,
+    );
+    const utteranceConfidence =
+      tokenConfidences.length > 0
+        ? tokenConfidences.reduce((sum, value) => sum + value, 0) / tokenConfidences.length
+        : undefined;
+    const wordAverage =
+      details.words && details.words.length > 0
+        ? details.words.reduce((sum, word) => sum + (word.confidence ?? 0), 0) /
+          details.words.length
+        : undefined;
+    const tokenAverage =
+      tokenConfidences.length > 0
+        ? tokenConfidences.reduce((sum, value) => sum + value, 0) / tokenConfidences.length
+        : undefined;
+    const totalMs = roundMetric(nowMs() - transcriptionStart);
     const rtf = audio.durationSeconds > 0 ? totalMs / (audio.durationSeconds * 1000) : 0;
+    const rtfx = audio.durationSeconds > 0 ? audio.durationSeconds / (totalMs / 1000) : undefined;
+    const totalMetrics: TranscriptMetrics = {
+      preprocessMs: roundMetric(preprocessMs),
+      encodeMs: roundMetric(encodeMs),
+      decodeMs: roundMetric(decodeMs),
+      tokenizeMs: roundMetric(tokenizeMs),
+      postprocessMs: roundMetric(tokenizeMs),
+      totalMs,
+      wallMs: totalMs,
+      audioDurationSec: roundMetric(audio.durationSeconds, 4),
+      rtf: roundMetric(rtf, 4),
+      rtfx: rtfx !== undefined ? roundMetric(rtfx, 4) : undefined,
+      requestedPreprocessorBackend: this.sourceOptions?.preprocessorBackend ?? 'onnx',
+      preprocessorBackend: loaded.preprocessorBackend,
+      encoderFrameCount: frameCount,
+      decodeIterations,
+      emittedTokenCount: tokenIds.length,
+      emittedWordCount: details.words?.length,
+    };
 
     const transcript: NemoTdtNativeTranscript = {
       utteranceText: text,
@@ -508,39 +665,65 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         utterance: utteranceConfidence,
         wordAverage,
         tokenAverage,
-        frameAverage: frameConfidences.length > 0
-          ? frameConfidences.reduce((sum, value) => sum + value, 0) / frameConfidences.length
-          : undefined,
-        averageLogProb: tokenLogProbs.length > 0
-          ? tokenLogProbs.reduce((sum, value) => sum + value, 0) / tokenLogProbs.length
-          : undefined,
-        frames: frameConfidences
+        frameAverage:
+          frameConfidences.length > 0
+            ? frameConfidences.reduce((sum, value) => sum + value, 0) / frameConfidences.length
+            : undefined,
+        averageLogProb:
+          tokenLogProbs.length > 0
+            ? tokenLogProbs.reduce((sum, value) => sum + value, 0) / tokenLogProbs.length
+            : undefined,
+        frames: frameConfidences,
       },
       metrics: {
-        preprocessMs: roundMetric(preprocessMs),
-        encodeMs: roundMetric(encodeMs),
-        decodeMs: roundMetric(decodeMs),
+        preprocessMs: totalMetrics.preprocessMs,
+        encodeMs: totalMetrics.encodeMs,
+        decodeMs: totalMetrics.decodeMs,
         tokenizeMs: roundMetric(tokenizeMs),
-        totalMs: roundMetric(totalMs),
-        rtf: roundMetric(rtf, 4)
+        totalMs: totalMetrics.totalMs,
+        wallMs: totalMetrics.wallMs,
+        audioDurationSec: totalMetrics.audioDurationSec,
+        rtf: totalMetrics.rtf,
+        rtfx: totalMetrics.rtfx,
+        requestedPreprocessorBackend: totalMetrics.requestedPreprocessorBackend,
+        preprocessorBackend: totalMetrics.preprocessorBackend,
+        encoderFrameCount: totalMetrics.encoderFrameCount,
+        decodeIterations: totalMetrics.decodeIterations,
+        emittedTokenCount: totalMetrics.emittedTokenCount,
+        emittedWordCount: totalMetrics.emittedWordCount,
       },
       warnings,
       debug: {
         tokenIds: options.returnTokenIds ? tokenIds : undefined,
         frameIndices: options.returnFrameIndices ? tokenFrameIndices : undefined,
         logProbs: options.returnLogProbs ? tokenLogProbs : undefined,
-        tdtSteps: options.returnTdtSteps ? tokenTdtSteps : undefined
+        tdtSteps: options.returnTdtSteps ? tokenTdtSteps : undefined,
       },
-      decoderState: options.returnDecoderState ? this.snapshotDecoderState(decoderState) : undefined
+      decoderState: options.returnDecoderState
+        ? this.snapshotDecoderState(decoderState)
+        : undefined,
     };
 
     disposeTensor(decoderState?.state1);
     disposeTensor(decoderState?.state2);
 
+    emitTranscriptionProgress(options, {
+      stage: 'complete',
+      progress: 1,
+      elapsedMs: totalMetrics.totalMs,
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Finished transcription for ${this.modelId}.`,
+      metrics: totalMetrics,
+    });
+
     return transcript;
   }
 
   dispose(): void {
+    for (const handle of this.assetHandles) {
+      handle.dispose();
+    }
     return undefined;
   }
 }

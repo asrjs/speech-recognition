@@ -1,12 +1,7 @@
-import type { ModelClassification, SpeechModelFactory } from '../../types/index.js';
-import {
-  createWhisperSeq2SeqModelFamily,
-  describeWhisperSeq2SeqModel,
-  parseWhisperSeq2SeqConfig,
-  type CreateWhisperSeq2SeqModelFamilyOptions,
-  type WhisperNativeTranscript,
-  type WhisperSeq2SeqModelOptions,
-  type WhisperSeq2SeqTranscriptionOptions
+import type { FamilyModelLoadRequest, SpeechPresetFactory } from '../../types/index.js';
+import type {
+  CreateWhisperSeq2SeqModelFamilyOptions,
+  WhisperSeq2SeqModelOptions,
 } from '../../models/whisper-seq2seq/index.js';
 import { resolveWhisperPresetManifest } from './manifest.js';
 
@@ -14,37 +9,37 @@ export interface CreateWhisperPresetFactoryOptions {
   readonly dependencies?: CreateWhisperSeq2SeqModelFamilyOptions['dependencies'];
 }
 
-function whisperClassificationFallback(classification: Partial<ModelClassification> = {}): boolean {
-  return classification.family === 'whisper'
-    || (
-      classification.ecosystem === 'openai'
-      && classification.topology === 'aed'
-      && classification.family === 'whisper'
-    );
-}
-
 export function createWhisperPresetFactory(
-  options: CreateWhisperPresetFactoryOptions = {}
-): SpeechModelFactory<WhisperSeq2SeqModelOptions, WhisperSeq2SeqTranscriptionOptions, WhisperNativeTranscript> {
-  return createWhisperSeq2SeqModelFamily({
-    family: 'whisper',
-    classification: {
-      family: 'whisper'
+  _options: CreateWhisperPresetFactoryOptions = {},
+): SpeechPresetFactory<WhisperSeq2SeqModelOptions, WhisperSeq2SeqModelOptions> {
+  return {
+    preset: 'whisper',
+    supports(modelId?: string): boolean {
+      return modelId ? resolveWhisperPresetManifest(modelId) !== undefined : true;
     },
-    dependencies: options.dependencies,
-    supportsModel(modelId, classification) {
-      return resolveWhisperPresetManifest(modelId) !== undefined || whisperClassificationFallback(classification);
-    },
-    resolveConfig(modelId, request) {
+    async resolveModelRequest(
+      request,
+      _context,
+    ): Promise<FamilyModelLoadRequest<WhisperSeq2SeqModelOptions>> {
+      const modelId = request.modelId ?? 'openai/whisper-base';
       const manifest = resolveWhisperPresetManifest(modelId);
-      return parseWhisperSeq2SeqConfig(modelId, {
-        ...manifest?.config,
-        ...request.options?.config
-      });
+
+      return {
+        family: 'whisper-seq2seq',
+        modelId,
+        classification: {
+          family: 'whisper',
+          ...request.classification,
+        },
+        resolvedPreset: 'whisper',
+        options: {
+          ...request.options,
+          config: {
+            ...manifest?.config,
+            ...request.options?.config,
+          },
+        },
+      };
     },
-    describeModel(modelId, classification, config) {
-      const manifest = resolveWhisperPresetManifest(modelId);
-      return manifest?.description ?? describeWhisperSeq2SeqModel(modelId, classification, config);
-    }
-  });
+  };
 }

@@ -3,7 +3,7 @@ import type {
   BackendCapabilities,
   BackendEnvironment,
   BackendExecutionRequest,
-  ExecutionBackend
+  ExecutionBackend,
 } from '../../../types/index.js';
 
 function detectEnvironments(): BackendEnvironment[] {
@@ -15,7 +15,10 @@ function detectEnvironments(): BackendEnvironment[] {
   if (typeof process !== 'undefined' && process.versions?.node) {
     environments.push('node');
   }
-  if (typeof (globalThis as { importScripts?: unknown }).importScripts === 'function' && typeof window === 'undefined') {
+  if (
+    typeof (globalThis as { importScripts?: unknown }).importScripts === 'function' &&
+    typeof window === 'undefined'
+  ) {
     environments.push('worker');
   }
 
@@ -32,7 +35,7 @@ export async function probeWasmCapabilities(): Promise<BackendCapabilities> {
     'Universal baseline backend for browser and local inference.',
     supportsThreads
       ? 'SharedArrayBuffer is available, so threaded WASM is possible.'
-      : 'SharedArrayBuffer is unavailable, so threaded WASM should not be assumed.'
+      : 'SharedArrayBuffer is unavailable, so threaded WASM should not be assumed.',
   ];
 
   return {
@@ -48,7 +51,7 @@ export async function probeWasmCapabilities(): Promise<BackendCapabilities> {
     supportsSharedArrayBuffer: supportsThreads,
     requiresSharedArrayBuffer: false,
     fallbackSuitable: true,
-    notes
+    notes,
   };
 }
 
@@ -64,9 +67,9 @@ export function createWasmBackend(): ExecutionBackend {
         {
           backendId: 'wasm',
           modelId: request.modelId,
-          capabilities
-        }
+          capabilities,
+        },
       );
-    }
+    },
   };
 }

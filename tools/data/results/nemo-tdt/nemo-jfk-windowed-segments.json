@@ -1,0 +1,108 @@
+{
+  "model": "ysdede/parakeet-tdt-0.6b-v2-onnx-tfjs4",
+  "api": "pipeline",
+  "audio": {
+    "file": "N:\\JFK.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "source_seconds": 146.326,
+    "model_seconds": 146.326
+  },
+  "load": {
+    "transformers_source": "N:\\github\\ysdede\\transformers.js\\packages\\transformers\\dist\\transformers.node.mjs",
+    "device": {
+      "encoder_model": "cpu",
+      "decoder_model_merged": "cpu"
+    },
+    "dtype": null,
+    "model_type": "nemo-conformer-tdt"
+  },
+  "options": {
+    "return_timestamps": true,
+    "chunk_length_s": 20,
+    "stride_length_s": 3
+  },
+  "elapsed_s": 11.06,
+  "output": {
+    "text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation. The energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so, my fellow Americans, ask not what your country can do for you. Ask what you can do for your country. My fellow citizens of the world, ask not what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice, which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help, but knowing that here on earth God's work must truly be our own.",
+    "chunks": [
+      {
+        "text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger.",
+        "timestamp": [
+          2.56,
+          15.92
+        ]
+      },
+      {
+        "text": "I do not shrink from this responsibility.",
+        "timestamp": [
+          15.92,
+          18.96
+        ]
+      },
+      {
+        "text": "I welcome it.",
+        "timestamp": [
+          18.96,
+          20.48
+        ]
+      },
+      {
+        "text": "I do not believe that any of us would exchange places with any other people or any other generation.",
+        "timestamp": [
+          25.28,
+          34.72
+        ]
+      },
+      {
+        "text": "The energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it.",
+        "timestamp": [
+          35.04,
+          46.32
+        ]
+      },
+      {
+        "text": "And the glow from that fire can truly light the world.",
+        "timestamp": [
+          46.32,
+          51.92
+        ]
+      },
+      {
+        "text": "And so, my fellow Americans, ask not what your country can do for you.",
+        "timestamp": [
+          52.24,
+          60.08
+        ]
+      },
+      {
+        "text": "Ask what you can do for your country.",
+        "timestamp": [
+          60.08,
+          62.88
+        ]
+      },
+      {
+        "text": "My fellow citizens of the world, ask not what America will do for you, but what together we can do for the freedom of man.",
+        "timestamp": [
+          69.6,
+          86.48
+        ]
+      },
+      {
+        "text": "Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice, which we ask of you.",
+        "timestamp": [
+          86.48,
+          104.56
+        ]
+      },
+      {
+        "text": "With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help, but knowing that here on earth God's work must truly be our own.",
+        "timestamp": [
+          104.56,
+          129.52
+        ]
+      }
+    ]
+  }
+}

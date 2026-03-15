@@ -1,81 +1,448 @@
-# asr.js
+# @asrjs/speech-recognition
 
-`asr.js` is a single-package, speech-first TypeScript runtime library.
+`@asrjs/speech-recognition` is a speech-first TypeScript runtime for browser and local Node.js inference.
 
-It keeps strong internal separation for processors, runtime orchestration, inference, model integrations, and presets, but publishes one library package with one root public API.
+It ships as one package, but with intentional subpath entry points so the root API stays small and environment-safe. The library is built around:
 
-## Structure
+- explicit runtime composition
+- architecture-based model families
+- thin branded presets
+- canonical transcript contracts
+- reusable realtime/browser helpers
+- injectable asset loading and caching
 
-```text
-src/
-  inference/
-  models/
-  presets/
-  processors/
-  runtime/
-  tokenizers/
-  types/
-docs/
-examples/
-tests/
-```
+This is intentionally not a generic task-pipeline model framework.
 
-`src/inference/graph.ts` is the shared descriptor layer for encoder families, decoder-head families, and decoding strategies. Real execution code stays in `src/models/*` until it is proven reusable across multiple families.
-
-## Usage
-
-```ts
-import { createSpeechRuntime, createWasmBackend } from 'asr.js';
-```
-
-## Realtime Helpers
-
-`asr.js` also exposes small app-facing helpers for realtime and long-form speech apps:
-
-- `AudioRingBuffer`
-- `VoiceActivityTimeline`
-- `StreamingWindowBuilder`
-- `UtteranceTranscriptMerger`
-- `RealtimeTranscriptionController`
-- `startMicrophoneCapture`
-- `AudioChunker`
-- `LayeredAudioBuffer`
-- `AudioFeatureCache`
-
-It also includes lightweight helpers for benchmark and evaluation apps:
-
-- `summarizeNumericSeries`
-- `benchmarkRunRecordsToCsv`
-- `fetchDatasetSplits`
-- `fetchSequentialRows`
-- `fetchRandomRows`
-- `decodeAudioSourceToMonoPcm`
-
-For transcript handling across different model families, `asr.js` supports:
-
-- canonical transcript results via `TranscriptResult`
-- streaming updates via `PartialTranscript`
-- native-only responses via `responseFlavor: 'native'`
-- dual canonical + native envelopes via `TranscriptionEnvelope<TNative>`
-- model-output normalizers such as `normalizeNemoTdtTranscript`, `normalizeWhisperTranscript`, and `normalizeLegacyParakeetTranscript`
-
-## Commands
+## Install
 
 ```bash
-npm install
-npm run build
-npm run typecheck
-npm test
+npm install @asrjs/speech-recognition
 ```
 
-## Status
+## Development
 
-- canonical transcript contracts: implemented
-- runtime and backend registration: implemented
-- processor scaffolding: implemented
-- inference scaffolding: implemented
-- tokenizer abstractions and stubs: implemented
-- architecture-based model scaffolds: implemented
-- branded preset layers: implemented
-- current implementation families: NeMo TDT, HF CTC, Whisper seq2seq, FireRed speech-LLM
-- production inference executors: not implemented yet
+Useful library-level workflows:
+
+```bash
+npm run typecheck
+npm run lint
+npm run format:check
+npm test
+npm run build
+npm run docs:build
+```
+
+`docs:build` generates API docs from the library JSDoc into `.typedoc-site/`.
+
+## Public API
+
+### `@asrjs/speech-recognition`
+
+Use the root entry for runtime-critical surfaces only:
+
+- transcript/runtime/backend/audio contracts
+- `createSpeechRuntime`
+- `loadSpeechModel`
+- backend factories
+- canonical transcript normalizers
+- `PcmAudioBuffer`
+
+```ts
+import {
+  createSpeechRuntime,
+  createWasmBackend,
+  loadSpeechModel,
+  PcmAudioBuffer,
+  getCanonicalTranscript,
+} from '@asrjs/speech-recognition';
+```
+
+#### High-level model loading
+
+If you want the library to handle built-in runtime creation, preset/family
+resolution, model loading, and ready-session creation for you, start from
+`loadSpeechModel`:
+
+```ts
+import { loadSpeechModel } from '@asrjs/speech-recognition';
+
+const loaded = await loadSpeechModel({
+  modelId: 'parakeet-tdt-0.6b-v2',
+  onProgress(event) {
+    console.log(event.phase, event.loaded, event.total);
+  },
+});
+
+const result = await loaded.transcribe(audioBuffer, {
+  responseFlavor: 'canonical+native',
+  onProgress(event) {
+    console.log(event.stage, event.progress, event.remainingMs, event.metrics);
+  },
+});
+
+await loaded.dispose();
+```
+
+### `@asrjs/speech-recognition/builtins`
+
+Use the builtins entry for convenience composition:
+
+```ts
+import { createBuiltInSpeechRuntime, loadBuiltInSpeechModel } from '@asrjs/speech-recognition/builtins';
+```
+
+Use `loadBuiltInSpeechModel` when you want the same convenience path but prefer
+to stay explicit about the built-ins namespace:
+
+```ts
+const loaded = await loadBuiltInSpeechModel({
+  modelId: 'parakeet-tdt-0.6b-v2',
+  onProgress(event) {
+    console.log(event.phase, event.loaded, event.total);
+  },
+});
+
+const result = await loaded.transcribe(audioBuffer, {
+  responseFlavor: 'canonical+native',
+  onProgress(event) {
+    console.log(event.stage, event.progress, event.remainingMs, event.metrics);
+  },
+});
+
+await loaded.dispose();
+```
+
+For built-in Parakeet TDT presets, the library now chooses optimized weights by
+default:
+
+- WebGPU: `fp16` encoder, `int8` decoder
+- automatic encoder fallback to `fp32` when `fp16` cannot initialize
+- WASM: `int8` encoder, `int8` decoder
+
+Advanced callers can still override these defaults explicitly:
+
+- preset helper path: pass `encoderQuant` / `decoderQuant`
+- direct runtime path: pass `options.source.encoderQuant` / `options.source.decoderQuant`
+- direct artifact path: create the model with your own chosen files or URLs
+
+### `@asrjs/speech-recognition/models/*`
+
+Use model-family entry points for technical implementations:
+
+```ts
+import { createNemoTdtModelFamily } from '@asrjs/speech-recognition/models/nemo-tdt';
+import { createHfCtcModelFamily } from '@asrjs/speech-recognition/models/hf-ctc-common';
+import { createWhisperSeq2SeqModelFamily } from '@asrjs/speech-recognition/models/whisper-seq2seq';
+```
+
+### `@asrjs/speech-recognition/presets/*`
+
+Use preset entry points for branded model families and convenience loaders:
+
+```ts
+import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/parakeet';
+import { createMedAsrPresetFactory } from '@asrjs/speech-recognition/presets/medasr';
+import { createWhisperPresetFactory } from '@asrjs/speech-recognition/presets/whisper';
+```
+
+Parakeet-specific helper loaders also live under its preset entry:
+
+```ts
+import {
+  getParakeetModel,
+  loadParakeetModelWithFallback,
+  loadParakeetModelFromLocalEntries,
+} from '@asrjs/speech-recognition/presets/parakeet';
+```
+
+### `@asrjs/speech-recognition/io`
+
+Use the IO entry for asset providers, cache implementations, and Hugging Face/file helpers:
+
+```ts
+import {
+  createDefaultAssetProvider,
+  createHuggingFaceAssetProvider,
+  fetchModelFiles,
+  getModelFile,
+  pickPreferredQuant,
+} from '@asrjs/speech-recognition/io';
+```
+
+### `@asrjs/speech-recognition/inference`
+
+Use the inference entry for shared descriptors, generic math, and shared streaming primitives:
+
+```ts
+import { FASTCONFORMER_ENCODER, argmax, DefaultStreamingTranscriber } from '@asrjs/speech-recognition/inference';
+```
+
+### Other subpaths
+
+```ts
+import { startMicrophoneCapture } from '@asrjs/speech-recognition/browser';
+import { RealtimeTranscriptionController } from '@asrjs/speech-recognition/realtime';
+import { benchmarkRunRecordsToCsv } from '@asrjs/speech-recognition/bench';
+import { fetchDatasetSplits } from '@asrjs/speech-recognition/datasets';
+```
+
+## Quick Start
+
+### Explicit runtime composition
+
+This is the preferred path when you want clear ownership and good bundle boundaries.
+
+```ts
+import { createSpeechRuntime, createWasmBackend, PcmAudioBuffer } from '@asrjs/speech-recognition';
+import { createNemoTdtModelFamily } from '@asrjs/speech-recognition/models/nemo-tdt';
+import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/parakeet';
+
+const runtime = createSpeechRuntime({
+  backends: [createWasmBackend()],
+  modelFamilies: [createNemoTdtModelFamily()],
+  presets: [createParakeetPresetFactory()],
+});
+
+const model = await runtime.loadModel({
+  preset: 'parakeet',
+  modelId: 'parakeet-tdt-0.6b-v3',
+});
+
+const session = await model.createSession();
+
+try {
+  const result = await session.transcribe(PcmAudioBuffer.fromMono(pcm, 16000), {
+    detail: 'words',
+    responseFlavor: 'canonical',
+  });
+
+  console.log(result.text);
+  console.log(result.words);
+} finally {
+  await session.dispose();
+  await model.dispose();
+  await runtime.dispose();
+}
+```
+
+### Built-in convenience runtime
+
+```ts
+import { PcmAudioBuffer, getCanonicalTranscript } from '@asrjs/speech-recognition';
+import { createBuiltInSpeechRuntime } from '@asrjs/speech-recognition/builtins';
+
+const runtime = createBuiltInSpeechRuntime();
+const model = await runtime.loadModel({
+  preset: 'whisper',
+  modelId: 'openai/whisper-base',
+});
+const session = await model.createSession();
+
+try {
+  const response = await session.transcribe(PcmAudioBuffer.fromMono(pcm, 16000), {
+    detail: 'detailed',
+    responseFlavor: 'canonical+native',
+  });
+
+  const canonical = getCanonicalTranscript(response);
+  console.log(canonical.text);
+} finally {
+  await session.dispose();
+  await model.dispose();
+  await runtime.dispose();
+}
+```
+
+## Model Families vs Presets
+
+`@asrjs/speech-recognition` treats technical implementations and branded families as different concepts.
+
+- model families
+  - `nemo-tdt`
+  - `hf-ctc`
+  - `whisper-seq2seq`
+- presets
+  - `parakeet`
+  - `medasr`
+  - `whisper`
+
+Rules:
+
+- model families own execution and decoding
+- presets resolve into family load requests
+- presets may inject config defaults, artifact hints, and branded classification metadata
+- presets do not own backend logic or execution loops
+
+When a model is loaded through a preset, `model.info.family` remains technical and `model.info.preset` carries the branded alias.
+
+## Transcript Contracts
+
+`@asrjs/speech-recognition` is built around a stable canonical transcript shape.
+
+### Canonical output
+
+`TranscriptResult` includes:
+
+- `text`
+- `warnings`
+- `meta`
+- optional `segments`
+- optional `words`
+- optional `tokens`
+
+### Streaming output
+
+`PartialTranscript` includes:
+
+- `kind`
+- `revision`
+- `text`
+- `committedText`
+- `previewText`
+- `warnings`
+- `meta`
+
+### Transcription progress
+
+Session transcription options can include `onProgress(event)` for stage-aware
+progress updates during inference.
+
+`TranscriptionProgressEvent` includes:
+
+- `stage`
+- `progress`
+- `elapsedMs`
+- `remainingMs`
+- optional `completedUnits` / `totalUnits`
+- optional `metrics`
+
+Current real progress coverage is strongest on the NeMo TDT execution path,
+including preprocess, encode, decode, postprocess, and complete stages.
+
+### Detailed metrics
+
+Transcript results can now carry richer timing metadata in `meta.metrics`, including:
+
+- phase timings: `preprocessMs`, `encodeMs`, `decodeMs`, `tokenizeMs`, `postprocessMs`
+- end-to-end timings: `totalMs`, `wallMs`
+- throughput: `rtf`, `rtfx`
+- model/runtime details: `preprocessorBackend`, `encoderFrameCount`, `decodeIterations`, `emittedTokenCount`, `emittedWordCount`
+- optional audio-prep details when available: `decodeAudioMs`, `downmixMs`, `resampleMs`, `audioPreparationMs`, `inputSampleRate`, `outputSampleRate`, `resampler`
+
+Browser audio decoding helpers also expose a preparation profile:
+
+```ts
+import { decodeAudioSourceToMonoPcm } from '@asrjs/speech-recognition/browser';
+
+const decoded = await decodeAudioSourceToMonoPcm(file);
+console.log(decoded.metrics);
+```
+
+### Response flavors
+
+- `'canonical'`
+- `'canonical+native'`
+- `'native'`
+
+### Worker safety
+
+Canonical transcript objects are intentionally structured-clone-safe POJOs. That means they can cross Web Worker boundaries safely.
+
+Native outputs are not guaranteed worker-safe unless a family documents that explicitly.
+
+## IO and Asset Loading
+
+`@asrjs/speech-recognition` has a first-class IO layer under `@asrjs/speech-recognition/io`.
+
+Core contracts:
+
+- `AssetRequest`
+- `ResolvedAssetHandle`
+- `AssetProvider`
+- `AssetCache`
+
+`ResolvedAssetHandle` is stream-first:
+
+- `openStream()` is the large-asset path
+- `readBytes()` is convenience
+- `readText()` and `readJson()` build on the same handle
+- `getLocator('url' | 'path')` exists for runtimes like ORT that still need a concrete URL or path
+- `dispose()` cleans up temporary locators and other owned resources
+
+Built-in providers/caches include:
+
+- browser fetch
+- Hugging Face
+- browser local file/directory handles
+- IndexedDB cache
+- Node filesystem
+
+## Lifecycle
+
+`dispose()` is the primary lifecycle contract.
+
+- `SpeechSession.dispose()` is required and idempotent
+- `SpeechModel.dispose()` is required and idempotent
+- `SpeechRuntime.dispose()` is required and idempotent
+- asset handles also own disposal
+
+Ownership rules:
+
+- models dispose sessions they created
+- runtimes dispose models they loaded
+- backend execution resources must be released through the same lifecycle chain
+
+`Symbol.asyncDispose` may exist as optional sugar in implementations, but it is not the required or primary API.
+
+## Current Family Coverage
+
+Architecture-based implementation families currently present in the repo:
+
+- `nemo-tdt`
+- `hf-ctc`
+- `whisper-seq2seq`
+- `firered-llm`
+
+Built-in runtime registration currently includes:
+
+- `nemo-tdt`
+- `hf-ctc`
+- `whisper-seq2seq`
+
+Current branded presets include:
+
+- `parakeet`
+- `medasr`
+- `whisper`
+
+## Extending @asrjs/speech-recognition
+
+`@asrjs/speech-recognition` should not become a bottleneck for new model support.
+
+Bring your own model family:
+
+```ts
+import { createSpeechRuntime, createWasmBackend } from '@asrjs/speech-recognition';
+import { createMySpeechModelFamily } from './my-family';
+
+const runtime = createSpeechRuntime({
+  backends: [createWasmBackend()],
+  modelFamilies: [createMySpeechModelFamily()],
+});
+```
+
+Bring your own branded preset:
+
+```ts
+runtime.registerPreset(createMyPresetFactory());
+```
+
+## Design Rules
+
+- runtime is orchestration, not model intelligence
+- model families own execution and decoding
+- presets stay thin and branded
+- canonical transcript contracts are the stable app-facing boundary
+- browser-only APIs stay off the root path
+- root exports stay narrow
+- shared model logic moves up only after real reuse is proven

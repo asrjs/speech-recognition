@@ -3,7 +3,7 @@ import type {
   BackendCapabilities,
   BackendEnvironment,
   BackendExecutionRequest,
-  ExecutionBackend
+  ExecutionBackend,
 } from '../../../types/index.js';
 
 interface NavigatorWithGpu extends Navigator {
@@ -21,7 +21,10 @@ function detectEnvironments(): BackendEnvironment[] {
   if (typeof window !== 'undefined') {
     environments.push('browser');
   }
-  if (typeof (globalThis as { importScripts?: unknown }).importScripts === 'function' && typeof window === 'undefined') {
+  if (
+    typeof (globalThis as { importScripts?: unknown }).importScripts === 'function' &&
+    typeof window === 'undefined'
+  ) {
     environments.push('worker');
   }
 
@@ -29,7 +32,8 @@ function detectEnvironments(): BackendEnvironment[] {
 }
 
 export async function probeWebGpuCapabilities(): Promise<BackendCapabilities> {
-  const navigatorLike = typeof navigator !== 'undefined' ? (navigator as NavigatorWithGpu) : undefined;
+  const navigatorLike =
+    typeof navigator !== 'undefined' ? (navigator as NavigatorWithGpu) : undefined;
   const notes = ['Primary browser acceleration path when WebGPU is available.'];
   let available = false;
   let supportsFp16 = false;
@@ -70,7 +74,7 @@ export async function probeWebGpuCapabilities(): Promise<BackendCapabilities> {
     fallbackSuitable: true,
     ...(adapterInfo?.architecture ? { adapter: adapterInfo.architecture } : {}),
     ...(adapterInfo?.vendor ? { provider: adapterInfo.vendor } : {}),
-    notes
+    notes,
   };
 }
 
@@ -86,9 +90,9 @@ export function createWebGpuBackend(): ExecutionBackend {
         {
           backendId: 'webgpu',
           modelId: request.modelId,
-          capabilities
-        }
+          capabilities,
+        },
       );
-    }
+    },
   };
 }

@@ -37,4 +37,3 @@ export interface StreamingTranscriber {
   reset(): Promise<void> | void;
   getState(): StreamingTranscriberState;
 }
-

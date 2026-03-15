@@ -1,0 +1,60 @@
+{
+  "python": {
+    "file": "N:\\github\\ysdede\\transformers-v4-parakeet-demo\\docs\\results\\hf-whisper-base-jfk-python.json",
+    "case": "words_chunked",
+    "model": "openai/whisper-base",
+    "chunk_count": 197
+  },
+  "node": {
+    "file": "N:\\github\\ysdede\\transformers-v4-parakeet-demo\\docs\\results\\whisper-base-jfk-node-words.json",
+    "model": "Xenova/whisper-base",
+    "mode": "words",
+    "chunk_count": 208
+  },
+  "normalized_text_equal": false,
+  "first_chunk_mismatch": {
+    "index": 0,
+    "left": {
+      "text": " In",
+      "timestamp": [
+        0,
+        1.38
+      ]
+    },
+    "right": {
+      "text": " In",
+      "timestamp": [
+        0,
+        2.82
+      ]
+    }
+  },
+  "python_first_chunk": {
+    "text": " In",
+    "timestamp": [
+      0,
+      1.38
+    ]
+  },
+  "node_first_chunk": {
+    "text": " In",
+    "timestamp": [
+      0,
+      2.82
+    ]
+  },
+  "python_last_chunk": {
+    "text": " own.",
+    "timestamp": [
+      128.64,
+      null
+    ]
+  },
+  "node_last_chunk": {
+    "text": " own.",
+    "timestamp": [
+      128.64,
+      128.9
+    ]
+  }
+}

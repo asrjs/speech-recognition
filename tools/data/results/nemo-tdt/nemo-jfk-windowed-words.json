@@ -1,0 +1,1480 @@
+{
+  "model": "ysdede/parakeet-tdt-0.6b-v2-onnx-tfjs4",
+  "api": "pipeline",
+  "audio": {
+    "file": "N:\\JFK.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "source_seconds": 146.326,
+    "model_seconds": 146.326
+  },
+  "load": {
+    "transformers_source": "N:\\github\\ysdede\\transformers.js\\packages\\transformers\\dist\\transformers.node.mjs",
+    "device": {
+      "encoder_model": "cpu",
+      "decoder_model_merged": "cpu"
+    },
+    "dtype": null,
+    "model_type": "nemo-conformer-tdt"
+  },
+  "options": {
+    "return_timestamps": "word",
+    "chunk_length_s": 20,
+    "stride_length_s": 3
+  },
+  "elapsed_s": 12.71,
+  "output": {
+    "text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation. The energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it. And the glow from that fire can truly light the world. And so, my fellow Americans, ask not what your country can do for you. Ask what you can do for your country. My fellow citizens of the world, ask not what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrifice, which we ask of you. With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help, but knowing that here on earth God's work must truly be our own.",
+    "chunks": [
+      {
+        "text": "In",
+        "timestamp": [
+          2.56,
+          2.88
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          2.88,
+          3.2
+        ]
+      },
+      {
+        "text": "long",
+        "timestamp": [
+          3.2,
+          3.52
+        ]
+      },
+      {
+        "text": "history",
+        "timestamp": [
+          3.52,
+          4.16
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          4.16,
+          4.4
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          4.4,
+          4.72
+        ]
+      },
+      {
+        "text": "world,",
+        "timestamp": [
+          4.72,
+          5.6
+        ]
+      },
+      {
+        "text": "only",
+        "timestamp": [
+          5.92,
+          6.08
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          6.32,
+          6.64
+        ]
+      },
+      {
+        "text": "few",
+        "timestamp": [
+          6.64,
+          7.28
+        ]
+      },
+      {
+        "text": "generations",
+        "timestamp": [
+          7.28,
+          7.92
+        ]
+      },
+      {
+        "text": "have",
+        "timestamp": [
+          8.56,
+          8.88
+        ]
+      },
+      {
+        "text": "been",
+        "timestamp": [
+          8.88,
+          9.12
+        ]
+      },
+      {
+        "text": "granted",
+        "timestamp": [
+          9.12,
+          9.68
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          9.68,
+          10
+        ]
+      },
+      {
+        "text": "role",
+        "timestamp": [
+          10,
+          10.64
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          10.88,
+          11.2
+        ]
+      },
+      {
+        "text": "defending",
+        "timestamp": [
+          11.2,
+          12
+        ]
+      },
+      {
+        "text": "freedom",
+        "timestamp": [
+          12,
+          12.96
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          12.96,
+          13.28
+        ]
+      },
+      {
+        "text": "its",
+        "timestamp": [
+          13.28,
+          13.52
+        ]
+      },
+      {
+        "text": "hour",
+        "timestamp": [
+          13.52,
+          13.76
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          13.76,
+          13.92
+        ]
+      },
+      {
+        "text": "maximum",
+        "timestamp": [
+          13.92,
+          14.64
+        ]
+      },
+      {
+        "text": "danger.",
+        "timestamp": [
+          14.64,
+          15.92
+        ]
+      },
+      {
+        "text": "I",
+        "timestamp": [
+          15.92,
+          16.24
+        ]
+      },
+      {
+        "text": "do",
+        "timestamp": [
+          16.24,
+          16.56
+        ]
+      },
+      {
+        "text": "not",
+        "timestamp": [
+          16.56,
+          16.8
+        ]
+      },
+      {
+        "text": "shrink",
+        "timestamp": [
+          16.8,
+          17.36
+        ]
+      },
+      {
+        "text": "from",
+        "timestamp": [
+          17.36,
+          17.52
+        ]
+      },
+      {
+        "text": "this",
+        "timestamp": [
+          17.52,
+          17.68
+        ]
+      },
+      {
+        "text": "responsibility.",
+        "timestamp": [
+          17.68,
+          18.96
+        ]
+      },
+      {
+        "text": "I",
+        "timestamp": [
+          18.96,
+          19.12
+        ]
+      },
+      {
+        "text": "welcome",
+        "timestamp": [
+          19.12,
+          20
+        ]
+      },
+      {
+        "text": "it.",
+        "timestamp": [
+          20,
+          20.48
+        ]
+      },
+      {
+        "text": "I",
+        "timestamp": [
+          25.28,
+          25.6
+        ]
+      },
+      {
+        "text": "do",
+        "timestamp": [
+          25.6,
+          25.92
+        ]
+      },
+      {
+        "text": "not",
+        "timestamp": [
+          25.92,
+          26.24
+        ]
+      },
+      {
+        "text": "believe",
+        "timestamp": [
+          26.56,
+          27.2
+        ]
+      },
+      {
+        "text": "that",
+        "timestamp": [
+          27.2,
+          27.52
+        ]
+      },
+      {
+        "text": "any",
+        "timestamp": [
+          27.52,
+          27.84
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          27.84,
+          28.16
+        ]
+      },
+      {
+        "text": "us",
+        "timestamp": [
+          28.16,
+          28.48
+        ]
+      },
+      {
+        "text": "would",
+        "timestamp": [
+          29.04,
+          29.36
+        ]
+      },
+      {
+        "text": "exchange",
+        "timestamp": [
+          29.36,
+          30.08
+        ]
+      },
+      {
+        "text": "places",
+        "timestamp": [
+          30.08,
+          30.8
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          30.8,
+          31.12
+        ]
+      },
+      {
+        "text": "any",
+        "timestamp": [
+          31.12,
+          31.44
+        ]
+      },
+      {
+        "text": "other",
+        "timestamp": [
+          31.44,
+          31.76
+        ]
+      },
+      {
+        "text": "people",
+        "timestamp": [
+          31.76,
+          32.08
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          32.4,
+          32.72
+        ]
+      },
+      {
+        "text": "any",
+        "timestamp": [
+          32.72,
+          33.04
+        ]
+      },
+      {
+        "text": "other",
+        "timestamp": [
+          33.04,
+          33.36
+        ]
+      },
+      {
+        "text": "generation.",
+        "timestamp": [
+          33.36,
+          34.72
+        ]
+      },
+      {
+        "text": "The",
+        "timestamp": [
+          35.04,
+          35.28
+        ]
+      },
+      {
+        "text": "energy,",
+        "timestamp": [
+          35.28,
+          36.24
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          36.24,
+          36.48
+        ]
+      },
+      {
+        "text": "faith,",
+        "timestamp": [
+          36.48,
+          37.28
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          37.28,
+          37.52
+        ]
+      },
+      {
+        "text": "devotion",
+        "timestamp": [
+          37.52,
+          38.72
+        ]
+      },
+      {
+        "text": "which",
+        "timestamp": [
+          39.04,
+          39.2
+        ]
+      },
+      {
+        "text": "we",
+        "timestamp": [
+          39.52,
+          39.84
+        ]
+      },
+      {
+        "text": "bring",
+        "timestamp": [
+          39.84,
+          40.32
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          40.32,
+          40.64
+        ]
+      },
+      {
+        "text": "this",
+        "timestamp": [
+          40.64,
+          40.96
+        ]
+      },
+      {
+        "text": "endeavor",
+        "timestamp": [
+          40.96,
+          42.24
+        ]
+      },
+      {
+        "text": "will",
+        "timestamp": [
+          42.56,
+          42.72
+        ]
+      },
+      {
+        "text": "light",
+        "timestamp": [
+          42.88,
+          43.36
+        ]
+      },
+      {
+        "text": "our",
+        "timestamp": [
+          43.36,
+          43.6
+        ]
+      },
+      {
+        "text": "country",
+        "timestamp": [
+          43.6,
+          44
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          44,
+          44.24
+        ]
+      },
+      {
+        "text": "all",
+        "timestamp": [
+          44.24,
+          44.56
+        ]
+      },
+      {
+        "text": "who",
+        "timestamp": [
+          44.56,
+          44.8
+        ]
+      },
+      {
+        "text": "serve",
+        "timestamp": [
+          44.8,
+          45.36
+        ]
+      },
+      {
+        "text": "it.",
+        "timestamp": [
+          45.36,
+          46.32
+        ]
+      },
+      {
+        "text": "And",
+        "timestamp": [
+          46.32,
+          46.48
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          46.48,
+          46.72
+        ]
+      },
+      {
+        "text": "glow",
+        "timestamp": [
+          46.72,
+          47.28
+        ]
+      },
+      {
+        "text": "from",
+        "timestamp": [
+          47.28,
+          47.6
+        ]
+      },
+      {
+        "text": "that",
+        "timestamp": [
+          47.6,
+          47.92
+        ]
+      },
+      {
+        "text": "fire",
+        "timestamp": [
+          47.92,
+          48.56
+        ]
+      },
+      {
+        "text": "can",
+        "timestamp": [
+          49.12,
+          49.44
+        ]
+      },
+      {
+        "text": "truly",
+        "timestamp": [
+          49.44,
+          50
+        ]
+      },
+      {
+        "text": "light",
+        "timestamp": [
+          50,
+          50.4
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          50.4,
+          50.72
+        ]
+      },
+      {
+        "text": "world.",
+        "timestamp": [
+          50.72,
+          51.92
+        ]
+      },
+      {
+        "text": "And",
+        "timestamp": [
+          52.24,
+          52.48
+        ]
+      },
+      {
+        "text": "so,",
+        "timestamp": [
+          52.48,
+          52.88
+        ]
+      },
+      {
+        "text": "my",
+        "timestamp": [
+          52.88,
+          53.12
+        ]
+      },
+      {
+        "text": "fellow",
+        "timestamp": [
+          53.12,
+          53.6
+        ]
+      },
+      {
+        "text": "Americans,",
+        "timestamp": [
+          53.6,
+          54.88
+        ]
+      },
+      {
+        "text": "ask",
+        "timestamp": [
+          55.2,
+          55.52
+        ]
+      },
+      {
+        "text": "not",
+        "timestamp": [
+          56.16,
+          56.48
+        ]
+      },
+      {
+        "text": "what",
+        "timestamp": [
+          57.12,
+          57.44
+        ]
+      },
+      {
+        "text": "your",
+        "timestamp": [
+          57.44,
+          57.76
+        ]
+      },
+      {
+        "text": "country",
+        "timestamp": [
+          57.76,
+          58.4
+        ]
+      },
+      {
+        "text": "can",
+        "timestamp": [
+          58.4,
+          58.72
+        ]
+      },
+      {
+        "text": "do",
+        "timestamp": [
+          58.72,
+          58.96
+        ]
+      },
+      {
+        "text": "for",
+        "timestamp": [
+          58.96,
+          59.2
+        ]
+      },
+      {
+        "text": "you.",
+        "timestamp": [
+          59.2,
+          60.08
+        ]
+      },
+      {
+        "text": "Ask",
+        "timestamp": [
+          60.08,
+          60.32
+        ]
+      },
+      {
+        "text": "what",
+        "timestamp": [
+          60.48,
+          60.8
+        ]
+      },
+      {
+        "text": "you",
+        "timestamp": [
+          60.8,
+          61.04
+        ]
+      },
+      {
+        "text": "can",
+        "timestamp": [
+          61.04,
+          61.36
+        ]
+      },
+      {
+        "text": "do",
+        "timestamp": [
+          61.36,
+          61.6
+        ]
+      },
+      {
+        "text": "for",
+        "timestamp": [
+          61.6,
+          61.92
+        ]
+      },
+      {
+        "text": "your",
+        "timestamp": [
+          61.92,
+          62.08
+        ]
+      },
+      {
+        "text": "country.",
+        "timestamp": [
+          62.08,
+          62.88
+        ]
+      },
+      {
+        "text": "My",
+        "timestamp": [
+          69.6,
+          70.08
+        ]
+      },
+      {
+        "text": "fellow",
+        "timestamp": [
+          70.08,
+          70.64
+        ]
+      },
+      {
+        "text": "citizens",
+        "timestamp": [
+          70.64,
+          71.36
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          71.36,
+          71.68
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          71.68,
+          72
+        ]
+      },
+      {
+        "text": "world,",
+        "timestamp": [
+          72,
+          72.88
+        ]
+      },
+      {
+        "text": "ask",
+        "timestamp": [
+          73.2,
+          73.44
+        ]
+      },
+      {
+        "text": "not",
+        "timestamp": [
+          73.92,
+          74.24
+        ]
+      },
+      {
+        "text": "what",
+        "timestamp": [
+          74.88,
+          75.2
+        ]
+      },
+      {
+        "text": "America",
+        "timestamp": [
+          75.2,
+          76
+        ]
+      },
+      {
+        "text": "will",
+        "timestamp": [
+          76,
+          76.32
+        ]
+      },
+      {
+        "text": "do",
+        "timestamp": [
+          76.32,
+          76.56
+        ]
+      },
+      {
+        "text": "for",
+        "timestamp": [
+          76.56,
+          76.88
+        ]
+      },
+      {
+        "text": "you,",
+        "timestamp": [
+          76.88,
+          77.84
+        ]
+      },
+      {
+        "text": "but",
+        "timestamp": [
+          77.84,
+          78.08
+        ]
+      },
+      {
+        "text": "what",
+        "timestamp": [
+          78.08,
+          78.4
+        ]
+      },
+      {
+        "text": "together",
+        "timestamp": [
+          78.4,
+          79.12
+        ]
+      },
+      {
+        "text": "we",
+        "timestamp": [
+          79.12,
+          79.44
+        ]
+      },
+      {
+        "text": "can",
+        "timestamp": [
+          79.44,
+          79.76
+        ]
+      },
+      {
+        "text": "do",
+        "timestamp": [
+          79.76,
+          80
+        ]
+      },
+      {
+        "text": "for",
+        "timestamp": [
+          80,
+          80.32
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          80.32,
+          80.48
+        ]
+      },
+      {
+        "text": "freedom",
+        "timestamp": [
+          80.48,
+          81.2
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          81.2,
+          81.44
+        ]
+      },
+      {
+        "text": "man.",
+        "timestamp": [
+          81.44,
+          86.48
+        ]
+      },
+      {
+        "text": "Finally,",
+        "timestamp": [
+          86.48,
+          87.2
+        ]
+      },
+      {
+        "text": "whether",
+        "timestamp": [
+          87.2,
+          87.84
+        ]
+      },
+      {
+        "text": "you",
+        "timestamp": [
+          87.84,
+          88.16
+        ]
+      },
+      {
+        "text": "are",
+        "timestamp": [
+          88.16,
+          88.48
+        ]
+      },
+      {
+        "text": "citizens",
+        "timestamp": [
+          88.8,
+          89.68
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          89.68,
+          89.92
+        ]
+      },
+      {
+        "text": "America",
+        "timestamp": [
+          89.92,
+          91.04
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          91.04,
+          91.36
+        ]
+      },
+      {
+        "text": "citizens",
+        "timestamp": [
+          91.36,
+          92.24
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          92.24,
+          92.56
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          92.56,
+          92.88
+        ]
+      },
+      {
+        "text": "world,",
+        "timestamp": [
+          92.88,
+          93.84
+        ]
+      },
+      {
+        "text": "ask",
+        "timestamp": [
+          94.16,
+          94.48
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          94.72,
+          95.04
+        ]
+      },
+      {
+        "text": "us",
+        "timestamp": [
+          95.04,
+          95.36
+        ]
+      },
+      {
+        "text": "here",
+        "timestamp": [
+          95.36,
+          95.68
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          96.32,
+          96.64
+        ]
+      },
+      {
+        "text": "same",
+        "timestamp": [
+          96.96,
+          97.2
+        ]
+      },
+      {
+        "text": "high",
+        "timestamp": [
+          97.52,
+          97.84
+        ]
+      },
+      {
+        "text": "standards",
+        "timestamp": [
+          97.84,
+          99.12
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          99.12,
+          99.36
+        ]
+      },
+      {
+        "text": "strength",
+        "timestamp": [
+          99.6,
+          100.24
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          100.24,
+          100.48
+        ]
+      },
+      {
+        "text": "sacrifice,",
+        "timestamp": [
+          100.48,
+          102
+        ]
+      },
+      {
+        "text": "which",
+        "timestamp": [
+          102,
+          102.32
+        ]
+      },
+      {
+        "text": "we",
+        "timestamp": [
+          102.32,
+          102.64
+        ]
+      },
+      {
+        "text": "ask",
+        "timestamp": [
+          102.64,
+          102.96
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          102.96,
+          103.28
+        ]
+      },
+      {
+        "text": "you.",
+        "timestamp": [
+          103.28,
+          104.56
+        ]
+      },
+      {
+        "text": "With",
+        "timestamp": [
+          104.56,
+          104.88
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          104.88,
+          105.12
+        ]
+      },
+      {
+        "text": "good",
+        "timestamp": [
+          105.12,
+          105.44
+        ]
+      },
+      {
+        "text": "conscience,",
+        "timestamp": [
+          105.44,
+          106.64
+        ]
+      },
+      {
+        "text": "our",
+        "timestamp": [
+          106.96,
+          107.28
+        ]
+      },
+      {
+        "text": "only",
+        "timestamp": [
+          107.28,
+          107.6
+        ]
+      },
+      {
+        "text": "sure",
+        "timestamp": [
+          107.6,
+          107.92
+        ]
+      },
+      {
+        "text": "reward,",
+        "timestamp": [
+          108.16,
+          110.32
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          110.32,
+          110.48
+        ]
+      },
+      {
+        "text": "history",
+        "timestamp": [
+          110.64,
+          111.12
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          111.28,
+          111.52
+        ]
+      },
+      {
+        "text": "final",
+        "timestamp": [
+          111.52,
+          112
+        ]
+      },
+      {
+        "text": "judge",
+        "timestamp": [
+          112,
+          112.4
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          112.4,
+          112.64
+        ]
+      },
+      {
+        "text": "our",
+        "timestamp": [
+          112.64,
+          112.88
+        ]
+      },
+      {
+        "text": "deeds,",
+        "timestamp": [
+          112.88,
+          114.16
+        ]
+      },
+      {
+        "text": "let",
+        "timestamp": [
+          114.48,
+          114.72
+        ]
+      },
+      {
+        "text": "us",
+        "timestamp": [
+          114.72,
+          115.04
+        ]
+      },
+      {
+        "text": "go",
+        "timestamp": [
+          115.04,
+          115.36
+        ]
+      },
+      {
+        "text": "forth",
+        "timestamp": [
+          115.36,
+          115.84
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          115.84,
+          116.08
+        ]
+      },
+      {
+        "text": "lead",
+        "timestamp": [
+          116.08,
+          116.4
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          116.4,
+          116.64
+        ]
+      },
+      {
+        "text": "land",
+        "timestamp": [
+          116.64,
+          117.2
+        ]
+      },
+      {
+        "text": "we",
+        "timestamp": [
+          117.2,
+          117.52
+        ]
+      },
+      {
+        "text": "love,",
+        "timestamp": [
+          117.52,
+          118.4
+        ]
+      },
+      {
+        "text": "asking",
+        "timestamp": [
+          118.72,
+          119.36
+        ]
+      },
+      {
+        "text": "His",
+        "timestamp": [
+          119.36,
+          119.84
+        ]
+      },
+      {
+        "text": "blessing",
+        "timestamp": [
+          119.84,
+          120.8
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          120.8,
+          121.12
+        ]
+      },
+      {
+        "text": "His",
+        "timestamp": [
+          121.12,
+          121.76
+        ]
+      },
+      {
+        "text": "help,",
+        "timestamp": [
+          121.76,
+          122.72
+        ]
+      },
+      {
+        "text": "but",
+        "timestamp": [
+          123.04,
+          123.36
+        ]
+      },
+      {
+        "text": "knowing",
+        "timestamp": [
+          123.36,
+          123.84
+        ]
+      },
+      {
+        "text": "that",
+        "timestamp": [
+          123.84,
+          124.16
+        ]
+      },
+      {
+        "text": "here",
+        "timestamp": [
+          124.16,
+          124.48
+        ]
+      },
+      {
+        "text": "on",
+        "timestamp": [
+          124.48,
+          124.8
+        ]
+      },
+      {
+        "text": "earth",
+        "timestamp": [
+          124.8,
+          125.44
+        ]
+      },
+      {
+        "text": "God's",
+        "timestamp": [
+          125.84,
+          126.72
+        ]
+      },
+      {
+        "text": "work",
+        "timestamp": [
+          126.72,
+          127.04
+        ]
+      },
+      {
+        "text": "must",
+        "timestamp": [
+          127.28,
+          127.76
+        ]
+      },
+      {
+        "text": "truly",
+        "timestamp": [
+          127.76,
+          128.48
+        ]
+      },
+      {
+        "text": "be",
+        "timestamp": [
+          128.48,
+          128.8
+        ]
+      },
+      {
+        "text": "our",
+        "timestamp": [
+          128.8,
+          129.12
+        ]
+      },
+      {
+        "text": "own.",
+        "timestamp": [
+          128.88,
+          129.52
+        ]
+      }
+    ]
+  }
+}

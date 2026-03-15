@@ -2,18 +2,20 @@ import {
   BENCHMARK_RUN_CSV_COLUMNS,
   benchmarkRunRecordsToCsv,
   calcRtfx,
-  extractAudioUrl,
-  fetchRandomRows,
   flattenBenchmarkRunRecord,
-  getConfigsAndSplits,
   levenshteinDistance,
   normalizeBenchmarkText,
-  normalizeDatasetRow,
-  normalizeReferenceText,
   summarizeNumericSeries,
   textSimilarity,
   toCsv,
-} from 'asr.js';
+} from '@asrjs/speech-recognition/bench';
+import {
+  extractAudioUrl,
+  fetchRandomRows,
+  getConfigsAndSplits,
+  normalizeDatasetRow,
+  normalizeReferenceText,
+} from '@asrjs/speech-recognition/datasets';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('benchmark and dataset helpers', () => {
@@ -44,23 +46,27 @@ describe('benchmark and dataset helpers', () => {
     expect(flattened.encode_rtfx).toBe(12);
     expect(flattened.decode_rtfx).toBe(24);
 
-    const csv = benchmarkRunRecordsToCsv([{
-      id: 'run-1',
-      sampleKey: 'sample-a',
-      audioDurationSec: 12,
-      transcription: 'hello',
-      metrics: {
-        encode_ms: 1000,
-        decode_ms: 500,
+    const csv = benchmarkRunRecordsToCsv([
+      {
+        id: 'run-1',
+        sampleKey: 'sample-a',
+        audioDurationSec: 12,
+        transcription: 'hello',
+        metrics: {
+          encode_ms: 1000,
+          decode_ms: 500,
+        },
       },
-    }]);
+    ]);
     expect(csv.startsWith(BENCHMARK_RUN_CSV_COLUMNS.join(','))).toBe(true);
     expect(toCsv([{ alpha: 'a', beta: 2 }], ['alpha', 'beta'])).toContain('alpha,beta');
   });
 
   it('normalizes dataset rows and extracts audio urls from nested shapes', () => {
     expect(extractAudioUrl({ src: 'https://example/audio.wav' })).toBe('https://example/audio.wav');
-    expect(extractAudioUrl([{ url: 'https://example/array.wav' }])).toBe('https://example/array.wav');
+    expect(extractAudioUrl([{ url: 'https://example/array.wav' }])).toBe(
+      'https://example/array.wav',
+    );
     expect(normalizeReferenceText('A PARAGRAPH B NEWLINE C')).toBe('A\nB\nC');
 
     const row = normalizeDatasetRow({

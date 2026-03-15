@@ -23,17 +23,17 @@ export const MEDASR_PRESET_MANIFESTS: readonly MedAsrPresetManifest[] = [
       decoder: 'ctc',
       topology: 'ctc',
       family: 'medasr',
-      task: 'asr'
+      task: 'asr',
     },
     config: {
       languages: ['en'],
       vocabularySize: 32,
       tokenizer: {
         kind: 'wordpiece',
-        blankTokenId: 31
-      }
-    }
-  }
+        blankTokenId: 31,
+      },
+    },
+  },
 ];
 
 function normalizePresetId(modelId: string): string {

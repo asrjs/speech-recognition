@@ -1,0 +1,186 @@
+
+> transformers-v4-parakeet-tdt-demo@1.0.0 test:whisper
+> node ./scripts/node-whisper-inspect.mjs --audio N:\JFK.wav --model Xenova/whisper-base
+
+{
+  "model": "Xenova/whisper-base",
+  "mode": "segments",
+  "audio": {
+    "file": "N:\\JFK.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "source_seconds": 146.326,
+    "model_seconds": 146.326
+  },
+  "options": {
+    "return_timestamps": true,
+    "chunk_length_s": 30,
+    "stride_length_s": 5
+  },
+  "output": {
+    "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to, we'll light our country and all who serve it. And the glow from that fire can truly light the world. And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country. [CHEERING] My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. [CHEERING] for the freedom of man. (audience cheering) Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrificing which we ask of you. With a good conscience, our only sure reward with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. But knowing that here on earth, God's work must truly be our own.",
+    "chunks": [
+      {
+        "timestamp": [
+          0,
+          11.24
+        ],
+        "text": " In the long history of the world, only a few generations have been granted the role of"
+      },
+      {
+        "timestamp": [
+          11.24,
+          15.92
+        ],
+        "text": " defending freedom in its hour of maximum danger."
+      },
+      {
+        "timestamp": [
+          15.92,
+          18.88
+        ],
+        "text": " I do not shrink from this responsibility."
+      },
+      {
+        "timestamp": [
+          18.88,
+          34.12
+        ],
+        "text": " I welcome it. I do not believe that any of us would exchange places with any other people or any other generation,"
+      },
+      {
+        "timestamp": [
+          34.12,
+          46.52
+        ],
+        "text": " the energy, the faith, the devotion which we bring to, we'll light our country and all who serve it."
+      },
+      {
+        "timestamp": [
+          46.52,
+          52.4
+        ],
+        "text": " And the glow from that fire can truly light the world."
+      },
+      {
+        "timestamp": [
+          52.4,
+          61.2
+        ],
+        "text": " And so my fellow Americans, ask not what your country can do for you, ask what you can"
+      },
+      {
+        "timestamp": [
+          61.2,
+          63.2
+        ],
+        "text": " do for your country."
+      },
+      {
+        "timestamp": [
+          63.2,
+          65.06
+        ],
+        "text": " [CHEERING]"
+      },
+      {
+        "timestamp": [
+          69.68,
+          74.96
+        ],
+        "text": " My fellow citizens of the world, if not,"
+      },
+      {
+        "timestamp": [
+          74.96,
+          80.24
+        ],
+        "text": " what America will do for you, but what together we can do"
+      },
+      {
+        "timestamp": [
+          80.24,
+          81.44
+        ],
+        "text": " for the freedom of man."
+      },
+      {
+        "timestamp": [
+          81.44,
+          83.64
+        ],
+        "text": " [CHEERING]"
+      },
+      {
+        "timestamp": [
+          82,
+          85
+        ],
+        "text": " for the freedom of man. (audience cheering)"
+      },
+      {
+        "timestamp": [
+          86.6,
+          91.2
+        ],
+        "text": " Finally, whether you are citizens of America"
+      },
+      {
+        "timestamp": [
+          91.2,
+          93
+        ],
+        "text": " or citizens of the world,"
+      },
+      {
+        "timestamp": [
+          94.16,
+          99.16
+        ],
+        "text": " ask of us here the same high standards"
+      },
+      {
+        "timestamp": [
+          99.44,
+          103.64
+        ],
+        "text": " of strength and sacrificing which we ask of you."
+      },
+      {
+        "timestamp": [
+          104.76,
+          110.38
+        ],
+        "text": " With a good conscience, our only sure reward"
+      },
+      {
+        "timestamp": [
+          110.38,
+          114.48
+        ],
+        "text": " with history the final judge of our deeds,"
+      },
+      {
+        "timestamp": [
+          114.48,
+          118.68
+        ],
+        "text": " let us go forth to lead the land we love,"
+      },
+      {
+        "timestamp": [
+          118.68,
+          123.02
+        ],
+        "text": " asking His blessing and His help."
+      },
+      {
+        "timestamp": [
+          123.02,
+          129
+        ],
+        "text": " But knowing that here on earth, God's work must truly be our own."
+      }
+    ]
+  }
+}

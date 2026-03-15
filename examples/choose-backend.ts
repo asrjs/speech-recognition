@@ -1,8 +1,9 @@
-import { createSpeechRuntime } from 'asr.js';
-import { createWasmBackend } from 'asr.js';
-import { createWebGpuBackend } from 'asr.js';
-import { createWebGlBackend } from 'asr.js';
-import { createParakeetPresetFactory } from 'asr.js';
+import { createSpeechRuntime } from '@asrjs/speech-recognition';
+import { createWasmBackend } from '@asrjs/speech-recognition';
+import { createWebGpuBackend } from '@asrjs/speech-recognition';
+import { createWebGlBackend } from '@asrjs/speech-recognition';
+import { createNemoTdtModelFamily } from '@asrjs/speech-recognition/models/nemo-tdt';
+import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/parakeet';
 
 export async function chooseBackendExample(): Promise<string> {
   const runtime = createSpeechRuntime();
@@ -10,7 +11,8 @@ export async function chooseBackendExample(): Promise<string> {
     .registerBackend(createWebGpuBackend())
     .registerBackend(createWasmBackend())
     .registerBackend(createWebGlBackend())
-    .registerModelFamily(createParakeetPresetFactory());
+    .registerModelFamily(createNemoTdtModelFamily())
+    .registerPreset(createParakeetPresetFactory());
 
   const backend = await runtime.selectBackend({
     preferredBackendIds: ['webgpu', 'wasm'],

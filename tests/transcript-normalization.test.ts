@@ -8,8 +8,8 @@ import {
   type HfCtcNativeTranscript,
   type LegacyParakeetTranscript,
   type NemoTdtNativeTranscript,
-  type WhisperNativeTranscript
-} from 'asr.js';
+  type WhisperNativeTranscript,
+} from '@asrjs/speech-recognition';
 import { describe, expect, it } from 'vitest';
 
 describe('transcript normalization helpers', () => {
@@ -17,38 +17,43 @@ describe('transcript normalization helpers', () => {
     const native: NemoTdtNativeTranscript = {
       utteranceText: 'hello world',
       isFinal: true,
-      words: [{
-        index: 0,
-        text: 'hello',
-        startTime: 0,
-        endTime: 0.5,
-        confidence: 0.9
-      }, {
-        index: 1,
-        text: 'world',
-        startTime: 0.5,
-        endTime: 1,
-        confidence: 0.8
-      }],
-      tokens: [{
-        index: 0,
-        id: 1,
-        text: 'hello',
-        startTime: 0,
-        endTime: 0.5,
-        confidence: 0.9
-      }],
+      words: [
+        {
+          index: 0,
+          text: 'hello',
+          startTime: 0,
+          endTime: 0.5,
+          confidence: 0.9,
+        },
+        {
+          index: 1,
+          text: 'world',
+          startTime: 0.5,
+          endTime: 1,
+          confidence: 0.8,
+        },
+      ],
+      tokens: [
+        {
+          index: 0,
+          id: 1,
+          text: 'hello',
+          startTime: 0,
+          endTime: 0.5,
+          confidence: 0.9,
+        },
+      ],
       confidence: {
         utterance: 0.85,
         wordAverage: 0.85,
-        tokenAverage: 0.9
-      }
+        tokenAverage: 0.9,
+      },
     };
 
     const canonical = createNemoTdtTranscriptNormalizer().toCanonical(native, {
       detailLevel: 'detailed',
       modelId: 'parakeet-tdt-0.6b-v3',
-      backendId: 'webgpu'
+      backendId: 'webgpu',
     });
 
     expect(canonical.text).toBe('hello world');
@@ -62,53 +67,61 @@ describe('transcript normalization helpers', () => {
     const hfNative: HfCtcNativeTranscript = {
       utteranceText: 'medical scaffold',
       isFinal: true,
-      words: [{
-        index: 0,
-        text: 'medical',
-        startTime: 0,
-        endTime: 0.4,
-        confidence: 0.9
-      }],
-      tokens: [{
-        index: 0,
-        id: 12,
-        text: 'medical',
-        startTime: 0,
-        endTime: 0.4,
-        confidence: 0.9
-      }],
+      words: [
+        {
+          index: 0,
+          text: 'medical',
+          startTime: 0,
+          endTime: 0.4,
+          confidence: 0.9,
+        },
+      ],
+      tokens: [
+        {
+          index: 0,
+          id: 12,
+          text: 'medical',
+          startTime: 0,
+          endTime: 0.4,
+          confidence: 0.9,
+        },
+      ],
       confidence: {
         utterance: 0.9,
         wordAverage: 0.9,
-        tokenAverage: 0.9
-      }
+        tokenAverage: 0.9,
+      },
     };
     const whisperNative: WhisperNativeTranscript = {
       utteranceText: 'translated whisper scaffold',
       isFinal: true,
       language: 'en',
-      segments: [{
-        index: 0,
-        text: 'translated whisper scaffold',
-        startTime: 0,
-        endTime: 1.2,
-        confidence: 0.93
-      }],
-      tokens: [{
-        index: 0,
-        id: 99,
-        text: 'translated',
-        startTime: 0,
-        endTime: 0.3,
-        confidence: 0.94
-      }]
+      segments: [
+        {
+          index: 0,
+          text: 'translated whisper scaffold',
+          startTime: 0,
+          endTime: 1.2,
+          confidence: 0.93,
+        },
+      ],
+      tokens: [
+        {
+          index: 0,
+          id: 99,
+          text: 'translated',
+          startTime: 0,
+          endTime: 0.3,
+          confidence: 0.94,
+        },
+      ],
     };
 
     const hfCanonical = createHfCtcTranscriptNormalizer().toCanonical(hfNative, {
-      detailLevel: 'detailed'
+      detailLevel: 'detailed',
     });
     const whisperCanonical = createWhisperTranscriptNormalizer().toCanonical(whisperNative, {
-      detailLevel: 'detailed'
+      detailLevel: 'detailed',
     });
 
     expect(hfCanonical.meta.modelFamily).toBe('hf-ctc');
@@ -120,23 +133,27 @@ describe('transcript normalization helpers', () => {
   it('normalizes legacy Parakeet JSON and exposes canonical/envelope helpers', () => {
     const legacy: LegacyParakeetTranscript = {
       utterance_text: 'legacy parakeet',
-      words: [{
-        text: 'legacy',
-        start_time: 0,
-        end_time: 0.5,
-        confidence: 0.8
-      }],
-      tokens: [{
-        id: 1,
-        token: 'legacy',
-        start_time: 0,
-        end_time: 0.5,
-        confidence: 0.8
-      }],
+      words: [
+        {
+          text: 'legacy',
+          start_time: 0,
+          end_time: 0.5,
+          confidence: 0.8,
+        },
+      ],
+      tokens: [
+        {
+          id: 1,
+          token: 'legacy',
+          start_time: 0,
+          end_time: 0.5,
+          confidence: 0.8,
+        },
+      ],
       confidence_scores: {
         utterance: 0.8,
         word_avg: 0.8,
-        token_avg: 0.8
+        token_avg: 0.8,
       },
       metrics: {
         preprocess_ms: 1,
@@ -144,21 +161,35 @@ describe('transcript normalization helpers', () => {
         decode_ms: 3,
         tokenize_ms: 1,
         total_ms: 7,
-        rtf: 0.1
+        wall_ms: 7.5,
+        audio_duration_sec: 3.2,
+        rtf: 0.1,
+        rtfx: 10,
+        preprocessor_backend: 'js',
+        resample_ms: 0.8,
+        encoder_frame_count: 42,
+        decode_iterations: 11,
+        emitted_token_count: 6,
+        emitted_word_count: 2,
       },
-      is_final: true
+      is_final: true,
     };
 
     const normalizer = createLegacyParakeetTranscriptNormalizer();
     const envelope = normalizer.toEnvelope(legacy, {
       detailLevel: 'detailed',
-      modelId: 'parakeet-tdt-0.6b-v3'
+      modelId: 'parakeet-tdt-0.6b-v3',
     });
 
     expect(isTranscriptionEnvelope(envelope)).toBe(true);
     expect(getCanonicalTranscript(envelope).text).toBe('legacy parakeet');
     expect(envelope.canonical.meta.modelFamily).toBe('parakeet');
     expect(envelope.canonical.meta.metrics?.totalMs).toBe(7);
+    expect(envelope.canonical.meta.metrics?.wallMs).toBe(7.5);
+    expect(envelope.canonical.meta.metrics?.audioDurationSec).toBe(3.2);
+    expect(envelope.canonical.meta.metrics?.rtfx).toBe(10);
+    expect(envelope.canonical.meta.metrics?.preprocessorBackend).toBe('js');
+    expect(envelope.canonical.meta.metrics?.encoderFrameCount).toBe(42);
     expect(envelope.canonical.tokens?.[0]?.text).toBe('legacy');
   });
 });

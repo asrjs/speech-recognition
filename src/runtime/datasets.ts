@@ -36,7 +36,10 @@ export interface NormalizedDatasetRow<T = Record<string, unknown>> {
   readonly raw: T;
 }
 
-function buildUrl(path: string, params: Record<string, string | number | undefined | null>): string {
+function buildUrl(
+  path: string,
+  params: Record<string, string | number | undefined | null>,
+): string {
   const url = new URL(`${HF_DATASET_API}${path}`);
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
@@ -81,7 +84,10 @@ function parseRetryAfterMs(response: Response, fallbackMs: number): number {
   return fallbackMs;
 }
 
-async function fetchJson<T>(url: string, options: { retries?: number; retryDelayMs?: number } = {}): Promise<T> {
+async function fetchJson<T>(
+  url: string,
+  options: { retries?: number; retryDelayMs?: number } = {},
+): Promise<T> {
   const retries = options.retries ?? 2;
   const retryDelayMs = options.retryDelayMs ?? 700;
   let lastError: unknown = null;
@@ -98,13 +104,15 @@ async function fetchJson<T>(url: string, options: { retries?: number; retryDelay
         }
         throw new Error(`Request failed (${response.status}): ${bodyText}`);
       }
-      return await response.json() as T;
+      return (await response.json()) as T;
     } catch (error) {
       lastError = error;
       if (attempt >= retries) {
         break;
       }
-      const isNetwork = /Failed to fetch|NetworkError|Load failed|CORS|ERR_FAILED/i.test(String((error as Error)?.message || error));
+      const isNetwork = /Failed to fetch|NetworkError|Load failed|CORS|ERR_FAILED/i.test(
+        String((error as Error)?.message || error),
+      );
       const backoff = isNetwork
         ? Math.max(1200, retryDelayMs * (attempt + 1) * 2)
         : retryDelayMs * (attempt + 1);
@@ -112,28 +120,37 @@ async function fetchJson<T>(url: string, options: { retries?: number; retryDelay
     }
   }
 
-  throw (lastError instanceof Error ? lastError : new Error('Request failed'));
+  throw lastError instanceof Error ? lastError : new Error('Request failed');
 }
 
 export async function fetchDatasetSplits(dataset: string): Promise<readonly DatasetSplitInfo[]> {
-  const payload = await fetchJson<{ splits?: DatasetSplitInfo[] }>(buildUrl('/splits', { dataset }));
+  const payload = await fetchJson<{ splits?: DatasetSplitInfo[] }>(
+    buildUrl('/splits', { dataset }),
+  );
   return payload.splits || [];
 }
 
-export async function fetchDatasetInfo(dataset: string, config: string): Promise<Record<string, unknown>> {
+export async function fetchDatasetInfo(
+  dataset: string,
+  config: string,
+): Promise<Record<string, unknown>> {
   return await fetchJson<Record<string, unknown>>(buildUrl('/info', { dataset, config }));
 }
 
-export async function fetchDatasetRows(request: DatasetRowsRequest): Promise<Record<string, unknown>> {
+export async function fetchDatasetRows(
+  request: DatasetRowsRequest,
+): Promise<Record<string, unknown>> {
   const safeLength = Math.max(1, Math.min(100, Number(request.length) || 1));
   const safeOffset = Math.max(0, Number(request.offset) || 0);
-  return await fetchJson<Record<string, unknown>>(buildUrl('/rows', {
-    dataset: request.dataset,
-    config: request.config,
-    split: request.split,
-    offset: safeOffset,
-    length: safeLength,
-  }));
+  return await fetchJson<Record<string, unknown>>(
+    buildUrl('/rows', {
+      dataset: request.dataset,
+      config: request.config,
+      split: request.split,
+      offset: safeOffset,
+      length: safeLength,
+    }),
+  );
 }
 
 export function extractAudioUrl(audioField: unknown): string | null {
@@ -165,7 +182,10 @@ export function normalizeReferenceText(value: unknown): string {
     .trim();
 }
 
-export function normalizeDatasetRow<T extends Record<string, unknown>>(rowWrapper: DatasetRowWrapper<T> | T, fallbackIndex = 0): NormalizedDatasetRow<T> {
+export function normalizeDatasetRow<T extends Record<string, unknown>>(
+  rowWrapper: DatasetRowWrapper<T> | T,
+  fallbackIndex = 0,
+): NormalizedDatasetRow<T> {
   const wrapper = rowWrapper as DatasetRowWrapper<T>;
   const row = (wrapper.row || rowWrapper) as T;
   const rowIndex = wrapper.row_idx ?? fallbackIndex;
@@ -173,10 +193,10 @@ export function normalizeDatasetRow<T extends Record<string, unknown>>(rowWrappe
     rowIndex,
     audioUrl: extractAudioUrl((row as Record<string, unknown>).audio),
     referenceText: normalizeReferenceText(
-      (row as Record<string, unknown>).transcription
-      || (row as Record<string, unknown>).text
-      || (row as Record<string, unknown>).transcript
-      || ''
+      (row as Record<string, unknown>).transcription ||
+        (row as Record<string, unknown>).text ||
+        (row as Record<string, unknown>).transcript ||
+        '',
     ),
     speaker: String((row as Record<string, unknown>).speaker || ''),
     gender: String((row as Record<string, unknown>).gender || ''),
@@ -187,7 +207,9 @@ export function normalizeDatasetRow<T extends Record<string, unknown>>(rowWrappe
   };
 }
 
-export async function fetchSequentialRows(request: DatasetRowsRequest & { readonly startOffset?: number; readonly limit?: number }): Promise<{
+export async function fetchSequentialRows(
+  request: DatasetRowsRequest & { readonly startOffset?: number; readonly limit?: number },
+): Promise<{
   readonly rows: readonly Record<string, unknown>[];
   readonly totalRows: number | null;
 }> {
@@ -198,7 +220,7 @@ export async function fetchSequentialRows(request: DatasetRowsRequest & { readon
 
   while (rows.length < limit) {
     const pageLength = Math.min(100, limit - rows.length);
-    const page = await fetchDatasetRows({ ...request, offset: cursor, length: pageLength }) as {
+    const page = (await fetchDatasetRows({ ...request, offset: cursor, length: pageLength })) as {
       rows?: Record<string, unknown>[];
       num_rows_total?: number;
     };
@@ -227,18 +249,20 @@ function normalizeSeed(seed: unknown): number | null {
 function createMulberry32(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
-    state += 0x6D2B79F5;
+    state += 0x6d2b79f5;
     let value = Math.imul(state ^ (state >>> 15), state | 1);
     value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
     return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
   };
 }
 
-export async function fetchRandomRows(request: DatasetRowsRequest & {
-  readonly totalRows: number;
-  readonly sampleCount: number;
-  readonly seed?: string | number;
-}): Promise<{
+export async function fetchRandomRows(
+  request: DatasetRowsRequest & {
+    readonly totalRows: number;
+    readonly sampleCount: number;
+    readonly seed?: string | number;
+  },
+): Promise<{
   readonly rows: readonly Record<string, unknown>[];
   readonly offsets: readonly number[];
   readonly failedOffsets: readonly number[];
@@ -259,7 +283,11 @@ export async function fetchRandomRows(request: DatasetRowsRequest & {
 
   const maxOffsetAttempts = Math.min(maxRows * 3, maxRows + wanted * 20);
   let offsetAttempts = 0;
-  while (selectedOffsets.size < wanted && offsetAttempts < maxOffsetAttempts && selectedOffsets.size < maxRows) {
+  while (
+    selectedOffsets.size < wanted &&
+    offsetAttempts < maxOffsetAttempts &&
+    selectedOffsets.size < maxRows
+  ) {
     offsetAttempts += 1;
     const offset = Math.floor(rand() * maxRows);
     if (selectedOffsets.has(offset)) continue;
@@ -279,7 +307,9 @@ export async function fetchRandomRows(request: DatasetRowsRequest & {
   for (const pageStart of pageStarts) {
     if (rows.length >= wanted) break;
     try {
-      const page = await fetchDatasetRows({ ...request, offset: pageStart, length: 100 }) as { rows?: Record<string, unknown>[] };
+      const page = (await fetchDatasetRows({ ...request, offset: pageStart, length: 100 })) as {
+        rows?: Record<string, unknown>[];
+      };
       const pageRows = page.rows || [];
       const offsetsInPage = pageMap.get(pageStart) || [];
       for (const absoluteOffset of offsetsInPage) {
@@ -307,7 +337,9 @@ export async function fetchRandomRows(request: DatasetRowsRequest & {
   };
 }
 
-export function getConfigsAndSplits(splits: readonly DatasetSplitInfo[]): ReadonlyMap<string, readonly string[]> {
+export function getConfigsAndSplits(
+  splits: readonly DatasetSplitInfo[],
+): ReadonlyMap<string, readonly string[]> {
   const byConfig = new Map<string, string[]>();
   for (const item of splits) {
     if (!item.config || !item.split) continue;

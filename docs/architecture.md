@@ -1,136 +1,338 @@
-# `asr.js` Architecture
+# `@asrjs/speech-recognition` Architecture
 
 ## System Overview
 
-`asr.js` is a single-package speech runtime library built around one public API, one build output, and one release flow.
+`@asrjs/speech-recognition` is a single-package speech runtime library with one build output and one release flow, but a layered public API.
 
-The internal codebase preserves strong separation, but those boundaries live inside `src/` folders rather than workspace packages. The library is organized around a speech-native inference stack and architecture-based model integrations, while branded families remain presets layered on top.
+It is designed around:
 
-The dependency direction is:
-`types -> processors / runtime / tokenizers -> inference -> models -> presets`
+- explicit runtime composition
+- architecture-based model families
+- thin branded presets
+- canonical transcript contracts
+- injectable asset loading and caching
+- browser and Node.js support without environment leakage
 
-This keeps the repo simple to build and publish while preserving technical boundaries that matter for maintainability and future model support.
+The library is intentionally speech-first. It is not a generic multimodal framework and it does not mirror generic task-pipeline architecture.
 
 ## Internal Layout
 
 ```text
 src/
+  audio/
   inference/
+  io/
   models/
   presets/
-  processors/
   runtime/
   tokenizers/
   types/
 ```
 
-### Folder responsibilities
+## Dependency Direction
 
-- `src/types`
-  - Canonical transcript types, backend capability types, runtime/model/session contracts, and classification metadata.
-- `src/runtime`
-  - Runtime registration, lifecycle, backend selection, errors, logging hooks, model loading, browser-audio helpers, transcript normalization helpers, and app-facing realtime helpers such as ring buffers, window builders, and utterance mergers.
-- `src/processors`
-  - PCM normalization, chunking, channel handling, and processor descriptors.
-- `src/tokenizers`
-  - Tokenization contracts, tokenizer stubs, and text reconstruction helpers.
-- `src/inference`
-  - Backend probes, streaming orchestration, and shared inference graph descriptors for encoders, decoder heads, and decoding strategies.
-- `src/models`
-  - Architecture-based model integrations such as NeMo TDT, HF CTC, Whisper seq2seq, and FireRed speech-LLM.
-- `src/presets`
-  - Branded model-family manifests and thin preset factories such as Parakeet, MedASR, and Whisper.
+The intended dependency direction is:
 
-## Model Classification
+`types -> audio / tokenizers / io / runtime -> inference -> models -> presets`
 
-Models are classified by implementation-relevant traits rather than marketing names.
+Rules:
 
-```ts
-interface ModelClassification {
-  readonly ecosystem: string;
-  readonly processor?: string;
-  readonly encoder?: string;
-  readonly decoder?: string;
-  readonly topology?: string;
-  readonly family?: string;
-  readonly task: string;
-}
-```
+- `src/types` defines stable contracts and should stay environment-agnostic.
+- `src/runtime` owns orchestration, registration, lifecycle, backend selection, and transcript normalization.
+- `src/io` owns asset resolution and caching, not model-specific execution.
+- `src/inference` owns shared descriptors, generic math, and shared streaming primitives only.
+- `src/models/*` owns family-specific execution, decode loops, tokenizer behavior, timestamp reconstruction, and native output shaping.
+- `src/presets/*` resolves branded presets into technical family load requests without owning execution logic.
 
-Implementation code lives under `src/models`, while branded aliases live under `src/presets`. This keeps reusable architecture logic separate from family naming.
+## Folder Responsibilities
 
-## Shared vs Model-Owned Logic
+### `src/types`
 
-- `src/inference/graph.ts`
-  - Owns shared classification for processor, encoder, decoder-head, and decoding-strategy families.
-- `src/models/*`
-  - Owns concrete execution logic, family-specific tensor wiring, and any decoder loop that is not yet genuinely reusable.
-- `src/tokenizers/*`
-  - Owns tokenizer contracts and implementations directly. Tokenizers are not nested under `inference`.
+Owns stable contracts:
 
-## Realtime App Helpers
+- transcript and streaming result types
+- backend capability types
+- runtime, model, session, and preset interfaces
+- model classification and architecture metadata
+- IO contracts such as `AssetRequest`, `AssetProvider`, and `ResolvedAssetHandle`
 
-`asr.js` intentionally includes a small helper layer for real apps, not just raw model loading.
+### `src/audio`
 
-- `AudioRingBuffer`
-  - Fixed-size PCM ring buffer with absolute frame addressing and overwrite protection.
-- `VoiceActivityTimeline`
-  - Ring-buffered speech/silence timeline for lightweight VAD-aware windowing and silence-tail checks.
-- `StreamingWindowBuilder`
-  - Cursor-aware window construction for long-running and low-latency transcription loops.
-- `UtteranceTranscriptMerger`
-  - Mature/pending transcript management for direct model outputs with punctuation-based finalization.
-- `RealtimeTranscriptionController`
-  - Thin coordinator for audio ring buffering, optional VAD tracking, window building, and transcript merging.
-- `startMicrophoneCapture`
-  - Browser microphone helper that emits PCM chunks without taking over UI state or worker orchestration.
-- `decodeAudioSourceToMonoPcm`
-  - Shared browser helper for fetching and decoding audio sources into mono PCM before inference.
+Owns reusable audio and feature-preprocessing primitives:
 
-These helpers are library-grade building blocks extracted from real application needs, but they stop short of pulling UI, worker orchestration, or app-specific state management into the core library.
+- PCM normalization
+- mono/channel handling
+- sample-rate helpers
+- chunking and framing
+- audio containers such as `PcmAudioBuffer`
 
-This split is deliberate: `asr.js` shares semantics and descriptors early, but only extracts executable math after multiple model families prove the code is truly shared.
+### `src/io`
 
-## Public API
+Owns the environment boundary for model assets.
 
-`asr.js` exposes one root public API from `src/index.ts`.
+This layer exists so model families do not hardcode:
 
-Consumers import from:
+- `fetch()`
+- `URL.createObjectURL()`
+- direct filesystem access
+- IndexedDB access
 
-```ts
-import { createSpeechRuntime, createWasmBackend } from 'asr.js';
-```
+Core contracts:
 
-The library does not publish segmented workspace-style packages like `@asrjs/core` or `@asrjs/model-nemo-tdt`.
+- `AssetRequest`
+- `ResolvedAssetHandle`
+- `AssetProvider`
+- `AssetCache`
 
-## Transcript Output Model
+`ResolvedAssetHandle` is stream-first:
 
-`asr.js` keeps transcript semantics stable across model families and backends.
+- `openStream()` is the primary large-asset path
+- `readBytes()` is convenience for eager consumers
+- `readText()` and `readJson()` build on the same handle
+- `getLocator('url' | 'path')` supports runtimes like ORT that still need a concrete locator
+- `dispose()` cleans up temporary URLs, paths, or cache-owned resources
+
+Built-in providers and caches currently cover:
+
+- browser fetch
+- Hugging Face hub resolution
+- browser local file/directory handles
+- IndexedDB caching
+- Node filesystem paths
+
+### `src/runtime`
+
+Owns orchestration, not model intelligence.
+
+Responsibilities:
+
+- backend registration
+- model-family registration
+- preset registration
+- model loading
+- backend capability probing and selection
+- runtime/model/session lifecycle
+- errors, logging, hooks, and transcript normalization
+
+The runtime surface now distinguishes technical model families from branded presets:
+
+- `registerModelFamily(...)`
+- `registerPreset(...)`
+- `listModelFamilies()`
+- `listPresets()`
+
+Load requests are intentionally discriminated:
+
+- family path:
+  - `{ family, modelId, ... }`
+- preset path:
+  - `{ preset, modelId?, ... }`
+
+Exactly one of `family` or `preset` should be present.
+
+### `src/inference`
+
+Owns only shared inference building blocks that are truly model-agnostic:
+
+- architecture descriptors in `src/inference/descriptors.ts`
+- generic math in `src/inference/math.ts`
+- shared streaming orchestration in `src/inference/streaming/*`
+- backend packages and probes in `src/inference/backends/*`
+
+This folder must not become a catch-all for:
+
+- backend policy
+- runtime orchestration
+- model-family quirks
+- tokenizer-specific behavior
+- topology-specific decode loops
+
+If shared descriptors become too broad later, the next split should be within `src/inference`, not by pushing model-owned logic upward prematurely.
+
+### `src/models`
+
+Owns architecture-based implementation families such as:
+
+- `nemo-tdt`
+- `hf-ctc-common`
+- `whisper-seq2seq`
+- `firered-llm`
+
+Family packages own:
+
+- config parsing
+- topology-specific preprocessing glue
+- tensor/session wiring
+- decode loops
+- timestamp and confidence reconstruction
+- native output shaping
+
+Shared helpers move upward only after reuse is proven across multiple families.
+
+### `src/presets`
+
+Owns branded presets such as:
+
+- `parakeet`
+- `medasr`
+- `whisper`
+
+Presets are intentionally thin:
+
+- they resolve branded names into technical family requests
+- they may inject default config, model ids, classification metadata, and asset hints
+- they may apply branded runtime or decoding defaults
+
+Presets must not own:
+
+- execution code
+- backend implementations
+- model-family decode loops
+
+## Model Families vs Presets
+
+This distinction is a core design rule.
+
+Examples:
+
+- technical family:
+  - `nemo-tdt`
+- branded preset:
+  - `parakeet`
+
+When a model is loaded through a preset:
+
+- `model.info.family` stays technical
+- `model.info.preset` records the branded alias
+
+This lets sibling branded families reuse the same implementation family without duplicating execution code.
+
+## Runtime Lifecycle and Disposal
+
+`dispose()` is the primary lifecycle contract.
+
+Required rules:
+
+- `SpeechSession.dispose()` is required and idempotent
+- `SpeechModel.dispose()` is required and idempotent
+- `SpeechRuntime.dispose()` is required and idempotent
+- `ResolvedAssetHandle.dispose()` is required
+- backend execution resources must be released through the same lifecycle chain
+
+Ownership rules:
+
+- models track and dispose sessions they create
+- runtimes track and dispose models they load
+- asset handles clean up temporary locators and owned resources
+
+`Symbol.asyncDispose` may be implemented as optional sugar, but it is not the primary or required API.
+
+## Canonical Transcript Boundary
+
+`@asrjs/speech-recognition` keeps transcript semantics stable across model families and backends.
+
+Canonical contracts:
 
 - `TranscriptResult`
-  - canonical app-facing JSON with `text`, `warnings`, `meta`, and optional `segments`, `words`, and `tokens`
 - `PartialTranscript`
-  - streaming update shape for partial/final transcript state
 - `TranscriptionEnvelope<TNative>`
-  - canonical transcript plus attached model-native output for power users
-- `responseFlavor: 'canonical' | 'canonical+native' | 'native'`
-  - lets apps choose whether they want stable canonical output, model-native output, or both
 
-`src/runtime/transcripts.ts` provides normalizers so consumers can route different native outputs such as NeMo TDT, HF CTC, Whisper, or legacy Parakeet JSON into the same canonical transcript workflow.
+Rules:
 
-## Metadata and Stability Rules
+- canonical transcript objects must remain structured-clone-safe POJOs
+- canonical outputs must not contain classes, methods, `Map`, `Set`, browser handles, backend references, or session references
+- native outputs are not guaranteed worker-safe unless documented by the family
 
-- Canonical transcript semantics remain stable across all backends.
-- Backend choice may affect performance and availability, but not transcript meaning.
-- `ModelArchitectureDescriptor.module` and `sharedModule` identify internal subsystems such as `processors` and `inference`, not publishable package names.
-- Decoder internals remain model-specific until real shared behavior is proven.
+Streaming state currently uses:
 
-## Why This Differs From `transformers.js`
+- `revision`
+- `committedText`
+- `previewText`
 
-This architecture is intentionally different from `transformers.js`:
+This supports partial/final updates and retroactive correction workflows without locking the library into a more opinionated cursor protocol too early.
 
-- it is a speech runtime, not a general model framework
-- it preserves architecture-based model boundaries instead of centering everything on generic task pipelines
-- it keeps one coherent library API instead of multiple pseudo-packages
-- it treats branded families as presets over technical implementations
-- it keeps backend policy capability-based without letting backend choice leak into output semantics
+## Public API Shape
+
+`@asrjs/speech-recognition` uses one npm package with intentional subpath exports.
+
+### Root: `@asrjs/speech-recognition`
+
+Keep the root entry narrow and runtime-critical:
+
+- transcript/runtime/backend/audio contracts
+- `createSpeechRuntime`
+- canonical transcript normalizers
+- backend factories
+- `PcmAudioBuffer`
+
+### Secondary subpaths
+
+- `@asrjs/speech-recognition/builtins`
+  - built-in family/preset registration and convenience runtime composition
+- `@asrjs/speech-recognition/io`
+  - asset providers, caches, and model-asset helpers
+- `@asrjs/speech-recognition/inference`
+  - descriptors, generic math, and shared streaming primitives
+- `@asrjs/speech-recognition/browser`
+  - browser-only helpers such as microphone capture and audio decoding
+- `@asrjs/speech-recognition/realtime`
+  - app-facing live transcription helpers
+- `@asrjs/speech-recognition/bench`
+  - benchmark and evaluation utilities
+- `@asrjs/speech-recognition/datasets`
+  - dataset helpers
+- `@asrjs/speech-recognition/models/*`
+  - technical model-family entry points
+- `@asrjs/speech-recognition/presets/*`
+  - branded preset entry points
+
+Subpath separation is the primary bundling boundary. Lazy imports inside built-in helpers may be added later, but they are secondary to clean public entrypoint separation.
+
+## Realtime and Browser Helpers
+
+`@asrjs/speech-recognition` includes library-grade helpers extracted from real apps:
+
+- `AudioRingBuffer`
+- `LayeredAudioBuffer`
+- `VoiceActivityTimeline`
+- `StreamingWindowBuilder`
+- `UtteranceTranscriptMerger`
+- `RealtimeTranscriptionController`
+- `startMicrophoneCapture`
+- `decodeAudioSourceToMonoPcm`
+
+These are intentionally separated from the root API because they are higher-level application helpers, not the minimal runtime core.
+
+## Built-In Composition vs Explicit Composition
+
+`createBuiltInSpeechRuntime()` is a convenience entrypoint.
+
+The stricter, more explicit architecture path is:
+
+1. create a runtime
+2. register the backends you want
+3. register the model families you want
+4. register the presets you want
+
+This keeps tree-shaking and ownership clearer for serious applications, while still allowing a batteries-included convenience path.
+
+## Why This Architecture Is Speech-First
+
+This architecture is intentionally optimized for speech workloads:
+
+- it is a speech runtime, not a general task-pipeline framework
+- it keeps canonical transcript contracts as the stable app-facing boundary
+- it keeps branded families downstream as presets over technical implementations
+- it separates asset loading from model execution through an explicit IO layer
+- it keeps runtime orchestration distinct from model-family execution
+- it keeps backend choice from changing transcript semantics
+
+## Architecture Rules To Keep
+
+1. Runtime is orchestration, not intelligence.
+2. Model families own execution and decoding.
+3. Presets stay thin and branded.
+4. Canonical transcripts are the stable app-facing contract.
+5. Browser-only code must stay off the root import path.
+6. Shared model logic moves upward only after reuse is proven.
+7. `src/inference` must stay descriptive and generic, not policy-heavy.

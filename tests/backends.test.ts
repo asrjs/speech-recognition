@@ -1,10 +1,7 @@
-import {
-  createWebGlBackend,
-  probeWebGlCapabilities
-} from 'asr.js';
-import { probeWasmCapabilities } from 'asr.js';
-import { probeWebGpuCapabilities } from 'asr.js';
-import { probeWebNnCapabilities } from 'asr.js';
+import { createWebGlBackend, probeWebGlCapabilities } from '@asrjs/speech-recognition';
+import { probeWasmCapabilities } from '@asrjs/speech-recognition';
+import { probeWebGpuCapabilities } from '@asrjs/speech-recognition';
+import { probeWebNnCapabilities } from '@asrjs/speech-recognition';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
@@ -12,7 +9,7 @@ const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
 
 function restoreGlobal(
   key: 'navigator' | 'document',
-  descriptor: PropertyDescriptor | undefined
+  descriptor: PropertyDescriptor | undefined,
 ): void {
   if (descriptor) {
     Object.defineProperty(globalThis, key, descriptor);
@@ -46,16 +43,16 @@ describe('backend probes', () => {
               features: {
                 has(feature: string) {
                   return feature === 'shader-f16';
-                }
+                },
               },
               info: {
                 vendor: 'MockVendor',
-                architecture: 'MockArchitecture'
-              }
+                architecture: 'MockArchitecture',
+              },
             };
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     const caps = await probeWebGpuCapabilities();
@@ -68,8 +65,8 @@ describe('backend probes', () => {
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
-        ml: {}
-      }
+        ml: {},
+      },
     });
 
     const caps = await probeWebNnCapabilities();
@@ -85,10 +82,10 @@ describe('backend probes', () => {
           return {
             getContext(kind: string) {
               return kind === 'webgl' ? {} : null;
-            }
+            },
           };
-        }
-      }
+        },
+      },
     });
 
     const caps = await probeWebGlCapabilities();
@@ -98,4 +95,3 @@ describe('backend probes', () => {
     expect(backend.id).toBe('webgl');
   });
 });
-

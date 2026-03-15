@@ -23,13 +23,13 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
       decoder: 'transformer-decoder',
       topology: 'aed',
       family: 'whisper',
-      task: 'multitask-asr-translation'
+      task: 'multitask-asr-translation',
     },
     config: {
       maxSourcePositions: 1500,
       maxTargetPositions: 448,
-      languages: ['auto']
-    }
+      languages: ['auto'],
+    },
   },
   {
     preset: 'whisper',
@@ -43,14 +43,14 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
       decoder: 'transformer-decoder',
       topology: 'aed',
       family: 'whisper',
-      task: 'multitask-asr-translation'
+      task: 'multitask-asr-translation',
     },
     config: {
       maxSourcePositions: 1500,
       maxTargetPositions: 448,
-      languages: ['auto']
-    }
-  }
+      languages: ['auto'],
+    },
+  },
 ];
 
 function normalizePresetId(modelId: string): string {

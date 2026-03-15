@@ -1,8 +1,5 @@
 import type { ModelClassification } from '../../types/index.js';
-import type {
-  NemoTdtArtifactSource,
-  NemoTdtModelConfig
-} from '../../models/nemo-tdt/index.js';
+import type { NemoTdtArtifactSource, NemoTdtModelConfig } from '../../models/nemo-tdt/index.js';
 
 export interface ParakeetPresetManifest {
   readonly preset: 'parakeet';
@@ -21,10 +18,7 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
   {
     preset: 'parakeet',
     modelId: 'parakeet-tdt-0.6b-v2',
-    aliases: [
-      'nvidia/parakeet-tdt-0.6b-v2',
-      'ysdede/parakeet-tdt-0.6b-v2-onnx'
-    ],
+    aliases: ['nvidia/parakeet-tdt-0.6b-v2', 'ysdede/parakeet-tdt-0.6b-v2-onnx'],
     description: 'Parakeet preset over the NeMo TDT implementation boundary.',
     classification: {
       ecosystem: 'nemo',
@@ -33,22 +27,22 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
       decoder: 'tdt',
       topology: 'tdt',
       family: 'parakeet',
-      task: 'asr'
+      task: 'asr',
     },
     config: {
       vocabularySize: 1025,
       languages: ['en'],
-      melBins: 128
+      melBins: 128,
     },
     source: {
       kind: 'huggingface',
       repoId: 'ysdede/parakeet-tdt-0.6b-v2-onnx',
       preprocessorName: 'nemo128',
-      preprocessorBackend: 'onnx'
+      preprocessorBackend: 'js',
     },
     quirks: {
-      preprocessorBackend: 'js'
-    }
+      preprocessorBackend: 'js',
+    },
   },
   {
     preset: 'parakeet',
@@ -56,7 +50,7 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
     aliases: [
       'nvidia/parakeet-tdt-0.6b-v3',
       'ysdede/parakeet-tdt-0.6b-v3-onnx',
-      'parakeet-tdt-multilingual'
+      'parakeet-tdt-multilingual',
     ],
     description: 'Multilingual Parakeet preset over the NeMo TDT implementation boundary.',
     classification: {
@@ -66,23 +60,23 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
       decoder: 'tdt',
       topology: 'tdt',
       family: 'parakeet',
-      task: 'asr'
+      task: 'asr',
     },
     config: {
-      vocabularySize: 4097,
+      vocabularySize: 8193,
       languages: ['en', 'fr', 'de', 'es', 'it', 'pt', 'nl', 'pl', 'ru', 'uk', 'ja', 'ko', 'zh'],
-      melBins: 128
+      melBins: 128,
     },
     source: {
       kind: 'huggingface',
       repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
       preprocessorName: 'nemo128',
-      preprocessorBackend: 'onnx'
+      preprocessorBackend: 'js',
     },
     quirks: {
-      preprocessorBackend: 'js'
-    }
-  }
+      preprocessorBackend: 'js',
+    },
+  },
 ];
 
 function normalizePresetId(modelId: string): string {

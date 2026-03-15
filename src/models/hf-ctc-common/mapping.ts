@@ -3,7 +3,7 @@ import type {
   TranscriptMeta,
   TranscriptResult,
   TranscriptToken,
-  TranscriptWord
+  TranscriptWord,
 } from '../../types/index.js';
 import type { HfCtcNativeTranscript, HfCtcTranscriptionOptions } from './types.js';
 
@@ -12,7 +12,7 @@ export function mapHfCtcNativeToCanonical(
   classification: ModelClassification,
   meta: Omit<TranscriptMeta, 'detailLevel' | 'isFinal'> & {
     readonly detailLevel: HfCtcTranscriptionOptions['detail'];
-  }
+  },
 ): TranscriptResult {
   const detail = meta.detailLevel ?? 'segments';
   const tokens: TranscriptToken[] = (nativeTranscript.tokens ?? []).map((token) => ({
@@ -21,7 +21,7 @@ export function mapHfCtcNativeToCanonical(
     text: token.text,
     startTime: token.startTime,
     endTime: token.endTime,
-    confidence: token.confidence
+    confidence: token.confidence,
   }));
   const words: TranscriptWord[] = (nativeTranscript.words ?? []).map((word) => ({
     index: word.index,
@@ -30,26 +30,35 @@ export function mapHfCtcNativeToCanonical(
     endTime: word.endTime,
     confidence: word.confidence,
     tokenIndices: tokens
-      .filter((token) => token.startTime !== undefined && token.endTime !== undefined && token.startTime >= word.startTime && token.endTime <= word.endTime)
-      .map((token) => token.index)
+      .filter(
+        (token) =>
+          token.startTime !== undefined &&
+          token.endTime !== undefined &&
+          token.startTime >= word.startTime &&
+          token.endTime <= word.endTime,
+      )
+      .map((token) => token.index),
   }));
-  const segments = words.length > 0
-    ? [{
-        index: 0,
-        text: nativeTranscript.utteranceText,
-        startTime: words[0]!.startTime,
-        endTime: words[words.length - 1]!.endTime,
-        confidence: nativeTranscript.confidence?.utterance,
-        wordIndices: words.map((word) => word.index)
-      }]
-    : undefined;
+  const segments =
+    words.length > 0
+      ? [
+          {
+            index: 0,
+            text: nativeTranscript.utteranceText,
+            startTime: words[0]!.startTime,
+            endTime: words[words.length - 1]!.endTime,
+            confidence: nativeTranscript.confidence?.utterance,
+            wordIndices: words.map((word) => word.index),
+          },
+        ]
+      : undefined;
 
   const result: TranscriptResult = {
     text: nativeTranscript.utteranceText,
     warnings: (nativeTranscript.warnings ?? []).map((warning) => ({
       code: warning.code,
       message: warning.message,
-      recoverable: true
+      recoverable: true,
     })),
     meta: {
       ...meta,
@@ -62,8 +71,8 @@ export function mapHfCtcNativeToCanonical(
       averageConfidence: nativeTranscript.confidence?.utterance,
       averageWordConfidence: nativeTranscript.confidence?.wordAverage,
       averageTokenConfidence: nativeTranscript.confidence?.tokenAverage,
-      nativeAvailable: true
-    }
+      nativeAvailable: true,
+    },
   };
 
   if (detail !== 'text' && segments) {

@@ -6,7 +6,7 @@ export class StubTextTokenizer implements TextTokenizer {
   constructor(
     readonly kind: TokenizerKind = 'sentencepiece',
     private readonly prefix = 'tok',
-    vocabSize?: number
+    vocabSize?: number,
   ) {
     this.vocabSize = vocabSize;
   }

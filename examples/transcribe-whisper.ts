@@ -1,15 +1,17 @@
-import { createWasmBackend } from 'asr.js';
-import { createSpeechRuntime } from 'asr.js';
-import { createWhisperPresetFactory } from 'asr.js';
+import { createWasmBackend } from '@asrjs/speech-recognition';
+import { createSpeechRuntime } from '@asrjs/speech-recognition';
+import { createWhisperSeq2SeqModelFamily } from '@asrjs/speech-recognition/models/whisper-seq2seq';
+import { createWhisperPresetFactory } from '@asrjs/speech-recognition/presets/whisper';
 
 export async function transcribeWhisperExample() {
   const runtime = createSpeechRuntime({
     backends: [createWasmBackend()],
-    modelFamilies: [createWhisperPresetFactory()]
+    modelFamilies: [createWhisperSeq2SeqModelFamily()],
+    presets: [createWhisperPresetFactory()]
   });
 
   const model = await runtime.loadModel({
-    family: 'whisper',
+    preset: 'whisper',
     modelId: 'openai/whisper-base'
   });
   const session = await model.createSession();

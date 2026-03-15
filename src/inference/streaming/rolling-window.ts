@@ -1,4 +1,4 @@
-import { AudioChunk, normalizePcmChunk, PcmAudioBuffer } from '../../processors/index.js';
+import { AudioChunk, normalizePcmChunk, PcmAudioBuffer } from '../../audio/index.js';
 import type { AudioInputLike } from '../../types/index.js';
 
 export interface RollingAudioWindowOptions {
@@ -20,7 +20,7 @@ export class RollingAudioWindow {
   push(input: AudioInputLike, startTimeSeconds?: number): AudioChunk {
     const chunk = normalizePcmChunk(input, {
       sequence: this.sequence,
-      startTimeSeconds
+      startTimeSeconds,
     });
 
     this.sequence += 1;
@@ -42,7 +42,7 @@ export class RollingAudioWindow {
     if (this.chunks.length === 0) {
       return new PcmAudioBuffer({
         sampleRate: 16000,
-        channels: [new Float32Array(0)]
+        channels: [new Float32Array(0)],
       });
     }
 
@@ -61,7 +61,7 @@ export class RollingAudioWindow {
 
     return new PcmAudioBuffer({
       sampleRate,
-      channels
+      channels,
     });
   }
 

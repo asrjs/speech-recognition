@@ -8,13 +8,13 @@ This doc complements the NeMo, MedASR, and Whisper architecture docs by document
 
 ## Model Family Overview
 
-| Family | Origin | Topology | Frontend | Encoder | Notes |
-|--------|--------|----------|----------|---------|-------|
-| **Kaldi / Vosk** | Alpha Cephei, k2-fsa | Stateless RNN-T | Kaldi mel | Zipformer | encoder + decoder + joiner (3 ONNX) |
-| **GigaAM** | GigaChat (Sber) | CTC, RNN-T | GigaAM mel (64 bins) | Conformer | v2/v3, E2E variants |
-| **T-one** | T-Tech | CTC | **Identity** (raw) | Chunk-based | 8 kHz, streaming state |
-| **NeMo** | NVIDIA | CTC, RNNT, TDT, AED | NeMo mel (80/128 bins) | FastConformer | Parakeet, Canary |
-| **Whisper** | OpenAI | AED | Whisper mel | Transformer | see WHISPER doc |
+| Family           | Origin               | Topology            | Frontend               | Encoder       | Notes                               |
+| ---------------- | -------------------- | ------------------- | ---------------------- | ------------- | ----------------------------------- |
+| **Kaldi / Vosk** | Alpha Cephei, k2-fsa | Stateless RNN-T     | Kaldi mel              | Zipformer     | encoder + decoder + joiner (3 ONNX) |
+| **GigaAM**       | GigaChat (Sber)      | CTC, RNN-T          | GigaAM mel (64 bins)   | Conformer     | v2/v3, E2E variants                 |
+| **T-one**        | T-Tech               | CTC                 | **Identity** (raw)     | Chunk-based   | 8 kHz, streaming state              |
+| **NeMo**         | NVIDIA               | CTC, RNNT, TDT, AED | NeMo mel (80/128 bins) | FastConformer | Parakeet, Canary                    |
+| **Whisper**      | OpenAI               | AED                 | Whisper mel            | Transformer   | see WHISPER doc                     |
 
 ---
 
@@ -72,6 +72,7 @@ Raw waveform [16 kHz]
 ### Pipeline
 
 **CTC:**
+
 ```
 Raw waveform [16 kHz]
   │
@@ -87,6 +88,7 @@ Raw waveform [16 kHz]
 ```
 
 **RNN-T:**
+
 ```
   ▼ encoder.onnx → decoder.onnx → joint.onnx
   │ LSTM decoder (state: h, c), pred_hidden=320
@@ -97,14 +99,14 @@ Raw waveform [16 kHz]
 
 ### Frontend (GigaAM)
 
-| Param | v2 | v3 |
-|-------|----|----|
-| n_fft | 400 | 320 |
-| win_length | 400 | 320 |
-| hop_length | 160 | 160 |
-| n_mels | 64 | 64 |
-| f_max | 8000 | 8000 |
-| mel_scale | — | bfloat16 in export |
+| Param      | v2   | v3                 |
+| ---------- | ---- | ------------------ |
+| n_fft      | 400  | 320                |
+| win_length | 400  | 320                |
+| hop_length | 160  | 160                |
+| n_mels     | 64   | 64                 |
+| f_max      | 8000 | 8000               |
+| mel_scale  | —    | bfloat16 in export |
 
 **Features layout:** `[B, 64, T]` (mel × time).
 
@@ -155,46 +157,46 @@ See `WHISPER_ASR_MODEL_ARCHITECTURE.md`. onnx-asr uses Whisper feature extractor
 
 ## Frontend Comparison (onnx-asr preprocessors)
 
-| Preprocessor | sample_rate | n_fft | win | hop | n_mels | mel_scale | norm |
-|--------------|-------------|-------|-----|-----|--------|-----------|------|
-| **Kaldi** | 16000 | 512 | 400 | 160 | 80 | Kaldi | — |
-| **Nemo80** | 16000 | 512 | 400 | 160 | 80 | Slaney | per_feature |
-| **Nemo128** | 16000 | 512 | 400 | 160 | 128 | Slaney | per_feature |
-| **GigaAM v2** | 16000 | 400 | 400 | 160 | 64 | — | — |
-| **GigaAM v3** | 16000 | 320 | 320 | 160 | 64 | — | — |
-| **Whisper** | 16000 | 400 | — | 160 | 80 | Slaney | log10+clamp+scale |
-| **T-one** | **8000** | — | — | — | — | **Identity** | — |
+| Preprocessor  | sample_rate | n_fft | win | hop | n_mels | mel_scale    | norm              |
+| ------------- | ----------- | ----- | --- | --- | ------ | ------------ | ----------------- |
+| **Kaldi**     | 16000       | 512   | 400 | 160 | 80     | Kaldi        | —                 |
+| **Nemo80**    | 16000       | 512   | 400 | 160 | 80     | Slaney       | per_feature       |
+| **Nemo128**   | 16000       | 512   | 400 | 160 | 128    | Slaney       | per_feature       |
+| **GigaAM v2** | 16000       | 400   | 400 | 160 | 64     | —            | —                 |
+| **GigaAM v3** | 16000       | 320   | 320 | 160 | 64     | —            | —                 |
+| **Whisper**   | 16000       | 400   | —   | 160 | 80     | Slaney       | log10+clamp+scale |
+| **T-one**     | **8000**    | —     | —   | —   | —      | **Identity** | —                 |
 
 ---
 
 ## ONNX Session Layout per Family
 
-| Family | Files | Inputs |
-|--------|-------|--------|
-| Kaldi | encoder, decoder, joiner | encoder: x [B,T,80], x_lens |
-| GigaAM CTC | model | features [B,64,T], feature_lengths |
-| GigaAM RNN-T | encoder, decoder, joint | encoder: audio_signal [B,64,T], length |
-| T-one | model | signal [B,2400,1], state [B,219729] |
-| NeMo CTC | model | audio_signal [B,80,T], length |
-| NeMo RNNT/TDT | encoder, decoder_joint | encoder: audio_signal, length |
-| NeMo AED | encoder, decoder | encoder: audio_signal, length |
-| Whisper | model | input_features [B,80,T] |
+| Family        | Files                    | Inputs                                 |
+| ------------- | ------------------------ | -------------------------------------- |
+| Kaldi         | encoder, decoder, joiner | encoder: x [B,T,80], x_lens            |
+| GigaAM CTC    | model                    | features [B,64,T], feature_lengths     |
+| GigaAM RNN-T  | encoder, decoder, joint  | encoder: audio_signal [B,64,T], length |
+| T-one         | model                    | signal [B,2400,1], state [B,219729]    |
+| NeMo CTC      | model                    | audio_signal [B,80,T], length          |
+| NeMo RNNT/TDT | encoder, decoder_joint   | encoder: audio_signal, length          |
+| NeMo AED      | encoder, decoder         | encoder: audio_signal, length          |
+| Whisper       | model                    | input_features [B,80,T]                |
 
 ---
 
-## Reusable Module Mapping for asr.js
+## Reusable Module Mapping for @asrjs/speech-recognition
 
 When porting onnx-asr to JS/WebGPU:
 
-| onnx-asr | asr.js module |
-|----------|---------------|
-| KaldiPreprocessor | processors/kaldi-mel.ts |
-| NemoPreprocessor80/128 | processors/mel-spectrogram.ts (NeMo) |
-| GigaamPreprocessorV2/V3 | processors/gigaam-mel.ts |
-| T-one | no frontend; raw → model |
+| onnx-asr                     | @asrjs/speech-recognition module                                               |
+| ---------------------------- | ----------------------------------------------------------- |
+| KaldiPreprocessor            | audio/kaldi-mel.ts                                          |
+| NemoPreprocessor80/128       | audio/js-mel.ts (NeMo-style)                                |
+| GigaamPreprocessorV2/V3      | audio/gigaam-mel.ts                                         |
+| T-one                        | no frontend; raw → model                                    |
 | Kaldi encoder/decoder/joiner | model-owned Zipformer + stateless transducer implementation |
-| GigaAM encoder/decoder/joint | model-owned conformer-family + CTC or RNNT implementation |
-| T-one model | model-owned chunk encoder implementation |
+| GigaAM encoder/decoder/joint | model-owned conformer-family + CTC or RNNT implementation   |
+| T-one model                  | model-owned chunk encoder implementation                    |
 
 ---
 

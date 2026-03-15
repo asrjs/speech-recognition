@@ -18,4 +18,3 @@ export interface AudioChunkLike extends AudioBufferLike {
 }
 
 export type AudioInputLike = Float32Array | Float64Array | AudioBufferLike;
-

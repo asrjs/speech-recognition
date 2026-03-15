@@ -1,0 +1,3746 @@
+{
+  "model": "ysdede/parakeet-tdt-0.6b-v2-onnx-tfjs4",
+  "api": "pipeline",
+  "audio": {
+    "file": "N:\\github\\ysdede\\scribe-ds\\data\\PARROT_v1.0\\07_audio\\labels\\full_reports\\a614661340fbb1cc36576bb03fbb3666b885ac007adac1456974b3d1fdc9a626.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "source_seconds": 296.4,
+    "model_seconds": 296.4
+  },
+  "load": {
+    "transformers_source": "N:\\github\\ysdede\\transformers.js\\packages\\transformers\\src\\transformers.js",
+    "device": {
+      "encoder_model": "cpu",
+      "decoder_model_merged": "cpu"
+    },
+    "dtype": null,
+    "model_type": "nemo-conformer-tdt"
+  },
+  "options": {
+    "return_timestamps": "word"
+  },
+  "elapsed_s": 27,
+  "output": {
+    "text": "Coronary CT angiography and calcium score. 48-year-old male patient with complaints of chest pain. Comparison none. Technique, a preliminary study was conducted using a Canon Aquilion 1 scanner followed by the coronary artery calcium protocol. Post-intravenous contrast administration, images with 0.5 millimeter collimation were obtained along the coronary arteries. Data was transferred offline for 3D reconstructions. Acquisition, prospective ECG gating was used. The heart rate during imaging was approximately 66 beats per minute. Medications, 100 milligrams of oral metoprolol was administered prior to the scan. 0.4 milligrams of sublingual nitroglycerin was given immediately before the scan. Technical quality, excellent no artifacts. Findings. The coronary artery calcium score is 300, placing it in the moderate risk category according to the Agatston method. This score is in the 91st percentile for age and gender. The coronary arteries are in a normal position with right coronary artery dominance. Left main, the left main coronary artery is a short vessel bifurcating into the LID and LCX. In the distal segment of the left main artery, there is a mixed plaque composed of calcified and non-calcified components causing 25 to 30 percent stenosis. LID. In the proximal segment of the LID, there is a calcified plaque causing 25 to 30 percent stenosis. Approximately a 12 millimeter segment of the proximal LID is totally occluded. The distal LID is thought to be partially filled via collateral circulation. Diagonal branches are patent. Ramus intermedius. Observed as a developed branch with a non-calcified plaque in the proximal segment causing 25 to 30% stenosis. LCX. Sequential diffuse mixed calcified and non-calcified plaques and vessel wall irregularities are observed from the proximal to mid-segment, with the most significant area showing 40 to 50% stenosis. In the distal LCX, a non-calcified plaque causes 60 to 70 percent stenosis. Obtuse marginal branches are patent. RCI, approximately a 57 millimeter segment from the proximal to mid RCI appears occluded. The distal RCI is thought to be partially filled via collateral circulation. The posterior descending artery and posterior left ventricular branch are patent. Non-coronary cardiac findings. Heart valves, the yortic valve is trileaflet. There is no thickening or calcification of the yortic and mitral valves. Pericardium, the pericardial contour is preserved with no effusion, thickening, or calcification. Extracardiac findings, no significant extracardiac findings in the limited views of the lungs, mediastinum, and upper abdomen. Impression: 1. Stenosis, mild 25 to 49% stenosis in the left main coronary artery. 2. Stenosis, mild 25 to 49% stenosis in the proximal segment of the LID. 3. Stenosis, severe 70 to 99% stenosis in the proximal segment of the LID. 4. Stenosis, mild 25 to 49% stenosis in the ramus intermedius. 5. Stenosis, moderate 50 to 69% stenosis in the proximal mid-segments of the LCX. 6. Stenosis. Severe 70 to 99% stenosis in the distal segment of the LCX. 7. Stenosis. Severe 70 to 99% stenosis in the proximal mid-segments of the RCI. 8. Plaque. Overall, a moderate amount of coronary plaque is present. Recommendation. CADRADS 5P3. Consideration of invasive coronary angiography, ICI functional and or viability assessment. Aggressive modification of risk factors and preventive pharmacotherapy is recommended. Anti-anginal therapy and revascularization options should be evaluated according to guidelines.",
+    "chunks": [
+      {
+        "text": "Coronary",
+        "timestamp": [
+          0.16,
+          0.72
+        ]
+      },
+      {
+        "text": "CT",
+        "timestamp": [
+          0.72,
+          1.12
+        ]
+      },
+      {
+        "text": "angiography",
+        "timestamp": [
+          1.12,
+          1.92
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          1.92,
+          2.08
+        ]
+      },
+      {
+        "text": "calcium",
+        "timestamp": [
+          2.08,
+          2.72
+        ]
+      },
+      {
+        "text": "score.",
+        "timestamp": [
+          2.72,
+          3.76
+        ]
+      },
+      {
+        "text": "48-year-old",
+        "timestamp": [
+          4,
+          4.96
+        ]
+      },
+      {
+        "text": "male",
+        "timestamp": [
+          4.96,
+          5.28
+        ]
+      },
+      {
+        "text": "patient",
+        "timestamp": [
+          5.28,
+          5.76
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          5.76,
+          5.92
+        ]
+      },
+      {
+        "text": "complaints",
+        "timestamp": [
+          5.92,
+          6.4
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          6.4,
+          6.56
+        ]
+      },
+      {
+        "text": "chest",
+        "timestamp": [
+          6.56,
+          7.12
+        ]
+      },
+      {
+        "text": "pain.",
+        "timestamp": [
+          7.12,
+          8.08
+        ]
+      },
+      {
+        "text": "Comparison",
+        "timestamp": [
+          8.08,
+          8.8
+        ]
+      },
+      {
+        "text": "none.",
+        "timestamp": [
+          8.96,
+          9.92
+        ]
+      },
+      {
+        "text": "Technique,",
+        "timestamp": [
+          9.92,
+          10.8
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          10.8,
+          10.88
+        ]
+      },
+      {
+        "text": "preliminary",
+        "timestamp": [
+          10.88,
+          11.6
+        ]
+      },
+      {
+        "text": "study",
+        "timestamp": [
+          11.6,
+          12
+        ]
+      },
+      {
+        "text": "was",
+        "timestamp": [
+          12,
+          12.24
+        ]
+      },
+      {
+        "text": "conducted",
+        "timestamp": [
+          12.24,
+          12.8
+        ]
+      },
+      {
+        "text": "using",
+        "timestamp": [
+          12.8,
+          13.12
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          13.12,
+          13.28
+        ]
+      },
+      {
+        "text": "Canon",
+        "timestamp": [
+          13.28,
+          13.68
+        ]
+      },
+      {
+        "text": "Aquilion",
+        "timestamp": [
+          13.76,
+          14.32
+        ]
+      },
+      {
+        "text": "1",
+        "timestamp": [
+          14.56,
+          14.8
+        ]
+      },
+      {
+        "text": "scanner",
+        "timestamp": [
+          14.8,
+          15.28
+        ]
+      },
+      {
+        "text": "followed",
+        "timestamp": [
+          15.44,
+          15.76
+        ]
+      },
+      {
+        "text": "by",
+        "timestamp": [
+          15.76,
+          15.92
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          15.92,
+          16.08
+        ]
+      },
+      {
+        "text": "coronary",
+        "timestamp": [
+          16.08,
+          16.72
+        ]
+      },
+      {
+        "text": "artery",
+        "timestamp": [
+          16.72,
+          17.28
+        ]
+      },
+      {
+        "text": "calcium",
+        "timestamp": [
+          17.28,
+          17.92
+        ]
+      },
+      {
+        "text": "protocol.",
+        "timestamp": [
+          17.92,
+          19.12
+        ]
+      },
+      {
+        "text": "Post-intravenous",
+        "timestamp": [
+          19.44,
+          20.96
+        ]
+      },
+      {
+        "text": "contrast",
+        "timestamp": [
+          20.96,
+          21.6
+        ]
+      },
+      {
+        "text": "administration,",
+        "timestamp": [
+          21.6,
+          22.56
+        ]
+      },
+      {
+        "text": "images",
+        "timestamp": [
+          22.72,
+          23.28
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          23.28,
+          23.52
+        ]
+      },
+      {
+        "text": "0.5",
+        "timestamp": [
+          23.84,
+          24.64
+        ]
+      },
+      {
+        "text": "millimeter",
+        "timestamp": [
+          24.72,
+          25.36
+        ]
+      },
+      {
+        "text": "collimation",
+        "timestamp": [
+          25.36,
+          26.24
+        ]
+      },
+      {
+        "text": "were",
+        "timestamp": [
+          26.24,
+          26.4
+        ]
+      },
+      {
+        "text": "obtained",
+        "timestamp": [
+          26.4,
+          26.88
+        ]
+      },
+      {
+        "text": "along",
+        "timestamp": [
+          26.88,
+          27.2
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          27.2,
+          27.36
+        ]
+      },
+      {
+        "text": "coronary",
+        "timestamp": [
+          27.36,
+          28.08
+        ]
+      },
+      {
+        "text": "arteries.",
+        "timestamp": [
+          28.08,
+          29.52
+        ]
+      },
+      {
+        "text": "Data",
+        "timestamp": [
+          29.52,
+          30
+        ]
+      },
+      {
+        "text": "was",
+        "timestamp": [
+          30,
+          30.24
+        ]
+      },
+      {
+        "text": "transferred",
+        "timestamp": [
+          30.24,
+          30.8
+        ]
+      },
+      {
+        "text": "offline",
+        "timestamp": [
+          30.8,
+          31.36
+        ]
+      },
+      {
+        "text": "for",
+        "timestamp": [
+          31.36,
+          31.52
+        ]
+      },
+      {
+        "text": "3D",
+        "timestamp": [
+          31.68,
+          32.08
+        ]
+      },
+      {
+        "text": "reconstructions.",
+        "timestamp": [
+          32.08,
+          33.76
+        ]
+      },
+      {
+        "text": "Acquisition,",
+        "timestamp": [
+          33.76,
+          34.72
+        ]
+      },
+      {
+        "text": "prospective",
+        "timestamp": [
+          34.72,
+          35.28
+        ]
+      },
+      {
+        "text": "ECG",
+        "timestamp": [
+          35.28,
+          35.92
+        ]
+      },
+      {
+        "text": "gating",
+        "timestamp": [
+          35.92,
+          36.24
+        ]
+      },
+      {
+        "text": "was",
+        "timestamp": [
+          36.64,
+          36.96
+        ]
+      },
+      {
+        "text": "used.",
+        "timestamp": [
+          36.96,
+          37.6
+        ]
+      },
+      {
+        "text": "The",
+        "timestamp": [
+          37.6,
+          37.76
+        ]
+      },
+      {
+        "text": "heart",
+        "timestamp": [
+          37.76,
+          38.08
+        ]
+      },
+      {
+        "text": "rate",
+        "timestamp": [
+          38.08,
+          38.4
+        ]
+      },
+      {
+        "text": "during",
+        "timestamp": [
+          38.4,
+          38.72
+        ]
+      },
+      {
+        "text": "imaging",
+        "timestamp": [
+          38.72,
+          39.2
+        ]
+      },
+      {
+        "text": "was",
+        "timestamp": [
+          39.2,
+          39.44
+        ]
+      },
+      {
+        "text": "approximately",
+        "timestamp": [
+          39.44,
+          40.24
+        ]
+      },
+      {
+        "text": "66",
+        "timestamp": [
+          40.48,
+          40.96
+        ]
+      },
+      {
+        "text": "beats",
+        "timestamp": [
+          40.96,
+          41.6
+        ]
+      },
+      {
+        "text": "per",
+        "timestamp": [
+          41.6,
+          41.92
+        ]
+      },
+      {
+        "text": "minute.",
+        "timestamp": [
+          41.92,
+          42.8
+        ]
+      },
+      {
+        "text": "Medications,",
+        "timestamp": [
+          42.8,
+          43.92
+        ]
+      },
+      {
+        "text": "100",
+        "timestamp": [
+          44.24,
+          44.64
+        ]
+      },
+      {
+        "text": "milligrams",
+        "timestamp": [
+          44.64,
+          45.36
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          45.36,
+          45.52
+        ]
+      },
+      {
+        "text": "oral",
+        "timestamp": [
+          45.52,
+          45.84
+        ]
+      },
+      {
+        "text": "metoprolol",
+        "timestamp": [
+          45.84,
+          46.72
+        ]
+      },
+      {
+        "text": "was",
+        "timestamp": [
+          46.88,
+          46.96
+        ]
+      },
+      {
+        "text": "administered",
+        "timestamp": [
+          46.96,
+          47.68
+        ]
+      },
+      {
+        "text": "prior",
+        "timestamp": [
+          47.68,
+          48.08
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          48.08,
+          48.32
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          48.32,
+          48.56
+        ]
+      },
+      {
+        "text": "scan.",
+        "timestamp": [
+          48.56,
+          49.76
+        ]
+      },
+      {
+        "text": "0.4",
+        "timestamp": [
+          50.08,
+          50.88
+        ]
+      },
+      {
+        "text": "milligrams",
+        "timestamp": [
+          50.88,
+          51.6
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          51.6,
+          51.84
+        ]
+      },
+      {
+        "text": "sublingual",
+        "timestamp": [
+          51.84,
+          52.48
+        ]
+      },
+      {
+        "text": "nitroglycerin",
+        "timestamp": [
+          52.56,
+          53.68
+        ]
+      },
+      {
+        "text": "was",
+        "timestamp": [
+          53.68,
+          53.84
+        ]
+      },
+      {
+        "text": "given",
+        "timestamp": [
+          53.84,
+          54.16
+        ]
+      },
+      {
+        "text": "immediately",
+        "timestamp": [
+          54.16,
+          55.04
+        ]
+      },
+      {
+        "text": "before",
+        "timestamp": [
+          55.04,
+          55.36
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          55.36,
+          55.6
+        ]
+      },
+      {
+        "text": "scan.",
+        "timestamp": [
+          55.6,
+          56.8
+        ]
+      },
+      {
+        "text": "Technical",
+        "timestamp": [
+          56.8,
+          57.44
+        ]
+      },
+      {
+        "text": "quality,",
+        "timestamp": [
+          57.44,
+          58.08
+        ]
+      },
+      {
+        "text": "excellent",
+        "timestamp": [
+          58.08,
+          58.56
+        ]
+      },
+      {
+        "text": "no",
+        "timestamp": [
+          58.64,
+          58.88
+        ]
+      },
+      {
+        "text": "artifacts.",
+        "timestamp": [
+          58.88,
+          60.24
+        ]
+      },
+      {
+        "text": "Findings.",
+        "timestamp": [
+          60.24,
+          61.28
+        ]
+      },
+      {
+        "text": "The",
+        "timestamp": [
+          61.6,
+          61.84
+        ]
+      },
+      {
+        "text": "coronary",
+        "timestamp": [
+          61.84,
+          62.56
+        ]
+      },
+      {
+        "text": "artery",
+        "timestamp": [
+          62.56,
+          63.04
+        ]
+      },
+      {
+        "text": "calcium",
+        "timestamp": [
+          63.04,
+          63.68
+        ]
+      },
+      {
+        "text": "score",
+        "timestamp": [
+          63.68,
+          64.08
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          64.08,
+          64.32
+        ]
+      },
+      {
+        "text": "300,",
+        "timestamp": [
+          64.56,
+          65.36
+        ]
+      },
+      {
+        "text": "placing",
+        "timestamp": [
+          65.36,
+          65.76
+        ]
+      },
+      {
+        "text": "it",
+        "timestamp": [
+          65.76,
+          65.92
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          65.92,
+          66
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          66,
+          66.16
+        ]
+      },
+      {
+        "text": "moderate",
+        "timestamp": [
+          66.16,
+          66.64
+        ]
+      },
+      {
+        "text": "risk",
+        "timestamp": [
+          66.64,
+          67.04
+        ]
+      },
+      {
+        "text": "category",
+        "timestamp": [
+          67.04,
+          67.68
+        ]
+      },
+      {
+        "text": "according",
+        "timestamp": [
+          67.68,
+          68.08
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          68.08,
+          68.16
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          68.16,
+          68.24
+        ]
+      },
+      {
+        "text": "Agatston",
+        "timestamp": [
+          68.24,
+          69.12
+        ]
+      },
+      {
+        "text": "method.",
+        "timestamp": [
+          69.28,
+          70.4
+        ]
+      },
+      {
+        "text": "This",
+        "timestamp": [
+          70.4,
+          70.64
+        ]
+      },
+      {
+        "text": "score",
+        "timestamp": [
+          70.64,
+          71.04
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          71.04,
+          71.2
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          71.2,
+          71.36
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          71.36,
+          71.44
+        ]
+      },
+      {
+        "text": "91st",
+        "timestamp": [
+          71.6,
+          72.16
+        ]
+      },
+      {
+        "text": "percentile",
+        "timestamp": [
+          72.16,
+          72.88
+        ]
+      },
+      {
+        "text": "for",
+        "timestamp": [
+          72.88,
+          73.04
+        ]
+      },
+      {
+        "text": "age",
+        "timestamp": [
+          73.04,
+          73.36
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          73.36,
+          73.6
+        ]
+      },
+      {
+        "text": "gender.",
+        "timestamp": [
+          73.6,
+          74.72
+        ]
+      },
+      {
+        "text": "The",
+        "timestamp": [
+          74.72,
+          74.96
+        ]
+      },
+      {
+        "text": "coronary",
+        "timestamp": [
+          74.96,
+          75.6
+        ]
+      },
+      {
+        "text": "arteries",
+        "timestamp": [
+          75.6,
+          76.16
+        ]
+      },
+      {
+        "text": "are",
+        "timestamp": [
+          76.16,
+          76.4
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          76.4,
+          76.56
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          76.56,
+          76.72
+        ]
+      },
+      {
+        "text": "normal",
+        "timestamp": [
+          76.72,
+          77.12
+        ]
+      },
+      {
+        "text": "position",
+        "timestamp": [
+          77.12,
+          77.6
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          77.6,
+          77.92
+        ]
+      },
+      {
+        "text": "right",
+        "timestamp": [
+          77.92,
+          78.24
+        ]
+      },
+      {
+        "text": "coronary",
+        "timestamp": [
+          78.24,
+          78.88
+        ]
+      },
+      {
+        "text": "artery",
+        "timestamp": [
+          78.88,
+          79.36
+        ]
+      },
+      {
+        "text": "dominance.",
+        "timestamp": [
+          79.36,
+          80.8
+        ]
+      },
+      {
+        "text": "Left",
+        "timestamp": [
+          80.8,
+          81.2
+        ]
+      },
+      {
+        "text": "main,",
+        "timestamp": [
+          81.2,
+          81.76
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          81.76,
+          81.84
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          81.84,
+          82.16
+        ]
+      },
+      {
+        "text": "main",
+        "timestamp": [
+          82.16,
+          82.48
+        ]
+      },
+      {
+        "text": "coronary",
+        "timestamp": [
+          82.48,
+          83.12
+        ]
+      },
+      {
+        "text": "artery",
+        "timestamp": [
+          83.12,
+          83.6
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          83.6,
+          83.76
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          83.76,
+          83.84
+        ]
+      },
+      {
+        "text": "short",
+        "timestamp": [
+          83.84,
+          84.16
+        ]
+      },
+      {
+        "text": "vessel",
+        "timestamp": [
+          84.16,
+          84.56
+        ]
+      },
+      {
+        "text": "bifurcating",
+        "timestamp": [
+          84.56,
+          85.36
+        ]
+      },
+      {
+        "text": "into",
+        "timestamp": [
+          85.36,
+          85.6
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          85.6,
+          85.76
+        ]
+      },
+      {
+        "text": "LID",
+        "timestamp": [
+          85.76,
+          86.64
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          86.64,
+          86.96
+        ]
+      },
+      {
+        "text": "LCX.",
+        "timestamp": [
+          86.96,
+          88.64
+        ]
+      },
+      {
+        "text": "In",
+        "timestamp": [
+          88.96,
+          89.12
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          89.12,
+          89.28
+        ]
+      },
+      {
+        "text": "distal",
+        "timestamp": [
+          89.28,
+          89.76
+        ]
+      },
+      {
+        "text": "segment",
+        "timestamp": [
+          89.76,
+          90.16
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          90.16,
+          90.32
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          90.32,
+          90.48
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          90.48,
+          90.8
+        ]
+      },
+      {
+        "text": "main",
+        "timestamp": [
+          90.8,
+          91.2
+        ]
+      },
+      {
+        "text": "artery,",
+        "timestamp": [
+          91.2,
+          91.76
+        ]
+      },
+      {
+        "text": "there",
+        "timestamp": [
+          91.76,
+          91.92
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          91.92,
+          92
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          92,
+          92.16
+        ]
+      },
+      {
+        "text": "mixed",
+        "timestamp": [
+          92.16,
+          92.48
+        ]
+      },
+      {
+        "text": "plaque",
+        "timestamp": [
+          92.48,
+          93.04
+        ]
+      },
+      {
+        "text": "composed",
+        "timestamp": [
+          93.04,
+          93.44
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          93.44,
+          93.6
+        ]
+      },
+      {
+        "text": "calcified",
+        "timestamp": [
+          93.6,
+          94.48
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          94.48,
+          94.64
+        ]
+      },
+      {
+        "text": "non-calcified",
+        "timestamp": [
+          94.64,
+          95.84
+        ]
+      },
+      {
+        "text": "components",
+        "timestamp": [
+          95.84,
+          96.4
+        ]
+      },
+      {
+        "text": "causing",
+        "timestamp": [
+          96.48,
+          96.88
+        ]
+      },
+      {
+        "text": "25",
+        "timestamp": [
+          97.04,
+          97.6
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          97.6,
+          97.76
+        ]
+      },
+      {
+        "text": "30",
+        "timestamp": [
+          97.92,
+          98.24
+        ]
+      },
+      {
+        "text": "percent",
+        "timestamp": [
+          98.24,
+          98.56
+        ]
+      },
+      {
+        "text": "stenosis.",
+        "timestamp": [
+          98.56,
+          100.08
+        ]
+      },
+      {
+        "text": "LID.",
+        "timestamp": [
+          100.4,
+          101.52
+        ]
+      },
+      {
+        "text": "In",
+        "timestamp": [
+          101.52,
+          101.68
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          101.68,
+          101.76
+        ]
+      },
+      {
+        "text": "proximal",
+        "timestamp": [
+          101.76,
+          102.4
+        ]
+      },
+      {
+        "text": "segment",
+        "timestamp": [
+          102.4,
+          102.8
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          102.8,
+          102.88
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          102.88,
+          103.12
+        ]
+      },
+      {
+        "text": "LID,",
+        "timestamp": [
+          103.12,
+          104.08
+        ]
+      },
+      {
+        "text": "there",
+        "timestamp": [
+          104.08,
+          104.24
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          104.24,
+          104.32
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          104.32,
+          104.48
+        ]
+      },
+      {
+        "text": "calcified",
+        "timestamp": [
+          104.48,
+          105.28
+        ]
+      },
+      {
+        "text": "plaque",
+        "timestamp": [
+          105.28,
+          105.76
+        ]
+      },
+      {
+        "text": "causing",
+        "timestamp": [
+          105.76,
+          106.08
+        ]
+      },
+      {
+        "text": "25",
+        "timestamp": [
+          106.24,
+          106.8
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          106.8,
+          106.96
+        ]
+      },
+      {
+        "text": "30",
+        "timestamp": [
+          107.04,
+          107.36
+        ]
+      },
+      {
+        "text": "percent",
+        "timestamp": [
+          107.36,
+          107.68
+        ]
+      },
+      {
+        "text": "stenosis.",
+        "timestamp": [
+          107.68,
+          109.36
+        ]
+      },
+      {
+        "text": "Approximately",
+        "timestamp": [
+          109.36,
+          110.32
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          110.32,
+          110.48
+        ]
+      },
+      {
+        "text": "12",
+        "timestamp": [
+          110.56,
+          110.88
+        ]
+      },
+      {
+        "text": "millimeter",
+        "timestamp": [
+          110.88,
+          111.6
+        ]
+      },
+      {
+        "text": "segment",
+        "timestamp": [
+          111.6,
+          112
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          112,
+          112.08
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          112.08,
+          112.16
+        ]
+      },
+      {
+        "text": "proximal",
+        "timestamp": [
+          112.16,
+          112.88
+        ]
+      },
+      {
+        "text": "LID",
+        "timestamp": [
+          112.88,
+          113.76
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          113.76,
+          114
+        ]
+      },
+      {
+        "text": "totally",
+        "timestamp": [
+          114,
+          114.48
+        ]
+      },
+      {
+        "text": "occluded.",
+        "timestamp": [
+          114.48,
+          115.92
+        ]
+      },
+      {
+        "text": "The",
+        "timestamp": [
+          115.92,
+          116.08
+        ]
+      },
+      {
+        "text": "distal",
+        "timestamp": [
+          116.08,
+          116.72
+        ]
+      },
+      {
+        "text": "LID",
+        "timestamp": [
+          116.72,
+          117.6
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          117.6,
+          117.92
+        ]
+      },
+      {
+        "text": "thought",
+        "timestamp": [
+          117.92,
+          118.16
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          118.16,
+          118.32
+        ]
+      },
+      {
+        "text": "be",
+        "timestamp": [
+          118.32,
+          118.48
+        ]
+      },
+      {
+        "text": "partially",
+        "timestamp": [
+          118.48,
+          118.96
+        ]
+      },
+      {
+        "text": "filled",
+        "timestamp": [
+          118.96,
+          119.44
+        ]
+      },
+      {
+        "text": "via",
+        "timestamp": [
+          119.44,
+          119.76
+        ]
+      },
+      {
+        "text": "collateral",
+        "timestamp": [
+          119.76,
+          120.4
+        ]
+      },
+      {
+        "text": "circulation.",
+        "timestamp": [
+          120.4,
+          121.92
+        ]
+      },
+      {
+        "text": "Diagonal",
+        "timestamp": [
+          121.92,
+          122.64
+        ]
+      },
+      {
+        "text": "branches",
+        "timestamp": [
+          122.64,
+          123.12
+        ]
+      },
+      {
+        "text": "are",
+        "timestamp": [
+          123.12,
+          123.28
+        ]
+      },
+      {
+        "text": "patent.",
+        "timestamp": [
+          123.28,
+          124.16
+        ]
+      },
+      {
+        "text": "Ramus",
+        "timestamp": [
+          124.48,
+          125.2
+        ]
+      },
+      {
+        "text": "intermedius.",
+        "timestamp": [
+          125.2,
+          126.48
+        ]
+      },
+      {
+        "text": "Observed",
+        "timestamp": [
+          126.48,
+          127.04
+        ]
+      },
+      {
+        "text": "as",
+        "timestamp": [
+          127.04,
+          127.2
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          127.2,
+          127.36
+        ]
+      },
+      {
+        "text": "developed",
+        "timestamp": [
+          127.36,
+          128
+        ]
+      },
+      {
+        "text": "branch",
+        "timestamp": [
+          128,
+          128.48
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          128.48,
+          128.64
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          128.64,
+          128.8
+        ]
+      },
+      {
+        "text": "non-calcified",
+        "timestamp": [
+          128.8,
+          129.92
+        ]
+      },
+      {
+        "text": "plaque",
+        "timestamp": [
+          129.92,
+          130.4
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          130.4,
+          130.48
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          130.48,
+          130.56
+        ]
+      },
+      {
+        "text": "proximal",
+        "timestamp": [
+          130.56,
+          131.12
+        ]
+      },
+      {
+        "text": "segment",
+        "timestamp": [
+          131.12,
+          131.68
+        ]
+      },
+      {
+        "text": "causing",
+        "timestamp": [
+          131.68,
+          132.08
+        ]
+      },
+      {
+        "text": "25",
+        "timestamp": [
+          132.24,
+          132.8
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          132.8,
+          132.96
+        ]
+      },
+      {
+        "text": "30%",
+        "timestamp": [
+          133.12,
+          133.6
+        ]
+      },
+      {
+        "text": "stenosis.",
+        "timestamp": [
+          133.76,
+          135.36
+        ]
+      },
+      {
+        "text": "LCX.",
+        "timestamp": [
+          135.68,
+          137.12
+        ]
+      },
+      {
+        "text": "Sequential",
+        "timestamp": [
+          137.12,
+          137.76
+        ]
+      },
+      {
+        "text": "diffuse",
+        "timestamp": [
+          137.76,
+          138.24
+        ]
+      },
+      {
+        "text": "mixed",
+        "timestamp": [
+          138.32,
+          138.64
+        ]
+      },
+      {
+        "text": "calcified",
+        "timestamp": [
+          138.64,
+          139.52
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          139.52,
+          139.6
+        ]
+      },
+      {
+        "text": "non-calcified",
+        "timestamp": [
+          139.6,
+          140.8
+        ]
+      },
+      {
+        "text": "plaques",
+        "timestamp": [
+          140.8,
+          141.28
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          141.28,
+          141.44
+        ]
+      },
+      {
+        "text": "vessel",
+        "timestamp": [
+          141.44,
+          141.92
+        ]
+      },
+      {
+        "text": "wall",
+        "timestamp": [
+          141.92,
+          142.24
+        ]
+      },
+      {
+        "text": "irregularities",
+        "timestamp": [
+          142.24,
+          143.2
+        ]
+      },
+      {
+        "text": "are",
+        "timestamp": [
+          143.2,
+          143.36
+        ]
+      },
+      {
+        "text": "observed",
+        "timestamp": [
+          143.36,
+          143.84
+        ]
+      },
+      {
+        "text": "from",
+        "timestamp": [
+          143.84,
+          144
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          144,
+          144.16
+        ]
+      },
+      {
+        "text": "proximal",
+        "timestamp": [
+          144.16,
+          144.72
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          144.72,
+          144.88
+        ]
+      },
+      {
+        "text": "mid-segment,",
+        "timestamp": [
+          144.88,
+          145.76
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          145.76,
+          145.92
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          145.92,
+          146.08
+        ]
+      },
+      {
+        "text": "most",
+        "timestamp": [
+          146.08,
+          146.24
+        ]
+      },
+      {
+        "text": "significant",
+        "timestamp": [
+          146.24,
+          146.96
+        ]
+      },
+      {
+        "text": "area",
+        "timestamp": [
+          146.96,
+          147.44
+        ]
+      },
+      {
+        "text": "showing",
+        "timestamp": [
+          147.44,
+          147.76
+        ]
+      },
+      {
+        "text": "40",
+        "timestamp": [
+          147.92,
+          148.24
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          148.24,
+          148.4
+        ]
+      },
+      {
+        "text": "50%",
+        "timestamp": [
+          148.48,
+          149.04
+        ]
+      },
+      {
+        "text": "stenosis.",
+        "timestamp": [
+          149.2,
+          150.96
+        ]
+      },
+      {
+        "text": "In",
+        "timestamp": [
+          150.96,
+          151.12
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          151.12,
+          151.28
+        ]
+      },
+      {
+        "text": "distal",
+        "timestamp": [
+          151.28,
+          151.84
+        ]
+      },
+      {
+        "text": "LCX,",
+        "timestamp": [
+          151.84,
+          152.8
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          152.8,
+          152.96
+        ]
+      },
+      {
+        "text": "non-calcified",
+        "timestamp": [
+          152.96,
+          154.08
+        ]
+      },
+      {
+        "text": "plaque",
+        "timestamp": [
+          154.08,
+          154.56
+        ]
+      },
+      {
+        "text": "causes",
+        "timestamp": [
+          154.56,
+          154.96
+        ]
+      },
+      {
+        "text": "60",
+        "timestamp": [
+          155.12,
+          155.44
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          155.44,
+          155.6
+        ]
+      },
+      {
+        "text": "70",
+        "timestamp": [
+          155.76,
+          156.08
+        ]
+      },
+      {
+        "text": "percent",
+        "timestamp": [
+          156.08,
+          156.4
+        ]
+      },
+      {
+        "text": "stenosis.",
+        "timestamp": [
+          156.4,
+          157.92
+        ]
+      },
+      {
+        "text": "Obtuse",
+        "timestamp": [
+          157.92,
+          158.56
+        ]
+      },
+      {
+        "text": "marginal",
+        "timestamp": [
+          158.56,
+          159.04
+        ]
+      },
+      {
+        "text": "branches",
+        "timestamp": [
+          159.04,
+          159.52
+        ]
+      },
+      {
+        "text": "are",
+        "timestamp": [
+          159.52,
+          159.68
+        ]
+      },
+      {
+        "text": "patent.",
+        "timestamp": [
+          159.68,
+          160.8
+        ]
+      },
+      {
+        "text": "RCI,",
+        "timestamp": [
+          160.8,
+          161.76
+        ]
+      },
+      {
+        "text": "approximately",
+        "timestamp": [
+          162,
+          162.64
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          162.64,
+          162.8
+        ]
+      },
+      {
+        "text": "57",
+        "timestamp": [
+          163.04,
+          163.52
+        ]
+      },
+      {
+        "text": "millimeter",
+        "timestamp": [
+          163.6,
+          164.24
+        ]
+      },
+      {
+        "text": "segment",
+        "timestamp": [
+          164.24,
+          164.64
+        ]
+      },
+      {
+        "text": "from",
+        "timestamp": [
+          164.64,
+          164.8
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          164.8,
+          164.88
+        ]
+      },
+      {
+        "text": "proximal",
+        "timestamp": [
+          164.88,
+          165.44
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          165.44,
+          165.6
+        ]
+      },
+      {
+        "text": "mid",
+        "timestamp": [
+          165.6,
+          165.84
+        ]
+      },
+      {
+        "text": "RCI",
+        "timestamp": [
+          166.08,
+          166.72
+        ]
+      },
+      {
+        "text": "appears",
+        "timestamp": [
+          166.88,
+          167.28
+        ]
+      },
+      {
+        "text": "occluded.",
+        "timestamp": [
+          167.28,
+          168.4
+        ]
+      },
+      {
+        "text": "The",
+        "timestamp": [
+          168.72,
+          168.88
+        ]
+      },
+      {
+        "text": "distal",
+        "timestamp": [
+          168.88,
+          169.44
+        ]
+      },
+      {
+        "text": "RCI",
+        "timestamp": [
+          169.44,
+          170.24
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          170.24,
+          170.48
+        ]
+      },
+      {
+        "text": "thought",
+        "timestamp": [
+          170.48,
+          170.72
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          170.72,
+          170.8
+        ]
+      },
+      {
+        "text": "be",
+        "timestamp": [
+          170.8,
+          170.96
+        ]
+      },
+      {
+        "text": "partially",
+        "timestamp": [
+          170.96,
+          171.52
+        ]
+      },
+      {
+        "text": "filled",
+        "timestamp": [
+          171.52,
+          171.92
+        ]
+      },
+      {
+        "text": "via",
+        "timestamp": [
+          171.92,
+          172.32
+        ]
+      },
+      {
+        "text": "collateral",
+        "timestamp": [
+          172.32,
+          172.96
+        ]
+      },
+      {
+        "text": "circulation.",
+        "timestamp": [
+          172.96,
+          174.56
+        ]
+      },
+      {
+        "text": "The",
+        "timestamp": [
+          174.56,
+          174.72
+        ]
+      },
+      {
+        "text": "posterior",
+        "timestamp": [
+          174.72,
+          175.44
+        ]
+      },
+      {
+        "text": "descending",
+        "timestamp": [
+          175.44,
+          176
+        ]
+      },
+      {
+        "text": "artery",
+        "timestamp": [
+          176,
+          176.48
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          176.48,
+          176.72
+        ]
+      },
+      {
+        "text": "posterior",
+        "timestamp": [
+          176.72,
+          177.36
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          177.36,
+          177.68
+        ]
+      },
+      {
+        "text": "ventricular",
+        "timestamp": [
+          177.68,
+          178.48
+        ]
+      },
+      {
+        "text": "branch",
+        "timestamp": [
+          178.48,
+          178.88
+        ]
+      },
+      {
+        "text": "are",
+        "timestamp": [
+          178.88,
+          179.04
+        ]
+      },
+      {
+        "text": "patent.",
+        "timestamp": [
+          179.04,
+          180
+        ]
+      },
+      {
+        "text": "Non-coronary",
+        "timestamp": [
+          180.32,
+          181.28
+        ]
+      },
+      {
+        "text": "cardiac",
+        "timestamp": [
+          181.28,
+          181.84
+        ]
+      },
+      {
+        "text": "findings.",
+        "timestamp": [
+          181.84,
+          182.96
+        ]
+      },
+      {
+        "text": "Heart",
+        "timestamp": [
+          182.96,
+          183.36
+        ]
+      },
+      {
+        "text": "valves,",
+        "timestamp": [
+          183.36,
+          183.76
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          183.84,
+          184
+        ]
+      },
+      {
+        "text": "yortic",
+        "timestamp": [
+          184,
+          184.48
+        ]
+      },
+      {
+        "text": "valve",
+        "timestamp": [
+          184.48,
+          184.72
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          184.72,
+          184.88
+        ]
+      },
+      {
+        "text": "trileaflet.",
+        "timestamp": [
+          184.88,
+          186.48
+        ]
+      },
+      {
+        "text": "There",
+        "timestamp": [
+          186.48,
+          186.72
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          186.72,
+          186.96
+        ]
+      },
+      {
+        "text": "no",
+        "timestamp": [
+          186.96,
+          187.2
+        ]
+      },
+      {
+        "text": "thickening",
+        "timestamp": [
+          187.2,
+          187.76
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          187.76,
+          188
+        ]
+      },
+      {
+        "text": "calcification",
+        "timestamp": [
+          188,
+          188.88
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          188.88,
+          189.04
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          189.04,
+          189.2
+        ]
+      },
+      {
+        "text": "yortic",
+        "timestamp": [
+          189.2,
+          189.68
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          189.68,
+          189.76
+        ]
+      },
+      {
+        "text": "mitral",
+        "timestamp": [
+          189.76,
+          190.4
+        ]
+      },
+      {
+        "text": "valves.",
+        "timestamp": [
+          190.4,
+          191.52
+        ]
+      },
+      {
+        "text": "Pericardium,",
+        "timestamp": [
+          191.52,
+          192.72
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          192.72,
+          192.8
+        ]
+      },
+      {
+        "text": "pericardial",
+        "timestamp": [
+          192.8,
+          193.6
+        ]
+      },
+      {
+        "text": "contour",
+        "timestamp": [
+          193.6,
+          194.16
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          194.16,
+          194.32
+        ]
+      },
+      {
+        "text": "preserved",
+        "timestamp": [
+          194.32,
+          194.96
+        ]
+      },
+      {
+        "text": "with",
+        "timestamp": [
+          194.96,
+          195.2
+        ]
+      },
+      {
+        "text": "no",
+        "timestamp": [
+          195.2,
+          195.44
+        ]
+      },
+      {
+        "text": "effusion,",
+        "timestamp": [
+          195.44,
+          196.24
+        ]
+      },
+      {
+        "text": "thickening,",
+        "timestamp": [
+          196.24,
+          196.8
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          196.8,
+          196.96
+        ]
+      },
+      {
+        "text": "calcification.",
+        "timestamp": [
+          196.96,
+          198.56
+        ]
+      },
+      {
+        "text": "Extracardiac",
+        "timestamp": [
+          198.88,
+          200.08
+        ]
+      },
+      {
+        "text": "findings,",
+        "timestamp": [
+          200.08,
+          201.04
+        ]
+      },
+      {
+        "text": "no",
+        "timestamp": [
+          201.04,
+          201.28
+        ]
+      },
+      {
+        "text": "significant",
+        "timestamp": [
+          201.28,
+          202
+        ]
+      },
+      {
+        "text": "extracardiac",
+        "timestamp": [
+          202,
+          203.12
+        ]
+      },
+      {
+        "text": "findings",
+        "timestamp": [
+          203.12,
+          203.6
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          203.6,
+          203.76
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          203.76,
+          203.84
+        ]
+      },
+      {
+        "text": "limited",
+        "timestamp": [
+          203.84,
+          204.32
+        ]
+      },
+      {
+        "text": "views",
+        "timestamp": [
+          204.32,
+          204.72
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          204.72,
+          204.8
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          204.8,
+          204.96
+        ]
+      },
+      {
+        "text": "lungs,",
+        "timestamp": [
+          204.96,
+          205.52
+        ]
+      },
+      {
+        "text": "mediastinum,",
+        "timestamp": [
+          205.52,
+          206.64
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          206.64,
+          206.8
+        ]
+      },
+      {
+        "text": "upper",
+        "timestamp": [
+          206.8,
+          207.12
+        ]
+      },
+      {
+        "text": "abdomen.",
+        "timestamp": [
+          207.12,
+          208.64
+        ]
+      },
+      {
+        "text": "Impression:",
+        "timestamp": [
+          208.64,
+          210.16
+        ]
+      },
+      {
+        "text": "1.",
+        "timestamp": [
+          210.32,
+          210.72
+        ]
+      },
+      {
+        "text": "Stenosis,",
+        "timestamp": [
+          210.72,
+          211.6
+        ]
+      },
+      {
+        "text": "mild",
+        "timestamp": [
+          211.76,
+          212.32
+        ]
+      },
+      {
+        "text": "25",
+        "timestamp": [
+          212.48,
+          212.96
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          212.96,
+          213.12
+        ]
+      },
+      {
+        "text": "49%",
+        "timestamp": [
+          213.28,
+          214
+        ]
+      },
+      {
+        "text": "stenosis",
+        "timestamp": [
+          214.32,
+          215.12
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          215.12,
+          215.2
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          215.2,
+          215.28
+        ]
+      },
+      {
+        "text": "left",
+        "timestamp": [
+          215.28,
+          215.6
+        ]
+      },
+      {
+        "text": "main",
+        "timestamp": [
+          215.6,
+          215.92
+        ]
+      },
+      {
+        "text": "coronary",
+        "timestamp": [
+          215.92,
+          216.56
+        ]
+      },
+      {
+        "text": "artery.",
+        "timestamp": [
+          216.56,
+          217.68
+        ]
+      },
+      {
+        "text": "2.",
+        "timestamp": [
+          218.08,
+          218.48
+        ]
+      },
+      {
+        "text": "Stenosis,",
+        "timestamp": [
+          218.48,
+          219.44
+        ]
+      },
+      {
+        "text": "mild",
+        "timestamp": [
+          219.6,
+          220.16
+        ]
+      },
+      {
+        "text": "25",
+        "timestamp": [
+          220.32,
+          220.8
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          220.8,
+          221.04
+        ]
+      },
+      {
+        "text": "49%",
+        "timestamp": [
+          221.2,
+          221.84
+        ]
+      },
+      {
+        "text": "stenosis",
+        "timestamp": [
+          222.16,
+          222.96
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          222.96,
+          223.04
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          223.04,
+          223.2
+        ]
+      },
+      {
+        "text": "proximal",
+        "timestamp": [
+          223.2,
+          223.76
+        ]
+      },
+      {
+        "text": "segment",
+        "timestamp": [
+          223.76,
+          224.16
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          224.16,
+          224.32
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          224.32,
+          224.48
+        ]
+      },
+      {
+        "text": "LID.",
+        "timestamp": [
+          224.48,
+          226
+        ]
+      },
+      {
+        "text": "3.",
+        "timestamp": [
+          226.4,
+          226.8
+        ]
+      },
+      {
+        "text": "Stenosis,",
+        "timestamp": [
+          226.8,
+          227.92
+        ]
+      },
+      {
+        "text": "severe",
+        "timestamp": [
+          227.92,
+          228.48
+        ]
+      },
+      {
+        "text": "70",
+        "timestamp": [
+          228.64,
+          229.04
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          229.04,
+          229.2
+        ]
+      },
+      {
+        "text": "99%",
+        "timestamp": [
+          229.36,
+          230.16
+        ]
+      },
+      {
+        "text": "stenosis",
+        "timestamp": [
+          230.32,
+          231.12
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          231.12,
+          231.28
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          231.28,
+          231.36
+        ]
+      },
+      {
+        "text": "proximal",
+        "timestamp": [
+          231.36,
+          232
+        ]
+      },
+      {
+        "text": "segment",
+        "timestamp": [
+          232,
+          232.32
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          232.32,
+          232.48
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          232.48,
+          232.72
+        ]
+      },
+      {
+        "text": "LID.",
+        "timestamp": [
+          232.72,
+          234.08
+        ]
+      },
+      {
+        "text": "4.",
+        "timestamp": [
+          234.48,
+          234.88
+        ]
+      },
+      {
+        "text": "Stenosis,",
+        "timestamp": [
+          234.88,
+          235.76
+        ]
+      },
+      {
+        "text": "mild",
+        "timestamp": [
+          236,
+          236.48
+        ]
+      },
+      {
+        "text": "25",
+        "timestamp": [
+          236.64,
+          237.12
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          237.12,
+          237.28
+        ]
+      },
+      {
+        "text": "49%",
+        "timestamp": [
+          237.44,
+          238.16
+        ]
+      },
+      {
+        "text": "stenosis",
+        "timestamp": [
+          238.48,
+          239.2
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          239.2,
+          239.28
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          239.28,
+          239.44
+        ]
+      },
+      {
+        "text": "ramus",
+        "timestamp": [
+          239.44,
+          240
+        ]
+      },
+      {
+        "text": "intermedius.",
+        "timestamp": [
+          240,
+          241.36
+        ]
+      },
+      {
+        "text": "5.",
+        "timestamp": [
+          241.84,
+          242.24
+        ]
+      },
+      {
+        "text": "Stenosis,",
+        "timestamp": [
+          242.24,
+          243.36
+        ]
+      },
+      {
+        "text": "moderate",
+        "timestamp": [
+          243.36,
+          243.92
+        ]
+      },
+      {
+        "text": "50",
+        "timestamp": [
+          244,
+          244.4
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          244.4,
+          244.56
+        ]
+      },
+      {
+        "text": "69%",
+        "timestamp": [
+          244.72,
+          245.36
+        ]
+      },
+      {
+        "text": "stenosis",
+        "timestamp": [
+          245.68,
+          246.4
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          246.4,
+          246.56
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          246.56,
+          246.64
+        ]
+      },
+      {
+        "text": "proximal",
+        "timestamp": [
+          246.64,
+          247.2
+        ]
+      },
+      {
+        "text": "mid-segments",
+        "timestamp": [
+          247.2,
+          247.92
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          247.92,
+          248.08
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          248.08,
+          248.32
+        ]
+      },
+      {
+        "text": "LCX.",
+        "timestamp": [
+          248.32,
+          249.92
+        ]
+      },
+      {
+        "text": "6.",
+        "timestamp": [
+          250.4,
+          250.8
+        ]
+      },
+      {
+        "text": "Stenosis.",
+        "timestamp": [
+          250.8,
+          251.92
+        ]
+      },
+      {
+        "text": "Severe",
+        "timestamp": [
+          251.92,
+          252.48
+        ]
+      },
+      {
+        "text": "70",
+        "timestamp": [
+          252.64,
+          252.96
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          252.96,
+          253.2
+        ]
+      },
+      {
+        "text": "99%",
+        "timestamp": [
+          253.28,
+          254
+        ]
+      },
+      {
+        "text": "stenosis",
+        "timestamp": [
+          254.32,
+          255.04
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          255.04,
+          255.2
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          255.2,
+          255.28
+        ]
+      },
+      {
+        "text": "distal",
+        "timestamp": [
+          255.28,
+          255.84
+        ]
+      },
+      {
+        "text": "segment",
+        "timestamp": [
+          255.84,
+          256.16
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          256.16,
+          256.32
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          256.32,
+          256.48
+        ]
+      },
+      {
+        "text": "LCX.",
+        "timestamp": [
+          256.48,
+          258.08
+        ]
+      },
+      {
+        "text": "7.",
+        "timestamp": [
+          258.56,
+          258.96
+        ]
+      },
+      {
+        "text": "Stenosis.",
+        "timestamp": [
+          258.96,
+          260.08
+        ]
+      },
+      {
+        "text": "Severe",
+        "timestamp": [
+          260.08,
+          260.64
+        ]
+      },
+      {
+        "text": "70",
+        "timestamp": [
+          260.8,
+          261.2
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          261.2,
+          261.36
+        ]
+      },
+      {
+        "text": "99%",
+        "timestamp": [
+          261.52,
+          262.32
+        ]
+      },
+      {
+        "text": "stenosis",
+        "timestamp": [
+          262.48,
+          263.28
+        ]
+      },
+      {
+        "text": "in",
+        "timestamp": [
+          263.28,
+          263.44
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          263.44,
+          263.52
+        ]
+      },
+      {
+        "text": "proximal",
+        "timestamp": [
+          263.52,
+          264
+        ]
+      },
+      {
+        "text": "mid-segments",
+        "timestamp": [
+          264,
+          264.8
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          264.8,
+          264.88
+        ]
+      },
+      {
+        "text": "the",
+        "timestamp": [
+          264.88,
+          265.12
+        ]
+      },
+      {
+        "text": "RCI.",
+        "timestamp": [
+          265.12,
+          266.48
+        ]
+      },
+      {
+        "text": "8.",
+        "timestamp": [
+          266.88,
+          267.2
+        ]
+      },
+      {
+        "text": "Plaque.",
+        "timestamp": [
+          267.2,
+          267.76
+        ]
+      },
+      {
+        "text": "Overall,",
+        "timestamp": [
+          267.76,
+          268.32
+        ]
+      },
+      {
+        "text": "a",
+        "timestamp": [
+          268.32,
+          268.48
+        ]
+      },
+      {
+        "text": "moderate",
+        "timestamp": [
+          268.48,
+          268.88
+        ]
+      },
+      {
+        "text": "amount",
+        "timestamp": [
+          268.88,
+          269.12
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          269.12,
+          269.2
+        ]
+      },
+      {
+        "text": "coronary",
+        "timestamp": [
+          269.2,
+          269.84
+        ]
+      },
+      {
+        "text": "plaque",
+        "timestamp": [
+          269.84,
+          270.4
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          270.4,
+          270.64
+        ]
+      },
+      {
+        "text": "present.",
+        "timestamp": [
+          270.64,
+          271.6
+        ]
+      },
+      {
+        "text": "Recommendation.",
+        "timestamp": [
+          271.6,
+          273.28
+        ]
+      },
+      {
+        "text": "CADRADS",
+        "timestamp": [
+          273.28,
+          274
+        ]
+      },
+      {
+        "text": "5P3.",
+        "timestamp": [
+          274.16,
+          275.68
+        ]
+      },
+      {
+        "text": "Consideration",
+        "timestamp": [
+          275.68,
+          276.56
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          276.56,
+          276.8
+        ]
+      },
+      {
+        "text": "invasive",
+        "timestamp": [
+          276.8,
+          277.36
+        ]
+      },
+      {
+        "text": "coronary",
+        "timestamp": [
+          277.36,
+          278
+        ]
+      },
+      {
+        "text": "angiography,",
+        "timestamp": [
+          278,
+          279.04
+        ]
+      },
+      {
+        "text": "ICI",
+        "timestamp": [
+          279.04,
+          279.84
+        ]
+      },
+      {
+        "text": "functional",
+        "timestamp": [
+          280,
+          280.72
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          280.72,
+          280.88
+        ]
+      },
+      {
+        "text": "or",
+        "timestamp": [
+          280.88,
+          281.12
+        ]
+      },
+      {
+        "text": "viability",
+        "timestamp": [
+          281.12,
+          281.84
+        ]
+      },
+      {
+        "text": "assessment.",
+        "timestamp": [
+          281.84,
+          283.28
+        ]
+      },
+      {
+        "text": "Aggressive",
+        "timestamp": [
+          283.28,
+          284.08
+        ]
+      },
+      {
+        "text": "modification",
+        "timestamp": [
+          284.08,
+          284.8
+        ]
+      },
+      {
+        "text": "of",
+        "timestamp": [
+          284.8,
+          285.04
+        ]
+      },
+      {
+        "text": "risk",
+        "timestamp": [
+          285.04,
+          285.44
+        ]
+      },
+      {
+        "text": "factors",
+        "timestamp": [
+          285.44,
+          285.92
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          285.92,
+          286.08
+        ]
+      },
+      {
+        "text": "preventive",
+        "timestamp": [
+          286.08,
+          286.64
+        ]
+      },
+      {
+        "text": "pharmacotherapy",
+        "timestamp": [
+          286.64,
+          287.68
+        ]
+      },
+      {
+        "text": "is",
+        "timestamp": [
+          287.68,
+          287.92
+        ]
+      },
+      {
+        "text": "recommended.",
+        "timestamp": [
+          287.92,
+          289.36
+        ]
+      },
+      {
+        "text": "Anti-anginal",
+        "timestamp": [
+          289.36,
+          290.72
+        ]
+      },
+      {
+        "text": "therapy",
+        "timestamp": [
+          290.72,
+          291.12
+        ]
+      },
+      {
+        "text": "and",
+        "timestamp": [
+          291.12,
+          291.36
+        ]
+      },
+      {
+        "text": "revascularization",
+        "timestamp": [
+          291.36,
+          292.72
+        ]
+      },
+      {
+        "text": "options",
+        "timestamp": [
+          292.72,
+          293.2
+        ]
+      },
+      {
+        "text": "should",
+        "timestamp": [
+          293.2,
+          293.44
+        ]
+      },
+      {
+        "text": "be",
+        "timestamp": [
+          293.44,
+          293.6
+        ]
+      },
+      {
+        "text": "evaluated",
+        "timestamp": [
+          293.6,
+          294.24
+        ]
+      },
+      {
+        "text": "according",
+        "timestamp": [
+          294.24,
+          294.64
+        ]
+      },
+      {
+        "text": "to",
+        "timestamp": [
+          294.64,
+          294.88
+        ]
+      },
+      {
+        "text": "guidelines.",
+        "timestamp": [
+          294.88,
+          296.08
+        ]
+      }
+    ]
+  }
+}

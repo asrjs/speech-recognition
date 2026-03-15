@@ -8,7 +8,7 @@ export const DEFAULT_NEMO_TDT_CLASSIFICATION: ModelClassification = {
   encoder: 'fastconformer',
   decoder: 'tdt',
   topology: 'tdt',
-  task: 'asr'
+  task: 'asr',
 };
 
 const BASE_NEMO_TDT_CONFIG: NemoTdtModelConfig = {
@@ -27,28 +27,28 @@ const BASE_NEMO_TDT_CONFIG: NemoTdtModelConfig = {
   languages: ['en'],
   tokenizer: {
     kind: 'sentencepiece',
-    blankTokenId: 0
-  }
+    blankTokenId: 0,
+  },
 };
 
 export function parseNemoTdtConfig(
   _modelId: string,
-  override: Partial<NemoTdtModelConfig> = {}
+  override: Partial<NemoTdtModelConfig> = {},
 ): NemoTdtModelConfig {
   return {
     ...BASE_NEMO_TDT_CONFIG,
     ...override,
     tokenizer: {
       ...BASE_NEMO_TDT_CONFIG.tokenizer,
-      ...override.tokenizer
-    }
+      ...override.tokenizer,
+    },
   };
 }
 
 export function describeNemoTdtModel(
   modelId: string,
   classification: ModelClassification,
-  config: NemoTdtModelConfig
+  config: NemoTdtModelConfig,
 ): string {
   const label = describeModelClassification(classification);
   return `NeMo TDT model for ${modelId} (${label}, ${config.melBins} mel bins).`;

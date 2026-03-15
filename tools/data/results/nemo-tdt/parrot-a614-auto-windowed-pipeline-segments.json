@@ -1,0 +1,386 @@
+{
+  "model": "ysdede/parakeet-tdt-0.6b-v2-onnx-tfjs4",
+  "api": "pipeline",
+  "audio": {
+    "file": "N:\\github\\ysdede\\scribe-ds\\data\\PARROT_v1.0\\07_audio\\labels\\full_reports\\a614661340fbb1cc36576bb03fbb3666b885ac007adac1456974b3d1fdc9a626.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "source_seconds": 296.4,
+    "model_seconds": 296.4
+  },
+  "load": {
+    "transformers_source": "N:\\github\\ysdede\\transformers.js\\packages\\transformers\\src\\transformers.js",
+    "device": {
+      "encoder_model": "cpu",
+      "decoder_model_merged": "cpu"
+    },
+    "dtype": null,
+    "model_type": "nemo-conformer-tdt"
+  },
+  "options": {
+    "return_timestamps": true
+  },
+  "elapsed_s": 24.96,
+  "output": {
+    "text": "Coronary CT angiography and calcium score.48-year-old male patient with complaints of chest pain. Comparison none. Technique, a preliminary study was conducted using a Canon Aquilion1 scanner followed by the coronary artery calcium protocol. Post-intravenous contrast administration, images with0.5 millimeter collimation were obtained along the coronary arteries. Data was transferred offline for3D reconstructions. Acquisition, prospective ECG gating was used. The heart rate during imaging was approximately66 beats per minute. Medications,100 milligrams of oral metoprolol was administered prior to the scan.0.4 milligrams of sublingual nitroglycerin was given immediately before the scan. Technical quality, excellent no artifacts. Findings. The coronary artery calcium score is300, placing it in the moderate risk category according to the Agatston method. This score is in the91st percentile for age and gender. The coronary arteries are in a normal position with right coronary artery dominance. Left main, the left main coronary artery is a short vessel bifurcating into the LID and LCX. In the distal segment of the left main artery, there is a mixed plaque composed of calcified and non-calcified components causing25 to30 percent stenosis. LID. In the proximal segment of the LID, there is a calcified plaque causing25 to30 percent stenosis. Approximately a12 millimeter segment of the proximal LID is totally occluded. The distal LID is thought to be partially filled via collateral circulation. Diagonal branches are patent. Ramus intermedius. Observed as a developed branch with a non-calcified plaque in the proximal segment causing25 to30% stenosis. LCX. Sequential diffuse mixed calcified and non-calcified plaques and vessel wall irregularities are observed from the proximal to mid-segment, with the most significant area showing40 to50% stenosis. In the distal LCX, a non-calcified plaque causes60 to70 percent stenosis. Obtuse marginal branches are patent. RCI, approximately a57 millimeter segment from the proximal to mid RCI appears occluded. The distal RCI is thought to be partially filled via collateral circulation. The posterior descending artery and posterior left ventricular branch are patent. Non-coronary cardiac findings. Heart valves, the yortic valve is trileaflet. There is no thickening or calcification of the yortic and mitral valves. Pericardium, the pericardial contour is preserved with no effusion, thickening, or calcification. Extracardiac findings, no significant extracardiac findings in the limited views of the lungs, mediastinum, and upper abdomen. Impression:1. Stenosis, mild25 to49% stenosis in the left main coronary artery.2. Stenosis, mild25 to49% stenosis in the proximal segment of the LID.3. Stenosis, severe70 to99% stenosis in the proximal segment of the LID.4. Stenosis, mild25 to49% stenosis in the ramus intermedius.5. Stenosis, moderate50 to69% stenosis in the proximal mid-segments of the LCX.6. Stenosis. Severe70 to99% stenosis in the distal segment of the LCX.7. Stenosis. Severe70 to99% stenosis in the proximal mid-segments of the RCI.8. Plaque. Overall, a moderate amount of coronary plaque is present. Recommendation. CADRADS5P3. Consideration of invasive coronary angiography, ICI functional and or viability assessment. Aggressive modification of risk factors and preventive pharmacotherapy is recommended. Anti-anginal therapy and revascularization options should be evaluated according to guidelines.",
+    "chunks": [
+      {
+        "text": "Coronary CT angiography and calcium score.48-year-old male patient with complaints of chest pain.",
+        "timestamp": [
+          0.16,
+          8.08
+        ]
+      },
+      {
+        "text": "Comparison none.",
+        "timestamp": [
+          8.08,
+          9.92
+        ]
+      },
+      {
+        "text": "Technique, a preliminary study was conducted using a Canon Aquilion1 scanner followed by the coronary artery calcium protocol.",
+        "timestamp": [
+          9.92,
+          19.12
+        ]
+      },
+      {
+        "text": "Post-intravenous contrast administration, images with0.5 millimeter collimation were obtained along the coronary arteries.",
+        "timestamp": [
+          19.44,
+          29.52
+        ]
+      },
+      {
+        "text": "Data was transferred offline for3D reconstructions.",
+        "timestamp": [
+          29.52,
+          33.76
+        ]
+      },
+      {
+        "text": "Acquisition, prospective ECG gating was used.",
+        "timestamp": [
+          33.76,
+          37.6
+        ]
+      },
+      {
+        "text": "The heart rate during imaging was approximately66 beats per minute.",
+        "timestamp": [
+          37.6,
+          42.8
+        ]
+      },
+      {
+        "text": "Medications,100 milligrams of oral metoprolol was administered prior to the scan.0.4 milligrams of sublingual nitroglycerin was given immediately before the scan.",
+        "timestamp": [
+          42.8,
+          56.8
+        ]
+      },
+      {
+        "text": "Technical quality, excellent no artifacts.",
+        "timestamp": [
+          56.8,
+          60.24
+        ]
+      },
+      {
+        "text": "Findings.",
+        "timestamp": [
+          60.24,
+          61.28
+        ]
+      },
+      {
+        "text": "The coronary artery calcium score is300, placing it in the moderate risk category according to the Agatston method.",
+        "timestamp": [
+          61.6,
+          70.4
+        ]
+      },
+      {
+        "text": "This score is in the91st percentile for age and gender.",
+        "timestamp": [
+          70.4,
+          74.72
+        ]
+      },
+      {
+        "text": "The coronary arteries are in a normal position with right coronary artery dominance.",
+        "timestamp": [
+          74.72,
+          80.8
+        ]
+      },
+      {
+        "text": "Left main, the left main coronary artery is a short vessel bifurcating into the LID and LCX.",
+        "timestamp": [
+          80.8,
+          88.64
+        ]
+      },
+      {
+        "text": "In the distal segment of the left main artery, there is a mixed plaque composed of calcified and non-calcified components causing25 to30 percent stenosis.",
+        "timestamp": [
+          88.96,
+          100.08
+        ]
+      },
+      {
+        "text": "LID.",
+        "timestamp": [
+          100.4,
+          101.52
+        ]
+      },
+      {
+        "text": "In the proximal segment of the LID, there is a calcified plaque causing25 to30 percent stenosis.",
+        "timestamp": [
+          101.52,
+          109.36
+        ]
+      },
+      {
+        "text": "Approximately a12 millimeter segment of the proximal LID is totally occluded.",
+        "timestamp": [
+          109.36,
+          115.92
+        ]
+      },
+      {
+        "text": "The distal LID is thought to be partially filled via collateral circulation.",
+        "timestamp": [
+          115.92,
+          121.92
+        ]
+      },
+      {
+        "text": "Diagonal branches are patent.",
+        "timestamp": [
+          121.92,
+          124.16
+        ]
+      },
+      {
+        "text": "Ramus intermedius.",
+        "timestamp": [
+          124.48,
+          126.48
+        ]
+      },
+      {
+        "text": "Observed as a developed branch with a non-calcified plaque in the proximal segment causing25 to30% stenosis.",
+        "timestamp": [
+          126.48,
+          135.36
+        ]
+      },
+      {
+        "text": "LCX.",
+        "timestamp": [
+          135.68,
+          137.12
+        ]
+      },
+      {
+        "text": "Sequential diffuse mixed calcified and non-calcified plaques and vessel wall irregularities are observed from the proximal to mid-segment, with the most significant area showing40 to50% stenosis.",
+        "timestamp": [
+          137.12,
+          150.96
+        ]
+      },
+      {
+        "text": "In the distal LCX, a non-calcified plaque causes60 to70 percent stenosis.",
+        "timestamp": [
+          150.96,
+          157.92
+        ]
+      },
+      {
+        "text": "Obtuse marginal branches are patent.",
+        "timestamp": [
+          157.92,
+          160.8
+        ]
+      },
+      {
+        "text": "RCI, approximately a57 millimeter segment from the proximal to mid RCI appears occluded.",
+        "timestamp": [
+          160.8,
+          168.4
+        ]
+      },
+      {
+        "text": "The distal RCI is thought to be partially filled via collateral circulation.",
+        "timestamp": [
+          168.72,
+          174.56
+        ]
+      },
+      {
+        "text": "The posterior descending artery and posterior left ventricular branch are patent.",
+        "timestamp": [
+          174.56,
+          180
+        ]
+      },
+      {
+        "text": "Non-coronary cardiac findings.",
+        "timestamp": [
+          180.32,
+          182.96
+        ]
+      },
+      {
+        "text": "Heart valves, the yortic valve is trileaflet.",
+        "timestamp": [
+          182.96,
+          186.48
+        ]
+      },
+      {
+        "text": "There is no thickening or calcification of the yortic and mitral valves.",
+        "timestamp": [
+          186.48,
+          191.52
+        ]
+      },
+      {
+        "text": "Pericardium, the pericardial contour is preserved with no effusion, thickening, or calcification.",
+        "timestamp": [
+          191.52,
+          198.56
+        ]
+      },
+      {
+        "text": "Extracardiac findings, no significant extracardiac findings in the limited views of the lungs, mediastinum, and upper abdomen.",
+        "timestamp": [
+          198.88,
+          208.64
+        ]
+      },
+      {
+        "text": "Impression:1.",
+        "timestamp": [
+          208.64,
+          210.72
+        ]
+      },
+      {
+        "text": "Stenosis, mild25 to49% stenosis in the left main coronary artery.2.",
+        "timestamp": [
+          210.72,
+          218.48
+        ]
+      },
+      {
+        "text": "Stenosis, mild25 to49% stenosis in the proximal segment of the LID.3.",
+        "timestamp": [
+          218.48,
+          226.8
+        ]
+      },
+      {
+        "text": "Stenosis, severe70 to99% stenosis in the proximal segment of the LID.4.",
+        "timestamp": [
+          226.8,
+          234.88
+        ]
+      },
+      {
+        "text": "Stenosis, mild25 to49% stenosis in the ramus intermedius.5.",
+        "timestamp": [
+          234.88,
+          242.24
+        ]
+      },
+      {
+        "text": "Stenosis, moderate50 to69% stenosis in the proximal mid-segments of the LCX.6.",
+        "timestamp": [
+          242.24,
+          250.8
+        ]
+      },
+      {
+        "text": "Stenosis.",
+        "timestamp": [
+          250.8,
+          251.92
+        ]
+      },
+      {
+        "text": "Severe70 to99% stenosis in the distal segment of the LCX.7.",
+        "timestamp": [
+          251.92,
+          258.96
+        ]
+      },
+      {
+        "text": "Stenosis.",
+        "timestamp": [
+          258.96,
+          260.08
+        ]
+      },
+      {
+        "text": "Severe70 to99% stenosis in the proximal mid-segments of the RCI.8.",
+        "timestamp": [
+          260.08,
+          267.2
+        ]
+      },
+      {
+        "text": "Plaque.",
+        "timestamp": [
+          267.2,
+          267.76
+        ]
+      },
+      {
+        "text": "Overall, a moderate amount of coronary plaque is present.",
+        "timestamp": [
+          267.76,
+          271.6
+        ]
+      },
+      {
+        "text": "Recommendation.",
+        "timestamp": [
+          271.6,
+          273.28
+        ]
+      },
+      {
+        "text": "CADRADS5P3.",
+        "timestamp": [
+          273.28,
+          275.68
+        ]
+      },
+      {
+        "text": "Consideration of invasive coronary angiography, ICI functional and or viability assessment.",
+        "timestamp": [
+          275.68,
+          283.28
+        ]
+      },
+      {
+        "text": "Aggressive modification of risk factors and preventive pharmacotherapy is recommended.",
+        "timestamp": [
+          283.28,
+          289.36
+        ]
+      },
+      {
+        "text": "Anti-anginal therapy and revascularization options should be evaluated according to guidelines.",
+        "timestamp": [
+          289.36,
+          296.08
+        ]
+      }
+    ]
+  }
+}

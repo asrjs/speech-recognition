@@ -1,0 +1,8088 @@
+{
+  "model": "ysdede/parakeet-tdt-0.6b-v2-onnx-tfjs4",
+  "generated_at": "2026-03-08T16:37:09.763Z",
+  "audio": {
+    "source_file": "N:\\github\\ysdede\\transformers-v4-parakeet-demo\\scientistsdoscienceinspaceedreadsshortscifivolvii_01_01.mp3",
+    "wav_file": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemo-sentence-regression-0skZlA\\scientistsdoscienceinspaceedreadsshortscifivolvii_01_01.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "seconds": 358.812
+  },
+  "transcript": {
+    "file": "N:\\github\\ysdede\\transformers-v4-parakeet-demo\\scientistsdoscienceinspaceedreadsshortscifivolvii_01_01.txt",
+    "characters": 6102,
+    "words": 1089
+  },
+  "sentences": {
+    "file": "N:\\github\\ysdede\\transformers-v4-parakeet-demo\\scientistsdoscienceinspaceedreadsshortscifivolvii_01_01.json",
+    "count": 95
+  },
+  "options": {
+    "chunk_length_s": 90,
+    "device": {
+      "encoder_model": "cpu",
+      "decoder_model_merged": "cpu"
+    },
+    "dtype": null,
+    "transformers_source": "N:\\github\\ysdede\\transformers.js\\packages\\transformers\\dist\\transformers.node.mjs"
+  },
+  "checks": {
+    "segments": {
+      "chunks": 82,
+      "joined_chunk_text_matches_text": true,
+      "monotonic_timestamps": true,
+      "overlap_vs_reference": {
+        "reference_words": 1089,
+        "hypothesis_words": 1089,
+        "matched_prefix_words": 80,
+        "matched_prefix_ratio": 0.0735
+      },
+      "sentence_alignment": {
+        "expected_sentences": 95,
+        "actual_sentences": 82,
+        "exact_position_matches": 0,
+        "exact_position_match_ratio": 0,
+        "matched_prefix_sentences": 0,
+        "matched_prefix_ratio": 0
+      }
+    },
+    "words": {
+      "chunks": 1063,
+      "joined_chunk_text_matches_text": true,
+      "monotonic_timestamps": true,
+      "overlap_vs_reference": {
+        "reference_words": 1089,
+        "hypothesis_words": 1089,
+        "matched_prefix_words": 80,
+        "matched_prefix_ratio": 0.0735
+      }
+    }
+  },
+  "outputs": {
+    "segments": {
+      "text": "Victor her voice shattered the cathedral silence, going the full four hundred and fifty foot perimeter of the fourteen foot wide floor that encircled the case of the brain. The echo rebounded from the maze of ladders and catwalks that went up and up until they were lost to view where the fifteen foot thick outer wall began its upward slope to form the giant dome. The silence returned, as motionless as the needles on the instrument panels resting on the zero pegs, unactivated, as enduring in essence as the atom-proof concrete dome built to last, as long as the earth itself. Then a sound answered, a faint sound, footsteps, movement appeared through the grill work of the steel catwalks above, trousered legs, a hand sliding along a railing of chrome pipe, more rapid steps as the man descended a steep stairwell, sharper as the man reached the marble floor. Dead video camera eyes let his passage go unregistered. Sensitive quartz crystals inside glistening microphone shells vibrated to the sound of his footsteps, his soft breathing, sending feeble currents along wires to dead amplifying circuits. What is it, Ethel? Doctor Victor Glassman said to his wife, Don't you realize it's almost an hour past your lunch time? she chided. Why do you come in here anyway? The brain was completed six months ago. It won't run away, and it won't come to life until someone finds the proper chemical for the nerve fluid to make it work. My goodness, eight hundred and fifty million dollars sitting idle in here gives me goose flesh. Now you come and eat your lunch, so I can get the dishes out of the way. I'm going to be busy the rest of the afternoon getting ready for the crowd. Or did you forget that your ten scientists are invited to dinner this evening? Of course not, Ethel, he said, putting his arm around her waist. He pulled her around so they were side by side, looking upward into the maze of catwalks, seeing the marble panels of the wall that served as a covering for the huge man made brain. You know why I come in here, he said. I like the feel. The sleeping giant. Not sleeping really, just not born yet. Not living yet. Some days soon that will change. The first non-human. I understand, Victor, Ethel said softly. It scares me. I know it will be just like a human mind. Same principles of thought, even if it will be housed in so vast a brain. But how much do we know of the capabilities of the human brain? I'm afraid. Dr. Glassman's eyes crinkled good naturedly. He tightened his arm around her waist. I'll protect you, Ethel, he said. She looked up at the giant structure that dwarfed them to insignificance. Against that, she snorted. What with? A lance and prancing nag of leather and bones, like Don Quixote of old. She slipped her arm around his shoulders, her expression softening. But I know what you mean, only it's and I know what you mean too. Sometimes even I am afraid of it, but once we activate it it will take years for it to build up a self integrated mind even equal to a child's, and we'll both be long dead before its intelligence starts climbing above that of man. You know I'm hungry. Together, arm in arm, they departed, closing the door, and once again the echoes died away, leaving only the silence, and the brain. I've a bink quiet for a minute, so I won't get these mixed up, Earl Fry said, a mask of tolerant good nature concealing his irritation. By the way, what's wrong with PN nine, bottleneck? Irene Connor clapped her hand over her mouth and spoke from between her fingers. Go ahead and pour, she mumbled. I'll keep quiet for five minutes. Ok, Earl said, unaffected by the twinkle in Irene's clear blue eyes, the smooth wave of her blonde hair, the quiet, unscientific curves under her lab apron. He picked the first vial off the tray, read the number on its label, and carefully jotted it down on the lab card. He emptied the vial into the small opening on top of the pump, and flicked the toggle switch. With a smooth whirr the pump started. The pressure gauge needle broke from zero and started upward, finally hovering near the seven tonne per square inch mark. He watched as the fluid he had poured emerged into glass tubing no thicker than a human hair, and under the tons per square inch pressure stretched into fine fluid columns less than half a dozen molecules thick. He repeated the performance with another vial and another pump, and another, until all ten pumps were working. He went back to the first one. The fluid had reached the slightly enlarged bubble several inches up the thread like glass tubes. He shot off the pump, then went through the same routine with the other ten. I'd sure want to see on at the Rialto, Earl, Irene said. Just tonight and tomorrow night. Good, Earl grunted, starting to recheck the charts. Let me know if you liked it. If it's only good, I might go see it. Why don't you come see it with me? Irene said. Ah Earl hesitated, not looking up from a chart he was studying. He was saved by the hall door opening. Hi, Basil, he said, taking in Basil Malson's expression of mild haste, and the empty test tube in his hand. Irene frowned in annoyance. Basil looked at her with a mixture of apology and hopefulness, then turned to Earl. Ah, I came in to borrow some base formula, he said. Just need a few CCs and want to take the time to get a full gallon from the storeroom. Help yourself, Earl said. He grinned sideways at Irene. By the way, Irene is looking for someone to go with her to see some show of the sun at the Rialto. I'll be glad to, Basil said eagerly. No, thanks, Irene said. I'm going with my aunt. Oh, aunt? Basil said. I didn't know you had an aunt living in Cresmont. He went to a supply shelf over a wall bench and poured some base formula from a rubber tube dangling from a large bottle.",
+      "chunks": [
+        {
+          "text": "Victor her voice shattered the cathedral silence, going the full four hundred and fifty foot perimeter of the fourteen foot wide floor that encircled the case of the brain.",
+          "timestamp": [
+            1.12,
+            11.92
+          ]
+        },
+        {
+          "text": "The echo rebounded from the maze of ladders and catwalks that went up and up until they were lost to view where the fifteen foot thick outer wall began its upward slope to form the giant dome.",
+          "timestamp": [
+            11.92,
+            23.68
+          ]
+        },
+        {
+          "text": "The silence returned, as motionless as the needles on the instrument panels resting on the zero pegs, unactivated, as enduring in essence as the atom-proof concrete dome built to last, as long as the earth itself.",
+          "timestamp": [
+            23.68,
+            38
+          ]
+        },
+        {
+          "text": "Then a sound answered, a faint sound, footsteps, movement appeared through the grill work of the steel catwalks above, trousered legs, a hand sliding along a railing of chrome pipe, more rapid steps as the man descended a steep stairwell, sharper as the man reached the marble floor.",
+          "timestamp": [
+            38,
+            57.36
+          ]
+        },
+        {
+          "text": "Dead video camera eyes let his passage go unregistered.",
+          "timestamp": [
+            57.36,
+            61.52
+          ]
+        },
+        {
+          "text": "Sensitive quartz crystals inside glistening microphone shells vibrated to the sound of his footsteps, his soft breathing, sending feeble currents along wires to dead amplifying circuits.",
+          "timestamp": [
+            61.52,
+            75.2
+          ]
+        },
+        {
+          "text": "What is it, Ethel?",
+          "timestamp": [
+            75.2,
+            76.56
+          ]
+        },
+        {
+          "text": "Doctor Victor Glassman said to his wife, Don't you realize it's almost an hour past your lunch time?",
+          "timestamp": [
+            76.56,
+            82.16
+          ]
+        },
+        {
+          "text": "she chided.",
+          "timestamp": [
+            82.16,
+            83.04
+          ]
+        },
+        {
+          "text": "Why do you come in here anyway?",
+          "timestamp": [
+            83.2,
+            84.96
+          ]
+        },
+        {
+          "text": "The brain was completed six months ago.",
+          "timestamp": [
+            84.96,
+            87.36
+          ]
+        },
+        {
+          "text": "It won't run away, and it won't come to life until someone finds the proper chemical for the nerve fluid to make it work.",
+          "timestamp": [
+            87.44,
+            94.24
+          ]
+        },
+        {
+          "text": "My goodness, eight hundred and fifty million dollars sitting idle in here gives me goose flesh.",
+          "timestamp": [
+            94.24,
+            100.48
+          ]
+        },
+        {
+          "text": "Now you come and eat your lunch, so I can get the dishes out of the way.",
+          "timestamp": [
+            100.48,
+            104
+          ]
+        },
+        {
+          "text": "I'm going to be busy the rest of the afternoon getting ready for the crowd.",
+          "timestamp": [
+            104,
+            107.36
+          ]
+        },
+        {
+          "text": "Or did you forget that your ten scientists are invited to dinner this evening?",
+          "timestamp": [
+            107.36,
+            111.2
+          ]
+        },
+        {
+          "text": "Of course not, Ethel, he said, putting his arm around her waist.",
+          "timestamp": [
+            111.2,
+            115.12
+          ]
+        },
+        {
+          "text": "He pulled her around so they were side by side, looking upward into the maze of catwalks, seeing the marble panels of the wall that served as a covering for the huge man made brain.",
+          "timestamp": [
+            115.12,
+            125.36
+          ]
+        },
+        {
+          "text": "You know why I come in here, he said.",
+          "timestamp": [
+            125.36,
+            127.92
+          ]
+        },
+        {
+          "text": "I like the feel.",
+          "timestamp": [
+            127.92,
+            129.2
+          ]
+        },
+        {
+          "text": "The sleeping giant.",
+          "timestamp": [
+            129.2,
+            130.64
+          ]
+        },
+        {
+          "text": "Not sleeping really, just not born yet.",
+          "timestamp": [
+            130.64,
+            133.44
+          ]
+        },
+        {
+          "text": "Not living yet.",
+          "timestamp": [
+            133.44,
+            135.12
+          ]
+        },
+        {
+          "text": "Some days soon that will change.",
+          "timestamp": [
+            135.12,
+            137.28
+          ]
+        },
+        {
+          "text": "The first non-human.",
+          "timestamp": [
+            137.28,
+            139.2
+          ]
+        },
+        {
+          "text": "I understand, Victor, Ethel said softly.",
+          "timestamp": [
+            139.2,
+            142.48
+          ]
+        },
+        {
+          "text": "It scares me.",
+          "timestamp": [
+            142.48,
+            144
+          ]
+        },
+        {
+          "text": "I know it will be just like a human mind.",
+          "timestamp": [
+            144,
+            146.32
+          ]
+        },
+        {
+          "text": "Same principles of thought, even if it will be housed in so vast a brain.",
+          "timestamp": [
+            146.32,
+            151.04
+          ]
+        },
+        {
+          "text": "But how much do we know of the capabilities of the human brain?",
+          "timestamp": [
+            151.04,
+            154.32
+          ]
+        },
+        {
+          "text": "I'm afraid.",
+          "timestamp": [
+            154.32,
+            155.6
+          ]
+        },
+        {
+          "text": "Dr. Glassman's eyes crinkled good naturedly.",
+          "timestamp": [
+            155.6,
+            158.72
+          ]
+        },
+        {
+          "text": "He tightened his arm around her waist.",
+          "timestamp": [
+            158.72,
+            160.96
+          ]
+        },
+        {
+          "text": "I'll protect you, Ethel, he said.",
+          "timestamp": [
+            160.96,
+            163.76
+          ]
+        },
+        {
+          "text": "She looked up at the giant structure that dwarfed them to insignificance.",
+          "timestamp": [
+            164.08,
+            167.84
+          ]
+        },
+        {
+          "text": "Against that, she snorted.",
+          "timestamp": [
+            167.84,
+            169.68
+          ]
+        },
+        {
+          "text": "What with?",
+          "timestamp": [
+            169.68,
+            170.72
+          ]
+        },
+        {
+          "text": "A lance and prancing nag of leather and bones, like Don Quixote of old.",
+          "timestamp": [
+            170.72,
+            175.76
+          ]
+        },
+        {
+          "text": "She slipped her arm around his shoulders, her expression softening.",
+          "timestamp": [
+            175.76,
+            179.6
+          ]
+        },
+        {
+          "text": "But I know what you mean, only it's and I know what you mean too.",
+          "timestamp": [
+            179.6,
+            183.76
+          ]
+        },
+        {
+          "text": "Sometimes even I am afraid of it, but once we activate it it will take years for it to build up a self integrated mind even equal to a child's, and we'll both be long dead before its intelligence starts climbing above that of man.",
+          "timestamp": [
+            183.76,
+            195.44
+          ]
+        },
+        {
+          "text": "You know I'm hungry.",
+          "timestamp": [
+            195.44,
+            196.88
+          ]
+        },
+        {
+          "text": "Together, arm in arm, they departed, closing the door, and once again the echoes died away, leaving only the silence, and the brain.",
+          "timestamp": [
+            196.88,
+            207.2
+          ]
+        },
+        {
+          "text": "I've a bink quiet for a minute, so I won't get these mixed up, Earl Fry said, a mask of tolerant good nature concealing his irritation.",
+          "timestamp": [
+            207.2,
+            215.2
+          ]
+        },
+        {
+          "text": "By the way, what's wrong with PN nine, bottleneck?",
+          "timestamp": [
+            215.2,
+            218.16
+          ]
+        },
+        {
+          "text": "Irene Connor clapped her hand over her mouth and spoke from between her fingers.",
+          "timestamp": [
+            218.16,
+            222.72
+          ]
+        },
+        {
+          "text": "Go ahead and pour, she mumbled.",
+          "timestamp": [
+            222.72,
+            224.72
+          ]
+        },
+        {
+          "text": "I'll keep quiet for five minutes.",
+          "timestamp": [
+            224.72,
+            226.96
+          ]
+        },
+        {
+          "text": "Ok, Earl said, unaffected by the twinkle in Irene's clear blue eyes, the smooth wave of her blonde hair, the quiet, unscientific curves under her lab apron.",
+          "timestamp": [
+            226.96,
+            238.8
+          ]
+        },
+        {
+          "text": "He picked the first vial off the tray, read the number on its label, and carefully jotted it down on the lab card.",
+          "timestamp": [
+            238.8,
+            244.88
+          ]
+        },
+        {
+          "text": "He emptied the vial into the small opening on top of the pump, and flicked the toggle switch.",
+          "timestamp": [
+            244.88,
+            249.68
+          ]
+        },
+        {
+          "text": "With a smooth whirr the pump started.",
+          "timestamp": [
+            249.68,
+            252.16
+          ]
+        },
+        {
+          "text": "The pressure gauge needle broke from zero and started upward, finally hovering near the seven tonne per square inch mark.",
+          "timestamp": [
+            252.16,
+            258.64
+          ]
+        },
+        {
+          "text": "He watched as the fluid he had poured emerged into glass tubing no thicker than a human hair, and under the tons per square inch pressure stretched into fine fluid columns less than half a dozen molecules thick.",
+          "timestamp": [
+            258.64,
+            271.68
+          ]
+        },
+        {
+          "text": "He repeated the performance with another vial and another pump, and another, until all ten pumps were working.",
+          "timestamp": [
+            271.68,
+            278.24
+          ]
+        },
+        {
+          "text": "He went back to the first one.",
+          "timestamp": [
+            278.24,
+            279.84
+          ]
+        },
+        {
+          "text": "The fluid had reached the slightly enlarged bubble several inches up the thread like glass tubes.",
+          "timestamp": [
+            279.84,
+            285.2
+          ]
+        },
+        {
+          "text": "He shot off the pump, then went through the same routine with the other ten.",
+          "timestamp": [
+            285.2,
+            289.28
+          ]
+        },
+        {
+          "text": "I'd sure want to see on at the Rialto, Earl, Irene said.",
+          "timestamp": [
+            289.28,
+            292.8
+          ]
+        },
+        {
+          "text": "Just tonight and tomorrow night.",
+          "timestamp": [
+            292.8,
+            294.96
+          ]
+        },
+        {
+          "text": "Good, Earl grunted, starting to recheck the charts.",
+          "timestamp": [
+            294.96,
+            297.92
+          ]
+        },
+        {
+          "text": "Let me know if you liked it.",
+          "timestamp": [
+            297.92,
+            299.2
+          ]
+        },
+        {
+          "text": "If it's only good, I might go see it.",
+          "timestamp": [
+            299.2,
+            301.28
+          ]
+        },
+        {
+          "text": "Why don't you come see it with me?",
+          "timestamp": [
+            301.28,
+            302.96
+          ]
+        },
+        {
+          "text": "Irene said.",
+          "timestamp": [
+            302.96,
+            304.16
+          ]
+        },
+        {
+          "text": "Ah Earl hesitated, not looking up from a chart he was studying.",
+          "timestamp": [
+            304.16,
+            308.8
+          ]
+        },
+        {
+          "text": "He was saved by the hall door opening.",
+          "timestamp": [
+            308.8,
+            311.52
+          ]
+        },
+        {
+          "text": "Hi, Basil, he said, taking in Basil Malson's expression of mild haste, and the empty test tube in his hand.",
+          "timestamp": [
+            311.52,
+            318
+          ]
+        },
+        {
+          "text": "Irene frowned in annoyance.",
+          "timestamp": [
+            318,
+            320
+          ]
+        },
+        {
+          "text": "Basil looked at her with a mixture of apology and hopefulness, then turned to Earl.",
+          "timestamp": [
+            320,
+            324.56
+          ]
+        },
+        {
+          "text": "Ah, I came in to borrow some base formula, he said.",
+          "timestamp": [
+            324.56,
+            328.16
+          ]
+        },
+        {
+          "text": "Just need a few CCs and want to take the time to get a full gallon from the storeroom.",
+          "timestamp": [
+            328.16,
+            332.4
+          ]
+        },
+        {
+          "text": "Help yourself, Earl said.",
+          "timestamp": [
+            332.4,
+            334.48
+          ]
+        },
+        {
+          "text": "He grinned sideways at Irene.",
+          "timestamp": [
+            334.48,
+            336.48
+          ]
+        },
+        {
+          "text": "By the way, Irene is looking for someone to go with her to see some show of the sun at the Rialto.",
+          "timestamp": [
+            336.48,
+            340.64
+          ]
+        },
+        {
+          "text": "I'll be glad to, Basil said eagerly.",
+          "timestamp": [
+            340.64,
+            343.6
+          ]
+        },
+        {
+          "text": "No, thanks, Irene said.",
+          "timestamp": [
+            343.6,
+            345.52
+          ]
+        },
+        {
+          "text": "I'm going with my aunt.",
+          "timestamp": [
+            345.52,
+            347.28
+          ]
+        },
+        {
+          "text": "Oh, aunt?",
+          "timestamp": [
+            347.44,
+            348.4
+          ]
+        },
+        {
+          "text": "Basil said.",
+          "timestamp": [
+            348.4,
+            349.84
+          ]
+        },
+        {
+          "text": "I didn't know you had an aunt living in Cresmont.",
+          "timestamp": [
+            349.84,
+            352.32
+          ]
+        },
+        {
+          "text": "He went to a supply shelf over a wall bench and poured some base formula from a rubber tube dangling from a large bottle.",
+          "timestamp": [
+            352.32,
+            358.56
+          ]
+        }
+      ]
+    },
+    "words": {
+      "text": "Victor her voice shattered the cathedral silence, going the full four hundred and fifty foot perimeter of the fourteen foot wide floor that encircled the case of the brain. The echo rebounded from the maze of ladders and catwalks that went up and up until they were lost to view where the fifteen foot thick outer wall began its upward slope to form the giant dome. The silence returned, as motionless as the needles on the instrument panels resting on the zero pegs, unactivated, as enduring in essence as the atom-proof concrete dome built to last, as long as the earth itself. Then a sound answered, a faint sound, footsteps, movement appeared through the grill work of the steel catwalks above, trousered legs, a hand sliding along a railing of chrome pipe, more rapid steps as the man descended a steep stairwell, sharper as the man reached the marble floor. Dead video camera eyes let his passage go unregistered. Sensitive quartz crystals inside glistening microphone shells vibrated to the sound of his footsteps, his soft breathing, sending feeble currents along wires to dead amplifying circuits. What is it, Ethel? Doctor Victor Glassman said to his wife, Don't you realize it's almost an hour past your lunch time? she chided. Why do you come in here anyway? The brain was completed six months ago. It won't run away, and it won't come to life until someone finds the proper chemical for the nerve fluid to make it work. My goodness, eight hundred and fifty million dollars sitting idle in here gives me goose flesh. Now you come and eat your lunch, so I can get the dishes out of the way. I'm going to be busy the rest of the afternoon getting ready for the crowd. Or did you forget that your ten scientists are invited to dinner this evening? Of course not, Ethel, he said, putting his arm around her waist. He pulled her around so they were side by side, looking upward into the maze of catwalks, seeing the marble panels of the wall that served as a covering for the huge man made brain. You know why I come in here, he said. I like the feel. The sleeping giant. Not sleeping really, just not born yet. Not living yet. Some days soon that will change. The first non-human. I understand, Victor, Ethel said softly. It scares me. I know it will be just like a human mind. Same principles of thought, even if it will be housed in so vast a brain. But how much do we know of the capabilities of the human brain? I'm afraid. Dr. Glassman's eyes crinkled good naturedly. He tightened his arm around her waist. I'll protect you, Ethel, he said. She looked up at the giant structure that dwarfed them to insignificance. Against that, she snorted. What with? A lance and prancing nag of leather and bones, like Don Quixote of old. She slipped her arm around his shoulders, her expression softening. But I know what you mean, only it's and I know what you mean too. Sometimes even I am afraid of it, but once we activate it it will take years for it to build up a self integrated mind even equal to a child's, and we'll both be long dead before its intelligence starts climbing above that of man. You know I'm hungry. Together, arm in arm, they departed, closing the door, and once again the echoes died away, leaving only the silence, and the brain. I've a bink quiet for a minute, so I won't get these mixed up, Earl Fry said, a mask of tolerant good nature concealing his irritation. By the way, what's wrong with PN nine, bottleneck? Irene Connor clapped her hand over her mouth and spoke from between her fingers. Go ahead and pour, she mumbled. I'll keep quiet for five minutes. Ok, Earl said, unaffected by the twinkle in Irene's clear blue eyes, the smooth wave of her blonde hair, the quiet, unscientific curves under her lab apron. He picked the first vial off the tray, read the number on its label, and carefully jotted it down on the lab card. He emptied the vial into the small opening on top of the pump, and flicked the toggle switch. With a smooth whirr the pump started. The pressure gauge needle broke from zero and started upward, finally hovering near the seven tonne per square inch mark. He watched as the fluid he had poured emerged into glass tubing no thicker than a human hair, and under the tons per square inch pressure stretched into fine fluid columns less than half a dozen molecules thick. He repeated the performance with another vial and another pump, and another, until all ten pumps were working. He went back to the first one. The fluid had reached the slightly enlarged bubble several inches up the thread like glass tubes. He shot off the pump, then went through the same routine with the other ten. I'd sure want to see on at the Rialto, Earl, Irene said. Just tonight and tomorrow night. Good, Earl grunted, starting to recheck the charts. Let me know if you liked it. If it's only good, I might go see it. Why don't you come see it with me? Irene said. Ah Earl hesitated, not looking up from a chart he was studying. He was saved by the hall door opening. Hi, Basil, he said, taking in Basil Malson's expression of mild haste, and the empty test tube in his hand. Irene frowned in annoyance. Basil looked at her with a mixture of apology and hopefulness, then turned to Earl. Ah, I came in to borrow some base formula, he said. Just need a few CCs and want to take the time to get a full gallon from the storeroom. Help yourself, Earl said. He grinned sideways at Irene. By the way, Irene is looking for someone to go with her to see some show of the sun at the Rialto. I'll be glad to, Basil said eagerly. No, thanks, Irene said. I'm going with my aunt. Oh, aunt? Basil said. I didn't know you had an aunt living in Cresmont. He went to a supply shelf over a wall bench and poured some base formula from a rubber tube dangling from a large bottle.",
+      "chunks": [
+        {
+          "text": "Victor",
+          "timestamp": [
+            1.12,
+            1.92
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            2.48,
+            2.64
+          ]
+        },
+        {
+          "text": "voice",
+          "timestamp": [
+            2.72,
+            3.12
+          ]
+        },
+        {
+          "text": "shattered",
+          "timestamp": [
+            3.12,
+            3.6
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            3.6,
+            3.76
+          ]
+        },
+        {
+          "text": "cathedral",
+          "timestamp": [
+            3.76,
+            4.32
+          ]
+        },
+        {
+          "text": "silence,",
+          "timestamp": [
+            4.4,
+            4.88
+          ]
+        },
+        {
+          "text": "going",
+          "timestamp": [
+            4.88,
+            5.04
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            5.2,
+            5.36
+          ]
+        },
+        {
+          "text": "full",
+          "timestamp": [
+            5.36,
+            5.6
+          ]
+        },
+        {
+          "text": "four",
+          "timestamp": [
+            5.6,
+            5.76
+          ]
+        },
+        {
+          "text": "hundred",
+          "timestamp": [
+            5.76,
+            6.08
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            6,
+            6.08
+          ]
+        },
+        {
+          "text": "fifty",
+          "timestamp": [
+            6.16,
+            6.48
+          ]
+        },
+        {
+          "text": "foot",
+          "timestamp": [
+            6.56,
+            6.8
+          ]
+        },
+        {
+          "text": "perimeter",
+          "timestamp": [
+            6.8,
+            7.52
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            7.52,
+            7.76
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            7.76,
+            7.92
+          ]
+        },
+        {
+          "text": "fourteen",
+          "timestamp": [
+            7.92,
+            8.32
+          ]
+        },
+        {
+          "text": "foot",
+          "timestamp": [
+            8.4,
+            8.64
+          ]
+        },
+        {
+          "text": "wide",
+          "timestamp": [
+            8.72,
+            8.96
+          ]
+        },
+        {
+          "text": "floor",
+          "timestamp": [
+            8.96,
+            9.36
+          ]
+        },
+        {
+          "text": "that",
+          "timestamp": [
+            9.36,
+            9.52
+          ]
+        },
+        {
+          "text": "encircled",
+          "timestamp": [
+            9.52,
+            10.08
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            10.08,
+            10.24
+          ]
+        },
+        {
+          "text": "case",
+          "timestamp": [
+            10.24,
+            10.56
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            10.56,
+            10.72
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            10.72,
+            10.88
+          ]
+        },
+        {
+          "text": "brain.",
+          "timestamp": [
+            10.88,
+            11.92
+          ]
+        },
+        {
+          "text": "The",
+          "timestamp": [
+            11.92,
+            12.08
+          ]
+        },
+        {
+          "text": "echo",
+          "timestamp": [
+            12.08,
+            12.56
+          ]
+        },
+        {
+          "text": "rebounded",
+          "timestamp": [
+            12.56,
+            13.2
+          ]
+        },
+        {
+          "text": "from",
+          "timestamp": [
+            13.2,
+            13.36
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            13.36,
+            13.52
+          ]
+        },
+        {
+          "text": "maze",
+          "timestamp": [
+            13.52,
+            13.92
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            13.92,
+            14
+          ]
+        },
+        {
+          "text": "ladders",
+          "timestamp": [
+            14,
+            14.48
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            14.48,
+            14.56
+          ]
+        },
+        {
+          "text": "catwalks",
+          "timestamp": [
+            14.56,
+            15.2
+          ]
+        },
+        {
+          "text": "that",
+          "timestamp": [
+            15.2,
+            15.36
+          ]
+        },
+        {
+          "text": "went",
+          "timestamp": [
+            15.36,
+            15.76
+          ]
+        },
+        {
+          "text": "up",
+          "timestamp": [
+            15.76,
+            16
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            16,
+            16.32
+          ]
+        },
+        {
+          "text": "up",
+          "timestamp": [
+            16.32,
+            16.56
+          ]
+        },
+        {
+          "text": "until",
+          "timestamp": [
+            16.72,
+            17.12
+          ]
+        },
+        {
+          "text": "they",
+          "timestamp": [
+            17.12,
+            17.28
+          ]
+        },
+        {
+          "text": "were",
+          "timestamp": [
+            17.28,
+            17.44
+          ]
+        },
+        {
+          "text": "lost",
+          "timestamp": [
+            17.44,
+            17.76
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            17.76,
+            17.92
+          ]
+        },
+        {
+          "text": "view",
+          "timestamp": [
+            17.92,
+            18.16
+          ]
+        },
+        {
+          "text": "where",
+          "timestamp": [
+            18.24,
+            18.4
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            18.4,
+            18.48
+          ]
+        },
+        {
+          "text": "fifteen",
+          "timestamp": [
+            18.48,
+            18.88
+          ]
+        },
+        {
+          "text": "foot",
+          "timestamp": [
+            18.96,
+            19.2
+          ]
+        },
+        {
+          "text": "thick",
+          "timestamp": [
+            19.28,
+            19.6
+          ]
+        },
+        {
+          "text": "outer",
+          "timestamp": [
+            19.6,
+            19.92
+          ]
+        },
+        {
+          "text": "wall",
+          "timestamp": [
+            19.92,
+            20.24
+          ]
+        },
+        {
+          "text": "began",
+          "timestamp": [
+            20.24,
+            20.56
+          ]
+        },
+        {
+          "text": "its",
+          "timestamp": [
+            20.56,
+            20.72
+          ]
+        },
+        {
+          "text": "upward",
+          "timestamp": [
+            20.72,
+            21.12
+          ]
+        },
+        {
+          "text": "slope",
+          "timestamp": [
+            21.12,
+            21.6
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            21.6,
+            21.92
+          ]
+        },
+        {
+          "text": "form",
+          "timestamp": [
+            21.92,
+            22.16
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            22.16,
+            22.4
+          ]
+        },
+        {
+          "text": "giant",
+          "timestamp": [
+            22.4,
+            22.88
+          ]
+        },
+        {
+          "text": "dome.",
+          "timestamp": [
+            22.88,
+            23.68
+          ]
+        },
+        {
+          "text": "The",
+          "timestamp": [
+            23.68,
+            23.84
+          ]
+        },
+        {
+          "text": "silence",
+          "timestamp": [
+            23.84,
+            24.32
+          ]
+        },
+        {
+          "text": "returned,",
+          "timestamp": [
+            24.32,
+            24.96
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            24.96,
+            25.12
+          ]
+        },
+        {
+          "text": "motionless",
+          "timestamp": [
+            25.12,
+            25.76
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            25.76,
+            25.92
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            25.92,
+            26.08
+          ]
+        },
+        {
+          "text": "needles",
+          "timestamp": [
+            26.08,
+            26.48
+          ]
+        },
+        {
+          "text": "on",
+          "timestamp": [
+            26.48,
+            26.56
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            26.56,
+            26.64
+          ]
+        },
+        {
+          "text": "instrument",
+          "timestamp": [
+            26.64,
+            27.12
+          ]
+        },
+        {
+          "text": "panels",
+          "timestamp": [
+            27.12,
+            27.6
+          ]
+        },
+        {
+          "text": "resting",
+          "timestamp": [
+            27.6,
+            27.92
+          ]
+        },
+        {
+          "text": "on",
+          "timestamp": [
+            27.92,
+            28.08
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            28.08,
+            28.16
+          ]
+        },
+        {
+          "text": "zero",
+          "timestamp": [
+            28.24,
+            28.72
+          ]
+        },
+        {
+          "text": "pegs,",
+          "timestamp": [
+            28.8,
+            29.44
+          ]
+        },
+        {
+          "text": "unactivated,",
+          "timestamp": [
+            29.44,
+            30.64
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            30.64,
+            30.88
+          ]
+        },
+        {
+          "text": "enduring",
+          "timestamp": [
+            30.88,
+            31.52
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            31.52,
+            31.68
+          ]
+        },
+        {
+          "text": "essence",
+          "timestamp": [
+            31.76,
+            32
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            32,
+            32.16
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            32.16,
+            32.32
+          ]
+        },
+        {
+          "text": "atom-proof",
+          "timestamp": [
+            32.32,
+            33.2
+          ]
+        },
+        {
+          "text": "concrete",
+          "timestamp": [
+            33.2,
+            33.84
+          ]
+        },
+        {
+          "text": "dome",
+          "timestamp": [
+            33.84,
+            34.32
+          ]
+        },
+        {
+          "text": "built",
+          "timestamp": [
+            34.32,
+            34.8
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            34.8,
+            35.12
+          ]
+        },
+        {
+          "text": "last,",
+          "timestamp": [
+            35.12,
+            35.68
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            35.68,
+            35.92
+          ]
+        },
+        {
+          "text": "long",
+          "timestamp": [
+            35.92,
+            36.08
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            36.08,
+            36.24
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            36.24,
+            36.48
+          ]
+        },
+        {
+          "text": "earth",
+          "timestamp": [
+            36.48,
+            37.04
+          ]
+        },
+        {
+          "text": "itself.",
+          "timestamp": [
+            37.04,
+            38
+          ]
+        },
+        {
+          "text": "Then",
+          "timestamp": [
+            38,
+            38.4
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            38.64,
+            38.88
+          ]
+        },
+        {
+          "text": "sound",
+          "timestamp": [
+            38.88,
+            39.36
+          ]
+        },
+        {
+          "text": "answered,",
+          "timestamp": [
+            39.36,
+            40.16
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            40.16,
+            40.4
+          ]
+        },
+        {
+          "text": "faint",
+          "timestamp": [
+            40.4,
+            40.96
+          ]
+        },
+        {
+          "text": "sound,",
+          "timestamp": [
+            40.96,
+            41.68
+          ]
+        },
+        {
+          "text": "footsteps,",
+          "timestamp": [
+            41.68,
+            42.88
+          ]
+        },
+        {
+          "text": "movement",
+          "timestamp": [
+            42.88,
+            43.52
+          ]
+        },
+        {
+          "text": "appeared",
+          "timestamp": [
+            43.52,
+            43.92
+          ]
+        },
+        {
+          "text": "through",
+          "timestamp": [
+            43.92,
+            44.08
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            44.08,
+            44.16
+          ]
+        },
+        {
+          "text": "grill",
+          "timestamp": [
+            44.16,
+            44.48
+          ]
+        },
+        {
+          "text": "work",
+          "timestamp": [
+            44.56,
+            44.64
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            44.8,
+            44.96
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            44.96,
+            45.04
+          ]
+        },
+        {
+          "text": "steel",
+          "timestamp": [
+            45.04,
+            45.36
+          ]
+        },
+        {
+          "text": "catwalks",
+          "timestamp": [
+            45.36,
+            46
+          ]
+        },
+        {
+          "text": "above,",
+          "timestamp": [
+            46,
+            46.72
+          ]
+        },
+        {
+          "text": "trousered",
+          "timestamp": [
+            46.72,
+            47.44
+          ]
+        },
+        {
+          "text": "legs,",
+          "timestamp": [
+            47.44,
+            48.08
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            48.08,
+            48.24
+          ]
+        },
+        {
+          "text": "hand",
+          "timestamp": [
+            48.24,
+            48.64
+          ]
+        },
+        {
+          "text": "sliding",
+          "timestamp": [
+            48.64,
+            49.12
+          ]
+        },
+        {
+          "text": "along",
+          "timestamp": [
+            49.12,
+            49.44
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            49.44,
+            49.52
+          ]
+        },
+        {
+          "text": "railing",
+          "timestamp": [
+            49.52,
+            49.92
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            49.92,
+            50.08
+          ]
+        },
+        {
+          "text": "chrome",
+          "timestamp": [
+            50.08,
+            50.56
+          ]
+        },
+        {
+          "text": "pipe,",
+          "timestamp": [
+            50.56,
+            51.2
+          ]
+        },
+        {
+          "text": "more",
+          "timestamp": [
+            51.2,
+            51.52
+          ]
+        },
+        {
+          "text": "rapid",
+          "timestamp": [
+            51.52,
+            51.92
+          ]
+        },
+        {
+          "text": "steps",
+          "timestamp": [
+            51.92,
+            52.24
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            52.24,
+            52.4
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            52.4,
+            52.48
+          ]
+        },
+        {
+          "text": "man",
+          "timestamp": [
+            52.48,
+            52.72
+          ]
+        },
+        {
+          "text": "descended",
+          "timestamp": [
+            52.72,
+            53.2
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            53.2,
+            53.36
+          ]
+        },
+        {
+          "text": "steep",
+          "timestamp": [
+            53.36,
+            53.68
+          ]
+        },
+        {
+          "text": "stairwell,",
+          "timestamp": [
+            53.68,
+            54.48
+          ]
+        },
+        {
+          "text": "sharper",
+          "timestamp": [
+            54.48,
+            55.04
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            55.04,
+            55.12
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            55.12,
+            55.28
+          ]
+        },
+        {
+          "text": "man",
+          "timestamp": [
+            55.28,
+            55.52
+          ]
+        },
+        {
+          "text": "reached",
+          "timestamp": [
+            55.52,
+            55.84
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            55.84,
+            55.92
+          ]
+        },
+        {
+          "text": "marble",
+          "timestamp": [
+            55.92,
+            56.48
+          ]
+        },
+        {
+          "text": "floor.",
+          "timestamp": [
+            56.48,
+            57.36
+          ]
+        },
+        {
+          "text": "Dead",
+          "timestamp": [
+            57.36,
+            57.76
+          ]
+        },
+        {
+          "text": "video",
+          "timestamp": [
+            57.76,
+            58.16
+          ]
+        },
+        {
+          "text": "camera",
+          "timestamp": [
+            58.16,
+            58.56
+          ]
+        },
+        {
+          "text": "eyes",
+          "timestamp": [
+            58.56,
+            58.96
+          ]
+        },
+        {
+          "text": "let",
+          "timestamp": [
+            58.96,
+            59.2
+          ]
+        },
+        {
+          "text": "his",
+          "timestamp": [
+            59.2,
+            59.36
+          ]
+        },
+        {
+          "text": "passage",
+          "timestamp": [
+            59.36,
+            59.92
+          ]
+        },
+        {
+          "text": "go",
+          "timestamp": [
+            59.92,
+            60.16
+          ]
+        },
+        {
+          "text": "unregistered.",
+          "timestamp": [
+            60.16,
+            61.52
+          ]
+        },
+        {
+          "text": "Sensitive",
+          "timestamp": [
+            61.52,
+            62.16
+          ]
+        },
+        {
+          "text": "quartz",
+          "timestamp": [
+            62.16,
+            62.72
+          ]
+        },
+        {
+          "text": "crystals",
+          "timestamp": [
+            62.72,
+            63.2
+          ]
+        },
+        {
+          "text": "inside",
+          "timestamp": [
+            63.2,
+            63.52
+          ]
+        },
+        {
+          "text": "glistening",
+          "timestamp": [
+            63.6,
+            64.16
+          ]
+        },
+        {
+          "text": "microphone",
+          "timestamp": [
+            64.16,
+            64.88
+          ]
+        },
+        {
+          "text": "shells",
+          "timestamp": [
+            64.88,
+            65.6
+          ]
+        },
+        {
+          "text": "vibrated",
+          "timestamp": [
+            65.6,
+            66.48
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            66.48,
+            66.64
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            66.64,
+            66.8
+          ]
+        },
+        {
+          "text": "sound",
+          "timestamp": [
+            66.8,
+            67.04
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            67.04,
+            67.2
+          ]
+        },
+        {
+          "text": "his",
+          "timestamp": [
+            67.2,
+            67.36
+          ]
+        },
+        {
+          "text": "footsteps,",
+          "timestamp": [
+            67.36,
+            68.4
+          ]
+        },
+        {
+          "text": "his",
+          "timestamp": [
+            68.4,
+            68.64
+          ]
+        },
+        {
+          "text": "soft",
+          "timestamp": [
+            68.64,
+            68.96
+          ]
+        },
+        {
+          "text": "breathing,",
+          "timestamp": [
+            68.96,
+            70.08
+          ]
+        },
+        {
+          "text": "sending",
+          "timestamp": [
+            70.08,
+            70.48
+          ]
+        },
+        {
+          "text": "feeble",
+          "timestamp": [
+            70.48,
+            70.96
+          ]
+        },
+        {
+          "text": "currents",
+          "timestamp": [
+            70.96,
+            71.36
+          ]
+        },
+        {
+          "text": "along",
+          "timestamp": [
+            71.36,
+            71.68
+          ]
+        },
+        {
+          "text": "wires",
+          "timestamp": [
+            71.68,
+            72.24
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            72.56,
+            72.8
+          ]
+        },
+        {
+          "text": "dead",
+          "timestamp": [
+            72.8,
+            73.12
+          ]
+        },
+        {
+          "text": "amplifying",
+          "timestamp": [
+            73.2,
+            74
+          ]
+        },
+        {
+          "text": "circuits.",
+          "timestamp": [
+            74,
+            75.2
+          ]
+        },
+        {
+          "text": "What",
+          "timestamp": [
+            75.2,
+            75.44
+          ]
+        },
+        {
+          "text": "is",
+          "timestamp": [
+            75.44,
+            75.6
+          ]
+        },
+        {
+          "text": "it,",
+          "timestamp": [
+            75.6,
+            75.84
+          ]
+        },
+        {
+          "text": "Ethel?",
+          "timestamp": [
+            75.84,
+            76.56
+          ]
+        },
+        {
+          "text": "Doctor",
+          "timestamp": [
+            76.56,
+            76.88
+          ]
+        },
+        {
+          "text": "Victor",
+          "timestamp": [
+            76.88,
+            77.28
+          ]
+        },
+        {
+          "text": "Glassman",
+          "timestamp": [
+            77.28,
+            77.92
+          ]
+        },
+        {
+          "text": "said",
+          "timestamp": [
+            77.92,
+            78
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            78,
+            78.16
+          ]
+        },
+        {
+          "text": "his",
+          "timestamp": [
+            78.16,
+            78.32
+          ]
+        },
+        {
+          "text": "wife,",
+          "timestamp": [
+            78.32,
+            78.96
+          ]
+        },
+        {
+          "text": "Don't",
+          "timestamp": [
+            79.12,
+            79.44
+          ]
+        },
+        {
+          "text": "you",
+          "timestamp": [
+            79.44,
+            79.52
+          ]
+        },
+        {
+          "text": "realize",
+          "timestamp": [
+            79.52,
+            79.92
+          ]
+        },
+        {
+          "text": "it's",
+          "timestamp": [
+            79.92,
+            80.16
+          ]
+        },
+        {
+          "text": "almost",
+          "timestamp": [
+            80.16,
+            80.4
+          ]
+        },
+        {
+          "text": "an",
+          "timestamp": [
+            80.4,
+            80.56
+          ]
+        },
+        {
+          "text": "hour",
+          "timestamp": [
+            80.56,
+            80.8
+          ]
+        },
+        {
+          "text": "past",
+          "timestamp": [
+            80.8,
+            81.04
+          ]
+        },
+        {
+          "text": "your",
+          "timestamp": [
+            81.04,
+            81.2
+          ]
+        },
+        {
+          "text": "lunch",
+          "timestamp": [
+            81.2,
+            81.6
+          ]
+        },
+        {
+          "text": "time?",
+          "timestamp": [
+            81.6,
+            82.16
+          ]
+        },
+        {
+          "text": "she",
+          "timestamp": [
+            82.16,
+            82.24
+          ]
+        },
+        {
+          "text": "chided.",
+          "timestamp": [
+            82.4,
+            83.04
+          ]
+        },
+        {
+          "text": "Why",
+          "timestamp": [
+            83.2,
+            83.44
+          ]
+        },
+        {
+          "text": "do",
+          "timestamp": [
+            83.44,
+            83.52
+          ]
+        },
+        {
+          "text": "you",
+          "timestamp": [
+            83.6,
+            83.68
+          ]
+        },
+        {
+          "text": "come",
+          "timestamp": [
+            83.68,
+            83.84
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            83.84,
+            84
+          ]
+        },
+        {
+          "text": "here",
+          "timestamp": [
+            84,
+            84.16
+          ]
+        },
+        {
+          "text": "anyway?",
+          "timestamp": [
+            84.24,
+            84.96
+          ]
+        },
+        {
+          "text": "The",
+          "timestamp": [
+            84.96,
+            85.2
+          ]
+        },
+        {
+          "text": "brain",
+          "timestamp": [
+            85.2,
+            85.6
+          ]
+        },
+        {
+          "text": "was",
+          "timestamp": [
+            85.6,
+            85.76
+          ]
+        },
+        {
+          "text": "completed",
+          "timestamp": [
+            85.76,
+            86.24
+          ]
+        },
+        {
+          "text": "six",
+          "timestamp": [
+            86.24,
+            86.48
+          ]
+        },
+        {
+          "text": "months",
+          "timestamp": [
+            86.48,
+            86.8
+          ]
+        },
+        {
+          "text": "ago.",
+          "timestamp": [
+            86.8,
+            87.36
+          ]
+        },
+        {
+          "text": "It",
+          "timestamp": [
+            87.44,
+            87.6
+          ]
+        },
+        {
+          "text": "won't",
+          "timestamp": [
+            87.6,
+            88
+          ]
+        },
+        {
+          "text": "run",
+          "timestamp": [
+            87.92,
+            88.16
+          ]
+        },
+        {
+          "text": "away,",
+          "timestamp": [
+            88.16,
+            88.8
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            88.8,
+            88.96
+          ]
+        },
+        {
+          "text": "it",
+          "timestamp": [
+            88.96,
+            89.12
+          ]
+        },
+        {
+          "text": "won't",
+          "timestamp": [
+            89.12,
+            89.52
+          ]
+        },
+        {
+          "text": "come",
+          "timestamp": [
+            89.44,
+            89.6
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            89.6,
+            89.84
+          ]
+        },
+        {
+          "text": "life",
+          "timestamp": [
+            89.84,
+            90.08
+          ]
+        },
+        {
+          "text": "until",
+          "timestamp": [
+            90.32,
+            90.72
+          ]
+        },
+        {
+          "text": "someone",
+          "timestamp": [
+            90.72,
+            91.04
+          ]
+        },
+        {
+          "text": "finds",
+          "timestamp": [
+            91.04,
+            91.36
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            91.36,
+            91.44
+          ]
+        },
+        {
+          "text": "proper",
+          "timestamp": [
+            91.44,
+            91.76
+          ]
+        },
+        {
+          "text": "chemical",
+          "timestamp": [
+            91.76,
+            92.24
+          ]
+        },
+        {
+          "text": "for",
+          "timestamp": [
+            92.24,
+            92.4
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            92.4,
+            92.48
+          ]
+        },
+        {
+          "text": "nerve",
+          "timestamp": [
+            92.48,
+            92.8
+          ]
+        },
+        {
+          "text": "fluid",
+          "timestamp": [
+            92.8,
+            93.2
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            93.2,
+            93.28
+          ]
+        },
+        {
+          "text": "make",
+          "timestamp": [
+            93.28,
+            93.52
+          ]
+        },
+        {
+          "text": "it",
+          "timestamp": [
+            93.52,
+            93.68
+          ]
+        },
+        {
+          "text": "work.",
+          "timestamp": [
+            93.68,
+            94.24
+          ]
+        },
+        {
+          "text": "My",
+          "timestamp": [
+            94.24,
+            94.56
+          ]
+        },
+        {
+          "text": "goodness,",
+          "timestamp": [
+            94.56,
+            95.28
+          ]
+        },
+        {
+          "text": "eight",
+          "timestamp": [
+            95.28,
+            95.6
+          ]
+        },
+        {
+          "text": "hundred",
+          "timestamp": [
+            95.6,
+            95.92
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            95.92,
+            96
+          ]
+        },
+        {
+          "text": "fifty",
+          "timestamp": [
+            96,
+            96.4
+          ]
+        },
+        {
+          "text": "million",
+          "timestamp": [
+            96.4,
+            96.8
+          ]
+        },
+        {
+          "text": "dollars",
+          "timestamp": [
+            96.8,
+            97.28
+          ]
+        },
+        {
+          "text": "sitting",
+          "timestamp": [
+            97.28,
+            97.52
+          ]
+        },
+        {
+          "text": "idle",
+          "timestamp": [
+            97.52,
+            98
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            98,
+            98.24
+          ]
+        },
+        {
+          "text": "here",
+          "timestamp": [
+            98.24,
+            98.48
+          ]
+        },
+        {
+          "text": "gives",
+          "timestamp": [
+            98.72,
+            98.96
+          ]
+        },
+        {
+          "text": "me",
+          "timestamp": [
+            98.96,
+            99.2
+          ]
+        },
+        {
+          "text": "goose",
+          "timestamp": [
+            99.2,
+            99.6
+          ]
+        },
+        {
+          "text": "flesh.",
+          "timestamp": [
+            99.6,
+            100.48
+          ]
+        },
+        {
+          "text": "Now",
+          "timestamp": [
+            100.48,
+            100.64
+          ]
+        },
+        {
+          "text": "you",
+          "timestamp": [
+            100.72,
+            100.88
+          ]
+        },
+        {
+          "text": "come",
+          "timestamp": [
+            100.88,
+            101.04
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            101.04,
+            101.2
+          ]
+        },
+        {
+          "text": "eat",
+          "timestamp": [
+            101.2,
+            101.44
+          ]
+        },
+        {
+          "text": "your",
+          "timestamp": [
+            101.44,
+            101.52
+          ]
+        },
+        {
+          "text": "lunch,",
+          "timestamp": [
+            101.52,
+            102.08
+          ]
+        },
+        {
+          "text": "so",
+          "timestamp": [
+            102.08,
+            102.24
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            102.24,
+            102.4
+          ]
+        },
+        {
+          "text": "can",
+          "timestamp": [
+            102.4,
+            102.48
+          ]
+        },
+        {
+          "text": "get",
+          "timestamp": [
+            102.48,
+            102.64
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            102.64,
+            102.72
+          ]
+        },
+        {
+          "text": "dishes",
+          "timestamp": [
+            102.72,
+            103.12
+          ]
+        },
+        {
+          "text": "out",
+          "timestamp": [
+            103.12,
+            103.28
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            103.28,
+            103.44
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            103.44,
+            103.6
+          ]
+        },
+        {
+          "text": "way.",
+          "timestamp": [
+            103.6,
+            104
+          ]
+        },
+        {
+          "text": "I'm",
+          "timestamp": [
+            104,
+            104.4
+          ]
+        },
+        {
+          "text": "going",
+          "timestamp": [
+            104.32,
+            104.48
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            104.48,
+            104.56
+          ]
+        },
+        {
+          "text": "be",
+          "timestamp": [
+            104.56,
+            104.72
+          ]
+        },
+        {
+          "text": "busy",
+          "timestamp": [
+            104.72,
+            105.04
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            105.04,
+            105.12
+          ]
+        },
+        {
+          "text": "rest",
+          "timestamp": [
+            105.12,
+            105.28
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            105.28,
+            105.36
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            105.36,
+            105.52
+          ]
+        },
+        {
+          "text": "afternoon",
+          "timestamp": [
+            105.52,
+            105.92
+          ]
+        },
+        {
+          "text": "getting",
+          "timestamp": [
+            106,
+            106.24
+          ]
+        },
+        {
+          "text": "ready",
+          "timestamp": [
+            106.24,
+            106.48
+          ]
+        },
+        {
+          "text": "for",
+          "timestamp": [
+            106.48,
+            106.56
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            106.56,
+            106.72
+          ]
+        },
+        {
+          "text": "crowd.",
+          "timestamp": [
+            106.72,
+            107.36
+          ]
+        },
+        {
+          "text": "Or",
+          "timestamp": [
+            107.36,
+            107.6
+          ]
+        },
+        {
+          "text": "did",
+          "timestamp": [
+            107.6,
+            107.76
+          ]
+        },
+        {
+          "text": "you",
+          "timestamp": [
+            107.76,
+            107.84
+          ]
+        },
+        {
+          "text": "forget",
+          "timestamp": [
+            107.84,
+            108.16
+          ]
+        },
+        {
+          "text": "that",
+          "timestamp": [
+            108.16,
+            108.32
+          ]
+        },
+        {
+          "text": "your",
+          "timestamp": [
+            108.32,
+            108.56
+          ]
+        },
+        {
+          "text": "ten",
+          "timestamp": [
+            108.56,
+            108.8
+          ]
+        },
+        {
+          "text": "scientists",
+          "timestamp": [
+            108.8,
+            109.36
+          ]
+        },
+        {
+          "text": "are",
+          "timestamp": [
+            109.36,
+            109.44
+          ]
+        },
+        {
+          "text": "invited",
+          "timestamp": [
+            109.44,
+            109.84
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            109.84,
+            110
+          ]
+        },
+        {
+          "text": "dinner",
+          "timestamp": [
+            110,
+            110.32
+          ]
+        },
+        {
+          "text": "this",
+          "timestamp": [
+            110.32,
+            110.56
+          ]
+        },
+        {
+          "text": "evening?",
+          "timestamp": [
+            110.56,
+            111.2
+          ]
+        },
+        {
+          "text": "Of",
+          "timestamp": [
+            111.2,
+            111.44
+          ]
+        },
+        {
+          "text": "course",
+          "timestamp": [
+            111.44,
+            111.68
+          ]
+        },
+        {
+          "text": "not,",
+          "timestamp": [
+            111.68,
+            112
+          ]
+        },
+        {
+          "text": "Ethel,",
+          "timestamp": [
+            112,
+            112.72
+          ]
+        },
+        {
+          "text": "he",
+          "timestamp": [
+            112.72,
+            112.88
+          ]
+        },
+        {
+          "text": "said,",
+          "timestamp": [
+            112.88,
+            113.28
+          ]
+        },
+        {
+          "text": "putting",
+          "timestamp": [
+            113.28,
+            113.6
+          ]
+        },
+        {
+          "text": "his",
+          "timestamp": [
+            113.6,
+            113.68
+          ]
+        },
+        {
+          "text": "arm",
+          "timestamp": [
+            113.68,
+            114
+          ]
+        },
+        {
+          "text": "around",
+          "timestamp": [
+            114,
+            114.24
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            114.24,
+            114.4
+          ]
+        },
+        {
+          "text": "waist.",
+          "timestamp": [
+            114.4,
+            115.12
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            115.12,
+            115.28
+          ]
+        },
+        {
+          "text": "pulled",
+          "timestamp": [
+            115.28,
+            115.68
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            115.68,
+            115.92
+          ]
+        },
+        {
+          "text": "around",
+          "timestamp": [
+            115.92,
+            116.16
+          ]
+        },
+        {
+          "text": "so",
+          "timestamp": [
+            116.16,
+            116.32
+          ]
+        },
+        {
+          "text": "they",
+          "timestamp": [
+            116.32,
+            116.48
+          ]
+        },
+        {
+          "text": "were",
+          "timestamp": [
+            116.48,
+            116.64
+          ]
+        },
+        {
+          "text": "side",
+          "timestamp": [
+            116.64,
+            116.88
+          ]
+        },
+        {
+          "text": "by",
+          "timestamp": [
+            116.88,
+            117.04
+          ]
+        },
+        {
+          "text": "side,",
+          "timestamp": [
+            117.04,
+            117.68
+          ]
+        },
+        {
+          "text": "looking",
+          "timestamp": [
+            117.68,
+            118
+          ]
+        },
+        {
+          "text": "upward",
+          "timestamp": [
+            118,
+            118.4
+          ]
+        },
+        {
+          "text": "into",
+          "timestamp": [
+            118.4,
+            118.64
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            118.64,
+            118.72
+          ]
+        },
+        {
+          "text": "maze",
+          "timestamp": [
+            118.72,
+            118.96
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            118.96,
+            119.12
+          ]
+        },
+        {
+          "text": "catwalks,",
+          "timestamp": [
+            119.12,
+            120.08
+          ]
+        },
+        {
+          "text": "seeing",
+          "timestamp": [
+            120.08,
+            120.4
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            120.4,
+            120.48
+          ]
+        },
+        {
+          "text": "marble",
+          "timestamp": [
+            120.48,
+            120.96
+          ]
+        },
+        {
+          "text": "panels",
+          "timestamp": [
+            120.96,
+            121.44
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            121.44,
+            121.6
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            121.6,
+            121.68
+          ]
+        },
+        {
+          "text": "wall",
+          "timestamp": [
+            121.68,
+            122
+          ]
+        },
+        {
+          "text": "that",
+          "timestamp": [
+            122,
+            122.16
+          ]
+        },
+        {
+          "text": "served",
+          "timestamp": [
+            122.16,
+            122.4
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            122.4,
+            122.56
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            122.56,
+            122.72
+          ]
+        },
+        {
+          "text": "covering",
+          "timestamp": [
+            122.72,
+            123.12
+          ]
+        },
+        {
+          "text": "for",
+          "timestamp": [
+            123.12,
+            123.28
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            123.28,
+            123.44
+          ]
+        },
+        {
+          "text": "huge",
+          "timestamp": [
+            123.44,
+            123.68
+          ]
+        },
+        {
+          "text": "man",
+          "timestamp": [
+            123.84,
+            124
+          ]
+        },
+        {
+          "text": "made",
+          "timestamp": [
+            124.08,
+            124.24
+          ]
+        },
+        {
+          "text": "brain.",
+          "timestamp": [
+            124.4,
+            125.36
+          ]
+        },
+        {
+          "text": "You",
+          "timestamp": [
+            125.36,
+            125.68
+          ]
+        },
+        {
+          "text": "know",
+          "timestamp": [
+            125.68,
+            125.92
+          ]
+        },
+        {
+          "text": "why",
+          "timestamp": [
+            125.92,
+            126.08
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            126.08,
+            126.32
+          ]
+        },
+        {
+          "text": "come",
+          "timestamp": [
+            126.32,
+            126.48
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            126.48,
+            126.72
+          ]
+        },
+        {
+          "text": "here,",
+          "timestamp": [
+            126.72,
+            127.2
+          ]
+        },
+        {
+          "text": "he",
+          "timestamp": [
+            127.2,
+            127.44
+          ]
+        },
+        {
+          "text": "said.",
+          "timestamp": [
+            127.44,
+            127.92
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            127.92,
+            128.16
+          ]
+        },
+        {
+          "text": "like",
+          "timestamp": [
+            128.16,
+            128.4
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            128.4,
+            128.64
+          ]
+        },
+        {
+          "text": "feel.",
+          "timestamp": [
+            128.64,
+            129.2
+          ]
+        },
+        {
+          "text": "The",
+          "timestamp": [
+            129.2,
+            129.36
+          ]
+        },
+        {
+          "text": "sleeping",
+          "timestamp": [
+            129.36,
+            129.84
+          ]
+        },
+        {
+          "text": "giant.",
+          "timestamp": [
+            129.84,
+            130.64
+          ]
+        },
+        {
+          "text": "Not",
+          "timestamp": [
+            130.64,
+            130.88
+          ]
+        },
+        {
+          "text": "sleeping",
+          "timestamp": [
+            130.88,
+            131.28
+          ]
+        },
+        {
+          "text": "really,",
+          "timestamp": [
+            131.36,
+            131.84
+          ]
+        },
+        {
+          "text": "just",
+          "timestamp": [
+            131.84,
+            132.08
+          ]
+        },
+        {
+          "text": "not",
+          "timestamp": [
+            132.08,
+            132.32
+          ]
+        },
+        {
+          "text": "born",
+          "timestamp": [
+            132.32,
+            132.72
+          ]
+        },
+        {
+          "text": "yet.",
+          "timestamp": [
+            132.72,
+            133.44
+          ]
+        },
+        {
+          "text": "Not",
+          "timestamp": [
+            133.44,
+            133.76
+          ]
+        },
+        {
+          "text": "living",
+          "timestamp": [
+            133.76,
+            134.32
+          ]
+        },
+        {
+          "text": "yet.",
+          "timestamp": [
+            134.32,
+            135.12
+          ]
+        },
+        {
+          "text": "Some",
+          "timestamp": [
+            135.12,
+            135.52
+          ]
+        },
+        {
+          "text": "days",
+          "timestamp": [
+            135.52,
+            135.84
+          ]
+        },
+        {
+          "text": "soon",
+          "timestamp": [
+            135.92,
+            136.24
+          ]
+        },
+        {
+          "text": "that",
+          "timestamp": [
+            136.24,
+            136.48
+          ]
+        },
+        {
+          "text": "will",
+          "timestamp": [
+            136.48,
+            136.64
+          ]
+        },
+        {
+          "text": "change.",
+          "timestamp": [
+            136.64,
+            137.28
+          ]
+        },
+        {
+          "text": "The",
+          "timestamp": [
+            137.28,
+            137.52
+          ]
+        },
+        {
+          "text": "first",
+          "timestamp": [
+            137.52,
+            137.84
+          ]
+        },
+        {
+          "text": "non-human.",
+          "timestamp": [
+            137.84,
+            139.2
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            139.2,
+            139.36
+          ]
+        },
+        {
+          "text": "understand,",
+          "timestamp": [
+            139.68,
+            140.24
+          ]
+        },
+        {
+          "text": "Victor,",
+          "timestamp": [
+            140.24,
+            141.12
+          ]
+        },
+        {
+          "text": "Ethel",
+          "timestamp": [
+            141.12,
+            141.6
+          ]
+        },
+        {
+          "text": "said",
+          "timestamp": [
+            141.6,
+            141.84
+          ]
+        },
+        {
+          "text": "softly.",
+          "timestamp": [
+            141.84,
+            142.48
+          ]
+        },
+        {
+          "text": "It",
+          "timestamp": [
+            142.48,
+            142.72
+          ]
+        },
+        {
+          "text": "scares",
+          "timestamp": [
+            142.72,
+            143.36
+          ]
+        },
+        {
+          "text": "me.",
+          "timestamp": [
+            143.36,
+            144
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            144,
+            144.16
+          ]
+        },
+        {
+          "text": "know",
+          "timestamp": [
+            144.16,
+            144.32
+          ]
+        },
+        {
+          "text": "it",
+          "timestamp": [
+            144.4,
+            144.56
+          ]
+        },
+        {
+          "text": "will",
+          "timestamp": [
+            144.56,
+            144.72
+          ]
+        },
+        {
+          "text": "be",
+          "timestamp": [
+            144.72,
+            144.8
+          ]
+        },
+        {
+          "text": "just",
+          "timestamp": [
+            144.8,
+            144.96
+          ]
+        },
+        {
+          "text": "like",
+          "timestamp": [
+            144.96,
+            145.12
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            145.12,
+            145.2
+          ]
+        },
+        {
+          "text": "human",
+          "timestamp": [
+            145.2,
+            145.6
+          ]
+        },
+        {
+          "text": "mind.",
+          "timestamp": [
+            145.6,
+            146.32
+          ]
+        },
+        {
+          "text": "Same",
+          "timestamp": [
+            146.32,
+            146.64
+          ]
+        },
+        {
+          "text": "principles",
+          "timestamp": [
+            146.64,
+            147.28
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            147.28,
+            147.52
+          ]
+        },
+        {
+          "text": "thought,",
+          "timestamp": [
+            147.52,
+            148.16
+          ]
+        },
+        {
+          "text": "even",
+          "timestamp": [
+            148.16,
+            148.4
+          ]
+        },
+        {
+          "text": "if",
+          "timestamp": [
+            148.4,
+            148.56
+          ]
+        },
+        {
+          "text": "it",
+          "timestamp": [
+            148.56,
+            148.72
+          ]
+        },
+        {
+          "text": "will",
+          "timestamp": [
+            148.72,
+            148.88
+          ]
+        },
+        {
+          "text": "be",
+          "timestamp": [
+            148.88,
+            149.04
+          ]
+        },
+        {
+          "text": "housed",
+          "timestamp": [
+            149.04,
+            149.36
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            149.36,
+            149.52
+          ]
+        },
+        {
+          "text": "so",
+          "timestamp": [
+            149.52,
+            149.68
+          ]
+        },
+        {
+          "text": "vast",
+          "timestamp": [
+            149.68,
+            150
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            150,
+            150.16
+          ]
+        },
+        {
+          "text": "brain.",
+          "timestamp": [
+            150.16,
+            151.04
+          ]
+        },
+        {
+          "text": "But",
+          "timestamp": [
+            151.04,
+            151.28
+          ]
+        },
+        {
+          "text": "how",
+          "timestamp": [
+            151.28,
+            151.44
+          ]
+        },
+        {
+          "text": "much",
+          "timestamp": [
+            151.44,
+            151.6
+          ]
+        },
+        {
+          "text": "do",
+          "timestamp": [
+            151.6,
+            151.76
+          ]
+        },
+        {
+          "text": "we",
+          "timestamp": [
+            151.76,
+            151.92
+          ]
+        },
+        {
+          "text": "know",
+          "timestamp": [
+            151.92,
+            152.08
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            152.08,
+            152.16
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            152.16,
+            152.24
+          ]
+        },
+        {
+          "text": "capabilities",
+          "timestamp": [
+            152.24,
+            152.88
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            152.88,
+            153.04
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            153.04,
+            153.2
+          ]
+        },
+        {
+          "text": "human",
+          "timestamp": [
+            153.2,
+            153.6
+          ]
+        },
+        {
+          "text": "brain?",
+          "timestamp": [
+            153.6,
+            154.32
+          ]
+        },
+        {
+          "text": "I'm",
+          "timestamp": [
+            154.32,
+            154.8
+          ]
+        },
+        {
+          "text": "afraid.",
+          "timestamp": [
+            154.72,
+            155.6
+          ]
+        },
+        {
+          "text": "Dr.",
+          "timestamp": [
+            155.6,
+            156
+          ]
+        },
+        {
+          "text": "Glassman's",
+          "timestamp": [
+            156,
+            156.8
+          ]
+        },
+        {
+          "text": "eyes",
+          "timestamp": [
+            156.72,
+            156.96
+          ]
+        },
+        {
+          "text": "crinkled",
+          "timestamp": [
+            156.96,
+            157.52
+          ]
+        },
+        {
+          "text": "good",
+          "timestamp": [
+            157.52,
+            157.68
+          ]
+        },
+        {
+          "text": "naturedly.",
+          "timestamp": [
+            157.68,
+            158.72
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            158.72,
+            158.88
+          ]
+        },
+        {
+          "text": "tightened",
+          "timestamp": [
+            158.88,
+            159.36
+          ]
+        },
+        {
+          "text": "his",
+          "timestamp": [
+            159.36,
+            159.52
+          ]
+        },
+        {
+          "text": "arm",
+          "timestamp": [
+            159.52,
+            159.76
+          ]
+        },
+        {
+          "text": "around",
+          "timestamp": [
+            159.76,
+            160
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            160,
+            160.16
+          ]
+        },
+        {
+          "text": "waist.",
+          "timestamp": [
+            160.16,
+            160.96
+          ]
+        },
+        {
+          "text": "I'll",
+          "timestamp": [
+            160.96,
+            161.36
+          ]
+        },
+        {
+          "text": "protect",
+          "timestamp": [
+            161.36,
+            161.68
+          ]
+        },
+        {
+          "text": "you,",
+          "timestamp": [
+            161.68,
+            161.92
+          ]
+        },
+        {
+          "text": "Ethel,",
+          "timestamp": [
+            161.92,
+            162.56
+          ]
+        },
+        {
+          "text": "he",
+          "timestamp": [
+            162.8,
+            163.12
+          ]
+        },
+        {
+          "text": "said.",
+          "timestamp": [
+            163.12,
+            163.76
+          ]
+        },
+        {
+          "text": "She",
+          "timestamp": [
+            164.08,
+            164.32
+          ]
+        },
+        {
+          "text": "looked",
+          "timestamp": [
+            164.32,
+            164.56
+          ]
+        },
+        {
+          "text": "up",
+          "timestamp": [
+            164.56,
+            164.72
+          ]
+        },
+        {
+          "text": "at",
+          "timestamp": [
+            164.72,
+            164.88
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            164.88,
+            164.96
+          ]
+        },
+        {
+          "text": "giant",
+          "timestamp": [
+            164.96,
+            165.36
+          ]
+        },
+        {
+          "text": "structure",
+          "timestamp": [
+            165.36,
+            165.68
+          ]
+        },
+        {
+          "text": "that",
+          "timestamp": [
+            165.68,
+            165.84
+          ]
+        },
+        {
+          "text": "dwarfed",
+          "timestamp": [
+            165.84,
+            166.32
+          ]
+        },
+        {
+          "text": "them",
+          "timestamp": [
+            166.4,
+            166.56
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            166.56,
+            166.8
+          ]
+        },
+        {
+          "text": "insignificance.",
+          "timestamp": [
+            166.8,
+            167.84
+          ]
+        },
+        {
+          "text": "Against",
+          "timestamp": [
+            167.84,
+            168.32
+          ]
+        },
+        {
+          "text": "that,",
+          "timestamp": [
+            168.32,
+            168.72
+          ]
+        },
+        {
+          "text": "she",
+          "timestamp": [
+            168.72,
+            168.88
+          ]
+        },
+        {
+          "text": "snorted.",
+          "timestamp": [
+            168.88,
+            169.68
+          ]
+        },
+        {
+          "text": "What",
+          "timestamp": [
+            169.68,
+            170
+          ]
+        },
+        {
+          "text": "with?",
+          "timestamp": [
+            170,
+            170.72
+          ]
+        },
+        {
+          "text": "A",
+          "timestamp": [
+            170.72,
+            170.96
+          ]
+        },
+        {
+          "text": "lance",
+          "timestamp": [
+            170.96,
+            171.28
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            171.44,
+            171.6
+          ]
+        },
+        {
+          "text": "prancing",
+          "timestamp": [
+            171.6,
+            172.08
+          ]
+        },
+        {
+          "text": "nag",
+          "timestamp": [
+            172.08,
+            172.48
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            172.48,
+            172.56
+          ]
+        },
+        {
+          "text": "leather",
+          "timestamp": [
+            172.56,
+            172.96
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            172.96,
+            173.12
+          ]
+        },
+        {
+          "text": "bones,",
+          "timestamp": [
+            173.12,
+            173.76
+          ]
+        },
+        {
+          "text": "like",
+          "timestamp": [
+            173.76,
+            174
+          ]
+        },
+        {
+          "text": "Don",
+          "timestamp": [
+            174,
+            174.32
+          ]
+        },
+        {
+          "text": "Quixote",
+          "timestamp": [
+            174.4,
+            174.88
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            174.88,
+            175.04
+          ]
+        },
+        {
+          "text": "old.",
+          "timestamp": [
+            175.04,
+            175.76
+          ]
+        },
+        {
+          "text": "She",
+          "timestamp": [
+            175.76,
+            176
+          ]
+        },
+        {
+          "text": "slipped",
+          "timestamp": [
+            176,
+            176.32
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            176.32,
+            176.48
+          ]
+        },
+        {
+          "text": "arm",
+          "timestamp": [
+            176.48,
+            176.72
+          ]
+        },
+        {
+          "text": "around",
+          "timestamp": [
+            176.72,
+            176.96
+          ]
+        },
+        {
+          "text": "his",
+          "timestamp": [
+            176.96,
+            177.12
+          ]
+        },
+        {
+          "text": "shoulders,",
+          "timestamp": [
+            177.12,
+            177.76
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            177.76,
+            177.92
+          ]
+        },
+        {
+          "text": "expression",
+          "timestamp": [
+            177.92,
+            178.48
+          ]
+        },
+        {
+          "text": "softening.",
+          "timestamp": [
+            178.48,
+            179.6
+          ]
+        },
+        {
+          "text": "But",
+          "timestamp": [
+            179.6,
+            179.92
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            179.92,
+            180.08
+          ]
+        },
+        {
+          "text": "know",
+          "timestamp": [
+            180.08,
+            180.24
+          ]
+        },
+        {
+          "text": "what",
+          "timestamp": [
+            180.24,
+            180.48
+          ]
+        },
+        {
+          "text": "you",
+          "timestamp": [
+            180.48,
+            180.64
+          ]
+        },
+        {
+          "text": "mean,",
+          "timestamp": [
+            180.64,
+            181.04
+          ]
+        },
+        {
+          "text": "only",
+          "timestamp": [
+            181.04,
+            181.36
+          ]
+        },
+        {
+          "text": "it's",
+          "timestamp": [
+            181.36,
+            181.76
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            181.92,
+            182.08
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            182.08,
+            182.24
+          ]
+        },
+        {
+          "text": "know",
+          "timestamp": [
+            182.24,
+            182.4
+          ]
+        },
+        {
+          "text": "what",
+          "timestamp": [
+            182.4,
+            182.64
+          ]
+        },
+        {
+          "text": "you",
+          "timestamp": [
+            182.64,
+            182.88
+          ]
+        },
+        {
+          "text": "mean",
+          "timestamp": [
+            182.88,
+            183.12
+          ]
+        },
+        {
+          "text": "too.",
+          "timestamp": [
+            183.12,
+            183.76
+          ]
+        },
+        {
+          "text": "Sometimes",
+          "timestamp": [
+            183.76,
+            184.24
+          ]
+        },
+        {
+          "text": "even",
+          "timestamp": [
+            184.24,
+            184.48
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            184.48,
+            184.64
+          ]
+        },
+        {
+          "text": "am",
+          "timestamp": [
+            184.64,
+            184.8
+          ]
+        },
+        {
+          "text": "afraid",
+          "timestamp": [
+            184.8,
+            185.04
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            185.04,
+            185.12
+          ]
+        },
+        {
+          "text": "it,",
+          "timestamp": [
+            185.12,
+            185.44
+          ]
+        },
+        {
+          "text": "but",
+          "timestamp": [
+            185.44,
+            185.52
+          ]
+        },
+        {
+          "text": "once",
+          "timestamp": [
+            185.52,
+            185.76
+          ]
+        },
+        {
+          "text": "we",
+          "timestamp": [
+            185.76,
+            185.92
+          ]
+        },
+        {
+          "text": "activate",
+          "timestamp": [
+            185.92,
+            186.32
+          ]
+        },
+        {
+          "text": "it",
+          "timestamp": [
+            186.32,
+            186.48
+          ]
+        },
+        {
+          "text": "it",
+          "timestamp": [
+            186.48,
+            186.64
+          ]
+        },
+        {
+          "text": "will",
+          "timestamp": [
+            186.64,
+            186.8
+          ]
+        },
+        {
+          "text": "take",
+          "timestamp": [
+            186.8,
+            186.96
+          ]
+        },
+        {
+          "text": "years",
+          "timestamp": [
+            186.96,
+            187.2
+          ]
+        },
+        {
+          "text": "for",
+          "timestamp": [
+            187.2,
+            187.36
+          ]
+        },
+        {
+          "text": "it",
+          "timestamp": [
+            187.36,
+            187.52
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            187.52,
+            187.6
+          ]
+        },
+        {
+          "text": "build",
+          "timestamp": [
+            187.6,
+            187.84
+          ]
+        },
+        {
+          "text": "up",
+          "timestamp": [
+            187.84,
+            187.92
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            187.92,
+            188
+          ]
+        },
+        {
+          "text": "self",
+          "timestamp": [
+            188,
+            188.4
+          ]
+        },
+        {
+          "text": "integrated",
+          "timestamp": [
+            188.4,
+            188.96
+          ]
+        },
+        {
+          "text": "mind",
+          "timestamp": [
+            188.96,
+            189.28
+          ]
+        },
+        {
+          "text": "even",
+          "timestamp": [
+            189.28,
+            189.52
+          ]
+        },
+        {
+          "text": "equal",
+          "timestamp": [
+            189.52,
+            189.76
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            189.76,
+            189.92
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            189.92,
+            190.08
+          ]
+        },
+        {
+          "text": "child's,",
+          "timestamp": [
+            190.08,
+            190.72
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            190.72,
+            190.88
+          ]
+        },
+        {
+          "text": "we'll",
+          "timestamp": [
+            190.88,
+            191.12
+          ]
+        },
+        {
+          "text": "both",
+          "timestamp": [
+            191.12,
+            191.36
+          ]
+        },
+        {
+          "text": "be",
+          "timestamp": [
+            191.36,
+            191.6
+          ]
+        },
+        {
+          "text": "long",
+          "timestamp": [
+            191.6,
+            191.84
+          ]
+        },
+        {
+          "text": "dead",
+          "timestamp": [
+            191.84,
+            192.32
+          ]
+        },
+        {
+          "text": "before",
+          "timestamp": [
+            192.32,
+            192.56
+          ]
+        },
+        {
+          "text": "its",
+          "timestamp": [
+            192.56,
+            192.8
+          ]
+        },
+        {
+          "text": "intelligence",
+          "timestamp": [
+            192.8,
+            193.44
+          ]
+        },
+        {
+          "text": "starts",
+          "timestamp": [
+            193.44,
+            193.76
+          ]
+        },
+        {
+          "text": "climbing",
+          "timestamp": [
+            193.76,
+            194.16
+          ]
+        },
+        {
+          "text": "above",
+          "timestamp": [
+            194.16,
+            194.4
+          ]
+        },
+        {
+          "text": "that",
+          "timestamp": [
+            194.4,
+            194.56
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            194.56,
+            194.72
+          ]
+        },
+        {
+          "text": "man.",
+          "timestamp": [
+            194.88,
+            195.44
+          ]
+        },
+        {
+          "text": "You",
+          "timestamp": [
+            195.44,
+            195.6
+          ]
+        },
+        {
+          "text": "know",
+          "timestamp": [
+            195.6,
+            195.76
+          ]
+        },
+        {
+          "text": "I'm",
+          "timestamp": [
+            195.76,
+            196
+          ]
+        },
+        {
+          "text": "hungry.",
+          "timestamp": [
+            196,
+            196.88
+          ]
+        },
+        {
+          "text": "Together,",
+          "timestamp": [
+            196.88,
+            197.76
+          ]
+        },
+        {
+          "text": "arm",
+          "timestamp": [
+            197.76,
+            198.08
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            198.08,
+            198.24
+          ]
+        },
+        {
+          "text": "arm,",
+          "timestamp": [
+            198.24,
+            198.72
+          ]
+        },
+        {
+          "text": "they",
+          "timestamp": [
+            198.72,
+            198.96
+          ]
+        },
+        {
+          "text": "departed,",
+          "timestamp": [
+            198.96,
+            199.76
+          ]
+        },
+        {
+          "text": "closing",
+          "timestamp": [
+            199.76,
+            200.24
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            200.24,
+            200.48
+          ]
+        },
+        {
+          "text": "door,",
+          "timestamp": [
+            200.48,
+            201.12
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            201.12,
+            201.28
+          ]
+        },
+        {
+          "text": "once",
+          "timestamp": [
+            201.28,
+            201.52
+          ]
+        },
+        {
+          "text": "again",
+          "timestamp": [
+            201.52,
+            201.76
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            201.76,
+            201.84
+          ]
+        },
+        {
+          "text": "echoes",
+          "timestamp": [
+            201.84,
+            202.32
+          ]
+        },
+        {
+          "text": "died",
+          "timestamp": [
+            202.32,
+            202.72
+          ]
+        },
+        {
+          "text": "away,",
+          "timestamp": [
+            202.72,
+            203.44
+          ]
+        },
+        {
+          "text": "leaving",
+          "timestamp": [
+            203.44,
+            203.84
+          ]
+        },
+        {
+          "text": "only",
+          "timestamp": [
+            203.84,
+            204.08
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            204.08,
+            204.4
+          ]
+        },
+        {
+          "text": "silence,",
+          "timestamp": [
+            204.4,
+            205.44
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            205.44,
+            205.68
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            205.68,
+            205.92
+          ]
+        },
+        {
+          "text": "brain.",
+          "timestamp": [
+            205.92,
+            207.2
+          ]
+        },
+        {
+          "text": "I've",
+          "timestamp": [
+            207.2,
+            207.68
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            207.6,
+            207.68
+          ]
+        },
+        {
+          "text": "bink",
+          "timestamp": [
+            207.76,
+            208
+          ]
+        },
+        {
+          "text": "quiet",
+          "timestamp": [
+            208,
+            208.32
+          ]
+        },
+        {
+          "text": "for",
+          "timestamp": [
+            208.32,
+            208.4
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            208.4,
+            208.48
+          ]
+        },
+        {
+          "text": "minute,",
+          "timestamp": [
+            208.48,
+            208.72
+          ]
+        },
+        {
+          "text": "so",
+          "timestamp": [
+            208.72,
+            208.88
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            208.88,
+            208.96
+          ]
+        },
+        {
+          "text": "won't",
+          "timestamp": [
+            208.96,
+            209.28
+          ]
+        },
+        {
+          "text": "get",
+          "timestamp": [
+            209.2,
+            209.36
+          ]
+        },
+        {
+          "text": "these",
+          "timestamp": [
+            209.36,
+            209.52
+          ]
+        },
+        {
+          "text": "mixed",
+          "timestamp": [
+            209.52,
+            209.84
+          ]
+        },
+        {
+          "text": "up,",
+          "timestamp": [
+            209.84,
+            210.24
+          ]
+        },
+        {
+          "text": "Earl",
+          "timestamp": [
+            210.24,
+            210.64
+          ]
+        },
+        {
+          "text": "Fry",
+          "timestamp": [
+            210.64,
+            210.88
+          ]
+        },
+        {
+          "text": "said,",
+          "timestamp": [
+            211.28,
+            211.68
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            211.68,
+            211.84
+          ]
+        },
+        {
+          "text": "mask",
+          "timestamp": [
+            211.84,
+            212.24
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            212.24,
+            212.4
+          ]
+        },
+        {
+          "text": "tolerant",
+          "timestamp": [
+            212.4,
+            212.96
+          ]
+        },
+        {
+          "text": "good",
+          "timestamp": [
+            212.96,
+            213.12
+          ]
+        },
+        {
+          "text": "nature",
+          "timestamp": [
+            213.12,
+            213.52
+          ]
+        },
+        {
+          "text": "concealing",
+          "timestamp": [
+            213.52,
+            213.92
+          ]
+        },
+        {
+          "text": "his",
+          "timestamp": [
+            213.92,
+            214.08
+          ]
+        },
+        {
+          "text": "irritation.",
+          "timestamp": [
+            214.08,
+            215.2
+          ]
+        },
+        {
+          "text": "By",
+          "timestamp": [
+            215.2,
+            215.44
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            215.44,
+            215.52
+          ]
+        },
+        {
+          "text": "way,",
+          "timestamp": [
+            215.52,
+            215.76
+          ]
+        },
+        {
+          "text": "what's",
+          "timestamp": [
+            215.76,
+            216
+          ]
+        },
+        {
+          "text": "wrong",
+          "timestamp": [
+            216,
+            216.16
+          ]
+        },
+        {
+          "text": "with",
+          "timestamp": [
+            216.16,
+            216.32
+          ]
+        },
+        {
+          "text": "PN",
+          "timestamp": [
+            216.32,
+            216.72
+          ]
+        },
+        {
+          "text": "nine,",
+          "timestamp": [
+            216.72,
+            217.04
+          ]
+        },
+        {
+          "text": "bottleneck?",
+          "timestamp": [
+            217.04,
+            218.16
+          ]
+        },
+        {
+          "text": "Irene",
+          "timestamp": [
+            218.16,
+            218.64
+          ]
+        },
+        {
+          "text": "Connor",
+          "timestamp": [
+            218.64,
+            219.04
+          ]
+        },
+        {
+          "text": "clapped",
+          "timestamp": [
+            219.12,
+            219.44
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            219.44,
+            219.52
+          ]
+        },
+        {
+          "text": "hand",
+          "timestamp": [
+            219.52,
+            219.68
+          ]
+        },
+        {
+          "text": "over",
+          "timestamp": [
+            219.68,
+            219.84
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            219.84,
+            220
+          ]
+        },
+        {
+          "text": "mouth",
+          "timestamp": [
+            220,
+            220.4
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            220.4,
+            220.64
+          ]
+        },
+        {
+          "text": "spoke",
+          "timestamp": [
+            220.64,
+            221.04
+          ]
+        },
+        {
+          "text": "from",
+          "timestamp": [
+            221.04,
+            221.28
+          ]
+        },
+        {
+          "text": "between",
+          "timestamp": [
+            221.28,
+            221.6
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            221.6,
+            221.84
+          ]
+        },
+        {
+          "text": "fingers.",
+          "timestamp": [
+            221.84,
+            222.72
+          ]
+        },
+        {
+          "text": "Go",
+          "timestamp": [
+            222.72,
+            223.04
+          ]
+        },
+        {
+          "text": "ahead",
+          "timestamp": [
+            223.04,
+            223.28
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            223.28,
+            223.44
+          ]
+        },
+        {
+          "text": "pour,",
+          "timestamp": [
+            223.44,
+            224
+          ]
+        },
+        {
+          "text": "she",
+          "timestamp": [
+            224,
+            224.08
+          ]
+        },
+        {
+          "text": "mumbled.",
+          "timestamp": [
+            224.08,
+            224.72
+          ]
+        },
+        {
+          "text": "I'll",
+          "timestamp": [
+            224.72,
+            225.12
+          ]
+        },
+        {
+          "text": "keep",
+          "timestamp": [
+            225.04,
+            225.2
+          ]
+        },
+        {
+          "text": "quiet",
+          "timestamp": [
+            225.2,
+            225.52
+          ]
+        },
+        {
+          "text": "for",
+          "timestamp": [
+            225.52,
+            225.68
+          ]
+        },
+        {
+          "text": "five",
+          "timestamp": [
+            225.68,
+            226.08
+          ]
+        },
+        {
+          "text": "minutes.",
+          "timestamp": [
+            226.08,
+            226.96
+          ]
+        },
+        {
+          "text": "Ok,",
+          "timestamp": [
+            226.96,
+            227.76
+          ]
+        },
+        {
+          "text": "Earl",
+          "timestamp": [
+            227.76,
+            228.32
+          ]
+        },
+        {
+          "text": "said,",
+          "timestamp": [
+            228.32,
+            228.8
+          ]
+        },
+        {
+          "text": "unaffected",
+          "timestamp": [
+            228.8,
+            229.44
+          ]
+        },
+        {
+          "text": "by",
+          "timestamp": [
+            229.44,
+            229.6
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            229.6,
+            229.68
+          ]
+        },
+        {
+          "text": "twinkle",
+          "timestamp": [
+            229.68,
+            230.08
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            230.08,
+            230.24
+          ]
+        },
+        {
+          "text": "Irene's",
+          "timestamp": [
+            230.24,
+            230.96
+          ]
+        },
+        {
+          "text": "clear",
+          "timestamp": [
+            230.96,
+            231.2
+          ]
+        },
+        {
+          "text": "blue",
+          "timestamp": [
+            231.2,
+            231.44
+          ]
+        },
+        {
+          "text": "eyes,",
+          "timestamp": [
+            231.44,
+            232
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            232,
+            232.16
+          ]
+        },
+        {
+          "text": "smooth",
+          "timestamp": [
+            232.16,
+            232.64
+          ]
+        },
+        {
+          "text": "wave",
+          "timestamp": [
+            232.64,
+            232.96
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            232.96,
+            233.12
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            233.12,
+            233.28
+          ]
+        },
+        {
+          "text": "blonde",
+          "timestamp": [
+            233.28,
+            233.68
+          ]
+        },
+        {
+          "text": "hair,",
+          "timestamp": [
+            233.76,
+            234.32
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            234.32,
+            234.48
+          ]
+        },
+        {
+          "text": "quiet,",
+          "timestamp": [
+            234.48,
+            235.12
+          ]
+        },
+        {
+          "text": "unscientific",
+          "timestamp": [
+            235.12,
+            236.24
+          ]
+        },
+        {
+          "text": "curves",
+          "timestamp": [
+            236.24,
+            236.8
+          ]
+        },
+        {
+          "text": "under",
+          "timestamp": [
+            236.8,
+            236.96
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            236.96,
+            237.12
+          ]
+        },
+        {
+          "text": "lab",
+          "timestamp": [
+            237.12,
+            237.44
+          ]
+        },
+        {
+          "text": "apron.",
+          "timestamp": [
+            237.44,
+            238.8
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            238.8,
+            239.04
+          ]
+        },
+        {
+          "text": "picked",
+          "timestamp": [
+            239.04,
+            239.36
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            239.36,
+            239.44
+          ]
+        },
+        {
+          "text": "first",
+          "timestamp": [
+            239.44,
+            239.68
+          ]
+        },
+        {
+          "text": "vial",
+          "timestamp": [
+            239.68,
+            240
+          ]
+        },
+        {
+          "text": "off",
+          "timestamp": [
+            240.08,
+            240.24
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            240.24,
+            240.32
+          ]
+        },
+        {
+          "text": "tray,",
+          "timestamp": [
+            240.32,
+            240.8
+          ]
+        },
+        {
+          "text": "read",
+          "timestamp": [
+            240.8,
+            241.04
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            241.04,
+            241.2
+          ]
+        },
+        {
+          "text": "number",
+          "timestamp": [
+            241.2,
+            241.44
+          ]
+        },
+        {
+          "text": "on",
+          "timestamp": [
+            241.44,
+            241.6
+          ]
+        },
+        {
+          "text": "its",
+          "timestamp": [
+            241.6,
+            241.76
+          ]
+        },
+        {
+          "text": "label,",
+          "timestamp": [
+            241.76,
+            242.16
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            242.16,
+            242.32
+          ]
+        },
+        {
+          "text": "carefully",
+          "timestamp": [
+            242.32,
+            242.72
+          ]
+        },
+        {
+          "text": "jotted",
+          "timestamp": [
+            242.72,
+            243.2
+          ]
+        },
+        {
+          "text": "it",
+          "timestamp": [
+            243.2,
+            243.28
+          ]
+        },
+        {
+          "text": "down",
+          "timestamp": [
+            243.28,
+            243.44
+          ]
+        },
+        {
+          "text": "on",
+          "timestamp": [
+            243.44,
+            243.6
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            243.6,
+            243.76
+          ]
+        },
+        {
+          "text": "lab",
+          "timestamp": [
+            243.76,
+            244.16
+          ]
+        },
+        {
+          "text": "card.",
+          "timestamp": [
+            244.16,
+            244.88
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            244.88,
+            245.04
+          ]
+        },
+        {
+          "text": "emptied",
+          "timestamp": [
+            245.04,
+            245.44
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            245.44,
+            245.52
+          ]
+        },
+        {
+          "text": "vial",
+          "timestamp": [
+            245.52,
+            245.84
+          ]
+        },
+        {
+          "text": "into",
+          "timestamp": [
+            245.92,
+            246.08
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            246.16,
+            246.24
+          ]
+        },
+        {
+          "text": "small",
+          "timestamp": [
+            246.24,
+            246.56
+          ]
+        },
+        {
+          "text": "opening",
+          "timestamp": [
+            246.56,
+            246.88
+          ]
+        },
+        {
+          "text": "on",
+          "timestamp": [
+            246.88,
+            247.04
+          ]
+        },
+        {
+          "text": "top",
+          "timestamp": [
+            247.04,
+            247.2
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            247.2,
+            247.28
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            247.28,
+            247.36
+          ]
+        },
+        {
+          "text": "pump,",
+          "timestamp": [
+            247.36,
+            247.92
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            247.92,
+            248.08
+          ]
+        },
+        {
+          "text": "flicked",
+          "timestamp": [
+            248.08,
+            248.4
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            248.4,
+            248.48
+          ]
+        },
+        {
+          "text": "toggle",
+          "timestamp": [
+            248.48,
+            249.04
+          ]
+        },
+        {
+          "text": "switch.",
+          "timestamp": [
+            249.04,
+            249.68
+          ]
+        },
+        {
+          "text": "With",
+          "timestamp": [
+            249.68,
+            249.92
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            249.92,
+            250.08
+          ]
+        },
+        {
+          "text": "smooth",
+          "timestamp": [
+            250.08,
+            250.4
+          ]
+        },
+        {
+          "text": "whirr",
+          "timestamp": [
+            250.4,
+            250.72
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            250.88,
+            250.96
+          ]
+        },
+        {
+          "text": "pump",
+          "timestamp": [
+            250.96,
+            251.36
+          ]
+        },
+        {
+          "text": "started.",
+          "timestamp": [
+            251.36,
+            252.16
+          ]
+        },
+        {
+          "text": "The",
+          "timestamp": [
+            252.16,
+            252.32
+          ]
+        },
+        {
+          "text": "pressure",
+          "timestamp": [
+            252.32,
+            252.72
+          ]
+        },
+        {
+          "text": "gauge",
+          "timestamp": [
+            252.72,
+            253.2
+          ]
+        },
+        {
+          "text": "needle",
+          "timestamp": [
+            253.2,
+            253.52
+          ]
+        },
+        {
+          "text": "broke",
+          "timestamp": [
+            253.52,
+            253.84
+          ]
+        },
+        {
+          "text": "from",
+          "timestamp": [
+            253.84,
+            253.92
+          ]
+        },
+        {
+          "text": "zero",
+          "timestamp": [
+            254.08,
+            254.4
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            254.4,
+            254.56
+          ]
+        },
+        {
+          "text": "started",
+          "timestamp": [
+            254.56,
+            254.88
+          ]
+        },
+        {
+          "text": "upward,",
+          "timestamp": [
+            254.88,
+            255.36
+          ]
+        },
+        {
+          "text": "finally",
+          "timestamp": [
+            255.36,
+            255.68
+          ]
+        },
+        {
+          "text": "hovering",
+          "timestamp": [
+            255.68,
+            256.16
+          ]
+        },
+        {
+          "text": "near",
+          "timestamp": [
+            256.16,
+            256.4
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            256.4,
+            256.48
+          ]
+        },
+        {
+          "text": "seven",
+          "timestamp": [
+            256.48,
+            256.72
+          ]
+        },
+        {
+          "text": "tonne",
+          "timestamp": [
+            256.72,
+            257.12
+          ]
+        },
+        {
+          "text": "per",
+          "timestamp": [
+            257.12,
+            257.28
+          ]
+        },
+        {
+          "text": "square",
+          "timestamp": [
+            257.28,
+            257.52
+          ]
+        },
+        {
+          "text": "inch",
+          "timestamp": [
+            257.52,
+            257.84
+          ]
+        },
+        {
+          "text": "mark.",
+          "timestamp": [
+            257.84,
+            258.64
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            258.64,
+            258.88
+          ]
+        },
+        {
+          "text": "watched",
+          "timestamp": [
+            258.88,
+            259.2
+          ]
+        },
+        {
+          "text": "as",
+          "timestamp": [
+            259.2,
+            259.36
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            259.36,
+            259.44
+          ]
+        },
+        {
+          "text": "fluid",
+          "timestamp": [
+            259.44,
+            259.84
+          ]
+        },
+        {
+          "text": "he",
+          "timestamp": [
+            259.84,
+            260
+          ]
+        },
+        {
+          "text": "had",
+          "timestamp": [
+            260,
+            260.16
+          ]
+        },
+        {
+          "text": "poured",
+          "timestamp": [
+            260.16,
+            260.64
+          ]
+        },
+        {
+          "text": "emerged",
+          "timestamp": [
+            260.8,
+            261.44
+          ]
+        },
+        {
+          "text": "into",
+          "timestamp": [
+            261.44,
+            261.68
+          ]
+        },
+        {
+          "text": "glass",
+          "timestamp": [
+            261.68,
+            262
+          ]
+        },
+        {
+          "text": "tubing",
+          "timestamp": [
+            262,
+            262.56
+          ]
+        },
+        {
+          "text": "no",
+          "timestamp": [
+            262.56,
+            262.72
+          ]
+        },
+        {
+          "text": "thicker",
+          "timestamp": [
+            262.72,
+            262.96
+          ]
+        },
+        {
+          "text": "than",
+          "timestamp": [
+            262.96,
+            263.12
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            263.12,
+            263.2
+          ]
+        },
+        {
+          "text": "human",
+          "timestamp": [
+            263.2,
+            263.6
+          ]
+        },
+        {
+          "text": "hair,",
+          "timestamp": [
+            263.6,
+            264.32
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            264.32,
+            264.56
+          ]
+        },
+        {
+          "text": "under",
+          "timestamp": [
+            264.56,
+            264.8
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            264.8,
+            264.96
+          ]
+        },
+        {
+          "text": "tons",
+          "timestamp": [
+            264.96,
+            265.2
+          ]
+        },
+        {
+          "text": "per",
+          "timestamp": [
+            265.36,
+            265.52
+          ]
+        },
+        {
+          "text": "square",
+          "timestamp": [
+            265.52,
+            265.84
+          ]
+        },
+        {
+          "text": "inch",
+          "timestamp": [
+            265.84,
+            266.24
+          ]
+        },
+        {
+          "text": "pressure",
+          "timestamp": [
+            266.24,
+            266.64
+          ]
+        },
+        {
+          "text": "stretched",
+          "timestamp": [
+            266.8,
+            267.44
+          ]
+        },
+        {
+          "text": "into",
+          "timestamp": [
+            267.44,
+            267.68
+          ]
+        },
+        {
+          "text": "fine",
+          "timestamp": [
+            267.68,
+            268.08
+          ]
+        },
+        {
+          "text": "fluid",
+          "timestamp": [
+            268.08,
+            268.48
+          ]
+        },
+        {
+          "text": "columns",
+          "timestamp": [
+            268.48,
+            269.04
+          ]
+        },
+        {
+          "text": "less",
+          "timestamp": [
+            269.04,
+            269.2
+          ]
+        },
+        {
+          "text": "than",
+          "timestamp": [
+            269.2,
+            269.36
+          ]
+        },
+        {
+          "text": "half",
+          "timestamp": [
+            269.36,
+            269.6
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            269.6,
+            269.68
+          ]
+        },
+        {
+          "text": "dozen",
+          "timestamp": [
+            269.68,
+            269.92
+          ]
+        },
+        {
+          "text": "molecules",
+          "timestamp": [
+            269.92,
+            270.8
+          ]
+        },
+        {
+          "text": "thick.",
+          "timestamp": [
+            270.8,
+            271.68
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            271.68,
+            271.92
+          ]
+        },
+        {
+          "text": "repeated",
+          "timestamp": [
+            271.92,
+            272.4
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            272.4,
+            272.48
+          ]
+        },
+        {
+          "text": "performance",
+          "timestamp": [
+            272.48,
+            273.04
+          ]
+        },
+        {
+          "text": "with",
+          "timestamp": [
+            273.04,
+            273.2
+          ]
+        },
+        {
+          "text": "another",
+          "timestamp": [
+            273.2,
+            273.44
+          ]
+        },
+        {
+          "text": "vial",
+          "timestamp": [
+            273.44,
+            273.84
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            274,
+            274.16
+          ]
+        },
+        {
+          "text": "another",
+          "timestamp": [
+            274.16,
+            274.4
+          ]
+        },
+        {
+          "text": "pump,",
+          "timestamp": [
+            274.4,
+            275.12
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            275.12,
+            275.36
+          ]
+        },
+        {
+          "text": "another,",
+          "timestamp": [
+            275.36,
+            275.92
+          ]
+        },
+        {
+          "text": "until",
+          "timestamp": [
+            275.92,
+            276.32
+          ]
+        },
+        {
+          "text": "all",
+          "timestamp": [
+            276.32,
+            276.56
+          ]
+        },
+        {
+          "text": "ten",
+          "timestamp": [
+            276.56,
+            276.88
+          ]
+        },
+        {
+          "text": "pumps",
+          "timestamp": [
+            276.88,
+            277.36
+          ]
+        },
+        {
+          "text": "were",
+          "timestamp": [
+            277.36,
+            277.52
+          ]
+        },
+        {
+          "text": "working.",
+          "timestamp": [
+            277.52,
+            278.24
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            278.24,
+            278.4
+          ]
+        },
+        {
+          "text": "went",
+          "timestamp": [
+            278.4,
+            278.64
+          ]
+        },
+        {
+          "text": "back",
+          "timestamp": [
+            278.64,
+            278.8
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            278.8,
+            278.96
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            278.96,
+            279.2
+          ]
+        },
+        {
+          "text": "first",
+          "timestamp": [
+            279.2,
+            279.44
+          ]
+        },
+        {
+          "text": "one.",
+          "timestamp": [
+            279.44,
+            279.84
+          ]
+        },
+        {
+          "text": "The",
+          "timestamp": [
+            279.84,
+            280.08
+          ]
+        },
+        {
+          "text": "fluid",
+          "timestamp": [
+            280.08,
+            280.56
+          ]
+        },
+        {
+          "text": "had",
+          "timestamp": [
+            280.56,
+            280.72
+          ]
+        },
+        {
+          "text": "reached",
+          "timestamp": [
+            280.72,
+            280.96
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            280.96,
+            281.12
+          ]
+        },
+        {
+          "text": "slightly",
+          "timestamp": [
+            281.12,
+            281.52
+          ]
+        },
+        {
+          "text": "enlarged",
+          "timestamp": [
+            281.52,
+            282
+          ]
+        },
+        {
+          "text": "bubble",
+          "timestamp": [
+            282,
+            282.48
+          ]
+        },
+        {
+          "text": "several",
+          "timestamp": [
+            282.48,
+            282.72
+          ]
+        },
+        {
+          "text": "inches",
+          "timestamp": [
+            282.72,
+            282.96
+          ]
+        },
+        {
+          "text": "up",
+          "timestamp": [
+            282.96,
+            283.12
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            283.12,
+            283.28
+          ]
+        },
+        {
+          "text": "thread",
+          "timestamp": [
+            283.28,
+            283.6
+          ]
+        },
+        {
+          "text": "like",
+          "timestamp": [
+            283.6,
+            283.76
+          ]
+        },
+        {
+          "text": "glass",
+          "timestamp": [
+            283.92,
+            284.24
+          ]
+        },
+        {
+          "text": "tubes.",
+          "timestamp": [
+            284.24,
+            285.2
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            285.2,
+            285.44
+          ]
+        },
+        {
+          "text": "shot",
+          "timestamp": [
+            285.44,
+            285.76
+          ]
+        },
+        {
+          "text": "off",
+          "timestamp": [
+            285.76,
+            285.92
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            285.92,
+            286
+          ]
+        },
+        {
+          "text": "pump,",
+          "timestamp": [
+            286,
+            286.64
+          ]
+        },
+        {
+          "text": "then",
+          "timestamp": [
+            286.64,
+            286.8
+          ]
+        },
+        {
+          "text": "went",
+          "timestamp": [
+            286.8,
+            287.04
+          ]
+        },
+        {
+          "text": "through",
+          "timestamp": [
+            287.04,
+            287.2
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            287.2,
+            287.28
+          ]
+        },
+        {
+          "text": "same",
+          "timestamp": [
+            287.28,
+            287.44
+          ]
+        },
+        {
+          "text": "routine",
+          "timestamp": [
+            287.44,
+            288
+          ]
+        },
+        {
+          "text": "with",
+          "timestamp": [
+            288,
+            288.08
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            288.08,
+            288.32
+          ]
+        },
+        {
+          "text": "other",
+          "timestamp": [
+            288.32,
+            288.56
+          ]
+        },
+        {
+          "text": "ten.",
+          "timestamp": [
+            288.56,
+            289.28
+          ]
+        },
+        {
+          "text": "I'd",
+          "timestamp": [
+            289.28,
+            289.68
+          ]
+        },
+        {
+          "text": "sure",
+          "timestamp": [
+            289.68,
+            289.84
+          ]
+        },
+        {
+          "text": "want",
+          "timestamp": [
+            289.92,
+            290.08
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            290.08,
+            290.16
+          ]
+        },
+        {
+          "text": "see",
+          "timestamp": [
+            290.16,
+            290.32
+          ]
+        },
+        {
+          "text": "on",
+          "timestamp": [
+            290.56,
+            290.64
+          ]
+        },
+        {
+          "text": "at",
+          "timestamp": [
+            290.72,
+            290.8
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            290.8,
+            290.88
+          ]
+        },
+        {
+          "text": "Rialto,",
+          "timestamp": [
+            290.88,
+            291.52
+          ]
+        },
+        {
+          "text": "Earl,",
+          "timestamp": [
+            291.52,
+            292
+          ]
+        },
+        {
+          "text": "Irene",
+          "timestamp": [
+            292,
+            292.56
+          ]
+        },
+        {
+          "text": "said.",
+          "timestamp": [
+            292.56,
+            292.8
+          ]
+        },
+        {
+          "text": "Just",
+          "timestamp": [
+            292.8,
+            293.04
+          ]
+        },
+        {
+          "text": "tonight",
+          "timestamp": [
+            293.04,
+            293.44
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            293.44,
+            293.52
+          ]
+        },
+        {
+          "text": "tomorrow",
+          "timestamp": [
+            293.52,
+            294.08
+          ]
+        },
+        {
+          "text": "night.",
+          "timestamp": [
+            294.08,
+            294.96
+          ]
+        },
+        {
+          "text": "Good,",
+          "timestamp": [
+            294.96,
+            295.6
+          ]
+        },
+        {
+          "text": "Earl",
+          "timestamp": [
+            295.6,
+            296.08
+          ]
+        },
+        {
+          "text": "grunted,",
+          "timestamp": [
+            296.08,
+            296.48
+          ]
+        },
+        {
+          "text": "starting",
+          "timestamp": [
+            296.48,
+            296.72
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            296.72,
+            296.88
+          ]
+        },
+        {
+          "text": "recheck",
+          "timestamp": [
+            296.88,
+            297.28
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            297.28,
+            297.36
+          ]
+        },
+        {
+          "text": "charts.",
+          "timestamp": [
+            297.36,
+            297.92
+          ]
+        },
+        {
+          "text": "Let",
+          "timestamp": [
+            297.92,
+            298.16
+          ]
+        },
+        {
+          "text": "me",
+          "timestamp": [
+            298.16,
+            298.24
+          ]
+        },
+        {
+          "text": "know",
+          "timestamp": [
+            298.24,
+            298.4
+          ]
+        },
+        {
+          "text": "if",
+          "timestamp": [
+            298.4,
+            298.56
+          ]
+        },
+        {
+          "text": "you",
+          "timestamp": [
+            298.56,
+            298.72
+          ]
+        },
+        {
+          "text": "liked",
+          "timestamp": [
+            298.72,
+            298.96
+          ]
+        },
+        {
+          "text": "it.",
+          "timestamp": [
+            298.96,
+            299.2
+          ]
+        },
+        {
+          "text": "If",
+          "timestamp": [
+            299.2,
+            299.28
+          ]
+        },
+        {
+          "text": "it's",
+          "timestamp": [
+            299.28,
+            299.6
+          ]
+        },
+        {
+          "text": "only",
+          "timestamp": [
+            299.52,
+            299.68
+          ]
+        },
+        {
+          "text": "good,",
+          "timestamp": [
+            299.68,
+            299.92
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            299.92,
+            300.08
+          ]
+        },
+        {
+          "text": "might",
+          "timestamp": [
+            300.08,
+            300.24
+          ]
+        },
+        {
+          "text": "go",
+          "timestamp": [
+            300.24,
+            300.48
+          ]
+        },
+        {
+          "text": "see",
+          "timestamp": [
+            300.48,
+            300.72
+          ]
+        },
+        {
+          "text": "it.",
+          "timestamp": [
+            300.72,
+            301.28
+          ]
+        },
+        {
+          "text": "Why",
+          "timestamp": [
+            301.28,
+            301.52
+          ]
+        },
+        {
+          "text": "don't",
+          "timestamp": [
+            301.52,
+            301.76
+          ]
+        },
+        {
+          "text": "you",
+          "timestamp": [
+            301.76,
+            301.84
+          ]
+        },
+        {
+          "text": "come",
+          "timestamp": [
+            301.84,
+            302
+          ]
+        },
+        {
+          "text": "see",
+          "timestamp": [
+            302,
+            302.16
+          ]
+        },
+        {
+          "text": "it",
+          "timestamp": [
+            302.16,
+            302.32
+          ]
+        },
+        {
+          "text": "with",
+          "timestamp": [
+            302.32,
+            302.48
+          ]
+        },
+        {
+          "text": "me?",
+          "timestamp": [
+            302.48,
+            302.96
+          ]
+        },
+        {
+          "text": "Irene",
+          "timestamp": [
+            302.96,
+            303.6
+          ]
+        },
+        {
+          "text": "said.",
+          "timestamp": [
+            303.6,
+            304.16
+          ]
+        },
+        {
+          "text": "Ah",
+          "timestamp": [
+            304.16,
+            304.72
+          ]
+        },
+        {
+          "text": "Earl",
+          "timestamp": [
+            305.04,
+            305.6
+          ]
+        },
+        {
+          "text": "hesitated,",
+          "timestamp": [
+            305.6,
+            306.48
+          ]
+        },
+        {
+          "text": "not",
+          "timestamp": [
+            306.48,
+            306.72
+          ]
+        },
+        {
+          "text": "looking",
+          "timestamp": [
+            306.72,
+            306.96
+          ]
+        },
+        {
+          "text": "up",
+          "timestamp": [
+            306.96,
+            307.12
+          ]
+        },
+        {
+          "text": "from",
+          "timestamp": [
+            307.12,
+            307.28
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            307.28,
+            307.36
+          ]
+        },
+        {
+          "text": "chart",
+          "timestamp": [
+            307.36,
+            307.68
+          ]
+        },
+        {
+          "text": "he",
+          "timestamp": [
+            307.68,
+            307.84
+          ]
+        },
+        {
+          "text": "was",
+          "timestamp": [
+            307.84,
+            308
+          ]
+        },
+        {
+          "text": "studying.",
+          "timestamp": [
+            308,
+            308.8
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            308.8,
+            309.04
+          ]
+        },
+        {
+          "text": "was",
+          "timestamp": [
+            309.04,
+            309.2
+          ]
+        },
+        {
+          "text": "saved",
+          "timestamp": [
+            309.2,
+            309.6
+          ]
+        },
+        {
+          "text": "by",
+          "timestamp": [
+            309.6,
+            309.76
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            309.76,
+            309.84
+          ]
+        },
+        {
+          "text": "hall",
+          "timestamp": [
+            309.84,
+            310.08
+          ]
+        },
+        {
+          "text": "door",
+          "timestamp": [
+            310.08,
+            310.56
+          ]
+        },
+        {
+          "text": "opening.",
+          "timestamp": [
+            310.56,
+            311.52
+          ]
+        },
+        {
+          "text": "Hi,",
+          "timestamp": [
+            311.52,
+            311.92
+          ]
+        },
+        {
+          "text": "Basil,",
+          "timestamp": [
+            311.92,
+            312.48
+          ]
+        },
+        {
+          "text": "he",
+          "timestamp": [
+            312.48,
+            312.64
+          ]
+        },
+        {
+          "text": "said,",
+          "timestamp": [
+            312.64,
+            312.88
+          ]
+        },
+        {
+          "text": "taking",
+          "timestamp": [
+            312.88,
+            313.12
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            313.12,
+            313.2
+          ]
+        },
+        {
+          "text": "Basil",
+          "timestamp": [
+            313.2,
+            313.68
+          ]
+        },
+        {
+          "text": "Malson's",
+          "timestamp": [
+            313.68,
+            314.32
+          ]
+        },
+        {
+          "text": "expression",
+          "timestamp": [
+            314.24,
+            314.56
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            314.56,
+            314.72
+          ]
+        },
+        {
+          "text": "mild",
+          "timestamp": [
+            314.72,
+            315.04
+          ]
+        },
+        {
+          "text": "haste,",
+          "timestamp": [
+            315.04,
+            315.68
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            315.68,
+            315.84
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            315.84,
+            316
+          ]
+        },
+        {
+          "text": "empty",
+          "timestamp": [
+            316,
+            316.32
+          ]
+        },
+        {
+          "text": "test",
+          "timestamp": [
+            316.32,
+            316.56
+          ]
+        },
+        {
+          "text": "tube",
+          "timestamp": [
+            316.56,
+            316.88
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            316.88,
+            317.04
+          ]
+        },
+        {
+          "text": "his",
+          "timestamp": [
+            317.04,
+            317.28
+          ]
+        },
+        {
+          "text": "hand.",
+          "timestamp": [
+            317.28,
+            318
+          ]
+        },
+        {
+          "text": "Irene",
+          "timestamp": [
+            318,
+            318.64
+          ]
+        },
+        {
+          "text": "frowned",
+          "timestamp": [
+            318.64,
+            319.04
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            319.04,
+            319.2
+          ]
+        },
+        {
+          "text": "annoyance.",
+          "timestamp": [
+            319.2,
+            320
+          ]
+        },
+        {
+          "text": "Basil",
+          "timestamp": [
+            320,
+            320.64
+          ]
+        },
+        {
+          "text": "looked",
+          "timestamp": [
+            320.64,
+            320.8
+          ]
+        },
+        {
+          "text": "at",
+          "timestamp": [
+            320.8,
+            320.88
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            320.88,
+            321.04
+          ]
+        },
+        {
+          "text": "with",
+          "timestamp": [
+            321.04,
+            321.2
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            321.2,
+            321.28
+          ]
+        },
+        {
+          "text": "mixture",
+          "timestamp": [
+            321.28,
+            321.68
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            321.68,
+            321.76
+          ]
+        },
+        {
+          "text": "apology",
+          "timestamp": [
+            321.76,
+            322.24
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            322.24,
+            322.4
+          ]
+        },
+        {
+          "text": "hopefulness,",
+          "timestamp": [
+            322.4,
+            323.28
+          ]
+        },
+        {
+          "text": "then",
+          "timestamp": [
+            323.28,
+            323.52
+          ]
+        },
+        {
+          "text": "turned",
+          "timestamp": [
+            323.52,
+            323.76
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            323.76,
+            323.84
+          ]
+        },
+        {
+          "text": "Earl.",
+          "timestamp": [
+            323.84,
+            324.56
+          ]
+        },
+        {
+          "text": "Ah,",
+          "timestamp": [
+            324.56,
+            325.12
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            325.12,
+            325.36
+          ]
+        },
+        {
+          "text": "came",
+          "timestamp": [
+            325.36,
+            325.6
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            325.6,
+            325.76
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            325.76,
+            325.84
+          ]
+        },
+        {
+          "text": "borrow",
+          "timestamp": [
+            325.84,
+            326.16
+          ]
+        },
+        {
+          "text": "some",
+          "timestamp": [
+            326.16,
+            326.24
+          ]
+        },
+        {
+          "text": "base",
+          "timestamp": [
+            326.4,
+            326.64
+          ]
+        },
+        {
+          "text": "formula,",
+          "timestamp": [
+            326.8,
+            327.44
+          ]
+        },
+        {
+          "text": "he",
+          "timestamp": [
+            327.44,
+            327.68
+          ]
+        },
+        {
+          "text": "said.",
+          "timestamp": [
+            327.68,
+            328.16
+          ]
+        },
+        {
+          "text": "Just",
+          "timestamp": [
+            328.16,
+            328.4
+          ]
+        },
+        {
+          "text": "need",
+          "timestamp": [
+            328.4,
+            328.56
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            328.56,
+            328.64
+          ]
+        },
+        {
+          "text": "few",
+          "timestamp": [
+            328.64,
+            328.88
+          ]
+        },
+        {
+          "text": "CCs",
+          "timestamp": [
+            328.88,
+            329.44
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            329.44,
+            329.52
+          ]
+        },
+        {
+          "text": "want",
+          "timestamp": [
+            329.84,
+            330
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            330,
+            330.08
+          ]
+        },
+        {
+          "text": "take",
+          "timestamp": [
+            330.08,
+            330.16
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            330.16,
+            330.32
+          ]
+        },
+        {
+          "text": "time",
+          "timestamp": [
+            330.32,
+            330.48
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            330.48,
+            330.64
+          ]
+        },
+        {
+          "text": "get",
+          "timestamp": [
+            330.64,
+            330.72
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            330.72,
+            330.8
+          ]
+        },
+        {
+          "text": "full",
+          "timestamp": [
+            330.8,
+            330.96
+          ]
+        },
+        {
+          "text": "gallon",
+          "timestamp": [
+            330.96,
+            331.36
+          ]
+        },
+        {
+          "text": "from",
+          "timestamp": [
+            331.36,
+            331.44
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            331.44,
+            331.52
+          ]
+        },
+        {
+          "text": "storeroom.",
+          "timestamp": [
+            331.52,
+            332.4
+          ]
+        },
+        {
+          "text": "Help",
+          "timestamp": [
+            332.4,
+            332.8
+          ]
+        },
+        {
+          "text": "yourself,",
+          "timestamp": [
+            332.8,
+            333.36
+          ]
+        },
+        {
+          "text": "Earl",
+          "timestamp": [
+            333.36,
+            333.92
+          ]
+        },
+        {
+          "text": "said.",
+          "timestamp": [
+            333.92,
+            334.48
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            334.48,
+            334.72
+          ]
+        },
+        {
+          "text": "grinned",
+          "timestamp": [
+            334.72,
+            335.2
+          ]
+        },
+        {
+          "text": "sideways",
+          "timestamp": [
+            335.2,
+            335.68
+          ]
+        },
+        {
+          "text": "at",
+          "timestamp": [
+            335.68,
+            335.84
+          ]
+        },
+        {
+          "text": "Irene.",
+          "timestamp": [
+            335.84,
+            336.48
+          ]
+        },
+        {
+          "text": "By",
+          "timestamp": [
+            336.48,
+            336.64
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            336.64,
+            336.72
+          ]
+        },
+        {
+          "text": "way,",
+          "timestamp": [
+            336.72,
+            336.88
+          ]
+        },
+        {
+          "text": "Irene",
+          "timestamp": [
+            336.88,
+            337.44
+          ]
+        },
+        {
+          "text": "is",
+          "timestamp": [
+            337.44,
+            337.52
+          ]
+        },
+        {
+          "text": "looking",
+          "timestamp": [
+            337.52,
+            337.68
+          ]
+        },
+        {
+          "text": "for",
+          "timestamp": [
+            337.68,
+            337.76
+          ]
+        },
+        {
+          "text": "someone",
+          "timestamp": [
+            337.76,
+            338
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            338,
+            338.08
+          ]
+        },
+        {
+          "text": "go",
+          "timestamp": [
+            338.08,
+            338.24
+          ]
+        },
+        {
+          "text": "with",
+          "timestamp": [
+            338.24,
+            338.4
+          ]
+        },
+        {
+          "text": "her",
+          "timestamp": [
+            338.4,
+            338.56
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            338.56,
+            338.64
+          ]
+        },
+        {
+          "text": "see",
+          "timestamp": [
+            338.64,
+            338.8
+          ]
+        },
+        {
+          "text": "some",
+          "timestamp": [
+            338.8,
+            338.96
+          ]
+        },
+        {
+          "text": "show",
+          "timestamp": [
+            338.96,
+            339.2
+          ]
+        },
+        {
+          "text": "of",
+          "timestamp": [
+            339.2,
+            339.28
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            339.28,
+            339.36
+          ]
+        },
+        {
+          "text": "sun",
+          "timestamp": [
+            339.36,
+            339.6
+          ]
+        },
+        {
+          "text": "at",
+          "timestamp": [
+            339.6,
+            339.68
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            339.68,
+            339.76
+          ]
+        },
+        {
+          "text": "Rialto.",
+          "timestamp": [
+            339.76,
+            340.64
+          ]
+        },
+        {
+          "text": "I'll",
+          "timestamp": [
+            340.64,
+            341.04
+          ]
+        },
+        {
+          "text": "be",
+          "timestamp": [
+            341.04,
+            341.2
+          ]
+        },
+        {
+          "text": "glad",
+          "timestamp": [
+            341.2,
+            341.52
+          ]
+        },
+        {
+          "text": "to,",
+          "timestamp": [
+            341.52,
+            341.92
+          ]
+        },
+        {
+          "text": "Basil",
+          "timestamp": [
+            341.92,
+            342.56
+          ]
+        },
+        {
+          "text": "said",
+          "timestamp": [
+            342.56,
+            342.72
+          ]
+        },
+        {
+          "text": "eagerly.",
+          "timestamp": [
+            342.72,
+            343.6
+          ]
+        },
+        {
+          "text": "No,",
+          "timestamp": [
+            343.6,
+            344
+          ]
+        },
+        {
+          "text": "thanks,",
+          "timestamp": [
+            344,
+            344.56
+          ]
+        },
+        {
+          "text": "Irene",
+          "timestamp": [
+            344.56,
+            345.12
+          ]
+        },
+        {
+          "text": "said.",
+          "timestamp": [
+            345.12,
+            345.52
+          ]
+        },
+        {
+          "text": "I'm",
+          "timestamp": [
+            345.52,
+            345.84
+          ]
+        },
+        {
+          "text": "going",
+          "timestamp": [
+            345.84,
+            346.08
+          ]
+        },
+        {
+          "text": "with",
+          "timestamp": [
+            346.08,
+            346.24
+          ]
+        },
+        {
+          "text": "my",
+          "timestamp": [
+            346.24,
+            346.4
+          ]
+        },
+        {
+          "text": "aunt.",
+          "timestamp": [
+            346.4,
+            347.28
+          ]
+        },
+        {
+          "text": "Oh,",
+          "timestamp": [
+            347.44,
+            347.68
+          ]
+        },
+        {
+          "text": "aunt?",
+          "timestamp": [
+            347.68,
+            348.4
+          ]
+        },
+        {
+          "text": "Basil",
+          "timestamp": [
+            348.4,
+            349.04
+          ]
+        },
+        {
+          "text": "said.",
+          "timestamp": [
+            349.2,
+            349.84
+          ]
+        },
+        {
+          "text": "I",
+          "timestamp": [
+            349.84,
+            350
+          ]
+        },
+        {
+          "text": "didn't",
+          "timestamp": [
+            350,
+            350.32
+          ]
+        },
+        {
+          "text": "know",
+          "timestamp": [
+            350.24,
+            350.4
+          ]
+        },
+        {
+          "text": "you",
+          "timestamp": [
+            350.4,
+            350.48
+          ]
+        },
+        {
+          "text": "had",
+          "timestamp": [
+            350.48,
+            350.64
+          ]
+        },
+        {
+          "text": "an",
+          "timestamp": [
+            350.64,
+            350.8
+          ]
+        },
+        {
+          "text": "aunt",
+          "timestamp": [
+            350.8,
+            351.04
+          ]
+        },
+        {
+          "text": "living",
+          "timestamp": [
+            351.04,
+            351.2
+          ]
+        },
+        {
+          "text": "in",
+          "timestamp": [
+            351.2,
+            351.28
+          ]
+        },
+        {
+          "text": "Cresmont.",
+          "timestamp": [
+            351.28,
+            352.32
+          ]
+        },
+        {
+          "text": "He",
+          "timestamp": [
+            352.32,
+            352.48
+          ]
+        },
+        {
+          "text": "went",
+          "timestamp": [
+            352.48,
+            352.72
+          ]
+        },
+        {
+          "text": "to",
+          "timestamp": [
+            352.72,
+            352.88
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            352.88,
+            352.96
+          ]
+        },
+        {
+          "text": "supply",
+          "timestamp": [
+            352.96,
+            353.36
+          ]
+        },
+        {
+          "text": "shelf",
+          "timestamp": [
+            353.36,
+            353.68
+          ]
+        },
+        {
+          "text": "over",
+          "timestamp": [
+            353.68,
+            353.84
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            353.84,
+            353.92
+          ]
+        },
+        {
+          "text": "wall",
+          "timestamp": [
+            353.92,
+            354.24
+          ]
+        },
+        {
+          "text": "bench",
+          "timestamp": [
+            354.24,
+            354.4
+          ]
+        },
+        {
+          "text": "and",
+          "timestamp": [
+            354.48,
+            354.56
+          ]
+        },
+        {
+          "text": "poured",
+          "timestamp": [
+            354.56,
+            354.88
+          ]
+        },
+        {
+          "text": "some",
+          "timestamp": [
+            354.88,
+            355.04
+          ]
+        },
+        {
+          "text": "base",
+          "timestamp": [
+            355.04,
+            355.36
+          ]
+        },
+        {
+          "text": "formula",
+          "timestamp": [
+            355.36,
+            355.84
+          ]
+        },
+        {
+          "text": "from",
+          "timestamp": [
+            355.84,
+            355.92
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            355.92,
+            356
+          ]
+        },
+        {
+          "text": "rubber",
+          "timestamp": [
+            356,
+            356.4
+          ]
+        },
+        {
+          "text": "tube",
+          "timestamp": [
+            356.4,
+            356.8
+          ]
+        },
+        {
+          "text": "dangling",
+          "timestamp": [
+            356.96,
+            357.44
+          ]
+        },
+        {
+          "text": "from",
+          "timestamp": [
+            357.44,
+            357.6
+          ]
+        },
+        {
+          "text": "a",
+          "timestamp": [
+            357.6,
+            357.68
+          ]
+        },
+        {
+          "text": "large",
+          "timestamp": [
+            357.68,
+            358
+          ]
+        },
+        {
+          "text": "bottle.",
+          "timestamp": [
+            358,
+            358.56
+          ]
+        }
+      ]
+    }
+  }
+}

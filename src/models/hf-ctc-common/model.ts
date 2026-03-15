@@ -1,29 +1,25 @@
-import { normalizePcmInput } from '../../processors/index.js';
+import { normalizePcmInput } from '../../audio/index.js';
 import {
   CTC_GREEDY_DECODING,
   CTC_HEAD_DECODER,
-  WAV2VEC2_CONFORMER_ENCODER
+  WAV2VEC2_CONFORMER_ENCODER,
 } from '../../inference/index.js';
 import { StubTextTokenizer } from '../../tokenizers/index.js';
 import type {
   AudioInputLike,
   BaseSessionOptions,
+  FamilyModelLoadRequest,
   ModelClassification,
-  ModelLoadRequest,
   SpeechModel,
   SpeechModelFactory,
   SpeechModelFactoryContext,
   SpeechSession,
   TranscriptResponse,
   TranscriptResponseFlavor,
-  TranscriptWord
+  TranscriptWord,
 } from '../../types/index.js';
 import { createModelArchitecture } from '../../types/index.js';
-import {
-  DEFAULT_HF_CTC_CLASSIFICATION,
-  describeHfCtcModel,
-  parseHfCtcConfig
-} from './config.js';
+import { DEFAULT_HF_CTC_CLASSIFICATION, describeHfCtcModel, parseHfCtcConfig } from './config.js';
 import { mapHfCtcNativeToCanonical } from './mapping.js';
 import type {
   HfCtcModelConfig,
@@ -31,12 +27,12 @@ import type {
   HfCtcModelOptions,
   HfCtcNativeToken,
   HfCtcNativeTranscript,
-  HfCtcTranscriptionOptions
+  HfCtcTranscriptionOptions,
 } from './types.js';
 
 function classificationContains(
   candidate: Partial<ModelClassification>,
-  requested: Partial<ModelClassification>
+  requested: Partial<ModelClassification>,
 ): boolean {
   return Object.entries(requested).every(([key, value]) => {
     if (value === undefined) {
@@ -48,12 +44,12 @@ function classificationContains(
 
 function resolveClassification(
   base: Partial<ModelClassification> = {},
-  request: Partial<ModelClassification> = {}
+  request: Partial<ModelClassification> = {},
 ): ModelClassification {
   return {
     ...DEFAULT_HF_CTC_CLASSIFICATION,
     ...base,
-    ...request
+    ...request,
   };
 }
 
@@ -66,13 +62,13 @@ function buildStubWords(durationSeconds: number): TranscriptWord[] {
     text,
     startTime: Number((index * span).toFixed(3)),
     endTime: Number(((index + 1) * span).toFixed(3)),
-    confidence: 0.91
+    confidence: 0.91,
   }));
 }
 
 function buildStubTokens(
   words: readonly TranscriptWord[],
-  options: HfCtcTranscriptionOptions
+  options: HfCtcTranscriptionOptions,
 ): HfCtcNativeToken[] {
   return words.map((word, index) => ({
     index,
@@ -81,27 +77,31 @@ function buildStubTokens(
     startTime: word.startTime,
     endTime: word.endTime,
     confidence: word.confidence,
-    logitIndex: options.returnLogitIndices ? index : undefined
+    logitIndex: options.returnLogitIndices ? index : undefined,
   }));
 }
 
-class HfCtcSpeechSession
-  implements SpeechSession<HfCtcTranscriptionOptions, HfCtcNativeTranscript> {
+class HfCtcSpeechSession implements SpeechSession<
+  HfCtcTranscriptionOptions,
+  HfCtcNativeTranscript
+> {
   private readonly tokenizer;
+  private disposed = false;
 
   constructor(
     private readonly modelId: string,
     private readonly classification: ModelClassification,
     private readonly config: HfCtcModelConfig,
     private readonly backendId: string,
-    dependencies: HfCtcModelDependencies = {}
+    dependencies: HfCtcModelDependencies = {},
+    private readonly onDispose?: () => void,
   ) {
     this.tokenizer = dependencies.tokenizer ?? new StubTextTokenizer(config.tokenizer.kind, 'hf');
   }
 
   async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
     input: AudioInputLike,
-    options: HfCtcTranscriptionOptions & { readonly responseFlavor?: TFlavor } = {}
+    options: HfCtcTranscriptionOptions & { readonly responseFlavor?: TFlavor } = {},
   ): Promise<TranscriptResponse<HfCtcNativeTranscript, TFlavor>> {
     const audio = normalizePcmInput(input).toMono();
     const words = buildStubWords(audio.durationSeconds);
@@ -114,12 +114,15 @@ class HfCtcSpeechSession
       confidence: {
         utterance: 0.91,
         wordAverage: 0.91,
-        tokenAverage: 0.91
+        tokenAverage: 0.91,
       },
-      warnings: [{
-        code: 'hf-ctc.stubbed-decoder',
-        message: 'HF CTC model execution is scaffolded. Integrate processor, encoder, and CTC logits execution to replace the stub.'
-      }]
+      warnings: [
+        {
+          code: 'hf-ctc.stubbed-decoder',
+          message:
+            'HF CTC model execution is scaffolded. Integrate processor, encoder, and CTC logits execution to replace the stub.',
+        },
+      ],
     };
 
     const canonical = mapHfCtcNativeToCanonical(nativeTranscript, this.classification, {
@@ -128,7 +131,7 @@ class HfCtcSpeechSession
       modelId: this.modelId,
       language: this.config.languages[0],
       sampleRate: audio.sampleRate,
-      durationSeconds: audio.durationSeconds
+      durationSeconds: audio.durationSeconds,
     });
     const responseFlavor = options.responseFlavor ?? 'canonical';
 
@@ -138,7 +141,7 @@ class HfCtcSpeechSession
     if (responseFlavor === 'canonical+native') {
       return {
         canonical,
-        native: nativeTranscript
+        native: nativeTranscript,
       } as TranscriptResponse<HfCtcNativeTranscript, TFlavor>;
     }
 
@@ -146,79 +149,120 @@ class HfCtcSpeechSession
   }
 
   dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
     void this.tokenizer;
+    this.onDispose?.();
   }
 }
 
-class HfCtcSpeechModel
-  implements SpeechModel<HfCtcModelOptions, HfCtcTranscriptionOptions, HfCtcNativeTranscript> {
+class HfCtcSpeechModel implements SpeechModel<
+  HfCtcModelOptions,
+  HfCtcTranscriptionOptions,
+  HfCtcNativeTranscript
+> {
   readonly info;
   readonly loadOptions?: HfCtcModelOptions;
+  private readonly sessions = new Set<HfCtcSpeechSession>();
+  private disposed = false;
 
   constructor(
-    readonly backend: SpeechModel<HfCtcModelOptions, HfCtcTranscriptionOptions, HfCtcNativeTranscript>['backend'],
+    readonly backend: SpeechModel<
+      HfCtcModelOptions,
+      HfCtcTranscriptionOptions,
+      HfCtcNativeTranscript
+    >['backend'],
     readonly family: string,
     readonly modelId: string,
     readonly classification: ModelClassification,
     readonly config: HfCtcModelConfig,
+    readonly resolvedPreset: string | undefined,
     loadOptions: HfCtcModelOptions | undefined,
     private readonly dependencies: HfCtcModelDependencies,
-    private readonly describeModel: (
+    describeModel: (
       modelId: string,
       classification: ModelClassification,
-      config: HfCtcModelConfig
-    ) => string
+      config: HfCtcModelConfig,
+    ) => string,
   ) {
     this.loadOptions = loadOptions;
     this.info = {
       family,
       modelId,
       classification,
+      preset: resolvedPreset,
       architecture: createModelArchitecture({
         processor: {
           layer: 'processor',
-          module: 'processors',
+          module: 'audio',
           implementation: classification.processor ?? config.processorArchitecture,
-          shared: true
+          shared: true,
         },
         encoder: {
           layer: 'encoder',
           module: WAV2VEC2_CONFORMER_ENCODER.sharedModule,
           implementation: config.encoderArchitecture,
           shared: true,
-          notes: [`Output stride ${config.rawStride}.`]
+          notes: [`Output stride ${config.rawStride}.`],
         },
         decoder: {
           layer: 'decoder',
           module: CTC_HEAD_DECODER.sharedModule,
           implementation: CTC_HEAD_DECODER.kind,
-          shared: true
+          shared: true,
         },
         decoding: {
           layer: 'decoding',
           module: 'inference',
           implementation: CTC_GREEDY_DECODING.strategy,
           shared: true,
-          notes: CTC_GREEDY_DECODING.notes
+          notes: CTC_GREEDY_DECODING.notes,
         },
         tokenizer: {
           layer: 'tokenizer',
           module: 'inference',
           implementation: config.tokenizer.kind,
-          shared: true
-        }
+          shared: true,
+        },
       }),
       description: describeModel(modelId, classification, config),
-      nativeOutputName: 'HfCtcNativeTranscript'
+      nativeOutputName: 'HfCtcNativeTranscript',
     };
   }
 
-  async createSession(_options: BaseSessionOptions = {}): Promise<SpeechSession<HfCtcTranscriptionOptions, HfCtcNativeTranscript>> {
-    return new HfCtcSpeechSession(this.modelId, this.classification, this.config, this.backend.id, this.dependencies);
+  async createSession(
+    _options: BaseSessionOptions = {},
+  ): Promise<SpeechSession<HfCtcTranscriptionOptions, HfCtcNativeTranscript>> {
+    const session = new HfCtcSpeechSession(
+      this.modelId,
+      this.classification,
+      this.config,
+      this.backend.id,
+      this.dependencies,
+      () => {
+        this.sessions.delete(session);
+      },
+    );
+    this.sessions.add(session);
+    return session;
   }
 
-  dispose(): void {
-    return undefined;
+  async dispose(): Promise<void> {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+
+    const sessions = [...this.sessions];
+    this.sessions.clear();
+
+    await Promise.all(
+      sessions.map(async (session) => {
+        await session.dispose();
+      }),
+    );
   }
 }
 
@@ -226,20 +270,23 @@ export interface CreateHfCtcModelFamilyOptions {
   readonly dependencies?: HfCtcModelDependencies;
   readonly family?: string;
   readonly classification?: Partial<ModelClassification>;
-  readonly supportsModel?: (modelId: string, classification?: Partial<ModelClassification>) => boolean;
+  readonly supportsModel?: (
+    modelId: string,
+    classification?: Partial<ModelClassification>,
+  ) => boolean;
   readonly resolveConfig?: (
     modelId: string,
-    request: ModelLoadRequest<HfCtcModelOptions>
+    request: FamilyModelLoadRequest<HfCtcModelOptions>,
   ) => HfCtcModelConfig;
   readonly describeModel?: (
     modelId: string,
     classification: ModelClassification,
-    config: HfCtcModelConfig
+    config: HfCtcModelConfig,
   ) => string;
 }
 
 export function createHfCtcModelFamily(
-  options: CreateHfCtcModelFamilyOptions = {}
+  options: CreateHfCtcModelFamilyOptions = {},
 ): SpeechModelFactory<HfCtcModelOptions, HfCtcTranscriptionOptions, HfCtcNativeTranscript> {
   const family = options.family ?? 'hf-ctc';
   const factoryClassification = resolveClassification(options.classification);
@@ -253,9 +300,11 @@ export function createHfCtcModelFamily(
       }
 
       const normalizedModelId = modelId.toLowerCase();
-      return normalizedModelId.includes('medasr')
-        || normalizedModelId.includes('wav2vec')
-        || normalizedModelId.includes('ctc');
+      return (
+        normalizedModelId.includes('medasr') ||
+        normalizedModelId.includes('wav2vec') ||
+        normalizedModelId.includes('ctc')
+      );
     },
     matchesClassification(classification: Partial<ModelClassification>): boolean {
       if (options.supportsModel) {
@@ -263,10 +312,7 @@ export function createHfCtcModelFamily(
       }
       return classificationContains(factoryClassification, classification);
     },
-    async createModel(
-      request,
-      context: SpeechModelFactoryContext
-    ): Promise<HfCtcSpeechModel> {
+    async createModel(request, context: SpeechModelFactoryContext): Promise<HfCtcSpeechModel> {
       const classification = resolveClassification(factoryClassification, request.classification);
       const config = options.resolveConfig
         ? options.resolveConfig(request.modelId, request)
@@ -275,7 +321,7 @@ export function createHfCtcModelFamily(
       context.hooks.logger?.info?.('Creating HF CTC scaffold model', {
         family,
         modelId: request.modelId,
-        backendId: context.backend.id
+        backendId: context.backend.id,
       });
 
       return new HfCtcSpeechModel(
@@ -284,10 +330,11 @@ export function createHfCtcModelFamily(
         request.modelId,
         classification,
         config,
+        request.resolvedPreset,
         request.options,
         options.dependencies ?? {},
-        options.describeModel ?? describeHfCtcModel
+        options.describeModel ?? describeHfCtcModel,
       );
-    }
+    },
   };
 }

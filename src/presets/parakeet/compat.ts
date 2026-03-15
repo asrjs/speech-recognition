@@ -1,4 +1,5 @@
-import { PcmAudioBuffer } from '../../processors/index.js';
+import { PcmAudioBuffer } from '../../audio/index.js';
+import { createBlobAssetProvider } from '../../io/index.js';
 import { createBuiltInSpeechRuntime } from '../../runtime/index.js';
 import {
   fetchModelFiles,
@@ -6,32 +7,49 @@ import {
   getModelFile,
   pickPreferredQuant,
   type ModelFileProgress,
-  type QuantizationMode
+  type QuantizationMode,
 } from '../../runtime/huggingface.js';
 import type { DefaultSpeechRuntime } from '../../runtime/session.js';
-import type { RuntimeLogger, SpeechModel, SpeechSession } from '../../types/index.js';
+import type {
+  ResolvedAssetHandle,
+  RuntimeLogger,
+  SpeechModel,
+  SpeechSession,
+} from '../../types/index.js';
 import type {
   NemoTdtModelOptions,
   NemoTdtNativeTranscript,
-  NemoTdtTranscriptionOptions
+  NemoTdtTranscriptionOptions,
 } from '../../models/nemo-tdt/index.js';
-import { DEFAULT_MODEL, getModelConfig, getModelKeyFromRepoId, MODELS } from './catalog.js';
+import {
+  DEFAULT_MODEL,
+  getModelConfig,
+  getModelKeyFromRepoId,
+  getParakeetDefaultWeightSetup,
+  MODELS,
+} from './catalog.js';
 
 export { MODELS, DEFAULT_MODEL };
 
+/** Browser/backend execution modes exposed by the Parakeet convenience helpers. */
 export type ParakeetBackend = 'wasm' | 'webgpu' | 'webgpu-hybrid' | 'webgpu-strict';
 
+/** Minimal browser file-handle shape accepted by Parakeet local-folder helpers. */
 export interface ParakeetLocalFileHandleLike {
   readonly kind?: 'file';
   getFile(): Promise<File | Blob>;
 }
 
+/** Minimal browser directory-handle shape accepted by Parakeet local-folder helpers. */
 export interface ParakeetLocalDirectoryHandleLike {
   readonly kind?: 'directory';
   readonly name?: string;
-  entries(): AsyncIterable<[string, ParakeetLocalFileHandleLike | ParakeetLocalDirectoryHandleLike]>;
+  entries(): AsyncIterable<
+    [string, ParakeetLocalFileHandleLike | ParakeetLocalDirectoryHandleLike]
+  >;
 }
 
+/** Flat local-entry record used by Parakeet local-folder resolution utilities. */
 export interface ParakeetLocalEntry {
   readonly path: string;
   readonly basename: string;
@@ -39,6 +57,7 @@ export interface ParakeetLocalEntry {
   readonly handle?: ParakeetLocalFileHandleLike;
 }
 
+/** Summary of what a local Parakeet folder contains before concrete files are selected. */
 export interface ParakeetLocalInspection {
   readonly encoderQuantizations: readonly QuantizationMode[];
   readonly decoderQuantizations: readonly QuantizationMode[];
@@ -46,6 +65,7 @@ export interface ParakeetLocalInspection {
   readonly preprocessorNames: readonly ('nemo80' | 'nemo128')[];
 }
 
+/** Options for resolving or loading a Parakeet model from a local folder. */
 export interface ResolveParakeetLocalEntriesOptions {
   readonly modelId?: string;
   readonly encoderQuant?: QuantizationMode;
@@ -60,8 +80,10 @@ export interface ResolveParakeetLocalEntriesOptions {
   readonly runtime?: DefaultSpeechRuntime;
 }
 
+/** Fully resolved local Parakeet artifact selection plus owned asset handles. */
 export interface ResolvedParakeetLocalArtifacts {
   readonly config: ParakeetFromUrlsConfig;
+  readonly assetHandles: readonly ResolvedAssetHandle[];
   readonly selection: {
     readonly encoderName: string;
     readonly decoderName: string;
@@ -72,6 +94,7 @@ export interface ResolvedParakeetLocalArtifacts {
   };
 }
 
+/** Direct artifact URLs and metadata describing a Parakeet model bundle. */
 export interface ParakeetModelUrls {
   readonly urls: {
     readonly encoderUrl: string;
@@ -93,6 +116,7 @@ export interface ParakeetModelUrls {
   readonly preprocessorBackend: 'js' | 'onnx';
 }
 
+/** Options for resolving a Parakeet model bundle from the Hugging Face hub. */
 export interface GetParakeetModelOptions {
   readonly revision?: string;
   readonly encoderQuant?: QuantizationMode;
@@ -104,6 +128,7 @@ export interface GetParakeetModelOptions {
   readonly verbose?: boolean;
 }
 
+/** Direct-artifact configuration accepted by `ParakeetModel.fromUrls()`. */
 export interface ParakeetFromUrlsConfig {
   readonly modelId?: string;
   readonly encoderUrl: string;
@@ -124,15 +149,34 @@ export interface ParakeetFromUrlsConfig {
   readonly runtime?: DefaultSpeechRuntime;
 }
 
+/** Legacy metrics shape preserved for compatibility with earlier Parakeet.js consumers. */
 export interface LegacyParakeetMetrics {
   readonly preprocess_ms?: number;
   readonly encode_ms?: number;
   readonly decode_ms?: number;
   readonly tokenize_ms?: number;
   readonly total_ms?: number;
+  readonly wall_ms?: number;
+  readonly audio_duration_sec?: number;
   readonly rtf?: number;
+  readonly rtfx?: number;
+  readonly preprocessor_backend_requested?: string;
+  readonly preprocessor_backend?: string;
+  readonly audio_decode_ms?: number;
+  readonly downmix_ms?: number;
+  readonly resample_ms?: number;
+  readonly audio_preparation_ms?: number;
+  readonly input_sample_rate?: number;
+  readonly output_sample_rate?: number;
+  readonly resampler?: string;
+  readonly resampler_quality?: string | null;
+  readonly encoder_frame_count?: number;
+  readonly decode_iterations?: number;
+  readonly emitted_token_count?: number;
+  readonly emitted_word_count?: number;
 }
 
+/** Legacy JSON transcript shape returned by the Parakeet compatibility wrapper. */
 export interface LegacyParakeetTranscript {
   readonly utterance_text: string;
   readonly words: ReadonlyArray<{
@@ -164,6 +208,7 @@ export interface LegacyParakeetTranscript {
   readonly is_final: boolean;
 }
 
+/** Legacy transcription options accepted by the Parakeet compatibility wrapper. */
 export interface LegacyParakeetTranscribeOptions {
   readonly returnTimestamps?: boolean;
   readonly returnConfidences?: boolean;
@@ -176,10 +221,16 @@ export interface LegacyParakeetTranscribeOptions {
   readonly enableProfiling?: boolean;
 }
 
+function getRequiredPreprocessorFilename(
+  preprocessor: 'nemo80' | 'nemo128',
+): `${'nemo80' | 'nemo128'}.onnx` {
+  return `${preprocessor}.onnx`;
+}
+
 const QUANT_SUFFIX: Record<QuantizationMode, string> = {
   int8: '.int8.onnx',
   fp16: '.fp16.onnx',
-  fp32: '.onnx'
+  fp32: '.onnx',
 };
 
 function getQuantizedModelName(baseName: string, quant: QuantizationMode): string {
@@ -187,14 +238,23 @@ function getQuantizedModelName(baseName: string, quant: QuantizationMode): strin
 }
 
 function getBasename(path: string): string {
-  return String(path || '').split('/').pop() || '';
+  return (
+    String(path || '')
+      .split('/')
+      .pop() || ''
+  );
 }
 
 function normalizeRelativePath(path: string): string {
-  return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
+  return String(path || '')
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '');
 }
 
-function detectLocalQuantModes(entries: readonly ParakeetLocalEntry[], baseName: string): QuantizationMode[] {
+function detectLocalQuantModes(
+  entries: readonly ParakeetLocalEntry[],
+  baseName: string,
+): QuantizationMode[] {
   const names = new Set(entries.map((entry) => entry.basename.toLowerCase()));
   const out: QuantizationMode[] = [];
   if (names.has(`${baseName}.onnx`)) out.push('fp32');
@@ -203,29 +263,37 @@ function detectLocalQuantModes(entries: readonly ParakeetLocalEntry[], baseName:
   return out;
 }
 
-function findLocalEntry(entries: readonly ParakeetLocalEntry[], expectedName: string): ParakeetLocalEntry | null {
+function findLocalEntry(
+  entries: readonly ParakeetLocalEntry[],
+  expectedName: string,
+): ParakeetLocalEntry | null {
   const lower = expectedName.toLowerCase();
-  return entries.find((entry) =>
-    entry.path.toLowerCase() === lower
-    || entry.basename.toLowerCase() === lower
-    || entry.path.toLowerCase().endsWith(`/${lower}`)
-  ) ?? null;
+  return (
+    entries.find(
+      (entry) =>
+        entry.path.toLowerCase() === lower ||
+        entry.basename.toLowerCase() === lower ||
+        entry.path.toLowerCase().endsWith(`/${lower}`),
+    ) ?? null
+  );
 }
 
+/** Converts a flat list of browser `File` objects into Parakeet local-entry records. */
 export function createParakeetLocalEntries(files: readonly File[]): ParakeetLocalEntry[] {
   return files.map((file) => {
     const path = normalizeRelativePath(file.webkitRelativePath || file.name);
     return {
       path,
       basename: getBasename(path),
-      file
+      file,
     };
   });
 }
 
+/** Recursively collects file entries from a local directory handle. */
 export async function collectParakeetLocalEntries(
   dirHandle: ParakeetLocalDirectoryHandleLike,
-  prefix = ''
+  prefix = '',
 ): Promise<ParakeetLocalEntry[]> {
   const entries: ParakeetLocalEntry[] = [];
   for await (const [name, handle] of dirHandle.entries()) {
@@ -239,7 +307,7 @@ export async function collectParakeetLocalEntries(
       entries.push({
         path,
         basename: getBasename(path),
-        handle
+        handle,
       });
       continue;
     }
@@ -253,6 +321,7 @@ export async function collectParakeetLocalEntries(
   return entries;
 }
 
+/** Resolves the actual `File` or `Blob` behind a local Parakeet entry. */
 export async function getParakeetLocalEntryFile(entry: ParakeetLocalEntry): Promise<File | Blob> {
   if (entry.file) {
     return entry.file;
@@ -260,16 +329,26 @@ export async function getParakeetLocalEntryFile(entry: ParakeetLocalEntry): Prom
   if (entry.handle?.kind === 'file') {
     return entry.handle.getFile();
   }
-  throw new Error(`Could not access local file entry: ${entry.path || entry.basename || 'unknown'}`);
+  throw new Error(
+    `Could not access local file entry: ${entry.path || entry.basename || 'unknown'}`,
+  );
 }
 
-export function inspectParakeetLocalEntries(entries: readonly ParakeetLocalEntry[]): ParakeetLocalInspection {
+/**
+ * Inspects a local folder against the canonical Parakeet model layout.
+ *
+ * The expected tokenizer file is `vocab.txt`, matching the original
+ * `parakeet.js` model repositories. Other `.txt` files are treated only as a
+ * fallback for local debugging folders that have not been normalized yet.
+ */
+export function inspectParakeetLocalEntries(
+  entries: readonly ParakeetLocalEntry[],
+): ParakeetLocalInspection {
   const encoderQuantizations = detectLocalQuantModes(entries, 'encoder-model');
   const decoderQuantizations = detectLocalQuantModes(entries, 'decoder_joint-model');
 
   const tokenizerCandidates: string[] = [];
   if (findLocalEntry(entries, 'vocab.txt')) tokenizerCandidates.push('vocab.txt');
-  if (findLocalEntry(entries, 'tokens.txt')) tokenizerCandidates.push('tokens.txt');
   if (!tokenizerCandidates.length) {
     for (const entry of entries) {
       if (entry.basename.toLowerCase().endsWith('.txt')) {
@@ -286,7 +365,7 @@ export function inspectParakeetLocalEntries(entries: readonly ParakeetLocalEntry
     encoderQuantizations,
     decoderQuantizations,
     tokenizerNames: [...new Set(tokenizerCandidates)],
-    preprocessorNames: [...new Set(preprocessorCandidates)]
+    preprocessorNames: [...new Set(preprocessorCandidates)],
   };
 }
 
@@ -311,7 +390,7 @@ function createConsoleLogger(enabled: boolean | undefined): RuntimeLogger | unde
     },
     error(message, meta) {
       console.error(message, meta);
-    }
+    },
   };
 }
 
@@ -323,35 +402,17 @@ function revokeBlobUrls(urls: Record<string, unknown>): void {
   }
 }
 
-function collectBlobUrlsFromConfig(config: ParakeetFromUrlsConfig): string[] {
-  return [
-    config.encoderUrl,
-    config.decoderUrl,
-    config.tokenizerUrl,
-    config.preprocessorUrl,
-    config.encoderDataUrl ?? undefined,
-    config.decoderDataUrl ?? undefined
-  ]
-    .filter((value): value is string => typeof value === 'string' && value.startsWith('blob:'))
-    .filter((value, index, array) => array.indexOf(value) === index);
-}
-
-function createBlobUrlCleanup(urls: readonly string[]): () => void {
-  return () => {
-    for (const url of urls) {
-      URL.revokeObjectURL(url);
-    }
-  };
-}
-
-function toFromUrlsConfig(modelUrls: ParakeetModelUrls, options: GetParakeetModelOptions = {}): ParakeetFromUrlsConfig {
+function toFromUrlsConfig(
+  modelUrls: ParakeetModelUrls,
+  options: GetParakeetModelOptions = {},
+): ParakeetFromUrlsConfig {
   return {
     modelId: getModelKeyFromRepoId(modelUrls.modelConfig?.repoId ?? '') ?? DEFAULT_MODEL,
     ...modelUrls.urls,
     filenames: modelUrls.filenames,
     preprocessorBackend: modelUrls.preprocessorBackend,
     backend: options.backend,
-    verbose: options.verbose
+    verbose: options.verbose,
   };
 }
 
@@ -361,7 +422,7 @@ function shouldRetryWithFp32(quantisation: ParakeetModelUrls['quantisation'] | u
 
 function buildRetryOptions(
   options: GetParakeetModelOptions,
-  quantisation: ParakeetModelUrls['quantisation'] | undefined
+  quantisation: ParakeetModelUrls['quantisation'] | undefined,
 ): GetParakeetModelOptions {
   const retryOptions = { ...options };
   if (quantisation?.encoder === 'fp16') {
@@ -380,7 +441,7 @@ function toLegacyTranscript(native: NemoTdtNativeTranscript): LegacyParakeetTran
       text: word.text,
       start_time: word.startTime,
       end_time: word.endTime,
-      confidence: word.confidence
+      confidence: word.confidence,
     })),
     tokens: native.tokens?.map((token) => ({
       id: token.id,
@@ -391,30 +452,51 @@ function toLegacyTranscript(native: NemoTdtNativeTranscript): LegacyParakeetTran
       confidence: token.confidence,
       frame_index: token.frameIndex,
       log_prob: token.logProb,
-      tdt_step: token.tdtStep
+      tdt_step: token.tdtStep,
     })),
-    confidence_scores: native.confidence ? {
-      utterance: native.confidence.utterance ?? null,
-      word_avg: native.confidence.wordAverage ?? null,
-      token_avg: native.confidence.tokenAverage ?? null,
-      frame_avg: native.confidence.frameAverage ?? null,
-      overall_log_prob: native.confidence.averageLogProb ?? null,
-      frame: native.confidence.frames ?? null
-    } : undefined,
-    metrics: native.metrics ? {
-      preprocess_ms: native.metrics.preprocessMs,
-      encode_ms: native.metrics.encodeMs,
-      decode_ms: native.metrics.decodeMs,
-      tokenize_ms: native.metrics.tokenizeMs,
-      total_ms: native.metrics.totalMs,
-      rtf: native.metrics.rtf
-    } : undefined,
-    is_final: native.isFinal
+    confidence_scores: native.confidence
+      ? {
+          utterance: native.confidence.utterance ?? null,
+          word_avg: native.confidence.wordAverage ?? null,
+          token_avg: native.confidence.tokenAverage ?? null,
+          frame_avg: native.confidence.frameAverage ?? null,
+          overall_log_prob: native.confidence.averageLogProb ?? null,
+          frame: native.confidence.frames ?? null,
+        }
+      : undefined,
+    metrics: native.metrics
+      ? {
+          preprocess_ms: native.metrics.preprocessMs,
+          encode_ms: native.metrics.encodeMs,
+          decode_ms: native.metrics.decodeMs,
+          tokenize_ms: native.metrics.tokenizeMs,
+          total_ms: native.metrics.totalMs,
+          wall_ms: native.metrics.wallMs,
+          audio_duration_sec: native.metrics.audioDurationSec,
+          rtf: native.metrics.rtf,
+          rtfx: native.metrics.rtfx,
+          preprocessor_backend_requested: native.metrics.requestedPreprocessorBackend,
+          preprocessor_backend: native.metrics.preprocessorBackend,
+          audio_decode_ms: native.metrics.decodeAudioMs,
+          downmix_ms: native.metrics.downmixMs,
+          resample_ms: native.metrics.resampleMs,
+          audio_preparation_ms: native.metrics.audioPreparationMs,
+          input_sample_rate: native.metrics.inputSampleRate,
+          output_sample_rate: native.metrics.outputSampleRate,
+          resampler: native.metrics.resampler,
+          resampler_quality: native.metrics.resamplerQuality,
+          encoder_frame_count: native.metrics.encoderFrameCount,
+          decode_iterations: native.metrics.decodeIterations,
+          emitted_token_count: native.metrics.emittedTokenCount,
+          emitted_word_count: native.metrics.emittedWordCount,
+        }
+      : undefined,
+    is_final: native.isFinal,
   };
 }
 
 function mapTranscribeOptions(
-  options: LegacyParakeetTranscribeOptions = {}
+  options: LegacyParakeetTranscribeOptions = {},
 ): NemoTdtTranscriptionOptions & { readonly responseFlavor: 'native' } {
   return {
     detail: options.returnTimestamps ? 'words' : 'text',
@@ -423,17 +505,21 @@ function mapTranscribeOptions(
     returnLogProbs: options.returnLogProbs,
     returnTdtSteps: options.returnTdtSteps,
     returnDecoderState: options.returnDecoderState,
-    returnTokenIds: options.returnTokenIds
+    returnTokenIds: options.returnTokenIds,
   };
 }
 
-export function formatResolvedQuantization(quantisation: ParakeetModelUrls['quantisation']): string {
+/** Formats the resolved encoder/decoder quantization for UI logging and diagnostics. */
+export function formatResolvedQuantization(
+  quantisation: ParakeetModelUrls['quantisation'],
+): string {
   return `Resolved quantization: encoder=${quantisation.encoder}, decoder=${quantisation.decoder}`;
 }
 
+/** Resolves a Parakeet model bundle from the Hugging Face hub into concrete artifact URLs. */
 export async function getParakeetModel(
   repoIdOrModelKey: string,
-  options: GetParakeetModelOptions = {}
+  options: GetParakeetModelOptions = {},
 ): Promise<ParakeetModelUrls> {
   const modelConfig = getModelConfig(repoIdOrModelKey);
   const repoId = modelConfig?.repoId || repoIdOrModelKey;
@@ -443,18 +529,41 @@ export async function getParakeetModel(
   const backend = options.backend ?? 'webgpu-hybrid';
   const repoFiles = await fetchModelFiles(repoId, revision);
 
+  const preferredSetup = getParakeetDefaultWeightSetup(repoIdOrModelKey, backend);
   const encoderAvailable = getAvailableQuantModes(repoFiles, 'encoder-model');
   const decoderAvailable = getAvailableQuantModes(repoFiles, 'decoder_joint-model');
-  const encoderQuant = options.encoderQuant ?? pickPreferredQuant(encoderAvailable, backend, 'encoder');
-  const decoderQuant = options.decoderQuant ?? pickPreferredQuant(decoderAvailable, backend, 'decoder');
+  const encoderQuant =
+    options.encoderQuant ??
+    preferredSetup.encoderPreferred.find((quantization) =>
+      encoderAvailable.includes(quantization),
+    ) ??
+    pickPreferredQuant(encoderAvailable, backend, 'encoder');
+  const decoderQuant =
+    options.decoderQuant ??
+    preferredSetup.decoderPreferred.find((quantization) =>
+      decoderAvailable.includes(quantization),
+    ) ??
+    pickPreferredQuant(decoderAvailable, backend, 'decoder');
   const encoderFilename = getQuantizedModelName('encoder-model', encoderQuant);
   const decoderFilename = getQuantizedModelName('decoder_joint-model', decoderQuant);
 
-  if (encoderQuant === 'fp16' && !repoFiles.includes(encoderFilename) && !repoFiles.some((path) => path.endsWith(`/${encoderFilename}`))) {
-    throw new Error(`[Hub] Encoder FP16 file is missing in ${repoId}. Choose encoderQuant='fp32' explicitly.`);
+  if (
+    encoderQuant === 'fp16' &&
+    !repoFiles.includes(encoderFilename) &&
+    !repoFiles.some((path) => path.endsWith(`/${encoderFilename}`))
+  ) {
+    throw new Error(
+      `[Hub] Encoder FP16 file is missing in ${repoId}. Choose encoderQuant='fp32' explicitly.`,
+    );
   }
-  if (decoderQuant === 'fp16' && !repoFiles.includes(decoderFilename) && !repoFiles.some((path) => path.endsWith(`/${decoderFilename}`))) {
-    throw new Error(`[Hub] Decoder FP16 file is missing in ${repoId}. Choose decoderQuant='fp32' explicitly.`);
+  if (
+    decoderQuant === 'fp16' &&
+    !repoFiles.includes(decoderFilename) &&
+    !repoFiles.some((path) => path.endsWith(`/${decoderFilename}`))
+  ) {
+    throw new Error(
+      `[Hub] Decoder FP16 file is missing in ${repoId}. Choose decoderQuant='fp32' explicitly.`,
+    );
   }
 
   const urls: {
@@ -465,57 +574,85 @@ export async function getParakeetModel(
     encoderDataUrl?: string | null;
     decoderDataUrl?: string | null;
   } = {
-    encoderUrl: await getModelFile(repoId, encoderFilename, { revision, progress: options.progress }),
-    decoderUrl: await getModelFile(repoId, decoderFilename, { revision, progress: options.progress }),
-    tokenizerUrl: await getModelFile(repoId, 'vocab.txt', { revision, progress: options.progress })
+    encoderUrl: await getModelFile(repoId, encoderFilename, {
+      revision,
+      progress: options.progress,
+    }),
+    decoderUrl: await getModelFile(repoId, decoderFilename, {
+      revision,
+      progress: options.progress,
+    }),
+    tokenizerUrl: await getModelFile(repoId, 'vocab.txt', { revision, progress: options.progress }),
   };
 
-  if (preprocessorBackend !== 'js') {
-    urls.preprocessorUrl = await getModelFile(repoId, `${preprocessor}.onnx`, {
-      revision,
-      progress: options.progress
-    });
-  }
+  // The restored Parakeet/TDT path still executes the ONNX mel frontend.
+  // Keep downloading the preprocessor artifact even when callers request the
+  // future JS mode so the executor can fall back cleanly.
+  urls.preprocessorUrl = await getModelFile(repoId, getRequiredPreprocessorFilename(preprocessor), {
+    revision,
+    progress: options.progress,
+  });
 
   const encoderDataName = `${encoderFilename}.data`;
   const decoderDataName = `${decoderFilename}.data`;
-  const hasEncoderData = repoFiles.some((path) => path === encoderDataName || path.endsWith(`/${encoderDataName}`));
-  const hasDecoderData = repoFiles.some((path) => path === decoderDataName || path.endsWith(`/${decoderDataName}`));
+  const hasEncoderData = repoFiles.some(
+    (path) => path === encoderDataName || path.endsWith(`/${encoderDataName}`),
+  );
+  const hasDecoderData = repoFiles.some(
+    (path) => path === decoderDataName || path.endsWith(`/${decoderDataName}`),
+  );
 
   if (hasEncoderData) {
-    urls.encoderDataUrl = await getModelFile(repoId, encoderDataName, { revision, progress: options.progress });
+    urls.encoderDataUrl = await getModelFile(repoId, encoderDataName, {
+      revision,
+      progress: options.progress,
+    });
   }
   if (hasDecoderData) {
-    urls.decoderDataUrl = await getModelFile(repoId, decoderDataName, { revision, progress: options.progress });
+    urls.decoderDataUrl = await getModelFile(repoId, decoderDataName, {
+      revision,
+      progress: options.progress,
+    });
   }
 
   return {
     urls,
     filenames: {
       encoder: encoderFilename,
-      decoder: decoderFilename
+      decoder: decoderFilename,
     },
     quantisation: {
       encoder: encoderQuant,
-      decoder: decoderQuant
+      decoder: decoderQuant,
     },
     modelConfig,
-    preprocessorBackend
+    preprocessorBackend,
   };
 }
 
+/**
+ * Loads a Parakeet model with an automatic FP16-to-FP32 retry when compilation
+ * fails on platforms that cannot run the preferred precision.
+ */
 export async function loadModelWithFallback({
   repoIdOrModelKey,
   options,
   getParakeetModelFn,
   fromUrlsFn,
-  onBeforeCompile
+  onBeforeCompile,
 }: {
   readonly repoIdOrModelKey: string;
   readonly options: GetParakeetModelOptions;
-  readonly getParakeetModelFn: (repoIdOrModelKey: string, options: GetParakeetModelOptions) => Promise<ParakeetModelUrls>;
+  readonly getParakeetModelFn: (
+    repoIdOrModelKey: string,
+    options: GetParakeetModelOptions,
+  ) => Promise<ParakeetModelUrls>;
   readonly fromUrlsFn: (config: ParakeetFromUrlsConfig) => Promise<ParakeetModel>;
-  readonly onBeforeCompile?: (ctx: { attempt: number; modelUrls: ParakeetModelUrls; options: GetParakeetModelOptions }) => void;
+  readonly onBeforeCompile?: (ctx: {
+    attempt: number;
+    modelUrls: ParakeetModelUrls;
+    options: GetParakeetModelOptions;
+  }) => void;
 }): Promise<{ model: ParakeetModel; modelUrls: ParakeetModelUrls; retryUsed: boolean }> {
   const firstModelUrls = await getParakeetModelFn(repoIdOrModelKey, options);
   onBeforeCompile?.({ attempt: 1, modelUrls: firstModelUrls, options });
@@ -536,9 +673,12 @@ export async function loadModelWithFallback({
       retryModelUrls = await getParakeetModelFn(repoIdOrModelKey, retryOptions);
     } catch (retryDownloadError) {
       const firstMessage = firstError instanceof Error ? firstError.message : String(firstError);
-      const retryDownloadMessage = retryDownloadError instanceof Error ? retryDownloadError.message : String(retryDownloadError);
+      const retryDownloadMessage =
+        retryDownloadError instanceof Error
+          ? retryDownloadError.message
+          : String(retryDownloadError);
       throw new Error(
-        `[ModelLoader] Initial compile failed (${firstMessage}). FP32 retry download failed (${retryDownloadMessage}).`
+        `[ModelLoader] Initial compile failed (${firstMessage}). FP32 retry download failed (${retryDownloadMessage}).`,
       );
     }
 
@@ -551,52 +691,63 @@ export async function loadModelWithFallback({
       const firstMessage = firstError instanceof Error ? firstError.message : String(firstError);
       const retryMessage = retryError instanceof Error ? retryError.message : String(retryError);
       throw new Error(
-        `[ModelLoader] Initial compile failed (${firstMessage}). FP32 retry also failed (${retryMessage}).`
+        `[ModelLoader] Initial compile failed (${firstMessage}). FP32 retry also failed (${retryMessage}).`,
       );
     }
   }
 }
 
+/** Convenience wrapper around `loadModelWithFallback()` for the built-in Parakeet hub loader. */
 export async function loadParakeetModelWithFallback(
   repoIdOrModelKey: string,
-  options: GetParakeetModelOptions
+  options: GetParakeetModelOptions,
 ): Promise<{ model: ParakeetModel; modelUrls: ParakeetModelUrls; retryUsed: boolean }> {
   return loadModelWithFallback({
     repoIdOrModelKey,
     options,
     getParakeetModelFn: getParakeetModel,
-    fromUrlsFn: ParakeetModel.fromUrls
+    fromUrlsFn: ParakeetModel.fromUrls,
   });
 }
 
+/**
+ * Selects concrete local artifacts for a Parakeet model and returns owned asset
+ * handles that must be disposed once the model is no longer needed.
+ */
 export async function resolveParakeetLocalEntries(
   entries: readonly ParakeetLocalEntry[],
-  options: ResolveParakeetLocalEntriesOptions = {}
+  options: ResolveParakeetLocalEntriesOptions = {},
 ): Promise<ResolvedParakeetLocalArtifacts> {
   if (entries.length === 0) {
     throw new Error('Pick a local model folder first.');
   }
 
   const inspection = inspectParakeetLocalEntries(entries);
-  const encoderQuant = options.encoderQuant
-    ?? pickPreferredQuant(
-      inspection.encoderQuantizations.length > 0 ? inspection.encoderQuantizations : ['fp32'],
-      options.backend ?? 'webgpu-hybrid',
-      'encoder'
-    );
-  const decoderQuant = options.decoderQuant
-    ?? pickPreferredQuant(
-      inspection.decoderQuantizations.length > 0 ? inspection.decoderQuantizations : ['fp32'],
-      options.backend ?? 'webgpu-hybrid',
-      'decoder'
-    );
+  const backend = options.backend ?? 'webgpu-hybrid';
+  const preferredSetup = getParakeetDefaultWeightSetup(options.modelId ?? DEFAULT_MODEL, backend);
+  const availableEncoderQuantizations: readonly QuantizationMode[] =
+    inspection.encoderQuantizations.length > 0 ? inspection.encoderQuantizations : ['fp32'];
+  const availableDecoderQuantizations: readonly QuantizationMode[] =
+    inspection.decoderQuantizations.length > 0 ? inspection.decoderQuantizations : ['fp32'];
+  const encoderQuant =
+    options.encoderQuant ??
+    preferredSetup.encoderPreferred.find((quantization) =>
+      availableEncoderQuantizations.includes(quantization),
+    ) ??
+    pickPreferredQuant(availableEncoderQuantizations, backend, 'encoder');
+  const decoderQuant =
+    options.decoderQuant ??
+    preferredSetup.decoderPreferred.find((quantization) =>
+      availableDecoderQuantizations.includes(quantization),
+    ) ??
+    pickPreferredQuant(availableDecoderQuantizations, backend, 'decoder');
   const encoderName = getQuantizedModelName('encoder-model', encoderQuant);
   const decoderName = getQuantizedModelName('decoder_joint-model', decoderQuant);
   const tokenizerName = options.tokenizerName ?? inspection.tokenizerNames[0];
   const preprocessorBackend = options.preprocessorBackend ?? 'js';
-  const preprocessorName = preprocessorBackend === 'onnx'
-    ? `${options.preprocessorName ?? inspection.preprocessorNames[0] ?? 'nemo128'}.onnx`
-    : undefined;
+  const preprocessorName = getRequiredPreprocessorFilename(
+    options.preprocessorName ?? inspection.preprocessorNames[0] ?? 'nemo128',
+  );
 
   const encoderEntry = findLocalEntry(entries, encoderName);
   const decoderEntry = findLocalEntry(entries, decoderName);
@@ -612,20 +763,30 @@ export async function resolveParakeetLocalEntries(
     throw new Error(`Missing tokenizer file: ${tokenizerName ?? 'vocab.txt'}`);
   }
 
-  const blobUrls: string[] = [];
-  const toBlobUrl = async (entry: ParakeetLocalEntry): Promise<string> => {
+  const assetProvider = createBlobAssetProvider();
+  const assetHandles: ResolvedAssetHandle[] = [];
+  const toLocator = async (entry: ParakeetLocalEntry): Promise<string> => {
     const file = await getParakeetLocalEntryFile(entry);
-    const url = URL.createObjectURL(file);
-    blobUrls.push(url);
-    return url;
+    const handle = await assetProvider.resolve({
+      id: entry.path,
+      provider: 'blob',
+      blob: file instanceof Blob ? file : new Blob([file]),
+    });
+    assetHandles.push(handle);
+    const locator = await handle.getLocator('url');
+    if (!locator) {
+      throw new Error(`Could not create a URL locator for local asset "${entry.path}".`);
+    }
+    return locator;
   };
 
   try {
-    const preprocessorEntry = preprocessorName
-      ? findLocalEntry(entries, preprocessorName)
-      : null;
+    const preprocessorEntry = preprocessorName ? findLocalEntry(entries, preprocessorName) : null;
     if (preprocessorName && !preprocessorEntry) {
-      throw new Error(`Missing preprocessor file: ${preprocessorName} (switch to JS preprocessor or add file to folder).`);
+      throw new Error(
+        `Missing preprocessor file: ${preprocessorName}. ` +
+          'The restored @asrjs/speech-recognition Parakeet/TDT path still needs the ONNX preprocessor artifact, even when JS preprocessing is requested.',
+      );
     }
 
     const encoderDataEntry = findLocalEntry(entries, `${encoderEntry.basename}.data`);
@@ -634,71 +795,88 @@ export async function resolveParakeetLocalEntries(
 
     const config: ParakeetFromUrlsConfig = {
       modelId: options.modelId,
-      encoderUrl: await toBlobUrl(encoderEntry),
-      decoderUrl: await toBlobUrl(decoderEntry),
-      tokenizerUrl: await toBlobUrl(tokenizerEntry),
-      preprocessorUrl: preprocessorEntry ? await toBlobUrl(preprocessorEntry) : undefined,
-      encoderDataUrl: encoderDataEntry ? await toBlobUrl(encoderDataEntry) : undefined,
-      decoderDataUrl: decoderDataEntry ? await toBlobUrl(decoderDataEntry) : undefined,
+      encoderUrl: await toLocator(encoderEntry),
+      decoderUrl: await toLocator(decoderEntry),
+      tokenizerUrl: await toLocator(tokenizerEntry),
+      preprocessorUrl: preprocessorEntry ? await toLocator(preprocessorEntry) : undefined,
+      encoderDataUrl: encoderDataEntry ? await toLocator(encoderDataEntry) : undefined,
+      decoderDataUrl: decoderDataEntry ? await toLocator(decoderDataEntry) : undefined,
       filenames: {
         encoder: encoderEntry.basename,
-        decoder: decoderEntry.basename
+        decoder: decoderEntry.basename,
       },
       preprocessorBackend,
       backend: options.backend,
       verbose: options.verbose,
       cpuThreads: options.cpuThreads,
       enableProfiling: options.enableProfiling,
-      runtime: options.runtime
+      runtime: options.runtime,
     };
 
     return {
       config,
+      assetHandles,
       selection: {
         encoderName,
         decoderName,
         tokenizerName: resolvedTokenizerName,
         preprocessorName,
         encoderQuant,
-        decoderQuant
-      }
+        decoderQuant,
+      },
     };
   } catch (error) {
-    createBlobUrlCleanup(blobUrls)();
+    await Promise.all(
+      assetHandles.map(async (handle) => {
+        await handle.dispose();
+      }),
+    );
     throw error;
   }
 }
 
+/** Loads a Parakeet model directly from a previously collected local folder. */
 export async function loadParakeetModelFromLocalEntries(
   entries: readonly ParakeetLocalEntry[],
-  options: ResolveParakeetLocalEntriesOptions = {}
+  options: ResolveParakeetLocalEntriesOptions = {},
 ): Promise<{ model: ParakeetModel; selection: ResolvedParakeetLocalArtifacts['selection'] }> {
   const resolved = await resolveParakeetLocalEntries(entries, options);
   const model = await ParakeetModel.fromResolvedLocalArtifacts(resolved);
   return {
     model,
-    selection: resolved.selection
+    selection: resolved.selection,
   };
 }
 
+/**
+ * Thin compatibility wrapper that exposes Parakeet-style loading and legacy JSON
+ * transcript output on top of the `@asrjs/speech-recognition` runtime.
+ */
 export class ParakeetModel {
   constructor(
     private readonly runtime: DefaultSpeechRuntime,
-    private readonly model: SpeechModel<NemoTdtModelOptions, NemoTdtTranscriptionOptions, NemoTdtNativeTranscript>,
+    private readonly model: SpeechModel<
+      NemoTdtModelOptions,
+      NemoTdtTranscriptionOptions,
+      NemoTdtNativeTranscript
+    >,
     private readonly session: SpeechSession<NemoTdtTranscriptionOptions, NemoTdtNativeTranscript>,
-    private readonly onDispose?: () => void | Promise<void>
+    private readonly onDispose?: () => void | Promise<void>,
   ) {}
 
+  /** Creates a Parakeet model from explicitly provided artifact URLs. */
   static async fromUrls(config: ParakeetFromUrlsConfig): Promise<ParakeetModel> {
-    const runtime = config.runtime ?? createBuiltInSpeechRuntime({
-      hooks: {
-        logger: createConsoleLogger(config.verbose)
-      }
-    });
+    const runtime =
+      config.runtime ??
+      createBuiltInSpeechRuntime({
+        hooks: {
+          logger: createConsoleLogger(config.verbose),
+        },
+      });
 
     const modelId = config.modelId ?? DEFAULT_MODEL;
-    const model = await runtime.loadModel<NemoTdtModelOptions, NemoTdtTranscriptionOptions, NemoTdtNativeTranscript>({
-      family: 'parakeet',
+    const model = await runtime.loadModel<NemoTdtModelOptions, NemoTdtNativeTranscript>({
+      preset: 'parakeet',
       modelId,
       backend: normalizeBackendId(config.backend),
       options: {
@@ -712,56 +890,64 @@ export class ParakeetModel {
             encoderDataUrl: config.encoderDataUrl ?? undefined,
             decoderDataUrl: config.decoderDataUrl ?? undefined,
             encoderFilename: config.filenames?.encoder,
-            decoderFilename: config.filenames?.decoder
+            decoderFilename: config.filenames?.decoder,
           },
           preprocessorBackend: config.preprocessorBackend,
           cpuThreads: config.cpuThreads,
-          enableProfiling: config.enableProfiling
-        }
-      }
+          enableProfiling: config.enableProfiling,
+        },
+      },
     });
     const session = await model.createSession();
     return new ParakeetModel(runtime, model, session);
   }
 
+  /** Creates a Parakeet model from a local folder represented by collected entries. */
   static async fromLocalEntries(
     entries: readonly ParakeetLocalEntry[],
-    options: ResolveParakeetLocalEntriesOptions = {}
+    options: ResolveParakeetLocalEntriesOptions = {},
   ): Promise<ParakeetModel> {
     const resolved = await resolveParakeetLocalEntries(entries, options);
     return ParakeetModel.fromResolvedLocalArtifacts(resolved);
   }
 
+  /** Creates a Parakeet model from already resolved local artifacts and owned asset handles. */
   static async fromResolvedLocalArtifacts(
-    resolved: ResolvedParakeetLocalArtifacts
+    resolved: ResolvedParakeetLocalArtifacts,
   ): Promise<ParakeetModel> {
-    const blobUrls = collectBlobUrlsFromConfig(resolved.config);
     const model = await ParakeetModel.fromUrls(resolved.config);
-    return new ParakeetModel(
-      model.runtime,
-      model.model,
-      model.session,
-      createBlobUrlCleanup(blobUrls)
-    );
+    return new ParakeetModel(model.runtime, model.model, model.session, async () => {
+      await Promise.all(
+        resolved.assetHandles.map(async (handle) => {
+          await handle.dispose();
+        }),
+      );
+    });
   }
 
-  static async fromHub(repoIdOrModelKey: string, options: GetParakeetModelOptions = {}): Promise<ParakeetModel> {
+  /** Resolves and loads a Parakeet model directly from the Hugging Face hub. */
+  static async fromHub(
+    repoIdOrModelKey: string,
+    options: GetParakeetModelOptions = {},
+  ): Promise<ParakeetModel> {
     const urls = await getParakeetModel(repoIdOrModelKey, options);
     return ParakeetModel.fromUrls(toFromUrlsConfig(urls, options));
   }
 
+  /** Runs transcription and converts the native NeMo-TDT output into legacy Parakeet JSON. */
   async transcribe(
     pcm: Float32Array,
     sampleRate: number,
-    options: LegacyParakeetTranscribeOptions = {}
+    options: LegacyParakeetTranscribeOptions = {},
   ): Promise<LegacyParakeetTranscript> {
     const native = await this.session.transcribe(
       PcmAudioBuffer.fromMono(pcm, sampleRate),
-      mapTranscribeOptions(options)
+      mapTranscribeOptions(options),
     );
     return toLegacyTranscript(native);
   }
 
+  /** Releases the session, model, and any temporary local asset handles owned by this wrapper. */
   async dispose(): Promise<void> {
     await this.session.dispose();
     await this.model.dispose();

@@ -1,60 +1,93 @@
 import { describe, expect, it } from 'vitest';
 
 describe('public exports', () => {
-  it('exposes the single-package API surface', async () => {
-    const module = await import('asr.js');
+  it('keeps the root API focused on runtime-critical surfaces', async () => {
+    const module = await import('@asrjs/speech-recognition');
 
     expect(module.TranscriptDetailLevel).toBeUndefined();
     expect(module.DefaultSpeechRuntime).toBeTypeOf('function');
+    expect(module.createSpeechRuntime).toBeTypeOf('function');
+    expect(module.loadSpeechModel).toBeTypeOf('function');
     expect(module.PcmAudioBuffer).toBeTypeOf('function');
-    expect(module.FASTCONFORMER_ENCODER.kind).toBe('fastconformer');
-    expect(module.CTC_HEAD_DECODER.kind).toBe('ctc-head');
-    expect(module.estimateFrameBasedProcessorDescriptor).toBeTypeOf('function');
-    expect(module.StubSentencePieceTokenizer).toBeTypeOf('function');
-    expect(module.createDecodingDescriptor).toBeTypeOf('function');
-    expect(module.DefaultStreamingTranscriber).toBeTypeOf('function');
     expect(module.createWasmBackend).toBeTypeOf('function');
     expect(module.createWebGpuBackend).toBeTypeOf('function');
     expect(module.createWebNnBackend).toBeTypeOf('function');
     expect(module.createWebGlBackend).toBeTypeOf('function');
-    expect(module.createBuiltInSpeechRuntime).toBeTypeOf('function');
-    expect(module.fetchModelFiles).toBeTypeOf('function');
-    expect(module.createModelClassification).toBeTypeOf('function');
-    expect(module.AudioFeatureCache).toBeTypeOf('function');
-    expect(module.AudioChunker).toBeTypeOf('function');
-    expect(module.LayeredAudioBuffer).toBeTypeOf('function');
-    expect(module.AudioRingBuffer).toBeTypeOf('function');
-    expect(module.VoiceActivityTimeline).toBeTypeOf('function');
-    expect(module.StreamingWindowBuilder).toBeTypeOf('function');
-    expect(module.UtteranceTranscriptMerger).toBeTypeOf('function');
-    expect(module.RealtimeTranscriptionController).toBeTypeOf('function');
-    expect(module.fetchDatasetSplits).toBeTypeOf('function');
-    expect(module.fetchRandomRows).toBeTypeOf('function');
-    expect(module.summarizeNumericSeries).toBeTypeOf('function');
-    expect(module.benchmarkRunRecordsToCsv).toBeTypeOf('function');
-    expect(module.decodeAudioSourceToMonoPcm).toBeTypeOf('function');
-    expect(module.startMicrophoneCapture).toBeTypeOf('function');
-    expect(module.FrameAlignedTokenMerger).toBeTypeOf('function');
-    expect(module.LcsPtfaTokenMerger).toBeTypeOf('function');
     expect(module.createNemoTdtTranscriptNormalizer).toBeTypeOf('function');
-    expect(module.createHfCtcTranscriptNormalizer).toBeTypeOf('function');
-    expect(module.createWhisperTranscriptNormalizer).toBeTypeOf('function');
-    expect(module.createLegacyParakeetTranscriptNormalizer).toBeTypeOf('function');
-    expect(module.normalizeNemoTdtTranscript).toBeTypeOf('function');
-    expect(module.normalizeHfCtcTranscript).toBeTypeOf('function');
-    expect(module.normalizeWhisperTranscript).toBeTypeOf('function');
-    expect(module.normalizeLegacyParakeetTranscript).toBeTypeOf('function');
     expect(module.getCanonicalTranscript).toBeTypeOf('function');
-    expect(module.isTranscriptionEnvelope).toBeTypeOf('function');
-    expect(module.createNemoTdtModelFamily).toBeTypeOf('function');
-    expect(module.createHfCtcModelFamily).toBeTypeOf('function');
-    expect(module.createWhisperSeq2SeqModelFamily).toBeTypeOf('function');
-    expect(module.createParakeetPresetFactory).toBeTypeOf('function');
-    expect(module.createMedAsrPresetFactory).toBeTypeOf('function');
-    expect(module.createWhisperPresetFactory).toBeTypeOf('function');
-    expect(module.ParakeetModel).toBeTypeOf('function');
-    expect(module.getParakeetModel).toBeTypeOf('function');
-    expect(module.loadParakeetModelWithFallback).toBeTypeOf('function');
-    expect(module.MODELS['parakeet-tdt-0.6b-v2']).toBeTruthy();
+
+    expect(module.createBuiltInSpeechRuntime).toBeUndefined();
+    expect(module.fetchModelFiles).toBeUndefined();
+    expect(module.argmax).toBeUndefined();
+    expect(module.FASTCONFORMER_ENCODER).toBeUndefined();
+    expect(module.DefaultStreamingTranscriber).toBeUndefined();
+    expect(module.createNemoTdtModelFamily).toBeUndefined();
+    expect(module.createParakeetPresetFactory).toBeUndefined();
+    expect(module.ParakeetModel).toBeUndefined();
+    expect(module.decodeAudioSourceToMonoPcm).toBeUndefined();
+    expect(module.AudioRingBuffer).toBeUndefined();
+    expect(module.fetchDatasetSplits).toBeUndefined();
+    expect(module.benchmarkRunRecordsToCsv).toBeUndefined();
+  });
+
+  it('exposes layered helper, model, and preset subpaths', async () => {
+    const builtins = await import('@asrjs/speech-recognition/builtins');
+    const io = await import('@asrjs/speech-recognition/io');
+    const ioNode = await import('@asrjs/speech-recognition/io/node');
+    const inference = await import('@asrjs/speech-recognition/inference');
+    const browser = await import('@asrjs/speech-recognition/browser');
+    const realtime = await import('@asrjs/speech-recognition/realtime');
+    const bench = await import('@asrjs/speech-recognition/bench');
+    const datasets = await import('@asrjs/speech-recognition/datasets');
+    const nemoTdt = await import('@asrjs/speech-recognition/models/nemo-tdt');
+    const hfCtc = await import('@asrjs/speech-recognition/models/hf-ctc-common');
+    const whisperModel = await import('@asrjs/speech-recognition/models/whisper-seq2seq');
+    const parakeetPreset = await import('@asrjs/speech-recognition/presets/parakeet');
+    const medasrPreset = await import('@asrjs/speech-recognition/presets/medasr');
+    const whisperPreset = await import('@asrjs/speech-recognition/presets/whisper');
+
+    expect(builtins.createBuiltInSpeechRuntime).toBeTypeOf('function');
+    expect(builtins.loadBuiltInSpeechModel).toBeTypeOf('function');
+    expect(builtins.registerBuiltInModelFamilies).toBeTypeOf('function');
+    expect(builtins.registerBuiltInPresets).toBeTypeOf('function');
+
+    expect(io.fetchModelFiles).toBeTypeOf('function');
+    expect(io.getModelFile).toBeTypeOf('function');
+    expect(io.pickPreferredQuant).toBeTypeOf('function');
+    expect(io.createDefaultAssetProvider).toBeTypeOf('function');
+    expect(io.createHuggingFaceAssetProvider).toBeTypeOf('function');
+    expect(io.createNodeFileSystemAssetProvider).toBeUndefined();
+
+    expect(ioNode.createNodeFileSystemAssetProvider).toBeTypeOf('function');
+    expect(ioNode.createDefaultNodeAssetProvider).toBeTypeOf('function');
+
+    expect(inference.FASTCONFORMER_ENCODER.kind).toBe('fastconformer');
+    expect(inference.CTC_HEAD_DECODER.kind).toBe('ctc-head');
+    expect(inference.argmax).toBeTypeOf('function');
+    expect(inference.confidenceFromLogits).toBeTypeOf('function');
+    expect(inference.DefaultStreamingTranscriber).toBeTypeOf('function');
+    expect(inference.FrameAlignedTokenMerger).toBeTypeOf('function');
+    expect(inference.LcsPtfaTokenMerger).toBeTypeOf('function');
+
+    expect(browser.decodeAudioSourceToMonoPcm).toBeTypeOf('function');
+    expect(browser.startMicrophoneCapture).toBeTypeOf('function');
+    expect(realtime.AudioFeatureCache).toBeTypeOf('function');
+    expect(realtime.AudioRingBuffer).toBeTypeOf('function');
+    expect(realtime.RealtimeTranscriptionController).toBeTypeOf('function');
+    expect(bench.summarizeNumericSeries).toBeTypeOf('function');
+    expect(bench.benchmarkRunRecordsToCsv).toBeTypeOf('function');
+    expect(datasets.fetchDatasetSplits).toBeTypeOf('function');
+    expect(datasets.fetchRandomRows).toBeTypeOf('function');
+
+    expect(nemoTdt.createNemoTdtModelFamily).toBeTypeOf('function');
+    expect(hfCtc.createHfCtcModelFamily).toBeTypeOf('function');
+    expect(whisperModel.createWhisperSeq2SeqModelFamily).toBeTypeOf('function');
+
+    expect(parakeetPreset.createParakeetPresetFactory).toBeTypeOf('function');
+    expect(parakeetPreset.ParakeetModel).toBeTypeOf('function');
+    expect(parakeetPreset.getParakeetModel).toBeTypeOf('function');
+    expect(parakeetPreset.loadParakeetModelWithFallback).toBeTypeOf('function');
+    expect(medasrPreset.createMedAsrPresetFactory).toBeTypeOf('function');
+    expect(whisperPreset.createWhisperPresetFactory).toBeTypeOf('function');
   });
 });

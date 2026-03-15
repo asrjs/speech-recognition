@@ -1,0 +1,53 @@
+{
+  "audio_seconds": 421,
+  "pipeline_options": {
+    "return_timestamps": true
+  },
+  "output_file": "N:\\github\\ysdede\\transformers-v4-parakeet-demo\\parrot-7min-nemo-auto-windowed-segments.json",
+  "reference_field": "transcription",
+  "cleanup": [
+    "remove NEWLINE",
+    "remove PARAGRAPH",
+    "collapse whitespace"
+  ],
+  "text_equal": false,
+  "ref_word_count": 775,
+  "hyp_word_count": 766,
+  "first_mismatch_index": 1,
+  "first_mismatch": {
+    "ref": [
+      "Body",
+      "Scan",
+      "Date:",
+      "20/03/2021",
+      "Indication",
+      "Motorcycle",
+      "accident,",
+      "facial",
+      "trauma."
+    ],
+    "hyp": [
+      "Body",
+      "scan.",
+      "Date",
+      "March20th,2021.",
+      "Indication.",
+      "Motorcycle",
+      "accident,",
+      "facial",
+      "trauma."
+    ]
+  },
+  "sample_no_space_tokens": [
+    "March20th,2021.",
+    "at4.",
+    "at8",
+    "lay-fought3",
+    "V2",
+    "teeth35",
+    "and36.",
+    "Fort3",
+    "V2"
+  ],
+  "text_head": "Body scan. Date March20th,2021. Indication. Motorcycle accident, facial trauma. Suspected posterior epistaxis. Pelvic pain. Elevated lactate level at4. Negative FIST ultrasound. Technique. CT scan performed without contrast on the brain. followed by contrast-enhanced arterial phase imaging of the suprajiortic trunks, chest, and abdomen down to the knees, and portal phase imaging of the abdomen and pelvis. Additional delayed imaging at8 minutes for the urinary system. Contrast dose. DLP for the brain, milligram centimeter, DLP for the trunk, milligray centimeter. Result. Brain. Small bilateral "
+}

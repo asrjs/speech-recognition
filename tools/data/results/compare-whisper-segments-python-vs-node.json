@@ -1,0 +1,60 @@
+{
+  "python": {
+    "file": "N:\\github\\ysdede\\transformers-v4-parakeet-demo\\docs\\results\\hf-whisper-base-jfk-python.json",
+    "case": "segments_chunked",
+    "model": "openai/whisper-base",
+    "chunk_count": 3
+  },
+  "node": {
+    "file": "N:\\github\\ysdede\\transformers-v4-parakeet-demo\\docs\\results\\whisper-base-jfk-node-segments.json",
+    "model": "Xenova/whisper-base",
+    "mode": "segments",
+    "chunk_count": 23
+  },
+  "normalized_text_equal": false,
+  "first_chunk_mismatch": {
+    "index": 0,
+    "left": {
+      "timestamp": [
+        0,
+        46.52
+      ],
+      "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it."
+    },
+    "right": {
+      "timestamp": [
+        0,
+        11.24
+      ],
+      "text": " In the long history of the world, only a few generations have been granted the role of"
+    }
+  },
+  "python_first_chunk": {
+    "timestamp": [
+      0,
+      46.52
+    ],
+    "text": " In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange places with any other people or any other generation, the energy, the faith, the devotion which we bring to this endeavor will light our country and all who serve it."
+  },
+  "node_first_chunk": {
+    "timestamp": [
+      0,
+      11.24
+    ],
+    "text": " In the long history of the world, only a few generations have been granted the role of"
+  },
+  "python_last_chunk": {
+    "timestamp": [
+      65.56,
+      129
+    ],
+    "text": " Woo! Woo! Woo! Woo! My fellow citizens of the world, if not, what America will do for you, but what together we can do for the freedom of man. Finally, whether you are citizens of America or citizens of the world, ask of us here the same high standards of strength and sacrificing which we ask of you. With a good conscience, our only sure reward with history the final judge of our deeds, let us go forth to lead the land we love, asking His blessing and His help. But knowing that here on earth, God's work must truly be our own."
+  },
+  "node_last_chunk": {
+    "timestamp": [
+      123.02,
+      129
+    ],
+    "text": " But knowing that here on earth, God's work must truly be our own."
+  }
+}

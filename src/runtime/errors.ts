@@ -37,4 +37,3 @@ export class NotImplementedSpeechFeatureError extends SpeechRuntimeError {
     super(message, 'not-implemented-speech-feature', details);
   }
 }
-

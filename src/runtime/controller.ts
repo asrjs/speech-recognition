@@ -1,11 +1,11 @@
-import { normalizePcmInput, PcmAudioBuffer } from '../processors/index.js';
+import { normalizePcmInput, PcmAudioBuffer } from '../audio/index.js';
 import type {
   AudioInputLike,
   PartialTranscript,
   TranscriptMeta,
   TranscriptResult,
   TranscriptWarning,
-  VoiceActivityDetector
+  VoiceActivityDetector,
 } from '../types/index.js';
 import {
   AudioRingBuffer,
@@ -14,9 +14,13 @@ import {
   type StreamingWindowBuilderOptions,
   UtteranceTranscriptMerger,
   type UtteranceTranscriptMergerOptions,
-  type UtteranceTranscriptSnapshot
+  type UtteranceTranscriptSnapshot,
 } from './realtime.js';
-import { VoiceActivityTimeline, type VoiceActivityObservation, type VoiceActivityTimelineSnapshot } from './vad.js';
+import {
+  VoiceActivityTimeline,
+  type VoiceActivityObservation,
+  type VoiceActivityTimelineSnapshot,
+} from './vad.js';
 
 export interface RealtimeTranscriptionRequest {
   readonly pcm: Float32Array;
@@ -33,7 +37,7 @@ export interface RealtimeTranscriptionRequest {
 }
 
 export type RealtimeTranscriptionCallback = (
-  request: RealtimeTranscriptionRequest
+  request: RealtimeTranscriptionRequest,
 ) => Promise<TranscriptResult> | TranscriptResult;
 
 export interface RealtimeControllerPushOptions {
@@ -84,25 +88,25 @@ function withTimeOffset(result: TranscriptResult, offsetSeconds: number): Transc
     segments: result.segments?.map((segment) => ({
       ...segment,
       startTime: segment.startTime + offsetSeconds,
-      endTime: segment.endTime + offsetSeconds
+      endTime: segment.endTime + offsetSeconds,
     })),
     words: result.words?.map((word) => ({
       ...word,
       startTime: word.startTime + offsetSeconds,
-      endTime: word.endTime + offsetSeconds
+      endTime: word.endTime + offsetSeconds,
     })),
     tokens: result.tokens?.map((token) => ({
       ...token,
       startTime: token.startTime !== undefined ? token.startTime + offsetSeconds : undefined,
-      endTime: token.endTime !== undefined ? token.endTime + offsetSeconds : undefined
-    }))
+      endTime: token.endTime !== undefined ? token.endTime + offsetSeconds : undefined,
+    })),
   };
 }
 
 function buildPartialTranscript(
   snapshot: UtteranceTranscriptSnapshot,
   canonical: TranscriptResult,
-  kind: 'partial' | 'final'
+  kind: 'partial' | 'final',
 ): PartialTranscript {
   const warnings = canonical.warnings;
   const meta: TranscriptMeta = {
@@ -120,18 +124,21 @@ function buildPartialTranscript(
     meta,
     segments: canonical.segments,
     words: canonical.words,
-    tokens: canonical.tokens
+    tokens: canonical.tokens,
   };
 }
 
-function createEmptyCanonical(detailLevel: TranscriptMeta['detailLevel'], warning?: TranscriptWarning): TranscriptResult {
+function createEmptyCanonical(
+  detailLevel: TranscriptMeta['detailLevel'],
+  warning?: TranscriptWarning,
+): TranscriptResult {
   return {
     text: '',
     warnings: warning ? [warning] : [],
     meta: {
       detailLevel,
-      isFinal: false
-    }
+      isFinal: false,
+    },
   };
 }
 
@@ -157,28 +164,33 @@ export class RealtimeTranscriptionController {
     this.sampleRate = options.sampleRate;
     this.audio = new AudioRingBuffer({
       sampleRate: options.sampleRate,
-      durationSeconds: options.bufferDurationSeconds ?? 30
+      durationSeconds: options.bufferDurationSeconds ?? 30,
     });
-    this.activity = options.vadTimeline ?? new VoiceActivityTimeline({
-      sampleRate: options.sampleRate,
-      maxDurationSeconds: options.bufferDurationSeconds ?? 30,
-      speechThreshold: options.speechThreshold
-    });
+    this.activity =
+      options.vadTimeline ??
+      new VoiceActivityTimeline({
+        sampleRate: options.sampleRate,
+        maxDurationSeconds: options.bufferDurationSeconds ?? 30,
+        speechThreshold: options.speechThreshold,
+      });
     this.windowBuilder = new StreamingWindowBuilder(this.audio, this.activity, {
       sampleRate: options.sampleRate,
-      ...options.window
+      ...options.window,
     });
     this.merger = options.merger ?? new UtteranceTranscriptMerger(options.mergerOptions);
     this.vad = options.vad;
     this.transcribeCallback = options.transcribe;
     this.speechThreshold = options.speechThreshold ?? this.activity?.speechThreshold ?? 0.5;
-    this.finalizeSilenceFrames = Math.max(0, Math.round((options.finalizeSilenceSeconds ?? 0.8) * options.sampleRate));
+    this.finalizeSilenceFrames = Math.max(
+      0,
+      Math.round((options.finalizeSilenceSeconds ?? 0.8) * options.sampleRate),
+    );
     this.lastSnapshot = this.merger.process(createEmptyCanonical('text'));
   }
 
   async pushAudio(
     input: AudioInputLike,
-    options: RealtimeControllerPushOptions = {}
+    options: RealtimeControllerPushOptions = {},
   ): Promise<RealtimeTranscriptionUpdate | null> {
     this.assertNotFinalized();
 
@@ -188,7 +200,9 @@ export class RealtimeTranscriptionController {
         : normalizePcmInput(input)
     ).toMono();
     if (normalized.sampleRate !== this.sampleRate) {
-      throw new RangeError(`RealtimeTranscriptionController expected ${this.sampleRate} Hz audio, received ${normalized.sampleRate} Hz.`);
+      throw new RangeError(
+        `RealtimeTranscriptionController expected ${this.sampleRate} Hz audio, received ${normalized.sampleRate} Hz.`,
+      );
     }
 
     const startFrame = this.audio.getCurrentFrame();
@@ -238,13 +252,13 @@ export class RealtimeTranscriptionController {
       isFinalized: this.isFinalized,
       snapshot: this.lastSnapshot,
       lastWindow: this.lastWindow,
-      activity: this.activity?.createSnapshot() ?? null
+      activity: this.activity?.createSnapshot() ?? null,
     };
   }
 
   private async processWindow(
     reason: 'push' | 'flush' | 'finalize',
-    forceFinalizePending = false
+    forceFinalizePending = false,
   ): Promise<RealtimeTranscriptionUpdate | null> {
     const window = this.windowBuilder.buildWindow();
     if (!window) {
@@ -267,14 +281,14 @@ export class RealtimeTranscriptionController {
       isInitialWindow: window.isInitial,
       matureCursorFrame: window.matureCursorFrame,
       matureCursorTimeSeconds: window.matureCursorFrame / this.sampleRate,
-      reason
+      reason,
     };
 
     const canonical = withTimeOffset(
       await this.transcribeCallback(request),
-      request.startTimeSeconds
+      request.startTimeSeconds,
     );
-    let snapshot = this.merger.process(canonical);
+    const snapshot = this.merger.process(canonical);
     this.lastSnapshot = snapshot;
     this.windowBuilder.advanceMatureCursorByTime(snapshot.matureCursorTime);
 
@@ -283,10 +297,10 @@ export class RealtimeTranscriptionController {
     }
 
     if (
-      this.activity
-      && this.finalizeSilenceFrames > 0
-      && this.activity.getSilenceTailDuration(this.speechThreshold) >= this.finalizeSilenceFrames
-      && snapshot.previewText
+      this.activity &&
+      this.finalizeSilenceFrames > 0 &&
+      this.activity.getSilenceTailDuration(this.speechThreshold) >= this.finalizeSilenceFrames &&
+      snapshot.previewText
     ) {
       return this.finalizePending('silence-finalize', canonical);
     }
@@ -299,13 +313,13 @@ export class RealtimeTranscriptionController {
       snapshot,
       canonical,
       window,
-      activity: this.activity?.createSnapshot() ?? null
+      activity: this.activity?.createSnapshot() ?? null,
     };
   }
 
   private finalizePending(
     trigger: 'silence-finalize' | 'finalize',
-    canonical: TranscriptResult
+    canonical: TranscriptResult,
   ): RealtimeTranscriptionUpdate | null {
     const finalized = this.merger.forceFinalizePending();
     const snapshot = finalized ?? this.lastSnapshot;
@@ -317,7 +331,7 @@ export class RealtimeTranscriptionController {
       endFrame: this.audio.getCurrentFrame(),
       durationSeconds: this.audio.getFillCount() / this.sampleRate,
       isInitial: false,
-      matureCursorFrame: Math.round(snapshot.matureCursorTime * this.sampleRate)
+      matureCursorFrame: Math.round(snapshot.matureCursorTime * this.sampleRate),
     };
 
     const partial = buildPartialTranscript(snapshot, canonical, 'final');
@@ -328,14 +342,14 @@ export class RealtimeTranscriptionController {
       snapshot,
       canonical,
       window,
-      activity: this.activity?.createSnapshot() ?? null
+      activity: this.activity?.createSnapshot() ?? null,
     };
   }
 
   private async detectVoiceActivity(
     input: AudioInputLike,
     defaultStartFrame: number,
-    defaultEndFrame: number
+    defaultEndFrame: number,
   ): Promise<VoiceActivityObservation | null> {
     if (!this.vad) {
       return null;
@@ -353,13 +367,15 @@ export class RealtimeTranscriptionController {
       startFrame,
       endFrame,
       speechProbability: event.speechProbability,
-      isSpeech: event.isSpeech
+      isSpeech: event.isSpeech,
     };
   }
 
   private assertNotFinalized(): void {
     if (this.isFinalized) {
-      throw new Error('RealtimeTranscriptionController is finalized. Call reset() before pushing new audio.');
+      throw new Error(
+        'RealtimeTranscriptionController is finalized. Call reset() before pushing new audio.',
+      );
     }
   }
 }

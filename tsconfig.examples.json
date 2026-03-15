@@ -3,18 +3,21 @@
   "compilerOptions": {
     "noEmit": true,
     "rootDir": ".",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "asr.js": [
-        "./src/index.ts"
-      ]
+      "@asrjs/speech-recognition": ["./src/index.ts"],
+      "@asrjs/speech-recognition/builtins": ["./src/builtins.ts"],
+      "@asrjs/speech-recognition/io": ["./src/io.ts"],
+      "@asrjs/speech-recognition/inference": ["./src/inference.ts"],
+      "@asrjs/speech-recognition/browser": ["./src/browser.ts"],
+      "@asrjs/speech-recognition/realtime": ["./src/realtime.ts"],
+      "@asrjs/speech-recognition/bench": ["./src/bench.ts"],
+      "@asrjs/speech-recognition/datasets": ["./src/datasets.ts"],
+      "@asrjs/speech-recognition/models/*": ["./src/models/*.ts"],
+      "@asrjs/speech-recognition/presets/*": ["./src/presets/*.ts"]
     }
   },
-  "include": [
-    "examples/**/*.ts"
-  ],
+  "include": ["examples/**/*.ts"],
   "exclude": []
 }

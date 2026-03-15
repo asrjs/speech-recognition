@@ -17,7 +17,7 @@ export interface ModelArchitectureDescriptor {
 }
 
 export function createModelArchitecture(
-  descriptor: ModelArchitectureDescriptor
+  descriptor: ModelArchitectureDescriptor,
 ): ModelArchitectureDescriptor {
   return descriptor;
 }

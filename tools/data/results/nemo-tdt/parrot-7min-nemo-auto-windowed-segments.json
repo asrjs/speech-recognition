@@ -1,0 +1,596 @@
+{
+  "model": "ysdede/parakeet-tdt-0.6b-v2-onnx-tfjs4",
+  "api": "pipeline",
+  "audio": {
+    "file": "N:\\github\\ysdede\\scribe-ds\\data\\PARROT_v1.0\\07_audio\\labels\\full_reports\\b34b97eebdfb699bab44bfa5e55d375436fb74f18ebc642835d4215f76f1139d.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "source_seconds": 421,
+    "model_seconds": 421
+  },
+  "load": {
+    "transformers_source": "N:\\github\\ysdede\\transformers.js\\packages\\transformers\\src\\transformers.js",
+    "device": {
+      "encoder_model": "cpu",
+      "decoder_model_merged": "cpu"
+    },
+    "dtype": null,
+    "model_type": "nemo-conformer-tdt"
+  },
+  "options": {
+    "return_timestamps": true
+  },
+  "elapsed_s": 43.71,
+  "output": {
+    "text": "Body scan. Date March20th,2021. Indication. Motorcycle accident, facial trauma. Suspected posterior epistaxis. Pelvic pain. Elevated lactate level at4. Negative FIST ultrasound. Technique. CT scan performed without contrast on the brain. followed by contrast-enhanced arterial phase imaging of the suprajiortic trunks, chest, and abdomen down to the knees, and portal phase imaging of the abdomen and pelvis. Additional delayed imaging at8 minutes for the urinary system. Contrast dose. DLP for the brain, milligram centimeter, DLP for the trunk, milligray centimeter. Result. Brain. Small bilateral parietal subarachnoid hemorrhage at thevertex. Right parieto-occipital subarachnoid hemorrhage with small associated hemorrhagic contusions. No cerebraledema or mass effect. No brain herniation or hydrocephalus. No detectable spontaneous hyperdensity within the intracranial vessels. No recent corticosubcortical ischemic area. Fracture of the right petrus bone extending to the tympanic bone with hemotympanum and partial filling of the mastoid cells. Significant facial bone fractures with bilateral lay-fought3 pattern involving a fracture through the nasal root, displaced comminuted fracture of the nasal bones, bilateral fracture of the laminar paparacea, fractures through the lateral walls of the orbits andzygomatic arches, and bilateral pterygoid fractures. Fracture of all walls of the left maxillary sinus, with depression of the lateral wall and orbital floor, with intracinous bone fragment. Comminuted fracture of the orbital floor involving the left V2 canal. Left orbital fat entrapment without muscle entrapment. Fracture through the left lacrimal canal. Fracture at the level of the left orbital apex. Fracture of the laminar paparaceae and superior wall of the left sphenoid sinus with a small pneumose phallus bubble at the left optic canal, indicating a dural breach. Fracture of the internal, lateral, and superior walls of the right maxillary sinus. Fracture of the right orbital floor without signs of entrapment. Fracture of the right orbital roof with probable dural breach, although no pneumosphallus is visible. Significant bilateral orbital emphysema. No clearly identifiable fracture of the optic nerve canals or right lacrimal canal. Bilateral maxillary and sphenoidal hemisinus. Non-displaced fracture of the left mandibular ramus and left parasymphysal fracture passing between teeth35 and36. Significant periorbital and right paramandibular, subcutaneous emphysema. Cervical spine. Satisfactory alignment of thevertebral bodies. No post-traumatic bone lesion, dislocation, joint separation, or abnormal disc widening. No abnormalities of the suprajiortic trunks, particularly no evidence of post-traumatic dissection. Thorax. No detectable hemop pneumothorax. Ground glass opacities, with thickening of the left apical interlobular septa, possibly related to pulmonary contusion. Ventilatory disturbances at the lung bases. Small right apical parazeptal emphysema lesions. Sliding hiatal hernia. Integrity of the mediastinal arterial vessels, particularly the jorta. Abdomenopelvic region. Hemoprotoneum located beneath the bladder above the pubic symphysis, of mild to moderate volume, without identifiable active bleeding, no detectable pelvic fracture. No identifiable ureteral injury on delayed urinary imaging. Incomplete opsification of the bladder on delayed urinary phase, not allowing formal exclusion of a bladder injury. No clearly identifiable bladder wall discontinuity on portal phase with presence of a bladder globe. The prostatic urethra is not accessible in this exam. No hemoprotoneum or pneumoprotoneum. No post-traumatic injury to the liver, spleen, adrenal glands, kidneys, or pancreas. Gall bladder without stones. No identifiable abnormalities in the digestive system, noting the exam was performed without preparation or opsification. No post-traumatic injury to the yorta or visceral arteries. Skeletal. Non-displaced articular fracture of the anterior part of the left medial tibial plateau with associated lipohemarthrosis. No detectable vascular abnormality in the area. Small non-displaced cortical fracture of the left fibular head. No spinal or pelvic fracture. No disjunction of the pubic symphysis or sacroiliac joints. No rib cage fracture. Conclusion. Bilateral parietal subarachnoid hemorrhage at thevertex, right parietooccipital, with small associated hemorrhagic contusions. Right petrus bone fracture extending to the tympanic bone. Significant facial bone fractures, see above report with bilateral Lay Fort3 pattern, more significant fracture of both orbital floors on the left with orbital fat entrapment, no muscle entrapment, involvement of the left V2 canal, involvement of the left lacrimal canal. Dural breach with fracture of the laminar papyrusia at the left orbital apex with a small pneumosphallus bubble, fracture at the superior part of the right orbit. Bifocal mandibular fracture with left parasymphysal fracture and fracture of the left mandibular ramus. Left apical pulmonary contusion. Hemoprotoneum without active bleeding, no associated pelvic fracture. No formally identifiable ureteral injury on delayed phase. Bladder analysis is incomplete due to incomplete opsification on delayed urinary phase. The exam cannot exclude a prostatic urethral injury. Consider secondary evaluation with cysto-CT or cystoscopy after urological consultation. Non-displaced articular fracture of the left medial tibial plateau with lipohemarthrosis. Small non-displaced cortical fracture of the left fibular head.",
+    "chunks": [
+      {
+        "text": "Body scan.",
+        "timestamp": [
+          0.24,
+          1.68
+        ]
+      },
+      {
+        "text": "Date March20th,2021.",
+        "timestamp": [
+          1.68,
+          4.48
+        ]
+      },
+      {
+        "text": "Indication.",
+        "timestamp": [
+          5.12,
+          6.4
+        ]
+      },
+      {
+        "text": "Motorcycle accident, facial trauma.",
+        "timestamp": [
+          6.72,
+          10
+        ]
+      },
+      {
+        "text": "Suspected posterior epistaxis.",
+        "timestamp": [
+          10.32,
+          13.36
+        ]
+      },
+      {
+        "text": "Pelvic pain.",
+        "timestamp": [
+          13.68,
+          15.28
+        ]
+      },
+      {
+        "text": "Elevated lactate level at4.",
+        "timestamp": [
+          15.6,
+          18.08
+        ]
+      },
+      {
+        "text": "Negative FIST ultrasound.",
+        "timestamp": [
+          18.72,
+          21.84
+        ]
+      },
+      {
+        "text": "Technique.",
+        "timestamp": [
+          22.16,
+          23.28
+        ]
+      },
+      {
+        "text": "CT scan performed without contrast on the brain.",
+        "timestamp": [
+          23.6,
+          26.8
+        ]
+      },
+      {
+        "text": "followed by contrast-enhanced arterial phase imaging of the suprajiortic trunks, chest, and abdomen down to the knees, and portal phase imaging of the abdomen and pelvis.",
+        "timestamp": [
+          26.8,
+          36.4
+        ]
+      },
+      {
+        "text": "Additional delayed imaging at8 minutes for the urinary system.",
+        "timestamp": [
+          36.72,
+          41.04
+        ]
+      },
+      {
+        "text": "Contrast dose.",
+        "timestamp": [
+          41.36,
+          42.88
+        ]
+      },
+      {
+        "text": "DLP for the brain, milligram centimeter, DLP for the trunk, milligray centimeter.",
+        "timestamp": [
+          43.2,
+          49.44
+        ]
+      },
+      {
+        "text": "Result.",
+        "timestamp": [
+          49.76,
+          50.96
+        ]
+      },
+      {
+        "text": "Brain.",
+        "timestamp": [
+          50.96,
+          51.76
+        ]
+      },
+      {
+        "text": "Small bilateral parietal subarachnoid hemorrhage at thevertex.",
+        "timestamp": [
+          52,
+          56.8
+        ]
+      },
+      {
+        "text": "Right parieto-occipital subarachnoid hemorrhage with small associated hemorrhagic contusions.",
+        "timestamp": [
+          57.12,
+          63.44
+        ]
+      },
+      {
+        "text": "No cerebraledema or mass effect.",
+        "timestamp": [
+          63.76,
+          67.04
+        ]
+      },
+      {
+        "text": "No brain herniation or hydrocephalus.",
+        "timestamp": [
+          67.36,
+          70.8
+        ]
+      },
+      {
+        "text": "No detectable spontaneous hyperdensity within the intracranial vessels.",
+        "timestamp": [
+          71.12,
+          76.32
+        ]
+      },
+      {
+        "text": "No recent corticosubcortical ischemic area.",
+        "timestamp": [
+          76.64,
+          80.56
+        ]
+      },
+      {
+        "text": "Fracture of the right petrus bone extending to the tympanic bone with hemotympanum and partial filling of the mastoid cells.",
+        "timestamp": [
+          80.88,
+          88.64
+        ]
+      },
+      {
+        "text": "Significant facial bone fractures with bilateral lay-fought3 pattern involving a fracture through the nasal root, displaced comminuted fracture of the nasal bones, bilateral fracture of the laminar paparacea, fractures through the lateral walls of the orbits andzygomatic arches, and bilateral pterygoid fractures.",
+        "timestamp": [
+          88.96,
+          106.24
+        ]
+      },
+      {
+        "text": "Fracture of all walls of the left maxillary sinus, with depression of the lateral wall and orbital floor, with intracinous bone fragment.",
+        "timestamp": [
+          106.56,
+          114.56
+        ]
+      },
+      {
+        "text": "Comminuted fracture of the orbital floor involving the left V2 canal.",
+        "timestamp": [
+          114.88,
+          120
+        ]
+      },
+      {
+        "text": "Left orbital fat entrapment without muscle entrapment.",
+        "timestamp": [
+          120.32,
+          124.4
+        ]
+      },
+      {
+        "text": "Fracture through the left lacrimal canal.",
+        "timestamp": [
+          124.72,
+          127.68
+        ]
+      },
+      {
+        "text": "Fracture at the level of the left orbital apex.",
+        "timestamp": [
+          128,
+          131.36
+        ]
+      },
+      {
+        "text": "Fracture of the laminar paparaceae and superior wall of the left sphenoid sinus with a small pneumose phallus bubble at the left optic canal, indicating a dural breach.",
+        "timestamp": [
+          132,
+          142
+        ]
+      },
+      {
+        "text": "Fracture of the internal, lateral, and superior walls of the right maxillary sinus.",
+        "timestamp": [
+          142.32,
+          147.92
+        ]
+      },
+      {
+        "text": "Fracture of the right orbital floor without signs of entrapment.",
+        "timestamp": [
+          148.24,
+          152.4
+        ]
+      },
+      {
+        "text": "Fracture of the right orbital roof with probable dural breach, although no pneumosphallus is visible.",
+        "timestamp": [
+          152.72,
+          158.8
+        ]
+      },
+      {
+        "text": "Significant bilateral orbital emphysema.",
+        "timestamp": [
+          159.12,
+          162.72
+        ]
+      },
+      {
+        "text": "No clearly identifiable fracture of the optic nerve canals or right lacrimal canal.",
+        "timestamp": [
+          163.04,
+          168.72
+        ]
+      },
+      {
+        "text": "Bilateral maxillary and sphenoidal hemisinus.",
+        "timestamp": [
+          169.04,
+          172.72
+        ]
+      },
+      {
+        "text": "Non-displaced fracture of the left mandibular ramus and left parasymphysal fracture passing between teeth35 and36.",
+        "timestamp": [
+          173.04,
+          181.6
+        ]
+      },
+      {
+        "text": "Significant periorbital and right paramandibular, subcutaneous emphysema.",
+        "timestamp": [
+          181.92,
+          187.28
+        ]
+      },
+      {
+        "text": "Cervical spine.",
+        "timestamp": [
+          187.6,
+          189.36
+        ]
+      },
+      {
+        "text": "Satisfactory alignment of thevertebral bodies.",
+        "timestamp": [
+          189.68,
+          193.28
+        ]
+      },
+      {
+        "text": "No post-traumatic bone lesion, dislocation, joint separation, or abnormal disc widening.",
+        "timestamp": [
+          193.6,
+          199.92
+        ]
+      },
+      {
+        "text": "No abnormalities of the suprajiortic trunks, particularly no evidence of post-traumatic dissection.",
+        "timestamp": [
+          200.24,
+          206.56
+        ]
+      },
+      {
+        "text": "Thorax.",
+        "timestamp": [
+          206.88,
+          208.24
+        ]
+      },
+      {
+        "text": "No detectable hemop pneumothorax.",
+        "timestamp": [
+          208.24,
+          211.2
+        ]
+      },
+      {
+        "text": "Ground glass opacities, with thickening of the left apical interlobular septa, possibly related to pulmonary contusion.",
+        "timestamp": [
+          211.52,
+          219.36
+        ]
+      },
+      {
+        "text": "Ventilatory disturbances at the lung bases.",
+        "timestamp": [
+          219.68,
+          223.36
+        ]
+      },
+      {
+        "text": "Small right apical parazeptal emphysema lesions.",
+        "timestamp": [
+          223.68,
+          227.44
+        ]
+      },
+      {
+        "text": "Sliding hiatal hernia.",
+        "timestamp": [
+          227.76,
+          230.24
+        ]
+      },
+      {
+        "text": "Integrity of the mediastinal arterial vessels, particularly the jorta.",
+        "timestamp": [
+          230.56,
+          235.6
+        ]
+      },
+      {
+        "text": "Abdomenopelvic region.",
+        "timestamp": [
+          235.92,
+          238.16
+        ]
+      },
+      {
+        "text": "Hemoprotoneum located beneath the bladder above the pubic symphysis, of mild to moderate volume, without identifiable active bleeding, no detectable pelvic fracture.",
+        "timestamp": [
+          238.48,
+          249.12
+        ]
+      },
+      {
+        "text": "No identifiable ureteral injury on delayed urinary imaging.",
+        "timestamp": [
+          249.44,
+          254.24
+        ]
+      },
+      {
+        "text": "Incomplete opsification of the bladder on delayed urinary phase, not allowing formal exclusion of a bladder injury.",
+        "timestamp": [
+          254.56,
+          262.16
+        ]
+      },
+      {
+        "text": "No clearly identifiable bladder wall discontinuity on portal phase with presence of a bladder globe.",
+        "timestamp": [
+          262.48,
+          269.44
+        ]
+      },
+      {
+        "text": "The prostatic urethra is not accessible in this exam.",
+        "timestamp": [
+          269.44,
+          273.68
+        ]
+      },
+      {
+        "text": "No hemoprotoneum or pneumoprotoneum.",
+        "timestamp": [
+          273.84,
+          277.2
+        ]
+      },
+      {
+        "text": "No post-traumatic injury to the liver, spleen, adrenal glands, kidneys, or pancreas.",
+        "timestamp": [
+          277.52,
+          283.52
+        ]
+      },
+      {
+        "text": "Gall bladder without stones.",
+        "timestamp": [
+          283.84,
+          286.32
+        ]
+      },
+      {
+        "text": "No identifiable abnormalities in the digestive system, noting the exam was performed without preparation or opsification.",
+        "timestamp": [
+          286.64,
+          294.88
+        ]
+      },
+      {
+        "text": "No post-traumatic injury to the yorta or visceral arteries.",
+        "timestamp": [
+          295.2,
+          299.6
+        ]
+      },
+      {
+        "text": "Skeletal.",
+        "timestamp": [
+          299.92,
+          301.12
+        ]
+      },
+      {
+        "text": "Non-displaced articular fracture of the anterior part of the left medial tibial plateau with associated lipohemarthrosis.",
+        "timestamp": [
+          301.12,
+          309.2
+        ]
+      },
+      {
+        "text": "No detectable vascular abnormality in the area.",
+        "timestamp": [
+          309.52,
+          313.44
+        ]
+      },
+      {
+        "text": "Small non-displaced cortical fracture of the left fibular head.",
+        "timestamp": [
+          313.76,
+          318.16
+        ]
+      },
+      {
+        "text": "No spinal or pelvic fracture.",
+        "timestamp": [
+          318.48,
+          321.44
+        ]
+      },
+      {
+        "text": "No disjunction of the pubic symphysis or sacroiliac joints.",
+        "timestamp": [
+          321.76,
+          326.56
+        ]
+      },
+      {
+        "text": "No rib cage fracture.",
+        "timestamp": [
+          326.56,
+          328.88
+        ]
+      },
+      {
+        "text": "Conclusion.",
+        "timestamp": [
+          329.2,
+          330.8
+        ]
+      },
+      {
+        "text": "Bilateral parietal subarachnoid hemorrhage at thevertex, right parietooccipital, with small associated hemorrhagic contusions.",
+        "timestamp": [
+          330.8,
+          339.44
+        ]
+      },
+      {
+        "text": "Right petrus bone fracture extending to the tympanic bone.",
+        "timestamp": [
+          339.76,
+          344
+        ]
+      },
+      {
+        "text": "Significant facial bone fractures, see above report with bilateral Lay Fort3 pattern, more significant fracture of both orbital floors on the left with orbital fat entrapment, no muscle entrapment, involvement of the left V2 canal, involvement of the left lacrimal canal.",
+        "timestamp": [
+          344.32,
+          360.24
+        ]
+      },
+      {
+        "text": "Dural breach with fracture of the laminar papyrusia at the left orbital apex with a small pneumosphallus bubble, fracture at the superior part of the right orbit.",
+        "timestamp": [
+          360.56,
+          370.16
+        ]
+      },
+      {
+        "text": "Bifocal mandibular fracture with left parasymphysal fracture and fracture of the left mandibular ramus.",
+        "timestamp": [
+          370.48,
+          377.36
+        ]
+      },
+      {
+        "text": "Left apical pulmonary contusion.",
+        "timestamp": [
+          377.68,
+          380.56
+        ]
+      },
+      {
+        "text": "Hemoprotoneum without active bleeding, no associated pelvic fracture.",
+        "timestamp": [
+          380.88,
+          386.08
+        ]
+      },
+      {
+        "text": "No formally identifiable ureteral injury on delayed phase.",
+        "timestamp": [
+          386.4,
+          390.88
+        ]
+      },
+      {
+        "text": "Bladder analysis is incomplete due to incomplete opsification on delayed urinary phase.",
+        "timestamp": [
+          391.2,
+          397.76
+        ]
+      },
+      {
+        "text": "The exam cannot exclude a prostatic urethral injury.",
+        "timestamp": [
+          398.08,
+          402.56
+        ]
+      },
+      {
+        "text": "Consider secondary evaluation with cysto-CT or cystoscopy after urological consultation.",
+        "timestamp": [
+          402.56,
+          409.6
+        ]
+      },
+      {
+        "text": "Non-displaced articular fracture of the left medial tibial plateau with lipohemarthrosis.",
+        "timestamp": [
+          409.92,
+          416.16
+        ]
+      },
+      {
+        "text": "Small non-displaced cortical fracture of the left fibular head.",
+        "timestamp": [
+          416.48,
+          420.72
+        ]
+      }
+    ]
+  }
+}

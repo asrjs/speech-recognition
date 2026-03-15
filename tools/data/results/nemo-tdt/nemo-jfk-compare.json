@@ -1,0 +1,237 @@
+{
+  "model": "ysdede/parakeet-tdt-0.6b-v2-onnx-tfjs4",
+  "audio": {
+    "file": "N:\\JFK.wav",
+    "source_sample_rate": 16000,
+    "model_sample_rate": 16000,
+    "source_seconds": 146.326,
+    "model_seconds": 146.326
+  },
+  "reference": {
+    "fixture": "N:\\github\\ysdede\\transformers-v4-parakeet-demo\\docs\\fixtures\\jfk-nemo-single-pass.json",
+    "text_length": 1080,
+    "word_count": 207,
+    "utterance_timestamp": [
+      2.56,
+      129.76
+    ]
+  },
+  "runs": [
+    {
+      "name": "pipeline_plain",
+      "elapsed_s": 11.93,
+      "text_matches_reference": true,
+      "first_text_mismatch": null,
+      "chunk_text_matches_reference": null,
+      "text_length": 1080,
+      "chunk_count": 0,
+      "chunk_text_length": 0,
+      "word_count": null,
+      "word_texts_match_reference": null,
+      "first_word_mismatch": null,
+      "timing_diff": null,
+      "first_chunks": [],
+      "last_chunks": []
+    },
+    {
+      "name": "pipeline_segments",
+      "elapsed_s": 11.81,
+      "text_matches_reference": true,
+      "first_text_mismatch": null,
+      "chunk_text_matches_reference": true,
+      "text_length": 1080,
+      "chunk_count": 12,
+      "chunk_text_length": 1080,
+      "word_count": null,
+      "word_texts_match_reference": null,
+      "first_word_mismatch": null,
+      "timing_diff": null,
+      "first_chunks": [
+        {
+          "text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger.",
+          "timestamp": [
+            2.56,
+            15.68
+          ]
+        },
+        {
+          "text": "I do not shrink from this responsibility.",
+          "timestamp": [
+            16,
+            18.96
+          ]
+        },
+        {
+          "text": "I welcome it.",
+          "timestamp": [
+            18.96,
+            20.48
+          ]
+        }
+      ],
+      "last_chunks": [
+        {
+          "text": "Finally, whether you are citizens of America or citizens of the world, ask of us here",
+          "timestamp": [
+            86.48,
+            95.68
+          ]
+        },
+        {
+          "text": "the same high standards of strength and sacrifice which we ask of you.",
+          "timestamp": [
+            96.56,
+            104.32
+          ]
+        },
+        {
+          "text": "With a good conscience, our only sure reward, with history the final judge of our deeds, let us go forth to lead the land we love, asking his blessing and his help, but knowing that here on earth, God's work must truly be our own.",
+          "timestamp": [
+            104.64,
+            129.76
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pipeline_words",
+      "elapsed_s": 11.91,
+      "text_matches_reference": true,
+      "first_text_mismatch": null,
+      "chunk_text_matches_reference": true,
+      "text_length": 1080,
+      "chunk_count": 207,
+      "chunk_text_length": 1080,
+      "word_count": 207,
+      "word_texts_match_reference": true,
+      "first_word_mismatch": null,
+      "timing_diff": {
+        "compared_words": 207,
+        "max_start_diff_s": 0,
+        "max_end_diff_s": 0,
+        "words_over_40ms": 0,
+        "words_over_80ms": 0
+      },
+      "first_chunks": [
+        {
+          "text": "In",
+          "timestamp": [
+            2.56,
+            2.88
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            2.88,
+            3.2
+          ]
+        },
+        {
+          "text": "long",
+          "timestamp": [
+            3.2,
+            3.52
+          ]
+        }
+      ],
+      "last_chunks": [
+        {
+          "text": "be",
+          "timestamp": [
+            128.48,
+            128.8
+          ]
+        },
+        {
+          "text": "our",
+          "timestamp": [
+            128.8,
+            129.12
+          ]
+        },
+        {
+          "text": "own.",
+          "timestamp": [
+            129.12,
+            129.76
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pipeline_words_windowed",
+      "elapsed_s": 11.08,
+      "text_matches_reference": false,
+      "first_text_mismatch": {
+        "index": 828,
+        "reference_snippet": "high standards of strength and sacrifice which we ask of you. With a good conscience, our only sure reward, with history",
+        "actual_snippet": "high standards of strength and sacrifice, which we ask of you. With a good conscience, our only sure reward, with histor"
+      },
+      "chunk_text_matches_reference": false,
+      "text_length": 1080,
+      "chunk_count": 207,
+      "chunk_text_length": 1080,
+      "word_count": 207,
+      "word_texts_match_reference": false,
+      "first_word_mismatch": {
+        "index": 156,
+        "reference": "sacrifice",
+        "actual": "sacrifice,"
+      },
+      "timing_diff": {
+        "compared_words": 207,
+        "max_start_diff_s": 0.24,
+        "max_end_diff_s": 4.08,
+        "words_over_40ms": 69,
+        "words_over_80ms": 33
+      },
+      "first_chunks": [
+        {
+          "text": "In",
+          "timestamp": [
+            2.56,
+            2.88
+          ]
+        },
+        {
+          "text": "the",
+          "timestamp": [
+            2.88,
+            3.2
+          ]
+        },
+        {
+          "text": "long",
+          "timestamp": [
+            3.2,
+            3.52
+          ]
+        }
+      ],
+      "last_chunks": [
+        {
+          "text": "be",
+          "timestamp": [
+            128.48,
+            128.8
+          ]
+        },
+        {
+          "text": "our",
+          "timestamp": [
+            128.8,
+            129.12
+          ]
+        },
+        {
+          "text": "own.",
+          "timestamp": [
+            128.88,
+            129.52
+          ]
+        }
+      ]
+    }
+  ]
+}

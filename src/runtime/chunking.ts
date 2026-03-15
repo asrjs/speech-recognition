@@ -2,8 +2,8 @@ import {
   chunkPcmAudio,
   normalizePcmInput,
   type AudioChunk,
-  type PcmAudioBuffer
-} from '../processors/index.js';
+  type PcmAudioBuffer,
+} from '../audio/index.js';
 import type { AudioInputLike } from '../types/index.js';
 
 export interface AudioChunkerOptions {
@@ -16,7 +16,9 @@ export interface LayeredAudioBufferOptions {
   readonly overlapMs?: number;
 }
 
-export interface LayeredAudioBufferEntry<TLayers extends Record<string, unknown> = Record<string, unknown>> {
+export interface LayeredAudioBufferEntry<
+  TLayers extends Record<string, unknown> = Record<string, unknown>,
+> {
   readonly chunk: AudioChunk;
   readonly layers: Partial<TLayers>;
 }
@@ -32,15 +34,21 @@ export class AudioChunker {
 
   split(input: AudioInputLike, startTimeSeconds = 0): AudioChunk[] {
     const audio = normalizePcmInput(input);
-    const chunkLengthFrames = Math.max(1, Math.round((this.chunkLengthMs / 1000) * audio.sampleRate));
+    const chunkLengthFrames = Math.max(
+      1,
+      Math.round((this.chunkLengthMs / 1000) * audio.sampleRate),
+    );
     const overlapFrames = Math.max(0, Math.round((this.overlapMs / 1000) * audio.sampleRate));
     const chunks = chunkPcmAudio(audio, chunkLengthFrames, overlapFrames);
 
-    return chunks.map((chunk, index) => chunk.toChunk({
-      sequence: index,
-      startTimeSeconds: startTimeSeconds + ((index * (chunkLengthFrames - overlapFrames)) / audio.sampleRate),
-      isLast: index === chunks.length - 1
-    }));
+    return chunks.map((chunk, index) =>
+      chunk.toChunk({
+        sequence: index,
+        startTimeSeconds:
+          startTimeSeconds + (index * (chunkLengthFrames - overlapFrames)) / audio.sampleRate,
+        isLast: index === chunks.length - 1,
+      }),
+    );
   }
 }
 
@@ -58,11 +66,11 @@ export class LayeredAudioBuffer<TLayers extends Record<string, unknown> = Record
   push(input: AudioInputLike, startTimeSeconds?: number): LayeredAudioBufferEntry<TLayers> {
     const chunk = normalizePcmInput(input).toChunk({
       sequence: this.sequence,
-      startTimeSeconds
+      startTimeSeconds,
     });
     const entry: LayeredAudioBufferEntry<TLayers> = {
       chunk,
-      layers: {}
+      layers: {},
     };
 
     this.sequence += 1;
@@ -71,11 +79,7 @@ export class LayeredAudioBuffer<TLayers extends Record<string, unknown> = Record
     return entry;
   }
 
-  setLayer<TKey extends keyof TLayers>(
-    sequence: number,
-    key: TKey,
-    value: TLayers[TKey]
-  ): void {
+  setLayer<TKey extends keyof TLayers>(sequence: number, key: TKey, value: TLayers[TKey]): void {
     const entry = this.entries.find((candidate) => candidate.chunk.sequence === sequence);
     if (!entry) {
       throw new Error(`LayeredAudioBuffer could not find chunk with sequence ${sequence}.`);
@@ -84,10 +88,7 @@ export class LayeredAudioBuffer<TLayers extends Record<string, unknown> = Record
     Object.assign(entry.layers, { [key]: value });
   }
 
-  getLayer<TKey extends keyof TLayers>(
-    sequence: number,
-    key: TKey
-  ): TLayers[TKey] | undefined {
+  getLayer<TKey extends keyof TLayers>(sequence: number, key: TKey): TLayers[TKey] | undefined {
     const entry = this.entries.find((candidate) => candidate.chunk.sequence === sequence);
     return entry?.layers[key];
   }
@@ -123,7 +124,7 @@ export class LayeredAudioBuffer<TLayers extends Record<string, unknown> = Record
       numberOfChannels,
       numberOfFrames: totalFrames,
       durationSeconds: totalFrames / sampleRate,
-      channels
+      channels,
     });
   }
 
@@ -134,7 +135,8 @@ export class LayeredAudioBuffer<TLayers extends Record<string, unknown> = Record
 
   private trim(): void {
     while (this.getBufferedDurationSeconds() > this.maxWindowSeconds && this.entries.length > 1) {
-      const nextDuration = this.getBufferedDurationSeconds() - this.entries[0]!.chunk.durationSeconds;
+      const nextDuration =
+        this.getBufferedDurationSeconds() - this.entries[0]!.chunk.durationSeconds;
       if (nextDuration < this.overlapSeconds) {
         break;
       }

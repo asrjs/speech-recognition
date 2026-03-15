@@ -3,8 +3,14 @@ import type {
   NemoTdtDirectArtifacts,
   NemoTdtHuggingFaceSource,
   NemoTdtPreprocessorBackend,
-  NemoTdtQuantization
+  NemoTdtQuantization,
 } from './types.js';
+import { getDefaultNemoTdtWeightSetup, normalizeNemoTdtWeightBackend } from './weights.js';
+import {
+  importNodeModule,
+  isNodeLikeRuntime,
+  resolveNodePackageSubpathUrl,
+} from '../../io/node.js';
 
 interface OrtEnv {
   wasm: {
@@ -33,7 +39,7 @@ export interface OrtModuleLike {
   readonly Tensor: new <TData extends ArrayBufferView>(
     type: 'float32' | 'int32' | 'int64',
     data: TData,
-    dims: readonly number[]
+    dims: readonly number[],
   ) => OrtTensorLike<TData>;
   readonly InferenceSession: {
     create(url: string, options?: Record<string, unknown>): Promise<OrtSessionLike>;
@@ -53,7 +59,7 @@ export interface ResolvedNemoTdtArtifacts {
 const QUANTIZATION_SUFFIX: Record<NemoTdtQuantization, string> = {
   int8: '.int8.onnx',
   fp16: '.fp16.onnx',
-  fp32: '.onnx'
+  fp32: '.onnx',
 };
 
 function buildResolveUrl(repoId: string, revision: string, filename: string): string {
@@ -74,32 +80,24 @@ function getQuantizedFilename(baseName: string, quantization: NemoTdtQuantizatio
   return `${baseName}${QUANTIZATION_SUFFIX[quantization]}`;
 }
 
-function normalizeBackendId(backendId: string): 'webgpu' | 'wasm' {
-  return backendId.startsWith('webgpu') ? 'webgpu' : 'wasm';
-}
-
 function resolveQuantization(
   requested: NemoTdtQuantization | undefined,
   backendForOrt: 'webgpu' | 'wasm',
-  role: 'encoder' | 'decoder'
+  role: 'encoder' | 'decoder',
 ): NemoTdtQuantization {
   if (requested) {
     return requested;
   }
-
-  if (role === 'encoder' && backendForOrt === 'webgpu') {
-    return 'fp32';
-  }
-
-  return 'int8';
+  const setup = getDefaultNemoTdtWeightSetup(backendForOrt);
+  return role === 'encoder' ? setup.encoderDefault : setup.decoderDefault;
 }
 
 function resolveHuggingFaceArtifacts(
   source: NemoTdtHuggingFaceSource,
-  backendId: string
+  backendId: string,
 ): ResolvedNemoTdtArtifacts {
   const revision = source.revision ?? 'main';
-  const backendForOrt = normalizeBackendId(backendId);
+  const backendForOrt = normalizeNemoTdtWeightBackend(backendId);
   const encoderQuant = resolveQuantization(source.encoderQuant, backendForOrt, 'encoder');
   const decoderQuant = resolveQuantization(source.decoderQuant, backendForOrt, 'decoder');
   const encoderFilename = getQuantizedFilename('encoder-model', encoderQuant);
@@ -110,7 +108,8 @@ function resolveHuggingFaceArtifacts(
   if ((source.preprocessorBackend ?? 'onnx') === 'js') {
     warnings.push({
       code: 'nemo-tdt.preprocessor-js-fallback',
-      message: 'JS mel preprocessing is not restored in asr.js yet. Falling back to the ONNX preprocessor.'
+      message:
+        'JS mel preprocessing is not restored in @asrjs/speech-recognition yet. Falling back to the ONNX preprocessor.',
     });
   }
 
@@ -121,27 +120,28 @@ function resolveHuggingFaceArtifacts(
       tokenizerUrl: buildResolveUrl(source.repoId, revision, 'vocab.txt'),
       preprocessorUrl: buildResolveUrl(source.repoId, revision, `${preprocessorName}.onnx`),
       encoderFilename,
-      decoderFilename
+      decoderFilename,
     },
     preprocessorBackend: 'onnx',
     warnings,
     backendForOrt,
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
-    enableProfiling: source.enableProfiling
+    enableProfiling: source.enableProfiling,
   };
 }
 
 function resolveDirectArtifacts(
   source: Extract<NemoTdtArtifactSource, { kind: 'direct' }>,
-  backendId: string
+  backendId: string,
 ): ResolvedNemoTdtArtifacts {
   const warnings: { code: string; message: string }[] = [];
 
   if ((source.preprocessorBackend ?? 'onnx') === 'js') {
     warnings.push({
       code: 'nemo-tdt.preprocessor-js-fallback',
-      message: 'JS mel preprocessing is not restored in asr.js yet. Falling back to the ONNX preprocessor.'
+      message:
+        'JS mel preprocessing is not restored in @asrjs/speech-recognition yet. Falling back to the ONNX preprocessor.',
     });
   }
 
@@ -149,16 +149,16 @@ function resolveDirectArtifacts(
     artifacts: source.artifacts,
     preprocessorBackend: 'onnx',
     warnings,
-    backendForOrt: normalizeBackendId(backendId),
+    backendForOrt: normalizeNemoTdtWeightBackend(backendId),
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
-    enableProfiling: source.enableProfiling
+    enableProfiling: source.enableProfiling,
   };
 }
 
 export function resolveNemoTdtArtifacts(
   source: NemoTdtArtifactSource,
-  backendId: string
+  backendId: string,
 ): ResolvedNemoTdtArtifacts {
   return source.kind === 'huggingface'
     ? resolveHuggingFaceArtifacts(source, backendId)
@@ -170,26 +170,29 @@ export async function initOrt(
   options: {
     readonly wasmPaths?: string;
     readonly cpuThreads?: number;
-  } = {}
+  } = {},
 ): Promise<OrtModuleLike> {
-  const imported = await import('onnxruntime-web') as unknown as OrtModuleLike & {
+  const imported = (await import('onnxruntime-web')) as unknown as OrtModuleLike & {
     readonly default?: OrtModuleLike;
   };
   const ort = imported.default ?? imported;
 
   if (!ort.env.wasm.wasmPaths) {
-    const version = ort.env.versions?.common ?? '1.24.1';
-    ort.env.wasm.wasmPaths = options.wasmPaths ?? `https://cdn.jsdelivr.net/npm/onnxruntime-web@${version}/dist/`;
+    ort.env.wasm.wasmPaths =
+      options.wasmPaths ??
+      (isNodeLikeRuntime()
+        ? await resolveNodePackageSubpathUrl('onnxruntime-web', 'dist')
+        : `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ort.env.versions?.common ?? '1.24.1'}/dist/`);
   } else if (options.wasmPaths) {
     ort.env.wasm.wasmPaths = options.wasmPaths;
   }
 
   if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads = options.cpuThreads ?? (
-      typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number'
+    ort.env.wasm.numThreads =
+      options.cpuThreads ??
+      (typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number'
         ? navigator.hardwareConcurrency
-        : 4
-    );
+        : 4);
     ort.env.wasm.simd = true;
   } else {
     ort.env.wasm.numThreads = 1;
@@ -197,7 +200,11 @@ export async function initOrt(
 
   ort.env.wasm.proxy = false;
 
-  if (normalizeBackendId(backendId) === 'webgpu' && typeof navigator !== 'undefined' && !('gpu' in navigator)) {
+  if (
+    normalizeNemoTdtWeightBackend(backendId) === 'webgpu' &&
+    typeof navigator !== 'undefined' &&
+    !('gpu' in navigator)
+  ) {
     return ort;
   }
 
@@ -212,14 +219,18 @@ export async function createOrtSession(
     readonly enableProfiling?: boolean;
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
-  }
+  },
 ): Promise<OrtSessionLike> {
+  let modelUrl = url;
+  let externalDataUrl = options.externalDataUrl;
   const executionProviders = options.backendId.startsWith('webgpu')
-    ? [{
-        name: 'webgpu',
-        deviceType: 'gpu',
-        powerPreference: 'high-performance'
-      }]
+    ? [
+        {
+          name: 'webgpu',
+          deviceType: 'gpu',
+          powerPreference: 'high-performance',
+        },
+      ]
     : ['wasm'];
 
   const sessionOptions: Record<string, unknown> = {
@@ -228,15 +239,27 @@ export async function createOrtSession(
     executionMode: 'parallel',
     enableCpuMemArena: true,
     enableMemPattern: true,
-    enableProfiling: options.enableProfiling ?? false
+    enableProfiling: options.enableProfiling ?? false,
   };
 
-  if (options.externalDataUrl && options.externalDataPath) {
-    sessionOptions.externalData = [{
-      data: options.externalDataUrl,
-      path: options.externalDataPath
-    }];
+  if (isNodeLikeRuntime()) {
+    const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
+    if (/^file:/i.test(modelUrl)) {
+      modelUrl = fileURLToPath(modelUrl);
+    }
+    if (externalDataUrl && /^file:/i.test(externalDataUrl)) {
+      externalDataUrl = fileURLToPath(externalDataUrl);
+    }
   }
 
-  return ort.InferenceSession.create(url, sessionOptions);
+  if (externalDataUrl && options.externalDataPath) {
+    sessionOptions.externalData = [
+      {
+        data: externalDataUrl,
+        path: options.externalDataPath,
+      },
+    ];
+  }
+
+  return ort.InferenceSession.create(modelUrl, sessionOptions);
 }

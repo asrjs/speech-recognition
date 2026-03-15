@@ -55,4 +55,3 @@ export interface ExecutionBackend {
   probeCapabilities(context?: BackendProbeContext): Promise<BackendCapabilities>;
   createExecutionContext(request: BackendExecutionRequest): Promise<BackendExecutionContext>;
 }
-

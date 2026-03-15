@@ -1,0 +1,66 @@
+{
+  "direct_word_count": 530,
+  "pipeline_word_count": 531,
+  "direct_equals_pipeline_text": false,
+  "direct_equals_ground_truth_text": false,
+  "pipeline_equals_ground_truth_text": false,
+  "first_word_mismatch_index": 188,
+  "direct_suspicious_tokens": [
+    {
+      "text": "48-year-old",
+      "start_time": 4,
+      "end_time": 4.96,
+      "confidence": 0.994257
+    },
+    {
+      "text": "3D",
+      "start_time": 31.68,
+      "end_time": 32.08,
+      "confidence": 0.995922
+    },
+    {
+      "text": "91st",
+      "start_time": 71.6,
+      "end_time": 72.16,
+      "confidence": 0.999976
+    },
+    {
+      "text": "5P3.",
+      "start_time": 274.16,
+      "end_time": 275.68,
+      "confidence": 0.972595
+    }
+  ],
+  "pipeline_suspicious_tokens": [
+    {
+      "text": "48-year-old",
+      "timestamp": [
+        4,
+        4.96
+      ]
+    },
+    {
+      "text": "3D",
+      "timestamp": [
+        31.68,
+        32.08
+      ]
+    },
+    {
+      "text": "91st",
+      "timestamp": [
+        71.6,
+        72.16
+      ]
+    },
+    {
+      "text": "5P3.",
+      "timestamp": [
+        274.16,
+        275.68
+      ]
+    }
+  ],
+  "direct_text_head": "Coronary CT angiography and calcium score. 48-year-old male patient with complaints of chest pain. Comparison none. Technique, a preliminary study was conducted using a Canon Aquilion 1 scanner followed by the coronary artery calcium protocol. Post-intravenous contrast administration, images with 0.5 millimeter collimation were obtained along the coronary arteries. Data was transferred offline for 3D reconstructions. Acquisition, prospective ECG gating was used. The heart rate during imaging was",
+  "pipeline_text_head": "Coronary CT angiography and calcium score. 48-year-old male patient with complaints of chest pain. Comparison none. Technique, a preliminary study was conducted using a Canon Aquilion 1 scanner followed by the coronary artery calcium protocol. Post-intravenous contrast administration, images with 0.5 millimeter collimation were obtained along the coronary arteries. Data was transferred offline for 3D reconstructions. Acquisition, prospective ECG gating was used. The heart rate during imaging was"
+}
