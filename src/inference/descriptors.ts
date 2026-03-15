@@ -139,10 +139,12 @@ export const CTC_GREEDY_DECODING: DecodingDescriptor = {
   notes: ['Argmax plus blank collapse over frame-level logits.'],
 };
 
-export const WHISPER_GENERATE_DECODING: DecodingDescriptor = {
+export const AED_GENERATE_DECODING: DecodingDescriptor = {
   topology: 'aed',
   strategy: 'aed-generate',
   supportsStreaming: false,
   supportsBeamSearch: true,
-  notes: ['Autoregressive decoding with logits processors and special token control.'],
+  notes: ['Autoregressive decoding with prompt tokens and next-token generation.'],
 };
+
+export const WHISPER_GENERATE_DECODING: DecodingDescriptor = AED_GENERATE_DECODING;

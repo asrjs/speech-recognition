@@ -103,27 +103,22 @@ function resolveHuggingFaceArtifacts(
   const encoderFilename = getQuantizedFilename('encoder-model', encoderQuant);
   const decoderFilename = getQuantizedFilename('decoder_joint-model', decoderQuant);
   const preprocessorName = source.preprocessorName ?? 'nemo128';
-  const warnings: { code: string; message: string }[] = [];
-
-  if ((source.preprocessorBackend ?? 'onnx') === 'js') {
-    warnings.push({
-      code: 'nemo-tdt.preprocessor-js-fallback',
-      message:
-        'JS mel preprocessing is not restored in @asrjs/speech-recognition yet. Falling back to the ONNX preprocessor.',
-    });
-  }
+  const preprocessorBackend = source.preprocessorBackend ?? 'onnx';
 
   return {
     artifacts: {
       encoderUrl: buildResolveUrl(source.repoId, revision, encoderFilename),
       decoderUrl: buildResolveUrl(source.repoId, revision, decoderFilename),
       tokenizerUrl: buildResolveUrl(source.repoId, revision, 'vocab.txt'),
-      preprocessorUrl: buildResolveUrl(source.repoId, revision, `${preprocessorName}.onnx`),
+      preprocessorUrl:
+        preprocessorBackend === 'onnx'
+          ? buildResolveUrl(source.repoId, revision, `${preprocessorName}.onnx`)
+          : undefined,
       encoderFilename,
       decoderFilename,
     },
-    preprocessorBackend: 'onnx',
-    warnings,
+    preprocessorBackend,
+    warnings: [],
     backendForOrt,
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
@@ -135,20 +130,10 @@ function resolveDirectArtifacts(
   source: Extract<NemoTdtArtifactSource, { kind: 'direct' }>,
   backendId: string,
 ): ResolvedNemoTdtArtifacts {
-  const warnings: { code: string; message: string }[] = [];
-
-  if ((source.preprocessorBackend ?? 'onnx') === 'js') {
-    warnings.push({
-      code: 'nemo-tdt.preprocessor-js-fallback',
-      message:
-        'JS mel preprocessing is not restored in @asrjs/speech-recognition yet. Falling back to the ONNX preprocessor.',
-    });
-  }
-
   return {
     artifacts: source.artifacts,
-    preprocessorBackend: 'onnx',
-    warnings,
+    preprocessorBackend: source.preprocessorBackend ?? 'onnx',
+    warnings: [],
     backendForOrt: normalizeNemoTdtWeightBackend(backendId),
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,

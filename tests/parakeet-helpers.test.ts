@@ -75,10 +75,10 @@ describe('Parakeet helpers', () => {
       expect.arrayContaining(['webgpu', 'wasm', 'webnn', 'webgl']),
     );
     expect(runtime.listModelFamilies().map((family) => family.family)).toEqual(
-      expect.arrayContaining(['nemo-tdt', 'lasr-ctc', 'whisper-seq2seq']),
+      expect.arrayContaining(['nemo-aed', 'nemo-tdt', 'lasr-ctc', 'whisper-seq2seq']),
     );
     expect(runtime.listPresets().map((preset) => preset.preset)).toEqual(
-      expect.arrayContaining(['parakeet', 'medasr', 'whisper']),
+      expect.arrayContaining(['canary', 'parakeet', 'medasr', 'whisper']),
     );
   });
 
@@ -186,7 +186,6 @@ describe('Parakeet helpers', () => {
         new File(['enc'], 'encoder-model.fp16.onnx'),
         new File(['enc-data'], 'encoder-model.fp16.onnx.data'),
         new File(['dec'], 'decoder_joint-model.int8.onnx'),
-        new File(['prep'], 'nemo128.onnx'),
         new File(['vocab'], 'vocab.txt'),
       ]);
 
@@ -206,7 +205,7 @@ describe('Parakeet helpers', () => {
       expect(resolved.config.encoderUrl.startsWith('blob:')).toBe(true);
       expect(resolved.config.decoderUrl.startsWith('blob:')).toBe(true);
       expect(resolved.config.tokenizerUrl.startsWith('blob:')).toBe(true);
-      expect(resolved.config.preprocessorUrl?.startsWith('blob:')).toBe(true);
+      expect(resolved.config.preprocessorUrl).toBeUndefined();
       expect(resolved.config.encoderDataUrl?.startsWith('blob:')).toBe(true);
       expect(revokeObjectURL).not.toHaveBeenCalled();
     } finally {
@@ -228,7 +227,6 @@ describe('Parakeet helpers', () => {
       const entries = createParakeetLocalEntries([
         new File(['enc'], 'encoder-model.onnx'),
         new File(['dec'], 'decoder_joint-model.int8.onnx'),
-        new File(['prep'], 'nemo128.onnx'),
         new File(['vocab'], 'vocab.txt'),
       ]);
 
@@ -247,7 +245,7 @@ describe('Parakeet helpers', () => {
     }
   });
 
-  it('still resolves the ONNX preprocessor artifact for hub loading when JS preprocessing is requested', async () => {
+  it('does not resolve the ONNX preprocessor artifact for hub loading when JS preprocessing is requested', async () => {
     const fetchModelFiles = vi
       .spyOn(huggingface, 'fetchModelFiles')
       .mockResolvedValue([
@@ -269,6 +267,35 @@ describe('Parakeet helpers', () => {
       });
 
       expect(resolved.preprocessorBackend).toBe('js');
+      expect(resolved.urls.preprocessorUrl).toBeUndefined();
+    } finally {
+      fetchModelFiles.mockRestore();
+      getModelFile.mockRestore();
+    }
+  });
+
+  it('still resolves the ONNX preprocessor artifact when ONNX preprocessing is explicitly requested', async () => {
+    const fetchModelFiles = vi
+      .spyOn(huggingface, 'fetchModelFiles')
+      .mockResolvedValue([
+        'encoder-model.fp16.onnx',
+        'decoder_joint-model.int8.onnx',
+        'vocab.txt',
+        'nemo128.onnx',
+      ]);
+    const getModelFile = vi
+      .spyOn(huggingface, 'getModelFile')
+      .mockImplementation(async (_repoId, filename) => `https://example.test/${filename}`);
+
+    try {
+      const { getParakeetModel } = await import('../src/presets/parakeet.js');
+      const resolved = await getParakeetModel('parakeet-tdt-0.6b-v3', {
+        encoderQuant: 'fp16',
+        decoderQuant: 'int8',
+        preprocessorBackend: 'onnx',
+      });
+
+      expect(resolved.preprocessorBackend).toBe('onnx');
       expect(resolved.urls.preprocessorUrl).toBe('https://example.test/nemo128.onnx');
     } finally {
       fetchModelFiles.mockRestore();

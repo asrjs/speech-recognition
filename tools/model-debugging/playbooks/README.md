@@ -9,6 +9,8 @@ from a proven path instead of rediscovering the workflow.
 
 - [audio-prep-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\audio-prep-parity.md)
   - use when browser and Node disagree, or when resampling seems to change text quality
+- [canary-aed-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\canary-aed-porting.md)
+  - step-by-step NeMo AED porting flow for Canary-style models, including reference generation, ONNX export, FP16/INT8 variants, and JS frontend guidance
 - [librivox-domain-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\librivox-domain-parity.md)
   - the concrete `LibriVox.org` case that drove recent WAV and Node-path fixes
 - [model-porting-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\model-porting-parity.md)
@@ -26,6 +28,7 @@ Create one when:
 Good playbooks usually include:
 
 - the symptom
+- the environment assumptions
 - the exact fixtures used
 - the scripts to run
 - the expected outputs

@@ -42,8 +42,10 @@ describe('public exports', () => {
     const bench = await import('@asrjs/speech-recognition/bench');
     const datasets = await import('@asrjs/speech-recognition/datasets');
     const nemoTdt = await import('@asrjs/speech-recognition/models/nemo-tdt');
+    const nemoAed = await import('@asrjs/speech-recognition/models/nemo-aed');
     const lasrCtc = await import('@asrjs/speech-recognition/models/lasr-ctc');
     const whisperModel = await import('@asrjs/speech-recognition/models/whisper-seq2seq');
+    const canaryPreset = await import('@asrjs/speech-recognition/presets/canary');
     const parakeetPreset = await import('@asrjs/speech-recognition/presets/parakeet');
     const medasrPreset = await import('@asrjs/speech-recognition/presets/medasr');
     const whisperPreset = await import('@asrjs/speech-recognition/presets/whisper');
@@ -82,9 +84,11 @@ describe('public exports', () => {
     expect(datasets.fetchRandomRows).toBeTypeOf('function');
 
     expect(nemoTdt.createNemoTdtModelFamily).toBeTypeOf('function');
+    expect(nemoAed.createNemoAedModelFamily).toBeTypeOf('function');
     expect(lasrCtc.createLasrCtcModelFamily).toBeTypeOf('function');
     expect(whisperModel.createWhisperSeq2SeqModelFamily).toBeTypeOf('function');
 
+    expect(canaryPreset.createCanaryPresetFactory).toBeTypeOf('function');
     expect(parakeetPreset.createParakeetPresetFactory).toBeTypeOf('function');
     expect(parakeetPreset.ParakeetModel).toBeTypeOf('function');
     expect(parakeetPreset.getParakeetModel).toBeTypeOf('function');

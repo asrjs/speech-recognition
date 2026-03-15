@@ -19,7 +19,11 @@ import {
   type OrtSessionLike,
   type OrtTensorLike,
 } from './ort.js';
-import { OnnxNemoPreprocessor } from './preprocessor.js';
+import {
+  JsNemoPreprocessor,
+  type NemoPreprocessor,
+  OnnxNemoPreprocessor,
+} from './preprocessor.js';
 import { ParakeetTokenizer } from './tokenizer.js';
 import { buildEmptyTranscript, buildWordAndTokenDetails } from './transcript-details.js';
 import { getDefaultNemoTdtWeightSetup } from './weights.js';
@@ -37,7 +41,7 @@ interface LoadedExecutorState {
   readonly tokenizer: ParakeetTokenizer;
   readonly encoderSession: OrtSessionLike;
   readonly decoderSession: OrtSessionLike;
-  readonly preprocessor: OnnxNemoPreprocessor;
+  readonly preprocessor: NemoPreprocessor;
   readonly preprocessorBackend: string;
   readonly warnings: readonly TranscriptWarning[];
 }
@@ -183,7 +187,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
 
     const resolved = resolveNemoTdtArtifacts(this.sourceOptions, this.backendId);
     let artifacts = await this.materializeHuggingFaceArtifacts(resolved.artifacts);
-    if (!artifacts.preprocessorUrl) {
+    if (resolved.preprocessorBackend === 'onnx' && !artifacts.preprocessorUrl) {
       throw new Error(
         `The NeMo TDT source for "${this.modelId}" does not provide a preprocessor model.`,
       );
@@ -256,11 +260,13 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       externalDataUrl: artifacts.decoderDataUrl,
       externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,
     });
-    const preprocessor = new OnnxNemoPreprocessor(
-      ort,
-      artifacts.preprocessorUrl!,
-      resolved.enableProfiling,
-    );
+    const preprocessor: NemoPreprocessor =
+      resolved.preprocessorBackend === 'js'
+        ? new JsNemoPreprocessor({
+            melBins: this.config.melBins,
+            validLengthMode: 'onnx',
+          })
+        : new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl!, resolved.enableProfiling);
 
     return {
       ort,

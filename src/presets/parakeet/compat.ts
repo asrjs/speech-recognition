@@ -585,13 +585,16 @@ export async function getParakeetModel(
     tokenizerUrl: await getModelFile(repoId, 'vocab.txt', { revision, progress: options.progress }),
   };
 
-  // The restored Parakeet/TDT path still executes the ONNX mel frontend.
-  // Keep downloading the preprocessor artifact even when callers request the
-  // future JS mode so the executor can fall back cleanly.
-  urls.preprocessorUrl = await getModelFile(repoId, getRequiredPreprocessorFilename(preprocessor), {
-    revision,
-    progress: options.progress,
-  });
+  if (preprocessorBackend === 'onnx') {
+    urls.preprocessorUrl = await getModelFile(
+      repoId,
+      getRequiredPreprocessorFilename(preprocessor),
+      {
+        revision,
+        progress: options.progress,
+      },
+    );
+  }
 
   const encoderDataName = `${encoderFilename}.data`;
   const decoderDataName = `${decoderFilename}.data`;
@@ -745,9 +748,12 @@ export async function resolveParakeetLocalEntries(
   const decoderName = getQuantizedModelName('decoder_joint-model', decoderQuant);
   const tokenizerName = options.tokenizerName ?? inspection.tokenizerNames[0];
   const preprocessorBackend = options.preprocessorBackend ?? 'js';
-  const preprocessorName = getRequiredPreprocessorFilename(
-    options.preprocessorName ?? inspection.preprocessorNames[0] ?? 'nemo128',
-  );
+  const preprocessorName =
+    preprocessorBackend === 'onnx'
+      ? getRequiredPreprocessorFilename(
+          options.preprocessorName ?? inspection.preprocessorNames[0] ?? 'nemo128',
+        )
+      : undefined;
 
   const encoderEntry = findLocalEntry(entries, encoderName);
   const decoderEntry = findLocalEntry(entries, decoderName);
@@ -783,10 +789,7 @@ export async function resolveParakeetLocalEntries(
   try {
     const preprocessorEntry = preprocessorName ? findLocalEntry(entries, preprocessorName) : null;
     if (preprocessorName && !preprocessorEntry) {
-      throw new Error(
-        `Missing preprocessor file: ${preprocessorName}. ` +
-          'The restored @asrjs/speech-recognition Parakeet/TDT path still needs the ONNX preprocessor artifact, even when JS preprocessing is requested.',
-      );
+      throw new Error(`Missing preprocessor file: ${preprocessorName}.`);
     }
 
     const encoderDataEntry = findLocalEntry(entries, `${encoderEntry.basename}.data`);

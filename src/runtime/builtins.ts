@@ -6,8 +6,10 @@ import {
 } from '../inference/index.js';
 import type { AudioInputLike } from '../types/audio.js';
 import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
+import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoTdtModelFamily } from '../models/nemo-tdt/index.js';
 import { createWhisperSeq2SeqModelFamily } from '../models/whisper-seq2seq/index.js';
+import { createCanaryPresetFactory } from '../presets/canary/factory.js';
 import { createMedAsrPresetFactory } from '../presets/medasr/factory.js';
 import { createParakeetPresetFactory } from '../presets/parakeet/factory.js';
 import { createWhisperPresetFactory } from '../presets/whisper/factory.js';
@@ -231,6 +233,7 @@ export function registerBuiltInBackends(runtime: DefaultSpeechRuntime): DefaultS
 
 /** Registers the built-in technical model families on an existing runtime. */
 export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): DefaultSpeechRuntime {
+  runtime.registerModelFamily(createNemoAedModelFamily());
   runtime.registerModelFamily(createNemoTdtModelFamily());
   runtime.registerModelFamily(createLasrCtcModelFamily());
   runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());
@@ -242,6 +245,11 @@ export function registerBuiltInPresets(
   runtime: DefaultSpeechRuntime,
   options: CreateBuiltInSpeechRuntimeOptions = {},
 ): DefaultSpeechRuntime {
+  runtime.registerPreset(
+    createCanaryPresetFactory({
+      useManifestSource: options.useManifestSources ?? true,
+    }),
+  );
   runtime.registerPreset(
     createParakeetPresetFactory({
       useManifestSource: options.useManifestSources ?? true,

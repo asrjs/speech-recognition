@@ -153,7 +153,7 @@ function createExecutorHarness(options: {
     tokenizer,
     encoderSession,
     decoderSession,
-    preprocessorBackend: 'onnx',
+    preprocessorBackend: options.source?.preprocessorBackend ?? 'onnx',
     preprocessor: {
       async process() {
         return {
@@ -453,7 +453,7 @@ describe('nemo-tdt executor decode loop', () => {
     expect(result.metrics?.emittedWordCount).toBe(2);
   });
 
-  it('reports requested and effective preprocessor backends when js falls back to onnx', async () => {
+  it('reports requested and effective preprocessor backends when js preprocessing is enabled', async () => {
     const harness = createExecutorHarness({
       frameCount: 1,
       logits: [
@@ -470,6 +470,6 @@ describe('nemo-tdt executor decode loop', () => {
     const result = await harness.executor.transcribe(createAudio(), {}, {} as never);
 
     expect(result.metrics?.requestedPreprocessorBackend).toBe('js');
-    expect(result.metrics?.preprocessorBackend).toBe('onnx');
+    expect(result.metrics?.preprocessorBackend).toBe('js');
   });
 });

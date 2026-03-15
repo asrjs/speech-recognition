@@ -23,6 +23,13 @@ Unlike `reference/`, this folder should trend toward:
   - runs against labeled WAV fixtures and writes machine-readable JSON
   - useful for transcript-quality regression checks before stage-level parity work
   - reports heuristic WER/CER only; do not compare those numbers directly with Python leaderboard-style benchmarks
+- [node-canary-js-frontend-parity.mjs](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\node-canary-js-frontend-parity.mjs)
+  - compares a JS mel frontend against `tools/data/results/canary/canary-180m-flash-reference.json`
+  - supports `asrjs`, `meljs`, and `parakeet.js`
+  - auto-selects the in-repo `asrjs` valid-length contract from the reference model id
+  - accepts `--valid-length-mode onnx|centered` when you want to override that default explicitly
+  - reports feature-length deltas, max/mean absolute difference, RMSE, and the largest mismatching bins/frames
+  - useful before switching Canary or future NeMo AED ports away from `nemo128.onnx`
 - [node-compare-transcript-jsons.mjs](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\node-compare-transcript-jsons.mjs)
   - compares two transcript JSON outputs by shared `file` key
   - supports `*.rows[]` debug JSON or plain benchmark arrays
