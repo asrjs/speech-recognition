@@ -268,6 +268,9 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly powerBuffer = new Float32Array(N_FREQ_BINS);
   private readonly filterbankBounds: Int32Array;
 
+  private emphasizedBuffer = new Float32Array(0);
+  private paddedBuffer = new Float64Array(0);
+
   constructor(options: MedAsrJsPreprocessorOptions = {}) {
     this.nMels = options.nMels ?? 128;
     this.center = options.center ?? false;
@@ -331,9 +334,13 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       };
     }
 
-    const emphasized = new Float32Array(sampleCount);
-    emphasized[0] = audio[0] ?? 0;
+    if (this.emphasizedBuffer.length < sampleCount) {
+      this.emphasizedBuffer = new Float32Array(sampleCount);
+    }
+    const emphasized = this.emphasizedBuffer;
+
     if (this.preemphasis > 0) {
+      emphasized[0] = audio[0] ?? 0;
       for (let index = 1; index < sampleCount; index += 1) {
         emphasized[index] = (audio[index] ?? 0) - this.preemphasis * (audio[index - 1] ?? 0);
       }
@@ -343,10 +350,17 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
 
     const pad = this.center ? N_FFT >> 1 : 0;
     const paddedLength = sampleCount + pad * 2;
-    const padded = new Float64Array(paddedLength);
+
+    if (this.paddedBuffer.length < paddedLength) {
+      this.paddedBuffer = new Float64Array(paddedLength);
+    }
+    const padded = this.paddedBuffer;
+
+    padded.fill(0, 0, pad);
     for (let index = 0; index < sampleCount; index += 1) {
       padded[index + pad] = emphasized[index] ?? 0;
     }
+    padded.fill(0, sampleCount + pad, paddedLength);
 
     const frameCount = Math.floor((paddedLength - WIN_LENGTH) / HOP_LENGTH) + 1;
     const validFrameCount = this.center ? Math.floor(sampleCount / HOP_LENGTH) : frameCount;
