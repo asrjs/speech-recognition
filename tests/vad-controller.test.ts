@@ -1,4 +1,7 @@
-import { RealtimeTranscriptionController, VoiceActivityTimeline } from '@asrjs/speech-recognition/realtime';
+import {
+  RealtimeTranscriptionController,
+  VoiceActivityTimeline,
+} from '@asrjs/speech-recognition/realtime';
 import { type TranscriptResult } from '@asrjs/speech-recognition';
 import { describe, expect, it, vi } from 'vitest';
 

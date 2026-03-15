@@ -5,7 +5,10 @@ import {
   type BackendCapabilities,
   type ExecutionBackend,
 } from '@asrjs/speech-recognition';
-import { registerBuiltInModelFamilies, registerBuiltInPresets } from '@asrjs/speech-recognition/builtins';
+import {
+  registerBuiltInModelFamilies,
+  registerBuiltInPresets,
+} from '@asrjs/speech-recognition/builtins';
 import { describe, expect, it } from 'vitest';
 
 function createStaticBackend(capabilities: BackendCapabilities): ExecutionBackend {
