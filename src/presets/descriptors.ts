@@ -81,6 +81,7 @@ export interface BuiltInModelLoadingDescriptor {
 export interface BuiltInModelWarmupDescriptor {
   readonly mode: BuiltInWarmupMode;
   readonly expectedTexts?: readonly string[];
+  readonly requiredKeywordGroups?: readonly (readonly string[])[];
 }
 
 export interface BuiltInModelDescriptor {
@@ -193,6 +194,8 @@ function createParakeetDescriptors(): BuiltInModelDescriptor[] {
     const source = resolveParakeetArtifactSource(modelId);
     const warmupExpectedTexts =
       'warmupExpectedTexts' in config ? config.warmupExpectedTexts : undefined;
+    const warmupRequiredKeywordGroups =
+      'warmupRequiredKeywordGroups' in config ? config.warmupRequiredKeywordGroups : undefined;
 
     return {
       modelId,
@@ -245,6 +248,7 @@ function createParakeetDescriptors(): BuiltInModelDescriptor[] {
       warmup: {
         mode: 'expected-text',
         expectedTexts: warmupExpectedTexts ?? buildWarmupExpectedTexts(),
+        requiredKeywordGroups: warmupRequiredKeywordGroups,
       },
     };
   });

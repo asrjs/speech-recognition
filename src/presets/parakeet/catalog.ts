@@ -29,6 +29,7 @@ export interface ParakeetModelConfig {
   readonly supportsWordTimestamps?: boolean;
   readonly defaultRevision?: string;
   readonly warmupExpectedTexts?: readonly string[];
+  readonly warmupRequiredKeywordGroups?: readonly (readonly string[])[];
 }
 
 export interface ParakeetDefaultWeightSetup {
@@ -85,6 +86,10 @@ export const MODELS = {
     supportsWordTimestamps: false,
     defaultRevision: 'main',
     warmupExpectedTexts: ['the boy was there when the sun rose'],
+    warmupRequiredKeywordGroups: [
+      ['boy', 'there'],
+      ['pink', 'salmon'],
+    ],
   },
 } satisfies Record<string, ParakeetModelConfig>;
 
