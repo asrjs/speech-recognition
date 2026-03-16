@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
+import zlib from 'node:zlib';
 
 const DEFAULT_REFERENCE = path.resolve(
   process.cwd(),
@@ -51,8 +52,23 @@ function ensureFile(filePath, label) {
   return filePath;
 }
 
+function resolveJsonArtifact(filePath) {
+  if (fs.existsSync(filePath)) {
+    return filePath;
+  }
+  const gzipPath = `${filePath}.gz`;
+  if (fs.existsSync(gzipPath)) {
+    return gzipPath;
+  }
+  throw new Error(`Reference JSON not found: ${filePath}`);
+}
+
 function loadReference(referencePath) {
-  const decoded = JSON.parse(fs.readFileSync(referencePath, 'utf8'));
+  const resolvedPath = resolveJsonArtifact(referencePath);
+  const raw = fs.readFileSync(resolvedPath);
+  const decoded = JSON.parse(
+    resolvedPath.endsWith('.gz') ? zlib.gunzipSync(raw).toString('utf8') : raw.toString('utf8'),
+  );
   const waveform = decoded?.audio?.waveform;
   const preprocessor = decoded?.preprocessor;
   const features = preprocessor?.features;
@@ -81,7 +97,7 @@ function loadReference(referencePath) {
 
   return {
     modelId: decoded?.runtime_config?.model_id ?? decoded?.meta?.model_id ?? 'unknown',
-    referencePath,
+    referencePath: resolvedPath,
     sampleRate,
     melBins,
     waveform: Float32Array.from(waveform.data),
@@ -241,7 +257,7 @@ function evaluateThresholds(options, comparison) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const reference = loadReference(ensureFile(options.reference, 'Reference JSON'));
+  const reference = loadReference(options.reference);
   const frontend = await loadFrontendAdapter(options, reference);
   const frontendResult = frontend.process(reference.waveform);
   const comparison = compareFeatures(reference, frontendResult);

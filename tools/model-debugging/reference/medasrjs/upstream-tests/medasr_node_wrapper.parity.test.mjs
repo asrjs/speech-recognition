@@ -6,6 +6,7 @@ import ort from 'onnxruntime-node';
 import wavefilePkg from 'wavefile';
 
 import { MedAsrModel } from '../src/medasr.js';
+import { hasArtifact, readJsonArtifact } from './reference-io.mjs';
 
 const { WaveFile } = wavefilePkg;
 const __filename = fileURLToPath(import.meta.url);
@@ -17,10 +18,10 @@ const ONNX_PATH = path.join(projectRoot, 'models', 'medasr', 'model.onnx');
 const TOKENS_PATH = path.join(projectRoot, 'models', 'medasr', 'tokens.txt');
 
 function loadReference() {
-  const metadata = JSON.parse(fs.readFileSync(path.join(REF_DIR, 'metadata.json'), 'utf-8'));
-  metadata.features = JSON.parse(fs.readFileSync(path.join(REF_DIR, 'features.json'), 'utf-8'));
-  metadata.attention_mask = JSON.parse(fs.readFileSync(path.join(REF_DIR, 'attention_mask.json'), 'utf-8'));
-  metadata.logits = JSON.parse(fs.readFileSync(path.join(REF_DIR, 'logits.json'), 'utf-8'));
+  const metadata = readJsonArtifact(REF_DIR, 'metadata.json');
+  metadata.features = readJsonArtifact(REF_DIR, 'features.json');
+  metadata.attention_mask = readJsonArtifact(REF_DIR, 'attention_mask.json');
+  metadata.logits = readJsonArtifact(REF_DIR, 'logits.json');
   return metadata;
 }
 
@@ -106,14 +107,14 @@ function loadAudioMono16k(audioPath) {
 
 function hasPrereqs() {
   const metadataPath = path.join(REF_DIR, 'metadata.json');
-  if (!fs.existsSync(metadataPath)) return false;
-  const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+  if (!hasArtifact(REF_DIR, 'metadata.json')) return false;
+  const metadata = readJsonArtifact(REF_DIR, 'metadata.json');
   return (
     !!metadata?.audio_path &&
     fs.existsSync(metadata.audio_path) &&
-    fs.existsSync(path.join(REF_DIR, 'features.json')) &&
-    fs.existsSync(path.join(REF_DIR, 'attention_mask.json')) &&
-    fs.existsSync(path.join(REF_DIR, 'logits.json')) &&
+    hasArtifact(REF_DIR, 'features.json') &&
+    hasArtifact(REF_DIR, 'attention_mask.json') &&
+    hasArtifact(REF_DIR, 'logits.json') &&
     fs.existsSync(ONNX_PATH) &&
     fs.existsSync(TOKENS_PATH)
   );

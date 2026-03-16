@@ -25,6 +25,11 @@ Unlike `reference/`, this folder should trend toward:
   - reports heuristic WER/CER only; do not compare those numbers directly with Python leaderboard-style benchmarks
 - [node-canary-js-frontend-parity.mjs](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\node-canary-js-frontend-parity.mjs)
   - compares a JS mel frontend against `tools/data/results/canary/canary-180m-flash-reference.json`
+  - automatically falls back to `canary-180m-flash-reference.json.gz` if the raw JSON has been packed out of the repo
+- [node-reference-artifacts.mjs](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\node-reference-artifacts.mjs)
+  - packs large debugging/reference JSON files into `.json.gz`
+  - restores them on demand for deep parity work
+  - supports `status`, `pack`, and `unpack` commands for the current heavy Canary and MedASR artifact sets
   - supports `asrjs`, `meljs`, and `parakeet.js`
   - auto-selects the in-repo `asrjs` valid-length contract from the reference model id
   - accepts `--valid-length-mode onnx|centered` when you want to override that default explicitly

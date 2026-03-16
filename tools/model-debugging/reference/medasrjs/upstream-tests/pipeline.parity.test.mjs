@@ -6,6 +6,7 @@ import ort from 'onnxruntime-node';
 import wavefilePkg from 'wavefile';
 
 import { MedAsrPipeline } from '../src/index.js';
+import { hasArtifact, readJsonArtifact } from './reference-io.mjs';
 
 const { WaveFile } = wavefilePkg;
 const __filename = fileURLToPath(import.meta.url);
@@ -17,8 +18,8 @@ const tokensPath = path.resolve(projectRoot, 'models/medasr/tokens.txt');
 
 function hasPrereqs() {
   const metadataPath = path.join(refDir, 'metadata.json');
-  if (!fs.existsSync(metadataPath)) return false;
-  const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+  if (!hasArtifact(refDir, 'metadata.json')) return false;
+  const metadata = readJsonArtifact(refDir, 'metadata.json');
   return (
     !!metadata?.audio_path &&
     fs.existsSync(metadata.audio_path) &&
@@ -28,7 +29,7 @@ function hasPrereqs() {
 }
 
 function loadRef() {
-  return JSON.parse(fs.readFileSync(path.join(refDir, 'metadata.json'), 'utf-8'));
+  return readJsonArtifact(refDir, 'metadata.json');
 }
 
 function loadAudioMono16k(audioPath) {

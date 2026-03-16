@@ -19,6 +19,30 @@ Validate the shared NeMo environment before running anything else:
 conda run -n nemo python -c "import nemo.collections.asr, onnx, onnxruntime, soundfile, torch; print('nemo env ok')"
 ```
 
+## Heavy Artifact Policy
+
+The large saved reference JSON for Canary may be committed as
+`canary-180m-flash-reference.json.gz` instead of raw JSON to keep pull request
+diffs and AI review context smaller.
+
+Check artifact status:
+
+```powershell
+node tools/model-debugging/scripts/node-reference-artifacts.mjs status --target canary
+```
+
+Restore the raw JSON locally when a script or manual inspection needs it:
+
+```powershell
+node tools/model-debugging/scripts/node-reference-artifacts.mjs unpack --target canary
+```
+
+Pack it back into `.json.gz` and delete the raw extracted file:
+
+```powershell
+node tools/model-debugging/scripts/node-reference-artifacts.mjs pack --target canary --delete-originals
+```
+
 ## Scripts
 
 - `generate_canary_reference.py`
@@ -57,6 +81,13 @@ This JSON is the source of truth for:
 - encoder output shapes
 - manual greedy token ids
 - normalized final text
+
+If you want to keep the repo lightweight after regenerating it, pack it back
+into `.json.gz`:
+
+```powershell
+node tools/model-debugging/scripts/node-reference-artifacts.mjs pack --target canary --delete-originals
+```
 
 ### 2. Export the runtime artifacts we actually need
 

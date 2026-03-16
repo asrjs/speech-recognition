@@ -5,6 +5,7 @@ import { describe, test, expect } from 'vitest';
 import wavefilePkg from 'wavefile';
 
 import { MedAsrPreprocessor } from '../src/pipeline/preprocessor.js';
+import { hasArtifact, readJsonArtifact } from './reference-io.mjs';
 
 const { WaveFile } = wavefilePkg;
 const __filename = fileURLToPath(import.meta.url);
@@ -13,16 +14,16 @@ const __dirname = path.dirname(__filename);
 const REF_DIR = path.resolve(__dirname, './reference_medasr');
 
 function hasReference() {
-  if (!fs.existsSync(path.join(REF_DIR, 'metadata.json')) || !fs.existsSync(path.join(REF_DIR, 'features.json'))) {
+  if (!hasArtifact(REF_DIR, 'metadata.json') || !hasArtifact(REF_DIR, 'features.json')) {
     return false;
   }
-  const metadata = JSON.parse(fs.readFileSync(path.join(REF_DIR, 'metadata.json'), 'utf-8'));
+  const metadata = readJsonArtifact(REF_DIR, 'metadata.json');
   return !!metadata?.audio_path && fs.existsSync(metadata.audio_path);
 }
 
 function loadReference() {
-  const metadata = JSON.parse(fs.readFileSync(path.join(REF_DIR, 'metadata.json'), 'utf-8'));
-  const features = JSON.parse(fs.readFileSync(path.join(REF_DIR, 'features.json'), 'utf-8'));
+  const metadata = readJsonArtifact(REF_DIR, 'metadata.json');
+  const features = readJsonArtifact(REF_DIR, 'features.json');
   return { metadata, features };
 }
 

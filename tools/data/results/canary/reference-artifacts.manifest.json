@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "updatedAt": "2026-03-16T20:12:42.285Z",
+  "entries": [
+    {
+      "file": "canary-180m-flash-reference.json",
+      "gzipFile": "canary-180m-flash-reference.json.gz",
+      "sizeBytes": 13332211,
+      "gzipBytes": 3288056,
+      "sha256": "9fbd9c4c95ad4311f42d210db28c6d742e881f8fdd9502a3b11f706d32f2728d"
+    }
+  ]
+}
