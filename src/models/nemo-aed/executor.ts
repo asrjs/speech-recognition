@@ -155,6 +155,23 @@ function resolveOutputTensor<TTensor extends OrtTensorLike>(
   return (outputs[preferredKey] ?? Object.values(outputs)[fallbackIndex]) as TTensor;
 }
 
+function resolveMaxNewTokens(
+  requestedMaxNewTokens: number | undefined,
+  maxTargetPositions: number,
+  promptLength: number,
+): number {
+  const remainingBudget = Math.max(1, maxTargetPositions - promptLength);
+  if (requestedMaxNewTokens === undefined) {
+    return remainingBudget;
+  }
+
+  const normalized = Number.isFinite(requestedMaxNewTokens)
+    ? Math.trunc(requestedMaxNewTokens)
+    : remainingBudget;
+
+  return Math.max(1, Math.min(normalized, remainingBudget));
+}
+
 export class OrtNemoAedExecutor implements NemoAedExecutor {
   private readonly sourceOptions: NemoAedModelOptions['source'];
   private readonly loadStatePromise?: Promise<LoadedExecutorState>;
@@ -487,12 +504,10 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       });
     }
 
-    const maxNewTokens = Math.max(
-      1,
-      Math.min(
-        options.maxNewTokens ?? this.config.maxTargetPositions - promptIds.length,
-        this.config.maxTargetPositions - promptIds.length,
-      ),
+    const maxNewTokens = resolveMaxNewTokens(
+      options.maxNewTokens,
+      this.config.maxTargetPositions,
+      promptIds.length,
     );
 
     const generatedTokenIds: number[] = [];
@@ -511,12 +526,16 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
           [1, inputIds.length],
         );
 
-        const decoderOutputs = await loaded.decoderSession.run({
-          input_ids: inputIdTensor,
-          encoder_states: encoderTensor,
-          encoder_mask: encoderMaskTensor,
-        });
-        inputIdTensor.dispose?.();
+        let decoderOutputs: Record<string, OrtTensorLike>;
+        try {
+          decoderOutputs = await loaded.decoderSession.run({
+            input_ids: inputIdTensor,
+            encoder_states: encoderTensor,
+            encoder_mask: encoderMaskTensor,
+          });
+        } finally {
+          inputIdTensor.dispose?.();
+        }
 
         const logits = resolveOutputTensor<OrtTensorLike<Float32Array>>(
           decoderOutputs,

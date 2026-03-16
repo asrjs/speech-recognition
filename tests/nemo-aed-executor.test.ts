@@ -57,6 +57,15 @@ class MockDecoderSession implements OrtSessionLike {
   }
 }
 
+class ThrowingDecoderSession implements OrtSessionLike {
+  lastInputTensor: OrtTensorLike<BigInt64Array> | null = null;
+
+  async run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>> {
+    this.lastInputTensor = feeds.input_ids as OrtTensorLike<BigInt64Array>;
+    throw new Error('decoder failed');
+  }
+}
+
 function createMockOrt(): OrtModuleLike {
   class RuntimeTensor<TData extends ArrayBufferView> extends MockTensor<TData> {
     readonly type: 'float32' | 'int32' | 'int64';
@@ -185,6 +194,52 @@ function createExecutorHarness(source?: NemoAedArtifactSource) {
   };
 }
 
+function createExecutorWithDecoderSession(decoderSession: OrtSessionLike) {
+  const config = parseNemoAedConfig('test-canary', {
+    vocabularySize: 84,
+    languages: ['en'],
+    maxTargetPositions: 16,
+  });
+  const tokenizer = CanaryTokenizer.fromPayload(createTokenizerPayload());
+  const executor = new OrtNemoAedExecutor(
+    'test-canary',
+    DEFAULT_NEMO_AED_CLASSIFICATION,
+    config,
+    'wasm',
+    undefined,
+  ) as OrtNemoAedExecutor & { loadStatePromise?: Promise<unknown> };
+
+  (executor as typeof executor & { sourceOptions?: unknown }).sourceOptions = {
+    kind: 'direct',
+    artifacts: {
+      encoderUrl: 'encoder',
+      decoderUrl: 'decoder',
+      tokenizerUrl: 'tokenizer',
+      preprocessorUrl: 'nemo128',
+    },
+  } satisfies NemoAedArtifactSource;
+
+  executor.loadStatePromise = Promise.resolve({
+    ort: createMockOrt(),
+    tokenizer,
+    encoderSession: new MockEncoderSession(),
+    decoderSession,
+    preprocessorBackend: 'onnx',
+    preprocessor: {
+      async process() {
+        return {
+          features: new Float32Array(config.melBins * 2),
+          frameCount: 2,
+          validLength: 2,
+        };
+      },
+    },
+    warnings: [],
+  });
+
+  return executor;
+}
+
 describe('nemo-aed executor decode loop', () => {
   it('runs a greedy autoregressive decode with canary prompt ids', async () => {
     const harness = createExecutorHarness();
@@ -266,5 +321,40 @@ describe('nemo-aed executor decode loop', () => {
 
     expect(result.metrics?.requestedPreprocessorBackend).toBe('js');
     expect(result.metrics?.preprocessorBackend).toBe('js');
+  });
+
+  it('treats NaN maxNewTokens as invalid input and falls back to the remaining decode budget', async () => {
+    const harness = createExecutorHarness();
+
+    const result = await harness.executor.transcribe(
+      createAudio(),
+      {
+        targetLanguage: 'en',
+        maxNewTokens: Number.NaN,
+      },
+      {} as never,
+    );
+
+    expect(result.utteranceText).toBe('Hello, world!');
+    expect(result.warnings?.some((warning) => warning.code === 'nemo-aed.max-new-tokens-exhausted')).toBe(
+      false,
+    );
+  });
+
+  it('disposes decoder input tensors even when decoder execution throws', async () => {
+    const decoderSession = new ThrowingDecoderSession();
+    const executor = createExecutorWithDecoderSession(decoderSession);
+
+    await expect(
+      executor.transcribe(
+        createAudio(),
+        {
+          targetLanguage: 'en',
+        },
+        {} as never,
+      ),
+    ).rejects.toThrow('decoder failed');
+
+    expect((decoderSession.lastInputTensor as MockTensor<BigInt64Array> | null)?.disposed).toBe(true);
   });
 });
