@@ -238,7 +238,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       );
     }
 
-    const ort = await initOrt(this.backendId, {
+    const ort = await initOrt(resolved.ortBackend, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
     });
@@ -251,7 +251,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
     let encoderSession: OrtSessionLike;
     try {
       encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
-        backendId: resolved.backendForOrt,
+        backendId: resolved.encoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
       });
     } catch (error) {
@@ -259,8 +259,8 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       const implicitFp16Encoder =
         source.kind === 'huggingface' &&
         !source.encoderQuant &&
-        resolved.backendForOrt === 'webgpu' &&
-        getDefaultNemoAedWeightSetup(resolved.backendForOrt).encoderDefault === 'fp16';
+        resolved.encoderBackendForOrt === 'webgpu' &&
+        getDefaultNemoAedWeightSetup(resolved.encoderBackendForOrt).encoderDefault === 'fp16';
 
       if (!implicitFp16Encoder) {
         throw error;
@@ -275,7 +275,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       );
       artifacts = await this.materializeHuggingFaceArtifacts(fallbackResolved.artifacts);
       encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
-        backendId: resolved.backendForOrt,
+        backendId: resolved.encoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
       });
       warnings.push({
@@ -289,7 +289,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
     let decoderSession: OrtSessionLike;
     try {
       decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
-        backendId: resolved.backendForOrt,
+        backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
       });
     } catch (error) {
@@ -297,8 +297,8 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       const implicitFp16Decoder =
         source.kind === 'huggingface' &&
         !source.decoderQuant &&
-        resolved.backendForOrt === 'webgpu' &&
-        getDefaultNemoAedWeightSetup(resolved.backendForOrt).decoderDefault === 'fp16';
+        resolved.decoderBackendForOrt === 'webgpu' &&
+        getDefaultNemoAedWeightSetup(resolved.decoderBackendForOrt).decoderDefault === 'fp16';
 
       if (!implicitFp16Decoder) {
         throw error;
@@ -313,7 +313,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       );
       artifacts = await this.materializeHuggingFaceArtifacts(fallbackResolved.artifacts);
       decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
-        backendId: resolved.backendForOrt,
+        backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
       });
       warnings.push({

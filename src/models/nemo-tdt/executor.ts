@@ -193,7 +193,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       );
     }
 
-    const ort = await initOrt(this.backendId, {
+    const ort = await initOrt(resolved.ortBackend, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
     });
@@ -205,7 +205,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     let encoderSession: OrtSessionLike;
     try {
       encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
-        backendId: resolved.backendForOrt,
+        backendId: resolved.encoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
         externalDataUrl: artifacts.encoderDataUrl,
         externalDataPath: artifacts.encoderFilename
@@ -216,8 +216,8 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       const implicitFp16Encoder =
         this.sourceOptions.kind === 'huggingface' &&
         !this.sourceOptions.encoderQuant &&
-        resolved.backendForOrt === 'webgpu' &&
-        getDefaultNemoTdtWeightSetup(resolved.backendForOrt).encoderDefault === 'fp16';
+        resolved.encoderBackendForOrt === 'webgpu' &&
+        getDefaultNemoTdtWeightSetup(resolved.encoderBackendForOrt).encoderDefault === 'fp16';
 
       if (!implicitFp16Encoder) {
         throw error;
@@ -240,7 +240,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         encoderFilename: fallbackArtifacts.encoderFilename,
       };
       encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
-        backendId: resolved.backendForOrt,
+        backendId: resolved.encoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
         externalDataUrl: artifacts.encoderDataUrl,
         externalDataPath: artifacts.encoderFilename
@@ -255,7 +255,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       });
     }
     const decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
-      backendId: 'wasm',
+      backendId: resolved.decoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
       externalDataUrl: artifacts.decoderDataUrl,
       externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,

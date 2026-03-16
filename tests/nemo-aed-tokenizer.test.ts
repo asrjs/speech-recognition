@@ -75,4 +75,24 @@ describe('CanaryTokenizer', () => {
 
     expect(() => tokenizer.buildPromptIds(prompt)).toThrow('decoder_context');
   });
+
+  it('accepts NeMo-style aliases for languages, task, pnc, and timestamp toggles', () => {
+    const tokenizer = CanaryTokenizer.fromPayload(createTokenizerPayload());
+    const config = parseNemoAedConfig('test-canary');
+
+    const prompt = tokenizer.resolvePromptSettings(config, {
+      source_lang: 'de',
+      task: 'asr',
+      pnc: 'no',
+      timestamp: 'yes',
+    });
+
+    expect(prompt).toMatchObject({
+      sourceLanguage: 'de',
+      targetLanguage: 'de',
+      punctuate: false,
+      timestamps: true,
+    });
+    expect(tokenizer.buildPromptIds(prompt)).toEqual([7, 4, 16, 76, 76, 6, 9, 10, 13]);
+  });
 });

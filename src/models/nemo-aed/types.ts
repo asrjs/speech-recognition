@@ -59,6 +59,7 @@ export interface NemoAedModelConfig extends NemoModelConfig {
 
 export type NemoAedQuantization = 'int8' | 'fp32' | 'fp16';
 export type NemoAedPreprocessorBackend = 'js' | 'onnx';
+export type NemoAedExecutionBackend = 'webgpu' | 'wasm';
 
 export interface NemoAedDirectArtifacts {
   readonly encoderUrl: string;
@@ -78,6 +79,8 @@ export interface NemoAedDirectArtifacts {
 export interface NemoAedDirectArtifactSource {
   readonly kind: 'direct';
   readonly artifacts: NemoAedDirectArtifacts;
+  readonly encoderBackend?: NemoAedExecutionBackend;
+  readonly decoderBackend?: NemoAedExecutionBackend;
   readonly preprocessorBackend?: NemoAedPreprocessorBackend;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
@@ -88,6 +91,8 @@ export interface NemoAedHuggingFaceSource {
   readonly kind: 'huggingface';
   readonly repoId: string;
   readonly revision?: string;
+  readonly encoderBackend?: NemoAedExecutionBackend;
+  readonly decoderBackend?: NemoAedExecutionBackend;
   readonly encoderQuant?: NemoAedQuantization;
   readonly decoderQuant?: NemoAedQuantization;
   readonly preprocessorName?: 'nemo80' | 'nemo128';
@@ -129,20 +134,36 @@ export interface NemoAedNativeTranscript extends Omit<NemoNativeTranscript, 'wor
 export interface NemoAedTranscriptionOptions extends BaseTranscriptionOptions {
   /** Shortcut for selecting the source language prompt token. */
   readonly sourceLanguage?: string;
+  /** NeMo manifest-style alias for `sourceLanguage`. */
+  readonly source_lang?: string;
   /** Shortcut for selecting the target language prompt token. */
   readonly targetLanguage?: string;
+  /** NeMo manifest-style alias for `targetLanguage`. */
+  readonly target_lang?: string;
   /** Optional decoder context text slot. Currently restricted to the empty default. */
   readonly decoderContext?: string;
   /** Optional Canary emotion token value. */
   readonly emotion?: string;
   /** Request punctuation and capitalization in the generated text. */
   readonly punctuate?: boolean;
+  /** NeMo-style alias for punctuation/capitalization toggling. */
+  readonly pnc?: boolean | 'yes' | 'no' | 'true' | 'false';
   /** Request inverse text normalization behavior. */
   readonly inverseTextNormalization?: boolean;
   /** Request timestamp output if the runtime/backend supports it. */
   readonly timestamps?: boolean;
+  /** NeMo manifest-style alias for `timestamps`. */
+  readonly timestamp?: boolean | 'yes' | 'no' | 'true' | 'false';
   /** Request diarization-aware prompting. */
   readonly diarize?: boolean;
+  /**
+   * Convenience task alias mirroring NeMo-style intent.
+   *
+   * Canary's prompt format does not expose a standalone task token in this
+   * runtime, so `asr` is modeled as `sourceLanguage === targetLanguage`, while
+   * translation-style values are modeled as `sourceLanguage !== targetLanguage`.
+   */
+  readonly task?: 'asr' | 'ast' | 'translate' | 'translation' | 'speech-translation';
   /** Upper bound on newly generated decoder tokens. */
   readonly maxNewTokens?: number;
   readonly returnTokenIds?: boolean;

@@ -70,6 +70,11 @@
       "import": "./dist/datasets.js",
       "default": "./dist/datasets.js"
     },
+    "./presets": {
+      "types": "./dist/presets/index.d.ts",
+      "import": "./dist/presets/index.js",
+      "default": "./dist/presets/index.js"
+    },
     "./tokenizers": {
       "types": "./dist/tokenizers.d.ts",
       "import": "./dist/tokenizers.js",

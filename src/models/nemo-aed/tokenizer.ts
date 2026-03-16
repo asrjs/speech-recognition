@@ -74,6 +74,52 @@ function normalizeBooleanToken(name: string, value: boolean): string {
   return value ? `<|${name}|>` : `<|no${name}|>`;
 }
 
+function normalizeBooleanOption(
+  value: boolean | string | undefined,
+  fallback: boolean,
+  fieldName: string,
+): boolean {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'yes' || normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'no' || normalized === 'false') {
+    return false;
+  }
+
+  throw new Error(
+    `Unsupported Canary boolean option "${fieldName}" value "${value}". Use boolean, "yes"/"no", or "true"/"false".`,
+  );
+}
+
+function normalizeTaskOption(task: NemoAedTranscriptionOptions['task']): 'asr' | 'translation' | null {
+  if (!task) {
+    return null;
+  }
+
+  const normalized = String(task).trim().toLowerCase();
+  if (normalized === 'asr') {
+    return 'asr';
+  }
+  if (
+    normalized === 'ast' ||
+    normalized === 'translate' ||
+    normalized === 'translation' ||
+    normalized === 'speech-translation'
+  ) {
+    return 'translation';
+  }
+
+  return null;
+}
+
 function normalizeDecodedPiece(piece: string): string {
   return piece.replace(/\u2581/g, ' ').replace(/^\s+/, '');
 }
@@ -155,16 +201,35 @@ export class CanaryTokenizer implements NemoTokenizer {
   ): NemoAedPromptSettings {
     const defaults = config.promptDefaults[0];
     const fallbackSource = defaults?.sourceLanguage ?? 'en';
-    const fallbackTarget = defaults?.targetLanguage ?? fallbackSource;
+    const task = normalizeTaskOption(options.task);
+    const requestedSource = options.sourceLanguage ?? options.source_lang ?? options.language;
+    const fallbackTarget =
+      task === 'asr'
+        ? requestedSource ?? defaults?.targetLanguage ?? fallbackSource
+        : defaults?.targetLanguage ?? fallbackSource;
+    const resolvedSource = requestedSource ?? fallbackSource;
+    const resolvedTarget =
+      options.targetLanguage ??
+      options.target_lang ??
+      (task === 'asr' ? resolvedSource : options.language) ??
+      fallbackTarget;
     return {
-      sourceLanguage: options.sourceLanguage ?? options.language ?? fallbackSource,
-      targetLanguage: options.targetLanguage ?? options.language ?? fallbackTarget,
+      sourceLanguage: resolvedSource,
+      targetLanguage: resolvedTarget,
       decoderContext: options.decoderContext ?? defaults?.decoderContext ?? '',
       emotion: normalizeEmotionToken(options.emotion ?? defaults?.emotion ?? 'undefined'),
-      punctuate: options.punctuate ?? defaults?.punctuate ?? true,
+      punctuate: normalizeBooleanOption(
+        options.punctuate ?? options.pnc,
+        defaults?.punctuate ?? true,
+        'pnc',
+      ),
       inverseTextNormalization:
         options.inverseTextNormalization ?? defaults?.inverseTextNormalization ?? false,
-      timestamps: options.timestamps ?? defaults?.timestamps ?? false,
+      timestamps: normalizeBooleanOption(
+        options.timestamps ?? options.timestamp,
+        defaults?.timestamps ?? false,
+        'timestamp',
+      ),
       diarize: options.diarize ?? defaults?.diarize ?? false,
     };
   }

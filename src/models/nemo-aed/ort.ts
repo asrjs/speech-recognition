@@ -1,6 +1,7 @@
 import type {
   NemoAedArtifactSource,
   NemoAedDirectArtifacts,
+  NemoAedExecutionBackend,
   NemoAedHuggingFaceSource,
   NemoAedPreprocessorBackend,
   NemoAedQuantization,
@@ -20,7 +21,9 @@ export interface ResolvedNemoAedArtifacts {
   readonly artifacts: NemoAedDirectArtifacts;
   readonly preprocessorBackend: NemoAedPreprocessorBackend;
   readonly warnings: readonly { readonly code: string; readonly message: string }[];
-  readonly backendForOrt: 'webgpu' | 'wasm';
+  readonly ortBackend: NemoAedExecutionBackend;
+  readonly encoderBackendForOrt: NemoAedExecutionBackend;
+  readonly decoderBackendForOrt: NemoAedExecutionBackend;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
@@ -51,7 +54,7 @@ function getQuantizedFilename(baseName: string, quantization: NemoAedQuantizatio
 
 function resolveQuantization(
   requested: NemoAedQuantization | undefined,
-  backendForOrt: 'webgpu' | 'wasm',
+  backendForOrt: NemoAedExecutionBackend,
   role: 'encoder' | 'decoder',
 ): NemoAedQuantization {
   if (requested) {
@@ -61,14 +64,25 @@ function resolveQuantization(
   return role === 'encoder' ? setup.encoderDefault : setup.decoderDefault;
 }
 
+function resolveComponentBackend(
+  requested: NemoAedExecutionBackend | undefined,
+  fallback: NemoAedExecutionBackend,
+): NemoAedExecutionBackend {
+  return requested ?? fallback;
+}
+
 function resolveHuggingFaceArtifacts(
   source: NemoAedHuggingFaceSource,
   backendId: string,
 ): ResolvedNemoAedArtifacts {
   const revision = source.revision ?? 'main';
-  const backendForOrt = normalizeNemoAedWeightBackend(backendId);
-  const encoderQuant = resolveQuantization(source.encoderQuant, backendForOrt, 'encoder');
-  const decoderQuant = resolveQuantization(source.decoderQuant, backendForOrt, 'decoder');
+  const fallbackBackend = normalizeNemoAedWeightBackend(backendId);
+  const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend);
+  const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend);
+  const ortBackend =
+    encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm';
+  const encoderQuant = resolveQuantization(source.encoderQuant, encoderBackendForOrt, 'encoder');
+  const decoderQuant = resolveQuantization(source.decoderQuant, decoderBackendForOrt, 'decoder');
   const encoderFilename = getQuantizedFilename('encoder-model', encoderQuant);
   const decoderFilename = getQuantizedFilename('decoder-model', decoderQuant);
   const preprocessorBackend = source.preprocessorBackend ?? 'onnx';
@@ -94,7 +108,9 @@ function resolveHuggingFaceArtifacts(
     },
     preprocessorBackend,
     warnings: [],
-    backendForOrt,
+    ortBackend,
+    encoderBackendForOrt,
+    decoderBackendForOrt,
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
@@ -105,11 +121,17 @@ function resolveDirectArtifacts(
   source: Extract<NemoAedArtifactSource, { kind: 'direct' }>,
   backendId: string,
 ): ResolvedNemoAedArtifacts {
+  const fallbackBackend = normalizeNemoAedWeightBackend(backendId);
+  const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend);
+  const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend);
   return {
     artifacts: source.artifacts,
     preprocessorBackend: source.preprocessorBackend ?? 'onnx',
     warnings: [],
-    backendForOrt: normalizeNemoAedWeightBackend(backendId),
+    ortBackend:
+      encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
+    encoderBackendForOrt,
+    decoderBackendForOrt,
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
