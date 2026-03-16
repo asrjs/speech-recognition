@@ -11,12 +11,17 @@ import {
   defaultNemoConfidenceReconstructor,
   defaultNemoTimestampReconstructor,
   mapNemoNativeToCanonical,
+  type NemoTimestampReconstructor,
 } from '../models/nemo-common/index.js';
 import {
   DEFAULT_LASR_CTC_CLASSIFICATION,
   type LasrCtcNativeTranscript,
   mapLasrCtcNativeToCanonical,
 } from '../models/lasr-ctc/index.js';
+import {
+  DEFAULT_NEMO_AED_CLASSIFICATION,
+  type NemoAedNativeTranscript,
+} from '../models/nemo-aed/index.js';
 import {
   DEFAULT_NEMO_TDT_CLASSIFICATION,
   type NemoTdtNativeTranscript,
@@ -62,6 +67,53 @@ function normalizeClassification(
   return createModelClassification(base, override);
 }
 
+const nemoAedTimestampReconstructor: NemoTimestampReconstructor<NemoAedNativeTranscript> = {
+  reconstruct(nativeTranscript, detail) {
+    const defaultReconstructed = defaultNemoTimestampReconstructor.reconstruct(
+      nativeTranscript,
+      detail,
+    );
+    if (
+      defaultReconstructed.segments?.length ||
+      defaultReconstructed.words?.length ||
+      detail === 'text'
+    ) {
+      return defaultReconstructed;
+    }
+
+    const duration = nativeTranscript.metrics?.audioDurationSec ?? 0;
+    const segments =
+      nativeTranscript.utteranceText.length > 0
+        ? [
+            {
+              index: 0,
+              text: nativeTranscript.utteranceText,
+              startTime: 0,
+              endTime: duration,
+              confidence: nativeTranscript.confidence?.utterance,
+            },
+          ]
+        : [];
+
+    if (detail === 'segments' || detail === 'words') {
+      return { segments };
+    }
+
+    return {
+      segments,
+      tokens: (nativeTranscript.tokens ?? []).map((token) => ({
+        index: token.index,
+        id: token.id,
+        text: token.text,
+        rawText: token.rawText,
+        isWordStart: token.isWordStart,
+        confidence: token.confidence,
+        logProb: token.logProb,
+      })),
+    };
+  },
+};
+
 export function createNemoTdtTranscriptNormalizer(
   classification: Partial<ModelClassification> = {},
 ): TranscriptNormalizer<NemoTdtNativeTranscript> {
@@ -106,6 +158,56 @@ export function createNemoTdtTranscriptNormalizer(
           : context.metrics,
       },
       defaultNemoTimestampReconstructor,
+      defaultNemoConfidenceReconstructor,
+    ),
+  );
+}
+
+export function createNemoAedTranscriptNormalizer(
+  classification: Partial<ModelClassification> = {},
+): TranscriptNormalizer<NemoAedNativeTranscript> {
+  const normalizedClassification = normalizeClassification(
+    DEFAULT_NEMO_AED_CLASSIFICATION,
+    classification,
+  );
+  return createTranscriptNormalizer('nemo-aed', (native, context) =>
+    mapNemoNativeToCanonical(
+      native,
+      normalizedClassification,
+      {
+        ...context,
+        detailLevel: context.detailLevel ?? 'segments',
+        language: native.language ?? context.language,
+        metrics: native.metrics
+          ? {
+              preprocessMs: native.metrics.preprocessMs,
+              encodeMs: native.metrics.encodeMs,
+              decodeMs: native.metrics.decodeMs,
+              tokenizeMs: native.metrics.tokenizeMs,
+              postprocessMs: native.metrics.tokenizeMs,
+              totalMs: native.metrics.totalMs,
+              wallMs: native.metrics.wallMs,
+              audioDurationSec: native.metrics.audioDurationSec,
+              rtf: native.metrics.rtf,
+              rtfx: native.metrics.rtfx,
+              requestedPreprocessorBackend: native.metrics.requestedPreprocessorBackend,
+              preprocessorBackend: native.metrics.preprocessorBackend,
+              decodeAudioMs: native.metrics.decodeAudioMs,
+              downmixMs: native.metrics.downmixMs,
+              resampleMs: native.metrics.resampleMs,
+              audioPreparationMs: native.metrics.audioPreparationMs,
+              inputSampleRate: native.metrics.inputSampleRate,
+              outputSampleRate: native.metrics.outputSampleRate,
+              resampler: native.metrics.resampler,
+              resamplerQuality: native.metrics.resamplerQuality,
+              encoderFrameCount: native.metrics.encoderFrameCount,
+              decodeIterations: native.metrics.decodeIterations,
+              emittedTokenCount: native.metrics.emittedTokenCount,
+              emittedWordCount: native.metrics.emittedWordCount,
+            }
+          : context.metrics,
+      },
+      nemoAedTimestampReconstructor,
       defaultNemoConfidenceReconstructor,
     ),
   );
@@ -238,6 +340,7 @@ export function createLegacyParakeetTranscriptNormalizer(): TranscriptNormalizer
 }
 
 export const nemoTdtTranscriptNormalizer = createNemoTdtTranscriptNormalizer();
+export const nemoAedTranscriptNormalizer = createNemoAedTranscriptNormalizer();
 export const lasrCtcTranscriptNormalizer = createLasrCtcTranscriptNormalizer();
 export const whisperTranscriptNormalizer = createWhisperTranscriptNormalizer();
 export const legacyParakeetTranscriptNormalizer = createLegacyParakeetTranscriptNormalizer();
@@ -247,6 +350,13 @@ export function normalizeNemoTdtTranscript(
   context: TranscriptNormalizationContext = {},
 ): TranscriptResult {
   return nemoTdtTranscriptNormalizer.toCanonical(native, context);
+}
+
+export function normalizeNemoAedTranscript(
+  native: NemoAedNativeTranscript,
+  context: TranscriptNormalizationContext = {},
+): TranscriptResult {
+  return nemoAedTranscriptNormalizer.toCanonical(native, context);
 }
 
 export function normalizeLasrCtcTranscript(

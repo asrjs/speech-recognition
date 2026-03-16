@@ -19,7 +19,11 @@ import {
   type OrtSessionLike,
   type OrtTensorLike,
 } from './ort.js';
-import { OnnxNemoPreprocessor } from './preprocessor.js';
+import {
+  JsNemoPreprocessor,
+  type NemoPreprocessor,
+  OnnxNemoPreprocessor,
+} from './preprocessor.js';
 import { ParakeetTokenizer } from './tokenizer.js';
 import { buildEmptyTranscript, buildWordAndTokenDetails } from './transcript-details.js';
 import { getDefaultNemoTdtWeightSetup } from './weights.js';
@@ -37,7 +41,7 @@ interface LoadedExecutorState {
   readonly tokenizer: ParakeetTokenizer;
   readonly encoderSession: OrtSessionLike;
   readonly decoderSession: OrtSessionLike;
-  readonly preprocessor: OnnxNemoPreprocessor;
+  readonly preprocessor: NemoPreprocessor;
   readonly preprocessorBackend: string;
   readonly warnings: readonly TranscriptWarning[];
 }
@@ -183,13 +187,13 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
 
     const resolved = resolveNemoTdtArtifacts(this.sourceOptions, this.backendId);
     let artifacts = await this.materializeHuggingFaceArtifacts(resolved.artifacts);
-    if (!artifacts.preprocessorUrl) {
+    if (resolved.preprocessorBackend === 'onnx' && !artifacts.preprocessorUrl) {
       throw new Error(
         `The NeMo TDT source for "${this.modelId}" does not provide a preprocessor model.`,
       );
     }
 
-    const ort = await initOrt(this.backendId, {
+    const ort = await initOrt(resolved.ortBackend, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
     });
@@ -201,7 +205,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     let encoderSession: OrtSessionLike;
     try {
       encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
-        backendId: resolved.backendForOrt,
+        backendId: resolved.encoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
         externalDataUrl: artifacts.encoderDataUrl,
         externalDataPath: artifacts.encoderFilename
@@ -212,8 +216,8 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       const implicitFp16Encoder =
         this.sourceOptions.kind === 'huggingface' &&
         !this.sourceOptions.encoderQuant &&
-        resolved.backendForOrt === 'webgpu' &&
-        getDefaultNemoTdtWeightSetup(resolved.backendForOrt).encoderDefault === 'fp16';
+        resolved.encoderBackendForOrt === 'webgpu' &&
+        getDefaultNemoTdtWeightSetup(resolved.encoderBackendForOrt).encoderDefault === 'fp16';
 
       if (!implicitFp16Encoder) {
         throw error;
@@ -236,7 +240,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         encoderFilename: fallbackArtifacts.encoderFilename,
       };
       encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
-        backendId: resolved.backendForOrt,
+        backendId: resolved.encoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
         externalDataUrl: artifacts.encoderDataUrl,
         externalDataPath: artifacts.encoderFilename
@@ -251,16 +255,18 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       });
     }
     const decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
-      backendId: 'wasm',
+      backendId: resolved.decoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
       externalDataUrl: artifacts.decoderDataUrl,
       externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,
     });
-    const preprocessor = new OnnxNemoPreprocessor(
-      ort,
-      artifacts.preprocessorUrl!,
-      resolved.enableProfiling,
-    );
+    const preprocessor: NemoPreprocessor =
+      resolved.preprocessorBackend === 'js'
+        ? new JsNemoPreprocessor({
+            melBins: this.config.melBins,
+            validLengthMode: 'onnx',
+          })
+        : new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl!, resolved.enableProfiling);
 
     return {
       ort,

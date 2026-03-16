@@ -10,6 +10,7 @@ import {
   registerBuiltInModelFamilies,
   registerBuiltInPresets,
 } from '@asrjs/speech-recognition/builtins';
+import { createCanaryPresetFactory } from '@asrjs/speech-recognition/presets/canary';
 import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/parakeet';
 import { describe, expect, it } from 'vitest';
 
@@ -93,6 +94,44 @@ describe('loadBuiltInSpeechModel', () => {
     ]);
     expect(transcriptionEvents.map((event) => event.stage)).toEqual(['start', 'complete']);
     expect(transcriptionEvents[1]?.metrics?.totalMs).toBeGreaterThan(0);
+
+    await loaded.dispose();
+  });
+
+  it('infers the Canary preset from modelId and returns a ready session-backed handle', async () => {
+    const runtime = createSpeechRuntime();
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+    registerBuiltInModelFamilies(runtime);
+    runtime.registerPreset(
+      createCanaryPresetFactory({
+        useManifestSource: false,
+      }),
+    );
+
+    const loaded = await loadSpeechModel({
+      runtime,
+      modelId: 'nvidia/canary-180m-flash',
+      backend: 'wasm',
+    });
+
+    expect(loaded.model.info.preset).toBe('canary');
+    expect(loaded.model.info.family).toBe('nemo-aed');
 
     await loaded.dispose();
   });

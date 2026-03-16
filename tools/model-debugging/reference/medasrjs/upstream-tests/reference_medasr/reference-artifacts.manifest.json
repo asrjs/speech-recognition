@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "updatedAt": "2026-03-16T20:11:55.383Z",
+  "entries": [
+    {
+      "file": "features.json",
+      "gzipFile": "features.json.gz",
+      "sizeBytes": 6300224,
+      "gzipBytes": 1727037,
+      "sha256": "a15ccc1026abd924ef65bb42d4351513242b870387fd582d5f97fdd1b99ea714"
+    },
+    {
+      "file": "logits.json",
+      "gzipFile": "logits.json.gz",
+      "sizeBytes": 6230951,
+      "gzipBytes": 2646958,
+      "sha256": "9b120425a0a42be3586f99fd60b8f570c71d06475d2c03ba6477f392dfa0cac0"
+    }
+  ]
+}

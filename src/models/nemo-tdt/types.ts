@@ -26,6 +26,7 @@ export interface NemoTdtModelConfig extends NemoModelConfig {
 
 export type NemoTdtQuantization = 'int8' | 'fp32' | 'fp16';
 export type NemoTdtPreprocessorBackend = 'js' | 'onnx';
+export type NemoTdtExecutionBackend = 'webgpu' | 'wasm';
 
 export interface NemoTdtDirectArtifacts {
   readonly encoderUrl: string;
@@ -41,6 +42,8 @@ export interface NemoTdtDirectArtifacts {
 export interface NemoTdtDirectArtifactSource {
   readonly kind: 'direct';
   readonly artifacts: NemoTdtDirectArtifacts;
+  readonly encoderBackend?: NemoTdtExecutionBackend;
+  readonly decoderBackend?: NemoTdtExecutionBackend;
   readonly preprocessorBackend?: NemoTdtPreprocessorBackend;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
@@ -51,6 +54,8 @@ export interface NemoTdtHuggingFaceSource {
   readonly kind: 'huggingface';
   readonly repoId: string;
   readonly revision?: string;
+  readonly encoderBackend?: NemoTdtExecutionBackend;
+  readonly decoderBackend?: NemoTdtExecutionBackend;
   readonly encoderQuant?: NemoTdtQuantization;
   readonly decoderQuant?: NemoTdtQuantization;
   readonly preprocessorName?: 'nemo80' | 'nemo128';

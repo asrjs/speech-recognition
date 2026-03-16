@@ -10,6 +10,10 @@ import {
   type LasrCtcNativeTranscript,
 } from '@asrjs/speech-recognition/models/lasr-ctc';
 import {
+  createNemoAedModelFamily,
+  type NemoAedNativeTranscript,
+} from '@asrjs/speech-recognition/models/nemo-aed';
+import {
   createNemoTdtModelFamily,
   type NemoTdtNativeTranscript,
 } from '@asrjs/speech-recognition/models/nemo-tdt';
@@ -17,6 +21,10 @@ import {
   createWhisperSeq2SeqModelFamily,
   type WhisperNativeTranscript,
 } from '@asrjs/speech-recognition/models/whisper-seq2seq';
+import {
+  createCanaryPresetFactory,
+  resolveCanaryArtifactSource,
+} from '@asrjs/speech-recognition/presets/canary';
 import { createMedAsrPresetFactory } from '@asrjs/speech-recognition/presets/medasr';
 import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/parakeet';
 import { createWhisperPresetFactory } from '@asrjs/speech-recognition/presets/whisper';
@@ -181,6 +189,52 @@ describe('DefaultSpeechRuntime', () => {
     expect(model.info.classification.processor).toBe('nemo-mel');
     expect(model.info.classification.family).toBe('parakeet');
     expect(model.info.classification.decoder).toBe('tdt');
+  });
+
+  it('keeps the Canary preset thin over the NeMo AED family boundary', async () => {
+    const runtime = createSpeechRuntime();
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+    runtime.registerModelFamily(createNemoAedModelFamily());
+    runtime.registerPreset(createCanaryPresetFactory());
+
+    const model = await runtime.loadModel({
+      preset: 'canary',
+      modelId: 'nvidia/canary-180m-flash',
+    });
+    const session = await model.createSession();
+    const envelope = await session.transcribe(new Float32Array(16000), {
+      detail: 'segments',
+      responseFlavor: 'canonical+native',
+    });
+
+    expect(model.info.family).toBe('nemo-aed');
+    expect(model.info.preset).toBe('canary');
+    expect(model.info.classification.family).toBe('canary');
+    expect(model.info.classification.topology).toBe('aed');
+    expect(envelope.native?.warnings?.[0]?.code).toBe('nemo-aed.stubbed-decoder');
+    expectTypeOf(envelope).toMatchTypeOf<TranscriptionEnvelope<NemoAedNativeTranscript>>();
+  });
+
+  it('advertises JS mel as the default Canary frontend backend', () => {
+    expect(resolveCanaryArtifactSource('nvidia/canary-180m-flash')?.preprocessorBackend).toBe(
+      'js',
+    );
   });
 
   it('can inject the built-in Parakeet artifact source without moving brand logic into nemo-tdt', async () => {

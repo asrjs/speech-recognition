@@ -72,13 +72,15 @@ Audio Waveform
 - `sample_rate`: 16000 (universal for NeMo ASR)
 - `window_size`: 0.025s (25ms)
 - `window_stride`: 0.01s (10ms) — this is the frame rate
-- `features`: 80 (number of mel bins — standard for Conformer/FastConformer)
+- `features`: usually `80` or `128`, depending on the checkpoint
 - `n_fft`: 512
 - `normalize`: `"per_feature"` (per-channel mean/std normalization)
 - `dither`: 1e-5 (small noise added for numerical stability)
 - `pad_to`: 0 (no padding)
 
-**For your library:** This is the same across virtually all NeMo ASR models (Parakeet, Canary, Conformer, FastConformer, etc.). One `MelSpectrogramFrontend` class handles them all. The params may differ slightly but the math is identical.
+**For your library:** This is the same math across virtually all NeMo ASR models (Parakeet, Canary, Conformer, FastConformer, etc.). One `MelSpectrogramFrontend` class can handle them all, but do not hard-code the bin count to `80`. In this workspace, both Parakeet TDT 0.6x and Canary 180M Flash use `128` mel bins.
+
+**Canary nuance:** the upstream model card says "Pre-Processing Not Needed" because NeMo's `transcribe()` accepts raw 16 kHz mono audio and runs this frontend internally. That does **not** mean Canary has no mel frontend. Any non-NeMo runtime still needs a feature extractor, either an ONNX frontend or a JS frontend with verified parity.
 
 ---
 
@@ -286,6 +288,31 @@ TransducerModelType: RNNT | TDT | MULTI_BLANK
 | Decoding       | `MultiTaskDecoding`, `strategy="greedy"`                                |
 | Tokenizer      | `CanaryTokenizer` (aggregate, with special prompt tokens)               |
 | Prompting      | `PromptFormatter` (language/task/pnc control tokens)                    |
+
+Additional upstream details for `nvidia/canary-180m-flash`:
+
+- 17 FastConformer encoder layers
+- 4 Transformer decoder layers
+- about 182M parameters
+- supported languages in the current checkpoint: `en`, `de`, `es`, `fr`
+- default plain-audio behavior: English ASR
+- multilingual ASR / speech translation behavior is controlled by prompt or manifest metadata
+- recommended long-form handling in NeMo:
+  - audio up to about 40 seconds per chunk
+  - use `speech_to_text_aed_chunked_infer.py` for longer audio
+  - use 10-second chunks when timestamp quality matters
+
+Concrete prompt slots used by this repo's runtime:
+
+- `<|startofcontext|>`
+- `<|startoftranscript|>`
+- `<|emo:undefined|>`
+- `<|source_lang|>`
+- `<|target_lang|>`
+- `<|pnc|>` / `<|nopnc|>`
+- `<|itn|>` / `<|noitn|>`
+- `<|timestamp|>` / `<|notimestamp|>`
+- `<|diarize|>` / `<|nodiarize|>`
 
 ### Hybrid RNNT+CTC
 

@@ -24,6 +24,7 @@ tools/model-debugging/
   playbooks/
     README.md
     audio-prep-parity.md
+    canary-aed-porting.md
     librivox-domain-parity.md
   scripts/
     README.md
@@ -31,6 +32,7 @@ tools/model-debugging/
   reference/
     README.md
     asr-merger-test/
+    canary-180m-flash/
     hf-parakeet-port/
     legacy-nemo-tdt-tests/
     medasrjs/
@@ -49,6 +51,11 @@ start directly with:
 
 - [audio-prep-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\audio-prep-parity.md)
 - [librivox-domain-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\librivox-domain-parity.md)
+
+If the task is a new NeMo model port or an AED-style encoder/decoder export,
+start with:
+
+- [canary-aed-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\canary-aed-porting.md)
 
 ## Main Workflows
 
@@ -91,6 +98,10 @@ Recommended sequence:
    - final transcript
 4. fix the earliest mismatching stage, not the whole pipeline at once
 
+For NeMo multitask AED ports, the current reference workflow is documented in:
+
+- [canary-aed-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\canary-aed-porting.md)
+
 ### 3. Long-form and realtime debugging
 
 Use this when:
@@ -108,6 +119,7 @@ Start with the curated reference set in:
 ### Playbooks
 
 - [audio-prep-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\audio-prep-parity.md)
+- [canary-aed-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\canary-aed-porting.md)
 - [librivox-domain-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\librivox-domain-parity.md)
 
 ### Native `@asrjs/speech-recognition` scripts
@@ -123,6 +135,12 @@ Start with the curated reference set in:
 - [reference/medasrjs/upstream-tests/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\medasrjs\upstream-tests\README.md)
 - CI-safe helper checks in:
   - `tests/lasr-ctc-medasr-port-helpers.test.ts`
+
+### Canary AED reference tooling
+
+- [reference/canary-180m-flash/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\canary-180m-flash\README.md)
+- Result JSONs in:
+  - `tools/data/results/canary/`
 
 ## Current Lessons
 
@@ -140,6 +158,16 @@ For transcript quality and merger debugging:
 - save detailed JSON
 - replay JSON when possible
 - use human-readable text or VTT only as a convenience view
+
+### Frontend export problems should not block model ports
+
+The Canary port reinforced another rule for NeMo-family work:
+
+- capture encoder and decoder parity first
+- treat tokenizer and prompt ids as runtime-critical artifacts
+- keep frontend work separate from encoder/decoder export work
+- prefer a JS frontend when it can match the saved native reference and remove
+  a heavyweight ONNX mel artifact
 
 ## Writing New Tools
 

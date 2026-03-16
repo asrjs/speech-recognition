@@ -5,6 +5,7 @@ import { describe, test, expect } from 'vitest';
 import ort from 'onnxruntime-node';
 
 import { MedAsrEncoder } from '../src/pipeline/encoder.js';
+import { hasArtifact, readJsonArtifact } from './reference-io.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,18 +15,18 @@ const onnxPath = path.resolve(projectRoot, 'models/medasr/model.onnx');
 
 function hasPrereqs() {
   return (
-    fs.existsSync(path.join(refDir, 'features.json')) &&
-    fs.existsSync(path.join(refDir, 'attention_mask.json')) &&
-    fs.existsSync(path.join(refDir, 'logits.json')) &&
+    hasArtifact(refDir, 'features.json') &&
+    hasArtifact(refDir, 'attention_mask.json') &&
+    hasArtifact(refDir, 'logits.json') &&
     fs.existsSync(onnxPath)
   );
 }
 
 function loadRef() {
   return {
-    features: JSON.parse(fs.readFileSync(path.join(refDir, 'features.json'), 'utf-8')),
-    attentionMask: JSON.parse(fs.readFileSync(path.join(refDir, 'attention_mask.json'), 'utf-8')),
-    logits: JSON.parse(fs.readFileSync(path.join(refDir, 'logits.json'), 'utf-8')),
+    features: readJsonArtifact(refDir, 'features.json'),
+    attentionMask: readJsonArtifact(refDir, 'attention_mask.json'),
+    logits: readJsonArtifact(refDir, 'logits.json'),
   };
 }
 

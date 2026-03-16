@@ -11,3 +11,6 @@ tmp/
 *.tsbuildinfo
 .typedoc-site/
 AGENTS.md
+tools/data/results/canary/canary-180m-flash-reference.json
+tools/model-debugging/reference/medasrjs/upstream-tests/reference_medasr/features.json
+tools/model-debugging/reference/medasrjs/upstream-tests/reference_medasr/logits.json

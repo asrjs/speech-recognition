@@ -33,6 +33,7 @@ export { MODELS, DEFAULT_MODEL };
 
 /** Browser/backend execution modes exposed by the Parakeet convenience helpers. */
 export type ParakeetBackend = 'wasm' | 'webgpu' | 'webgpu-hybrid' | 'webgpu-strict';
+export type ParakeetExecutionBackend = 'wasm' | 'webgpu';
 
 /** Minimal browser file-handle shape accepted by Parakeet local-folder helpers. */
 export interface ParakeetLocalFileHandleLike {
@@ -68,6 +69,8 @@ export interface ParakeetLocalInspection {
 /** Options for resolving or loading a Parakeet model from a local folder. */
 export interface ResolveParakeetLocalEntriesOptions {
   readonly modelId?: string;
+  readonly encoderBackend?: ParakeetExecutionBackend;
+  readonly decoderBackend?: ParakeetExecutionBackend;
   readonly encoderQuant?: QuantizationMode;
   readonly decoderQuant?: QuantizationMode;
   readonly tokenizerName?: string;
@@ -119,6 +122,8 @@ export interface ParakeetModelUrls {
 /** Options for resolving a Parakeet model bundle from the Hugging Face hub. */
 export interface GetParakeetModelOptions {
   readonly revision?: string;
+  readonly encoderBackend?: ParakeetExecutionBackend;
+  readonly decoderBackend?: ParakeetExecutionBackend;
   readonly encoderQuant?: QuantizationMode;
   readonly decoderQuant?: QuantizationMode;
   readonly preprocessor?: 'nemo80' | 'nemo128';
@@ -131,6 +136,8 @@ export interface GetParakeetModelOptions {
 /** Direct-artifact configuration accepted by `ParakeetModel.fromUrls()`. */
 export interface ParakeetFromUrlsConfig {
   readonly modelId?: string;
+  readonly encoderBackend?: ParakeetExecutionBackend;
+  readonly decoderBackend?: ParakeetExecutionBackend;
   readonly encoderUrl: string;
   readonly decoderUrl: string;
   readonly tokenizerUrl: string;
@@ -373,6 +380,19 @@ function normalizeBackendId(backend: ParakeetBackend | undefined): 'webgpu' | 'w
   return String(backend || 'webgpu-hybrid').startsWith('webgpu') ? 'webgpu' : 'wasm';
 }
 
+function resolveEncoderBackend(options: {
+  readonly backend?: ParakeetBackend;
+  readonly encoderBackend?: ParakeetExecutionBackend;
+}): ParakeetExecutionBackend {
+  return options.encoderBackend ?? normalizeBackendId(options.backend);
+}
+
+function resolveDecoderBackend(options: {
+  readonly decoderBackend?: ParakeetExecutionBackend;
+}): ParakeetExecutionBackend {
+  return options.decoderBackend ?? 'wasm';
+}
+
 function createConsoleLogger(enabled: boolean | undefined): RuntimeLogger | undefined {
   if (!enabled) {
     return undefined;
@@ -410,6 +430,8 @@ function toFromUrlsConfig(
     modelId: getModelKeyFromRepoId(modelUrls.modelConfig?.repoId ?? '') ?? DEFAULT_MODEL,
     ...modelUrls.urls,
     filenames: modelUrls.filenames,
+    encoderBackend: options.encoderBackend,
+    decoderBackend: options.decoderBackend,
     preprocessorBackend: modelUrls.preprocessorBackend,
     backend: options.backend,
     verbose: options.verbose,
@@ -526,24 +548,26 @@ export async function getParakeetModel(
   const revision = options.revision ?? 'main';
   const preprocessor = options.preprocessor ?? modelConfig?.preprocessor ?? 'nemo128';
   const preprocessorBackend = options.preprocessorBackend ?? 'js';
-  const backend = options.backend ?? 'webgpu-hybrid';
+  const encoderBackend = resolveEncoderBackend(options);
+  const decoderBackend = resolveDecoderBackend(options);
   const repoFiles = await fetchModelFiles(repoId, revision);
 
-  const preferredSetup = getParakeetDefaultWeightSetup(repoIdOrModelKey, backend);
+  const encoderSetup = getParakeetDefaultWeightSetup(repoIdOrModelKey, encoderBackend);
+  const decoderSetup = getParakeetDefaultWeightSetup(repoIdOrModelKey, decoderBackend);
   const encoderAvailable = getAvailableQuantModes(repoFiles, 'encoder-model');
   const decoderAvailable = getAvailableQuantModes(repoFiles, 'decoder_joint-model');
   const encoderQuant =
     options.encoderQuant ??
-    preferredSetup.encoderPreferred.find((quantization) =>
+    encoderSetup.encoderPreferred.find((quantization) =>
       encoderAvailable.includes(quantization),
     ) ??
-    pickPreferredQuant(encoderAvailable, backend, 'encoder');
+    pickPreferredQuant(encoderAvailable, encoderBackend, 'encoder');
   const decoderQuant =
     options.decoderQuant ??
-    preferredSetup.decoderPreferred.find((quantization) =>
+    decoderSetup.decoderPreferred.find((quantization) =>
       decoderAvailable.includes(quantization),
     ) ??
-    pickPreferredQuant(decoderAvailable, backend, 'decoder');
+    pickPreferredQuant(decoderAvailable, decoderBackend, 'decoder');
   const encoderFilename = getQuantizedModelName('encoder-model', encoderQuant);
   const decoderFilename = getQuantizedModelName('decoder_joint-model', decoderQuant);
 
@@ -585,13 +609,16 @@ export async function getParakeetModel(
     tokenizerUrl: await getModelFile(repoId, 'vocab.txt', { revision, progress: options.progress }),
   };
 
-  // The restored Parakeet/TDT path still executes the ONNX mel frontend.
-  // Keep downloading the preprocessor artifact even when callers request the
-  // future JS mode so the executor can fall back cleanly.
-  urls.preprocessorUrl = await getModelFile(repoId, getRequiredPreprocessorFilename(preprocessor), {
-    revision,
-    progress: options.progress,
-  });
+  if (preprocessorBackend === 'onnx') {
+    urls.preprocessorUrl = await getModelFile(
+      repoId,
+      getRequiredPreprocessorFilename(preprocessor),
+      {
+        revision,
+        progress: options.progress,
+      },
+    );
+  }
 
   const encoderDataName = `${encoderFilename}.data`;
   const decoderDataName = `${decoderFilename}.data`;
@@ -723,31 +750,36 @@ export async function resolveParakeetLocalEntries(
   }
 
   const inspection = inspectParakeetLocalEntries(entries);
-  const backend = options.backend ?? 'webgpu-hybrid';
-  const preferredSetup = getParakeetDefaultWeightSetup(options.modelId ?? DEFAULT_MODEL, backend);
+  const encoderBackend = resolveEncoderBackend(options);
+  const decoderBackend = resolveDecoderBackend(options);
+  const encoderSetup = getParakeetDefaultWeightSetup(options.modelId ?? DEFAULT_MODEL, encoderBackend);
+  const decoderSetup = getParakeetDefaultWeightSetup(options.modelId ?? DEFAULT_MODEL, decoderBackend);
   const availableEncoderQuantizations: readonly QuantizationMode[] =
     inspection.encoderQuantizations.length > 0 ? inspection.encoderQuantizations : ['fp32'];
   const availableDecoderQuantizations: readonly QuantizationMode[] =
     inspection.decoderQuantizations.length > 0 ? inspection.decoderQuantizations : ['fp32'];
   const encoderQuant =
     options.encoderQuant ??
-    preferredSetup.encoderPreferred.find((quantization) =>
+    encoderSetup.encoderPreferred.find((quantization) =>
       availableEncoderQuantizations.includes(quantization),
     ) ??
-    pickPreferredQuant(availableEncoderQuantizations, backend, 'encoder');
+    pickPreferredQuant(availableEncoderQuantizations, encoderBackend, 'encoder');
   const decoderQuant =
     options.decoderQuant ??
-    preferredSetup.decoderPreferred.find((quantization) =>
+    decoderSetup.decoderPreferred.find((quantization) =>
       availableDecoderQuantizations.includes(quantization),
     ) ??
-    pickPreferredQuant(availableDecoderQuantizations, backend, 'decoder');
+    pickPreferredQuant(availableDecoderQuantizations, decoderBackend, 'decoder');
   const encoderName = getQuantizedModelName('encoder-model', encoderQuant);
   const decoderName = getQuantizedModelName('decoder_joint-model', decoderQuant);
   const tokenizerName = options.tokenizerName ?? inspection.tokenizerNames[0];
   const preprocessorBackend = options.preprocessorBackend ?? 'js';
-  const preprocessorName = getRequiredPreprocessorFilename(
-    options.preprocessorName ?? inspection.preprocessorNames[0] ?? 'nemo128',
-  );
+  const preprocessorName =
+    preprocessorBackend === 'onnx'
+      ? getRequiredPreprocessorFilename(
+          options.preprocessorName ?? inspection.preprocessorNames[0] ?? 'nemo128',
+        )
+      : undefined;
 
   const encoderEntry = findLocalEntry(entries, encoderName);
   const decoderEntry = findLocalEntry(entries, decoderName);
@@ -783,10 +815,7 @@ export async function resolveParakeetLocalEntries(
   try {
     const preprocessorEntry = preprocessorName ? findLocalEntry(entries, preprocessorName) : null;
     if (preprocessorName && !preprocessorEntry) {
-      throw new Error(
-        `Missing preprocessor file: ${preprocessorName}. ` +
-          'The restored @asrjs/speech-recognition Parakeet/TDT path still needs the ONNX preprocessor artifact, even when JS preprocessing is requested.',
-      );
+      throw new Error(`Missing preprocessor file: ${preprocessorName}.`);
     }
 
     const encoderDataEntry = findLocalEntry(entries, `${encoderEntry.basename}.data`);
@@ -795,6 +824,8 @@ export async function resolveParakeetLocalEntries(
 
     const config: ParakeetFromUrlsConfig = {
       modelId: options.modelId,
+      encoderBackend,
+      decoderBackend,
       encoderUrl: await toLocator(encoderEntry),
       decoderUrl: await toLocator(decoderEntry),
       tokenizerUrl: await toLocator(tokenizerEntry),
@@ -882,6 +913,8 @@ export class ParakeetModel {
       options: {
         source: {
           kind: 'direct',
+          encoderBackend: config.encoderBackend,
+          decoderBackend: config.decoderBackend,
           artifacts: {
             encoderUrl: config.encoderUrl,
             decoderUrl: config.decoderUrl,

@@ -1,0 +1,89 @@
+{
+  "comparedAt": "2026-03-15T20:12:01.898Z",
+  "frontend": {
+    "name": "asrjs",
+    "modulePath": "N:\\github\\asrjs\\speech-recognition\\dist\\audio\\js-mel.js",
+    "validLengthMode": "centered"
+  },
+  "reference": {
+    "modelId": "nvidia/canary-180m-flash",
+    "referencePath": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\canary\\canary-180m-flash-reference.json",
+    "sampleRate": 16000,
+    "waveformSamples": 176000,
+    "melBins": 128,
+    "validLength": 1101,
+    "totalFrames": 1101
+  },
+  "comparison": {
+    "featureLayoutCompatible": true,
+    "referenceValidLength": 1101,
+    "frontendValidLength": 1101,
+    "validLengthDelta": 0,
+    "referenceTotalFrames": 1101,
+    "frontendTotalFrames": 1101,
+    "totalFrameDelta": 0,
+    "comparedFrames": 1101,
+    "comparedValues": 140928,
+    "maxAbs": 2.146139442920685,
+    "meanAbs": 0.0008918627375390161,
+    "rmse": 0.016710857064999748,
+    "largestMismatches": [
+      {
+        "melIndex": 12,
+        "frameIndex": 1100,
+        "referenceValue": -1.5274558067321777,
+        "frontendValue": 0.6186836361885071,
+        "absDiff": 2.146139442920685
+      },
+      {
+        "melIndex": 1,
+        "frameIndex": 1100,
+        "referenceValue": 3.6087985038757324,
+        "frontendValue": 1.6218626499176025,
+        "absDiff": 1.9869358539581299
+      },
+      {
+        "melIndex": 0,
+        "frameIndex": 1100,
+        "referenceValue": 3.981715202331543,
+        "frontendValue": 2.292323112487793,
+        "absDiff": 1.68939208984375
+      },
+      {
+        "melIndex": 2,
+        "frameIndex": 1100,
+        "referenceValue": 2.4645862579345703,
+        "frontendValue": 0.9198063611984253,
+        "absDiff": 1.544779896736145
+      },
+      {
+        "melIndex": 3,
+        "frameIndex": 1100,
+        "referenceValue": 0.9170042872428894,
+        "frontendValue": -0.5604016780853271,
+        "absDiff": 1.4774059653282166
+      },
+      {
+        "melIndex": 127,
+        "frameIndex": 1100,
+        "referenceValue": 5.189350605010986,
+        "frontendValue": 3.965770721435547,
+        "absDiff": 1.2235798835754395
+      },
+      {
+        "melIndex": 8,
+        "frameIndex": 1100,
+        "referenceValue": -1.7831451892852783,
+        "frontendValue": -0.7181559801101685,
+        "absDiff": 1.0649892091751099
+      },
+      {
+        "melIndex": 22,
+        "frameIndex": 1100,
+        "referenceValue": -0.9699937105178833,
+        "frontendValue": 0.05478561669588089,
+        "absDiff": 1.0247793272137642
+      }
+    ]
+  }
+}

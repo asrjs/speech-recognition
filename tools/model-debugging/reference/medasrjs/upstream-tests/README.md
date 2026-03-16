@@ -26,6 +26,13 @@ These files are intentionally preserved close to original form.
   - `reference_medasr/attention_mask.json`
   - `reference_medasr/logits.json`
 
+Large copied tensors may be stored as compressed `.json.gz` files in git:
+
+- `reference_medasr/features.json.gz`
+- `reference_medasr/logits.json.gz`
+
+The copied parity tests now read either raw `.json` or `.json.gz`.
+
 ## How To Use
 
 - Treat these as reference/debugging helpers, not asrjs runtime tests.
@@ -43,3 +50,11 @@ These files are intentionally preserved close to original form.
 
 - Some original parity tests require local ONNX artifacts and environment setup (`onnxruntime-node`, model files, and valid audio paths).
 - `reference_medasr/metadata.json` may contain environment-specific absolute paths from the original workspace; update locally when replaying full parity checks.
+- Use the shared archive helper when you need to restore or repack the large
+  MedASR tensor dumps:
+
+```powershell
+node tools/model-debugging/scripts/node-reference-artifacts.mjs status --target medasr
+node tools/model-debugging/scripts/node-reference-artifacts.mjs unpack --target medasr
+node tools/model-debugging/scripts/node-reference-artifacts.mjs pack --target medasr --delete-originals
+```
