@@ -268,6 +268,9 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly powerBuffer = new Float32Array(N_FREQ_BINS);
   private readonly filterbankBounds: Int32Array;
 
+  private emphasizedBuffer = new Float32Array(0);
+  private paddedBuffer = new Float64Array(0);
+
   constructor(options: MedAsrJsPreprocessorOptions = {}) {
     this.nMels = options.nMels ?? 128;
     this.center = options.center ?? false;
@@ -331,7 +334,11 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       };
     }
 
-    const emphasized = new Float32Array(sampleCount);
+    if (this.emphasizedBuffer.length < sampleCount) {
+      this.emphasizedBuffer = new Float32Array(Math.max(this.emphasizedBuffer.length * 2, sampleCount));
+    }
+    const emphasized = this.emphasizedBuffer.subarray(0, sampleCount);
+
     emphasized[0] = audio[0] ?? 0;
     if (this.preemphasis > 0) {
       for (let index = 1; index < sampleCount; index += 1) {
@@ -343,7 +350,14 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
 
     const pad = this.center ? N_FFT >> 1 : 0;
     const paddedLength = sampleCount + pad * 2;
-    const padded = new Float64Array(paddedLength);
+
+    if (this.paddedBuffer.length < paddedLength) {
+      this.paddedBuffer = new Float64Array(Math.max(this.paddedBuffer.length * 2, paddedLength));
+    } else {
+      this.paddedBuffer.fill(0, 0, paddedLength); // Clear previously used buffer
+    }
+    const padded = this.paddedBuffer.subarray(0, paddedLength);
+
     for (let index = 0; index < sampleCount; index += 1) {
       padded[index + pad] = emphasized[index] ?? 0;
     }
