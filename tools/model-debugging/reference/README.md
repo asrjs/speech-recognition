@@ -68,6 +68,31 @@ Important current rule:
 - do not treat `nemo128.onnx` as a required artifact for Canary-style ports
 - a JS frontend or feature extractor can be the preferred path when it matches
   the saved NeMo reference
+- for new NeMo-family work, prefer extending the shared pure-JS frontend over
+  trying to export `nemo80.onnx` or `nemo128.onnx`
+
+### `parakeet-realtime-eou-120m-v1`
+
+Useful for:
+
+- NeMo RNNT stage capture
+- encoder and decoder/joint ONNX export
+- raw-text vs visible-text `<EOU>` parity checks
+- JS frontend validation for centered raw log-mel features
+- documenting the current NeMo RNNT porting workflow
+
+Start with:
+
+- [nemo-rnnt-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\nemo-rnnt-porting.md)
+- [parakeet-realtime-eou-120m-v1/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\parakeet-realtime-eou-120m-v1\README.md)
+
+Important current rule:
+
+- do not reuse a generic normalized `nemo128.onnx` artifact for this model
+- the current runtime path should use the shared JS frontend with centered
+  raw-log NeMo settings
+- more generally, do not treat `nemo80.onnx` or `nemo128.onnx` export as a
+  porting goal for new NeMo models in this repo
 
 ## Rule
 

@@ -25,6 +25,7 @@ function parseArgs(argv) {
     rmseThreshold: null,
     lengthTolerance: null,
     validLengthMode: null,
+    normalization: null,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -40,6 +41,7 @@ function parseArgs(argv) {
     else if (arg === '--rmse-threshold') options.rmseThreshold = Number(argv[++index]);
     else if (arg === '--length-tolerance') options.lengthTolerance = Number(argv[++index]);
     else if (arg === '--valid-length-mode') options.validLengthMode = argv[++index];
+    else if (arg === '--normalization') options.normalization = argv[++index];
   }
 
   return options;
@@ -117,8 +119,24 @@ function resolveAsrjsValidLengthMode(options, reference) {
   if (modelId.includes('canary')) {
     return 'centered';
   }
+  if (modelId.includes('parakeet_realtime_eou_120m')) {
+    return 'centered';
+  }
 
   return 'onnx';
+}
+
+function resolveAsrjsNormalization(options, reference) {
+  if (options.normalization === 'per_feature' || options.normalization === 'none') {
+    return options.normalization;
+  }
+
+  const modelId = String(reference.modelId ?? '').toLowerCase();
+  if (modelId.includes('parakeet_realtime_eou_120m')) {
+    return 'none';
+  }
+
+  return 'per_feature';
 }
 
 async function loadFrontendAdapter(options, reference) {
@@ -158,12 +176,18 @@ async function loadFrontendAdapter(options, reference) {
     const modulePath = ensureFile(options.asrjsDist, 'asrjs frontend');
     const module = await import(pathToFileURL(modulePath).href);
     const validLengthMode = resolveAsrjsValidLengthMode(options, reference);
+    const normalization = resolveAsrjsNormalization(options, reference);
     return {
       label: 'asrjs',
       modulePath,
       validLengthMode,
+      normalization,
       process(waveform) {
-        const processor = new module.JSMelProcessor({ nMels: melBins, validLengthMode });
+        const processor = new module.JSMelProcessor({
+          nMels: melBins,
+          validLengthMode,
+          normalization,
+        });
         return processor.process(waveform);
       },
     };
@@ -268,6 +292,7 @@ async function main() {
       name: frontend.label,
       modulePath: frontend.modulePath,
       validLengthMode: frontend.validLengthMode ?? null,
+      normalization: frontend.normalization ?? null,
     },
     reference: {
       modelId: reference.modelId,

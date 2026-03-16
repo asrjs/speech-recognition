@@ -42,6 +42,8 @@ const BASE_NEMO_AED_CONFIG: NemoAedModelConfig = {
   frameShiftSeconds: 0.01,
   subsamplingFactor: 8,
   melBins: 128,
+  preprocessorValidLengthMode: 'centered',
+  preprocessorNormalization: 'per_feature',
   vocabularySize: 5248,
   languages: ['en', 'de', 'es', 'fr'],
   encoderHiddenSize: 512,

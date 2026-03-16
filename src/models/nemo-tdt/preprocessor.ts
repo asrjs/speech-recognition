@@ -82,11 +82,13 @@ export class JsNemoPreprocessor implements NemoPreprocessor {
     options: {
       readonly melBins?: number;
       readonly validLengthMode?: 'onnx' | 'centered';
+      readonly normalization?: 'per_feature' | 'none';
     } = {},
   ) {
     this.processor = new JSMelProcessor({
       nMels: options.melBins,
       validLengthMode: options.validLengthMode,
+      normalization: options.normalization,
     });
   }
 

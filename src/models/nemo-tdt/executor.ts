@@ -264,7 +264,8 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       resolved.preprocessorBackend === 'js'
         ? new JsNemoPreprocessor({
             melBins: this.config.melBins,
-            validLengthMode: 'onnx',
+            validLengthMode: this.config.preprocessorValidLengthMode,
+            normalization: this.config.preprocessorNormalization,
           })
         : new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl!, resolved.enableProfiling);
 

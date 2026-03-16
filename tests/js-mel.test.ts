@@ -47,6 +47,23 @@ describe('js mel processor', () => {
     expect(Array.from(result.features).every(Number.isFinite)).toBe(true);
   });
 
+  it('can emit raw log-mel features without per-feature normalization', () => {
+    const processor = new JSMelProcessor({
+      nMels: 128,
+      validLengthMode: 'centered',
+      normalization: 'none',
+    });
+    const audio = createSineWave(1600);
+
+    const raw = processor.computeRawMel(audio);
+    const result = processor.process(audio);
+
+    expect(result.frameCount).toBe(11);
+    expect(result.length).toBe(11);
+    expect(result.features.length).toBe(128 * 11);
+    expect(result.features).toEqual(raw.rawMel);
+  });
+
   it('reuses cached prefix work in incremental mode while keeping feature shapes stable', () => {
     const processor = new IncrementalJSMelProcessor({ nMels: 128 });
     const first = processor.process(createSineWave(1600));

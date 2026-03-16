@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "modelId": "parakeet-realtime-eou-120m-v1",
+    "modelDir": "N:\\models\\onnx\\nemo\\parakeet-realtime-eou-120m-v1-onnx",
+    "audio": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+    "reference": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\parakeet\\parakeet-realtime-eou-120m-v1-reference.json",
+    "encoderQuant": "fp32",
+    "decoderQuant": "fp32",
+    "preprocessorBackend": "onnx",
+    "loadMs": 1859.8589,
+    "transcribeMs": 997.9293000000002
+  },
+  "output": {
+    "canonicalText": "",
+    "rawText": "<EOU>",
+    "visibleText": "",
+    "tokenIds": [
+      1024
+    ],
+    "frameIndices": [
+      138
+    ],
+    "containsEou": true,
+    "containsEob": false,
+    "metrics": {
+      "preprocessMs": 96.415,
+      "encodeMs": 709.66,
+      "decodeMs": 185.321,
+      "tokenizeMs": 0.848,
+      "totalMs": 992.769,
+      "wallMs": 992.769,
+      "audioDurationSec": 11,
+      "rtf": 0.0903,
+      "rtfx": 11.0801,
+      "requestedPreprocessorBackend": "onnx",
+      "preprocessorBackend": "onnx",
+      "encoderFrameCount": 139,
+      "decodeIterations": 140,
+      "emittedTokenCount": 0,
+      "emittedWordCount": 0
+    }
+  },
+  "compare": {
+    "tokenIdsMatch": false,
+    "visibleTextMatch": false,
+    "rawTextMatch": false,
+    "containsEouMatch": true,
+    "referenceVisibleText": "and so my fellow americans ask not what your country can do for you ask what",
+    "referenceRawText": "and so my fellow americans ask not what your country can do for you ask what<EOU>",
+    "referenceTokenIds": [
+      25,
+      66,
+      162,
+      251,
+      553,
+      271,
+      653,
+      260,
+      796,
+      107,
+      50,
+      11,
+      39,
+      1004,
+      15,
+      340,
+      290,
+      110,
+      97,
+      69,
+      39,
+      796,
+      50,
+      11,
+      1024
+    ]
+  }
+}

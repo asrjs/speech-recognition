@@ -23,6 +23,10 @@ import {
   type NemoAedNativeTranscript,
 } from '../models/nemo-aed/index.js';
 import {
+  DEFAULT_NEMO_RNNT_CLASSIFICATION,
+  type NemoRnntNativeTranscript,
+} from '../models/nemo-rnnt/index.js';
+import {
   DEFAULT_NEMO_TDT_CLASSIFICATION,
   type NemoTdtNativeTranscript,
 } from '../models/nemo-tdt/index.js';
@@ -122,6 +126,55 @@ export function createNemoTdtTranscriptNormalizer(
     classification,
   );
   return createTranscriptNormalizer('nemo-tdt', (native, context) =>
+    mapNemoNativeToCanonical(
+      native,
+      normalizedClassification,
+      {
+        ...context,
+        detailLevel: context.detailLevel ?? 'segments',
+        metrics: native.metrics
+          ? {
+              preprocessMs: native.metrics.preprocessMs,
+              encodeMs: native.metrics.encodeMs,
+              decodeMs: native.metrics.decodeMs,
+              tokenizeMs: native.metrics.tokenizeMs,
+              postprocessMs: native.metrics.tokenizeMs,
+              totalMs: native.metrics.totalMs,
+              wallMs: native.metrics.wallMs,
+              audioDurationSec: native.metrics.audioDurationSec,
+              rtf: native.metrics.rtf,
+              rtfx: native.metrics.rtfx,
+              requestedPreprocessorBackend: native.metrics.requestedPreprocessorBackend,
+              preprocessorBackend: native.metrics.preprocessorBackend,
+              decodeAudioMs: native.metrics.decodeAudioMs,
+              downmixMs: native.metrics.downmixMs,
+              resampleMs: native.metrics.resampleMs,
+              audioPreparationMs: native.metrics.audioPreparationMs,
+              inputSampleRate: native.metrics.inputSampleRate,
+              outputSampleRate: native.metrics.outputSampleRate,
+              resampler: native.metrics.resampler,
+              resamplerQuality: native.metrics.resamplerQuality,
+              encoderFrameCount: native.metrics.encoderFrameCount,
+              decodeIterations: native.metrics.decodeIterations,
+              emittedTokenCount: native.metrics.emittedTokenCount,
+              emittedWordCount: native.metrics.emittedWordCount,
+            }
+          : context.metrics,
+      },
+      defaultNemoTimestampReconstructor,
+      defaultNemoConfidenceReconstructor,
+    ),
+  );
+}
+
+export function createNemoRnntTranscriptNormalizer(
+  classification: Partial<ModelClassification> = {},
+): TranscriptNormalizer<NemoRnntNativeTranscript> {
+  const normalizedClassification = normalizeClassification(
+    DEFAULT_NEMO_RNNT_CLASSIFICATION,
+    classification,
+  );
+  return createTranscriptNormalizer('nemo-rnnt', (native, context) =>
     mapNemoNativeToCanonical(
       native,
       normalizedClassification,
@@ -340,6 +393,7 @@ export function createLegacyParakeetTranscriptNormalizer(): TranscriptNormalizer
 }
 
 export const nemoTdtTranscriptNormalizer = createNemoTdtTranscriptNormalizer();
+export const nemoRnntTranscriptNormalizer = createNemoRnntTranscriptNormalizer();
 export const nemoAedTranscriptNormalizer = createNemoAedTranscriptNormalizer();
 export const lasrCtcTranscriptNormalizer = createLasrCtcTranscriptNormalizer();
 export const whisperTranscriptNormalizer = createWhisperTranscriptNormalizer();
@@ -350,6 +404,13 @@ export function normalizeNemoTdtTranscript(
   context: TranscriptNormalizationContext = {},
 ): TranscriptResult {
   return nemoTdtTranscriptNormalizer.toCanonical(native, context);
+}
+
+export function normalizeNemoRnntTranscript(
+  native: NemoRnntNativeTranscript,
+  context: TranscriptNormalizationContext = {},
+): TranscriptResult {
+  return nemoRnntTranscriptNormalizer.toCanonical(native, context);
 }
 
 export function normalizeNemoAedTranscript(

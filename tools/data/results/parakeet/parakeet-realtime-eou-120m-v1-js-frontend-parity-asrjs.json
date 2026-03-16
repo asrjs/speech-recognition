@@ -1,0 +1,90 @@
+{
+  "comparedAt": "2026-03-16T22:13:19.952Z",
+  "frontend": {
+    "name": "asrjs",
+    "modulePath": "N:\\github\\asrjs\\speech-recognition\\dist\\audio\\js-mel.js",
+    "validLengthMode": "centered",
+    "normalization": "none"
+  },
+  "reference": {
+    "modelId": "nvidia/parakeet_realtime_eou_120m-v1",
+    "referencePath": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\parakeet\\parakeet-realtime-eou-120m-v1-reference.json",
+    "sampleRate": 16000,
+    "waveformSamples": 176000,
+    "melBins": 128,
+    "validLength": 1101,
+    "totalFrames": 1101
+  },
+  "comparison": {
+    "featureLayoutCompatible": true,
+    "referenceValidLength": 1101,
+    "frontendValidLength": 1101,
+    "validLengthDelta": 0,
+    "referenceTotalFrames": 1101,
+    "frontendTotalFrames": 1101,
+    "totalFrameDelta": 0,
+    "comparedFrames": 1101,
+    "comparedValues": 140928,
+    "maxAbs": 4.080103874206543,
+    "meanAbs": 0.0009019221011595758,
+    "rmse": 0.03480533515201417,
+    "largestMismatches": [
+      {
+        "melIndex": 12,
+        "frameIndex": 1100,
+        "referenceValue": -11.781784057617188,
+        "frontendValue": -7.7016801834106445,
+        "absDiff": 4.080103874206543
+      },
+      {
+        "melIndex": 22,
+        "frameIndex": 1100,
+        "referenceValue": -10.362576484680176,
+        "frontendValue": -6.856720447540283,
+        "absDiff": 3.5058560371398926
+      },
+      {
+        "melIndex": 51,
+        "frameIndex": 1100,
+        "referenceValue": -10.512300491333008,
+        "frontendValue": -7.33522891998291,
+        "absDiff": 3.1770715713500977
+      },
+      {
+        "melIndex": 32,
+        "frameIndex": 1100,
+        "referenceValue": -8.66845703125,
+        "frontendValue": -5.777784824371338,
+        "absDiff": 2.890672206878662
+      },
+      {
+        "melIndex": 8,
+        "frameIndex": 1100,
+        "referenceValue": -12.573919296264648,
+        "frontendValue": -10.168992042541504,
+        "absDiff": 2.4049272537231445
+      },
+      {
+        "melIndex": 28,
+        "frameIndex": 1100,
+        "referenceValue": -8.381450653076172,
+        "frontendValue": -6.0750732421875,
+        "absDiff": 2.306377410888672
+      },
+      {
+        "melIndex": 21,
+        "frameIndex": 1100,
+        "referenceValue": -9.981643676757812,
+        "frontendValue": -7.776782512664795,
+        "absDiff": 2.2048611640930176
+      },
+      {
+        "melIndex": 27,
+        "frameIndex": 1100,
+        "referenceValue": -6.609996318817139,
+        "frontendValue": -4.6920247077941895,
+        "absDiff": 1.9179716110229492
+      }
+    ]
+  }
+}

@@ -15,6 +15,10 @@ from a proven path instead of rediscovering the workflow.
   - the concrete `LibriVox.org` case that drove recent WAV and Node-path fixes
 - [model-porting-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\model-porting-parity.md)
   - workflow for merging reference test suites and keeping CI-safe parity helpers
+- [nemo-rnnt-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\nemo-rnnt-porting.md)
+  - step-by-step NeMo RNNT porting flow, including frontend-contract checks for raw-log vs normalized mel features
+- [huggingface-model-publishing.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\huggingface-model-publishing.md)
+  - adapt a validated local model folder into our ONNX repo card format and publish it with `hf` CLI
 
 ## When To Create A New Playbook
 

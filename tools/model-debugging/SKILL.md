@@ -58,6 +58,7 @@ Use the reference scripts and `@asrjs/speech-recognition` scripts to compare:
 
 - normalized / resampled PCM
 - preprocessor outputs
+  - include valid-length mode and normalization mode, not just tensor shape
 - encoder outputs or shapes
 - decoder/joint outputs
 - token ids and token pieces
@@ -79,6 +80,12 @@ For Parakeet/NeMo quality work:
 - reproduce in Node first
 - use local direct artifacts when possible
 - use simple linear resampling when validating parity
+- do not assume a shared `nemo128` frontend is correct without checking the
+  saved native preprocessor outputs first
+- treat the shared pure-JS NeMo frontend as the expected implementation path
+  for new ports
+- extend the JS frontend when the model contract differs; do not plan around
+  exporting `nemo80.onnx` or `nemo128.onnx` preprocessors
 
 Then move the same case into the browser demo.
 

@@ -25,6 +25,10 @@ export interface ParakeetModelConfig {
   readonly subsampling: number;
   readonly predHidden: number;
   readonly predLayers: number;
+  readonly topology?: 'tdt' | 'rnnt';
+  readonly supportsWordTimestamps?: boolean;
+  readonly defaultRevision?: string;
+  readonly warmupExpectedTexts?: readonly string[];
 }
 
 export interface ParakeetDefaultWeightSetup {
@@ -47,6 +51,9 @@ export const MODELS = {
     subsampling: 8,
     predHidden: 640,
     predLayers: 2,
+    topology: 'tdt',
+    supportsWordTimestamps: true,
+    defaultRevision: 'feat/fp16-canonical-v2',
   },
   'parakeet-tdt-0.6b-v3': {
     repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
@@ -59,6 +66,25 @@ export const MODELS = {
     subsampling: 8,
     predHidden: 640,
     predLayers: 2,
+    topology: 'tdt',
+    supportsWordTimestamps: true,
+    defaultRevision: 'feat/fp16-canonical-v3',
+  },
+  'parakeet-realtime-eou-120m-v1': {
+    repoId: 'ysdede/parakeet-realtime-eou-120m-v1-onnx',
+    displayName: 'Parakeet Realtime EOU 120M v1 (English)',
+    languages: ['en'],
+    defaultLanguage: 'en',
+    vocabSize: 1026,
+    featuresSize: 128,
+    preprocessor: 'nemo128',
+    subsampling: 8,
+    predHidden: 640,
+    predLayers: 1,
+    topology: 'rnnt',
+    supportsWordTimestamps: false,
+    defaultRevision: 'main',
+    warmupExpectedTexts: ['the boy was there when the sun rose'],
   },
 } satisfies Record<string, ParakeetModelConfig>;
 

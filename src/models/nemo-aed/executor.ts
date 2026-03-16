@@ -345,7 +345,8 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       resolved.preprocessorBackend === 'js'
         ? new JsNemoPreprocessor({
             melBins: this.config.melBins,
-            validLengthMode: 'centered',
+            validLengthMode: this.config.preprocessorValidLengthMode,
+            normalization: this.config.preprocessorNormalization,
           })
         : new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl!, resolved.enableProfiling);
 

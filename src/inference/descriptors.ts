@@ -18,6 +18,7 @@ export interface AcousticEncoderDescriptor {
 
 export type DecoderHeadKind =
   | 'ctc-head'
+  | 'transducer-rnnt'
   | 'transducer-tdt'
   | 'transformer-decoder'
   | 'speech-llm'
@@ -114,6 +115,13 @@ export const TDT_TRANSDUCER_DECODER = createDecoderHeadDescriptor({
   notes: ['Prediction net plus joiner with duration outputs.'],
 });
 
+export const RNNT_TRANSDUCER_DECODER = createDecoderHeadDescriptor({
+  kind: 'transducer-rnnt',
+  sharedModule: 'inference',
+  supportsStreaming: true,
+  notes: ['Prediction net plus joiner without duration outputs.'],
+});
+
 export const TRANSFORMER_SEQ2SEQ_DECODER = createDecoderHeadDescriptor({
   kind: 'transformer-decoder',
   sharedModule: 'inference',
@@ -128,6 +136,17 @@ export const TDT_GREEDY_DECODING: DecodingDescriptor = {
   notes: [
     'Duration-aware greedy transducer decoding.',
     'Keeps decoding policy separate from the prediction network and joiner.',
+  ],
+};
+
+export const RNNT_GREEDY_DECODING: DecodingDescriptor = {
+  topology: 'rnnt',
+  strategy: 'rnnt-greedy',
+  supportsStreaming: true,
+  supportsBeamSearch: false,
+  notes: [
+    'Autoregressive transducer decoding that advances frames on blank emissions.',
+    'Reuses the current prediction state until a new symbol is emitted.',
   ],
 };
 

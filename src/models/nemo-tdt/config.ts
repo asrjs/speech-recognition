@@ -20,6 +20,8 @@ const BASE_NEMO_TDT_CONFIG: NemoTdtModelConfig = {
   frameShiftSeconds: 0.01,
   subsamplingFactor: 8,
   melBins: 128,
+  preprocessorValidLengthMode: 'onnx',
+  preprocessorNormalization: 'per_feature',
   predictionHiddenSize: 640,
   predictionLayers: 2,
   maxSymbolsPerStep: 10,
