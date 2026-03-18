@@ -10,6 +10,7 @@ export interface JsNemoMelProcessorOptions {
   readonly nMels?: number;
   readonly boundaryFrames?: number;
   readonly validLengthMode?: 'onnx' | 'centered';
+  readonly normalization?: 'per_feature' | 'none';
 }
 
 export interface JsNemoMelProcessResult {
@@ -296,6 +297,7 @@ export function fft(
 export class JSMelProcessor {
   readonly nMels: number;
   readonly validLengthMode: 'onnx' | 'centered';
+  readonly normalization: 'per_feature' | 'none';
   private readonly melFilterbank: Float32Array;
   private readonly hannWindow: Float64Array;
   private readonly twiddles: FFTTwiddles;
@@ -309,6 +311,7 @@ export class JSMelProcessor {
   constructor(options: JsNemoMelProcessorOptions = {}) {
     this.nMels = options.nMels ?? 128;
     this.validLengthMode = options.validLengthMode ?? 'onnx';
+    this.normalization = options.normalization ?? 'per_feature';
     this.melFilterbank = getCachedMelFilterbank(this.nMels);
     this.hannWindow = getCachedPaddedHannWindow();
     this.twiddles = precomputeTwiddles(N_FFT);
@@ -342,7 +345,7 @@ export class JSMelProcessor {
     }
 
     return {
-      features: this.normalizeFeatures(rawMel, nFrames, validLength),
+      features: this.finalizeFeatures(rawMel, nFrames, validLength),
       frameCount: nFrames,
       length: validLength,
     };
@@ -504,11 +507,39 @@ export class JSMelProcessor {
 
     return features;
   }
+
+  finalizeFeatures(
+    rawMel: Float32Array,
+    nFrames: number,
+    validLength: number,
+    outBuffer: Float32Array | null = null,
+  ): Float32Array {
+    if (this.normalization === 'none') {
+      const requiredSize = this.nMels * nFrames;
+      const features =
+        outBuffer && outBuffer.length >= requiredSize
+          ? outBuffer.subarray(0, requiredSize)
+          : new Float32Array(requiredSize);
+
+      features.set(rawMel);
+      if (validLength < nFrames) {
+        for (let melIndex = 0; melIndex < this.nMels; melIndex += 1) {
+          const base = melIndex * nFrames;
+          features.fill(0, base + validLength, base + nFrames);
+        }
+      }
+
+      return features;
+    }
+
+    return this.normalizeFeatures(rawMel, nFrames, validLength, outBuffer);
+  }
 }
 
 export class IncrementalJSMelProcessor {
   readonly nMels: number;
   readonly validLengthMode: 'onnx' | 'centered';
+  readonly normalization: 'per_feature' | 'none';
   private readonly preprocessor: JSMelProcessor;
   private readonly boundaryFrames: number;
   private cachedRawMel: Float32Array | null = null;
@@ -523,6 +554,7 @@ export class IncrementalJSMelProcessor {
     this.preprocessor = new JSMelProcessor(options);
     this.nMels = this.preprocessor.nMels;
     this.validLengthMode = this.preprocessor.validLengthMode;
+    this.normalization = this.preprocessor.normalization;
     this.boundaryFrames = options.boundaryFrames ?? 3;
   }
 
@@ -563,7 +595,7 @@ export class IncrementalJSMelProcessor {
         0,
         currentRawBuffer,
       );
-      const features = this.preprocessor.normalizeFeatures(
+      const features = this.preprocessor.finalizeFeatures(
         rawMel,
         nFrames,
         validLength,
@@ -605,7 +637,7 @@ export class IncrementalJSMelProcessor {
       }
     }
 
-    const features = this.preprocessor.normalizeFeatures(
+    const features = this.preprocessor.finalizeFeatures(
       rawMel,
       nFrames,
       validLength,

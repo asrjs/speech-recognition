@@ -23,6 +23,8 @@ export interface NemoModelConfig {
   readonly frameShiftSeconds: number;
   readonly subsamplingFactor: number;
   readonly melBins: number;
+  readonly preprocessorValidLengthMode?: 'onnx' | 'centered';
+  readonly preprocessorNormalization?: 'per_feature' | 'none';
   readonly vocabularySize?: number;
   readonly languages: readonly string[];
   readonly tokenizer: TokenizerSpec;

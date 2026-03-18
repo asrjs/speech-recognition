@@ -24,9 +24,11 @@ import * as huggingface from '../src/runtime/huggingface.js';
 describe('Parakeet helpers', () => {
   it('exposes preset model metadata without duplicating implementation families', () => {
     expect(DEFAULT_MODEL).toBe('parakeet-tdt-0.6b-v2');
+    expect(listModels()).toContain('parakeet-realtime-eou-120m-v1');
     expect(listModels()).toContain('parakeet-tdt-0.6b-v3');
     expect(getModelConfig('parakeet-tdt-0.6b-v3')?.repoId).toBe('ysdede/parakeet-tdt-0.6b-v3-onnx');
     expect(getModelConfig('parakeet-tdt-0.6b-v3')?.vocabSize).toBe(8193);
+    expect(getModelConfig('parakeet-realtime-eou-120m-v1')?.topology).toBe('rnnt');
     expect(getModelKeyFromRepoId('ysdede/parakeet-tdt-0.6b-v2-onnx')).toBe('parakeet-tdt-0.6b-v2');
     expect(supportsLanguage('parakeet-tdt-0.6b-v3', 'ja')).toBe(true);
     expect(getLanguageName('zh')).toBe('Chinese');
@@ -67,6 +69,9 @@ describe('Parakeet helpers', () => {
   it('uses JS mel as the advertised Parakeet preset default preprocessor backend', () => {
     expect(resolveParakeetArtifactSource('parakeet-tdt-0.6b-v2')?.preprocessorBackend).toBe('js');
     expect(resolveParakeetArtifactSource('parakeet-tdt-0.6b-v3')?.preprocessorBackend).toBe('js');
+    expect(resolveParakeetArtifactSource('parakeet-realtime-eou-120m-v1')?.preprocessorBackend).toBe(
+      'js',
+    );
   });
 
   it('creates a built-in runtime with registered backends and presets', () => {
@@ -75,7 +80,7 @@ describe('Parakeet helpers', () => {
       expect.arrayContaining(['webgpu', 'wasm', 'webnn', 'webgl']),
     );
     expect(runtime.listModelFamilies().map((family) => family.family)).toEqual(
-      expect.arrayContaining(['nemo-aed', 'nemo-tdt', 'lasr-ctc', 'whisper-seq2seq']),
+      expect.arrayContaining(['nemo-aed', 'nemo-rnnt', 'nemo-tdt', 'lasr-ctc', 'whisper-seq2seq']),
     );
     expect(runtime.listPresets().map((preset) => preset.preset)).toEqual(
       expect.arrayContaining(['canary', 'parakeet', 'medasr', 'whisper']),

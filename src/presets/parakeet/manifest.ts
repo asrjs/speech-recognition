@@ -1,5 +1,6 @@
 import type { ModelClassification } from '../../types/index.js';
 import type { NemoTdtArtifactSource, NemoTdtModelConfig } from '../../models/nemo-tdt/index.js';
+import type { NemoRnntArtifactSource, NemoRnntModelConfig } from '../../models/nemo-rnnt/index.js';
 
 export interface ParakeetPresetManifest {
   readonly preset: 'parakeet';
@@ -7,8 +8,8 @@ export interface ParakeetPresetManifest {
   readonly aliases?: readonly string[];
   readonly description: string;
   readonly classification: ModelClassification;
-  readonly config: Partial<NemoTdtModelConfig>;
-  readonly source?: NemoTdtArtifactSource;
+  readonly config: Partial<NemoTdtModelConfig> | Partial<NemoRnntModelConfig>;
+  readonly source?: NemoTdtArtifactSource | NemoRnntArtifactSource;
   readonly quirks?: {
     readonly preprocessorBackend?: 'js' | 'onnx';
   };
@@ -77,6 +78,45 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
       preprocessorBackend: 'js',
     },
   },
+  {
+    preset: 'parakeet',
+    modelId: 'parakeet-realtime-eou-120m-v1',
+    aliases: [
+      'nvidia/parakeet_realtime_eou_120m-v1',
+      'nvidia/parakeet-realtime-eou-120m-v1',
+      'ysdede/parakeet-realtime-eou-120m-v1-onnx',
+    ],
+    description: 'Realtime Parakeet preset over the NeMo RNNT implementation boundary.',
+    classification: {
+      ecosystem: 'nemo',
+      processor: 'nemo-mel',
+      encoder: 'fastconformer',
+      decoder: 'rnnt',
+      topology: 'rnnt',
+      family: 'parakeet',
+      task: 'asr',
+    },
+    config: {
+      vocabularySize: 1026,
+      languages: ['en'],
+      melBins: 128,
+      predictionHiddenSize: 640,
+      predictionLayers: 1,
+      tokenizer: {
+        kind: 'sentencepiece',
+        blankTokenId: 1026,
+      },
+    },
+    source: {
+      kind: 'huggingface',
+      repoId: 'ysdede/parakeet-realtime-eou-120m-v1-onnx',
+      preprocessorName: 'nemo128',
+      preprocessorBackend: 'js',
+    },
+    quirks: {
+      preprocessorBackend: 'js',
+    },
+  },
 ];
 
 function normalizePresetId(modelId: string): string {
@@ -99,6 +139,8 @@ export function resolveParakeetPresetManifest(modelId: string): ParakeetPresetMa
   });
 }
 
-export function resolveParakeetArtifactSource(modelId: string): NemoTdtArtifactSource | undefined {
+export function resolveParakeetArtifactSource(
+  modelId: string,
+): NemoTdtArtifactSource | NemoRnntArtifactSource | undefined {
   return resolveParakeetPresetManifest(modelId)?.source;
 }

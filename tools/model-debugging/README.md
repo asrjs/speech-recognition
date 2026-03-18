@@ -25,7 +25,9 @@ tools/model-debugging/
     README.md
     audio-prep-parity.md
     canary-aed-porting.md
+    huggingface-model-publishing.md
     librivox-domain-parity.md
+    nemo-rnnt-porting.md
   scripts/
     README.md
     node-asrjs-nemo-inspect.mjs
@@ -36,6 +38,7 @@ tools/model-debugging/
     hf-parakeet-port/
     legacy-nemo-tdt-tests/
     medasrjs/
+    parakeet-realtime-eou-120m-v1/
 ```
 
 ## Start Here
@@ -56,6 +59,11 @@ If the task is a new NeMo model port or an AED-style encoder/decoder export,
 start with:
 
 - [canary-aed-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\canary-aed-porting.md)
+
+If the task is a NeMo RNNT port or an RNNT parity mismatch that looks like a
+frontend bug, start with:
+
+- [nemo-rnnt-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\nemo-rnnt-porting.md)
 
 ## Main Workflows
 
@@ -102,6 +110,10 @@ For NeMo multitask AED ports, the current reference workflow is documented in:
 
 - [canary-aed-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\canary-aed-porting.md)
 
+For NeMo RNNT ports, the current frontend-first parity workflow is documented in:
+
+- [nemo-rnnt-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\nemo-rnnt-porting.md)
+
 ### 3. Long-form and realtime debugging
 
 Use this when:
@@ -120,7 +132,9 @@ Start with the curated reference set in:
 
 - [audio-prep-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\audio-prep-parity.md)
 - [canary-aed-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\canary-aed-porting.md)
+- [huggingface-model-publishing.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\huggingface-model-publishing.md)
 - [librivox-domain-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\librivox-domain-parity.md)
+- [nemo-rnnt-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\nemo-rnnt-porting.md)
 
 ### Native `@asrjs/speech-recognition` scripts
 
@@ -168,6 +182,15 @@ The Canary port reinforced another rule for NeMo-family work:
 - keep frontend work separate from encoder/decoder export work
 - prefer a JS frontend when it can match the saved native reference and remove
   a heavyweight ONNX mel artifact
+
+The Parakeet realtime RNNT port reinforced one more rule:
+
+- check whether the model expects raw log-mel or normalized features before
+  reusing a shared `nemo128` frontend artifact
+- for new NeMo-family ports, expect the shared pure-JS frontend to be the
+  supported path
+- extend the JS frontend contract when needed instead of trying to ship
+  `nemo80.onnx` or `nemo128.onnx` preprocessors
 
 ## Writing New Tools
 

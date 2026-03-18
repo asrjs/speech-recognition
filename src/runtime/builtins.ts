@@ -7,6 +7,7 @@ import {
 import type { AudioInputLike } from '../types/audio.js';
 import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
+import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
 import { createNemoTdtModelFamily } from '../models/nemo-tdt/index.js';
 import { createWhisperSeq2SeqModelFamily } from '../models/whisper-seq2seq/index.js';
 import { createCanaryPresetFactory } from '../presets/canary/factory.js';
@@ -234,6 +235,7 @@ export function registerBuiltInBackends(runtime: DefaultSpeechRuntime): DefaultS
 /** Registers the built-in technical model families on an existing runtime. */
 export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): DefaultSpeechRuntime {
   runtime.registerModelFamily(createNemoAedModelFamily());
+  runtime.registerModelFamily(createNemoRnntModelFamily());
   runtime.registerModelFamily(createNemoTdtModelFamily());
   runtime.registerModelFamily(createLasrCtcModelFamily());
   runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());

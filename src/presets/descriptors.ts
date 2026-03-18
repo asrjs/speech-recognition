@@ -81,6 +81,7 @@ export interface BuiltInModelLoadingDescriptor {
 export interface BuiltInModelWarmupDescriptor {
   readonly mode: BuiltInWarmupMode;
   readonly expectedTexts?: readonly string[];
+  readonly requiredKeywordGroups?: readonly (readonly string[])[];
 }
 
 export interface BuiltInModelDescriptor {
@@ -191,13 +192,19 @@ function createParakeetDescriptors(): BuiltInModelDescriptor[] {
   return Object.entries(PARAKEET_MODELS).map(([modelId, config]) => {
     const manifest = resolveParakeetPresetManifest(modelId);
     const source = resolveParakeetArtifactSource(modelId);
+    const warmupExpectedTexts =
+      'warmupExpectedTexts' in config ? config.warmupExpectedTexts : undefined;
+    const warmupRequiredKeywordGroups =
+      'warmupRequiredKeywordGroups' in config ? config.warmupRequiredKeywordGroups : undefined;
 
     return {
       modelId,
       aliases: manifest?.aliases ?? [],
       preset: 'parakeet',
       displayName: config.displayName,
-      description: manifest?.description ?? 'Parakeet TDT model preset.',
+      description:
+        manifest?.description ??
+        `Parakeet ${config.topology === 'rnnt' ? 'RNNT' : 'TDT'} model preset.`,
       classification: manifest?.classification ?? {},
       languages: config.languages,
       defaultSourceLanguage: config.defaultLanguage,
@@ -207,7 +214,7 @@ function createParakeetDescriptors(): BuiltInModelDescriptor[] {
         supportsTranslation: false,
         supportsPunctuationCapitalization: false,
         supportsInverseTextNormalization: false,
-        supportsWordTimestamps: true,
+        supportsWordTimestamps: config.supportsWordTimestamps ?? true,
         supportsSegmentTimestamps: false,
         supportsPromptControls: false,
       },
@@ -232,12 +239,16 @@ function createParakeetDescriptors(): BuiltInModelDescriptor[] {
         encoderArtifactBaseName: 'encoder-model',
         decoderArtifactBaseName: 'decoder_joint-model',
         defaultRevision:
-          modelId === PARAKEET_DEFAULT_MODEL ? 'feat/fp16-canonical-v2' : 'feat/fp16-canonical-v3',
+          config.defaultRevision ??
+          (modelId === PARAKEET_DEFAULT_MODEL
+            ? 'feat/fp16-canonical-v2'
+            : 'feat/fp16-canonical-v3'),
       },
       controls: [],
       warmup: {
         mode: 'expected-text',
-        expectedTexts: buildWarmupExpectedTexts(),
+        expectedTexts: warmupExpectedTexts ?? buildWarmupExpectedTexts(),
+        requiredKeywordGroups: warmupRequiredKeywordGroups,
       },
     };
   });

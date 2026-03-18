@@ -32,6 +32,7 @@ export interface OrtTensorLike<TData extends ArrayBufferView = ArrayBufferView> 
 }
 
 export interface OrtSessionLike {
+  readonly inputNames?: readonly string[];
   run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>>;
 }
 
