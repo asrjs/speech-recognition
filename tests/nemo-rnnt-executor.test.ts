@@ -25,6 +25,7 @@ class MockTensor<TData extends ArrayBufferView = ArrayBufferView> implements Ort
 
 interface MockDecoderStep {
   readonly logits: readonly number[];
+  readonly outputDims?: readonly number[];
 }
 
 class MockEncoderSession implements OrtSessionLike {
@@ -40,6 +41,7 @@ class MockEncoderSession implements OrtSessionLike {
 class MockDecoderSession implements OrtSessionLike {
   readonly targetHistory: number[] = [];
   readonly emittedStates: MockTensor<Float32Array>[] = [];
+  readonly emittedLogits: MockTensor<Float32Array>[] = [];
   private callIndex = 0;
 
   constructor(
@@ -72,11 +74,14 @@ class MockDecoderSession implements OrtSessionLike {
     );
     this.emittedStates.push(outputState1, outputState2);
 
+    const outputLogits = new MockTensor(
+      new Float32Array([...new Array(step.logits.length).fill(-10), ...step.logits]),
+      step.outputDims ?? [1, 1, 2, step.logits.length],
+    );
+    this.emittedLogits.push(outputLogits);
+
     return {
-      outputs: new MockTensor(
-        new Float32Array([...new Array(step.logits.length).fill(-10), ...step.logits]),
-        [1, 1, 2, step.logits.length],
-      ),
+      outputs: outputLogits,
       output_states_1: outputState1,
       output_states_2: outputState2,
     };
@@ -307,6 +312,28 @@ describe('nemo-rnnt executor decode loop', () => {
       ),
     ).rejects.toThrow('Forced decoder failure');
 
+    expect(harness.decoderSession.emittedStates).toHaveLength(2);
+    expect(harness.decoderSession.emittedStates.every((state) => state.disposed)).toBe(true);
+  });
+
+  it('disposes transient decoder tensors when post-run processing throws', async () => {
+    const harness = createExecutorHarness({
+      logits: [{ logits: [10.0, 0.0, 0.0], outputDims: [1, 1, 1, 1] }],
+      vocab: ['▁hello', '<EOU>'],
+    });
+
+    await expect(
+      harness.executor.transcribe(
+        createAudio(),
+        {
+          returnDecoderState: true,
+        },
+        {} as never,
+      ),
+    ).rejects.toThrow('decoder output is too small');
+
+    expect(harness.decoderSession.emittedLogits).toHaveLength(1);
+    expect(harness.decoderSession.emittedLogits[0]?.disposed).toBe(true);
     expect(harness.decoderSession.emittedStates).toHaveLength(2);
     expect(harness.decoderSession.emittedStates.every((state) => state.disposed)).toBe(true);
   });

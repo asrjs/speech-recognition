@@ -543,33 +543,43 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
               state1: decoderOutputs.output_states_1 as OrtTensorLike<Float32Array>,
               state2: decoderOutputs.output_states_2 as OrtTensorLike<Float32Array>,
             };
-            const logitsSlice = extractLatestLogitsSlice(logits, distributionSize);
-            const tokenId = argmax(logitsSlice, 0, distributionSize);
-            const confidence = confidenceFromLogits(logitsSlice, tokenId, distributionSize);
+            let transferredNextState = false;
+            try {
+              const logitsSlice = extractLatestLogitsSlice(logits, distributionSize);
+              const tokenId = argmax(logitsSlice, 0, distributionSize);
+              const confidence = confidenceFromLogits(logitsSlice, tokenId, distributionSize);
 
-            const existingFrameConfidence = frameConfidenceStats.get(frameIndex);
-            if (existingFrameConfidence) {
-              existingFrameConfidence.sum += confidence.confidence;
-              existingFrameConfidence.count += 1;
-            } else {
-              frameConfidenceStats.set(frameIndex, { sum: confidence.confidence, count: 1 });
+              const existingFrameConfidence = frameConfidenceStats.get(frameIndex);
+              if (existingFrameConfidence) {
+                existingFrameConfidence.sum += confidence.confidence;
+                existingFrameConfidence.count += 1;
+              } else {
+                frameConfidenceStats.set(frameIndex, { sum: confidence.confidence, count: 1 });
+              }
+
+              if (tokenId === blankId) {
+                break;
+              }
+
+              tokenIds.push(tokenId);
+              tokenConfidences.push(confidence.confidence);
+              tokenFrameIndices.push(frameIndex);
+              tokenLogProbs.push(confidence.logProb);
+              emittedOnFrame += 1;
+
+              disposeDecoderState(decoderState, nextState);
+              decoderState = nextState;
+              transferredNextState = true;
+            } finally {
+              if (!transferredNextState) {
+                disposeDecoderState(nextState);
+              }
+              disposeTensor(logits);
             }
 
-            if (tokenId === blankId) {
-              disposeDecoderState(nextState, decoderState);
-              disposeTensor(logits);
+            if (!transferredNextState) {
               break;
             }
-
-            tokenIds.push(tokenId);
-            tokenConfidences.push(confidence.confidence);
-            tokenFrameIndices.push(frameIndex);
-            tokenLogProbs.push(confidence.logProb);
-            emittedOnFrame += 1;
-
-            disposeDecoderState(decoderState, nextState);
-            decoderState = nextState;
-            disposeTensor(logits);
           }
 
           const completedUnits = Math.min(frameCount, frameIndex + 1);

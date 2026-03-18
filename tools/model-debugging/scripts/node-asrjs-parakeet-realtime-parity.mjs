@@ -32,6 +32,7 @@ const QUANT_SUFFIX = {
   int8: '.int8.onnx',
 };
 const VALID_QUANTS = new Set(Object.keys(QUANT_SUFFIX));
+const VALID_PREPROCESSOR_BACKENDS = new Set(['js', 'onnx']);
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -63,6 +64,16 @@ function parseArgs() {
     else if (arg === '--cpu-threads') options.cpuThreads = Number(args[++index]);
     else if (arg === '--output') options.output = path.resolve(args[++index]);
     else if (arg.startsWith('--')) throw new Error(`Unknown argument: ${arg}`);
+  }
+
+  if (!Number.isInteger(options.targetSampleRate) || options.targetSampleRate <= 0) {
+    throw new Error('--target-sample-rate must be a positive integer.');
+  }
+  if (!Number.isInteger(options.cpuThreads) || options.cpuThreads <= 0) {
+    throw new Error('--cpu-threads must be a positive integer.');
+  }
+  if (!VALID_PREPROCESSOR_BACKENDS.has(options.preprocessorBackend)) {
+    throw new Error('--preprocessor-backend must be one of: js, onnx.');
   }
 
   return options;
@@ -222,9 +233,12 @@ function resolveJsonArtifact(filePath) {
 }
 
 function readReference(referencePath) {
-  const resolvedPath = referencePath ? resolveJsonArtifact(referencePath) : null;
-  if (!resolvedPath) {
+  if (!referencePath) {
     return null;
+  }
+  const resolvedPath = resolveJsonArtifact(referencePath);
+  if (!resolvedPath) {
+    throw new Error(`Reference JSON not found: ${referencePath} (.gz fallback also checked).`);
   }
   const raw = fs.readFileSync(resolvedPath);
   return JSON.parse(
