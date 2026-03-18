@@ -18,6 +18,10 @@ const TARGETS = {
       'tools/model-debugging/reference/medasrjs/upstream-tests/reference_medasr/logits.json',
     ],
   },
+  parakeet: {
+    description: 'Large Parakeet realtime RNNT reference JSON used by parity/debugging scripts.',
+    files: ['tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-reference.json'],
+  },
 };
 
 function parseArgs(argv) {
@@ -198,7 +202,7 @@ function statusTargets(targets) {
 
 function printHelp() {
   console.log(`Usage:
-  node tools/model-debugging/scripts/node-reference-artifacts.mjs status [--target canary] [--target medasr]
+  node tools/model-debugging/scripts/node-reference-artifacts.mjs status [--target canary] [--target medasr] [--target parakeet]
   node tools/model-debugging/scripts/node-reference-artifacts.mjs pack --target canary --delete-originals
   node tools/model-debugging/scripts/node-reference-artifacts.mjs unpack --target medasr
 

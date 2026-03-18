@@ -7,6 +7,30 @@ These scripts are intended to be run from a Python environment with NeMo ASR,
 ONNX, and ONNX Runtime installed. In this workspace, the `nemo` conda
 environment is the expected baseline.
 
+## Heavy Artifact Policy
+
+The large saved reference JSON for this RNNT port may be committed as
+`parakeet-realtime-eou-120m-v1-reference.json.gz` instead of raw JSON to keep
+pull request diffs and review context smaller.
+
+Check artifact status:
+
+```powershell
+node tools/model-debugging/scripts/node-reference-artifacts.mjs status --target parakeet
+```
+
+Restore the raw JSON locally when a script or manual inspection needs it:
+
+```powershell
+node tools/model-debugging/scripts/node-reference-artifacts.mjs unpack --target parakeet
+```
+
+Pack it back into `.json.gz` and delete the raw extracted file:
+
+```powershell
+node tools/model-debugging/scripts/node-reference-artifacts.mjs pack --target parakeet --delete-originals
+```
+
 ## Scripts
 
 - `generate_parakeet_realtime_reference.py`
@@ -37,6 +61,13 @@ environment is the expected baseline.
 & 'C:\Users\steam\anaconda3\envs\nemo\python.exe' tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/generate_parakeet_realtime_reference.py `
   --audio tools/data/fixtures/audio/jfk-short.wav `
   --output tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-reference.json
+```
+
+If you want to keep the repo lightweight after regenerating it, pack it back
+into `.json.gz`:
+
+```powershell
+node tools/model-debugging/scripts/node-reference-artifacts.mjs pack --target parakeet --delete-originals
 ```
 
 ### 2. Export the ONNX runtime artifacts

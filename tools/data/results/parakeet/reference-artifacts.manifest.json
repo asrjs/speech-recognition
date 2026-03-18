@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "updatedAt": "2026-03-18T20:29:30.396Z",
+  "entries": [
+    {
+      "file": "parakeet-realtime-eou-120m-v1-reference.json",
+      "gzipFile": "parakeet-realtime-eou-120m-v1-reference.json.gz",
+      "sizeBytes": 11144637,
+      "gzipBytes": 2496788,
+      "sha256": "14095416487d59035cf87583cf3ddb1a73424da062823c87d3bbc7069e5eed31"
+    }
+  ]
+}

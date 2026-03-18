@@ -3,6 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
+import zlib from 'node:zlib';
 
 import {
   PcmAudioBuffer,
@@ -198,11 +199,26 @@ function resolveModelArtifacts(options) {
   };
 }
 
+function resolveJsonArtifact(filePath) {
+  if (fs.existsSync(filePath)) {
+    return filePath;
+  }
+  const gzipPath = `${filePath}.gz`;
+  if (fs.existsSync(gzipPath)) {
+    return gzipPath;
+  }
+  return null;
+}
+
 function readReference(referencePath) {
-  if (!referencePath || !fs.existsSync(referencePath)) {
+  const resolvedPath = referencePath ? resolveJsonArtifact(referencePath) : null;
+  if (!resolvedPath) {
     return null;
   }
-  return JSON.parse(fs.readFileSync(referencePath, 'utf8'));
+  const raw = fs.readFileSync(resolvedPath);
+  return JSON.parse(
+    resolvedPath.endsWith('.gz') ? zlib.gunzipSync(raw).toString('utf8') : raw.toString('utf8'),
+  );
 }
 
 async function main() {
