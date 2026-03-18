@@ -7,6 +7,10 @@ These scripts are intended to be run from a Python environment with NeMo ASR,
 ONNX, and ONNX Runtime installed. In this workspace, the `nemo` conda
 environment is the expected baseline.
 
+The command examples below use placeholder variables for local tools and model
+directories. Replace them with paths that match your environment before
+running the scripts.
+
 ## Heavy Artifact Policy
 
 The large saved reference JSON for this RNNT port may be committed as
@@ -58,7 +62,9 @@ node tools/model-debugging/scripts/node-reference-artifacts.mjs pack --target pa
 ### 1. Generate the NeMo reference JSON
 
 ```powershell
-& 'C:\Users\steam\anaconda3\envs\nemo\python.exe' tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/generate_parakeet_realtime_reference.py `
+$PYTHON_EXE = 'C:\path\to\your\nemo\python.exe'
+
+& $PYTHON_EXE tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/generate_parakeet_realtime_reference.py `
   --audio tools/data/fixtures/audio/jfk-short.wav `
   --output tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-reference.json
 ```
@@ -73,8 +79,10 @@ node tools/model-debugging/scripts/node-reference-artifacts.mjs pack --target pa
 ### 2. Export the ONNX runtime artifacts
 
 ```powershell
-& 'C:\Users\steam\anaconda3\envs\nemo\python.exe' tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/export_parakeet_realtime_onnx.py `
-  --output-dir N:\models\onnx\nemo\parakeet-realtime-eou-120m-v1-onnx `
+$MODEL_DIR = 'N:\models\onnx\nemo\parakeet-realtime-eou-120m-v1-onnx'
+
+& $PYTHON_EXE tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/export_parakeet_realtime_onnx.py `
+  --output-dir $MODEL_DIR `
   --device cpu
 ```
 
@@ -88,22 +96,22 @@ Expected outputs:
 ### 3. Produce FP16 variants
 
 ```powershell
-& 'C:\Users\steam\anaconda3\envs\nemo\python.exe' tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/convert_onnx_fp16.py `
-  --model-dir N:\models\onnx\nemo\parakeet-realtime-eou-120m-v1-onnx
+& $PYTHON_EXE tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/convert_onnx_fp16.py `
+  --model-dir $MODEL_DIR
 ```
 
 ### 4. Produce INT8 variants
 
 ```powershell
-& 'C:\Users\steam\anaconda3\envs\nemo\python.exe' tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/convert_onnx_int8.py `
-  --model-dir N:\models\onnx\nemo\parakeet-realtime-eou-120m-v1-onnx
+& $PYTHON_EXE tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/convert_onnx_int8.py `
+  --model-dir $MODEL_DIR
 ```
 
 ### 5. Verify ONNX parity
 
 ```powershell
-& 'C:\Users\steam\anaconda3\envs\nemo\python.exe' tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/verify_parakeet_realtime_onnx.py `
-  --model-dir N:\models\onnx\nemo\parakeet-realtime-eou-120m-v1-onnx `
+& $PYTHON_EXE tools/model-debugging/reference/parakeet-realtime-eou-120m-v1/verify_parakeet_realtime_onnx.py `
+  --model-dir $MODEL_DIR `
   --reference tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-reference.json `
   --output tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-onnx-verify.json
 ```
@@ -112,7 +120,7 @@ Expected outputs:
 
 ```powershell
 node tools/model-debugging/scripts/node-asrjs-parakeet-realtime-parity.mjs `
-  --model-dir N:\models\onnx\nemo\parakeet-realtime-eou-120m-v1-onnx `
+  --model-dir $MODEL_DIR `
   --reference tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-reference.json `
   --output tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-asrjs-parity.json
 ```

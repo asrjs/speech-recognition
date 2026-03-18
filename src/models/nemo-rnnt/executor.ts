@@ -510,237 +510,240 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       }
     };
 
-    const decoderStart = nowMs();
-    let lastReportedDecodeUnits = -1;
     try {
-      for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
-        for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
-          encoderFrameBuffer[featureIndex] =
-            encoderTensor.data[featureIndex * frameCount + frameIndex] ?? 0;
-        }
-
-        let emittedOnFrame = 0;
-        while (emittedOnFrame < (this.config.maxSymbolsPerStep ?? 10)) {
-          decodeIterations += 1;
-          targetIdBuffer[0] = tokenIds.length > 0 ? tokenIds[tokenIds.length - 1]! : blankId;
-          const decoderFeeds: Record<string, unknown> = {
-            encoder_outputs: encoderFrameTensor,
-            targets: targetTensor,
-            input_states_1: decoderState?.state1,
-            input_states_2: decoderState?.state2,
-          };
-          if (
-            !loaded.decoderSession.inputNames ||
-            loaded.decoderSession.inputNames.includes('target_length')
-          ) {
-            decoderFeeds.target_length = targetLengthTensor;
-          }
-          const decoderOutputs = await loaded.decoderSession.run(decoderFeeds);
-
-          const logits = decoderOutputs.outputs as OrtTensorLike<Float32Array>;
-          const nextState = {
-            state1: decoderOutputs.output_states_1 as OrtTensorLike<Float32Array>,
-            state2: decoderOutputs.output_states_2 as OrtTensorLike<Float32Array>,
-          };
-          const logitsSlice = extractLatestLogitsSlice(logits, distributionSize);
-          const tokenId = argmax(logitsSlice, 0, distributionSize);
-          const confidence = confidenceFromLogits(logitsSlice, tokenId, distributionSize);
-
-          const existingFrameConfidence = frameConfidenceStats.get(frameIndex);
-          if (existingFrameConfidence) {
-            existingFrameConfidence.sum += confidence.confidence;
-            existingFrameConfidence.count += 1;
-          } else {
-            frameConfidenceStats.set(frameIndex, { sum: confidence.confidence, count: 1 });
+      const decoderStart = nowMs();
+      let lastReportedDecodeUnits = -1;
+      try {
+        for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+          for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
+            encoderFrameBuffer[featureIndex] =
+              encoderTensor.data[featureIndex * frameCount + frameIndex] ?? 0;
           }
 
-          if (tokenId === blankId) {
-            disposeDecoderState(nextState, decoderState);
+          let emittedOnFrame = 0;
+          while (emittedOnFrame < (this.config.maxSymbolsPerStep ?? 10)) {
+            decodeIterations += 1;
+            targetIdBuffer[0] = tokenIds.length > 0 ? tokenIds[tokenIds.length - 1]! : blankId;
+            const decoderFeeds: Record<string, unknown> = {
+              encoder_outputs: encoderFrameTensor,
+              targets: targetTensor,
+              input_states_1: decoderState?.state1,
+              input_states_2: decoderState?.state2,
+            };
+            if (
+              !loaded.decoderSession.inputNames ||
+              loaded.decoderSession.inputNames.includes('target_length')
+            ) {
+              decoderFeeds.target_length = targetLengthTensor;
+            }
+            const decoderOutputs = await loaded.decoderSession.run(decoderFeeds);
+
+            const logits = decoderOutputs.outputs as OrtTensorLike<Float32Array>;
+            const nextState = {
+              state1: decoderOutputs.output_states_1 as OrtTensorLike<Float32Array>,
+              state2: decoderOutputs.output_states_2 as OrtTensorLike<Float32Array>,
+            };
+            const logitsSlice = extractLatestLogitsSlice(logits, distributionSize);
+            const tokenId = argmax(logitsSlice, 0, distributionSize);
+            const confidence = confidenceFromLogits(logitsSlice, tokenId, distributionSize);
+
+            const existingFrameConfidence = frameConfidenceStats.get(frameIndex);
+            if (existingFrameConfidence) {
+              existingFrameConfidence.sum += confidence.confidence;
+              existingFrameConfidence.count += 1;
+            } else {
+              frameConfidenceStats.set(frameIndex, { sum: confidence.confidence, count: 1 });
+            }
+
+            if (tokenId === blankId) {
+              disposeDecoderState(nextState, decoderState);
+              disposeTensor(logits);
+              break;
+            }
+
+            tokenIds.push(tokenId);
+            tokenConfidences.push(confidence.confidence);
+            tokenFrameIndices.push(frameIndex);
+            tokenLogProbs.push(confidence.logProb);
+            emittedOnFrame += 1;
+
+            disposeDecoderState(decoderState, nextState);
+            decoderState = nextState;
             disposeTensor(logits);
-            break;
           }
 
-          tokenIds.push(tokenId);
-          tokenConfidences.push(confidence.confidence);
-          tokenFrameIndices.push(frameIndex);
-          tokenLogProbs.push(confidence.logProb);
-          emittedOnFrame += 1;
-
-          disposeDecoderState(decoderState, nextState);
-          decoderState = nextState;
-          disposeTensor(logits);
+          const completedUnits = Math.min(frameCount, frameIndex + 1);
+          if (completedUnits > lastReportedDecodeUnits) {
+            lastReportedDecodeUnits = completedUnits;
+            const decodeProgress = clampProgress(0.4 + (completedUnits / frameCount) * 0.5);
+            const decodeElapsedMs = nowMs() - transcriptionStart;
+            emitTranscriptionProgress(options, {
+              stage: 'decode',
+              progress: decodeProgress,
+              elapsedMs: roundMetric(decodeElapsedMs),
+              remainingMs: estimateRemainingMs(decodeElapsedMs, decodeProgress),
+              completedUnits,
+              totalUnits: frameCount,
+              modelId: this.modelId,
+              backendId: this.backendId,
+              message: `Decoded ${completedUnits}/${frameCount} encoder frames for ${this.modelId}.`,
+              metrics: {
+                preprocessMs: roundMetric(preprocessMs),
+                encodeMs: roundMetric(encodeMs),
+                decodeMs: roundMetric(nowMs() - decoderStart),
+              },
+            });
+          }
         }
-
-        const completedUnits = Math.min(frameCount, frameIndex + 1);
-        if (completedUnits > lastReportedDecodeUnits) {
-          lastReportedDecodeUnits = completedUnits;
-          const decodeProgress = clampProgress(0.4 + (completedUnits / frameCount) * 0.5);
-          const decodeElapsedMs = nowMs() - transcriptionStart;
-          emitTranscriptionProgress(options, {
-            stage: 'decode',
-            progress: decodeProgress,
-            elapsedMs: roundMetric(decodeElapsedMs),
-            remainingMs: estimateRemainingMs(decodeElapsedMs, decodeProgress),
-            completedUnits,
-            totalUnits: frameCount,
-            modelId: this.modelId,
-            backendId: this.backendId,
-            message: `Decoded ${completedUnits}/${frameCount} encoder frames for ${this.modelId}.`,
-            metrics: {
-              preprocessMs: roundMetric(preprocessMs),
-              encodeMs: roundMetric(encodeMs),
-              decodeMs: roundMetric(nowMs() - decoderStart),
-            },
-          });
-        }
+      } finally {
+        disposeTensor(encoderTensor);
+        targetTensor.dispose?.();
+        targetLengthTensor.dispose?.();
+        encoderFrameTensor.dispose?.();
       }
-    } finally {
-      disposeTensor(encoderTensor);
-      targetTensor.dispose?.();
-      targetLengthTensor.dispose?.();
-      encoderFrameTensor.dispose?.();
-    }
-    const decodeMs = nowMs() - decoderStart;
+      const decodeMs = nowMs() - decoderStart;
 
-    const tokenizeStart = nowMs();
-    const details = buildRnntTranscriptDetails(
-      loaded.tokenizer,
-      tokenIds,
-      tokenFrameIndices,
-      tokenConfidences,
-      tokenLogProbs,
-      {
-        frameTimeSeconds: frameTime,
-        eouTokenId: loaded.tokenizer.getTokenId('<EOU>'),
-        eobTokenId: loaded.tokenizer.getTokenId('<EOB>'),
-      },
-    );
-    const tokenizeMs = nowMs() - tokenizeStart;
-    const postprocessElapsedMs = nowMs() - transcriptionStart;
-    emitTranscriptionProgress(options, {
-      stage: 'postprocess',
-      progress: 0.95,
-      elapsedMs: roundMetric(postprocessElapsedMs),
-      remainingMs: estimateRemainingMs(postprocessElapsedMs, 0.95),
-      modelId: this.modelId,
-      backendId: this.backendId,
-      message: `Built transcript details for ${this.modelId}.`,
-      metrics: {
+      const tokenizeStart = nowMs();
+      const details = buildRnntTranscriptDetails(
+        loaded.tokenizer,
+        tokenIds,
+        tokenFrameIndices,
+        tokenConfidences,
+        tokenLogProbs,
+        {
+          frameTimeSeconds: frameTime,
+          eouTokenId: loaded.tokenizer.getTokenId('<EOU>'),
+          eobTokenId: loaded.tokenizer.getTokenId('<EOB>'),
+        },
+      );
+      const tokenizeMs = nowMs() - tokenizeStart;
+      const postprocessElapsedMs = nowMs() - transcriptionStart;
+      emitTranscriptionProgress(options, {
+        stage: 'postprocess',
+        progress: 0.95,
+        elapsedMs: roundMetric(postprocessElapsedMs),
+        remainingMs: estimateRemainingMs(postprocessElapsedMs, 0.95),
+        modelId: this.modelId,
+        backendId: this.backendId,
+        message: `Built transcript details for ${this.modelId}.`,
+        metrics: {
+          preprocessMs: roundMetric(preprocessMs),
+          encodeMs: roundMetric(encodeMs),
+          decodeMs: roundMetric(decodeMs),
+          postprocessMs: roundMetric(tokenizeMs),
+        },
+      });
+
+      const frameConfidences = [...frameConfidenceStats.values()].map(
+        (entry) => entry.sum / entry.count,
+      );
+      const visibleTokenConfidences =
+        details.tokens?.flatMap((token) =>
+          typeof token.confidence === 'number' ? [token.confidence] : [],
+        ) ?? [];
+      const utteranceConfidence =
+        visibleTokenConfidences.length > 0
+          ? visibleTokenConfidences.reduce((sum, value) => sum + value, 0) /
+            visibleTokenConfidences.length
+          : undefined;
+      const wordAverage =
+        details.words && details.words.length > 0
+          ? details.words.reduce((sum, word) => sum + (word.confidence ?? 0), 0) /
+            details.words.length
+          : undefined;
+      const tokenAverage =
+        visibleTokenConfidences.length > 0
+          ? visibleTokenConfidences.reduce((sum, value) => sum + value, 0) /
+            visibleTokenConfidences.length
+          : undefined;
+      const totalMs = roundMetric(nowMs() - transcriptionStart);
+      const rtf = audio.durationSeconds > 0 ? totalMs / (audio.durationSeconds * 1000) : 0;
+      const rtfx =
+        audio.durationSeconds > 0 ? audio.durationSeconds / (totalMs / 1000) : undefined;
+      const totalMetrics: TranscriptMetrics = {
         preprocessMs: roundMetric(preprocessMs),
         encodeMs: roundMetric(encodeMs),
         decodeMs: roundMetric(decodeMs),
-        postprocessMs: roundMetric(tokenizeMs),
-      },
-    });
-
-    const frameConfidences = [...frameConfidenceStats.values()].map(
-      (entry) => entry.sum / entry.count,
-    );
-    const visibleTokenConfidences =
-      details.tokens?.flatMap((token) =>
-        typeof token.confidence === 'number' ? [token.confidence] : [],
-      ) ?? [];
-    const utteranceConfidence =
-      visibleTokenConfidences.length > 0
-        ? visibleTokenConfidences.reduce((sum, value) => sum + value, 0) /
-          visibleTokenConfidences.length
-        : undefined;
-    const wordAverage =
-      details.words && details.words.length > 0
-        ? details.words.reduce((sum, word) => sum + (word.confidence ?? 0), 0) /
-          details.words.length
-        : undefined;
-    const tokenAverage =
-      visibleTokenConfidences.length > 0
-        ? visibleTokenConfidences.reduce((sum, value) => sum + value, 0) /
-          visibleTokenConfidences.length
-        : undefined;
-    const totalMs = roundMetric(nowMs() - transcriptionStart);
-    const rtf = audio.durationSeconds > 0 ? totalMs / (audio.durationSeconds * 1000) : 0;
-    const rtfx = audio.durationSeconds > 0 ? audio.durationSeconds / (totalMs / 1000) : undefined;
-    const totalMetrics: TranscriptMetrics = {
-      preprocessMs: roundMetric(preprocessMs),
-      encodeMs: roundMetric(encodeMs),
-      decodeMs: roundMetric(decodeMs),
-      tokenizeMs: roundMetric(tokenizeMs),
-      postprocessMs: roundMetric(tokenizeMs),
-      totalMs,
-      wallMs: totalMs,
-      audioDurationSec: roundMetric(audio.durationSeconds, 4),
-      rtf: roundMetric(rtf, 4),
-      rtfx: rtfx !== undefined ? roundMetric(rtfx, 4) : undefined,
-      requestedPreprocessorBackend: this.sourceOptions?.preprocessorBackend ?? 'onnx',
-      preprocessorBackend: loaded.preprocessorBackend,
-      encoderFrameCount: frameCount,
-      decodeIterations,
-      emittedTokenCount: details.tokens?.length,
-      emittedWordCount: details.words?.length,
-    };
-
-    const transcript: NemoRnntNativeTranscript = {
-      utteranceText: details.utteranceText,
-      rawUtteranceText: details.rawUtteranceText,
-      isFinal: true,
-      words: details.words,
-      tokens: details.tokens,
-      specialTokens: details.specialTokens,
-      control: details.control,
-      confidence: {
-        utterance: utteranceConfidence,
-        wordAverage,
-        tokenAverage,
-        frameAverage:
-          frameConfidences.length > 0
-            ? frameConfidences.reduce((sum, value) => sum + value, 0) / frameConfidences.length
-            : undefined,
-        averageLogProb:
-          tokenLogProbs.length > 0
-            ? tokenLogProbs.reduce((sum, value) => sum + value, 0) / tokenLogProbs.length
-            : undefined,
-        frames: frameConfidences,
-      },
-      metrics: {
-        preprocessMs: totalMetrics.preprocessMs,
-        encodeMs: totalMetrics.encodeMs,
-        decodeMs: totalMetrics.decodeMs,
         tokenizeMs: roundMetric(tokenizeMs),
-        totalMs: totalMetrics.totalMs,
-        wallMs: totalMetrics.wallMs,
-        audioDurationSec: totalMetrics.audioDurationSec,
-        rtf: totalMetrics.rtf,
-        rtfx: totalMetrics.rtfx,
-        requestedPreprocessorBackend: totalMetrics.requestedPreprocessorBackend,
-        preprocessorBackend: totalMetrics.preprocessorBackend,
-        encoderFrameCount: totalMetrics.encoderFrameCount,
-        decodeIterations: totalMetrics.decodeIterations,
-        emittedTokenCount: totalMetrics.emittedTokenCount,
-        emittedWordCount: totalMetrics.emittedWordCount,
-      },
-      warnings,
-      debug: {
-        tokenIds: options.returnTokenIds ? tokenIds : undefined,
-        frameIndices: options.returnFrameIndices ? tokenFrameIndices : undefined,
-        logProbs: options.returnLogProbs ? tokenLogProbs : undefined,
-      },
-      decoderState: options.returnDecoderState
-        ? this.snapshotDecoderState(decoderState)
-        : undefined,
-    };
+        postprocessMs: roundMetric(tokenizeMs),
+        totalMs,
+        wallMs: totalMs,
+        audioDurationSec: roundMetric(audio.durationSeconds, 4),
+        rtf: roundMetric(rtf, 4),
+        rtfx: rtfx !== undefined ? roundMetric(rtfx, 4) : undefined,
+        requestedPreprocessorBackend: this.sourceOptions?.preprocessorBackend ?? 'onnx',
+        preprocessorBackend: loaded.preprocessorBackend,
+        encoderFrameCount: frameCount,
+        decodeIterations,
+        emittedTokenCount: details.tokens?.length,
+        emittedWordCount: details.words?.length,
+      };
 
-    disposeTensor(decoderState?.state1);
-    disposeTensor(decoderState?.state2);
+      const transcript: NemoRnntNativeTranscript = {
+        utteranceText: details.utteranceText,
+        rawUtteranceText: details.rawUtteranceText,
+        isFinal: true,
+        words: details.words,
+        tokens: details.tokens,
+        specialTokens: details.specialTokens,
+        control: details.control,
+        confidence: {
+          utterance: utteranceConfidence,
+          wordAverage,
+          tokenAverage,
+          frameAverage:
+            frameConfidences.length > 0
+              ? frameConfidences.reduce((sum, value) => sum + value, 0) / frameConfidences.length
+              : undefined,
+          averageLogProb:
+            tokenLogProbs.length > 0
+              ? tokenLogProbs.reduce((sum, value) => sum + value, 0) / tokenLogProbs.length
+              : undefined,
+          frames: frameConfidences,
+        },
+        metrics: {
+          preprocessMs: totalMetrics.preprocessMs,
+          encodeMs: totalMetrics.encodeMs,
+          decodeMs: totalMetrics.decodeMs,
+          tokenizeMs: roundMetric(tokenizeMs),
+          totalMs: totalMetrics.totalMs,
+          wallMs: totalMetrics.wallMs,
+          audioDurationSec: totalMetrics.audioDurationSec,
+          rtf: totalMetrics.rtf,
+          rtfx: totalMetrics.rtfx,
+          requestedPreprocessorBackend: totalMetrics.requestedPreprocessorBackend,
+          preprocessorBackend: totalMetrics.preprocessorBackend,
+          encoderFrameCount: totalMetrics.encoderFrameCount,
+          decodeIterations: totalMetrics.decodeIterations,
+          emittedTokenCount: totalMetrics.emittedTokenCount,
+          emittedWordCount: totalMetrics.emittedWordCount,
+        },
+        warnings,
+        debug: {
+          tokenIds: options.returnTokenIds ? tokenIds : undefined,
+          frameIndices: options.returnFrameIndices ? tokenFrameIndices : undefined,
+          logProbs: options.returnLogProbs ? tokenLogProbs : undefined,
+        },
+        decoderState: options.returnDecoderState
+          ? this.snapshotDecoderState(decoderState)
+          : undefined,
+      };
 
-    emitTranscriptionProgress(options, {
-      stage: 'complete',
-      progress: 1,
-      elapsedMs: totalMetrics.totalMs,
-      modelId: this.modelId,
-      backendId: this.backendId,
-      message: `Finished transcription for ${this.modelId}.`,
-      metrics: totalMetrics,
-    });
+      emitTranscriptionProgress(options, {
+        stage: 'complete',
+        progress: 1,
+        elapsedMs: totalMetrics.totalMs,
+        modelId: this.modelId,
+        backendId: this.backendId,
+        message: `Finished transcription for ${this.modelId}.`,
+        metrics: totalMetrics,
+      });
 
-    return transcript;
+      return transcript;
+    } finally {
+      disposeTensor(decoderState?.state1);
+      disposeTensor(decoderState?.state2);
+    }
   }
 
   dispose(): void {

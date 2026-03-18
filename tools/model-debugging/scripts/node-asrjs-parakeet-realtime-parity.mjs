@@ -23,12 +23,15 @@ const DEFAULT_REFERENCE = path.resolve(
   process.cwd(),
   'tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-reference.json',
 );
-const DEFAULT_MODEL_DIR = 'N:\\models\\onnx\\nemo\\parakeet-realtime-eou-120m-v1-onnx';
+const DEFAULT_MODEL_DIR =
+  process.env.PARAKEET_MODEL_DIR ??
+  path.resolve(process.cwd(), 'models', 'parakeet-realtime-eou-120m-v1-onnx');
 const QUANT_SUFFIX = {
   fp32: '.onnx',
   fp16: '.fp16.onnx',
   int8: '.int8.onnx',
 };
+const VALID_QUANTS = new Set(Object.keys(QUANT_SUFFIX));
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -59,6 +62,7 @@ function parseArgs() {
     else if (arg === '--preprocessor-backend') options.preprocessorBackend = args[++index];
     else if (arg === '--cpu-threads') options.cpuThreads = Number(args[++index]);
     else if (arg === '--output') options.output = path.resolve(args[++index]);
+    else if (arg.startsWith('--')) throw new Error(`Unknown argument: ${arg}`);
   }
 
   return options;
@@ -174,9 +178,16 @@ function toFileUrl(filePath) {
   return pathToFileURL(filePath).href;
 }
 
+function resolveQuantSuffix(kind, value) {
+  if (!VALID_QUANTS.has(value)) {
+    throw new Error(`Invalid ${kind} quantization: ${value}. Use: fp32, fp16, or int8.`);
+  }
+  return QUANT_SUFFIX[value];
+}
+
 function resolveModelArtifacts(options) {
-  const encoderName = `encoder-model${QUANT_SUFFIX[options.encoderQuant]}`;
-  const decoderName = `decoder_joint-model${QUANT_SUFFIX[options.decoderQuant]}`;
+  const encoderName = `encoder-model${resolveQuantSuffix('encoder', options.encoderQuant)}`;
+  const decoderName = `decoder_joint-model${resolveQuantSuffix('decoder', options.decoderQuant)}`;
   const tokenizerName = 'vocab.txt';
   const preprocessorName = `${options.preprocessor}.onnx`;
   const encoderPath = ensureFile(path.join(options.modelDir, encoderName), 'Encoder model');

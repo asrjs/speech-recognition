@@ -39,14 +39,20 @@ class MockEncoderSession implements OrtSessionLike {
 
 class MockDecoderSession implements OrtSessionLike {
   readonly targetHistory: number[] = [];
+  readonly emittedStates: MockTensor<Float32Array>[] = [];
   private callIndex = 0;
 
   constructor(
     private readonly steps: readonly MockDecoderStep[],
     private readonly stateDims: readonly number[],
+    private readonly throwOnCallIndex?: number,
   ) {}
 
   async run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>> {
+    if (this.throwOnCallIndex && this.callIndex + 1 === this.throwOnCallIndex) {
+      this.callIndex += 1;
+      throw new Error(`Forced decoder failure on invocation #${this.callIndex}.`);
+    }
     const step = this.steps[this.callIndex];
     this.callIndex += 1;
     if (!step) {
@@ -56,19 +62,23 @@ class MockDecoderSession implements OrtSessionLike {
     const targetTensor = feeds.targets as OrtTensorLike<Int32Array>;
     this.targetHistory.push(Number(targetTensor.data[0] ?? -1));
 
+    const outputState1 = new MockTensor(
+      new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
+      this.stateDims,
+    );
+    const outputState2 = new MockTensor(
+      new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
+      this.stateDims,
+    );
+    this.emittedStates.push(outputState1, outputState2);
+
     return {
       outputs: new MockTensor(
         new Float32Array([...new Array(step.logits.length).fill(-10), ...step.logits]),
         [1, 1, 2, step.logits.length],
       ),
-      output_states_1: new MockTensor(
-        new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
-        this.stateDims,
-      ),
-      output_states_2: new MockTensor(
-        new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
-        this.stateDims,
-      ),
+      output_states_1: outputState1,
+      output_states_2: outputState2,
     };
   }
 }
@@ -112,6 +122,7 @@ function createExecutorHarness(options: {
   readonly frameCount?: number;
   readonly featureSize?: number;
   readonly logits: readonly MockDecoderStep[];
+  readonly throwOnDecoderCallIndex?: number;
   readonly vocab?: readonly string[];
   readonly source?: NemoRnntArtifactSource;
 }) {
@@ -148,7 +159,7 @@ function createExecutorHarness(options: {
     config.predictionLayers ?? 1,
     1,
     config.predictionHiddenSize ?? 4,
-  ]);
+  ], options.throwOnDecoderCallIndex);
   const executor = new OrtNemoRnntExecutor(
     'test-nemo-rnnt',
     DEFAULT_NEMO_RNNT_CLASSIFICATION,
@@ -277,5 +288,26 @@ describe('nemo-rnnt executor decode loop', () => {
       }),
     ]);
     expect(result.debug?.frameIndices).toEqual([4]);
+  });
+
+  it('disposes decoder state tensors when decoding fails after state has advanced', async () => {
+    const harness = createExecutorHarness({
+      logits: [{ logits: [10.0, 0.0, 0.0] }],
+      vocab: ['▁hello', '<EOU>'],
+      throwOnDecoderCallIndex: 2,
+    });
+
+    await expect(
+      harness.executor.transcribe(
+        createAudio(),
+        {
+          returnDecoderState: true,
+        },
+        {} as never,
+      ),
+    ).rejects.toThrow('Forced decoder failure');
+
+    expect(harness.decoderSession.emittedStates).toHaveLength(2);
+    expect(harness.decoderSession.emittedStates.every((state) => state.disposed)).toBe(true);
   });
 });

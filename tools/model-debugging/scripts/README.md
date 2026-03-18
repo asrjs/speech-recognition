@@ -21,7 +21,7 @@ Unlike `reference/`, this folder should trend toward:
   - runs the Parakeet realtime RNNT preset through `@asrjs/speech-recognition` in Node/WASM
   - compares the runtime output against `parakeet-realtime-eou-120m-v1-reference.json`
   - automatically falls back to `parakeet-realtime-eou-120m-v1-reference.json.gz` if the raw JSON has been packed out of the repo
-  - defaults to the in-repo JS frontend path used by the preset
+  - uses `PARAKEET_MODEL_DIR` or `--model-dir` for the local ONNX directory; the bundled fallback path is only a placeholder
   - reports visible text, raw text with `<EOU>`, token ids, and EOU/EOB signal parity
 - [node-asrjs-medasr-compare.mjs](./node-asrjs-medasr-compare.mjs)
   - compares `@asrjs/speech-recognition` MedASR output against the original `medasrjs` Node wrapper
