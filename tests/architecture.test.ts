@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  createModelArchitecture,
-  ModelArchitectureDescriptor,
-} from '../src/types/architecture.js';
+import { createModelArchitecture } from '../src/types/architecture.js';
+import type { ModelArchitectureDescriptor } from '../src/types/architecture.js';
 
 describe('createModelArchitecture', () => {
   it('should return the provided descriptor object unmodified', () => {
