@@ -58,11 +58,23 @@ export class PcmAudioBuffer implements AudioBufferLike {
     }
 
     const mono = new Float32Array(this.numberOfFrames);
-    for (let channelIndex = 0; channelIndex < this.numberOfChannels; channelIndex += 1) {
-      const channel = this.channels[channelIndex]!;
+    const invChannels = 1 / this.numberOfChannels;
+
+    if (this.numberOfChannels === 2) {
+      // Fast path for stereo downmixing
+      const left = this.channels[0]!;
+      const right = this.channels[1]!;
       for (let frameIndex = 0; frameIndex < this.numberOfFrames; frameIndex += 1) {
-        mono[frameIndex] =
-          (mono[frameIndex] ?? 0) + (channel[frameIndex] ?? 0) / this.numberOfChannels;
+        mono[frameIndex] = (left[frameIndex]! + right[frameIndex]!) * 0.5;
+      }
+    } else {
+      // General path for other channel counts
+      for (let channelIndex = 0; channelIndex < this.numberOfChannels; channelIndex += 1) {
+        const channel = this.channels[channelIndex]!;
+        for (let frameIndex = 0; frameIndex < this.numberOfFrames; frameIndex += 1) {
+          // mono is zero-initialized; we can safely use ! operator.
+          mono[frameIndex] = mono[frameIndex]! + channel[frameIndex]! * invChannels;
+        }
       }
     }
 
@@ -136,7 +148,7 @@ function splitInterleavedFloatData(
 
   for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
     for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
-      channels[channelIndex]![frameIndex] = data[frameIndex * numberOfChannels + channelIndex] ?? 0;
+      channels[channelIndex]![frameIndex] = data[frameIndex * numberOfChannels + channelIndex]!;
     }
   }
 
@@ -150,7 +162,7 @@ function splitInterleavedInt16Data(data: Int16Array, numberOfChannels: number): 
   for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
     for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
       channels[channelIndex]![frameIndex] =
-        (data[frameIndex * numberOfChannels + channelIndex] ?? 0) / 32768;
+        data[frameIndex * numberOfChannels + channelIndex]! / 32768;
     }
   }
 
