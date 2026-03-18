@@ -83,8 +83,8 @@ Useful for:
 
 Start with:
 
-- [nemo-rnnt-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\nemo-rnnt-porting.md)
-- [parakeet-realtime-eou-120m-v1/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\parakeet-realtime-eou-120m-v1\README.md)
+- [nemo-rnnt-porting.md](../playbooks/nemo-rnnt-porting.md)
+- [parakeet-realtime-eou-120m-v1/README.md](./parakeet-realtime-eou-120m-v1/README.md)
 
 Important current rule:
 

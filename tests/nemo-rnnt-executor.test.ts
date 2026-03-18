@@ -243,4 +243,39 @@ describe('nemo-rnnt executor decode loop', () => {
     expect(result.decoderState?.dims1).toEqual([1, 1, 4]);
     expect(harness.decoderSession.targetHistory).toEqual([3, 0, 1, 1, 2]);
   });
+
+  it('keeps BDT encoder layout for long utterances where frame count exceeds feature size', async () => {
+    const harness = createExecutorHarness({
+      frameCount: 5,
+      featureSize: 2,
+      logits: [
+        { logits: [0.0, 0.0, 10.0] },
+        { logits: [0.0, 0.0, 10.0] },
+        { logits: [0.0, 0.0, 10.0] },
+        { logits: [0.0, 0.0, 10.0] },
+        { logits: [10.0, 0.0, 0.0] },
+        { logits: [0.0, 0.0, 10.0] },
+      ],
+      vocab: ['▁hello', '<EOU>'],
+    });
+
+    const result = await harness.executor.transcribe(
+      createAudio(),
+      {
+        returnTokenIds: true,
+        returnFrameIndices: true,
+      },
+      {} as never,
+    );
+
+    expect(result.utteranceText).toBe('hello');
+    expect(result.tokens).toEqual([
+      expect.objectContaining({
+        id: 0,
+        text: 'hello',
+        frameIndex: 4,
+      }),
+    ]);
+    expect(result.debug?.frameIndices).toEqual([4]);
+  });
 });

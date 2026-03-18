@@ -1,9 +1,8 @@
 {
-  "reference": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\parakeet\\parakeet-realtime-eou-120m-v1-reference.json",
-  "model_dir": "N:\\models\\onnx\\nemo\\parakeet-realtime-eou-120m-v1-onnx",
+  "reference": "tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-reference.json",
+  "model_dir": "parakeet-realtime-eou-120m-v1-onnx",
   "encoder_name": "encoder-model.fp16.onnx",
   "decoder_name": "decoder_joint-model.fp16.onnx",
-  "preprocessor_name": "nemo128.onnx",
   "vocab_name": "vocab.txt",
   "preprocessor": {
     "skipped": true

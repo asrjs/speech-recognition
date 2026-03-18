@@ -435,9 +435,13 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       throw new Error(`Unexpected NeMo RNNT encoder output shape: [${dims.join(', ')}].`);
     }
 
-    const encoderIsBdt = (dims[1] ?? 0) > (dims[2] ?? 0);
-    const featureSize = encoderIsBdt ? dims[1]! : dims[2]!;
-    const frameCount = encoderIsBdt ? dims[2]! : dims[1]!;
+    // The exported NeMo RNNT encoder uses [batch, features, frames] (BDT).
+    // Inferring layout from dimension sizes breaks once long utterances make T > D.
+    const featureSize = dims[1]!;
+    const frameCount = dims[2]!;
+    if (featureSize <= 0 || frameCount <= 0) {
+      throw new Error(`Unexpected NeMo RNNT encoder output shape: [${dims.join(', ')}].`);
+    }
     const frameTime = this.config.frameShiftSeconds * this.config.subsamplingFactor;
     const tokenizerVocabSize = loaded.tokenizer.vocabSize;
     const blankId =
@@ -510,14 +514,9 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
     let lastReportedDecodeUnits = -1;
     try {
       for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
-        if (encoderIsBdt) {
-          for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
-            encoderFrameBuffer[featureIndex] =
-              encoderTensor.data[featureIndex * frameCount + frameIndex] ?? 0;
-          }
-        } else {
-          const offset = frameIndex * featureSize;
-          encoderFrameBuffer.set(encoderTensor.data.subarray(offset, offset + featureSize));
+        for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
+          encoderFrameBuffer[featureIndex] =
+            encoderTensor.data[featureIndex * frameCount + frameIndex] ?? 0;
         }
 
         let emittedOnFrame = 0;
@@ -748,6 +747,5 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
     for (const handle of this.assetHandles) {
       handle.dispose();
     }
-    return undefined;
   }
 }

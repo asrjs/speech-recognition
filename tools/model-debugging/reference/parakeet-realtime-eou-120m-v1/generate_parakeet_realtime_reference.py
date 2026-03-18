@@ -58,6 +58,15 @@ def main() -> None:
 
     manual = manual_greedy_decode(model, encoder_outputs, runtime_config)
     nemo_transcribe = run_model_transcribe(model, audio_path)
+    normalized_nemo_text = nemo_transcribe["text"].replace("<EOU>", "").replace("<EOB>", "")
+    visible_text_matches = manual["text"] == normalized_nemo_text
+    raw_text_matches = manual["raw_text"] == nemo_transcribe["text"]
+    if not visible_text_matches or not raw_text_matches:
+        raise RuntimeError(
+            "Refusing to write a mismatched reference JSON to "
+            f"{args.output.resolve()}: visible={visible_text_matches}, raw={raw_text_matches}, "
+            f"manual={manual['raw_text']!r}, nemo={nemo_transcribe['text']!r}"
+        )
 
     payload = {
         "meta": {
@@ -83,8 +92,8 @@ def main() -> None:
         "decode": {
             "manual_greedy": manual,
             "nemo_transcribe": nemo_transcribe,
-            "visible_text_matches_nemo_transcribe": manual["text"] == nemo_transcribe["text"].replace("<EOU>", "").replace("<EOB>", ""),
-            "raw_text_matches_nemo_transcribe": manual["raw_text"] == nemo_transcribe["text"],
+            "visible_text_matches_nemo_transcribe": visible_text_matches,
+            "raw_text_matches_nemo_transcribe": raw_text_matches,
         },
     }
 

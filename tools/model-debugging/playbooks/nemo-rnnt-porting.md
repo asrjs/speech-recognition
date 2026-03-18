@@ -38,7 +38,7 @@ and final text in one JSON artifact.
 
 Current reference entry point:
 
-- [generate_parakeet_realtime_reference.py](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\parakeet-realtime-eou-120m-v1\generate_parakeet_realtime_reference.py)
+- [generate_parakeet_realtime_reference.py](../reference/parakeet-realtime-eou-120m-v1/generate_parakeet_realtime_reference.py)
 
 ### 2. Export encoder and decoder artifacts before frontend work
 
@@ -46,8 +46,8 @@ Get encoder and decoder/joint parity stable first.
 
 Current reference entry points:
 
-- [export_parakeet_realtime_onnx.py](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\parakeet-realtime-eou-120m-v1\export_parakeet_realtime_onnx.py)
-- [verify_parakeet_realtime_onnx.py](N:\github\asrjs\speech-recognition\tools\model-debugging\reference\parakeet-realtime-eou-120m-v1\verify_parakeet_realtime_onnx.py)
+- [export_parakeet_realtime_onnx.py](../reference/parakeet-realtime-eou-120m-v1/export_parakeet_realtime_onnx.py)
+- [verify_parakeet_realtime_onnx.py](../reference/parakeet-realtime-eou-120m-v1/verify_parakeet_realtime_onnx.py)
 
 If verification only passes when you feed saved reference features into the
 encoder, the remaining bug is probably frontend parity, not RNNT decoding.
@@ -58,7 +58,7 @@ Use a JS frontend parity helper before touching runtime decode logic.
 
 Current helper:
 
-- [node-canary-js-frontend-parity.mjs](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\node-canary-js-frontend-parity.mjs)
+- [node-canary-js-frontend-parity.mjs](../scripts/node-canary-js-frontend-parity.mjs)
 
 This script now auto-selects the in-repo `asrjs` frontend contract from the
 reference model id, including both valid-length mode and normalization mode.
@@ -70,7 +70,7 @@ the same reference JSON.
 
 Current helper:
 
-- [node-asrjs-parakeet-realtime-parity.mjs](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\node-asrjs-parakeet-realtime-parity.mjs)
+- [node-asrjs-parakeet-realtime-parity.mjs](../scripts/node-asrjs-parakeet-realtime-parity.mjs)
 
 ## Current RNNT Lessons
 

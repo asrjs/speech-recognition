@@ -84,8 +84,11 @@ export const MODELS = {
     predLayers: 1,
     topology: 'rnnt',
     supportsWordTimestamps: false,
-    defaultRevision: 'main',
-    warmupExpectedTexts: ['the boy was there when the sun rose'],
+    defaultRevision: '6d6be8e9113b4aa8ae7b4d5dfb655795c084d0c6',
+    warmupExpectedTexts: [
+      'the boy was there when the sun rose',
+      'the boy was there when the sun rose a rod is used to catch pink salmon',
+    ],
     warmupRequiredKeywordGroups: [
       ['boy', 'there'],
       ['pink', 'salmon'],
