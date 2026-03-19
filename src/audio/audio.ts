@@ -58,11 +58,21 @@ export class PcmAudioBuffer implements AudioBufferLike {
     }
 
     const mono = new Float32Array(this.numberOfFrames);
-    for (let channelIndex = 0; channelIndex < this.numberOfChannels; channelIndex += 1) {
-      const channel = this.channels[channelIndex]!;
+    const invChannels = 1 / this.numberOfChannels;
+
+    if (this.numberOfChannels === 2) {
+      const left = this.channels[0]!;
+      const right = this.channels[1]!;
       for (let frameIndex = 0; frameIndex < this.numberOfFrames; frameIndex += 1) {
-        mono[frameIndex] =
-          (mono[frameIndex] ?? 0) + (channel[frameIndex] ?? 0) / this.numberOfChannels;
+        mono[frameIndex] = (left[frameIndex]! + right[frameIndex]!) * 0.5;
+      }
+    } else {
+      for (let frameIndex = 0; frameIndex < this.numberOfFrames; frameIndex += 1) {
+        let sampleSum = 0;
+        for (let channelIndex = 0; channelIndex < this.numberOfChannels; channelIndex += 1) {
+          sampleSum += this.channels[channelIndex]![frameIndex]!;
+        }
+        mono[frameIndex] = sampleSum * invChannels;
       }
     }
 
@@ -136,7 +146,7 @@ function splitInterleavedFloatData(
 
   for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
     for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
-      channels[channelIndex]![frameIndex] = data[frameIndex * numberOfChannels + channelIndex] ?? 0;
+      channels[channelIndex]![frameIndex] = data[frameIndex * numberOfChannels + channelIndex]!;
     }
   }
 
@@ -146,11 +156,12 @@ function splitInterleavedFloatData(
 function splitInterleavedInt16Data(data: Int16Array, numberOfChannels: number): Float32Array[] {
   const frames = Math.floor(data.length / numberOfChannels);
   const channels = Array.from({ length: numberOfChannels }, () => new Float32Array(frames));
+  const int16Scale = 1 / 32768;
 
   for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
     for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
       channels[channelIndex]![frameIndex] =
-        (data[frameIndex * numberOfChannels + channelIndex] ?? 0) / 32768;
+        data[frameIndex * numberOfChannels + channelIndex]! * int16Scale;
     }
   }
 

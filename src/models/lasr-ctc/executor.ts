@@ -117,22 +117,45 @@ function average(values: readonly number[]): number | undefined {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function toMonoPcm(audio: AudioBufferLike): Float32Array {
+function ensureFloat32Buffer(length: number, buffer?: Float32Array): Float32Array {
+  return !buffer || buffer.length < length ? new Float32Array(length) : buffer;
+}
+
+function prepareMonoBuffer(frames: number, destination?: Float32Array): Float32Array {
+  const mono = destination
+    ? (destination.length === frames ? destination : destination.subarray(0, frames))
+    : new Float32Array(frames);
+  mono.fill(0);
+  return mono;
+}
+
+function toMonoPcm(audio: AudioBufferLike, destination?: Float32Array): Float32Array {
   if (audio.channels && audio.channels.length > 0) {
     if (audio.channels.length === 1) {
       return audio.channels[0] ?? new Float32Array(0);
     }
 
-    const mono = new Float32Array(audio.numberOfFrames);
-    for (let channelIndex = 0; channelIndex < audio.channels.length; channelIndex += 1) {
-      const channel = audio.channels[channelIndex];
-      if (!channel) {
-        continue;
+    const mono = prepareMonoBuffer(audio.numberOfFrames, destination);
+    const channelCount = audio.channels.length;
+
+    if (channelCount === 2) {
+      const left = audio.channels[0];
+      const right = audio.channels[1];
+      if (left && right) {
+        for (let frameIndex = 0; frameIndex < audio.numberOfFrames; frameIndex += 1) {
+          mono[frameIndex] = ((left[frameIndex] ?? 0) + (right[frameIndex] ?? 0)) * 0.5;
+        }
+        return mono;
       }
-      for (let frameIndex = 0; frameIndex < audio.numberOfFrames; frameIndex += 1) {
-        mono[frameIndex] =
-          (mono[frameIndex] ?? 0) + (channel[frameIndex] ?? 0) / audio.channels.length;
+    }
+
+    const invChannels = 1 / channelCount;
+    for (let frameIndex = 0; frameIndex < audio.numberOfFrames; frameIndex += 1) {
+      let sampleSum = 0;
+      for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
+        sampleSum += audio.channels[channelIndex]?.[frameIndex] ?? 0;
       }
+      mono[frameIndex] = sampleSum * invChannels;
     }
 
     return mono;
@@ -145,26 +168,51 @@ function toMonoPcm(audio: AudioBufferLike): Float32Array {
       return Float32Array.from(audio.data.subarray(0, frames));
     }
 
-    const mono = new Float32Array(frames);
-    for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
-      let sample = 0;
-      for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
-        sample += audio.data[frameIndex * numberOfChannels + channelIndex] ?? 0;
+    const mono = prepareMonoBuffer(frames, destination);
+    const data = audio.data;
+
+    if (numberOfChannels === 2) {
+      for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+        const baseIndex = frameIndex * 2;
+        mono[frameIndex] = ((data[baseIndex] ?? 0) + (data[baseIndex + 1] ?? 0)) * 0.5;
       }
-      mono[frameIndex] = sample / numberOfChannels;
+      return mono;
+    }
+
+    const invChannels = 1 / numberOfChannels;
+    for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+      let sampleSum = 0;
+      const baseIndex = frameIndex * numberOfChannels;
+      for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
+        sampleSum += data[baseIndex + channelIndex] ?? 0;
+      }
+      mono[frameIndex] = sampleSum * invChannels;
     }
     return mono;
   }
 
   if (audio.data instanceof Int16Array) {
     const frames = Math.floor(audio.data.length / numberOfChannels);
-    const mono = new Float32Array(frames);
-    for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
-      let sample = 0;
-      for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
-        sample += (audio.data[frameIndex * numberOfChannels + channelIndex] ?? 0) / 32768;
+    const mono = prepareMonoBuffer(frames, destination);
+    const data = audio.data;
+    const int16Scale = 1 / 32768;
+
+    if (numberOfChannels === 2) {
+      for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+        const baseIndex = frameIndex * 2;
+        mono[frameIndex] = ((data[baseIndex] ?? 0) + (data[baseIndex + 1] ?? 0)) * 0.5 * int16Scale;
       }
-      mono[frameIndex] = sample / numberOfChannels;
+      return mono;
+    }
+
+    const sampleScale = int16Scale / numberOfChannels;
+    for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+      let sampleSum = 0;
+      const baseIndex = frameIndex * numberOfChannels;
+      for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
+        sampleSum += data[baseIndex + channelIndex] ?? 0;
+      }
+      mono[frameIndex] = sampleSum * sampleScale;
     }
     return mono;
   }
@@ -325,6 +373,8 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
   private readonly runtimeHooks?: SpeechRuntimeHooks;
   private readonly preprocessor?: LasrCtcFeaturePreprocessor;
   private readonly assetHandles: ResolvedAssetHandle[] = [];
+  private sharedMonoBuffer?: Float32Array;
+  private featuresTxMBuffer?: Float32Array;
 
   constructor(
     private readonly modelId: string,
@@ -555,15 +605,21 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
       });
     }
 
-    const mono = toMonoPcm(audio);
+    this.sharedMonoBuffer = ensureFloat32Buffer(audio.numberOfFrames, this.sharedMonoBuffer);
+    const mono = toMonoPcm(audio, this.sharedMonoBuffer);
 
     const preprocessStart = nowMs();
     const features = state.preprocessor.process(mono);
     const transposeStart = nowMs();
+    this.featuresTxMBuffer = ensureFloat32Buffer(
+      features.featureSize * features.frameCount,
+      this.featuresTxMBuffer,
+    );
     const featuresTxM = transposeMelToTxM(
       features.features,
       features.featureSize,
       features.frameCount,
+      this.featuresTxMBuffer,
     );
     const transposeMs = nowMs() - transposeStart;
     const preprocessMs = nowMs() - preprocessStart;

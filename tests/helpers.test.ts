@@ -32,6 +32,31 @@ describe('app helpers', () => {
     expect(cache.getStats().hitCount).toBe(1);
   });
 
+  it('does not cache values when the factory throws an error', async () => {
+    const cache = new AudioFeatureCache<Float32Array>({
+      maxSizeMB: 1,
+      estimateSizeBytes: (value) => value.byteLength,
+    });
+    const input = new Float32Array([0, 0.1, -0.1, 0.25]);
+    let computeCount = 0;
+
+    await expect(
+      cache.getOrCreate(input, async () => {
+        computeCount += 1;
+        throw new Error('Factory error');
+      }),
+    ).rejects.toThrow('Factory error');
+
+    const second = await cache.getOrCreate(input, async () => {
+      computeCount += 1;
+      return new Float32Array([4, 5, 6]);
+    });
+
+    expect(second.cached).toBe(false);
+    expect(computeCount).toBe(2);
+    expect(cache.getStats().hitCount).toBe(0);
+  });
+
   it('splits audio into overlapping chunks for long-form orchestration', () => {
     const chunker = new AudioChunker({
       chunkLengthMs: 1000,
