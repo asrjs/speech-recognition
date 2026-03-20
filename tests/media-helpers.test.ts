@@ -1,5 +1,7 @@
 import {
+  decodeAudioBufferToMonoPcm,
   decodeAudioSourceToMonoPcm,
+  encodeMonoPcmToWavBlob,
   mixAudioBufferChannelsToMono,
   resolveAudioSourceToBlob,
 } from '@asrjs/speech-recognition/browser';
@@ -61,6 +63,20 @@ describe('media helpers', () => {
 
     expect(fetchImpl).toHaveBeenCalledOnce();
     expect(await resolved.text()).toBe('audio');
+  });
+
+  it('encodes mono PCM into a WAV blob', async () => {
+    const blob = encodeMonoPcmToWavBlob(new Float32Array([0, 1, -1]), { sampleRate: 8000 });
+    const buffer = await blob.arrayBuffer();
+    const view = new DataView(buffer);
+    const readAscii = (offset: number, length: number) =>
+      Array.from({ length }, (_, index) => String.fromCharCode(view.getUint8(offset + index))).join('');
+
+    expect(blob.type).toBe('audio/wav');
+    expect(readAscii(0, 4)).toBe('RIFF');
+    expect(readAscii(8, 4)).toBe('WAVE');
+    expect(view.getUint32(24, true)).toBe(8000);
+    expect(view.getUint16(22, true)).toBe(1);
   });
 
   it('decodes audio sources into mono PCM with an injected AudioContext', async () => {
@@ -148,5 +164,27 @@ describe('media helpers', () => {
     expect(decoded.pcm[0]).toBeCloseTo(0, 4);
     expect(decoded.pcm[1]).toBeCloseTo(2 / 3, 3);
     expect(decoded.pcm[2]).toBeCloseTo(-(2 / 3), 3);
+  });
+
+  it('decodes ArrayBuffer audio sources through the shared wrapper', async () => {
+    const createAudioContext = vi.fn(() => ({
+      decodeAudioData: vi.fn(async () => ({
+        numberOfChannels: 1,
+        length: 2,
+        sampleRate: 16000,
+        getChannelData() {
+          return new Float32Array([0.25, -0.25]);
+        },
+      })),
+      close: vi.fn(),
+    }));
+
+    const decoded = await decodeAudioBufferToMonoPcm(
+      await new Blob(['audio']).arrayBuffer(),
+      { createAudioContext },
+    );
+
+    expect(createAudioContext).toHaveBeenCalledWith(16000);
+    expect(Array.from(decoded.pcm)).toEqual([0.25, -0.25]);
   });
 });
