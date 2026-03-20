@@ -285,6 +285,16 @@ import { benchmarkRunRecordsToCsv } from '@asrjs/speech-recognition/bench';
 import { fetchDatasetSplits } from '@asrjs/speech-recognition/datasets';
 ```
 
+The browser entry also owns browser-only local model helpers such as:
+
+```ts
+import {
+  collectSpeechModelLocalEntries,
+  inspectSpeechModelLocalEntries,
+  loadSpeechModelFromLocalEntries,
+} from '@asrjs/speech-recognition/browser';
+```
+
 ## Quick Start
 
 ### Explicit runtime composition

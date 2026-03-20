@@ -83,6 +83,10 @@ describe('public exports', () => {
     expect(inference.LcsPtfaTokenMerger).toBeTypeOf('function');
 
     expect(browser.decodeAudioSourceToMonoPcm).toBeTypeOf('function');
+    expect(browser.createSpeechModelLocalEntries).toBeTypeOf('function');
+    expect(browser.collectSpeechModelLocalEntries).toBeTypeOf('function');
+    expect(browser.inspectSpeechModelLocalEntries).toBeTypeOf('function');
+    expect(browser.loadSpeechModelFromLocalEntries).toBeTypeOf('function');
     expect(browser.startMicrophoneCapture).toBeTypeOf('function');
     expect(realtime.AudioFeatureCache).toBeTypeOf('function');
     expect(realtime.AudioRingBuffer).toBeTypeOf('function');
