@@ -123,7 +123,9 @@ function ensureFloat32Buffer(length: number, buffer?: Float32Array): Float32Arra
 
 function prepareMonoBuffer(frames: number, destination?: Float32Array): Float32Array {
   const mono = destination
-    ? (destination.length === frames ? destination : destination.subarray(0, frames))
+    ? destination.length === frames
+      ? destination
+      : destination.subarray(0, frames)
     : new Float32Array(frames);
   mono.fill(0);
   return mono;

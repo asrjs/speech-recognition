@@ -189,12 +189,14 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       decoderUrl: (await resolveFile(artifacts.decoderFilename)) ?? artifacts.decoderUrl,
       tokenizerUrl: (await resolveFile('vocab.txt')) ?? artifacts.tokenizerUrl,
       preprocessorUrl: (await resolveFile(preprocessorFilename)) ?? artifacts.preprocessorUrl,
-      encoderDataUrl: artifacts.encoderDataUrl && artifacts.encoderFilename
-        ? await resolveFile(`${artifacts.encoderFilename}.data`)
-        : artifacts.encoderDataUrl,
-      decoderDataUrl: artifacts.decoderDataUrl && artifacts.decoderFilename
-        ? await resolveFile(`${artifacts.decoderFilename}.data`)
-        : artifacts.decoderDataUrl,
+      encoderDataUrl:
+        artifacts.encoderDataUrl && artifacts.encoderFilename
+          ? await resolveFile(`${artifacts.encoderFilename}.data`)
+          : artifacts.encoderDataUrl,
+      decoderDataUrl:
+        artifacts.decoderDataUrl && artifacts.decoderFilename
+          ? await resolveFile(`${artifacts.decoderFilename}.data`)
+          : artifacts.decoderDataUrl,
     };
   }
 
@@ -668,8 +670,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
           : undefined;
       const totalMs = roundMetric(nowMs() - transcriptionStart);
       const rtf = audio.durationSeconds > 0 ? totalMs / (audio.durationSeconds * 1000) : 0;
-      const rtfx =
-        audio.durationSeconds > 0 ? audio.durationSeconds / (totalMs / 1000) : undefined;
+      const rtfx = audio.durationSeconds > 0 ? audio.durationSeconds / (totalMs / 1000) : undefined;
       const totalMetrics: TranscriptMetrics = {
         preprocessMs: roundMetric(preprocessMs),
         encodeMs: roundMetric(encodeMs),

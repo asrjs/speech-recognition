@@ -19,21 +19,21 @@ describe('Canary helpers', () => {
       'ysdede/canary-180m-flash-onnx',
     );
     expect(getModelConfig('nvidia/canary-180m-flash')?.featuresSize).toBe(128);
-    expect(getModelKeyFromRepoId('ysdede/canary-180m-flash-onnx')).toBe(
-      'nvidia/canary-180m-flash',
-    );
+    expect(getModelKeyFromRepoId('ysdede/canary-180m-flash-onnx')).toBe('nvidia/canary-180m-flash');
     expect(getLanguageName('fr')).toBe('French');
   });
 
   it('does not resolve an ONNX preprocessor artifact when JS preprocessing is requested', async () => {
-    const fetchModelFiles = vi.spyOn(huggingface, 'fetchModelFiles').mockResolvedValue([
-      'encoder-model.fp16.onnx',
-      'encoder-model.fp16.onnx.data',
-      'decoder-model.int8.onnx',
-      'tokenizer.json',
-      'config.json',
-      'nemo128.onnx',
-    ]);
+    const fetchModelFiles = vi
+      .spyOn(huggingface, 'fetchModelFiles')
+      .mockResolvedValue([
+        'encoder-model.fp16.onnx',
+        'encoder-model.fp16.onnx.data',
+        'decoder-model.int8.onnx',
+        'tokenizer.json',
+        'config.json',
+        'nemo128.onnx',
+      ]);
     const getModelFile = vi
       .spyOn(huggingface, 'getModelFile')
       .mockImplementation(async (_repoId, filename) => `https://example.test/${filename}`);
@@ -49,7 +49,9 @@ describe('Canary helpers', () => {
 
       expect(resolved.preprocessorBackend).toBe('js');
       expect(resolved.urls.preprocessorUrl).toBeUndefined();
-      expect(resolved.urls.encoderDataUrl).toBe('https://example.test/encoder-model.fp16.onnx.data');
+      expect(resolved.urls.encoderDataUrl).toBe(
+        'https://example.test/encoder-model.fp16.onnx.data',
+      );
       expect(resolved.filenames.encoder).toBe('encoder-model.fp16.onnx');
       expect(resolved.filenames.decoder).toBe('decoder-model.int8.onnx');
     } finally {
@@ -59,12 +61,14 @@ describe('Canary helpers', () => {
   });
 
   it('fails fast when ONNX preprocessing is requested without a nemo128 artifact', async () => {
-    const fetchModelFiles = vi.spyOn(huggingface, 'fetchModelFiles').mockResolvedValue([
-      'encoder-model.onnx',
-      'decoder-model.onnx',
-      'tokenizer.json',
-      'config.json',
-    ]);
+    const fetchModelFiles = vi
+      .spyOn(huggingface, 'fetchModelFiles')
+      .mockResolvedValue([
+        'encoder-model.onnx',
+        'decoder-model.onnx',
+        'tokenizer.json',
+        'config.json',
+      ]);
 
     try {
       const { getCanaryModel: getCanaryModelFromSource } = await import('../src/presets/canary.js');
@@ -171,7 +175,7 @@ describe('Canary helpers', () => {
         },
       }),
     );
-      expect(session.transcribe).toHaveBeenCalledWith(
+    expect(session.transcribe).toHaveBeenCalledWith(
       expect.objectContaining({
         sampleRate: 16000,
         numberOfChannels: 1,

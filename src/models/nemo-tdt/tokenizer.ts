@@ -37,10 +37,7 @@ export class ParakeetTokenizer implements NemoTokenizer {
     this.vocabSize = idToToken.length;
     const discoveredBlankId = idToToken.findIndex((token) => token === '<blk>');
     this.blankId =
-      options.blankId ??
-      (discoveredBlankId >= 0
-        ? discoveredBlankId
-        : idToToken.length);
+      options.blankId ?? (discoveredBlankId >= 0 ? discoveredBlankId : idToToken.length);
     this.sanitizedTokens = idToToken.map((token) => token.replace(/\u2581/g, ' '));
     this.controlTokenIds = new Set(
       idToToken.flatMap((token, index) =>
