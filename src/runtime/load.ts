@@ -177,7 +177,7 @@ function createMonoPcmAudioBuffer(pcm: MonoPcmInput, sampleRate: number): PcmAud
   return PcmAudioBuffer.fromMono(pcm, sampleRate);
 }
 
-function createLoadedSpeechModelHandle<
+export function createLoadedSpeechModelHandle<
   TLoadOptions = unknown,
   TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
   TNative = unknown,

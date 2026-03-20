@@ -1,4 +1,5 @@
 import { loadBuiltInSpeechModel, type BuiltInSpeechModelHandle } from './builtins.js';
+import { createLoadedSpeechModelHandle, type LoadedSpeechModel } from './load.js';
 import {
   listBuiltInLocalModelAdapters,
   resolveBuiltInLocalModelAdapter,
@@ -29,7 +30,7 @@ export interface LoadedLocalSpeechModel<
   TLoadOptions = unknown,
   TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
   TNative = unknown,
-> extends BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative> {
+> extends LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative> {
   readonly selection: LoadedLocalSpeechModelSelection;
 }
 
@@ -107,8 +108,10 @@ export async function loadSpeechModelFromLocalEntries(
       onProgress: options.onProgress,
     });
 
+    const handle = createLoadedSpeechModelHandle(loaded);
+
     return {
-      ...loaded,
+      ...handle,
       selection: resolved.selection,
       async dispose(): Promise<void> {
         if (disposed) {

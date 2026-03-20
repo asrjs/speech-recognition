@@ -128,9 +128,15 @@ describe('browser local model helpers', () => {
       }),
     );
 
+    const transcript = await loaded.transcribeMonoPcm(new Float32Array([0, 0.25, -0.25]), 16_000, {
+      responseFlavor: 'canonical',
+    });
+
     await loaded.dispose();
     await loaded.dispose();
 
+    expect(transcript).toEqual({ text: 'hello' });
+    expect(loadedTranscribe).toHaveBeenCalledTimes(1);
     expect(loadedHandleDispose).toHaveBeenCalledTimes(1);
     expect(assetHandleDispose).toHaveBeenCalledTimes(1);
   });
