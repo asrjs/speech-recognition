@@ -28,6 +28,266 @@ export interface VoiceActivityTimelineSnapshot {
   readonly segments: readonly VoiceActivitySegment[];
 }
 
+export interface VoiceActivityProbabilityBufferOptions {
+  readonly sampleRate: number;
+  readonly maxDurationSeconds: number;
+  readonly hopFrames?: number;
+  readonly speechThreshold?: number;
+}
+
+export interface VoiceActivityProbabilityBufferWindowSummary {
+  readonly totalHops: number;
+  readonly speechHopCount: number;
+  readonly nonSpeechHopCount: number;
+  readonly maxConsecutiveSpeech: number;
+  readonly maxProbability: number;
+  readonly recent: readonly {
+    readonly startFrame: number;
+    readonly endFrame: number;
+    readonly probability: number;
+    readonly speaking: boolean;
+  }[];
+}
+
+export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
+  readonly sampleRate: number;
+  readonly hopFrames: number;
+  readonly speechThreshold: number;
+  readonly maxEntries: number;
+  private readonly buffer: Float32Array;
+  private nextEntryIndex = 0;
+
+  constructor(options: VoiceActivityProbabilityBufferOptions) {
+    if (!Number.isFinite(options.sampleRate) || options.sampleRate <= 0) {
+      throw new TypeError('VoiceActivityProbabilityBuffer requires a positive sampleRate.');
+    }
+    if (!Number.isFinite(options.maxDurationSeconds) || options.maxDurationSeconds <= 0) {
+      throw new TypeError(
+        'VoiceActivityProbabilityBuffer requires a positive maxDurationSeconds.',
+      );
+    }
+
+    this.sampleRate = options.sampleRate;
+    this.hopFrames = Math.max(1, Math.floor(options.hopFrames ?? 512));
+    this.speechThreshold = options.speechThreshold ?? 0.5;
+    this.maxEntries = Math.max(
+      1,
+      Math.ceil((options.sampleRate * options.maxDurationSeconds) / this.hopFrames),
+    );
+    this.buffer = new Float32Array(this.maxEntries);
+  }
+
+  appendProbability(probability: number): number {
+    const writePosition = this.nextEntryIndex % this.maxEntries;
+    this.buffer[writePosition] = probability;
+    this.nextEntryIndex += 1;
+    return this.getLatestFrame();
+  }
+
+  appendProbabilities(probabilities: Float32Array | readonly number[]): number {
+    for (let index = 0; index < probabilities.length; index += 1) {
+      this.appendProbability(probabilities[index] ?? 0);
+    }
+    return this.getLatestFrame();
+  }
+
+  getLatestFrame(): number {
+    return this.nextEntryIndex * this.hopFrames;
+  }
+
+  getBaseEntry(): number {
+    return Math.max(0, this.nextEntryIndex - this.maxEntries);
+  }
+
+  getBaseFrame(): number {
+    return this.getBaseEntry() * this.hopFrames;
+  }
+
+  findSilenceBoundary(searchEndFrame: number, minimumFrame: number, threshold: number): number {
+    const cappedEndFrame = Math.min(searchEndFrame, this.getLatestFrame());
+    const fromEntry =
+      cappedEndFrame <= 0 ? 0 : Math.max(0, Math.ceil(cappedEndFrame / this.hopFrames) - 1);
+    const minimumEntry = Math.floor(minimumFrame / this.hopFrames);
+    const baseEntry = this.getBaseEntry();
+    const clampedMinimum = Math.max(minimumEntry, baseEntry);
+
+    for (let entryIndex = fromEntry; entryIndex >= clampedMinimum; entryIndex -= 1) {
+      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      if (probability < threshold) {
+        return entryIndex * this.hopFrames;
+      }
+    }
+
+    return minimumFrame;
+  }
+
+  getSilenceTailDuration(threshold: number): number {
+    if (this.nextEntryIndex === 0) {
+      return 0;
+    }
+
+    let silentEntries = 0;
+    const baseEntry = this.getBaseEntry();
+    for (let entryIndex = this.nextEntryIndex - 1; entryIndex >= baseEntry; entryIndex -= 1) {
+      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      if (probability >= threshold) {
+        break;
+      }
+      silentEntries += 1;
+    }
+
+    return silentEntries * this.hopFrames;
+  }
+
+  hasSpeechInRange(startFrame: number, endFrame: number, threshold: number): boolean {
+    if (endFrame <= startFrame) {
+      return false;
+    }
+
+    const startEntry = Math.floor(startFrame / this.hopFrames);
+    const endEntry = Math.ceil(endFrame / this.hopFrames);
+    const baseEntry = this.getBaseEntry();
+    const clampedStart = Math.max(startEntry, baseEntry);
+    const clampedEnd = Math.min(endEntry, this.nextEntryIndex);
+
+    for (let entryIndex = clampedStart; entryIndex < clampedEnd; entryIndex += 1) {
+      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      if (probability >= threshold) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  findFirstSpeechFrame(
+    startFrame: number,
+    endFrame: number,
+    threshold: number = this.speechThreshold,
+    minSpeechHops = 4,
+  ): number | null {
+    if (endFrame <= startFrame || minSpeechHops <= 0) {
+      return null;
+    }
+
+    const startEntry = Math.floor(startFrame / this.hopFrames);
+    const endEntry = Math.ceil(endFrame / this.hopFrames);
+    const baseEntry = this.getBaseEntry();
+    const clampedStart = Math.max(startEntry, baseEntry);
+    const clampedEnd = Math.min(endEntry, this.nextEntryIndex);
+
+    let runStart: number | null = null;
+    let runLength = 0;
+    for (let entryIndex = clampedStart; entryIndex < clampedEnd; entryIndex += 1) {
+      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      if (probability >= threshold) {
+        if (runStart === null) {
+          runStart = entryIndex * this.hopFrames;
+          runLength = 1;
+        } else {
+          runLength += 1;
+        }
+
+        if (runLength >= minSpeechHops) {
+          return runStart;
+        }
+      } else {
+        runStart = null;
+        runLength = 0;
+      }
+    }
+
+    return null;
+  }
+
+  getWindowSummary(
+    endFrame: number,
+    windowMs: number,
+    sampleRate = this.sampleRate,
+  ): VoiceActivityProbabilityBufferWindowSummary {
+    const windowFrames = Math.ceil((windowMs / 1000) * sampleRate);
+    const startFrame = Math.max(0, endFrame - windowFrames);
+    const startEntry = Math.floor(startFrame / this.hopFrames);
+    const endEntry = Math.ceil(endFrame / this.hopFrames);
+    const baseEntry = this.getBaseEntry();
+    const clampedStart = Math.max(startEntry, baseEntry);
+    const clampedEnd = Math.min(endEntry, this.nextEntryIndex);
+
+    const recent: {
+      readonly startFrame: number;
+      readonly endFrame: number;
+      readonly probability: number;
+      readonly speaking: boolean;
+    }[] = [];
+    let speechHopCount = 0;
+    let nonSpeechHopCount = 0;
+    let maxConsecutiveSpeech = 0;
+    let consecutiveSpeech = 0;
+    let maxProbability = 0;
+
+    for (let entryIndex = clampedStart; entryIndex < clampedEnd; entryIndex += 1) {
+      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      const speaking = probability >= this.speechThreshold;
+      if (speaking) {
+        speechHopCount += 1;
+        consecutiveSpeech += 1;
+        maxConsecutiveSpeech = Math.max(maxConsecutiveSpeech, consecutiveSpeech);
+      } else {
+        nonSpeechHopCount += 1;
+        consecutiveSpeech = 0;
+      }
+      maxProbability = Math.max(maxProbability, probability);
+      recent.push({
+        startFrame: entryIndex * this.hopFrames,
+        endFrame: (entryIndex + 1) * this.hopFrames,
+        probability,
+        speaking,
+      });
+    }
+
+    return {
+      totalHops: recent.length,
+      speechHopCount,
+      nonSpeechHopCount,
+      maxConsecutiveSpeech,
+      maxProbability,
+      recent,
+    };
+  }
+
+  hasRecentSpeech(
+    endFrame: number,
+    windowMs: number,
+    sampleRate = this.sampleRate,
+    minSpeechHops = 4,
+    minSpeechRatio = 0.5,
+  ): boolean {
+    const summary = this.getWindowSummary(endFrame, windowMs, sampleRate);
+    const speechRatio = summary.totalHops > 0 ? summary.speechHopCount / summary.totalHops : 0;
+    return (
+      summary.speechHopCount >= minSpeechHops &&
+      summary.maxConsecutiveSpeech >= minSpeechHops &&
+      summary.maxProbability >= this.speechThreshold &&
+      speechRatio >= minSpeechRatio
+    );
+  }
+
+  hasRecentSilence(
+    endFrame: number,
+    windowMs: number,
+    sampleRate = this.sampleRate,
+    minSilenceHops = 5,
+  ): boolean {
+    const summary = this.getWindowSummary(endFrame, windowMs, sampleRate);
+    return summary.totalHops >= minSilenceHops && summary.nonSpeechHopCount >= minSilenceHops;
+  }
+
+  reset(): void {
+    this.nextEntryIndex = 0;
+    this.buffer.fill(0);
+  }
+}
+
 function toSpeechFlag(
   observation: Pick<VoiceActivityObservation, 'speechProbability' | 'isSpeech'>,
   threshold: number,

@@ -17,6 +17,7 @@ describe('public exports', () => {
     expect(module.buildSpeechTranscriptionOptions).toBeTypeOf('function');
     expect(module.loadSpeechModel).toBeTypeOf('function');
     expect(module.transcribeSpeech).toBeTypeOf('function');
+    expect(module.transcribeSpeechFromMonoPcm).toBeTypeOf('function');
     expect(module.createSpeechPipeline).toBeTypeOf('function');
     expect(module.PcmAudioBuffer).toBeTypeOf('function');
     expect(module.createWasmBackend).toBeTypeOf('function');
@@ -87,13 +88,16 @@ describe('public exports', () => {
     expect(browser.collectSpeechModelLocalEntries).toBeTypeOf('function');
     expect(browser.inspectSpeechModelLocalEntries).toBeTypeOf('function');
     expect(browser.loadSpeechModelFromLocalEntries).toBeTypeOf('function');
+    expect(browser.createBrowserRealtimeStarter).toBeTypeOf('function');
     expect(browser.TenVadAdapter).toBeTypeOf('function');
     expect(browser.startMicrophoneCapture).toBeTypeOf('function');
+    expect(browser.encodeMonoPcmToWavBlob).toBeTypeOf('function');
     expect(realtime.AudioFeatureCache).toBeTypeOf('function');
     expect(realtime.AudioRingBuffer).toBeTypeOf('function');
     expect(realtime.RoughSpeechGate).toBeTypeOf('function');
     expect(realtime.RealtimeTranscriptionController).toBeTypeOf('function');
     expect(realtime.StreamingSpeechDetector).toBeTypeOf('function');
+    expect(realtime.VoiceActivityProbabilityBuffer).toBeTypeOf('function');
     expect(realtime.listStreamingPresets).toBeTypeOf('function');
     expect(bench.summarizeNumericSeries).toBeTypeOf('function');
     expect(bench.benchmarkRunRecordsToCsv).toBeTypeOf('function');

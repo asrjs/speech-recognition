@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { TenVadAdapter } from '@asrjs/speech-recognition/browser';
+import {
+  TenVadAdapter,
+  resolveDefaultTenVadAssetUrls,
+  resolveTenVadAssetUrls,
+} from '@asrjs/speech-recognition/browser';
+
+type FakeWorkerMode = 'ok' | 'fail-init';
 
 class FakeWorker {
-  onmessage = null;
-  onerror = null;
-  messages = [];
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: ErrorEvent) => void) | null = null;
+  messages: Array<{ type: string; payload?: any; id?: number }> = [];
+  private readonly mode: FakeWorkerMode;
 
-  constructor(mode = 'ok') {
+  constructor(mode: FakeWorkerMode = 'ok') {
     this.mode = mode;
   }
 
-  postMessage(message) {
+  postMessage(message: { type: string; payload?: any; id?: number }) {
     this.messages.push(message);
     if (message.type === 'INIT') {
       if (this.mode === 'fail-init') {
@@ -51,6 +58,28 @@ class FakeWorker {
 }
 
 describe('TenVadAdapter', () => {
+  it('resolves default bundled assets without adding a fallback loop', () => {
+    const defaults = resolveDefaultTenVadAssetUrls();
+    const resolved = resolveTenVadAssetUrls();
+
+    expect(resolved.scriptUrl).toBe(defaults.scriptUrl);
+    expect(resolved.wasmUrl).toBe(defaults.wasmUrl);
+    expect(resolved.fallbackScriptUrl).toBeNull();
+    expect(resolved.fallbackWasmUrl).toBeNull();
+  });
+
+  it('adds a bundled fallback when callers override TEN-VAD assets', () => {
+    const defaults = resolveDefaultTenVadAssetUrls();
+    const resolved = resolveTenVadAssetUrls({
+      assetBaseUrl: 'https://example.com/vendor/ten-vad/',
+    });
+
+    expect(resolved.scriptUrl).toBe('https://example.com/vendor/ten-vad/ten_vad.js');
+    expect(resolved.wasmUrl).toBe('https://example.com/vendor/ten-vad/ten_vad.wasm');
+    expect(resolved.fallbackScriptUrl).toBe(defaults.scriptUrl);
+    expect(resolved.fallbackWasmUrl).toBe(defaults.wasmUrl);
+  });
+
   it('handles init, process, reset, and dispose with aligned frame offsets', async () => {
     const adapter = new TenVadAdapter(
       {

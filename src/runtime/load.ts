@@ -5,9 +5,11 @@ import {
   type CreateBuiltInSpeechRuntimeOptions,
   type LoadBuiltInSpeechModelOptions,
 } from './builtins.js';
+import { PcmAudioBuffer } from '../audio/index.js';
 import type {
   AudioInputLike,
   BaseTranscriptionOptions,
+  MonoPcmInput,
   TranscriptResponse,
   TranscriptResponseFlavor,
 } from '../types/index.js';
@@ -19,11 +21,17 @@ import type { DefaultSpeechRuntime } from './session.js';
  * This is a thin alias over the built-in model handle so consumers can start
  * from the root package without learning the built-ins namespace first.
  */
-export type LoadedSpeechModel<
+export interface LoadedSpeechModel<
   TLoadOptions = unknown,
   TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
   TNative = unknown,
-> = BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative>;
+> extends BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative> {
+  transcribeMonoPcm<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+    pcm: MonoPcmInput,
+    sampleRate: number,
+    options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+  ): Promise<TranscriptResponse<TNative, TFlavor>>;
+}
 
 /** Root-level convenience options for loading a built-in speech model. */
 export type LoadSpeechModelOptions<TLoadOptions = unknown> =
@@ -43,7 +51,8 @@ export async function loadSpeechModel<
 >(
   options: LoadSpeechModelOptions<TLoadOptions>,
 ): Promise<LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>> {
-  return loadBuiltInSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(options);
+  const handle = await loadBuiltInSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(options);
+  return createLoadedSpeechModelHandle(handle);
 }
 
 export interface TranscribeSpeechOptions<
@@ -77,6 +86,28 @@ export async function transcribeSpeech<
   } finally {
     await loaded.dispose();
   }
+}
+
+/**
+ * One-shot convenience helper for callers starting from raw mono PCM.
+ *
+ * This keeps the root high-level API explicit about sample rate without forcing
+ * app code to manually wrap audio in `PcmAudioBuffer`.
+ */
+export async function transcribeSpeechFromMonoPcm<
+  TLoadOptions = unknown,
+  TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+  TNative = unknown,
+  TFlavor extends TranscriptResponseFlavor = 'canonical',
+>(
+  pcm: MonoPcmInput,
+  sampleRate: number,
+  options: TranscribeSpeechOptions<TLoadOptions, TTranscriptionOptions, TFlavor>,
+): Promise<TranscriptResponse<TNative, TFlavor>> {
+  return transcribeSpeech<TLoadOptions, TTranscriptionOptions, TNative, TFlavor>(
+    createMonoPcmAudioBuffer(pcm, sampleRate),
+    options,
+  );
 }
 
 export interface SpeechPipelineOptions extends CreateBuiltInSpeechRuntimeOptions {
@@ -125,12 +156,56 @@ export interface SpeechPipeline {
     input: AudioInputLike,
     request: SpeechPipelineTranscribeRequest<TLoadOptions, TTranscriptionOptions, TFlavor>,
   ): Promise<TranscriptResponse<TNative, TFlavor>>;
+  transcribeMonoPcm<
+    TLoadOptions = unknown,
+    TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+    TNative = unknown,
+    TFlavor extends TranscriptResponseFlavor = 'canonical',
+  >(
+    pcm: MonoPcmInput,
+    sampleRate: number,
+    request: SpeechPipelineTranscribeRequest<TLoadOptions, TTranscriptionOptions, TFlavor>,
+  ): Promise<TranscriptResponse<TNative, TFlavor>>;
   listLoadedModels(): readonly string[];
   disposeModel(requestOrCacheKey: string | SpeechPipelineModelRequest<unknown>): Promise<void>;
   dispose(): Promise<void>;
 }
 
 type UnknownLoadedModelHandle = BuiltInSpeechModelHandle<unknown, BaseTranscriptionOptions, unknown>;
+
+function createMonoPcmAudioBuffer(pcm: MonoPcmInput, sampleRate: number): PcmAudioBuffer {
+  return PcmAudioBuffer.fromMono(pcm, sampleRate);
+}
+
+function createLoadedSpeechModelHandle<
+  TLoadOptions = unknown,
+  TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+  TNative = unknown,
+>(
+  handle: BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative>,
+): LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative> {
+  return {
+    runtime: handle.runtime,
+    model: handle.model,
+    session: handle.session,
+    async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+      input: AudioInputLike,
+      options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+    ): Promise<TranscriptResponse<TNative, TFlavor>> {
+      return handle.transcribe(input, options);
+    },
+    async transcribeMonoPcm<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+      pcm: MonoPcmInput,
+      sampleRate: number,
+      options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+    ): Promise<TranscriptResponse<TNative, TFlavor>> {
+      return handle.transcribe(createMonoPcmAudioBuffer(pcm, sampleRate), options);
+    },
+    async dispose(): Promise<void> {
+      await handle.dispose();
+    },
+  };
+}
 
 function canonicalizeCacheValue(value: unknown, seen = new WeakSet<object>()): unknown {
   if (value === null || value === undefined) {
@@ -298,6 +373,22 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     return await handle.transcribe<TFlavor>(input, transcribeOptions);
   }
 
+  async transcribeMonoPcm<
+    TLoadOptions = unknown,
+    TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+    TNative = unknown,
+    TFlavor extends TranscriptResponseFlavor = 'canonical',
+  >(
+    pcm: MonoPcmInput,
+    sampleRate: number,
+    request: SpeechPipelineTranscribeRequest<TLoadOptions, TTranscriptionOptions, TFlavor>,
+  ): Promise<TranscriptResponse<TNative, TFlavor>> {
+    return this.transcribe<TLoadOptions, TTranscriptionOptions, TNative, TFlavor>(
+      createMonoPcmAudioBuffer(pcm, sampleRate),
+      request,
+    );
+  }
+
   listLoadedModels(): readonly string[] {
     return [...this.handles.keys()];
   }
@@ -366,7 +457,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       hooks: this.hooks,
       useManifestSources: this.useManifestSources,
     });
-    return handle as UnknownLoadedModelHandle;
+    return createLoadedSpeechModelHandle(handle) as unknown as UnknownLoadedModelHandle;
   }
 
   private assertNotDisposed(): void {

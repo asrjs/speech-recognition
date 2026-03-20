@@ -111,7 +111,7 @@ describe('browser local model helpers', () => {
       expect.objectContaining({
         modelId: 'parakeet-tdt-0.6b-v2',
         preset: 'parakeet',
-        backend: 'webgpu-hybrid',
+        backend: 'webgpu',
         options: {
           source: expect.objectContaining({
             kind: 'direct',
@@ -132,6 +132,47 @@ describe('browser local model helpers', () => {
     await loaded.dispose();
 
     expect(loadedHandleDispose).toHaveBeenCalledTimes(1);
+    expect(assetHandleDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('disposes resolved local artifact handles when loading fails', async () => {
+    const assetHandleDispose = vi.fn(async () => undefined);
+
+    vi.mocked(resolveParakeetLocalEntries).mockResolvedValue({
+      config: {
+        modelId: 'parakeet-tdt-0.6b-v2',
+        encoderBackend: 'webgpu',
+        decoderBackend: 'wasm',
+        encoderUrl: 'blob:encoder',
+        decoderUrl: 'blob:decoder',
+        tokenizerUrl: 'blob:vocab',
+        preprocessorBackend: 'js',
+        backend: 'webgpu',
+      },
+      assetHandles: [
+        {
+          dispose: assetHandleDispose,
+        },
+      ] as any,
+      selection: {
+        encoderName: 'encoder-model.fp16.onnx',
+        decoderName: 'decoder_joint-model.int8.onnx',
+        tokenizerName: 'vocab.txt',
+        preprocessorName: undefined,
+        encoderQuant: 'fp16',
+        decoderQuant: 'int8',
+      },
+    });
+    vi.mocked(loadBuiltInSpeechModel).mockRejectedValue(new Error('Load failed'));
+
+    await expect(
+      loadSpeechModelFromLocalEntries({
+        modelId: 'parakeet-tdt-0.6b-v2',
+        entries: [],
+        backend: 'webgpu-hybrid',
+      }),
+    ).rejects.toThrow('Load failed');
+
     expect(assetHandleDispose).toHaveBeenCalledTimes(1);
   });
 });

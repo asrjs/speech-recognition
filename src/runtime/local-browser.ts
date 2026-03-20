@@ -1,69 +1,29 @@
 import { loadBuiltInSpeechModel, type BuiltInSpeechModelHandle } from './builtins.js';
-import { getBuiltInModelDescriptor } from '../presets/descriptors.js';
 import {
-  collectParakeetLocalEntries,
-  createParakeetLocalEntries,
-  inspectParakeetLocalEntries,
-  resolveParakeetLocalEntries,
-  type ParakeetExecutionBackend,
-  type ParakeetLocalDirectoryHandleLike,
-  type ParakeetLocalEntry,
-  type ParakeetLocalFileHandleLike,
-  type ResolvedParakeetLocalArtifacts,
-} from '../presets/parakeet/compat.js';
-import type { QuantizationMode } from './huggingface.js';
+  listBuiltInLocalModelAdapters,
+  resolveBuiltInLocalModelAdapter,
+  type LoadedLocalSpeechModelSelection,
+  type LoadSpeechModelFromLocalEntriesOptions,
+  type SpeechModelLocalInspection,
+} from './local-adapter-registry.js';
 import type {
-  BaseSessionOptions,
   BaseTranscriptionOptions,
-  RuntimeProgressEvent,
+  ResolvedAssetHandle,
 } from '../types/index.js';
-import type { DefaultSpeechRuntime } from './session.js';
-import type { CreateBuiltInSpeechRuntimeOptions } from './builtins.js';
 import type {
-  NemoTdtModelOptions,
-  NemoTdtNativeTranscript,
-  NemoTdtTranscriptionOptions,
-} from '../models/nemo-tdt/index.js';
+  SpeechModelLocalDirectoryHandleLike,
+  SpeechModelLocalEntry,
+  SpeechModelLocalFileHandleLike,
+} from './local-types.js';
 
-export type SpeechModelLocalFileHandleLike = ParakeetLocalFileHandleLike;
-export type SpeechModelLocalDirectoryHandleLike = ParakeetLocalDirectoryHandleLike;
-export type SpeechModelLocalEntry = ParakeetLocalEntry;
-
-export interface SpeechModelLocalInspection {
-  readonly encoderQuantizations: readonly QuantizationMode[];
-  readonly decoderQuantizations: readonly QuantizationMode[];
-  readonly tokenizerNames: readonly string[];
-  readonly preprocessorNames: readonly string[];
-}
-
-export interface LoadedLocalSpeechModelSelection {
-  readonly encoderName: string;
-  readonly decoderName: string;
-  readonly tokenizerName: string;
-  readonly preprocessorName?: string;
-  readonly encoderQuant: QuantizationMode;
-  readonly decoderQuant: QuantizationMode;
-}
-
-export interface LoadSpeechModelFromLocalEntriesOptions
-  extends CreateBuiltInSpeechRuntimeOptions {
-  readonly runtime?: DefaultSpeechRuntime;
-  readonly modelId: string;
-  readonly entries: readonly SpeechModelLocalEntry[];
-  readonly backend?: 'wasm' | 'webgpu' | 'webgpu-hybrid' | 'webgpu-strict';
-  readonly encoderBackend?: ParakeetExecutionBackend;
-  readonly decoderBackend?: ParakeetExecutionBackend;
-  readonly encoderQuant?: QuantizationMode;
-  readonly decoderQuant?: QuantizationMode;
-  readonly tokenizerName?: string;
-  readonly preprocessorName?: 'nemo80' | 'nemo128';
-  readonly preprocessorBackend?: 'js' | 'onnx';
-  readonly verbose?: boolean;
-  readonly cpuThreads?: number;
-  readonly enableProfiling?: boolean;
-  readonly sessionOptions?: BaseSessionOptions;
-  readonly onProgress?: (event: RuntimeProgressEvent) => void;
-}
+export type {
+  LoadedLocalSpeechModelSelection,
+  LoadSpeechModelFromLocalEntriesOptions,
+  SpeechModelLocalDirectoryHandleLike,
+  SpeechModelLocalEntry,
+  SpeechModelLocalFileHandleLike,
+  SpeechModelLocalInspection,
+};
 
 export interface LoadedLocalSpeechModel<
   TLoadOptions = unknown,
@@ -73,73 +33,31 @@ export interface LoadedLocalSpeechModel<
   readonly selection: LoadedLocalSpeechModelSelection;
 }
 
-function resolveSupportedLocalBuiltInModel(modelId: string): {
-  readonly modelId: string;
-  readonly preset: 'parakeet';
-} {
-  const descriptor = getBuiltInModelDescriptor(modelId);
-  if (!descriptor) {
-    throw new Error(`Unknown built-in model "${modelId}".`);
-  }
-  if (!descriptor.loading.supportsLocalSource) {
-    throw new Error(`Built-in model "${descriptor.modelId}" does not support local folder loading.`);
-  }
-  if (descriptor.preset !== 'parakeet') {
-    throw new Error(
-      `Built-in model "${descriptor.modelId}" does not yet have a browser local-folder loader.`,
-    );
-  }
-  return {
-    modelId: descriptor.modelId,
-    preset: 'parakeet',
-  };
-}
-
-function normalizeSpeechModelLocalInspection(
-  inspection: ReturnType<typeof inspectParakeetLocalEntries>,
-): SpeechModelLocalInspection {
-  return {
-    encoderQuantizations: inspection.encoderQuantizations,
-    decoderQuantizations: inspection.decoderQuantizations,
-    tokenizerNames: inspection.tokenizerNames,
-    preprocessorNames: inspection.preprocessorNames,
-  };
-}
-
-function toBuiltInDirectLoadOptions(
-  resolved: ResolvedParakeetLocalArtifacts,
-): NemoTdtModelOptions {
-  return {
-    source: {
-      kind: 'direct',
-      encoderBackend: resolved.config.encoderBackend,
-      decoderBackend: resolved.config.decoderBackend,
-      artifacts: {
-        encoderUrl: resolved.config.encoderUrl,
-        decoderUrl: resolved.config.decoderUrl,
-        tokenizerUrl: resolved.config.tokenizerUrl,
-        preprocessorUrl: resolved.config.preprocessorUrl,
-        encoderDataUrl: resolved.config.encoderDataUrl ?? undefined,
-        decoderDataUrl: resolved.config.decoderDataUrl ?? undefined,
-        encoderFilename: resolved.config.filenames?.encoder,
-        decoderFilename: resolved.config.filenames?.decoder,
-      },
-      preprocessorBackend: resolved.config.preprocessorBackend,
-      cpuThreads: resolved.config.cpuThreads,
-      enableProfiling: resolved.config.enableProfiling,
-    },
-  };
-}
-
 async function disposeResolvedLocalArtifacts(
-  resolved: ResolvedParakeetLocalArtifacts,
+  assetHandles: readonly ResolvedAssetHandle[],
 ): Promise<void> {
-  await Promise.all(resolved.assetHandles.map(async (handle) => await handle.dispose()));
+  await Promise.all(assetHandles.map(async (handle) => await handle.dispose()));
+}
+
+function resolveLocalModelLoadBackend(
+  backend: LoadSpeechModelFromLocalEntriesOptions['backend'],
+): LoadSpeechModelFromLocalEntriesOptions['backend'] {
+  // Direct local-folder loads resolve concrete backend-specific artifacts up front,
+  // so the hybrid preference has to collapse to a concrete execution backend.
+  return backend === 'webgpu-hybrid' ? 'webgpu' : backend;
+}
+
+function getDefaultLocalModelAdapter() {
+  const adapter = listBuiltInLocalModelAdapters()[0];
+  if (!adapter) {
+    throw new Error('No browser local-folder adapters are registered.');
+  }
+  return adapter;
 }
 
 /** Converts flat browser File objects into normalized local entries for built-in speech models. */
 export function createSpeechModelLocalEntries(files: readonly File[]): SpeechModelLocalEntry[] {
-  return createParakeetLocalEntries(files);
+  return getDefaultLocalModelAdapter().createEntries(files);
 }
 
 /** Recursively collects file entries from a browser directory handle for built-in speech models. */
@@ -147,7 +65,7 @@ export async function collectSpeechModelLocalEntries(
   dirHandle: SpeechModelLocalDirectoryHandleLike,
   prefix = '',
 ): Promise<SpeechModelLocalEntry[]> {
-  return await collectParakeetLocalEntries(dirHandle, prefix);
+  return await getDefaultLocalModelAdapter().collectEntries(dirHandle, prefix);
 }
 
 /** Inspects local entries for a built-in model and returns selectable local artifact metadata. */
@@ -155,13 +73,7 @@ export function inspectSpeechModelLocalEntries(
   modelId: string,
   entries: readonly SpeechModelLocalEntry[],
 ): SpeechModelLocalInspection {
-  const resolved = resolveSupportedLocalBuiltInModel(modelId);
-  switch (resolved.preset) {
-    case 'parakeet':
-      return normalizeSpeechModelLocalInspection(inspectParakeetLocalEntries(entries));
-    default:
-      throw new Error(`Unsupported local inspection preset "${resolved.preset}".`);
-  }
+  return resolveBuiltInLocalModelAdapter(modelId).adapter.inspectEntries(entries);
 }
 
 /**
@@ -172,47 +84,25 @@ export function inspectSpeechModelLocalEntries(
  */
 export async function loadSpeechModelFromLocalEntries(
   options: LoadSpeechModelFromLocalEntriesOptions,
-): Promise<
-  LoadedLocalSpeechModel<NemoTdtModelOptions, NemoTdtTranscriptionOptions, NemoTdtNativeTranscript>
-> {
-  const resolvedModel = resolveSupportedLocalBuiltInModel(options.modelId);
-  const resolved = await resolveParakeetLocalEntries(options.entries, {
+): Promise<LoadedLocalSpeechModel> {
+  const resolvedModel = resolveBuiltInLocalModelAdapter(options.modelId);
+  const resolved = await resolvedModel.adapter.resolveEntries({
+    ...options,
     modelId: resolvedModel.modelId,
-    encoderBackend: options.encoderBackend,
-    decoderBackend: options.decoderBackend,
-    encoderQuant: options.encoderQuant,
-    decoderQuant: options.decoderQuant,
-    tokenizerName: options.tokenizerName,
-    preprocessorName: options.preprocessorName,
-    preprocessorBackend: options.preprocessorBackend,
-    backend: options.backend,
-    verbose: options.verbose,
-    cpuThreads: options.cpuThreads,
-    enableProfiling: options.enableProfiling,
   });
 
-  let loaded:
-    | BuiltInSpeechModelHandle<
-        NemoTdtModelOptions,
-        NemoTdtTranscriptionOptions,
-        NemoTdtNativeTranscript
-      >
-    | null = null;
+  let loaded: BuiltInSpeechModelHandle | null = null;
   let disposed = false;
 
   try {
-    loaded = await loadBuiltInSpeechModel<
-      NemoTdtModelOptions,
-      NemoTdtTranscriptionOptions,
-      NemoTdtNativeTranscript
-    >({
+    loaded = await loadBuiltInSpeechModel({
       runtime: options.runtime,
       hooks: options.hooks,
       useManifestSources: options.useManifestSources,
-      modelId: resolvedModel.modelId,
-      preset: resolvedModel.preset,
-      backend: options.backend,
-      options: toBuiltInDirectLoadOptions(resolved),
+      modelId: resolved.modelId,
+      preset: resolved.preset,
+      backend: resolveLocalModelLoadBackend(options.backend),
+      options: resolved.builtInLoadOptions,
       sessionOptions: options.sessionOptions,
       onProgress: options.onProgress,
     });
@@ -228,12 +118,12 @@ export async function loadSpeechModelFromLocalEntries(
         try {
           await loaded?.dispose();
         } finally {
-          await disposeResolvedLocalArtifacts(resolved);
+          await disposeResolvedLocalArtifacts(resolved.assetHandles);
         }
       },
     };
   } catch (error) {
-    await disposeResolvedLocalArtifacts(resolved);
+    await disposeResolvedLocalArtifacts(resolved.assetHandles);
     throw error;
   }
 }

@@ -17,4 +17,6 @@ export interface AudioChunkLike extends AudioBufferLike {
   readonly isLast?: boolean;
 }
 
-export type AudioInputLike = Float32Array | Float64Array | AudioBufferLike;
+export type MonoPcmInput = Float32Array | Float64Array;
+
+export type AudioInputLike = MonoPcmInput | AudioBufferLike;

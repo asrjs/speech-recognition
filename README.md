@@ -34,6 +34,11 @@ npm run docs:build
 
 `docs:build` generates API docs from the library JSDoc into `.typedoc-site/`.
 
+Source-structure guardrails:
+
+- the ESLint config warns when a source or test module grows past `800` lines
+- preset-specific logic should stay behind preset/model adapters instead of leaking into runtime-common modules
+
 ## Public API
 
 ### `@asrjs/speech-recognition`
@@ -50,6 +55,7 @@ Use the root entry for runtime-critical surfaces only:
 - `buildSpeechTranscriptionOptions`
 - `loadSpeechModel`
 - `transcribeSpeech`
+- `transcribeSpeechFromMonoPcm`
 - `createSpeechPipeline`
 - backend factories
 - canonical transcript normalizers
@@ -63,6 +69,7 @@ import {
   buildSpeechModelLoadOptions,
   loadSpeechModel,
   transcribeSpeech,
+  transcribeSpeechFromMonoPcm,
   createSpeechPipeline,
   PcmAudioBuffer,
   getCanonicalTranscript,
@@ -79,7 +86,6 @@ import {
   listSpeechModels,
   buildSpeechTranscriptionOptions,
   loadSpeechModel,
-  PcmAudioBuffer,
 } from '@asrjs/speech-recognition';
 
 const modelId = listSpeechModels().find((model) => model.preset === 'parakeet')?.modelId;
@@ -92,7 +98,7 @@ const loaded = await loadSpeechModel(buildSpeechModelLoadOptions({
   backend: 'webgpu-hybrid',
 }));
 
-const result = await loaded.transcribe(PcmAudioBuffer.fromMono(pcm, 16000), {
+const result = await loaded.transcribeMonoPcm(pcm, 16000, {
   responseFlavor: 'canonical',
   ...buildSpeechTranscriptionOptions(modelId, {
     timestamps: true,
@@ -119,7 +125,7 @@ const loaded = await loadSpeechModel({
   },
 });
 
-const result = await loaded.transcribe(audioBuffer, {
+const result = await loaded.transcribeMonoPcm(pcm, 16000, {
   responseFlavor: 'canonical+native',
   onProgress(event) {
     console.log(event.stage, event.progress, event.remainingMs, event.metrics);
@@ -132,25 +138,25 @@ await loaded.dispose();
 #### One-shot automatic transcription
 
 If you want a single call that handles model loading, transcription, and
-cleanup automatically, use `transcribeSpeech`:
+cleanup automatically, use `transcribeSpeechFromMonoPcm`:
 
 ```ts
-import { transcribeSpeech, PcmAudioBuffer } from '@asrjs/speech-recognition';
+import { transcribeSpeechFromMonoPcm } from '@asrjs/speech-recognition';
 
-const canonical = await transcribeSpeech(
-  PcmAudioBuffer.fromMono(pcm, 16000),
-  {
-    modelId: 'google/medasr',
-    backend: 'wasm',
-    transcribeOptions: {
-      responseFlavor: 'canonical',
-      detail: 'detailed',
-    },
+const canonical = await transcribeSpeechFromMonoPcm(pcm, 16000, {
+  modelId: 'google/medasr',
+  backend: 'wasm',
+  transcribeOptions: {
+    responseFlavor: 'canonical',
+    detail: 'detailed',
   },
-);
+});
 
 console.log(canonical.text);
 ```
+
+`transcribeSpeech` still accepts `AudioInputLike` directly when you already have
+an `AudioBufferLike` or want the default 16 kHz mono PCM shorthand.
 
 #### Cached model-agnostic pipeline
 
@@ -158,18 +164,18 @@ If you need repeated transcriptions across one or more model families, use
 `createSpeechPipeline` to reuse loaded models automatically:
 
 ```ts
-import { createSpeechPipeline, PcmAudioBuffer } from '@asrjs/speech-recognition';
+import { createSpeechPipeline } from '@asrjs/speech-recognition';
 
 const pipeline = createSpeechPipeline({
   cacheModels: true,
 });
 
-const med = await pipeline.transcribe(PcmAudioBuffer.fromMono(pcm, 16000), {
+const med = await pipeline.transcribeMonoPcm(pcm, 16000, {
   modelId: 'google/medasr',
   backend: 'wasm',
 });
 
-const parakeet = await pipeline.transcribe(PcmAudioBuffer.fromMono(pcm, 16000), {
+const parakeet = await pipeline.transcribeMonoPcm(pcm, 16000, {
   modelId: 'parakeet-tdt-0.6b-v3',
   backend: 'webgpu-hybrid',
 });
@@ -289,12 +295,19 @@ The browser entry also owns browser-only local model helpers such as:
 
 ```ts
 import {
+  createSpeechModelLocalEntries,
   collectSpeechModelLocalEntries,
   inspectSpeechModelLocalEntries,
   loadSpeechModelFromLocalEntries,
+  createBrowserRealtimeStarter,
   TenVadAdapter,
+  encodeMonoPcmToWavBlob,
 } from '@asrjs/speech-recognition/browser';
 ```
+
+`createBrowserRealtimeStarter` is the browser-side convenience starter that
+bundles `TenVadAdapter`, `VoiceActivityProbabilityBuffer`, and
+`RealtimeTranscriptionController` into one setup flow for realtime demos.
 
 ## Quick Start
 
