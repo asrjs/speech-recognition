@@ -1,3 +1,8 @@
+import {
+  STREAMING_PROCESSING_SAMPLE_RATE,
+  STREAMING_ROUGH_GATE_ANALYSIS_WINDOW_MS,
+} from './audio-timeline.js';
+
 export const STREAMING_PROFILE_IDS = {
   REALTIME_RNNT: 'realtime-rnnt',
   GENERIC_STREAMING: 'generic-streaming',
@@ -46,15 +51,15 @@ export interface StreamingDetectorPreset {
 }
 
 export const DEFAULT_STREAMING_DETECTOR_CONFIG: StreamingDetectorConfig = {
-  sampleRate: 16000,
-  ringBufferDurationMs: 8000,
+  sampleRate: STREAMING_PROCESSING_SAMPLE_RATE,
+  ringBufferDurationMs: 12000,
   waveformPointCount: 180,
-  analysisWindowMs: 80,
+  analysisWindowMs: STREAMING_ROUGH_GATE_ANALYSIS_WINDOW_MS,
   energySmoothingWindows: 6,
-  prerollMs: 600,
-  minSpeechDurationMs: 240,
-  minSilenceDurationMs: 800,
-  maxSegmentDurationMs: 4000,
+  prerollMs: 320,
+  minSpeechDurationMs: 320,
+  minSilenceDurationMs: 500,
+  maxSegmentDurationMs: 10000,
   minSpeechLevelDbfs: -38,
   useSnrGate: false,
   snrThreshold: 3.0,

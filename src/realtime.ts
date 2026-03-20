@@ -1,3 +1,4 @@
+export * from './runtime/audio-timeline.js';
 export * from './runtime/cache.js';
 export * from './runtime/chunking.js';
 export * from './runtime/controller.js';

@@ -1,4 +1,5 @@
 import type { StreamingTenVadLike, StreamingTenVadResultEvent, StreamingTenVadStatus } from './streaming-detector.js';
+import { STREAMING_TIMELINE_CHUNK_FRAMES } from './audio-timeline.js';
 
 export interface TenVadAdapterConfig {
   readonly hopSize?: number;
@@ -44,7 +45,7 @@ const TEN_VAD_INIT_TIMEOUT_MS = 30_000;
 const DEFAULT_TEN_VAD_CONFIG: Required<
   Omit<TenVadAdapterConfig, 'assetBaseUrl' | 'scriptUrl' | 'wasmUrl'>
 > = {
-  hopSize: 256,
+  hopSize: STREAMING_TIMELINE_CHUNK_FRAMES,
   threshold: 0.5,
   confirmationWindowMs: 192,
   hangoverMs: 320,

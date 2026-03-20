@@ -1,3 +1,5 @@
+import { STREAMING_TIMELINE_CHUNK_FRAMES } from './audio-timeline.js';
+
 interface WorkerScopeLike {
   onmessage: ((event: MessageEvent) => void) | null;
   postMessage(message: unknown, transfer?: Transferable[]): void;
@@ -8,7 +10,7 @@ const workerScope = self as unknown as WorkerScopeLike;
 
 let moduleInstance: any = null;
 let vadHandle = 0;
-let hopSize = 256;
+let hopSize = STREAMING_TIMELINE_CHUNK_FRAMES;
 let threshold = 0.5;
 let audioPtr = 0;
 let probPtr = 0;
@@ -53,7 +55,7 @@ workerScope.onmessage = async (event: MessageEvent) => {
 };
 
 async function handleInit(id: number, config: Record<string, unknown>) {
-  hopSize = Number(config.hopSize) || 256;
+  hopSize = Number(config.hopSize) || STREAMING_TIMELINE_CHUNK_FRAMES;
   threshold = Number(config.threshold) || 0.5;
   const scriptUrl = typeof config.scriptUrl === 'string' ? config.scriptUrl : null;
   const wasmUrl = typeof config.wasmUrl === 'string' ? config.wasmUrl : null;

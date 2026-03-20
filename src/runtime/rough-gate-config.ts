@@ -1,3 +1,8 @@
+import {
+  STREAMING_PROCESSING_SAMPLE_RATE,
+  STREAMING_ROUGH_GATE_ANALYSIS_WINDOW_MS,
+} from './audio-timeline.js';
+
 export interface RoughSpeechGateConfig {
   readonly sampleRate: number;
   readonly analysisWindowMs: number;
@@ -20,8 +25,8 @@ export interface RoughSpeechGateConfig {
 }
 
 export const DEFAULT_ROUGH_GATE_CONFIG: RoughSpeechGateConfig = {
-  sampleRate: 16000,
-  analysisWindowMs: 80,
+  sampleRate: STREAMING_PROCESSING_SAMPLE_RATE,
+  analysisWindowMs: STREAMING_ROUGH_GATE_ANALYSIS_WINDOW_MS,
   energySmoothingWindows: 6,
   minSpeechLevelDbfs: -38,
   useSnrGate: false,
