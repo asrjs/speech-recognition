@@ -90,7 +90,10 @@ describe('public exports', () => {
     expect(browser.startMicrophoneCapture).toBeTypeOf('function');
     expect(realtime.AudioFeatureCache).toBeTypeOf('function');
     expect(realtime.AudioRingBuffer).toBeTypeOf('function');
+    expect(realtime.RoughSpeechGate).toBeTypeOf('function');
     expect(realtime.RealtimeTranscriptionController).toBeTypeOf('function');
+    expect(realtime.StreamingSpeechDetector).toBeTypeOf('function');
+    expect(realtime.listStreamingPresets).toBeTypeOf('function');
     expect(bench.summarizeNumericSeries).toBeTypeOf('function');
     expect(bench.benchmarkRunRecordsToCsv).toBeTypeOf('function');
     expect(datasets.fetchDatasetSplits).toBeTypeOf('function');

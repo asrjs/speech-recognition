@@ -5,6 +5,12 @@ export interface AudioRingBufferOptions {
   readonly durationSeconds: number;
 }
 
+export interface AudioRingBufferMinMaxPairs {
+  readonly startFrame: number;
+  readonly endFrame: number;
+  readonly minMax: Float32Array;
+}
+
 export class AudioRingBuffer {
   readonly sampleRate: number;
   readonly maxFrames: number;
@@ -88,6 +94,48 @@ export class AudioRingBuffer {
 
   getSize(): number {
     return this.maxFrames;
+  }
+
+  getMinMaxPairs(
+    pointCount = 160,
+    frameSpan = this.maxFrames,
+  ): AudioRingBufferMinMaxPairs {
+    const safePoints = Math.max(8, Math.floor(pointCount));
+    const endFrame = this.getCurrentFrame();
+    const startFrame = Math.max(this.getBaseFrameOffset(), endFrame - frameSpan);
+    const frameCount = Math.max(1, endFrame - startFrame);
+    const framesPerPoint = Math.max(1, Math.floor(frameCount / safePoints));
+    const minMax = new Float32Array(safePoints * 2);
+
+    for (let pointIndex = 0; pointIndex < safePoints; pointIndex += 1) {
+      const pointStart = startFrame + pointIndex * framesPerPoint;
+      const pointEnd =
+        pointIndex === safePoints - 1
+          ? endFrame
+          : Math.min(endFrame, pointStart + framesPerPoint);
+      let min = 1;
+      let max = -1;
+
+      for (let frame = pointStart; frame < pointEnd; frame += 1) {
+        const sample = this.buffer[frame % this.maxFrames] ?? 0;
+        if (sample < min) min = sample;
+        if (sample > max) max = sample;
+      }
+
+      if (pointEnd <= pointStart) {
+        min = 0;
+        max = 0;
+      }
+
+      minMax[pointIndex * 2] = min;
+      minMax[pointIndex * 2 + 1] = max;
+    }
+
+    return {
+      startFrame,
+      endFrame,
+      minMax,
+    };
   }
 
   reset(): void {
