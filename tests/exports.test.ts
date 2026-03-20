@@ -7,6 +7,14 @@ describe('public exports', () => {
     expect(module.TranscriptDetailLevel).toBeUndefined();
     expect(module.DefaultSpeechRuntime).toBeTypeOf('function');
     expect(module.createSpeechRuntime).toBeTypeOf('function');
+    expect(module.listSpeechModels).toBeTypeOf('function');
+    expect(module.listSpeechModelOptions).toBeTypeOf('function');
+    expect(module.getSpeechModelDescriptor).toBeTypeOf('function');
+    expect(module.getSpeechModelLanguageName).toBeTypeOf('function');
+    expect(module.resolveSpeechModelComponentBackends).toBeTypeOf('function');
+    expect(module.detectSpeechModelRepoQuantizations).toBeTypeOf('function');
+    expect(module.buildSpeechModelLoadOptions).toBeTypeOf('function');
+    expect(module.buildSpeechTranscriptionOptions).toBeTypeOf('function');
     expect(module.loadSpeechModel).toBeTypeOf('function');
     expect(module.transcribeSpeech).toBeTypeOf('function');
     expect(module.createSpeechPipeline).toBeTypeOf('function');

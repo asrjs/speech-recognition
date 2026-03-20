@@ -1,5 +1,6 @@
 export * from './types/index.js';
 export * from './runtime/backend.js';
+export * from './runtime/catalog.js';
 export * from './runtime/errors.js';
 export * from './runtime/load.js';
 export * from './runtime/session.js';

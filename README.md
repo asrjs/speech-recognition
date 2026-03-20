@@ -41,7 +41,13 @@ npm run docs:build
 Use the root entry for runtime-critical surfaces only:
 
 - transcript/runtime/backend/audio contracts
+- built-in model discovery helpers
+- preset-aware load/transcription option builders
 - `createSpeechRuntime`
+- `listSpeechModels`
+- `getSpeechModelDescriptor`
+- `buildSpeechModelLoadOptions`
+- `buildSpeechTranscriptionOptions`
 - `loadSpeechModel`
 - `transcribeSpeech`
 - `createSpeechPipeline`
@@ -53,12 +59,48 @@ Use the root entry for runtime-critical surfaces only:
 import {
   createSpeechRuntime,
   createWasmBackend,
+  listSpeechModels,
+  buildSpeechModelLoadOptions,
   loadSpeechModel,
   transcribeSpeech,
   createSpeechPipeline,
   PcmAudioBuffer,
   getCanonicalTranscript,
 } from '@asrjs/speech-recognition';
+```
+
+#### Few-line quick start
+
+If you want one obvious import path for discovery, loading, and inference, start here:
+
+```ts
+import {
+  buildSpeechModelLoadOptions,
+  listSpeechModels,
+  buildSpeechTranscriptionOptions,
+  loadSpeechModel,
+  PcmAudioBuffer,
+} from '@asrjs/speech-recognition';
+
+const modelId = listSpeechModels().find((model) => model.preset === 'parakeet')?.modelId;
+if (!modelId) {
+  throw new Error('No built-in Parakeet model is available.');
+}
+
+const loaded = await loadSpeechModel(buildSpeechModelLoadOptions({
+  modelId,
+  backend: 'webgpu-hybrid',
+}));
+
+const result = await loaded.transcribe(PcmAudioBuffer.fromMono(pcm, 16000), {
+  responseFlavor: 'canonical',
+  ...buildSpeechTranscriptionOptions(modelId, {
+    timestamps: true,
+  }),
+});
+
+console.log(result.text);
+await loaded.dispose();
 ```
 
 #### High-level model loading
@@ -197,6 +239,10 @@ import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/p
 import { createMedAsrPresetFactory } from '@asrjs/speech-recognition/presets/medasr';
 import { createWhisperPresetFactory } from '@asrjs/speech-recognition/presets/whisper';
 ```
+
+Most app code no longer needs this entry just to discover models or build
+preset-aware load/transcription options. Those common helpers are now available
+from the root `@asrjs/speech-recognition` import.
 
 Parakeet-specific helper loaders also live under its preset entry:
 
