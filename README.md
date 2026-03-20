@@ -292,6 +292,7 @@ import {
   collectSpeechModelLocalEntries,
   inspectSpeechModelLocalEntries,
   loadSpeechModelFromLocalEntries,
+  TenVadAdapter,
 } from '@asrjs/speech-recognition/browser';
 ```
 
