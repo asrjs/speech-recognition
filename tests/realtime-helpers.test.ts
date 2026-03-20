@@ -1,8 +1,10 @@
 import {
   AudioRingBuffer,
+  RoughSpeechGate,
   StreamingWindowBuilder,
   UtteranceTranscriptMerger,
   type TranscriptResult,
+  VoiceActivityProbabilityBuffer,
 } from '@asrjs/speech-recognition/realtime';
 import { describe, expect, it } from 'vitest';
 
@@ -19,6 +21,18 @@ describe('realtime helpers', () => {
     expect(ring.getCurrentFrame()).toBe(9);
     expect(ring.getBaseFrameOffset()).toBe(1);
     expect(Array.from(ring.read(1, 9))).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it('samples real waveform points directly from the visible ring-buffer range', () => {
+    const ring = new AudioRingBuffer({
+      sampleRate: 8,
+      durationSeconds: 2,
+    });
+
+    ring.write(new Float32Array([0, 0.25, 0.5, 0.75, 1, 0.75, 0.5, 0.25]));
+    const waveform = ring.getSamplePoints(5, 8);
+
+    expect(Array.from(waveform.samples)).toEqual([0, 0.5, 1, 0.75, 0.25]);
   });
 
   it('builds initial and cursor-aware streaming windows from the ring buffer head', () => {
@@ -97,5 +111,46 @@ describe('realtime helpers', () => {
     expect(finalized?.committedText).toBe('A complete sentence.');
     expect(finalized?.previewText).toBe('');
     expect(finalized?.committedSentences).toHaveLength(1);
+  });
+
+  it('bucketizes VAD probabilities across the visible waveform range', () => {
+    const vad = new VoiceActivityProbabilityBuffer({
+      sampleRate: 16000,
+      maxDurationSeconds: 2,
+      hopFrames: 160,
+      speechThreshold: 0.5,
+    });
+
+    vad.appendProbabilities([0.1, 0.85, 0.9, 0.2]);
+    const timeline = vad.getTimeline(0, 640, 4);
+
+    expect(timeline).toHaveLength(4);
+    expect(timeline[0]?.probability).toBeCloseTo(0.1, 3);
+    expect(timeline[1]?.probability).toBeCloseTo(0.85, 3);
+    expect(timeline[2]?.probability).toBeCloseTo(0.9, 3);
+    expect(timeline[3]?.probability).toBeCloseTo(0.2, 3);
+  });
+
+  it('bucketizes rough energy across the visible waveform range', () => {
+    const gate = new RoughSpeechGate({
+      sampleRate: 16000,
+      analysisWindowMs: 80,
+      minSpeechDurationMs: 80,
+      minSilenceDurationMs: 160,
+      minSpeechLevelDbfs: -45,
+      maxHistoryChunks: 8,
+    });
+
+    gate.process(new Float32Array(1280).fill(0.001));
+    gate.process(new Float32Array(1280).fill(0.05));
+    gate.process(new Float32Array(1280).fill(0.05));
+    gate.process(new Float32Array(1280).fill(0.001));
+
+    const timeline = gate.getTimeline(0, 5120, 4);
+
+    expect(timeline).toHaveLength(4);
+    expect(timeline[1]?.energy).toBeGreaterThan(timeline[0]?.energy ?? 0);
+    expect(timeline[2]?.energy).toBeGreaterThan(timeline[3]?.energy ?? 0);
+    expect(timeline[1]?.isSpeech).toBe(true);
   });
 });

@@ -29,6 +29,7 @@ describe('microphone capture helpers', () => {
     const handle = await startMicrophoneCapture({
       stream,
       createAudioContext,
+      chunkFrames: 4,
       stopTracksOnStop: true,
       onChunk,
     });

@@ -11,6 +11,10 @@ import {
 } from '../../runtime/huggingface.js';
 import type { DefaultSpeechRuntime } from '../../runtime/session.js';
 import type {
+  SpeechModelLocalDirectoryHandleLike as ParakeetLocalDirectoryHandleLike,
+  SpeechModelLocalEntry as ParakeetLocalEntry,
+} from '../../runtime/local-types.js';
+import type {
   ResolvedAssetHandle,
   RuntimeLogger,
   SpeechModel,
@@ -34,29 +38,6 @@ export { MODELS, DEFAULT_MODEL };
 /** Browser/backend execution modes exposed by the Parakeet convenience helpers. */
 export type ParakeetBackend = 'wasm' | 'webgpu' | 'webgpu-hybrid' | 'webgpu-strict';
 export type ParakeetExecutionBackend = 'wasm' | 'webgpu';
-
-/** Minimal browser file-handle shape accepted by Parakeet local-folder helpers. */
-export interface ParakeetLocalFileHandleLike {
-  readonly kind?: 'file';
-  getFile(): Promise<File | Blob>;
-}
-
-/** Minimal browser directory-handle shape accepted by Parakeet local-folder helpers. */
-export interface ParakeetLocalDirectoryHandleLike {
-  readonly kind?: 'directory';
-  readonly name?: string;
-  entries(): AsyncIterable<
-    [string, ParakeetLocalFileHandleLike | ParakeetLocalDirectoryHandleLike]
-  >;
-}
-
-/** Flat local-entry record used by Parakeet local-folder resolution utilities. */
-export interface ParakeetLocalEntry {
-  readonly path: string;
-  readonly basename: string;
-  readonly file?: File | Blob;
-  readonly handle?: ParakeetLocalFileHandleLike;
-}
 
 /** Summary of what a local Parakeet folder contains before concrete files are selected. */
 export interface ParakeetLocalInspection {

@@ -1,7 +1,9 @@
 import {
   createSpeechPipeline,
   createSpeechRuntime,
+  loadSpeechModel,
   transcribeSpeech,
+  transcribeSpeechFromMonoPcm,
   type BackendCapabilities,
   type ExecutionBackend,
 } from '@asrjs/speech-recognition';
@@ -73,6 +75,41 @@ describe('high-level model-agnostic APIs', () => {
     await runtime.dispose();
   });
 
+  it('transcribeSpeechFromMonoPcm accepts explicit sample rate without manual wrappers', async () => {
+    const runtime = createRuntime();
+
+    const result = await transcribeSpeechFromMonoPcm(new Float32Array(16000), 16000, {
+      runtime,
+      modelId: 'parakeet-tdt-0.6b-v3',
+      backend: 'wasm',
+      transcribeOptions: {
+        responseFlavor: 'canonical',
+      },
+    });
+
+    expect(result.text.length).toBeGreaterThan(0);
+
+    await runtime.dispose();
+  });
+
+  it('loaded model handles can transcribe raw mono PCM directly', async () => {
+    const runtime = createRuntime();
+    const loaded = await loadSpeechModel({
+      runtime,
+      modelId: 'parakeet-tdt-0.6b-v3',
+      backend: 'wasm',
+    });
+
+    const result = await loaded.transcribeMonoPcm(new Float32Array(16000), 16000, {
+      responseFlavor: 'canonical',
+    });
+
+    expect(result.text.length).toBeGreaterThan(0);
+
+    await loaded.dispose();
+    await runtime.dispose();
+  });
+
   it('speech pipeline caches and reuses loaded models across transcriptions', async () => {
     const runtime = createRuntime();
     const pipeline = createSpeechPipeline({
@@ -97,6 +134,28 @@ describe('high-level model-agnostic APIs', () => {
     });
 
     expect(handleA).toBe(handleB);
+    expect(transcript.text.length).toBeGreaterThan(0);
+    expect(pipeline.listLoadedModels().length).toBe(1);
+
+    await pipeline.dispose();
+    await runtime.dispose();
+  });
+
+  it('speech pipeline transcribes explicit-rate raw mono PCM directly', async () => {
+    const runtime = createRuntime();
+    const pipeline = createSpeechPipeline({
+      runtime,
+      useManifestSources: false,
+    });
+
+    const transcript = await pipeline.transcribeMonoPcm(new Float32Array(16000), 16000, {
+      modelId: 'parakeet-tdt-0.6b-v3',
+      backend: 'wasm',
+      transcribeOptions: {
+        responseFlavor: 'canonical',
+      },
+    });
+
     expect(transcript.text.length).toBeGreaterThan(0);
     expect(pipeline.listLoadedModels().length).toBe(1);
 
