@@ -12,8 +12,13 @@ import { TenVadAdapter, type TenVadAdapterConfig, type TenVadAdapterOptions } fr
 import {
   VoiceActivityProbabilityBuffer,
   type VoiceActivityProbabilityBufferOptions,
+  type VoiceActivityProbabilityTimelinePoint,
   type VoiceActivityProbabilityBufferWindowSummary,
 } from './vad.js';
+import {
+  resolveStreamingTimelineChunkFrames,
+  STREAMING_PROCESSING_SAMPLE_RATE,
+} from './audio-timeline.js';
 
 export interface BrowserRealtimeStarterOptions extends StreamingSpeechDetectorOptions {
   readonly bufferDurationSeconds?: number;
@@ -27,7 +32,9 @@ export interface BrowserRealtimeStarterOptions extends StreamingSpeechDetectorOp
 }
 
 export interface BrowserRealtimeStarterSnapshot extends StreamingSpeechDetectorSnapshot {
-  readonly vadBuffer: VoiceActivityProbabilityBufferWindowSummary;
+  readonly vadBuffer: VoiceActivityProbabilityBufferWindowSummary & {
+    readonly timeline: readonly VoiceActivityProbabilityTimelinePoint[];
+  };
 }
 
 export interface BrowserRealtimeStarter {
@@ -56,8 +63,9 @@ function resolveTenVadConfig(
   options: BrowserRealtimeStarterOptions,
 ): Required<Pick<TenVadAdapterConfig, 'hopSize' | 'threshold' | 'confirmationWindowMs' | 'hangoverMs'>> {
   const base = options.tenVadConfig ?? {};
+  const sampleRate = options.config?.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE;
   return {
-    hopSize: base.hopSize ?? 256,
+    hopSize: base.hopSize ?? resolveStreamingTimelineChunkFrames(sampleRate),
     threshold: base.threshold ?? options.config?.tenVadThreshold ?? 0.5,
     confirmationWindowMs: base.confirmationWindowMs ?? options.config?.tenVadConfirmationWindowMs ?? 192,
     hangoverMs: base.hangoverMs ?? options.config?.tenVadHangoverMs ?? 320,
@@ -69,7 +77,7 @@ function createVadBuffer(
   tenVadConfig: ReturnType<typeof resolveTenVadConfig>,
 ): VoiceActivityProbabilityBuffer {
   const bufferOptions: VoiceActivityProbabilityBufferOptions = {
-    sampleRate: options.config?.sampleRate ?? 16000,
+    sampleRate: options.config?.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
     maxDurationSeconds: (options.config?.ringBufferDurationMs ?? 8000) / 1000,
     hopFrames: tenVadConfig.hopSize,
     speechThreshold: tenVadConfig.threshold,
@@ -107,7 +115,7 @@ export function createBrowserRealtimeStarter(
   const controller =
     options.transcribe || options.controllerOptions
       ? new RealtimeTranscriptionController({
-          sampleRate: options.config?.sampleRate ?? 16000,
+          sampleRate: options.config?.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
           bufferDurationSeconds: options.bufferDurationSeconds,
           transcribe: options.transcribe ?? (async () => ({
             text: '',
@@ -158,13 +166,21 @@ export function createBrowserRealtimeStarter(
     },
     getSnapshot(): BrowserRealtimeStarterSnapshot {
       const snapshot = detector.getSnapshot();
+      const waveformPointCount = Math.max(1, Math.floor(snapshot.waveform.minMax.length / 2));
       return {
         ...snapshot,
-        vadBuffer: vadBuffer.getWindowSummary(
-          vadBuffer.getLatestFrame(),
-          tenVadConfig.confirmationWindowMs,
-          snapshot.sampleRate,
-        ),
+        vadBuffer: {
+          ...vadBuffer.getWindowSummary(
+            vadBuffer.getLatestFrame(),
+            tenVadConfig.confirmationWindowMs,
+            snapshot.sampleRate,
+          ),
+          timeline: vadBuffer.getTimeline(
+            snapshot.waveform.startFrame,
+            snapshot.waveform.endFrame,
+            waveformPointCount,
+          ),
+        },
       };
     },
     async dispose(): Promise<void> {

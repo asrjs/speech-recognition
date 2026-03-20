@@ -74,9 +74,9 @@ describe('StreamingSpeechDetector', () => {
     const detector = new StreamingSpeechDetector({
       profileId: 'generic-streaming',
       config: {
-        analysisWindowMs: 20,
-        minSpeechDurationMs: 20,
-        minSilenceDurationMs: 200,
+        analysisWindowMs: 16,
+        minSpeechDurationMs: 16,
+        minSilenceDurationMs: 192,
         maxSegmentDurationMs: 60,
         tenVadEnabled: false,
       },
@@ -86,9 +86,10 @@ describe('StreamingSpeechDetector', () => {
     detector.subscribe((event) => events.push(event as any));
     await detector.start({ sampleRate: 16000 });
 
-    detector.processChunk(createChunk(320, 0.05), { startFrame: 0 });
-    detector.processChunk(createChunk(320, 0.05), { startFrame: 320 });
-    detector.processChunk(createChunk(320, 0.05), { startFrame: 640 });
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 0 });
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 256 });
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 512 });
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 768 });
 
     const segmentEvent = events.find((event) => event.type === 'segment-ready');
     expect(segmentEvent).toBeTruthy();
@@ -99,10 +100,10 @@ describe('StreamingSpeechDetector', () => {
     const detector = new StreamingSpeechDetector({
       profileId: 'generic-streaming',
       config: {
-        analysisWindowMs: 20,
+        analysisWindowMs: 16,
         energySmoothingWindows: 1,
-        minSpeechDurationMs: 20,
-        minSilenceDurationMs: 40,
+        minSpeechDurationMs: 16,
+        minSilenceDurationMs: 32,
       },
       tenVadFactory: () => new FakeTenVad({ failInit: true }) as any,
     });
@@ -111,10 +112,10 @@ describe('StreamingSpeechDetector', () => {
     detector.subscribe((event) => events.push(event as any));
     await detector.start({ sampleRate: 16000 });
 
-    detector.processChunk(createChunk(320, 0.05), { startFrame: 0 });
-    detector.processChunk(createChunk(320, 0.001), { startFrame: 320 });
-    detector.processChunk(createChunk(320, 0.001), { startFrame: 640 });
-    detector.processChunk(createChunk(320, 0.001), { startFrame: 960 });
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 0 });
+    detector.processChunk(createChunk(256, 0.001), { startFrame: 256 });
+    detector.processChunk(createChunk(256, 0.001), { startFrame: 512 });
+    detector.processChunk(createChunk(256, 0.001), { startFrame: 768 });
 
     const snapshot = detector.getSnapshot();
     expect(snapshot.tenVad.state).toBe('degraded');
@@ -126,9 +127,9 @@ describe('StreamingSpeechDetector', () => {
     const detector = new StreamingSpeechDetector({
       profileId: 'generic-streaming',
       config: {
-        analysisWindowMs: 20,
-        minSpeechDurationMs: 20,
-        minSilenceDurationMs: 40,
+        analysisWindowMs: 16,
+        minSpeechDurationMs: 16,
+        minSilenceDurationMs: 32,
       },
       tenVadFactory: () =>
         new FakeTenVad({
@@ -140,14 +141,14 @@ describe('StreamingSpeechDetector', () => {
     });
 
     await detector.start({ sampleRate: 16000 });
-    detector.processChunk(createChunk(320, 0.05), { startFrame: 0 });
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 0 });
 
     let snapshot = detector.getSnapshot();
     expect(snapshot.activeSegment).toBeNull();
     expect(snapshot.pendingSegmentStartFrame).not.toBeNull();
 
     confirmed = true;
-    detector.processChunk(createChunk(320, 0.05), { startFrame: 320 });
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 256 });
     snapshot = detector.getSnapshot();
 
     expect(snapshot.activeSegment).not.toBeNull();

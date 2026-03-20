@@ -1,4 +1,5 @@
 import type { TranscriptResult, TranscriptWord } from '../types/index.js';
+import { STREAMING_PROCESSING_SAMPLE_RATE } from './audio-timeline.js';
 
 export interface AudioRingBufferOptions {
   readonly sampleRate: number;
@@ -9,6 +10,12 @@ export interface AudioRingBufferMinMaxPairs {
   readonly startFrame: number;
   readonly endFrame: number;
   readonly minMax: Float32Array;
+}
+
+export interface AudioRingBufferSamplePoints {
+  readonly startFrame: number;
+  readonly endFrame: number;
+  readonly samples: Float32Array;
 }
 
 export class AudioRingBuffer {
@@ -145,6 +152,49 @@ export class AudioRingBuffer {
     };
   }
 
+  getSamplePoints(
+    pointCount = 1024,
+    frameSpan = this.maxFrames,
+  ): AudioRingBufferSamplePoints {
+    const safePoints = Math.max(
+      1,
+      Number.isFinite(pointCount) ? Math.floor(pointCount) : 1,
+    );
+    const safeFrameSpan = Math.max(
+      1,
+      Number.isFinite(frameSpan) ? Math.floor(frameSpan) : this.maxFrames,
+    );
+    const endFrame = this.getCurrentFrame();
+    const startFrame = Math.max(this.getBaseFrameOffset(), endFrame - safeFrameSpan);
+    const frameCount = Math.max(1, endFrame - startFrame);
+    const samples = new Float32Array(safePoints);
+
+    if (frameCount <= 1) {
+      const sample = this.buffer[startFrame % this.maxFrames] ?? 0;
+      samples.fill(sample);
+      return {
+        startFrame,
+        endFrame,
+        samples,
+      };
+    }
+
+    for (let pointIndex = 0; pointIndex < safePoints; pointIndex += 1) {
+      const offset =
+        safePoints === 1
+          ? 0
+          : Math.round((pointIndex * (frameCount - 1)) / (safePoints - 1));
+      const frame = Math.min(endFrame - 1, startFrame + offset);
+      samples[pointIndex] = this.buffer[frame % this.maxFrames] ?? 0;
+    }
+
+    return {
+      startFrame,
+      endFrame,
+      samples,
+    };
+  }
+
   reset(): void {
     this.currentFrame = 0;
     this.buffer.fill(0);
@@ -219,7 +269,7 @@ export class StreamingWindowBuilder {
     this.ringBuffer = ringBuffer;
     this.activityBuffer = activityBuffer;
     this.config = {
-      sampleRate: options.sampleRate ?? 16000,
+      sampleRate: options.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
       minDurationSec: options.minDurationSec ?? 3,
       maxDurationSec: options.maxDurationSec ?? 30,
       minInitialDurationSec: options.minInitialDurationSec ?? 1.5,

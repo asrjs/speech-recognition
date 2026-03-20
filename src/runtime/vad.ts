@@ -49,6 +49,14 @@ export interface VoiceActivityProbabilityBufferWindowSummary {
   }[];
 }
 
+export interface VoiceActivityProbabilityTimelinePoint {
+  readonly startFrame: number;
+  readonly endFrame: number;
+  readonly probability: number;
+  readonly speechRatio: number;
+  readonly speaking: boolean;
+}
+
 export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
   readonly sampleRate: number;
   readonly hopFrames: number;
@@ -253,6 +261,64 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
       maxProbability,
       recent,
     };
+  }
+
+  getTimeline(
+    startFrame: number,
+    endFrame: number,
+    pointCount: number,
+  ): readonly VoiceActivityProbabilityTimelinePoint[] {
+    const safeStart = Math.max(0, Math.floor(startFrame));
+    const safeEnd = Math.max(safeStart + 1, Math.floor(endFrame));
+    const safePoints = Math.max(1, Math.floor(pointCount));
+    const baseEntry = this.getBaseEntry();
+    const endEntry = this.nextEntryIndex;
+    const points: VoiceActivityProbabilityTimelinePoint[] = [];
+
+    for (let index = 0; index < safePoints; index += 1) {
+      const bucketStart =
+        safeStart + Math.floor((index * (safeEnd - safeStart)) / safePoints);
+      const bucketEnd =
+        index === safePoints - 1
+          ? safeEnd
+          : safeStart + Math.floor(((index + 1) * (safeEnd - safeStart)) / safePoints);
+
+      const startEntry = Math.max(baseEntry, Math.floor(bucketStart / this.hopFrames));
+      const bucketEndEntry = Math.ceil(bucketEnd / this.hopFrames);
+      const clampedEndEntry = Math.min(endEntry, bucketEndEntry);
+
+      let totalWeight = 0;
+      let weightedProbability = 0;
+      let weightedSpeech = 0;
+
+      for (let entryIndex = startEntry; entryIndex < clampedEndEntry; entryIndex += 1) {
+        const entryStart = entryIndex * this.hopFrames;
+        const entryEnd = entryStart + this.hopFrames;
+        const overlapStart = Math.max(bucketStart, entryStart);
+        const overlapEnd = Math.min(bucketEnd, entryEnd);
+        const overlapFrames = overlapEnd - overlapStart;
+        if (overlapFrames <= 0) {
+          continue;
+        }
+
+        const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+        totalWeight += overlapFrames;
+        weightedProbability += probability * overlapFrames;
+        weightedSpeech += (probability >= this.speechThreshold ? 1 : 0) * overlapFrames;
+      }
+
+      const probability = totalWeight > 0 ? weightedProbability / totalWeight : 0;
+      const speechRatio = totalWeight > 0 ? weightedSpeech / totalWeight : 0;
+      points.push({
+        startFrame: bucketStart,
+        endFrame: Math.max(bucketStart + 1, bucketEnd),
+        probability,
+        speechRatio,
+        speaking: speechRatio >= 0.5,
+      });
+    }
+
+    return points;
   }
 
   hasRecentSpeech(

@@ -1,10 +1,13 @@
 import { AudioRingBuffer } from './realtime.js';
+import { durationMsToAlignedFrameCount } from './audio-timeline.js';
 import {
   DEFAULT_ROUGH_GATE_CONFIG,
   type RoughSpeechGateConfig,
 } from './rough-gate-config.js';
 import {
   RoughSpeechGate,
+  type RoughSpeechChunkSummary,
+  type RoughSpeechTimelinePoint,
   type RoughSpeechGateWindowResult,
 } from './rough-speech-gate.js';
 import {
@@ -109,7 +112,10 @@ export interface StreamingSpeechDetectorSnapshot {
     readonly meta: Record<string, unknown>;
   }>;
   readonly acceptance: Record<string, unknown> | null;
-  readonly rough: Record<string, unknown>;
+  readonly rough: Record<string, unknown> & {
+    readonly recent?: readonly RoughSpeechChunkSummary[];
+    readonly timeline?: readonly RoughSpeechTimelinePoint[];
+  };
   readonly tenVad: StreamingTenVadStatus;
   readonly warnings: readonly string[];
   readonly error: string | null;
@@ -221,7 +227,10 @@ export class StreamingSpeechDetector {
       energyRiseThreshold: this.config.energyRiseThreshold,
       maxOnsetLookbackChunks: this.config.maxOnsetLookbackChunks,
       defaultOnsetLookbackChunks: this.config.defaultOnsetLookbackChunks,
-      maxHistoryChunks: this.config.maxHistoryChunks,
+      maxHistoryChunks: Math.max(
+        this.config.maxHistoryChunks,
+        Math.ceil(this.config.ringBufferDurationMs / Math.max(1, this.config.analysisWindowMs)) + 2,
+      ),
       minSpeechDurationMs: this.config.minSpeechDurationMs,
       minSilenceDurationMs: this.config.minSilenceDurationMs,
       initialNoiseFloor: this.config.initialNoiseFloor,
@@ -372,9 +381,14 @@ export class StreamingSpeechDetector {
         this.ringBuffer.getBaseFrameOffset(),
         rough.onsetFrame ?? nowFrame - chunk.length,
       );
+      const prerollFrames = durationMsToAlignedFrameCount(
+        this.config.prerollMs,
+        this.sampleRate,
+        'ceil',
+      );
       const roughStart = Math.max(
         this.ringBuffer.getBaseFrameOffset(),
-        fallbackStart - Math.ceil((this.config.prerollMs / 1000) * this.sampleRate),
+        fallbackStart - prerollFrames,
       );
       const tenVadSummary = this.tenVad?.getWindowSummary(
         nowFrame,
@@ -704,6 +718,7 @@ export class StreamingSpeechDetector {
       this.config.waveformPointCount,
       Math.ceil((this.config.ringBufferDurationMs / 1000) * this.sampleRate),
     );
+    const waveformPointCount = Math.max(1, Math.floor(waveform.minMax.length / 2));
 
     return {
       state: this.state,
@@ -740,6 +755,12 @@ export class StreamingSpeechDetector {
             useSnrGate: this.config.useSnrGate,
             snrPass: this.lastMetrics.snrPass,
             isSpeech: this.lastMetrics.isSpeech,
+            recent: this.roughGate.getRecentChunks(),
+            timeline: this.roughGate.getTimeline(
+              waveform.startFrame,
+              waveform.endFrame,
+              waveformPointCount,
+            ),
           }
         : {
             energy: 0,
@@ -759,6 +780,8 @@ export class StreamingSpeechDetector {
             useSnrGate: this.config.useSnrGate,
             snrPass: false,
             isSpeech: false,
+            recent: [],
+            timeline: [],
           },
       tenVad:
         this.tenVad?.getStatus() ?? {

@@ -2,6 +2,10 @@ import {
   DEFAULT_ROUGH_GATE_CONFIG,
   type RoughSpeechGateConfig,
 } from './rough-gate-config.js';
+import {
+  durationMsToAlignedFrameCount,
+  framesToMilliseconds,
+} from './audio-timeline.js';
 
 function amplitudeToDbfs(value: number, floorDbfs = -100): number {
   if (!Number.isFinite(value) || value <= 0) {
@@ -14,11 +18,19 @@ function dbfsToAmplitude(dbfs: number): number {
   return 10 ** (dbfs / 20);
 }
 
-interface RoughSpeechChunkHistory {
+export interface RoughSpeechChunkSummary {
   readonly startFrame: number;
   readonly endFrame: number;
   readonly energy: number;
   readonly snr: number;
+  readonly isSpeech: boolean;
+}
+
+export interface RoughSpeechTimelinePoint {
+  readonly startFrame: number;
+  readonly endFrame: number;
+  readonly energy: number;
+  readonly speechRatio: number;
   readonly isSpeech: boolean;
 }
 
@@ -66,10 +78,13 @@ export class RoughSpeechGate {
   private lastLevelWindowRms = 0;
   private lastLevelWindowDbfs = -100;
   private lastNoiseFloorDbfs: number;
+  private lastEnergyPass = false;
+  private lastSnrPass = false;
+  private lastCandidateReason: 'energy-threshold' | 'snr-threshold' | 'none' = 'none';
   private silenceDurationSec = 0;
   private processedFrames = 0;
   private windowBaseFrame = 0;
-  private recentChunks: RoughSpeechChunkHistory[] = [];
+  private recentChunks: RoughSpeechChunkSummary[] = [];
   private recentWindowEnergies: number[] = [];
   private analysisWindowFrames: number;
   private analysisBuffer: Float32Array;
@@ -89,22 +104,13 @@ export class RoughSpeechGate {
     };
     this.noiseFloor = this.config.initialNoiseFloor;
     this.lastNoiseFloorDbfs = amplitudeToDbfs(this.noiseFloor);
-    this.analysisWindowFrames = Math.max(
-      1,
-      Math.round((this.config.analysisWindowMs / 1000) * this.config.sampleRate),
-    );
-    this.analysisBuffer = new Float32Array(this.analysisWindowFrames);
-    this.levelWindowFrames = Math.max(
-      this.analysisWindowFrames,
-      Math.round((this.config.levelWindowMs / 1000) * this.config.sampleRate),
-    );
-    this.energyThresholdAmplitude = dbfsToAmplitude(this.config.minSpeechLevelDbfs);
-    this.minSpeechFrames = Math.ceil(
-      (this.config.minSpeechDurationMs / 1000) * this.config.sampleRate,
-    );
-    this.minSilenceFrames = Math.ceil(
-      (this.config.minSilenceDurationMs / 1000) * this.config.sampleRate,
-    );
+    this.analysisWindowFrames = 0;
+    this.analysisBuffer = new Float32Array(0);
+    this.levelWindowFrames = 0;
+    this.energyThresholdAmplitude = 0;
+    this.minSpeechFrames = 0;
+    this.minSilenceFrames = 0;
+    this.rebuildDerivedFrames();
   }
 
   updateConfig(config: Partial<RoughSpeechGateConfig>): void {
@@ -112,22 +118,7 @@ export class RoughSpeechGate {
       ...this.config,
       ...config,
     };
-    this.analysisWindowFrames = Math.max(
-      1,
-      Math.round((this.config.analysisWindowMs / 1000) * this.config.sampleRate),
-    );
-    this.analysisBuffer = new Float32Array(this.analysisWindowFrames);
-    this.levelWindowFrames = Math.max(
-      this.analysisWindowFrames,
-      Math.round((this.config.levelWindowMs / 1000) * this.config.sampleRate),
-    );
-    this.energyThresholdAmplitude = dbfsToAmplitude(this.config.minSpeechLevelDbfs);
-    this.minSpeechFrames = Math.ceil(
-      (this.config.minSpeechDurationMs / 1000) * this.config.sampleRate,
-    );
-    this.minSilenceFrames = Math.ceil(
-      (this.config.minSilenceDurationMs / 1000) * this.config.sampleRate,
-    );
+    this.rebuildDerivedFrames();
   }
 
   process(chunk: Float32Array): RoughSpeechGateWindowResult {
@@ -183,11 +174,11 @@ export class RoughSpeechGate {
         levelDbfs: this.lastLevelDbfs,
         levelWindowRms: this.lastLevelWindowRms,
         levelWindowDbfs: this.lastLevelWindowDbfs,
-        levelWindowMs: this.config.levelWindowMs,
+        levelWindowMs: framesToMilliseconds(this.levelWindowFrames, this.config.sampleRate),
         noiseFloorDbfs: this.lastNoiseFloorDbfs,
-        energyPass: false,
-        snrPass: false,
-        candidateReason: 'none',
+        energyPass: this.lastEnergyPass,
+        snrPass: this.lastSnrPass,
+        candidateReason: this.lastCandidateReason,
         snrThreshold: this.config.snrThreshold,
         minSnrThreshold: this.config.minSnrThreshold,
         chunkStartFrame: fallbackStartFrame,
@@ -247,6 +238,13 @@ export class RoughSpeechGate {
     const energyPass = smoothedEnergy > this.energyThresholdAmplitude;
     const snrPass = this.snr > this.config.snrThreshold;
     const isCandidateSpeech = energyPass || (this.config.useSnrGate && snrPass);
+    this.lastEnergyPass = energyPass;
+    this.lastSnrPass = snrPass;
+    this.lastCandidateReason = energyPass
+      ? 'energy-threshold'
+      : this.config.useSnrGate && snrPass
+        ? 'snr-threshold'
+        : 'none';
 
     if (!isCandidateSpeech) {
       this.silenceDurationSec += chunkDurationSec;
@@ -310,15 +308,11 @@ export class RoughSpeechGate {
       levelDbfs: this.lastLevelDbfs,
       levelWindowRms: this.lastLevelWindowRms,
       levelWindowDbfs: this.lastLevelWindowDbfs,
-      levelWindowMs: this.config.levelWindowMs,
+      levelWindowMs: framesToMilliseconds(this.levelWindowFrames, this.config.sampleRate),
       noiseFloorDbfs: this.lastNoiseFloorDbfs,
       energyPass,
       snrPass,
-      candidateReason: energyPass
-        ? 'energy-threshold'
-        : this.config.useSnrGate && snrPass
-          ? 'snr-threshold'
-          : 'none',
+      candidateReason: this.lastCandidateReason,
       snrThreshold: this.config.snrThreshold,
       minSnrThreshold: this.config.minSnrThreshold,
       chunkStartFrame,
@@ -387,30 +381,98 @@ export class RoughSpeechGate {
     this.lastLevelWindowRms = 0;
     this.lastLevelWindowDbfs = -100;
     this.lastNoiseFloorDbfs = amplitudeToDbfs(this.noiseFloor);
+    this.lastEnergyPass = false;
+    this.lastSnrPass = false;
+    this.lastCandidateReason = 'none';
     this.silenceDurationSec = 0;
     this.processedFrames = processedFrames;
     this.windowBaseFrame = processedFrames;
     this.recentChunks = [];
     this.recentWindowEnergies = [];
-    this.analysisWindowFrames = Math.max(
-      1,
-      Math.round((this.config.analysisWindowMs / 1000) * this.config.sampleRate),
-    );
-    this.analysisBuffer = new Float32Array(this.analysisWindowFrames);
     this.analysisBufferIndex = 0;
-    this.levelWindowFrames = Math.max(
-      this.analysisWindowFrames,
-      Math.round((this.config.levelWindowMs / 1000) * this.config.sampleRate),
-    );
+    this.rebuildDerivedFrames();
     this.levelHistory = [];
     this.levelHistorySumSquares = 0;
     this.levelHistoryFrameCount = 0;
-    this.energyThresholdAmplitude = dbfsToAmplitude(this.config.minSpeechLevelDbfs);
-    this.minSpeechFrames = Math.ceil(
-      (this.config.minSpeechDurationMs / 1000) * this.config.sampleRate,
+  }
+
+  getRecentChunks(): readonly RoughSpeechChunkSummary[] {
+    return this.recentChunks.map((chunk) => ({ ...chunk }));
+  }
+
+  getTimeline(
+    startFrame: number,
+    endFrame: number,
+    pointCount: number,
+  ): readonly RoughSpeechTimelinePoint[] {
+    const safeStart = Math.max(0, Math.floor(startFrame));
+    const safeEnd = Math.max(safeStart + 1, Math.floor(endFrame));
+    const safePoints = Math.max(1, Math.floor(pointCount));
+    const visibleChunks = this.recentChunks.filter(
+      (chunk) => chunk.endFrame > safeStart && chunk.startFrame < safeEnd,
     );
-    this.minSilenceFrames = Math.ceil(
-      (this.config.minSilenceDurationMs / 1000) * this.config.sampleRate,
+
+    const points: RoughSpeechTimelinePoint[] = [];
+    for (let index = 0; index < safePoints; index += 1) {
+      const bucketStart =
+        safeStart + Math.floor((index * (safeEnd - safeStart)) / safePoints);
+      const bucketEnd =
+        index === safePoints - 1
+          ? safeEnd
+          : safeStart + Math.floor(((index + 1) * (safeEnd - safeStart)) / safePoints);
+
+      let totalWeight = 0;
+      let weightedEnergy = 0;
+      let weightedSpeech = 0;
+
+      for (const chunk of visibleChunks) {
+        const overlapStart = Math.max(bucketStart, chunk.startFrame);
+        const overlapEnd = Math.min(bucketEnd, chunk.endFrame);
+        const overlapFrames = overlapEnd - overlapStart;
+        if (overlapFrames <= 0) {
+          continue;
+        }
+
+        totalWeight += overlapFrames;
+        weightedEnergy += chunk.energy * overlapFrames;
+        weightedSpeech += (chunk.isSpeech ? 1 : 0) * overlapFrames;
+      }
+
+      const energy = totalWeight > 0 ? weightedEnergy / totalWeight : 0;
+      const speechRatio = totalWeight > 0 ? weightedSpeech / totalWeight : 0;
+      points.push({
+        startFrame: bucketStart,
+        endFrame: Math.max(bucketStart + 1, bucketEnd),
+        energy,
+        speechRatio,
+        isSpeech: speechRatio >= 0.5,
+      });
+    }
+
+    return points;
+  }
+
+  private rebuildDerivedFrames(): void {
+    this.analysisWindowFrames = durationMsToAlignedFrameCount(
+      this.config.analysisWindowMs,
+      this.config.sampleRate,
+      'ceil',
+    );
+    this.analysisBuffer = new Float32Array(this.analysisWindowFrames);
+    this.levelWindowFrames = Math.max(
+      this.analysisWindowFrames,
+      durationMsToAlignedFrameCount(this.config.levelWindowMs, this.config.sampleRate, 'round'),
+    );
+    this.energyThresholdAmplitude = dbfsToAmplitude(this.config.minSpeechLevelDbfs);
+    this.minSpeechFrames = durationMsToAlignedFrameCount(
+      this.config.minSpeechDurationMs,
+      this.config.sampleRate,
+      'ceil',
+    );
+    this.minSilenceFrames = durationMsToAlignedFrameCount(
+      this.config.minSilenceDurationMs,
+      this.config.sampleRate,
+      'ceil',
     );
   }
 }
