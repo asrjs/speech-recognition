@@ -100,4 +100,20 @@ describe('RoughSpeechGate', () => {
     expect(activationWindow.energyPass).toBe(true);
     expect(activationWindow.candidateReason).toBe('energy-threshold');
   });
+
+  it('resets frame-based state when the sample rate changes', () => {
+    const gate = new RoughSpeechGate({
+      sampleRate: 16000,
+      analysisWindowMs: 80,
+      minSpeechDurationMs: 160,
+      minSilenceDurationMs: 240,
+    });
+
+    gate.process(createChunk(1280, 0.05));
+    gate.updateConfig({ sampleRate: 8000 });
+
+    const result = gate.process(createChunk(640, 0.01));
+    expect(result.chunkStartFrame).toBe(0);
+    expect(result.chunkEndFrame).toBe(640);
+  });
 });

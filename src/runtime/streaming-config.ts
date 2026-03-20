@@ -167,16 +167,17 @@ export function listStreamingPresets(): readonly StreamingDetectorPreset[] {
 function normalizeStreamingConfig(
   config: Partial<StreamingDetectorConfig> & { readonly energyThreshold?: number } = {},
 ): Partial<StreamingDetectorConfig> {
+  const { energyThreshold, ...rest } = config;
   if (
-    typeof config.energyThreshold === 'number' &&
-    typeof config.minSpeechLevelDbfs !== 'number'
+    typeof energyThreshold === 'number' &&
+    typeof rest.minSpeechLevelDbfs !== 'number'
   ) {
     return {
-      ...config,
-      minSpeechLevelDbfs: 20 * Math.log10(Math.max(config.energyThreshold, 0.000001)),
+      ...rest,
+      minSpeechLevelDbfs: 20 * Math.log10(Math.max(energyThreshold, 0.000001)),
     };
   }
-  return config;
+  return rest;
 }
 
 export function mergeStreamingConfig(

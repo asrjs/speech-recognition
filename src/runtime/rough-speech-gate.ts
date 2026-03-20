@@ -114,10 +114,19 @@ export class RoughSpeechGate {
   }
 
   updateConfig(config: Partial<RoughSpeechGateConfig>): void {
+    const previousSampleRate = this.config.sampleRate;
     this.config = {
       ...this.config,
       ...config,
     };
+    if (
+      config.sampleRate !== undefined &&
+      Number.isFinite(config.sampleRate) &&
+      config.sampleRate !== previousSampleRate
+    ) {
+      this.reset();
+      return;
+    }
     this.rebuildDerivedFrames();
   }
 

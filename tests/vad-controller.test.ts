@@ -39,8 +39,20 @@ describe('voice activity probability buffer', () => {
 
     expect(buffer.getLatestFrame()).toBe(10);
     expect(buffer.hasSpeechInRange(0, 8, 0.5)).toBe(true);
-    expect(buffer.findSilenceBoundary(10, 4, 0.5)).toBe(8);
+    expect(buffer.findSilenceBoundary(10, 4, 0.5)).toBe(10);
     expect(buffer.getSilenceTailDuration(0.5)).toBe(4);
+  });
+
+  it('rejects non-finite hop sizes', () => {
+    expect(
+      () =>
+        new VoiceActivityProbabilityBuffer({
+          sampleRate: 16_000,
+          maxDurationSeconds: 8,
+          hopFrames: Number.NaN,
+          speechThreshold: 0.5,
+        }),
+    ).toThrow('positive finite hopFrames');
   });
 
   it('drops overwritten history while keeping recent VAD queries stable', () => {

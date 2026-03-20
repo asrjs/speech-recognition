@@ -88,6 +88,11 @@ function createVadBuffer(
 export function createBrowserRealtimeStarter(
   options: BrowserRealtimeStarterOptions = {},
 ): BrowserRealtimeStarter {
+  if (options.controllerOptions && !options.transcribe) {
+    throw new Error(
+      'createBrowserRealtimeStarter requires transcribe when controllerOptions are provided.',
+    );
+  }
   const tenVadConfig = resolveTenVadConfig(options);
   const tenVad = new TenVadAdapter(tenVadConfig, options.tenVadOptions);
   const vadBuffer = createVadBuffer(options, tenVadConfig);
@@ -112,22 +117,14 @@ export function createBrowserRealtimeStarter(
     }
   });
 
-  const controller =
-    options.transcribe || options.controllerOptions
-      ? new RealtimeTranscriptionController({
-          sampleRate: options.config?.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
-          bufferDurationSeconds: options.bufferDurationSeconds,
-          transcribe: options.transcribe ?? (async () => ({
-            text: '',
-            warnings: [],
-            meta: {
-              detailLevel: 'text',
-              isFinal: false,
-            },
-          })),
-          ...options.controllerOptions,
-        })
-      : null;
+  const controller = options.transcribe
+    ? new RealtimeTranscriptionController({
+        sampleRate: options.config?.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
+        bufferDurationSeconds: options.bufferDurationSeconds,
+        transcribe: options.transcribe,
+        ...options.controllerOptions,
+      })
+    : null;
 
   return {
     detector,

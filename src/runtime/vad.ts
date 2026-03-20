@@ -76,7 +76,13 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     }
 
     this.sampleRate = options.sampleRate;
-    this.hopFrames = Math.max(1, Math.floor(options.hopFrames ?? 512));
+    const hopFrames = options.hopFrames ?? 512;
+    if (!Number.isFinite(hopFrames) || hopFrames <= 0) {
+      throw new TypeError(
+        'VoiceActivityProbabilityBuffer requires a positive finite hopFrames.',
+      );
+    }
+    this.hopFrames = Math.max(1, Math.floor(hopFrames));
     this.speechThreshold = options.speechThreshold ?? 0.5;
     this.maxEntries = Math.max(
       1,
@@ -122,11 +128,11 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     for (let entryIndex = fromEntry; entryIndex >= clampedMinimum; entryIndex -= 1) {
       const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
       if (probability < threshold) {
-        return entryIndex * this.hopFrames;
+        return Math.min(cappedEndFrame, (entryIndex + 1) * this.hopFrames);
       }
     }
 
-    return minimumFrame;
+    return Math.max(minimumFrame, clampedMinimum * this.hopFrames);
   }
 
   getSilenceTailDuration(threshold: number): number {
