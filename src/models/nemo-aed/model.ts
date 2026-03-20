@@ -180,7 +180,9 @@ class StubNemoAedDecoder implements NemoAedDecoder {
       debug: {
         tokenIds: options.returnTokenIds ? tokens.map((token) => token.id ?? -1) : undefined,
         promptIds: undefined,
-        logProbs: options.returnLogProbs ? Array.from({ length: tokens.length }, () => -0.08) : undefined,
+        logProbs: options.returnLogProbs
+          ? Array.from({ length: tokens.length }, () => -0.08)
+          : undefined,
       },
     };
   }
