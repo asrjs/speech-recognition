@@ -91,6 +91,7 @@ describe('public exports', () => {
     expect(browser.createBrowserRealtimeStarter).toBeTypeOf('function');
     expect(browser.createBrowserRealtimeMicrophoneController).toBeTypeOf('function');
     expect(browser.createBrowserRealtimeMonitor).toBeTypeOf('function');
+    expect(browser.createBrowserTranscriptionWorkerClient).toBeTypeOf('function');
     expect(browser.renderBrowserRealtimeWaveformFrame).toBeTypeOf('function');
     expect(browser.TenVadAdapter).toBeTypeOf('function');
     expect(browser.resolveSupportedTenVadHopSize).toBeTypeOf('function');
@@ -105,6 +106,15 @@ describe('public exports', () => {
     expect(realtime.StreamingSpeechDetector).toBeTypeOf('function');
     expect(realtime.VoiceActivityProbabilityBuffer).toBeTypeOf('function');
     expect(realtime.listStreamingPresets).toBeTypeOf('function');
+    expect(Array.isArray(realtime.STREAMING_CONTROL_DEFINITIONS)).toBe(true);
+    expect(realtime.listStreamingControls).toBeTypeOf('function');
+    expect(realtime.getStreamingControlDefinition).toBeTypeOf('function');
+    expect(realtime.resolveStreamingControlConstraints).toBeTypeOf('function');
+    expect(realtime.resolveStreamingControlStep).toBeTypeOf('function');
+    expect(realtime.formatStreamingControlValue).toBeTypeOf('function');
+    expect(realtime.formatStreamingControlHint).toBeTypeOf('function');
+    expect(realtime.clampStreamingControlValue).toBeTypeOf('function');
+    expect(realtime.normalizeStreamingControlValue).toBeTypeOf('function');
     expect(bench.summarizeNumericSeries).toBeTypeOf('function');
     expect(bench.benchmarkRunRecordsToCsv).toBeTypeOf('function');
     expect(datasets.fetchDatasetSplits).toBeTypeOf('function');
