@@ -24,7 +24,8 @@ export function createBrowserRealtimeMonitor(
   const listeners = new Set<(snapshot: BrowserRealtimeStarterSnapshot) => void>();
   const frameIntervalMs = options.frameIntervalMs ?? DEFAULT_FRAME_INTERVAL_MS;
   let latestSnapshot: BrowserRealtimeStarterSnapshot | null = source.getSnapshot();
-  let pendingSnapshot: BrowserRealtimeStarterSnapshot | null = latestSnapshot;
+  let pendingSnapshot: BrowserRealtimeStarterSnapshot | null = null;
+  let hasPendingMetrics = false;
   let timerId = 0;
 
   const emit = (snapshot: BrowserRealtimeStarterSnapshot | null) => {
@@ -42,8 +43,12 @@ export function createBrowserRealtimeMonitor(
       clearTimeout(timerId);
       timerId = 0;
     }
-    const snapshot = pendingSnapshot ?? source.getSnapshot();
+    if (!pendingSnapshot && hasPendingMetrics) {
+      pendingSnapshot = source.getSnapshot();
+    }
+    const snapshot = pendingSnapshot ?? latestSnapshot ?? source.getSnapshot();
     pendingSnapshot = null;
+    hasPendingMetrics = false;
     emit(snapshot);
   };
 
@@ -55,11 +60,12 @@ export function createBrowserRealtimeMonitor(
   };
 
   const unsubscribeSource = source.subscribe((event: StreamingSpeechDetectorEvent) => {
-    pendingSnapshot = source.getSnapshot();
     if (event.type === 'metrics') {
+      hasPendingMetrics = true;
       schedule();
       return;
     }
+    pendingSnapshot = source.getSnapshot();
     flush();
   });
 
@@ -72,7 +78,13 @@ export function createBrowserRealtimeMonitor(
       return () => listeners.delete(listener);
     },
     getSnapshot(): BrowserRealtimeStarterSnapshot | null {
-      return latestSnapshot ?? pendingSnapshot ?? source.getSnapshot();
+      if (pendingSnapshot) {
+        return pendingSnapshot;
+      }
+      if (latestSnapshot && !hasPendingMetrics) {
+        return latestSnapshot;
+      }
+      return source.getSnapshot();
     },
     flush,
     dispose(): void {

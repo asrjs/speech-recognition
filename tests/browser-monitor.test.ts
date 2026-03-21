@@ -137,8 +137,9 @@ describe('browser realtime monitor', () => {
 
     let revision = 0;
     const listeners = new Set<(event: { type: 'metrics' | 'speech-start' }) => void>();
+    const getSnapshot = vi.fn(() => createSnapshot(revision));
     const source = {
-      getSnapshot: () => createSnapshot(revision),
+      getSnapshot,
       subscribe(listener: (event: { type: 'metrics' | 'speech-start' }) => void) {
         listeners.add(listener);
         return () => listeners.delete(listener);
@@ -159,10 +160,12 @@ describe('browser realtime monitor', () => {
     listeners.forEach((listener) => listener({ type: 'metrics' }));
 
     expect(received.at(-1)).toBe(0);
+    expect(getSnapshot).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(51);
 
     expect(received.at(-1)).toBe(3);
+    expect(getSnapshot).toHaveBeenCalledTimes(2);
 
     unsubscribe();
     monitor.dispose();

@@ -90,6 +90,7 @@ describe('public exports', () => {
     expect(browser.loadSpeechModelFromLocalEntries).toBeTypeOf('function');
     expect(browser.createBrowserRealtimeStarter).toBeTypeOf('function');
     expect(browser.createBrowserRealtimeMonitor).toBeTypeOf('function');
+    expect(browser.renderBrowserRealtimeWaveformFrame).toBeTypeOf('function');
     expect(browser.TenVadAdapter).toBeTypeOf('function');
     expect(browser.startMicrophoneCapture).toBeTypeOf('function');
     expect(browser.startMicrophoneRingCapture).toBeTypeOf('function');
