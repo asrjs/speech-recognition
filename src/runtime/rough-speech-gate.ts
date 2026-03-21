@@ -45,6 +45,8 @@ export interface RoughSpeechGateWindowResult {
   readonly snr: number;
   readonly noiseFloor: number;
   readonly backgroundAverage: number;
+  readonly confirmedSilenceAverage: number;
+  readonly rejectedCandidateAverage: number;
   readonly threshold: number;
   readonly thresholdDbfs: number;
   readonly levelDbfs: number;
@@ -53,6 +55,8 @@ export interface RoughSpeechGateWindowResult {
   readonly levelWindowMs: number;
   readonly noiseFloorDbfs: number;
   readonly backgroundAverageDbfs: number;
+  readonly confirmedSilenceAverageDbfs: number;
+  readonly rejectedCandidateAverageDbfs: number;
   readonly energyPass: boolean;
   readonly snrPass: boolean;
   readonly candidateReason: 'energy-threshold' | 'snr-threshold' | 'none';
@@ -84,6 +88,10 @@ export class RoughSpeechGate {
   private lastNoiseFloorDbfs: number;
   private lastBackgroundAverage: number;
   private lastBackgroundAverageDbfs: number;
+  private lastConfirmedSilenceAverage: number;
+  private lastConfirmedSilenceAverageDbfs: number;
+  private lastRejectedCandidateAverage: number;
+  private lastRejectedCandidateAverageDbfs: number;
   private lastEnergyPass = false;
   private lastSnrPass = false;
   private lastCandidateReason: 'energy-threshold' | 'snr-threshold' | 'none' = 'none';
@@ -118,6 +126,10 @@ export class RoughSpeechGate {
     this.lastNoiseFloorDbfs = initialNoiseState.noiseFloorDbfs;
     this.lastBackgroundAverage = initialNoiseState.backgroundAverage;
     this.lastBackgroundAverageDbfs = initialNoiseState.backgroundAverageDbfs;
+    this.lastConfirmedSilenceAverage = initialNoiseState.confirmedSilenceAverage;
+    this.lastConfirmedSilenceAverageDbfs = initialNoiseState.confirmedSilenceAverageDbfs;
+    this.lastRejectedCandidateAverage = initialNoiseState.rejectedCandidateAverage;
+    this.lastRejectedCandidateAverageDbfs = initialNoiseState.rejectedCandidateAverageDbfs;
     this.analysisWindowFrames = 0;
     this.analysisBuffer = new Float32Array(0);
     this.levelWindowFrames = 0;
@@ -199,6 +211,8 @@ export class RoughSpeechGate {
         snr: this.snr,
         noiseFloor: this.noiseFloorTracker.getState().noiseFloor,
         backgroundAverage: this.lastBackgroundAverage,
+        confirmedSilenceAverage: this.lastConfirmedSilenceAverage,
+        rejectedCandidateAverage: this.lastRejectedCandidateAverage,
         threshold: this.energyThresholdAmplitude,
         thresholdDbfs: this.config.minSpeechLevelDbfs,
         levelDbfs: this.lastLevelDbfs,
@@ -207,6 +221,8 @@ export class RoughSpeechGate {
         levelWindowMs: framesToMilliseconds(this.levelWindowFrames, this.config.sampleRate),
         noiseFloorDbfs: this.lastNoiseFloorDbfs,
         backgroundAverageDbfs: this.lastBackgroundAverageDbfs,
+        confirmedSilenceAverageDbfs: this.lastConfirmedSilenceAverageDbfs,
+        rejectedCandidateAverageDbfs: this.lastRejectedCandidateAverageDbfs,
         energyPass: this.lastEnergyPass,
         snrPass: this.lastSnrPass,
         candidateReason: this.lastCandidateReason,
@@ -267,6 +283,10 @@ export class RoughSpeechGate {
     this.lastNoiseFloorDbfs = noiseStateBefore.noiseFloorDbfs;
     this.lastBackgroundAverage = noiseStateBefore.backgroundAverage;
     this.lastBackgroundAverageDbfs = noiseStateBefore.backgroundAverageDbfs;
+    this.lastConfirmedSilenceAverage = noiseStateBefore.confirmedSilenceAverage;
+    this.lastConfirmedSilenceAverageDbfs = noiseStateBefore.confirmedSilenceAverageDbfs;
+    this.lastRejectedCandidateAverage = noiseStateBefore.rejectedCandidateAverage;
+    this.lastRejectedCandidateAverageDbfs = noiseStateBefore.rejectedCandidateAverageDbfs;
     this.snr = this.lastLevelDbfs - this.lastNoiseFloorDbfs;
     const energyPass = smoothedEnergy > this.energyThresholdAmplitude;
     const snrPass = this.snr > this.config.snrThreshold;
@@ -296,6 +316,10 @@ export class RoughSpeechGate {
       this.lastNoiseFloorDbfs = updatedNoiseState.noiseFloorDbfs;
       this.lastBackgroundAverage = updatedNoiseState.backgroundAverage;
       this.lastBackgroundAverageDbfs = updatedNoiseState.backgroundAverageDbfs;
+      this.lastConfirmedSilenceAverage = updatedNoiseState.confirmedSilenceAverage;
+      this.lastConfirmedSilenceAverageDbfs = updatedNoiseState.confirmedSilenceAverageDbfs;
+      this.lastRejectedCandidateAverage = updatedNoiseState.rejectedCandidateAverage;
+      this.lastRejectedCandidateAverageDbfs = updatedNoiseState.rejectedCandidateAverageDbfs;
     }
 
     this.recentChunks.push({
@@ -340,6 +364,10 @@ export class RoughSpeechGate {
     this.lastNoiseFloorDbfs = reportedNoiseState.noiseFloorDbfs;
     this.lastBackgroundAverage = reportedNoiseState.backgroundAverage;
     this.lastBackgroundAverageDbfs = reportedNoiseState.backgroundAverageDbfs;
+    this.lastConfirmedSilenceAverage = reportedNoiseState.confirmedSilenceAverage;
+    this.lastConfirmedSilenceAverageDbfs = reportedNoiseState.confirmedSilenceAverageDbfs;
+    this.lastRejectedCandidateAverage = reportedNoiseState.rejectedCandidateAverage;
+    this.lastRejectedCandidateAverageDbfs = reportedNoiseState.rejectedCandidateAverageDbfs;
     this.snr = this.lastLevelDbfs - this.lastNoiseFloorDbfs;
 
     return {
@@ -351,6 +379,8 @@ export class RoughSpeechGate {
       snr: this.snr,
       noiseFloor: reportedNoiseState.noiseFloor,
       backgroundAverage: reportedNoiseState.backgroundAverage,
+      confirmedSilenceAverage: reportedNoiseState.confirmedSilenceAverage,
+      rejectedCandidateAverage: reportedNoiseState.rejectedCandidateAverage,
       threshold: this.energyThresholdAmplitude,
       thresholdDbfs: this.config.minSpeechLevelDbfs,
       levelDbfs: this.lastLevelDbfs,
@@ -359,6 +389,8 @@ export class RoughSpeechGate {
       levelWindowMs: framesToMilliseconds(this.levelWindowFrames, this.config.sampleRate),
       noiseFloorDbfs: this.lastNoiseFloorDbfs,
       backgroundAverageDbfs: this.lastBackgroundAverageDbfs,
+      confirmedSilenceAverageDbfs: this.lastConfirmedSilenceAverageDbfs,
+      rejectedCandidateAverageDbfs: this.lastRejectedCandidateAverageDbfs,
       energyPass,
       snrPass,
       candidateReason: this.lastCandidateReason,
@@ -433,6 +465,10 @@ export class RoughSpeechGate {
     this.lastNoiseFloorDbfs = noiseState.noiseFloorDbfs;
     this.lastBackgroundAverage = noiseState.backgroundAverage;
     this.lastBackgroundAverageDbfs = noiseState.backgroundAverageDbfs;
+    this.lastConfirmedSilenceAverage = noiseState.confirmedSilenceAverage;
+    this.lastConfirmedSilenceAverageDbfs = noiseState.confirmedSilenceAverageDbfs;
+    this.lastRejectedCandidateAverage = noiseState.rejectedCandidateAverage;
+    this.lastRejectedCandidateAverageDbfs = noiseState.rejectedCandidateAverageDbfs;
     this.lastEnergyPass = false;
     this.lastSnrPass = false;
     this.lastCandidateReason = 'none';
@@ -529,6 +565,10 @@ export class RoughSpeechGate {
     this.lastNoiseFloorDbfs = updatedNoiseState.noiseFloorDbfs;
     this.lastBackgroundAverage = updatedNoiseState.backgroundAverage;
     this.lastBackgroundAverageDbfs = updatedNoiseState.backgroundAverageDbfs;
+    this.lastConfirmedSilenceAverage = updatedNoiseState.confirmedSilenceAverage;
+    this.lastConfirmedSilenceAverageDbfs = updatedNoiseState.confirmedSilenceAverageDbfs;
+    this.lastRejectedCandidateAverage = updatedNoiseState.rejectedCandidateAverage;
+    this.lastRejectedCandidateAverageDbfs = updatedNoiseState.rejectedCandidateAverageDbfs;
     this.pendingCandidateWindows = [];
   }
 

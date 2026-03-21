@@ -14,7 +14,12 @@ import {
   resolveStreamingProfileId,
   type StreamingDetectorConfig,
 } from './streaming-config.js';
-import { TenVadAdapter, type TenVadAdapterConfig, type TenVadAdapterOptions } from './ten-vad-browser.js';
+import {
+  TenVadAdapter,
+  resolveSupportedTenVadHopSize,
+  type TenVadAdapterConfig,
+  type TenVadAdapterOptions,
+} from './ten-vad-browser.js';
 import {
   VoiceActivityProbabilityBuffer,
   type VoiceActivityProbabilityBufferOptions,
@@ -121,7 +126,10 @@ function resolveTenVadConfig(
   return {
     sampleRate,
     hopSize:
-      base.hopSize ?? resolveStreamingTimelineChunkFrames(sampleRate, chunkDurationMs),
+      resolveSupportedTenVadHopSize(
+        sampleRate,
+        base.hopSize ?? resolveStreamingTimelineChunkFrames(sampleRate, chunkDurationMs),
+      ),
     threshold: base.threshold ?? resolvedConfig.tenVadThreshold ?? 0.5,
     confirmationWindowMs:
       base.confirmationWindowMs ??

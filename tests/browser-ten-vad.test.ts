@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TenVadAdapter,
   resolveDefaultTenVadAssetUrls,
+  resolveSupportedTenVadHopSize,
   resolveTenVadAssetUrls,
 } from '@asrjs/speech-recognition/browser';
 
@@ -78,6 +79,11 @@ describe('TenVadAdapter', () => {
     expect(resolved.wasmUrl).toBe('https://example.com/vendor/ten-vad/ten_vad.wasm');
     expect(resolved.fallbackScriptUrl).toBe(defaults.scriptUrl);
     expect(resolved.fallbackWasmUrl).toBe(defaults.wasmUrl);
+  });
+
+  it('normalizes unsupported preferred hop sizes to the nearest TEN-VAD-safe value', () => {
+    expect(resolveSupportedTenVadHopSize(16000, 512)).toBe(256);
+    expect(resolveSupportedTenVadHopSize(16000, 200)).toBe(160);
   });
 
   it('handles init, process, reset, and dispose with aligned frame offsets', async () => {

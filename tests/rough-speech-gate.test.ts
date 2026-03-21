@@ -65,6 +65,7 @@ describe('RoughSpeechGate', () => {
     expect(result.noiseFloor).toBeGreaterThan(0.002);
     expect(result.backgroundAverage).toBeGreaterThan(0.002);
     expect(result.backgroundAverage).toBeLessThan(0.02);
+    expect(result.rejectedCandidateAverageDbfs).toBeGreaterThan(-100);
   });
 
   it('reports calibrated dBFS levels for the current and rolling windows', () => {

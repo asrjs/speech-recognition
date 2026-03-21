@@ -15,7 +15,12 @@ export interface NoiseFloorTrackerState {
   readonly backgroundAverage: number;
   readonly backgroundAverageDbfs: number;
   readonly confirmedSilenceDurationSec: number;
-  readonly recentBackgroundObservationCount: number;
+  readonly confirmedSilenceAverage: number;
+  readonly confirmedSilenceAverageDbfs: number;
+  readonly rejectedCandidateAverage: number;
+  readonly rejectedCandidateAverageDbfs: number;
+  readonly confirmedBackgroundObservationCount: number;
+  readonly rejectedBackgroundObservationCount: number;
 }
 
 const MIN_NOISE_FLOOR = 0.00001;
@@ -62,7 +67,8 @@ export class NoiseFloorTracker {
   private config: NoiseFloorTrackerConfig;
   private noiseFloor: number;
   private confirmedSilenceDurationSec = 0;
-  private recentBackgroundObservations: number[] = [];
+  private recentConfirmedSilenceObservations: number[] = [];
+  private recentRejectedCandidateObservations: number[] = [];
 
   constructor(config: NoiseFloorTrackerConfig) {
     this.config = {
@@ -95,13 +101,13 @@ export class NoiseFloorTracker {
 
     if (source === 'confirmed-silence-window') {
       this.confirmedSilenceDurationSec += safeDurationSec;
+      pushObservation(this.recentConfirmedSilenceObservations, safeEnergy);
     } else {
       this.confirmedSilenceDurationSec = 0;
+      pushObservation(this.recentRejectedCandidateObservations, safeEnergy);
     }
 
-    pushObservation(this.recentBackgroundObservations, safeEnergy);
-    const backgroundAverage =
-      computeRobustBackgroundAverage(this.recentBackgroundObservations) ?? safeEnergy;
+    const backgroundAverage = this.computeBackgroundAverage(safeEnergy);
     const adaptationRate =
       source === 'confirmed-silence-window'
         ? this.resolveConfirmedSilenceAdaptationRate()
@@ -119,22 +125,31 @@ export class NoiseFloorTracker {
   }
 
   getState(): NoiseFloorTrackerState {
-    const backgroundAverage =
-      computeRobustBackgroundAverage(this.recentBackgroundObservations) ?? this.noiseFloor;
+    const confirmedSilenceAverage =
+      computeRobustBackgroundAverage(this.recentConfirmedSilenceObservations) ?? this.noiseFloor;
+    const rejectedCandidateAverage =
+      computeRobustBackgroundAverage(this.recentRejectedCandidateObservations) ?? this.noiseFloor;
+    const backgroundAverage = this.computeBackgroundAverage(this.noiseFloor);
     return {
       noiseFloor: this.noiseFloor,
       noiseFloorDbfs: amplitudeToDbfs(this.noiseFloor),
       backgroundAverage,
       backgroundAverageDbfs: amplitudeToDbfs(backgroundAverage),
       confirmedSilenceDurationSec: this.confirmedSilenceDurationSec,
-      recentBackgroundObservationCount: this.recentBackgroundObservations.length,
+      confirmedSilenceAverage,
+      confirmedSilenceAverageDbfs: amplitudeToDbfs(confirmedSilenceAverage),
+      rejectedCandidateAverage,
+      rejectedCandidateAverageDbfs: amplitudeToDbfs(rejectedCandidateAverage),
+      confirmedBackgroundObservationCount: this.recentConfirmedSilenceObservations.length,
+      rejectedBackgroundObservationCount: this.recentRejectedCandidateObservations.length,
     };
   }
 
   reset(): void {
     this.noiseFloor = clampFinitePositive(this.config.initialNoiseFloor, MIN_NOISE_FLOOR);
     this.confirmedSilenceDurationSec = 0;
-    this.recentBackgroundObservations = [];
+    this.recentConfirmedSilenceObservations = [];
+    this.recentRejectedCandidateObservations = [];
   }
 
   private resolveConfirmedSilenceAdaptationRate(): number {
@@ -148,5 +163,25 @@ export class NoiseFloorTracker {
     return (
       this.config.fastAdaptationRate * (1 - blend) + this.config.slowAdaptationRate * blend
     );
+  }
+
+  private computeBackgroundAverage(fallback: number): number {
+    const confirmedSilenceAverage = computeRobustBackgroundAverage(
+      this.recentConfirmedSilenceObservations,
+    );
+    const rejectedCandidateAverage = computeRobustBackgroundAverage(
+      this.recentRejectedCandidateObservations,
+    );
+
+    if (confirmedSilenceAverage !== null && rejectedCandidateAverage !== null) {
+      return confirmedSilenceAverage * 0.8 + rejectedCandidateAverage * 0.2;
+    }
+    if (confirmedSilenceAverage !== null) {
+      return confirmedSilenceAverage;
+    }
+    if (rejectedCandidateAverage !== null) {
+      return rejectedCandidateAverage;
+    }
+    return clampFinitePositive(fallback, this.noiseFloor);
   }
 }
