@@ -1,4 +1,5 @@
 import { mixAudioBufferChannelsToMono } from './media.js';
+import { AudioRingBuffer } from './realtime.js';
 import {
   STREAMING_DEVICE_SAMPLE_RATE_FALLBACK,
   STREAMING_PROCESSING_SAMPLE_RATE,
@@ -61,6 +62,7 @@ export interface BrowserAudioContextLike {
 export interface BrowserMicrophoneCaptureOptions {
   readonly bufferSize?: number;
   readonly chunkFrames?: number;
+  readonly chunkDurationMs?: number;
   readonly targetSampleRate?: number;
   readonly stream?: MediaStream;
   readonly constraints?: MediaStreamConstraints;
@@ -79,6 +81,25 @@ export interface BrowserMicrophoneCaptureHandle {
   readonly chunkDurationMs: number;
   readonly stream: MediaStream;
   stop(): Promise<void>;
+}
+
+export interface BrowserMicrophoneRingCaptureOptions
+  extends Omit<BrowserMicrophoneCaptureOptions, 'onChunk'> {
+  readonly ringBufferDurationSeconds?: number;
+  readonly onChunk?: (chunk: MicrophoneAudioChunk) => void;
+}
+
+export interface BrowserMicrophoneRingCaptureHandle extends BrowserMicrophoneCaptureHandle {
+  readonly ringBuffer: AudioRingBuffer;
+  subscribe(listener: (chunk: MicrophoneAudioChunk) => void): () => void;
+  getWaveform(
+    pointCount?: number,
+    frameSpan?: number,
+  ): ReturnType<AudioRingBuffer['getMinMaxPairs']>;
+  getSamplePoints(
+    pointCount?: number,
+    frameSpan?: number,
+  ): ReturnType<AudioRingBuffer['getSamplePoints']>;
 }
 
 function defaultConstraints(): MediaStreamConstraints {
@@ -297,6 +318,15 @@ function createFixedChunkResampler(options: {
   };
 }
 
+function resolveScriptProcessorBufferSize(chunkFrames: number): number {
+  const safeChunkFrames = Math.max(1, Math.floor(chunkFrames));
+  let bufferSize = 256;
+  while (bufferSize < safeChunkFrames && bufferSize < 16_384) {
+    bufferSize *= 2;
+  }
+  return bufferSize;
+}
+
 async function createAudioWorkletCaptureNode(
   audioContext: BrowserAudioContextLike,
   options: BrowserMicrophoneCaptureOptions,
@@ -336,8 +366,12 @@ export async function startMicrophoneCapture(
 ): Promise<BrowserMicrophoneCaptureHandle> {
   const processingSampleRate = options.targetSampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE;
   const chunkFrames =
-    options.chunkFrames ?? resolveStreamingTimelineChunkFrames(processingSampleRate);
-  const bufferSize = options.bufferSize ?? chunkFrames;
+    options.chunkFrames ??
+    resolveStreamingTimelineChunkFrames(
+      processingSampleRate,
+      options.chunkDurationMs,
+    );
+  const bufferSize = options.bufferSize ?? resolveScriptProcessorBufferSize(chunkFrames);
   const createAudioContext = resolveCreateAudioContext(options.createAudioContext);
   const ownsStream = !options.stream;
   const stream =
@@ -445,6 +479,43 @@ export async function startMicrophoneCapture(
           track.stop();
         }
       }
+    },
+  };
+}
+
+export async function startMicrophoneRingCapture(
+  options: BrowserMicrophoneRingCaptureOptions,
+): Promise<BrowserMicrophoneRingCaptureHandle> {
+  const processingSampleRate = options.targetSampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE;
+  const ringBuffer = new AudioRingBuffer({
+    sampleRate: processingSampleRate,
+    durationSeconds: options.ringBufferDurationSeconds ?? 12,
+  });
+  const listeners = new Set<(chunk: MicrophoneAudioChunk) => void>();
+
+  const handle = await startMicrophoneCapture({
+    ...options,
+    onChunk(chunk) {
+      ringBuffer.write(chunk.pcm);
+      options.onChunk?.(chunk);
+      for (const listener of listeners) {
+        listener(chunk);
+      }
+    },
+  });
+
+  return {
+    ...handle,
+    ringBuffer,
+    subscribe(listener: (chunk: MicrophoneAudioChunk) => void): () => void {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    getWaveform(pointCount?: number, frameSpan?: number) {
+      return ringBuffer.getMinMaxPairs(pointCount, frameSpan);
+    },
+    getSamplePoints(pointCount?: number, frameSpan?: number) {
+      return ringBuffer.getSamplePoints(pointCount, frameSpan);
     },
   };
 }

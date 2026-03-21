@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { StreamingSpeechDetector } from '@asrjs/speech-recognition/realtime';
+import {
+  STREAMING_PROCESSING_SAMPLE_RATE,
+  STREAMING_TIMELINE_CHUNK_FRAMES,
+} from '@asrjs/speech-recognition/browser';
 
 function createChunk(length: number, amplitude: number): Float32Array {
   const chunk = new Float32Array(length);
@@ -153,5 +157,55 @@ describe('StreamingSpeechDetector', () => {
 
     expect(snapshot.activeSegment).not.toBeNull();
     expect(snapshot.pendingSegmentStartFrame).toBeNull();
+  });
+
+  it('can segment with TEN-VAD only when that gate mode is selected', async () => {
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        analysisWindowMs: 16,
+        minSpeechDurationMs: 16,
+        minSilenceDurationMs: 32,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          startFrame: 0,
+          hasRecentSpeech: true,
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+    detector.processChunk(createChunk(256, 0.001), { startFrame: 0 });
+
+    const snapshot = detector.getSnapshot();
+    expect(snapshot.gate.effectiveMode).toBe('ten-vad-only');
+    expect(snapshot.activeSegment).not.toBeNull();
+  });
+
+  it('builds waveform snapshots from stable timeline-aligned chunk buckets', async () => {
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        tenVadEnabled: false,
+        ringBufferDurationMs: 8000,
+      },
+    });
+
+    await detector.start({ sampleRate: STREAMING_PROCESSING_SAMPLE_RATE });
+
+    const chunkCount = 8000 / 16;
+    for (let index = 0; index < chunkCount; index += 1) {
+      detector.processChunk(createChunk(STREAMING_TIMELINE_CHUNK_FRAMES, 0.25), {
+        startFrame: index * STREAMING_TIMELINE_CHUNK_FRAMES,
+      });
+    }
+
+    const snapshot = detector.getSnapshot();
+
+    expect(snapshot.waveform.minMax.length / 2).toBe(chunkCount);
+    expect(snapshot.waveform.endFrame - snapshot.waveform.startFrame).toBe(
+      STREAMING_TIMELINE_CHUNK_FRAMES * chunkCount,
+    );
   });
 });

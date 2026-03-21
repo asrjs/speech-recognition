@@ -84,6 +84,7 @@ describe('TenVadAdapter', () => {
     const adapter = new TenVadAdapter(
       {
         hopSize: 256,
+        minSpeechDurationMs: 48,
       },
       {
         workerFactory: () => new FakeWorker(),
@@ -105,6 +106,26 @@ describe('TenVadAdapter', () => {
     await adapter.reset();
     await adapter.dispose();
     unsubscribe();
+  });
+
+  it('uses duration-derived smoothing defaults for safe speech acceptance', async () => {
+    const adapter = new TenVadAdapter(
+      {
+        hopSize: 256,
+      },
+      {
+        workerFactory: () => new FakeWorker(),
+      },
+    );
+
+    await adapter.init();
+    const processed = adapter.process(new Float32Array(512), 1024);
+    expect(processed).toBe(true);
+
+    expect(adapter.findFirstSpeechFrame(1024, 2048)).toBeNull();
+    expect(adapter.hasRecentSpeech(2048, 128, 16000)).toBe(false);
+
+    await adapter.dispose();
   });
 
   it('degrades gracefully when init fails', async () => {

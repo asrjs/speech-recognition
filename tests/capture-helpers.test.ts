@@ -1,4 +1,7 @@
-import { startMicrophoneCapture } from '@asrjs/speech-recognition/browser';
+import {
+  startMicrophoneCapture,
+  startMicrophoneRingCapture,
+} from '@asrjs/speech-recognition/browser';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('microphone capture helpers', () => {
@@ -60,6 +63,57 @@ describe('microphone capture helpers', () => {
 
     expect(processorNode.disconnect).toHaveBeenCalledOnce();
     expect(sourceNode.disconnect).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledOnce();
+    expect(stopTrack).toHaveBeenCalledOnce();
+  });
+
+  it('can write resampled microphone chunks into an audio ring buffer', async () => {
+    const sourceNode = {
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    const processorNode = {
+      onaudioprocess: null,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    const close = vi.fn();
+    const createAudioContext = vi.fn(() => ({
+      sampleRate: 16000,
+      destination: {},
+      createMediaStreamSource: vi.fn(() => sourceNode),
+      createScriptProcessor: vi.fn(() => processorNode),
+      close,
+    }));
+    const stopTrack = vi.fn();
+    const stream = {
+      getTracks: () => [{ stop: stopTrack }],
+    } as unknown as MediaStream;
+
+    const handle = await startMicrophoneRingCapture({
+      stream,
+      createAudioContext,
+      chunkFrames: 4,
+      ringBufferDurationSeconds: 1,
+      stopTracksOnStop: true,
+    });
+
+    processorNode.onaudioprocess?.({
+      inputBuffer: {
+        numberOfChannels: 1,
+        length: 4,
+        sampleRate: 16000,
+        getChannelData() {
+          return new Float32Array([0.25, 0.5, -0.25, -0.5]);
+        },
+      },
+    });
+
+    expect(handle.ringBuffer.getCurrentFrame()).toBe(4);
+    expect(Array.from(handle.ringBuffer.read(0, 4))).toEqual([0.25, 0.5, -0.25, -0.5]);
+
+    await handle.stop();
+
     expect(close).toHaveBeenCalledOnce();
     expect(stopTrack).toHaveBeenCalledOnce();
   });

@@ -1,11 +1,21 @@
 import type { StreamingTenVadLike, StreamingTenVadResultEvent, StreamingTenVadStatus } from './streaming-detector.js';
-import { STREAMING_TIMELINE_CHUNK_FRAMES } from './audio-timeline.js';
+import {
+  STREAMING_PROCESSING_SAMPLE_RATE,
+  STREAMING_TIMELINE_CHUNK_FRAMES,
+  framesToMilliseconds,
+} from './audio-timeline.js';
 
 export interface TenVadAdapterConfig {
+  readonly sampleRate?: number;
   readonly hopSize?: number;
   readonly threshold?: number;
   readonly confirmationWindowMs?: number;
   readonly hangoverMs?: number;
+  readonly minSpeechDurationMs?: number;
+  readonly minSilenceDurationMs?: number;
+  readonly speechPaddingMs?: number;
+  readonly negativeThresholdOffset?: number;
+  // Deprecated duration-unsafe overrides. Prefer duration-based settings above.
   readonly minSpeechHops?: number;
   readonly minSpeechRatio?: number;
   readonly minSilenceHops?: number;
@@ -31,6 +41,7 @@ export interface TenVadRecentResult {
   readonly startFrame: number;
   readonly endFrame: number;
   readonly probability: number;
+  readonly rawSpeaking: boolean;
   readonly speaking: boolean;
   readonly createdAt: number;
 }
@@ -45,13 +56,18 @@ const TEN_VAD_INIT_TIMEOUT_MS = 30_000;
 const DEFAULT_TEN_VAD_CONFIG: Required<
   Omit<TenVadAdapterConfig, 'assetBaseUrl' | 'scriptUrl' | 'wasmUrl'>
 > = {
+  sampleRate: STREAMING_PROCESSING_SAMPLE_RATE,
   hopSize: STREAMING_TIMELINE_CHUNK_FRAMES,
   threshold: 0.5,
   confirmationWindowMs: 192,
   hangoverMs: 320,
-  minSpeechHops: 4,
+  minSpeechDurationMs: 240,
+  minSilenceDurationMs: 80,
+  speechPaddingMs: 48,
+  negativeThresholdOffset: 0.15,
+  minSpeechHops: 0,
   minSpeechRatio: 0.5,
-  minSilenceHops: 5,
+  minSilenceHops: 0,
   fallbackToBundledAssets: true,
 };
 
@@ -112,6 +128,9 @@ export class TenVadAdapter implements StreamingTenVadLike {
   private recentResults: TenVadRecentResult[] = [];
   private latestProbability = 0;
   private latestSpeaking = false;
+  private speechRunHops = 0;
+  private silenceRunHops = 0;
+  private smoothedSpeechActive = false;
 
   constructor(config: TenVadAdapterConfig = {}, options: TenVadAdapterOptions = {}) {
     const defaults = resolveDefaultTenVadAssetUrls();
@@ -215,26 +234,65 @@ export class TenVadAdapter implements StreamingTenVadLike {
 
   private recordResult(result: any): void {
     const hopSize = this.config.hopSize;
+    const {
+      minSpeechHops,
+      minSilenceHops,
+      paddingFrames,
+      negativeThreshold,
+    } = this.getDerivedTemporalConfig();
+
     for (let index = 0; index < result.hopCount; index += 1) {
       const startFrame = result.globalSampleOffset + index * hopSize;
       const endFrame = startFrame + hopSize;
       const probability = result.probabilities[index];
-      const speaking = result.flags[index] === 1;
+      const rawSpeaking = result.flags[index] === 1 || probability >= this.config.threshold;
+
+      if (rawSpeaking) {
+        this.speechRunHops += 1;
+        this.silenceRunHops = 0;
+      } else if (probability <= negativeThreshold) {
+        this.silenceRunHops += 1;
+        this.speechRunHops = 0;
+      } else {
+        this.speechRunHops = 0;
+        this.silenceRunHops = 0;
+      }
+
+      if (!this.smoothedSpeechActive && this.speechRunHops >= minSpeechHops) {
+        this.smoothedSpeechActive = true;
+      } else if (
+        this.smoothedSpeechActive &&
+        !rawSpeaking &&
+        this.silenceRunHops >= minSilenceHops
+      ) {
+        this.smoothedSpeechActive = false;
+      }
 
       this.recentResults.push({
         startFrame,
         endFrame,
         probability,
-        speaking,
+        rawSpeaking,
+        speaking: this.smoothedSpeechActive,
         createdAt: this.now(),
       });
       this.latestProbability = probability;
-      this.latestSpeaking = speaking;
+      this.latestSpeaking = this.smoothedSpeechActive;
     }
 
     const maxAgeMs = Math.max(this.config.hangoverMs * 8, 5000);
     const cutoff = this.now() - maxAgeMs;
     this.recentResults = this.recentResults.filter((entry) => entry.createdAt >= cutoff);
+
+    if (paddingFrames > 0 && this.latestSpeaking) {
+      for (let index = this.recentResults.length - 1; index >= 0 && index >= this.recentResults.length - paddingFrames; index -= 1) {
+        const entry = this.recentResults[index]!;
+        this.recentResults[index] = {
+          ...entry,
+          speaking: true,
+        };
+      }
+    }
   }
 
   process(samples: Float32Array, globalSampleOffset: number): boolean {
@@ -260,6 +318,9 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.recentResults = [];
     this.latestProbability = 0;
     this.latestSpeaking = false;
+    this.speechRunHops = 0;
+    this.silenceRunHops = 0;
+    this.smoothedSpeechActive = false;
 
     if (this.worker && this.status === 'ready') {
       await this.sendRequest('RESET', {});
@@ -305,26 +366,13 @@ export class TenVadAdapter implements StreamingTenVadLike {
   }
 
   findFirstSpeechFrame(startFrame: number, endFrame: number): number | null {
+    const { paddingFrames } = this.getDerivedTemporalConfig();
     const recent = this.recentResults.filter(
       (entry) => entry.endFrame >= startFrame && entry.startFrame <= endFrame,
     );
-    let runLength = 0;
-    let runStart: number | null = null;
     for (const entry of recent) {
       if (entry.speaking) {
-        if (runStart === null) {
-          runStart = entry.startFrame;
-          runLength = 1;
-        } else {
-          runLength += 1;
-        }
-
-        if (runLength >= this.config.minSpeechHops) {
-          return runStart;
-        }
-      } else {
-        runStart = null;
-        runLength = 0;
+        return Math.max(startFrame, entry.startFrame - paddingFrames * this.config.hopSize);
       }
     }
 
@@ -332,23 +380,25 @@ export class TenVadAdapter implements StreamingTenVadLike {
   }
 
   hasRecentSpeech(endFrame: number, windowMs: number, sampleRate: number): boolean {
+    const { minSpeechHops } = this.getDerivedTemporalConfig();
     const summary = this.getWindowSummary(endFrame, windowMs, sampleRate);
     const speechRatio =
       summary.totalHops > 0 ? summary.speechHopCount / summary.totalHops : 0;
     return (
-      summary.speechHopCount >= this.config.minSpeechHops &&
-      summary.maxConsecutiveSpeech >= this.config.minSpeechHops &&
+      summary.speechHopCount >= minSpeechHops &&
+      summary.maxConsecutiveSpeech >= minSpeechHops &&
       summary.maxProbability >= this.config.threshold &&
       speechRatio >= this.config.minSpeechRatio
     );
   }
 
   hasRecentSilence(endFrame: number, windowMs: number, sampleRate: number): boolean {
+    const { minSilenceHops } = this.getDerivedTemporalConfig();
     const summary = this.getWindowSummary(endFrame, windowMs, sampleRate);
-    if (summary.totalHops < this.config.minSilenceHops) {
+    if (summary.totalHops < minSilenceHops) {
       return false;
     }
-    return summary.nonSpeechHopCount >= this.config.minSilenceHops;
+    return summary.nonSpeechHopCount >= minSilenceHops;
   }
 
   getWindowSummary(endFrame: number, windowMs: number, sampleRate: number) {
@@ -419,5 +469,34 @@ export class TenVadAdapter implements StreamingTenVadLike {
         },
       );
     });
+  }
+
+  private getDerivedTemporalConfig() {
+    const hopDurationMs = framesToMilliseconds(this.config.hopSize, this.config.sampleRate);
+    const resolveHopCount = (durationMs: number, deprecatedHops: number) => {
+      if (Number.isFinite(deprecatedHops) && deprecatedHops > 0) {
+        return Math.max(1, Math.floor(deprecatedHops));
+      }
+      return Math.max(1, Math.ceil(durationMs / Math.max(1, hopDurationMs)));
+    };
+
+    return {
+      minSpeechHops: resolveHopCount(
+        this.config.minSpeechDurationMs,
+        this.config.minSpeechHops,
+      ),
+      minSilenceHops: resolveHopCount(
+        this.config.minSilenceDurationMs,
+        this.config.minSilenceHops,
+      ),
+      paddingFrames: Math.max(
+        0,
+        Math.ceil(this.config.speechPaddingMs / Math.max(1, hopDurationMs)),
+      ),
+      negativeThreshold: Math.max(
+        0,
+        this.config.threshold - this.config.negativeThresholdOffset,
+      ),
+    };
   }
 }

@@ -308,6 +308,9 @@ import {
 `createBrowserRealtimeStarter` is the browser-side convenience starter that
 bundles `TenVadAdapter`, `VoiceActivityProbabilityBuffer`, and
 `RealtimeTranscriptionController` into one setup flow for realtime demos.
+Waveform history is derived from `ringBufferDurationMs` and the realtime
+timeline chunk size; there is no separate waveform point-count knob for the
+primary chunk-aligned view.
 
 ## Quick Start
 
