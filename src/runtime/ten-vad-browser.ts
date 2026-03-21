@@ -368,6 +368,8 @@ export class TenVadAdapter implements StreamingTenVadLike {
   }
 
   updateConfig(config: Record<string, unknown> = {}): void {
+    const previousHopSize = this.config.hopSize;
+    const previousThreshold = this.config.threshold;
     const nextSampleRate =
       typeof config.sampleRate === 'number' && Number.isFinite(config.sampleRate) && config.sampleRate > 0
         ? config.sampleRate
@@ -381,7 +383,10 @@ export class TenVadAdapter implements StreamingTenVadLike {
         typeof config.hopSize === 'number' ? config.hopSize : this.config.hopSize,
       ),
     } as Required<TenVadAdapterConfig>;
-    if (this.worker && this.status === 'ready') {
+    const workerConfigChanged =
+      this.config.hopSize !== previousHopSize ||
+      this.config.threshold !== previousThreshold;
+    if (this.worker && this.status === 'ready' && workerConfigChanged) {
       void this.sendRequest('UPDATE_CONFIG', {
         hopSize: this.config.hopSize,
         threshold: this.config.threshold,

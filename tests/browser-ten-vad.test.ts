@@ -139,4 +139,30 @@ describe('TenVadAdapter', () => {
     await expect(adapter.init()).rejects.toThrow('init failed');
     expect(adapter.getStatus().state).toBe('degraded');
   });
+
+  it('does not reset the worker when only non-worker tuning changes', async () => {
+    const worker = new FakeWorker();
+    const adapter = new TenVadAdapter(
+      {
+        hopSize: 256,
+        threshold: 0.5,
+      },
+      {
+        workerFactory: () => worker,
+      },
+    );
+
+    await adapter.init();
+    const beforeMessageCount = worker.messages.length;
+
+    adapter.updateConfig({
+      minSpeechDurationMs: 320,
+      minSilenceDurationMs: 96,
+      speechPaddingMs: 64,
+    });
+
+    expect(worker.messages).toHaveLength(beforeMessageCount);
+
+    await adapter.dispose();
+  });
 });

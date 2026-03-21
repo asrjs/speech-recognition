@@ -19,6 +19,7 @@ export interface RoughSpeechChunkSummary {
   readonly startFrame: number;
   readonly endFrame: number;
   readonly energy: number;
+  readonly rawEnergy: number;
   readonly snr: number;
   readonly isSpeech: boolean;
 }
@@ -27,6 +28,7 @@ export interface RoughSpeechTimelinePoint {
   readonly startFrame: number;
   readonly endFrame: number;
   readonly energy: number;
+  readonly rawEnergy: number;
   readonly speechRatio: number;
   readonly isSpeech: boolean;
 }
@@ -42,6 +44,7 @@ export interface RoughSpeechGateWindowResult {
   readonly speechEnd: boolean;
   readonly onsetFrame: number | null;
   readonly energy: number;
+  readonly rawEnergy: number;
   readonly snr: number;
   readonly noiseFloor: number;
   readonly backgroundAverage: number;
@@ -208,6 +211,7 @@ export class RoughSpeechGate {
         speechEnd,
         onsetFrame,
         energy: this.lastEnergy,
+        rawEnergy: this.lastLevelWindowRms,
         snr: this.snr,
         noiseFloor: this.noiseFloorTracker.getState().noiseFloor,
         backgroundAverage: this.lastBackgroundAverage,
@@ -326,6 +330,7 @@ export class RoughSpeechGate {
       startFrame: chunkStartFrame,
       endFrame: chunkEndFrame,
       energy: smoothedEnergy,
+      rawEnergy,
       snr: this.snr,
       isSpeech: isCandidateSpeech,
     });
@@ -376,6 +381,7 @@ export class RoughSpeechGate {
       speechEnd,
       onsetFrame,
       energy: smoothedEnergy,
+      rawEnergy,
       snr: this.snr,
       noiseFloor: reportedNoiseState.noiseFloor,
       backgroundAverage: reportedNoiseState.backgroundAverage,
@@ -511,6 +517,7 @@ export class RoughSpeechGate {
 
       let totalWeight = 0;
       let weightedEnergy = 0;
+      let weightedRawEnergy = 0;
       let weightedSpeech = 0;
 
       for (const chunk of visibleChunks) {
@@ -523,15 +530,18 @@ export class RoughSpeechGate {
 
         totalWeight += overlapFrames;
         weightedEnergy += chunk.energy * overlapFrames;
+        weightedRawEnergy += chunk.rawEnergy * overlapFrames;
         weightedSpeech += (chunk.isSpeech ? 1 : 0) * overlapFrames;
       }
 
       const energy = totalWeight > 0 ? weightedEnergy / totalWeight : 0;
+      const rawEnergy = totalWeight > 0 ? weightedRawEnergy / totalWeight : 0;
       const speechRatio = totalWeight > 0 ? weightedSpeech / totalWeight : 0;
       points.push({
         startFrame: bucketStart,
         endFrame: Math.max(bucketStart + 1, bucketEnd),
         energy,
+        rawEnergy,
         speechRatio,
         isSpeech: speechRatio >= 0.5,
       });
@@ -589,10 +599,13 @@ export class RoughSpeechGate {
       this.config.sampleRate,
       'ceil',
     );
-    this.minSilenceFrames = durationMsToAlignedFrameCount(
-      this.config.minSilenceDurationMs,
-      this.config.sampleRate,
-      'ceil',
-    );
+    this.minSilenceFrames =
+      this.config.minSilenceDurationMs <= 0
+        ? 0
+        : durationMsToAlignedFrameCount(
+            this.config.minSilenceDurationMs,
+            this.config.sampleRate,
+            'ceil',
+          );
   }
 }

@@ -26,6 +26,9 @@ export interface BrowserWaveformRenderOptions {
   readonly waveformMaxDisplayGain?: number;
   readonly showSpeechThreshold?: boolean;
   readonly speechThresholdDbfs?: number | null;
+  readonly showTenVadThreshold?: boolean;
+  readonly tenVadThreshold?: number | null;
+  readonly showPreVadOverlay?: boolean;
 }
 
 const DEFAULT_RENDER_OPTIONS: Required<BrowserWaveformRenderOptions> = {
@@ -35,6 +38,9 @@ const DEFAULT_RENDER_OPTIONS: Required<BrowserWaveformRenderOptions> = {
   waveformMaxDisplayGain: 12,
   showSpeechThreshold: false,
   speechThresholdDbfs: null,
+  showTenVadThreshold: false,
+  tenVadThreshold: null,
+  showPreVadOverlay: false,
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -77,6 +83,33 @@ function drawGrid(context: CanvasRenderingContext2D, width: number, height: numb
     context.lineTo(width, y);
     context.stroke();
   }
+}
+
+function drawLaneAxis(
+  context: CanvasRenderingContext2D,
+  width: number,
+  laneTop: number,
+  laneHeight: number,
+  labels: readonly { readonly value: number; readonly label: string }[],
+  color = 'rgba(93, 115, 135, 0.18)',
+): void {
+  const toY = (value: number) => laneTop + (1 - clamp(value, 0, 1)) * laneHeight;
+
+  context.save();
+  context.strokeStyle = color;
+  context.lineWidth = 1;
+  context.fillStyle = 'rgba(93, 115, 135, 0.72)';
+  context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
+
+  for (const entry of labels) {
+    const y = toY(entry.value);
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(width, y);
+    context.stroke();
+    context.fillText(entry.label, 8, Math.min(laneTop + laneHeight - 2, y - 2));
+  }
+  context.restore();
 }
 
 function resolveWaveformDisplayGain(
@@ -131,7 +164,7 @@ function drawWaveformAxis(
   context.fillText('+1.0', 8, toY(1) + 10);
   context.fillText('0', 8, toY(0) - 4);
   context.fillText('-1.0', 8, toY(-1) - 4);
-  if (options.waveformScaleMode === 'adaptive' && displayGain > 1.05) {
+  if (options.waveformScaleMode !== 'physical' && displayGain > 1.05) {
     context.fillText(`display x${displayGain.toFixed(1)}`, width - 92, toY(1) + 10);
   }
   context.restore();
@@ -141,7 +174,6 @@ function drawSpeechThreshold(
   context: CanvasRenderingContext2D,
   width: number,
   height: number,
-  columns: readonly BrowserRealtimePlot['columns'][number][],
   displayGain: number,
   options: Required<BrowserWaveformRenderOptions>,
 ): void {
@@ -154,23 +186,9 @@ function drawSpeechThreshold(
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
     waveformTop + ((1 - clamp(amplitude, -1, 1)) * 0.5) * laneHeight;
-  let thresholdHit = false;
-  for (const column of columns) {
-    if (!column?.hasData) {
-      continue;
-    }
-    const peak = Math.max(
-      Math.abs(Number(column.waveformMin ?? 0)),
-      Math.abs(Number(column.waveformMax ?? 0)),
-    );
-    if (peak >= thresholdAmplitude) {
-      thresholdHit = true;
-      break;
-    }
-  }
 
   context.save();
-  context.strokeStyle = thresholdHit ? 'rgba(239, 68, 68, 0.9)' : 'rgba(245, 158, 11, 0.92)';
+  context.strokeStyle = 'rgba(239, 68, 68, 0.9)';
   context.lineWidth = 1;
   context.setLineDash([5, 3]);
   context.beginPath();
@@ -180,10 +198,10 @@ function drawSpeechThreshold(
   context.lineTo(width, toY(-scaledThreshold));
   context.stroke();
   context.setLineDash([]);
-  context.fillStyle = thresholdHit ? 'rgba(239, 68, 68, 0.95)' : 'rgba(180, 83, 9, 0.92)';
+  context.fillStyle = 'rgba(239, 68, 68, 0.95)';
   context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
   context.fillText(
-    `speech thr ${options.speechThresholdDbfs?.toFixed(0)} dBFS ${thresholdHit ? 'hit' : 'clear'}`,
+    `speech rms thr ${options.speechThresholdDbfs?.toFixed(0)} dBFS`,
     8,
     toY(scaledThreshold) - 4,
   );
@@ -310,6 +328,7 @@ function drawTenVadOverlay(
   columns: readonly BrowserRealtimePlot['columns'][number][],
   width: number,
   height: number,
+  options: Required<BrowserWaveformRenderOptions>,
 ): void {
   if (!Array.isArray(columns) || columns.length === 0) {
     return;
@@ -321,6 +340,18 @@ function drawTenVadOverlay(
   context.save();
   context.fillStyle = 'rgba(37, 99, 235, 0.08)';
   context.fillRect(0, laneTop, width, laneHeight);
+  drawLaneAxis(
+    context,
+    width,
+    laneTop,
+    laneHeight,
+    [
+      { value: 1, label: '1.0' },
+      { value: 0.5, label: '0.5' },
+      { value: 0, label: '0.0' },
+    ],
+    'rgba(37, 99, 235, 0.12)',
+  );
 
   for (let index = 0; index < columns.length; index += 1) {
     const column = columns[index];
@@ -328,6 +359,28 @@ function drawTenVadOverlay(
     const barHeight = Math.max(1, probability * laneHeight);
     context.fillStyle = column?.tenVadPass ? 'rgba(37, 99, 235, 0.82)' : 'rgba(37, 99, 235, 0.3)';
     context.fillRect(index, laneTop + laneHeight - barHeight, 1, barHeight);
+  }
+
+  if (options.showTenVadThreshold && Number.isFinite(options.tenVadThreshold)) {
+    const threshold = clamp(options.tenVadThreshold as number, 0, 1);
+    const thresholdY = laneTop + (1 - threshold) * laneHeight;
+    let thresholdHit = false;
+    for (const column of columns) {
+      if (Number(column?.vadProbability ?? 0) >= threshold) {
+        thresholdHit = true;
+        break;
+      }
+    }
+    context.strokeStyle = thresholdHit ? 'rgba(239, 68, 68, 0.92)' : 'rgba(37, 99, 235, 0.92)';
+    context.lineWidth = 1;
+    context.setLineDash([5, 3]);
+    context.beginPath();
+    context.moveTo(0, thresholdY);
+    context.lineTo(width, thresholdY);
+    context.stroke();
+    context.setLineDash([]);
+    context.fillStyle = thresholdHit ? 'rgba(239, 68, 68, 0.95)' : 'rgba(37, 99, 235, 0.95)';
+    context.fillText(`thr ${threshold.toFixed(2)}`, 66, Math.max(laneTop + 10, thresholdY - 4));
   }
 
   context.fillStyle = 'rgba(37, 99, 235, 0.8)';
@@ -354,12 +407,24 @@ function drawEnergyOverlay(
   context.save();
   context.fillStyle = 'rgba(217, 119, 6, 0.08)';
   context.fillRect(0, laneTop, width, laneHeight);
+  drawLaneAxis(
+    context,
+    width,
+    laneTop,
+    laneHeight,
+    [
+      { value: 1, label: '1.0' },
+      { value: 0.5, label: '0.5' },
+      { value: 0, label: '0.0' },
+    ],
+    'rgba(217, 119, 6, 0.12)',
+  );
   context.beginPath();
   context.moveTo(0, laneBottom);
 
   for (let index = 0; index < columns.length; index += 1) {
     const centerX = index + 0.5;
-    const normalizedEnergy = clamp(Number(columns[index]?.roughEnergy ?? 0), 0, 1);
+    const normalizedEnergy = clamp(Number(columns[index]?.preVadRms ?? 0), 0, 1);
     const y = laneBottom - normalizedEnergy * (laneHeight - 2);
     context.lineTo(centerX, y);
   }
@@ -372,7 +437,7 @@ function drawEnergyOverlay(
   context.beginPath();
   for (let index = 0; index < columns.length; index += 1) {
     const centerX = index + 0.5;
-    const normalizedEnergy = clamp(Number(columns[index]?.roughEnergy ?? 0), 0, 1);
+    const normalizedEnergy = clamp(Number(columns[index]?.preVadRms ?? 0), 0, 1);
     const y = laneBottom - normalizedEnergy * (laneHeight - 2);
     if (index === 0) {
       context.moveTo(centerX, y);
@@ -395,15 +460,7 @@ function drawEnergyOverlay(
   if (options.showSpeechThreshold && Number.isFinite(options.speechThresholdDbfs)) {
     const thresholdAmplitude = clamp(dbfsToAmplitude(options.speechThresholdDbfs as number), 0, 1);
     const thresholdY = laneBottom - thresholdAmplitude * (laneHeight - 2);
-    let thresholdHit = false;
-    for (const column of columns) {
-      if (Number(column?.roughEnergy ?? 0) >= thresholdAmplitude) {
-        thresholdHit = true;
-        break;
-      }
-    }
-
-    context.strokeStyle = thresholdHit ? 'rgba(239, 68, 68, 0.92)' : 'rgba(245, 158, 11, 0.92)';
+    context.strokeStyle = 'rgba(245, 158, 11, 0.92)';
     context.lineWidth = 1;
     context.setLineDash([5, 3]);
     context.beginPath();
@@ -411,7 +468,7 @@ function drawEnergyOverlay(
     context.lineTo(width, thresholdY);
     context.stroke();
     context.setLineDash([]);
-    context.fillStyle = thresholdHit ? 'rgba(239, 68, 68, 0.95)' : 'rgba(180, 83, 9, 0.92)';
+    context.fillStyle = 'rgba(180, 83, 9, 0.92)';
     context.fillText(
       `thr ${options.speechThresholdDbfs?.toFixed(0)} dBFS / ${thresholdAmplitude.toFixed(3)}`,
       84,
@@ -422,6 +479,69 @@ function drawEnergyOverlay(
   context.fillStyle = 'rgba(180, 83, 9, 0.85)';
   context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
   context.fillText('pre-vad rms', 8, laneTop + 10);
+  context.restore();
+}
+
+function drawPreVadWaveformOverlay(
+  context: CanvasRenderingContext2D,
+  columns: readonly BrowserRealtimePlot['columns'][number][],
+  height: number,
+  displayGain: number,
+  enabled: boolean,
+): void {
+  if (!enabled || !Array.isArray(columns) || columns.length === 0) {
+    return;
+  }
+  const { waveformTop, waveformBottom } = getLaneLayout(height);
+  const laneHeight = Math.max(8, waveformBottom - waveformTop);
+  const toY = (amplitude: number) =>
+    waveformTop + ((1 - clamp(amplitude * displayGain, -1, 1)) * 0.5) * laneHeight;
+
+  context.save();
+  context.beginPath();
+  for (let index = 0; index < columns.length; index += 1) {
+    const x = index + 0.5;
+    const y = toY(Number(columns[index]?.preVadRms ?? 0));
+    if (index === 0) {
+      context.moveTo(x, y);
+    } else {
+      context.lineTo(x, y);
+    }
+  }
+  for (let index = columns.length - 1; index >= 0; index -= 1) {
+    const x = index + 0.5;
+    const y = toY(-Number(columns[index]?.preVadRms ?? 0));
+    context.lineTo(x, y);
+  }
+  context.closePath();
+  context.fillStyle = 'rgba(217, 119, 6, 0.12)';
+  context.fill();
+
+  context.beginPath();
+  for (let index = 0; index < columns.length; index += 1) {
+    const x = index + 0.5;
+    const y = toY(Number(columns[index]?.preVadRms ?? 0));
+    if (index === 0) {
+      context.moveTo(x, y);
+    } else {
+      context.lineTo(x, y);
+    }
+  }
+  context.strokeStyle = 'rgba(217, 119, 6, 0.95)';
+  context.lineWidth = 1;
+  context.stroke();
+
+  context.beginPath();
+  for (let index = 0; index < columns.length; index += 1) {
+    const x = index + 0.5;
+    const y = toY(-Number(columns[index]?.preVadRms ?? 0));
+    if (index === 0) {
+      context.moveTo(x, y);
+    } else {
+      context.lineTo(x, y);
+    }
+  }
+  context.stroke();
   context.restore();
 }
 
@@ -466,10 +586,17 @@ export function renderBrowserRealtimeWaveformFrame(
     height,
   );
   drawWaveformAxis(context, width, height, displayGain, resolvedOptions);
-  drawTenVadOverlay(context, columns, width, height);
+  drawTenVadOverlay(context, columns, width, height, resolvedOptions);
   drawEnergyOverlay(context, columns, width, height, resolvedOptions);
   drawWaveformGateOverlay(context, columns, width, height);
-  drawSpeechThreshold(context, width, height, columns, displayGain, resolvedOptions);
+  drawSpeechThreshold(context, width, height, displayGain, resolvedOptions);
   drawWaveformAmplitude(context, columns, height, displayGain);
+  drawPreVadWaveformOverlay(
+    context,
+    columns,
+    height,
+    displayGain,
+    resolvedOptions.showPreVadOverlay,
+  );
   drawLiveEdge(context, frame.plot, height);
 }
