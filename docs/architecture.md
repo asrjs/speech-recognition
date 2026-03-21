@@ -15,6 +15,38 @@ It is designed around:
 
 The library is intentionally speech-first. It is not a generic multimodal framework and it does not mirror generic task-pipeline architecture.
 
+It is also intentionally framework-neutral at the core package boundary:
+
+- `@asrjs/speech-recognition` should own headless runtime and browser primitives
+- framework-specific UI bindings should live in thin sibling packages, not in the core package
+
+The core package may own:
+
+- audio capture
+- resampling
+- ring buffers
+- chunking
+- VAD / rough gate / detector logic
+- waveform renderers and canvas utilities
+- monitor/store-style snapshot APIs
+
+Framework packages should own:
+
+- React hooks/components
+- Vue composables/components
+- Svelte stores/components
+- Solid signals/components
+
+Recommended package layout when those bindings are published:
+
+- `@asrjs/speech-recognition`
+- `@asrjs/speech-recognition-react`
+- `@asrjs/speech-recognition-vue`
+- `@asrjs/speech-recognition-svelte`
+- `@asrjs/speech-recognition-solid`
+
+This boundary matters because mixing framework widgets into the core package would force the wrong dependency model and bundle shape on every consumer.
+
 ## Internal Layout
 
 ```text
@@ -39,6 +71,7 @@ Rules:
 
 - `src/types` defines stable contracts and should stay environment-agnostic.
 - `src/runtime` owns orchestration, registration, lifecycle, backend selection, and transcript normalization.
+- `src/runtime` may expose framework-agnostic browser monitors/controllers/renderers, but not framework-specific UI bindings.
 - `src/io` owns asset resolution and caching, not model-specific execution.
 - `src/inference` owns shared descriptors, generic math, and shared streaming primitives only.
 - `src/models/*` owns family-specific execution, decode loops, tokenizer behavior, timestamp reconstruction, and native output shaping.
