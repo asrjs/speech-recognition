@@ -98,6 +98,7 @@ describe('public exports', () => {
     expect(browser.encodeMonoPcmToWavBlob).toBeTypeOf('function');
     expect(realtime.AudioFeatureCache).toBeTypeOf('function');
     expect(realtime.AudioRingBuffer).toBeTypeOf('function');
+    expect(realtime.NoiseFloorTracker).toBeTypeOf('function');
     expect(realtime.RoughSpeechGate).toBeTypeOf('function');
     expect(realtime.RealtimeTranscriptionController).toBeTypeOf('function');
     expect(realtime.StreamingSpeechDetector).toBeTypeOf('function');

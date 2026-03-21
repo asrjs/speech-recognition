@@ -45,6 +45,28 @@ describe('RoughSpeechGate', () => {
     expect(lastResult?.noiseFloor).toBeGreaterThan(0.001);
   });
 
+  it('feeds rejected candidate windows back into the background model', () => {
+    const gate = new RoughSpeechGate({
+      sampleRate: 16000,
+      analysisWindowMs: 16,
+      minSpeechDurationMs: 80,
+      minSilenceDurationMs: 96,
+      minSpeechLevelDbfs: -40,
+      initialNoiseFloor: 0.002,
+      useSnrGate: false,
+    });
+
+    gate.process(createChunk(256, 0.002));
+    gate.process(createChunk(256, 0.02));
+    gate.process(createChunk(256, 0.02));
+    const result = gate.process(createChunk(256, 0.002));
+
+    expect(result.isSpeech).toBe(false);
+    expect(result.noiseFloor).toBeGreaterThan(0.002);
+    expect(result.backgroundAverage).toBeGreaterThan(0.002);
+    expect(result.backgroundAverage).toBeLessThan(0.02);
+  });
+
   it('reports calibrated dBFS levels for the current and rolling windows', () => {
     const gate = new RoughSpeechGate({
       sampleRate: 16000,
