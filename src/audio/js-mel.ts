@@ -305,7 +305,7 @@ export class JSMelProcessor {
   private readonly fftRe: Float64Array;
   private readonly fftIm: Float64Array;
   private readonly powerBuf: Float32Array;
-  private paddedBuffer: Float64Array | null = null;
+  private paddedBuffer: Float32Array | null = null;
   private readonly fbBounds: Int32Array;
 
   constructor(options: JsNemoMelProcessorOptions = {}) {
@@ -338,15 +338,42 @@ export class JSMelProcessor {
     }
   }
 
+  private processRawBuffer: Float32Array | null = null;
+  private processFeaturesBuffer: Float32Array | null = null;
+
   process(audio: Float32Array): JsNemoMelProcessResult {
-    const { rawMel, nFrames, validLength } = this.computeRawMel(audio);
+    const sampleCount = audio.length;
+    const pad = N_FFT >> 1;
+    const paddedLen = sampleCount + 2 * pad;
+    const nFrames = Math.floor((paddedLen - N_FFT) / HOP_LENGTH) + 1;
+    const requiredSize = this.nMels * nFrames;
+
+    if (!this.processRawBuffer || this.processRawBuffer.length < requiredSize) {
+      this.processRawBuffer = new Float32Array(Math.ceil(requiredSize * 1.2));
+    }
+    if (!this.processFeaturesBuffer || this.processFeaturesBuffer.length < requiredSize) {
+      this.processFeaturesBuffer = new Float32Array(Math.ceil(requiredSize * 1.2));
+    }
+
+    const { rawMel, nFrames: computedNFrames, validLength } = this.computeRawMel(
+      audio,
+      0,
+      this.processRawBuffer,
+    );
     if (validLength === 0) {
       return { features: new Float32Array(0), frameCount: 0, length: 0 };
     }
 
+    const features = this.finalizeFeatures(
+      rawMel,
+      computedNFrames,
+      validLength,
+      this.processFeaturesBuffer,
+    );
+
     return {
-      features: this.finalizeFeatures(rawMel, nFrames, validLength),
-      frameCount: nFrames,
+      features: features.slice(),
+      frameCount: computedNFrames,
       length: validLength,
     };
   }
@@ -369,14 +396,14 @@ export class JSMelProcessor {
     const paddedLen = sampleCount + 2 * pad;
     let paddedReallocated = false;
     if (!this.paddedBuffer || this.paddedBuffer.length < paddedLen) {
-      this.paddedBuffer = new Float64Array(Math.ceil(paddedLen * 1.2));
+      this.paddedBuffer = new Float32Array(Math.ceil(paddedLen * 1.2));
       paddedReallocated = true;
     }
     const padded = this.paddedBuffer;
 
-    padded[pad] = Math.fround(audio[0]!);
+    padded[pad] = audio[0]!;
     for (let index = 1; index < sampleCount; index += 1) {
-      padded[pad + index] = Math.fround(audio[index]! - PREEMPH * audio[index - 1]!);
+      padded[pad + index] = audio[index]! - PREEMPH * audio[index - 1]!;
     }
     if (!paddedReallocated) {
       padded.fill(0, pad + sampleCount, paddedLen);
