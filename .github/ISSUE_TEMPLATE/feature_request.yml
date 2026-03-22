@@ -1,0 +1,72 @@
+name: Feature Request
+description: Propose a new capability, API shape, or workflow for @asrjs/speech-recognition
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and open pull requests for the same request.
+          required: true
+        - label: I am describing a user-facing need, not just a local workaround.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What use case is currently blocked or awkward?
+      placeholder: I need to ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected Surface
+      options:
+        - root package API
+        - browser helpers
+        - realtime helpers
+        - node/io helpers
+        - presets / model adapters
+        - docs / examples
+        - framework wrapper support
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe the desired API, behavior, or workflow.
+      placeholder: |
+        Proposed API:
+        Proposed behavior:
+        Why this shape fits the library:
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Existing workarounds, competing API shapes, or why current behavior is insufficient.
+      placeholder: Current workaround / alternative API / tradeoffs
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example Usage
+      description: Show how consumers would use the feature if it existed.
+      render: ts
+      placeholder: |
+        import { ... } from '@asrjs/speech-recognition';
+    validations:
+      required: false
