@@ -47,6 +47,20 @@ describe('js mel processor', () => {
     expect(Array.from(result.features).every(Number.isFinite)).toBe(true);
   });
 
+  it('returns stable feature buffers across repeated process calls', () => {
+    const processor = new JSMelProcessor({ nMels: 128 });
+    const firstAudio = createSineWave(1600, 440);
+    const secondAudio = createSineWave(3200, 660);
+
+    const first = processor.process(firstAudio);
+    const firstSnapshot = new Float32Array(first.features);
+    const second = processor.process(secondAudio);
+
+    expect(first.features).not.toBe(second.features);
+    expect(first.features).toEqual(firstSnapshot);
+    expect(second.features.length).toBe(128 * second.frameCount);
+  });
+
   it('can emit raw log-mel features without per-feature normalization', () => {
     const processor = new JSMelProcessor({
       nMels: 128,

@@ -306,6 +306,7 @@ export class JSMelProcessor {
   private readonly fftIm: Float64Array;
   private readonly powerBuf: Float32Array;
   private paddedBuffer: Float64Array | null = null;
+  private processRawBuffer: Float32Array | null = null;
   private readonly fbBounds: Int32Array;
 
   constructor(options: JsNemoMelProcessorOptions = {}) {
@@ -339,15 +340,35 @@ export class JSMelProcessor {
   }
 
   process(audio: Float32Array): JsNemoMelProcessResult {
-    const { rawMel, nFrames, validLength } = this.computeRawMel(audio);
+    const sampleCount = audio.length;
+    if (sampleCount === 0) {
+      return { features: new Float32Array(0), frameCount: 0, length: 0 };
+    }
+
+    const pad = N_FFT >> 1;
+    const paddedLen = sampleCount + 2 * pad;
+    const nFrames = Math.floor((paddedLen - N_FFT) / HOP_LENGTH) + 1;
+    const validLength =
+      this.validLengthMode === 'centered' ? nFrames : Math.floor(sampleCount / HOP_LENGTH);
     if (validLength === 0) {
       return { features: new Float32Array(0), frameCount: 0, length: 0 };
     }
 
+    const requiredRawSize = this.nMels * nFrames;
+    if (!this.processRawBuffer || this.processRawBuffer.length < requiredRawSize) {
+      this.processRawBuffer = new Float32Array(Math.ceil(requiredRawSize * 1.2));
+    }
+
+    const { rawMel, nFrames: computedNFrames, validLength: computedValidLength } = this.computeRawMel(
+      audio,
+      0,
+      this.processRawBuffer,
+    );
+
     return {
-      features: this.finalizeFeatures(rawMel, nFrames, validLength),
-      frameCount: nFrames,
-      length: validLength,
+      features: this.finalizeFeatures(rawMel, computedNFrames, computedValidLength),
+      frameCount: computedNFrames,
+      length: computedValidLength,
     };
   }
 

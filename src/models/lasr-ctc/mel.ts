@@ -269,6 +269,9 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly fftImaginary = new Float64Array(N_FFT);
   private readonly powerBuffer = new Float32Array(N_FREQ_BINS);
   private readonly filterbankBounds: Int32Array;
+  private emphasizedBuffer: Float32Array | null = null;
+  private paddedBuffer: Float64Array | null = null;
+  private rawMelBuffer: Float32Array | null = null;
 
   constructor(options: MedAsrJsPreprocessorOptions = {}) {
     this.nMels = options.nMels ?? 128;
@@ -333,7 +336,10 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       };
     }
 
-    const emphasized = new Float32Array(sampleCount);
+    if (!this.emphasizedBuffer || this.emphasizedBuffer.length < sampleCount) {
+      this.emphasizedBuffer = new Float32Array(Math.ceil(sampleCount * 1.2));
+    }
+    const emphasized = this.emphasizedBuffer;
     emphasized[0] = audio[0] ?? 0;
     if (this.preemphasis > 0) {
       for (let index = 1; index < sampleCount; index += 1) {
@@ -345,7 +351,11 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
 
     const pad = this.center ? N_FFT >> 1 : 0;
     const paddedLength = sampleCount + pad * 2;
-    const padded = new Float64Array(paddedLength);
+    if (!this.paddedBuffer || this.paddedBuffer.length < paddedLength) {
+      this.paddedBuffer = new Float64Array(Math.ceil(paddedLength * 1.2));
+    }
+    const padded = this.paddedBuffer;
+    padded.fill(0, 0, paddedLength);
     for (let index = 0; index < sampleCount; index += 1) {
       padded[index + pad] = emphasized[index] ?? 0;
     }
@@ -360,7 +370,11 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       };
     }
 
-    const rawMel = new Float32Array(this.nMels * frameCount);
+    const requiredRawMelSize = this.nMels * frameCount;
+    if (!this.rawMelBuffer || this.rawMelBuffer.length < requiredRawMelSize) {
+      this.rawMelBuffer = new Float32Array(Math.ceil(requiredRawMelSize * 1.2));
+    }
+    const rawMel = this.rawMelBuffer.subarray(0, requiredRawMelSize);
 
     for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
       const frameOffset = frameIndex * HOP_LENGTH;
