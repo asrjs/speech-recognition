@@ -7,10 +7,7 @@ import {
   type LoadSpeechModelFromLocalEntriesOptions,
   type SpeechModelLocalInspection,
 } from './local-adapter-registry.js';
-import type {
-  BaseTranscriptionOptions,
-  ResolvedAssetHandle,
-} from '../types/index.js';
+import type { BaseTranscriptionOptions, ResolvedAssetHandle } from '../types/index.js';
 import type {
   SpeechModelLocalDirectoryHandleLike,
   SpeechModelLocalEntry,

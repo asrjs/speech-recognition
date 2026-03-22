@@ -21,8 +21,7 @@ export const STREAMING_PROFILE_IDS = {
   CUSTOM: 'custom',
 } as const;
 
-export type StreamingProfileId =
-  (typeof STREAMING_PROFILE_IDS)[keyof typeof STREAMING_PROFILE_IDS];
+export type StreamingProfileId = (typeof STREAMING_PROFILE_IDS)[keyof typeof STREAMING_PROFILE_IDS];
 
 export const STREAMING_GATE_MODES = {
   ROUGH_ONLY: 'rough-only',
@@ -30,8 +29,7 @@ export const STREAMING_GATE_MODES = {
   ROUGH_AND_TEN_VAD: 'rough-and-ten-vad',
 } as const;
 
-export type StreamingGateMode =
-  (typeof STREAMING_GATE_MODES)[keyof typeof STREAMING_GATE_MODES];
+export type StreamingGateMode = (typeof STREAMING_GATE_MODES)[keyof typeof STREAMING_GATE_MODES];
 
 export interface StreamingDetectorConfig {
   readonly sampleRate: number;
@@ -130,9 +128,7 @@ function deriveStreamingConfig(
     levelWindowMs: alignDuration(config.levelWindowMs ?? 1000),
     tenVadEnabled: config.tenVadEnabled ?? true,
     tenVadThreshold: config.tenVadThreshold ?? 0.5,
-    tenVadConfirmationWindowMs: alignDuration(
-      config.tenVadConfirmationWindowMs ?? 192,
-    ),
+    tenVadConfirmationWindowMs: alignDuration(config.tenVadConfirmationWindowMs ?? 192),
     tenVadHangoverMs: alignDuration(config.tenVadHangoverMs ?? 320),
     tenVadMinSpeechDurationMs: alignDuration(
       config.tenVadMinSpeechDurationMs ?? DEFAULT_TEN_VAD_MIN_SPEECH_DURATION_MS,
@@ -146,8 +142,7 @@ function deriveStreamingConfig(
   };
 }
 
-export const DEFAULT_STREAMING_DETECTOR_CONFIG: StreamingDetectorConfig =
-  deriveStreamingConfig();
+export const DEFAULT_STREAMING_DETECTOR_CONFIG: StreamingDetectorConfig = deriveStreamingConfig();
 
 export const STREAMING_PRESETS: Record<StreamingProfileId, StreamingDetectorPreset> = {
   [STREAMING_PROFILE_IDS.REALTIME_RNNT]: {
@@ -240,10 +235,7 @@ function normalizeStreamingConfig(
   config: StreamingDetectorConfigOverrides = {},
 ): Partial<StreamingDetectorConfig> {
   const { energyThreshold, waveformPointCount: _waveformPointCount, ...rest } = config;
-  if (
-    typeof energyThreshold === 'number' &&
-    typeof rest.minSpeechLevelDbfs !== 'number'
-  ) {
+  if (typeof energyThreshold === 'number' && typeof rest.minSpeechLevelDbfs !== 'number') {
     return {
       ...rest,
       minSpeechLevelDbfs: 20 * Math.log10(Math.max(energyThreshold, 0.000001)),
@@ -296,5 +288,7 @@ export function isStreamingConfigEqual(
   const leftEntries = Object.entries(left ?? {});
   const rightEntries = Object.entries(right ?? {});
   if (leftEntries.length !== rightEntries.length) return false;
-  return leftEntries.every(([key, value]) => right?.[key as keyof StreamingDetectorConfig] === value);
+  return leftEntries.every(
+    ([key, value]) => right?.[key as keyof StreamingDetectorConfig] === value,
+  );
 }

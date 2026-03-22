@@ -1,4 +1,8 @@
-import type { StreamingTenVadLike, StreamingTenVadResultEvent, StreamingTenVadStatus } from './streaming-detector.js';
+import type {
+  StreamingTenVadLike,
+  StreamingTenVadResultEvent,
+  StreamingTenVadStatus,
+} from './streaming-detector.js';
 import {
   STREAMING_PROCESSING_SAMPLE_RATE,
   STREAMING_TIMELINE_CHUNK_FRAMES,
@@ -91,17 +95,22 @@ export function resolveDefaultTenVadAssetUrls(): TenVadAssetUrls {
 }
 
 export function resolveTenVadAssetUrls(
-  config: Pick<TenVadAdapterConfig, 'assetBaseUrl' | 'scriptUrl' | 'wasmUrl' | 'fallbackToBundledAssets'> = {},
+  config: Pick<
+    TenVadAdapterConfig,
+    'assetBaseUrl' | 'scriptUrl' | 'wasmUrl' | 'fallbackToBundledAssets'
+  > = {},
 ): ResolvedTenVadAssetUrls {
   const defaults = resolveDefaultTenVadAssetUrls();
   const assetBaseUrl = config.assetBaseUrl ?? null;
   const scriptUrl =
-    config.scriptUrl ?? (assetBaseUrl ? new URL('ten_vad.js', assetBaseUrl).href : defaults.scriptUrl);
+    config.scriptUrl ??
+    (assetBaseUrl ? new URL('ten_vad.js', assetBaseUrl).href : defaults.scriptUrl);
   const wasmUrl =
-    config.wasmUrl ?? (assetBaseUrl ? new URL('ten_vad.wasm', assetBaseUrl).href : defaults.wasmUrl);
+    config.wasmUrl ??
+    (assetBaseUrl ? new URL('ten_vad.wasm', assetBaseUrl).href : defaults.wasmUrl);
   const shouldFallback =
-    (config.fallbackToBundledAssets ?? DEFAULT_TEN_VAD_CONFIG.fallbackToBundledAssets)
-    && (scriptUrl !== defaults.scriptUrl || wasmUrl !== defaults.wasmUrl);
+    (config.fallbackToBundledAssets ?? DEFAULT_TEN_VAD_CONFIG.fallbackToBundledAssets) &&
+    (scriptUrl !== defaults.scriptUrl || wasmUrl !== defaults.wasmUrl);
 
   return {
     scriptUrl,
@@ -183,11 +192,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
         fallbackScriptUrl: resolvedAssets.fallbackScriptUrl,
         fallbackWasmUrl: resolvedAssets.fallbackWasmUrl,
       });
-      await this.waitWithTimeout(
-        initRequest,
-        TEN_VAD_INIT_TIMEOUT_MS,
-        'TEN-VAD init timed out.',
-      );
+      await this.waitWithTimeout(initRequest, TEN_VAD_INIT_TIMEOUT_MS, 'TEN-VAD init timed out.');
       this.status = 'ready';
       this.lastError = null;
     } catch (error) {
@@ -234,12 +239,8 @@ export class TenVadAdapter implements StreamingTenVadLike {
 
   private recordResult(result: any): void {
     const hopSize = this.config.hopSize;
-    const {
-      minSpeechHops,
-      minSilenceHops,
-      paddingFrames,
-      negativeThreshold,
-    } = this.getDerivedTemporalConfig();
+    const { minSpeechHops, minSilenceHops, paddingFrames, negativeThreshold } =
+      this.getDerivedTemporalConfig();
 
     for (let index = 0; index < result.hopCount; index += 1) {
       const startFrame = result.globalSampleOffset + index * hopSize;
@@ -285,7 +286,11 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.recentResults = this.recentResults.filter((entry) => entry.createdAt >= cutoff);
 
     if (paddingFrames > 0 && this.latestSpeaking) {
-      for (let index = this.recentResults.length - 1; index >= 0 && index >= this.recentResults.length - paddingFrames; index -= 1) {
+      for (
+        let index = this.recentResults.length - 1;
+        index >= 0 && index >= this.recentResults.length - paddingFrames;
+        index -= 1
+      ) {
         const entry = this.recentResults[index]!;
         this.recentResults[index] = {
           ...entry,
@@ -382,8 +387,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
   hasRecentSpeech(endFrame: number, windowMs: number, sampleRate: number): boolean {
     const { minSpeechHops } = this.getDerivedTemporalConfig();
     const summary = this.getWindowSummary(endFrame, windowMs, sampleRate);
-    const speechRatio =
-      summary.totalHops > 0 ? summary.speechHopCount / summary.totalHops : 0;
+    const speechRatio = summary.totalHops > 0 ? summary.speechHopCount / summary.totalHops : 0;
     return (
       summary.speechHopCount >= minSpeechHops &&
       summary.maxConsecutiveSpeech >= minSpeechHops &&
@@ -448,11 +452,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     });
   }
 
-  private waitWithTimeout<T>(
-    promise: Promise<T>,
-    timeoutMs: number,
-    message: string,
-  ): Promise<T> {
+  private waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         reject(new Error(message));
@@ -481,22 +481,13 @@ export class TenVadAdapter implements StreamingTenVadLike {
     };
 
     return {
-      minSpeechHops: resolveHopCount(
-        this.config.minSpeechDurationMs,
-        this.config.minSpeechHops,
-      ),
-      minSilenceHops: resolveHopCount(
-        this.config.minSilenceDurationMs,
-        this.config.minSilenceHops,
-      ),
+      minSpeechHops: resolveHopCount(this.config.minSpeechDurationMs, this.config.minSpeechHops),
+      minSilenceHops: resolveHopCount(this.config.minSilenceDurationMs, this.config.minSilenceHops),
       paddingFrames: Math.max(
         0,
         Math.ceil(this.config.speechPaddingMs / Math.max(1, hopDurationMs)),
       ),
-      negativeThreshold: Math.max(
-        0,
-        this.config.threshold - this.config.negativeThresholdOffset,
-      ),
+      negativeThreshold: Math.max(0, this.config.threshold - this.config.negativeThresholdOffset),
     };
   }
 }

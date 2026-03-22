@@ -59,8 +59,10 @@ async function handleInit(id: number, config: Record<string, unknown>) {
   threshold = Number(config.threshold) || 0.5;
   const scriptUrl = typeof config.scriptUrl === 'string' ? config.scriptUrl : null;
   const wasmUrl = typeof config.wasmUrl === 'string' ? config.wasmUrl : null;
-  const fallbackScriptUrl = typeof config.fallbackScriptUrl === 'string' ? config.fallbackScriptUrl : null;
-  const fallbackWasmUrl = typeof config.fallbackWasmUrl === 'string' ? config.fallbackWasmUrl : null;
+  const fallbackScriptUrl =
+    typeof config.fallbackScriptUrl === 'string' ? config.fallbackScriptUrl : null;
+  const fallbackWasmUrl =
+    typeof config.fallbackWasmUrl === 'string' ? config.fallbackWasmUrl : null;
   if (!scriptUrl || !wasmUrl) {
     throw new Error('TEN-VAD init requires scriptUrl and wasmUrl.');
   }
@@ -252,9 +254,7 @@ async function loadTenVadModule(scriptUrl: string, wasmUrl: string) {
   }
 
   const jsText = await response.text();
-  const blobUrl = URL.createObjectURL(
-    new Blob([jsText], { type: 'application/javascript' }),
-  );
+  const blobUrl = URL.createObjectURL(new Blob([jsText], { type: 'application/javascript' }));
 
   try {
     const moduleImport = await import(/* @vite-ignore */ blobUrl);

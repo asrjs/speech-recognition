@@ -183,10 +183,7 @@ describe('PcmAudioBuffer', () => {
   describe('sliceFrames', () => {
     const buffer = new PcmAudioBuffer({
       sampleRate: 16000,
-      channels: [
-        new Float32Array([1, 2, 3, 4, 5, 6]),
-        new Float32Array([10, 20, 30, 40, 50, 60]),
-      ],
+      channels: [new Float32Array([1, 2, 3, 4, 5, 6]), new Float32Array([10, 20, 30, 40, 50, 60])],
     });
 
     it('slices both channels within bounds', () => {

@@ -70,17 +70,13 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
       throw new TypeError('VoiceActivityProbabilityBuffer requires a positive sampleRate.');
     }
     if (!Number.isFinite(options.maxDurationSeconds) || options.maxDurationSeconds <= 0) {
-      throw new TypeError(
-        'VoiceActivityProbabilityBuffer requires a positive maxDurationSeconds.',
-      );
+      throw new TypeError('VoiceActivityProbabilityBuffer requires a positive maxDurationSeconds.');
     }
 
     this.sampleRate = options.sampleRate;
     const hopFrames = options.hopFrames ?? 512;
     if (!Number.isFinite(hopFrames) || hopFrames <= 0) {
-      throw new TypeError(
-        'VoiceActivityProbabilityBuffer requires a positive finite hopFrames.',
-      );
+      throw new TypeError('VoiceActivityProbabilityBuffer requires a positive finite hopFrames.');
     }
     this.hopFrames = Math.max(1, Math.floor(hopFrames));
     this.speechThreshold = options.speechThreshold ?? 0.5;
@@ -282,8 +278,7 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     const points: VoiceActivityProbabilityTimelinePoint[] = [];
 
     for (let index = 0; index < safePoints; index += 1) {
-      const bucketStart =
-        safeStart + Math.floor((index * (safeEnd - safeStart)) / safePoints);
+      const bucketStart = safeStart + Math.floor((index * (safeEnd - safeStart)) / safePoints);
       const bucketEnd =
         index === safePoints - 1
           ? safeEnd
