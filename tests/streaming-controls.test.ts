@@ -24,8 +24,10 @@ describe('streaming control helpers', () => {
 
   it('normalizes chunk-aligned millisecond controls to runtime step size', () => {
     const definition = getStreamingControlDefinition('minSilenceDurationMs');
+    const prerollDefinition = getStreamingControlDefinition('prerollMs');
 
     expect(definition).toBeTruthy();
+    expect(prerollDefinition).toBeTruthy();
     expect(
       normalizeStreamingControlValue(definition!, 23, {
         chunkDurationMs: 16,
@@ -36,6 +38,16 @@ describe('streaming control helpers', () => {
         chunkDurationMs: 16,
       }),
     ).toBe(0);
+    expect(
+      resolveStreamingControlConstraints(prerollDefinition!, {
+        chunkDurationMs: 32,
+      }).min,
+    ).toBe(96);
+    expect(
+      normalizeStreamingControlValue(prerollDefinition!, 80, {
+        chunkDurationMs: 32,
+      }),
+    ).toBe(96);
   });
 
   it('formats values and hints with canonical units', () => {
@@ -48,7 +60,6 @@ describe('streaming control helpers', () => {
         chunkDurationMs: 16,
         ringBufferDurationMs: 12000,
       }),
-    ).toContain('200..12000 ms');
+    ).toContain('256..12000 ms');
   });
 });
-

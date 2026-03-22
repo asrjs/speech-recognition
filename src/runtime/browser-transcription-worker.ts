@@ -119,6 +119,17 @@ export function createBrowserTranscriptionWorkerClient(
   };
   const pending = new Map<number, PendingWorkerRequest>();
 
+  const resetWorker = (): void => {
+    if (!worker) {
+      return;
+    }
+    try {
+      worker.terminate();
+    } finally {
+      worker = null;
+    }
+  };
+
   const fail = (error: unknown): void => {
     const message = error instanceof Error ? error.message : String(error);
     status = {
@@ -170,6 +181,7 @@ export function createBrowserTranscriptionWorkerClient(
     worker = workerFactory();
     worker.onmessage = (event) => handleMessage(event.data);
     worker.onerror = (event) => {
+      resetWorker();
       fail(new Error(event?.message || 'Browser transcription worker error.'));
     };
     return worker;
@@ -184,7 +196,14 @@ export function createBrowserTranscriptionWorkerClient(
     const id = ++requestId;
     return new Promise((resolve, reject) => {
       pending.set(id, { resolve, reject });
-      activeWorker.postMessage({ id, type, payload }, transfer);
+      try {
+        activeWorker.postMessage({ id, type, payload }, transfer);
+      } catch (error) {
+        pending.delete(id);
+        resetWorker();
+        fail(error);
+        reject(error);
+      }
     });
   };
 

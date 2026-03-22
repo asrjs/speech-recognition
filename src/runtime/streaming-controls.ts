@@ -187,6 +187,13 @@ export interface StreamingControlConstraints {
   readonly step: number;
 }
 
+function alignChunkAlignedMinimum(min: number, step: number): number {
+  if (!Number.isFinite(min) || !Number.isFinite(step) || step <= 0) {
+    return min;
+  }
+  return Math.ceil(min / step) * step;
+}
+
 /**
  * Return the canonical list of realtime tuning controls exposed by the library.
  *
@@ -260,9 +267,12 @@ export function resolveStreamingControlConstraints(
     Number.isFinite(resolvedConfig[definition.maxFromConfigField])
       ? Number(resolvedConfig[definition.maxFromConfigField])
       : null;
-  const max = Math.max(definition.min, maxFromConfig ?? definition.max);
+  const min = definition.chunkAligned
+    ? alignChunkAlignedMinimum(definition.min, step)
+    : definition.min;
+  const max = Math.max(min, maxFromConfig ?? definition.max);
   return {
-    min: definition.min,
+    min,
     max,
     step,
   };

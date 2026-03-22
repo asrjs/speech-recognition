@@ -74,6 +74,29 @@ class FakeWorker {
   }
 }
 
+class ThrowingWorker extends FakeWorker {
+  override postMessage(message: any, transfer: Transferable[] = []): void {
+    if (message.type === 'LOAD_BUILT_IN_MODEL') {
+      throw new Error('sync postMessage failure');
+    }
+    super.postMessage(message, transfer);
+  }
+}
+
+class ErroringWorker extends FakeWorker {
+  override postMessage(message: any, transfer: Transferable[] = []): void {
+    if (message.type === 'LOAD_BUILT_IN_MODEL') {
+      queueMicrotask(() => {
+        this.onerror?.({
+          message: 'worker boot failed',
+        } as ErrorEvent);
+      });
+      return;
+    }
+    super.postMessage(message, transfer);
+  }
+}
+
 describe('BrowserTranscriptionWorkerClient', () => {
   it('loads a model and transcribes PCM through the worker transport', async () => {
     const worker = new FakeWorker();
@@ -119,5 +142,60 @@ describe('BrowserTranscriptionWorkerClient', () => {
     expect(Array.from(pcm)).toEqual([0.25, -0.5, 0.125]);
 
     await client.dispose();
+  });
+
+  it('recreates the worker after an asynchronous worker error', async () => {
+    const workers = [new ErroringWorker(), new FakeWorker()];
+    const client = createBrowserTranscriptionWorkerClient({
+      workerFactory: () => workers.shift() ?? new FakeWorker(),
+    });
+
+    await expect(
+      client.loadBuiltInModel({
+        modelId: 'parakeet',
+        backend: 'webgpu',
+      }),
+    ).rejects.toThrow('worker boot failed');
+
+    await expect(
+      client.loadBuiltInModel({
+        modelId: 'parakeet',
+        backend: 'webgpu',
+      }),
+    ).resolves.toMatchObject({
+      modelId: 'parakeet',
+      source: 'built-in',
+    });
+  });
+
+  it('removes pending bookkeeping when postMessage throws synchronously', async () => {
+    const failingWorker = new ThrowingWorker();
+    const fallbackWorker = new FakeWorker();
+    const client = createBrowserTranscriptionWorkerClient({
+      workerFactory: (() => {
+        let callCount = 0;
+        return () => {
+          callCount += 1;
+          return callCount === 1 ? failingWorker : fallbackWorker;
+        };
+      })(),
+    });
+
+    await expect(
+      client.loadBuiltInModel({
+        modelId: 'parakeet',
+        backend: 'webgpu',
+      }),
+    ).rejects.toThrow('sync postMessage failure');
+
+    await expect(
+      client.loadBuiltInModel({
+        modelId: 'parakeet',
+        backend: 'webgpu',
+      }),
+    ).resolves.toMatchObject({
+      modelId: 'parakeet',
+      source: 'built-in',
+    });
   });
 });
