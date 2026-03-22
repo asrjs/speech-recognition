@@ -54,9 +54,12 @@ function sanitizeNoiseFloorConfig(
   fallback: NoiseFloorTrackerConfig,
 ): NoiseFloorTrackerConfig {
   return {
-    initialNoiseFloor: clampFinitePositive(
-      config.initialNoiseFloor,
-      fallback.initialNoiseFloor,
+    initialNoiseFloor: Math.max(
+      MIN_NOISE_FLOOR,
+      clampFinitePositive(
+        config.initialNoiseFloor,
+        fallback.initialNoiseFloor,
+      ),
     ),
     fastAdaptationRate: clampUnitInterval(
       config.fastAdaptationRate,
@@ -133,8 +136,17 @@ export class NoiseFloorTracker {
     energy: number,
     durationSec: number,
   ): NoiseFloorTrackerState {
-    const safeEnergy = clampFinitePositive(energy, MIN_NOISE_FLOOR);
-    const safeDurationSec = Math.max(0, Number.isFinite(durationSec) ? durationSec : 0);
+    if (
+      !Number.isFinite(energy) ||
+      energy < 0 ||
+      !Number.isFinite(durationSec) ||
+      durationSec <= 0
+    ) {
+      return this.getState();
+    }
+
+    const safeEnergy = Math.max(MIN_NOISE_FLOOR, energy);
+    const safeDurationSec = durationSec;
 
     if (source === 'confirmed-silence-window') {
       this.confirmedSilenceDurationSec += safeDurationSec;

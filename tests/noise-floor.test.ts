@@ -77,6 +77,17 @@ describe('NoiseFloorTracker', () => {
     expect(Number.isFinite(state.backgroundAverage)).toBe(true);
   });
 
+  it('clamps the configured seed to the minimum noise floor', () => {
+    const tracker = new NoiseFloorTracker({
+      initialNoiseFloor: 1e-12,
+      fastAdaptationRate: 0.15,
+      slowAdaptationRate: 0.05,
+      minBackgroundDurationSec: 1,
+    });
+
+    expect(tracker.getState().noiseFloor).toBeGreaterThanOrEqual(0.00001);
+  });
+
   it('resets accumulated state when initialNoiseFloor is explicitly updated', () => {
     const tracker = new NoiseFloorTracker({
       initialNoiseFloor: 0.004,
@@ -137,5 +148,33 @@ describe('NoiseFloorTracker', () => {
     const after = tracker.observeWindow('rejected-candidate-window', 0.02, 0.032);
 
     expect(after.noiseFloor).toBe(before.noiseFloor);
+  });
+
+  it('ignores invalid observation telemetry instead of mutating state', () => {
+    const tracker = new NoiseFloorTracker({
+      initialNoiseFloor: 0.004,
+      fastAdaptationRate: 0.15,
+      slowAdaptationRate: 0.05,
+      minBackgroundDurationSec: 1,
+    });
+
+    for (let index = 0; index < 3; index += 1) {
+      tracker.observeWindow('confirmed-silence-window', 0.003, 0.08);
+    }
+
+    const before = tracker.getState();
+    const afterInvalidEnergy = tracker.observeWindow(
+      'confirmed-silence-window',
+      Number.NaN,
+      0.08,
+    );
+    const afterInvalidDuration = tracker.observeWindow(
+      'rejected-candidate-window',
+      0.02,
+      0,
+    );
+
+    expect(afterInvalidEnergy).toEqual(before);
+    expect(afterInvalidDuration).toEqual(before);
   });
 });

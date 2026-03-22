@@ -101,12 +101,12 @@ function getMeta(error: Error | null = null) {
 }
 
 async function disposeLoadedModel(): Promise<void> {
-  if (!loadedModel) {
+  const modelToDispose = loadedModel;
+  if (!modelToDispose) {
     return;
   }
-  try {
-    await loadedModel.dispose();
-  } finally {
+  await modelToDispose.dispose();
+  if (loadedModel === modelToDispose) {
     loadedModel = null;
     loadSource = null;
   }
@@ -146,12 +146,29 @@ async function handleRequest(message: WorkerRequestMessage): Promise<unknown> {
 
 let requestChain = Promise.resolve();
 
-workerScope.onmessage = (event: MessageEvent<WorkerRequestMessage>) => {
-  const message = event.data;
+workerScope.onmessage = (event: MessageEvent<unknown>) => {
+  const rawMessage = event.data;
+  const requestId =
+    typeof rawMessage === 'object' &&
+    rawMessage !== null &&
+    'id' in rawMessage &&
+    typeof (rawMessage as { id?: unknown }).id === 'number'
+      ? (rawMessage as { id: number }).id
+      : -1;
   requestChain = requestChain
     .catch(() => undefined)
     .then(async () => {
       try {
+        if (
+          typeof rawMessage !== 'object' ||
+          rawMessage === null ||
+          typeof (rawMessage as { id?: unknown }).id !== 'number' ||
+          typeof (rawMessage as { type?: unknown }).type !== 'string'
+        ) {
+          throw new Error('Invalid browser transcription worker request.');
+        }
+
+        const message = rawMessage as WorkerRequestMessage;
         const payload = await handleRequest(message);
         const response: WorkerSuccessMessage = {
           id: message.id,
@@ -163,7 +180,7 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequestMessage>) => {
       } catch (error) {
         const resolvedError = error instanceof Error ? error : new Error(String(error));
         const response: WorkerErrorMessage = {
-          id: message.id,
+          id: requestId,
           type: 'ERROR',
           payload: resolvedError.message,
           meta: getMeta(resolvedError),
