@@ -60,11 +60,15 @@ interface FFTTwiddles {
 }
 
 export function hzToMel(freq: number): number {
-  return freq >= MIN_LOG_HZ ? MIN_LOG_MEL + Math.log(freq / MIN_LOG_HZ) / LOG_STEP : freq / F_SP;
+  return freq >= MIN_LOG_HZ
+    ? MIN_LOG_MEL + Math.log(freq / MIN_LOG_HZ) / LOG_STEP
+    : freq / F_SP;
 }
 
 export function melToHz(mel: number): number {
-  return mel >= MIN_LOG_MEL ? MIN_LOG_HZ * Math.exp(LOG_STEP * (mel - MIN_LOG_MEL)) : mel * F_SP;
+  return mel >= MIN_LOG_MEL
+    ? MIN_LOG_HZ * Math.exp(LOG_STEP * (mel - MIN_LOG_MEL))
+    : mel * F_SP;
 }
 
 export function createMelFilterbank(nMels = 128): Float32Array {
@@ -138,7 +142,7 @@ export function precomputeTwiddles(size: number): FFTTwiddles {
   }
 
   const bits = Math.log2(size);
-  if (1 << bits !== size) {
+  if ((1 << bits) !== size) {
     throw new Error(`FFT size must be a power of two. Received: ${size}`);
   }
 
@@ -167,7 +171,12 @@ export function precomputeTwiddles(size: number): FFTTwiddles {
   return twiddles;
 }
 
-export function fft(re: Float64Array, im: Float64Array, size: number, twiddles: FFTTwiddles): void {
+export function fft(
+  re: Float64Array,
+  im: Float64Array,
+  size: number,
+  twiddles: FFTTwiddles,
+): void {
   const bitrev = twiddles.bitrev;
   if (bitrev.length === size) {
     for (let index = 0; index < size; index += 1) {
@@ -400,7 +409,8 @@ export class JSMelProcessor {
       for (let k = 0; k < halfN; k += 1) {
         const sampleIndex = k << 1;
         this.fftRe[k] = padded[offset + sampleIndex]! * this.hannWindow[sampleIndex]!;
-        this.fftIm[k] = padded[offset + sampleIndex + 1]! * this.hannWindow[sampleIndex + 1]!;
+        this.fftIm[k] =
+          padded[offset + sampleIndex + 1]! * this.hannWindow[sampleIndex + 1]!;
       }
 
       fft(this.fftRe, this.fftIm, halfN, this.twiddlesHalf);
@@ -445,7 +455,8 @@ export class JSMelProcessor {
         const start = this.fbBounds[melIndex * 2]!;
         const end = this.fbBounds[melIndex * 2 + 1]!;
         for (let freqIndex = start; freqIndex < end; freqIndex += 1) {
-          melValue += this.powerBuf[freqIndex]! * this.melFilterbank[filterbankOffset + freqIndex]!;
+          melValue +=
+            this.powerBuf[freqIndex]! * this.melFilterbank[filterbankOffset + freqIndex]!;
         }
         rawMel[melIndex * nFrames + frameIndex] = Math.log(melValue + LOG_ZERO_GUARD);
       }
@@ -486,7 +497,8 @@ export class JSMelProcessor {
         validLength > 1 ? 1.0 / (Math.sqrt(varianceSum / (validLength - 1)) + 1e-5) : 0;
 
       for (let frameIndex = 0; frameIndex < validLength; frameIndex += 1) {
-        features[dstBase + frameIndex] = (rawMel[srcBase + frameIndex]! - mean) * invStd;
+        features[dstBase + frameIndex] =
+          (rawMel[srcBase + frameIndex]! - mean) * invStd;
       }
       if (validLength < outputFrames) {
         features.fill(0, dstBase + validLength, dstBase + outputFrames);
@@ -560,7 +572,9 @@ export class IncrementalJSMelProcessor {
     }
 
     const canReuse =
-      prefixSamples > 0 && this.cachedRawMel !== null && prefixSamples <= this.cachedAudioLen;
+      prefixSamples > 0 &&
+      this.cachedRawMel !== null &&
+      prefixSamples <= this.cachedAudioLen;
 
     const predictedFrames = Math.floor(sampleCount / HOP_LENGTH) + 1;
     const requiredRawSize = this.nMels * predictedFrames;

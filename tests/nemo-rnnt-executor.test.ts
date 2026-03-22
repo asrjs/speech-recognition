@@ -160,11 +160,11 @@ function createExecutorHarness(options: {
   const encoderSession = new MockEncoderSession(
     new MockTensor(encoderData, [1, featureSize, frameCount]),
   );
-  const decoderSession = new MockDecoderSession(
-    options.logits,
-    [config.predictionLayers ?? 1, 1, config.predictionHiddenSize ?? 4],
-    options.throwOnDecoderCallIndex,
-  );
+  const decoderSession = new MockDecoderSession(options.logits, [
+    config.predictionLayers ?? 1,
+    1,
+    config.predictionHiddenSize ?? 4,
+  ], options.throwOnDecoderCallIndex);
   const executor = new OrtNemoRnntExecutor(
     'test-nemo-rnnt',
     DEFAULT_NEMO_RNNT_CLASSIFICATION,

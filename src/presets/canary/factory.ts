@@ -3,11 +3,7 @@ import type {
   CreateNemoAedModelFamilyOptions,
   NemoAedModelOptions,
 } from '../../models/nemo-aed/index.js';
-import {
-  DEFAULT_MODEL,
-  resolveCanaryArtifactSource,
-  resolveCanaryPresetManifest,
-} from './manifest.js';
+import { DEFAULT_MODEL, resolveCanaryArtifactSource, resolveCanaryPresetManifest } from './manifest.js';
 
 export interface CreateCanaryPresetFactoryOptions {
   readonly dependencies?: CreateNemoAedModelFamilyOptions['dependencies'];

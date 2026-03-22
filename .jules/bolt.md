@@ -1,3 +1,0 @@
-## 2024-03-20 - Pool buffers with 1.2x growth factor in hot audio loops
-**Learning:** Instantiating new `Float32Array` or `Float64Array` frequently in hot paths like `computeRawMel` within audio preprocessors triggers noticeable garbage collection overhead, particularly for medium-to-large audio segments (e.g. 10-30s chunks).
-**Action:** Always prefer caching typed arrays as class properties (`private emphasizedBuffer?: Float32Array;`). When an array needs resizing due to dynamic inputs, use a multiplier (e.g. `Math.ceil(requiredSize * 1.2)`) to amortize reallocation costs across iterations instead of precisely matching lengths each time.

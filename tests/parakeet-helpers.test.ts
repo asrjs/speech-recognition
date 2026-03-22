@@ -69,9 +69,9 @@ describe('Parakeet helpers', () => {
   it('uses JS mel as the advertised Parakeet preset default preprocessor backend', () => {
     expect(resolveParakeetArtifactSource('parakeet-tdt-0.6b-v2')?.preprocessorBackend).toBe('js');
     expect(resolveParakeetArtifactSource('parakeet-tdt-0.6b-v3')?.preprocessorBackend).toBe('js');
-    expect(
-      resolveParakeetArtifactSource('parakeet-realtime-eou-120m-v1')?.preprocessorBackend,
-    ).toBe('js');
+    expect(resolveParakeetArtifactSource('parakeet-realtime-eou-120m-v1')?.preprocessorBackend).toBe(
+      'js',
+    );
   });
 
   it('creates a built-in runtime with registered backends and presets', () => {

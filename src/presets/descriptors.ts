@@ -1,7 +1,4 @@
-import {
-  MODELS as CANARY_MODELS,
-  getLanguageName as getCanaryLanguageName,
-} from './canary/catalog.js';
+import { MODELS as CANARY_MODELS, getLanguageName as getCanaryLanguageName } from './canary/catalog.js';
 import type { ModelClassification } from '../types/index.js';
 import {
   fetchModelFiles,
@@ -19,10 +16,7 @@ import {
   getLanguageName as getParakeetLanguageName,
   MODELS as PARAKEET_MODELS,
 } from './parakeet/catalog.js';
-import {
-  resolveParakeetArtifactSource,
-  resolveParakeetPresetManifest,
-} from './parakeet/manifest.js';
+import { resolveParakeetArtifactSource, resolveParakeetPresetManifest } from './parakeet/manifest.js';
 import { resolveWhisperPresetManifest } from './whisper/manifest.js';
 
 export type BuiltInPresetId = 'parakeet' | 'canary' | 'medasr' | 'whisper';
@@ -161,9 +155,7 @@ function buildWarmupExpectedTexts(): readonly string[] {
 }
 
 function normalizeRequestedBackend(backend: string | undefined): string {
-  return String(backend ?? '')
-    .trim()
-    .toLowerCase();
+  return String(backend ?? '').trim().toLowerCase();
 }
 
 function pickBuiltInComponentBackend(
@@ -312,8 +304,7 @@ function createCanaryDescriptors(): BuiltInModelDescriptor[] {
         {
           key: 'task',
           label: 'Task',
-          description:
-            'Controls whether the decoder performs same-language ASR or speech translation.',
+          description: 'Controls whether the decoder performs same-language ASR or speech translation.',
           type: 'enum',
           defaultValue: 'asr',
           options: [
@@ -582,9 +573,7 @@ export async function detectBuiltInModelRepoQuantizations(
 }
 
 export function getBuiltInModelDescriptor(modelId: string): BuiltInModelDescriptor | null {
-  const normalized = String(modelId || '')
-    .trim()
-    .toLowerCase();
+  const normalized = String(modelId || '').trim().toLowerCase();
   return (
     BUILT_IN_MODEL_DESCRIPTORS.find(
       (descriptor) =>
@@ -607,9 +596,7 @@ export function getBuiltInModelLanguageName(languageCode: string): string {
   return languageCode;
 }
 
-export function buildBuiltInHubLoadOptions(
-  input: BuildBuiltInHubLoadOptionsInput,
-): Record<string, unknown> {
+export function buildBuiltInHubLoadOptions(input: BuildBuiltInHubLoadOptionsInput): Record<string, unknown> {
   const descriptor = getBuiltInModelDescriptor(input.modelId);
   if (!descriptor) {
     throw new Error(`Unknown built-in model "${input.modelId}".`);
@@ -643,12 +630,9 @@ export function buildBuiltInHubLoadOptions(
             decoderBackend: componentBackends.decoderBackend,
             encoderQuant: input.encoderQuant,
             decoderQuant: input.decoderQuant,
-            preprocessorName:
-              input.preprocessorName ?? descriptor.loading.defaultPreprocessorName ?? undefined,
+            preprocessorName: input.preprocessorName ?? descriptor.loading.defaultPreprocessorName ?? undefined,
             preprocessorBackend:
-              input.preprocessorBackend ??
-              descriptor.loading.defaultPreprocessorBackend ??
-              undefined,
+              input.preprocessorBackend ?? descriptor.loading.defaultPreprocessorBackend ?? undefined,
             cpuThreads: input.cpuThreads,
             enableProfiling: input.enableProfiling,
           },
@@ -670,12 +654,9 @@ export function buildBuiltInHubLoadOptions(
             decoderBackend: componentBackends.decoderBackend,
             encoderQuant: input.encoderQuant,
             decoderQuant: input.decoderQuant,
-            preprocessorName:
-              input.preprocessorName ?? descriptor.loading.defaultPreprocessorName ?? undefined,
+            preprocessorName: input.preprocessorName ?? descriptor.loading.defaultPreprocessorName ?? undefined,
             preprocessorBackend:
-              input.preprocessorBackend ??
-              descriptor.loading.defaultPreprocessorBackend ??
-              undefined,
+              input.preprocessorBackend ?? descriptor.loading.defaultPreprocessorBackend ?? undefined,
             cpuThreads: input.cpuThreads,
             enableProfiling: input.enableProfiling,
           },
@@ -722,7 +703,7 @@ export function buildBuiltInTranscriptionOptions(
     const targetLanguage =
       normalizedTask === 'asr'
         ? sourceLanguage
-        : (input.targetLanguage ?? descriptor.defaultTargetLanguage ?? sourceLanguage);
+        : input.targetLanguage ?? descriptor.defaultTargetLanguage ?? sourceLanguage;
 
     return {
       sourceLanguage,

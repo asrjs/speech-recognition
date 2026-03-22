@@ -171,7 +171,8 @@ export const CANARY_180M_FLASH_DOCS: CanaryPresetDocumentation = {
   prompting: {
     format: 'canary2',
     tokens: CANARY_PROMPT_TOKENS,
-    note: 'Task control is encoded through special prompt tokens rather than a separate task enum in the runtime.',
+    note:
+      'Task control is encoded through special prompt tokens rather than a separate task enum in the runtime.',
   },
   longform: {
     preferredNeMoScript: 'scripts/speech_to_text_aed_chunked_infer.py',
@@ -182,7 +183,8 @@ export const CANARY_180M_FLASH_DOCS: CanaryPresetDocumentation = {
     nemoApiHandlesFrontendInternally: true,
     runtimeStillNeedsFrontendArtifacts: true,
     currentRuntimeDefault: 'Shared NeMo 128-bin frontend via in-repo JS mel.',
-    note: 'The repo now defaults Canary to the shared in-repo JS frontend. Keep `nemo128.onnx` as an optional comparison or fallback artifact while NeMo-reference feature parity continues to improve.',
+    note:
+      'The repo now defaults Canary to the shared in-repo JS frontend. Keep `nemo128.onnx` as an optional comparison or fallback artifact while NeMo-reference feature parity continues to improve.',
   },
 };
 

@@ -23,9 +23,7 @@ describe('built-in preset descriptors', () => {
         'google/medasr',
       ]),
     );
-    expect(options.find((option) => option.key === 'nvidia/canary-180m-flash')?.preset).toBe(
-      'canary',
-    );
+    expect(options.find((option) => option.key === 'nvidia/canary-180m-flash')?.preset).toBe('canary');
   });
 
   it('exposes Canary capabilities, controls, and loading defaults', () => {

@@ -482,11 +482,9 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       'encoder_states',
       0,
     );
-    const encodedLengthTensorOut = resolveOutputTensor<OrtTensorLike<BigInt64Array | Int32Array>>(
-      encoderOutputs,
-      'encoded_length',
-      1,
-    );
+    const encodedLengthTensorOut = resolveOutputTensor<
+      OrtTensorLike<BigInt64Array | Int32Array>
+    >(encoderOutputs, 'encoded_length', 1);
     const encoderMaskTensor = resolveOutputTensor<OrtTensorLike<Float32Array>>(
       encoderOutputs,
       'encoder_mask',
@@ -674,7 +672,8 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
             : undefined,
         averageLogProb:
           nonSpecialLogProbs.length > 0
-            ? nonSpecialLogProbs.reduce((sum, value) => sum + value, 0) / nonSpecialLogProbs.length
+            ? nonSpecialLogProbs.reduce((sum, value) => sum + value, 0) /
+              nonSpecialLogProbs.length
             : undefined,
       },
       metrics: {

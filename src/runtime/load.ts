@@ -89,10 +89,11 @@ export interface SpeechPipelineOptions extends CreateBuiltInSpeechRuntimeOptions
   readonly cacheModels?: boolean;
 }
 
-export interface SpeechPipelineModelRequest<TLoadOptions = unknown> extends Omit<
-  LoadSpeechModelOptions<TLoadOptions>,
-  'runtime' | 'hooks' | 'useManifestSources'
-> {
+export interface SpeechPipelineModelRequest<TLoadOptions = unknown>
+  extends Omit<
+    LoadSpeechModelOptions<TLoadOptions>,
+    'runtime' | 'hooks' | 'useManifestSources'
+  > {
   readonly cacheKey?: string;
   readonly forceReload?: boolean;
 }
@@ -129,11 +130,7 @@ export interface SpeechPipeline {
   dispose(): Promise<void>;
 }
 
-type UnknownLoadedModelHandle = BuiltInSpeechModelHandle<
-  unknown,
-  BaseTranscriptionOptions,
-  unknown
->;
+type UnknownLoadedModelHandle = BuiltInSpeechModelHandle<unknown, BaseTranscriptionOptions, unknown>;
 
 function canonicalizeCacheValue(value: unknown, seen = new WeakSet<object>()): unknown {
   if (value === null || value === undefined) {
@@ -288,10 +285,10 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     if (!cacheKey) {
       const handle = await this.createModelHandle(modelRequest);
       try {
-        return (await handle.transcribe(input, transcribeOptions)) as TranscriptResponse<
-          TNative,
-          TFlavor
-        >;
+        return (await handle.transcribe(
+          input,
+          transcribeOptions,
+        )) as TranscriptResponse<TNative, TFlavor>;
       } finally {
         await handle.dispose();
       }
@@ -305,9 +302,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     return [...this.handles.keys()];
   }
 
-  async disposeModel(
-    requestOrCacheKey: string | SpeechPipelineModelRequest<unknown>,
-  ): Promise<void> {
+  async disposeModel(requestOrCacheKey: string | SpeechPipelineModelRequest<unknown>): Promise<void> {
     const cacheKey =
       typeof requestOrCacheKey === 'string'
         ? requestOrCacheKey

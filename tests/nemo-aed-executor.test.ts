@@ -336,9 +336,9 @@ describe('nemo-aed executor decode loop', () => {
     );
 
     expect(result.utteranceText).toBe('Hello, world!');
-    expect(
-      result.warnings?.some((warning) => warning.code === 'nemo-aed.max-new-tokens-exhausted'),
-    ).toBe(false);
+    expect(result.warnings?.some((warning) => warning.code === 'nemo-aed.max-new-tokens-exhausted')).toBe(
+      false,
+    );
   });
 
   it('disposes decoder input tensors even when decoder execution throws', async () => {
@@ -355,8 +355,6 @@ describe('nemo-aed executor decode loop', () => {
       ),
     ).rejects.toThrow('decoder failed');
 
-    expect((decoderSession.lastInputTensor as MockTensor<BigInt64Array> | null)?.disposed).toBe(
-      true,
-    );
+    expect((decoderSession.lastInputTensor as MockTensor<BigInt64Array> | null)?.disposed).toBe(true);
   });
 });

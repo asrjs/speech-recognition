@@ -177,14 +177,14 @@ Whisper uses custom generation logic:
 
 ## What Is Shared vs Not Shared with NeMo/MedASR
 
-| Component            | NeMo                                | MedASR                  | Whisper                            |
-| -------------------- | ----------------------------------- | ----------------------- | ---------------------------------- |
-| **Frontend**         | Mel (STFT→mel→log→per_feature norm) | 128-bin kaldi-style mel | Mel (STFT→mel→log10→clamp→scale)   |
-| **Encoder**          | Conformer (conv block)              | Conformer               | Plain transformer (no conv block)  |
-| **Subsampling**      | 4× or 8× inside encoder             | 10 ms frame hop path    | 2× in encoder (2 conv layers)      |
-| **Decoder topology** | CTC / RNNT / TDT / AED              | CTC                     | AED (transformer decoder)          |
-| **Decoding**         | CTC greedy/beam, RNNT, etc.         | CTC                     | Autoregressive + logits processors |
-| **Tokenizer**        | SentencePiece / WPE                 | MedASR tokenizer        | Tiktoken BPE                       |
+| Component            | NeMo                                | MedASR                | Whisper                            |
+| -------------------- | ----------------------------------- | --------------------- | ---------------------------------- |
+| **Frontend**         | Mel (STFT→mel→log→per_feature norm) | 128-bin kaldi-style mel | Mel (STFT→mel→log10→clamp→scale) |
+| **Encoder**          | Conformer (conv block)              | Conformer             | Plain transformer (no conv block)  |
+| **Subsampling**      | 4× or 8× inside encoder             | 10 ms frame hop path  | 2× in encoder (2 conv layers)      |
+| **Decoder topology** | CTC / RNNT / TDT / AED              | CTC                   | AED (transformer decoder)          |
+| **Decoding**         | CTC greedy/beam, RNNT, etc.         | CTC                   | Autoregressive + logits processors |
+| **Tokenizer**        | SentencePiece / WPE                 | MedASR tokenizer      | Tiktoken BPE                       |
 
 **Shared with NeMo:** Nothing at the layer level — different frontend, encoder, and topology.
 **Shared with MedASR:** Nothing — MedASR is CTC; Whisper is encoder-decoder autoregressive.

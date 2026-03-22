@@ -31,28 +31,28 @@ Master reference for designing `@asrjs/speech-recognition` from scratch. Maps al
 
 ## Frontend Taxonomy
 
-| Type                      | Families                     | Params                                                       |
-| ------------------------- | ---------------------------- | ------------------------------------------------------------ |
-| **Mel (NeMo)**            | NeMo, Parakeet CTC           | 80/128 bins, n_fft=512, hop=160, Slaney, per_feature norm    |
-| **Mel (Kaldi)**           | Kaldi/Vosk, FireRedASR2S     | 80 bins, n_fft=512, hop=160, Kaldi mel, Hann^0.85            |
-| **Mel (GigaAM)**          | GigaAM                       | 64 bins, n_fft 400/320, hop=160                              |
-| **Mel (Whisper)**         | Whisper                      | 80 bins, log10, clamp, scale                                 |
-| **Raw (7-layer conv)**    | Wav2Vec2, Wav2Vec2-Conformer | No mel; conv feature extractor                               |
-| **Mel (LASR/MedASR)**     | MedASR runtime family        | 128-bin log-mel / kaldi-style frontend for current ONNX path |
-| **Identity (raw chunks)** | T-one                        | No frontend; raw waveform chunks                             |
-| **Conv subsampler**       | Speech2Text, Moonshine       | 1D conv on mel or raw                                        |
+| Type                      | Families                             | Params                                                    |
+| ------------------------- | ------------------------------------ | --------------------------------------------------------- |
+| **Mel (NeMo)**            | NeMo, Parakeet CTC                   | 80/128 bins, n_fft=512, hop=160, Slaney, per_feature norm |
+| **Mel (Kaldi)**           | Kaldi/Vosk, FireRedASR2S             | 80 bins, n_fft=512, hop=160, Kaldi mel, Hann^0.85         |
+| **Mel (GigaAM)**          | GigaAM                               | 64 bins, n_fft 400/320, hop=160                           |
+| **Mel (Whisper)**         | Whisper                              | 80 bins, log10, clamp, scale                              |
+| **Raw (7-layer conv)**    | Wav2Vec2, Wav2Vec2-Conformer         | No mel; conv feature extractor                            |
+| **Mel (LASR/MedASR)**     | MedASR runtime family                | 128-bin log-mel / kaldi-style frontend for current ONNX path |
+| **Identity (raw chunks)** | T-one                                | No frontend; raw waveform chunks                          |
+| **Conv subsampler**       | Speech2Text, Moonshine               | 1D conv on mel or raw                                     |
 
 ---
 
 ## Encoder Taxonomy
 
-| Type              | Families                                                                   |
-| ----------------- | -------------------------------------------------------------------------- |
+| Type              | Families                                                           |
+| ----------------- | ------------------------------------------------------------------ |
 | **Conformer**     | NeMo, GigaAM, Parakeet, MedASR, Wav2Vec2-Conformer, Moonshine, FireRedASR2 |
-| **Transformer**   | Whisper, Speech2Text, Qwen2-Audio, Granite Speech                          |
-| **Zipformer**     | Kaldi/Vosk (Icefall)                                                       |
-| **Chunk encoder** | T-one (stateful, 2400 samples)                                             |
-| **7-layer conv**  | Wav2Vec2 (no separate encoder; feature extractor)                          |
+| **Transformer**   | Whisper, Speech2Text, Qwen2-Audio, Granite Speech                  |
+| **Zipformer**     | Kaldi/Vosk (Icefall)                                               |
+| **Chunk encoder** | T-one (stateful, 2400 samples)                                     |
+| **7-layer conv**  | Wav2Vec2 (no separate encoder; feature extractor)                  |
 
 ---
 

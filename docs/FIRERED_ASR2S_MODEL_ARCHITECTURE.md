@@ -235,7 +235,7 @@ Not an acoustic model; operates on tokenized text. Uses HuggingFace BERT + token
 
 ## Reusable Module Mapping for @asrjs/speech-recognition
 
-| FireRedASR2S              | @asrjs/speech-recognition module                |
+| FireRedASR2S              | @asrjs/speech-recognition module                                   |
 | ------------------------- | ----------------------------------------------- |
 | KaldifeatFbank            | audio/kaldi-mel.ts                              |
 | Conv2dSubsampling         | model-owned FireRed implementation              |

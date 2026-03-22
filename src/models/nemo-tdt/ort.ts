@@ -113,16 +113,8 @@ function resolveHuggingFaceArtifacts(
 ): ResolvedNemoTdtArtifacts {
   const revision = source.revision ?? 'main';
   const fallbackBackend = normalizeNemoTdtWeightBackend(backendId);
-  const encoderBackendForOrt = resolveComponentBackend(
-    source.encoderBackend,
-    fallbackBackend,
-    'encoder',
-  );
-  const decoderBackendForOrt = resolveComponentBackend(
-    source.decoderBackend,
-    fallbackBackend,
-    'decoder',
-  );
+  const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend, 'encoder');
+  const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend, 'decoder');
   const ortBackend =
     encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm';
   const encoderQuant = resolveQuantization(source.encoderQuant, encoderBackendForOrt, 'encoder');
@@ -160,16 +152,8 @@ function resolveDirectArtifacts(
   backendId: string,
 ): ResolvedNemoTdtArtifacts {
   const fallbackBackend = normalizeNemoTdtWeightBackend(backendId);
-  const encoderBackendForOrt = resolveComponentBackend(
-    source.encoderBackend,
-    fallbackBackend,
-    'encoder',
-  );
-  const decoderBackendForOrt = resolveComponentBackend(
-    source.decoderBackend,
-    fallbackBackend,
-    'decoder',
-  );
+  const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend, 'encoder');
+  const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend, 'decoder');
   return {
     artifacts: source.artifacts,
     preprocessorBackend: source.preprocessorBackend ?? 'onnx',

@@ -99,9 +99,7 @@ function normalizeBooleanOption(
   );
 }
 
-function normalizeTaskOption(
-  task: NemoAedTranscriptionOptions['task'],
-): 'asr' | 'translation' | null {
+function normalizeTaskOption(task: NemoAedTranscriptionOptions['task']): 'asr' | 'translation' | null {
   if (!task) {
     return null;
   }
@@ -127,11 +125,7 @@ function normalizeDecodedPiece(piece: string): string {
 }
 
 function normalizeDecodedText(text: string): string {
-  return text
-    .replace(/\u2581/g, ' ')
-    .replace(/\s+(?=[!,.?:;])/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return text.replace(/\u2581/g, ' ').replace(/\s+(?=[!,.?:;])/g, '').replace(/\s+/g, ' ').trim();
 }
 
 export class CanaryTokenizer implements NemoTokenizer {
@@ -211,8 +205,8 @@ export class CanaryTokenizer implements NemoTokenizer {
     const requestedSource = options.sourceLanguage ?? options.source_lang ?? options.language;
     const fallbackTarget =
       task === 'asr'
-        ? (requestedSource ?? defaults?.targetLanguage ?? fallbackSource)
-        : (defaults?.targetLanguage ?? fallbackSource);
+        ? requestedSource ?? defaults?.targetLanguage ?? fallbackSource
+        : defaults?.targetLanguage ?? fallbackSource;
     const resolvedSource = requestedSource ?? fallbackSource;
     const resolvedTarget =
       options.targetLanguage ??
