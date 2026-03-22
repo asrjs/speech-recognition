@@ -19,11 +19,7 @@ import {
   type OrtSessionLike,
   type OrtTensorLike,
 } from './ort.js';
-import {
-  JsNemoPreprocessor,
-  type NemoPreprocessor,
-  OnnxNemoPreprocessor,
-} from './preprocessor.js';
+import { JsNemoPreprocessor, type NemoPreprocessor, OnnxNemoPreprocessor } from './preprocessor.js';
 import { ParakeetTokenizer } from './tokenizer.js';
 import { buildEmptyTranscript, buildWordAndTokenDetails } from './transcript-details.js';
 import { getDefaultNemoTdtWeightSetup } from './weights.js';

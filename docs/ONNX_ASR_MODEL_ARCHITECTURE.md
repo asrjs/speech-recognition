@@ -188,7 +188,7 @@ See `WHISPER_ASR_MODEL_ARCHITECTURE.md`. onnx-asr uses Whisper feature extractor
 
 When porting onnx-asr to JS/WebGPU:
 
-| onnx-asr                     | @asrjs/speech-recognition module                                               |
+| onnx-asr                     | @asrjs/speech-recognition module                            |
 | ---------------------------- | ----------------------------------------------------------- |
 | KaldiPreprocessor            | audio/kaldi-mel.ts                                          |
 | NemoPreprocessor80/128       | audio/js-mel.ts (NeMo-style)                                |

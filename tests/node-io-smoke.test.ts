@@ -5,7 +5,10 @@ import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { createDefaultNodeAssetProvider, createNodeFileSystemAssetProvider } from '@asrjs/speech-recognition/io/node';
+import {
+  createDefaultNodeAssetProvider,
+  createNodeFileSystemAssetProvider,
+} from '@asrjs/speech-recognition/io/node';
 
 async function withTempDir<T>(run: (dir: string) => Promise<T>): Promise<T> {
   const dir = await mkdtemp(join(tmpdir(), 'asrjs-node-smoke-'));

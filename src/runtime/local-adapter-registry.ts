@@ -6,10 +6,7 @@ import type {
 } from '../types/index.js';
 import type { DefaultSpeechRuntime } from './session.js';
 import type { CreateBuiltInSpeechRuntimeOptions } from './builtins.js';
-import type {
-  SpeechModelLocalDirectoryHandleLike,
-  SpeechModelLocalEntry,
-} from './local-types.js';
+import type { SpeechModelLocalDirectoryHandleLike, SpeechModelLocalEntry } from './local-types.js';
 import { getBuiltInModelDescriptor } from '../presets/descriptors.js';
 import { parakeetBuiltInLocalModelAdapter } from '../presets/parakeet/local-adapter.js';
 
@@ -29,8 +26,7 @@ export interface LoadedLocalSpeechModelSelection {
   readonly decoderQuant: QuantizationMode;
 }
 
-export interface LoadSpeechModelFromLocalEntriesOptions
-  extends CreateBuiltInSpeechRuntimeOptions {
+export interface LoadSpeechModelFromLocalEntriesOptions extends CreateBuiltInSpeechRuntimeOptions {
   readonly runtime?: DefaultSpeechRuntime;
   readonly modelId: string;
   readonly entries: readonly SpeechModelLocalEntry[];
@@ -88,7 +84,9 @@ export function resolveBuiltInLocalModelAdapter(modelId: string): {
     throw new Error(`Unknown built-in model "${modelId}".`);
   }
   if (!descriptor.loading.supportsLocalSource) {
-    throw new Error(`Built-in model "${descriptor.modelId}" does not support local folder loading.`);
+    throw new Error(
+      `Built-in model "${descriptor.modelId}" does not support local folder loading.`,
+    );
   }
 
   const adapter = BUILT_IN_LOCAL_MODEL_ADAPTERS.get(descriptor.preset);

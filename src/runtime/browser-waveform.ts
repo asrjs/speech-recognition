@@ -112,8 +112,7 @@ function drawWaveformAxis(
 ): void {
   const { waveformTop, waveformBottom } = getLaneLayout(height);
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
-  const toY = (amplitude: number) =>
-    waveformTop + ((1 - clamp(amplitude, -1, 1)) * 0.5) * laneHeight;
+  const toY = (amplitude: number) => waveformTop + (1 - clamp(amplitude, -1, 1)) * 0.5 * laneHeight;
 
   context.save();
   context.strokeStyle = 'rgba(93, 115, 135, 0.18)';
@@ -152,8 +151,7 @@ function drawSpeechThreshold(
   const scaledThreshold = clamp(thresholdAmplitude * displayGain, 0, 1);
   const { waveformTop, waveformBottom } = getLaneLayout(height);
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
-  const toY = (amplitude: number) =>
-    waveformTop + ((1 - clamp(amplitude, -1, 1)) * 0.5) * laneHeight;
+  const toY = (amplitude: number) => waveformTop + (1 - clamp(amplitude, -1, 1)) * 0.5 * laneHeight;
   let thresholdHit = false;
   for (const column of columns) {
     if (!column?.hasData) {
@@ -259,7 +257,7 @@ function drawWaveformAmplitude(
   const { waveformTop, waveformBottom } = getLaneLayout(height);
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
-    waveformTop + ((1 - clamp(amplitude * displayGain, -1, 1)) * 0.5) * laneHeight;
+    waveformTop + (1 - clamp(amplitude * displayGain, -1, 1)) * 0.5 * laneHeight;
 
   for (let index = 0; index < columns.length; index += 1) {
     const column = columns[index];
@@ -274,9 +272,7 @@ function drawWaveformAmplitude(
       context.fillStyle = 'rgba(5, 150, 105, 0.95)';
     } else if (column.detectorPass) {
       context.fillStyle =
-        column.gateMode === 'ten-vad-only'
-          ? 'rgba(37, 99, 235, 0.92)'
-          : 'rgba(59, 130, 246, 0.9)';
+        column.gateMode === 'ten-vad-only' ? 'rgba(37, 99, 235, 0.92)' : 'rgba(59, 130, 246, 0.9)';
     } else if (column.tenVadPass || column.roughPass) {
       context.fillStyle = 'rgba(148, 163, 184, 0.92)';
     } else {

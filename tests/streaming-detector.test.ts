@@ -48,9 +48,15 @@ class FakeTenVad {
   async reset(): Promise<void> {}
   async dispose(): Promise<void> {}
   updateConfig(): void {}
-  process(): boolean { return false; }
-  getStatus() { return this.status; }
-  findFirstSpeechFrame(): number | null { return (this.behavior.startFrame as number | null) ?? null; }
+  process(): boolean {
+    return false;
+  }
+  getStatus() {
+    return this.status;
+  }
+  findFirstSpeechFrame(): number | null {
+    return (this.behavior.startFrame as number | null) ?? null;
+  }
 
   getWindowSummary() {
     const hasRecentSpeech = Boolean(this.behavior.hasRecentSpeech);
