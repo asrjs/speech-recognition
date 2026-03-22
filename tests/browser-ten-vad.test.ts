@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TenVadAdapter,
   resolveDefaultTenVadAssetUrls,
+  resolveSupportedTenVadHopSize,
   resolveTenVadAssetUrls,
 } from '@asrjs/speech-recognition/browser';
 
@@ -80,6 +81,12 @@ describe('TenVadAdapter', () => {
     expect(resolved.fallbackWasmUrl).toBe(defaults.wasmUrl);
   });
 
+  it('normalizes unsupported preferred hop sizes to the nearest TEN-VAD-safe value', () => {
+    expect(resolveSupportedTenVadHopSize(16000, 512)).toBe(256);
+    expect(resolveSupportedTenVadHopSize(16000, 200)).toBe(160);
+    expect(resolveSupportedTenVadHopSize(48000)).toBe(768);
+  });
+
   it('handles init, process, reset, and dispose with aligned frame offsets', async () => {
     const adapter = new TenVadAdapter(
       {
@@ -132,5 +139,57 @@ describe('TenVadAdapter', () => {
     const adapter = new TenVadAdapter({}, { workerFactory: () => new FakeWorker('fail-init') });
     await expect(adapter.init()).rejects.toThrow('init failed');
     expect(adapter.getStatus().state).toBe('degraded');
+  });
+
+  it('does not reset the worker when only non-worker tuning changes', async () => {
+    const worker = new FakeWorker();
+    const adapter = new TenVadAdapter(
+      {
+        hopSize: 256,
+        threshold: 0.5,
+      },
+      {
+        workerFactory: () => worker,
+      },
+    );
+
+    await adapter.init();
+    const beforeMessageCount = worker.messages.length;
+
+    adapter.updateConfig({
+      minSpeechDurationMs: 320,
+      minSilenceDurationMs: 96,
+      speechPaddingMs: 64,
+    });
+
+    expect(worker.messages).toHaveLength(beforeMessageCount);
+
+    await adapter.dispose();
+  });
+
+  it('resets cached temporal state when worker-facing config changes', async () => {
+    const adapter = new TenVadAdapter(
+      {
+        hopSize: 256,
+        threshold: 0.5,
+        minSpeechDurationMs: 16,
+      },
+      {
+        workerFactory: () => new FakeWorker(),
+      },
+    );
+
+    await adapter.init();
+    adapter.process(new Float32Array(512), 0);
+    expect(adapter.getStatus().speaking).toBe(true);
+
+    adapter.updateConfig({
+      threshold: 0.6,
+    });
+
+    expect(adapter.getStatus().probability).toBe(0);
+    expect(adapter.getStatus().speaking).toBe(false);
+
+    await adapter.dispose();
   });
 });

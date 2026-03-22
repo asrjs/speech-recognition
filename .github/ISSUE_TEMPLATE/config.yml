@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation and API Surface
+    url: https://github.com/asrjs/speech-recognition#readme
+    about: Check the README and public subpath documentation before opening an issue.
+  - name: Existing Issues
+    url: https://github.com/asrjs/speech-recognition/issues
+    about: Search existing issues for the same runtime, model-loading, or realtime behavior first.

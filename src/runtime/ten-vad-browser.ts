@@ -52,6 +52,7 @@ interface PendingRequest {
 }
 
 const TEN_VAD_INIT_TIMEOUT_MS = 30_000;
+const TEN_VAD_SUPPORTED_HOP_DURATIONS_MS = [10, 16] as const;
 
 const DEFAULT_TEN_VAD_CONFIG: Required<
   Omit<TenVadAdapterConfig, 'assetBaseUrl' | 'scriptUrl' | 'wasmUrl'>
@@ -79,6 +80,37 @@ export interface TenVadAssetUrls {
 export interface ResolvedTenVadAssetUrls extends TenVadAssetUrls {
   readonly fallbackScriptUrl: string | null;
   readonly fallbackWasmUrl: string | null;
+}
+
+export function resolveSupportedTenVadHopSize(
+  sampleRate = STREAMING_PROCESSING_SAMPLE_RATE,
+  preferredHopSize?: number,
+): number {
+  const safeSampleRate =
+    Number.isFinite(sampleRate) && sampleRate > 0
+      ? sampleRate
+      : STREAMING_PROCESSING_SAMPLE_RATE;
+  const defaultPreferredHopSize = Math.max(
+    1,
+    Math.round(
+      (STREAMING_TIMELINE_CHUNK_FRAMES * safeSampleRate) / STREAMING_PROCESSING_SAMPLE_RATE,
+    ),
+  );
+  const safePreferredHopSize =
+    typeof preferredHopSize === 'number' &&
+    Number.isFinite(preferredHopSize) &&
+    preferredHopSize > 0
+      ? Math.round(preferredHopSize)
+      : defaultPreferredHopSize;
+  const supportedHopSizes = TEN_VAD_SUPPORTED_HOP_DURATIONS_MS.map((durationMs) =>
+    Math.max(1, Math.round((durationMs / 1000) * safeSampleRate)),
+  );
+
+  return supportedHopSizes.reduce((best, candidate) => {
+    const bestDistance = Math.abs(best - safePreferredHopSize);
+    const candidateDistance = Math.abs(candidate - safePreferredHopSize);
+    return candidateDistance < bestDistance ? candidate : best;
+  }, supportedHopSizes[0]!);
 }
 
 export function resolveDefaultTenVadAssetUrls(): TenVadAssetUrls {
@@ -136,9 +168,15 @@ export class TenVadAdapter implements StreamingTenVadLike {
     const defaults = resolveDefaultTenVadAssetUrls();
     const assetBaseUrl = config.assetBaseUrl ?? null;
     const resolvedAssets = resolveTenVadAssetUrls(config);
+    const sampleRate =
+      typeof config.sampleRate === 'number' && Number.isFinite(config.sampleRate) && config.sampleRate > 0
+        ? config.sampleRate
+        : DEFAULT_TEN_VAD_CONFIG.sampleRate;
     this.config = {
       ...DEFAULT_TEN_VAD_CONFIG,
       ...config,
+      sampleRate,
+      hopSize: resolveSupportedTenVadHopSize(sampleRate, config.hopSize),
       assetBaseUrl: assetBaseUrl ?? defaults.scriptUrl.replace(/ten_vad\.js$/, ''),
       scriptUrl: resolvedAssets.scriptUrl,
       wasmUrl: resolvedAssets.wasmUrl,
@@ -315,12 +353,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
   }
 
   async reset(): Promise<void> {
-    this.recentResults = [];
-    this.latestProbability = 0;
-    this.latestSpeaking = false;
-    this.speechRunHops = 0;
-    this.silenceRunHops = 0;
-    this.smoothedSpeechActive = false;
+    this.resetTemporalState();
 
     if (this.worker && this.status === 'ready') {
       await this.sendRequest('RESET', {});
@@ -340,12 +373,38 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.status = 'idle';
   }
 
+  private resetTemporalState(): void {
+    this.recentResults = [];
+    this.latestProbability = 0;
+    this.latestSpeaking = false;
+    this.speechRunHops = 0;
+    this.silenceRunHops = 0;
+    this.smoothedSpeechActive = false;
+  }
+
   updateConfig(config: Record<string, unknown> = {}): void {
+    const previousHopSize = this.config.hopSize;
+    const previousThreshold = this.config.threshold;
+    const nextSampleRate =
+      typeof config.sampleRate === 'number' && Number.isFinite(config.sampleRate) && config.sampleRate > 0
+        ? config.sampleRate
+        : this.config.sampleRate;
     this.config = {
       ...this.config,
       ...config,
+      sampleRate: nextSampleRate,
+      hopSize: resolveSupportedTenVadHopSize(
+        nextSampleRate,
+        typeof config.hopSize === 'number' ? config.hopSize : this.config.hopSize,
+      ),
     } as Required<TenVadAdapterConfig>;
-    if (this.worker && this.status === 'ready') {
+    const workerConfigChanged =
+      this.config.hopSize !== previousHopSize ||
+      this.config.threshold !== previousThreshold;
+    if (workerConfigChanged) {
+      this.resetTemporalState();
+    }
+    if (this.worker && this.status === 'ready' && workerConfigChanged) {
       void this.sendRequest('UPDATE_CONFIG', {
         hopSize: this.config.hopSize,
         threshold: this.config.threshold,

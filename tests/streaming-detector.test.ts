@@ -14,6 +14,7 @@ function createChunk(length: number, amplitude: number): Float32Array {
 class FakeTenVad {
   private readonly behavior: Record<string, unknown>;
   private readonly listeners = new Set<(event: { type: 'result'; payload: unknown }) => void>();
+  public updateCalls: Array<Record<string, unknown>> = [];
   private status = {
     state: 'ready',
     error: null as string | null,
@@ -47,7 +48,9 @@ class FakeTenVad {
 
   async reset(): Promise<void> {}
   async dispose(): Promise<void> {}
-  updateConfig(): void {}
+  updateConfig(config: Record<string, unknown> = {}): void {
+    this.updateCalls.push(config);
+  }
   process(): boolean { return false; }
   getStatus() { return this.status; }
   findFirstSpeechFrame(): number | null { return (this.behavior.startFrame as number | null) ?? null; }
@@ -183,6 +186,75 @@ describe('StreamingSpeechDetector', () => {
     expect(snapshot.activeSegment).not.toBeNull();
   });
 
+  it('keeps the rough onset start when TEN-VAD confirms later in rough-and-ten-vad mode', async () => {
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'rough-and-ten-vad',
+        analysisWindowMs: 16,
+        minSpeechDurationMs: 16,
+        minSilenceDurationMs: 32,
+        prerollMs: 0,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          startFrame: 256,
+          hasRecentSpeech: true,
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 0 });
+
+    const snapshot = detector.getSnapshot();
+    expect(snapshot.gate.effectiveMode).toBe('rough-and-ten-vad');
+    expect(snapshot.activeSegment).not.toBeNull();
+    expect(snapshot.activeSegment?.startFrame).toBe(0);
+  });
+
+  it('does not let TEN-VAD alone hold a tail after rough speech has ended in rough-and-ten-vad mode', async () => {
+    const tenVadState = {
+      hasRecentSpeech: true,
+      hasRecentSilence: false,
+    };
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'rough-and-ten-vad',
+        analysisWindowMs: 16,
+        energySmoothingWindows: 1,
+        minSpeechDurationMs: 16,
+        minSilenceDurationMs: 16,
+        minSpeechLevelDbfs: -45,
+        prerollMs: 0,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          startFrame: 0,
+          get hasRecentSpeech() {
+            return tenVadState.hasRecentSpeech;
+          },
+          get hasRecentSilence() {
+            return tenVadState.hasRecentSilence;
+          },
+        }) as any,
+    });
+
+    const events: Array<{ type: string; payload: any }> = [];
+    detector.subscribe((event) => events.push(event as any));
+    await detector.start({ sampleRate: 16000 });
+
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 0 });
+    expect(detector.getSnapshot().activeSegment).not.toBeNull();
+
+    detector.processChunk(createChunk(256, 0.001), { startFrame: 256 });
+
+    const segmentEvent = events.find((event) => event.type === 'segment-ready');
+    expect(segmentEvent).toBeTruthy();
+    expect(segmentEvent?.payload.reason).toBe('silence');
+    expect(detector.getSnapshot().activeSegment).toBeNull();
+  });
+
   it('builds waveform snapshots from stable timeline-aligned chunk buckets', async () => {
     const detector = new StreamingSpeechDetector({
       profileId: 'generic-streaming',
@@ -207,5 +279,35 @@ describe('StreamingSpeechDetector', () => {
     expect(snapshot.waveform.endFrame - snapshot.waveform.startFrame).toBe(
       STREAMING_TIMELINE_CHUNK_FRAMES * chunkCount,
     );
+  });
+
+  it('does not push unrelated rough-gate config changes into TEN-VAD worker settings', async () => {
+    let fakeTenVad: FakeTenVad | null = null;
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        analysisWindowMs: 16,
+        minSpeechDurationMs: 16,
+        minSilenceDurationMs: 32,
+      },
+      tenVadFactory: () => {
+        fakeTenVad = new FakeTenVad() as any;
+        return fakeTenVad as any;
+      },
+    });
+
+    await detector.start({ sampleRate: 16000 });
+    fakeTenVad?.updateCalls.splice(0);
+
+    detector.updateConfig({
+      minSpeechLevelDbfs: -55,
+    });
+
+    expect(fakeTenVad?.updateCalls).toHaveLength(1);
+    expect(fakeTenVad?.updateCalls[0]).toMatchObject({
+      threshold: 0.5,
+      sampleRate: 16000,
+      hopSize: STREAMING_TIMELINE_CHUNK_FRAMES,
+    });
   });
 });

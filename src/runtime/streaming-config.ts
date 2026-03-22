@@ -39,6 +39,7 @@ export interface StreamingDetectorConfig {
   readonly gateMode: StreamingGateMode;
   readonly ringBufferDurationMs: number;
   readonly analysisWindowMs: number;
+  readonly energySmoothingDurationMs: number;
   readonly energySmoothingWindows: number;
   readonly prerollMs: number;
   readonly minSpeechDurationMs: number;
@@ -97,6 +98,25 @@ function deriveStreamingConfig(
   const analysisWindowMs = alignDuration(
     config.analysisWindowMs ?? STREAMING_ROUGH_GATE_ANALYSIS_WINDOW_MS,
   );
+  const resolveOptionalZeroAlignedDuration = (
+    durationMs: number | undefined,
+    fallbackMs: number,
+  ): number => {
+    if (durationMs === 0) {
+      return 0;
+    }
+    return alignDuration(durationMs ?? fallbackMs);
+  };
+  const resolvedEnergySmoothingWindows = hasOwnConfigValue(config, 'energySmoothingWindows')
+    ? Math.max(1, Math.round(config.energySmoothingWindows ?? 1))
+    : resolveAnalysisWindowCount(
+        alignDuration(
+          config.energySmoothingDurationMs ?? DEFAULT_ENERGY_SMOOTHING_DURATION_MS,
+        ),
+        analysisWindowMs,
+      );
+  const resolvedEnergySmoothingDurationMs =
+    resolvedEnergySmoothingWindows * analysisWindowMs;
 
   return {
     sampleRate,
@@ -104,12 +124,14 @@ function deriveStreamingConfig(
     gateMode: config.gateMode ?? STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD,
     ringBufferDurationMs: alignDuration(config.ringBufferDurationMs ?? 12000),
     analysisWindowMs,
-    energySmoothingWindows: hasOwnConfigValue(config, 'energySmoothingWindows')
-      ? Math.max(1, Math.round(config.energySmoothingWindows ?? 1))
-      : resolveAnalysisWindowCount(DEFAULT_ENERGY_SMOOTHING_DURATION_MS, analysisWindowMs),
+    energySmoothingDurationMs: resolvedEnergySmoothingDurationMs,
+    energySmoothingWindows: resolvedEnergySmoothingWindows,
     prerollMs: alignDuration(config.prerollMs ?? 320),
     minSpeechDurationMs: alignDuration(config.minSpeechDurationMs ?? 320),
-    minSilenceDurationMs: alignDuration(config.minSilenceDurationMs ?? 500),
+    minSilenceDurationMs: resolveOptionalZeroAlignedDuration(
+      config.minSilenceDurationMs,
+      500,
+    ),
     maxSegmentDurationMs: alignDuration(config.maxSegmentDurationMs ?? 10000),
     minSpeechLevelDbfs: config.minSpeechLevelDbfs ?? -38,
     useSnrGate: config.useSnrGate ?? false,
@@ -263,7 +285,8 @@ export function mergeStreamingConfig(
 
   if (
     hasOwnConfigValue(normalizedOverrides, 'chunkDurationMs') ||
-    hasOwnConfigValue(normalizedOverrides, 'analysisWindowMs')
+    hasOwnConfigValue(normalizedOverrides, 'analysisWindowMs') ||
+    hasOwnConfigValue(normalizedOverrides, 'energySmoothingDurationMs')
   ) {
     if (!hasOwnConfigValue(normalizedOverrides, 'energySmoothingWindows')) {
       delete presetConfig.energySmoothingWindows;

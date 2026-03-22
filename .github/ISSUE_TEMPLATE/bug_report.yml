@@ -1,0 +1,170 @@
+name: Bug Report
+description: Report a reproducible bug in @asrjs/speech-recognition
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues for the same bug.
+          required: true
+        - label: I reproduced this on the latest published package or current main branch.
+          required: true
+        - label: I can provide a minimal reproduction or deterministic reproduction steps.
+          required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the bug in one or two sentences.
+      placeholder: What broke, where did it happen, and what was the visible failure?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Public Surface
+      description: Which package entry or feature area is affected?
+      options:
+        - root package (@asrjs/speech-recognition)
+        - browser helpers (@asrjs/speech-recognition/browser)
+        - realtime helpers (@asrjs/speech-recognition/realtime)
+        - builtins helpers (@asrjs/speech-recognition/builtins)
+        - io / io-node helpers
+        - inference helpers
+        - presets / models metadata
+        - docs / examples
+        - unsure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Runtime Environment
+      options:
+        - browser
+        - node.js
+        - browser + worker
+        - browser + realtime microphone
+        - multiple environments
+    validations:
+      required: true
+
+  - type: input
+    id: package_version
+    attributes:
+      label: Package Version
+      description: Published version, git SHA, or branch name.
+      placeholder: 0.2.0, main@<commit>, feat/background-noise-model
+    validations:
+      required: true
+
+  - type: input
+    id: model_id
+    attributes:
+      label: Model ID or Preset
+      description: Built-in model ID, remote repo ID, or local preset name.
+      placeholder: parakeet-tdt-0.6b-v3, google/medasr, local folder preset, or N/A
+    validations:
+      required: false
+
+  - type: dropdown
+    id: artifact_source
+    attributes:
+      label: Artifact Source
+      options:
+        - built-in / hub download
+        - browser local folder
+        - node local filesystem
+        - custom asset base URL
+        - not applicable
+    validations:
+      required: true
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options:
+        - webgpu
+        - webgpu-hybrid
+        - wasm
+        - cpu
+        - mixed / custom
+        - unsure
+    validations:
+      required: true
+
+  - type: input
+    id: sample_rate
+    attributes:
+      label: Audio Sample Rate
+      description: Input sample rate in Hz if audio is involved.
+      placeholder: "16000"
+    validations:
+      required: false
+
+  - type: textarea
+    id: platform
+    attributes:
+      label: Platform Details
+      description: Include browser/Node version, OS, GPU, WebGPU availability, and worker usage if relevant.
+      placeholder: |
+        Browser: Chrome 135
+        OS: Windows 11
+        GPU: RTX 3060
+        WebGPU: navigator.gpu truthy
+        Worker path: browser transcription worker / TEN-VAD worker / none
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide exact steps and a minimal code snippet or repo if possible.
+      placeholder: |
+        1. Install ...
+        2. Load model with ...
+        3. Call ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected vs Actual
+      placeholder: |
+        Expected:
+        Actual:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs_metrics
+    attributes:
+      label: Logs / Metrics / Trace Data
+      description: Paste console logs, detector decisions, ORT errors, timing metrics, or profiler notes.
+      render: text
+      placeholder: |
+        [StreamingSpeechDetector] ...
+        [MicQueue] ...
+        ORT error ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Audio links, screenshots, traces, or notes about regressions from previous versions.
+      placeholder: Links to sample audio, screenshots, trace files, or related issues.
+    validations:
+      required: false

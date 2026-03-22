@@ -32,9 +32,20 @@ describe('streaming config helpers', () => {
       analysisWindowMs: 160,
     });
 
+    expect(merged.energySmoothingDurationMs).toBe(480);
     expect(merged.energySmoothingWindows).toBe(3);
     expect(merged.maxOnsetLookbackChunks).toBe(2);
     expect(merged.defaultOnsetLookbackChunks).toBe(2);
+  });
+
+  it('exposes effective energy smoothing duration as a first-class config value', () => {
+    const merged = mergeStreamingConfig('generic-streaming', {
+      energySmoothingDurationMs: 640,
+      analysisWindowMs: 80,
+    });
+
+    expect(merged.energySmoothingDurationMs).toBe(640);
+    expect(merged.energySmoothingWindows).toBe(8);
   });
 
   it('aligns TEN-VAD smoothing durations to the configured chunk size', () => {
@@ -57,9 +68,18 @@ describe('streaming config helpers', () => {
     });
 
     expect(merged.chunkDurationMs).toBe(32);
+    expect(merged.energySmoothingDurationMs).toBe(480);
     expect(merged.energySmoothingWindows).toBe(5);
     expect(merged.maxOnsetLookbackChunks).toBe(3);
     expect(merged.defaultOnsetLookbackChunks).toBe(3);
     expect(merged.tenVadSpeechPaddingMs).toBe(96);
+  });
+
+  it('preserves an explicit zero rough-silence duration', () => {
+    const merged = mergeStreamingConfig('generic-streaming', {
+      minSilenceDurationMs: 0,
+    });
+
+    expect(merged.minSilenceDurationMs).toBe(0);
   });
 });

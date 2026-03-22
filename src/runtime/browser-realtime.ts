@@ -14,7 +14,12 @@ import {
   resolveStreamingProfileId,
   type StreamingDetectorConfig,
 } from './streaming-config.js';
-import { TenVadAdapter, type TenVadAdapterConfig, type TenVadAdapterOptions } from './ten-vad-browser.js';
+import {
+  TenVadAdapter,
+  resolveSupportedTenVadHopSize,
+  type TenVadAdapterConfig,
+  type TenVadAdapterOptions,
+} from './ten-vad-browser.js';
 import {
   VoiceActivityProbabilityBuffer,
   type VoiceActivityProbabilityBufferOptions,
@@ -52,6 +57,7 @@ export interface BrowserRealtimePlotColumn {
   readonly waveformMin: number;
   readonly waveformMax: number;
   readonly roughEnergy: number;
+  readonly preVadRms: number;
   readonly roughSpeechRatio: number;
   readonly roughIsSpeech: boolean;
   readonly roughPass: boolean;
@@ -121,7 +127,10 @@ function resolveTenVadConfig(
   return {
     sampleRate,
     hopSize:
-      base.hopSize ?? resolveStreamingTimelineChunkFrames(sampleRate, chunkDurationMs),
+      resolveSupportedTenVadHopSize(
+        sampleRate,
+        base.hopSize ?? resolveStreamingTimelineChunkFrames(sampleRate, chunkDurationMs),
+      ),
     threshold: base.threshold ?? resolvedConfig.tenVadThreshold ?? 0.5,
     confirmationWindowMs:
       base.confirmationWindowMs ??
@@ -205,6 +214,7 @@ function buildAlignedPlot(
     waveformMin: 0,
     waveformMax: 0,
     roughEnergy: 0,
+    preVadRms: 0,
     roughSpeechRatio: 0,
     roughIsSpeech: false,
     roughPass: false,
@@ -228,6 +238,7 @@ function buildAlignedPlot(
       waveformMin: snapshot.waveform.minMax[sourceIndex * 2] ?? 0,
       waveformMax: snapshot.waveform.minMax[sourceIndex * 2 + 1] ?? 0,
       roughEnergy: roughPoint?.energy ?? 0,
+      preVadRms: roughPoint?.rawEnergy ?? roughPoint?.energy ?? 0,
       roughSpeechRatio: roughPoint?.speechRatio ?? 0,
       roughIsSpeech: roughPoint?.isSpeech ?? false,
       roughPass: roughPoint?.isSpeech ?? false,
