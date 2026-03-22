@@ -71,6 +71,20 @@ function assertNever(value: never): never {
   throw new Error(`Unknown browser transcription worker request: ${String(value)}`);
 }
 
+function sanitizeForPostMessage<T>(value: T): T | null {
+  if (value == null) {
+    return null;
+  }
+  try {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(value);
+    }
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch {
+    return null;
+  }
+}
+
 function getMeta(error: Error | null = null) {
   return {
     state: loadedModel ? 'ready' : 'idle',
@@ -79,8 +93,8 @@ function getMeta(error: Error | null = null) {
       ? {
           source: loadSource!,
           modelId: loadedModel.model?.id,
-          info: loadedModel.model?.info ?? null,
-          selection: loadedModel.selection ?? null,
+          info: sanitizeForPostMessage(loadedModel.model?.info ?? null),
+          selection: sanitizeForPostMessage(loadedModel.selection ?? null),
         }
       : null,
   };

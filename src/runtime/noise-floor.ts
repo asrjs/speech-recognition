@@ -114,18 +114,16 @@ export class NoiseFloorTracker {
   }
 
   updateConfig(config: Partial<NoiseFloorTrackerConfig>): void {
-    this.config = sanitizeNoiseFloorConfig(
+    const previousInitialNoiseFloor = this.config.initialNoiseFloor;
+    const nextConfig = sanitizeNoiseFloorConfig(
       {
         ...this.config,
         ...config,
       },
       this.config,
     );
-    if (
-      config.initialNoiseFloor !== undefined &&
-      Number.isFinite(config.initialNoiseFloor) &&
-      config.initialNoiseFloor > 0
-    ) {
+    this.config = nextConfig;
+    if (this.config.initialNoiseFloor !== previousInitialNoiseFloor) {
       this.reset();
     }
   }
@@ -151,7 +149,7 @@ export class NoiseFloorTracker {
       source === 'confirmed-silence-window'
         ? this.resolveConfirmedSilenceAdaptationRate()
         : Math.max(
-            0.0001,
+            0,
             Math.min(this.config.fastAdaptationRate, this.config.slowAdaptationRate) *
               REJECTED_CANDIDATE_ADAPTATION_SCALE,
           );

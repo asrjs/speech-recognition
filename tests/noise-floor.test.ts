@@ -99,4 +99,43 @@ describe('NoiseFloorTracker', () => {
     expect(state.confirmedBackgroundObservationCount).toBe(0);
     expect(state.rejectedBackgroundObservationCount).toBe(0);
   });
+
+  it('does not reset learned state when initialNoiseFloor is unchanged after sanitization', () => {
+    const tracker = new NoiseFloorTracker({
+      initialNoiseFloor: 0.004,
+      fastAdaptationRate: 0.15,
+      slowAdaptationRate: 0.05,
+      minBackgroundDurationSec: 1,
+    });
+
+    for (let index = 0; index < 6; index += 1) {
+      tracker.observeWindow('confirmed-silence-window', 0.002, 0.08);
+    }
+
+    const before = tracker.getState();
+    tracker.updateConfig({
+      initialNoiseFloor: 0.004,
+    });
+    const after = tracker.getState();
+
+    expect(after.noiseFloor).toBe(before.noiseFloor);
+    expect(after.confirmedSilenceDurationSec).toBe(before.confirmedSilenceDurationSec);
+    expect(after.confirmedBackgroundObservationCount).toBe(
+      before.confirmedBackgroundObservationCount,
+    );
+  });
+
+  it('honors zero adaptation rates for rejected candidate windows', () => {
+    const tracker = new NoiseFloorTracker({
+      initialNoiseFloor: 0.004,
+      fastAdaptationRate: 0,
+      slowAdaptationRate: 0,
+      minBackgroundDurationSec: 1,
+    });
+
+    const before = tracker.getState();
+    const after = tracker.observeWindow('rejected-candidate-window', 0.02, 0.032);
+
+    expect(after.noiseFloor).toBe(before.noiseFloor);
+  });
 });

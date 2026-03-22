@@ -7,24 +7,25 @@ class FakeWorker {
   public readonly messages: any[] = [];
   public terminated = false;
 
-  postMessage(message: any): void {
-    this.messages.push(message);
+  postMessage(message: any, transfer: Transferable[] = []): void {
+    const request = structuredClone(message, { transfer });
+    this.messages.push(request);
     queueMicrotask(() => {
-      if (message.type === 'LOAD_BUILT_IN_MODEL') {
+      if (request.type === 'LOAD_BUILT_IN_MODEL') {
         this.onmessage?.({
           data: {
-            id: message.id,
+            id: request.id,
             type: 'SUCCESS',
             payload: {
               source: 'built-in',
-              modelId: message.payload.modelId,
+              modelId: request.payload.modelId,
             },
             meta: {
               state: 'ready',
               error: null,
               model: {
                 source: 'built-in',
-                modelId: message.payload.modelId,
+                modelId: request.payload.modelId,
               },
             },
           },
@@ -32,10 +33,10 @@ class FakeWorker {
         return;
       }
 
-      if (message.type === 'TRANSCRIBE_MONO_PCM') {
+      if (request.type === 'TRANSCRIBE_MONO_PCM') {
         this.onmessage?.({
           data: {
-            id: message.id,
+            id: request.id,
             type: 'SUCCESS',
             payload: {
               text: 'ok',
@@ -77,7 +78,7 @@ describe('BrowserTranscriptionWorkerClient', () => {
   it('loads a model and transcribes PCM through the worker transport', async () => {
     const worker = new FakeWorker();
     const client = createBrowserTranscriptionWorkerClient({
-      workerFactory: () => worker as never,
+      workerFactory: () => worker,
     });
 
     await client.loadBuiltInModel({
@@ -103,7 +104,7 @@ describe('BrowserTranscriptionWorkerClient', () => {
   it('does not detach the caller PCM buffer during worker transcription', async () => {
     const worker = new FakeWorker();
     const client = createBrowserTranscriptionWorkerClient({
-      workerFactory: () => worker as never,
+      workerFactory: () => worker,
     });
 
     await client.loadBuiltInModel({
