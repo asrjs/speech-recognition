@@ -12,7 +12,7 @@ export class NodePathAssetHandle implements ResolvedAssetHandle {
   }
 
   async *openStream(): AsyncIterable<Uint8Array> {
-    const fs = await importNodeModule<typeof import('node:fs')>('node:fs');
+    const fs = await this.getFs();
     const stream = fs.createReadStream(this.path);
     for await (const chunk of stream) {
       yield chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
@@ -20,13 +20,13 @@ export class NodePathAssetHandle implements ResolvedAssetHandle {
   }
 
   async readBytes(): Promise<Uint8Array> {
-    const fs = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+    const fs = await this.getFsPromises();
     const bytes = await fs.readFile(this.path);
     return new Uint8Array(bytes);
   }
 
   async readText(): Promise<string> {
-    const fs = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+    const fs = await this.getFsPromises();
     return fs.readFile(this.path, 'utf8');
   }
 
@@ -39,8 +39,20 @@ export class NodePathAssetHandle implements ResolvedAssetHandle {
       return this.path;
     }
 
-    const { pathToFileURL } = await importNodeModule<typeof import('node:url')>('node:url');
+    const { pathToFileURL } = await this.getUrl();
     return pathToFileURL(this.path).href;
+  }
+
+  private async getFs(): Promise<typeof import('node:fs')> {
+    return importNodeModule<typeof import('node:fs')>('node:fs');
+  }
+
+  private async getFsPromises(): Promise<typeof import('node:fs/promises')> {
+    return importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+  }
+
+  private async getUrl(): Promise<typeof import('node:url')> {
+    return importNodeModule<typeof import('node:url')>('node:url');
   }
 
   dispose(): void {
