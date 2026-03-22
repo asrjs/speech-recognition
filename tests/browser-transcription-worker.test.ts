@@ -56,7 +56,7 @@ class FakeWorker {
 
       this.onmessage?.({
         data: {
-          id: message.id,
+          id: request.id,
           type: 'SUCCESS',
           payload: null,
           meta: {

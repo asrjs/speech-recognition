@@ -202,6 +202,9 @@ export class NoiseFloorTracker {
   }
 
   private resolveConfirmedSilenceAdaptationRate(): number {
+    if (this.config.minBackgroundDurationSec <= 0) {
+      return this.config.slowAdaptationRate;
+    }
     if (this.confirmedSilenceDurationSec >= this.config.minBackgroundDurationSec) {
       return this.config.slowAdaptationRate;
     }

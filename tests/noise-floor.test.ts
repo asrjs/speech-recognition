@@ -150,6 +150,19 @@ describe('NoiseFloorTracker', () => {
     expect(after.noiseFloor).toBe(before.noiseFloor);
   });
 
+  it('uses the slow adaptation rate immediately when minBackgroundDurationSec is zero', () => {
+    const tracker = new NoiseFloorTracker({
+      initialNoiseFloor: 0.02,
+      fastAdaptationRate: 0.4,
+      slowAdaptationRate: 0.1,
+      minBackgroundDurationSec: 0,
+    });
+
+    const state = tracker.observeWindow('confirmed-silence-window', 0.01, 0.08);
+
+    expect(state.noiseFloor).toBeCloseTo(0.019, 6);
+  });
+
   it('ignores invalid observation telemetry instead of mutating state', () => {
     const tracker = new NoiseFloorTracker({
       initialNoiseFloor: 0.004,
