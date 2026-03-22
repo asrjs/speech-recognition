@@ -81,14 +81,14 @@ function createMelFilterbank(
 
   const melDifferences = new Float64Array(melPoints - 1);
   for (let index = 0; index < melPoints - 1; index += 1) {
-    const current = melFrequencies[index] ?? 0;
+    const current = melFrequencies[index]!;
     const next = melFrequencies[index + 1] ?? current;
     melDifferences[index] = next - current;
   }
 
   const filterbank = new Float32Array(nMels * N_FREQ_BINS);
   for (let melIndex = 0; melIndex < nMels; melIndex += 1) {
-    const centerLeft = melFrequencies[melIndex] ?? 0;
+    const centerLeft = melFrequencies[melIndex]!;
     const centerRight = melFrequencies[melIndex + 2] ?? centerLeft;
     const lowerDelta = melDifferences[melIndex] ?? 1;
     const upperDelta = melDifferences[melIndex + 1] ?? 1;
@@ -96,7 +96,7 @@ function createMelFilterbank(
     const rowOffset = melIndex * N_FREQ_BINS;
 
     for (let frequencyIndex = 0; frequencyIndex < N_FREQ_BINS; frequencyIndex += 1) {
-      const frequency = allFrequencies[frequencyIndex] ?? 0;
+      const frequency = allFrequencies[frequencyIndex]!;
       const downSlope = (frequency - centerLeft) / Math.max(1e-12, lowerDelta);
       const upSlope = (centerRight - frequency) / Math.max(1e-12, upperDelta);
       filterbank[rowOffset + frequencyIndex] =
@@ -189,17 +189,17 @@ function fft(
   twiddles: MelTwiddles,
 ): void {
   for (let index = 0; index < size; index += 1) {
-    const swappedIndex = twiddles.bitReverse[index] ?? index;
+    const swappedIndex = twiddles.bitReverse[index]!;
     if (index >= swappedIndex) {
       continue;
     }
 
-    const realValue = real[index] ?? 0;
-    real[index] = real[swappedIndex] ?? 0;
+    const realValue = real[index]!;
+    real[index] = real[swappedIndex]!;
     real[swappedIndex] = realValue;
 
-    const imaginaryValue = imaginary[index] ?? 0;
-    imaginary[index] = imaginary[swappedIndex] ?? 0;
+    const imaginaryValue = imaginary[index]!;
+    imaginary[index] = imaginary[swappedIndex]!;
     imaginary[swappedIndex] = imaginaryValue;
   }
 
@@ -210,15 +210,15 @@ function fft(
     for (let segment = 0; segment < size; segment += length) {
       for (let offset = 0; offset < halfLength; offset += 1) {
         const twiddleIndex = offset * twiddleStep;
-        const cosine = twiddles.cos[twiddleIndex] ?? 0;
-        const sine = twiddles.sin[twiddleIndex] ?? 0;
+        const cosine = twiddles.cos[twiddleIndex]!;
+        const sine = twiddles.sin[twiddleIndex]!;
         const first = segment + offset;
         const second = first + halfLength;
 
-        const tReal = (real[second] ?? 0) * cosine - (imaginary[second] ?? 0) * sine;
-        const tImaginary = (real[second] ?? 0) * sine + (imaginary[second] ?? 0) * cosine;
-        const uReal = real[first] ?? 0;
-        const uImaginary = imaginary[first] ?? 0;
+        const tReal = real[second]! * cosine - imaginary[second]! * sine;
+        const tImaginary = real[second]! * sine + imaginary[second]! * cosine;
+        const uReal = real[first]!;
+        const uImaginary = imaginary[first]!;
 
         real[first] = uReal + tReal;
         imaginary[first] = uImaginary + tImaginary;
@@ -241,7 +241,7 @@ export function transposeMelToTxM(
   for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
     const frameOffset = frameIndex * nMels;
     for (let melIndex = 0; melIndex < nMels; melIndex += 1) {
-      transposed[frameOffset + melIndex] = featuresMxT[melIndex * frameCount + frameIndex] ?? 0;
+      transposed[frameOffset + melIndex] = featuresMxT[melIndex * frameCount + frameIndex]!;
     }
   }
 
@@ -289,7 +289,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       let start = -1;
       let end = -1;
       for (let frequencyIndex = 0; frequencyIndex < N_FREQ_BINS; frequencyIndex += 1) {
-        if ((this.melFilterbank[offset + frequencyIndex] ?? 0) > 0) {
+        if (this.melFilterbank[offset + frequencyIndex]! > 0) {
           if (start < 0) {
             start = frequencyIndex;
           }
@@ -334,10 +334,10 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     }
 
     const emphasized = new Float32Array(sampleCount);
-    emphasized[0] = audio[0] ?? 0;
+    emphasized[0] = audio[0]!;
     if (this.preemphasis > 0) {
       for (let index = 1; index < sampleCount; index += 1) {
-        emphasized[index] = (audio[index] ?? 0) - this.preemphasis * (audio[index - 1] ?? 0);
+        emphasized[index] = audio[index]! - this.preemphasis * audio[index - 1]!;
       }
     } else {
       emphasized.set(audio);
@@ -347,7 +347,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     const paddedLength = sampleCount + pad * 2;
     const padded = new Float64Array(paddedLength);
     for (let index = 0; index < sampleCount; index += 1) {
-      padded[index + pad] = emphasized[index] ?? 0;
+      padded[index + pad] = emphasized[index]!;
     }
 
     const frameCount = Math.floor((paddedLength - WIN_LENGTH) / HOP_LENGTH) + 1;
@@ -366,29 +366,28 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       const frameOffset = frameIndex * HOP_LENGTH;
       for (let fftIndex = 0; fftIndex < N_FFT; fftIndex += 1) {
         const sourceIndex = frameOffset + fftIndex;
-        const sample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
-        this.fftReal[fftIndex] = sample * (this.hannWindow[fftIndex] ?? 0);
+        const sample = sourceIndex < paddedLength ? padded[sourceIndex]! : 0;
+        this.fftReal[fftIndex] = sample * this.hannWindow[fftIndex]!;
         this.fftImaginary[fftIndex] = 0;
       }
 
       fft(this.fftReal, this.fftImaginary, N_FFT, this.fftTwiddles);
 
       for (let frequencyIndex = 0; frequencyIndex < N_FREQ_BINS; frequencyIndex += 1) {
-        const realValue = this.fftReal[frequencyIndex] ?? 0;
-        const imaginaryValue = this.fftImaginary[frequencyIndex] ?? 0;
+        const realValue = this.fftReal[frequencyIndex]!;
+        const imaginaryValue = this.fftImaginary[frequencyIndex]!;
         this.powerBuffer[frequencyIndex] = realValue * realValue + imaginaryValue * imaginaryValue;
       }
 
       for (let melIndex = 0; melIndex < this.nMels; melIndex += 1) {
         const melOffset = melIndex * N_FREQ_BINS;
-        const lower = this.filterbankBounds[melIndex * 2] ?? 0;
-        const upper = this.filterbankBounds[melIndex * 2 + 1] ?? 0;
+        const lower = this.filterbankBounds[melIndex * 2]!;
+        const upper = this.filterbankBounds[melIndex * 2 + 1]!;
 
         let melValue = 0;
         for (let frequencyIndex = lower; frequencyIndex < upper; frequencyIndex += 1) {
           melValue +=
-            (this.powerBuffer[frequencyIndex] ?? 0) *
-            (this.melFilterbank[melOffset + frequencyIndex] ?? 0);
+            this.powerBuffer[frequencyIndex]! * this.melFilterbank[melOffset + frequencyIndex]!;
         }
 
         rawMel[melIndex * frameCount + frameIndex] =
@@ -415,7 +414,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       const sourceBase = melIndex * frameCount;
       const destinationBase = melIndex * validFrameCount;
       for (let frameIndex = 0; frameIndex < validFrameCount; frameIndex += 1) {
-        copied[destinationBase + frameIndex] = rawMel[sourceBase + frameIndex] ?? 0;
+        copied[destinationBase + frameIndex] = rawMel[sourceBase + frameIndex]!;
       }
     }
 
@@ -435,13 +434,13 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
 
       let sum = 0;
       for (let frameIndex = 0; frameIndex < validFrameCount; frameIndex += 1) {
-        sum += rawMel[sourceBase + frameIndex] ?? 0;
+        sum += rawMel[sourceBase + frameIndex]!;
       }
       const mean = sum / validFrameCount;
 
       let varianceSum = 0;
       for (let frameIndex = 0; frameIndex < validFrameCount; frameIndex += 1) {
-        const delta = (rawMel[sourceBase + frameIndex] ?? 0) - mean;
+        const delta = rawMel[sourceBase + frameIndex]! - mean;
         varianceSum += delta * delta;
       }
 
@@ -450,7 +449,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
 
       for (let frameIndex = 0; frameIndex < validFrameCount; frameIndex += 1) {
         normalized[destinationBase + frameIndex] =
-          ((rawMel[sourceBase + frameIndex] ?? 0) - mean) * inverseStdDev;
+          (rawMel[sourceBase + frameIndex]! - mean) * inverseStdDev;
       }
     }
 
