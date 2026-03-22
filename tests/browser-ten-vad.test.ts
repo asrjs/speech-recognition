@@ -84,6 +84,7 @@ describe('TenVadAdapter', () => {
   it('normalizes unsupported preferred hop sizes to the nearest TEN-VAD-safe value', () => {
     expect(resolveSupportedTenVadHopSize(16000, 512)).toBe(256);
     expect(resolveSupportedTenVadHopSize(16000, 200)).toBe(160);
+    expect(resolveSupportedTenVadHopSize(48000)).toBe(768);
   });
 
   it('handles init, process, reset, and dispose with aligned frame offsets', async () => {
@@ -162,6 +163,32 @@ describe('TenVadAdapter', () => {
     });
 
     expect(worker.messages).toHaveLength(beforeMessageCount);
+
+    await adapter.dispose();
+  });
+
+  it('resets cached temporal state when worker-facing config changes', async () => {
+    const adapter = new TenVadAdapter(
+      {
+        hopSize: 256,
+        threshold: 0.5,
+        minSpeechDurationMs: 16,
+      },
+      {
+        workerFactory: () => new FakeWorker(),
+      },
+    );
+
+    await adapter.init();
+    adapter.process(new Float32Array(512), 0);
+    expect(adapter.getStatus().speaking).toBe(true);
+
+    adapter.updateConfig({
+      threshold: 0.6,
+    });
+
+    expect(adapter.getStatus().probability).toBe(0);
+    expect(adapter.getStatus().speaking).toBe(false);
 
     await adapter.dispose();
   });

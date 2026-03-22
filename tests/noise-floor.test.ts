@@ -61,4 +61,42 @@ describe('NoiseFloorTracker', () => {
     expect(state.backgroundAverage).toBeGreaterThan(state.confirmedSilenceAverage);
     expect(state.backgroundAverage).toBeLessThan(state.rejectedCandidateAverage);
   });
+
+  it('sanitizes invalid adaptation config values', () => {
+    const tracker = new NoiseFloorTracker({
+      initialNoiseFloor: Number.NaN,
+      fastAdaptationRate: 5,
+      slowAdaptationRate: -2,
+      minBackgroundDurationSec: Number.NaN,
+    });
+
+    const state = tracker.observeWindow('confirmed-silence-window', 0.003, 0.08);
+
+    expect(Number.isFinite(state.noiseFloor)).toBe(true);
+    expect(state.noiseFloor).toBeGreaterThan(0);
+    expect(Number.isFinite(state.backgroundAverage)).toBe(true);
+  });
+
+  it('resets accumulated state when initialNoiseFloor is explicitly updated', () => {
+    const tracker = new NoiseFloorTracker({
+      initialNoiseFloor: 0.004,
+      fastAdaptationRate: 0.15,
+      slowAdaptationRate: 0.05,
+      minBackgroundDurationSec: 1,
+    });
+
+    for (let index = 0; index < 6; index += 1) {
+      tracker.observeWindow('confirmed-silence-window', 0.002, 0.08);
+    }
+
+    tracker.updateConfig({
+      initialNoiseFloor: 0.01,
+    });
+
+    const state = tracker.getState();
+    expect(state.noiseFloor).toBe(0.01);
+    expect(state.confirmedSilenceDurationSec).toBe(0);
+    expect(state.confirmedBackgroundObservationCount).toBe(0);
+    expect(state.rejectedBackgroundObservationCount).toBe(0);
+  });
 });

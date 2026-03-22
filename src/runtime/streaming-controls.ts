@@ -442,7 +442,7 @@ export function formatStreamingControlHint(
       : isMillisecondsField(definition.field)
         ? `step ${step} ms`
         : isChunkField(definition.field)
-          ? `step ${step} chunk`
+          ? `step ${step} chunk${step === 1 ? '' : 's'}`
           : `step ${step}`;
 
   return chunkNote ? `${range} · ${stepLabel} · ${chunkNote}` : `${range} · ${stepLabel}`;

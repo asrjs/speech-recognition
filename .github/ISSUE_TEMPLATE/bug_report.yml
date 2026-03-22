@@ -70,9 +70,9 @@ body:
     attributes:
       label: Model ID or Preset
       description: Built-in model ID, remote repo ID, or local preset name.
-      placeholder: parakeet-tdt-0.6b-v3, google/medasr, local folder preset
+      placeholder: parakeet-tdt-0.6b-v3, google/medasr, local folder preset, or N/A
     validations:
-      required: true
+      required: false
 
   - type: dropdown
     id: artifact_source

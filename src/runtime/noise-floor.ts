@@ -42,6 +42,39 @@ function clampFinitePositive(value: number, fallback: number): number {
   return value;
 }
 
+function clampUnitInterval(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.min(1, Math.max(0, value));
+}
+
+function sanitizeNoiseFloorConfig(
+  config: NoiseFloorTrackerConfig,
+  fallback: NoiseFloorTrackerConfig,
+): NoiseFloorTrackerConfig {
+  return {
+    initialNoiseFloor: clampFinitePositive(
+      config.initialNoiseFloor,
+      fallback.initialNoiseFloor,
+    ),
+    fastAdaptationRate: clampUnitInterval(
+      config.fastAdaptationRate,
+      fallback.fastAdaptationRate,
+    ),
+    slowAdaptationRate: clampUnitInterval(
+      config.slowAdaptationRate,
+      fallback.slowAdaptationRate,
+    ),
+    minBackgroundDurationSec: Math.max(
+      0,
+      Number.isFinite(config.minBackgroundDurationSec)
+        ? config.minBackgroundDurationSec
+        : fallback.minBackgroundDurationSec,
+    ),
+  };
+}
+
 function pushObservation(target: number[], value: number): void {
   target.push(value);
   if (target.length > MAX_BACKGROUND_OBSERVATIONS) {
@@ -71,23 +104,29 @@ export class NoiseFloorTracker {
   private recentRejectedCandidateObservations: number[] = [];
 
   constructor(config: NoiseFloorTrackerConfig) {
-    this.config = {
-      ...config,
-    };
-    this.noiseFloor = clampFinitePositive(config.initialNoiseFloor, MIN_NOISE_FLOOR);
+    this.config = sanitizeNoiseFloorConfig(config, {
+      initialNoiseFloor: MIN_NOISE_FLOOR,
+      fastAdaptationRate: 0,
+      slowAdaptationRate: 0,
+      minBackgroundDurationSec: 0,
+    });
+    this.noiseFloor = this.config.initialNoiseFloor;
   }
 
   updateConfig(config: Partial<NoiseFloorTrackerConfig>): void {
-    this.config = {
-      ...this.config,
-      ...config,
-    };
+    this.config = sanitizeNoiseFloorConfig(
+      {
+        ...this.config,
+        ...config,
+      },
+      this.config,
+    );
     if (
       config.initialNoiseFloor !== undefined &&
       Number.isFinite(config.initialNoiseFloor) &&
       config.initialNoiseFloor > 0
     ) {
-      this.noiseFloor = clampFinitePositive(config.initialNoiseFloor, MIN_NOISE_FLOOR);
+      this.reset();
     }
   }
 

@@ -44,6 +44,30 @@ interface BrowserTranscriptionWorkerInfo {
   readonly info?: unknown;
 }
 
+interface BrowserTranscriptionWorkerResponseMeta {
+  readonly state?: BrowserTranscriptionWorkerState;
+  readonly error?: string | null;
+  readonly model?: BrowserTranscriptionWorkerInfo | null;
+}
+
+interface BrowserTranscriptionWorkerSuccessMessage {
+  readonly id: number;
+  readonly type: 'SUCCESS';
+  readonly payload: unknown;
+  readonly meta?: BrowserTranscriptionWorkerResponseMeta;
+}
+
+interface BrowserTranscriptionWorkerErrorMessage {
+  readonly id: number;
+  readonly type: 'ERROR';
+  readonly payload: unknown;
+  readonly meta?: BrowserTranscriptionWorkerResponseMeta;
+}
+
+type BrowserTranscriptionWorkerResponseMessage =
+  | BrowserTranscriptionWorkerSuccessMessage
+  | BrowserTranscriptionWorkerErrorMessage;
+
 export interface BrowserTranscriptionWorkerClientStatus {
   readonly state: BrowserTranscriptionWorkerState;
   readonly error: string | null;
@@ -108,7 +132,7 @@ export function createBrowserTranscriptionWorkerClient(
     pending.clear();
   };
 
-  const handleMessage = (message: any): void => {
+  const handleMessage = (message: BrowserTranscriptionWorkerResponseMessage): void => {
     const request = pending.get(message.id);
     if (!request) {
       return;
@@ -197,7 +221,7 @@ export function createBrowserTranscriptionWorkerClient(
       sampleRate: number,
       options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
     ): Promise<TranscriptResponse<TNative, TFlavor>> {
-      const chunk = pcm instanceof Float32Array ? pcm : new Float32Array(pcm);
+      const chunk = new Float32Array(pcm);
       return (await sendRequest(
         'TRANSCRIBE_MONO_PCM',
         {

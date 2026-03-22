@@ -84,16 +84,24 @@ export interface ResolvedTenVadAssetUrls extends TenVadAssetUrls {
 
 export function resolveSupportedTenVadHopSize(
   sampleRate = STREAMING_PROCESSING_SAMPLE_RATE,
-  preferredHopSize = STREAMING_TIMELINE_CHUNK_FRAMES,
+  preferredHopSize?: number,
 ): number {
   const safeSampleRate =
     Number.isFinite(sampleRate) && sampleRate > 0
       ? sampleRate
       : STREAMING_PROCESSING_SAMPLE_RATE;
+  const defaultPreferredHopSize = Math.max(
+    1,
+    Math.round(
+      (STREAMING_TIMELINE_CHUNK_FRAMES * safeSampleRate) / STREAMING_PROCESSING_SAMPLE_RATE,
+    ),
+  );
   const safePreferredHopSize =
-    Number.isFinite(preferredHopSize) && preferredHopSize > 0
+    typeof preferredHopSize === 'number' &&
+    Number.isFinite(preferredHopSize) &&
+    preferredHopSize > 0
       ? Math.round(preferredHopSize)
-      : STREAMING_TIMELINE_CHUNK_FRAMES;
+      : defaultPreferredHopSize;
   const supportedHopSizes = TEN_VAD_SUPPORTED_HOP_DURATIONS_MS.map((durationMs) =>
     Math.max(1, Math.round((durationMs / 1000) * safeSampleRate)),
   );
@@ -160,7 +168,10 @@ export class TenVadAdapter implements StreamingTenVadLike {
     const defaults = resolveDefaultTenVadAssetUrls();
     const assetBaseUrl = config.assetBaseUrl ?? null;
     const resolvedAssets = resolveTenVadAssetUrls(config);
-    const sampleRate = config.sampleRate ?? DEFAULT_TEN_VAD_CONFIG.sampleRate;
+    const sampleRate =
+      typeof config.sampleRate === 'number' && Number.isFinite(config.sampleRate) && config.sampleRate > 0
+        ? config.sampleRate
+        : DEFAULT_TEN_VAD_CONFIG.sampleRate;
     this.config = {
       ...DEFAULT_TEN_VAD_CONFIG,
       ...config,
@@ -342,12 +353,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
   }
 
   async reset(): Promise<void> {
-    this.recentResults = [];
-    this.latestProbability = 0;
-    this.latestSpeaking = false;
-    this.speechRunHops = 0;
-    this.silenceRunHops = 0;
-    this.smoothedSpeechActive = false;
+    this.resetTemporalState();
 
     if (this.worker && this.status === 'ready') {
       await this.sendRequest('RESET', {});
@@ -365,6 +371,15 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.worker?.terminate();
     this.worker = null;
     this.status = 'idle';
+  }
+
+  private resetTemporalState(): void {
+    this.recentResults = [];
+    this.latestProbability = 0;
+    this.latestSpeaking = false;
+    this.speechRunHops = 0;
+    this.silenceRunHops = 0;
+    this.smoothedSpeechActive = false;
   }
 
   updateConfig(config: Record<string, unknown> = {}): void {
@@ -386,6 +401,9 @@ export class TenVadAdapter implements StreamingTenVadLike {
     const workerConfigChanged =
       this.config.hopSize !== previousHopSize ||
       this.config.threshold !== previousThreshold;
+    if (workerConfigChanged) {
+      this.resetTemporalState();
+    }
     if (this.worker && this.status === 'ready' && workerConfigChanged) {
       void this.sendRequest('UPDATE_CONFIG', {
         hopSize: this.config.hopSize,

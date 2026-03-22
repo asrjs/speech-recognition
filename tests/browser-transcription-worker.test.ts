@@ -99,4 +99,24 @@ describe('BrowserTranscriptionWorkerClient', () => {
     await client.dispose();
     expect(worker.terminated).toBe(true);
   });
+
+  it('does not detach the caller PCM buffer during worker transcription', async () => {
+    const worker = new FakeWorker();
+    const client = createBrowserTranscriptionWorkerClient({
+      workerFactory: () => worker as never,
+    });
+
+    await client.loadBuiltInModel({
+      modelId: 'parakeet',
+      backend: 'webgpu',
+    });
+
+    const pcm = new Float32Array([0.25, -0.5, 0.125]);
+    await client.transcribeMonoPcm(pcm, 16000);
+
+    expect(pcm.buffer.byteLength).toBe(12);
+    expect(Array.from(pcm)).toEqual([0.25, -0.5, 0.125]);
+
+    await client.dispose();
+  });
 });
