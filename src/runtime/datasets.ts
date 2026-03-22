@@ -304,27 +304,45 @@ export async function fetchRandomRows(
   }
 
   const pageStarts = [...pageMap.keys()].sort((a, b) => a - b);
-  for (const pageStart of pageStarts) {
+
+  for (let i = 0; i < pageStarts.length; i += 5) {
     if (rows.length >= wanted) break;
-    try {
-      const page = (await fetchDatasetRows({ ...request, offset: pageStart, length: 100 })) as {
-        rows?: Record<string, unknown>[];
-      };
-      const pageRows = page.rows || [];
-      const offsetsInPage = pageMap.get(pageStart) || [];
-      for (const absoluteOffset of offsetsInPage) {
-        if (rows.length >= wanted) break;
-        const row = pageRows[absoluteOffset - pageStart];
-        if (!row) {
-          failedOffsets.push(absoluteOffset);
-          continue;
-        }
-        rows.push(row);
-        successfulOffsets.push(absoluteOffset);
-      }
-    } catch {
+
+    const chunkStarts = pageStarts.slice(i, i + 5);
+    const chunkPromises = chunkStarts.map((pageStart) =>
+      fetchDatasetRows({ ...request, offset: pageStart, length: 100 })
+        .then((page) => ({
+          pageStart,
+          pageRows: (page as { rows?: Record<string, unknown>[] }).rows || [],
+          error: false,
+        }))
+        .catch(() => ({
+          pageStart,
+          pageRows: [],
+          error: true,
+        })),
+    );
+
+    const pages = await Promise.all(chunkPromises);
+
+    for (const { pageStart, pageRows, error } of pages) {
+    if (rows.length >= wanted) break;
+    if (error) {
       failedOffsets.push(...(pageMap.get(pageStart) || []));
+      continue;
     }
+    const offsetsInPage = pageMap.get(pageStart) || [];
+    for (const absoluteOffset of offsetsInPage) {
+      if (rows.length >= wanted) break;
+      const row = pageRows[absoluteOffset - pageStart];
+      if (!row) {
+        failedOffsets.push(absoluteOffset);
+        continue;
+      }
+      rows.push(row);
+      successfulOffsets.push(absoluteOffset);
+    }
+  }
   }
 
   return {
