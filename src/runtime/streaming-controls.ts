@@ -33,97 +33,18 @@ function isChunkField(field: keyof StreamingDetectorConfig): boolean {
  */
 export const STREAMING_CONTROL_DEFINITIONS: readonly StreamingControlDefinition[] = [
   {
-    field: 'analysisWindowMs',
-    label: 'analysis',
-    min: STREAMING_TIMELINE_CHUNK_MS,
-    max: 160,
-    step: STREAMING_TIMELINE_CHUNK_MS,
-    description: 'Rough-gate analysis window. Larger windows are steadier but slower to react.',
-    guide: 'Lower for faster onset and release. Raise for noisier microphones.',
-    chunkAligned: true,
-  },
-  {
-    field: 'energySmoothingDurationMs',
-    label: 'energy_smoothing',
-    min: 80,
-    max: 1600,
-    step: STREAMING_TIMELINE_CHUNK_MS,
-    description: 'Release and hold smoothing for the rough energy gate.',
-    guide: 'Lower to reduce sticky tails. Raise to suppress jitter.',
-    chunkAligned: true,
-  },
-  {
     field: 'prerollMs',
-    label: 'preroll',
+    label: 'Preroll',
     min: 80,
-    max: 1200,
+    max: 800,
     step: 20,
     description: 'Audio kept before accepted onset so initial consonants are not cut.',
     guide: 'Raise if starts are clipped. Too high adds extra leading silence.',
     chunkAligned: true,
   },
   {
-    field: 'minSilenceDurationMs',
-    label: 'silence',
-    min: 0,
-    max: 2000,
-    step: 20,
-    description: 'How long rough silence must last before the segment can end.',
-    guide: 'Lower for shorter tails. Raise to avoid choppy segmentation.',
-    chunkAligned: true,
-  },
-  {
-    field: 'minSpeechDurationMs',
-    label: 'min_speech',
-    min: 80,
-    max: 640,
-    step: 40,
-    description: 'Minimum rough-gate speech duration before onset is accepted.',
-    guide: 'Lower for short words. Raise to reject clicks and bumps.',
-    chunkAligned: true,
-  },
-  {
-    field: 'minSpeechLevelDbfs',
-    label: 'speech_dbfs',
-    min: -72,
-    max: -12,
-    step: 1,
-    description: 'RMS energy threshold for the rough gate, in dBFS.',
-    guide: 'More negative is more sensitive. Less negative rejects quieter speech and noise.',
-  },
-  {
-    field: 'levelWindowMs',
-    label: 'level_window',
-    min: 200,
-    max: 2000,
-    step: STREAMING_TIMELINE_CHUNK_MS * 4,
-    description: 'Longer RMS level window used for diagnostics and noise-relative metrics.',
-    guide: 'Raise for steadier meters. Lower for faster visual response.',
-    chunkAligned: true,
-    stepChunkMultiplier: 4,
-    maxFromConfigField: 'ringBufferDurationMs',
-  },
-  {
-    field: 'energyRiseThreshold',
-    label: 'energy_rise',
-    min: 0.01,
-    max: 0.4,
-    step: 0.01,
-    description: 'Extra onset cue from sudden energy growth.',
-    guide: 'Raise to ignore small fluctuations. Lower to catch softer onsets.',
-  },
-  {
-    field: 'maxOnsetLookbackChunks',
-    label: 'lookback',
-    min: 1,
-    max: 12,
-    step: 1,
-    description: 'Maximum onset rewind in chunk units.',
-    guide: 'Each chunk is the configured frame size. Raise if starts are still clipped.',
-  },
-  {
     field: 'tenVadThreshold',
-    label: 'ten_threshold',
+    label: 'Speech sensitivity',
     min: 0.05,
     max: 0.95,
     step: 0.01,
@@ -132,7 +53,7 @@ export const STREAMING_CONTROL_DEFINITIONS: readonly StreamingControlDefinition[
   },
   {
     field: 'tenVadConfirmationWindowMs',
-    label: 'ten_confirm',
+    label: 'Confirmation window',
     min: 64,
     max: 800,
     step: 16,
@@ -142,7 +63,7 @@ export const STREAMING_CONTROL_DEFINITIONS: readonly StreamingControlDefinition[
   },
   {
     field: 'tenVadHangoverMs',
-    label: 'ten_hangover',
+    label: 'Tail hold',
     min: 64,
     max: 1200,
     step: 16,
@@ -152,7 +73,7 @@ export const STREAMING_CONTROL_DEFINITIONS: readonly StreamingControlDefinition[
   },
   {
     field: 'tenVadMinSpeechDurationMs',
-    label: 'ten_min_speech',
+    label: 'Start speech minimum',
     min: 48,
     max: 640,
     step: STREAMING_TIMELINE_CHUNK_MS,
@@ -162,7 +83,7 @@ export const STREAMING_CONTROL_DEFINITIONS: readonly StreamingControlDefinition[
   },
   {
     field: 'tenVadMinSilenceDurationMs',
-    label: 'ten_min_silence',
+    label: 'Release silence minimum',
     min: 32,
     max: 640,
     step: STREAMING_TIMELINE_CHUNK_MS,
@@ -171,8 +92,65 @@ export const STREAMING_CONTROL_DEFINITIONS: readonly StreamingControlDefinition[
     chunkAligned: true,
   },
   {
+    field: 'foregroundOnsetWindowMs',
+    label: 'Onset window',
+    min: 96,
+    max: 320,
+    step: 16,
+    description: 'How much of the segment start is inspected for a strong foreground onset.',
+    guide: 'Raise to make onset scoring steadier. Lower for very short phrases.',
+    chunkAligned: true,
+  },
+  {
+    field: 'foregroundShortSpeechMs',
+    label: 'Short utterance limit',
+    min: 80,
+    max: 640,
+    step: 16,
+    description: 'Segments shorter than this must also pass the onset loudness check.',
+    guide: 'Raise to reject more short quiet bursts. Lower to accept clipped short words.',
+    chunkAligned: true,
+  },
+  {
+    field: 'foregroundLongSpeechMs',
+    label: 'Long utterance limit',
+    min: 400,
+    max: 2400,
+    step: 16,
+    description: 'Segments at or above this duration use the long-quiet foreground rule.',
+    guide: 'Raise if long quiet speech is still accepted. Lower if it should reject earlier.',
+    chunkAligned: true,
+  },
+  {
+    field: 'foregroundMinDb',
+    label: 'Foreground minimum',
+    min: 0,
+    max: 24,
+    step: 0.5,
+    description: 'Minimum segment loudness above the adaptive noise floor.',
+    guide: 'Raise to reject quieter speech. Lower to accept softer near-mic talk.',
+  },
+  {
+    field: 'foregroundOnsetMinDb',
+    label: 'Short onset minimum',
+    min: 0,
+    max: 24,
+    step: 0.5,
+    description: 'Minimum onset loudness above the adaptive noise floor for short segments.',
+    guide: 'Raise to reject short quiet triggers. Lower if short words get dropped.',
+  },
+  {
+    field: 'foregroundLongMinDb',
+    label: 'Long utterance minimum',
+    min: 0,
+    max: 24,
+    step: 0.5,
+    description: 'Minimum segment loudness above the floor for long utterances.',
+    guide: 'Raise to reject distant background speech. Lower to keep quiet long dictation.',
+  },
+  {
     field: 'maxSegmentDurationMs',
-    label: 'max_segment',
+    label: 'Max segment duration',
     min: 400,
     max: 12000,
     step: 100,
@@ -386,8 +364,15 @@ export function formatStreamingControlValue(
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return '--';
   }
-  if (definition.field === 'minSpeechLevelDbfs') {
-    return `${value.toFixed(1)} dBFS`;
+  if (
+    definition.field === 'minSpeechLevelDbfs'
+    || definition.field === 'foregroundMinDb'
+    || definition.field === 'foregroundOnsetMinDb'
+    || definition.field === 'foregroundLongMinDb'
+  ) {
+    return definition.field === 'minSpeechLevelDbfs'
+      ? `${value.toFixed(1)} dBFS`
+      : `${value.toFixed(1)} dB`;
   }
   if (
     definition.field === 'tenVadThreshold' ||
@@ -438,22 +423,30 @@ export function formatStreamingControlHint(
   const range =
     definition.field === 'minSpeechLevelDbfs'
       ? `${min}..${max} dBFS`
-      : definition.field === 'tenVadThreshold' || definition.field === 'energyRiseThreshold'
-        ? `${min}..${max}`
-        : isMillisecondsField(definition.field)
-          ? `${min}..${max} ms`
-          : isChunkField(definition.field)
-            ? `${min}..${max} chunks`
-            : `${min}..${max}`;
+      : definition.field === 'foregroundMinDb'
+          || definition.field === 'foregroundOnsetMinDb'
+          || definition.field === 'foregroundLongMinDb'
+        ? `${min}..${max} dB`
+        : definition.field === 'tenVadThreshold' || definition.field === 'energyRiseThreshold'
+          ? `${min}..${max}`
+          : isMillisecondsField(definition.field)
+            ? `${min}..${max} ms`
+            : isChunkField(definition.field)
+              ? `${min}..${max} chunks`
+              : `${min}..${max}`;
 
   const stepLabel =
     definition.field === 'minSpeechLevelDbfs'
       ? `step ${step} dB`
-      : isMillisecondsField(definition.field)
-        ? `step ${step} ms`
-        : isChunkField(definition.field)
-          ? `step ${step} chunk${step === 1 ? '' : 's'}`
-          : `step ${step}`;
+      : definition.field === 'foregroundMinDb'
+          || definition.field === 'foregroundOnsetMinDb'
+          || definition.field === 'foregroundLongMinDb'
+        ? `step ${step} dB`
+        : isMillisecondsField(definition.field)
+          ? `step ${step} ms`
+          : isChunkField(definition.field)
+            ? `step ${step} chunk${step === 1 ? '' : 's'}`
+            : `step ${step}`;
 
   return chunkNote ? `${range} · ${stepLabel} · ${chunkNote}` : `${range} · ${stepLabel}`;
 }

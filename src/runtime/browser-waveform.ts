@@ -1,7 +1,7 @@
 import type { BrowserRealtimePlot } from './browser-realtime.js';
 
 export const BROWSER_WAVEFORM_CANVAS_MAX_DPR = 2;
-export const BROWSER_WAVEFORM_CANVAS_HEIGHT = 156;
+export const BROWSER_WAVEFORM_CANVAS_HEIGHT = 252;
 
 const LANE_HEIGHT = 22;
 const LANE_INSET = 8;
@@ -21,7 +21,7 @@ export interface BrowserWaveformRenderFrame {
 
 export interface BrowserWaveformRenderOptions {
   readonly backgroundColor?: string;
-  readonly waveformScaleMode?: 'physical' | 'adaptive';
+  readonly waveformScaleMode?: 'physical' | 'adaptive' | 'focus';
   readonly waveformTargetPeak?: number;
   readonly waveformMaxDisplayGain?: number;
   readonly showSpeechThreshold?: boolean;
@@ -33,7 +33,7 @@ export interface BrowserWaveformRenderOptions {
 
 const DEFAULT_RENDER_OPTIONS: Required<BrowserWaveformRenderOptions> = {
   backgroundColor: '#fbfcfd',
-  waveformScaleMode: 'adaptive',
+  waveformScaleMode: 'focus',
   waveformTargetPeak: 0.82,
   waveformMaxDisplayGain: 12,
   showSpeechThreshold: false,
@@ -136,6 +136,23 @@ function resolveWaveformDisplayGain(
   return clamp(options.waveformTargetPeak / peak, 1, options.waveformMaxDisplayGain);
 }
 
+function mapDisplayAmplitude(
+  amplitude: number,
+  displayGain: number,
+  options: Required<BrowserWaveformRenderOptions>,
+): number {
+  const scaledAmplitude = clamp(amplitude * displayGain, -1, 1);
+  if (options.waveformScaleMode === 'physical') {
+    return scaledAmplitude;
+  }
+  const magnitude = Math.abs(scaledAmplitude);
+  if (magnitude <= 0.000001) {
+    return 0;
+  }
+  const exponent = options.waveformScaleMode === 'focus' ? 0.45 : 0.62;
+  return Math.sign(scaledAmplitude) * magnitude ** exponent;
+}
+
 function drawWaveformAxis(
   context: CanvasRenderingContext2D,
   width: number,
@@ -147,25 +164,29 @@ function drawWaveformAxis(
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
     waveformTop + ((1 - clamp(amplitude, -1, 1)) * 0.5) * laneHeight;
+  const axisTop = options.waveformScaleMode === 'physical' ? 1 : mapDisplayAmplitude(1, displayGain, options);
+  const axisMid = 0;
+  const axisBottom = -axisTop;
 
   context.save();
   context.strokeStyle = 'rgba(93, 115, 135, 0.18)';
   context.beginPath();
-  context.moveTo(0, toY(1));
-  context.lineTo(width, toY(1));
-  context.moveTo(0, toY(0));
-  context.lineTo(width, toY(0));
-  context.moveTo(0, toY(-1));
-  context.lineTo(width, toY(-1));
+  context.moveTo(0, toY(axisTop));
+  context.lineTo(width, toY(axisTop));
+  context.moveTo(0, toY(axisMid));
+  context.lineTo(width, toY(axisMid));
+  context.moveTo(0, toY(axisBottom));
+  context.lineTo(width, toY(axisBottom));
   context.stroke();
 
   context.fillStyle = 'rgba(93, 115, 135, 0.72)';
   context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
-  context.fillText('+1.0', 8, toY(1) + 10);
-  context.fillText('0', 8, toY(0) - 4);
-  context.fillText('-1.0', 8, toY(-1) - 4);
+  context.fillText('+1.0', 8, toY(axisTop) + 10);
+  context.fillText('0', 8, toY(axisMid) - 4);
+  context.fillText('-1.0', 8, toY(axisBottom) - 4);
   if (options.waveformScaleMode !== 'physical' && displayGain > 1.05) {
-    context.fillText(`display x${displayGain.toFixed(1)}`, width - 92, toY(1) + 10);
+    const detailLabel = options.waveformScaleMode === 'focus' ? 'detail' : 'balanced';
+    context.fillText(`display x${displayGain.toFixed(1)} · ${detailLabel}`, width - 132, toY(axisTop) + 10);
   }
   context.restore();
 }
@@ -181,7 +202,11 @@ function drawSpeechThreshold(
     return;
   }
   const thresholdAmplitude = 10 ** ((options.speechThresholdDbfs as number) / 20);
-  const scaledThreshold = clamp(thresholdAmplitude * displayGain, 0, 1);
+  const scaledThreshold = clamp(
+    mapDisplayAmplitude(thresholdAmplitude, displayGain, options),
+    0,
+    1,
+  );
   const { waveformTop, waveformBottom } = getLaneLayout(height);
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
@@ -273,11 +298,12 @@ function drawWaveformAmplitude(
   columns: readonly (BrowserRealtimePlot['columns'][number] & { readonly gateMode: string })[],
   height: number,
   displayGain: number,
+  options: Required<BrowserWaveformRenderOptions>,
 ): void {
   const { waveformTop, waveformBottom } = getLaneLayout(height);
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
-    waveformTop + ((1 - clamp(amplitude * displayGain, -1, 1)) * 0.5) * laneHeight;
+    waveformTop + ((1 - mapDisplayAmplitude(amplitude, displayGain, options)) * 0.5) * laneHeight;
 
   for (let index = 0; index < columns.length; index += 1) {
     const column = columns[index];
@@ -487,6 +513,7 @@ function drawPreVadWaveformOverlay(
   columns: readonly BrowserRealtimePlot['columns'][number][],
   height: number,
   displayGain: number,
+  options: Required<BrowserWaveformRenderOptions>,
   enabled: boolean,
 ): void {
   if (!enabled || !Array.isArray(columns) || columns.length === 0) {
@@ -495,7 +522,7 @@ function drawPreVadWaveformOverlay(
   const { waveformTop, waveformBottom } = getLaneLayout(height);
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
-    waveformTop + ((1 - clamp(amplitude * displayGain, -1, 1)) * 0.5) * laneHeight;
+    waveformTop + ((1 - mapDisplayAmplitude(amplitude, displayGain, options)) * 0.5) * laneHeight;
 
   context.save();
   context.beginPath();
@@ -590,12 +617,13 @@ export function renderBrowserRealtimeWaveformFrame(
   drawEnergyOverlay(context, columns, width, height, resolvedOptions);
   drawWaveformGateOverlay(context, columns, width, height);
   drawSpeechThreshold(context, width, height, displayGain, resolvedOptions);
-  drawWaveformAmplitude(context, columns, height, displayGain);
+  drawWaveformAmplitude(context, columns, height, displayGain, resolvedOptions);
   drawPreVadWaveformOverlay(
     context,
     columns,
     height,
     displayGain,
+    resolvedOptions,
     resolvedOptions.showPreVadOverlay,
   );
   drawLiveEdge(context, frame.plot, height);

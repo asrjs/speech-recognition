@@ -198,12 +198,14 @@ function buildAlignedPlot(
     const columnEndFrame = columnStartFrame + chunkFrames;
     return segment.endFrame > columnStartFrame && segment.startFrame < columnEndFrame;
   };
-  const computeDetectorPass = (roughPass: boolean, tenVadPass: boolean): boolean => {
+  const computeDetectorPass = (roughPass: boolean): boolean => {
     switch (snapshot.gate.effectiveMode) {
       case 'ten-vad-only':
-        return tenVadPass;
+        // In TEN-VAD-first mode, hop-level VAD is only a segment proposal.
+        // Accepted speech is shown through active/recent segment spans instead.
+        return false;
       case 'rough-and-ten-vad':
-        return roughPass && tenVadPass;
+        return false;
       default:
         return roughPass;
     }
@@ -248,7 +250,6 @@ function buildAlignedPlot(
       tenVadPass: vadPoint?.speaking ?? false,
       detectorPass: computeDetectorPass(
         roughPoint?.isSpeech ?? false,
-        vadPoint?.speaking ?? false,
       ),
       activeSegment: columnOverlapsSegment(targetIndex, snapshot.activeSegment),
       recentSegment: snapshot.recentSegments.some((segment) =>

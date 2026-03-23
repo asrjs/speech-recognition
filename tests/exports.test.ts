@@ -108,6 +108,8 @@ describe('public exports', () => {
     expect(realtime.listStreamingPresets).toBeTypeOf('function');
     expect(Array.isArray(realtime.STREAMING_CONTROL_DEFINITIONS)).toBe(true);
     expect(realtime.listStreamingControls).toBeTypeOf('function');
+    expect(realtime.listStreamingControlGroups).toBeTypeOf('function');
+    expect(realtime.resolveStreamingControlGroups).toBeTypeOf('function');
     expect(realtime.getStreamingControlDefinition).toBeTypeOf('function');
     expect(realtime.resolveStreamingControlConstraints).toBeTypeOf('function');
     expect(realtime.resolveStreamingControlStep).toBeTypeOf('function');
@@ -115,6 +117,10 @@ describe('public exports', () => {
     expect(realtime.formatStreamingControlHint).toBeTypeOf('function');
     expect(realtime.clampStreamingControlValue).toBeTypeOf('function');
     expect(realtime.normalizeStreamingControlValue).toBeTypeOf('function');
+    expect(realtime.estimateStreamingReleaseMs).toBeTypeOf('function');
+    expect(realtime.resolveStreamingSnapshotNoiseFloorDbfs).toBeTypeOf('function');
+    expect(realtime.resolveStreamingForegroundThresholdDbfs).toBeTypeOf('function');
+    expect(realtime.getStreamingSegmentDurationSeconds).toBeTypeOf('function');
     expect(bench.summarizeNumericSeries).toBeTypeOf('function');
     expect(bench.benchmarkRunRecordsToCsv).toBeTypeOf('function');
     expect(datasets.fetchDatasetSplits).toBeTypeOf('function');

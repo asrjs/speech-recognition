@@ -65,6 +65,13 @@ export interface StreamingDetectorConfig {
   readonly tenVadMinSpeechDurationMs: number;
   readonly tenVadMinSilenceDurationMs: number;
   readonly tenVadSpeechPaddingMs: number;
+  readonly foregroundFilterEnabled: boolean;
+  readonly foregroundMinDb: number;
+  readonly foregroundOnsetMinDb: number;
+  readonly foregroundOnsetWindowMs: number;
+  readonly foregroundShortSpeechMs: number;
+  readonly foregroundLongSpeechMs: number;
+  readonly foregroundLongMinDb: number;
 }
 
 export interface StreamingDetectorPreset {
@@ -121,7 +128,7 @@ function deriveStreamingConfig(
   return {
     sampleRate,
     chunkDurationMs,
-    gateMode: config.gateMode ?? STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD,
+    gateMode: config.gateMode ?? STREAMING_GATE_MODES.TEN_VAD_ONLY,
     ringBufferDurationMs: alignDuration(config.ringBufferDurationMs ?? 12000),
     analysisWindowMs,
     energySmoothingDurationMs: resolvedEnergySmoothingDurationMs,
@@ -165,6 +172,13 @@ function deriveStreamingConfig(
     tenVadSpeechPaddingMs: alignDuration(
       config.tenVadSpeechPaddingMs ?? chunkDurationMs * DEFAULT_TEN_VAD_SPEECH_PADDING_CHUNKS,
     ),
+    foregroundFilterEnabled: config.foregroundFilterEnabled ?? true,
+    foregroundMinDb: config.foregroundMinDb ?? 8,
+    foregroundOnsetMinDb: config.foregroundOnsetMinDb ?? 10,
+    foregroundOnsetWindowMs: alignDuration(config.foregroundOnsetWindowMs ?? 192),
+    foregroundShortSpeechMs: alignDuration(config.foregroundShortSpeechMs ?? 240),
+    foregroundLongSpeechMs: alignDuration(config.foregroundLongSpeechMs ?? 1200),
+    foregroundLongMinDb: config.foregroundLongMinDb ?? 6,
   };
 }
 
@@ -178,10 +192,12 @@ export const STREAMING_PRESETS: Record<StreamingProfileId, StreamingDetectorPres
     mode: 'speech-detect',
     config: deriveStreamingConfig({
       prerollMs: 680,
-      minSilenceDurationMs: 820,
+      minSilenceDurationMs: 640,
       maxSegmentDurationMs: 3600,
-      snrThreshold: 3.2,
       tenVadThreshold: 0.55,
+      tenVadHangoverMs: 352,
+      foregroundMinDb: 8,
+      foregroundOnsetMinDb: 10,
     }),
   },
   [STREAMING_PROFILE_IDS.GENERIC_STREAMING]: {
@@ -189,7 +205,8 @@ export const STREAMING_PRESETS: Record<StreamingProfileId, StreamingDetectorPres
     label: 'Generic Streaming',
     mode: 'speech-detect',
     config: deriveStreamingConfig({
-      minSilenceDurationMs: 400,
+      minSilenceDurationMs: 320,
+      tenVadThreshold: 0.55,
     }),
   },
   [STREAMING_PROFILE_IDS.AGGRESSIVE]: {
@@ -197,11 +214,13 @@ export const STREAMING_PRESETS: Record<StreamingProfileId, StreamingDetectorPres
     label: 'Aggressive',
     mode: 'speech-detect',
     config: deriveStreamingConfig({
-      prerollMs: 520,
-      minSilenceDurationMs: 560,
-      snrThreshold: 1.75,
+      prerollMs: 160,
+      minSilenceDurationMs: 240,
       tenVadThreshold: 0.42,
       tenVadConfirmationWindowMs: 128,
+      foregroundMinDb: 6,
+      foregroundOnsetMinDb: 8,
+      foregroundLongMinDb: 5,
     }),
   },
   [STREAMING_PROFILE_IDS.CONSERVATIVE]: {
@@ -209,13 +228,14 @@ export const STREAMING_PRESETS: Record<StreamingProfileId, StreamingDetectorPres
     label: 'Conservative',
     mode: 'speech-detect',
     config: deriveStreamingConfig({
-      prerollMs: 800,
-      minSilenceDurationMs: 1100,
-      snrThreshold: 3.2,
-      minSnrThreshold: 1.75,
+      prerollMs: 240,
+      minSilenceDurationMs: 560,
       tenVadThreshold: 0.6,
       tenVadConfirmationWindowMs: 256,
       tenVadHangoverMs: 480,
+      foregroundMinDb: 10,
+      foregroundOnsetMinDb: 12,
+      foregroundLongMinDb: 8,
     }),
   },
   [STREAMING_PROFILE_IDS.CUSTOM]: {

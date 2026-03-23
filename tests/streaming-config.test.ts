@@ -11,7 +11,7 @@ describe('streaming config helpers', () => {
     });
 
     expect('energyThreshold' in merged).toBe(false);
-    expect(merged.gateMode).toBe('rough-and-ten-vad');
+    expect(merged.gateMode).toBe('ten-vad-only');
     expect(
       isStreamingConfigEqual(merged, mergeStreamingConfig('generic-streaming', {
         minSpeechLevelDbfs: merged.minSpeechLevelDbfs,
