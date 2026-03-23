@@ -353,4 +353,50 @@ describe('StreamingSpeechDetector', () => {
       accepted: false,
     });
   });
+
+  it('does not adapt the rough noise floor upward while TEN-VAD tracks active speech', async () => {
+    const tenVadState = {
+      hasRecentSpeech: false,
+      hasRecentSilence: true,
+    };
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        analysisWindowMs: 16,
+        energySmoothingWindows: 1,
+        minSpeechDurationMs: 16,
+        minSilenceDurationMs: 32,
+        minSpeechLevelDbfs: -45,
+        initialNoiseFloor: 0.001,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          startFrame: 0,
+          get hasRecentSpeech() {
+            return tenVadState.hasRecentSpeech;
+          },
+          get hasRecentSilence() {
+            return tenVadState.hasRecentSilence;
+          },
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+
+    for (let index = 0; index < 6; index += 1) {
+      detector.processChunk(createChunk(256, 0.001), { startFrame: index * 256 });
+    }
+    const baselineNoiseFloor = detector.getSnapshot().rough.noiseFloorDbfs;
+
+    tenVadState.hasRecentSpeech = true;
+    tenVadState.hasRecentSilence = false;
+    for (let index = 6; index < 12; index += 1) {
+      detector.processChunk(createChunk(256, 0.003), { startFrame: index * 256 });
+    }
+
+    const duringSpeechNoiseFloor = detector.getSnapshot().rough.noiseFloorDbfs;
+    expect(detector.getSnapshot().activeSegment).not.toBeNull();
+    expect(duringSpeechNoiseFloor).toBeCloseTo(baselineNoiseFloor, 3);
+  });
 });

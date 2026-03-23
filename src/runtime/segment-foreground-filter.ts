@@ -15,10 +15,12 @@ export interface SegmentForegroundFilterResult {
   readonly reason: string;
   readonly durationMs: number;
   readonly noiseFloorDbfs: number;
+  readonly speechDbfs: number;
   readonly segmentP90Dbfs: number;
   readonly onsetP90Dbfs: number;
   readonly foregroundDb: number;
   readonly onsetDb: number;
+  readonly speechNoiseRatio: number;
   readonly shortSpeech: boolean;
   readonly longSpeech: boolean;
 }
@@ -31,6 +33,13 @@ function clampDb(value: number): number {
     return MIN_DBFS;
   }
   return Math.max(MIN_DBFS, value);
+}
+
+function dbToAmplitudeRatio(deltaDb: number): number {
+  if (!Number.isFinite(deltaDb)) {
+    return 1;
+  }
+  return Math.max(1, 10 ** (deltaDb / 20));
 }
 
 function resolvePercentile(values: readonly number[], percentile: number): number {
@@ -89,10 +98,12 @@ export function scoreSegmentForeground(
       reason: 'foreground-filter-disabled',
       durationMs,
       noiseFloorDbfs: resolvedNoiseFloorDbfs,
+      speechDbfs: MIN_DBFS,
       segmentP90Dbfs: MIN_DBFS,
       onsetP90Dbfs: MIN_DBFS,
       foregroundDb: 0,
       onsetDb: 0,
+      speechNoiseRatio: 1,
       shortSpeech: durationMs < config.foregroundShortSpeechMs,
       longSpeech: durationMs >= config.foregroundLongSpeechMs,
     };
@@ -141,10 +152,12 @@ export function scoreSegmentForeground(
     reason,
     durationMs,
     noiseFloorDbfs: resolvedNoiseFloorDbfs,
+    speechDbfs: segmentP90Dbfs,
     segmentP90Dbfs,
     onsetP90Dbfs,
     foregroundDb,
     onsetDb,
+    speechNoiseRatio: dbToAmplitudeRatio(foregroundDb),
     shortSpeech,
     longSpeech,
   };

@@ -26,7 +26,6 @@ export interface NoiseFloorTrackerState {
 const MIN_NOISE_FLOOR = 0.00001;
 const MAX_BACKGROUND_OBSERVATIONS = 64;
 const ROBUST_BACKGROUND_LOWER_FRACTION = 0.6;
-const REJECTED_CANDIDATE_ADAPTATION_SCALE = 0.5;
 
 export function amplitudeToDbfs(value: number, floorDbfs = -100): number {
   if (!Number.isFinite(value) || value <= 0) {
@@ -160,11 +159,7 @@ export class NoiseFloorTracker {
     const adaptationRate =
       source === 'confirmed-silence-window'
         ? this.resolveConfirmedSilenceAdaptationRate()
-        : Math.max(
-            0,
-            Math.min(this.config.fastAdaptationRate, this.config.slowAdaptationRate) *
-              REJECTED_CANDIDATE_ADAPTATION_SCALE,
-          );
+        : 0;
 
     this.noiseFloor =
       this.noiseFloor * (1 - adaptationRate) + backgroundAverage * adaptationRate;
@@ -221,18 +216,8 @@ export class NoiseFloorTracker {
     const confirmedSilenceAverage = computeRobustBackgroundAverage(
       this.recentConfirmedSilenceObservations,
     );
-    const rejectedCandidateAverage = computeRobustBackgroundAverage(
-      this.recentRejectedCandidateObservations,
-    );
-
-    if (confirmedSilenceAverage !== null && rejectedCandidateAverage !== null) {
-      return confirmedSilenceAverage * 0.8 + rejectedCandidateAverage * 0.2;
-    }
     if (confirmedSilenceAverage !== null) {
       return confirmedSilenceAverage;
-    }
-    if (rejectedCandidateAverage !== null) {
-      return rejectedCandidateAverage;
     }
     return clampFinitePositive(fallback, this.noiseFloor);
   }

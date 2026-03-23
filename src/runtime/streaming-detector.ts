@@ -434,12 +434,29 @@ export class StreamingSpeechDetector {
 
     this.ringBuffer.write(chunk);
     this.tenVad?.process(chunk, chunkStartFrame);
-
-    const rough = this.roughGate.process(chunk);
-    this.lastMetrics = rough;
-
     const nowFrame = this.ringBuffer.getCurrentFrame();
     const effectiveGateMode = this.resolveEffectiveGateMode();
+    const confirmWindowMs = Math.max(
+      this.config.tenVadConfirmationWindowMs,
+      this.config.tenVadMinSpeechDurationMs,
+    );
+    const hangoverWindowMs = Math.max(
+      this.config.tenVadHangoverMs,
+      this.config.tenVadSpeechPaddingMs,
+    );
+    const freezeRoughBackgroundAdaptation =
+      effectiveGateMode !== STREAMING_GATE_MODES.ROUGH_ONLY
+      && (
+        this.activeSegment !== null
+        || this.pendingSegmentStartFrame !== null
+        || (this.tenVad?.hasRecentSpeech(nowFrame, confirmWindowMs, this.sampleRate) ?? false)
+        || (this.tenVad?.hasRecentSpeech(nowFrame, hangoverWindowMs, this.sampleRate) ?? false)
+      );
+
+    const rough = this.roughGate.process(chunk, {
+      freezeBackgroundAdaptation: freezeRoughBackgroundAdaptation,
+    });
+    this.lastMetrics = rough;
     const tenVadReady = this.isTenVadReady();
     const baseFrame = this.ringBuffer.getBaseFrameOffset();
     const prerollFrames = durationMsToAlignedFrameCount(
@@ -677,10 +694,12 @@ export class StreamingSpeechDetector {
       reason: filterResult.reason,
       segmentReason: reason,
       segmentDurationMs: filterResult.durationMs,
+      speechDbfs: filterResult.speechDbfs,
       segmentP90Dbfs: filterResult.segmentP90Dbfs,
       onsetP90Dbfs: filterResult.onsetP90Dbfs,
       foregroundDb: filterResult.foregroundDb,
       onsetDb: filterResult.onsetDb,
+      speechNoiseRatio: filterResult.speechNoiseRatio,
       shortSpeech: filterResult.shortSpeech,
       longSpeech: filterResult.longSpeech,
       noiseFloorDbfs: filterResult.noiseFloorDbfs,
@@ -703,6 +722,7 @@ export class StreamingSpeechDetector {
       this.recordDecision('Segment rejected by foreground filter', {
         reason: filterResult.reason,
         durationMs: Number(filterResult.durationMs.toFixed(0)),
+        speechDbfs: Number(filterResult.speechDbfs.toFixed(1)),
         foregroundDb: Number(filterResult.foregroundDb.toFixed(1)),
         onsetDb: Number(filterResult.onsetDb.toFixed(1)),
         noiseFloorDbfs: Number(filterResult.noiseFloorDbfs.toFixed(1)),
@@ -734,7 +754,9 @@ export class StreamingSpeechDetector {
       durationSec: Number(
         ((segment.endFrame - segment.startFrame) / segment.sampleRate).toFixed(2),
       ),
+      speechDbfs: Number(filterResult.speechDbfs.toFixed(1)),
       foregroundDb: Number(filterResult.foregroundDb.toFixed(1)),
+      speechNoiseRatio: Number(filterResult.speechNoiseRatio.toFixed(2)),
     });
     this.emit({
       type: 'segment-ready',

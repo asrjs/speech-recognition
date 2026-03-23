@@ -22,7 +22,7 @@ describe('NoiseFloorTracker', () => {
     expect(lastState.rejectedBackgroundObservationCount).toBe(0);
   });
 
-  it('uses rejected candidate windows as bounded background evidence', () => {
+  it('tracks rejected candidate windows as telemetry without adapting the learned floor', () => {
     const tracker = new NoiseFloorTracker({
       initialNoiseFloor: 0.004,
       fastAdaptationRate: 0.15,
@@ -34,15 +34,16 @@ describe('NoiseFloorTracker', () => {
       tracker.observeWindow('confirmed-silence-window', 0.003, 0.08);
     }
 
+    const before = tracker.getState();
     const state = tracker.observeWindow('rejected-candidate-window', 0.02, 0.032);
 
-    expect(state.noiseFloor).toBeGreaterThan(0.003);
-    expect(state.noiseFloor).toBeLessThan(0.02);
-    expect(state.backgroundAverage).toBeLessThan(0.02);
+    expect(state.noiseFloor).toBe(before.noiseFloor);
+    expect(state.backgroundAverage).toBe(before.backgroundAverage);
+    expect(state.rejectedCandidateAverage).toBeGreaterThan(before.rejectedCandidateAverage);
     expect(state.confirmedSilenceAverage).toBeLessThan(state.rejectedCandidateAverage);
   });
 
-  it('prefers confirmed silence over rejected candidates when both are available', () => {
+  it('bases the reported background average on confirmed silence only', () => {
     const tracker = new NoiseFloorTracker({
       initialNoiseFloor: 0.004,
       fastAdaptationRate: 0.15,
@@ -58,8 +59,8 @@ describe('NoiseFloorTracker', () => {
     }
 
     const state = tracker.getState();
-    expect(state.backgroundAverage).toBeGreaterThan(state.confirmedSilenceAverage);
-    expect(state.backgroundAverage).toBeLessThan(state.rejectedCandidateAverage);
+    expect(state.backgroundAverage).toBe(state.confirmedSilenceAverage);
+    expect(state.rejectedCandidateAverage).toBeGreaterThan(state.backgroundAverage);
   });
 
   it('sanitizes invalid adaptation config values', () => {

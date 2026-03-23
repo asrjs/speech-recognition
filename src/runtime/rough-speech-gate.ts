@@ -77,6 +77,10 @@ interface PendingCandidateWindow {
   readonly durationSec: number;
 }
 
+export interface RoughSpeechGateProcessOptions {
+  readonly freezeBackgroundAdaptation?: boolean;
+}
+
 export class RoughSpeechGate {
   private config: RoughSpeechGateConfig;
   private isSpeechActive = false;
@@ -165,7 +169,10 @@ export class RoughSpeechGate {
     this.rebuildDerivedFrames();
   }
 
-  process(chunk: Float32Array): RoughSpeechGateWindowResult {
+  process(
+    chunk: Float32Array,
+    options: RoughSpeechGateProcessOptions = {},
+  ): RoughSpeechGateWindowResult {
     const inputStartFrame = this.processedFrames;
     this.processedFrames += chunk.length;
 
@@ -191,6 +198,7 @@ export class RoughSpeechGate {
           this.analysisBuffer,
           this.windowBaseFrame,
           windowEndFrame,
+          options,
         );
         lastResult = result;
         speechStart ||= result.speechStart;
@@ -245,6 +253,7 @@ export class RoughSpeechGate {
     window: Float32Array,
     chunkStartFrame: number,
     chunkEndFrame: number,
+    options: RoughSpeechGateProcessOptions = {},
   ): RoughSpeechGateWindowResult {
     let sumSquares = 0;
     for (let index = 0; index < window.length; index += 1) {
@@ -303,7 +312,9 @@ export class RoughSpeechGate {
         ? 'snr-threshold'
         : 'none';
 
-    if (isCandidateSpeech) {
+    if (options.freezeBackgroundAdaptation) {
+      this.pendingCandidateWindows = [];
+    } else if (isCandidateSpeech) {
       if (!this.isSpeechActive) {
         this.pendingCandidateWindows.push({
           energy: smoothedEnergy,
