@@ -54,6 +54,10 @@ function resolvePercentile(values: readonly number[], percentile: number): numbe
   return sorted[index] ?? MIN_DBFS;
 }
 
+function resolvePercentileDb(values: readonly number[], percentile: number): number {
+  return clampDb(resolvePercentile(values, percentile));
+}
+
 function collectWindowDbfs(
   pcm: Float32Array,
   sampleRate: number,
@@ -128,6 +132,71 @@ export function scoreSegmentForeground(
       collectWindowDbfs(pcm, sampleRate, analysisWindowFrames, onsetFrames),
       0.9,
     ),
+  );
+  const foregroundDb = segmentP90Dbfs - resolvedNoiseFloorDbfs;
+  const onsetDb = onsetP90Dbfs - resolvedNoiseFloorDbfs;
+  const shortSpeech = durationMs < config.foregroundShortSpeechMs;
+  const longSpeech = durationMs >= config.foregroundLongSpeechMs;
+
+  let accepted = true;
+  let reason = 'accepted';
+  if (foregroundDb < config.foregroundMinDb) {
+    accepted = false;
+    reason = 'foreground-too-quiet';
+  } else if (shortSpeech && onsetDb < config.foregroundOnsetMinDb) {
+    accepted = false;
+    reason = 'short-onset-too-quiet';
+  } else if (longSpeech && foregroundDb < config.foregroundLongMinDb) {
+    accepted = false;
+    reason = 'long-quiet-background';
+  }
+
+  return {
+    accepted,
+    reason,
+    durationMs,
+    noiseFloorDbfs: resolvedNoiseFloorDbfs,
+    speechDbfs: segmentP90Dbfs,
+    segmentP90Dbfs,
+    onsetP90Dbfs,
+    foregroundDb,
+    onsetDb,
+    speechNoiseRatio: dbToAmplitudeRatio(foregroundDb),
+    shortSpeech,
+    longSpeech,
+  };
+}
+
+export function scoreSegmentForegroundFromDbfsSamples(
+  segmentDbfsSamples: readonly number[],
+  onsetDbfsSamples: readonly number[],
+  durationMs: number,
+  noiseFloorDbfs: number,
+  config: SegmentForegroundFilterConfig,
+): SegmentForegroundFilterResult {
+  const resolvedNoiseFloorDbfs = clampDb(noiseFloorDbfs);
+
+  if (!config.foregroundFilterEnabled) {
+    return {
+      accepted: true,
+      reason: 'foreground-filter-disabled',
+      durationMs,
+      noiseFloorDbfs: resolvedNoiseFloorDbfs,
+      speechDbfs: MIN_DBFS,
+      segmentP90Dbfs: MIN_DBFS,
+      onsetP90Dbfs: MIN_DBFS,
+      foregroundDb: 0,
+      onsetDb: 0,
+      speechNoiseRatio: 1,
+      shortSpeech: durationMs < config.foregroundShortSpeechMs,
+      longSpeech: durationMs >= config.foregroundLongSpeechMs,
+    };
+  }
+
+  const segmentP90Dbfs = resolvePercentileDb(segmentDbfsSamples, 0.9);
+  const onsetP90Dbfs = resolvePercentileDb(
+    onsetDbfsSamples.length > 0 ? onsetDbfsSamples : segmentDbfsSamples,
+    0.9,
   );
   const foregroundDb = segmentP90Dbfs - resolvedNoiseFloorDbfs;
   const onsetDb = onsetP90Dbfs - resolvedNoiseFloorDbfs;

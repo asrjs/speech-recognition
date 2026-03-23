@@ -25,7 +25,6 @@ export interface NoiseFloorTrackerState {
 
 const MIN_NOISE_FLOOR = 0.00001;
 const MAX_BACKGROUND_OBSERVATIONS = 64;
-const ROBUST_BACKGROUND_LOWER_FRACTION = 0.6;
 
 export function amplitudeToDbfs(value: number, floorDbfs = -100): number {
   if (!Number.isFinite(value) || value <= 0) {
@@ -84,18 +83,12 @@ function pushObservation(target: number[], value: number): void {
   }
 }
 
-function computeRobustBackgroundAverage(observations: readonly number[]): number | null {
+function computeBackgroundAverage(observations: readonly number[]): number | null {
   if (observations.length === 0) {
     return null;
   }
-  const sorted = [...observations].sort((left, right) => left - right);
-  const sampleCount = Math.max(
-    1,
-    Math.floor(sorted.length * ROBUST_BACKGROUND_LOWER_FRACTION),
-  );
-  const slice = sorted.slice(0, sampleCount);
-  const sum = slice.reduce((total, value) => total + value, 0);
-  return sum / Math.max(1, slice.length);
+  const sum = observations.reduce((total, value) => total + value, 0);
+  return sum / Math.max(1, observations.length);
 }
 
 export class NoiseFloorTracker {
@@ -155,14 +148,13 @@ export class NoiseFloorTracker {
       pushObservation(this.recentRejectedCandidateObservations, safeEnergy);
     }
 
-    const backgroundAverage = this.computeBackgroundAverage(safeEnergy);
     const adaptationRate =
       source === 'confirmed-silence-window'
         ? this.resolveConfirmedSilenceAdaptationRate()
         : 0;
 
     this.noiseFloor =
-      this.noiseFloor * (1 - adaptationRate) + backgroundAverage * adaptationRate;
+      this.noiseFloor * (1 - adaptationRate) + safeEnergy * adaptationRate;
     this.noiseFloor = Math.max(MIN_NOISE_FLOOR, this.noiseFloor);
 
     return this.getState();
@@ -170,9 +162,9 @@ export class NoiseFloorTracker {
 
   getState(): NoiseFloorTrackerState {
     const confirmedSilenceAverage =
-      computeRobustBackgroundAverage(this.recentConfirmedSilenceObservations) ?? this.noiseFloor;
+      computeBackgroundAverage(this.recentConfirmedSilenceObservations) ?? this.noiseFloor;
     const rejectedCandidateAverage =
-      computeRobustBackgroundAverage(this.recentRejectedCandidateObservations) ?? this.noiseFloor;
+      computeBackgroundAverage(this.recentRejectedCandidateObservations) ?? this.noiseFloor;
     const backgroundAverage = this.computeBackgroundAverage(this.noiseFloor);
     return {
       noiseFloor: this.noiseFloor,
@@ -213,7 +205,7 @@ export class NoiseFloorTracker {
   }
 
   private computeBackgroundAverage(fallback: number): number {
-    const confirmedSilenceAverage = computeRobustBackgroundAverage(
+    const confirmedSilenceAverage = computeBackgroundAverage(
       this.recentConfirmedSilenceObservations,
     );
     if (confirmedSilenceAverage !== null) {

@@ -14,9 +14,15 @@ import {
   type RoughSpeechGateWindowResult,
 } from './rough-speech-gate.js';
 import {
+  scoreSegmentForegroundFromDbfsSamples,
   scoreSegmentForeground,
   type SegmentForegroundFilterResult,
 } from './segment-foreground-filter.js';
+import {
+  NoiseFloorTracker,
+  type NoiseFloorTrackerState,
+  amplitudeToDbfs,
+} from './noise-floor.js';
 import {
   STREAMING_GATE_MODES,
   STREAMING_PROFILE_IDS,
@@ -70,7 +76,12 @@ export interface StreamingTenVadWindowSummary {
   readonly nonSpeechHopCount: number;
   readonly maxConsecutiveSpeech: number;
   readonly maxProbability: number;
-  readonly recent: readonly unknown[];
+  readonly recent: readonly {
+    readonly startFrame: number;
+    readonly endFrame: number;
+    readonly probability: number;
+    readonly speaking: boolean;
+  }[];
 }
 
 export interface StreamingTenVadResultEvent {
@@ -138,6 +149,10 @@ export interface StreamingSpeechDetectorSnapshot {
   readonly foreground: {
     readonly enabled: boolean;
     readonly noiseFloorDbfs: number;
+    readonly liveLevelDbfs: number;
+    readonly liveForegroundActive: boolean;
+    readonly liveSnrDb: number;
+    readonly liveSpeechNoiseRatio: number;
     readonly foregroundMinDb: number;
     readonly onsetMinDb: number;
     readonly longMinDb: number;
@@ -194,6 +209,72 @@ function cloneEntries<T extends Record<string, unknown>>(entries: readonly T[]):
   return entries.map((entry) => ({ ...entry }));
 }
 
+interface TenVadRecentHop {
+  readonly startFrame: number;
+  readonly endFrame: number;
+  readonly probability: number;
+  readonly speaking: boolean;
+}
+
+function isTenVadRecentHop(value: unknown): value is TenVadRecentHop {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.startFrame === 'number'
+    && typeof candidate.endFrame === 'number'
+    && typeof candidate.probability === 'number'
+    && typeof candidate.speaking === 'boolean'
+  );
+}
+
+function clampOverlap(startFrame: number, endFrame: number, hop: TenVadRecentHop): [number, number] | null {
+  const overlapStart = Math.max(startFrame, hop.startFrame);
+  const overlapEnd = Math.min(endFrame, hop.endFrame);
+  return overlapEnd > overlapStart ? [overlapStart, overlapEnd] : null;
+}
+
+function computeRmsDbfs(samples: Float32Array): number {
+  if (!samples.length) {
+    return -100;
+  }
+  let sumSquares = 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    const sample = samples[index] ?? 0;
+    sumSquares += sample * sample;
+  }
+  return amplitudeToDbfs(Math.sqrt(sumSquares / samples.length));
+}
+
+function computeAverageDbfs(values: readonly number[]): number | null {
+  if (!values.length) {
+    return null;
+  }
+  const amplitudes = values
+    .filter((value) => Number.isFinite(value))
+    .map((value) => 10 ** (value / 20))
+    .sort((left, right) => left - right);
+  if (!amplitudes.length) {
+    return null;
+  }
+  const average = amplitudes.reduce((total, value) => total + value, 0) / amplitudes.length;
+  return amplitudeToDbfs(average);
+}
+
+function computePercentileDbfs(values: readonly number[], percentile: number): number | null {
+  const finiteValues = values.filter((value) => Number.isFinite(value)).sort((left, right) => left - right);
+  if (!finiteValues.length) {
+    return null;
+  }
+  const index = Math.min(
+    finiteValues.length - 1,
+    Math.max(0, Math.ceil(percentile * finiteValues.length) - 1),
+  );
+  const value = finiteValues[index];
+  return typeof value === 'number' ? value : null;
+}
+
 export class StreamingSpeechDetector {
   private readonly createTenVad;
   private profileId: string;
@@ -216,6 +297,10 @@ export class StreamingSpeechDetector {
   private lastMetrics: RoughSpeechGateWindowResult | null = null;
   private lastAcceptanceInfo: Record<string, unknown> | null = null;
   private lastForegroundResult: SegmentForegroundFilterResult | null = null;
+  private lastStableForegroundNoiseFloorDbfs: number | null = null;
+  private tenVadNoiseFloorTracker: NoiseFloorTracker;
+  private tenVadNoiseFloorState: NoiseFloorTrackerState;
+  private lastTenVadSpeechFrame: number | null = null;
   private lastError: Error | null = null;
   private disposed = false;
   private tenVadOptions: unknown;
@@ -237,6 +322,8 @@ export class StreamingSpeechDetector {
       durationSeconds: this.config.ringBufferDurationMs / 1000,
     });
     this.roughGate = new RoughSpeechGate(this.buildRoughGateConfig());
+    this.tenVadNoiseFloorTracker = new NoiseFloorTracker(this.buildNoiseFloorTrackerConfig());
+    this.tenVadNoiseFloorState = this.tenVadNoiseFloorTracker.getState();
     this.tenVad = this.config.tenVadEnabled
       ? this.createTenVad(this.buildTenVadConfig(), options.tenVadOptions)
       : null;
@@ -283,6 +370,15 @@ export class StreamingSpeechDetector {
       minSpeechDurationMs: this.config.tenVadMinSpeechDurationMs,
       minSilenceDurationMs: this.config.tenVadMinSilenceDurationMs,
       speechPaddingMs: this.config.tenVadSpeechPaddingMs,
+    };
+  }
+
+  private buildNoiseFloorTrackerConfig() {
+    return {
+      initialNoiseFloor: this.config.initialNoiseFloor,
+      fastAdaptationRate: this.config.fastAdaptationRate,
+      slowAdaptationRate: this.config.slowAdaptationRate,
+      minBackgroundDurationSec: this.config.minBackgroundDurationSec,
     };
   }
 
@@ -378,6 +474,10 @@ export class StreamingSpeechDetector {
         durationSeconds: this.config.ringBufferDurationMs / 1000,
       });
       this.roughGate = new RoughSpeechGate(this.buildRoughGateConfig());
+      this.tenVadNoiseFloorTracker = new NoiseFloorTracker(this.buildNoiseFloorTrackerConfig());
+      this.tenVadNoiseFloorState = this.tenVadNoiseFloorTracker.getState();
+      this.lastTenVadSpeechFrame = null;
+      this.lastStableForegroundNoiseFloorDbfs = null;
       this.tenVad?.updateConfig(this.buildTenVadConfig());
     }
 
@@ -390,6 +490,10 @@ export class StreamingSpeechDetector {
     this.lastError = null;
     this.ringBuffer.reset();
     this.roughGate.reset();
+    this.tenVadNoiseFloorTracker.reset();
+    this.tenVadNoiseFloorState = this.tenVadNoiseFloorTracker.getState();
+    this.lastTenVadSpeechFrame = null;
+    this.lastStableForegroundNoiseFloorDbfs = null;
 
     if (this.tenVad) {
       try {
@@ -452,11 +556,19 @@ export class StreamingSpeechDetector {
         || (this.tenVad?.hasRecentSpeech(nowFrame, confirmWindowMs, this.sampleRate) ?? false)
         || (this.tenVad?.hasRecentSpeech(nowFrame, hangoverWindowMs, this.sampleRate) ?? false)
       );
+    const tenVadConfirmedNow =
+      this.tenVad?.hasRecentSpeech(nowFrame, confirmWindowMs, this.sampleRate) ?? false;
+    const tenVadTailHoldNow =
+      this.tenVad?.hasRecentSpeech(nowFrame, hangoverWindowMs, this.sampleRate) ?? false;
+    if (tenVadConfirmedNow || tenVadTailHoldNow) {
+      this.lastTenVadSpeechFrame = nowFrame;
+    }
 
     const rough = this.roughGate.process(chunk, {
       freezeBackgroundAdaptation: freezeRoughBackgroundAdaptation,
     });
     this.lastMetrics = rough;
+    this.updateTenVadNoiseFloorTracker(chunk, nowFrame);
     const tenVadReady = this.isTenVadReady();
     const baseFrame = this.ringBuffer.getBaseFrameOffset();
     const prerollFrames = durationMsToAlignedFrameCount(
@@ -663,6 +775,159 @@ export class StreamingSpeechDetector {
     });
   }
 
+  private getRecentTenVadHops(
+    endFrame: number,
+    windowMs: number,
+  ): TenVadRecentHop[] {
+    const summary = this.tenVad?.getWindowSummary(endFrame, windowMs, this.sampleRate);
+    if (!summary?.recent?.length) {
+      return [];
+    }
+    return summary.recent.filter(isTenVadRecentHop);
+  }
+
+  private computeTenVadNoiseFloorDbfs(endFrame: number): number | null {
+    if (this.tenVadNoiseFloorState.confirmedBackgroundObservationCount > 0) {
+      return this.tenVadNoiseFloorState.backgroundAverageDbfs;
+    }
+    const hops = this.getRecentTenVadHops(endFrame, this.config.ringBufferDurationMs);
+    if (!hops.length) {
+      return null;
+    }
+    const baseFrame = this.ringBuffer.getBaseFrameOffset();
+    const currentFrame = this.ringBuffer.getCurrentFrame();
+    const nonSpeechDbfsValues: number[] = [];
+    for (const hop of hops) {
+      if (hop.speaking) {
+        continue;
+      }
+      const overlap = clampOverlap(baseFrame, currentFrame, hop);
+      if (!overlap) {
+        continue;
+      }
+      const [startFrame, stopFrame] = overlap;
+      nonSpeechDbfsValues.push(computeRmsDbfs(this.ringBuffer.read(startFrame, stopFrame)));
+    }
+    return computeAverageDbfs(nonSpeechDbfsValues);
+  }
+
+  private updateTenVadNoiseFloorTracker(chunk: Float32Array, nowFrame: number): void {
+    if (!this.tenVad || !this.isTenVadReady()) {
+      return;
+    }
+
+    const speechCooldownFrames = durationMsToAlignedFrameCount(
+      this.config.tenVadHangoverMs
+        + this.config.tenVadMinSilenceDurationMs
+        + this.config.chunkDurationMs * 2,
+      this.sampleRate,
+      'ceil',
+      this.config.chunkDurationMs,
+    );
+    const hasActiveSpeechContext =
+      this.activeSegment !== null
+      || this.pendingSegmentStartFrame !== null
+      || this.tenVad.hasRecentSpeech(
+        nowFrame,
+        Math.max(this.config.tenVadHangoverMs, this.config.tenVadSpeechPaddingMs),
+        this.sampleRate,
+      );
+    const hasStableSilence = this.tenVad.hasRecentSilence(
+      nowFrame,
+      Math.max(
+        this.config.tenVadMinSilenceDurationMs + this.config.chunkDurationMs * 2,
+        this.config.chunkDurationMs * 3,
+      ),
+      this.sampleRate,
+    );
+    const isPastSpeechCooldown =
+      this.lastTenVadSpeechFrame === null
+      || nowFrame - this.lastTenVadSpeechFrame >= speechCooldownFrames;
+
+    if (hasActiveSpeechContext || !hasStableSilence || !isPastSpeechCooldown) {
+      return;
+    }
+
+    let sumSquares = 0;
+    for (let index = 0; index < chunk.length; index += 1) {
+      const sample = chunk[index] ?? 0;
+      sumSquares += sample * sample;
+    }
+    const rms = chunk.length > 0 ? Math.sqrt(sumSquares / chunk.length) : 0;
+    this.tenVadNoiseFloorState = this.tenVadNoiseFloorTracker.observeWindow(
+      'confirmed-silence-window',
+      rms,
+      chunk.length / this.sampleRate,
+    );
+  }
+
+  private scoreSegmentFromTenVadHops(
+    startFrame: number,
+    endFrame: number,
+  ): SegmentForegroundFilterResult | null {
+    const durationMs = ((endFrame - startFrame) / this.sampleRate) * 1000;
+    const baseFrame = this.ringBuffer.getBaseFrameOffset();
+    const currentFrame = this.ringBuffer.getCurrentFrame();
+    const windowMs = Math.max(this.config.ringBufferDurationMs, durationMs + this.config.prerollMs + this.config.tenVadHangoverMs);
+    const hops = this.getRecentTenVadHops(endFrame, windowMs);
+    if (!hops.length) {
+      return null;
+    }
+
+    const noiseFloorDbfs = this.computeTenVadNoiseFloorDbfs(endFrame);
+    if (noiseFloorDbfs === null) {
+      return null;
+    }
+
+    const onsetEndFrame = Math.min(
+      endFrame,
+      startFrame + durationMsToAlignedFrameCount(
+        this.config.foregroundOnsetWindowMs,
+        this.sampleRate,
+        'ceil',
+        this.config.chunkDurationMs,
+      ),
+    );
+    const speechDbfsSamples: number[] = [];
+    const onsetDbfsSamples: number[] = [];
+
+    for (const hop of hops) {
+      if (!hop.speaking) {
+        continue;
+      }
+      const overlap = clampOverlap(startFrame, endFrame, hop);
+      if (!overlap) {
+        continue;
+      }
+      const bounded = clampOverlap(baseFrame, currentFrame, {
+        ...hop,
+        startFrame: overlap[0],
+        endFrame: overlap[1],
+      });
+      if (!bounded) {
+        continue;
+      }
+      const [speechStartFrame, speechEndFrame] = bounded;
+      const speechDbfs = computeRmsDbfs(this.ringBuffer.read(speechStartFrame, speechEndFrame));
+      speechDbfsSamples.push(speechDbfs);
+      if (speechStartFrame < onsetEndFrame) {
+        onsetDbfsSamples.push(speechDbfs);
+      }
+    }
+
+    if (!speechDbfsSamples.length) {
+      return null;
+    }
+
+    return scoreSegmentForegroundFromDbfsSamples(
+      speechDbfsSamples,
+      onsetDbfsSamples,
+      durationMs,
+      noiseFloorDbfs,
+      this.config,
+    );
+  }
+
   finalizeSegment(
     reason: string,
     endFrame = this.ringBuffer.getCurrentFrame(),
@@ -681,13 +946,15 @@ export class StreamingSpeechDetector {
         speaking: false,
         threshold: this.config.tenVadThreshold,
       };
-    const filterResult = scoreSegmentForeground(
-      pcm,
-      this.sampleRate,
-      this.lastMetrics?.noiseFloorDbfs
-        ?? 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001)),
-      this.config,
-    );
+    const filterResult =
+      this.scoreSegmentFromTenVadHops(startFrame, endFrame)
+      ?? scoreSegmentForeground(
+        pcm,
+        this.sampleRate,
+        this.lastMetrics?.noiseFloorDbfs
+          ?? 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001)),
+        this.config,
+      );
     this.lastForegroundResult = filterResult;
     this.lastAcceptanceInfo = {
       accepted: filterResult.accepted,
@@ -805,6 +1072,8 @@ export class StreamingSpeechDetector {
     this.profileId = nextProfileId;
     this.config = mergeStreamingConfig(nextProfileId, nextOverrides);
     this.roughGate.updateConfig(this.buildRoughGateConfig());
+    this.tenVadNoiseFloorTracker.updateConfig(this.buildNoiseFloorTrackerConfig());
+    this.tenVadNoiseFloorState = this.tenVadNoiseFloorTracker.getState();
     if (!previousTenVadEnabled && this.config.tenVadEnabled) {
       const nextTenVad = this.createTenVad(this.buildTenVadConfig(), this.tenVadOptions);
       this.replaceTenVad(nextTenVad);
@@ -819,6 +1088,91 @@ export class StreamingSpeechDetector {
       type: 'metrics',
       payload: this.getSnapshot(),
     });
+  }
+
+  private hasLiveForegroundContext(nowFrame: number): boolean {
+    const confirmWindowMs = Math.max(
+      this.config.tenVadConfirmationWindowMs,
+      this.config.tenVadMinSpeechDurationMs,
+    );
+    const hangoverWindowMs = Math.max(
+      this.config.tenVadHangoverMs,
+      this.config.tenVadSpeechPaddingMs,
+    );
+    return (
+      this.activeSegment !== null
+      || this.pendingSegmentStartFrame !== null
+      || (this.tenVad?.hasRecentSpeech(nowFrame, confirmWindowMs, this.sampleRate) ?? false)
+      || (this.tenVad?.hasRecentSpeech(nowFrame, hangoverWindowMs, this.sampleRate) ?? false)
+    );
+  }
+
+  private computeLiveForegroundLevelDbfs(endFrame: number): number | null {
+    const windowMs = Math.max(
+      this.config.tenVadConfirmationWindowMs,
+      this.config.foregroundOnsetWindowMs,
+      this.config.chunkDurationMs * 8,
+    );
+    const hops = this.getRecentTenVadHops(endFrame, windowMs);
+    if (!hops.length) {
+      return null;
+    }
+
+    const baseFrame = this.ringBuffer.getBaseFrameOffset();
+    const currentFrame = this.ringBuffer.getCurrentFrame();
+    const speechDbfsSamples: number[] = [];
+    for (const hop of hops) {
+      if (!hop.speaking) {
+        continue;
+      }
+      const overlap = clampOverlap(baseFrame, currentFrame, hop);
+      if (!overlap) {
+        continue;
+      }
+      const [speechStartFrame, speechEndFrame] = overlap;
+      speechDbfsSamples.push(computeRmsDbfs(this.ringBuffer.read(speechStartFrame, speechEndFrame)));
+    }
+
+    return computePercentileDbfs(speechDbfsSamples, 0.9);
+  }
+
+  private resolveLiveForegroundNoiseFloorDbfs(
+    endFrame: number,
+    liveForegroundActive: boolean,
+    defaultNoiseFloorDbfs: number,
+  ): number {
+    const trackerNoiseFloorDbfs =
+      this.tenVadNoiseFloorState.confirmedBackgroundObservationCount > 0
+        ? this.tenVadNoiseFloorState.backgroundAverageDbfs
+        : null;
+    const idleNoiseFloorDbfs =
+      liveForegroundActive ? null : this.computeTenVadNoiseFloorDbfs(endFrame);
+    const stableNoiseFloorDbfs = trackerNoiseFloorDbfs ?? idleNoiseFloorDbfs;
+
+    if (
+      !liveForegroundActive
+      && typeof stableNoiseFloorDbfs === 'number'
+      && Number.isFinite(stableNoiseFloorDbfs)
+    ) {
+      this.lastStableForegroundNoiseFloorDbfs = stableNoiseFloorDbfs;
+    }
+
+    if (liveForegroundActive) {
+      return (
+        this.lastStableForegroundNoiseFloorDbfs
+        ?? trackerNoiseFloorDbfs
+        ?? this.lastForegroundResult?.noiseFloorDbfs
+        ?? defaultNoiseFloorDbfs
+      );
+    }
+
+    return (
+      stableNoiseFloorDbfs
+      ?? this.lastStableForegroundNoiseFloorDbfs
+      ?? this.lastForegroundResult?.noiseFloorDbfs
+      ?? this.lastMetrics?.noiseFloorDbfs
+      ?? defaultNoiseFloorDbfs
+    );
   }
 
   getSnapshot(): StreamingSpeechDetectorSnapshot {
@@ -838,6 +1192,21 @@ export class StreamingSpeechDetector {
     );
     const waveformPointCount = Math.max(1, Math.floor(waveform.minMax.length / 2));
     const defaultNoiseFloorDbfs = 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001));
+    const currentFrame = this.ringBuffer.getCurrentFrame();
+    const liveSpeechLevelDbfs = this.computeLiveForegroundLevelDbfs(currentFrame);
+    const liveForegroundActive =
+      liveSpeechLevelDbfs !== null
+      && this.hasLiveForegroundContext(currentFrame);
+    const resolvedForegroundNoiseFloorDbfs = this.resolveLiveForegroundNoiseFloorDbfs(
+      currentFrame,
+      liveForegroundActive,
+      defaultNoiseFloorDbfs,
+    );
+    const liveLevelDbfs = liveForegroundActive
+      ? liveSpeechLevelDbfs
+      : (this.lastMetrics?.levelDbfs ?? this.lastMetrics?.levelWindowDbfs ?? -100);
+    const liveSnrDb = Number((liveLevelDbfs - resolvedForegroundNoiseFloorDbfs).toFixed(1));
+    const liveSpeechNoiseRatio = Number((10 ** (liveSnrDb / 20)).toFixed(2));
 
     return {
       state: this.state,
@@ -921,7 +1290,11 @@ export class StreamingSpeechDetector {
           },
       foreground: {
         enabled: this.config.foregroundFilterEnabled,
-        noiseFloorDbfs: this.lastMetrics?.noiseFloorDbfs ?? defaultNoiseFloorDbfs,
+        noiseFloorDbfs: resolvedForegroundNoiseFloorDbfs,
+        liveLevelDbfs,
+        liveForegroundActive,
+        liveSnrDb,
+        liveSpeechNoiseRatio,
         foregroundMinDb: this.config.foregroundMinDb,
         onsetMinDb: this.config.foregroundOnsetMinDb,
         longMinDb: this.config.foregroundLongMinDb,

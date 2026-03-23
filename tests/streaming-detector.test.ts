@@ -56,6 +56,28 @@ class FakeTenVad {
   findFirstSpeechFrame(): number | null { return (this.behavior.startFrame as number | null) ?? null; }
 
   getWindowSummary() {
+    const explicitRecent =
+      typeof this.behavior.getRecent === 'function'
+        ? this.behavior.getRecent()
+        : Array.isArray(this.behavior.recent)
+          ? this.behavior.recent
+          : null;
+    if (explicitRecent) {
+      const speechHopCount = explicitRecent.filter((entry: any) => entry?.speaking).length;
+      const nonSpeechHopCount = explicitRecent.length - speechHopCount;
+      const maxProbability = explicitRecent.reduce(
+        (max: number, entry: any) => Math.max(max, Number(entry?.probability ?? 0)),
+        0,
+      );
+      return {
+        totalHops: explicitRecent.length,
+        speechHopCount,
+        nonSpeechHopCount,
+        maxConsecutiveSpeech: speechHopCount,
+        maxProbability,
+        recent: explicitRecent,
+      };
+    }
     const hasRecentSpeech = Boolean(this.behavior.hasRecentSpeech);
     return {
       totalHops: hasRecentSpeech ? 4 : 0,
@@ -328,7 +350,9 @@ describe('StreamingSpeechDetector', () => {
       },
       tenVadFactory: () =>
         new FakeTenVad({
-          startFrame: 0,
+          get startFrame() {
+            return tenVadState.hasRecentSpeech ? 0 : null;
+          },
           get hasRecentSpeech() {
             return tenVadState.hasRecentSpeech;
           },
@@ -372,7 +396,9 @@ describe('StreamingSpeechDetector', () => {
       },
       tenVadFactory: () =>
         new FakeTenVad({
-          startFrame: 0,
+          get startFrame() {
+            return tenVadState.hasRecentSpeech ? 0 : null;
+          },
           get hasRecentSpeech() {
             return tenVadState.hasRecentSpeech;
           },
@@ -398,5 +424,277 @@ describe('StreamingSpeechDetector', () => {
     const duringSpeechNoiseFloor = detector.getSnapshot().rough.noiseFloorDbfs;
     expect(detector.getSnapshot().activeSegment).not.toBeNull();
     expect(duringSpeechNoiseFloor).toBeCloseTo(baselineNoiseFloor, 3);
+  });
+
+  it('does not adapt the live foreground noise floor upward while TEN-VAD tracks active speech', async () => {
+    const tenVadState = {
+      hasRecentSpeech: false,
+      hasRecentSilence: true,
+    };
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        analysisWindowMs: 16,
+        initialNoiseFloor: 0.001,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          get startFrame() {
+            return tenVadState.hasRecentSpeech ? 0 : null;
+          },
+          get hasRecentSpeech() {
+            return tenVadState.hasRecentSpeech;
+          },
+          get hasRecentSilence() {
+            return tenVadState.hasRecentSilence;
+          },
+          getRecent() {
+            return Array.from({ length: 24 }, (_, index) => ({
+              startFrame: index * 256,
+              endFrame: (index + 1) * 256,
+              probability: tenVadState.hasRecentSpeech ? 0.9 : 0.1,
+              speaking: tenVadState.hasRecentSpeech,
+            }));
+          },
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+
+    for (let index = 0; index < 6; index += 1) {
+      detector.processChunk(createChunk(256, 0.001), { startFrame: index * 256 });
+    }
+    const baselineNoiseFloor = detector.getSnapshot().foreground.noiseFloorDbfs;
+
+    tenVadState.hasRecentSpeech = true;
+    tenVadState.hasRecentSilence = false;
+    for (let index = 6; index < 12; index += 1) {
+      detector.processChunk(createChunk(256, 0.02), { startFrame: index * 256 });
+    }
+
+    const snapshot = detector.getSnapshot();
+    expect(snapshot.foreground.liveForegroundActive).toBe(true);
+    expect(snapshot.foreground.noiseFloorDbfs).toBeCloseTo(baselineNoiseFloor, 3);
+  });
+
+  it('derives foreground speech and noise floor from TEN-VAD speech/non-speech hops only', async () => {
+    const recent = [
+      { startFrame: 0, endFrame: 256, probability: 0.1, speaking: false },
+      { startFrame: 256, endFrame: 512, probability: 0.9, speaking: true },
+      { startFrame: 512, endFrame: 768, probability: 0.9, speaking: true },
+      { startFrame: 768, endFrame: 1024, probability: 0.1, speaking: false },
+    ];
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        prerollMs: 0,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          startFrame: 256,
+          hasRecentSpeech: true,
+          recent,
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+    detector.processChunk(createChunk(256, 0.001), { startFrame: 0 });
+    detector.processChunk(createChunk(256, 0.01), { startFrame: 256 });
+    detector.processChunk(createChunk(256, 0.01), { startFrame: 512 });
+    detector.processChunk(createChunk(256, 0.001), { startFrame: 768 });
+
+    const segment = detector.finalizeSegment('manual');
+    expect(segment).not.toBeNull();
+    expect(segment?.metadata.filter?.noiseFloorDbfs).toBeCloseTo(-60, 1);
+    expect(segment?.metadata.filter?.speechDbfs).toBeCloseTo(-40, 1);
+    expect(segment?.metadata.filter?.foregroundDb).toBeCloseTo(20, 1);
+  });
+
+  it('zeros live foreground snr while the detector is idle in background-only audio', async () => {
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        analysisWindowMs: 16,
+        foregroundFilterEnabled: true,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          hasRecentSpeech: false,
+          hasRecentSilence: true,
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+    detector.processChunk(createChunk(256, 0.01), { startFrame: 0 });
+
+    const snapshot = detector.getSnapshot();
+    expect(snapshot.foreground.liveLevelDbfs).toBeCloseTo(-40, 0);
+    expect(snapshot.foreground.liveForegroundActive).toBe(false);
+    expect(snapshot.foreground.liveSnrDb).toBe(0);
+    expect(snapshot.foreground.liveSpeechNoiseRatio).toBe(1);
+  });
+
+  it('exposes live foreground snr during active TEN-VAD speech context', async () => {
+    const recent = [
+      { startFrame: 0, endFrame: 256, probability: 0.9, speaking: true },
+    ];
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        analysisWindowMs: 16,
+        foregroundFilterEnabled: true,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          hasRecentSpeech: true,
+          hasRecentSilence: false,
+          recent,
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+    detector.processChunk(createChunk(256, 0.01), { startFrame: 0 });
+
+    const snapshot = detector.getSnapshot();
+    expect(snapshot.foreground.liveForegroundActive).toBe(true);
+    expect(snapshot.foreground.liveSnrDb).toBeCloseTo(
+      snapshot.foreground.liveLevelDbfs - snapshot.foreground.noiseFloorDbfs,
+      1,
+    );
+    expect(snapshot.foreground.liveSpeechNoiseRatio).toBeCloseTo(
+      10 ** (snapshot.foreground.liveSnrDb / 20),
+      2,
+    );
+  });
+
+  it('does not relearn post-speech tail energy as TEN-VAD silence floor', async () => {
+    const tenVadState = {
+      hasRecentSpeech: false,
+      hasRecentSilence: true,
+    };
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        analysisWindowMs: 16,
+        tenVadHangoverMs: 320,
+        tenVadMinSilenceDurationMs: 80,
+        initialNoiseFloor: 0.001,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          get startFrame() {
+            return tenVadState.hasRecentSpeech ? 0 : null;
+          },
+          get hasRecentSpeech() {
+            return tenVadState.hasRecentSpeech;
+          },
+          get hasRecentSilence() {
+            return tenVadState.hasRecentSilence;
+          },
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+
+    for (let index = 0; index < 8; index += 1) {
+      detector.processChunk(createChunk(256, 0.001), { startFrame: index * 256 });
+    }
+    const baselineNoiseFloor = detector.getSnapshot().foreground.noiseFloorDbfs;
+
+    tenVadState.hasRecentSpeech = true;
+    tenVadState.hasRecentSilence = false;
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 8 * 256 });
+    detector.processChunk(createChunk(256, 0.05), { startFrame: 9 * 256 });
+
+    tenVadState.hasRecentSpeech = false;
+    tenVadState.hasRecentSilence = true;
+    detector.processChunk(createChunk(256, 0.02), { startFrame: 10 * 256 });
+
+    const postTailNoiseFloor = detector.getSnapshot().foreground.noiseFloorDbfs;
+    expect(postTailNoiseFloor).toBeCloseTo(baselineNoiseFloor, 2);
+  });
+
+  it('adapts the TEN-VAD background reference upward during sustained idle silence', async () => {
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        analysisWindowMs: 16,
+        initialNoiseFloor: 0.001,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          hasRecentSpeech: false,
+          hasRecentSilence: true,
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+
+    for (let index = 0; index < 8; index += 1) {
+      detector.processChunk(createChunk(256, 0.001), { startFrame: index * 256 });
+    }
+    const baselineNoiseFloor = detector.getSnapshot().foreground.noiseFloorDbfs;
+
+    for (let index = 8; index < 20; index += 1) {
+      detector.processChunk(createChunk(256, 0.01), { startFrame: index * 256 });
+    }
+
+    const raisedNoiseFloor = detector.getSnapshot().foreground.noiseFloorDbfs;
+    expect(raisedNoiseFloor).toBeGreaterThan(baselineNoiseFloor + 8);
+  });
+
+  it('returns live snr near ambient shortly after speech ends without waiting for old buffer history to expire', async () => {
+    const tenVadState = {
+      hasRecentSpeech: false,
+      hasRecentSilence: true,
+    };
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        analysisWindowMs: 16,
+        initialNoiseFloor: 0.001,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          get startFrame() {
+            return tenVadState.hasRecentSpeech ? 0 : null;
+          },
+          get hasRecentSpeech() {
+            return tenVadState.hasRecentSpeech;
+          },
+          get hasRecentSilence() {
+            return tenVadState.hasRecentSilence;
+          },
+        }) as any,
+    });
+
+    await detector.start({ sampleRate: 16000 });
+
+    for (let index = 0; index < 8; index += 1) {
+      detector.processChunk(createChunk(256, 0.001), { startFrame: index * 256 });
+    }
+
+    tenVadState.hasRecentSpeech = true;
+    tenVadState.hasRecentSilence = false;
+    for (let index = 8; index < 14; index += 1) {
+      detector.processChunk(createChunk(256, 0.05), { startFrame: index * 256 });
+    }
+
+    tenVadState.hasRecentSpeech = false;
+    tenVadState.hasRecentSilence = true;
+    for (let index = 14; index < 64; index += 1) {
+      detector.processChunk(createChunk(256, 0.001), { startFrame: index * 256 });
+    }
+
+    const snapshot = detector.getSnapshot();
+    expect(snapshot.foreground.liveForegroundActive).toBe(false);
+    expect(Math.abs(snapshot.foreground.liveSnrDb)).toBeLessThan(3);
   });
 });
