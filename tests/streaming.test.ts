@@ -1,6 +1,9 @@
 import { createSpeechRuntime } from '@asrjs/speech-recognition';
 import { createWasmBackend } from '@asrjs/speech-recognition';
-import { DefaultStreamingTranscriber, RollingAudioWindow } from '@asrjs/speech-recognition/inference';
+import {
+  DefaultStreamingTranscriber,
+  RollingAudioWindow,
+} from '@asrjs/speech-recognition/inference';
 import { createNemoTdtModelFamily } from '@asrjs/speech-recognition/models/nemo-tdt';
 import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/parakeet';
 import { describe, expect, it } from 'vitest';

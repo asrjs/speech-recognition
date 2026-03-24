@@ -1,15 +1,6 @@
-import {
-  DEFAULT_ROUGH_GATE_CONFIG,
-  type RoughSpeechGateConfig,
-} from './rough-gate-config.js';
-import {
-  NoiseFloorTracker,
-  amplitudeToDbfs,
-} from './noise-floor.js';
-import {
-  durationMsToAlignedFrameCount,
-  framesToMilliseconds,
-} from './audio-timeline.js';
+import { DEFAULT_ROUGH_GATE_CONFIG, type RoughSpeechGateConfig } from './rough-gate-config.js';
+import { NoiseFloorTracker, amplitudeToDbfs } from './noise-floor.js';
+import { durationMsToAlignedFrameCount, framesToMilliseconds } from './audio-timeline.js';
 
 function dbfsToAmplitude(dbfs: number): number {
   return 10 ** (dbfs / 20);
@@ -426,7 +417,10 @@ export class RoughSpeechGate {
     let foundRisingTrend = false;
 
     for (let index = firstSpeechIndex - 1; index >= 0; index -= 1) {
-      if (chunks[index + 1]!.energy > chunks[index]!.energy * (1 + this.config.energyRiseThreshold)) {
+      if (
+        chunks[index + 1]!.energy >
+        chunks[index]!.energy * (1 + this.config.energyRiseThreshold)
+      ) {
         earliestRisingIndex = index;
         foundRisingTrend = true;
       }
@@ -508,8 +502,7 @@ export class RoughSpeechGate {
 
     const points: RoughSpeechTimelinePoint[] = [];
     for (let index = 0; index < safePoints; index += 1) {
-      const bucketStart =
-        safeStart + Math.floor((index * (safeEnd - safeStart)) / safePoints);
+      const bucketStart = safeStart + Math.floor((index * (safeEnd - safeStart)) / safePoints);
       const bucketEnd =
         index === safePoints - 1
           ? safeEnd

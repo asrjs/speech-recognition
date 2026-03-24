@@ -1,9 +1,5 @@
 import { normalizePcmInput } from '../../audio/index.js';
-import {
-  CONFORMER_ENCODER,
-  CTC_GREEDY_DECODING,
-  CTC_HEAD_DECODER,
-} from '../../inference/index.js';
+import { CONFORMER_ENCODER, CTC_GREEDY_DECODING, CTC_HEAD_DECODER } from '../../inference/index.js';
 import { StubTextTokenizer } from '../../tokenizers/index.js';
 import type {
   AudioInputLike,
@@ -19,7 +15,11 @@ import type {
   TranscriptWord,
 } from '../../types/index.js';
 import { createModelArchitecture } from '../../types/index.js';
-import { DEFAULT_LASR_CTC_CLASSIFICATION, describeLasrCtcModel, parseLasrCtcConfig } from './config.js';
+import {
+  DEFAULT_LASR_CTC_CLASSIFICATION,
+  describeLasrCtcModel,
+  parseLasrCtcConfig,
+} from './config.js';
 import { OrtLasrCtcExecutor } from './executor.js';
 import { mapLasrCtcNativeToCanonical } from './mapping.js';
 import type {

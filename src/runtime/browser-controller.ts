@@ -20,7 +20,10 @@ import {
   STREAMING_TIMELINE_CHUNK_MS,
   resolveStreamingTimelineChunkFrames,
 } from './audio-timeline.js';
-import type { StreamingDetectorConfig, StreamingDetectorConfigOverrides } from './streaming-config.js';
+import type {
+  StreamingDetectorConfig,
+  StreamingDetectorConfigOverrides,
+} from './streaming-config.js';
 import { mergeStreamingConfig, resolveStreamingProfileId } from './streaming-config.js';
 
 export type BrowserRealtimeMicrophoneMode = 'manual' | 'speech-detect';
@@ -51,8 +54,10 @@ export interface BrowserRealtimeMicrophoneControllerState {
   readonly captureInfo: BrowserRealtimeCaptureInfo;
 }
 
-export interface BrowserRealtimeMicrophoneControllerOptions
-  extends Omit<BrowserRealtimeStarterOptions, 'profileId' | 'config'> {
+export interface BrowserRealtimeMicrophoneControllerOptions extends Omit<
+  BrowserRealtimeStarterOptions,
+  'profileId' | 'config'
+> {
   readonly profileId?: string;
   readonly config?: StreamingDetectorConfigOverrides | StreamingDetectorConfig;
   readonly micMode?: BrowserRealtimeMicrophoneMode;
@@ -132,7 +137,8 @@ export function createBrowserRealtimeMicrophoneController(
   const onUtterance = options.onUtterance ?? (() => undefined);
   const onStatus = options.onStatus ?? (() => undefined);
   let micMode: BrowserRealtimeMicrophoneMode = options.micMode ?? 'speech-detect';
-  let profileId = options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true);
+  let profileId =
+    options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true);
   let resolvedConfig = mergeStreamingConfig(profileId, options.config);
   let captureHandle: BrowserMicrophoneCaptureHandle | null = null;
   let sampleRate = STREAMING_PROCESSING_SAMPLE_RATE;
@@ -157,7 +163,9 @@ export function createBrowserRealtimeMicrophoneController(
   const setState = (
     patch:
       | Partial<BrowserRealtimeMicrophoneControllerState>
-      | ((current: BrowserRealtimeMicrophoneControllerState) => BrowserRealtimeMicrophoneControllerState),
+      | ((
+          current: BrowserRealtimeMicrophoneControllerState,
+        ) => BrowserRealtimeMicrophoneControllerState),
   ): void => {
     state =
       typeof patch === 'function'
@@ -174,7 +182,9 @@ export function createBrowserRealtimeMicrophoneController(
     onStatus(appStatus);
   };
 
-  const updateCaptureInfo = (partial: Partial<BrowserRealtimeCaptureInfo> = {}): BrowserRealtimeCaptureInfo => {
+  const updateCaptureInfo = (
+    partial: Partial<BrowserRealtimeCaptureInfo> = {},
+  ): BrowserRealtimeCaptureInfo => {
     const nextCaptureInfo = {
       ...state.captureInfo,
       ...partial,

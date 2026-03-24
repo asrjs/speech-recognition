@@ -103,14 +103,8 @@ export class AudioRingBuffer {
     return this.maxFrames;
   }
 
-  getMinMaxPairs(
-    pointCount = 160,
-    frameSpan = this.maxFrames,
-  ): AudioRingBufferMinMaxPairs {
-    const safePoints = Math.max(
-      8,
-      Number.isFinite(pointCount) ? Math.floor(pointCount) : 8,
-    );
+  getMinMaxPairs(pointCount = 160, frameSpan = this.maxFrames): AudioRingBufferMinMaxPairs {
+    const safePoints = Math.max(8, Number.isFinite(pointCount) ? Math.floor(pointCount) : 8);
     const safeFrameSpan = Math.max(
       1,
       Number.isFinite(frameSpan) ? Math.floor(frameSpan) : this.maxFrames,
@@ -124,9 +118,7 @@ export class AudioRingBuffer {
     for (let pointIndex = 0; pointIndex < safePoints; pointIndex += 1) {
       const pointStart = startFrame + pointIndex * framesPerPoint;
       const pointEnd =
-        pointIndex === safePoints - 1
-          ? endFrame
-          : Math.min(endFrame, pointStart + framesPerPoint);
+        pointIndex === safePoints - 1 ? endFrame : Math.min(endFrame, pointStart + framesPerPoint);
       let min = Number.POSITIVE_INFINITY;
       let max = Number.NEGATIVE_INFINITY;
 
@@ -152,14 +144,8 @@ export class AudioRingBuffer {
     };
   }
 
-  getSamplePoints(
-    pointCount = 1024,
-    frameSpan = this.maxFrames,
-  ): AudioRingBufferSamplePoints {
-    const safePoints = Math.max(
-      1,
-      Number.isFinite(pointCount) ? Math.floor(pointCount) : 1,
-    );
+  getSamplePoints(pointCount = 1024, frameSpan = this.maxFrames): AudioRingBufferSamplePoints {
+    const safePoints = Math.max(1, Number.isFinite(pointCount) ? Math.floor(pointCount) : 1);
     const safeFrameSpan = Math.max(
       1,
       Number.isFinite(frameSpan) ? Math.floor(frameSpan) : this.maxFrames,
@@ -181,9 +167,7 @@ export class AudioRingBuffer {
 
     for (let pointIndex = 0; pointIndex < safePoints; pointIndex += 1) {
       const offset =
-        safePoints === 1
-          ? 0
-          : Math.round((pointIndex * (frameCount - 1)) / (safePoints - 1));
+        safePoints === 1 ? 0 : Math.round((pointIndex * (frameCount - 1)) / (safePoints - 1));
       const frame = Math.min(endFrame - 1, startFrame + offset);
       samples[pointIndex] = this.buffer[frame % this.maxFrames] ?? 0;
     }

@@ -455,7 +455,11 @@ export interface CreateNemoRnntModelFamilyOptions {
 
 export function createNemoRnntModelFamily(
   options: CreateNemoRnntModelFamilyOptions = {},
-): SpeechModelFactory<NemoRnntModelOptions, NemoRnntTranscriptionOptions, NemoRnntNativeTranscript> {
+): SpeechModelFactory<
+  NemoRnntModelOptions,
+  NemoRnntTranscriptionOptions,
+  NemoRnntNativeTranscript
+> {
   const family = options.family ?? 'nemo-rnnt';
   const factoryClassification = resolveClassification(options.classification);
 

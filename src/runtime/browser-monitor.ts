@@ -1,7 +1,4 @@
-import type {
-  BrowserRealtimeStarter,
-  BrowserRealtimeStarterSnapshot,
-} from './browser-realtime.js';
+import type { BrowserRealtimeStarter, BrowserRealtimeStarterSnapshot } from './browser-realtime.js';
 import type { StreamingSpeechDetectorEvent } from './streaming-detector.js';
 
 export interface BrowserRealtimeMonitorOptions {

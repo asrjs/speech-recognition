@@ -31,8 +31,7 @@ describe('browser realtime starter', () => {
 
     expect(snapshot.plot.pointCount).toBe(
       Math.round(
-        DEFAULT_STREAMING_DETECTOR_CONFIG.ringBufferDurationMs /
-          snapshot.plot.chunkDurationMs,
+        DEFAULT_STREAMING_DETECTOR_CONFIG.ringBufferDurationMs / snapshot.plot.chunkDurationMs,
       ),
     );
     expect(snapshot.plot.columns).toHaveLength(snapshot.plot.pointCount);

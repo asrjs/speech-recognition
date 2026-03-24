@@ -232,9 +232,7 @@ describe('DefaultSpeechRuntime', () => {
   });
 
   it('advertises JS mel as the default Canary frontend backend', () => {
-    expect(resolveCanaryArtifactSource('nvidia/canary-180m-flash')?.preprocessorBackend).toBe(
-      'js',
-    );
+    expect(resolveCanaryArtifactSource('nvidia/canary-180m-flash')?.preprocessorBackend).toBe('js');
   });
 
   it('can inject the built-in Parakeet artifact source without moving brand logic into nemo-tdt', async () => {

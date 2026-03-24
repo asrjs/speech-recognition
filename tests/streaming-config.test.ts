@@ -1,7 +1,4 @@
-import {
-  isStreamingConfigEqual,
-  mergeStreamingConfig,
-} from '@asrjs/speech-recognition/realtime';
+import { isStreamingConfigEqual, mergeStreamingConfig } from '@asrjs/speech-recognition/realtime';
 import { describe, expect, it } from 'vitest';
 
 describe('streaming config helpers', () => {
@@ -13,9 +10,12 @@ describe('streaming config helpers', () => {
     expect('energyThreshold' in merged).toBe(false);
     expect(merged.gateMode).toBe('rough-and-ten-vad');
     expect(
-      isStreamingConfigEqual(merged, mergeStreamingConfig('generic-streaming', {
-        minSpeechLevelDbfs: merged.minSpeechLevelDbfs,
-      })),
+      isStreamingConfigEqual(
+        merged,
+        mergeStreamingConfig('generic-streaming', {
+          minSpeechLevelDbfs: merged.minSpeechLevelDbfs,
+        }),
+      ),
     ).toBe(true);
   });
 

@@ -132,26 +132,25 @@ export function argmaxAndSelectedLogProbs(
     const rowOffset = frameIndex * vocabSize;
     let bestId = 0;
     let bestValue = Number.NEGATIVE_INFINITY;
-    let rowMax = Number.NEGATIVE_INFINITY;
 
     for (let vocabIndex = 0; vocabIndex < vocabSize; vocabIndex += 1) {
-      const value = logits[rowOffset + vocabIndex] ?? Number.NEGATIVE_INFINITY;
+      // PERF: Using the non-null assertion operator (!) instead of nullish coalescing (??) inside
+      // tight inner loops over TypedArrays significantly improves V8 performance.
+      const value = logits[rowOffset + vocabIndex]!;
       if (value > bestValue) {
         bestValue = value;
         bestId = vocabIndex;
-      }
-      if (value > rowMax) {
-        rowMax = value;
       }
     }
 
     let expSum = 0;
     for (let vocabIndex = 0; vocabIndex < vocabSize; vocabIndex += 1) {
-      expSum += Math.exp((logits[rowOffset + vocabIndex] ?? Number.NEGATIVE_INFINITY) - rowMax);
+      expSum += Math.exp(logits[rowOffset + vocabIndex]! - bestValue);
     }
 
     frameIds[frameIndex] = bestId;
-    selectedLogProbs[frameIndex] = bestValue - (rowMax + Math.log(expSum || 1));
+    // Mathematically simplifies: bestValue - (bestValue + Math.log(expSum || 1)) => -Math.log(expSum || 1)
+    selectedLogProbs[frameIndex] = -Math.log(expSum || 1);
   }
 
   return {

@@ -38,8 +38,7 @@ export function alignDurationMsToTimeline(
     return safeChunkDurationMs;
   }
   const chunkCount = durationMs / safeChunkDurationMs;
-  const aligner =
-    mode === 'floor' ? Math.floor : mode === 'ceil' ? Math.ceil : Math.round;
+  const aligner = mode === 'floor' ? Math.floor : mode === 'ceil' ? Math.ceil : Math.round;
   return Math.max(safeChunkDurationMs, aligner(chunkCount) * safeChunkDurationMs);
 }
 
@@ -55,8 +54,7 @@ export function alignFrameCountToTimeline(
 
   const chunkFrames = resolveStreamingTimelineChunkFrames(sampleRate, chunkDurationMs);
   const chunkCount = frameCount / chunkFrames;
-  const aligner =
-    mode === 'floor' ? Math.floor : mode === 'ceil' ? Math.ceil : Math.round;
+  const aligner = mode === 'floor' ? Math.floor : mode === 'ceil' ? Math.ceil : Math.round;
   return Math.max(chunkFrames, aligner(chunkCount) * chunkFrames);
 }
 
