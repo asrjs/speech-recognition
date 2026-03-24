@@ -249,7 +249,7 @@ Raw waveform
 
 ## Reusable Module Mapping for @asrjs/speech-recognition
 
-| Transformers Model           | @asrjs/speech-recognition module                                                          |
+| Transformers Model           | @asrjs/speech-recognition module                                       |
 | ---------------------------- | ---------------------------------------------------------------------- |
 | Wav2Vec2FeatureEncoder       | audio/wav2vec-conv.ts                                                  |
 | WhisperFeatureExtractor      | audio/whisper-mel.ts                                                   |

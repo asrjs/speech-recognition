@@ -176,16 +176,8 @@ describe('NoiseFloorTracker', () => {
     }
 
     const before = tracker.getState();
-    const afterInvalidEnergy = tracker.observeWindow(
-      'confirmed-silence-window',
-      Number.NaN,
-      0.08,
-    );
-    const afterInvalidDuration = tracker.observeWindow(
-      'rejected-candidate-window',
-      0.02,
-      0,
-    );
+    const afterInvalidEnergy = tracker.observeWindow('confirmed-silence-window', Number.NaN, 0.08);
+    const afterInvalidDuration = tracker.observeWindow('rejected-candidate-window', 0.02, 0);
 
     expect(afterInvalidEnergy).toEqual(before);
     expect(afterInvalidDuration).toEqual(before);

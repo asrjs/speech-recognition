@@ -70,7 +70,9 @@ describe('media helpers', () => {
     const buffer = await blob.arrayBuffer();
     const view = new DataView(buffer);
     const readAscii = (offset: number, length: number) =>
-      Array.from({ length }, (_, index) => String.fromCharCode(view.getUint8(offset + index))).join('');
+      Array.from({ length }, (_, index) => String.fromCharCode(view.getUint8(offset + index))).join(
+        '',
+      );
 
     expect(blob.type).toBe('audio/wav');
     expect(readAscii(0, 4)).toBe('RIFF');
@@ -179,10 +181,9 @@ describe('media helpers', () => {
       close: vi.fn(),
     }));
 
-    const decoded = await decodeAudioBufferToMonoPcm(
-      await new Blob(['audio']).arrayBuffer(),
-      { createAudioContext },
-    );
+    const decoded = await decodeAudioBufferToMonoPcm(await new Blob(['audio']).arrayBuffer(), {
+      createAudioContext,
+    });
 
     expect(createAudioContext).toHaveBeenCalledWith(16000);
     expect(Array.from(decoded.pcm)).toEqual([0.25, -0.25]);

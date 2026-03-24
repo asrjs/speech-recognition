@@ -126,29 +126,19 @@ function resolveTenVadConfig(
   const chunkDurationMs = resolvedConfig.chunkDurationMs;
   return {
     sampleRate,
-    hopSize:
-      resolveSupportedTenVadHopSize(
-        sampleRate,
-        base.hopSize ?? resolveStreamingTimelineChunkFrames(sampleRate, chunkDurationMs),
-      ),
+    hopSize: resolveSupportedTenVadHopSize(
+      sampleRate,
+      base.hopSize ?? resolveStreamingTimelineChunkFrames(sampleRate, chunkDurationMs),
+    ),
     threshold: base.threshold ?? resolvedConfig.tenVadThreshold ?? 0.5,
     confirmationWindowMs:
-      base.confirmationWindowMs ??
-      resolvedConfig.tenVadConfirmationWindowMs ??
-      192,
+      base.confirmationWindowMs ?? resolvedConfig.tenVadConfirmationWindowMs ?? 192,
     hangoverMs: base.hangoverMs ?? resolvedConfig.tenVadHangoverMs ?? 320,
     minSpeechDurationMs:
-      base.minSpeechDurationMs ??
-      resolvedConfig.tenVadMinSpeechDurationMs ??
-      240,
+      base.minSpeechDurationMs ?? resolvedConfig.tenVadMinSpeechDurationMs ?? 240,
     minSilenceDurationMs:
-      base.minSilenceDurationMs ??
-      resolvedConfig.tenVadMinSilenceDurationMs ??
-      80,
-    speechPaddingMs:
-      base.speechPaddingMs ??
-      resolvedConfig.tenVadSpeechPaddingMs ??
-      48,
+      base.minSilenceDurationMs ?? resolvedConfig.tenVadMinSilenceDurationMs ?? 80,
+    speechPaddingMs: base.speechPaddingMs ?? resolvedConfig.tenVadSpeechPaddingMs ?? 48,
   };
 }
 
@@ -178,7 +168,10 @@ function buildAlignedPlot(
   const pointCount = Math.max(1, Math.floor(snapshot.waveform.minMax.length / 2));
   const filledPointCount = Math.min(
     pointCount,
-    Math.max(0, Math.ceil((snapshot.waveform.endFrame - snapshot.waveform.startFrame) / chunkFrames)),
+    Math.max(
+      0,
+      Math.ceil((snapshot.waveform.endFrame - snapshot.waveform.startFrame) / chunkFrames),
+    ),
   );
   const padPoints = Math.max(0, pointCount - filledPointCount);
   const displaySpanFrames = pointCount * chunkFrames;
@@ -246,10 +239,7 @@ function buildAlignedPlot(
       vadSpeechRatio: vadPoint?.speechRatio ?? 0,
       vadSpeaking: vadPoint?.speaking ?? false,
       tenVadPass: vadPoint?.speaking ?? false,
-      detectorPass: computeDetectorPass(
-        roughPoint?.isSpeech ?? false,
-        vadPoint?.speaking ?? false,
-      ),
+      detectorPass: computeDetectorPass(roughPoint?.isSpeech ?? false, vadPoint?.speaking ?? false),
       activeSegment: columnOverlapsSegment(targetIndex, snapshot.activeSegment),
       recentSegment: snapshot.recentSegments.some((segment) =>
         columnOverlapsSegment(targetIndex, segment),

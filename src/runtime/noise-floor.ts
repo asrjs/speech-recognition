@@ -5,9 +5,7 @@ export interface NoiseFloorTrackerConfig {
   readonly minBackgroundDurationSec: number;
 }
 
-export type NoiseFloorObservationSource =
-  | 'confirmed-silence-window'
-  | 'rejected-candidate-window';
+export type NoiseFloorObservationSource = 'confirmed-silence-window' | 'rejected-candidate-window';
 
 export interface NoiseFloorTrackerState {
   readonly noiseFloor: number;
@@ -56,19 +54,10 @@ function sanitizeNoiseFloorConfig(
   return {
     initialNoiseFloor: Math.max(
       MIN_NOISE_FLOOR,
-      clampFinitePositive(
-        config.initialNoiseFloor,
-        fallback.initialNoiseFloor,
-      ),
+      clampFinitePositive(config.initialNoiseFloor, fallback.initialNoiseFloor),
     ),
-    fastAdaptationRate: clampUnitInterval(
-      config.fastAdaptationRate,
-      fallback.fastAdaptationRate,
-    ),
-    slowAdaptationRate: clampUnitInterval(
-      config.slowAdaptationRate,
-      fallback.slowAdaptationRate,
-    ),
+    fastAdaptationRate: clampUnitInterval(config.fastAdaptationRate, fallback.fastAdaptationRate),
+    slowAdaptationRate: clampUnitInterval(config.slowAdaptationRate, fallback.slowAdaptationRate),
     minBackgroundDurationSec: Math.max(
       0,
       Number.isFinite(config.minBackgroundDurationSec)
@@ -90,10 +79,7 @@ function computeRobustBackgroundAverage(observations: readonly number[]): number
     return null;
   }
   const sorted = [...observations].sort((left, right) => left - right);
-  const sampleCount = Math.max(
-    1,
-    Math.floor(sorted.length * ROBUST_BACKGROUND_LOWER_FRACTION),
-  );
+  const sampleCount = Math.max(1, Math.floor(sorted.length * ROBUST_BACKGROUND_LOWER_FRACTION));
   const slice = sorted.slice(0, sampleCount);
   const sum = slice.reduce((total, value) => total + value, 0);
   return sum / Math.max(1, slice.length);
@@ -166,8 +152,7 @@ export class NoiseFloorTracker {
               REJECTED_CANDIDATE_ADAPTATION_SCALE,
           );
 
-    this.noiseFloor =
-      this.noiseFloor * (1 - adaptationRate) + backgroundAverage * adaptationRate;
+    this.noiseFloor = this.noiseFloor * (1 - adaptationRate) + backgroundAverage * adaptationRate;
     this.noiseFloor = Math.max(MIN_NOISE_FLOOR, this.noiseFloor);
 
     return this.getState();
@@ -212,9 +197,7 @@ export class NoiseFloorTracker {
       0,
       Math.min(1, this.confirmedSilenceDurationSec / this.config.minBackgroundDurationSec),
     );
-    return (
-      this.config.fastAdaptationRate * (1 - blend) + this.config.slowAdaptationRate * blend
-    );
+    return this.config.fastAdaptationRate * (1 - blend) + this.config.slowAdaptationRate * blend;
   }
 
   private computeBackgroundAverage(fallback: number): number {

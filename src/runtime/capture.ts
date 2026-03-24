@@ -83,8 +83,10 @@ export interface BrowserMicrophoneCaptureHandle {
   stop(): Promise<void>;
 }
 
-export interface BrowserMicrophoneRingCaptureOptions
-  extends Omit<BrowserMicrophoneCaptureOptions, 'onChunk'> {
+export interface BrowserMicrophoneRingCaptureOptions extends Omit<
+  BrowserMicrophoneCaptureOptions,
+  'onChunk'
+> {
   readonly ringBufferDurationSeconds?: number;
   readonly onChunk?: (chunk: MicrophoneAudioChunk) => void;
 }
@@ -251,9 +253,7 @@ function createFixedChunkResampler(options: {
   const targetSampleRate = Math.max(1, options.targetSampleRate);
   const chunkFrames = Math.max(1, options.chunkFrames);
   const rateRatio = sourceSampleRate / targetSampleRate;
-  let sourceBuffer = new Float32Array(
-    Math.max(2048, Math.ceil(rateRatio * chunkFrames * 4) + 2),
-  );
+  let sourceBuffer = new Float32Array(Math.max(2048, Math.ceil(rateRatio * chunkFrames * 4) + 2));
   let sourceLength = 0;
   let sourceReadIndex = 0;
 
@@ -296,8 +296,7 @@ function createFixedChunkResampler(options: {
         const sourceIndex = Math.floor(sourcePosition);
         const fraction = sourcePosition - sourceIndex;
         const left = sourceBuffer[sourceIndex] ?? 0;
-        const right =
-          sourceBuffer[Math.min(sourceIndex + 1, sourceLength - 1)] ?? left;
+        const right = sourceBuffer[Math.min(sourceIndex + 1, sourceLength - 1)] ?? left;
         out[index] = left + (right - left) * fraction;
       }
 
@@ -346,19 +345,15 @@ async function createAudioWorkletCaptureNode(
     URL.revokeObjectURL(moduleUrl);
   }
 
-  return new globalThis.AudioWorkletNode(
-    audioContext as AudioContext,
-    'asrjs-capture-processor',
-    {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-      outputChannelCount: [1],
-      processorOptions: {
-        targetSampleRate: options.targetSampleRate ?? audioContext.sampleRate,
-        targetChunkFrames: options.chunkFrames ?? STREAMING_TIMELINE_CHUNK_FRAMES,
-      },
+  return new globalThis.AudioWorkletNode(audioContext as AudioContext, 'asrjs-capture-processor', {
+    numberOfInputs: 1,
+    numberOfOutputs: 1,
+    outputChannelCount: [1],
+    processorOptions: {
+      targetSampleRate: options.targetSampleRate ?? audioContext.sampleRate,
+      targetChunkFrames: options.chunkFrames ?? STREAMING_TIMELINE_CHUNK_FRAMES,
     },
-  ) as AudioWorkletNodeLike;
+  }) as AudioWorkletNodeLike;
 }
 
 export async function startMicrophoneCapture(
@@ -367,10 +362,7 @@ export async function startMicrophoneCapture(
   const processingSampleRate = options.targetSampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE;
   const chunkFrames =
     options.chunkFrames ??
-    resolveStreamingTimelineChunkFrames(
-      processingSampleRate,
-      options.chunkDurationMs,
-    );
+    resolveStreamingTimelineChunkFrames(processingSampleRate, options.chunkDurationMs);
   const bufferSize = options.bufferSize ?? resolveScriptProcessorBufferSize(chunkFrames);
   const createAudioContext = resolveCreateAudioContext(options.createAudioContext);
   const ownsStream = !options.stream;
@@ -407,8 +399,7 @@ export async function startMicrophoneCapture(
     chunkFrames,
     targetSampleRate: processingSampleRate,
   });
-  const scriptProcessor =
-    workletNode ? null : audioContext.createScriptProcessor(bufferSize, 1, 1);
+  const scriptProcessor = workletNode ? null : audioContext.createScriptProcessor(bufferSize, 1, 1);
   const processor = workletNode ?? scriptProcessor;
   if (!processor) {
     throw new Error('Unable to create a microphone capture processor.');

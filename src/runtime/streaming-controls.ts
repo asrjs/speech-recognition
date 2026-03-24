@@ -389,10 +389,7 @@ export function formatStreamingControlValue(
   if (definition.field === 'minSpeechLevelDbfs') {
     return `${value.toFixed(1)} dBFS`;
   }
-  if (
-    definition.field === 'tenVadThreshold' ||
-    definition.field === 'energyRiseThreshold'
-  ) {
+  if (definition.field === 'tenVadThreshold' || definition.field === 'energyRiseThreshold') {
     return value.toFixed(2);
   }
   if (isMillisecondsField(definition.field)) {
@@ -431,9 +428,7 @@ export function formatStreamingControlHint(
   const chunkDurationMs = Math.round(
     resolvedConfig?.chunkDurationMs ?? STREAMING_TIMELINE_CHUNK_MS,
   );
-  const chunkNote = definition.chunkAligned
-    ? `chunk-aligned ${chunkDurationMs} ms`
-    : null;
+  const chunkNote = definition.chunkAligned ? `chunk-aligned ${chunkDurationMs} ms` : null;
 
   const range =
     definition.field === 'minSpeechLevelDbfs'

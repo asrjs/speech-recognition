@@ -539,15 +539,11 @@ export async function getParakeetModel(
   const decoderAvailable = getAvailableQuantModes(repoFiles, 'decoder_joint-model');
   const encoderQuant =
     options.encoderQuant ??
-    encoderSetup.encoderPreferred.find((quantization) =>
-      encoderAvailable.includes(quantization),
-    ) ??
+    encoderSetup.encoderPreferred.find((quantization) => encoderAvailable.includes(quantization)) ??
     pickPreferredQuant(encoderAvailable, encoderBackend, 'encoder');
   const decoderQuant =
     options.decoderQuant ??
-    decoderSetup.decoderPreferred.find((quantization) =>
-      decoderAvailable.includes(quantization),
-    ) ??
+    decoderSetup.decoderPreferred.find((quantization) => decoderAvailable.includes(quantization)) ??
     pickPreferredQuant(decoderAvailable, decoderBackend, 'decoder');
   const encoderFilename = getQuantizedModelName('encoder-model', encoderQuant);
   const decoderFilename = getQuantizedModelName('decoder_joint-model', decoderQuant);
@@ -733,8 +729,14 @@ export async function resolveParakeetLocalEntries(
   const inspection = inspectParakeetLocalEntries(entries);
   const encoderBackend = resolveEncoderBackend(options);
   const decoderBackend = resolveDecoderBackend(options);
-  const encoderSetup = getParakeetDefaultWeightSetup(options.modelId ?? DEFAULT_MODEL, encoderBackend);
-  const decoderSetup = getParakeetDefaultWeightSetup(options.modelId ?? DEFAULT_MODEL, decoderBackend);
+  const encoderSetup = getParakeetDefaultWeightSetup(
+    options.modelId ?? DEFAULT_MODEL,
+    encoderBackend,
+  );
+  const decoderSetup = getParakeetDefaultWeightSetup(
+    options.modelId ?? DEFAULT_MODEL,
+    decoderBackend,
+  );
   const availableEncoderQuantizations: readonly QuantizationMode[] =
     inspection.encoderQuantizations.length > 0 ? inspection.encoderQuantizations : ['fp32'];
   const availableDecoderQuantizations: readonly QuantizationMode[] =
