@@ -120,6 +120,7 @@ describe('public exports', () => {
     expect(realtime.estimateStreamingReleaseMs).toBeTypeOf('function');
     expect(realtime.resolveStreamingSnapshotNoiseFloorDbfs).toBeTypeOf('function');
     expect(realtime.resolveStreamingForegroundThresholdDbfs).toBeTypeOf('function');
+    expect(realtime.resolveStreamingOnsetThresholdDbfs).toBeTypeOf('function');
     expect(realtime.getStreamingSegmentDurationSeconds).toBeTypeOf('function');
     expect(bench.summarizeNumericSeries).toBeTypeOf('function');
     expect(bench.benchmarkRunRecordsToCsv).toBeTypeOf('function');

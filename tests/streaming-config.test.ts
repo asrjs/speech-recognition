@@ -4,17 +4,22 @@ import {
 } from '@asrjs/speech-recognition/realtime';
 import { describe, expect, it } from 'vitest';
 
+function amplitudeToDbfs(value: number): number {
+  return 20 * Math.log10(value);
+}
+
 describe('streaming config helpers', () => {
-  it('drops runtime-only energyThreshold after normalizing overrides', () => {
+  it('keeps energyThreshold as a first-class runtime setting and derives minSpeechLevelDbfs from it', () => {
     const merged = mergeStreamingConfig('generic-streaming', {
       energyThreshold: 0.01,
     });
 
-    expect('energyThreshold' in merged).toBe(false);
-    expect(merged.gateMode).toBe('ten-vad-only');
+    expect(merged.energyThreshold).toBe(0.01);
+    expect(merged.minSpeechLevelDbfs).toBeCloseTo(amplitudeToDbfs(0.01), 5);
+    expect(merged.gateMode).toBe('rough-only');
     expect(
       isStreamingConfigEqual(merged, mergeStreamingConfig('generic-streaming', {
-        minSpeechLevelDbfs: merged.minSpeechLevelDbfs,
+        energyThreshold: merged.energyThreshold,
       })),
     ).toBe(true);
   });
@@ -27,6 +32,15 @@ describe('streaming config helpers', () => {
     expect('waveformPointCount' in merged).toBe(false);
   });
 
+  it('drops deprecated long-speech dB overrides and keeps the new excess-energy default', () => {
+    const merged = mergeStreamingConfig('generic-streaming', {
+      foregroundLongMinDb: 12,
+    } as never);
+
+    expect('foregroundLongMinDb' in merged).toBe(false);
+    expect(merged.foregroundLongExcessDbMs).toBeGreaterThan(0);
+  });
+
   it('derives analysis-window counts from analysis duration when chunk timing changes', () => {
     const merged = mergeStreamingConfig('generic-streaming', {
       analysisWindowMs: 160,
@@ -34,7 +48,7 @@ describe('streaming config helpers', () => {
 
     expect(merged.energySmoothingDurationMs).toBe(480);
     expect(merged.energySmoothingWindows).toBe(3);
-    expect(merged.maxOnsetLookbackChunks).toBe(2);
+    expect(merged.maxOnsetLookbackChunks).toBe(3);
     expect(merged.defaultOnsetLookbackChunks).toBe(2);
   });
 
@@ -70,7 +84,7 @@ describe('streaming config helpers', () => {
     expect(merged.chunkDurationMs).toBe(32);
     expect(merged.energySmoothingDurationMs).toBe(480);
     expect(merged.energySmoothingWindows).toBe(5);
-    expect(merged.maxOnsetLookbackChunks).toBe(3);
+    expect(merged.maxOnsetLookbackChunks).toBe(5);
     expect(merged.defaultOnsetLookbackChunks).toBe(3);
     expect(merged.tenVadSpeechPaddingMs).toBe(96);
   });

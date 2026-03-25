@@ -22,29 +22,59 @@ export interface ResolvedStreamingControlGroup extends StreamingControlGroupDefi
 export const STREAMING_CONTROL_GROUPS: readonly StreamingControlGroupDefinition[] = [
   {
     id: 'segmenter',
-    title: 'TEN-VAD Segmenter',
-    description: 'Speech proposal, confirmation, and release timing.',
+    title: 'Live Segmenter',
+    description: 'Peak-energy speech trigger, smoothing, and silence release.',
     fields: [
-      'prerollMs',
-      'tenVadThreshold',
-      'tenVadConfirmationWindowMs',
-      'tenVadHangoverMs',
-      'tenVadMinSpeechDurationMs',
-      'tenVadMinSilenceDurationMs',
+      'energyThreshold',
+      'analysisWindowMs',
+      'energySmoothingDurationMs',
+      'minSilenceDurationMs',
       'maxSegmentDurationMs',
     ],
   },
   {
-    id: 'foreground',
-    title: 'Foreground Filter',
-    description: 'Rejects quiet background speech after TEN-VAD creates a segment.',
+    id: 'timing',
+    title: 'Extraction Timing',
+    description: 'Lookback, overlap, and tail padding applied when a segment is extracted.',
     fields: [
-      'foregroundOnsetWindowMs',
-      'foregroundShortSpeechMs',
-      'foregroundLongSpeechMs',
-      'foregroundMinDb',
-      'foregroundOnsetMinDb',
-      'foregroundLongMinDb',
+      'prerollMs',
+      'overlapDurationMs',
+      'speechHangoverMs',
+    ],
+  },
+  {
+    id: 'acceptance',
+    title: 'Final Acceptance',
+    description: 'Duration and normalized 16 kHz energy thresholds used after live segmentation.',
+    fields: [
+      'minSpeechDurationMs',
+      'minEnergyPerSecond',
+      'minEnergyIntegral',
+    ],
+  },
+  {
+    id: 'adaptation',
+    title: 'Noise Adaptation',
+    description: 'How the baseline noise floor and onset backtracking adapt over time.',
+    fields: [
+      'initialNoiseFloor',
+      'fastAdaptationRate',
+      'slowAdaptationRate',
+      'minBackgroundDurationSec',
+      'snrThreshold',
+      'minSnrThreshold',
+      'energyRiseThreshold',
+    ],
+  },
+  {
+    id: 'acceptance-advanced',
+    title: 'Adaptive Acceptance',
+    description: 'Noise-scaled energy thresholds for the final segment acceptance gate.',
+    fields: [
+      'adaptiveEnergyPerSecondFactor',
+      'adaptiveEnergyIntegralFactor',
+      'minAdaptiveEnergyPerSecond',
+      'minAdaptiveEnergyIntegral',
     ],
   },
 ] as const;
@@ -69,27 +99,21 @@ export function estimateStreamingReleaseMs(
   config:
     | Pick<
         Partial<StreamingDetectorConfig>,
-        'tenVadConfirmationWindowMs' | 'tenVadMinSilenceDurationMs' | 'tenVadHangoverMs'
+        'minSilenceDurationMs' | 'speechHangoverMs'
       >
     | null
     | undefined,
 ): number | null {
   if (
-    typeof config?.tenVadConfirmationWindowMs !== 'number'
-    || !Number.isFinite(config.tenVadConfirmationWindowMs)
-    || typeof config?.tenVadMinSilenceDurationMs !== 'number'
-    || !Number.isFinite(config.tenVadMinSilenceDurationMs)
-    || typeof config?.tenVadHangoverMs !== 'number'
-    || !Number.isFinite(config.tenVadHangoverMs)
+    typeof config?.minSilenceDurationMs !== 'number'
+    || !Number.isFinite(config.minSilenceDurationMs)
+    || typeof config?.speechHangoverMs !== 'number'
+    || !Number.isFinite(config.speechHangoverMs)
   ) {
     return null;
   }
 
-  return Math.max(
-    config.tenVadConfirmationWindowMs,
-    config.tenVadMinSilenceDurationMs,
-    config.tenVadHangoverMs,
-  );
+  return Math.max(config.minSilenceDurationMs, config.speechHangoverMs);
 }
 
 export function resolveStreamingSnapshotNoiseFloorDbfs(
@@ -113,22 +137,42 @@ export function resolveStreamingSnapshotNoiseFloorDbfs(
 
 export function resolveStreamingForegroundThresholdDbfs(
   config:
-    | Pick<Partial<StreamingDetectorConfig>, 'foregroundFilterEnabled' | 'foregroundMinDb'>
+    | Pick<
+        Partial<StreamingDetectorConfig>,
+        'minSpeechLevelDbfs'
+      >
     | null
     | undefined,
-  noiseFloorDbfs: number | null | undefined,
+  _noiseFloorDbfs: number | null | undefined,
 ): number | null {
   if (
-    !config?.foregroundFilterEnabled
-    || typeof noiseFloorDbfs !== 'number'
-    || !Number.isFinite(noiseFloorDbfs)
-    || typeof config?.foregroundMinDb !== 'number'
-    || !Number.isFinite(config.foregroundMinDb)
+    typeof config?.minSpeechLevelDbfs !== 'number'
+    || !Number.isFinite(config.minSpeechLevelDbfs)
   ) {
     return null;
   }
 
-  return noiseFloorDbfs + config.foregroundMinDb;
+  return config.minSpeechLevelDbfs;
+}
+
+export function resolveStreamingOnsetThresholdDbfs(
+  config:
+    | Pick<
+        Partial<StreamingDetectorConfig>,
+        'minSpeechLevelDbfs'
+      >
+    | null
+    | undefined,
+  _noiseFloorDbfs: number | null | undefined,
+): number | null {
+  if (
+    typeof config?.minSpeechLevelDbfs !== 'number'
+    || !Number.isFinite(config.minSpeechLevelDbfs)
+  ) {
+    return null;
+  }
+
+  return config.minSpeechLevelDbfs;
 }
 
 export function getStreamingSegmentDurationSeconds(

@@ -1,10 +1,6 @@
 import { STREAMING_TIMELINE_CHUNK_MS } from './audio-timeline.js';
 import type { StreamingDetectorConfig } from './streaming-config.js';
 
-/**
- * Consumer-facing metadata for a tunable realtime detector setting.
- * UI packages can use this to render sliders, tooltips, docs, or validation.
- */
 export interface StreamingControlDefinition {
   readonly field: keyof StreamingDetectorConfig;
   readonly label: string;
@@ -22,140 +18,226 @@ function isMillisecondsField(field: keyof StreamingDetectorConfig): boolean {
   return String(field).endsWith('Ms');
 }
 
-function isChunkField(field: keyof StreamingDetectorConfig): boolean {
-  return String(field).endsWith('Chunks');
+function isSecondsField(field: keyof StreamingDetectorConfig): boolean {
+  return String(field).endsWith('Sec');
 }
 
-/**
- * Shared tuning-control metadata for realtime detector settings.
- * The core library remains headless, but it serves canonical ranges,
- * step sizes, and descriptions so framework bindings can stay consistent.
- */
+function isRateField(field: keyof StreamingDetectorConfig): boolean {
+  return (
+    field === 'energyThreshold'
+    || field === 'initialNoiseFloor'
+    || field === 'fastAdaptationRate'
+    || field === 'slowAdaptationRate'
+    || field === 'energyRiseThreshold'
+  );
+}
+
 export const STREAMING_CONTROL_DEFINITIONS: readonly StreamingControlDefinition[] = [
   {
-    field: 'prerollMs',
-    label: 'Preroll',
+    field: 'energyThreshold',
+    label: 'Energy threshold',
+    min: 0.01,
+    max: 0.3,
+    step: 0.005,
+    description: 'Smoothed peak-amplitude threshold that opens live speech.',
+    guide: 'Raise to reject weak triggers. Lower to catch softer near-mic speech.',
+  },
+  {
+    field: 'analysisWindowMs',
+    label: 'Analysis window',
     min: 80,
-    max: 800,
-    step: 20,
-    description: 'Audio kept before accepted onset so initial consonants are not cut.',
-    guide: 'Raise if starts are clipped. Too high adds extra leading silence.',
-    chunkAligned: true,
-  },
-  {
-    field: 'tenVadThreshold',
-    label: 'Speech sensitivity',
-    min: 0.05,
-    max: 0.95,
-    step: 0.01,
-    description: 'TEN-VAD probability threshold for speech versus non-speech.',
-    guide: 'Lower is more permissive. Higher is stricter.',
-  },
-  {
-    field: 'tenVadConfirmationWindowMs',
-    label: 'Confirmation window',
-    min: 64,
-    max: 800,
-    step: 16,
-    description: 'Window used to confirm recent TEN-VAD speech or silence.',
-    guide: 'Lower for faster turns. Raise for more stable confirmation.',
-    chunkAligned: true,
-  },
-  {
-    field: 'tenVadHangoverMs',
-    label: 'Tail hold',
-    min: 64,
-    max: 1200,
-    step: 16,
-    description: 'How long recent TEN-VAD speech can keep a tail alive.',
-    guide: 'Lower to shorten tails. Raise to keep phrase endings intact.',
-    chunkAligned: true,
-  },
-  {
-    field: 'tenVadMinSpeechDurationMs',
-    label: 'Start speech minimum',
-    min: 48,
-    max: 640,
-    step: STREAMING_TIMELINE_CHUNK_MS,
-    description: 'Minimum continuous TEN-VAD speech needed before speech is confirmed.',
-    guide: 'Lower for quicker starts. Raise to reject burst noise.',
-    chunkAligned: true,
-  },
-  {
-    field: 'tenVadMinSilenceDurationMs',
-    label: 'Release silence minimum',
-    min: 32,
-    max: 640,
-    step: STREAMING_TIMELINE_CHUNK_MS,
-    description: 'Minimum continuous TEN-VAD silence needed before speech can end.',
-    guide: 'Lower for quicker release. Raise to avoid cutting internal pauses.',
-    chunkAligned: true,
-  },
-  {
-    field: 'foregroundOnsetWindowMs',
-    label: 'Onset window',
-    min: 96,
     max: 320,
-    step: 16,
-    description: 'How much of the segment start is inspected for a strong foreground onset.',
-    guide: 'Raise to make onset scoring steadier. Lower for very short phrases.',
+    step: STREAMING_TIMELINE_CHUNK_MS,
+    description: 'Window size used for the peak-energy analysis chunks.',
+    guide: 'Keep near 80 ms unless you have a clear reason to trade latency for stability.',
     chunkAligned: true,
   },
   {
-    field: 'foregroundShortSpeechMs',
-    label: 'Short utterance limit',
+    field: 'energySmoothingDurationMs',
+    label: 'Energy smoothing',
+    min: 160,
+    max: 1280,
+    step: STREAMING_TIMELINE_CHUNK_MS,
+    description: 'Duration of the moving-average smoothing applied to peak energy.',
+    guide: 'Raise for steadier decisions. Lower for faster reaction.',
+    chunkAligned: true,
+  },
+  {
+    field: 'prerollMs',
+    label: 'Lookback',
     min: 80,
+    max: 800,
+    step: STREAMING_TIMELINE_CHUNK_MS,
+    description: 'Audio prepended before the detected onset when a segment is extracted.',
+    guide: 'Raise if initial consonants are clipped. Too high adds leading silence.',
+    chunkAligned: true,
+  },
+  {
+    field: 'overlapDurationMs',
+    label: 'Overlap',
+    min: 16,
+    max: 320,
+    step: STREAMING_TIMELINE_CHUNK_MS,
+    description: 'Intentional overlap allowed between consecutive accepted segments.',
+    guide: 'Raise to preserve continuity across splits. Lower to reduce duplicated audio.',
+    chunkAligned: true,
+  },
+  {
+    field: 'speechHangoverMs',
+    label: 'Tail padding',
+    min: 16,
     max: 640,
-    step: 16,
-    description: 'Segments shorter than this must also pass the onset loudness check.',
-    guide: 'Raise to reject more short quiet bursts. Lower to accept clipped short words.',
+    step: STREAMING_TIMELINE_CHUNK_MS,
+    description: 'Extra audio appended after the logical speech end during extraction.',
+    guide: 'Raise if endings feel clipped. Lower to reduce trailing silence.',
     chunkAligned: true,
   },
   {
-    field: 'foregroundLongSpeechMs',
-    label: 'Long utterance limit',
-    min: 400,
-    max: 2400,
-    step: 16,
-    description: 'Segments at or above this duration use the long-quiet foreground rule.',
-    guide: 'Raise if long quiet speech is still accepted. Lower if it should reject earlier.',
+    field: 'minSpeechDurationMs',
+    label: 'Min final duration',
+    min: 80,
+    max: 960,
+    step: STREAMING_TIMELINE_CHUNK_MS,
+    description: 'Final acceptance rejects segments shorter than this duration.',
+    guide: 'Raise to reject short bursts. Lower to keep clipped short words.',
     chunkAligned: true,
   },
   {
-    field: 'foregroundMinDb',
-    label: 'Foreground minimum',
+    field: 'minSilenceDurationMs',
+    label: 'Silence release',
     min: 0,
-    max: 24,
-    step: 0.5,
-    description: 'Minimum segment loudness above the adaptive noise floor.',
-    guide: 'Raise to reject quieter speech. Lower to accept softer near-mic talk.',
-  },
-  {
-    field: 'foregroundOnsetMinDb',
-    label: 'Short onset minimum',
-    min: 0,
-    max: 24,
-    step: 0.5,
-    description: 'Minimum onset loudness above the adaptive noise floor for short segments.',
-    guide: 'Raise to reject short quiet triggers. Lower if short words get dropped.',
-  },
-  {
-    field: 'foregroundLongMinDb',
-    label: 'Long utterance minimum',
-    min: 0,
-    max: 24,
-    step: 0.5,
-    description: 'Minimum segment loudness above the floor for long utterances.',
-    guide: 'Raise to reject distant background speech. Lower to keep quiet long dictation.',
+    max: 1600,
+    step: STREAMING_TIMELINE_CHUNK_MS,
+    description: 'Configured silence hold before the live detector ends speech.',
+    guide: 'Lower for faster turn-taking. Raise to keep internal pauses inside one segment.',
+    chunkAligned: true,
   },
   {
     field: 'maxSegmentDurationMs',
-    label: 'Max segment duration',
+    label: 'Max segment',
     min: 400,
     max: 12000,
-    step: 100,
-    description: 'Hard cap for one live segment before forced finalization.',
-    guide: 'Raise for long utterances. Lower for faster transcript turnover.',
+    step: 80,
+    description: 'Hard cap for one segment before the detector forces a split.',
+    guide: 'Raise for long dictation. Lower for faster transcript turnover.',
+    maxFromConfigField: 'ringBufferDurationMs',
+  },
+  {
+    field: 'initialNoiseFloor',
+    label: 'Initial noise',
+    min: 0.00001,
+    max: 0.05,
+    step: 0.0005,
+    description: 'Starting baseline for the adaptive noise-floor tracker.',
+    guide: 'Lower for quiet-room defaults. Raise if your input chain has a persistent floor.',
+  },
+  {
+    field: 'fastAdaptationRate',
+    label: 'Fast adapt',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    description: 'Noise-floor adaptation used early in a silence run.',
+    guide: 'Raise to react faster to room changes. Lower for a steadier baseline.',
+  },
+  {
+    field: 'slowAdaptationRate',
+    label: 'Slow adapt',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    description: 'Noise-floor adaptation used after sustained silence.',
+    guide: 'Lower for a more stable baseline. Raise if the environment changes often.',
+  },
+  {
+    field: 'minBackgroundDurationSec',
+    label: 'Blend duration',
+    min: 0,
+    max: 5,
+    step: 0.1,
+    description: 'Silence duration needed before the tracker fully shifts from fast to slow adaptation.',
+    guide: 'Raise to keep the tracker in fast mode longer. Lower for quicker stabilization.',
+  },
+  {
+    field: 'snrThreshold',
+    label: 'SNR display gate',
+    min: 0,
+    max: 20,
+    step: 0.5,
+    description: 'Heuristic SNR level used for diagnostics and optional rough gating.',
+    guide: 'Usually leave this alone unless you explicitly enable SNR gating.',
+  },
+  {
+    field: 'minSnrThreshold',
+    label: 'Onset SNR floor',
+    min: 0,
+    max: 10,
+    step: 0.25,
+    description: 'Minimum SNR cue used when backtracking the real speech start.',
+    guide: 'Raise to stop onset search sooner in noisy rooms. Lower to search farther back.',
+  },
+  {
+    field: 'energyRiseThreshold',
+    label: 'Rise threshold',
+    min: 0,
+    max: 0.5,
+    step: 0.01,
+    description: 'Required relative energy rise when searching backward for onset.',
+    guide: 'Raise to be stricter about what counts as a meaningful onset ramp.',
+  },
+  {
+    field: 'minEnergyPerSecond',
+    label: 'Min power',
+    min: 0,
+    max: 40,
+    step: 0.5,
+    description: 'Minimum 16 kHz-normalized average power required for final acceptance.',
+    guide: 'Raise to reject quiet background speech. Lower to keep softer valid speech.',
+  },
+  {
+    field: 'minEnergyIntegral',
+    label: 'Min integral',
+    min: 0,
+    max: 200,
+    step: 1,
+    description: 'Minimum 16 kHz-normalized total energy required for final acceptance.',
+    guide: 'Raise to reject weak long segments. Lower if quiet long dictation is being dropped.',
+  },
+  {
+    field: 'adaptiveEnergyPerSecondFactor',
+    label: 'Adaptive power factor',
+    min: 0,
+    max: 100,
+    step: 1,
+    description: 'Noise-scaled factor used to derive the adaptive per-second threshold.',
+    guide: 'Raise if noisy rooms still accept weak speech. Lower if valid speech is over-rejected.',
+  },
+  {
+    field: 'adaptiveEnergyIntegralFactor',
+    label: 'Adaptive integral factor',
+    min: 0,
+    max: 100,
+    step: 1,
+    description: 'Noise-scaled factor used to derive the adaptive energy-integral threshold.',
+    guide: 'Raise for stricter long-segment rejection in noise.',
+  },
+  {
+    field: 'minAdaptiveEnergyPerSecond',
+    label: 'Adaptive power floor',
+    min: 0,
+    max: 20,
+    step: 0.5,
+    description: 'Minimum floor for the adaptive per-second threshold.',
+    guide: 'Raise to keep a stronger base rejection floor even in quiet rooms.',
+  },
+  {
+    field: 'minAdaptiveEnergyIntegral',
+    label: 'Adaptive integral floor',
+    min: 0,
+    max: 40,
+    step: 0.5,
+    description: 'Minimum floor for the adaptive energy-integral threshold.',
+    guide: 'Raise to keep a stronger long-segment rejection floor even in quiet rooms.',
   },
 ] as const;
 
@@ -172,62 +254,16 @@ function alignChunkAlignedMinimum(min: number, step: number): number {
   return Math.ceil(min / step) * step;
 }
 
-/**
- * Return the canonical list of realtime tuning controls exposed by the library.
- *
- * @example
- * ```ts
- * import { listStreamingControls } from '@asrjs/speech-recognition/realtime';
- *
- * const controls = listStreamingControls();
- * const sliderFields = controls.map((control) => control.field);
- * ```
- */
 export function listStreamingControls(): readonly StreamingControlDefinition[] {
   return STREAMING_CONTROL_DEFINITIONS;
 }
 
-/**
- * Look up one tuning control definition by config field.
- *
- * @example
- * ```ts
- * import { getStreamingControlDefinition } from '@asrjs/speech-recognition/realtime';
- *
- * const silenceControl = getStreamingControlDefinition('minSilenceDurationMs');
- * if (silenceControl) {
- *   console.log(silenceControl.label); // "silence"
- * }
- * ```
- */
 export function getStreamingControlDefinition(
   field: keyof StreamingDetectorConfig,
 ): StreamingControlDefinition | undefined {
   return STREAMING_CONTROL_DEFINITIONS.find((definition) => definition.field === field);
 }
 
-/**
- * Resolve the effective min/max/step for a control against a concrete runtime config.
- * This accounts for dynamic constraints such as chunk-aligned step sizes and
- * max values derived from other config fields.
- *
- * @example
- * ```ts
- * import {
- *   getStreamingControlDefinition,
- *   resolveStreamingControlConstraints,
- * } from '@asrjs/speech-recognition/realtime';
- *
- * const definition = getStreamingControlDefinition('levelWindowMs');
- * const constraints = resolveStreamingControlConstraints(definition!, {
- *   chunkDurationMs: 32,
- *   ringBufferDurationMs: 12000,
- * });
- *
- * console.log(constraints);
- * // { min: 200, max: 12000, step: 128 }
- * ```
- */
 export function resolveStreamingControlConstraints(
   definition: StreamingControlDefinition,
   resolvedConfig?: Partial<StreamingDetectorConfig> | null,
@@ -256,23 +292,6 @@ export function resolveStreamingControlConstraints(
   };
 }
 
-/**
- * Resolve the effective step for a tuning control against a concrete runtime config.
- * Time-based controls follow the active chunk size so framework bindings stay aligned.
- *
- * @example
- * ```ts
- * import {
- *   getStreamingControlDefinition,
- *   resolveStreamingControlStep,
- * } from '@asrjs/speech-recognition/realtime';
- *
- * const definition = getStreamingControlDefinition('tenVadMinSpeechDurationMs');
- * const step = resolveStreamingControlStep(definition!, { chunkDurationMs: 16 });
- *
- * console.log(step); // 16
- * ```
- */
 export function resolveStreamingControlStep(
   definition: StreamingControlDefinition,
   resolvedConfig?: Partial<StreamingDetectorConfig> | null,
@@ -280,22 +299,6 @@ export function resolveStreamingControlStep(
   return resolveStreamingControlConstraints(definition, resolvedConfig).step;
 }
 
-/**
- * Clamp an arbitrary input value to the effective runtime range of a control.
- *
- * @example
- * ```ts
- * import {
- *   clampStreamingControlValue,
- *   getStreamingControlDefinition,
- * } from '@asrjs/speech-recognition/realtime';
- *
- * const definition = getStreamingControlDefinition('tenVadThreshold');
- * const clamped = clampStreamingControlValue(definition!, 1.2);
- *
- * console.log(clamped); // 0.95
- * ```
- */
 export function clampStreamingControlValue(
   definition: StreamingControlDefinition,
   value: number,
@@ -308,25 +311,6 @@ export function clampStreamingControlValue(
   return Math.min(max, Math.max(min, value));
 }
 
-/**
- * Snap an arbitrary input value to the effective runtime step of a control after clamping.
- * This is useful for framework bindings that accept free-form text input or custom sliders.
- *
- * @example
- * ```ts
- * import {
- *   getStreamingControlDefinition,
- *   normalizeStreamingControlValue,
- * } from '@asrjs/speech-recognition/realtime';
- *
- * const definition = getStreamingControlDefinition('minSilenceDurationMs');
- * const normalized = normalizeStreamingControlValue(definition!, 23, {
- *   chunkDurationMs: 16,
- * });
- *
- * console.log(normalized); // 16
- * ```
- */
 export function normalizeStreamingControlValue(
   definition: StreamingControlDefinition,
   value: number,
@@ -341,22 +325,6 @@ export function normalizeStreamingControlValue(
   return clampStreamingControlValue(definition, snapped, resolvedConfig);
 }
 
-/**
- * Format a control value using the canonical unit semantics of the setting.
- *
- * @example
- * ```ts
- * import {
- *   formatStreamingControlValue,
- *   getStreamingControlDefinition,
- * } from '@asrjs/speech-recognition/realtime';
- *
- * const definition = getStreamingControlDefinition('minSpeechLevelDbfs');
- * const label = formatStreamingControlValue(definition!, -47);
- *
- * console.log(label); // "-47.0 dBFS"
- * ```
- */
 export function formatStreamingControlValue(
   definition: StreamingControlDefinition,
   value: number | null | undefined,
@@ -364,50 +332,20 @@ export function formatStreamingControlValue(
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return '--';
   }
-  if (
-    definition.field === 'minSpeechLevelDbfs'
-    || definition.field === 'foregroundMinDb'
-    || definition.field === 'foregroundOnsetMinDb'
-    || definition.field === 'foregroundLongMinDb'
-  ) {
-    return definition.field === 'minSpeechLevelDbfs'
-      ? `${value.toFixed(1)} dBFS`
-      : `${value.toFixed(1)} dB`;
-  }
-  if (
-    definition.field === 'tenVadThreshold' ||
-    definition.field === 'energyRiseThreshold'
-  ) {
-    return value.toFixed(2);
-  }
   if (isMillisecondsField(definition.field)) {
     return `${value.toFixed(0)} ms`;
   }
-  if (isChunkField(definition.field)) {
-    return `${value.toFixed(0)} chunks`;
+  if (isSecondsField(definition.field)) {
+    return `${value.toFixed(1)} s`;
+  }
+  if (isRateField(definition.field)) {
+    return definition.field === 'initialNoiseFloor'
+      ? value.toFixed(5)
+      : value.toFixed(2);
   }
   return value.toFixed(2);
 }
 
-/**
- * Format a consumer-facing hint describing range, resolution, and chunk alignment.
- *
- * @example
- * ```ts
- * import {
- *   formatStreamingControlHint,
- *   getStreamingControlDefinition,
- * } from '@asrjs/speech-recognition/realtime';
- *
- * const definition = getStreamingControlDefinition('levelWindowMs');
- * const hint = formatStreamingControlHint(definition!, {
- *   chunkDurationMs: 16,
- *   ringBufferDurationMs: 12000,
- * });
- *
- * console.log(hint); // "200..12000 ms · step 64 ms · chunk-aligned 16 ms"
- * ```
- */
 export function formatStreamingControlHint(
   definition: StreamingControlDefinition,
   resolvedConfig?: Partial<StreamingDetectorConfig> | null,
@@ -420,33 +358,14 @@ export function formatStreamingControlHint(
     ? `chunk-aligned ${chunkDurationMs} ms`
     : null;
 
-  const range =
-    definition.field === 'minSpeechLevelDbfs'
-      ? `${min}..${max} dBFS`
-      : definition.field === 'foregroundMinDb'
-          || definition.field === 'foregroundOnsetMinDb'
-          || definition.field === 'foregroundLongMinDb'
-        ? `${min}..${max} dB`
-        : definition.field === 'tenVadThreshold' || definition.field === 'energyRiseThreshold'
-          ? `${min}..${max}`
-          : isMillisecondsField(definition.field)
-            ? `${min}..${max} ms`
-            : isChunkField(definition.field)
-              ? `${min}..${max} chunks`
-              : `${min}..${max}`;
-
-  const stepLabel =
-    definition.field === 'minSpeechLevelDbfs'
-      ? `step ${step} dB`
-      : definition.field === 'foregroundMinDb'
-          || definition.field === 'foregroundOnsetMinDb'
-          || definition.field === 'foregroundLongMinDb'
-        ? `step ${step} dB`
-        : isMillisecondsField(definition.field)
-          ? `step ${step} ms`
-          : isChunkField(definition.field)
-            ? `step ${step} chunk${step === 1 ? '' : 's'}`
-            : `step ${step}`;
+  const unit =
+    isMillisecondsField(definition.field)
+      ? 'ms'
+      : isSecondsField(definition.field)
+        ? 's'
+        : null;
+  const range = unit ? `${min}..${max} ${unit}` : `${min}..${max}`;
+  const stepLabel = unit ? `step ${step} ${unit}` : `step ${step}`;
 
   return chunkNote ? `${range} · ${stepLabel} · ${chunkNote}` : `${range} · ${stepLabel}`;
 }

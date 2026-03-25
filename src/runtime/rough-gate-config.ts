@@ -7,6 +7,7 @@ export interface RoughSpeechGateConfig {
   readonly sampleRate: number;
   readonly analysisWindowMs: number;
   readonly energySmoothingWindows: number;
+  readonly energyThreshold: number;
   readonly minSpeechLevelDbfs: number;
   readonly useSnrGate: boolean;
   readonly snrThreshold: number;
@@ -28,19 +29,20 @@ export const DEFAULT_ROUGH_GATE_CONFIG: RoughSpeechGateConfig = {
   sampleRate: STREAMING_PROCESSING_SAMPLE_RATE,
   analysisWindowMs: STREAMING_ROUGH_GATE_ANALYSIS_WINDOW_MS,
   energySmoothingWindows: 6,
-  minSpeechLevelDbfs: -38,
+  energyThreshold: 0.08,
+  minSpeechLevelDbfs: -22,
   useSnrGate: false,
-  snrThreshold: 2.5,
-  minSnrThreshold: 1.25,
+  snrThreshold: 3.0,
+  minSnrThreshold: 1.0,
   energyRiseThreshold: 0.08,
   maxOnsetLookbackChunks: 6,
   defaultOnsetLookbackChunks: 4,
-  maxHistoryChunks: 24,
+  maxHistoryChunks: 20,
   minSpeechDurationMs: 240,
-  minSilenceDurationMs: 800,
-  initialNoiseFloor: 0.004,
+  minSilenceDurationMs: 400,
+  initialNoiseFloor: 0.005,
   fastAdaptationRate: 0.15,
   slowAdaptationRate: 0.05,
   minBackgroundDurationSec: 1,
-  levelWindowMs: 1000,
+  levelWindowMs: 480,
 };

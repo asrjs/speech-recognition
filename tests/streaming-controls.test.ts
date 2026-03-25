@@ -8,8 +8,8 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('streaming control helpers', () => {
-  it('resolves dynamic level-window constraints from the runtime config', () => {
-    const definition = getStreamingControlDefinition('levelWindowMs');
+  it('resolves control constraints from the canonical definition metadata', () => {
+    const definition = getStreamingControlDefinition('maxSegmentDurationMs');
 
     expect(definition).toBeTruthy();
 
@@ -19,7 +19,7 @@ describe('streaming control helpers', () => {
     });
 
     expect(constraints.max).toBe(12000);
-    expect(constraints.step).toBe(128);
+    expect(constraints.step).toBe(80);
   });
 
   it('normalizes chunk-aligned millisecond controls to runtime step size', () => {
@@ -51,15 +51,17 @@ describe('streaming control helpers', () => {
   });
 
   it('formats values and hints with canonical units', () => {
-    const dbfsDefinition = getStreamingControlDefinition('minSpeechLevelDbfs');
-    const levelWindowDefinition = getStreamingControlDefinition('levelWindowMs');
+    const thresholdDefinition = getStreamingControlDefinition('energyThreshold');
+    const prerollDefinition = getStreamingControlDefinition('prerollMs');
+    const backgroundDefinition = getStreamingControlDefinition('minBackgroundDurationSec');
 
-    expect(formatStreamingControlValue(dbfsDefinition!, -47)).toBe('-47.0 dBFS');
+    expect(formatStreamingControlValue(thresholdDefinition!, 0.08)).toBe('0.08');
+    expect(formatStreamingControlValue(backgroundDefinition!, 1.2)).toBe('1.2 s');
     expect(
-      formatStreamingControlHint(levelWindowDefinition!, {
+      formatStreamingControlHint(prerollDefinition!, {
         chunkDurationMs: 16,
         ringBufferDurationMs: 12000,
       }),
-    ).toContain('256..12000 ms');
+    ).toContain('80..800 ms');
   });
 });

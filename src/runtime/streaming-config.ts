@@ -7,11 +7,50 @@ import {
 } from './audio-timeline.js';
 
 const DEFAULT_ENERGY_SMOOTHING_DURATION_MS = 480;
-const DEFAULT_MAX_ONSET_LOOKBACK_MS = 240;
-const DEFAULT_ONSET_LOOKBACK_MS = 240;
+const DEFAULT_MAX_ONSET_LOOKBACK_MS = 480;
+const DEFAULT_ONSET_LOOKBACK_MS = 320;
 const DEFAULT_TEN_VAD_MIN_SPEECH_DURATION_MS = 240;
 const DEFAULT_TEN_VAD_MIN_SILENCE_DURATION_MS = 80;
 const DEFAULT_TEN_VAD_SPEECH_PADDING_CHUNKS = 3;
+const DEFAULT_ENERGY_THRESHOLD = 0.08;
+
+export const PARAKEET_SEGMENTATION_PRESETS = {
+  FAST: {
+    id: 'fast',
+    label: 'Fast',
+    energyThreshold: 0.12,
+    minSilenceDurationMs: 100,
+    speechHangoverMs: 80,
+  },
+  MEDIUM: {
+    id: 'medium',
+    label: 'Medium',
+    energyThreshold: 0.08,
+    minSilenceDurationMs: 400,
+    speechHangoverMs: 160,
+  },
+  SLOW: {
+    id: 'slow',
+    label: 'Slow',
+    energyThreshold: 0.06,
+    minSilenceDurationMs: 1000,
+    speechHangoverMs: 240,
+  },
+} as const;
+
+function amplitudeToDbfs(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    return -120;
+  }
+  return 20 * Math.log10(value);
+}
+
+function dbfsToAmplitude(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_ENERGY_THRESHOLD;
+  }
+  return 10 ** (value / 20);
+}
 
 export const STREAMING_PROFILE_IDS = {
   REALTIME_RNNT: 'realtime-rnnt',
@@ -42,9 +81,12 @@ export interface StreamingDetectorConfig {
   readonly energySmoothingDurationMs: number;
   readonly energySmoothingWindows: number;
   readonly prerollMs: number;
+  readonly overlapDurationMs: number;
+  readonly speechHangoverMs: number;
   readonly minSpeechDurationMs: number;
   readonly minSilenceDurationMs: number;
   readonly maxSegmentDurationMs: number;
+  readonly energyThreshold: number;
   readonly minSpeechLevelDbfs: number;
   readonly useSnrGate: boolean;
   readonly snrThreshold: number;
@@ -58,6 +100,13 @@ export interface StreamingDetectorConfig {
   readonly slowAdaptationRate: number;
   readonly minBackgroundDurationSec: number;
   readonly levelWindowMs: number;
+  readonly minEnergyIntegral: number;
+  readonly minEnergyPerSecond: number;
+  readonly useAdaptiveEnergyThresholds: boolean;
+  readonly adaptiveEnergyIntegralFactor: number;
+  readonly adaptiveEnergyPerSecondFactor: number;
+  readonly minAdaptiveEnergyIntegral: number;
+  readonly minAdaptiveEnergyPerSecond: number;
   readonly tenVadEnabled: boolean;
   readonly tenVadThreshold: number;
   readonly tenVadConfirmationWindowMs: number;
@@ -71,7 +120,7 @@ export interface StreamingDetectorConfig {
   readonly foregroundOnsetWindowMs: number;
   readonly foregroundShortSpeechMs: number;
   readonly foregroundLongSpeechMs: number;
-  readonly foregroundLongMinDb: number;
+  readonly foregroundLongExcessDbMs: number;
 }
 
 export interface StreamingDetectorPreset {
@@ -124,23 +173,37 @@ function deriveStreamingConfig(
       );
   const resolvedEnergySmoothingDurationMs =
     resolvedEnergySmoothingWindows * analysisWindowMs;
+  const resolvedEnergyThreshold = Math.max(
+    0.000001,
+    config.energyThreshold
+      ?? (typeof config.minSpeechLevelDbfs === 'number'
+        ? dbfsToAmplitude(config.minSpeechLevelDbfs)
+        : DEFAULT_ENERGY_THRESHOLD),
+  );
+  const resolvedMinSpeechLevelDbfs =
+    typeof config.minSpeechLevelDbfs === 'number' && Number.isFinite(config.minSpeechLevelDbfs)
+      ? config.minSpeechLevelDbfs
+      : amplitudeToDbfs(resolvedEnergyThreshold);
 
   return {
     sampleRate,
     chunkDurationMs,
-    gateMode: config.gateMode ?? STREAMING_GATE_MODES.TEN_VAD_ONLY,
+    gateMode: config.gateMode ?? STREAMING_GATE_MODES.ROUGH_ONLY,
     ringBufferDurationMs: alignDuration(config.ringBufferDurationMs ?? 12000),
     analysisWindowMs,
     energySmoothingDurationMs: resolvedEnergySmoothingDurationMs,
     energySmoothingWindows: resolvedEnergySmoothingWindows,
-    prerollMs: alignDuration(config.prerollMs ?? 320),
-    minSpeechDurationMs: alignDuration(config.minSpeechDurationMs ?? 320),
+    prerollMs: alignDuration(config.prerollMs ?? 120),
+    overlapDurationMs: alignDuration(config.overlapDurationMs ?? 80),
+    speechHangoverMs: alignDuration(config.speechHangoverMs ?? 160),
+    minSpeechDurationMs: alignDuration(config.minSpeechDurationMs ?? 240),
     minSilenceDurationMs: resolveOptionalZeroAlignedDuration(
       config.minSilenceDurationMs,
-      500,
+      400,
     ),
-    maxSegmentDurationMs: alignDuration(config.maxSegmentDurationMs ?? 10000),
-    minSpeechLevelDbfs: config.minSpeechLevelDbfs ?? -38,
+    maxSegmentDurationMs: alignDuration(config.maxSegmentDurationMs ?? 4800),
+    energyThreshold: resolvedEnergyThreshold,
+    minSpeechLevelDbfs: resolvedMinSpeechLevelDbfs,
     useSnrGate: config.useSnrGate ?? false,
     snrThreshold: config.snrThreshold ?? 3.0,
     minSnrThreshold: config.minSnrThreshold ?? 1.0,
@@ -156,8 +219,15 @@ function deriveStreamingConfig(
     fastAdaptationRate: config.fastAdaptationRate ?? 0.15,
     slowAdaptationRate: config.slowAdaptationRate ?? 0.05,
     minBackgroundDurationSec: config.minBackgroundDurationSec ?? 1,
-    levelWindowMs: alignDuration(config.levelWindowMs ?? 1000),
-    tenVadEnabled: config.tenVadEnabled ?? true,
+    levelWindowMs: alignDuration(config.levelWindowMs ?? 480),
+    minEnergyIntegral: config.minEnergyIntegral ?? 22,
+    minEnergyPerSecond: config.minEnergyPerSecond ?? 5,
+    useAdaptiveEnergyThresholds: config.useAdaptiveEnergyThresholds ?? true,
+    adaptiveEnergyIntegralFactor: config.adaptiveEnergyIntegralFactor ?? 25,
+    adaptiveEnergyPerSecondFactor: config.adaptiveEnergyPerSecondFactor ?? 10,
+    minAdaptiveEnergyIntegral: config.minAdaptiveEnergyIntegral ?? 3,
+    minAdaptiveEnergyPerSecond: config.minAdaptiveEnergyPerSecond ?? 1,
+    tenVadEnabled: config.tenVadEnabled ?? false,
     tenVadThreshold: config.tenVadThreshold ?? 0.5,
     tenVadConfirmationWindowMs: alignDuration(
       config.tenVadConfirmationWindowMs ?? 192,
@@ -178,7 +248,7 @@ function deriveStreamingConfig(
     foregroundOnsetWindowMs: alignDuration(config.foregroundOnsetWindowMs ?? 192),
     foregroundShortSpeechMs: alignDuration(config.foregroundShortSpeechMs ?? 240),
     foregroundLongSpeechMs: alignDuration(config.foregroundLongSpeechMs ?? 1200),
-    foregroundLongMinDb: config.foregroundLongMinDb ?? 6,
+    foregroundLongExcessDbMs: config.foregroundLongExcessDbMs ?? 1800,
   };
 }
 
@@ -188,54 +258,56 @@ export const DEFAULT_STREAMING_DETECTOR_CONFIG: StreamingDetectorConfig =
 export const STREAMING_PRESETS: Record<StreamingProfileId, StreamingDetectorPreset> = {
   [STREAMING_PROFILE_IDS.REALTIME_RNNT]: {
     id: STREAMING_PROFILE_IDS.REALTIME_RNNT,
-    label: 'Realtime RNNT',
+    label: PARAKEET_SEGMENTATION_PRESETS.MEDIUM.label,
     mode: 'speech-detect',
     config: deriveStreamingConfig({
-      prerollMs: 680,
-      minSilenceDurationMs: 640,
-      maxSegmentDurationMs: 3600,
-      tenVadThreshold: 0.55,
-      tenVadHangoverMs: 352,
-      foregroundMinDb: 8,
-      foregroundOnsetMinDb: 10,
+      gateMode: STREAMING_GATE_MODES.ROUGH_ONLY,
+      prerollMs: 120,
+      overlapDurationMs: 80,
+      speechHangoverMs: PARAKEET_SEGMENTATION_PRESETS.MEDIUM.speechHangoverMs,
+      minSilenceDurationMs: PARAKEET_SEGMENTATION_PRESETS.MEDIUM.minSilenceDurationMs,
+      maxSegmentDurationMs: 4800,
+      energyThreshold: PARAKEET_SEGMENTATION_PRESETS.MEDIUM.energyThreshold,
     }),
   },
   [STREAMING_PROFILE_IDS.GENERIC_STREAMING]: {
     id: STREAMING_PROFILE_IDS.GENERIC_STREAMING,
-    label: 'Generic Streaming',
+    label: PARAKEET_SEGMENTATION_PRESETS.MEDIUM.label,
     mode: 'speech-detect',
     config: deriveStreamingConfig({
-      minSilenceDurationMs: 320,
-      tenVadThreshold: 0.55,
+      gateMode: STREAMING_GATE_MODES.ROUGH_ONLY,
+      prerollMs: 120,
+      overlapDurationMs: 80,
+      speechHangoverMs: PARAKEET_SEGMENTATION_PRESETS.MEDIUM.speechHangoverMs,
+      minSilenceDurationMs: PARAKEET_SEGMENTATION_PRESETS.MEDIUM.minSilenceDurationMs,
+      maxSegmentDurationMs: 4800,
+      energyThreshold: PARAKEET_SEGMENTATION_PRESETS.MEDIUM.energyThreshold,
     }),
   },
   [STREAMING_PROFILE_IDS.AGGRESSIVE]: {
     id: STREAMING_PROFILE_IDS.AGGRESSIVE,
-    label: 'Aggressive',
+    label: PARAKEET_SEGMENTATION_PRESETS.FAST.label,
     mode: 'speech-detect',
     config: deriveStreamingConfig({
-      prerollMs: 160,
-      minSilenceDurationMs: 240,
-      tenVadThreshold: 0.42,
-      tenVadConfirmationWindowMs: 128,
-      foregroundMinDb: 6,
-      foregroundOnsetMinDb: 8,
-      foregroundLongMinDb: 5,
+      gateMode: STREAMING_GATE_MODES.ROUGH_ONLY,
+      prerollMs: 120,
+      overlapDurationMs: 80,
+      speechHangoverMs: PARAKEET_SEGMENTATION_PRESETS.FAST.speechHangoverMs,
+      minSilenceDurationMs: PARAKEET_SEGMENTATION_PRESETS.FAST.minSilenceDurationMs,
+      energyThreshold: PARAKEET_SEGMENTATION_PRESETS.FAST.energyThreshold,
     }),
   },
   [STREAMING_PROFILE_IDS.CONSERVATIVE]: {
     id: STREAMING_PROFILE_IDS.CONSERVATIVE,
-    label: 'Conservative',
+    label: PARAKEET_SEGMENTATION_PRESETS.SLOW.label,
     mode: 'speech-detect',
     config: deriveStreamingConfig({
-      prerollMs: 240,
-      minSilenceDurationMs: 560,
-      tenVadThreshold: 0.6,
-      tenVadConfirmationWindowMs: 256,
-      tenVadHangoverMs: 480,
-      foregroundMinDb: 10,
-      foregroundOnsetMinDb: 12,
-      foregroundLongMinDb: 8,
+      gateMode: STREAMING_GATE_MODES.ROUGH_ONLY,
+      prerollMs: 120,
+      overlapDurationMs: 80,
+      speechHangoverMs: PARAKEET_SEGMENTATION_PRESETS.SLOW.speechHangoverMs,
+      minSilenceDurationMs: PARAKEET_SEGMENTATION_PRESETS.SLOW.minSilenceDurationMs,
+      energyThreshold: PARAKEET_SEGMENTATION_PRESETS.SLOW.energyThreshold,
     }),
   },
   [STREAMING_PROFILE_IDS.CUSTOM]: {
@@ -281,17 +353,31 @@ export interface StreamingDetectorConfigOverrides extends Partial<StreamingDetec
 function normalizeStreamingConfig(
   config: StreamingDetectorConfigOverrides = {},
 ): Partial<StreamingDetectorConfig> {
-  const { energyThreshold, waveformPointCount: _waveformPointCount, ...rest } = config;
-  if (
-    typeof energyThreshold === 'number' &&
-    typeof rest.minSpeechLevelDbfs !== 'number'
-  ) {
-    return {
-      ...rest,
-      minSpeechLevelDbfs: 20 * Math.log10(Math.max(energyThreshold, 0.000001)),
-    };
+  const {
+    energyThreshold,
+    waveformPointCount: _waveformPointCount,
+    foregroundLongMinDb: _foregroundLongMinDb,
+    ...rest
+  } = config as StreamingDetectorConfigOverrides & { readonly foregroundLongMinDb?: number };
+  const normalized: Record<string, unknown> = {
+    ...rest,
+  };
+  if (typeof energyThreshold === 'number' && Number.isFinite(energyThreshold)) {
+    const resolvedEnergyThreshold = Math.max(energyThreshold, 0.000001);
+    normalized.energyThreshold = resolvedEnergyThreshold;
+    if (typeof normalized.minSpeechLevelDbfs !== 'number') {
+      normalized.minSpeechLevelDbfs = amplitudeToDbfs(resolvedEnergyThreshold);
+    }
+    return normalized as Partial<StreamingDetectorConfig>;
   }
-  return rest;
+  if (
+    typeof normalized.minSpeechLevelDbfs === 'number'
+    && Number.isFinite(normalized.minSpeechLevelDbfs)
+    && typeof normalized.energyThreshold !== 'number'
+  ) {
+    normalized.energyThreshold = dbfsToAmplitude(normalized.minSpeechLevelDbfs);
+  }
+  return normalized as Partial<StreamingDetectorConfig>;
 }
 
 export function mergeStreamingConfig(

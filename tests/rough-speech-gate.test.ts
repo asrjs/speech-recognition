@@ -8,37 +8,60 @@ function createChunk(length: number, amplitude: number): Float32Array {
 }
 
 describe('RoughSpeechGate', () => {
-  it('detects onset with lookback before the confirmed speech frame', () => {
+  it('starts speech immediately once a full analysis window clears the energy threshold', () => {
     const gate = new RoughSpeechGate({
       sampleRate: 16000,
-      analysisWindowMs: 16,
-      minSpeechDurationMs: 32,
-      minSilenceDurationMs: 96,
-      minSpeechLevelDbfs: -40,
+      analysisWindowMs: 80,
+      energySmoothingWindows: 1,
+      energyThreshold: 0.08,
+      minSilenceDurationMs: 400,
       useSnrGate: false,
     });
 
-    gate.process(createChunk(256, 0.001));
-    gate.process(createChunk(256, 0.004));
-    gate.process(createChunk(256, 0.05));
-    const result = gate.process(createChunk(256, 0.05));
+    for (let index = 0; index < 4; index += 1) {
+      const result = gate.process(createChunk(256, 0.12));
+      expect(result.speechStart).toBe(false);
+      expect(result.energyPass).toBe(false);
+    }
+
+    const result = gate.process(createChunk(256, 0.12));
+    expect(result.speechStart).toBe(true);
+    expect(result.isSpeech).toBe(true);
+    expect(result.energyPass).toBe(true);
+    expect(result.candidateReason).toBe('energy-threshold');
+  });
+
+  it('backtracks onset using rising energy and low-SNR boundaries', () => {
+    const gate = new RoughSpeechGate({
+      sampleRate: 16000,
+      analysisWindowMs: 80,
+      energySmoothingWindows: 1,
+      energyThreshold: 0.08,
+      minSilenceDurationMs: 400,
+      useSnrGate: false,
+    });
+
+    gate.process(createChunk(1280, 0.001));
+    gate.process(createChunk(1280, 0.02));
+    const result = gate.process(createChunk(1280, 0.12));
 
     expect(result.speechStart).toBe(true);
+    expect(result.onsetFrame).toBe(0);
     expect(result.onsetFrame).toBeLessThan(result.chunkStartFrame);
   });
 
   it('adapts the noise floor during sustained silence', () => {
     const gate = new RoughSpeechGate({
       sampleRate: 16000,
-      analysisWindowMs: 16,
-      minSpeechDurationMs: 32,
-      minSilenceDurationMs: 96,
+      analysisWindowMs: 80,
+      energySmoothingWindows: 1,
+      energyThreshold: 0.08,
       initialNoiseFloor: 0.02,
     });
 
     let lastResult = null;
     for (let index = 0; index < 12; index += 1) {
-      lastResult = gate.process(createChunk(256, 0.003));
+      lastResult = gate.process(createChunk(1280, 0.003));
     }
 
     expect(lastResult?.noiseFloor).toBeLessThan(0.02);
@@ -48,18 +71,16 @@ describe('RoughSpeechGate', () => {
   it('feeds rejected candidate windows back into the background model', () => {
     const gate = new RoughSpeechGate({
       sampleRate: 16000,
-      analysisWindowMs: 16,
-      minSpeechDurationMs: 80,
-      minSilenceDurationMs: 96,
-      minSpeechLevelDbfs: -40,
+      analysisWindowMs: 80,
+      energySmoothingWindows: 1,
+      energyThreshold: 0.08,
       initialNoiseFloor: 0.002,
       useSnrGate: false,
     });
 
-    gate.process(createChunk(256, 0.002));
-    gate.process(createChunk(256, 0.02));
-    gate.process(createChunk(256, 0.02));
-    const result = gate.process(createChunk(256, 0.002));
+    gate.process(createChunk(1280, 0.002));
+    gate.process(createChunk(1280, 0.02));
+    const result = gate.process(createChunk(1280, 0.002));
 
     expect(result.isSpeech).toBe(false);
     expect(result.noiseFloor).toBeGreaterThan(0.002);
@@ -68,71 +89,38 @@ describe('RoughSpeechGate', () => {
     expect(result.rejectedCandidateAverageDbfs).toBeGreaterThan(-100);
   });
 
-  it('reports calibrated dBFS levels for the current and rolling windows', () => {
-    const gate = new RoughSpeechGate({
-      sampleRate: 16000,
-      analysisWindowMs: 96,
-      levelWindowMs: 1008,
-      minSpeechLevelDbfs: -40,
-    });
-
-    let lastResult = null;
-    for (let index = 0; index < 10; index += 1) {
-      lastResult = gate.process(createChunk(1536, 0.01));
-    }
-
-    expect(lastResult?.levelDbfs).toBeCloseTo(-40, 0);
-    expect(lastResult?.levelWindowDbfs).toBeCloseTo(-40, 0);
-    expect(lastResult?.thresholdDbfs).toBe(-40);
-  });
-
-  it('preserves candidate state between aligned analysis windows', () => {
+  it('uses the legacy silence release window count even with 80 ms analysis windows', () => {
     const gate = new RoughSpeechGate({
       sampleRate: 16000,
       analysisWindowMs: 80,
-      minSpeechDurationMs: 160,
-      minSilenceDurationMs: 240,
-      minSpeechLevelDbfs: -40,
+      energySmoothingWindows: 1,
+      energyThreshold: 0.08,
+      minSilenceDurationMs: 400,
       useSnrGate: false,
     });
 
-    const speechChunk = createChunk(256, 0.05);
+    gate.process(createChunk(1280, 0.12));
 
-    for (let index = 0; index < 4; index += 1) {
-      const result = gate.process(speechChunk);
-      expect(result.isSpeech).toBe(false);
-      expect(result.energyPass).toBe(false);
-      expect(result.candidateReason).toBe('none');
+    for (let index = 0; index < 3; index += 1) {
+      const result = gate.process(createChunk(1280, 0.001));
+      expect(result.speechEnd).toBe(false);
+      expect(result.isSpeech).toBe(true);
     }
 
-    const firstWindow = gate.process(speechChunk);
-    expect(firstWindow.isSpeech).toBe(false);
-    expect(firstWindow.energyPass).toBe(true);
-    expect(firstWindow.candidateReason).toBe('energy-threshold');
-
-    for (let index = 0; index < 4; index += 1) {
-      const result = gate.process(speechChunk);
-      expect(result.isSpeech).toBe(false);
-      expect(result.energyPass).toBe(true);
-      expect(result.candidateReason).toBe('energy-threshold');
-    }
-
-    const activationWindow = gate.process(speechChunk);
-    expect(activationWindow.isSpeech).toBe(true);
-    expect(activationWindow.speechStart).toBe(true);
-    expect(activationWindow.energyPass).toBe(true);
-    expect(activationWindow.candidateReason).toBe('energy-threshold');
+    const release = gate.process(createChunk(1280, 0.001));
+    expect(release.speechEnd).toBe(true);
+    expect(release.isSpeech).toBe(false);
   });
 
   it('resets frame-based state when the sample rate changes', () => {
     const gate = new RoughSpeechGate({
       sampleRate: 16000,
       analysisWindowMs: 80,
-      minSpeechDurationMs: 160,
-      minSilenceDurationMs: 240,
+      energySmoothingWindows: 1,
+      energyThreshold: 0.08,
     });
 
-    gate.process(createChunk(1280, 0.05));
+    gate.process(createChunk(1280, 0.12));
     gate.updateConfig({ sampleRate: 8000 });
 
     const result = gate.process(createChunk(640, 0.01));

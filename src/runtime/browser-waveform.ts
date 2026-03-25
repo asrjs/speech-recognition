@@ -6,10 +6,16 @@ export const BROWSER_WAVEFORM_CANVAS_HEIGHT = 252;
 const LANE_HEIGHT = 22;
 const LANE_INSET = 8;
 const LANE_GAP = 8;
+const SEGMENT_BAND_HEIGHT = 24;
+const SEGMENT_BAND_ROWS = 4;
 
 export interface BrowserWaveformRenderSegment {
   readonly startFrame: number;
   readonly endFrame: number;
+  readonly logicalStartFrame?: number;
+  readonly label?: string;
+  readonly reason?: string;
+  readonly accepted?: boolean;
 }
 
 export interface BrowserWaveformRenderFrame {
@@ -17,6 +23,13 @@ export interface BrowserWaveformRenderFrame {
   readonly plot?: BrowserRealtimePlot | null;
   readonly recentSegments?: readonly BrowserWaveformRenderSegment[];
   readonly activeSegment?: BrowserWaveformRenderSegment | null;
+  readonly rough?: {
+    readonly snr?: number;
+    readonly snrThreshold?: number;
+    readonly minSnrThreshold?: number;
+    readonly useSnrGate?: boolean;
+    readonly isSpeech?: boolean;
+  } | null;
 }
 
 export interface BrowserWaveformRenderOptions {
@@ -25,7 +38,10 @@ export interface BrowserWaveformRenderOptions {
   readonly waveformTargetPeak?: number;
   readonly waveformMaxDisplayGain?: number;
   readonly showSpeechThreshold?: boolean;
+  readonly noiseFloorDbfs?: number | null;
+  readonly absoluteSpeechFloorDbfs?: number | null;
   readonly speechThresholdDbfs?: number | null;
+  readonly onsetThresholdDbfs?: number | null;
   readonly showTenVadThreshold?: boolean;
   readonly tenVadThreshold?: number | null;
   readonly showPreVadOverlay?: boolean;
@@ -37,7 +53,10 @@ const DEFAULT_RENDER_OPTIONS: Required<BrowserWaveformRenderOptions> = {
   waveformTargetPeak: 0.82,
   waveformMaxDisplayGain: 12,
   showSpeechThreshold: false,
+  noiseFloorDbfs: null,
+  absoluteSpeechFloorDbfs: null,
   speechThresholdDbfs: null,
+  onsetThresholdDbfs: null,
   showTenVadThreshold: false,
   tenVadThreshold: null,
   showPreVadOverlay: false,
@@ -59,12 +78,16 @@ function getLaneLayout(height: number) {
   const topLaneBottom = topLaneTop + LANE_HEIGHT;
   const bottomLaneTop = height - LANE_INSET - LANE_HEIGHT;
   const bottomLaneBottom = bottomLaneTop + LANE_HEIGHT;
-  const waveformTop = topLaneBottom + LANE_GAP;
+  const segmentBandTop = topLaneBottom + 2;
+  const segmentBandBottom = segmentBandTop + SEGMENT_BAND_HEIGHT;
+  const waveformTop = segmentBandBottom + LANE_GAP;
   const waveformBottom = bottomLaneTop - LANE_GAP;
 
   return {
     topLaneTop,
     topLaneBottom,
+    segmentBandTop,
+    segmentBandBottom,
     bottomLaneTop,
     bottomLaneBottom,
     waveformTop,
@@ -119,38 +142,43 @@ function resolveWaveformDisplayGain(
   if (options.waveformScaleMode === 'physical') {
     return 1;
   }
-  let peak = 0;
+  const amplitudes: number[] = [];
   for (const column of columns) {
     if (!column?.hasData) {
       continue;
     }
-    peak = Math.max(
-      peak,
+    const columnPeak = Math.max(
       Math.abs(Number(column.waveformMin ?? 0)),
       Math.abs(Number(column.waveformMax ?? 0)),
     );
+    if (Number.isFinite(columnPeak) && columnPeak > 0.00001) {
+      amplitudes.push(columnPeak);
+    }
   }
+  if (amplitudes.length === 0) {
+    return 1;
+  }
+  amplitudes.sort((a, b) => a - b);
+  const percentile = options.waveformScaleMode === 'focus' ? 0.9 : 0.97;
+  const percentileIndex = clamp(
+    Math.round((amplitudes.length - 1) * percentile),
+    0,
+    amplitudes.length - 1,
+  );
+  const peak = amplitudes[percentileIndex] ?? amplitudes[amplitudes.length - 1] ?? 0;
   if (!Number.isFinite(peak) || peak <= 0.00001) {
     return 1;
   }
-  return clamp(options.waveformTargetPeak / peak, 1, options.waveformMaxDisplayGain);
+  const targetPeak = options.waveformScaleMode === 'focus' ? 0.92 : 0.84;
+  const maxGain = options.waveformScaleMode === 'focus' ? 18 : options.waveformMaxDisplayGain;
+  return clamp(targetPeak / peak, 1, maxGain);
 }
 
 function mapDisplayAmplitude(
   amplitude: number,
   displayGain: number,
-  options: Required<BrowserWaveformRenderOptions>,
 ): number {
-  const scaledAmplitude = clamp(amplitude * displayGain, -1, 1);
-  if (options.waveformScaleMode === 'physical') {
-    return scaledAmplitude;
-  }
-  const magnitude = Math.abs(scaledAmplitude);
-  if (magnitude <= 0.000001) {
-    return 0;
-  }
-  const exponent = options.waveformScaleMode === 'focus' ? 0.45 : 0.62;
-  return Math.sign(scaledAmplitude) * magnitude ** exponent;
+  return clamp(amplitude * displayGain, -1, 1);
 }
 
 function drawWaveformAxis(
@@ -164,7 +192,7 @@ function drawWaveformAxis(
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
     waveformTop + ((1 - clamp(amplitude, -1, 1)) * 0.5) * laneHeight;
-  const axisTop = options.waveformScaleMode === 'physical' ? 1 : mapDisplayAmplitude(1, displayGain, options);
+  const axisTop = options.waveformScaleMode === 'physical' ? 1 : mapDisplayAmplitude(1, displayGain);
   const axisMid = 0;
   const axisBottom = -axisTop;
 
@@ -193,43 +221,207 @@ function drawWaveformAxis(
 
 function drawSpeechThreshold(
   context: CanvasRenderingContext2D,
+  frame: BrowserWaveformRenderFrame | null | undefined,
+  columns: readonly (BrowserRealtimePlot['columns'][number] & { readonly gateMode: string })[],
   width: number,
   height: number,
   displayGain: number,
   options: Required<BrowserWaveformRenderOptions>,
 ): void {
-  if (!options.showSpeechThreshold || !Number.isFinite(options.speechThresholdDbfs)) {
+  if (!options.showSpeechThreshold) {
     return;
   }
-  const thresholdAmplitude = 10 ** ((options.speechThresholdDbfs as number) / 20);
-  const scaledThreshold = clamp(
-    mapDisplayAmplitude(thresholdAmplitude, displayGain, options),
-    0,
-    1,
-  );
+
+  const currentSnr = Number(frame?.rough?.snr);
+  const snrThreshold = Number(frame?.rough?.snrThreshold);
+  const minSnrThreshold = Number(frame?.rough?.minSnrThreshold);
+  const useSnrGate = frame?.rough?.useSnrGate === true;
+  const adaptiveSnrGateDbfs =
+    Number.isFinite(options.noiseFloorDbfs) && Number.isFinite(snrThreshold)
+      ? (options.noiseFloorDbfs as number) + snrThreshold
+      : null;
+  const adaptiveMinSnrGateDbfs =
+    Number.isFinite(options.noiseFloorDbfs) && Number.isFinite(minSnrThreshold)
+      ? (options.noiseFloorDbfs as number) + minSnrThreshold
+      : null;
+  const thresholds = [
+    {
+      key: 'noise',
+      label: 'noise',
+      dbfs: options.noiseFloorDbfs,
+      color: 'rgba(71, 85, 105, 0.82)',
+      dash: [3, 3] as number[],
+    },
+    {
+      key: 'floor',
+      label: 'floor',
+      dbfs: options.absoluteSpeechFloorDbfs,
+      color: 'rgba(124, 58, 237, 0.88)',
+      dash: [2, 4] as number[],
+    },
+    {
+      key: 'speech',
+      label: 'gate',
+      dbfs: options.speechThresholdDbfs,
+      color: 'rgba(239, 68, 68, 0.92)',
+      dash: [5, 3] as number[],
+    },
+    {
+      key: 'onset',
+      label: 'onset',
+      dbfs: options.onsetThresholdDbfs,
+      color: 'rgba(245, 158, 11, 0.92)',
+      dash: [4, 3] as number[],
+    },
+    {
+      key: 'snr',
+      label: 'snr',
+      dbfs: useSnrGate ? adaptiveSnrGateDbfs : null,
+      color: 'rgba(14, 165, 233, 0.9)',
+      dash: [6, 2] as number[],
+    },
+    {
+      key: 'min-snr',
+      label: 'min snr',
+      dbfs: useSnrGate ? adaptiveMinSnrGateDbfs : null,
+      color: 'rgba(34, 197, 94, 0.9)',
+      dash: [2, 2] as number[],
+    },
+  ].filter((threshold, index, entries) => {
+    if (!Number.isFinite(threshold.dbfs)) {
+      return false;
+    }
+    const thresholdDbfs = threshold.dbfs as number;
+    if (threshold.key === 'onset' && Number.isFinite(options.speechThresholdDbfs)) {
+      return Math.abs(thresholdDbfs - (options.speechThresholdDbfs as number)) >= 0.5;
+    }
+    return !entries.slice(0, index).some((previous) => (
+      Number.isFinite(previous.dbfs) && Math.abs((previous.dbfs as number) - thresholdDbfs) < 0.5
+    ));
+  });
+
+  if (thresholds.length === 0) {
+    return;
+  }
+
   const { waveformTop, waveformBottom } = getLaneLayout(height);
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
     waveformTop + ((1 - clamp(amplitude, -1, 1)) * 0.5) * laneHeight;
+  const maxColumnAmplitude = columns.reduce((peak, column) => (
+    Math.max(
+      peak,
+      Math.abs(Number(column?.waveformMin ?? 0)),
+      Math.abs(Number(column?.waveformMax ?? 0)),
+    )
+  ), 0);
 
   context.save();
-  context.strokeStyle = 'rgba(239, 68, 68, 0.9)';
   context.lineWidth = 1;
-  context.setLineDash([5, 3]);
-  context.beginPath();
-  context.moveTo(0, toY(scaledThreshold));
-  context.lineTo(width, toY(scaledThreshold));
-  context.moveTo(0, toY(-scaledThreshold));
-  context.lineTo(width, toY(-scaledThreshold));
-  context.stroke();
+  for (const threshold of thresholds) {
+    const amplitude = clamp(dbfsToAmplitude(threshold.dbfs as number), 0, 1);
+    const scaledThreshold = clamp(mapDisplayAmplitude(amplitude, displayGain), 0, 1);
+    const activeAlpha = maxColumnAmplitude >= amplitude ? 1 : 0.55;
+    context.strokeStyle = threshold.color.replace(/0\.\d+\)$/, `${activeAlpha})`);
+    context.setLineDash(threshold.dash);
+    context.beginPath();
+    context.moveTo(0, toY(scaledThreshold));
+    context.lineTo(width, toY(scaledThreshold));
+    context.moveTo(0, toY(-scaledThreshold));
+    context.lineTo(width, toY(-scaledThreshold));
+    context.stroke();
+  }
   context.setLineDash([]);
-  context.fillStyle = 'rgba(239, 68, 68, 0.95)';
   context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
-  context.fillText(
-    `speech rms thr ${options.speechThresholdDbfs?.toFixed(0)} dBFS`,
-    8,
-    toY(scaledThreshold) - 4,
-  );
+  const legendRows = thresholds.map((threshold) => ({
+    ...threshold,
+    text:
+      threshold.key === 'snr'
+        ? `snr ${snrThreshold.toFixed(1)} dB`
+        : threshold.key === 'min-snr'
+          ? `min ${minSnrThreshold.toFixed(1)} dB`
+          : `${threshold.label} ${(threshold.dbfs as number).toFixed(0)} dBFS`,
+  }));
+  const legendWidth = legendRows.reduce(
+    (maxWidth, row) => Math.max(maxWidth, context.measureText(row.text).width),
+    126,
+  ) + 28;
+  const rowHeight = 14;
+  const snrBarHeight = Number.isFinite(currentSnr) ? 22 : 0;
+  const legendHeight = legendRows.length * rowHeight + 8 + snrBarHeight;
+  const legendX = Math.max(40, width - legendWidth - 10);
+  const legendY = waveformTop + 8;
+
+  context.fillStyle = 'rgba(255, 255, 255, 0.82)';
+  context.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+  context.lineWidth = 1;
+  context.beginPath();
+  context.roundRect(legendX, legendY, legendWidth, legendHeight, 6);
+  context.fill();
+  context.stroke();
+
+  legendRows.forEach((row, index) => {
+    const rowY = legendY + 12 + index * rowHeight;
+    context.strokeStyle = row.color;
+    context.lineWidth = 1.5;
+    context.setLineDash(row.dash);
+    context.beginPath();
+    context.moveTo(legendX + 8, rowY - 4);
+    context.lineTo(legendX + 18, rowY - 4);
+    context.stroke();
+    context.setLineDash([]);
+    context.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    context.fillText(row.text, legendX + 22, rowY);
+  });
+
+  if (Number.isFinite(currentSnr)) {
+    const meterTop = legendY + 8 + legendRows.length * rowHeight + 4;
+    const meterLeft = legendX + 8;
+    const meterWidth = legendWidth - 16;
+    const meterHeight = 10;
+    const snrPercent = clamp((currentSnr / 20) * 100, 0, 100);
+    const snrThresholdPercent = Number.isFinite(snrThreshold)
+      ? clamp((snrThreshold / 20) * 100, 0, 100)
+      : 0;
+    const minSnrThresholdPercent = Number.isFinite(minSnrThreshold)
+      ? clamp((minSnrThreshold / 20) * 100, 0, 100)
+      : 0;
+    const fillWidth = (meterWidth * snrPercent) / 100;
+
+    const meterGradient = context.createLinearGradient(meterLeft, 0, meterLeft + meterWidth, 0);
+    meterGradient.addColorStop(0, 'rgba(239, 68, 68, 0.78)');
+    meterGradient.addColorStop(0.45, 'rgba(245, 158, 11, 0.82)');
+    meterGradient.addColorStop(1, 'rgba(34, 197, 94, 0.86)');
+
+    context.fillStyle = 'rgba(226, 232, 240, 0.95)';
+    context.fillRect(meterLeft, meterTop, meterWidth, meterHeight);
+    context.fillStyle = meterGradient;
+    context.fillRect(meterLeft, meterTop, fillWidth, meterHeight);
+
+    if (Number.isFinite(snrThreshold)) {
+      const markerX = meterLeft + (meterWidth * snrThresholdPercent) / 100;
+      context.strokeStyle = 'rgba(14, 165, 233, 0.95)';
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(markerX, meterTop - 1);
+      context.lineTo(markerX, meterTop + meterHeight + 1);
+      context.stroke();
+    }
+    if (Number.isFinite(minSnrThreshold)) {
+      const markerX = meterLeft + (meterWidth * minSnrThresholdPercent) / 100;
+      context.strokeStyle = 'rgba(34, 197, 94, 0.95)';
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(markerX, meterTop - 1);
+      context.lineTo(markerX, meterTop + meterHeight + 1);
+      context.stroke();
+    }
+
+    context.fillStyle = Number.isFinite(snrThreshold) && currentSnr >= snrThreshold
+      ? 'rgba(21, 128, 61, 0.95)'
+      : 'rgba(15, 23, 42, 0.88)';
+    context.fillText(`snr ${currentSnr.toFixed(1)} dB`, meterLeft, meterTop + meterHeight + 10);
+  }
   context.restore();
 }
 
@@ -243,24 +435,144 @@ function drawSpans(
   height: number,
 ): void {
   const toX = (frame: number) => ((frame - displayStartFrame) / totalFrames) * width;
+  const { segmentBandTop, waveformBottom } = getLaneLayout(height);
+  const segmentTop = Math.max(0, segmentBandTop);
+  const segmentHeight = Math.max(24, waveformBottom - segmentBandTop + 8);
 
   if (Array.isArray(segments)) {
-    context.fillStyle = 'rgba(148, 163, 184, 0.08)';
-    for (const segment of segments) {
+    segments.forEach((segment, index) => {
       const x0 = clamp(toX(segment.startFrame), 0, width);
       const x1 = clamp(toX(segment.endFrame), 0, width);
       if (x1 > x0) {
-        context.fillRect(x0, 0, x1 - x0, height);
+        const isEven = index % 2 === 0;
+        const fillStyle = isEven ? 'rgba(148, 163, 184, 0.09)' : 'rgba(203, 213, 225, 0.14)';
+        const strokeStyle = isEven ? 'rgba(100, 116, 139, 0.34)' : 'rgba(148, 163, 184, 0.4)';
+
+        context.save();
+        context.fillStyle = fillStyle;
+        context.strokeStyle = strokeStyle;
+        context.lineWidth = 1;
+        context.fillRect(x0, segmentTop, x1 - x0, segmentHeight);
+        context.strokeRect(x0 + 0.5, segmentTop + 0.5, Math.max(1, x1 - x0 - 1), segmentHeight - 1);
+        context.restore();
       }
-    }
+    });
   }
 
   if (activeSegment) {
     const x0 = clamp(toX(activeSegment.startFrame), 0, width);
     const x1 = clamp(toX(activeSegment.endFrame), 0, width);
-    context.fillStyle = 'rgba(93, 115, 135, 0.12)';
-    context.fillRect(x0, 0, Math.max(2, x1 - x0), height);
+    context.save();
+    context.fillStyle = 'rgba(16, 185, 129, 0.12)';
+    context.strokeStyle = 'rgba(5, 150, 105, 0.8)';
+    context.lineWidth = 1;
+    context.fillRect(x0, segmentTop, Math.max(2, x1 - x0), segmentHeight);
+    context.strokeRect(x0 + 0.5, segmentTop + 0.5, Math.max(1, x1 - x0 - 1), segmentHeight - 1);
+    context.restore();
   }
+}
+
+function drawSegmentAnnotations(
+  context: CanvasRenderingContext2D,
+  displayStartFrame: number,
+  totalFrames: number,
+  segments: readonly BrowserWaveformRenderSegment[] | undefined,
+  activeSegment: BrowserWaveformRenderSegment | null | undefined,
+  width: number,
+  height: number,
+): void {
+  const toX = (frame: number) => ((frame - displayStartFrame) / totalFrames) * width;
+  const {
+    segmentBandTop,
+    segmentBandBottom,
+    waveformBottom,
+  } = getLaneLayout(height);
+  const segmentTop = Math.max(0, segmentBandTop);
+  const segmentHeight = Math.max(24, waveformBottom - segmentBandTop + 8);
+  const rowHeight = Math.max(6, Math.floor(SEGMENT_BAND_HEIGHT / SEGMENT_BAND_ROWS));
+  const rowBottoms = Array.from({ length: SEGMENT_BAND_ROWS }, () => -Infinity);
+
+  const drawLabelPill = (
+    x0: number,
+    x1: number,
+    text: string,
+    fill: string,
+    textColor: string,
+  ) => {
+    if (x1 - x0 < 24) {
+      return;
+    }
+    context.font = '9px ui-monospace, SFMono-Regular, Menlo, monospace';
+    const textWidth = context.measureText(text).width;
+    const maxWidth = Math.max(0, x1 - x0 - 6);
+    const pillWidth = Math.min(Math.max(20, textWidth + 8), maxWidth);
+    if (pillWidth < 16) {
+      return;
+    }
+    let rowIndex = 0;
+    for (let index = 0; index < rowBottoms.length; index += 1) {
+      if (x0 >= rowBottoms[index]!) {
+        rowIndex = index;
+        break;
+      }
+      rowIndex = index;
+    }
+    rowBottoms[rowIndex] = Math.max(rowBottoms[rowIndex]!, x0 + pillWidth + 3);
+    const pillX = x0 + 2;
+    const pillY = segmentBandTop + rowIndex * rowHeight + 1;
+    context.save();
+    context.fillStyle = fill;
+    context.beginPath();
+    context.roundRect(pillX, pillY, pillWidth, rowHeight - 1, 3);
+    context.fill();
+    context.fillStyle = textColor;
+    context.fillText(text, pillX + 4, pillY + rowHeight - 2);
+    context.restore();
+  };
+
+  context.save();
+  context.fillStyle = 'rgba(248, 250, 252, 0.92)';
+  context.fillRect(0, segmentBandTop, width, Math.max(1, segmentBandBottom - segmentBandTop));
+  context.strokeStyle = 'rgba(203, 213, 225, 0.7)';
+  context.beginPath();
+  context.moveTo(0, segmentBandBottom + 0.5);
+  context.lineTo(width, segmentBandBottom + 0.5);
+  context.stroke();
+
+  if (Array.isArray(segments)) {
+    segments.forEach((segment, index) => {
+      const x0 = clamp(toX(segment.startFrame), 0, width);
+      const x1 = clamp(toX(segment.endFrame), 0, width);
+      if (x1 <= x0) {
+        return;
+      }
+      const label = segment.label ?? segment.reason ?? `seg ${index + 1}`;
+      drawLabelPill(x0, x1, label, 'rgba(255, 255, 255, 0.92)', 'rgba(51, 65, 85, 0.92)');
+      if (
+        Number.isFinite(segment.logicalStartFrame)
+        && (segment.logicalStartFrame as number) > segment.startFrame
+        && (segment.logicalStartFrame as number) < segment.endFrame
+      ) {
+        const onsetX = clamp(toX(segment.logicalStartFrame as number), 0, width);
+        context.strokeStyle = 'rgba(14, 165, 233, 0.95)';
+        context.lineWidth = 1;
+        context.setLineDash([2, 2]);
+        context.beginPath();
+        context.moveTo(onsetX + 0.5, segmentBandTop);
+        context.lineTo(onsetX + 0.5, segmentTop + segmentHeight - 1);
+        context.stroke();
+        context.setLineDash([]);
+      }
+    });
+  }
+
+  if (activeSegment) {
+    const x0 = clamp(toX(activeSegment.startFrame), 0, width);
+    const x1 = clamp(toX(activeSegment.endFrame), 0, width);
+    const label = activeSegment.label ?? 'live';
+    drawLabelPill(x0, x1, label, 'rgba(209, 250, 229, 0.96)', 'rgba(4, 120, 87, 0.96)');
+  }
+  context.restore();
 }
 
 function drawWaveformGateOverlay(
@@ -282,10 +594,6 @@ function drawWaveformGateOverlay(
     }
     if (column.activeSegment) {
       context.fillStyle = 'rgba(16, 185, 129, 0.14)';
-    } else if (column.recentSegment) {
-      context.fillStyle = 'rgba(93, 115, 135, 0.08)';
-    } else if (column.detectorPass) {
-      context.fillStyle = 'rgba(59, 130, 246, 0.1)';
     } else {
       continue;
     }
@@ -298,12 +606,11 @@ function drawWaveformAmplitude(
   columns: readonly (BrowserRealtimePlot['columns'][number] & { readonly gateMode: string })[],
   height: number,
   displayGain: number,
-  options: Required<BrowserWaveformRenderOptions>,
 ): void {
   const { waveformTop, waveformBottom } = getLaneLayout(height);
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
-    waveformTop + ((1 - mapDisplayAmplitude(amplitude, displayGain, options)) * 0.5) * laneHeight;
+    waveformTop + ((1 - mapDisplayAmplitude(amplitude, displayGain)) * 0.5) * laneHeight;
 
   for (let index = 0; index < columns.length; index += 1) {
     const column = columns[index];
@@ -314,6 +621,7 @@ function drawWaveformAmplitude(
     const max = clamp(Number(column.waveformMax ?? 0), -1, 1);
     const y0 = toY(max);
     const y1 = toY(min);
+    const insideSegment = column.activeSegment || column.recentSegment;
     if (column.activeSegment) {
       context.fillStyle = 'rgba(5, 150, 105, 0.95)';
     } else if (column.detectorPass) {
@@ -322,7 +630,13 @@ function drawWaveformAmplitude(
           ? 'rgba(37, 99, 235, 0.92)'
           : 'rgba(59, 130, 246, 0.9)';
     } else if (column.tenVadPass || column.roughPass) {
-      context.fillStyle = 'rgba(148, 163, 184, 0.92)';
+      context.fillStyle = insideSegment
+        ? 'rgba(56, 189, 248, 0.72)'
+        : 'rgba(148, 163, 184, 0.92)';
+    } else if (insideSegment) {
+      context.fillStyle = column.recentSegment
+        ? 'rgba(96, 165, 250, 0.62)'
+        : 'rgba(45, 212, 191, 0.72)';
     } else {
       context.fillStyle = 'rgba(148, 163, 184, 0.42)';
     }
@@ -483,23 +797,47 @@ function drawEnergyOverlay(
     context.fillRect(index, laneTop, 1, laneHeight);
   }
 
-  if (options.showSpeechThreshold && Number.isFinite(options.speechThresholdDbfs)) {
-    const thresholdAmplitude = clamp(dbfsToAmplitude(options.speechThresholdDbfs as number), 0, 1);
-    const thresholdY = laneBottom - thresholdAmplitude * (laneHeight - 2);
-    context.strokeStyle = 'rgba(245, 158, 11, 0.92)';
-    context.lineWidth = 1;
-    context.setLineDash([5, 3]);
-    context.beginPath();
-    context.moveTo(0, thresholdY);
-    context.lineTo(width, thresholdY);
-    context.stroke();
-    context.setLineDash([]);
-    context.fillStyle = 'rgba(180, 83, 9, 0.92)';
-    context.fillText(
-      `thr ${options.speechThresholdDbfs?.toFixed(0)} dBFS / ${thresholdAmplitude.toFixed(3)}`,
-      84,
-      Math.max(laneTop + 10, thresholdY - 4),
+  if (options.showSpeechThreshold) {
+    const maxEnergy = columns.reduce(
+      (peak, column) => Math.max(peak, clamp(Number(column?.preVadRms ?? 0), 0, 1)),
+      0,
     );
+    const thresholds = [
+      {
+        dbfs: options.noiseFloorDbfs,
+        color: 'rgba(71, 85, 105, 0.82)',
+        dash: [3, 3] as number[],
+      },
+      {
+        dbfs: options.absoluteSpeechFloorDbfs,
+        color: 'rgba(124, 58, 237, 0.88)',
+        dash: [2, 4] as number[],
+      },
+      {
+        dbfs: options.speechThresholdDbfs,
+        color: 'rgba(239, 68, 68, 0.92)',
+        dash: [5, 3] as number[],
+      },
+      {
+        dbfs: options.onsetThresholdDbfs,
+        color: 'rgba(245, 158, 11, 0.92)',
+        dash: [4, 3] as number[],
+      },
+    ].filter((threshold) => Number.isFinite(threshold.dbfs));
+
+    for (const threshold of thresholds) {
+      const thresholdAmplitude = clamp(dbfsToAmplitude(threshold.dbfs as number), 0, 1);
+      const thresholdY = laneBottom - thresholdAmplitude * (laneHeight - 2);
+      const activeAlpha = maxEnergy >= thresholdAmplitude ? 1 : 0.55;
+      context.strokeStyle = threshold.color.replace(/0\.\d+\)$/, `${activeAlpha})`);
+      context.lineWidth = 1;
+      context.setLineDash(threshold.dash);
+      context.beginPath();
+      context.moveTo(0, thresholdY);
+      context.lineTo(width, thresholdY);
+      context.stroke();
+    }
+    context.setLineDash([]);
   }
 
   context.fillStyle = 'rgba(180, 83, 9, 0.85)';
@@ -513,7 +851,6 @@ function drawPreVadWaveformOverlay(
   columns: readonly BrowserRealtimePlot['columns'][number][],
   height: number,
   displayGain: number,
-  options: Required<BrowserWaveformRenderOptions>,
   enabled: boolean,
 ): void {
   if (!enabled || !Array.isArray(columns) || columns.length === 0) {
@@ -522,7 +859,7 @@ function drawPreVadWaveformOverlay(
   const { waveformTop, waveformBottom } = getLaneLayout(height);
   const laneHeight = Math.max(8, waveformBottom - waveformTop);
   const toY = (amplitude: number) =>
-    waveformTop + ((1 - mapDisplayAmplitude(amplitude, displayGain, options)) * 0.5) * laneHeight;
+    waveformTop + ((1 - mapDisplayAmplitude(amplitude, displayGain)) * 0.5) * laneHeight;
 
   context.save();
   context.beginPath();
@@ -572,6 +909,63 @@ function drawPreVadWaveformOverlay(
   context.restore();
 }
 
+function drawSegmentDebugLegend(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+): void {
+  const { waveformBottom } = getLaneLayout(height);
+  const legendX = 12;
+  const legendY = waveformBottom - 40;
+  const legendWidth = 286;
+  const legendHeight = 32;
+  const boxWidth = Math.min(legendWidth, width - 24);
+
+  context.save();
+  context.fillStyle = 'rgba(255, 255, 255, 0.84)';
+  context.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+  context.lineWidth = 1;
+  context.beginPath();
+  context.roundRect(legendX, legendY, boxWidth, legendHeight, 5);
+  context.fill();
+  context.stroke();
+
+  context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
+  context.fillStyle = 'rgba(51, 65, 85, 0.92)';
+
+  context.strokeStyle = 'rgba(100, 116, 139, 0.7)';
+  context.strokeRect(legendX + 7.5, legendY + 5.5, 10, 9);
+  context.fillText('box start', legendX + 22, legendY + 13);
+
+  const onsetX = legendX + 74.5;
+  context.strokeStyle = 'rgba(14, 165, 233, 0.95)';
+  context.setLineDash([2, 2]);
+  context.beginPath();
+  context.moveTo(onsetX, legendY + 4);
+  context.lineTo(onsetX, legendY + 16);
+  context.stroke();
+  context.setLineDash([]);
+  context.fillText('onset', legendX + 79, legendY + 13);
+
+  context.fillStyle = 'rgba(96, 165, 250, 0.62)';
+  context.fillRect(legendX + 118, legendY + 5, 12, 10);
+  context.fillStyle = 'rgba(51, 65, 85, 0.92)';
+  context.fillText('included', legendX + 135, legendY + 13);
+
+  context.fillStyle = 'rgba(59, 130, 246, 0.9)';
+  context.fillRect(legendX + 206, legendY + 5, 12, 10);
+  context.fillStyle = 'rgba(51, 65, 85, 0.92)';
+  context.fillText('gate', legendX + 223, legendY + 13);
+
+  context.fillStyle = 'rgba(16, 185, 129, 0.22)';
+  context.fillRect(legendX + 7, legendY + 19, 12, 10);
+  context.strokeStyle = 'rgba(5, 150, 105, 0.84)';
+  context.strokeRect(legendX + 7.5, legendY + 19.5, 11, 9);
+  context.fillStyle = 'rgba(51, 65, 85, 0.92)';
+  context.fillText('live', legendX + 24, legendY + 27);
+  context.restore();
+}
+
 export function renderBrowserRealtimeWaveformFrame(
   context: CanvasRenderingContext2D,
   frame: BrowserWaveformRenderFrame | null | undefined,
@@ -616,15 +1010,24 @@ export function renderBrowserRealtimeWaveformFrame(
   drawTenVadOverlay(context, columns, width, height, resolvedOptions);
   drawEnergyOverlay(context, columns, width, height, resolvedOptions);
   drawWaveformGateOverlay(context, columns, width, height);
-  drawSpeechThreshold(context, width, height, displayGain, resolvedOptions);
-  drawWaveformAmplitude(context, columns, height, displayGain, resolvedOptions);
+  drawSpeechThreshold(context, frame, columns, width, height, displayGain, resolvedOptions);
+  drawWaveformAmplitude(context, columns, height, displayGain);
+  drawSegmentAnnotations(
+    context,
+    frame.plot.startFrame,
+    Math.max(1, frame.plot.endFrame - frame.plot.startFrame),
+    frame.recentSegments,
+    frame.activeSegment,
+    width,
+    height,
+  );
   drawPreVadWaveformOverlay(
     context,
     columns,
     height,
     displayGain,
-    resolvedOptions,
     resolvedOptions.showPreVadOverlay,
   );
+  drawSegmentDebugLegend(context, width, height);
   drawLiveEdge(context, frame.plot, height);
 }

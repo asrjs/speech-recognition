@@ -4,6 +4,8 @@ export * from './runtime/browser-monitor.js';
 export * from './runtime/browser-transcription-worker.js';
 export * from './runtime/capture.js';
 export * from './runtime/browser-realtime.js';
+export * from './runtime/browser-compact-stats.js';
+export * from './runtime/browser-monitor-display.js';
 export * from './runtime/browser-waveform.js';
 export * from './runtime/local-browser.js';
 export * from './runtime/media.js';

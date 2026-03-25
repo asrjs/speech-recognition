@@ -4,38 +4,45 @@ import {
   listStreamingControlGroups,
   resolveStreamingControlGroups,
   resolveStreamingForegroundThresholdDbfs,
+  resolveStreamingOnsetThresholdDbfs,
   resolveStreamingSnapshotNoiseFloorDbfs,
 } from '@asrjs/speech-recognition/realtime';
 import { describe, expect, it } from 'vitest';
 
 describe('streaming consumer helpers', () => {
-  it('exposes stable detector tuning groups for consumer apps', () => {
+  it('exposes stable Parakeet-style detector tuning groups for consumer apps', () => {
     const groups = listStreamingControlGroups();
     const resolvedGroups = resolveStreamingControlGroups();
 
-    expect(groups.map((group) => group.id)).toEqual(['segmenter', 'foreground']);
-    expect(resolvedGroups).toHaveLength(2);
-    expect(resolvedGroups[0]?.controls.length).toBeGreaterThan(0);
-    expect(resolvedGroups[1]?.controls.length).toBeGreaterThan(0);
-    expect(resolvedGroups[0]?.controls.every((control) => groups[0]?.fields.includes(control.field))).toBe(true);
-    expect(resolvedGroups[1]?.controls.every((control) => groups[1]?.fields.includes(control.field))).toBe(true);
+    expect(groups.map((group) => group.id)).toEqual([
+      'segmenter',
+      'timing',
+      'acceptance',
+      'adaptation',
+      'acceptance-advanced',
+    ]);
+    expect(resolvedGroups).toHaveLength(5);
+    expect(resolvedGroups.every((group) => group.controls.length > 0)).toBe(true);
+    expect(
+      resolvedGroups.every((group, index) =>
+        group.controls.every((control) => groups[index]?.fields.includes(control.field)),
+      ),
+    ).toBe(true);
   });
 
-  it('estimates release timing from the slowest TEN-VAD tail budget', () => {
+  it('estimates release timing from silence hold versus extraction hangover', () => {
     expect(
       estimateStreamingReleaseMs({
-        tenVadConfirmationWindowMs: 120,
-        tenVadMinSilenceDurationMs: 260,
-        tenVadHangoverMs: 180,
+        minSilenceDurationMs: 400,
+        speechHangoverMs: 160,
       }),
-    ).toBe(260);
+    ).toBe(400);
 
     expect(estimateStreamingReleaseMs(null)).toBeNull();
     expect(
       estimateStreamingReleaseMs({
-        tenVadConfirmationWindowMs: 120,
-        tenVadMinSilenceDurationMs: Number.NaN,
-        tenVadHangoverMs: 180,
+        minSilenceDurationMs: Number.NaN,
+        speechHangoverMs: 160,
       }),
     ).toBeNull();
   });
@@ -58,26 +65,26 @@ describe('streaming consumer helpers', () => {
     expect(resolveStreamingSnapshotNoiseFloorDbfs(null)).toBeNull();
   });
 
-  it('derives the live foreground threshold only when the filter is enabled', () => {
+  it('derives the displayed live speech threshold from minSpeechLevelDbfs', () => {
     expect(
       resolveStreamingForegroundThresholdDbfs(
         {
-          foregroundFilterEnabled: true,
-          foregroundMinDb: 8,
+          minSpeechLevelDbfs: -22,
         },
         -50,
       ),
-    ).toBe(-42);
+    ).toBe(-22);
 
     expect(
-      resolveStreamingForegroundThresholdDbfs(
+      resolveStreamingOnsetThresholdDbfs(
         {
-          foregroundFilterEnabled: false,
-          foregroundMinDb: 8,
+          minSpeechLevelDbfs: -22,
         },
         -50,
       ),
-    ).toBeNull();
+    ).toBe(-22);
+
+    expect(resolveStreamingForegroundThresholdDbfs(null, -50)).toBeNull();
   });
 
   it('computes segment duration from frame bounds and sample rate', () => {

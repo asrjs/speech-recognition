@@ -1,4 +1,5 @@
 import { AudioRingBuffer } from './realtime.js';
+
 import {
   durationMsToAlignedFrameCount,
   resolveStreamingTimelineChunkFrames,
@@ -15,9 +16,11 @@ import {
 } from './rough-speech-gate.js';
 import {
   scoreSegmentForeground,
+  type SegmentForegroundFilterConfig,
   type SegmentForegroundFilterResult,
 } from './segment-foreground-filter.js';
 import {
+  PARAKEET_SEGMENTATION_PRESETS,
   STREAMING_GATE_MODES,
   STREAMING_PROFILE_IDS,
   STREAMING_PRESETS,
@@ -29,13 +32,15 @@ import {
   resolveStreamingProfileId,
   type StreamingDetectorConfig,
   type StreamingDetectorConfigOverrides,
-  type StreamingGateMode,
   type StreamingDetectorPreset,
+  type StreamingGateMode,
   type StreamingProfileId,
 } from './streaming-config.js';
+import { amplitudeToDbfs } from './noise-floor.js';
 
 export {
   DEFAULT_ROUGH_GATE_CONFIG,
+  PARAKEET_SEGMENTATION_PRESETS,
   STREAMING_GATE_MODES,
   STREAMING_PROFILE_IDS,
   STREAMING_PRESETS,
@@ -51,8 +56,8 @@ export type {
   RoughSpeechGateWindowResult,
   StreamingDetectorConfig,
   StreamingDetectorConfigOverrides,
-  StreamingGateMode,
   StreamingDetectorPreset,
+  StreamingGateMode,
   StreamingProfileId,
 };
 
@@ -64,13 +69,22 @@ export interface StreamingTenVadStatus {
   readonly threshold: number;
 }
 
+export interface StreamingTenVadRecentHop {
+  readonly startFrame: number;
+  readonly endFrame: number;
+  readonly probability: number;
+  readonly rawSpeaking?: boolean;
+  readonly speaking: boolean;
+  readonly createdAt?: number;
+}
+
 export interface StreamingTenVadWindowSummary {
   readonly totalHops: number;
   readonly speechHopCount: number;
   readonly nonSpeechHopCount: number;
   readonly maxConsecutiveSpeech: number;
   readonly maxProbability: number;
-  readonly recent: readonly unknown[];
+  readonly recent: readonly StreamingTenVadRecentHop[];
 }
 
 export interface StreamingTenVadResultEvent {
@@ -106,6 +120,9 @@ export interface StreamingDetectorSegment {
     readonly rough: RoughSpeechGateWindowResult | null;
     readonly tenVad: StreamingTenVadStatus;
     readonly filter: SegmentForegroundFilterResult | null;
+    readonly logicalStartFrame: number;
+    readonly logicalEndFrame: number;
+    readonly source: 'ten-vad' | 'rough-fallback';
   };
   readPcm(): Float32Array;
 }
@@ -137,10 +154,15 @@ export interface StreamingSpeechDetectorSnapshot {
   };
   readonly foreground: {
     readonly enabled: boolean;
+    readonly noiseFloor: number;
     readonly noiseFloorDbfs: number;
-    readonly foregroundMinDb: number;
-    readonly onsetMinDb: number;
-    readonly longMinDb: number;
+    readonly energyThreshold: number;
+    readonly energyThresholdDbfs: number;
+    readonly minSpeechDurationMs: number;
+    readonly minEnergyPerSecond: number;
+    readonly minEnergyIntegral: number;
+    readonly adaptiveEnergyThresholdsEnabled: boolean;
+    readonly activeResult: Record<string, unknown> | null;
     readonly lastResult: Record<string, unknown> | null;
   };
   readonly tenVad: StreamingTenVadStatus;
@@ -179,6 +201,13 @@ interface ActiveSegmentState {
   readonly source: 'ten-vad' | 'rough-fallback';
 }
 
+interface FinalizedSegmentBounds {
+  readonly logicalStartFrame: number;
+  readonly logicalEndFrame: number;
+  readonly extractedStartFrame: number;
+  readonly extractedEndFrame: number;
+}
+
 export interface StreamingSpeechDetectorOptions {
   readonly profileId?: string;
   readonly config?: StreamingDetectorConfigOverrides;
@@ -192,6 +221,19 @@ export interface StreamingSpeechDetectorOptions {
 
 function cloneEntries<T extends Record<string, unknown>>(entries: readonly T[]): T[] {
   return entries.map((entry) => ({ ...entry }));
+}
+
+function createDisabledTenVadStatus(
+  config: StreamingDetectorConfig,
+  error: Error | null,
+): StreamingTenVadStatus {
+  return {
+    state: config.tenVadEnabled ? 'idle' : 'disabled',
+    error: error?.message ?? null,
+    probability: 0,
+    speaking: false,
+    threshold: config.tenVadThreshold,
+  };
 }
 
 export class StreamingSpeechDetector {
@@ -221,6 +263,7 @@ export class StreamingSpeechDetector {
   private tenVadOptions: unknown;
   private tenVadUnsubscribe: (() => void) | null = null;
   private lastDebugTraceAt = 0;
+  private lastAcceptedLogicalEndFrame: number | null = null;
 
   constructor(options: StreamingSpeechDetectorOptions = {}) {
     this.createTenVad =
@@ -249,6 +292,7 @@ export class StreamingSpeechDetector {
       sampleRate: this.sampleRate,
       analysisWindowMs: this.config.analysisWindowMs,
       energySmoothingWindows: this.config.energySmoothingWindows,
+      energyThreshold: this.config.energyThreshold,
       minSpeechLevelDbfs: this.config.minSpeechLevelDbfs,
       useSnrGate: this.config.useSnrGate,
       snrThreshold: this.config.snrThreshold,
@@ -286,6 +330,20 @@ export class StreamingSpeechDetector {
     };
   }
 
+  private buildForegroundFilterConfig(): SegmentForegroundFilterConfig {
+    return {
+      foregroundFilterEnabled: this.config.foregroundFilterEnabled,
+      minSpeechDurationMs: this.config.minSpeechDurationMs,
+      minEnergyPerSecond: this.config.minEnergyPerSecond,
+      minEnergyIntegral: this.config.minEnergyIntegral,
+      useAdaptiveEnergyThresholds: this.config.useAdaptiveEnergyThresholds,
+      adaptiveEnergyIntegralFactor: this.config.adaptiveEnergyIntegralFactor,
+      adaptiveEnergyPerSecondFactor: this.config.adaptiveEnergyPerSecondFactor,
+      minAdaptiveEnergyIntegral: this.config.minAdaptiveEnergyIntegral,
+      minAdaptiveEnergyPerSecond: this.config.minAdaptiveEnergyPerSecond,
+    };
+  }
+
   private subscribeTenVad(tenVad: StreamingTenVadLike | null): (() => void) | null {
     return (
       tenVad?.subscribe((event) => {
@@ -309,14 +367,12 @@ export class StreamingSpeechDetector {
     return this.tenVad?.getStatus().state === 'ready';
   }
 
+  private getTenVadStatus(): StreamingTenVadStatus {
+    return this.tenVad?.getStatus() ?? createDisabledTenVadStatus(this.config, this.lastError);
+  }
+
   private resolveEffectiveGateMode(): StreamingGateMode {
-    if (this.config.gateMode === STREAMING_GATE_MODES.ROUGH_ONLY) {
-      return STREAMING_GATE_MODES.ROUGH_ONLY;
-    }
-    if (!this.config.tenVadEnabled || !this.isTenVadReady()) {
-      return STREAMING_GATE_MODES.ROUGH_ONLY;
-    }
-    return STREAMING_GATE_MODES.TEN_VAD_ONLY;
+    return STREAMING_GATE_MODES.ROUGH_ONLY;
   }
 
   private getCurrentConfigOverrides(): Partial<StreamingDetectorConfig> {
@@ -388,6 +444,7 @@ export class StreamingSpeechDetector {
     this.lastAcceptanceInfo = null;
     this.lastForegroundResult = null;
     this.lastError = null;
+    this.lastAcceptedLogicalEndFrame = null;
     this.ringBuffer.reset();
     this.roughGate.reset();
 
@@ -396,12 +453,12 @@ export class StreamingSpeechDetector {
         await this.tenVad.init();
         await this.tenVad.reset();
         this.recordDecision(
-          'TEN-VAD ready',
+          'TEN-VAD ready for diagnostics',
           this.tenVad.getStatus() as unknown as Record<string, unknown>,
         );
       } catch (error) {
         this.lastError = error instanceof Error ? error : new Error(String(error));
-        this.recordDecision('TEN-VAD degraded, falling back to rough gate', {
+        this.recordDecision('TEN-VAD degraded; segmentation remains on rough gate', {
           error: this.lastError.message,
         });
         this.emit({
@@ -439,176 +496,72 @@ export class StreamingSpeechDetector {
     this.lastMetrics = rough;
 
     const nowFrame = this.ringBuffer.getCurrentFrame();
-    const effectiveGateMode = this.resolveEffectiveGateMode();
-    const tenVadReady = this.isTenVadReady();
     const baseFrame = this.ringBuffer.getBaseFrameOffset();
-    const prerollFrames = durationMsToAlignedFrameCount(
-      this.config.prerollMs,
-      this.sampleRate,
-      'ceil',
-      this.config.chunkDurationMs,
-    );
 
-    if (effectiveGateMode === STREAMING_GATE_MODES.ROUGH_ONLY) {
-      this.processWithRoughFallback(rough, nowFrame, chunk.length, prerollFrames, baseFrame);
-    } else if (tenVadReady) {
-      this.processWithTenVad(nowFrame, prerollFrames, baseFrame);
+    if (!this.activeSegment && rough.speechStart) {
+      const logicalStartFrame = Math.max(
+        baseFrame,
+        rough.onsetFrame ?? rough.chunkStartFrame,
+      );
+      this.activateSegment(logicalStartFrame, nowFrame, 'rough-fallback');
+      this.recordDecision('Rough gate speech start', {
+        startFrame: logicalStartFrame,
+        energy: Number(rough.energy.toFixed(3)),
+        noiseFloor: Number(rough.noiseFloor.toFixed(5)),
+        snr: Number(rough.snr.toFixed(2)),
+      });
+    }
+
+    if (!this.activeSegment && !rough.speechStart) {
+      const isNearThreshold =
+        rough.energy >= this.config.energyThreshold * 0.8
+        || rough.snr >= this.config.minSnrThreshold;
+      if (isNearThreshold && !rough.isSpeech) {
+        this.debugTrace('Near-threshold audio stayed below live start trigger', {
+          energy: Number(rough.energy.toFixed(3)),
+          threshold: Number(this.config.energyThreshold.toFixed(3)),
+          snr: Number(rough.snr.toFixed(2)),
+        });
+      }
+    }
+
+    if (this.activeSegment) {
+      this.activeSegment = {
+        ...this.activeSegment,
+        lastFrame: nowFrame,
+      };
+
+      const segmentFrames = nowFrame - this.activeSegment.startFrame;
+      const segmentDurationMs = (segmentFrames / this.sampleRate) * 1000;
+      if (segmentDurationMs >= this.config.maxSegmentDurationMs) {
+        const finalized = this.finalizeSegment('max-duration', nowFrame);
+        if (rough.isSpeech) {
+          const nextStartFrame = Math.max(baseFrame, rough.chunkStartFrame);
+          this.activateSegment(nextStartFrame, nowFrame, 'rough-fallback');
+          this.recordDecision('Long speech split into a new rough segment', {
+            previousAccepted: finalized?.metadata.filter?.accepted ?? false,
+            nextStartFrame,
+          });
+        }
+      } else if (rough.isSpeech) {
+        this.state = 'speaking';
+        this.emitSpeechUpdate(nowFrame);
+      } else if (rough.speechEnd) {
+        this.recordDecision('Rough gate finalized speech after sustained silence', {
+          endFrame: nowFrame,
+          energy: Number(rough.energy.toFixed(3)),
+          noiseFloor: Number(rough.noiseFloor.toFixed(5)),
+        });
+        this.finalizeSegment('silence', nowFrame);
+      } else {
+        this.state = 'candidate';
+      }
     }
 
     this.emit({
       type: 'metrics',
       payload: this.getSnapshot(),
     });
-  }
-
-  private processWithTenVad(
-    nowFrame: number,
-    prerollFrames: number,
-    baseFrame: number,
-  ): void {
-    const confirmWindowMs = Math.max(
-      this.config.tenVadConfirmationWindowMs,
-      this.config.tenVadMinSpeechDurationMs,
-    );
-    const silenceWindowMs = Math.max(
-      this.config.tenVadConfirmationWindowMs,
-      this.config.tenVadMinSilenceDurationMs,
-    );
-    const startSearchFrames = durationMsToAlignedFrameCount(
-      this.config.prerollMs
-        + this.config.tenVadSpeechPaddingMs
-        + confirmWindowMs
-        + this.config.chunkDurationMs * 2,
-      this.sampleRate,
-      'ceil',
-      this.config.chunkDurationMs,
-    );
-    const searchStartFrame = Math.max(baseFrame, nowFrame - startSearchFrames);
-    const tenVadConfirmed =
-      this.tenVad?.hasRecentSpeech(nowFrame, confirmWindowMs, this.sampleRate) ?? false;
-    const tenVadTailHold =
-      this.tenVad?.hasRecentSpeech(nowFrame, this.config.tenVadHangoverMs, this.sampleRate) ?? false;
-    const tenVadSilence =
-      this.tenVad?.hasRecentSilence(nowFrame, silenceWindowMs, this.sampleRate) ?? false;
-    const tenVadStart = this.tenVad?.findFirstSpeechFrame(searchStartFrame, nowFrame) ?? null;
-    const segmentStartFrame =
-      tenVadStart === null
-        ? null
-        : Math.max(baseFrame, tenVadStart - prerollFrames);
-
-    if (!this.activeSegment) {
-      if (segmentStartFrame !== null && !tenVadConfirmed) {
-        this.pendingSegmentStartFrame = segmentStartFrame;
-        this.state = 'candidate';
-      } else if (segmentStartFrame !== null && tenVadConfirmed) {
-        this.activateSegment(segmentStartFrame, nowFrame, 'ten-vad');
-        this.recordDecision('TEN-VAD segment accepted', {
-          startFrame: segmentStartFrame,
-          probability: this.tenVad?.getStatus().probability ?? 0,
-        });
-      } else {
-        this.pendingSegmentStartFrame = null;
-        if (this.state !== 'idle') {
-          this.state = 'listening';
-        }
-      }
-      return;
-    }
-
-    this.activeSegment = {
-      ...this.activeSegment,
-      lastFrame: nowFrame,
-    };
-
-    const segmentFrames = nowFrame - this.activeSegment.startFrame;
-    const segmentDurationMs = (segmentFrames / this.sampleRate) * 1000;
-    if (segmentDurationMs >= this.config.maxSegmentDurationMs) {
-      this.finalizeSegment('max-duration', nowFrame);
-      return;
-    }
-
-    if (tenVadConfirmed) {
-      this.state = 'speaking';
-      this.emitSpeechUpdate(nowFrame);
-      return;
-    }
-
-    if (tenVadTailHold) {
-      this.state = 'candidate';
-      this.emitSpeechUpdate(nowFrame);
-      return;
-    }
-
-    if (tenVadSilence) {
-      this.recordDecision('Speech finalized by TEN-VAD silence', {
-        endFrame: nowFrame,
-        probability: this.tenVad?.getStatus().probability ?? 0,
-      });
-      this.finalizeSegment('ten-vad-silence', nowFrame);
-      return;
-    }
-
-    this.state = 'candidate';
-  }
-
-  private processWithRoughFallback(
-    rough: RoughSpeechGateWindowResult,
-    nowFrame: number,
-    chunkLength: number,
-    prerollFrames: number,
-    baseFrame: number,
-  ): void {
-    if (!this.activeSegment && rough.speechStart) {
-      const fallbackStart = Math.max(
-        baseFrame,
-        (rough.onsetFrame ?? nowFrame - chunkLength) - prerollFrames,
-      );
-      this.activateSegment(fallbackStart, nowFrame, 'rough-fallback');
-      this.recordDecision('Rough fallback segment accepted', {
-        startFrame: fallbackStart,
-        levelDbfs: Number(rough.levelDbfs.toFixed(1)),
-        snr: Number(rough.snr.toFixed(2)),
-      });
-      return;
-    }
-
-    if (!this.activeSegment) {
-      const isNearSpeechThreshold =
-        rough.levelDbfs >= this.config.minSpeechLevelDbfs - 6 ||
-        rough.snr >= this.config.minSnrThreshold - 1;
-      if (isNearSpeechThreshold && !rough.speechStart && !rough.isSpeech) {
-        this.debugTrace('Near-threshold audio rejected before rough fallback onset', {
-          levelDbfs: Number(rough.levelDbfs.toFixed(1)),
-          snr: Number(rough.snr.toFixed(2)),
-        });
-      }
-      return;
-    }
-
-    this.activeSegment = {
-      ...this.activeSegment,
-      lastFrame: nowFrame,
-    };
-    const segmentFrames = nowFrame - this.activeSegment.startFrame;
-    const segmentDurationMs = (segmentFrames / this.sampleRate) * 1000;
-    if (segmentDurationMs >= this.config.maxSegmentDurationMs) {
-      this.finalizeSegment('max-duration', nowFrame);
-      return;
-    }
-
-    if (rough.isSpeech) {
-      this.state = 'speaking';
-      this.emitSpeechUpdate(nowFrame);
-      return;
-    }
-
-    if (rough.speechEnd) {
-      this.recordDecision('Speech finalized after rough fallback silence', {
-        endFrame: nowFrame,
-        levelDbfs: Number(rough.levelDbfs.toFixed(1)),
-      });
-      this.finalizeSegment('silence', nowFrame);
-    }
   }
 
   private activateSegment(
@@ -646,6 +599,55 @@ export class StreamingSpeechDetector {
     });
   }
 
+  private finalizeBounds(
+    logicalStartFrame: number,
+    logicalEndFrame: number,
+  ): FinalizedSegmentBounds {
+    const baseFrame = this.ringBuffer.getBaseFrameOffset();
+    const currentFrame = this.ringBuffer.getCurrentFrame();
+    const prerollFrames = durationMsToAlignedFrameCount(
+      this.config.prerollMs,
+      this.sampleRate,
+      'ceil',
+      this.config.chunkDurationMs,
+    );
+    const overlapFrames = durationMsToAlignedFrameCount(
+      this.config.overlapDurationMs,
+      this.sampleRate,
+      'ceil',
+      this.config.chunkDurationMs,
+    );
+    const hangoverFrames = durationMsToAlignedFrameCount(
+      this.config.speechHangoverMs,
+      this.sampleRate,
+      'ceil',
+      this.config.chunkDurationMs,
+    );
+
+    let extractedStartFrame = Math.max(baseFrame, logicalStartFrame - prerollFrames);
+    if (this.lastAcceptedLogicalEndFrame !== null) {
+      const overlappedStartFrame = this.lastAcceptedLogicalEndFrame - overlapFrames;
+      extractedStartFrame = Math.max(baseFrame, Math.min(extractedStartFrame, overlappedStartFrame));
+    }
+
+    const clampedLogicalStartFrame = Math.max(baseFrame, logicalStartFrame);
+    const clampedLogicalEndFrame = Math.max(
+      clampedLogicalStartFrame + 1,
+      Math.min(currentFrame, logicalEndFrame),
+    );
+    const extractedEndFrame = Math.max(
+      extractedStartFrame + 1,
+      Math.min(currentFrame, clampedLogicalEndFrame + hangoverFrames),
+    );
+
+    return {
+      logicalStartFrame: clampedLogicalStartFrame,
+      logicalEndFrame: clampedLogicalEndFrame,
+      extractedStartFrame,
+      extractedEndFrame,
+    };
+  }
+
   finalizeSegment(
     reason: string,
     endFrame = this.ringBuffer.getCurrentFrame(),
@@ -654,68 +656,69 @@ export class StreamingSpeechDetector {
       return null;
     }
 
-    const startFrame = this.activeSegment.startFrame;
-    const pcm = this.ringBuffer.read(startFrame, endFrame);
-    const tenVadStatus =
-      this.tenVad?.getStatus() ?? {
-        state: this.config.tenVadEnabled ? 'idle' : 'disabled',
-        error: this.lastError?.message ?? null,
-        probability: 0,
-        speaking: false,
-        threshold: this.config.tenVadThreshold,
-      };
+    const activeSegment = this.activeSegment;
+    const bounds = this.finalizeBounds(activeSegment.startFrame, endFrame);
+    const pcm = this.ringBuffer.read(bounds.extractedStartFrame, bounds.extractedEndFrame);
+    const tenVadStatus = this.getTenVadStatus();
     const filterResult = scoreSegmentForeground(
       pcm,
       this.sampleRate,
-      this.lastMetrics?.noiseFloorDbfs
-        ?? 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001)),
-      this.config,
+      this.lastMetrics?.noiseFloor ?? this.config.initialNoiseFloor,
+      this.buildForegroundFilterConfig(),
+      {
+        noiseWindowFrames: this.lastMetrics?.analysisWindowFrames ?? null,
+      },
     );
     this.lastForegroundResult = filterResult;
     this.lastAcceptanceInfo = {
       accepted: filterResult.accepted,
       reason: filterResult.reason,
       segmentReason: reason,
-      segmentDurationMs: filterResult.durationMs,
-      segmentP90Dbfs: filterResult.segmentP90Dbfs,
-      onsetP90Dbfs: filterResult.onsetP90Dbfs,
-      foregroundDb: filterResult.foregroundDb,
-      onsetDb: filterResult.onsetDb,
-      shortSpeech: filterResult.shortSpeech,
-      longSpeech: filterResult.longSpeech,
+      source: activeSegment.source,
+      logicalStartFrame: bounds.logicalStartFrame,
+      logicalEndFrame: bounds.logicalEndFrame,
+      extractedStartFrame: bounds.extractedStartFrame,
+      extractedEndFrame: bounds.extractedEndFrame,
+      extractedDurationMs: Number(filterResult.durationMs.toFixed(1)),
+      noiseFloor: filterResult.noiseFloor,
       noiseFloorDbfs: filterResult.noiseFloorDbfs,
-      source: this.activeSegment.source,
+      normalizedPowerAt16k: filterResult.normalizedPowerAt16k,
+      normalizedEnergyIntegralAt16k: filterResult.normalizedEnergyIntegralAt16k,
+      minEnergyPerSecondThreshold: filterResult.minEnergyPerSecondThreshold,
+      minEnergyIntegralThreshold: filterResult.minEnergyIntegralThreshold,
+      adaptiveThresholds: filterResult.usedAdaptiveThresholds,
       gateMode: this.resolveEffectiveGateMode(),
       tenVadState: tenVadStatus.state,
-      foregroundFilterEnabled: this.config.foregroundFilterEnabled,
     };
 
     this.emit({
       type: 'speech-end',
       payload: {
-        startFrame,
-        endFrame,
+        startFrame: bounds.extractedStartFrame,
+        endFrame: bounds.extractedEndFrame,
         sampleRate: this.sampleRate,
       },
     });
 
+    this.activeSegment = null;
+    this.pendingSegmentStartFrame = null;
+    this.state = 'listening';
+
     if (!filterResult.accepted) {
-      this.recordDecision('Segment rejected by foreground filter', {
+      this.recordDecision('Segment rejected by final energy gate', {
         reason: filterResult.reason,
         durationMs: Number(filterResult.durationMs.toFixed(0)),
-        foregroundDb: Number(filterResult.foregroundDb.toFixed(1)),
-        onsetDb: Number(filterResult.onsetDb.toFixed(1)),
-        noiseFloorDbfs: Number(filterResult.noiseFloorDbfs.toFixed(1)),
+        normalizedPowerAt16k: Number(filterResult.normalizedPowerAt16k.toFixed(2)),
+        normalizedEnergyIntegralAt16k: Number(
+          filterResult.normalizedEnergyIntegralAt16k.toFixed(2),
+        ),
       });
-      this.activeSegment = null;
-      this.pendingSegmentStartFrame = null;
-      this.state = 'listening';
       return null;
     }
 
     const segment: StreamingDetectorSegment = {
-      startFrame,
-      endFrame,
+      startFrame: bounds.extractedStartFrame,
+      endFrame: bounds.extractedEndFrame,
       sampleRate: this.sampleRate,
       reason,
       metadata: {
@@ -723,27 +726,26 @@ export class StreamingSpeechDetector {
         rough: this.lastMetrics,
         tenVad: tenVadStatus,
         filter: filterResult,
+        logicalStartFrame: bounds.logicalStartFrame,
+        logicalEndFrame: bounds.logicalEndFrame,
+        source: activeSegment.source,
       },
       readPcm: () => pcm,
     };
 
+    this.lastAcceptedLogicalEndFrame = bounds.logicalEndFrame;
     this.recentSegments = [...this.recentSegments.slice(-11), segment];
     this.recordDecision(`Segment ready: ${reason}`, {
       startFrame: segment.startFrame,
       endFrame: segment.endFrame,
-      durationSec: Number(
-        ((segment.endFrame - segment.startFrame) / segment.sampleRate).toFixed(2),
-      ),
-      foregroundDb: Number(filterResult.foregroundDb.toFixed(1)),
+      logicalEndFrame: bounds.logicalEndFrame,
+      durationSec: Number(((segment.endFrame - segment.startFrame) / segment.sampleRate).toFixed(2)),
+      normalizedPowerAt16k: Number(filterResult.normalizedPowerAt16k.toFixed(2)),
     });
     this.emit({
       type: 'segment-ready',
       payload: segment,
     });
-
-    this.activeSegment = null;
-    this.pendingSegmentStartFrame = null;
-    this.state = 'listening';
     return segment;
   }
 
@@ -762,6 +764,7 @@ export class StreamingSpeechDetector {
     } else {
       this.activeSegment = null;
       this.pendingSegmentStartFrame = null;
+      this.state = 'listening';
     }
     this.state = 'idle';
     return segment;
@@ -783,6 +786,7 @@ export class StreamingSpeechDetector {
     this.profileId = nextProfileId;
     this.config = mergeStreamingConfig(nextProfileId, nextOverrides);
     this.roughGate.updateConfig(this.buildRoughGateConfig());
+
     if (!previousTenVadEnabled && this.config.tenVadEnabled) {
       const nextTenVad = this.createTenVad(this.buildTenVadConfig(), this.tenVadOptions);
       this.replaceTenVad(nextTenVad);
@@ -793,6 +797,7 @@ export class StreamingSpeechDetector {
     } else {
       this.tenVad?.updateConfig(this.buildTenVadConfig());
     }
+
     this.emit({
       type: 'metrics',
       payload: this.getSnapshot(),
@@ -815,7 +820,8 @@ export class StreamingSpeechDetector {
       waveformFrameSpan,
     );
     const waveformPointCount = Math.max(1, Math.floor(waveform.minMax.length / 2));
-    const defaultNoiseFloorDbfs = 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001));
+    const defaultNoiseFloorDbfs = amplitudeToDbfs(this.config.initialNoiseFloor);
+    const lastNoiseFloor = this.lastMetrics?.noiseFloor ?? this.config.initialNoiseFloor;
 
     return {
       state: this.state,
@@ -841,6 +847,7 @@ export class StreamingSpeechDetector {
       rough: this.lastMetrics
         ? {
             energy: this.lastMetrics.energy,
+            rawEnergy: this.lastMetrics.rawEnergy,
             snr: this.lastMetrics.snr,
             noiseFloor: this.lastMetrics.noiseFloor,
             noiseFloorDbfs: this.lastMetrics.noiseFloorDbfs,
@@ -872,6 +879,7 @@ export class StreamingSpeechDetector {
           }
         : {
             energy: 0,
+            rawEnergy: 0,
             snr: 0,
             noiseFloor: this.config.initialNoiseFloor,
             noiseFloorDbfs: defaultNoiseFloorDbfs,
@@ -881,7 +889,7 @@ export class StreamingSpeechDetector {
             confirmedSilenceAverageDbfs: defaultNoiseFloorDbfs,
             rejectedCandidateAverage: this.config.initialNoiseFloor,
             rejectedCandidateAverageDbfs: defaultNoiseFloorDbfs,
-            threshold: 10 ** (this.config.minSpeechLevelDbfs / 20),
+            threshold: this.config.energyThreshold,
             thresholdDbfs: this.config.minSpeechLevelDbfs,
             levelDbfs: -100,
             levelWindowRms: 0,
@@ -899,20 +907,18 @@ export class StreamingSpeechDetector {
           },
       foreground: {
         enabled: this.config.foregroundFilterEnabled,
+        noiseFloor: lastNoiseFloor,
         noiseFloorDbfs: this.lastMetrics?.noiseFloorDbfs ?? defaultNoiseFloorDbfs,
-        foregroundMinDb: this.config.foregroundMinDb,
-        onsetMinDb: this.config.foregroundOnsetMinDb,
-        longMinDb: this.config.foregroundLongMinDb,
+        energyThreshold: this.config.energyThreshold,
+        energyThresholdDbfs: this.config.minSpeechLevelDbfs,
+        minSpeechDurationMs: this.config.minSpeechDurationMs,
+        minEnergyPerSecond: this.config.minEnergyPerSecond,
+        minEnergyIntegral: this.config.minEnergyIntegral,
+        adaptiveEnergyThresholdsEnabled: this.config.useAdaptiveEnergyThresholds,
+        activeResult: null,
         lastResult: this.lastForegroundResult as unknown as Record<string, unknown> | null,
       },
-      tenVad:
-        this.tenVad?.getStatus() ?? {
-          state: this.config.tenVadEnabled ? 'idle' : 'disabled',
-          error: this.lastError?.message ?? null,
-          probability: 0,
-          speaking: false,
-          threshold: this.config.tenVadThreshold,
-        },
+      tenVad: this.getTenVadStatus(),
       warnings: this.buildWarnings(),
       error: this.lastError?.message ?? null,
     };
@@ -921,24 +927,21 @@ export class StreamingSpeechDetector {
   private buildWarnings(): string[] {
     const warnings: string[] = [];
     const tenVadStatus = this.tenVad?.getStatus();
-    const effectiveGateMode = this.resolveEffectiveGateMode();
-    const tenVadUnavailableForRequestedGate =
-      tenVadStatus?.state === 'degraded' || tenVadStatus?.state === 'disabled';
 
     if (tenVadStatus?.state === 'degraded') {
-      warnings.push('TEN-VAD is degraded. Speech detection is running on rough fallback only.');
+      warnings.push('TEN-VAD is degraded. Runtime plots may be incomplete.');
     }
 
-    if (
-      this.config.gateMode !== STREAMING_GATE_MODES.ROUGH_ONLY &&
-      effectiveGateMode === STREAMING_GATE_MODES.ROUGH_ONLY &&
-      tenVadUnavailableForRequestedGate
-    ) {
-      warnings.push('TEN-VAD-first segmentation is unavailable, so detection is falling back to rough energy gating.');
+    if (this.config.tenVadEnabled) {
+      warnings.push('Speech segmentation is running on the rough gate. TEN-VAD is diagnostics-only.');
+    }
+
+    if (this.config.gateMode !== STREAMING_GATE_MODES.ROUGH_ONLY) {
+      warnings.push('Requested TEN-VAD-first gating is ignored by this Parakeet-style detector port.');
     }
 
     if (!this.config.foregroundFilterEnabled) {
-      warnings.push('Foreground filtering is disabled. Quiet background speech may be accepted.');
+      warnings.push('Final segment energy rejection is disabled. Quiet background audio may be accepted.');
     }
 
     return warnings;
