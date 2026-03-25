@@ -12,6 +12,34 @@ It is based on the current implementation in:
 
 This is the implementation truth for `parakeet-ui`. It is not a generic DSP note and it is not the `asrjs` runtime.
 
+## 0. Port Status In `asrjs`
+
+This report is also the reference point for the current `asrjs` port.
+
+The current `@asrjs/speech-recognition` runtime mirrors these behaviors in:
+
+- `src/runtime/rough-speech-gate.ts`
+- `src/runtime/streaming-detector.ts`
+- `src/runtime/segment-foreground-filter.ts`
+- `src/runtime/streaming-config.ts`
+- `src/runtime/browser-waveform.ts`
+- `src/runtime/browser-compact-stats.ts`
+- `src/runtime/browser-monitor-display.ts`
+
+Important current `asrjs` notes:
+
+- Segmentation is rough-gate-first. TEN-VAD is diagnostics-only in this port.
+- Final segment acceptance is a separate foreground/energy gate after live boundary detection.
+- The browser monitor now uses framework-agnostic runtime renderers plus thin app wrappers.
+- The waveform debugging surface distinguishes:
+  - accepted segment box bounds
+  - backtracked logical onset
+  - included-but-below-gate lead-in audio
+  - live gate columns
+  - current active segment
+
+If the `asrjs` runtime behavior and this report ever diverge, update this section first and then fix the detailed sections below.
+
 ## 1. High-Level Flow
 
 The project uses a four-stage pipeline:

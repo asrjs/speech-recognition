@@ -30,6 +30,12 @@ The core package may own:
 - waveform renderers and canvas utilities
 - monitor/store-style snapshot APIs
 
+For the current streaming monitor stack, this explicitly includes:
+
+- framework-agnostic browser renderers such as `browser-waveform` and `browser-compact-stats`
+- shared browser monitor display metadata in `browser-monitor-display`
+- renderer-oriented browser helpers that can be wrapped by React, Vue, Svelte, or Solid without moving visual logic into framework packages
+
 Framework packages should own:
 
 - React hooks/components
@@ -146,6 +152,19 @@ Responsibilities:
 - backend capability probing and selection
 - runtime/model/session lifecycle
 - errors, logging, hooks, and transcript normalization
+
+For browser streaming inspection, `src/runtime` is also the canonical home for:
+
+- compact stats renderers
+- waveform renderers
+- display mode and control metadata
+- monitor snapshot formatting helpers
+
+The rule is:
+
+- shared visual logic belongs in browser runtime renderers
+- framework apps only provide lifecycle glue, state wiring, and layout
+- labels and option metadata that define monitor semantics should live with the runtime renderers, not be re-authored in each app
 
 The runtime surface now distinguishes technical model families from branded presets:
 
@@ -333,6 +352,10 @@ Subpath separation is the primary bundling boundary. Lazy imports inside built-i
 - `RealtimeTranscriptionController`
 - `startMicrophoneCapture`
 - `decodeAudioSourceToMonoPcm`
+- `createBrowserCompactStatsRenderer`
+- `renderBrowserRealtimeWaveformFrame`
+- `BROWSER_MONITOR_SURFACE_OPTIONS`
+- `BROWSER_WAVEFORM_SCALE_OPTIONS`
 
 These are intentionally separated from the root API because they are higher-level application helpers, not the minimal runtime core.
 
