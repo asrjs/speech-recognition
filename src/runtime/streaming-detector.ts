@@ -14,6 +14,10 @@ import {
   type RoughSpeechGateWindowResult,
 } from './rough-speech-gate.js';
 import {
+  scoreSegmentForeground,
+  type SegmentForegroundFilterResult,
+} from './segment-foreground-filter.js';
+import {
   STREAMING_GATE_MODES,
   STREAMING_PROFILE_IDS,
   STREAMING_PRESETS,
@@ -101,6 +105,7 @@ export interface StreamingDetectorSegment {
     readonly profileId: string;
     readonly rough: RoughSpeechGateWindowResult | null;
     readonly tenVad: StreamingTenVadStatus;
+    readonly filter: SegmentForegroundFilterResult | null;
   };
   readPcm(): Float32Array;
 }
@@ -129,6 +134,14 @@ export interface StreamingSpeechDetectorSnapshot {
   readonly rough: Record<string, unknown> & {
     readonly recent?: readonly RoughSpeechChunkSummary[];
     readonly timeline?: readonly RoughSpeechTimelinePoint[];
+  };
+  readonly foreground: {
+    readonly enabled: boolean;
+    readonly noiseFloorDbfs: number;
+    readonly foregroundMinDb: number;
+    readonly onsetMinDb: number;
+    readonly longMinDb: number;
+    readonly lastResult: Record<string, unknown> | null;
   };
   readonly tenVad: StreamingTenVadStatus;
   readonly warnings: readonly string[];
@@ -163,7 +176,7 @@ export type StreamingSpeechDetectorEvent =
 interface ActiveSegmentState {
   readonly startFrame: number;
   readonly lastFrame: number;
-  readonly reason: string;
+  readonly source: 'ten-vad' | 'rough-fallback';
 }
 
 export interface StreamingSpeechDetectorOptions {
@@ -177,8 +190,8 @@ export interface StreamingSpeechDetectorOptions {
   readonly tenVadOptions?: unknown;
 }
 
-function cloneSegments<T extends Record<string, unknown>>(segments: readonly T[]): T[] {
-  return segments.map((segment) => ({ ...segment }));
+function cloneEntries<T extends Record<string, unknown>>(entries: readonly T[]): T[] {
+  return entries.map((entry) => ({ ...entry }));
 }
 
 export class StreamingSpeechDetector {
@@ -202,6 +215,7 @@ export class StreamingSpeechDetector {
   }> = [];
   private lastMetrics: RoughSpeechGateWindowResult | null = null;
   private lastAcceptanceInfo: Record<string, unknown> | null = null;
+  private lastForegroundResult: SegmentForegroundFilterResult | null = null;
   private lastError: Error | null = null;
   private disposed = false;
   private tenVadOptions: unknown;
@@ -295,10 +309,6 @@ export class StreamingSpeechDetector {
     return this.tenVad?.getStatus().state === 'ready';
   }
 
-  private supportsTenVadTailHold(rough: RoughSpeechGateWindowResult): boolean {
-    return rough.energyPass || (this.config.useSnrGate && rough.snrPass);
-  }
-
   private resolveEffectiveGateMode(): StreamingGateMode {
     if (this.config.gateMode === STREAMING_GATE_MODES.ROUGH_ONLY) {
       return STREAMING_GATE_MODES.ROUGH_ONLY;
@@ -306,7 +316,7 @@ export class StreamingSpeechDetector {
     if (!this.config.tenVadEnabled || !this.isTenVadReady()) {
       return STREAMING_GATE_MODES.ROUGH_ONLY;
     }
-    return this.config.gateMode;
+    return STREAMING_GATE_MODES.TEN_VAD_ONLY;
   }
 
   private getCurrentConfigOverrides(): Partial<StreamingDetectorConfig> {
@@ -374,6 +384,9 @@ export class StreamingSpeechDetector {
     this.state = 'listening';
     this.activeSegment = null;
     this.pendingSegmentStartFrame = null;
+    this.lastMetrics = null;
+    this.lastAcceptanceInfo = null;
+    this.lastForegroundResult = null;
     this.lastError = null;
     this.ringBuffer.reset();
     this.roughGate.reset();
@@ -408,7 +421,9 @@ export class StreamingSpeechDetector {
     chunk: Float32Array,
     meta: { readonly startFrame?: number; readonly endFrame?: number } = {},
   ): void {
-    if (!chunk.length) return;
+    if (!chunk.length) {
+      return;
+    }
 
     const chunkStartFrame = this.ringBuffer.getCurrentFrame();
     if (meta.startFrame !== undefined && meta.startFrame !== chunkStartFrame) {
@@ -416,6 +431,7 @@ export class StreamingSpeechDetector {
         `processChunk startFrame mismatch. Expected ${chunkStartFrame}, got ${meta.startFrame}.`,
       );
     }
+
     this.ringBuffer.write(chunk);
     this.tenVad?.process(chunk, chunkStartFrame);
 
@@ -425,263 +441,18 @@ export class StreamingSpeechDetector {
     const nowFrame = this.ringBuffer.getCurrentFrame();
     const effectiveGateMode = this.resolveEffectiveGateMode();
     const tenVadReady = this.isTenVadReady();
-    const isNearSpeechThreshold =
-      rough.levelDbfs >= this.config.minSpeechLevelDbfs - 6 ||
-      rough.snr >= this.config.minSnrThreshold - 1;
+    const baseFrame = this.ringBuffer.getBaseFrameOffset();
     const prerollFrames = durationMsToAlignedFrameCount(
       this.config.prerollMs,
       this.sampleRate,
       'ceil',
       this.config.chunkDurationMs,
     );
-    const fallbackStart = Math.max(
-      this.ringBuffer.getBaseFrameOffset(),
-      rough.onsetFrame ?? nowFrame - chunk.length,
-    );
-    const roughStart = Math.max(
-      this.ringBuffer.getBaseFrameOffset(),
-      fallbackStart - prerollFrames,
-    );
-    const tenVadSpeechConfirmWindowMs = Math.max(
-      this.config.tenVadConfirmationWindowMs,
-      this.config.tenVadMinSpeechDurationMs,
-    );
-    const tenVadSummary = tenVadReady
-      ? this.tenVad?.getWindowSummary(
-          nowFrame,
-          tenVadSpeechConfirmWindowMs,
-          this.sampleRate,
-        ) ?? null
-      : null;
-    const tenVadConfirmed =
-      tenVadReady &&
-      (this.tenVad?.hasRecentSpeech(
-        nowFrame,
-        tenVadSpeechConfirmWindowMs,
-        this.sampleRate,
-      ) ?? false);
-    const tenVadStart = tenVadReady
-      ? this.tenVad?.findFirstSpeechFrame(roughStart, nowFrame) ?? null
-      : null;
-    const combinedStartFrame = Math.max(
-      this.ringBuffer.getBaseFrameOffset(),
-      effectiveGateMode === STREAMING_GATE_MODES.TEN_VAD_ONLY
-        ? Math.max(
-            this.ringBuffer.getBaseFrameOffset(),
-            (tenVadStart ?? roughStart) - prerollFrames,
-          )
-        : roughStart,
-    );
 
-    if (
-      !this.activeSegment &&
-      effectiveGateMode === STREAMING_GATE_MODES.TEN_VAD_ONLY &&
-      tenVadConfirmed &&
-      tenVadStart !== null
-    ) {
-      if (this.pendingSegmentStartFrame === null) {
-        this.pendingSegmentStartFrame = combinedStartFrame;
-      }
-      this.activateSegment(
-        this.pendingSegmentStartFrame,
-        nowFrame,
-        rough,
-        tenVadStart,
-        tenVadSummary ?? null,
-      );
-    } else if (rough.speechStart) {
-      if (
-        effectiveGateMode === STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD &&
-        tenVadReady &&
-        (tenVadStart === null || !tenVadConfirmed)
-      ) {
-        this.pendingSegmentStartFrame = combinedStartFrame;
-        this.state = 'candidate';
-        this.recordDecision('Rough onset waiting for TEN-VAD confirmation', {
-          startFrame: combinedStartFrame,
-          reason: rough.candidateReason,
-          energy: Number(rough.energy.toFixed(4)),
-          levelDbfs: Number(rough.levelDbfs.toFixed(1)),
-          snr: Number(rough.snr.toFixed(2)),
-          tenVadState: this.tenVad?.getStatus() as unknown as Record<string, unknown>,
-          tenVadSummary: tenVadSummary as unknown as Record<string, unknown>,
-          gateMode: effectiveGateMode,
-        });
-      } else if (effectiveGateMode !== STREAMING_GATE_MODES.TEN_VAD_ONLY) {
-        this.activateSegment(
-          combinedStartFrame,
-          nowFrame,
-          rough,
-          tenVadStart,
-          tenVadSummary ?? null,
-        );
-      } else {
-        this.pendingSegmentStartFrame = combinedStartFrame;
-        this.state = 'candidate';
-      }
-    }
-
-    if (
-      !this.activeSegment &&
-      this.pendingSegmentStartFrame !== null &&
-      ((effectiveGateMode === STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD &&
-        rough.isSpeech &&
-        (!tenVadReady || tenVadConfirmed)) ||
-        (effectiveGateMode === STREAMING_GATE_MODES.TEN_VAD_ONLY &&
-          tenVadConfirmed &&
-          tenVadStart !== null))
-    ) {
-      this.activateSegment(
-        this.pendingSegmentStartFrame,
-        nowFrame,
-        rough,
-        tenVadStart ?? this.pendingSegmentStartFrame,
-        tenVadSummary ?? null,
-      );
-    }
-
-    if (
-      this.pendingSegmentStartFrame !== null &&
-      ((effectiveGateMode === STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD &&
-        !rough.isSpeech &&
-        !rough.speechStart &&
-        (!tenVadReady || !tenVadConfirmed)) ||
-        (effectiveGateMode === STREAMING_GATE_MODES.TEN_VAD_ONLY &&
-          !tenVadConfirmed &&
-          !rough.speechStart))
-    ) {
-      this.recordDecision('Candidate rejected by gate policy', {
-        startFrame: this.pendingSegmentStartFrame,
-        reason: rough.candidateReason,
-        energy: Number(rough.energy.toFixed(4)),
-        levelDbfs: Number(rough.levelDbfs.toFixed(1)),
-        snr: Number(rough.snr.toFixed(2)),
-        tenVadSummary,
-        gateMode: effectiveGateMode,
-      });
-      this.pendingSegmentStartFrame = null;
-    }
-
-    if (this.activeSegment) {
-      this.activeSegment = {
-        ...this.activeSegment,
-        lastFrame: nowFrame,
-      };
-
-      const segmentFrames = nowFrame - this.activeSegment.startFrame;
-      const segmentDurationMs = (segmentFrames / this.sampleRate) * 1000;
-      if (segmentDurationMs >= this.config.maxSegmentDurationMs) {
-        this.finalizeSegment('max-duration', nowFrame);
-      } else if (
-        (effectiveGateMode === STREAMING_GATE_MODES.ROUGH_ONLY && rough.isSpeech) ||
-        (effectiveGateMode === STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD && rough.isSpeech) ||
-        (effectiveGateMode === STREAMING_GATE_MODES.TEN_VAD_ONLY && tenVadConfirmed)
-      ) {
-        this.state = 'speaking';
-        this.emit({
-          type: 'speech-update',
-          payload: {
-            startFrame: this.activeSegment.startFrame,
-            endFrame: nowFrame,
-            sampleRate: this.sampleRate,
-          },
-        });
-      } else if (
-        effectiveGateMode !== STREAMING_GATE_MODES.TEN_VAD_ONLY &&
-        rough.speechEnd
-      ) {
-        const roughSupportsTailHold = this.supportsTenVadTailHold(rough);
-        const tenVadAllowsEnd =
-          effectiveGateMode === STREAMING_GATE_MODES.ROUGH_ONLY ||
-          (effectiveGateMode === STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD &&
-            !roughSupportsTailHold) ||
-          !tenVadReady ||
-          (this.tenVad?.hasRecentSilence(
-            nowFrame,
-            this.config.tenVadConfirmationWindowMs,
-            this.sampleRate,
-          ) ?? true);
-
-        if (tenVadAllowsEnd) {
-          this.recordDecision('Speech finalized after silence', {
-            endFrame: nowFrame,
-            energy: Number(rough.energy.toFixed(4)),
-            levelDbfs: Number(rough.levelDbfs.toFixed(1)),
-            snr: Number(rough.snr.toFixed(2)),
-          });
-          this.finalizeSegment('silence', nowFrame);
-        } else {
-          this.state = 'candidate';
-          this.recordDecision('Silence rejected by TEN-VAD hangover', {
-            endFrame: nowFrame,
-            probability: this.tenVad?.getStatus().probability ?? 0,
-            roughEnergyPass: rough.energyPass,
-            roughSnrPass: rough.snrPass,
-            gateMode: effectiveGateMode,
-          });
-        }
-      } else if (
-        effectiveGateMode !== STREAMING_GATE_MODES.ROUGH_ONLY &&
-        tenVadReady &&
-        (effectiveGateMode !== STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD ||
-          this.supportsTenVadTailHold(rough)) &&
-        (this.tenVad?.hasRecentSpeech(
-          nowFrame,
-          this.config.tenVadHangoverMs,
-          this.sampleRate,
-        ) ?? false)
-        ) {
-          this.state = 'candidate';
-          this.recordDecision('Speech tail held by TEN-VAD hangover', {
-            endFrame: nowFrame,
-            probability: this.tenVad?.getStatus().probability ?? 0,
-            roughEnergyPass: rough.energyPass,
-            roughSnrPass: rough.snrPass,
-            gateMode: effectiveGateMode,
-          });
-        } else if (
-        effectiveGateMode === STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD &&
-        tenVadReady &&
-        !rough.isSpeech &&
-        (this.tenVad?.hasRecentSilence(
-          nowFrame,
-          this.config.tenVadConfirmationWindowMs,
-          this.sampleRate,
-        ) ?? false)
-      ) {
-        this.recordDecision('Speech finalized after TEN-VAD silence', {
-          endFrame: nowFrame,
-          probability: this.tenVad?.getStatus().probability ?? 0,
-          gateMode: effectiveGateMode,
-        });
-        this.finalizeSegment('ten-vad-silence', nowFrame);
-      } else if (
-        effectiveGateMode === STREAMING_GATE_MODES.TEN_VAD_ONLY &&
-        tenVadReady &&
-        (this.tenVad?.hasRecentSilence(
-          nowFrame,
-          this.config.tenVadConfirmationWindowMs,
-          this.sampleRate,
-        ) ?? false)
-      ) {
-        this.recordDecision('Speech finalized by TEN-VAD silence', {
-          endFrame: nowFrame,
-          probability: this.tenVad?.getStatus().probability ?? 0,
-        });
-        this.finalizeSegment('ten-vad-silence', nowFrame);
-      }
-    } else if (isNearSpeechThreshold && !rough.speechStart && !rough.isSpeech) {
-      this.debugTrace('Near-threshold audio rejected before speech start', {
-        reason: rough.candidateReason,
-        energy: Number(rough.energy.toFixed(4)),
-        levelDbfs: Number(rough.levelDbfs.toFixed(1)),
-        snr: Number(rough.snr.toFixed(2)),
-        energyThresholdDbfs: this.config.minSpeechLevelDbfs,
-        useSnrGate: this.config.useSnrGate,
-        snrThreshold: this.config.snrThreshold,
-        minSpeechDurationMs: this.config.minSpeechDurationMs,
-        gateMode: effectiveGateMode,
-      });
+    if (effectiveGateMode === STREAMING_GATE_MODES.ROUGH_ONLY) {
+      this.processWithRoughFallback(rough, nowFrame, chunk.length, prerollFrames, baseFrame);
+    } else if (tenVadReady) {
+      this.processWithTenVad(nowFrame, prerollFrames, baseFrame);
     }
 
     this.emit({
@@ -690,57 +461,186 @@ export class StreamingSpeechDetector {
     });
   }
 
+  private processWithTenVad(
+    nowFrame: number,
+    prerollFrames: number,
+    baseFrame: number,
+  ): void {
+    const confirmWindowMs = Math.max(
+      this.config.tenVadConfirmationWindowMs,
+      this.config.tenVadMinSpeechDurationMs,
+    );
+    const silenceWindowMs = Math.max(
+      this.config.tenVadConfirmationWindowMs,
+      this.config.tenVadMinSilenceDurationMs,
+    );
+    const startSearchFrames = durationMsToAlignedFrameCount(
+      this.config.prerollMs
+        + this.config.tenVadSpeechPaddingMs
+        + confirmWindowMs
+        + this.config.chunkDurationMs * 2,
+      this.sampleRate,
+      'ceil',
+      this.config.chunkDurationMs,
+    );
+    const searchStartFrame = Math.max(baseFrame, nowFrame - startSearchFrames);
+    const tenVadConfirmed =
+      this.tenVad?.hasRecentSpeech(nowFrame, confirmWindowMs, this.sampleRate) ?? false;
+    const tenVadTailHold =
+      this.tenVad?.hasRecentSpeech(nowFrame, this.config.tenVadHangoverMs, this.sampleRate) ?? false;
+    const tenVadSilence =
+      this.tenVad?.hasRecentSilence(nowFrame, silenceWindowMs, this.sampleRate) ?? false;
+    const tenVadStart = this.tenVad?.findFirstSpeechFrame(searchStartFrame, nowFrame) ?? null;
+    const segmentStartFrame =
+      tenVadStart === null
+        ? null
+        : Math.max(baseFrame, tenVadStart - prerollFrames);
+
+    if (!this.activeSegment) {
+      if (segmentStartFrame !== null && !tenVadConfirmed) {
+        this.pendingSegmentStartFrame = segmentStartFrame;
+        this.state = 'candidate';
+      } else if (segmentStartFrame !== null && tenVadConfirmed) {
+        this.activateSegment(segmentStartFrame, nowFrame, 'ten-vad');
+        this.recordDecision('TEN-VAD segment accepted', {
+          startFrame: segmentStartFrame,
+          probability: this.tenVad?.getStatus().probability ?? 0,
+        });
+      } else {
+        this.pendingSegmentStartFrame = null;
+        if (this.state !== 'idle') {
+          this.state = 'listening';
+        }
+      }
+      return;
+    }
+
+    this.activeSegment = {
+      ...this.activeSegment,
+      lastFrame: nowFrame,
+    };
+
+    const segmentFrames = nowFrame - this.activeSegment.startFrame;
+    const segmentDurationMs = (segmentFrames / this.sampleRate) * 1000;
+    if (segmentDurationMs >= this.config.maxSegmentDurationMs) {
+      this.finalizeSegment('max-duration', nowFrame);
+      return;
+    }
+
+    if (tenVadConfirmed) {
+      this.state = 'speaking';
+      this.emitSpeechUpdate(nowFrame);
+      return;
+    }
+
+    if (tenVadTailHold) {
+      this.state = 'candidate';
+      this.emitSpeechUpdate(nowFrame);
+      return;
+    }
+
+    if (tenVadSilence) {
+      this.recordDecision('Speech finalized by TEN-VAD silence', {
+        endFrame: nowFrame,
+        probability: this.tenVad?.getStatus().probability ?? 0,
+      });
+      this.finalizeSegment('ten-vad-silence', nowFrame);
+      return;
+    }
+
+    this.state = 'candidate';
+  }
+
+  private processWithRoughFallback(
+    rough: RoughSpeechGateWindowResult,
+    nowFrame: number,
+    chunkLength: number,
+    prerollFrames: number,
+    baseFrame: number,
+  ): void {
+    if (!this.activeSegment && rough.speechStart) {
+      const fallbackStart = Math.max(
+        baseFrame,
+        (rough.onsetFrame ?? nowFrame - chunkLength) - prerollFrames,
+      );
+      this.activateSegment(fallbackStart, nowFrame, 'rough-fallback');
+      this.recordDecision('Rough fallback segment accepted', {
+        startFrame: fallbackStart,
+        levelDbfs: Number(rough.levelDbfs.toFixed(1)),
+        snr: Number(rough.snr.toFixed(2)),
+      });
+      return;
+    }
+
+    if (!this.activeSegment) {
+      const isNearSpeechThreshold =
+        rough.levelDbfs >= this.config.minSpeechLevelDbfs - 6 ||
+        rough.snr >= this.config.minSnrThreshold - 1;
+      if (isNearSpeechThreshold && !rough.speechStart && !rough.isSpeech) {
+        this.debugTrace('Near-threshold audio rejected before rough fallback onset', {
+          levelDbfs: Number(rough.levelDbfs.toFixed(1)),
+          snr: Number(rough.snr.toFixed(2)),
+        });
+      }
+      return;
+    }
+
+    this.activeSegment = {
+      ...this.activeSegment,
+      lastFrame: nowFrame,
+    };
+    const segmentFrames = nowFrame - this.activeSegment.startFrame;
+    const segmentDurationMs = (segmentFrames / this.sampleRate) * 1000;
+    if (segmentDurationMs >= this.config.maxSegmentDurationMs) {
+      this.finalizeSegment('max-duration', nowFrame);
+      return;
+    }
+
+    if (rough.isSpeech) {
+      this.state = 'speaking';
+      this.emitSpeechUpdate(nowFrame);
+      return;
+    }
+
+    if (rough.speechEnd) {
+      this.recordDecision('Speech finalized after rough fallback silence', {
+        endFrame: nowFrame,
+        levelDbfs: Number(rough.levelDbfs.toFixed(1)),
+      });
+      this.finalizeSegment('silence', nowFrame);
+    }
+  }
+
   private activateSegment(
     startFrame: number,
     nowFrame: number,
-    rough: RoughSpeechGateWindowResult,
-    tenVadStart: number | null,
-    tenVadSummary: StreamingTenVadWindowSummary | null,
+    source: ActiveSegmentState['source'],
   ): void {
     this.pendingSegmentStartFrame = null;
-    const effectiveGateMode = this.resolveEffectiveGateMode();
     this.activeSegment = {
       startFrame,
       lastFrame: nowFrame,
-      reason: 'speech-start',
+      source,
     };
     this.state = 'speaking';
-    this.lastAcceptanceInfo = {
-      reason:
-        effectiveGateMode === STREAMING_GATE_MODES.TEN_VAD_ONLY
-          ? 'Accepted by TEN-VAD gate'
-          : effectiveGateMode === STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD
-            ? 'Accepted by rough and TEN-VAD gates'
-            : rough.candidateReason === 'energy-threshold'
-              ? 'Accepted because energy crossed threshold'
-              : 'Accepted by rough speech gate',
-      energy: rough.energy,
-      threshold: rough.threshold,
-      thresholdDbfs: rough.thresholdDbfs,
-      levelDbfs: rough.levelDbfs,
-      levelWindowDbfs: rough.levelWindowDbfs,
-      energyPass: rough.energyPass,
-      snr: rough.snr,
-      snrPass: rough.snrPass,
-      useSnrGate: this.config.useSnrGate,
-      gateMode: effectiveGateMode,
-      tenVadConfirmed: tenVadStart !== null,
-      tenVadState: this.tenVad?.getStatus().state ?? 'disabled',
-    };
-    this.recordDecision('Speech accepted', {
-      startFrame,
-      reason: rough.candidateReason,
-      energy: Number(rough.energy.toFixed(4)),
-      levelDbfs: Number(rough.levelDbfs.toFixed(1)),
-      snr: Number(rough.snr.toFixed(2)),
-      gateMode: effectiveGateMode,
-      tenVadStart,
-      tenVadSummary: tenVadSummary as unknown as Record<string, unknown> | null,
-    });
     this.emit({
       type: 'speech-start',
       payload: {
         startFrame,
+        sampleRate: this.sampleRate,
+      },
+    });
+  }
+
+  private emitSpeechUpdate(nowFrame: number): void {
+    if (!this.activeSegment) {
+      return;
+    }
+    this.emit({
+      type: 'speech-update',
+      payload: {
+        startFrame: this.activeSegment.startFrame,
+        endFrame: nowFrame,
         sampleRate: this.sampleRate,
       },
     });
@@ -755,6 +655,64 @@ export class StreamingSpeechDetector {
     }
 
     const startFrame = this.activeSegment.startFrame;
+    const pcm = this.ringBuffer.read(startFrame, endFrame);
+    const tenVadStatus =
+      this.tenVad?.getStatus() ?? {
+        state: this.config.tenVadEnabled ? 'idle' : 'disabled',
+        error: this.lastError?.message ?? null,
+        probability: 0,
+        speaking: false,
+        threshold: this.config.tenVadThreshold,
+      };
+    const filterResult = scoreSegmentForeground(
+      pcm,
+      this.sampleRate,
+      this.lastMetrics?.noiseFloorDbfs
+        ?? 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001)),
+      this.config,
+    );
+    this.lastForegroundResult = filterResult;
+    this.lastAcceptanceInfo = {
+      accepted: filterResult.accepted,
+      reason: filterResult.reason,
+      segmentReason: reason,
+      segmentDurationMs: filterResult.durationMs,
+      segmentP90Dbfs: filterResult.segmentP90Dbfs,
+      onsetP90Dbfs: filterResult.onsetP90Dbfs,
+      foregroundDb: filterResult.foregroundDb,
+      onsetDb: filterResult.onsetDb,
+      shortSpeech: filterResult.shortSpeech,
+      longSpeech: filterResult.longSpeech,
+      noiseFloorDbfs: filterResult.noiseFloorDbfs,
+      source: this.activeSegment.source,
+      gateMode: this.resolveEffectiveGateMode(),
+      tenVadState: tenVadStatus.state,
+      foregroundFilterEnabled: this.config.foregroundFilterEnabled,
+    };
+
+    this.emit({
+      type: 'speech-end',
+      payload: {
+        startFrame,
+        endFrame,
+        sampleRate: this.sampleRate,
+      },
+    });
+
+    if (!filterResult.accepted) {
+      this.recordDecision('Segment rejected by foreground filter', {
+        reason: filterResult.reason,
+        durationMs: Number(filterResult.durationMs.toFixed(0)),
+        foregroundDb: Number(filterResult.foregroundDb.toFixed(1)),
+        onsetDb: Number(filterResult.onsetDb.toFixed(1)),
+        noiseFloorDbfs: Number(filterResult.noiseFloorDbfs.toFixed(1)),
+      });
+      this.activeSegment = null;
+      this.pendingSegmentStartFrame = null;
+      this.state = 'listening';
+      return null;
+    }
+
     const segment: StreamingDetectorSegment = {
       startFrame,
       endFrame,
@@ -763,16 +721,10 @@ export class StreamingSpeechDetector {
       metadata: {
         profileId: this.profileId,
         rough: this.lastMetrics,
-        tenVad:
-          this.tenVad?.getStatus() ?? {
-            state: 'disabled',
-            error: null,
-            probability: 0,
-            speaking: false,
-            threshold: this.config.tenVadThreshold,
-          },
+        tenVad: tenVadStatus,
+        filter: filterResult,
       },
-      readPcm: () => this.ringBuffer.read(startFrame, endFrame),
+      readPcm: () => pcm,
     };
 
     this.recentSegments = [...this.recentSegments.slice(-11), segment];
@@ -782,14 +734,7 @@ export class StreamingSpeechDetector {
       durationSec: Number(
         ((segment.endFrame - segment.startFrame) / segment.sampleRate).toFixed(2),
       ),
-    });
-    this.emit({
-      type: 'speech-end',
-      payload: {
-        startFrame: segment.startFrame,
-        endFrame: segment.endFrame,
-        sampleRate: segment.sampleRate,
-      },
+      foregroundDb: Number(filterResult.foregroundDb.toFixed(1)),
     });
     this.emit({
       type: 'segment-ready',
@@ -819,23 +764,20 @@ export class StreamingSpeechDetector {
       this.pendingSegmentStartFrame = null;
     }
     this.state = 'idle';
-    this.emit({
-      type: 'metrics',
-      payload: this.getSnapshot(),
-    });
     return segment;
   }
 
   updateConfig(
-    partial: StreamingDetectorConfigOverrides & { readonly profileId?: string } = {},
+    partial: StreamingDetectorConfigOverrides & {
+      readonly profileId?: string;
+    } = {},
   ): void {
     const nextProfileId = partial.profileId ?? this.profileId;
-    const carriedOverrides = this.getCurrentConfigOverrides();
     const nextOverrides = {
-      ...carriedOverrides,
+      ...this.getCurrentConfigOverrides(),
       ...partial,
     };
-    delete (nextOverrides as { profileId?: string }).profileId;
+    delete nextOverrides.profileId;
 
     const previousTenVadEnabled = this.config.tenVadEnabled;
     this.profileId = nextProfileId;
@@ -873,6 +815,7 @@ export class StreamingSpeechDetector {
       waveformFrameSpan,
     );
     const waveformPointCount = Math.max(1, Math.floor(waveform.minMax.length / 2));
+    const defaultNoiseFloorDbfs = 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001));
 
     return {
       state: this.state,
@@ -888,7 +831,7 @@ export class StreamingSpeechDetector {
         : null,
       pendingSegmentStartFrame: this.pendingSegmentStartFrame,
       recentSegments: this.recentSegments.map((segment) => ({ ...segment })),
-      recentDecisions: cloneSegments(this.recentDecisions),
+      recentDecisions: cloneEntries(this.recentDecisions),
       acceptance: this.lastAcceptanceInfo,
       gate: {
         requestedMode: this.config.gateMode,
@@ -931,13 +874,13 @@ export class StreamingSpeechDetector {
             energy: 0,
             snr: 0,
             noiseFloor: this.config.initialNoiseFloor,
-            noiseFloorDbfs: 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001)),
+            noiseFloorDbfs: defaultNoiseFloorDbfs,
             backgroundAverage: this.config.initialNoiseFloor,
-            backgroundAverageDbfs: 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001)),
+            backgroundAverageDbfs: defaultNoiseFloorDbfs,
             confirmedSilenceAverage: this.config.initialNoiseFloor,
-            confirmedSilenceAverageDbfs: 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001)),
+            confirmedSilenceAverageDbfs: defaultNoiseFloorDbfs,
             rejectedCandidateAverage: this.config.initialNoiseFloor,
-            rejectedCandidateAverageDbfs: 20 * Math.log10(Math.max(this.config.initialNoiseFloor, 0.000001)),
+            rejectedCandidateAverageDbfs: defaultNoiseFloorDbfs,
             threshold: 10 ** (this.config.minSpeechLevelDbfs / 20),
             thresholdDbfs: this.config.minSpeechLevelDbfs,
             levelDbfs: -100,
@@ -954,6 +897,14 @@ export class StreamingSpeechDetector {
             recent: [],
             timeline: [],
           },
+      foreground: {
+        enabled: this.config.foregroundFilterEnabled,
+        noiseFloorDbfs: this.lastMetrics?.noiseFloorDbfs ?? defaultNoiseFloorDbfs,
+        foregroundMinDb: this.config.foregroundMinDb,
+        onsetMinDb: this.config.foregroundOnsetMinDb,
+        longMinDb: this.config.foregroundLongMinDb,
+        lastResult: this.lastForegroundResult as unknown as Record<string, unknown> | null,
+      },
       tenVad:
         this.tenVad?.getStatus() ?? {
           state: this.config.tenVadEnabled ? 'idle' : 'disabled',
@@ -975,7 +926,7 @@ export class StreamingSpeechDetector {
       tenVadStatus?.state === 'degraded' || tenVadStatus?.state === 'disabled';
 
     if (tenVadStatus?.state === 'degraded') {
-      warnings.push('TEN-VAD is degraded. Speech detection is running on rough energy gating only.');
+      warnings.push('TEN-VAD is degraded. Speech detection is running on rough fallback only.');
     }
 
     if (
@@ -983,30 +934,20 @@ export class StreamingSpeechDetector {
       effectiveGateMode === STREAMING_GATE_MODES.ROUGH_ONLY &&
       tenVadUnavailableForRequestedGate
     ) {
-      warnings.push('Configured TEN-VAD gate mode is unavailable, so detection is falling back to rough gating.');
+      warnings.push('TEN-VAD-first segmentation is unavailable, so detection is falling back to rough energy gating.');
     }
 
-    if (
-      this.lastAcceptanceInfo &&
-      this.lastAcceptanceInfo.tenVadConfirmed === false &&
-      tenVadStatus?.state !== 'degraded'
-    ) {
-      warnings.push(
-        'Latest accepted speech came from the rough gate without TEN-VAD confirmation.',
-      );
-    }
-
-    if (this.lastMetrics && !this.config.useSnrGate) {
-      warnings.push(
-        'SNR is shown for diagnostics only. Speech triggering currently uses the dBFS speech-level threshold.',
-      );
+    if (!this.config.foregroundFilterEnabled) {
+      warnings.push('Foreground filtering is disabled. Quiet background speech may be accepted.');
     }
 
     return warnings;
   }
 
   async dispose(): Promise<void> {
-    if (this.disposed) return;
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.tenVadUnsubscribe?.();
     this.tenVadUnsubscribe = null;

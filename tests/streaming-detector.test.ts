@@ -140,7 +140,9 @@ describe('StreamingSpeechDetector', () => {
       },
       tenVadFactory: () =>
         new FakeTenVad({
-          startFrame: null,
+          get startFrame() {
+            return confirmed ? 0 : null;
+          },
           get hasRecentSpeech() {
             return confirmed;
           },
@@ -152,7 +154,7 @@ describe('StreamingSpeechDetector', () => {
 
     let snapshot = detector.getSnapshot();
     expect(snapshot.activeSegment).toBeNull();
-    expect(snapshot.pendingSegmentStartFrame).not.toBeNull();
+    expect(snapshot.pendingSegmentStartFrame).toBeNull();
 
     confirmed = true;
     detector.processChunk(createChunk(256, 0.05), { startFrame: 256 });
@@ -207,12 +209,12 @@ describe('StreamingSpeechDetector', () => {
     detector.processChunk(createChunk(256, 0.05), { startFrame: 0 });
 
     const snapshot = detector.getSnapshot();
-    expect(snapshot.gate.effectiveMode).toBe('rough-and-ten-vad');
+    expect(snapshot.gate.effectiveMode).toBe('ten-vad-only');
     expect(snapshot.activeSegment).not.toBeNull();
     expect(snapshot.activeSegment?.startFrame).toBe(0);
   });
 
-  it('does not let TEN-VAD alone hold a tail after rough speech has ended in rough-and-ten-vad mode', async () => {
+  it('lets TEN-VAD keep the tail alive even after rough speech has ended', async () => {
     const tenVadState = {
       hasRecentSpeech: true,
       hasRecentSilence: false,
@@ -250,9 +252,8 @@ describe('StreamingSpeechDetector', () => {
     detector.processChunk(createChunk(256, 0.001), { startFrame: 256 });
 
     const segmentEvent = events.find((event) => event.type === 'segment-ready');
-    expect(segmentEvent).toBeTruthy();
-    expect(segmentEvent?.payload.reason).toBe('silence');
-    expect(detector.getSnapshot().activeSegment).toBeNull();
+    expect(segmentEvent).toBeFalsy();
+    expect(detector.getSnapshot().activeSegment).not.toBeNull();
   });
 
   it('builds waveform snapshots from stable timeline-aligned chunk buckets', async () => {
@@ -305,9 +306,51 @@ describe('StreamingSpeechDetector', () => {
 
     expect(fakeTenVad?.updateCalls).toHaveLength(1);
     expect(fakeTenVad?.updateCalls[0]).toMatchObject({
-      threshold: 0.5,
+      threshold: 0.55,
       sampleRate: 16000,
       hopSize: STREAMING_TIMELINE_CHUNK_FRAMES,
+    });
+  });
+
+  it('rejects quiet completed segments with the foreground filter', async () => {
+    const tenVadState = {
+      hasRecentSpeech: true,
+      hasRecentSilence: false,
+    };
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        gateMode: 'ten-vad-only',
+        prerollMs: 0,
+        foregroundMinDb: 18,
+        foregroundOnsetMinDb: 18,
+        foregroundLongMinDb: 18,
+      },
+      tenVadFactory: () =>
+        new FakeTenVad({
+          startFrame: 0,
+          get hasRecentSpeech() {
+            return tenVadState.hasRecentSpeech;
+          },
+          get hasRecentSilence() {
+            return tenVadState.hasRecentSilence;
+          },
+        }) as any,
+    });
+
+    const events: Array<{ type: string; payload: any }> = [];
+    detector.subscribe((event) => events.push(event as any));
+    await detector.start({ sampleRate: 16000 });
+
+    detector.processChunk(createChunk(256, 0.01), { startFrame: 0 });
+    tenVadState.hasRecentSpeech = false;
+    tenVadState.hasRecentSilence = true;
+    detector.processChunk(createChunk(256, 0.01), { startFrame: 256 });
+    detector.processChunk(createChunk(256, 0.01), { startFrame: 512 });
+
+    expect(events.some((event) => event.type === 'segment-ready')).toBe(false);
+    expect(detector.getSnapshot().acceptance).toMatchObject({
+      accepted: false,
     });
   });
 });

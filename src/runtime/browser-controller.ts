@@ -224,7 +224,7 @@ export function createBrowserRealtimeMicrophoneController(
     if (event.type === 'metrics') {
       const tenVadState = event.payload?.tenVad?.state;
       if (state.isMicActive && tenVadState === 'degraded') {
-        setState({ micStatus: 'Listening with rough gate fallback…' });
+        setState({ micStatus: 'Listening with rough fallback…' });
       }
       return;
     }
@@ -352,8 +352,8 @@ export function createBrowserRealtimeMicrophoneController(
         const tenVadState = starter.getSnapshot()?.tenVad?.state;
         updateStatus(
           tenVadState === 'degraded'
-            ? `Listening for speech at ${sampleRate} Hz with rough gate fallback…`
-            : `Listening for speech at ${sampleRate} Hz with streaming detector…`,
+            ? `Listening for speech at ${sampleRate} Hz with rough fallback…`
+            : `Listening for speech at ${sampleRate} Hz with TEN-VAD segmenter…`,
           'Microphone active',
         );
         return;

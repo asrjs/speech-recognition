@@ -5,6 +5,7 @@ export * from './runtime/controller.js';
 export * from './runtime/noise-floor.js';
 export * from './runtime/realtime.js';
 export * from './runtime/streaming-controls.js';
+export * from './runtime/streaming-consumer.js';
 export * from './runtime/rough-speech-gate.js';
 export * from './runtime/streaming-detector.js';
 export * from './runtime/vad.js';
