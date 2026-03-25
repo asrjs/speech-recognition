@@ -295,6 +295,11 @@ function float16BitsToFloat32(value: number): number {
   return FLOAT32_BITS_VIEW[0] ?? 0;
 }
 
+const FLOAT16_TO_FLOAT32_LUT = new Float32Array(65536);
+for (let i = 0; i < 65536; i += 1) {
+  FLOAT16_TO_FLOAT32_LUT[i] = float16BitsToFloat32(i);
+}
+
 function float32ToFloat16Array(values: Float32Array): Uint16Array {
   const output = new Uint16Array(values.length);
   for (let index = 0; index < values.length; index += 1) {
@@ -337,7 +342,10 @@ function createAttentionMaskTensor(
   return new ort.Tensor('int32', data, [1, frames]);
 }
 
-function normalizeLogitsData(logitsTensor: OrtTensorLike): Float32Array {
+function normalizeLogitsData(
+  logitsTensor: OrtTensorLike,
+  outBuffer?: Float32Array,
+): Float32Array {
   const tensorType = logitsTensor.type ?? 'float32';
   if (tensorType !== 'float16') {
     const source = logitsTensor.data as Float32Array;
@@ -345,12 +353,13 @@ function normalizeLogitsData(logitsTensor: OrtTensorLike): Float32Array {
   }
 
   const source = logitsTensor.data as Uint16Array;
-  const normalized = new Float32Array(source.length);
+  const normalized =
+    outBuffer && outBuffer.length >= source.length ? outBuffer : new Float32Array(source.length);
   for (let index = 0; index < source.length; index += 1) {
-    normalized[index] = float16BitsToFloat32(source[index] ?? 0);
+    normalized[index] = FLOAT16_TO_FLOAT32_LUT[source[index]!]!;
   }
 
-  return normalized;
+  return normalized.subarray(0, source.length);
 }
 
 function findLogitsTensor(outputs: Record<string, OrtTensorLike>): OrtTensorLike {
@@ -375,6 +384,7 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
   private readonly assetHandles: ResolvedAssetHandle[] = [];
   private sharedMonoBuffer?: Float32Array;
   private featuresTxMBuffer?: Float32Array;
+  private logitsBuffer?: Float32Array;
 
   constructor(
     private readonly modelId: string,
@@ -726,7 +736,9 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
     });
 
     const logitsTensor = findLogitsTensor(outputs);
-    const logits = normalizeLogitsData(logitsTensor);
+    const rawDataLength = (logitsTensor.data as unknown as { length: number }).length;
+    this.logitsBuffer = ensureFloat32Buffer(rawDataLength, this.logitsBuffer);
+    const logits = normalizeLogitsData(logitsTensor, this.logitsBuffer);
     const dims = [...logitsTensor.dims];
     if (dims.length !== 3 || (dims[0] ?? 0) !== 1) {
       throw new Error(`Unexpected LASR CTC logits shape: [${dims.join(', ')}].`);
