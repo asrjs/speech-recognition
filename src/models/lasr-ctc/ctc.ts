@@ -135,7 +135,7 @@ export function argmaxAndSelectedLogProbs(
     let rowMax = Number.NEGATIVE_INFINITY;
 
     for (let vocabIndex = 0; vocabIndex < vocabSize; vocabIndex += 1) {
-      const value = logits[rowOffset + vocabIndex] ?? Number.NEGATIVE_INFINITY;
+      const value = logits[rowOffset + vocabIndex]!;
       if (value > bestValue) {
         bestValue = value;
         bestId = vocabIndex;
@@ -147,7 +147,7 @@ export function argmaxAndSelectedLogProbs(
 
     let expSum = 0;
     for (let vocabIndex = 0; vocabIndex < vocabSize; vocabIndex += 1) {
-      expSum += Math.exp((logits[rowOffset + vocabIndex] ?? Number.NEGATIVE_INFINITY) - rowMax);
+      expSum += Math.exp(logits[rowOffset + vocabIndex]! - rowMax);
     }
 
     frameIds[frameIndex] = bestId;
@@ -175,10 +175,10 @@ export function ctcCollapseWithSpans(
     };
   }
 
-  let runId = frameIds[0] ?? blankId;
+  let runId = frameIds[0]!;
   let runStart = 0;
   let runFrameCount = 1;
-  let runLogProbSum = frameLogProbs[0] ?? 0;
+  let runLogProbSum = frameLogProbs[0]!;
 
   const flushRun = (endFrame: number): void => {
     if (runId === blankId) {
@@ -198,8 +198,8 @@ export function ctcCollapseWithSpans(
   };
 
   for (let frameIndex = 1; frameIndex < frameIds.length; frameIndex += 1) {
-    const frameId = frameIds[frameIndex] ?? blankId;
-    const frameLogProb = frameLogProbs[frameIndex] ?? 0;
+    const frameId = frameIds[frameIndex]!;
+    const frameLogProb = frameLogProbs[frameIndex]!;
 
     if (frameId !== runId) {
       flushRun(frameIndex - 1);
@@ -291,7 +291,7 @@ export function buildUtteranceTiming(
   let count = 0;
 
   for (let frameIndex = 0; frameIndex < frameIds.length; frameIndex += 1) {
-    if ((frameIds[frameIndex] ?? blankId) === blankId) {
+    if (frameIds[frameIndex]! === blankId) {
       continue;
     }
 
@@ -299,7 +299,7 @@ export function buildUtteranceTiming(
       startFrame = frameIndex;
     }
     endFrame = frameIndex;
-    logProbSum += frameLogProbs[frameIndex] ?? 0;
+    logProbSum += frameLogProbs[frameIndex]!;
     count += 1;
   }
 
