@@ -11,8 +11,8 @@ const N_FREQ_BINS = (N_FFT >> 1) + 1;
 type MelScaleKind = 'slaney' | 'kaldi';
 
 interface MelTwiddles {
-  readonly cos: Float64Array;
-  readonly sin: Float64Array;
+  readonly cos: Float32Array;
+  readonly sin: Float32Array;
   readonly bitReverse: Uint32Array;
 }
 
@@ -28,7 +28,7 @@ export interface MedAsrJsPreprocessorOptions {
 
 const MEL_FILTERBANK_CACHE = new Map<string, Float32Array>();
 const FFT_TWIDDLE_CACHE = new Map<number, MelTwiddles>();
-const HANN_WINDOW_CACHE = new Map<'center' | 'left', Float64Array>();
+const HANN_WINDOW_CACHE = new Map<'center' | 'left', Float32Array>();
 
 const F_SP = 200 / 3;
 const MIN_LOG_HZ = 1000;
@@ -66,7 +66,7 @@ function createMelFilterbank(
   const toHz =
     melScale === 'kaldi' ? (mel: number): number => 700 * (Math.exp(mel / 1127) - 1) : melToHz;
 
-  const allFrequencies = new Float64Array(N_FREQ_BINS);
+  const allFrequencies = new Float32Array(N_FREQ_BINS);
   for (let index = 0; index < N_FREQ_BINS; index += 1) {
     allFrequencies[index] = ((SAMPLE_RATE / 2) * index) / (N_FREQ_BINS - 1);
   }
@@ -74,12 +74,12 @@ function createMelFilterbank(
   const melMin = toMel(frequencyMin);
   const melMax = toMel(frequencyMax);
   const melPoints = nMels + 2;
-  const melFrequencies = new Float64Array(melPoints);
+  const melFrequencies = new Float32Array(melPoints);
   for (let index = 0; index < melPoints; index += 1) {
     melFrequencies[index] = toHz(melMin + ((melMax - melMin) * index) / (melPoints - 1));
   }
 
-  const melDifferences = new Float64Array(melPoints - 1);
+  const melDifferences = new Float32Array(melPoints - 1);
   for (let index = 0; index < melPoints - 1; index += 1) {
     const current = melFrequencies[index] ?? 0;
     const next = melFrequencies[index + 1] ?? current;
@@ -123,8 +123,8 @@ function getCachedMelFilterbank(
   return created;
 }
 
-function createPaddedHannWindow(centerWindow: boolean): Float64Array {
-  const window = new Float64Array(N_FFT);
+function createPaddedHannWindow(centerWindow: boolean): Float32Array {
+  const window = new Float32Array(N_FFT);
   const leftPad = centerWindow ? (N_FFT - WIN_LENGTH) >> 1 : 0;
 
   for (let index = 0; index < WIN_LENGTH; index += 1) {
@@ -134,7 +134,7 @@ function createPaddedHannWindow(centerWindow: boolean): Float64Array {
   return window;
 }
 
-function getCachedPaddedHannWindow(centerWindow: boolean): Float64Array {
+function getCachedPaddedHannWindow(centerWindow: boolean): Float32Array {
   const key: 'center' | 'left' = centerWindow ? 'center' : 'left';
   const cached = HANN_WINDOW_CACHE.get(key);
   if (cached) {
@@ -158,8 +158,8 @@ function precomputeFftTwiddles(size: number): MelTwiddles {
   }
 
   const half = size >> 1;
-  const cos = new Float64Array(half);
-  const sin = new Float64Array(half);
+  const cos = new Float32Array(half);
+  const sin = new Float32Array(half);
   for (let index = 0; index < half; index += 1) {
     const angle = (-2 * Math.PI * index) / size;
     cos[index] = Math.cos(angle);
@@ -183,8 +183,8 @@ function precomputeFftTwiddles(size: number): MelTwiddles {
 }
 
 function fft(
-  real: Float64Array,
-  imaginary: Float64Array,
+  real: Float32Array,
+  imaginary: Float32Array,
   size: number,
   twiddles: MelTwiddles,
 ): void {
@@ -263,14 +263,14 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly logZeroGuard: number;
   private readonly normalizeFeatures: boolean;
   private readonly melFilterbank: Float32Array;
-  private readonly hannWindow: Float64Array;
+  private readonly hannWindow: Float32Array;
   private readonly fftTwiddles: MelTwiddles;
-  private readonly fftReal = new Float64Array(N_FFT);
-  private readonly fftImaginary = new Float64Array(N_FFT);
+  private readonly fftReal = new Float32Array(N_FFT);
+  private readonly fftImaginary = new Float32Array(N_FFT);
   private readonly powerBuffer = new Float32Array(N_FREQ_BINS);
   private readonly filterbankBounds: Int32Array;
   private emphasizedBuffer: Float32Array | null = null;
-  private paddedBuffer: Float64Array | null = null;
+  private paddedBuffer: Float32Array | null = null;
   private rawMelBuffer: Float32Array | null = null;
 
   constructor(options: MedAsrJsPreprocessorOptions = {}) {
@@ -352,7 +352,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     const pad = this.center ? N_FFT >> 1 : 0;
     const paddedLength = sampleCount + pad * 2;
     if (!this.paddedBuffer || this.paddedBuffer.length < paddedLength) {
-      this.paddedBuffer = new Float64Array(Math.ceil(paddedLength * 1.2));
+      this.paddedBuffer = new Float32Array(Math.ceil(paddedLength * 1.2));
     }
     const padded = this.paddedBuffer;
     padded.fill(0, 0, paddedLength);
