@@ -51,29 +51,25 @@ const LOG_STEP = Math.log(6.4) / 27.0;
 
 const MEL_FILTERBANK_CACHE = new Map<number, Float32Array>();
 const FFT_TWIDDLE_CACHE = new Map<number, FFTTwiddles>();
-let SHARED_HANN_WINDOW: Float64Array | null = null;
+let SHARED_HANN_WINDOW: Float32Array | null = null;
 
 interface FFTTwiddles {
-  readonly cos: Float64Array;
-  readonly sin: Float64Array;
+  readonly cos: Float32Array;
+  readonly sin: Float32Array;
   readonly bitrev: Uint32Array;
 }
 
 export function hzToMel(freq: number): number {
-  return freq >= MIN_LOG_HZ
-    ? MIN_LOG_MEL + Math.log(freq / MIN_LOG_HZ) / LOG_STEP
-    : freq / F_SP;
+  return freq >= MIN_LOG_HZ ? MIN_LOG_MEL + Math.log(freq / MIN_LOG_HZ) / LOG_STEP : freq / F_SP;
 }
 
 export function melToHz(mel: number): number {
-  return mel >= MIN_LOG_MEL
-    ? MIN_LOG_HZ * Math.exp(LOG_STEP * (mel - MIN_LOG_MEL))
-    : mel * F_SP;
+  return mel >= MIN_LOG_MEL ? MIN_LOG_HZ * Math.exp(LOG_STEP * (mel - MIN_LOG_MEL)) : mel * F_SP;
 }
 
 export function createMelFilterbank(nMels = 128): Float32Array {
   const fMax = SAMPLE_RATE / 2;
-  const allFreqs = new Float64Array(N_FREQ_BINS);
+  const allFreqs = new Float32Array(N_FREQ_BINS);
   for (let index = 0; index < N_FREQ_BINS; index += 1) {
     allFreqs[index] = (fMax * index) / (N_FREQ_BINS - 1);
   }
@@ -81,12 +77,12 @@ export function createMelFilterbank(nMels = 128): Float32Array {
   const melMin = hzToMel(0);
   const melMax = hzToMel(fMax);
   const nPoints = nMels + 2;
-  const fPts = new Float64Array(nPoints);
+  const fPts = new Float32Array(nPoints);
   for (let index = 0; index < nPoints; index += 1) {
     fPts[index] = melToHz(melMin + ((melMax - melMin) * index) / (nPoints - 1));
   }
 
-  const fDiff = new Float64Array(nPoints - 1);
+  const fDiff = new Float32Array(nPoints - 1);
   for (let index = 0; index < nPoints - 1; index += 1) {
     fDiff[index] = fPts[index + 1]! - fPts[index]!;
   }
@@ -119,8 +115,8 @@ function getCachedMelFilterbank(nMels: number): Float32Array {
   return filterbank;
 }
 
-export function createPaddedHannWindow(): Float64Array {
-  const window = new Float64Array(N_FFT);
+export function createPaddedHannWindow(): Float32Array {
+  const window = new Float32Array(N_FFT);
   const padLeft = (N_FFT - WIN_LENGTH) >> 1;
   for (let index = 0; index < WIN_LENGTH; index += 1) {
     window[padLeft + index] = 0.5 * (1 - Math.cos((2 * Math.PI * index) / (WIN_LENGTH - 1)));
@@ -128,7 +124,7 @@ export function createPaddedHannWindow(): Float64Array {
   return window;
 }
 
-function getCachedPaddedHannWindow(): Float64Array {
+function getCachedPaddedHannWindow(): Float32Array {
   if (!SHARED_HANN_WINDOW) {
     SHARED_HANN_WINDOW = createPaddedHannWindow();
   }
@@ -142,13 +138,13 @@ export function precomputeTwiddles(size: number): FFTTwiddles {
   }
 
   const bits = Math.log2(size);
-  if ((1 << bits) !== size) {
+  if (1 << bits !== size) {
     throw new Error(`FFT size must be a power of two. Received: ${size}`);
   }
 
   const half = size >> 1;
-  const cos = new Float64Array(half);
-  const sin = new Float64Array(half);
+  const cos = new Float32Array(half);
+  const sin = new Float32Array(half);
   for (let index = 0; index < half; index += 1) {
     const angle = (-2 * Math.PI * index) / size;
     cos[index] = Math.cos(angle);
@@ -171,12 +167,7 @@ export function precomputeTwiddles(size: number): FFTTwiddles {
   return twiddles;
 }
 
-export function fft(
-  re: Float64Array,
-  im: Float64Array,
-  size: number,
-  twiddles: FFTTwiddles,
-): void {
+export function fft(re: Float32Array, im: Float32Array, size: number, twiddles: FFTTwiddles): void {
   const bitrev = twiddles.bitrev;
   if (bitrev.length === size) {
     for (let index = 0; index < size; index += 1) {
@@ -299,13 +290,13 @@ export class JSMelProcessor {
   readonly validLengthMode: 'onnx' | 'centered';
   readonly normalization: 'per_feature' | 'none';
   private readonly melFilterbank: Float32Array;
-  private readonly hannWindow: Float64Array;
+  private readonly hannWindow: Float32Array;
   private readonly twiddles: FFTTwiddles;
   private readonly twiddlesHalf: FFTTwiddles;
-  private readonly fftRe: Float64Array;
-  private readonly fftIm: Float64Array;
+  private readonly fftRe: Float32Array;
+  private readonly fftIm: Float32Array;
   private readonly powerBuf: Float32Array;
-  private paddedBuffer: Float64Array | null = null;
+  private paddedBuffer: Float32Array | null = null;
   private processRawBuffer: Float32Array | null = null;
   private readonly fbBounds: Int32Array;
 
@@ -317,8 +308,8 @@ export class JSMelProcessor {
     this.hannWindow = getCachedPaddedHannWindow();
     this.twiddles = precomputeTwiddles(N_FFT);
     this.twiddlesHalf = precomputeTwiddles(N_FFT >> 1);
-    this.fftRe = new Float64Array(N_FFT >> 1);
-    this.fftIm = new Float64Array(N_FFT >> 1);
+    this.fftRe = new Float32Array(N_FFT >> 1);
+    this.fftIm = new Float32Array(N_FFT >> 1);
     this.powerBuf = new Float32Array(N_FREQ_BINS);
     this.fbBounds = new Int32Array(this.nMels * 2);
 
@@ -359,11 +350,11 @@ export class JSMelProcessor {
       this.processRawBuffer = new Float32Array(Math.ceil(requiredRawSize * 1.2));
     }
 
-    const { rawMel, nFrames: computedNFrames, validLength: computedValidLength } = this.computeRawMel(
-      audio,
-      0,
-      this.processRawBuffer,
-    );
+    const {
+      rawMel,
+      nFrames: computedNFrames,
+      validLength: computedValidLength,
+    } = this.computeRawMel(audio, 0, this.processRawBuffer);
 
     return {
       features: this.finalizeFeatures(rawMel, computedNFrames, computedValidLength),
@@ -390,7 +381,7 @@ export class JSMelProcessor {
     const paddedLen = sampleCount + 2 * pad;
     let paddedReallocated = false;
     if (!this.paddedBuffer || this.paddedBuffer.length < paddedLen) {
-      this.paddedBuffer = new Float64Array(Math.ceil(paddedLen * 1.2));
+      this.paddedBuffer = new Float32Array(Math.ceil(paddedLen * 1.2));
       paddedReallocated = true;
     }
     const padded = this.paddedBuffer;
@@ -430,8 +421,7 @@ export class JSMelProcessor {
       for (let k = 0; k < halfN; k += 1) {
         const sampleIndex = k << 1;
         this.fftRe[k] = padded[offset + sampleIndex]! * this.hannWindow[sampleIndex]!;
-        this.fftIm[k] =
-          padded[offset + sampleIndex + 1]! * this.hannWindow[sampleIndex + 1]!;
+        this.fftIm[k] = padded[offset + sampleIndex + 1]! * this.hannWindow[sampleIndex + 1]!;
       }
 
       fft(this.fftRe, this.fftIm, halfN, this.twiddlesHalf);
@@ -476,8 +466,7 @@ export class JSMelProcessor {
         const start = this.fbBounds[melIndex * 2]!;
         const end = this.fbBounds[melIndex * 2 + 1]!;
         for (let freqIndex = start; freqIndex < end; freqIndex += 1) {
-          melValue +=
-            this.powerBuf[freqIndex]! * this.melFilterbank[filterbankOffset + freqIndex]!;
+          melValue += this.powerBuf[freqIndex]! * this.melFilterbank[filterbankOffset + freqIndex]!;
         }
         rawMel[melIndex * nFrames + frameIndex] = Math.log(melValue + LOG_ZERO_GUARD);
       }
@@ -518,8 +507,7 @@ export class JSMelProcessor {
         validLength > 1 ? 1.0 / (Math.sqrt(varianceSum / (validLength - 1)) + 1e-5) : 0;
 
       for (let frameIndex = 0; frameIndex < validLength; frameIndex += 1) {
-        features[dstBase + frameIndex] =
-          (rawMel[srcBase + frameIndex]! - mean) * invStd;
+        features[dstBase + frameIndex] = (rawMel[srcBase + frameIndex]! - mean) * invStd;
       }
       if (validLength < outputFrames) {
         features.fill(0, dstBase + validLength, dstBase + outputFrames);
@@ -593,9 +581,7 @@ export class IncrementalJSMelProcessor {
     }
 
     const canReuse =
-      prefixSamples > 0 &&
-      this.cachedRawMel !== null &&
-      prefixSamples <= this.cachedAudioLen;
+      prefixSamples > 0 && this.cachedRawMel !== null && prefixSamples <= this.cachedAudioLen;
 
     const predictedFrames = Math.floor(sampleCount / HOP_LENGTH) + 1;
     const requiredRawSize = this.nMels * predictedFrames;
