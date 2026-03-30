@@ -725,7 +725,7 @@ function drawTenVadOverlay(
 
   context.fillStyle = 'rgba(37, 99, 235, 0.8)';
   context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
-  context.fillText('ten-vad', 8, laneTop + 10);
+  context.fillText('firered-vad', 8, laneTop + 10);
   context.restore();
 }
 

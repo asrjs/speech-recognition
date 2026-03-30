@@ -53,7 +53,7 @@ export const BROWSER_MONITOR_DISPLAY_CONTROL_DEFINITIONS = {
   },
   tenVadThreshold: {
     id: 'ten-vad-threshold',
-    label: 'TEN line',
+    label: 'FireRed line',
     note: 'diagnostic only',
   },
   preVadOverlay: {

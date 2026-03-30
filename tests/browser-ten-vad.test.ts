@@ -59,7 +59,7 @@ class FakeWorker {
 }
 
 describe('TenVadAdapter', () => {
-  it('resolves default bundled assets without adding a fallback loop', () => {
+  it('resolves default FireRed model URLs without adding a fallback loop', () => {
     const defaults = resolveDefaultTenVadAssetUrls();
     const resolved = resolveTenVadAssetUrls();
 
@@ -69,29 +69,30 @@ describe('TenVadAdapter', () => {
     expect(resolved.fallbackWasmUrl).toBeNull();
   });
 
-  it('adds a bundled fallback when callers override TEN-VAD assets', () => {
-    const defaults = resolveDefaultTenVadAssetUrls();
+  it('resolves FireRed model URLs from assetBaseUrl overrides', () => {
     const resolved = resolveTenVadAssetUrls({
-      assetBaseUrl: 'https://example.com/vendor/ten-vad/',
+      assetBaseUrl: 'https://example.com/vendor/firered-vad/',
     });
 
-    expect(resolved.scriptUrl).toBe('https://example.com/vendor/ten-vad/ten_vad.js');
-    expect(resolved.wasmUrl).toBe('https://example.com/vendor/ten-vad/ten_vad.wasm');
-    expect(resolved.fallbackScriptUrl).toBe(defaults.scriptUrl);
-    expect(resolved.fallbackWasmUrl).toBe(defaults.wasmUrl);
+    expect(resolved.scriptUrl).toBe(
+      'https://example.com/vendor/firered-vad/fireredvad_stream_vad_with_cache.onnx',
+    );
+    expect(resolved.wasmUrl).toBe('https://example.com/vendor/firered-vad/cmvn.json');
+    expect(resolved.fallbackScriptUrl).toBeNull();
+    expect(resolved.fallbackWasmUrl).toBeNull();
   });
 
-  it('normalizes unsupported preferred hop sizes to the nearest TEN-VAD-safe value', () => {
-    expect(resolveSupportedTenVadHopSize(16000, 512)).toBe(256);
+  it('normalizes unsupported preferred hop sizes to FireRed 10ms hops', () => {
+    expect(resolveSupportedTenVadHopSize(16000, 512)).toBe(160);
     expect(resolveSupportedTenVadHopSize(16000, 200)).toBe(160);
-    expect(resolveSupportedTenVadHopSize(48000)).toBe(768);
+    expect(resolveSupportedTenVadHopSize(48000)).toBe(480);
   });
 
   it('handles init, process, reset, and dispose with aligned frame offsets', async () => {
     const adapter = new TenVadAdapter(
       {
         hopSize: 256,
-        minSpeechDurationMs: 48,
+        minSpeechDurationMs: 40,
       },
       {
         workerFactory: () => new FakeWorker(),

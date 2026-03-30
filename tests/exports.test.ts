@@ -95,6 +95,8 @@ describe('public exports', () => {
     expect(browser.renderBrowserRealtimeWaveformFrame).toBeTypeOf('function');
     expect(browser.TenVadAdapter).toBeTypeOf('function');
     expect(browser.resolveSupportedTenVadHopSize).toBeTypeOf('function');
+    expect(browser.FireRedVadAdapter).toBeTypeOf('function');
+    expect(browser.resolveSupportedFireRedVadHopSize).toBeTypeOf('function');
     expect(browser.startMicrophoneCapture).toBeTypeOf('function');
     expect(browser.startMicrophoneRingCapture).toBeTypeOf('function');
     expect(browser.encodeMonoPcmToWavBlob).toBeTypeOf('function');

@@ -353,7 +353,7 @@ export function createBrowserRealtimeMicrophoneController(
         updateStatus(
           tenVadState === 'degraded'
             ? `Listening for speech at ${sampleRate} Hz with rough fallback…`
-            : `Listening for speech at ${sampleRate} Hz with TEN-VAD segmenter…`,
+            : `Listening for speech at ${sampleRate} Hz with FireRed VAD segmenter…`,
           'Microphone active',
         );
         return;

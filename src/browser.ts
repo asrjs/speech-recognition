@@ -10,3 +10,4 @@ export * from './runtime/browser-waveform.js';
 export * from './runtime/local-browser.js';
 export * from './runtime/media.js';
 export * from './runtime/ten-vad-browser.js';
+export * from './runtime/firered-vad-browser.js';

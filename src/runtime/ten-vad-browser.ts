@@ -9,6 +9,13 @@ export interface TenVadAdapterConfig {
   readonly sampleRate?: number;
   readonly hopSize?: number;
   readonly threshold?: number;
+  readonly modelDir?: string;
+  readonly modelFilename?: string;
+  readonly modelUrl?: string;
+  readonly cmvnJsonUrl?: string;
+  readonly wasmPaths?: string | Record<string, string>;
+  readonly wasmNumThreads?: number;
+  readonly cacheAssets?: boolean;
   readonly confirmationWindowMs?: number;
   readonly hangoverMs?: number;
   readonly minSpeechDurationMs?: number;
@@ -52,14 +59,24 @@ interface PendingRequest {
 }
 
 const TEN_VAD_INIT_TIMEOUT_MS = 30_000;
-const TEN_VAD_SUPPORTED_HOP_DURATIONS_MS = [10, 16] as const;
+const TEN_VAD_SUPPORTED_HOP_DURATIONS_MS = [10] as const;
+const DEFAULT_FIRERED_MODEL_URL =
+  'https://raw.githubusercontent.com/FireRedTeam/FireRedVAD/main/pretrained_models/onnx_models/fireredvad_stream_vad_with_cache.onnx';
+const DEFAULT_FIRERED_CMVN_JSON_URL =
+  'https://raw.githubusercontent.com/FireRedTeam/FireRedVAD/main/pretrained_models/onnx_models/cmvn.json';
 
 const DEFAULT_TEN_VAD_CONFIG: Required<
-  Omit<TenVadAdapterConfig, 'assetBaseUrl' | 'scriptUrl' | 'wasmUrl'>
+  Omit<TenVadAdapterConfig, 'assetBaseUrl' | 'scriptUrl' | 'wasmUrl' | 'wasmPaths'>
 > = {
   sampleRate: STREAMING_PROCESSING_SAMPLE_RATE,
-  hopSize: STREAMING_TIMELINE_CHUNK_FRAMES,
+  hopSize: Math.round((10 / 1000) * STREAMING_PROCESSING_SAMPLE_RATE),
   threshold: 0.5,
+  modelDir: '',
+  modelFilename: 'fireredvad_stream_vad_with_cache.onnx',
+  modelUrl: DEFAULT_FIRERED_MODEL_URL,
+  cmvnJsonUrl: DEFAULT_FIRERED_CMVN_JSON_URL,
+  wasmNumThreads: 1,
+  cacheAssets: true,
   confirmationWindowMs: 192,
   hangoverMs: 320,
   minSpeechDurationMs: 240,
@@ -114,8 +131,8 @@ export function resolveSupportedTenVadHopSize(
 }
 
 export function resolveDefaultTenVadAssetUrls(): TenVadAssetUrls {
-  const scriptUrl = new URL('./assets/ten-vad/ten_vad.js', import.meta.url).href;
-  const wasmUrl = new URL('./assets/ten-vad/ten_vad.wasm', import.meta.url).href;
+  const scriptUrl = DEFAULT_FIRERED_MODEL_URL;
+  const wasmUrl = DEFAULT_FIRERED_CMVN_JSON_URL;
   return {
     scriptUrl,
     wasmUrl,
@@ -128,18 +145,18 @@ export function resolveTenVadAssetUrls(
   const defaults = resolveDefaultTenVadAssetUrls();
   const assetBaseUrl = config.assetBaseUrl ?? null;
   const scriptUrl =
-    config.scriptUrl ?? (assetBaseUrl ? new URL('ten_vad.js', assetBaseUrl).href : defaults.scriptUrl);
+    config.scriptUrl ??
+    (assetBaseUrl
+      ? new URL('fireredvad_stream_vad_with_cache.onnx', assetBaseUrl).href
+      : defaults.scriptUrl);
   const wasmUrl =
-    config.wasmUrl ?? (assetBaseUrl ? new URL('ten_vad.wasm', assetBaseUrl).href : defaults.wasmUrl);
-  const shouldFallback =
-    (config.fallbackToBundledAssets ?? DEFAULT_TEN_VAD_CONFIG.fallbackToBundledAssets)
-    && (scriptUrl !== defaults.scriptUrl || wasmUrl !== defaults.wasmUrl);
+    config.wasmUrl ?? (assetBaseUrl ? new URL('cmvn.json', assetBaseUrl).href : defaults.wasmUrl);
 
   return {
     scriptUrl,
     wasmUrl,
-    fallbackScriptUrl: shouldFallback ? defaults.scriptUrl : null,
-    fallbackWasmUrl: shouldFallback ? defaults.wasmUrl : null,
+    fallbackScriptUrl: null,
+    fallbackWasmUrl: null,
   };
 }
 
@@ -168,6 +185,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     const defaults = resolveDefaultTenVadAssetUrls();
     const assetBaseUrl = config.assetBaseUrl ?? null;
     const resolvedAssets = resolveTenVadAssetUrls(config);
+    const resolvedWasmPaths = config.wasmPaths ?? '';
     const sampleRate =
       typeof config.sampleRate === 'number' && Number.isFinite(config.sampleRate) && config.sampleRate > 0
         ? config.sampleRate
@@ -177,9 +195,10 @@ export class TenVadAdapter implements StreamingTenVadLike {
       ...config,
       sampleRate,
       hopSize: resolveSupportedTenVadHopSize(sampleRate, config.hopSize),
-      assetBaseUrl: assetBaseUrl ?? defaults.scriptUrl.replace(/ten_vad\.js$/, ''),
+      assetBaseUrl: assetBaseUrl ?? defaults.scriptUrl.replace(/fireredvad_stream_vad_with_cache\.onnx$/, ''),
       scriptUrl: resolvedAssets.scriptUrl,
       wasmUrl: resolvedAssets.wasmUrl,
+      wasmPaths: resolvedWasmPaths,
     };
     this.workerFactory = options.workerFactory ?? defaultWorkerFactory;
     this.now = options.now ?? (() => Date.now());
@@ -207,24 +226,31 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.worker = this.workerFactory();
     this.worker.onmessage = (event) => this.handleMessage(event.data);
     this.worker.onerror = (event) => {
-      const message = event?.message || 'TEN-VAD worker error';
+      const message = event?.message || 'FireRed VAD worker error';
       this.fail(new Error(message));
     };
 
     try {
       const resolvedAssets = resolveTenVadAssetUrls(this.config);
+      const wasmPaths =
+        typeof this.config.wasmPaths === 'string' && this.config.wasmPaths.length === 0
+          ? undefined
+          : this.config.wasmPaths;
       const initRequest = this.sendRequest('INIT', {
         hopSize: this.config.hopSize,
         threshold: this.config.threshold,
-        scriptUrl: resolvedAssets.scriptUrl,
-        wasmUrl: resolvedAssets.wasmUrl,
-        fallbackScriptUrl: resolvedAssets.fallbackScriptUrl,
-        fallbackWasmUrl: resolvedAssets.fallbackWasmUrl,
+        modelDir: this.config.modelDir,
+        modelFilename: this.config.modelFilename,
+        modelUrl: this.config.modelUrl ?? resolvedAssets.scriptUrl,
+        cmvnJsonUrl: this.config.cmvnJsonUrl ?? resolvedAssets.wasmUrl,
+        wasmPaths,
+        wasmNumThreads: this.config.wasmNumThreads,
+        cacheAssets: this.config.cacheAssets,
       });
       await this.waitWithTimeout(
         initRequest,
         TEN_VAD_INIT_TIMEOUT_MS,
-        'TEN-VAD init timed out.',
+        'FireRed VAD init timed out.',
       );
       this.status = 'ready';
       this.lastError = null;
@@ -498,7 +524,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
   private sendRequest(type: string, payload: unknown): Promise<unknown> {
     return new Promise((resolve, reject) => {
       if (!this.worker) {
-        reject(new Error('TEN-VAD worker is not initialized.'));
+        reject(new Error('FireRed VAD worker is not initialized.'));
         return;
       }
       const id = ++this.messageId;

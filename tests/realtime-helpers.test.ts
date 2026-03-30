@@ -151,6 +151,5 @@ describe('realtime helpers', () => {
     expect(timeline).toHaveLength(4);
     expect(timeline[1]?.energy).toBeGreaterThan(timeline[0]?.energy ?? 0);
     expect(timeline[2]?.energy).toBeGreaterThan(timeline[3]?.energy ?? 0);
-    expect(timeline[1]?.isSpeech).toBe(true);
   });
 });

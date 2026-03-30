@@ -35,7 +35,9 @@ import type { StreamingDetectorConfigOverrides } from './streaming-config.js';
 
 export interface BrowserRealtimeStarterOptions extends StreamingSpeechDetectorOptions {
   readonly bufferDurationSeconds?: number;
+  readonly fireRedVadConfig?: TenVadAdapterConfig;
   readonly tenVadConfig?: TenVadAdapterConfig;
+  readonly fireRedVadOptions?: TenVadAdapterOptions;
   readonly tenVadOptions?: TenVadAdapterOptions;
   readonly controllerOptions?: Omit<
     RealtimeTranscriptionControllerOptions,
@@ -108,23 +110,12 @@ export interface BrowserRealtimeStarter {
 function resolveTenVadConfig(
   resolvedConfig: StreamingDetectorConfig,
   options: BrowserRealtimeStarterOptions,
-): Required<
-  Pick<
-    TenVadAdapterConfig,
-    | 'sampleRate'
-    | 'hopSize'
-    | 'threshold'
-    | 'confirmationWindowMs'
-    | 'hangoverMs'
-    | 'minSpeechDurationMs'
-    | 'minSilenceDurationMs'
-    | 'speechPaddingMs'
-  >
-> {
-  const base = options.tenVadConfig ?? {};
+): TenVadAdapterConfig {
+  const base = options.fireRedVadConfig ?? options.tenVadConfig ?? {};
   const sampleRate = resolvedConfig.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE;
   const chunkDurationMs = resolvedConfig.chunkDurationMs;
   return {
+    ...base,
     sampleRate,
     hopSize:
       resolveSupportedTenVadHopSize(
@@ -161,8 +152,13 @@ function createVadBuffer(
     maxDurationSeconds:
       (resolvedConfig.ringBufferDurationMs ??
         DEFAULT_STREAMING_DETECTOR_CONFIG.ringBufferDurationMs) / 1000,
-    hopFrames: tenVadConfig.hopSize,
-    speechThreshold: tenVadConfig.threshold,
+    hopFrames:
+      tenVadConfig.hopSize ??
+      resolveStreamingTimelineChunkFrames(
+        resolvedConfig.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
+        resolvedConfig.chunkDurationMs,
+      ),
+    speechThreshold: tenVadConfig.threshold ?? 0.5,
   };
   return new VoiceActivityProbabilityBuffer(bufferOptions);
 }
@@ -201,7 +197,7 @@ function buildAlignedPlot(
   const computeDetectorPass = (roughPass: boolean): boolean => {
     switch (snapshot.gate.effectiveMode) {
       case 'ten-vad-only':
-        // In TEN-VAD-first mode, hop-level VAD is only a segment proposal.
+        // In FireRed-first mode, hop-level VAD is only a segment proposal.
         // Accepted speech is shown through active/recent segment spans instead.
         return false;
       case 'rough-and-ten-vad':
@@ -285,14 +281,15 @@ export function createBrowserRealtimeStarter(
     options.config,
   );
   const tenVadConfig = resolveTenVadConfig(resolvedConfig, options);
-  const tenVad = new TenVadAdapter(tenVadConfig, options.tenVadOptions);
+  const tenVadOptions = options.fireRedVadOptions ?? options.tenVadOptions;
+  const tenVad = new TenVadAdapter(tenVadConfig, tenVadOptions);
   const vadBuffer = createVadBuffer(resolvedConfig, tenVadConfig);
   const detector = new StreamingSpeechDetector({
     profileId: options.profileId,
     config: resolvedConfig,
     isRealtimeEouModel: options.isRealtimeEouModel,
     tenVadFactory: () => tenVad,
-    tenVadOptions: options.tenVadOptions,
+    tenVadOptions,
   });
 
   const tenVadUnsubscribe = tenVad.subscribe((event) => {

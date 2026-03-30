@@ -269,7 +269,7 @@ export class StreamingSpeechDetector {
     this.createTenVad =
       options.tenVadFactory ??
       (() => {
-        throw new Error('StreamingSpeechDetector requires a tenVadFactory when TEN-VAD is enabled.');
+        throw new Error('StreamingSpeechDetector requires a tenVadFactory when FireRed VAD is enabled.');
       });
     this.profileId =
       options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true);
@@ -453,12 +453,12 @@ export class StreamingSpeechDetector {
         await this.tenVad.init();
         await this.tenVad.reset();
         this.recordDecision(
-          'TEN-VAD ready for diagnostics',
+          'FireRed VAD ready for diagnostics',
           this.tenVad.getStatus() as unknown as Record<string, unknown>,
         );
       } catch (error) {
         this.lastError = error instanceof Error ? error : new Error(String(error));
-        this.recordDecision('TEN-VAD degraded; segmentation remains on rough gate', {
+        this.recordDecision('FireRed VAD degraded; segmentation remains on rough gate', {
           error: this.lastError.message,
         });
         this.emit({
@@ -929,15 +929,15 @@ export class StreamingSpeechDetector {
     const tenVadStatus = this.tenVad?.getStatus();
 
     if (tenVadStatus?.state === 'degraded') {
-      warnings.push('TEN-VAD is degraded. Runtime plots may be incomplete.');
+      warnings.push('FireRed VAD is degraded. Runtime plots may be incomplete.');
     }
 
     if (this.config.tenVadEnabled) {
-      warnings.push('Speech segmentation is running on the rough gate. TEN-VAD is diagnostics-only.');
+      warnings.push('Speech segmentation is running on the rough gate. FireRed VAD is diagnostics-only.');
     }
 
     if (this.config.gateMode !== STREAMING_GATE_MODES.ROUGH_ONLY) {
-      warnings.push('Requested TEN-VAD-first gating is ignored by this Parakeet-style detector port.');
+      warnings.push('Requested FireRed-first gating is ignored by this Parakeet-style detector port.');
     }
 
     if (!this.config.foregroundFilterEnabled) {
