@@ -118,12 +118,15 @@ function average(values: readonly number[]): number | undefined {
 }
 
 function ensureFloat32Buffer(length: number, buffer?: Float32Array): Float32Array {
-  return !buffer || buffer.length < length ? new Float32Array(length) : buffer;
+  // Use a 1.2x growth factor for pooled buffers to minimize reallocation frequency
+  return !buffer || buffer.length < length ? new Float32Array(Math.ceil(length * 1.2)) : buffer;
 }
 
 function prepareMonoBuffer(frames: number, destination?: Float32Array): Float32Array {
   const mono = destination
-    ? (destination.length === frames ? destination : destination.subarray(0, frames))
+    ? destination.length === frames
+      ? destination
+      : destination.subarray(0, frames)
     : new Float32Array(frames);
   mono.fill(0);
   return mono;
