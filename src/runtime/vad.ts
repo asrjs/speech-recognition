@@ -70,17 +70,13 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
       throw new TypeError('VoiceActivityProbabilityBuffer requires a positive sampleRate.');
     }
     if (!Number.isFinite(options.maxDurationSeconds) || options.maxDurationSeconds <= 0) {
-      throw new TypeError(
-        'VoiceActivityProbabilityBuffer requires a positive maxDurationSeconds.',
-      );
+      throw new TypeError('VoiceActivityProbabilityBuffer requires a positive maxDurationSeconds.');
     }
 
     this.sampleRate = options.sampleRate;
     const hopFrames = options.hopFrames ?? 512;
     if (!Number.isFinite(hopFrames) || hopFrames <= 0) {
-      throw new TypeError(
-        'VoiceActivityProbabilityBuffer requires a positive finite hopFrames.',
-      );
+      throw new TypeError('VoiceActivityProbabilityBuffer requires a positive finite hopFrames.');
     }
     this.hopFrames = Math.max(1, Math.floor(hopFrames));
     this.speechThreshold = options.speechThreshold ?? 0.5;
@@ -126,7 +122,8 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     const clampedMinimum = Math.max(minimumEntry, baseEntry);
 
     for (let entryIndex = fromEntry; entryIndex >= clampedMinimum; entryIndex -= 1) {
-      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      // PERF: using `!` instead of `?? 0` in tight loop for V8 optimizations on TypedArrays.
+      const probability = this.buffer[entryIndex % this.maxEntries]!;
       if (probability < threshold) {
         return Math.min(cappedEndFrame, (entryIndex + 1) * this.hopFrames);
       }
@@ -143,7 +140,8 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     let silentEntries = 0;
     const baseEntry = this.getBaseEntry();
     for (let entryIndex = this.nextEntryIndex - 1; entryIndex >= baseEntry; entryIndex -= 1) {
-      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      // PERF: using `!` instead of `?? 0` in tight loop for V8 optimizations on TypedArrays.
+      const probability = this.buffer[entryIndex % this.maxEntries]!;
       if (probability >= threshold) {
         break;
       }
@@ -165,7 +163,8 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     const clampedEnd = Math.min(endEntry, this.nextEntryIndex);
 
     for (let entryIndex = clampedStart; entryIndex < clampedEnd; entryIndex += 1) {
-      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      // PERF: using `!` instead of `?? 0` in tight loop for V8 optimizations on TypedArrays.
+      const probability = this.buffer[entryIndex % this.maxEntries]!;
       if (probability >= threshold) {
         return true;
       }
@@ -193,7 +192,8 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     let runStart: number | null = null;
     let runLength = 0;
     for (let entryIndex = clampedStart; entryIndex < clampedEnd; entryIndex += 1) {
-      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      // PERF: using `!` instead of `?? 0` in tight loop for V8 optimizations on TypedArrays.
+      const probability = this.buffer[entryIndex % this.maxEntries]!;
       if (probability >= threshold) {
         if (runStart === null) {
           runStart = entryIndex * this.hopFrames;
@@ -240,7 +240,8 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     let maxProbability = 0;
 
     for (let entryIndex = clampedStart; entryIndex < clampedEnd; entryIndex += 1) {
-      const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+      // PERF: using `!` instead of `?? 0` in tight loop for V8 optimizations on TypedArrays.
+      const probability = this.buffer[entryIndex % this.maxEntries]!;
       const speaking = probability >= this.speechThreshold;
       if (speaking) {
         speechHopCount += 1;
@@ -282,8 +283,7 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     const points: VoiceActivityProbabilityTimelinePoint[] = [];
 
     for (let index = 0; index < safePoints; index += 1) {
-      const bucketStart =
-        safeStart + Math.floor((index * (safeEnd - safeStart)) / safePoints);
+      const bucketStart = safeStart + Math.floor((index * (safeEnd - safeStart)) / safePoints);
       const bucketEnd =
         index === safePoints - 1
           ? safeEnd
@@ -307,7 +307,8 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
           continue;
         }
 
-        const probability = this.buffer[entryIndex % this.maxEntries] ?? 0;
+        // PERF: using `!` instead of `?? 0` in tight loop for V8 optimizations on TypedArrays.
+        const probability = this.buffer[entryIndex % this.maxEntries]!;
         totalWeight += overlapFrames;
         weightedProbability += probability * overlapFrames;
         weightedSpeech += (probability >= this.speechThreshold ? 1 : 0) * overlapFrames;
