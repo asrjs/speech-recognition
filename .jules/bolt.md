@@ -1,0 +1,3 @@
+## 2025-04-06 - V8 Optimization for TypedArray access with non-null assertion
+**Learning:** Using the nullish coalescing operator (??) inside tight inner loops dealing with TypedArrays significantly degrades performance compared to using the non-null assertion operator (!). This is because the V8 engine has to add null/undefined checks which breaks fast paths for TypedArray reads.
+**Action:** When bounds are known to be safe on a TypedArray, prefer the non-null assertion operator (!) over the nullish coalescing operator (??) to preserve performance.
