@@ -189,19 +189,22 @@ function fft(
   twiddles: MelTwiddles,
 ): void {
   for (let index = 0; index < size; index += 1) {
-    const swappedIndex = twiddles.bitReverse[index] ?? index;
+    const swappedIndex = twiddles.bitReverse[index]!;
     if (index >= swappedIndex) {
       continue;
     }
 
-    const realValue = real[index] ?? 0;
-    real[index] = real[swappedIndex] ?? 0;
+    const realValue = real[index]!;
+    real[index] = real[swappedIndex]!;
     real[swappedIndex] = realValue;
 
-    const imaginaryValue = imaginary[index] ?? 0;
-    imaginary[index] = imaginary[swappedIndex] ?? 0;
+    const imaginaryValue = imaginary[index]!;
+    imaginary[index] = imaginary[swappedIndex]!;
     imaginary[swappedIndex] = imaginaryValue;
   }
+
+  const twiddlesCos = twiddles.cos;
+  const twiddlesSin = twiddles.sin;
 
   for (let length = 2; length <= size; length <<= 1) {
     const halfLength = length >> 1;
@@ -210,15 +213,18 @@ function fft(
     for (let segment = 0; segment < size; segment += length) {
       for (let offset = 0; offset < halfLength; offset += 1) {
         const twiddleIndex = offset * twiddleStep;
-        const cosine = twiddles.cos[twiddleIndex] ?? 0;
-        const sine = twiddles.sin[twiddleIndex] ?? 0;
+        const cosine = twiddlesCos[twiddleIndex]!;
+        const sine = twiddlesSin[twiddleIndex]!;
         const first = segment + offset;
         const second = first + halfLength;
 
-        const tReal = (real[second] ?? 0) * cosine - (imaginary[second] ?? 0) * sine;
-        const tImaginary = (real[second] ?? 0) * sine + (imaginary[second] ?? 0) * cosine;
-        const uReal = real[first] ?? 0;
-        const uImaginary = imaginary[first] ?? 0;
+        const rs = real[second]!;
+        const is = imaginary[second]!;
+        const tReal = rs * cosine - is * sine;
+        const tImaginary = rs * sine + is * cosine;
+
+        const uReal = real[first]!;
+        const uImaginary = imaginary[first]!;
 
         real[first] = uReal + tReal;
         imaginary[first] = uImaginary + tImaginary;

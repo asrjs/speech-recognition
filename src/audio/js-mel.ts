@@ -60,15 +60,11 @@ interface FFTTwiddles {
 }
 
 export function hzToMel(freq: number): number {
-  return freq >= MIN_LOG_HZ
-    ? MIN_LOG_MEL + Math.log(freq / MIN_LOG_HZ) / LOG_STEP
-    : freq / F_SP;
+  return freq >= MIN_LOG_HZ ? MIN_LOG_MEL + Math.log(freq / MIN_LOG_HZ) / LOG_STEP : freq / F_SP;
 }
 
 export function melToHz(mel: number): number {
-  return mel >= MIN_LOG_MEL
-    ? MIN_LOG_HZ * Math.exp(LOG_STEP * (mel - MIN_LOG_MEL))
-    : mel * F_SP;
+  return mel >= MIN_LOG_MEL ? MIN_LOG_HZ * Math.exp(LOG_STEP * (mel - MIN_LOG_MEL)) : mel * F_SP;
 }
 
 export function createMelFilterbank(nMels = 128): Float32Array {
@@ -142,7 +138,7 @@ export function precomputeTwiddles(size: number): FFTTwiddles {
   }
 
   const bits = Math.log2(size);
-  if ((1 << bits) !== size) {
+  if (1 << bits !== size) {
     throw new Error(`FFT size must be a power of two. Received: ${size}`);
   }
 
@@ -171,12 +167,7 @@ export function precomputeTwiddles(size: number): FFTTwiddles {
   return twiddles;
 }
 
-export function fft(
-  re: Float64Array,
-  im: Float64Array,
-  size: number,
-  twiddles: FFTTwiddles,
-): void {
+export function fft(re: Float64Array, im: Float64Array, size: number, twiddles: FFTTwiddles): void {
   const bitrev = twiddles.bitrev;
   if (bitrev.length === size) {
     for (let index = 0; index < size; index += 1) {
@@ -273,22 +264,32 @@ export function fft(
     }
   }
 
+  const twiddlesCos = twiddles.cos;
+  const twiddlesSin = twiddles.sin;
+
   for (let len = 16; len <= size; len <<= 1) {
     const halfLen = len >> 1;
     const step = size / len;
     for (let index = 0; index < size; index += len) {
       for (let k = 0; k < halfLen; k += 1) {
         const twiddleIndex = k * step;
-        const wCos = twiddles.cos[twiddleIndex]!;
-        const wSin = twiddles.sin[twiddleIndex]!;
+        const wCos = twiddlesCos[twiddleIndex]!;
+        const wSin = twiddlesSin[twiddleIndex]!;
         const p = index + k;
         const q = p + halfLen;
-        const tRe = re[q]! * wCos - im[q]! * wSin;
-        const tIm = re[q]! * wSin + im[q]! * wCos;
-        re[q] = re[p]! - tRe;
-        im[q] = im[p]! - tIm;
-        re[p] = re[p]! + tRe;
-        im[p] = im[p]! + tIm;
+
+        const req = re[q]!;
+        const imq = im[q]!;
+        const tRe = req * wCos - imq * wSin;
+        const tIm = req * wSin + imq * wCos;
+
+        const rep = re[p]!;
+        const imp = im[p]!;
+
+        re[q] = rep - tRe;
+        im[q] = imp - tIm;
+        re[p] = rep + tRe;
+        im[p] = imp + tIm;
       }
     }
   }
@@ -359,11 +360,11 @@ export class JSMelProcessor {
       this.processRawBuffer = new Float32Array(Math.ceil(requiredRawSize * 1.2));
     }
 
-    const { rawMel, nFrames: computedNFrames, validLength: computedValidLength } = this.computeRawMel(
-      audio,
-      0,
-      this.processRawBuffer,
-    );
+    const {
+      rawMel,
+      nFrames: computedNFrames,
+      validLength: computedValidLength,
+    } = this.computeRawMel(audio, 0, this.processRawBuffer);
 
     return {
       features: this.finalizeFeatures(rawMel, computedNFrames, computedValidLength),
@@ -425,59 +426,70 @@ export class JSMelProcessor {
 
     const halfN = N_FFT >> 1;
     const quarterN = halfN >> 1;
+
+    // Cache array references for inner loops
+    const hannWindow = this.hannWindow;
+    const fftRe = this.fftRe;
+    const fftIm = this.fftIm;
+    const twiddlesHalf = this.twiddlesHalf;
+    const powerBuf = this.powerBuf;
+    const twiddlesCos = this.twiddles.cos;
+    const twiddlesSin = this.twiddles.sin;
+    const melFilterbank = this.melFilterbank;
+    const fbBounds = this.fbBounds;
+    const nMels = this.nMels;
+
     for (let frameIndex = startFrame; frameIndex < nFrames; frameIndex += 1) {
       const offset = frameIndex * HOP_LENGTH;
       for (let k = 0; k < halfN; k += 1) {
         const sampleIndex = k << 1;
-        this.fftRe[k] = padded[offset + sampleIndex]! * this.hannWindow[sampleIndex]!;
-        this.fftIm[k] =
-          padded[offset + sampleIndex + 1]! * this.hannWindow[sampleIndex + 1]!;
+        fftRe[k] = padded[offset + sampleIndex]! * hannWindow[sampleIndex]!;
+        fftIm[k] = padded[offset + sampleIndex + 1]! * hannWindow[sampleIndex + 1]!;
       }
 
-      fft(this.fftRe, this.fftIm, halfN, this.twiddlesHalf);
+      fft(fftRe, fftIm, halfN, twiddlesHalf);
 
-      const z0r = this.fftRe[0]!;
-      const z0i = this.fftIm[0]!;
-      this.powerBuf[0] = (z0r + z0i) * (z0r + z0i);
-      this.powerBuf[halfN] = (z0r - z0i) * (z0r - z0i);
+      const z0r = fftRe[0]!;
+      const z0i = fftIm[0]!;
+      powerBuf[0] = (z0r + z0i) * (z0r + z0i);
+      powerBuf[halfN] = (z0r - z0i) * (z0r - z0i);
 
       for (let k = 1; k < quarterN; k += 1) {
-        const rk = this.fftRe[k]!;
-        const ik = this.fftIm[k]!;
-        const rnk = this.fftRe[halfN - k]!;
-        const ink = this.fftIm[halfN - k]!;
+        const rk = fftRe[k]!;
+        const ik = fftIm[k]!;
+        const rnk = fftRe[halfN - k]!;
+        const ink = fftIm[halfN - k]!;
 
         const xeR = 0.5 * (rk + rnk);
         const xeI = 0.5 * (ik - ink);
         const xoR = 0.5 * (ik + ink);
         const xoI = -0.5 * (rk - rnk);
 
-        const wc = this.twiddles.cos[k]!;
-        const ws = this.twiddles.sin[k]!;
+        const wc = twiddlesCos[k]!;
+        const ws = twiddlesSin[k]!;
         const tr = xoR * wc - xoI * ws;
         const ti = xoR * ws + xoI * wc;
 
         const xkR = xeR + tr;
         const xkI = xeI + ti;
-        this.powerBuf[k] = xkR * xkR + xkI * xkI;
+        powerBuf[k] = xkR * xkR + xkI * xkI;
 
         const xnkR = xeR - tr;
         const xnkI = xeI - ti;
-        this.powerBuf[halfN - k] = xnkR * xnkR + xnkI * xnkI;
+        powerBuf[halfN - k] = xnkR * xnkR + xnkI * xnkI;
       }
 
-      const quarterRe = this.fftRe[quarterN]!;
-      const quarterIm = this.fftIm[quarterN]!;
-      this.powerBuf[quarterN] = quarterRe * quarterRe + quarterIm * quarterIm;
+      const quarterRe = fftRe[quarterN]!;
+      const quarterIm = fftIm[quarterN]!;
+      powerBuf[quarterN] = quarterRe * quarterRe + quarterIm * quarterIm;
 
-      for (let melIndex = 0; melIndex < this.nMels; melIndex += 1) {
+      for (let melIndex = 0; melIndex < nMels; melIndex += 1) {
         let melValue = 0;
         const filterbankOffset = melIndex * N_FREQ_BINS;
-        const start = this.fbBounds[melIndex * 2]!;
-        const end = this.fbBounds[melIndex * 2 + 1]!;
+        const start = fbBounds[melIndex * 2]!;
+        const end = fbBounds[melIndex * 2 + 1]!;
         for (let freqIndex = start; freqIndex < end; freqIndex += 1) {
-          melValue +=
-            this.powerBuf[freqIndex]! * this.melFilterbank[filterbankOffset + freqIndex]!;
+          melValue += powerBuf[freqIndex]! * melFilterbank[filterbankOffset + freqIndex]!;
         }
         rawMel[melIndex * nFrames + frameIndex] = Math.log(melValue + LOG_ZERO_GUARD);
       }
@@ -518,8 +530,7 @@ export class JSMelProcessor {
         validLength > 1 ? 1.0 / (Math.sqrt(varianceSum / (validLength - 1)) + 1e-5) : 0;
 
       for (let frameIndex = 0; frameIndex < validLength; frameIndex += 1) {
-        features[dstBase + frameIndex] =
-          (rawMel[srcBase + frameIndex]! - mean) * invStd;
+        features[dstBase + frameIndex] = (rawMel[srcBase + frameIndex]! - mean) * invStd;
       }
       if (validLength < outputFrames) {
         features.fill(0, dstBase + validLength, dstBase + outputFrames);
@@ -593,9 +604,7 @@ export class IncrementalJSMelProcessor {
     }
 
     const canReuse =
-      prefixSamples > 0 &&
-      this.cachedRawMel !== null &&
-      prefixSamples <= this.cachedAudioLen;
+      prefixSamples > 0 && this.cachedRawMel !== null && prefixSamples <= this.cachedAudioLen;
 
     const predictedFrames = Math.floor(sampleCount / HOP_LENGTH) + 1;
     const requiredRawSize = this.nMels * predictedFrames;
