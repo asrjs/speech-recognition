@@ -340,10 +340,14 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       this.emphasizedBuffer = new Float32Array(Math.ceil(sampleCount * 1.2));
     }
     const emphasized = this.emphasizedBuffer;
-    emphasized[0] = audio[0] ?? 0;
+    let prev = audio[0]!;
+    emphasized[0] = prev;
     if (this.preemphasis > 0) {
+      const preemphasis = this.preemphasis;
       for (let index = 1; index < sampleCount; index += 1) {
-        emphasized[index] = (audio[index] ?? 0) - this.preemphasis * (audio[index - 1] ?? 0);
+        const current = audio[index]!;
+        emphasized[index] = current - preemphasis * prev;
+        prev = current;
       }
     } else {
       emphasized.set(audio);
