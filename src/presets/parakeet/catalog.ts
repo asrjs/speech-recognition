@@ -98,27 +98,25 @@ export const MODELS = {
 
 export const DEFAULT_MODEL = 'parakeet-tdt-0.6b-v2' as const;
 
+const REPO_ID_TO_KEY = Object.fromEntries(
+  Object.entries(MODELS).map(([key, config]) => [config.repoId, key]),
+);
+
 export function getModelConfig(modelKeyOrRepoId: string): ParakeetModelConfig | null {
   if (modelKeyOrRepoId in MODELS) {
     return MODELS[modelKeyOrRepoId as keyof typeof MODELS];
   }
 
-  for (const config of Object.values(MODELS)) {
-    if (config.repoId === modelKeyOrRepoId) {
-      return config;
-    }
+  const key = REPO_ID_TO_KEY[modelKeyOrRepoId];
+  if (key && key in MODELS) {
+    return MODELS[key as keyof typeof MODELS];
   }
 
   return null;
 }
 
 export function getModelKeyFromRepoId(repoId: string): string | null {
-  for (const [key, config] of Object.entries(MODELS)) {
-    if (config.repoId === repoId) {
-      return key;
-    }
-  }
-  return null;
+  return REPO_ID_TO_KEY[repoId] ?? null;
 }
 
 export function supportsLanguage(modelKeyOrRepoId: string, language: string): boolean {
