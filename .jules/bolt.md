@@ -1,0 +1,3 @@
+## 2025-04-25 - Catalog Lookups O(1) Precomputations
+**Learning:** Found that `getModelKeyFromRepoId` and `getModelConfig` in the `MODELS` exports of canary and parakeet were using `Object.entries(MODELS)` and `Object.values(MODELS)` repeatedly to linearly scan `MODELS` on lookup, which both incurs an O(N) lookup penalty and performs needless allocations on every single query of `MODELS`.
+**Action:** Always precompute Object to Object / Id maps statically during module initialization using `Object.fromEntries` rather than performing `Object.entries/values` linearly inside the getter if the target data doesn't change during the lifecycle.
