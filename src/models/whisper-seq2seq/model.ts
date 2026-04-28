@@ -25,6 +25,7 @@ import {
 } from './config.js';
 import { mapWhisperNativeToCanonical } from './mapping.js';
 import type {
+  WhisperNativeToken,
   WhisperNativeSegment,
   WhisperNativeTranscript,
   WhisperSeq2SeqModelConfig,
@@ -99,21 +100,37 @@ class WhisperSeq2SeqSpeechSession implements SpeechSession<
   ): Promise<TranscriptResponse<WhisperNativeTranscript, TFlavor>> {
     const audio = normalizePcmInput(input).toMono();
     const segments = buildStubSegments(audio.durationSeconds, options.task);
-    const tokens = segments.map((segment, index) => ({
-      index,
-      id: index + 100,
-      text: segment.text,
-      startTime: segment.startTime,
-      endTime: segment.endTime,
-      confidence: segment.confidence,
-      special: false,
-    }));
+
+    // Performance Optimization: Combine tokens and utterance generation into a single loop
+    // This avoids multiple intermediate array allocations and chained map/filter iterations.
+    const tokens: WhisperNativeToken[] = [];
+    const utteranceParts: string[] = [];
+
+    for (let index = 0; index < segments.length; index++) {
+      const segment = segments[index]!;
+      utteranceParts.push(segment.text);
+
+      const token = {
+        index,
+        id: index + 100,
+        text: segment.text,
+        startTime: segment.startTime,
+        endTime: segment.endTime,
+        confidence: segment.confidence,
+        special: false,
+      };
+
+      if (options.returnSpecialTokens || !token.special) {
+        tokens.push(token);
+      }
+    }
+
     const nativeTranscript: WhisperNativeTranscript = {
-      utteranceText: segments.map((segment) => segment.text).join(' '),
+      utteranceText: utteranceParts.join(' '),
       isFinal: true,
       language: options.language ?? this.config.languages[0],
       segments,
-      tokens: options.returnSpecialTokens ? tokens : tokens.filter((token) => !token.special),
+      tokens,
       warnings: [
         {
           code: 'whisper-seq2seq.stubbed-decoder',

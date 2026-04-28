@@ -1,0 +1,3 @@
+## 2024-04-28 - Optimize array iteration for transcription segments
+**Learning:** Chaining `.map()` and `.filter()` operations on arrays (especially for post-processing transcribed segments into tokens and strings) creates significant overhead due to multiple intermediate array allocations and GC pauses. This is especially problematic in the V8 engine during hot execution paths.
+**Action:** When transforming segment arrays into canonical tokens or text, merge chained array operations into a single `for` loop. Specifically, populate necessary target arrays and joining structures simultaneously within the single loop to prevent intermediate buffer allocations.
