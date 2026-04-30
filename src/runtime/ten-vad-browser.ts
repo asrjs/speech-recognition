@@ -46,6 +46,22 @@ export interface TenVadRecentResult {
   readonly createdAt: number;
 }
 
+
+export interface TenVadWorkerResultPayload {
+  readonly probabilities: Float32Array;
+  readonly flags: Uint8Array;
+  readonly globalSampleOffset: number;
+  readonly hopCount: number;
+}
+
+export type TenVadWorkerMessage =
+  | { type: 'INIT'; id: number; payload: { success: boolean; version?: string } }
+  | { type: 'RESULT'; payload: TenVadWorkerResultPayload }
+  | { type: 'ERROR'; id: number; payload: string }
+  | { type: 'RESET'; id: number; payload: { success: boolean } }
+  | { type: 'UPDATE_CONFIG'; id: number; payload: { success: boolean } }
+  | { type: 'DISPOSE'; id: number; payload: { success: boolean } };
+
 interface PendingRequest {
   readonly resolve: (value: unknown) => void;
   readonly reject: (reason?: unknown) => void;
@@ -243,7 +259,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.pending.clear();
   }
 
-  private handleMessage(message: any): void {
+  private handleMessage(message: TenVadWorkerMessage): void {
     if (message.type === 'RESULT') {
       this.recordResult(message.payload);
       this.emit({
@@ -270,7 +286,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     }
   }
 
-  private recordResult(result: any): void {
+  private recordResult(result: TenVadWorkerResultPayload): void {
     const hopSize = this.config.hopSize;
     const {
       minSpeechHops,
