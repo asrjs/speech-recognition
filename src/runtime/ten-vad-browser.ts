@@ -4,6 +4,7 @@ import {
   STREAMING_TIMELINE_CHUNK_FRAMES,
   framesToMilliseconds,
 } from './audio-timeline.js';
+import type { TenVadWorkerMessage, TenVadWorkerResultPayload } from './ten-vad-worker.js';
 
 export interface TenVadAdapterConfig {
   readonly sampleRate?: number;
@@ -243,7 +244,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.pending.clear();
   }
 
-  private handleMessage(message: any): void {
+  private handleMessage(message: TenVadWorkerMessage): void {
     if (message.type === 'RESULT') {
       this.recordResult(message.payload);
       this.emit({
@@ -254,8 +255,8 @@ export class TenVadAdapter implements StreamingTenVadLike {
     }
 
     if (message.type === 'ERROR') {
-      const pending = this.pending.get(message.id);
-      if (pending) {
+      const pending = message.id != null ? this.pending.get(message.id) : undefined;
+      if (pending && message.id != null) {
         this.pending.delete(message.id);
         pending.reject(new Error(message.payload));
       }
@@ -263,14 +264,14 @@ export class TenVadAdapter implements StreamingTenVadLike {
       return;
     }
 
-    const pending = this.pending.get(message.id);
-    if (pending) {
+    const pending = message.id != null ? this.pending.get(message.id) : undefined;
+    if (pending && message.id != null) {
       this.pending.delete(message.id);
-      pending.resolve(message.payload);
+      pending.resolve('payload' in message ? message.payload : undefined);
     }
   }
 
-  private recordResult(result: any): void {
+  private recordResult(result: TenVadWorkerResultPayload): void {
     const hopSize = this.config.hopSize;
     const {
       minSpeechHops,
@@ -282,7 +283,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     for (let index = 0; index < result.hopCount; index += 1) {
       const startFrame = result.globalSampleOffset + index * hopSize;
       const endFrame = startFrame + hopSize;
-      const probability = result.probabilities[index];
+      const probability = result.probabilities[index] ?? 0;
       const rawSpeaking = result.flags[index] === 1 || probability >= this.config.threshold;
 
       if (rawSpeaking) {

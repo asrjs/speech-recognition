@@ -6,6 +6,22 @@ interface WorkerScopeLike {
   location: Location;
 }
 
+export interface TenVadWorkerResultPayload {
+  readonly probabilities: Float32Array;
+  readonly flags: Uint8Array;
+  readonly globalSampleOffset: number;
+  readonly hopCount: number;
+}
+
+export type TenVadWorkerMessage =
+  | { type: 'INIT'; id: number; payload?: Record<string, unknown> }
+  | { type: 'PROCESS'; id?: number; payload?: { samples?: Float32Array; globalSampleOffset?: number } }
+  | { type: 'RESET'; id: number; payload?: { success: boolean } | unknown }
+  | { type: 'UPDATE_CONFIG'; id: number; payload?: Record<string, unknown> }
+  | { type: 'DISPOSE'; id: number; payload?: { success: boolean } | unknown }
+  | { type: 'RESULT'; id?: number; payload: TenVadWorkerResultPayload }
+  | { type: 'ERROR'; id: number; payload: string };
+
 const workerScope = self as unknown as WorkerScopeLike;
 
 let moduleInstance: any = null;
@@ -20,7 +36,7 @@ let accumulator: Float32Array | null = null;
 let accumulatorPos = 0;
 
 workerScope.onmessage = async (event: MessageEvent) => {
-  const message = event.data as any;
+  const message = event.data as TenVadWorkerMessage;
 
   try {
     switch (message.type) {
@@ -241,7 +257,7 @@ function handleDispose(id: number) {
   respond({ type: 'DISPOSE', id, payload: { success: true } });
 }
 
-function respond(message: unknown) {
+function respond(message: TenVadWorkerMessage) {
   workerScope.postMessage(message);
 }
 
