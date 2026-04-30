@@ -46,6 +46,18 @@ export interface TenVadRecentResult {
   readonly createdAt: number;
 }
 
+export interface TenVadWorkerResultPayload {
+  readonly probabilities: Float32Array;
+  readonly flags: Uint8Array;
+  readonly globalSampleOffset: number;
+  readonly hopCount: number;
+}
+
+export type TenVadWorkerMessage =
+  | { type: 'RESULT'; payload: TenVadWorkerResultPayload }
+  | { type: 'ERROR'; id: number; payload: string }
+  | { type: string; id?: number; payload?: unknown };
+
 interface PendingRequest {
   readonly resolve: (value: unknown) => void;
   readonly reject: (reason?: unknown) => void;
@@ -243,9 +255,9 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.pending.clear();
   }
 
-  private handleMessage(message: any): void {
+  private handleMessage(message: TenVadWorkerMessage): void {
     if (message.type === 'RESULT') {
-      this.recordResult(message.payload);
+      this.recordResult(message.payload as TenVadWorkerResultPayload);
       this.emit({
         type: 'result',
         payload: message.payload,
@@ -254,23 +266,27 @@ export class TenVadAdapter implements StreamingTenVadLike {
     }
 
     if (message.type === 'ERROR') {
-      const pending = this.pending.get(message.id);
-      if (pending) {
-        this.pending.delete(message.id);
-        pending.reject(new Error(message.payload));
+      if ('id' in message && message.id !== undefined) {
+        const pending = this.pending.get(message.id);
+        if (pending) {
+          this.pending.delete(message.id);
+          pending.reject(new Error(message.payload as string));
+        }
       }
-      this.fail(new Error(message.payload));
+      this.fail(new Error(message.payload as string));
       return;
     }
 
-    const pending = this.pending.get(message.id);
-    if (pending) {
-      this.pending.delete(message.id);
-      pending.resolve(message.payload);
+    if ('id' in message && message.id !== undefined) {
+      const pending = this.pending.get(message.id);
+      if (pending) {
+        this.pending.delete(message.id);
+        pending.resolve(message.payload);
+      }
     }
   }
 
-  private recordResult(result: any): void {
+  private recordResult(result: TenVadWorkerResultPayload): void {
     const hopSize = this.config.hopSize;
     const {
       minSpeechHops,
@@ -282,7 +298,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     for (let index = 0; index < result.hopCount; index += 1) {
       const startFrame = result.globalSampleOffset + index * hopSize;
       const endFrame = startFrame + hopSize;
-      const probability = result.probabilities[index];
+      const probability = result.probabilities[index] ?? 0;
       const rawSpeaking = result.flags[index] === 1 || probability >= this.config.threshold;
 
       if (rawSpeaking) {
