@@ -208,16 +208,11 @@ function toNemoQuantization(quant: QuantizationMode): NemoAedQuantization {
 
 function mapCanaryTranscribeOptions(
   options: CanaryTranscribeOptions = {},
-): NemoAedTranscriptionOptions & { readonly responseFlavor: 'canonical+native'; readonly detail: 'detailed' } {
-  const {
-    source_lang,
-    target_lang,
-    pnc,
-    timestamp,
-    responseFlavor,
-    detail,
-    ...rest
-  } = options;
+): NemoAedTranscriptionOptions & {
+  readonly responseFlavor: 'canonical+native';
+  readonly detail: 'detailed';
+} {
+  const { source_lang, target_lang, pnc, timestamp, responseFlavor, detail, ...rest } = options;
   void responseFlavor;
   void detail;
 
@@ -299,7 +294,9 @@ export async function getCanaryModel(
 
   if (
     preprocessorBackend === 'onnx' &&
-    !repoFiles.some((path) => path === `${preprocessorName}.onnx` || path.endsWith(`/${preprocessorName}.onnx`))
+    !repoFiles.some(
+      (path) => path === `${preprocessorName}.onnx` || path.endsWith(`/${preprocessorName}.onnx`),
+    )
   ) {
     throw new Error(
       `[Hub] Canary ONNX preprocessor ${preprocessorName}.onnx is missing in ${repoId}. Use preprocessorBackend='js' or upload the frontend artifact.`,
@@ -375,7 +372,11 @@ export async function getCanaryModel(
 export class CanaryModel {
   constructor(
     private readonly runtime: DefaultSpeechRuntime,
-    private readonly model: SpeechModel<NemoAedModelOptions, any, NemoAedNativeTranscript>,
+    private readonly model: SpeechModel<
+      NemoAedModelOptions,
+      NemoAedTranscriptionOptions,
+      NemoAedNativeTranscript
+    >,
     private readonly session: SpeechSession<NemoAedTranscriptionOptions, NemoAedNativeTranscript>,
     private readonly onDispose?: () => void | Promise<void>,
   ) {}
