@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {
   createModelArchitecture,
@@ -6,6 +6,19 @@ import {
 } from '../src/types/architecture.js';
 
 describe('createModelArchitecture', () => {
+  it('returns correctly typed ModelArchitectureDescriptor', () => {
+    const descriptor: ModelArchitectureDescriptor = {
+      processor: { layer: 'processor', module: 'processor-module', implementation: 'processor' },
+      encoder: { layer: 'encoder', module: 'encoder-module', implementation: 'encoder' },
+      decoder: { layer: 'decoder', module: 'decoder-module', implementation: 'decoder' },
+      decoding: { layer: 'decoding', module: 'decoding-module', implementation: 'decoding' },
+      tokenizer: { layer: 'tokenizer', module: 'tokenizer-module', implementation: 'tokenizer' },
+    };
+
+    const result = createModelArchitecture(descriptor);
+    expectTypeOf(result).toEqualTypeOf<ModelArchitectureDescriptor>();
+  });
+
   it('returns the original descriptor reference unchanged', () => {
     const descriptor: ModelArchitectureDescriptor = {
       processor: { layer: 'processor', module: 'processor-module', implementation: 'processor' },
