@@ -162,6 +162,7 @@ describe('built-in preset descriptors', () => {
   });
 
   it('resolves model-specific component backend defaults and restrictions', () => {
+    // Falls back to generic backend logic
     expect(
       resolveBuiltInModelComponentBackends('parakeet-tdt-0.6b-v2', {
         backend: 'webgpu-hybrid',
@@ -169,6 +170,37 @@ describe('built-in preset descriptors', () => {
     ).toEqual({
       encoderBackend: 'webgpu',
       decoderBackend: 'wasm',
+    });
+
+    // Throws on unknown models
+    expect(() => resolveBuiltInModelComponentBackends('not-a-model')).toThrow('Unknown built-in model "not-a-model".');
+
+    // Returns defaults when no input is provided
+    expect(resolveBuiltInModelComponentBackends('nvidia/canary-180m-flash')).toEqual({
+      encoderBackend: 'webgpu',
+      decoderBackend: 'wasm',
+    });
+
+    // Explicitly respects encoderBackend and decoderBackend when provided
+    expect(
+      resolveBuiltInModelComponentBackends('nvidia/canary-180m-flash', {
+        encoderBackend: 'wasm',
+        decoderBackend: 'webgpu',
+      })
+    ).toEqual({
+      encoderBackend: 'wasm',
+      decoderBackend: 'webgpu',
+    });
+
+    // Falls back gracefully when an unsupported backend is requested explicitly
+    // e.g. parakeet decoder doesn't support webgpu
+    expect(
+      resolveBuiltInModelComponentBackends('parakeet-tdt-0.6b-v2', {
+        decoderBackend: 'webgpu',
+      })
+    ).toEqual({
+      encoderBackend: 'webgpu', // default
+      decoderBackend: 'wasm',   // fallback because webgpu is unavailable
     });
 
     expect(
