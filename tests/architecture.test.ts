@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {
   createModelArchitecture,
@@ -16,6 +16,35 @@ describe('createModelArchitecture', () => {
     };
 
     expect(createModelArchitecture(descriptor)).toBe(descriptor);
+    expect(createModelArchitecture(descriptor)).toEqual(descriptor);
+  });
+
+  it('acts as a pure function without mutating the input descriptor', () => {
+    const descriptor: ModelArchitectureDescriptor = {
+      processor: { layer: 'processor', module: 'processor-module', implementation: 'processor' },
+      encoder: { layer: 'encoder', module: 'encoder-module', implementation: 'encoder' },
+      decoder: { layer: 'decoder', module: 'decoder-module', implementation: 'decoder' },
+      decoding: { layer: 'decoding', module: 'decoding-module', implementation: 'decoding' },
+      tokenizer: { layer: 'tokenizer', module: 'tokenizer-module', implementation: 'tokenizer' },
+    };
+
+    Object.freeze(descriptor);
+
+    expect(() => createModelArchitecture(descriptor)).not.toThrow();
+    expect(createModelArchitecture(descriptor)).toBe(descriptor);
+  });
+
+  it('maintains strict typing for the returned descriptor', () => {
+    const descriptor: ModelArchitectureDescriptor = {
+      processor: { layer: 'processor', module: 'processor-module', implementation: 'processor' },
+      encoder: { layer: 'encoder', module: 'encoder-module', implementation: 'encoder' },
+      decoder: { layer: 'decoder', module: 'decoder-module', implementation: 'decoder' },
+      decoding: { layer: 'decoding', module: 'decoding-module', implementation: 'decoding' },
+      tokenizer: { layer: 'tokenizer', module: 'tokenizer-module', implementation: 'tokenizer' },
+    };
+
+    const result = createModelArchitecture(descriptor);
+    expectTypeOf(result).toEqualTypeOf<ModelArchitectureDescriptor>();
   });
 
   it('preserves optional descriptor metadata', () => {
