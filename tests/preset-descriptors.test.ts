@@ -23,7 +23,9 @@ describe('built-in preset descriptors', () => {
         'google/medasr',
       ]),
     );
-    expect(options.find((option) => option.key === 'nvidia/canary-180m-flash')?.preset).toBe('canary');
+    expect(options.find((option) => option.key === 'nvidia/canary-180m-flash')?.preset).toBe(
+      'canary',
+    );
   });
 
   it('exposes Canary capabilities, controls, and loading defaults', () => {
@@ -162,6 +164,39 @@ describe('built-in preset descriptors', () => {
   });
 
   it('resolves model-specific component backend defaults and restrictions', () => {
+    // 1. Component explicitly requested in inputs
+    expect(
+      resolveBuiltInModelComponentBackends('parakeet-tdt-0.6b-v2', {
+        encoderBackend: 'wasm',
+        decoderBackend: 'wasm',
+      }),
+    ).toEqual({
+      encoderBackend: 'wasm',
+      decoderBackend: 'wasm',
+    });
+
+    // 2. Default when no backend is specified
+    expect(resolveBuiltInModelComponentBackends('parakeet-tdt-0.6b-v2')).toEqual({
+      encoderBackend: 'webgpu', // defaultEncoderBackend
+      decoderBackend: 'wasm', // defaultDecoderBackend
+    });
+
+    // 3. Global 'wasm' fallback
+    expect(
+      resolveBuiltInModelComponentBackends('parakeet-tdt-0.6b-v2', {
+        backend: 'wasm',
+      }),
+    ).toEqual({
+      encoderBackend: 'wasm',
+      decoderBackend: 'wasm',
+    });
+
+    // 4. Unknown model ID should throw
+    expect(() => resolveBuiltInModelComponentBackends('unknown-model-id')).toThrowError(
+      'Unknown built-in model "unknown-model-id".',
+    );
+
+    // 5. Existing tests for complex global backends
     expect(
       resolveBuiltInModelComponentBackends('parakeet-tdt-0.6b-v2', {
         backend: 'webgpu-hybrid',
