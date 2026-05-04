@@ -1,0 +1,4 @@
+
+## 2024-05-04 - Optimize array processing in post-processing loops
+**Learning:** Calling chained array operations like `.filter(...).map(...)` inside of loops that process long sequences (like generated word transcripts mapping back to subword tokens) scales surprisingly poorly in this V8 environment. Even though the lengths are relatively small per-word, iterating the tokens array completely twice per word generated massive hidden GC pressure from discarded arrays, blocking the main thread during real-time transcription aggregation.
+**Action:** Always identify hidden $O(N \cdot M)$ complexity when using functional array methods on intersecting data sets inside loops. Flattening these into a single $O(N)$ pass using a simple `for` loop that mutates a tightly-scoped local array prevents the intermediate allocations completely and yields measurable wins without architectural changes.
