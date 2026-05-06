@@ -1,0 +1,3 @@
+## 2025-05-06 - Optimize array mapping in transcription post-processing
+**Learning:** Nested `.filter(...).map(...)` inside another `.map(...)` introduces an O(N*M) iteration bottleneck when processing word/token mappings in transcripts, causing significant CPU time allocation for long transcription segments due to large numbers of tokens and intermediate array allocations.
+**Action:** Replace nested `.filter().map()` loops with a single-pass `for` loop over the inner array directly capturing elements into a single local array. This avoids multiple array allocations per element and drastically reduces execution time, as demonstrated by the O(N) optimizations in `lasr-ctc` and `nemo-common` mapping files.
