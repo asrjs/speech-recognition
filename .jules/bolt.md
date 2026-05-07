@@ -1,0 +1,3 @@
+## 2026-05-07 - Optimize findAnchors in FrameAlignedTokenMerger
+**Learning:** The nested loops in `findAnchors` caused O(N*M) lookup times for token streaming alignment, establishing a performance bottleneck in high-throughput audio pipelines. Extracting grouping by ID into a `Map` creates O(N) average case lookup, highlighting that V8 map allocations are measurably faster than redundant outer-inner loop searches in realtime pipelines.
+**Action:** Always consider using a `Map` array-grouping cache before executing nested element searches over token streams or temporal events with matching ids in Javascript hot paths.
