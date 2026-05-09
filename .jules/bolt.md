@@ -1,0 +1,3 @@
+## 2025-05-09 - Avoid Chained Array Methods in Post-Processing Loops
+**Learning:** In audio post-processing mapping loops (like in `lasr-ctc/mapping.ts` and `nemo-common/mapping.ts`), using nested `.filter(...).map(...)` chains to find matching `tokenIndices` for every word creates an O(N*M) performance bottleneck and severe garbage collection (GC) pressure.
+**Action:** Replace chained `.filter(...).map(...)` operations with a single-pass `for` loop over the tokens array to populate a local `tokenIndices` array directly, which improves performance and reduces GC overhead significantly, especially in large segment processing.
