@@ -23,22 +23,35 @@ export function mapLasrCtcNativeToCanonical(
     endTime: token.endTime,
     confidence: token.confidence,
   }));
-  const words: TranscriptWord[] = (nativeTranscript.words ?? []).map((word) => ({
-    index: word.index,
-    text: word.text,
-    startTime: word.startTime,
-    endTime: word.endTime,
-    confidence: word.confidence,
-    tokenIndices: tokens
-      .filter(
-        (token) =>
-          token.startTime !== undefined &&
-          token.endTime !== undefined &&
-          token.startTime >= word.startTime &&
-          token.endTime <= word.endTime,
-      )
-      .map((token) => token.index),
-  }));
+  // ⚡ Bolt: Replaced O(N*M) .filter().map() with a single-pass loop over tokens.
+  // This avoids intermediate array allocations and reduces GC pressure in hot paths.
+  const nativeWords = nativeTranscript.words ?? [];
+  const words: TranscriptWord[] = new Array(nativeWords.length);
+  for (let i = 0; i < nativeWords.length; i++) {
+    const word = nativeWords[i]!;
+    const tokenIndices: number[] = [];
+
+    for (let j = 0; j < tokens.length; j++) {
+      const token = tokens[j]!;
+      if (
+        token.startTime !== undefined &&
+        token.endTime !== undefined &&
+        token.startTime >= word.startTime &&
+        token.endTime <= word.endTime
+      ) {
+        tokenIndices.push(token.index);
+      }
+    }
+
+    words[i] = {
+      index: word.index,
+      text: word.text,
+      startTime: word.startTime,
+      endTime: word.endTime,
+      confidence: word.confidence,
+      tokenIndices,
+    };
+  }
   const segmentStart =
     words.length > 0 ? words[0]?.startTime : tokens.length > 0 ? tokens[0]?.startTime : undefined;
   const segmentEnd =

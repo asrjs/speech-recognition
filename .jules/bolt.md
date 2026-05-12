@@ -1,0 +1,3 @@
+## 2026-03-25 - Optimize Array Operations in Hot Mapping Paths
+**Learning:** Chaining array operations like `.filter(...).map(...)` inside nested iteration blocks over potentially large sequence arrays (like audio/text tokens) creates O(N*M) algorithmic complexity. Additionally, each step in the chain allocates a new intermediate array, driving up GC pressure and severely impacting performance in hot transcription post-processing paths.
+**Action:** Replace chained array operations inside hot DSP/mapping paths with single-pass `for` loops. Pre-allocate arrays where the size is known (e.g. `new Array(nativeWords.length)`) and manually push elements or update indices within the nested loop to avoid unnecessary intermediate allocations and function call overhead.
