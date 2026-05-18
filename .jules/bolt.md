@@ -1,0 +1,3 @@
+## 2024-05-24 - [O(N) Token Alignment in Streaming Merge]
+**Learning:** In `FrameAlignedTokenMerger` (`src/inference/streaming/merge.ts`), the `findAnchors` method checks for time-aligned tokens across two sequences (overlapping tokens and pending tokens) using a nested $O(N \cdot M)$ loop. In a streaming context where `processChunk` is called frequently, these arrays can grow, causing an avoidable performance bottleneck.
+**Action:** By pre-grouping `pendingTokens` into a `Map<number, FrameAlignedToken[]>` keyed by `tokenId`, the search space for matching tokens is dramatically reduced, bringing the lookup complexity down to $O(N)$ on average. This should be a standard pattern for multi-sequence token reconciliation in hot paths.
