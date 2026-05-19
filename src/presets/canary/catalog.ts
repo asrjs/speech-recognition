@@ -38,27 +38,28 @@ export const MODELS = {
   },
 } satisfies Record<string, CanaryModelConfig>;
 
+// ⚡ Bolt: Pre-compute reverse mapping for O(1) lookups by repoId
+const REPO_ID_TO_KEY = new Map<string, string>(
+  Object.entries(MODELS).map(([key, config]) => [config.repoId, key]),
+);
+
 export function getModelConfig(modelKeyOrRepoId: string): CanaryModelConfig | null {
   if (modelKeyOrRepoId in MODELS) {
     return MODELS[modelKeyOrRepoId as keyof typeof MODELS];
   }
 
-  for (const config of Object.values(MODELS)) {
-    if (config.repoId === modelKeyOrRepoId) {
-      return config;
-    }
+  // ⚡ Bolt: Replaced O(N) linear search and Object.values() allocation with O(1) reverse map lookup
+  const key = REPO_ID_TO_KEY.get(modelKeyOrRepoId);
+  if (key) {
+    return MODELS[key as keyof typeof MODELS];
   }
 
   return null;
 }
 
 export function getModelKeyFromRepoId(repoId: string): string | null {
-  for (const [key, config] of Object.entries(MODELS)) {
-    if (config.repoId === repoId) {
-      return key;
-    }
-  }
-  return null;
+  // ⚡ Bolt: Replaced O(N) linear search and Object.entries() allocation with O(1) reverse map lookup
+  return REPO_ID_TO_KEY.get(repoId) ?? null;
 }
 
 export function listModels(): string[] {
