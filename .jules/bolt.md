@@ -1,0 +1,3 @@
+## 2025-05-20 - [Transcription post-processing bottleneck]
+**Learning:** Nested `.filter().map()` chains in transcript mapping code (e.g., when finding matching `tokenIndices` for every word) create a severe O(N*M) performance bottleneck and high garbage collection (GC) pressure due to intermediate array allocations.
+**Action:** Replace nested `.filter().map()` operations with a single `for` loop that populates the resulting arrays directly. This approach significantly improves performance for large segments and reduces memory overhead.
