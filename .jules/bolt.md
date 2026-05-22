@@ -1,0 +1,3 @@
+## 2024-05-22 - [Avoid Array Method Chaining in Post-Processing]
+**Learning:** Chained `.map()` and `.filter()` operations on arrays in transcription post-processing (e.g., `src/models/whisper-seq2seq/model.ts`) cause multiple intermediate array allocations. This creates excessive garbage collection pressure and CPU overhead, especially with large segments.
+**Action:** Replace chained `.map()` and `.filter()` operations with a single `for` loop that populates target arrays directly (e.g., tokens and string parts) to avoid intermediate allocations. This is a recurring optimization pattern in this codebase.
