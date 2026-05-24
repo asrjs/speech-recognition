@@ -1,6 +1,42 @@
 import { describe, expect, it } from 'vitest';
 
-import { AudioChunk, normalizePcmInput, PcmAudioBuffer } from '../src/audio/audio.js';
+import { AudioChunk, createPassthroughSampleRatePolicy, normalizePcmInput, PcmAudioBuffer } from '../src/audio/audio.js';
+
+describe('createPassthroughSampleRatePolicy', () => {
+  it('should return a policy with the name "passthrough"', () => {
+    const policy = createPassthroughSampleRatePolicy();
+    expect(policy.name).toBe('passthrough');
+  });
+
+  describe('ensure', () => {
+    it('should return the original audio when sample rate matches target', () => {
+      const policy = createPassthroughSampleRatePolicy();
+      const input = new Float32Array([0.1, 0.2, 0.3]);
+      const audio = normalizePcmInput(input, { sampleRate: 16000 });
+      Object.freeze(audio);
+
+      const result = policy.ensure(audio, 16000);
+
+      expect(result.audio).toBe(audio);
+      expect(result.warning).toBeUndefined();
+    });
+
+    it('should return audio with a warning when sample rate does not match target', () => {
+      const policy = createPassthroughSampleRatePolicy();
+      const input = new Float32Array([0.1, 0.2, 0.3]);
+      const audio = normalizePcmInput(input, { sampleRate: 16000 });
+      Object.freeze(audio);
+
+      const result = policy.ensure(audio, 8000);
+
+      expect(result.audio).toBe(audio);
+      expect(result.warning).toBeDefined();
+      expect(result.warning?.code).toBe('audio.sample-rate-passthrough');
+      expect(result.warning?.message).toBe('Received 16000 Hz audio while 8000 Hz was requested. The passthrough policy does not resample.');
+      expect(result.warning?.recoverable).toBe(true);
+    });
+  });
+});
 
 describe('normalizePcmInput', () => {
   it('handles Float32Array with default sample rate', () => {
