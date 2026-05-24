@@ -1,6 +1,36 @@
 import { describe, expect, it } from 'vitest';
 
-import { AudioChunk, normalizePcmInput, PcmAudioBuffer } from '../src/audio/audio.js';
+import { AudioChunk, downmixToMono, normalizePcmInput, PcmAudioBuffer } from '../src/audio/audio.js';
+
+describe('downmixToMono', () => {
+  it('downmixes a multi-channel input to mono', () => {
+    const input = {
+      sampleRate: 48000,
+      numberOfChannels: 2,
+      numberOfFrames: 2,
+      durationSeconds: 2 / 48000,
+      channels: [new Float32Array([1.0, 0.5]), new Float32Array([-1.0, -0.5])],
+    };
+    const result = downmixToMono(input);
+
+    expect(result).toBeInstanceOf(PcmAudioBuffer);
+    expect(result.sampleRate).toBe(48000);
+    expect(result.numberOfChannels).toBe(1);
+    expect(result.numberOfFrames).toBe(2);
+    expect(Array.from(result.channels[0]!)).toEqual([0, 0]);
+  });
+
+  it('preserves mono input and applies options', () => {
+    const input = new Float32Array([0.5, 0.25]);
+    const result = downmixToMono(input, { sampleRate: 8000 });
+
+    expect(result).toBeInstanceOf(PcmAudioBuffer);
+    expect(result.sampleRate).toBe(8000);
+    expect(result.numberOfChannels).toBe(1);
+    expect(result.numberOfFrames).toBe(2);
+    expect(Array.from(result.channels[0]!)).toEqual([0.5, 0.25]);
+  });
+});
 
 describe('normalizePcmInput', () => {
   it('handles Float32Array with default sample rate', () => {
