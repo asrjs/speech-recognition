@@ -79,8 +79,24 @@ export class LayeredAudioBuffer<TLayers extends Record<string, unknown> = Record
     return entry;
   }
 
+  private getEntryBySequence(sequence: number): LayeredAudioBufferEntry<TLayers> | undefined {
+    if (this.entries.length === 0) {
+      return undefined;
+    }
+
+    const firstEntry = this.entries[0] as LayeredAudioBufferEntry<TLayers>;
+    const firstSequence = firstEntry.chunk.sequence ?? 0;
+    const index = sequence - firstSequence;
+
+    if (index >= 0 && index < this.entries.length) {
+      return this.entries[index];
+    }
+
+    return undefined;
+  }
+
   setLayer<TKey extends keyof TLayers>(sequence: number, key: TKey, value: TLayers[TKey]): void {
-    const entry = this.entries.find((candidate) => candidate.chunk.sequence === sequence);
+    const entry = this.getEntryBySequence(sequence);
     if (!entry) {
       throw new Error(`LayeredAudioBuffer could not find chunk with sequence ${sequence}.`);
     }
@@ -89,7 +105,7 @@ export class LayeredAudioBuffer<TLayers extends Record<string, unknown> = Record
   }
 
   getLayer<TKey extends keyof TLayers>(sequence: number, key: TKey): TLayers[TKey] | undefined {
-    const entry = this.entries.find((candidate) => candidate.chunk.sequence === sequence);
+    const entry = this.getEntryBySequence(sequence);
     return entry?.layers[key];
   }
 
