@@ -10,6 +10,7 @@ import {
 } from './streaming-detector.js';
 import {
   DEFAULT_STREAMING_DETECTOR_CONFIG,
+  STREAMING_VAD_BACKENDS,
   mergeStreamingConfig,
   resolveStreamingProfileId,
   type StreamingDetectorConfig,
@@ -20,6 +21,12 @@ import {
   type TenVadAdapterConfig,
   type TenVadAdapterOptions,
 } from './ten-vad-browser.js';
+import {
+  FireRedVadAdapter,
+  resolveSupportedFireRedVadHopSize,
+  type FireRedVadAdapterConfig,
+  type FireRedVadAdapterOptions,
+} from './firered-vad-browser.js';
 import {
   VoiceActivityProbabilityBuffer,
   type VoiceActivityProbabilityBufferOptions,
@@ -35,9 +42,9 @@ import type { StreamingDetectorConfigOverrides } from './streaming-config.js';
 
 export interface BrowserRealtimeStarterOptions extends StreamingSpeechDetectorOptions {
   readonly bufferDurationSeconds?: number;
-  readonly fireRedVadConfig?: TenVadAdapterConfig;
+  readonly fireRedVadConfig?: FireRedVadAdapterConfig;
   readonly tenVadConfig?: TenVadAdapterConfig;
-  readonly fireRedVadOptions?: TenVadAdapterOptions;
+  readonly fireRedVadOptions?: FireRedVadAdapterOptions;
   readonly tenVadOptions?: TenVadAdapterOptions;
   readonly controllerOptions?: Omit<
     RealtimeTranscriptionControllerOptions,
@@ -87,7 +94,7 @@ export interface BrowserRealtimePlot {
 
 export interface BrowserRealtimeStarter {
   readonly detector: StreamingSpeechDetector;
-  readonly tenVad: TenVadAdapter;
+  readonly tenVad: TenVadAdapter | FireRedVadAdapter;
   readonly vadBuffer: VoiceActivityProbabilityBuffer;
   readonly controller: RealtimeTranscriptionController | null;
   subscribe(listener: (event: StreamingSpeechDetectorEvent) => void): () => void;
@@ -110,18 +117,22 @@ export interface BrowserRealtimeStarter {
 function resolveTenVadConfig(
   resolvedConfig: StreamingDetectorConfig,
   options: BrowserRealtimeStarterOptions,
-): TenVadAdapterConfig {
-  const base = options.fireRedVadConfig ?? options.tenVadConfig ?? {};
+): TenVadAdapterConfig | FireRedVadAdapterConfig {
+  const base =
+    resolvedConfig.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
+      ? options.fireRedVadConfig ?? {}
+      : options.tenVadConfig ?? {};
   const sampleRate = resolvedConfig.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE;
-  const chunkDurationMs = resolvedConfig.chunkDurationMs;
+  const hopDurationMs = resolvedConfig.vadHopDurationMs;
+  const preferredHopSize = resolveStreamingTimelineChunkFrames(sampleRate, hopDurationMs);
+  const resolveSupportedHopSize =
+    resolvedConfig.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
+      ? resolveSupportedFireRedVadHopSize
+      : resolveSupportedTenVadHopSize;
   return {
     ...base,
     sampleRate,
-    hopSize:
-      resolveSupportedTenVadHopSize(
-        sampleRate,
-        base.hopSize ?? resolveStreamingTimelineChunkFrames(sampleRate, chunkDurationMs),
-      ),
+    hopSize: resolveSupportedHopSize(sampleRate, base.hopSize ?? preferredHopSize),
     threshold: base.threshold ?? resolvedConfig.tenVadThreshold ?? 0.5,
     confirmationWindowMs:
       base.confirmationWindowMs ??
@@ -147,20 +158,48 @@ function createVadBuffer(
   resolvedConfig: StreamingDetectorConfig,
   tenVadConfig: ReturnType<typeof resolveTenVadConfig>,
 ): VoiceActivityProbabilityBuffer {
+  const visualBucketFrames = resolveStreamingTimelineChunkFrames(
+    resolvedConfig.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
+    resolvedConfig.vadVisualBucketDurationMs,
+  );
   const bufferOptions: VoiceActivityProbabilityBufferOptions = {
     sampleRate: resolvedConfig.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
     maxDurationSeconds:
       (resolvedConfig.ringBufferDurationMs ??
         DEFAULT_STREAMING_DETECTOR_CONFIG.ringBufferDurationMs) / 1000,
-    hopFrames:
-      tenVadConfig.hopSize ??
-      resolveStreamingTimelineChunkFrames(
-        resolvedConfig.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
-        resolvedConfig.chunkDurationMs,
-      ),
+    hopFrames: visualBucketFrames,
     speechThreshold: tenVadConfig.threshold ?? 0.5,
   };
   return new VoiceActivityProbabilityBuffer(bufferOptions);
+}
+
+function appendAlignedVadProbabilities(
+  vadBuffer: VoiceActivityProbabilityBuffer,
+  bucketMaxima: Map<number, number>,
+  probabilities: Float32Array | readonly number[],
+  sourceStartFrame: number,
+  sourceHopFrames: number,
+): void {
+  const targetBucketFrames = vadBuffer.hopFrames;
+  const safeSourceHopFrames = Math.max(1, Math.floor(sourceHopFrames));
+
+  for (let index = 0; index < probabilities.length; index += 1) {
+    const sourceFrame = sourceStartFrame + index * safeSourceHopFrames;
+    const bucketIndex = Math.max(0, Math.floor(sourceFrame / targetBucketFrames));
+    const probability = Math.max(
+      bucketMaxima.get(bucketIndex) ?? 0,
+      probabilities[index] ?? 0,
+    );
+    bucketMaxima.set(bucketIndex, probability);
+    vadBuffer.appendProbabilitiesAtFrame([probability], bucketIndex * targetBucketFrames);
+  }
+
+  const baseEntry = vadBuffer.getBaseEntry();
+  for (const bucketIndex of bucketMaxima.keys()) {
+    if (bucketIndex < baseEntry) {
+      bucketMaxima.delete(bucketIndex);
+    }
+  }
 }
 
 function buildAlignedPlot(
@@ -276,33 +315,97 @@ export function createBrowserRealtimeStarter(
       'createBrowserRealtimeStarter requires transcribe when controllerOptions are provided.',
     );
   }
-  const resolvedConfig = mergeStreamingConfig(
-    options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true),
+  let activeProfileId = options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true);
+  let resolvedConfig = mergeStreamingConfig(
+    activeProfileId,
     options.config,
   );
-  const tenVadConfig = resolveTenVadConfig(resolvedConfig, options);
-  const tenVadOptions = options.fireRedVadOptions ?? options.tenVadOptions;
-  const tenVad = new TenVadAdapter(tenVadConfig, tenVadOptions);
-  const vadBuffer = createVadBuffer(resolvedConfig, tenVadConfig);
+  let tenVadConfig = resolveTenVadConfig(resolvedConfig, options);
+  let vadBuffer = createVadBuffer(resolvedConfig, tenVadConfig);
+  let vadBucketMaxima = new Map<number, number>();
+  let tenVadUnsubscribe: (() => void) | null = null;
+
+  const resolveTenVadOptions = (
+    config: StreamingDetectorConfig,
+  ): TenVadAdapterOptions | FireRedVadAdapterOptions | undefined =>
+    config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
+      ? options.fireRedVadOptions
+      : options.tenVadOptions;
+
+  let tenVadOptions = resolveTenVadOptions(resolvedConfig);
+  let tenVad: TenVadAdapter | FireRedVadAdapter;
+
+  const subscribeTenVadBuffer = (
+    adapter: TenVadAdapter | FireRedVadAdapter,
+  ): void => {
+    tenVadUnsubscribe?.();
+    tenVadUnsubscribe = adapter.subscribe((event) => {
+      if (event.type === 'result') {
+        const payload = event.payload as
+          | {
+              readonly probabilities?: Float32Array | readonly number[];
+              readonly globalSampleOffset?: number;
+            }
+          | null
+          | undefined;
+        const probabilities = payload?.probabilities;
+        if (probabilities instanceof Float32Array || Array.isArray(probabilities)) {
+          const sourceHopFrames =
+            tenVadConfig.hopSize ??
+            resolveStreamingTimelineChunkFrames(
+              resolvedConfig.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
+              resolvedConfig.vadHopDurationMs,
+            );
+          appendAlignedVadProbabilities(
+            vadBuffer,
+            vadBucketMaxima,
+            probabilities,
+            typeof payload?.globalSampleOffset === 'number'
+              ? payload.globalSampleOffset
+              : vadBuffer.getLatestFrame(),
+            sourceHopFrames,
+          );
+        }
+      }
+    });
+  };
+
+  let tenVadBackend = resolvedConfig.vadBackend;
+
+  const createTenVad = (config: Record<string, unknown> = {}): TenVadAdapter | FireRedVadAdapter => {
+    const vadBackend =
+      config.vadBackend === STREAMING_VAD_BACKENDS.TEN_VAD ||
+      config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
+        ? config.vadBackend
+        : resolvedConfig.vadBackend;
+    const adapterConfigSource = {
+      ...resolvedConfig,
+      vadBackend,
+    };
+    tenVadConfig = resolveTenVadConfig(adapterConfigSource, options);
+    tenVadOptions = resolveTenVadOptions(adapterConfigSource);
+    const adapter =
+      vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
+        ? new FireRedVadAdapter(tenVadConfig as FireRedVadAdapterConfig, tenVadOptions as FireRedVadAdapterOptions)
+        : new TenVadAdapter(tenVadConfig as TenVadAdapterConfig, tenVadOptions as TenVadAdapterOptions);
+    tenVad = adapter;
+    tenVadBackend = vadBackend;
+    subscribeTenVadBuffer(adapter);
+    return adapter;
+  };
+
+  tenVad = createTenVad({ vadBackend: resolvedConfig.vadBackend });
   const detector = new StreamingSpeechDetector({
     profileId: options.profileId,
     config: resolvedConfig,
     isRealtimeEouModel: options.isRealtimeEouModel,
-    tenVadFactory: () => tenVad,
-    tenVadOptions,
-  });
-
-  const tenVadUnsubscribe = tenVad.subscribe((event) => {
-    if (event.type === 'result') {
-      const payload = event.payload as
-        | { readonly probabilities?: Float32Array | readonly number[] }
-        | null
-        | undefined;
-      const probabilities = payload?.probabilities;
-      if (probabilities instanceof Float32Array || Array.isArray(probabilities)) {
-        vadBuffer.appendProbabilities(probabilities);
+    tenVadFactory: (config) => {
+      if (tenVad && config.vadBackend === resolvedConfig.vadBackend && tenVadBackend === config.vadBackend) {
+        return tenVad;
       }
-    }
+      return createTenVad(config);
+    },
+    tenVadOptions,
   });
 
   const controller = options.transcribe
@@ -316,8 +419,12 @@ export function createBrowserRealtimeStarter(
 
   return {
     detector,
-    tenVad,
-    vadBuffer,
+    get tenVad() {
+      return tenVad;
+    },
+    get vadBuffer() {
+      return vadBuffer;
+    },
     controller,
     subscribe(listener: (event: StreamingSpeechDetectorEvent) => void): () => void {
       return detector.subscribe(listener);
@@ -328,6 +435,7 @@ export function createBrowserRealtimeStarter(
         controller.reset();
       }
       await tenVad.reset();
+      vadBucketMaxima.clear();
       vadBuffer.reset();
     },
     processChunk(
@@ -347,7 +455,49 @@ export function createBrowserRealtimeStarter(
         readonly profileId?: string;
       } = {},
     ): void {
+      activeProfileId = partial.profileId ?? activeProfileId;
+      const nextOverrides: Record<string, unknown> = {
+        ...resolvedConfig,
+        ...partial,
+      };
+      delete nextOverrides.profileId;
+      if (
+        Object.prototype.hasOwnProperty.call(partial, 'vadBackend')
+        && !Object.prototype.hasOwnProperty.call(partial, 'vadHopDurationMs')
+      ) {
+        delete nextOverrides.vadHopDurationMs;
+      }
+      if (
+        Object.prototype.hasOwnProperty.call(partial, 'vadBackend')
+        && !Object.prototype.hasOwnProperty.call(partial, 'vadVisualBucketDurationMs')
+      ) {
+        delete nextOverrides.vadVisualBucketDurationMs;
+      }
+      const previousConfig = resolvedConfig;
+      resolvedConfig = mergeStreamingConfig(
+        activeProfileId,
+        nextOverrides as StreamingDetectorConfigOverrides,
+      );
+      tenVadConfig = resolveTenVadConfig(resolvedConfig, options);
+      tenVadOptions = resolveTenVadOptions(resolvedConfig);
+      if (
+        previousConfig.sampleRate !== resolvedConfig.sampleRate ||
+        previousConfig.ringBufferDurationMs !== resolvedConfig.ringBufferDurationMs ||
+        previousConfig.vadVisualBucketDurationMs !== resolvedConfig.vadVisualBucketDurationMs ||
+        previousConfig.tenVadThreshold !== resolvedConfig.tenVadThreshold
+      ) {
+        vadBuffer = createVadBuffer(resolvedConfig, tenVadConfig);
+        vadBucketMaxima = new Map<number, number>();
+      }
       detector.updateConfig(partial);
+      if (
+        !resolvedConfig.tenVadEnabled
+        && (previousConfig.tenVadEnabled || previousConfig.vadBackend !== resolvedConfig.vadBackend)
+      ) {
+        const previousTenVad = tenVad;
+        createTenVad({ vadBackend: resolvedConfig.vadBackend });
+        void previousTenVad.dispose().catch(() => undefined);
+      }
     },
     getSnapshot(): BrowserRealtimeStarterSnapshot {
       const snapshot = detector.getSnapshot();
@@ -371,7 +521,7 @@ export function createBrowserRealtimeStarter(
       };
     },
     async dispose(): Promise<void> {
-      tenVadUnsubscribe();
+      tenVadUnsubscribe?.();
       await detector.dispose();
       if (controller) {
         controller.reset();

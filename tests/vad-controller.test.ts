@@ -27,6 +27,25 @@ describe('voice activity timeline', () => {
 });
 
 describe('voice activity probability buffer', () => {
+  it('writes probabilities at absolute frame positions for aligned visual timelines', () => {
+    const buffer = new VoiceActivityProbabilityBuffer({
+      sampleRate: 16000,
+      maxDurationSeconds: 1,
+      hopFrames: 320,
+      speechThreshold: 0.5,
+    });
+
+    buffer.appendProbabilitiesAtFrame([0.8], 640);
+
+    expect(buffer.getLatestFrame()).toBe(960);
+    expect(buffer.getTimeline(0, 1280, 4)).toEqual([
+      expect.objectContaining({ startFrame: 0, endFrame: 320, probability: 0 }),
+      expect.objectContaining({ startFrame: 320, endFrame: 640, probability: 0 }),
+      expect.objectContaining({ startFrame: 640, endFrame: 960, probability: expect.closeTo(0.8) }),
+      expect.objectContaining({ startFrame: 960, endFrame: 1280, probability: 0 }),
+    ]);
+  });
+
   it('tracks speech ranges, silence tails, and boundary search across hop-sized entries', () => {
     const buffer = new VoiceActivityProbabilityBuffer({
       sampleRate: 4,

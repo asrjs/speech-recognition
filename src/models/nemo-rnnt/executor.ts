@@ -12,6 +12,7 @@ import type {
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
 import type { NemoDecodeContext } from '../nemo-common/index.js';
+import { hasHuggingFaceExternalDataFile } from '../nemo-common/huggingface-artifacts.js';
 import {
   createOrtSession,
   initOrt,
@@ -182,6 +183,12 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
     const preprocessorFilename = artifacts.preprocessorUrl
       ? artifacts.preprocessorUrl.split('/').pop()
       : undefined;
+    const hasEncoderData =
+      Boolean(artifacts.encoderDataUrl) ||
+      (await hasHuggingFaceExternalDataFile(source.repoId, revision, artifacts.encoderFilename));
+    const hasDecoderData =
+      Boolean(artifacts.decoderDataUrl) ||
+      (await hasHuggingFaceExternalDataFile(source.repoId, revision, artifacts.decoderFilename));
 
     return {
       ...artifacts,
@@ -189,10 +196,10 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       decoderUrl: (await resolveFile(artifacts.decoderFilename)) ?? artifacts.decoderUrl,
       tokenizerUrl: (await resolveFile('vocab.txt')) ?? artifacts.tokenizerUrl,
       preprocessorUrl: (await resolveFile(preprocessorFilename)) ?? artifacts.preprocessorUrl,
-      encoderDataUrl: artifacts.encoderDataUrl && artifacts.encoderFilename
+      encoderDataUrl: hasEncoderData && artifacts.encoderFilename
         ? await resolveFile(`${artifacts.encoderFilename}.data`)
         : artifacts.encoderDataUrl,
-      decoderDataUrl: artifacts.decoderDataUrl && artifacts.decoderFilename
+      decoderDataUrl: hasDecoderData && artifacts.decoderFilename
         ? await resolveFile(`${artifacts.decoderFilename}.data`)
         : artifacts.decoderDataUrl,
     };

@@ -26,6 +26,14 @@ function hasIndexedDb(): boolean {
   return typeof indexedDB !== 'undefined';
 }
 
+function isNotFoundIndexedDbError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  const candidate = error as { readonly name?: unknown };
+  return candidate.name === 'NotFoundError';
+}
+
 const CACHE_DB_NAME = 'asrjs-cache-db';
 const CACHE_STORE_NAME = 'asset-cache';
 const CACHE_DB_VERSION = 2;
@@ -97,7 +105,7 @@ export class IndexedDbAssetCache implements AssetCache {
         request.onsuccess = () => resolve(request.result);
       });
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'NotFoundError') {
+      if (isNotFoundIndexedDbError(error)) {
         this.resetDb();
         return null;
       }
@@ -133,7 +141,7 @@ export class IndexedDbAssetCache implements AssetCache {
         request.onsuccess = () => resolve();
       });
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'NotFoundError') {
+      if (isNotFoundIndexedDbError(error)) {
         this.resetDb();
         return;
       }

@@ -29,9 +29,13 @@ export async function loadBinaryResource(
   }
   const key = toCacheKey(source);
   if (cache) {
-    const cached = await cache.get(key);
-    if (cached) {
-      return cached.bytes;
+    try {
+      const cached = await cache.get(key);
+      if (cached) {
+        return cached.bytes;
+      }
+    } catch {
+      // Cache issues should not block model loading.
     }
   }
 
@@ -45,7 +49,11 @@ export async function loadBinaryResource(
   }
 
   if (cache) {
-    await cache.set(key, { bytes });
+    try {
+      await cache.set(key, { bytes });
+    } catch {
+      // Cache issues should not block model loading.
+    }
   }
   return bytes;
 }

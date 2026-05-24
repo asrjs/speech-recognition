@@ -22,6 +22,7 @@ import {
 import {
   PARAKEET_SEGMENTATION_PRESETS,
   STREAMING_GATE_MODES,
+  STREAMING_VAD_BACKENDS,
   STREAMING_PROFILE_IDS,
   STREAMING_PRESETS,
   getStreamingPreset,
@@ -34,6 +35,7 @@ import {
   type StreamingDetectorConfigOverrides,
   type StreamingDetectorPreset,
   type StreamingGateMode,
+  type StreamingVadBackend,
   type StreamingProfileId,
 } from './streaming-config.js';
 import { amplitudeToDbfs } from './noise-floor.js';
@@ -42,6 +44,7 @@ export {
   DEFAULT_ROUGH_GATE_CONFIG,
   PARAKEET_SEGMENTATION_PRESETS,
   STREAMING_GATE_MODES,
+  STREAMING_VAD_BACKENDS,
   STREAMING_PROFILE_IDS,
   STREAMING_PRESETS,
   getStreamingPreset,
@@ -58,6 +61,7 @@ export type {
   StreamingDetectorConfigOverrides,
   StreamingDetectorPreset,
   StreamingGateMode,
+  StreamingVadBackend,
   StreamingProfileId,
 };
 
@@ -146,6 +150,7 @@ export interface StreamingSpeechDetectorSnapshot {
   readonly gate: {
     readonly requestedMode: StreamingGateMode;
     readonly effectiveMode: StreamingGateMode;
+    readonly vadBackend: StreamingVadBackend;
     readonly tenVadReady: boolean;
   };
   readonly rough: Record<string, unknown> & {
@@ -316,10 +321,11 @@ export class StreamingSpeechDetector {
 
   private buildTenVadConfig(): Record<string, unknown> {
     return {
+      vadBackend: this.config.vadBackend,
       sampleRate: this.sampleRate,
       hopSize: resolveStreamingTimelineChunkFrames(
         this.sampleRate,
-        this.config.chunkDurationMs,
+        this.config.vadHopDurationMs,
       ),
       threshold: this.config.tenVadThreshold,
       confirmationWindowMs: this.config.tenVadConfirmationWindowMs,
@@ -781,8 +787,21 @@ export class StreamingSpeechDetector {
       ...partial,
     };
     delete nextOverrides.profileId;
+    if (
+      Object.prototype.hasOwnProperty.call(partial, 'vadBackend')
+      && !Object.prototype.hasOwnProperty.call(partial, 'vadHopDurationMs')
+    ) {
+      delete nextOverrides.vadHopDurationMs;
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(partial, 'vadBackend')
+      && !Object.prototype.hasOwnProperty.call(partial, 'vadVisualBucketDurationMs')
+    ) {
+      delete nextOverrides.vadVisualBucketDurationMs;
+    }
 
     const previousTenVadEnabled = this.config.tenVadEnabled;
+    const previousVadBackend = this.config.vadBackend;
     this.profileId = nextProfileId;
     this.config = mergeStreamingConfig(nextProfileId, nextOverrides);
     this.roughGate.updateConfig(this.buildRoughGateConfig());
@@ -790,6 +809,15 @@ export class StreamingSpeechDetector {
     if (!previousTenVadEnabled && this.config.tenVadEnabled) {
       const nextTenVad = this.createTenVad(this.buildTenVadConfig(), this.tenVadOptions);
       this.replaceTenVad(nextTenVad);
+    } else if (
+      previousTenVadEnabled
+      && this.config.tenVadEnabled
+      && previousVadBackend !== this.config.vadBackend
+    ) {
+      const previousTenVad = this.tenVad;
+      const nextTenVad = this.createTenVad(this.buildTenVadConfig(), this.tenVadOptions);
+      this.replaceTenVad(nextTenVad);
+      void previousTenVad?.dispose().catch(() => undefined);
     } else if (previousTenVadEnabled && !this.config.tenVadEnabled) {
       const previousTenVad = this.tenVad;
       this.replaceTenVad(null);
@@ -842,6 +870,7 @@ export class StreamingSpeechDetector {
       gate: {
         requestedMode: this.config.gateMode,
         effectiveMode: this.resolveEffectiveGateMode(),
+        vadBackend: this.config.vadBackend,
         tenVadReady: this.isTenVadReady(),
       },
       rough: this.lastMetrics
@@ -928,16 +957,29 @@ export class StreamingSpeechDetector {
     const warnings: string[] = [];
     const tenVadStatus = this.tenVad?.getStatus();
 
+    const backendName =
+      this.config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
+        ? 'FireRed VAD'
+        : 'TEN-VAD';
+
     if (tenVadStatus?.state === 'degraded') {
-      warnings.push('FireRed VAD is degraded. Runtime plots may be incomplete.');
+      const detail =
+        typeof tenVadStatus.error === 'string' && tenVadStatus.error.length > 0
+          ? ` (${tenVadStatus.error})`
+          : '';
+      warnings.push(`${backendName} is degraded. Runtime plots may be incomplete.${detail}`);
     }
 
     if (this.config.tenVadEnabled) {
-      warnings.push('Speech segmentation is running on the rough gate. FireRed VAD is diagnostics-only.');
+      warnings.push(`Speech segmentation is running on the rough gate. ${backendName} is diagnostics-only.`);
     }
 
     if (this.config.gateMode !== STREAMING_GATE_MODES.ROUGH_ONLY) {
-      warnings.push('Requested FireRed-first gating is ignored by this Parakeet-style detector port.');
+      const backendLabel =
+        this.config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
+          ? 'FireRed-first'
+          : 'TEN-VAD-first';
+      warnings.push(`Requested ${backendLabel} gating is ignored by this Parakeet-style detector port.`);
     }
 
     if (!this.config.foregroundFilterEnabled) {

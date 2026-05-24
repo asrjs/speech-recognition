@@ -503,6 +503,10 @@ Built-in providers/caches include:
 - IndexedDB cache
 - Node filesystem
 
+FireRed VAD degraded troubleshooting:
+
+- [`docs/FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md`](./docs/FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md)
+
 ## Lifecycle
 
 `dispose()` is the primary lifecycle contract.

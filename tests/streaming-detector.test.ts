@@ -176,6 +176,7 @@ describe('StreamingSpeechDetector', () => {
         analysisWindowMs: 16,
         energySmoothingWindows: 1,
         tenVadEnabled: true,
+        vadBackend: 'ten-vad',
       },
       tenVadFactory: () => {
         fakeTenVad = new FakeTenVad() as any;

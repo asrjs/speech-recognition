@@ -105,6 +105,32 @@ export class VoiceActivityProbabilityBuffer implements StreamingActivityBuffer {
     return this.getLatestFrame();
   }
 
+  appendProbabilitiesAtFrame(
+    probabilities: Float32Array | readonly number[],
+    startFrame: number,
+  ): number {
+    const startEntry = Math.max(0, Math.round(Math.max(0, startFrame) / this.hopFrames));
+    if (startEntry - this.nextEntryIndex >= this.maxEntries) {
+      this.buffer.fill(0);
+    }
+    const gapEndEntry = Math.min(startEntry, this.nextEntryIndex + this.maxEntries);
+    for (let entryIndex = this.nextEntryIndex; entryIndex < gapEndEntry; entryIndex += 1) {
+      this.buffer[entryIndex % this.maxEntries] = 0;
+    }
+
+    for (let index = 0; index < probabilities.length; index += 1) {
+      const entryIndex = startEntry + index;
+      const baseEntry = this.getBaseEntry();
+      if (entryIndex < baseEntry) {
+        continue;
+      }
+      this.buffer[entryIndex % this.maxEntries] = probabilities[index] ?? 0;
+      this.nextEntryIndex = Math.max(this.nextEntryIndex, entryIndex + 1);
+    }
+
+    return this.getLatestFrame();
+  }
+
   getLatestFrame(): number {
     return this.nextEntryIndex * this.hopFrames;
   }

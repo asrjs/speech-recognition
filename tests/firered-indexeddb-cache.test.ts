@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { IndexedDbAssetCache } from '../src/io/cache.js';
+import { IndexedDbAssetCache } from '../src/runtime/firered-vad/core/asset-cache.js';
 
 type OpenRequestLike = {
   result: unknown;
@@ -44,8 +44,8 @@ afterEach(() => {
   }
 });
 
-describe('IndexedDbAssetCache', () => {
-  it('recovers from a stale database that is missing the asset-cache store', async () => {
+describe('FireRed IndexedDbAssetCache', () => {
+  it('recovers from stale databases missing the asset-cache store', async () => {
     let hasStore = false;
     const store: FakeStore = {
       get: () => {

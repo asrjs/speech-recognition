@@ -13,6 +13,8 @@ const DEFAULT_TEN_VAD_MIN_SPEECH_DURATION_MS = 240;
 const DEFAULT_TEN_VAD_MIN_SILENCE_DURATION_MS = 80;
 const DEFAULT_TEN_VAD_SPEECH_PADDING_CHUNKS = 3;
 const DEFAULT_ENERGY_THRESHOLD = 0.08;
+const DEFAULT_FIRERED_VAD_HOP_DURATION_MS = 10;
+const DEFAULT_FIRERED_VAD_VISUAL_BUCKET_DURATION_MS = 20;
 
 export const PARAKEET_SEGMENTATION_PRESETS = {
   FAST: {
@@ -72,10 +74,21 @@ export const STREAMING_GATE_MODES = {
 export type StreamingGateMode =
   (typeof STREAMING_GATE_MODES)[keyof typeof STREAMING_GATE_MODES];
 
+export const STREAMING_VAD_BACKENDS = {
+  TEN_VAD: 'ten-vad',
+  FIRERED_VAD: 'firered-vad',
+} as const;
+
+export type StreamingVadBackend =
+  (typeof STREAMING_VAD_BACKENDS)[keyof typeof STREAMING_VAD_BACKENDS];
+
 export interface StreamingDetectorConfig {
   readonly sampleRate: number;
   readonly chunkDurationMs: number;
   readonly gateMode: StreamingGateMode;
+  readonly vadBackend: StreamingVadBackend;
+  readonly vadHopDurationMs: number;
+  readonly vadVisualBucketDurationMs: number;
   readonly ringBufferDurationMs: number;
   readonly analysisWindowMs: number;
   readonly energySmoothingDurationMs: number;
@@ -146,6 +159,7 @@ function deriveStreamingConfig(
   config: Partial<StreamingDetectorConfig> = {},
 ): StreamingDetectorConfig {
   const sampleRate = config.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE;
+  const vadBackend = config.vadBackend ?? STREAMING_VAD_BACKENDS.FIRERED_VAD;
   const chunkDurationMs = resolveStreamingTimelineChunkDurationMs(
     config.chunkDurationMs ?? STREAMING_TIMELINE_CHUNK_MS,
   );
@@ -189,6 +203,15 @@ function deriveStreamingConfig(
     sampleRate,
     chunkDurationMs,
     gateMode: config.gateMode ?? STREAMING_GATE_MODES.ROUGH_ONLY,
+    vadBackend,
+    vadHopDurationMs:
+      vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
+        ? DEFAULT_FIRERED_VAD_HOP_DURATION_MS
+        : chunkDurationMs,
+    vadVisualBucketDurationMs:
+      vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
+        ? DEFAULT_FIRERED_VAD_VISUAL_BUCKET_DURATION_MS
+        : chunkDurationMs,
     ringBufferDurationMs: alignDuration(config.ringBufferDurationMs ?? 12000),
     analysisWindowMs,
     energySmoothingDurationMs: resolvedEnergySmoothingDurationMs,
@@ -410,6 +433,15 @@ export function mergeStreamingConfig(
     !hasOwnConfigValue(normalizedOverrides, 'tenVadSpeechPaddingMs')
   ) {
     delete presetConfig.tenVadSpeechPaddingMs;
+  }
+
+  if (hasOwnConfigValue(normalizedOverrides, 'vadBackend')) {
+    if (!hasOwnConfigValue(normalizedOverrides, 'vadHopDurationMs')) {
+      delete presetConfig.vadHopDurationMs;
+    }
+    if (!hasOwnConfigValue(normalizedOverrides, 'vadVisualBucketDurationMs')) {
+      delete presetConfig.vadVisualBucketDurationMs;
+    }
   }
 
   return deriveStreamingConfig({

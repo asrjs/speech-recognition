@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  FireRedVadAdapter,
   TenVadAdapter,
+  resolveDefaultFireRedVadModelUrls,
   resolveDefaultTenVadAssetUrls,
+  resolveFireRedVadModelUrls,
+  resolveSupportedFireRedVadHopSize,
   resolveSupportedTenVadHopSize,
   resolveTenVadAssetUrls,
 } from '@asrjs/speech-recognition/browser';
@@ -59,7 +63,7 @@ class FakeWorker {
 }
 
 describe('TenVadAdapter', () => {
-  it('resolves default FireRed model URLs without adding a fallback loop', () => {
+  it('resolves default TEN-VAD asset URLs without adding a fallback loop', () => {
     const defaults = resolveDefaultTenVadAssetUrls();
     const resolved = resolveTenVadAssetUrls();
 
@@ -69,23 +73,22 @@ describe('TenVadAdapter', () => {
     expect(resolved.fallbackWasmUrl).toBeNull();
   });
 
-  it('resolves FireRed model URLs from assetBaseUrl overrides', () => {
+  it('resolves TEN-VAD asset URLs from assetBaseUrl overrides', () => {
+    const defaults = resolveDefaultTenVadAssetUrls();
     const resolved = resolveTenVadAssetUrls({
-      assetBaseUrl: 'https://example.com/vendor/firered-vad/',
+      assetBaseUrl: 'https://example.com/vendor/ten-vad/',
     });
 
-    expect(resolved.scriptUrl).toBe(
-      'https://example.com/vendor/firered-vad/fireredvad_stream_vad_with_cache.onnx',
-    );
-    expect(resolved.wasmUrl).toBe('https://example.com/vendor/firered-vad/cmvn.json');
-    expect(resolved.fallbackScriptUrl).toBeNull();
-    expect(resolved.fallbackWasmUrl).toBeNull();
+    expect(resolved.scriptUrl).toBe('https://example.com/vendor/ten-vad/ten_vad.js');
+    expect(resolved.wasmUrl).toBe('https://example.com/vendor/ten-vad/ten_vad.wasm');
+    expect(resolved.fallbackScriptUrl).toBe(defaults.scriptUrl);
+    expect(resolved.fallbackWasmUrl).toBe(defaults.wasmUrl);
   });
 
-  it('normalizes unsupported preferred hop sizes to FireRed 10ms hops', () => {
-    expect(resolveSupportedTenVadHopSize(16000, 512)).toBe(160);
+  it('normalizes preferred hop sizes to TEN-VAD supported hops', () => {
+    expect(resolveSupportedTenVadHopSize(16000, 512)).toBe(256);
     expect(resolveSupportedTenVadHopSize(16000, 200)).toBe(160);
-    expect(resolveSupportedTenVadHopSize(48000)).toBe(480);
+    expect(resolveSupportedTenVadHopSize(48000)).toBe(768);
   });
 
   it('handles init, process, reset, and dispose with aligned frame offsets', async () => {
@@ -190,6 +193,79 @@ describe('TenVadAdapter', () => {
 
     expect(adapter.getStatus().probability).toBe(0);
     expect(adapter.getStatus().speaking).toBe(false);
+
+    await adapter.dispose();
+  });
+});
+
+describe('FireRedVadAdapter', () => {
+  it('resolves default FireRed model URLs without adding a fallback loop', () => {
+    const defaults = resolveDefaultFireRedVadModelUrls();
+    const resolved = resolveFireRedVadModelUrls();
+
+    expect(resolved.scriptUrl).toBe(defaults.scriptUrl);
+    expect(resolved.wasmUrl).toBe(defaults.wasmUrl);
+    expect(resolved.fallbackScriptUrl).toBeNull();
+    expect(resolved.fallbackWasmUrl).toBeNull();
+  });
+
+  it('resolves FireRed model URLs from assetBaseUrl overrides', () => {
+    const resolved = resolveFireRedVadModelUrls({
+      assetBaseUrl: 'https://example.com/vendor/firered-vad/',
+    });
+
+    expect(resolved.scriptUrl).toBe(
+      'https://example.com/vendor/firered-vad/fireredvad_stream_vad_with_cache.onnx',
+    );
+    expect(resolved.wasmUrl).toBe('https://example.com/vendor/firered-vad/cmvn.json');
+    expect(resolved.fallbackScriptUrl).toBeNull();
+    expect(resolved.fallbackWasmUrl).toBeNull();
+  });
+
+  it('normalizes unsupported preferred hop sizes to FireRed 10ms hops', () => {
+    expect(resolveSupportedFireRedVadHopSize(16000, 512)).toBe(160);
+    expect(resolveSupportedFireRedVadHopSize(16000, 200)).toBe(160);
+    expect(resolveSupportedFireRedVadHopSize(48000)).toBe(480);
+  });
+
+  it('uses the FireRed worker surface', async () => {
+    const adapter = new FireRedVadAdapter(
+      {
+        hopSize: 256,
+        minSpeechDurationMs: 40,
+      },
+      {
+        workerFactory: () => new FakeWorker(),
+      },
+    );
+
+    await adapter.init();
+    const seen = [];
+    const unsubscribe = adapter.subscribe((event) => seen.push(event));
+
+    const processed = adapter.process(new Float32Array(512), 1024);
+    expect(processed).toBe(true);
+    expect(seen.at(-1)?.payload.globalSampleOffset).toBe(1024);
+    expect(adapter.findFirstSpeechFrame(1024, 2048)).toBe(1024);
+
+    await adapter.dispose();
+    unsubscribe();
+  });
+
+  it('forwards explicit CMVN JSON URLs to the FireRed worker init payload', async () => {
+    const worker = new FakeWorker();
+    const adapter = new FireRedVadAdapter(
+      {
+        cmvnJsonUrl: 'https://example.com/cmvn.json',
+      },
+      {
+        workerFactory: () => worker,
+      },
+    );
+
+    await adapter.init();
+    const initMessage = worker.messages.find((message) => message.type === 'INIT');
+    expect(initMessage?.payload.cmvnJsonUrl).toBe('https://example.com/cmvn.json');
 
     await adapter.dispose();
   });

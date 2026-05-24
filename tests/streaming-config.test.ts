@@ -89,6 +89,37 @@ describe('streaming config helpers', () => {
     expect(merged.tenVadSpeechPaddingMs).toBe(96);
   });
 
+  it('keeps FireRed VAD hop timing separate from the visual streaming chunk', () => {
+    const merged = mergeStreamingConfig('generic-streaming', {
+      vadBackend: 'firered-vad',
+    });
+
+    expect(merged.chunkDurationMs).toBe(16);
+    expect(merged.vadHopDurationMs).toBe(10);
+    expect(merged.vadVisualBucketDurationMs).toBe(20);
+  });
+
+  it('normalizes stale FireRed VAD timing overrides back to 10ms hops and 20ms visual buckets', () => {
+    const merged = mergeStreamingConfig('generic-streaming', {
+      vadBackend: 'firered-vad',
+      vadHopDurationMs: 16,
+      vadVisualBucketDurationMs: 16,
+    });
+
+    expect(merged.vadHopDurationMs).toBe(10);
+    expect(merged.vadVisualBucketDurationMs).toBe(20);
+  });
+
+  it('uses the streaming chunk as the default TEN-VAD hop and visual bucket', () => {
+    const merged = mergeStreamingConfig('generic-streaming', {
+      vadBackend: 'ten-vad',
+      chunkDurationMs: 16,
+    });
+
+    expect(merged.vadHopDurationMs).toBe(16);
+    expect(merged.vadVisualBucketDurationMs).toBe(16);
+  });
+
   it('preserves an explicit zero rough-silence duration', () => {
     const merged = mergeStreamingConfig('generic-streaming', {
       minSilenceDurationMs: 0,

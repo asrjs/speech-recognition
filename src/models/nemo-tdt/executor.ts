@@ -8,6 +8,7 @@ import type {
   TranscriptWarning,
 } from '../../types/index.js';
 import type { NemoDecodeContext } from '../nemo-common/index.js';
+import { hasHuggingFaceExternalDataFile } from '../nemo-common/huggingface-artifacts.js';
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
 import { nowMs, roundMetric, roundTimestampSeconds } from '../../runtime/timing.js';
 import type { TranscriptMetrics, TranscriptionProgressEvent } from '../../types/index.js';
@@ -164,6 +165,12 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     const preprocessorFilename = artifacts.preprocessorUrl
       ? artifacts.preprocessorUrl.split('/').pop()
       : undefined;
+    const hasEncoderData =
+      Boolean(artifacts.encoderDataUrl) ||
+      (await hasHuggingFaceExternalDataFile(source.repoId, revision, artifacts.encoderFilename));
+    const hasDecoderData =
+      Boolean(artifacts.decoderDataUrl) ||
+      (await hasHuggingFaceExternalDataFile(source.repoId, revision, artifacts.decoderFilename));
 
     return {
       ...artifacts,
@@ -171,10 +178,10 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       decoderUrl: (await resolveFile(artifacts.decoderFilename)) ?? artifacts.decoderUrl,
       tokenizerUrl: (await resolveFile('vocab.txt')) ?? artifacts.tokenizerUrl,
       preprocessorUrl: (await resolveFile(preprocessorFilename)) ?? artifacts.preprocessorUrl,
-      encoderDataUrl: artifacts.encoderDataUrl
+      encoderDataUrl: hasEncoderData && artifacts.encoderFilename
         ? await resolveFile(`${artifacts.encoderFilename}.data`)
         : artifacts.encoderDataUrl,
-      decoderDataUrl: artifacts.decoderDataUrl
+      decoderDataUrl: hasDecoderData && artifacts.decoderFilename
         ? await resolveFile(`${artifacts.decoderFilename}.data`)
         : artifacts.decoderDataUrl,
     };

@@ -553,6 +553,7 @@ export class FireredVadStreamPacked extends FireRedBase {
         streamVadWithCacheUrl: modelUrl,
         vadUrl: options.modelUrls?.vadUrl ?? `${base}fireredvad_vad.onnx`,
         aedUrl: options.modelUrls?.aedUrl ?? `${base}fireredvad_aed.onnx`,
+        cmvnJsonUrl: options.modelUrls?.cmvnJsonUrl ?? options.cmvnJsonUrl,
       },
     };
     const runtime = await initRuntime(runtimeOptions);
