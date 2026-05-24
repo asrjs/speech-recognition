@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { IncrementalJSMelProcessor, JSMelProcessor, MEL_CONSTANTS } from '../src/audio/js-mel.js';
+import {
+  IncrementalJSMelProcessor,
+  JSMelProcessor,
+  MEL_CONSTANTS,
+  fft,
+  precomputeTwiddles,
+} from '../src/audio/js-mel.js';
 
 function createSineWave(samples: number, frequency = 440): Float32Array {
   const pcm = new Float32Array(samples);
@@ -93,5 +99,56 @@ describe('js mel processor', () => {
     expect(second.length).toBe(20);
     expect(second.features.length).toBe(128 * 21);
     expect(Array.from(second.features).every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe('fft', () => {
+  it('computes correct FFT for a DC signal', () => {
+    const size = 8;
+    const twiddles = precomputeTwiddles(size);
+    const re = new Float64Array(size).fill(1.0);
+    const im = new Float64Array(size);
+
+    fft(re, im, size, twiddles);
+
+    expect(re[0]).toBeCloseTo(8, 5);
+    expect(im[0]).toBeCloseTo(0, 5);
+    for (let i = 1; i < size; i++) {
+      expect(re[i]).toBeCloseTo(0, 5);
+      expect(im[i]).toBeCloseTo(0, 5);
+    }
+  });
+
+  it('computes correct FFT for an impulse signal', () => {
+    const size = 8;
+    const twiddles = precomputeTwiddles(size);
+    const re = new Float64Array(size);
+    re[0] = 1.0;
+    const im = new Float64Array(size);
+
+    fft(re, im, size, twiddles);
+
+    for (let i = 0; i < size; i++) {
+      expect(re[i]).toBeCloseTo(1, 5);
+      expect(im[i]).toBeCloseTo(0, 5);
+    }
+  });
+
+  it('computes correct FFT for a known real signal', () => {
+    const size = 4;
+    const twiddles = precomputeTwiddles(size);
+    const re = new Float64Array([1, 2, 3, 4]);
+    const im = new Float64Array(size);
+
+    fft(re, im, size, twiddles);
+
+    expect(re[0]).toBeCloseTo(10, 5);
+    expect(im[0]).toBeCloseTo(0, 5);
+    expect(re[1]).toBeCloseTo(-2, 5);
+    expect(im[1]).toBeCloseTo(2, 5);
+    expect(re[2]).toBeCloseTo(-2, 5);
+    expect(im[2]).toBeCloseTo(0, 5);
+    expect(re[3]).toBeCloseTo(-2, 5);
+    expect(im[3]).toBeCloseTo(-2, 5);
   });
 });
