@@ -142,8 +142,11 @@ function toMonoPcm(audio: AudioBufferLike, destination?: Float32Array): Float32A
       const left = audio.channels[0];
       const right = audio.channels[1];
       if (left && right) {
+        // Optimize: Use non-null assertion (!) instead of nullish coalescing (??) inside hot loops
+        // since Array/TypedArray bounds are guaranteed by the frame count check.
+        // This avoids V8 deoptimizations and significantly improves tight loop performance.
         for (let frameIndex = 0; frameIndex < audio.numberOfFrames; frameIndex += 1) {
-          mono[frameIndex] = ((left[frameIndex] ?? 0) + (right[frameIndex] ?? 0)) * 0.5;
+          mono[frameIndex] = (left[frameIndex]! + right[frameIndex]!) * 0.5;
         }
         return mono;
       }
@@ -153,7 +156,7 @@ function toMonoPcm(audio: AudioBufferLike, destination?: Float32Array): Float32A
     for (let frameIndex = 0; frameIndex < audio.numberOfFrames; frameIndex += 1) {
       let sampleSum = 0;
       for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
-        sampleSum += audio.channels[channelIndex]?.[frameIndex] ?? 0;
+        sampleSum += audio.channels[channelIndex]![frameIndex]!;
       }
       mono[frameIndex] = sampleSum * invChannels;
     }
@@ -174,7 +177,7 @@ function toMonoPcm(audio: AudioBufferLike, destination?: Float32Array): Float32A
     if (numberOfChannels === 2) {
       for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
         const baseIndex = frameIndex * 2;
-        mono[frameIndex] = ((data[baseIndex] ?? 0) + (data[baseIndex + 1] ?? 0)) * 0.5;
+        mono[frameIndex] = (data[baseIndex]! + data[baseIndex + 1]!) * 0.5;
       }
       return mono;
     }
@@ -184,7 +187,7 @@ function toMonoPcm(audio: AudioBufferLike, destination?: Float32Array): Float32A
       let sampleSum = 0;
       const baseIndex = frameIndex * numberOfChannels;
       for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
-        sampleSum += data[baseIndex + channelIndex] ?? 0;
+        sampleSum += data[baseIndex + channelIndex]!;
       }
       mono[frameIndex] = sampleSum * invChannels;
     }
@@ -200,7 +203,7 @@ function toMonoPcm(audio: AudioBufferLike, destination?: Float32Array): Float32A
     if (numberOfChannels === 2) {
       for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
         const baseIndex = frameIndex * 2;
-        mono[frameIndex] = ((data[baseIndex] ?? 0) + (data[baseIndex + 1] ?? 0)) * 0.5 * int16Scale;
+        mono[frameIndex] = (data[baseIndex]! + data[baseIndex + 1]!) * 0.5 * int16Scale;
       }
       return mono;
     }
@@ -210,7 +213,7 @@ function toMonoPcm(audio: AudioBufferLike, destination?: Float32Array): Float32A
       let sampleSum = 0;
       const baseIndex = frameIndex * numberOfChannels;
       for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
-        sampleSum += data[baseIndex + channelIndex] ?? 0;
+        sampleSum += data[baseIndex + channelIndex]!;
       }
       mono[frameIndex] = sampleSum * sampleScale;
     }
