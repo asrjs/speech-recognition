@@ -7,13 +7,16 @@ import {
   listBuiltInModelDescriptors,
   listBuiltInModelOptions,
   resolveBuiltInModelComponentBackends,
+  type BuiltInModelDescriptor,
 } from '@asrjs/speech-recognition/presets';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 describe('built-in preset descriptors', () => {
   it('lists built-in models with consolidated metadata', () => {
     const descriptors = listBuiltInModelDescriptors();
     const options = listBuiltInModelOptions();
+
+    expectTypeOf(descriptors).toEqualTypeOf<readonly BuiltInModelDescriptor[]>();
 
     expect(descriptors.map((descriptor) => descriptor.modelId)).toEqual(
       expect.arrayContaining([
@@ -23,6 +26,7 @@ describe('built-in preset descriptors', () => {
         'google/medasr',
       ]),
     );
+    expect(descriptors.length).toBeGreaterThan(0);
     expect(options.find((option) => option.key === 'nvidia/canary-180m-flash')?.preset).toBe('canary');
   });
 
