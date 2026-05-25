@@ -7,14 +7,17 @@ import {
   listBuiltInModelDescriptors,
   listBuiltInModelOptions,
   resolveBuiltInModelComponentBackends,
+  type BuiltInModelDescriptor,
 } from '@asrjs/speech-recognition/presets';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 describe('built-in preset descriptors', () => {
   it('lists built-in models with consolidated metadata', () => {
     const descriptors = listBuiltInModelDescriptors();
     const options = listBuiltInModelOptions();
 
+    expectTypeOf(descriptors).toEqualTypeOf<readonly BuiltInModelDescriptor[]>();
+    expect(descriptors.length).toBeGreaterThan(0);
     expect(descriptors.map((descriptor) => descriptor.modelId)).toEqual(
       expect.arrayContaining([
         'parakeet-tdt-0.6b-v2',

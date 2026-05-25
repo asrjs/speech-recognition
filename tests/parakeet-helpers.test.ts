@@ -41,6 +41,15 @@ describe('Parakeet helpers', () => {
     expect(supportsLanguage('invalid-model-key', 'en')).toBe(false);
   });
 
+  it('resolves language names case-insensitively and falls back to the code', () => {
+    expect(getLanguageName('en')).toBe('English');
+    expect(getLanguageName('EN')).toBe('English');
+    expect(getLanguageName('Zh')).toBe('Chinese');
+    expect(getLanguageName('fr')).toBe('French');
+    expect(getLanguageName('xx')).toBe('xx');
+    expect(getLanguageName('unknown')).toBe('unknown');
+  });
+
   it('treats prototype property names as unknown Parakeet models', () => {
     expect(getModelConfig('toString')).toBeNull();
     expect(getModelConfig('__proto__')).toBeNull();
