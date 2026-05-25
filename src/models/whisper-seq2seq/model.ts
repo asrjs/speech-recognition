@@ -99,21 +99,37 @@ class WhisperSeq2SeqSpeechSession implements SpeechSession<
   ): Promise<TranscriptResponse<WhisperNativeTranscript, TFlavor>> {
     const audio = normalizePcmInput(input).toMono();
     const segments = buildStubSegments(audio.durationSeconds, options.task);
-    const tokens = segments.map((segment, index) => ({
-      index,
-      id: index + 100,
-      text: segment.text,
-      startTime: segment.startTime,
-      endTime: segment.endTime,
-      confidence: segment.confidence,
-      special: false,
-    }));
+
+    // Performance optimization: Single pass loop over segments
+    // Replaces multiple .map() and .filter() array allocations
+    const tokens = [];
+    const utteranceParts = [];
+    const returnSpecialTokens = options.returnSpecialTokens;
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i]!;
+      utteranceParts.push(segment.text);
+
+      const isSpecial = false;
+      if (returnSpecialTokens || !isSpecial) {
+        tokens.push({
+          index: i,
+          id: i + 100,
+          text: segment.text,
+          startTime: segment.startTime,
+          endTime: segment.endTime,
+          confidence: segment.confidence,
+          special: isSpecial,
+        });
+      }
+    }
+
     const nativeTranscript: WhisperNativeTranscript = {
-      utteranceText: segments.map((segment) => segment.text).join(' '),
+      utteranceText: utteranceParts.join(' '),
       isFinal: true,
       language: options.language ?? this.config.languages[0],
       segments,
-      tokens: options.returnSpecialTokens ? tokens : tokens.filter((token) => !token.special),
+      tokens,
       warnings: [
         {
           code: 'whisper-seq2seq.stubbed-decoder',
