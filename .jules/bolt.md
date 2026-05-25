@@ -1,0 +1,5 @@
+## 2025-02-12 - Optimizing Hot Loop Array Processing by Bypassing Nullish Coalescing
+
+**Learning:** V8 engine struggles to efficiently optimize numeric tight loops processing arrays when employing the nullish coalescing operator (`??`) to handle potentially undefined typed-array accesses. Under `noUncheckedIndexedAccess: true` in TypeScript, typed array accesses fallback to undefined. However, inside hot execution loops dynamically retrieving contiguous model values, we know boundaries are strictly respected based on logic offsets. Coalescing `array[index] ?? fallback` inside tight loops adds an implicit branch checking for nullish value to V8 optimization layers. Using the non-null assertion operator `array[index]!` allows V8 to sidestep checking bounds or explicit conditionals during Hot Execution, drastically dropping compilation limits.
+
+**Action:** Whenever mathematically resolving dynamic matrix lengths bounded to TypedArray boundaries where out-of-bound errors cannot occur, favor using explicit non-null assertion `!` during Hot Code Loops instead of nullish coalescing `??`. Eliminate structurally identical redundant values mapping.

@@ -8,7 +8,7 @@ export function argmax(
   const end = offset + length;
 
   for (let index = offset; index < end; index += 1) {
-    const value = values[index] ?? Number.NEGATIVE_INFINITY;
+    const value = values[index]!;
     if (value > maxValue) {
       maxValue = value;
       maxIndex = index;
@@ -25,7 +25,7 @@ export function confidenceFromLogits(
 ): { confidence: number; logProb: number } {
   let maxLogit = Number.NEGATIVE_INFINITY;
   for (let index = 0; index < vocabSize; index += 1) {
-    const value = logits[index] ?? Number.NEGATIVE_INFINITY;
+    const value = logits[index]!;
     if (value > maxLogit) {
       maxLogit = value;
     }
@@ -33,11 +33,11 @@ export function confidenceFromLogits(
 
   let expSum = 0;
   for (let index = 0; index < vocabSize; index += 1) {
-    expSum += Math.exp((logits[index] ?? 0) - maxLogit);
+    expSum += Math.exp(logits[index]! - maxLogit);
   }
 
   const logSumExp = maxLogit + Math.log(expSum);
-  const logProb = (logits[tokenId] ?? Number.NEGATIVE_INFINITY) - logSumExp;
+  const logProb = logits[tokenId]! - logSumExp;
 
   return {
     confidence: Math.exp(logProb),
