@@ -23,7 +23,9 @@ describe('built-in preset descriptors', () => {
         'google/medasr',
       ]),
     );
-    expect(options.find((option) => option.key === 'nvidia/canary-180m-flash')?.preset).toBe('canary');
+    expect(options.find((option) => option.key === 'nvidia/canary-180m-flash')?.preset).toBe(
+      'canary',
+    );
   });
 
   it('exposes Canary capabilities, controls, and loading defaults', () => {
@@ -162,6 +164,21 @@ describe('built-in preset descriptors', () => {
   });
 
   it('resolves model-specific component backend defaults and restrictions', () => {
+    expect(resolveBuiltInModelComponentBackends('parakeet-tdt-0.6b-v2')).toEqual({
+      encoderBackend: 'webgpu',
+      decoderBackend: 'wasm',
+    });
+
+    expect(
+      resolveBuiltInModelComponentBackends('parakeet-tdt-0.6b-v2', {
+        encoderBackend: 'wasm',
+        decoderBackend: 'wasm',
+      }),
+    ).toEqual({
+      encoderBackend: 'wasm',
+      decoderBackend: 'wasm',
+    });
+
     expect(
       resolveBuiltInModelComponentBackends('parakeet-tdt-0.6b-v2', {
         backend: 'webgpu-hybrid',
@@ -179,6 +196,10 @@ describe('built-in preset descriptors', () => {
       encoderBackend: 'webgpu',
       decoderBackend: 'webgpu',
     });
+
+    expect(() => resolveBuiltInModelComponentBackends('unknown-model-id')).toThrow(
+      'Unknown built-in model "unknown-model-id".',
+    );
   });
 
   it('detects quantization variants from repo filenames using built-in artifact names', () => {

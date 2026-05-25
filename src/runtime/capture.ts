@@ -20,7 +20,7 @@ export interface MicrophoneAudioChunk {
 }
 
 export interface ScriptProcessorAudioNodeLike {
-  onaudioprocess: ((event: any) => void) | null;
+  onaudioprocess: ((event: AudioProcessingEvent) => void) | null;
   connect(destination: unknown): void;
   disconnect(): void;
 }
@@ -444,7 +444,7 @@ export async function startMicrophoneCapture(
       chunkFrames,
       onChunk: (pcm) => emitChunk(pcm, processingSampleRate),
     });
-    scriptProcessor!.onaudioprocess = (event: any) => {
+    scriptProcessor!.onaudioprocess = (event: AudioProcessingEvent) => {
       try {
         fallbackResampler.push(mixAudioBufferChannelsToMono(event.inputBuffer));
       } catch (error) {

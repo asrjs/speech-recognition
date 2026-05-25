@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { IncrementalJSMelProcessor, JSMelProcessor, MEL_CONSTANTS } from '../src/audio/js-mel.js';
+import {
+  fft,
+  IncrementalJSMelProcessor,
+  JSMelProcessor,
+  MEL_CONSTANTS,
+  precomputeTwiddles,
+} from '../src/audio/js-mel.js';
 
 function createSineWave(samples: number, frequency = 440): Float32Array {
   const pcm = new Float32Array(samples);
@@ -93,5 +99,57 @@ describe('js mel processor', () => {
     expect(second.length).toBe(20);
     expect(second.features.length).toBe(128 * 21);
     expect(Array.from(second.features).every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe('fft', () => {
+  it('computes the expected spectrum for a DC signal', () => {
+    const size = 8;
+    const re = new Float64Array(size).fill(1);
+    const im = new Float64Array(size);
+
+    fft(re, im, size, precomputeTwiddles(size));
+
+    expect(re[0]).toBeCloseTo(8, 5);
+    expect(im[0]).toBeCloseTo(0, 5);
+    for (let index = 1; index < size; index += 1) {
+      expect(re[index]).toBeCloseTo(0, 5);
+      expect(im[index]).toBeCloseTo(0, 5);
+    }
+  });
+
+  it('computes the expected spectrum for an impulse signal', () => {
+    const size = 8;
+    const re = new Float64Array(size);
+    const im = new Float64Array(size);
+    re[0] = 1;
+
+    fft(re, im, size, precomputeTwiddles(size));
+
+    for (let index = 0; index < size; index += 1) {
+      expect(re[index]).toBeCloseTo(1, 5);
+      expect(im[index]).toBeCloseTo(0, 5);
+    }
+  });
+
+  it('computes a known real-valued transform', () => {
+    const size = 4;
+    const re = new Float64Array([1, 2, 3, 4]);
+    const im = new Float64Array(size);
+
+    fft(re, im, size, precomputeTwiddles(size));
+
+    expect(Array.from(re)).toEqual([
+      expect.closeTo(10, 5),
+      expect.closeTo(-2, 5),
+      expect.closeTo(-2, 5),
+      expect.closeTo(-2, 5),
+    ]);
+    expect(Array.from(im)).toEqual([
+      expect.closeTo(0, 5),
+      expect.closeTo(2, 5),
+      expect.closeTo(0, 5),
+      expect.closeTo(-2, 5),
+    ]);
   });
 });

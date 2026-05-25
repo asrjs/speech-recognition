@@ -99,7 +99,7 @@ export const MODELS = {
 export const DEFAULT_MODEL = 'parakeet-tdt-0.6b-v2' as const;
 
 export function getModelConfig(modelKeyOrRepoId: string): ParakeetModelConfig | null {
-  if (modelKeyOrRepoId in MODELS) {
+  if (Object.prototype.hasOwnProperty.call(MODELS, modelKeyOrRepoId)) {
     return MODELS[modelKeyOrRepoId as keyof typeof MODELS];
   }
 

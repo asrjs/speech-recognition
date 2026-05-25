@@ -86,6 +86,24 @@ describe('app helpers', () => {
     expect(buffer.toPcmAudioBuffer().numberOfFrames).toBeGreaterThan(0);
   });
 
+  it('retrieves layered audio entries by sequence after trimming old chunks', () => {
+    const buffer = new LayeredAudioBuffer<{ transcript: string }>({
+      maxWindowMs: 1000,
+      overlapMs: 250,
+    });
+
+    const first = buffer.push(new Float32Array(8000), 0);
+    const second = buffer.push(new Float32Array(8000), 0.5);
+    const third = buffer.push(new Float32Array(8000), 1.0);
+    buffer.setLayer(third.chunk.sequence ?? 0, 'transcript', 'still-buffered');
+
+    expect(buffer.getEntries().map((entry) => entry.chunk.sequence)).not.toContain(
+      first.chunk.sequence,
+    );
+    expect(buffer.getLayer(second.chunk.sequence ?? 0, 'transcript')).toBeUndefined();
+    expect(buffer.getLayer(third.chunk.sequence ?? 0, 'transcript')).toBe('still-buffered');
+  });
+
   it('merges overlapping frame-aligned token streams', () => {
     const merger = new FrameAlignedTokenMerger({
       frameTimeStride: 0.1,

@@ -375,7 +375,11 @@ export async function getCanaryModel(
 export class CanaryModel {
   constructor(
     private readonly runtime: DefaultSpeechRuntime,
-    private readonly model: SpeechModel<NemoAedModelOptions, any, NemoAedNativeTranscript>,
+    private readonly model: SpeechModel<
+      NemoAedModelOptions,
+      NemoAedTranscriptionOptions,
+      NemoAedNativeTranscript
+    >,
     private readonly session: SpeechSession<NemoAedTranscriptionOptions, NemoAedNativeTranscript>,
     private readonly onDispose?: () => void | Promise<void>,
   ) {}

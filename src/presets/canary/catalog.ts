@@ -39,7 +39,7 @@ export const MODELS = {
 } satisfies Record<string, CanaryModelConfig>;
 
 export function getModelConfig(modelKeyOrRepoId: string): CanaryModelConfig | null {
-  if (modelKeyOrRepoId in MODELS) {
+  if (Object.prototype.hasOwnProperty.call(MODELS, modelKeyOrRepoId)) {
     return MODELS[modelKeyOrRepoId as keyof typeof MODELS];
   }
 

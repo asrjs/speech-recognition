@@ -1,6 +1,81 @@
 import { describe, expect, it } from 'vitest';
 
-import { AudioChunk, normalizePcmInput, PcmAudioBuffer } from '../src/audio/audio.js';
+import {
+  AudioChunk,
+  createPassthroughSampleRatePolicy,
+  downmixToMono,
+  normalizePcmInput,
+  PcmAudioBuffer,
+} from '../src/audio/audio.js';
+
+describe('createPassthroughSampleRatePolicy', () => {
+  it('returns the original audio when the sample rate already matches', () => {
+    const policy = createPassthroughSampleRatePolicy();
+    const audio = normalizePcmInput(new Float32Array([0.1, 0.2, 0.3]), { sampleRate: 16000 });
+
+    const result = policy.ensure(audio, 16000);
+
+    expect(policy.name).toBe('passthrough');
+    expect(result.audio).toBe(audio);
+    expect(result.warning).toBeUndefined();
+  });
+
+  it('keeps audio unchanged and reports a recoverable warning for mismatched rates', () => {
+    const policy = createPassthroughSampleRatePolicy();
+    const audio = normalizePcmInput(new Float32Array([0.1, 0.2, 0.3]), { sampleRate: 16000 });
+
+    const result = policy.ensure(audio, 8000);
+
+    expect(result.audio).toBe(audio);
+    expect(result.warning).toEqual({
+      code: 'audio.sample-rate-passthrough',
+      message:
+        'Received 16000 Hz audio while 8000 Hz was requested. The passthrough policy does not resample.',
+      recoverable: true,
+    });
+  });
+});
+
+describe('downmixToMono', () => {
+  it('downmixes planar multi-channel input to mono', () => {
+    const result = downmixToMono({
+      sampleRate: 48000,
+      numberOfChannels: 2,
+      numberOfFrames: 2,
+      durationSeconds: 2 / 48000,
+      channels: [new Float32Array([1, 0.5]), new Float32Array([-1, -0.5])],
+    });
+
+    expect(result).toBeInstanceOf(PcmAudioBuffer);
+    expect(result.sampleRate).toBe(48000);
+    expect(result.numberOfChannels).toBe(1);
+    expect(result.numberOfFrames).toBe(2);
+    expect(Array.from(result.channels[0]!)).toEqual([0, 0]);
+  });
+
+  it('downmixes interleaved multi-channel input to mono', () => {
+    const result = downmixToMono({
+      sampleRate: 16000,
+      numberOfChannels: 2,
+      numberOfFrames: 2,
+      durationSeconds: 2 / 16000,
+      data: new Float32Array([1, -1, 0.25, 0.75]),
+    });
+
+    expect(result.sampleRate).toBe(16000);
+    expect(result.numberOfChannels).toBe(1);
+    expect(Array.from(result.channels[0]!)).toEqual([0, 0.5]);
+  });
+
+  it('preserves mono typed array input with caller-provided sample rate', () => {
+    const result = downmixToMono(new Float32Array([0.5, 0.25]), { sampleRate: 8000 });
+
+    expect(result.sampleRate).toBe(8000);
+    expect(result.numberOfChannels).toBe(1);
+    expect(result.numberOfFrames).toBe(2);
+    expect(Array.from(result.channels[0]!)).toEqual([0.5, 0.25]);
+  });
+});
 
 describe('normalizePcmInput', () => {
   it('handles Float32Array with default sample rate', () => {
@@ -183,10 +258,7 @@ describe('PcmAudioBuffer', () => {
   describe('sliceFrames', () => {
     const buffer = new PcmAudioBuffer({
       sampleRate: 16000,
-      channels: [
-        new Float32Array([1, 2, 3, 4, 5, 6]),
-        new Float32Array([10, 20, 30, 40, 50, 60]),
-      ],
+      channels: [new Float32Array([1, 2, 3, 4, 5, 6]), new Float32Array([10, 20, 30, 40, 50, 60])],
     });
 
     it('slices both channels within bounds', () => {

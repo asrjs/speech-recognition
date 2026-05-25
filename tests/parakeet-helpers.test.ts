@@ -30,8 +30,23 @@ describe('Parakeet helpers', () => {
     expect(getModelConfig('parakeet-tdt-0.6b-v3')?.vocabSize).toBe(8193);
     expect(getModelConfig('parakeet-realtime-eou-120m-v1')?.topology).toBe('rnnt');
     expect(getModelKeyFromRepoId('ysdede/parakeet-tdt-0.6b-v2-onnx')).toBe('parakeet-tdt-0.6b-v2');
-    expect(supportsLanguage('parakeet-tdt-0.6b-v3', 'ja')).toBe(true);
     expect(getLanguageName('zh')).toBe('Chinese');
+  });
+
+  it('reports supported languages for model keys and repository IDs', () => {
+    expect(supportsLanguage('parakeet-tdt-0.6b-v2', 'en')).toBe(true);
+    expect(supportsLanguage('parakeet-tdt-0.6b-v3', 'ja')).toBe(true);
+    expect(supportsLanguage('ysdede/parakeet-tdt-0.6b-v3-onnx', 'fr')).toBe(true);
+    expect(supportsLanguage('parakeet-tdt-0.6b-v2', 'fr')).toBe(false);
+    expect(supportsLanguage('invalid-model-key', 'en')).toBe(false);
+  });
+
+  it('treats prototype property names as unknown Parakeet models', () => {
+    expect(getModelConfig('toString')).toBeNull();
+    expect(getModelConfig('__proto__')).toBeNull();
+    expect(() => supportsLanguage('toString', 'en')).not.toThrow();
+    expect(supportsLanguage('toString', 'en')).toBe(false);
+    expect(supportsLanguage('__proto__', 'en')).toBe(false);
   });
 
   it('picks preferred quantization based on backend and component role', () => {
@@ -69,9 +84,9 @@ describe('Parakeet helpers', () => {
   it('uses JS mel as the advertised Parakeet preset default preprocessor backend', () => {
     expect(resolveParakeetArtifactSource('parakeet-tdt-0.6b-v2')?.preprocessorBackend).toBe('js');
     expect(resolveParakeetArtifactSource('parakeet-tdt-0.6b-v3')?.preprocessorBackend).toBe('js');
-    expect(resolveParakeetArtifactSource('parakeet-realtime-eou-120m-v1')?.preprocessorBackend).toBe(
-      'js',
-    );
+    expect(
+      resolveParakeetArtifactSource('parakeet-realtime-eou-120m-v1')?.preprocessorBackend,
+    ).toBe('js');
   });
 
   it('creates a built-in runtime with registered backends and presets', () => {
