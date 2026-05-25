@@ -180,16 +180,16 @@ function floatSampleToFloat(view: DataView, offset: number, bitsPerSample: numbe
   throw new Error(`Unsupported float WAV bits per sample: ${bitsPerSample}`);
 }
 
-function decodeWavArrayBuffer(arrayBuffer: ArrayBuffer): {
-  readonly audio: Float32Array;
-  readonly sampleRate: number;
+interface WavChunkData {
+  readonly audioFormat: number;
   readonly numberOfChannels: number;
-} {
-  const view = new DataView(arrayBuffer);
-  if (!isWavArrayBuffer(arrayBuffer)) {
-    throw new Error('Invalid WAV: expected RIFF/WAVE header.');
-  }
+  readonly sampleRate: number;
+  readonly bitsPerSample: number;
+  readonly dataOffset: number;
+  readonly dataSize: number;
+}
 
+function parseWavChunks(view: DataView, byteLength: number): WavChunkData {
   let offset = WAV_HEADER_SIZE;
   let audioFormat: number | null = null;
   let numberOfChannels: number | null = null;
@@ -198,7 +198,7 @@ function decodeWavArrayBuffer(arrayBuffer: ArrayBuffer): {
   let dataOffset: number | null = null;
   let dataSize: number | null = null;
 
-  while (offset + 8 <= arrayBuffer.byteLength) {
+  while (offset + 8 <= byteLength) {
     const chunkId = readAscii(view, offset, 4);
     const chunkSize = view.getUint32(offset + 4, true);
     const chunkDataStart = offset + 8;
@@ -228,28 +228,55 @@ function decodeWavArrayBuffer(arrayBuffer: ArrayBuffer): {
     throw new Error('Invalid WAV: missing fmt or data chunk.');
   }
 
-  const bytesPerSample = bitsPerSample / 8;
-  const totalSamples = Math.floor(dataSize / bytesPerSample);
-  const totalFrames = Math.floor(totalSamples / numberOfChannels);
+  return {
+    audioFormat,
+    numberOfChannels,
+    sampleRate,
+    bitsPerSample,
+    dataOffset,
+    dataSize,
+  };
+}
+
+function decodeWavData(view: DataView, chunkData: WavChunkData): Float32Array {
+  const bytesPerSample = chunkData.bitsPerSample / 8;
+  const totalSamples = Math.floor(chunkData.dataSize / bytesPerSample);
+  const totalFrames = Math.floor(totalSamples / chunkData.numberOfChannels);
   const mono = new Float32Array(totalFrames);
 
-  let sampleOffset = dataOffset;
+  let sampleOffset = chunkData.dataOffset;
   for (let frameIndex = 0; frameIndex < totalFrames; frameIndex += 1) {
     let sum = 0;
-    for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
+    for (let channelIndex = 0; channelIndex < chunkData.numberOfChannels; channelIndex += 1) {
       sum +=
-        audioFormat === 3
-          ? floatSampleToFloat(view, sampleOffset, bitsPerSample)
-          : pcmSampleToFloat(view, sampleOffset, bitsPerSample);
+        chunkData.audioFormat === 3
+          ? floatSampleToFloat(view, sampleOffset, chunkData.bitsPerSample)
+          : pcmSampleToFloat(view, sampleOffset, chunkData.bitsPerSample);
       sampleOffset += bytesPerSample;
     }
-    mono[frameIndex] = sum / numberOfChannels;
+    mono[frameIndex] = sum / chunkData.numberOfChannels;
   }
+
+  return mono;
+}
+
+function decodeWavArrayBuffer(arrayBuffer: ArrayBuffer): {
+  readonly audio: Float32Array;
+  readonly sampleRate: number;
+  readonly numberOfChannels: number;
+} {
+  const view = new DataView(arrayBuffer);
+  if (!isWavArrayBuffer(arrayBuffer)) {
+    throw new Error('Invalid WAV: expected RIFF/WAVE header.');
+  }
+
+  const chunkData = parseWavChunks(view, arrayBuffer.byteLength);
+  const mono = decodeWavData(view, chunkData);
 
   return {
     audio: mono,
-    sampleRate,
-    numberOfChannels,
+    sampleRate: chunkData.sampleRate,
+    numberOfChannels: chunkData.numberOfChannels,
   };
 }
 
