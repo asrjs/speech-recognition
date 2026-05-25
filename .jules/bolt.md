@@ -1,0 +1,3 @@
+## 2025-05-25 - [Optimize FrameAlignedTokenMerger finding anchors]
+**Learning:** The `findAnchors` method inside `src/inference/streaming/merge.ts` relied on a nested loop structure, matching new tokens against all pending tokens. This yields $O(N \cdot M)$ complexity which can become a bottleneck when both token lists grow during sustained overlap scenarios. Grouping pending tokens by their ID into a `Map<number, FrameAlignedToken[]>` reduces the operation to an average $O(N)$ lookup.
+**Action:** When performing time-alignment searches between sets of streaming speech tokens where ID is the primary joining key, always preemptively partition one of the sets into a Map keyed by token ID, allowing for direct indexing over brute-force matching.

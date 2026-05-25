@@ -266,14 +266,25 @@ export class FrameAlignedTokenMerger {
 
   private findAnchors(overlapTokens: readonly FrameAlignedToken[]): FrameAlignedToken[] {
     const anchors: FrameAlignedToken[] = [];
+    const pendingById = new Map<number, FrameAlignedToken[]>();
+
+    for (const token of this.pendingTokens) {
+      let arr = pendingById.get(token.id);
+      if (!arr) {
+        arr = [];
+        pendingById.set(token.id, arr);
+      }
+      arr.push(token);
+    }
+
     for (const newToken of overlapTokens) {
-      for (const pendingToken of this.pendingTokens) {
-        if (
-          newToken.id === pendingToken.id &&
-          Math.abs(newToken.absTime - pendingToken.absTime) < this.timeTolerance
-        ) {
-          anchors.push(newToken);
-          break;
+      const matchTokens = pendingById.get(newToken.id);
+      if (matchTokens) {
+        for (const pendingToken of matchTokens) {
+          if (Math.abs(newToken.absTime - pendingToken.absTime) < this.timeTolerance) {
+            anchors.push(newToken);
+            break;
+          }
         }
       }
     }
