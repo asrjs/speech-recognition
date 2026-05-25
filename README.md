@@ -13,6 +13,10 @@ It ships as one package, but with intentional subpath entry points so the root A
 
 This is intentionally not a generic task-pipeline model framework.
 
+## Workspace Context
+
+This repository is the core library inside a larger local ASR workspace. If you are returning after a break, start with [docs/WORKSPACE_CONTEXT.md](./docs/WORKSPACE_CONTEXT.md) for the sibling repo/app map, why each demo exists, and the current realtime/VAD resume point.
+
 ## Install
 
 ```bash
