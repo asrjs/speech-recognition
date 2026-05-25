@@ -12,7 +12,6 @@ import type {
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
 import type { NemoDecodeContext } from '../nemo-common/index.js';
-import { hasHuggingFaceExternalDataFile } from '../nemo-common/huggingface-artifacts.js';
 import {
   createOrtSession,
   initOrt,
@@ -103,6 +102,13 @@ function createAssetProgressEvent(
   };
 }
 
+function isAssetMissingError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return /\b404\b/.test(error.message) || /\bnot found\b/i.test(error.message);
+  }
+  return false;
+}
+
 function extractLatestLogitsSlice(
   tensor: OrtTensorLike<Float32Array>,
   distributionSize: number,
@@ -167,6 +173,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
         repoId: source.repoId,
         revision,
         filename,
+        preferBlobUrl: true,
         cacheKey: `huggingface:${source.repoId}:${revision}:${filename}`,
         onProgress: (event) => {
           this.runtimeHooks?.onProgress?.(createAssetProgressEvent(this.modelId, filename, event));
@@ -179,16 +186,23 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       }
       return locator;
     };
+    const resolveOptionalFile = async (filename: string | undefined): Promise<string | undefined> => {
+      if (!filename) {
+        return undefined;
+      }
+      try {
+        return await resolveFile(filename);
+      } catch (error) {
+        if (isAssetMissingError(error)) {
+          return undefined;
+        }
+        throw error;
+      }
+    };
 
     const preprocessorFilename = artifacts.preprocessorUrl
       ? artifacts.preprocessorUrl.split('/').pop()
       : undefined;
-    const hasEncoderData =
-      Boolean(artifacts.encoderDataUrl) ||
-      (await hasHuggingFaceExternalDataFile(source.repoId, revision, artifacts.encoderFilename));
-    const hasDecoderData =
-      Boolean(artifacts.decoderDataUrl) ||
-      (await hasHuggingFaceExternalDataFile(source.repoId, revision, artifacts.decoderFilename));
 
     return {
       ...artifacts,
@@ -196,12 +210,16 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       decoderUrl: (await resolveFile(artifacts.decoderFilename)) ?? artifacts.decoderUrl,
       tokenizerUrl: (await resolveFile('vocab.txt')) ?? artifacts.tokenizerUrl,
       preprocessorUrl: (await resolveFile(preprocessorFilename)) ?? artifacts.preprocessorUrl,
-      encoderDataUrl: hasEncoderData && artifacts.encoderFilename
-        ? await resolveFile(`${artifacts.encoderFilename}.data`)
-        : artifacts.encoderDataUrl,
-      decoderDataUrl: hasDecoderData && artifacts.decoderFilename
-        ? await resolveFile(`${artifacts.decoderFilename}.data`)
-        : artifacts.decoderDataUrl,
+      encoderDataUrl:
+        artifacts.encoderDataUrl ??
+        (artifacts.encoderFilename
+          ? await resolveOptionalFile(`${artifacts.encoderFilename}.data`)
+          : undefined),
+      decoderDataUrl:
+        artifacts.decoderDataUrl ??
+        (artifacts.decoderFilename
+          ? await resolveOptionalFile(`${artifacts.decoderFilename}.data`)
+          : undefined),
     };
   }
 

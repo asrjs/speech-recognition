@@ -50,6 +50,25 @@ async function streamToBytes(
   return bytes;
 }
 
+async function streamToBlob(
+  iterable: AsyncIterable<Uint8Array>,
+  contentType: string | undefined,
+  onChunk?: (chunk: Uint8Array, loaded: number) => void,
+): Promise<Blob> {
+  const chunks: BlobPart[] = [];
+  let loaded = 0;
+
+  for await (const chunk of iterable) {
+    chunks.push(chunk.slice().buffer as ArrayBuffer);
+    loaded += chunk.byteLength;
+    onChunk?.(chunk, loaded);
+  }
+
+  return new Blob(chunks, {
+    type: contentType ?? 'application/octet-stream',
+  });
+}
+
 async function readCache(
   cache: AssetCache | undefined,
   key: string | undefined,
@@ -58,7 +77,17 @@ async function readCache(
     return null;
   }
 
-  return cache.get(key);
+  try {
+    return await cache.get(key);
+  } catch (error) {
+    console.warn(`[assets] Cache read failed for "${key}". Falling back to network.`, error);
+    try {
+      await cache.delete?.(key);
+    } catch {
+      // best-effort cache eviction only
+    }
+    return null;
+  }
 }
 
 async function writeCache(
@@ -70,7 +99,93 @@ async function writeCache(
     return;
   }
 
-  await cache.set(key, value);
+  try {
+    await cache.set(key, value);
+  } catch (error) {
+    console.warn(`[assets] Cache write failed for "${key}". Continuing without cache.`, error);
+  }
+}
+
+function formatRepoPath(repoId: string): string {
+  return String(repoId || '')
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+}
+
+function buildHuggingFaceResolveUrl(
+  request: AssetRequest,
+  revisionOverride?: string,
+): string | null {
+  if (!request.repoId || !request.filename) {
+    return null;
+  }
+
+  const revision = revisionOverride ?? request.revision ?? 'main';
+  const encodedRevision = encodeURIComponent(revision);
+  const encodedSubfolder = request.subfolder
+    ? request.subfolder
+        .split('/')
+        .map((part) => encodeURIComponent(part))
+        .join('/')
+    : '';
+  const encodedFilename = request.filename
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+
+  const pathParts = [formatRepoPath(request.repoId), 'resolve', encodedRevision];
+  if (encodedSubfolder) {
+    pathParts.push(encodedSubfolder);
+  }
+  pathParts.push(encodedFilename);
+  return `https://huggingface.co/${pathParts.join('/')}`;
+}
+
+function getFetchCandidateUrls(request: AssetRequest, primaryUrl: string): readonly string[] {
+  const urls = [primaryUrl];
+  if (request.provider !== 'huggingface') {
+    return urls;
+  }
+
+  const revision = request.revision ?? 'main';
+  if (revision === 'main') {
+    return urls;
+  }
+
+  const fallbackUrl = buildHuggingFaceResolveUrl(request, 'main');
+  if (fallbackUrl && fallbackUrl !== primaryUrl) {
+    urls.push(fallbackUrl);
+  }
+  return urls;
+}
+
+async function fetchWithCandidates(
+  request: AssetRequest,
+  primaryUrl: string,
+): Promise<Response> {
+  const candidateUrls = getFetchCandidateUrls(request, primaryUrl);
+  let lastStatus: number | null = null;
+  let lastStatusText = '';
+
+  for (let index = 0; index < candidateUrls.length; index += 1) {
+    const candidateUrl = candidateUrls[index]!;
+    const response = await fetch(candidateUrl);
+    if (response.ok) {
+      return response;
+    }
+
+    lastStatus = response.status;
+    lastStatusText = response.statusText;
+    const hasNext = index < candidateUrls.length - 1;
+    if (!hasNext || response.status !== 404) {
+      break;
+    }
+  }
+
+  throw new Error(
+    `Failed to fetch asset "${request.id}": ${lastStatus ?? 0} ${lastStatusText}`.trim(),
+  );
 }
 
 export class BlobAssetHandle implements ResolvedAssetHandle {
@@ -129,6 +244,7 @@ export class BlobAssetHandle implements ResolvedAssetHandle {
 export class UrlAssetHandle implements ResolvedAssetHandle {
   private blobUrl: string | null = null;
   private bytesPromise: Promise<Uint8Array> | null = null;
+  private blobPromise: Promise<Blob> | null = null;
 
   constructor(
     readonly request: AssetRequest,
@@ -153,12 +269,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
       return;
     }
 
-    const response = await fetch(this.url);
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch asset "${this.request.id}": ${response.status} ${response.statusText}`,
-      );
-    }
+    const response = await fetchWithCandidates(this.request, this.url);
 
     const totalHeader = response.headers.get('content-length');
     const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
@@ -227,12 +338,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
           return cached.bytes;
         }
 
-        const response = await fetch(this.url);
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch asset "${this.request.id}": ${response.status} ${response.statusText}`,
-          );
-        }
+        const response = await fetchWithCandidates(this.request, this.url);
 
         const totalHeader = response.headers.get('content-length');
         const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
@@ -282,15 +388,65 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
       return null;
     }
 
+    if (/^https?:\/\//i.test(this.url) && !this.request.preferBlobUrl) {
+      return this.url;
+    }
+
     if (!this.blobUrl) {
-      const bytes = await this.readBytes();
-      const blob = new Blob([bytes.slice().buffer], {
-        type: this.request.contentType ?? 'application/octet-stream',
-      });
+      const blob = await this.readBlob();
       this.blobUrl = URL.createObjectURL(blob);
     }
 
     return this.blobUrl;
+  }
+
+  private async readBlob(): Promise<Blob> {
+    if (!this.blobPromise) {
+      this.blobPromise = (async () => {
+        const cached = await readCache(this.cache, this.request.cacheKey);
+        if (cached) {
+          this.request.onProgress?.({
+            id: this.request.id,
+            loaded: cached.bytes.byteLength,
+            total: cached.bytes.byteLength,
+            done: true,
+          });
+          return new Blob([cached.bytes.slice().buffer], {
+            type: cached.contentType ?? this.request.contentType ?? 'application/octet-stream',
+          });
+        }
+
+        const response = await fetchWithCandidates(this.request, this.url);
+        const contentType = response.headers.get('content-type') || this.request.contentType;
+        const totalHeader = response.headers.get('content-length');
+        const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
+        const body = response.body;
+        const blob = body
+          ? await streamToBlob(
+              readReadableStream(body as ReadableStream<Uint8Array>),
+              contentType || undefined,
+              (_chunk, loaded) => {
+                this.request.onProgress?.({
+                  id: this.request.id,
+                  loaded,
+                  total,
+                });
+              },
+            )
+          : await response.blob();
+
+        this.request.onProgress?.({
+          id: this.request.id,
+          loaded: blob.size,
+          total,
+          done: true,
+        });
+
+        return blob;
+      })();
+    }
+
+    return this.blobPromise;
   }
 
   dispose(): void {

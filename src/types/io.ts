@@ -30,6 +30,12 @@ export interface AssetRequest {
   readonly blob?: Blob;
   readonly bytes?: Uint8Array;
   readonly fileHandle?: LocalAssetFileHandleLike;
+  /**
+   * When true, URL locators are materialized as temporary blob URLs instead of
+   * returning the original remote URL. This keeps model downloads observable to
+   * the runtime and lets callers pass a local URL to engines such as ORT.
+   */
+  readonly preferBlobUrl?: boolean;
   readonly cacheKey?: string;
   readonly contentType?: string;
   readonly onProgress?: (event: AssetProgressEvent) => void;

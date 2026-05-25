@@ -20,6 +20,7 @@ interface IdbObjectStoreLike {
     blob: Blob,
     key: string,
   ): { onsuccess: (() => void) | null; onerror: (() => void) | null; result?: IDBValidKey };
+  delete(key: string): { onsuccess: (() => void) | null; onerror: (() => void) | null };
 }
 
 function hasIndexedDb(): boolean {
@@ -148,6 +149,29 @@ export class IndexedDbAssetCache implements AssetCache {
       throw error;
     }
   }
+
+  async delete(key: string): Promise<void> {
+    if (!hasIndexedDb()) {
+      return;
+    }
+
+    const db = await this.getDb();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction([CACHE_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(CACHE_STORE_NAME);
+        const request = store.delete(key);
+        request.onerror = () => reject(new Error('Error deleting from IndexedDB.'));
+        request.onsuccess = () => resolve();
+      });
+    } catch (error) {
+      if (isNotFoundIndexedDbError(error)) {
+        this.resetDb();
+        return;
+      }
+      throw error;
+    }
+  }
 }
 
 export class MemoryAssetCache implements AssetCache {
@@ -159,6 +183,10 @@ export class MemoryAssetCache implements AssetCache {
 
   async set(key: string, value: AssetCacheValue): Promise<void> {
     this.values.set(key, value);
+  }
+
+  async delete(key: string): Promise<void> {
+    this.values.delete(key);
   }
 }
 

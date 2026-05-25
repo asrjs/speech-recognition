@@ -507,6 +507,10 @@ FireRed VAD degraded troubleshooting:
 
 - [`docs/FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md`](./docs/FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md)
 
+HuggingFace download resilience notes:
+
+- [`docs/HUGGINGFACE_DOWNLOAD_RESILIENCE.md`](./docs/HUGGINGFACE_DOWNLOAD_RESILIENCE.md)
+
 ## Lifecycle
 
 `dispose()` is the primary lifecycle contract.

@@ -8,7 +8,6 @@ import type {
   TranscriptWarning,
 } from '../../types/index.js';
 import type { NemoDecodeContext } from '../nemo-common/index.js';
-import { hasHuggingFaceExternalDataFile } from '../nemo-common/huggingface-artifacts.js';
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
 import { nowMs, roundMetric, roundTimestampSeconds } from '../../runtime/timing.js';
 import type { TranscriptMetrics, TranscriptionProgressEvent } from '../../types/index.js';
@@ -103,6 +102,21 @@ function createAssetProgressEvent(
   };
 }
 
+function isAssetMissingError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return /\b404\b/.test(error.message) || /\bnot found\b/i.test(error.message);
+  }
+  return false;
+}
+
+function isExternalDataLoadError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /failed to load external data file/i.test(error.message);
+}
+
 export class OrtNemoTdtExecutor implements NemoTdtExecutor {
   private readonly sourceOptions: NemoTdtModelOptions['source'];
   private readonly loadStatePromise?: Promise<LoadedExecutorState>;
@@ -149,6 +163,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         repoId: source.repoId,
         revision,
         filename,
+        preferBlobUrl: true,
         cacheKey: `huggingface:${source.repoId}:${revision}:${filename}`,
         onProgress: (event) => {
           this.runtimeHooks?.onProgress?.(createAssetProgressEvent(this.modelId, filename, event));
@@ -161,16 +176,23 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       }
       return locator;
     };
+    const resolveOptionalFile = async (filename: string | undefined): Promise<string | undefined> => {
+      if (!filename) {
+        return undefined;
+      }
+      try {
+        return await resolveFile(filename);
+      } catch (error) {
+        if (isAssetMissingError(error)) {
+          return undefined;
+        }
+        throw error;
+      }
+    };
 
     const preprocessorFilename = artifacts.preprocessorUrl
       ? artifacts.preprocessorUrl.split('/').pop()
       : undefined;
-    const hasEncoderData =
-      Boolean(artifacts.encoderDataUrl) ||
-      (await hasHuggingFaceExternalDataFile(source.repoId, revision, artifacts.encoderFilename));
-    const hasDecoderData =
-      Boolean(artifacts.decoderDataUrl) ||
-      (await hasHuggingFaceExternalDataFile(source.repoId, revision, artifacts.decoderFilename));
 
     return {
       ...artifacts,
@@ -178,12 +200,16 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       decoderUrl: (await resolveFile(artifacts.decoderFilename)) ?? artifacts.decoderUrl,
       tokenizerUrl: (await resolveFile('vocab.txt')) ?? artifacts.tokenizerUrl,
       preprocessorUrl: (await resolveFile(preprocessorFilename)) ?? artifacts.preprocessorUrl,
-      encoderDataUrl: hasEncoderData && artifacts.encoderFilename
-        ? await resolveFile(`${artifacts.encoderFilename}.data`)
-        : artifacts.encoderDataUrl,
-      decoderDataUrl: hasDecoderData && artifacts.decoderFilename
-        ? await resolveFile(`${artifacts.decoderFilename}.data`)
-        : artifacts.decoderDataUrl,
+      encoderDataUrl:
+        artifacts.encoderDataUrl ??
+        (artifacts.encoderFilename
+          ? await resolveOptionalFile(`${artifacts.encoderFilename}.data`)
+          : undefined),
+      decoderDataUrl:
+        artifacts.decoderDataUrl ??
+        (artifacts.decoderFilename
+          ? await resolveOptionalFile(`${artifacts.decoderFilename}.data`)
+          : undefined),
     };
   }
 
@@ -209,7 +235,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       ...warning,
       recoverable: true,
     }));
-    let encoderSession: OrtSessionLike;
+    let encoderSession: OrtSessionLike | undefined;
     try {
       encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
         backendId: resolved.encoderBackendForOrt,
@@ -230,10 +256,88 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         throw error;
       }
 
+      const fallbackCandidates: ReadonlyArray<{ quant: 'fp32' | 'int8'; warningCode: string; warningMessage: string }> =
+        [
+          {
+            quant: 'fp32',
+            warningCode: 'nemo-tdt.encoder-fp16-fallback-fp32',
+            warningMessage:
+              'Default FP16 encoder weights could not be initialized on this WebGPU setup. Falling back to FP32 encoder weights.',
+          },
+          {
+            quant: 'int8',
+            warningCode: 'nemo-tdt.encoder-fp16-fallback-int8',
+            warningMessage:
+              'Default FP16 encoder weights could not be initialized on this WebGPU setup. Falling back to INT8 encoder weights.',
+          },
+        ];
+
+      let fallbackError: unknown = error;
+      let fallbackSucceeded = false;
+
+      for (const candidate of fallbackCandidates) {
+        const fallbackResolved = resolveNemoTdtArtifacts(
+          {
+            ...this.sourceOptions,
+            encoderQuant: candidate.quant,
+          },
+          this.backendId,
+        );
+        const fallbackArtifacts = await this.materializeHuggingFaceArtifacts(
+          fallbackResolved.artifacts,
+        );
+        artifacts = {
+          ...artifacts,
+          encoderUrl: fallbackArtifacts.encoderUrl,
+          encoderDataUrl: fallbackArtifacts.encoderDataUrl,
+          encoderFilename: fallbackArtifacts.encoderFilename,
+        };
+
+        try {
+          encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
+            backendId: resolved.encoderBackendForOrt,
+            enableProfiling: resolved.enableProfiling,
+            externalDataUrl: artifacts.encoderDataUrl,
+            externalDataPath: artifacts.encoderFilename
+              ? `${artifacts.encoderFilename}.data`
+              : undefined,
+          });
+          warnings.push({
+            code: candidate.warningCode,
+            message: candidate.warningMessage,
+            recoverable: true,
+          });
+          fallbackSucceeded = true;
+          break;
+        } catch (candidateError) {
+          fallbackError = candidateError;
+        }
+      }
+
+      if (!fallbackSucceeded || !encoderSession) {
+        throw fallbackError;
+      }
+    }
+    let decoderSession: OrtSessionLike;
+    try {
+      decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
+        backendId: resolved.decoderBackendForOrt,
+        enableProfiling: resolved.enableProfiling,
+        externalDataUrl: artifacts.decoderDataUrl,
+        externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,
+      });
+    } catch (error) {
+      const canFallbackDecoderToInt8 =
+        this.sourceOptions.kind === 'huggingface' && this.sourceOptions.decoderQuant !== 'int8';
+
+      if (!canFallbackDecoderToInt8 || !isExternalDataLoadError(error)) {
+        throw error;
+      }
+
       const fallbackResolved = resolveNemoTdtArtifacts(
         {
           ...this.sourceOptions,
-          encoderQuant: 'fp32',
+          decoderQuant: 'int8',
         },
         this.backendId,
       );
@@ -242,31 +346,26 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       );
       artifacts = {
         ...artifacts,
-        encoderUrl: fallbackArtifacts.encoderUrl,
-        encoderDataUrl: fallbackArtifacts.encoderDataUrl,
-        encoderFilename: fallbackArtifacts.encoderFilename,
+        decoderUrl: fallbackArtifacts.decoderUrl,
+        decoderDataUrl: fallbackArtifacts.decoderDataUrl,
+        decoderFilename: fallbackArtifacts.decoderFilename,
       };
-      encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
-        backendId: resolved.encoderBackendForOrt,
+
+      decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
+        backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
-        externalDataUrl: artifacts.encoderDataUrl,
-        externalDataPath: artifacts.encoderFilename
-          ? `${artifacts.encoderFilename}.data`
+        externalDataUrl: artifacts.decoderDataUrl,
+        externalDataPath: artifacts.decoderFilename
+          ? `${artifacts.decoderFilename}.data`
           : undefined,
       });
       warnings.push({
-        code: 'nemo-tdt.encoder-fp16-fallback',
+        code: 'nemo-tdt.decoder-fp32-fallback',
         message:
-          'Default FP16 encoder weights could not be initialized on this WebGPU setup. Falling back to FP32 encoder weights.',
+          'Decoder weights required missing external data at the selected quantization. Falling back to INT8 decoder weights.',
         recoverable: true,
       });
     }
-    const decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
-      backendId: resolved.decoderBackendForOrt,
-      enableProfiling: resolved.enableProfiling,
-      externalDataUrl: artifacts.decoderDataUrl,
-      externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,
-    });
     const preprocessor: NemoPreprocessor =
       resolved.preprocessorBackend === 'js'
         ? new JsNemoPreprocessor({

@@ -218,6 +218,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
         repoId: source.repoId,
         revision,
         filename,
+        preferBlobUrl: true,
         cacheKey: `huggingface:${source.repoId}:${revision}:${filename}`,
         onProgress: (event) => {
           this.runtimeHooks?.onProgress?.(createAssetProgressEvent(this.modelId, filename, event));
