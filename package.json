@@ -125,5 +125,9 @@
     "typescript-eslint": "^8.26.1",
     "typescript": "5.9.3",
     "vitest": "4.0.18"
-  }
+  },
+  "trustedDependencies": [
+    "onnxruntime-node",
+    "protobufjs"
+  ]
 }

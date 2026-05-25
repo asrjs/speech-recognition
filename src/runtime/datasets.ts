@@ -256,6 +256,12 @@ function createMulberry32(seed: number): () => number {
   };
 }
 
+function secureRandom(): number {
+  const array = new Uint32Array(1);
+  globalThis.crypto.getRandomValues(array);
+  return array[0]! / 4294967296;
+}
+
 export async function fetchRandomRows(
   request: DatasetRowsRequest & {
     readonly totalRows: number;
@@ -274,7 +280,7 @@ export async function fetchRandomRows(
   const maxRows = Math.max(1, Number(request.totalRows) || 1);
   const wanted = Math.min(targetCount, maxRows);
   const seedValue = normalizeSeed(request.seed);
-  const rand = seedValue === null ? Math.random : createMulberry32(seedValue);
+  const rand = seedValue === null ? secureRandom : createMulberry32(seedValue);
   const requestedOffsets: number[] = [];
   const selectedOffsets = new Set<number>();
   const successfulOffsets: number[] = [];
