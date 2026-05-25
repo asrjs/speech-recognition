@@ -1,0 +1,3 @@
+## 2024-04-28 - Optimize array iteration for transcription segments
+**Learning:** While chaining `.map()` and `.filter()` operations on arrays creates overhead due to multiple intermediate array allocations and GC pauses in V8, these optimizations may be considered overlapping micro-optimizations with low value if they lack local benchmark evidence and distract from correctness-focused cleanup passes.
+**Action:** Before proposing micro-optimizations (like loop merging), always ensure they align with the current project focus (e.g., performance vs correctness) and provide strong, verifiable local benchmark evidence to prove their value.
