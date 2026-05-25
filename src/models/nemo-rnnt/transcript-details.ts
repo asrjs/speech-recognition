@@ -64,12 +64,12 @@ function flushActiveWord(
 function createActiveWord(
   index: number,
   startTime: number,
-  tokenText: string | undefined,
+  tokenText: string,
   confidence?: number,
 ): ActiveWordState {
   return {
     index,
-    parts: tokenText !== undefined ? [tokenText] : [],
+    parts: [tokenText],
     startTime,
     endTime: startTime,
     confidences: isFiniteNumber(confidence) ? [confidence] : [],
