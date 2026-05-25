@@ -29,16 +29,29 @@ export function mapLasrCtcNativeToCanonical(
     startTime: word.startTime,
     endTime: word.endTime,
     confidence: word.confidence,
-    tokenIndices: tokens
-      .filter(
-        (token) =>
-          token.startTime !== undefined &&
-          token.endTime !== undefined &&
-          token.startTime >= word.startTime &&
-          token.endTime <= word.endTime,
-      )
-      .map((token) => token.index),
+    tokenIndices: [] as number[],
   }));
+
+  if (words.length > 0 && tokens.length > 0) {
+    let wordIndex = 0;
+    for (const token of tokens) {
+      if (token.startTime === undefined || token.endTime === undefined) {
+        continue;
+      }
+
+      while (wordIndex < words.length && words[wordIndex]!.endTime < token.endTime) {
+        wordIndex++;
+      }
+
+      if (
+        wordIndex < words.length &&
+        token.startTime >= words[wordIndex]!.startTime &&
+        token.endTime <= words[wordIndex]!.endTime
+      ) {
+        (words[wordIndex]!.tokenIndices as number[]).push(token.index);
+      }
+    }
+  }
   const segmentStart =
     words.length > 0 ? words[0]?.startTime : tokens.length > 0 ? tokens[0]?.startTime : undefined;
   const segmentEnd =
