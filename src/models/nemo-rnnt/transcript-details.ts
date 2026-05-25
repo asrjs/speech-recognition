@@ -27,6 +27,55 @@ function classifySpecialToken(
   return 'control';
 }
 
+interface ActiveWordState {
+  index: number;
+  parts: string[];
+  startTime: number;
+  endTime: number;
+  confidences: number[];
+}
+
+function calculateWordConfidence(confidences: number[]): number | undefined {
+  if (confidences.length === 0) {
+    return undefined;
+  }
+  return confidences.reduce((sum, value) => sum + value, 0) / confidences.length;
+}
+
+function flushActiveWord(
+  activeWord: ActiveWordState,
+  words: Array<{
+    index: number;
+    text: string;
+    startTime: number;
+    endTime: number;
+    confidence?: number;
+  }>,
+): void {
+  words.push({
+    index: activeWord.index,
+    text: activeWord.parts.join('').trim(),
+    startTime: activeWord.startTime,
+    endTime: activeWord.endTime,
+    confidence: calculateWordConfidence(activeWord.confidences),
+  });
+}
+
+function createActiveWord(
+  index: number,
+  startTime: number,
+  tokenText: string | undefined,
+  confidence?: number,
+): ActiveWordState {
+  return {
+    index,
+    parts: tokenText !== undefined ? [tokenText] : [],
+    startTime,
+    endTime: startTime,
+    confidences: isFiniteNumber(confidence) ? [confidence] : [],
+  };
+}
+
 export function buildRnntTranscriptDetails(
   tokenizer: ParakeetTokenizer,
   tokenIds: readonly number[],
@@ -55,15 +104,7 @@ export function buildRnntTranscriptDetails(
     confidence?: number;
   }> = [];
 
-  let activeWord:
-    | {
-        index: number;
-        parts: string[];
-        startTime: number;
-        endTime: number;
-        confidences: number[];
-      }
-    | undefined;
+  let activeWord: ActiveWordState | undefined;
 
   for (let index = 0; index < tokenIds.length; index += 1) {
     const tokenId = tokenIds[index];
@@ -112,37 +153,15 @@ export function buildRnntTranscriptDetails(
 
     if (isWordStart) {
       if (activeWord) {
-        words.push({
-          index: activeWord.index,
-          text: activeWord.parts.join('').trim(),
-          startTime: activeWord.startTime,
-          endTime: activeWord.endTime,
-          confidence:
-            activeWord.confidences.length > 0
-              ? activeWord.confidences.reduce((sum, value) => sum + value, 0) /
-                activeWord.confidences.length
-              : undefined,
-        });
+        flushActiveWord(activeWord, words);
       }
 
-      activeWord = {
-        index: words.length,
-        parts: [tokenText],
-        startTime: time,
-        endTime: time,
-        confidences: isFiniteNumber(confidence) ? [confidence] : [],
-      };
+      activeWord = createActiveWord(words.length, time, tokenText, confidence);
       continue;
     }
 
     if (!activeWord) {
-      activeWord = {
-        index: words.length,
-        parts: [tokenText],
-        startTime: time,
-        endTime: time,
-        confidences: isFiniteNumber(confidence) ? [confidence] : [],
-      };
+      activeWord = createActiveWord(words.length, time, tokenText, confidence);
       continue;
     }
 
@@ -154,17 +173,7 @@ export function buildRnntTranscriptDetails(
   }
 
   if (activeWord) {
-    words.push({
-      index: activeWord.index,
-      text: activeWord.parts.join('').trim(),
-      startTime: activeWord.startTime,
-      endTime: activeWord.endTime,
-      confidence:
-        activeWord.confidences.length > 0
-          ? activeWord.confidences.reduce((sum, value) => sum + value, 0) /
-            activeWord.confidences.length
-          : undefined,
-    });
+    flushActiveWord(activeWord, words);
   }
 
   return {
