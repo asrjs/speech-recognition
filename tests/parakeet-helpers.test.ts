@@ -147,6 +147,21 @@ describe('Parakeet helpers', () => {
     expect(fromUrlsFn.mock.calls[1]?.[0]?.filenames?.encoder).toBe('encoder-model.onnx');
   });
 
+  it('handles empty Parakeet local entries gracefully', () => {
+    const entries = createParakeetLocalEntries([]);
+    const inspection = inspectParakeetLocalEntries(entries);
+
+    expect(inspection.encoderQuantizations).toEqual([]);
+    expect(inspection.decoderQuantizations).toEqual([]);
+    expect(inspection.tokenizerNames).toEqual([]);
+    expect(inspection.preprocessorNames).toEqual([]);
+  });
+
+  it('throws an error when resolving empty Parakeet local entries', async () => {
+    const entries = createParakeetLocalEntries([]);
+    await expect(resolveParakeetLocalEntries(entries)).rejects.toThrow('Pick a local model folder first.');
+  });
+
   it('inspects local Parakeet entries and derives local artifact choices', () => {
     const file = new File(['token-a\ntoken-b\n'], 'vocab.txt', { type: 'text/plain' });
     const entries = createParakeetLocalEntries([
