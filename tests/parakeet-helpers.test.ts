@@ -30,8 +30,21 @@ describe('Parakeet helpers', () => {
     expect(getModelConfig('parakeet-tdt-0.6b-v3')?.vocabSize).toBe(8193);
     expect(getModelConfig('parakeet-realtime-eou-120m-v1')?.topology).toBe('rnnt');
     expect(getModelKeyFromRepoId('ysdede/parakeet-tdt-0.6b-v2-onnx')).toBe('parakeet-tdt-0.6b-v2');
-    expect(supportsLanguage('parakeet-tdt-0.6b-v3', 'ja')).toBe(true);
     expect(getLanguageName('zh')).toBe('Chinese');
+  });
+
+  it('correctly reports supported languages for models', () => {
+    expect(supportsLanguage('parakeet-tdt-0.6b-v2', 'en')).toBe(true);
+    expect(supportsLanguage('parakeet-tdt-0.6b-v3', 'ja')).toBe(true);
+
+    // Check by repoId
+    expect(supportsLanguage('ysdede/parakeet-tdt-0.6b-v3-onnx', 'fr')).toBe(true);
+
+    // Check unsupported language
+    expect(supportsLanguage('parakeet-tdt-0.6b-v2', 'fr')).toBe(false);
+
+    // Check invalid model
+    expect(supportsLanguage('invalid-model-key', 'en')).toBe(false);
   });
 
   it('picks preferred quantization based on backend and component role', () => {
