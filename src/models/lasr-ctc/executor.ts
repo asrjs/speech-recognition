@@ -129,92 +129,114 @@ function prepareMonoBuffer(frames: number, destination?: Float32Array): Float32A
   return mono;
 }
 
+function toMonoPcmFromChannels(
+  channels: readonly Float32Array[],
+  numberOfFrames: number,
+  destination?: Float32Array,
+): Float32Array {
+  if (channels.length === 1) {
+    return channels[0] ?? new Float32Array(0);
+  }
+
+  const mono = prepareMonoBuffer(numberOfFrames, destination);
+  const channelCount = channels.length;
+
+  if (channelCount === 2) {
+    const left = channels[0];
+    const right = channels[1];
+    if (left && right) {
+      for (let frameIndex = 0; frameIndex < numberOfFrames; frameIndex += 1) {
+        mono[frameIndex] = ((left[frameIndex] ?? 0) + (right[frameIndex] ?? 0)) * 0.5;
+      }
+      return mono;
+    }
+  }
+
+  const invChannels = 1 / channelCount;
+  for (let frameIndex = 0; frameIndex < numberOfFrames; frameIndex += 1) {
+    let sampleSum = 0;
+    for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
+      sampleSum += channels[channelIndex]?.[frameIndex] ?? 0;
+    }
+    mono[frameIndex] = sampleSum * invChannels;
+  }
+
+  return mono;
+}
+
+function toMonoPcmFromFloatArray(
+  data: Float32Array | Float64Array,
+  numberOfChannels: number,
+  destination?: Float32Array,
+): Float32Array {
+  const frames = Math.floor(data.length / numberOfChannels);
+  if (numberOfChannels === 1) {
+    return Float32Array.from(data.subarray(0, frames));
+  }
+
+  const mono = prepareMonoBuffer(frames, destination);
+
+  if (numberOfChannels === 2) {
+    for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+      const baseIndex = frameIndex * 2;
+      mono[frameIndex] = ((data[baseIndex] ?? 0) + (data[baseIndex + 1] ?? 0)) * 0.5;
+    }
+    return mono;
+  }
+
+  const invChannels = 1 / numberOfChannels;
+  for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+    let sampleSum = 0;
+    const baseIndex = frameIndex * numberOfChannels;
+    for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
+      sampleSum += data[baseIndex + channelIndex] ?? 0;
+    }
+    mono[frameIndex] = sampleSum * invChannels;
+  }
+  return mono;
+}
+
+function toMonoPcmFromInt16Array(
+  data: Int16Array,
+  numberOfChannels: number,
+  destination?: Float32Array,
+): Float32Array {
+  const frames = Math.floor(data.length / numberOfChannels);
+  const mono = prepareMonoBuffer(frames, destination);
+  const int16Scale = 1 / 32768;
+
+  if (numberOfChannels === 2) {
+    for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+      const baseIndex = frameIndex * 2;
+      mono[frameIndex] = ((data[baseIndex] ?? 0) + (data[baseIndex + 1] ?? 0)) * 0.5 * int16Scale;
+    }
+    return mono;
+  }
+
+  const sampleScale = int16Scale / numberOfChannels;
+  for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+    let sampleSum = 0;
+    const baseIndex = frameIndex * numberOfChannels;
+    for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
+      sampleSum += data[baseIndex + channelIndex] ?? 0;
+    }
+    mono[frameIndex] = sampleSum * sampleScale;
+  }
+  return mono;
+}
+
 function toMonoPcm(audio: AudioBufferLike, destination?: Float32Array): Float32Array {
   if (audio.channels && audio.channels.length > 0) {
-    if (audio.channels.length === 1) {
-      return audio.channels[0] ?? new Float32Array(0);
-    }
-
-    const mono = prepareMonoBuffer(audio.numberOfFrames, destination);
-    const channelCount = audio.channels.length;
-
-    if (channelCount === 2) {
-      const left = audio.channels[0];
-      const right = audio.channels[1];
-      if (left && right) {
-        for (let frameIndex = 0; frameIndex < audio.numberOfFrames; frameIndex += 1) {
-          mono[frameIndex] = ((left[frameIndex] ?? 0) + (right[frameIndex] ?? 0)) * 0.5;
-        }
-        return mono;
-      }
-    }
-
-    const invChannels = 1 / channelCount;
-    for (let frameIndex = 0; frameIndex < audio.numberOfFrames; frameIndex += 1) {
-      let sampleSum = 0;
-      for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
-        sampleSum += audio.channels[channelIndex]?.[frameIndex] ?? 0;
-      }
-      mono[frameIndex] = sampleSum * invChannels;
-    }
-
-    return mono;
+    return toMonoPcmFromChannels(audio.channels, audio.numberOfFrames, destination);
   }
 
   const numberOfChannels = Math.max(1, audio.numberOfChannels || 1);
   if (audio.data instanceof Float32Array || audio.data instanceof Float64Array) {
-    const frames = Math.floor(audio.data.length / numberOfChannels);
-    if (numberOfChannels === 1) {
-      return Float32Array.from(audio.data.subarray(0, frames));
-    }
-
-    const mono = prepareMonoBuffer(frames, destination);
-    const data = audio.data;
-
-    if (numberOfChannels === 2) {
-      for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
-        const baseIndex = frameIndex * 2;
-        mono[frameIndex] = ((data[baseIndex] ?? 0) + (data[baseIndex + 1] ?? 0)) * 0.5;
-      }
-      return mono;
-    }
-
-    const invChannels = 1 / numberOfChannels;
-    for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
-      let sampleSum = 0;
-      const baseIndex = frameIndex * numberOfChannels;
-      for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
-        sampleSum += data[baseIndex + channelIndex] ?? 0;
-      }
-      mono[frameIndex] = sampleSum * invChannels;
-    }
-    return mono;
+    return toMonoPcmFromFloatArray(audio.data, numberOfChannels, destination);
   }
 
   if (audio.data instanceof Int16Array) {
-    const frames = Math.floor(audio.data.length / numberOfChannels);
-    const mono = prepareMonoBuffer(frames, destination);
-    const data = audio.data;
-    const int16Scale = 1 / 32768;
-
-    if (numberOfChannels === 2) {
-      for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
-        const baseIndex = frameIndex * 2;
-        mono[frameIndex] = ((data[baseIndex] ?? 0) + (data[baseIndex + 1] ?? 0)) * 0.5 * int16Scale;
-      }
-      return mono;
-    }
-
-    const sampleScale = int16Scale / numberOfChannels;
-    for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
-      let sampleSum = 0;
-      const baseIndex = frameIndex * numberOfChannels;
-      for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
-        sampleSum += data[baseIndex + channelIndex] ?? 0;
-      }
-      mono[frameIndex] = sampleSum * sampleScale;
-    }
-    return mono;
+    return toMonoPcmFromInt16Array(audio.data, numberOfChannels, destination);
   }
 
   throw new Error('Unsupported audio buffer shape for LASR CTC executor.');
