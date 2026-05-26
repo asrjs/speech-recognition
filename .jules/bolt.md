@@ -1,0 +1,3 @@
+## 2024-05-26 - O(1) Cache for Model Lookups
+**Learning:** Model catalog lookup functions like `getModelConfig` and `supportsLanguage` frequently loop over all models and search their arrays (`array.includes()`), creating O(N) operations in `src/presets/parakeet/catalog.ts` and `src/presets/canary/catalog.ts`. While small arrays make this seem cheap, these getters are frequently accessed on hot paths (e.g., streaming inference setups).
+**Action:** Implemented a static O(1) reverse mapping Map (`REPO_ID_TO_KEY`) and a WeakMap cache (`LANGUAGE_SETS`) in model catalogs to convert linear searches into constant-time lookups.

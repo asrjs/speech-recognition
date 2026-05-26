@@ -98,27 +98,29 @@ export const MODELS = {
 
 export const DEFAULT_MODEL = 'parakeet-tdt-0.6b-v2' as const;
 
+// ⚡ Bolt: O(1) reverse lookup map to eliminate O(N) linear searches
+const REPO_ID_TO_KEY = new Map<string, string>(
+  Object.entries(MODELS).map(([key, config]) => [config.repoId, key]),
+);
+
+// ⚡ Bolt: O(1) language set cache to eliminate O(N) array includes
+const LANGUAGE_SETS = new WeakMap<ParakeetModelConfig, Set<string>>();
+
 export function getModelConfig(modelKeyOrRepoId: string): ParakeetModelConfig | null {
   if (Object.prototype.hasOwnProperty.call(MODELS, modelKeyOrRepoId)) {
     return MODELS[modelKeyOrRepoId as keyof typeof MODELS];
   }
 
-  for (const config of Object.values(MODELS)) {
-    if (config.repoId === modelKeyOrRepoId) {
-      return config;
-    }
+  const keyFromRepoId = REPO_ID_TO_KEY.get(modelKeyOrRepoId);
+  if (keyFromRepoId) {
+    return MODELS[keyFromRepoId as keyof typeof MODELS];
   }
 
   return null;
 }
 
 export function getModelKeyFromRepoId(repoId: string): string | null {
-  for (const [key, config] of Object.entries(MODELS)) {
-    if (config.repoId === repoId) {
-      return key;
-    }
-  }
-  return null;
+  return REPO_ID_TO_KEY.get(repoId) ?? null;
 }
 
 export function supportsLanguage(modelKeyOrRepoId: string, language: string): boolean {
@@ -126,7 +128,14 @@ export function supportsLanguage(modelKeyOrRepoId: string, language: string): bo
   if (!config) {
     return false;
   }
-  return config.languages.includes(language.toLowerCase());
+
+  let langSet = LANGUAGE_SETS.get(config);
+  if (!langSet) {
+    langSet = new Set(config.languages);
+    LANGUAGE_SETS.set(config, langSet);
+  }
+
+  return langSet.has(language.toLowerCase());
 }
 
 export function listModels(): string[] {
