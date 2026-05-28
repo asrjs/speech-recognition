@@ -33,6 +33,7 @@ describe('pipeline windowing primitives', () => {
   it('maps transformers-style return options onto canonical detail levels', () => {
     expect(resolveTranscriptDetail({ returnTimestamps: true })).toBe('segments');
     expect(resolveTranscriptDetail({ returnTimestamps: 'word' })).toBe('words');
+    expect(resolveTranscriptDetail({ returnTimestamps: 'sentences' })).toBe('sentences');
     expect(resolveTranscriptDetail({ returnWords: true })).toBe('words');
     expect(resolveTranscriptDetail({ returnTokens: true })).toBe('detailed');
     expect(resolveTranscriptDetail({ detail: 'text', returnTokens: true })).toBe('text');

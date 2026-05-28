@@ -120,7 +120,7 @@ export interface NemoTimestampReconstructor<
   reconstruct(
     nativeTranscript: TNative,
     detail: TOptions['detail'],
-  ): Pick<TranscriptResult, 'segments' | 'words' | 'tokens'>;
+  ): Pick<TranscriptResult, 'segments' | 'sentences' | 'words' | 'tokens'>;
 }
 
 export interface NemoConfidenceReconstructor<

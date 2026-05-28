@@ -108,6 +108,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:node-smoke": "npm run build && node tests/smoke/node-import-smoke.mjs",
+    "test:offline-output-smoke": "npm run build && node tests/smoke/offline-output-smoke.mjs",
     "docs:clean": "node -e \"require('fs').rmSync('.typedoc-site', { recursive: true, force: true })\"",
     "docs:api": "node ./node_modules/typedoc/bin/typedoc --options typedoc.json",
     "docs:build": "npm run docs:clean && npm run docs:api"

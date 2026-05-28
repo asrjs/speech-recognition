@@ -1,4 +1,4 @@
-import type { TranscriptSegment, TranscriptWord } from '../types/index.js';
+import type { TranscriptSegment, TranscriptSentence, TranscriptWord } from '../types/index.js';
 
 const STRONG_SENTENCE_END_REGEX = /[!?…](?:["')\]]+)?$/u;
 const PERIOD_SENTENCE_END_REGEX = /\.(?:["')\]]+)?$/u;
@@ -102,11 +102,18 @@ export function partitionWordsIntoSegments(
   words: readonly TranscriptWord[],
   options: SentenceSegmentationOptions = {},
 ): TranscriptSegment[] {
+  return partitionWordsIntoSentences(words, options);
+}
+
+export function partitionWordsIntoSentences(
+  words: readonly TranscriptWord[],
+  options: SentenceSegmentationOptions = {},
+): TranscriptSentence[] {
   if (words.length === 0) {
     return [];
   }
 
-  const segments: TranscriptSegment[] = [];
+  const sentences: TranscriptSentence[] = [];
   let current: TranscriptWord[] = [];
   for (let i = 0; i < words.length; i += 1) {
     const word = words[i]!;
@@ -115,19 +122,19 @@ export function partitionWordsIntoSegments(
     const nextWord = words[i + 1] ?? null;
     const gapSeconds = nextWord ? Math.max(0, nextWord.startTime - word.endTime) : 0;
     if (shouldEndSentenceAfterWord(word, nextWord, gapSeconds, options)) {
-      segments.push(buildSegment(segments.length, current));
+      sentences.push(buildSentence(sentences.length, current));
       current = [];
     }
   }
 
   if (current.length > 0) {
-    segments.push(buildSegment(segments.length, current));
+    sentences.push(buildSentence(sentences.length, current));
   }
 
-  return segments;
+  return sentences;
 }
 
-function buildSegment(index: number, words: readonly TranscriptWord[]): TranscriptSegment {
+function buildSentence(index: number, words: readonly TranscriptWord[]): TranscriptSentence {
   const first = words[0]!;
   const last = words[words.length - 1]!;
   const confidence = words.every((word) => typeof word.confidence === 'number')

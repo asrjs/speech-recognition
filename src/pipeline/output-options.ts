@@ -15,6 +15,9 @@ export function resolveTranscriptDetail(
   if (options.returnWords || options.returnTimestamps === 'word') {
     return 'words';
   }
+  if (options.returnTimestamps === 'sentence' || options.returnTimestamps === 'sentences') {
+    return 'sentences';
+  }
   if (
     options.returnTimestamps === true ||
     options.returnTimestamps === 'segment' ||

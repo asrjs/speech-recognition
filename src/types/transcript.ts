@@ -4,7 +4,13 @@
  * Higher detail levels add nested `segments`, `words`, and `tokens`, but the
  * meaning of those fields stays stable across model families and backends.
  */
-export type TranscriptDetailLevel = 'text' | 'segments' | 'words' | 'detailed';
+export type TranscriptDetailLevel =
+  | 'text'
+  | 'segments'
+  | 'sentences'
+  | 'words'
+  | 'sentences+words'
+  | 'detailed';
 
 /**
  * Selects whether callers receive canonical output, native output, or both.
@@ -51,6 +57,27 @@ export interface TranscriptSegment {
   readonly endTime: number;
   readonly confidence?: number;
   readonly wordIndices?: readonly number[];
+  readonly speaker?: string;
+}
+
+/** Sentence-level detail derived from punctuation/gap-aware word grouping. */
+export interface TranscriptSentence {
+  readonly index: number;
+  readonly text: string;
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly confidence?: number;
+  readonly wordIndices?: readonly number[];
+  readonly speaker?: string;
+}
+
+/** Subtitle cue generated from sentence, segment, or word-level transcript timing. */
+export interface SubtitleCue {
+  readonly index: number;
+  readonly text: string;
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly speaker?: string;
 }
 
 /** Optional performance metadata attached to canonical transcript results. */
@@ -93,6 +120,7 @@ export interface TranscriptMeta {
   readonly durationSeconds?: number;
   readonly tokenCount?: number;
   readonly wordCount?: number;
+  readonly sentenceCount?: number;
   readonly segmentCount?: number;
   readonly averageConfidence?: number;
   readonly averageSegmentConfidence?: number;
@@ -123,6 +151,7 @@ export interface TranscriptResult {
   readonly warnings: readonly TranscriptWarning[];
   readonly meta: TranscriptMeta;
   readonly segments?: readonly TranscriptSegment[];
+  readonly sentences?: readonly TranscriptSentence[];
   readonly words?: readonly TranscriptWord[];
   readonly tokens?: readonly TranscriptToken[];
 }
@@ -142,6 +171,7 @@ export interface PartialTranscript {
   readonly warnings: readonly TranscriptWarning[];
   readonly meta: TranscriptMeta;
   readonly segments?: readonly TranscriptSegment[];
+  readonly sentences?: readonly TranscriptSentence[];
   readonly words?: readonly TranscriptWord[];
   readonly tokens?: readonly TranscriptToken[];
 }

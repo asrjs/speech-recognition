@@ -1,9 +1,10 @@
-import { partitionWordsIntoSegments } from '../../pipeline/index.js';
+import { partitionWordsIntoSentences } from '../../pipeline/index.js';
 import type {
   ModelClassification,
   TranscriptDetailLevel,
   TranscriptMeta,
   TranscriptResult,
+  TranscriptSentence,
   TranscriptSegment,
   TranscriptToken,
   TranscriptWord,
@@ -16,8 +17,12 @@ import type {
   NemoTimestampReconstructor,
 } from './types.js';
 
+function buildDefaultSentences(words: readonly TranscriptWord[]): TranscriptSentence[] {
+  return partitionWordsIntoSentences(words);
+}
+
 function buildDefaultSegments(words: readonly TranscriptWord[]): TranscriptSegment[] {
-  return partitionWordsIntoSegments(words);
+  return buildDefaultSentences(words);
 }
 
 function mapNativeToken(token: NemoNativeToken): TranscriptToken {
@@ -64,10 +69,14 @@ export const defaultNemoTimestampReconstructor: NemoTimestampReconstructor = {
         .map((token) => token.index),
     }));
 
+    const sentences = buildDefaultSentences(words);
     const segments = buildDefaultSegments(words);
 
     if (detail === 'text') {
       return {};
+    }
+    if (detail === 'sentences') {
+      return { sentences };
     }
     if (detail === 'segments') {
       return { segments };
@@ -75,12 +84,20 @@ export const defaultNemoTimestampReconstructor: NemoTimestampReconstructor = {
     if (detail === 'words') {
       return {
         segments,
+        sentences,
+        words,
+      };
+    }
+    if (detail === 'sentences+words') {
+      return {
+        sentences,
         words,
       };
     }
 
     return {
       segments,
+      sentences,
       words,
       tokens,
     };
@@ -133,6 +150,7 @@ export function mapNemoNativeToCanonical(
     modelFamily: resolveCanonicalFamily(classification),
     tokenCount: reconstructed.tokens?.length,
     wordCount: reconstructed.words?.length,
+    sentenceCount: reconstructed.sentences?.length,
     segmentCount: reconstructed.segments?.length,
     nativeAvailable: true,
   };
@@ -145,6 +163,9 @@ export function mapNemoNativeToCanonical(
 
   if (reconstructed.segments && reconstructed.segments.length > 0) {
     Object.assign(result, { segments: reconstructed.segments });
+  }
+  if (reconstructed.sentences && reconstructed.sentences.length > 0) {
+    Object.assign(result, { sentences: reconstructed.sentences });
   }
   if (reconstructed.words && reconstructed.words.length > 0) {
     Object.assign(result, { words: reconstructed.words });
