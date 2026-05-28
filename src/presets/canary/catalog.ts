@@ -38,27 +38,27 @@ export const MODELS = {
   },
 } satisfies Record<string, CanaryModelConfig>;
 
+// ⚡ Bolt: Static mapping for O(1) repoId to key lookups instead of O(N) Object.entries() iterations
+const REPO_ID_TO_KEY = new Map<string, string>();
+for (const [key, config] of Object.entries(MODELS)) {
+  REPO_ID_TO_KEY.set(config.repoId, key);
+}
+
 export function getModelConfig(modelKeyOrRepoId: string): CanaryModelConfig | null {
   if (Object.prototype.hasOwnProperty.call(MODELS, modelKeyOrRepoId)) {
     return MODELS[modelKeyOrRepoId as keyof typeof MODELS];
   }
 
-  for (const config of Object.values(MODELS)) {
-    if (config.repoId === modelKeyOrRepoId) {
-      return config;
-    }
+  const key = REPO_ID_TO_KEY.get(modelKeyOrRepoId);
+  if (key !== undefined) {
+    return MODELS[key as keyof typeof MODELS];
   }
 
   return null;
 }
 
 export function getModelKeyFromRepoId(repoId: string): string | null {
-  for (const [key, config] of Object.entries(MODELS)) {
-    if (config.repoId === repoId) {
-      return key;
-    }
-  }
-  return null;
+  return REPO_ID_TO_KEY.get(repoId) ?? null;
 }
 
 export function listModels(): string[] {
