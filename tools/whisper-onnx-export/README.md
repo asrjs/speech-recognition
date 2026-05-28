@@ -52,7 +52,12 @@ output/whisper-tiny/
 - Outputs: `logits` [batch, alignment_seq, vocab], `selected_cross_attentions` [batch, n_selected, alignment_seq, audio_ctx]
 - Use: word-level timestamps via cross-attention DTW
 
-## Model Variants
+## Known Limitations
+
+- `decoder_model_merged.onnx` is an init-only decoder (no KV cache). Autoregressive decoding
+  without cache is much slower. For production, source `decoder_model_merged.onnx` from
+  `onnx-community/whisper-*_timestamped` which includes proper KV cache support, or contribute
+  a custom PyTorch export path that handles DynamicCache branching.
 
 | Model | Params | n_mels | alignment_heads |
 |-------|--------|--------|-----------------|
