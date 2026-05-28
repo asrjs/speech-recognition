@@ -356,22 +356,30 @@ Verified:
 Commit:
 - `feat: add Whisper timestamp merge helpers`
 
-### Task 7: Add offline fixture-audio smoke harness
+### Task 7: Add offline fixture-audio smoke harness — DONE
 
 Objective: support user-provided audio samples for repeatable offline smoke tests without browser demos.
 
 Files:
-- Create: `tests/smoke/transcribe-fixture.mjs`
-- Create: `tests/fixtures/README.md`
-- Modify: `package.json`
+- Created: `tests/smoke/transcribe-fixture.mjs`
+- Created: `tests/fixtures/README.md`
+- Created: `tests/fixture-smoke-cli.test.ts`
+- Modified: `package.json`
 
 Behavior:
-- accepts local audio path and expected text snippets
-- supports cached/local model artifacts if already available
-- skips gracefully if model assets are absent unless env var forces run
+- accepts local WAV audio path and expected text snippets via `--audio` and repeatable `--expect`
+- supports `--model`, `--preset`, `--family`, `--backend`, `--language`, and `--detail`
+- decodes RIFF/WAVE PCM locally in the harness: 16-bit, 24-bit, 32-bit integer PCM, and 32-bit float PCM
+- downmixes multichannel WAV fixtures to mono before calling `transcribeSpeechFromMonoPcm`
+- skips gracefully unless `ASRJS_FIXTURE_SMOKE=1`, `ASRJS_FIXTURE_SMOKE_FORCE=1`, or `--force` is set
+- skips gracefully when model/assets are unavailable unless forced
+- `--force` / `ASRJS_FIXTURE_SMOKE_FORCE=1` converts unavailable assets and expectation mismatches into failures
 
-Potential scripts:
+Script:
 - `npm run test:fixture-smoke -- --audio path --model parakeet-tdt-0.6b-v2 --expect "..."`
+
+Verified:
+- `npm test -- tests/fixture-smoke-cli.test.ts --run`
 
 Commit:
 - `test: add offline fixture transcription smoke harness`
