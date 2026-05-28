@@ -170,34 +170,35 @@ Verified:
 Commit:
 - `feat: add transcript output sidecar stage`
 
-### Task 2: Add windowing as a stage adapter
+### Task 2: Add windowing as a stage adapter — DONE
 
 Objective: let high-level users compose long-audio windowing into pipelines without hardwiring it into all `transcribe()` calls.
 
 Files:
-- Create: `src/pipeline/windowing-stage.ts`
-- Modify: `src/pipeline/index.ts`
+- Created: `src/pipeline/windowing-stage.ts`
+- Modified: `src/pipeline/index.ts`
 - Test: `tests/pipeline-windowing-stage.test.ts`
 
-API sketch:
+Implemented:
 ```ts
 createWindowingStage({
   inference,
   transcribeWindow,
-  sampleRate,
+  transcribeDirect?,
 })
 ```
 
-Expected behavior:
+Behavior:
 - reads `context.input`, `context.options`, `context.signal`
 - calls existing `transcribeWithWindowing`
 - returns `{ transcript }`
-- respects abort signal and passes progress callback through options
+- passes context signal into transcription options
+- if `options.windowing === 'disabled'` and `transcribeDirect` is provided, uses direct fallback instead of normalizing/windowing
+- missing input throws a useful stage error via `PipelineStageError`
 
-Tests:
-- long audio calls multiple windows and returns merged transcript
-- disabled windowing calls direct fallback if provided
-- missing input throws a stage error with useful message
+Verified:
+- `npm test -- tests/pipeline-windowing-stage.test.ts --run`
+- `npm run typecheck`
 
 Commit:
 - `feat: expose long-audio windowing as pipeline stage`
