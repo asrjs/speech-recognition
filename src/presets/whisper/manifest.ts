@@ -31,7 +31,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
       task: 'multitask-asr-translation',
     },
     config: {
-      maxSourcePositions: 1500,
+      maxSourcePositions: 3000,
       maxTargetPositions: 448,
       melBins: 80,
       vocabularySize: 51865,
@@ -39,7 +39,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
     },
     source: {
       kind: 'huggingface',
-      repoId: 'onnx-community/whisper-tiny',
+      repoId: 'onnx-community/whisper-tiny_timestamped',
     },
   },
   {
@@ -58,7 +58,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
       task: 'multitask-asr-translation',
     },
     config: {
-      maxSourcePositions: 1500,
+      maxSourcePositions: 3000,
       maxTargetPositions: 448,
       melBins: 80,
       vocabularySize: 51865,
@@ -66,7 +66,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
     },
     source: {
       kind: 'huggingface',
-      repoId: 'onnx-community/whisper-base',
+      repoId: 'onnx-community/whisper-base_timestamped',
     },
   },
   {
@@ -85,7 +85,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
       task: 'multitask-asr-translation',
     },
     config: {
-      maxSourcePositions: 1500,
+      maxSourcePositions: 3000,
       maxTargetPositions: 448,
       melBins: 80,
       vocabularySize: 51865,
@@ -93,7 +93,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
     },
     source: {
       kind: 'huggingface',
-      repoId: 'onnx-community/whisper-small',
+      repoId: 'onnx-community/whisper-small_timestamped',
     },
   },
   {
@@ -112,7 +112,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
       task: 'multitask-asr-translation',
     },
     config: {
-      maxSourcePositions: 1500,
+      maxSourcePositions: 3000,
       maxTargetPositions: 448,
       melBins: 128,
       vocabularySize: 51866,
@@ -120,7 +120,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
     },
     source: {
       kind: 'huggingface',
-      repoId: 'onnx-community/whisper-large-v3-turbo',
+      repoId: 'onnx-community/whisper-large-v3-turbo_timestamped',
     },
   },
 ];

@@ -1,3 +1,4 @@
+export * from './attention-alignment.js';
 export * from './beam-search.js';
 export * from './chunking.js';
 export * from './config.js';

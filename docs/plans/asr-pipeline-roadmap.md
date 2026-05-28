@@ -605,6 +605,54 @@ Commit:
 
 ---
 
+### Task 15: Upgrade Whisper word timestamps from interpolation to attention-DTW — IN PROGRESS
+
+Objective: replace the Task 12 fallback with true Whisper cross-attention + DTW alignment when the ONNX graph exposes attention outputs, while keeping timestamp-token interpolation as fallback.
+
+Research findings:
+- Regular `onnx-community/whisper-*` merged decoder exports expose logits + KV cache only; no `cross_attentions.*`.
+- Public `onnx-community/whisper-*_timestamped` exports expose decoder cross-attention outputs.
+  - Directly inspected: `whisper-tiny_timestamped`, `whisper-tiny.en_timestamped`, `whisper-base_timestamped`.
+  - Published timestamped family also includes small/medium/large-v3-turbo variants.
+- `Xenova/whisper-tiny` also exposes `decoder_attentions.N` and `cross_attentions.N`.
+- sherpa-onnx has `scripts/whisper/export-onnx-with-attention.py`, exporting a sherpa-style `cross_attention_weights` output; public examples exist under `clairemcw/sherpa-onnx-whisper-*-attention`.
+- OpenAI/faster-whisper/whisper.cpp use forced decoder alignment over final text tokens, alignment heads, median filtering, and DTW.
+- HF/Transformers.js use generation-time `cross_attentions` for token timestamps and require attention-enabled ONNX graphs.
+
+Files modified so far:
+- Created: `docs/handoffs/whisper-attention-timestamps-research.md`
+- Created: `src/models/whisper-seq2seq/attention-alignment.ts`
+- Created: `tests/whisper-attention-alignment.test.ts`
+- Modified: `src/models/whisper-seq2seq/index.ts`
+- Modified: `src/presets/whisper/manifest.ts`
+- Modified: `tests/whisper-integration.test.ts`
+
+Implemented so far:
+- Whisper presets now use attention-capable `onnx-community/*_timestamped` artifact sources.
+- Whisper preset configs now use `maxSourcePositions: 3000` consistently.
+- Added pure attention-DTW primitives:
+  - `medianFilterWhisperAttention()`
+  - `computeWhisperDtwTokenTimestamps()`
+
+Verification so far:
+- RED confirmed: `npx vitest run tests/whisper-integration.test.ts --run` failed before switching to timestamped repos / 3000 frames.
+- RED confirmed: `npx vitest run tests/whisper-attention-alignment.test.ts --run` failed before adding the helper exports.
+- GREEN: `npx vitest run tests/whisper-attention-alignment.test.ts tests/whisper-integration.test.ts --run` passed.
+- `npm run typecheck -- --pretty false` passed.
+
+Remaining steps:
+1. Materialize and parse `generation_config.json` / `config.json` for `alignment_heads` and `median_filter_width`.
+2. Add ONNX graph inspection/decoder-output test for `cross_attentions.*` using a tiny timestamped fixture.
+3. Collect `cross_attentions.N` from decoder outputs.
+4. Prefer a forced decoder alignment pass over generated text tokens for OpenAI/CTranslate2 parity.
+5. Convert DTW token timestamps to word timestamps; keep interpolation fallback when attention outputs are absent.
+6. Run full verification gate and update `asrjs-dev` references.
+
+Commit target:
+- `feat: add Whisper attention-DTW timestamp groundwork`
+
+---
+
 ## Verification gate after every task
 
 Run targeted tests first, then:

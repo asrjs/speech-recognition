@@ -13,13 +13,20 @@ import { WhisperMelProcessor } from '../src/audio/whisper-mel.js';
 import { PcmAudioBuffer } from '../src/audio/index.js';
 
 describe('Whisper preset manifests', () => {
-  it('includes onnx-community sources for all presets', () => {
+  it('uses onnx-community timestamped sources so word timestamps can use cross-attention DTW', () => {
     for (const manifest of WHISPER_PRESET_MANIFESTS) {
       expect(manifest.source).toBeDefined();
       expect(manifest.source?.kind).toBe('huggingface');
       if (manifest.source?.kind === 'huggingface') {
         expect(manifest.source.repoId).toMatch(/^onnx-community\/whisper-/);
+        expect(manifest.source.repoId).toMatch(/_timestamped$/);
       }
+    }
+  });
+
+  it('uses 3000 mel frames for every Whisper encoder preset', () => {
+    for (const manifest of WHISPER_PRESET_MANIFESTS) {
+      expect(manifest.config.maxSourcePositions).toBe(3000);
     }
   });
 
