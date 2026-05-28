@@ -18,7 +18,7 @@ const BASE_WHISPER_CONFIG: WhisperSeq2SeqModelConfig = {
   decoderArchitecture: 'transformer-decoder',
   sampleRate: 16000,
   melBins: 80,
-  maxSourcePositions: 1500,
+  maxSourcePositions: 3000,
   maxTargetPositions: 448,
   vocabularySize: 51865,
   languages: ['auto'],

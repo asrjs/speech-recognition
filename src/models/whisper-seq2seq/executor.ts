@@ -279,8 +279,8 @@ export class WhisperOnnxExecutor {
 
     for (let step = 0; step < maxNewTokens; step++) {
       const isFirstStep = step === 0;
-      const inputIds = new Int32Array(generatedTokens);
-      const inputIdsTensor = new loaded.ort.Tensor('int32', inputIds, [1, generatedTokens.length]);
+      const inputIds = new BigInt64Array(generatedTokens.map((id) => BigInt(id)));
+      const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, generatedTokens.length]);
 
       const feeds: Record<string, unknown> = {
         input_ids: inputIdsTensor,
@@ -288,14 +288,35 @@ export class WhisperOnnxExecutor {
       };
 
       if (hasCacheBranch) {
-        // ORT merged decoder uses a bool scalar; we use int32 as a workaround
-        feeds.use_cache_branch = new loaded.ort.Tensor('int32', new Int32Array([isFirstStep ? 0 : 1]), []);
+        // ORT merged decoder uses a bool scalar
+        feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([isFirstStep ? 1 : 0]), [1]);
       }
 
       // Add past key values from previous step
       if (!isFirstStep) {
         for (const [name, tensor] of Object.entries(pastKeyValues)) {
           feeds[name] = tensor;
+        }
+      } else {
+        // First step: provide empty past_key_values tensors for the merged decoder
+        const numLayers = 4;
+        const numHeads = 6;
+        const headDim = 64;
+        const encoderSeqLen = encoderHiddenStates.dims[1] as number;
+        for (let i = 0; i < numLayers; i++) {
+          feeds[`past_key_values.${i}.decoder.key`] = new loaded.ort.Tensor(
+            'float32', new Float32Array(0), [1, numHeads, 0, headDim]
+          );
+          feeds[`past_key_values.${i}.decoder.value`] = new loaded.ort.Tensor(
+            'float32', new Float32Array(0), [1, numHeads, 0, headDim]
+          );
+          const encoderCacheSize = 1 * numHeads * encoderSeqLen * headDim;
+          feeds[`past_key_values.${i}.encoder.key`] = new loaded.ort.Tensor(
+            'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]
+          );
+          feeds[`past_key_values.${i}.encoder.value`] = new loaded.ort.Tensor(
+            'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]
+          );
         }
       }
 
