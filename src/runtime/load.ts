@@ -10,6 +10,7 @@ import {
   createDefaultModelInferenceLimits,
   planWindowedTranscription,
   transcribeWithWindowing,
+  withResolvedTranscriptDetail,
 } from '../pipeline/index.js';
 import type {
   AudioInputLike,
@@ -197,8 +198,9 @@ export function createLoadedSpeechModelHandle<
       input: AudioInputLike,
       options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
     ): Promise<TranscriptResponse<TNative, TFlavor>> {
-      if (options?.responseFlavor === 'native') {
-        return handle.transcribe(input, options);
+      const resolvedOptions = withResolvedTranscriptDetail(options);
+      if (resolvedOptions?.responseFlavor === 'native') {
+        return handle.transcribe(input, resolvedOptions);
       }
 
       const inference =
@@ -207,14 +209,14 @@ export function createLoadedSpeechModelHandle<
           family: handle.model.info.family,
           modelId: handle.model.info.modelId,
         });
-      const decision = planWindowedTranscription(input, options, inference);
+      const decision = planWindowedTranscription(input, resolvedOptions, inference);
       if (!decision.shouldWindow) {
-        return handle.transcribe(input, options);
+        return handle.transcribe(input, resolvedOptions);
       }
 
       const canonical = await transcribeWithWindowing({
         input: decision.audio,
-        options: { ...(options ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
+        options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
         inference,
         transcribeWindow: async (windowInput, windowOptions) =>
           (await handle.transcribe(windowInput, {
@@ -226,7 +228,7 @@ export function createLoadedSpeechModelHandle<
           >,
       });
 
-      if (options?.responseFlavor === 'canonical+native') {
+      if (resolvedOptions?.responseFlavor === 'canonical+native') {
         return { canonical } as TranscriptResponse<TNative, TFlavor>;
       }
       return canonical as TranscriptResponse<TNative, TFlavor>;

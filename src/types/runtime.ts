@@ -109,6 +109,9 @@ export interface ModelInferenceLimits {
 export interface BaseTranscriptionOptions {
   readonly detail?: TranscriptDetailLevel;
   readonly responseFlavor?: TranscriptResponseFlavor;
+  readonly returnTimestamps?: boolean | 'word' | 'segment' | 'segments';
+  readonly returnWords?: boolean;
+  readonly returnTokens?: boolean;
   readonly language?: string;
   readonly timeOffsetSeconds?: number;
   readonly chunkLengthSeconds?: number;

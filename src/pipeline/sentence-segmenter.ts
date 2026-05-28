@@ -130,11 +130,15 @@ export function partitionWordsIntoSegments(
 function buildSegment(index: number, words: readonly TranscriptWord[]): TranscriptSegment {
   const first = words[0]!;
   const last = words[words.length - 1]!;
+  const confidence = words.every((word) => typeof word.confidence === 'number')
+    ? words.reduce((sum, word) => sum + (word.confidence ?? 0), 0) / words.length
+    : undefined;
   return {
     index,
     text: joinTranscriptWords(words),
     startTime: first.startTime,
     endTime: last.endTime,
+    confidence,
     wordIndices: words.map((word) => word.index),
   };
 }

@@ -3,6 +3,7 @@ import {
   dedupeWindowWords,
   partitionWordsIntoSegments,
   resolveWindowPolicy,
+  resolveTranscriptDetail,
   transcribeWithWindowing,
   type TranscriptResult,
 } from '@asrjs/speech-recognition';
@@ -29,6 +30,14 @@ function result(words: ReturnType<typeof word>[], offsetText = ''): TranscriptRe
 }
 
 describe('pipeline windowing primitives', () => {
+  it('maps transformers-style return options onto canonical detail levels', () => {
+    expect(resolveTranscriptDetail({ returnTimestamps: true })).toBe('segments');
+    expect(resolveTranscriptDetail({ returnTimestamps: 'word' })).toBe('words');
+    expect(resolveTranscriptDetail({ returnWords: true })).toBe('words');
+    expect(resolveTranscriptDetail({ returnTokens: true })).toBe('detailed');
+    expect(resolveTranscriptDetail({ detail: 'text', returnTokens: true })).toBe('text');
+  });
+
   it('resolves model-specific Parakeet and Whisper defaults', () => {
     const parakeet = createDefaultModelInferenceLimits({ family: 'nemo-tdt', modelId: 'parakeet' });
     const whisper = createDefaultModelInferenceLimits({ family: 'whisper-seq2seq', modelId: 'whisper' });

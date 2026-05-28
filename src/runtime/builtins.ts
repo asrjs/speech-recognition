@@ -9,6 +9,7 @@ import {
   createDefaultModelInferenceLimits,
   planWindowedTranscription,
   transcribeWithWindowing,
+  withResolvedTranscriptDetail,
 } from '../pipeline/index.js';
 import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
@@ -19,6 +20,7 @@ import { createCanaryPresetFactory } from '../presets/canary/factory.js';
 import { createMedAsrPresetFactory } from '../presets/medasr/factory.js';
 import { createParakeetPresetFactory } from '../presets/parakeet/factory.js';
 import { createWhisperPresetFactory } from '../presets/whisper/factory.js';
+import { getBuiltInModelDescriptor } from '../presets/descriptors.js';
 import type {
   BackendSelectionCriteria,
   BaseSessionOptions,
@@ -313,6 +315,7 @@ export async function loadBuiltInSpeechModel<
     message: 'Resolving built-in model request.',
   });
   const resolved = resolveBuiltInModelRequest(runtime, options);
+  const resolvedDescriptor = resolved.modelId ? getBuiltInModelDescriptor(resolved.modelId) : undefined;
   emitProgress(options, {
     phase: 'resolve:complete',
     modelId: resolved.modelId,
@@ -392,24 +395,26 @@ export async function loadBuiltInSpeechModel<
         input: AudioInputLike,
         transcribeOptions?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
       ): Promise<TranscriptResponse<TNative, TFlavor>> {
-        if (transcribeOptions?.responseFlavor === 'native') {
-          return session.transcribe(input, transcribeOptions);
+        const resolvedOptions = withResolvedTranscriptDetail(transcribeOptions);
+        if (resolvedOptions?.responseFlavor === 'native') {
+          return session.transcribe(input, resolvedOptions);
         }
 
         const inference =
           loadedModel.info.inference ??
+          resolvedDescriptor?.inference ??
           createDefaultModelInferenceLimits({
             family: loadedModel.info.family,
             modelId: loadedModel.info.modelId,
           });
-        const decision = planWindowedTranscription(input, transcribeOptions, inference);
+        const decision = planWindowedTranscription(input, resolvedOptions, inference);
         if (!decision.shouldWindow) {
-          return session.transcribe(input, transcribeOptions);
+          return session.transcribe(input, resolvedOptions);
         }
 
         const canonical = await transcribeWithWindowing({
           input: decision.audio,
-          options: { ...(transcribeOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
+          options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
           inference,
           transcribeWindow: async (windowInput, windowOptions) =>
             (await session.transcribe(windowInput, {
@@ -421,7 +426,7 @@ export async function loadBuiltInSpeechModel<
             >,
         });
 
-        if (transcribeOptions?.responseFlavor === 'canonical+native') {
+        if (resolvedOptions?.responseFlavor === 'canonical+native') {
           return { canonical } as TranscriptResponse<TNative, TFlavor>;
         }
         return canonical as TranscriptResponse<TNative, TFlavor>;

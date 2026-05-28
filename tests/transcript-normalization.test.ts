@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 describe('transcript normalization helpers', () => {
   it('normalizes NeMo TDT native output into canonical transcript data', () => {
     const native: NemoTdtNativeTranscript = {
-      utteranceText: 'hello world',
+      utteranceText: 'hello world. Next sentence',
       isFinal: true,
       words: [
         {
@@ -27,10 +27,24 @@ describe('transcript normalization helpers', () => {
         },
         {
           index: 1,
-          text: 'world',
+          text: 'world.',
           startTime: 0.5,
           endTime: 1,
           confidence: 0.8,
+        },
+        {
+          index: 2,
+          text: 'Next',
+          startTime: 1.1,
+          endTime: 1.4,
+          confidence: 0.7,
+        },
+        {
+          index: 3,
+          text: 'sentence',
+          startTime: 1.5,
+          endTime: 2,
+          confidence: 0.6,
         },
       ],
       tokens: [
@@ -41,6 +55,9 @@ describe('transcript normalization helpers', () => {
           startTime: 0,
           endTime: 0.5,
           confidence: 0.9,
+          frameIndex: 12,
+          logProb: -0.1,
+          tdtStep: 2,
         },
       ],
       confidence: {
@@ -56,11 +73,15 @@ describe('transcript normalization helpers', () => {
       backendId: 'webgpu',
     });
 
-    expect(canonical.text).toBe('hello world');
+    expect(canonical.text).toBe('hello world. Next sentence');
     expect(canonical.meta.modelFamily).toBe('nemo-tdt');
     expect(canonical.meta.averageConfidence).toBe(0.85);
-    expect(canonical.words).toHaveLength(2);
-    expect(canonical.tokens).toHaveLength(1);
+    expect(canonical.segments?.map((segment) => segment.text)).toEqual([
+      'hello world.',
+      'Next sentence',
+    ]);
+    expect(canonical.words).toHaveLength(4);
+    expect(canonical.tokens?.[0]).toMatchObject({ frameIndex: 12, logProb: -0.1, tdtStep: 2 });
   });
 
   it('normalizes LASR CTC and Whisper native outputs with the same interface', () => {

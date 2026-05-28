@@ -1,3 +1,4 @@
+export * from './output-options.js';
 export * from './long-audio-windowing.js';
 export * from './sentence-segmenter.js';
 export * from './window-policy.js';

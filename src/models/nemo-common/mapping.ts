@@ -1,3 +1,4 @@
+import { partitionWordsIntoSegments } from '../../pipeline/index.js';
 import type {
   ModelClassification,
   TranscriptDetailLevel,
@@ -10,44 +11,41 @@ import type {
 } from '../../types/index.js';
 import type {
   NemoConfidenceReconstructor,
+  NemoNativeToken,
   NemoNativeTranscript,
   NemoTimestampReconstructor,
 } from './types.js';
 
 function buildDefaultSegments(words: readonly TranscriptWord[]): TranscriptSegment[] {
-  if (words.length === 0) {
-    return [];
-  }
+  return partitionWordsIntoSegments(words);
+}
 
-  return [
-    {
-      index: 0,
-      text: words
-        .map((word) => word.text)
-        .join(' ')
-        .trim(),
-      startTime: words[0]!.startTime,
-      endTime: words[words.length - 1]!.endTime,
-      confidence: words.every((word) => typeof word.confidence === 'number')
-        ? words.reduce((sum, word) => sum + (word.confidence ?? 0), 0) / words.length
-        : undefined,
-      wordIndices: words.map((word) => word.index),
-    },
-  ];
+function mapNativeToken(token: NemoNativeToken): TranscriptToken {
+  const extended = token as {
+    readonly frameIndex?: number;
+    readonly logProb?: number;
+    readonly tdtStep?: number;
+  };
+  return {
+    index: token.index,
+    id: token.id,
+    text: token.text,
+    rawText: token.rawText,
+    isWordStart: token.isWordStart,
+    startTime: token.startTime,
+    endTime: token.endTime,
+    confidence: token.confidence,
+    frameIndex: extended.frameIndex,
+    logProb: extended.logProb,
+    tdtStep: extended.tdtStep,
+  };
 }
 
 export const defaultNemoTimestampReconstructor: NemoTimestampReconstructor = {
   reconstruct(nativeTranscript, detail) {
-    const tokens: TranscriptToken[] = (nativeTranscript.tokens ?? []).map((token) => ({
-      index: token.index,
-      id: token.id,
-      text: token.text,
-      rawText: token.rawText,
-      isWordStart: token.isWordStart,
-      startTime: token.startTime,
-      endTime: token.endTime,
-      confidence: token.confidence,
-    }));
+    const tokens: TranscriptToken[] = (nativeTranscript.tokens ?? []).map((token) =>
+      mapNativeToken(token),
+    );
 
     const words: TranscriptWord[] = (nativeTranscript.words ?? []).map((word) => ({
       index: word.index,
