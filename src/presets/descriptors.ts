@@ -2,7 +2,7 @@ import {
   MODELS as CANARY_MODELS,
   getLanguageName as getCanaryLanguageName,
 } from './canary/catalog.js';
-import type { ModelClassification } from '../types/index.js';
+import type { ModelClassification, ModelInferenceLimits } from '../types/index.js';
 import {
   fetchModelFiles,
   getAvailableQuantModes,
@@ -100,6 +100,7 @@ export interface BuiltInModelDescriptor {
   readonly defaultSourceLanguage: string;
   readonly defaultTargetLanguage?: string;
   readonly capabilities: BuiltInModelCapabilities;
+  readonly inference: ModelInferenceLimits;
   readonly loading: BuiltInModelLoadingDescriptor;
   readonly controls: readonly BuiltInControlDescriptor[];
   readonly warmup: BuiltInModelWarmupDescriptor;
@@ -195,6 +196,101 @@ function pickBuiltInComponentBackend(
     : (availableBackends[0] ?? defaultBackend);
 }
 
+function createParakeetInferenceLimits(config: {
+  readonly topology?: 'tdt' | 'rnnt';
+  readonly supportsWordTimestamps?: boolean;
+}): ModelInferenceLimits {
+  if (config.topology === 'rnnt') {
+    return {
+      sampleRate: 16000,
+      maxInputDurationSec: 30,
+      recommendedWindowDurationSec: 15,
+      minWindowDurationSec: 5,
+      maxWindowDurationSec: 30,
+      autoWindowThresholdSec: 30,
+      defaultOverlapSec: 2,
+      preferVadSegmentWindowing: true,
+      supportsWordTimestamps: config.supportsWordTimestamps ?? false,
+      supportsTokenTimestamps: true,
+      supportsSegmentTimestamps: true,
+      supportsConfidence: true,
+      defaultSegmentationStrategy: 'vad',
+      defaultMergeStrategy: 'concat',
+    };
+  }
+
+  return {
+    sampleRate: 16000,
+    maxInputDurationSec: 180,
+    recommendedWindowDurationSec: 90,
+    minWindowDurationSec: 20,
+    maxWindowDurationSec: 180,
+    autoWindowThresholdSec: 180,
+    defaultOverlapSec: 10,
+    preferSentenceBoundaryWindowing: true,
+    supportsWordTimestamps: config.supportsWordTimestamps ?? true,
+    supportsTokenTimestamps: true,
+    supportsSegmentTimestamps: true,
+    supportsConfidence: true,
+    defaultSegmentationStrategy: 'word-punctuation',
+    defaultMergeStrategy: 'word-dedupe',
+  };
+}
+
+function createConservativeAedInferenceLimits(): ModelInferenceLimits {
+  return {
+    sampleRate: 16000,
+    maxInputDurationSec: 60,
+    recommendedWindowDurationSec: 30,
+    minWindowDurationSec: 5,
+    maxWindowDurationSec: 60,
+    autoWindowThresholdSec: 60,
+    defaultOverlapSec: 5,
+    supportsWordTimestamps: false,
+    supportsTokenTimestamps: true,
+    supportsSegmentTimestamps: true,
+    supportsConfidence: true,
+    defaultSegmentationStrategy: 'word-punctuation',
+    defaultMergeStrategy: 'concat',
+  };
+}
+
+function createCtcInferenceLimits(): ModelInferenceLimits {
+  return {
+    sampleRate: 16000,
+    maxInputDurationSec: 60,
+    recommendedWindowDurationSec: 30,
+    minWindowDurationSec: 5,
+    maxWindowDurationSec: 60,
+    autoWindowThresholdSec: 60,
+    defaultOverlapSec: 5,
+    supportsWordTimestamps: false,
+    supportsTokenTimestamps: false,
+    supportsSegmentTimestamps: false,
+    supportsConfidence: false,
+    defaultSegmentationStrategy: 'ctc-frame',
+    defaultMergeStrategy: 'ctc-collapse',
+  };
+}
+
+function createWhisperInferenceLimits(): ModelInferenceLimits {
+  return {
+    sampleRate: 16000,
+    maxInputDurationSec: 30,
+    recommendedWindowDurationSec: 30,
+    minWindowDurationSec: 5,
+    maxWindowDurationSec: 30,
+    autoWindowThresholdSec: 30,
+    defaultStrideSec: 5,
+    supportsWordTimestamps: true,
+    supportsTokenTimestamps: true,
+    supportsSegmentTimestamps: true,
+    supportsConfidence: true,
+    defaultSegmentationStrategy: 'whisper-token',
+    defaultMergeStrategy: 'whisper-stride',
+  };
+}
+
 function createParakeetDescriptors(): BuiltInModelDescriptor[] {
   return Object.entries(PARAKEET_MODELS).map(([modelId, config]) => {
     const manifest = resolveParakeetPresetManifest(modelId);
@@ -222,9 +318,10 @@ function createParakeetDescriptors(): BuiltInModelDescriptor[] {
         supportsPunctuationCapitalization: false,
         supportsInverseTextNormalization: false,
         supportsWordTimestamps: config.supportsWordTimestamps ?? true,
-        supportsSegmentTimestamps: false,
+        supportsSegmentTimestamps: true,
         supportsPromptControls: false,
       },
+      inference: createParakeetInferenceLimits(config),
       loading: {
         repoId: config.repoId,
         supportsHubSource: true,
@@ -281,6 +378,7 @@ function createCanaryDescriptors(): BuiltInModelDescriptor[] {
         supportsSegmentTimestamps: CANARY_180M_FLASH_DOCS.capabilities.supportsSegmentTimestamps,
         supportsPromptControls: true,
       },
+      inference: createConservativeAedInferenceLimits(),
       loading: {
         repoId: config.repoId,
         supportsHubSource: true,
@@ -378,6 +476,7 @@ function createMedAsrDescriptors(): BuiltInModelDescriptor[] {
         supportsSegmentTimestamps: false,
         supportsPromptControls: false,
       },
+      inference: createCtcInferenceLimits(),
       loading: {
         repoId: source?.kind === 'huggingface' ? source.repoId : undefined,
         supportsHubSource: true,
@@ -426,10 +525,11 @@ function createWhisperDescriptors(): BuiltInModelDescriptor[] {
         supportsTranslation: true,
         supportsPunctuationCapitalization: false,
         supportsInverseTextNormalization: false,
-        supportsWordTimestamps: false,
-        supportsSegmentTimestamps: false,
+        supportsWordTimestamps: true,
+        supportsSegmentTimestamps: true,
         supportsPromptControls: false,
       },
+      inference: createWhisperInferenceLimits(),
       loading: {
         supportsHubSource: true,
         supportsLocalSource: false,

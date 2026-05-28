@@ -6,6 +6,11 @@ import {
   type LoadBuiltInSpeechModelOptions,
 } from './builtins.js';
 import { PcmAudioBuffer } from '../audio/index.js';
+import {
+  createDefaultModelInferenceLimits,
+  planWindowedTranscription,
+  transcribeWithWindowing,
+} from '../pipeline/index.js';
 import type {
   AudioInputLike,
   BaseTranscriptionOptions,
@@ -192,7 +197,39 @@ export function createLoadedSpeechModelHandle<
       input: AudioInputLike,
       options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
     ): Promise<TranscriptResponse<TNative, TFlavor>> {
-      return handle.transcribe(input, options);
+      if (options?.responseFlavor === 'native') {
+        return handle.transcribe(input, options);
+      }
+
+      const inference =
+        handle.model.info.inference ??
+        createDefaultModelInferenceLimits({
+          family: handle.model.info.family,
+          modelId: handle.model.info.modelId,
+        });
+      const decision = planWindowedTranscription(input, options, inference);
+      if (!decision.shouldWindow) {
+        return handle.transcribe(input, options);
+      }
+
+      const canonical = await transcribeWithWindowing({
+        input: decision.audio,
+        options: { ...(options ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
+        inference,
+        transcribeWindow: async (windowInput, windowOptions) =>
+          (await handle.transcribe(windowInput, {
+            ...windowOptions,
+            responseFlavor: 'canonical',
+          } as TTranscriptionOptions & { readonly responseFlavor: 'canonical' })) as TranscriptResponse<
+            TNative,
+            'canonical'
+          >,
+      });
+
+      if (options?.responseFlavor === 'canonical+native') {
+        return { canonical } as TranscriptResponse<TNative, TFlavor>;
+      }
+      return canonical as TranscriptResponse<TNative, TFlavor>;
     },
     async transcribeMonoPcm<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
       pcm: MonoPcmInput,

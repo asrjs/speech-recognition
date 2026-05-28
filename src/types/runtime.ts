@@ -81,7 +81,31 @@ export interface BaseSessionOptions {
   readonly locale?: string;
 }
 
-/** Stable cross-family transcription options understood by all sessions. */
+export type SegmentationStrategy = 'word-punctuation' | 'ctc-frame' | 'whisper-token' | 'vad' | 'none';
+export type WindowMergeStrategy = 'word-dedupe' | 'ctc-collapse' | 'whisper-stride' | 'concat';
+export type PipelineWindowingMode = 'auto' | 'disabled' | 'force';
+
+/** Model-specific inference and pipeline limits used to resolve safe windowing defaults. */
+export interface ModelInferenceLimits {
+  readonly sampleRate: number;
+  readonly maxInputDurationSec?: number;
+  readonly recommendedWindowDurationSec?: number;
+  readonly minWindowDurationSec?: number;
+  readonly maxWindowDurationSec?: number;
+  readonly autoWindowThresholdSec?: number;
+  readonly defaultOverlapSec?: number;
+  readonly defaultStrideSec?: number;
+  readonly preferSentenceBoundaryWindowing?: boolean;
+  readonly preferVadSegmentWindowing?: boolean;
+  readonly supportsWordTimestamps: boolean;
+  readonly supportsTokenTimestamps?: boolean;
+  readonly supportsSegmentTimestamps: boolean;
+  readonly supportsConfidence?: boolean;
+  readonly defaultSegmentationStrategy: SegmentationStrategy;
+  readonly defaultMergeStrategy: WindowMergeStrategy;
+}
+
+/** Stable cross-family transcription options understood by all sessions and pipeline helpers. */
 export interface BaseTranscriptionOptions {
   readonly detail?: TranscriptDetailLevel;
   readonly responseFlavor?: TranscriptResponseFlavor;
@@ -89,6 +113,13 @@ export interface BaseTranscriptionOptions {
   readonly timeOffsetSeconds?: number;
   readonly chunkLengthSeconds?: number;
   readonly strideLengthSeconds?: number;
+  readonly windowing?: PipelineWindowingMode;
+  readonly windowDurationSeconds?: number;
+  readonly overlapSeconds?: number;
+  readonly maxInputDurationSeconds?: number;
+  readonly segmentationStrategy?: SegmentationStrategy;
+  readonly mergeStrategy?: WindowMergeStrategy;
+  readonly unsafeAllowOverMaxWindow?: boolean;
   readonly signal?: AbortSignalLike | null;
   readonly onProgress?: TranscriptionProgressCallback;
 }
@@ -102,6 +133,7 @@ export interface SpeechModelInfo {
   readonly architecture?: ModelArchitectureDescriptor;
   readonly description?: string;
   readonly nativeOutputName?: string;
+  readonly inference?: ModelInferenceLimits;
 }
 
 /** Explicit model-family load request. */

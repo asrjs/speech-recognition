@@ -5,6 +5,7 @@ export * from './runtime/errors.js';
 export * from './runtime/load.js';
 export * from './runtime/session.js';
 export * from './runtime/transcripts.js';
+export * from './pipeline/index.js';
 export * from './audio/index.js';
 export * from './inference/backends/wasm/index.js';
 export * from './inference/backends/webgpu/index.js';

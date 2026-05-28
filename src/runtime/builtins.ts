@@ -5,6 +5,11 @@ import {
   createWasmBackend,
 } from '../inference/index.js';
 import type { AudioInputLike } from '../types/audio.js';
+import {
+  createDefaultModelInferenceLimits,
+  planWindowedTranscription,
+  transcribeWithWindowing,
+} from '../pipeline/index.js';
 import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
@@ -387,7 +392,39 @@ export async function loadBuiltInSpeechModel<
         input: AudioInputLike,
         transcribeOptions?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
       ): Promise<TranscriptResponse<TNative, TFlavor>> {
-        return session.transcribe(input, transcribeOptions);
+        if (transcribeOptions?.responseFlavor === 'native') {
+          return session.transcribe(input, transcribeOptions);
+        }
+
+        const inference =
+          loadedModel.info.inference ??
+          createDefaultModelInferenceLimits({
+            family: loadedModel.info.family,
+            modelId: loadedModel.info.modelId,
+          });
+        const decision = planWindowedTranscription(input, transcribeOptions, inference);
+        if (!decision.shouldWindow) {
+          return session.transcribe(input, transcribeOptions);
+        }
+
+        const canonical = await transcribeWithWindowing({
+          input: decision.audio,
+          options: { ...(transcribeOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
+          inference,
+          transcribeWindow: async (windowInput, windowOptions) =>
+            (await session.transcribe(windowInput, {
+              ...windowOptions,
+              responseFlavor: 'canonical',
+            } as TTranscriptionOptions & { readonly responseFlavor: 'canonical' })) as TranscriptResponse<
+              TNative,
+              'canonical'
+            >,
+        });
+
+        if (transcribeOptions?.responseFlavor === 'canonical+native') {
+          return { canonical } as TranscriptResponse<TNative, TFlavor>;
+        }
+        return canonical as TranscriptResponse<TNative, TFlavor>;
       },
       async dispose(): Promise<void> {
         if (ownsRuntime) {
