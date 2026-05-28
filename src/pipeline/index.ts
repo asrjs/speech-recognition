@@ -9,3 +9,4 @@ export * from './output-sidecars.js';
 export * from './windowing-stage.js';
 export * from './sentence-stage.js';
 export * from './vad-segments.js';
+export * from './whisper-chunking.js';

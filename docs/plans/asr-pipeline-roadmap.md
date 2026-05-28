@@ -288,23 +288,31 @@ Verified:
 Commit:
 - `feat: add VAD speech segment helpers`
 
-### Task 5: Add Whisper chunk/stride planning helpers
+### Task 5: Add Whisper chunk/stride planning helpers — DONE
 
 Objective: implement the model-neutral part of Whisper chunking before decoding real models.
 
 Files:
-- Create: `src/pipeline/whisper-chunking.ts`
-- Modify: `src/pipeline/index.ts`
+- Created: `src/pipeline/whisper-chunking.ts`
+- Modified: `src/pipeline/index.ts`
 - Test: `tests/pipeline-whisper-chunking.test.ts`
 
 Helpers:
-- `planWhisperChunks(audioLengthSamples, sampleRate, chunkLengthSeconds, strideLengthSeconds)`
-- validate stride < chunk/2 if using left+right stride
-- produce chunks with sample offsets and stride metadata
+- `planWhisperChunks(audioLengthSamples, sampleRate, chunkLengthSeconds, strideLengthSeconds?)`
+- validates symmetric stride is `< chunk / 2`
+- validates asymmetric `[left, right]` stride sum is `< chunk`
+- produces chunks with sample offsets, second offsets, `isFirst`/`isLast`, and HF/Transformers.js-compatible `[inputLength, leftStride, rightStride]` stride metadata
+- defaults stride to `chunkLengthSeconds / 6`
+- returns a single unstrided chunk when chunking is disabled or audio fits in one chunk
 
 Reference:
 - `/home/steam/github/ysdede/transformers.js/packages/transformers/src/pipelines/automatic-speech-recognition.js`
 - `/home/steam/github/ysdede/transformers.js/packages/transformers/src/models/whisper/tokenization_whisper.js`
+
+Verified:
+- `npm test -- tests/pipeline-whisper-chunking.test.ts --run`
+- `npm run typecheck`
+- `npm run lint` passed with 3 pre-existing max-lines warnings
 
 Commit:
 - `feat: add Whisper chunk planning helpers`
