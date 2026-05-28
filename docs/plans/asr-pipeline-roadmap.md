@@ -605,7 +605,7 @@ Commit:
 
 ---
 
-### Task 15: Upgrade Whisper word timestamps from interpolation to attention-DTW — IN PROGRESS
+### Task 15: Upgrade Whisper word timestamps from interpolation to attention-DTW — DONE
 
 Objective: replace the Task 12 fallback with true Whisper cross-attention + DTW alignment when the ONNX graph exposes attention outputs, while keeping timestamp-token interpolation as fallback.
 

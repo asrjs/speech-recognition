@@ -73,33 +73,41 @@ Different approach:
 - Uses separate CTC forced alignment model (wav2vec2/torchaudio/HF) on waveform + transcript.
 - Often more accurate but requires extra language-specific model.
 
-## Code changes started
+## Code changes — ALL DONE as of 2026-05-29
 
 1. Presets now source attention-enabled `onnx-community/*_timestamped` repos, while preserving user-facing aliases/model IDs.
-2. Preset `maxSourcePositions` fixed to 3000 mel frames. Whisper encoder expects 30s x 100 fps mel frames; encoder output is downsampled to 1500 frames.
+2. Preset `maxSourcePositions` fixed to 3000 mel frames.
 3. Added pure DTW alignment primitives:
    - `src/models/whisper-seq2seq/attention-alignment.ts`
-   - exports `medianFilterWhisperAttention()`
-   - exports `computeWhisperDtwTokenTimestamps()`
-4. Added tests:
-   - `tests/whisper-attention-alignment.test.ts`
-   - updated `tests/whisper-integration.test.ts`
+   - exports `medianFilterWhisperAttention()` and `computeWhisperDtwTokenTimestamps()`
+4. Added generation config parsing:
+   - `src/models/whisper-seq2seq/generation-config.ts`
+   - `parseWhisperGenerationConfig()` and `parseWhisperModelConfig()`
+5. Added cross-attention collection from decoder outputs:
+   - `extractCrossAttentions()` in executor, called from `runDecoderStep`
+6. Added forced alignment pass:
+   - `runForcedAlignment()` in executor — single forward pass over forced token sequence
+7. Added attention-DTW word timestamp pipeline:
+   - `computeAttentionWordTimestamps()` in executor — full pipeline: forced alignment → DTW → word timestamps
+8. Fallback: timestamp-token interpolation used when cross-attention outputs absent
+9. Generation config auto-fetched from HF repo alongside tokenizer
+10. Added tests:
+    - `tests/whisper-attention-alignment.test.ts`
+    - `tests/whisper-generation-config.test.ts`
+    - `tests/whisper-cross-attention-collection.test.ts`
+    - `tests/whisper-forced-alignment.test.ts`
+    - `tests/whisper-timestamped-decoder.test.ts` (fixture smoke)
+    - updated `tests/whisper-integration.test.ts`
 
-## Remaining implementation plan
+## Implementation complete
 
-1. Load `generation_config.json` from the same HF repo as tokenizer/model artifacts.
-   - Parse `alignment_heads`.
-   - Parse `median_filter_width` from `config.json` if available, default 7.
-2. Extend `WhisperDirectArtifacts` / `WhisperHuggingFaceSource` to optionally include config/generation config URLs.
-3. Collect `cross_attentions.N` outputs from attention-enabled `decoder_model_merged.onnx` runs.
-   - ONNX shape: `[batch, heads, decoder_sequence_length, encoder_sequence_length]`.
-   - For generation-time alignment, collect one slice per emitted text token.
-4. Prefer OpenAI/CTranslate2 forced alignment for accuracy:
-   - After decoding final tokens, rerun decoder over `SOT + lang + task + no_timestamps + text + EOT` without timestamp tokens.
-   - Request/use all cross-attention outputs from the ONNX graph.
-   - Compute DTW timestamps with the helper added here.
-5. Convert token timestamps to word timestamps using tokenizer split/grouping. Current fallback `buildWhisperWordTimestampsFromTokenDetails()` can stay as fallback when attention outputs are absent.
-6. Add a fixture smoke test using `onnx-community/whisper-tiny_timestamped` direct local artifacts and assert `cross_attentions.*` are present.
+All 6 remaining steps from the previous handoff are now complete:
+1. Materialize/parse generation_config.json ✓ (generation-config.ts, auto-fetched)
+2. Fixture test for cross_attentions.* ✓ (whisper-timestamped-decoder.test.ts)
+3. Collect cross_attentions.N ✓ (extractCrossAttentions + runDecoderStep)
+4. Forced alignment pass ✓ (runForcedAlignment)
+5. DTW → word timestamps ✓ (computeAttentionWordTimestamps)
+6. Fallback preserved ✓ (falls back to buildWhisperWordTimestampsFromTokenDetails)
 
 ## Important distinction
 

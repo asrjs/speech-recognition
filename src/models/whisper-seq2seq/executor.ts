@@ -29,11 +29,17 @@ import {
 } from './ort.js';
 import { WhisperTokenizer } from './tokenizer.js';
 import { buildWhisperWordTimestampsFromTokenDetails } from './word-timestamps.js';
+import { computeWhisperDtwTokenTimestamps } from './attention-alignment.js';
+import {
+  parseWhisperGenerationConfig,
+  type WhisperGenerationConfig,
+} from './generation-config.js';
 import type {
   WhisperArtifactSource,
   WhisperNativeSegment,
   WhisperNativeToken,
   WhisperNativeTranscript,
+  WhisperNativeWord,
   WhisperSeq2SeqModelConfig,
   WhisperSeq2SeqTranscriptionOptions,
 } from './types.js';
@@ -43,6 +49,7 @@ interface LoadedExecutorState {
   readonly tokenizer: WhisperTokenizer;
   readonly encoderSession: OrtSessionLike;
   readonly decoderSession: OrtSessionLike;
+  readonly generationConfig: WhisperGenerationConfig;
   readonly warnings: readonly TranscriptWarning[];
 }
 
@@ -50,6 +57,24 @@ interface DecoderStepResult {
   readonly lastLogits: Float32Array;
   readonly vocabSize: number;
   readonly pastKeyValues: Record<string, OrtTensorLike<Float32Array>>;
+  readonly crossAttentions: readonly OrtTensorLike<Float32Array>[];
+}
+
+function extractCrossAttentions(
+  outputs: Record<string, unknown>,
+): OrtTensorLike<Float32Array>[] {
+  const entries: { layer: number; tensor: OrtTensorLike<Float32Array> }[] = [];
+  for (const [key, value] of Object.entries(outputs)) {
+    const match = key.match(/^cross_attentions\.(\d+)$/);
+    if (match) {
+      entries.push({
+        layer: parseInt(match[1]!, 10),
+        tensor: value as OrtTensorLike<Float32Array>,
+      });
+    }
+  }
+  entries.sort((a, b) => a.layer - b.layer);
+  return entries.map((e) => e.tensor);
 }
 
 interface BeamPayload {
@@ -223,7 +248,8 @@ export class WhisperOnnxExecutor {
       enableProfiling: resolved.enableProfiling,
     });
 
-    return { ort, tokenizer, encoderSession, decoderSession, warnings };
+    const genConfig = await this.loadGenerationConfig(artifacts);
+    return { ort, tokenizer, encoderSession, decoderSession, generationConfig: genConfig, warnings };
   }
 
   private async getLoadedState(): Promise<LoadedExecutorState> {
@@ -310,7 +336,187 @@ export class WhisperOnnxExecutor {
       lastLogits: logits.subarray(lastLogitsOffset),
       vocabSize,
       pastKeyValues: nextPastKeyValues,
+      crossAttentions: extractCrossAttentions(outputs),
     };
+  }
+
+  private async runForcedAlignment(
+    loaded: LoadedExecutorState,
+    encoderHiddenStates: OrtTensorLike<Float32Array>,
+    language: string,
+    textTokenIds: number[],
+  ): Promise<readonly OrtTensorLike<Float32Array>[]> {
+    const tokenizer = loaded.tokenizer;
+    const sotId = tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
+    const langToken = language === 'auto' ? '<|tr|>' : `<|${language}|>`;
+    const langId = tokenizer.getTokenId(langToken) ?? 50268;
+    const taskId = tokenizer.getTokenId('<|transcribe|>') ?? 50359;
+    const noTsId = tokenizer.getTokenId('<|notimestamps|>') ?? 50363;
+    const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
+
+    const forcedIds = [sotId, langId, taskId, noTsId, ...textTokenIds, eosId];
+    const inputIds = new BigInt64Array(forcedIds.map((id) => BigInt(id)));
+    const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, forcedIds.length]);
+
+    const feeds: Record<string, unknown> = {
+      input_ids: inputIdsTensor,
+      encoder_hidden_states: encoderHiddenStates,
+    };
+
+    const decoderInputNames = loaded.decoderSession.inputNames ?? [];
+    if (decoderInputNames.includes('use_cache_branch')) {
+      feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([1]), [1]);
+    }
+
+    // First step: provide empty past_key_values
+    // Use config-derived layer/head counts if available, fall back to defaults
+    const numLayers = 4;
+    const numHeads = 6;
+    const headDim = 64;
+    const encoderSeqLen = encoderHiddenStates.dims[1] as number;
+    for (let i = 0; i < numLayers; i++) {
+      feeds[`past_key_values.${i}.decoder.key`] = new loaded.ort.Tensor(
+        'float32', new Float32Array(0), [1, numHeads, 0, headDim]);
+      feeds[`past_key_values.${i}.decoder.value`] = new loaded.ort.Tensor(
+        'float32', new Float32Array(0), [1, numHeads, 0, headDim]);
+      const encoderCacheSize = 1 * numHeads * encoderSeqLen * headDim;
+      feeds[`past_key_values.${i}.encoder.key`] = new loaded.ort.Tensor(
+        'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]);
+      feeds[`past_key_values.${i}.encoder.value`] = new loaded.ort.Tensor(
+        'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]);
+    }
+
+    const outputs = await loaded.decoderSession.run(feeds);
+    return extractCrossAttentions(outputs);
+  }
+
+  private async computeAttentionWordTimestamps(
+    loaded: LoadedExecutorState,
+    encoderHiddenStates: OrtTensorLike<Float32Array>,
+    tokenizer: WhisperTokenizer,
+    tokenDetails: WhisperNativeToken[],
+    segments: WhisperNativeSegment[],
+    language: string,
+    _options: WhisperSeq2SeqTranscriptionOptions,
+  ): Promise<WhisperNativeTranscript['words']> {
+    const alignmentHeads = loaded.generationConfig.alignmentHeads;
+    if (alignmentHeads.length === 0) {
+      // No alignment heads configured — fall back to timestamp-token interpolation
+      return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
+        timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
+        timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
+        language,
+      });
+    }
+
+    // Collect text token IDs from segments (exclude special/timestamp tokens)
+    const textTokenIds: number[] = [];
+    for (const seg of segments) {
+      const ids = tokenizer.encode(seg.text);
+      for (const id of ids) {
+        if (!tokenizer.isSpecialTokenId(id) && !tokenizer.isTimestampTokenId(id)) {
+          textTokenIds.push(id);
+        }
+      }
+    }
+    if (textTokenIds.length === 0) return [];
+
+    try {
+      const crossAttentions = await this.runForcedAlignment(
+        loaded, encoderHiddenStates, language, textTokenIds,
+      );
+      if (crossAttentions.length === 0) {
+        // Decoder had no cross-attention outputs — fall back
+        return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
+          timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
+          timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
+          language,
+        });
+      }
+
+      // Build attention head matrices for DTW
+      const encoderFrameCount = (encoderHiddenStates.dims[1] as number) ?? 0;
+      const croppedFrames = Math.floor(encoderFrameCount / 2); // Whisper encoder downsamples by 2
+
+      const attentionHeads = crossAttentions.map((tensor) => ({
+        values: tensor.data,
+        tokenCount: (tensor.dims[2] as number) ?? 0,
+        frameCount: croppedFrames,
+      }));
+
+      const dtwTimestamps = computeWhisperDtwTokenTimestamps({
+        attentionHeads,
+        tokenCount: textTokenIds.length,
+        frameCount: croppedFrames,
+        timePrecisionSeconds: 0.02,
+      });
+
+      // Build word timestamps from token timestamps using tokenizer
+      return this.buildWordsFromDtwTimestamps(
+        tokenizer, textTokenIds, dtwTimestamps,
+      );
+    } catch {
+      // Forced alignment failed — fall back to timestamp-token interpolation
+      return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
+        timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
+        timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
+        language,
+      });
+    }
+  }
+
+  private buildWordsFromDtwTimestamps(
+    tokenizer: WhisperTokenizer,
+    textTokenIds: number[],
+    dtwTimestamps: readonly number[],
+  ): WhisperNativeTranscript['words'] {
+    // DTW gives tokenCount+1 timestamps — start of each text token + end of last
+    const words: WhisperNativeWord[] = [];
+    const text = tokenizer.decode(textTokenIds, { skipSpecialTokens: true });
+    const wordTexts = text.split(/\s+/).filter((w) => w.length > 0);
+    if (wordTexts.length === 0) return undefined;
+
+    // Approximate word boundaries from token-to-word mapping using tokenizer encode
+    const allWordTokenIds: number[][] = [];
+    for (const w of wordTexts) {
+      const ids = tokenizer.encode(w);
+      if (ids.length > 0) allWordTokenIds.push(ids);
+    }
+
+    const WORD_PROBABILITY_UNAVAILABLE = -1;
+    let tokenOffset = 0;
+    for (let wi = 0; wi < allWordTokenIds.length; wi++) {
+      const wIds = allWordTokenIds[wi]!;
+      if (wIds.length === 0) continue;
+      const wordStartIdx = tokenOffset;
+      const wordEndIdx = tokenOffset + wIds.length - 1;
+      const startTime = dtwTimestamps[wordStartIdx] ?? 0;
+      const endTime = dtwTimestamps[wordEndIdx + 1] ?? dtwTimestamps[wordStartIdx] ?? 0;
+      words.push({
+        index: wi,
+        text: wordTexts[wi]!,
+        startTime,
+        endTime,
+        confidence: WORD_PROBABILITY_UNAVAILABLE,
+        tokenIds: wIds,
+      });
+      tokenOffset += wIds.length;
+    }
+    return words.length > 0 ? words : undefined;
+  }
+
+  private async loadGenerationConfig(
+    artifacts: { readonly tokenizerUrl: string },
+  ): Promise<WhisperGenerationConfig> {
+    try {
+      const genConfigUrl = artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'generation_config.json');
+      const response = await fetch(genConfigUrl);
+      if (!response.ok) return parseWhisperGenerationConfig({});
+      const json = (await response.json()) as Record<string, unknown>;
+      return parseWhisperGenerationConfig(json);
+    } catch {
+      return parseWhisperGenerationConfig({});
+    }
   }
 
   async transcribe(
@@ -475,11 +681,15 @@ export class WhisperOnnxExecutor {
     // 5. Build segments from decoded tokens
     const segments = this.buildSegments(tokenDetails, tokenizer, options.noTimestamps);
     const words = this.shouldReturnWordTimestamps(options)
-      ? buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
-          timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
-          timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
+      ? await this.computeAttentionWordTimestamps(
+          loaded,
+          encoderHiddenStates,
+          tokenizer,
+          tokenDetails,
+          segments,
           language,
-        })
+          options,
+        )
       : [];
     const utteranceText = segments.map((s) => s.text).join(' ').trim();
 
@@ -488,7 +698,7 @@ export class WhisperOnnxExecutor {
       isFinal: true,
       language,
       segments,
-      ...(words.length > 0 ? { words } : {}),
+      ...(words && words.length > 0 ? { words } : {}),
       tokens: options.returnSpecialTokens
         ? tokenDetails
         : tokenDetails.filter((t) => !t.special),
