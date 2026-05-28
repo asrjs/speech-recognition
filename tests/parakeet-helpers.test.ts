@@ -33,6 +33,16 @@ describe('Parakeet helpers', () => {
     expect(getLanguageName('zh')).toBe('Chinese');
   });
 
+  it('resolves model keys from repository IDs', () => {
+    expect(getModelKeyFromRepoId('ysdede/parakeet-tdt-0.6b-v2-onnx')).toBe('parakeet-tdt-0.6b-v2');
+    expect(getModelKeyFromRepoId('ysdede/parakeet-tdt-0.6b-v3-onnx')).toBe('parakeet-tdt-0.6b-v3');
+    expect(getModelKeyFromRepoId('ysdede/parakeet-realtime-eou-120m-v1-onnx')).toBe(
+      'parakeet-realtime-eou-120m-v1',
+    );
+    expect(getModelKeyFromRepoId('invalid-repo-id')).toBeNull();
+    expect(getModelKeyFromRepoId('')).toBeNull();
+  });
+
   it('reports supported languages for model keys and repository IDs', () => {
     expect(supportsLanguage('parakeet-tdt-0.6b-v2', 'en')).toBe(true);
     expect(supportsLanguage('parakeet-tdt-0.6b-v3', 'ja')).toBe(true);
