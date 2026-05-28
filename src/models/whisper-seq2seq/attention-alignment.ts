@@ -75,6 +75,28 @@ function normalizeOverTokens(values: Float32Array, tokenCount: number, frameCoun
   return output;
 }
 
+function softmaxOverFrames(values: Float32Array, tokenCount: number, frameCount: number): Float32Array {
+  const output = new Float32Array(values.length);
+  for (let token = 0; token < tokenCount; token++) {
+    const rowOffset = token * frameCount;
+    let maxVal = -Infinity;
+    for (let frame = 0; frame < frameCount; frame++) {
+      const v = values[rowOffset + frame] ?? 0;
+      if (v > maxVal) maxVal = v;
+    }
+    let sum = 0;
+    for (let frame = 0; frame < frameCount; frame++) {
+      const exp = Math.exp((values[rowOffset + frame] ?? 0) - maxVal);
+      output[rowOffset + frame] = exp;
+      sum += exp;
+    }
+    for (let frame = 0; frame < frameCount; frame++) {
+      output[rowOffset + frame] = (output[rowOffset + frame] ?? 0) / sum;
+    }
+  }
+  return output;
+}
+
 function averageHeads(heads: readonly Float32Array[], tokenCount: number, frameCount: number): Float32Array {
   const output = new Float32Array(tokenCount * frameCount);
   for (const head of heads) {
@@ -156,7 +178,8 @@ export function computeWhisperDtwTokenTimestamps(
       const targetOffset = token * frameCount;
       cropped.set(head.values.subarray(sourceOffset, sourceOffset + frameCount), targetOffset);
     }
-    const normalized = normalizeOverTokens(cropped, tokenCount, frameCount);
+    const softened = softmaxOverFrames(cropped, tokenCount, frameCount);
+    const normalized = normalizeOverTokens(softened, tokenCount, frameCount);
     return medianFilterWhisperAttention(normalized, {
       tokenCount,
       frameCount,

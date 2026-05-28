@@ -434,15 +434,31 @@ export class WhisperOnnxExecutor {
         });
       }
 
-      // Build attention head matrices for DTW
+      // Build attention head matrices for DTW — select only alignment_heads
       const encoderFrameCount = (encoderHiddenStates.dims[1] as number) ?? 0;
       const croppedFrames = Math.floor(encoderFrameCount / 2); // Whisper encoder downsamples by 2
 
-      const attentionHeads = crossAttentions.map((tensor) => ({
-        values: tensor.data,
-        tokenCount: (tensor.dims[2] as number) ?? 0,
-        frameCount: croppedFrames,
-      }));
+      const attentionHeads = alignmentHeads.map(({ layer, head }) => {
+        const layerTensor = crossAttentions[layer];
+        if (!layerTensor) {
+          throw new Error(`Cross-attention layer ${layer} missing from decoder outputs.`);
+        }
+        const numLayerHeads = (layerTensor.dims[1] as number) ?? 6;
+        if (head >= numLayerHeads) {
+          throw new Error(`Alignment head ${head} exceeds layer ${layer} head count ${numLayerHeads}.`);
+        }
+        const totalTokens = (layerTensor.dims[2] as number) ?? 0;
+        const totalFramesPerHead = (layerTensor.dims[3] as number) ?? 0;
+        // Extract single head: tensor has shape [batch=1, heads, tokens, frames]
+        const headSize = totalTokens * totalFramesPerHead;
+        const headOffset = head * headSize;
+        const headValues = layerTensor.data.subarray(headOffset, headOffset + headSize);
+        return {
+          values: new Float32Array(headValues),
+          tokenCount: totalTokens,
+          frameCount: croppedFrames,
+        };
+      });
 
       const dtwTimestamps = computeWhisperDtwTokenTimestamps({
         attentionHeads,
