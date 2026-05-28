@@ -127,8 +127,29 @@ End-to-end Whisper ONNX inference confirmed working. Key fixes applied during th
 Test: `tests/whisper-onnx-smoke.test.ts` (skipped unless `ASRJS_FIXTURE_SMOKE=1`)
 Debug script: `scripts/whisper-e2e.ts`
 
-### Task 13: Wire long-audio chunking into Whisper executor — PENDING
-### Task 12: Implement word-level timestamps — PENDING
+### Task 12: Implement word-level timestamps — DONE by Flexo on 2026-05-29
+Current output now supports word-level timestamps when requested.
+
+Key changes:
+- Added `WhisperNativeWord` and `WhisperNativeTranscript.words`.
+- Added `buildWhisperWordTimestampsFromTokenDetails()` fallback in `src/models/whisper-seq2seq/word-timestamps.ts`.
+- Fallback interpolates token timing between paired timestamp tokens, then reuses `collateWhisperWordTimestamps()` to merge subwords and punctuation.
+- Executor emits `words` for `returnWords`, `returnTimestamps: 'word'`, `detail: 'words'`, or `detail: 'detailed'`.
+- Canonical mapping now maps native words instead of treating segments as words.
+
+Limitation: current ONNX exports do not expose decoder cross-attention, so this is timestamp-token interpolation fallback rather than OpenAI DTW attention alignment.
+
+Tests: `tests/whisper-word-timestamps.test.ts`
+
+### Task 13: Wire long-audio chunking into Whisper executor — DONE by Flexo on 2026-05-29
+Audio longer than the Whisper window now routes through existing chunk planning.
+
+Key changes:
+- Executor calls `planWhisperChunks()` for audio longer than 30s unless `windowing: 'disabled'` or `unsafeAllowOverMaxWindow` is set.
+- Each chunk is decoded via the same executor path with `unsafeAllowOverMaxWindow: true` to prevent recursive chunking.
+- Added `mergeWhisperChunkTranscripts()` in `src/models/whisper-seq2seq/chunking.ts` to offset chunk-local segment/word/token timings to absolute time.
+
+Tests: `tests/whisper-long-audio.test.ts`
 Priority order for the next agent:
 
 1. **OpenAI whisper (Python)** — Reference
@@ -181,7 +202,7 @@ Then:
 1. Load skill `asrjs-dev`.
 2. Read `docs/plans/asr-pipeline-roadmap.md`.
 3. Read `~/.hermes/skills/mlops/asrjs-dev/references/whisper-onnx-integration.md`.
-4. Pick Task 12 (word-level timestamps) or Task 13 (long-audio chunking), depending on priority.
+4. Pick the next quality/robustness item from the roadmap or create follow-up issues for remaining limitations (attention-based DTW word alignment, generation-config defaults, top-k beam optimization).
 5. Write failing test first, implement, verify, commit.
 6. Update roadmap and reference file before finishing.
 

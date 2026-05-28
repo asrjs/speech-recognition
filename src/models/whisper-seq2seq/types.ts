@@ -76,11 +76,22 @@ export interface WhisperNativeSegment {
   readonly confidence?: number;
 }
 
+export interface WhisperNativeWord {
+  readonly index: number;
+  readonly text: string;
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly confidence?: number;
+  readonly tokenIds?: readonly number[];
+  readonly tokenIndices?: readonly number[];
+}
+
 export interface WhisperNativeTranscript {
   readonly utteranceText: string;
   readonly isFinal: boolean;
   readonly language?: string;
   readonly segments?: readonly WhisperNativeSegment[];
+  readonly words?: readonly WhisperNativeWord[];
   readonly tokens?: readonly WhisperNativeToken[];
   readonly warnings?: readonly { readonly code: string; readonly message: string }[];
 }

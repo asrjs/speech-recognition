@@ -23,12 +23,13 @@ export function mapWhisperNativeToCanonical(
     endTime: token.endTime,
     confidence: token.confidence,
   }));
-  const words: TranscriptWord[] = (nativeTranscript.segments ?? []).map((segment) => ({
-    index: segment.index,
-    text: segment.text,
-    startTime: segment.startTime,
-    endTime: segment.endTime,
-    confidence: segment.confidence,
+  const words: TranscriptWord[] = (nativeTranscript.words ?? []).map((word) => ({
+    index: word.index,
+    text: word.text,
+    startTime: word.startTime,
+    endTime: word.endTime,
+    confidence: word.confidence,
+    tokenIndices: word.tokenIndices,
   }));
 
   const result: TranscriptResult = {

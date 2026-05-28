@@ -11,12 +11,14 @@ import { argmax, confidenceFromLogits } from '../../inference/index.js';
 import { fetchModelFiles } from '../../runtime/huggingface.js';
 import { roundMetric } from '../../runtime/timing.js';
 import { WhisperMelProcessor } from '../../audio/whisper-mel.js';
+import { planWhisperChunks } from '../../pipeline/whisper-chunking.js';
 import {
   createInitialWhisperBeam,
   rankWhisperBeamCandidates,
   selectBestWhisperBeam,
   type WhisperBeamState,
 } from './beam-search.js';
+import { mergeWhisperChunkTranscripts } from './chunking.js';
 import {
   createWhisperOrtSession,
   initWhisperOrt,
@@ -26,6 +28,7 @@ import {
   type OrtTensorLike,
 } from './ort.js';
 import { WhisperTokenizer } from './tokenizer.js';
+import { buildWhisperWordTimestampsFromTokenDetails } from './word-timestamps.js';
 import type {
   WhisperArtifactSource,
   WhisperNativeSegment,
@@ -318,6 +321,10 @@ export class WhisperOnnxExecutor {
     const loaded = await this.getLoadedState();
     const warnings = [...loaded.warnings];
 
+    if (this.shouldChunkAudio(audio, options)) {
+      return this.transcribeLongAudio(audio, options, _context);
+    }
+
     // 1. Preprocess audio to mel spectrogram
     const melProcessor = new WhisperMelProcessor({ nMels: this.config.melBins });
     // Audio is already normalized to mono by the session before calling executor
@@ -391,7 +398,7 @@ export class WhisperOnnxExecutor {
           result.vocabSize,
         );
 
-        const tokenText = tokenizer.idsToTokens([nextTokenId])[0] ?? '';
+        const tokenText = this.formatTokenText(tokenizer, nextTokenId);
         tokenDetails.push({
           index: step,
           id: nextTokenId,
@@ -444,7 +451,7 @@ export class WhisperOnnxExecutor {
               tokenId,
               vocabSize,
             );
-            const tokenText = tokenizer.idsToTokens([tokenId])[0] ?? '';
+            const tokenText = this.formatTokenText(tokenizer, tokenId);
             return {
               tokenDetails: [
                 ...(beam.payload?.tokenDetails ?? []),
@@ -467,6 +474,13 @@ export class WhisperOnnxExecutor {
 
     // 5. Build segments from decoded tokens
     const segments = this.buildSegments(tokenDetails, tokenizer, options.noTimestamps);
+    const words = this.shouldReturnWordTimestamps(options)
+      ? buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
+          timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
+          timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
+          language,
+        })
+      : [];
     const utteranceText = segments.map((s) => s.text).join(' ').trim();
 
     return {
@@ -474,6 +488,7 @@ export class WhisperOnnxExecutor {
       isFinal: true,
       language,
       segments,
+      ...(words.length > 0 ? { words } : {}),
       tokens: options.returnSpecialTokens
         ? tokenDetails
         : tokenDetails.filter((t) => !t.special),
@@ -558,6 +573,58 @@ export class WhisperOnnxExecutor {
     }
 
     return segments;
+  }
+
+  private shouldReturnWordTimestamps(options: WhisperSeq2SeqTranscriptionOptions): boolean {
+    return options.returnWords === true || options.returnTimestamps === 'word' || options.detail === 'words' || options.detail === 'detailed';
+  }
+
+  private shouldChunkAudio(audio: AudioBufferLike, options: WhisperSeq2SeqTranscriptionOptions): boolean {
+    if (options.windowing === 'disabled' || options.unsafeAllowOverMaxWindow) return false;
+    const maxDuration = options.chunkLengthSeconds ?? options.maxInputDurationSeconds ?? 30;
+    return audio.durationSeconds > maxDuration;
+  }
+
+  private async transcribeLongAudio(
+    audio: AudioBufferLike,
+    options: WhisperSeq2SeqTranscriptionOptions,
+    context: { readonly modelId: string; readonly config: WhisperSeq2SeqModelConfig },
+  ): Promise<WhisperNativeTranscript> {
+    const pcmData = audio.channels?.[0] ?? new Float32Array(0);
+    const chunkLengthSeconds = options.chunkLengthSeconds ?? 30;
+    const chunks = planWhisperChunks(
+      pcmData.length,
+      audio.sampleRate,
+      chunkLengthSeconds,
+      options.strideLengthSeconds,
+    );
+
+    const chunkTranscripts = [];
+    for (const chunk of chunks) {
+      const samples = pcmData.slice(chunk.startSample, chunk.endSample);
+      const chunkAudio: AudioBufferLike = {
+        sampleRate: audio.sampleRate,
+        durationSeconds: samples.length / audio.sampleRate,
+        channels: [samples],
+        numberOfChannels: 1,
+        numberOfFrames: samples.length,
+      };
+      const transcript = await this.transcribe(
+        chunkAudio,
+        { ...options, unsafeAllowOverMaxWindow: true },
+        context,
+      );
+      chunkTranscripts.push({ chunkStartTime: chunk.startTime, transcript });
+    }
+
+    return mergeWhisperChunkTranscripts(chunkTranscripts);
+  }
+
+  private formatTokenText(tokenizer: WhisperTokenizer, tokenId: number): string {
+    if (tokenizer.isTimestampTokenId(tokenId) || tokenizer.isSpecialTokenId(tokenId)) {
+      return tokenizer.idsToTokens([tokenId])[0] ?? '';
+    }
+    return tokenizer.decode([tokenId]);
   }
 
   async dispose(): Promise<void> {

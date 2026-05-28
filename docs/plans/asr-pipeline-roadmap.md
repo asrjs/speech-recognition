@@ -515,48 +515,59 @@ Commit:
 
 ---
 
-### Task 12: Implement word-level timestamps
+### Task 12: Implement word-level timestamps — DONE
 
-Objective: add per-word timestamp support using cross-attention alignment.
+Objective: add per-word timestamp support using cross-attention alignment or fallback timestamp interpolation.
 
-Steps:
-1. Modify decoder loop to capture cross-attention weights (if exposed by ONNX graph; may need to export with attention outputs).
-2. If ONNX graph does not expose attention, fallback to median-filtered timestamp token interpolation.
-3. Implement DTW or median-filter alignment between decoder attention and encoder frames.
-4. Map attention peaks to time using `whisperTimestampTokenIdToSeconds`.
-5. Update `buildSegments` to emit word-level timestamps when `detail: 'words'` or `returnTimestamps: 'word'`.
+Files modified:
+- Created: `src/models/whisper-seq2seq/word-timestamps.ts`
+- Modified: `src/models/whisper-seq2seq/executor.ts`
+- Modified: `src/models/whisper-seq2seq/mapping.ts`
+- Modified: `src/models/whisper-seq2seq/types.ts`
+- Modified: `src/models/whisper-seq2seq/index.ts`
+- Test: `tests/whisper-word-timestamps.test.ts`
 
-References to study:
-- OpenAI `whisper/timing.py` (`add_word_timestamps`)
-- HF `transformers` `WhisperTokenTimestampDecoder`
-- `whisperX` alignment pipeline
-- `faster-whisper` word timestamp implementation
+Implemented:
+- Adds `WhisperNativeWord` and `WhisperNativeTranscript.words`.
+- Adds `buildWhisperWordTimestampsFromTokenDetails()` fallback for exported ONNX graphs that do not expose decoder cross-attention.
+- Interpolates token times between paired Whisper timestamp tokens, then reuses existing `collateWhisperWordTimestamps()` to merge subword tokens/punctuation into words.
+- Executor emits `words` when `returnWords`, `returnTimestamps: 'word'`, `detail: 'words'`, or `detail: 'detailed'` is requested.
+- Canonical mapping now maps native Whisper words to `TranscriptResult.words` instead of incorrectly treating segments as words.
+
+Limitations:
+- ONNX cross-attention capture is not available in the current `decoder_model_merged.onnx`; this is timestamp-token interpolation fallback, not OpenAI DTW attention alignment.
 
 Verification:
-- `npm test -- tests/whisper-word-timestamps.test.ts --run`
-- `npm run typecheck`
+- `npx vitest run tests/whisper-word-timestamps.test.ts --run` passed: 2 tests
+- `npm run typecheck` passed
+
+Commit:
+- `feat: add Whisper word timestamp fallback`
 
 ---
 
-### Task 13: Wire long-audio chunking into Whisper executor
+### Task 13: Wire long-audio chunking into Whisper executor — DONE
 
 Objective: support audio longer than 30 seconds by chunking with stride.
 
-Steps:
-1. In `WhisperOnnxExecutor.transcribe()`, check `audio.durationSeconds > 30`.
-2. Use existing `src/pipeline/whisper-chunking.ts` `planWhisperChunks()` to produce chunk plans.
-3. Run encoder + decoder per chunk.
-4. Use existing `src/pipeline/whisper-timestamps.ts` `mergeWhisperTokenSequences()` to merge overlapping outputs.
-5. Return merged transcript with correct absolute timestamps.
+Files modified:
+- Created: `src/models/whisper-seq2seq/chunking.ts`
+- Modified: `src/models/whisper-seq2seq/executor.ts`
+- Modified: `src/models/whisper-seq2seq/index.ts`
+- Test: `tests/whisper-long-audio.test.ts`
 
-References to study:
-- HF `transformers` `pipelines/automatic_speech_recognition.py` (chunking, stride, merging)
-- `faster-whisper` `transcribe.py` chunking
-- `whisper.cpp` CLI chunking
+Implemented:
+- `WhisperOnnxExecutor.transcribe()` now routes audio longer than the max window through `planWhisperChunks()` unless `windowing: 'disabled'` or `unsafeAllowOverMaxWindow` is set.
+- Each chunk is decoded through the same executor path with `unsafeAllowOverMaxWindow: true` to prevent recursive chunking.
+- Added `mergeWhisperChunkTranscripts()` to offset chunk-local segment/word/token timings to absolute audio time and concatenate native details.
+- Uses existing default Whisper chunk policy: 30s windows and default symmetric stride (`chunkLengthSeconds / 6`) unless overridden by options.
 
 Verification:
-- `npm test -- tests/whisper-long-audio.test.ts --run`
-- `npm run typecheck`
+- `npx vitest run tests/whisper-long-audio.test.ts --run` passed: 1 test
+- `npm run typecheck` passed
+
+Commit:
+- `feat: wire Whisper long-audio chunking`
 
 ---
 
