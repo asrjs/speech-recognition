@@ -99,15 +99,51 @@ Different approach:
     - `tests/whisper-timestamped-decoder.test.ts` (fixture smoke)
     - updated `tests/whisper-integration.test.ts`
 
-## Implementation complete
+## Implementation complete as of 2026-05-29
 
-All 6 remaining steps from the previous handoff are now complete:
+All 6 previous steps + additional enhancements are now complete:
 1. Materialize/parse generation_config.json ✓ (generation-config.ts, auto-fetched)
 2. Fixture test for cross_attentions.* ✓ (whisper-timestamped-decoder.test.ts)
 3. Collect cross_attentions.N ✓ (extractCrossAttentions + runDecoderStep)
 4. Forced alignment pass ✓ (runForcedAlignment)
 5. DTW → word timestamps ✓ (computeAttentionWordTimestamps)
 6. Fallback preserved ✓ (falls back to buildWhisperWordTimestampsFromTokenDetails)
+7. Alignment head selection ✓ (filter to alignment_heads only, not all layers)
+8. Softmax over audio frames ✓ (attention-alignment.ts)
+9. Word probability from logprobs ✓ (forced alignment returns logits, compute token logprobs → word confidence)
+10. Self-contained ONNX export tool ✓ (tools/whisper-onnx-export/)
+
+## ONNX export tool
+
+`tools/whisper-onnx-export/export_whisper.py` — fully self-contained export:
+
+```
+python export_whisper.py openai/whisper-tiny ./output/whisper-tiny --fp16 --int8
+```
+
+Produces:
+- encoder_model.onnx (PyTorch 2.x dynamo exporter, opset 18)
+- decoder_model_merged.onnx (legacy exporter, opset 20 — init-only, NO KV cache)
+- decoder_align_model.onnx (dynamo exporter, opset 18 — selected cross-attention heads)
+- fp16 variants (onnxconverter-common)
+- int8 variants (onnxruntime dynamic quantization)
+- manifest.json + tokenizer.json + generation_config.json + config.json
+
+Known limitation: decoder_model_merged.onnx cannot export KV cache due to PyTorch 2.12 / HF 5.x
+DynamicCache data-dependent branching. Workaround: source decoder_model_merged from
+onnx-community/whisper-*_timestamped for production.
+
+## Deferred tasks
+
+### Timestamp logit processor
+
+Not implemented. Attention-DTW pipeline bypasses timestamp tokens for word timestamps.
+Segment-level timestamps still use timestamp tokens (buildSegments) without proper
+suppression rules. Lower priority because DTW accuracy doesn't depend on timestamp tokens.
+
+### KV cache decoder export
+
+Awaiting user research. See Task 17 in roadmap.
 
 ## Important distinction
 

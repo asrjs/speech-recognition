@@ -641,15 +641,78 @@ Verification so far:
 - `npm run typecheck -- --pretty false` passed.
 
 Remaining steps:
-1. Materialize and parse `generation_config.json` / `config.json` for `alignment_heads` and `median_filter_width`.
-2. Add ONNX graph inspection/decoder-output test for `cross_attentions.*` using a tiny timestamped fixture.
-3. Collect `cross_attentions.N` from decoder outputs.
-4. Prefer a forced decoder alignment pass over generated text tokens for OpenAI/CTranslate2 parity.
-5. Convert DTW token timestamps to word timestamps; keep interpolation fallback when attention outputs are absent.
-6. Run full verification gate and update `asrjs-dev` references.
+ALL DONE as of 2026-05-29:
+1. Materialize and parse generation_config.json / config.json ✓ (generation-config.ts, auto-fetched from HF)
+2. ONNX graph inspection for cross_attentions.* ✓ (whisper-timestamped-decoder.test.ts fixture test)
+3. Collect cross_attentions.N from decoder outputs ✓ (extractCrossAttentions in executor)
+4. Forced decoder alignment pass ✓ (runForcedAlignment in executor)
+5. Convert DTW token timestamps to word timestamps ✓ (computeAttentionWordTimestamps + buildWordsFromDtwTimestamps)
+6. Word probability from logprobs ✓ (forced alignment logits → token logprobs → word confidence)
+7. Softmax over audio frames ✓ (attention-alignment.ts)
+8. Filter to alignment_heads only ✓ (executor filters cross-attention layers by layer/head index)
+9. Fallback preserved ✓ (returns to buildWhisperWordTimestampsFromTokenDetails)
 
-Commit target:
-- `feat: add Whisper attention-DTW timestamp groundwork`
+Commit targets:
+- `7abc82d feat: add Whisper attention timestamp groundwork`
+- `92d6892 feat: add Whisper attention-DTW word timestamps with forced alignment`
+- `91a4145 fix: filter alignment heads and apply softmax for correct DTW word timestamps`
+- `8f9faf1 feat: compute word probability from forced alignment logprobs`
+
+### Task 16: Timestamp logit processor — DEFERRED
+
+Status: Not implemented. Deferred because:
+
+The attention-DTW word timestamp pipeline bypasses timestamp tokens entirely:
+1. Autoregressive decode produces text tokens (timestamp tokens included for segment timing).
+2. Forced alignment pass runs decoder over SOT+lang+task+notimestamps+text+EOT.
+3. Cross-attention + DTW produces word boundaries without using timestamp tokens.
+
+Segment-level timestamps still rely on timestamp tokens (buildSegments splits on <|N.NN|> tokens), which works
+for basic segment timing but could be improved. OpenAI-style timestamp suppression rules would fix:
+- Preventing decreasing timestamps (token <|5.00|> after <|10.00|>)
+- Enforcing timestamp pairs
+- Preventing zero-length timestamp loops
+- max_initial_timestamp_index enforcement
+- Timestamp vs text probability comparison
+
+Implementation would require:
+- A TimestampLogitsProcessor class (similar to HF's `WhisperTimestampLogitsProcessor`)
+- Integration into the greedy/beam decode loops
+- Tests comparing against HF generation output
+
+This is lower priority than the attention-DTW pipeline because:
+- Word timestamps come from cross-attention, not timestamp tokens
+- Segment timestamps from timestamp tokens are approximate by design
+- The timestamped ONNX models already produce correctly ordered tokens in most cases
+
+### Task 17: KV cache decoder export — AWAITING RESEARCH
+
+Status: The self-contained export tool (tools/whisper-onnx-export/) produces:
+- encoder_model.onnx ✓
+- decoder_model_merged.onnx (init-only, NO KV cache — traced as single forward pass)
+- decoder_align_model.onnx ✓
+- fp16/int8 variants ✓
+
+The merged decoder cannot export with KV cache because PyTorch 2.12 / HF 5.x DynamicCache uses
+data-dependent branching (if not torch.all(use_cache_branch.bool())) that the dynamo and legacy
+exporters can't trace across. The ONNX graph only has input_ids and encoder_hidden_states as inputs —
+use_cache_branch and past_key_values.* were treated as constants during tracing.
+
+Affected: autoregressive decoding speed. Without KV cache, each step re-runs the full decoder.
+
+Workaround for production: onnx-community/whisper-*_timestamped repos provide properly exported
+decoder_model_merged.onnx with use_cache_branch + past_key_values.* IO.
+
+Research needed (user is investigating):
+- Export Whisper decoder with torch.export constraints for DynamicCache
+- Alternative: manual KV cache implementation in the wrapper (bypass HF's DynamicCache)
+- Alternative: export separate decoder_init + decoder_step models
+- Alternative: use Optimum's ONNX export pipeline which may handle this
+
+Relevant references:
+- onnx-community export scripts (likely use older transformers/Optimum)
+- Microsoft ONNX Runtime Whisper exporter (uses different cache approach)
+- sherpa-onnx attention-enabled export scripts
 
 ---
 
@@ -674,8 +737,24 @@ Expected known lint warnings:
 
 ## Handoff prompt for next session
 
-If session resets, start with:
+Current state as of 2026-05-29 (commit `a2fc491` → `6e3eed9` on `feat/asr-pipeline-output-formats`):
+
+**Completed:**
+- Full attention-DTW word timestamp pipeline (forced alignment → cross-attention extraction → softmax → normalize → median filter → DTW → word boundaries)
+- Word probability from forced alignment logprobs
+- Generation config parsing (alignment_heads, median_filter_width)
+- Self-contained Python ONNX export tool (encoder, align, fp16, int8)
+- 76 test files, 366 tests, all passing
+
+**Deferred / awaiting research:**
+- Task 16: Timestamp logit processor (suppression rules). Not needed for DTW word timestamps.
+- Task 17: KV cache decoder export. PyTorch 2.12 / HF 5.x DynamicCache can't be traced.
+  User is researching alternative export approaches.
+
+**KV cache workaround:** use `onnx-community/whisper-*_timestamped` `decoder_model_merged.onnx`
 
 ```
-Load skill asrjs-dev. Open /home/steam/github/asrjs/speech-recognition/docs/plans/asr-pipeline-roadmap.md. Continue branch feat/asr-pipeline-output-formats from latest origin. Follow TDD. Do not touch .serena/. Continue next unchecked task in the plan.
+Load skill asrjs-dev. Read /home/steam/github/asrjs/speech-recognition/docs/plans/asr-pipeline-roadmap.md. Branch feat/asr-pipeline-output-formats. Follow TDD. Do not touch .serena/.
+Check docs/handoffs/whisper-attention-timestamps-research.md for full research background.
+If user provides KV cache export research, start from tools/whisper-onnx-export/export_whisper.py.
 ```
