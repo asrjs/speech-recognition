@@ -29,6 +29,42 @@ async function fetchText(url: string): Promise<string> {
   return response.text();
 }
 
+// GPT-2 style byte-to-unicode mapping
+function createByteToUnicodeMap(): ReadonlyMap<number, string> {
+  const bs: number[] = [];
+  for (let i = 33; i <= 126; i++) bs.push(i);
+  for (let i = 161; i <= 172; i++) bs.push(i);
+  for (let i = 174; i <= 255; i++) bs.push(i);
+  const cs = bs.slice();
+  let n = 0;
+  for (let b = 0; b < 256; b++) {
+    if (!bs.includes(b)) {
+      bs.push(b);
+      cs.push(256 + n);
+      n++;
+    }
+  }
+  const map = new Map<number, string>();
+  for (let i = 0; i < bs.length; i++) {
+    map.set(bs[i]!, String.fromCharCode(cs[i]!));
+  }
+  return map;
+}
+
+function createUnicodeToByteMap(byteToUnicode: ReadonlyMap<number, string>): ReadonlyMap<string, number> {
+  const map = new Map<string, number>();
+  for (const [byte, char] of byteToUnicode) {
+    map.set(char, byte);
+  }
+  return map;
+}
+
+// GPT-2 ByteLevel pre-tokenizer regex
+const GPT2_REGEX = new RegExp(
+  "'(?:[sdmt]|ll|ve|re)| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+",
+  "gu"
+);
+
 export class WhisperTokenizer implements TextTokenizer {
   readonly kind = 'tiktoken' as const;
   readonly vocabSize: number;
@@ -37,10 +73,14 @@ export class WhisperTokenizer implements TextTokenizer {
   private readonly specialTokenIds: ReadonlySet<number>;
   private readonly timestampStartId: number;
   private readonly timestampEndId: number;
+  private readonly byteToUnicode: ReadonlyMap<number, string>;
+  private readonly unicodeToByte: ReadonlyMap<string, number>;
+  private readonly bpeMerges: ReadonlyMap<string, number>;
 
   constructor(data: WhisperTokenizerJson) {
     const vocab = data.model?.vocab ?? {};
     const addedTokens = data.added_tokens ?? [];
+    const merges = data.model?.merges ?? [];
 
     const idToToken = new Map<number, string>();
     const tokenToId = new Map<string, number>();
@@ -66,6 +106,15 @@ export class WhisperTokenizer implements TextTokenizer {
 
     this.timestampStartId = tokenToId.get('<|0.00|>') ?? 50364;
     this.timestampEndId = tokenToId.get('<|30.00|>') ?? 51864;
+
+    this.byteToUnicode = createByteToUnicodeMap();
+    this.unicodeToByte = createUnicodeToByteMap(this.byteToUnicode);
+    const bpeMerges = new Map<string, number>();
+    for (let i = 0; i < merges.length; i++) {
+      const merge = merges[i];
+      if (merge !== undefined) bpeMerges.set(merge, i);
+    }
+    this.bpeMerges = bpeMerges;
   }
 
   static async fromUrl(url: string): Promise<WhisperTokenizer> {
@@ -102,8 +151,6 @@ export class WhisperTokenizer implements TextTokenizer {
   }
 
   encode(text: string): number[] {
-    // For Whisper prompts, we mainly need special token lookup.
-    // Full BPE encode is complex; this handles exact special token matches.
     const ids: number[] = [];
     const pattern = /(<\|[^|]+\|>)|([^<]+)/g;
     let match: RegExpExecArray | null;
@@ -116,21 +163,54 @@ export class WhisperTokenizer implements TextTokenizer {
           ids.push(id);
         }
       } else if (plain) {
-        // Naive fallback: character-level encoding for non-special text
-        for (const char of plain) {
-          const id = this.tokenToId.get(char);
-          if (id !== undefined) {
-            ids.push(id);
-          } else {
-            // Try with GPT-2 space prefix
-            const spaceId = this.tokenToId.get('Ġ' + char);
-            if (spaceId !== undefined) {
-              ids.push(spaceId);
-            }
-          }
-        }
+        ids.push(...this.bpeEncode(plain));
       }
     }
+    return ids;
+  }
+
+  private bpeEncode(text: string): number[] {
+    const ids: number[] = [];
+    const tokens = text.match(GPT2_REGEX) ?? [];
+
+    for (const token of tokens) {
+      // Convert to bytes via byte-to-unicode mapping
+      const bytes = new TextEncoder().encode(token);
+      let word = '';
+      for (const b of bytes) {
+        word += this.byteToUnicode.get(b) ?? '\uFFFD';
+      }
+
+      // BPE merge loop
+      let wordTokens: string[] = Array.from(word);
+      while (wordTokens.length > 1) {
+        let minRank = Infinity;
+        let minIndex = -1;
+        for (let i = 0; i < wordTokens.length - 1; i++) {
+          const left = wordTokens[i];
+          const right = wordTokens[i + 1];
+          if (left === undefined || right === undefined) continue;
+          const pair = left + ' ' + right;
+          const rank = this.bpeMerges.get(pair);
+          if (rank !== undefined && rank < minRank) {
+            minRank = rank;
+            minIndex = i;
+          }
+        }
+        if (minIndex === -1) break;
+        wordTokens = [
+          ...wordTokens.slice(0, minIndex),
+          wordTokens[minIndex]! + wordTokens[minIndex + 1]!,
+          ...wordTokens.slice(minIndex + 2),
+        ];
+      }
+
+      for (const t of wordTokens) {
+        const id = this.tokenToId.get(t);
+        if (id !== undefined) ids.push(id);
+      }
+    }
+
     return ids;
   }
 
@@ -147,12 +227,14 @@ export class WhisperTokenizer implements TextTokenizer {
       parts.push(token);
     }
 
-    // GPT-2 style BPE decode cleanup
-    let text = parts.join('');
-    // Replace continuation marker with nothing ( Whisper uses no marker, but GPT-2 vocab does )
-    text = text.replace(/Ġ/g, ' ');
-    text = text.replace(/\s+/g, ' ');
-    return text.trim();
+    const bytes: number[] = [];
+    for (const char of Array.from(parts.join(''))) {
+      const byte = this.unicodeToByte.get(char);
+      if (byte !== undefined) {
+        bytes.push(byte);
+      }
+    }
+    return new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
   }
 
   idsToTokens(ids: readonly number[]): readonly string[] {

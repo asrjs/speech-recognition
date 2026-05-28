@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WhisperMelProcessor } from '../src/audio/whisper-mel.js';
 import * as fs from 'fs';
-import * as path from 'path';
 
 /**
  * Validate WhisperMelProcessor against OpenAI reference output.

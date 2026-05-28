@@ -12,6 +12,12 @@ import { fetchModelFiles } from '../../runtime/huggingface.js';
 import { roundMetric } from '../../runtime/timing.js';
 import { WhisperMelProcessor } from '../../audio/whisper-mel.js';
 import {
+  createInitialWhisperBeam,
+  rankWhisperBeamCandidates,
+  selectBestWhisperBeam,
+  type WhisperBeamState,
+} from './beam-search.js';
+import {
   createWhisperOrtSession,
   initWhisperOrt,
   resolveWhisperArtifacts,
@@ -35,6 +41,17 @@ interface LoadedExecutorState {
   readonly encoderSession: OrtSessionLike;
   readonly decoderSession: OrtSessionLike;
   readonly warnings: readonly TranscriptWarning[];
+}
+
+interface DecoderStepResult {
+  readonly lastLogits: Float32Array;
+  readonly vocabSize: number;
+  readonly pastKeyValues: Record<string, OrtTensorLike<Float32Array>>;
+}
+
+interface BeamPayload {
+  readonly tokenDetails: readonly WhisperNativeToken[];
+  readonly pastKeyValues: Record<string, OrtTensorLike<Float32Array>>;
 }
 
 function roundMiB(bytes: number | undefined): number | undefined {
@@ -217,6 +234,82 @@ export class WhisperOnnxExecutor {
     await this.getLoadedState();
   }
 
+  private async runDecoderStep(
+    loaded: LoadedExecutorState,
+    encoderHiddenStates: OrtTensorLike<Float32Array>,
+    generatedTokens: readonly number[],
+    pastKeyValues: Record<string, OrtTensorLike<Float32Array>>,
+    isFirstStep: boolean,
+  ): Promise<DecoderStepResult> {
+    const inputIds = new BigInt64Array(generatedTokens.map((id) => BigInt(id)));
+    const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, generatedTokens.length]);
+    const feeds: Record<string, unknown> = {
+      input_ids: inputIdsTensor,
+      encoder_hidden_states: encoderHiddenStates,
+    };
+
+    const decoderInputNames = loaded.decoderSession.inputNames ?? [];
+    if (decoderInputNames.includes('use_cache_branch')) {
+      feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([isFirstStep ? 1 : 0]), [1]);
+    }
+
+    if (!isFirstStep) {
+      for (const [name, tensor] of Object.entries(pastKeyValues)) {
+        feeds[name] = tensor;
+      }
+    } else {
+      const numLayers = 4;
+      const numHeads = 6;
+      const headDim = 64;
+      const encoderSeqLen = encoderHiddenStates.dims[1] as number;
+      for (let i = 0; i < numLayers; i++) {
+        feeds[`past_key_values.${i}.decoder.key`] = new loaded.ort.Tensor(
+          'float32',
+          new Float32Array(0),
+          [1, numHeads, 0, headDim],
+        );
+        feeds[`past_key_values.${i}.decoder.value`] = new loaded.ort.Tensor(
+          'float32',
+          new Float32Array(0),
+          [1, numHeads, 0, headDim],
+        );
+        const encoderCacheSize = 1 * numHeads * encoderSeqLen * headDim;
+        feeds[`past_key_values.${i}.encoder.key`] = new loaded.ort.Tensor(
+          'float32',
+          new Float32Array(encoderCacheSize),
+          [1, numHeads, encoderSeqLen, headDim],
+        );
+        feeds[`past_key_values.${i}.encoder.value`] = new loaded.ort.Tensor(
+          'float32',
+          new Float32Array(encoderCacheSize),
+          [1, numHeads, encoderSeqLen, headDim],
+        );
+      }
+    }
+
+    const outputs = await loaded.decoderSession.run(feeds);
+    const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+    const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+    const logits = logitsTensor.data;
+    const logitsDims = logitsTensor.dims;
+    const vocabSize = logitsDims[logitsDims.length - 1] ?? 0;
+    const lastLogitsOffset = logits.length - vocabSize;
+
+    const nextPastKeyValues: Record<string, OrtTensorLike<Float32Array>> = {};
+    for (const [key, value] of Object.entries(outputs)) {
+      if (key.startsWith('present')) {
+        const pastName = key.replace(/^present/, 'past_key_values');
+        nextPastKeyValues[pastName] = value as OrtTensorLike<Float32Array>;
+      }
+    }
+
+    return {
+      lastLogits: logits.subarray(lastLogitsOffset),
+      vocabSize,
+      pastKeyValues: nextPastKeyValues,
+    };
+  }
+
   async transcribe(
     audio: AudioBufferLike,
     options: WhisperSeq2SeqTranscriptionOptions,
@@ -265,104 +358,111 @@ export class WhisperOnnxExecutor {
       }
     }
 
-    // 4. Greedy decode loop
+    // 4. Decode loop (greedy by default, beam search when numBeams > 1)
     const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
     const maxNewTokens = options.maxNewTokens ?? this.config.maxTargetPositions ?? 448;
-    const generatedTokens: number[] = [...promptTokens];
-    const tokenDetails: WhisperNativeToken[] = [];
+    const numBeams = Math.max(1, Math.floor(options.numBeams ?? 1));
+    const lengthPenalty = options.lengthPenalty ?? 0;
+    const beamCandidateWidth = Math.max(
+      numBeams,
+      Math.ceil(numBeams * Math.max(1, options.patience ?? 1)),
+    );
+    let tokenDetails: WhisperNativeToken[] = [];
 
-    // Inspect decoder session for cache tensor names
-    const decoderInputNames = loaded.decoderSession.inputNames ?? [];
-    const hasCacheBranch = decoderInputNames.includes('use_cache_branch');
+    if (numBeams === 1) {
+      const generatedTokens: number[] = [...promptTokens];
+      let pastKeyValues: Record<string, OrtTensorLike<Float32Array>> = {};
 
-    let pastKeyValues: Record<string, OrtTensorLike<Float32Array>> = {};
+      for (let step = 0; step < maxNewTokens; step++) {
+        const result = await this.runDecoderStep(
+          loaded,
+          encoderHiddenStates,
+          generatedTokens,
+          pastKeyValues,
+          step === 0,
+        );
+        pastKeyValues = result.pastKeyValues;
+        const nextTokenId = argmax(result.lastLogits);
+        generatedTokens.push(nextTokenId);
 
-    for (let step = 0; step < maxNewTokens; step++) {
-      const isFirstStep = step === 0;
-      const inputIds = new BigInt64Array(generatedTokens.map((id) => BigInt(id)));
-      const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, generatedTokens.length]);
+        const { confidence } = confidenceFromLogits(
+          new Float32Array(result.lastLogits),
+          nextTokenId,
+          result.vocabSize,
+        );
 
-      const feeds: Record<string, unknown> = {
-        input_ids: inputIdsTensor,
-        encoder_hidden_states: encoderHiddenStates,
-      };
+        const tokenText = tokenizer.idsToTokens([nextTokenId])[0] ?? '';
+        tokenDetails.push({
+          index: step,
+          id: nextTokenId,
+          text: tokenText,
+          confidence,
+          special: tokenizer.isSpecialTokenId(nextTokenId),
+        });
 
-      if (hasCacheBranch) {
-        // ORT merged decoder uses a bool scalar
-        feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([isFirstStep ? 1 : 0]), [1]);
+        if (nextTokenId === eosId) break;
       }
+    } else {
+      let beams: WhisperBeamState<BeamPayload>[] = [
+        createInitialWhisperBeam(promptTokens, 0, { tokenDetails: [], pastKeyValues: {} }),
+      ];
 
-      // Add past key values from previous step
-      if (!isFirstStep) {
-        for (const [name, tensor] of Object.entries(pastKeyValues)) {
-          feeds[name] = tensor;
+      for (let step = 0; step < maxNewTokens; step++) {
+        const activeBeams = beams.filter((beam) => !beam.completed);
+        if (activeBeams.length === 0) break;
+
+        const logitsByBeam: Float32Array[] = [];
+        const nextPastByBeam = new Map<WhisperBeamState<BeamPayload>, Record<string, OrtTensorLike<Float32Array>>>();
+        let vocabSize = 0;
+
+        for (const beam of beams) {
+          if (beam.completed) {
+            logitsByBeam.push(new Float32Array(0));
+            continue;
+          }
+          const result = await this.runDecoderStep(
+            loaded,
+            encoderHiddenStates,
+            beam.tokens,
+            beam.payload?.pastKeyValues ?? {},
+            step === 0,
+          );
+          logitsByBeam.push(result.lastLogits);
+          nextPastByBeam.set(beam, result.pastKeyValues);
+          vocabSize = result.vocabSize;
         }
-      } else {
-        // First step: provide empty past_key_values tensors for the merged decoder
-        const numLayers = 4;
-        const numHeads = 6;
-        const headDim = 64;
-        const encoderSeqLen = encoderHiddenStates.dims[1] as number;
-        for (let i = 0; i < numLayers; i++) {
-          feeds[`past_key_values.${i}.decoder.key`] = new loaded.ort.Tensor(
-            'float32', new Float32Array(0), [1, numHeads, 0, headDim]
-          );
-          feeds[`past_key_values.${i}.decoder.value`] = new loaded.ort.Tensor(
-            'float32', new Float32Array(0), [1, numHeads, 0, headDim]
-          );
-          const encoderCacheSize = 1 * numHeads * encoderSeqLen * headDim;
-          feeds[`past_key_values.${i}.encoder.key`] = new loaded.ort.Tensor(
-            'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]
-          );
-          feeds[`past_key_values.${i}.encoder.value`] = new loaded.ort.Tensor(
-            'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]
-          );
-        }
+
+        beams = rankWhisperBeamCandidates({
+          beams,
+          logitsByBeam,
+          beamWidth: beamCandidateWidth,
+          eosTokenId: eosId,
+          lengthPenalty,
+          expandPayload: (beam, tokenId) => {
+            const { confidence } = confidenceFromLogits(
+              logitsByBeam[beams.indexOf(beam)] ?? new Float32Array(0),
+              tokenId,
+              vocabSize,
+            );
+            const tokenText = tokenizer.idsToTokens([tokenId])[0] ?? '';
+            return {
+              tokenDetails: [
+                ...(beam.payload?.tokenDetails ?? []),
+                {
+                  index: step,
+                  id: tokenId,
+                  text: tokenText,
+                  confidence,
+                  special: tokenizer.isSpecialTokenId(tokenId),
+                },
+              ],
+              pastKeyValues: nextPastByBeam.get(beam) ?? {},
+            };
+          },
+        });
       }
 
-      const outputs = await loaded.decoderSession.run(feeds);
-
-      // Extract logits
-      const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
-      const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
-      const logits = logitsTensor.data;
-      const logitsDims = logitsTensor.dims;
-      const vocabSize = logitsDims[logitsDims.length - 1] ?? 0;
-
-      // Get last token logits
-      const lastLogitsOffset = logits.length - vocabSize;
-      const lastLogits = logits.subarray(lastLogitsOffset);
-      const nextTokenId = argmax(lastLogits);
-
-      // Extract present key values for next step
-      pastKeyValues = {};
-      for (const [key, value] of Object.entries(outputs)) {
-        if (key.startsWith('present')) {
-          const pastName = key.replace(/^present/, 'past_key_values');
-          pastKeyValues[pastName] = value as OrtTensorLike<Float32Array>;
-        }
-      }
-
-      generatedTokens.push(nextTokenId);
-
-      const { confidence } = confidenceFromLogits(
-        new Float32Array(lastLogits),
-        nextTokenId,
-        vocabSize,
-      );
-
-      const tokenText = tokenizer.idsToTokens([nextTokenId])[0] ?? '';
-      tokenDetails.push({
-        index: step,
-        id: nextTokenId,
-        text: tokenText,
-        confidence,
-        special: tokenizer.isSpecialTokenId(nextTokenId),
-      });
-
-      if (nextTokenId === eosId) {
-        break;
-      }
+      tokenDetails = [...(selectBestWhisperBeam(beams, lengthPenalty)?.payload?.tokenDetails ?? [])];
     }
 
     // 5. Build segments from decoded tokens

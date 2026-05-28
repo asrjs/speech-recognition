@@ -1,6 +1,10 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
 import { WhisperOnnxExecutor } from '../src/models/whisper-seq2seq/executor.js';
+import type {
+  WhisperArtifactSource,
+  WhisperSeq2SeqModelConfig,
+} from '../src/models/whisper-seq2seq/types.js';
 
 describe('Whisper ONNX end-to-end smoke', () => {
   it('runs real ONNX inference and does not return stub output', async () => {
@@ -9,26 +13,42 @@ describe('Whisper ONNX end-to-end smoke', () => {
       return;
     }
 
-    const config = {
+    const config: WhisperSeq2SeqModelConfig = {
+      ecosystem: 'openai',
+      architecture: 'whisper-seq2seq',
       melBins: 80,
+      sampleRate: 16000,
       maxSourcePositions: 3000,
       maxTargetPositions: 448,
+      vocabularySize: 51865,
       languages: ['tr', 'en'],
       processorArchitecture: 'whisper-mel',
       encoderArchitecture: 'whisper-transformer',
       decoderArchitecture: 'transformer-decoder',
       tokenizer: { kind: 'tiktoken', vocabSize: 51865 },
-      windowing: { kind: 'disabled' },
     };
 
-    const source = {
-      kind: 'huggingface',
-      repoId: 'onnx-community/whisper-tiny',
+    const fixtureDir = '/tmp/whisper-tiny-onnx';
+    const encoderPath = `${fixtureDir}/encoder_model_int8.onnx`;
+    const decoderPath = `${fixtureDir}/decoder_model_merged_int8.onnx`;
+    const tokenizerPath = `${fixtureDir}/tokenizer.json`;
+    if (![encoderPath, decoderPath, tokenizerPath].every((file) => fs.existsSync(file))) {
+      console.warn(`Skipping: Whisper ONNX fixture files not found under ${fixtureDir}`);
+      return;
+    }
+
+    const source: WhisperArtifactSource = {
+      kind: 'direct',
+      artifacts: {
+        encoderUrl: `file://${encoderPath}`,
+        decoderUrl: `file://${decoderPath}`,
+        tokenizerUrl: `file://${tokenizerPath}`,
+      },
     };
 
     const executor = new WhisperOnnxExecutor(
       'whisper-tiny',
-      { family: 'whisper-seq2seq', task: 'transcribe' },
+      { ecosystem: 'openai', family: 'whisper-seq2seq', task: 'transcribe' },
       config,
       'wasm',
       { source }
@@ -59,7 +79,7 @@ describe('Whisper ONNX end-to-end smoke', () => {
     await executor.dispose();
 
     // Assert: no stub warning
-    const stubWarning = result.warnings.find(
+    const stubWarning = result.warnings?.find(
       (w) => w.code === 'whisper-seq2seq.stubbed-decoder'
     );
     expect(stubWarning).toBeUndefined();

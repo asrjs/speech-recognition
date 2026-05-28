@@ -78,24 +78,29 @@ The `WhisperMelProcessor` was validated against OpenAI's `whisper.log_mel_spectr
 
 Test: `tests/whisper-mel-validation.test.ts`
 
-### Task 10: Implement full BPE tokenizer encode
-Current `WhisperTokenizer.encode()` only handles exact special token matches and falls back to naive character-level encoding. A full BPE encoder is needed that:
-- Parses `model.merges` from `tokenizer.json`.
-- Applies GPT-2 style byte-level BPE (`Ġ` prefix for word boundaries).
-- Supports `pre_tokenizer` rules if present.
+### Task 10: Implement full BPE tokenizer encode — DONE by Flexo on 2026-05-29
+`WhisperTokenizer.encode()` now matches HF `tokenizers` ByteLevel BPE for English and Turkish regression cases.
 
-**Refs:** OpenAI `whisper/tokenizer.py`, HF `WhisperTokenizer`, `tokenizers` Rust bindings.
+Key fixes:
+- Parses `model.merges` into ranked BPE pairs.
+- Uses byte-to-unicode mapping for encode; reverses it for UTF-8 decode.
+- Uses contraction-aware GPT-2 regex so `it's` and `Türkiye'de` match reference tokenization.
+- Avoids incorrect manual leading-space `Ġ` replacement; ByteLevel maps space byte `0x20` to `Ġ`.
 
-### Task 11: Implement beam search decoding
-Only greedy decoding exists. Beam search should:
-- Track `num_beams` hypotheses.
-- Use log-prob scores from `confidenceFromLogits`.
-- Read defaults from `generation_config.json`.
-- Default remains greedy; beam search is opt-in.
+Tests: `tests/whisper-tokenizer-bpe.test.ts`
 
-**Refs:** HF `BeamSearchScorer`, `faster-whisper` beam search, `whisper.cpp` `whisper_decode_internal`.
+### Task 11: Implement beam search decoding — DONE by Flexo on 2026-05-29
+`WhisperOnnxExecutor` now has opt-in beam search while preserving greedy default behavior.
 
-### Task 12: Implement word-level timestamps
+Key changes:
+- Added options: `numBeams`, `lengthPenalty`, `patience`.
+- Added `src/models/whisper-seq2seq/beam-search.ts` with beam ranking/selection helpers.
+- Extracted shared ONNX `runDecoderStep()` so greedy and beam paths use the same feed/cache handling.
+- Beam state carries token details and per-beam decoder cache payloads.
+
+Tests: `tests/whisper-beam-search.test.ts`
+
+### Task 12: Implement word-level timestamps — PENDING
 Current output only has segment-level timestamps. Word-level requires:
 - Cross-attention weights from decoder (may need re-exported ONNX with attention outputs).
 - DTW or median-filtered alignment between attention and encoder frames.
@@ -124,8 +129,6 @@ Debug script: `scripts/whisper-e2e.ts`
 
 ### Task 13: Wire long-audio chunking into Whisper executor — PENDING
 ### Task 12: Implement word-level timestamps — PENDING
-### Task 11: Implement beam search decoding — PENDING
-### Task 10: Implement full BPE tokenizer encode — PENDING
 Priority order for the next agent:
 
 1. **OpenAI whisper (Python)** — Reference
@@ -178,7 +181,7 @@ Then:
 1. Load skill `asrjs-dev`.
 2. Read `docs/plans/asr-pipeline-roadmap.md`.
 3. Read `~/.hermes/skills/mlops/asrjs-dev/references/whisper-onnx-integration.md`.
-4. Pick Task 9 (or whichever is highest priority).
+4. Pick Task 12 (word-level timestamps) or Task 13 (long-audio chunking), depending on priority.
 5. Write failing test first, implement, verify, commit.
 6. Update roadmap and reference file before finishing.
 

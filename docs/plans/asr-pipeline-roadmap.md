@@ -457,47 +457,61 @@ Commit:
 
 ---
 
-### Task 10: Implement full BPE tokenizer encode
+### Task 10: Implement full BPE tokenizer encode — DONE
 
 Objective: replace the naive character-level fallback in `WhisperTokenizer.encode()` with proper BPE merge rules.
 
-Steps:
-1. Parse `model.merges` from `tokenizer.json` into ordered merge pairs.
-2. Implement GPT-2 style byte-level BPE pre-tokenization (byte-to-unicode mapping, `Ġ` prefix for word starts).
-3. Apply merge rules greedily to token sequences.
-4. Handle `pre_tokenizer` configuration if present in `tokenizer.json`.
-5. Add tests that verify encode/decode round-trip for English and Turkish text.
+Files modified:
+- `src/models/whisper-seq2seq/tokenizer.ts`
+- `tests/whisper-tokenizer-bpe.test.ts`
 
-References to study:
-- OpenAI `whisper/tokenizer.py`
-- HF `transformers` `WhisperTokenizer`
-- `tokenizers` Rust library Python bindings (`ByteLevel` pre-tokenizer)
+Implemented:
+- Parses `model.merges` from `tokenizer.json` into ranked BPE merge pairs.
+- Implements GPT-2/ByteLevel byte-to-unicode mapping for encode and reverse unicode-to-byte mapping for decode.
+- Uses the GPT-2/tiktoken regex split including contraction pieces (`'s`, `'d`, etc.) so outputs match Hugging Face `tokenizers` for Whisper text.
+- Applies greedy lowest-rank BPE pair merges per pre-tokenized word.
+- Preserves special-token handling alongside plain BPE text.
+- Adds English/Turkish reference ID tests and exact encode/decode round-trip coverage.
+
+Fixes applied:
+- Removed the incorrect manual leading-space `Ġ` replacement before byte encoding; ByteLevel already maps literal space byte `0x20` to `Ġ`.
+- Added contraction-aware regex so `it's` encodes as `['it', "'s"]` instead of `['it', "'", 's']`, and `Türkiye'de` encodes as `['T', 'Ã¼r', 'kiye', "'d", 'e']`.
+- Replaced naive decode cleanup with proper ByteLevel byte reconstruction, fixing non-ASCII Turkish round-trips.
 
 Verification:
-- `npm test -- tests/whisper-tokenizer-bpe.test.ts --run`
-- `npm run typecheck`
+- `npx vitest run tests/whisper-tokenizer-bpe.test.ts --run` passed: 4 tests
+- `npm run typecheck` passed
+
+Commit:
+- `feat: add Whisper ByteLevel BPE tokenizer encode`
 
 ---
 
-### Task 11: Implement beam search decoding
+### Task 11: Implement beam search decoding — DONE
 
 Objective: add beam search as an alternative to greedy decoding in `WhisperOnnxExecutor`.
 
-Steps:
-1. Add `numBeams`, `lengthPenalty`, `patience` to `WhisperSeq2SeqTranscriptionOptions`.
-2. Implement `BeamSearchScorer` or equivalent that tracks `num_beams` hypotheses.
-3. In the decoder loop, run the model once per beam hypothesis, score with log-probs, keep top-k.
-4. Wire `generation_config.json` defaults (read from HF repo at load time).
-5. Default remains greedy (`numBeams: 1`); beam search is opt-in.
+Files modified:
+- Created: `src/models/whisper-seq2seq/beam-search.ts`
+- Modified: `src/models/whisper-seq2seq/executor.ts`
+- Modified: `src/models/whisper-seq2seq/types.ts`
+- Modified: `src/models/whisper-seq2seq/index.ts`
+- Test: `tests/whisper-beam-search.test.ts`
 
-References to study:
-- HF `transformers` `BeamSearchScorer`, `beam_search()`
-- `faster-whisper` beam search
-- `whisper.cpp` `whisper_decode_internal`
+Implemented:
+- Added transcription options: `numBeams`, `lengthPenalty`, `patience`.
+- Extracted decoder-step execution into `runDecoderStep()` so greedy and beam search share the same ONNX feed/caching path.
+- Added `WhisperBeamState`, `rankWhisperBeamCandidates()`, and `selectBestWhisperBeam()` helpers.
+- Default remains greedy (`numBeams <= 1`). Beam search is opt-in with `numBeams > 1`.
+- Beam search tracks hypothesis score, completion on EOS, token details, and per-beam decoder cache payload.
+- `lengthPenalty` affects candidate ranking/final selection; `patience` widens the retained candidate set (`ceil(numBeams * patience)`).
 
 Verification:
-- `npm test -- tests/whisper-beam-search.test.ts --run`
-- `npm run typecheck`
+- `npx vitest run tests/whisper-beam-search.test.ts tests/whisper-tokenizer-bpe.test.ts --run` passed: 6 tests
+- `npm run typecheck` passed
+
+Commit:
+- `feat: add Whisper beam search decoding`
 
 ---
 
@@ -568,6 +582,7 @@ Files modified:
 
 Verification:
 - `ASRJS_FIXTURE_SMOKE=1 npm test -- tests/whisper-onnx-smoke.test.ts --run` passed
+- `ASRJS_FIXTURE_SMOKE=1 npx vitest run tests/whisper-onnx-smoke.test.ts --run` passed after switching the smoke fixture to local `file:///tmp/whisper-tiny-onnx/*` direct artifacts (Node ORT cannot load raw HTTPS model URLs without an asset provider)
 - `npm run typecheck` passed
 - `npm run build` passed
 - `npm test` passed: 66 files, 336 tests

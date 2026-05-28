@@ -91,6 +91,9 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
   readonly returnPromptTokens?: boolean;
   readonly maxNewTokens?: number;
   readonly noTimestamps?: boolean;
+  readonly numBeams?: number;
+  readonly lengthPenalty?: number;
+  readonly patience?: number;
 }
 
 export interface WhisperSeq2SeqModelDependencies {
