@@ -9,6 +9,7 @@ import type {
 } from '../../types/index.js';
 import type { NemoDecodeContext } from '../nemo-common/index.js';
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
+import { fetchModelFiles } from '../../runtime/huggingface.js';
 import { nowMs, roundMetric, roundTimestampSeconds } from '../../runtime/timing.js';
 import type { TranscriptMetrics, TranscriptionProgressEvent } from '../../types/index.js';
 import {
@@ -19,11 +20,7 @@ import {
   type OrtSessionLike,
   type OrtTensorLike,
 } from './ort.js';
-import {
-  JsNemoPreprocessor,
-  type NemoPreprocessor,
-  OnnxNemoPreprocessor,
-} from './preprocessor.js';
+import { JsNemoPreprocessor, type NemoPreprocessor, OnnxNemoPreprocessor } from './preprocessor.js';
 import { ParakeetTokenizer } from './tokenizer.js';
 import { buildEmptyTranscript, buildWordAndTokenDetails } from './transcript-details.js';
 import { getDefaultNemoTdtWeightSetup } from './weights.js';
@@ -109,6 +106,15 @@ function isAssetMissingError(error: unknown): boolean {
   return false;
 }
 
+function normalizeRepoPath(path: string): string {
+  return String(path || '').replace(/^\.\/+/, '').replace(/\\/g, '/');
+}
+
+function hasListedRepoFile(files: readonly string[], filename: string): boolean {
+  const target = normalizeRepoPath(filename);
+  return files.some((path) => normalizeRepoPath(path) === target || normalizeRepoPath(path).endsWith(`/${target}`));
+}
+
 function isExternalDataLoadError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
@@ -152,10 +158,20 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     }
 
     const revision = source.revision ?? 'main';
+    let repoFilesPromise: Promise<readonly string[]> | null = null;
+    const getRepoFiles = (): Promise<readonly string[]> => {
+      repoFilesPromise ??= fetchModelFiles(source.repoId, revision);
+      return repoFilesPromise;
+    };
+
     const resolveFile = async (filename: string | undefined): Promise<string | undefined> => {
       if (!filename) {
         return undefined;
       }
+      const cacheKey = `huggingface:${source.repoId}:${revision}:${filename}`;
+      const cacheKeyFallbacks = (source.cacheKeyFallbackRevisions ?? [])
+        .filter((fallbackRevision) => fallbackRevision !== revision)
+        .map((fallbackRevision) => `huggingface:${source.repoId}:${fallbackRevision}:${filename}`);
 
       const handle = await this.assetProvider!.resolve({
         id: `huggingface:${source.repoId}:${revision}:${filename}`,
@@ -164,7 +180,8 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         revision,
         filename,
         preferBlobUrl: true,
-        cacheKey: `huggingface:${source.repoId}:${revision}:${filename}`,
+        cacheKey,
+        cacheKeyFallbacks,
         onProgress: (event) => {
           this.runtimeHooks?.onProgress?.(createAssetProgressEvent(this.modelId, filename, event));
         },
@@ -178,6 +195,10 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     };
     const resolveOptionalFile = async (filename: string | undefined): Promise<string | undefined> => {
       if (!filename) {
+        return undefined;
+      }
+      const repoFiles = await getRepoFiles();
+      if (repoFiles.length > 0 && !hasListedRepoFile(repoFiles, filename)) {
         return undefined;
       }
       try {
@@ -256,21 +277,24 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         throw error;
       }
 
-      const fallbackCandidates: ReadonlyArray<{ quant: 'fp32' | 'int8'; warningCode: string; warningMessage: string }> =
-        [
-          {
-            quant: 'fp32',
-            warningCode: 'nemo-tdt.encoder-fp16-fallback-fp32',
-            warningMessage:
-              'Default FP16 encoder weights could not be initialized on this WebGPU setup. Falling back to FP32 encoder weights.',
-          },
-          {
-            quant: 'int8',
-            warningCode: 'nemo-tdt.encoder-fp16-fallback-int8',
-            warningMessage:
-              'Default FP16 encoder weights could not be initialized on this WebGPU setup. Falling back to INT8 encoder weights.',
-          },
-        ];
+      const fallbackCandidates: ReadonlyArray<{
+        quant: 'fp32' | 'int8';
+        warningCode: string;
+        warningMessage: string;
+      }> = [
+        {
+          quant: 'fp32',
+          warningCode: 'nemo-tdt.encoder-fp16-fallback-fp32',
+          warningMessage:
+            'Default FP16 encoder weights could not be initialized on this WebGPU setup. Falling back to FP32 encoder weights.',
+        },
+        {
+          quant: 'int8',
+          warningCode: 'nemo-tdt.encoder-fp16-fallback-int8',
+          warningMessage:
+            'Default FP16 encoder weights could not be initialized on this WebGPU setup. Falling back to INT8 encoder weights.',
+        },
+      ];
 
       let fallbackError: unknown = error;
       let fallbackSucceeded = false;

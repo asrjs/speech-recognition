@@ -19,6 +19,7 @@ type FakeStore = {
     blob: Blob,
     key: string,
   ) => { onsuccess: (() => void) | null; onerror: (() => void) | null; result?: IDBValidKey };
+  delete: (key: string) => { onsuccess: (() => void) | null; onerror: (() => void) | null };
 };
 
 const originalIndexedDb = globalThis.indexedDB;
@@ -64,6 +65,16 @@ describe('IndexedDbAssetCache', () => {
           onsuccess: null as (() => void) | null,
           onerror: null as (() => void) | null,
           result: 'ok' as IDBValidKey,
+        };
+        queueMicrotask(() => {
+          request.onsuccess?.();
+        });
+        return request;
+      },
+      delete: () => {
+        const request = {
+          onsuccess: null as (() => void) | null,
+          onerror: null as (() => void) | null,
         };
         queueMicrotask(() => {
           request.onsuccess?.();
@@ -156,5 +167,87 @@ describe('IndexedDbAssetCache', () => {
     const value = await cache.get('missing-key');
 
     expect(value).toBeNull();
+  });
+
+  it('evicts stale cached blobs whose backing data disappeared', async () => {
+    let deletedKey: string | null = null;
+    const staleBlob = {
+      type: 'application/octet-stream',
+      async arrayBuffer() {
+        throw { name: 'NotFoundError' };
+      },
+    } as unknown as Blob;
+    const store: FakeStore = {
+      get: () => {
+        const request = {
+          onsuccess: null as (() => void) | null,
+          onerror: null as (() => void) | null,
+          result: staleBlob,
+        };
+        queueMicrotask(() => {
+          request.onsuccess?.();
+        });
+        return request;
+      },
+      put: () => {
+        const request = {
+          onsuccess: null as (() => void) | null,
+          onerror: null as (() => void) | null,
+          result: 'ok' as IDBValidKey,
+        };
+        queueMicrotask(() => {
+          request.onsuccess?.();
+        });
+        return request;
+      },
+      delete: (key: string) => {
+        deletedKey = key;
+        const request = {
+          onsuccess: null as (() => void) | null,
+          onerror: null as (() => void) | null,
+        };
+        queueMicrotask(() => {
+          request.onsuccess?.();
+        });
+        return request;
+      },
+    };
+    const db = {
+      version: 2,
+      objectStoreNames: {
+        contains() {
+          return true;
+        },
+      },
+      createObjectStore() {
+        return {};
+      },
+      transaction() {
+        return {
+          objectStore() {
+            return store;
+          },
+        };
+      },
+      close() {
+        return undefined;
+      },
+    };
+
+    globalThis.indexedDB = {
+      open() {
+        const request = createEmptyRequest(db);
+        queueMicrotask(() => {
+          request.onsuccess?.({});
+        });
+        return request as unknown as IDBOpenDBRequest;
+      },
+    } as IDBFactory;
+
+    const cache = new IndexedDbAssetCache();
+    const value = await cache.get('stale-key');
+
+    expect(value).toBeNull();
+    expect(deletedKey).toBe('stale-key');
   });
 });

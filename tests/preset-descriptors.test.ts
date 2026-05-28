@@ -66,6 +66,7 @@ describe('built-in preset descriptors', () => {
     expect(descriptor?.loading.availableDecoderQuantizations).toEqual(['fp16', 'int8', 'fp32']);
     expect(descriptor?.loading.defaultEncoderQuantization).toBe('fp16');
     expect(descriptor?.loading.defaultDecoderQuantization).toBe('int8');
+    expect(descriptor?.loading.defaultRevision).toBe('main');
   });
 
   it('builds preset-aware hub load requests from a single generic helper', () => {

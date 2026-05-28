@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fetchModelFiles } from '../src/runtime/huggingface.js';
 import {
   DEFAULT_NEMO_RNNT_CLASSIFICATION,
   parseNemoRnntConfig,
@@ -8,7 +9,15 @@ import { OrtNemoRnntExecutor } from '../src/models/nemo-rnnt/executor.js';
 import { ParakeetTokenizer } from '../src/models/nemo-rnnt/index.js';
 import type { OrtModuleLike, OrtSessionLike, OrtTensorLike } from '../src/models/nemo-rnnt/ort.js';
 import type { NemoRnntArtifactSource, NemoRnntModelConfig } from '../src/models/nemo-rnnt/types.js';
-import type { AudioBufferLike } from '../src/types/index.js';
+import type { AssetProvider, AudioBufferLike, ResolvedAssetHandle } from '../src/types/index.js';
+
+vi.mock('../src/runtime/huggingface.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/runtime/huggingface.js')>();
+  return {
+    ...actual,
+    fetchModelFiles: vi.fn(actual.fetchModelFiles),
+  };
+});
 
 class MockTensor<TData extends ArrayBufferView = ArrayBufferView> implements OrtTensorLike<TData> {
   disposed = false;
@@ -122,6 +131,42 @@ function createAudio(sampleRate = 16000, frames = 1600): AudioBufferLike {
   };
 }
 
+function createResolvedHandle(filename: string): ResolvedAssetHandle {
+  return {
+    request: {
+      id: filename,
+      filename,
+    },
+    async *openStream() {
+      yield new Uint8Array();
+    },
+    async readBytes() {
+      return new Uint8Array();
+    },
+    async readText() {
+      return '';
+    },
+    async readJson<T>() {
+      return {} as T;
+    },
+    async getLocator(target) {
+      return target === 'url' ? `blob:test/${filename}` : null;
+    },
+    dispose() {},
+  };
+}
+
+function createRecordingAssetProvider(requests: string[]): AssetProvider {
+  return {
+    canResolve: () => true,
+    async resolve(request) {
+      const filename = request.filename ?? '';
+      requests.push(filename);
+      return createResolvedHandle(filename);
+    },
+  };
+}
+
 function createExecutorHarness(options: {
   readonly config?: Partial<NemoRnntModelConfig>;
   readonly frameCount?: number;
@@ -160,11 +205,11 @@ function createExecutorHarness(options: {
   const encoderSession = new MockEncoderSession(
     new MockTensor(encoderData, [1, featureSize, frameCount]),
   );
-  const decoderSession = new MockDecoderSession(options.logits, [
-    config.predictionLayers ?? 1,
-    1,
-    config.predictionHiddenSize ?? 4,
-  ], options.throwOnDecoderCallIndex);
+  const decoderSession = new MockDecoderSession(
+    options.logits,
+    [config.predictionLayers ?? 1, 1, config.predictionHiddenSize ?? 4],
+    options.throwOnDecoderCallIndex,
+  );
   const executor = new OrtNemoRnntExecutor(
     'test-nemo-rnnt',
     DEFAULT_NEMO_RNNT_CLASSIFICATION,
@@ -198,6 +243,72 @@ function createExecutorHarness(options: {
     decoderSession,
   };
 }
+
+beforeEach(() => {
+  vi.mocked(fetchModelFiles).mockReset();
+  vi.mocked(fetchModelFiles).mockResolvedValue([]);
+});
+
+describe('nemo-rnnt Hugging Face artifact materialization', () => {
+  it('skips optional external-data probes when the repo listing shows the sidecars are absent', async () => {
+    vi.mocked(fetchModelFiles).mockResolvedValue([
+      'encoder-model.fp16.onnx',
+      'decoder_joint-model.int8.onnx',
+      'vocab.txt',
+    ]);
+
+    const requests: string[] = [];
+    const config = parseNemoRnntConfig('test-nemo-rnnt', {
+      subsamplingFactor: 4,
+      frameShiftSeconds: 0.01,
+      melBins: 2,
+      vocabularySize: 3,
+      predictionLayers: 1,
+      predictionHiddenSize: 4,
+      tokenizer: {
+        kind: 'sentencepiece',
+        blankTokenId: 3,
+      },
+    });
+    const executor = new OrtNemoRnntExecutor(
+      'test-nemo-rnnt',
+      DEFAULT_NEMO_RNNT_CLASSIFICATION,
+      config,
+      'wasm',
+      undefined,
+      { assetProvider: createRecordingAssetProvider(requests) },
+    ) as OrtNemoRnntExecutor & {
+      sourceOptions: NemoRnntArtifactSource;
+      materializeHuggingFaceArtifacts(
+        artifacts: Record<string, string | undefined>,
+      ): Promise<Record<string, string | undefined>>;
+    };
+
+    executor.sourceOptions = {
+      kind: 'huggingface',
+      repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+      revision: 'main',
+      preprocessorBackend: 'js',
+    };
+
+    const artifacts = await executor.materializeHuggingFaceArtifacts({
+      encoderUrl: 'https://example.test/encoder-model.fp16.onnx',
+      decoderUrl: 'https://example.test/decoder_joint-model.int8.onnx',
+      tokenizerUrl: 'https://example.test/vocab.txt',
+      encoderFilename: 'encoder-model.fp16.onnx',
+      decoderFilename: 'decoder_joint-model.int8.onnx',
+    });
+
+    expect(fetchModelFiles).toHaveBeenCalledWith('ysdede/parakeet-tdt-0.6b-v3-onnx', 'main');
+    expect(requests).toEqual([
+      'encoder-model.fp16.onnx',
+      'decoder_joint-model.int8.onnx',
+      'vocab.txt',
+    ]);
+    expect(artifacts.encoderDataUrl).toBeUndefined();
+    expect(artifacts.decoderDataUrl).toBeUndefined();
+  });
+});
 
 describe('nemo-rnnt executor decode loop', () => {
   it('emits multiple symbols on one frame, advances on blank, and strips EOU from user text', async () => {

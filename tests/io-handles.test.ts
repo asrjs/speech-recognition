@@ -78,6 +78,45 @@ describe('UrlAssetHandle', () => {
     expect(cache.set).toHaveBeenCalledTimes(1);
   });
 
+  it('reads fallback cache keys and migrates hits to the primary key', async () => {
+    const cache: AssetCache = {
+      get: vi.fn(async (key: string) =>
+        key === 'cache:legacy'
+          ? {
+              bytes: new Uint8Array([4, 5, 6]),
+              contentType: 'application/octet-stream',
+            }
+          : null,
+      ),
+      set: vi.fn(async () => undefined),
+      delete: vi.fn(async () => undefined),
+    };
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const handle = new UrlAssetHandle(
+      {
+        id: 'url:test',
+        provider: 'url',
+        url: 'https://example.com/model.onnx',
+        cacheKey: 'cache:primary',
+        cacheKeyFallbacks: ['cache:legacy'],
+      },
+      'https://example.com/model.onnx',
+      cache,
+    );
+
+    const bytes = await handle.readBytes();
+    expect(Array.from(bytes)).toEqual([4, 5, 6]);
+    expect(cache.get).toHaveBeenCalledWith('cache:primary');
+    expect(cache.get).toHaveBeenCalledWith('cache:legacy');
+    expect(cache.set).toHaveBeenCalledWith('cache:primary', {
+      bytes,
+      contentType: 'application/octet-stream',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('returns remote URL locators without materializing the full payload', async () => {
     const fetchSpy = vi.fn();
     globalThis.fetch = fetchSpy as unknown as typeof fetch;

@@ -10,9 +10,11 @@ When remote model loading fails, the fix should live in the shared IO/runtime la
 ## Failure Patterns We Hardened
 
 1. Stale or broken IndexedDB cache entries causing load failure instead of network fallback.
-2. Branch/revision-specific Hugging Face URLs returning `404` while `main` still exists.
-3. External `.data` ONNX sidecars being resolved only via listing checks.
-4. Large external-data files (multi-GB) being materialized into browser memory while creating URL locators.
+2. Cached Blob records whose browser backing store disappeared and throw `NotFoundError` when read.
+3. Branch/revision-specific Hugging Face URLs returning `404` while `main` still exists.
+4. Revision cache-key changes forcing duplicate downloads after model repos move artifacts to `main`.
+5. External `.data` ONNX sidecars creating noisy browser `404` errors when absent.
+6. Large external-data files (multi-GB) being materialized into browser memory while creating URL locators.
 
 ## Implemented Resilience
 
@@ -27,7 +29,23 @@ Behavior:
 
 - Cache read errors no longer fail model load.
 - Broken cache keys are best-effort evicted when read fails.
+- Cached IndexedDB blobs that throw `NotFoundError` during `arrayBuffer()` are treated as stale entries, evicted, and reported as cache misses.
 - Cache write errors are logged but do not fail runtime loading.
+
+### Cache-key migration
+
+Files:
+
+- `src/io/handles.ts`
+- `src/types/io.ts`
+- `src/presets/parakeet/catalog.ts`
+- `src/presets/parakeet/manifest.ts`
+
+Behavior:
+
+- Asset requests can provide `cacheKeyFallbacks` for older keys that may contain the same artifact.
+- A fallback-key hit is migrated back to the primary `cacheKey` so future reads use the canonical key.
+- Built-in Parakeet TDT v2/v3 descriptors now default to Hugging Face `main`, with their previous `feat/fp16-canonical-v2` and `feat/fp16-canonical-v3` cache keys retained as fallback revisions.
 
 ### Revision fallback for Hugging Face assets
 
@@ -40,7 +58,7 @@ Behavior:
 - For `provider: 'huggingface'`, if fetch for non-`main` revision returns `404`, the loader retries with `main`.
 - This reduces hard failures from stale revision pins.
 
-### Optional ONNX external-data resolution without hard listing dependency
+### Optional ONNX external-data resolution without noisy absence probes
 
 Files:
 
@@ -49,9 +67,10 @@ Files:
 
 Behavior:
 
-- Encoder/decoder `.data` files are tried directly as optional downloads.
-- `404` is treated as "file absent" and ignored.
-- Other errors still surface.
+- Encoder/decoder `.data` files are checked against the Hugging Face repo listing when that listing is available.
+- Known-absent sidecars are skipped without issuing a browser `GET`, avoiding expected-but-noisy console `404` errors.
+- If the listing API is unavailable or empty, the loader falls back to the previous direct optional download probe.
+- Direct probe `404` responses are still treated as "file absent"; other errors still surface.
 
 ### Controlled URL locator materialization for HTTP assets
 

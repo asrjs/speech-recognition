@@ -28,6 +28,7 @@ export interface ParakeetModelConfig {
   readonly topology?: 'tdt' | 'rnnt';
   readonly supportsWordTimestamps?: boolean;
   readonly defaultRevision?: string;
+  readonly cacheKeyFallbackRevisions?: readonly string[];
   readonly warmupExpectedTexts?: readonly string[];
   readonly warmupRequiredKeywordGroups?: readonly (readonly string[])[];
 }
@@ -54,7 +55,8 @@ export const MODELS = {
     predLayers: 2,
     topology: 'tdt',
     supportsWordTimestamps: true,
-    defaultRevision: 'feat/fp16-canonical-v2',
+    defaultRevision: 'main',
+    cacheKeyFallbackRevisions: ['feat/fp16-canonical-v2'],
   },
   'parakeet-tdt-0.6b-v3': {
     repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
@@ -69,7 +71,8 @@ export const MODELS = {
     predLayers: 2,
     topology: 'tdt',
     supportsWordTimestamps: true,
-    defaultRevision: 'feat/fp16-canonical-v3',
+    defaultRevision: 'main',
+    cacheKeyFallbackRevisions: ['feat/fp16-canonical-v3'],
   },
   'parakeet-realtime-eou-120m-v1': {
     repoId: 'ysdede/parakeet-realtime-eou-120m-v1-onnx',

@@ -117,10 +117,18 @@ export class IndexedDbAssetCache implements AssetCache {
       return null;
     }
 
-    return {
-      bytes: new Uint8Array(await blob.arrayBuffer()),
-      contentType: blob.type || undefined,
-    };
+    try {
+      return {
+        bytes: new Uint8Array(await blob.arrayBuffer()),
+        contentType: blob.type || undefined,
+      };
+    } catch (error) {
+      if (isNotFoundIndexedDbError(error)) {
+        await this.delete(key);
+        return null;
+      }
+      throw error;
+    }
   }
 
   async set(key: string, value: AssetCacheValue): Promise<void> {

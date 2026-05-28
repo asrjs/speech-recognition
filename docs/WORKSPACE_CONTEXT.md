@@ -120,3 +120,5 @@ Treat it as reference material until its current contents are rechecked.
 - ONNX external data, artifact naming, or Parakeet TDT loader issue: compare `speech-recognition`, `parakeet.js`, `onnx-asr`, and `transformers-v4-parakeet-demo`.
 
 Remote model loading resilience is documented in [HUGGINGFACE_DOWNLOAD_RESILIENCE.md](./HUGGINGFACE_DOWNLOAD_RESILIENCE.md). FireRed diagnostic fallback behavior is documented in [FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md](./FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md).
+
+The Windows-to-WSL2 maintenance handoff is documented in [WSL2_PROJECT_HANDOFF.md](./WSL2_PROJECT_HANDOFF.md).

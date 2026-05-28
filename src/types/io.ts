@@ -37,6 +37,11 @@ export interface AssetRequest {
    */
   readonly preferBlobUrl?: boolean;
   readonly cacheKey?: string;
+  /**
+   * Older cache keys that may contain the same artifact. Providers try these
+   * after `cacheKey` and migrate hits back to `cacheKey` when possible.
+   */
+  readonly cacheKeyFallbacks?: readonly string[];
   readonly contentType?: string;
   readonly onProgress?: (event: AssetProgressEvent) => void;
 }

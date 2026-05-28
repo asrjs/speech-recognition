@@ -54,6 +54,7 @@ export interface NemoTdtHuggingFaceSource {
   readonly kind: 'huggingface';
   readonly repoId: string;
   readonly revision?: string;
+  readonly cacheKeyFallbackRevisions?: readonly string[];
   readonly encoderBackend?: NemoTdtExecutionBackend;
   readonly decoderBackend?: NemoTdtExecutionBackend;
   readonly encoderQuant?: NemoTdtQuantization;

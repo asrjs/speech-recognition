@@ -10,6 +10,7 @@ import type {
   TranscriptionProgressEvent,
 } from '../../types/index.js';
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
+import { fetchModelFiles } from '../../runtime/huggingface.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
 import type { NemoDecodeContext } from '../nemo-common/index.js';
 import {
@@ -109,6 +110,20 @@ function isAssetMissingError(error: unknown): boolean {
   return false;
 }
 
+function normalizeRepoPath(path: string): string {
+  return String(path || '')
+    .replace(/^\.\/+/, '')
+    .replace(/\\/g, '/');
+}
+
+function hasListedRepoFile(files: readonly string[], filename: string): boolean {
+  const target = normalizeRepoPath(filename);
+  return files.some((path) => {
+    const normalized = normalizeRepoPath(path);
+    return normalized === target || normalized.endsWith(`/${target}`);
+  });
+}
+
 function extractLatestLogitsSlice(
   tensor: OrtTensorLike<Float32Array>,
   distributionSize: number,
@@ -162,10 +177,20 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
     }
 
     const revision = source.revision ?? 'main';
+    let repoFilesPromise: Promise<readonly string[]> | null = null;
+    const getRepoFiles = (): Promise<readonly string[]> => {
+      repoFilesPromise ??= fetchModelFiles(source.repoId, revision);
+      return repoFilesPromise;
+    };
+
     const resolveFile = async (filename: string | undefined): Promise<string | undefined> => {
       if (!filename) {
         return undefined;
       }
+      const cacheKey = `huggingface:${source.repoId}:${revision}:${filename}`;
+      const cacheKeyFallbacks = (source.cacheKeyFallbackRevisions ?? [])
+        .filter((fallbackRevision) => fallbackRevision !== revision)
+        .map((fallbackRevision) => `huggingface:${source.repoId}:${fallbackRevision}:${filename}`);
 
       const handle = await this.assetProvider!.resolve({
         id: `huggingface:${source.repoId}:${revision}:${filename}`,
@@ -174,7 +199,8 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
         revision,
         filename,
         preferBlobUrl: true,
-        cacheKey: `huggingface:${source.repoId}:${revision}:${filename}`,
+        cacheKey,
+        cacheKeyFallbacks,
         onProgress: (event) => {
           this.runtimeHooks?.onProgress?.(createAssetProgressEvent(this.modelId, filename, event));
         },
@@ -186,8 +212,14 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       }
       return locator;
     };
-    const resolveOptionalFile = async (filename: string | undefined): Promise<string | undefined> => {
+    const resolveOptionalFile = async (
+      filename: string | undefined,
+    ): Promise<string | undefined> => {
       if (!filename) {
+        return undefined;
+      }
+      const repoFiles = await getRepoFiles();
+      if (repoFiles.length > 0 && !hasListedRepoFile(repoFiles, filename)) {
         return undefined;
       }
       try {
@@ -693,8 +725,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
           : undefined;
       const totalMs = roundMetric(nowMs() - transcriptionStart);
       const rtf = audio.durationSeconds > 0 ? totalMs / (audio.durationSeconds * 1000) : 0;
-      const rtfx =
-        audio.durationSeconds > 0 ? audio.durationSeconds / (totalMs / 1000) : undefined;
+      const rtfx = audio.durationSeconds > 0 ? audio.durationSeconds / (totalMs / 1000) : undefined;
       const totalMetrics: TranscriptMetrics = {
         preprocessMs: roundMetric(preprocessMs),
         encodeMs: roundMetric(encodeMs),

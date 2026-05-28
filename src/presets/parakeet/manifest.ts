@@ -1,6 +1,7 @@
 import type { ModelClassification } from '../../types/index.js';
 import type { NemoTdtArtifactSource, NemoTdtModelConfig } from '../../models/nemo-tdt/index.js';
 import type { NemoRnntArtifactSource, NemoRnntModelConfig } from '../../models/nemo-rnnt/index.js';
+import { getModelConfig } from './catalog.js';
 
 export interface ParakeetPresetManifest {
   readonly preset: 'parakeet';
@@ -123,20 +124,42 @@ function normalizePresetId(modelId: string): string {
   return modelId.trim().toLowerCase();
 }
 
+function withCatalogDefaults(
+  manifest: ParakeetPresetManifest | undefined,
+): ParakeetPresetManifest | undefined {
+  const config = manifest ? getModelConfig(manifest.modelId) : null;
+  if (!manifest || !config || manifest.source?.kind !== 'huggingface') {
+    return manifest;
+  }
+
+  return {
+    ...manifest,
+    source: {
+      ...manifest.source,
+      revision: manifest.source.revision ?? config.defaultRevision,
+      cacheKeyFallbackRevisions: config.cacheKeyFallbackRevisions,
+    },
+  };
+}
+
 export function listParakeetPresetManifests(): readonly ParakeetPresetManifest[] {
-  return PARAKEET_PRESET_MANIFESTS;
+  return PARAKEET_PRESET_MANIFESTS.map((manifest) => withCatalogDefaults(manifest)!);
 }
 
 export function resolveParakeetPresetManifest(modelId: string): ParakeetPresetManifest | undefined {
   const normalizedModelId = normalizePresetId(modelId);
 
-  return PARAKEET_PRESET_MANIFESTS.find((manifest) => {
-    if (normalizePresetId(manifest.modelId) === normalizedModelId) {
-      return true;
-    }
+  return withCatalogDefaults(
+    PARAKEET_PRESET_MANIFESTS.find((manifest) => {
+      if (normalizePresetId(manifest.modelId) === normalizedModelId) {
+        return true;
+      }
 
-    return (manifest.aliases ?? []).some((alias) => normalizePresetId(alias) === normalizedModelId);
-  });
+      return (manifest.aliases ?? []).some(
+        (alias) => normalizePresetId(alias) === normalizedModelId,
+      );
+    }),
+  );
 }
 
 export function resolveParakeetArtifactSource(
