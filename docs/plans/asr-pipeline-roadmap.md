@@ -237,13 +237,13 @@ Verified:
 Commit:
 - `feat: add sentence segmentation pipeline stage`
 
-### Task 4: Add VAD segment schema and merge helpers before full VAD stage
+### Task 4: Add VAD segment schema and merge helpers before full VAD stage — DONE
 
 Objective: define reusable VAD data structures and pure merge functions before wiring actual TEN-VAD/FireRed backends.
 
 Files:
-- Create: `src/pipeline/vad-segments.ts`
-- Modify: `src/pipeline/index.ts`
+- Created: `src/pipeline/vad-segments.ts`
+- Modified: `src/pipeline/index.ts`
 - Test: `tests/pipeline-vad-segments.test.ts`
 
 Types:
@@ -254,6 +254,10 @@ interface SpeechSegment {
   endTime: number;
   confidence?: number;
 }
+
+interface SpeechWindow extends SpeechSegment {
+  sourceSegmentIndices?: readonly number[];
+}
 ```
 
 Helpers:
@@ -262,12 +266,24 @@ Helpers:
 - `splitLongSpeechSegments`
 - `speechSegmentsToWindows`
 
+Implemented behavior:
+- pads speech segments and clamps to audio bounds
+- merges overlapping/nearby segments using min-silence threshold
+- splits long speech regions into catalog-safe windows
+- filters sub-minimum speech before window planning
+- carries `sourceSegmentIndices` from VAD segments into planned windows
+
 Defaults inspired by WhisperX/whisper.cpp:
 - threshold: 0.5 is backend-level, not here
 - min speech: 250ms
 - min silence: 100ms
 - pad: 30ms
-- max speech/window: from model catalog, often 30s for Whisper
+- max speech/window: defaults to 30s; callers can pass model catalog value
+
+Verified:
+- `npm test -- tests/pipeline-vad-segments.test.ts --run`
+- `npm run typecheck`
+- `npm run lint` passed with 3 pre-existing max-lines warnings
 
 Commit:
 - `feat: add VAD speech segment helpers`
