@@ -345,7 +345,10 @@ export class WhisperOnnxExecutor {
     encoderHiddenStates: OrtTensorLike<Float32Array>,
     language: string,
     textTokenIds: number[],
-  ): Promise<readonly OrtTensorLike<Float32Array>[]> {
+  ): Promise<{
+    readonly crossAttentions: readonly OrtTensorLike<Float32Array>[];
+    readonly logitsForText: Float32Array;
+  }> {
     const tokenizer = loaded.tokenizer;
     const sotId = tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
     const langToken = language === 'auto' ? '<|tr|>' : `<|${language}|>`;
@@ -387,7 +390,22 @@ export class WhisperOnnxExecutor {
     }
 
     const outputs = await loaded.decoderSession.run(feeds);
-    return extractCrossAttentions(outputs);
+    const crossAttentions = extractCrossAttentions(outputs);
+
+    // Extract logits for the text tokens (skip prompt + EOS)
+    const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+    const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+    const totalVocab = (logitsTensor.dims[logitsTensor.dims.length - 1] as number) ?? 51865;
+
+    // forcedIds: [SOT, lang, task, notimestamps, ...text, EOS]
+    const promptLen = 4; // SOT + lang + task + notimestamps
+    const textStart = promptLen;
+    const textCount = textTokenIds.length;
+    const logitsForText = new Float32Array(textCount * totalVocab);
+    const srcOffset = textStart * totalVocab;
+    logitsForText.set(logitsTensor.data.subarray(srcOffset, srcOffset + textCount * totalVocab));
+
+    return { crossAttentions, logitsForText };
   }
 
   private async computeAttentionWordTimestamps(
@@ -422,9 +440,10 @@ export class WhisperOnnxExecutor {
     if (textTokenIds.length === 0) return [];
 
     try {
-      const crossAttentions = await this.runForcedAlignment(
+      const alignment = await this.runForcedAlignment(
         loaded, encoderHiddenStates, language, textTokenIds,
       );
+      const crossAttentions = alignment.crossAttentions;
       if (crossAttentions.length === 0) {
         // Decoder had no cross-attention outputs — fall back
         return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
@@ -467,9 +486,34 @@ export class WhisperOnnxExecutor {
         timePrecisionSeconds: 0.02,
       });
 
+      // Compute token logprobs from forced alignment logits
+      const logits = alignment.logitsForText;
+      const totalVocab = (logits?.length ?? 0) / textTokenIds.length;
+      let tokenLogprobs: Float32Array | undefined;
+      if (logits && totalVocab > 0) {
+        tokenLogprobs = new Float32Array(textTokenIds.length);
+        for (let t = 0; t < textTokenIds.length; t++) {
+          const tokenId = textTokenIds[t] ?? 0;
+          // logprob = log(softmax(logits[t]))[tokenId]
+          // = logits[t][tokenId] - logsumexp(logits[t])
+          let maxVal = -Infinity;
+          const tStart = t * totalVocab;
+          for (let v = 0; v < totalVocab; v++) {
+            const val = logits[tStart + v] ?? -Infinity;
+            if (val > maxVal) maxVal = val;
+          }
+          let sumExp = 0;
+          for (let v = 0; v < totalVocab; v++) {
+            sumExp += Math.exp((logits[tStart + v] ?? -Infinity) - maxVal);
+          }
+          const logProb = (logits[tStart + tokenId] ?? -Infinity) - maxVal - Math.log(sumExp);
+          tokenLogprobs[t] = logProb;
+        }
+      }
+
       // Build word timestamps from token timestamps using tokenizer
       return this.buildWordsFromDtwTimestamps(
-        tokenizer, textTokenIds, dtwTimestamps,
+        tokenizer, textTokenIds, dtwTimestamps, tokenLogprobs,
       );
     } catch {
       // Forced alignment failed — fall back to timestamp-token interpolation
@@ -485,6 +529,7 @@ export class WhisperOnnxExecutor {
     tokenizer: WhisperTokenizer,
     textTokenIds: number[],
     dtwTimestamps: readonly number[],
+    tokenLogprobs?: Float32Array,
   ): WhisperNativeTranscript['words'] {
     // DTW gives tokenCount+1 timestamps — start of each text token + end of last
     const words: WhisperNativeWord[] = [];
@@ -499,7 +544,6 @@ export class WhisperOnnxExecutor {
       if (ids.length > 0) allWordTokenIds.push(ids);
     }
 
-    const WORD_PROBABILITY_UNAVAILABLE = -1;
     let tokenOffset = 0;
     for (let wi = 0; wi < allWordTokenIds.length; wi++) {
       const wIds = allWordTokenIds[wi]!;
@@ -508,12 +552,23 @@ export class WhisperOnnxExecutor {
       const wordEndIdx = tokenOffset + wIds.length - 1;
       const startTime = dtwTimestamps[wordStartIdx] ?? 0;
       const endTime = dtwTimestamps[wordEndIdx + 1] ?? dtwTimestamps[wordStartIdx] ?? 0;
+
+      // Compute word probability as mean of token probabilities
+      let confidence = -1;
+      if (tokenLogprobs && wIds.length > 0) {
+        let probSum = 0;
+        for (let t = wordStartIdx; t <= wordEndIdx; t++) {
+          probSum += Math.exp(tokenLogprobs[t] ?? -Infinity);
+        }
+        confidence = probSum / wIds.length;
+      }
+
       words.push({
         index: wi,
         text: wordTexts[wi]!,
         startTime,
         endTime,
-        confidence: WORD_PROBABILITY_UNAVAILABLE,
+        confidence,
         tokenIds: wIds,
       });
       tokenOffset += wIds.length;
