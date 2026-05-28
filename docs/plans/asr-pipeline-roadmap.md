@@ -203,16 +203,16 @@ Verified:
 Commit:
 - `feat: expose long-audio windowing as pipeline stage`
 
-### Task 3: Add sentence normalization as an explicit stage
+### Task 3: Add sentence normalization as an explicit stage — DONE
 
 Objective: allow non-NeMo models or user pipelines to add sentence spans from words after ASR/alignment.
 
 Files:
-- Create: `src/pipeline/sentence-stage.ts`
-- Modify: `src/pipeline/index.ts`
+- Created: `src/pipeline/sentence-stage.ts`
+- Modified: `src/pipeline/index.ts`
 - Test: `tests/pipeline-sentence-stage.test.ts`
 
-API sketch:
+Implemented:
 ```ts
 createSentenceSegmentationStage({
   source: 'words',
@@ -222,10 +222,17 @@ createSentenceSegmentationStage({
 ```
 
 Behavior:
-- if transcript has words, produce `sentences`
-- optionally update `segments` for legacy apps
-- preserve existing words/tokens/text
-- update `meta.sentenceCount`
+- if transcript has words, produces `sentences` from punctuation/gap-aware word grouping
+- optionally updates `segments` for legacy apps via `updateSegments: true`
+- preserves existing words/tokens/text
+- updates `meta.sentenceCount`
+- updates `meta.segmentCount` when `updateSegments` is enabled
+- leaves transcripts without words unchanged
+
+Verified:
+- `npm test -- tests/pipeline-sentence-stage.test.ts --run`
+- `npm run typecheck`
+- `npm run lint` passed with 3 pre-existing max-lines warnings
 
 Commit:
 - `feat: add sentence segmentation pipeline stage`

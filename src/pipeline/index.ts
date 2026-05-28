@@ -7,3 +7,4 @@ export * from './subtitles.js';
 export * from './composition.js';
 export * from './output-sidecars.js';
 export * from './windowing-stage.js';
+export * from './sentence-stage.js';
