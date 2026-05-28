@@ -1,5 +1,6 @@
 import type { AbortSignalLike, BaseTranscriptionOptions, TranscriptResult } from '../types/index.js';
-import { transcriptToSrt, transcriptToVtt, type SubtitleFormat } from './subtitles.js';
+import { createTranscriptOutputStage } from './output-sidecars.js';
+import type { SubtitleFormat } from './subtitles.js';
 
 export type PipelineSidecars = Readonly<Record<string, unknown>>;
 
@@ -109,23 +110,10 @@ export interface SubtitleSidecarStageOptions {
 export function createSubtitleSidecarStage(
   options: SubtitleSidecarStageOptions = {},
 ): PipelineStage {
-  const formats = options.formats ?? ['srt', 'vtt'];
-  return {
+  return createTranscriptOutputStage({
     id: options.id ?? 'subtitle-sidecars',
-    run(context) {
-      if (!context.transcript) {
-        return {};
-      }
-      const sidecars: Record<string, string> = {};
-      if (formats.includes('srt')) {
-        sidecars.srt = transcriptToSrt(context.transcript);
-      }
-      if (formats.includes('vtt')) {
-        sidecars.vtt = transcriptToVtt(context.transcript);
-      }
-      return { sidecars };
-    },
-  };
+    formats: options.formats ?? ['srt', 'vtt'],
+  });
 }
 
 function mergePipelineStageResult<TOptions extends BaseTranscriptionOptions>(

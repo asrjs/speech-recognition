@@ -148,26 +148,23 @@ Important patterns:
 
 ## Next implementation tasks
 
-### Task 1: Add explicit built-in transcript sidecar/output stage
+### Task 1: Add explicit built-in transcript sidecar/output stage — DONE
 
 Objective: make JSON/SRT/VTT sidecar generation a reusable pipeline stage driven by requested output formats.
 
 Files:
-- Modify: `src/pipeline/composition.ts`
-- Modify or create: `src/pipeline/output-sidecars.ts`
+- Created: `src/pipeline/output-sidecars.ts`
+- Modified: `src/pipeline/composition.ts`
+- Modified: `src/pipeline/index.ts`
 - Test: `tests/pipeline-output-sidecars.test.ts`
 
-Tests first:
-- `createTranscriptOutputStage({ formats: ['json', 'srt', 'vtt'] })` emits `sidecars.json`, `sidecars.srt`, `sidecars.vtt`
-- if transcript missing, emits no sidecars and does not throw
-- if requested format duplicates existing sidecar key, explicit stage output wins only for that key
+Implemented:
+- `createTranscriptOutputStage({ formats: ['json', 'srt', 'vtt'] })`
+- `createTranscriptSidecars(transcript, formats)`
+- compatibility: `createSubtitleSidecarStage` delegates to the generic output stage
 
-Implementation notes:
-- Keep `createSubtitleSidecarStage` for compatibility, but prefer a generic output sidecar stage.
-- Use existing `transcriptToSrt` and `transcriptToVtt`.
-
-Verification:
-- `npm test -- tests/pipeline-output-sidecars.test.ts --run`
+Verified:
+- `npm test -- tests/pipeline-output-sidecars.test.ts tests/pipeline-composition.test.ts --run`
 - `npm run typecheck`
 
 Commit:
