@@ -25,8 +25,8 @@ const BASE_WHISPER_CONFIG: WhisperSeq2SeqModelConfig = {
   tokenizer: {
     kind: 'tiktoken',
     bosTokenId: 50257,
-    eosTokenId: 50256,
-    padTokenId: 50256,
+    eosTokenId: 50257,
+    padTokenId: 50257,
   },
 };
 
@@ -49,5 +49,5 @@ export function describeWhisperSeq2SeqModel(
   classification: ModelClassification,
   config: WhisperSeq2SeqModelConfig,
 ): string {
-  return `Whisper seq2seq scaffold model for ${modelId} (${classification.processor ?? config.processorArchitecture} -> ${classification.encoder ?? config.encoderArchitecture} -> ${classification.topology ?? 'aed'}).`;
+  return `Whisper seq2seq model for ${modelId} (${classification.processor ?? config.processorArchitecture} -> ${classification.encoder ?? config.encoderArchitecture} -> ${classification.topology ?? 'aed'}).`;
 }

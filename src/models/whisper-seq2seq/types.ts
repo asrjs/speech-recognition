@@ -1,5 +1,5 @@
-import type { TokenizerSpec, TextTokenizer } from '../../tokenizers/index.js';
-import type { BaseTranscriptionOptions } from '../../types/index.js';
+import type { AssetProvider, AudioBufferLike, BaseTranscriptionOptions, SpeechRuntimeHooks } from '../../types/index.js';
+import type { TextTokenizer, TokenizerSpec } from '../../tokenizers/index.js';
 
 export interface WhisperSeq2SeqModelConfig {
   readonly ecosystem: 'openai';
@@ -16,10 +16,46 @@ export interface WhisperSeq2SeqModelConfig {
   readonly tokenizer: TokenizerSpec;
 }
 
+export type WhisperExecutionBackend = 'webgpu' | 'wasm';
+export type WhisperQuantization = 'fp32' | 'fp16' | 'int8' | 'q4' | 'uint8';
+
+export interface WhisperDirectArtifacts {
+  readonly encoderUrl: string;
+  readonly decoderUrl: string;
+  readonly tokenizerUrl: string;
+}
+
+export interface WhisperDirectArtifactSource {
+  readonly kind: 'direct';
+  readonly artifacts: WhisperDirectArtifacts;
+  readonly encoderBackend?: WhisperExecutionBackend;
+  readonly decoderBackend?: WhisperExecutionBackend;
+  readonly wasmPaths?: string;
+  readonly cpuThreads?: number;
+  readonly enableProfiling?: boolean;
+}
+
+export interface WhisperHuggingFaceSource {
+  readonly kind: 'huggingface';
+  readonly repoId: string;
+  readonly revision?: string;
+  readonly cacheKeyFallbackRevisions?: readonly string[];
+  readonly encoderBackend?: WhisperExecutionBackend;
+  readonly decoderBackend?: WhisperExecutionBackend;
+  readonly encoderQuant?: WhisperQuantization;
+  readonly decoderQuant?: WhisperQuantization;
+  readonly wasmPaths?: string;
+  readonly cpuThreads?: number;
+  readonly enableProfiling?: boolean;
+}
+
+export type WhisperArtifactSource = WhisperDirectArtifactSource | WhisperHuggingFaceSource;
+
 export interface WhisperSeq2SeqModelOptions {
   readonly modelBaseUrl?: string;
   readonly revision?: string;
   readonly config?: Partial<WhisperSeq2SeqModelConfig>;
+  readonly source?: WhisperArtifactSource;
 }
 
 export interface WhisperNativeToken {
@@ -53,8 +89,29 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
   readonly task?: 'transcribe' | 'translate';
   readonly returnSpecialTokens?: boolean;
   readonly returnPromptTokens?: boolean;
+  readonly maxNewTokens?: number;
+  readonly noTimestamps?: boolean;
 }
 
 export interface WhisperSeq2SeqModelDependencies {
   readonly tokenizer?: TextTokenizer;
+  readonly assetProvider?: AssetProvider;
+  readonly runtimeHooks?: SpeechRuntimeHooks;
+}
+
+export interface WhisperExecutor {
+  ready?(): Promise<void> | void;
+  transcribe(
+    audio: AudioBufferLike,
+    options: WhisperSeq2SeqTranscriptionOptions,
+    context: WhisperDecodeContext,
+  ): Promise<WhisperNativeTranscript>;
+  dispose(): Promise<void> | void;
+}
+
+export interface WhisperDecodeContext {
+  readonly modelId: string;
+  readonly classification: { readonly family?: string };
+  readonly config: WhisperSeq2SeqModelConfig;
+  readonly tokenizer: TextTokenizer;
 }

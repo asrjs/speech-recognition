@@ -4,7 +4,6 @@ import {
   WHISPER_GENERATE_DECODING,
   WHISPER_TRANSFORMER_ENCODER,
 } from '../../inference/index.js';
-import { StubTextTokenizer } from '../../tokenizers/index.js';
 import type {
   AudioInputLike,
   BaseSessionOptions,
@@ -23,9 +22,9 @@ import {
   describeWhisperSeq2SeqModel,
   parseWhisperSeq2SeqConfig,
 } from './config.js';
+import { WhisperOnnxExecutor } from './executor.js';
 import { mapWhisperNativeToCanonical } from './mapping.js';
 import type {
-  WhisperNativeSegment,
   WhisperNativeTranscript,
   WhisperSeq2SeqModelConfig,
   WhisperSeq2SeqModelDependencies,
@@ -56,30 +55,32 @@ function resolveClassification(
   };
 }
 
-function buildStubSegments(
-  durationSeconds: number,
-  task: WhisperSeq2SeqTranscriptionOptions['task'],
-): WhisperNativeSegment[] {
-  const texts =
-    task === 'translate'
-      ? ['Translated', 'Whisper', 'scaffold']
-      : ['Whisper', 'seq2seq', 'scaffold'];
-  const span = Math.max(durationSeconds, 0.3) / texts.length;
-
-  return texts.map((text, index) => ({
-    index,
-    text,
-    startTime: Number((index * span).toFixed(3)),
-    endTime: Number(((index + 1) * span).toFixed(3)),
-    confidence: 0.9,
-  }));
+function createExecutor(
+  modelId: string,
+  classification: ModelClassification,
+  config: WhisperSeq2SeqModelConfig,
+  backendId: string,
+  loadOptions: WhisperSeq2SeqModelOptions | undefined,
+  dependencies: WhisperSeq2SeqModelDependencies,
+): WhisperOnnxExecutor | undefined {
+  if (!loadOptions?.source) {
+    return undefined;
+  }
+  return new WhisperOnnxExecutor(
+    modelId,
+    classification,
+    config,
+    backendId,
+    loadOptions,
+    dependencies,
+  );
 }
 
 class WhisperSeq2SeqSpeechSession implements SpeechSession<
   WhisperSeq2SeqTranscriptionOptions,
   WhisperNativeTranscript
 > {
-  private readonly tokenizer;
+  private readonly executor?: WhisperOnnxExecutor;
   private disposed = false;
 
   constructor(
@@ -87,10 +88,22 @@ class WhisperSeq2SeqSpeechSession implements SpeechSession<
     private readonly classification: ModelClassification,
     private readonly config: WhisperSeq2SeqModelConfig,
     private readonly backendId: string,
+    loadOptions: WhisperSeq2SeqModelOptions | undefined,
     dependencies: WhisperSeq2SeqModelDependencies = {},
     private readonly onDispose?: () => void,
   ) {
-    this.tokenizer = dependencies.tokenizer ?? new StubTextTokenizer('tiktoken', 'wh');
+    this.executor = createExecutor(
+      modelId,
+      classification,
+      config,
+      backendId,
+      loadOptions,
+      dependencies,
+    );
+  }
+
+  async initialize(): Promise<void> {
+    await this.executor?.ready?.();
   }
 
   async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
@@ -98,30 +111,16 @@ class WhisperSeq2SeqSpeechSession implements SpeechSession<
     options: WhisperSeq2SeqTranscriptionOptions & { readonly responseFlavor?: TFlavor } = {},
   ): Promise<TranscriptResponse<WhisperNativeTranscript, TFlavor>> {
     const audio = normalizePcmInput(input).toMono();
-    const segments = buildStubSegments(audio.durationSeconds, options.task);
-    const tokens = segments.map((segment, index) => ({
-      index,
-      id: index + 100,
-      text: segment.text,
-      startTime: segment.startTime,
-      endTime: segment.endTime,
-      confidence: segment.confidence,
-      special: false,
-    }));
-    const nativeTranscript: WhisperNativeTranscript = {
-      utteranceText: segments.map((segment) => segment.text).join(' '),
-      isFinal: true,
-      language: options.language ?? this.config.languages[0],
-      segments,
-      tokens: options.returnSpecialTokens ? tokens : tokens.filter((token) => !token.special),
-      warnings: [
-        {
-          code: 'whisper-seq2seq.stubbed-decoder',
-          message:
-            'Whisper seq2seq execution is scaffolded. Integrate encoder/decoder generation to replace the stub.',
-        },
-      ],
-    };
+
+    let nativeTranscript: WhisperNativeTranscript;
+    if (this.executor) {
+      nativeTranscript = await this.executor.transcribe(audio, options, {
+        modelId: this.modelId,
+        config: this.config,
+      });
+    } else {
+      nativeTranscript = this.transcribeWithStub(audio, options);
+    }
 
     const canonical = mapWhisperNativeToCanonical(nativeTranscript, this.classification, {
       detailLevel: options.detail,
@@ -146,12 +145,57 @@ class WhisperSeq2SeqSpeechSession implements SpeechSession<
     return canonical as TranscriptResponse<WhisperNativeTranscript, TFlavor>;
   }
 
+  private transcribeWithStub(
+    audio: ReturnType<typeof normalizePcmInput>,
+    options: WhisperSeq2SeqTranscriptionOptions,
+  ): WhisperNativeTranscript {
+    const durationSeconds = audio.durationSeconds;
+    const texts =
+      options.task === 'translate'
+        ? ['Translated', 'Whisper', 'scaffold']
+        : ['Whisper', 'seq2seq', 'scaffold'];
+    const span = Math.max(durationSeconds, 0.3) / texts.length;
+
+    const segments = texts.map((text, index) => ({
+      index,
+      text,
+      startTime: Number((index * span).toFixed(3)),
+      endTime: Number(((index + 1) * span).toFixed(3)),
+      confidence: 0.9,
+    }));
+
+    const tokens = segments.map((segment, index) => ({
+      index,
+      id: index + 100,
+      text: segment.text,
+      startTime: segment.startTime,
+      endTime: segment.endTime,
+      confidence: segment.confidence,
+      special: false,
+    }));
+
+    return {
+      utteranceText: segments.map((s) => s.text).join(' '),
+      isFinal: true,
+      language: options.language ?? this.config.languages[0],
+      segments,
+      tokens: options.returnSpecialTokens ? tokens : tokens.filter((t) => !t.special),
+      warnings: [
+        {
+          code: 'whisper-seq2seq.stubbed-decoder',
+          message:
+            'Whisper seq2seq execution is scaffolded. Provide model artifacts to activate the real ONNX path.',
+        },
+      ],
+    };
+  }
+
   dispose(): void {
     if (this.disposed) {
       return;
     }
     this.disposed = true;
-    void this.tokenizer;
+    this.executor?.dispose();
     this.onDispose?.();
   }
 }
@@ -238,12 +282,14 @@ class WhisperSeq2SeqSpeechModel implements SpeechModel<
       this.classification,
       this.config,
       this.backend.id,
+      this.loadOptions,
       this.dependencies,
       () => {
         this.sessions.delete(session);
       },
     );
     this.sessions.add(session);
+    await session.initialize();
     return session;
   }
 
@@ -300,7 +346,6 @@ export function createWhisperSeq2SeqModelFamily(
       if (options.supportsModel) {
         return options.supportsModel(modelId);
       }
-
       return modelId.toLowerCase().includes('whisper');
     },
     matchesClassification(classification: Partial<ModelClassification>): boolean {
@@ -318,10 +363,11 @@ export function createWhisperSeq2SeqModelFamily(
         ? options.resolveConfig(request.modelId, request)
         : parseWhisperSeq2SeqConfig(request.modelId, request.options?.config);
 
-      context.hooks.logger?.info?.('Creating Whisper seq2seq scaffold model', {
+      context.hooks.logger?.info?.('Creating Whisper seq2seq model', {
         family,
         modelId: request.modelId,
         backendId: context.backend.id,
+        hasSource: !!request.options?.source,
       });
 
       return new WhisperSeq2SeqSpeechModel(

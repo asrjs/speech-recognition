@@ -384,6 +384,44 @@ Verified:
 Commit:
 - `test: add offline fixture transcription smoke harness`
 
+### Task 8: Add real Whisper ONNX inference support — DONE
+
+Objective: replace stubbed Whisper seq2seq scaffold with real ONNX encoder/decoder sessions, tokenizer loading, and greedy generation loop.
+
+Files:
+- Created: `src/models/whisper-seq2seq/ort.ts` (ONNX artifact resolution + session creation)
+- Created: `src/models/whisper-seq2seq/tokenizer.ts` (HF tokenizer.json loader)
+- Created: `src/models/whisper-seq2seq/executor.ts` (ONNX encoder + decoder greedy loop)
+- Created: `tests/whisper-integration.test.ts`
+- Modified: `src/audio/whisper-mel.ts` (real log-mel frontend)
+- Modified: `src/models/whisper-seq2seq/types.ts` (artifact source types, executor interface)
+- Modified: `src/models/whisper-seq2seq/config.ts` (updated defaults)
+- Modified: `src/models/whisper-seq2seq/model.ts` (wire real executor, keep stub fallback)
+- Modified: `src/models/whisper-seq2seq/index.ts` (exports)
+- Modified: `src/presets/whisper/manifest.ts` (HF sources for tiny/base/small/large-v3-turbo)
+- Modified: `src/presets/whisper/factory.ts` (pass manifest source to model options)
+
+Implemented behavior:
+- Preset manifests now declare `source: { kind: 'huggingface', repoId: 'onnx-community/whisper-...' }`
+- `resolveWhisperArtifacts()` resolves encoder/decoder ONNX URLs with quantization selection (fp16/int8/q4/uint8/fp32)
+- `WhisperTokenizer` loads `tokenizer.json` from HF, supports special token lookup, timestamp token detection, and basic BPE decode
+- `WhisperMelProcessor` computes 80/128-bin log10 mel spectrograms compatible with Whisper's frontend
+- `WhisperOnnxExecutor` runs encoder → builds prompt tokens (SOT + language + task + notimestamps) → greedy decoder loop using `decoder_model_merged.onnx` with KV-cache reuse
+- Segment-level timestamps supported via timestamp token splitting; word-level optional
+- Model session falls back to stub output when no `source` is configured (backward compatible)
+- Default preset changed from `openai/whisper-base` (no ONNX artifacts) to `onnx-community/whisper-base`
+
+Models configured:
+- `whisper-tiny` (~39M): smoke/low-memory
+- `whisper-base` (~74M): default multilingual baseline
+- `whisper-small` (~244M): better quality, heavier
+- `whisper-large-v3-turbo` (~809M): experimental desktop/WebGPU only
+
+Verified:
+- `npm run typecheck` passed
+- `npm test` passed: 64 files, 334 tests
+- `npm run build` passed
+
 ---
 
 ## Verification gate after every task

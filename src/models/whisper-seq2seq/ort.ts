@@ -1,0 +1,276 @@
+import type {
+  WhisperArtifactSource,
+  WhisperDirectArtifacts,
+  WhisperExecutionBackend,
+  WhisperHuggingFaceSource,
+  WhisperQuantization,
+} from './types.js';
+import {
+  importNodeModule,
+  isNodeLikeRuntime,
+  resolveNodePackageSubpathUrl,
+} from '../../io/node.js';
+
+interface OrtEnv {
+  wasm: {
+    wasmPaths?: string;
+    numThreads?: number;
+    simd?: boolean;
+    proxy?: boolean;
+  };
+  versions?: {
+    common?: string;
+  };
+}
+
+export interface OrtTensorLike<TData extends ArrayBufferView = ArrayBufferView> {
+  readonly data: TData;
+  readonly dims: readonly number[];
+  dispose?(): void;
+}
+
+export interface OrtSessionLike {
+  readonly inputNames?: readonly string[];
+  run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>>;
+}
+
+export interface OrtModuleLike {
+  readonly env: OrtEnv;
+  readonly Tensor: new <TData extends ArrayBufferView>(
+    type: 'float32' | 'int32' | 'int64',
+    data: TData,
+    dims: readonly number[],
+  ) => OrtTensorLike<TData>;
+  readonly InferenceSession: {
+    create(url: string, options?: Record<string, unknown>): Promise<OrtSessionLike>;
+  };
+}
+
+export interface ResolvedWhisperArtifacts {
+  readonly artifacts: WhisperDirectArtifacts;
+  readonly warnings: readonly { readonly code: string; readonly message: string }[];
+  readonly ortBackend: WhisperExecutionBackend;
+  readonly encoderBackendForOrt: string;
+  readonly decoderBackendForOrt: string;
+  readonly wasmPaths?: string;
+  readonly cpuThreads?: number;
+  readonly enableProfiling?: boolean;
+}
+
+const QUANTIZATION_SUFFIX: Record<WhisperQuantization, string> = {
+  fp32: '_model.onnx',
+  fp16: '_model_fp16.onnx',
+  int8: '_model_int8.onnx',
+  q4: '_model_q4.onnx',
+  uint8: '_model_uint8.onnx',
+};
+
+function buildResolveUrl(repoId: string, revision: string, filename: string): string {
+  const encodedRepo = repoId
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  const encodedRevision = encodeURIComponent(revision);
+  const encodedFilename = filename
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+
+  return `https://huggingface.co/${encodedRepo}/resolve/${encodedRevision}/${encodedFilename}`;
+}
+
+function getQuantizedFilename(baseName: string, quantization: WhisperQuantization): string {
+  return `${baseName}${QUANTIZATION_SUFFIX[quantization]}`;
+}
+
+function resolveQuantization(
+  requested: WhisperQuantization | undefined,
+  backendForOrt: WhisperExecutionBackend,
+  role: 'encoder' | 'decoder',
+): WhisperQuantization {
+  if (requested) {
+    return requested;
+  }
+  if (backendForOrt === 'webgpu') {
+    return role === 'encoder' ? 'fp16' : 'int8';
+  }
+  return 'int8';
+}
+
+function resolveComponentBackend(
+  requested: WhisperExecutionBackend | undefined,
+  fallback: WhisperExecutionBackend,
+  role: 'encoder' | 'decoder',
+): WhisperExecutionBackend {
+  if (requested) {
+    return requested;
+  }
+  return role === 'decoder' ? 'wasm' : fallback;
+}
+
+function normalizeWhisperWeightBackend(backendId: string): WhisperExecutionBackend {
+  const normalized = String(backendId || '').toLowerCase();
+  if (normalized.startsWith('webgpu')) {
+    return 'webgpu';
+  }
+  return 'wasm';
+}
+
+function resolveHuggingFaceArtifacts(
+  source: WhisperHuggingFaceSource,
+  backendId: string,
+): ResolvedWhisperArtifacts {
+  const revision = source.revision ?? 'main';
+  const fallbackBackend = normalizeWhisperWeightBackend(backendId);
+  const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend, 'encoder');
+  const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend, 'decoder');
+  const ortBackend =
+    encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm';
+  const encoderQuant = resolveQuantization(source.encoderQuant, encoderBackendForOrt, 'encoder');
+  const decoderQuant = resolveQuantization(source.decoderQuant, decoderBackendForOrt, 'decoder');
+  const encoderFilename = getQuantizedFilename('onnx/encoder', encoderQuant);
+  const decoderFilename = getQuantizedFilename('onnx/decoder_model_merged', decoderQuant);
+
+  return {
+    artifacts: {
+      encoderUrl: buildResolveUrl(source.repoId, revision, encoderFilename),
+      decoderUrl: buildResolveUrl(source.repoId, revision, decoderFilename),
+      tokenizerUrl: buildResolveUrl(source.repoId, revision, 'tokenizer.json'),
+    },
+    warnings: [],
+    ortBackend,
+    encoderBackendForOrt,
+    decoderBackendForOrt,
+    wasmPaths: source.wasmPaths,
+    cpuThreads: source.cpuThreads,
+    enableProfiling: source.enableProfiling,
+  };
+}
+
+function resolveDirectArtifacts(
+  source: Extract<WhisperArtifactSource, { kind: 'direct' }>,
+  backendId: string,
+): ResolvedWhisperArtifacts {
+  const fallbackBackend = normalizeWhisperWeightBackend(backendId);
+  const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend, 'encoder');
+  const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend, 'decoder');
+  return {
+    artifacts: source.artifacts,
+    warnings: [],
+    ortBackend:
+      encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
+    encoderBackendForOrt,
+    decoderBackendForOrt,
+    wasmPaths: source.wasmPaths,
+    cpuThreads: source.cpuThreads,
+    enableProfiling: source.enableProfiling,
+  };
+}
+
+export function resolveWhisperArtifacts(
+  source: WhisperArtifactSource,
+  backendId: string,
+): ResolvedWhisperArtifacts {
+  return source.kind === 'huggingface'
+    ? resolveHuggingFaceArtifacts(source, backendId)
+    : resolveDirectArtifacts(source, backendId);
+}
+
+export async function initWhisperOrt(
+  backendId: string,
+  options: {
+    readonly wasmPaths?: string;
+    readonly cpuThreads?: number;
+  } = {},
+): Promise<OrtModuleLike> {
+  const imported = (await import('onnxruntime-web')) as unknown as OrtModuleLike & {
+    readonly default?: OrtModuleLike;
+  };
+  const ort = imported.default ?? imported;
+
+  if (!ort.env.wasm.wasmPaths) {
+    ort.env.wasm.wasmPaths =
+      options.wasmPaths ??
+      (isNodeLikeRuntime()
+        ? await resolveNodePackageSubpathUrl('onnxruntime-web', 'dist')
+        : `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ort.env.versions?.common ?? '1.24.1'}/dist/`);
+  } else if (options.wasmPaths) {
+    ort.env.wasm.wasmPaths = options.wasmPaths;
+  }
+
+  if (typeof SharedArrayBuffer !== 'undefined') {
+    ort.env.wasm.numThreads =
+      options.cpuThreads ??
+      (typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number'
+        ? navigator.hardwareConcurrency
+        : 4);
+    ort.env.wasm.simd = true;
+  } else {
+    ort.env.wasm.numThreads = 1;
+  }
+
+  ort.env.wasm.proxy = false;
+
+  if (
+    normalizeWhisperWeightBackend(backendId) === 'webgpu' &&
+    typeof navigator !== 'undefined' &&
+    !('gpu' in navigator)
+  ) {
+    return ort;
+  }
+
+  return ort;
+}
+
+export async function createWhisperOrtSession(
+  ort: OrtModuleLike,
+  url: string,
+  options: {
+    readonly backendId: string;
+    readonly enableProfiling?: boolean;
+    readonly externalDataUrl?: string;
+    readonly externalDataPath?: string;
+  },
+): Promise<OrtSessionLike> {
+  let modelUrl = url;
+  let externalDataUrl = options.externalDataUrl;
+  const executionProviders = options.backendId.startsWith('webgpu')
+    ? [
+        {
+          name: 'webgpu',
+          deviceType: 'gpu',
+          powerPreference: 'high-performance',
+        },
+      ]
+    : ['wasm'];
+
+  const sessionOptions: Record<string, unknown> = {
+    executionProviders,
+    graphOptimizationLevel: 'all',
+    executionMode: 'parallel',
+    enableCpuMemArena: true,
+    enableMemPattern: true,
+    enableProfiling: options.enableProfiling ?? false,
+  };
+
+  if (isNodeLikeRuntime()) {
+    const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
+    if (/^file:/i.test(modelUrl)) {
+      modelUrl = fileURLToPath(modelUrl);
+    }
+    if (externalDataUrl && /^file:/i.test(externalDataUrl)) {
+      externalDataUrl = fileURLToPath(externalDataUrl);
+    }
+  }
+
+  if (externalDataUrl && options.externalDataPath) {
+    sessionOptions.externalData = [
+      {
+        data: externalDataUrl,
+        path: options.externalDataPath,
+      },
+    ];
+  }
+
+  return ort.InferenceSession.create(modelUrl, sessionOptions);
+}
