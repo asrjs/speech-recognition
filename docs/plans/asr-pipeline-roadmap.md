@@ -317,22 +317,41 @@ Verified:
 Commit:
 - `feat: add Whisper chunk planning helpers`
 
-### Task 6: Add Whisper timestamp-token merge helpers
+### Task 6: Add Whisper timestamp-token merge helpers — DONE
 
 Objective: prepare SOTA-ish Whisper output merging independently of actual ONNX decoder implementation.
 
 Files:
-- Create: `src/pipeline/whisper-timestamps.ts`
-- Modify: `src/pipeline/index.ts`
+- Created: `src/pipeline/whisper-timestamps.ts`
+- Modified: `src/pipeline/index.ts`
 - Test: `tests/pipeline-whisper-timestamps.test.ts`
 
 Helpers:
-- timestamp token detection abstraction
-- decode timestamp spans from token stream
-- overlap merge via longest common sequence
-- word timestamp collation tests for punctuation/CJK handling
+- `isWhisperTimestampToken`
+- `whisperTimestampTokenToSeconds`
+- `decodeWhisperTimestampSpans`
+- `mergeWhisperTokenSequences`
+- `collateWhisperWordTimestamps`
+
+Implemented behavior:
+- timestamp token detection abstraction with configurable `timestampBegin`, `timestampEnd`, and 20ms default precision
+- pure timestamp-token span decoding for paired Whisper timestamp tokens
+- chunk-overlap token merging using longest-common-sequence style overlap detection
+- optional token timestamp merging while preserving monotonic timestamp order
+- word timestamp collation with punctuation merging compatible with Transformers.js/HF conventions
+- CJK-like language path that treats unicode units as word-like timestamp units instead of whitespace words
+
+Design references incorporated:
+- Transformers.js Whisper WebGPU/tokenizer pipeline: timestamp token state machine, stride-aware overlap handling, LCS-style chunk merge, punctuation collation
+- whisper.cpp internals: keep timestamp math/model decoding separate from post-processing helpers; use 20ms timestamp precision defaults
+- WhisperX/faster-whisper style architecture: separate ASR decode, VAD/alignment, and word-level post-processing; helpers are pure and backend-neutral
 
 Do not implement full model decode here.
+
+Verified:
+- `npm test -- tests/pipeline-whisper-timestamps.test.ts --run`
+- `npm run typecheck`
+- `npm run lint` passed with 3 pre-existing max-lines warnings
 
 Commit:
 - `feat: add Whisper timestamp merge helpers`

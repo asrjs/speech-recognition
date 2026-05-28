@@ -10,3 +10,4 @@ export * from './windowing-stage.js';
 export * from './sentence-stage.js';
 export * from './vad-segments.js';
 export * from './whisper-chunking.js';
+export * from './whisper-timestamps.js';
