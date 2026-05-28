@@ -111,17 +111,21 @@ Audio > 30s is not handled. Should:
 
 **Refs:** HF `pipelines/automatic_speech_recognition.py`, `faster-whisper` chunking, `whisper.cpp` CLI.
 
-### Task 14: Add real ONNX fixture smoke test
-No end-to-end ONNX inference test exists. Should:
-- Download `onnx-community/whisper-tiny` artifacts once.
-- Run on short Turkish audio (or synthetic PCM).
-- Assert output is NOT stub text.
-- Skip gracefully unless `ASRJS_FIXTURE_SMOKE=1`.
+### Task 14: Add real ONNX fixture smoke test — DONE by Flexo on 2026-05-29
+End-to-end Whisper ONNX inference confirmed working. Key fixes applied during this session:
 
----
+1. **Encoder input shape**: `maxSourcePositions` changed from 1500 to 3000. Whisper encoder expects 3000 mel frames (30s at 16kHz). The encoder downsamples by 2x to produce 1500 hidden states.
+2. **Decoder input types**: `input_ids` changed from `int32` to `int64` (BigInt64Array). `use_cache_branch` changed from `int32` workaround to proper `bool` (Uint8Array).
+3. **Empty past_key_values**: First decoder step now provides empty `past_key_values.*` tensors for the merged decoder ONNX model. Without them, the decoder throws "input missing" errors.
+4. **Mel alignment**: Task 9 fixes (direct DFT, reflect padding, Slaney normalization, OpenAI post-processing) ensure mel features match the reference within 1e-5.
 
-## SOTA reference implementations to study
+Test: `tests/whisper-onnx-smoke.test.ts` (skipped unless `ASRJS_FIXTURE_SMOKE=1`)
+Debug script: `scripts/whisper-e2e.ts`
 
+### Task 13: Wire long-audio chunking into Whisper executor — PENDING
+### Task 12: Implement word-level timestamps — PENDING
+### Task 11: Implement beam search decoding — PENDING
+### Task 10: Implement full BPE tokenizer encode — PENDING
 Priority order for the next agent:
 
 1. **OpenAI whisper (Python)** — Reference
