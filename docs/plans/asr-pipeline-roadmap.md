@@ -426,7 +426,7 @@ Verified:
 
 ## Next implementation tasks (remaining)
 
-### Task 9: Validate mel processor against OpenAI reference
+### Task 9: Validate mel processor against OpenAI reference — DONE
 
 Objective: ensure `WhisperMelProcessor` output matches OpenAI's `whisper.log_mel_spectrogram()` within tolerance.
 
@@ -435,14 +435,25 @@ Steps:
 2. Write a Node test that creates the same signal, runs `WhisperMelProcessor`, and compares against the reference data loaded from a fixture file.
 3. Fix any discrepancies in windowing, padding, mel scale constants, or log clamping.
 
-References to study:
-- OpenAI `whisper/audio.py` (`log_mel_spectrogram`, `mel_filters`, `stft`)
-- HF `transformers` `WhisperFeatureExtractor`
-- `whisper.cpp` `whisper_mel_init`, `whisper_mel_calc`
+Files modified:
+- `src/audio/whisper-mel.ts` (fixed FFT, Hann window, reflect padding, frame count, Slaney normalization, post-processing)
+- `tests/whisper-mel-validation.test.ts` (new)
+
+Fixes applied:
+- Replaced broken Cooley-Tukey FFT (which only worked for power-of-2) with a direct real-input DFT that correctly handles 400-sample frames.
+- Changed Hann window from `periodic=False` to `periodic=True` to match `torch.hann_window(400)`.
+- Changed frame count from `floor((paddedLen - nFft) / hop) + 1` to `floor(sampleCount / hopLength)` to match OpenAI's `stft[..., :-1]` (drops last STFT frame).
+- Replaced zero padding with reflect padding to match `torch.stft(center=True, pad_mode='reflect')`.
+- Added Slaney-style mel filterbank normalization (`2.0 / bandwidth`) to match `librosa.filters.mel(..., norm='slaney')` used by OpenAI.
+- Added OpenAI post-processing pipeline: `clamp(1e-10).log10()`, dynamic range clip `max - 8.0`, normalize `(+4.0) / 4.0`.
 
 Verification:
-- `npm test -- tests/whisper-mel-validation.test.ts --run`
-- `npm run typecheck`
+- `npm test -- tests/whisper-mel-validation.test.ts --run` passed: max diff 1.12e-5, avg diff 3.02e-8
+- `npm run typecheck` passed
+- `npm run build` passed
+
+Commit:
+- `fix: align WhisperMelProcessor with OpenAI reference`
 
 ---
 

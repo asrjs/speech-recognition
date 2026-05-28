@@ -1,7 +1,7 @@
 /**
  * Whisper-compatible log-mel frontend.
  *
- * Computes 80-bin (or 128-bin for large-v3) log10 mel spectrograms
+ * Computes 80-bin (or 128-bin for large-v3) log-mel spectrograms
  * from 16 kHz mono PCM, matching OpenAI Whisper's preprocessing.
  */
 
@@ -9,13 +9,12 @@ const WHISPER_SAMPLE_RATE = 16000;
 const WHISPER_N_FFT = 400;
 const WHISPER_HOP_LENGTH = 160;
 const WHISPER_WIN_LENGTH = 400;
-const WHISPER_CLIP_MIN = -4.0;
 
-// Hann window for 400 samples
+// Hann window, periodic=True (matches torch.hann_window default)
 function createHannWindow(size: number): Float32Array {
   const window = new Float32Array(size);
   for (let i = 0; i < size; i++) {
-    window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (size - 1));
+    window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / size);
   }
   return window;
 }
@@ -66,53 +65,35 @@ function createMelFilterbank(nMels: number, sampleRate = WHISPER_SAMPLE_RATE, nF
         filterbank[offset + freqIndex] = (upper - freq) / (upper - center);
       }
     }
+    // Slaney-style normalization: divide by bandwidth so each filter has
+    // approximately constant energy per channel (matches librosa norm='slaney')
+    const bandwidth = upper - lower;
+    if (bandwidth > 0) {
+      const scale = 2.0 / bandwidth;
+      for (let freqIndex = 0; freqIndex < nFreqs; freqIndex++) {
+        const existing = filterbank[offset + freqIndex] as number;
+        filterbank[offset + freqIndex] = existing * scale;
+      }
+    }
   }
   return filterbank;
 }
 
-// Cooley-Tukey FFT (power-of-2 only)
-function bitReverse(index: number, bits: number): number {
-  let reversed = 0;
-  for (let b = 0; b < bits; b++) {
-    reversed = (reversed << 1) | (index & 1);
-    index >>= 1;
-  }
-  return reversed;
-}
-
-function fft(re: Float64Array, im: Float64Array): void {
-  const n = re.length;
-  const bits = Math.log2(n);
-  // Bit-reverse permutation
-  for (let i = 0; i < n; i++) {
-    const j = bitReverse(i, bits);
-    if (i < j) {
-      let tmp = re[i] as number;
-      re[i] = re[j] as number;
-      re[j] = tmp;
-      tmp = im[i] as number;
-      im[i] = im[j] as number;
-      im[j] = tmp;
+// Real-input DFT returning first nFreqs bins (slow but correct for any n)
+function rfftDirect(input: Float32Array, outRe: Float64Array, outIm: Float64Array): void {
+  const n = input.length;
+  const nFreqs = outRe.length;
+  for (let k = 0; k < nFreqs; k++) {
+    let sumRe = 0;
+    let sumIm = 0;
+    for (let t = 0; t < n; t++) {
+      const angle = (2 * Math.PI * k * t) / n;
+      const v = input[t] as number;
+      sumRe += v * Math.cos(angle);
+      sumIm -= v * Math.sin(angle);
     }
-  }
-  // Butterfly
-  for (let len = 2; len <= n; len <<= 1) {
-    const halfLen = len >> 1;
-    const angleStep = (-2 * Math.PI) / len;
-    for (let i = 0; i < n; i += len) {
-      for (let j = 0; j < halfLen; j++) {
-        const wCos = Math.cos(angleStep * j);
-        const wSin = Math.sin(angleStep * j);
-        const u = i + j;
-        const v = u + halfLen;
-        const tRe = (re[v] as number) * wCos - (im[v] as number) * wSin;
-        const tIm = (re[v] as number) * wSin + (im[v] as number) * wCos;
-        re[v] = (re[u] as number) - tRe;
-        im[v] = (im[u] as number) - tIm;
-        re[u] = (re[u] as number) + tRe;
-        im[u] = (im[u] as number) + tIm;
-      }
-    }
+    outRe[k] = sumRe;
+    outIm[k] = sumIm;
   }
 }
 
@@ -130,9 +111,7 @@ export class WhisperMelProcessor {
   readonly winLength: number;
   private readonly window: Float32Array;
   private readonly melFilterbank: Float32Array;
-  private readonly fftRe: Float64Array;
-  private readonly fftIm: Float64Array;
-  private readonly powerBuf: Float32Array;
+  private readonly dftWindowed: Float32Array;
 
   constructor(options: { readonly nMels?: number; readonly sampleRate?: number } = {}) {
     this.sampleRate = options.sampleRate ?? WHISPER_SAMPLE_RATE;
@@ -142,9 +121,7 @@ export class WhisperMelProcessor {
     this.winLength = WHISPER_WIN_LENGTH;
     this.window = createHannWindow(this.winLength);
     this.melFilterbank = createMelFilterbank(this.nMels, this.sampleRate, this.nFft);
-    this.fftRe = new Float64Array(this.nFft);
-    this.fftIm = new Float64Array(this.nFft);
-    this.powerBuf = new Float32Array((this.nFft >> 1) + 1);
+    this.dftWindowed = new Float32Array(this.winLength);
   }
 
   process(audio: Float32Array): WhisperMelProcessResult {
@@ -153,48 +130,78 @@ export class WhisperMelProcessor {
       return { features: new Float32Array(0), frameCount: 0, nMels: this.nMels };
     }
 
+    // OpenAI whisper drops the last STFT frame: nFrames = floor(sampleCount / hopLength)
+    const nFrames = Math.floor(sampleCount / this.hopLength);
     const pad = this.nFft >> 1; // 200
-    const paddedLen = sampleCount + 2 * pad;
-    const nFrames = Math.floor((paddedLen - this.nFft) / this.hopLength) + 1;
 
     const features = new Float32Array(this.nMels * nFrames);
-    const nFreqs = (this.nFft >> 1) + 1;
+    const nFreqs = (this.nFft >> 1) + 1; // 201
+    const fftRe = new Float64Array(nFreqs);
+    const fftIm = new Float64Array(nFreqs);
 
     for (let frameIndex = 0; frameIndex < nFrames; frameIndex++) {
       const offset = frameIndex * this.hopLength;
 
-      // Fill FFT buffer with windowed samples
-      this.fftRe.fill(0);
-      this.fftIm.fill(0);
+      // Window samples with reflect padding (matches torch.stft center=True pad_mode='reflect')
       for (let i = 0; i < this.winLength; i++) {
-        const sampleIdx = offset + i - pad;
-        const sample = sampleIdx >= 0 && sampleIdx < sampleCount ? (audio[sampleIdx] as number) : 0;
-        this.fftRe[i] = sample * (this.window[i] as number);
+        const paddedIdx = offset + i;
+        const sample = this.getReflectPaddedSample(audio, paddedIdx, pad);
+        this.dftWindowed[i] = sample * (this.window[i] as number);
       }
 
-      fft(this.fftRe, this.fftIm);
+      rfftDirect(this.dftWindowed, fftRe, fftIm);
 
       // Power spectrum
-      this.powerBuf[0] = (this.fftRe[0] as number) * (this.fftRe[0] as number) + (this.fftIm[0] as number) * (this.fftIm[0] as number);
-      for (let k = 1; k < nFreqs - 1; k++) {
-        this.powerBuf[k] = (this.fftRe[k] as number) * (this.fftRe[k] as number) + (this.fftIm[k] as number) * (this.fftIm[k] as number);
+      const powerBuf = new Float32Array(nFreqs);
+      for (let k = 0; k < nFreqs; k++) {
+        powerBuf[k] = (fftRe[k] as number) * (fftRe[k] as number) + (fftIm[k] as number) * (fftIm[k] as number);
       }
-      const nyquist = nFreqs - 1;
-      this.powerBuf[nyquist] = (this.fftRe[nyquist] as number) * (this.fftRe[nyquist] as number) + (this.fftIm[nyquist] as number) * (this.fftIm[nyquist] as number);
 
       // Mel filterbank + log10
       for (let melIndex = 0; melIndex < this.nMels; melIndex++) {
         let melPower = 0;
         const fbOffset = melIndex * nFreqs;
         for (let freqIndex = 0; freqIndex < nFreqs; freqIndex++) {
-          melPower += (this.powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
+          melPower += (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
         }
-        const logValue = melPower > 0 ? Math.log10(melPower) : WHISPER_CLIP_MIN;
-        features[melIndex * nFrames + frameIndex] = Math.max(logValue, WHISPER_CLIP_MIN);
+        const logValue = melPower > 0 ? Math.log10(melPower) : -10;
+        features[melIndex * nFrames + frameIndex] = logValue;
       }
     }
 
+    // Post-processing matching OpenAI whisper/audio.py:
+    // log_spec = torch.clamp(mel_spec, min=1e-10).log10()
+    // log_spec = torch.maximum(log_spec, log_spec.max() - 8.0)
+    // log_spec = (log_spec + 4.0) / 4.0
+    let globalMax = -Infinity;
+    for (let i = 0; i < features.length; i++) {
+      const v = features[i] as number;
+      if (v > globalMax) globalMax = v;
+    }
+    const clipMin = globalMax - 8.0;
+    for (let i = 0; i < features.length; i++) {
+      const v = features[i] as number;
+      const clipped = v > clipMin ? v : clipMin;
+      features[i] = (clipped + 4.0) / 4.0;
+    }
+
     return { features, frameCount: nFrames, nMels: this.nMels };
+  }
+
+  private getReflectPaddedSample(audio: Float32Array, paddedIdx: number, pad: number): number {
+    const sampleCount = audio.length;
+    const originalStart = pad;
+    const originalEnd = pad + sampleCount - 1;
+
+    if (paddedIdx < originalStart) {
+      const dist = originalStart - paddedIdx;
+      return audio[dist] as number;
+    } else if (paddedIdx > originalEnd) {
+      const dist = paddedIdx - originalEnd;
+      return audio[sampleCount - 1 - dist] as number;
+    } else {
+      return audio[paddedIdx - pad] as number;
+    }
   }
 
   /**

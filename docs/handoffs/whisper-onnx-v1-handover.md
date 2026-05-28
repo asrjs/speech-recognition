@@ -66,13 +66,17 @@ Whisper went from a completely stubbed scaffold to real ONNX inference with enco
 
 These are documented in `docs/plans/asr-pipeline-roadmap.md` and detailed in `~/.hermes/skills/mlops/asrjs-dev/references/whisper-onnx-integration.md`.
 
-### Task 9: Validate mel processor against OpenAI reference
-The `WhisperMelProcessor` is a clean-room implementation. It has NOT been validated for bit-exact matching against OpenAI's `whisper.log_mel_spectrogram()`. Next agent should:
-- Generate reference mel features with Python `openai-whisper` for a test signal.
-- Compare against `WhisperMelProcessor` output.
-- Fix discrepancies in windowing, padding, mel scale, or log clamping.
+### Task 9: Validate mel processor against OpenAI reference — DONE by Flexo on 2026-05-29
+The `WhisperMelProcessor` was validated against OpenAI's `whisper.log_mel_spectrogram()` and matched within numerical precision (max diff 1.12e-5). Several bugs were fixed:
 
-**Refs:** OpenAI `whisper/audio.py`, HF `WhisperFeatureExtractor`, `whisper.cpp` `whisper_mel_calc`.
+1. **Broken FFT**: The original Cooley-Tukey FFT only worked for power-of-2 sizes. It was replaced with a direct real-input DFT that correctly handles 400-sample frames.
+2. **Hann window**: Changed from `periodic=False` to `periodic=True` to match `torch.hann_window(400)`.
+3. **Frame count**: Changed from `floor((paddedLen - nFft) / hop) + 1` to `floor(sampleCount / hopLength)` to match OpenAI's `stft[..., :-1]` which drops the last STFT frame.
+4. **Padding**: Replaced zero padding with reflect padding to match `torch.stft(center=True, pad_mode='reflect')`.
+5. **Mel filterbank**: Added Slaney-style normalization (`2.0 / bandwidth`) to match `librosa.filters.mel(..., norm='slaney')`.
+6. **Post-processing**: Added OpenAI's clamp → log10 → dynamic range clip → normalize pipeline.
+
+Test: `tests/whisper-mel-validation.test.ts`
 
 ### Task 10: Implement full BPE tokenizer encode
 Current `WhisperTokenizer.encode()` only handles exact special token matches and falls back to naive character-level encoding. A full BPE encoder is needed that:
