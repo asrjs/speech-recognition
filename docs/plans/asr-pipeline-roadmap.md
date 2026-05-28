@@ -424,6 +424,136 @@ Verified:
 
 ---
 
+## Next implementation tasks (remaining)
+
+### Task 9: Validate mel processor against OpenAI reference
+
+Objective: ensure `WhisperMelProcessor` output matches OpenAI's `whisper.log_mel_spectrogram()` within tolerance.
+
+Steps:
+1. Write a Python script using `openai-whisper` to generate reference mel features for a test signal (e.g. 1s 440Hz sine at 16kHz).
+2. Write a Node test that creates the same signal, runs `WhisperMelProcessor`, and compares against the reference data loaded from a fixture file.
+3. Fix any discrepancies in windowing, padding, mel scale constants, or log clamping.
+
+References to study:
+- OpenAI `whisper/audio.py` (`log_mel_spectrogram`, `mel_filters`, `stft`)
+- HF `transformers` `WhisperFeatureExtractor`
+- `whisper.cpp` `whisper_mel_init`, `whisper_mel_calc`
+
+Verification:
+- `npm test -- tests/whisper-mel-validation.test.ts --run`
+- `npm run typecheck`
+
+---
+
+### Task 10: Implement full BPE tokenizer encode
+
+Objective: replace the naive character-level fallback in `WhisperTokenizer.encode()` with proper BPE merge rules.
+
+Steps:
+1. Parse `model.merges` from `tokenizer.json` into ordered merge pairs.
+2. Implement GPT-2 style byte-level BPE pre-tokenization (byte-to-unicode mapping, `Ġ` prefix for word starts).
+3. Apply merge rules greedily to token sequences.
+4. Handle `pre_tokenizer` configuration if present in `tokenizer.json`.
+5. Add tests that verify encode/decode round-trip for English and Turkish text.
+
+References to study:
+- OpenAI `whisper/tokenizer.py`
+- HF `transformers` `WhisperTokenizer`
+- `tokenizers` Rust library Python bindings (`ByteLevel` pre-tokenizer)
+
+Verification:
+- `npm test -- tests/whisper-tokenizer-bpe.test.ts --run`
+- `npm run typecheck`
+
+---
+
+### Task 11: Implement beam search decoding
+
+Objective: add beam search as an alternative to greedy decoding in `WhisperOnnxExecutor`.
+
+Steps:
+1. Add `numBeams`, `lengthPenalty`, `patience` to `WhisperSeq2SeqTranscriptionOptions`.
+2. Implement `BeamSearchScorer` or equivalent that tracks `num_beams` hypotheses.
+3. In the decoder loop, run the model once per beam hypothesis, score with log-probs, keep top-k.
+4. Wire `generation_config.json` defaults (read from HF repo at load time).
+5. Default remains greedy (`numBeams: 1`); beam search is opt-in.
+
+References to study:
+- HF `transformers` `BeamSearchScorer`, `beam_search()`
+- `faster-whisper` beam search
+- `whisper.cpp` `whisper_decode_internal`
+
+Verification:
+- `npm test -- tests/whisper-beam-search.test.ts --run`
+- `npm run typecheck`
+
+---
+
+### Task 12: Implement word-level timestamps
+
+Objective: add per-word timestamp support using cross-attention alignment.
+
+Steps:
+1. Modify decoder loop to capture cross-attention weights (if exposed by ONNX graph; may need to export with attention outputs).
+2. If ONNX graph does not expose attention, fallback to median-filtered timestamp token interpolation.
+3. Implement DTW or median-filter alignment between decoder attention and encoder frames.
+4. Map attention peaks to time using `whisperTimestampTokenIdToSeconds`.
+5. Update `buildSegments` to emit word-level timestamps when `detail: 'words'` or `returnTimestamps: 'word'`.
+
+References to study:
+- OpenAI `whisper/timing.py` (`add_word_timestamps`)
+- HF `transformers` `WhisperTokenTimestampDecoder`
+- `whisperX` alignment pipeline
+- `faster-whisper` word timestamp implementation
+
+Verification:
+- `npm test -- tests/whisper-word-timestamps.test.ts --run`
+- `npm run typecheck`
+
+---
+
+### Task 13: Wire long-audio chunking into Whisper executor
+
+Objective: support audio longer than 30 seconds by chunking with stride.
+
+Steps:
+1. In `WhisperOnnxExecutor.transcribe()`, check `audio.durationSeconds > 30`.
+2. Use existing `src/pipeline/whisper-chunking.ts` `planWhisperChunks()` to produce chunk plans.
+3. Run encoder + decoder per chunk.
+4. Use existing `src/pipeline/whisper-timestamps.ts` `mergeWhisperTokenSequences()` to merge overlapping outputs.
+5. Return merged transcript with correct absolute timestamps.
+
+References to study:
+- HF `transformers` `pipelines/automatic_speech_recognition.py` (chunking, stride, merging)
+- `faster-whisper` `transcribe.py` chunking
+- `whisper.cpp` CLI chunking
+
+Verification:
+- `npm test -- tests/whisper-long-audio.test.ts --run`
+- `npm run typecheck`
+
+---
+
+### Task 14: Add real ONNX fixture smoke test
+
+Objective: run actual Whisper ONNX inference on a short audio fixture and verify non-stub output.
+
+Steps:
+1. Download `onnx-community/whisper-tiny` encoder + decoder artifacts once (cache them).
+2. Use a short Turkish audio sample (or synthetic 16kHz mono PCM).
+3. Run `WhisperOnnxExecutor` end-to-end.
+4. Assert output is NOT `Whisper seq2seq scaffold`.
+5. Assert Turkish text is present (or at least non-English tokens).
+6. Skip gracefully when `ASRJS_FIXTURE_SMOKE=1` is not set (to avoid downloading in normal CI).
+7. Compare mel output against Python reference if Task 9 is done.
+
+Verification:
+- `ASRJS_FIXTURE_SMOKE=1 npm test -- tests/whisper-onnx-smoke.test.ts --run`
+- `npm run typecheck`
+
+---
+
 ## Verification gate after every task
 
 Run targeted tests first, then:
