@@ -1240,6 +1240,10 @@ export class WhisperOnnxExecutor {
       const ntId = tokenizer.getTokenId(noTimestampsToken);
       if (ntId !== undefined) promptTokens.push(ntId);
     }
+    // Append extra prompt tokens for condition_on_previous_text
+    if (options.extraPromptTokens && options.extraPromptTokens.length > 0) {
+      promptTokens.push(...options.extraPromptTokens);
+    }
 
     // 4. Run 4-graph decode loop
     const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;

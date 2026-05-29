@@ -11,8 +11,6 @@ import {
   type QualityGateResult,
   type SegmentQualityMetrics,
   type EnhancedDecodeResult,
-  type EnhancedDecodeOptions,
-  type VadSegmenterConfig,
   makeDefaultEnhancedDecodeOptions,
   makeDefaultVadSegmenterConfig,
 } from '../src/models/whisper-seq2seq/enhanced-types.js';

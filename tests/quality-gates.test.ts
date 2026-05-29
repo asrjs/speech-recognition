@@ -11,7 +11,6 @@ import {
   noSpeechGate,
   evaluateGates,
   withTemperatureFallback,
-  DEFAULT_TEMPERATURES,
   type QualityGate,
   type QualityGateResult,
 } from '../src/quality/index.js';

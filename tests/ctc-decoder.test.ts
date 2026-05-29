@@ -10,13 +10,7 @@ import {
   ctcCollapseWithSpans,
   estimateSecondsPerOutputFrame,
 } from '../src/ctc/decoder.js';
-import type {
-  CtcDecodeResult,
-  CtcRawTokenSpan,
-  CtcSentenceTiming,
-  CtcTokenSpan,
-  CtcUtteranceTiming,
-} from '../src/ctc/types.js';
+import type { CtcRawTokenSpan, CtcTokenSpan } from '../src/ctc/types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -276,8 +270,6 @@ describe('CtcDecoder parity with lasr-ctc/ctc.ts', () => {
 // ===========================================================================
 
 describe('buildWordsFromCharSpans', () => {
-  const tokenizer = new Wav2VecCharTokenizer();
-
   test('builds words from char-level spans with space separator', () => {
     // "HE|LLO|WORLD" → "HE LLO WORLD" (3 words)
     // Token IDs: H=13, E=10, space=4, L=17, L=17, O=20, space=4, W=28, O=20, R=23, L=17, D=9

@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { TenVadBackend } from '../src/chunking/backends/ten-vad.js';
 import { FireRedVadBackend } from '../src/chunking/backends/firered-vad.js';
-import type { WhisperVadBackend, VadSpeechSegment } from '../src/chunking/types.js';
+import type { WhisperVadBackend } from '../src/chunking/types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

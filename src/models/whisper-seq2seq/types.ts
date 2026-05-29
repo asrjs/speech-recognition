@@ -149,6 +149,12 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
     processedLogits: Float32Array,
     ctx: { readonly tokens: readonly number[]; readonly beginIndex: number },
   ) => void;
+  /**
+   * Extra tokens to append after the standard prompt.
+   * Used by EnhancedWhisperExecutor for condition_on_previous_text.
+   * Format: [<|0.00|>, ...previous_tokens]
+   */
+  readonly extraPromptTokens?: readonly number[];
 }
 
 export interface WhisperSeq2SeqModelDependencies {

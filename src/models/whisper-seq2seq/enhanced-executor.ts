@@ -139,17 +139,24 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
 
       if (!chunk || chunk.length === 0) continue;
 
-      // Build chunk options
-      let chunkOpts = { ...options };
+      // Build chunk options with context conditioning
+      const chunkOpts: any = { ...options };
       if (conditionOnPrev) {
         const prevTokens = this.contextBuilder.getPreviousTokens();
-        // Note: actual prompt injection needs vanilla executor API
-        // For now, context tokens are tracked for future integration
-        void prevTokens; // suppress unused warning
+        if (prevTokens.length > 0) {
+          const maxCtx = options.maxContextTokens ?? 224;
+          // Build prompt context: [<|0.00|>, ...prev_tokens_tail]
+          const timestamp0 = 50364; // <|0.00|>
+          const ctxTokens = prevTokens.slice(-maxCtx);
+          chunkOpts.extraPromptTokens = [timestamp0, ...ctxTokens];
+        }
       }
 
       // Transcribe with temperature fallback + full quality gates
       let chunkResult: WhisperNativeTranscript;
+      const collectedLogits: Float32Array[] = [];
+      const collectedTokens: number[] = [];
+
       if (useFallback) {
         const gates = [
           compressionRatioGate(options.compressionRatioThreshold ?? 2.4),
@@ -159,8 +166,6 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
         ];
         const fallback = await withTemperatureFallback(
           async (_temp) => {
-            const collectedLogits: Float32Array[] = [];
-            const collectedTokens: number[] = [];
             const optsWithLogits = {
               ...chunkOpts,
               onTokenLogits: (tokenId: number, logits: Float32Array, _ctx: any) => {
@@ -176,11 +181,14 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
         );
         chunkResult = fallback.result;
       } else {
-        chunkResult = await this.vanilla.transcribe(chunk, chunkOpts, context);
+        chunkResult = await this.vanilla.transcribe(chunk, { ...chunkOpts, onTokenLogits: (tokenId: number, logits: Float32Array, _ctx: any) => {
+          collectedLogits.push(new Float32Array(logits));
+          collectedTokens.push(tokenId);
+        } } as any, context);
       }
 
-      // Feed context builder (tokens deferred until vanilla exposes them)
-      this.contextBuilder.addSegmentTokens([]);
+      // Feed context builder with generated tokens
+      this.contextBuilder.addSegmentTokens(collectedTokens);
 
       // Drift correction
       const corrected = this.driftHandler.correctTimestamps(

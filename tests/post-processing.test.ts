@@ -7,7 +7,6 @@ import { describe, it, expect } from 'vitest';
 import { mergeSegments } from '../src/post-processing/index.js';
 
 interface TestWord { start: number; end: number; word: string; probability: number }
-interface TestSegment { id: number; start: number; end: number; text: string; words: TestWord[] }
 
 describe('mergeSegments', () => {
   it('adjusts timestamps by offset', () => {
