@@ -1,112 +1,147 @@
 # Agent Task Coordination
 
 Branch: `feat/asr-pipeline-output-formats`
-Updated: 2026-05-30 (Flexo-DSV4Pro)
+Updated: 2026-05-30 (Flexo-DSV4Pro — comprehensive redesign)
 
-## Dependency Chain (CRITICAL)
+## BLOCKER CHAIN (read top-to-bottom)
 
 ```
-CTC decode (lasr-ctc/ctc.ts) ──┐
-                                ├──► WAV2VEC2 model (Phase E) ──► Alignment (Phase D)
-                                │
-quality/ (Phase A) ──┐         │
-chunking/ (Phase B) ─┤─────────┼──► Enhanced Executors (Phase F)
-post-processing/ (Phase C) ───┘
+CTC refactor (src/ctc/) ──────► WAV2VEC2 model (Phase E) ──► WAV2VEC2 alignment (Phase D2)
+                                       │
+                                       └──► WAV2VEC2 ASR (Phase E)
 ```
 
-**Rule**: Phase D blocked until Phase E done. Phase E blocked until CTC verify pass.
-Phases A/B/C have NO blockers — relocate existing code from `src/models/whisper-seq2seq/`.
+**Rule**: Phase D2 blocked until Phase E. Phase E blocked until CTC refactor.
+Everything else can proceed in parallel.
 
-## ACTIVE TASKS
+---
 
-### Phase A: src/quality/ — ASSIGNED (Flexo-DSV4Pro)
+## READY NOW — No Blockers
 
-Owner: Flexo-DSV4Pro
-Started: 2026-05-30
-Status: STARTING
+### T1: VAD Backend Adapters — ASSIGNED (Flexo-DSV4Pro)
+
+Priority: HIGH (enables actual VAD-based chunking)
+Dependencies: NONE (runtime VAD already exists)
+Files:
+- `src/chunking/backends/ten-vad.ts` — TenVAD adapter implementing WhisperVadBackend
+- `src/chunking/backends/firered-vad.ts` — FireRed VAD adapter
+- Tests: `tests/chunking-backends.test.ts`
+
+### T2: Fixed Window Chunker — ASSIGNED (Flexo-DSV4Pro)
+
+Priority: MEDIUM (fallback when VAD unavailable)
 Dependencies: NONE
+Files:
+- `src/chunking/fixed-window.ts` — 30s window, 28s hop, 2s overlap
+- Tests: `tests/chunking-fixed-window.test.ts`
 
-Scope:
-- Move quality gates from `src/models/whisper-seq2seq/` to `src/quality/`
-- Files: enhanced-types → quality/types.ts, quality-gates → split into compression-ratio/log-probability/entropy/no-speech/evaluator, temperature-fallback → quality/temperature-fallback.ts
-- Tests: `tests/quality-*.test.ts`
-- Add `./quality` export to package.json
-- Re-export from whisper-seq2seq/index.ts for backward compat
+### T3: Post-Processing Extras — ASSIGNED (Flexo-DSV4Pro)
 
-### Phase B: src/chunking/ — ASSIGNED (Flexo-DSV4Pro)
+Priority: MEDIUM
+Dependencies: NONE
+Files:
+- `src/post-processing/word-deduplicator.ts` — cross-window word dedup
+- `src/post-processing/text-normalizer.ts` — casing, punctuation normalization
+- `src/post-processing/sentence-boundary.ts` — punctuation-based sentence detection
+- `src/post-processing/transcript-formatter.ts` — canonical transcript output
+- Tests: `tests/post-processing-extras.test.ts`
 
-Owner: Flexo-DSV4Pro  
-Dependencies: Phase A complete
-Status: AFTER PHASE A
+### T4: Cross-Attention DTW Extractor — AVAILABLE
 
-Scope:
-- Move: vad-segmenter → chunking/vad-segmenter.ts, drift-handler → chunking/drift-handler.ts
-- Add: chunking/backends/ten-vad.ts, chunking/backends/firered-vad.ts (adapters)
-- Tests: `tests/chunking-*.test.ts`
-- Add `./chunking` export to package.json
+Priority: LOW (Whisper-specific, extract from existing code)
+Dependencies: NONE (read from whisper-seq2seq/attention-alignment.ts)
+Files:
+- `src/alignment/cross-attention-dtw.ts` — extract DTW from whisper-seq2seq
+- Tests: `tests/alignment-dtw.test.ts`
 
-### Phase C: src/post-processing/ — ASSIGNED (Flexo-DSV4Pro)
+---
 
-Owner: Flexo-DSV4Pro
-Dependencies: Phase A complete
-Status: AFTER PHASE A
+## BLOCKED — Waiting for CTC Refactor
 
-Scope:
-- Move: segment-merger → post-processing/segment-merger.ts
-- Add: post-processing/word-deduplicator.ts, text-normalizer.ts, sentence-boundary.ts
-- Tests: `tests/post-processing-*.test.ts`
-- Add `./post-processing` export to package.json
+### T5: CTC Module Refactor — ASSIGNED (Flexo-glm5.1)
 
-### Phase E: src/models/wav2vec2/ — CLAIMED (Flexo-glm5.1)
+Priority: HIGH (blocks WAV2VEC2 + alignment)
+Status: BLOCKED on architecture decision
+Files:
+- `src/ctc/types.ts` — CtcLogits, CtcDecoder interface
+- `src/ctc/decoder.ts` — argmaxAndSelectedLogProbs + ctcCollapseWithSpans + timing
+- Migrate from `src/models/lasr-ctc/ctc.ts`
+- Tests: `tests/ctc-decoder.test.ts`
 
-Owner: Flexo-glm5.1 (other instance)
-Started: 2026-05-30
-Status: IN PROGRESS
-Dependencies: lasr-ctc/ctc.ts CTC decode (SHARED, read-only)
+### T6: WAV2VEC2 Model Completion — ASSIGNED (Flexo-glm5.1)
 
-Scope:
-- `src/models/wav2vec2/` — new model family (CTC ASR)
-- `src/presets/wav2vec2/` — model presets
-- Tests: `tests/wav2vec2-*.test.ts`
-- ONNX export tool: `tools/wav2vec2-onnx-export/`
+Priority: HIGH (blocks alignment)
+Status: PARTIAL — types/config/tokenizer/ort/executor DONE (commit `94ceb99`)
+Remaining:
+- `src/models/wav2vec2/model.ts` — model factory
+- `src/presets/wav2vec2/` — model presets (wav2vec2-base-960h, xlsr-turkish, etc.)
+- WAV2VEC2 feature extractor (mel.ts — currently empty stub)
+- Unit tests + smoke test with real ONNX model
+- HF upload: wav2vec2-base-960h + xlsr-turkish
 
-Files owned (do not modify without coordination):
-- `src/models/wav2vec2/**`
-- `src/presets/wav2vec2/**`
-- `tests/wav2vec2-*.test.ts`
+### T7: CTC Viterbi Forced Alignment — BLOCKED
 
-### Phase D: src/alignment/ — BLOCKED
+Priority: HIGH (enables WhisperX-style alignment)
+Dependencies: CTC decoder interface (T5) + WAV2VEC2 model (T6)
+Files:
+- `src/alignment/ctc-viterbi.ts` — forward Viterbi + backtrack
+- `src/alignment/word-merger.ts` — char alignment → word boundaries
+- `src/alignment/post-processor.ts` — monotonic enforcement, gap handling, clamping
+- Tests: `tests/alignment-ctc-viterbi.test.ts`
 
-Owner: UNASSIGNED
-Dependencies: Phase E complete (WAV2VEC2 model)
-Status: BLOCKED — waiting for WAV2VEC2
+### T8: WAV2VEC2 Aligner — BLOCKED
 
-Scope:
-- `src/alignment/ctc-viterbi.ts` — CTC forced alignment algorithm
-- `src/alignment/wav2vec2-aligner.ts` — WAV2VEC2 alignment backend
-- `src/alignment/cross-attention-dtw.ts` — extracted from whisper-seq2seq
-- `src/alignment/post-processor.ts` — monotonic enforcement, gap handling
-- Tests: `tests/alignment-*.test.ts`
+Priority: HIGH (WhisperX's key advantage: 20ms alignment)
+Dependencies: CTC Viterbi (T7) + WAV2VEC2 model (T6)
+Files:
+- `src/alignment/wav2vec2-aligner.ts` — Wav2Vec2ForcedAligner class
+- `src/alignment/models/registry.ts` — language → model mapping
+- `src/alignment/models/loader.ts` — ONNX model loading
+- Tests: `tests/alignment-wav2vec2.test.ts`
 
-## COMPLETED TASKS
+---
 
-### Whisper Vanilla Core — DONE (Flexo-DSV4Pro)
+## DONE
 
-Commit: `1efddda`
-- `core.ts` — pure decode loop (ONNX-agnostic)
-- `executor.ts` — ONNX bridge (delegates to core)
+### Completed by Flexo-DSV4Pro
 
-### Whisper Enhanced Modules (8 phases) — DONE (Flexo-DSV4Pro)
+| Phase | Module | Tests | Commits |
+|-------|--------|-------|---------|
+| Whisper Core | vanilla decode loop + onTokenLogits | 78 | `1efddda`-`7c85cdb` |
+| Phase A | `src/quality/` (7 files) | 13 | `5474991` |
+| Phase B | `src/chunking/` (4 files, partial) | 11 | `0ec5fba` |
+| Phase C | `src/post-processing/` (2 files, partial) | 4 | `5d31de4` |
+| Phase F | enhanced-executor wiring | — | `bdfef2a` |
+| Phase G | package.json exports | — | `1e3edfc` |
 
-Commits: `708aac9` through `7c85cdb`
-- 8 source files + 8 test files in `src/models/whisper-seq2seq/`
-- 78 new tests, 489 total pass
-- EnhancedWhisperExecutor wraps WhisperExecutor via composition
-- **These files will be RELOCATED in Phases A/B/C**
+### Completed by Flexo-glm5.1
 
-## SHARED FILES (coordinate before modifying)
+| Phase | Module | Commits |
+|-------|--------|---------|
+| Phase E | `src/models/wav2vec2/` (6 files, partial) | `94ceb99` |
 
-- `src/models/lasr-ctc/ctc.ts` — CTC decode logic (imported by MedASR + WAV2VEC2)
+---
+
+## Per-Language WAV2VEC2 Models (Reference)
+
+| Language | HF Model | Size | Use Case |
+|----------|----------|------|----------|
+| English | `facebook/wav2vec2-base-960h` | 95M | ASR + alignment |
+| Turkish | `m3hrdadfi/wav2vec2-large-xlsr-turkish` | 317M | Turkish alignment |
+| Multi-53 | `facebook/wav2vec2-large-xlsr-53` | 300M | 53 languages |
+| Multi-128 | `facebook/wav2vec2-xls-r-300m` | 300M | 128 languages |
+| English Large | `facebook/wav2vec2-large-960h` | 317M | Best English alignment |
+
+**WhisperX pattern**: "Transcribe with Whisper → align with WAV2VEC2"
+- Whisper gives best accuracy across 99 languages
+- WAV2VEC2 gives 20ms word timestamps (vs Whisper's ~100ms DTW)
+- Best of both worlds, composable modules
+
+---
+
+## Shared Files (coordinate before modifying)
+
+- `src/models/lasr-ctc/ctc.ts` — CTC decode logic (T5 will migrate this to src/ctc/)
 - `src/types/index.ts` — shared type definitions
 - `src/audio/specs.ts` — audio processor specs
 - `src/inference/descriptors.ts` — encoder/decoder descriptors
