@@ -772,7 +772,7 @@ Expected known lint warnings:
 ╔══════════════════════════════════════════════════════════════════╗
 ║  RESUME PROMPT — asrjs/speech-recognition                       ║
 ║  Branch: feat/asr-pipeline-output-formats                       ║
-║  State: 2026-05-29, commit c3bb4a0                              ║
+║  State: 2026-05-29, commit 26d0a21                              ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 Load skill asrjs-dev.
@@ -784,9 +784,9 @@ MAIN GOAL
   Build a framework-neutral ASR pipeline with catalog-driven windowing,
   output formatting (JSON/SRT/VTT), sentence segmentation, VAD helpers,
   Whisper ONNX inference, attention-DTW word timestamps, and self-contained
-  4-graph KV-cache ONNX export.
+  4-graph KV-cache ONNX export + TypeScript runtime for self-exported models.
 
-WHAT'S DONE (Tasks 1–15, 17)
+WHAT'S DONE (Tasks 1–15, 17, config-driven dims, 4-graph TypeScript wiring)
   ✓ Transcript/detail output surface, sentence/subtitle utilities
   ✓ Pipeline composition API, windowing stage, sentence segmentation
   ✓ VAD segment schema, Whisper chunk/stride/timestamp helpers
@@ -794,86 +794,77 @@ WHAT'S DONE (Tasks 1–15, 17)
   ✓ Mel processor validation against OpenAI reference
   ✓ Full BPE tokenizer encode (ByteLevel, contraction-aware)
   ✓ Beam search decoding
-  ✓ Attention-DTW word timestamps (forced alignment → cross-attention
-    extraction → softmax → normalize → median filter → DTW → word boundaries)
+  ✓ Attention-DTW word timestamps
   ✓ Word probability from forced alignment logprobs
   ✓ Long-audio chunking wired into Whisper executor
-  ✓ **4-graph KV-cache ONNX export** — self-contained, produces:
-      encoder_model.onnx     (31 MB)  — mel → hidden states
-      decoder_init.onnx      (189 MB) — prompt/prefill, creates KV cache
-      decoder_step.onnx      (108 MB) — single-token autoregressive
-      decoder_align.onnx     (107 MB) — cross-attention alignment matrix
-    Sizes for whisper-tiny fp32.
+  ✓ 4-graph KV-cache ONNX export tool (Python, tools/whisper-onnx-export/)
+  ✓ Config-driven Whisper dimensions (no more hardcoded tiny constants)
+  ✓ 4-graph TypeScript executor: splitgraph source, manifest parser,
+    init→step autoregressive loop, alignment session loading
+  ✓ splitGraphDecodeLoop() — pure export, testable without ONNX runtime
 
-E2E VALIDATION (all passing)
-  - Synthetic (440Hz sine):  5/5  tokens exact match ONNX vs PyTorch
-  - Real speech (JFK, 11s): 27/27 tokens (100%) exact match
-  - Alignment shape:  [1, 27, 1500], row sums = 1.0000, non-negative
-  - fp16 parity: 100%  |  int8 parity: 100%
-  - TypeScript gate: typecheck ✓, lint 0e ✓, 366 tests ✓, build ✓
-
-CRITICAL ARCHITECTURE NOTES
-  - decoder_step does NOT need encoder_hidden_states as input —
-    cross-attention K/V come from past_key_values.{i}.encoder.{key,value}
-  - decoder_align uses MANUAL decoder block iteration (no output_attentions=True)
-    to avoid aten::diff which has NO ONNX lowering in any opset
-  - HF 5.x EncoderDecoderCache yields 6-element tuples (self_k, self_v, None,
-    cross_k, cross_v, None). to_legacy_cache() handles both 4 and 6.
-  - build_encoder_decoder_cache_from_flat() constructs DynamicCache +
-    EncoderDecoderCache(self_cache, cross_cache) for HF 5.x decoder
-  - Manifest format: "whisper-browser-self-export-v1" with artifacts dict
-    pointing to all 4 ONNX files + alignment_heads + special_tokens
-
-EXPORT TOOL LOCATION
-  tools/whisper-onnx-export/
-    export_whisper.py          — main export script (4-graph)
-    test_kv_export.py          — structural validation
-    test_e2e_tokens.py         — ONNX vs PyTorch token comparison
-    test_comprehensive.py      — real speech, alignment, quantization
-    requirements.txt           — torch, transformers, onnx, onnxruntime, onnxconverter-common
-    .venv/                     — Python 3.12 venv with all deps installed
-
-  Run tests:
-    cd tools/whisper-onnx-export
-    .venv/bin/python test_kv_export.py
-    .venv/bin/python test_e2e_tokens.py
-    .venv/bin/python test_comprehensive.py [--quantize]
-
-  Export a model:
-    .venv/bin/python export_whisper.py openai/whisper-tiny ./output/tiny --fp16 --int8
-
-HARDCODED DIMENSION BUG (in TypeScript executor.ts)
-  runDecoderStep() and runForcedAlignment() hardcode numLayers=4, numHeads=6,
-  headDim=64. This is ONLY correct for whisper-tiny. For whisper-base/small/
-  large-v3-turbo, KV cache tensors will be wrong shape.
-  Fix: load WhisperModelConfig from config.json during initialize(), pass
-  decoderLayers/decoderAttentionHeads/d_model into LoadedExecutorState,
-  use them instead of hardcoded constants.
-
-DEFERRED
-  - Task 16: Timestamp logit processor (suppression rules). Not needed for
-    DTW word timestamps. Would improve segment-level timestamp quality.
-  - Hardcoded dimension fix in TypeScript executor (see above)
-
-NEXT STEPS (pick one)
-  A) Fix hardcoded dimensions in executor.ts (config-driven numLayers/numHeads)
-  B) Wire 4-graph format in TypeScript executor (separate init/step sessions)
-  C) Add 4-graph Whisper preset/artifact source type for local-file models
-  D) Task 16: Timestamp logit processor for better segment timestamps
-  E) Keep using onnx-community *_timestamped for production;
-     self-export tool is for custom checkpoints
-
-VERIFICATION GATE (after any code change)
-  npm run typecheck && npm run lint && npm test && npm run build
-  node tests/smoke/offline-output-smoke.mjs
-
-COMMIT HISTORY
+COMMIT HISTORY (feat/asr-pipeline-output-formats)
   511fcee feat: implement 4-graph KV-cache Whisper decoder export
   35e9fcc fix: remove tensor no-ops, add E2E token comparison test
   c3bb4a0 docs: comprehensive validation report, handoff, requirements
+  56a8469 docs: comprehensive resume prompt with final state
+  1ff95ed feat: config-driven Whisper decoder dimensions
+  26d0a21 feat: wire 4-graph Whisper ONNX format in TypeScript executor
+
+E2E VALIDATION (Python exporter, all passing)
+  - Synthetic (440Hz sine):  5/5  tokens exact match ONNX vs PyTorch
+  - Real speech (JFK, 11s): 27/27 tokens (100%) exact match
+  - Alignment: [1, 27, 1500], row sums = 1.0000, non-negative
+  - fp16 parity: 100%  |  int8 parity: 100%
+
+TYPE-SPLITGRAPH FIXTURE SMOKE TEST (pending)
+  - Needs exported whisper-tiny artifacts (run Python exporter first)
+  - Set WHISPER_SPLITGRAPH_FIXTURE_DIR=/path/to/exported/tiny
+  - Test verifies: encoder shape, init→step loop, alignment shape, tokens
+
+CRITICAL ARCHITECTURE NOTES
+  - decoder_step does NOT need encoder_hidden_states as input
+  - decoder_align uses manual decoder block iteration (avoids aten::diff)
+  - Step model outputs present.{i}.decoder.{key,value} only (no encoder KV)
+  - Encoder KV must be preserved from init output throughout step loop
+  - Present→past_key_values name mapping required for step input
+  - splitGraphDecodeLoop: pure function, testable with mock callbacks
+  - Config-driven dimensions: WhisperModelConfig carries dModel/headDim
+
+FILES ADDED
+  src/models/whisper-seq2seq/manifest.ts          — parseWhisperManifest()
+  tests/whisper-kv-cache-shapes.test.ts           — config-driven shape tests
+  tests/whisper-splitgraph-artifacts.test.ts      — 3 tests
+  tests/whisper-manifest-parsing.test.ts          — 6 tests (tiny+base)
+  tests/whisper-splitgraph-decode.test.ts         — 2 tests (decode loop)
+
+EXPORT TOOL
+  tools/whisper-onnx-export/
+    export_whisper.py         — main export (4-graph)
+    test_kv_export.py         — structural validation
+    test_e2e_tokens.py        — ONNX vs PyTorch
+    test_comprehensive.py     — speech + alignment + quantization
+    .venv/                    — Python 3.12, all deps
+  Run: .venv/bin/python export_whisper.py openai/whisper-tiny ./out/tiny
+
+DEFERRED
+  - Task 16: Timestamp logit processor
+  - Beam search for 4-graph path (greedy only)
+  - decoder_align dedicated alignment method (currently falls through to
+    merged-decoder forced-alignment path)
+
+NEXT STEPS (prioritized)
+  1) Real 4-graph fixture smoke test (WHISPER_SPLITGRAPH_FIXTURE_DIR)
+  2) Add 4-graph Whisper preset/artifact source in manifest/catalog
+  3) Dedicated decoder_align-based alignment method
+  4) Timestamp logit processor (Task 16)
+  5) Beam search support for 4-graph path
+
+VERIFICATION GATE
+  npm run typecheck && npm run lint && npm test && npm run build
 ```
 
-**Current state as of 2026-05-29 (commit `c3bb4a0` on `feat/asr-pipeline-output-formats`):**
+**Current state as of 2026-05-29 (commit `26d0a21` on `feat/asr-pipeline-output-formats`):**
 
 **Completed (Tasks 1-15, 17):**
 - Full attention-DTW word timestamp pipeline
