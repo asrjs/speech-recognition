@@ -241,11 +241,10 @@ class WhisperDecoderStepWrapper(nn.Module):
         cache_position: torch.Tensor,
         *flat_past_key_values: torch.Tensor,
     ) -> Tuple[torch.Tensor, ...]:
-        # Force tracer to keep encoder_hidden_states + cache_position as inputs
-        # JIT may optimize unused params away; add no-op operations that use them
-        encoder_hidden_states = encoder_hidden_states + torch.zeros_like(encoder_hidden_states)
-        cache_position = cache_position + torch.zeros_like(cache_position)
-
+        # encoder_hidden_states is used inside decoder(**kwargs) for cross-attention
+        # when past_key_values lacks cross KV (should not happen for step, but the
+        # decoder API still requires it). cache_position may be used by the decoder
+        # internally depending on the HF version; we pass it through unconditionally.
         pkv = build_encoder_decoder_cache_from_flat(flat_past_key_values, self.num_layers)
 
         kwargs = dict(
