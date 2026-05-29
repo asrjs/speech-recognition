@@ -70,6 +70,21 @@
       "import": "./dist/datasets.js",
       "default": "./dist/datasets.js"
     },
+    "./quality": {
+      "types": "./dist/quality.d.ts",
+      "import": "./dist/quality.js",
+      "default": "./dist/quality.js"
+    },
+    "./chunking": {
+      "types": "./dist/chunking.d.ts",
+      "import": "./dist/chunking.js",
+      "default": "./dist/chunking.js"
+    },
+    "./post-processing": {
+      "types": "./dist/post-processing.d.ts",
+      "import": "./dist/post-processing.js",
+      "default": "./dist/post-processing.js"
+    },
     "./presets": {
       "types": "./dist/presets/index.d.ts",
       "import": "./dist/presets/index.js",
