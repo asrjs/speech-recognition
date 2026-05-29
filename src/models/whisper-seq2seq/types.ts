@@ -51,6 +51,17 @@ export interface WhisperHuggingFaceSource {
 
 export type WhisperArtifactSource = WhisperDirectArtifactSource | WhisperHuggingFaceSource | WhisperSplitGraphArtifactSource;
 
+export interface ExternalDataEntry {
+  /** Path relative to the graph file, used as ONNX internal location reference. */
+  readonly path: string;
+  /** Filename of the external data file. */
+  readonly file: string;
+  /** Size in bytes of the external data file. */
+  readonly sizeBytes?: number;
+  /** Optional SHA-256 hash of the external data file. */
+  readonly sha256?: string;
+}
+
 export interface WhisperSplitGraphArtifacts {
   readonly encoderUrl: string;
   readonly decoderInitUrl: string;
@@ -58,6 +69,10 @@ export interface WhisperSplitGraphArtifacts {
   readonly decoderAlignUrl?: string;
   readonly tokenizerUrl: string;
   readonly manifestUrl: string;
+  /** External data URLs for each graph file, keyed by graph name:
+   *  encoder, decoder_init, decoder_step, decoder_align.
+   *  Populated from manifest.json when the model uses external ONNX data. */
+  readonly externalDataUrls?: Partial<Record<'encoder' | 'decoder_init' | 'decoder_step' | 'decoder_align', readonly ExternalDataEntry[]>>;
 }
 
 export interface WhisperSplitGraphArtifactSource {

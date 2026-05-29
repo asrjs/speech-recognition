@@ -48,6 +48,10 @@ export interface OrtModuleLike {
   };
 }
 
+export interface ExternalDataMap {
+  readonly [graphName: string]: readonly { readonly dataUrl: string; readonly path: string }[];
+}
+
 export interface ResolvedWhisperArtifacts {
   readonly artifacts: WhisperDirectArtifacts;
   readonly warnings: readonly { readonly code: string; readonly message: string }[];
@@ -62,6 +66,10 @@ export interface ResolvedWhisperArtifacts {
   readonly decoderStepUrl?: string;
   readonly decoderAlignUrl?: string;
   readonly manifestUrl?: string;
+  /** Per-graph external data mappings: graph name → [{ dataUrl, path }].
+   *  For Node.js, ORT loads co-located .data files automatically. For browser,
+   *  the executor passes these to InferenceSession.create() as externalData. */
+  readonly externalData?: ExternalDataMap;
 }
 
 const QUANTIZATION_SUFFIX: Record<WhisperQuantization, string> = {
@@ -183,10 +191,36 @@ function resolveSplitGraphArtifacts(
   const fallbackBackend = normalizeWhisperWeightBackend(backendId);
   const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend, 'encoder');
   const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend, 'decoder');
+
+  // Compute external data URLs from graph URLs.
+  // For each .onnx graph, the external data lives at <graph_url>.data
+  // with internal ONNX path = "<graph>.onnx.data".
+  const externalDataBuild: Record<string, readonly { dataUrl: string; path: string }[]> = {};
+
+  function addExternalData(graphName: string, url: string): void {
+    const dataUrl = `${url}.data`;
+    const basename = url.split('/').pop() ?? `${graphName}.onnx`;
+    const dataPath = `${basename}.data`;
+    externalDataBuild[graphName] = [{ dataUrl, path: dataPath }];
+  }
+
+  const encoderUrl = source.artifacts.encoderUrl;
+  const decoderInitUrl = source.artifacts.decoderInitUrl;
+  const decoderStepUrl = source.artifacts.decoderStepUrl;
+
+  addExternalData('encoder', encoderUrl);
+  addExternalData('decoder_init', decoderInitUrl);
+  addExternalData('decoder_step', decoderStepUrl);
+  if (source.artifacts.decoderAlignUrl) {
+    addExternalData('decoder_align', source.artifacts.decoderAlignUrl);
+  }
+
+  const externalData: ExternalDataMap = externalDataBuild;
+
   return {
     artifacts: {
-      encoderUrl: source.artifacts.encoderUrl,
-      decoderUrl: source.artifacts.decoderInitUrl,
+      encoderUrl,
+      decoderUrl: decoderInitUrl,
       tokenizerUrl: source.artifacts.tokenizerUrl,
     },
     warnings: [],
@@ -198,10 +232,11 @@ function resolveSplitGraphArtifacts(
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
     isSplitGraph: true,
-    decoderInitUrl: source.artifacts.decoderInitUrl,
-    decoderStepUrl: source.artifacts.decoderStepUrl,
+    decoderInitUrl,
+    decoderStepUrl,
     decoderAlignUrl: source.artifacts.decoderAlignUrl,
     manifestUrl: source.artifacts.manifestUrl,
+    externalData: externalData,
   };
 }
 

@@ -64,3 +64,68 @@ describe('Whisper splitgraph artifact resolution', () => {
     expect(resolved.decoderBackendForOrt).toBe('wasm');
   });
 });
+
+describe('Whisper splitgraph external data resolution', () => {
+  it('populates externalData for all 4 graphs from splitgraph source', () => {
+    const resolved = resolveWhisperArtifacts(sampleSplitGraphSource, 'wasm');
+
+    expect(resolved.externalData).toBeDefined();
+    const ext = resolved.externalData!;
+
+    // encoder
+    expect(ext.encoder).toBeDefined();
+    expect(ext.encoder![0]!.dataUrl).toBe(
+      'https://example.com/models/tiny/encoder_model.onnx.data',
+    );
+    expect(ext.encoder![0]!.path).toBe('encoder_model.onnx.data');
+
+    // decoder_init
+    expect(ext.decoder_init).toBeDefined();
+    expect(ext.decoder_init![0]!.dataUrl).toBe(
+      'https://example.com/models/tiny/decoder_init.onnx.data',
+    );
+    expect(ext.decoder_init![0]!.path).toBe('decoder_init.onnx.data');
+
+    // decoder_step
+    expect(ext.decoder_step).toBeDefined();
+    expect(ext.decoder_step![0]!.dataUrl).toBe(
+      'https://example.com/models/tiny/decoder_step.onnx.data',
+    );
+    expect(ext.decoder_step![0]!.path).toBe('decoder_step.onnx.data');
+
+    // decoder_align
+    expect(ext.decoder_align).toBeDefined();
+    expect(ext.decoder_align![0]!.dataUrl).toBe(
+      'https://example.com/models/tiny/decoder_align.onnx.data',
+    );
+    expect(ext.decoder_align![0]!.path).toBe('decoder_align.onnx.data');
+  });
+
+  it('does not include externalData for decoder_align when align URL is absent', () => {
+    const sourceNoAlign: WhisperSplitGraphArtifactSource = {
+      ...sampleSplitGraphSource,
+      artifacts: {
+        ...sampleSplitGraphSource.artifacts,
+        decoderAlignUrl: undefined,
+      },
+    };
+    const resolved = resolveWhisperArtifacts(sourceNoAlign, 'wasm');
+
+    expect(resolved.externalData?.encoder).toBeDefined();
+    expect(resolved.externalData?.decoder_init).toBeDefined();
+    expect(resolved.externalData?.decoder_step).toBeDefined();
+    expect(resolved.externalData?.decoder_align).toBeUndefined();
+  });
+
+  it('externalData is absent for non-splitgraph sources', () => {
+    const resolved = resolveWhisperArtifacts(
+      {
+        kind: 'huggingface',
+        repoId: 'openai/whisper-tiny',
+      },
+      'wasm',
+    );
+    expect(resolved.externalData).toBeUndefined();
+    expect(resolved.isSplitGraph).toBe(false);
+  });
+});

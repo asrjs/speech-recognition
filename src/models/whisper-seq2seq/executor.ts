@@ -368,11 +368,17 @@ export class WhisperOnnxExecutor {
     const encoderSession = await createWhisperOrtSession(ort, artifacts.encoderUrl, {
       backendId: resolved.encoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
+      ...(resolved.externalData?.encoder?.[0]
+        ? { externalDataUrl: resolved.externalData.encoder[0].dataUrl, externalDataPath: resolved.externalData.encoder[0].path }
+        : {}),
     });
 
     const decoderSession = await createWhisperOrtSession(ort, artifacts.decoderUrl, {
       backendId: resolved.decoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
+      ...(resolved.externalData?.decoder_init?.[0]
+        ? { externalDataUrl: resolved.externalData.decoder_init[0].dataUrl, externalDataPath: resolved.externalData.decoder_init[0].path }
+        : {}),
     });
 
     const genConfig = await this.loadGenerationConfig(artifacts);
@@ -387,15 +393,24 @@ export class WhisperOnnxExecutor {
       decoderInitSession = await createWhisperOrtSession(ort, resolved.decoderInitUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        ...(resolved.externalData?.decoder_init?.[0]
+          ? { externalDataUrl: resolved.externalData.decoder_init[0].dataUrl, externalDataPath: resolved.externalData.decoder_init[0].path }
+          : {}),
       });
       decoderStepSession = await createWhisperOrtSession(ort, resolved.decoderStepUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        ...(resolved.externalData?.decoder_step?.[0]
+          ? { externalDataUrl: resolved.externalData.decoder_step[0].dataUrl, externalDataPath: resolved.externalData.decoder_step[0].path }
+          : {}),
       });
       if (resolved.decoderAlignUrl) {
         decoderAlignSession = await createWhisperOrtSession(ort, resolved.decoderAlignUrl, {
           backendId: resolved.decoderBackendForOrt,
           enableProfiling: resolved.enableProfiling,
+          ...(resolved.externalData?.decoder_align?.[0]
+            ? { externalDataUrl: resolved.externalData.decoder_align[0].dataUrl, externalDataPath: resolved.externalData.decoder_align[0].path }
+            : {}),
         });
       }
     }

@@ -189,10 +189,16 @@ def validate_manifest(export_dir: Path, model_id: str, expected_layers: int, exp
     assert "artifacts" in manifest, "Missing artifacts"
 
     artifacts = manifest["artifacts"]
-    assert artifacts.get("encoder") == "encoder_model.onnx", f"encoder artifact: {artifacts.get('encoder')}"
-    assert artifacts.get("decoder_init") == "decoder_init.onnx", f"decoder_init artifact: {artifacts.get('decoder_init')}"
-    assert artifacts.get("decoder_step") == "decoder_step.onnx", f"decoder_step artifact: {artifacts.get('decoder_step')}"
-    assert artifacts.get("decoder_align") == "decoder_align.onnx", f"decoder_align artifact: {artifacts.get('decoder_align')}"
+    def artifact_file(key: str) -> str:
+        """Handle both old (string) and new ({file, externalData?}) artifact formats."""
+        val = artifacts.get(key)
+        if isinstance(val, dict):
+            return val.get("file", "")
+        return val or ""
+    assert artifact_file("encoder") == "encoder_model.onnx", f"encoder artifact: {artifacts.get('encoder')}"
+    assert artifact_file("decoder_init") == "decoder_init.onnx", f"decoder_init artifact: {artifacts.get('decoder_init')}"
+    assert artifact_file("decoder_step") == "decoder_step.onnx", f"decoder_step artifact: {artifacts.get('decoder_step')}"
+    assert artifact_file("decoder_align") == "decoder_align.onnx", f"decoder_align artifact: {artifacts.get('decoder_align')}"
 
     # Special tokens sanity
     st = manifest["special_tokens"]

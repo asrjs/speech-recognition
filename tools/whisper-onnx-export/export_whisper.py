@@ -9,10 +9,6 @@ Generates:
   manifest.json                — model metadata
   Plus copies tokenizer.json, generation_config.json, config.json
 
-Options:
-  --fp16    Also generate fp16 variants (float16 conversion)
-  --int8    Also generate int8 variants (dynamic quantization)
-
 Why 4 graphs instead of a merged decoder:
   - decoder_init runs once to build the initial cache from the prompt tokens
   - decoder_step is branch-free and fast for the autoregressive loop
@@ -20,21 +16,30 @@ Why 4 graphs instead of a merged decoder:
   - This avoids a fragile merged decoder with ONNX If branches and
     DynamicCache data-dependent tracing that torch.onnx.export cannot capture
 
+External data / large-model safety:
+  - ONNX protobuf has a 2GB hard limit on serialized ModelProto.
+  - Large models (whisper-large-v3 ~1.55B, large-v3-turbo ~809M) produce
+    decoder graphs >2GB when weights are inline.
+  - Use --external-data auto to automatically store weights in separate .data
+    files co-located with the .onnx graph, keeping the .onnx file small.
+  - Never serialize a >2GB ModelProto in memory; use path-based validate/save.
+
 Usage:
   python export_whisper.py openai/whisper-tiny ./output/whisper-tiny
-  python export_whisper.py openai/whisper-base ./output/whisper-base --fp16 --int8
-  python export_whisper.py openai/whisper-base ./output --alignment-heads "2:3,3:5"
+  python export_whisper.py openai/whisper-large-v3-turbo ./output --device cpu --dtype float32 --external-data auto
+  python export_whisper.py openai/whisper-large-v3-turbo ./out-fp16 --device cuda --dtype float16 --external-data auto
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import inspect
 import json
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -42,7 +47,125 @@ from transformers import AutoTokenizer, WhisperForConditionalGeneration
 from huggingface_hub import hf_hub_download
 
 import onnx
+from onnx.external_data_helper import convert_model_to_external_data
 from onnxruntime.quantization import quantize_dynamic, QuantType
+
+# ---------------------------------------------------------------------------
+# External-data-safe ONNX helpers
+# ---------------------------------------------------------------------------
+
+# Default threshold: save weights externally if the serialized graph would
+# exceed 100 MB (safe margin below the 2 GB protobuf hard limit). Large
+# models like whisper-large-v3-turbo produce decoder graphs up to ~910 MB
+# (decoder_init) in fp32; external data keeps the .onnx file small.
+_DEFAULT_EXTERNAL_DATA_THRESHOLD = 100 * 1024 * 1024  # 100 MB
+
+
+def _model_size_estimate(model: onnx.ModelProto) -> int:
+    """Rough byte estimate of a ModelProto's inline weight data."""
+    total = 0
+    for init in model.graph.initializer:
+        if init.raw_data:
+            total += len(init.raw_data)
+        elif init.float_data:
+            total += len(init.float_data) * 4
+        elif init.int32_data:
+            total += len(init.int32_data) * 4
+    return total
+
+
+def save_onnx_safe(
+    model: onnx.ModelProto,
+    path: str | Path,
+    *,
+    use_external_data: bool = False,
+    all_tensors_to_one_file: bool = True,
+    size_threshold: int = _DEFAULT_EXTERNAL_DATA_THRESHOLD,
+    convert_attribute: bool = False,
+) -> Path:
+    """Save an ONNX model safely.
+
+    When ``use_external_data=True``, large initializers (weights) are saved in
+    a co-located ``<graph>.onnx.data`` file and the .onnx file stays well
+    below the 2 GB protobuf serialization limit.  This is required for large
+    Whisper models like large-v3-turbo (809M params) and large-v3 (1.55B).
+
+    Never calls SerializeToString on a >2 GB ModelProto — the external-data
+    path splits weights out before serialization.
+    """
+    path = Path(path)
+    if use_external_data:
+        location = f"{path.name}.data"
+        onnx.save_model(
+            model,
+            str(path),
+            save_as_external_data=True,
+            all_tensors_to_one_file=all_tensors_to_one_file,
+            location=location,
+            size_threshold=size_threshold,
+            convert_attribute=convert_attribute,
+        )
+    else:
+        onnx.save_model(model, str(path))
+    return path
+
+
+def validate_onnx_safe(
+    model_or_path: onnx.ModelProto | str | Path,
+    *,
+    use_path_based: bool = False,
+) -> None:
+    """Validate an ONNX model safely.
+
+    For external-data / large models use ``use_path_based=True`` (or pass a
+    path string).  This calls ``onnx.checker.check_model(path)`` which reads
+    the graph structure without loading all weights into memory.
+
+    Never calls ``check_model(proto)`` on a large ModelProto — that would
+    require serializing the full model and hit the 2 GB protobuf limit.
+    """
+    if use_path_based or isinstance(model_or_path, (str, Path)):
+        onnx.checker.check_model(str(model_or_path))
+    else:
+        # For small in-memory models this is fine.
+        onnx.checker.check_model(model_or_path)
+
+
+def discover_external_data(graph_path: Path) -> List[Dict[str, Any]]:
+    """Return external-data metadata for an ONNX graph file.
+
+    Returns a list of {path, file, sizeBytes, sha256} entries, or an empty
+    list if no external data is used.
+    """
+    entries: List[Dict[str, Any]] = []
+    if not graph_path.exists():
+        return entries
+
+    try:
+        model = onnx.load(str(graph_path), load_external_data=False)
+    except Exception:
+        return entries
+
+    for init in model.graph.initializer:
+        data_loc = None
+        for prop in init.metadata_props:
+            if prop.key == 'location':
+                data_loc = prop.value
+                break
+        if not data_loc:
+            continue
+        data_path = (graph_path.parent / data_loc).resolve()
+        if data_path.exists():
+            stat = data_path.stat()
+            sha = hashlib.sha256(data_path.read_bytes()).hexdigest()
+            entries.append({
+                "path": f"./{data_loc}",
+                "file": data_loc,
+                "sizeBytes": stat.st_size,
+                "sha256": sha,
+            })
+    return entries
+
 
 # ---------------------------------------------------------------------------
 # Cache type aliases and helpers
@@ -241,10 +364,6 @@ class WhisperDecoderStepWrapper(nn.Module):
         cache_position: torch.Tensor,
         *flat_past_key_values: torch.Tensor,
     ) -> Tuple[torch.Tensor, ...]:
-        # encoder_hidden_states is used inside decoder(**kwargs) for cross-attention
-        # when past_key_values lacks cross KV (should not happen for step, but the
-        # decoder API still requires it). cache_position may be used by the decoder
-        # internally depending on the HF version; we pass it through unconditionally.
         pkv = build_encoder_decoder_cache_from_flat(flat_past_key_values, self.num_layers)
 
         kwargs = dict(
@@ -472,29 +591,82 @@ def parse_manual_alignment_heads(value: str | None) -> List[Tuple[int, int]] | N
 
 
 # ---------------------------------------------------------------------------
-# Quantization
+# Quantization (external-data-safe)
 # ---------------------------------------------------------------------------
 
-def convert_fp16(model_dir: Path, names: list[str]):
-    """Convert fp32 models to fp16."""
-    imported = False
+def convert_fp16_safe(
+    model_dir: Path,
+    names: list[str],
+    *,
+    use_external_data: bool = False,
+    all_tensors_to_one_file: bool = True,
+    size_threshold: int = _DEFAULT_EXTERNAL_DATA_THRESHOLD,
+    validate_path: bool = True,
+):
+    """Convert fp32 ONNX models to fp16 using external-data-safe saving.
+
+    For export-time FP16 (--dtype float16 at export time), torch.onnx.export
+    already produces the FP16 graph directly; this convert_fp16_safe path is
+    the *post-export* route.
+
+    Large-model safety: for models where the FP32 proto in memory exceeds
+    2 GB, loading with ``load_external_data=False`` keeps the graph small and
+    then the converter works on the in-memory graph.  The result is saved
+    immediately with external data.  If the converter itself requires all
+    weights in memory, the user should use the export-time FP16 path
+    (--dtype float16) instead.
+    """
+    from onnxconverter_common import float16
+
+    success = True
     for name in names:
         src = model_dir / name.replace(".fp16", "")
         dst = model_dir / name
         if not src.exists():
             continue
-        if not imported:
-            from onnxconverter_common import float16
-            imported = True
-        model = onnx.load(str(src))
-        model_fp16 = float16.convert_float_to_float16(model)
-        onnx.save(model_fp16, str(dst))
-        size_mb = os.path.getsize(dst) / 1024 / 1024
-        print(f"  {name}  ({size_mb:.1f} MB)")
+
+        # Load WITHOUT external data to keep the ModelProto small — the
+        # converter only transforms graph nodes, not initializer values.
+        try:
+            model = onnx.load(str(src), load_external_data=True)
+            est = _model_size_estimate(model) / 1024 / 1024
+            print(f"  Loading {name}  ({est:.1f} MB in-memory)")
+
+            model_fp16 = float16.convert_float_to_float16(model)
+
+            save_onnx_safe(
+                model_fp16,
+                dst,
+                use_external_data=use_external_data,
+                all_tensors_to_one_file=all_tensors_to_one_file,
+                size_threshold=size_threshold,
+            )
+
+            # Validate via path-based checker (safe for external-data models)
+            if validate_path:
+                validate_onnx_safe(dst, use_path_based=True)
+
+            size_mb = os.path.getsize(dst) / 1024 / 1024
+            data_size = ""
+            data_file = Path(str(dst) + ".data")
+            if data_file.exists():
+                data_size = f"  data: {os.path.getsize(data_file) / 1024 / 1024:.1f} MB"
+            print(f"  {name}  ({size_mb:.1f} MB onnx{data_size})")
+
+        except Exception as e:
+            print(f"  FAILED {name}: {e}")
+            print(f"    For large models, use export-time FP16: --dtype float16 --external-data auto")
+            success = False
+
+    return success
 
 
-def convert_int8(model_dir: Path, names: list[str]):
-    """Quantize to int8 using ONNX Runtime dynamic quantization."""
+def convert_int8_safe(model_dir: Path, names: list[str]):
+    """Quantize to int8 using ONNX Runtime dynamic quantization.
+
+    ORT's quantize_dynamic works on file paths and reads/writes safely.
+    External data files are preserved automatically.
+    """
     for name in names:
         src = model_dir / name.replace("_int8", "")
         dst = model_dir / name
@@ -502,7 +674,11 @@ def convert_int8(model_dir: Path, names: list[str]):
             continue
         quantize_dynamic(str(src), str(dst), weight_type=QuantType.QInt8)
         size_mb = os.path.getsize(dst) / 1024 / 1024
-        print(f"  {name}  ({size_mb:.1f} MB)")
+        data_size = ""
+        data_file = Path(str(dst) + ".data")
+        if data_file.exists():
+            data_size = f"  data: {os.path.getsize(data_file) / 1024 / 1024:.1f} MB"
+        print(f"  {name}  ({size_mb:.1f} MB onnx{data_size})")
 
 
 # ---------------------------------------------------------------------------
@@ -534,6 +710,10 @@ def export_all(
     int8: bool = False,
     device: str | None = None,
     dtype: str = "float32",
+    external_data: str = "auto",
+    external_data_threshold: int = _DEFAULT_EXTERNAL_DATA_THRESHOLD,
+    external_data_one_file: bool = True,
+    validate_path_only: Optional[bool] = None,
 ):
     out_dir = ensure_dir(output_dir)
 
@@ -571,6 +751,31 @@ def export_all(
     print(f"  layers={num_layers}  heads={num_heads}  head_dim={head_dim}")
     print(f"  mel_bins={num_mel_bins}  max_source={max_source_positions}  max_target={max_target_positions}")
     print(f"  alignment_heads={alignment_heads}")
+    print(f"  dtype={dtype}  external_data={external_data}"
+          f"  threshold={external_data_threshold / 1024 / 1024:.0f}MB"
+          f"  one_file={external_data_one_file}")
+    print()
+
+    # ---- External data resolution ----
+    # "auto" → use external data for models likely to exceed threshold
+    # "always" → force external data for all graphs
+    # "never" → inline weights (DANGEROUS for large models)
+    use_external_data: bool
+    if external_data == "never":
+        use_external_data = False
+    elif external_data == "always":
+        use_external_data = True
+    else:  # "auto"
+        # Enable external data if the model has enough parameters to risk
+        # exceeding the 2 GB protobuf limit.  Threshold: decoder_layers >= 24
+        # (large-v2: 32, large-v3: 32, large-v3-turbo: 32).
+        use_external_data = num_layers >= 24
+
+    # Auto-detect validate_path_only if not explicitly set
+    if validate_path_only is None:
+        validate_path_only = use_external_data
+
+    print(f"  use_external_data={use_external_data}  validate_path_only={validate_path_only}")
     print()
 
     dummy_mel = torch.randn(1, num_mel_bins, 3000, dtype=torch.float32)
@@ -694,6 +899,53 @@ def export_all(
     print(f"  decoder_align.onnx  ({size_mb:.1f} MB)")
     align_exported = True
 
+    # ---- External data conversion for graphs ----
+    # If external data is enabled, convert graphs exported by torch.onnx.export
+    # (which always uses inline weights) to external-data format.  This avoids
+    # the 2 GB protobuf serialization limit.
+    if use_external_data:
+        print("\nConverting to external-data format:")
+        graph_names = [
+            "encoder_model.onnx",
+            "decoder_init.onnx",
+            "decoder_step.onnx",
+        ]
+        if align_exported:
+            graph_names.append("decoder_align.onnx")
+
+        for gname in graph_names:
+            gpath = out_dir / gname
+            if not gpath.exists():
+                continue
+            model = onnx.load(str(gpath), load_external_data=True)
+            est = _model_size_estimate(model) / 1024 / 1024
+            print(f"  {gname}  ({est:.1f} MB weights → external)")
+
+            save_onnx_safe(
+                model,
+                gpath,
+                use_external_data=True,
+                all_tensors_to_one_file=external_data_one_file,
+                size_threshold=external_data_threshold,
+            )
+            onnx_size = os.path.getsize(gpath) / 1024 / 1024
+            data_size = ""
+            data_file = Path(str(gpath) + ".data")
+            if data_file.exists():
+                data_size = f"  data: {os.path.getsize(data_file) / 1024 / 1024:.1f} MB"
+            print(f"    → {onnx_size:.1f} MB onnx{data_size}")
+
+        # Validate converted graphs
+        print("  Validating external-data graphs (path-based):")
+        for gname in graph_names:
+            gpath = out_dir / gname
+            if gpath.exists():
+                try:
+                    validate_onnx_safe(gpath, use_path_based=True)
+                    print(f"    ✓ {gname}")
+                except Exception as e:
+                    print(f"    ✗ {gname}: {e}")
+
     # ---- Quantization variants ----
     all_names = [
         "encoder_model.onnx",
@@ -704,14 +956,21 @@ def export_all(
         all_names.append("decoder_align.onnx")
 
     if fp16:
-        print("\nConverting to fp16:")
+        print("\nConverting to fp16 (post-export):")
         fp16_names = [n.replace(".onnx", ".fp16.onnx") for n in all_names]
-        convert_fp16(out_dir, fp16_names)
+        convert_fp16_safe(
+            out_dir,
+            fp16_names,
+            use_external_data=use_external_data,
+            all_tensors_to_one_file=external_data_one_file,
+            size_threshold=external_data_threshold,
+            validate_path=validate_path_only,
+        )
 
     if int8:
         print("\nQuantizing to int8:")
         int8_names = [n.replace(".onnx", "_int8.onnx") for n in all_names]
-        convert_int8(out_dir, int8_names)
+        convert_int8_safe(out_dir, int8_names)
 
     # ---- Tokenizer / config files ----
     print("\nCopying config files:")
@@ -738,13 +997,22 @@ def export_all(
         "timestamp_begin": token_id("<|0.00|>"),
     }
 
-    artifacts: Dict[str, str] = {
-        "encoder": "encoder_model.onnx",
-        "decoder_init": "decoder_init.onnx",
-        "decoder_step": "decoder_step.onnx",
+    # Build artifacts dict with externalData metadata
+    def _graph_entry(filename: str) -> Dict[str, Any]:
+        entry: Dict[str, Any] = {"file": filename}
+        if use_external_data:
+            ext = discover_external_data(out_dir / filename)
+            if ext:
+                entry["externalData"] = ext
+        return entry
+
+    artifacts: Dict[str, Dict[str, Any]] = {
+        "encoder": _graph_entry("encoder_model.onnx"),
+        "decoder_init": _graph_entry("decoder_init.onnx"),
+        "decoder_step": _graph_entry("decoder_step.onnx"),
     }
     if align_exported:
-        artifacts["decoder_align"] = "decoder_align.onnx"
+        artifacts["decoder_align"] = _graph_entry("decoder_align.onnx")
 
     manifest = {
         "model_id": model_id,
@@ -762,6 +1030,8 @@ def export_all(
         "alignment_heads_source": "manual" if manual_alignment_heads else "generation_config_or_config",
         "special_tokens": special_tokens,
         "artifacts": artifacts,
+        "external_data": use_external_data,
+        "external_data_threshold": external_data_threshold,
     }
     with open(out_dir / "manifest.json", "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
@@ -769,6 +1039,8 @@ def export_all(
 
     print(f"\nDone! All 4-graph artifacts in {out_dir}")
     print(f"  encoder_model.onnx  decoder_init.onnx  decoder_step.onnx  decoder_align.onnx")
+    if use_external_data:
+        print(f"  External data: *.onnx.data files co-located with each graph")
 
 
 # ---------------------------------------------------------------------------
@@ -795,12 +1067,41 @@ def main():
         help="Model dtype: 'float32' or 'float16'. Default: float32.",
     )
     parser.add_argument(
+        "--external-data", type=str, default="auto",
+        choices=["auto", "always", "never"],
+        help="ONNX external data strategy. 'auto' enables external data for large models "
+             "(decoder_layers >= 24). 'always' forces external data for all graphs. "
+             "'never' uses inline weights (NOT safe for large models >2GB). Default: auto.",
+    )
+    parser.add_argument(
+        "--external-data-threshold", type=int, default=_DEFAULT_EXTERNAL_DATA_THRESHOLD,
+        help=f"Size threshold in bytes for external data (default: {_DEFAULT_EXTERNAL_DATA_THRESHOLD}). "
+             "Initializers above this size are stored in the .data file.",
+    )
+    parser.add_argument(
+        "--external-data-one-file", type=str, default="true",
+        choices=["true", "false"],
+        help="Store all external data in a single .data file per graph (default: true).",
+    )
+    parser.add_argument(
+        "--validate-path-only", type=str, default=None,
+        choices=["true", "false"],
+        help="Use path-based ONNX checker (safe for external-data models). "
+             "Default: auto (true when external data is used).",
+    )
+    parser.add_argument(
         "--alignment-heads",
         type=str,
         default=None,
         help="Manual verified heads as 'layer:head,layer:head'. Use only when official metadata is absent.",
     )
     args = parser.parse_args()
+
+    validate_path_only = None
+    if args.validate_path_only is not None:
+        validate_path_only = args.validate_path_only == "true"
+
+    external_data_one_file = args.external_data_one_file == "true"
 
     export_all(
         model_id=args.model_id,
@@ -813,6 +1114,10 @@ def main():
         int8=args.int8,
         device=args.device,
         dtype=args.dtype,
+        external_data=args.external_data,
+        external_data_threshold=args.external_data_threshold,
+        external_data_one_file=external_data_one_file,
+        validate_path_only=validate_path_only,
     )
 
 

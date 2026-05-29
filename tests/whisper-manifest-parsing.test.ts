@@ -101,4 +101,22 @@ describe('Whisper manifest parsing (whisper-browser-self-export-v1)', () => {
     const parsed = parseWhisperManifest(raw);
     expect(parsed.generationConfig.alignmentHeads).toEqual([]);
   });
+
+  it('parses manifest even when artifacts are object-format with externalData (backward compat)', () => {
+    // New-style artifacts: { file, externalData? } instead of plain string
+    const newStyle = {
+      ...tinyManifest,
+      artifacts: {
+        encoder: { file: 'encoder_model.onnx', externalData: [{ path: './encoder_model.onnx.data', file: 'encoder_model.onnx.data', sizeBytes: 123456 }] },
+        decoder_init: { file: 'decoder_init.onnx', externalData: [{ path: './decoder_init.onnx.data', file: 'decoder_init.onnx.data', sizeBytes: 456789 }] },
+        decoder_step: { file: 'decoder_step.onnx' },
+        decoder_align: { file: 'decoder_align.onnx' },
+      },
+    };
+    const parsed = parseWhisperManifest(newStyle);
+    // Model config should still parse correctly
+    expect(parsed.modelConfig.decoderLayers).toBe(4);
+    expect(parsed.modelConfig.decoderAttentionHeads).toBe(6);
+    expect(parsed.modelConfig.dModel).toBe(384);
+  });
 });

@@ -863,6 +863,9 @@ CRITICAL ARCHITECTURE NOTES
   - Present→past_key_values name mapping required for step input
   - splitGraphDecodeLoop: pure function, testable with mock callbacks
   - Config-driven dimensions: WhisperModelConfig carries dModel/headDim
+  - External data: ONNX protobuf 2GB limit → weights in co-located .data files
+  - ORT browsers: explicit externalData URLs required in session options
+  - Node.js: ORT loads co-located .data files automatically
 
 FILES ADDED
   src/models/whisper-seq2seq/manifest.ts          — parseWhisperManifest()
@@ -873,13 +876,15 @@ FILES ADDED
 EXPORT TOOL
   tools/whisper-onnx-export/
     export_whisper.py         — main export (4-graph); --device cpu for large models
+                                --external-data auto|always|never
+                                --external-data-threshold BYTES --external-data-one-file true|false
     generate_hf_reference.py  — HF Transformers reference JSON generator (--export-mel)
-    test_kv_export.py         — structural validation
+    test_kv_export.py         — structural validation (updated for new artifact format)
     test_e2e_tokens.py        — ONNX vs PyTorch
     test_comprehensive.py     — speech + alignment + quantization
     .venv/                    — Python 3.12, all deps
   Tiny:  .venv/bin/python export_whisper.py openai/whisper-tiny ./out/tiny
-  Large: .venv/bin/python export_whisper.py openai/whisper-large-v3-turbo ./out --device cpu
+  Large: .venv/bin/python export_whisper.py openai/whisper-large-v3-turbo ./out --device cpu --external-data auto
 
 HF MODEL REPO
   ysdede/whisper-large-v3-turbo-onnx-4graph
@@ -892,10 +897,11 @@ DEFERRED
   - Beam search for 4-graph path (greedy only)
 
 NEXT STEPS (prioritized)
-  1) Quantize fp32 models: fp16 + int8 variants
+  1) Quantize fp32 models: fp16 + int8 variants (external-data-safe)
   2) Organize HF repo with fp16/int8/ subdirectories
   3) Verify quantized variants via fixture smoke tests
   4) Beam search support for 4-graph path
+  5) Re-export fp32 to HF with --external-data auto (large-model safety)
 
 EXPORT WORKFLOW DOCS
   docs/whisper-export-workflow.md — full pipeline: export→verify→quantize→upload
@@ -922,11 +928,22 @@ VERIFICATION GATE
 - Public API example: examples/whisper-splitgraph-local.mjs
 - HF model repo: ysdede/whisper-large-v3-turbo-onnx-4graph (fp32)
 - Export tool: --device cpu|cuda, --dtype float32|float16
-- 84 test files, 401 tests, all passing
+- **ONNX external data for large models** — safe save/validate/convert
+  - Exporter flags: --external-data auto|always|never, --external-data-threshold,
+    --external-data-one-file, --validate-path-only
+  - Safe helpers: save_onnx_safe(), validate_onnx_safe(), discover_external_data()
+  - Post-export FP16: convert_fp16_safe() with external-data-aware save
+  - Manifest: per-graph externalData [{path, file, sizeBytes, sha256}]
+  - TypeScript: ResolvedWhisperArtifacts.externalData, ORT session wiring
+  - Tests: 4 new TS tests + updated Python tests
+  - Docs: whisper-export-workflow.md updated with external data section
+- 84 test files, 405 tests, all passing
 
-**Quantized variants:** fp16, int8 planned — export at export time, organize in subdirectories
+**Quantized variants:** fp16, int8 planned — export at export time, organize in subdirectories.
+External-data-safe paths available for both post-export and export-time quantization.
 
 **Next steps:**
 - Export quantized fp16 + int8 variants for whisper-large-v3-turbo
 - Organize HF repo with fp16/int8/ subdirectories
 - Verify each variant via fixture smoke tests
+- Re-export fp32 to HF repo using --external-data auto for large-model safety

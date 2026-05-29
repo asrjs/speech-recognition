@@ -20,8 +20,8 @@
 │    Option A: --fp16 at export time                      │
 │    Option B: Post-export with onnxconverter_common      │
 │    Option C: --int8 at export time (dynamic quant)      │
-│    Currently: fp16 post-export fails >2GB models        │
-│              → use --fp16 at export time                │
+│    All paths are external-data-safe when using          │
+│    --external-data auto (or always)                     │
 ├─────────────────────────────────────────────────────────┤
 │ 4. VERIFY (TypeScript)                                  │
 │    WHISPER_SPLITGRAPH_FIXTURE_DIR=... npx vitest run    │
@@ -51,9 +51,13 @@ Workflow: `fp32 export → verify → quantize → verify → upload`
 ```
 model-repo-root/
 ├── encoder_model.onnx          # fp32 (source of truth)
+├── encoder_model.onnx.data     # external data (co-located)
 ├── decoder_init.onnx
+├── decoder_init.onnx.data
 ├── decoder_step.onnx
+├── decoder_step.onnx.data
 ├── decoder_align.onnx
+├── decoder_align.onnx.data
 ├── manifest.json
 ├── tokenizer.json
 ├── config.json
@@ -62,22 +66,57 @@ model-repo-root/
 ├── README.md
 ├── fp16/                       # fp16 variants
 │   ├── encoder_model.onnx
-│   ├── decoder_init.onnx
-│   ├── decoder_step.onnx
-│   └── decoder_align.onnx
+│   └── ...
 ├── int8/                       # int8 variants
 │   ├── encoder_model.onnx
-│   ├── decoder_init.onnx
-│   ├── decoder_step.onnx
-│   └── decoder_align.onnx
+│   └── ...
 └── manifest.json               # Updated with variant paths
 ```
 
 Quantization methods:
-- **fp16**: `--fp16` at export time. Post-export `onnxconverter_common.float16` fails for >2GB models (protobuf limit).
-- **int8**: `--int8` at export time (dynamic quantization). Works for all sizes.
+- **fp16**: `--fp16` at export time or post-export with `convert_fp16_safe`.
+  When `--external-data auto` is active, post-export fp16 uses external-data-aware
+  save to stay safely below the 2 GB protobuf limit.
+- **int8**: `--int8` at export time (dynamic quantization). ORT quantize_dynamic
+  works on file paths and preserves external data automatically.
 - **q4/q8**: Not supported by onnxconverter_common. Needs custom tooling.
 - **nvfp4**: NVIDIA-specific. Not applicable for cross-platform ONNX.
+
+## External data (large model safety)
+
+ONNX protobuf has a 2 GB hard limit on serialized `ModelProto`.
+Large Whisper models exceed this:
+- whisper-large-v3-turbo (809M params): decoder_init ~910 MB, decoder_step ~606 MB
+- whisper-large-v3 (1.55B params): all decoder graphs >2 GB
+
+The exporter supports three strategies via `--external-data`:
+- **auto** (default): Use external data for models with decoder_layers >= 24
+- **always**: Force external data for all graphs
+- **never**: Inline all weights (NOT safe for large models)
+
+With external data enabled:
+- Each `.onnx` file contains only the graph structure (small, ~400 KB).
+- Weights are stored in co-located `.onnx.data` files.
+- ORT loads co-located `.data` files automatically in Node.js.
+- Browser loads require explicit externalData URLs in manifest + session options.
+
+Recommended commands:
+```
+# CPU-safe fp32 export (avoids CUDA OOM but still needs external data)
+python export_whisper.py openai/whisper-large-v3-turbo ./output \\
+  --device cpu --dtype float32 --external-data auto
+
+# GPU fp16 export (memory-efficient at load + external-data safe)
+python export_whisper.py openai/whisper-large-v3-turbo ./output-fp16 \\
+  --device cuda --dtype float16 --external-data auto
+```
+
+Key safety features:
+- `save_onnx_safe()` — Never calls SerializeToString on >2 GB ModelProto
+- `validate_onnx_safe()` — Uses path-based checker for external-data models
+- `discover_external_data()` — Extracts external data metadata for manifest
+- `convert_fp16_safe()` — Post-export fp16 with external-data-aware save
+- `convert_int8_safe()` — ORT path-based quantize preserves external data
 
 ## Current HF repos
 
