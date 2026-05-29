@@ -1,9 +1,11 @@
 import type {
   WhisperArtifactSource,
+  WhisperDirectArtifactSource,
   WhisperDirectArtifacts,
   WhisperExecutionBackend,
   WhisperHuggingFaceSource,
   WhisperQuantization,
+  WhisperSplitGraphArtifactSource,
 } from './types.js';
 import {
   importNodeModule,
@@ -55,6 +57,11 @@ export interface ResolvedWhisperArtifacts {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  readonly isSplitGraph: boolean;
+  readonly decoderInitUrl?: string;
+  readonly decoderStepUrl?: string;
+  readonly decoderAlignUrl?: string;
+  readonly manifestUrl?: string;
 }
 
 const QUANTIZATION_SUFFIX: Record<WhisperQuantization, string> = {
@@ -144,11 +151,12 @@ function resolveHuggingFaceArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    isSplitGraph: false,
   };
 }
 
 function resolveDirectArtifacts(
-  source: Extract<WhisperArtifactSource, { kind: 'direct' }>,
+  source: WhisperDirectArtifactSource,
   backendId: string,
 ): ResolvedWhisperArtifacts {
   const fallbackBackend = normalizeWhisperWeightBackend(backendId);
@@ -164,6 +172,36 @@ function resolveDirectArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    isSplitGraph: false,
+  };
+}
+
+function resolveSplitGraphArtifacts(
+  source: WhisperSplitGraphArtifactSource,
+  backendId: string,
+): ResolvedWhisperArtifacts {
+  const fallbackBackend = normalizeWhisperWeightBackend(backendId);
+  const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend, 'encoder');
+  const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend, 'decoder');
+  return {
+    artifacts: {
+      encoderUrl: source.artifacts.encoderUrl,
+      decoderUrl: source.artifacts.decoderInitUrl,
+      tokenizerUrl: source.artifacts.tokenizerUrl,
+    },
+    warnings: [],
+    ortBackend:
+      encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
+    encoderBackendForOrt,
+    decoderBackendForOrt,
+    wasmPaths: source.wasmPaths,
+    cpuThreads: source.cpuThreads,
+    enableProfiling: source.enableProfiling,
+    isSplitGraph: true,
+    decoderInitUrl: source.artifacts.decoderInitUrl,
+    decoderStepUrl: source.artifacts.decoderStepUrl,
+    decoderAlignUrl: source.artifacts.decoderAlignUrl,
+    manifestUrl: source.artifacts.manifestUrl,
   };
 }
 
@@ -171,9 +209,13 @@ export function resolveWhisperArtifacts(
   source: WhisperArtifactSource,
   backendId: string,
 ): ResolvedWhisperArtifacts {
-  return source.kind === 'huggingface'
-    ? resolveHuggingFaceArtifacts(source, backendId)
-    : resolveDirectArtifacts(source, backendId);
+  if (source.kind === 'huggingface') {
+    return resolveHuggingFaceArtifacts(source, backendId);
+  }
+  if (source.kind === 'splitgraph') {
+    return resolveSplitGraphArtifacts(source, backendId);
+  }
+  return resolveDirectArtifacts(source, backendId);
 }
 
 export async function initWhisperOrt(

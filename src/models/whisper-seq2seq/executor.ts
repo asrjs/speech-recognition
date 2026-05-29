@@ -54,6 +54,10 @@ interface LoadedExecutorState {
   readonly generationConfig: WhisperGenerationConfig;
   readonly modelConfig: WhisperModelConfig;
   readonly warnings: readonly TranscriptWarning[];
+  readonly isSplitGraph: boolean;
+  readonly decoderInitSession?: OrtSessionLike;
+  readonly decoderStepSession?: OrtSessionLike;
+  readonly decoderAlignSession?: OrtSessionLike;
 }
 
 interface DecoderStepResult {
@@ -146,6 +150,62 @@ export function computeEmptyPastKeyValueShapes(
     shapes[`past_key_values.${i}.encoder.value`] = [1, decoderAttentionHeads, encoderSeqLen, headDim];
   }
   return shapes;
+}
+
+export interface SplitGraphDecodeCallbacks {
+  runInit(
+    promptTokens: readonly number[],
+    encoderHiddenStates: Float32Array,
+    encoderDims: readonly number[],
+  ): Promise<{ logits: Float32Array; vocabSize: number; presentKv: Record<string, Float32Array> }>;
+  runStep(
+    tokenId: number,
+    pastKv: Record<string, Float32Array>,
+  ): Promise<{ logits: Float32Array; vocabSize: number; presentKv: Record<string, Float32Array> }>;
+}
+
+export interface SplitGraphDecodeResult {
+  readonly tokens: readonly number[];
+}
+
+export async function splitGraphDecodeLoop(params: {
+  promptTokens: readonly number[];
+  encoderHiddenStates: Float32Array;
+  eosTokenId: number;
+  maxNewTokens: number;
+  modelConfig: WhisperModelConfig;
+  runInit: SplitGraphDecodeCallbacks['runInit'];
+  runStep: SplitGraphDecodeCallbacks['runStep'];
+}): Promise<SplitGraphDecodeResult> {
+  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, runInit, runStep } = params;
+
+  // Init: prefill with prompt tokens
+  const initResult = await runInit(
+    promptTokens,
+    encoderHiddenStates,
+    [1, encoderHiddenStates.length / params.modelConfig.dModel, params.modelConfig.dModel],
+  );
+  const initLogits = initResult.logits;
+  const vocabSize = initResult.vocabSize;
+  let pastKv = initResult.presentKv;
+
+  // First token from init logits (last position)
+  const lastLogitOffset = initLogits.length - vocabSize;
+  const firstLogits = initLogits.subarray(lastLogitOffset);
+  const firstTokenId = argmax(firstLogits);
+  const tokens: number[] = [firstTokenId];
+
+  // Autoregressive step loop
+  for (let step = 1; step < maxNewTokens; step++) {
+    const stepResult = await runStep(tokens[tokens.length - 1]!, pastKv);
+    const nextTokenId = argmax(stepResult.logits);
+    tokens.push(nextTokenId);
+    pastKv = stepResult.presentKv;
+
+    if (nextTokenId === eosTokenId) break;
+  }
+
+  return { tokens };
 }
 
 export class WhisperOnnxExecutor {
@@ -268,7 +328,34 @@ export class WhisperOnnxExecutor {
 
     const genConfig = await this.loadGenerationConfig(artifacts);
     const modelConfig = await this.loadModelConfig(artifacts);
-    return { ort, tokenizer, encoderSession, decoderSession, generationConfig: genConfig, modelConfig, warnings };
+    const isSplitGraph = resolved.isSplitGraph;
+
+    let decoderInitSession: OrtSessionLike | undefined;
+    let decoderStepSession: OrtSessionLike | undefined;
+    let decoderAlignSession: OrtSessionLike | undefined;
+
+    if (isSplitGraph && resolved.decoderInitUrl && resolved.decoderStepUrl) {
+      decoderInitSession = await createWhisperOrtSession(ort, resolved.decoderInitUrl, {
+        backendId: resolved.decoderBackendForOrt,
+        enableProfiling: resolved.enableProfiling,
+      });
+      decoderStepSession = await createWhisperOrtSession(ort, resolved.decoderStepUrl, {
+        backendId: resolved.decoderBackendForOrt,
+        enableProfiling: resolved.enableProfiling,
+      });
+      if (resolved.decoderAlignUrl) {
+        decoderAlignSession = await createWhisperOrtSession(ort, resolved.decoderAlignUrl, {
+          backendId: resolved.decoderBackendForOrt,
+          enableProfiling: resolved.enableProfiling,
+        });
+      }
+    }
+
+    return {
+      ort, tokenizer, encoderSession, decoderSession,
+      generationConfig: genConfig, modelConfig, warnings,
+      isSplitGraph, decoderInitSession, decoderStepSession, decoderAlignSession,
+    };
   }
 
   private async getLoadedState(): Promise<LoadedExecutorState> {
@@ -623,6 +710,79 @@ export class WhisperOnnxExecutor {
     }
   }
 
+  private async runDecoderInit(
+    loaded: Required<Pick<LoadedExecutorState, 'decoderInitSession' | 'ort'>> & LoadedExecutorState,
+    encoderHiddenStates: OrtTensorLike<Float32Array>,
+    promptTokens: readonly number[],
+  ): Promise<{
+    logits: Float32Array;
+    vocabSize: number;
+    presentKv: Record<string, OrtTensorLike<Float32Array>>;
+  }> {
+    const inputIds = new BigInt64Array(promptTokens.map((id) => BigInt(id)));
+    const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, promptTokens.length]);
+    const feeds: Record<string, unknown> = {
+      input_ids: inputIdsTensor,
+      encoder_hidden_states: encoderHiddenStates,
+    };
+
+    const outputs = await loaded.decoderInitSession.run(feeds);
+    const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+    const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+    const logitsDims = logitsTensor.dims;
+    const vocabSize = logitsDims[logitsDims.length - 1] ?? 0;
+
+    const presentKv: Record<string, OrtTensorLike<Float32Array>> = {};
+    for (const [key, value] of Object.entries(outputs)) {
+      if (key.startsWith('present')) {
+        presentKv[key] = value as OrtTensorLike<Float32Array>;
+      }
+    }
+
+    return { logits: logitsTensor.data, vocabSize, presentKv };
+  }
+
+  private async runDecoderStepSplit(
+    loaded: Required<Pick<LoadedExecutorState, 'decoderStepSession' | 'ort'>> & LoadedExecutorState,
+    tokenId: number,
+    pastKv: Record<string, OrtTensorLike<Float32Array>>,
+  ): Promise<{
+    logits: Float32Array;
+    vocabSize: number;
+    presentKv: Record<string, OrtTensorLike<Float32Array>>;
+  }> {
+    const inputIdsTensor = new loaded.ort.Tensor('int64', new BigInt64Array([BigInt(tokenId)]), [1, 1]);
+    const feeds: Record<string, unknown> = { input_ids: inputIdsTensor };
+
+    // Add all past_key_values (decoder + encoder KV). Step model expects both.
+    for (const [name, tensor] of Object.entries(pastKv)) {
+      feeds[name] = tensor;
+    }
+
+    const outputs = await loaded.decoderStepSession.run(feeds);
+    const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+    const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+    const logitsDims = logitsTensor.dims;
+    const vocabSize = logitsDims[logitsDims.length - 1] ?? 0;
+
+    // decoder_step outputs only self-attention present KV. Merge with encoder KV from input.
+    const presentKv: Record<string, OrtTensorLike<Float32Array>> = {};
+    for (const [key, value] of Object.entries(outputs)) {
+      if (key.startsWith('present')) {
+        const pastName = key.replace(/^present/, 'past_key_values');
+        presentKv[pastName] = value as OrtTensorLike<Float32Array>;
+      }
+    }
+    // Preserve encoder KV from input (they don't change and step model doesn't output them)
+    for (const [key, value] of Object.entries(pastKv)) {
+      if (key.includes('encoder') && !presentKv[key]) {
+        presentKv[key] = value;
+      }
+    }
+
+    return { logits: logitsTensor.data, vocabSize, presentKv };
+  }
+
   async transcribe(
     audio: AudioBufferLike,
     options: WhisperSeq2SeqTranscriptionOptions,
@@ -630,6 +790,10 @@ export class WhisperOnnxExecutor {
   ): Promise<WhisperNativeTranscript> {
     const loaded = await this.getLoadedState();
     const warnings = [...loaded.warnings];
+
+    if (loaded.isSplitGraph && loaded.decoderInitSession && loaded.decoderStepSession) {
+      return this.transcribeWithSplitGraph(audio, options, _context);
+    }
 
     if (this.shouldChunkAudio(audio, options)) {
       return this.transcribeLongAudio(audio, options, _context);
@@ -897,6 +1061,128 @@ export class WhisperOnnxExecutor {
     if (options.windowing === 'disabled' || options.unsafeAllowOverMaxWindow) return false;
     const maxDuration = options.chunkLengthSeconds ?? options.maxInputDurationSeconds ?? 30;
     return audio.durationSeconds > maxDuration;
+  }
+
+  private async transcribeWithSplitGraph(
+    audio: AudioBufferLike,
+    options: WhisperSeq2SeqTranscriptionOptions,
+    _context: { readonly modelId: string; readonly config: WhisperSeq2SeqModelConfig },
+  ): Promise<WhisperNativeTranscript> {
+    const loaded = await this.getLoadedState();
+    const warnings = [...loaded.warnings];
+    const splitLoaded = loaded as Required<LoadedExecutorState>;
+
+    // 1. Preprocess audio to mel spectrogram
+    const melProcessor = new WhisperMelProcessor({ nMels: this.config.melBins });
+    const pcmData = audio.channels?.[0] ?? new Float32Array(0);
+    const melResult = melProcessor.process(pcmData);
+    const maxFrames = this.config.maxSourcePositions;
+    const paddedFeatures = WhisperMelProcessor.padToFrames(melResult, maxFrames);
+
+    const featureTensor = new loaded.ort.Tensor(
+      'float32', paddedFeatures,
+      [1, this.config.melBins, maxFrames],
+    );
+
+    // 2. Run encoder
+    const encoderOutputs = await loaded.encoderSession.run({ input_features: featureTensor });
+    const encoderHiddenStates = encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>;
+
+    // 3. Build initial prompt tokens
+    const tokenizer = loaded.tokenizer;
+    const language = options.language ?? this.config.languages[0] ?? 'auto';
+    const langToken = language === 'auto' ? '<|tr|>' : `<|${language}|>`;
+    const taskToken = options.task === 'translate' ? '<|translate|>' : '<|transcribe|>';
+    const noTimestampsToken = options.noTimestamps ? '<|notimestamps|>' : undefined;
+
+    const promptTokens: number[] = [
+      tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
+      tokenizer.getTokenId(langToken) ?? 50268,
+      tokenizer.getTokenId(taskToken) ?? 50359,
+    ];
+    if (noTimestampsToken) {
+      const ntId = tokenizer.getTokenId(noTimestampsToken);
+      if (ntId !== undefined) promptTokens.push(ntId);
+    }
+
+    // 4. Run 4-graph decode loop
+    const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
+    const maxNewTokens = options.maxNewTokens ?? this.config.maxTargetPositions ?? 448;
+
+    // Only greedy decoding supported for splitgraph (no beam search yet)
+    const result = await splitGraphDecodeLoop({
+      promptTokens,
+      encoderHiddenStates: encoderHiddenStates.data,
+      eosTokenId: eosId,
+      maxNewTokens,
+      modelConfig: loaded.modelConfig,
+      runInit: async (prompt, _encHs, _dims) => {
+        const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
+        return {
+          logits: init.logits,
+          vocabSize: init.vocabSize,
+          presentKv: Object.fromEntries(
+            Object.entries(init.presentKv).map(([k, v]) => [k, v.data]),
+          ),
+        };
+      },
+      runStep: async (tokenId, pastKv) => {
+        // Reconstruct OrtTensorLike wrapping from data arrays
+        const pastKvTensors: Record<string, OrtTensorLike<Float32Array>> = {};
+        for (const [name, data] of Object.entries(pastKv)) {
+          pastKvTensors[name] = { data, dims: [] } as OrtTensorLike<Float32Array>;
+        }
+        // Step model expects `past_key_values.` prefix but init outputs `present.` prefix
+        // Convert present→past_key_values for step input
+        const stepKv: Record<string, OrtTensorLike<Float32Array>> = {};
+        for (const [key, tensor] of Object.entries(pastKvTensors)) {
+          const stepKey = key.replace(/^present\./, 'past_key_values.');
+          stepKv[stepKey] = tensor;
+        }
+        const step = await this.runDecoderStepSplit(splitLoaded, tokenId, stepKv);
+        return {
+          logits: step.logits,
+          vocabSize: step.vocabSize,
+          presentKv: Object.fromEntries(
+            Object.entries(step.presentKv).map(([k, v]) => [k, v.data]),
+          ),
+        };
+      },
+    });
+
+    // 5. Build token details
+    const generatedTokens = [...promptTokens, ...result.tokens];
+    const tokenDetails: WhisperNativeToken[] = [];
+    for (let i = promptTokens.length; i < generatedTokens.length; i++) {
+      const tokenId = generatedTokens[i]!;
+      tokenDetails.push({
+        index: i - promptTokens.length,
+        id: tokenId,
+        text: this.formatTokenText(tokenizer, tokenId),
+        special: tokenizer.isSpecialTokenId(tokenId),
+      });
+    }
+
+    // 6. Build segments
+    const segments = this.buildSegments(tokenDetails, tokenizer, options.noTimestamps);
+
+    // 7. Word timestamps via alignment
+    const words = this.shouldReturnWordTimestamps(options)
+      ? await this.computeAttentionWordTimestamps(
+          loaded, encoderHiddenStates, tokenizer, tokenDetails, segments, language, options,
+        )
+      : [];
+
+    const utteranceText = segments.map((s) => s.text).join(' ').trim();
+
+    return {
+      utteranceText, isFinal: true, language, segments,
+      ...(words && words.length > 0 ? { words } : {}),
+      tokens: options.returnSpecialTokens
+        ? tokenDetails
+        : tokenDetails.filter((t) => !t.special),
+      warnings,
+    };
   }
 
   private async transcribeLongAudio(

@@ -49,7 +49,26 @@ export interface WhisperHuggingFaceSource {
   readonly enableProfiling?: boolean;
 }
 
-export type WhisperArtifactSource = WhisperDirectArtifactSource | WhisperHuggingFaceSource;
+export type WhisperArtifactSource = WhisperDirectArtifactSource | WhisperHuggingFaceSource | WhisperSplitGraphArtifactSource;
+
+export interface WhisperSplitGraphArtifacts {
+  readonly encoderUrl: string;
+  readonly decoderInitUrl: string;
+  readonly decoderStepUrl: string;
+  readonly decoderAlignUrl?: string;
+  readonly tokenizerUrl: string;
+  readonly manifestUrl: string;
+}
+
+export interface WhisperSplitGraphArtifactSource {
+  readonly kind: 'splitgraph';
+  readonly artifacts: WhisperSplitGraphArtifacts;
+  readonly encoderBackend?: WhisperExecutionBackend;
+  readonly decoderBackend?: WhisperExecutionBackend;
+  readonly wasmPaths?: string;
+  readonly cpuThreads?: number;
+  readonly enableProfiling?: boolean;
+}
 
 export interface WhisperSeq2SeqModelOptions {
   readonly modelBaseUrl?: string;
