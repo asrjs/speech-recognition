@@ -2,139 +2,177 @@
 
 Branch: `feat/asr-pipeline-output-formats`
 Last updated: 2026-05-31
-Author: Flexo (glm-5.1, home P520)
+Author: Flexo (gpt-5.5, home P520)
+
+## Current Status
+
+WAV2VEC2 base-960h is now wired as a real model family and preset, and the Node/WASM smoke path has been validated against a real ONNX model.
+
+Completed:
+- Shared `src/ctc/` module for CTC argmax/collapse/timing/word building.
+- `src/models/wav2vec2/` core model implementation.
+- `src/models/wav2vec2/model.ts` model factory.
+- `src/models/wav2vec2/mapping.ts` native→canonical transcript mapping.
+- `src/presets/wav2vec2/` manifest + preset factory.
+- Built-in runtime registration and descriptor catalog entry.
+- Real ONNX Node/WASM smoke script and run.
 
 ## Commit History (WAV2VEC2 + CTC related)
 
-```
-PENDING: refactor: extract shared CTC module, migrate wav2vec2 + lasr-ctc executors
-bdfef2a refactor: wire enhanced-executor to standalone quality/chunking/post-processing modules (Phase F)
-5d31de4 refactor: extract post-processing/ module (Phase C)
-0ec5fba refactor: extract chunking/ module (Phase B)
-5474991 refactor: extract quality/ module (Phase A)
-94ceb99 feat: add WAV2VEC2 CTC model family — types, config, tokenizer, ORT glue, executor
+```text
+b25e9a6  feat: wire context conditioning (contains Wav2Vec2 model factory/preset files + smoke script)
+64c1cea  feat: add formatTranscript() (contains Wav2Vec2 ORT external data, built-in registration, descriptor wiring)
+be7f1c9  refactor: extract shared CTC module, migrate wav2vec2 + lasr-ctc executors
+94ceb99  feat: add WAV2VEC2 CTC model family — types, config, tokenizer, ORT glue, executor
 ```
 
-## Phase 1: WAV2VEC2 Model Files (commit 94ceb99) — DONE
+## Architecture
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/models/wav2vec2/types.ts` | 206 | All interfaces: config, artifacts, transcription options, native output, executor |
-| `src/models/wav2vec2/config.ts` | 107 | DEFAULT_WAV2VEC2_CONFIG, parseWav2Vec2Config, describeWav2Vec2Model |
-| `src/models/wav2vec2/tokenizer.ts` | 127 | Wav2Vec2CharTokenizer — char-level CTC vocab, encode/decode |
-| `src/models/wav2vec2/ort.ts` | 227 | ONNX Runtime glue — session creation, artifact resolution, HF download |
-| `src/models/wav2vec2/executor.ts` | ~670 | OrtWav2Vec2Executor — full inference pipeline (deduplicated buildWords) |
-| `src/models/wav2vec2/index.ts` | 2 | Barrel exports |
-
-## Phase 2: CTC Module Extraction — DONE (pending commit)
-
-### New Files
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/ctc/types.ts` | ~170 | Generic CTC types: CtcTokenSpan, CtcUtteranceTiming, CtcSentenceTiming, CtcNativeWord, CtcDecoderConfig, CtcDecodeResult |
-| `src/ctc/decoder.ts` | ~420 | CtcDecoder class + stateless functions: argmax, collapse, timing, sentences, words |
-| `src/ctc/index.ts` | ~25 | Barrel exports |
-| `tests/ctc-decoder.test.ts` | ~460 | 25 tests: parity, word building, CtcDecoder class, backward compat |
-
-### Migration
-
-1. `src/ctc/decoder.ts` — new shared module (functions moved from lasr-ctc/ctc.ts)
-2. `src/models/lasr-ctc/ctc.ts` — thin re-export wrapper (backward compat)
-3. `src/models/lasr-ctc/executor.ts` — imports from `../../ctc/index.js` (was `./ctc.js`)
-4. `src/models/wav2vec2/executor.ts` — imports from `../../ctc/index.js` (was `../lasr-ctc/ctc.js`)
-5. Removed `buildWordsFromSpans()` from wav2vec2/executor.ts — uses shared `buildWordsFromCharSpans()`
-6. Removed `Wav2Vec2NativeWord` unused import
-
-### Type Aliases (backward compat)
-
-```ts
-// lasr-ctc/ctc.ts exports:
-export type { CtcTokenSpan as LasrCtcTokenSpan } from '../../ctc/types.js';
-export type { CtcUtteranceTiming as LasrCtcUtteranceTiming } from '../../ctc/types.js';
-export type { CtcSentenceTiming as LasrCtcSentenceTiming } from '../../ctc/types.js';
+```text
+Raw Float32 PCM @ 16 kHz
+  → Wav2Vec2 single ONNX graph
+  → logits [batch, frames, vocab]
+  → src/ctc CtcDecoder helpers
+     - argmaxAndSelectedLogProbs()
+     - ctcCollapseWithSpans()
+     - addTimesToTokenSpans()
+     - buildUtteranceTiming()
+     - buildSentenceTimings()
+     - buildWordsFromCharSpans()
+  → Wav2Vec2NativeTranscript
+  → mapWav2Vec2NativeToCanonical()
+  → TranscriptResult
 ```
 
-### Architecture
+Important boundary: Wav2Vec2 is raw-waveform, not mel-based. The convolutional feature extractor is inside the ONNX graph.
 
+## Implemented Files
+
+### Model family
+
+| File | Purpose |
+|------|---------|
+| `src/models/wav2vec2/types.ts` | Config, artifact sources, transcript options, native output, executor deps |
+| `src/models/wav2vec2/config.ts` | Default and parsed Wav2Vec2 config |
+| `src/models/wav2vec2/tokenizer.ts` | Character-level CTC tokenizer (`|` → space) |
+| `src/models/wav2vec2/ort.ts` | ORT Web session creation, HF/direct artifact resolution, external data support |
+| `src/models/wav2vec2/executor.ts` | Real ONNX inference → shared CTC decode → native transcript |
+| `src/models/wav2vec2/model.ts` | `createWav2Vec2ModelFamily()` + `SpeechModel`/`SpeechSession` wrapper |
+| `src/models/wav2vec2/mapping.ts` | Native Wav2Vec2 transcript → canonical transcript |
+| `src/models/wav2vec2/index.ts` | Barrel export |
+| `src/models/wav2vec2.ts` | Package subpath shim |
+
+### Presets and built-ins
+
+| File | Purpose |
+|------|---------|
+| `src/presets/wav2vec2/manifest.ts` | `facebook/wav2vec2-base-960h` preset manifest + aliases |
+| `src/presets/wav2vec2/factory.ts` | `createWav2Vec2PresetFactory()` |
+| `src/presets/wav2vec2/index.ts` | Preset barrel export |
+| `src/presets/wav2vec2.ts` | Package subpath shim |
+| `src/runtime/builtins.ts` | Registers Wav2Vec2 model family + preset |
+| `src/presets/descriptors.ts` | Built-in catalog descriptor for Wav2Vec2 CTC |
+| `src/presets/index.ts` | Exports Wav2Vec2 preset helpers |
+
+### Tests and smoke
+
+| File | Purpose |
+|------|---------|
+| `tests/wav2vec2-model.test.ts` | Family support, stub fallback, preset resolution, built-in registration |
+| `tests/preset-descriptors.test.ts` | Wav2Vec2 descriptor/catalog metadata |
+| `tests/smoke/wav2vec2-node-wasm-smoke.mjs` | Real ONNX Node/WASM smoke script |
+
+## ONNX Model Details
+
+Local smoke artifact:
+
+```text
+/tmp/wav2vec2-base-960h.onnx
+/tmp/wav2vec2-base-960h.onnx.data
 ```
-src/ctc/
-  types.ts      — Generic types (CtcTokenSpan, CtcUtteranceTiming, etc.)
-                  No model-specific imports. Pure contract.
-  decoder.ts    — CtcDecoder class + stateless functions
-                  Stateless: argmaxAndSelectedLogProbs, ctcCollapseWithSpans,
-                  estimateSecondsPerOutputFrame, addTimesToTokenSpans,
-                  buildUtteranceTiming, buildSentenceTimings, buildWordsFromCharSpans
-                  Class: CtcDecoder(blankId, vocabSize, tokenizer, wordSeparator?)
-                    .decodeFromLogits() → CtcDecodeResult (full pipeline)
-                    .argmax(), .collapse(), .addTiming(), .buildUtterance(),
-                    .buildSentences(), .buildWords() (individual steps)
-  index.ts      — barrel exports
 
-src/models/lasr-ctc/
-  ctc.ts        — RE-EXPORT WRAPPER ONLY (backward compat)
-  executor.ts   — imports from ../../ctc/index.js
-  types.ts      — LasrCtcTokenSpan etc. still defined locally (unchanged)
-
-src/models/wav2vec2/
-  executor.ts   — imports from ../../ctc/index.js, no local buildWordsFromSpans
-  types.ts      — Wav2Vec2TokenSpan etc. still defined locally (unchanged)
-```
-
-### Models Using CTC
-
-| Model | blankId | vocab | Word Strategy | Frame Rate |
-|-------|---------|-------|---------------|------------|
-| MedASR (lasr-ctc) | 0 (epsilon) | BPE sentencepiece | No auto word building (BPE handles) | varies |
-| WAV2VEC2 base-960h | 0 (pad) | 32 char-level | buildWordsFromCharSpans(' ') | 49/sec |
-| Future CTC models | TBD | TBD | TBD | TBD |
-
-## ONNX Model
-
-- Source: `facebook/wav2vec2-base-960h`
-- File: `/tmp/wav2vec2-base-960h.onnx` (1.71 MB, opset 18)
-- Input: `input_values` [batch, seq] float32 (raw waveform)
-- Output: `logits` [batch, frames, 32] float32
-- 49 frames/sec at 16kHz (outputStride=320)
-- Vocab: 32 tokens — 26 uppercase letters + pad(0), <s>(1), </s>(2), <unk>(3), |(4=space), '(5)
+Specs:
+- Source model: `facebook/wav2vec2-base-960h`
+- Input: `input_values` `[1, samples]` float32 raw waveform
+- Output: `logits` `[1, frames, 32]` float32
+- Output stride: 320 samples (`16000 / 320 ≈ 50 fps`)
 - CTC blank token ID: 0 (`<pad>`)
+- Vocabulary: 32 char-level tokens, `|` as word separator
+- Local ONNX graph uses external data; Node/WASM must pass `externalData` explicitly.
 
-## Gate Status (after CTC refactor)
+Critical smoke-source pattern:
 
-- typecheck: ✓ clean
-- lint: ✓ 0 errors
-- tests: 547/549 pass (2 pre-existing flaky whisper tests, unrelated)
-  - CTC-specific: 25/25 new + 3/3 legacy = 28/28 ✓
-- build: ✓ clean
+```js
+source: {
+  kind: 'direct',
+  artifacts: {
+    modelUrl: pathToFileURL('/tmp/wav2vec2-base-960h.onnx').href,
+    modelDataUrl: pathToFileURL('/tmp/wav2vec2-base-960h.onnx.data').href,
+    modelDataFilename: 'wav2vec2-base-960h.onnx.data',
+    tokenizerUrl: 'https://huggingface.co/facebook/wav2vec2-base-960h/resolve/main/vocab.json',
+  },
+  cpuThreads: 1,
+}
+```
+
+## Validated Smoke Output
+
+Command:
+
+```bash
+node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
+```
+
+Observed output:
+
+```text
+wav2vec2 node/wasm smoke passed
+model=/tmp/wav2vec2-base-960h.onnx
+audio=/home/steam/github/asrjs/speech-recognition/tests/fixtures/jfk2.en.wav
+sampleRate=16000 duration=11.000s elapsed≈8.6s
+words=22 tokens=105
+and so my fellow americans ask not what your country can do for you ask what you can do for your country
+```
+
+## Verification
+
+Latest gate:
+
+```bash
+npx vitest run tests/wav2vec2-model.test.ts tests/preset-descriptors.test.ts tests/exports.test.ts
+npm run typecheck
+npm run lint
+npm test
+npm run build
+node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
+```
+
+Results:
+- Focused Wav2Vec2/preset/export tests: 16 passed
+- Typecheck: clean
+- Lint: 0 errors, 5 existing max-lines warnings
+- Full tests: 100 files, 568 tests passed
+- Build: clean
+- Node/WASM Wav2Vec2 smoke: passed
+
+## Design Decisions
+
+- Browser/runtime default for Wav2Vec2 descriptor is WASM first. WebGPU is listed as available but not validated here.
+- Preset manifest currently does not force a hub ONNX source; local smoke uses an explicit direct source. This avoids pretending the asrjs-owned Wav2Vec2 ONNX repo is published before it is.
+- Stub fallback remains only for tests/no-source development. Real inference activates whenever `options.source` is provided.
+- Backward compatibility is no longer a project constraint before release. The `lasr-ctc/ctc.ts` wrapper can be deleted when MedASR is rewritten.
 
 ## Remaining Work
 
-### Next: Model Factory + Presets
-- W2V-3: `src/models/wav2vec2/model.ts` — model factory
-- W2V-3: `src/presets/wav2vec2/` — preset manifest + factory
-- W2V-3: `src/models/wav2vec2/mapping.ts` — native → canonical transcript
+1. Publish/host Wav2Vec2 ONNX artifact if we want `useManifestSources: true` to load without local direct paths.
+2. Implement CTC Viterbi forced alignment in `src/alignment/ctc-viterbi.ts`.
+3. Add Wav2Vec2 aligner wrapper in `src/alignment/wav2vec2-aligner.ts`.
+4. Add alignment fixture tests.
+5. Optional: add an npm script for `tests/smoke/wav2vec2-node-wasm-smoke.mjs` if recurring.
+6. Remove MedASR backward-compat wrappers when rewriting MedASR.
 
-### After Model Factory
-- W2V-4: Smoke test with real ONNX model (`/tmp/wav2vec2-base-960h.onnx`)
-- HF upload: `wav2vec2-base-960h` to HuggingFace
-- CTC Viterbi forced alignment (`src/alignment/ctc-viterbi.ts`)
-- Final gate check
+## Resume Instructions
 
-### Future (deferred)
-- Deduplicate Wav2Vec2TokenSpan → CtcTokenSpan alias in wav2vec2/types.ts
-- Deduplicate LasrCtcTokenSpan → CtcTokenSpan alias in lasr-ctc/types.ts
-- Mixed dtype
-- q4/q4f16
+Next useful task: start Phase D CTC Viterbi alignment.
 
-## Other Agent's Work
-
-- Flexo-DSV4Pro completed Phases A/B/C/F (quality/chunking/post-processing extraction, enhanced-executor wiring)
-  - Commits: 5474991 → bdfef2a
-  - Files owned: `src/quality/`, `src/chunking/`, `src/post-processing/`, enhanced executor files
-  - Do NOT modify without coordination
-
-## Environment Notes
-
-- Python venv: `tools/whisper-onnx-export/.venv/`
-- Python 3.12, ONNX Runtime 1.26.0
-- ONNX export at `/tmp/wav2vec2-base-960h.onnx` (may need re-export if /tmp cleaned)
+Start by writing failing tests for a tiny synthetic CTC lattice, then implement a model-agnostic aligner under `src/alignment/` or `src/ctc/` depending on whether it is generic CTC path logic or transcript-alignment-specific orchestration.
