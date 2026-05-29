@@ -1046,3 +1046,13 @@ loadSplitGraphLocalModel(dir, {
 - q8 runs through ONNX Runtime Web WASM CPU. Extended `max_new_tokens=64` comparison currently exposes quantized decoder divergence on two English fixtures while prompt/control parity remains correct.
 - WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.
 - Beam search is not implemented yet; keep it as the next decoding task after greedy parity is stable.
+
+### Future Whisper splitgraph beam search design note
+
+Do not implement beam search before Node/WASM greedy validation and manual WebGPU smoke are settled. When it starts, cover:
+- KV cache duplication per beam: duplicate decoder self-attention KV and preserve/reuse encoder cross-attention KV for each active beam.
+- Beam scores: maintain cumulative log-prob scores, apply length/EOS handling consistently with the target HF `generate()` behavior, and keep deterministic tie-breaking.
+- EOS handling: track finished beams separately, stop only when enough finished beams beat active candidates or max token budget is reached.
+- Timestamp token constraints: reuse the existing Whisper timestamp processor semantics per beam, including no-timestamps mode, monotonic timestamp constraints, and timestamp-pair rules.
+- Suppress token processor reuse: run the same suppress/begin-suppress/no-timestamps processor before top-k selection for every beam step.
+- HF comparison: validate beam output, token IDs, EOS behavior, and decoded text against HF `generate()` fixtures before considering the splitgraph beam path complete.
