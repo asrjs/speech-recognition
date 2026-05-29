@@ -74,6 +74,14 @@ function readExternalDataUrls(
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
+function readWhisperFeatureFrameCount(manifestRaw: Record<string, unknown>): number {
+  const maxSourcePositions = (manifestRaw.max_source_positions as number) ?? 3000;
+  // HF/OpenAI config max_source_positions is encoder time positions after the
+  // conv downsample (1500 for 30s Whisper). The ONNX encoder input is mel
+  // frames before downsample, so browser/WASM local comparison must feed 3000.
+  return maxSourcePositions <= 1500 ? maxSourcePositions * 2 : maxSourcePositions;
+}
+
 export function loadSplitGraphLocalModel(
   dirPath: string,
   options: SplitGraphLocalOptions = {},
@@ -155,7 +163,7 @@ export function loadSplitGraphLocalModel(
     decoderArchitecture: 'transformer-decoder',
     sampleRate: 16000,
     melBins: (manifestRaw.num_mel_bins as number) ?? 80,
-    maxSourcePositions: (manifestRaw.max_source_positions as number) ?? 3000,
+    maxSourcePositions: readWhisperFeatureFrameCount(manifestRaw),
     maxTargetPositions: (manifestRaw.max_target_positions as number) ?? 448,
     vocabularySize: (manifestRaw.vocab_size as number) ?? 51865,
     languages: ['en'],

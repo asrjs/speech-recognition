@@ -209,6 +209,7 @@ describe('Local splitgraph manifest external data', () => {
           decoder_layers: 4,
           decoder_attention_heads: 20,
           d_model: 1280,
+          max_source_positions: 1500,
           artifacts: {
             encoder: { file: 'encoder_model.onnx' },
             decoder_init: {
@@ -231,6 +232,7 @@ describe('Local splitgraph manifest external data', () => {
       const loaded = loadSplitGraphLocalModel(dir, { variant: null });
       expect(loaded.source.kind).toBe('splitgraph');
       if (loaded.source.kind !== 'splitgraph') throw new Error('expected splitgraph source');
+      expect(loaded.config.maxSourcePositions).toBe(3000);
       expect(loaded.source.artifacts.externalDataUrls?.encoder).toBeUndefined();
       expect(loaded.source.artifacts.externalDataUrls?.decoder_step).toBeUndefined();
       expect(loaded.source.artifacts.externalDataUrls?.decoder_init?.[0]?.path).toBe('./decoder_init.onnx.data');

@@ -1,6 +1,6 @@
 # Whisper Large v3 Turbo — Variant Validation Report
 
-**Generated**: 2026-05-29 16:45:43
+**Generated**: 2026-05-29 17:30:16
 **Model**: openai/whisper-large-v3-turbo (4-graph ONNX)
 **Artifacts**: /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph
 
@@ -35,7 +35,7 @@
 
 ## Variant: fp32
 
-Load time: 5.55s
+Load time: 5.745s
 
 ### 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.wav (unknown)
 
@@ -43,14 +43,16 @@ Load time: 5.55s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | The pandemic was so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad  |
 | Reference text | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta, ülkelerin sosyal ve ekonomik gel |
 | Word overlap | 0.0% |
-| Encoder time | 7.8982s |
-| Decoder init time | 0.2208s |
-| Step total time | 6.2953s |
-| Step avg / token | 28.1ms |
-| Total decode time | 14.429s |
+| Encoder time | 8.0592s |
+| Decoder init time | 0.1891s |
+| Step total time | 7.0305s |
+| Step avg / token | 31.39ms |
+| Total decode time | 15.293s |
 
 ### Its Life Jim.wav (en)
 
@@ -58,12 +60,14 @@ Load time: 5.55s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | Incredible. Not only should it have been destroyed by our phasers, it does not even register on my tricorder. Captain, it doesn't even look real. It is not life as we know or understand it. Yet it is  |
-| Encoder time | 6.692s |
-| Decoder init time | 0.1991s |
-| Step total time | 6.2723s |
-| Step avg / token | 28.0ms |
-| Total decode time | 13.177s |
+| Encoder time | 7.3569s |
+| Decoder init time | 0.1675s |
+| Step total time | 7.5621s |
+| Step avg / token | 33.76ms |
+| Total decode time | 15.103s |
 
 ### JFK_Short.wav (en)
 
@@ -71,12 +75,14 @@ Load time: 5.55s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I welcom |
-| Encoder time | 6.7691s |
-| Decoder init time | 0.1353s |
-| Step total time | 6.3725s |
-| Step avg / token | 28.45ms |
-| Total decode time | 13.292s |
+| Encoder time | 7.1513s |
+| Decoder init time | 0.147s |
+| Step total time | 7.072s |
+| Step avg / token | 31.57ms |
+| Total decode time | 14.387s |
 
 ### jfk2.wav (en)
 
@@ -84,12 +90,14 @@ Load time: 5.55s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Tha |
-| Encoder time | 6.7134s |
-| Decoder init time | 0.1348s |
-| Step total time | 6.4782s |
-| Step avg / token | 28.92ms |
-| Total decode time | 13.343s |
+| Encoder time | 7.312s |
+| Decoder init time | 0.147s |
+| Step total time | 8.2178s |
+| Step avg / token | 36.69ms |
+| Total decode time | 15.691s |
 
 ### librivox.org-1600hz.wav (en)
 
@@ -97,16 +105,18 @@ Load time: 5.55s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information or to volunteer, please visit LibriVox.org. Read by Olivia. A Yea |
-| Encoder time | 6.8825s |
-| Decoder init time | 0.1492s |
-| Step total time | 6.002s |
-| Step avg / token | 26.79ms |
-| Total decode time | 13.048s |
+| Encoder time | 8.3381s |
+| Decoder init time | 0.1948s |
+| Step total time | 8.5992s |
+| Step avg / token | 38.39ms |
+| Total decode time | 17.152s |
 
 ## Variant: fp16
 
-Load time: 5.599s
+Load time: 7.357s
 
 ### 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.wav (unknown)
 
@@ -114,14 +124,16 @@ Load time: 5.599s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | The pandemic was so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad and so bad  |
 | Reference text | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta, ülkelerin sosyal ve ekonomik gel |
 | Word overlap | 0.0% |
-| Encoder time | 13.2893s |
-| Decoder init time | 0.1987s |
-| Step total time | 7.1127s |
-| Step avg / token | 31.75ms |
-| Total decode time | 20.657s |
+| Encoder time | 10.4736s |
+| Decoder init time | 0.2245s |
+| Step total time | 10.7086s |
+| Step avg / token | 47.81ms |
+| Total decode time | 21.466s |
 
 ### Its Life Jim.wav (en)
 
@@ -129,12 +141,14 @@ Load time: 5.599s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | Incredible. Not only should it have been destroyed by our phasers, it does not even register on my tricorder. Captain, it doesn't even look real. It is not life as we know or understand it. Yet it is  |
-| Encoder time | 7.9501s |
-| Decoder init time | 0.1534s |
-| Step total time | 7.3563s |
-| Step avg / token | 32.84ms |
-| Total decode time | 15.505s |
+| Encoder time | 11.5227s |
+| Decoder init time | 0.2085s |
+| Step total time | 10.35s |
+| Step avg / token | 46.21ms |
+| Total decode time | 22.14s |
 
 ### JFK_Short.wav (en)
 
@@ -142,12 +156,14 @@ Load time: 5.599s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I welcom |
-| Encoder time | 7.9995s |
-| Decoder init time | 0.1346s |
-| Step total time | 7.3765s |
-| Step avg / token | 32.93ms |
-| Total decode time | 15.575s |
+| Encoder time | 10.2375s |
+| Decoder init time | 0.1931s |
+| Step total time | 10.3615s |
+| Step avg / token | 46.26ms |
+| Total decode time | 20.856s |
 
 ### jfk2.wav (en)
 
@@ -155,12 +171,14 @@ Load time: 5.599s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Tha |
-| Encoder time | 7.9666s |
-| Decoder init time | 0.1391s |
-| Step total time | 7.2961s |
-| Step avg / token | 32.57ms |
-| Total decode time | 15.443s |
+| Encoder time | 10.9636s |
+| Decoder init time | 0.1845s |
+| Step total time | 10.4522s |
+| Step avg / token | 46.66ms |
+| Total decode time | 21.661s |
 
 ### librivox.org-1600hz.wav (en)
 
@@ -168,16 +186,18 @@ Load time: 5.599s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information or to volunteer, please visit LibriVox.org. Read by Olivia. A Yea |
-| Encoder time | 7.9094s |
-| Decoder init time | 0.143s |
-| Step total time | 7.6497s |
-| Step avg / token | 34.15ms |
-| Total decode time | 15.754s |
+| Encoder time | 10.3682s |
+| Decoder init time | 0.2008s |
+| Step total time | 10.689s |
+| Step avg / token | 47.72ms |
+| Total decode time | 21.317s |
 
 ## Variant: q8
 
-Load time: 2.041s
+Load time: 3.059s
 
 ### 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.wav (unknown)
 
@@ -185,14 +205,16 @@ Load time: 2.041s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta ülkelerin sosyal ve ekonomik geli |
 | Reference text | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta, ülkelerin sosyal ve ekonomik gel |
 | Word overlap | 84.6% |
-| Encoder time | 5.697s |
-| Decoder init time | 0.1417s |
-| Step total time | 6.5138s |
-| Step avg / token | 29.08ms |
-| Total decode time | 12.376s |
+| Encoder time | 8.8972s |
+| Decoder init time | 0.1313s |
+| Step total time | 9.7136s |
+| Step avg / token | 43.36ms |
+| Total decode time | 18.762s |
 
 ### Its Life Jim.wav (en)
 
@@ -200,12 +222,14 @@ Load time: 2.041s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | Incredible. Not only should it have been destroyed by our phasers, it does not even register on my tricorder. Captain, it doesn't even look real. It is not life as we know or understand it. Yet it is  |
-| Encoder time | 6.2826s |
-| Decoder init time | 0.0901s |
-| Step total time | 5.2186s |
-| Step avg / token | 23.3ms |
-| Total decode time | 11.605s |
+| Encoder time | 9.6645s |
+| Decoder init time | 0.199s |
+| Step total time | 9.1983s |
+| Step avg / token | 41.06ms |
+| Total decode time | 19.078s |
 
 ### JFK_Short.wav (en)
 
@@ -213,12 +237,14 @@ Load time: 2.041s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I welcom |
-| Encoder time | 7.4598s |
-| Decoder init time | 0.1451s |
-| Step total time | 8.4567s |
-| Step avg / token | 37.75ms |
-| Total decode time | 16.08s |
+| Encoder time | 9.7467s |
+| Decoder init time | 0.1648s |
+| Step total time | 6.9299s |
+| Step avg / token | 30.94ms |
+| Total decode time | 16.862s |
 
 ### jfk2.wav (en)
 
@@ -226,12 +252,14 @@ Load time: 2.041s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Tha |
-| Encoder time | 4.8489s |
-| Decoder init time | 0.0798s |
-| Step total time | 4.4499s |
-| Step avg / token | 19.87ms |
-| Total decode time | 9.392s |
+| Encoder time | 6.6313s |
+| Decoder init time | 0.1246s |
+| Step total time | 7.652s |
+| Step avg / token | 34.16ms |
+| Total decode time | 14.424s |
 
 ### librivox.org-1600hz.wav (en)
 
@@ -239,28 +267,46 @@ Load time: 2.041s
 |--------|-------|
 | Tokens generated | 224 |
 | EOS reached | False |
+| Prompt language | en |
+| Prompt token IDs | [50258, 50259, 50360, 50364] |
 | Decoded text | Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information or to volunteer, please visit LibriVox.org. Read by Olivia. A Yea |
-| Encoder time | 4.6422s |
-| Decoder init time | 0.0781s |
-| Step total time | 4.4306s |
-| Step avg / token | 19.78ms |
-| Total decode time | 9.164s |
+| Encoder time | 6.4224s |
+| Decoder init time | 0.1208s |
+| Step total time | 7.133s |
+| Step avg / token | 31.84ms |
+| Total decode time | 13.693s |
 
-## Performance Comparison (JFK_Short / first fixture)
+## Performance Comparison (first fixture)
 
 | Variant | Encoder | Init | Step Total | Step/tok | Total | Tokens |
 |---------|---------|------|------------|----------|-------|--------|
-| fp32 | 7.8982s | 0.2208s | 6.2953s | 28.1ms | 14.429s | 224 |
-| fp16 | 13.2893s | 0.1987s | 7.1127s | 31.75ms | 20.657s | 224 |
-| q8 | 5.697s | 0.1417s | 6.5138s | 29.08ms | 12.376s | 224 |
+| fp32 | 8.0592s | 0.1891s | 7.0305s | 31.39ms | 15.293s | 224 |
+| fp16 | 10.4736s | 0.2245s | 10.7086s | 47.81ms | 21.466s | 224 |
+| q8 | 8.8972s | 0.1313s | 9.7136s | 43.36ms | 18.762s | 224 |
+
+## Prompt Consistency
+
+| Fixture | Prompt language | Prompt token IDs | Consistent across variants |
+|---------|-----------------|------------------|----------------------------|
+| 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.wav | en | [50258, 50259, 50360, 50364] | yes |
+| Its Life Jim.wav | en | [50258, 50259, 50360, 50364] | yes |
+| JFK_Short.wav | en | [50258, 50259, 50360, 50364] | yes |
+| jfk2.wav | en | [50258, 50259, 50360, 50364] | yes |
+| librivox.org-1600hz.wav | en | [50258, 50259, 50360, 50364] | yes |
 
 ## Status Summary
 
 | Variant | Native ORT | Smoke Decode | Accuracy vs FP32 | Status |
 |---------|-----------|-------------|-----------------|--------|
 | fp32 | pass | pass | reference | baseline |
-| fp16 | pass | pass | pending | WebGPU candidate |
-| q8 | pass | pass | pending | compact candidate |
+| fp16 | pass | pass | compare prompt-consistent output vs fp32 | WebGPU candidate |
+| q8 | pass | pass | compare prompt-consistent output vs fp32 | compact candidate |
+
+## Conclusion
+
+This report uses one fixed prompt token sequence per fixture across all variants before comparing outputs.
+If variants disagree on a fixture, treat it as a real variant/runtime difference, not a language-prompt difference.
+Do not claim Turkish accuracy from this report unless the same Turkish prompt was used for every variant on that fixture and the fp32 baseline agrees.
 
 ## Known Limitations
 

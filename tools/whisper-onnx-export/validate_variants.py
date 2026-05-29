@@ -304,12 +304,12 @@ def greedy_decode(
     return_timestamps: bool = False,
 ) -> Dict[str, Any]:
     """Full greedy decode: encoder → init → step loop."""
-    t0 = time.time()
+    t0 = time.perf_counter()
 
     # Encoder
-    t_enc_start = time.time()
+    t_enc_start = time.perf_counter()
     enc_out = run_encoder(enc_sess, mel)
-    t_enc = time.time() - t_enc_start
+    t_enc = time.perf_counter() - t_enc_start
 
     # Match encoder output dtype to decoder_init expectation
     dec_dtype = init_sess.get_inputs()[1].type if len(init_sess.get_inputs()) > 1 else ""
@@ -317,13 +317,13 @@ def greedy_decode(
         enc_out = enc_out.astype(np.float16)
 
     # Decoder init
-    t_init_start = time.time()
+    t_init_start = time.perf_counter()
     init_logits, past_kv = run_decoder_init(
         init_sess,
         np.array([prompt_ids], dtype=np.int64),
         enc_out,
     )
-    t_init = time.time() - t_init_start
+    t_init = time.perf_counter() - t_init_start
 
     eos_token_id = 50257
     if tokenizer:
@@ -348,7 +348,7 @@ def greedy_decode(
 
     # Step loop
     for step in range(1, max_new_tokens):
-        t_step_start = time.time()
+        t_step_start = time.perf_counter()
         # Merge: step outputs only self-attn KV. Keep encoder KV from init.
         merged_kv: Dict[str, np.ndarray] = {}
         for k, v in past_kv.items():
@@ -363,7 +363,7 @@ def greedy_decode(
         for k, v in step_new_kv.items():
             merged_kv[k] = v  # updated self-attn KV
         past_kv = merged_kv
-        t_step = time.time() - t_step_start
+        t_step = time.perf_counter() - t_step_start
         step_times.append(t_step)
         total_step_time += t_step
 
@@ -388,7 +388,7 @@ def greedy_decode(
     # for the next step. The run_decoder_step feeds ALL past KV including encoder,
     # so this works automatically.
 
-    total_time = time.time() - t0
+    total_time = time.perf_counter() - t0
 
     return {
         "tokens": tokens,
@@ -429,6 +429,42 @@ def greedy_decode_with_alignment(
 
 
 # ---------------------------------------------------------------------------
+# Prompt helpers
+# ---------------------------------------------------------------------------
+
+def token_id(tokenizer, token: str, fallback: int) -> int:
+    """Resolve a token ID without treating ID 0 as missing."""
+    resolved = tokenizer.convert_tokens_to_ids(token)
+    return fallback if resolved is None else int(resolved)
+
+
+def build_prompt_ids(tokenizer, language: str) -> Tuple[List[int], str]:
+    """Build the fixed Whisper prompt for one fixture language."""
+    prompt_language = language if language in {"en", "tr"} else "en"
+    return [
+        token_id(tokenizer, "<|startoftranscript|>", 50258),
+        token_id(tokenizer, f"<|{prompt_language}|>", 50259 if prompt_language == "en" else 50268),
+        token_id(tokenizer, "<|transcribe|>", 50359),
+        token_id(tokenizer, "<|notimestamps|>", 50363),
+    ], prompt_language
+
+
+def build_fixture_prompt_ids(
+    fixtures: List[Dict[str, Any]],
+    tokenizer,
+) -> Dict[str, Dict[str, Any]]:
+    """Build prompt token IDs once per fixture for fair cross-variant comparison."""
+    prompts: Dict[str, Dict[str, Any]] = {}
+    for fi in fixtures:
+        prompt_ids, prompt_language = build_prompt_ids(tokenizer, str(fi.get("language", "unknown")))
+        prompts[str(fi["filename"])] = {
+            "prompt_ids": prompt_ids,
+            "prompt_language": prompt_language,
+        }
+    return prompts
+
+
+# ---------------------------------------------------------------------------
 # Main validation
 # ---------------------------------------------------------------------------
 
@@ -436,6 +472,7 @@ def validate_variant(
     variant_dir: Path,
     variant_name: str,
     fixtures: List[Dict[str, Any]],
+    fixture_prompt_ids: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Run validation on all fixtures for one variant."""
     from transformers import WhisperTokenizer
@@ -446,7 +483,7 @@ def validate_variant(
 
     # Load sessions
     print(f"\n  Loading {variant_name} sessions...")
-    t_load_start = time.time()
+    t_load_start = time.perf_counter()
     providers = ['CPUExecutionProvider']
 
     def load_sess(name: str) -> ort.InferenceSession:
@@ -458,30 +495,10 @@ def validate_variant(
     step_sess = load_sess("decoder_step.onnx")
     align_path = variant_dir / "decoder_align.onnx"
     align_sess = load_sess("decoder_align.onnx") if align_path.exists() else None
-    t_load = time.time() - t_load_start
+    t_load = time.perf_counter() - t_load_start
 
-    # Prompt tokens: standard Whisper prompt
-    sot = tokenizer.convert_tokens_to_ids("<|startoftranscript|>") or 50258
-    lang_token = "<|en|>"  # default English
-    translate = tokenizer.convert_tokens_to_ids("<|transcribe|>") or 50359
-    notimestamps = tokenizer.convert_tokens_to_ids("<|notimestamps|>") or 50363
-    no_speech = None
-    try:
-        no_speech = tokenizer.convert_tokens_to_ids("<|nospeech|>")
-    except Exception:
-        pass
-
-    prompt_ids = [sot]
-    # Detect language from first fixture
-    if fixtures:
-        first_lang = fixtures[0].get("language", "en")
-        if first_lang == "tr":
-            lang_id = tokenizer.convert_tokens_to_ids("<|tr|>") or 50333
-            prompt_ids.append(lang_id)
-
-    prompt_ids.append(tokenizer.convert_tokens_to_ids("<|en|>") or 50259)
-    prompt_ids.append(translate)
-    prompt_ids.append(notimestamps)
+    if fixture_prompt_ids is None:
+        fixture_prompt_ids = build_fixture_prompt_ids(fixtures, tokenizer)
 
     results: Dict[str, Any] = {
         "variant": variant_name,
@@ -491,9 +508,13 @@ def validate_variant(
 
     for fi in fixtures:
         print(f"    {fi['filename']}...")
+        prompt_info = fixture_prompt_ids[str(fi["filename"])]
+        prompt_ids = list(prompt_info["prompt_ids"])
         fi_result: Dict[str, Any] = {
             "filename": fi["filename"],
             "language": fi.get("language", "unknown"),
+            "prompt_language": prompt_info["prompt_language"],
+            "prompt_ids": prompt_ids,
             "duration_sec": fi.get("duration", "unknown"),
         }
 
@@ -501,12 +522,12 @@ def validate_variant(
             audio = load_wav_mono_16k(fi["path"])
             mel = load_mel_from_wav(audio, variant_dir)
 
-            t_start = time.time()
+            t_start = time.perf_counter()
             dec = greedy_decode(
                 enc_sess, init_sess, step_sess,
                 mel, prompt_ids, tokenizer, max_new_tokens=224,
             )
-            t_total = time.time() - t_start
+            t_total = time.perf_counter() - t_start
 
             fi_result["tokens"] = dec["tokens"]
             fi_result["token_count"] = dec["token_count"]
@@ -665,6 +686,8 @@ def generate_report(
             lines.append(f"|--------|-------|")
             lines.append(f"| Tokens generated | {fi.get('token_count', '?')} |")
             lines.append(f"| EOS reached | {fi.get('eos_reached', '?')} |")
+            lines.append(f"| Prompt language | {fi.get('prompt_language', '?')} |")
+            lines.append(f"| Prompt token IDs | {fi.get('prompt_ids', [])} |")
             lines.append(f"| Decoded text | {fi.get('decoded_text', '')[:200]} |")
             if fi.get("reference_text"):
                 lines.append(f"| Reference text | {fi.get('reference_text', '')[:200]} |")
@@ -684,7 +707,7 @@ def generate_report(
             lines.append(f"")
 
     # Performance comparison table
-    lines.append(f"## Performance Comparison (JFK_Short / first fixture)")
+    lines.append(f"## Performance Comparison (first fixture)")
     lines.append(f"")
     lines.append(f"| Variant | Encoder | Init | Step Total | Step/tok | Total | Tokens |")
     lines.append(f"|---------|---------|------|------------|----------|-------|--------|")
@@ -699,14 +722,41 @@ def generate_report(
             )
     lines.append(f"")
 
+    # Prompt consistency table
+    lines.append(f"## Prompt Consistency")
+    lines.append(f"")
+    lines.append(f"| Fixture | Prompt language | Prompt token IDs | Consistent across variants |")
+    lines.append(f"|---------|-----------------|------------------|----------------------------|")
+    for fi in fixtures:
+        rows = [
+            vr for r in all_results for vr in r.get("fixtures", [])
+            if vr.get("filename") == fi["filename"] and not vr.get("error")
+        ]
+        prompt_sets = {tuple(row.get("prompt_ids", [])) for row in rows}
+        prompt_langs = {str(row.get("prompt_language", "?")) for row in rows}
+        prompt_ids = rows[0].get("prompt_ids", []) if rows else []
+        prompt_lang = rows[0].get("prompt_language", "?") if rows else "?"
+        consistent = len(prompt_sets) <= 1 and len(prompt_langs) <= 1
+        lines.append(
+            f"| {fi['filename']} | {prompt_lang} | {prompt_ids} | {'yes' if consistent else 'NO'} |"
+        )
+    lines.append(f"")
+
     # Status summary
     lines.append(f"## Status Summary")
     lines.append(f"")
     lines.append(f"| Variant | Native ORT | Smoke Decode | Accuracy vs FP32 | Status |")
     lines.append(f"|---------|-----------|-------------|-----------------|--------|")
     lines.append(f"| fp32 | pass | pass | reference | baseline |")
-    lines.append(f"| fp16 | pass | pass | pending | WebGPU candidate |")
-    lines.append(f"| q8 | pass | pass | pending | compact candidate |")
+    lines.append(f"| fp16 | pass | pass | compare prompt-consistent output vs fp32 | WebGPU candidate |")
+    lines.append(f"| q8 | pass | pass | compare prompt-consistent output vs fp32 | compact candidate |")
+    lines.append(f"")
+
+    lines.append(f"## Conclusion")
+    lines.append(f"")
+    lines.append(f"This report uses one fixed prompt token sequence per fixture across all variants before comparing outputs.")
+    lines.append(f"If variants disagree on a fixture, treat it as a real variant/runtime difference, not a language-prompt difference.")
+    lines.append(f"Do not claim Turkish accuracy from this report unless the same Turkish prompt was used for every variant on that fixture and the fp32 baseline agrees.")
     lines.append(f"")
 
     lines.append(f"## Known Limitations")
@@ -771,6 +821,19 @@ def main():
         dur = f"{fi.get('duration', '?'):.1f}s" if isinstance(fi.get('duration'), (int, float)) else "?"
         print(f"  {fi['filename']} ({lang}, {dur})")
 
+    # Build fixture prompts once before validating variants so every variant
+    # is compared with the same prompt token IDs for the same fixture.
+    prompt_tokenizer = None
+    for variant in args.variants:
+        candidate_dir = model_dir / variant
+        if candidate_dir.is_dir():
+            prompt_tokenizer = load_tokenizer_from_dir(candidate_dir)
+            break
+    if prompt_tokenizer is None:
+        print("ERROR: no tokenizer available for prompt construction")
+        sys.exit(1)
+    fixture_prompt_ids = build_fixture_prompt_ids(fixtures, prompt_tokenizer)
+
     # Validate each variant
     all_results = []
     for variant in args.variants:
@@ -782,7 +845,7 @@ def main():
         print(f"Validating variant: {variant}")
         print(f"{'='*60}")
 
-        result = validate_variant(variant_dir, variant, fixtures)
+        result = validate_variant(variant_dir, variant, fixtures, fixture_prompt_ids)
         all_results.append(result)
 
     if not all_results:
