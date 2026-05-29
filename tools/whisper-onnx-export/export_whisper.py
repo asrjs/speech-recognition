@@ -1484,6 +1484,26 @@ def export_all(
         "artifacts": artifacts,
         "external_data": use_external_data,
         "external_data_threshold": external_data_threshold,
+        "runtime_compatibility": {
+            "fp32": {
+                "precision": "float32",
+                "intended_runtime": ["node", "native", "python"],
+                "status": "validated",
+                "notes": "Reference path. Very large (~4.5 GB for large-v3-turbo). Not recommended for browser/WebGPU."
+            },
+            "fp16": {
+                "precision": "float16",
+                "intended_runtime": ["browser", "webgpu", "native_gpu"],
+                "status": "requires_export_time_fp16",
+                "notes": "Use --dtype float16 at export time. Post-export fp16 conversion is experimental due to onnxconverter_common Cast/type mismatch."
+            },
+            "int8-dynamic": {
+                "precision": "int8 (dynamic)",
+                "intended_runtime": ["cpu", "native", "browser_candidate"],
+                "status": "requires_validation",
+                "notes": "Post-export ONNX Runtime dynamic quantization. All four graphs must validate independently."
+            }
+        },
     }
     with open(out_dir / "manifest.json", "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
