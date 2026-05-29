@@ -33,19 +33,42 @@ Dependencies on other agents:
 - `src/audio/wav2vec-conv.ts` — MINE TO FILL (currently empty stub)
 - `src/alignment/` cross-attention DTW — FUTURE (not starting yet)
 
-### Whisper Executor Refactoring — OTHER AGENT
+### Whisper Executor Refactoring — OTHER AGENT (DONE, Flexo-DSV4Pro)
 
-Owner: Other agent (opencode/codex)
-Files: `src/models/whisper-seq2seq/core.ts`, `executor.ts`, `processors.ts`
-Status: IN PROGRESS (commit `1efddda`)
+Owner: Flexo-DSV4Pro (home agent, P520 WSL2)
+Started: 2026-05-29, Completed: 2026-05-30
+Status: ✅ DONE
 
-Do not touch these files.
+Completed:
+- `src/models/whisper-seq2seq/core.ts` — pure decode loop (vanilla, ONNX-agnostic)
+- `src/models/whisper-seq2seq/executor.ts` — ONNX bridge (unchanged, wrapper delegates to core)
+- Added `onTokenLogits` callback to core for quality gates
+- Commits: `1efddda` (core extraction), `708aac9` (callback + types)
 
-### Whisper Enhanced Modules — NOT YET CLAIMED
+### Whisper Enhanced Modules — DONE (Flexo-DSV4Pro)
 
-Files: `src/quality/`, `src/chunking/`, `src/post-processing/`
-Plan: `docs/plans/enhanced-asr-master-guide.md`
-Status: WAITING for vanilla executor to stabilize
+Owner: Flexo-DSV4Pro (home agent, P520 WSL2)
+Completed: 2026-05-30
+Status: ✅ ALL 8 PHASES DONE
+
+All new files in `src/models/whisper-seq2seq/` (zero modifications to core/executor):
+- `enhanced-types.ts` — QualityVerdict, QualityGate, EnhancedDecodeOptions, VadSegmenterConfig
+- `quality-gates.ts` — compression ratio (pako), logprob, entropy, no-speech gates
+- `temperature-fallback.ts` — generic retry loop with escalating temperatures
+- `chunk-context.ts` — ChunkContextBuilder + buildPromptWithContext()
+- `drift-handler.ts` — whisper.cpp-style seek counter for long audio
+- `vad-segmenter.ts` — WhisperVadBackend interface + mergeVadSegments()
+- `segment-merger.ts` — mergeWhisperSegments() with word deduplication
+- `enhanced-executor.ts` — EnhancedWhisperExecutor wraps WhisperExecutor via composition
+
+Tests: 78 new tests (489 total). Commits: `708aac9` through `7c85cdb`.
+Skill docs: `~/.hermes/skills/mlops/asrjs-dev/` + reference `references/whisper-enhanced-implementation.md`
+
+### WAV2VEC2 CTC Model Implementation — CLAIMED BY FLEXO
+
+Owner: Flexo (home agent, P520 WSL2)
+Started: 2026-05-30
+Status: IN PROGRESS
 
 ## Shared Files (coordinate before modifying)
 
