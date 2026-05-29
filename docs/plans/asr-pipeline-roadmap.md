@@ -1040,10 +1040,26 @@ loadSplitGraphLocalModel(dir, {
 
 ## Whisper splitgraph Node/WASM validation note
 
+Status date: 2026-05-29
+
+Completed and documented:
 - Node CLI validation lives in `tests/smoke/whisper-splitgraph-node-wasm-validate.mjs` and compares fp16/q8 against fp32 with fixture-language prompts from `.tr.*` / `.en.*` suffixes.
 - Greedy decode controls are verified: `language`, `task=transcribe`, `no_timestamps`, `max_new_tokens`, `suppress_tokens`, `begin_suppress_tokens`, `temperature=0`, `num_beams=1`.
 - fp16 Node CPU parity requires decoding float16 logits/alignment tensors to float32 before logit processing and argmax; raw uint16 half bits are not numeric logits.
+- `npm run validate:whisper-variants` builds the package, runs the Node validator in non-strict report mode, and regenerates `docs/reports/whisper-large-v3-turbo-variant-validation.{md,json}`.
+- Export/audit/verify workflow is documented in `docs/whisper-export-workflow.md`.
+- Detailed handoff is documented in `docs/handoffs/whisper-node-wasm-validation-handoff.md`.
+
+Current result:
+- fp32 is the Node CPU baseline.
+- fp16 Node CPU matches fp32 exactly on all 5 fixtures at `max_new_tokens=64`.
 - q8 runs through ONNX Runtime Web WASM CPU. Extended `max_new_tokens=64` comparison currently exposes quantized decoder divergence on two English fixtures while prompt/control parity remains correct.
+
+Next task:
+- Investigate q8 WASM extended greedy decode divergence vs fp32. Start with top-k/logit diagnostics around `ItsLifeJim.en.wav` token 46 and `librivox.org-1600hz.en.wav` token 9/EOS.
+- Do not start WebGPU automation until q8 divergence is understood or explicitly accepted.
+
+Manual/deferred:
 - WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.
 - Beam search is not implemented yet; keep it as the next decoding task after greedy parity is stable.
 

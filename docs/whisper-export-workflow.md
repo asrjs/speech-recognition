@@ -1,203 +1,309 @@
-# Whisper 4-Graph Export & Quantization Workflow
+# Whisper 4-Graph Export, Packaging, Publish Audit, and Node/WASM Validation
 
-## Pipeline
+Status date: 2026-05-29
+Branch: `feat/asr-pipeline-output-formats`
+Scope: existing Whisper splitgraph export scripts and local Node CLI / WASM validation. WebGPU/browser automation, mixed dtype, q4/q4f16, and beam-search implementation are intentionally deferred.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ 1. EXPORT FP32 (source of truth)                        │
-│    .venv/bin/python export_whisper.py MODEL_ID OUT_DIR  │
-│    --device cpu --dtype float32                         │
-│    Produces: encoder_model.onnx, decoder_init.onnx,     │
-│              decoder_step.onnx, decoder_align.onnx,     │
-│              manifest.json, tokenizer.json, ...         │
-├─────────────────────────────────────────────────────────┤
-│ 2. VERIFY (Python)                                      │
-│    .venv/bin/python test_kv_export.py                   │
-│    .venv/bin/python test_e2e_tokens.py                  │
-│    .venv/bin/python test_comprehensive.py [--quantize]  │
-├─────────────────────────────────────────────────────────┤
-│ 3. QUANTIZE (from fp32 originals)                       │
-│    Option A: --fp16 at export time                      │
-│    Option B: Post-export with onnxconverter_common      │
-│    Option C: --int8 at export time (dynamic quant)      │
-│    All paths are external-data-safe when using          │
-│    --external-data auto (or always)                     │
-├─────────────────────────────────────────────────────────┤
-│ 4. VERIFY (TypeScript)                                  │
-│    WHISPER_SPLITGRAPH_FIXTURE_DIR=... npx vitest run    │
-│    WHISPER_REFERENCE_JSON=... npx vitest run            │
-├─────────────────────────────────────────────────────────┤
-│ 5. UPLOAD to HF                                         │
-│    gf upload MODEL_DIR REPO_ID                          │
-│    hf upload REPO_ID MODEL_DIR .                        │
-└─────────────────────────────────────────────────────────┘
+## Current exported target
+
+Published validation target:
+
+- HF repo: `ysdede/whisper-large-v3-turbo-onnx-4graph`
+- Model: `openai/whisper-large-v3-turbo`
+- Format: 4-graph splitgraph (`encoder_model.onnx`, `decoder_init.onnx`, `decoder_step.onnx`, `decoder_align.onnx`)
+- Variants: `fp32`, `fp16`, `q8`
+- Clean publish layout: root config/tokenizer/preprocessor files plus one self-contained subdirectory per variant
+- Large-model external data: safe path-based ONNX operations, one `.data` file per graph when external data is required
+
+Variant sizes from the validated publish layout:
+
+| Variant | Approx size | External data | Runtime note |
+|---------|-------------|---------------|--------------|
+| `fp32/` | 4.5 GB | all 4 graphs | reference/native baseline, not a browser default |
+| `fp16/` | 2.3 GB | decoder graphs use `.data`; encoder inline | export-time FP16 only |
+| `q8/` | 1.4 GB | none | dynamic int8 quantized compact candidate |
+
+## Export tool location
+
+```bash
+cd /home/steam/github/asrjs/speech-recognition/tools/whisper-onnx-export
+.venv/bin/python --version
 ```
 
-## Model sizes
+Expected environment on Flexo:
 
-| Model | Params | d_model | Layers | Heads | Export device |
-|-------|--------|---------|--------|-------|---------------|
-| whisper-tiny | ~39M | 384 | 4 | 6 | GPU or CPU |
-| whisper-base | ~74M | 512 | 6 | 8 | GPU or CPU |
-| whisper-small | ~244M | 768 | 12 | 12 | GPU or CPU |
-| whisper-medium | ~769M | 1024 | 24 | 16 | GPU (8GB+) |
-| whisper-large-v3-turbo | ~809M | 1280 | 32 | 20 | CPU recommended |
-| whisper-large-v3 | ~1.55B | 1280 | 32 | 20 | CPU only |
+- Python 3.12 venv at `tools/whisper-onnx-export/.venv/`
+- ONNX Runtime 1.26.0
+- Export scripts in `tools/whisper-onnx-export/`
 
-## Quantization plan
+Key scripts:
 
-Workflow: `fp32 export → verify → quantize → verify → upload`
+| Script | Purpose |
+|--------|---------|
+| `export_whisper.py` | Export one splitgraph variant |
+| `audit_publish.py` | Check publish layout, manifest/ONNX agreement, external data, ORT load |
+| `validate_variants.py` | Python/native accuracy/perf validation |
+| `test_kv_export.py` | Export graph structure/unit checks |
+| `test_e2e_tokens.py` | ONNX-vs-PyTorch token checks |
+| `test_comprehensive.py` | Real speech/alignment/variant checks |
 
-```
-model-repo-root/
-├── encoder_model.onnx          # fp32 (source of truth)
-├── encoder_model.onnx.data     # external data (co-located)
-├── decoder_init.onnx
-├── decoder_init.onnx.data
-├── decoder_step.onnx
-├── decoder_step.onnx.data
-├── decoder_align.onnx
-├── decoder_align.onnx.data
-├── manifest.json
-├── tokenizer.json
-├── config.json
-├── generation_config.json
-├── preprocessor_config.json
-├── README.md
-├── fp16/                       # fp16 variants
-│   ├── encoder_model.onnx
-│   └── ...
-├── int8/                       # int8 variants
-│   ├── encoder_model.onnx
-│   └── ...
-└── manifest.json               # Updated with variant paths
-```
+## Export commands
 
-Quantization methods:
-- **fp16**: `--fp16` at export time or post-export with `convert_fp16_safe`.
-  When `--external-data auto` is active, post-export fp16 uses external-data-aware
-  save to stay safely below the 2 GB protobuf limit.
-- **int8**: `--int8` at export time (dynamic quantization). ORT quantize_dynamic
-  works on file paths and preserves external data automatically.
-- **q4/q8**: Not supported by onnxconverter_common. Needs custom tooling.
-- **nvfp4**: NVIDIA-specific. Not applicable for cross-platform ONNX.
+Use `--output-layout variant-dirs` (default). Each variant is self-contained.
 
-## External data (large model safety)
+```bash
+cd /home/steam/github/asrjs/speech-recognition/tools/whisper-onnx-export
 
-ONNX protobuf has a 2 GB hard limit on serialized `ModelProto`.
-Large Whisper models exceed this:
-- whisper-large-v3-turbo (809M params): decoder_init ~910 MB, decoder_step ~606 MB
-- whisper-large-v3 (1.55B params): all decoder graphs >2 GB
+# FP32 reference variant. CPU avoids CUDA memory pressure for large-v3-turbo.
+.venv/bin/python export_whisper.py openai/whisper-large-v3-turbo \
+  /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph \
+  --device cpu \
+  --dtype float32 \
+  --external-data auto \
+  --variant fp32 \
+  --output-layout variant-dirs
 
-The exporter supports three strategies via `--external-data`:
-- **auto** (default): Use external data for models with decoder_layers >= 24
-- **always**: Force external data for all graphs
-- **never**: Inline all weights (NOT safe for large models)
+# FP16 variant. Export-time FP16 only; do not use post-export FP16 conversion.
+.venv/bin/python export_whisper.py openai/whisper-large-v3-turbo \
+  /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph \
+  --device cuda \
+  --dtype float16 \
+  --external-data auto \
+  --variant fp16 \
+  --output-layout variant-dirs
 
-With external data enabled:
-- Each `.onnx` file contains only the graph structure (small, ~400 KB).
-- Weights are stored in co-located `.onnx.data` files.
-- ORT loads co-located `.data` files automatically in Node.js.
-- Browser loads require explicit externalData URLs in manifest + session options.
-
-Recommended commands:
-```
-# CPU-safe fp32 export (avoids CUDA OOM but still needs external data)
-python export_whisper.py openai/whisper-large-v3-turbo ./output \\
-  --device cpu --dtype float32 --external-data auto
-
-# GPU fp16 export (memory-efficient at load + external-data safe)
-python export_whisper.py openai/whisper-large-v3-turbo ./output-fp16 \\
-  --device cuda --dtype float16 --external-data auto
+# q8 variant. Dynamic int8 quantization from fp32 export path.
+.venv/bin/python export_whisper.py openai/whisper-large-v3-turbo \
+  /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph \
+  --device cpu \
+  --dtype float32 \
+  --external-data auto \
+  --variant q8 \
+  --output-layout variant-dirs
 ```
 
-Key safety features:
-- `save_onnx_safe()` — Never calls SerializeToString on >2 GB ModelProto
-- `validate_onnx_safe()` — Uses path-based checker for external-data models
-- `discover_external_data()` — Extracts external data metadata for manifest
-- `convert_fp16_safe()` — Post-export fp16 with external-data-aware save
-- `convert_int8_safe()` — ORT path-based quantize preserves external data
+Notes:
 
-## Variant directory layout
+- `--external-data auto` is the default and is required for safe large-model export. It detects large encoders as well as large decoders.
+- `--variant fp16` auto-aligns with export-time FP16. Post-export FP16 via `onnxconverter_common.float16` is broken for these graphs because ORT hits Cast type mismatches.
+- `--variant q8` is the current preferred name. Older `int8-dynamic` terminology may appear in scripts/docs as an alias, but the publish layout uses `q8/`.
+- `--external-data-one-file true` is the default. It repacks per-weight external-data files from `torch.onnx.export` into one `<graph>.onnx.data` file per graph.
 
-Export with `--output-layout variant-dirs` (default) produces a clean publishable
-structure. Each variant lives in its own self-contained subdirectory:
+## Expected publish layout
 
-```
-model-repo-root/
+```text
+whisper-large-v3-turbo-onnx-4graph/
 ├── README.md
 ├── config.json
 ├── generation_config.json
-├── tokenizer.json
 ├── preprocessor_config.json
+├── tokenizer.json
 ├── fp32/
 │   ├── manifest.json
-│   ├── config.json
-│   ├── tokenizer.json
-│   ├── encoder_model.onnx       (+ encoder_model.onnx.data if external)
-│   ├── decoder_init.onnx        (+ decoder_init.onnx.data)
-│   ├── decoder_step.onnx        (+ decoder_step.onnx.data)
-│   └── decoder_align.onnx       (+ decoder_align.onnx.data)
+│   ├── encoder_model.onnx
+│   ├── encoder_model.onnx.data
+│   ├── decoder_init.onnx
+│   ├── decoder_init.onnx.data
+│   ├── decoder_step.onnx
+│   ├── decoder_step.onnx.data
+│   ├── decoder_align.onnx
+│   └── decoder_align.onnx.data
 ├── fp16/
-│   └── ... (export-time FP16 recommended)
-└── int8-dynamic/
-    └── ... (post-export dynamic quantization)
+│   ├── manifest.json
+│   ├── encoder_model.onnx
+│   ├── decoder_init.onnx
+│   ├── decoder_init.onnx.data
+│   ├── decoder_step.onnx
+│   ├── decoder_step.onnx.data
+│   ├── decoder_align.onnx
+│   └── decoder_align.onnx.data
+└── q8/
+    ├── manifest.json
+    ├── encoder_model.onnx
+    ├── decoder_init.onnx
+    ├── decoder_step.onnx
+    └── decoder_align.onnx
 ```
 
-Key rules:
-- Each variant is self-contained — graphs never reference data files from
-  other variants.
-- Manifest paths are relative to the variant directory (e.g., `"file": "encoder_model.onnx"`).
-- `--external-data-one-file true` (default) ensures one `.onnx.data` file per graph.
-  Per-weight external data from `torch.onnx.export` is automatically repacked.
-- `fp16/` is only valid when created with `--dtype float16` (export-time FP16).
-  Post-export FP16 conversion is experimental — export-time is preferred.
-- `int8-dynamic/` is created via `--variant int8-dynamic --int8`.
-  All four graphs are validated (ONNX checker + ORT load) before the variant
-  is marked ready.
+Each variant dir also contains copied tokenizer/config/preprocessor files required by local loaders.
 
-Recommended commands:
-```
-# FP32
-python export_whisper.py openai/whisper-large-v3-turbo ./dist \
-  --device cpu --dtype float32 --external-data auto --variant fp32
+## Publish audit
 
-# FP16 (export-time, ORT-safe)
-python export_whisper.py openai/whisper-large-v3-turbo ./dist \
-  --device cuda --dtype float16 --external-data auto --variant fp16
+Run audit before upload and after any local packaging change:
 
-# INT8 (post-export dynamic)
-python export_whisper.py openai/whisper-large-v3-turbo ./dist \
-  --device cpu --dtype float32 --external-data auto --variant int8-dynamic --int8
+```bash
+cd /home/steam/github/asrjs/speech-recognition/tools/whisper-onnx-export
+
+.venv/bin/python audit_publish.py \
+  /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph \
+  --variants fp32 fp16 q8 \
+  --smoke
 ```
 
-The `--output-layout flat` escape hatch keeps everything in root (legacy behaviour).
+Audit expectations:
 
-## Browser loading requirement
+- 0 failures
+- no tensor-named external files remain in published layout
+- every manifest path exists
+- every ONNX external-data location/offset/length agrees with manifest metadata
+- ONNX checker uses safe path-based validation
+- ORT can load every graph
+- SHA256 metadata is stable
 
-ORT Web requires explicit externalData in session options:
+## Python/native variant validation
+
+Python/native validation remains useful for artifact sanity and speed/accuracy reports:
+
+```bash
+cd /home/steam/github/asrjs/speech-recognition/tools/whisper-onnx-export
+
+.venv/bin/python validate_variants.py \
+  --model-dir /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph \
+  --fixtures ../../tests/fixtures \
+  --variants fp32 fp16 q8 \
+  --report ../../docs/reports/whisper-large-v3-turbo-variant-validation.md
 ```
-{
-  path: "<ONNX internal external_data location>",  // e.g. "encoder_model.onnx.data"
-  data: "<resolved URL/blob/Uint8Array>"            // full URL to the .data file
-}
+
+Prompt fairness rule:
+
+- Resolve fixture language from filename suffix first: `.tr.*` -> Turkish, `.en.*` -> English.
+- Build one prompt token sequence per fixture.
+- Reuse the same prompt IDs across `fp32`, `fp16`, and `q8`.
+- Report prompt IDs before making accuracy conclusions.
+
+Expected prompt IDs:
+
+- English: `[50258, 50259, 50360, 50364]`
+- Turkish: `[50258, 50268, 50360, 50364]`
+
+## Node CLI / WASM validation
+
+Primary runtime validation now lives in:
+
+```text
+tests/smoke/whisper-splitgraph-node-wasm-validate.mjs
 ```
-The `path` must match the ONNX graph's internal `external_data.location` EXACTLY.
-This value comes from the manifest's `externalData[].path` field.
 
-## Current HF repos
+Run through npm:
 
-| Repo | Model | Variants |
-|------|-------|----------|
-| `ysdede/whisper-large-v3-turbo-onnx-4graph` | whisper-large-v3-turbo | fp32 |
+```bash
+cd /home/steam/github/asrjs/speech-recognition
 
-## Per-weight vs consolidated external data
+WHISPER_VARIANT_DIR=/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph \
+WHISPER_MAX_NEW_TOKENS=64 \
+npm run validate:whisper-variants
+```
 
-`torch.onnx.export` auto-externalizes individual tensors for large encoders,
-producing files like `encoder.conv1.weight`, `encoder.layers.0.fc1.bias`, etc.
-These are valid ONNX external data but NOT suitable for published repos.
+Equivalent direct command:
 
-The exporter automatically detects per-weight files and uses `repack_external_data()`
-to consolidate them into a single `<graph>.onnx.data` file per graph.  Old per-weight
-files are deleted after repack.  This is controlled by `--external-data-one-file true`
-(default).  Use `--external-data-one-file false` to keep per-weight files.
+```bash
+npm run build
+node tests/smoke/whisper-splitgraph-node-wasm-validate.mjs \
+  --model-dir /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph \
+  --fixtures tests/fixtures \
+  --variants fp32 fp16 q8 \
+  --max-new-tokens 64 \
+  --no-align \
+  --no-strict \
+  --report docs/reports/whisper-large-v3-turbo-variant-validation.md
+```
+
+What it verifies:
+
+- fixture language suffixes: `.tr.*` -> Turkish, `.en.*` -> English
+- prompt IDs match across variants for the same fixture
+- generation controls: `language`, `task=transcribe`, `no_timestamps`, `max_new_tokens`, `suppress_tokens`, `begin_suppress_tokens`, greedy `temperature=0`, `num_beams=1`
+- token IDs, decoded text, EOS behavior, exact token match vs fp32 baseline
+- optional alignment path: shape, row sums, non-negative values, monotonic DTW timestamps
+
+Backend policy in the current validator:
+
+- `fp32`: onnxruntime-node CPU baseline. Large fp32 exceeds practical WASM memory on this host.
+- `fp16`: onnxruntime-node CPU. The validator converts float16 logits/alignment tensors back to float32 before logit processing and argmax.
+- `q8`: onnxruntime-web WASM CPU.
+
+Alignment validation is available, but full large-variant alignment over every fixture is slow. Use a focused fixture for sanity:
+
+```bash
+mkdir -p /tmp/whisper-one-fixture
+cp tests/fixtures/jfk2.en.wav /tmp/whisper-one-fixture/
+
+node tests/smoke/whisper-splitgraph-node-wasm-validate.mjs \
+  --model-dir /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph \
+  --fixtures /tmp/whisper-one-fixture \
+  --variants fp32 fp16 q8 \
+  --max-new-tokens 32 \
+  --report /tmp/whisper-align-strict.md
+```
+
+## Current Node/WASM validation results
+
+Current generated report:
+
+```text
+docs/reports/whisper-large-v3-turbo-variant-validation.md
+docs/reports/whisper-large-v3-turbo-variant-validation.json
+```
+
+At `max_new_tokens=64`, `--no-align`, `--no-strict`:
+
+| Variant | Prompt/control parity | Token/text parity vs fp32 | Status |
+|---------|-----------------------|---------------------------|--------|
+| fp32 | baseline | baseline | pass |
+| fp16 | pass | exact on 5/5 fixtures | pass |
+| q8 | pass | exact on 3/5 fixtures | investigate |
+
+Known q8 divergences:
+
+- `ItsLifeJim.en.wav`: first token difference at token 46; wording diverges while the prefix remains close.
+- `librivox.org-1600hz.en.wav`: fp32 emits EOS after the title; q8 continues into LibriVox boilerplate and reaches EOS later.
+
+These are now real q8/runtime differences, not prompt-language artifacts.
+
+## TypeScript/runtime gate
+
+Run before handoff or push:
+
+```bash
+cd /home/steam/github/asrjs/speech-recognition
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm run validate:whisper-variants
+```
+
+Latest verified gate:
+
+- `npm run typecheck` passed
+- `npm run lint` passed with 0 errors / 4 existing max-lines warnings
+- `npm test` passed: 84 files / 411 tests
+- `npm run build` passed
+- `npm run validate:whisper-variants` passed in non-strict reporting mode
+
+## HF upload
+
+Only upload after audit and validation are accepted:
+
+```bash
+hf upload ysdede/whisper-large-v3-turbo-onnx-4graph \
+  /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph .
+```
+
+Current task explicitly did not change published HF artifacts.
+
+## Deferred / manual steps
+
+- WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.
+- Beam search is not implemented yet. Design note is in `docs/plans/asr-pipeline-roadmap.md`.
+- Mixed dtype and q4/q4f16 are deferred.
+- External benchmark datasets are deferred until local runtime validation is stable.
+
+## Next task
+
+Investigate q8 WASM extended greedy decode divergence against fp32. Start with logits/top-k inspection around:
+
+- `ItsLifeJim.en.wav`, token step 46
+- `librivox.org-1600hz.en.wav`, token step 9 / EOS decision
+
+Do not begin WebGPU automation until q8 divergence is understood or explicitly accepted.
