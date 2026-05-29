@@ -82,4 +82,54 @@ describe('Whisper model config parsing', () => {
     const large = parseWhisperModelConfig({ num_mel_bins: 128 });
     expect(large.numMelBins).toBe(128);
   });
+
+  it('reads d_model and computes headDim', () => {
+    const tiny = parseWhisperModelConfig({
+      decoder_layers: 4,
+      decoder_attention_heads: 6,
+      d_model: 384,
+    });
+    expect(tiny.dModel).toBe(384);
+    expect(tiny.headDim).toBe(64); // 384 / 6
+
+    const base = parseWhisperModelConfig({
+      decoder_layers: 6,
+      decoder_attention_heads: 8,
+      d_model: 512,
+    });
+    expect(base.dModel).toBe(512);
+    expect(base.headDim).toBe(64); // 512 / 8
+
+    const small = parseWhisperModelConfig({
+      decoder_layers: 12,
+      decoder_attention_heads: 12,
+      d_model: 768,
+    });
+    expect(small.dModel).toBe(768);
+    expect(small.headDim).toBe(64); // 768 / 12
+
+    const largeV3 = parseWhisperModelConfig({
+      decoder_layers: 32,
+      decoder_attention_heads: 20,
+      d_model: 1280,
+    });
+    expect(largeV3.dModel).toBe(1280);
+    expect(largeV3.headDim).toBe(64); // 1280 / 20
+  });
+
+  it('defaults dModel and headDim to whisper-tiny values when missing', () => {
+    const parsed = parseWhisperModelConfig({});
+    expect(parsed.dModel).toBe(384);
+    expect(parsed.headDim).toBe(64);
+  });
+
+  it('throws when dModel is not divisible by decoderAttentionHeads', () => {
+    expect(() =>
+      parseWhisperModelConfig({
+        decoder_layers: 4,
+        decoder_attention_heads: 7,
+        d_model: 384,
+      }),
+    ).toThrow(/d_model.*not divisible.*decoder_attention_heads/);
+  });
 });

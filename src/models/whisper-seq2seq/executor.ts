@@ -32,7 +32,9 @@ import { buildWhisperWordTimestampsFromTokenDetails } from './word-timestamps.js
 import { computeWhisperDtwTokenTimestamps } from './attention-alignment.js';
 import {
   parseWhisperGenerationConfig,
+  parseWhisperModelConfig,
   type WhisperGenerationConfig,
+  type WhisperModelConfig,
 } from './generation-config.js';
 import type {
   WhisperArtifactSource,
@@ -50,6 +52,7 @@ interface LoadedExecutorState {
   readonly encoderSession: OrtSessionLike;
   readonly decoderSession: OrtSessionLike;
   readonly generationConfig: WhisperGenerationConfig;
+  readonly modelConfig: WhisperModelConfig;
   readonly warnings: readonly TranscriptWarning[];
 }
 
@@ -128,6 +131,21 @@ function hasListedRepoFile(files: readonly string[], filename: string): boolean 
   return files.some(
     (p) => normalizeRepoPath(p) === target || normalizeRepoPath(p).endsWith(`/${target}`),
   );
+}
+
+export function computeEmptyPastKeyValueShapes(
+  config: WhisperModelConfig,
+  encoderSeqLen: number,
+): Record<string, readonly number[]> {
+  const shapes: Record<string, readonly number[]> = {};
+  const { decoderLayers, decoderAttentionHeads, headDim } = config;
+  for (let i = 0; i < decoderLayers; i++) {
+    shapes[`past_key_values.${i}.decoder.key`] = [1, decoderAttentionHeads, 0, headDim];
+    shapes[`past_key_values.${i}.decoder.value`] = [1, decoderAttentionHeads, 0, headDim];
+    shapes[`past_key_values.${i}.encoder.key`] = [1, decoderAttentionHeads, encoderSeqLen, headDim];
+    shapes[`past_key_values.${i}.encoder.value`] = [1, decoderAttentionHeads, encoderSeqLen, headDim];
+  }
+  return shapes;
 }
 
 export class WhisperOnnxExecutor {
@@ -249,7 +267,8 @@ export class WhisperOnnxExecutor {
     });
 
     const genConfig = await this.loadGenerationConfig(artifacts);
-    return { ort, tokenizer, encoderSession, decoderSession, generationConfig: genConfig, warnings };
+    const modelConfig = await this.loadModelConfig(artifacts);
+    return { ort, tokenizer, encoderSession, decoderSession, generationConfig: genConfig, modelConfig, warnings };
   }
 
   private async getLoadedState(): Promise<LoadedExecutorState> {
@@ -287,9 +306,9 @@ export class WhisperOnnxExecutor {
         feeds[name] = tensor;
       }
     } else {
-      const numLayers = 4;
-      const numHeads = 6;
-      const headDim = 64;
+      const numLayers = loaded.modelConfig.decoderLayers;
+      const numHeads = loaded.modelConfig.decoderAttentionHeads;
+      const headDim = loaded.modelConfig.headDim;
       const encoderSeqLen = encoderHiddenStates.dims[1] as number;
       for (let i = 0; i < numLayers; i++) {
         feeds[`past_key_values.${i}.decoder.key`] = new loaded.ort.Tensor(
@@ -372,10 +391,10 @@ export class WhisperOnnxExecutor {
     }
 
     // First step: provide empty past_key_values
-    // Use config-derived layer/head counts if available, fall back to defaults
-    const numLayers = 4;
-    const numHeads = 6;
-    const headDim = 64;
+    // Use config-driven layer/head counts
+    const numLayers = loaded.modelConfig.decoderLayers;
+    const numHeads = loaded.modelConfig.decoderAttentionHeads;
+    const headDim = loaded.modelConfig.headDim;
     const encoderSeqLen = encoderHiddenStates.dims[1] as number;
     for (let i = 0; i < numLayers; i++) {
       feeds[`past_key_values.${i}.decoder.key`] = new loaded.ort.Tensor(
@@ -587,6 +606,20 @@ export class WhisperOnnxExecutor {
       return parseWhisperGenerationConfig(json);
     } catch {
       return parseWhisperGenerationConfig({});
+    }
+  }
+
+  private async loadModelConfig(
+    artifacts: { readonly tokenizerUrl: string },
+  ): Promise<WhisperModelConfig> {
+    try {
+      const configUrl = artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'config.json');
+      const response = await fetch(configUrl);
+      if (!response.ok) return parseWhisperModelConfig({});
+      const json = (await response.json()) as Record<string, unknown>;
+      return parseWhisperModelConfig(json);
+    } catch {
+      return parseWhisperModelConfig({});
     }
   }
 

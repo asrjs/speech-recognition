@@ -9,6 +9,8 @@ export interface WhisperModelConfig {
   readonly medianFilterWidth: number;
   readonly decoderLayers: number;
   readonly decoderAttentionHeads: number;
+  readonly dModel: number;
+  readonly headDim: number;
   readonly numMelBins?: number;
 }
 
@@ -44,13 +46,26 @@ export function parseWhisperGenerationConfig(
 export function parseWhisperModelConfig(
   raw: Record<string, unknown>,
 ): WhisperModelConfig {
+  const decoderLayers: number =
+    typeof raw.decoder_layers === 'number' ? raw.decoder_layers : 4;
+  const decoderAttentionHeads: number =
+    typeof raw.decoder_attention_heads === 'number' ? raw.decoder_attention_heads : 6;
+  const dModel: number =
+    typeof raw.d_model === 'number' ? raw.d_model : 384;
+
+  if (dModel % decoderAttentionHeads !== 0) {
+    throw new Error(
+      `d_model (${dModel}) is not divisible by decoder_attention_heads (${decoderAttentionHeads}). Whisper requires head_dim to be integral.`,
+    );
+  }
+
   return {
     medianFilterWidth:
       typeof raw.median_filter_width === 'number' ? raw.median_filter_width : 7,
-    decoderLayers:
-      typeof raw.decoder_layers === 'number' ? raw.decoder_layers : 4,
-    decoderAttentionHeads:
-      typeof raw.decoder_attention_heads === 'number' ? raw.decoder_attention_heads : 6,
+    decoderLayers,
+    decoderAttentionHeads,
+    dModel,
+    headDim: Math.floor(dModel / decoderAttentionHeads),
     numMelBins:
       typeof raw.num_mel_bins === 'number' ? raw.num_mel_bins : undefined,
   };
