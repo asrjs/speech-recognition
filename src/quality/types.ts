@@ -1,0 +1,44 @@
+/**
+ * Quality Gate Types — shared contracts for hallucination suppression.
+ *
+ * Model-agnostic. Works with any ASR model that produces text + token logits.
+ */
+
+// ---------------------------------------------------------------------------
+// Verdicts
+// ---------------------------------------------------------------------------
+
+/** Outcome of a quality gate evaluation. */
+export type QualityVerdict = 'accept' | 'reject' | 'no_speech';
+
+// ---------------------------------------------------------------------------
+// Quality Gate
+// ---------------------------------------------------------------------------
+
+/** A quality gate function — evaluates a decode result. */
+export interface QualityGate {
+  (text: string, tokens: readonly number[], logits: readonly Float32Array[], vocabSize: number): QualityGateResult;
+}
+
+/** Result of running one or more quality gates on a decode result. */
+export interface QualityGateResult {
+  readonly verdict: QualityVerdict;
+  readonly compressionRatio?: number;
+  readonly avgLogProb?: number;
+  readonly noSpeechProb?: number;
+  readonly entropy?: number;
+  readonly reason?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Per-segment metrics
+// ---------------------------------------------------------------------------
+
+/** Quality metrics collected during a single decode run. */
+export interface SegmentQualityMetrics {
+  readonly compressionRatio: number;
+  readonly avgLogProb: number;
+  readonly noSpeechProb: number;
+  readonly entropy: number;
+  readonly temperature: number;
+}
