@@ -208,6 +208,47 @@ export async function splitGraphDecodeLoop(params: {
   return { tokens };
 }
 
+export interface SplitGraphAlignmentOptions {
+  readonly alignmentData: Float32Array;
+  readonly totalTokens: number;
+  readonly promptLen: number;
+  readonly textTokenCount: number;
+  readonly frameCount: number;
+  readonly medianFilterWidth?: number;
+  readonly timePrecisionSeconds?: number;
+}
+
+export function processSplitGraphAlignment(
+  options: SplitGraphAlignmentOptions,
+): readonly number[] {
+  const {
+    alignmentData, totalTokens: _totalTokens, promptLen, textTokenCount, frameCount,
+    medianFilterWidth, timePrecisionSeconds,
+  } = options;
+
+  if (textTokenCount === 0) return [0];
+  if (frameCount === 0) return Array.from({ length: textTokenCount + 1 }, () => 0);
+
+  // Slice off prompt rows: alignment[T_all, S] → extract text-only rows [promptLen:totalTokens, :]
+  const textValues = new Float32Array(textTokenCount * frameCount);
+  const srcOffset = promptLen * frameCount;
+  textValues.set(alignmentData.subarray(srcOffset, srcOffset + textTokenCount * frameCount));
+
+  const headMatrix = {
+    values: textValues,
+    tokenCount: textTokenCount,
+    frameCount,
+  };
+
+  return computeWhisperDtwTokenTimestamps({
+    attentionHeads: [headMatrix],
+    tokenCount: textTokenCount,
+    frameCount,
+    medianFilterWidth,
+    timePrecisionSeconds,
+  });
+}
+
 export class WhisperOnnxExecutor {
   private readonly sourceOptions: WhisperArtifactSource | undefined;
   private readonly loadStatePromise?: Promise<LoadedExecutorState>;
@@ -512,6 +553,82 @@ export class WhisperOnnxExecutor {
     logitsForText.set(logitsTensor.data.subarray(srcOffset, srcOffset + textCount * totalVocab));
 
     return { crossAttentions, logitsForText };
+  }
+
+  private async runForcedAlignmentSplitGraph(
+    loaded: Required<Pick<LoadedExecutorState, 'decoderAlignSession' | 'ort'>> & LoadedExecutorState,
+    encoderHiddenStates: OrtTensorLike<Float32Array>,
+    allTokenIds: readonly number[],
+    _promptLen: number,
+  ): Promise<Float32Array> {
+    const inputIds = new BigInt64Array(allTokenIds.map((id) => BigInt(id)));
+    const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, allTokenIds.length]);
+    const feeds: Record<string, unknown> = {
+      input_ids: inputIdsTensor,
+      encoder_hidden_states: encoderHiddenStates,
+    };
+
+    const outputs = await loaded.decoderAlignSession.run(feeds);
+    const alignKey = Object.keys(outputs)[0]!;
+    const alignTensor = outputs[alignKey] as OrtTensorLike<Float32Array>;
+
+    return alignTensor.data;
+  }
+
+  private async computeAttentionWordTimestampsSplitGraph(
+    loaded: Required<Pick<LoadedExecutorState, 'decoderAlignSession' | 'ort'>> & LoadedExecutorState,
+    encoderHiddenStates: OrtTensorLike<Float32Array>,
+    tokenizer: WhisperTokenizer,
+    segments: WhisperNativeSegment[],
+    allTokens: readonly number[],
+    promptLen: number,
+    _options: WhisperSeq2SeqTranscriptionOptions,
+  ): Promise<WhisperNativeTranscript['words']> {
+    // Collect text token IDs from segments
+    const textTokenIds: number[] = [];
+    for (const seg of segments) {
+      const ids = tokenizer.encode(seg.text);
+      for (const id of ids) {
+        if (!tokenizer.isSpecialTokenId(id) && !tokenizer.isTimestampTokenId(id)) {
+          textTokenIds.push(id);
+        }
+      }
+    }
+    if (textTokenIds.length === 0) return [];
+
+    try {
+      const alignmentData = await this.runForcedAlignmentSplitGraph(
+        loaded, encoderHiddenStates, allTokens, promptLen,
+      );
+
+      const encoderFrameCount = (encoderHiddenStates.dims[1] as number) ?? 0;
+      const frameCount = encoderFrameCount; // decoder_align outputs full encoder seq
+      const totalTokens = allTokens.length;
+
+      const dtwTimestamps = processSplitGraphAlignment({
+        alignmentData,
+        totalTokens,
+        promptLen,
+        textTokenCount: textTokenIds.length,
+        frameCount,
+        medianFilterWidth: loaded.modelConfig.medianFilterWidth,
+        timePrecisionSeconds: 0.02,
+      });
+
+      return this.buildWordsFromDtwTimestamps(
+        tokenizer, textTokenIds, dtwTimestamps,
+      );
+    } catch {
+      // Alignment failed — fall back to timestamp-token interpolation
+      return buildWhisperWordTimestampsFromTokenDetails(
+        [], // No token details with timestamps to build from
+        {
+          timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
+          timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
+          language: '',
+        },
+      );
+    }
   }
 
   private async computeAttentionWordTimestamps(
@@ -1166,11 +1283,15 @@ export class WhisperOnnxExecutor {
     // 6. Build segments
     const segments = this.buildSegments(tokenDetails, tokenizer, options.noTimestamps);
 
-    // 7. Word timestamps via alignment
+    // 7. Word timestamps via splitgraph alignment
     const words = this.shouldReturnWordTimestamps(options)
-      ? await this.computeAttentionWordTimestamps(
-          loaded, encoderHiddenStates, tokenizer, tokenDetails, segments, language, options,
-        )
+      ? loaded.decoderAlignSession
+        ? await this.computeAttentionWordTimestampsSplitGraph(
+            loaded as Required<LoadedExecutorState>,
+            encoderHiddenStates, tokenizer, segments,
+            generatedTokens, promptTokens.length, options,
+          )
+        : []
       : [];
 
     const utteranceText = segments.map((s) => s.text).join(' ').trim();
