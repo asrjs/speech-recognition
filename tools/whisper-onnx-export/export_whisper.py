@@ -222,6 +222,162 @@ def discover_external_data(graph_path: Path) -> List[Dict[str, Any]]:
     return entries
 
 
+def repack_external_data(
+    graph_path: Path,
+    *,
+    location: str | None = None,
+    all_tensors_to_one_file: bool = True,
+    size_threshold: int = 0,
+) -> bool:
+    """Convert per-weight external data into a single consolidated .data file.
+
+    When torch.onnx.export auto-externalizes a large encoder into many
+    per-weight files (encoder.conv1.weight, encoder.layers.0.fc1.bias, ...),
+    this function loads the graph metadata, reads all the per-weight files,
+    concatenates them, and rewrites the ONNX graph to reference a single
+    ``<name>.onnx.data`` file.  Old per-weight files are deleted.
+
+    Returns True if repacking was needed/peformed, False if the graph already
+    uses a single consolidated .data file or has no external data.
+    """
+    if not graph_path.exists():
+        return False
+
+    try:
+        model = onnx.load(str(graph_path), load_external_data=False)
+    except Exception:
+        return False
+
+    # Check if external data is used at all
+    has_external = False
+    per_weight_count = 0
+    consolidated_count = 0
+    for init in model.graph.initializer:
+        if init.data_location != onnx.TensorProto.EXTERNAL:
+            continue
+        has_external = True
+        for entry in init.external_data:
+            if entry.key == "location":
+                loc = entry.value
+                # Per-weight: filename contains '.' (e.g., encoder.conv1.weight)
+                # Consolidated: single file like "graph.onnx.data"
+                if "/" not in loc and loc.endswith(".data"):
+                    consolidated_count += 1
+                else:
+                    per_weight_count += 1
+                break
+
+    if not has_external:
+        return False
+
+    # If already consolidated (all init refs point to the same .data file),
+    # nothing to do.
+    if per_weight_count == 0 and consolidated_count > 0:
+        return False
+
+    # Only per-weight files — we need to repack.
+    # Read all external data files, build a single .data file.
+    if location is None:
+        location = f"{graph_path.name}.data"
+
+    data_dir = graph_path.parent
+    data_path = data_dir / location
+
+    # Collect all unique external data files and their order
+    offset_map: dict[str, tuple[int, int]] = {}  # file -> (offset_in_combined, length)
+    ordered_files: list[str] = []  # order as they appear in initializers
+    seen_files: set[str] = set()
+
+    for init in model.graph.initializer:
+        if init.data_location != onnx.TensorProto.EXTERNAL:
+            continue
+        for entry in init.external_data:
+            if entry.key == "location":
+                loc = entry.value
+                if loc not in seen_files:
+                    seen_files.add(loc)
+                    ordered_files.append(loc)
+                break
+
+    # Build the combined .data file
+    current_offset = 0
+    with open(data_path, "wb") as out_f:
+        for loc in ordered_files:
+            src = data_dir / loc
+            if not src.exists():
+                print(f"    WARNING: external data file missing: {loc}")
+                continue
+            data = src.read_bytes()
+            out_f.write(data)
+            offset_map[loc] = (current_offset, len(data))
+            current_offset += len(data)
+
+    # Rewrite ONNX graph: replace per-weight external_data refs
+    # with consolidated ref pointing into the single .data file
+    for init in model.graph.initializer:
+        if init.data_location != onnx.TensorProto.EXTERNAL:
+            continue
+        # Find the original location
+        orig_loc = None
+        orig_length = None
+        for entry in init.external_data:
+            if entry.key == "location":
+                orig_loc = entry.value
+            elif entry.key == "length":
+                orig_length = int(entry.value)
+
+        if orig_loc is None or orig_loc not in offset_map:
+            continue
+
+        off, length = offset_map[orig_loc]
+        # Clear old external_data and set new consolidated ref
+        del init.external_data[:]
+        init.external_data.add()
+        init.external_data[0].key = "location"
+        init.external_data[0].value = location
+        init.external_data.add()
+        init.external_data[1].key = "offset"
+        init.external_data[1].value = str(off)
+        init.external_data.add()
+        init.external_data[2].key = "length"
+        init.external_data[2].value = str(length)
+
+    # Save the updated graph (no external data conversion needed —
+    # initializers already reference external data)
+    onnx.save_model(model, str(graph_path))
+
+    # Delete old per-weight files
+    for loc in ordered_files:
+        old_file = data_dir / loc
+        if old_file.exists() and old_file != data_path:
+            old_file.unlink()
+
+    return True
+
+
+def _has_per_weight_external(gpath: Path) -> bool:
+    """Return True if a graph uses per-weight external data files."""
+    if not gpath.exists():
+        return False
+    try:
+        m = onnx.load(str(gpath), load_external_data=False)
+    except Exception:
+        return False
+    counts: dict[str, int] = {}
+    for init in m.graph.initializer:
+        if init.data_location != onnx.TensorProto.EXTERNAL:
+            continue
+        for entry in init.external_data:
+            if entry.key == "location":
+                counts[entry.value] = counts.get(entry.value, 0) + 1
+                break
+    # Per-weight: many unique locations with count=1
+    # Consolidated: one location referenced many times
+    if len(counts) <= 1:
+        return False
+    return any(c == 1 for c in counts.values())
+
+
 # ---------------------------------------------------------------------------
 # Cache type aliases and helpers
 # ---------------------------------------------------------------------------
@@ -762,6 +918,191 @@ def copy_tokenizer_files(model_id: str, output_dir: Path):
             print(f"  SKIP {filename}: {e}")
 
 
+def _organize_variant_dirs(
+    build_dir: Path,
+    *,
+    model_id: str,
+    variant: str,
+    fp16: bool,
+    int8: bool,
+    dtype: str,
+    use_external_data: bool,
+    external_data_one_file: bool,
+    external_data_threshold: int,
+    validate_path_only: bool,
+    quantize: str,
+    graph_names: list[str],
+):
+    """Organize exported artifacts into variant subdirectories.
+
+    Target layout:
+      <build_dir>/
+        fp32/    (or fp16/, int8-dynamic/)
+          manifest.json
+          encoder_model.onnx  (+ .data)
+          decoder_init.onnx   (+ .data)
+          decoder_step.onnx   (+ .data)
+          decoder_align.onnx  (+ .data)
+        README.md
+        config.json
+        ...
+    """
+    variant_dir_name = variant  # "fp32", "fp16", "int8-dynamic"
+    variant_dir = build_dir / variant_dir_name
+    variant_dir.mkdir(parents=True, exist_ok=True)
+
+    # Move graph files into variant dir
+    for gname in graph_names:
+        src = build_dir / gname
+        if src.exists():
+            shutil.move(str(src), str(variant_dir / gname))
+        # Move associated .data file
+        data_src = build_dir / f"{gname}.data"
+        if data_src.exists():
+            shutil.move(str(data_src), str(variant_dir / f"{gname}.data"))
+
+    # Move manifest into variant dir
+    manifest_src = build_dir / "manifest.json"
+    if manifest_src.exists():
+        shutil.move(str(manifest_src), str(variant_dir / "manifest.json"))
+
+    # Copy config files into variant dir (needed for local-file loading)
+    for cfg_file in ["config.json", "generation_config.json", "tokenizer.json", "preprocessor_config.json"]:
+        cfg_src = build_dir / cfg_file
+        if cfg_src.exists():
+            shutil.copy(str(cfg_src), str(variant_dir / cfg_file))
+
+    # FP16/INT8 post-processing inside variant dir
+    if variant == "fp16" and dtype == "float16":
+        # Export-time FP16: torch.onnx.export already produced FP16 graphs.
+        # Validate that ORT can load each graph.
+        print(f"\nValidating export-time FP16 variant:")
+        _validate_variant_graphs(variant_dir, graph_names, "FP16")
+    elif variant == "fp16" and fp16:
+        # Post-export FP16 conversion
+        print(f"\nPost-export FP16 conversion in {variant_dir_name}/:")
+        fp16_names = [n.replace(".onnx", ".fp16.onnx") for n in graph_names]
+        # Note: fp16_names currently have .fp16 in them but the sources are base names
+        # Fix: convert from base names
+        fp16_src_names = [n for n in graph_names]
+        fp16_dst_names = [n.replace(".onnx", ".fp16.onnx") for n in graph_names]
+        # Actually for variant dir, we convert in-place to the variant name
+        ok = convert_fp16_safe(
+            variant_dir,
+            [f"{n.replace('.onnx', '')}.fp16.onnx" for n in graph_names],
+            use_external_data=use_external_data,
+            all_tensors_to_one_file=external_data_one_file,
+            size_threshold=external_data_threshold,
+            validate_path=validate_path_only,
+        )
+        if not ok:
+            print("  WARNING: FP16 conversion had failures. See above.")
+    elif variant == "int8-dynamic" and int8:
+        print(f"\nDynamic int8 quantization in {variant_dir_name}/:")
+        int8_names = [n.replace(".onnx", "_int8.onnx") for n in graph_names]
+        convert_int8_safe(variant_dir, int8_names)
+        # Remove old FP32 files to keep dir clean
+        for gname in graph_names:
+            old = variant_dir / gname
+            if old.exists():
+                old.unlink()
+            old_data = variant_dir / f"{gname}.data"
+            if old_data.exists():
+                old_data.unlink()
+        # Rename int8 files to standard names
+        for gname in graph_names:
+            int8_name = gname.replace(".onnx", "_int8.onnx")
+            src = variant_dir / int8_name
+            if src.exists():
+                shutil.move(str(src), str(variant_dir / gname))
+            # Handle data files too
+            int8_data = variant_dir / f"{int8_name}.data"
+            if int8_data.exists():
+                shutil.move(str(int8_data), str(variant_dir / f"{gname}.data"))
+
+    # Write README at root
+    _write_publish_readme(build_dir, model_id, variant_dir_name)
+
+    print(f"\nVariant layout: {variant_dir_name}/")
+
+
+def _validate_variant_graphs(
+    variant_dir: Path,
+    graph_names: list[str],
+    label: str,
+):
+    """Validate all graphs in a variant directory: path-based ONNX checker + ORT load."""
+    for gname in graph_names:
+        gpath = variant_dir / gname
+        if not gpath.exists():
+            print(f"  ✗ {gname}: MISSING")
+            continue
+        try:
+            validate_onnx_safe(gpath, use_path_based=True)
+        except Exception as e:
+            print(f"  ✗ {gname} ONNX check failed: {e}")
+            continue
+        try:
+            import onnxruntime as _ort_val
+            _ort_val.InferenceSession(str(gpath), providers=['CPUExecutionProvider'])
+            onnx_sz = os.path.getsize(gpath) / 1024 / 1024
+            data_sz = ""
+            df = variant_dir / f"{gname}.data"
+            if df.exists():
+                data_sz = f" + {os.path.getsize(df) / 1024 / 1024:.1f} MB data"
+            print(f"  ✓ {gname} ({onnx_sz:.1f} MB{data_sz})")
+        except Exception as e:
+            print(f"  ✗ {gname} ORT load failed: {e}")
+
+
+def _write_publish_readme(build_dir: Path, model_id: str, variant_dir_name: str):
+    """Write a README.md at the publish root."""
+    import datetime
+    readme = build_dir / "README.md"
+    if readme.exists():
+        return  # Don't overwrite existing README
+    with open(readme, "w") as f:
+        f.write(f"""---
+license: apache-2.0
+tags:
+- whisper
+- onnx
+- asr
+- speech-recognition
+base_model: {model_id}
+---
+
+# {model_id} — 4-Graph ONNX Export
+
+Self-exported 4-graph Whisper ONNX for [asrjs/speech-recognition](https://github.com/asrjs/speech-recognition).
+
+## Format
+
+`whisper-browser-self-export-v1` — 4-graph KV-cache split (encoder + decoder_init + decoder_step + decoder_align).
+
+## Variants
+
+| Dir | Description |
+|-----|-------------|
+| `{variant_dir_name}/` | Exported variant |
+
+## Usage
+
+```python
+# Python: export_whisper.py
+python export_whisper.py {model_id} ./output --device cpu --dtype float32 --external-data auto
+```
+
+```js
+// TypeScript
+import {{ loadSplitGraphLocalModel }} from '@asrjs/speech-recognition/models/whisper-seq2seq';
+const model = loadSplitGraphLocalModel('./{variant_dir_name}');
+```
+
+Generated {datetime.date.today().isoformat()}.
+""")
+
+
 # ---------------------------------------------------------------------------
 # Main export
 # ---------------------------------------------------------------------------
@@ -781,6 +1122,9 @@ def export_all(
     external_data_threshold: int = _DEFAULT_EXTERNAL_DATA_THRESHOLD,
     external_data_one_file: bool = True,
     validate_path_only: Optional[bool] = None,
+    variant: str = "fp32",
+    output_layout: str = "flat",
+    quantize: str = "dynamic",
 ):
     out_dir = ensure_dir(output_dir)
 
@@ -1007,11 +1351,21 @@ def export_all(
 
             if _already_external(gpath):
                 # torch.onnx.export already externalized this graph's weights.
-                # Count the .data files and report.
-                ext_files = list(out_dir.glob(f"{gpath.stem}*"))
-                ext_files = [f for f in ext_files if f != gpath and f.suffix != '.onnx']
-                ext_total = sum(f.stat().st_size for f in ext_files) / 1024 / 1024
-                print(f"  {gname}  ({onnx_size_mb:.2f} MB onnx, {len(ext_files)} ext files, {ext_total:.1f} MB data) [already external]")
+                # Check if they are per-weight files (bad for publishing) or
+                # already consolidated into a single .data file.
+                if external_data_one_file and _has_per_weight_external(gpath):
+                    print(f"  {gname}  ({onnx_size_mb:.2f} MB onnx, per-weight files → repacking...)")
+                    repack_external_data(gpath)
+                    new_onnx = os.path.getsize(gpath) / 1024 / 1024
+                    data_file = Path(str(gpath) + ".data")
+                    data_sz = os.path.getsize(data_file) / 1024 / 1024 if data_file.exists() else 0
+                    print(f"    → {new_onnx:.2f} MB onnx, data: {data_sz:.1f} MB (consolidated)")
+                else:
+                    # Already good — consolidated or user wants per-weight files.
+                    ext_files = list(out_dir.glob(f"{gpath.stem}*"))
+                    ext_files = [f for f in ext_files if f != gpath and not f.name.endswith('.json')]
+                    ext_total = sum(f.stat().st_size for f in ext_files) / 1024 / 1024
+                    print(f"  {gname}  ({onnx_size_mb:.2f} MB onnx, {len(ext_files)} ext files, {ext_total:.1f} MB data) [already external]")
                 continue
 
             # Graph has inline weights — convert safely.
@@ -1135,6 +1489,23 @@ def export_all(
         json.dump(manifest, f, indent=2)
     print(f"  manifest.json")
 
+    # ---- Variant directory layout ----
+    if output_layout == "variant-dirs":
+        _organize_variant_dirs(
+            out_dir,
+            model_id=model_id,
+            variant=variant,
+            fp16=fp16,
+            int8=int8,
+            dtype=dtype,
+            use_external_data=use_external_data,
+            external_data_one_file=external_data_one_file,
+            external_data_threshold=external_data_threshold,
+            validate_path_only=validate_path_only,
+            quantize=quantize,
+            graph_names=all_names,
+        )
+
     print(f"\nDone! All 4-graph artifacts in {out_dir}")
     print(f"  encoder_model.onnx  decoder_init.onnx  decoder_step.onnx  decoder_align.onnx")
     if use_external_data:
@@ -1188,12 +1559,37 @@ def main():
              "Default: auto (true when external data is used).",
     )
     parser.add_argument(
+        "--variant", type=str, default="fp32",
+        choices=["fp32", "fp16", "int8-dynamic"],
+        help="Variant to export: fp32, fp16, or int8-dynamic. Default: fp32.",
+    )
+    parser.add_argument(
+        "--output-layout", type=str, default="variant-dirs",
+        choices=["variant-dirs", "flat"],
+        help="Output layout: 'variant-dirs' puts each variant in a subdirectory "
+             "(fp32/, fp16/, int8-dynamic/). 'flat' keeps everything in root. "
+             "Default: variant-dirs.",
+    )
+    parser.add_argument(
+        "--quantize", type=str, default="dynamic",
+        choices=["dynamic"],
+        help="Quantization method (only used for int8-dynamic variant). Default: dynamic.",
+    )
+    parser.add_argument(
         "--alignment-heads",
         type=str,
         default=None,
         help="Manual verified heads as 'layer:head,layer:head'. Use only when official metadata is absent.",
     )
     args = parser.parse_args()
+
+    # Auto-detect flags from variant
+    if args.variant == "fp16" and args.dtype == "float32" and not args.fp16:
+        args.dtype = "float16"
+        print("Note: --variant fp16 → auto-setting --dtype float16 (export-time FP16)")
+    elif args.variant == "int8-dynamic" and not args.int8:
+        args.int8 = True
+        print("Note: --variant int8-dynamic → auto-enabling --int8")
 
     validate_path_only = None
     if args.validate_path_only is not None:
@@ -1216,6 +1612,9 @@ def main():
         external_data_threshold=args.external_data_threshold,
         external_data_one_file=external_data_one_file,
         validate_path_only=validate_path_only,
+        variant=args.variant,
+        output_layout=args.output_layout,
+        quantize=args.quantize,
     )
 
 
