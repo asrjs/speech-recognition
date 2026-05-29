@@ -52,6 +52,35 @@ Commits: `708aac9` through `7c85cdb`
 ### Phases A/B/C/F (quality/chunking/post-processing/enhanced) — DONE (Flexo-DSV4Pro)
 Commits: `5474991` through `bdfef2a`
 
+### onTokenLogits Wired: All 4 Quality Gates Active — DONE (Flexo-DSV4Pro)
+Commit: `bc634eb`
+
+**What changed:**
+- `WhisperSeq2SeqTranscriptionOptions` now has optional `onTokenLogits` callback
+- `executor.ts` → `splitGraphDecodeLoop` → `core.ts` passes it through
+- `EnhancedWhisperExecutor` collects per-token logits via callback, feeds to ALL 4 gates
+
+**How other agents use this:**
+```ts
+// Pass onTokenLogits to ANY WhisperExecutor.transcribe() call:
+const logits: Float32Array[] = [];
+const tokens: number[] = [];
+const result = await executor.transcribe(audio, {
+  ...options,
+  onTokenLogits: (chosenId, logitVec, ctx) => {
+    logits.push(new Float32Array(logitVec)); // snapshot!
+    tokens.push(chosenId);
+  },
+}, context);
+
+// Then evaluate quality:
+import { logProbGate, entropyGate, noSpeechGate } from '@asrjs/speech-recognition/quality';
+const verdict = logProbGate(-1.0)(result.utteranceText, tokens, logits, 51865);
+```
+
+**EnhancedWhisperExecutor does this automatically** — no manual wiring needed.
+Just pass `temperatureFallback: true` and all 4 gates run with real logits.
+
 ### T1-T3: VAD Backends + Fixed-Window + Post-Extras — DONE (Flexo-DSV4Pro)
 Commit: `1db314c`
 - TenVAD + FireRed backend adapters (chunking/backends/)
