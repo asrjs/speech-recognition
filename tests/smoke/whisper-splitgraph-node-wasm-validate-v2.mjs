@@ -37,7 +37,7 @@ function parseArgs(argv) {
     fixtures: process.env.WHISPER_FIXTURES ?? 'tests/fixtures',
     variants: ['fp32', 'fp16', 'q8'],
     report: process.env.WHISPER_REPORT ?? 'docs/reports/whisper-large-v3-turbo-variant-validation.md',
-    maxNewTokens: Number(process.env.WHISPER_MAX_NEW_TOKENS ?? 64),
+    maxNewTokens: Number(process.env.WHISPER_MAX_NEW_TOKENS ?? 0),
     align: process.env.WHISPER_VALIDATE_ALIGN !== '0',
     strict: process.env.WHISPER_VALIDATE_STRICT !== '0',
     debugDivergence: false,
@@ -840,6 +840,15 @@ async function main() {
   // Normal mode — only init WASM if q8 is in the variant list
   const needsWasm = args.variants.includes('q8');
   const ortWasm = needsWasm ? await initWhisperOrt('wasm') : null;
+
+  // Resolve maxNewTokens from model config if not explicitly set
+  if (!args.maxNewTokens) {
+    const probeState = await loadVariant(ortWasm, modelDir, args.variants[0] ?? 'fp32');
+    const maxTotal = probeState.manifestRaw.max_target_positions ?? probeState.manifestRaw.maxTargetPositions ?? 448;
+    // Reserve 4 slots for prompt tokens (startoftranscript, language, task, notimestamps)
+    args.maxNewTokens = Math.max(1, maxTotal - 4);
+    console.log(`Resolved max_new_tokens from model: ${args.maxNewTokens} (max_target_positions=${maxTotal})`);
+  }
 
   const results = [];
   for (const variant of args.variants) {
