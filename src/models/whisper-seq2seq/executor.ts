@@ -28,6 +28,7 @@ import {
   type OrtTensorLike,
 } from './ort.js';
 import { WhisperTokenizer } from './tokenizer.js';
+import { WhisperTimestampLogitProcessor } from './processors.js';
 import { buildWhisperWordTimestampsFromTokenDetails } from './word-timestamps.js';
 import { computeWhisperDtwTokenTimestamps } from './attention-alignment.js';
 import {
@@ -176,8 +177,9 @@ export async function splitGraphDecodeLoop(params: {
   modelConfig: WhisperModelConfig;
   runInit: SplitGraphDecodeCallbacks['runInit'];
   runStep: SplitGraphDecodeCallbacks['runStep'];
+  processLogits?: (logits: Float32Array, generatedTokens: readonly number[], beginIndex: number) => void;
 }): Promise<SplitGraphDecodeResult> {
-  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, runInit, runStep } = params;
+  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, runInit, runStep, processLogits } = params;
 
   // Init: prefill with prompt tokens
   const initResult = await runInit(
@@ -192,12 +194,18 @@ export async function splitGraphDecodeLoop(params: {
   // First token from init logits (last position)
   const lastLogitOffset = initLogits.length - vocabSize;
   const firstLogits = initLogits.subarray(lastLogitOffset);
+  if (processLogits) {
+    processLogits(firstLogits, promptTokens, promptTokens.length);
+  }
   const firstTokenId = argmax(firstLogits);
   const tokens: number[] = [firstTokenId];
 
   // Autoregressive step loop
   for (let step = 1; step < maxNewTokens; step++) {
     const stepResult = await runStep(tokens[tokens.length - 1]!, pastKv);
+    if (processLogits) {
+      processLogits(stepResult.logits, [...promptTokens, ...tokens], promptTokens.length);
+    }
     const nextTokenId = argmax(stepResult.logits);
     tokens.push(nextTokenId);
     pastKv = stepResult.presentKv;
@@ -967,6 +975,16 @@ export class WhisperOnnxExecutor {
     );
     let tokenDetails: WhisperNativeToken[] = [];
 
+    // Build timestamp logit processor
+    const timestampBegin = tokenizer.getTokenId('<|0.00|>') ?? 50364;
+    const timestampProcessor = new WhisperTimestampLogitProcessor({
+      eosTokenId: eosId,
+      noTimestampsTokenId: tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
+      timestampBegin,
+      suppressTokens: [],
+      beginSuppressTokens: [],
+    });
+
     if (numBeams === 1) {
       const generatedTokens: number[] = [...promptTokens];
       let pastKeyValues: Record<string, OrtTensorLike<Float32Array>> = {};
@@ -980,6 +998,7 @@ export class WhisperOnnxExecutor {
           step === 0,
         );
         pastKeyValues = result.pastKeyValues;
+        timestampProcessor.process(result.lastLogits, generatedTokens, promptTokens.length);
         const nextTokenId = argmax(result.lastLogits);
         generatedTokens.push(nextTokenId);
 
@@ -1025,6 +1044,7 @@ export class WhisperOnnxExecutor {
             beam.payload?.pastKeyValues ?? {},
             step === 0,
           );
+          timestampProcessor.process(result.lastLogits, beam.tokens, promptTokens.length);
           logitsByBeam.push(result.lastLogits);
           nextPastByBeam.set(beam, result.pastKeyValues);
           vocabSize = result.vocabSize;
@@ -1227,12 +1247,24 @@ export class WhisperOnnxExecutor {
     const maxNewTokens = options.maxNewTokens ?? this.config.maxTargetPositions ?? 448;
 
     // Only greedy decoding supported for splitgraph (no beam search yet)
+    const timestampBegin = tokenizer.getTokenId('<|0.00|>') ?? 50364;
+    const splitTimestampProcessor = new WhisperTimestampLogitProcessor({
+      eosTokenId: eosId,
+      noTimestampsTokenId: tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
+      timestampBegin,
+      suppressTokens: [],
+      beginSuppressTokens: [],
+    });
+
     const result = await splitGraphDecodeLoop({
       promptTokens,
       encoderHiddenStates: encoderHiddenStates.data,
       eosTokenId: eosId,
       maxNewTokens,
       modelConfig: loaded.modelConfig,
+      processLogits: (logits, genTokens, beginIdx) => {
+        splitTimestampProcessor.process(logits, genTokens, beginIdx);
+      },
       runInit: async (prompt, _encHs, _dims) => {
         const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
         return {
