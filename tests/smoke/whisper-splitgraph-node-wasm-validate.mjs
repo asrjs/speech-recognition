@@ -2,6 +2,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { execSync } from 'node:child_process';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { initWhisperOrt } from '../../dist/models/whisper-seq2seq/ort.js';
@@ -12,7 +14,7 @@ import { WhisperMelProcessor } from '../../dist/audio/whisper-mel.js';
 import { WhisperTimestampLogitProcessor } from '../../dist/models/whisper-seq2seq/processors.js';
 import { processSplitGraphAlignment } from '../../dist/models/whisper-seq2seq/executor.js';
 
-const AUDIO_EXTENSIONS = new Set(['.wav']);
+const AUDIO_EXTENSIONS = new Set(['.wav', '.mp3']);
 const GRAPH_FILES = {
   encoder: 'encoder_model.onnx',
   decoder_init: 'decoder_init.onnx',
@@ -83,6 +85,15 @@ function discoverFixtures(fixturesDir) {
 }
 
 function readWavMono(pathname) {
+  const ext = path.extname(pathname).toLowerCase();
+  if (ext !== '.wav') {
+    // Convert to temp WAV via ffmpeg
+    const tmpWav = path.join(os.tmpdir(), `asrjs-fixture-${Buffer.from(pathname).toString('base64').slice(0, 32)}.wav`);
+    execSync(`ffmpeg -y -i '${pathname.replace(/'/g, "'\\''")}' -ar 16000 -ac 1 -sample_fmt s16 '${tmpWav.replace(/'/g, "'\\''")}' 2>/dev/null`, { timeout: 15000 });
+    const result = readWavMono(tmpWav);
+    try { fs.unlinkSync(tmpWav); } catch (_) { /* best-effort cleanup */ }
+    return result;
+  }
   const buf = fs.readFileSync(pathname);
   if (buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WAVE') {
     throw new Error(`Not a RIFF/WAVE file: ${pathname}`);

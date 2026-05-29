@@ -119,6 +119,7 @@
     "docs:api": "node ./node_modules/typedoc/bin/typedoc --options typedoc.json",
     "docs:build": "npm run docs:clean && npm run docs:api",
     "validate:whisper-variants": "npm run build && node tests/smoke/whisper-splitgraph-node-wasm-validate.mjs --model-dir ${WHISPER_VARIANT_DIR:-/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph} --fixtures ${WHISPER_FIXTURES:-tests/fixtures} --variants fp32 fp16 q8 --max-new-tokens ${WHISPER_MAX_NEW_TOKENS:-64} --no-align --no-strict --report ${WHISPER_REPORT:-docs/reports/whisper-large-v3-turbo-variant-validation.md}",
+    "validate:whisper-base": "npm run build && node tests/smoke/whisper-splitgraph-node-wasm-validate.mjs --model-dir ${WHISPER_BASE_DIR:-/tmp/whisper-base-4graph} --fixtures ${WHISPER_FIXTURES:-tests/fixtures} --variants fp32 fp16 --max-new-tokens ${WHISPER_MAX_NEW_TOKENS:-64} --no-align --report ${WHISPER_REPORT:-docs/reports/whisper-base-variant-validation.md}",
     "validate:whisper-variants:python": "cd tools/whisper-onnx-export && .venv/bin/python validate_variants.py --model-dir ${WHISPER_VARIANT_DIR:-/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph} --fixtures ${WHISPER_FIXTURES:-tests/fixtures} --variants fp32 fp16 q8 --report ${WHISPER_REPORT:-docs/reports/whisper-large-v3-turbo-variant-validation.md}"
   },
   "dependencies": {
