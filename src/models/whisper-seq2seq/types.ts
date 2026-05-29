@@ -136,9 +136,14 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
   readonly returnPromptTokens?: boolean;
   readonly maxNewTokens?: number;
   readonly noTimestamps?: boolean;
+  /** Number of beams for beam search (1 = greedy). WhisperX: beam_size */
   readonly numBeams?: number;
+  /** Length penalty for beam search (0 = no penalty). WhisperX: length_penalty */
   readonly lengthPenalty?: number;
+  /** Beam search patience: max consecutive EOS before stopping early. WhisperX: patience */
   readonly patience?: number;
+  /** Number of independent decodings to run. WhisperX: best_of (default: null = numBeams) */
+  readonly bestOf?: number;
   /**
    * Optional per-token logit callback — fired after logit processing, before argmax.
    * Enables quality gates (logprob, entropy, no-speech) to collect per-token data.
