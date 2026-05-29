@@ -124,16 +124,18 @@
   },
   "dependencies": {
     "onnxruntime-node": "1.25.0-dev.20260228-6e72d31970",
-    "onnxruntime-web": "1.25.0-dev.20260228-6e72d31970"
+    "onnxruntime-web": "1.25.0-dev.20260228-6e72d31970",
+    "pako": "^2.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
     "@types/node": "24.1.0",
+    "@types/pako": "^2.0.4",
     "eslint": "^9.22.0",
     "prettier": "^3.6.2",
     "typedoc": "^0.28.17",
-    "typescript-eslint": "^8.26.1",
     "typescript": "5.9.3",
+    "typescript-eslint": "^8.26.1",
     "vitest": "4.0.18"
   }
 }

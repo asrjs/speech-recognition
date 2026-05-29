@@ -17,6 +17,11 @@
 /** Outcome of a quality gate evaluation. */
 export type QualityVerdict = 'accept' | 'reject' | 'no_speech';
 
+/** A quality gate function — evaluates a decode result. */
+export interface QualityGate {
+  (text: string, tokens: readonly number[], logits: readonly Float32Array[], vocabSize: number): QualityGateResult;
+}
+
 /** Result of running one or more quality gates on a decode result. */
 export interface QualityGateResult {
   readonly verdict: QualityVerdict;

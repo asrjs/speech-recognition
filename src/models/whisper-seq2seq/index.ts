@@ -11,6 +11,7 @@ export * from './manifest.js';
 export * from './mapping.js';
 export * from './model.js';
 export * from './processors.js';
+export * from './quality-gates.js';
 export * from './tokenizer.js';
 export * from './types.js';
 export * from './word-timestamps.js';
