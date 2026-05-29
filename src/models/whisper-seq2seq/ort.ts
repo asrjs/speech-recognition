@@ -184,6 +184,11 @@ function resolveDirectArtifacts(
   };
 }
 
+function resolveDataUrl(graphUrl: string, externalFile: string): string {
+  const normalizedFile = externalFile.replace(/^\.\//, '');
+  return new URL(normalizedFile, graphUrl.replace(/[^/]*$/, '')).toString();
+}
+
 function resolveSplitGraphArtifacts(
   source: WhisperSplitGraphArtifactSource,
   backendId: string,
@@ -192,16 +197,18 @@ function resolveSplitGraphArtifacts(
   const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend, 'encoder');
   const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend, 'decoder');
 
-  // Compute external data URLs from graph URLs.
-  // For each .onnx graph, the external data lives at <graph_url>.data
-  // with internal ONNX path = "<graph>.onnx.data".
   const externalDataBuild: Record<string, readonly { dataUrl: string; path: string }[]> = {};
 
-  function addExternalData(graphName: string, url: string): void {
-    const dataUrl = `${url}.data`;
-    const basename = url.split('/').pop() ?? `${graphName}.onnx`;
-    const dataPath = `${basename}.data`;
-    externalDataBuild[graphName] = [{ dataUrl, path: dataPath }];
+  function addExternalData(
+    graphName: 'encoder' | 'decoder_init' | 'decoder_step' | 'decoder_align',
+    graphUrl: string,
+  ): void {
+    const entries = source.artifacts.externalDataUrls?.[graphName];
+    if (!entries || entries.length === 0) return;
+    externalDataBuild[graphName] = entries.map((entry) => ({
+      dataUrl: resolveDataUrl(graphUrl, entry.file),
+      path: entry.path,
+    }));
   }
 
   const encoderUrl = source.artifacts.encoderUrl;
@@ -215,7 +222,9 @@ function resolveSplitGraphArtifacts(
     addExternalData('decoder_align', source.artifacts.decoderAlignUrl);
   }
 
-  const externalData: ExternalDataMap = externalDataBuild;
+  const externalData: ExternalDataMap | undefined = Object.keys(externalDataBuild).length > 0
+    ? externalDataBuild
+    : undefined;
 
   return {
     artifacts: {

@@ -13,8 +13,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseWhisperManifest } from './manifest.js';
 import type {
+  ExternalDataEntry,
   WhisperArtifactSource,
   WhisperSeq2SeqModelConfig,
+  WhisperSplitGraphArtifacts,
 } from './types.js';
 
 export interface SplitGraphLocalModel {
@@ -31,6 +33,46 @@ export interface SplitGraphLocalOptions {
 }
 
 const DEFAULT_VARIANT = 'fp32';
+
+type GraphName = keyof NonNullable<WhisperSplitGraphArtifacts['externalDataUrls']>;
+
+const MANIFEST_GRAPH_KEYS: readonly GraphName[] = [
+  'encoder',
+  'decoder_init',
+  'decoder_step',
+  'decoder_align',
+];
+
+function readExternalDataUrls(
+  manifestRaw: Record<string, unknown>,
+): WhisperSplitGraphArtifacts['externalDataUrls'] | undefined {
+  const artifacts = manifestRaw.artifacts;
+  if (!artifacts || typeof artifacts !== 'object') return undefined;
+
+  const result: Partial<Record<GraphName, readonly ExternalDataEntry[]>> = {};
+  for (const graphName of MANIFEST_GRAPH_KEYS) {
+    const graph = (artifacts as Record<string, unknown>)[graphName];
+    if (!graph || typeof graph !== 'object') continue;
+    const externalData = (graph as Record<string, unknown>).externalData;
+    if (!Array.isArray(externalData) || externalData.length === 0) continue;
+
+    const entries = externalData
+      .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
+      .map((entry) => ({
+        path: String(entry.path ?? entry.file ?? ''),
+        file: String(entry.file ?? entry.path ?? ''),
+        sizeBytes: typeof entry.sizeBytes === 'number' ? entry.sizeBytes : undefined,
+        sha256: typeof entry.sha256 === 'string' ? entry.sha256 : undefined,
+      }))
+      .filter((entry) => entry.path.length > 0 && entry.file.length > 0);
+
+    if (entries.length > 0) {
+      result[graphName] = entries;
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
 
 export function loadSplitGraphLocalModel(
   dirPath: string,
@@ -134,6 +176,7 @@ export function loadSplitGraphLocalModel(
         : undefined,
       tokenizerUrl: fileUrl('tokenizer.json'),
       manifestUrl: fileUrl('manifest.json'),
+      externalDataUrls: readExternalDataUrls(manifestRaw),
     },
   };
 

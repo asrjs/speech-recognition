@@ -954,6 +954,15 @@ VERIFICATION GATE
 - ~~Verify each variant via fixture smoke tests~~ ✅ DONE (audit_publish.py, all 0 failures)
 - ~~Re-export fp32 to HF repo using --external-data auto for large-model safety~~ ✅ DONE
 
+**Browser/WebGPU smoke prep (2026-05-29):** ✅ DONE
+- Fixed splitgraph external-data resolution to be manifest-driven instead of inventing `<graph>.onnx.data` for every graph.
+- `loadSplitGraphLocalModel()` now propagates `artifacts.<graph>.externalData` from `manifest.json` into `source.artifacts.externalDataUrls`.
+- `resolveWhisperArtifacts()` now passes only declared external-data entries to browser ORT session creation; q8 has no external-data entries and fp16 encoder remains inline.
+- Preserves manifest `externalData.path` exactly for ORT internal-location matching, and resolves data URLs relative to the graph URL directory.
+- Tests: `tests/whisper-splitgraph-artifacts.test.ts` expanded to cover inline q8/fp16-style graphs and manifest propagation.
+- Verification: `npm test -- tests/whisper-splitgraph-artifacts.test.ts --run`, `npm run typecheck`, `npm run lint` (0 errors/4 pre-existing max-lines warnings), `npm test` (84 files/410 tests), `npm run build`.
+- Commit subject: `fix: use manifest-driven whisper external data`
+
 **Deferred features:**
 
 ### Graph-level mixed dtype (Transformers.js-style per-module dtype)
