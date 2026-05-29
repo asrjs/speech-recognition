@@ -939,11 +939,69 @@ VERIFICATION GATE
   - Docs: whisper-export-workflow.md updated with external data section
 - 84 test files, 405 tests, all passing
 
-**Quantized variants:** fp16, int8 planned — export at export time, organize in subdirectories.
-External-data-safe paths available for both post-export and export-time quantization.
+**Quantized variants:** ✅ fp16 and q8 validated and published to HF.
+- fp32: 4.5 GB, 13 files, Node/native reference
+- fp16: 2.3 GB, 12 files, export-time CUDA, browser/WebGPU candidate
+- q8: 1.4 GB, 9 files, post-export dynamic int8, CPU/browser candidate
+- HF repo: 40 files total, 0 tensor-named files
+- All variants: audit_publish.py 0 failures, ONNX checker ✓, ORT load ✓
+- Export-time FP16 required (post-export converter broken — Cast mismatch)
+- q8 alias added alongside int8-dynamic for public variant name
 
 **Next steps:**
-- Export quantized fp16 + int8 variants for whisper-large-v3-turbo
-- Organize HF repo with fp16/int8/ subdirectories
-- Verify each variant via fixture smoke tests
-- Re-export fp32 to HF repo using --external-data auto for large-model safety
+- ~~Export quantized fp16 + int8 variants for whisper-large-v3-turbo~~ ✅ DONE
+- ~~Organize HF repo with fp16/int8 subdirectories~~ ✅ DONE (fp32/, fp16/, q8/)
+- ~~Verify each variant via fixture smoke tests~~ ✅ DONE (audit_publish.py, all 0 failures)
+- ~~Re-export fp32 to HF repo using --external-data auto for large-model safety~~ ✅ DONE
+
+**Deferred features:**
+
+### Graph-level mixed dtype (Transformers.js-style per-module dtype)
+
+**Status**: Deferred. Design documented below. Do not implement in this pass.
+
+**Motivation**: Support combinations like:
+- `encoder_model: fp16 + decoder_init: q8 + decoder_step: q8 + decoder_align: fp16`
+- `encoder_model: fp16 + decoder_init: q4 + decoder_step: q4 + decoder_align: fp16`
+
+**Proposed named presets**:
+| Preset | encoder | decoder_init | decoder_step | decoder_align |
+|--------|---------|-------------|-------------|---------------|
+| `encoder-fp16-decoder-q8` | fp16 | q8 | q8 | fp16 |
+| `encoder-fp16-decoder-q4` | fp16 | q4 | q4 | fp16 |
+| `safe-q4-step` | fp16 | fp16 | q4 | fp16 |
+
+**Proposed API**:
+```js
+loadSplitGraphLocalModel(dir, {
+  dtype: {
+    encoder_model: "fp16",
+    decoder_init: "q8",
+    decoder_step: "q8",
+    decoder_align: "fp16"
+  }
+})
+```
+
+**Cross-graph compatibility requirements**:
+1. encoder output dtype/shape must match decoder_init input
+2. decoder_init KV outputs must match decoder_step KV inputs
+3. encoder output must match decoder_align input
+4. decoder_align must remain DTW-suitable: non-negative, row sums ~1.0, monotonic timestamps
+5. WebGPU session creation must pass for all selected graphs
+6. Smoke decode must compare against fp16 baseline
+7. Mixed variants must not silently fall back to fp32
+8. Browser default for large-v3-turbo must never be fp32
+
+**Changes required**: manifest schema, artifact resolver, local loader, browser URL loader, external data URL mapping, graph boundary dtype validation, KV-cache compatibility, WebGPU smoke tests.
+
+### Q4/Q4F16 weight-only quantization
+
+**Status**: Deferred. Research needed.
+
+- Check opset requirements for INT4/UINT4 weight-only quantization.
+- Validate with ORT native load first, then WebGPU.
+- Define precisely what stays fp16 vs 4-bit (mixed within a single graph).
+- Expect encoder may need fp16, decoder_step may tolerate q8/q4 better.
+- decoder_align needs separate validation (timestamp quality depends on attention behavior).
+- Do NOT publish as browser-ready without WebGPU validation.
