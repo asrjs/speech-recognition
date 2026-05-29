@@ -42,6 +42,7 @@ const MAX_NEW_TOKENS = 64;
 
 const MODEL_BASE = '/tests/smoke/.whisper-fp16-model/';
 const AUDIO_URL = '/tests/fixtures/jfk2.en.wav';
+const MEL_REF_URL = '/tests/smoke/jfk2-mel.json';  // pre-computed via library's WhisperMelProcessor
 const N_MELS = 80;
 const MEL_FRAMES = 3000;
 
@@ -194,34 +195,26 @@ async function runSmoke() {
     const ep = isWebGpu ? 'webgpu' : 'wasm';
     document.getElementById('backendLabel').textContent = isWebGpu ? 'WebGPU' : 'WASM (WebGPU not available, falling back)';
 
-    // 2. Load audio
-    log('Loading audio...');
-    const audioCtx = new AudioContext({ sampleRate: 16000 });
-    const audioResp = await fetch(AUDIO_URL);
-    const audioBuf = await audioResp.arrayBuffer();
-    const decoded = await audioCtx.decodeAudioData(audioBuf);
-    const pcm = decoded.getChannelData(0);
-    log(`  Audio: ${pcm.length} samples, ${decoded.sampleRate} Hz`);
-
-    // Resample to 16kHz if needed (simple linear)
-    let pcm16k = pcm;
-    if (decoded.sampleRate !== 16000) {
-      const ratio = 16000 / decoded.sampleRate;
-      const outLen = Math.floor(pcm.length * ratio);
-      pcm16k = new Float32Array(outLen);
-      for (let i = 0; i < outLen; i++) {
-        const src = i / ratio;
-        const s0 = Math.floor(src), s1 = Math.min(pcm.length - 1, s0 + 1);
-        pcm16k[i] = pcm[s0] * (1 - (src - s0)) + pcm[s1] * (src - s0);
-      }
-      log(`  Resampled to 16kHz: ${pcm16k.length} samples`);
+    // 2. Load pre-computed mel (library's WhisperMelProcessor, not hand-rolled DFT)
+    let mel;
+    log('Loading pre-computed mel...');
+    const melResp = await fetch(MEL_REF_URL);
+    if (!melResp.ok) {
+      // Fallback: compute mel from audio (may not match reference)
+      log('  WARN: pre-computed mel not found, computing from audio (may differ from reference)');
+      const audioCtx = new AudioContext({ sampleRate: 16000 });
+      const audioResp = await fetch(AUDIO_URL);
+      const audioBuf = await audioResp.arrayBuffer();
+      const decoded = await audioCtx.decodeAudioData(audioBuf);
+      const pcm16k = decoded.getChannelData(0);
+      const melArr = computeMel(pcm16k, 16000);
+      mel = new Float32Array(melArr);
+      log('  Mel from audio (hand-rolled DFT — may differ from library)');
+    } else {
+      mel = new Float32Array(await melResp.json());
+      log('  Pre-computed mel loaded (matches Node/WASM reference mel)');
     }
-
-    // 3. Compute mel
-    log('Computing mel spectrogram...');
-    const tMelStart = performance.now();
-    const mel = computeMel(pcm16k, 16000);
-    log(`  Mel shape: [1, ${N_MELS}, ${MEL_FRAMES}], time: ${((performance.now() - tMelStart) / 1000).toFixed(2)}s`);
+    log(`  Mel shape: [1, ${N_MELS}, ${MEL_FRAMES}]`);
 
     // 4. Load ONNX sessions
     log('Creating ONNX sessions...');
