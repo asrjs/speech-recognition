@@ -11,3 +11,5 @@ export * from './sentence-stage.js';
 export * from './vad-segments.js';
 export * from './whisper-chunking.js';
 export * from './whisper-timestamps.js';
+export * from './whisper-production-pipeline.js';
+export * from './types.js';
