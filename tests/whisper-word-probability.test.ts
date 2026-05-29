@@ -5,7 +5,7 @@ describe('Whisper word probability from DTW alignment', () => {
     // Simulate: 5 text tokens mapping to 2 words
     // Word "hello" = tokens [0, 1], Word "world" = tokens [2, 3, 4]
     const textTokenIds = [100, 101, 200, 201, 202];
-    const dtwTimestamps = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9]; // 6 values for 5 tokens
+    const _dtwTimestamps = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9]; // 6 values for 5 tokens — context for tests
     // Token logprobs: -0.2, -0.3, -0.1, -0.15, -0.05
     const tokenLogprobs = new Float32Array([-0.2, -0.3, -0.1, -0.15, -0.05]);
 

@@ -685,34 +685,55 @@ This is lower priority than the attention-DTW pipeline because:
 - Segment timestamps from timestamp tokens are approximate by design
 - The timestamped ONNX models already produce correctly ordered tokens in most cases
 
-### Task 17: KV cache decoder export — AWAITING RESEARCH
+### Task 17: KV cache decoder export — DONE
 
-Status: The self-contained export tool (tools/whisper-onnx-export/) produces:
-- encoder_model.onnx ✓
-- decoder_model_merged.onnx (init-only, NO KV cache — traced as single forward pass)
-- decoder_align_model.onnx ✓
-- fp16/int8 variants ✓
+Objective: implement self-contained 4-graph Whisper ONNX export with proper KV-cache decoder split.
 
-The merged decoder cannot export with KV cache because PyTorch 2.12 / HF 5.x DynamicCache uses
-data-dependent branching (if not torch.all(use_cache_branch.bool())) that the dynamo and legacy
-exporters can't trace across. The ONNX graph only has input_ids and encoder_hidden_states as inputs —
-use_cache_branch and past_key_values.* were treated as constants during tracing.
+Files:
+- Rewrote: `tools/whisper-onnx-export/export_whisper.py` (4-graph architecture)
+- Created: `tools/whisper-onnx-export/test_kv_export.py` (export validation)
+- Created: `docs/whisper_onnx_browser_full_export_report.md` (architecture research)
+- Fixed: `tests/whisper-word-probability.test.ts` (unused var lint)
 
-Affected: autoregressive decoding speed. Without KV cache, each step re-runs the full decoder.
+Architecture: 4 separate ONNX graphs instead of a merged decoder:
+1. `encoder_model.onnx` — mel to encoder hidden states
+2. `decoder_init.onnx` — prompt/prefill decoder, creates initial KV cache
+3. `decoder_step.onnx` — single-token autoregressive step with KV cache reuse
+4. `decoder_align.onnx` — forced cross-attention alignment (manual decoder block capture)
 
-Workaround for production: onnx-community/whisper-*_timestamped repos provide properly exported
-decoder_model_merged.onnx with use_cache_branch + past_key_values.* IO.
+Key decisions:
+- Split `decoder_init` + `decoder_step` avoids DynamicCache data-dependent branching that
+  `torch.onnx.export(dynamo=False)` cannot trace
+- `decoder_step` only needs `input_ids` + `past_key_values.*` (both decoder + encoder K/V);
+  `encoder_hidden_states` and `cache_position` are NOT graph inputs because cross-attention
+  K/V are cached and position is derived from cache length
+- `decoder_align` uses manual decoder block iteration (no `output_attentions=True`) to avoid
+  `aten::diff` which has no ONNX lowering. Returns averaged alignment matrix `[B, T, S]`
+- HF 5.x `EncoderDecoderCache` yields 6-element tuples `(self_k, self_v, None, cross_k, cross_v, None)`
+  — handled in `to_legacy_cache()` with explicit tuple indexing
+- `build_encoder_decoder_cache_from_flat()` constructs HF 5.x cache objects from flat ONNX tensors
+- `decoder_align` export produces `alignment` output (not `alignment_heads`) — averaged across selected heads
+- All fp32 exports: encoder 31MB, init 189MB, step 108MB, align 107MB (whisper-tiny)
+- Quantization (fp16/int8) still supported for all graphs
 
-Research needed (user is investigating):
-- Export Whisper decoder with torch.export constraints for DynamicCache
-- Alternative: manual KV cache implementation in the wrapper (bypass HF's DynamicCache)
-- Alternative: export separate decoder_init + decoder_step models
-- Alternative: use Optimum's ONNX export pipeline which may handle this
+HF 5.x compatibility:
+- Decoder expects `EncoderDecoderCache` (not raw tuples). `build_encoder_decoder_cache_from_flat()`
+  constructs `DynamicCache` per attention type, wraps in `EncoderDecoderCache(self_cache, cross_cache)`
+- `to_legacy_cache()` handles both 4-element (legacy) and 6-element (HF 5.x) layer cache tuples
 
-Relevant references:
-- onnx-community export scripts (likely use older transformers/Optimum)
-- Microsoft ONNX Runtime Whisper exporter (uses different cache approach)
-- sherpa-onnx attention-enabled export scripts
+Verified:
+- `python test_kv_export.py` passed — validates all 4 ONNX files + manifest + ORT loading
+- `npm run typecheck` passed
+- `npm run lint` passed (0 errors, 4 pre-existing warnings)
+- `npm test` passed: 76 files, 366 tests
+- `npm run build` passed
+- `node tests/smoke/offline-output-smoke.mjs` passed
+
+Commit:
+- `feat: implement 4-graph KV-cache Whisper decoder export`
+<a following commit will sqash fix aten::diff via manual alignment wrapper; HF 5.x EncoderDecoderCache compat>
+- `fix: handle HF 5.x EncoderDecoderCache in decoder export wrappers`
+- `fix: prevent decoder_step from losing encoder_hidden_states input`
 
 ---
 
@@ -737,24 +758,28 @@ Expected known lint warnings:
 
 ## Handoff prompt for next session
 
-Current state as of 2026-05-29 (commit `a2fc491` → `6e3eed9` on `feat/asr-pipeline-output-formats`):
+Current state as of 2026-05-29 (commit `6e3eed9` + 4-graph export on `feat/asr-pipeline-output-formats`):
 
-**Completed:**
+**Completed (Tasks 1-15, 17):**
 - Full attention-DTW word timestamp pipeline (forced alignment → cross-attention extraction → softmax → normalize → median filter → DTW → word boundaries)
 - Word probability from forced alignment logprobs
 - Generation config parsing (alignment_heads, median_filter_width)
-- Self-contained Python ONNX export tool (encoder, align, fp16, int8)
+- **Self-contained 4-graph Whisper ONNX export with KV-cache decoder split** (encoder, decoder_init, decoder_step, decoder_align)
+- Python export test: `tools/whisper-onnx-export/test_kv_export.py`
+- Manifest produces `whisper-browser-self-export-v1` format with artifacts, alignment_heads, special_tokens
 - 76 test files, 366 tests, all passing
 
-**Deferred / awaiting research:**
+**Deferred:**
 - Task 16: Timestamp logit processor (suppression rules). Not needed for DTW word timestamps.
-- Task 17: KV cache decoder export. PyTorch 2.12 / HF 5.x DynamicCache can't be traced.
-  User is researching alternative export approaches.
 
-**KV cache workaround:** use `onnx-community/whisper-*_timestamped` `decoder_model_merged.onnx`
+**Next steps:**
+- Wire TypeScript executor to use 4-graph format (separate init/step sessions) for self-exported models
+- Add 4-graph Whisper preset/artifact source type for local files
+- OR keep using onnx-community `*_timestamped` merged decoders for production; use self-export for custom checkpoints
 
 ```
-Load skill asrjs-dev. Read /home/steam/github/asrjs/speech-recognition/docs/plans/asr-pipeline-roadmap.md. Branch feat/asr-pipeline-output-formats. Follow TDD. Do not touch .serena/.
-Check docs/handoffs/whisper-attention-timestamps-research.md for full research background.
-If user provides KV cache export research, start from tools/whisper-onnx-export/export_whisper.py.
+Load skill asrjs-dev. Read /home/steam/github/asrjs/speech-recognition/docs/plans/asr-pipeline-roadmap.md.
+Branch feat/asr-pipeline-output-formats. Follow TDD. Do not touch .serena/.
+Self-contained 4-graph export tool lives at tools/whisper-onnx-export/export_whisper.py.
+Run `python test_kv_export.py` in the export dir venv to validate.
 ```

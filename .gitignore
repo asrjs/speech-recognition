@@ -15,3 +15,5 @@ tools/data/results/canary/canary-180m-flash-reference.json
 tools/model-debugging/reference/medasrjs/upstream-tests/reference_medasr/features.json
 tools/model-debugging/reference/medasrjs/upstream-tests/reference_medasr/logits.json
 .serena/
+tools/whisper-onnx-export/.venv/
+tools/whisper-onnx-export/__pycache__/
