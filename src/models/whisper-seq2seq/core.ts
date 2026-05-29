@@ -4,43 +4,31 @@
  * This module contains the vanilla Whisper inference loop, independent of
  * ONNX Runtime, the asrjs model-family system, or any audio processing.
  *
- * A "session" is any object that can run decoder_init and decoder_step.
- * The session is responsible for:
- *   - Converting prompt tokens + encoder output into init logits + KV cache
- *   - Converting a single token + KV cache into step logits + updated KV cache
- *   - Handling dtype conversion (float16 → float32) internally
- *   - Mapping ONNX tensor names (present. ↔ past_key_values.) internally
+ * Decode strategies:
+ *   - Greedy: argmax per step (fastest, lowest quality)
+ *   - Beam: top-k beam search (WhisperX/faster-whisper quality)
  *
- * This design follows the same pattern as Nemo TDT's executor where
- * the decode loop is separated from the ONNX bridge.
+ * A "session" is any object that can run decoder_init and decoder_step.
  */
 
 import { argmax } from '../../inference/index.js';
+import {
+  createInitialWhisperBeam,
+  rankWhisperBeamCandidates,
+  selectBestWhisperBeam,
+} from './beam-search.js';
 
 // ---------------------------------------------------------------------------
 // Session interface
 // ---------------------------------------------------------------------------
 
-/**
- * A Whisper decoder session — provides init and step methods.
- * Implementations wrap ONNX Runtime, a mock, or any backend.
- */
 export interface WhisperCoreSession {
-  /**
-   * Run decoder_init: prompt tokens + encoder output → logits + KV cache.
-   * The returned presentKv must use keys compatible with runStep input
-   * (implementation handles present. ↔ past_key_values. mapping internally).
-   */
   runInit(
     promptTokens: readonly number[],
     encoderOutput: Float32Array,
     encoderDims: readonly number[],
   ): Promise<WhisperInitResult>;
 
-  /**
-   * Run decoder_step: single token + KV cache → logits + updated KV cache.
-   * The pastKv keys match what runInit returned (or previous runStep returned).
-   */
   runStep(
     tokenId: number,
     pastKv: Record<string, Float32Array>,
@@ -60,13 +48,9 @@ export interface WhisperStepResult {
 }
 
 // ---------------------------------------------------------------------------
-// Logit processor (callback-based — same as transformers.js)
+// Logit processor
 // ---------------------------------------------------------------------------
 
-/**
- * A logit processor mutates logits before argmax.
- * Typical implementations: timestamp suppression, EOS handling, begin/prevent tokens.
- */
 export type WhisperLogitProcessor = (
   logits: Float32Array,
   generatedTokens: readonly number[],
@@ -78,29 +62,25 @@ export type WhisperLogitProcessor = (
 // ---------------------------------------------------------------------------
 
 export interface WhisperDecodeOptions {
-  /** Prompt token IDs: [<|startoftranscript|>, <|lang|>, <|transcribe|>, ...] */
   readonly promptTokens: readonly number[];
-  /** Encoder output tensor data (flat Float32Array) */
   readonly encoderOutput: Float32Array;
-  /** Encoder output dims (for computing time steps) */
   readonly encoderDims: readonly number[];
-  /** EOS token ID (typically 50257) */
   readonly eosTokenId: number;
-  /** Maximum new tokens to generate */
   readonly maxNewTokens: number;
-  /** Optional logit processor (e.g. WhisperTimestampLogitProcessor) */
   readonly processLogits?: WhisperLogitProcessor;
-  /**
-   * Optional per-token logit callback — fired after processLogits, before argmax.
-   * Enables quality gates (logprob, entropy, no-speech prob) without memory overhead.
-   * Called with: (chosenTokenId, postSuppressLogits, { tokens, beginIndex }).
-   * The logits snapshot is valid only during the callback; do not store references.
-   */
   readonly onTokenLogits?: (
     chosenTokenId: number,
     processedLogits: Float32Array,
     ctx: { readonly tokens: readonly number[]; readonly beginIndex: number },
   ) => void;
+  /** Decoding strategy: greedy (argmax) or beam search */
+  readonly strategy?: 'greedy' | 'beam';
+  /** Beam size for beam search (default: 5) */
+  readonly beamSize?: number;
+  /** Length penalty for beam search (default: 0.0) */
+  readonly lengthPenalty?: number;
+  /** Temperature (0 = greedy argmax, >0 = sample). Greedy mode only. */
+  readonly temperature?: number;
 }
 
 export interface WhisperDecodeResult {
@@ -108,20 +88,26 @@ export interface WhisperDecodeResult {
 }
 
 // ---------------------------------------------------------------------------
-// Core decode loop
+// Unified dispatch
+// ---------------------------------------------------------------------------
+
+export async function whisperDecode(
+  session: WhisperCoreSession,
+  options: WhisperDecodeOptions,
+): Promise<WhisperDecodeResult> {
+  const strategy = options.strategy ?? 'greedy';
+  if (strategy === 'beam' && (options.beamSize ?? 5) > 1) {
+    return whisperBeamDecode(session, options);
+  }
+  return whisperGreedyDecode(session, options);
+}
+
+// ---------------------------------------------------------------------------
+// Greedy decode
 // ---------------------------------------------------------------------------
 
 /**
  * Pure greedy decode loop for Whisper splitgraph inference.
- *
- * Algorithm (matches OpenAI Whisper, HF Transformers, faster-whisper):
- *   1. runInit(prompt, encoder) → first logits + KV cache
- *   2. argmax first logits → first token
- *   3. Loop: runStep(prevToken, KV) → next logits
- *   4. argmax → next token; stop on EOS or max tokens
- *
- * The session handles all ONNX/backend details.
- * The processLogits callback handles timestamp/suppress rules.
  */
 export async function whisperGreedyDecode(
   session: WhisperCoreSession,
@@ -129,38 +115,139 @@ export async function whisperGreedyDecode(
 ): Promise<WhisperDecodeResult> {
   const { promptTokens, encoderOutput, encoderDims, eosTokenId, maxNewTokens, processLogits, onTokenLogits } = options;
 
-  // Init: prefill with prompt tokens
   const initResult = await session.runInit(promptTokens, encoderOutput, encoderDims);
   const vocabSize = initResult.vocabSize;
   let pastKv = initResult.presentKv;
 
-  // First token from init logits (last position, after prompt)
   const lastLogitOffset = initResult.logits.length - vocabSize;
   const firstLogits = initResult.logits.subarray(lastLogitOffset);
-  if (processLogits) {
-    processLogits(firstLogits, promptTokens, promptTokens.length);
-  }
+  if (processLogits) processLogits(firstLogits, promptTokens, promptTokens.length);
   const firstTokenId = argmax(firstLogits);
   const tokens: number[] = [firstTokenId];
-  if (onTokenLogits) {
-    onTokenLogits(firstTokenId, firstLogits, { tokens, beginIndex: promptTokens.length });
-  }
+  if (onTokenLogits) onTokenLogits(firstTokenId, firstLogits, { tokens, beginIndex: promptTokens.length });
 
-  // Autoregressive step loop
   for (let step = 1; step < maxNewTokens; step++) {
     const stepResult = await session.runStep(tokens[tokens.length - 1]!, pastKv);
-    if (processLogits) {
-      processLogits(stepResult.logits, [...promptTokens, ...tokens], promptTokens.length);
-    }
+    if (processLogits) processLogits(stepResult.logits, [...promptTokens, ...tokens], promptTokens.length);
     const nextTokenId = argmax(stepResult.logits);
     tokens.push(nextTokenId);
     pastKv = stepResult.presentKv;
-    if (onTokenLogits) {
-      onTokenLogits(nextTokenId, stepResult.logits, { tokens, beginIndex: promptTokens.length });
-    }
-
+    if (onTokenLogits) onTokenLogits(nextTokenId, stepResult.logits, { tokens, beginIndex: promptTokens.length });
     if (nextTokenId === eosTokenId) break;
   }
 
   return { tokens };
+}
+
+// ---------------------------------------------------------------------------
+// Beam search decode
+// ---------------------------------------------------------------------------
+
+/**
+ * Beam search decode for Whisper splitgraph inference.
+ *
+ * Matches faster-whisper / WhisperX beam search behavior.
+ */
+export async function whisperBeamDecode(
+  session: WhisperCoreSession,
+  options: WhisperDecodeOptions,
+): Promise<WhisperDecodeResult> {
+  const {
+    promptTokens, encoderOutput, encoderDims,
+    eosTokenId, maxNewTokens, processLogits,
+    beamSize = 5, lengthPenalty = 0,
+  } = options;
+
+  const initResult = await session.runInit(promptTokens, encoderOutput, encoderDims);
+  const vocabSize = initResult.vocabSize;
+
+  const lastLogitOffset = initResult.logits.length - vocabSize;
+  const firstLogits = initResult.logits.subarray(lastLogitOffset);
+  if (processLogits) processLogits(firstLogits, promptTokens, promptTokens.length);
+
+  const firstLogProbs = logSoftmax(firstLogits);
+  const topK = selectTopK(firstLogProbs, beamSize);
+
+  let beams = topK.map(({ tokenId, logProb }) =>
+    createInitialWhisperBeam([...promptTokens, tokenId], logProb) as any,
+  );
+
+  // Clone KV cache per beam
+  let beamKvs: Record<string, Float32Array>[] = beams.map(() => {
+    const c: Record<string, Float32Array> = {};
+    for (const [k, v] of Object.entries(initResult.presentKv)) c[k] = new Float32Array(v);
+    return c;
+  });
+
+  for (let s = 1; s < maxNewTokens; s++) {
+    if (beams.every(b => (b as any).completed)) break;
+
+    const logitsByBeam: Float32Array[] = [];
+    for (let bi = 0; bi < beams.length; bi++) {
+      const beam = beams[bi] as any;
+      if (beam.completed) { logitsByBeam.push(new Float32Array(0)); continue; }
+      const prevToken = beam.tokens[beam.tokens.length - 1];
+      const stepResult = await session.runStep(prevToken, beamKvs[bi]!);
+      const sl = stepResult.logits;
+      if (processLogits) processLogits(sl, beam.tokens, promptTokens.length);
+      logitsByBeam.push(sl);
+      beamKvs[bi] = stepResult.presentKv;
+    }
+
+    const candidates = rankWhisperBeamCandidates({
+      beams: beams as any,
+      logitsByBeam,
+      beamWidth: beamSize,
+      eosTokenId,
+      lengthPenalty,
+    });
+
+    // Rebuild KV cache for survivors
+    const newKvs: Record<string, Float32Array>[] = [];
+    for (const cand of candidates) {
+      const cTokens = (cand as any).tokens as number[];
+      for (let bi = 0; bi < beams.length; bi++) {
+        const parent = beams[bi] as any;
+        const pTokens = parent.tokens as number[];
+        if (pTokens.length + 1 === cTokens.length &&
+            cTokens.slice(0, pTokens.length).every((t, i) => t === pTokens[i])) {
+          const clone: Record<string, Float32Array> = {};
+          for (const [k, v] of Object.entries(beamKvs[bi]!)) clone[k] = new Float32Array(v);
+          newKvs.push(clone);
+          break;
+        }
+      }
+    }
+
+    beams = candidates as any[];
+    beamKvs = newKvs;
+
+    if (beams.every(b => (b as any).completed)) break;
+  }
+
+  const best = selectBestWhisperBeam(beams as any, lengthPenalty) as any;
+  if (!best) return whisperGreedyDecode(session, { ...options, strategy: 'greedy' });
+
+  return { tokens: best.tokens.slice(promptTokens.length) };
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function logSoftmax(logits: Float32Array): Float32Array {
+  let max = -Infinity;
+  for (let i = 0; i < logits.length; i++) if (logits[i]! > max) max = logits[i]!;
+  let sum = 0;
+  for (let i = 0; i < logits.length; i++) sum += Math.exp(logits[i]! - max);
+  const logSum = Math.log(sum);
+  const result = new Float32Array(logits.length);
+  for (let i = 0; i < logits.length; i++) result[i] = logits[i]! - max - logSum;
+  return result;
+}
+
+function selectTopK(logProbs: Float32Array, k: number): { tokenId: number; logProb: number }[] {
+  const indexed = Array.from(logProbs, (lp, i) => ({ tokenId: i, logProb: lp }));
+  indexed.sort((a, b) => b.logProb - a.logProb);
+  return indexed.slice(0, k);
 }
