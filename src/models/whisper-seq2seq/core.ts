@@ -90,6 +90,17 @@ export interface WhisperDecodeOptions {
   readonly maxNewTokens: number;
   /** Optional logit processor (e.g. WhisperTimestampLogitProcessor) */
   readonly processLogits?: WhisperLogitProcessor;
+  /**
+   * Optional per-token logit callback — fired after processLogits, before argmax.
+   * Enables quality gates (logprob, entropy, no-speech prob) without memory overhead.
+   * Called with: (chosenTokenId, postSuppressLogits, { tokens, beginIndex }).
+   * The logits snapshot is valid only during the callback; do not store references.
+   */
+  readonly onTokenLogits?: (
+    chosenTokenId: number,
+    processedLogits: Float32Array,
+    ctx: { readonly tokens: readonly number[]; readonly beginIndex: number },
+  ) => void;
 }
 
 export interface WhisperDecodeResult {
@@ -116,7 +127,7 @@ export async function whisperGreedyDecode(
   session: WhisperCoreSession,
   options: WhisperDecodeOptions,
 ): Promise<WhisperDecodeResult> {
-  const { promptTokens, encoderOutput, encoderDims, eosTokenId, maxNewTokens, processLogits } = options;
+  const { promptTokens, encoderOutput, encoderDims, eosTokenId, maxNewTokens, processLogits, onTokenLogits } = options;
 
   // Init: prefill with prompt tokens
   const initResult = await session.runInit(promptTokens, encoderOutput, encoderDims);
@@ -131,6 +142,9 @@ export async function whisperGreedyDecode(
   }
   const firstTokenId = argmax(firstLogits);
   const tokens: number[] = [firstTokenId];
+  if (onTokenLogits) {
+    onTokenLogits(firstTokenId, firstLogits, { tokens, beginIndex: promptTokens.length });
+  }
 
   // Autoregressive step loop
   for (let step = 1; step < maxNewTokens; step++) {
@@ -141,6 +155,9 @@ export async function whisperGreedyDecode(
     const nextTokenId = argmax(stepResult.logits);
     tokens.push(nextTokenId);
     pastKv = stepResult.presentKv;
+    if (onTokenLogits) {
+      onTokenLogits(nextTokenId, stepResult.logits, { tokens, beginIndex: promptTokens.length });
+    }
 
     if (nextTokenId === eosTokenId) break;
   }

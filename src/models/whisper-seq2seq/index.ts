@@ -3,6 +3,7 @@ export * from './beam-search.js';
 export * from './chunking.js';
 export * from './config.js';
 export * from './core.js';
+export * from './enhanced-types.js';
 export * from './executor.js';
 export * from './generation-config.js';
 export * from './local-file.js';
