@@ -132,8 +132,10 @@ src/presets/wav2vec2/ — presets (NEW)
 
 ## Remaining (production polish)
 
-1. **Sentence boundary + text normalization in output** — `buildSentences()` and `normalizeText()` exist but not called in executor output
-2. **End-to-end smoke test** — real audio → VAD → Whisper → gates → formatted output
-3. **No-speech probability from first token** — gate exists but needs real inference to test
-4. **WAV2VEC2 forced alignment** — blocked on Flexo-glm5.1 model factory
-5. **Parakeet/MedASR enhanced executors** — same modules, different models
+1. [x] **Sentence boundary + text normalization in output** — `buildSentences()` and `normalizeText()` wired via `formatTranscript()` in EnhancedWhisperExecutor
+2. [x] **CTC Viterbi forced alignment** — `src/alignment/ctc-viterbi.ts` (14 tests)
+3. [x] **WAV2VEC2 alignment backend** — `src/alignment/wav2vec2-aligner.ts` (8 tests)
+4. [ ] **End-to-end smoke test** — real audio → VAD → Whisper → gates → formatted output
+5. [ ] **No-speech probability from first token** — gate exists but needs real inference to test
+6. [ ] **Parakeet/MedASR enhanced executors** — same modules, different models
+7. [ ] **CTC Viterbi on real WAV2VEC2 ONNX model** — integration test with wav2vec2-base-960h
