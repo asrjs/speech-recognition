@@ -84,7 +84,7 @@ interface ReferenceJson {
 }
 
 describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () => {
-  it('feature-input mode: 100% token match using Python mel features', async () => {
+  it('feature-input: 100% token match using Python/HF mel features (no TS frontend tolerance)', async () => {
     const refPath = process.env.WHISPER_REFERENCE_JSON;
     if (!refPath) { console.warn('Skipping: set WHISPER_REFERENCE_JSON'); return; }
     if (!fs.existsSync(refPath)) { console.warn(`Skipping: ${refPath} not found`); return; }
@@ -165,7 +165,7 @@ describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () =
     console.log('\nFeature-input reproducibility PASSED (100% token match)');
   }, 180000);
 
-  it('wav-input mode: >=80% token match using TS mel frontend', async () => {
+  it('wav-input: >=80% token match using TS mel frontend (tolerance for HF frontend differences, will tighten)', async () => {
     const refPath = process.env.WHISPER_REFERENCE_JSON;
     if (!refPath) { console.warn('Skipping: set WHISPER_REFERENCE_JSON'); return; }
     if (!fs.existsSync(refPath)) { console.warn(`Skipping: ${refPath} not found`); return; }
@@ -226,7 +226,11 @@ describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () =
       for (const m of cmp.mismatches.slice(0, 5)) console.log(m);
     }
 
-    // With TS mel frontend, allow >=80% due to possible frontend differences
+    // WAV-INPUT TOLERANCE: >=80% because TS WhisperMelProcessor may differ from
+    // PyTorch's WhisperFeatureExtractor. This threshold exists ONLY for the
+    // wav-input path. Feature-input (Python mel) path requires 100%.
+    // Once the TS mel frontend is proven bit-close to HF/OpenAI preprocessing,
+    // tighten this to >=95% or 100%.
     expect(cmp.matchPct).toBeGreaterThanOrEqual(80);
 
     // No timestamp tokens in no_timestamps mode
