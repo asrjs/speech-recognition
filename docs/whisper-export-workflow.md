@@ -118,17 +118,86 @@ Key safety features:
 - `convert_fp16_safe()` — Post-export fp16 with external-data-aware save
 - `convert_int8_safe()` — ORT path-based quantize preserves external data
 
+## Variant directory layout
+
+Export with `--output-layout variant-dirs` (default) produces a clean publishable
+structure. Each variant lives in its own self-contained subdirectory:
+
+```
+model-repo-root/
+├── README.md
+├── config.json
+├── generation_config.json
+├── tokenizer.json
+├── preprocessor_config.json
+├── fp32/
+│   ├── manifest.json
+│   ├── config.json
+│   ├── tokenizer.json
+│   ├── encoder_model.onnx       (+ encoder_model.onnx.data if external)
+│   ├── decoder_init.onnx        (+ decoder_init.onnx.data)
+│   ├── decoder_step.onnx        (+ decoder_step.onnx.data)
+│   └── decoder_align.onnx       (+ decoder_align.onnx.data)
+├── fp16/
+│   └── ... (export-time FP16 recommended)
+└── int8-dynamic/
+    └── ... (post-export dynamic quantization)
+```
+
+Key rules:
+- Each variant is self-contained — graphs never reference data files from
+  other variants.
+- Manifest paths are relative to the variant directory (e.g., `"file": "encoder_model.onnx"`).
+- `--external-data-one-file true` (default) ensures one `.onnx.data` file per graph.
+  Per-weight external data from `torch.onnx.export` is automatically repacked.
+- `fp16/` is only valid when created with `--dtype float16` (export-time FP16).
+  Post-export FP16 conversion is experimental — export-time is preferred.
+- `int8-dynamic/` is created via `--variant int8-dynamic --int8`.
+  All four graphs are validated (ONNX checker + ORT load) before the variant
+  is marked ready.
+
+Recommended commands:
+```
+# FP32
+python export_whisper.py openai/whisper-large-v3-turbo ./dist \
+  --device cpu --dtype float32 --external-data auto --variant fp32
+
+# FP16 (export-time, ORT-safe)
+python export_whisper.py openai/whisper-large-v3-turbo ./dist \
+  --device cuda --dtype float16 --external-data auto --variant fp16
+
+# INT8 (post-export dynamic)
+python export_whisper.py openai/whisper-large-v3-turbo ./dist \
+  --device cpu --dtype float32 --external-data auto --variant int8-dynamic --int8
+```
+
+The `--output-layout flat` escape hatch keeps everything in root (legacy behaviour).
+
+## Browser loading requirement
+
+ORT Web requires explicit externalData in session options:
+```
+{
+  path: "<ONNX internal external_data location>",  // e.g. "encoder_model.onnx.data"
+  data: "<resolved URL/blob/Uint8Array>"            // full URL to the .data file
+}
+```
+The `path` must match the ONNX graph's internal `external_data.location` EXACTLY.
+This value comes from the manifest's `externalData[].path` field.
+
 ## Current HF repos
 
 | Repo | Model | Variants |
 |------|-------|----------|
 | `ysdede/whisper-large-v3-turbo-onnx-4graph` | whisper-large-v3-turbo | fp32 |
 
-## Next steps (quantization)
+## Per-weight vs consolidated external data
 
-1. Re-export whisper-large-v3-turbo with `--fp16` flag → fp16 variants
-2. Re-export with `--int8` flag → int8 variants
-3. Organize in subdirectories: `fp16/`, `int8/`
-4. Update manifest.json with variant paths
-5. Upload to HF repo
-6. Verify each variant with `WHISPER_SPLITGRAPH_FIXTURE_DIR`
+`torch.onnx.export` auto-externalizes individual tensors for large encoders,
+producing files like `encoder.conv1.weight`, `encoder.layers.0.fc1.bias`, etc.
+These are valid ONNX external data but NOT suitable for published repos.
+
+The exporter automatically detects per-weight files and uses `repack_external_data()`
+to consolidate them into a single `<graph>.onnx.data` file per graph.  Old per-weight
+files are deleted after repack.  This is controlled by `--external-data-one-file true`
+(default).  Use `--external-data-one-file false` to keep per-weight files.
