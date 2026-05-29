@@ -510,7 +510,7 @@ def convert_int8(model_dir: Path, names: list[str]):
 # ---------------------------------------------------------------------------
 
 def copy_tokenizer_files(model_id: str, output_dir: Path):
-    for filename in ["tokenizer.json", "generation_config.json", "config.json"]:
+    for filename in ["tokenizer.json", "generation_config.json", "config.json", "preprocessor_config.json"]:
         try:
             local = hf_hub_download(model_id, filename)
             shutil.copy(local, output_dir / filename)
@@ -533,14 +533,19 @@ def export_all(
     fp16: bool = False,
     int8: bool = False,
     device: str | None = None,
+    dtype: str = "float32",
 ):
     out_dir = ensure_dir(output_dir)
 
     # Use eager attention so output_attentions=True works for alignment export
-    load_kwargs = dict(attn_implementation="eager")
+    load_kwargs: Dict[str, Any] = dict(attn_implementation="eager")
+    if dtype == "float16":
+        load_kwargs["torch_dtype"] = torch.float16
+    else:
+        load_kwargs["torch_dtype"] = torch.float32
+
     if device == "cpu":
         load_kwargs["device_map"] = "cpu"
-        load_kwargs["torch_dtype"] = torch.float32
     elif device == "cuda":
         load_kwargs["device_map"] = "cuda"
     model = WhisperForConditionalGeneration.from_pretrained(
@@ -786,6 +791,10 @@ def main():
         help="Device to load model on: 'cpu' or 'cuda'. Default: auto.",
     )
     parser.add_argument(
+        "--dtype", type=str, default="float32",
+        help="Model dtype: 'float32' or 'float16'. Default: float32.",
+    )
+    parser.add_argument(
         "--alignment-heads",
         type=str,
         default=None,
@@ -803,6 +812,7 @@ def main():
         fp16=args.fp16,
         int8=args.int8,
         device=args.device,
+        dtype=args.dtype,
     )
 
 

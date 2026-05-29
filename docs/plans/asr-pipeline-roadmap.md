@@ -849,8 +849,11 @@ EXAMPLE
   examples/whisper-splitgraph-local.mjs — text, segments, word-timestamp modes
 
 HF MODEL REPO
-  ysdede/whisper-large-v3-turbo-onnx-4graph — self-exported 4-graph ONNX model
+  ysdede/whisper-large-v3-turbo-onnx-4graph — self-exported 4-graph ONNX
   https://huggingface.co/ysdede/whisper-large-v3-turbo-onnx-4graph
+  Model sizes: whisper-large-v3 ~1.55B, whisper-large-v3-turbo ~809M
+  Variants: fp32 (default), fp16 (post-export conversion)
+  Export: --device cpu --dtype float32 for large models (GPU may OOM)
 
 CRITICAL ARCHITECTURE NOTES
   - decoder_step does NOT need encoder_hidden_states as input
