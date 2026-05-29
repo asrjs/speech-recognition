@@ -997,7 +997,7 @@ def _organize_variant_dirs(
         )
         if not ok:
             print("  WARNING: FP16 conversion had failures. See above.")
-    elif variant == "int8-dynamic" and int8:
+    elif variant in ("int8-dynamic", "q8") and int8:
         print(f"\nDynamic int8 quantization in {variant_dir_name}/:")
         int8_names = [n.replace(".onnx", "_int8.onnx") for n in graph_names]
         convert_int8_safe(variant_dir, int8_names)
@@ -1191,11 +1191,14 @@ def export_all(
     print(f"  use_external_data={use_external_data}  validate_path_only={validate_path_only}")
     print()
 
-    dummy_mel = torch.randn(1, num_mel_bins, 3000, dtype=torch.float32)
-    dummy_hidden = torch.randn(1, max_source_positions, cfg.d_model, dtype=torch.float32)
-    dummy_prompt_ids = torch.ones(1, prompt_len, dtype=torch.long)
-    dummy_single_id = torch.ones(1, 1, dtype=torch.long)
-    dummy_cache_position = torch.tensor([prompt_len], dtype=torch.long)
+    # Use model's dtype and device for dummy inputs (critical for fp16/cuda export)
+    model_dtype = next(model.parameters()).dtype
+    model_device = next(model.parameters()).device
+    dummy_mel = torch.randn(1, num_mel_bins, 3000, dtype=model_dtype).to(model_device)
+    dummy_hidden = torch.randn(1, max_source_positions, cfg.d_model, dtype=model_dtype).to(model_device)
+    dummy_prompt_ids = torch.ones(1, prompt_len, dtype=torch.long).to(model_device)
+    dummy_single_id = torch.ones(1, 1, dtype=torch.long).to(model_device)
+    dummy_cache_position = torch.tensor([prompt_len], dtype=torch.long).to(model_device)
 
     # ---- 1. Encoder ----
     print("Exporting encoder_model.onnx ...")
@@ -1243,10 +1246,10 @@ def export_all(
     print("Exporting decoder_step.onnx ...")
     flat_dummy_pkv: List[torch.Tensor] = []
     for _layer in range(num_layers):
-        flat_dummy_pkv.append(torch.randn(1, num_heads, past_len, head_dim, dtype=torch.float32))
-        flat_dummy_pkv.append(torch.randn(1, num_heads, past_len, head_dim, dtype=torch.float32))
-        flat_dummy_pkv.append(torch.randn(1, num_heads, max_source_positions, head_dim, dtype=torch.float32))
-        flat_dummy_pkv.append(torch.randn(1, num_heads, max_source_positions, head_dim, dtype=torch.float32))
+        flat_dummy_pkv.append(torch.randn(1, num_heads, past_len, head_dim, dtype=model_dtype).to(model_device))
+        flat_dummy_pkv.append(torch.randn(1, num_heads, past_len, head_dim, dtype=model_dtype).to(model_device))
+        flat_dummy_pkv.append(torch.randn(1, num_heads, max_source_positions, head_dim, dtype=model_dtype).to(model_device))
+        flat_dummy_pkv.append(torch.randn(1, num_heads, max_source_positions, head_dim, dtype=model_dtype).to(model_device))
 
     step_wrapper = WhisperDecoderStepWrapper(model)
 
@@ -1270,7 +1273,7 @@ def export_all(
     # ---- 4. Decoder align ----
     print("Exporting decoder_align.onnx ...")
     align_wrapper = WhisperDecoderAlignWrapper(model, alignment_heads=alignment_heads)
-    dummy_align_ids = torch.ones(1, 16, dtype=torch.long)
+    dummy_align_ids = torch.ones(1, 16, dtype=torch.long).to(model_device)
 
     with torch.no_grad():
         _ = align_wrapper(dummy_align_ids, dummy_hidden)
@@ -1580,8 +1583,8 @@ def main():
     )
     parser.add_argument(
         "--variant", type=str, default="fp32",
-        choices=["fp32", "fp16", "int8-dynamic"],
-        help="Variant to export: fp32, fp16, or int8-dynamic. Default: fp32.",
+        choices=["fp32", "fp16", "int8-dynamic", "q8"],
+        help="Variant to export: fp32, fp16, q8/int8-dynamic. Default: fp32.",
     )
     parser.add_argument(
         "--output-layout", type=str, default="variant-dirs",
@@ -1604,12 +1607,13 @@ def main():
     args = parser.parse_args()
 
     # Auto-detect flags from variant
-    if args.variant == "fp16" and args.dtype == "float32" and not args.fp16:
+    if args.variant in ("fp16",) and args.dtype == "float32" and not args.fp16:
         args.dtype = "float16"
         print("Note: --variant fp16 → auto-setting --dtype float16 (export-time FP16)")
-    elif args.variant == "int8-dynamic" and not args.int8:
+    elif args.variant in ("int8-dynamic", "q8") and not args.int8:
         args.int8 = True
-        print("Note: --variant int8-dynamic → auto-enabling --int8")
+        args.variant = "q8"  # Normalize to q8 directory name
+        print("Note: --variant q8/int8-dynamic → auto-enabling --int8")
 
     validate_path_only = None
     if args.validate_path_only is not None:
