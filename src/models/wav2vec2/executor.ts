@@ -14,9 +14,10 @@ import {
   argmaxAndSelectedLogProbs,
   buildSentenceTimings,
   buildUtteranceTiming,
+  buildWordsFromCharSpans,
   ctcCollapseWithSpans,
   estimateSecondsPerOutputFrame,
-} from '../lasr-ctc/ctc.js';
+} from '../../ctc/index.js';
 import {
   createOrtSession,
   initOrt,
@@ -36,7 +37,6 @@ import type {
   Wav2Vec2NativeSegment,
   Wav2Vec2NativeToken,
   Wav2Vec2NativeTranscript,
-  Wav2Vec2NativeWord,
   Wav2Vec2SentenceTiming,
   Wav2Vec2TokenSpan,
   Wav2Vec2TranscriptionOptions,
@@ -288,75 +288,6 @@ function findLogitsTensor(outputs: Record<string, OrtTensorLike>): OrtTensorLike
   }
 
   return first;
-}
-
-// ---------------------------------------------------------------------------
-// Build words from token spans (character-level)
-// ---------------------------------------------------------------------------
-
-function buildWordsFromSpans(
-  timedSpans: readonly Wav2Vec2TokenSpan[],
-): Wav2Vec2NativeWord[] {
-  const words: Wav2Vec2NativeWord[] = [];
-  let wordIndex = 0;
-  let currentWordText = '';
-  let currentWordStart: number | undefined;
-  let currentWordEnd: number | undefined;
-  let currentWordConfSum = 0;
-  let currentWordConfCount = 0;
-  let currentWordTokenIndices: number[] = [];
-  let currentWordTokenIds: number[] = [];
-
-  const flushWord = (): void => {
-    if (currentWordText.length === 0) {
-      return;
-    }
-
-    words.push({
-      index: wordIndex,
-      text: currentWordText,
-      startTime: currentWordStart ?? 0,
-      endTime: currentWordEnd ?? 0,
-      confidence:
-        currentWordConfCount > 0
-          ? roundMetric(currentWordConfSum / currentWordConfCount, 4)
-          : undefined,
-      tokenIds: currentWordTokenIds,
-      tokenIndices: currentWordTokenIndices,
-    });
-    wordIndex += 1;
-  };
-
-  for (let spanIndex = 0; spanIndex < timedSpans.length; spanIndex += 1) {
-    const span = timedSpans[spanIndex];
-    if (!span) continue;
-
-    // Space token separates words
-    if (span.text === ' ') {
-      flushWord();
-      currentWordText = '';
-      currentWordStart = undefined;
-      currentWordEnd = undefined;
-      currentWordConfSum = 0;
-      currentWordConfCount = 0;
-      currentWordTokenIndices = [];
-      currentWordTokenIds = [];
-      continue;
-    }
-
-    if (currentWordStart === undefined) {
-      currentWordStart = span.startTime;
-    }
-    currentWordEnd = span.endTime;
-    currentWordText += span.text;
-    currentWordConfSum += span.confidence;
-    currentWordConfCount += 1;
-    currentWordTokenIndices.push(spanIndex);
-    currentWordTokenIds.push(span.tokenId);
-  }
-
-  flushWord();
-  return words;
 }
 
 // ---------------------------------------------------------------------------
@@ -669,8 +600,8 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
       }),
     );
 
-    // 14. Build words from spans
-    const words = buildWordsFromSpans(wav2vec2TokenSpans);
+    // 14. Build words from spans (char-level, space separator)
+    const words = buildWordsFromCharSpans(wav2vec2TokenSpans, ' ');
 
     // 15. Build utterance timing result
     const utteranceTiming: Wav2Vec2UtteranceTiming = {

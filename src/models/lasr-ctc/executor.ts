@@ -16,7 +16,7 @@ import {
   buildUtteranceTiming,
   ctcCollapseWithSpans,
   estimateSecondsPerOutputFrame,
-} from './ctc.js';
+} from '../../ctc/index.js';
 import { MedAsrJsPreprocessor, transposeMelToTxM } from './mel.js';
 import {
   createOrtSession,
