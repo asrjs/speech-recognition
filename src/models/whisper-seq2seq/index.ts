@@ -5,6 +5,7 @@ export * from './chunking.js';
 export * from './config.js';
 export * from './core.js';
 export * from './drift-handler.js';
+export * from './enhanced-executor.js';
 export * from './enhanced-types.js';
 export * from './executor.js';
 export * from './generation-config.js';
