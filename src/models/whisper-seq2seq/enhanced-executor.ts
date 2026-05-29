@@ -15,15 +15,10 @@
 
 import type { AudioBufferLike } from '../../types/index.js';
 import type { EnhancedDecodeOptions, VadSegmenterConfig } from './enhanced-types.js';
-import {
-  compressionRatioGate,
-  logProbGate,
-  noSpeechGate,
-  entropyGate,
-} from './quality-gates.js';
-import { withTemperatureFallback } from './temperature-fallback.js';
-import { mergeVadSegments, type WhisperVadBackend, type VadSpeechSegment } from './vad-segmenter.js';
-import { mergeWhisperSegments } from './segment-merger.js';
+import { compressionRatioGate, logProbGate, noSpeechGate, entropyGate } from '../../quality/index.js';
+import { withTemperatureFallback } from '../../quality/index.js';
+import { mergeVadSegments, type WhisperVadBackend, type VadSpeechSegment } from '../../chunking/index.js';
+import { mergeSegments } from '../../post-processing/index.js';
 import type { WhisperExecutor, WhisperNativeTranscript, WhisperSeq2SeqTranscriptionOptions, WhisperDecodeContext } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -146,7 +141,7 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
     }
 
     // 4. Merge all chunks
-    const merged = mergeWhisperSegments(perChunkResults);
+    const merged = mergeSegments(perChunkResults);
 
     return {
       utteranceText: merged.segments.map((s) => s.text).join(' ').trim(),
