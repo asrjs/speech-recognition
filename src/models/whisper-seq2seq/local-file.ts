@@ -46,7 +46,7 @@ export function loadSplitGraphLocalModel(
       resolved = variantDir;
     } else if (options.variant !== undefined) {
       // User explicitly requested a variant that doesn't exist
-      const available = ['fp32', 'fp16', 'int8-dynamic']
+      const available = ['fp32', 'fp16', 'q8']
         .filter((v) => fs.existsSync(path.join(resolved, v, 'manifest.json')));
       throw new Error(
         `Variant "${variant}" not found in ${resolved}. ` +
