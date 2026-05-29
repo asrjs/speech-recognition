@@ -31,6 +31,7 @@ import { WhisperTokenizer } from './tokenizer.js';
 import { WhisperTimestampLogitProcessor } from './processors.js';
 import { buildWhisperWordTimestampsFromTokenDetails } from './word-timestamps.js';
 import { computeWhisperDtwTokenTimestamps } from './attention-alignment.js';
+import { whisperGreedyDecode, type WhisperCoreSession } from './core.js';
 import {
   parseWhisperGenerationConfig,
   parseWhisperModelConfig,
@@ -179,41 +180,18 @@ export async function splitGraphDecodeLoop(params: {
   runStep: SplitGraphDecodeCallbacks['runStep'];
   processLogits?: (logits: Float32Array, generatedTokens: readonly number[], beginIndex: number) => void;
 }): Promise<SplitGraphDecodeResult> {
-  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, runInit, runStep, processLogits } = params;
+  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, modelConfig, runInit, runStep, processLogits } = params;
 
-  // Init: prefill with prompt tokens
-  const initResult = await runInit(
-    promptTokens,
-    encoderHiddenStates,
-    [1, encoderHiddenStates.length / params.modelConfig.dModel, params.modelConfig.dModel],
-  );
-  const initLogits = initResult.logits;
-  const vocabSize = initResult.vocabSize;
-  let pastKv = initResult.presentKv;
-
-  // First token from init logits (last position)
-  const lastLogitOffset = initLogits.length - vocabSize;
-  const firstLogits = initLogits.subarray(lastLogitOffset);
-  if (processLogits) {
-    processLogits(firstLogits, promptTokens, promptTokens.length);
-  }
-  const firstTokenId = argmax(firstLogits);
-  const tokens: number[] = [firstTokenId];
-
-  // Autoregressive step loop
-  for (let step = 1; step < maxNewTokens; step++) {
-    const stepResult = await runStep(tokens[tokens.length - 1]!, pastKv);
-    if (processLogits) {
-      processLogits(stepResult.logits, [...promptTokens, ...tokens], promptTokens.length);
-    }
-    const nextTokenId = argmax(stepResult.logits);
-    tokens.push(nextTokenId);
-    pastKv = stepResult.presentKv;
-
-    if (nextTokenId === eosTokenId) break;
-  }
-
-  return { tokens };
+  // Delegate to vanilla Whisper core
+  const encoderDims: readonly number[] = [1, encoderHiddenStates.length / modelConfig.dModel, modelConfig.dModel];
+  const session: WhisperCoreSession = {
+    runInit: async (pt, enc, dims) => runInit(pt, enc, dims),
+    runStep: async (tid, kv) => runStep(tid, kv),
+  };
+  const result = await whisperGreedyDecode(session, {
+    promptTokens, encoderOutput: encoderHiddenStates, encoderDims, eosTokenId, maxNewTokens, processLogits,
+  });
+  return { tokens: result.tokens };
 }
 
 export interface SplitGraphAlignmentOptions {
