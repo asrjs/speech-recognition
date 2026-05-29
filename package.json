@@ -85,6 +85,11 @@
       "import": "./dist/models/*.js",
       "default": "./dist/models/*.js"
     },
+    "./models/whisper-seq2seq": {
+      "types": "./dist/models/whisper-seq2seq/index.d.ts",
+      "import": "./dist/models/whisper-seq2seq/index.js",
+      "default": "./dist/models/whisper-seq2seq/index.js"
+    },
     "./presets/*": {
       "types": "./dist/presets/*.d.ts",
       "import": "./dist/presets/*.js",

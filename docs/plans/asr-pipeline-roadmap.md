@@ -772,7 +772,7 @@ Expected known lint warnings:
 ╔══════════════════════════════════════════════════════════════════╗
 ║  RESUME PROMPT — asrjs/speech-recognition                       ║
 ║  Branch: feat/asr-pipeline-output-formats                       ║
-║  State: 2026-05-29, commit 26d0a21                              ║
+║  State: 2026-05-29, commit 2fcb814                              ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 Load skill asrjs-dev.
@@ -786,7 +786,7 @@ MAIN GOAL
   Whisper ONNX inference, attention-DTW word timestamps, and self-contained
   4-graph KV-cache ONNX export + TypeScript runtime for self-exported models.
 
-WHAT'S DONE (Tasks 1–15, 17, config-driven dims, 4-graph TypeScript wiring)
+WHAT'S DONE (all core tasks complete)
   ✓ Transcript/detail output surface, sentence/subtitle utilities
   ✓ Pipeline composition API, windowing stage, sentence segmentation
   ✓ VAD segment schema, Whisper chunk/stride/timestamp helpers
@@ -797,11 +797,17 @@ WHAT'S DONE (Tasks 1–15, 17, config-driven dims, 4-graph TypeScript wiring)
   ✓ Attention-DTW word timestamps
   ✓ Word probability from forced alignment logprobs
   ✓ Long-audio chunking wired into Whisper executor
-  ✓ 4-graph KV-cache ONNX export tool (Python, tools/whisper-onnx-export/)
-  ✓ Config-driven Whisper dimensions (no more hardcoded tiny constants)
+  ✓ 4-graph KV-cache ONNX export tool (Python)
+  ✓ Config-driven Whisper dimensions (no hardcoded tiny constants)
   ✓ 4-graph TypeScript executor: splitgraph source, manifest parser,
     init→step autoregressive loop, alignment session loading
   ✓ splitGraphDecodeLoop() — pure export, testable without ONNX runtime
+  ✓ Timestamp logit processor (Task 16) — suppression, pairs, monotonic
+  ✓ Splitgraph decoder_align forced alignment → DTW word timestamps
+  ✓ Reproducibility harness (feature-input 100%, wav-input ≥80%)
+  ✓ Local-file loader: loadSplitGraphLocalModel(dirPath)
+  ✓ Public API example: examples/whisper-splitgraph-local.mjs
+  ✓ Docs: docs/whisper-splitgraph-local.md
 
 COMMIT HISTORY (feat/asr-pipeline-output-formats)
   511fcee feat: implement 4-graph KV-cache Whisper decoder export
@@ -810,6 +816,15 @@ COMMIT HISTORY (feat/asr-pipeline-output-formats)
   56a8469 docs: comprehensive resume prompt with final state
   1ff95ed feat: config-driven Whisper decoder dimensions
   26d0a21 feat: wire 4-graph Whisper ONNX format in TypeScript executor
+  8d66f4e feat: add 4-graph splitgraph fixture smoke test
+  c8fecc0 feat: low-level ONNX tensor shape verification smoke test
+  f9e1e16 feat: implement splitgraph forced alignment via decoder_align.onnx
+  b98427b feat: implement Whisper timestamp logit processor (Task 16)
+  e305ae2 test: add PyTorch-reproducibility comparison to smoke test
+  e8bb013 feat: add HF Transformers reproducibility harness
+  da6d089 feat: split harness into feature-input (100%) and wav-input (>=80%)
+  a9174a3 docs: clarify reproducibility harness threshold rationale
+  2fcb814 feat: add splitgraph local-file loader + public example
 
 E2E VALIDATION (Python exporter, all passing)
   - Synthetic (440Hz sine):  5/5  tokens exact match ONNX vs PyTorch
@@ -817,10 +832,21 @@ E2E VALIDATION (Python exporter, all passing)
   - Alignment: [1, 27, 1500], row sums = 1.0000, non-negative
   - fp16 parity: 100%  |  int8 parity: 100%
 
-TYPE-SPLITGRAPH FIXTURE SMOKE TEST (pending)
-  - Needs exported whisper-tiny artifacts (run Python exporter first)
-  - Set WHISPER_SPLITGRAPH_FIXTURE_DIR=/path/to/exported/tiny
-  - Test verifies: encoder shape, init→step loop, alignment shape, tokens
+VERIFICATION TESTS (all passing, skipped without env vars)
+  - WHISPER_SPLITGRAPH_FIXTURE_DIR: low-level tensor shape smoke test
+  - WHISPER_REFERENCE_JSON: reproducibility harness vs HF Transformers
+
+DEFERRED
+  - Task 16: Timestamp logit processor ✓ DONE
+  - External dataset benchmarks (LibriSpeech, AMI, Common Voice)
+  - TS mel frontend parity with PyTorch WhisperFeatureExtractor
+    (currently ≥80% wav-input tolerance; target ≥95-100%)
+
+DOCS
+  docs/whisper-splitgraph-local.md — full usage guide
+
+EXAMPLE
+  examples/whisper-splitgraph-local.mjs — text, segments, word-timestamp modes
 
 CRITICAL ARCHITECTURE NOTES
   - decoder_step does NOT need encoder_hidden_states as input
