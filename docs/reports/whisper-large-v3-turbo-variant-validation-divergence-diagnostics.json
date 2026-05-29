@@ -1,0 +1,1666 @@
+[
+  {
+    "filename": "019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav",
+    "language": "tr",
+    "prompt_ids": [
+      50258,
+      50268,
+      50360,
+      50364
+    ],
+    "fp32_tokens_preview": [
+      363,
+      3780,
+      1165,
+      699,
+      31803,
+      6581,
+      304,
+      4157,
+      14716,
+      9393,
+      6698,
+      1912
+    ],
+    "fp32_token_count": 64,
+    "fp32_eos": false,
+    "fp32_text_preview": "Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar ne",
+    "q8_text_preview": "Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar ne",
+    "first_mismatch_generated_token_index": -1,
+    "debug": {
+      "diverged_at_step": -1,
+      "diverged_at_generated_token_count": -1,
+      "steps": [
+        {
+          "step_index": 0,
+          "generated_token_count": 0,
+          "input_token_id": 50364,
+          "input_token_text": "",
+          "fp32_selected_token_id": 363,
+          "selected_token_id": 363,
+          "selected_token_text": "B",
+          "fp32_selected_token_text": "B",
+          "eos_token_id": 50257,
+          "is_eos": false,
+          "fp32_is_eos": false,
+          "logits_before_process": null,
+          "logits_after_process": [
+            {
+              "token_id": 363,
+              "logit": 15.7864,
+              "text": "B"
+            },
+            {
+              "token_id": 272,
+              "logit": 11.8701,
+              "text": "b"
+            },
+            {
+              "token_id": 624,
+              "logit": 8.6198,
+              "text": "U"
+            },
+            {
+              "token_id": 19825,
+              "logit": 8.1135,
+              "text": "Bul"
+            },
+            {
+              "token_id": 413,
+              "logit": 7.0559,
+              "text": "D"
+            },
+            {
+              "token_id": 4078,
+              "logit": 6.8798,
+              "text": "Bu"
+            },
+            {
+              "token_id": 691,
+              "logit": 5.4667,
+              "text": "V"
+            },
+            {
+              "token_id": 6493,
+              "logit": 5.4667,
+              "text": "bul"
+            },
+            {
+              "token_id": 316,
+              "logit": 5.3548,
+              "text": "A"
+            },
+            {
+              "token_id": 344,
+              "logit": 5.3166,
+              "text": "u"
+            }
+          ],
+          "top1_top2_margin": 3.916221,
+          "eos_allowed": false,
+          "timestamp_tokens_suppressed": true,
+          "suppress_tokens_active": 88,
+          "begin_suppress_tokens_active": 2,
+          "decoder_step_output_keys": null,
+          "kvcache_shapes": [
+            {
+              "key": "present.0.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            }
+          ],
+          "mismatch": false
+        }
+      ]
+    }
+  },
+  {
+    "filename": "ItsLifeJim.en.wav",
+    "language": "en",
+    "prompt_ids": [
+      50258,
+      50259,
+      50360,
+      50364
+    ],
+    "fp32_tokens_preview": [
+      35261,
+      13,
+      1726,
+      787,
+      820,
+      309,
+      362,
+      668,
+      8937,
+      538,
+      527,
+      903
+    ],
+    "fp32_token_count": 64,
+    "fp32_eos": false,
+    "fp32_text_preview": "Incredible. Not only should it have been destroyed by our phasers, it does not even register on my tricorder. Captain, i",
+    "q8_text_preview": "Incredible. Not only should it have been destroyed by our phasers, it does not even register on my tricorder. Captain, i",
+    "first_mismatch_generated_token_index": 46,
+    "debug": {
+      "diverged_at_step": 46,
+      "diverged_at_generated_token_count": 46,
+      "steps": [
+        {
+          "step_index": 0,
+          "generated_token_count": 0,
+          "input_token_id": 50364,
+          "input_token_text": "",
+          "fp32_selected_token_id": 35261,
+          "selected_token_id": 35261,
+          "selected_token_text": "Incredible",
+          "fp32_selected_token_text": "Incredible",
+          "eos_token_id": 50257,
+          "is_eos": false,
+          "fp32_is_eos": false,
+          "logits_before_process": null,
+          "logits_after_process": [
+            {
+              "token_id": 35261,
+              "logit": 7.1135,
+              "text": "Incredible"
+            },
+            {
+              "token_id": 4651,
+              "logit": 5.7607,
+              "text": "incredible"
+            },
+            {
+              "token_id": 467,
+              "logit": 3.5179,
+              "text": "It"
+            },
+            {
+              "token_id": 1726,
+              "logit": 1.8775,
+              "text": "Not"
+            },
+            {
+              "token_id": 39523,
+              "logit": 1.775,
+              "text": "Unbelievable"
+            },
+            {
+              "token_id": 309,
+              "logit": 1.7655,
+              "text": "it"
+            },
+            {
+              "token_id": 1097,
+              "logit": 1.7264,
+              "text": "..."
+            },
+            {
+              "token_id": 663,
+              "logit": 1.6985,
+              "text": "That"
+            },
+            {
+              "token_id": 286,
+              "logit": 1.6226,
+              "text": "I"
+            },
+            {
+              "token_id": 406,
+              "logit": 1.1223,
+              "text": "not"
+            }
+          ],
+          "top1_top2_margin": 1.352869,
+          "eos_allowed": false,
+          "timestamp_tokens_suppressed": true,
+          "suppress_tokens_active": 88,
+          "begin_suppress_tokens_active": 2,
+          "decoder_step_output_keys": null,
+          "kvcache_shapes": [
+            {
+              "key": "present.0.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            }
+          ],
+          "mismatch": false
+        },
+        {
+          "step_index": 46,
+          "generated_token_count": 46,
+          "input_token_id": 13,
+          "input_token_text": ".",
+          "fp32_selected_token_id": 10890,
+          "selected_token_id": 467,
+          "selected_token_text": "It",
+          "fp32_selected_token_text": "Yet",
+          "eos_token_id": 50257,
+          "is_eos": false,
+          "fp32_is_eos": false,
+          "logits_before_process": [
+            {
+              "token_id": 467,
+              "logit": 17.0015,
+              "text": "It"
+            },
+            {
+              "token_id": 10890,
+              "logit": 16.7323,
+              "text": "Yet"
+            },
+            {
+              "token_id": 400,
+              "logit": 14.8557,
+              "text": "And"
+            },
+            {
+              "token_id": 583,
+              "logit": 13.3428,
+              "text": "But"
+            },
+            {
+              "token_id": 663,
+              "logit": 11.1549,
+              "text": "That"
+            },
+            {
+              "token_id": 865,
+              "logit": 10.6495,
+              "text": "Yeah"
+            },
+            {
+              "token_id": 821,
+              "logit": 10.5556,
+              "text": "There"
+            },
+            {
+              "token_id": 823,
+              "logit": 9.9215,
+              "text": "Now"
+            },
+            {
+              "token_id": 759,
+              "logit": 9.8586,
+              "text": "If"
+            },
+            {
+              "token_id": 1079,
+              "logit": 9.7825,
+              "text": "Yes"
+            }
+          ],
+          "logits_after_process": [
+            {
+              "token_id": 467,
+              "logit": 17.0015,
+              "text": "It"
+            },
+            {
+              "token_id": 10890,
+              "logit": 16.7323,
+              "text": "Yet"
+            },
+            {
+              "token_id": 400,
+              "logit": 14.8557,
+              "text": "And"
+            },
+            {
+              "token_id": 583,
+              "logit": 13.3428,
+              "text": "But"
+            },
+            {
+              "token_id": 663,
+              "logit": 11.1549,
+              "text": "That"
+            },
+            {
+              "token_id": 865,
+              "logit": 10.6495,
+              "text": "Yeah"
+            },
+            {
+              "token_id": 821,
+              "logit": 10.5556,
+              "text": "There"
+            },
+            {
+              "token_id": 823,
+              "logit": 9.9215,
+              "text": "Now"
+            },
+            {
+              "token_id": 759,
+              "logit": 9.8586,
+              "text": "If"
+            },
+            {
+              "token_id": 1079,
+              "logit": 9.7825,
+              "text": "Yes"
+            }
+          ],
+          "top1_top2_margin": 0.269205,
+          "eos_allowed": true,
+          "timestamp_tokens_suppressed": true,
+          "suppress_tokens_active": 88,
+          "begin_suppress_tokens_active": 2,
+          "decoder_step_output_keys": 8,
+          "kvcache_shapes": [
+            {
+              "key": "present.0.decoder.key",
+              "dims": [
+                1,
+                20,
+                50,
+                64
+              ]
+            },
+            {
+              "key": "present.0.decoder.value",
+              "dims": [
+                1,
+                20,
+                50,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.key",
+              "dims": [
+                1,
+                20,
+                50,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.value",
+              "dims": [
+                1,
+                20,
+                50,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.key",
+              "dims": [
+                1,
+                20,
+                50,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.value",
+              "dims": [
+                1,
+                20,
+                50,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.key",
+              "dims": [
+                1,
+                20,
+                50,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.value",
+              "dims": [
+                1,
+                20,
+                50,
+                64
+              ]
+            }
+          ],
+          "mismatch": true
+        }
+      ]
+    }
+  },
+  {
+    "filename": "JFK_Short.en.wav",
+    "language": "en",
+    "prompt_ids": [
+      50258,
+      50259,
+      50360,
+      50364
+    ],
+    "fp32_tokens_preview": [
+      682,
+      264,
+      938,
+      2503,
+      295,
+      264,
+      1002,
+      11,
+      787,
+      257,
+      1326,
+      10593
+    ],
+    "fp32_token_count": 40,
+    "fp32_eos": true,
+    "fp32_text_preview": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of ",
+    "q8_text_preview": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of ",
+    "first_mismatch_generated_token_index": -1,
+    "debug": {
+      "diverged_at_step": -1,
+      "diverged_at_generated_token_count": -1,
+      "steps": [
+        {
+          "step_index": 0,
+          "generated_token_count": 0,
+          "input_token_id": 50364,
+          "input_token_text": "",
+          "fp32_selected_token_id": 682,
+          "selected_token_id": 682,
+          "selected_token_text": "In",
+          "fp32_selected_token_text": "In",
+          "eos_token_id": 50257,
+          "is_eos": false,
+          "fp32_is_eos": false,
+          "logits_before_process": null,
+          "logits_after_process": [
+            {
+              "token_id": 682,
+              "logit": 11.3557,
+              "text": "In"
+            },
+            {
+              "token_id": 294,
+              "logit": 9.9349,
+              "text": "in"
+            },
+            {
+              "token_id": 400,
+              "logit": 6.4846,
+              "text": "And"
+            },
+            {
+              "token_id": 1097,
+              "logit": 6.4127,
+              "text": "..."
+            },
+            {
+              "token_id": 6892,
+              "logit": 6.1509,
+              "text": "IN"
+            },
+            {
+              "token_id": 440,
+              "logit": 6.0312,
+              "text": "The"
+            },
+            {
+              "token_id": 264,
+              "logit": 5.4913,
+              "text": "the"
+            },
+            {
+              "token_id": 293,
+              "logit": 5.3777,
+              "text": "and"
+            },
+            {
+              "token_id": 583,
+              "logit": 4.9581,
+              "text": "But"
+            },
+            {
+              "token_id": 286,
+              "logit": 4.8444,
+              "text": "I"
+            }
+          ],
+          "top1_top2_margin": 1.420747,
+          "eos_allowed": false,
+          "timestamp_tokens_suppressed": true,
+          "suppress_tokens_active": 88,
+          "begin_suppress_tokens_active": 2,
+          "decoder_step_output_keys": null,
+          "kvcache_shapes": [
+            {
+              "key": "present.0.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            }
+          ],
+          "mismatch": false
+        }
+      ]
+    }
+  },
+  {
+    "filename": "jfk2.en.wav",
+    "language": "en",
+    "prompt_ids": [
+      50258,
+      50259,
+      50360,
+      50364
+    ],
+    "fp32_tokens_preview": [
+      400,
+      370,
+      11,
+      452,
+      7177,
+      6280,
+      11,
+      1029,
+      406,
+      437,
+      428,
+      1941
+    ],
+    "fp32_token_count": 27,
+    "fp32_eos": true,
+    "fp32_text_preview": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+    "q8_text_preview": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+    "first_mismatch_generated_token_index": -1,
+    "debug": {
+      "diverged_at_step": -1,
+      "diverged_at_generated_token_count": -1,
+      "steps": [
+        {
+          "step_index": 0,
+          "generated_token_count": 0,
+          "input_token_id": 50364,
+          "input_token_text": "",
+          "fp32_selected_token_id": 400,
+          "selected_token_id": 400,
+          "selected_token_text": "And",
+          "fp32_selected_token_text": "And",
+          "eos_token_id": 50257,
+          "is_eos": false,
+          "fp32_is_eos": false,
+          "logits_before_process": null,
+          "logits_after_process": [
+            {
+              "token_id": 400,
+              "logit": 9.2285,
+              "text": "And"
+            },
+            {
+              "token_id": 293,
+              "logit": 7.5098,
+              "text": "and"
+            },
+            {
+              "token_id": 407,
+              "logit": 4.6415,
+              "text": "So"
+            },
+            {
+              "token_id": 1222,
+              "logit": 3.7504,
+              "text": "My"
+            },
+            {
+              "token_id": 440,
+              "logit": 3.5299,
+              "text": "The"
+            },
+            {
+              "token_id": 8093,
+              "logit": 3.4189,
+              "text": "AND"
+            },
+            {
+              "token_id": 1097,
+              "logit": 3.3865,
+              "text": "..."
+            },
+            {
+              "token_id": 12320,
+              "logit": 3.1267,
+              "text": "Ask"
+            },
+            {
+              "token_id": 2221,
+              "logit": 2.9675,
+              "text": "Mr"
+            },
+            {
+              "token_id": 1029,
+              "logit": 2.7111,
+              "text": "ask"
+            }
+          ],
+          "top1_top2_margin": 1.71876,
+          "eos_allowed": false,
+          "timestamp_tokens_suppressed": true,
+          "suppress_tokens_active": 88,
+          "begin_suppress_tokens_active": 2,
+          "decoder_step_output_keys": null,
+          "kvcache_shapes": [
+            {
+              "key": "present.0.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            }
+          ],
+          "mismatch": false
+        }
+      ]
+    }
+  },
+  {
+    "filename": "librivox.org-1600hz.en.wav",
+    "language": "en",
+    "prompt_ids": [
+      50258,
+      50259,
+      50360,
+      50364
+    ],
+    "fp32_tokens_preview": [
+      6001,
+      2868,
+      295,
+      316,
+      10289,
+      365,
+      264,
+      41456,
+      13,
+      50257
+    ],
+    "fp32_token_count": 10,
+    "fp32_eos": true,
+    "fp32_text_preview": "Preface of A Year with the Birds.",
+    "q8_text_preview": "Preface of A Year with the Birds. This",
+    "first_mismatch_generated_token_index": 9,
+    "debug": {
+      "diverged_at_step": 9,
+      "diverged_at_generated_token_count": 9,
+      "steps": [
+        {
+          "step_index": 0,
+          "generated_token_count": 0,
+          "input_token_id": 50364,
+          "input_token_text": "",
+          "fp32_selected_token_id": 6001,
+          "selected_token_id": 6001,
+          "selected_token_text": "Pre",
+          "fp32_selected_token_text": "Pre",
+          "eos_token_id": 50257,
+          "is_eos": false,
+          "fp32_is_eos": false,
+          "logits_before_process": null,
+          "logits_after_process": [
+            {
+              "token_id": 6001,
+              "logit": 7.8681,
+              "text": "Pre"
+            },
+            {
+              "token_id": 316,
+              "logit": 5.6581,
+              "text": "A"
+            },
+            {
+              "token_id": 44164,
+              "logit": 4.9798,
+              "text": "PRE"
+            },
+            {
+              "token_id": 10869,
+              "logit": 3.8126,
+              "text": "RE"
+            },
+            {
+              "token_id": 2114,
+              "logit": 2.9208,
+              "text": "Pr"
+            },
+            {
+              "token_id": 430,
+              "logit": 2.7773,
+              "text": "P"
+            },
+            {
+              "token_id": 2411,
+              "logit": 2.5154,
+              "text": "."
+            },
+            {
+              "token_id": 659,
+              "logit": 2.4164,
+              "text": "pre"
+            },
+            {
+              "token_id": 1057,
+              "logit": 2.222,
+              "text": "All"
+            },
+            {
+              "token_id": 502,
+              "logit": 2.0225,
+              "text": "1"
+            }
+          ],
+          "top1_top2_margin": 2.209959,
+          "eos_allowed": false,
+          "timestamp_tokens_suppressed": true,
+          "suppress_tokens_active": 88,
+          "begin_suppress_tokens_active": 2,
+          "decoder_step_output_keys": null,
+          "kvcache_shapes": [
+            {
+              "key": "present.0.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.0.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.1.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.2.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.key",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.value",
+              "dims": [
+                1,
+                20,
+                4,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.key",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            },
+            {
+              "key": "present.3.encoder.value",
+              "dims": [
+                1,
+                20,
+                1500,
+                64
+              ]
+            }
+          ],
+          "mismatch": false
+        },
+        {
+          "step_index": 9,
+          "generated_token_count": 9,
+          "input_token_id": 13,
+          "input_token_text": ".",
+          "fp32_selected_token_id": 50257,
+          "selected_token_id": 639,
+          "selected_token_text": "This",
+          "fp32_selected_token_text": "",
+          "eos_token_id": 50257,
+          "is_eos": false,
+          "fp32_is_eos": true,
+          "logits_before_process": [
+            {
+              "token_id": 639,
+              "logit": 11.7399,
+              "text": "This"
+            },
+            {
+              "token_id": 50257,
+              "logit": 11.3169,
+              "text": "[50257]"
+            },
+            {
+              "token_id": 1057,
+              "logit": 8.4171,
+              "text": "All"
+            },
+            {
+              "token_id": 316,
+              "logit": 7.7598,
+              "text": "A"
+            },
+            {
+              "token_id": 17604,
+              "logit": 7.3569,
+              "text": "Read"
+            },
+            {
+              "token_id": 341,
+              "logit": 5.7695,
+              "text": "this"
+            },
+            {
+              "token_id": 6001,
+              "logit": 5.3013,
+              "text": "Pre"
+            },
+            {
+              "token_id": 440,
+              "logit": 5.2105,
+              "text": "The"
+            },
+            {
+              "token_id": 3146,
+              "logit": 4.9254,
+              "text": "By"
+            },
+            {
+              "token_id": 10869,
+              "logit": 4.5085,
+              "text": "RE"
+            }
+          ],
+          "logits_after_process": [
+            {
+              "token_id": 639,
+              "logit": 11.7399,
+              "text": "This"
+            },
+            {
+              "token_id": 50257,
+              "logit": 11.3169,
+              "text": "[50257]"
+            },
+            {
+              "token_id": 1057,
+              "logit": 8.4171,
+              "text": "All"
+            },
+            {
+              "token_id": 316,
+              "logit": 7.7598,
+              "text": "A"
+            },
+            {
+              "token_id": 17604,
+              "logit": 7.3569,
+              "text": "Read"
+            },
+            {
+              "token_id": 341,
+              "logit": 5.7695,
+              "text": "this"
+            },
+            {
+              "token_id": 6001,
+              "logit": 5.3013,
+              "text": "Pre"
+            },
+            {
+              "token_id": 440,
+              "logit": 5.2105,
+              "text": "The"
+            },
+            {
+              "token_id": 3146,
+              "logit": 4.9254,
+              "text": "By"
+            },
+            {
+              "token_id": 10869,
+              "logit": 4.5085,
+              "text": "RE"
+            }
+          ],
+          "top1_top2_margin": 0.423025,
+          "eos_allowed": true,
+          "timestamp_tokens_suppressed": true,
+          "suppress_tokens_active": 88,
+          "begin_suppress_tokens_active": 2,
+          "decoder_step_output_keys": 8,
+          "kvcache_shapes": [
+            {
+              "key": "present.0.decoder.key",
+              "dims": [
+                1,
+                20,
+                13,
+                64
+              ]
+            },
+            {
+              "key": "present.0.decoder.value",
+              "dims": [
+                1,
+                20,
+                13,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.key",
+              "dims": [
+                1,
+                20,
+                13,
+                64
+              ]
+            },
+            {
+              "key": "present.1.decoder.value",
+              "dims": [
+                1,
+                20,
+                13,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.key",
+              "dims": [
+                1,
+                20,
+                13,
+                64
+              ]
+            },
+            {
+              "key": "present.2.decoder.value",
+              "dims": [
+                1,
+                20,
+                13,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.key",
+              "dims": [
+                1,
+                20,
+                13,
+                64
+              ]
+            },
+            {
+              "key": "present.3.decoder.value",
+              "dims": [
+                1,
+                20,
+                13,
+                64
+              ]
+            }
+          ],
+          "mismatch": true
+        }
+      ]
+    }
+  }
+]

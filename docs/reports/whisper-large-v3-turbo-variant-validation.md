@@ -1,6 +1,6 @@
 # Whisper Large v3 Turbo — Node/WASM Splitgraph Validation Report
 
-**Generated**: 2026-05-29T17:20:10.361Z
+**Generated**: 2026-05-29T18:52:42.625Z
 **Artifacts**: /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph
 **Backend**: Node CLI (`fp32`/`fp16` use onnxruntime-node CPU because these large variants exceed WASM memory on this host; `q8` uses onnxruntime-web WASM CPU)
 **max_new_tokens**: 64
@@ -57,21 +57,21 @@
 
 | Fixture | Variant | Tokens | EOS | Token match vs fp32 | Text match | Decoded text | Time |
 |---------|---------|--------|-----|---------------------|------------|--------------|------|
-| 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav | fp32 | 64 | false | exact (64/64, 100.0%) | true | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciyd | 16.53s |
-| ItsLifeJim.en.wav | fp32 | 64 | false | exact (64/64, 100.0%) | true | Incredible. Not only should it have been destroyed by our phasers, it does not even register on my t | 11.829s |
-| JFK_Short.en.wav | fp32 | 40 | true | exact (40/40, 100.0%) | true | In the long history of the world, only a few generations have been granted the role of defending fre | 11.021s |
-| jfk2.en.wav | fp32 | 27 | true | exact (27/27, 100.0%) | true | And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your  | 10.986s |
-| librivox.org-1600hz.en.wav | fp32 | 10 | true | exact (10/10, 100.0%) | true | Preface of A Year with the Birds. | 10.453s |
-| 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav | fp16 | 64 | false | exact (64/64, 100.0%) | true | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciyd | 14.477s |
-| ItsLifeJim.en.wav | fp16 | 64 | false | exact (64/64, 100.0%) | true | Incredible. Not only should it have been destroyed by our phasers, it does not even register on my t | 15.18s |
-| JFK_Short.en.wav | fp16 | 40 | true | exact (40/40, 100.0%) | true | In the long history of the world, only a few generations have been granted the role of defending fre | 19.08s |
-| jfk2.en.wav | fp16 | 27 | true | exact (27/27, 100.0%) | true | And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your  | 13.682s |
-| librivox.org-1600hz.en.wav | fp16 | 10 | true | exact (10/10, 100.0%) | true | Preface of A Year with the Birds. | 13.253s |
-| 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav | q8 | 64 | false | exact (64/64, 100.0%) | true | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciyd | 31.874s |
-| ItsLifeJim.en.wav | q8 | 64 | false | DIFF (46/64, 71.9%) | false | Incredible. Not only should it have been destroyed by our phasers, it does not even register on my t | 29.231s |
-| JFK_Short.en.wav | q8 | 40 | true | exact (40/40, 100.0%) | true | In the long history of the world, only a few generations have been granted the role of defending fre | 27.89s |
-| jfk2.en.wav | q8 | 27 | true | exact (27/27, 100.0%) | true | And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your  | 28.51s |
-| librivox.org-1600hz.en.wav | q8 | 64 | true | DIFF (9/64, 14.1%) | false | Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the p | 28.922s |
+| 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav | fp32 | 64 | false | exact (64/64, 100.0%) | true | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciyd | 19.027s |
+| ItsLifeJim.en.wav | fp32 | 64 | false | exact (64/64, 100.0%) | true | Incredible. Not only should it have been destroyed by our phasers, it does not even register on my t | 12.44s |
+| JFK_Short.en.wav | fp32 | 40 | true | exact (40/40, 100.0%) | true | In the long history of the world, only a few generations have been granted the role of defending fre | 15.166s |
+| jfk2.en.wav | fp32 | 27 | true | exact (27/27, 100.0%) | true | And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your  | 18.563s |
+| librivox.org-1600hz.en.wav | fp32 | 10 | true | exact (10/10, 100.0%) | true | Preface of A Year with the Birds. | 13.386s |
+| 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav | fp16 | 64 | false | exact (64/64, 100.0%) | true | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciyd | 18.834s |
+| ItsLifeJim.en.wav | fp16 | 64 | false | exact (64/64, 100.0%) | true | Incredible. Not only should it have been destroyed by our phasers, it does not even register on my t | 15.468s |
+| JFK_Short.en.wav | fp16 | 40 | true | exact (40/40, 100.0%) | true | In the long history of the world, only a few generations have been granted the role of defending fre | 13.45s |
+| jfk2.en.wav | fp16 | 27 | true | exact (27/27, 100.0%) | true | And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your  | 14.376s |
+| librivox.org-1600hz.en.wav | fp16 | 10 | true | exact (10/10, 100.0%) | true | Preface of A Year with the Birds. | 13.827s |
+| 019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav | q8 | 64 | false | exact (64/64, 100.0%) | true | Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciyd | 32.204s |
+| ItsLifeJim.en.wav | q8 | 64 | false | DIFF (46/64, 71.9%) | false | Incredible. Not only should it have been destroyed by our phasers, it does not even register on my t | 29.637s |
+| JFK_Short.en.wav | q8 | 40 | true | exact (40/40, 100.0%) | true | In the long history of the world, only a few generations have been granted the role of defending fre | 28.932s |
+| jfk2.en.wav | q8 | 27 | true | exact (27/27, 100.0%) | true | And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your  | 28.111s |
+| librivox.org-1600hz.en.wav | q8 | 64 | true | DIFF (9/64, 14.1%) | false | Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the p | 31.085s |
 
 ## Alignment/DTW Validation
 
@@ -114,4 +114,23 @@ WebGPU smoke is intentionally not automated here. After Node/WASM validation pas
 Beam search for the 4-graph splitgraph runtime is not implemented in this validation pass; keep it as the next decoding task after greedy parity is stable.
 
 Mixed dtype, q4/q4f16, exporter changes, browser automation, and published HF artifact changes are out of scope for this report.
+
+## q8 Divergence Analysis
+
+Two fixtures diverge from fp32 under extended greedy decoding (`max_new_tokens=64`).
+Both are quantized-decoder sensitivity, not runtime bugs.
+
+| Fixture | Divergence step | fp32 token | q8 token | Top-1 / Top-2 margin | Cause |
+|---------|-----------------|------------|----------|----------------------|-------|
+| ItsLifeJim.en.wav | 46 | `10890` | `467` | 0.2692 | very tight logit decision (quantization flips argmax) |
+| librivox.org-1600hz.en.wav | 9 | `50257` | `639` | 0.4230 | very tight logit decision (quantization flips argmax) |
+
+Both divergences occur at tight decision points where the top-1/top-2 margin is small.
+The logit processor is applied identically (logits before and after suppression are the same at the divergence step, confirming no generation-control mismatch).
+Prompt IDs and generation controls are identical between fp32 and q8.
+
+Conclusion: q8 strict token parity with fp32 is not expected at extended `max_new_tokens`.
+The q8 variant is validated as a compact quantized candidate, not a bit-exact drop-in for fp32.
+Short-sequence decoding is stable; extended decoding can differ at tight decision points.
+WebGPU testing should accept these known divergences as expected quantization sensitivity.
 

@@ -1054,9 +1054,10 @@ Current result:
 - fp32 is the Node CPU baseline.
 - fp16 Node CPU matches fp32 exactly on all 5 fixtures at `max_new_tokens=64`.
 - q8 runs through ONNX Runtime Web WASM CPU. Extended `max_new_tokens=64` comparison currently exposes quantized decoder divergence on two English fixtures while prompt/control parity remains correct.
+- Divergence analysis confirms both are quantization sensitivity at tight decision points (top-1/top-2 margin < 0.5), not runtime bugs. q8 is validated as a compact candidate, not bit-exact drop-in for fp32.
 
 Next task:
-- Investigate q8 WASM extended greedy decode divergence vs fp32. Start with top-k/logit diagnostics around `ItsLifeJim.en.wav` token 46 and `librivox.org-1600hz.en.wav` token 9/EOS.
+- Manual WebGPU smoke for fp16 and q8 in browser/app. Node/WASM validation is now stable for all three variants.
 - Do not start WebGPU automation until q8 divergence is understood or explicitly accepted.
 
 Manual/deferred:

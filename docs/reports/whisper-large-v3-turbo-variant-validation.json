@@ -231,7 +231,7 @@
           "decoded_text": "Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta ülkelerin sosyal ve ekonomik",
           "eos_reached": false,
           "alignment": null,
-          "duration_sec": 16.53,
+          "duration_sec": 19.027,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -431,7 +431,7 @@
           "decoded_text": "Incredible. Not only should it have been destroyed by our phasers, it does not even register on my tricorder. Captain, it doesn't even look real. It is not life as we know or understand it. Yet it is obviously alive, it exists. And it can bear up under full phaser",
           "eos_reached": false,
           "alignment": null,
-          "duration_sec": 11.829,
+          "duration_sec": 12.44,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -607,7 +607,7 @@
           "decoded_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it.",
           "eos_reached": true,
           "alignment": null,
-          "duration_sec": 11.021,
+          "duration_sec": 15.166,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -770,7 +770,7 @@
           "decoded_text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
           "eos_reached": true,
           "alignment": null,
-          "duration_sec": 10.986,
+          "duration_sec": 18.563,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -916,7 +916,7 @@
           "decoded_text": "Preface of A Year with the Birds.",
           "eos_reached": true,
           "alignment": null,
-          "duration_sec": 10.453,
+          "duration_sec": 13.386,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -1122,7 +1122,7 @@
           "decoded_text": "Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta ülkelerin sosyal ve ekonomik",
           "eos_reached": false,
           "alignment": null,
-          "duration_sec": 14.477,
+          "duration_sec": 18.834,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -1322,7 +1322,7 @@
           "decoded_text": "Incredible. Not only should it have been destroyed by our phasers, it does not even register on my tricorder. Captain, it doesn't even look real. It is not life as we know or understand it. Yet it is obviously alive, it exists. And it can bear up under full phaser",
           "eos_reached": false,
           "alignment": null,
-          "duration_sec": 15.18,
+          "duration_sec": 15.468,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -1498,7 +1498,7 @@
           "decoded_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it.",
           "eos_reached": true,
           "alignment": null,
-          "duration_sec": 19.08,
+          "duration_sec": 13.45,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -1661,7 +1661,7 @@
           "decoded_text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
           "eos_reached": true,
           "alignment": null,
-          "duration_sec": 13.682,
+          "duration_sec": 14.376,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -1807,7 +1807,7 @@
           "decoded_text": "Preface of A Year with the Birds.",
           "eos_reached": true,
           "alignment": null,
-          "duration_sec": 13.253,
+          "duration_sec": 13.827,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -2013,7 +2013,7 @@
           "decoded_text": "Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta ülkelerin sosyal ve ekonomik",
           "eos_reached": false,
           "alignment": null,
-          "duration_sec": 31.874,
+          "duration_sec": 32.204,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -2213,7 +2213,7 @@
           "decoded_text": "Incredible. Not only should it have been destroyed by our phasers, it does not even register on my tricorder. Captain, it doesn't even look real. It is not life as we know or understand it. It is obviously alive, it exists. And it can bear up under full phaser power",
           "eos_reached": false,
           "alignment": null,
-          "duration_sec": 29.231,
+          "duration_sec": 29.637,
           "comparison_to_fp32": {
             "exact": false,
             "ratio": 0.71875,
@@ -2389,7 +2389,7 @@
           "decoded_text": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it.",
           "eos_reached": true,
           "alignment": null,
-          "duration_sec": 27.89,
+          "duration_sec": 28.932,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -2552,7 +2552,7 @@
           "decoded_text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
           "eos_reached": true,
           "alignment": null,
-          "duration_sec": 28.51,
+          "duration_sec": 28.111,
           "comparison_to_fp32": {
             "exact": true,
             "ratio": 1,
@@ -2752,7 +2752,7 @@
           "decoded_text": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information or to volunteer, please visit LibriVox.org. Read by Olivia. A Year with the Birds by W. Ward Fowler.",
           "eos_reached": true,
           "alignment": null,
-          "duration_sec": 28.922,
+          "duration_sec": 31.085,
           "comparison_to_fp32": {
             "exact": false,
             "ratio": 0.140625,
