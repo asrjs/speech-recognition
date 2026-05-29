@@ -723,17 +723,27 @@ HF 5.x compatibility:
 
 Verified:
 - `python test_kv_export.py` passed — validates all 4 ONNX files + manifest + ORT loading
+- `python test_e2e_tokens.py` passed — exact token match ONNX vs PyTorch (synthetic)
+- `python test_comprehensive.py` passed — real speech (JFK) 100% token match, alignment validation
 - `npm run typecheck` passed
 - `npm run lint` passed (0 errors, 4 pre-existing warnings)
 - `npm test` passed: 76 files, 366 tests
 - `npm run build` passed
 - `node tests/smoke/offline-output-smoke.mjs` passed
 
+E2E validation results:
+- **Synthetic (440Hz sine):** 5/5 tokens exact match ONNX vs PyTorch
+- **Real speech (JFK, 11s):** 27/27 tokens (100%) exact match ONNX vs PyTorch
+- **Alignment shape:** [1, 27, 1500] — correct B×T×S
+- **Attention normalization:** row sums = 1.0000 (perfect softmax)
+- **Alignment values:** [0.0000, 0.1796] — non-negative, properly scaled
+- **Alignment heads:** 6 heads from official generation_config.json
+- **Quantization:** fp16 conversion requires `onnxconverter-common` (installed); int8 uses built-in onnxruntime dynamic quantization
+
 Commit:
-- `feat: implement 4-graph KV-cache Whisper decoder export`
-<a following commit will sqash fix aten::diff via manual alignment wrapper; HF 5.x EncoderDecoderCache compat>
-- `fix: handle HF 5.x EncoderDecoderCache in decoder export wrappers`
-- `fix: prevent decoder_step from losing encoder_hidden_states input`
+- `feat: implement 4-graph KV-cache Whisper decoder export` (511fcee)
+- `fix: remove tensor no-ops, add E2E token comparison test` (35e9fcc)
+- (pending) comprehensive validation + quantization fix
 
 ---
 

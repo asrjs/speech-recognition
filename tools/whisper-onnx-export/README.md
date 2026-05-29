@@ -1,68 +1,99 @@
-# Whisper ONNX Export Tool
+# Whisper ONNX Export Tool — 4-Graph KV-Cache Architecture
 
-Produces ASR.js-compatible Whisper ONNX artifacts with cross-attention support.
+Produces self-contained Whisper ONNX artifacts for ASR.js with proper KV-cache decoder support.
 
 ## Usage
 
 ```bash
-# Install dependencies
-python3 -m venv venv && source venv/bin/activate
-pip install torch transformers optimum onnx onnxconverter-common huggingface_hub
+# Setup
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 
-# Export whisper-tiny
+# Export whisper-tiny (4 graphs)
 python export_whisper.py openai/whisper-tiny ./output/whisper-tiny
 
-# Export with fp16 variants
-python export_whisper.py openai/whisper-base ./output/whisper-base --fp16
+# Export with quantization variants
+python export_whisper.py openai/whisper-base ./output/whisper-base --fp16 --int8
+
+# Custom alignment heads (when official metadata missing)
+python export_whisper.py openai/whisper-tiny ./output --alignment-heads "2:2,3:0"
 ```
 
 ## Output Structure
 
 ```
 output/whisper-tiny/
-  manifest.json              — model metadata
-  tokenizer.json             — BPE tokenizer
-  generation_config.json     — alignment_heads, suppress tokens
-  config.json                — model config
-  preprocessor_config.json   — audio preprocessing
-  encoder_model.onnx         — mel features → encoder hidden states
-  decoder_init_model.onnx    — full prompt decode (no cache)
-  decoder_step_model.onnx    — single-token decode with KV cache
-  decoder_align_model.onnx   — forced alignment with selected cross-attention
+  manifest.json                  — model metadata (format: whisper-browser-self-export-v1)
+  tokenizer.json                 — BPE tokenizer
+  generation_config.json         — alignment_heads, suppress tokens
+  config.json                    — model config (layers, heads, dims)
+  encoder_model.onnx             — mel → encoder hidden states (31 MB)
+  decoder_init.onnx              — prompt/prefill decoder with KV cache init (189 MB)
+  decoder_step.onnx              — single-token autoregressive with KV reuse (108 MB)
+  decoder_align.onnx             — cross-attention alignment for word timestamps (107 MB)
 ```
 
-## Graph Details
+All sizes for whisper-tiny fp32. Multiply by ~1.9x for whisper-base.
 
-### encoder_model.onnx
-- Input: `mel` [batch, n_mels, num_frames]
-- Output: `encoder_hidden_states` [batch, audio_ctx, d_model]
+## 4-Graph Architecture
 
-### decoder_init_model.onnx
-- Inputs: `input_ids` [batch, seq], `encoder_hidden_states` [batch, audio_ctx, d_model]
-- Output: `logits` [batch, seq, vocab]
-- Use: first decode pass, language detection, forced alignment prompt
+| Graph | Purpose | Runs | Key design |
+|-------|---------|------|------------|
+| `encoder_model.onnx` | Mel → hidden states | Once per chunk | Clean fixed path |
+| `decoder_init.onnx` | Prompt/prefill, creates KV cache | Once per chunk | 4 KV tensors per layer output |
+| `decoder_step.onnx` | Single-token autoregressive | Many times | Branch-free, only self-attn KV updated |
+| `decoder_align.onnx` | Cross-attention for DTW alignment | Once after gen | Manual decoder block capture, no aten::diff |
 
-### decoder_step_model.onnx
-- Inputs: `input_ids` [batch, 1], `encoder_hidden_states`, `past_key_values.*`
-- Outputs: `logits` [batch, 1, vocab], `present.*` (KV cache)
-- Use: fast autoregressive decode
+### Graph Details
 
-### decoder_align_model.onnx
-- Inputs: `input_ids` [batch, alignment_seq], `encoder_hidden_states`
-- Outputs: `logits` [batch, alignment_seq, vocab], `selected_cross_attentions` [batch, n_selected, alignment_seq, audio_ctx]
-- Use: word-level timestamps via cross-attention DTW
+#### encoder_model.onnx
+- Input: `input_features` [batch, n_mels, 3000]
+- Output: `last_hidden_state` [batch, 1500, d_model]
 
-## Known Limitations
+#### decoder_init.onnx
+- Inputs: `input_ids` [batch, prompt_length], `encoder_hidden_states`
+- Outputs: `logits` + `present.{i}.decoder.key/.value` + `present.{i}.encoder.key/.value` (4 per layer)
 
-- `decoder_model_merged.onnx` is an init-only decoder (no KV cache). Autoregressive decoding
-  without cache is much slower. For production, source `decoder_model_merged.onnx` from
-  `onnx-community/whisper-*_timestamped` which includes proper KV cache support, or contribute
-  a custom PyTorch export path that handles DynamicCache branching.
+#### decoder_step.onnx
+- Inputs: `input_ids` [batch, 1] + all `past_key_values.*.{key,value}` (decoder + encoder K/V)
+- Outputs: `logits` [batch, 1, vocab] + `present.{i}.decoder.key/.value` (self-attn only)
+- Cross-attention KV preserved from init, never output by step
 
-| Model | Params | n_mels | alignment_heads |
-|-------|--------|--------|-----------------|
-| whisper-tiny | ~39M | 80 | [[2,2],[3,0],[3,2],[3,3],[3,4],[3,5]] |
-| whisper-base | ~74M | 80 | [[3,3],[4,7],[5,1],[5,5],[5,7]] |
-| whisper-small | ~244M | 80 | [[5,3],[5,9],[8,0],[8,4],[8,7],[8,8],[9,0],[9,7],[9,9],[10,5]] |
-| whisper-medium | ~769M | 80 | [[13,8],[16,11],[17,14],[19,14],[21,1],[23,2]] |
-| whisper-large-v3 | ~1.6B | 128 | [[10,17],[13,19],[15,18],[19,7],[20,18],[20,19],[22,16],[23,17]] |
+#### decoder_align.onnx
+- Inputs: `input_ids` [batch, T], `encoder_hidden_states`
+- Output: `alignment` [batch, T, 1500] — averaged across selected alignment_heads
+- No DTW, timestamp logic, or torch.diff in ONNX — all post-processing in TypeScript
+
+## Verification
+
+```bash
+# Structural validation
+python test_kv_export.py
+
+# E2E token match vs PyTorch (synthetic audio)
+python test_e2e_tokens.py
+
+# Comprehensive: real speech (JFK), alignment, quantization parity
+python test_comprehensive.py
+python test_comprehensive.py --quantize
+```
+
+## Validation Results (whisper-tiny)
+
+| Test | Result |
+|------|--------|
+| Synthetic (440Hz sine) tokens | 5/5 exact match ONNX vs PyTorch |
+| Real speech (JFK, 11s) tokens | 27/27 (100%) exact match |
+| Alignment shape | [1, 27, 1500] correct |
+| Attention normalization | row sums = 1.0000 |
+| fp16 parity | 100% token match |
+| int8 parity | 100% token match |
+
+## Model Config Reference
+
+| Model | Params | n_mels | d_model | layers | heads | alignment_heads |
+|-------|--------|--------|---------|--------|-------|-----------------|
+| whisper-tiny | ~39M | 80 | 384 | 4 | 6 | 6 heads (layers 2-3) |
+| whisper-base | ~74M | 80 | 512 | 6 | 8 | 5 heads (layers 3-5) |
+| whisper-small | ~244M | 80 | 768 | 12 | 12 | 10 heads (layers 5-10) |
+| whisper-large-v3-turbo | ~809M | 128 | 1280 | 32 | 20 | from generation_config |
