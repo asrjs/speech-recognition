@@ -139,6 +139,16 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
   readonly numBeams?: number;
   readonly lengthPenalty?: number;
   readonly patience?: number;
+  /**
+   * Optional per-token logit callback — fired after logit processing, before argmax.
+   * Enables quality gates (logprob, entropy, no-speech) to collect per-token data.
+   * Signature: (chosenTokenId, processedLogits, { tokens, beginIndex }) => void
+   */
+  readonly onTokenLogits?: (
+    chosenTokenId: number,
+    processedLogits: Float32Array,
+    ctx: { readonly tokens: readonly number[]; readonly beginIndex: number },
+  ) => void;
 }
 
 export interface WhisperSeq2SeqModelDependencies {

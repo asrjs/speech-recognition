@@ -179,8 +179,9 @@ export async function splitGraphDecodeLoop(params: {
   runInit: SplitGraphDecodeCallbacks['runInit'];
   runStep: SplitGraphDecodeCallbacks['runStep'];
   processLogits?: (logits: Float32Array, generatedTokens: readonly number[], beginIndex: number) => void;
+  onTokenLogits?: (chosenTokenId: number, processedLogits: Float32Array, ctx: { readonly tokens: readonly number[]; readonly beginIndex: number }) => void;
 }): Promise<SplitGraphDecodeResult> {
-  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, modelConfig, runInit, runStep, processLogits } = params;
+  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, modelConfig, runInit, runStep, processLogits, onTokenLogits } = params;
 
   // Delegate to vanilla Whisper core
   const encoderDims: readonly number[] = [1, encoderHiddenStates.length / modelConfig.dModel, modelConfig.dModel];
@@ -189,7 +190,7 @@ export async function splitGraphDecodeLoop(params: {
     runStep: async (tid, kv) => runStep(tid, kv),
   };
   const result = await whisperGreedyDecode(session, {
-    promptTokens, encoderOutput: encoderHiddenStates, encoderDims, eosTokenId, maxNewTokens, processLogits,
+    promptTokens, encoderOutput: encoderHiddenStates, encoderDims, eosTokenId, maxNewTokens, processLogits, onTokenLogits,
   });
   return { tokens: result.tokens };
 }
@@ -1263,6 +1264,7 @@ export class WhisperOnnxExecutor {
       processLogits: (logits, genTokens, beginIdx) => {
         splitTimestampProcessor.process(logits, genTokens, beginIdx);
       },
+      onTokenLogits: options.onTokenLogits,
       runInit: async (prompt, _encHs, _dims) => {
         const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
         return {

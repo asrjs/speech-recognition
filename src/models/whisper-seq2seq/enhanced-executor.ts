@@ -22,7 +22,7 @@
 
 import type { AudioBufferLike } from '../../types/index.js';
 import type { EnhancedDecodeOptions, VadSegmenterConfig } from './enhanced-types.js';
-import { compressionRatioGate } from '../../quality/index.js';
+import { compressionRatioGate, logProbGate, noSpeechGate, entropyGate } from '../../quality/index.js';
 import { withTemperatureFallback } from '../../quality/index.js';
 import {
   mergeVadSegments,
@@ -148,22 +148,30 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
         void prevTokens; // suppress unused warning
       }
 
-      // Transcribe with temperature fallback + compression gate
+      // Transcribe with temperature fallback + full quality gates
       let chunkResult: WhisperNativeTranscript;
       if (useFallback) {
-        const gate = compressionRatioGate(options.compressionRatioThreshold ?? 2.4);
+        const gates = [
+          compressionRatioGate(options.compressionRatioThreshold ?? 2.4),
+          logProbGate(options.logProbThreshold ?? -1.0),
+          entropyGate(options.entropyThreshold ?? 2.4),
+          noSpeechGate(options.noSpeechThreshold ?? 0.6, options.logProbThreshold ?? -1.0),
+        ];
         const fallback = await withTemperatureFallback(
           async (_temp) => {
-            const r = await this.vanilla.transcribe(chunk, chunkOpts, context);
-            return {
-              result: r,
-              text: r.utteranceText,
-              tokens: [] as readonly number[],
-              logits: [] as Float32Array[],
-              vocabSize: 51865,
+            const collectedLogits: Float32Array[] = [];
+            const collectedTokens: number[] = [];
+            const optsWithLogits = {
+              ...chunkOpts,
+              onTokenLogits: (tokenId: number, logits: Float32Array, _ctx: any) => {
+                collectedLogits.push(new Float32Array(logits));
+                collectedTokens.push(tokenId);
+              },
             };
+            const r = await this.vanilla.transcribe(chunk, optsWithLogits as any, context);
+            return { result: r, text: r.utteranceText, tokens: collectedTokens, logits: collectedLogits, vocabSize: 51865 };
           },
-          [gate],
+          gates,
           temps,
         );
         chunkResult = fallback.result;
@@ -227,20 +235,36 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
       return this.vanilla.transcribe(audio, options, context);
     }
 
-    const gate = compressionRatioGate(options.compressionRatioThreshold ?? 2.4);
+    // Build quality gates
+    const gates = [
+      compressionRatioGate(options.compressionRatioThreshold ?? 2.4),
+      logProbGate(options.logProbThreshold ?? -1.0),
+      entropyGate(options.entropyThreshold ?? 2.4),
+      noSpeechGate(options.noSpeechThreshold ?? 0.6, options.logProbThreshold ?? -1.0),
+    ];
 
     const fallback = await withTemperatureFallback(
       async (_temp) => {
-        const r = await this.vanilla.transcribe(audio, options, context);
+        // Collect logits from the vanilla executor via onTokenLogits callback
+        const collectedLogits: Float32Array[] = [];
+        const collectedTokens: number[] = [];
+        const optsWithLogits = {
+          ...options,
+          onTokenLogits: (tokenId: number, logits: Float32Array, _ctx: any) => {
+            collectedLogits.push(new Float32Array(logits)); // snapshot
+            collectedTokens.push(tokenId);
+          },
+        };
+        const r = await this.vanilla.transcribe(audio, optsWithLogits as any, context);
         return {
           result: r,
           text: r.utteranceText,
-          tokens: [] as readonly number[],
-          logits: [] as Float32Array[],
+          tokens: collectedTokens,
+          logits: collectedLogits,
           vocabSize: 51865,
         };
       },
-      [gate],
+      gates,
       temps,
     );
 
