@@ -964,10 +964,11 @@ VERIFICATION GATE
 - Commit subject: `fix: use manifest-driven whisper external data`
 
 **Local comparison prompt fairness (2026-05-29):** ✅ DONE
-- `validate_variants.py` now builds prompt token IDs once per fixture before looping variants and reuses them for fp32/fp16/q8.
-- The validation report now records prompt language/token IDs per fixture and includes a prompt-consistency table.
-- Regenerated `docs/reports/whisper-large-v3-turbo-variant-validation.md`; all variants use `[50258, 50259, 50360, 50364]` for the current fixture set, including the Turkish reference fixture whose language metadata is still `unknown`.
-- Corrected conclusion: do not claim Turkish accuracy unless the same Turkish prompt is used for every variant and fp32 agrees.
+- Audio fixtures now use explicit `.en` / `.tr` filename suffixes; `validate_variants.py` resolves those before legacy filename hints.
+- `validate_variants.py` builds prompt token IDs once per fixture before looping variants and reuses them for fp32/fp16/q8.
+- The validation report records prompt language/token IDs per fixture and includes a prompt-consistency table.
+- Regenerated `docs/reports/whisper-large-v3-turbo-variant-validation.md`; English fixtures use `[50258, 50259, 50360, 50364]` and the Turkish fixture uses `[50258, 50268, 50360, 50364]`, consistently across fp32/fp16/q8.
+- Turkish reference scoring is now prompt-valid for the `.tr` fixture when fp32/fp16/q8 agree and fp32 matches the reference.
 - Node/WASM local q8 splitgraph smoke now handles 3000 mel-frame input vs 1500 encoder/alignment sequence length.
 - Verification: Python prompt test + py_compile, `validate_variants.py --variants fp32 fp16 q8`, `WHISPER_SPLITGRAPH_FIXTURE_DIR=/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/q8 npm test -- tests/whisper-splitgraph-smoke.test.ts --run`, `npm test -- tests/whisper-splitgraph-artifacts.test.ts --run`, `npm run typecheck`, `npm run lint` (0 errors/4 pre-existing max-lines warnings).
 - Commit subject: `fix: make whisper variant prompts comparable`

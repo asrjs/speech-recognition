@@ -45,7 +45,12 @@ _TR_EN_HINTS = {
 
 
 def guess_language(filename: str) -> str:
-    """Guess language from filename hints."""
+    """Guess language from explicit .en/.tr fixture suffixes, then legacy hints."""
+    path = Path(filename)
+    stem_suffix = Path(path.stem).suffix.lower().lstrip(".")
+    if stem_suffix in {"en", "tr"}:
+        return stem_suffix
+
     lower = filename.lower()
     for hint, lang in _TR_EN_HINTS.items():
         if hint in lower:
@@ -755,8 +760,9 @@ def generate_report(
     lines.append(f"## Conclusion")
     lines.append(f"")
     lines.append(f"This report uses one fixed prompt token sequence per fixture across all variants before comparing outputs.")
+    lines.append(f"Fixture language is read from explicit `.en` / `.tr` filename suffixes when present, then legacy filename hints.")
     lines.append(f"If variants disagree on a fixture, treat it as a real variant/runtime difference, not a language-prompt difference.")
-    lines.append(f"Do not claim Turkish accuracy from this report unless the same Turkish prompt was used for every variant on that fixture and the fp32 baseline agrees.")
+    lines.append(f"Turkish fixture accuracy is now prompt-valid only when the Prompt Consistency table shows `tr` with identical token IDs for fp32/fp16/q8 and the fp32 baseline agrees with the reference.")
     lines.append(f"")
 
     lines.append(f"## Known Limitations")

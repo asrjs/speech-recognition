@@ -1,4 +1,4 @@
-from validate_variants import build_fixture_prompt_ids
+from validate_variants import build_fixture_prompt_ids, guess_language
 
 
 class FakeTokenizer:
@@ -41,6 +41,14 @@ def test_unknown_language_uses_default_english_prompt_consistently():
     assert prompts["hash.wav"]["prompt_ids"] == prompts["missing-language.wav"]["prompt_ids"]
 
 
+def test_language_suffix_overrides_heuristics_for_fixture_files():
+    assert guess_language("019b50a9c564.tr.wav") == "tr"
+    assert guess_language("JFK_Short.en.wav") == "en"
+    assert guess_language("ItsLifeJim.en.wav") == "en"
+    assert guess_language("ambiguous.turkish.en.wav") == "en"
+
+
 if __name__ == "__main__":
     test_prompt_ids_are_built_per_fixture_not_from_first_fixture()
     test_unknown_language_uses_default_english_prompt_consistently()
+    test_language_suffix_overrides_heuristics_for_fixture_files()
