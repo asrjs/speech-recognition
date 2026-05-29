@@ -886,40 +886,47 @@ HF MODEL REPO
   Upload: hf upload ysdede/whisper-large-v3-turbo-onnx-4graph /tmp/whisper-large-v3-turbo-4graph .
 
 DEFERRED
-  - Task 16: Timestamp logit processor
+  - External dataset benchmarks (LibriSpeech, AMI, Common Voice)
+  - TS mel frontend parity with PyTorch WhisperFeatureExtractor
+    (currently >=80% wav-input tolerance; target >=95-100%)
   - Beam search for 4-graph path (greedy only)
-  - decoder_align dedicated alignment method (currently falls through to
-    merged-decoder forced-alignment path)
 
 NEXT STEPS (prioritized)
-  1) Real 4-graph fixture smoke test (WHISPER_SPLITGRAPH_FIXTURE_DIR)
-  2) Add 4-graph Whisper preset/artifact source in manifest/catalog
-  3) Dedicated decoder_align-based alignment method
-  4) Timestamp logit processor (Task 16)
-  5) Beam search support for 4-graph path
+  1) Quantize fp32 models: fp16 + int8 variants
+  2) Organize HF repo with fp16/int8/ subdirectories
+  3) Verify quantized variants via fixture smoke tests
+  4) Beam search support for 4-graph path
+
+EXPORT WORKFLOW DOCS
+  docs/whisper-export-workflow.md — full pipeline: export→verify→quantize→upload
 
 VERIFICATION GATE
   npm run typecheck && npm run lint && npm test && npm run build
 ```
 
-**Current state as of 2026-05-29 (commit `26d0a21` on `feat/asr-pipeline-output-formats`):**
+**Current state as of 2026-05-29 (commit `04ad3cb` on `feat/asr-pipeline-output-formats`):**
 
-**Completed (Tasks 1-15, 17):**
+**Completed (all core tasks):**
 - Full attention-DTW word timestamp pipeline
 - Word probability from forced alignment logprobs
 - Generation config parsing (alignment_heads, median_filter_width)
 - Self-contained 4-graph Whisper ONNX export with KV-cache decoder split
-- Python tests: `test_kv_export.py`, `test_e2e_tokens.py`, `test_comprehensive.py`
-- Manifest format: `whisper-browser-self-export-v1`
-- 76 test files, 366 tests, all passing
-- E2E validation: 100% token match on synthetic + real speech; fp16/int8 parity 100%
+- Python tests: test_kv_export.py, test_e2e_tokens.py, test_comprehensive.py
+- Manifest format: whisper-browser-self-export-v1
+- Config-driven dimensions (no hardcoded tiny constants)
+- 4-graph TypeScript executor: init->step loop, alignment session loading
+- Timestamp logit processor (Task 16)
+- Splitgraph decoder_align -> DTW word timestamps
+- Reproducibility harness (feature-input 100%, wav-input >=80%)
+- Local-file loader: loadSplitGraphLocalModel(dirPath)
+- Public API example: examples/whisper-splitgraph-local.mjs
+- HF model repo: ysdede/whisper-large-v3-turbo-onnx-4graph (fp32)
+- Export tool: --device cpu|cuda, --dtype float32|float16
+- 84 test files, 401 tests, all passing
 
-**Deferred:**
-- Task 16: Timestamp logit processor
-- Hardcoded dimension fix in executor.ts (numLayers=4, numHeads=6 only correct for whisper-tiny)
+**Quantized variants:** fp16, int8 planned — export at export time, organize in subdirectories
 
 **Next steps:**
-- Fix hardcoded dimensions in executor.ts (config-driven)
-- Wire 4-graph format in TypeScript executor (separate init/step sessions)
-- Add 4-graph Whisper preset/artifact source type for local files
-- OR keep using onnx-community `*_timestamped` merged decoders for production; self-export for custom checkpoints
+- Export quantized fp16 + int8 variants for whisper-large-v3-turbo
+- Organize HF repo with fp16/int8/ subdirectories
+- Verify each variant via fixture smoke tests
