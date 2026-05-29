@@ -85,6 +85,11 @@
       "import": "./dist/post-processing.js",
       "default": "./dist/post-processing.js"
     },
+    "./alignment": {
+      "types": "./dist/alignment.d.ts",
+      "import": "./dist/alignment.js",
+      "default": "./dist/alignment.js"
+    },
     "./presets": {
       "types": "./dist/presets/index.d.ts",
       "import": "./dist/presets/index.js",

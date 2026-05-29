@@ -52,6 +52,21 @@ Commits: `708aac9` through `7c85cdb`
 ### Phases A/B/C/F (quality/chunking/post-processing/enhanced) — DONE (Flexo-DSV4Pro)
 Commits: `5474991` through `bdfef2a`
 
+### T1-T3: VAD Backends + Fixed-Window + Post-Extras — DONE (Flexo-DSV4Pro)
+Commit: `1db314c`
+- TenVAD + FireRed backend adapters (chunking/backends/)
+- FixedWindowChunker (30s/28s/2s overlap)
+- Post-processing extras: deduplicateWords, normalizeText, buildSentences
+- 558 tests pass
+
+### T4: Cross-Attention DTW Extractor — DONE (delegate_task, Flexo-DSV4Pro)
+Commit: pending
+- `src/alignment/cross-attention-dtw.ts` — crossAttentionDtwTimestamps()
+- `src/alignment/index.ts`, `src/alignment.ts` entry stub
+- `tests/alignment-dtw.test.ts` — 5 tests
+- Package.json export: `@asrjs/speech-recognition/alignment`
+- 563 tests pass
+
 ### WAV2VEC2 Model Files — DONE (Flexo-glm5.1)
 Commit: `94ceb99`
 - types.ts, config.ts, tokenizer.ts, ort.ts, executor.ts, index.ts
@@ -79,16 +94,21 @@ Remaining:
 - [ ] Smoke test with real ONNX model
 - [ ] HF upload: wav2vec2-base-960h
 
-### Phase D: src/alignment/ — BLOCKED
+### Phase D: src/alignment/ — PARTIAL (DTW DONE, CTC Viterbi BLOCKED)
 
-Owner: UNASSIGNED
-Dependencies: Phase E complete (WAV2VEC2 model)
-Status: BLOCKED
+Owner: Flexo-DSV4Pro (DTW), UNASSIGNED (CTC Viterbi)
+Dependencies: WAV2VEC2 model (Phase E) for CTC Viterbi
+Status: DTW ✅, CTC Viterbi ⏳
 
-Scope:
-- `src/alignment/ctc-viterbi.ts` — will use CtcDecoder
+Completed:
+- `src/alignment/cross-attention-dtw.ts` — crossAttentionDtwTimestamps()
+- `src/alignment/index.ts`, `src/alignment.ts`, package.json export
+- 5 tests
+
+Remaining:
+- `src/alignment/ctc-viterbi.ts` — will use CtcDecoder (from src/ctc/)
 - `src/alignment/wav2vec2-aligner.ts` — WAV2VEC2 alignment backend
-- Tests: `tests/alignment-*.test.ts`
+- Tests: `tests/alignment-ctc-viterbi.test.ts`
 
 ## SHARED FILES (coordinate before modifying)
 
