@@ -1,5 +1,6 @@
 export * from './attention-alignment.js';
 export * from './beam-search.js';
+export * from './chunk-context.js';
 export * from './chunking.js';
 export * from './config.js';
 export * from './core.js';
