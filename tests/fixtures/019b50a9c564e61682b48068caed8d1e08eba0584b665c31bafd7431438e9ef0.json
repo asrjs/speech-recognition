@@ -1,0 +1,22 @@
+{
+    "index": 40,
+    "text_hash": "019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0",
+    "text": "Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta, ülkelerin sosyal ve ekonomik gelişmeleri yıllarca duraklamakta idi.",
+    "text_normalized": "Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta, ülkelerin sosyal ve ekonomik gelişmeleri yıllarca duraklamakta idi,",
+    "tts": "xtts_v1",
+    "tts_version": "0.22.0",
+    "toolkit": "ytk 0.4.1",
+    "speaker": "Gracie Wise",
+    "gender": "female",
+    "audio_path": "019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.wav",
+    "corpus": "tdk_ornekler.txt",
+    "corpus_md5": "b87f247004f224de15bc5c68b9f648e3",
+    "worker": "colab_yd",
+    "temperature": 0.65,
+    "overlap": 1,
+    "trim_end_silence": true,
+    "stitch_pieces": true,
+    "creation_ts": 1740019893,
+    "duration": 18.641,
+    "speed": 0.9136
+}
