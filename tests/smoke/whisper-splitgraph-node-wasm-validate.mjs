@@ -174,6 +174,28 @@ function float32ToFloat16Bits(values) {
   return out;
 }
 
+function float16BitsToFloat32(values) {
+  const out = new Float32Array(values.length);
+  for (let i = 0; i < values.length; i++) {
+    const h = values[i] ?? 0;
+    const sign = (h & 0x8000) ? -1 : 1;
+    const exp = (h >>> 10) & 0x1f;
+    const frac = h & 0x03ff;
+    if (exp === 0) {
+      out[i] = frac === 0 ? sign * 0 : sign * 2 ** -14 * (frac / 1024);
+    } else if (exp === 0x1f) {
+      out[i] = frac === 0 ? sign * Infinity : NaN;
+    } else {
+      out[i] = sign * 2 ** (exp - 15) * (1 + frac / 1024);
+    }
+  }
+  return out;
+}
+
+function tensorDataAsFloat32(tensor) {
+  return tensor.type === 'float16' ? float16BitsToFloat32(tensor.data) : tensor.data;
+}
+
 function readJsonIfExists(file) {
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
 }
@@ -289,7 +311,8 @@ async function runFixture(variantState, fixture, maxNewTokens, enableAlign) {
   const logitsKey = initKeys.find((k) => k.includes('logits')) ?? initKeys[0];
   const initLogitsTensor = initOut[logitsKey];
   const vocabSize = initLogitsTensor.dims.at(-1);
-  const firstLogits = initLogitsTensor.data.subarray(initLogitsTensor.data.length - vocabSize);
+  const initLogitsData = tensorDataAsFloat32(initLogitsTensor);
+  const firstLogits = initLogitsData.slice(initLogitsData.length - vocabSize);
   processor.process(firstLogits, promptIds, promptIds.length);
   let nextToken = argmax(firstLogits);
   const tokens = [nextToken];
@@ -307,7 +330,7 @@ async function runFixture(variantState, fixture, maxNewTokens, enableAlign) {
     const stepOut = await stepSession.run(feeds);
     const stepKeys = Object.keys(stepOut);
     const stepLogitsKey = stepKeys.find((k) => k.includes('logits')) ?? stepKeys[0];
-    const logits = stepOut[stepLogitsKey].data;
+    const logits = tensorDataAsFloat32(stepOut[stepLogitsKey]);
     processor.process(logits, [...promptIds, ...tokens], promptIds.length);
     nextToken = argmax(logits);
     tokens.push(nextToken);
@@ -329,6 +352,7 @@ async function runFixture(variantState, fixture, maxNewTokens, enableAlign) {
       encoder_hidden_states: enc,
     });
     const alignTensor = alignOut[Object.keys(alignOut)[0]];
+    const alignData = tensorDataAsFloat32(alignTensor);
     const [batch, textSteps, frames] = alignTensor.dims;
     let rowSumMin = Infinity;
     let rowSumMax = -Infinity;
@@ -337,7 +361,7 @@ async function runFixture(variantState, fixture, maxNewTokens, enableAlign) {
     for (let t = 0; t < textSteps; t++) {
       let sum = 0;
       for (let f = 0; f < frames; f++) {
-        const value = alignTensor.data[t * frames + f] ?? 0;
+        const value = alignData[t * frames + f] ?? 0;
         if (value < 0) nonNegative = false;
         sum += value;
       }
@@ -346,7 +370,7 @@ async function runFixture(variantState, fixture, maxNewTokens, enableAlign) {
       rowSumTotal += sum;
     }
     const dtw = processSplitGraphAlignment({
-      alignmentData: alignTensor.data,
+      alignmentData: alignData,
       totalTokens: allTokens.length,
       promptLen: promptIds.length,
       textTokenCount: tokens.length,
@@ -515,6 +539,10 @@ function generateReport({ modelDir, fixtures, results, maxNewTokens, align }) {
   lines.push('## Deferred / Manual');
   lines.push('');
   lines.push('Current Node CLI validation is intentionally strict: prompt/generation-control parity passes, but any token/text/EOS divergence is reported before WebGPU is attempted.');
+  lines.push('');
+  lines.push('fp16 parity requires converting float16 logits/alignment tensors back to float32 before logit processors and argmax; raw uint16 half bits are not comparable logits.');
+  lines.push('');
+  lines.push('q8 uses ONNX Runtime Web WASM CPU. Extended greedy decoding can diverge from fp32 because the decoder is quantized; those token/EOS differences remain visible in the comparison table instead of being hidden.');
   lines.push('');
   lines.push('WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.');
   lines.push('');

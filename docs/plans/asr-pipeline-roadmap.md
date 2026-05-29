@@ -1036,3 +1036,13 @@ loadSplitGraphLocalModel(dir, {
 - Expect encoder may need fp16, decoder_step may tolerate q8/q4 better.
 - decoder_align needs separate validation (timestamp quality depends on attention behavior).
 - Do NOT publish as browser-ready without WebGPU validation.
+---
+
+## Whisper splitgraph Node/WASM validation note
+
+- Node CLI validation lives in `tests/smoke/whisper-splitgraph-node-wasm-validate.mjs` and compares fp16/q8 against fp32 with fixture-language prompts from `.tr.*` / `.en.*` suffixes.
+- Greedy decode controls are verified: `language`, `task=transcribe`, `no_timestamps`, `max_new_tokens`, `suppress_tokens`, `begin_suppress_tokens`, `temperature=0`, `num_beams=1`.
+- fp16 Node CPU parity requires decoding float16 logits/alignment tensors to float32 before logit processing and argmax; raw uint16 half bits are not numeric logits.
+- q8 runs through ONNX Runtime Web WASM CPU. Extended `max_new_tokens=64` comparison currently exposes quantized decoder divergence on two English fixtures while prompt/control parity remains correct.
+- WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.
+- Beam search is not implemented yet; keep it as the next decoding task after greedy parity is stable.
