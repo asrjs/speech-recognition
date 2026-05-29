@@ -31,7 +31,7 @@ import { WhisperTokenizer } from './tokenizer.js';
 import { WhisperTimestampLogitProcessor } from './processors.js';
 import { buildWhisperWordTimestampsFromTokenDetails } from './word-timestamps.js';
 import { computeWhisperDtwTokenTimestamps } from './attention-alignment.js';
-import { whisperGreedyDecode, type WhisperCoreSession } from './core.js';
+import { whisperDecode, type WhisperCoreSession } from './core.js';
 import {
   parseWhisperGenerationConfig,
   parseWhisperModelConfig,
@@ -180,17 +180,23 @@ export async function splitGraphDecodeLoop(params: {
   runStep: SplitGraphDecodeCallbacks['runStep'];
   processLogits?: (logits: Float32Array, generatedTokens: readonly number[], beginIndex: number) => void;
   onTokenLogits?: (chosenTokenId: number, processedLogits: Float32Array, ctx: { readonly tokens: readonly number[]; readonly beginIndex: number }) => void;
+  /** Beam search: number of beams (default: 1 = greedy) */
+  numBeams?: number;
+  /** Length penalty for beam search (default: 0.0) */
+  lengthPenalty?: number;
 }): Promise<SplitGraphDecodeResult> {
-  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, modelConfig, runInit, runStep, processLogits, onTokenLogits } = params;
+  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, modelConfig, runInit, runStep, processLogits, onTokenLogits, numBeams, lengthPenalty } = params;
 
-  // Delegate to vanilla Whisper core
   const encoderDims: readonly number[] = [1, encoderHiddenStates.length / modelConfig.dModel, modelConfig.dModel];
   const session: WhisperCoreSession = {
     runInit: async (pt, enc, dims) => runInit(pt, enc, dims),
     runStep: async (tid, kv) => runStep(tid, kv),
   };
-  const result = await whisperGreedyDecode(session, {
+  const result = await whisperDecode(session, {
     promptTokens, encoderOutput: encoderHiddenStates, encoderDims, eosTokenId, maxNewTokens, processLogits, onTokenLogits,
+    strategy: (numBeams ?? 1) > 1 ? 'beam' : 'greedy',
+    beamSize: numBeams ?? 1,
+    lengthPenalty: lengthPenalty ?? 0,
   });
   return { tokens: result.tokens };
 }
@@ -1249,7 +1255,7 @@ export class WhisperOnnxExecutor {
     const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
     const maxNewTokens = options.maxNewTokens ?? this.config.maxTargetPositions ?? 448;
 
-    // Only greedy decoding supported for splitgraph (no beam search yet)
+    // Greedy or beam search supported via splitgraph
     const timestampBegin = tokenizer.getTokenId('<|0.00|>') ?? 50364;
     const splitTimestampProcessor = new WhisperTimestampLogitProcessor({
       eosTokenId: eosId,
@@ -1269,6 +1275,8 @@ export class WhisperOnnxExecutor {
         splitTimestampProcessor.process(logits, genTokens, beginIdx);
       },
       onTokenLogits: options.onTokenLogits,
+      numBeams: options.numBeams ?? 1,
+      lengthPenalty: options.lengthPenalty ?? 0,
       runInit: async (prompt, _encHs, _dims) => {
         const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
         return {
