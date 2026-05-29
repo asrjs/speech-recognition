@@ -8,3 +8,11 @@
  */
 
 export { crossAttentionDtwTimestamps } from './cross-attention-dtw.js';
+export {
+  ctcForceAlign,
+  ctcViterbiBacktrack,
+  ctcLogSoftmax,
+  type CtcAlignedFrame,
+  type CtcAlignmentResult,
+  type CtcForceAlignOptions,
+} from './ctc-viterbi.js';
