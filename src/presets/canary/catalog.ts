@@ -38,27 +38,30 @@ export const MODELS = {
   },
 } satisfies Record<string, CanaryModelConfig>;
 
+// Static reverse mapping Map derived from the MODELS configuration to enable
+// O(1) lookups by repoId, replacing O(N) linear searches in functions like
+// getModelKeyFromRepoId and getModelConfig and eliminating redundant
+// Object.entries() and Object.values() allocations.
+const REPO_ID_TO_KEY = new Map<string, string>();
+for (const [key, config] of Object.entries(MODELS)) {
+  REPO_ID_TO_KEY.set(config.repoId, key);
+}
+
 export function getModelConfig(modelKeyOrRepoId: string): CanaryModelConfig | null {
   if (Object.prototype.hasOwnProperty.call(MODELS, modelKeyOrRepoId)) {
     return MODELS[modelKeyOrRepoId as keyof typeof MODELS];
   }
 
-  for (const config of Object.values(MODELS)) {
-    if (config.repoId === modelKeyOrRepoId) {
-      return config;
-    }
+  const key = REPO_ID_TO_KEY.get(modelKeyOrRepoId);
+  if (key) {
+    return MODELS[key as keyof typeof MODELS];
   }
 
   return null;
 }
 
 export function getModelKeyFromRepoId(repoId: string): string | null {
-  for (const [key, config] of Object.entries(MODELS)) {
-    if (config.repoId === repoId) {
-      return key;
-    }
-  }
-  return null;
+  return REPO_ID_TO_KEY.get(repoId) ?? null;
 }
 
 export function listModels(): string[] {
