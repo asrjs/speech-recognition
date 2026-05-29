@@ -973,6 +973,18 @@ VERIFICATION GATE
 - Verification: Python prompt test + py_compile, `validate_variants.py --variants fp32 fp16 q8`, `WHISPER_SPLITGRAPH_FIXTURE_DIR=/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/q8 npm test -- tests/whisper-splitgraph-smoke.test.ts --run`, `npm test -- tests/whisper-splitgraph-artifacts.test.ts --run`, `npm run typecheck`, `npm run lint` (0 errors/4 pre-existing max-lines warnings).
 - Commit subject: `fix: make whisper variant prompts comparable`
 
+**Node CLI / WASM splitgraph validation hardening (2026-05-29):** ✅ TOOLING DONE, STRICT PARITY NOT YET PASSING
+- Added `tests/smoke/whisper-splitgraph-node-wasm-validate.mjs` and made `npm run validate:whisper-variants` use the Node CLI validation path. The previous Python validator remains as `npm run validate:whisper-variants:python`.
+- Validation uses fixture `.en` / `.tr` suffixes for prompt language, fixed `task=transcribe`, `no_timestamps=true`, `temperature=0`, greedy decode, configured `max_new_tokens`, parsed `suppress_tokens`, and parsed `begin_suppress_tokens`.
+- `parseWhisperGenerationConfig()` now exposes `suppressTokens`; merged and splitgraph decoders pass parsed `suppressTokens`, `beginSuppressTokens`, and `noTimestampsTokenId` into `WhisperTimestampLogitProcessor` instead of hardcoded empty lists.
+- Node report output includes generation-control table, prompt consistency, token/text/EOS comparison vs fp32, and optional alignment/DTW checks (shape, row sums, non-negative values, monotonic DTW timestamps).
+- Regenerated `docs/reports/whisper-large-v3-turbo-variant-validation.md` with Node CLI results. Prompt/control parity passes for fp32/fp16/q8. q8 WASM matches fp32 on 4/5 fixtures for first 16 tokens; LibriVox differs by EOS/continuation. fp16 Node CPU currently produces garbage tokens; fp16 WASM fails allocation for this large artifact on this host.
+- Focused alignment validation was run on `jfk2.en.wav` for fp32 vs q8: shape `[1, 8, 1500]`, row sums `1/1/1`, non-negative `true`, monotonic DTW `true`.
+- WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.
+- Beam search remains a next task; not implemented in this pass.
+- Verification: `npm test -- tests/whisper-generation-config.test.ts --run`, Node validation report generation (`--max-new-tokens 16 --no-align --no-strict`), strict one-fixture validation fails as expected on fp16 mismatch, focused fp32/q8 alignment validation passes.
+- Intended commit subject: `test: add node wasm whisper variant validation`
+
 **Deferred features:**
 
 ### Graph-level mixed dtype (Transformers.js-style per-module dtype)

@@ -1,6 +1,7 @@
 export interface WhisperGenerationConfig {
   readonly alignmentHeads: readonly { readonly layer: number; readonly head: number }[];
   readonly noTimestampsTokenId?: number;
+  readonly suppressTokens?: readonly number[];
   readonly beginSuppressTokens?: readonly number[];
   readonly maxLength?: number;
 }
@@ -36,6 +37,9 @@ export function parseWhisperGenerationConfig(
       typeof raw.no_timestamps_token_id === 'number'
         ? raw.no_timestamps_token_id
         : undefined,
+    suppressTokens: Array.isArray(raw.suppress_tokens)
+      ? raw.suppress_tokens.filter((v): v is number => typeof v === 'number')
+      : undefined,
     beginSuppressTokens: Array.isArray(raw.begin_suppress_tokens)
       ? raw.begin_suppress_tokens.filter((v): v is number => typeof v === 'number')
       : undefined,

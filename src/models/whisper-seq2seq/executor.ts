@@ -994,10 +994,10 @@ export class WhisperOnnxExecutor {
     const timestampBegin = tokenizer.getTokenId('<|0.00|>') ?? 50364;
     const timestampProcessor = new WhisperTimestampLogitProcessor({
       eosTokenId: eosId,
-      noTimestampsTokenId: tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
+      noTimestampsTokenId: loaded.generationConfig.noTimestampsTokenId ?? tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
       timestampBegin,
-      suppressTokens: [],
-      beginSuppressTokens: [],
+      suppressTokens: loaded.generationConfig.suppressTokens ?? [],
+      beginSuppressTokens: loaded.generationConfig.beginSuppressTokens ?? [],
     });
 
     if (numBeams === 1) {
@@ -1265,10 +1265,10 @@ export class WhisperOnnxExecutor {
     const timestampBegin = tokenizer.getTokenId('<|0.00|>') ?? 50364;
     const splitTimestampProcessor = new WhisperTimestampLogitProcessor({
       eosTokenId: eosId,
-      noTimestampsTokenId: tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
+      noTimestampsTokenId: loaded.generationConfig.noTimestampsTokenId ?? tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
       timestampBegin,
-      suppressTokens: [],
-      beginSuppressTokens: [],
+      suppressTokens: loaded.generationConfig.suppressTokens ?? [],
+      beginSuppressTokens: loaded.generationConfig.beginSuppressTokens ?? [],
     });
 
     const result = await splitGraphDecodeLoop({

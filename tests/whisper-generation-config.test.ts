@@ -33,6 +33,12 @@ describe('Whisper generation config parsing', () => {
     expect(parsed.noTimestampsTokenId).toBe(50363);
   });
 
+  it('exposes suppress token controls used by greedy decoding', () => {
+    const parsed = parseWhisperGenerationConfig(tinyGenConfig);
+    expect(parsed.suppressTokens).toEqual([1, 2, 50257]);
+    expect(parsed.beginSuppressTokens).toEqual([220, 50257]);
+  });
+
   it('handles missing optional fields gracefully', () => {
     const parsed = parseWhisperGenerationConfig({});
     expect(parsed.alignmentHeads).toEqual([]);
