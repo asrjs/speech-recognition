@@ -64,15 +64,34 @@ export function loadSplitGraphLocalModel(
   const manifestRaw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Record<string, unknown>;
   const manifest = parseWhisperManifest(manifestRaw);
 
-  // Warn on inappropriate variant selections
+  // Warn on variant selection based on validation status
   const compat = (manifestRaw.runtime_compatibility ?? {}) as Record<string, Record<string, unknown>>;
   if (variant && compat[variant]) {
     const notes = String(compat[variant]?.notes ?? '');
-    const status = String(compat[variant]?.status ?? '');
-    if (status === 'requires_validation' || status === 'requires_export_time_fp16') {
+
+    // Check detailed validation fields first (new schema), fall back to legacy 'status'
+    const validation = (compat[variant]?.validation ?? {}) as Record<string, string>;
+    const runtime = (compat[variant]?.runtimeCompatibility ?? {}) as Record<string, string>;
+
+    const isPending = (key: string) => (validation[key] ?? runtime[key]) === 'pending';
+    const isNotRecommended = (key: string) => (validation[key] ?? runtime[key]) === 'not_recommended';
+
+    if (isNotRecommended('browserWebGpu') || isNotRecommended('browserWasm')) {
       console.warn(
-        `[whisper-seq2seq] Variant "${variant}": ${status}. ${notes}`,
+        `[whisper-seq2seq] Variant "${variant}" is not recommended for browser/WebGPU. ${notes}`,
       );
+    } else if (isPending('browserWebGpu') || isPending('webGpuSmokeDecode')) {
+      console.warn(
+        `[whisper-seq2seq] Variant "${variant}" is native-validated but browser/WebGPU validation is pending. ${notes}`,
+      );
+    } else {
+      // Legacy status check
+      const status = String(compat[variant]?.status ?? '');
+      if (status === 'requires_validation' || status === 'requires_export_time_fp16') {
+        console.warn(
+          `[whisper-seq2seq] Variant "${variant}": ${status}. ${notes}`,
+        );
+      }
     }
   }
 

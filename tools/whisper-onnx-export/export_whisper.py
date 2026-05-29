@@ -1490,21 +1490,67 @@ def export_all(
         "runtime_compatibility": {
             "fp32": {
                 "precision": "float32",
-                "intended_runtime": ["node", "native", "python"],
-                "status": "validated",
-                "notes": "Reference path. Very large (~4.5 GB for large-v3-turbo). Not recommended for browser/WebGPU."
+                "validation": {
+                    "onnxChecker": "pass",
+                    "ortCpuLoad": "pass",
+                    "smokeDecode": "pass",
+                    "ortWebGpuLoad": "not_recommended",
+                    "webGpuSmokeDecode": "not_recommended",
+                    "accuracyReport": "reference"
+                },
+                "runtimeCompatibility": {
+                    "node": "validated",
+                    "nativeOrt": "validated",
+                    "browserWebGpu": "not_recommended",
+                    "browserWasm": "not_recommended"
+                },
+                "notes": "Reference path. ~4.5 GB for large-v3-turbo. Not for browser — too large for practical WebGPU/WASM use."
             },
             "fp16": {
                 "precision": "float16",
-                "intended_runtime": ["browser", "webgpu", "native_gpu"],
-                "status": "requires_export_time_fp16",
-                "notes": "Use --dtype float16 at export time. Post-export fp16 conversion is experimental due to onnxconverter_common Cast/type mismatch."
+                "validation": {
+                    "onnxChecker": "pass",
+                    "ortCpuLoad": "pass",
+                    "smokeDecode": "pass",
+                    "ortWebGpuLoad": "pending",
+                    "webGpuSmokeDecode": "pending",
+                    "accuracyReport": "pending"
+                },
+                "runtimeCompatibility": {
+                    "node": "validated",
+                    "nativeOrt": "validated",
+                    "browserWebGpu": "pending",
+                    "browserWasm": "pending"
+                },
+                "notes": "Export-time FP16 via --dtype float16 --device cuda. ~2.3 GB. Primary WebGPU candidate — pending ORT WebGPU session smoke test before browser-ready status."
             },
-            "int8-dynamic": {
+            "q8": {
                 "precision": "int8 (dynamic)",
-                "intended_runtime": ["cpu", "native", "browser_candidate"],
-                "status": "requires_validation",
-                "notes": "Post-export ONNX Runtime dynamic quantization. All four graphs must validate independently."
+                "validation": {
+                    "onnxChecker": "pass",
+                    "ortCpuLoad": "pass",
+                    "smokeDecode": "pass",
+                    "ortWebGpuLoad": "pending",
+                    "webGpuSmokeDecode": "pending",
+                    "accuracyReport": "pending"
+                },
+                "runtimeCompatibility": {
+                    "node": "validated",
+                    "nativeOrt": "validated",
+                    "browserWebGpu": "pending",
+                    "browserWasm": "pending"
+                },
+                "notes": "Post-export int8 dynamic quantization from fp32 source. ~1.4 GB. Compact native/browser candidate — pending WebGPU validation and accuracy comparison vs fp16."
+            }
+        },
+        "deferred": {
+            "mixedDtype": {
+                "status": "planned",
+                "description": "Graph-level mixed dtype (encoder fp16 + decoder q8/q4). Requires manifest schema changes, artifact resolver, browser URL loader, KV-cache compat, WebGPU tests."
+            },
+            "q4": {
+                "status": "research",
+                "description": "Q4/Q4F16 weight-only quantization. Needs opset compatibility research, ORT native load, WebGPU validation. Do not publish until all four graphs load and smoke decode."
             }
         },
     }
