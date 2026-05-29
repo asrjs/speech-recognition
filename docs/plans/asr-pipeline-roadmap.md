@@ -1055,13 +1055,23 @@ Current result:
 - fp16 Node CPU matches fp32 exactly on all 5 fixtures at `max_new_tokens=64`.
 - q8 runs through ONNX Runtime Web WASM CPU. Extended `max_new_tokens=64` comparison currently exposes quantized decoder divergence on two English fixtures while prompt/control parity remains correct.
 - Whisper splitgraph runtime fixes (2026-05-29):
-  - `language === 'auto'` fallback corrected from `<|tr|>` → `<|en|>` per OpenAI/HF reference.
+  - `language === 'auto'` fallback corrected from `<|tr|>` → `<|en|>`.  This is an English fallback, not true OpenAI/HF auto-language detection (which requires language-detection head output or special no-language-token handling).  True auto-language is deferred.
   - Mel input frame count now doubles `maxSourcePositions` when ≤1500 to produce 3000 encoder input frames (Whisper conv layers downsample 2x).
   - Affects both splitgraph (`transcribeWithSplitGraph`) and merged-decoder paths.
 
 Next task:
-- Manual WebGPU smoke for fp16 and q8 in browser/app. Node/WASM validation is now stable for all three variants.
-- Do not start WebGPU automation until q8 divergence is understood or explicitly accepted.
+- Manual WebGPU smoke for fp16 in browser/app. Use `scripts/whisper-webgpu-smoke.sh` to start the server, then open `tests/smoke/whisper-webgpu-smoke.html`.
+- First target: whisper-base fp16 on jfk2.en.wav, comparing against Node/WASM reference tokens.
+
+Fast smoke fixture set (curated, ~5):
+- jfk2.en.wav — short English, EOS after complete sentence
+- ItsLifeJim.en.wav — short English, EOS at natural stop
+- 019b50a9c564....tr.wav — Turkish, has reference text
+- librivox.org-1600hz.en.wav — English, EOS at title boundary
+- common_voice_tr_38277367.tr.mp3 — Turkish, MP3 path coverage
+
+Full set: all tracked fixtures plus curated untracked ones after inspection.
+Untracked fixtures from other agents remain uncommitted.
 
 Manual/deferred:
 - WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.

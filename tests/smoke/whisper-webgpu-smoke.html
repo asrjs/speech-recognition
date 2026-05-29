@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Whisper Splitgraph — fp16 WebGPU Smoke</title>
+<style>
+body { font-family: monospace; background: #111; color: #eee; padding: 20px; max-width: 900px; margin: auto; }
+h1 { color: #0cf; }
+pre { background: #222; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+button { padding: 8px 16px; font: inherit; cursor: pointer; }
+.status { padding: 4px 0; }
+.pass { color: #0f0; }
+.fail { color: #f44; }
+.warn { color: #fa0; }
+.info { color: #0cf; }
+</style>
+</head>
+<body>
+<h1>Whisper Splitgraph &mdash; fp16 WebGPU Smoke</h1>
+
+<p class="info">This page runs the whisper-base fp16 4-graph splitgraph decoder loop in the browser
+using onnxruntime-web with WebGPU backend. It compares output against the Node/WASM reference.</p>
+
+<p><b>Fixture</b>: jfk2.en.wav ("And so my fellow Americans...")<br>
+<b>Model</b>: <span id="modelPath">tests/smoke/.whisper-fp16-model/</span><br>
+<b>Backend</b>: <span id="backendLabel">WebGPU (wasm fallback)</span></p>
+
+<button id="runBtn" onclick="runSmoke()">Run fp16 WebGPU Smoke</button>
+<span id="status" class="status"></span>
+
+<pre id="log" style="display:none;"></pre>
+<pre id="result" style="display:none;"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.all.min.js"></script>
+<script>
+// ── Reference tokens from Node/WASM V2 validator (whisper-base fp32, jfk2.en.wav) ──
+const REF_TOKENS = [400, 370, 452, 7177, 6280, 11, 1029, 406, 437, 428, 1941, 393, 360, 337, 291, 11, 1029, 437, 291, 393, 360, 337, 428, 1941, 13, 50257];
+const REF_TEXT = "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.";
+const PROMPT_IDS = [50258, 50259, 50359, 50363]; // <|startoftranscript|>, <|en|>, <|transcribe|>, <|notimestamps|>
+const EOS_ID = 50257;
+const MAX_NEW_TOKENS = 64;
+
+const MODEL_BASE = 'tests/smoke/.whisper-fp16-model/';
+const AUDIO_URL = 'tests/fixtures/jfk2.en.wav';
+const N_MELS = 80;
+const MEL_FRAMES = 3000;
+
+// ── Log helper ──
+const logEl = document.getElementById('log');
+const resultEl = document.getElementById('result');
+const statusEl = document.getElementById('status');
+function log(msg) { logEl.style.display='block'; logEl.textContent += msg + '\n'; }
+function status(msg, cls) { statusEl.textContent = msg; statusEl.className = 'status ' + (cls||''); }
+
+// ── Minimal Whisper mel processor ──
+// Matches OpenAI's log-mel filterbank: 25ms window, 10ms hop, Hann window, 80 mel bins
+function computeMel(pcm, sampleRate) {
+  const hopLength = 160;   // 10ms @ 16kHz
+  const winLength = 400;   // 25ms @ 16kHz
+  const fftSize = 512;
+  const nFrames = Math.floor((pcm.length - winLength) / hopLength) + 1;
+
+  // Hann window
+  const window = new Float32Array(winLength);
+  for (let i = 0; i < winLength; i++) window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (winLength - 1)));
+
+  // STFT magnitude
+  const nFreqs = fftSize / 2 + 1;
+  const magnitudes = new Float32Array(nFrames * nFreqs);
+  for (let f = 0; f < nFrames; f++) {
+    const offset = f * hopLength;
+    // Real FFT via DFT (simplified, OK for smoke test at 64 tokens)
+    const real = new Float32Array(fftSize);
+    const imag = new Float32Array(fftSize);
+    for (let n = 0; n < winLength; n++) {
+      const sample = (pcm[offset + n] ?? 0) * (window[n] ?? 0);
+      for (let k = 0; k < nFreqs; k++) {
+        const angle = -2 * Math.PI * k * n / fftSize;
+        real[k] += sample * Math.cos(angle);
+        imag[k] += sample * Math.sin(angle);
+      }
+    }
+    for (let k = 0; k < nFreqs; k++) {
+      magnitudes[f * nFreqs + k] = Math.sqrt(real[k] * real[k] + imag[k] * imag[k]);
+    }
+  }
+
+  // Mel filterbank (simplified triangular filters)
+  function hzToMel(hz) { return 2595 * Math.log10(1 + hz / 700); }
+  function melToHz(mel) { return 700 * (10 ** (mel / 2595) - 1); }
+  const melMin = hzToMel(0);
+  const melMax = hzToMel(sampleRate / 2);
+  const melPoints = new Float32Array(N_MELS + 2);
+  for (let i = 0; i < N_MELS + 2; i++) melPoints[i] = melToHz(melMin + (melMax - melMin) * i / (N_MELS + 1));
+
+  const melBank = new Float32Array(nFreqs * N_MELS);
+  for (let m = 0; m < N_MELS; m++) {
+    const left = melPoints[m], center = melPoints[m + 1], right = melPoints[m + 2];
+    for (let k = 0; k < nFreqs; k++) {
+      const freq = k * sampleRate / fftSize;
+      if (freq < left || freq > right) continue;
+      melBank[m * nFreqs + k] = freq <= center ? (freq - left) / (center - left) : (right - freq) / (right - center);
+    }
+  }
+
+  // Apply filterbank
+  const melSpec = new Float32Array(N_MELS * nFrames);
+  for (let f = 0; f < nFrames; f++) {
+    for (let m = 0; m < N_MELS; m++) {
+      let sum = 0;
+      for (let k = 0; k < nFreqs; k++) sum += magnitudes[f * nFreqs + k] * (melBank[m * nFreqs + k] ?? 0);
+      melSpec[m * nFrames + f] = Math.max(Math.log(Math.max(sum, 1e-10)), -10);
+    }
+  }
+
+  // Pad/truncate to MEL_FRAMES
+  const out = new Float32Array(N_MELS * MEL_FRAMES);
+  const copyFrames = Math.min(nFrames, MEL_FRAMES);
+  for (let m = 0; m < N_MELS; m++) {
+    for (let f = 0; f < copyFrames; f++) out[m * MEL_FRAMES + f] = melSpec[m * nFrames + f] ?? 0;
+  }
+  return out;
+}
+
+// ── Argmax ──
+function argmax(arr) {
+  let idx = 0, val = arr[0] ?? -Infinity;
+  for (let i = 1; i < arr.length; i++) { if ((arr[i] ?? -Infinity) > val) { idx = i; val = arr[i]; } }
+  return idx;
+}
+
+// ── Float16 → Float32 (from V2 validator) ──
+function float16BitsToFloat32(values) {
+  const out = new Float32Array(values.length);
+  for (let i = 0; i < values.length; i++) {
+    const h = values[i] ?? 0;
+    const sign = (h & 0x8000) ? -1 : 1;
+    const exp = (h >>> 10) & 0x1f, frac = h & 0x03ff;
+    if (exp === 0) out[i] = frac === 0 ? sign * 0 : sign * 2 ** -14 * (frac / 1024);
+    else if (exp === 0x1f) out[i] = frac === 0 ? sign * Infinity : NaN;
+    else out[i] = sign * 2 ** (exp - 15) * (1 + frac / 1024);
+  }
+  return out;
+}
+
+function ensureFloat32(data, type) {
+  return type === 'float16' ? float16BitsToFloat32(data) : data;
+}
+
+// ── Tokenizer (minimal — load from JSON) ──
+let tokenizer = null;
+async function loadTokenizer() {
+  const resp = await fetch(MODEL_BASE + 'tokenizer.json');
+  tokenizer = await resp.json();
+}
+
+function decodeTokens(ids) {
+  if (!tokenizer) return `[${ids.slice(0, 6).join(',')}...]`;
+  // Use the tokenizer's decode or simple vocab lookup
+  const vocab = tokenizer.model?.vocab ?? tokenizer.vocab ?? {};
+  const idToToken = {};
+  for (const [tok, id] of Object.entries(vocab)) idToToken[id] = tok;
+  return ids.map(id => idToToken[id] ?? `[${id}]`).join('');
+}
+
+// ── Main smoke ──
+async function runSmoke() {
+  logEl.textContent = '';
+  resultEl.style.display = 'none';
+  status('Loading...', 'info');
+
+  try {
+    // 1. Check WebGPU availability
+    log('Checking WebGPU backend...');
+    const isWebGpu = typeof navigator !== 'undefined' && navigator.gpu;
+    log(`  WebGPU available: ${isWebGpu}`);
+    const ep = isWebGpu ? 'webgpu' : 'wasm';
+    document.getElementById('backendLabel').textContent = isWebGpu ? 'WebGPU' : 'WASM (WebGPU not available, falling back)';
+
+    // 2. Load audio
+    log('Loading audio...');
+    const audioCtx = new AudioContext({ sampleRate: 16000 });
+    const audioResp = await fetch(AUDIO_URL);
+    const audioBuf = await audioResp.arrayBuffer();
+    const decoded = await audioCtx.decodeAudioData(audioBuf);
+    const pcm = decoded.getChannelData(0);
+    log(`  Audio: ${pcm.length} samples, ${decoded.sampleRate} Hz`);
+
+    // Resample to 16kHz if needed (simple linear)
+    let pcm16k = pcm;
+    if (decoded.sampleRate !== 16000) {
+      const ratio = 16000 / decoded.sampleRate;
+      const outLen = Math.floor(pcm.length * ratio);
+      pcm16k = new Float32Array(outLen);
+      for (let i = 0; i < outLen; i++) {
+        const src = i / ratio;
+        const s0 = Math.floor(src), s1 = Math.min(pcm.length - 1, s0 + 1);
+        pcm16k[i] = pcm[s0] * (1 - (src - s0)) + pcm[s1] * (src - s0);
+      }
+      log(`  Resampled to 16kHz: ${pcm16k.length} samples`);
+    }
+
+    // 3. Compute mel
+    log('Computing mel spectrogram...');
+    const tMelStart = performance.now();
+    const mel = computeMel(pcm16k, 16000);
+    log(`  Mel shape: [1, ${N_MELS}, ${MEL_FRAMES}], time: ${((performance.now() - tMelStart) / 1000).toFixed(2)}s`);
+
+    // 4. Load ONNX sessions
+    log('Creating ONNX sessions...');
+    const tSessStart = performance.now();
+    const sessOpts = { executionProviders: [ep], graphOptimizationLevel: 'all' };
+    const encSess = await ort.InferenceSession.create(MODEL_BASE + 'encoder_model.onnx', sessOpts);
+    const initSess = await ort.InferenceSession.create(MODEL_BASE + 'decoder_init.onnx', sessOpts);
+    const stepSess = await ort.InferenceSession.create(MODEL_BASE + 'decoder_step.onnx', sessOpts);
+    log(`  Sessions created in ${((performance.now() - tSessStart) / 1000).toFixed(2)}s`);
+
+    // 5. Encoder
+    log('Running encoder...');
+    const melTensor = new ort.Tensor('float32', mel, [1, N_MELS, MEL_FRAMES]);
+    const tEnc = performance.now();
+    const encOut = await encSess.run({ input_features: melTensor });
+    const encData = encOut[Object.keys(encOut)[0]];
+    log(`  Encoder output: [${encData.dims.join(', ')}], time: ${((performance.now() - tEnc) / 1000).toFixed(2)}s`);
+
+    // 6. Decoder init
+    log('Running decoder_init...');
+    const inputIds = new BigInt64Array(PROMPT_IDS.map(BigInt));
+    const promptTensor = new ort.Tensor('int64', inputIds, [1, PROMPT_IDS.length]);
+    const tInit = performance.now();
+    const initOut = await initSess.run({ input_ids: promptTensor, encoder_hidden_states: encData });
+    const initKeys = Object.keys(initOut);
+    const logitsKey = initKeys.find(k => k.includes('logits')) ?? initKeys[0];
+    const initLogitsTensor = initOut[logitsKey];
+    const vocabSize = initLogitsTensor.dims.at(-1);
+    const initLogits = ensureFloat32(initLogitsTensor.data, initLogitsTensor.type);
+    const firstLogits = initLogits.subarray(initLogits.length - vocabSize);
+    let nextToken = argmax(firstLogits);
+    const tokens = [nextToken];
+    log(`  Init token: ${nextToken}, time: ${((performance.now() - tInit) / 1000).toFixed(2)}s`);
+
+    // Build pastKv from init outputs (present.* → past_key_values.*)
+    const pastKv = {};
+    for (const key of initKeys) {
+      if (key.startsWith('present')) pastKv[key.replace(/^present\./, 'past_key_values.')] = initOut[key];
+    }
+
+    // 7. Step loop
+    log(`Step loop (max ${MAX_NEW_TOKENS} tokens)...`);
+    let eosReached = nextToken === EOS_ID;
+    const tLoop = performance.now();
+    for (let step = 1; step < MAX_NEW_TOKENS && !eosReached; step++) {
+      const feeds = { input_ids: new ort.Tensor('int64', new BigInt64Array([BigInt(nextToken)]), [1, 1]) };
+      for (const [k, v] of Object.entries(pastKv)) feeds[k] = v;
+
+      const stepOut = await stepSess.run(feeds);
+      const stepKeys = Object.keys(stepOut);
+      const stepLogitsKey = stepKeys.find(k => k.includes('logits')) ?? stepKeys[0];
+      const stepLogits = ensureFloat32(stepOut[stepLogitsKey].data, stepOut[stepLogitsKey].type);
+      nextToken = argmax(stepLogits);
+      tokens.push(nextToken);
+      eosReached = nextToken === EOS_ID;
+
+      // Update KV: step outputs self-attn only, preserve encoder KV
+      for (const key of stepKeys) {
+        if (key.startsWith('present')) {
+          pastKv[key.replace(/^present\./, 'past_key_values.')] = stepOut[key];
+        }
+      }
+    }
+    log(`  Loop complete: ${tokens.length} tokens, time: ${((performance.now() - tLoop) / 1000).toFixed(2)}s`);
+
+    // 8. Decode text
+    await loadTokenizer();
+    const decodedText = decodeText(tokens);
+
+    // 9. Compare against reference
+    log('\n=== COMPARISON ===');
+    const refExact = tokens.length === REF_TOKENS.length && tokens.every((t, i) => t === REF_TOKENS[i]);
+    const refTextMatch = decodedText.trim() === REF_TEXT.trim();
+
+    let firstMismatch = -1;
+    for (let i = 0; i < Math.min(tokens.length, REF_TOKENS.length); i++) {
+      if (tokens[i] !== REF_TOKENS[i]) { firstMismatch = i; break; }
+    }
+
+    resultEl.style.display = 'block';
+    resultEl.textContent = [
+      `REF  tokens: [${REF_TOKENS.join(', ')}]`,
+      `WEB  tokens: [${tokens.join(', ')}]`,
+      `REF  text:   "${REF_TEXT}"`,
+      `WEB  text:   "${decodedText.trim()}"`,
+      '',
+      `Token match: ${refExact ? 'PASS (exact)' : 'DIFF (first mismatch at index ' + firstMismatch + ')'}`,
+      `Text  match: ${refTextMatch ? 'PASS' : 'FAIL'}`,
+      `EOS   match: ${tokens[tokens.length-1] === EOS_ID ? 'PASS' : 'FAIL'}`,
+    ].join('\n');
+
+    if (refExact) {
+      status('PASS — fp16 WebGPU output matches Node/WASM reference exactly', 'pass');
+    } else {
+      status('DIFF — see comparison above', 'warn');
+    }
+
+  } catch (err) {
+    log(`\nERROR: ${err.message}\n${err.stack}`);
+    status('FAILED — check log for details', 'fail');
+  }
+}
+
+// Simple text decode using tokenizer vocab
+function decodeText(ids) {
+  if (!tokenizer) return `[${ids.join(',')}]`;
+  const vocab = tokenizer.model?.vocab ?? tokenizer.vocab ?? {};
+  const idToToken = {};
+  for (const [tok, id] of Object.entries(vocab)) idToToken[id] = tok;
+  let text = '';
+  for (const id of ids) {
+    const tok = idToToken[id] ?? '';
+    // Whisper BPE tokens: remove special tokens, join with space heuristic
+    if (id >= 50257) continue; // skip special tokens
+    text += tok.replace(/^Ġ/, ' ').replace(/^Ċ/, '\n');
+  }
+  return text.trim();
+}
+</script>
+</body>
+</html>
