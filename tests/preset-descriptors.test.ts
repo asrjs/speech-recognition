@@ -24,6 +24,7 @@ describe('built-in preset descriptors', () => {
         'parakeet-tdt-0.6b-v3',
         'nvidia/canary-180m-flash',
         'google/medasr',
+        'facebook/wav2vec2-base-960h',
       ]),
     );
     expect(options.find((option) => option.key === 'nvidia/canary-180m-flash')?.preset).toBe(
@@ -158,6 +159,43 @@ describe('built-in preset descriptors', () => {
       returnConfidences: true,
       frameStride: 2,
       enableProfiling: true,
+    });
+  });
+
+  it('exposes Wav2Vec2 CTC metadata with raw-waveform loading defaults', () => {
+    const descriptor = getBuiltInModelDescriptor('wav2vec2-base-960h');
+
+    expect(descriptor?.preset).toBe('wav2vec2');
+    expect(descriptor?.modelId).toBe('facebook/wav2vec2-base-960h');
+    expect(descriptor?.classification).toMatchObject({
+      ecosystem: 'meta',
+      processor: 'wav2vec2-conv',
+      encoder: 'wav2vec2-conformer',
+      decoder: 'ctc',
+      topology: 'ctc',
+      family: 'wav2vec2',
+      task: 'asr',
+    });
+    expect(descriptor?.capabilities).toMatchObject({
+      supportedTasks: ['asr'],
+      supportsWordTimestamps: true,
+      supportsSegmentTimestamps: true,
+      supportsTranslation: false,
+    });
+    expect(descriptor?.inference).toMatchObject({
+      sampleRate: 16000,
+      supportsWordTimestamps: true,
+      supportsTokenTimestamps: true,
+      defaultSegmentationStrategy: 'ctc-frame',
+      defaultMergeStrategy: 'ctc-collapse',
+    });
+    expect(descriptor?.loading).toMatchObject({
+      supportsHubSource: false,
+      supportsLocalSource: true,
+      defaultEncoderBackend: 'wasm',
+      defaultDecoderBackend: 'wasm',
+      encoderArtifactBaseName: 'model',
+      decoderArtifactBaseName: 'model',
     });
   });
 

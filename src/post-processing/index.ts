@@ -6,4 +6,11 @@
  */
 
 export { mergeSegments, type MergedTranscription } from './segment-merger.js';
-export { deduplicateWords, normalizeText, buildSentences, type DedupWord, type Sentence } from './extras.js';
+export {
+  deduplicateWords,
+  normalizeText,
+  buildSentences,
+  formatTranscript,
+  type DedupWord,
+  type Sentence,
+} from './extras.js';

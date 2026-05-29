@@ -44,7 +44,7 @@ const emptyTextNoSpeech: QualityGate = (text: string): QualityGateResult => {
 /** Make a mock transcribe function */
 function mockTranscribe(results: MockDecodeResult[]) {
   let callCount = 0;
-  return vi.fn(async (temperature: number) => {
+  return vi.fn(async (_temperature: number) => {
     const result = results[callCount] ?? results[results.length - 1]!;
     callCount++;
     return {

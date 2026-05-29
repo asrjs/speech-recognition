@@ -23,8 +23,9 @@ import {
   resolveParakeetPresetManifest,
 } from './parakeet/manifest.js';
 import { resolveWhisperPresetManifest } from './whisper/manifest.js';
+import { resolveWav2Vec2PresetManifest } from './wav2vec2/manifest.js';
 
-export type BuiltInPresetId = 'parakeet' | 'canary' | 'medasr' | 'whisper';
+export type BuiltInPresetId = 'parakeet' | 'canary' | 'medasr' | 'whisper' | 'wav2vec2';
 export type BuiltInModelTask = 'asr' | 'speech-translation';
 export type BuiltInWarmupMode = 'expected-text' | 'non-empty';
 export type BuiltInControlType = 'boolean' | 'enum' | 'language';
@@ -507,6 +508,73 @@ function createMedAsrDescriptors(): BuiltInModelDescriptor[] {
   ];
 }
 
+function createWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
+  const manifest = resolveWav2Vec2PresetManifest('facebook/wav2vec2-base-960h');
+
+  return [
+    {
+      modelId: 'facebook/wav2vec2-base-960h',
+      aliases: manifest?.aliases ?? [],
+      preset: 'wav2vec2',
+      displayName: 'Wav2Vec2 Base 960h',
+      description: manifest?.description ?? 'Wav2Vec2 CTC preset.',
+      classification: manifest?.classification ?? {},
+      languages: manifest?.config.languages ?? ['en'],
+      defaultSourceLanguage: 'en',
+      defaultTargetLanguage: 'en',
+      capabilities: {
+        supportedTasks: ['asr'],
+        supportsTranslation: false,
+        supportsPunctuationCapitalization: false,
+        supportsInverseTextNormalization: false,
+        supportsWordTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsPromptControls: false,
+      },
+      inference: {
+        ...createCtcInferenceLimits(),
+        sampleRate: manifest?.config.sampleRate ?? 16000,
+        supportsWordTimestamps: true,
+        supportsTokenTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsConfidence: true,
+        defaultSegmentationStrategy: 'ctc-frame',
+        defaultMergeStrategy: 'ctc-collapse',
+      },
+      loading: {
+        repoId: manifest?.source?.kind === 'huggingface' ? manifest.source.repoId : undefined,
+        supportsHubSource: manifest?.source?.kind === 'huggingface' ? true : false,
+        supportsLocalSource: true,
+        supportsSplitQuantization: false,
+        supportsSplitBackends: false,
+        availableEncoderBackends: ['wasm', 'webgpu'],
+        availableDecoderBackends: ['wasm', 'webgpu'],
+        defaultEncoderBackend: 'wasm',
+        defaultDecoderBackend: 'wasm',
+        availableEncoderQuantizations: ['fp32'],
+        availableDecoderQuantizations: ['fp32'],
+        defaultEncoderQuantization: 'fp32',
+        defaultDecoderQuantization: 'fp32',
+        supportsPreprocessorBackend: false,
+        preprocessorBackends: [],
+        defaultPreprocessorBackend: null,
+        defaultPreprocessorName: null,
+        encoderArtifactBaseName: 'model',
+        decoderArtifactBaseName: 'model',
+        defaultRevision: 'main',
+      },
+      controls: [],
+      warmup: {
+        mode: 'non-empty',
+      },
+      docs: {
+        modelCardUrl: 'https://huggingface.co/facebook/wav2vec2-base-960h',
+        architectureSummary: 'Raw waveform → Wav2Vec2 encoder → CTC greedy decode.',
+      },
+    },
+  ];
+}
+
 function createWhisperDescriptors(): BuiltInModelDescriptor[] {
   return ['openai/whisper-base', 'openai/whisper-large-v3'].map((modelId) => {
     const manifest = resolveWhisperPresetManifest(modelId);
@@ -561,6 +629,7 @@ const BUILT_IN_MODEL_DESCRIPTORS = [
   ...createParakeetDescriptors(),
   ...createCanaryDescriptors(),
   ...createMedAsrDescriptors(),
+  ...createWav2Vec2Descriptors(),
   ...createWhisperDescriptors(),
 ] as const;
 

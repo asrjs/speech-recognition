@@ -50,7 +50,9 @@ export interface OrtModuleLike {
 // ---------------------------------------------------------------------------
 
 export interface ResolvedWav2Vec2Artifacts {
-  readonly artifacts: Wav2Vec2DirectArtifacts;
+  readonly artifacts: Wav2Vec2DirectArtifacts & {
+    readonly modelDataFilename?: string;
+  };
   readonly backendForOrt: 'webgpu' | 'wasm';
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
@@ -99,10 +101,15 @@ function resolveDirectArtifacts(
   source: Extract<Wav2Vec2ArtifactSource, { kind: 'direct' }>,
   backendId: string,
 ): ResolvedWav2Vec2Artifacts {
+  const modelDataFilename =
+    source.artifacts.modelDataFilename ?? source.artifacts.modelDataUrl?.split('/').pop();
+
   return {
     artifacts: {
       modelUrl: source.artifacts.modelUrl,
       tokenizerUrl: source.artifacts.tokenizerUrl,
+      modelDataUrl: source.artifacts.modelDataUrl,
+      modelDataFilename,
     },
     backendForOrt: normalizeBackendForOrt(backendId),
     wasmPaths: source.wasmPaths,
@@ -117,12 +124,15 @@ function resolveHuggingFaceArtifacts(
 ): ResolvedWav2Vec2Artifacts {
   const revision = source.revision ?? 'main';
   const modelFilename = source.modelFilename ?? 'model.onnx';
+  const modelDataFilename = source.modelDataFilename ?? 'model.onnx.data';
   const tokenizerFilename = source.tokenizerFilename ?? 'vocab.json';
 
   return {
     artifacts: {
-      modelUrl: buildResolveUrl(source.repoId, revision, modelFilename),
-      tokenizerUrl: buildResolveUrl(source.repoId, revision, tokenizerFilename),
+      modelUrl: buildResolveUrl(source.repoId, revision, modelFilename, source.subfolder),
+      tokenizerUrl: buildResolveUrl(source.repoId, revision, tokenizerFilename, source.subfolder),
+      modelDataUrl: buildResolveUrl(source.repoId, revision, modelDataFilename, source.subfolder),
+      modelDataFilename,
     },
     backendForOrt: normalizeBackendForOrt(backendId),
     wasmPaths: source.wasmPaths,
@@ -190,6 +200,8 @@ export async function createOrtSession(
   options: {
     readonly backendId?: 'webgpu' | 'wasm';
     readonly enableProfiling?: boolean;
+    readonly externalDataUrl?: string;
+    readonly externalDataPath?: string;
   } = {},
 ): Promise<OrtSessionLike> {
   const backend = options.backendId ?? 'wasm';
@@ -215,12 +227,25 @@ export async function createOrtSession(
   };
 
   let sessionModelUrl = modelUrl;
+  let externalDataUrl = options.externalDataUrl;
 
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
     if (/^file:/i.test(sessionModelUrl)) {
       sessionModelUrl = fileURLToPath(sessionModelUrl);
     }
+    if (externalDataUrl && /^file:/i.test(externalDataUrl)) {
+      externalDataUrl = fileURLToPath(externalDataUrl);
+    }
+  }
+
+  if (externalDataUrl && options.externalDataPath) {
+    sessionOptions.externalData = [
+      {
+        data: externalDataUrl,
+        path: options.externalDataPath,
+      },
+    ];
   }
 
   return ort.InferenceSession.create(sessionModelUrl, sessionOptions);

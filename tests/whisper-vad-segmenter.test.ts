@@ -100,7 +100,7 @@ describe('mergeVadSegments', () => {
 describe('WhisperVadBackend interface', () => {
   it('can be implemented by mock backend', async () => {
     const mockBackend: WhisperVadBackend = {
-      async segment(audio, sampleRate, threshold) {
+      async segment(audio, sampleRate, _threshold) {
         if (audio.length === 0) return [];
         // Simple: one segment covering the whole audio
         const duration = audio.length / sampleRate;

@@ -378,15 +378,19 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     };
 
     const modelFilename = source.modelFilename ?? 'model.onnx';
+    const modelDataFilename = source.modelDataFilename ?? 'model.onnx.data';
     const tokenizerFilename = source.tokenizerFilename ?? 'vocab.json';
 
     const modelUrl = await resolveFile(modelFilename);
+    const modelDataUrl = await resolveFile(modelDataFilename, true);
     const tokenizerUrl = await resolveFile(tokenizerFilename);
 
     return {
       artifacts: {
         modelUrl: modelUrl ?? artifacts.modelUrl,
         tokenizerUrl: tokenizerUrl ?? artifacts.tokenizerUrl,
+        modelDataUrl: modelDataUrl ?? artifacts.modelDataUrl,
+        modelDataFilename: modelDataUrl ? modelDataFilename : artifacts.modelDataFilename,
       },
       warnings,
     };
@@ -422,6 +426,8 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     const session = await createOrtSession(ort, artifacts.modelUrl, {
       backendId: resolved.backendForOrt,
       enableProfiling: resolved.enableProfiling,
+      externalDataUrl: artifacts.modelDataUrl,
+      externalDataPath: artifacts.modelDataFilename,
     });
 
     const tokenizer = await Wav2Vec2CharTokenizer.fromUrl(artifacts.tokenizerUrl);

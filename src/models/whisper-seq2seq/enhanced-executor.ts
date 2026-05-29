@@ -31,6 +31,7 @@ import {
   type VadSpeechSegment,
 } from '../../chunking/index.js';
 import { mergeSegments, deduplicateWords } from '../../post-processing/index.js';
+import { formatTranscript } from '../../post-processing/index.js';
 import { ChunkContextBuilder } from './chunk-context.js';
 import type {
   WhisperExecutor,
@@ -214,13 +215,20 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
     const merged = mergeSegments(perChunkResults);
     const deduped = deduplicateWords(merged.words);
 
+    // Build formatted transcript (sentences, normalization)
+    const totalDuration = segments.reduce((sum, s) => sum + s.durationSeconds, 0);
+    const formattedWords = deduped.map((w: any) => ({
+      word: w.word, start: w.start, end: w.end, probability: w.probability ?? 0.9,
+    }));
+    const formatted = formatTranscript(formattedWords, totalDuration);
+
     // Build final text from segments, fall back to joining chunk texts
-    const utteranceText = merged.segments.length > 0
+    const rawText = merged.segments.length > 0
       ? merged.segments.map((s) => s.text).join(' ').trim()
       : perChunkResults.map(c => c.text).join(' ').trim();
 
     return {
-      utteranceText: utteranceText || '[no speech detected]',
+      utteranceText: formatted.text || rawText || '[no speech detected]',
       isFinal: true,
       language: (options as any).language ?? 'en',
       segments: merged.segments as any,

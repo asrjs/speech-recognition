@@ -60,6 +60,8 @@ export interface Wav2Vec2ModelConfig {
 export interface Wav2Vec2DirectArtifacts {
   readonly modelUrl: string;
   readonly tokenizerUrl: string;
+  readonly modelDataUrl?: string;
+  readonly modelDataFilename?: string;
 }
 
 export interface Wav2Vec2DirectArtifactSource {
@@ -74,7 +76,9 @@ export interface Wav2Vec2HuggingFaceSource {
   readonly kind: 'huggingface';
   readonly repoId: string;
   readonly revision?: string;
+  readonly subfolder?: string;
   readonly modelFilename?: string;
+  readonly modelDataFilename?: string;
   readonly tokenizerFilename?: string;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
@@ -164,6 +168,7 @@ export interface Wav2Vec2Executor {
 export interface Wav2Vec2ModelDependencies {
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
+  readonly executor?: Wav2Vec2Executor;
 }
 
 // ---------------------------------------------------------------------------

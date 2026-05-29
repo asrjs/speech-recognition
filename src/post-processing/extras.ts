@@ -123,3 +123,48 @@ export function buildSentences(
 
   return sentences;
 }
+
+// ---------------------------------------------------------------------------
+// Transcript Formatting
+// ---------------------------------------------------------------------------
+
+export interface FormattedTranscript {
+  /** Full transcript text with sentences separated by newlines */
+  readonly text: string;
+  /** Normalized text (collapsed spaces, trimmed) */
+  readonly normalized: string;
+  /** Sentences with word-level timestamps */
+  readonly sentences: readonly Sentence[];
+  /** Total audio duration in seconds */
+  readonly duration: number;
+  /** Word count */
+  readonly wordCount: number;
+}
+
+/**
+ * Format raw ASR output into a clean, production-ready transcript.
+ *
+ * Pipeline:
+ *   1. Deduplicate overlapping words
+ *   2. Build sentences (punctuation + gap heuristics)
+ *   3. Normalize text
+ *
+ * Model-agnostic. Works with any ASR output format.
+ */
+export function formatTranscript(
+  words: readonly DedupWord[],
+  audioDurationSeconds: number,
+): FormattedTranscript {
+  const deduped = deduplicateWords(words);
+  const sentences = buildSentences(deduped);
+  const normalized = normalizeText(sentences.map((s) => s.text).join(' '));
+  const text = sentences.map((s) => s.text).join('\n');
+
+  return {
+    text,
+    normalized,
+    sentences,
+    duration: audioDurationSeconds,
+    wordCount: deduped.length,
+  };
+}

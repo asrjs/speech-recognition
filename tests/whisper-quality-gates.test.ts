@@ -13,7 +13,7 @@ import {
   entropyGate,
   evaluateGates,
 } from '../src/models/whisper-seq2seq/quality-gates.js';
-import type { QualityGate, QualityVerdict } from '../src/models/whisper-seq2seq/enhanced-types.js';
+import type { QualityGate } from '../src/models/whisper-seq2seq/enhanced-types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

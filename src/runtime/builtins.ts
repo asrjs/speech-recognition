@@ -16,10 +16,12 @@ import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
 import { createNemoTdtModelFamily } from '../models/nemo-tdt/index.js';
 import { createWhisperSeq2SeqModelFamily } from '../models/whisper-seq2seq/index.js';
+import { createWav2Vec2ModelFamily } from '../models/wav2vec2/index.js';
 import { createCanaryPresetFactory } from '../presets/canary/factory.js';
 import { createMedAsrPresetFactory } from '../presets/medasr/factory.js';
 import { createParakeetPresetFactory } from '../presets/parakeet/factory.js';
 import { createWhisperPresetFactory } from '../presets/whisper/factory.js';
+import { createWav2Vec2PresetFactory } from '../presets/wav2vec2/factory.js';
 import { getBuiltInModelDescriptor } from '../presets/descriptors.js';
 import type {
   BackendSelectionCriteria,
@@ -246,6 +248,7 @@ export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): Def
   runtime.registerModelFamily(createNemoTdtModelFamily());
   runtime.registerModelFamily(createLasrCtcModelFamily());
   runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());
+  runtime.registerModelFamily(createWav2Vec2ModelFamily());
   return runtime;
 }
 
@@ -266,6 +269,11 @@ export function registerBuiltInPresets(
   );
   runtime.registerPreset(createMedAsrPresetFactory());
   runtime.registerPreset(createWhisperPresetFactory());
+  runtime.registerPreset(
+    createWav2Vec2PresetFactory({
+      useManifestSource: options.useManifestSources ?? false,
+    }),
+  );
   return runtime;
 }
 
