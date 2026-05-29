@@ -95,16 +95,25 @@ Commits: `5474991` through `1744585`.
 
 ## ACTIVE TASKS
 
-### Phase D: src/alignment/ — PARTIAL (DTW DONE, CTC Viterbi next)
+### Phase D: src/alignment/ — DONE
+Owner: Flexo (DSV4Pro/gpt-5.5)
+Commits: `33cc27b` (ctc-viterbi), `4ab5e89` (wav2vec2-aligner)
+Status: ✅ Complete — 22 tests (14 CTC Viterbi + 8 WAV2VEC2 aligner)
 
+Completed:
+- [x] `src/alignment/ctc-viterbi.ts` — `ctcForceAlign()`, `ctcViterbiBacktrack()`, `ctcLogSoftmax()`
+- [x] `src/alignment/wav2vec2-aligner.ts` — `createWav2Vec2Aligner()`, `groupCharAlignmentToWords()`
+- [x] Tests: `tests/alignment-ctc-viterbi.test.ts` (14), `tests/wav2vec2-alignment.test.ts` (8)
+
+### Phase E: End-to-end smoke test — NEXT
 Owner: UNASSIGNED
-Dependencies: WAV2VEC2 model + smoke are now green.
-Status: DTW ✅, WAV2VEC2 ASR ✅, CTC Viterbi ⏳
+Dependencies: Whisper ONNX model + VAD backend + audio fixtures
+Status: ⏳
 
-Remaining:
-- `src/alignment/ctc-viterbi.ts` — use `src/ctc/` logits/path utilities.
-- `src/alignment/wav2vec2-aligner.ts` — Wav2Vec2 alignment backend.
-- Tests: `tests/alignment-ctc-viterbi.test.ts` and Wav2Vec2 aligner fixtures.
+Task:
+- Real audio file → VAD → Whisper EnhancedExecutor → formattedTranscript
+- Verify all 4 quality gates fire on real logits
+- Verify sentence boundary output
 
 ### WAV2VEC2 follow-ups — UNASSIGNED
 
@@ -112,6 +121,7 @@ Remaining:
 - HF upload/publish for the ONNX Wav2Vec2 base-960h artifact.
 - Optional npm script for the Wav2Vec2 smoke command if this becomes recurring.
 - Remove `lasr-ctc/ctc.ts` compatibility wrapper when MedASR is rewritten.
+- CTC Viterbi on real WAV2VEC2 ONNX model (integration test with wav2vec2-base-960h)
 
 ## SHARED FILES (coordinate before modifying)
 
