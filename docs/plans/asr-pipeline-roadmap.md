@@ -1054,7 +1054,10 @@ Current result:
 - fp32 is the Node CPU baseline.
 - fp16 Node CPU matches fp32 exactly on all 5 fixtures at `max_new_tokens=64`.
 - q8 runs through ONNX Runtime Web WASM CPU. Extended `max_new_tokens=64` comparison currently exposes quantized decoder divergence on two English fixtures while prompt/control parity remains correct.
-- Divergence analysis confirms both are quantization sensitivity at tight decision points (top-1/top-2 margin < 0.5), not runtime bugs. q8 is validated as a compact candidate, not bit-exact drop-in for fp32.
+- Whisper splitgraph runtime fixes (2026-05-29):
+  - `language === 'auto'` fallback corrected from `<|tr|>` → `<|en|>` per OpenAI/HF reference.
+  - Mel input frame count now doubles `maxSourcePositions` when ≤1500 to produce 3000 encoder input frames (Whisper conv layers downsample 2x).
+  - Affects both splitgraph (`transcribeWithSplitGraph`) and merged-decoder paths.
 
 Next task:
 - Manual WebGPU smoke for fp16 and q8 in browser/app. Node/WASM validation is now stable for all three variants.

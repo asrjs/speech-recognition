@@ -521,7 +521,7 @@ export class WhisperOnnxExecutor {
   }> {
     const tokenizer = loaded.tokenizer;
     const sotId = tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
-    const langToken = language === 'auto' ? '<|tr|>' : `<|${language}|>`;
+    const langToken = language === 'auto' ? '<|en|>' : `<|${language}|>`;
     const langId = tokenizer.getTokenId(langToken) ?? 50268;
     const taskId = tokenizer.getTokenId('<|transcribe|>') ?? 50359;
     const noTsId = tokenizer.getTokenId('<|notimestamps|>') ?? 50363;
@@ -944,14 +944,16 @@ export class WhisperOnnxExecutor {
     // Audio is already normalized to mono by the session before calling executor
     const pcmData = audio.channels?.[0] ?? new Float32Array(0);
     const melResult = melProcessor.process(pcmData);
-    const maxFrames = this.config.maxSourcePositions; // 1500 for Whisper
-    const paddedFeatures = WhisperMelProcessor.padToFrames(melResult, maxFrames);
+    // Whisper conv layers downsample by 2x: input 3000 frames → output 1500 time positions.
+    const encoderOutputPositions = this.config.maxSourcePositions;
+    const melInputFrames = encoderOutputPositions <= 1500 ? encoderOutputPositions * 2 : encoderOutputPositions;
+    const paddedFeatures = WhisperMelProcessor.padToFrames(melResult, melInputFrames);
 
-    // Reshape to [1, n_mels, maxFrames] channels-first
+    // Reshape to [1, n_mels, melInputFrames] channels-first
     const featureTensor = new loaded.ort.Tensor(
       'float32',
       paddedFeatures,
-      [1, this.config.melBins, maxFrames],
+      [1, this.config.melBins, melInputFrames],
     );
 
     // 2. Run encoder
@@ -963,7 +965,7 @@ export class WhisperOnnxExecutor {
     // 3. Build initial decoder input IDs
     const tokenizer = loaded.tokenizer;
     const language = options.language ?? this.config.languages[0] ?? 'auto';
-    const langToken = language === 'auto' ? '<|tr|>' : `<|${language}|>`;
+    const langToken = language === 'auto' ? '<|en|>' : `<|${language}|>`;
     const taskToken = options.task === 'translate' ? '<|translate|>' : '<|transcribe|>';
     const noTimestampsToken = options.noTimestamps ? '<|notimestamps|>' : undefined;
 
@@ -1228,12 +1230,15 @@ export class WhisperOnnxExecutor {
     const melProcessor = new WhisperMelProcessor({ nMels: this.config.melBins });
     const pcmData = audio.channels?.[0] ?? new Float32Array(0);
     const melResult = melProcessor.process(pcmData);
-    const maxFrames = this.config.maxSourcePositions;
-    const paddedFeatures = WhisperMelProcessor.padToFrames(melResult, maxFrames);
+    // Whisper conv layers downsample by 2x: input 3000 frames → output 1500 time positions.
+    // config.maxSourcePositions is encoder output positions (1500); mel input needs 2x.
+    const encoderOutputPositions = this.config.maxSourcePositions;
+    const melInputFrames = encoderOutputPositions <= 1500 ? encoderOutputPositions * 2 : encoderOutputPositions;
+    const paddedFeatures = WhisperMelProcessor.padToFrames(melResult, melInputFrames);
 
     const featureTensor = new loaded.ort.Tensor(
       'float32', paddedFeatures,
-      [1, this.config.melBins, maxFrames],
+      [1, this.config.melBins, melInputFrames],
     );
 
     // 2. Run encoder
@@ -1243,7 +1248,7 @@ export class WhisperOnnxExecutor {
     // 3. Build initial prompt tokens
     const tokenizer = loaded.tokenizer;
     const language = options.language ?? this.config.languages[0] ?? 'auto';
-    const langToken = language === 'auto' ? '<|tr|>' : `<|${language}|>`;
+    const langToken = language === 'auto' ? '<|en|>' : `<|${language}|>`;
     const taskToken = options.task === 'translate' ? '<|translate|>' : '<|transcribe|>';
     const noTimestampsToken = options.noTimestamps ? '<|notimestamps|>' : undefined;
 
