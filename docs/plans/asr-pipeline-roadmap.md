@@ -848,6 +848,10 @@ DOCS
 EXAMPLE
   examples/whisper-splitgraph-local.mjs — text, segments, word-timestamp modes
 
+HF MODEL REPO
+  ysdede/whisper-large-v3-turbo-onnx-4graph — self-exported 4-graph ONNX model
+  https://huggingface.co/ysdede/whisper-large-v3-turbo-onnx-4graph
+
 CRITICAL ARCHITECTURE NOTES
   - decoder_step does NOT need encoder_hidden_states as input
   - decoder_align uses manual decoder block iteration (avoids aten::diff)
@@ -863,15 +867,20 @@ FILES ADDED
   tests/whisper-splitgraph-artifacts.test.ts      — 3 tests
   tests/whisper-manifest-parsing.test.ts          — 6 tests (tiny+base)
   tests/whisper-splitgraph-decode.test.ts         — 2 tests (decode loop)
-
 EXPORT TOOL
   tools/whisper-onnx-export/
-    export_whisper.py         — main export (4-graph)
+    export_whisper.py         — main export (4-graph); --device cpu for large models
+    generate_hf_reference.py  — HF Transformers reference JSON generator (--export-mel)
     test_kv_export.py         — structural validation
     test_e2e_tokens.py        — ONNX vs PyTorch
     test_comprehensive.py     — speech + alignment + quantization
     .venv/                    — Python 3.12, all deps
-  Run: .venv/bin/python export_whisper.py openai/whisper-tiny ./out/tiny
+  Tiny:  .venv/bin/python export_whisper.py openai/whisper-tiny ./out/tiny
+  Large: .venv/bin/python export_whisper.py openai/whisper-large-v3-turbo ./out --device cpu
+
+HF MODEL REPO
+  ysdede/whisper-large-v3-turbo-onnx-4graph
+  Upload: hf upload ysdede/whisper-large-v3-turbo-onnx-4graph /tmp/whisper-large-v3-turbo-4graph .
 
 DEFERRED
   - Task 16: Timestamp logit processor

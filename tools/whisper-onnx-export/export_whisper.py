@@ -532,13 +532,20 @@ def export_all(
     manual_alignment_heads: List[Tuple[int, int]] | None = None,
     fp16: bool = False,
     int8: bool = False,
+    device: str | None = None,
 ):
     out_dir = ensure_dir(output_dir)
 
     # Use eager attention so output_attentions=True works for alignment export
+    load_kwargs = dict(attn_implementation="eager")
+    if device == "cpu":
+        load_kwargs["device_map"] = "cpu"
+        load_kwargs["torch_dtype"] = torch.float32
+    elif device == "cuda":
+        load_kwargs["device_map"] = "cuda"
     model = WhisperForConditionalGeneration.from_pretrained(
         model_id,
-        attn_implementation="eager",
+        **load_kwargs,
     )
     model.eval()
     model.config.use_cache = True
@@ -775,6 +782,10 @@ def main():
     parser.add_argument("--fp16", action="store_true")
     parser.add_argument("--int8", action="store_true")
     parser.add_argument(
+        "--device", type=str, default=None,
+        help="Device to load model on: 'cpu' or 'cuda'. Default: auto.",
+    )
+    parser.add_argument(
         "--alignment-heads",
         type=str,
         default=None,
@@ -791,6 +802,7 @@ def main():
         manual_alignment_heads=parse_manual_alignment_heads(args.alignment_heads),
         fp16=args.fp16,
         int8=args.int8,
+        device=args.device,
     )
 
 
