@@ -40,8 +40,8 @@ const PROMPT_IDS = [50258, 50259, 50359, 50363]; // <|startoftranscript|>, <|en|
 const EOS_ID = 50257;
 const MAX_NEW_TOKENS = 64;
 
-const MODEL_BASE = 'tests/smoke/.whisper-fp16-model/';
-const AUDIO_URL = 'tests/fixtures/jfk2.en.wav';
+const MODEL_BASE = '/tests/smoke/.whisper-fp16-model/';
+const AUDIO_URL = '/tests/fixtures/jfk2.en.wav';
 const N_MELS = 80;
 const MEL_FRAMES = 3000;
 
@@ -129,7 +129,24 @@ function argmax(arr) {
   return idx;
 }
 
-// ── Float16 → Float32 (from V2 validator) ──
+// ── Float16 ↔ Float32 ──
+function float32ToFloat16Bits(values) {
+  const out = new Uint16Array(values.length);
+  const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
+  for (let i = 0; i < values.length; i++) {
+    f32[0] = values[i] ?? 0;
+    const x = u32[0], sign = (x >>> 16) & 0x8000;
+    let mantissa = x & 0x7fffff, exp = (x >>> 23) & 0xff;
+    if (exp === 0xff) { out[i] = sign | (mantissa ? 0x7e00 : 0x7c00); }
+    else if (exp > 142) { out[i] = sign | 0x7c00; }
+    else if (exp < 113) {
+      if (exp < 103) out[i] = sign;
+      else { mantissa |= 0x800000; const shift = 125 - exp; out[i] = sign | ((mantissa + (1 << (shift - 1))) >> shift); }
+    } else { exp = exp - 112; mantissa = mantissa + 0x1000; if (mantissa & 0x800000) { mantissa = 0; exp++; } out[i] = sign | (exp << 10) | (mantissa >> 13); }
+  }
+  return out;
+}
+
 function float16BitsToFloat32(values) {
   const out = new Float32Array(values.length);
   for (let i = 0; i < values.length; i++) {
@@ -215,15 +232,16 @@ async function runSmoke() {
     const stepSess = await ort.InferenceSession.create(MODEL_BASE + 'decoder_step.onnx', sessOpts);
     log(`  Sessions created in ${((performance.now() - tSessStart) / 1000).toFixed(2)}s`);
 
-    // 5. Encoder
-    log('Running encoder...');
-    const melTensor = new ort.Tensor('float32', mel, [1, N_MELS, MEL_FRAMES]);
+    // 5. Encoder — fp16 model expects float16 input
+    log('Running encoder (fp16 input)...');
+    const melFp16 = float32ToFloat16Bits(mel);
+    const melTensor = new ort.Tensor('float16', melFp16, [1, N_MELS, MEL_FRAMES]);
     const tEnc = performance.now();
     const encOut = await encSess.run({ input_features: melTensor });
     const encData = encOut[Object.keys(encOut)[0]];
-    log(`  Encoder output: [${encData.dims.join(', ')}], time: ${((performance.now() - tEnc) / 1000).toFixed(2)}s`);
+    log(`  Encoder output: [${encData.dims.join(', ')}], type: ${encData.type}, time: ${((performance.now() - tEnc) / 1000).toFixed(2)}s`);
 
-    // 6. Decoder init
+    // 6. Decoder init — encoder output is also float16, need to pass as-is
     log('Running decoder_init...');
     const inputIds = new BigInt64Array(PROMPT_IDS.map(BigInt));
     const promptTensor = new ort.Tensor('int64', inputIds, [1, PROMPT_IDS.length]);
