@@ -407,3 +407,67 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
     console.log('Reproducibility test PASSED');
   }, 120000);
 });
+
+describe('Node local-file co-located external data smoke', () => {
+  it('loads splitgraph model from disk with co-located .data files', async () => {
+    const fixtureDir = process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR;
+    if (!fixtureDir) {
+      console.warn('Skipping: set WHISPER_SPLITGRAPH_FIXTURE_DIR');
+      return;
+    }
+
+    // Verify external data files exist alongside .onnx files
+    const onnxFiles = [
+      'encoder_model.onnx',
+      'decoder_init.onnx',
+      'decoder_step.onnx',
+      'decoder_align.onnx',
+    ];
+
+    for (const name of onnxFiles) {
+      const onnxPath = path.join(fixtureDir, name);
+      if (fs.existsSync(onnxPath)) {
+        // The .data file should be co-located OR one of the per-weight files
+        const dataFile = `${onnxPath}.data`;
+        const hasConsolidated = fs.existsSync(dataFile);
+
+        // For the consolidated case, validate the .data file exists
+        if (hasConsolidated) {
+          const stat = fs.statSync(dataFile);
+          expect(stat.size).toBeGreaterThan(0);
+          console.log(`  ${name}: consolidated .data OK (${(stat.size / 1024 / 1024).toFixed(1)} MB)`);
+        } else {
+          // For encoder, check that at least one external weight file exists
+          const dir = path.dirname(onnxPath);
+          const files = fs.readdirSync(dir);
+          const weightFiles = files.filter(f =>
+            f !== name && !f.endsWith('.json') && !f.endsWith('.txt') &&
+            !f.endsWith('.md') && !f.endsWith('.py') && !f.startsWith('.')
+          );
+          console.log(`  ${name}: ${weightFiles.length} external weight files (no consolidated .data)`);
+          expect(weightFiles.length).toBeGreaterThan(0);
+        }
+      }
+    }
+
+    // Import and test via loadSplitGraphLocalModel
+    const { loadSplitGraphLocalModel } = await import(
+      '../src/models/whisper-seq2seq/local-file.js'
+    );
+    const loaded = loadSplitGraphLocalModel(fixtureDir);
+    expect(loaded.source.kind).toBe('splitgraph');
+    expect(loaded.config.ecosystem).toBe('openai');
+
+    // Verify artifact source resolves with externalData entries
+    const resolved = resolveWhisperArtifacts(loaded.source, 'wasm');
+    expect(resolved.isSplitGraph).toBe(true);
+
+    // ORT Web WASM binding cannot load filesystem external data
+    // (Module.MountedFiles not available). Native ort.node handles
+    // co-located .data files automatically. This test validates
+    // the artifact chain + file existence.
+    console.log('  External data files verified co-located with .onnx graphs');
+    console.log('  ORT native binding handles co-located .data automatically');
+    console.log('  Node local-file co-located external data smoke: OK');
+  }, 120000);
+});

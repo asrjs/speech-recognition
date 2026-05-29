@@ -62,7 +62,11 @@ _DEFAULT_EXTERNAL_DATA_THRESHOLD = 100 * 1024 * 1024  # 100 MB
 
 
 def _model_size_estimate(model: onnx.ModelProto) -> int:
-    """Rough byte estimate of a ModelProto's inline weight data."""
+    """Rough byte estimate of a ModelProto's initializer data.
+
+    Covers inline raw_data, float_data, int32_data, and external_data
+    (the latter requires the .data files to be accessible).
+    """
     total = 0
     for init in model.graph.initializer:
         if init.raw_data:
@@ -71,6 +75,14 @@ def _model_size_estimate(model: onnx.ModelProto) -> int:
             total += len(init.float_data) * 4
         elif init.int32_data:
             total += len(init.int32_data) * 4
+        elif init.external_data:
+            # External data: try to stat the actual file
+            for entry in init.external_data:
+                if entry.key == 'location':
+                    data_path = Path(entry.value)
+                    if data_path.exists():
+                        total += data_path.stat().st_size
+                    break
     return total
 
 
@@ -135,7 +147,8 @@ def discover_external_data(graph_path: Path) -> List[Dict[str, Any]]:
     """Return external-data metadata for an ONNX graph file.
 
     Returns a list of {path, file, sizeBytes, sha256} entries, or an empty
-    list if no external data is used.
+    list if no external data is used.  Handles both external_data proto fields
+    (torch.onnx.export, save_as_external_data) and metadata_props convention.
     """
     entries: List[Dict[str, Any]] = []
     if not graph_path.exists():
@@ -146,24 +159,66 @@ def discover_external_data(graph_path: Path) -> List[Dict[str, Any]]:
     except Exception:
         return entries
 
+    # Collect unique external data files across all initializers.
+    seen: set[str] = set()
     for init in model.graph.initializer:
-        data_loc = None
-        for prop in init.metadata_props:
-            if prop.key == 'location':
-                data_loc = prop.value
-                break
+        if init.data_location != onnx.TensorProto.EXTERNAL:
+            continue
+
+        data_loc: str | None = None
+        offset: int | None = None
+        length: int | None = None
+
+        # Preferred: external_data proto field (torch.onnx.export, save_as_external_data)
+        for entry in init.external_data:
+            if entry.key == 'location':
+                data_loc = entry.value
+            elif entry.key == 'offset':
+                try:
+                    offset = int(entry.value)
+                except ValueError:
+                    pass
+            elif entry.key == 'length':
+                try:
+                    length = int(entry.value)
+                except ValueError:
+                    pass
+
+        # Fallback: metadata_props convention (some exporters)
+        if not data_loc:
+            for prop in init.metadata_props:
+                if prop.key == 'location':
+                    data_loc = prop.value
+                    break
+
         if not data_loc:
             continue
+
+        # Resolve path relative to the graph file's directory.
         data_path = (graph_path.parent / data_loc).resolve()
-        if data_path.exists():
-            stat = data_path.stat()
+        if not data_path.exists():
+            continue
+
+        # Deduplicate by file path.
+        if str(data_path) in seen:
+            continue
+        seen.add(str(data_path))
+
+        stat = data_path.stat()
+        try:
             sha = hashlib.sha256(data_path.read_bytes()).hexdigest()
-            entries.append({
-                "path": f"./{data_loc}",
-                "file": data_loc,
-                "sizeBytes": stat.st_size,
-                "sha256": sha,
-            })
+        except Exception:
+            sha = ""
+
+        entry: Dict[str, Any] = {
+            "path": f"./{data_loc}",
+            "file": data_loc,
+            "sizeBytes": stat.st_size,
+        }
+        if sha:
+            entry["sha256"] = sha
+        entries.append(entry)
+
     return entries
 
 
@@ -646,6 +701,18 @@ def convert_fp16_safe(
             if validate_path:
                 validate_onnx_safe(dst, use_path_based=True)
 
+            # Try ORT load to verify graph health.
+            # NOTE: onnxconverter_common.float16 may leave Cast nodes with
+            # mismatched output types, causing ORT load failures for some graphs.
+            # This is a known converter limitation, not an external-data issue.
+            # Export-time FP16 (--dtype float16) avoids this entirely.
+            try:
+                import onnxruntime as _ort_verify
+                _ort_verify.InferenceSession(str(dst), providers=['CPUExecutionProvider'])
+                print(f"    ORT load: OK")
+            except Exception as _ort_err:
+                print(f"    ORT load: FAILED ({_ort_err}). Use --dtype float16 at export time instead.")
+
             size_mb = os.path.getsize(dst) / 1024 / 1024
             data_size = ""
             data_file = Path(str(dst) + ".data")
@@ -767,9 +834,11 @@ def export_all(
         use_external_data = True
     else:  # "auto"
         # Enable external data if the model has enough parameters to risk
-        # exceeding the 2 GB protobuf limit.  Threshold: decoder_layers >= 24
-        # (large-v2: 32, large-v3: 32, large-v3-turbo: 32).
-        use_external_data = num_layers >= 24
+        # exceeding the 2 GB protobuf limit.  Check both encoder and decoder
+        # layers — encoder may be large even when decoder is small (e.g.,
+        # large-v3-turbo: 32 encoder layers, 4 decoder layers).
+        enc_layers = getattr(cfg, "encoder_layers", num_layers)
+        use_external_data = max(num_layers, enc_layers) >= 24
 
     # Auto-detect validate_path_only if not explicitly set
     if validate_path_only is None:
@@ -901,10 +970,15 @@ def export_all(
 
     # ---- External data conversion for graphs ----
     # If external data is enabled, convert graphs exported by torch.onnx.export
-    # (which always uses inline weights) to external-data format.  This avoids
-    # the 2 GB protobuf serialization limit.
+    # with INLINE weights to external-data format.  This avoids the 2 GB
+    # protobuf serialization limit.
+    #
+    # Important: torch.onnx.export sometimes auto-externalizes individual
+    # tensors into separate files (for very large models).  We detect and
+    # skip those graphs — they're already safe, and re-loading all external
+    # weights back into memory would create a >2 GB ModelProto.
     if use_external_data:
-        print("\nConverting to external-data format:")
+        print("\nExternal data check:")
         graph_names = [
             "encoder_model.onnx",
             "decoder_init.onnx",
@@ -913,13 +987,37 @@ def export_all(
         if align_exported:
             graph_names.append("decoder_align.onnx")
 
+        def _already_external(gpath: Path) -> bool:
+            """Check if a graph already uses external data."""
+            try:
+                m = onnx.load(str(gpath), load_external_data=False)
+                for init in m.graph.initializer:
+                    if init.data_location == onnx.TensorProto.EXTERNAL:
+                        return True
+                return False
+            except Exception:
+                return False
+
         for gname in graph_names:
             gpath = out_dir / gname
             if not gpath.exists():
                 continue
+
+            onnx_size_mb = os.path.getsize(gpath) / 1024 / 1024
+
+            if _already_external(gpath):
+                # torch.onnx.export already externalized this graph's weights.
+                # Count the .data files and report.
+                ext_files = list(out_dir.glob(f"{gpath.stem}*"))
+                ext_files = [f for f in ext_files if f != gpath and f.suffix != '.onnx']
+                ext_total = sum(f.stat().st_size for f in ext_files) / 1024 / 1024
+                print(f"  {gname}  ({onnx_size_mb:.2f} MB onnx, {len(ext_files)} ext files, {ext_total:.1f} MB data) [already external]")
+                continue
+
+            # Graph has inline weights — convert safely.
             model = onnx.load(str(gpath), load_external_data=True)
             est = _model_size_estimate(model) / 1024 / 1024
-            print(f"  {gname}  ({est:.1f} MB weights → external)")
+            print(f"  {gname}  ({onnx_size_mb:.1f} MB, ~{est:.1f} MB weights → external)")
 
             save_onnx_safe(
                 model,
@@ -928,12 +1026,12 @@ def export_all(
                 all_tensors_to_one_file=external_data_one_file,
                 size_threshold=external_data_threshold,
             )
-            onnx_size = os.path.getsize(gpath) / 1024 / 1024
+            new_onnx = os.path.getsize(gpath) / 1024 / 1024
             data_size = ""
             data_file = Path(str(gpath) + ".data")
             if data_file.exists():
                 data_size = f"  data: {os.path.getsize(data_file) / 1024 / 1024:.1f} MB"
-            print(f"    → {onnx_size:.1f} MB onnx{data_size}")
+            print(f"    → {new_onnx:.2f} MB onnx{data_size}")
 
         # Validate converted graphs
         print("  Validating external-data graphs (path-based):")
