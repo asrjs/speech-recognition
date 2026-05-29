@@ -181,6 +181,8 @@ def main():
     parser.add_argument("--model-id", default="openai/whisper-tiny", help="HF model ID")
     parser.add_argument("--language", default="en", help="Language code")
     parser.add_argument("--max-new-tokens", type=int, default=128)
+    parser.add_argument("--export-mel", action="store_true",
+                        help="Also export mel features as .npy for feature-input mode")
     args = parser.parse_args()
 
     model_dir = Path(args.model_dir)
@@ -295,6 +297,13 @@ def main():
     with open(output_path, "w") as f:
         json.dump(reference, f, indent=2)
     print(f"\nReference written to {output_path}")
+
+    # Export mel features for feature-input mode
+    if args.export_mel:
+        mel_path = output_path.with_suffix(".mel.npy")
+        np.save(mel_path, mel.numpy().astype(np.float32))
+        print(f"Mel features exported to {mel_path}")
+        reference["mel_features_path"] = str(mel_path.resolve())
 
 
 if __name__ == "__main__":
