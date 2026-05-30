@@ -14,7 +14,7 @@ interface WhisperTokenizerJson {
   }>;
 }
 
-async function fetchText(url: string): Promise<string> {
+export async function fetchText(url: string): Promise<string> {
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
     const fs = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');

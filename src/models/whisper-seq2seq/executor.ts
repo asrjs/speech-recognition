@@ -27,7 +27,7 @@ import {
   type OrtSessionLike,
   type OrtTensorLike,
 } from './ort.js';
-import { WhisperTokenizer } from './tokenizer.js';
+import { WhisperTokenizer, fetchText } from './tokenizer.js';
 import { WhisperTimestampLogitProcessor } from './processors.js';
 import { buildWhisperWordTimestampsFromTokenDetails } from './word-timestamps.js';
 import { computeWhisperDtwTokenTimestamps } from './attention-alignment.js';
@@ -812,9 +812,8 @@ export class WhisperOnnxExecutor {
   ): Promise<WhisperGenerationConfig> {
     try {
       const genConfigUrl = artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'generation_config.json');
-      const response = await fetch(genConfigUrl);
-      if (!response.ok) return parseWhisperGenerationConfig({});
-      const json = (await response.json()) as Record<string, unknown>;
+      const text = await fetchText(genConfigUrl);
+      const json = JSON.parse(text) as Record<string, unknown>;
       return parseWhisperGenerationConfig(json);
     } catch {
       return parseWhisperGenerationConfig({});
@@ -826,10 +825,22 @@ export class WhisperOnnxExecutor {
   ): Promise<WhisperModelConfig> {
     try {
       const configUrl = artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'config.json');
-      const response = await fetch(configUrl);
-      if (!response.ok) return parseWhisperModelConfig({});
-      const json = (await response.json()) as Record<string, unknown>;
-      return parseWhisperModelConfig(json);
+      const text = await fetchText(configUrl);
+      const json = JSON.parse(text) as Record<string, unknown>;
+      const config = parseWhisperModelConfig(json);
+
+      // Also try generation_config.json for num_mel_bins (not in HF config.json)
+      if (!config.numMelBins) {
+        try {
+          const genUrl = artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'generation_config.json');
+          const genText = await fetchText(genUrl);
+          const genJson = JSON.parse(genText) as Record<string, unknown>;
+          if (typeof genJson.num_mel_bins === 'number') {
+            return { ...config, numMelBins: genJson.num_mel_bins };
+          }
+        } catch { /* ignore */ }
+      }
+      return config;
     } catch {
       return parseWhisperModelConfig({});
     }
@@ -925,7 +936,8 @@ export class WhisperOnnxExecutor {
     }
 
     // 1. Preprocess audio to mel spectrogram
-    const melProcessor = new WhisperMelProcessor({ nMels: this.config.melBins });
+    const melBins = loaded.modelConfig.numMelBins ?? this.config.melBins;
+    const melProcessor = new WhisperMelProcessor({ nMels: melBins });
     // Audio is already normalized to mono by the session before calling executor
     const pcmData = audio.channels?.[0] ?? new Float32Array(0);
     const melResult = melProcessor.process(pcmData);
@@ -938,7 +950,7 @@ export class WhisperOnnxExecutor {
     const featureTensor = new loaded.ort.Tensor(
       'float32',
       paddedFeatures,
-      [1, this.config.melBins, melInputFrames],
+      [1, melBins, melInputFrames],
     );
 
     // 2. Run encoder
@@ -1212,7 +1224,8 @@ export class WhisperOnnxExecutor {
     const splitLoaded = loaded as Required<LoadedExecutorState>;
 
     // 1. Preprocess audio to mel spectrogram
-    const melProcessor = new WhisperMelProcessor({ nMels: this.config.melBins });
+    const melBins = loaded.modelConfig.numMelBins ?? this.config.melBins;
+    const melProcessor = new WhisperMelProcessor({ nMels: melBins });
     const pcmData = audio.channels?.[0] ?? new Float32Array(0);
     const melResult = melProcessor.process(pcmData);
     // Whisper conv layers downsample by 2x: input 3000 frames → output 1500 time positions.
@@ -1223,7 +1236,7 @@ export class WhisperOnnxExecutor {
 
     const featureTensor = new loaded.ort.Tensor(
       'float32', paddedFeatures,
-      [1, this.config.melBins, melInputFrames],
+      [1, melBins, melInputFrames],
     );
 
     // 2. Run encoder
