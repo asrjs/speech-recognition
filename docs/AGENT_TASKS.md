@@ -71,11 +71,29 @@ Already implemented in `computeAttentionWordTimestampsSplitGraph` + `runForcedAl
 2-3x faster for long audio. Requires encoder to accept batched input [N, mel, 3000].
 Large effort — needs ONNX graph changes and executor refactor.
 
-### 4. VAD Integration Test ✅ DONE
-Commit: `77778e3`. TenVAD energy-based backend works without ONNX model.
-Smoke test: `tests/smoke/vad-integration-smoke.mjs`. Detects speech segments,
-merge+pad, silence detection. FireRed VAD needs pretrained model directory
-(`FireRedVadBackend.create('/path/to/firered-model')`).
+### 4. VAD Integration — WhisperX-style Pipeline ✅ DONE
+Enhanced 2026-05-30 (Flexo). The basic smoke (commit `77778e3`) detected segments.
+Now expanded into full WhisperX-compatible VAD preprocessing pipeline:
+
+**Added to `src/chunking/vad-segmenter.ts`:**
+- `vadBinarize()` — probability→binary speech/silence with hysteresis (onset/offset confirm, hangover)
+- `noiseGate()` — energy-based noise gating with smooth crossfade (opt-in)
+- `mergeVadSegments()` — enhanced with overlap support (`overlapDurationMs`), `vadOnset`/`vadOffset` params
+- `segmentAudio()` — full pipeline wrapper: optional noise gate → VAD → merge+pad+overlap
+
+**Smoke test**: `tests/smoke/vad-pipeline-smoke.mjs` — 18 tests covering:
+- Noise gate (silence attenuation, speech preservation, SNR improvement)
+- VAD binarization (all-silence, all-speech, mixed speech→silence→speech)
+- TenVAD energy-based segmentation
+- mergeVadSegments with and without overlap
+- segmentAudio() full pipeline (with noise gate opt-in)
+- (Optional) Full ASR pipeline with quality gates + temperature fallback (RUN_ASR=1)
+
+**WhisperX parity gaps closed:**
+- Overlap between consecutive chunks ✓
+- VAD probability binarization with hysteresis ✓
+- Noise floor gating for noisy environments ✓
+- vad_onset/vad_offset parameters exposed ✓
 
 ### 5. SRT/VTT Export ✅ DONE
 `ProductionWhisperPipeline` generates SRT/VTT via `generateSubtitles()`. 7 unit tests pass.

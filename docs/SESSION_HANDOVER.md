@@ -1,7 +1,7 @@
 # ASR.js Whisper Engine — Session Handover
 
 **Branch**: `feat/large-v3-turbo-fp16-external-data`
-**Date**: 2026-06-01
+**Date**: 2026-05-30 (evening session)
 **Agent**: Flexo (P520, WSL2, RTX 5060 Ti 8GB)
 
 ## Quick Recall
@@ -30,6 +30,13 @@ sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array
 ```
 
 ### Features completed this session
+
+**VAD pipeline (2026-05-30):**
+- `mergeVadSegments` enhanced: overlap support, vad_onset/vad_offset params
+- `vadBinarize()`: probability→binary speech/silence with hysteresis
+- `noiseGate()`: energy-based with smooth crossfade (opt-in)
+- `segmentAudio()`: full pipeline wrapper
+- Smoke: `tests/smoke/vad-pipeline-smoke.mjs` (18 tests)
 
 | # | Feature | Status | Commit |
 |---|---------|--------|--------|
