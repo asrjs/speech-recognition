@@ -127,16 +127,38 @@ Fixed:
 - [x] `ort.ts:createWhisperOrtSession()` already handled both — documented
 - [ ] Remaining: `loadSpeechModel` direct-source path has wiring issue at `materializeHuggingFaceArtifacts` (manipulates URLs even for `kind='direct'`). Workaround: use direct session creation pattern.
 
-### Phase E: End-to-end smoke test — NEXT
-Owner: UNASSIGNED
-Dependencies: Whisper ONNX model + VAD backend + audio fixtures
-Status: ⏳ (URL/path fix done, loadSpeechModel path still needs fix)
+### Phase E: End-to-end smoke test — IN PROGRESS
+Owner: Flexo
+Dependencies: Whisper ONNX model + long audio fixture
+Status: ⏳ (loadSpeechModel path needs fix first)
+
+New fixture: `tests/fixtures/end-of-chapter-4.en.mp3` (2m47s, 22050Hz mono, 64kbps MP3)
+Reference: `tests/fixtures/end-of-chapter-4.en.txt` (2622 bytes)
 
 Task:
-- Real audio file → VAD → Whisper EnhancedExecutor → formattedTranscript
-- Verify all 4 quality gates fire on real logits
-- Verify sentence boundary output
-- Use: whisper-base-4graph (256MB q8, faster than large-v3-turbo)
+- Fix loadSpeechModel direct-source path → run `loaded.transcribeMonoPcm()`
+- Library's `transcribeWithWindowing()` handles 30s Whisper windows automatically
+- Compare output against reference transcription
+- Verify: long audio stitching, word dedup across windows, sentence boundaries
+- Model: whisper-large-v3-turbo q8 or whisper-base-4graph q8
+
+### Long Audio Production Task — NEXT
+Owner: Flexo
+Dependencies: Phase E fix
+Status: ⏳
+
+Goal: Full transcription of 2m47s audio via Whisper inference with long audio stitching.
+
+Files:
+- `tests/fixtures/end-of-chapter-4.en.mp3` — long audio sample (2m47s)
+- `tests/fixtures/end-of-chapter-4.en.txt` — reference transcription
+- `src/pipeline/long-audio-windowing.ts` — `transcribeWithWindowing()` already exists
+
+Verification:
+- Run through `loaded.transcribeMonoPcm()` (auto-windowed for Whisper 30s limit)
+- Compare word overlap with reference text
+- Check no hallucination in long output
+- Measure WER/word accuracy
 
 ### WAV2VEC2 follow-ups — UNASSIGNED
 

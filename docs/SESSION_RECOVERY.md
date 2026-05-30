@@ -72,9 +72,14 @@ Audio → VAD (TenVAD/FireRed)
 2. 1 pre-existing browser test flaky (browser-realtime.test.ts)
 3. CTC Viterbi on real WAV2VEC2 ONNX model not yet tested
 
+## New Fixture (2026-06-01)
+- `tests/fixtures/end-of-chapter-4.en.mp3` — 2m47s, 22050Hz mono, 64kbps MP3
+- `tests/fixtures/end-of-chapter-4.en.txt` — reference transcription (2622 bytes)
+- Purpose: long audio stitching smoke test (> Whisper 30s limit)
+
 ## Next Tasks (from AGENT_TASKS.md)
-1. Phase E: End-to-end smoke test (real ONNX + VAD + all gates)
-   - Use whisper-base-4graph (256MB q8, faster)
-   - Fix loadSpeechModel direct-source path OR use direct session creation
-2. WAV2VEC2 follow-ups: HF publish, CTC Viterbi integration test
-3. Parakeet/MedASR enhanced executors (reuse same standalone modules)
+1. Fix loadSpeechModel direct-source path (materializeHuggingFaceArtifacts)
+2. Run `loaded.transcribeMonoPcm(endOfChapter4, sr, opts)` — auto-windowed
+3. Compare output vs reference transcription
+4. Verify long audio stitching quality (word dedup, no hallucinations)
+5. WAV2VEC2 HF publish + CTC Viterbi integration test
