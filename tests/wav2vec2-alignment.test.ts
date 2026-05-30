@@ -1,5 +1,6 @@
 import {
   createWav2Vec2Aligner,
+  createWav2Vec2AlignerFromLogits,
   groupCharAlignmentToWords,
   type Wav2Vec2AlignerConfig,
 } from '@asrjs/speech-recognition/alignment';
@@ -199,6 +200,35 @@ describe('createWav2Vec2Aligner', () => {
     expect(result.words[0]!.charFrames.map((frame) => frame.tokenIdx)).toEqual([1, 2]);
     expect(result.words[1]!.text).toBe('you');
     expect(result.words[1]!.charFrames.map((frame) => frame.tokenIdx)).toEqual([5, 6, 7]);
+    expect(result.words[1]!.start).toBeCloseTo(0.8, 1);
+  });
+
+  it('creates an aligner directly from reusable Wav2Vec2 logits', () => {
+    const frameCount = 8;
+    const tokenizer = simpleTokenizer({ ' ': 4, h: 1, i: 2, y: 5, o: 6, u: 7 });
+    const logits = makeLogitProvider(frameCount, VOCAB, new Map([
+      [1, [1]],
+      [2, [2]],
+      [4, [3]],
+      [5, [4]],
+      [6, [5]],
+      [7, [6]],
+    ]), BLANK)();
+
+    const aligner = createWav2Vec2AlignerFromLogits({
+      logits,
+      frameCount,
+      vocabSize: VOCAB,
+      blankId: BLANK,
+      tokenizer,
+      sampleRate: 16000,
+      audioDurationSeconds: 1.6,
+      wordSeparator: SEPARATOR,
+    });
+
+    const result = aligner.align({ transcript: 'hi you' });
+
+    expect(result.words.map((word) => word.text)).toEqual(['hi', 'you']);
     expect(result.words[1]!.start).toBeCloseTo(0.8, 1);
   });
 

@@ -129,38 +129,46 @@ Fixed:
 - [x] `ort.ts:createWhisperOrtSession()` already handled both — documented
 - [ ] Remaining: `loadSpeechModel` direct-source path has wiring issue at `materializeHuggingFaceArtifacts` (manipulates URLs even for `kind='direct'`). Workaround: use direct session creation pattern.
 
-### Phase E: End-to-end smoke test — IN PROGRESS
+### Phase E: Splitgraph Bridge Fix — DONE
 Owner: Flexo
-Dependencies: Whisper ONNX model + long audio fixture
-Status: ⏳ (loadSpeechModel path needs fix first)
+Commit: `cef005f`
+Status: ✅ Complete
 
-New fixture: `tests/fixtures/end-of-chapter-4.en.mp3` (2m47s, 22050Hz mono, 64kbps MP3)
-Reference: `tests/fixtures/end-of-chapter-4.en.txt` (2622 bytes)
+Root cause: `transcribeWithSplitGraph` bridge had three bugs:
+1. `dims: []` — tensors without shape (ORT rejection)
+2. Prefix mismatch — init outputs `present.*`, step expects `past_key_values.*`
+3. Encoder KV lost — step model outputs only decoder KV
 
-Task:
-- Fix loadSpeechModel direct-source path → run `loaded.transcribeMonoPcm()`
-- Library's `transcribeWithWindowing()` handles 30s Whisper windows automatically
-- Compare output against reference transcription
-- Verify: long audio stitching, word dedup across windows, sentence boundaries
-- Model: whisper-large-v3-turbo q8 or whisper-base-4graph q8
+Fixed:
+- [x] runInit: store tensor dims for both `present.*` and `past_key_values.*` prefixes
+- [x] runStep: reconstruct `ort.Tensor` with proper dims + prefix conversion + data cloning
+- [x] runDecoderStepSplit: clone tensor data for cross-session safety
 
-### Long Audio Production Task — NEXT
+Verified: whisper-base fp32, end-of-chapter-4.en.mp3 (167s)
+→ 73.6s transcription, 84.8% word overlap, zero hallucinations
+
+### Phase F: Whisper Production Checklist — ACTIVE
 Owner: Flexo
-Dependencies: Phase E fix
-Status: ⏳
+Status: ✅ Core works | ⏳ Features pending
 
-Goal: Full transcription of 2m47s audio via Whisper inference with long audio stitching.
-
-Files:
-- `tests/fixtures/end-of-chapter-4.en.mp3` — long audio sample (2m47s)
-- `tests/fixtures/end-of-chapter-4.en.txt` — reference transcription
-- `src/pipeline/long-audio-windowing.ts` — `transcribeWithWindowing()` already exists
-
-Verification:
-- Run through `loaded.transcribeMonoPcm()` (auto-windowed for Whisper 30s limit)
-- Compare word overlap with reference text
-- Check no hallucination in long output
-- Measure WER/word accuracy
+Checklist:
+- [x] Greedy decode (argmax per step)
+- [x] Beam search (whisperBeamDecode, numBeams, lengthPenalty)
+- [x] Long audio windowing (transcribeWithWindowing, 30s windows)
+- [x] Timestamp tokens (WhisperTimestampLogitProcessor)
+- [x] Token suppression (suppressTokens, beginSuppressTokens from generation_config)
+- [x] Context conditioning (extraPromptTokens, condition_on_previous_text)
+- [x] Quality gates (compression, logprob, entropy, no-speech)
+- [x] Temperature fallback [0.0, 0.2, ..., 1.0]
+- [x] Mel dimension auto-detect (numMelBins from manifest)
+- [x] SRT/VTT subtitle export
+- [x] VRAM optimization (skip merged decoder, defer alignment)
+- [x] URL/path unified (fetchText handles bare paths + file://)
+- [ ] Large-v3-turbo smoke test (needs fp32/fp16 on 8GB+ or use q8 with ORT fix)
+- [ ] bestOf independent decodings (multiple runs, pick best)
+- [ ] patience (beam search early stopping)
+- [ ] Diarization (separate model, future Phase)
+- [ ] Batched encoder for parallel window processing (WhisperX-style)
 
 ### WAV2VEC2 follow-ups — UNASSIGNED
 

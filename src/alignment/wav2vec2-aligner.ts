@@ -27,6 +27,8 @@ export interface Wav2Vec2AlignerConfig {
   readonly wordSeparator: string;
   readonly frameCount: number;
   readonly sampleRate: number;
+  /** Optional default duration from a prior Wav2Vec2 logits extraction. */
+  readonly audioDurationSeconds?: number;
 }
 
 export interface Wav2Vec2AlignedWord {
@@ -45,7 +47,18 @@ export interface Wav2Vec2AlignmentResult {
 
 export interface Wav2Vec2AlignerAlignOptions {
   readonly transcript: string;
+  readonly audioDurationSeconds?: number;
+}
+
+export interface Wav2Vec2ReusableLogits {
+  readonly logits: Float32Array;
+  readonly frameCount: number;
+  readonly vocabSize: number;
+  readonly blankId: number;
+  readonly tokenizer: Wav2Vec2AlignerConfig['tokenizer'];
+  readonly sampleRate: number;
   readonly audioDurationSeconds: number;
+  readonly wordSeparator?: string;
 }
 
 export interface Wav2Vec2Aligner {
