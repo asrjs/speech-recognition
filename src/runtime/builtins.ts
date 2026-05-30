@@ -271,7 +271,7 @@ export function registerBuiltInPresets(
   runtime.registerPreset(createWhisperPresetFactory());
   runtime.registerPreset(
     createWav2Vec2PresetFactory({
-      useManifestSource: options.useManifestSources ?? false,
+      useManifestSource: options.useManifestSources ?? true,
     }),
   );
   return runtime;

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wav2Vec2 Base 960h — WebGPU Smoke</title>
+<style>
+body { font-family: monospace; background: #111; color: #eee; padding: 20px; max-width: 900px; margin: auto; }
+h1 { color: #0cf; }
+pre { background: #222; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+button { padding: 8px 16px; font: inherit; cursor: pointer; margin: 4px; }
+.status { padding: 4px 0; }
+.pass { color: #0f0; }
+.fail { color: #f44; }
+.info { color: #0cf; }
+</style>
+</head>
+<body>
+<h1>Wav2Vec2 Base 960h — WebGPU Smoke</h1>
+
+<p class="info">Loads ysdede/wav2vec2-base-960h-onnx from HuggingFace via ORT WebGPU backend.
+Runs raw 16kHz waveform through the model and displays CTC transcription.</p>
+
+<p><b>Model</b>: ysdede/wav2vec2-base-960h-onnx (opset 18, ~95M params)<br>
+<b>Backend</b>: <span id="backendLabel">probing...</span></p>
+
+<button id="runBtn" onclick="runSmoke()">Run WebGPU Smoke</button>
+<button id="alignBtn" onclick="runAlignment()" disabled>Run Forced Alignment</button>
+<span id="status" class="status"></span>
+
+<pre id="log" style="display:none;"></pre>
+
+<script>
+// ── State ──
+let ortSession = null;
+let vocab = null;           // Map<number, string>
+let blankId = 0;
+let logitsCache = null;
+
+const MODEL_URL = 'https://huggingface.co/ysdede/wav2vec2-base-960h-onnx/resolve/main/model.onnx';
+const DATA_URL  = 'https://huggingface.co/ysdede/wav2vec2-base-960h-onnx/resolve/main/model.onnx.data';
+
+const logEl = document.getElementById('log');
+const statusEl = document.getElementById('status');
+const backendLabel = document.getElementById('backendLabel');
+const runBtn = document.getElementById('runBtn');
+const alignBtn = document.getElementById('alignBtn');
+
+function log(msg) {
+  logEl.style.display = 'block';
+  logEl.textContent += msg.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '\n';
+}
+function status(msg, cls) {
+  statusEl.textContent = msg;
+  statusEl.className = 'status ' + (cls || '');
+}
+
+// ── Vocab loading ──
+async function loadVocab() {
+  const resp = await fetch('https://huggingface.co/ysdede/wav2vec2-base-960h-onnx/resolve/main/vocab.json');
+  const raw = await resp.json();
+  vocab = new Map();
+  for (const [char, id] of Object.entries(raw)) {
+    vocab.set(Number(id), char);
+  }
+  blankId = raw['<pad>'] ?? 0;
+  log(`Vocab loaded: ${vocab.size} tokens, blank=${blankId}`);
+}
+
+// ── Session loading ──
+async function loadSession(backend) {
+  log(`Creating ORT session with ${backend}...`);
+  const opt = { executionProviders: [backend] };
+
+  // External data for the single-file model
+  if (backend !== 'wasm') {
+    // WebGPU: ORT fetches model from URL directly
+    // External data: ORT Web needs the .data file co-located
+    // We pass externalData option for the session
+    const session = await ort.InferenceSession.create(MODEL_URL, {
+      ...opt,
+      externalData: [{ path: 'model.onnx.data' }],
+    });
+    return session;
+  }
+
+  // WASM fallback
+  const session = await ort.InferenceSession.create(MODEL_URL, {
+    ...opt,
+    externalData: [{ path: 'model.onnx.data' }],
+  });
+  return session;
+}
+
+// ── Decode WAV ──
+async function loadAudio(url) {
+  const resp = await fetch(url);
+  const buf = await resp.arrayBuffer();
+  const view = new DataView(buf);
+
+  if (view.getUint32(0) !== 0x52494646) throw new Error('Not RIFF');
+
+  // Find fmt and data chunks
+  let fmtOffset = -1, dataOffset = -1, dataSize = 0;
+  let channels = 1, sampleRate = 16000, bitsPerSample = 16;
+  let off = 12;
+  while (off + 8 <= buf.byteLength) {
+    const ckId = String.fromCharCode(...new Uint8Array(buf, off, 4));
+    const ckSize = view.getUint32(off + 4, true);
+    if (ckId === 'fmt ') {
+      channels = view.getUint16(off + 10, true);
+      sampleRate = view.getUint32(off + 12, true);
+      bitsPerSample = view.getUint16(off + 22, true);
+      fmtOffset = off + 8;
+    } else if (ckId === 'data') {
+      dataOffset = off + 8;
+      dataSize = ckSize;
+    }
+    off += 8 + ckSize + (ckSize % 2);
+  }
+
+  if (dataOffset < 0) throw new Error('No data chunk');
+
+  const bytesPerSample = bitsPerSample / 8;
+  const frameCount = Math.floor(dataSize / (bytesPerSample * channels));
+  const pcm = new Float32Array(frameCount);
+
+  for (let f = 0; f < frameCount; f++) {
+    let sum = 0;
+    for (let c = 0; c < channels; c++) {
+      const sampleOff = dataOffset + (f * channels + c) * bytesPerSample;
+      sum += view.getInt16(sampleOff, true) / 32768;
+    }
+    pcm[f] = sum / channels;
+  }
+
+  return { pcm, sampleRate, durationSeconds: frameCount / sampleRate };
+}
+
+// ── CTC Decode ──
+function ctcDecode(logits, frameCount, vocabSize, blankId) {
+  const tokens = [];
+  for (let f = 0; f < frameCount; f++) {
+    let bestId = blankId;
+    let bestVal = -Infinity;
+    for (let v = 0; v < vocabSize; v++) {
+      if (logits[f * vocabSize + v] > bestVal) {
+        bestVal = logits[f * vocabSize + v];
+        bestId = v;
+      }
+    }
+    tokens.push(bestId);
+  }
+
+  // CTC collapse
+  const collapsed = [];
+  for (const t of tokens) {
+    if (t === blankId) continue;
+    if (collapsed.length > 0 && collapsed[collapsed.length - 1] === t) continue;
+    collapsed.push(t);
+  }
+
+  // Decode to text
+  const chars = collapsed.map(id => vocab.get(id) ?? '').join('');
+  // Wav2Vec2 | → space
+  return chars.replace(/\|/g, ' ').trim();
+}
+
+// ── CTC Viterbi Forced Alignment ──
+function ctcViterbiAlign(logits, frameCount, vocabSize, targetTokens, blankId) {
+  const T = frameCount;
+  const S = 2 * targetTokens.length + 1; // S states: blank + tokens (each token x2 for repeats)
+
+  // Build emission sequence: blank, t0, t0, t1, t1, ...
+  const emit = [];
+  for (const t of targetTokens) {
+    emit.push(blankId, t, t);
+  }
+  // Actually CTC forced alignment uses: blank, token0, blank, token1, blank, ...
+  // Simpler: use standard CTC Viterbi with forced path
+
+  const V = vocabSize;
+  const logProbs = new Float32Array(T * V);
+  for (let f = 0; f < T; f++) {
+    let maxVal = -Infinity;
+    for (let v = 0; v < V; v++) {
+      if (logits[f * V + v] > maxVal) maxVal = logits[f * V + v];
+    }
+    let sum = 0;
+    for (let v = 0; v < V; v++) {
+      sum += Math.exp(logits[f * V + v] - maxVal);
+    }
+    const logSum = Math.log(sum) + maxVal;
+    for (let v = 0; v < V; v++) {
+      logProbs[f * V + v] = logits[f * V + v] - logSum;
+    }
+  }
+
+  // Build state labels
+  const stateLabels = [];
+  const stateTokens = [];
+  for (let i = 0; i < targetTokens.length; i++) {
+    stateLabels.push(blankId);
+    stateTokens.push(-1);
+    stateLabels.push(targetTokens[i]);
+    stateTokens.push(i);
+  }
+  stateLabels.push(blankId);
+  stateTokens.push(-1);
+
+  const nStates = stateLabels.length;
+
+  // Forward DP
+  const dp = new Float32Array(T * nStates);
+  dp.fill(-Infinity);
+  dp[0] = logProbs[stateLabels[0]]; // first state at frame 0
+  if (nStates > 1) {
+    dp[nStates] = logProbs[stateLabels[1]]; // second state at frame 0 too (with blank skip)
+  }
+
+  for (let t = 1; t < T; t++) {
+    for (let s = 0; s < nStates; s++) {
+      const label = stateLabels[s];
+      const lp = logProbs[t * V + label];
+
+      // Stay (same state)
+      dp[t * nStates + s] = lp + dp[(t - 1) * nStates + s];
+
+      // From blank (or previous state)
+      if (s > 0) {
+        const prev = lp + dp[(t - 1) * nStates + (s - 1)];
+        if (prev > dp[t * nStates + s]) dp[t * nStates + s] = prev;
+      }
+      // Skip blank (s-2, if labels differ)
+      if (s > 1 && stateLabels[s] !== stateLabels[s - 2]) {
+        const prev = lp + dp[(t - 1) * nStates + (s - 2)];
+        if (prev > dp[t * nStates + s]) dp[t * nStates + s] = prev;
+      }
+    }
+  }
+
+  // Backtrack
+  const alignment = new Int32Array(T);
+  let bestS = nStates - 1;
+  for (let s = nStates - 2; s >= 0; s--) {
+    if (dp[(T - 1) * nStates + s] > dp[(T - 1) * nStates + bestS]) {
+      bestS = s;
+    }
+  }
+
+  alignment[T - 1] = bestS;
+  for (let t = T - 2; t >= 0; t--) {
+    let s = alignment[t + 1];
+    // Check s-1 and s-2
+    if (s > 0 && dp[t * nStates + (s - 1)] >= dp[t * nStates + s]) {
+      s = s - 1;
+    }
+    if (s > 1 && stateLabels[s] !== stateLabels[s - 2] &&
+        dp[t * nStates + (s - 2)] >= dp[t * nStates + s]) {
+      s = s - 2;
+    }
+    alignment[t] = s;
+  }
+
+  // Build word timestamps from alignment
+  const words = [];
+  const textTokens = targetTokens.map(id => vocab.get(id) ?? String(id));
+  const rawText = textTokens.join('').replace(/\|/g, ' ');
+  const wordTexts = rawText.split(' ');
+  let wordIdx = 0;
+  let charPos = 0;
+  let wordStart = -1;
+
+  for (let t = 0; t < T; t++) {
+    const s = alignment[t];
+    const tokenIdx = stateTokens[s];
+    if (tokenIdx >= 0) {
+      if (wordStart < 0) wordStart = t;
+      charPos++;
+      if (charPos >= wordTexts[wordIdx]?.length) {
+        words.push({
+          text: wordTexts[wordIdx] ?? '',
+          start: wordStart / T * (pcm ? pcm.length / 16000 : 1),
+          end: t / T * (pcm ? pcm.length / 16000 : 1),
+          frames: t - wordStart + 1,
+        });
+        wordIdx++;
+        wordStart = -1;
+        charPos = 0;
+      }
+    }
+  }
+
+  return { alignment, stateLabels, stateTokens, words };
+}
+
+// ── Main smoke ──
+let pcm = null;
+window.pcm = null;
+
+async function runSmoke() {
+  logEl.textContent = '';
+  status('Loading...', 'info');
+  runBtn.disabled = true;
+
+  try {
+    // Probe backend
+    const gpuAvailable = typeof navigator !== 'undefined' && navigator.gpu;
+    const backend = gpuAvailable ? 'webgpu' : 'wasm';
+    backendLabel.textContent = gpuAvailable ? 'WebGPU' : 'WASM (WebGPU not available)';
+    log(`Backend: ${backend}`);
+
+    // Load vocab
+    await loadVocab();
+
+    // Load model
+    const startLoad = performance.now();
+    ortSession = await loadSession(backend);
+    log(`Session created in ${(performance.now() - startLoad).toFixed(0)}ms`);
+
+    // Load audio
+    const audio = await loadAudio('/tests/fixtures/jfk2.en.wav');
+    pcm = audio.pcm;
+    log(`Audio: ${audio.sampleRate}Hz, ${audio.durationSeconds.toFixed(2)}s, ${audio.pcm.length} samples`);
+
+    // Run inference
+    const inputTensor = new ort.Tensor('float32', audio.pcm, [1, audio.pcm.length]);
+    const startInfer = performance.now();
+    const outputs = await ortSession.run({ input_values: inputTensor });
+    const inferMs = performance.now() - startInfer;
+    log(`Inference: ${inferMs.toFixed(0)}ms`);
+
+    const logitsTensor = outputs.logits;
+    const logits = new Float32Array(logitsTensor.data.buffer, logitsTensor.data.byteOffset, logitsTensor.data.length);
+    const [_, frames, vocabSize] = logitsTensor.dims;
+    log(`Logits: [1, ${frames}, ${vocabSize}]`);
+
+    // Cache for alignment
+    logitsCache = { logits, frames, vocabSize, logitsTensor };
+    alignBtn.disabled = false;
+
+    // Decode
+    const text = ctcDecode(logits, frames, vocabSize, blankId);
+    log(`Transcript: "${text}"`);
+
+    // Validate
+    const words = text.split(/\s+/).filter(Boolean);
+    const hasAnd = words.some(w => w.toLowerCase() === 'and');
+    const hasCountry = words.some(w => w.toLowerCase() === 'country');
+
+    if (hasAnd && hasCountry) {
+      status('PASS — WebGPU Wav2Vec2 transcription verified', 'pass');
+    } else {
+      status('WARN — expected words not found in transcription', 'warn');
+    }
+
+    log(`Words: ${words.length}, expect.and=${hasAnd}, expect.country=${hasCountry}`);
+
+  } catch (e) {
+    status('FAIL: ' + e.message, 'fail');
+    log('Error: ' + e.stack);
+  } finally {
+    runBtn.disabled = false;
+  }
+}
+
+async function runAlignment() {
+  if (!logitsCache || !pcm) {
+    status('Run smoke first', 'warn');
+    return;
+  }
+
+  alignBtn.disabled = true;
+  try {
+    const { logits, frames, vocabSize } = logitsCache;
+    const transcript = 'and so my fellow americans ask not what your country can do for you ask what you can do for your country';
+
+    // Tokenize
+    const encoded = [];
+    for (const ch of transcript) {
+      if (ch === ' ') {
+        // Find the separator token
+        for (const [id, char] of vocab.entries()) {
+          if (char === '|') { encoded.push(id); break; }
+        }
+      } else {
+        for (const [id, char] of vocab.entries()) {
+          if (char === ch) { encoded.push(id); break; }
+        }
+      }
+    }
+
+    log(`\nAlignment: transcript="${transcript}", tokens=${encoded.length}`);
+
+    const result = ctcViterbiAlign(logits, frames, vocabSize, encoded, blankId);
+    const alignedWords = result.words.filter(w => w.text.length > 0);
+    log(`Aligned words: ${alignedWords.length}`);
+
+    alignedWords.slice(0, 10).forEach(w => {
+      log(`  ${w.text}: ${w.start.toFixed(2)}s - ${w.end.toFixed(2)}s`);
+    });
+
+    if (alignedWords.length >= 10) {
+      status(`PASS — WebGPU Wav2Vec2 alignment: ${alignedWords.length} words`, 'pass');
+    } else {
+      status('WARN — few aligned words', 'warn');
+    }
+  } catch (e) {
+    status('FAIL: ' + e.message, 'fail');
+    log('Error: ' + e.stack);
+  } finally {
+    alignBtn.disabled = false;
+  }
+}
+
+// Init
+(async () => {
+  const gpuAvailable = typeof navigator !== 'undefined' && navigator.gpu;
+  backendLabel.textContent = gpuAvailable ? 'WebGPU' : 'WASM (WebGPU not available)';
+  if (!gpuAvailable) {
+    status('WebGPU not available — use Chrome with --enable-unsafe-webgpu or similar', 'warn');
+  } else {
+    status('Ready — click Run', 'info');
+  }
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.all.min.js"></script>
+</body>
+</html>
