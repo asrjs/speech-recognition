@@ -355,6 +355,97 @@ function createParakeetDescriptors(): BuiltInModelDescriptor[] {
   });
 }
 
+function createCanaryCapabilities(): BuiltInModelCapabilities {
+  return {
+    supportedTasks: ['asr', 'speech-translation'],
+    supportsTranslation: true,
+    supportsPunctuationCapitalization: true,
+    supportsInverseTextNormalization: true,
+    supportsWordTimestamps: CANARY_180M_FLASH_DOCS.capabilities.supportsWordTimestamps,
+    supportsSegmentTimestamps: CANARY_180M_FLASH_DOCS.capabilities.supportsSegmentTimestamps,
+    supportsPromptControls: true,
+  };
+}
+
+function createCanaryLoadingDescriptor(
+  config: { readonly repoId: string },
+  source: { readonly preprocessorBackend?: 'js' | 'onnx' | null } | null,
+): BuiltInModelLoadingDescriptor {
+  return {
+    repoId: config.repoId,
+    supportsHubSource: true,
+    supportsLocalSource: false,
+    supportsSplitQuantization: true,
+    supportsSplitBackends: true,
+    availableEncoderBackends: ['webgpu', 'wasm'],
+    availableDecoderBackends: ['webgpu', 'wasm'],
+    defaultEncoderBackend: 'webgpu',
+    defaultDecoderBackend: 'wasm',
+    availableEncoderQuantizations: ['fp16', 'int8', 'fp32'],
+    availableDecoderQuantizations: ['fp16', 'int8', 'fp32'],
+    defaultEncoderQuantization: 'fp32',
+    defaultDecoderQuantization: 'int8',
+    supportsPreprocessorBackend: true,
+    preprocessorBackends: ['js', 'onnx'],
+    defaultPreprocessorBackend: source?.preprocessorBackend ?? 'js',
+    defaultPreprocessorName: 'nemo128',
+    encoderArtifactBaseName: 'encoder-model',
+    decoderArtifactBaseName: 'decoder-model',
+    defaultRevision: 'main',
+  };
+}
+
+function createCanaryControls(config: {
+  readonly defaultTargetLanguage?: string;
+}): readonly BuiltInControlDescriptor[] {
+  return [
+    {
+      key: 'task',
+      label: 'Task',
+      description: 'Controls whether the decoder performs same-language ASR or speech translation.',
+      type: 'enum',
+      defaultValue: 'asr',
+      options: [
+        { value: 'asr', label: 'ASR' },
+        { value: 'translation', label: 'Speech Translation' },
+      ],
+    },
+    {
+      key: 'targetLanguage',
+      label: 'Target Language',
+      description: 'Target text language prompt token.',
+      type: 'language',
+      defaultValue: config.defaultTargetLanguage,
+      visibleWhen: {
+        key: 'task',
+        notEquals: 'asr',
+      },
+    },
+    {
+      key: 'punctuate',
+      label: 'Punctuation & Capitalization',
+      description: 'Injects the Canary PnC prompt toggle.',
+      type: 'boolean',
+      defaultValue: true,
+    },
+    {
+      key: 'timestamps',
+      label: 'Timestamps',
+      description: 'Injects the Canary timestamp prompt toggle.',
+      type: 'boolean',
+      defaultValue: false,
+    },
+  ];
+}
+
+function createCanaryDocs(): BuiltInModelDescriptor['docs'] {
+  return {
+    modelCardUrl: CANARY_180M_FLASH_DOCS.modelCardUrl,
+    architectureSummary: CANARY_180M_FLASH_DOCS.architecture.summary,
+    promptingNote: CANARY_180M_FLASH_DOCS.prompting.note,
+  };
+}
+
 function createCanaryDescriptors(): BuiltInModelDescriptor[] {
   return Object.entries(CANARY_MODELS).map(([modelId, config]) => {
     const manifest = resolveCanaryPresetManifest(modelId);
@@ -370,86 +461,15 @@ function createCanaryDescriptors(): BuiltInModelDescriptor[] {
       languages: config.languages,
       defaultSourceLanguage: config.defaultSourceLanguage,
       defaultTargetLanguage: config.defaultTargetLanguage,
-      capabilities: {
-        supportedTasks: ['asr', 'speech-translation'],
-        supportsTranslation: true,
-        supportsPunctuationCapitalization: true,
-        supportsInverseTextNormalization: true,
-        supportsWordTimestamps: CANARY_180M_FLASH_DOCS.capabilities.supportsWordTimestamps,
-        supportsSegmentTimestamps: CANARY_180M_FLASH_DOCS.capabilities.supportsSegmentTimestamps,
-        supportsPromptControls: true,
-      },
+      capabilities: createCanaryCapabilities(),
       inference: createConservativeAedInferenceLimits(),
-      loading: {
-        repoId: config.repoId,
-        supportsHubSource: true,
-        supportsLocalSource: false,
-        supportsSplitQuantization: true,
-        supportsSplitBackends: true,
-        availableEncoderBackends: ['webgpu', 'wasm'],
-        availableDecoderBackends: ['webgpu', 'wasm'],
-        defaultEncoderBackend: 'webgpu',
-        defaultDecoderBackend: 'wasm',
-        availableEncoderQuantizations: ['fp16', 'int8', 'fp32'],
-        availableDecoderQuantizations: ['fp16', 'int8', 'fp32'],
-        defaultEncoderQuantization: 'fp32',
-        defaultDecoderQuantization: 'int8',
-        supportsPreprocessorBackend: true,
-        preprocessorBackends: ['js', 'onnx'],
-        defaultPreprocessorBackend: source?.preprocessorBackend ?? 'js',
-        defaultPreprocessorName: 'nemo128',
-        encoderArtifactBaseName: 'encoder-model',
-        decoderArtifactBaseName: 'decoder-model',
-        defaultRevision: 'main',
-      },
-      controls: [
-        {
-          key: 'task',
-          label: 'Task',
-          description:
-            'Controls whether the decoder performs same-language ASR or speech translation.',
-          type: 'enum',
-          defaultValue: 'asr',
-          options: [
-            { value: 'asr', label: 'ASR' },
-            { value: 'translation', label: 'Speech Translation' },
-          ],
-        },
-        {
-          key: 'targetLanguage',
-          label: 'Target Language',
-          description: 'Target text language prompt token.',
-          type: 'language',
-          defaultValue: config.defaultTargetLanguage,
-          visibleWhen: {
-            key: 'task',
-            notEquals: 'asr',
-          },
-        },
-        {
-          key: 'punctuate',
-          label: 'Punctuation & Capitalization',
-          description: 'Injects the Canary PnC prompt toggle.',
-          type: 'boolean',
-          defaultValue: true,
-        },
-        {
-          key: 'timestamps',
-          label: 'Timestamps',
-          description: 'Injects the Canary timestamp prompt toggle.',
-          type: 'boolean',
-          defaultValue: false,
-        },
-      ],
+      loading: createCanaryLoadingDescriptor(config, source),
+      controls: createCanaryControls(config),
       warmup: {
         mode: 'expected-text',
         expectedTexts: buildWarmupExpectedTexts(),
       },
-      docs: {
-        modelCardUrl: CANARY_180M_FLASH_DOCS.modelCardUrl,
-        architectureSummary: CANARY_180M_FLASH_DOCS.architecture.summary,
-        promptingNote: CANARY_180M_FLASH_DOCS.prompting.note,
-      },
+      docs: createCanaryDocs(),
     };
   });
 }
