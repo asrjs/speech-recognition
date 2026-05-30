@@ -258,4 +258,19 @@ describe('built-in preset descriptors', () => {
     expect(detected.encoder).toEqual(['fp16', 'fp32']);
     expect(detected.decoder).toEqual(['int8', 'fp32']);
   });
+
+  it('throws an error when detecting quantizations for an unknown model', () => {
+    expect(() => detectBuiltInModelQuantizationsFromFiles('unknown-model-id', [])).toThrow(
+      'Unknown built-in model "unknown-model-id".',
+    );
+  });
+
+  it('falls back to default fp32 quantization if no matching files are found', () => {
+    const detected = detectBuiltInModelQuantizationsFromFiles('nvidia/canary-180m-flash', []);
+
+    expect(detected.encoderArtifactBaseName).toBe('encoder-model');
+    expect(detected.decoderArtifactBaseName).toBe('decoder-model');
+    expect(detected.encoder).toEqual(['fp32']);
+    expect(detected.decoder).toEqual(['fp32']);
+  });
 });
