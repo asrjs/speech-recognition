@@ -410,11 +410,11 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     };
 
     const modelFilename = source.modelFilename ?? 'model.onnx';
-    const modelDataFilename = source.modelDataFilename ?? 'model.onnx.data';
+    const modelDataFilename = source.modelDataFilename || undefined;
     const tokenizerFilename = source.tokenizerFilename ?? 'vocab.json';
 
     const modelUrl = await resolveFile(modelFilename);
-    const modelDataUrl = await resolveFile(modelDataFilename, true);
+    const modelDataUrl = modelDataFilename ? await resolveFile(modelDataFilename, true) : undefined;
     const tokenizerUrl = await resolveFile(tokenizerFilename);
 
     return {
