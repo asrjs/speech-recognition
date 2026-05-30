@@ -171,6 +171,7 @@ export async function whisperBeamDecode(
     promptTokens, encoderOutput, encoderDims,
     eosTokenId, maxNewTokens, processLogits,
     beamSize = 5, lengthPenalty = 0,
+    patience = 1,
   } = options;
 
   const initResult = await session.runInit(promptTokens, encoderOutput, encoderDims);
@@ -193,6 +194,8 @@ export async function whisperBeamDecode(
     for (const [k, v] of Object.entries(initResult.presentKv)) c[k] = new Float32Array(v);
     return c;
   });
+
+  let completedSteps = 0;
 
   for (let s = 1; s < maxNewTokens; s++) {
     if (beams.every(b => (b as any).completed)) break;
@@ -236,6 +239,15 @@ export async function whisperBeamDecode(
 
     beams = candidates as any[];
     beamKvs = newKvs;
+
+    // Patience: stop early if best beam has been completed for N consecutive steps
+    const stepBest = selectBestWhisperBeam(beams as any, lengthPenalty);
+    if (stepBest && (stepBest as any).completed) {
+      completedSteps++;
+      if (completedSteps >= patience) break;
+    } else {
+      completedSteps = 0;
+    }
 
     if (beams.every(b => (b as any).completed)) break;
   }
