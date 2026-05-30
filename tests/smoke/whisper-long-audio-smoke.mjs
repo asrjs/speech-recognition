@@ -28,7 +28,7 @@ async function main() {
   console.log('=== Whisper Long Audio Production Smoke ===\n');
 
   // Check prerequisites
-  const variantDir = path.join(MODEL_DIR, 'q8');
+  const variantDir = path.join(MODEL_DIR, 'fp16');
   if (!existsSync(variantDir)) { console.error(`ERROR: ${variantDir} not found`); process.exit(1); }
   if (!existsSync(AUDIO_MP3)) { console.error(`ERROR: ${AUDIO_MP3} not found`); process.exit(1); }
   if (!existsSync(REF_TXT)) { console.error(`ERROR: ${REF_TXT} not found`); process.exit(1); }
@@ -49,7 +49,7 @@ async function main() {
     modelId: 'openai/whisper-large-v3-turbo',
     backend: 'wasm',
     options: {
-      variant: 'q8',
+      variant: 'fp16',
       source: {
         kind: 'splitgraph',
         artifacts: {

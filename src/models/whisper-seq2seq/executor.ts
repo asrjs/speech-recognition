@@ -52,7 +52,7 @@ interface LoadedExecutorState {
   readonly ort: OrtModuleLike;
   readonly tokenizer: WhisperTokenizer;
   readonly encoderSession: OrtSessionLike;
-  readonly decoderSession: OrtSessionLike;
+  readonly decoderSession?: OrtSessionLike;
   readonly generationConfig: WhisperGenerationConfig;
   readonly modelConfig: WhisperModelConfig;
   readonly warnings: readonly TranscriptWarning[];
@@ -350,6 +350,7 @@ export class WhisperOnnxExecutor {
     const tokenizer = await WhisperTokenizer.fromUrl(artifacts.tokenizerUrl);
     const warnings = [...resolved.warnings];
 
+    // Only create encoder session for now (decoder sessions created below if splitgraph)
     const encoderSession = await createWhisperOrtSession(ort, artifacts.encoderUrl, {
       backendId: resolved.encoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
@@ -358,17 +359,21 @@ export class WhisperOnnxExecutor {
         : {}),
     });
 
-    const decoderSession = await createWhisperOrtSession(ort, artifacts.decoderUrl, {
-      backendId: resolved.decoderBackendForOrt,
-      enableProfiling: resolved.enableProfiling,
-      ...(resolved.externalData?.decoder_init?.[0]
-        ? { externalDataUrl: resolved.externalData.decoder_init[0].dataUrl, externalDataPath: resolved.externalData.decoder_init[0].path }
-        : {}),
-    });
+    // Merged decoder session — only needed for non-splitgraph path
+    let decoderSession: OrtSessionLike | undefined;
+    const isSplitGraph = resolved.isSplitGraph;
+    if (!isSplitGraph) {
+      decoderSession = await createWhisperOrtSession(ort, artifacts.decoderUrl, {
+        backendId: resolved.decoderBackendForOrt,
+        enableProfiling: resolved.enableProfiling,
+        ...(resolved.externalData?.decoder_init?.[0]
+          ? { externalDataUrl: resolved.externalData.decoder_init[0].dataUrl, externalDataPath: resolved.externalData.decoder_init[0].path }
+          : {}),
+      });
+    }
 
     const genConfig = await this.loadGenerationConfig(artifacts);
     const modelConfig = await this.loadModelConfig(artifacts);
-    const isSplitGraph = resolved.isSplitGraph;
 
     let decoderInitSession: OrtSessionLike | undefined;
     let decoderStepSession: OrtSessionLike | undefined;
@@ -389,15 +394,7 @@ export class WhisperOnnxExecutor {
           ? { externalDataUrl: resolved.externalData.decoder_step[0].dataUrl, externalDataPath: resolved.externalData.decoder_step[0].path }
           : {}),
       });
-      if (resolved.decoderAlignUrl) {
-        decoderAlignSession = await createWhisperOrtSession(ort, resolved.decoderAlignUrl, {
-          backendId: resolved.decoderBackendForOrt,
-          enableProfiling: resolved.enableProfiling,
-          ...(resolved.externalData?.decoder_align?.[0]
-            ? { externalDataUrl: resolved.externalData.decoder_align[0].dataUrl, externalDataPath: resolved.externalData.decoder_align[0].path }
-            : {}),
-        });
-      }
+      // Defer decoder_align — only load when needed for alignment (saves VRAM)
     }
 
     return {
@@ -432,7 +429,7 @@ export class WhisperOnnxExecutor {
       encoder_hidden_states: encoderHiddenStates,
     };
 
-    const decoderInputNames = loaded.decoderSession.inputNames ?? [];
+    const decoderInputNames = loaded.decoderSession!.inputNames ?? [];
     if (decoderInputNames.includes('use_cache_branch')) {
       feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([isFirstStep ? 1 : 0]), [1]);
     }
@@ -471,7 +468,7 @@ export class WhisperOnnxExecutor {
       }
     }
 
-    const outputs = await loaded.decoderSession.run(feeds);
+    const outputs = await loaded.decoderSession!.run(feeds);
     const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
     const logits = logitsTensor.data;
@@ -521,7 +518,7 @@ export class WhisperOnnxExecutor {
       encoder_hidden_states: encoderHiddenStates,
     };
 
-    const decoderInputNames = loaded.decoderSession.inputNames ?? [];
+    const decoderInputNames = loaded.decoderSession!.inputNames ?? [];
     if (decoderInputNames.includes('use_cache_branch')) {
       feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([1]), [1]);
     }
@@ -544,7 +541,7 @@ export class WhisperOnnxExecutor {
         'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]);
     }
 
-    const outputs = await loaded.decoderSession.run(feeds);
+    const outputs = await loaded.decoderSession!.run(feeds);
     const crossAttentions = extractCrossAttentions(outputs);
 
     // Extract logits for the text tokens (skip prompt + EOS)
