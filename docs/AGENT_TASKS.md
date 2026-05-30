@@ -1,263 +1,123 @@
 # Agent Task Coordination
 
-Branch: `feat/asr-pipeline-output-formats`
-Updated: 2026-05-31 (Flexo-gpt5.5)
+Branch: `feat/large-v3-turbo-fp16-external-data`
+Updated: 2026-06-01 (Flexo)
 
 ## Context Recovery
 
+**Primary skill**: Load `asrjs-dev` skill first
 **Progress file**: `docs/handoffs/flexo-wav2vec2-progress.md`
-Read this file first after any context reset. Contains:
-- Completed WAV2VEC2 + shared CTC files
-- Node/WASM smoke command and known local ONNX model location
-- Remaining alignment/HF-upload work
+**HF models**: `ysdede/whisper-large-v3-turbo-onnx-4graph` (original, fixed fp16) + v2 backup
+**Local models**: `/tmp/whisper-base-4graph/` (fast smoke), `/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/` (large smoke)
 
-## Dependency Chain
+## Backend Strategy (FINAL)
 
-```
-src/ctc/ (shared CTC module) ✅ DONE ──┐
-                                        ├──► WAV2VEC2 model factory/preset ✅ DONE ──► real ONNX smoke ✅ DONE
-                                        │                                             └──► Alignment (Phase D) ✅ DONE
-quality/ (Phase A) ✅ DONE              │
-chunking/ (Phase B) ✅ DONE             │
-post-processing/ (Phase C) ✅ DONE      │
-                                        │
-enhanced-executor (Phase F) ✅ DONE ────┘
-```
+| Priority | Backend | Model | Lifecycle | Time | Notes |
+|----------|---------|-------|-----------|------|-------|
+| **1st** | `onnxruntime-node` (native) | fp32 | Persistent | 13.3s | Streaming-ready, no heap limit |
+| 2nd | WebGPU (browser) | fp16 | Persistent | 24.5s | Needs explicit externalData |
+| Fallback | ORT Web/WASM | fp32 | Sequential | 62s | ~1.5GB heap → one session at a time |
+
+**WASM heap limit (~1.5GB)**: Even with external data, WASM can only hold ONE large session. Use sequential lifecycle (encoder→dispose→decoders→dispose) for WASM. Native ORT and WebGPU load all sessions simultaneously.
+
+**Browser externalData**: Must fetch `.data` files and pass `externalData: [{path, data: Uint8Array}]` in session options. Browser cannot auto-discover co-located files.
+
+**fp16 dtype**: Encoder expects float16 input. Node.js lacks native Float16Array → fp32 for Node dev, fp16 for WebGPU.
 
 ## COMPLETED TASKS
 
-### CTC Module Extraction — DONE (Flexo)
-
-**Shared module: `src/ctc/`**
-- `src/ctc/types.ts` — Generic CTC types (CtcTokenSpan, CtcUtteranceTiming, etc.)
-- `src/ctc/decoder.ts` — CtcDecoder class + stateless functions
-- `src/ctc/index.ts` — barrel exports
-- `tests/ctc-decoder.test.ts` — 25 tests (parity + word building + class)
-
-**Migration:**
-- `lasr-ctc/executor.ts` imports from `../../ctc/index.js`
-- `wav2vec2/executor.ts` imports from `../../ctc/index.js`, removed local buildWordsFromSpans
-- `lasr-ctc/ctc.ts` currently remains a re-export wrapper; backward compatibility is no longer a requirement and can be removed when MedASR is rewritten.
-
-### WAV2VEC2 Model Files — DONE
-
-- `src/models/wav2vec2/types.ts`
-- `src/models/wav2vec2/config.ts`
-- `src/models/wav2vec2/tokenizer.ts`
-- `src/models/wav2vec2/ort.ts`
-- `src/models/wav2vec2/executor.ts`
-
-### WAV2VEC2 Model Factory + Presets — DONE (Flexo-gpt5.5)
-Commits: `b25e9a6`, `64c1cea`
-
-Implemented:
-- `src/models/wav2vec2/model.ts` — `createWav2Vec2ModelFamily()` with stub fallback and real `OrtWav2Vec2Executor` when a source is provided.
-- `src/models/wav2vec2/mapping.ts` — native Wav2Vec2 CTC transcript → canonical `TranscriptResult` mapping.
-- `src/models/wav2vec2/index.ts`, `src/models/wav2vec2.ts` — model subpath exports.
-- `src/presets/wav2vec2/manifest.ts` — `facebook/wav2vec2-base-960h` manifest + aliases.
-- `src/presets/wav2vec2/factory.ts` — `createWav2Vec2PresetFactory()`.
-- `src/presets/wav2vec2/index.ts`, `src/presets/wav2vec2.ts`, `src/presets/index.ts` — preset exports.
-- `src/runtime/builtins.ts` — registers wav2vec2 model family and preset.
-- `src/presets/descriptors.ts` — built-in descriptor for Wav2Vec2 CTC raw-waveform model.
-- `tests/wav2vec2-model.test.ts` — model family, preset, built-in registration coverage.
-- `tests/preset-descriptors.test.ts` — Wav2Vec2 catalog metadata coverage.
-
-### WAV2VEC2 Real ONNX Node/WASM Smoke — DONE (Flexo-gpt5.5)
-Commits: `b25e9a6`, `64c1cea`
-
-Implemented:
-- `tests/smoke/wav2vec2-node-wasm-smoke.mjs`
-- Direct local source support with explicit external data:
-  - `modelUrl: file:///tmp/wav2vec2-base-960h.onnx`
-  - `modelDataUrl: file:///tmp/wav2vec2-base-960h.onnx.data`
-  - `modelDataFilename: wav2vec2-base-960h.onnx.data`
-
-Smoke command:
-
-```bash
-node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
-```
-
-Observed output:
-
-```text
-wav2vec2 node/wasm smoke passed
-sampleRate=16000 duration=11.000s elapsed≈8.6s
-words=22 tokens=105
-and so my fellow americans ask not what your country can do for you ask what you can do for your country
-```
-
-### Whisper Vanilla Core — DONE
-Commit: `1efddda`
-
-### Whisper Enhanced / Quality / Chunking / Post-processing / Alignment DTW — DONE
-Commits: `5474991` through `1744585`.
-
-## ACTIVE TASKS
-
-### Phase D: src/alignment/ — DONE
-Owner: Flexo (DSV4Pro/gpt-5.5)
-Commits: `33cc27b` (ctc-viterbi), `4ab5e89` (wav2vec2-aligner), `eb2cc6d` (token label/separator hardening)
-Status: ✅ Complete — 24 focused tests (15 CTC Viterbi + 9 WAV2VEC2 aligner)
-
-Completed:
-- [x] `src/alignment/ctc-viterbi.ts` — `ctcForceAlign()`, `ctcViterbiBacktrack()`, `ctcLogSoftmax()`
-- [x] `src/alignment/wav2vec2-aligner.ts` — `createWav2Vec2Aligner()`, `groupCharAlignmentToWords()`
-- [x] Tests: `tests/alignment-ctc-viterbi.test.ts` (15), `tests/wav2vec2-alignment.test.ts` (10)
-- [x] Token label callback: `ctcForceAlign(..., { tokenToChar })` so Wav2Vec2 separator tokens decode to spaces before word grouping.
-- [x] `createWav2Vec2AlignerFromLogits()` for executor-extracted/reusable logits.
-- [x] Vitest source alias for `@asrjs/speech-recognition/alignment` so alignment tests exercise `src/`, not stale `dist/`.
-
-### WAV2VEC2 Real ONNX Forced Alignment Smoke — DONE
-Owner: Flexo (gpt-5.5)
-Commit: `f7ef300`
-Status: ✅ Complete
-
-Implemented:
-- [x] `OrtWav2Vec2Executor.extractLogits()` exposes reusable `[frames, vocab]` logits, tokenizer, blank ID, duration, and shape metadata.
-- [x] `tests/smoke/wav2vec2-node-wasm-align-smoke.mjs` runs real Node/WASM ONNX logits extraction and CTC Viterbi forced alignment.
-- [x] Verified on `tests/fixtures/jfk2.en.wav` with `/tmp/wav2vec2-base-960h.onnx`.
-
-Observed forced-alignment smoke:
-
-```text
-wav2vec2 node/wasm forced-alignment smoke passed
-frames=549 vocab=32 chars=104 words=22
-and:0.42-0.48 so:0.64-0.82 my:1.02-1.16 fellow:1.32-1.56 americans:1.70-2.18 ask:3.55-3.69
-```
-
-### Beam Search — DONE
-Owner: Flexo
-Commits: `a0bdb9e` (core.ts), `d2ce555` (executor.ts), `783dfd1` (types.ts)
-Status: ✅ Complete
-
-Completed:
-- [x] `core.ts`: `whisperDecode()` dispatch, `whisperBeamDecode()` (beam search with KV-cache-per-beam)
-- [x] `executor.ts`: `splitGraphDecodeLoop` accepts `numBeams` + `lengthPenalty`, dispatches to `whisperDecode`
-- [x] `types.ts`: `numBeams`, `lengthPenalty`, `patience`, `bestOf` params
-- [x] WhisperX param parity: beam_size, best_of, patience, length_penalty
-
-### ORT URL/Path Fix — DONE
-Owner: Flexo
-Commit: `87e5e6a`
-Status: ✅ Complete
-
-Fixed:
-- [x] `tokenizer.ts:fetchText()` now handles bare file paths in Node.js (not just `file://` URLs)
-- [x] Verified: `WhisperTokenizer.fromUrl('/tmp/.../tokenizer.json')` works
-- [x] `ort.ts:createWhisperOrtSession()` already handled both — documented
-- [ ] Remaining: `loadSpeechModel` direct-source path has wiring issue at `materializeHuggingFaceArtifacts` (manipulates URLs even for `kind='direct'`). Workaround: use direct session creation pattern.
-
-### Phase E: Splitgraph Bridge Fix — DONE
-Owner: Flexo
-Commit: `cef005f`
-Status: ✅ Complete
-
-Root cause: `transcribeWithSplitGraph` bridge had three bugs:
-1. `dims: []` — tensors without shape (ORT rejection)
-2. Prefix mismatch — init outputs `present.*`, step expects `past_key_values.*`
-3. Encoder KV lost — step model outputs only decoder KV
-
-Fixed:
-- [x] runInit: store tensor dims for both `present.*` and `past_key_values.*` prefixes
-- [x] runStep: reconstruct `ort.Tensor` with proper dims + prefix conversion + data cloning
-- [x] runDecoderStepSplit: clone tensor data for cross-session safety
-
-Verified: whisper-base fp32, end-of-chapter-4.en.mp3 (167s)
-→ 73.6s transcription, 84.8% word overlap, zero hallucinations
-
-### Phase F: Whisper Production Checklist — ACTIVE
-Owner: Flexo
-Status: ✅ Core works | ⏳ 2 features remaining
-
-Checklist:
-- [x] Greedy decode (argmax per step)
-- [x] Beam search (whisperBeamDecode, numBeams, lengthPenalty)
-- [x] Long audio windowing (transcribeWithWindowing, 30s windows)
-- [x] Timestamp tokens (WhisperTimestampLogitProcessor)
-- [x] Token suppression (suppressTokens, beginSuppressTokens from generation_config)
-- [x] Context conditioning (extraPromptTokens, condition_on_previous_text)
-- [x] Quality gates (compression, logprob, entropy, no-speech)
+### Core Pipeline ✅
+- [x] Greedy decode + Beam search + bestOf + patience
+- [x] Long audio windowing (30s windows, 84.8% overlap)
+- [x] Timestamp tokens + token suppression
+- [x] Context conditioning (extraPromptTokens)
+- [x] Quality gates: compression, logprob, entropy, no-speech
 - [x] Temperature fallback [0.0, 0.2, ..., 1.0]
-- [x] Mel dimension auto-detect (numMelBins from manifest)
 - [x] SRT/VTT subtitle export
+- [x] Mel dimension auto-detect (numMelBins from manifest)
 - [x] VRAM optimization (skip merged decoder, defer alignment)
 - [x] URL/path unified (fetchText handles bare paths + file://)
-- [x] CTC Viterbi integration test — done (f7ef300): WAV2VEC2 alignment smoke passes, 22 words with timestamps
-- [x] bestOf independent decodings — done (71410b0): whisperBestOfDecode, score tracking, smoke verified
-- [x] patience beam search early stopping — done (74fe639, aceb643): completedSteps counter, stops N steps after best beam reaches EOS
-- [x] Large-v3-turbo smoke test — done (c49109b): fp32 works on 8GB with sequential session lifecycle (encoder→dispose→decoders→dispose). fp16 encoder blocked by ORT WASM inline 1.2GB allocation limit, not VRAM. 4.0s, perfect JFK output.
-- [ ] Diarization (separate model, future Phase)
-- [ ] Batched encoder for parallel window processing (WhisperX-style)
+- [x] Splitgraph KV cache bridge fix
+- [x] CTC Viterbi alignment + WAV2VEC2 aligner
+- [x] WAV2VEC2 model factory + presets + smoke
+- [x] EnhancedWhisperExecutor: VAD+gates+fallback+drift+context+merge
+- [x] ProductionWhisperPipeline: formatTranscript + SRT/VTT + metrics
 
-### WAV2VEC2 follow-ups — UNASSIGNED
+### large-v3-turbo Validation ✅
+- [x] Native ORT fp32 persistent smoke: 13.3s, perfect JFK
+- [x] WebGPU fp16 persistent smoke: 24.5s, perfect JFK
+- [x] WASM fp32 sequential smoke: 62s, perfect JFK
+- [x] fp16 encoder fixed: inline→external data (0.4MB graph + 1.2GB data)
+- [x] HF repos updated with fixed fp16
 
-Remaining:
-- HF upload/publish for the ONNX Wav2Vec2 base-960h artifact.
-- CTC Viterbi integration smoke done (f7ef300). Alignment works end-to-end.
-- Optional npm script for the Wav2Vec2 smoke commands if this becomes recurring.
-- Remove `lasr-ctc/ctc.ts` compatibility wrapper when MedASR is rewritten.
+### Smoke Tests
+- `tests/smoke/whisper-large-v3-turbo-native.mjs` — native ORT persistent
+- `tests/smoke/whisper-large-v3-turbo-wasm.mjs` — WASM sequential
+- `tests/smoke/whisper-e2e-pipeline-smoke.mjs` — full pipeline (encoder→gates→fallback)
+- `tests/smoke/whisper-webgpu-smoke.html` — WebGPU with model selector
+- `tests/smoke/whisper-bestof-smoke.mjs` — bestOf decodings
+- `tests/smoke/wav2vec2-node-wasm-smoke.mjs` — WAV2VEC2 ASR
+- `tests/smoke/wav2vec2-node-wasm-align-smoke.mjs` — WAV2VEC2 alignment
 
-## SHARED FILES (coordinate before modifying)
+## REMAINING TASKS (priority order)
 
-- `src/ctc/**` — shared CTC decoder/timing utilities.
-- `src/models/wav2vec2/**` — Wav2Vec2 CTC model family.
-- `src/presets/wav2vec2/**` — Wav2Vec2 preset manifest/factory.
-- `src/types/index.ts` — shared type definitions.
-- `src/audio/specs.ts` — audio processor specs.
-- `src/inference/descriptors.ts` — encoder/decoder descriptors.
-- `package.json` — coordinate exports changes.
-- `src/index.ts` — coordinate barrel exports.
+### 1. Language Auto-Detection
+**Impact**: Replaces hardcoded `<|en|>` with actual language detection from encoder output.
+Whisper has a language detection head — extract logits from first encoder token.
+**Files**: `src/models/whisper-seq2seq/executor.ts`, new `src/models/whisper-seq2seq/language.ts`
+**Effort**: Medium | **Status**: ⏳
 
-## Verification (latest pass)
+### 2. Word Timestamps via Cross-Attention DTW
+**Impact**: WhisperX-quality word-level timestamps. Already implemented in
+`attention-alignment.ts` + `computeAttentionWordTimestampsSplitGraph`. Need to wire through
+EnhancedWhisperExecutor so production pipeline gets word timestamps.
+**Files**: `src/models/whisper-seq2seq/enhanced-executor.ts`, `src/models/whisper-seq2seq/attention-alignment.ts`
+**Effort**: Medium | **Status**: ⏳
 
-```bash
-npx vitest run tests/alignment-ctc-viterbi.test.ts tests/wav2vec2-alignment.test.ts tests/whisper-beam-search.test.ts
-npm run typecheck
-npm run lint          # 0 errors, existing max-lines warnings only
-npm test              # 103 files, 601 tests passed
-npm run build
-node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
-node tests/smoke/wav2vec2-node-wasm-align-smoke.mjs
-node tests/smoke/whisper-bestof-smoke.mjs
-# Large model smokes (require /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/)
-node tests/smoke/whisper-large-v3-turbo-native.mjs          # fp32 native ORT persistent (streaming)
-node tests/smoke/whisper-large-v3-turbo-wasm.mjs --fp32     # fp32 WASM sequential (batch)
-```
+### 3. Batched Encoder Processing
+**Impact**: 2-3x faster for long audio. Run encoder on multiple windows in parallel
+(WhisperX-style batching). Requires encoder to accept batched input [N, mel, 3000].
+**Files**: `src/models/whisper-seq2seq/executor.ts`, `src/pipeline/whisper-chunking.ts`
+**Effort**: Large | **Status**: ⏳
 
-## Backend Strategy
+### 4. VAD Integration Test (FireRed ONNX)
+**Impact**: Validates VAD pre-segmentation with real ONNX model.
+FireRed VAD is implemented in `src/runtime/firered-vad/` but needs end-to-end test.
+**Files**: `src/runtime/firered-vad/`, new smoke test
+**Effort**: Small | **Status**: ⏳
 
-| Priority | Backend | Model size | Lifecycle | Status |
-|----------|---------|------------|-----------|--------|
-| **1st** | `onnxruntime-node` (native) | large-v3-turbo fp32 | Persistent (streaming) | ✅ 13.3s |
-| 2nd | WebGPU (browser) | large-v3-turbo fp16 | Persistent | ⏳ Needs browser+GPU |
-| Fallback | ORT Web/WASM | large-v3-turbo fp32 | Sequential (batch) | ✅ 62s |
-| Diagnostic | ORT Web/WASM | whisper-base fp32 | Persistent | ✅ |
-
-**WASM heap limit (~1.5GB)**: Large models need sequential lifecycle on WASM
-(encoder→dispose→decoders→dispose). Native ORT and WebGPU have no such limit.
-
-**fp16 dtype**: Encoder expects float16 input. Node.js lacks native Float16Array.
-fp32 is the Node.js development target. fp16 reserved for WebGPU deployment.
+### 5. SRT/VTT Export End-to-End Test
+**Impact**: Validates subtitle pipeline with real audio.
+ProductionWhisperPipeline has SRT/VTT generation but needs smoke test.
+**Files**: new smoke test
+**Effort**: Small | **Status**: ⏳
 
 ## Quantization Roadmap (deferred)
 
-Quantized variants reduce model size but need accuracy validation:
-- **q8 (1.4GB)**: Post-export dynamic quantization. WASM loads but KV cache tensor
-  bug on large-v3-turbo (ORT-level defect). Validated on whisper-base.
+- **q8 (1.4GB)**: KV cache tensor bug on large-v3-turbo (ORT-level defect). Validated on whisper-base.
 - **q4/q4f16**: Experimental. Needs opset research + WebGPU validation.
-- **Mixed precision** (encoder fp16 + decoder q8): Deferred — needs dtype boundary
-  validation and KV cache compatibility checks.
-- **Priority**: fp32/fp16 correctness first. Quantization is a deployment optimization
-  to add after core pipeline is stable.
+- **Mixed precision**: Deferred until dtype boundary + KV cache validated.
+- **Priority**: fp32/fp16 correctness first. Quantization is deployment optimization.
 
-## WebGPU Test Plan
+## Verification
 
-1. Serve fp16 model via HTTP (CORS-safe, need `externalData` mapping in browser)
-2. Adapt `tests/smoke/whisper-webgpu-smoke.html` for large-v3-turbo fp16
-3. Test on machine with browser+GPU (Windows host, Bender, or Waffle)
-4. Validate against native ORT reference output
+```bash
+npm run typecheck && npm run lint && npm test          # 103 files, 601 tests
+npm run build
+node tests/smoke/whisper-e2e-pipeline-smoke.mjs        # Full pipeline
+node tests/smoke/whisper-large-v3-turbo-native.mjs     # Native ORT persistent
+node tests/smoke/whisper-large-v3-turbo-wasm.mjs --fp32 # WASM sequential
+node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
+node tests/smoke/whisper-bestof-smoke.mjs
+```
 
-## Communication
+## Shared Files (coordinate before modifying)
 
-Leave notes in this file when claiming tasks or changing shared files. Commit this file when updating task status.
+- `src/models/whisper-seq2seq/core.ts` — decode loops (greedy, beam, bestOf, patience)
+- `src/models/whisper-seq2seq/executor.ts` — ORT bridge, splitGraphDecodeLoop, transcribeWithSplitGraph
+- `src/models/whisper-seq2seq/enhanced-executor.ts` — production pipeline
+- `src/quality/` — quality gates (model-agnostic)
+- `src/chunking/` — VAD, drift, context (model-agnostic)
+- `src/post-processing/` — merge, format, subtitles
+- `src/alignment/` — CTC Viterbi, WAV2VEC2 aligner
+- `src/pipeline/` — ProductionWhisperPipeline
