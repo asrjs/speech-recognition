@@ -81,10 +81,14 @@ export interface WhisperDecodeOptions {
   readonly lengthPenalty?: number;
   /** Temperature (0 = greedy argmax, >0 = sample). Greedy mode only. */
   readonly temperature?: number;
+  /** Number of independent decodings to run, pick best by score. WhisperX: best_of */
+  readonly bestOf?: number;
 }
 
 export interface WhisperDecodeResult {
   readonly tokens: readonly number[];
+  /** Cumulative log-probability score (sum of log probs per token). */
+  readonly score?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +99,10 @@ export async function whisperDecode(
   session: WhisperCoreSession,
   options: WhisperDecodeOptions,
 ): Promise<WhisperDecodeResult> {
+  const bestOf = options.bestOf ?? 1;
+  if (bestOf > 1) {
+    return whisperBestOfDecode(session, options, bestOf);
+  }
   const strategy = options.strategy ?? 'greedy';
   if (strategy === 'beam' && (options.beamSize ?? 5) > 1) {
     return whisperBeamDecode(session, options);
@@ -124,6 +132,10 @@ export async function whisperGreedyDecode(
   if (processLogits) processLogits(firstLogits, promptTokens, promptTokens.length);
   const firstTokenId = argmax(firstLogits);
   const tokens: number[] = [firstTokenId];
+
+  // Track cumulative log-probability for bestOf scoring
+  let cumulativeLogProb = logProbOfToken(firstLogits, firstTokenId);
+
   if (onTokenLogits) onTokenLogits(firstTokenId, firstLogits, { tokens, beginIndex: promptTokens.length });
 
   for (let step = 1; step < maxNewTokens; step++) {
@@ -132,11 +144,12 @@ export async function whisperGreedyDecode(
     const nextTokenId = argmax(stepResult.logits);
     tokens.push(nextTokenId);
     pastKv = stepResult.presentKv;
+    cumulativeLogProb += logProbOfToken(stepResult.logits, nextTokenId);
     if (onTokenLogits) onTokenLogits(nextTokenId, stepResult.logits, { tokens, beginIndex: promptTokens.length });
     if (nextTokenId === eosTokenId) break;
   }
 
-  return { tokens };
+  return { tokens, score: cumulativeLogProb };
 }
 
 // ---------------------------------------------------------------------------
@@ -228,7 +241,7 @@ export async function whisperBeamDecode(
   const best = selectBestWhisperBeam(beams as any, lengthPenalty) as any;
   if (!best) return whisperGreedyDecode(session, { ...options, strategy: 'greedy' });
 
-  return { tokens: best.tokens.slice(promptTokens.length) };
+  return { tokens: best.tokens.slice(promptTokens.length), score: best.score };
 }
 
 // ---------------------------------------------------------------------------
@@ -250,4 +263,55 @@ function selectTopK(logProbs: Float32Array, k: number): { tokenId: number; logPr
   const indexed = Array.from(logProbs, (lp, i) => ({ tokenId: i, logProb: lp }));
   indexed.sort((a, b) => b.logProb - a.logProb);
   return indexed.slice(0, k);
+}
+
+/**
+ * Compute log-probability of a specific token from raw logits.
+ * Returns log_softmax(logits)[tokenId].
+ */
+function logProbOfToken(logits: Float32Array, tokenId: number): number {
+  let max = -Infinity;
+  for (let i = 0; i < logits.length; i++) if (logits[i]! > max) max = logits[i]!;
+  let sum = 0;
+  for (let i = 0; i < logits.length; i++) sum += Math.exp(logits[i]! - max);
+  return (logits[tokenId] ?? -Infinity) - max - Math.log(sum);
+}
+
+// ---------------------------------------------------------------------------
+// BestOf independent decodings
+// ---------------------------------------------------------------------------
+
+/**
+ * Run N independent decodings and return the one with the best score.
+ *
+ * Matches WhisperX/faster-whisper best_of behavior:
+ * multiple independent beam/greedy decodes, pick the best by
+ * normalized cumulative log-probability score.
+ */
+async function whisperBestOfDecode(
+  session: WhisperCoreSession,
+  options: WhisperDecodeOptions,
+  bestOf: number,
+): Promise<WhisperDecodeResult> {
+  const lengthPenalty = options.lengthPenalty ?? 0;
+  let bestResult: WhisperDecodeResult | null = null;
+  let bestScore = -Infinity;
+
+  for (let i = 0; i < bestOf; i++) {
+    const result = await (options.strategy === 'beam' && (options.beamSize ?? 5) > 1
+      ? whisperBeamDecode(session, options)
+      : whisperGreedyDecode(session, options));
+
+    const tokenCount = result.tokens.length;
+    const normScore = result.score !== undefined
+      ? (lengthPenalty === 0 ? result.score : result.score / Math.pow(Math.max(1, tokenCount), lengthPenalty))
+      : -Infinity;
+
+    if (normScore > bestScore) {
+      bestScore = normScore;
+      bestResult = result;
+    }
+  }
+
+  return bestResult!;
 }

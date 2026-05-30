@@ -41,10 +41,20 @@ function logSoftmax(logits: Float32Array): Float32Array {
   return logProbs;
 }
 
-function normalizedBeamScore(beam: WhisperBeamState, lengthPenalty: number): number {
+export function normalizedBeamScore(beam: WhisperBeamState, lengthPenalty: number): number {
   if (lengthPenalty === 0) return beam.score;
   const generatedLength = Math.max(1, beam.tokens.length);
   return beam.score / Math.pow(generatedLength, lengthPenalty);
+}
+
+/** Normalize a raw cumulative log-prob score by token count. */
+export function normalizedSequenceScore(
+  cumulativeLogProb: number,
+  tokenCount: number,
+  lengthPenalty: number,
+): number {
+  if (lengthPenalty === 0) return cumulativeLogProb;
+  return cumulativeLogProb / Math.pow(Math.max(1, tokenCount), lengthPenalty);
 }
 
 export function rankWhisperBeamCandidates<TToken = unknown>({

@@ -184,8 +184,10 @@ export async function splitGraphDecodeLoop(params: {
   numBeams?: number;
   /** Length penalty for beam search (default: 0.0) */
   lengthPenalty?: number;
+  /** Number of independent decodings, pick best by score (WhisperX: best_of) */
+  bestOf?: number;
 }): Promise<SplitGraphDecodeResult> {
-  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, modelConfig, runInit, runStep, processLogits, onTokenLogits, numBeams, lengthPenalty } = params;
+  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, modelConfig, runInit, runStep, processLogits, onTokenLogits, numBeams, lengthPenalty, bestOf } = params;
 
   const encoderDims: readonly number[] = [1, encoderHiddenStates.length / modelConfig.dModel, modelConfig.dModel];
   const session: WhisperCoreSession = {
@@ -197,6 +199,7 @@ export async function splitGraphDecodeLoop(params: {
     strategy: (numBeams ?? 1) > 1 ? 'beam' : 'greedy',
     beamSize: numBeams ?? 1,
     lengthPenalty: lengthPenalty ?? 0,
+    bestOf: bestOf ?? 1,
   });
   return { tokens: result.tokens };
 }
@@ -1293,6 +1296,7 @@ export class WhisperOnnxExecutor {
       onTokenLogits: options.onTokenLogits,
       numBeams: options.numBeams ?? 1,
       lengthPenalty: options.lengthPenalty ?? 0,
+      bestOf: options.bestOf,
       runInit: async (prompt, _encHs, _dims) => {
         const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
         // Store tensor dims for runStep reconstruction (init→step tensor bridging).
