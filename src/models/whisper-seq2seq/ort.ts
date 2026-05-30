@@ -344,6 +344,11 @@ export async function createWhisperOrtSession(
     if (/^file:/i.test(modelUrl)) {
       modelUrl = fileURLToPath(modelUrl);
     }
+    // Also handle bare file paths — ONNX Runtime Node.js accepts them natively,
+    // but ensure they're absolute for consistency
+    if (typeof modelUrl === 'string' && modelUrl.startsWith('/')) {
+      // Already a file path, no conversion needed
+    }
     if (externalDataUrl && /^file:/i.test(externalDataUrl)) {
       externalDataUrl = fileURLToPath(externalDataUrl);
     }

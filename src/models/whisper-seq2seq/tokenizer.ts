@@ -15,12 +15,21 @@ interface WhisperTokenizerJson {
 }
 
 async function fetchText(url: string): Promise<string> {
-  if (isNodeLikeRuntime() && /^file:/i.test(url)) {
-    const [{ fileURLToPath }, fs] = await Promise.all([
-      importNodeModule<typeof import('node:url')>('node:url'),
-      importNodeModule<typeof import('node:fs/promises')>('node:fs/promises'),
-    ]);
-    return fs.readFile(fileURLToPath(url), 'utf8');
+  if (isNodeLikeRuntime()) {
+    const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
+    const fs = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+
+    if (/^file:/i.test(url)) {
+      return fs.readFile(fileURLToPath(url), 'utf8');
+    }
+
+    // Handle bare file paths (no protocol) — check filesystem directly
+    if (/^(?:\/|[A-Za-z]:\\|\.\.?[\\/])/.test(url)) {
+      const { existsSync } = await importNodeModule<typeof import('node:fs')>('node:fs');
+      if (existsSync(url)) {
+        return fs.readFile(url, 'utf8');
+      }
+    }
   }
   const response = await fetch(url);
   if (!response.ok) {
