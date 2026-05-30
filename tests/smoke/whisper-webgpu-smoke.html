@@ -63,7 +63,7 @@ const MODELS = {
     dir: '/models/whisper-large-v3-turbo-fp16/',  // serve this dir via HTTP
     nMels: 128,
     melFrames: 3000,
-    promptIds: [50258, 50259, 50359],  // <|startoftranscript|>, <|en|>, <|transcribe|>
+    promptIds: [50258, 50259, 50359, 50363], // <|startoftranscript|>, <|en|>, <|transcribe|>, <|notimestamps|>
     eosId: 50257,
     maxNewTokens: 200,
     // Reference from native ORT fp32 smoke — text match only (timestamp tokens differ without processor)
