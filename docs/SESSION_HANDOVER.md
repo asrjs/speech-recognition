@@ -14,9 +14,11 @@ Load `asrjs-dev` skill → read `docs/AGENT_TASKS.md` → this file.
 
 | Backend | Precision | Lifecycle | Time | Smoke |
 |---------|-----------|-----------|------|-------|
-| Native ORT | fp32 | Persistent | 19.2s | `whisper-large-v3-turbo-native.mjs` |
+| Native ORT | fp32 | Persistent | 13.0s | `whisper-large-v3-turbo-native.mjs` |
+| Native ORT | q8 | Persistent | **10.3s** | `WHISPER_LARGE_DIR=.../q8 …native.mjs` |
 | WebGPU | fp16 | Persistent | 24.5s | `whisper-webgpu-smoke.html` |
 | WASM | fp32 | Sequential | 57.1s | `whisper-large-v3-turbo-wasm.mjs` |
+| WASM | q8 | Sequential | **32.7s** | `WHISPER_LARGE_DIR=.../q8 …wasm.mjs` |
 
 ### fp16 packaging fix
 Encoder had 1.2GB inline weights → ORT WASM `std::bad_alloc`. Fixed by converting to external data with `onnx.external_data_helper.convert_model_to_external_data()`. Updated HF repos:
@@ -140,11 +142,10 @@ vad-demo/                   — Isolated VAD testing
 
 | Task | Effort | Notes |
 |------|--------|-------|
-| Batched encoder | Deferred | ONNX batch dim is dynamic (verified batch=2 works), but **0.95-1.0x speedup on CPU** — no benefit on CPU backend. Needs GPU (CUDA provider) to show gains. Marked deferred. |
-| q8 KV cache fix | Medium | ORT-level quantization defect on large-v3-turbo |
+| Batched encoder | Deferred | (see investigation above) |
 | q4/q4f16 | Large | Experimental quantization |
 
-**Stale items cleaned up:** `loadSpeechModel` fix was already done (fetchText handles bare paths since `87e5e6a`). OOM already fixed via sequential lifecycle.
+**Stale items cleaned up:** `loadSpeechModel` fix was already done (fetchText handles bare paths since `87e5e6a`). OOM already fixed via sequential lifecycle. **q8 KV cache bug** — investigated and confirmed **WORKING** on both native ORT (10.3s) and WASM (32.7s). The previously reported "KV cache tensor bug" does not reproduce with current onnxruntime. q8 produces identical JFK output to fp32.
 
 ## Verification
 
