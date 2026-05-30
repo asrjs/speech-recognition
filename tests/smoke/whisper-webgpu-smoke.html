@@ -251,15 +251,33 @@ async function runSmoke() {
     }
     log(`  Mel shape: [1, ${model.nMels}, ${model.melFrames}]`);
 
-    // 2. Load ONNX sessions
+    // 2. Load ONNX sessions (browser needs explicit externalData mapping)
     log('Creating ONNX sessions...');
     const tSessStart = performance.now();
-    const sessOpts = { executionProviders: [ep], graphOptimizationLevel: 'all' };
-    const encSess = await ort.InferenceSession.create(model.dir + 'encoder_model.onnx', sessOpts);
+
+    // Helper: fetch external data file if it exists, return session options
+    async function createSession(graphFile, dataFile) {
+      const sessOpts = { executionProviders: [ep], graphOptimizationLevel: 'all' };
+      if (dataFile) {
+        const dataUrl = model.dir + dataFile;
+        log(`  fetching external data: ${dataFile}`);
+        const dataResp = await fetch(dataUrl);
+        if (dataResp.ok) {
+          const dataBuf = await dataResp.arrayBuffer();
+          sessOpts.externalData = [{ path: dataFile, data: new Uint8Array(dataBuf) }];
+          log(`    loaded (${(dataBuf.byteLength / 1024 / 1024).toFixed(1)} MB)`);
+        } else {
+          log(`  WARN: external data not found (${dataUrl}), trying without`);
+        }
+      }
+      return ort.InferenceSession.create(model.dir + graphFile, sessOpts);
+    }
+
+    const encSess = await createSession('encoder_model.onnx', 'encoder_model.onnx.data');
     log(`  encoder loaded`);
-    const initSess = await ort.InferenceSession.create(model.dir + 'decoder_init.onnx', sessOpts);
+    const initSess = await createSession('decoder_init.onnx', 'decoder_init.onnx.data');
     log(`  decoder_init loaded`);
-    const stepSess = await ort.InferenceSession.create(model.dir + 'decoder_step.onnx', sessOpts);
+    const stepSess = await createSession('decoder_step.onnx', 'decoder_step.onnx.data');
     log(`  decoder_step loaded`);
     log(`  Sessions created in ${((performance.now() - tSessStart) / 1000).toFixed(2)}s`);
 
