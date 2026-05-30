@@ -48,7 +48,26 @@ sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array
 - Smoke: `tests/smoke/quality-gates-smoke.mjs` (26 tests)
 - CLI flags: `--compression_ratio_threshold`, `--logprob_threshold`, `--no_speech_threshold`, `--entropy_threshold`, `--temperature`, `--temperature_increment_on_fallback`
 
-### Features completed this session
+### Features completed this session (2026-06-01, Flexo)
+
+**Beam search in runner:**
+- `--beam_size N` (default 1 = greedy), `--best_of N`, `--patience`, `--length_penalty`
+- `--decode_type greedy|beam|best_of` for explicit mode selection
+- Uses library's `whisperDecode` when beam/best_of requested
+- Backward compatible: no beam params → existing greedy path
+
+**Wav2Vec2 forced alignment in runner:**
+- WhisperX-style CTC post-pass alignment
+- Loads `wav2vec2-base-960h-onnx` from HF hub (fp16 or fp32)
+- 16kHz preprocessing → ONNX inference → argmax → CTC collapse → word timestamps
+- Falls back gracefully if Wav2Vec2 model unavailable
+- `--wav2vec2_model` flag for custom path
+
+**OOM handling verification:**
+- User confirmed OOM was already fixed (sequential lifecycle, external data)
+- Native ORT fp32 persistent: ✓ (3 sessions, 10.6s+1.5s, JFK perfect)
+- WASM fp32 sequential: ✓ (57.1s, encoder→dispose→decoders, JFK perfect)
+- Not a regression — both large-v3-turbo smokes pass clean
 
 **VAD pipeline (2026-05-30):**
 - `mergeVadSegments` enhanced: overlap support, vad_onset/vad_offset params

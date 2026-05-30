@@ -63,6 +63,15 @@ Updated: 2026-06-01 (Flexo)
 
 ## REMAINING TASKS (priority order)
 
+### 0. Error Recovery / OOM Handling ✅ DONE (Legacy)
+**OOM already fixed**: The large-model OOM issue (ORT WASM heap limit) was fixed by the sequential lifecycle pattern:
+- encoder → run → dispose, then decoders → run → dispose
+- Peak memory ~max(encoder, decoders) instead of sum(encoder, decoders)
+- Native ORT (primary backend) has no OOM issue — all 3 sessions load persistently
+- WASM fallback uses sequential lifecycle (verified in large-v3-turbo-wasm smoke)
+- fp16 fix: 1.2GB inline weights → external data (no more std::bad_alloc on WASM)
+- Not a regression — working in both existing smoke tests
+
 ### 1. Language Auto-Detection ✅ DONE
 Commit: `136ad2a`. Runs decoder_init with single `<|startoftranscript|>` token, reads language from first logit position. Wired in `transcribeWithSplitGraph` when `language='auto'`. Falls back to `config.languages[0] ?? 'en'`.
 
@@ -73,7 +82,28 @@ Already implemented in `computeAttentionWordTimestampsSplitGraph` + `runForcedAl
 2-3x faster for long audio. Requires encoder to accept batched input [N, mel, 3000].
 Large effort — needs ONNX graph changes and executor refactor.
 
-### 4. VAD Integration — WhisperX-style Pipeline ✅ DONE
+### 5. Beam Search in Runner ✅ DONE (2026-06-01, Flexo)
+Commit: `03707b4`. Wired into `whisperx-runner.mjs`:
+- `--beam_size N` (default 1 = greedy). Uses library's greedy decode at beam_size=1 for backward compat.
+- `--best_of N` (default 1). Added `whisperDecode` import for best_of / decode_type branching.
+- `--patience 2.0` — beam expansion patience
+- `--length_penalty 0.0` — length penalty for beam / best_of
+- `--decode_type greedy|beam|best_of` — explicit decode mode selection
+- Fallback: when no beam search params given, uses existing greedy path (no behavior change)
+
+### 5. Wav2Vec2 Forced Alignment in Runner ✅ DONE (2026-06-01, Flexo)
+Commit: `9f62c42`. WhisperX-style CTC forced alignment:
+- Loads `wav2vec2-base-960h-onnx` model from HF hub (fp16 default, falls back fp32)
+- Preprocesses audio to wav2vec2 feature format (16kHz mono, padding/truncation)
+- Runs Wav2Vec2 ONNX inference via ort-node → logits → argmax → CTC collapse
+- Produces word-level timestamps using token alignment + Viterbi-like decoding
+- Integrated as post-pass after whisper transcription (WhisperX semantic)
+- Configurable via `--wav2vec2_model` flag
+- Falls back gracefully if Wav2Vec2 model not available
+  
+Smoke verified: JFK English returns correct alignment for all 22 words.
+
+### 6. VAD Integration — WhisperX-style Pipeline ✅ DONE
 Enhanced 2026-05-30 (Flexo). The basic smoke (commit `77778e3`) detected segments.
 Now expanded into full WhisperX-compatible VAD preprocessing pipeline:
 
