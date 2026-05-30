@@ -143,7 +143,8 @@ vad-demo/                   — Isolated VAD testing
 | Batched encoder | Large | Needs encoder ONNX to accept [N, mel, 3000] |
 | q8 KV cache fix | Medium | ORT-level quantization defect on large-v3-turbo |
 | q4/q4f16 | Large | Experimental quantization |
-| loadSpeechModel fix | Medium | Direct-source path has URL/path wiring issue |
+
+**Stale items cleaned up:** `loadSpeechModel` fix was already done (fetchText handles bare paths since `87e5e6a`). OOM already fixed via sequential lifecycle.
 
 ## Verification
 

@@ -156,6 +156,12 @@ The `whisperx-runner.mjs` now fully integrates all 4 quality gates with temperat
 - **Mixed precision**: Deferred until dtype boundary + KV cache validated.
 - **Priority**: fp32/fp16 correctness first. Quantization is deployment optimization.
 
+## Stale Items Cleanup
+
+The following items from earlier docs were **already fixed** as of this session:
+- **loadSpeechModel fix** — URL/path wiring issue fixed in commits `87e5e6a` + `0ceb405`. `fetchText` now handles bare file paths, `file://` URLs, and HTTP URLs. Verified: `loadSpeechModel({modelId:'base', preset:'whisper'})` works with and without `useManifestSources`.
+- **OOM handling** — Fixed via sequential lifecycle (encoder→dispose→decoders) for WASM + external data for fp16. Native ORT has no heap limit. Verified both large-v3-turbo smokes pass.
+
 ## Verification
 
 ```bash
