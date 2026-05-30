@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * WhisperX-compatible transcription runner with full quality gates.
+ * WhisperX-compatible transcription runner with full quality gates + word timestamps.
  *
- * Accepts the same CLI parameters as WhisperX:
- *   --model, --language, --vad_onset, --beam_size, --temperature,
+ * Accepts WhisperX CLI parameters:
+ *   --model, --language, --vad_onset, --word_timestamps, --beam_size,
  *   --compression_ratio_threshold, --logprob_threshold,
- *   --no_speech_threshold, --entropy_threshold, etc.
+ *   --no_speech_threshold, --entropy_threshold, --temperature, etc.
  *
- * Exports runAsrPipeline() for programmatic use (smoke tests).
+ * Exports runAsrPipeline() for programmatic use.
  */
 
 import path from 'node:path';
@@ -27,7 +27,7 @@ const usedIndices = new Set();
 const BOOLEAN_FLAGS = new Set([
   'verbose', 'noalign', 'suppressnumerals', 'conditiononprevioustext',
   'diarize', 'speakerembeddings', 'highlightwords', 'returncharalignments',
-  'printprogress', 'modelcacheonly', 'fp16',
+  'printprogress', 'modelcacheonly', 'fp16', 'wordtimestamps',
 ]);
 
 const DEFAULT_OPTS = {
@@ -43,7 +43,8 @@ const DEFAULT_OPTS = {
   task: 'transcribe', language: null,
   noAlign: false,
   outputFormat: 'vtt',
-  verbose: true,
+  verbose: false,
+  wordTimestamps: true,
 };
 
 function parseArgs(customArgs) {
@@ -79,7 +80,7 @@ function parseArgs(customArgs) {
 
       const optKey = mapping[key];
       if (optKey) {
-        if (['noAlign', 'suppressNumerals', 'conditionOnPreviousText', 'verbose'].includes(optKey)) {
+        if (['noAlign', 'suppressNumerals', 'conditionOnPreviousText', 'verbose', 'wordTimestamps'].includes(optKey)) {
           opts[optKey] = val === true || val === 'true' || val === '1';
         } else if (typeof opts[optKey] === 'number') {
           opts[optKey] = Number(val);
@@ -109,7 +110,7 @@ function formatTime(seconds) {
 }
 
 function toVtt(segments) {
-  const lines = ['WEBVTT', 'Kind: captions', 'Language: tr', ''];
+  const lines = ['WEBVTT', 'Kind: captions', 'Language: en', ''];
   for (const seg of segments) {
     lines.push(`${formatTime(seg.start)} --> ${formatTime(seg.end)}`);
     lines.push(seg.text);
@@ -118,11 +119,38 @@ function toVtt(segments) {
   return lines.join('\n');
 }
 
+function toSrt(segments) {
+  return segments.map((seg, i) => {
+    const start = formatTime(seg.start).replace('.', ',');
+    const end = formatTime(seg.end).replace('.', ',');
+    return `${i + 1}\n${start} --> ${end}\n${seg.text}\n`;
+  }).join('\n');
+}
+
+function toTxt(segments) {
+  return segments.map(s => s.text).join('\n');
+}
+
+function toJson(segments, meta) {
+  return JSON.stringify({
+    segments: segments.map(s => ({
+      text: s.text,
+      start: s.start,
+      end: s.end,
+      words: s.words?.map(w => ({
+        text: w.text,
+        start: w.start,
+        end: w.end,
+      })),
+    })),
+    ...(meta ? { metadata: meta } : {}),
+  }, null, 2);
+}
+
 // ──────────────────────────────────────────────────────────
 // Temperature sampling
 // ──────────────────────────────────────────────────────────
 
-/** Greedy argmax for temperature=0. */
 function argmax(arr) {
   let idx = 0;
   for (let i = 1; i < arr.length; i++) {
@@ -131,14 +159,9 @@ function argmax(arr) {
   return idx;
 }
 
-/** Temperature-scaled sampling for temperature > 0. */
 function sample(logits, temperature) {
-  // Apply temperature scaling
   const scaled = new Float32Array(logits.length);
-  for (let i = 0; i < logits.length; i++) {
-    scaled[i] = logits[i] / temperature;
-  }
-  // Softmax
+  for (let i = 0; i < logits.length; i++) scaled[i] = logits[i] / temperature;
   const maxVal = Math.max(...scaled);
   const exps = new Float32Array(scaled.length);
   let sumExp = 0;
@@ -147,7 +170,6 @@ function sample(logits, temperature) {
     exps[i] = e;
     sumExp += e;
   }
-  // Sample from distribution
   const r = Math.random();
   let cum = 0;
   for (let i = 0; i < exps.length; i++) {
@@ -161,45 +183,53 @@ function nextToken(logits, temperature) {
   return temperature <= 0 ? argmax(logits) : sample(logits, temperature);
 }
 
+/** Build word-level timestamps from DTW token timestamps. */
+function buildWordsFromTimestamps(
+  textTokenIds, decodedTokens, segStart, dtwTimestamps, tokenizer,
+) {
+  if (textTokenIds.length === 0 || dtwTimestamps.length < 2) return [];
+  const words = [];
+  let bufText = '';
+  let bufStart = segStart + dtwTimestamps[0];
+
+  for (let i = 0; i < textTokenIds.length; i++) {
+    const t = decodedTokens[i] ?? '';
+    // Whisper BPE: tokens starting with space are word-starts
+    // Also handle punctuation boundaries
+    const isWordStart = t.startsWith(' ') || (
+      i > 0 && (decodedTokens[i - 1]?.endsWith('.') || decodedTokens[i - 1]?.endsWith('!') ||
+                decodedTokens[i - 1]?.endsWith('?') || decodedTokens[i - 1]?.endsWith(':') ||
+                decodedTokens[i - 1]?.endsWith(';'))
+    );
+
+    if (isWordStart && bufText) {
+      words.push({ text: bufText.trim(), start: bufStart, end: segStart + dtwTimestamps[i] });
+      bufText = t;
+      bufStart = segStart + dtwTimestamps[i];
+    } else {
+      bufText += t;
+    }
+  }
+  if (bufText.trim()) {
+    words.push({ text: bufText.trim(), start: bufStart, end: segStart + dtwTimestamps[dtwTimestamps.length - 1] });
+  }
+  return words;
+}
+
 // ──────────────────────────────────────────────────────────
 // Core ASR pipeline
 // ──────────────────────────────────────────────────────────
 
-/**
- * Run the full ASR pipeline: audio → VAD → decode (with quality gates + fallback).
- *
- * @param {object} opts
- * @param {string} opts.model           Path to ONNX model directory
- * @param {string} [opts.language]      Language code or null for auto-detect
- * @param {number} [opts.vadOnset]      VAD speech onset threshold
- * @param {number} [opts.vadOffset]     VAD speech offset threshold
- * @param {number} [opts.compressionRatioThreshold]  Default 2.4
- * @param {number} [opts.logprobThreshold]           Default -1.0
- * @param {number} [opts.noSpeechThreshold]          Default 0.6
- * @param {number} [opts.entropyThreshold]           Default 2.4
- * @param {number} [opts.temperature]                Starting temperature (default 0)
- * @param {number} [opts.temperatureIncrement]       Fallback increment (default 0.2)
- * @param {number} [opts.bestOf]        Best-of N sampling (not implemented in temp fallback yet)
- * @param {number} [opts.beamSize]      Beam search size (not implemented yet)
- * @param {boolean} [opts.conditionOnPreviousText]  Context conditioning
- * @param {string} [opts.initialPrompt] Initial prompt text
- * @param {number} [opts.chunkSize]     Max segment duration in seconds
- * @param {boolean} [opts.verbose]      Print progress
- * @param {string} opts.audioPath       Path to audio file
- * @returns {Promise<object>} { segments, fullText, wordCount, asrTime, vttContent,
- *                              temperaturesUsed, fallbackCount, gateResults }
- */
 export async function runAsrPipeline(_opts) {
-  // Merge with defaults
   const opts = { ...DEFAULT_OPTS, ..._opts };
   const { audioPath } = opts;
-  const verbose = opts.verbose !== false;
+  const verbose = opts.verbose;
 
   log(`Audio: ${audioPath}`, verbose);
   log(`Model: ${opts.model}`, verbose);
   log(`Language: ${opts.language || 'auto-detect'}`, verbose);
-  log(`VAD: ${opts.vadBackendType} (onset=${opts.vadOnset}, offset=${opts.vadOffset})`, verbose);
-  log(`Beam: ${opts.beamSize}, BestOf: ${opts.bestOf}`, verbose);
+  log(`Word timestamps: ${opts.wordTimestamps ? 'yes' : 'no'}`, verbose);
+  log(`Output format: ${opts.outputFormat}`, verbose);
   log('', verbose);
 
   // ── 1. Decode audio to 16kHz mono WAV ──
@@ -239,10 +269,13 @@ export async function runAsrPipeline(_opts) {
   const { parseWhisperGenerationConfig, parseWhisperModelConfig } = await import(
     path.join(dist, 'models/whisper-seq2seq/generation-config.js')
   );
+  const { processSplitGraphAlignment } = await import(
+    path.join(dist, 'models/whisper-seq2seq/executor.js')
+  );
 
   const tokenizer = await WhisperTokenizer.fromUrl(path.join(opts.model, 'tokenizer.json'));
-  const language = opts.language || 'en';
-  const langId = tokenizer.getTokenId(`<|${language}|>`) ?? tokenizer.getTokenId('<|en|>') ?? 50259;
+  let language = 'en';
+  let langId = tokenizer.getTokenId('<|en|>') ?? 50259;
 
   const genConfig = parseWhisperGenerationConfig(
     JSON.parse(await fetchText(path.join(opts.model, 'generation_config.json')))
@@ -251,14 +284,73 @@ export async function runAsrPipeline(_opts) {
   const modelConfig = parseWhisperModelConfig(configRaw);
   const melBins = modelConfig.numMelBins ?? 80;
   const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
+  const timestampBeginId = tokenizer.getTokenId('<|0.00|>') ?? 50364;
+  const timestampEndId = tokenizer.getTokenId('<|30.00|>') ?? 51864;
 
+  // Load split-graph sessions
   const encSess = await ort.InferenceSession.create(path.join(opts.model, 'encoder_model.onnx'));
   const initSess = await ort.InferenceSession.create(path.join(opts.model, 'decoder_init.onnx'));
   const stepSess = await ort.InferenceSession.create(path.join(opts.model, 'decoder_step.onnx'));
+
+  // Load alignment session (for word timestamps)
+  let alignSess = null;
+  if (opts.wordTimestamps) {
+    try {
+      alignSess = await ort.InferenceSession.create(path.join(opts.model, 'decoder_align.onnx'));
+    } catch {
+      log('  Warning: decoder_align.onnx not found — word timestamps disabled', verbose);
+    }
+  }
+
   log(`  Loaded in ${((performance.now() - tLoad) / 1000).toFixed(1)}s`, verbose);
 
   const melProc = new WhisperMelProcessor({ nMels: melBins });
   const timestampProc = new WhisperTimestampLogitProcessor(tokenizer, genConfig);
+
+  // ── Language auto-detection (first 30s) ──
+  {
+    const langIdRaw = opts.language || null;
+    if (!langIdRaw || langIdRaw === 'auto') {
+      log('Detecting language...', verbose);
+      const detectSamples = Math.min(pcm.length, 30 * sampleRate);
+      try {
+        const detectMel = WhisperMelProcessor.padToFrames(melProc.process(pcm.slice(0, detectSamples)), 3000);
+        const detectEncOut = await encSess.run({
+          input_features: new ort.Tensor('float32', detectMel, [1, melBins, 3000]),
+        });
+        const detectEncKey = Object.keys(detectEncOut).find(k =>
+          k === 'last_hidden_state' || k.includes('hidden') || k.includes('output')
+        ) ?? Object.keys(detectEncOut)[0];
+        const detectEncHs = new Float32Array(detectEncOut[detectEncKey].data);
+        const detectEncTensor = new ort.Tensor('float32', detectEncHs, [1, detectEncHs.length / dModel, dModel]);
+
+        const sotId = tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
+        const detectOut = await initSess.run({
+          input_ids: new ort.Tensor('int64', BigInt64Array.from([BigInt(sotId)]), [1, 1]),
+          encoder_hidden_states: detectEncTensor,
+        });
+        const detectLogitsKey = Object.keys(detectOut).find(k => k.includes('logits')) ?? Object.keys(detectOut)[0];
+        const detectLogits = new Float32Array(detectOut[detectLogitsKey].data);
+        const vSize = detectOut[detectLogitsKey].dims[detectOut[detectLogitsKey].dims.length - 1];
+
+        let maxLogit = -Infinity, maxLangToken = -1;
+        for (let i = 50259; i <= 50357 && i < vSize; i++) {
+          if (detectLogits[i] > maxLogit) { maxLogit = detectLogits[i]; maxLangToken = i; }
+        }
+        if (maxLangToken > 0) {
+          const langToken = tokenizer.decode([maxLangToken]) || '';
+          const match = langToken.match(/<\|(\w+)\|>/);
+          if (match) { language = match[1]; langId = maxLangToken; }
+        }
+        log(`  Detected: ${language}`, verbose);
+      } catch (detectErr) {
+        log(`  Lang detect: ${detectErr.message}, using ${language}`, verbose);
+      }
+    } else {
+      language = langIdRaw;
+      langId = tokenizer.getTokenId(`<|${language}|>`) ?? tokenizer.getTokenId('<|en|>') ?? 50259;
+    }
+  }
 
   // ── 3. VAD segmentation ──
   log('Running VAD...', verbose);
@@ -280,10 +372,12 @@ export async function runAsrPipeline(_opts) {
     },
   });
   log(`  ${segments.length} VAD segments in ${((performance.now() - tVad) / 1000).toFixed(2)}s`, verbose);
-  for (const seg of segments.slice(0, 5)) {
-    log(`    [${seg.startSeconds.toFixed(1)}-${seg.endSeconds.toFixed(1)}] ${seg.durationSeconds.toFixed(1)}s`, verbose);
+  if (verbose) {
+    for (const seg of segments.slice(0, 5)) {
+      log(`    [${seg.startSeconds.toFixed(1)}-${seg.endSeconds.toFixed(1)}] ${seg.durationSeconds.toFixed(1)}s`);
+    }
+    if (segments.length > 5) log(`    ... and ${segments.length - 5} more`);
   }
-  if (segments.length > 5) log(`    ... and ${segments.length - 5} more`, verbose);
 
   // ── 4. Quality gates ──
   const { compressionRatioGate, logProbGate, noSpeechGate, entropyGate } = await import(
@@ -300,7 +394,6 @@ export async function runAsrPipeline(_opts) {
     noSpeechGate(opts.noSpeechThreshold ?? 0.6, opts.logprobThreshold ?? -1.0),
   ];
 
-  // Build temperature progression
   const inc = opts.temperatureIncrement ?? 0.2;
   const startTemp = opts.temperature ?? 0;
   const temperatures = [startTemp];
@@ -310,8 +403,8 @@ export async function runAsrPipeline(_opts) {
     }
   }
 
-  // ── 5. Transcribe each segment with quality gates + fallback ──
-  log('Transcribing with quality gates...', verbose);
+  // ── 5. Transcribe each segment ──
+  log('Transcribing...', verbose);
   const tAsr = performance.now();
   const allSegments = [];
   const gateResultsAll = [];
@@ -325,10 +418,9 @@ export async function runAsrPipeline(_opts) {
     const chunk = pcm.slice(startSample, endSample);
     if (chunk.length < 1600) continue;
 
-    // Mel features (shared across fallback attempts)
     const mel = WhisperMelProcessor.padToFrames(melProc.process(chunk), 3000);
 
-    // Encoder run (shared — no need to re-encode on fallback)
+    // Encoder (shared across fallback attempts)
     const encOut = await encSess.run({
       input_features: new ort.Tensor('float32', mel, [1, melBins, 3000]),
     });
@@ -337,12 +429,12 @@ export async function runAsrPipeline(_opts) {
     ) ?? Object.keys(encOut)[0];
     const encHs = new Float32Array(encOut[encKey].data);
     const dModel = modelConfig.dModel ?? 384;
-    const encDims = [1, encHs.length / dModel, dModel];
+    const encoderFrameCount = encHs.length / dModel;
+    const encDims = [1, encoderFrameCount, dModel];
     const encTensor = new ort.Tensor('float32', encHs, encDims);
 
-    // Transcribe function (returns TranscribeAttempt)
+    // Transcribe function for temperature fallback
     const transcribeFn = async (temperature) => {
-      // Prompt tokens
       const promptTokens = [
         tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
         langId,
@@ -355,19 +447,15 @@ export async function runAsrPipeline(_opts) {
       }
       const promptLen = promptTokens.length;
 
-      // Decoder init
       const initFeeds = {
         input_ids: new ort.Tensor('int64', BigInt64Array.from(promptTokens.map(BigInt)), [1, promptTokens.length]),
         encoder_hidden_states: encTensor,
       };
       const initOut = await initSess.run(initFeeds);
-
-      // Logits output name
       const logitsKey = Object.keys(initOut).find(k => k.startsWith('logits')) ?? Object.keys(initOut)[0];
       const initLogitsData = initOut[logitsKey];
       const vSize = initLogitsData.dims[initLogitsData.dims.length - 1];
 
-      // First token
       const lastOffset = initLogitsData.data.length - vSize;
       const firstLogits = initLogitsData.data.subarray(lastOffset, lastOffset + vSize);
       timestampProc.process(firstLogits, promptTokens, promptLen);
@@ -375,7 +463,7 @@ export async function runAsrPipeline(_opts) {
       const tokens = [firstToken];
       const stepLogits = [new Float32Array(firstLogits)];
 
-      // Build KV cache from init outputs
+      // KV cache from init
       const kvKeys = Object.keys(initOut).filter(k => k.startsWith('present'));
       let pastKv = {};
       const kvDims = {};
@@ -388,9 +476,6 @@ export async function runAsrPipeline(_opts) {
         pastKv[k] = new Float32Array(initOut[k].data);
       }
 
-      // Decode loop (greedy or temperature-sampled)
-      // maxLength from config is TOTAL length (prompt + generated), so
-      // max new tokens = maxLength - promptLen - 1 (for the init output)
       const maxNewTokens = (genConfig.maxLength ?? 448) - promptTokens.length - 1;
       for (let step = 1; step < maxNewTokens; step++) {
         const feeds = {
@@ -399,9 +484,7 @@ export async function runAsrPipeline(_opts) {
         for (const [k, v] of Object.entries(pastKv)) {
           const stepKey = k.replace(/^present\./, 'past_key_values.');
           const dims = kvDims[k] ?? kvDims[stepKey] ?? kvDims[k.replace(/^past_key_values\./, 'present.')];
-          if (dims) {
-            feeds[stepKey] = new ort.Tensor('float32', v, dims);
-          }
+          if (dims) feeds[stepKey] = new ort.Tensor('float32', v, dims);
         }
         const stepOut = await stepSess.run(feeds);
         const stepLogitsKey = Object.keys(stepOut).find(k => k.startsWith('logits'));
@@ -413,7 +496,6 @@ export async function runAsrPipeline(_opts) {
         tokens.push(nextTok);
         stepLogits.push(new Float32Array(slLast));
 
-        // Update KV
         const stepKvKeys = Object.keys(stepOut).filter(k => k.startsWith('present'));
         const newKv = {};
         for (const [k, v] of Object.entries(pastKv)) {
@@ -425,21 +507,55 @@ export async function runAsrPipeline(_opts) {
           kvDims[k.replace(/^present\./, 'past_key_values.')] = stepOut[k].dims;
         }
         pastKv = newKv;
-
         if (nextTok === eosId) break;
       }
 
-      // Decode tokens to text
+      // ── Word timestamps via decoder_align + DTW ──
+      let segmentWords = [];
+      if (alignSess && opts.wordTimestamps) {
+        const allTokenIds = [...promptTokens, ...tokens];
+        const textIds = tokens.filter(t => {
+          const text = tokenizer.decode([t]) || '';
+          return text && !text.startsWith('<|') && !text.startsWith('[') && !text.startsWith('�');
+        });
+        const decodedTexts = textIds.map(t => tokenizer.decode([t]) || '');
+
+        try {
+          const alignFeeds = {
+            input_ids: new ort.Tensor('int64', BigInt64Array.from(allTokenIds.map(BigInt)), [1, allTokenIds.length]),
+            encoder_hidden_states: encTensor,
+          };
+          const alignOut = await alignSess.run(alignFeeds);
+          const alignKey = Object.keys(alignOut)[0];
+          const alignmentData = new Float32Array(alignOut[alignKey].data);
+
+          const dtwTimestamps = processSplitGraphAlignment({
+            alignmentData,
+            totalTokens: allTokenIds.length,
+            promptLen: promptTokens.length,
+            textTokenCount: textIds.length,
+            frameCount: encoderFrameCount,
+            timePrecisionSeconds: 0.02,
+          });
+
+          segmentWords = buildWordsFromTimestamps(
+            textIds, decodedTexts, seg.startSeconds, dtwTimestamps, tokenizer,
+          );
+        } catch (alignErr) {
+          // Alignment failed — skip words for this segment
+          if (verbose) log(`    align fail on seg ${si}: ${alignErr.message}`);
+        }
+      }
+
+      // Build segment text
       const text = tokens
-        .map(t => {
-          try { return tokenizer.decode([t]); } catch { return ''; }
-        })
+        .map(t => { try { return tokenizer.decode([t]); } catch { return ''; } })
         .filter(t => t && !t.startsWith('<|') && !t.startsWith('['))
         .join('')
         .trim();
 
       return {
-        result: { text, start: seg.startSeconds, end: seg.endSeconds },
+        result: { text, start: seg.startSeconds, end: seg.endSeconds, words: segmentWords },
         text,
         tokens,
         logits: stepLogits,
@@ -458,7 +574,8 @@ export async function runAsrPipeline(_opts) {
       allSegments.push(segResult);
       if (verbose) {
         const fb = fbResult.attempts > 1 ? ` [fallback t=${fbResult.temperature}]` : '';
-        log(`  [${si + 1}/${segments.length}] ${segResult.text.slice(0, 60)}${fb}`, verbose);
+        const wordsInfo = segResult.words?.length ? ` (${segResult.words.length} words)` : '';
+        log(`  [${si + 1}/${segments.length}] ${segResult.text.slice(0, 60)}${fb}${wordsInfo}`);
       }
     }
   }
@@ -468,10 +585,27 @@ export async function runAsrPipeline(_opts) {
   const fullText = allSegments.map(s => s.text).join(' ');
   const wordCount = fullText.split(/\s+/).filter(Boolean).length;
   log(`\nASR: ${asrTime.toFixed(1)}s for ${segments.length} segments, ${wordCount} words`, verbose);
-  log(`Fallbacks triggered: ${fallbackCount}/${segments.length} segments`, verbose);
-  log(`Temperatures used: ${[...temperaturesUsed].sort((a, b) => a - b).join(', ')}`, verbose);
+  if (verbose) {
+    log(`Fallbacks triggered: ${fallbackCount}/${segments.length} segments`);
+    log(`Temperatures used: ${[...temperaturesUsed].sort((a, b) => a - b).join(', ')}`);
+  }
 
-  const vttContent = toVtt(allSegments);
+  // Generate outputs
+  const outputs = {};
+  switch (opts.outputFormat) {
+    case 'srt':
+      outputs.srt = toSrt(allSegments);
+      break;
+    case 'txt':
+      outputs.txt = toTxt(allSegments);
+      break;
+    case 'json':
+      outputs.json = toJson(allSegments, { audioDuration, asrTime, segments: allSegments.length });
+      break;
+    default:
+      outputs.vtt = toVtt(allSegments);
+      break;
+  }
 
   // Cleanup
   try { fs.unlinkSync(tmpWav); } catch {}
@@ -481,7 +615,7 @@ export async function runAsrPipeline(_opts) {
     fullText,
     wordCount,
     asrTime,
-    vttContent,
+    outputs,
     temperaturesUsed: [...temperaturesUsed].sort((a, b) => a - b),
     fallbackCount,
     gateResults: gateResultsAll,
@@ -496,50 +630,71 @@ async function main() {
 
   if (!audioPath) {
     console.error('Usage: node tests/smoke/whisperx-runner.mjs [options] <audio-file>');
+    console.error('');
+    console.error('Options:');
+    console.error('  --model <path>                ONNX model directory');
+    console.error('  --language <code>             Language (en, tr, auto)');
+    console.error('  --vad_onset <float>           VAD onset threshold (0.5)');
+    console.error('  --vad_offset <float>          VAD offset threshold (0.363)');
+    console.error('  --chunk_size <sec>            Max segment duration (30)');
+    console.error('  --word_timestamps             Enable word-level timestamps (default: on)');
+    console.error('  --no-word_timestamps          Disable word-level timestamps');
+    console.error('  --temperature <float>         Decoding temperature (0.0)');
+    console.error('  --temperature_increment_on_fallback <float>  Fallback step (0.2)');
+    console.error('  --compression_ratio_threshold <float>  2.4');
+    console.error('  --logprob_threshold <float>           -1.0');
+    console.error('  --no_speech_threshold <float>         0.6');
+    console.error('  --entropy_threshold <float>           2.4');
+    console.error('  --output_format <vtt|srt|txt|json>    Output format');
+    console.error('  --verbose                      Print progress');
+    console.error('');
+    console.error('Example:');
+    console.error('  node tests/smoke/whisperx-runner.mjs \\');
+    console.error('    --model /tmp/whisper-base-4graph/fp32 \\');
+    console.error('    --language tr --word_timestamps \\');
+    console.error('    tests/fixtures/12_dans.tr.m4a');
     process.exit(1);
   }
 
   const result = await runAsrPipeline({ ...opts, audioPath });
 
-  // Output VTT
-  const outPath = path.join(REPO_ROOT, 'tmp', '_whisperx_result.vtt');
-  fs.writeFileSync(outPath, result.vttContent);
+  // Write output
+  const outBase = path.join(REPO_ROOT, 'tmp', '_whisperx_result');
+  if (result.outputs.vtt) {
+    fs.writeFileSync(outBase + '.vtt', result.outputs.vtt);
+    console.log(`\n  VTT: ${outBase}.vtt`);
+  }
+  if (result.outputs.srt) {
+    fs.writeFileSync(outBase + '.srt', result.outputs.srt);
+    console.log(`  SRT: ${outBase}.srt`);
+  }
+  if (result.outputs.txt) {
+    fs.writeFileSync(outBase + '.txt', result.outputs.txt);
+    console.log(`  TXT: ${outBase}.txt`);
+  }
+  if (result.outputs.json) {
+    fs.writeFileSync(outBase + '.json', result.outputs.json);
+    console.log(`  JSON: ${outBase}.json`);
+  }
 
   console.log(`\n${'='.repeat(60)}`);
   console.log(`TRANSCRIPT (${result.segments.length} segments):`);
   console.log(`${'='.repeat(60)}`);
   console.log(result.fullText);
   console.log(`${'='.repeat(60)}`);
-  console.log(`\nOutput saved: ${outPath}`);
 
-  // Compare with reference VTT
-  const refVtt = path.join(REPO_ROOT, 'tests/fixtures', '12_dans.tr.vtt');
-  if (fs.existsSync(refVtt)) {
-    console.log('\nComparing with reference VTT (WER estimation)...');
-    const refContent = fs.readFileSync(refVtt, 'utf-8');
-    const refWords = refContent.split('\n')
-      .filter(l => l && !l.startsWith('WEBVTT') && !l.startsWith('Kind:') && !l.startsWith('Language:') && !l.includes('-->'))
-      .map(l => l.trim()).filter(Boolean).join(' ').split(/\s+/);
-    const hypWords = result.fullText.split(/\s+/).filter(Boolean);
-
-    console.log(`  Reference words: ${refWords.length}`);
-    console.log(`  Hypothesis words: ${hypWords.length}`);
-
-    const refSet = new Set(refWords.map(w => w.toLowerCase()));
-    const hypSet = new Set(hypWords.map(w => w.toLowerCase()));
-    const correct = [...hypSet].filter(w => refSet.has(w)).length;
-    const ins = hypSet.size - correct;
-    const del = [...refSet].filter(w => !hypSet.has(w)).length;
-    const wer = refSet.size > 0 ? (ins + del) / refSet.size : 1;
-
-    console.log(`  Correct unique: ${correct}, Ins: ${ins}, Del: ${del}`);
-    console.log(`  Estimated WER: ${(wer * 100).toFixed(1)}%`);
+  if (result.segments.length > 0 && result.segments[0].words?.length) {
+    const firstSeg = result.segments[0];
+    console.log(`\nSample words (segment 1, ${firstSeg.words.length} words):`);
+    for (const w of firstSeg.words.slice(0, 10)) {
+      console.log(`  ${formatTime(w.start)} --> ${formatTime(w.end)}  ${w.text}`);
+    }
+    if (firstSeg.words.length > 10) console.log(`  ... and ${firstSeg.words.length - 10} more`);
   }
 
-  console.log('\nDONE');
+  console.log(`\nDONE`);
 }
 
-// Run as CLI (only when executed directly, not imported)
 const isMain = process.argv[1] && (
   process.argv[1] === fileURLToPath(import.meta.url)
   || process.argv[1].endsWith('whisperx-runner.mjs')

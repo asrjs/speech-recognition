@@ -29,7 +29,15 @@ Browsers cannot auto-discover `.data` files. Must fetch explicitly and pass:
 sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array(arrayBuffer) }];
 ```
 
-**Quality gates wired into runner (2026-06-01):**
+**Word timestamps in runner (2026-06-01):**
+- `decoder_align.onnx` (4th graph) loaded for word-level timestamps
+- Cross-attention DTW alignment via `processSplitGraphAlignment`
+- Word boundary detection via whisper BPE token patterns
+- Verified JFK: 22 words with millisecond-accurate timestamps
+- `--word_timestamps` / `--no-word_timestamps` CLI flags
+- `--output_format vtt|srt|txt|json` — fully wired with SRT, TXT, JSON support
+- Added `--verbose` (off by default), progress always shown
+- Full usage help on `--help` / no args
 - All 4 quality gates (compression, logprob, entropy, no-speech) now active in `whisperx-runner.mjs`
 - Temperature fallback loop: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] configurable via CLI
 - Temperature-scaled sampling (not just argmax) for temp > 0
@@ -61,7 +69,11 @@ sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array
 || 8 | WAV2VEC2 CTC alignment | ✅ | `f7ef300` |
 || 9 | Quality gates + fallback runner | ✅ | This session |
 || 10 | Quality gates smoke (26 tests) | ✅ | This session |
-|| 11 | Turkish fixture 12_dans.tr | ✅ | This session |
+||| 11 | Turkish fixture 12_dans.tr | ✅ | This session |
+||| 12 | Word timestamps in runner | ✅ | This session |
+||| 13 | Multiple output formats (SRT/TXT/JSON) | ✅ | This session |
+||| 14 | Verbose/quiet CLI mode | ✅ | This session |
+||| 15 | Language auto-detection | ✅ | This session |
 
 ### Backend strategy (established)
 1. **Native ORT** (`onnxruntime-node`) — first dev target, no heap limit, streaming-ready
