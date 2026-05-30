@@ -31,8 +31,8 @@ Updated: 2026-06-01 (Flexo)
 - [x] Long audio windowing (30s windows, 84.8% overlap)
 - [x] Timestamp tokens + token suppression
 - [x] Context conditioning (extraPromptTokens)
-- [x] Quality gates: compression, logprob, entropy, no-speech
-- [x] Temperature fallback [0.0, 0.2, ..., 1.0]
+- [x] Quality gates: compression, logprob, entropy, no-speech (src/quality/ + wired in runner)
+- [x] Temperature fallback [0.0, 0.2, ..., 1.0] with temperature sampling
 - [x] SRT/VTT subtitle export
 - [x] Mel dimension auto-detect (numMelBins from manifest)
 - [x] VRAM optimization (skip merged decoder, defer alignment)
@@ -51,6 +51,7 @@ Updated: 2026-06-01 (Flexo)
 - [x] HF repos updated with fixed fp16
 
 ### Smoke Tests
+- `tests/smoke/quality-gates-smoke.mjs` — quality gates (26 tests, RED_ASR=1 for integration)
 - `tests/smoke/whisper-large-v3-turbo-native.mjs` — native ORT persistent
 - `tests/smoke/whisper-large-v3-turbo-wasm.mjs` — WASM sequential
 - `tests/smoke/whisper-e2e-pipeline-smoke.mjs` — full pipeline (encoder→gates→fallback)
@@ -58,6 +59,7 @@ Updated: 2026-06-01 (Flexo)
 - `tests/smoke/whisper-bestof-smoke.mjs` — bestOf decodings
 - `tests/smoke/wav2vec2-node-wasm-smoke.mjs` — WAV2VEC2 ASR
 - `tests/smoke/wav2vec2-node-wasm-align-smoke.mjs` — WAV2VEC2 alignment
+- `tests/smoke/vad-pipeline-smoke.mjs` — 18 VAD tests (VAD integration with WhisperX-style pipeline)
 
 ## REMAINING TASKS (priority order)
 
@@ -94,6 +96,25 @@ Now expanded into full WhisperX-compatible VAD preprocessing pipeline:
 - VAD probability binarization with hysteresis ✓
 - Noise floor gating for noisy environments ✓
 - vad_onset/vad_offset parameters exposed ✓
+
+### 5b. Quality Gates Wired into Runner ✅ NEW 2026-06-01
+
+The `whisperx-runner.mjs` now fully integrates all 4 quality gates with temperature fallback:
+
+| Component | File | Details |
+|-----------|------|---------|
+| compressionRatioGate | `src/quality/compression-ratio.ts` | deflate-based, default threshold 2.4 |
+| logProbGate | `src/quality/log-probability.ts` | per-token log prob avg, default -1.0 |
+| entropyGate | `src/quality/entropy.ts` | avg distribution entropy, default 2.4 nats |
+| noSpeechGate | `src/quality/no-speech.ts` | token 50362 prob + avgLogProb, default 0.6 |
+| temperature-fallback | `src/quality/temperature-fallback.ts` | scaled loop [0.0, 0.2, ..., 1.0] |
+| Runner | `tests/smoke/whisperx-runner.mjs` | exports `runAsrPipeline()`, all CLI flags |
+| Smoke tests | `tests/smoke/quality-gates-smoke.mjs` | 26 unit + optional ASR integration |
+
+**Accepted WhisperX CLI flags (now fully functional):**
+`--compression_ratio_threshold`, `--logprob_threshold`, `--no_speech_threshold`, `--entropy_threshold`, `--temperature`, `--temperature_increment_on_fallback`
+
+**Temperature sampling** for temp > 0: applies `logits / temperature` scaling before softmax, then samples from the distribution.
 
 ### 5. SRT/VTT Export ✅ DONE
 `ProductionWhisperPipeline` generates SRT/VTT via `generateSubtitles()`. 7 unit tests pass.

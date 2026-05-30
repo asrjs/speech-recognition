@@ -1,7 +1,7 @@
 # ASR.js Whisper Engine — Session Handover
 
 **Branch**: `feat/large-v3-turbo-fp16-external-data`
-**Date**: 2026-05-30 (evening session)
+**Date**: 2026-06-01
 **Agent**: Flexo (P520, WSL2, RTX 5060 Ti 8GB)
 
 ## Quick Recall
@@ -29,6 +29,17 @@ Browsers cannot auto-discover `.data` files. Must fetch explicitly and pass:
 sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array(arrayBuffer) }];
 ```
 
+**Quality gates wired into runner (2026-06-01):**
+- All 4 quality gates (compression, logprob, entropy, no-speech) now active in `whisperx-runner.mjs`
+- Temperature fallback loop: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] configurable via CLI
+- Temperature-scaled sampling (not just argmax) for temp > 0
+- Per-segment fallback tracking (12/93 Turkish segments triggered fallback)
+- JFK verification: clean accept at t=0, perfect transcription
+- Turkish 12_dans (662s): 93 segments, 890 words, 278.6s CPU processing
+- Runner exports `runAsrPipeline()` for programmatic use
+- Smoke: `tests/smoke/quality-gates-smoke.mjs` (26 tests)
+- CLI flags: `--compression_ratio_threshold`, `--logprob_threshold`, `--no_speech_threshold`, `--entropy_threshold`, `--temperature`, `--temperature_increment_on_fallback`
+
 ### Features completed this session
 
 **VAD pipeline (2026-05-30):**
@@ -38,16 +49,19 @@ sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array
 - `segmentAudio()`: full pipeline wrapper
 - Smoke: `tests/smoke/vad-pipeline-smoke.mjs` (18 tests)
 
-| # | Feature | Status | Commit |
+|| # | Feature | Status | Commit |
 |---|---------|--------|--------|
-| 1 | Language auto-detection | ✅ | `136ad2a` |
-| 2 | Word timestamps DTW | ✅ | Already wired |
-| 3 | bestOf decodings | ✅ | `71410b0` |
-| 4 | patience beam search | ✅ | `aceb643` |
-| 5 | VAD integration smoke | ✅ | `77778e3` |
-| 6 | SRT/VTT export | ✅ | 7 tests |
-| 7 | WebGPU model selector | ✅ | `f2a09e2` |
-| 8 | WAV2VEC2 CTC alignment | ✅ | `f7ef300` |
+|| 1 | Language auto-detection | ✅ | `136ad2a` |
+|| 2 | Word timestamps DTW | ✅ | Already wired |
+|| 3 | bestOf decodings | ✅ | `71410b0` |
+|| 4 | patience beam search | ✅ | `aceb643` |
+|| 5 | VAD integration smoke | ✅ | `77778e3` |
+|| 6 | SRT/VTT export | ✅ | 7 tests |
+|| 7 | WebGPU model selector | ✅ | `f2a09e2` |
+|| 8 | WAV2VEC2 CTC alignment | ✅ | `f7ef300` |
+|| 9 | Quality gates + fallback runner | ✅ | This session |
+|| 10 | Quality gates smoke (26 tests) | ✅ | This session |
+|| 11 | Turkish fixture 12_dans.tr | ✅ | This session |
 
 ### Backend strategy (established)
 1. **Native ORT** (`onnxruntime-node`) — first dev target, no heap limit, streaming-ready
@@ -101,9 +115,17 @@ vad-demo/                   — Isolated VAD testing
 cd ~/github/asrjs/speech-recognition
 npm run typecheck && npm run lint && npm test   # 601 tests
 npm run build
+node tests/smoke/quality-gates-smoke.mjs         # 26 unit tests (fast)
+RED_ASR=1 node tests/smoke/quality-gates-smoke.mjs  # + ASR integration
 node tests/smoke/whisper-e2e-pipeline-smoke.mjs
 node tests/smoke/whisper-large-v3-turbo-native.mjs
 node tests/smoke/vad-integration-smoke.mjs
+node tests/smoke/vad-pipeline-smoke.mjs          # 18 VAD tests
 node tests/smoke/whisper-bestof-smoke.mjs
 node tests/smoke/wav2vec2-node-wasm-align-smoke.mjs
+
+# Turkish fixture (WhisperX-compatible runner):
+WHISPER_MODEL_DIR=/tmp/whisper-base-4graph/fp32 node tests/smoke/whisperx-runner.mjs \
+  --language tr --vad_onset 0.5 \
+  tests/fixtures/12_dans.tr.m4a
 ```
