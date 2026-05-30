@@ -35,11 +35,16 @@ Goal: Make `whisperx-runner.mjs` a fully production-grade WhisperX-compatible pi
 
 ## Remaining
 
-### Phase 5 — Wav2Vec2 Forced Alignment (MEDIUM)
-- Load Wav2Vec2 model as post-process pass
-- For each segment: extract audio, run Wav2Vec2, align known transcript
-- Update/substitute word timestamps with Wav2Vec2 alignment
-- `--no_align` to skip
+### Phase 5 — Wav2Vec2 Forced Alignment ✅
+- Loads Wav2Vec2 CTC model per language (EN fp16 default, TR supported)
+- Per-segment: runs Wav2Vec2 on PCM chunk, creates aligner from logits,
+  aligns Whisper transcript, overrides DTW word timestamps
+- Falls back to DTW alignment when Wav2Vec2 unavailable
+- `--no_align` to skip, `--w2v_model` for custom path
+- Works alongside all other features (gates, fallback, beam search, etc.)
+- Tested: JFK English, Wav2Vec2 alignment produces word timestamps
+
+## Remaining
 
 ### Phase 6 — Error Recovery (LOW)
 - Catch ORT errors per segment, retry N times

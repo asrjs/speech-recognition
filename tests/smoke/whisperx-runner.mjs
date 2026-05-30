@@ -45,6 +45,7 @@ const DEFAULT_OPTS = {
   outputFormat: 'vtt',
   verbose: false,
   wordTimestamps: true,
+  w2vModel: null,
 };
 
 function parseArgs(customArgs) {
@@ -76,6 +77,7 @@ function parseArgs(customArgs) {
         task: 'task', language: 'language',
         noalign: 'noAlign', outputformat: 'outputFormat',
         verbose: 'verbose', batchsize: 'batchSize',
+        'w2v-model': 'w2vModel',
       };
 
       const optKey = mapping[key];
@@ -275,6 +277,9 @@ export async function runAsrPipeline(_opts) {
   const { whisperDecode } = await import(
     path.join(dist, 'models/whisper-seq2seq/core.js')
   );
+  const { createWav2Vec2AlignerFromLogits } = await import(
+    path.join(dist, 'alignment.js')
+  );
 
   const tokenizer = await WhisperTokenizer.fromUrl(path.join(opts.model, 'tokenizer.json'));
   let language = 'en';
@@ -306,6 +311,43 @@ export async function runAsrPipeline(_opts) {
   }
 
   log(`  Loaded in ${((performance.now() - tLoad) / 1000).toFixed(1)}s`, verbose);
+
+  // ── Wav2Vec2 forced alignment model (post-process pass) ──
+  let w2vSession = null;
+  let w2vTokenizer = null;
+  const W2V_MODEL_BY_LANG = {
+    en: {
+      path: opts.w2vModel || '/tmp/wav2vec2-english-onnx/wav2vec2-base-960h.fp16.onnx',
+      dataFile: '/tmp/wav2vec2-english-onnx/wav2vec2-base-960h.fp16.onnx.data',
+      vocabUrl: '/tmp/wav2vec2-publish/vocab.json',
+    },
+    tr: {
+      path: '/tmp/wav2vec2-turkish-onnx/wav2vec2-large-xlsr-turkish.fp16.onnx',
+      dataFile: '/tmp/wav2vec2-turkish-onnx/wav2vec2-large-xlsr-turkish.fp16.onnx.data',
+      vocabUrl: '/tmp/wav2vec2-turkish-onnx/vocab.json',
+    },
+  };
+
+  if (!opts.noAlign && opts.wordTimestamps) {
+    const w2vCfg = W2V_MODEL_BY_LANG[language] || W2V_MODEL_BY_LANG.en;
+    try {
+      log(`Loading Wav2Vec2 aligner (${language})...`, verbose);
+      const w2vOpts = {};
+      if (fs.existsSync(w2vCfg.dataFile)) {
+        const data = fs.readFileSync(w2vCfg.dataFile);
+        w2vOpts.externalData = [{ path: path.basename(w2vCfg.path), data }];
+      }
+      w2vSession = await ort.InferenceSession.create(w2vCfg.path, w2vOpts);
+
+      const { Wav2Vec2CharTokenizer } = await import(
+        path.join(dist, 'models/wav2vec2/tokenizer.js')
+      );
+      w2vTokenizer = await Wav2Vec2CharTokenizer.fromUrl(w2vCfg.vocabUrl);
+      log(`  Wav2Vec2 ready (${language})`, verbose);
+    } catch (w2vErr) {
+      log(`  Wav2Vec2 not loaded (${w2vErr.message}) — falling back to DTW alignment`, verbose);
+    }
+  }
 
   const melProc = new WhisperMelProcessor({ nMels: melBins });
   const timestampProc = new WhisperTimestampLogitProcessor(tokenizer, genConfig);
@@ -525,13 +567,20 @@ export async function runAsrPipeline(_opts) {
 
       const tokens = [...decodeResult.tokens];
 
+      // Build segment text (needed for Wav2Vec2 alignment)
+      const text = tokens
+        .map(t => { try { return tokenizer.decode([t]); } catch { return ''; } })
+        .filter(t => t && !t.startsWith('<|') && !t.startsWith('['))
+        .join('')
+        .trim();
+
       // ── Word timestamps via decoder_align + DTW ──
       let segmentWords = [];
       if (alignSess && opts.wordTimestamps) {
         const allTokenIds = [...promptTokens, ...tokens];
         const textIds = tokens.filter(t => {
-          const text = tokenizer.decode([t]) || '';
-          return text && !text.startsWith('<|') && !text.startsWith('[') && !text.startsWith('�');
+          const td = tokenizer.decode([t]) || '';
+          return td && !td.startsWith('<|') && !td.startsWith('[') && !td.startsWith('�');
         });
         const decodedTexts = textIds.map(t => tokenizer.decode([t]) || '');
 
@@ -561,12 +610,40 @@ export async function runAsrPipeline(_opts) {
         }
       }
 
-      // Build segment text
-      const text = tokens
-        .map(t => { try { return tokenizer.decode([t]); } catch { return ''; } })
-        .filter(t => t && !t.startsWith('<|') && !t.startsWith('['))
-        .join('')
-        .trim();
+      // ── Wav2Vec2 forced alignment (overrides DTW when available) ──
+      if (w2vSession && w2vTokenizer && opts.wordTimestamps && !opts.noAlign) {
+        try {
+          const inputTensor = new ort.Tensor('float32', chunk, [1, chunk.length]);
+          const w2vOut = await w2vSession.run({ input_values: inputTensor });
+          const w2vKey = Object.keys(w2vOut)[0];
+          const w2vTensor = w2vOut[w2vKey];
+          const logitsData = new Float32Array(w2vTensor.data);
+          const w2vDims = w2vTensor.dims;
+          const wfc = w2vDims[1];
+          const wvs = w2vDims[2];
+
+          const reusableLogits = {
+            logits: logitsData, frameCount: wfc, vocabSize: wvs,
+            blankId: 0, tokenizer: w2vTokenizer,
+            sampleRate: 16000, audioDurationSeconds: chunk.length / 16000,
+            wordSeparator: ' ',
+          };
+
+          const aligner = createWav2Vec2AlignerFromLogits(reusableLogits);
+          const alignment = aligner.align({
+            transcript: text,
+            audioDurationSeconds: chunk.length / 16000,
+          });
+
+          if (alignment.words && alignment.words.length > 0) {
+            segmentWords = alignment.words.map(w => ({
+              text: w.text, start: seg.startSeconds + w.start, end: seg.startSeconds + w.end,
+            }));
+          }
+        } catch (w2vErr) {
+          if (verbose) log(`    w2v align fail on seg ${si}: ${w2vErr.message}`);
+        }
+      }
 
       // Get vocabSize from last step logits
       const vSize = stepLogits.length > 0 ? stepLogits[0].length : 51864;
@@ -667,6 +744,8 @@ async function main() {
     console.error('  --no_speech_threshold <float>         0.6');
     console.error('  --entropy_threshold <float>           2.4');
     console.error('  --output_format <vtt|srt|txt|json>    Output format');
+    console.error('  --no-align                     Skip forced alignment');
+    console.error('  --w2v_model <path>             Wav2Vec2 model path');
     console.error('  --verbose                      Print progress');
     console.error('');
     console.error('Example:');
