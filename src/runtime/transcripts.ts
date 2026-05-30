@@ -3,7 +3,6 @@ import type {
   TranscriptNormalizationContext,
   TranscriptNormalizer,
   TranscriptResult,
-  TranscriptWarning,
   TranscriptionEnvelope,
 } from '../types/index.js';
 import {
@@ -35,7 +34,10 @@ import {
   type WhisperNativeTranscript,
   mapWhisperNativeToCanonical,
 } from '../models/whisper-seq2seq/index.js';
-import type { LegacyParakeetTranscript } from '../presets/parakeet/index.js';
+import {
+  mapLegacyParakeetNativeToCanonical,
+  type LegacyParakeetTranscript,
+} from '../presets/parakeet/index.js';
 
 function withTranscriptDefaults(
   context: TranscriptNormalizationContext = {},
@@ -298,98 +300,9 @@ export function createWhisperTranscriptNormalizer(
 }
 
 export function createLegacyParakeetTranscriptNormalizer(): TranscriptNormalizer<LegacyParakeetTranscript> {
-  return createTranscriptNormalizer('parakeet-legacy', (native, context) => {
-    const detail = context.detailLevel ?? 'segments';
-    const words = (native.words ?? []).map((word, index) => ({
-      index,
-      text: word.text,
-      startTime: word.start_time,
-      endTime: word.end_time,
-      confidence: word.confidence,
-    }));
-    const tokens = (native.tokens ?? []).map((token, index) => ({
-      index,
-      id: token.id,
-      text: token.token,
-      rawText: token.raw_text,
-      startTime: token.start_time,
-      endTime: token.end_time,
-      confidence: token.confidence,
-      frameIndex: token.frame_index,
-      logProb: token.log_prob,
-      tdtStep: token.tdt_step,
-    }));
-    const segments =
-      words.length > 0
-        ? [
-            {
-              index: 0,
-              text: native.utterance_text,
-              startTime: words[0]!.startTime,
-              endTime: words[words.length - 1]!.endTime,
-              confidence: native.confidence_scores?.utterance ?? undefined,
-              wordIndices: words.map((word) => word.index),
-            },
-          ]
-        : undefined;
-
-    const result: TranscriptResult = {
-      text: native.utterance_text,
-      warnings: [] satisfies readonly TranscriptWarning[],
-      meta: {
-        ...context,
-        detailLevel: detail,
-        isFinal: native.is_final,
-        modelFamily: context.modelFamily ?? 'parakeet',
-        tokenCount: tokens.length || undefined,
-        wordCount: words.length || undefined,
-        segmentCount: segments?.length,
-        averageConfidence: native.confidence_scores?.utterance ?? undefined,
-        averageWordConfidence: native.confidence_scores?.word_avg ?? undefined,
-        averageTokenConfidence: native.confidence_scores?.token_avg ?? undefined,
-        nativeAvailable: true,
-        metrics: native.metrics
-          ? {
-              preprocessMs: native.metrics.preprocess_ms,
-              encodeMs: native.metrics.encode_ms,
-              decodeMs: native.metrics.decode_ms,
-              tokenizeMs: native.metrics.tokenize_ms,
-              postprocessMs: native.metrics.tokenize_ms,
-              totalMs: native.metrics.total_ms,
-              wallMs: native.metrics.wall_ms,
-              audioDurationSec: native.metrics.audio_duration_sec,
-              rtf: native.metrics.rtf,
-              rtfx: native.metrics.rtfx,
-              preprocessorBackend: native.metrics.preprocessor_backend,
-              decodeAudioMs: native.metrics.audio_decode_ms,
-              downmixMs: native.metrics.downmix_ms,
-              resampleMs: native.metrics.resample_ms,
-              audioPreparationMs: native.metrics.audio_preparation_ms,
-              inputSampleRate: native.metrics.input_sample_rate,
-              outputSampleRate: native.metrics.output_sample_rate,
-              resampler: native.metrics.resampler,
-              resamplerQuality: native.metrics.resampler_quality,
-              encoderFrameCount: native.metrics.encoder_frame_count,
-              decodeIterations: native.metrics.decode_iterations,
-              emittedTokenCount: native.metrics.emitted_token_count,
-              emittedWordCount: native.metrics.emitted_word_count,
-            }
-          : context.metrics,
-      },
-    };
-
-    if (detail !== 'text' && segments) {
-      Object.assign(result, { segments });
-    }
-    if ((detail === 'words' || detail === 'detailed') && words.length > 0) {
-      Object.assign(result, { words });
-    }
-    if (detail === 'detailed' && tokens.length > 0) {
-      Object.assign(result, { tokens });
-    }
-
-    return result;
-  });
+  return createTranscriptNormalizer('parakeet-legacy', (native, context) =>
+    mapLegacyParakeetNativeToCanonical(native, context)
+  );
 }
 
 export const nemoTdtTranscriptNormalizer = createNemoTdtTranscriptNormalizer();
