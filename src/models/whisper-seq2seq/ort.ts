@@ -341,13 +341,21 @@ export async function createWhisperOrtSession(
 
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
+    const { existsSync: fsExists } = await importNodeModule<typeof import('node:fs')>('node:fs');
     if (/^file:/i.test(modelUrl)) {
       modelUrl = fileURLToPath(modelUrl);
     }
-    // Also handle bare file paths — ONNX Runtime Node.js accepts them natively,
-    // but ensure they're absolute for consistency
-    if (typeof modelUrl === 'string' && modelUrl.startsWith('/')) {
-      // Already a file path, no conversion needed
+    // Auto-detect co-located external data file
+    if (!externalDataUrl) {
+      const dataPath = modelUrl + '.data';
+      if (fsExists(dataPath)) {
+        externalDataUrl = dataPath;
+        // Derive the relative path for ORT
+        if (!options.externalDataPath) {
+          const basename = modelUrl.split('/').pop() ?? 'model.onnx';
+          (options as Record<string, unknown>).externalDataPath = basename + '.data';
+        }
+      }
     }
     if (externalDataUrl && /^file:/i.test(externalDataUrl)) {
       externalDataUrl = fileURLToPath(externalDataUrl);

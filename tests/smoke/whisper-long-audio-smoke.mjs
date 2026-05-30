@@ -17,7 +17,7 @@ import os from 'node:os';
 const ENABLED = new Set(['1', 'true', 'yes', 'on']);
 const isSmoke = ENABLED.has(String(process.env.ASRJS_SMOKE ?? '').toLowerCase());
 
-const MODEL_DIR = '/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph';
+const MODEL_DIR = '/tmp/whisper-base-4graph';
 const AUDIO_MP3 = path.resolve(process.cwd(), 'tests/fixtures/end-of-chapter-4.en.mp3');
 const REF_TXT = path.resolve(process.cwd(), 'tests/fixtures/end-of-chapter-4.en.txt');
 
@@ -28,7 +28,7 @@ async function main() {
   console.log('=== Whisper Long Audio Production Smoke ===\n');
 
   // Check prerequisites
-  const variantDir = path.join(MODEL_DIR, 'fp16');
+  const variantDir = path.join(MODEL_DIR, 'fp32');
   if (!existsSync(variantDir)) { console.error(`ERROR: ${variantDir} not found`); process.exit(1); }
   if (!existsSync(AUDIO_MP3)) { console.error(`ERROR: ${AUDIO_MP3} not found`); process.exit(1); }
   if (!existsSync(REF_TXT)) { console.error(`ERROR: ${REF_TXT} not found`); process.exit(1); }
@@ -46,17 +46,17 @@ async function main() {
 
   const loaded = await loadSpeechModel({
     family: 'whisper-seq2seq',
-    modelId: 'openai/whisper-large-v3-turbo',
+    modelId: 'openai/whisper-base',
     backend: 'wasm',
     options: {
-      variant: 'fp16',
+      variant: 'fp32',
       source: {
         kind: 'splitgraph',
         artifacts: {
           encoderUrl: path.join(variantDir, 'encoder_model.onnx'),
           decoderInitUrl: path.join(variantDir, 'decoder_init.onnx'),
           decoderStepUrl: path.join(variantDir, 'decoder_step.onnx'),
-          decoderAlignUrl: path.join(variantDir, 'decoder_align.onnx'),
+          // No decoderAlignUrl — alignment deferred, saves VRAM
           tokenizerUrl: path.join(variantDir, 'tokenizer.json'),
           manifestUrl: path.join(variantDir, 'manifest.json'),
         },
