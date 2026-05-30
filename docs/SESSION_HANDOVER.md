@@ -14,9 +14,9 @@ Load `asrjs-dev` skill → read `docs/AGENT_TASKS.md` → this file.
 
 | Backend | Precision | Lifecycle | Time | Smoke |
 |---------|-----------|-----------|------|-------|
-| Native ORT | fp32 | Persistent | 13.3s | `whisper-large-v3-turbo-native.mjs` |
+| Native ORT | fp32 | Persistent | 19.2s | `whisper-large-v3-turbo-native.mjs` |
 | WebGPU | fp16 | Persistent | 24.5s | `whisper-webgpu-smoke.html` |
-| WASM | fp32 | Sequential | 62s | `whisper-large-v3-turbo-wasm.mjs` |
+| WASM | fp32 | Sequential | 57.1s | `whisper-large-v3-turbo-wasm.mjs` |
 
 ### fp16 packaging fix
 Encoder had 1.2GB inline weights → ORT WASM `std::bad_alloc`. Fixed by converting to external data with `onnx.external_data_helper.convert_model_to_external_data()`. Updated HF repos:
@@ -29,7 +29,7 @@ Browsers cannot auto-discover `.data` files. Must fetch explicitly and pass:
 sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array(arrayBuffer) }];
 ```
 
-**Word timestamps in runner (2026-06-01):**
+### Word timestamps in runner (2026-06-01)
 - `decoder_align.onnx` (4th graph) loaded for word-level timestamps
 - Cross-attention DTW alignment via `processSplitGraphAlignment`
 - Word boundary detection via whisper BPE token patterns
@@ -65,7 +65,7 @@ sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array
 
 **OOM handling verification:**
 - User confirmed OOM was already fixed (sequential lifecycle, external data)
-- Native ORT fp32 persistent: ✓ (3 sessions, 10.6s+1.5s, JFK perfect)
+- Native ORT fp32 persistent: ✓ (3 sessions, 19.2s, JFK perfect)
 - WASM fp32 sequential: ✓ (57.1s, encoder→dispose→decoders, JFK perfect)
 - Not a regression — both large-v3-turbo smokes pass clean
 
@@ -76,30 +76,31 @@ sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array
 - `segmentAudio()`: full pipeline wrapper
 - Smoke: `tests/smoke/vad-pipeline-smoke.mjs` (18 tests)
 
-|| # | Feature | Status | Commit |
+| # | Feature | Status | Commit |
 |---|---------|--------|--------|
-|| 1 | Language auto-detection | ✅ | `136ad2a` |
-|| 2 | Word timestamps DTW | ✅ | Already wired |
-|| 3 | bestOf decodings | ✅ | `71410b0` |
-|| 4 | patience beam search | ✅ | `aceb643` |
-|| 5 | VAD integration smoke | ✅ | `77778e3` |
-|| 6 | SRT/VTT export | ✅ | 7 tests |
-|| 7 | WebGPU model selector | ✅ | `f2a09e2` |
-|| 8 | WAV2VEC2 CTC alignment | ✅ | `f7ef300` |
-|| 9 | Quality gates + fallback runner | ✅ | This session |
-|| 10 | Quality gates smoke (26 tests) | ✅ | This session |
-||| 11 | Turkish fixture 12_dans.tr | ✅ | This session |
-||| 12 | Word timestamps in runner | ✅ | This session |
-||| 13 | Multiple output formats (SRT/TXT/JSON) | ✅ | This session |
-||| 14 | Verbose/quiet CLI mode | ✅ | This session |
-||| 15 | Language auto-detection | ✅ | This session |
-||| 16 | Beam search in runner | ✅ | This session |
-||| 17 | Wav2Vec2 forced alignment | ✅ | This session |
+| 1 | Language auto-detection | ✅ | `136ad2a` |
+| 2 | Word timestamps DTW | ✅ | Already wired |
+| 3 | bestOf decodings | ✅ | `71410b0` |
+| 4 | patience beam search | ✅ | `aceb643` |
+| 5 | VAD integration smoke | ✅ | `77778e3` |
+| 6 | SRT/VTT export | ✅ | 7 tests |
+| 7 | WebGPU model selector | ✅ | `f2a09e2` |
+| 8 | WAV2VEC2 CTC alignment | ✅ | `f7ef300` |
+| 9 | Quality gates + fallback runner | ✅ | Commit `49ae0a7` |
+| 10 | Quality gates smoke (26 tests) | ✅ | Commit `49ae0a7` |
+| 11 | Turkish fixture 12_dans.tr | ✅ | Commit `49ae0a7` |
+| 12 | Word timestamps in runner | ✅ | Commit `49ae0a7` |
+| 13 | Multiple output formats (SRT/TXT/JSON) | ✅ | Commit `49ae0a7` |
+| 14 | Verbose/quiet CLI mode | ✅ | Commit `49ae0a7` |
+| 15 | Language auto-detection in runner | ✅ | Commit `49ae0a7` |
+| 16 | Beam search in runner | ✅ | Commit `03707b4` |
+| 17 | Wav2Vec2 forced alignment | ✅ | Commit `9f62c42` |
 
 ### Backend strategy (established)
 1. **Native ORT** (`onnxruntime-node`) — first dev target, no heap limit, streaming-ready
 2. **WebGPU** (browser) — production browser target, needs explicit externalData
 3. **WASM** (fallback) — ~1.5GB heap limit, sequential only for large models
+4. **OOM** already fixed via sequential lifecycle (encoder→dispose→decoders) for WASM
 
 ## Project Structure
 
@@ -124,6 +125,8 @@ speech-recognition/
     vad-integration-smoke.mjs            — TenVAD energy-based VAD
     wav2vec2-node-wasm-smoke.mjs         — WAV2VEC2 ASR
     wav2vec2-node-wasm-align-smoke.mjs   — WAV2VEC2 alignment
+    whisperx-runner.mjs                  — WhisperX-compatible runner (all features)
+    quality-gates-smoke.mjs              — 26 quality gate tests
   docs/
     AGENT_TASKS.md          — Task coordination (source of truth)
 
@@ -146,7 +149,7 @@ vad-demo/                   — Isolated VAD testing
 
 ```bash
 cd ~/github/asrjs/speech-recognition
-npm run typecheck && npm run lint && npm test   # 601 tests
+npm run typecheck && npm run lint && npm test   # 601 tests, 1 pre-existing flaky
 npm run build
 node tests/smoke/quality-gates-smoke.mjs         # 26 unit tests (fast)
 RED_ASR=1 node tests/smoke/quality-gates-smoke.mjs  # + ASR integration
@@ -161,4 +164,11 @@ node tests/smoke/wav2vec2-node-wasm-align-smoke.mjs
 WHISPER_MODEL_DIR=/tmp/whisper-base-4graph/fp32 node tests/smoke/whisperx-runner.mjs \
   --language tr --vad_onset 0.5 \
   tests/fixtures/12_dans.tr.m4a
+
+# WhisperX runner with all features:
+node tests/smoke/whisperx-runner.mjs \
+  --model /tmp/whisper-base-4graph/fp32 \
+  --language auto --word_timestamps \
+  --beam_size 3 --patience 2.0 --length_penalty 0.0 \
+  tests/fixtures/jfk2.en.wav
 ```
