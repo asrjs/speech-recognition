@@ -16,12 +16,16 @@ Completed:
 - `src/presets/wav2vec2/` manifest + preset factory.
 - Built-in runtime registration and descriptor catalog entry.
 - Real ONNX Node/WASM smoke script and run.
+- CTC Viterbi forced alignment plus Wav2Vec2 word alignment backend.
 
 ## Commit History (WAV2VEC2 + CTC related)
 
 ```text
+eb2cc6d  smoke: minimal whisper-base splitgraph (also contains alignment token-label hardening + Vitest alignment source alias)
 b25e9a6  feat: wire context conditioning (contains Wav2Vec2 model factory/preset files + smoke script)
 64c1cea  feat: add formatTranscript() (contains Wav2Vec2 ORT external data, built-in registration, descriptor wiring)
+4ab5e89  feat: add WAV2VEC2 alignment backend — Wav2Vec2Aligner + groupCharAlignmentToWords
+33cc27b  feat: add CTC Viterbi forced alignment
 be7f1c9  refactor: extract shared CTC module, migrate wav2vec2 + lasr-ctc executors
 94ceb99  feat: add WAV2VEC2 CTC model family — types, config, tokenizer, ORT glue, executor
 ```
@@ -80,7 +84,19 @@ Important boundary: Wav2Vec2 is raw-waveform, not mel-based. The convolutional f
 |------|---------|
 | `tests/wav2vec2-model.test.ts` | Family support, stub fallback, preset resolution, built-in registration |
 | `tests/preset-descriptors.test.ts` | Wav2Vec2 descriptor/catalog metadata |
+| `tests/alignment-ctc-viterbi.test.ts` | 15 CTC Viterbi/core alignment tests |
+| `tests/wav2vec2-alignment.test.ts` | 9 Wav2Vec2 aligner/word grouping tests |
 | `tests/smoke/wav2vec2-node-wasm-smoke.mjs` | Real ONNX Node/WASM smoke script |
+
+### Alignment backend
+
+| File | Purpose |
+|------|---------|
+| `src/alignment/ctc-viterbi.ts` | Model-agnostic CTC Viterbi forced alignment (`ctcForceAlign`, `ctcViterbiBacktrack`, `ctcLogSoftmax`) |
+| `src/alignment/wav2vec2-aligner.ts` | Wav2Vec2 transcript→word alignment wrapper over CTC Viterbi |
+| `src/alignment/index.ts`, `src/alignment.ts` | Public alignment exports |
+
+Alignment pitfall fixed: Wav2Vec2 separator tokens must be decoded before word grouping. `ctcForceAlign()` now accepts `tokenToChar`; the Wav2Vec2 aligner passes `decodeTokenPiece()` so the `|` token becomes a space and is skipped instead of consuming the first character of the following word.
 
 ## ONNX Model Details
 
@@ -139,7 +155,7 @@ and so my fellow americans ask not what your country can do for you ask what you
 Latest gate:
 
 ```bash
-npx vitest run tests/wav2vec2-model.test.ts tests/preset-descriptors.test.ts tests/exports.test.ts
+npx vitest run tests/alignment-ctc-viterbi.test.ts tests/wav2vec2-alignment.test.ts
 npm run typecheck
 npm run lint
 npm test
@@ -148,10 +164,10 @@ node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
 ```
 
 Results:
-- Focused Wav2Vec2/preset/export tests: 16 passed
+- Focused alignment tests: 2 files, 24 tests passed
 - Typecheck: clean
 - Lint: 0 errors, 5 existing max-lines warnings
-- Full tests: 100 files, 568 tests passed
+- Full tests: 103 files, 599 tests passed
 - Build: clean
 - Node/WASM Wav2Vec2 smoke: passed
 
@@ -165,14 +181,12 @@ Results:
 ## Remaining Work
 
 1. Publish/host Wav2Vec2 ONNX artifact if we want `useManifestSources: true` to load without local direct paths.
-2. Implement CTC Viterbi forced alignment in `src/alignment/ctc-viterbi.ts`.
-3. Add Wav2Vec2 aligner wrapper in `src/alignment/wav2vec2-aligner.ts`.
-4. Add alignment fixture tests.
-5. Optional: add an npm script for `tests/smoke/wav2vec2-node-wasm-smoke.mjs` if recurring.
-6. Remove MedASR backward-compat wrappers when rewriting MedASR.
+2. Add a real Wav2Vec2 ONNX forced-alignment smoke once executor/logit reuse API is exposed (current aligner accepts injected logits).
+3. Optional: add an npm script for `tests/smoke/wav2vec2-node-wasm-smoke.mjs` if recurring.
+4. Remove MedASR backward-compat wrappers when rewriting MedASR.
 
 ## Resume Instructions
 
-Next useful task: start Phase D CTC Viterbi alignment.
+Next useful task: expose/reuse Wav2Vec2 logits for real-audio forced alignment, then run the aligner on a known transcript/audio pair.
 
-Start by writing failing tests for a tiny synthetic CTC lattice, then implement a model-agnostic aligner under `src/alignment/` or `src/ctc/` depending on whether it is generic CTC path logic or transcript-alignment-specific orchestration.
+Start with a failing integration test around a small fixture and expected word order/timestamp monotonicity. Keep generic Viterbi path logic in `src/alignment/ctc-viterbi.ts`; keep Wav2Vec2-specific tokenization/logit-provider orchestration in `src/alignment/wav2vec2-aligner.ts`.

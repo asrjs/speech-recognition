@@ -16,7 +16,7 @@ Read this file first after any context reset. Contains:
 ```
 src/ctc/ (shared CTC module) ✅ DONE ──┐
                                         ├──► WAV2VEC2 model factory/preset ✅ DONE ──► real ONNX smoke ✅ DONE
-                                        │                                             └──► Alignment (Phase D) next
+                                        │                                             └──► Alignment (Phase D) ✅ DONE
 quality/ (Phase A) ✅ DONE              │
 chunking/ (Phase B) ✅ DONE             │
 post-processing/ (Phase C) ✅ DONE      │
@@ -97,13 +97,15 @@ Commits: `5474991` through `1744585`.
 
 ### Phase D: src/alignment/ — DONE
 Owner: Flexo (DSV4Pro/gpt-5.5)
-Commits: `33cc27b` (ctc-viterbi), `4ab5e89` (wav2vec2-aligner)
-Status: ✅ Complete — 22 tests (14 CTC Viterbi + 8 WAV2VEC2 aligner)
+Commits: `33cc27b` (ctc-viterbi), `4ab5e89` (wav2vec2-aligner), `eb2cc6d` (token label/separator hardening)
+Status: ✅ Complete — 24 focused tests (15 CTC Viterbi + 9 WAV2VEC2 aligner)
 
 Completed:
 - [x] `src/alignment/ctc-viterbi.ts` — `ctcForceAlign()`, `ctcViterbiBacktrack()`, `ctcLogSoftmax()`
 - [x] `src/alignment/wav2vec2-aligner.ts` — `createWav2Vec2Aligner()`, `groupCharAlignmentToWords()`
-- [x] Tests: `tests/alignment-ctc-viterbi.test.ts` (14), `tests/wav2vec2-alignment.test.ts` (8)
+- [x] Tests: `tests/alignment-ctc-viterbi.test.ts` (15), `tests/wav2vec2-alignment.test.ts` (9)
+- [x] Token label callback: `ctcForceAlign(..., { tokenToChar })` so Wav2Vec2 separator tokens decode to spaces before word grouping.
+- [x] Vitest source alias for `@asrjs/speech-recognition/alignment` so alignment tests exercise `src/`, not stale `dist/`.
 
 ### Beam Search — DONE
 Owner: Flexo
@@ -185,7 +187,7 @@ Remaining:
 npx vitest run tests/wav2vec2-model.test.ts tests/preset-descriptors.test.ts tests/exports.test.ts
 npm run typecheck
 npm run lint          # 0 errors, existing max-lines warnings only
-npm test              # 100 files, 568 tests passed
+npm test              # 103 files, 599 tests passed
 npm run build
 node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
 ```
