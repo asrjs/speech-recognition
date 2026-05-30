@@ -103,9 +103,28 @@ Status: ✅ Complete — 24 focused tests (15 CTC Viterbi + 9 WAV2VEC2 aligner)
 Completed:
 - [x] `src/alignment/ctc-viterbi.ts` — `ctcForceAlign()`, `ctcViterbiBacktrack()`, `ctcLogSoftmax()`
 - [x] `src/alignment/wav2vec2-aligner.ts` — `createWav2Vec2Aligner()`, `groupCharAlignmentToWords()`
-- [x] Tests: `tests/alignment-ctc-viterbi.test.ts` (15), `tests/wav2vec2-alignment.test.ts` (9)
+- [x] Tests: `tests/alignment-ctc-viterbi.test.ts` (15), `tests/wav2vec2-alignment.test.ts` (10)
 - [x] Token label callback: `ctcForceAlign(..., { tokenToChar })` so Wav2Vec2 separator tokens decode to spaces before word grouping.
+- [x] `createWav2Vec2AlignerFromLogits()` for executor-extracted/reusable logits.
 - [x] Vitest source alias for `@asrjs/speech-recognition/alignment` so alignment tests exercise `src/`, not stale `dist/`.
+
+### WAV2VEC2 Real ONNX Forced Alignment Smoke — DONE
+Owner: Flexo (gpt-5.5)
+Commit: pending
+Status: ✅ Complete
+
+Implemented:
+- [x] `OrtWav2Vec2Executor.extractLogits()` exposes reusable `[frames, vocab]` logits, tokenizer, blank ID, duration, and shape metadata.
+- [x] `tests/smoke/wav2vec2-node-wasm-align-smoke.mjs` runs real Node/WASM ONNX logits extraction and CTC Viterbi forced alignment.
+- [x] Verified on `tests/fixtures/jfk2.en.wav` with `/tmp/wav2vec2-base-960h.onnx`.
+
+Observed forced-alignment smoke:
+
+```text
+wav2vec2 node/wasm forced-alignment smoke passed
+frames=549 vocab=32 chars=104 words=22
+and:0.42-0.48 so:0.64-0.82 my:1.02-1.16 fellow:1.32-1.56 americans:1.70-2.18 ask:3.55-3.69
+```
 
 ### Beam Search — DONE
 Owner: Flexo
@@ -174,9 +193,8 @@ Checklist:
 
 Remaining:
 - HF upload/publish for the ONNX Wav2Vec2 base-960h artifact.
-- Optional npm script for the Wav2Vec2 smoke command if this becomes recurring.
+- Optional npm script for the Wav2Vec2 smoke commands if this becomes recurring.
 - Remove `lasr-ctc/ctc.ts` compatibility wrapper when MedASR is rewritten.
-- CTC Viterbi on real WAV2VEC2 ONNX model (integration test with wav2vec2-base-960h)
 
 ## SHARED FILES (coordinate before modifying)
 
@@ -192,12 +210,13 @@ Remaining:
 ## Verification (latest W2V pass)
 
 ```bash
-npx vitest run tests/wav2vec2-model.test.ts tests/preset-descriptors.test.ts tests/exports.test.ts
+npx vitest run tests/wav2vec2-model.test.ts tests/wav2vec2-alignment.test.ts
 npm run typecheck
 npm run lint          # 0 errors, existing max-lines warnings only
-npm test              # 103 files, 599 tests passed
+npm test              # 103 files, 601 tests passed
 npm run build
 node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
+node tests/smoke/wav2vec2-node-wasm-align-smoke.mjs
 ```
 
 ## Communication
