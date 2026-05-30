@@ -2,8 +2,6 @@ import {
   ctcForceAlign,
   ctcViterbiBacktrack,
   ctcLogSoftmax,
-  type CtcAlignedFrame,
-  type CtcAlignmentResult,
 } from '@asrjs/speech-recognition/alignment';
 import { describe, expect, it } from 'vitest';
 
@@ -154,6 +152,22 @@ describe('CTC Viterbi forced alignment', () => {
     // 'a' at frame 1 → 2.0s, 'b' at frame 3 → 6.0s
     expect(result.alignedFrames[0]!.seconds).toBeCloseTo(2.0, 0);
     expect(result.alignedFrames[1]!.seconds).toBeCloseTo(6.0, 0);
+  });
+
+  it('uses token labels from tokenToChar when provided', () => {
+    const logits = makeSimpleLogits(5, VOCAB, new Map([
+      [1, [1]],
+      [4, [2]],
+      [2, [3]],
+    ]), BLANK);
+
+    const result = ctcForceAlign(logits, 5, VOCAB, [1, 4, 2], BLANK, {
+      audioDurationSeconds: 1,
+      tokenToChar: (tokenId) => ({ 1: 'h', 4: ' ', 2: 'i' })[tokenId] ?? '?',
+    });
+
+    expect(result.alignedFrames.map((frame) => frame.char)).toEqual(['h', ' ', 'i']);
+    expect(result.alignedFrames.map((frame) => frame.tokenIdx)).toEqual([1, 4, 2]);
   });
 });
 

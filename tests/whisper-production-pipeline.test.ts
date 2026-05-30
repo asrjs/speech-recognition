@@ -1,9 +1,4 @@
-import {
-  ProductionWhisperPipeline,
-  createWhisperProductionPipeline,
-  type ProductionWhisperPipelineOptions,
-  type ProductionTranscript,
-} from '@asrjs/speech-recognition/pipeline';
+import { createWhisperProductionPipeline } from '@asrjs/speech-recognition/pipeline';
 import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------

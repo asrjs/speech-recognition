@@ -20,6 +20,7 @@ export interface Wav2Vec2AlignerConfig {
   readonly tokenizer: {
     encode: (text: string) => number[];
     decode: (ids: readonly number[]) => string;
+    decodeTokenPiece?: (id: number) => string;
   };
   readonly vocabSize: number;
   readonly blankId: number;
@@ -175,7 +176,13 @@ export function createWav2Vec2Aligner(
         config.vocabSize,
         targetTokens,
         config.blankId,
-        { audioDurationSeconds },
+        {
+          audioDurationSeconds,
+          tokenToChar: (tokenId) =>
+            config.tokenizer.decodeTokenPiece?.(tokenId) ||
+            config.tokenizer.decode([tokenId]) ||
+            String(tokenId),
+        },
       );
 
       // 4. Group characters into words

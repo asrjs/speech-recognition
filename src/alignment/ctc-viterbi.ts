@@ -33,8 +33,10 @@ export interface CtcAlignmentResult {
 
 export interface CtcForceAlignOptions {
   /** Optional audio duration for seconds conversion
-   *  seconds = (frame + 0.5) / frameCount * audioDurationSeconds */
+   *  seconds = frame / frameCount * audioDurationSeconds */
   readonly audioDurationSeconds?: number;
+  /** Optional token label decoder used by character-level aligners. */
+  readonly tokenToChar?: (tokenId: number) => string;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +95,10 @@ function sStateToTokenIdx(
  */
 function isCharState(s: number): boolean {
   return s % 2 === 1;
+}
+
+function tokenLabel(tokenId: number, options?: CtcForceAlignOptions): string {
+  return options?.tokenToChar?.(tokenId) ?? String(tokenId);
 }
 
 // ---------------------------------------------------------------------------
@@ -271,7 +277,7 @@ export function ctcForceAlign(
       : 0;
     return {
       alignedFrames: targets.map((tokenIdx) => ({
-        char: String(tokenIdx),
+        char: tokenLabel(tokenIdx, options),
         tokenIdx,
         frame: 0,
         seconds: secondsPerFrame * 0.5,
@@ -306,7 +312,7 @@ export function ctcForceAlign(
     const confidence = Math.exp(logProb);
 
     return {
-      char: String(tokenIdx),
+      char: tokenLabel(tokenIdx, options),
       tokenIdx,
       frame,
       seconds: frame * secondsPerFrame,

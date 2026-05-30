@@ -2,9 +2,8 @@ import {
   createWav2Vec2Aligner,
   groupCharAlignmentToWords,
   type Wav2Vec2AlignerConfig,
-  type Wav2Vec2AlignedWord,
 } from '@asrjs/speech-recognition/alignment';
-import { ctcForceAlign, type CtcAlignmentResult } from '@asrjs/speech-recognition/alignment';
+import type { CtcAlignmentResult } from '@asrjs/speech-recognition/alignment';
 import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
@@ -27,7 +26,7 @@ function makeLogitProvider(
     }
     for (const [charId, frames] of charIdToFrames) {
       for (const f of frames) {
-        logits[f * charId + charId] = 10.0;
+        logits[f * vocabSize + charId] = 10.0;
       }
     }
     return logits;
@@ -35,10 +34,17 @@ function makeLogitProvider(
 }
 
 function simpleTokenizer(charToId: Record<string, number>) {
+  const idToChar = new Map<number, string>();
+  for (const [char, id] of Object.entries(charToId)) {
+    idToChar.set(id, char);
+  }
+
   return {
     encode: (text: string): number[] =>
       [...text].map((c) => charToId[c] ?? 0).filter((id) => id !== 0),
-    decode: (_ids: readonly number[]): string => '',
+    decode: (ids: readonly number[]): string =>
+      ids.map((id) => idToChar.get(id) ?? '').join(''),
+    decodeTokenPiece: (id: number): string => idToChar.get(id) ?? '',
   };
 }
 
@@ -153,6 +159,47 @@ describe('createWav2Vec2Aligner', () => {
     expect(result.words[0]!.text).toBe('hello');
     expect(result.words[1]!.text).toBe('world');
     expect(result.words[0]!.start).toBeLessThan(result.words[1]!.start);
+  });
+
+  it('uses decoded separator token labels so spaces do not consume word characters', () => {
+    const frameCount = 8;
+    const separatorAwareChars: Record<string, number> = {
+      ' ': 4,
+      h: 1,
+      i: 2,
+      y: 5,
+      o: 6,
+      u: 7,
+    };
+    const logitProvider = makeLogitProvider(frameCount, VOCAB, new Map([
+      [1, [1]], // h
+      [2, [2]], // i
+      [4, [3]], // separator / space
+      [5, [4]], // y
+      [6, [5]], // o
+      [7, [6]], // u
+    ]), BLANK);
+    const tokenizer = simpleTokenizer(separatorAwareChars);
+    const config: Wav2Vec2AlignerConfig = {
+      logitProvider,
+      tokenizer,
+      vocabSize: VOCAB,
+      blankId: BLANK,
+      wordSeparator: SEPARATOR,
+      frameCount,
+      sampleRate: 16000,
+    };
+
+    const aligner = createWav2Vec2Aligner(config);
+    const result = aligner.align({ transcript: 'hi you', audioDurationSeconds: 1.6 });
+
+    expect(result.words).toHaveLength(2);
+    expect(result.totalChars).toBe(6);
+    expect(result.words[0]!.text).toBe('hi');
+    expect(result.words[0]!.charFrames.map((frame) => frame.tokenIdx)).toEqual([1, 2]);
+    expect(result.words[1]!.text).toBe('you');
+    expect(result.words[1]!.charFrames.map((frame) => frame.tokenIdx)).toEqual([5, 6, 7]);
+    expect(result.words[1]!.start).toBeCloseTo(0.8, 1);
   });
 
   it('returns empty words for empty transcript', () => {
