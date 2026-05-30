@@ -340,6 +340,37 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
 
     const warnings: TranscriptWarning[] = [];
     const revision = source.revision ?? 'main';
+
+    const maybeDownloadToTemp = async (
+      handle: ResolvedAssetHandle,
+      locator: string,
+      filename: string,
+    ): Promise<string> => {
+      const isHttp = /^https?:\/\//i.test(locator);
+      if (!isHttp) return locator;
+
+      const isNode = typeof process !== 'undefined' && process.versions?.node != null;
+      if (!isNode) return locator;
+
+      // Only download binary files needed by ORT — small text files work via fetch() natively
+      const isOnnxFile = /\.(onnx|onnx\.data|ort|bin)$/i.test(filename);
+      if (!isOnnxFile) return locator;
+
+      // Download to temp file so ORT WASM/Node can open it from local filesystem
+      const bytes = await handle.readBytes();
+      const { mkdir, writeFile } = await import('node:fs/promises');
+      const { tmpdir } = await import('node:os');
+      const { join } = await import('node:path');
+      const { pathToFileURL } = await import('node:url');
+
+      const cacheDir = join(tmpdir(), 'asrjs-cache', source.repoId.replace(/\//g, '_'), revision);
+      await mkdir(cacheDir, { recursive: true });
+      const destPath = join(cacheDir, filename);
+      await writeFile(destPath, bytes);
+
+      return pathToFileURL(destPath).href;
+    };
+
     const resolveFile = async (filename: string, optional = false): Promise<string | undefined> => {
       try {
         const handle = await this.assetProvider!.resolve({
@@ -364,7 +395,7 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
         if (!locator) {
           throw new Error(`Could not create a URL locator for "${filename}".`);
         }
-        return locator;
+        return maybeDownloadToTemp(handle, locator, filename);
       } catch (error) {
         if (optional) {
           warnings.push({

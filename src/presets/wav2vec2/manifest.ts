@@ -56,8 +56,8 @@ export const WAV2VEC2_PRESET_MANIFESTS: readonly Wav2Vec2PresetManifest[] = [
     source: {
       kind: 'huggingface',
       repoId: 'ysdede/wav2vec2-base-960h-onnx',
-      modelFilename: 'model.onnx',
-      modelDataFilename: 'model.onnx.data',
+      modelFilename: 'wav2vec2-base-960h.onnx',
+      modelDataFilename: 'wav2vec2-base-960h.onnx.data',
       tokenizerFilename: 'vocab.json',
     },
   },
