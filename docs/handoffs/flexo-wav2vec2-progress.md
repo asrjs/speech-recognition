@@ -1,196 +1,119 @@
 # Flexo — WAV2VEC2 CTC Model Progress
 
-Branch: `feat/asr-pipeline-output-formats`
-Last updated: 2026-05-31
-Author: Flexo (gpt-5.5, home P520)
+Branch: `feat/large-v3-turbo-fp16-external-data` (also exists on `feat/asr-pipeline-output-formats`)
+Last updated: 2026-05-30
+Author: Flexo (deepseek-v4-pro, home P520)
 
 ## Current Status
 
-WAV2VEC2 base-960h is now wired as a real model family and preset, and the Node/WASM smoke path has been validated against a real ONNX model.
+**COMPLETE.** Two Wav2Vec2 models (EN + TR) ported to ONNX, published on HuggingFace with 3 quantization variants each (fp32, fp16, q8). ASR + WhisperX-style forced alignment validated on Node/WASM and native ORT. WebGPU smoke HTML ready.
 
 Completed:
-- Shared `src/ctc/` module for CTC argmax/collapse/timing/word building.
-- `src/models/wav2vec2/` core model implementation.
-- `src/models/wav2vec2/model.ts` model factory.
-- `src/models/wav2vec2/mapping.ts` native→canonical transcript mapping.
-- `src/presets/wav2vec2/` manifest + preset factory.
-- Built-in runtime registration and descriptor catalog entry.
-- Real ONNX Node/WASM smoke script and run.
-- CTC Viterbi forced alignment plus Wav2Vec2 word alignment backend.
-- `OrtWav2Vec2Executor.extractLogits()` for reusable logit extraction.
-- Real ONNX Node/WASM forced-alignment smoke (JFK fixture, 22 words with timestamps).
+- `src/ctc/` shared CTC module
+- `src/models/wav2vec2/` model family (types, config, tokenizer, ORT, executor, model, mapping)
+- `src/presets/wav2vec2/` presets for 6 model variants (EN fp32/fp16/q8, TR fp32/fp16/q8)
+- `src/alignment/` CTC Viterbi + Wav2Vec2 aligner + extractLogits + createWav2Vec2AlignerFromLogits
+- Built-in runtime registration with `useManifestSource: true`
+- Node.js HF download bridge (materialize to temp for ORT)
+- Quantization benchmark suite (native ORT, Python + JS)
 
-## Commit History (WAV2VEC2 + CTC related)
+## HF Repos
 
-```text
-f7ef300  wav2vec2: CTC Viterbi forced alignment integration — extractLogits() + align smoke
-eb2cc6d  smoke: minimal whisper-base splitgraph (also contains alignment token-label hardening + Vitest alignment source alias)
-b25e9a6  feat: wire context conditioning (contains Wav2Vec2 model factory/preset files + smoke script)
-64c1cea  feat: add formatTranscript() (contains Wav2Vec2 ORT external data, built-in registration, descriptor wiring)
-4ab5e89  feat: add WAV2VEC2 alignment backend — Wav2Vec2Aligner + groupCharAlignmentToWords
-33cc27b  feat: add CTC Viterbi forced alignment
-be7f1c9  refactor: extract shared CTC module, migrate wav2vec2 + lasr-ctc executors
-94ceb99  feat: add WAV2VEC2 CTC model family — types, config, tokenizer, ORT glue, executor
+| Repo | Models | Variants |
+|------|--------|----------|
+| `ysdede/wav2vec2-base-960h-onnx` | EN base-960h (95M) | fp32, fp16, q8 |
+| `ysdede/wav2vec2-large-xlsr-turkish-onnx` | TR large-xlsr (317M) | fp32, fp16, q8 |
+
+## Quantization Benchmarks (native ORT, CPU, P520)
+
+### English — `facebook/wav2vec2-base-960h` (WhisperX default, JFK 11s)
+
+| Variant | Size | Infer | WER | Preset Alias |
+|---------|------|-------|-----|-------------|
+| fp32 | 362 MB | 704ms | 4.5% | `facebook/wav2vec2-base-960h` |
+| **fp16** | **182 MB** | **769ms** | **4.5%** | `base-960h-fp16` |
+| q8 | 91 MB | 2291ms | 9.1% | `base-960h-q8` |
+
+### Turkish — `m3hrdadfi/wav2vec2-large-xlsr-turkish` (WhisperX default, 18.6s)
+
+| Variant | Size | Infer | WER | Preset Alias |
+|---------|------|-------|-----|-------------|
+| fp32 | 1207 MB | 5626ms | 53.6% | `wav2vec2-turkish` |
+| **fp16** | **605 MB** | **3856ms** | **53.6%** | `wav2vec2-turkish-fp16` |
+| q8 | 302 MB | 5888ms | 71.4% | `wav2vec2-turkish-q8` |
+
+**Conclusion: fp16 is optimal for both models.**
+- Same WER as fp32 (identical transcript output)
+- 2x smaller download
+- For large models (317M+): also 32% faster inference
+- q8 degrades accuracy (WER +4-18 points) and is slower (int8→fp32 dequant overhead on CPU)
+- Use fp16 as default, fp32 for debugging, q8 only for size-constrained deployment
+
+## Export Recipes
+
+**fp16** (PyTorch export-time):
+```python
+model = model.half()  # convert to float16
+dummy = torch.randn(1, 16000*10, dtype=torch.float16)
+torch.onnx.export(model, dummy, path, opset_version=18, do_constant_folding=True,
+    input_names=["input_values"], output_names=["logits"],
+    dynamic_axes={"input_values":{0:"batch",1:"sequence"},"logits":{0:"batch",1:"frames"}})
 ```
 
-## Architecture
+**q8** (post-export, requires optimization pass first):
+```python
+from onnxruntime.transformers import optimizer, FusionOptions
+from onnxruntime.quantization import quantize_dynamic, QuantType
 
-```text
-Raw Float32 PCM @ 16 kHz
-  → Wav2Vec2 single ONNX graph
-  → logits [batch, frames, vocab]
-  → src/ctc CtcDecoder helpers
-     - argmaxAndSelectedLogProbs()
-     - ctcCollapseWithSpans()
-     - addTimesToTokenSpans()
-     - buildUtteranceTiming()
-     - buildSentenceTimings()
-     - buildWordsFromCharSpans()
-  → Wav2Vec2NativeTranscript
-  → mapWav2Vec2NativeToCanonical()
-  → TranscriptResult
+opt = optimizer.optimize_model(src, 'bert', num_heads=16, hidden_size=1024, ...)
+opt.save_model_to_file(opt_path)
+quantize_dynamic(opt_path, dst, weight_type=QuantType.QInt8)
 ```
 
-Important boundary: Wav2Vec2 is raw-waveform, not mel-based. The convolutional feature extractor is inside the ONNX graph.
+**Pitfall**: Direct `quantize_dynamic` without `optimize_model` fails with `ValueError: Expected mul_N to be an initializer`. Torch export with `do_constant_folding=True` doesn't fold all patterns — the optimizer handles the remaining non-initializer Conv weights.
 
-## Implemented Files
+**opt-fp32**: ORT optimizer converts external data to inline, producing 1.2 GB+ single files that exceed WASM heap limit (OOM). Not recommended.
 
-### Model family
+## ORT Backend Notes
 
-| File | Purpose |
-|------|---------|
-| `src/models/wav2vec2/types.ts` | Config, artifact sources, transcript options, native output, executor deps |
-| `src/models/wav2vec2/config.ts` | Default and parsed Wav2Vec2 config |
-| `src/models/wav2vec2/tokenizer.ts` | Character-level CTC tokenizer (`|` → space) |
-| `src/models/wav2vec2/ort.ts` | ORT Web session creation, HF/direct artifact resolution, external data support |
-| `src/models/wav2vec2/executor.ts` | Real ONNX inference → shared CTC decode → native transcript |
-| `src/models/wav2vec2/model.ts` | `createWav2Vec2ModelFamily()` + `SpeechModel`/`SpeechSession` wrapper |
-| `src/models/wav2vec2/mapping.ts` | Native Wav2Vec2 transcript → canonical transcript |
-| `src/models/wav2vec2/index.ts` | Barrel export |
-| `src/models/wav2vec2.ts` | Package subpath shim |
+- **Local smoke tests**: Use native ORT (`onnxruntime` Python / `onnxruntime-node`), NOT WASM
+- **WASM**: ~1.5 GB heap limit, single-session constraint. Large models (1.2 GB) fail on WASM.
+- **Native ORT**: Full system RAM, persistent multi-session support. Reference backend for benchmarking.
+- **Benchmark script**: `tests/smoke/wav2vec2-tr-quant-bench.mjs` (JS, direct session) and Python equivalent
 
-### Presets and built-ins
+## All Preset Aliases
 
-| File | Purpose |
-|------|---------|
-| `src/presets/wav2vec2/manifest.ts` | `facebook/wav2vec2-base-960h` preset manifest + aliases |
-| `src/presets/wav2vec2/factory.ts` | `createWav2Vec2PresetFactory()` |
-| `src/presets/wav2vec2/index.ts` | Preset barrel export |
-| `src/presets/wav2vec2.ts` | Package subpath shim |
-| `src/runtime/builtins.ts` | Registers Wav2Vec2 model family + preset |
-| `src/presets/descriptors.ts` | Built-in catalog descriptor for Wav2Vec2 CTC |
-| `src/presets/index.ts` | Exports Wav2Vec2 preset helpers |
+| Model | Alias | Variant |
+|-------|-------|---------|
+| EN | `facebook/wav2vec2-base-960h`, `wav2vec2`, `base-960h` | fp32 |
+| EN | `base-960h-fp16`, `wav2vec2-fp16` | fp16 |
+| EN | `base-960h-q8`, `wav2vec2-q8` | q8 |
+| TR | `wav2vec2-turkish`, `xlsr-turkish`, `wav2vec2-tr` | fp32 |
+| TR | `wav2vec2-turkish-fp16`, `xlsr-turkish-fp16` | fp16 |
+| TR | `wav2vec2-turkish-q8`, `xlsr-turkish-q8` | q8 |
 
-### Tests and smoke
+## Usage
 
-| File | Purpose |
-|------|---------|
-| `tests/wav2vec2-model.test.ts` | Family support, stub fallback, preset resolution, built-in registration, extractLogits API |
-| `tests/preset-descriptors.test.ts` | Wav2Vec2 descriptor/catalog metadata |
-| `tests/alignment-ctc-viterbi.test.ts` | 15 CTC Viterbi/core alignment tests |
-| `tests/wav2vec2-alignment.test.ts` | 10 Wav2Vec2 aligner/word grouping tests |
-| `tests/smoke/wav2vec2-node-wasm-smoke.mjs` | Real ONNX Node/WASM ASR smoke script |
-| `tests/smoke/wav2vec2-node-wasm-align-smoke.mjs` | Real ONNX Node/WASM forced-alignment smoke script |
+```typescript
+import { loadSpeechModel } from '@asrjs/speech-recognition';
+import { createWav2Vec2AlignerFromLogits } from '@asrjs/speech-recognition/alignment';
 
-### Alignment backend
+// ASR — fp16 (recommended)
+const model = await loadSpeechModel('base-960h-fp16', { useManifestSources: true });
+const result = await model.transcribe(audio);
 
-| File | Purpose |
-|------|---------|
-| `src/alignment/ctc-viterbi.ts` | Model-agnostic CTC Viterbi forced alignment (`ctcForceAlign`, `ctcViterbiBacktrack`, `ctcLogSoftmax`) |
-| `src/alignment/wav2vec2-aligner.ts` | Wav2Vec2 transcript→word alignment wrapper over CTC Viterbi |
-| `src/alignment/index.ts`, `src/alignment.ts` | Public alignment exports |
+// Forced alignment (WhisperX-style)
+const logits = await model.session.executor.extractLogits(audio);
+const aligner = createWav2Vec2AlignerFromLogits(logits);
+const words = aligner.align({ transcript: 'known text' });
 
-Alignment pitfall fixed: Wav2Vec2 separator tokens must be decoded before word grouping. `ctcForceAlign()` now accepts `tokenToChar`; the Wav2Vec2 aligner passes `decodeTokenPiece()` so the `|` token becomes a space and is skipped instead of consuming the first character of the following word.
-
-## ONNX Model Details
-
-Local smoke artifact:
-
-```text
-/tmp/wav2vec2-base-960h.onnx
-/tmp/wav2vec2-base-960h.onnx.data
+// Turkish
+const trModel = await loadSpeechModel('wav2vec2-turkish-fp16', { useManifestSources: true });
 ```
 
-Specs:
-- Source model: `facebook/wav2vec2-base-960h`
-- Input: `input_values` `[1, samples]` float32 raw waveform
-- Output: `logits` `[1, frames, 32]` float32
-- Output stride: 320 samples (`16000 / 320 ≈ 50 fps`)
-- CTC blank token ID: 0 (`<pad>`)
-- Vocabulary: 32 char-level tokens, `|` as word separator
-- Local ONNX graph uses external data; Node/WASM must pass `externalData` explicitly.
+## Key Design Decisions
 
-Critical smoke-source pattern:
-
-```js
-source: {
-  kind: 'direct',
-  artifacts: {
-    modelUrl: pathToFileURL('/tmp/wav2vec2-base-960h.onnx').href,
-    modelDataUrl: pathToFileURL('/tmp/wav2vec2-base-960h.onnx.data').href,
-    modelDataFilename: 'wav2vec2-base-960h.onnx.data',
-    tokenizerUrl: 'https://huggingface.co/facebook/wav2vec2-base-960h/resolve/main/vocab.json',
-  },
-  cpuThreads: 1,
-}
-```
-
-## Validated Smoke Output
-
-Command:
-
-```bash
-node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
-```
-
-Observed output:
-
-```text
-wav2vec2 node/wasm smoke passed
-model=/tmp/wav2vec2-base-960h.onnx
-audio=/home/steam/github/asrjs/speech-recognition/tests/fixtures/jfk2.en.wav
-sampleRate=16000 duration=11.000s elapsed≈8.6s
-words=22 tokens=105
-and so my fellow americans ask not what your country can do for you ask what you can do for your country
-```
-
-## Verification
-
-Latest gate:
-
-```bash
-npx vitest run tests/alignment-ctc-viterbi.test.ts tests/wav2vec2-alignment.test.ts
-npm run typecheck
-npm run lint
-npm test
-npm run build
-node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
-node tests/smoke/wav2vec2-node-wasm-align-smoke.mjs
-```
-
-Results:
-- Focused alignment tests: 2 files, 25 tests passed
-- Typecheck: clean
-- Lint: 0 errors, 5 existing max-lines warnings
-- Full tests: 103 files, 601 tests passed
-- Build: clean
-- Node/WASM Wav2Vec2 ASR smoke: passed
-- Node/WASM Wav2Vec2 forced-alignment smoke: passed (22 words, 549 frames, monotonic timestamps)
-
-## Design Decisions
-
-- Browser/runtime default for Wav2Vec2 descriptor is WASM first. WebGPU is listed as available but not validated here.
-- Preset manifest currently does not force a hub ONNX source; local smoke uses an explicit direct source. This avoids pretending the asrjs-owned Wav2Vec2 ONNX repo is published before it is.
-- Stub fallback remains only for tests/no-source development. Real inference activates whenever `options.source` is provided.
-- Backward compatibility is no longer a project constraint before release. The `lasr-ctc/ctc.ts` wrapper can be deleted when MedASR is rewritten.
-
-## Remaining Work
-
-1. Publish/host Wav2Vec2 ONNX artifact if we want `useManifestSources: true` to load without local direct paths.
-2. Optional: add an npm script for the Wav2Vec2 smoke commands if recurring.
-3. Remove MedASR backward-compat wrappers when rewriting MedASR.
-4. WebGPU smoke for Wav2Vec2 model (Node/WASM path is fully validated).
-
-## Resume Instructions
-
-Next useful task: HF upload/publish for the Wav2Vec2 ONNX base-960h artifact, then WebGPU smoke validation. The Node/WASM path for both ASR and forced alignment is complete and validated.
+- fp16 is default recommendation (not q8 like many LLMs). Unlike LLMs where q8 preserves accuracy, Wav2Vec2 CTC suffers significant WER degradation from q8 (+4-18 points) because CTC argmax is sensitive to logit precision.
+- `modelDataFilename` defaults removed — must be explicitly set for models with external data. q8 models (inline weights) skip this field entirely.
+- Conv bias=true for XLSR models (Turkish), false for base (English).
+- feat_extract_norm: 'layer' for XLSR, 'group' for base.

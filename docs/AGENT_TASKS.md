@@ -109,3 +109,21 @@ node tests/smoke/whisper-bestof-smoke.mjs
 - `src/post-processing/` — merge, format, subtitles
 - `src/alignment/` — CTC Viterbi, WAV2VEC2 aligner
 - `src/pipeline/` — ProductionWhisperPipeline
+
+## WAV2VEC2 Quantization — DONE (Flexo-deepseek-v4-pro)
+
+EN+TR models published in 3 variants each. Benchmark results (native ORT, P520):
+
+| Model | fp32 | fp16 | q8 | Optimal |
+|-------|------|------|-----|---------|
+| EN base-960h (JFK 11s) | 362MB/704ms/4.5% | 182MB/769ms/4.5% | 91MB/2291ms/9.1% | fp16 |
+| TR large-xlsr (18.6s) | 1207MB/5626ms/53.6% | 605MB/3856ms/53.6% | 302MB/5888ms/71.4% | fp16 |
+
+Key finding: fp16 = identical WER to fp32, 2x smaller. q8 degrades accuracy AND is slower.
+Use fp16 as default.
+
+Export: fp16 via PyTorch model.half() + export. q8 via optimize_model → quantize_dynamic.
+Pitfall: q8 requires optimizer pass first (Conv weight-as-initializer error otherwise).
+
+Commits: `0d7d2fb` (q8), `08a5def` (fp16+benchmark), `7a329b9` (EN fp16/q8 presets)
+HF: ysdede/wav2vec2-base-960h-onnx, ysdede/wav2vec2-large-xlsr-turkish-onnx
