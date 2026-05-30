@@ -83,8 +83,10 @@ export interface BrowserMicrophoneCaptureHandle {
   stop(): Promise<void>;
 }
 
-export interface BrowserMicrophoneRingCaptureOptions
-  extends Omit<BrowserMicrophoneCaptureOptions, 'onChunk'> {
+export interface BrowserMicrophoneRingCaptureOptions extends Omit<
+  BrowserMicrophoneCaptureOptions,
+  'onChunk'
+> {
   readonly ringBufferDurationSeconds?: number;
   readonly onChunk?: (chunk: MicrophoneAudioChunk) => void;
 }
@@ -241,81 +243,86 @@ registerProcessor('asrjs-capture-processor', AsrjsCaptureProcessor);
 `;
 }
 
-function createFixedChunkResampler(options: {
-  readonly sourceSampleRate: number;
-  readonly targetSampleRate: number;
-  readonly chunkFrames: number;
-  readonly onChunk: (pcm: Float32Array) => void;
-}) {
-  const sourceSampleRate = Math.max(1, options.sourceSampleRate);
-  const targetSampleRate = Math.max(1, options.targetSampleRate);
-  const chunkFrames = Math.max(1, options.chunkFrames);
-  const rateRatio = sourceSampleRate / targetSampleRate;
-  let sourceBuffer = new Float32Array(
-    Math.max(2048, Math.ceil(rateRatio * chunkFrames * 4) + 2),
-  );
-  let sourceLength = 0;
-  let sourceReadIndex = 0;
+class FixedChunkResampler {
+  private readonly chunkFrames: number;
+  private readonly rateRatio: number;
+  private readonly onChunk: (pcm: Float32Array) => void;
+  private sourceBuffer: Float32Array;
+  private sourceLength = 0;
+  private sourceReadIndex = 0;
 
-  const ensureCapacity = (required: number) => {
-    if (required <= sourceBuffer.length) return;
-    let nextLength = sourceBuffer.length;
+  constructor(options: {
+    readonly sourceSampleRate: number;
+    readonly targetSampleRate: number;
+    readonly chunkFrames: number;
+    readonly onChunk: (pcm: Float32Array) => void;
+  }) {
+    const sourceSampleRate = Math.max(1, options.sourceSampleRate);
+    const targetSampleRate = Math.max(1, options.targetSampleRate);
+    this.chunkFrames = Math.max(1, options.chunkFrames);
+    this.rateRatio = sourceSampleRate / targetSampleRate;
+    this.onChunk = options.onChunk;
+    this.sourceBuffer = new Float32Array(
+      Math.max(2048, Math.ceil(this.rateRatio * this.chunkFrames * 4) + 2),
+    );
+  }
+
+  private ensureCapacity(required: number): void {
+    if (required <= this.sourceBuffer.length) return;
+    let nextLength = this.sourceBuffer.length;
     while (nextLength < required) {
       nextLength *= 2;
     }
     const next = new Float32Array(nextLength);
-    next.set(sourceBuffer.subarray(0, sourceLength), 0);
-    sourceBuffer = next;
-  };
+    next.set(this.sourceBuffer.subarray(0, this.sourceLength), 0);
+    this.sourceBuffer = next;
+  }
 
-  const compactSourceBuffer = () => {
-    const consumed = Math.floor(sourceReadIndex);
+  private compactSourceBuffer(): void {
+    const consumed = Math.floor(this.sourceReadIndex);
     if (consumed <= 0) return;
-    if (consumed < sourceLength) {
-      sourceBuffer.copyWithin(0, consumed, sourceLength);
+    if (consumed < this.sourceLength) {
+      this.sourceBuffer.copyWithin(0, consumed, this.sourceLength);
     }
-    sourceLength -= consumed;
-    sourceReadIndex -= consumed;
-  };
+    this.sourceLength -= consumed;
+    this.sourceReadIndex -= consumed;
+  }
 
-  const append = (chunk: Float32Array) => {
+  private append(chunk: Float32Array): void {
     if (!chunk.length) return;
-    ensureCapacity(sourceLength + chunk.length + 2);
-    sourceBuffer.set(chunk, sourceLength);
-    sourceLength += chunk.length;
-  };
+    this.ensureCapacity(this.sourceLength + chunk.length + 2);
+    this.sourceBuffer.set(chunk, this.sourceLength);
+    this.sourceLength += chunk.length;
+  }
 
-  const emitAvailableChunks = () => {
+  private emitAvailableChunks(): void {
     const requiredSourceFrames = () =>
-      sourceReadIndex + Math.max(1, (chunkFrames - 1) * rateRatio + 1);
+      this.sourceReadIndex + Math.max(1, (this.chunkFrames - 1) * this.rateRatio + 1);
 
-    while (sourceLength >= requiredSourceFrames()) {
-      const out = new Float32Array(chunkFrames);
-      for (let index = 0; index < chunkFrames; index += 1) {
-        const sourcePosition = sourceReadIndex + index * rateRatio;
+    while (this.sourceLength >= requiredSourceFrames()) {
+      const out = new Float32Array(this.chunkFrames);
+      for (let index = 0; index < this.chunkFrames; index += 1) {
+        const sourcePosition = this.sourceReadIndex + index * this.rateRatio;
         const sourceIndex = Math.floor(sourcePosition);
         const fraction = sourcePosition - sourceIndex;
-        const left = sourceBuffer[sourceIndex] ?? 0;
-        const right =
-          sourceBuffer[Math.min(sourceIndex + 1, sourceLength - 1)] ?? left;
+        const left = this.sourceBuffer[sourceIndex] ?? 0;
+        const right = this.sourceBuffer[Math.min(sourceIndex + 1, this.sourceLength - 1)] ?? left;
         out[index] = left + (right - left) * fraction;
       }
 
-      sourceReadIndex += chunkFrames * rateRatio;
-      options.onChunk(out);
+      this.sourceReadIndex += this.chunkFrames * this.rateRatio;
+      this.onChunk(out);
 
-      if (sourceReadIndex >= 2048) {
-        compactSourceBuffer();
+      if (this.sourceReadIndex >= 2048) {
+        this.compactSourceBuffer();
       }
     }
-  };
+  }
 
-  return {
-    push(chunk: Float32Array) {
-      append(chunk);
-      emitAvailableChunks();
-    },
-  };
+  public push(chunk: Float32Array): void {
+    this.append(chunk);
+    this.emitAvailableChunks();
+  }
 }
 
 function resolveScriptProcessorBufferSize(chunkFrames: number): number {
@@ -346,19 +353,15 @@ async function createAudioWorkletCaptureNode(
     URL.revokeObjectURL(moduleUrl);
   }
 
-  return new globalThis.AudioWorkletNode(
-    audioContext as AudioContext,
-    'asrjs-capture-processor',
-    {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-      outputChannelCount: [1],
-      processorOptions: {
-        targetSampleRate: options.targetSampleRate ?? audioContext.sampleRate,
-        targetChunkFrames: options.chunkFrames ?? STREAMING_TIMELINE_CHUNK_FRAMES,
-      },
+  return new globalThis.AudioWorkletNode(audioContext as AudioContext, 'asrjs-capture-processor', {
+    numberOfInputs: 1,
+    numberOfOutputs: 1,
+    outputChannelCount: [1],
+    processorOptions: {
+      targetSampleRate: options.targetSampleRate ?? audioContext.sampleRate,
+      targetChunkFrames: options.chunkFrames ?? STREAMING_TIMELINE_CHUNK_FRAMES,
     },
-  ) as AudioWorkletNodeLike;
+  }) as AudioWorkletNodeLike;
 }
 
 export async function startMicrophoneCapture(
@@ -367,10 +370,7 @@ export async function startMicrophoneCapture(
   const processingSampleRate = options.targetSampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE;
   const chunkFrames =
     options.chunkFrames ??
-    resolveStreamingTimelineChunkFrames(
-      processingSampleRate,
-      options.chunkDurationMs,
-    );
+    resolveStreamingTimelineChunkFrames(processingSampleRate, options.chunkDurationMs);
   const bufferSize = options.bufferSize ?? resolveScriptProcessorBufferSize(chunkFrames);
   const createAudioContext = resolveCreateAudioContext(options.createAudioContext);
   const ownsStream = !options.stream;
@@ -407,8 +407,7 @@ export async function startMicrophoneCapture(
     chunkFrames,
     targetSampleRate: processingSampleRate,
   });
-  const scriptProcessor =
-    workletNode ? null : audioContext.createScriptProcessor(bufferSize, 1, 1);
+  const scriptProcessor = workletNode ? null : audioContext.createScriptProcessor(bufferSize, 1, 1);
   const processor = workletNode ?? scriptProcessor;
   if (!processor) {
     throw new Error('Unable to create a microphone capture processor.');
@@ -438,7 +437,7 @@ export async function startMicrophoneCapture(
       options.onError?.(error);
     };
   } else {
-    const fallbackResampler = createFixedChunkResampler({
+    const fallbackResampler = new FixedChunkResampler({
       sourceSampleRate: audioContext.sampleRate,
       targetSampleRate: processingSampleRate,
       chunkFrames,
