@@ -105,15 +105,38 @@ Completed:
 - [x] `src/alignment/wav2vec2-aligner.ts` — `createWav2Vec2Aligner()`, `groupCharAlignmentToWords()`
 - [x] Tests: `tests/alignment-ctc-viterbi.test.ts` (14), `tests/wav2vec2-alignment.test.ts` (8)
 
+### Beam Search — DONE
+Owner: Flexo
+Commits: `a0bdb9e` (core.ts), `d2ce555` (executor.ts), `783dfd1` (types.ts)
+Status: ✅ Complete
+
+Completed:
+- [x] `core.ts`: `whisperDecode()` dispatch, `whisperBeamDecode()` (beam search with KV-cache-per-beam)
+- [x] `executor.ts`: `splitGraphDecodeLoop` accepts `numBeams` + `lengthPenalty`, dispatches to `whisperDecode`
+- [x] `types.ts`: `numBeams`, `lengthPenalty`, `patience`, `bestOf` params
+- [x] WhisperX param parity: beam_size, best_of, patience, length_penalty
+
+### ORT URL/Path Fix — DONE
+Owner: Flexo
+Commit: `87e5e6a`
+Status: ✅ Complete
+
+Fixed:
+- [x] `tokenizer.ts:fetchText()` now handles bare file paths in Node.js (not just `file://` URLs)
+- [x] Verified: `WhisperTokenizer.fromUrl('/tmp/.../tokenizer.json')` works
+- [x] `ort.ts:createWhisperOrtSession()` already handled both — documented
+- [ ] Remaining: `loadSpeechModel` direct-source path has wiring issue at `materializeHuggingFaceArtifacts` (manipulates URLs even for `kind='direct'`). Workaround: use direct session creation pattern.
+
 ### Phase E: End-to-end smoke test — NEXT
 Owner: UNASSIGNED
 Dependencies: Whisper ONNX model + VAD backend + audio fixtures
-Status: ⏳
+Status: ⏳ (URL/path fix done, loadSpeechModel path still needs fix)
 
 Task:
 - Real audio file → VAD → Whisper EnhancedExecutor → formattedTranscript
 - Verify all 4 quality gates fire on real logits
 - Verify sentence boundary output
+- Use: whisper-base-4graph (256MB q8, faster than large-v3-turbo)
 
 ### WAV2VEC2 follow-ups — UNASSIGNED
 
