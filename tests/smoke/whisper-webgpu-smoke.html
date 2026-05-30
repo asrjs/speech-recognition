@@ -66,8 +66,8 @@ const MODELS = {
     promptIds: [50258, 50259, 50359],  // <|startoftranscript|>, <|en|>, <|transcribe|>
     eosId: 50257,
     maxNewTokens: 200,
-    // Reference from native ORT fp32 smoke (large-v3-turbo)
-    refTokens: [],  // populated from native ORT run
+    // Reference from native ORT fp32 smoke — text match only (timestamp tokens differ without processor)
+    refTokens: [],  // not compared; WebGPU lacks WhisperTimestampLogitProcessor
     refText: "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
   }
 };
