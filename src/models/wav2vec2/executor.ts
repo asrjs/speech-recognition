@@ -31,6 +31,7 @@ import { Wav2Vec2CharTokenizer } from './tokenizer.js';
 import type {
   Wav2Vec2ArtifactSource,
   Wav2Vec2Executor,
+  Wav2Vec2LogitsResult,
   Wav2Vec2ModelConfig,
   Wav2Vec2ModelDependencies,
   Wav2Vec2ModelOptions,
@@ -456,6 +457,97 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
   // -------------------------------------------------------------------------
   // Transcription
   // -------------------------------------------------------------------------
+
+  async extractLogits(
+    audio: AudioBufferLike,
+    options: Wav2Vec2TranscriptionOptions = {},
+  ): Promise<Wav2Vec2LogitsResult> {
+    const state = await this.getLoadedState();
+    const warnings: TranscriptWarning[] = [...state.warnings];
+    const extractionStart = nowMs();
+
+    emitTranscriptionProgress(options, {
+      stage: 'start',
+      progress: 0,
+      elapsedMs: 0,
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Starting Wav2Vec2 logits extraction for ${this.modelId}.`,
+    });
+
+    if (audio.sampleRate !== state.config.sampleRate) {
+      warnings.push({
+        code: 'wav2vec2.sample-rate-mismatch',
+        message: `Expected ${state.config.sampleRate} Hz audio but received ${audio.sampleRate} Hz. No resampler is active on this path.`,
+        recoverable: true,
+      });
+    }
+
+    this.sharedMonoBuffer = ensureFloat32Buffer(audio.numberOfFrames, this.sharedMonoBuffer);
+    const mono = toMonoPcm(audio, this.sharedMonoBuffer);
+
+    const preprocessElapsedMs = nowMs() - extractionStart;
+    emitTranscriptionProgress(options, {
+      stage: 'preprocess',
+      progress: 0.2,
+      elapsedMs: roundMetric(preprocessElapsedMs),
+      remainingMs: estimateRemainingMs(preprocessElapsedMs, 0.2),
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Prepared raw waveform for ${this.modelId}.`,
+    });
+
+    const inputTensor = new state.ort.Tensor('float32', mono, [1, mono.length]);
+    const encodeStart = nowMs();
+    let outputs: Record<string, OrtTensorLike>;
+    try {
+      outputs = await state.session.run({
+        input_values: inputTensor,
+      });
+    } finally {
+      inputTensor.dispose?.();
+    }
+    const encodeMs = nowMs() - encodeStart;
+    const encodeElapsedMs = nowMs() - extractionStart;
+
+    emitTranscriptionProgress(options, {
+      stage: 'encode',
+      progress: 0.6,
+      elapsedMs: roundMetric(encodeElapsedMs),
+      remainingMs: estimateRemainingMs(encodeElapsedMs, 0.6),
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Encoded logits for ${this.modelId}.`,
+      metrics: {
+        encodeMs: roundMetric(encodeMs),
+      },
+    });
+
+    const logitsTensor = findLogitsTensor(outputs);
+    const logits = normalizeLogitsData(logitsTensor);
+    const dims = [...logitsTensor.dims];
+    if (dims.length !== 3 || (dims[0] ?? 0) !== 1) {
+      throw new Error(`Unexpected Wav2Vec2 logits shape: [${dims.join(', ')}].`);
+    }
+
+    const frameCount = dims[1] ?? 0;
+    const vocabSize = dims[2] ?? 0;
+    if (frameCount <= 0 || vocabSize <= 0) {
+      throw new Error(`Wav2Vec2 logits shape is invalid: [${dims.join(', ')}].`);
+    }
+
+    return {
+      logits,
+      frameCount,
+      vocabSize,
+      sampleRate: state.config.sampleRate,
+      audioDurationSeconds: mono.length / state.config.sampleRate,
+      blankId: state.config.ctcBlankId,
+      tokenizer: state.tokenizer,
+      warnings: warnings.length > 0 ? warnings : undefined,
+      encodeMs: roundMetric(encodeMs),
+    };
+  }
 
   async transcribe(
     audio: AudioBufferLike,

@@ -166,7 +166,11 @@ export function createWav2Vec2Aligner(
 ): Wav2Vec2Aligner {
   return {
     align(options: Wav2Vec2AlignerAlignOptions): Wav2Vec2AlignmentResult {
-      const { transcript, audioDurationSeconds } = options;
+      const { transcript } = options;
+      const audioDurationSeconds = options.audioDurationSeconds ?? config.audioDurationSeconds;
+      if (typeof audioDurationSeconds !== 'number' || !Number.isFinite(audioDurationSeconds)) {
+        throw new Error('Wav2Vec2 alignment requires audioDurationSeconds.');
+      }
 
       if (!transcript || transcript.trim().length === 0) {
         return { words: [], totalFrames: config.frameCount, totalChars: 0 };
@@ -212,4 +216,24 @@ export function createWav2Vec2Aligner(
       };
     },
   };
+}
+
+/**
+ * Create a Wav2Vec2 aligner from logits that were already extracted by the
+ * Wav2Vec2 executor. This avoids a second ONNX run when a caller wants both
+ * ASR text and forced alignment over the same audio.
+ */
+export function createWav2Vec2AlignerFromLogits(
+  source: Wav2Vec2ReusableLogits,
+): Wav2Vec2Aligner {
+  return createWav2Vec2Aligner({
+    logitProvider: () => source.logits,
+    tokenizer: source.tokenizer,
+    vocabSize: source.vocabSize,
+    blankId: source.blankId,
+    wordSeparator: source.wordSeparator ?? ' ',
+    frameCount: source.frameCount,
+    sampleRate: source.sampleRate,
+    audioDurationSeconds: source.audioDurationSeconds,
+  });
 }

@@ -4,6 +4,7 @@ import type {
   AudioBufferLike,
   BaseTranscriptionOptions,
   SpeechRuntimeHooks,
+  TranscriptWarning,
 } from '../../types/index.js';
 
 // ---------------------------------------------------------------------------
@@ -152,8 +153,30 @@ export interface Wav2Vec2NativeTranscript {
 // Executor interface
 // ---------------------------------------------------------------------------
 
+export interface Wav2Vec2TokenizerLike {
+  encode(text: string): number[];
+  decode(ids: readonly number[]): string;
+  decodeTokenPiece?(tokenId: number): string;
+}
+
+export interface Wav2Vec2LogitsResult {
+  readonly logits: Float32Array;
+  readonly frameCount: number;
+  readonly vocabSize: number;
+  readonly sampleRate: number;
+  readonly audioDurationSeconds: number;
+  readonly blankId: number;
+  readonly tokenizer: Wav2Vec2TokenizerLike;
+  readonly warnings?: readonly TranscriptWarning[];
+  readonly encodeMs?: number;
+}
+
 export interface Wav2Vec2Executor {
   ready?(): Promise<void> | void;
+  extractLogits(
+    audio: AudioBufferLike,
+    options?: Wav2Vec2TranscriptionOptions,
+  ): Promise<Wav2Vec2LogitsResult>;
   transcribe(
     audio: AudioBufferLike,
     options: Wav2Vec2TranscriptionOptions,

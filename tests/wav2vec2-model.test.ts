@@ -3,6 +3,7 @@ import { registerBuiltInModelFamilies, registerBuiltInPresets } from '@asrjs/spe
 import { createSpeechRuntime } from '@asrjs/speech-recognition';
 import {
   createWav2Vec2ModelFamily,
+  OrtWav2Vec2Executor,
   type Wav2Vec2ModelOptions,
   type Wav2Vec2NativeTranscript,
   type Wav2Vec2TranscriptionOptions,
@@ -111,6 +112,10 @@ describe('Wav2Vec2 model family', () => {
 
     await loaded.dispose();
     await runtime.dispose();
+  });
+
+  it('exposes a reusable logits extraction method for forced alignment', () => {
+    expect(OrtWav2Vec2Executor.prototype.extractLogits).toBeTypeOf('function');
   });
 });
 

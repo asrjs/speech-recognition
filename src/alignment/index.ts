@@ -19,10 +19,12 @@ export {
 
 export {
   createWav2Vec2Aligner,
+  createWav2Vec2AlignerFromLogits,
   groupCharAlignmentToWords,
   type Wav2Vec2Aligner,
   type Wav2Vec2AlignerConfig,
   type Wav2Vec2AlignerAlignOptions,
   type Wav2Vec2AlignedWord,
   type Wav2Vec2AlignmentResult,
+  type Wav2Vec2ReusableLogits,
 } from './wav2vec2-aligner.js';
