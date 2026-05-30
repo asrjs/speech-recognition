@@ -168,7 +168,7 @@ Verified: whisper-base fp32, end-of-chapter-4.en.mp3 (167s)
 
 ### Phase F: Whisper Production Checklist — ACTIVE
 Owner: Flexo
-Status: ✅ Core works | ⏳ Features pending
+Status: ✅ Core works | ⏳ 2 features remaining
 
 Checklist:
 - [x] Greedy decode (argmax per step)
@@ -183,9 +183,10 @@ Checklist:
 - [x] SRT/VTT subtitle export
 - [x] VRAM optimization (skip merged decoder, defer alignment)
 - [x] URL/path unified (fetchText handles bare paths + file://)
-- [ ] Large-v3-turbo smoke test (needs fp32/fp16 on 8GB+ or use q8 with ORT fix)
-- [ ] bestOf independent decodings (multiple runs, pick best)
-- [ ] patience (beam search early stopping)
+- [x] CTC Viterbi integration test — done (f7ef300): WAV2VEC2 alignment smoke passes, 22 words with timestamps
+- [x] bestOf independent decodings — done (71410b0): whisperBestOfDecode, score tracking, smoke verified
+- [x] patience beam search early stopping — done (74fe639, aceb643): completedSteps counter, stops N steps after best beam reaches EOS
+- [ ] Large-v3-turbo smoke test — BLOCKED: fp16 OOM on 8GB (std::bad_alloc on 1.2GB inline encoder). Needs >8GB (Waffle RTX A6000 48GB or Bender). whisper-base fp32 smoke works and covers the pipeline.
 - [ ] Diarization (separate model, future Phase)
 - [ ] Batched encoder for parallel window processing (WhisperX-style)
 
@@ -193,6 +194,7 @@ Checklist:
 
 Remaining:
 - HF upload/publish for the ONNX Wav2Vec2 base-960h artifact.
+- CTC Viterbi integration smoke done (f7ef300). Alignment works end-to-end.
 - Optional npm script for the Wav2Vec2 smoke commands if this becomes recurring.
 - Remove `lasr-ctc/ctc.ts` compatibility wrapper when MedASR is rewritten.
 
@@ -207,16 +209,17 @@ Remaining:
 - `package.json` — coordinate exports changes.
 - `src/index.ts` — coordinate barrel exports.
 
-## Verification (latest W2V pass)
+## Verification (latest pass)
 
 ```bash
-npx vitest run tests/wav2vec2-model.test.ts tests/wav2vec2-alignment.test.ts
+npx vitest run tests/alignment-ctc-viterbi.test.ts tests/wav2vec2-alignment.test.ts tests/whisper-beam-search.test.ts
 npm run typecheck
 npm run lint          # 0 errors, existing max-lines warnings only
 npm test              # 103 files, 601 tests passed
 npm run build
 node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
 node tests/smoke/wav2vec2-node-wasm-align-smoke.mjs
+node tests/smoke/whisper-bestof-smoke.mjs
 ```
 
 ## Communication
