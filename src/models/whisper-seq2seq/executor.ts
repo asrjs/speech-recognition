@@ -1217,6 +1217,51 @@ export class WhisperOnnxExecutor {
     return audio.durationSeconds > maxDuration;
   }
 
+  /**
+   * Detect language from encoder output using decoder_init with single start token.
+   * Returns language code (e.g. 'en', 'tr') or 'auto' if detection fails.
+   */
+  private async detectLanguageFromEncoder(
+    loaded: Required<LoadedExecutorState>,
+    encoderHiddenStates: OrtTensorLike<Float32Array>,
+  ): Promise<string> {
+    try {
+      const sotId = loaded.tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
+      const inputIds = new BigInt64Array([BigInt(sotId)]);
+      const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, 1]);
+      const feeds: Record<string, unknown> = {
+        input_ids: inputIdsTensor,
+        encoder_hidden_states: encoderHiddenStates,
+      };
+      const outputs = await loaded.decoderInitSession.run(feeds);
+      const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+      const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+      const vocabSize = logitsTensor.dims[logitsTensor.dims.length - 1] ?? 0;
+
+      // Language tokens span 50259-50357 in Whisper vocabulary
+      const logits = logitsTensor.data;
+      let maxLogit = -Infinity;
+      let maxLangToken = -1;
+      for (let i = 50259; i <= 50357 && i < vocabSize; i++) {
+        if (logits[i]! > maxLogit) {
+          maxLogit = logits[i]!;
+          maxLangToken = i;
+        }
+      }
+
+      // Decode the language token to get the code
+      if (maxLangToken > 0) {
+        const langToken = loaded.tokenizer.idsToTokens?.([maxLangToken])?.[0] ?? '';
+        const match = langToken.match(/<\|(\w+)\|>/);
+        if (match) return match[1]!;
+      }
+
+      return 'auto';
+    } catch {
+      return 'auto';
+    }
+  }
+
   private async transcribeWithSplitGraph(
     audio: AudioBufferLike,
     options: WhisperSeq2SeqTranscriptionOptions,
@@ -1246,10 +1291,16 @@ export class WhisperOnnxExecutor {
     const encoderOutputs = await loaded.encoderSession.run({ input_features: featureTensor });
     const encoderHiddenStates = encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>;
 
-    // 3. Build initial prompt tokens
+    // 3. Detect language if auto
     const tokenizer = loaded.tokenizer;
-    const language = options.language ?? this.config.languages[0] ?? 'auto';
-    const langToken = language === 'auto' ? '<|en|>' : `<|${language}|>`;
+    let language = options.language ?? 'auto';
+    if (language === 'auto' && loaded.isSplitGraph && loaded.decoderInitSession) {
+      language = await this.detectLanguageFromEncoder(loaded as Required<LoadedExecutorState>, encoderHiddenStates);
+    }
+    if (language === 'auto') {
+      language = this.config.languages[0] ?? 'en';
+    }
+    const langToken = `<|${language}|>`;
     const taskToken = options.task === 'translate' ? '<|translate|>' : '<|transcribe|>';
     const noTimestampsToken = options.noTimestamps ? '<|notimestamps|>' : undefined;
 
