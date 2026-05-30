@@ -186,7 +186,7 @@ Checklist:
 - [x] CTC Viterbi integration test — done (f7ef300): WAV2VEC2 alignment smoke passes, 22 words with timestamps
 - [x] bestOf independent decodings — done (71410b0): whisperBestOfDecode, score tracking, smoke verified
 - [x] patience beam search early stopping — done (74fe639, aceb643): completedSteps counter, stops N steps after best beam reaches EOS
-- [ ] Large-v3-turbo smoke test — BLOCKED: fp16 OOM on 8GB (std::bad_alloc on 1.2GB inline encoder). Needs >8GB (Waffle RTX A6000 48GB or Bender). whisper-base fp32 smoke works and covers the pipeline.
+- [x] Large-v3-turbo smoke test — done (c49109b): fp32 works on 8GB with sequential session lifecycle (encoder→dispose→decoders→dispose). fp16 encoder blocked by ORT WASM inline 1.2GB allocation limit, not VRAM. 4.0s, perfect JFK output.
 - [ ] Diarization (separate model, future Phase)
 - [ ] Batched encoder for parallel window processing (WhisperX-style)
 
