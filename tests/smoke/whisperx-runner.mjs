@@ -272,6 +272,9 @@ export async function runAsrPipeline(_opts) {
   const { processSplitGraphAlignment } = await import(
     path.join(dist, 'models/whisper-seq2seq/executor.js')
   );
+  const { whisperDecode } = await import(
+    path.join(dist, 'models/whisper-seq2seq/core.js')
+  );
 
   const tokenizer = await WhisperTokenizer.fromUrl(path.join(opts.model, 'tokenizer.json'));
   let language = 'en';
@@ -445,70 +448,82 @@ export async function runAsrPipeline(_opts) {
         const encoded = tokenizer.encode(opts.initialPrompt);
         if (encoded) promptTokens.push(...encoded);
       }
-      const promptLen = promptTokens.length;
-
-      const initFeeds = {
-        input_ids: new ort.Tensor('int64', BigInt64Array.from(promptTokens.map(BigInt)), [1, promptTokens.length]),
-        encoder_hidden_states: encTensor,
-      };
-      const initOut = await initSess.run(initFeeds);
-      const logitsKey = Object.keys(initOut).find(k => k.startsWith('logits')) ?? Object.keys(initOut)[0];
-      const initLogitsData = initOut[logitsKey];
-      const vSize = initLogitsData.dims[initLogitsData.dims.length - 1];
-
-      const lastOffset = initLogitsData.data.length - vSize;
-      const firstLogits = initLogitsData.data.subarray(lastOffset, lastOffset + vSize);
-      timestampProc.process(firstLogits, promptTokens, promptLen);
-      const firstToken = nextToken(firstLogits, temperature);
-      const tokens = [firstToken];
-      const stepLogits = [new Float32Array(firstLogits)];
-
-      // KV cache from init
-      const kvKeys = Object.keys(initOut).filter(k => k.startsWith('present'));
-      let pastKv = {};
-      const kvDims = {};
-      for (const k of kvKeys) {
-        const d = initOut[k].dims;
-        if (d) {
-          kvDims[k] = d;
-          kvDims[k.replace(/^present\./, 'past_key_values.')] = d;
-        }
-        pastKv[k] = new Float32Array(initOut[k].data);
-      }
-
       const maxNewTokens = (genConfig.maxLength ?? 448) - promptTokens.length - 1;
-      for (let step = 1; step < maxNewTokens; step++) {
-        const feeds = {
-          input_ids: new ort.Tensor('int64', BigInt64Array.from([BigInt(tokens[tokens.length - 1])]), [1, 1]),
-        };
-        for (const [k, v] of Object.entries(pastKv)) {
-          const stepKey = k.replace(/^present\./, 'past_key_values.');
-          const dims = kvDims[k] ?? kvDims[stepKey] ?? kvDims[k.replace(/^past_key_values\./, 'present.')];
-          if (dims) feeds[stepKey] = new ort.Tensor('float32', v, dims);
-        }
-        const stepOut = await stepSess.run(feeds);
-        const stepLogitsKey = Object.keys(stepOut).find(k => k.startsWith('logits'));
-        const sl = new Float32Array(stepOut[stepLogitsKey].data);
-        const stepVSize = stepOut[stepLogitsKey].dims[stepOut[stepLogitsKey].dims.length - 1];
-        const slLast = sl.subarray(sl.length - stepVSize, sl.length);
-        timestampProc.process(slLast, [...promptTokens, ...tokens], promptLen);
-        const nextTok = nextToken(slLast, temperature);
-        tokens.push(nextTok);
-        stepLogits.push(new Float32Array(slLast));
 
-        const stepKvKeys = Object.keys(stepOut).filter(k => k.startsWith('present'));
-        const newKv = {};
-        for (const [k, v] of Object.entries(pastKv)) {
-          if (k.includes('.encoder.')) newKv[k] = v;
-        }
-        for (const k of stepKvKeys) {
-          newKv[k] = new Float32Array(stepOut[k].data);
-          kvDims[k] = stepOut[k].dims;
-          kvDims[k.replace(/^present\./, 'past_key_values.')] = stepOut[k].dims;
-        }
-        pastKv = newKv;
-        if (nextTok === eosId) break;
-      }
+      // Session adapter for whisperDecode
+      const kvDims = {};
+      const coreSession = {
+        runInit: async (pt, _enc, _dims) => {
+          const feeds = {
+            input_ids: new ort.Tensor('int64', BigInt64Array.from(pt.map(BigInt)), [1, pt.length]),
+            encoder_hidden_states: encTensor,
+          };
+          const out = await initSess.run(feeds);
+          const lk = Object.keys(out).find(k => k.startsWith('logits')) ?? Object.keys(out)[0];
+          const lt = out[lk];
+          const vSize = lt.dims[lt.dims.length - 1];
+          const lastOff = lt.data.length - vSize;
+          const logits = new Float32Array(lt.data.subarray(lastOff, lastOff + vSize));
+          const pk = {};
+          for (const k of Object.keys(out).filter(k => k.startsWith('present'))) {
+            pk[k] = new Float32Array(out[k].data);
+            kvDims[k] = out[k].dims;
+            kvDims[k.replace(/^present\./, 'past_key_values.')] = out[k].dims;
+          }
+          return { logits, vocabSize: vSize, presentKv: pk };
+        },
+        runStep: async (tid, pastKv) => {
+          const feeds = {
+            input_ids: new ort.Tensor('int64', BigInt64Array.from([BigInt(tid)]), [1, 1]),
+          };
+          for (const [k, v] of Object.entries(pastKv)) {
+            const sk = k.replace(/^present\./, 'past_key_values.');
+            const dims = kvDims[k] ?? kvDims[sk] ?? kvDims[k.replace(/^past_key_values\./, 'present.')];
+            if (dims) feeds[sk] = new ort.Tensor('float32', v, dims);
+          }
+          const out = await stepSess.run(feeds);
+          const lk = Object.keys(out).find(k => k.startsWith('logits'));
+          const lt = out[lk];
+          const vSize = lt.dims[lt.dims.length - 1];
+          const sl = new Float32Array(lt.data);
+          const slLast = sl.subarray(sl.length - vSize, sl.length);
+          const pk = {};
+          for (const k of Object.keys(out).filter(k => k.startsWith('present'))) {
+            pk[k] = new Float32Array(out[k].data);
+            kvDims[k] = out[k].dims;
+            kvDims[k.replace(/^present\./, 'past_key_values.')] = out[k].dims;
+          }
+          // Preserve encoder KV
+          for (const [k, v] of Object.entries(pastKv)) {
+            if (k.includes('.encoder.') && !pk[k]) pk[k] = v;
+          }
+          return { logits: new Float32Array(slLast), vocabSize: vSize, presentKv: pk };
+        },
+      };
+
+      // Collect per-step logits for quality gates
+      const stepLogits = [];
+
+      const decodeResult = await whisperDecode(coreSession, {
+        promptTokens,
+        encoderOutput: encHs,
+        encoderDims: encDims,
+        eosTokenId: eosId,
+        maxNewTokens,
+        temperature,
+        processLogits: (logits, genTokens, beginIdx) => {
+          timestampProc.process(logits, genTokens, beginIdx);
+        },
+        onTokenLogits: (_chosenId, processedLogits) => {
+          stepLogits.push(new Float32Array(processedLogits));
+        },
+        strategy: (opts.beamSize ?? 1) > 1 ? 'beam' : 'greedy',
+        beamSize: opts.beamSize ?? 1,
+        lengthPenalty: opts.lengthPenalty ?? 0,
+        bestOf: opts.bestOf ?? 1,
+      });
+
+      const tokens = [...decodeResult.tokens];
 
       // ── Word timestamps via decoder_align + DTW ──
       let segmentWords = [];
@@ -542,7 +557,6 @@ export async function runAsrPipeline(_opts) {
             textIds, decodedTexts, seg.startSeconds, dtwTimestamps, tokenizer,
           );
         } catch (alignErr) {
-          // Alignment failed — skip words for this segment
           if (verbose) log(`    align fail on seg ${si}: ${alignErr.message}`);
         }
       }
@@ -553,6 +567,9 @@ export async function runAsrPipeline(_opts) {
         .filter(t => t && !t.startsWith('<|') && !t.startsWith('['))
         .join('')
         .trim();
+
+      // Get vocabSize from last step logits
+      const vSize = stepLogits.length > 0 ? stepLogits[0].length : 51864;
 
       return {
         result: { text, start: seg.startSeconds, end: seg.endSeconds, words: segmentWords },
@@ -641,6 +658,10 @@ async function main() {
     console.error('  --no-word_timestamps          Disable word-level timestamps');
     console.error('  --temperature <float>         Decoding temperature (0.0)');
     console.error('  --temperature_increment_on_fallback <float>  Fallback step (0.2)');
+    console.error('  --beam_size <int>              Beam search width (1 = greedy)');
+    console.error('  --best_of <int>                Independent decodings to pick best');
+    console.error('  --patience <float>             Beam search patience');
+    console.error('  --length_penalty <float>       Beam search length penalty (0.0)');
     console.error('  --compression_ratio_threshold <float>  2.4');
     console.error('  --logprob_threshold <float>           -1.0');
     console.error('  --no_speech_threshold <float>         0.6');

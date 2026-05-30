@@ -26,10 +26,14 @@ Goal: Make `whisperx-runner.mjs` a fully production-grade WhisperX-compatible pi
 - Verified on JFK (detected English) — also works with Turkish
 - Uses first 30s of audio for detection
 
-### Phase 4 — Beam Search in Runner (MEDIUM)
-- Wire `--beam_size` (default 1 = greedy)
-- Wire `--best_of` for N-best sampling
-- Wire `--patience` and `--length_penalty`
+### Phase 4 — Beam Search in Runner ✅
+- Refactored decode loop to use `whisperDecode` from core.ts (WhisperCoreSession adapter)
+- Supports greedy (default), beam search (`--beam_size N`), and best-of (`--best_of N`)
+- Wired `--patience`, `--length_penalty` params
+- Same quality gates + word timestamps + temperature fallback for greedy mode
+- Verified: greedy baseline, beam_size=3, best_of=3, patience+length_penalty
+
+## Remaining
 
 ### Phase 5 — Wav2Vec2 Forced Alignment (MEDIUM)
 - Load Wav2Vec2 model as post-process pass
