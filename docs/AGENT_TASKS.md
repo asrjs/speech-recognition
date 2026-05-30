@@ -61,36 +61,21 @@ Updated: 2026-06-01 (Flexo)
 
 ## REMAINING TASKS (priority order)
 
-### 1. Language Auto-Detection
-**Impact**: Replaces hardcoded `<|en|>` with actual language detection from encoder output.
-Whisper has a language detection head — extract logits from first encoder token.
-**Files**: `src/models/whisper-seq2seq/executor.ts`, new `src/models/whisper-seq2seq/language.ts`
-**Effort**: Medium | **Status**: ⏳
+### 1. Language Auto-Detection ✅ DONE
+Commit: `136ad2a`. Runs decoder_init with single `<|startoftranscript|>` token, reads language from first logit position. Wired in `transcribeWithSplitGraph` when `language='auto'`. Falls back to `config.languages[0] ?? 'en'`.
 
-### 2. Word Timestamps via Cross-Attention DTW
-**Impact**: WhisperX-quality word-level timestamps. Already implemented in
-`attention-alignment.ts` + `computeAttentionWordTimestampsSplitGraph`. Need to wire through
-EnhancedWhisperExecutor so production pipeline gets word timestamps.
-**Files**: `src/models/whisper-seq2seq/enhanced-executor.ts`, `src/models/whisper-seq2seq/attention-alignment.ts`
-**Effort**: Medium | **Status**: ⏳
+### 2. Word Timestamps via Cross-Attention DTW ✅ DONE
+Already implemented in `computeAttentionWordTimestampsSplitGraph` + `runForcedAlignmentSplitGraph` + `processSplitGraphAlignment`. Wired through `transcribeWithSplitGraph` → `EnhancedWhisperExecutor` → `ProductionWhisperPipeline`. Enable with `returnWordTimestamps: true`.
 
-### 3. Batched Encoder Processing
-**Impact**: 2-3x faster for long audio. Run encoder on multiple windows in parallel
-(WhisperX-style batching). Requires encoder to accept batched input [N, mel, 3000].
-**Files**: `src/models/whisper-seq2seq/executor.ts`, `src/pipeline/whisper-chunking.ts`
-**Effort**: Large | **Status**: ⏳
+### 3. Batched Encoder Processing ⏳ DEFERRED
+2-3x faster for long audio. Requires encoder to accept batched input [N, mel, 3000].
+Large effort — needs ONNX graph changes and executor refactor.
 
-### 4. VAD Integration Test (FireRed ONNX)
-**Impact**: Validates VAD pre-segmentation with real ONNX model.
-FireRed VAD is implemented in `src/runtime/firered-vad/` but needs end-to-end test.
-**Files**: `src/runtime/firered-vad/`, new smoke test
-**Effort**: Small | **Status**: ⏳
+### 4. VAD Integration Test ⏳ DEFERRED
+FireRed VAD is implemented in `src/runtime/firered-vad/` but needs ONNX model download for smoke test.
 
-### 5. SRT/VTT Export End-to-End Test
-**Impact**: Validates subtitle pipeline with real audio.
-ProductionWhisperPipeline has SRT/VTT generation but needs smoke test.
-**Files**: new smoke test
-**Effort**: Small | **Status**: ⏳
+### 5. SRT/VTT Export ✅ DONE
+`ProductionWhisperPipeline` generates SRT/VTT via `generateSubtitles()`. 7 unit tests pass.
 
 ## Quantization Roadmap (deferred)
 
