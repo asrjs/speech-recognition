@@ -74,6 +74,8 @@ sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array
 ||| 13 | Multiple output formats (SRT/TXT/JSON) | ✅ | This session |
 ||| 14 | Verbose/quiet CLI mode | ✅ | This session |
 ||| 15 | Language auto-detection | ✅ | This session |
+||| 16 | Beam search in runner | ✅ | This session |
+||| 17 | Wav2Vec2 forced alignment | ✅ | This session |
 
 ### Backend strategy (established)
 1. **Native ORT** (`onnxruntime-node`) — first dev target, no heap limit, streaming-ready
