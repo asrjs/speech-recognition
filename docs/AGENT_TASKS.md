@@ -181,7 +181,15 @@ node tests/smoke/whisper-large-v3-turbo-native.mjs     # Native ORT persistent
 node tests/smoke/whisper-large-v3-turbo-wasm.mjs --fp32 # WASM sequential
 node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
 node tests/smoke/whisper-bestof-smoke.mjs
+
+# q8 variants:
+WHISPER_LARGE_DIR=/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/q8 \
+  node tests/smoke/whisper-large-v3-turbo-native.mjs   # Native ORT q8 (10.3s)
+WHISPER_LARGE_DIR=/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/q8 \
+  node tests/smoke/whisper-large-v3-turbo-wasm.mjs      # WASM q8 (32.7s)
 ```
+
+See `docs/quantization-research.md` for full analysis of quantization options and recommended roadmap.
 
 ## Shared Files (coordinate before modifying)
 
