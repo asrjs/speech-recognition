@@ -78,9 +78,12 @@ Commit: `136ad2a`. Runs decoder_init with single `<|startoftranscript|>` token, 
 ### 2. Word Timestamps via Cross-Attention DTW ✅ DONE
 Already implemented in `computeAttentionWordTimestampsSplitGraph` + `runForcedAlignmentSplitGraph` + `processSplitGraphAlignment`. Wired through `transcribeWithSplitGraph` → `EnhancedWhisperExecutor` → `ProductionWhisperPipeline`. Enable with `returnWordTimestamps: true`.
 
-### 3. Batched Encoder Processing ⏳ DEFERRED
-2-3x faster for long audio. Requires encoder to accept batched input [N, mel, 3000].
-Large effort — needs ONNX graph changes and executor refactor.
+### 3. Batched Encoder Processing 🔍 INVESTIGATED — DEFERRED
+The ONNX encoder model already accepts dynamic batch dimension (verified batch=2+ works). However, benchmarking on CPU showed **0.95-1.0x speedup** — no benefit. The encoder is CPU-bound and ORT processes batch elements sequentially.
+
+**Would help on GPU**: With CUDA provider, batched matmuls could parallelize across windows. Requires CUDA-enabled ORT runtime (not currently set up).
+
+**Status**: Deferred. No code changes needed if/when CUDA provider is added — just reshape featureTensor from [1, mel, 3000] to [N, mel, 3000] and dispatch N windows at once.
 
 ### 5. Beam Search in Runner ✅ DONE (2026-06-01, Flexo)
 Commit: `03707b4`. Wired into `whisperx-runner.mjs`:

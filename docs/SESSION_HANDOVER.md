@@ -140,7 +140,7 @@ vad-demo/                   — Isolated VAD testing
 
 | Task | Effort | Notes |
 |------|--------|-------|
-| Batched encoder | Large | Needs encoder ONNX to accept [N, mel, 3000] |
+| Batched encoder | Deferred | ONNX batch dim is dynamic (verified batch=2 works), but **0.95-1.0x speedup on CPU** — no benefit on CPU backend. Needs GPU (CUDA provider) to show gains. Marked deferred. |
 | q8 KV cache fix | Medium | ORT-level quantization defect on large-v3-turbo |
 | q4/q4f16 | Large | Experimental quantization |
 
