@@ -888,8 +888,11 @@ export class WhisperOnnxExecutor {
     const feeds: Record<string, unknown> = { input_ids: inputIdsTensor };
 
     // Add all past_key_values (decoder + encoder KV). Step model expects both.
+    // CRITICAL: Clone tensor data for cross-session safety. ORT WASM cannot
+    // reuse tensor objects from one session as inputs to another.
     for (const [name, tensor] of Object.entries(pastKv)) {
-      feeds[name] = tensor;
+      const rawData = new Float32Array(tensor.data.buffer, tensor.data.byteOffset, tensor.data.length);
+      feeds[name] = new loaded.ort.Tensor('float32', rawData, tensor.dims);
     }
 
     const outputs = await loaded.decoderStepSession.run(feeds);
@@ -1275,6 +1278,9 @@ export class WhisperOnnxExecutor {
       beginSuppressTokens: loaded.generationConfig.beginSuppressTokens ?? [],
     });
 
+    // Tensor dimension storage for KV cache bridge (init→step tensor reconstruction)
+    let kvDims: Record<string, readonly number[]> = {};
+
     const result = await splitGraphDecodeLoop({
       promptTokens,
       encoderHiddenStates: encoderHiddenStates.data,
@@ -1289,6 +1295,13 @@ export class WhisperOnnxExecutor {
       lengthPenalty: options.lengthPenalty ?? 0,
       runInit: async (prompt, _encHs, _dims) => {
         const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
+        // Store tensor dims for runStep reconstruction (init→step tensor bridging).
+        // Store both present.* (init output) and past_key_values.* (step output) formats.
+        kvDims = {};
+        for (const [k, v] of Object.entries(init.presentKv)) {
+          kvDims[k] = v.dims;                                         // present.0.decoder.key
+          kvDims[k.replace(/^present\./, 'past_key_values.')] = v.dims; // past_key_values.0.decoder.key
+        }
         return {
           logits: init.logits,
           vocabSize: init.vocabSize,
@@ -1298,19 +1311,28 @@ export class WhisperOnnxExecutor {
         };
       },
       runStep: async (tokenId, pastKv) => {
-        // Reconstruct OrtTensorLike wrapping from data arrays
-        const pastKvTensors: Record<string, OrtTensorLike<Float32Array>> = {};
+        // Reconstruct tensors from raw data + stored dims.
+        // Init outputs present.* prefix; step model expects past_key_values.* prefix.
+        // Convert prefix and clone tensor data for cross-session safety.
+        const feeds: Record<string, OrtTensorLike<Float32Array>> = {};
         for (const [name, data] of Object.entries(pastKv)) {
-          pastKvTensors[name] = { data, dims: [] } as OrtTensorLike<Float32Array>;
+          const stepName = name.replace(/^present\./, 'past_key_values.');
+          // Try multiple key formats for dims lookup (init uses present.*, step uses past_key_values.*)
+          const dims = kvDims[name] ?? kvDims[stepName] ?? kvDims[name.replace(/^past_key_values\./, 'present.')];
+          if (dims) {
+            feeds[stepName] = new splitLoaded.ort.Tensor('float32', data, dims) as unknown as OrtTensorLike<Float32Array>;
+          } else {
+            const numHeads = splitLoaded.modelConfig.decoderAttentionHeads;
+            const headDim = splitLoaded.modelConfig.headDim;
+            const seqLen = Math.round(data.length / (numHeads * headDim));
+            feeds[stepName] = new splitLoaded.ort.Tensor('float32', data, [1, numHeads, seqLen, headDim]) as unknown as OrtTensorLike<Float32Array>;
+          }
         }
-        // Step model expects `past_key_values.` prefix but init outputs `present.` prefix
-        // Convert present→past_key_values for step input
-        const stepKv: Record<string, OrtTensorLike<Float32Array>> = {};
-        for (const [key, tensor] of Object.entries(pastKvTensors)) {
-          const stepKey = key.replace(/^present\./, 'past_key_values.');
-          stepKv[stepKey] = tensor;
+        const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds);
+        // Update stored dims from step output
+        for (const [k, v] of Object.entries(step.presentKv)) {
+          kvDims[k] = v.dims;
         }
-        const step = await this.runDecoderStepSplit(splitLoaded, tokenId, stepKv);
         return {
           logits: step.logits,
           vocabSize: step.vocabSize,
