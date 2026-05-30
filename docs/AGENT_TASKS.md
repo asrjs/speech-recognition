@@ -71,8 +71,11 @@ Already implemented in `computeAttentionWordTimestampsSplitGraph` + `runForcedAl
 2-3x faster for long audio. Requires encoder to accept batched input [N, mel, 3000].
 Large effort — needs ONNX graph changes and executor refactor.
 
-### 4. VAD Integration Test ⏳ DEFERRED
-FireRed VAD is implemented in `src/runtime/firered-vad/` but needs ONNX model download for smoke test.
+### 4. VAD Integration Test ✅ DONE
+Commit: `77778e3`. TenVAD energy-based backend works without ONNX model.
+Smoke test: `tests/smoke/vad-integration-smoke.mjs`. Detects speech segments,
+merge+pad, silence detection. FireRed VAD needs pretrained model directory
+(`FireRedVadBackend.create('/path/to/firered-model')`).
 
 ### 5. SRT/VTT Export ✅ DONE
 `ProductionWhisperPipeline` generates SRT/VTT via `generateSubtitles()`. 7 unit tests pass.
