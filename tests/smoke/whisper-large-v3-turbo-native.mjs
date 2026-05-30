@@ -7,19 +7,43 @@
  * Streaming-ready: encoder + decoder_init + decoder_step all loaded.
  *
  * Usage:
- *   node tests/smoke/whisper-large-v3-turbo-native.mjs [--fp16]
+ *   node tests/smoke/whisper-large-v3-turbo-native.mjs [--fp16] [--mixed]
+ *
+ *   --mixed    Use q8 encoder + fp16 decoder (mixed precision, best perf)
+ *   --fp16     Use fp16 variant (requires fp16 input conversion)
  *
  * Env vars:
- *   WHISPER_LARGE_DIR — model dir (default: /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/fp32)
+ *   WHISPER_LARGE_DIR — model dir (default: .../fp32)
  */
 import path from "node:path";
 import fs from "node:fs";
 import * as ort from "onnxruntime-node";
 
+// Float32 → Float16 bit-preserving conversion for ORT
+function float32ToFloat16Bits(f32) {
+  const len = f32.length;
+  const u16 = new Uint16Array(len);
+  const view = new DataView(new ArrayBuffer(4));
+  for (let i = 0; i < len; i++) {
+    view.setFloat32(0, f32[i]);
+    const bits = view.getUint32(0);
+    const sign = (bits >>> 16) & 0x8000;
+    const exp = ((bits >>> 23) & 0xff) - 127 + 15;
+    const mantissa = (bits >>> 13) & 0x3ff;
+    if (exp <= 0) { u16[i] = sign; continue; }
+    if (exp > 30) { u16[i] = sign | 0x7c00; continue; }
+    u16[i] = sign | (exp << 10) | mantissa;
+  }
+  return u16;
+}
+
 async function main() {
   const useFp16 = process.argv.includes("--fp16");
-  const variant = useFp16 ? "fp16" : "fp32";
-  const base = process.env.WHISPER_LARGE_DIR ?? `/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/${variant}`;
+  const useMixed = process.argv.includes("--mixed");
+  const variant = useMixed ? "mixed" : (useFp16 ? "fp16" : "fp32");
+  const base = useMixed
+    ? (process.env.WHISPER_LARGE_DIR ?? "/tmp/whisper-mixed-q8-enc-f16-dec")
+    : (process.env.WHISPER_LARGE_DIR ?? `/tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/${variant}`);
   const wavPath = process.argv.find(a => a.endsWith(".wav")) ?? "tests/fixtures/jfk2.en.wav";
 
   const { WhisperTokenizer, fetchText } = await import("../../dist/models/whisper-seq2seq/index.js");
@@ -28,7 +52,7 @@ async function main() {
   const { WhisperTimestampLogitProcessor } = await import("../../dist/models/whisper-seq2seq/processors.js");
   const { parseWhisperGenerationConfig, parseWhisperModelConfig } = await import("../../dist/models/whisper-seq2seq/generation-config.js");
 
-  console.log(`Model: ${base} (onnxruntime-node, persistent)`);
+  console.log(`Model: ${base} (onnxruntime-node, persistent, ${variant})`);
   console.log(`Audio: ${wavPath}`);
 
   const tokenizer = await WhisperTokenizer.fromUrl(path.join(base, "tokenizer.json"));
@@ -144,6 +168,15 @@ async function main() {
   console.log(text.trim());
 
   await Promise.all([enc.release(), decInit.release(), decStep.release()]);
+
+  // Verify transcription
+  const expected = "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.";
+  const norm = (s) => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+  const match = norm(text).includes(norm(expected).substring(0, 40));
+  if (!match) {
+    console.error("\nTRANSCRIPTION MISMATCH — expected JFK text");
+    process.exit(1);
+  }
 
   const totalSec = ((performance.now() - t0) / 1000).toFixed(1);
   console.log(`\nLARGE-V3-TURBO ${variant.toUpperCase()} NATIVE SMOKE PASSED (${totalSec}s total)`);

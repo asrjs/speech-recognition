@@ -6,13 +6,16 @@
 
 ## Current State
 
-large-v3-turbo (809M params) currently has 3 model variants on disk:
+large-v3-turbo (809M params) currently has 3 model variants on disk, plus a mixed variant:
 
-| Variant | Encoder | Decoder Init | Decoder Step | Total | Load Time | Accuracy |
-|---------|---------|-------------|--------------|-------|-----------|----------|
-| fp32    | 2.5 GB  | 0.5 GB      | 0.25 GB      | 3.4 GB | 4.9s | Reference |
+| Variant | Encoder | Decoder Init | Decoder Step | Total | End-to-End Time | Accuracy |
+|---------|---------|-------------|--------------|-------|----------------|----------|
+| fp32    | 2.5 GB  | 0.5 GB      | 0.25 GB      | 3.4 GB | 9708ms (1.0x) | Reference |
 | fp16    | 1.2 GB  | 0.25 GB     | 0.13 GB      | 1.7 GB | ? | Identical tokens |
-| q8      | 616 MB  | 228 MB      | 415 MB       | 1.4 GB | 2.1s | Identical tokens |
+| q8      | 616 MB  | 228 MB      | 415 MB       | 1.4 GB | 6911ms (1.40x) | Identical tokens |
+| **Mixed** (q8 enc + fp32 dec) | 616 MB | 0.5 GB | 0.25 GB | **~1.4 GB** | **6644ms (1.46x fastest)** 🏆 | Identical tokens |
+
+**Mixed precision is the fastest variant**: q8 encoder provides 24% faster encode, fp32 decoder provides 2x faster per-step decoding. Combined = 1.46x total speedup over pure fp32.
 
 **Current toolchain**: `quantize_dynamic(src, dst, weight_type=QuantType.QInt8)` — ONNX Runtime dynamic quantization, weights only.
 
@@ -227,14 +230,14 @@ Already done and working:
 
 ## Summary
 
-| Approach | Encoder speed | Decoder speed | Model size | Effort | Recommended? |
-|----------|--------------|--------------|------------|--------|-------------|
-| fp32 (baseline) | 1.0x | 1.0x | 3.4 GB | — | ✅ Works |
-| q8 (current) | **1.24x** 🟢 | **0.48x** 🔴 | 1.4 GB | Done | ⚠️ Decoder regression |
-| fp16 | ~1.1x 🟢 | ~1.5x 🟢 | 1.7 GB | Done | ✅ Good for WebGPU |
-| Mixed (q8 enc + fp32 dec) | **1.24x** 🟢 | **1.0x** | ~1.8 GB | Medium | 🏆 **RECOMMENDED** |
-| Static quantization | 1.3x? | ~0.8x? | ~1.2 GB | Large | 🔬 Needs research |
-| KV cache quantization | +5% | +15-20% | ~1.2 GB | Very large | 🔬 Experimental |
-| GGUF Q4_K_M | 2-3x | 2-3x | ~450 MB | Massive | 🚀 Future work |
+| Approach | Encoder speed | Decoder speed | Model size | Total time | Recommended? |
+|----------|--------------|--------------|------------|-----------|-------------|
+| fp32 (baseline) | 1.0x | 1.0x | 3.4 GB | 9708ms | ✅ Works |
+| q8 (current) | **1.24x** 🟢 | **0.48x** 🔴 | 1.4 GB | 6911ms | ⚠️ Decoder regression |
+| fp16 | ~1.1x 🟢 | ~1.5x 🟢 | 1.7 GB | ? | ✅ Good for WebGPU |
+| **Mixed (q8 enc + fp32 dec)** | **1.24x** 🟢 | **1.0x** | **~1.4 GB** | **6644ms 🏆** | **RECOMMENDED** |
+| Static quantization | 1.3x? | ~0.8x? | ~1.2 GB | ? | 🔬 Needs research |
+| KV cache quantization | +5% | +15-20% | ~1.2 GB | ? | 🔬 Experimental |
+| GGUF Q4_K_M | 2-3x | 2-3x | ~450 MB | ? | 🚀 Future work |
 
 **Bottom line**: The mixed-precision approach (q8 encoder + fp16 decoder) is the highest-ROI next step. It gives encoder speedup without the decoder step regression. KV cache quantization would help streaming but requires custom ORT work that's not natively supported.
