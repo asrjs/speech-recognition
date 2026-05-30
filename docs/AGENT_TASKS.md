@@ -220,7 +220,43 @@ npm run build
 node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
 node tests/smoke/wav2vec2-node-wasm-align-smoke.mjs
 node tests/smoke/whisper-bestof-smoke.mjs
+# Large model smokes (require /tmp/hf-publish/whisper-large-v3-turbo-onnx-4graph/)
+node tests/smoke/whisper-large-v3-turbo-native.mjs          # fp32 native ORT persistent (streaming)
+node tests/smoke/whisper-large-v3-turbo-wasm.mjs --fp32     # fp32 WASM sequential (batch)
 ```
+
+## Backend Strategy
+
+| Priority | Backend | Model size | Lifecycle | Status |
+|----------|---------|------------|-----------|--------|
+| **1st** | `onnxruntime-node` (native) | large-v3-turbo fp32 | Persistent (streaming) | ✅ 13.3s |
+| 2nd | WebGPU (browser) | large-v3-turbo fp16 | Persistent | ⏳ Needs browser+GPU |
+| Fallback | ORT Web/WASM | large-v3-turbo fp32 | Sequential (batch) | ✅ 62s |
+| Diagnostic | ORT Web/WASM | whisper-base fp32 | Persistent | ✅ |
+
+**WASM heap limit (~1.5GB)**: Large models need sequential lifecycle on WASM
+(encoder→dispose→decoders→dispose). Native ORT and WebGPU have no such limit.
+
+**fp16 dtype**: Encoder expects float16 input. Node.js lacks native Float16Array.
+fp32 is the Node.js development target. fp16 reserved for WebGPU deployment.
+
+## Quantization Roadmap (deferred)
+
+Quantized variants reduce model size but need accuracy validation:
+- **q8 (1.4GB)**: Post-export dynamic quantization. WASM loads but KV cache tensor
+  bug on large-v3-turbo (ORT-level defect). Validated on whisper-base.
+- **q4/q4f16**: Experimental. Needs opset research + WebGPU validation.
+- **Mixed precision** (encoder fp16 + decoder q8): Deferred — needs dtype boundary
+  validation and KV cache compatibility checks.
+- **Priority**: fp32/fp16 correctness first. Quantization is a deployment optimization
+  to add after core pipeline is stable.
+
+## WebGPU Test Plan
+
+1. Serve fp16 model via HTTP (CORS-safe, need `externalData` mapping in browser)
+2. Adapt `tests/smoke/whisper-webgpu-smoke.html` for large-v3-turbo fp16
+3. Test on machine with browser+GPU (Windows host, Bender, or Waffle)
+4. Validate against native ORT reference output
 
 ## Communication
 
