@@ -1,16 +1,19 @@
 # WAV2VEC2 as First-Class ASR Model + Alignment Backend
 
-## Implementation Status (2026-05-31)
+## Implementation Status (2026-05-30)
 
 DONE:
 - `src/alignment/ctc-viterbi.ts` — model-agnostic CTC Viterbi forced alignment.
 - `src/alignment/wav2vec2-aligner.ts` — Wav2Vec2 transcript-to-word alignment backend over CTC Viterbi.
+- `createWav2Vec2AlignerFromLogits()` — reuses executor-extracted logits without second ONNX pass.
 - Public exports from `@asrjs/speech-recognition/alignment`.
-- Focused tests: `tests/alignment-ctc-viterbi.test.ts` (15) + `tests/wav2vec2-alignment.test.ts` (9).
-- Regression: Wav2Vec2 separator tokens are decoded to spaces via `tokenToChar` before word grouping, so the separator does not consume the first character of the next word.
+- Focused tests: `tests/alignment-ctc-viterbi.test.ts` (15) + `tests/wav2vec2-alignment.test.ts` (10).
+- Regression: Wav2Vec2 separator tokens are decoded to spaces via `tokenToChar` before word grouping.
+- Real ONNX forced-alignment smoke: `tests/smoke/wav2vec2-node-wasm-align-smoke.mjs` (JFK fixture, 22 words, 549 frames, monotonic timestamps).
 
 NEXT:
-- Add real ONNX forced-alignment smoke after exposing/reusing Wav2Vec2 logits from the runtime.
+- HF upload/publish for Wav2Vec2 ONNX artifact.
+- WebGPU smoke for Wav2Vec2 (Node/WASM is validated).
 
 ## The Insight
 

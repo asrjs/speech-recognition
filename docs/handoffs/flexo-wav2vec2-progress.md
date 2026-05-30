@@ -17,10 +17,13 @@ Completed:
 - Built-in runtime registration and descriptor catalog entry.
 - Real ONNX Node/WASM smoke script and run.
 - CTC Viterbi forced alignment plus Wav2Vec2 word alignment backend.
+- `OrtWav2Vec2Executor.extractLogits()` for reusable logit extraction.
+- Real ONNX Node/WASM forced-alignment smoke (JFK fixture, 22 words with timestamps).
 
 ## Commit History (WAV2VEC2 + CTC related)
 
 ```text
+f7ef300  wav2vec2: CTC Viterbi forced alignment integration — extractLogits() + align smoke
 eb2cc6d  smoke: minimal whisper-base splitgraph (also contains alignment token-label hardening + Vitest alignment source alias)
 b25e9a6  feat: wire context conditioning (contains Wav2Vec2 model factory/preset files + smoke script)
 64c1cea  feat: add formatTranscript() (contains Wav2Vec2 ORT external data, built-in registration, descriptor wiring)
@@ -82,11 +85,12 @@ Important boundary: Wav2Vec2 is raw-waveform, not mel-based. The convolutional f
 
 | File | Purpose |
 |------|---------|
-| `tests/wav2vec2-model.test.ts` | Family support, stub fallback, preset resolution, built-in registration |
+| `tests/wav2vec2-model.test.ts` | Family support, stub fallback, preset resolution, built-in registration, extractLogits API |
 | `tests/preset-descriptors.test.ts` | Wav2Vec2 descriptor/catalog metadata |
 | `tests/alignment-ctc-viterbi.test.ts` | 15 CTC Viterbi/core alignment tests |
-| `tests/wav2vec2-alignment.test.ts` | 9 Wav2Vec2 aligner/word grouping tests |
-| `tests/smoke/wav2vec2-node-wasm-smoke.mjs` | Real ONNX Node/WASM smoke script |
+| `tests/wav2vec2-alignment.test.ts` | 10 Wav2Vec2 aligner/word grouping tests |
+| `tests/smoke/wav2vec2-node-wasm-smoke.mjs` | Real ONNX Node/WASM ASR smoke script |
+| `tests/smoke/wav2vec2-node-wasm-align-smoke.mjs` | Real ONNX Node/WASM forced-alignment smoke script |
 
 ### Alignment backend
 
@@ -161,15 +165,17 @@ npm run lint
 npm test
 npm run build
 node tests/smoke/wav2vec2-node-wasm-smoke.mjs --expect country --expect ask
+node tests/smoke/wav2vec2-node-wasm-align-smoke.mjs
 ```
 
 Results:
-- Focused alignment tests: 2 files, 24 tests passed
+- Focused alignment tests: 2 files, 25 tests passed
 - Typecheck: clean
 - Lint: 0 errors, 5 existing max-lines warnings
-- Full tests: 103 files, 599 tests passed
+- Full tests: 103 files, 601 tests passed
 - Build: clean
-- Node/WASM Wav2Vec2 smoke: passed
+- Node/WASM Wav2Vec2 ASR smoke: passed
+- Node/WASM Wav2Vec2 forced-alignment smoke: passed (22 words, 549 frames, monotonic timestamps)
 
 ## Design Decisions
 
@@ -181,12 +187,10 @@ Results:
 ## Remaining Work
 
 1. Publish/host Wav2Vec2 ONNX artifact if we want `useManifestSources: true` to load without local direct paths.
-2. Add a real Wav2Vec2 ONNX forced-alignment smoke once executor/logit reuse API is exposed (current aligner accepts injected logits).
-3. Optional: add an npm script for `tests/smoke/wav2vec2-node-wasm-smoke.mjs` if recurring.
-4. Remove MedASR backward-compat wrappers when rewriting MedASR.
+2. Optional: add an npm script for the Wav2Vec2 smoke commands if recurring.
+3. Remove MedASR backward-compat wrappers when rewriting MedASR.
+4. WebGPU smoke for Wav2Vec2 model (Node/WASM path is fully validated).
 
 ## Resume Instructions
 
-Next useful task: expose/reuse Wav2Vec2 logits for real-audio forced alignment, then run the aligner on a known transcript/audio pair.
-
-Start with a failing integration test around a small fixture and expected word order/timestamp monotonicity. Keep generic Viterbi path logic in `src/alignment/ctc-viterbi.ts`; keep Wav2Vec2-specific tokenization/logit-provider orchestration in `src/alignment/wav2vec2-aligner.ts`.
+Next useful task: HF upload/publish for the Wav2Vec2 ONNX base-960h artifact, then WebGPU smoke validation. The Node/WASM path for both ASR and forced alignment is complete and validated.

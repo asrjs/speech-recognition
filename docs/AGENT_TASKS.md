@@ -110,7 +110,7 @@ Completed:
 
 ### WAV2VEC2 Real ONNX Forced Alignment Smoke — DONE
 Owner: Flexo (gpt-5.5)
-Commit: pending
+Commit: `f7ef300`
 Status: ✅ Complete
 
 Implemented:
