@@ -22,3 +22,4 @@ tools/whisper-onnx-export/__pycache__/
 *.wav
 *.vtt
 tests/fixtures/
+models/
