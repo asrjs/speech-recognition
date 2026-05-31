@@ -60,15 +60,11 @@ interface FFTTwiddles {
 }
 
 export function hzToMel(freq: number): number {
-  return freq >= MIN_LOG_HZ
-    ? MIN_LOG_MEL + Math.log(freq / MIN_LOG_HZ) / LOG_STEP
-    : freq / F_SP;
+  return freq >= MIN_LOG_HZ ? MIN_LOG_MEL + Math.log(freq / MIN_LOG_HZ) / LOG_STEP : freq / F_SP;
 }
 
 export function melToHz(mel: number): number {
-  return mel >= MIN_LOG_MEL
-    ? MIN_LOG_HZ * Math.exp(LOG_STEP * (mel - MIN_LOG_MEL))
-    : mel * F_SP;
+  return mel >= MIN_LOG_MEL ? MIN_LOG_HZ * Math.exp(LOG_STEP * (mel - MIN_LOG_MEL)) : mel * F_SP;
 }
 
 export function createMelFilterbank(nMels = 128): Float32Array {
@@ -142,7 +138,7 @@ export function precomputeTwiddles(size: number): FFTTwiddles {
   }
 
   const bits = Math.log2(size);
-  if ((1 << bits) !== size) {
+  if (1 << bits !== size) {
     throw new Error(`FFT size must be a power of two. Received: ${size}`);
   }
 
@@ -171,12 +167,7 @@ export function precomputeTwiddles(size: number): FFTTwiddles {
   return twiddles;
 }
 
-export function fft(
-  re: Float64Array,
-  im: Float64Array,
-  size: number,
-  twiddles: FFTTwiddles,
-): void {
+export function fft(re: Float64Array, im: Float64Array, size: number, twiddles: FFTTwiddles): void {
   const bitrev = twiddles.bitrev;
   if (bitrev.length === size) {
     for (let index = 0; index < size; index += 1) {
@@ -359,11 +350,11 @@ export class JSMelProcessor {
       this.processRawBuffer = new Float32Array(Math.ceil(requiredRawSize * 1.2));
     }
 
-    const { rawMel, nFrames: computedNFrames, validLength: computedValidLength } = this.computeRawMel(
-      audio,
-      0,
-      this.processRawBuffer,
-    );
+    const {
+      rawMel,
+      nFrames: computedNFrames,
+      validLength: computedValidLength,
+    } = this.computeRawMel(audio, 0, this.processRawBuffer);
 
     return {
       features: this.finalizeFeatures(rawMel, computedNFrames, computedValidLength),
@@ -430,8 +421,7 @@ export class JSMelProcessor {
       for (let k = 0; k < halfN; k += 1) {
         const sampleIndex = k << 1;
         this.fftRe[k] = padded[offset + sampleIndex]! * this.hannWindow[sampleIndex]!;
-        this.fftIm[k] =
-          padded[offset + sampleIndex + 1]! * this.hannWindow[sampleIndex + 1]!;
+        this.fftIm[k] = padded[offset + sampleIndex + 1]! * this.hannWindow[sampleIndex + 1]!;
       }
 
       fft(this.fftRe, this.fftIm, halfN, this.twiddlesHalf);
@@ -476,8 +466,7 @@ export class JSMelProcessor {
         const start = this.fbBounds[melIndex * 2]!;
         const end = this.fbBounds[melIndex * 2 + 1]!;
         for (let freqIndex = start; freqIndex < end; freqIndex += 1) {
-          melValue +=
-            this.powerBuf[freqIndex]! * this.melFilterbank[filterbankOffset + freqIndex]!;
+          melValue += this.powerBuf[freqIndex]! * this.melFilterbank[filterbankOffset + freqIndex]!;
         }
         rawMel[melIndex * nFrames + frameIndex] = Math.log(melValue + LOG_ZERO_GUARD);
       }
@@ -518,8 +507,7 @@ export class JSMelProcessor {
         validLength > 1 ? 1.0 / (Math.sqrt(varianceSum / (validLength - 1)) + 1e-5) : 0;
 
       for (let frameIndex = 0; frameIndex < validLength; frameIndex += 1) {
-        features[dstBase + frameIndex] =
-          (rawMel[srcBase + frameIndex]! - mean) * invStd;
+        features[dstBase + frameIndex] = (rawMel[srcBase + frameIndex]! - mean) * invStd;
       }
       if (validLength < outputFrames) {
         features.fill(0, dstBase + validLength, dstBase + outputFrames);
@@ -579,25 +567,7 @@ export class IncrementalJSMelProcessor {
     this.boundaryFrames = options.boundaryFrames ?? 3;
   }
 
-  process(audio: Float32Array, prefixSamples = 0): IncrementalJsNemoMelProcessResult {
-    const sampleCount = audio.length;
-    if (sampleCount === 0) {
-      return {
-        features: new Float32Array(0),
-        frameCount: 0,
-        length: 0,
-        cached: false,
-        cachedFrames: 0,
-        newFrames: 0,
-      };
-    }
-
-    const canReuse =
-      prefixSamples > 0 &&
-      this.cachedRawMel !== null &&
-      prefixSamples <= this.cachedAudioLen;
-
-    const predictedFrames = Math.floor(sampleCount / HOP_LENGTH) + 1;
+  private ensureBuffers(predictedFrames: number): Float32Array {
     const requiredRawSize = this.nMels * predictedFrames;
     let currentRawBuffer = this.rawBuffers[this.currentBufferIndex];
     if (!currentRawBuffer || currentRawBuffer.length < requiredRawSize) {
@@ -610,35 +580,57 @@ export class IncrementalJSMelProcessor {
       this.featuresBuffer = new Float32Array(Math.ceil(requiredFeatureSize * 1.2));
     }
 
-    if (!canReuse) {
-      const { rawMel, nFrames, validLength } = this.preprocessor.computeRawMel(
-        audio,
-        0,
-        currentRawBuffer,
-      );
-      const features = this.preprocessor.finalizeFeatures(
-        rawMel,
-        nFrames,
-        validLength,
-        this.featuresBuffer,
-      );
+    return currentRawBuffer;
+  }
 
-      this.cachedRawMel = rawMel;
-      this.cachedNFrames = nFrames;
-      this.cachedAudioLen = sampleCount;
-      this.cachedFeaturesLen = validLength;
-      this.currentBufferIndex ^= 1;
+  private updateCache(
+    rawMel: Float32Array,
+    nFrames: number,
+    sampleCount: number,
+    validLength: number,
+  ): void {
+    this.cachedRawMel = rawMel;
+    this.cachedNFrames = nFrames;
+    this.cachedAudioLen = sampleCount;
+    this.cachedFeaturesLen = validLength;
+    this.currentBufferIndex ^= 1;
+  }
 
-      return {
-        features: new Float32Array(features),
-        frameCount: nFrames,
-        length: validLength,
-        cached: false,
-        cachedFrames: 0,
-        newFrames: validLength,
-      };
-    }
+  private processFull(
+    audio: Float32Array,
+    currentRawBuffer: Float32Array,
+    sampleCount: number,
+  ): IncrementalJsNemoMelProcessResult {
+    const { rawMel, nFrames, validLength } = this.preprocessor.computeRawMel(
+      audio,
+      0,
+      currentRawBuffer,
+    );
+    const features = this.preprocessor.finalizeFeatures(
+      rawMel,
+      nFrames,
+      validLength,
+      this.featuresBuffer,
+    );
 
+    this.updateCache(rawMel, nFrames, sampleCount, validLength);
+
+    return {
+      features: new Float32Array(features),
+      frameCount: nFrames,
+      length: validLength,
+      cached: false,
+      cachedFrames: 0,
+      newFrames: validLength,
+    };
+  }
+
+  private processIncremental(
+    audio: Float32Array,
+    prefixSamples: number,
+    currentRawBuffer: Float32Array,
+    sampleCount: number,
+  ): IncrementalJsNemoMelProcessResult {
     const prefixFrames = Math.floor(prefixSamples / HOP_LENGTH);
     const safeFrames = Math.max(
       0,
@@ -665,11 +657,7 @@ export class IncrementalJSMelProcessor {
       this.featuresBuffer,
     );
 
-    this.cachedRawMel = rawMel;
-    this.cachedNFrames = nFrames;
-    this.cachedAudioLen = sampleCount;
-    this.cachedFeaturesLen = validLength;
-    this.currentBufferIndex ^= 1;
+    this.updateCache(rawMel, nFrames, sampleCount, validLength);
 
     return {
       features: new Float32Array(features),
@@ -679,6 +667,32 @@ export class IncrementalJSMelProcessor {
       cachedFrames: safeFrames,
       newFrames: validLength - safeFrames,
     };
+  }
+
+  process(audio: Float32Array, prefixSamples = 0): IncrementalJsNemoMelProcessResult {
+    const sampleCount = audio.length;
+    if (sampleCount === 0) {
+      return {
+        features: new Float32Array(0),
+        frameCount: 0,
+        length: 0,
+        cached: false,
+        cachedFrames: 0,
+        newFrames: 0,
+      };
+    }
+
+    const predictedFrames = Math.floor(sampleCount / HOP_LENGTH) + 1;
+    const currentRawBuffer = this.ensureBuffers(predictedFrames);
+
+    const canReuse =
+      prefixSamples > 0 && this.cachedRawMel !== null && prefixSamples <= this.cachedAudioLen;
+
+    if (!canReuse) {
+      return this.processFull(audio, currentRawBuffer, sampleCount);
+    }
+
+    return this.processIncremental(audio, prefixSamples, currentRawBuffer, sampleCount);
   }
 
   reset(): void {
