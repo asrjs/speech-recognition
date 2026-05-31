@@ -144,9 +144,8 @@ function resolveCreateAudioContext(
   };
 }
 
-function buildCaptureProcessorModule(): string {
+function buildProcessorConstructor(): string {
   return `
-class AsrjsCaptureProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
     const opts = options?.processorOptions ?? {};
@@ -158,7 +157,11 @@ class AsrjsCaptureProcessor extends AudioWorkletProcessor {
     this.sourceLength = 0;
     this.sourceReadIndex = 0;
   }
+`;
+}
 
+function buildProcessorBufferHelpers(): string {
+  return `
   ensureCapacity(required) {
     if (required <= this.sourceBuffer.length) return;
     let nextLength = this.sourceBuffer.length;
@@ -179,7 +182,11 @@ class AsrjsCaptureProcessor extends AudioWorkletProcessor {
     this.sourceLength -= consumed;
     this.sourceReadIndex -= consumed;
   }
+`;
+}
 
+function buildProcessorInputHelpers(): string {
+  return `
   appendInput(inputChannels) {
     if (!inputChannels?.length || !inputChannels[0]?.length) return;
     const frameCount = inputChannels[0].length;
@@ -196,7 +203,11 @@ class AsrjsCaptureProcessor extends AudioWorkletProcessor {
 
     this.sourceLength += frameCount;
   }
+`;
+}
 
+function buildProcessorOutputHelpers(): string {
+  return `
   emitAvailableChunks() {
     const requiredSourceFrames = () =>
       this.sourceReadIndex + Math.max(1, (this.targetChunkFrames - 1) * this.rateRatio + 1);
@@ -224,7 +235,11 @@ class AsrjsCaptureProcessor extends AudioWorkletProcessor {
       }
     }
   }
+`;
+}
 
+function buildProcessorMainMethods(): string {
+  return `
   process(inputs) {
     const inputChannels = inputs[0];
     if (!inputChannels?.length || !inputChannels[0]?.length) {
@@ -235,6 +250,17 @@ class AsrjsCaptureProcessor extends AudioWorkletProcessor {
     this.emitAvailableChunks();
     return true;
   }
+`;
+}
+
+function buildCaptureProcessorModule(): string {
+  return `
+class AsrjsCaptureProcessor extends AudioWorkletProcessor {
+${buildProcessorConstructor()}
+${buildProcessorBufferHelpers()}
+${buildProcessorInputHelpers()}
+${buildProcessorOutputHelpers()}
+${buildProcessorMainMethods()}
 }
 
 registerProcessor('asrjs-capture-processor', AsrjsCaptureProcessor);
