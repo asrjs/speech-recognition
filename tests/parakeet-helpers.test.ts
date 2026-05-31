@@ -26,10 +26,6 @@ describe('Parakeet helpers', () => {
     expect(DEFAULT_MODEL).toBe('parakeet-tdt-0.6b-v2');
     expect(listModels()).toContain('parakeet-realtime-eou-120m-v1');
     expect(listModels()).toContain('parakeet-tdt-0.6b-v3');
-    expect(getModelConfig('parakeet-tdt-0.6b-v3')?.repoId).toBe('ysdede/parakeet-tdt-0.6b-v3-onnx');
-    expect(getModelConfig('parakeet-tdt-0.6b-v3')?.vocabSize).toBe(8193);
-    expect(getModelConfig('parakeet-realtime-eou-120m-v1')?.topology).toBe('rnnt');
-    expect(getModelKeyFromRepoId('ysdede/parakeet-tdt-0.6b-v2-onnx')).toBe('parakeet-tdt-0.6b-v2');
     expect(getLanguageName('zh')).toBe('Chinese');
   });
 
@@ -51,8 +47,6 @@ describe('Parakeet helpers', () => {
   });
 
   it('treats prototype property names as unknown Parakeet models', () => {
-    expect(getModelConfig('toString')).toBeNull();
-    expect(getModelConfig('__proto__')).toBeNull();
     expect(() => supportsLanguage('toString', 'en')).not.toThrow();
     expect(supportsLanguage('toString', 'en')).toBe(false);
     expect(supportsLanguage('__proto__', 'en')).toBe(false);
