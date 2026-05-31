@@ -792,83 +792,111 @@ export function buildBuiltInHubLoadOptions(
   } as Record<string, unknown>;
 
   switch (descriptor.preset) {
-    case 'parakeet': {
-      const source = resolveParakeetArtifactSource(descriptor.modelId);
-      if (!source || source.kind !== 'huggingface') {
-        throw new Error(`Could not resolve Parakeet artifact source for "${descriptor.modelId}".`);
-      }
-      return {
-        ...base,
-        options: {
-          source: {
-            ...source,
-            revision: input.revision || source.revision || descriptor.loading.defaultRevision,
-            encoderBackend: componentBackends.encoderBackend,
-            decoderBackend: componentBackends.decoderBackend,
-            encoderQuant: input.encoderQuant,
-            decoderQuant: input.decoderQuant,
-            preprocessorName:
-              input.preprocessorName ?? descriptor.loading.defaultPreprocessorName ?? undefined,
-            preprocessorBackend:
-              input.preprocessorBackend ??
-              descriptor.loading.defaultPreprocessorBackend ??
-              undefined,
-            cpuThreads: input.cpuThreads,
-            enableProfiling: input.enableProfiling,
-          },
-        },
-      };
-    }
-    case 'canary': {
-      const source = resolveCanaryArtifactSource(descriptor.modelId);
-      if (!source || source.kind !== 'huggingface') {
-        throw new Error(`Could not resolve Canary artifact source for "${descriptor.modelId}".`);
-      }
-      return {
-        ...base,
-        options: {
-          source: {
-            ...source,
-            revision: input.revision || source.revision || descriptor.loading.defaultRevision,
-            encoderBackend: componentBackends.encoderBackend,
-            decoderBackend: componentBackends.decoderBackend,
-            encoderQuant: input.encoderQuant,
-            decoderQuant: input.decoderQuant,
-            preprocessorName:
-              input.preprocessorName ?? descriptor.loading.defaultPreprocessorName ?? undefined,
-            preprocessorBackend:
-              input.preprocessorBackend ??
-              descriptor.loading.defaultPreprocessorBackend ??
-              undefined,
-            cpuThreads: input.cpuThreads,
-            enableProfiling: input.enableProfiling,
-          },
-        },
-      };
-    }
-    case 'medasr': {
-      const manifest = resolveMedAsrPresetManifest(descriptor.modelId);
-      const source = manifest?.source;
-      if (!source || source.kind !== 'huggingface') {
-        throw new Error(`Could not resolve MedASR artifact source for "${descriptor.modelId}".`);
-      }
-      return {
-        ...base,
-        options: {
-          source: {
-            ...source,
-            revision: input.revision || source.revision || descriptor.loading.defaultRevision,
-            cpuThreads: input.cpuThreads,
-            enableProfiling: input.enableProfiling,
-          },
-        },
-      };
-    }
+    case 'parakeet':
+      return buildParakeetHubLoadOptions(descriptor, input, componentBackends, base);
+    case 'canary':
+      return buildCanaryHubLoadOptions(descriptor, input, componentBackends, base);
+    case 'medasr':
+      return buildMedAsrHubLoadOptions(descriptor, input, base);
     case 'whisper':
-      return base;
     default:
       return base;
   }
+}
+
+function buildParakeetHubLoadOptions(
+  descriptor: BuiltInModelDescriptor,
+  input: BuildBuiltInHubLoadOptionsInput,
+  componentBackends: {
+    readonly encoderBackend: BuiltInExecutionBackend;
+    readonly decoderBackend: BuiltInExecutionBackend;
+  },
+  base: Record<string, unknown>,
+): Record<string, unknown> {
+  const source = resolveParakeetArtifactSource(descriptor.modelId);
+  if (!source || source.kind !== 'huggingface') {
+    throw new Error(`Could not resolve Parakeet artifact source for "${descriptor.modelId}".`);
+  }
+  return {
+    ...base,
+    options: {
+      source: {
+        ...source,
+        revision: input.revision || source.revision || descriptor.loading.defaultRevision,
+        encoderBackend: componentBackends.encoderBackend,
+        decoderBackend: componentBackends.decoderBackend,
+        encoderQuant: input.encoderQuant,
+        decoderQuant: input.decoderQuant,
+        preprocessorName:
+          input.preprocessorName ?? descriptor.loading.defaultPreprocessorName ?? undefined,
+        preprocessorBackend:
+          input.preprocessorBackend ??
+          descriptor.loading.defaultPreprocessorBackend ??
+          undefined,
+        cpuThreads: input.cpuThreads,
+        enableProfiling: input.enableProfiling,
+      },
+    },
+  };
+}
+
+function buildCanaryHubLoadOptions(
+  descriptor: BuiltInModelDescriptor,
+  input: BuildBuiltInHubLoadOptionsInput,
+  componentBackends: {
+    readonly encoderBackend: BuiltInExecutionBackend;
+    readonly decoderBackend: BuiltInExecutionBackend;
+  },
+  base: Record<string, unknown>,
+): Record<string, unknown> {
+  const source = resolveCanaryArtifactSource(descriptor.modelId);
+  if (!source || source.kind !== 'huggingface') {
+    throw new Error(`Could not resolve Canary artifact source for "${descriptor.modelId}".`);
+  }
+  return {
+    ...base,
+    options: {
+      source: {
+        ...source,
+        revision: input.revision || source.revision || descriptor.loading.defaultRevision,
+        encoderBackend: componentBackends.encoderBackend,
+        decoderBackend: componentBackends.decoderBackend,
+        encoderQuant: input.encoderQuant,
+        decoderQuant: input.decoderQuant,
+        preprocessorName:
+          input.preprocessorName ?? descriptor.loading.defaultPreprocessorName ?? undefined,
+        preprocessorBackend:
+          input.preprocessorBackend ??
+          descriptor.loading.defaultPreprocessorBackend ??
+          undefined,
+        cpuThreads: input.cpuThreads,
+        enableProfiling: input.enableProfiling,
+      },
+    },
+  };
+}
+
+function buildMedAsrHubLoadOptions(
+  descriptor: BuiltInModelDescriptor,
+  input: BuildBuiltInHubLoadOptionsInput,
+  base: Record<string, unknown>,
+): Record<string, unknown> {
+  const manifest = resolveMedAsrPresetManifest(descriptor.modelId);
+  const source = manifest?.source;
+  if (!source || source.kind !== 'huggingface') {
+    throw new Error(`Could not resolve MedASR artifact source for "${descriptor.modelId}".`);
+  }
+  return {
+    ...base,
+    options: {
+      source: {
+        ...source,
+        revision: input.revision || source.revision || descriptor.loading.defaultRevision,
+        cpuThreads: input.cpuThreads,
+        enableProfiling: input.enableProfiling,
+      },
+    },
+  };
 }
 
 export function buildBuiltInTranscriptionOptions(
