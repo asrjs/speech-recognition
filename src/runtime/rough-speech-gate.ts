@@ -236,11 +236,7 @@ export class RoughSpeechGate {
     );
   }
 
-  private processAnalysisWindow(
-    window: Float32Array,
-    chunkStartFrame: number,
-    chunkEndFrame: number,
-  ): RoughSpeechGateWindowResult {
+  private updateEnergy(window: Float32Array): { rawEnergy: number; smoothedEnergy: number } {
     let peak = 0;
     for (let index = 0; index < window.length; index += 1) {
       peak = Math.max(peak, Math.abs(window[index] ?? 0));
@@ -254,11 +250,14 @@ export class RoughSpeechGate {
     const smoothedEnergy =
       this.recentWindowEnergies.reduce((sum, value) => sum + value, 0) /
       Math.max(1, this.recentWindowEnergies.length);
-    const chunkDurationSec = window.length / this.config.sampleRate;
 
     this.lastEnergy = smoothedEnergy;
     this.lastLevelDbfs = amplitudeToDbfs(smoothedEnergy);
 
+    return { rawEnergy, smoothedEnergy };
+  }
+
+  private updateLevelHistory(window: Float32Array, smoothedEnergy: number): void {
     this.levelHistory.push({
       energy: smoothedEnergy,
       frameCount: window.length,
@@ -278,7 +277,9 @@ export class RoughSpeechGate {
         ? this.levelHistoryWeightedEnergy / this.levelHistoryFrameCount
         : 0;
     this.lastLevelWindowDbfs = amplitudeToDbfs(this.lastLevelWindowEnergy);
+  }
 
+  private evaluateCandidateSpeech(smoothedEnergy: number): boolean {
     const noiseStateBefore = this.noiseFloorTracker.getState();
     this.lastNoiseFloorDbfs = noiseStateBefore.noiseFloorDbfs;
     this.lastBackgroundAverage = noiseStateBefore.backgroundAverage;
@@ -300,6 +301,10 @@ export class RoughSpeechGate {
         ? 'snr-threshold'
         : 'none';
 
+    return isCandidateSpeech;
+  }
+
+  private updateNoiseState(isCandidateSpeech: boolean, smoothedEnergy: number, chunkDurationSec: number): void {
     if (isCandidateSpeech) {
       if (!this.isSpeechActive) {
         this.pendingCandidateWindows.push({
@@ -322,19 +327,9 @@ export class RoughSpeechGate {
       this.lastRejectedCandidateAverage = updatedNoiseState.rejectedCandidateAverage;
       this.lastRejectedCandidateAverageDbfs = updatedNoiseState.rejectedCandidateAverageDbfs;
     }
+  }
 
-    this.recentChunks.push({
-      startFrame: chunkStartFrame,
-      endFrame: chunkEndFrame,
-      energy: smoothedEnergy,
-      rawEnergy,
-      snr: this.snr,
-      isSpeech: isCandidateSpeech,
-    });
-    if (this.recentChunks.length > this.config.maxHistoryChunks) {
-      this.recentChunks.shift();
-    }
-
+  private updateSpeechState(isCandidateSpeech: boolean): { speechStart: boolean; speechEnd: boolean; onsetFrame: number | null } {
     let speechStart = false;
     let speechEnd = false;
     let onsetFrame: number | null = null;
@@ -356,6 +351,18 @@ export class RoughSpeechGate {
       }
     }
 
+    return { speechStart, speechEnd, onsetFrame };
+  }
+
+  private buildWindowResult(
+    speechStart: boolean,
+    speechEnd: boolean,
+    onsetFrame: number | null,
+    smoothedEnergy: number,
+    rawEnergy: number,
+    chunkStartFrame: number,
+    chunkEndFrame: number
+  ): RoughSpeechGateWindowResult {
     const reportedNoiseState = this.noiseFloorTracker.getState();
     this.lastNoiseFloorDbfs = reportedNoiseState.noiseFloorDbfs;
     this.lastBackgroundAverage = reportedNoiseState.backgroundAverage;
@@ -388,8 +395,8 @@ export class RoughSpeechGate {
       backgroundAverageDbfs: this.lastBackgroundAverageDbfs,
       confirmedSilenceAverageDbfs: this.lastConfirmedSilenceAverageDbfs,
       rejectedCandidateAverageDbfs: this.lastRejectedCandidateAverageDbfs,
-      energyPass,
-      snrPass,
+      energyPass: this.lastEnergyPass,
+      snrPass: this.lastSnrPass,
       candidateReason: this.lastCandidateReason,
       snrThreshold: this.config.snrThreshold,
       minSnrThreshold: this.config.minSnrThreshold,
@@ -397,6 +404,45 @@ export class RoughSpeechGate {
       chunkEndFrame,
       analysisWindowFrames: this.analysisWindowFrames,
     };
+  }
+
+  private processAnalysisWindow(
+    window: Float32Array,
+    chunkStartFrame: number,
+    chunkEndFrame: number,
+  ): RoughSpeechGateWindowResult {
+    const { rawEnergy, smoothedEnergy } = this.updateEnergy(window);
+    const chunkDurationSec = window.length / this.config.sampleRate;
+
+    this.updateLevelHistory(window, smoothedEnergy);
+
+    const isCandidateSpeech = this.evaluateCandidateSpeech(smoothedEnergy);
+
+    this.updateNoiseState(isCandidateSpeech, smoothedEnergy, chunkDurationSec);
+
+    this.recentChunks.push({
+      startFrame: chunkStartFrame,
+      endFrame: chunkEndFrame,
+      energy: smoothedEnergy,
+      rawEnergy,
+      snr: this.snr,
+      isSpeech: isCandidateSpeech,
+    });
+    if (this.recentChunks.length > this.config.maxHistoryChunks) {
+      this.recentChunks.shift();
+    }
+
+    const { speechStart, speechEnd, onsetFrame } = this.updateSpeechState(isCandidateSpeech);
+
+    return this.buildWindowResult(
+      speechStart,
+      speechEnd,
+      onsetFrame,
+      smoothedEnergy,
+      rawEnergy,
+      chunkStartFrame,
+      chunkEndFrame
+    );
   }
 
   private findSpeechStartFrame(): number | null {
