@@ -311,31 +311,25 @@ export class StreamingWindowBuilder {
     return this.matureCursorFrame / this.config.sampleRate;
   }
 
-  buildWindow(): StreamingWindow | null {
-    const endFrame = this.ringBuffer.getCurrentFrame();
-    const baseFrame = this.ringBuffer.getBaseFrameOffset();
-    if (endFrame <= baseFrame) {
+  private buildInitialWindow(baseFrame: number, endFrame: number): StreamingWindow | null {
+    const availableFrames = endFrame - baseFrame;
+    const minInitialFrames = Math.round(this.config.minInitialDurationSec * this.config.sampleRate);
+    if (availableFrames < minInitialFrames) {
       return null;
     }
 
-    const availableFrames = endFrame - baseFrame;
-    const minInitialFrames = Math.round(this.config.minInitialDurationSec * this.config.sampleRate);
-    if (!this.firstBoundaryReceived) {
-      if (availableFrames < minInitialFrames) {
-        return null;
-      }
+    const maxFrames = Math.round(this.config.maxDurationSec * this.config.sampleRate);
+    const clippedEnd = Math.min(endFrame, baseFrame + maxFrames);
+    return {
+      startFrame: baseFrame,
+      endFrame: clippedEnd,
+      durationSeconds: (clippedEnd - baseFrame) / this.config.sampleRate,
+      isInitial: true,
+      matureCursorFrame: this.matureCursorFrame,
+    };
+  }
 
-      const maxFrames = Math.round(this.config.maxDurationSec * this.config.sampleRate);
-      const clippedEnd = Math.min(endFrame, baseFrame + maxFrames);
-      return {
-        startFrame: baseFrame,
-        endFrame: clippedEnd,
-        durationSeconds: (clippedEnd - baseFrame) / this.config.sampleRate,
-        isInitial: true,
-        matureCursorFrame: this.matureCursorFrame,
-      };
-    }
-
+  private calculateStartFrame(baseFrame: number): number {
     let startFrame =
       this.matureCursorFrame > 0
         ? this.matureCursorFrame
@@ -348,6 +342,37 @@ export class StreamingWindowBuilder {
     if (startFrame < baseFrame) {
       startFrame = baseFrame;
     }
+    return startFrame;
+  }
+
+  private adjustForSilenceBoundary(
+    startFrame: number,
+    endFrame: number,
+    minFrames: number,
+  ): { startFrame: number; windowFrames: number } {
+    let adjustedStartFrame = startFrame;
+    let windowFrames = endFrame - startFrame;
+
+    if (this.config.useActivityBoundaries && this.activityBuffer) {
+      const searchEnd = Math.min(startFrame + Math.round(this.config.sampleRate * 0.5), endFrame);
+      const boundary = this.activityBuffer.findSilenceBoundary(
+        searchEnd,
+        startFrame,
+        this.config.activityThreshold,
+      );
+      const adjustedFrames = endFrame - boundary;
+      if (boundary > startFrame && adjustedFrames >= minFrames) {
+        adjustedStartFrame = boundary;
+        windowFrames = adjustedFrames;
+      }
+    }
+
+    return { startFrame: adjustedStartFrame, windowFrames };
+  }
+
+  private buildMatureWindow(baseFrame: number, endFrame: number): StreamingWindow | null {
+    let startFrame = this.calculateStartFrame(baseFrame);
+
     if (startFrame >= endFrame) {
       return null;
     }
@@ -364,19 +389,9 @@ export class StreamingWindowBuilder {
       windowFrames = endFrame - startFrame;
     }
 
-    if (this.config.useActivityBoundaries && this.activityBuffer) {
-      const searchEnd = Math.min(startFrame + Math.round(this.config.sampleRate * 0.5), endFrame);
-      const boundary = this.activityBuffer.findSilenceBoundary(
-        searchEnd,
-        startFrame,
-        this.config.activityThreshold,
-      );
-      const adjustedFrames = endFrame - boundary;
-      if (boundary > startFrame && adjustedFrames >= minFrames) {
-        startFrame = boundary;
-        windowFrames = adjustedFrames;
-      }
-    }
+    const adjusted = this.adjustForSilenceBoundary(startFrame, endFrame, minFrames);
+    startFrame = adjusted.startFrame;
+    windowFrames = adjusted.windowFrames;
 
     if (this.config.debug) {
       console.debug('[StreamingWindowBuilder] buildWindow', { startFrame, endFrame, windowFrames });
@@ -389,6 +404,20 @@ export class StreamingWindowBuilder {
       isInitial: false,
       matureCursorFrame: this.matureCursorFrame,
     };
+  }
+
+  buildWindow(): StreamingWindow | null {
+    const endFrame = this.ringBuffer.getCurrentFrame();
+    const baseFrame = this.ringBuffer.getBaseFrameOffset();
+    if (endFrame <= baseFrame) {
+      return null;
+    }
+
+    if (!this.firstBoundaryReceived) {
+      return this.buildInitialWindow(baseFrame, endFrame);
+    }
+
+    return this.buildMatureWindow(baseFrame, endFrame);
   }
 
   getSilenceTailDurationSeconds(): number {
