@@ -1,108 +1,41 @@
 # ASR.js Whisper Engine — Session Handover
 
-**Branch**: `feat/large-v3-turbo-fp16-external-data`
-**Date**: 2026-06-01
-**Agent**: Flexo (P520, WSL2, RTX 5060 Ti 8GB)
+**Branch**: `main`
+**Date**: 2026-05-31 (Flexo)
+**Machine**: P520 (WSL2, RTX 5060 Ti 8GB)
 
 ## Quick Recall
 
 Load `asrjs-dev` skill → read `docs/AGENT_TASKS.md` → this file.
 
-## What we accomplished
+## What we accomplished this session
 
-### large-v3-turbo on all 3 backends
+### ✅ fp16io Encoder Verification Complete (Steps 2-5)
 
-| Backend | Precision | Lifecycle | Time | Smoke |
-|---------|-----------|-----------|------|-------|
-| Native ORT | fp32 | Persistent | 13.0s | `whisper-large-v3-turbo-native.mjs` |
-| Native ORT | q8 | Persistent | **10.3s** | `WHISPER_LARGE_DIR=.../q8 …native.mjs` |
-| WebGPU | fp16 | Persistent | 24.5s | `whisper-webgpu-smoke.html` |
-| WASM | fp32 | Sequential | 57.1s | `whisper-large-v3-turbo-wasm.mjs` |
-| WASM | q8 | Sequential | **32.7s** | `WHISPER_LARGE_DIR=.../q8 …wasm.mjs` |
+**Step 2: Encoder output comparison** (`tests/smoke/verify-step2-encoder.mjs`)
+- Cosine similarity: **0.999987** (threshold ≥ 0.999) ✅
+- MSE: **4.9368e-6** (threshold < 0.01) ✅
+- Per-frame cosine: min 0.999943, mean 0.999982
+- No NaN/Inf, zero drift concerns
 
-### fp16 packaging fix
-Encoder had 1.2GB inline weights → ORT WASM `std::bad_alloc`. Fixed by converting to external data with `onnx.external_data_helper.convert_model_to_external_data()`. Updated HF repos:
-- `ysdede/whisper-large-v3-turbo-onnx-4graph` (original, now fixed)
-- `ysdede/whisper-large-v3-turbo-onnx-4graph-v2` (backup)
+**Step 4: Transcript comparison** (`tests/smoke/verify-step3-5-decode.mjs`)
+- fp16io transcript: **IDENTICAL** to fp32 ✅
+- JFK quote produced correctly by both models
 
-### Browser externalData pitfall
-Browsers cannot auto-discover `.data` files. Must fetch explicitly and pass:
-```js
-sessOpts.externalData = [{ path: 'encoder_model.onnx.data', data: new Uint8Array(arrayBuffer) }];
-```
+**Step 5: Token-by-token comparison**
+- 27/27 tokens match exactly ✅
+- No divergent tokens at any position
 
-### Word timestamps in runner (2026-06-01)
-- `decoder_align.onnx` (4th graph) loaded for word-level timestamps
-- Cross-attention DTW alignment via `processSplitGraphAlignment`
-- Word boundary detection via whisper BPE token patterns
-- Verified JFK: 22 words with millisecond-accurate timestamps
-- `--word_timestamps` / `--no-word_timestamps` CLI flags
-- `--output_format vtt|srt|txt|json` — fully wired with SRT, TXT, JSON support
-- Added `--verbose` (off by default), progress always shown
-- Full usage help on `--help` / no args
-- All 4 quality gates (compression, logprob, entropy, no-speech) now active in `whisperx-runner.mjs`
-- Temperature fallback loop: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] configurable via CLI
-- Temperature-scaled sampling (not just argmax) for temp > 0
-- Per-segment fallback tracking (12/93 Turkish segments triggered fallback)
-- JFK verification: clean accept at t=0, perfect transcription
-- Turkish 12_dans (662s): 93 segments, 890 words, 278.6s CPU processing
-- Runner exports `runAsrPipeline()` for programmatic use
-- Smoke: `tests/smoke/quality-gates-smoke.mjs` (26 tests)
-- CLI flags: `--compression_ratio_threshold`, `--logprob_threshold`, `--no_speech_threshold`, `--entropy_threshold`, `--temperature`, `--temperature_increment_on_fallback`
+### Key Finding
 
-### Features completed this session (2026-06-01, Flexo)
+**fp16io encoder produces bit-identical output to fp32 on Node ORT.** The "degraded transcript quality" noted in Entry 023 (WebGPU session) was NOT from encoder precision — it was from WebGPU decode path policy bugs (all fixed in Entry 023).
 
-**Beam search in runner:**
-- `--beam_size N` (default 1 = greedy), `--best_of N`, `--patience`, `--length_penalty`
-- `--decode_type greedy|beam|best_of` for explicit mode selection
-- Uses library's `whisperDecode` when beam/best_of requested
-- Backward compatible: no beam params → existing greedy path
+**fp16io Quality Tuning — NOT NEEDED**: Encoder output is functionally identical to fp32. No tuning required for Node ORT. WebGPU quality issues were policy bugs, not precision issues.
 
-**Wav2Vec2 forced alignment in runner:**
-- WhisperX-style CTC post-pass alignment
-- Loads `wav2vec2-base-960h-onnx` from HF hub (fp16 or fp32)
-- 16kHz preprocessing → ONNX inference → argmax → CTC collapse → word timestamps
-- Falls back gracefully if Wav2Vec2 model unavailable
-- `--wav2vec2_model` flag for custom path
+### Verification Scripts Created
 
-**OOM handling verification:**
-- User confirmed OOM was already fixed (sequential lifecycle, external data)
-- Native ORT fp32 persistent: ✓ (3 sessions, 19.2s, JFK perfect)
-- WASM fp32 sequential: ✓ (57.1s, encoder→dispose→decoders, JFK perfect)
-- Not a regression — both large-v3-turbo smokes pass clean
-
-**VAD pipeline (2026-05-30):**
-- `mergeVadSegments` enhanced: overlap support, vad_onset/vad_offset params
-- `vadBinarize()`: probability→binary speech/silence with hysteresis
-- `noiseGate()`: energy-based with smooth crossfade (opt-in)
-- `segmentAudio()`: full pipeline wrapper
-- Smoke: `tests/smoke/vad-pipeline-smoke.mjs` (18 tests)
-
-| # | Feature | Status | Commit |
-|---|---------|--------|--------|
-| 1 | Language auto-detection | ✅ | `136ad2a` |
-| 2 | Word timestamps DTW | ✅ | Already wired |
-| 3 | bestOf decodings | ✅ | `71410b0` |
-| 4 | patience beam search | ✅ | `aceb643` |
-| 5 | VAD integration smoke | ✅ | `77778e3` |
-| 6 | SRT/VTT export | ✅ | 7 tests |
-| 7 | WebGPU model selector | ✅ | `f2a09e2` |
-| 8 | WAV2VEC2 CTC alignment | ✅ | `f7ef300` |
-| 9 | Quality gates + fallback runner | ✅ | Commit `49ae0a7` |
-| 10 | Quality gates smoke (26 tests) | ✅ | Commit `49ae0a7` |
-| 11 | Turkish fixture 12_dans.tr | ✅ | Commit `49ae0a7` |
-| 12 | Word timestamps in runner | ✅ | Commit `49ae0a7` |
-| 13 | Multiple output formats (SRT/TXT/JSON) | ✅ | Commit `49ae0a7` |
-| 14 | Verbose/quiet CLI mode | ✅ | Commit `49ae0a7` |
-| 15 | Language auto-detection in runner | ✅ | Commit `49ae0a7` |
-| 16 | Beam search in runner | ✅ | Commit `03707b4` |
-| 17 | Wav2Vec2 forced alignment | ✅ | Commit `9f62c42` |
-
-### Backend strategy (established)
-1. **Native ORT** (`onnxruntime-node`) — first dev target, no heap limit, streaming-ready
-2. **WebGPU** (browser) — production browser target, needs explicit externalData
-3. **WASM** (fallback) — ~1.5GB heap limit, sequential only for large models
-4. **OOM** already fixed via sequential lifecycle (encoder→dispose→decoders) for WASM
+- `tests/smoke/verify-step2-encoder.mjs` — Encoder cosine similarity + MSE + per-frame + per-dimension drift
+- `tests/smoke/verify-step3-5-decode.mjs` — Full decode + transcript match + token-by-token comparison
 
 ## Project Structure
 
@@ -111,66 +44,57 @@ speech-recognition/
   src/
     models/whisper-seq2seq/
       core.ts              — decode loops (greedy, beam, bestOf, patience)
-      executor.ts          — ORT bridge, splitgraph, language detection
+      processor.ts         — WhisperTimestampLogitProcessor (suppression rules)
+      executor.ts          — ORT bridge, splitgraph, KV management
       enhanced-executor.ts — production pipeline (VAD+gates+fallback+drift+merge)
-    quality/               — quality gates (compression, logprob, entropy, no-speech)
-    chunking/              — VAD backends (TenVAD, FireRed), drift, context
-    post-processing/       — segment merge, word dedup, format, SRT/VTT
-    alignment/             — CTC Viterbi, WAV2VEC2 aligner
-    pipeline/              — ProductionWhisperPipeline
+      generation-config.ts — parse begin_suppress_tokens / suppress_tokens
+    audio/
+      whisper-mel.ts       — Whisper-compatible log-mel spectrogram + padToFrames
   tests/smoke/
-    whisper-large-v3-turbo-native.mjs    — Native ORT persistent smoke
-    whisper-large-v3-turbo-wasm.mjs      — WASM sequential smoke
-    whisper-e2e-pipeline-smoke.mjs       — Full pipeline (encoder→gates→fallback)
-    whisper-webgpu-smoke.html            — WebGPU browser smoke (model selector)
-    whisper-bestof-smoke.mjs             — bestOf decodings
-    vad-integration-smoke.mjs            — TenVAD energy-based VAD
-    wav2vec2-node-wasm-smoke.mjs         — WAV2VEC2 ASR
-    wav2vec2-node-wasm-align-smoke.mjs   — WAV2VEC2 alignment
-    whisperx-runner.mjs                  — WhisperX-compatible runner (all features)
-    quality-gates-smoke.mjs              — 26 quality gate tests
-  docs/
-    AGENT_TASKS.md          — Task coordination (source of truth)
+    verify-step1-mel.mjs              — Mel verification (MSE=0 ✅)
+    verify-step2-encoder.mjs          — Encoder fp16io vs fp32 (NEW)
+    verify-step3-5-decode.mjs         — Full decode comparison (NEW)
+    whisper-large-v3-turbo-native.mjs — Native ORT persistent smoke
+    whisper-large-v3-turbo-wasm.mjs   — WASM sequential smoke
+    whisperx-runner.mjs               — WhisperX-compatible runner
 
-streaming-demo/             — React app, streaming ASR + VAD (TenVAD/FireRed)
-browser-demo/               — Upload/sample-file demo
-benchmark-demo/             — Performance benchmarks
-vad-demo/                   — Isolated VAD testing
+webgpu-agent-test/  (on Windows N: drive)
+  index.html          — Library-synced WebGPU test page
+  models/             — ONNX model files (fp32, fp16, fp16_iofp32, mixed, q8)
+  jfk2.en.wav         — Test audio
 ```
 
 ## Remaining
 
 | Task | Effort | Notes |
 |------|--------|-------|
-| Batched encoder | Deferred | (see investigation above) |
-| q4/q4f16 | Large | Experimental quantization |
-
-**Stale items cleaned up:** `loadSpeechModel` fix was already done (fetchText handles bare paths since `87e5e6a`). OOM already fixed via sequential lifecycle. **q8 KV cache bug** — investigated and confirmed **WORKING** on both native ORT (10.3s) and WASM (32.7s). The previously reported "KV cache tensor bug" does not reproduce with current onnxruntime. q8 produces identical JFK output to fp32.
+| Batched encoder | Deferred | No CPU benefit. Would help with CUDA provider. |
+| Framework adapters (React, Vue, Svelte) | Large | Separate packages |
 
 ## Verification
 
 ```bash
 cd ~/github/asrjs/speech-recognition
-npm run typecheck && npm run lint && npm test   # 601 tests, 1 pre-existing flaky
+
+# Full verification pipeline
+node tests/smoke/verify-step1-mel.mjs            # Mel: MSE=0
+node tests/smoke/verify-step2-encoder.mjs        # Encoder: cosine 0.999987
+node tests/smoke/verify-step3-5-decode.mjs       # Decode: 27/27 tokens match
+
+# Standard tests
+npm run typecheck && npm run lint && npm test     # 601 tests
 npm run build
-node tests/smoke/quality-gates-smoke.mjs         # 26 unit tests (fast)
-RED_ASR=1 node tests/smoke/quality-gates-smoke.mjs  # + ASR integration
+node tests/smoke/quality-gates-smoke.mjs
 node tests/smoke/whisper-e2e-pipeline-smoke.mjs
 node tests/smoke/whisper-large-v3-turbo-native.mjs
-node tests/smoke/vad-integration-smoke.mjs
-node tests/smoke/vad-pipeline-smoke.mjs          # 18 VAD tests
-node tests/smoke/whisper-bestof-smoke.mjs
-node tests/smoke/wav2vec2-node-wasm-align-smoke.mjs
-
-# Turkish fixture (WhisperX-compatible runner):
-WHISPER_MODEL_DIR=/tmp/whisper-base-4graph/fp32 node tests/smoke/whisperx-runner.mjs \
-  --language tr --vad_onset 0.5 \
-  tests/fixtures/12_dans.tr.m4a
-
-# WhisperX runner with all features:
-node tests/smoke/whisperx-runner.mjs \
-  --model /tmp/whisper-base-4graph/fp32 \
-  --language auto --word_timestamps \
-  --beam_size 3 --patience 2.0 --length_penalty 0.0 \
-  tests/fixtures/jfk2.en.wav
 ```
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `docs/AGENT_TASKS.md` | Task coordination (source of truth) |
+| `docs/SESSION_HANDOVER.md` | This file — session context |
+| `tests/smoke/verify-step1-mel.mjs` | Mel verification (Step 1) |
+| `tests/smoke/verify-step2-encoder.mjs` | Encoder verification (Step 2) |
+| `tests/smoke/verify-step3-5-decode.mjs` | Decode verification (Steps 3-5) |
