@@ -6,7 +6,7 @@ Strategy (in order of preference):
   2. onnxconverter_common.float16      – community converter with op_block_list fix.
 
 Both keep IO types as float32 so the JS inference code is unchanged.
-Post-conversion shape inference is run to fix any residual type-annotation gaps.
+Post-conversion shape inference is run to resolve any residual type-annotation gaps.
 
 Usage:
     conda run -n medasr_env python scripts/export_fp16_native.py [--in-onnx PATH] [--out PATH]
