@@ -1,7 +1,7 @@
 # Agent Task Coordination
 
 Branch: `main`
-Updated: 2026-05-31 (Flexo, Step 2-5 verification complete)
+Updated: 2026-05-31 (Flexo, demo app + verification suite)
 
 ## Context Recovery
 
@@ -92,10 +92,22 @@ Step 5: Token-by-token → first 5 tokens match fp32 baseline
 
 ## REMAINING TASKS (priority order)
 
-### 1. Batched Encoder
+### 1. int8 (qf8) Model Generation for WASM
+Parakeet.js uses int8 for WASM compatibility. Whisper q8 already works identically to fp32.
+May need to generate proper int8 variants if q8 decoder has issues on specific WASM backends.
+Tool: `onnxruntime.quantization.quantize_dynamic` with `optimize_model` pass first.
+
+### 2. WebGPU Verification (Browser)
+Full verification suite at `/mnt/n/github/asrjs/webgpu-agent-test/index.html`:
+- All variants: fp32, fp16, fp16io, q8, mixed
+- All backends: WebGPU, WASM (configurable per encoder/decoder)
+- Modes: Run Decode, Cross-Validate, Encoder-Only
+- Requires real browser with GPU (RTX 5060 Ti + Chrome)
+
+### 3. Batched Encoder
 Deferred — no CPU benefit. Would help with CUDA provider.
 
-### 2. Framework Adapters (React, Vue, Svelte)
+### 4. Framework Adapters (React, Vue, Svelte)
 Separate packages — deferred.
 
 ## Shared Files (coordinate before modifying)
