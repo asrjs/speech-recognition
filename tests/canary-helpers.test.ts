@@ -7,6 +7,7 @@ import {
   listModels,
   transcribeCanary,
 } from '@asrjs/speech-recognition/presets/canary';
+import { resolveCanaryArtifactSource } from '../src/presets/canary/manifest.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { DefaultSpeechRuntime } from '../src/runtime/session.js';
 import * as huggingface from '../src/runtime/huggingface.js';
@@ -26,6 +27,16 @@ describe('Canary helpers', () => {
   it('treats prototype property names as unknown Canary models', () => {
     expect(getModelConfig('toString')).toBeNull();
     expect(getModelConfig('__proto__')).toBeNull();
+  });
+
+  it('resolves artifact sources for known models and returns undefined for unknown ones', () => {
+    const knownSource = resolveCanaryArtifactSource(DEFAULT_MODEL);
+    expect(knownSource).toBeDefined();
+    expect(knownSource?.repoId).toBe('ysdede/canary-180m-flash-onnx');
+    expect(knownSource?.preprocessorBackend).toBe('js');
+
+    expect(resolveCanaryArtifactSource('canary-180m-flash')).toBeDefined(); // alias
+    expect(resolveCanaryArtifactSource('unknown-model')).toBeUndefined();
   });
 
   it('does not resolve an ONNX preprocessor artifact when JS preprocessing is requested', async () => {
