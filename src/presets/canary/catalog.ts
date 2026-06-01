@@ -38,27 +38,28 @@ export const MODELS = {
   },
 } satisfies Record<string, CanaryModelConfig>;
 
+// Cache repository IDs to keys for O(1) performance impact instead of O(N) linear search
+const REPO_ID_TO_KEY = new Map<string, string>(
+  Object.entries(MODELS).map(([key, config]) => [config.repoId, key])
+);
+
 export function getModelConfig(modelKeyOrRepoId: string): CanaryModelConfig | null {
   if (Object.prototype.hasOwnProperty.call(MODELS, modelKeyOrRepoId)) {
     return MODELS[modelKeyOrRepoId as keyof typeof MODELS];
   }
 
-  for (const config of Object.values(MODELS)) {
-    if (config.repoId === modelKeyOrRepoId) {
-      return config;
-    }
+  // O(1) reverse lookup, replacing O(N) Object.values() linear search
+  const key = REPO_ID_TO_KEY.get(modelKeyOrRepoId);
+  if (key) {
+    return MODELS[key as keyof typeof MODELS];
   }
 
   return null;
 }
 
 export function getModelKeyFromRepoId(repoId: string): string | null {
-  for (const [key, config] of Object.entries(MODELS)) {
-    if (config.repoId === repoId) {
-      return key;
-    }
-  }
-  return null;
+  // O(1) lookup, replacing O(N) Object.entries() linear search
+  return REPO_ID_TO_KEY.get(repoId) ?? null;
 }
 
 export function listModels(): string[] {
