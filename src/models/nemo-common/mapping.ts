@@ -52,22 +52,35 @@ export const defaultNemoTimestampReconstructor: NemoTimestampReconstructor = {
       mapNativeToken(token),
     );
 
-    const words: TranscriptWord[] = (nativeTranscript.words ?? []).map((word) => ({
-      index: word.index,
-      text: word.text,
-      startTime: word.startTime,
-      endTime: word.endTime,
-      confidence: word.confidence,
-      tokenIndices: tokens
-        .filter(
-          (token) =>
-            token.startTime !== undefined &&
-            token.endTime !== undefined &&
-            token.startTime >= word.startTime &&
-            token.endTime <= word.endTime,
-        )
-        .map((token) => token.index),
-    }));
+    const words: TranscriptWord[] = (nativeTranscript.words ?? []).map((word) => {
+      // Collect token indices matching the word's time boundaries.
+      // We use a single-pass loop here to populate a local array directly, eliminating
+      // intermediate array allocations from `.filter(...).map(...)` chains. This avoids
+      // an O(N*M) performance bottleneck and severe GC pressure during audio post-processing.
+      // Note: True time complexity optimization requires algorithmic refactoring
+      // (like a two-pointer approach) to fully resolve the O(N*M) bottleneck.
+      const tokenIndices: number[] = [];
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i]!;
+        if (
+          token.startTime !== undefined &&
+          token.endTime !== undefined &&
+          token.startTime >= word.startTime &&
+          token.endTime <= word.endTime
+        ) {
+          tokenIndices.push(token.index);
+        }
+      }
+
+      return {
+        index: word.index,
+        text: word.text,
+        startTime: word.startTime,
+        endTime: word.endTime,
+        confidence: word.confidence,
+        tokenIndices,
+      };
+    });
 
     const sentences = buildDefaultSentences(words);
     const segments = buildDefaultSegments(words);
