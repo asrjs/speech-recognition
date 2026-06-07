@@ -52,22 +52,29 @@ export const defaultNemoTimestampReconstructor: NemoTimestampReconstructor = {
       mapNativeToken(token),
     );
 
-    const words: TranscriptWord[] = (nativeTranscript.words ?? []).map((word) => ({
-      index: word.index,
-      text: word.text,
-      startTime: word.startTime,
-      endTime: word.endTime,
-      confidence: word.confidence,
-      tokenIndices: tokens
-        .filter(
-          (token) =>
-            token.startTime !== undefined &&
-            token.endTime !== undefined &&
-            token.startTime >= word.startTime &&
-            token.endTime <= word.endTime,
-        )
-        .map((token) => token.index),
-    }));
+    const words: TranscriptWord[] = (nativeTranscript.words ?? []).map((word) => {
+      const tokenIndices: number[] = [];
+      // Use a single-pass loop instead of nested .filter().map() chains to eliminate
+      // intermediate array allocations, reducing O(N*M) allocation overhead to O(N).
+      for (const token of tokens) {
+        if (
+          token.startTime !== undefined &&
+          token.endTime !== undefined &&
+          token.startTime >= word.startTime &&
+          token.endTime <= word.endTime
+        ) {
+          tokenIndices.push(token.index);
+        }
+      }
+      return {
+        index: word.index,
+        text: word.text,
+        startTime: word.startTime,
+        endTime: word.endTime,
+        confidence: word.confidence,
+        tokenIndices,
+      };
+    });
 
     const sentences = buildDefaultSentences(words);
     const segments = buildDefaultSegments(words);
