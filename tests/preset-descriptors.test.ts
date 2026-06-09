@@ -190,7 +190,8 @@ describe('built-in preset descriptors', () => {
       defaultMergeStrategy: 'ctc-collapse',
     });
     expect(descriptor?.loading).toMatchObject({
-      supportsHubSource: false,
+      // O(1) attribute lookup verification for loading capability metadata.
+      supportsHubSource: true,
       supportsLocalSource: true,
       defaultEncoderBackend: 'wasm',
       defaultDecoderBackend: 'wasm',
