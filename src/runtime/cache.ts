@@ -75,12 +75,12 @@ export function createAudioCacheKey(input: AudioInputLike): string {
   let state = count | 0;
   if (count <= fullHashThreshold) {
     for (let index = 0; index < count; index += 1) {
-      state = mix32(state, samples[index] ?? 0);
+      state = mix32(state, samples[index]!);
     }
   } else {
     const edgeCount = Math.min(edgeSampleCount, Math.floor(count / 2));
     for (let index = 0; index < edgeCount; index += 1) {
-      state = mix32(state, samples[index] ?? 0);
+      state = mix32(state, samples[index]!);
     }
 
     const middleStart = edgeCount;
@@ -90,11 +90,11 @@ export function createAudioCacheKey(input: AudioInputLike): string {
     const stride = Math.max(1, Math.floor(middleLength / remainingBudget));
 
     for (let index = middleStart; index < middleEnd; index += stride) {
-      state = mix32(state, samples[index] ?? 0);
+      state = mix32(state, samples[index]!);
     }
 
     for (let index = Math.max(edgeCount, count - edgeCount); index < count; index += 1) {
-      state = mix32(state, samples[index] ?? 0);
+      state = mix32(state, samples[index]!);
     }
   }
 
