@@ -20,15 +20,17 @@ function tokenIndicesWithinWord(
   tokens: readonly TranscriptToken[],
   word: { readonly startTime: number; readonly endTime: number },
 ): readonly number[] | undefined {
-  const indices = tokens
-    .filter(
-      (token) =>
-        token.startTime !== undefined &&
-        token.endTime !== undefined &&
-        token.startTime >= word.startTime &&
-        token.endTime <= word.endTime,
-    )
-    .map((token) => token.index);
+  const indices: number[] = [];
+  for (const token of tokens) {
+    if (
+      token.startTime !== undefined &&
+      token.endTime !== undefined &&
+      token.startTime >= word.startTime &&
+      token.endTime <= word.endTime
+    ) {
+      indices.push(token.index);
+    }
+  }
   return indices.length > 0 ? indices : undefined;
 }
 
@@ -36,9 +38,12 @@ function wordIndicesWithinSegment(
   words: readonly TranscriptWord[],
   segment: { readonly startTime: number; readonly endTime: number },
 ): readonly number[] | undefined {
-  const indices = words
-    .filter((word) => word.startTime >= segment.startTime && word.endTime <= segment.endTime)
-    .map((word) => word.index);
+  const indices: number[] = [];
+  for (const word of words) {
+    if (word.startTime >= segment.startTime && word.endTime <= segment.endTime) {
+      indices.push(word.index);
+    }
+  }
   return indices.length > 0 ? indices : undefined;
 }
 
