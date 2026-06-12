@@ -5,7 +5,7 @@ describe('WhisperTokenizer BPE encode', () => {
   let tokenizer: WhisperTokenizer;
 
   beforeAll(async () => {
-    tokenizer = await WhisperTokenizer.fromUrl('file:///tmp/whisper-tiny-onnx/tokenizer.json');
+    tokenizer = await WhisperTokenizer.fromUrl('https://huggingface.co/Xenova/whisper-tiny/resolve/main/tokenizer.json');
   });
 
   it('encodes English text matching reference', () => {

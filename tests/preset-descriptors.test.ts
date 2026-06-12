@@ -190,7 +190,7 @@ describe('built-in preset descriptors', () => {
       defaultMergeStrategy: 'ctc-collapse',
     });
     expect(descriptor?.loading).toMatchObject({
-      supportsHubSource: false,
+      supportsHubSource: true,
       supportsLocalSource: true,
       defaultEncoderBackend: 'wasm',
       defaultDecoderBackend: 'wasm',

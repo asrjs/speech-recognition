@@ -1,4 +1,4 @@
-import { createWhisperProductionPipeline } from '@asrjs/speech-recognition/pipeline';
+import { createWhisperProductionPipeline } from '../src/pipeline.js';
 import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
