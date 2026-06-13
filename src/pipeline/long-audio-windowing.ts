@@ -217,6 +217,7 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
   const { audio, policy } = decision;
   const accumulator = createWindowedMetricsAccumulator(audio.durationSeconds);
   const finalizedSegments: TranscriptSegment[] = [];
+  const allSegments: TranscriptSegment[] = [];
   let allWords: TranscriptWord[] = [];
   let pendingWords: TranscriptWord[] = [];
   let lastTextFallback = '';
@@ -252,6 +253,12 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
     lastTextFallback = windowResult.text || lastTextFallback;
 
     const currentWords = windowResult.words ?? [];
+    const currentSegments = windowResult.segments ?? [];
+    if (currentWords.length === 0 && currentSegments.length > 0) {
+      for (const segment of currentSegments) {
+        appendFinalizedSegment(allSegments, segment);
+      }
+    }
     const windowWords = shouldMergePending
       ? mergePendingAndCurrentWords(pendingWords, currentWords)
       : dedupeWindowWords(currentWords);
@@ -310,11 +317,23 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
     ...word,
     index,
   }));
-  const segments =
-    mergedWords.length > 0
-      ? partitionWordsIntoSegments(mergedWords).map((segment, index) => ({ ...segment, index }))
-      : finalizedSegments.map((segment, index) => ({ ...segment, index }));
-  const text = mergedWords.length > 0 ? joinTranscriptWords(mergedWords) : lastTextFallback.trim();
+
+  let segments: TranscriptSegment[];
+  if (mergedWords.length > 0) {
+    segments = partitionWordsIntoSegments(mergedWords).map((segment, index) => ({ ...segment, index }));
+  } else if (allSegments.length > 0) {
+    segments = [...allSegments]
+      .sort((a, b) => a.startTime - b.startTime)
+      .map((segment, index) => ({ ...segment, index }));
+  } else {
+    segments = finalizedSegments.map((segment, index) => ({ ...segment, index }));
+  }
+
+  const text = mergedWords.length > 0
+    ? joinTranscriptWords(mergedWords)
+    : segments.length > 0
+      ? segments.map((segment) => segment.text).join(' ').trim()
+      : lastTextFallback.trim();
   const metrics = buildWindowedMetrics(accumulator);
 
   return {

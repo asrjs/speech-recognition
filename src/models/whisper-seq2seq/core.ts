@@ -79,6 +79,8 @@ export interface WhisperDecodeOptions {
   readonly beamSize?: number;
   /** Length penalty for beam search (default: 0.0) */
   readonly lengthPenalty?: number;
+  /** Patience for beam search early stopping (default: 1.0). */
+  readonly patience?: number;
   /** Temperature (0 = greedy argmax, >0 = sample). Greedy mode only. */
   readonly temperature?: number;
   /** Number of independent decodings to run, pick best by score. WhisperX: best_of */

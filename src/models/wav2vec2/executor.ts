@@ -31,6 +31,7 @@ import { Wav2Vec2CharTokenizer } from './tokenizer.js';
 import type {
   Wav2Vec2ArtifactSource,
   Wav2Vec2Executor,
+  Wav2Vec2LogitsResult,
   Wav2Vec2ModelConfig,
   Wav2Vec2ModelDependencies,
   Wav2Vec2ModelOptions,
@@ -451,6 +452,73 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
 
   async ready(): Promise<void> {
     await this.getLoadedState();
+  }
+
+  // -------------------------------------------------------------------------
+  // Raw logits extraction (without CTC decoding)
+  // -------------------------------------------------------------------------
+
+  async extractLogits(
+    audio: AudioBufferLike,
+    _options?: Wav2Vec2TranscriptionOptions,
+  ): Promise<Wav2Vec2LogitsResult> {
+    const state = await this.getLoadedState();
+    const warnings: TranscriptWarning[] = [...state.warnings];
+
+    if (audio.sampleRate !== state.config.sampleRate) {
+      warnings.push({
+        code: 'wav2vec2.sample-rate-mismatch',
+        message: `Expected ${state.config.sampleRate} Hz audio but received ${audio.sampleRate} Hz. No resampler is active on this path.`,
+        recoverable: true,
+      });
+    }
+
+    // Normalize audio to mono float32 PCM
+    this.sharedMonoBuffer = ensureFloat32Buffer(audio.numberOfFrames, this.sharedMonoBuffer);
+    const mono = toMonoPcm(audio, this.sharedMonoBuffer);
+
+    // Create ONNX tensor from waveform
+    const inputTensor = new state.ort.Tensor('float32', mono, [1, mono.length]);
+
+    // Run ONNX session
+    const encodeStart = nowMs();
+    let outputs: Record<string, OrtTensorLike>;
+    try {
+      outputs = await state.session.run({
+        input_values: inputTensor,
+      });
+    } finally {
+      inputTensor.dispose?.();
+    }
+    const encodeMs = nowMs() - encodeStart;
+
+    // Extract logits
+    const logitsTensor = findLogitsTensor(outputs);
+    const logits = normalizeLogitsData(logitsTensor);
+    const dims = [...logitsTensor.dims];
+    if (dims.length !== 3 || (dims[0] ?? 0) !== 1) {
+      throw new Error(`Unexpected Wav2Vec2 logits shape: [${dims.join(', ')}].`);
+    }
+
+    const frameCount = dims[1] ?? 0;
+    const vocabSize = dims[2] ?? 0;
+    if (frameCount <= 0 || vocabSize <= 0) {
+      throw new Error(`Wav2Vec2 logits shape is invalid: [${dims.join(', ')}].`);
+    }
+
+    const audioDurationSeconds = mono.length / state.config.sampleRate;
+
+    return {
+      logits,
+      frameCount,
+      vocabSize,
+      sampleRate: state.config.sampleRate,
+      audioDurationSeconds,
+      blankId: state.config.ctcBlankId,
+      tokenizer: state.tokenizer,
+      warnings: warnings.length > 0 ? warnings : undefined,
+      encodeMs: roundMetric(encodeMs),
+    };
   }
 
   // -------------------------------------------------------------------------
