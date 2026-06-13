@@ -79,8 +79,6 @@ export interface WhisperDecodeOptions {
   readonly beamSize?: number;
   /** Length penalty for beam search (default: 0.0) */
   readonly lengthPenalty?: number;
-  /** Beam search patience: consecutive completed-best steps before early stop. WhisperX: patience (default: 1) */
-  readonly patience?: number;
   /** Temperature (0 = greedy argmax, >0 = sample). Greedy mode only. */
   readonly temperature?: number;
   /** Number of independent decodings to run, pick best by score. WhisperX: best_of */
@@ -241,8 +239,8 @@ export async function whisperBeamDecode(
     beamKvs = newKvs;
 
     // Patience: stop early if best beam has been completed for N consecutive steps
-    const stepBest = selectBestWhisperBeam(beams as any, lengthPenalty);
-    if (stepBest && (stepBest as any).completed) {
+    const bestBeam = selectBestWhisperBeam(beams as any, lengthPenalty);
+    if (bestBeam && (bestBeam as any).completed) {
       completedSteps++;
       if (completedSteps >= patience) break;
     } else {
