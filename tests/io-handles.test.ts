@@ -170,4 +170,44 @@ describe('UrlAssetHandle', () => {
     expect(progressEvents[progressEvents.length - 1]).toBe(4);
     handle.dispose();
   });
+
+  it('uses blob cache methods when materializing blob URL locators', async () => {
+    const cache: AssetCache = {
+      get: vi.fn(async () => null),
+      set: vi.fn(async () => undefined),
+      getBlob: vi.fn(async () => null),
+      setBlob: vi.fn(async () => undefined),
+      delete: vi.fn(async () => undefined),
+    };
+
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(new Uint8Array([5, 6, 7, 8]), {
+        status: 200,
+        headers: {
+          'content-length': '4',
+          'content-type': 'application/octet-stream',
+        },
+      });
+    }) as typeof fetch;
+
+    const handle = new UrlAssetHandle(
+      {
+        id: 'url:blob-cache',
+        provider: 'url',
+        url: 'https://example.com/encoder_model.onnx.data',
+        preferBlobUrl: true,
+        cacheKey: 'cache:blob',
+      },
+      'https://example.com/encoder_model.onnx.data',
+      cache,
+    );
+
+    const locator = await handle.getLocator('url');
+
+    expect(locator).toMatch(/^blob:/);
+    expect(cache.getBlob).toHaveBeenCalledWith('cache:blob');
+    expect(cache.setBlob).toHaveBeenCalledTimes(1);
+    expect(cache.set).not.toHaveBeenCalled();
+    handle.dispose();
+  });
 });

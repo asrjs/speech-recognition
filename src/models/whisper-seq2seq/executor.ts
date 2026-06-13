@@ -26,6 +26,7 @@ import {
   type OrtModuleLike,
   type OrtSessionLike,
   type OrtTensorLike,
+  type ResolvedWhisperArtifacts,
 } from './ort.js';
 import { WhisperTokenizer, fetchText } from './tokenizer.js';
 import { WhisperTimestampLogitProcessor } from './processors.js';
@@ -271,12 +272,94 @@ export class WhisperOnnxExecutor {
     }
   }
 
-  private async materializeHuggingFaceArtifacts(
-    artifacts: ReturnType<typeof resolveWhisperArtifacts>['artifacts'],
-  ): Promise<typeof artifacts> {
+  private async materializeResolvedArtifacts(
+    resolved: ResolvedWhisperArtifacts,
+  ): Promise<ResolvedWhisperArtifacts> {
     const source = this.sourceOptions;
-    if (!this.assetProvider || !source || source.kind !== 'huggingface') {
-      return artifacts;
+    if (!this.assetProvider || !source) {
+      return resolved;
+    }
+
+    const resolveRemoteUrl = async (
+      url: string | undefined,
+      fileLabel: string,
+    ): Promise<string | undefined> => {
+      if (!url || !/^https?:\/\//i.test(url)) {
+        return url;
+      }
+
+      const handle = await this.assetProvider!.resolve({
+        id: `url:${url}`,
+        provider: 'url',
+        url,
+        preferBlobUrl: true,
+        cacheKey: `url:${url}`,
+        onProgress: (event) => {
+          this.runtimeHooks?.onProgress?.(createAssetProgressEvent(this.modelId, fileLabel, event));
+        },
+      });
+      this.assetHandles.push(handle);
+      const locator = await handle.getLocator('url');
+      if (!locator) {
+        throw new Error(`Could not create a URL locator for "${fileLabel}".`);
+      }
+      return locator;
+    };
+
+    if (source.kind === 'splitgraph') {
+      const materializedExternalData: Record<string, { dataUrl: string; path: string }[]> = {};
+      for (const [graphName, entries] of Object.entries(resolved.externalData ?? {})) {
+        const nextEntries: { dataUrl: string; path: string }[] = [];
+        for (const entry of entries ?? []) {
+          nextEntries.push({
+            path: entry.path,
+            dataUrl:
+              (await resolveRemoteUrl(
+                entry.dataUrl,
+                `${graphName}/${entry.path.replace(/^\.\//, '')}`,
+              )) ?? entry.dataUrl,
+          });
+        }
+        if (nextEntries.length > 0) {
+          materializedExternalData[graphName] = nextEntries;
+        }
+      }
+
+      const encoderUrl =
+        (await resolveRemoteUrl(resolved.artifacts.encoderUrl, 'encoder_model.onnx')) ??
+        resolved.artifacts.encoderUrl;
+      const decoderInitUrl =
+        (await resolveRemoteUrl(resolved.decoderInitUrl, 'decoder_init.onnx')) ??
+        resolved.decoderInitUrl;
+      const decoderStepUrl =
+        (await resolveRemoteUrl(resolved.decoderStepUrl, 'decoder_step.onnx')) ??
+        resolved.decoderStepUrl;
+      const decoderAlignUrl =
+        (await resolveRemoteUrl(resolved.decoderAlignUrl, 'decoder_align.onnx')) ??
+        resolved.decoderAlignUrl;
+
+      return {
+        ...resolved,
+        artifacts: {
+          ...resolved.artifacts,
+          encoderUrl,
+          decoderUrl: decoderInitUrl ?? resolved.artifacts.decoderUrl,
+          // Keep tokenizerUrl remote/file based so config.json and
+          // generation_config.json remain derivable by sibling path replacement.
+          tokenizerUrl: resolved.artifacts.tokenizerUrl,
+        },
+        decoderInitUrl,
+        decoderStepUrl,
+        decoderAlignUrl,
+        externalData:
+          Object.keys(materializedExternalData).length > 0
+            ? materializedExternalData
+            : undefined,
+      };
+    }
+
+    if (source.kind !== 'huggingface') {
+      return resolved;
     }
 
     const revision = source.revision ?? 'main';
@@ -331,9 +414,19 @@ export class WhisperOnnxExecutor {
     void resolveOptionalFile;
 
     return {
-      encoderUrl: (await resolveFile(artifacts.encoderUrl.split('/').pop())) ?? artifacts.encoderUrl,
-      decoderUrl: (await resolveFile(artifacts.decoderUrl.split('/').pop())) ?? artifacts.decoderUrl,
-      tokenizerUrl: (await resolveFile('tokenizer.json')) ?? artifacts.tokenizerUrl,
+      ...resolved,
+      artifacts: {
+        ...resolved.artifacts,
+        encoderUrl:
+          (await resolveFile(resolved.artifacts.encoderUrl.split('/').pop())) ??
+          resolved.artifacts.encoderUrl,
+        decoderUrl:
+          (await resolveFile(resolved.artifacts.decoderUrl.split('/').pop())) ??
+          resolved.artifacts.decoderUrl,
+        // Keep tokenizerUrl remote/file based so config.json and generation_config.json
+        // remain derivable by sibling path replacement.
+        tokenizerUrl: resolved.artifacts.tokenizerUrl,
+      },
     };
   }
 
@@ -342,8 +435,10 @@ export class WhisperOnnxExecutor {
       throw new Error(`No artifact source is configured for "${this.modelId}".`);
     }
 
-    const resolved = resolveWhisperArtifacts(this.sourceOptions, this.backendId);
-    const artifacts = await this.materializeHuggingFaceArtifacts(resolved.artifacts);
+    const resolved = await this.materializeResolvedArtifacts(
+      resolveWhisperArtifacts(this.sourceOptions, this.backendId),
+    );
+    const artifacts = resolved.artifacts;
 
     const ort = await initWhisperOrt(resolved.ortBackend, {
       wasmPaths: resolved.wasmPaths,

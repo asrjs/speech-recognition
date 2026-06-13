@@ -10,6 +10,11 @@ interface CacheReadHit {
   readonly value: AssetCacheValue;
 }
 
+interface BlobCacheReadHit {
+  readonly key: string;
+  readonly blob: Blob;
+}
+
 async function* bytesToStream(bytes: Uint8Array): AsyncIterable<Uint8Array> {
   yield bytes;
 }
@@ -120,6 +125,66 @@ async function writeCache(
   } catch (error) {
     console.warn(`[assets] Cache write failed for "${key}". Continuing without cache.`, error);
   }
+}
+
+async function readBlobCache(
+  cache: AssetCache | undefined,
+  key: string | undefined,
+  fallbackKeys: readonly string[] = [],
+): Promise<BlobCacheReadHit | null> {
+  if (!cache?.getBlob || !key) {
+    return null;
+  }
+
+  const keys = [key, ...fallbackKeys.filter((candidate) => candidate && candidate !== key)];
+  for (const candidateKey of keys) {
+    try {
+      const blob = await cache.getBlob(candidateKey);
+      if (blob) {
+        return { key: candidateKey, blob };
+      }
+    } catch (error) {
+      console.warn(
+        `[assets] Blob cache read failed for "${candidateKey}". Falling back to network.`,
+        error,
+      );
+      try {
+        await cache.delete?.(candidateKey);
+      } catch {
+        // best-effort cache eviction only
+      }
+    }
+  }
+
+  return null;
+}
+
+async function writeBlobCache(
+  cache: AssetCache | undefined,
+  key: string | undefined,
+  blob: Blob,
+): Promise<void> {
+  if (!cache?.setBlob || !key) {
+    return;
+  }
+
+  try {
+    await cache.setBlob(key, blob);
+  } catch (error) {
+    console.warn(`[assets] Blob cache write failed for "${key}". Continuing without cache.`, error);
+  }
+}
+
+async function migrateBlobCacheHit(
+  cache: AssetCache | undefined,
+  primaryKey: string | undefined,
+  hit: BlobCacheReadHit,
+): Promise<void> {
+  if (!cache?.setBlob || !primaryKey || hit.key === primaryKey) {
+    return;
+  }
+
+  await writeBlobCache(cache, primaryKey, hit.blob);
 }
 
 async function migrateCacheHit(
@@ -438,23 +503,20 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
   private async readBlob(): Promise<Blob> {
     if (!this.blobPromise) {
       this.blobPromise = (async () => {
-        const cached = await readCache(
+        const cached = await readBlobCache(
           this.cache,
           this.request.cacheKey,
           this.request.cacheKeyFallbacks,
         );
         if (cached) {
-          await migrateCacheHit(this.cache, this.request.cacheKey, cached);
+          await migrateBlobCacheHit(this.cache, this.request.cacheKey, cached);
           this.request.onProgress?.({
             id: this.request.id,
-            loaded: cached.value.bytes.byteLength,
-            total: cached.value.bytes.byteLength,
+            loaded: cached.blob.size,
+            total: cached.blob.size,
             done: true,
           });
-          return new Blob([cached.value.bytes.slice().buffer], {
-            type:
-              cached.value.contentType ?? this.request.contentType ?? 'application/octet-stream',
-          });
+          return cached.blob;
         }
 
         const response = await fetchWithCandidates(this.request, this.url);
@@ -482,6 +544,8 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
           total,
           done: true,
         });
+
+        await writeBlobCache(this.cache, this.request.cacheKey, blob);
 
         return blob;
       })();

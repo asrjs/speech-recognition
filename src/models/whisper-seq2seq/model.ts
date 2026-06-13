@@ -378,7 +378,11 @@ export function createWhisperSeq2SeqModelFamily(
         config,
         request.resolvedPreset,
         request.options,
-        options.dependencies ?? {},
+        {
+          ...options.dependencies,
+          assetProvider: options.dependencies?.assetProvider ?? context.assetProvider,
+          runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks,
+        },
         options.describeModel ?? describeWhisperSeq2SeqModel,
       );
     },

@@ -1,0 +1,17 @@
+{
+  "name": "@asrjs/speech-recognition-demo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../../node_modules/vite/bin/vite.js --host 0.0.0.0 --port 8765 --strictPort",
+    "build": "node ../../node_modules/vite/bin/vite.js build",
+    "preview": "node ../../node_modules/vite/bin/vite.js preview --host 0.0.0.0 --port 8765 --strictPort"
+  },
+  "dependencies": {
+    "@asrjs/speech-recognition": "file:../.."
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}

@@ -56,6 +56,8 @@ export interface AssetCacheValue {
 export interface AssetCache {
   get(key: string): Promise<AssetCacheValue | null>;
   set(key: string, value: AssetCacheValue): Promise<void>;
+  getBlob?(key: string): Promise<Blob | null>;
+  setBlob?(key: string, blob: Blob): Promise<void>;
   delete?(key: string): Promise<void>;
 }
 

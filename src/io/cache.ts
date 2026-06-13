@@ -91,6 +91,26 @@ export class IndexedDbAssetCache implements AssetCache {
   }
 
   async get(key: string): Promise<AssetCacheValue | null> {
+    const blob = await this.getBlob(key);
+    if (!blob) {
+      return null;
+    }
+
+    try {
+      return {
+        bytes: new Uint8Array(await blob.arrayBuffer()),
+        contentType: blob.type || undefined,
+      };
+    } catch (error) {
+      if (isNotFoundIndexedDbError(error)) {
+        await this.delete(key);
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async getBlob(key: string): Promise<Blob | null> {
     if (!hasIndexedDb()) {
       return null;
     }
@@ -117,29 +137,24 @@ export class IndexedDbAssetCache implements AssetCache {
       return null;
     }
 
-    try {
-      return {
-        bytes: new Uint8Array(await blob.arrayBuffer()),
-        contentType: blob.type || undefined,
-      };
-    } catch (error) {
-      if (isNotFoundIndexedDbError(error)) {
-        await this.delete(key);
-        return null;
-      }
-      throw error;
-    }
+    return blob;
   }
 
   async set(key: string, value: AssetCacheValue): Promise<void> {
+    await this.setBlob(
+      key,
+      new Blob([value.bytes.slice().buffer], {
+        type: value.contentType ?? 'application/octet-stream',
+      }),
+    );
+  }
+
+  async setBlob(key: string, blob: Blob): Promise<void> {
     if (!hasIndexedDb()) {
       return;
     }
 
     const db = await this.getDb();
-    const blob = new Blob([value.bytes.slice().buffer], {
-      type: value.contentType ?? 'application/octet-stream',
-    });
 
     try {
       await new Promise<void>((resolve, reject) => {
@@ -184,17 +199,42 @@ export class IndexedDbAssetCache implements AssetCache {
 
 export class MemoryAssetCache implements AssetCache {
   private readonly values = new Map<string, AssetCacheValue>();
+  private readonly blobs = new Map<string, Blob>();
 
   async get(key: string): Promise<AssetCacheValue | null> {
-    return this.values.get(key) ?? null;
+    const value = this.values.get(key);
+    if (value) return value;
+    const blob = this.blobs.get(key);
+    if (!blob) return null;
+    return {
+      bytes: new Uint8Array(await blob.arrayBuffer()),
+      contentType: blob.type || undefined,
+    };
   }
 
   async set(key: string, value: AssetCacheValue): Promise<void> {
     this.values.set(key, value);
+    this.blobs.delete(key);
+  }
+
+  async getBlob(key: string): Promise<Blob | null> {
+    const blob = this.blobs.get(key);
+    if (blob) return blob;
+    const value = this.values.get(key);
+    if (!value) return null;
+    return new Blob([value.bytes.slice().buffer], {
+      type: value.contentType ?? 'application/octet-stream',
+    });
+  }
+
+  async setBlob(key: string, blob: Blob): Promise<void> {
+    this.blobs.set(key, blob);
+    this.values.delete(key);
   }
 
   async delete(key: string): Promise<void> {
     this.values.delete(key);
+    this.blobs.delete(key);
   }
 }
 
