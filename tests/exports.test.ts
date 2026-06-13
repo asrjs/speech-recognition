@@ -54,11 +54,13 @@ describe('public exports', () => {
     const nemoAed = await import('@asrjs/speech-recognition/models/nemo-aed');
     const lasrCtc = await import('@asrjs/speech-recognition/models/lasr-ctc');
     const whisperModel = await import('@asrjs/speech-recognition/models/whisper-seq2seq');
+    const wav2Vec2Model = await import('@asrjs/speech-recognition/models/wav2vec2');
     const presets = await import('@asrjs/speech-recognition/presets');
     const canaryPreset = await import('@asrjs/speech-recognition/presets/canary');
     const parakeetPreset = await import('@asrjs/speech-recognition/presets/parakeet');
     const medasrPreset = await import('@asrjs/speech-recognition/presets/medasr');
     const whisperPreset = await import('@asrjs/speech-recognition/presets/whisper');
+    const wav2Vec2Preset = await import('@asrjs/speech-recognition/presets/wav2vec2');
 
     expect(builtins.createBuiltInSpeechRuntime).toBeTypeOf('function');
     expect(builtins.loadBuiltInSpeechModel).toBeTypeOf('function');
@@ -133,6 +135,7 @@ describe('public exports', () => {
     expect(nemoAed.createNemoAedModelFamily).toBeTypeOf('function');
     expect(lasrCtc.createLasrCtcModelFamily).toBeTypeOf('function');
     expect(whisperModel.createWhisperSeq2SeqModelFamily).toBeTypeOf('function');
+    expect(wav2Vec2Model.createWav2Vec2ModelFamily).toBeTypeOf('function');
     expect(presets.listBuiltInModelDescriptors).toBeTypeOf('function');
     expect(presets.getBuiltInModelDescriptor).toBeTypeOf('function');
     expect(presets.buildBuiltInHubLoadOptions).toBeTypeOf('function');
@@ -149,5 +152,6 @@ describe('public exports', () => {
     expect(parakeetPreset.loadParakeetModelWithFallback).toBeTypeOf('function');
     expect(medasrPreset.createMedAsrPresetFactory).toBeTypeOf('function');
     expect(whisperPreset.createWhisperPresetFactory).toBeTypeOf('function');
+    expect(wav2Vec2Preset.createWav2Vec2PresetFactory).toBeTypeOf('function');
   });
 });

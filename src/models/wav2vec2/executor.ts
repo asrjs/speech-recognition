@@ -31,7 +31,6 @@ import { Wav2Vec2CharTokenizer } from './tokenizer.js';
 import type {
   Wav2Vec2ArtifactSource,
   Wav2Vec2Executor,
-  Wav2Vec2LogitsResult,
   Wav2Vec2ModelConfig,
   Wav2Vec2ModelDependencies,
   Wav2Vec2ModelOptions,
@@ -340,37 +339,6 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
 
     const warnings: TranscriptWarning[] = [];
     const revision = source.revision ?? 'main';
-
-    const maybeDownloadToTemp = async (
-      handle: ResolvedAssetHandle,
-      locator: string,
-      filename: string,
-    ): Promise<string> => {
-      const isHttp = /^https?:\/\//i.test(locator);
-      if (!isHttp) return locator;
-
-      const isNode = typeof process !== 'undefined' && process.versions?.node != null;
-      if (!isNode) return locator;
-
-      // Only download binary files needed by ORT — small text files work via fetch() natively
-      const isOnnxFile = /\.(onnx|onnx\.data|ort|bin)$/i.test(filename);
-      if (!isOnnxFile) return locator;
-
-      // Download to temp file so ORT WASM/Node can open it from local filesystem
-      const bytes = await handle.readBytes();
-      const { mkdir, writeFile } = await import('node:fs/promises');
-      const { tmpdir } = await import('node:os');
-      const { join } = await import('node:path');
-      const { pathToFileURL } = await import('node:url');
-
-      const cacheDir = join(tmpdir(), 'asrjs-cache', source.repoId.replace(/\//g, '_'), revision);
-      await mkdir(cacheDir, { recursive: true });
-      const destPath = join(cacheDir, filename);
-      await writeFile(destPath, bytes);
-
-      return pathToFileURL(destPath).href;
-    };
-
     const resolveFile = async (filename: string, optional = false): Promise<string | undefined> => {
       try {
         const handle = await this.assetProvider!.resolve({
@@ -395,7 +363,7 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
         if (!locator) {
           throw new Error(`Could not create a URL locator for "${filename}".`);
         }
-        return maybeDownloadToTemp(handle, locator, filename);
+        return locator;
       } catch (error) {
         if (optional) {
           warnings.push({
@@ -410,19 +378,19 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     };
 
     const modelFilename = source.modelFilename ?? 'model.onnx';
-    const modelDataFilename = source.modelDataFilename || undefined;
+    const modelDataFilename = source.modelDataFilename ?? 'model.onnx.data';
     const tokenizerFilename = source.tokenizerFilename ?? 'vocab.json';
 
     const modelUrl = await resolveFile(modelFilename);
-    const modelDataUrl = modelDataFilename ? await resolveFile(modelDataFilename, true) : undefined;
+    const modelDataUrl = await resolveFile(modelDataFilename, true);
     const tokenizerUrl = await resolveFile(tokenizerFilename);
 
     return {
       artifacts: {
         modelUrl: modelUrl ?? artifacts.modelUrl,
-        tokenizerUrl: tokenizerUrl ?? artifacts.tokenizerUrl,
         modelDataUrl: modelDataUrl ?? artifacts.modelDataUrl,
         modelDataFilename: modelDataUrl ? modelDataFilename : artifacts.modelDataFilename,
+        tokenizerUrl: tokenizerUrl ?? artifacts.tokenizerUrl,
       },
       warnings,
     };
@@ -488,97 +456,6 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
   // -------------------------------------------------------------------------
   // Transcription
   // -------------------------------------------------------------------------
-
-  async extractLogits(
-    audio: AudioBufferLike,
-    options: Wav2Vec2TranscriptionOptions = {},
-  ): Promise<Wav2Vec2LogitsResult> {
-    const state = await this.getLoadedState();
-    const warnings: TranscriptWarning[] = [...state.warnings];
-    const extractionStart = nowMs();
-
-    emitTranscriptionProgress(options, {
-      stage: 'start',
-      progress: 0,
-      elapsedMs: 0,
-      modelId: this.modelId,
-      backendId: this.backendId,
-      message: `Starting Wav2Vec2 logits extraction for ${this.modelId}.`,
-    });
-
-    if (audio.sampleRate !== state.config.sampleRate) {
-      warnings.push({
-        code: 'wav2vec2.sample-rate-mismatch',
-        message: `Expected ${state.config.sampleRate} Hz audio but received ${audio.sampleRate} Hz. No resampler is active on this path.`,
-        recoverable: true,
-      });
-    }
-
-    this.sharedMonoBuffer = ensureFloat32Buffer(audio.numberOfFrames, this.sharedMonoBuffer);
-    const mono = toMonoPcm(audio, this.sharedMonoBuffer);
-
-    const preprocessElapsedMs = nowMs() - extractionStart;
-    emitTranscriptionProgress(options, {
-      stage: 'preprocess',
-      progress: 0.2,
-      elapsedMs: roundMetric(preprocessElapsedMs),
-      remainingMs: estimateRemainingMs(preprocessElapsedMs, 0.2),
-      modelId: this.modelId,
-      backendId: this.backendId,
-      message: `Prepared raw waveform for ${this.modelId}.`,
-    });
-
-    const inputTensor = new state.ort.Tensor('float32', mono, [1, mono.length]);
-    const encodeStart = nowMs();
-    let outputs: Record<string, OrtTensorLike>;
-    try {
-      outputs = await state.session.run({
-        input_values: inputTensor,
-      });
-    } finally {
-      inputTensor.dispose?.();
-    }
-    const encodeMs = nowMs() - encodeStart;
-    const encodeElapsedMs = nowMs() - extractionStart;
-
-    emitTranscriptionProgress(options, {
-      stage: 'encode',
-      progress: 0.6,
-      elapsedMs: roundMetric(encodeElapsedMs),
-      remainingMs: estimateRemainingMs(encodeElapsedMs, 0.6),
-      modelId: this.modelId,
-      backendId: this.backendId,
-      message: `Encoded logits for ${this.modelId}.`,
-      metrics: {
-        encodeMs: roundMetric(encodeMs),
-      },
-    });
-
-    const logitsTensor = findLogitsTensor(outputs);
-    const logits = normalizeLogitsData(logitsTensor);
-    const dims = [...logitsTensor.dims];
-    if (dims.length !== 3 || (dims[0] ?? 0) !== 1) {
-      throw new Error(`Unexpected Wav2Vec2 logits shape: [${dims.join(', ')}].`);
-    }
-
-    const frameCount = dims[1] ?? 0;
-    const vocabSize = dims[2] ?? 0;
-    if (frameCount <= 0 || vocabSize <= 0) {
-      throw new Error(`Wav2Vec2 logits shape is invalid: [${dims.join(', ')}].`);
-    }
-
-    return {
-      logits,
-      frameCount,
-      vocabSize,
-      sampleRate: state.config.sampleRate,
-      audioDurationSeconds: mono.length / state.config.sampleRate,
-      blankId: state.config.ctcBlankId,
-      tokenizer: state.tokenizer,
-      warnings: warnings.length > 0 ? warnings : undefined,
-      encodeMs: roundMetric(encodeMs),
-    };
-  }
 
   async transcribe(
     audio: AudioBufferLike,

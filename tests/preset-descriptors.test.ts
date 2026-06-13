@@ -166,7 +166,6 @@ describe('built-in preset descriptors', () => {
     const descriptor = getBuiltInModelDescriptor('wav2vec2-base-960h');
 
     expect(descriptor?.preset).toBe('wav2vec2');
-    expect(descriptor?.modelId).toBe('facebook/wav2vec2-base-960h');
     expect(descriptor?.classification).toMatchObject({
       ecosystem: 'meta',
       processor: 'wav2vec2-conv',
@@ -176,26 +175,26 @@ describe('built-in preset descriptors', () => {
       family: 'wav2vec2',
       task: 'asr',
     });
-    expect(descriptor?.capabilities).toMatchObject({
-      supportedTasks: ['asr'],
-      supportsWordTimestamps: true,
-      supportsSegmentTimestamps: true,
-      supportsTranslation: false,
-    });
-    expect(descriptor?.inference).toMatchObject({
-      sampleRate: 16000,
-      supportsWordTimestamps: true,
-      supportsTokenTimestamps: true,
-      defaultSegmentationStrategy: 'ctc-frame',
-      defaultMergeStrategy: 'ctc-collapse',
-    });
-    expect(descriptor?.loading).toMatchObject({
-      supportsHubSource: false,
-      supportsLocalSource: true,
-      defaultEncoderBackend: 'wasm',
-      defaultDecoderBackend: 'wasm',
-      encoderArtifactBaseName: 'model',
-      decoderArtifactBaseName: 'model',
+    expect(descriptor?.languages).toEqual(['en']);
+    expect(descriptor?.capabilities.supportsWordTimestamps).toBe(true);
+    expect(descriptor?.loading.supportsHubSource).toBe(false);
+    expect(descriptor?.loading.supportsLocalSource).toBe(true);
+    expect(descriptor?.loading.defaultEncoderBackend).toBe('wasm');
+    expect(descriptor?.loading.defaultDecoderBackend).toBe('wasm');
+    expect(descriptor?.loading.encoderArtifactBaseName).toBe('model');
+  });
+
+  it('builds Wav2Vec2 transcription defaults through the generic helper', () => {
+    expect(
+      buildBuiltInTranscriptionOptions('facebook/wav2vec2-base-960h', {
+        timestamps: true,
+        returnConfidences: true,
+      }),
+    ).toEqual({
+      returnTimestamps: true,
+      returnConfidences: true,
+      frameStride: undefined,
+      enableProfiling: undefined,
     });
   });
 

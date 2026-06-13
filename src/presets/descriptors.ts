@@ -510,7 +510,6 @@ function createMedAsrDescriptors(): BuiltInModelDescriptor[] {
 
 function createWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
   const manifest = resolveWav2Vec2PresetManifest('facebook/wav2vec2-base-960h');
-
   return [
     {
       modelId: 'facebook/wav2vec2-base-960h',
@@ -533,13 +532,10 @@ function createWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
       },
       inference: {
         ...createCtcInferenceLimits(),
-        sampleRate: manifest?.config.sampleRate ?? 16000,
         supportsWordTimestamps: true,
         supportsTokenTimestamps: true,
         supportsSegmentTimestamps: true,
         supportsConfidence: true,
-        defaultSegmentationStrategy: 'ctc-frame',
-        defaultMergeStrategy: 'ctc-collapse',
       },
       loading: {
         repoId: manifest?.source?.kind === 'huggingface' ? manifest.source.repoId : undefined,

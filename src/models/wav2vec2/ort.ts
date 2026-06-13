@@ -107,9 +107,9 @@ function resolveDirectArtifacts(
   return {
     artifacts: {
       modelUrl: source.artifacts.modelUrl,
-      tokenizerUrl: source.artifacts.tokenizerUrl,
       modelDataUrl: source.artifacts.modelDataUrl,
       modelDataFilename,
+      tokenizerUrl: source.artifacts.tokenizerUrl,
     },
     backendForOrt: normalizeBackendForOrt(backendId),
     wasmPaths: source.wasmPaths,
@@ -124,17 +124,15 @@ function resolveHuggingFaceArtifacts(
 ): ResolvedWav2Vec2Artifacts {
   const revision = source.revision ?? 'main';
   const modelFilename = source.modelFilename ?? 'model.onnx';
-  const modelDataFilename = source.modelDataFilename || undefined;
+  const modelDataFilename = source.modelDataFilename ?? 'model.onnx.data';
   const tokenizerFilename = source.tokenizerFilename ?? 'vocab.json';
 
   return {
     artifacts: {
       modelUrl: buildResolveUrl(source.repoId, revision, modelFilename, source.subfolder),
-      tokenizerUrl: buildResolveUrl(source.repoId, revision, tokenizerFilename, source.subfolder),
-      modelDataUrl: modelDataFilename
-        ? buildResolveUrl(source.repoId, revision, modelDataFilename, source.subfolder)
-        : undefined,
+      modelDataUrl: buildResolveUrl(source.repoId, revision, modelDataFilename, source.subfolder),
       modelDataFilename,
+      tokenizerUrl: buildResolveUrl(source.repoId, revision, tokenizerFilename, source.subfolder),
     },
     backendForOrt: normalizeBackendForOrt(backendId),
     wasmPaths: source.wasmPaths,
