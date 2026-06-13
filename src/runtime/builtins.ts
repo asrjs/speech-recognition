@@ -15,7 +15,7 @@ import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
 import { createNemoTdtModelFamily } from '../models/nemo-tdt/index.js';
-import { createWhisperSeq2SeqModelFamily } from '../models/whisper-seq2seq/model.js';
+import { createWhisperSeq2SeqModelFamily } from '../models/whisper-seq2seq/index.js';
 import { createWav2Vec2ModelFamily } from '../models/wav2vec2/index.js';
 import { createCanaryPresetFactory } from '../presets/canary/factory.js';
 import { createMedAsrPresetFactory } from '../presets/medasr/factory.js';
@@ -271,7 +271,7 @@ export function registerBuiltInPresets(
   runtime.registerPreset(createWhisperPresetFactory());
   runtime.registerPreset(
     createWav2Vec2PresetFactory({
-      useManifestSource: options.useManifestSources ?? true,
+      useManifestSource: options.useManifestSources ?? false,
     }),
   );
   return runtime;
@@ -323,9 +323,7 @@ export async function loadBuiltInSpeechModel<
     message: 'Resolving built-in model request.',
   });
   const resolved = resolveBuiltInModelRequest(runtime, options);
-  const resolvedDescriptor = resolved.modelId
-    ? getBuiltInModelDescriptor(resolved.modelId)
-    : undefined;
+  const resolvedDescriptor = resolved.modelId ? getBuiltInModelDescriptor(resolved.modelId) : undefined;
   emitProgress(options, {
     phase: 'resolve:complete',
     modelId: resolved.modelId,
@@ -424,18 +422,16 @@ export async function loadBuiltInSpeechModel<
 
         const canonical = await transcribeWithWindowing({
           input: decision.audio,
-          options: {
-            ...(resolvedOptions ?? {}),
-            responseFlavor: 'canonical',
-          } as TTranscriptionOptions,
+          options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
           inference,
           transcribeWindow: async (windowInput, windowOptions) =>
             (await session.transcribe(windowInput, {
               ...windowOptions,
               responseFlavor: 'canonical',
-            } as TTranscriptionOptions & {
-              readonly responseFlavor: 'canonical';
-            })) as TranscriptResponse<TNative, 'canonical'>,
+            } as TTranscriptionOptions & { readonly responseFlavor: 'canonical' })) as TranscriptResponse<
+              TNative,
+              'canonical'
+            >,
         });
 
         if (resolvedOptions?.responseFlavor === 'canonical+native') {
