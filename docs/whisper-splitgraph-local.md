@@ -163,6 +163,33 @@ When serving very large local ONNX files from the same origin, ORT can consume
 the `/models/...` URLs directly. Avoid forcing those local files through
 Blob/IndexedDB materialization unless you specifically need cache semantics.
 
+### Decoder performance profile
+
+The 4-graph layout is for both correctness and speed:
+
+- `decoder_init.onnx` runs the prompt prefill and creates the first KV cache.
+- `decoder_step.onnx` consumes one new token plus KV cache and emits updated KV.
+- KV cache avoids recomputing previous decoder tokens on every step.
+
+It does not make Whisper decoding parallel. Whisper remains autoregressive, so a
+50-token transcript still requires one init run plus up to 49 step runs. On the
+2026-06-14 Chrome WebGPU fp16 validation run, the measured cost was dominated by
+`decoder_step.onnx` execution:
+
+| Metric | Observed |
+| ------ | -------- |
+| Encoder | `1759ms` |
+| Decoder total | `3979ms` |
+| Decoder init ORT run | `134ms` |
+| Decoder step ORT run | `3788ms` across 49 steps |
+| Decoder step p50 / p95 | `77ms` / `86ms` |
+| JS feed build + tensor bridge + output handling | `<4ms` total |
+
+This means a slow decoder is expected for seq2seq Whisper, and the current
+profile points at ORT/WebGPU `decoder_step` graph execution rather than
+JavaScript KV-cache glue. Beam search and `best_of` call `decoder_step` more
+times and should be treated as quality/robustness options, not speed options.
+
 ### Whisper mel performance
 
 `WhisperMelProcessor` preserves OpenAI Whisper's `n_fft=400` STFT. It should not

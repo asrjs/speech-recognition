@@ -123,7 +123,16 @@ export async function whisperGreedyDecode(
   session: WhisperCoreSession,
   options: WhisperDecodeOptions,
 ): Promise<WhisperDecodeResult> {
-  const { promptTokens, encoderOutput, encoderDims, eosTokenId, maxNewTokens, processLogits, onTokenLogits } = options;
+  const {
+    promptTokens,
+    encoderOutput,
+    encoderDims,
+    eosTokenId,
+    maxNewTokens,
+    processLogits,
+    onTokenLogits,
+    temperature = 0,
+  } = options;
 
   const initResult = await session.runInit(promptTokens, encoderOutput, encoderDims);
   const vocabSize = initResult.vocabSize;
@@ -132,7 +141,7 @@ export async function whisperGreedyDecode(
   const lastLogitOffset = initResult.logits.length - vocabSize;
   const firstLogits = initResult.logits.subarray(lastLogitOffset);
   if (processLogits) processLogits(firstLogits, promptTokens, promptTokens.length);
-  const firstTokenId = argmax(firstLogits);
+  const firstTokenId = selectToken(firstLogits, temperature);
   const tokens: number[] = [firstTokenId];
 
   // Track cumulative log-probability for bestOf scoring
@@ -143,7 +152,7 @@ export async function whisperGreedyDecode(
   for (let step = 1; step < maxNewTokens; step++) {
     const stepResult = await session.runStep(tokens[tokens.length - 1]!, pastKv);
     if (processLogits) processLogits(stepResult.logits, [...promptTokens, ...tokens], promptTokens.length);
-    const nextTokenId = argmax(stepResult.logits);
+    const nextTokenId = selectToken(stepResult.logits, temperature);
     tokens.push(nextTokenId);
     pastKv = stepResult.presentKv;
     cumulativeLogProb += logProbOfToken(stepResult.logits, nextTokenId);
@@ -289,6 +298,33 @@ function logProbOfToken(logits: Float32Array, tokenId: number): number {
   let sum = 0;
   for (let i = 0; i < logits.length; i++) sum += Math.exp(logits[i]! - max);
   return (logits[tokenId] ?? -Infinity) - max - Math.log(sum);
+}
+
+function selectToken(logits: Float32Array, temperature: number): number {
+  return Number.isFinite(temperature) && temperature > 0 ? sampleFromLogits(logits, temperature) : argmax(logits);
+}
+
+function sampleFromLogits(logits: Float32Array, temperature: number): number {
+  let max = -Infinity;
+  for (let i = 0; i < logits.length; i++) {
+    const value = (logits[i] as number) / temperature;
+    if (value > max) max = value;
+  }
+  if (!Number.isFinite(max)) return argmax(logits);
+
+  let sum = 0;
+  for (let i = 0; i < logits.length; i++) {
+    const probability = Math.exp((logits[i] as number) / temperature - max);
+    sum += probability;
+  }
+  if (!Number.isFinite(sum) || sum <= 0) return argmax(logits);
+
+  let sample = Math.random() * sum;
+  for (let i = 0; i < logits.length; i++) {
+    sample -= Math.exp((logits[i] as number) / temperature - max);
+    if (sample <= 0) return i;
+  }
+  return logits.length - 1;
 }
 
 // ---------------------------------------------------------------------------

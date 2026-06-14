@@ -1,7 +1,7 @@
 # Agent Task Coordination
 
 Branch: `main`
-Updated: 2026-06-14 (Bev/Codex, fp16 WebGPU + Whisper mel optimization)
+Updated: 2026-06-14 (Bev/Codex, fp16 WebGPU + Whisper mel optimization + decoder profiling)
 
 ## Context Recovery
 
@@ -36,6 +36,34 @@ Important correction: the library preset must resolve the custom 4-graph repo,
 not `onnx-community/whisper-large-v3-turbo`. Logs mentioning
 `onnx-community/...` during this work indicated the demo/app was resolving the
 wrong manifest source.
+
+### Decoder profile finding
+
+For Whisper splitgraph models, decoder time can exceed encoder time even when KV
+cache is working. The encoder is one parallel pass over all mel frames; the
+decoder is autoregressive and must run `decoder_step.onnx` once per generated
+token. The 4-graph split plus KV cache prevents recomputing the full decoder
+prefix, but it cannot remove token-by-token generation.
+
+Latest Chrome WebGPU fp16 run (`fp16io-fp16-webgpu`, 29.9s JFK fixture, 50-token
+cap) shows the bottleneck is ORT/WebGPU graph execution, not JS KV bridging:
+
+| Metric | Time |
+| ------ | ---- |
+| Encode | `1759.04ms` |
+| Decode total | `3979.24ms` |
+| Decoder init run | `133.52ms` |
+| Decoder step total | `3792.29ms` |
+| Decoder step ORT run | `3788.18ms` |
+| Step feed build | `0.82ms` |
+| Step tensor wrapping/clone | `1.24ms` |
+| Step output handling | `1.67ms` |
+| Step p50 / p95 / max | `77.0ms` / `86.01ms` / `91.2ms` |
+| Step count | `49` |
+
+Optimization implication: first reduce `decoder_step` calls or the cost of each
+ORT/WebGPU step. Beam search and `best_of` improve quality options but multiply
+decoder-step work; they are expected to be slower.
 
 ### Whisper mel performance fix
 

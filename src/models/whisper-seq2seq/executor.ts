@@ -253,6 +253,12 @@ export interface SplitGraphDecodeResult {
   readonly tokens: readonly number[];
 }
 
+interface DecoderSessionTiming {
+  readonly inputMs: number;
+  readonly runMs: number;
+  readonly outputMs: number;
+}
+
 export async function splitGraphDecodeLoop(params: {
   promptTokens: readonly number[];
   encoderHiddenStates: Float32Array;
@@ -267,10 +273,29 @@ export async function splitGraphDecodeLoop(params: {
   numBeams?: number;
   /** Length penalty for beam search (default: 0.0) */
   lengthPenalty?: number;
+  /** Beam search patience for early stopping. */
+  patience?: number;
+  /** Greedy decoding temperature. 0 = argmax. */
+  temperature?: number;
   /** Number of independent decodings, pick best by score (WhisperX: best_of) */
   bestOf?: number;
 }): Promise<SplitGraphDecodeResult> {
-  const { promptTokens, encoderHiddenStates, eosTokenId, maxNewTokens, modelConfig, runInit, runStep, processLogits, onTokenLogits, numBeams, lengthPenalty, bestOf } = params;
+  const {
+    promptTokens,
+    encoderHiddenStates,
+    eosTokenId,
+    maxNewTokens,
+    modelConfig,
+    runInit,
+    runStep,
+    processLogits,
+    onTokenLogits,
+    numBeams,
+    lengthPenalty,
+    patience,
+    temperature,
+    bestOf,
+  } = params;
 
   const encoderDims: readonly number[] = [1, encoderHiddenStates.length / modelConfig.dModel, modelConfig.dModel];
   const session: WhisperCoreSession = {
@@ -282,9 +307,18 @@ export async function splitGraphDecodeLoop(params: {
     strategy: (numBeams ?? 1) > 1 ? 'beam' : 'greedy',
     beamSize: numBeams ?? 1,
     lengthPenalty: lengthPenalty ?? 0,
+    patience: patience ?? 1,
+    temperature: temperature ?? 0,
     bestOf: bestOf ?? 1,
   });
   return { tokens: result.tokens };
+}
+
+function percentile(values: readonly number[], p: number): number | undefined {
+  if (values.length === 0) return undefined;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  return sorted[index];
 }
 
 export interface SplitGraphAlignmentOptions {
@@ -1042,7 +1076,9 @@ export class WhisperOnnxExecutor {
     logits: Float32Array;
     vocabSize: number;
     presentKv: Record<string, OrtTensorLike<Float32Array>>;
+    timings: DecoderSessionTiming;
   }> {
+    const inputStart = nowMs();
     const inputIds = new BigInt64Array(promptTokens.map((id) => BigInt(id)));
     const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, promptTokens.length]);
     const feeds: Record<string, unknown> = {
@@ -1050,7 +1086,9 @@ export class WhisperOnnxExecutor {
       encoder_hidden_states: encoderHiddenStates,
     };
 
+    const runStart = nowMs();
     const outputs = await loaded.decoderInitSession.run(feeds);
+    const outputStart = nowMs();
     const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
     const logitsDims = logitsTensor.dims;
@@ -1063,7 +1101,17 @@ export class WhisperOnnxExecutor {
       }
     }
 
-    return { logits: logitsTensor.data, vocabSize, presentKv };
+    const outputEnd = nowMs();
+    return {
+      logits: logitsTensor.data,
+      vocabSize,
+      presentKv,
+      timings: {
+        inputMs: runStart - inputStart,
+        runMs: outputStart - runStart,
+        outputMs: outputEnd - outputStart,
+      },
+    };
   }
 
   private async runDecoderStepSplit(
@@ -1074,7 +1122,9 @@ export class WhisperOnnxExecutor {
     logits: Float32Array;
     vocabSize: number;
     presentKv: Record<string, OrtTensorLike<Float32Array>>;
+    timings: DecoderSessionTiming;
   }> {
+    const inputStart = nowMs();
     const inputIdsTensor = new loaded.ort.Tensor('int64', new BigInt64Array([BigInt(tokenId)]), [1, 1]);
     const feeds: Record<string, unknown> = { input_ids: inputIdsTensor };
 
@@ -1088,7 +1138,9 @@ export class WhisperOnnxExecutor {
       feeds[name] = new loaded.ort.Tensor(isFloat16 ? 'float16' : 'float32', rawData, tensor.dims);
     }
 
+    const runStart = nowMs();
     const outputs = await loaded.decoderStepSession.run(feeds);
+    const outputStart = nowMs();
     const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
     const logitsDims = logitsTensor.dims;
@@ -1109,7 +1161,17 @@ export class WhisperOnnxExecutor {
       }
     }
 
-    return { logits: logitsTensor.data, vocabSize, presentKv };
+    const outputEnd = nowMs();
+    return {
+      logits: logitsTensor.data,
+      vocabSize,
+      presentKv,
+      timings: {
+        inputMs: runStart - inputStart,
+        runMs: outputStart - runStart,
+        outputMs: outputEnd - outputStart,
+      },
+    };
   }
 
   async transcribe(
@@ -1581,8 +1643,17 @@ export class WhisperOnnxExecutor {
     let kvDims: Record<string, readonly number[]> = {};
     let kvDtype: 'float32' | 'float16' = 'float32';
     let decoderInitMs = 0;
+    let decoderInitInputMs = 0;
+    let decoderInitRunMs = 0;
+    let decoderInitOutputMs = 0;
     let decoderStepMs = 0;
+    let decoderStepFeedBuildMs = 0;
+    let decoderStepTensorCloneMs = 0;
+    let decoderStepRunMs = 0;
+    let decoderStepOutputMs = 0;
+    let decoderLogitProcessMs = 0;
     let decoderStepCount = 0;
+    const decoderStepTimings: number[] = [];
 
     const decoderStart = nowMs();
     const result = await splitGraphDecodeLoop({
@@ -1592,16 +1663,24 @@ export class WhisperOnnxExecutor {
       maxNewTokens,
       modelConfig: loaded.modelConfig,
       processLogits: (logits, genTokens, beginIdx) => {
+        const logitsStart = nowMs();
         splitTimestampProcessor.process(logits, genTokens, beginIdx);
+        decoderLogitProcessMs += nowMs() - logitsStart;
       },
       onTokenLogits: options.onTokenLogits,
       numBeams: options.numBeams ?? 1,
       lengthPenalty: options.lengthPenalty ?? 0,
+      patience: options.patience ?? 1,
+      temperature: options.temperature ?? 0,
       bestOf: options.bestOf,
       runInit: async (prompt, _encHs, _dims) => {
         const decoderInitStart = nowMs();
         const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
-        decoderInitMs += nowMs() - decoderInitStart;
+        const decoderInitTotal = nowMs() - decoderInitStart;
+        decoderInitMs += decoderInitTotal;
+        decoderInitInputMs += init.timings.inputMs;
+        decoderInitRunMs += init.timings.runMs;
+        decoderInitOutputMs += init.timings.outputMs;
         // Store tensor dims for runStep reconstruction (init→step tensor bridging).
         // Store both present.* (init output) and past_key_values.* (step output) formats.
         kvDims = {};
@@ -1627,6 +1706,7 @@ export class WhisperOnnxExecutor {
         // Reconstruct tensors from raw data + stored dims.
         // Init outputs present.* prefix; step model expects past_key_values.* prefix.
         // Convert prefix and clone tensor data for cross-session safety.
+        const feedBuildStart = nowMs();
         const feeds: Record<string, OrtTensorLike<Float32Array>> = {};
         for (const [name, data] of Object.entries(pastKv)) {
           const stepName = name.replace(/^present\./, 'past_key_values.');
@@ -1641,9 +1721,15 @@ export class WhisperOnnxExecutor {
             feeds[stepName] = new splitLoaded.ort.Tensor(kvDtype, data, [1, numHeads, seqLen, headDim]) as unknown as OrtTensorLike<Float32Array>;
           }
         }
+        decoderStepFeedBuildMs += nowMs() - feedBuildStart;
         const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds);
-        decoderStepMs += nowMs() - decoderStepStart;
+        const decoderStepTotal = nowMs() - decoderStepStart;
+        decoderStepMs += decoderStepTotal;
+        decoderStepTensorCloneMs += step.timings.inputMs;
+        decoderStepRunMs += step.timings.runMs;
+        decoderStepOutputMs += step.timings.outputMs;
         decoderStepCount += 1;
+        decoderStepTimings.push(decoderStepTotal);
         // Update stored dims from step output
         for (const [k, v] of Object.entries(step.presentKv)) {
           kvDims[k] = v.dims;
@@ -1658,6 +1744,10 @@ export class WhisperOnnxExecutor {
       },
     });
     const decodeMs = nowMs() - decoderStart;
+    const decoderStepAvgMs = decoderStepCount > 0 ? decoderStepMs / decoderStepCount : undefined;
+    const decoderStepP50Ms = percentile(decoderStepTimings, 50);
+    const decoderStepP95Ms = percentile(decoderStepTimings, 95);
+    const decoderStepMaxMs = decoderStepTimings.length > 0 ? Math.max(...decoderStepTimings) : undefined;
     const decodeElapsedMs = nowMs() - transcriptionStart;
     emitTranscriptionProgress(options, {
       stage: 'decode',
@@ -1673,6 +1763,21 @@ export class WhisperOnnxExecutor {
         preprocessMs: roundMetric(preprocessMs),
         encodeMs: roundMetric(encodeMs),
         decodeMs: roundMetric(decodeMs),
+        decoderInitMs: roundMetric(decoderInitMs),
+        decoderInitInputMs: roundMetric(decoderInitInputMs),
+        decoderInitRunMs: roundMetric(decoderInitRunMs),
+        decoderInitOutputMs: roundMetric(decoderInitOutputMs),
+        decoderStepMs: roundMetric(decoderStepMs),
+        decoderStepFeedBuildMs: roundMetric(decoderStepFeedBuildMs),
+        decoderStepTensorCloneMs: roundMetric(decoderStepTensorCloneMs),
+        decoderStepRunMs: roundMetric(decoderStepRunMs),
+        decoderStepOutputMs: roundMetric(decoderStepOutputMs),
+        decoderStepAvgMs: decoderStepAvgMs !== undefined ? roundMetric(decoderStepAvgMs) : undefined,
+        decoderStepP50Ms: decoderStepP50Ms !== undefined ? roundMetric(decoderStepP50Ms) : undefined,
+        decoderStepP95Ms: decoderStepP95Ms !== undefined ? roundMetric(decoderStepP95Ms) : undefined,
+        decoderStepMaxMs: decoderStepMaxMs !== undefined ? roundMetric(decoderStepMaxMs) : undefined,
+        decoderLogitProcessMs: roundMetric(decoderLogitProcessMs),
+        decoderStepCount,
         encoderFrameCount,
         decodeIterations: result.tokens.length,
       },
@@ -1719,7 +1824,19 @@ export class WhisperOnnxExecutor {
       postprocessMs: roundMetric(tokenizeMs),
       languageDetectionMs: roundMetric(languageDetectionMs),
       decoderInitMs: roundMetric(decoderInitMs),
+      decoderInitInputMs: roundMetric(decoderInitInputMs),
+      decoderInitRunMs: roundMetric(decoderInitRunMs),
+      decoderInitOutputMs: roundMetric(decoderInitOutputMs),
       decoderStepMs: roundMetric(decoderStepMs),
+      decoderStepFeedBuildMs: roundMetric(decoderStepFeedBuildMs),
+      decoderStepTensorCloneMs: roundMetric(decoderStepTensorCloneMs),
+      decoderStepRunMs: roundMetric(decoderStepRunMs),
+      decoderStepOutputMs: roundMetric(decoderStepOutputMs),
+      decoderStepAvgMs: decoderStepAvgMs !== undefined ? roundMetric(decoderStepAvgMs) : undefined,
+      decoderStepP50Ms: decoderStepP50Ms !== undefined ? roundMetric(decoderStepP50Ms) : undefined,
+      decoderStepP95Ms: decoderStepP95Ms !== undefined ? roundMetric(decoderStepP95Ms) : undefined,
+      decoderStepMaxMs: decoderStepMaxMs !== undefined ? roundMetric(decoderStepMaxMs) : undefined,
+      decoderLogitProcessMs: roundMetric(decoderLogitProcessMs),
       decoderStepCount,
       totalMs,
       wallMs: totalMs,

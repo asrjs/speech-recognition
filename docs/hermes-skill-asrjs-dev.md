@@ -46,6 +46,8 @@ Bugs 1-6 were fixed with a proper logit processor. Bug #7 was fixed with oldPkv 
 
 **Whisper mel performance note:** Whisper uses `n_fft=400`, so do not switch it to the NeMo/Parakeet 512-point radix-2 STFT for speed. Keep exact Whisper semantics and use the cached Bluestein FFT path in `src/audio/whisper-mel.ts`. The old direct DFT path measured ~9185ms for 30s audio; the optimized path measures ~204ms with direct-DFT parity (`maxDiff < 1e-4`). Use `npm run benchmark:whisper-mel`.
 
+**Decoder performance note:** A working KV cache does not make Whisper decoding parallel. It avoids recomputing old decoder tokens, but `decoder_step.onnx` still runs once per generated token. In the 2026-06-14 Chrome WebGPU fp16 run, decode was `3979ms`; `decoderStepRunMs` was `3788ms` across 49 steps, while JS feed build + tensor bridge + output handling was under `4ms` total. If decoder feels slow, profile `decoderInitRunMs`, `decoderStepRunMs`, `decoderStepP50Ms`, and `decoderStepP95Ms` before changing KV glue. Beam search and `best_of` multiply decoder-step runs and are expected to slow inference.
+
 ### Token-sequence diagnostic
 
 The buggy test page produced: `50360 → 50364 → 50257(EOS)` — only 3 generated tokens, all special, no text. This is the **hallmark of a missing-prompt-tokens problem**, NOT encoder precision:
