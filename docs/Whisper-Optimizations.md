@@ -828,9 +828,113 @@ investigation needed.
 | 6 | GPU encoder→decoder Cast | Encode: 5.7×, RTFx: 10→21.5× | ✅ deployed |
 | 7 | Fast mel N_FFT=512 | Preprocess: 2.85×, RTFx: 21.5→25.3× | ✅ deployed |
 | 8 | Shared WebGPU device | Init regression persists | ⚠️ deployed, needs investigation |
+| 9 | Stripped fp16 encoder | Encode: 6.4× (1900→296ms), no Cast nodes | ✅ deployed |
+
+**Note:** Experiment 9 supersedes Experiment 6 (GPU encoder→decoder Cast). The stripped
+fp16-output encoder + original fp16-input decoder_init is the cleaner architecture —
+zero dtype casts anywhere in the pipeline, no ONNX modifications to decoder_init.
+
+**Cumulative improvement from baseline (fp16io-fp16-webgpu, greedy, 29.9s JFK, RTX 5060 Ti, warm):**
+- Preprocess: ~240ms → ~81ms (3.0× faster, fast mel N_FFT=512)
+- Encode: ~1900ms → ~277ms (6.9× faster, stripped fp16 encoder)
+- Decode: ~4000ms → ~698ms (5.7× faster, GPU KV bridge)
+- **Total: ~6140ms → ~1056ms (5.8× faster, combined)**
+- **RTFx: ~4.8× → 27.6× (5.8× throughput improvement)**
+- **Step P50: 80ms → 9.5ms (8.4× faster per token)**
 
 **Remaining high-impact opportunities:**
 1. GPU logit processing + ArgMax combined (eliminates 207KB/step download)
 2. Batched beam graph (beam_size=5 → 5× fewer ORT calls)
 3. Static KV cache + graph capture (requires new ONNX export)
-4. Resolve decoder init regression (197ms → 69ms, investigate Cast node overhead)
+4. Resolve decoder init regression (195ms → 69ms, cross-session GPU handoff)
+
+---
+
+## Lessons Learned — Pitfalls & Discoveries
+
+### ONNX graph surgery
+
+1. **`onnx.save(save_as_external_data=True)` corrupts weights.** When modifying an ONNX
+   graph that uses external data, load with `load_external_data=False`, modify the
+   graph structure, save with plain `onnx.save(model, path)`, and copy the original
+   `.data` file alongside. Re-packing via `save_as_external_data=True` produces
+   different file sizes (54MB discrepancy observed) and breaks ORT deserialization.
+
+2. **Deployed `.onnx` filename must match internal `external_data.location`.**
+   The ONNX graph stores a relative path to its weight file. If you rename the
+   `.onnx` file, ORT looks for the old `.data` filename and fails with "Failed to
+   load external data." Either save with the final filename or patch the internal
+   reference.
+
+3. **New ONNX outputs default to GPU-buffer in per-output maps.** When using
+   `preferredOutputLocation` as a per-output record, any output NOT explicitly
+   listed defaults to `'gpu-buffer'`, NOT `'cpu'`. If graph surgery adds a new
+   output that JS needs to read (e.g., `next_token_id` from ArgMax), explicitly
+   add it as `'cpu'` in the location map. Otherwise `.data` is unreadable and
+   JS silently falls back while still paying GPU dispatch cost — a ~35% overhead.
+
+4. **Symbolic dimensions must be preserved with `dim_param`, not `dim_value=0`.**
+   When creating new graph inputs/outputs via `onnx.helper.make_tensor_value_info()`,
+   use `dim_param="batch"` for symbolic dimensions. Setting `dim_value=0` makes it a
+   literal zero-dimension that ORT rejects at runtime.
+
+### WebGPU execution
+
+5. **`preferredOutputLocation: 'gpu-buffer'` eliminates GPU pipeline stalls.**
+   Without it, `session.run()` blocks on the output download (GPU→CPU DMA). With it,
+   `run()` returns as soon as commands are dispatched. The measured encode wall time
+   dropped from ~1900ms to ~277ms — not because the GPU is faster, but because JS
+   no longer waits for the 7.68MB readback. Actual GPU compute time is unchanged.
+
+6. **Cross-session GPU tensor handoff adds ~125ms overhead.** When encoder output
+   is on GPU (`preferredOutputLocation: 'gpu-buffer'`) and passed to decoder_init,
+   init time increases from ~69ms to ~195ms. This is a one-time per-transcription
+   cost from ORT setting up buffer sharing between separate sessions. Not from
+   dtype casting or shader compilation.
+
+7. **Shared WebGPU device needs `shader-f16` feature.** Creating a GPUDevice via
+   `navigator.gpu.requestAdapter().requestDevice()` without `requiredFeatures:
+   ['shader-f16']` causes ORT's fp16 Cast/Mul/MatMul kernels to fail at runtime
+   with "requires f16 but the device does not support it." ORT's default per-session
+   device creation includes fp16 automatically. If pre-creating a shared device,
+   always request `shader-f16`.
+
+8. **Encoder graph capture fails on current export.** The encoder ONNX graph
+   contains `Reshape`/`Shape` ops that have **no GPU kernel** per the WebGPU
+   operator table. ORT rejects session creation with `ERROR_CODE: 1`. Graph
+   capture requires a static-shape export eliminating those ops.
+
+### Optimization methodology
+
+9. **GPU ArgMax alone is counterproductive (+20% overhead).** The timestamp logit
+   processor still requires downloading the full 207KB logits every step. GPU
+   ArgMax dispatch overhead exceeds JS `argmax()` savings. Only becomes net-positive
+   when combined with GPU-side logit processing (suppression masks + argmax on GPU).
+
+10. **Stripped fp16 encoder > Cast-injected decoder_init.** The fp16_iofp32 encoder
+    already computes internally in fp16. It has a final `Cast(f16→f32)` from
+    `keep_io_types=True`. Removing this Cast and exposing fp16 output directly,
+    paired with the original fp16-input decoder_init, produces a cleaner pipeline
+    with zero dtype casts anywhere. Simpler graph surgery (remove 1 node vs add 1
+    node + redirect 8 refs) and no cross-session Cast synchronization.
+
+11. **Always warm up before benchmarking.** First run after model load includes
+    ORT session creation, shader compilation, and GPU buffer allocation. Second run
+    in the same tab shows true inference performance. Cold runs include 2-3×
+    overhead from model loading.
+
+12. **Reuse browser tabs; don't launch new Chrome windows.** Each new Chrome tab
+    creates fresh ORT sessions and allocates new VRAM. Use `browser_navigate` on an
+    existing `localhost:8765` tab. Kill previous tabs to free VRAM before
+    benchmarking.
+
+### Vite dev server
+
+13. **Vite `.vite` cache corruption causes 504 errors.** After multiple kill/restart
+    cycles, Vite's pre-bundled dependency cache gets out of sync. Symptom:
+    `GET /node_modules/.vite/deps/pako.js 504 (Outdated Optimize Dep)`. Fix: kill
+    all node processes, `rm -rf node_modules/.vite`, restart with `--force`.
+
+14. **Vite on Windows needs PTY.** Background Vite processes exit with "stdin is
+    not a tty" unless launched with `pty=true`. Use `npx vite --host 0.0.0.0 --port
+    8765 --strictPort --force` with `background=true, pty=true`.

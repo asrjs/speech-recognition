@@ -69,13 +69,19 @@ Uploaded filenames MUST match ONNX graph's internal `external_data.location`. Ch
 - **ArgMax graph output**: future experiment only. It must preserve logit
   processor semantics, use ORT fetches to avoid requesting full logits, and be
   rejected on any token mismatch.
-- **GPU encoder→decoder Cast bridge** (`experimentalGpuKvCache` + WebGPU):
+- **GPU encoder→decoder bridge** (`experimentalGpuKvCache` + WebGPU):
   Encoder session set `preferredOutputLocation: 'gpu-buffer'`. Encoder output
-  stays on GPU. `decoder_init.onnx` patched with Cast(f32→f16) node at entry
-  (see `tools/whisper-onnx-export/inject_decoder_init_cast.py`).
-  `maybeCastEncoderHiddenStates()` skips CPU cast when decoder_init accepts
-  fp32. Eliminates 7.68MB GPU→CPU download + pipeline stall. Encode: 5.7×
-  faster (1900→336ms). RTFx: 10→21.5×.
+  stays on GPU. **Preferred approach:** strip the final `Cast(f16→f32)` from the
+  fp16_iofp32 encoder (see `tools/whisper-onnx-export/strip_encoder_cast.py`),
+  output fp16 directly. Paired with the original fp16-input `decoder_init.onnx`,
+  this gives zero dtype casts in the pipeline. Encode: 6.9× faster (1900→277ms).
+  RTFx: 4.8→27.6×. Step P50: 80→9.5ms.
+- **Fast mel spectrogram** (`fastFft` option, default true): Uses N_FFT=512
+  (power-of-2) with zero-padded Hann window instead of Bluestein FFT for N_FFT=400.
+  Preprocess: 2.9× faster (237→81ms). Matches parakeet.js approach.
+- **WebGPU optimization lessons**: See `docs/Whisper-Optimizations.md` §Lessons
+  Learned for 14 documented pitfalls covering ONNX surgery, WebGPU execution,
+  optimization methodology, and Vite dev server.
 
 ## Beam search
 `whisperBeamDecode` in core.ts. `numBeams`, `lengthPenalty`, `bestOf`, `patience` params. Wired into splitGraphDecodeLoop. Default `numBeams=1` (greedy).
