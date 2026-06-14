@@ -163,22 +163,34 @@ function float32ToFloat16Bits(src: Float32Array): Uint16Array {
 
 /**
  * If the decoder expects float16 encoder hidden states, cast the fp32 encoder output.
+ * When the Cast-injected decoder_init model is used (accepts fp32 natively), this
+ * is a no-op and the GPU tensor flows through with zero CPU touch.
  */
-function maybeCastEncoderHiddenStates(
+async function maybeCastEncoderHiddenStates(
   encoderHiddenStates: OrtTensorLike<Float32Array>,
   decoderInitSession: OrtSessionLike,
   ort: OrtModuleLike,
-): OrtTensorLike<Float32Array> {
+): Promise<OrtTensorLike<Float32Array>> {
   const metadata = (decoderInitSession as unknown as { inputMetadata?: Array<{ name?: string; type?: string; shape?: number[] }> }).inputMetadata;
   const encMeta = metadata?.find((m) => m.name === 'encoder_hidden_states');
-  if (encMeta?.type === 'float16') {
-    const dims = encoderHiddenStates.dims as number[];
-    const size = dims.reduce((a, b) => a * b, 1);
-    const f32Data = encoderHiddenStates.data as Float32Array;
-    const f16Bits = float32ToFloat16Bits(f32Data.length === size ? f32Data : f32Data.subarray(0, size));
-    return new ort.Tensor('float16', f16Bits, dims) as unknown as OrtTensorLike<Float32Array>;
+  // If decoder_init already accepts fp32 (Cast-injected model), skip the CPU cast.
+  // The encoder output flows directly from GPU to decoder_init with zero CPU touch.
+  if (!encMeta || encMeta.type !== 'float16') {
+    return encoderHiddenStates;
   }
-  return encoderHiddenStates;
+  // Decoder expects float16 — CPU cast needed. If tensor is on GPU, download first
+  // (this path is only hit with the original model; the Cast model skips this entirely).
+  const f32Data = isGpuBufferTensor(encoderHiddenStates) && encoderHiddenStates.getData
+    ? (await encoderHiddenStates.getData(true)) as Float32Array
+    : encoderHiddenStates.data as Float32Array;
+  const dims = encoderHiddenStates.dims as number[];
+  const size = dims.reduce((a, b) => a * b, 1);
+  const f16Bits = float32ToFloat16Bits(
+    (f32Data as Float32Array).length === size
+      ? (f32Data as Float32Array)
+      : (f32Data as Float32Array).subarray(0, size),
+  );
+  return new ort.Tensor('float16', f16Bits, dims) as unknown as OrtTensorLike<Float32Array>;
 }
 
 function createWhisperGpuKvOutputLocation(
@@ -684,6 +696,11 @@ export class WhisperOnnxExecutor {
       backendId: resolved.encoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
       enableGraphCapture: resolved.experimentalWebGpuEncoderGraphCapture,
+      // GPU encoder bridge: keep encoder output on GPU to avoid the CPU
+      // f32→f16 cast round-trip when using the Cast-injected decoder_init.
+      ...(resolved.experimentalGpuKvCache && resolved.encoderBackendForOrt === 'webgpu'
+        ? { preferredOutputLocation: 'gpu-buffer' as const }
+        : {}),
       ...(resolved.externalData?.encoder?.[0]
         ? { externalDataUrl: resolved.externalData.encoder[0].dataUrl, externalDataPath: resolved.externalData.encoder[0].path }
         : {}),
@@ -1360,7 +1377,7 @@ export class WhisperOnnxExecutor {
     const encoderOutputs = await loaded.encoderSession.run({
       input_features: featureTensor,
     });
-    const encoderHiddenStates = maybeCastEncoderHiddenStates(
+    const encoderHiddenStates = await maybeCastEncoderHiddenStates(
       encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>,
       loaded.decoderInitSession ?? loaded.decoderSession!,
       loaded.ort,
@@ -1794,7 +1811,7 @@ export class WhisperOnnxExecutor {
     // 2. Run encoder
     const encodeStart = nowMs();
     const encoderOutputs = await loaded.encoderSession.run({ input_features: featureTensor });
-    const encoderHiddenStates = maybeCastEncoderHiddenStates(
+    const encoderHiddenStates = await maybeCastEncoderHiddenStates(
       encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>,
       loaded.decoderInitSession ?? loaded.decoderSession!,
       loaded.ort,
