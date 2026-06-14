@@ -11,6 +11,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { parseWhisperManifest } from './manifest.js';
 import type {
   ExternalDataEntry,
@@ -152,7 +153,7 @@ export function loadSplitGraphLocalModel(
     if (!fs.existsSync(fullPath)) {
       throw new Error(`Missing artifact: ${name} in ${resolved}`);
     }
-    return `file://${fullPath}`;
+    return pathToFileURL(fullPath).href;
   };
 
   const config: WhisperSeq2SeqModelConfig = {

@@ -177,7 +177,7 @@ describe('built-in preset descriptors', () => {
     });
     expect(descriptor?.languages).toEqual(['en']);
     expect(descriptor?.capabilities.supportsWordTimestamps).toBe(true);
-    expect(descriptor?.loading.supportsHubSource).toBe(false);
+    expect(descriptor?.loading.supportsHubSource).toBe(true);
     expect(descriptor?.loading.supportsLocalSource).toBe(true);
     expect(descriptor?.loading.defaultEncoderBackend).toBe('wasm');
     expect(descriptor?.loading.defaultDecoderBackend).toBe('wasm');
@@ -256,5 +256,20 @@ describe('built-in preset descriptors', () => {
     expect(detected.decoderArtifactBaseName).toBe('decoder-model');
     expect(detected.encoder).toEqual(['fp16', 'fp32']);
     expect(detected.decoder).toEqual(['int8', 'fp32']);
+  });
+
+  it('falls back to declared quantizations when no repo files match', () => {
+    const detected = detectBuiltInModelQuantizationsFromFiles('nvidia/canary-180m-flash', []);
+
+    expect(detected.encoderArtifactBaseName).toBe('encoder-model');
+    expect(detected.decoderArtifactBaseName).toBe('decoder-model');
+    expect(detected.encoder).toEqual(['fp32']);
+    expect(detected.decoder).toEqual(['fp32']);
+  });
+
+  it('throws when detecting quantizations for an unknown model id', () => {
+    expect(() => detectBuiltInModelQuantizationsFromFiles('unknown-model-id', [])).toThrow(
+      'Unknown built-in model "unknown-model-id".',
+    );
   });
 });

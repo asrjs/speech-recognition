@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import {
   resolveWhisperArtifacts,
   type ResolvedWhisperArtifacts,
@@ -241,10 +242,10 @@ describe('Local splitgraph manifest external data', () => {
       expect(resolved.externalData?.encoder).toBeUndefined();
       expect(resolved.externalData?.decoder_step).toBeUndefined();
       expect(resolved.externalData?.decoder_init?.[0]?.dataUrl).toBe(
-        `file://${path.join(dir, 'decoder_init.onnx.data')}`,
+        pathToFileURL(path.join(dir, 'decoder_init.onnx.data')).href,
       );
       expect(resolved.externalData?.decoder_align?.[0]?.dataUrl).toBe(
-        `file://${path.join(dir, 'decoder_align.onnx.data')}`,
+        pathToFileURL(path.join(dir, 'decoder_align.onnx.data')).href,
       );
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

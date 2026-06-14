@@ -1,11 +1,17 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { WhisperTokenizer } from '../src/models/whisper-seq2seq/tokenizer.js';
 
-describe('WhisperTokenizer BPE encode', () => {
+const tokenizerPath = resolve('/tmp/whisper-tiny-onnx/tokenizer.json');
+const describeWithTokenizer = existsSync(tokenizerPath) ? describe : describe.skip;
+
+describeWithTokenizer('WhisperTokenizer BPE encode', () => {
   let tokenizer: WhisperTokenizer;
 
   beforeAll(async () => {
-    tokenizer = await WhisperTokenizer.fromUrl('file:///tmp/whisper-tiny-onnx/tokenizer.json');
+    tokenizer = await WhisperTokenizer.fromUrl(pathToFileURL(tokenizerPath).href);
   });
 
   it('encodes English text matching reference', () => {

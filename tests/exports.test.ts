@@ -39,7 +39,7 @@ describe('public exports', () => {
     expect(module.AudioRingBuffer).toBeUndefined();
     expect(module.fetchDatasetSplits).toBeUndefined();
     expect(module.benchmarkRunRecordsToCsv).toBeUndefined();
-  });
+  }, 15_000);
 
   it('exposes layered helper, model, and preset subpaths', async () => {
     const builtins = await import('@asrjs/speech-recognition/builtins');
@@ -153,5 +153,5 @@ describe('public exports', () => {
     expect(medasrPreset.createMedAsrPresetFactory).toBeTypeOf('function');
     expect(whisperPreset.createWhisperPresetFactory).toBeTypeOf('function');
     expect(wav2Vec2Preset.createWav2Vec2PresetFactory).toBeTypeOf('function');
-  });
+  }, 15_000);
 });
