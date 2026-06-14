@@ -38,7 +38,7 @@ async function main() {
   }
 
   // 1. Load self-exported 4-graph model from local directory
-  const { source, config, modelId } = loadSplitGraphLocalModel(modelDir);
+  const { source, config, modelId } = await loadSplitGraphLocalModel(modelDir);
   console.log(`Loaded model: ${modelId} from ${modelDir}`);
   console.log(`  d_model=${config.vocabularySize} decoder_layers=${config.maxTargetPositions}`);
 

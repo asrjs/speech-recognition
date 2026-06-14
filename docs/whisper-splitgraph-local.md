@@ -25,7 +25,7 @@ import {
 import { loadSplitGraphLocalModel } from '@asrjs/speech-recognition/models/whisper-seq2seq/local-file';
 
 // Read manifest.json + build artifact source from local directory
-const { source, config, modelId } = loadSplitGraphLocalModel('/path/to/exported/whisper-tiny');
+const { source, config, modelId } = await loadSplitGraphLocalModel('/path/to/exported/whisper-tiny');
 
 const factory = createWhisperSeq2SeqModelFamily();
 const model = await factory.createModel(

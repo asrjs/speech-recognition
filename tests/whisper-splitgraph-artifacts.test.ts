@@ -190,7 +190,7 @@ describe('Browser externalData path matching (ONNX internal location)', () => {
 });
 
 describe('Local splitgraph manifest external data', () => {
-  it('propagates per-graph externalData entries and omits inline graphs', () => {
+  it('propagates per-graph externalData entries and omits inline graphs', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'asrjs-whisper-manifest-'));
     try {
       for (const name of [
@@ -230,7 +230,7 @@ describe('Local splitgraph manifest external data', () => {
         }),
       );
 
-      const loaded = loadSplitGraphLocalModel(dir, { variant: null });
+      const loaded = await loadSplitGraphLocalModel(dir, { variant: null });
       expect(loaded.source.kind).toBe('splitgraph');
       if (loaded.source.kind !== 'splitgraph') throw new Error('expected splitgraph source');
       expect(loaded.config.maxSourcePositions).toBe(3000);

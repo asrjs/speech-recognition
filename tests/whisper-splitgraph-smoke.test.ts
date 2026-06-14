@@ -460,7 +460,7 @@ describe('Node local-file co-located external data smoke', () => {
     const { loadSplitGraphLocalModel } = await import(
       '../src/models/whisper-seq2seq/local-file.js'
     );
-    const loaded = loadSplitGraphLocalModel(fixtureDir);
+    const loaded = await loadSplitGraphLocalModel(fixtureDir);
     expect(loaded.source.kind).toBe('splitgraph');
     expect(loaded.config.ecosystem).toBe('openai');
 
