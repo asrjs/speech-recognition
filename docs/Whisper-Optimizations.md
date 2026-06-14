@@ -787,13 +787,50 @@ The internal `external_data.location` references stay intact. The deployed
 | 5 | GPU ArgMax | Counterproductive standalone | ⚠️ infra committed, skip solo |
 | **6** | **GPU encoder→decoder Cast** | **Encode: 5.7×, RTFx: 10→21.5×** | **✅ deployed** |
 
-**Cumulative improvement from baseline (fp16io-fp16-webgpu, greedy):**
-- Decode: ~4000ms → ~773ms (5.2× faster, GPU KV bridge)
+**Cumulative improvement from baseline (fp16io-fp16-webgpu, greedy, 29.9s JFK, RTX 5060 Ti):**
+- Preprocess: ~240ms → ~83ms (2.9× faster, fast mel N_FFT=512)
 - Encode: ~1900ms → ~336ms (5.7× faster, GPU Cast bridge)
-- **Total: ~5900ms → ~1109ms (5.3× faster, combined)**
-- **RTFx: ~4.8× → 21.5× (4.5× throughput improvement)**
+- Decode: ~4000ms → ~773ms (5.2× faster, GPU KV bridge)
+- **Total: ~6140ms → ~1192ms (5.1× faster, combined)**
+- **RTFx: ~4.8× → 25.3× (5.3× throughput improvement)**
+
+### Experiment 8: fast mel — power-of-2 FFT replacing Bluestein (2026-06-14) ✅ DEPLOYED
+
+Replaced the expensive Bluestein (chirp Z-transform) algorithm required by the
+non-power-of-2 N_FFT=400 with zero-padded 512-point standard radix-2 FFT.
+The 400-point Hann window is centered in a 512-point buffer (56 zeros each side).
+Mel filterbank adapts automatically (defined in Hz, not bin indices).
+Frame alignment preserved (reflect pad=200, same as original).
+
+**Chrome benchmark:** preprocessMs: 237ms → **83ms avg** (2.85× faster).
+Transcript: identical (token parity confirmed).
+Gate: `fastFft` option (default true); legacy Bluestein via `fastFft: false`.
+
+### Experiment 9: shared WebGPU device (2026-06-14)
+
+Set `ort.env.webgpu.device` to a single GPUDevice created at ORT init time
+via `navigator.gpu.requestAdapter()/requestDevice()`. All encoder/decoder
+sessions share this device, avoiding per-session device creation.
+
+**Result:** initRun regression (197ms) persists — the overhead is from the Cast
+node or first-run GPU tensor handoff, not cross-device copies. Further
+investigation needed.
+
+### Final optimization summary (perf/whisper-webgpu-decode branch)
+
+| # | Experiment | Impact | Status |
+|---|---|---|---|
+| 1 | GPU KV cache bridge | Decode: 4.8× → 11× RTFx | ✅ deployed |
+| 2 | Beam candidate ranking | Helper: 20× faster | ✅ deployed |
+| 3 | Skip greedy score pass | CPU work: 49→2.5ms | ✅ deployed |
+| 4 | Encoder graph capture | Session creation fails | ❌ blocked |
+| 5 | GPU ArgMax | Counterproductive standalone | ⚠️ infra committed |
+| 6 | GPU encoder→decoder Cast | Encode: 5.7×, RTFx: 10→21.5× | ✅ deployed |
+| 7 | Fast mel N_FFT=512 | Preprocess: 2.85×, RTFx: 21.5→25.3× | ✅ deployed |
+| 8 | Shared WebGPU device | Init regression persists | ⚠️ deployed, needs investigation |
 
 **Remaining high-impact opportunities:**
 1. GPU logit processing + ArgMax combined (eliminates 207KB/step download)
 2. Batched beam graph (beam_size=5 → 5× fewer ORT calls)
 3. Static KV cache + graph capture (requires new ONNX export)
+4. Resolve decoder init regression (197ms → 69ms, investigate Cast node overhead)
