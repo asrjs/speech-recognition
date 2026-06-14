@@ -178,8 +178,14 @@ async function maybeCastEncoderHiddenStates(
   if (!encMeta || encMeta.type !== 'float16') {
     return encoderHiddenStates;
   }
-  // Decoder expects float16 — CPU cast needed. If tensor is on GPU, download first
-  // (this path is only hit with the original model; the Cast model skips this entirely).
+  // If encoder already outputs fp16 (stripped encoder) and decoder accepts fp16,
+  // no cast needed — GPU tensor passes through directly.
+  if (encoderHiddenStates.type === 'float16') {
+    return encoderHiddenStates;
+  }
+  // Decoder expects float16 but encoder outputs fp32 — CPU cast needed.
+  // If tensor is on GPU, download first (this path is only hit with the original
+  // fp32-output encoder + original fp16-input decoder_init combination).
   const f32Data = isGpuBufferTensor(encoderHiddenStates) && encoderHiddenStates.getData
     ? (await encoderHiddenStates.getData(true)) as Float32Array
     : encoderHiddenStates.data as Float32Array;
