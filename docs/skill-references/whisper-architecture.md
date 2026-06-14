@@ -59,5 +59,10 @@ Uploaded filenames MUST match ONNX graph's internal `external_data.location`. Ch
 ## Beam search
 `whisperBeamDecode` in core.ts. `numBeams`, `lengthPenalty`, `bestOf`, `patience` params. Wired into splitGraphDecodeLoop. Default `numBeams=1` (greedy).
 
+The experimental WebGPU GPU-KV bridge is greedy-only: `numBeams=1`,
+`bestOf=1`, and `temperature=0`. Beam search remains supported on the stable
+splitgraph path, but it is not part of the measured WebGPU `11x` path until a
+batched beam graph and GPU KV reorder path exist.
+
 ## Reproducibility harness
 Two modes: feature-input (100% token match, Python mel features) and wav-input (≥80%, TS mel frontend). Env vars: `WHISPER_REFERENCE_JSON`, `WHISPER_SPLITGRAPH_FIXTURE_DIR`.

@@ -283,9 +283,19 @@ function logSoftmax(logits: Float32Array): Float32Array {
 }
 
 function selectTopK(logProbs: Float32Array, k: number): { tokenId: number; logProb: number }[] {
-  const indexed = Array.from(logProbs, (lp, i) => ({ tokenId: i, logProb: lp }));
-  indexed.sort((a, b) => b.logProb - a.logProb);
-  return indexed.slice(0, k);
+  const limit = Math.max(0, k);
+  const top: { tokenId: number; logProb: number }[] = [];
+  for (let tokenId = 0; tokenId < logProbs.length; tokenId++) {
+    const logProb = logProbs[tokenId] ?? Number.NEGATIVE_INFINITY;
+    let insertAt = top.length;
+    while (insertAt > 0 && logProb > (top[insertAt - 1]?.logProb ?? Number.NEGATIVE_INFINITY)) {
+      insertAt--;
+    }
+    if (insertAt >= limit) continue;
+    top.splice(insertAt, 0, { tokenId, logProb });
+    if (top.length > limit) top.pop();
+  }
+  return top;
 }
 
 /**

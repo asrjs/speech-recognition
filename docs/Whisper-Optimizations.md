@@ -490,3 +490,69 @@ Parity result:
 Conclusion: per-output placement is safer than all-output GPU placement for the
 current CPU logit-processing design. It removes the explicit logits download
 without changing suppression, timestamps, or argmax semantics.
+
+### Follow-up audit: beam state, encoder work, and browser testing
+
+The measured `11x` WebGPU path is currently the greedy-only
+`experimentalGpuKvCache` path. Beam search is still implemented and exposed by
+the stable splitgraph decoder path, but it is not yet accelerated by the
+GPU-resident KV bridge. Keep this distinction explicit in demos and reports:
+
+| Decode mode | Current path | Status |
+| --- | --- | --- |
+| Greedy, `temperature=0`, `numBeams=1`, `bestOf=1` | WebGPU GPU-KV bridge | Fast path, measured around `11x` RTFx on the 29.9s fixture |
+| Beam search | CPU/WASM-style KV bridge | Supported, not part of the measured `11x` path |
+| `best_of` / temperature sampling | CPU/WASM-style KV bridge | Supported, not part of the measured `11x` path |
+
+This mirrors the broader transformer-inference pattern: fast paths usually
+require static or carefully managed cache state. Hugging Face Transformers
+documents separate dynamic, static, and quantized KV cache strategies, where
+static cache is the compile-friendly/high-memory option. CTranslate2 exposes
+Whisper generation with `beam_size`, fp16/int8 compute types, worker queues, and
+optional flash attention; faster-whisper's largest benchmark wins also come from
+batching. In browser ORT WebGPU, the closest portable equivalents are:
+
+- keep KV tensors on GPU between decoder calls,
+- batch independent decode work when the graph supports it,
+- use static shapes/graph capture only after a measured A/B,
+- avoid full-vocabulary JS allocation in CPU fallback paths,
+- export alternate model repos for static-cache or fused-attention experiments.
+
+Encoder-side optimization is now the next likely source of gains for the greedy
+path because decode has dropped below one second on the 29.9s fixture. The safe
+candidate experiments are:
+
+1. Try `enableGraphCapture` on the encoder only, gated by an explicit option,
+   because ORT WebGPU says graph capture is model-dependent and session
+   creation can fail.
+2. Export an alternate encoder graph with fixed input shapes and fewer dynamic
+   shape ops, then publish it to a separate HF repo rather than overwriting
+   `ysdede/whisper-large-v3-turbo-onnx-4graph`.
+3. Benchmark encoder output placement before changing it. The current fp16
+   decoder bridge still needs dtype handling, so keeping encoder output on GPU
+   is only useful if the encoder output dtype and decoder input contract line up
+   without a CPU cast.
+4. Keep mel optimization separate. The Whisper mel processor should be compared
+   against the optimized mel processors in `speech-recognition` and
+   `ysdede/parakeet.js`, but the current 30s WebGPU profile is dominated by
+   encoder/decode rather than mel.
+
+Immediate code cleanup landed for the beam fallback: beam candidate ranking no
+longer materializes every vocabulary token as an object and full-sorts the whole
+candidate list. It keeps only the best `beamWidth` candidates while scanning
+logits, preserving deterministic tie order. This does not change the GPU-KV
+fast path; it reduces JS allocation for the supported beam path while a proper
+batched-beam graph remains future work.
+
+Local Node micro-benchmark, using 5 active beams and a 51,865-token vocabulary:
+old full-materialize/full-sort ranking averaged `182.9ms`, while the partial
+selection implementation averaged `9.0ms` over 5 measured runs
+(`~20.3x` faster for the ranking helper itself). This is a helper-level result,
+not an end-to-end beam transcription result.
+
+For Chrome testing, avoid shell commands that launch a fresh Chrome tab for
+each smoke run. Reuse an existing localhost tab through the Chrome extension
+automation session, or navigate the current controlled test tab. If a scripted
+smoke runner is added later, it should claim an existing
+`http://localhost:8765/` tab first and only create a new tab when no controlled
+test tab exists.
