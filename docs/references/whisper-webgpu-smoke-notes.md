@@ -190,14 +190,21 @@ preferredOutputLocation: 'gpu-buffer'
 
 the KV tensors should stay as ORT GPU-buffer tensors. Remap their names from
 `present.*` to `past_key_values.*`, feed them directly into `decoder_step`, and
-avoid `.data` access for KV. Download logits only with `getData(true)`, then
-dispose replaced GPU KV tensors to avoid growth across token steps.
+avoid `.data` access for KV. Request logits as CPU outputs with a per-output
+`preferredOutputLocation` map until logit processing moves to GPU. Dispose
+replaced GPU KV tensors to avoid growth across token steps.
 
 Measured on the 29.9s JFK fixture with 50 generated tokens:
 
 - CPU KV bridge: `decodeMs=4365.735`, `decoderStepP50Ms=84.395`
 - GPU KV bridge: `decodeMs=608.53`, `decoderStepP50Ms=10.555`
 - Token IDs matched exactly.
+
+Follow-up per-output placement smoke:
+
+- CPU KV bridge: `decodeMs=3979.045`, `decoderStepP50Ms=77.02`
+- GPU KV + CPU logits: `decodeMs=575.785`, `decoderStepP50Ms=9.66`
+- GPU downloads dropped from `50` to `0`; token IDs still matched exactly.
 
 ### Encoder KV Preservation
 

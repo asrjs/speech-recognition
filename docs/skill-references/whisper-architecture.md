@@ -18,8 +18,9 @@ another. Extract raw data, preserve dims, and create a new `ort.Tensor`.
 Experimental WebGPU KV bridge: when decoder init/step sessions are both WebGPU
 and were created with `preferredOutputLocation: 'gpu-buffer'`, keep KV tensors
 on GPU and feed them directly into the next decoder step. Do not touch `.data`
-for those tensors; download logits with `getData(true)` only, and dispose
-replaced GPU KV tensors.
+for those tensors. Prefer a per-output location map so KV outputs stay on GPU
+while logits stay on CPU until logit processing moves to GPU. Dispose replaced
+GPU KV tensors.
 
 ### Mel dimension from manifest
 `config.json` lacks `num_mel_bins`. Read from `generation_config.json` or `manifest.json`. Large-v3-turbo = 128 mel, whisper-base/tiny = 80 mel.

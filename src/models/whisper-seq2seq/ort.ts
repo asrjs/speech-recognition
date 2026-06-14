@@ -60,6 +60,11 @@ export interface OrtModuleLike {
   };
 }
 
+export type OrtOutputLocation = 'cpu' | 'gpu-buffer';
+export type OrtPreferredOutputLocation =
+  | OrtOutputLocation
+  | Record<string, OrtOutputLocation>;
+
 export interface ExternalDataMap {
   readonly [graphName: string]: readonly { readonly dataUrl: string; readonly path: string }[];
 }
@@ -341,7 +346,7 @@ export async function createWhisperOrtSession(
     readonly enableProfiling?: boolean;
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
-    readonly preferredOutputLocation?: 'cpu' | 'gpu-buffer';
+    readonly preferredOutputLocation?: OrtPreferredOutputLocation;
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;

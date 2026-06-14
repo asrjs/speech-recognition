@@ -417,10 +417,9 @@ preferredOutputLocation: 'gpu-buffer'
 
 The greedy decode path keeps `present.*` / `past_key_values.*` KV tensors as ORT
 GPU-buffer tensors and feeds them directly into the next `decoder_step` call.
-Only logits are downloaded with `getData(true)`, and GPU KV tensors are disposed
-as they are replaced. This path is intentionally limited to greedy argmax
-decoding. Beam search, `best_of`, and temperature sampling still use the stable
-CPU-KV bridge.
+Logits are still processed on CPU for now. GPU KV tensors are disposed as they
+are replaced. This path is intentionally limited to greedy argmax decoding. Beam
+search, `best_of`, and temperature sampling still use the stable CPU-KV bridge.
 
 New transcript metrics expose whether the path actually used GPU tensors:
 
@@ -451,3 +450,43 @@ Conclusion: this is a real speedup and should be kept behind the experimental
 flag while we gather more fixtures. The next clear optimization is not another
 KV bridge change; it is to avoid downloading full logits once per token by
 moving logit processing + argmax/top-k to GPU.
+
+### Experiment 3: per-output placement for CPU logits + GPU KV
+
+The first GPU-KV implementation used `preferredOutputLocation: 'gpu-buffer'`
+for all decoder outputs, which kept KV on GPU but also made logits GPU tensors.
+Because JS still needs CPU logits for timestamp suppression and argmax, that
+created one explicit `getData(true)` download per token.
+
+ORT Web supports per-output location maps, so the decoder sessions now request:
+
+```ts
+{
+  logits: 'cpu',
+  'present.0.decoder.key': 'gpu-buffer',
+  'present.0.decoder.value': 'gpu-buffer',
+  // ...
+}
+```
+
+`decoder_init` maps both decoder and encoder KV outputs to `gpu-buffer`;
+`decoder_step` maps decoder KV outputs to `gpu-buffer`. Logits remain CPU
+outputs until logit processing moves to GPU.
+
+Chrome WebGPU smoke on the same 29.9s fixture, `fp16io-fp16-webgpu`,
+`maxNewTokens=50`:
+
+| Mode | Decode | Step run | Step output | Step p50 / p95 | RTFx | Downloads |
+| ---- | ------ | -------- | ----------- | -------------- | ---- | --------- |
+| CPU KV bridge | `3979.045ms` | `3783.915ms` | `2.19ms` | `77.02ms` / `83.315ms` | `4.8285` | `0` |
+| GPU KV, CPU logits | `575.785ms` | `499.365ms` | `1.75ms` | `9.66ms` / `12.51ms` | `11.3872` | `0` |
+
+Parity result:
+
+- Same 50 token IDs.
+- GPU-KV run: `784` GPU inputs, `51` CPU inputs, `408` GPU outputs, `50`
+  CPU outputs, `0` GPU downloads.
+
+Conclusion: per-output placement is safer than all-output GPU placement for the
+current CPU logit-processing design. It removes the explicit logits download
+without changing suppression, timestamps, or argmax semantics.

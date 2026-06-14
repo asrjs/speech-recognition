@@ -26,6 +26,7 @@ import {
   initWhisperOrt,
   resolveWhisperArtifacts,
   type OrtModuleLike,
+  type OrtPreferredOutputLocation,
   type OrtSessionLike,
   type OrtTensorLike,
   type ResolvedWhisperArtifacts,
@@ -178,6 +179,24 @@ function maybeCastEncoderHiddenStates(
     return new ort.Tensor('float16', f16Bits, dims) as unknown as OrtTensorLike<Float32Array>;
   }
   return encoderHiddenStates;
+}
+
+function createWhisperGpuKvOutputLocation(
+  config: WhisperModelConfig,
+  role: 'init' | 'step',
+): OrtPreferredOutputLocation {
+  const outputLocation: Record<string, 'cpu' | 'gpu-buffer'> = {
+    logits: 'cpu',
+  };
+  for (let layer = 0; layer < config.decoderLayers; layer++) {
+    outputLocation[`present.${layer}.decoder.key`] = 'gpu-buffer';
+    outputLocation[`present.${layer}.decoder.value`] = 'gpu-buffer';
+    if (role === 'init') {
+      outputLocation[`present.${layer}.encoder.key`] = 'gpu-buffer';
+      outputLocation[`present.${layer}.encoder.value`] = 'gpu-buffer';
+    }
+  }
+  return outputLocation;
 }
 
 function createAssetProgressEvent(
@@ -686,16 +705,20 @@ export class WhisperOnnxExecutor {
     let decoderInitSession: OrtSessionLike | undefined;
     let decoderStepSession: OrtSessionLike | undefined;
     let decoderAlignSession: OrtSessionLike | undefined;
-    const decoderPreferredOutputLocation =
+    const decoderInitPreferredOutputLocation =
       resolved.experimentalGpuKvCache && resolved.decoderBackendForOrt === 'webgpu'
-        ? 'gpu-buffer'
+        ? createWhisperGpuKvOutputLocation(modelConfig, 'init')
+        : undefined;
+    const decoderStepPreferredOutputLocation =
+      resolved.experimentalGpuKvCache && resolved.decoderBackendForOrt === 'webgpu'
+        ? createWhisperGpuKvOutputLocation(modelConfig, 'step')
         : undefined;
 
     if (isSplitGraph && resolved.decoderInitUrl && resolved.decoderStepUrl) {
       decoderInitSession = await createWhisperOrtSession(ort, resolved.decoderInitUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
-        preferredOutputLocation: decoderPreferredOutputLocation,
+        preferredOutputLocation: decoderInitPreferredOutputLocation,
         ...(resolved.externalData?.decoder_init?.[0]
           ? { externalDataUrl: resolved.externalData.decoder_init[0].dataUrl, externalDataPath: resolved.externalData.decoder_init[0].path }
           : {}),
@@ -703,7 +726,7 @@ export class WhisperOnnxExecutor {
       decoderStepSession = await createWhisperOrtSession(ort, resolved.decoderStepUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
-        preferredOutputLocation: decoderPreferredOutputLocation,
+        preferredOutputLocation: decoderStepPreferredOutputLocation,
         ...(resolved.externalData?.decoder_step?.[0]
           ? { externalDataUrl: resolved.externalData.decoder_step[0].dataUrl, externalDataPath: resolved.externalData.decoder_step[0].path }
           : {}),
@@ -1850,7 +1873,7 @@ export class WhisperOnnxExecutor {
       splitLoaded.experimentalGpuKvCache &&
       splitLoaded.decoderBackendForOrt === 'webgpu',
     );
-    const decoderKvCacheLocation = useExperimentalGpuKvCache ? 'gpu-buffer' : 'cpu';
+    const requestedDecoderKvCacheLocation = useExperimentalGpuKvCache ? 'gpu-buffer' : 'cpu';
     const recordDecoderTiming = (timings: DecoderSessionTiming): void => {
       decoderGpuTensorInputs += timings.gpuInputCount;
       decoderCpuTensorInputs += timings.cpuInputCount;
@@ -1990,6 +2013,10 @@ export class WhisperOnnxExecutor {
     const decoderStepP50Ms = percentile(decoderStepTimings, 50);
     const decoderStepP95Ms = percentile(decoderStepTimings, 95);
     const decoderStepMaxMs = decoderStepTimings.length > 0 ? Math.max(...decoderStepTimings) : undefined;
+    const decoderKvCacheLocation =
+      useExperimentalGpuKvCache && decoderGpuTensorOutputs > 0
+        ? 'gpu-buffer'
+        : requestedDecoderKvCacheLocation;
     const decodeElapsedMs = nowMs() - transcriptionStart;
     emitTranscriptionProgress(options, {
       stage: 'decode',
