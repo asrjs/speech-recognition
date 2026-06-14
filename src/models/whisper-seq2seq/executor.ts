@@ -63,6 +63,8 @@ interface LoadedExecutorState {
   readonly decoderInitSession?: OrtSessionLike;
   readonly decoderStepSession?: OrtSessionLike;
   readonly decoderAlignSession?: OrtSessionLike;
+  readonly decoderBackendForOrt?: string;
+  readonly experimentalGpuKvCache?: boolean;
 }
 
 interface DecoderStepResult {
@@ -168,7 +170,6 @@ function maybeCastEncoderHiddenStates(
 ): OrtTensorLike<Float32Array> {
   const metadata = (decoderInitSession as unknown as { inputMetadata?: Array<{ name?: string; type?: string; shape?: number[] }> }).inputMetadata;
   const encMeta = metadata?.find((m) => m.name === 'encoder_hidden_states');
-  console.log('[maybeCastEncoderHiddenStates] metadata:', metadata, 'encMeta:', encMeta);
   if (encMeta?.type === 'float16') {
     const dims = encoderHiddenStates.dims as number[];
     const size = dims.reduce((a, b) => a * b, 1);
@@ -257,6 +258,87 @@ interface DecoderSessionTiming {
   readonly inputMs: number;
   readonly runMs: number;
   readonly outputMs: number;
+  readonly gpuInputCount: number;
+  readonly cpuInputCount: number;
+  readonly gpuOutputCount: number;
+  readonly cpuOutputCount: number;
+  readonly gpuDownloadCount: number;
+}
+
+interface TensorLocationCounts {
+  readonly gpu: number;
+  readonly cpu: number;
+}
+
+function isOrtTensorLike(value: unknown): value is OrtTensorLike {
+  return Boolean(value) && typeof value === 'object' && Array.isArray((value as { dims?: unknown }).dims);
+}
+
+function isGpuBufferTensor(tensor: OrtTensorLike): boolean {
+  return tensor.location === 'gpu-buffer';
+}
+
+function countTensorLocations(values: Iterable<unknown>): TensorLocationCounts {
+  let gpu = 0;
+  let cpu = 0;
+  for (const value of values) {
+    if (!isOrtTensorLike(value)) continue;
+    if (isGpuBufferTensor(value)) {
+      gpu++;
+    } else {
+      cpu++;
+    }
+  }
+  return { gpu, cpu };
+}
+
+async function readOrtTensorData<TData extends ArrayBufferView>(
+  tensor: OrtTensorLike<TData>,
+  options: { readonly releaseGpu?: boolean } = {},
+): Promise<{ readonly data: TData; readonly downloaded: boolean }> {
+  if (isGpuBufferTensor(tensor)) {
+    if (!tensor.getData) {
+      throw new Error('ORT GPU tensor does not expose getData().');
+    }
+    return {
+      data: await tensor.getData(options.releaseGpu ?? false),
+      downloaded: true,
+    };
+  }
+  return { data: tensor.data, downloaded: false };
+}
+
+function disposeGpuTensor(tensor: OrtTensorLike | undefined): void {
+  if (tensor && isGpuBufferTensor(tensor)) {
+    tensor.dispose?.();
+  }
+}
+
+function disposeReplacedGpuKv(
+  previous: Record<string, OrtTensorLike>,
+  next: Record<string, OrtTensorLike>,
+): void {
+  for (const [key, tensor] of Object.entries(previous)) {
+    if (next[key] !== tensor) {
+      disposeGpuTensor(tensor);
+    }
+  }
+}
+
+function disposeGpuKv(kv: Record<string, OrtTensorLike>): void {
+  for (const tensor of Object.values(kv)) {
+    disposeGpuTensor(tensor);
+  }
+}
+
+function mapPresentKvToPastKv(
+  presentKv: Record<string, OrtTensorLike<Float32Array>>,
+): Record<string, OrtTensorLike<Float32Array>> {
+  const mapped: Record<string, OrtTensorLike<Float32Array>> = {};
+  for (const [name, tensor] of Object.entries(presentKv)) {
+    mapped[name.replace(/^present\./, 'past_key_values.')] = tensor;
+  }
+  return mapped;
 }
 
 export async function splitGraphDecodeLoop(params: {
@@ -604,11 +686,16 @@ export class WhisperOnnxExecutor {
     let decoderInitSession: OrtSessionLike | undefined;
     let decoderStepSession: OrtSessionLike | undefined;
     let decoderAlignSession: OrtSessionLike | undefined;
+    const decoderPreferredOutputLocation =
+      resolved.experimentalGpuKvCache && resolved.decoderBackendForOrt === 'webgpu'
+        ? 'gpu-buffer'
+        : undefined;
 
     if (isSplitGraph && resolved.decoderInitUrl && resolved.decoderStepUrl) {
       decoderInitSession = await createWhisperOrtSession(ort, resolved.decoderInitUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        preferredOutputLocation: decoderPreferredOutputLocation,
         ...(resolved.externalData?.decoder_init?.[0]
           ? { externalDataUrl: resolved.externalData.decoder_init[0].dataUrl, externalDataPath: resolved.externalData.decoder_init[0].path }
           : {}),
@@ -616,6 +703,7 @@ export class WhisperOnnxExecutor {
       decoderStepSession = await createWhisperOrtSession(ort, resolved.decoderStepUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        preferredOutputLocation: decoderPreferredOutputLocation,
         ...(resolved.externalData?.decoder_step?.[0]
           ? { externalDataUrl: resolved.externalData.decoder_step[0].dataUrl, externalDataPath: resolved.externalData.decoder_step[0].path }
           : {}),
@@ -627,6 +715,8 @@ export class WhisperOnnxExecutor {
       ort, tokenizer, encoderSession, decoderSession,
       generationConfig: genConfig, modelConfig, warnings,
       isSplitGraph, decoderInitSession, decoderStepSession, decoderAlignSession,
+      decoderBackendForOrt: resolved.decoderBackendForOrt,
+      experimentalGpuKvCache: resolved.experimentalGpuKvCache,
     };
   }
 
@@ -1086,12 +1176,15 @@ export class WhisperOnnxExecutor {
       input_ids: inputIdsTensor,
       encoder_hidden_states: encoderHiddenStates,
     };
+    const inputLocations = countTensorLocations(Object.values(feeds));
 
     const runStart = nowMs();
     const outputs = await loaded.decoderInitSession.run(feeds);
     const outputStart = nowMs();
+    const outputLocations = countTensorLocations(Object.values(outputs));
     const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+    const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
     const logitsDims = logitsTensor.dims;
     const vocabSize = logitsDims[logitsDims.length - 1] ?? 0;
 
@@ -1104,13 +1197,18 @@ export class WhisperOnnxExecutor {
 
     const outputEnd = nowMs();
     return {
-      logits: logitsTensor.data,
+      logits: logitsData.data,
       vocabSize,
       presentKv,
       timings: {
         inputMs: runStart - inputStart,
         runMs: outputStart - runStart,
         outputMs: outputEnd - outputStart,
+        gpuInputCount: inputLocations.gpu,
+        cpuInputCount: inputLocations.cpu,
+        gpuOutputCount: outputLocations.gpu,
+        cpuOutputCount: outputLocations.cpu,
+        gpuDownloadCount: logitsData.downloaded ? 1 : 0,
       },
     };
   }
@@ -1133,17 +1231,24 @@ export class WhisperOnnxExecutor {
     // CRITICAL: Clone tensor data for cross-session safety. ORT WASM cannot
     // reuse tensor objects from one session as inputs to another.
     for (const [name, tensor] of Object.entries(pastKv)) {
-      const isFloat16 = tensor.data.constructor.name === 'Float16Array';
-      const TypedArrayCtor = tensor.data.constructor as { new(buffer: ArrayBufferLike, byteOffset: number, length: number): ArrayBufferView };
-      const rawData = new TypedArrayCtor(tensor.data.buffer, tensor.data.byteOffset, tensor.data.length);
-      feeds[name] = new loaded.ort.Tensor(isFloat16 ? 'float16' : 'float32', rawData, tensor.dims);
+      if (isGpuBufferTensor(tensor)) {
+        feeds[name] = tensor;
+      } else {
+        const isFloat16 = tensor.type === 'float16' || tensor.data.constructor.name === 'Float16Array';
+        const TypedArrayCtor = tensor.data.constructor as { new(buffer: ArrayBufferLike, byteOffset: number, length: number): ArrayBufferView };
+        const rawData = new TypedArrayCtor(tensor.data.buffer, tensor.data.byteOffset, tensor.data.length);
+        feeds[name] = new loaded.ort.Tensor(isFloat16 ? 'float16' : 'float32', rawData, tensor.dims);
+      }
     }
+    const inputLocations = countTensorLocations(Object.values(feeds));
 
     const runStart = nowMs();
     const outputs = await loaded.decoderStepSession.run(feeds);
     const outputStart = nowMs();
+    const outputLocations = countTensorLocations(Object.values(outputs));
     const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+    const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
     const logitsDims = logitsTensor.dims;
     const vocabSize = logitsDims[logitsDims.length - 1] ?? 0;
 
@@ -1164,13 +1269,18 @@ export class WhisperOnnxExecutor {
 
     const outputEnd = nowMs();
     return {
-      logits: logitsTensor.data,
+      logits: logitsData.data,
       vocabSize,
       presentKv,
       timings: {
         inputMs: runStart - inputStart,
         runMs: outputStart - runStart,
         outputMs: outputEnd - outputStart,
+        gpuInputCount: inputLocations.gpu,
+        cpuInputCount: inputLocations.cpu,
+        gpuOutputCount: outputLocations.gpu,
+        cpuOutputCount: outputLocations.cpu,
+        gpuDownloadCount: logitsData.downloaded ? 1 : 0,
       },
     };
   }
@@ -1491,31 +1601,104 @@ export class WhisperOnnxExecutor {
         encoder_hidden_states: encoderHiddenStates,
       };
       const outputs = await loaded.decoderInitSession.run(feeds);
-      const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
-      const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
-      const vocabSize = logitsTensor.dims[logitsTensor.dims.length - 1] ?? 0;
+      try {
+        const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+        const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+        const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
+        const vocabSize = logitsTensor.dims[logitsTensor.dims.length - 1] ?? 0;
 
-      // Language tokens span 50259-50357 in Whisper vocabulary
-      const logits = logitsTensor.data;
-      let maxLogit = -Infinity;
-      let maxLangToken = -1;
-      for (let i = 50259; i <= 50357 && i < vocabSize; i++) {
-        if (logits[i]! > maxLogit) {
-          maxLogit = logits[i]!;
-          maxLangToken = i;
+        // Language tokens span 50259-50357 in Whisper vocabulary
+        const logits = logitsData.data;
+        let maxLogit = -Infinity;
+        let maxLangToken = -1;
+        for (let i = 50259; i <= 50357 && i < vocabSize; i++) {
+          if (logits[i]! > maxLogit) {
+            maxLogit = logits[i]!;
+            maxLangToken = i;
+          }
         }
-      }
 
-      // Decode the language token to get the code
-      if (maxLangToken > 0) {
-        const langToken = loaded.tokenizer.idsToTokens?.([maxLangToken])?.[0] ?? '';
-        const match = langToken.match(/<\|(\w+)\|>/);
-        if (match) return match[1]!;
+        // Decode the language token to get the code
+        if (maxLangToken > 0) {
+          const langToken = loaded.tokenizer.idsToTokens?.([maxLangToken])?.[0] ?? '';
+          const match = langToken.match(/<\|(\w+)\|>/);
+          if (match) return match[1]!;
+        }
+      } finally {
+        for (const output of Object.values(outputs)) {
+          disposeGpuTensor(output);
+        }
       }
 
       return 'auto';
     } catch {
       return 'auto';
+    }
+  }
+
+  private async runGreedyGpuKvDecode(params: {
+    readonly loaded: Required<Pick<LoadedExecutorState, 'decoderInitSession' | 'decoderStepSession' | 'ort'>> & LoadedExecutorState;
+    readonly encoderHiddenStates: OrtTensorLike<Float32Array>;
+    readonly promptTokens: readonly number[];
+    readonly eosTokenId: number;
+    readonly maxNewTokens: number;
+    readonly processLogits?: (logits: Float32Array, generatedTokens: readonly number[], beginIndex: number) => void;
+    readonly onTokenLogits?: WhisperSeq2SeqTranscriptionOptions['onTokenLogits'];
+    readonly onInitTiming?: (timings: DecoderSessionTiming, elapsedMs: number) => void;
+    readonly onStepTiming?: (timings: DecoderSessionTiming, elapsedMs: number) => void;
+  }): Promise<SplitGraphDecodeResult> {
+    const {
+      loaded,
+      encoderHiddenStates,
+      promptTokens,
+      eosTokenId,
+      maxNewTokens,
+      processLogits,
+      onTokenLogits,
+      onInitTiming,
+      onStepTiming,
+    } = params;
+
+    const initStart = nowMs();
+    const init = await this.runDecoderInit(loaded, encoderHiddenStates, promptTokens);
+    onInitTiming?.(init.timings, nowMs() - initStart);
+
+    const vocabSize = init.vocabSize;
+    const firstLogits = init.logits.subarray(init.logits.length - vocabSize);
+    processLogits?.(firstLogits, promptTokens, promptTokens.length);
+
+    const firstTokenId = argmax(firstLogits);
+    const tokens: number[] = [firstTokenId];
+    onTokenLogits?.(firstTokenId, firstLogits, { tokens, beginIndex: promptTokens.length });
+
+    let pastKv = mapPresentKvToPastKv(init.presentKv);
+    try {
+      if (firstTokenId === eosTokenId) {
+        return { tokens };
+      }
+
+      for (let stepIndex = 1; stepIndex < maxNewTokens; stepIndex++) {
+        const stepStart = nowMs();
+        const step = await this.runDecoderStepSplit(loaded, tokens[tokens.length - 1]!, pastKv);
+        onStepTiming?.(step.timings, nowMs() - stepStart);
+
+        const previousKv = pastKv;
+        pastKv = step.presentKv;
+        disposeReplacedGpuKv(previousKv, pastKv);
+
+        processLogits?.(step.logits, [...promptTokens, ...tokens], promptTokens.length);
+        const nextTokenId = argmax(step.logits);
+        tokens.push(nextTokenId);
+        onTokenLogits?.(nextTokenId, step.logits, { tokens, beginIndex: promptTokens.length });
+
+        if (nextTokenId === eosTokenId) {
+          break;
+        }
+      }
+
+      return { tokens };
+    } finally {
+      disposeGpuKv(pastKv);
     }
   }
 
@@ -1654,96 +1837,154 @@ export class WhisperOnnxExecutor {
     let decoderStepOutputMs = 0;
     let decoderLogitProcessMs = 0;
     let decoderStepCount = 0;
+    let decoderGpuTensorInputs = 0;
+    let decoderCpuTensorInputs = 0;
+    let decoderGpuTensorOutputs = 0;
+    let decoderCpuTensorOutputs = 0;
+    let decoderGpuTensorDownloads = 0;
     const decoderStepTimings: number[] = [];
+    const requestedNumBeams = Math.max(1, Math.floor(options.numBeams ?? 1));
+    const requestedBestOf = Math.max(1, Math.floor(options.bestOf ?? 1));
+    const requestedTemperature = options.temperature ?? 0;
+    const useExperimentalGpuKvCache = Boolean(
+      splitLoaded.experimentalGpuKvCache &&
+      splitLoaded.decoderBackendForOrt === 'webgpu',
+    );
+    const decoderKvCacheLocation = useExperimentalGpuKvCache ? 'gpu-buffer' : 'cpu';
+    const recordDecoderTiming = (timings: DecoderSessionTiming): void => {
+      decoderGpuTensorInputs += timings.gpuInputCount;
+      decoderCpuTensorInputs += timings.cpuInputCount;
+      decoderGpuTensorOutputs += timings.gpuOutputCount;
+      decoderCpuTensorOutputs += timings.cpuOutputCount;
+      decoderGpuTensorDownloads += timings.gpuDownloadCount;
+    };
+
+    if (
+      useExperimentalGpuKvCache &&
+      (requestedNumBeams > 1 || requestedBestOf > 1 || requestedTemperature > 0)
+    ) {
+      throw new Error(
+        'experimentalGpuKvCache currently supports only greedy argmax decoding; disable it for beam search, best_of, or temperature sampling.',
+      );
+    }
 
     const decoderStart = nowMs();
-    const result = await splitGraphDecodeLoop({
-      promptTokens,
-      encoderHiddenStates: encoderHiddenStates.data,
-      eosTokenId: eosId,
-      maxNewTokens,
-      modelConfig: loaded.modelConfig,
-      processLogits: (logits, genTokens, beginIdx) => {
-        const logitsStart = nowMs();
-        splitTimestampProcessor.process(logits, genTokens, beginIdx);
-        decoderLogitProcessMs += nowMs() - logitsStart;
-      },
-      onTokenLogits: options.onTokenLogits,
-      numBeams: options.numBeams ?? 1,
-      lengthPenalty: options.lengthPenalty ?? 0,
-      patience: options.patience ?? 1,
-      temperature: options.temperature ?? 0,
-      bestOf: options.bestOf,
-      runInit: async (prompt, _encHs, _dims) => {
-        const decoderInitStart = nowMs();
-        const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
-        const decoderInitTotal = nowMs() - decoderInitStart;
-        decoderInitMs += decoderInitTotal;
-        decoderInitInputMs += init.timings.inputMs;
-        decoderInitRunMs += init.timings.runMs;
-        decoderInitOutputMs += init.timings.outputMs;
-        // Store tensor dims for runStep reconstruction (init→step tensor bridging).
-        // Store both present.* (init output) and past_key_values.* (step output) formats.
-        kvDims = {};
-        for (const [k, v] of Object.entries(init.presentKv)) {
-          kvDims[k] = v.dims;                                         // present.0.decoder.key
-          kvDims[k.replace(/^present\./, 'past_key_values.')] = v.dims; // past_key_values.0.decoder.key
-        }
-        // Detect KV dtype from init output (fp16 models produce Float16Array data)
-        const firstKv = Object.values(init.presentKv)[0];
-        if (firstKv) {
-          kvDtype = firstKv.data.constructor.name === 'Float16Array' ? 'float16' : 'float32';
-        }
-        return {
-          logits: init.logits,
-          vocabSize: init.vocabSize,
-          presentKv: Object.fromEntries(
-            Object.entries(init.presentKv).map(([k, v]) => [k, v.data]),
-          ),
-        };
-      },
-      runStep: async (tokenId, pastKv) => {
-        const decoderStepStart = nowMs();
-        // Reconstruct tensors from raw data + stored dims.
-        // Init outputs present.* prefix; step model expects past_key_values.* prefix.
-        // Convert prefix and clone tensor data for cross-session safety.
-        const feedBuildStart = nowMs();
-        const feeds: Record<string, OrtTensorLike<Float32Array>> = {};
-        for (const [name, data] of Object.entries(pastKv)) {
-          const stepName = name.replace(/^present\./, 'past_key_values.');
-          // Try multiple key formats for dims lookup (init uses present.*, step uses past_key_values.*)
-          const dims = kvDims[name] ?? kvDims[stepName] ?? kvDims[name.replace(/^past_key_values\./, 'present.')];
-          if (dims) {
-            feeds[stepName] = new splitLoaded.ort.Tensor(kvDtype, data, dims) as unknown as OrtTensorLike<Float32Array>;
-          } else {
-            const numHeads = splitLoaded.modelConfig.decoderAttentionHeads;
-            const headDim = splitLoaded.modelConfig.headDim;
-            const seqLen = Math.round(data.length / (numHeads * headDim));
-            feeds[stepName] = new splitLoaded.ort.Tensor(kvDtype, data, [1, numHeads, seqLen, headDim]) as unknown as OrtTensorLike<Float32Array>;
-          }
-        }
-        decoderStepFeedBuildMs += nowMs() - feedBuildStart;
-        const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds);
-        const decoderStepTotal = nowMs() - decoderStepStart;
-        decoderStepMs += decoderStepTotal;
-        decoderStepTensorCloneMs += step.timings.inputMs;
-        decoderStepRunMs += step.timings.runMs;
-        decoderStepOutputMs += step.timings.outputMs;
-        decoderStepCount += 1;
-        decoderStepTimings.push(decoderStepTotal);
-        // Update stored dims from step output
-        for (const [k, v] of Object.entries(step.presentKv)) {
-          kvDims[k] = v.dims;
-        }
-        return {
-          logits: step.logits,
-          vocabSize: step.vocabSize,
-          presentKv: Object.fromEntries(
-            Object.entries(step.presentKv).map(([k, v]) => [k, v.data]),
-          ),
-        };
-      },
-    });
+    const processSplitGraphLogits = (logits: Float32Array, genTokens: readonly number[], beginIdx: number): void => {
+      const logitsStart = nowMs();
+      splitTimestampProcessor.process(logits, genTokens, beginIdx);
+      decoderLogitProcessMs += nowMs() - logitsStart;
+    };
+    const result = useExperimentalGpuKvCache
+      ? await this.runGreedyGpuKvDecode({
+          loaded: splitLoaded,
+          encoderHiddenStates,
+          promptTokens,
+          eosTokenId: eosId,
+          maxNewTokens,
+          processLogits: processSplitGraphLogits,
+          onTokenLogits: options.onTokenLogits,
+          onInitTiming: (timings, elapsedMs) => {
+            decoderInitMs += elapsedMs;
+            decoderInitInputMs += timings.inputMs;
+            decoderInitRunMs += timings.runMs;
+            decoderInitOutputMs += timings.outputMs;
+            recordDecoderTiming(timings);
+          },
+          onStepTiming: (timings, elapsedMs) => {
+            decoderStepMs += elapsedMs;
+            decoderStepTensorCloneMs += timings.inputMs;
+            decoderStepRunMs += timings.runMs;
+            decoderStepOutputMs += timings.outputMs;
+            decoderStepCount += 1;
+            decoderStepTimings.push(elapsedMs);
+            recordDecoderTiming(timings);
+          },
+        })
+      : await splitGraphDecodeLoop({
+          promptTokens,
+          encoderHiddenStates: encoderHiddenStates.data,
+          eosTokenId: eosId,
+          maxNewTokens,
+          modelConfig: loaded.modelConfig,
+          processLogits: processSplitGraphLogits,
+          onTokenLogits: options.onTokenLogits,
+          numBeams: requestedNumBeams,
+          lengthPenalty: options.lengthPenalty ?? 0,
+          patience: options.patience ?? 1,
+          temperature: requestedTemperature,
+          bestOf: requestedBestOf,
+          runInit: async (prompt, _encHs, _dims) => {
+            const decoderInitStart = nowMs();
+            const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
+            const decoderInitTotal = nowMs() - decoderInitStart;
+            decoderInitMs += decoderInitTotal;
+            decoderInitInputMs += init.timings.inputMs;
+            decoderInitRunMs += init.timings.runMs;
+            decoderInitOutputMs += init.timings.outputMs;
+            recordDecoderTiming(init.timings);
+            // Store tensor dims for runStep reconstruction (init→step tensor bridging).
+            // Store both present.* (init output) and past_key_values.* (step output) formats.
+            kvDims = {};
+            for (const [k, v] of Object.entries(init.presentKv)) {
+              kvDims[k] = v.dims;                                         // present.0.decoder.key
+              kvDims[k.replace(/^present\./, 'past_key_values.')] = v.dims; // past_key_values.0.decoder.key
+            }
+            // Detect KV dtype from init output (fp16 models may expose Float16Array or Uint16Array data)
+            const firstKv = Object.values(init.presentKv)[0];
+            if (firstKv) {
+              kvDtype = firstKv.type === 'float16' || firstKv.data.constructor.name === 'Float16Array' ? 'float16' : 'float32';
+            }
+            return {
+              logits: init.logits,
+              vocabSize: init.vocabSize,
+              presentKv: Object.fromEntries(
+                Object.entries(init.presentKv).map(([k, v]) => [k, v.data]),
+              ),
+            };
+          },
+          runStep: async (tokenId, pastKv) => {
+            const decoderStepStart = nowMs();
+            // Reconstruct tensors from raw data + stored dims.
+            // Init outputs present.* prefix; step model expects past_key_values.* prefix.
+            // Convert prefix and clone tensor data for cross-session safety.
+            const feedBuildStart = nowMs();
+            const feeds: Record<string, OrtTensorLike<Float32Array>> = {};
+            for (const [name, data] of Object.entries(pastKv)) {
+              const stepName = name.replace(/^present\./, 'past_key_values.');
+              // Try multiple key formats for dims lookup (init uses present.*, step uses past_key_values.*)
+              const dims = kvDims[name] ?? kvDims[stepName] ?? kvDims[name.replace(/^past_key_values\./, 'present.')];
+              if (dims) {
+                feeds[stepName] = new splitLoaded.ort.Tensor(kvDtype, data, dims) as unknown as OrtTensorLike<Float32Array>;
+              } else {
+                const numHeads = splitLoaded.modelConfig.decoderAttentionHeads;
+                const headDim = splitLoaded.modelConfig.headDim;
+                const seqLen = Math.round(data.length / (numHeads * headDim));
+                feeds[stepName] = new splitLoaded.ort.Tensor(kvDtype, data, [1, numHeads, seqLen, headDim]) as unknown as OrtTensorLike<Float32Array>;
+              }
+            }
+            decoderStepFeedBuildMs += nowMs() - feedBuildStart;
+            const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds);
+            const decoderStepTotal = nowMs() - decoderStepStart;
+            decoderStepMs += decoderStepTotal;
+            decoderStepTensorCloneMs += step.timings.inputMs;
+            decoderStepRunMs += step.timings.runMs;
+            decoderStepOutputMs += step.timings.outputMs;
+            decoderStepCount += 1;
+            decoderStepTimings.push(decoderStepTotal);
+            recordDecoderTiming(step.timings);
+            // Update stored dims from step output
+            for (const [k, v] of Object.entries(step.presentKv)) {
+              kvDims[k] = v.dims;
+            }
+            return {
+              logits: step.logits,
+              vocabSize: step.vocabSize,
+              presentKv: Object.fromEntries(
+                Object.entries(step.presentKv).map(([k, v]) => [k, v.data]),
+              ),
+            };
+          },
+        });
     const decodeMs = nowMs() - decoderStart;
     const decoderStepAvgMs = decoderStepCount > 0 ? decoderStepMs / decoderStepCount : undefined;
     const decoderStepP50Ms = percentile(decoderStepTimings, 50);
@@ -1779,6 +2020,12 @@ export class WhisperOnnxExecutor {
         decoderStepMaxMs: decoderStepMaxMs !== undefined ? roundMetric(decoderStepMaxMs) : undefined,
         decoderLogitProcessMs: roundMetric(decoderLogitProcessMs),
         decoderStepCount,
+        decoderGpuTensorInputs,
+        decoderCpuTensorInputs,
+        decoderGpuTensorOutputs,
+        decoderCpuTensorOutputs,
+        decoderGpuTensorDownloads,
+        decoderKvCacheLocation,
         encoderFrameCount,
         decodeIterations: result.tokens.length,
       },
@@ -1839,6 +2086,12 @@ export class WhisperOnnxExecutor {
       decoderStepMaxMs: decoderStepMaxMs !== undefined ? roundMetric(decoderStepMaxMs) : undefined,
       decoderLogitProcessMs: roundMetric(decoderLogitProcessMs),
       decoderStepCount,
+      decoderGpuTensorInputs,
+      decoderCpuTensorInputs,
+      decoderGpuTensorOutputs,
+      decoderCpuTensorOutputs,
+      decoderGpuTensorDownloads,
+      decoderKvCacheLocation,
       totalMs,
       wallMs: totalMs,
       audioDurationSec: roundMetric(audio.durationSeconds, 4),

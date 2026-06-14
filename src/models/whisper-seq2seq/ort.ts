@@ -31,12 +31,21 @@ interface OrtEnv {
 export interface OrtTensorLike<TData extends ArrayBufferView = ArrayBufferView> {
   readonly data: TData;
   readonly dims: readonly number[];
+  readonly type?: string;
+  readonly location?: string;
+  readonly gpuBuffer?: unknown;
+  getData?(releaseData?: boolean): Promise<TData>;
   dispose?(): void;
 }
 
 export interface OrtSessionLike {
   readonly inputNames?: readonly string[];
-  run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>>;
+  readonly outputNames?: readonly string[];
+  run(
+    feeds: Record<string, unknown>,
+    fetchesOrOptions?: unknown,
+    options?: Record<string, unknown>,
+  ): Promise<Record<string, OrtTensorLike>>;
 }
 
 export interface OrtModuleLike {
@@ -64,6 +73,7 @@ export interface ResolvedWhisperArtifacts {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  readonly experimentalGpuKvCache?: boolean;
   readonly isSplitGraph: boolean;
   readonly decoderInitUrl?: string;
   readonly decoderStepUrl?: string;
@@ -162,6 +172,7 @@ function resolveHuggingFaceArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    experimentalGpuKvCache: source.experimentalGpuKvCache,
     isSplitGraph: false,
   };
 }
@@ -183,6 +194,7 @@ function resolveDirectArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    experimentalGpuKvCache: source.experimentalGpuKvCache,
     isSplitGraph: false,
   };
 }
@@ -243,6 +255,7 @@ function resolveSplitGraphArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    experimentalGpuKvCache: source.experimentalGpuKvCache,
     isSplitGraph: true,
     decoderInitUrl,
     decoderStepUrl,
@@ -328,6 +341,7 @@ export async function createWhisperOrtSession(
     readonly enableProfiling?: boolean;
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
+    readonly preferredOutputLocation?: 'cpu' | 'gpu-buffer';
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
@@ -350,6 +364,10 @@ export async function createWhisperOrtSession(
     enableMemPattern: true,
     enableProfiling: options.enableProfiling ?? false,
   };
+
+  if (options.preferredOutputLocation) {
+    sessionOptions.preferredOutputLocation = options.preferredOutputLocation;
+  }
 
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');

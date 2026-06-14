@@ -179,6 +179,26 @@ decoder_step expects:  past_key_values.{i}.decoder.key, past_key_values.{i}.enco
 
 **Must remap**: `key.replace(/^present\./, 'past_key_values.')`
 
+### Experimental GPU-buffer KV path
+
+For `fp16io-fp16-webgpu`, the faster path is not the CPU-style bridge shown
+above. With decoder sessions created using:
+
+```js
+preferredOutputLocation: 'gpu-buffer'
+```
+
+the KV tensors should stay as ORT GPU-buffer tensors. Remap their names from
+`present.*` to `past_key_values.*`, feed them directly into `decoder_step`, and
+avoid `.data` access for KV. Download logits only with `getData(true)`, then
+dispose replaced GPU KV tensors to avoid growth across token steps.
+
+Measured on the 29.9s JFK fixture with 50 generated tokens:
+
+- CPU KV bridge: `decodeMs=4365.735`, `decoderStepP50Ms=84.395`
+- GPU KV bridge: `decodeMs=608.53`, `decoderStepP50Ms=10.555`
+- Token IDs matched exactly.
+
 ### Encoder KV Preservation
 
 `decoder_step` outputs ONLY self-attention (decoder-side) KV. Encoder cross-attention KV

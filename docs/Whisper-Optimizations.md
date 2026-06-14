@@ -399,3 +399,55 @@ comparisons:
 - Any WebGPU memory leak or unreleased GPU tensor growth stops the experiment.
 - If `decoderStepRunMs` does not improve, do not keep complexity just because it
   looks closer to CTranslate2.
+
+### Experiment 2: opt-in GPU KV bridge
+
+Implemented an opt-in splitgraph source flag:
+
+```ts
+experimentalGpuKvCache: true
+```
+
+When this is enabled and the resolved decoder backend is WebGPU, decoder init
+and decoder step sessions use:
+
+```ts
+preferredOutputLocation: 'gpu-buffer'
+```
+
+The greedy decode path keeps `present.*` / `past_key_values.*` KV tensors as ORT
+GPU-buffer tensors and feeds them directly into the next `decoder_step` call.
+Only logits are downloaded with `getData(true)`, and GPU KV tensors are disposed
+as they are replaced. This path is intentionally limited to greedy argmax
+decoding. Beam search, `best_of`, and temperature sampling still use the stable
+CPU-KV bridge.
+
+New transcript metrics expose whether the path actually used GPU tensors:
+
+- `decoderGpuTensorInputs`
+- `decoderCpuTensorInputs`
+- `decoderGpuTensorOutputs`
+- `decoderCpuTensorOutputs`
+- `decoderGpuTensorDownloads`
+- `decoderKvCacheLocation`
+
+Chrome WebGPU smoke on the 29.9s fixture, `fp16io-fp16-webgpu`,
+`maxNewTokens=50`:
+
+| Mode | Decode | Step run | Step p50 / p95 | RTFx | Tensor path |
+| ---- | ------ | -------- | -------------- | ---- | ----------- |
+| CPU KV bridge | `4365.735ms` | `4169.225ms` | `84.395ms` / `93.865ms` | `4.6793` | `cpu` |
+| GPU KV bridge | `608.53ms` | `389.155ms` | `10.555ms` / `15.285ms` | `10.7035` | `gpu-buffer` |
+
+Parity result:
+
+- Same 50 token IDs.
+- Same transcript prefix.
+- CPU-KV run: `0` GPU inputs, `835` CPU inputs, `458` CPU outputs.
+- GPU-KV run: `784` GPU inputs, `51` CPU inputs, `458` GPU outputs, `50`
+  GPU downloads.
+
+Conclusion: this is a real speedup and should be kept behind the experimental
+flag while we gather more fixtures. The next clear optimization is not another
+KV bridge change; it is to avoid downloading full logits once per token by
+moving logit processing + argmax/top-k to GPU.
