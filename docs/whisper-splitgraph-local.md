@@ -22,29 +22,27 @@ WHISPER_MODEL_DIR=/tmp/whisper-tiny-4graph \
 import {
   createWhisperSeq2SeqModelFamily,
   loadSplitGraphLocalModel,
-} from "@asrjs/speech-recognition/models/whisper-seq2seq";
+} from '@asrjs/speech-recognition/models/whisper-seq2seq';
 
 // Read manifest.json + build artifact source from local directory
-const { source, config, modelId } = loadSplitGraphLocalModel(
-  "/path/to/exported/whisper-tiny"
-);
+const { source, config, modelId } = loadSplitGraphLocalModel('/path/to/exported/whisper-tiny');
 
 const factory = createWhisperSeq2SeqModelFamily();
 const model = await factory.createModel(
   { modelId, options: { source, config } },
-  { backend: { id: "wasm" }, hooks: {} }
+  { backend: { id: 'wasm' }, hooks: {} },
 );
 const session = await model.createSession();
 
 // Text only
-const result = await session.transcribe(audio, { language: "en" });
+const result = await session.transcribe(audio, { language: 'en' });
 console.log(result.utteranceText);
 
 // With word timestamps (requires decoder_align.onnx)
 const words = await session.transcribe(audio, {
-  language: "en",
-  detail: "words",
-  returnTimestamps: "word",
+  language: 'en',
+  detail: 'words',
+  returnTimestamps: 'word',
 });
 for (const w of words.words ?? []) {
   console.log(`[${w.startTime.toFixed(2)}s] ${w.text}`);
@@ -58,16 +56,16 @@ await model.dispose();
 
 Every exported directory must contain:
 
-| File | Purpose |
-|------|---------|
-| `manifest.json` | Model metadata (format, dimensions, alignment heads, special tokens) |
-| `encoder_model.onnx` | Mel spectrogram → encoder hidden states |
-| `decoder_init.onnx` | Prompt tokens + hidden states → first logits + full KV cache |
-| `decoder_step.onnx` | Single token + KV cache → next logits + updated KV cache |
-| `decoder_align.onnx` | All tokens + hidden states → cross-attention alignment matrix |
-| `tokenizer.json` | BPE tokenizer vocabulary and merges |
-| `generation_config.json` | Alignment heads, suppression rules |
-| `config.json` | Model architecture (optional; manifest provides dimensions) |
+| File                     | Purpose                                                              |
+| ------------------------ | -------------------------------------------------------------------- |
+| `manifest.json`          | Model metadata (format, dimensions, alignment heads, special tokens) |
+| `encoder_model.onnx`     | Mel spectrogram → encoder hidden states                              |
+| `decoder_init.onnx`      | Prompt tokens + hidden states → first logits + full KV cache         |
+| `decoder_step.onnx`      | Single token + KV cache → next logits + updated KV cache             |
+| `decoder_align.onnx`     | All tokens + hidden states → cross-attention alignment matrix        |
+| `tokenizer.json`         | BPE tokenizer vocabulary and merges                                  |
+| `generation_config.json` | Alignment heads, suppression rules                                   |
+| `config.json`            | Model architecture (optional; manifest provides dimensions)          |
 
 ## Manifest format
 
@@ -125,14 +123,14 @@ The `manifest.json` uses format `"whisper-browser-self-export-v1"` and MUST incl
 ```typescript
 // Browser: construct URLs from your static asset server
 const source: WhisperArtifactSource = {
-  kind: "splitgraph",
+  kind: 'splitgraph',
   artifacts: {
-    encoderUrl:     "https://example.com/models/tiny/encoder_model.onnx",
-    decoderInitUrl: "https://example.com/models/tiny/decoder_init.onnx",
-    decoderStepUrl: "https://example.com/models/tiny/decoder_step.onnx",
-    decoderAlignUrl:"https://example.com/models/tiny/decoder_align.onnx",
-    tokenizerUrl:   "https://example.com/models/tiny/tokenizer.json",
-    manifestUrl:    "https://example.com/models/tiny/manifest.json",
+    encoderUrl: 'https://example.com/models/tiny/encoder_model.onnx',
+    decoderInitUrl: 'https://example.com/models/tiny/decoder_init.onnx',
+    decoderStepUrl: 'https://example.com/models/tiny/decoder_step.onnx',
+    decoderAlignUrl: 'https://example.com/models/tiny/decoder_align.onnx',
+    tokenizerUrl: 'https://example.com/models/tiny/tokenizer.json',
+    manifestUrl: 'https://example.com/models/tiny/manifest.json',
   },
 };
 ```
@@ -141,12 +139,52 @@ The `loadSplitGraphLocalModel()` helper uses `fs` and `file://` — it is intend
 **Node.js development only**. Browser apps should construct URLs manually or use a
 custom URL-based helper.
 
+### Built-in 4-graph WebGPU preset
+
+The browser/WebGPU validation path uses the custom 4-graph repository:
+
+```text
+ysdede/whisper-large-v3-turbo-onnx-4graph
+```
+
+The default WebGPU-friendly splitgraph pairing is:
+
+| Component     | Variant                          |
+| ------------- | -------------------------------- |
+| Encoder       | `fp16_iofp32/encoder_model.onnx` |
+| Decoder init  | `fp16/decoder_init.onnx`         |
+| Decoder step  | `fp16/decoder_step.onnx`         |
+| Decoder align | `fp16/decoder_align.onnx`        |
+
+If browser logs mention `onnx-community/whisper-large-v3-turbo`, the app is not
+exercising this custom 4-graph preset.
+
+When serving very large local ONNX files from the same origin, ORT can consume
+the `/models/...` URLs directly. Avoid forcing those local files through
+Blob/IndexedDB materialization unless you specifically need cache semantics.
+
+### Whisper mel performance
+
+`WhisperMelProcessor` preserves OpenAI Whisper's `n_fft=400` STFT. It should not
+reuse the 512-point NeMo/Parakeet mel processor directly because that changes
+the frequency grid. The optimized Whisper implementation uses cached Bluestein
+FFT work buffers for the exact 400-point transform.
+
+Benchmark:
+
+```bash
+npm run benchmark:whisper-mel
+```
+
+Expected ballpark on the 2026-06-14 Windows test host: about `200ms` for 30s of
+128-bin Whisper mel features.
+
 ## Output modes
 
-| Mode | Option | Returns |
-|------|--------|---------|
-| Text only | `{}` (default) | `utteranceText` string |
-| Segments | `{ detail: "segments" }` | `segments[{ startTime, endTime, text, confidence }]` |
+| Mode            | Option                                          | Returns                                                                           |
+| --------------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| Text only       | `{}` (default)                                  | `utteranceText` string                                                            |
+| Segments        | `{ detail: "segments" }`                        | `segments[{ startTime, endTime, text, confidence }]`                              |
 | Word timestamps | `{ detail: "words", returnTimestamps: "word" }` | `words[{ startTime, endTime, text, confidence }]` (requires `decoder_align.onnx`) |
 
 Word timestamps use cross-attention DTW alignment via `decoder_align.onnx`.
@@ -157,10 +195,10 @@ timestamp-token interpolation (less accurate).
 
 These optional environment variables enable fixture-based tests:
 
-| Var | Test | What it verifies |
-|-----|------|-----------------|
-| `WHISPER_SPLITGRAPH_FIXTURE_DIR` | `tests/whisper-splitgraph-smoke.test.ts` | Encoder shape, init→step loop, alignment shape, row sums |
-| `WHISPER_REFERENCE_JSON` | `tests/whisper-reproducibility-harness.test.ts` | Token match vs PyTorch/ONNX Python reference |
+| Var                              | Test                                            | What it verifies                                         |
+| -------------------------------- | ----------------------------------------------- | -------------------------------------------------------- |
+| `WHISPER_SPLITGRAPH_FIXTURE_DIR` | `tests/whisper-splitgraph-smoke.test.ts`        | Encoder shape, init→step loop, alignment shape, row sums |
+| `WHISPER_REFERENCE_JSON`         | `tests/whisper-reproducibility-harness.test.ts` | Token match vs PyTorch/ONNX Python reference             |
 
 ```bash
 # Export model + generate reference

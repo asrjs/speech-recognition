@@ -16,14 +16,34 @@
 
 ## Zaman Çizelgesi
 
+### 14 Haziran — Full fp16 WebGPU + mel perf ✅
+
+Windows Chrome + WebGPU'da custom repo doğrulandı:
+
+- Model source: `ysdede/whisper-large-v3-turbo-onnx-4graph`
+- Preset: `fp16io-fp16-webgpu`
+- Encoder: `fp16_iofp32`
+- Decoder: `fp16`
+- 29.9s JFK fixture, 50 token cap, doğru transcript + EOS
+- Stage metrics: preprocess `234.63ms`, encode `1732.64ms`, decode `3837.28ms`, total `5812.04ms`, RTFx `5.1452`
+
+Önemli: Loglarda `onnx-community/whisper-large-v3-turbo` görünürse yanlış repo
+yükleniyor demektir. Demo/library preset custom 4-graph kaynağına resolve etmeli.
+
+Whisper mel tarafı da optimize edildi: `n_fft=400` korunarak direct DFT yerine
+cached Bluestein FFT kullanılıyor. 30s mel benchmark yaklaşık `9185ms` →
+`204ms`.
+
 ### 30 Mayıs — Entry 023: WebGPU Pipeline İLK ÇALIŞMA ✅
 
 ~150 tool call sonunda **ilk başarılı WebGPU Whisper transkripti**:
+
 - **fp16io encoder** (fp16 internal + fp32 I/O) + **fp32 decoder**
 - JFK transkripti: "And so, my fellow Americans, ask not what your country can do for you..."
 - 25.57s total (encoder 2.13s, decoder 3.32s WebGPU'da)
 
 **Kök neden 6 policy bug (precision DEĞİL):**
+
 1. Yanlış task token (translate → transcribe)
 2. Yanlış no_timestamps token ID (50363 → 50364)
 3. `suppress_tokens` eksik (~80 token)
@@ -37,24 +57,24 @@
 
 #### ✅ Node ORT Verification (Steps 1-5, HEPSİ PASS)
 
-| Test | Sonuç | Eşik |
-|------|-------|------|
-| Step 1: Mel | MSE=0 | ✅ |
-| Step 2: Encoder cosine | 0.999987 | ≥0.999 ✅ |
-| Step 2: Encoder MSE | 4.9368e-6 | <0.01 ✅ |
-| Step 4: Transcript | IDENTICAL | birebir ✅ |
-| Step 5: Token-by-token | 27/27 match | 100% ✅ |
+| Test                   | Sonuç       | Eşik       |
+| ---------------------- | ----------- | ---------- |
+| Step 1: Mel            | MSE=0       | ✅         |
+| Step 2: Encoder cosine | 0.999987    | ≥0.999 ✅  |
+| Step 2: Encoder MSE    | 4.9368e-6   | <0.01 ✅   |
+| Step 4: Transcript     | IDENTICAL   | birebir ✅ |
+| Step 5: Token-by-token | 27/27 match | 100% ✅    |
 
 **Sonuç:** fp16io encoder Node ORT'de fp32 ile bit-identical. Quality tuning GEREKSİZ.
 
 #### ❌ Browser Testing — 4 Bloker
 
-| # | Sorun | Detay |
-|---|-------|-------|
-| 1 | **fp32 encoder 2.4GB** | Browser fetch limit ~1.5-2GB → `Failed to fetch` |
-| 2 | **WASM fp16 desteksiz** | fp16io WASM'de çöp çıktı ("a, a,") |
-| 3 | **WASM heap limit** | ~1.5GB → encoder+decoder birlikte yüklenemiyor |
-| 4 | **Headless browser WebGPU yok** | GPU adapter yok (WSL2) → **Windows Chrome gerek** |
+| #   | Sorun                           | Detay                                             |
+| --- | ------------------------------- | ------------------------------------------------- |
+| 1   | **fp32 encoder 2.4GB**          | Browser fetch limit ~1.5-2GB → `Failed to fetch`  |
+| 2   | **WASM fp16 desteksiz**         | fp16io WASM'de çöp çıktı ("a, a,")                |
+| 3   | **WASM heap limit**             | ~1.5GB → encoder+decoder birlikte yüklenemiyor    |
+| 4   | **Headless browser WebGPU yok** | GPU adapter yok (WSL2) → **Windows Chrome gerek** |
 
 ### 13 Haziran — IO + Cache Rework (bugün pushlanan)
 
@@ -68,6 +88,7 @@ a73ca0e chore: lint fixes — const declarations, wav2vec2 builtin imports
 ```
 
 **io/cache.ts** ve **io/handles.ts** rework — IndexedDB cache altyapısı güçlendirildi:
+
 - `IndexedDbAssetCache` → blob storage eklendi
 - `resolveAssetHandle` → HF URL builder + BlobAssetHandle
 - Wav2Vec2 model ailesi registration + external data desteği
@@ -77,12 +98,14 @@ a73ca0e chore: lint fixes — const declarations, wav2vec2 builtin imports
 **Bev (Windows host, RTX 5060 Ti + gerçek Chrome) WebGPU testlerini yapıyordu.** Flexo (WSL2) headless browser'da WebGPU adapter alamıyor.
 
 Test sayfası: `/mnt/n/github/asrjs/webgpu-agent-test/index.html`
+
 - Tüm variant'lar: fp32, fp16, fp16io, q8, mixed
 - Tüm backend'ler: WebGPU, WASM
 - Cross-validation mode
 - Library-synced (kendi decode loop'u YOK)
 
 **Bev'in yapacağı testler:**
+
 ```bash
 cd /mnt/n/github/asrjs/webgpu-agent-test
 npx serve -l 8765
@@ -92,13 +115,13 @@ npx serve -l 8765
 
 ## Model Boyutları ve Hangi Backend'de Çalışır
 
-| Variant | Encoder | Decoder | WASM | WebGPU | Not |
-|---------|---------|---------|------|--------|-----|
-| fp32 | 2.4GB | 761MB | ❌ heap | ❌ fetch | Çok büyük |
-| fp16 | 1.2GB | 381MB | ❌ fp16 yok | ✅ | Küçük ama WASM'e uymaz |
-| **fp16io** | 1.2GB | 761MB | ❌ fp16 yok | ✅ | **Ana hedef** |
-| q8 | 616MB inline | 643MB inline | ❌ bad_alloc | ? | En küçük ama decoder büyük |
-| mixed | 616MB inline | 582MB | ? | ? | Test edilmedi |
+| Variant    | Encoder      | Decoder      | WASM         | WebGPU   | Not                        |
+| ---------- | ------------ | ------------ | ------------ | -------- | -------------------------- |
+| fp32       | 2.4GB        | 761MB        | ❌ heap      | ❌ fetch | Çok büyük                  |
+| fp16       | 1.2GB        | 381MB        | ❌ fp16 yok  | ✅       | Küçük ama WASM'e uymaz     |
+| **fp16io** | 1.2GB        | 761MB        | ❌ fp16 yok  | ✅       | **Ana hedef**              |
+| q8         | 616MB inline | 643MB inline | ❌ bad_alloc | ?        | En küçük ama decoder büyük |
+| mixed      | 616MB inline | 582MB        | ?            | ?        | Test edilmedi              |
 
 ## Proje Yapısı
 
@@ -128,21 +151,23 @@ npx serve -l 8765
     AGENT_TASKS.md       — Görev listesi
 ```
 
+```
 /mnt/n/github/asrjs/webgpu-agent-test/  (Windows N: sürücüsü)
-  index.html    — Verification suite (library-synced)
-  models/       — fp32, fp16, fp16_iofp32, q8, mixed ONNX modeller
-  INSTRUCTIONS.md — Test talimatları
+  index.html       — Verification suite (library-synced)
+  models/          — fp32, fp16, fp16_iofp32, q8, mixed ONNX modeller
+  INSTRUCTIONS.md  — Test talimatları
+```
 
 ## Sıradaki Görevler (Bev için)
 
-| # | Görev | Öncelik | Not |
-|---|-------|---------|-----|
-| 1 | IndexedDB cache ile browser model loading | 🔴 Yüksek | `createSpeechPipeline({ cacheModels: true })` veya low-level `IndexedDbAssetCache` |
-| 2 | WebGPU verification (gerçek Chrome) | 🔴 Yüksek | Bev'in GPU'suyla test sayfasını çalıştır |
-| 3 | fp16io + fp32 decoder WebGPU'da test | 🔴 Yüksek | Çalışan tek kombinasyon, doğrula |
-| 4 | q8/mixed variant'ları dene | 🟡 Orta | Daha küçük modeller, WASM'e uyabilir |
-| 5 | int8 model generation for WASM | 🟡 Orta | `onnxruntime.quantization.quantize_dynamic` |
-| 6 | Batched encoder | ⬜ Ertelendi | CPU'ya faydası yok |
+| #   | Görev                                     | Öncelik      | Not                                                                                |
+| --- | ----------------------------------------- | ------------ | ---------------------------------------------------------------------------------- |
+| 1   | IndexedDB cache ile browser model loading | 🔴 Yüksek    | `createSpeechPipeline({ cacheModels: true })` veya low-level `IndexedDbAssetCache` |
+| 2   | WebGPU verification (gerçek Chrome)       | 🔴 Yüksek    | Bev'in GPU'suyla test sayfasını çalıştır                                           |
+| 3   | fp16io + fp32 decoder WebGPU'da test      | 🔴 Yüksek    | Çalışan tek kombinasyon, doğrula                                                   |
+| 4   | q8/mixed variant'ları dene                | 🟡 Orta      | Daha küçük modeller, WASM'e uyabilir                                               |
+| 5   | int8 model generation for WASM            | 🟡 Orta      | `onnxruntime.quantization.quantize_dynamic`                                        |
+| 6   | Batched encoder                           | ⬜ Ertelendi | CPU'ya faydası yok                                                                 |
 
 ## Doğrulama Komutları
 
