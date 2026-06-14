@@ -1,7 +1,7 @@
 # Agent Task Coordination
 
 Branch: `main`
-Updated: 2026-06-14 (Bev/Codex, fp16 WebGPU + Whisper mel optimization + decoder profiling)
+Updated: 2026-06-14 (Bev/Codex, fp16 WebGPU + Whisper mel optimization + decoder profiling + greedy score cleanup)
 
 ## Context Recovery
 
@@ -83,9 +83,20 @@ Latest benchmark:
 
 | Audio | Avg mel time | RTFx   |
 | ----- | ------------ | ------ |
-| 1s    | 8.7ms        | 114.8x |
-| 10s   | 62.7ms       | 159.5x |
-| 30s   | 204.2ms      | 146.9x |
+| 1s    | 9.8ms        | 101.6x |
+| 10s   | 58.1ms       | 172.1x |
+| 30s   | 179.2ms      | 167.4x |
+
+### Greedy score cleanup
+
+The generic greedy splitgraph loop no longer computes cumulative
+log-probability unless `bestOf` ranking requests it. This keeps ordinary greedy
+decode token-equivalent while removing one full-vocabulary pass per token on
+the stable CPU/WASM-style path.
+
+Local helper benchmark, 50 tokens and 51,865 vocab entries: `49.18ms` average
+before, `2.54ms` average after. This is a helper-level CPU result, not a
+browser WebGPU GPU-KV end-to-end claim.
 
 ### Root cause: Policy bugs, NOT precision bugs
 

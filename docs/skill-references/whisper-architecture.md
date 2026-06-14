@@ -68,5 +68,10 @@ The experimental WebGPU GPU-KV bridge is greedy-only: `numBeams=1`,
 splitgraph path, but it is not part of the measured WebGPU `11x` path until a
 batched beam graph and GPU KV reorder path exist.
 
+Default greedy decoding does not track cumulative log-probability scores.
+`trackScore: true` is used only for `bestOf`, where ranking multiple candidate
+decodes requires a score. Do not reintroduce full-vocabulary score work into
+ordinary greedy decoding without an end-to-end benchmark showing it is needed.
+
 ## Reproducibility harness
 Two modes: feature-input (100% token match, Python mel features) and wav-input (≥80%, TS mel frontend). Env vars: `WHISPER_REFERENCE_JSON`, `WHISPER_SPLITGRAPH_FIXTURE_DIR`.

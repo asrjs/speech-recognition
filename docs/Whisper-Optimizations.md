@@ -592,7 +592,35 @@ Keep or reject criteria:
   the same fixture.
 - Keep only if the encoder timing improves enough to justify the extra option.
 
-Status: source plumbing and unit coverage are implemented. Browser A/B is still
-pending because the selected Chrome profile does not currently have the Codex
-Chrome Extension installed/enabled, so the no-new-tab automation path cannot
-claim the existing localhost tab.
+Status: source plumbing and unit coverage are implemented. The selected Chrome
+profile now has the Codex Chrome Extension installed and enabled, and the native
+host manifest checks pass, but the extension still is not accepting automation.
+Per the Chrome workflow, the next step is to open a Chrome window for the
+selected profile and retry only after user approval.
+
+### Experiment 5: skip greedy score pass unless best-of needs it
+
+The generic splitgraph greedy path used to compute cumulative log probability
+for every token even when `bestOf=1`. That score is only needed when multiple
+candidate decodes must be ranked. For ordinary greedy decoding, token selection
+depends only on the processed logits and argmax/sampling, so the full-vocabulary
+`logProbOfToken()` pass was wasted CPU work.
+
+Implemented change:
+
+```ts
+whisperGreedyDecode(..., { trackScore: true })
+```
+
+is now used only by `bestOf`; default greedy decoding returns no `score`.
+
+Local helper benchmark, 50 generated tokens and a 51,865-token vocabulary:
+
+| Mode | Avg | p50 | Notes |
+| --- | ---: | ---: | --- |
+| Before | `49.18ms` | `53.90ms` | Full-vocab log-prob pass per token |
+| After | `2.54ms` | `2.49ms` | Score pass skipped for `bestOf=1` |
+
+This is a stable-path/helper optimization. It does not change the WebGPU
+GPU-KV fast path, which already bypasses the generic core greedy loop. It does
+reduce CPU work for WASM/CPU-KV greedy decode and keeps `bestOf` scoring intact.
