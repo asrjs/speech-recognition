@@ -320,7 +320,7 @@ export async function loadBuiltInSpeechModel<
   emitProgress(options, {
     phase: 'resolve:start',
     modelId: options.modelId,
-    message: 'Resolving built-in model request.',
+    message: 'Resolving model request.',
   });
   const resolved = resolveBuiltInModelRequest(runtime, options);
   const resolvedDescriptor = resolved.modelId ? getBuiltInModelDescriptor(resolved.modelId) : undefined;

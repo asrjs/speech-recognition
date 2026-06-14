@@ -13,13 +13,19 @@ import { WhisperMelProcessor } from '../src/audio/whisper-mel.js';
 import { PcmAudioBuffer } from '../src/audio/index.js';
 
 describe('Whisper preset manifests', () => {
-  it('uses onnx-community timestamped sources so word timestamps can use cross-attention DTW', () => {
+  it('declares timestamped HF sources for legacy presets and splitgraph artifacts for the 4-graph preset', () => {
     for (const manifest of WHISPER_PRESET_MANIFESTS) {
       expect(manifest.source).toBeDefined();
-      expect(manifest.source?.kind).toBe('huggingface');
       if (manifest.source?.kind === 'huggingface') {
         expect(manifest.source.repoId).toMatch(/^onnx-community\/whisper-/);
         expect(manifest.source.repoId).toMatch(/_timestamped$/);
+      } else if (manifest.source?.kind === 'splitgraph') {
+        expect(manifest.modelId).toBe('ysdede/whisper-large-v3-turbo-onnx-4graph');
+        expect(manifest.source.artifacts.encoderUrl).toContain('/fp16_iofp32/encoder_model.onnx');
+        expect(manifest.source.artifacts.decoderInitUrl).toContain('/fp16/decoder_init.onnx');
+        expect(manifest.source.artifacts.decoderStepUrl).toContain('/fp16/decoder_step.onnx');
+      } else {
+        expect.unreachable('Whisper preset source must be huggingface or splitgraph');
       }
     }
   });

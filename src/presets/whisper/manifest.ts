@@ -14,7 +14,61 @@ export interface WhisperPresetManifest {
   readonly source?: WhisperArtifactSource;
 }
 
+const WHISPER_4GRAPH_REPO_ID = 'ysdede/whisper-large-v3-turbo-onnx-4graph';
+
+function hfResolve(repoId: string, filename: string, revision = 'main'): string {
+  const repoPath = repoId.split('/').map(encodeURIComponent).join('/');
+  const encodedRevision = encodeURIComponent(revision);
+  const filePath = filename.split('/').map(encodeURIComponent).join('/');
+  return `https://huggingface.co/${repoPath}/resolve/${encodedRevision}/${filePath}`;
+}
+
 export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
+  {
+    preset: 'whisper',
+    modelId: WHISPER_4GRAPH_REPO_ID,
+    aliases: [
+      'whisper-large-v3-turbo-onnx-4graph',
+      'whisper-large-v3-turbo-4graph',
+    ],
+    description:
+      'Whisper Large-v3 Turbo ONNX 4-graph split decoder port with KV-cache decode for WebGPU.',
+    classification: {
+      ecosystem: 'openai',
+      processor: 'whisper-mel',
+      encoder: 'whisper-transformer',
+      decoder: 'transformer-decoder',
+      topology: 'aed',
+      family: 'whisper',
+      task: 'multitask-asr-translation',
+    },
+    config: {
+      maxSourcePositions: 3000,
+      maxTargetPositions: 448,
+      melBins: 128,
+      vocabularySize: 51866,
+      languages: ['auto'],
+    },
+    source: {
+      kind: 'splitgraph',
+      artifacts: {
+        encoderUrl: hfResolve(WHISPER_4GRAPH_REPO_ID, 'fp16_iofp32/encoder_model.onnx'),
+        decoderInitUrl: hfResolve(WHISPER_4GRAPH_REPO_ID, 'fp16/decoder_init.onnx'),
+        decoderStepUrl: hfResolve(WHISPER_4GRAPH_REPO_ID, 'fp16/decoder_step.onnx'),
+        decoderAlignUrl: hfResolve(WHISPER_4GRAPH_REPO_ID, 'fp16/decoder_align.onnx'),
+        tokenizerUrl: hfResolve(WHISPER_4GRAPH_REPO_ID, 'fp16/tokenizer.json'),
+        manifestUrl: hfResolve(WHISPER_4GRAPH_REPO_ID, 'fp16/manifest.json'),
+        externalDataUrls: {
+          encoder: [{ path: './encoder_model.onnx.data', file: 'encoder_model.onnx.data' }],
+          decoder_init: [{ path: './decoder_init.onnx.data', file: 'decoder_init.onnx.data' }],
+          decoder_step: [{ path: './decoder_step.onnx.data', file: 'decoder_step.onnx.data' }],
+          decoder_align: [{ path: './decoder_align.onnx.data', file: 'decoder_align.onnx.data' }],
+        },
+      },
+      encoderBackend: 'webgpu',
+      decoderBackend: 'webgpu',
+    },
+  },
   {
     preset: 'whisper',
     modelId: 'onnx-community/whisper-tiny',

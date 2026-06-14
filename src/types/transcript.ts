@@ -87,6 +87,10 @@ export interface TranscriptMetrics {
   readonly decodeMs?: number;
   readonly tokenizeMs?: number;
   readonly postprocessMs?: number;
+  readonly languageDetectionMs?: number;
+  readonly decoderInitMs?: number;
+  readonly decoderStepMs?: number;
+  readonly decoderStepCount?: number;
   readonly totalMs?: number;
   readonly wallMs?: number;
   readonly audioDurationSec?: number;

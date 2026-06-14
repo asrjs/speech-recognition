@@ -39,7 +39,7 @@ export interface OrtSessionLike {
 export interface OrtModuleLike {
   readonly env: OrtEnv;
   readonly Tensor: new <TData extends ArrayBufferView>(
-    type: 'float32' | 'int32' | 'int64' | 'bool',
+    type: 'float32' | 'float16' | 'int32' | 'int64' | 'bool',
     data: TData,
     dims: readonly number[],
   ) => OrtTensorLike<TData>;

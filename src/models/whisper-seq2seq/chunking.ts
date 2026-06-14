@@ -1,3 +1,4 @@
+import type { TranscriptMetrics } from '../../types/index.js';
 import type { WhisperNativeSegment, WhisperNativeToken, WhisperNativeTranscript, WhisperNativeWord } from './types.js';
 
 export interface WhisperChunkTranscriptInput {
@@ -11,6 +12,7 @@ export function mergeWhisperChunkTranscripts(chunks: readonly WhisperChunkTransc
   const tokens: WhisperNativeToken[] = [];
   const warnings = chunks.flatMap((chunk) => chunk.transcript.warnings ?? []);
   const language = chunks.find((chunk) => chunk.transcript.language)?.transcript.language;
+  const metrics = mergeWhisperChunkMetrics(chunks.map((chunk) => chunk.transcript.metrics));
 
   for (const chunk of chunks) {
     const offset = chunk.chunkStartTime;
@@ -51,10 +53,86 @@ export function mergeWhisperChunkTranscripts(chunks: readonly WhisperChunkTransc
     ...(segments.length > 0 ? { segments } : {}),
     ...(words.length > 0 ? { words } : {}),
     ...(tokens.length > 0 ? { tokens } : {}),
+    ...(metrics ? { metrics } : {}),
     ...(warnings.length > 0 ? { warnings } : {}),
   };
 }
 
 function offsetTime(time: number, offset: number): number {
   return Math.round((time + offset) * 1000) / 1000;
+}
+
+function sumMetrics(
+  metrics: readonly TranscriptMetrics[],
+  key: keyof TranscriptMetrics,
+): number | undefined {
+  let total = 0;
+  let seen = false;
+  for (const metric of metrics) {
+    const value = metric[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      total += value;
+      seen = true;
+    }
+  }
+  return seen ? total : undefined;
+}
+
+function commonStringMetric(
+  metrics: readonly TranscriptMetrics[],
+  key: keyof TranscriptMetrics,
+): string | undefined {
+  const values = metrics
+    .map((metric) => metric[key])
+    .filter((value): value is string => typeof value === 'string');
+  if (values.length === 0) return undefined;
+  const first = values[0];
+  return values.every((value) => value === first) ? first : 'mixed';
+}
+
+function roundMetric(value: number, digits = 3): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
+function mergeWhisperChunkMetrics(
+  inputMetrics: readonly (TranscriptMetrics | undefined)[],
+): TranscriptMetrics | undefined {
+  const metrics = inputMetrics.filter((metric): metric is TranscriptMetrics => Boolean(metric));
+  if (metrics.length === 0) {
+    return undefined;
+  }
+
+  const totalMs = sumMetrics(metrics, 'totalMs');
+  const audioDurationSec = sumMetrics(metrics, 'audioDurationSec');
+  const rtf =
+    totalMs !== undefined && audioDurationSec !== undefined && audioDurationSec > 0
+      ? totalMs / (audioDurationSec * 1000)
+      : undefined;
+
+  return {
+    preprocessMs: sumMetrics(metrics, 'preprocessMs'),
+    encodeMs: sumMetrics(metrics, 'encodeMs'),
+    decodeMs: sumMetrics(metrics, 'decodeMs'),
+    tokenizeMs: sumMetrics(metrics, 'tokenizeMs'),
+    postprocessMs: sumMetrics(metrics, 'postprocessMs'),
+    languageDetectionMs: sumMetrics(metrics, 'languageDetectionMs'),
+    decoderInitMs: sumMetrics(metrics, 'decoderInitMs'),
+    decoderStepMs: sumMetrics(metrics, 'decoderStepMs'),
+    decoderStepCount: sumMetrics(metrics, 'decoderStepCount'),
+    totalMs,
+    wallMs: sumMetrics(metrics, 'wallMs'),
+    audioDurationSec,
+    rtf: rtf !== undefined ? roundMetric(rtf, 4) : undefined,
+    rtfx:
+      totalMs !== undefined && audioDurationSec !== undefined && totalMs > 0
+        ? roundMetric(audioDurationSec / (totalMs / 1000), 4)
+        : undefined,
+    requestedPreprocessorBackend: commonStringMetric(metrics, 'requestedPreprocessorBackend'),
+    preprocessorBackend: commonStringMetric(metrics, 'preprocessorBackend'),
+    encoderFrameCount: sumMetrics(metrics, 'encoderFrameCount'),
+    decodeIterations: sumMetrics(metrics, 'decodeIterations'),
+    emittedTokenCount: sumMetrics(metrics, 'emittedTokenCount'),
+    emittedWordCount: sumMetrics(metrics, 'emittedWordCount'),
+  };
 }

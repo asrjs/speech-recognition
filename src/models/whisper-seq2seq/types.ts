@@ -1,4 +1,10 @@
-import type { AssetProvider, AudioBufferLike, BaseTranscriptionOptions, SpeechRuntimeHooks } from '../../types/index.js';
+import type {
+  AssetProvider,
+  AudioBufferLike,
+  BaseTranscriptionOptions,
+  SpeechRuntimeHooks,
+  TranscriptMetrics,
+} from '../../types/index.js';
 import type { TextTokenizer, TokenizerSpec } from '../../tokenizers/index.js';
 
 export interface WhisperSeq2SeqModelConfig {
@@ -127,6 +133,7 @@ export interface WhisperNativeTranscript {
   readonly segments?: readonly WhisperNativeSegment[];
   readonly words?: readonly WhisperNativeWord[];
   readonly tokens?: readonly WhisperNativeToken[];
+  readonly metrics?: TranscriptMetrics;
   readonly warnings?: readonly { readonly code: string; readonly message: string }[];
 }
 

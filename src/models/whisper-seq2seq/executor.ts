@@ -5,11 +5,13 @@ import type {
   ResolvedAssetHandle,
   RuntimeProgressEvent,
   SpeechRuntimeHooks,
+  TranscriptMetrics,
   TranscriptWarning,
+  TranscriptionProgressEvent,
 } from '../../types/index.js';
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
 import { fetchModelFiles } from '../../runtime/huggingface.js';
-import { roundMetric } from '../../runtime/timing.js';
+import { nowMs, roundMetric } from '../../runtime/timing.js';
 import { WhisperMelProcessor } from '../../audio/whisper-mel.js';
 import { planWhisperChunks } from '../../pipeline/whisper-chunking.js';
 import {
@@ -95,6 +97,25 @@ interface BeamPayload {
 function roundMiB(bytes: number | undefined): number | undefined {
   if (!Number.isFinite(bytes)) return undefined;
   return roundMetric((bytes as number) / (1024 * 1024), 2);
+}
+
+function clampProgress(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
+function estimateRemainingMs(elapsedMs: number, progress: number): number | undefined {
+  if (progress <= 0 || progress >= 1) {
+    return undefined;
+  }
+
+  return roundMetric((elapsedMs / progress) * (1 - progress), 2);
+}
+
+function emitTranscriptionProgress(
+  options: WhisperSeq2SeqTranscriptionOptions,
+  event: TranscriptionProgressEvent,
+): void {
+  options.onProgress?.(event);
 }
 
 /**
@@ -346,6 +367,17 @@ export class WhisperOnnxExecutor {
       fileLabel: string,
     ): Promise<string | undefined> => {
       if (!url || !/^https?:\/\//i.test(url)) {
+        return url;
+      }
+
+      // Local browser demos serve very large ONNX external-data files from the
+      // same origin. Hand those URLs directly to ORT instead of routing them
+      // through IndexedDB/blob URLs, which is useful for remote assets but a
+      // fragile extra hop for multi-GB local files.
+      if (
+        typeof window !== 'undefined' &&
+        url.startsWith(`${window.location.origin}/models/`)
+      ) {
         return url;
       }
 
@@ -1051,7 +1083,7 @@ export class WhisperOnnxExecutor {
     // reuse tensor objects from one session as inputs to another.
     for (const [name, tensor] of Object.entries(pastKv)) {
       const isFloat16 = tensor.data.constructor.name === 'Float16Array';
-      const TypedArrayCtor = tensor.data.constructor as { new(buffer: ArrayBuffer, byteOffset: number, length: number): ArrayBufferView };
+      const TypedArrayCtor = tensor.data.constructor as { new(buffer: ArrayBufferLike, byteOffset: number, length: number): ArrayBufferView };
       const rawData = new TypedArrayCtor(tensor.data.buffer, tensor.data.byteOffset, tensor.data.length);
       feeds[name] = new loaded.ort.Tensor(isFloat16 ? 'float16' : 'float32', rawData, tensor.dims);
     }
@@ -1429,11 +1461,22 @@ export class WhisperOnnxExecutor {
     options: WhisperSeq2SeqTranscriptionOptions,
     _context: { readonly modelId: string; readonly config: WhisperSeq2SeqModelConfig },
   ): Promise<WhisperNativeTranscript> {
+    const transcriptionStart = nowMs();
     const loaded = await this.getLoadedState();
     const warnings = [...loaded.warnings];
     const splitLoaded = loaded as Required<LoadedExecutorState>;
 
+    emitTranscriptionProgress(options, {
+      stage: 'start',
+      progress: 0,
+      elapsedMs: 0,
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Starting transcription for ${this.modelId}.`,
+    });
+
     // 1. Preprocess audio to mel spectrogram
+    const preprocessStart = nowMs();
     const melBins = loaded.modelConfig.numMelBins ?? this.config.melBins;
     const melProcessor = new WhisperMelProcessor({ nMels: melBins });
     const pcmData = audio.channels?.[0] ?? new Float32Array(0);
@@ -1443,6 +1486,21 @@ export class WhisperOnnxExecutor {
     const encoderOutputPositions = this.config.maxSourcePositions;
     const melInputFrames = encoderOutputPositions <= 1500 ? encoderOutputPositions * 2 : encoderOutputPositions;
     const paddedFeatures = WhisperMelProcessor.padToFrames(melResult, melInputFrames);
+    const preprocessMs = nowMs() - preprocessStart;
+    const preprocessElapsedMs = nowMs() - transcriptionStart;
+    emitTranscriptionProgress(options, {
+      stage: 'preprocess',
+      progress: 0.2,
+      elapsedMs: roundMetric(preprocessElapsedMs),
+      remainingMs: estimateRemainingMs(preprocessElapsedMs, 0.2),
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Prepared Whisper mel features for ${this.modelId}.`,
+      metrics: {
+        preprocessMs: roundMetric(preprocessMs),
+        audioDurationSec: roundMetric(audio.durationSeconds, 4),
+      },
+    });
 
     const featureTensor = new loaded.ort.Tensor(
       'float32', paddedFeatures,
@@ -1450,18 +1508,39 @@ export class WhisperOnnxExecutor {
     );
 
     // 2. Run encoder
+    const encodeStart = nowMs();
     const encoderOutputs = await loaded.encoderSession.run({ input_features: featureTensor });
     const encoderHiddenStates = maybeCastEncoderHiddenStates(
       encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>,
       loaded.decoderInitSession ?? loaded.decoderSession!,
       loaded.ort,
     );
+    const encodeMs = nowMs() - encodeStart;
+    const encoderFrameCount = encoderHiddenStates.dims[1] ?? encoderOutputPositions;
+    const encodeElapsedMs = nowMs() - transcriptionStart;
+    emitTranscriptionProgress(options, {
+      stage: 'encode',
+      progress: 0.4,
+      elapsedMs: roundMetric(encodeElapsedMs),
+      remainingMs: estimateRemainingMs(encodeElapsedMs, 0.4),
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Encoded Whisper frames for ${this.modelId}.`,
+      metrics: {
+        preprocessMs: roundMetric(preprocessMs),
+        encodeMs: roundMetric(encodeMs),
+        encoderFrameCount,
+      },
+    });
 
     // 3. Detect language if auto
     const tokenizer = loaded.tokenizer;
     let language = options.language ?? 'auto';
+    let languageDetectionMs = 0;
     if (language === 'auto' && loaded.isSplitGraph && loaded.decoderInitSession) {
+      const languageDetectionStart = nowMs();
       language = await this.detectLanguageFromEncoder(loaded as Required<LoadedExecutorState>, encoderHiddenStates);
+      languageDetectionMs = nowMs() - languageDetectionStart;
     }
     if (language === 'auto') {
       language = this.config.languages[0] ?? 'en';
@@ -1501,7 +1580,11 @@ export class WhisperOnnxExecutor {
     // Tensor dimension storage for KV cache bridge (init→step tensor reconstruction)
     let kvDims: Record<string, readonly number[]> = {};
     let kvDtype: 'float32' | 'float16' = 'float32';
+    let decoderInitMs = 0;
+    let decoderStepMs = 0;
+    let decoderStepCount = 0;
 
+    const decoderStart = nowMs();
     const result = await splitGraphDecodeLoop({
       promptTokens,
       encoderHiddenStates: encoderHiddenStates.data,
@@ -1516,7 +1599,9 @@ export class WhisperOnnxExecutor {
       lengthPenalty: options.lengthPenalty ?? 0,
       bestOf: options.bestOf,
       runInit: async (prompt, _encHs, _dims) => {
+        const decoderInitStart = nowMs();
         const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
+        decoderInitMs += nowMs() - decoderInitStart;
         // Store tensor dims for runStep reconstruction (init→step tensor bridging).
         // Store both present.* (init output) and past_key_values.* (step output) formats.
         kvDims = {};
@@ -1538,6 +1623,7 @@ export class WhisperOnnxExecutor {
         };
       },
       runStep: async (tokenId, pastKv) => {
+        const decoderStepStart = nowMs();
         // Reconstruct tensors from raw data + stored dims.
         // Init outputs present.* prefix; step model expects past_key_values.* prefix.
         // Convert prefix and clone tensor data for cross-session safety.
@@ -1556,6 +1642,8 @@ export class WhisperOnnxExecutor {
           }
         }
         const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds);
+        decoderStepMs += nowMs() - decoderStepStart;
+        decoderStepCount += 1;
         // Update stored dims from step output
         for (const [k, v] of Object.entries(step.presentKv)) {
           kvDims[k] = v.dims;
@@ -1569,8 +1657,29 @@ export class WhisperOnnxExecutor {
         };
       },
     });
+    const decodeMs = nowMs() - decoderStart;
+    const decodeElapsedMs = nowMs() - transcriptionStart;
+    emitTranscriptionProgress(options, {
+      stage: 'decode',
+      progress: clampProgress(0.85),
+      elapsedMs: roundMetric(decodeElapsedMs),
+      remainingMs: estimateRemainingMs(decodeElapsedMs, 0.85),
+      completedUnits: result.tokens.length,
+      totalUnits: maxNewTokens,
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Decoded ${result.tokens.length} Whisper tokens for ${this.modelId}.`,
+      metrics: {
+        preprocessMs: roundMetric(preprocessMs),
+        encodeMs: roundMetric(encodeMs),
+        decodeMs: roundMetric(decodeMs),
+        encoderFrameCount,
+        decodeIterations: result.tokens.length,
+      },
+    });
 
     // 5. Build token details
+    const tokenizeStart = nowMs();
     const generatedTokens = [...promptTokens, ...result.tokens];
     const tokenDetails: WhisperNativeToken[] = [];
     for (let i = promptTokens.length; i < generatedTokens.length; i++) {
@@ -1598,6 +1707,52 @@ export class WhisperOnnxExecutor {
       : [];
 
     const utteranceText = segments.map((s) => s.text).join(' ').trim();
+    const tokenizeMs = nowMs() - tokenizeStart;
+    const totalMs = roundMetric(nowMs() - transcriptionStart);
+    const rtf = audio.durationSeconds > 0 ? totalMs / (audio.durationSeconds * 1000) : 0;
+    const rtfx = audio.durationSeconds > 0 ? audio.durationSeconds / (totalMs / 1000) : undefined;
+    const metrics: TranscriptMetrics = {
+      preprocessMs: roundMetric(preprocessMs),
+      encodeMs: roundMetric(encodeMs),
+      decodeMs: roundMetric(decodeMs),
+      tokenizeMs: roundMetric(tokenizeMs),
+      postprocessMs: roundMetric(tokenizeMs),
+      languageDetectionMs: roundMetric(languageDetectionMs),
+      decoderInitMs: roundMetric(decoderInitMs),
+      decoderStepMs: roundMetric(decoderStepMs),
+      decoderStepCount,
+      totalMs,
+      wallMs: totalMs,
+      audioDurationSec: roundMetric(audio.durationSeconds, 4),
+      rtf: roundMetric(rtf, 4),
+      rtfx: rtfx !== undefined ? roundMetric(rtfx, 4) : undefined,
+      preprocessorBackend: 'js-whisper-mel',
+      requestedPreprocessorBackend: 'js-whisper-mel',
+      encoderFrameCount,
+      decodeIterations: result.tokens.length,
+      emittedTokenCount: tokenDetails.filter((token) => !token.special).length,
+      emittedWordCount: words?.length,
+    };
+    const postprocessElapsedMs = nowMs() - transcriptionStart;
+    emitTranscriptionProgress(options, {
+      stage: 'postprocess',
+      progress: 0.95,
+      elapsedMs: roundMetric(postprocessElapsedMs),
+      remainingMs: estimateRemainingMs(postprocessElapsedMs, 0.95),
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Built Whisper transcript details for ${this.modelId}.`,
+      metrics,
+    });
+    emitTranscriptionProgress(options, {
+      stage: 'complete',
+      progress: 1,
+      elapsedMs: metrics.totalMs,
+      modelId: this.modelId,
+      backendId: this.backendId,
+      message: `Finished transcription for ${this.modelId}.`,
+      metrics,
+    });
 
     return {
       utteranceText, isFinal: true, language, segments,
@@ -1605,6 +1760,7 @@ export class WhisperOnnxExecutor {
       tokens: options.returnSpecialTokens
         ? tokenDetails
         : tokenDetails.filter((t) => !t.special),
+      metrics,
       warnings,
     };
   }

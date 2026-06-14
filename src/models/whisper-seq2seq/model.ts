@@ -129,6 +129,7 @@ class WhisperSeq2SeqSpeechSession implements SpeechSession<
       sampleRate: audio.sampleRate,
       durationSeconds: audio.durationSeconds,
       language: nativeTranscript.language,
+      metrics: nativeTranscript.metrics,
     });
     const responseFlavor = options.responseFlavor ?? 'canonical';
 
