@@ -78,6 +78,7 @@ export interface ResolvedWhisperArtifacts {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  readonly experimentalWebGpuEncoderGraphCapture?: boolean;
   readonly experimentalGpuKvCache?: boolean;
   readonly isSplitGraph: boolean;
   readonly decoderInitUrl?: string;
@@ -177,6 +178,7 @@ function resolveHuggingFaceArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
     experimentalGpuKvCache: source.experimentalGpuKvCache,
     isSplitGraph: false,
   };
@@ -199,6 +201,7 @@ function resolveDirectArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
     experimentalGpuKvCache: source.experimentalGpuKvCache,
     isSplitGraph: false,
   };
@@ -260,6 +263,7 @@ function resolveSplitGraphArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
     experimentalGpuKvCache: source.experimentalGpuKvCache,
     isSplitGraph: true,
     decoderInitUrl,
@@ -347,6 +351,7 @@ export async function createWhisperOrtSession(
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
     readonly preferredOutputLocation?: OrtPreferredOutputLocation;
+    readonly enableGraphCapture?: boolean;
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
@@ -372,6 +377,9 @@ export async function createWhisperOrtSession(
 
   if (options.preferredOutputLocation) {
     sessionOptions.preferredOutputLocation = options.preferredOutputLocation;
+  }
+  if (options.enableGraphCapture && options.backendId.startsWith('webgpu')) {
+    sessionOptions.enableGraphCapture = true;
   }
 
   if (isNodeLikeRuntime()) {

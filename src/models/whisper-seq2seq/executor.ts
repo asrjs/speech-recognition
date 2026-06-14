@@ -681,6 +681,7 @@ export class WhisperOnnxExecutor {
     const encoderSession = await createWhisperOrtSession(ort, artifacts.encoderUrl, {
       backendId: resolved.encoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
+      enableGraphCapture: resolved.experimentalWebGpuEncoderGraphCapture,
       ...(resolved.externalData?.encoder?.[0]
         ? { externalDataUrl: resolved.externalData.encoder[0].dataUrl, externalDataPath: resolved.externalData.encoder[0].path }
         : {}),

@@ -556,3 +556,43 @@ automation session, or navigate the current controlled test tab. If a scripted
 smoke runner is added later, it should claim an existing
 `http://localhost:8765/` tab first and only create a new tab when no controlled
 test tab exists.
+
+### Experiment 4: opt-in encoder graph capture
+
+ORT WebGPU documents graph capture as a potential win when shapes are static
+and all kernels run on WebGPU, but also says some models fail session creation
+and decoder-style dynamic shapes are a caution case. The next experiment is
+therefore encoder-only:
+
+```ts
+experimentalWebGpuEncoderGraphCapture: true
+```
+
+When this source flag is enabled, the Whisper executor passes
+`enableGraphCapture: true` only to the encoder WebGPU session. Decoder init,
+decoder step, and alignment sessions do not receive graph capture in this pass.
+The browser demo exposes the experiment with:
+
+```text
+?encoderGraphCapture=1
+```
+
+Recommended A/B URLs:
+
+```text
+http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&gpuKv=1
+http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&gpuKv=1&encoderGraphCapture=1
+```
+
+Keep or reject criteria:
+
+- Reject if session creation fails.
+- Reject if token IDs differ from baseline.
+- Reject if `encodeMs`, total time, or p95 step latency regresses materially on
+  the same fixture.
+- Keep only if the encoder timing improves enough to justify the extra option.
+
+Status: source plumbing and unit coverage are implemented. Browser A/B is still
+pending because the selected Chrome profile does not currently have the Codex
+Chrome Extension installed/enabled, so the no-new-tab automation path cannot
+claim the existing localhost tab.

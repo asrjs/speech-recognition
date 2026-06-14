@@ -55,6 +55,10 @@ Uploaded filenames MUST match ONNX graph's internal `external_data.location`. Ch
 - **WASM** (`onnxruntime-web`): ~1.5 GB heap limit, single-session constraint. Use for browser + small models.
 - **WebGPU**: Browser only. fp16 models load directly, inline weights only.
 - **Sequential lifecycle** for large models on 8GB: load encoder→run→dispose, then decoders→run→dispose. Peak ~2.5GB.
+- **Encoder graph capture**: `experimentalWebGpuEncoderGraphCapture` is an
+  opt-in WebGPU-only experiment. It applies ORT `enableGraphCapture` to the
+  encoder session only; do not enable it for dynamic decoder-step sessions
+  without a measured A/B.
 
 ## Beam search
 `whisperBeamDecode` in core.ts. `numBeams`, `lengthPenalty`, `bestOf`, `patience` params. Wired into splitGraphDecodeLoop. Default `numBeams=1` (greedy).

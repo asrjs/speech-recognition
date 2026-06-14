@@ -4,7 +4,9 @@ import * as os from 'os';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 import {
+  createWhisperOrtSession,
   resolveWhisperArtifacts,
+  type OrtModuleLike,
   type ResolvedWhisperArtifacts,
 } from '../src/models/whisper-seq2seq/ort.js';
 import { loadSplitGraphLocalModel } from '../src/models/whisper-seq2seq/local-file.js';
@@ -79,6 +81,44 @@ describe('Whisper splitgraph artifact resolution', () => {
     expect(resolved.encoderBackendForOrt).toBe('webgpu');
     // decoder defaults to wasm even for webgpu
     expect(resolved.decoderBackendForOrt).toBe('wasm');
+  });
+
+  it('propagates the opt-in WebGPU encoder graph-capture flag', () => {
+    const resolved = resolveWhisperArtifacts(
+      {
+        ...sampleSplitGraphSource,
+        experimentalWebGpuEncoderGraphCapture: true,
+      },
+      'webgpu',
+    );
+
+    expect(resolved.experimentalWebGpuEncoderGraphCapture).toBe(true);
+  });
+
+  it('passes graph capture only to WebGPU ORT sessions', async () => {
+    const createdOptions: Record<string, unknown>[] = [];
+    const fakeOrt = {
+      env: { wasm: {} },
+      Tensor: class {},
+      InferenceSession: {
+        async create(_url: string, options?: Record<string, unknown>) {
+          createdOptions.push(options ?? {});
+          return { async run() { return {}; } };
+        },
+      },
+    } as unknown as OrtModuleLike;
+
+    await createWhisperOrtSession(fakeOrt, 'https://example.com/encoder.onnx', {
+      backendId: 'webgpu',
+      enableGraphCapture: true,
+    });
+    await createWhisperOrtSession(fakeOrt, 'https://example.com/encoder.onnx', {
+      backendId: 'wasm',
+      enableGraphCapture: true,
+    });
+
+    expect(createdOptions[0]?.enableGraphCapture).toBe(true);
+    expect(createdOptions[1]?.enableGraphCapture).toBeUndefined();
   });
 });
 
