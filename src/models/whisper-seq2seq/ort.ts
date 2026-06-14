@@ -274,22 +274,21 @@ export async function initWhisperOrt(
   };
   const ort = imported.default ?? imported;
 
-  if (!ort.env.wasm.wasmPaths) {
-    ort.env.wasm.wasmPaths =
-      options.wasmPaths ??
-      (isNodeLikeRuntime()
-        ? await resolveNodePackageSubpathUrl('onnxruntime-web', 'dist')
-        : `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ort.env.versions?.common ?? '1.24.1'}/dist/`);
-  } else if (options.wasmPaths) {
+  // Always override ORT's default wasmPaths (which is CDN and blocked by COEP).
+  // User-provided path takes precedence; otherwise use local dist/.
+  if (options.wasmPaths) {
     ort.env.wasm.wasmPaths = options.wasmPaths;
+  } else if (isNodeLikeRuntime()) {
+    if (!ort.env.wasm.wasmPaths) {
+      ort.env.wasm.wasmPaths = await resolveNodePackageSubpathUrl('onnxruntime-web', 'dist');
+    }
+  } else {
+    // Browser — force local path to avoid COEP-blocked CDN worker imports.
+    ort.env.wasm.wasmPaths = '/node_modules/onnxruntime-web/dist/';
   }
 
   if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads =
-      options.cpuThreads ??
-      (typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number'
-        ? navigator.hardwareConcurrency
-        : 4);
+    ort.env.wasm.numThreads = options.cpuThreads ?? 1;
     ort.env.wasm.simd = true;
   } else {
     ort.env.wasm.numThreads = 1;

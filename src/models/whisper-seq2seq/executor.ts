@@ -97,6 +97,67 @@ function roundMiB(bytes: number | undefined): number | undefined {
   return roundMetric((bytes as number) / (1024 * 1024), 2);
 }
 
+/**
+ * Convert a Float32Array to a Uint16Array of fp16 bits.
+ * Uses round-to-nearest-even.
+ */
+function float32ToFloat16Bits(src: Float32Array): Uint16Array {
+  const dst = new Uint16Array(src.length);
+  for (let i = 0; i < src.length; i++) {
+    const x = src[i]!;
+    const b = new DataView(new ArrayBuffer(4));
+    b.setFloat32(0, x, true);
+    const uint32 = b.getUint32(0, true);
+    const sign = (uint32 >>> 31) & 0x1;
+    let exp = (uint32 >>> 23) & 0xff;
+    let mant = uint32 & 0x7fffff;
+    let fp16: number;
+    if (exp === 0xff) {
+      // Inf/NaN
+      fp16 = (sign << 15) | 0x7c00 | (mant ? 0x200 : 0);
+    } else if (exp > 142) {
+      // Overflow to infinity
+      fp16 = (sign << 15) | 0x7c00;
+    } else if (exp < 113) {
+      // Subnormal or zero
+      if (exp < 103) {
+        fp16 = sign << 15;
+      } else {
+        mant |= 0x800000;
+        const shift = 113 - exp - 1;
+        fp16 = (sign << 15) | (mant >>> shift);
+      }
+    } else {
+      exp -= 112;
+      mant >>= 13;
+      fp16 = (sign << 15) | (exp << 10) | mant;
+    }
+    dst[i] = fp16;
+  }
+  return dst;
+}
+
+/**
+ * If the decoder expects float16 encoder hidden states, cast the fp32 encoder output.
+ */
+function maybeCastEncoderHiddenStates(
+  encoderHiddenStates: OrtTensorLike<Float32Array>,
+  decoderInitSession: OrtSessionLike,
+  ort: OrtModuleLike,
+): OrtTensorLike<Float32Array> {
+  const metadata = (decoderInitSession as unknown as { inputMetadata?: Array<{ name?: string; type?: string; shape?: number[] }> }).inputMetadata;
+  const encMeta = metadata?.find((m) => m.name === 'encoder_hidden_states');
+  console.log('[maybeCastEncoderHiddenStates] metadata:', metadata, 'encMeta:', encMeta);
+  if (encMeta?.type === 'float16') {
+    const dims = encoderHiddenStates.dims as number[];
+    const size = dims.reduce((a, b) => a * b, 1);
+    const f32Data = encoderHiddenStates.data as Float32Array;
+    const f16Bits = float32ToFloat16Bits(f32Data.length === size ? f32Data : f32Data.subarray(0, size));
+    return new ort.Tensor('float16', f16Bits, dims) as unknown as OrtTensorLike<Float32Array>;
+  }
+  return encoderHiddenStates;
+}
+
 function createAssetProgressEvent(
   modelId: string,
   file: string,
@@ -989,8 +1050,10 @@ export class WhisperOnnxExecutor {
     // CRITICAL: Clone tensor data for cross-session safety. ORT WASM cannot
     // reuse tensor objects from one session as inputs to another.
     for (const [name, tensor] of Object.entries(pastKv)) {
-      const rawData = new Float32Array(tensor.data.buffer, tensor.data.byteOffset, tensor.data.length);
-      feeds[name] = new loaded.ort.Tensor('float32', rawData, tensor.dims);
+      const isFloat16 = tensor.data.constructor.name === 'Float16Array';
+      const TypedArrayCtor = tensor.data.constructor as { new(buffer: ArrayBuffer, byteOffset: number, length: number): ArrayBufferView };
+      const rawData = new TypedArrayCtor(tensor.data.buffer, tensor.data.byteOffset, tensor.data.length);
+      feeds[name] = new loaded.ort.Tensor(isFloat16 ? 'float16' : 'float32', rawData, tensor.dims);
     }
 
     const outputs = await loaded.decoderStepSession.run(feeds);
@@ -1055,7 +1118,11 @@ export class WhisperOnnxExecutor {
     const encoderOutputs = await loaded.encoderSession.run({
       input_features: featureTensor,
     });
-    const encoderHiddenStates = encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>;
+    const encoderHiddenStates = maybeCastEncoderHiddenStates(
+      encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>,
+      loaded.decoderInitSession ?? loaded.decoderSession!,
+      loaded.ort,
+    );
 
     // 3. Build initial decoder input IDs
     const tokenizer = loaded.tokenizer;
@@ -1384,7 +1451,11 @@ export class WhisperOnnxExecutor {
 
     // 2. Run encoder
     const encoderOutputs = await loaded.encoderSession.run({ input_features: featureTensor });
-    const encoderHiddenStates = encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>;
+    const encoderHiddenStates = maybeCastEncoderHiddenStates(
+      encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>,
+      loaded.decoderInitSession ?? loaded.decoderSession!,
+      loaded.ort,
+    );
 
     // 3. Detect language if auto
     const tokenizer = loaded.tokenizer;
@@ -1429,6 +1500,7 @@ export class WhisperOnnxExecutor {
 
     // Tensor dimension storage for KV cache bridge (init→step tensor reconstruction)
     let kvDims: Record<string, readonly number[]> = {};
+    let kvDtype: 'float32' | 'float16' = 'float32';
 
     const result = await splitGraphDecodeLoop({
       promptTokens,
@@ -1452,6 +1524,11 @@ export class WhisperOnnxExecutor {
           kvDims[k] = v.dims;                                         // present.0.decoder.key
           kvDims[k.replace(/^present\./, 'past_key_values.')] = v.dims; // past_key_values.0.decoder.key
         }
+        // Detect KV dtype from init output (fp16 models produce Float16Array data)
+        const firstKv = Object.values(init.presentKv)[0];
+        if (firstKv) {
+          kvDtype = firstKv.data.constructor.name === 'Float16Array' ? 'float16' : 'float32';
+        }
         return {
           logits: init.logits,
           vocabSize: init.vocabSize,
@@ -1470,12 +1547,12 @@ export class WhisperOnnxExecutor {
           // Try multiple key formats for dims lookup (init uses present.*, step uses past_key_values.*)
           const dims = kvDims[name] ?? kvDims[stepName] ?? kvDims[name.replace(/^past_key_values\./, 'present.')];
           if (dims) {
-            feeds[stepName] = new splitLoaded.ort.Tensor('float32', data, dims) as unknown as OrtTensorLike<Float32Array>;
+            feeds[stepName] = new splitLoaded.ort.Tensor(kvDtype, data, dims) as unknown as OrtTensorLike<Float32Array>;
           } else {
             const numHeads = splitLoaded.modelConfig.decoderAttentionHeads;
             const headDim = splitLoaded.modelConfig.headDim;
             const seqLen = Math.round(data.length / (numHeads * headDim));
-            feeds[stepName] = new splitLoaded.ort.Tensor('float32', data, [1, numHeads, seqLen, headDim]) as unknown as OrtTensorLike<Float32Array>;
+            feeds[stepName] = new splitLoaded.ort.Tensor(kvDtype, data, [1, numHeads, seqLen, headDim]) as unknown as OrtTensorLike<Float32Array>;
           }
         }
         const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds);
