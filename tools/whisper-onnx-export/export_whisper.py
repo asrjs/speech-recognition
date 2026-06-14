@@ -981,15 +981,10 @@ def _organize_variant_dirs(
     elif variant == "fp16" and fp16:
         # Post-export FP16 conversion
         print(f"\nPost-export FP16 conversion in {variant_dir_name}/:")
-        fp16_names = [n.replace(".onnx", ".fp16.onnx") for n in graph_names]
-        # Note: fp16_names currently have .fp16 in them but the sources are base names
-        # Fix: convert from base names
-        fp16_src_names = [n for n in graph_names]
-        fp16_dst_names = [n.replace(".onnx", ".fp16.onnx") for n in graph_names]
-        # Actually for variant dir, we convert in-place to the variant name
+        # Convert from base names in-place
         ok = convert_fp16_safe(
             variant_dir,
-            [f"{n.replace('.onnx', '')}.fp16.onnx" for n in graph_names],
+            graph_names,
             use_external_data=use_external_data,
             all_tensors_to_one_file=external_data_one_file,
             size_threshold=external_data_threshold,

@@ -406,7 +406,7 @@ def main():
     print(f"TEST 2: Real English speech (JFK)")
     print(f"{'='*60}")
 
-    jfk_wav = "/home/steam/github/asrjs/speech-recognition/tools/data/fixtures/audio/jfk-short.wav"
+    jfk_wav = "/app/tools/data/fixtures/audio/jfk-short.wav"
     audio_jfk, sr_jfk = load_wav_mono_16k(jfk_wav)
     mel_jfk = compute_mel(audio_jfk, sr_jfk, feature_extractor)
     print(f"  Audio: {len(audio_jfk)/sr_jfk:.1f}s, mel shape: {mel_jfk.shape}")
