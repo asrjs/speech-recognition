@@ -22,6 +22,13 @@ for those tensors. Prefer a per-output location map so KV outputs stay on GPU
 while logits stay on CPU until logit processing moves to GPU. Dispose replaced
 GPU KV tensors.
 
+The current measured fast path intentionally keeps logits on CPU. Do not append
+a raw `ArgMax(logits)` output to the decoder graph as a shortcut: Whisper token
+selection depends on `suppress_tokens`, `begin_suppress_tokens`, no-timestamp
+suppression, and timestamp-state rules. A GPU ArgMax experiment must be masked,
+limited first to greedy `noTimestamps=true`, and published as an alternate
+artifact.
+
 ### Mel dimension from manifest
 `config.json` lacks `num_mel_bins`. Read from `generation_config.json` or `manifest.json`. Large-v3-turbo = 128 mel, whisper-base/tiny = 80 mel.
 
@@ -59,6 +66,9 @@ Uploaded filenames MUST match ONNX graph's internal `external_data.location`. Ch
   opt-in WebGPU-only experiment. It applies ORT `enableGraphCapture` to the
   encoder session only; do not enable it for dynamic decoder-step sessions
   without a measured A/B.
+- **ArgMax graph output**: future experiment only. It must preserve logit
+  processor semantics, use ORT fetches to avoid requesting full logits, and be
+  rejected on any token mismatch.
 
 ## Beam search
 `whisperBeamDecode` in core.ts. `numBeams`, `lengthPenalty`, `bestOf`, `patience` params. Wired into splitGraphDecodeLoop. Default `numBeams=1` (greedy).

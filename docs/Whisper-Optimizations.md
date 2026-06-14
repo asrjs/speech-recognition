@@ -264,6 +264,80 @@ Bottom line: your next meaningful speedup is probably hiding in the JS/WebGPU bo
 
 ## Codex validation addendum — 2026-06-14
 
+### Current optimization state — 2026-06-14 late update
+
+The working fast path is now:
+
+```text
+fp16io encoder + fp16 decoder + WebGPU EP + experimentalGpuKvCache
+```
+
+The important measured win is the GPU-resident KV bridge, not ONNX graph
+surgery. Decoder KV tensors stay as ORT `gpu-buffer` tensors between
+`decoder_init` and repeated `decoder_step` calls, while logits intentionally
+remain CPU outputs so the existing Whisper logit processor keeps exact
+suppression and no-timestamp semantics.
+
+Latest known 29.9s Chrome WebGPU run (`fp16io-fp16-webgpu`, 50-token cap,
+`experimentalGpuKvCache=true`, `experimentalWebGpuEncoderGraphCapture=false`):
+
+| Metric | Value |
+| --- | ---: |
+| Preprocess | `335.83ms` |
+| Encode | `1980.085ms` |
+| Decode | `771.56ms` |
+| Decoder init run | `72.08ms` |
+| Decoder step run | `685.14ms` |
+| Step p50 / p95 / max | `11.55ms` / `30.615ms` / `53.42ms` |
+| Logit processing | `2.025ms` |
+| Output handling | `1.525ms` |
+| GPU tensor downloads | `0` |
+| Total | `3095.505ms` |
+| RTFx | `9.6606x` |
+
+This changes the next-optimization priority:
+
+1. Do not assume logit download is still a 75-100ms bottleneck. The current
+   per-output placement already reports `0` GPU downloads and only a few
+   milliseconds in visible JS logit handling.
+2. GPU-side ArgMax is still worth an isolated A/B, but only as a masked
+   no-timestamps greedy experiment in an alternate model artifact. It is not a
+   safe direct patch to the current production model.
+3. Encoder work is now competitive with decode time and should be measured with
+   encoder graph capture and static-shape export experiments before changing
+   decoder graph semantics.
+4. Beam search remains supported, but the measured fast path is greedy-only.
+   Batched beam decode is the next quality-mode optimization, not part of the
+   `11x` claim.
+
+### ArgMax experiment guardrail
+
+A plain ONNX `ArgMax(logits)` output is semantically unsafe for Whisper. The
+runtime currently mutates logits before token selection:
+
+- `suppress_tokens` are suppressed every step.
+- `begin_suppress_tokens` are suppressed for the first generated token.
+- `no_timestamps` suppresses every timestamp token.
+- Timestamped mode has dynamic state rules based on previously emitted tokens.
+
+Therefore an ArgMax graph experiment must satisfy all of these conditions:
+
+- Publish or serve it as an alternate artifact, not by overwriting
+  `ysdede/whisper-large-v3-turbo-onnx-4graph`.
+- Limit the first version to greedy decode with `noTimestamps=true`,
+  `temperature=0`, `numBeams=1`, `bestOf=1`, and no `onTokenLogits` callback.
+- Add a static mask for `suppress_tokens` plus timestamp-token suppression.
+- Keep `decoder_init` token selection on the existing CPU logit path unless a
+  separate masked init graph is validated.
+- Request only `next_token_id` plus `present.*` outputs through ORT `fetches`
+  for the speed A/B; otherwise the graph may still materialize CPU logits.
+- Reject the experiment on any token mismatch, transcript mismatch, session
+  creation failure, or WebGPU memory growth.
+
+Expected upside is unknown until measured. The latest counters show only about
+`3.5ms` total in visible output/logit JS work, so the only plausible larger win
+would be hidden inside `decoder_step` `session.run`.
+
 ### Safety baseline
 
 Before starting optimization experiments, the known-good fp16 WebGPU state was
