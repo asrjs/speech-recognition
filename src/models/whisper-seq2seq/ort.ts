@@ -347,11 +347,7 @@ export async function initWhisperOrt(
       const gpu = nav.gpu;
       const adapter = gpu?.requestAdapter ? await gpu.requestAdapter() : null;
       if (adapter && typeof (adapter as { requestDevice?: unknown }).requestDevice === 'function') {
-        // Request fp16 shader support — required by Whisper fp16 encoder/decoder.
-        // Without 'shader-f16', ORT's fp16 Cast/Mul/MatMul kernels fail at runtime.
-        const device = await (adapter as { requestDevice(desc?: { requiredFeatures?: string[] }): Promise<unknown> }).requestDevice({
-          requiredFeatures: ['shader-f16'],
-        });
+        const device = await (adapter as { requestDevice(): Promise<unknown> }).requestDevice();
         ort.env.webgpu ??= {};
         ort.env.webgpu.device = device;
       }
@@ -392,9 +388,6 @@ export async function createWhisperOrtSession(
           name: 'webgpu',
           deviceType: 'gpu',
           powerPreference: 'high-performance',
-          // Share the device created in initWhisperOrt() to avoid
-          // cross-device buffer copies between encoder/decoder sessions.
-          ...(ort.env.webgpu?.device ? { device: ort.env.webgpu.device } : {}),
         },
       ]
     : ['wasm'];
