@@ -20,6 +20,9 @@ interface OrtEnv {
     simd?: boolean;
     proxy?: boolean;
   };
+  webgpu?: {
+    profiling?: unknown;
+  };
   versions?: {
     common?: string;
   };
@@ -267,6 +270,7 @@ export async function initWhisperOrt(
   options: {
     readonly wasmPaths?: string;
     readonly cpuThreads?: number;
+    readonly enableProfiling?: boolean;
   } = {},
 ): Promise<OrtModuleLike> {
   const imported = (await (
@@ -299,6 +303,11 @@ export async function initWhisperOrt(
   }
 
   ort.env.wasm.proxy = false;
+
+  if (normalizeWhisperWeightBackend(backendId) === 'webgpu' && options.enableProfiling) {
+    ort.env.webgpu ??= {};
+    ort.env.webgpu.profiling = { mode: 'default' };
+  }
 
   if (
     normalizeWhisperWeightBackend(backendId) === 'webgpu' &&

@@ -570,6 +570,7 @@ export class WhisperOnnxExecutor {
     const ort = await initWhisperOrt(resolved.ortBackend, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
+      enableProfiling: resolved.enableProfiling,
     });
 
     const tokenizer = await WhisperTokenizer.fromUrl(artifacts.tokenizerUrl);

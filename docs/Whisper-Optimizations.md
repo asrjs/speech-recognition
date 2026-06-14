@@ -367,17 +367,21 @@ Verification after this import change:
 Conclusion: explicit WebGPU import is a packaging/correctness prerequisite, not
 the speedup.
 
+`enableProfiling` on Whisper artifact sources now also enables
+`ort.env.webgpu.profiling = { mode: 'default' }` when the resolved ORT backend is
+WebGPU. This is opt-in and should be used in the demo/source request for the
+next profiling run.
+
 ### Next experiment order
 
-1. Enable optional ORT WebGPU profiling capture in the demo and save profile
-   summaries with the existing `_results/*.json`.
-2. A/B the explicit WebGPU import on the same 29.9s fixture.
-3. Add a WebGPU-only `preferredOutputLocation` experiment for decoder-step KV
+1. Enable optional ORT WebGPU profiling in the demo and inspect console output
+   with the existing `_results/*.json` timings.
+2. Add a WebGPU-only `preferredOutputLocation` experiment for decoder-step KV
    outputs, but keep logits on CPU until logit processing moves to GPU.
-4. If GPU KV tensors can be fed back into `decoder_step` without `.data`, add
+3. If GPU KV tensors can be fed back into `decoder_step` without `.data`, add
    tensor-location metrics and parity-gate it behind an opt-in flag.
-5. Only after that, export an alternative static-cache graph to a new HF repo.
-6. Beam batching is separate: do not mix it with greedy GPU-resident KV work.
+4. Only after that, export an alternative static-cache graph to a new HF repo.
+5. Beam batching is separate: do not mix it with greedy GPU-resident KV work.
 
 ### Stop conditions
 
