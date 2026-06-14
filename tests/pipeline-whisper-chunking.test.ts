@@ -87,4 +87,11 @@ describe('Whisper chunk planning helpers', () => {
       /left.*right.*less than chunk/i,
     );
   });
+
+  it('rejects non-positive sample rates', () => {
+    expect(() => planWhisperChunks(16_000, 0, 30)).toThrow(/sampleRate must be a positive number/);
+    expect(() => planWhisperChunks(16_000, -16_000, 30)).toThrow(/sampleRate must be a positive number/);
+    expect(() => planWhisperChunks(16_000, NaN, 30)).toThrow(/sampleRate must be a positive number/);
+    expect(() => planWhisperChunks(16_000, Infinity, 30)).toThrow(/sampleRate must be a positive number/);
+  });
 });
