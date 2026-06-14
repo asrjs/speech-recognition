@@ -69,6 +69,13 @@ Uploaded filenames MUST match ONNX graph's internal `external_data.location`. Ch
 - **ArgMax graph output**: future experiment only. It must preserve logit
   processor semantics, use ORT fetches to avoid requesting full logits, and be
   rejected on any token mismatch.
+- **GPU encoder→decoder Cast bridge** (`experimentalGpuKvCache` + WebGPU):
+  Encoder session set `preferredOutputLocation: 'gpu-buffer'`. Encoder output
+  stays on GPU. `decoder_init.onnx` patched with Cast(f32→f16) node at entry
+  (see `tools/whisper-onnx-export/inject_decoder_init_cast.py`).
+  `maybeCastEncoderHiddenStates()` skips CPU cast when decoder_init accepts
+  fp32. Eliminates 7.68MB GPU→CPU download + pipeline stall. Encode: 5.7×
+  faster (1900→336ms). RTFx: 10→21.5×.
 
 ## Beam search
 `whisperBeamDecode` in core.ts. `numBeams`, `lengthPenalty`, `bestOf`, `patience` params. Wired into splitGraphDecodeLoop. Default `numBeams=1` (greedy).

@@ -698,3 +698,102 @@ Local helper benchmark, 50 generated tokens and a 51,865-token vocabulary:
 This is a stable-path/helper optimization. It does not change the WebGPU
 GPU-KV fast path, which already bypasses the generic core greedy loop. It does
 reduce CPU work for WASM/CPU-KV greedy decode and keeps `bestOf` scoring intact.
+
+### Experiment 6: GPU ArgMax on decoder_step (2026-06-14)
+
+Appended `ArgMax(axis=-1, keepdims=0)` + `Cast(INT32)` nodes after the logits
+output of `decoder_step.onnx`. The JS executor reads `outputs.next_token_id`
+(INT32 scalar, 4 bytes) instead of computing `argmax(logits)` over 51k floats.
+
+**Tooling:** `tools/whisper-onnx-export/append_argmax_to_decoder.py` (reusable
+surgery script). Python ORT parity verified via `verify_argmax_parity.py` —
+`next_token_id` matches `np.argmax(logits)` bit-exact.
+
+**Result: counterproductive standalone.** The ArgMax model was ~20% slower than
+the original (819ms vs 656ms decode). Root cause: the timestamp logit processor
+still requires downloading the full 207KB logits every step. GPU ArgMax dispatch
+overhead exceeds JS `argmax()` savings. The GPU ArgMax only becomes a net win
+when **logit processing (timestamp suppression, EOS suppression) also moves to
+GPU**, eliminating the 207KB/token download entirely.
+
+**Critical pitfall discovered:** New ONNX outputs added via graph surgery are NOT
+automatically mapped to CPU in ORT's `preferredOutputLocation` per-output map.
+They default to GPU-buffer, making `.data` unreadable in JS. Without explicitly
+adding `next_token_id: 'cpu'` to `createWhisperGpuKvOutputLocation()`, the
+ArgMax kernel still dispatches on GPU while JS silently falls back to
+`argmax(logits)` — a net loss of ~35%.
+
+**Verdict:** Infrastructure committed (executor.ts `nextTokenId` plumbing,
+surgery scripts). Skip standalone deployment. Bundle with GPU logit processing
+as a single combined change.
+
+### Experiment 7: GPU encoder→decoder Cast bridge (2026-06-14) ✅ DEPLOYED
+
+Eliminated the CPU f32→f16 cast round-trip for encoder hidden states by
+injecting a native ONNX `Cast` node into `decoder_init.onnx`.
+
+**ONNX surgery** (`tools/whisper-onnx-export/inject_decoder_init_cast.py`):
+- Changed `encoder_hidden_states` input type from `FLOAT16` → `FLOAT` (fp32)
+- Inserted `Cast(f32→f16)` node at graph entry position 0
+- Redirected 8 downstream cross-attention MatMul references
+- Preserved original external data (no weight re-packing — see pitfall below)
+- Parity verified via `tools/whisper-onnx-export/verify_cast_parity.py`
+
+**JS changes** (`executor.ts`):
+- Encoder session gets `preferredOutputLocation: 'gpu-buffer'` when
+  `experimentalGpuKvCache` + WebGPU (encoder output stays on GPU)
+- `maybeCastEncoderHiddenStates()` now `async`: returns immediately (no-op)
+  when decoder_init accepts fp32 (Cast model). For original fp16 model,
+  downloads GPU tensor via `getData()` and does CPU cast.
+- Two call sites updated with `await`.
+
+**Benchmark** (RTX 5060 Ti, 29.9s JFK, fp16io-fp16, greedy, maxNewTokens=50,
+3 runs, warm-up discarded):
+
+| Metric | CPU Cast (before) | GPU Bridge (after) | Delta |
+|---|---|---|---|
+| Encode | ~1900ms | **336ms avg** | **5.7× faster** |
+| Decode | 660-820ms | 773ms avg | within range |
+| Step P50 | 11-14ms | 10.7ms | same |
+| RTFx | ~10× | **21.5×** | 2.15× overall |
+| Token parity | ✅ | ✅ | identical transcript |
+
+The encode speedup is from **eliminating the GPU pipeline stall**:
+`encoderSession.run()` with CPU output blocks on the 7.68MB GPU→CPU download
+(flushes the WebGPU command queue). With `preferredOutputLocation: 'gpu-buffer'`,
+`run()` returns as soon as commands are dispatched — JS no longer waits for the
+readback. Actual GPU compute is unchanged; measured wall time drops because the
+stall is removed.
+
+**Feature parity preserved:** Timestamps, logits, beam search, temperature
+sampling, and token suppression all unchanged.
+
+**ONNX external data pitfall (CRITICAL):** When saving a modified ONNX graph that
+uses external data, do NOT use `onnx.save(save_as_external_data=True)` — it
+re-packs all weights and can produce different file sizes (corruption risk).
+Instead: (1) load with `load_external_data=False`, (2) modify graph, (3) save
+with plain `onnx.save(model, path)`, (4) copy original `.data` file alongside.
+The internal `external_data.location` references stay intact. The deployed
+`.onnx` filename must match the internal location reference.
+
+### Final optimization summary (perf/whisper-webgpu-decode branch)
+
+| # | Experiment | Impact | Status |
+|---|---|---|---|
+| 1 | GPU KV cache bridge | Decode: 4.8× → 11× RTFx | ✅ deployed |
+| 2 | Beam candidate ranking | Helper: 20× faster (182→9ms) | ✅ deployed |
+| 3 | Skip greedy score pass | CPU work: 49→2.5ms per run | ✅ deployed |
+| 4 | Encoder graph capture | Session creation fails | ❌ blocked (Reshape/Shape ops) |
+| 5 | GPU ArgMax | Counterproductive standalone | ⚠️ infra committed, skip solo |
+| **6** | **GPU encoder→decoder Cast** | **Encode: 5.7×, RTFx: 10→21.5×** | **✅ deployed** |
+
+**Cumulative improvement from baseline (fp16io-fp16-webgpu, greedy):**
+- Decode: ~4000ms → ~773ms (5.2× faster, GPU KV bridge)
+- Encode: ~1900ms → ~336ms (5.7× faster, GPU Cast bridge)
+- **Total: ~5900ms → ~1109ms (5.3× faster, combined)**
+- **RTFx: ~4.8× → 21.5× (4.5× throughput improvement)**
+
+**Remaining high-impact opportunities:**
+1. GPU logit processing + ArgMax combined (eliminates 207KB/step download)
+2. Batched beam graph (beam_size=5 → 5× fewer ORT calls)
+3. Static KV cache + graph capture (requires new ONNX export)
