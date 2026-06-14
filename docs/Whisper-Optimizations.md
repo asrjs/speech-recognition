@@ -372,6 +372,15 @@ the speedup.
 WebGPU. This is opt-in and should be used in the demo/source request for the
 next profiling run.
 
+Profiled smoke (`?profiling=1`) also completed with the same 50 token IDs and
+transcript prefix. Profiling adds overhead and should not be used for speed
+comparisons:
+
+| Mode | Decode | Step ORT run | Step p50 / p95 | RTFx |
+| ---- | ------ | ------------ | -------------- | ---- |
+| Profiling off | `4034.72ms` | `3833.98ms` | `78.23ms` / `82.94ms` | `4.961` |
+| Profiling on | `4405.08ms` | `4214.56ms` | `85.64ms` / `91.10ms` | `4.662` |
+
 ### Next experiment order
 
 1. Enable optional ORT WebGPU profiling in the demo and inspect console output
