@@ -187,6 +187,8 @@ function createWhisperGpuKvOutputLocation(
 ): OrtPreferredOutputLocation {
   const outputLocation: Record<string, 'cpu' | 'gpu-buffer'> = {
     logits: 'cpu',
+    // GPU ArgMax output: always keep on CPU (INT32 scalar, 4 bytes)
+    next_token_id: 'cpu',
   };
   for (let layer = 0; layer < config.decoderLayers; layer++) {
     outputLocation[`present.${layer}.decoder.key`] = 'gpu-buffer';
@@ -1244,6 +1246,8 @@ export class WhisperOnnxExecutor {
   ): Promise<{
     logits: Float32Array;
     vocabSize: number;
+    /** GPU ArgMax: pre-computed next token ID from model output (undefined if not exported). */
+    nextTokenId?: number;
     presentKv: Record<string, OrtTensorLike<Float32Array>>;
     timings: DecoderSessionTiming;
   }> {
@@ -1291,10 +1295,19 @@ export class WhisperOnnxExecutor {
       }
     }
 
+    // GPU ArgMax: if the model exports next_token_id, read it directly.
+    let nextTokenId: number | undefined;
+    const nextTokenTensor = outputs['next_token_id'] as OrtTensorLike<Int32Array> | undefined;
+    if (nextTokenTensor && nextTokenTensor.data) {
+      // CPU tensor — read directly (4 bytes, not a download)
+      nextTokenId = nextTokenTensor.data[0];
+    }
+
     const outputEnd = nowMs();
     return {
       logits: logitsData.data,
       vocabSize,
+      nextTokenId,
       presentKv,
       timings: {
         inputMs: runStart - inputStart,
@@ -1711,7 +1724,8 @@ export class WhisperOnnxExecutor {
         disposeReplacedGpuKv(previousKv, pastKv);
 
         processLogits?.(step.logits, [...promptTokens, ...tokens], promptTokens.length);
-        const nextTokenId = argmax(step.logits);
+        // GPU ArgMax: use model-computed next_token_id when available, fall back to JS argmax
+        const nextTokenId = step.nextTokenId ?? argmax(step.logits);
         tokens.push(nextTokenId);
         onTokenLogits?.(nextTokenId, step.logits, { tokens, beginIndex: promptTokens.length });
 
