@@ -21,8 +21,8 @@ WHISPER_MODEL_DIR=/tmp/whisper-tiny-4graph \
 ```typescript
 import {
   createWhisperSeq2SeqModelFamily,
-  loadSplitGraphLocalModel,
 } from '@asrjs/speech-recognition/models/whisper-seq2seq';
+import { loadSplitGraphLocalModel } from '@asrjs/speech-recognition/models/whisper-seq2seq/local-file';
 
 // Read manifest.json + build artifact source from local directory
 const { source, config, modelId } = loadSplitGraphLocalModel('/path/to/exported/whisper-tiny');

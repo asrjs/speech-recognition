@@ -135,6 +135,7 @@ describe('public exports', () => {
     expect(nemoAed.createNemoAedModelFamily).toBeTypeOf('function');
     expect(lasrCtc.createLasrCtcModelFamily).toBeTypeOf('function');
     expect(whisperModel.createWhisperSeq2SeqModelFamily).toBeTypeOf('function');
+    expect('loadSplitGraphLocalModel' in whisperModel).toBe(false);
     expect(wav2Vec2Model.createWav2Vec2ModelFamily).toBeTypeOf('function');
     expect(presets.listBuiltInModelDescriptors).toBeTypeOf('function');
     expect(presets.getBuiltInModelDescriptor).toBeTypeOf('function');

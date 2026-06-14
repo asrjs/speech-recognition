@@ -9,7 +9,6 @@ export * from './enhanced-executor.js';
 export * from './enhanced-types.js';
 export * from './executor.js';
 export * from './generation-config.js';
-export * from './local-file.js';
 export * from './manifest.js';
 export * from './mapping.js';
 export * from './model.js';
