@@ -269,7 +269,11 @@ export async function initWhisperOrt(
     readonly cpuThreads?: number;
   } = {},
 ): Promise<OrtModuleLike> {
-  const imported = (await import('onnxruntime-web')) as unknown as OrtModuleLike & {
+  const imported = (await (
+    normalizeWhisperWeightBackend(backendId) === 'webgpu'
+      ? import('onnxruntime-web/webgpu')
+      : import('onnxruntime-web')
+  )) as unknown as OrtModuleLike & {
     readonly default?: OrtModuleLike;
   };
   const ort = imported.default ?? imported;
