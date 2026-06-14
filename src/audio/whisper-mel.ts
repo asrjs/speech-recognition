@@ -9,6 +9,179 @@ const WHISPER_SAMPLE_RATE = 16000;
 const WHISPER_N_FFT = 400;
 const WHISPER_HOP_LENGTH = 160;
 const WHISPER_WIN_LENGTH = 400;
+const WHISPER_N_FREQS = (WHISPER_N_FFT >> 1) + 1;
+
+interface FftTwiddles {
+  readonly cos: Float64Array;
+  readonly sin: Float64Array;
+  readonly bitrev: Uint32Array;
+  readonly inverse: boolean;
+}
+
+const FFT_TWIDDLE_CACHE = new Map<string, FftTwiddles>();
+
+function nextPowerOfTwo(size: number): number {
+  let value = 1;
+  while (value < size) value <<= 1;
+  return value;
+}
+
+function precomputeTwiddles(size: number, inverse: boolean): FftTwiddles {
+  const key = `${size}:${inverse ? 'inverse' : 'forward'}`;
+  const cached = FFT_TWIDDLE_CACHE.get(key);
+  if (cached) return cached;
+
+  const bits = Math.log2(size);
+  if (!Number.isInteger(bits)) {
+    throw new Error(`FFT size must be power-of-two. Received: ${size}`);
+  }
+
+  const half = size >> 1;
+  const cos = new Float64Array(half);
+  const sin = new Float64Array(half);
+  const sign = inverse ? 2 : -2;
+  for (let i = 0; i < half; i++) {
+    const angle = (sign * Math.PI * i) / size;
+    cos[i] = Math.cos(angle);
+    sin[i] = Math.sin(angle);
+  }
+
+  const bitrev = new Uint32Array(size);
+  for (let i = 0; i < size; i++) {
+    let x = i;
+    let r = 0;
+    for (let bit = 0; bit < bits; bit++) {
+      r = (r << 1) | (x & 1);
+      x >>= 1;
+    }
+    bitrev[i] = r;
+  }
+
+  const twiddles: FftTwiddles = { cos, sin, bitrev, inverse };
+  FFT_TWIDDLE_CACHE.set(key, twiddles);
+  return twiddles;
+}
+
+function fft(re: Float64Array, im: Float64Array, size: number, twiddles: FftTwiddles): void {
+  const bitrev = twiddles.bitrev;
+  for (let i = 0; i < size; i++) {
+    const j = bitrev[i] as number;
+    if (i < j) {
+      let tmp = re[i] as number;
+      re[i] = re[j] as number;
+      re[j] = tmp;
+      tmp = im[i] as number;
+      im[i] = im[j] as number;
+      im[j] = tmp;
+    }
+  }
+
+  for (let len = 2; len <= size; len <<= 1) {
+    const halfLen = len >> 1;
+    const step = size / len;
+    for (let offset = 0; offset < size; offset += len) {
+      for (let k = 0; k < halfLen; k++) {
+        const twiddleIndex = k * step;
+        const wCos = twiddles.cos[twiddleIndex] as number;
+        const wSin = twiddles.sin[twiddleIndex] as number;
+        const even = offset + k;
+        const odd = even + halfLen;
+        const oddRe = re[odd] as number;
+        const oddIm = im[odd] as number;
+        const tRe = oddRe * wCos - oddIm * wSin;
+        const tIm = oddRe * wSin + oddIm * wCos;
+        const evenRe = re[even] as number;
+        const evenIm = im[even] as number;
+        re[odd] = evenRe - tRe;
+        im[odd] = evenIm - tIm;
+        re[even] = evenRe + tRe;
+        im[even] = evenIm + tIm;
+      }
+    }
+  }
+
+  if (twiddles.inverse) {
+    const invSize = 1 / size;
+    for (let i = 0; i < size; i++) {
+      re[i] = (re[i] as number) * invSize;
+      im[i] = (im[i] as number) * invSize;
+    }
+  }
+}
+
+class BluesteinRfft {
+  private readonly fftSize: number;
+  private readonly forwardTwiddles: FftTwiddles;
+  private readonly inverseTwiddles: FftTwiddles;
+  private readonly chirpCos: Float64Array;
+  private readonly chirpSin: Float64Array;
+  private readonly kernelRe: Float64Array;
+  private readonly kernelIm: Float64Array;
+  private readonly workRe: Float64Array;
+  private readonly workIm: Float64Array;
+
+  constructor(private readonly size: number) {
+    this.fftSize = nextPowerOfTwo(size * 2 - 1);
+    this.forwardTwiddles = precomputeTwiddles(this.fftSize, false);
+    this.inverseTwiddles = precomputeTwiddles(this.fftSize, true);
+    this.chirpCos = new Float64Array(size);
+    this.chirpSin = new Float64Array(size);
+    this.kernelRe = new Float64Array(this.fftSize);
+    this.kernelIm = new Float64Array(this.fftSize);
+    this.workRe = new Float64Array(this.fftSize);
+    this.workIm = new Float64Array(this.fftSize);
+
+    this.kernelRe[0] = 1;
+    for (let i = 0; i < size; i++) {
+      const angle = (Math.PI * i * i) / size;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      this.chirpCos[i] = cos;
+      this.chirpSin[i] = sin;
+      if (i > 0) {
+        this.kernelRe[i] = cos;
+        this.kernelIm[i] = sin;
+        this.kernelRe[this.fftSize - i] = cos;
+        this.kernelIm[this.fftSize - i] = sin;
+      }
+    }
+
+    fft(this.kernelRe, this.kernelIm, this.fftSize, this.forwardTwiddles);
+  }
+
+  transform(input: Float32Array, outRe: Float64Array, outIm: Float64Array): void {
+    this.workRe.fill(0);
+    this.workIm.fill(0);
+
+    for (let i = 0; i < this.size; i++) {
+      const value = input[i] as number;
+      this.workRe[i] = value * (this.chirpCos[i] as number);
+      this.workIm[i] = -value * (this.chirpSin[i] as number);
+    }
+
+    fft(this.workRe, this.workIm, this.fftSize, this.forwardTwiddles);
+
+    for (let i = 0; i < this.fftSize; i++) {
+      const aRe = this.workRe[i] as number;
+      const aIm = this.workIm[i] as number;
+      const bRe = this.kernelRe[i] as number;
+      const bIm = this.kernelIm[i] as number;
+      this.workRe[i] = aRe * bRe - aIm * bIm;
+      this.workIm[i] = aRe * bIm + aIm * bRe;
+    }
+
+    fft(this.workRe, this.workIm, this.fftSize, this.inverseTwiddles);
+
+    for (let k = 0; k < outRe.length; k++) {
+      const cRe = this.workRe[k] as number;
+      const cIm = this.workIm[k] as number;
+      const cos = this.chirpCos[k] as number;
+      const sin = this.chirpSin[k] as number;
+      outRe[k] = cRe * cos + cIm * sin;
+      outIm[k] = cIm * cos - cRe * sin;
+    }
+  }
+}
 
 // Hann window, periodic=True (matches torch.hann_window default)
 function createHannWindow(size: number): Float32Array {
@@ -24,7 +197,7 @@ function hzToMelSlaney(hz: number): number {
   const fSp = 200.0 / 3;
   const minLogHz = 1000.0;
   if (hz >= minLogHz) {
-    return (Math.log(hz / minLogHz) / Math.log(6.4)) * 27 + (minLogHz / fSp);
+    return (Math.log(hz / minLogHz) / Math.log(6.4)) * 27 + minLogHz / fSp;
   }
   return hz / fSp;
 }
@@ -39,7 +212,11 @@ function melToHzSlaney(mel: number): number {
   return mel * fSp;
 }
 
-function createMelFilterbank(nMels: number, sampleRate = WHISPER_SAMPLE_RATE, nFft = WHISPER_N_FFT): Float32Array {
+function createMelFilterbank(
+  nMels: number,
+  sampleRate = WHISPER_SAMPLE_RATE,
+  nFft = WHISPER_N_FFT,
+): Float32Array {
   const fMax = sampleRate / 2;
   const nFreqs = (nFft >> 1) + 1;
   const melMin = hzToMelSlaney(0);
@@ -79,22 +256,26 @@ function createMelFilterbank(nMels: number, sampleRate = WHISPER_SAMPLE_RATE, nF
   return filterbank;
 }
 
-// Real-input DFT returning first nFreqs bins (slow but correct for any n)
-function rfftDirect(input: Float32Array, outRe: Float64Array, outIm: Float64Array): void {
-  const n = input.length;
-  const nFreqs = outRe.length;
-  for (let k = 0; k < nFreqs; k++) {
-    let sumRe = 0;
-    let sumIm = 0;
-    for (let t = 0; t < n; t++) {
-      const angle = (2 * Math.PI * k * t) / n;
-      const v = input[t] as number;
-      sumRe += v * Math.cos(angle);
-      sumIm -= v * Math.sin(angle);
+function createMelFilterBounds(
+  filterbank: Float32Array,
+  nMels: number,
+  nFreqs: number,
+): Int32Array {
+  const bounds = new Int32Array(nMels * 2);
+  for (let melIndex = 0; melIndex < nMels; melIndex++) {
+    const fbOffset = melIndex * nFreqs;
+    let start = -1;
+    let end = -1;
+    for (let freqIndex = 0; freqIndex < nFreqs; freqIndex++) {
+      if ((filterbank[fbOffset + freqIndex] as number) > 0) {
+        if (start === -1) start = freqIndex;
+        end = freqIndex;
+      }
     }
-    outRe[k] = sumRe;
-    outIm[k] = sumIm;
+    bounds[melIndex * 2] = start === -1 ? 0 : start;
+    bounds[melIndex * 2 + 1] = end === -1 ? 0 : end + 1;
   }
+  return bounds;
 }
 
 export interface WhisperMelProcessResult {
@@ -111,7 +292,12 @@ export class WhisperMelProcessor {
   readonly winLength: number;
   private readonly window: Float32Array;
   private readonly melFilterbank: Float32Array;
+  private readonly melFilterBounds: Int32Array;
   private readonly dftWindowed: Float32Array;
+  private readonly rfft: BluesteinRfft;
+  private readonly fftRe: Float64Array;
+  private readonly fftIm: Float64Array;
+  private readonly powerBuf: Float32Array;
 
   constructor(options: { readonly nMels?: number; readonly sampleRate?: number } = {}) {
     this.sampleRate = options.sampleRate ?? WHISPER_SAMPLE_RATE;
@@ -121,7 +307,12 @@ export class WhisperMelProcessor {
     this.winLength = WHISPER_WIN_LENGTH;
     this.window = createHannWindow(this.winLength);
     this.melFilterbank = createMelFilterbank(this.nMels, this.sampleRate, this.nFft);
+    this.melFilterBounds = createMelFilterBounds(this.melFilterbank, this.nMels, WHISPER_N_FREQS);
     this.dftWindowed = new Float32Array(this.winLength);
+    this.rfft = new BluesteinRfft(this.nFft);
+    this.fftRe = new Float64Array(WHISPER_N_FREQS);
+    this.fftIm = new Float64Array(WHISPER_N_FREQS);
+    this.powerBuf = new Float32Array(WHISPER_N_FREQS);
   }
 
   process(audio: Float32Array): WhisperMelProcessResult {
@@ -135,9 +326,10 @@ export class WhisperMelProcessor {
     const pad = this.nFft >> 1; // 200
 
     const features = new Float32Array(this.nMels * nFrames);
-    const nFreqs = (this.nFft >> 1) + 1; // 201
-    const fftRe = new Float64Array(nFreqs);
-    const fftIm = new Float64Array(nFreqs);
+    const nFreqs = WHISPER_N_FREQS;
+    const fftRe = this.fftRe;
+    const fftIm = this.fftIm;
+    const powerBuf = this.powerBuf;
 
     for (let frameIndex = 0; frameIndex < nFrames; frameIndex++) {
       const offset = frameIndex * this.hopLength;
@@ -149,20 +341,23 @@ export class WhisperMelProcessor {
         this.dftWindowed[i] = sample * (this.window[i] as number);
       }
 
-      rfftDirect(this.dftWindowed, fftRe, fftIm);
+      this.rfft.transform(this.dftWindowed, fftRe, fftIm);
 
       // Power spectrum
-      const powerBuf = new Float32Array(nFreqs);
       for (let k = 0; k < nFreqs; k++) {
-        powerBuf[k] = (fftRe[k] as number) * (fftRe[k] as number) + (fftIm[k] as number) * (fftIm[k] as number);
+        powerBuf[k] =
+          (fftRe[k] as number) * (fftRe[k] as number) + (fftIm[k] as number) * (fftIm[k] as number);
       }
 
       // Mel filterbank + log10
       for (let melIndex = 0; melIndex < this.nMels; melIndex++) {
         let melPower = 0;
         const fbOffset = melIndex * nFreqs;
-        for (let freqIndex = 0; freqIndex < nFreqs; freqIndex++) {
-          melPower += (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
+        const start = this.melFilterBounds[melIndex * 2] as number;
+        const end = this.melFilterBounds[melIndex * 2 + 1] as number;
+        for (let freqIndex = start; freqIndex < end; freqIndex++) {
+          melPower +=
+            (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
         }
         const logValue = melPower > 0 ? Math.log10(melPower) : -10;
         features[melIndex * nFrames + frameIndex] = logValue;

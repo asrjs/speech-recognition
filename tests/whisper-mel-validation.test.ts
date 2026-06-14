@@ -10,6 +10,9 @@ import * as fs from 'fs';
  */
 
 const REF_PATH = '/tmp/whisper_mel_ref_440hz_1s.json';
+const SAMPLE_RATE = 16000;
+const N_FFT = 400;
+const HOP_LENGTH = 160;
 
 interface RefData {
   shape: number[];
@@ -25,7 +28,158 @@ function loadRef(): RefData | null {
   }
 }
 
+function hzToMelSlaney(hz: number): number {
+  const fSp = 200.0 / 3;
+  const minLogHz = 1000.0;
+  if (hz >= minLogHz) {
+    return (Math.log(hz / minLogHz) / Math.log(6.4)) * 27 + minLogHz / fSp;
+  }
+  return hz / fSp;
+}
+
+function melToHzSlaney(mel: number): number {
+  const fSp = 200.0 / 3;
+  const minLogHz = 1000.0;
+  const minLogMel = minLogHz / fSp;
+  if (mel >= minLogMel) {
+    return minLogHz * Math.exp((Math.log(6.4) * (mel - minLogMel)) / 27);
+  }
+  return mel * fSp;
+}
+
+function createDirectMelFilterbank(nMels: number): Float32Array {
+  const fMax = SAMPLE_RATE / 2;
+  const nFreqs = (N_FFT >> 1) + 1;
+  const melMin = hzToMelSlaney(0);
+  const melMax = hzToMelSlaney(fMax);
+  const melPts = new Float64Array(nMels + 2);
+  for (let i = 0; i < melPts.length; i++) {
+    melPts[i] = melToHzSlaney(melMin + ((melMax - melMin) * i) / (melPts.length - 1));
+  }
+
+  const filterbank = new Float32Array(nMels * nFreqs);
+  for (let melIndex = 0; melIndex < nMels; melIndex++) {
+    const lower = melPts[melIndex] as number;
+    const center = melPts[melIndex + 1] as number;
+    const upper = melPts[melIndex + 2] as number;
+    const fbOffset = melIndex * nFreqs;
+    for (let freqIndex = 0; freqIndex < nFreqs; freqIndex++) {
+      const freq = (fMax * freqIndex) / (nFreqs - 1);
+      if (freq >= lower && freq <= center && center !== lower) {
+        filterbank[fbOffset + freqIndex] = (freq - lower) / (center - lower);
+      } else if (freq > center && freq <= upper && upper !== center) {
+        filterbank[fbOffset + freqIndex] = (upper - freq) / (upper - center);
+      }
+    }
+    const bandwidth = upper - lower;
+    if (bandwidth > 0) {
+      const scale = 2.0 / bandwidth;
+      for (let freqIndex = 0; freqIndex < nFreqs; freqIndex++) {
+        filterbank[fbOffset + freqIndex] = (filterbank[fbOffset + freqIndex] as number) * scale;
+      }
+    }
+  }
+  return filterbank;
+}
+
+function reflectSample(audio: Float32Array, paddedIdx: number, pad: number): number {
+  const sampleCount = audio.length;
+  const originalStart = pad;
+  const originalEnd = pad + sampleCount - 1;
+  if (paddedIdx < originalStart) {
+    return audio[originalStart - paddedIdx] as number;
+  }
+  if (paddedIdx > originalEnd) {
+    return audio[sampleCount - 1 - (paddedIdx - originalEnd)] as number;
+  }
+  return audio[paddedIdx - pad] as number;
+}
+
+function computeDirectWhisperMel(audio: Float32Array, nMels: number): Float32Array {
+  const nFrames = Math.floor(audio.length / HOP_LENGTH);
+  const nFreqs = (N_FFT >> 1) + 1;
+  const pad = N_FFT >> 1;
+  const window = new Float32Array(N_FFT);
+  const frame = new Float32Array(N_FFT);
+  const power = new Float64Array(nFreqs);
+  const filterbank = createDirectMelFilterbank(nMels);
+  const features = new Float32Array(nMels * nFrames);
+
+  for (let i = 0; i < N_FFT; i++) {
+    window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N_FFT);
+  }
+
+  for (let frameIndex = 0; frameIndex < nFrames; frameIndex++) {
+    const offset = frameIndex * HOP_LENGTH;
+    for (let i = 0; i < N_FFT; i++) {
+      frame[i] = reflectSample(audio, offset + i, pad) * (window[i] as number);
+    }
+
+    for (let freqIndex = 0; freqIndex < nFreqs; freqIndex++) {
+      let sumRe = 0;
+      let sumIm = 0;
+      for (let i = 0; i < N_FFT; i++) {
+        const angle = (2 * Math.PI * freqIndex * i) / N_FFT;
+        const value = frame[i] as number;
+        sumRe += value * Math.cos(angle);
+        sumIm -= value * Math.sin(angle);
+      }
+      power[freqIndex] = sumRe * sumRe + sumIm * sumIm;
+    }
+
+    for (let melIndex = 0; melIndex < nMels; melIndex++) {
+      let melPower = 0;
+      const fbOffset = melIndex * nFreqs;
+      for (let freqIndex = 0; freqIndex < nFreqs; freqIndex++) {
+        melPower += (power[freqIndex] as number) * (filterbank[fbOffset + freqIndex] as number);
+      }
+      features[melIndex * nFrames + frameIndex] = melPower > 0 ? Math.log10(melPower) : -10;
+    }
+  }
+
+  let globalMax = -Infinity;
+  for (let i = 0; i < features.length; i++) {
+    const value = features[i] as number;
+    if (value > globalMax) globalMax = value;
+  }
+  const clipMin = globalMax - 8.0;
+  for (let i = 0; i < features.length; i++) {
+    const value = features[i] as number;
+    features[i] = ((value > clipMin ? value : clipMin) + 4.0) / 4.0;
+  }
+
+  return features;
+}
+
 describe('WhisperMelProcessor vs OpenAI reference', () => {
+  it('matches a direct 400-point DFT reference for deterministic audio', () => {
+    const nMels = 80;
+    const samples = new Float32Array(3200);
+    for (let i = 0; i < samples.length; i++) {
+      samples[i] =
+        0.2 * Math.sin((2 * Math.PI * 440 * i) / SAMPLE_RATE) +
+        0.1 * Math.sin((2 * Math.PI * 1200 * i) / SAMPLE_RATE);
+    }
+
+    const processor = new WhisperMelProcessor({ nMels, sampleRate: SAMPLE_RATE });
+    const result = processor.process(samples);
+    const expected = computeDirectWhisperMel(samples, nMels);
+
+    expect(result.frameCount).toBe(Math.floor(samples.length / HOP_LENGTH));
+    expect(result.features.length).toBe(expected.length);
+
+    let maxDiff = 0;
+    let totalDiff = 0;
+    for (let i = 0; i < expected.length; i++) {
+      const diff = Math.abs((result.features[i] as number) - (expected[i] as number));
+      totalDiff += diff;
+      if (diff > maxDiff) maxDiff = diff;
+    }
+
+    expect(maxDiff).toBeLessThan(1e-4);
+    expect(totalDiff / expected.length).toBeLessThan(1e-6);
+  });
+
   it('produces mel features matching OpenAI within tolerance', () => {
     const ref = loadRef();
     if (!ref) {
