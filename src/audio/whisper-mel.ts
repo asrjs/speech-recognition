@@ -109,6 +109,7 @@ function fft(re: Float64Array, im: Float64Array, size: number, twiddles: FftTwid
   }
 }
 
+
 class BluesteinRfft {
   private readonly fftSize: number;
   private readonly forwardTwiddles: FftTwiddles;
@@ -119,21 +120,27 @@ class BluesteinRfft {
   private readonly kernelIm: Float64Array;
   private readonly workRe: Float64Array;
   private readonly workIm: Float64Array;
+  private readonly twiddlesCos: Float64Array;
+  private readonly twiddlesSin: Float64Array;
+  private readonly halfN: number;
 
-  constructor(private readonly size: number) {
-    this.fftSize = nextPowerOfTwo(size * 2 - 1);
+  constructor(size: number) {
+    this.halfN = size >> 1;
+    this.fftSize = nextPowerOfTwo(this.halfN * 2 - 1);
     this.forwardTwiddles = precomputeTwiddles(this.fftSize, false);
     this.inverseTwiddles = precomputeTwiddles(this.fftSize, true);
-    this.chirpCos = new Float64Array(size);
-    this.chirpSin = new Float64Array(size);
+    this.chirpCos = new Float64Array(this.halfN);
+    this.chirpSin = new Float64Array(this.halfN);
     this.kernelRe = new Float64Array(this.fftSize);
     this.kernelIm = new Float64Array(this.fftSize);
     this.workRe = new Float64Array(this.fftSize);
     this.workIm = new Float64Array(this.fftSize);
+    this.twiddlesCos = new Float64Array(this.halfN);
+    this.twiddlesSin = new Float64Array(this.halfN);
 
     this.kernelRe[0] = 1;
-    for (let i = 0; i < size; i++) {
-      const angle = (Math.PI * i * i) / size;
+    for (let i = 0; i < this.halfN; i++) {
+      const angle = (Math.PI * i * i) / this.halfN;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
       this.chirpCos[i] = cos;
@@ -144,6 +151,10 @@ class BluesteinRfft {
         this.kernelRe[this.fftSize - i] = cos;
         this.kernelIm[this.fftSize - i] = sin;
       }
+
+      const twiddleAngle = -2 * Math.PI * i / size;
+      this.twiddlesCos[i] = Math.cos(twiddleAngle);
+      this.twiddlesSin[i] = Math.sin(twiddleAngle);
     }
 
     fft(this.kernelRe, this.kernelIm, this.fftSize, this.forwardTwiddles);
@@ -153,10 +164,13 @@ class BluesteinRfft {
     this.workRe.fill(0);
     this.workIm.fill(0);
 
-    for (let i = 0; i < this.size; i++) {
-      const value = input[i] as number;
-      this.workRe[i] = value * (this.chirpCos[i] as number);
-      this.workIm[i] = -value * (this.chirpSin[i] as number);
+    for (let i = 0; i < this.halfN; i++) {
+      const re = input[2 * i] as number;
+      const im = input[2 * i + 1] as number;
+      const c = this.chirpCos[i] as number;
+      const s = this.chirpSin[i] as number;
+      this.workRe[i] = re * c - im * -s;
+      this.workIm[i] = re * -s + im * c;
     }
 
     fft(this.workRe, this.workIm, this.fftSize, this.forwardTwiddles);
@@ -172,13 +186,44 @@ class BluesteinRfft {
 
     fft(this.workRe, this.workIm, this.fftSize, this.inverseTwiddles);
 
-    for (let k = 0; k < outRe.length; k++) {
+    for (let k = 0; k < this.halfN; k++) {
       const cRe = this.workRe[k] as number;
       const cIm = this.workIm[k] as number;
-      const cos = this.chirpCos[k] as number;
-      const sin = this.chirpSin[k] as number;
-      outRe[k] = cRe * cos + cIm * sin;
-      outIm[k] = cIm * cos - cRe * sin;
+      const c = this.chirpCos[k] as number;
+      const s = this.chirpSin[k] as number;
+      const ZRe = cRe * c - cIm * -s;
+      const ZIm = cRe * -s + cIm * c;
+      this.workRe[k] = ZRe;
+      this.workIm[k] = ZIm;
+    }
+
+    outRe[0] = (this.workRe[0] as number) + (this.workIm[0] as number);
+    outIm[0] = 0;
+
+    outRe[this.halfN] = (this.workRe[0] as number) - (this.workIm[0] as number);
+    outIm[this.halfN] = 0;
+
+    const outLen = Math.min(outRe.length, this.halfN);
+
+    for (let k = 1; k < outLen; k++) {
+      const Z_k_re = this.workRe[k] as number;
+      const Z_k_im = this.workIm[k] as number;
+      const Z_N_k_re = this.workRe[this.halfN - k] as number;
+      const Z_N_k_im = this.workIm[this.halfN - k] as number;
+
+      const X_e_re = 0.5 * (Z_k_re + Z_N_k_re);
+      const X_e_im = 0.5 * (Z_k_im - Z_N_k_im);
+      const X_o_re = 0.5 * (Z_k_im + Z_N_k_im);
+      const X_o_im = -0.5 * (Z_k_re - Z_N_k_re);
+
+      const c = this.twiddlesCos[k] as number;
+      const s = this.twiddlesSin[k] as number;
+
+      const tw_re = X_o_re * c - X_o_im * s;
+      const tw_im = X_o_re * s + X_o_im * c;
+
+      outRe[k] = X_e_re + tw_re;
+      outIm[k] = X_e_im + tw_im;
     }
   }
 }
@@ -315,15 +360,27 @@ export class WhisperMelProcessor {
     this.powerBuf = new Float32Array(WHISPER_N_FREQS);
   }
 
+
+
   process(audio: Float32Array): WhisperMelProcessResult {
     const sampleCount = audio.length;
     if (sampleCount === 0) {
       return { features: new Float32Array(0), frameCount: 0, nMels: this.nMels };
     }
 
-    // OpenAI whisper drops the last STFT frame: nFrames = floor(sampleCount / hopLength)
     const nFrames = Math.floor(sampleCount / this.hopLength);
-    const pad = this.nFft >> 1; // 200
+    const pad = this.nFft >> 1;
+
+    const paddedLen = sampleCount + 2 * pad;
+    const padded = new Float32Array(paddedLen);
+
+    for (let i = 0; i < pad; i++) {
+      padded[pad - 1 - i] = audio[i + 1] as number;
+    }
+    padded.set(audio, pad);
+    for (let i = 0; i < pad; i++) {
+      padded[pad + sampleCount + i] = audio[sampleCount - 2 - i] as number;
+    }
 
     const features = new Float32Array(this.nMels * nFrames);
     const nFreqs = WHISPER_N_FREQS;
@@ -331,43 +388,38 @@ export class WhisperMelProcessor {
     const fftIm = this.fftIm;
     const powerBuf = this.powerBuf;
 
+    const LOG10E = Math.LOG10E;
+
     for (let frameIndex = 0; frameIndex < nFrames; frameIndex++) {
       const offset = frameIndex * this.hopLength;
 
-      // Window samples with reflect padding (matches torch.stft center=True pad_mode='reflect')
       for (let i = 0; i < this.winLength; i++) {
-        const paddedIdx = offset + i;
-        const sample = this.getReflectPaddedSample(audio, paddedIdx, pad);
-        this.dftWindowed[i] = sample * (this.window[i] as number);
+        this.dftWindowed[i] = (padded[offset + i] as number) * (this.window[i] as number);
       }
 
       this.rfft.transform(this.dftWindowed, fftRe, fftIm);
 
-      // Power spectrum
+      // Extract power directly within the loop to avoid an extra pass
       for (let k = 0; k < nFreqs; k++) {
-        powerBuf[k] =
-          (fftRe[k] as number) * (fftRe[k] as number) + (fftIm[k] as number) * (fftIm[k] as number);
+        const re = fftRe[k] as number;
+        const im = fftIm[k] as number;
+        powerBuf[k] = re * re + im * im;
       }
 
-      // Mel filterbank + log10
+      let outOffset = frameIndex;
       for (let melIndex = 0; melIndex < this.nMels; melIndex++) {
         let melPower = 0;
         const fbOffset = melIndex * nFreqs;
         const start = this.melFilterBounds[melIndex * 2] as number;
         const end = this.melFilterBounds[melIndex * 2 + 1] as number;
         for (let freqIndex = start; freqIndex < end; freqIndex++) {
-          melPower +=
-            (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
+          melPower += (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
         }
-        const logValue = melPower > 0 ? Math.log10(melPower) : -10;
-        features[melIndex * nFrames + frameIndex] = logValue;
+        features[outOffset] = melPower > 0 ? Math.log(melPower) * LOG10E : -10;
+        outOffset += nFrames;
       }
     }
 
-    // Post-processing matching OpenAI whisper/audio.py:
-    // log_spec = torch.clamp(mel_spec, min=1e-10).log10()
-    // log_spec = torch.maximum(log_spec, log_spec.max() - 8.0)
-    // log_spec = (log_spec + 4.0) / 4.0
     let globalMax = -Infinity;
     for (let i = 0; i < features.length; i++) {
       const v = features[i] as number;
@@ -376,28 +428,15 @@ export class WhisperMelProcessor {
     const clipMin = globalMax - 8.0;
     for (let i = 0; i < features.length; i++) {
       const v = features[i] as number;
-      const clipped = v > clipMin ? v : clipMin;
-      features[i] = (clipped + 4.0) / 4.0;
+      features[i] = ((v > clipMin ? v : clipMin) + 4.0) * 0.25;
     }
 
     return { features, frameCount: nFrames, nMels: this.nMels };
   }
 
-  private getReflectPaddedSample(audio: Float32Array, paddedIdx: number, pad: number): number {
-    const sampleCount = audio.length;
-    const originalStart = pad;
-    const originalEnd = pad + sampleCount - 1;
 
-    if (paddedIdx < originalStart) {
-      const dist = originalStart - paddedIdx;
-      return audio[dist] as number;
-    } else if (paddedIdx > originalEnd) {
-      const dist = paddedIdx - originalEnd;
-      return audio[sampleCount - 1 - dist] as number;
-    } else {
-      return audio[paddedIdx - pad] as number;
-    }
-  }
+
+
 
   /**
    * Pad or truncate mel features to a target frame count.
