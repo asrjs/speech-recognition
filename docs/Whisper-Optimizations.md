@@ -827,8 +827,10 @@ investigation needed.
 | 5 | GPU ArgMax | Counterproductive standalone | ⚠️ infra committed |
 | 6 | GPU encoder→decoder Cast | Encode: 5.7×, RTFx: 10→21.5× | ✅ deployed |
 | 7 | Fast mel N_FFT=512 | Preprocess: 2.85×, RTFx: 21.5→25.3× | ✅ deployed |
-| 8 | Shared WebGPU device | Init regression persists | ⚠️ deployed, needs investigation |
+| 8 | Shared WebGPU device | Init regression persists, step regression | ❌ rejected, code removed |
 | 9 | Stripped fp16 encoder | Encode: 6.4× (1900→296ms), no Cast nodes | ✅ deployed |
+| 10 | Fused encoder_decoder_init | Slower than separate, +VRAM | ❌ rejected (perf/fused-encoder-decoder-init) |
+| 11 | GPU ArgMax Phase 2 (suppression mask + ArgMax) | Token parity ✅, step regression on long audio | ❌ rejected as default; infra kept (perf/gpu-argmax) |
 
 **Note:** Experiment 9 supersedes Experiment 6 (GPU encoder→decoder Cast). The stripped
 fp16-output encoder + original fp16-input decoder_init is the cleaner architecture —
@@ -843,10 +845,11 @@ zero dtype casts anywhere in the pipeline, no ONNX modifications to decoder_init
 - **Step P50: 80ms → 9.5ms (8.4× faster per token)**
 
 **Remaining high-impact opportunities:**
-1. GPU logit processing + ArgMax combined (eliminates 207KB/step download)
+1. ~GPU logit processing + ArgMax combined~~ — **TESTED, REJECTED** (perf/gpu-argmax). Token parity perfect but step regression on long audio (+11% Turkish). GPU-side Add(mask)+ArgMax overhead exceeds CPU-side JS argmax on already-downloaded fp16 logits. Future: needs custom WGSL shader.
 2. Batched beam graph (beam_size=5 → 5× fewer ORT calls)
 3. Static KV cache + graph capture (requires new ONNX export)
 4. Resolve decoder init regression (195ms → 69ms, cross-session GPU handoff)
+5. Reduce VRAM: gpu-argmax adds ~620MB (2 extra decoder_step sessions). Even without it, baseline is ~1.85GB + runtime = ~2.4GB peak — investigate whether encoder/decoder sessions can share weight buffers.
 
 ---
 
