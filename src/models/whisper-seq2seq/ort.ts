@@ -332,39 +332,6 @@ export async function initWhisperOrt(
     ort.env.webgpu.profiling = { mode: 'default' };
   }
 
-  // Shared WebGPU device: create once and reuse across all ORT sessions.
-  // Without this, each InferenceSession.create() spawns a separate GPUDevice,
-  // causing cross-device buffer copies (~128ms overhead) when passing tensors
-  // between encoder and decoder sessions.
-  if (
-    normalizeWhisperWeightBackend(backendId) === 'webgpu' &&
-    typeof navigator !== 'undefined' &&
-    'gpu' in navigator &&
-    !ort.env.webgpu?.device
-  ) {
-    try {
-      const nav = navigator as { gpu?: { requestAdapter?(): Promise<{ requestDevice?(): Promise<unknown> } | null> } };
-      const gpu = nav.gpu;
-      const adapter = gpu?.requestAdapter ? await gpu.requestAdapter() : null;
-      if (adapter && typeof (adapter as { requestDevice?: unknown }).requestDevice === 'function') {
-        const device = await (adapter as { requestDevice(): Promise<unknown> }).requestDevice();
-        ort.env.webgpu ??= {};
-        ort.env.webgpu.device = device;
-      }
-    } catch {
-      // Adapter/device creation can fail on some configurations.
-      // ORT will fall back to creating its own device per session.
-    }
-  }
-
-  if (
-    normalizeWhisperWeightBackend(backendId) === 'webgpu' &&
-    typeof navigator !== 'undefined' &&
-    !('gpu' in navigator)
-  ) {
-    return ort;
-  }
-
   return ort;
 }
 
