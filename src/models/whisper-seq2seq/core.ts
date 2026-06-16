@@ -85,6 +85,8 @@ export interface WhisperDecodeOptions {
   readonly temperature?: number;
   /** Number of independent decodings to run, pick best by score. WhisperX: best_of */
   readonly bestOf?: number;
+  /** Track cumulative log-probability for best-of scoring. */
+  readonly trackScore?: boolean;
 }
 
 export interface WhisperDecodeResult {
@@ -144,8 +146,8 @@ export async function whisperGreedyDecode(
   const firstTokenId = selectToken(firstLogits, temperature);
   const tokens: number[] = [firstTokenId];
 
-  // Track cumulative log-probability for bestOf scoring
-  let cumulativeLogProb = logProbOfToken(firstLogits, firstTokenId);
+  const trackScore = options.trackScore === true;
+  let cumulativeLogProb = trackScore ? logProbOfToken(firstLogits, firstTokenId) : 0;
 
   if (onTokenLogits) onTokenLogits(firstTokenId, firstLogits, { tokens, beginIndex: promptTokens.length });
 
@@ -155,12 +157,14 @@ export async function whisperGreedyDecode(
     const nextTokenId = selectToken(stepResult.logits, temperature);
     tokens.push(nextTokenId);
     pastKv = stepResult.presentKv;
-    cumulativeLogProb += logProbOfToken(stepResult.logits, nextTokenId);
+    if (trackScore) {
+      cumulativeLogProb += logProbOfToken(stepResult.logits, nextTokenId);
+    }
     if (onTokenLogits) onTokenLogits(nextTokenId, stepResult.logits, { tokens, beginIndex: promptTokens.length });
     if (nextTokenId === eosTokenId) break;
   }
 
-  return { tokens, score: cumulativeLogProb };
+  return trackScore ? { tokens, score: cumulativeLogProb } : { tokens };
 }
 
 // ---------------------------------------------------------------------------
@@ -283,9 +287,19 @@ function logSoftmax(logits: Float32Array): Float32Array {
 }
 
 function selectTopK(logProbs: Float32Array, k: number): { tokenId: number; logProb: number }[] {
-  const indexed = Array.from(logProbs, (lp, i) => ({ tokenId: i, logProb: lp }));
-  indexed.sort((a, b) => b.logProb - a.logProb);
-  return indexed.slice(0, k);
+  const limit = Math.max(0, k);
+  const top: { tokenId: number; logProb: number }[] = [];
+  for (let tokenId = 0; tokenId < logProbs.length; tokenId++) {
+    const logProb = logProbs[tokenId] ?? Number.NEGATIVE_INFINITY;
+    let insertAt = top.length;
+    while (insertAt > 0 && logProb > (top[insertAt - 1]?.logProb ?? Number.NEGATIVE_INFINITY)) {
+      insertAt--;
+    }
+    if (insertAt >= limit) continue;
+    top.splice(insertAt, 0, { tokenId, logProb });
+    if (top.length > limit) top.pop();
+  }
+  return top;
 }
 
 /**
@@ -350,7 +364,7 @@ async function whisperBestOfDecode(
   for (let i = 0; i < bestOf; i++) {
     const result = await (options.strategy === 'beam' && (options.beamSize ?? 5) > 1
       ? whisperBeamDecode(session, options)
-      : whisperGreedyDecode(session, options));
+      : whisperGreedyDecode(session, { ...options, trackScore: true }));
 
     const tokenCount = result.tokens.length;
     const normScore = result.score !== undefined

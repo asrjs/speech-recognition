@@ -1,13 +1,13 @@
 # Agent Task Coordination
 
-Branch: `main`
-Updated: 2026-06-14 (Bev/Codex, fp16 WebGPU + Whisper mel optimization + decoder profiling)
+Branch: `perf/whisper-webgpu-decode`
+Updated: 2026-06-14 (Codex, WebGPU GPU-KV optimization plan refresh)
 
 ## Context Recovery
 
 **Primary skill**: Load `asrjs-dev` skill first
 **Verification skill**: Load `whisper-model-verification-pipeline` for model porting verification
-**Progress file**: `docs/SESSION_HANDOVER.md`
+**Progress file**: `docs/Whisper-Optimizations.md`
 **HF models**: `ysdede/whisper-large-v3-turbo-onnx-4graph` (original, fixed fp16) + v2 backup
 **Local models (webgpu test)**: `/mnt/n/github/asrjs/webgpu-agent-test/models/` (fp32, fp16, fp16_iofp32, mixed, q8)
 **Test page**: `/mnt/n/github/asrjs/webgpu-agent-test/index.html` (library-synced)
@@ -61,9 +61,36 @@ cap) shows the bottleneck is ORT/WebGPU graph execution, not JS KV bridging:
 | Step p50 / p95 / max | `77.0ms` / `86.01ms` / `91.2ms` |
 | Step count | `49` |
 
-Optimization implication: first reduce `decoder_step` calls or the cost of each
-ORT/WebGPU step. Beam search and `best_of` improve quality options but multiply
-decoder-step work; they are expected to be slower.
+Optimization implication after the GPU-KV work: first preserve the measured
+greedy fast path, then optimize encoder time and beam-specific decode separately.
+Beam search and `best_of` improve quality options but multiply decoder-step
+work; they are expected to be slower until batched beam decode exists.
+
+### WebGPU GPU-KV fast path
+
+The active WebGPU speedup is `experimentalGpuKvCache`. It keeps decoder KV
+tensors on GPU between `decoder_init` and `decoder_step`, while keeping logits
+on CPU through per-output placement so Whisper token suppression remains exact.
+
+Latest known Chrome WebGPU run (`fp16io-fp16-webgpu`, 29.9s JFK fixture,
+50-token cap, `experimentalGpuKvCache=true`):
+
+| Metric | Time |
+| ------ | ---- |
+| Preprocess | `335.83ms` |
+| Encode | `1980.085ms` |
+| Decode total | `771.56ms` |
+| Decoder init run | `72.08ms` |
+| Decoder step run | `685.14ms` |
+| Step p50 / p95 / max | `11.55ms` / `30.615ms` / `53.42ms` |
+| Logit processing | `2.025ms` |
+| Output handling | `1.525ms` |
+| GPU tensor downloads | `0` |
+| Total | `3095.505ms` |
+| RTFx | `9.6606x` |
+
+Do not use the older arithmetic that assumes a 75ms full-logit GPU download on
+this path. Current per-output placement reports zero GPU tensor downloads.
 
 ### Whisper mel performance fix
 
@@ -83,9 +110,40 @@ Latest benchmark:
 
 | Audio | Avg mel time | RTFx   |
 | ----- | ------------ | ------ |
-| 1s    | 8.7ms        | 114.8x |
-| 10s   | 62.7ms       | 159.5x |
-| 30s   | 204.2ms      | 146.9x |
+| 1s    | 9.8ms        | 101.6x |
+| 10s   | 58.1ms       | 172.1x |
+| 30s   | 179.2ms      | 167.4x |
+
+### Greedy score cleanup
+
+The generic greedy splitgraph loop no longer computes cumulative
+log-probability unless `bestOf` ranking requests it. This keeps ordinary greedy
+decode token-equivalent while removing one full-vocabulary pass per token on
+the stable CPU/WASM-style path.
+
+Local helper benchmark, 50 tokens and 51,865 vocab entries: `49.18ms` average
+before, `2.54ms` average after. This is a helper-level CPU result, not a
+browser WebGPU GPU-KV end-to-end claim.
+
+### ArgMax experiment status
+
+GPU-side ArgMax is a future isolated experiment, not a committed optimization.
+A raw `ArgMax(logits)` graph output is unsafe because it bypasses
+`suppress_tokens`, `begin_suppress_tokens`, no-timestamp suppression, and
+timestamp-state rules.
+
+Only attempt this behind a new local/HF alternate artifact, and only for the
+greedy no-timestamps path at first:
+
+- `temperature=0`
+- `numBeams=1`
+- `bestOf=1`
+- `noTimestamps=true`
+- no `onTokenLogits` callback
+
+The first safe graph variant needs a static suppression mask and must request
+only `next_token_id` plus `present.*` outputs via ORT `fetches` for the A/B.
+Reject it on any token mismatch or WebGPU memory growth.
 
 ### Root cause: Policy bugs, NOT precision bugs
 
@@ -168,13 +226,56 @@ Step 5: Token-by-token → first 5 tokens match fp32 baseline
 
 ## REMAINING TASKS (priority order)
 
-### 1. int8 (qf8) Model Generation for WASM
+### 1. Preserve and broaden WebGPU GPU-KV validation
+
+Run the working `fp16io-fp16-webgpu` fast path on more fixtures up to 30s:
+
+- fixed JFK 29.9s fixture
+- shorter 10s fixture
+- at least one non-JFK speech sample
+- `maxNewTokens=50` and a longer cap for EOS behavior
+
+Keep token IDs, transcript prefix, RTFx, p50/p95 step timing, and tensor
+location metrics in results.
+
+### 2. Encoder graph-capture A/B
+
+The source flag `experimentalWebGpuEncoderGraphCapture` is wired, but the
+Chrome automation retry was blocked by the Chrome extension not accepting
+automation after a fresh-window retry. Reinstall the Chrome plugin/extension
+from the Codex plugin UI before trying automation again.
+
+Manual A/B URLs when the demo is running:
+
+```text
+http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&gpuKv=1
+http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&gpuKv=1&encoderGraphCapture=1
+```
+
+Keep only if session creation succeeds, tokens match, and `encodeMs` improves
+on the same fixture.
+
+### 3. Masked GPU ArgMax alternate artifact
+
+Create a separate local/HF model artifact before touching graph outputs. Do not
+overwrite `ysdede/whisper-large-v3-turbo-onnx-4graph`.
+
+The experiment must use a masked ArgMax output and ORT `fetches`; raw ArgMax is
+not semantically equivalent to the library decoder.
+
+### 4. Batched beam decode
+
+Beam search is implemented but still uses the stable CPU/WASM-style KV bridge.
+The measured WebGPU fast path is greedy-only. For beam speed, design a batched
+decoder step plus KV reorder path instead of multiplying ORT calls per beam.
+
+### 5. int8 (q8) Model Generation for WASM
 
 Parakeet.js uses int8 for WASM compatibility. Whisper q8 already works identically to fp32.
 May need to generate proper int8 variants if q8 decoder has issues on specific WASM backends.
 Tool: `onnxruntime.quantization.quantize_dynamic` with `optimize_model` pass first.
 
-### 2. WebGPU Verification (Browser)
+### 6. WebGPU Verification (Browser)
 
 Full verification suite at `/mnt/n/github/asrjs/webgpu-agent-test/index.html`:
 
@@ -183,11 +284,11 @@ Full verification suite at `/mnt/n/github/asrjs/webgpu-agent-test/index.html`:
 - Modes: Run Decode, Cross-Validate, Encoder-Only
 - Requires real browser with GPU (RTX 5060 Ti + Chrome)
 
-### 3. Batched Encoder
+### 7. Batched Encoder
 
 Deferred — no CPU benefit. Would help with CUDA provider.
 
-### 4. Framework Adapters (React, Vue, Svelte)
+### 8. Framework Adapters (React, Vue, Svelte)
 
 Separate packages — deferred.
 

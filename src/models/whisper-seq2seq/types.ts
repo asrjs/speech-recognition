@@ -39,6 +39,8 @@ export interface WhisperDirectArtifactSource {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  readonly experimentalWebGpuEncoderGraphCapture?: boolean;
+  readonly experimentalGpuKvCache?: boolean;
 }
 
 export interface WhisperHuggingFaceSource {
@@ -53,6 +55,8 @@ export interface WhisperHuggingFaceSource {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  readonly experimentalWebGpuEncoderGraphCapture?: boolean;
+  readonly experimentalGpuKvCache?: boolean;
 }
 
 export type WhisperArtifactSource = WhisperDirectArtifactSource | WhisperHuggingFaceSource | WhisperSplitGraphArtifactSource;
@@ -89,6 +93,8 @@ export interface WhisperSplitGraphArtifactSource {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  readonly experimentalWebGpuEncoderGraphCapture?: boolean;
+  readonly experimentalGpuKvCache?: boolean;
 }
 
 export interface WhisperSeq2SeqModelOptions {

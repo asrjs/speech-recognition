@@ -103,6 +103,12 @@ export interface TranscriptMetrics {
   readonly decoderStepMaxMs?: number;
   readonly decoderLogitProcessMs?: number;
   readonly decoderStepCount?: number;
+  readonly decoderGpuTensorInputs?: number;
+  readonly decoderCpuTensorInputs?: number;
+  readonly decoderGpuTensorOutputs?: number;
+  readonly decoderCpuTensorOutputs?: number;
+  readonly decoderGpuTensorDownloads?: number;
+  readonly decoderKvCacheLocation?: string;
   readonly totalMs?: number;
   readonly wallMs?: number;
   readonly audioDurationSec?: number;

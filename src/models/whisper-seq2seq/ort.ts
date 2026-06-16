@@ -20,6 +20,10 @@ interface OrtEnv {
     simd?: boolean;
     proxy?: boolean;
   };
+  webgpu?: {
+    profiling?: unknown;
+    device?: unknown;
+  };
   versions?: {
     common?: string;
   };
@@ -28,12 +32,21 @@ interface OrtEnv {
 export interface OrtTensorLike<TData extends ArrayBufferView = ArrayBufferView> {
   readonly data: TData;
   readonly dims: readonly number[];
+  readonly type?: string;
+  readonly location?: string;
+  readonly gpuBuffer?: unknown;
+  getData?(releaseData?: boolean): Promise<TData>;
   dispose?(): void;
 }
 
 export interface OrtSessionLike {
   readonly inputNames?: readonly string[];
-  run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>>;
+  readonly outputNames?: readonly string[];
+  run(
+    feeds: Record<string, unknown>,
+    fetchesOrOptions?: unknown,
+    options?: Record<string, unknown>,
+  ): Promise<Record<string, OrtTensorLike>>;
 }
 
 export interface OrtModuleLike {
@@ -48,6 +61,11 @@ export interface OrtModuleLike {
   };
 }
 
+export type OrtOutputLocation = 'cpu' | 'gpu-buffer';
+export type OrtPreferredOutputLocation =
+  | OrtOutputLocation
+  | Record<string, OrtOutputLocation>;
+
 export interface ExternalDataMap {
   readonly [graphName: string]: readonly { readonly dataUrl: string; readonly path: string }[];
 }
@@ -61,6 +79,8 @@ export interface ResolvedWhisperArtifacts {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  readonly experimentalWebGpuEncoderGraphCapture?: boolean;
+  readonly experimentalGpuKvCache?: boolean;
   readonly isSplitGraph: boolean;
   readonly decoderInitUrl?: string;
   readonly decoderStepUrl?: string;
@@ -159,6 +179,8 @@ function resolveHuggingFaceArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
+    experimentalGpuKvCache: source.experimentalGpuKvCache,
     isSplitGraph: false,
   };
 }
@@ -180,6 +202,8 @@ function resolveDirectArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
+    experimentalGpuKvCache: source.experimentalGpuKvCache,
     isSplitGraph: false,
   };
 }
@@ -240,6 +264,8 @@ function resolveSplitGraphArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
+    experimentalGpuKvCache: source.experimentalGpuKvCache,
     isSplitGraph: true,
     decoderInitUrl,
     decoderStepUrl,
@@ -267,9 +293,14 @@ export async function initWhisperOrt(
   options: {
     readonly wasmPaths?: string;
     readonly cpuThreads?: number;
+    readonly enableProfiling?: boolean;
   } = {},
 ): Promise<OrtModuleLike> {
-  const imported = (await import('onnxruntime-web')) as unknown as OrtModuleLike & {
+  const imported = (await (
+    normalizeWhisperWeightBackend(backendId) === 'webgpu'
+      ? import('onnxruntime-web/webgpu')
+      : import('onnxruntime-web')
+  )) as unknown as OrtModuleLike & {
     readonly default?: OrtModuleLike;
   };
   const ort = imported.default ?? imported;
@@ -296,6 +327,36 @@ export async function initWhisperOrt(
 
   ort.env.wasm.proxy = false;
 
+  if (normalizeWhisperWeightBackend(backendId) === 'webgpu' && options.enableProfiling) {
+    ort.env.webgpu ??= {};
+    ort.env.webgpu.profiling = { mode: 'default' };
+  }
+
+  // Shared WebGPU device: create once and reuse across all ORT sessions.
+  // Without this, each InferenceSession.create() spawns a separate GPUDevice,
+  // causing cross-device buffer copies (~128ms overhead) when passing tensors
+  // between encoder and decoder sessions.
+  if (
+    normalizeWhisperWeightBackend(backendId) === 'webgpu' &&
+    typeof navigator !== 'undefined' &&
+    'gpu' in navigator &&
+    !ort.env.webgpu?.device
+  ) {
+    try {
+      const nav = navigator as { gpu?: { requestAdapter?(): Promise<{ requestDevice?(): Promise<unknown> } | null> } };
+      const gpu = nav.gpu;
+      const adapter = gpu?.requestAdapter ? await gpu.requestAdapter() : null;
+      if (adapter && typeof (adapter as { requestDevice?: unknown }).requestDevice === 'function') {
+        const device = await (adapter as { requestDevice(): Promise<unknown> }).requestDevice();
+        ort.env.webgpu ??= {};
+        ort.env.webgpu.device = device;
+      }
+    } catch {
+      // Adapter/device creation can fail on some configurations.
+      // ORT will fall back to creating its own device per session.
+    }
+  }
+
   if (
     normalizeWhisperWeightBackend(backendId) === 'webgpu' &&
     typeof navigator !== 'undefined' &&
@@ -315,6 +376,8 @@ export async function createWhisperOrtSession(
     readonly enableProfiling?: boolean;
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
+    readonly preferredOutputLocation?: OrtPreferredOutputLocation;
+    readonly enableGraphCapture?: boolean;
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
@@ -337,6 +400,13 @@ export async function createWhisperOrtSession(
     enableMemPattern: true,
     enableProfiling: options.enableProfiling ?? false,
   };
+
+  if (options.preferredOutputLocation) {
+    sessionOptions.preferredOutputLocation = options.preferredOutputLocation;
+  }
+  if (options.enableGraphCapture && options.backendId.startsWith('webgpu')) {
+    sessionOptions.enableGraphCapture = true;
+  }
 
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');

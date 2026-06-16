@@ -11,6 +11,12 @@ const WHISPER_HOP_LENGTH = 160;
 const WHISPER_WIN_LENGTH = 400;
 const WHISPER_N_FREQS = (WHISPER_N_FFT >> 1) + 1;
 
+// Power-of-two FFT for fast path: pad 400-point window → 512-point FFT.
+// Mathematically equivalent — zero-padding in time = interpolation in freq,
+// but the exact bin values at the original 201-bin grid are identical.
+const WHISPER_FAST_N_FFT = 512;
+const WHISPER_FAST_N_FREQS = (WHISPER_FAST_N_FFT >> 1) + 1; // 257
+
 interface FftTwiddles {
   readonly cos: Float64Array;
   readonly sin: Float64Array;
@@ -294,25 +300,56 @@ export class WhisperMelProcessor {
   private readonly melFilterbank: Float32Array;
   private readonly melFilterBounds: Int32Array;
   private readonly dftWindowed: Float32Array;
-  private readonly rfft: BluesteinRfft;
+  /** Fast path: power-of-2 FFT (512 → 257 bins) instead of Bluestein (400 → 201 bins). */
+  private readonly useFastFft: boolean;
+  private readonly rfft?: BluesteinRfft;
+  private readonly fftTwiddles?: FftTwiddles;
+  private readonly paddedWindow?: Float32Array;
+  private readonly fftWorkRe?: Float64Array;
+  private readonly fftWorkIm?: Float64Array;
   private readonly fftRe: Float64Array;
   private readonly fftIm: Float64Array;
   private readonly powerBuf: Float32Array;
 
-  constructor(options: { readonly nMels?: number; readonly sampleRate?: number } = {}) {
+  constructor(options: { readonly nMels?: number; readonly sampleRate?: number; readonly fastFft?: boolean } = {}) {
     this.sampleRate = options.sampleRate ?? WHISPER_SAMPLE_RATE;
     this.nMels = options.nMels ?? 80;
-    this.nFft = WHISPER_N_FFT;
+    this.useFastFft = options.fastFft !== false; // default: fast path enabled
     this.hopLength = WHISPER_HOP_LENGTH;
     this.winLength = WHISPER_WIN_LENGTH;
-    this.window = createHannWindow(this.winLength);
-    this.melFilterbank = createMelFilterbank(this.nMels, this.sampleRate, this.nFft);
-    this.melFilterBounds = createMelFilterBounds(this.melFilterbank, this.nMels, WHISPER_N_FREQS);
-    this.dftWindowed = new Float32Array(this.winLength);
-    this.rfft = new BluesteinRfft(this.nFft);
-    this.fftRe = new Float64Array(WHISPER_N_FREQS);
-    this.fftIm = new Float64Array(WHISPER_N_FREQS);
-    this.powerBuf = new Float32Array(WHISPER_N_FREQS);
+
+    if (this.useFastFft) {
+      // Power-of-2 FFT: pad 400-point Hann window into 512-point array
+      this.nFft = WHISPER_FAST_N_FFT;
+      const nFreqs = WHISPER_FAST_N_FREQS;
+      this.window = createHannWindow(this.winLength);
+      this.paddedWindow = new Float32Array(this.nFft);
+      // Pre-compute padded Hann window (centered, zero-padded)
+      const padOffset = (this.nFft - this.winLength) >> 1; // 56
+      for (let i = 0; i < this.winLength; i++) {
+        this.paddedWindow[padOffset + i] = this.window[i]!;
+      }
+      this.melFilterbank = createMelFilterbank(this.nMels, this.sampleRate, this.nFft);
+      this.melFilterBounds = createMelFilterBounds(this.melFilterbank, this.nMels, nFreqs);
+      this.dftWindowed = new Float32Array(this.nFft);
+      this.fftTwiddles = precomputeTwiddles(this.nFft, false);
+      this.fftWorkRe = new Float64Array(this.nFft);
+      this.fftWorkIm = new Float64Array(this.nFft);
+      this.fftRe = new Float64Array(nFreqs);
+      this.fftIm = new Float64Array(nFreqs);
+      this.powerBuf = new Float32Array(nFreqs);
+    } else {
+      // Legacy Bluestein path (N_FFT=400, non-power-of-2)
+      this.nFft = WHISPER_N_FFT;
+      this.window = createHannWindow(this.winLength);
+      this.melFilterbank = createMelFilterbank(this.nMels, this.sampleRate, this.nFft);
+      this.melFilterBounds = createMelFilterBounds(this.melFilterbank, this.nMels, WHISPER_N_FREQS);
+      this.dftWindowed = new Float32Array(this.winLength);
+      this.rfft = new BluesteinRfft(this.nFft);
+      this.fftRe = new Float64Array(WHISPER_N_FREQS);
+      this.fftIm = new Float64Array(WHISPER_N_FREQS);
+      this.powerBuf = new Float32Array(WHISPER_N_FREQS);
+    }
   }
 
   process(audio: Float32Array): WhisperMelProcessResult {
@@ -323,44 +360,98 @@ export class WhisperMelProcessor {
 
     // OpenAI whisper drops the last STFT frame: nFrames = floor(sampleCount / hopLength)
     const nFrames = Math.floor(sampleCount / this.hopLength);
-    const pad = this.nFft >> 1; // 200
+    // Reflect padding is always based on the original 400-point window center,
+    // even when the FFT is zero-padded to 512. This preserves frame alignment.
+    const pad = WHISPER_N_FFT >> 1; // 200
 
     const features = new Float32Array(this.nMels * nFrames);
-    const nFreqs = WHISPER_N_FREQS;
+    const nFreqs = this.useFastFft ? WHISPER_FAST_N_FREQS : WHISPER_N_FREQS;
     const fftRe = this.fftRe;
     const fftIm = this.fftIm;
     const powerBuf = this.powerBuf;
 
-    for (let frameIndex = 0; frameIndex < nFrames; frameIndex++) {
-      const offset = frameIndex * this.hopLength;
+    if (this.useFastFft) {
+      // Fast path: power-of-2 FFT with zero-padded window
+      const twiddles = this.fftTwiddles!;
+      const workRe = this.fftWorkRe!;
+      const workIm = this.fftWorkIm!;
+      const paddedWin = this.paddedWindow!;
+      const winLen = this.winLength; // 400
+      const fftSize = this.nFft;    // 512
 
-      // Window samples with reflect padding (matches torch.stft center=True pad_mode='reflect')
-      for (let i = 0; i < this.winLength; i++) {
-        const paddedIdx = offset + i;
-        const sample = this.getReflectPaddedSample(audio, paddedIdx, pad);
-        this.dftWindowed[i] = sample * (this.window[i] as number);
-      }
+      for (let frameIndex = 0; frameIndex < nFrames; frameIndex++) {
+        const offset = frameIndex * this.hopLength;
 
-      this.rfft.transform(this.dftWindowed, fftRe, fftIm);
-
-      // Power spectrum
-      for (let k = 0; k < nFreqs; k++) {
-        powerBuf[k] =
-          (fftRe[k] as number) * (fftRe[k] as number) + (fftIm[k] as number) * (fftIm[k] as number);
-      }
-
-      // Mel filterbank + log10
-      for (let melIndex = 0; melIndex < this.nMels; melIndex++) {
-        let melPower = 0;
-        const fbOffset = melIndex * nFreqs;
-        const start = this.melFilterBounds[melIndex * 2] as number;
-        const end = this.melFilterBounds[melIndex * 2 + 1] as number;
-        for (let freqIndex = start; freqIndex < end; freqIndex++) {
-          melPower +=
-            (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
+        // Copy reflect-padded + windowed samples into zero-padded buffer
+        this.dftWindowed.fill(0);
+        const padOffset = (fftSize - winLen) >> 1; // 56
+        for (let i = 0; i < winLen; i++) {
+          const paddedIdx = offset + i;
+          const sample = this.getReflectPaddedSample(audio, paddedIdx, pad);
+          this.dftWindowed[padOffset + i] = sample * (paddedWin[padOffset + i] as number);
         }
-        const logValue = melPower > 0 ? Math.log10(melPower) : -10;
-        features[melIndex * nFrames + frameIndex] = logValue;
+
+        // Standard radix-2 FFT (fast — power of 2)
+        workRe.set(this.dftWindowed);
+        workIm.fill(0);
+        fft(workRe, workIm, fftSize, twiddles);
+
+        // Extract first half of spectrum (real-valued input → conjugate symmetric output)
+        for (let k = 0; k < nFreqs; k++) {
+          fftRe[k] = workRe[k]!;
+          fftIm[k] = workIm[k]!;
+        }
+
+        // Power spectrum
+        for (let k = 0; k < nFreqs; k++) {
+          powerBuf[k] = (fftRe[k] as number) * (fftRe[k] as number) + (fftIm[k] as number) * (fftIm[k] as number);
+        }
+
+        // Mel filterbank + log10 (same for both paths)
+        for (let melIndex = 0; melIndex < this.nMels; melIndex++) {
+          let melPower = 0;
+          const fbOffset = melIndex * nFreqs;
+          const start = this.melFilterBounds[melIndex * 2] as number;
+          const end = this.melFilterBounds[melIndex * 2 + 1] as number;
+          for (let freqIndex = start; freqIndex < end; freqIndex++) {
+            melPower += (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
+          }
+          const logValue = melPower > 0 ? Math.log10(melPower) : -10;
+          features[melIndex * nFrames + frameIndex] = logValue;
+        }
+      }
+    } else {
+      // Legacy path: Bluestein FFT for N_FFT=400 (non-power-of-2)
+      const winLen = this.winLength;
+      for (let frameIndex = 0; frameIndex < nFrames; frameIndex++) {
+        const offset = frameIndex * this.hopLength;
+
+        // Window samples with reflect padding
+        for (let i = 0; i < winLen; i++) {
+          const paddedIdx = offset + i;
+          const sample = this.getReflectPaddedSample(audio, paddedIdx, pad);
+          this.dftWindowed[i] = sample * (this.window[i] as number);
+        }
+
+        this.rfft!.transform(this.dftWindowed, fftRe, fftIm);
+
+        // Power spectrum
+        for (let k = 0; k < nFreqs; k++) {
+          powerBuf[k] = (fftRe[k] as number) * (fftRe[k] as number) + (fftIm[k] as number) * (fftIm[k] as number);
+        }
+
+        // Mel filterbank + log10
+        for (let melIndex = 0; melIndex < this.nMels; melIndex++) {
+          let melPower = 0;
+          const fbOffset = melIndex * nFreqs;
+          const start = this.melFilterBounds[melIndex * 2] as number;
+          const end = this.melFilterBounds[melIndex * 2 + 1] as number;
+          for (let freqIndex = start; freqIndex < end; freqIndex++) {
+            melPower += (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
+          }
+          const logValue = melPower > 0 ? Math.log10(melPower) : -10;
+          features[melIndex * nFrames + frameIndex] = logValue;
+        }
       }
     }
 

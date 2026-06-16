@@ -161,7 +161,7 @@ describe('WhisperMelProcessor vs OpenAI reference', () => {
         0.1 * Math.sin((2 * Math.PI * 1200 * i) / SAMPLE_RATE);
     }
 
-    const processor = new WhisperMelProcessor({ nMels, sampleRate: SAMPLE_RATE });
+    const processor = new WhisperMelProcessor({ nMels, sampleRate: SAMPLE_RATE, fastFft: false });
     const result = processor.process(samples);
     const expected = computeDirectWhisperMel(samples, nMels);
 
