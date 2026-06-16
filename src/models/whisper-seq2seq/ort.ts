@@ -375,6 +375,15 @@ export async function createWhisperOrtSession(
     sessionOptions.enableGraphCapture = true;
   }
 
+  // Explicit WebGPU buffer cache mode: "simple" reduces GPU memory fragmentation
+  // and avoids stale buffer retention between repeated decoder_step calls.
+  if (options.backendId.startsWith('webgpu')) {
+    sessionOptions.extra = {
+      "ep.webgpuexecutionprovider.storageBufferCacheMode": "simple",
+      "ep.webgpuexecutionprovider.uniformBufferCacheMode": "simple",
+    };
+  }
+
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
     const { existsSync: fsExists } = await importNodeModule<typeof import('node:fs')>('node:fs');
