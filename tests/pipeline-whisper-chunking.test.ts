@@ -79,6 +79,12 @@ describe('Whisper chunk planning helpers', () => {
     expect(planWhisperChunks(10 * 16_000, 16_000, 30)).toHaveLength(1);
   });
 
+  it('rejects non-positive integer audio lengths', () => {
+    expect(() => planWhisperChunks(0, 16_000, 30)).toThrow(/positive integer/i);
+    expect(() => planWhisperChunks(-1, 16_000, 30)).toThrow(/positive integer/i);
+    expect(() => planWhisperChunks(16_000.5, 16_000, 30)).toThrow(/positive integer/i);
+  });
+
   it('rejects stride settings that do not leave forward progress', () => {
     expect(() => planWhisperChunks(60 * 16_000, 16_000, 30, 15)).toThrow(
       /stride.*less than half/i,
