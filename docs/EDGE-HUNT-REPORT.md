@@ -184,3 +184,17 @@ None currently viable without GPU device access. The `getData()` flush costs mor
 | `encoderGpuFlush=1` | Force GPU flush via getData() + re-wrap | B2 |
 
 All flags default off. No production impact. Token parity verified for all tests.
+
+---
+
+## Postscript: Follow-up Investigation (2026-06-19)
+
+After this report, a full ORT C++ source audit and profiling fix were completed:
+
+- **`docs/ORT-FLUSH-INVESTIGATION.md`** — Traces the complete GPU command submission pipeline. Proves ORT flushes correctly (`OnRunEnd` → `Flush` → `Finish` → `Submit`). The 178ms penalty is GPU async execution time, not a missing flush. Includes Fix A reference patch (C++ `OnSubmittedWorkDone` fence).
+
+- **`docs/PROFILING-REPORT-2026-06-19.md`** — Honest profiling baseline after the fix. The fp32 path appearing "fast" (decoderInitMs=23ms) was solved: `maybeCastEncoderHiddenStates` calls `getData(true)` for fp32→fp16 cast, which forces GPU flush and hides the cost in `encoderOutputCastMs`. The fp16 path is actually more efficient.
+
+- **`docs/OPTIMIZATION-SPRINT-REPORT-2026-06-19.md`** — Post-fix optimization sprint. Multi-token decoder_step deployed. Encoder scan completed. CPU prep audited. Closed branches: decoder_init optimization, fused encoder_decoder_init, shared WebGPU device, GPU ArgMax, Identity/Cast tricks.
+
+**Key takeaway for future agents:** `decoderInitMs ~196ms` was a lie. The encoder pays that cost. The decoder_init is only ~15ms. Do not optimize decoder_init.

@@ -501,6 +501,25 @@ When a model variant works on one backend but produces early EOS on another, **v
 - Wav2Vec2 progress: `docs/handoffs/flexo-wav2vec2-progress.md`
 - Whisper 4-graph handoff: `docs/handoffs/whisper-4graph-export-handoff.md`
 - **Quantization research**: `docs/quantization-research.md` — comprehensive analysis of q8, fp16, mixed precision, KV cache quantization, Q4, GGUF paths, and recommended roadmap
+- **Handover (current state)**: `docs/HANDOVER.md` — production state, rejected experiments, profiling fix, multi-token model, optimization roadmap
+- **Profiling report**: `docs/PROFILING-REPORT-2026-06-19.md` — honest baseline with encoderGpuDrainMs
+- **ORT flush investigation**: `docs/ORT-FLUSH-INVESTIGATION.md` — C++ command buffer audit, fp32 sync point found
+- **Edge Hunt**: `docs/EDGE-HUNT-REPORT.md` — Edge A/B/B2/C/D concluded, root cause proven
+- **Optimization sprint**: `docs/OPTIMIZATION-SPRINT-REPORT.md` — P1/P1-B/P1-C with ACCEPT/REJECT/DEFER
+
+## Critical Knowledge (2026-06-19 update)
+
+1. **decoderInitMs was a profiling lie — FIXED**: The ~196ms in decoderInitMs was the encoder's GPU async completion time (~178ms) appearing at the first synchronization point. ORT's `Submit()` is non-blocking. Both sessions share the same `device_queue_`. The encoder cost was billed to decoder_init. Added `encoderGpuDrainMs` (gated behind `encoderGpuDrain` flag, off by default) to measure the real GPU drain. After the fix: `encoderRunMs ~185ms`, `encoderGpuDrainMs ~193ms` (when enabled), `decoderInitMs ~15ms`. Do NOT optimize decoder_init — it's only 15ms. See `docs/EDGE-HUNT-REPORT.md` and `docs/ORT-FLUSH-INVESTIGATION.md`.
+
+2. **fp32 path looked fast because of hidden GPU flush**: `maybeCastEncoderHiddenStates()` calls `getData(true)` when casting fp32→fp16, which forces GPU pipeline flush. The ~193ms was hidden in `encoderOutputCastMs`. fp16→fp16 path (no cast) is actually more efficient — no unnecessary CPU round-trip. The cost just appears in a different metric bucket.
+
+3. **Multi-token decoder_step DEPLOYED**: `decoder_step.onnx` now supports dynamic sequence length (input_ids dim[1] changed from 1 to dynamic). Verified K=2,4,8 with token parity. Backward-compatible. Code infrastructure ready (`runDecoderStepMultiToken()`, `secondArgmax()`). Speedup requires draft model for speculative decoding — self-speculation breaks token parity. See `docs/OPTIMIZATION-SPRINT-REPORT.md`.
+
+4. **Closed branches (do not revisit)**: decoder_init optimization (15ms, not bottleneck), fused encoder_decoder_init (rejected +19%), shared WebGPU device (rejected +22%), GPU ArgMax for decoder_init (15ms fine), Identity/Cast graph tricks (penalty was profiling attribution), CPU pass-through for encoder (fp16 GPU optimal).
+
+5. **encoderGpuDrain is PROFILING ONLY**: Calls `getData(false)` which adds ~18ms staging buffer overhead. Gated behind `encoderGpuDrain` flag (off by default). In production, fp16 pass-through avoids readback. Total latency identical — only metric attribution differs. URL param: `&encoderGpuDrain=1`.
+
+6. **WebGPU benchmark URL params**: `?auto=fp16io-fp16-webgpu&local=1&gpuKv=1` for production. Add `&encoderGpuDrain=1` for honest profiling. `browser_navigate` strips URL params — use `browser_console` to set `location.href` instead.
 
 ## Benchmarking (WhisperX comparison)
 
@@ -526,6 +545,7 @@ Benchmark system at `~/github/ysdede/asr_benchmark_tools/`:
 | `references/whisper-beam-search.md`            | Beam search implementation                                                                                                                                              |
 | `references/whisperx-runner-implementation.md` | WhisperX runner implementation: KV bridge, pitfalls, CLI parsing                                                                                                        |
 | `references/batched-encoder-investigation.md`  | Batched encoder benchmark results, batch dim is dynamic but only GPU benefit                                                                                            |
-| `references/webgpu-fp16-nan-investigation.md`  | WebGPU fp16 NaN root cause analysis: 6-variant test matrix, decoder_init ops, ConvInteger fix in ORT 1.26.0, mixf32/mixf16f32 results, q8 decoder composability failure |
+|| `references/ort-flush-fence.patch`               | Fix A reference patch (C++ OnSubmittedWorkDone fence in ORT Flush)                                                                                              |
+|| `references/webgpu-fp16-nan-investigation.md`  | WebGPU fp16 NaN root cause analysis: 6-variant test matrix, decoder_init ops, ConvInteger fix in ORT 1.26.0, mixf32/mixf16f32 results, q8 decoder composability failure |
 | `references/verification-scripts.md`           | Encoder & decode verification scripts (verify-step2, verify-step3-5)                                                                                                    |
 | `references/browser-model-loading.md`          | Fetch limits, IndexedDB cache, pipeline API, WASM sequential lifecycle                                                                                                  |
