@@ -1921,6 +1921,39 @@ export class WhisperOnnxExecutor {
       }
       encoderGpuFlushMs = nowMs() - flushStart;
     }
+
+    // PRODUCTION: Always drain the GPU after encoder to correctly attribute GPU
+    // execution time.  ORT Submit() is non-blocking — the encoder's ~178ms GPU
+    // compute hasn't finished when session.run() returns.  Without this drain,
+    // the cost is silently charged to decoderInitMs (both sessions share the
+    // same device queue).  This forces the GPU to drain now so encoderTotalMs
+    // tells the truth and decoderInitMs shows only its own compute cost.
+    //
+    // The getData() approach adds ~15ms overhead (staging buffer copy + map)
+    // vs a native fence.  That's acceptable for profiling — the 15ms is still
+    // billed to the encoder phase where it belongs.
+    //
+    // Skip if Edge B2 already drained (encoderGpuFlushMs > 0).
+    let encoderGpuDrainMs = 0;
+    if (encoderGpuFlushMs === 0 && isGpuBufferTensor(encoderHiddenStates as OrtTensorLike<Float32Array>)) {
+      const drainStart = nowMs();
+      const origTensor = encoderHiddenStates as OrtTensorLike<Float32Array>;
+      const gpuBuffer = (origTensor as unknown as { gpuBuffer: GPUBuffer }).gpuBuffer;
+      const dims = [...origTensor.dims] as readonly number[];
+      const dtype = origTensor.type as string;
+      if (origTensor.getData && gpuBuffer) {
+        await origTensor.getData(false); // force GPU drain, keep buffer alive
+      }
+      if (gpuBuffer && loaded.ort.Tensor.fromGpuBuffer) {
+        encoderHiddenStates = loaded.ort.Tensor.fromGpuBuffer(gpuBuffer, {
+          dataType: dtype,
+          dims,
+          download: undefined,
+          dispose: undefined,
+        }) as unknown as OrtTensorLike<Float32Array>;
+      }
+      encoderGpuDrainMs = nowMs() - drainStart;
+    }
     const encoderFrameCount = encoderHiddenStates.dims[1] ?? encoderOutputPositions;
     const encodeElapsedMs = nowMs() - transcriptionStart;
     emitTranscriptionProgress(options, {
@@ -2290,8 +2323,12 @@ export class WhisperOnnxExecutor {
       encoderOutputDtype,
       // DIAGNOSTIC: Edge A re-wrap timing
       encoderBufferRewrapMs: roundMetric(encoderBufferRewrapMs),
-      // DIAGNOSTIC: Edge B2 GPU flush timing
+      // DIAGNOSTIC: Edge B2 GPU flush timing (now redundant with encoderGpuDrainMs)
       encoderGpuFlushMs: roundMetric(encoderGpuFlushMs),
+      // PRODUCTION: GPU drain after encoder — true encoder GPU completion cost
+      encoderGpuDrainMs: roundMetric(encoderGpuDrainMs),
+      // PRODUCTION: encoder total = session.run() + GPU drain wait
+      encoderTotalMs: roundMetric(encoderRunMs + encoderGpuDrainMs),
       totalMs,
       wallMs: totalMs,
       audioDurationSec: roundMetric(audio.durationSeconds, 4),
