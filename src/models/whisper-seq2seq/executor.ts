@@ -66,6 +66,7 @@ interface LoadedExecutorState {
   readonly decoderAlignSession?: OrtSessionLike;
   readonly decoderBackendForOrt?: string;
   readonly experimentalGpuKvCache?: boolean;
+  readonly sessionCreateMs?: number;
 }
 
 interface DecoderStepResult {
@@ -302,6 +303,10 @@ interface DecoderSessionTiming {
   readonly gpuOutputCount: number;
   readonly cpuOutputCount: number;
   readonly gpuDownloadCount: number;
+  // Profiling sub-buckets (added by runDecoderInit / runDecoderStepSplit)
+  readonly tensorCreateMs?: number;
+  readonly logitReadMs?: number;
+  readonly kvExtractMs?: number;
 }
 
 interface TensorLocationCounts {
@@ -697,6 +702,8 @@ export class WhisperOnnxExecutor {
     const tokenizer = await WhisperTokenizer.fromUrl(artifacts.tokenizerUrl);
     const warnings = [...resolved.warnings];
 
+    // Time session creation
+    const sessionStart = nowMs();
     // Only create encoder session for now (decoder sessions created below if splitgraph)
     const encoderSession = await createWhisperOrtSession(ort, artifacts.encoderUrl, {
       backendId: resolved.encoderBackendForOrt,
@@ -766,6 +773,7 @@ export class WhisperOnnxExecutor {
       isSplitGraph, decoderInitSession, decoderStepSession, decoderAlignSession,
       decoderBackendForOrt: resolved.decoderBackendForOrt,
       experimentalGpuKvCache: resolved.experimentalGpuKvCache,
+      sessionCreateMs: nowMs() - sessionStart,
     };
   }
 
@@ -1233,16 +1241,20 @@ export class WhisperOnnxExecutor {
     const outputLocations = countTensorLocations(Object.values(outputs));
     const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+    const logitsReadStart = nowMs();
     const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
+    const logitReadMs = nowMs() - logitsReadStart;
     const logitsDims = logitsTensor.dims;
     const vocabSize = logitsDims[logitsDims.length - 1] ?? 0;
 
+    const kvStart = nowMs();
     const presentKv: Record<string, OrtTensorLike<Float32Array>> = {};
     for (const [key, value] of Object.entries(outputs)) {
       if (key.startsWith('present')) {
         presentKv[key] = value as OrtTensorLike<Float32Array>;
       }
     }
+    const kvExtractMs = nowMs() - kvStart;
 
     const outputEnd = nowMs();
     return {
@@ -1253,6 +1265,9 @@ export class WhisperOnnxExecutor {
         inputMs: runStart - inputStart,
         runMs: outputStart - runStart,
         outputMs: outputEnd - outputStart,
+        tensorCreateMs: runStart - inputStart,
+        logitReadMs,
+        kvExtractMs,
         gpuInputCount: inputLocations.gpu,
         cpuInputCount: inputLocations.cpu,
         gpuOutputCount: outputLocations.gpu,
@@ -1299,11 +1314,14 @@ export class WhisperOnnxExecutor {
     const outputLocations = countTensorLocations(Object.values(outputs));
     const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+    const logitReadStart = nowMs();
     const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
+    const logitReadMs = nowMs() - logitReadStart;
     const logitsDims = logitsTensor.dims;
     const vocabSize = logitsDims[logitsDims.length - 1] ?? 0;
 
     // decoder_step outputs only self-attention present KV. Merge with encoder KV from input.
+    const kvStart = nowMs();
     const presentKv: Record<string, OrtTensorLike<Float32Array>> = {};
     for (const [key, value] of Object.entries(outputs)) {
       if (key.startsWith('present')) {
@@ -1326,6 +1344,7 @@ export class WhisperOnnxExecutor {
       nextTokenId = nextTokenTensor.data[0];
     }
 
+    const kvEnd = nowMs();
     const outputEnd = nowMs();
     return {
       logits: logitsData.data,
@@ -1336,6 +1355,9 @@ export class WhisperOnnxExecutor {
         inputMs: runStart - inputStart,
         runMs: outputStart - runStart,
         outputMs: outputEnd - outputStart,
+        tensorCreateMs: runStart - inputStart,
+        logitReadMs,
+        kvExtractMs: kvEnd - kvStart,
         gpuInputCount: inputLocations.gpu,
         cpuInputCount: inputLocations.cpu,
         gpuOutputCount: outputLocations.gpu,
@@ -1903,6 +1925,17 @@ export class WhisperOnnxExecutor {
     let decoderGpuTensorOutputs = 0;
     let decoderCpuTensorOutputs = 0;
     let decoderGpuTensorDownloads = 0;
+    // ── Profiling: fine-grained timing buckets ──
+    let encoderTensorCreateMs = 0;
+    let encoderOutputReadMs = 0;
+    let decoderInitTensorCreateMs = 0;
+    let decoderInitLogitReadMs = 0;
+    let decoderInitKvExtractMs = 0;
+    let decoderStepTensorCreateMs = 0;
+    let decoderStepLogitReadMs = 0;
+    let decoderStepKvMergeMs = 0;
+    let decoderStepKvDisposeMs = 0;
+    let sessionCreateMs = 0;
     const decoderStepTimings: number[] = [];
     const requestedNumBeams = Math.max(1, Math.floor(options.numBeams ?? 1));
     const requestedBestOf = Math.max(1, Math.floor(options.bestOf ?? 1));
@@ -1949,6 +1982,9 @@ export class WhisperOnnxExecutor {
             decoderInitInputMs += timings.inputMs;
             decoderInitRunMs += timings.runMs;
             decoderInitOutputMs += timings.outputMs;
+            decoderInitTensorCreateMs += timings.tensorCreateMs ?? 0;
+            decoderInitLogitReadMs += timings.logitReadMs ?? 0;
+            decoderInitKvExtractMs += timings.kvExtractMs ?? 0;
             recordDecoderTiming(timings);
           },
           onStepTiming: (timings, elapsedMs) => {
@@ -1956,6 +1992,9 @@ export class WhisperOnnxExecutor {
             decoderStepTensorCloneMs += timings.inputMs;
             decoderStepRunMs += timings.runMs;
             decoderStepOutputMs += timings.outputMs;
+            decoderStepTensorCreateMs += timings.tensorCreateMs ?? 0;
+            decoderStepLogitReadMs += timings.logitReadMs ?? 0;
+            decoderStepKvMergeMs += timings.kvExtractMs ?? 0;
             decoderStepCount += 1;
             decoderStepTimings.push(elapsedMs);
             recordDecoderTiming(timings);
@@ -2157,6 +2196,15 @@ export class WhisperOnnxExecutor {
       decoderCpuTensorOutputs,
       decoderGpuTensorDownloads,
       decoderKvCacheLocation,
+      // Profiling sub-buckets (init)
+      decoderInitTensorCreateMs: roundMetric(decoderInitTensorCreateMs),
+      decoderInitLogitReadMs: roundMetric(decoderInitLogitReadMs),
+      decoderInitKvExtractMs: roundMetric(decoderInitKvExtractMs),
+      // Profiling sub-buckets (step, totals across all steps)
+      decoderStepTensorCreateMs: roundMetric(decoderStepTensorCreateMs),
+      decoderStepLogitReadMs: roundMetric(decoderStepLogitReadMs),
+      decoderStepKvMergeMs: roundMetric(decoderStepKvMergeMs),
+      sessionCreateMs: roundMetric(loaded.sessionCreateMs ?? 0),
       totalMs,
       wallMs: totalMs,
       audioDurationSec: roundMetric(audio.durationSeconds, 4),
