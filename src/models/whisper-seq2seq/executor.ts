@@ -10,6 +10,22 @@ import type {
   TranscriptionProgressEvent,
 } from '../../types/index.js';
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
+
+/** Return the index of the second-highest value in a Float32Array.
+ *  Used for K=2 speculative decoding — the second-best token is the draft.
+ *  (Currently unused; kept for future multi-token speculative decode.) */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _secondArgmax(logits: Float32Array): number {
+  let best = 0;
+  let second = 1;
+  if (logits[best]! < logits[second]!) { best = 1; second = 0; }
+  for (let i = 2; i < logits.length; i++) {
+    const v = logits[i]!;
+    if (v > logits[best]!) { second = best; best = i; }
+    else if (v > logits[second]!) { second = i; }
+  }
+  return second;
+}
 import { fetchModelFiles } from '../../runtime/huggingface.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
 import { WhisperMelProcessor } from '../../audio/whisper-mel.js';
@@ -1308,8 +1324,31 @@ export class WhisperOnnxExecutor {
     presentKv: Record<string, OrtTensorLike<Float32Array>>;
     timings: DecoderSessionTiming;
   }> {
+    return this.runDecoderStepMultiToken(loaded, [tokenId], pastKv);
+  }
+
+  /** Multi-token decoder_step: feeds K tokens at once, returns K logits vectors.
+   *  The model was exported with dynamic sequence length — input_ids [1, K]
+   *  produces logits [1, K, vocab] and advances present KV by K positions.
+   *  GPU ArgMax (next_token_id) is only valid for K=1. */
+  private async runDecoderStepMultiToken(
+    loaded: Required<Pick<LoadedExecutorState, 'decoderStepSession' | 'ort'>> & LoadedExecutorState,
+    tokenIds: number[],
+    pastKv: Record<string, OrtTensorLike<Float32Array>>,
+  ): Promise<{
+    logits: Float32Array;
+    vocabSize: number;
+    nextTokenId?: number;
+    presentKv: Record<string, OrtTensorLike<Float32Array>>;
+    timings: DecoderSessionTiming;
+  }> {
+    const K = tokenIds.length;
     const inputStart = nowMs();
-    const inputIdsTensor = new loaded.ort.Tensor('int64', new BigInt64Array([BigInt(tokenId)]), [1, 1]);
+    const inputIdsTensor = new loaded.ort.Tensor(
+      'int64',
+      new BigInt64Array(tokenIds.map((id) => BigInt(id))),
+      [1, K],
+    );
     const feeds: Record<string, unknown> = { input_ids: inputIdsTensor };
 
     // Add all past_key_values (decoder + encoder KV). Step model expects both.
