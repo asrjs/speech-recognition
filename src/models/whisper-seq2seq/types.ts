@@ -103,6 +103,10 @@ export interface WhisperSplitGraphArtifactSource {
   readonly decoderGraphCapture?: boolean;
   /** DIAGNOSTIC (B2-B): freeDimensionOverrides for decoder_step session. */
   readonly decoderFreeDimensionOverrides?: Record<string, number>;
+  /** DIAGNOSTIC (Edge A): Re-wrap encoder GPU output as fresh Tensor.fromGpuBuffer. */
+  readonly encoderBufferRewrap?: boolean;
+  /** DIAGNOSTIC (Edge B2): Force GPU flush before decoder_init. */
+  readonly encoderGpuFlush?: boolean;
 }
 
 export interface WhisperSeq2SeqModelOptions {

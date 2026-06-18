@@ -49,13 +49,26 @@ export interface OrtSessionLike {
   ): Promise<Record<string, OrtTensorLike>>;
 }
 
-export interface OrtModuleLike {
-  readonly env: OrtEnv;
-  readonly Tensor: new <TData extends ArrayBufferView>(
+export interface OrtTensorConstructor {
+  new <TData extends ArrayBufferView>(
     type: 'float32' | 'float16' | 'int32' | 'int64' | 'bool',
     data: TData,
     dims: readonly number[],
-  ) => OrtTensorLike<TData>;
+  ): OrtTensorLike<TData>;
+  fromGpuBuffer?(
+    buffer: unknown,
+    options: {
+      dataType?: string;
+      dims: readonly number[];
+      download?: () => Promise<ArrayBufferView>;
+      dispose?: () => void;
+    },
+  ): OrtTensorLike;
+}
+
+export interface OrtModuleLike {
+  readonly env: OrtEnv;
+  readonly Tensor: OrtTensorConstructor;
   readonly InferenceSession: {
     create(url: string, options?: Record<string, unknown>): Promise<OrtSessionLike>;
   };
@@ -87,6 +100,10 @@ export interface ResolvedWhisperArtifacts {
   readonly decoderGraphCapture?: boolean;
   /** DIAGNOSTIC (B2-B): freeDimensionOverrides for decoder_step session. */
   readonly decoderFreeDimensionOverrides?: Record<string, number>;
+  /** DIAGNOSTIC (Edge A): Re-wrap encoder GPU output as fresh Tensor.fromGpuBuffer. */
+  readonly encoderBufferRewrap?: boolean;
+  /** DIAGNOSTIC (Edge B2): Force GPU flush before decoder_init. */
+  readonly encoderGpuFlush?: boolean;
   readonly isSplitGraph: boolean;
   readonly decoderInitUrl?: string;
   readonly decoderStepUrl?: string;
@@ -275,6 +292,8 @@ function resolveSplitGraphArtifacts(
     encoderOutputCpu: source.encoderOutputCpu,
     decoderGraphCapture: source.decoderGraphCapture,
     decoderFreeDimensionOverrides: source.decoderFreeDimensionOverrides,
+    encoderBufferRewrap: source.encoderBufferRewrap,
+    encoderGpuFlush: source.encoderGpuFlush,
     isSplitGraph: true,
     decoderInitUrl,
     decoderStepUrl,

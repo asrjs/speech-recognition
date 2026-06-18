@@ -67,6 +67,10 @@ interface LoadedExecutorState {
   readonly decoderBackendForOrt?: string;
   readonly experimentalGpuKvCache?: boolean;
   readonly sessionCreateMs?: number;
+  /** DIAGNOSTIC (Edge A): Re-wrap encoder GPU buffer as fresh tensor. */
+  readonly encoderBufferRewrap?: boolean;
+  /** DIAGNOSTIC (Edge B2): Force GPU flush before decoder_init. */
+  readonly encoderGpuFlush?: boolean;
 }
 
 interface DecoderStepResult {
@@ -779,6 +783,8 @@ export class WhisperOnnxExecutor {
       isSplitGraph, decoderInitSession, decoderStepSession, decoderAlignSession,
       decoderBackendForOrt: resolved.decoderBackendForOrt,
       experimentalGpuKvCache: resolved.experimentalGpuKvCache,
+      encoderBufferRewrap: resolved.encoderBufferRewrap,
+      encoderGpuFlush: resolved.encoderGpuFlush,
       sessionCreateMs: nowMs() - sessionStart,
     };
   }
@@ -1847,7 +1853,7 @@ export class WhisperOnnxExecutor {
     const encoderRunStart = nowMs();
     const encoderOutputs = await loaded.encoderSession.run({ input_features: featureTensor });
     const encoderRunEnd = nowMs();
-    const encoderHiddenStates = await maybeCastEncoderHiddenStates(
+    let encoderHiddenStates = await maybeCastEncoderHiddenStates(
       encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>,
       loaded.decoderInitSession ?? loaded.decoderSession!,
       loaded.ort,
@@ -1859,6 +1865,57 @@ export class WhisperOnnxExecutor {
     const encoderOutputMs = encoderOutputEnd - encoderRunEnd;
     const encoderOutputLocation = (encoderHiddenStates as OrtTensorLike<Float32Array>).location ?? 'cpu';
     const encoderOutputDtype = (encoderHiddenStates as OrtTensorLike<Float32Array>).type ?? 'float32';
+
+    // EDGE A DIAGNOSTIC: Re-wrap encoder GPU output as a fresh Tensor.fromGpuBuffer.
+    // The encoder output tensor carries the encoder session's downloader/disposer
+    // callbacks. Re-wrapping the same GPUBuffer as a fresh tensor strips those
+    // callbacks, testing whether the session association causes the fp16 handoff penalty.
+    let encoderBufferRewrapMs = 0;
+    let encoderGpuFlushMs = 0;
+    if (loaded.encoderBufferRewrap && isGpuBufferTensor(encoderHiddenStates as OrtTensorLike<Float32Array>)) {
+      const rewrapStart = nowMs();
+      const origTensor = encoderHiddenStates as OrtTensorLike<Float32Array>;
+      const gpuBuffer = (origTensor as unknown as { gpuBuffer: GPUBuffer }).gpuBuffer;
+      if (gpuBuffer && loaded.ort.Tensor.fromGpuBuffer) {
+        const rewrapped = loaded.ort.Tensor.fromGpuBuffer(gpuBuffer, {
+          dataType: origTensor.type as string,
+          dims: [...origTensor.dims] as readonly number[],
+          download: origTensor.getData
+            ? async () => origTensor.getData!() as Promise<ArrayBufferView>
+            : undefined,
+          dispose: undefined,
+        });
+        encoderHiddenStates = rewrapped as unknown as OrtTensorLike<Float32Array>;
+      }
+      encoderBufferRewrapMs = nowMs() - rewrapStart;
+    }
+
+    // EDGE B2 DIAGNOSTIC: Force GPU pipeline flush by calling getData() on the
+    // encoder output, then re-wrap the SAME GPUBuffer as a fresh tensor.
+    // This tests whether the 197ms penalty is caused by GPU synchronization
+    // (encoder compute pass not yet submitted/completed when decoder_init starts).
+    // If decoderInitMs drops to ~19ms after the flush, synchronization is the cause.
+    if (loaded.encoderGpuFlush && isGpuBufferTensor(encoderHiddenStates as OrtTensorLike<Float32Array>)) {
+      const flushStart = nowMs();
+      const origTensor = encoderHiddenStates as OrtTensorLike<Float32Array>;
+      const gpuBuffer = (origTensor as unknown as { gpuBuffer: GPUBuffer }).gpuBuffer;
+      const dims = [...origTensor.dims] as readonly number[];
+      const dtype = origTensor.type as string;
+      // Force GPU pipeline flush by downloading to CPU
+      if (origTensor.getData) {
+        await origTensor.getData(false); // false = don't release GPU buffer
+      }
+      // Re-wrap the SAME GPUBuffer as a fresh tensor (data is already computed on GPU)
+      if (gpuBuffer && loaded.ort.Tensor.fromGpuBuffer) {
+        encoderHiddenStates = loaded.ort.Tensor.fromGpuBuffer(gpuBuffer, {
+          dataType: dtype,
+          dims,
+          download: undefined,
+          dispose: undefined,
+        }) as unknown as OrtTensorLike<Float32Array>;
+      }
+      encoderGpuFlushMs = nowMs() - flushStart;
+    }
     const encoderFrameCount = encoderHiddenStates.dims[1] ?? encoderOutputPositions;
     const encodeElapsedMs = nowMs() - transcriptionStart;
     emitTranscriptionProgress(options, {
@@ -2224,6 +2281,10 @@ export class WhisperOnnxExecutor {
       encoderOutputMs: roundMetric(encoderOutputMs),
       encoderOutputLocation,
       encoderOutputDtype,
+      // DIAGNOSTIC: Edge A re-wrap timing
+      encoderBufferRewrapMs: roundMetric(encoderBufferRewrapMs),
+      // DIAGNOSTIC: Edge B2 GPU flush timing
+      encoderGpuFlushMs: roundMetric(encoderGpuFlushMs),
       totalMs,
       wallMs: totalMs,
       audioDurationSec: roundMetric(audio.durationSeconds, 4),
