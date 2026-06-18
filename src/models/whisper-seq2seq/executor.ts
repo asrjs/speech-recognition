@@ -1853,16 +1853,21 @@ export class WhisperOnnxExecutor {
     const encoderRunStart = nowMs();
     const encoderOutputs = await loaded.encoderSession.run({ input_features: featureTensor });
     const encoderRunEnd = nowMs();
+    const encoderOutputTensorStart = nowMs();
     let encoderHiddenStates = await maybeCastEncoderHiddenStates(
       encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>,
       loaded.decoderInitSession ?? loaded.decoderSession!,
       loaded.ort,
     );
+    const encoderOutputCastEnd = nowMs();
     const encoderOutputEnd = nowMs();
     const encodeMs = nowMs() - encodeStart;
     // DIAGNOSTIC: sub-timing for encoder run vs output processing
     const encoderRunMs = encoderRunEnd - encoderRunStart;
     const encoderOutputMs = encoderOutputEnd - encoderRunEnd;
+    // DIAGNOSTIC (ORT-FLUSH): fp32 path forces GPU flush inside maybeCastEncoderHiddenStates
+    // via getData(true).  This hides ~193ms in encoderOutputCastMs instead of decoderInitMs.
+    const encoderOutputCastMs = encoderOutputCastEnd - encoderOutputTensorStart;
     const encoderOutputLocation = (encoderHiddenStates as OrtTensorLike<Float32Array>).location ?? 'cpu';
     const encoderOutputDtype = (encoderHiddenStates as OrtTensorLike<Float32Array>).type ?? 'float32';
 
@@ -2279,6 +2284,8 @@ export class WhisperOnnxExecutor {
       // DIAGNOSTIC: encoder sub-timing (Track A)
       encoderRunMs: roundMetric(encoderRunMs),
       encoderOutputMs: roundMetric(encoderOutputMs),
+      // DIAGNOSTIC (ORT-FLUSH): cast/download time — fp32 path hides GPU flush here
+      encoderOutputCastMs: roundMetric(encoderOutputCastMs),
       encoderOutputLocation,
       encoderOutputDtype,
       // DIAGNOSTIC: Edge A re-wrap timing

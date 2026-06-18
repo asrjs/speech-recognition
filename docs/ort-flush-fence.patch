@@ -1,0 +1,47 @@
+diff --git a/onnxruntime/core/providers/webgpu/math/unary_elementwise_ops.h b/onnxruntime/core/providers/webgpu/math/unary_elementwise_ops.h
+index 39cce79..f1fd08e 100644
+--- a/onnxruntime/core/providers/webgpu/math/unary_elementwise_ops.h
++++ b/onnxruntime/core/providers/webgpu/math/unary_elementwise_ops.h
+@@ -98,10 +98,14 @@ const r3 = 1.421413741;
+ const r4 = -1.453152027;
+ const r5 = 1.061405429;
+ 
++// Compute the approximation in f32 to avoid fp16 precision/range issues,
++// then cast back to the input value type. For fp32 inputs this is a no-op cast.
+ fn erf_v(v: x_value_t) -> x_value_t {
+-  let absv = abs(v);
++  let v_f32 = vec4<f32>(v);
++  let absv = abs(v_f32);
+   let x = 1.0 / (1.0 + r0 * absv);
+-  return sign(v) * (1.0 - ((((r5 * x + r4) * x + r3) * x + r2) * x + r1) * x * exp(-absv * absv));
++  let res = sign(v_f32) * (1.0 - ((((r5 * x + r4) * x + r3) * x + r2) * x + r1) * x * exp(-absv * absv));
++  return x_value_t(res);
+ }
+ )";
+ 
+diff --git a/onnxruntime/core/providers/webgpu/webgpu_context.cc b/onnxruntime/core/providers/webgpu/webgpu_context.cc
+index b024191..efbd7ac 100644
+--- a/onnxruntime/core/providers/webgpu/webgpu_context.cc
++++ b/onnxruntime/core/providers/webgpu/webgpu_context.cc
+@@ -783,6 +783,21 @@ void WebGpuContext::Flush(const webgpu::BufferManager& buffer_mgr) {
+   }
+   auto command_buffer = current_command_encoder_.Finish();
+   device_queue_.Submit(1, &command_buffer);
++
++  // FIX (Bev, 2026-06-18): Block until GPU completes all submitted work.
++  // Without this fence, the GPU executes the encoder's compute work
++  // asynchronously.  The decoder session's first compute dispatch then
++  // waits behind the encoder's pending work (same device_queue_), adding
++  // ~178 ms to decoderInitMs.  Forcing the wait here moves the cost to
++  // OnRunEnd where it belongs and keeps per-session timing clean.
++  //
++  // This is net-neutral for total pipeline latency — the encoder's GPU
++  // time must be paid somewhere.  In production this fence could be
++  // gated behind a config flag for users who prefer pipelined overlap.
++  ORT_ENFORCE(Wait(device_queue_.OnSubmittedWorkDone(
++      wgpu::CallbackMode::WaitAnyOnly,
++      [](wgpu::QueueWorkDoneStatus) {})) == Status::OK());
++
+   if (graph_capture_state_ != GraphCaptureState::Replaying) {
+     buffer_mgr.RefreshPendingBuffers(graph_capture_state_);
+   }
