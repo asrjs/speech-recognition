@@ -52,6 +52,10 @@ import type {
   WhisperSeq2SeqTranscriptionOptions,
 } from './types.js';
 
+// GPUBuffer is a browser WebGPU global, not available in Node/TS compilation.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GPUBuffer = any;
+
 interface LoadedExecutorState {
   readonly ort: OrtModuleLike;
   readonly tokenizer: WhisperTokenizer;
@@ -2035,16 +2039,12 @@ export class WhisperOnnxExecutor {
     let decoderCpuTensorOutputs = 0;
     let decoderGpuTensorDownloads = 0;
     // ── Profiling: fine-grained timing buckets ──
-    let encoderTensorCreateMs = 0;
-    let encoderOutputReadMs = 0;
     let decoderInitTensorCreateMs = 0;
     let decoderInitLogitReadMs = 0;
     let decoderInitKvExtractMs = 0;
     let decoderStepTensorCreateMs = 0;
     let decoderStepLogitReadMs = 0;
     let decoderStepKvMergeMs = 0;
-    let decoderStepKvDisposeMs = 0;
-    let sessionCreateMs = 0;
     const decoderStepTimings: number[] = [];
     const requestedNumBeams = Math.max(1, Math.floor(options.numBeams ?? 1));
     const requestedBestOf = Math.max(1, Math.floor(options.bestOf ?? 1));

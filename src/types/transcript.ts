@@ -117,6 +117,18 @@ export interface TranscriptMetrics {
   readonly decoderStepLogitReadMs?: number;
   readonly decoderStepKvMergeMs?: number;
   readonly sessionCreateMs?: number;
+  // Encoder sub-timing
+  readonly encoderRunMs?: number;
+  readonly encoderOutputMs?: number;
+  readonly encoderOutputCastMs?: number;
+  readonly encoderOutputLocation?: string;
+  readonly encoderOutputDtype?: string;
+  // Edge diagnostics
+  readonly encoderBufferRewrapMs?: number;
+  readonly encoderGpuFlushMs?: number;
+  // Production GPU drain
+  readonly encoderGpuDrainMs?: number;
+  readonly encoderTotalMs?: number;
   readonly totalMs?: number;
   readonly wallMs?: number;
   readonly audioDurationSec?: number;
