@@ -11,21 +11,6 @@ import type {
 } from '../../types/index.js';
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
 
-/** Return the index of the second-highest value in a Float32Array.
- *  Used for K=2 speculative decoding — the second-best token is the draft.
- *  (Currently unused; kept for future multi-token speculative decode.) */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _secondArgmax(logits: Float32Array): number {
-  let best = 0;
-  let second = 1;
-  if (logits[best]! < logits[second]!) { best = 1; second = 0; }
-  for (let i = 2; i < logits.length; i++) {
-    const v = logits[i]!;
-    if (v > logits[best]!) { second = best; best = i; }
-    else if (v > logits[second]!) { second = i; }
-  }
-  return second;
-}
 import { fetchModelFiles } from '../../runtime/huggingface.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
 import { WhisperMelProcessor } from '../../audio/whisper-mel.js';

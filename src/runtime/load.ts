@@ -473,7 +473,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       }
     }
     // Dispose all cached handles
-    for (const [key, handle] of this.handles) {
+    for (const [, handle] of this.handles) {
       try { await handle.dispose(); } catch { /* best-effort */ }
     }
     this.handles.clear();

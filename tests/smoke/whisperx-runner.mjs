@@ -350,7 +350,13 @@ export async function runAsrPipeline(_opts) {
   }
 
   const melProc = new WhisperMelProcessor({ nMels: melBins });
-  const timestampProc = new WhisperTimestampLogitProcessor(tokenizer, genConfig);
+  const timestampProc = new WhisperTimestampLogitProcessor({
+    eosTokenId: eosId,
+    noTimestampsTokenId: genConfig.noTimestampsTokenId ?? tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
+    timestampBegin: timestampBeginId,
+    suppressTokens: genConfig.suppressTokens ?? [],
+    beginSuppressTokens: genConfig.beginSuppressTokens ?? [],
+  });
 
   // ── Language auto-detection (first 30s) ──
   {
