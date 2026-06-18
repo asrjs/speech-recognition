@@ -104,6 +104,8 @@ export interface ResolvedWhisperArtifacts {
   readonly encoderBufferRewrap?: boolean;
   /** DIAGNOSTIC (Edge B2): Force GPU flush before decoder_init. */
   readonly encoderGpuFlush?: boolean;
+  /** PROFILING (encoderGpuDrain): Force GPU drain + re-wrap after encoder. */
+  readonly encoderGpuDrain?: boolean;
   readonly isSplitGraph: boolean;
   readonly decoderInitUrl?: string;
   readonly decoderStepUrl?: string;
@@ -294,6 +296,7 @@ function resolveSplitGraphArtifacts(
     decoderFreeDimensionOverrides: source.decoderFreeDimensionOverrides,
     encoderBufferRewrap: source.encoderBufferRewrap,
     encoderGpuFlush: source.encoderGpuFlush,
+    encoderGpuDrain: source.encoderGpuDrain,
     isSplitGraph: true,
     decoderInitUrl,
     decoderStepUrl,

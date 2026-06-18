@@ -75,6 +75,8 @@ interface LoadedExecutorState {
   readonly encoderBufferRewrap?: boolean;
   /** DIAGNOSTIC (Edge B2): Force GPU flush before decoder_init. */
   readonly encoderGpuFlush?: boolean;
+  /** PROFILING (encoderGpuDrain): Force GPU drain + re-wrap after encoder. */
+  readonly encoderGpuDrain?: boolean;
 }
 
 interface DecoderStepResult {
@@ -789,6 +791,7 @@ export class WhisperOnnxExecutor {
       experimentalGpuKvCache: resolved.experimentalGpuKvCache,
       encoderBufferRewrap: resolved.encoderBufferRewrap,
       encoderGpuFlush: resolved.encoderGpuFlush,
+      encoderGpuDrain: resolved.encoderGpuDrain,
       sessionCreateMs: nowMs() - sessionStart,
     };
   }
@@ -1926,20 +1929,25 @@ export class WhisperOnnxExecutor {
       encoderGpuFlushMs = nowMs() - flushStart;
     }
 
-    // PRODUCTION: Always drain the GPU after encoder to correctly attribute GPU
-    // execution time.  ORT Submit() is non-blocking — the encoder's ~178ms GPU
-    // compute hasn't finished when session.run() returns.  Without this drain,
-    // the cost is silently charged to decoderInitMs (both sessions share the
-    // same device queue).  This forces the GPU to drain now so encoderTotalMs
-    // tells the truth and decoderInitMs shows only its own compute cost.
+    // PROFILING (encoderGpuDrain): Force GPU drain after encoder for honest
+    // per-phase metrics.  ORT Submit() is non-blocking — the encoder's GPU
+    // compute work (~178ms) hasn't finished when session.run() returns.
+    // Without this drain, the cost silently appears in decoderInitMs (both
+    // sessions share the same device queue).  This forces the GPU to drain
+    // so encoderTotalMs tells the truth and decoderInitMs shows only its own
+    // compute cost.
     //
-    // The getData() approach adds ~15ms overhead (staging buffer copy + map)
-    // vs a native fence.  That's acceptable for profiling — the 15ms is still
-    // billed to the encoder phase where it belongs.
+    // This calls getData(false) which adds ~18ms staging-buffer overhead vs
+    // a native fence.  It is a PROFILING OPTION, not production behavior.
+    // In production, the fp16 pass-through path avoids this readback and
+    // lets the queue dependency resolve naturally — the total latency is
+    // the same, only the metric attribution differs.
     //
     // Skip if Edge B2 already drained (encoderGpuFlushMs > 0).
     let encoderGpuDrainMs = 0;
-    if (encoderGpuFlushMs === 0 && isGpuBufferTensor(encoderHiddenStates as OrtTensorLike<Float32Array>)) {
+    if (encoderGpuFlushMs === 0 &&
+        loaded.encoderGpuDrain &&
+        isGpuBufferTensor(encoderHiddenStates as OrtTensorLike<Float32Array>)) {
       const drainStart = nowMs();
       const origTensor = encoderHiddenStates as OrtTensorLike<Float32Array>;
       const gpuBuffer = (origTensor as unknown as { gpuBuffer: GPUBuffer }).gpuBuffer;
@@ -2325,9 +2333,9 @@ export class WhisperOnnxExecutor {
       encoderBufferRewrapMs: roundMetric(encoderBufferRewrapMs),
       // DIAGNOSTIC: Edge B2 GPU flush timing (now redundant with encoderGpuDrainMs)
       encoderGpuFlushMs: roundMetric(encoderGpuFlushMs),
-      // PRODUCTION: GPU drain after encoder — true encoder GPU completion cost
+      // PROFILING (encoderGpuDrain): GPU drain after encoder — gated, adds ~18ms overhead
       encoderGpuDrainMs: roundMetric(encoderGpuDrainMs),
-      // PRODUCTION: encoder total = session.run() + GPU drain wait
+      // PROFILING: encoder total when drain is active (encoderRunMs + encoderGpuDrainMs)
       encoderTotalMs: roundMetric(encoderRunMs + encoderGpuDrainMs),
       totalMs,
       wallMs: totalMs,

@@ -6,7 +6,7 @@
 **Model:** whisper-large-v3-turbo-onnx-4graph  
 **Audio:** JFK 30s (29.9s, 16kHz mono)  
 **Browser:** Chrome, WebGPU, COI enabled  
-**Commit:** `7f7e48a` (includes `encoderGpuDrainMs`)
+**Commit:** `7f7e48a` (includes gated `encoderGpuDrain` profiling flag)
 
 ---
 
@@ -64,12 +64,12 @@ Pure JS — mel spectrogram computation from PCM. Single-threaded.
 |--------|-------|-------|
 | `encoderRunMs` | **184.5** | `session.run()` wall time |
 | `encoderOutputCastMs` | 0.02 | fp16→fp16 = no cast needed ✓ |
-| `encoderGpuDrainMs` | **196.6** | GPU async completion wait |
-| `encoderTotalMs` | **381.1** | 184.5 + 196.6 = true cost |
+| `encoderGpuDrainMs` | **196.6** | GPU async completion wait (PROFILING ONLY — gated behind `encoderGpuDrain` flag) |
+| `encoderTotalMs` | **381.1** | 184.5 + 196.6 = true cost with drain active |
 | `encoderOutputLocation` | gpu-buffer | Stays on GPU ✓ |
 | `encoderOutputDtype` | float16 | fp16 output ✓ |
 
-**The drain is unavoidable.** ORT's `Submit()` is non-blocking. The 196.6ms is:
+**The drain is a profiling option, not production behavior.** ORT's `Submit()` is non-blocking. The 196.6ms is:
 - 178ms: encoder GPU compute time (must be paid somewhere)
 - 18ms: `getData()` staging buffer overhead (could save with native fence)
 

@@ -107,6 +107,11 @@ export interface WhisperSplitGraphArtifactSource {
   readonly encoderBufferRewrap?: boolean;
   /** DIAGNOSTIC (Edge B2): Force GPU flush before decoder_init. */
   readonly encoderGpuFlush?: boolean;
+  /** PROFILING (encoderGpuDrain): Force GPU drain + re-wrap after encoder.
+   *  Calls getData(false) to drain the GPU queue, then re-wraps the same
+   *  GPUBuffer as a fresh tensor.  Adds ~18ms staging buffer overhead.
+   *  Use for honest per-phase profiling; leave off for production latency. */
+  readonly encoderGpuDrain?: boolean;
 }
 
 export interface WhisperSeq2SeqModelOptions {
