@@ -711,7 +711,9 @@ export class WhisperOnnxExecutor {
       enableGraphCapture: resolved.experimentalWebGpuEncoderGraphCapture,
       // GPU encoder bridge: keep encoder output on GPU to avoid the CPU
       // f32→f16 cast round-trip when using the Cast-injected decoder_init.
-      ...(resolved.experimentalGpuKvCache && resolved.encoderBackendForOrt === 'webgpu'
+      // DIAGNOSTIC (Track A2): encoderOutputCpu forces CPU output to measure
+      // cross-session GPU tensor handoff penalty.
+      ...((resolved.experimentalGpuKvCache && resolved.encoderBackendForOrt === 'webgpu' && !resolved.encoderOutputCpu)
         ? { preferredOutputLocation: 'gpu-buffer' as const }
         : {}),
       ...(resolved.externalData?.encoder?.[0]
@@ -760,6 +762,10 @@ export class WhisperOnnxExecutor {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
         preferredOutputLocation: decoderStepPreferredOutputLocation,
+        // DIAGNOSTIC (B2-C): graph capture for decoder_step
+        ...(resolved.decoderGraphCapture ? { enableGraphCapture: true } : {}),
+        // DIAGNOSTIC (B2-B): freeDimensionOverrides for decoder_step
+        ...(resolved.decoderFreeDimensionOverrides ? { freeDimensionOverrides: resolved.decoderFreeDimensionOverrides } : {}),
         ...(resolved.externalData?.decoder_step?.[0]
           ? { externalDataUrl: resolved.externalData.decoder_step[0].dataUrl, externalDataPath: resolved.externalData.decoder_step[0].path }
           : {}),
@@ -1838,13 +1844,21 @@ export class WhisperOnnxExecutor {
 
     // 2. Run encoder
     const encodeStart = nowMs();
+    const encoderRunStart = nowMs();
     const encoderOutputs = await loaded.encoderSession.run({ input_features: featureTensor });
+    const encoderRunEnd = nowMs();
     const encoderHiddenStates = await maybeCastEncoderHiddenStates(
       encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>,
       loaded.decoderInitSession ?? loaded.decoderSession!,
       loaded.ort,
     );
+    const encoderOutputEnd = nowMs();
     const encodeMs = nowMs() - encodeStart;
+    // DIAGNOSTIC: sub-timing for encoder run vs output processing
+    const encoderRunMs = encoderRunEnd - encoderRunStart;
+    const encoderOutputMs = encoderOutputEnd - encoderRunEnd;
+    const encoderOutputLocation = (encoderHiddenStates as OrtTensorLike<Float32Array>).location ?? 'cpu';
+    const encoderOutputDtype = (encoderHiddenStates as OrtTensorLike<Float32Array>).type ?? 'float32';
     const encoderFrameCount = encoderHiddenStates.dims[1] ?? encoderOutputPositions;
     const encodeElapsedMs = nowMs() - transcriptionStart;
     emitTranscriptionProgress(options, {
@@ -2205,6 +2219,11 @@ export class WhisperOnnxExecutor {
       decoderStepLogitReadMs: roundMetric(decoderStepLogitReadMs),
       decoderStepKvMergeMs: roundMetric(decoderStepKvMergeMs),
       sessionCreateMs: roundMetric(loaded.sessionCreateMs ?? 0),
+      // DIAGNOSTIC: encoder sub-timing (Track A)
+      encoderRunMs: roundMetric(encoderRunMs),
+      encoderOutputMs: roundMetric(encoderOutputMs),
+      encoderOutputLocation,
+      encoderOutputDtype,
       totalMs,
       wallMs: totalMs,
       audioDurationSec: roundMetric(audio.durationSeconds, 4),

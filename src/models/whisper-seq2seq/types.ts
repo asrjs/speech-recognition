@@ -95,6 +95,14 @@ export interface WhisperSplitGraphArtifactSource {
   readonly enableProfiling?: boolean;
   readonly experimentalWebGpuEncoderGraphCapture?: boolean;
   readonly experimentalGpuKvCache?: boolean;
+  /** DIAGNOSTIC: Force encoder output to CPU (Track A2). When true, encoder
+   *  output is downloaded to CPU even with gpuKv enabled, to measure
+   *  cross-session GPU tensor handoff penalty. */
+  readonly encoderOutputCpu?: boolean;
+  /** DIAGNOSTIC (B2-C): Enable graph capture for decoder_step session. */
+  readonly decoderGraphCapture?: boolean;
+  /** DIAGNOSTIC (B2-B): freeDimensionOverrides for decoder_step session. */
+  readonly decoderFreeDimensionOverrides?: Record<string, number>;
 }
 
 export interface WhisperSeq2SeqModelOptions {

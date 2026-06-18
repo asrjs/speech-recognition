@@ -81,6 +81,12 @@ export interface ResolvedWhisperArtifacts {
   readonly enableProfiling?: boolean;
   readonly experimentalWebGpuEncoderGraphCapture?: boolean;
   readonly experimentalGpuKvCache?: boolean;
+  /** DIAGNOSTIC: Force encoder output to CPU (Track A2). */
+  readonly encoderOutputCpu?: boolean;
+  /** DIAGNOSTIC (B2-C): Enable graph capture for decoder_step session. */
+  readonly decoderGraphCapture?: boolean;
+  /** DIAGNOSTIC (B2-B): freeDimensionOverrides for decoder_step session. */
+  readonly decoderFreeDimensionOverrides?: Record<string, number>;
   readonly isSplitGraph: boolean;
   readonly decoderInitUrl?: string;
   readonly decoderStepUrl?: string;
@@ -266,6 +272,9 @@ function resolveSplitGraphArtifacts(
     enableProfiling: source.enableProfiling,
     experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
     experimentalGpuKvCache: source.experimentalGpuKvCache,
+    encoderOutputCpu: source.encoderOutputCpu,
+    decoderGraphCapture: source.decoderGraphCapture,
+    decoderFreeDimensionOverrides: source.decoderFreeDimensionOverrides,
     isSplitGraph: true,
     decoderInitUrl,
     decoderStepUrl,
@@ -345,6 +354,8 @@ export async function createWhisperOrtSession(
     readonly externalDataPath?: string;
     readonly preferredOutputLocation?: OrtPreferredOutputLocation;
     readonly enableGraphCapture?: boolean;
+    /** DIAGNOSTIC (B2-B): Override symbolic dimensions at session creation. */
+    readonly freeDimensionOverrides?: Record<string, number>;
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
@@ -373,6 +384,10 @@ export async function createWhisperOrtSession(
   }
   if (options.enableGraphCapture && options.backendId.startsWith('webgpu')) {
     sessionOptions.enableGraphCapture = true;
+  }
+  // DIAGNOSTIC (B2-B): freeDimensionOverrides for shape specialization
+  if (options.freeDimensionOverrides) {
+    sessionOptions.freeDimensionOverrides = options.freeDimensionOverrides;
   }
 
   if (isNodeLikeRuntime()) {
