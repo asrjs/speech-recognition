@@ -265,9 +265,10 @@ not semantically equivalent to the library decoder.
 
 ### 4. Batched beam decode
 
-Beam search is implemented but still uses the stable CPU/WASM-style KV bridge.
-The measured WebGPU fast path is greedy-only. For beam speed, design a batched
-decoder step plus KV reorder path instead of multiplying ORT calls per beam.
+Beam search now has an opt-in experimental batched decoder-step path for the
+stable CPU-KV splitgraph bridge. Keep the normal beam path as the correctness
+oracle, then compare token parity and browser metrics with `batchedBeam=1`.
+The measured WebGPU fast path is still greedy GPU-KV.
 
 ### 5. int8 (q8) Model Generation for WASM
 

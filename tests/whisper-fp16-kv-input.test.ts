@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { cloneDecoderKvDataForInput } from '../src/models/whisper-seq2seq/executor.js';
+import { cloneDecoderKvDataForInput, concatDecoderKvDataForBatch } from '../src/models/whisper-seq2seq/executor.js';
 import { WhisperOnnxExecutor } from '../src/models/whisper-seq2seq/index.js';
 
 const originalFloat16Array = (globalThis as any).Float16Array;
@@ -19,6 +19,19 @@ describe('Whisper fp16 decoder-step KV inputs', () => {
     expect(cloned.data.constructor.name).toBe('Float16Array');
     expect(cloned.data).not.toBe(source);
     expect(Array.from(cloned.data as Uint16Array)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('concatenates raw fp16 KV bits as Float16Array for batched beam inputs', () => {
+    (globalThis as any).Float16Array = class Float16Array extends Uint16Array {};
+
+    const batched = concatDecoderKvDataForBatch([
+      { data: new Uint16Array([1, 2]), type: 'float16' },
+      { data: new Uint16Array([3, 4]), type: 'float16' },
+    ], 'float16');
+
+    expect(batched.type).toBe('float16');
+    expect(batched.data.constructor.name).toBe('Float16Array');
+    expect(Array.from(batched.data as Uint16Array)).toEqual([1, 2, 3, 4]);
   });
 
   it('re-wraps Uint16Array fp16 KV data with Float16Array when the runtime provides it', async () => {

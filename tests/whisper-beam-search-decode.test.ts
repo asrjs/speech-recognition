@@ -208,4 +208,102 @@ describe('whisperBeamDecode integration', () => {
     expect(result.tokens[result.tokens.length - 1]).toBe(EOS_TOKEN_ID);
     expect(seenActiveStepKv).toEqual([3]);
   });
+
+  it('uses batched beam step hook only when explicitly enabled', async () => {
+    const makeSession = () => {
+      let singleCalls = 0;
+      let batchCalls = 0;
+      const session: WhisperCoreSession = {
+        async runInit() {
+          const logits = new Float32Array(VOCAB_SIZE);
+          logits[2] = 8.0;
+          logits[3] = 7.5;
+          return {
+            logits,
+            vocabSize: VOCAB_SIZE,
+            presentKv: { marker: new Float32Array([0]) },
+          };
+        },
+        async runStep(tokenId) {
+          singleCalls += 1;
+          const logits = new Float32Array(VOCAB_SIZE);
+          logits[tokenId === 2 ? 4 : EOS_TOKEN_ID] = 8.0;
+          return {
+            logits,
+            vocabSize: VOCAB_SIZE,
+            presentKv: { marker: new Float32Array([tokenId]) },
+          };
+        },
+        async runStepBatch(tokenIds) {
+          batchCalls += 1;
+          return tokenIds.map((tokenId) => {
+            const logits = new Float32Array(VOCAB_SIZE);
+            logits[tokenId === 2 ? 4 : EOS_TOKEN_ID] = 8.0;
+            return {
+              logits,
+              vocabSize: VOCAB_SIZE,
+              presentKv: { marker: new Float32Array([tokenId]) },
+            };
+          });
+        },
+      };
+      return {
+        session,
+        get singleCalls() {
+          return singleCalls;
+        },
+        get batchCalls() {
+          return batchCalls;
+        },
+      };
+    };
+
+    const stable = makeSession();
+    const stableResult = await whisperBeamDecode(stable.session, {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      maxNewTokens: 4,
+    });
+
+    const batched = makeSession();
+    const batchedResult = await whisperBeamDecode(batched.session, {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      maxNewTokens: 4,
+      experimentalBatchedBeam: true,
+    });
+
+    expect(batchedResult.tokens).toEqual(stableResult.tokens);
+    expect(stable.batchCalls).toBe(0);
+    expect(stable.singleCalls).toBeGreaterThan(1);
+    expect(batched.batchCalls).toBeGreaterThan(0);
+    expect(batched.singleCalls).toBeLessThan(stable.singleCalls);
+  });
+
+  it('throws if a batched beam step returns the wrong result count', async () => {
+    const session: WhisperCoreSession = {
+      async runInit() {
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits[2] = 8.0;
+        logits[3] = 7.5;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+      async runStep() {
+        throw new Error('sequential fallback should not be used');
+      },
+      async runStepBatch() {
+        return [];
+      },
+    };
+
+    await expect(whisperBeamDecode(session, {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      maxNewTokens: 3,
+      experimentalBatchedBeam: true,
+    })).rejects.toThrow(/Batched Whisper beam step returned 0 results/);
+  });
 });

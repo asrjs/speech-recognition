@@ -177,6 +177,13 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
   /** Number of independent sampling decodings when temperature > 0. Whisper: best_of. */
   readonly bestOf?: number;
   /**
+   * Experimental beam-search optimization. When true, active beam decoder-step
+   * calls may be grouped into one ORT batch if the splitgraph model supports
+   * batch-shaped decoder_step inputs. Default false; stable beam remains the
+   * correctness oracle.
+   */
+  readonly experimentalBatchedBeam?: boolean;
+  /**
    * Optional per-token logit callback — fired after logit processing, before argmax.
    * Enables quality gates (logprob, entropy, no-speech) to collect per-token data.
    * Signature: (chosenTokenId, processedLogits, { tokens, beginIndex }) => void

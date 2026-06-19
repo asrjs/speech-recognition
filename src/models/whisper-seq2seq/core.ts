@@ -33,6 +33,11 @@ export interface WhisperCoreSession {
     tokenId: number,
     pastKv: WhisperKvCache,
   ): Promise<WhisperStepResult>;
+
+  runStepBatch?(
+    tokenIds: readonly number[],
+    pastKvs: readonly WhisperKvCache[],
+  ): Promise<readonly WhisperStepResult[]>;
 }
 
 export interface WhisperKvCacheEntry {
@@ -126,6 +131,8 @@ export interface WhisperDecodeOptions {
   readonly bestOf?: number;
   /** Track cumulative log-probability for best-of scoring. */
   readonly trackScore?: boolean;
+  /** Experimental: run active beam decoder steps in one batch when the session supports it. */
+  readonly experimentalBatchedBeam?: boolean;
 }
 
 export interface WhisperDecodeResult {
@@ -255,19 +262,50 @@ export async function whisperBeamDecode(
 
   let completedSteps = 0;
 
+  const useBatchedBeam = options.experimentalBatchedBeam === true && Boolean(session.runStepBatch);
+
   for (let s = 1; s < maxNewTokens; s++) {
     if (beams.every(b => (b as any).completed)) break;
 
     const logitsByBeam: Float32Array[] = [];
+    const activeIndexes: number[] = [];
+    const activeTokenIds: number[] = [];
+    const activeKvs: WhisperKvCache[] = [];
+
     for (let bi = 0; bi < beams.length; bi++) {
       const beam = beams[bi] as any;
-      if (beam.completed) { logitsByBeam.push(new Float32Array(0)); continue; }
-      const prevToken = beam.tokens[beam.tokens.length - 1];
-      const stepResult = await session.runStep(prevToken, beamKvs[bi]!);
-      const sl = stepResult.logits;
-      if (processLogits) processLogits(sl, beam.tokens, promptTokens.length);
-      logitsByBeam.push(sl);
-      beamKvs[bi] = stepResult.presentKv;
+      logitsByBeam.push(new Float32Array(0));
+      if (beam.completed) continue;
+      activeIndexes.push(bi);
+      activeTokenIds.push(beam.tokens[beam.tokens.length - 1]);
+      activeKvs.push(beamKvs[bi]!);
+    }
+
+    if (useBatchedBeam && activeIndexes.length > 1) {
+      const stepResults = await session.runStepBatch!(activeTokenIds, activeKvs);
+      if (stepResults.length !== activeIndexes.length) {
+        throw new Error(
+          `Batched Whisper beam step returned ${stepResults.length} results for ${activeIndexes.length} active beams.`,
+        );
+      }
+      for (let i = 0; i < activeIndexes.length; i++) {
+        const beamIndex = activeIndexes[i]!;
+        const beam = beams[beamIndex] as any;
+        const stepResult = stepResults[i]!;
+        if (processLogits) processLogits(stepResult.logits, beam.tokens, promptTokens.length);
+        logitsByBeam[beamIndex] = stepResult.logits;
+        beamKvs[beamIndex] = stepResult.presentKv;
+      }
+    } else {
+      for (const beamIndex of activeIndexes) {
+        const beam = beams[beamIndex] as any;
+        const prevToken = beam.tokens[beam.tokens.length - 1];
+        const stepResult = await session.runStep(prevToken, beamKvs[beamIndex]!);
+        const sl = stepResult.logits;
+        if (processLogits) processLogits(sl, beam.tokens, promptTokens.length);
+        logitsByBeam[beamIndex] = sl;
+        beamKvs[beamIndex] = stepResult.presentKv;
+      }
     }
 
     const candidates = rankWhisperBeamCandidates({

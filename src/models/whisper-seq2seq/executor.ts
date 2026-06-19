@@ -305,6 +305,10 @@ export interface SplitGraphDecodeCallbacks {
     tokenId: number,
     pastKv: WhisperKvCache,
   ): Promise<{ logits: Float32Array; vocabSize: number; presentKv: WhisperKvCache }>;
+  runStepBatch?(
+    tokenIds: readonly number[],
+    pastKvs: readonly WhisperKvCache[],
+  ): Promise<readonly { logits: Float32Array; vocabSize: number; presentKv: WhisperKvCache }[]>;
 }
 
 export interface SplitGraphDecodeResult {
@@ -403,7 +407,12 @@ function mapPresentKvToPastKv(
 }
 
 type TensorDataView = ArrayBufferView & { readonly length: number };
+type MutableTensorDataView = TensorDataView & {
+  [index: number]: number;
+  set?: (source: ArrayLike<number>, offset?: number) => void;
+};
 type TensorDataConstructor = {
+  new(length: number): TensorDataView;
   new(buffer: ArrayBufferLike, byteOffset?: number, length?: number): TensorDataView;
   readonly name?: string;
 };
@@ -411,6 +420,14 @@ type TensorDataConstructor = {
 function cloneTensorDataView(data: TensorDataView, ctor: TensorDataConstructor): TensorDataView {
   const buffer = (data.buffer as ArrayBuffer).slice(data.byteOffset, data.byteOffset + data.byteLength);
   return new ctor(buffer, 0, data.length);
+}
+
+function sliceTensorDataView(data: TensorDataView, elementOffset: number, length: number): TensorDataView {
+  const bytesPerElement = data.byteLength / Math.max(1, data.length);
+  const startByte = data.byteOffset + elementOffset * bytesPerElement;
+  const endByte = startByte + length * bytesPerElement;
+  const buffer = (data.buffer as ArrayBuffer).slice(startByte, endByte);
+  return new (data.constructor as TensorDataConstructor)(buffer, 0, length);
 }
 
 export function cloneDecoderKvDataForInput(
@@ -431,6 +448,47 @@ export function cloneDecoderKvDataForInput(
   return {
     type: 'float32',
     data: cloneTensorDataView(view, dataCtor),
+  };
+}
+
+function concatTensorDataViews(parts: readonly TensorDataView[], ctor: TensorDataConstructor): TensorDataView {
+  const totalLength = parts.reduce((sum, part) => sum + part.length, 0);
+  const merged = new ctor(totalLength) as MutableTensorDataView;
+  let offset = 0;
+  for (const part of parts) {
+    if (merged.set) {
+      merged.set(part as unknown as ArrayLike<number>, offset);
+    } else {
+      const source = part as unknown as ArrayLike<number>;
+      for (let i = 0; i < part.length; i++) {
+        merged[offset + i] = source[i] ?? 0;
+      }
+    }
+    offset += part.length;
+  }
+  return merged;
+}
+
+export function concatDecoderKvDataForBatch(
+  values: readonly { readonly data: ArrayBufferView; readonly type?: string }[],
+  fallbackType: 'float32' | 'float16',
+): { readonly type: 'float32' | 'float16'; readonly data: TensorDataView } {
+  const cloned = values.map((value) => cloneDecoderKvDataForInput(value.data, value.type ?? fallbackType));
+  const first = cloned[0];
+  if (!first) {
+    throw new Error('Cannot batch empty Whisper KV tensor data.');
+  }
+  for (const value of cloned) {
+    if (value.type !== first.type) {
+      throw new Error(`Cannot batch mixed Whisper KV tensor dtypes: ${first.type} and ${value.type}.`);
+    }
+  }
+  return {
+    type: first.type,
+    data: concatTensorDataViews(
+      cloned.map((value) => value.data),
+      first.data.constructor as TensorDataConstructor,
+    ),
   };
 }
 
@@ -459,6 +517,7 @@ export async function splitGraphDecodeLoop(params: {
   modelConfig: WhisperModelConfig;
   runInit: SplitGraphDecodeCallbacks['runInit'];
   runStep: SplitGraphDecodeCallbacks['runStep'];
+  runStepBatch?: SplitGraphDecodeCallbacks['runStepBatch'];
   processLogits?: (logits: Float32Array, generatedTokens: readonly number[], beginIndex: number) => void;
   onTokenLogits?: (chosenTokenId: number, processedLogits: Float32Array, ctx: { readonly tokens: readonly number[]; readonly beginIndex: number }) => void;
   /** Beam search: number of beams (default: 1 = greedy) */
@@ -471,6 +530,8 @@ export async function splitGraphDecodeLoop(params: {
   temperature?: number;
   /** Number of independent decodings, pick best by score (WhisperX: best_of) */
   bestOf?: number;
+  /** Experimental: batch active beam decoder steps into one ORT call when supported. */
+  experimentalBatchedBeam?: boolean;
 }): Promise<SplitGraphDecodeResult> {
   const {
     promptTokens,
@@ -480,6 +541,7 @@ export async function splitGraphDecodeLoop(params: {
     modelConfig,
     runInit,
     runStep,
+    runStepBatch,
     processLogits,
     onTokenLogits,
     numBeams,
@@ -487,12 +549,14 @@ export async function splitGraphDecodeLoop(params: {
     patience,
     temperature,
     bestOf,
+    experimentalBatchedBeam,
   } = params;
 
   const encoderDims: readonly number[] = [1, encoderHiddenStates.length / modelConfig.dModel, modelConfig.dModel];
   const session: WhisperCoreSession = {
     runInit: async (pt, enc, dims) => runInit(pt, enc, dims),
     runStep: async (tid, kv) => runStep(tid, kv),
+    ...(runStepBatch ? { runStepBatch: async (tids, kvs) => runStepBatch(tids, kvs) } : {}),
   };
   const result = await whisperDecode(session, {
     promptTokens, encoderOutput: encoderHiddenStates, encoderDims, eosTokenId, maxNewTokens, processLogits, onTokenLogits,
@@ -502,6 +566,7 @@ export async function splitGraphDecodeLoop(params: {
     patience: patience ?? 1,
     temperature: temperature ?? 0,
     bestOf: bestOf ?? 1,
+    experimentalBatchedBeam: experimentalBatchedBeam ?? false,
   });
   return { tokens: result.tokens };
 }
@@ -2191,6 +2256,7 @@ export class WhisperOnnxExecutor {
           patience: options.patience ?? 1,
           temperature: requestedTemperature,
           bestOf: requestedBestOf,
+          experimentalBatchedBeam: options.experimentalBatchedBeam === true,
           runInit: async (prompt, _encHs, _dims) => {
             const decoderInitStart = nowMs();
             const init = await this.runDecoderInit(splitLoaded, encoderHiddenStates, prompt);
@@ -2285,6 +2351,171 @@ export class WhisperOnnxExecutor {
               ),
             };
           },
+          runStepBatch: options.experimentalBatchedBeam
+            ? async (tokenIds, pastKvs) => {
+                const batchSize = tokenIds.length;
+                if (batchSize === 0) return [];
+                const decoderStepStart = nowMs();
+                const feedBuildStart = nowMs();
+                const feeds: Record<string, unknown> = {
+                  input_ids: new splitLoaded.ort.Tensor(
+                    'int64',
+                    new BigInt64Array(tokenIds.map((id) => BigInt(id))),
+                    [batchSize, 1],
+                  ),
+                };
+
+                const firstKv = pastKvs[0] ?? {};
+                for (const name of Object.keys(firstKv)) {
+                  const stepName = name.replace(/^present\./, 'past_key_values.');
+                  const values = pastKvs.map((kv) => {
+                    const value = kv[name]
+                      ?? kv[stepName]
+                      ?? kv[name.replace(/^past_key_values\./, 'present.')];
+                    if (!value) {
+                      throw new Error(`Missing Whisper batched beam KV "${name}" for one active beam.`);
+                    }
+                    return normalizeWhisperKvCacheValue(value);
+                  });
+                  const firstValue = values[0]!;
+                  const dims = firstValue.dims
+                    ?? kvDims[name]
+                    ?? kvDims[stepName]
+                    ?? kvDims[name.replace(/^past_key_values\./, 'present.')];
+                  let perBeamDims = dims;
+                  if (!perBeamDims) {
+                    const numHeads = splitLoaded.modelConfig.decoderAttentionHeads;
+                    const headDim = splitLoaded.modelConfig.headDim;
+                    const clonedFirst = cloneDecoderKvDataForInput(firstValue.data, firstValue.type ?? kvDtype);
+                    const seqLen = Math.round(clonedFirst.data.length / (numHeads * headDim));
+                    perBeamDims = [1, numHeads, seqLen, headDim];
+                  }
+                  for (const value of values) {
+                    if (!value.dims) continue;
+                    const sameRank = value.dims.length === perBeamDims.length;
+                    const sameNonBatchDims = value.dims.slice(1).every((dim, i) => dim === perBeamDims![i + 1]);
+                    if (!sameRank || !sameNonBatchDims) {
+                      throw new Error(`Cannot batch Whisper KV "${name}" with mismatched per-beam dims.`);
+                    }
+                  }
+                  const batched = concatDecoderKvDataForBatch(values, kvDtype);
+                  feeds[stepName] = new splitLoaded.ort.Tensor(
+                    batched.type,
+                    batched.data,
+                    [batchSize, ...perBeamDims.slice(1)],
+                  );
+                }
+
+                decoderStepFeedBuildMs += nowMs() - feedBuildStart;
+                const inputLocations = countTensorLocations(Object.values(feeds));
+                const runStart = nowMs();
+                const outputs = await splitLoaded.decoderStepSession.run(feeds);
+                const outputStart = nowMs();
+                const outputLocations = countTensorLocations(Object.values(outputs));
+                const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+                const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
+                const logitReadStart = nowMs();
+                const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
+                const logitReadMs = nowMs() - logitReadStart;
+                const logitsDims = logitsTensor.dims;
+                const vocabSize = logitsDims[logitsDims.length - 1] ?? 0;
+                const logitsBatch = logitsDims[0] ?? batchSize;
+                if (logitsBatch !== batchSize) {
+                  throw new Error(`Batched Whisper decoder logits batch ${logitsBatch} does not match active beams ${batchSize}.`);
+                }
+                const perBeamLogitSpan = logitsData.data.length / batchSize;
+                if (!Number.isInteger(perBeamLogitSpan) || perBeamLogitSpan < vocabSize) {
+                  throw new Error('Batched Whisper decoder logits shape is not divisible by active beam count.');
+                }
+                const logitTimeSteps = Math.max(1, Math.floor(perBeamLogitSpan / vocabSize));
+                const lastLogitOffset = (logitTimeSteps - 1) * vocabSize;
+                const results = Array.from({ length: batchSize }, (_, beamIndex) => ({
+                  logits: new Float32Array(
+                    logitsData.data.subarray(
+                      beamIndex * perBeamLogitSpan + lastLogitOffset,
+                      beamIndex * perBeamLogitSpan + lastLogitOffset + vocabSize,
+                    ),
+                  ),
+                  vocabSize,
+                  presentKv: {} as WhisperKvCache,
+                }));
+
+                const kvStart = nowMs();
+                let outputDownloadCount = logitsData.downloaded ? 1 : 0;
+                for (const [key, value] of Object.entries(outputs)) {
+                  if (!key.startsWith('present')) continue;
+                  const pastName = key.replace(/^present/, 'past_key_values');
+                  const tensor = value as OrtTensorLike<Float32Array>;
+                  const tensorData = await readOrtTensorData(tensor, { releaseGpu: true });
+                  if (tensorData.downloaded) outputDownloadCount += 1;
+                  const data = tensorData.data as unknown as TensorDataView;
+                  const tensorBatch = tensor.dims[0] ?? batchSize;
+                  if (tensorBatch !== batchSize) {
+                    throw new Error(`Batched Whisper KV "${key}" batch ${tensorBatch} does not match active beams ${batchSize}.`);
+                  }
+                  const perBeamLength = data.length / batchSize;
+                  if (!Number.isInteger(perBeamLength)) {
+                    throw new Error(`Batched Whisper KV "${key}" data length is not divisible by active beam count.`);
+                  }
+                  const perBeamDims = [1, ...tensor.dims.slice(1)];
+                  for (let beamIndex = 0; beamIndex < batchSize; beamIndex++) {
+                    results[beamIndex]!.presentKv[pastName] = {
+                      data: sliceTensorDataView(data, beamIndex * perBeamLength, perBeamLength),
+                      dims: perBeamDims,
+                      type: tensor.type,
+                    };
+                  }
+                }
+
+                for (let beamIndex = 0; beamIndex < batchSize; beamIndex++) {
+                  for (const [name, value] of Object.entries(pastKvs[beamIndex] ?? {})) {
+                    const stepName = name.replace(/^present\./, 'past_key_values.');
+                    if (!stepName.includes('encoder') || results[beamIndex]!.presentKv[stepName]) continue;
+                    const kvValue = normalizeWhisperKvCacheValue(value);
+                    results[beamIndex]!.presentKv[stepName] = {
+                      data: kvValue.data,
+                      ...(kvValue.dims ? { dims: kvValue.dims } : {}),
+                      type: kvValue.type ?? kvDtype,
+                    };
+                  }
+                }
+
+                for (const result of results) {
+                  for (const [k, v] of Object.entries(result.presentKv)) {
+                    const kvValue = normalizeWhisperKvCacheValue(v);
+                    if (kvValue.dims) kvDims[k] = kvValue.dims;
+                  }
+                }
+
+                const kvEnd = nowMs();
+                const outputEnd = nowMs();
+                const decoderStepTotal = nowMs() - decoderStepStart;
+                decoderStepMs += decoderStepTotal;
+                decoderStepTensorCloneMs += runStart - feedBuildStart;
+                decoderStepRunMs += outputStart - runStart;
+                decoderStepOutputMs += outputEnd - outputStart;
+                decoderStepTensorCreateMs += runStart - feedBuildStart;
+                decoderStepLogitReadMs += logitReadMs;
+                decoderStepKvMergeMs += kvEnd - kvStart;
+                decoderStepCount += 1;
+                decoderStepTimings.push(decoderStepTotal);
+                recordDecoderTiming({
+                  inputMs: runStart - feedBuildStart,
+                  runMs: outputStart - runStart,
+                  outputMs: outputEnd - outputStart,
+                  tensorCreateMs: runStart - feedBuildStart,
+                  logitReadMs,
+                  kvExtractMs: kvEnd - kvStart,
+                  gpuInputCount: inputLocations.gpu,
+                  cpuInputCount: inputLocations.cpu,
+                  gpuOutputCount: outputLocations.gpu,
+                  cpuOutputCount: outputLocations.cpu,
+                  gpuDownloadCount: outputDownloadCount,
+                });
+
+                return results;
+              }
+            : undefined,
         });
     const decodeMs = nowMs() - decoderStart;
     const decoderStepAvgMs = decoderStepCount > 0 ? decoderStepMs / decoderStepCount : undefined;

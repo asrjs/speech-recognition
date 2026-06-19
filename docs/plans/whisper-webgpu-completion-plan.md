@@ -123,8 +123,15 @@ Browser validation on 2026-06-19:
 - Beam fp16 WebGPU with `numBeams=2&patience=1` and GPU-KV disabled:
   functional pass on the stable CPU-KV path, decode p50 about 106ms per step,
   KV location `cpu`.
+- Experimental batched beam with `numBeams=2&patience=1&batchedBeam=1`:
+  functional pass with the same transcript prefix as stable beam. Decoder-step
+  ORT calls dropped from `98` to `49`; paired browser measurement improved from
+  about `15.16s` total / `1.98` RTFx to about `12.83s` total / `2.33` RTFx.
 
 ### P3: WebGPU-Safe Beam Optimization
+
+Status: experimental opt-in path implemented and browser-validated for CPU-KV
+splitgraph beam with the current fp16 WebGPU artifact.
 
 Goal: reduce beam cost after correctness is proven.
 
@@ -134,6 +141,18 @@ Goal: reduce beam cost after correctness is proven.
   `input_ids` and KV tensors.
 - Reorder KV by surviving beam parent after candidate selection.
 - Compare tokens against the stable beam path before taking timing wins.
+
+Implemented experiment:
+
+- `experimentalBatchedBeam` transcription option.
+- Pure decode loop batches active beams only when the option is true and the
+  session exposes `runStepBatch()`.
+- Splitgraph bridge builds `[activeBeams, 1]` decoder-step inputs and batched KV
+  tensors, then splits logits and present KV back into per-beam caches.
+- fp16 KV batching preserves `Float16Array` inputs for browser ORT.
+- The current fp16 WebGPU artifact accepts batch-shaped decoder-step inputs, but
+  the option remains off by default until wider model/back-end validation is
+  complete.
 
 ### P4: WhisperX-Style Extras With Clear Boundaries
 

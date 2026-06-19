@@ -26,6 +26,10 @@ Branch: `feat/whisper-cleanup-beam-temperature`
 - Tightened decode dispatch to match Whisper/faster-whisper: `temperature=0`
   uses greedy/beam argmax, nonzero temperature uses sampling, and `bestOf` only
   applies to nonzero-temperature sampling.
+- Added opt-in experimental batched beam decode for the CPU-KV splitgraph path:
+  active beams can share one `decoder_step` ORT call when
+  `experimentalBatchedBeam` is true and the model accepts batch-shaped step
+  inputs.
 
 ## Local Verification Already Run
 
@@ -41,7 +45,7 @@ npm run build
 Final local result:
 
 ```text
-Vitest: 112 files passed, 1 skipped; 649 tests passed, 4 skipped
+Vitest: 112 files passed, 1 skipped; 653 tests passed, 4 skipped
 Typecheck: passed
 Lint: 0 errors, 6 existing warnings
 Build: passed
@@ -101,11 +105,30 @@ Result: functional pass. Transcript prefix begins:
 In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange
 ```
 
-Final metrics: total `12672.18ms`, transcribe `12671.84ms`, preprocess
-`78.46ms`, encode `378.855ms`, decode `12188.81ms`, RTFx `2.3629`,
-decoder init `95.76ms`, decoder step `10385.625ms`, step p50 `105.985ms`,
-step p95 `117.67ms`, step count `98`, GPU tensor downloads `0`, KV location
-`cpu`.
+Paired measurement metrics from the batched-beam validation run: total
+`15156.185ms`, transcribe `15155.660ms`, encode `471.455ms`, decode
+`14538.675ms`, RTFx `1.9755`, decoder init `105.390ms`, decoder step
+`12392.930ms`, step p50 `126.210ms`, step p95 `140.470ms`, step count `98`,
+KV location `cpu`.
+
+Experimental batched beam validation:
+
+```text
+http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&numBeams=2&patience=1&batchedBeam=1
+```
+
+Result: functional pass with the same transcript prefix as stable beam.
+Metadata confirmed `decoding.experimentalBatchedBeam: true`; no ONNX/ORT
+batch-shaped decoder input rejection occurred.
+
+Paired measurement metrics: total `12834.765ms`, transcribe `12834.330ms`,
+encode `485.435ms`, decode `12247.235ms`, RTFx `2.3320`, decoder init
+`95.250ms`, decoder step `10345.335ms`, step p50 `212.005ms`, step p95
+`218.835ms`, step count `49`, KV location `cpu`.
+
+Interpretation: the batched path halves decoder-step ORT calls for two active
+beams and improved this paired browser measurement by about 15%. Per-call time is
+higher because each ORT run carries a beam-shaped batch.
 
 ## Browser Harness To Test
 
@@ -120,15 +143,19 @@ Recommended validation order:
 1. Sync or point the harness at the local `speech-recognition` working tree.
 2. Run the default greedy WebGPU path with `experimentalGpuKvCache=true`.
 3. Run the stable beam path with GPU-KV disabled.
-4. Run a temperature-fallback scenario with GPU-KV disabled, since GPU-KV is
+4. Run the experimental batched beam path by adding `batchedBeam=1`.
+5. Run a temperature-fallback scenario with GPU-KV disabled, since GPU-KV is
    intentionally greedy/temperature-0 only.
 
 ## Expected Behavior
 
 - Greedy WebGPU GPU-KV remains the fast path and should still produce the known
   JFK transcript prefix without token-policy regressions.
-- Beam search should run on the stable splitgraph path. It should not use
+- Beam search should run on the splitgraph CPU-KV path. It should not use
   `experimentalGpuKvCache`.
+- `experimentalBatchedBeam` should only change how active beam steps are grouped
+  into ORT calls. Token prefix, EOS behavior, timestamp policy, and selected
+  beam should match the stable path before timing wins are accepted.
 - If `experimentalGpuKvCache=true` is combined with `numBeams > 1`, `bestOf > 1`,
   or `temperature > 0`, the executor should reject that combination rather than
   silently changing semantics.
@@ -154,8 +181,9 @@ Please report:
 - Any console errors or thrown guardrail errors.
 - Verdict: pass, fail, or inconclusive, with the smallest repro if failing.
 
-## Do Not Test As A Performance Win Yet
+## Batched Beam Status
 
-Do not treat beam search as optimized. Current beam work is correctness-first.
-Batched beam decode is still future work and should be compared against this
-stable path before any timing claims are accepted.
+Stable beam remains the correctness oracle. The opt-in batched beam path is now
+implemented and has one paired browser pass, but it should stay experimental
+until it is checked against more model variants, beam sizes, EOS/timestamp cases,
+and longer audio.

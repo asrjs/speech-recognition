@@ -38,12 +38,16 @@ Windows Chrome headless harness (`N:\github\asrjs\webgpu-agent-test`) validated:
 - Greedy `fp16io-fp16-webgpu&gpuKv=1`: functional pass, zero GPU tensor
   downloads, KV location `gpu-buffer`, RTFx about `28.29`.
 - Beam `fp16io-fp16-webgpu&numBeams=2&patience=1`: functional pass on stable
-  CPU-KV splitgraph path, KV location `cpu`, RTFx about `2.36`.
+  CPU-KV splitgraph path, KV location `cpu`.
+- Experimental batched beam
+  `fp16io-fp16-webgpu&numBeams=2&patience=1&batchedBeam=1`: functional pass
+  with the same transcript prefix as stable beam. Decoder-step ORT calls dropped
+  from `98` to `49`; paired measurement improved from about `15.16s` total /
+  `1.98` RTFx to about `12.83s` total / `2.33` RTFx.
 
-Important: beam search is correct but not optimized. Treat the stable CPU-KV
-beam path as the oracle for future batched beam work. Batched beam should not be
-accepted as a speedup until token parity, EOS behavior, timestamp policy, and KV
-parent reordering are proven against this path.
+Important: stable CPU-KV beam remains the correctness oracle. The batched beam
+path is opt-in and experimental until more model variants, beam sizes,
+EOS/timestamp cases, and longer audio prove parity.
 
 ### 14 Haziran — Full fp16 WebGPU + mel perf ✅
 
