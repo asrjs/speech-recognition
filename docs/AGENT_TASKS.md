@@ -226,72 +226,69 @@ Step 5: Token-by-token → first 5 tokens match fp32 baseline
 
 ## REMAINING TASKS (priority order)
 
-### 1. Preserve and broaden WebGPU GPU-KV validation
+> **Direction change (2026-06-19):** Pause broad optimization work. Finish practical
+> Whisper compatibility first: reference decode parity, real language detection,
+> correct beam search semantics, quality gates that actually work, and word-level
+> timestamp parity. Optimization (batched beam, GPU-KV extensions, encoder graph
+> capture) stays experimental and only after correctness is proven on fixtures.
 
-Run the working `fp16io-fp16-webgpu` fast path on more fixtures up to 30s:
+### 1. Reference Decode Parity
 
-- fixed JFK 29.9s fixture
-- shorter 10s fixture
-- at least one non-JFK speech sample
-- `maxNewTokens=50` and a longer cap for EOS behavior
+Compare asr.js decode output token-by-token against OpenAI Whisper / faster-whisper
+/ HF Transformers on a curated fixture set (English + Turkish). Use the existing
+reproducibility harness and generate `WHISPER_REFERENCE_JSON` fixtures.
 
-Keep token IDs, transcript prefix, RTFx, p50/p95 step timing, and tensor
-location metrics in results.
+- Verify greedy decode tokens match reference.
+- Verify beam search tokens match reference for `numBeams=2..5`.
+- Verify temperature sampling behavior matches Whisper/faster-whisper semantics.
+- Verify `bestOf` only applies to nonzero-temperature sampling.
 
-### 2. Encoder graph-capture A/B
+### 2. True Language Auto-Detection
 
-The source flag `experimentalWebGpuEncoderGraphCapture` is wired, but the
-Chrome automation retry was blocked by the Chrome extension not accepting
-automation after a fresh-window retry. Reinstall the Chrome plugin/extension
-from the Codex plugin UI before trying automation again.
+`language: "auto"` currently works on the splitgraph path but silently falls back
+ to English on the merged-decoder (`onnx-community/*`) path and in forced alignment.
 
-Manual A/B URLs when the demo is running:
+- Wire `detectLanguageFromEncoder()` style probing into the merged-decoder path.
+- Ensure `language: "auto"` does not bias to English when decoder-init logits
+  identify a non-English language token.
+- Add Node tests with mocked decoder sessions for both splitgraph and merged paths.
+- Validate with a non-English browser fixture when available.
 
-```text
-http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&gpuKv=1
-http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&gpuKv=1&encoderGraphCapture=1
-```
+### 3. Quality Gates + Temperature Fallback
 
-Keep only if session creation succeeds, tokens match, and `encodeMs` improves
-on the same fixture.
+The wrapper exists but needs fixture-based validation that it actually rejects
+hallucinations and recovers with higher temperature.
 
-### 3. Masked GPU ArgMax alternate artifact
+- Add fixture smoke tests for compression-ratio and logprob rejection.
+- Verify retry temperatures are passed through correctly in single-chunk and
+  VAD-chunk paths.
+- Verify caller `onTokenLogits` survives wrapper collection.
 
-Create a separate local/HF model artifact before touching graph outputs. Do not
-overwrite `ysdede/whisper-large-v3-turbo-onnx-4graph`.
+### 4. Word Timestamp Parity
 
-The experiment must use a masked ArgMax output and ORT `fetches`; raw ArgMax is
-not semantically equivalent to the library decoder.
+- Compare DTW/attention word timestamps against faster-whisper / WhisperX on
+  reference fixtures.
+- Fix any systematic drift or boundary errors.
+- Validate that word timestamps work with both splitgraph and merged-decoder paths.
 
-### 4. Batched beam decode
+### 5. WhisperX Runner End-to-End Validation
 
-Beam search now has an opt-in experimental batched decoder-step path for the
-stable CPU-KV splitgraph bridge. Keep the normal beam path as the correctness
-oracle, then compare token parity and browser metrics with `batchedBeam=1`.
-The measured WebGPU fast path is still greedy GPU-KV.
+- Run `tests/smoke/whisperx-runner.mjs` on real speech files (English + Turkish).
+- Verify `--beam_size`, `--temperature`, `--language auto`, `--word_timestamps`,
+  and `--output_format` produce sane output.
+- Fix any runner bugs found during real-file testing.
 
-### 5. int8 (q8) Model Generation for WASM
+### 6. Deprioritized / Experimental (do not prioritize)
 
-Parakeet.js uses int8 for WASM compatibility. Whisper q8 already works identically to fp32.
-May need to generate proper int8 variants if q8 decoder has issues on specific WASM backends.
-Tool: `onnxruntime.quantization.quantize_dynamic` with `optimize_model` pass first.
-
-### 6. WebGPU Verification (Browser)
-
-Full verification suite at `/mnt/n/github/asrjs/webgpu-agent-test/index.html`:
-
-- All variants: fp32, fp16, fp16io, q8, mixed
-- All backends: WebGPU, WASM (configurable per encoder/decoder)
-- Modes: Run Decode, Cross-Validate, Encoder-Only
-- Requires real browser with GPU (RTX 5060 Ti + Chrome)
-
-### 7. Batched Encoder
-
-Deferred — no CPU benefit. Would help with CUDA provider.
-
-### 8. Framework Adapters (React, Vue, Svelte)
-
-Separate packages — deferred.
+- Batched beam decode: implemented as opt-in `experimentalBatchedBeam`. Keep stable
+  CPU-KV beam as oracle. Only promote after more variants/fixtures prove parity.
+- GPU-KV beam support: not feasible without batched beam decode graph changes.
+- Encoder graph capture: fails on Reshape/Shape ops; revisit only after ORT updates.
+- Masked GPU ArgMax: requires alternate model artifact; not core compatibility.
+- Batched encoder: no CPU benefit.
+- Framework adapters: separate packages.
+- `condition_on_previous_text`, hotwords, numeral suppression: skip unless a fixture
+  proves they help.
 
 ## Shared Files (coordinate before modifying)
 

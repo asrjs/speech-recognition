@@ -1572,10 +1572,13 @@ export class WhisperOnnxExecutor {
       loaded.ort,
     );
 
-    // 3. Build initial decoder input IDs
+    // 3. Detect language if auto
     const tokenizer = loaded.tokenizer;
-    const language = options.language ?? this.config.languages[0] ?? 'auto';
-    const langToken = language === 'auto' ? '<|en|>' : `<|${language}|>`;
+    let language = options.language ?? this.config.languages[0] ?? 'auto';
+    if (language === 'auto' && loaded.decoderSession) {
+      language = await this.detectLanguageFromMergedDecoder(loaded, encoderHiddenStates);
+    }
+    const langToken = `<|${language}|>`;
     const taskToken = options.task === 'translate' ? '<|translate|>' : '<|transcribe|>';
     const noTimestampsToken = options.noTimestamps ? '<|notimestamps|>' : undefined;
 
@@ -1858,6 +1861,30 @@ export class WhisperOnnxExecutor {
       }
 
       return 'auto';
+    } catch {
+      return 'auto';
+    }
+  }
+
+  /**
+   * Detect language from encoder output using the merged decoder with single start token.
+   * Returns language code (e.g. 'en', 'tr') or 'auto' if detection fails.
+   */
+  private async detectLanguageFromMergedDecoder(
+    loaded: LoadedExecutorState,
+    encoderHiddenStates: OrtTensorLike<Float32Array>,
+  ): Promise<string> {
+    try {
+      const sotId = loaded.tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
+      const result = await this.runDecoderStep(loaded, encoderHiddenStates, [sotId], {}, true);
+      try {
+        return selectWhisperLanguageFromLogits(loaded.tokenizer, result.lastLogits, result.vocabSize) ?? 'auto';
+      } finally {
+        // Dispose present KV tensors from the probe to avoid leaking GPU memory.
+        for (const tensor of Object.values(result.pastKeyValues)) {
+          disposeGpuTensor(tensor);
+        }
+      }
     } catch {
       return 'auto';
     }
