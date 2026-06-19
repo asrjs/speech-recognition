@@ -49,8 +49,10 @@ export async function withTemperatureFallback<T>(
 ): Promise<FallbackResult<T>> {
   const gateResults: QualityGateResult[] = [];
   let lastAttempt: TranscribeAttempt<T> | null = null;
+  let attempts = 0;
 
   for (const temperature of temperatures) {
+    attempts++;
     const attempt = await transcribeFn(temperature);
     lastAttempt = attempt;
 
@@ -64,13 +66,13 @@ export async function withTemperatureFallback<T>(
     const noSpeech = verdicts.find((v) => v.verdict === 'no_speech');
     if (noSpeech) {
       gateResults.push(...verdicts);
-      return { result: attempt.result, temperature, attempts: gateResults.length, gateResults };
+      return { result: attempt.result, temperature, attempts, gateResults };
     }
 
     const allAccepted = verdicts.every((v) => v.verdict === 'accept');
     if (allAccepted) {
       gateResults.push(...verdicts);
-      return { result: attempt.result, temperature, attempts: gateResults.length, gateResults };
+      return { result: attempt.result, temperature, attempts, gateResults };
     }
 
     gateResults.push(...verdicts);
@@ -82,7 +84,7 @@ export async function withTemperatureFallback<T>(
   return {
     result: lastAttempt.result,
     temperature: temperatures[temperatures.length - 1]!,
-    attempts: gateResults.length,
+    attempts,
     gateResults,
   };
 }

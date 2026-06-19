@@ -31,20 +31,59 @@ export interface WhisperCoreSession {
 
   runStep(
     tokenId: number,
-    pastKv: Record<string, Float32Array>,
+    pastKv: WhisperKvCache,
   ): Promise<WhisperStepResult>;
+}
+
+export interface WhisperKvCacheEntry {
+  readonly data: ArrayBufferView;
+  readonly dims?: readonly number[];
+  readonly type?: string;
+}
+
+export type WhisperKvCacheValue = ArrayBufferView | WhisperKvCacheEntry;
+export type WhisperKvCache = Record<string, WhisperKvCacheValue>;
+
+type WhisperKvDataView = ArrayBufferView & { readonly length?: number };
+type WhisperKvDataConstructor = {
+  new(buffer: ArrayBufferLike, byteOffset?: number, length?: number): ArrayBufferView;
+};
+
+function isWhisperKvCacheEntry(value: WhisperKvCacheValue): value is WhisperKvCacheEntry {
+  return !ArrayBuffer.isView(value);
+}
+
+function cloneWhisperKvData(data: ArrayBufferView): ArrayBufferView {
+  const view = data as WhisperKvDataView;
+  const buffer = (view.buffer as ArrayBuffer).slice(view.byteOffset, view.byteOffset + view.byteLength);
+  if (typeof view.length === 'number') {
+    const ctor = view.constructor as WhisperKvDataConstructor;
+    return new ctor(buffer, 0, view.length);
+  }
+  return new DataView(buffer);
+}
+
+function cloneWhisperKvCacheValue(value: WhisperKvCacheValue): WhisperKvCacheValue {
+  if (isWhisperKvCacheEntry(value)) {
+    return {
+      data: cloneWhisperKvData(value.data),
+      ...(value.dims ? { dims: value.dims } : {}),
+      ...(value.type ? { type: value.type } : {}),
+    };
+  }
+  return cloneWhisperKvData(value);
 }
 
 export interface WhisperInitResult {
   readonly logits: Float32Array;
   readonly vocabSize: number;
-  readonly presentKv: Record<string, Float32Array>;
+  readonly presentKv: WhisperKvCache;
 }
 
 export interface WhisperStepResult {
   readonly logits: Float32Array;
   readonly vocabSize: number;
-  readonly presentKv: Record<string, Float32Array>;
+  readonly presentKv: WhisperKvCache;
 }
 
 // ---------------------------------------------------------------------------
@@ -81,9 +120,9 @@ export interface WhisperDecodeOptions {
   readonly lengthPenalty?: number;
   /** Patience for beam search early stopping (default: 1.0). */
   readonly patience?: number;
-  /** Temperature (0 = greedy argmax, >0 = sample). Greedy mode only. */
+  /** Temperature (0 = greedy/beam argmax, >0 = sampling and disables beam search). */
   readonly temperature?: number;
-  /** Number of independent decodings to run, pick best by score. WhisperX: best_of */
+  /** Number of independent sampling decodings to run when temperature > 0. Whisper: best_of. */
   readonly bestOf?: number;
   /** Track cumulative log-probability for best-of scoring. */
   readonly trackScore?: boolean;
@@ -103,10 +142,16 @@ export async function whisperDecode(
   session: WhisperCoreSession,
   options: WhisperDecodeOptions,
 ): Promise<WhisperDecodeResult> {
-  const bestOf = options.bestOf ?? 1;
-  if (bestOf > 1) {
+  const temperature = options.temperature ?? 0;
+  const isSampling = Number.isFinite(temperature) && temperature > 0;
+  const bestOf = isSampling ? options.bestOf ?? 1 : 1;
+  if (isSampling && bestOf > 1) {
     return whisperBestOfDecode(session, options, bestOf);
   }
+  if (isSampling) {
+    return whisperGreedyDecode(session, options);
+  }
+
   const strategy = options.strategy ?? 'greedy';
   if (strategy === 'beam' && (options.beamSize ?? 5) > 1) {
     return whisperBeamDecode(session, options);
@@ -202,9 +247,9 @@ export async function whisperBeamDecode(
   );
 
   // Clone KV cache per beam
-  let beamKvs: Record<string, Float32Array>[] = beams.map(() => {
-    const c: Record<string, Float32Array> = {};
-    for (const [k, v] of Object.entries(initResult.presentKv)) c[k] = new Float32Array(v);
+  let beamKvs: WhisperKvCache[] = beams.map(() => {
+    const c: WhisperKvCache = {};
+    for (const [k, v] of Object.entries(initResult.presentKv)) c[k] = cloneWhisperKvCacheValue(v);
     return c;
   });
 
@@ -234,20 +279,25 @@ export async function whisperBeamDecode(
     });
 
     // Rebuild KV cache for survivors
-    const newKvs: Record<string, Float32Array>[] = [];
+    const newKvs: WhisperKvCache[] = [];
     for (const cand of candidates) {
       const cTokens = (cand as any).tokens as number[];
+      let matchedKv: WhisperKvCache | undefined;
       for (let bi = 0; bi < beams.length; bi++) {
         const parent = beams[bi] as any;
         const pTokens = parent.tokens as number[];
-        if (pTokens.length + 1 === cTokens.length &&
-            cTokens.slice(0, pTokens.length).every((t, i) => t === pTokens[i])) {
-          const clone: Record<string, Float32Array> = {};
-          for (const [k, v] of Object.entries(beamKvs[bi]!)) clone[k] = new Float32Array(v);
-          newKvs.push(clone);
+        const isExpandedFromParent = pTokens.length + 1 === cTokens.length &&
+          cTokens.slice(0, pTokens.length).every((t, i) => t === pTokens[i]);
+        const isRetainedParent = pTokens.length === cTokens.length &&
+          cTokens.every((t, i) => t === pTokens[i]);
+        if (isExpandedFromParent || isRetainedParent) {
+          const clone: WhisperKvCache = {};
+          for (const [k, v] of Object.entries(beamKvs[bi]!)) clone[k] = cloneWhisperKvCacheValue(v);
+          matchedKv = clone;
           break;
         }
       }
+      newKvs.push(matchedKv ?? {});
     }
 
     beams = candidates as any[];
@@ -348,9 +398,9 @@ function sampleFromLogits(logits: Float32Array, temperature: number): number {
 /**
  * Run N independent decodings and return the one with the best score.
  *
- * Matches WhisperX/faster-whisper best_of behavior:
- * multiple independent beam/greedy decodes, pick the best by
- * normalized cumulative log-probability score.
+ * Matches Whisper/faster-whisper best_of behavior:
+ * multiple independent sampling decodes, pick the best by normalized
+ * cumulative log-probability score. Beam search is a temperature=0 path.
  */
 async function whisperBestOfDecode(
   session: WhisperCoreSession,
@@ -362,9 +412,12 @@ async function whisperBestOfDecode(
   let bestScore = -Infinity;
 
   for (let i = 0; i < bestOf; i++) {
-    const result = await (options.strategy === 'beam' && (options.beamSize ?? 5) > 1
-      ? whisperBeamDecode(session, options)
-      : whisperGreedyDecode(session, { ...options, trackScore: true }));
+    const result = await whisperGreedyDecode(session, {
+      ...options,
+      strategy: 'greedy',
+      beamSize: 1,
+      trackScore: true,
+    });
 
     const tokenCount = result.tokens.length;
     const normScore = result.score !== undefined

@@ -128,6 +128,17 @@ describe('temperature fallback', () => {
     expect(result.attempts).toBe(1);
   });
 
+  it('counts decode attempts, not gate evaluations', async () => {
+    const fn = vi.fn(async () => ({
+      result: { text: 'hello' },
+      text: 'hello', tokens: [1], logits: [] as Float32Array[], vocabSize: 100,
+    }));
+    const acceptGate: QualityGate = () => ({ verdict: 'accept' });
+    const result = await withTemperatureFallback(fn, [acceptGate, acceptGate]);
+    expect(result.attempts).toBe(1);
+    expect(result.gateResults).toHaveLength(2);
+  });
+
   it('retries on reject', async () => {
     let call = 0;
     const fn = vi.fn(async () => {

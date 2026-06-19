@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   whisperBeamDecode,
   whisperDecode,
@@ -99,5 +99,113 @@ describe('whisperBeamDecode integration', () => {
     const result = await whisperDecode(makeMockSession(), baseOptions);
 
     expect(result.tokens).toEqual([2, 3, 3, 3, 3, 3, 3, 3]);
+  });
+
+  it('ignores bestOf when temperature is zero', async () => {
+    let initCalls = 0;
+    const session: WhisperCoreSession = {
+      async runInit() {
+        initCalls += 1;
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits[2] = 8.0;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+      async runStep() {
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits[EOS_TOKEN_ID] = 8.0;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+    };
+
+    const result = await whisperDecode(session, {
+      ...baseOptions,
+      temperature: 0,
+      bestOf: 3,
+      maxNewTokens: 2,
+    });
+
+    expect(result.tokens).toEqual([2, EOS_TOKEN_ID]);
+    expect(initCalls).toBe(1);
+  });
+
+  it('uses sampling instead of beam search when temperature is nonzero', async () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    let stepCalls = 0;
+    const session: WhisperCoreSession = {
+      async runInit() {
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits.fill(-100);
+        logits[2] = 8.0;
+        logits[3] = 7.0;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+      async runStep() {
+        stepCalls += 1;
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits.fill(-100);
+        logits[EOS_TOKEN_ID] = 8.0;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+    };
+
+    try {
+      const result = await whisperDecode(session, {
+        ...baseOptions,
+        strategy: 'beam',
+        beamSize: 2,
+        temperature: 0.4,
+        maxNewTokens: 2,
+      });
+
+      expect(result.tokens).toEqual([2, EOS_TOKEN_ID]);
+      expect(stepCalls).toBe(1);
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
+  it('keeps KV caches aligned when completed beams are retained with patience', async () => {
+    const seenActiveStepKv: Array<number | undefined> = [];
+    const session: WhisperCoreSession = {
+      async runInit() {
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits[2] = 8.0;
+        logits[3] = 7.0;
+        return {
+          logits,
+          vocabSize: VOCAB_SIZE,
+          presentKv: { marker: new Float32Array([0]) },
+        };
+      },
+      async runStep(tokenId, pastKv) {
+        const marker = pastKv.marker?.[0];
+        const logits = new Float32Array(VOCAB_SIZE);
+        if (tokenId === 2) {
+          logits[EOS_TOKEN_ID] = 8.0;
+          return { logits, vocabSize: VOCAB_SIZE, presentKv: { marker: new Float32Array([2]) } };
+        }
+        if (tokenId === 3) {
+          logits[4] = 8.0;
+          return { logits, vocabSize: VOCAB_SIZE, presentKv: { marker: new Float32Array([3]) } };
+        }
+        if (tokenId === 4) {
+          seenActiveStepKv.push(marker);
+          logits[EOS_TOKEN_ID] = 8.0;
+          return { logits, vocabSize: VOCAB_SIZE, presentKv: { marker: new Float32Array([4]) } };
+        }
+        logits[EOS_TOKEN_ID] = 8.0;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: { marker: new Float32Array([tokenId]) } };
+      },
+    };
+
+    const result = await whisperBeamDecode(session, {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 2,
+      maxNewTokens: 4,
+    });
+
+    expect(result.tokens[result.tokens.length - 1]).toBe(EOS_TOKEN_ID);
+    expect(seenActiveStepKv).toEqual([3]);
   });
 });

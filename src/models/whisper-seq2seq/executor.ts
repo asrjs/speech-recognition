@@ -36,7 +36,13 @@ import { WhisperTokenizer, fetchText } from './tokenizer.js';
 import { WhisperTimestampLogitProcessor } from './processors.js';
 import { buildWhisperWordTimestampsFromTokenDetails } from './word-timestamps.js';
 import { computeWhisperDtwTokenTimestamps } from './attention-alignment.js';
-import { whisperDecode, type WhisperCoreSession } from './core.js';
+import {
+  whisperDecode,
+  type WhisperCoreSession,
+  type WhisperKvCache,
+  type WhisperKvCacheValue,
+} from './core.js';
+import { selectWhisperLanguageFromLogits } from './language-detection.js';
 import {
   parseWhisperGenerationConfig,
   parseWhisperModelConfig,
@@ -294,11 +300,11 @@ export interface SplitGraphDecodeCallbacks {
     promptTokens: readonly number[],
     encoderHiddenStates: Float32Array,
     encoderDims: readonly number[],
-  ): Promise<{ logits: Float32Array; vocabSize: number; presentKv: Record<string, Float32Array> }>;
+  ): Promise<{ logits: Float32Array; vocabSize: number; presentKv: WhisperKvCache }>;
   runStep(
     tokenId: number,
-    pastKv: Record<string, Float32Array>,
-  ): Promise<{ logits: Float32Array; vocabSize: number; presentKv: Record<string, Float32Array> }>;
+    pastKv: WhisperKvCache,
+  ): Promise<{ logits: Float32Array; vocabSize: number; presentKv: WhisperKvCache }>;
 }
 
 export interface SplitGraphDecodeResult {
@@ -394,6 +400,55 @@ function mapPresentKvToPastKv(
     mapped[name.replace(/^present\./, 'past_key_values.')] = tensor;
   }
   return mapped;
+}
+
+type TensorDataView = ArrayBufferView & { readonly length: number };
+type TensorDataConstructor = {
+  new(buffer: ArrayBufferLike, byteOffset?: number, length?: number): TensorDataView;
+  readonly name?: string;
+};
+
+function cloneTensorDataView(data: TensorDataView, ctor: TensorDataConstructor): TensorDataView {
+  const buffer = (data.buffer as ArrayBuffer).slice(data.byteOffset, data.byteOffset + data.byteLength);
+  return new ctor(buffer, 0, data.length);
+}
+
+export function cloneDecoderKvDataForInput(
+  data: ArrayBufferView,
+  tensorType?: string,
+): { readonly type: 'float32' | 'float16'; readonly data: TensorDataView } {
+  const view = data as TensorDataView;
+  const dataCtor = view.constructor as TensorDataConstructor;
+  const isFloat16 = tensorType === 'float16' || dataCtor.name === 'Float16Array';
+  if (isFloat16) {
+    const globalFloat16Ctor = (globalThis as unknown as { readonly Float16Array?: TensorDataConstructor }).Float16Array;
+    return {
+      type: 'float16',
+      data: cloneTensorDataView(view, globalFloat16Ctor ?? dataCtor),
+    };
+  }
+
+  return {
+    type: 'float32',
+    data: cloneTensorDataView(view, dataCtor),
+  };
+}
+
+function cloneDecoderKvTensorDataForInput(
+  tensor: OrtTensorLike<Float32Array>,
+): { readonly type: 'float32' | 'float16'; readonly data: TensorDataView } {
+  const data = tensor.data as unknown as TensorDataView;
+  const dataCtor = data.constructor as TensorDataConstructor;
+  return cloneDecoderKvDataForInput(data, tensor.type ?? dataCtor.name);
+}
+
+function normalizeWhisperKvCacheValue(
+  value: WhisperKvCacheValue,
+): { readonly data: ArrayBufferView; readonly dims?: readonly number[]; readonly type?: string } {
+  if (ArrayBuffer.isView(value)) {
+    return { data: value };
+  }
+  return value;
 }
 
 export async function splitGraphDecodeLoop(params: {
@@ -1343,10 +1398,8 @@ export class WhisperOnnxExecutor {
       if (isGpuBufferTensor(tensor)) {
         feeds[name] = tensor;
       } else {
-        const isFloat16 = tensor.type === 'float16' || tensor.data.constructor.name === 'Float16Array';
-        const TypedArrayCtor = tensor.data.constructor as { new(buffer: ArrayBufferLike, byteOffset: number, length: number): ArrayBufferView };
-        const rawData = new TypedArrayCtor(tensor.data.buffer, tensor.data.byteOffset, tensor.data.length);
-        feeds[name] = new loaded.ort.Tensor(isFloat16 ? 'float16' : 'float32', rawData, tensor.dims);
+        const cloned = cloneDecoderKvTensorDataForInput(tensor);
+        feeds[name] = new loaded.ort.Tensor(cloned.type, cloned.data, tensor.dims);
       }
     }
     const inputLocations = countTensorLocations(Object.values(feeds));
@@ -1732,23 +1785,7 @@ export class WhisperOnnxExecutor {
         const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
         const vocabSize = logitsTensor.dims[logitsTensor.dims.length - 1] ?? 0;
 
-        // Language tokens span 50259-50357 in Whisper vocabulary
-        const logits = logitsData.data;
-        let maxLogit = -Infinity;
-        let maxLangToken = -1;
-        for (let i = 50259; i <= 50357 && i < vocabSize; i++) {
-          if (logits[i]! > maxLogit) {
-            maxLogit = logits[i]!;
-            maxLangToken = i;
-          }
-        }
-
-        // Decode the language token to get the code
-        if (maxLangToken > 0) {
-          const langToken = loaded.tokenizer.idsToTokens?.([maxLangToken])?.[0] ?? '';
-          const match = langToken.match(/<\|(\w+)\|>/);
-          if (match) return match[1]!;
-        }
+        return selectWhisperLanguageFromLogits(loaded.tokenizer, logitsData.data, vocabSize) ?? 'auto';
       } finally {
         for (const output of Object.values(outputs)) {
           disposeGpuTensor(output);
@@ -2179,7 +2216,14 @@ export class WhisperOnnxExecutor {
               logits: init.logits,
               vocabSize: init.vocabSize,
               presentKv: Object.fromEntries(
-                Object.entries(init.presentKv).map(([k, v]) => [k, v.data]),
+                Object.entries(init.presentKv).map(([k, v]) => [
+                  k,
+                  {
+                    data: v.data as ArrayBufferView,
+                    dims: v.dims,
+                    type: v.type,
+                  },
+                ]),
               ),
             };
           },
@@ -2190,17 +2234,26 @@ export class WhisperOnnxExecutor {
             // Convert prefix and clone tensor data for cross-session safety.
             const feedBuildStart = nowMs();
             const feeds: Record<string, OrtTensorLike<Float32Array>> = {};
-            for (const [name, data] of Object.entries(pastKv)) {
+            for (const [name, value] of Object.entries(pastKv)) {
+              const kvValue = normalizeWhisperKvCacheValue(value);
               const stepName = name.replace(/^present\./, 'past_key_values.');
+              const cloned = cloneDecoderKvDataForInput(kvValue.data, kvValue.type ?? kvDtype);
               // Try multiple key formats for dims lookup (init uses present.*, step uses past_key_values.*)
-              const dims = kvDims[name] ?? kvDims[stepName] ?? kvDims[name.replace(/^past_key_values\./, 'present.')];
+              const dims = kvValue.dims
+                ?? kvDims[name]
+                ?? kvDims[stepName]
+                ?? kvDims[name.replace(/^past_key_values\./, 'present.')];
               if (dims) {
-                feeds[stepName] = new splitLoaded.ort.Tensor(kvDtype, data, dims) as unknown as OrtTensorLike<Float32Array>;
+                feeds[stepName] = new splitLoaded.ort.Tensor(cloned.type, cloned.data, dims) as unknown as OrtTensorLike<Float32Array>;
               } else {
                 const numHeads = splitLoaded.modelConfig.decoderAttentionHeads;
                 const headDim = splitLoaded.modelConfig.headDim;
-                const seqLen = Math.round(data.length / (numHeads * headDim));
-                feeds[stepName] = new splitLoaded.ort.Tensor(kvDtype, data, [1, numHeads, seqLen, headDim]) as unknown as OrtTensorLike<Float32Array>;
+                const seqLen = Math.round(cloned.data.length / (numHeads * headDim));
+                feeds[stepName] = new splitLoaded.ort.Tensor(
+                  cloned.type,
+                  cloned.data,
+                  [1, numHeads, seqLen, headDim],
+                ) as unknown as OrtTensorLike<Float32Array>;
               }
             }
             decoderStepFeedBuildMs += nowMs() - feedBuildStart;
@@ -2221,7 +2274,14 @@ export class WhisperOnnxExecutor {
               logits: step.logits,
               vocabSize: step.vocabSize,
               presentKv: Object.fromEntries(
-                Object.entries(step.presentKv).map(([k, v]) => [k, v.data]),
+                Object.entries(step.presentKv).map(([k, v]) => [
+                  k,
+                  {
+                    data: v.data as ArrayBufferView,
+                    dims: v.dims,
+                    type: v.type,
+                  },
+                ]),
               ),
             };
           },

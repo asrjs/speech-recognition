@@ -172,9 +172,9 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
   readonly lengthPenalty?: number;
   /** Beam search patience: max consecutive EOS before stopping early. WhisperX: patience */
   readonly patience?: number;
-  /** Greedy decoding temperature. 0 uses argmax; >0 samples from scaled logits. */
+  /** Decode temperature. 0 uses greedy/beam argmax; >0 samples from scaled logits and disables beam search. */
   readonly temperature?: number;
-  /** Number of independent decodings to run. WhisperX: best_of (default: null = numBeams) */
+  /** Number of independent sampling decodings when temperature > 0. Whisper: best_of. */
   readonly bestOf?: number;
   /**
    * Optional per-token logit callback — fired after logit processing, before argmax.

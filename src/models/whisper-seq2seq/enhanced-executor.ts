@@ -161,11 +161,14 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
           async (_temp) => {
             const collectedLogits: Float32Array[] = [];
             const collectedTokens: number[] = [];
+            const callerOnTokenLogits = chunkOpts.onTokenLogits;
             const optsWithLogits = {
               ...chunkOpts,
+              temperature: _temp,
               onTokenLogits: (tokenId: number, logits: Float32Array, _ctx: any) => {
                 collectedLogits.push(new Float32Array(logits));
                 collectedTokens.push(tokenId);
+                callerOnTokenLogits?.(tokenId, logits, _ctx);
               },
             };
             const r = await this.vanilla.transcribe(chunk, optsWithLogits as any, context);
@@ -248,11 +251,14 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
         // Collect logits from the vanilla executor via onTokenLogits callback
         const collectedLogits: Float32Array[] = [];
         const collectedTokens: number[] = [];
+        const callerOnTokenLogits = options.onTokenLogits;
         const optsWithLogits = {
           ...options,
+          temperature: _temp,
           onTokenLogits: (tokenId: number, logits: Float32Array, _ctx: any) => {
             collectedLogits.push(new Float32Array(logits)); // snapshot
             collectedTokens.push(tokenId);
+            callerOnTokenLogits?.(tokenId, logits, _ctx);
           },
         };
         const r = await this.vanilla.transcribe(audio, optsWithLogits as any, context);

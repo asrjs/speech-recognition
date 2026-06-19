@@ -16,6 +16,35 @@
 
 ## Zaman Çizelgesi
 
+### 19 June — Whisper decode parity + fp16 WebGPU beam functional pass ✅
+
+Branch `feat/whisper-cleanup-beam-temperature` now has a correctness-first
+Whisper decode pass aligned with OpenAI Whisper/faster-whisper semantics:
+
+- `temperature=0` uses greedy or beam argmax.
+- `temperature>0` uses sampling and disables beam search.
+- `bestOf` is sampling-only and ignored for `temperature=0`.
+- Enhanced temperature fallback now passes each retry temperature to the
+  vanilla executor and preserves caller `onTokenLogits` callbacks.
+- Language auto-detection uses decoder-init SOT logits and filters real Whisper
+  language tokens.
+- Beam survivor KV caches stay aligned when completed beams are retained during
+  patience-based continuation.
+- fp16 splitgraph beam caches carry typed-array storage plus per-beam tensor
+  dims through the decoder-init -> decoder-step callback boundary.
+
+Windows Chrome headless harness (`N:\github\asrjs\webgpu-agent-test`) validated:
+
+- Greedy `fp16io-fp16-webgpu&gpuKv=1`: functional pass, zero GPU tensor
+  downloads, KV location `gpu-buffer`, RTFx about `28.29`.
+- Beam `fp16io-fp16-webgpu&numBeams=2&patience=1`: functional pass on stable
+  CPU-KV splitgraph path, KV location `cpu`, RTFx about `2.36`.
+
+Important: beam search is correct but not optimized. Treat the stable CPU-KV
+beam path as the oracle for future batched beam work. Batched beam should not be
+accepted as a speedup until token parity, EOS behavior, timestamp policy, and KV
+parent reordering are proven against this path.
+
 ### 14 Haziran — Full fp16 WebGPU + mel perf ✅
 
 Windows Chrome + WebGPU'da custom repo doğrulandı:
