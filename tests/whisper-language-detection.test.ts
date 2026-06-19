@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { selectWhisperLanguageFromLogits, WhisperOnnxExecutor } from '../src/models/whisper-seq2seq/index.js';
+import {
+  resolveWhisperLanguageCode,
+  resolveWhisperLanguageTokenId,
+} from '../src/models/whisper-seq2seq/executor.js';
 import type { TextTokenizer } from '../src/tokenizers/index.js';
 
 function mockTokenizer(tokens: Record<number, string>): Pick<TextTokenizer, 'idsToTokens'> {
@@ -187,5 +191,35 @@ describe('selectWhisperLanguageFromLogits', () => {
     );
 
     expect(language).toBe('tr');
+  });
+
+  it('falls back from unresolved auto language to English, not Turkish or <|auto|>', () => {
+    const seenTokens: string[] = [];
+    const tokenizer = {
+      getTokenId(token: string): number | undefined {
+        seenTokens.push(token);
+        return token === '<|en|>' ? 50259 : undefined;
+      },
+    };
+
+    const language = resolveWhisperLanguageCode('auto', ['auto']);
+    const tokenId = resolveWhisperLanguageTokenId(tokenizer, language);
+
+    expect(language).toBe('en');
+    expect(tokenId).toBe(50259);
+    expect(seenTokens).toEqual(['<|en|>']);
+  });
+
+  it('keeps explicit or detected Turkish language tokens when the tokenizer supports them', () => {
+    const tokenizer = {
+      getTokenId(token: string): number | undefined {
+        return token === '<|tr|>' ? 50268 : token === '<|en|>' ? 50259 : undefined;
+      },
+    };
+
+    const language = resolveWhisperLanguageCode('tr', ['auto']);
+
+    expect(language).toBe('tr');
+    expect(resolveWhisperLanguageTokenId(tokenizer, language)).toBe(50268);
   });
 });

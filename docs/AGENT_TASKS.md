@@ -1,7 +1,7 @@
 # Agent Task Coordination
 
-Branch: `perf/whisper-webgpu-decode`
-Updated: 2026-06-14 (Codex, WebGPU GPU-KV optimization plan refresh)
+Branch: `feat/whisper-cleanup-beam-temperature`
+Updated: 2026-06-19 (Whisper 4-graph WebGPU compatibility and beam validation)
 
 ## Context Recovery
 
@@ -227,16 +227,20 @@ Step 5: Token-by-token → first 5 tokens match fp32 baseline
 ## REMAINING TASKS (priority order)
 
 > **Direction change (2026-06-19):** Pause broad optimization work. Finish practical
-> Whisper compatibility first: reference decode parity, real language detection,
-> correct beam search semantics, quality gates that actually work, and word-level
-> timestamp parity. Optimization (batched beam, GPU-KV extensions, encoder graph
-> capture) stays experimental and only after correctness is proven on fixtures.
+> Whisper compatibility first, but keep the model target straight: the browser
+> WebGPU implementation target is the custom splitgraph repo
+> `ysdede/whisper-large-v3-turbo-onnx-4graph`. Merged-decoder
+> `onnx-community/*_timestamped` presets are secondary compatibility paths.
+> Optimization (batched beam, GPU-KV extensions, encoder graph capture) stays
+> experimental until correctness is proven on fixtures.
 
 ### 1. Reference Decode Parity
 
-Compare asr.js decode output token-by-token against OpenAI Whisper / faster-whisper
-/ HF Transformers on a curated fixture set (English + Turkish). Use the existing
-reproducibility harness and generate `WHISPER_REFERENCE_JSON` fixtures.
+Compare asr.js splitgraph decode output token-by-token against OpenAI Whisper /
+HF Transformers / faster-whisper on a curated fixture set (English + Turkish).
+Use the existing `WHISPER_REFERENCE_JSON` reproducibility harness with
+`ysdede/whisper-large-v3-turbo-onnx-4graph` artifacts or local exports from the
+same 4-graph layout.
 
 - Verify greedy decode tokens match reference.
 - Verify beam search tokens match reference for `numBeams=2..5`.
@@ -245,14 +249,14 @@ reproducibility harness and generate `WHISPER_REFERENCE_JSON` fixtures.
 
 ### 2. True Language Auto-Detection
 
-`language: "auto"` currently works on the splitgraph path but silently falls back
- to English on the merged-decoder (`onnx-community/*`) path and in forced alignment.
+`language: "auto"` is wired for the splitgraph path and the merged-decoder
+compatibility path. Keep validating it against the custom 4-graph target first;
+use merged-decoder tests only to prevent regressions in secondary presets.
 
-- Wire `detectLanguageFromEncoder()` style probing into the merged-decoder path.
-- Ensure `language: "auto"` does not bias to English when decoder-init logits
-  identify a non-English language token.
-- Add Node tests with mocked decoder sessions for both splitgraph and merged paths.
-- Validate with a non-English browser fixture when available.
+- Ensure failed auto-detection falls back to a real language token, never
+  `<|auto|>` or a hard-coded Turkish fallback.
+- Add browser/manual validation with a non-English splitgraph fixture when
+  available.
 
 ### 3. Quality Gates + Temperature Fallback
 

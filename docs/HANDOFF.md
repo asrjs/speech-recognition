@@ -16,6 +16,20 @@
 
 ## Zaman Çizelgesi
 
+### 19 June — Model-source correction after merged-decoder compatibility pass
+
+The active WebGPU target remains
+`ysdede/whisper-large-v3-turbo-onnx-4graph` with splitgraph artifacts. The
+`onnx-community/*_timestamped` merged-decoder presets are secondary compatibility
+paths, not the browser performance target.
+
+After the merged-decoder language probe landed, prompt fallback handling was
+corrected so failed `language: "auto"` detection falls back to a real configured
+language, or English (`<|en|>` / `50259`) when no concrete language is
+configured, instead of forming `<|auto|>` or relying on a hard-coded Turkish
+fallback. Explicit or detected Turkish still resolves through the tokenizer
+normally.
+
 ### 19 June — Whisper decode parity + fp16 WebGPU beam functional pass ✅
 
 Branch `feat/whisper-cleanup-beam-temperature` now has a correctness-first

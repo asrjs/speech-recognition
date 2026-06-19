@@ -139,6 +139,23 @@ function emitTranscriptionProgress(
   options.onProgress?.(event);
 }
 
+export function resolveWhisperLanguageCode(
+  requestedLanguage: string | undefined,
+  configuredLanguages: readonly string[] | undefined,
+): string {
+  if (requestedLanguage && requestedLanguage !== 'auto') return requestedLanguage;
+  return configuredLanguages?.find((language) => language !== 'auto') ?? 'en';
+}
+
+export function resolveWhisperLanguageTokenId(
+  tokenizer: Pick<WhisperTokenizer, 'getTokenId'>,
+  language: string,
+): number {
+  return tokenizer.getTokenId(`<|${language}|>`)
+    ?? tokenizer.getTokenId('<|en|>')
+    ?? 50259;
+}
+
 /**
  * Convert a Float32Array to a Uint16Array of fp16 bits.
  * Uses round-to-nearest-even.
@@ -1016,8 +1033,10 @@ export class WhisperOnnxExecutor {
   }> {
     const tokenizer = loaded.tokenizer;
     const sotId = tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
-    const langToken = language === 'auto' ? '<|en|>' : `<|${language}|>`;
-    const langId = tokenizer.getTokenId(langToken) ?? 50268;
+    const langId = resolveWhisperLanguageTokenId(
+      tokenizer,
+      resolveWhisperLanguageCode(language, this.config.languages),
+    );
     const taskId = tokenizer.getTokenId('<|transcribe|>') ?? 50359;
     const noTsId = tokenizer.getTokenId('<|notimestamps|>') ?? 50363;
     const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
@@ -1578,13 +1597,13 @@ export class WhisperOnnxExecutor {
     if (language === 'auto' && loaded.decoderSession) {
       language = await this.detectLanguageFromMergedDecoder(loaded, encoderHiddenStates);
     }
-    const langToken = `<|${language}|>`;
+    language = resolveWhisperLanguageCode(language, this.config.languages);
     const taskToken = options.task === 'translate' ? '<|translate|>' : '<|transcribe|>';
     const noTimestampsToken = options.noTimestamps ? '<|notimestamps|>' : undefined;
 
     const promptTokens: number[] = [
       tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
-      tokenizer.getTokenId(langToken) ?? 50268,
+      resolveWhisperLanguageTokenId(tokenizer, language),
       tokenizer.getTokenId(taskToken) ?? 50359,
     ];
     if (noTimestampsToken) {
@@ -2146,15 +2165,14 @@ export class WhisperOnnxExecutor {
       languageDetectionMs = nowMs() - languageDetectionStart;
     }
     if (language === 'auto') {
-      language = this.config.languages[0] ?? 'en';
+      language = resolveWhisperLanguageCode(language, this.config.languages);
     }
-    const langToken = `<|${language}|>`;
     const taskToken = options.task === 'translate' ? '<|translate|>' : '<|transcribe|>';
     const noTimestampsToken = options.noTimestamps ? '<|notimestamps|>' : undefined;
 
     const promptTokens: number[] = [
       tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
-      tokenizer.getTokenId(langToken) ?? 50268,
+      resolveWhisperLanguageTokenId(tokenizer, language),
       tokenizer.getTokenId(taskToken) ?? 50359,
     ];
     if (noTimestampsToken) {
