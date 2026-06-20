@@ -14,6 +14,11 @@ export default defineConfig({
       { find: /^asr\.js\/bench$/, replacement: resolve(__dirname, 'src/bench.ts') },
       { find: /^asr\.js\/datasets$/, replacement: resolve(__dirname, 'src/datasets.ts') },
       { find: /^asr\.js\/alignment$/, replacement: resolve(__dirname, 'src/alignment.ts') },
+      { find: /^asr\.js\/pipeline$/, replacement: resolve(__dirname, 'src/pipeline.ts') },
+      { find: /^asr\.js\/quality$/, replacement: resolve(__dirname, 'src/quality.ts') },
+      { find: /^asr\.js\/chunking$/, replacement: resolve(__dirname, 'src/chunking.ts') },
+      { find: /^asr\.js\/post-processing$/, replacement: resolve(__dirname, 'src/post-processing.ts') },
+
       { find: /^asr\.js\/presets$/, replacement: resolve(__dirname, 'src/presets/index.ts') },
       { find: /^asr\.js\/tokenizers$/, replacement: resolve(__dirname, 'src/tokenizers.ts') },
       { find: /^asr\.js\/models\/(.+)$/, replacement: resolve(__dirname, 'src/models/$1.ts') },
@@ -28,6 +33,11 @@ export default defineConfig({
       { find: /^@asrjs\/speech-recognition\/bench$/, replacement: resolve(__dirname, 'src/bench.ts') },
       { find: /^@asrjs\/speech-recognition\/datasets$/, replacement: resolve(__dirname, 'src/datasets.ts') },
       { find: /^@asrjs\/speech-recognition\/alignment$/, replacement: resolve(__dirname, 'src/alignment.ts') },
+      { find: /^@asrjs\/speech-recognition\/pipeline$/, replacement: resolve(__dirname, 'src/pipeline.ts') },
+      { find: /^@asrjs\/speech-recognition\/quality$/, replacement: resolve(__dirname, 'src/quality.ts') },
+      { find: /^@asrjs\/speech-recognition\/chunking$/, replacement: resolve(__dirname, 'src/chunking.ts') },
+      { find: /^@asrjs\/speech-recognition\/post-processing$/, replacement: resolve(__dirname, 'src/post-processing.ts') },
+
       { find: /^@asrjs\/speech-recognition\/presets$/, replacement: resolve(__dirname, 'src/presets/index.ts') },
       { find: /^@asrjs\/speech-recognition\/tokenizers$/, replacement: resolve(__dirname, 'src/tokenizers.ts') },
       { find: /^@asrjs\/speech-recognition\/models\/(.+)$/, replacement: resolve(__dirname, 'src/models/$1.ts') },
