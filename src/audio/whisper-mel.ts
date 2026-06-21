@@ -504,9 +504,7 @@ export class WhisperMelProcessor {
     for (let mel = 0; mel < nMels; mel++) {
       const srcOffset = mel * frameCount;
       const dstOffset = mel * targetFrames;
-      for (let f = 0; f < copyFrames; f++) {
-        out[dstOffset + f] = features[srcOffset + f] as number;
-      }
+      out.set(features.subarray(srcOffset, srcOffset + copyFrames), dstOffset);
     }
     return out;
   }
