@@ -30,6 +30,10 @@ export default defineConfig({
       { find: /^@asrjs\/speech-recognition\/alignment$/, replacement: resolve(__dirname, 'src/alignment.ts') },
       { find: /^@asrjs\/speech-recognition\/presets$/, replacement: resolve(__dirname, 'src/presets/index.ts') },
       { find: /^@asrjs\/speech-recognition\/tokenizers$/, replacement: resolve(__dirname, 'src/tokenizers.ts') },
+      { find: /^@asrjs\/speech-recognition\/pipeline$/, replacement: resolve(__dirname, 'src/pipeline.ts') },
+      { find: /^@asrjs\/speech-recognition\/post-processing$/, replacement: resolve(__dirname, 'src/post-processing.ts') },
+      { find: /^asr\.js\/pipeline$/, replacement: resolve(__dirname, 'src/pipeline.ts') },
+      { find: /^asr\.js\/post-processing$/, replacement: resolve(__dirname, 'src/post-processing.ts') },
       { find: /^@asrjs\/speech-recognition\/models\/(.+)$/, replacement: resolve(__dirname, 'src/models/$1.ts') },
       { find: /^@asrjs\/speech-recognition\/presets\/(.+)$/, replacement: resolve(__dirname, 'src/presets/$1.ts') }
     ]
