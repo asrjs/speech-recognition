@@ -504,7 +504,11 @@ Implemented:
 - Added `WhisperBeamState`, `rankWhisperBeamCandidates()`, and `selectBestWhisperBeam()` helpers.
 - Default remains greedy (`numBeams <= 1`). Beam search is opt-in with `numBeams > 1`.
 - Beam search tracks hypothesis score, completion on EOS, token details, and per-beam decoder cache payload.
-- `lengthPenalty` affects candidate ranking/final selection; `patience` widens the retained candidate set (`ceil(numBeams * patience)`).
+- `lengthPenalty` affects final candidate selection; `patience` sets the
+  finished-candidate budget (`round(numBeams * patience)`). Finished EOS
+  hypotheses do not consume active beam slots. An omitted length penalty uses
+  simple length normalization; an explicit value uses the Google NMT formula,
+  where `0` means raw cumulative score.
 
 Verification:
 - `npx vitest run tests/whisper-beam-search.test.ts tests/whisper-tokenizer-bpe.test.ts --run` passed: 6 tests

@@ -941,3 +941,72 @@ zero dtype casts anywhere in the pipeline, no ONNX modifications to decoder_init
 14. **Vite on Windows needs PTY.** Background Vite processes exit with "stdin is
     not a tty" unless launched with `pty=true`. Use `npx vite --host 0.0.0.0 --port
     8765 --strictPort --force` with `background=true, pty=true`.
+
+## Compatibility resume - 2026-08-23
+
+Optimization was intentionally paused to repair reference semantics around the
+working ~25x greedy WebGPU path. The custom splitgraph target is still
+`ysdede/whisper-large-v3-turbo-onnx-4graph`; merged `onnx-community` decoders are
+secondary compatibility targets.
+
+### Root causes corrected
+
+1. The beam loop allowed completed EOS hypotheses to consume active slots.
+2. `patience` counted consecutive completed steps instead of setting Whisper's
+   `round(beamSize * patience)` finished-candidate budget.
+3. Survivor KV caches were matched by token prefix instead of explicit parent
+   indexes.
+4. Final beam ranking used the old `length^alpha` helper and raw-score default
+   instead of Whisper's default length normalization / Google NMT formula.
+5. Timestamp processing omitted `<|notimestamps|>` suppression and the
+   aggregate timestamp-probability rule.
+6. The reference harness treated manifest `max_source_positions=1500` as 3000
+   mel input frames. The actual graph contract is input `[B, 128, 3000]` and
+   output `[B, 1500, 1280]`.
+7. The reference generator omitted `<|notimestamps|>` from its manual prompt,
+   did not persist the exported mel path, and assumed encoder/decoder graphs
+   shared one directory.
+
+### Verification
+
+- Full Vitest: 112 files passed, 1 skipped; 662 tests passed, 4 skipped.
+- TypeScript typecheck, build, and Python `py_compile` pass; lint reports zero
+  errors and six existing warnings.
+- A cached HF `openai/whisper-large-v3-turbo` oracle on `jfk2.en.wav` matches
+  local fp32 splitgraph decode exactly:
+  - Python mel input: 31/31 normalized tokens, exact text.
+  - TypeScript WAV/mel input: 31/31 normalized tokens, exact text.
+- Python ORT 1.22 rejects these IR-v13 graphs, so the generator now supports
+  `--skip-onnx` and the Vitest gate executes them with Node ORT 1.26.
+- Node ORT cannot materialize this artifact's fp16 encoder output on the host
+  (`expected 3840000, got 0`); Chrome WebGPU remains the fp16 execution gate.
+
+### Architecture decision
+
+Greedy GPU-KV remains untouched and is still the speed path. Stable CPU-KV beam
+is the correctness oracle. Experimental batched beam shares the same corrected
+candidate lifecycle and may be promoted only after stable/batched token parity
+across beam sizes, EOS/timestamp cases, English and Turkish fixtures, followed
+by wall-time measurement.
+
+The next compatibility issue is metric provenance: OpenAI measures no-speech
+from raw decoder-init logits at the SOT position before suppression. The current
+generic quality gate uses a hard-coded token and processed next-token logits;
+selected-beam logprob/entropy collection also needs a memory-conscious design.
+
+### Browser revalidation
+
+An independent headless Chromium run on the NVIDIA WebGPU adapter confirmed
+exact 50-token parity across greedy GPU-KV, stable beam, and batched beam. The
+paired beam measurements were:
+
+| Mode | Total | Decode | RTFx | Step ORT calls |
+| ---- | ----: | -----: | ----: | -------------: |
+| Stable CPU-KV beam | `14126.025ms` | `12577.285ms` | `2.1192` | `98` |
+| Batched CPU-KV beam | `11841.205ms` | `10609.685ms` | `2.5276` | `49` |
+
+Batched beam therefore halved ORT calls and improved paired decode time by
+15.64% with no token change. Greedy GPU-KV completed at `3291.080ms` total,
+reported `9.1304` RTFx, and kept GPU tensor downloads at zero. These absolute
+numbers are a new-run observation, not a replacement for the faster historical
+warm baseline; use paired measurements for optimization claims.

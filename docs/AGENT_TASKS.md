@@ -1,7 +1,7 @@
 # Agent Task Coordination
 
 Branch: `feat/whisper-cleanup-beam-temperature`
-Updated: 2026-06-19 (Whisper 4-graph WebGPU compatibility and beam validation)
+Updated: 2026-08-23 (reference decode parity and beam-state correction)
 
 ## Context Recovery
 
@@ -9,8 +9,8 @@ Updated: 2026-06-19 (Whisper 4-graph WebGPU compatibility and beam validation)
 **Verification skill**: Load `whisper-model-verification-pipeline` for model porting verification
 **Progress file**: `docs/Whisper-Optimizations.md`
 **HF models**: `ysdede/whisper-large-v3-turbo-onnx-4graph` (original, fixed fp16) + v2 backup
-**Local models (webgpu test)**: `/mnt/n/github/asrjs/webgpu-agent-test/models/` (fp32, fp16, fp16_iofp32, mixed, q8)
-**Test page**: `/mnt/n/github/asrjs/webgpu-agent-test/index.html` (library-synced)
+**Local models (webgpu test)**: `N:\github\asrjs\webgpu-agent-test\public\models\` (fp32, fp16, fp16_iofp32, mixed, q8)
+**Test page**: `N:\github\asrjs\webgpu-agent-test` (library-synced Vite harness)
 
 ## 🏆 MILESTONE: WebGPU large-v3-turbo pipeline WORKING (Entry 023)
 
@@ -242,10 +242,30 @@ Use the existing `WHISPER_REFERENCE_JSON` reproducibility harness with
 `ysdede/whisper-large-v3-turbo-onnx-4graph` artifacts or local exports from the
 same 4-graph layout.
 
-- Verify greedy decode tokens match reference.
+- [x] Verify no-timestamps greedy decode against the locally cached HF
+  `openai/whisper-large-v3-turbo` oracle on JFK: 31/31 normalized tokens and
+  identical text for both Python mel and the TypeScript WAV frontend.
 - Verify beam search tokens match reference for `numBeams=2..5`.
 - Verify temperature sampling behavior matches Whisper/faster-whisper semantics.
 - Verify `bestOf` only applies to nonzero-temperature sampling.
+
+The reproducibility harness now supports separate encoder/decoder variant
+directories and reads `[mel frames]` and `[encoder positions]` from ONNX graph
+metadata. For large-v3-turbo, keep these distinct: 3000 input mel frames and
+1500 encoder output positions. Use `--skip-onnx` in the Python generator when
+the installed Python ORT cannot load the graph IR, then execute the graphs with
+the Node/Vitest harness.
+
+### 1a. Beam Semantics Revalidation
+
+- [x] Keep finished EOS hypotheses outside active beam slots.
+- [x] Use `round(numBeams * patience)` as the finished-candidate budget.
+- [x] Route survivor KV caches with explicit parent indexes.
+- [x] Run stable and batched execution through the same candidate lifecycle.
+- [x] Match Whisper final ranking: default length normalization and Google NMT
+  penalty for explicit `lengthPenalty`; use `0` only for raw-score ranking.
+- [ ] Revalidate stable versus batched tokens in Windows Chrome/WebGPU.
+- [ ] Add an HF/OpenAI beam reference fixture for `numBeams=2` and `5`.
 
 ### 2. True Language Auto-Detection
 
@@ -267,6 +287,10 @@ hallucinations and recovers with higher temperature.
 - Verify retry temperatures are passed through correctly in single-chunk and
   VAD-chunk paths.
 - Verify caller `onTokenLogits` survives wrapper collection.
+- Replace the hard-coded no-speech token and processed-last-logit approximation.
+  Whisper measures no-speech from raw decoder-init logits at the SOT position,
+  before suppression; beam quality metrics also need a selected-sequence-safe
+  collection path.
 
 ### 4. Word Timestamp Parity
 
@@ -274,6 +298,8 @@ hallucinations and recovers with higher temperature.
   reference fixtures.
 - Fix any systematic drift or boundary errors.
 - Validate that word timestamps work with both splitgraph and merged-decoder paths.
+- Timestamp-token processing now includes `<|notimestamps|>` suppression and
+  the aggregate timestamp-probability rule; retain focused tests for both.
 
 ### 5. WhisperX Runner End-to-End Validation
 

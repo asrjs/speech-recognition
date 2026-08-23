@@ -1,9 +1,61 @@
 # Whisper WebGPU Completion Validation Handoff
 
-Date: 2026-06-19
+Date: 2026-08-23
 Branch: `feat/whisper-cleanup-beam-temperature`
 
 ## What Changed
+
+### 2026-08-23 resume pass
+
+- Corrected the beam lifecycle to match OpenAI Whisper: finished EOS candidates
+  are separate from active beams, patience controls the finished-candidate
+  budget, and survivor KV caches use explicit parent indexes.
+- Kept stable sequential and experimental batched decoder-step execution on the
+  same candidate-selection implementation.
+- Added timestamp parity rules for `<|notimestamps|>` suppression and aggregate
+  timestamp probability versus the best text token.
+- Repaired the HF/ONNX reproducibility workflow:
+  - graph metadata supplies 3000 mel input frames and 1500 encoder positions;
+  - encoder and decoder variant directories can be overridden independently;
+  - suppression policy comes from `generation_config.json`;
+  - `--skip-onnx` lets Python generate the HF oracle when its ORT is too old for
+    the graph IR;
+  - WAV decoding uses the library's RIFF parser instead of assuming a 44-byte
+    PCM16 header.
+- Verified the fp32 splitgraph path against cached HF
+  `openai/whisper-large-v3-turbo`: 31/31 normalized tokens and identical text
+  for both Python-mel and TypeScript-WAV inputs.
+
+The earlier 2026-06-19 browser measurements below are historical baselines.
+They predate the corrected active/finished beam lifecycle and must not be used
+as the current parity verdict.
+
+### Independent browser result - 2026-08-23
+
+Headless Chromium exposed WebGPU on the NVIDIA adapter with `shader-f16`.
+Warmup and measurement runs completed without application errors.
+
+| Mode | Result | Total | Encode | Decode | RTFx | Step ORT calls | GPU downloads |
+| ---- | ------ | ----: | -----: | -----: | ----: | -------------: | -------------: |
+| Greedy GPU-KV | functional pass | `3291.080ms` | `512.930ms` | `2637.220ms` | `9.1304` | `49` | `0` |
+| Stable CPU-KV beam | functional pass | `14126.025ms` | `1453.975ms` | `12577.285ms` | `2.1192` | `98` | `0` |
+| Batched CPU-KV beam | functional pass | `11841.205ms` | `1133.575ms` | `10609.685ms` | `2.5276` | `49` | `0` |
+
+All three modes produced the same 50-token sequence and transcript:
+
+```text
+In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange
+```
+
+The harness verdict is `check`, rather than `pass`, only because
+`maxNewTokens=50` intentionally stops before the longer reference transcript.
+The final token in the returned capped sequence is EOS (`50257`). Stable and
+batched beam match exactly. Batching reduced step calls by 50%, decode time by
+15.64%, and transcription time by 16.17%; RTFx improved by 19.27%.
+
+Console output contained only a missing-resource 404, a Windows
+`powerPreference` warning, and ORT warnings that shape nodes were assigned to
+CPU. No inference error occurred.
 
 - Added the current implementation plan:
   `docs/plans/whisper-webgpu-completion-plan.md`
@@ -32,6 +84,20 @@ Branch: `feat/whisper-cleanup-beam-temperature`
   inputs.
 
 ## Local Verification Already Run
+
+Current resume-pass gates:
+
+```text
+Vitest: 112 files passed, 1 skipped; 662 tests passed, 4 skipped
+Typecheck: passed
+Lint: 0 errors, 6 existing warnings
+Build: passed
+Python export tools: py_compile passed
+Live fp32 Node/HF reference: 31/31 tokens in both input modes, exact text
+```
+
+The current browser comparison is recorded above. Historical verification
+follows.
 
 From `N:\github\asrjs\speech-recognition`:
 

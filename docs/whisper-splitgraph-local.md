@@ -80,7 +80,7 @@ The `manifest.json` uses format `"whisper-browser-self-export-v1"` and MUST incl
   "decoder_attention_heads": 6,
   "head_dim": 64,
   "num_mel_bins": 80,
-  "max_source_positions": 3000,
+  "max_source_positions": 1500,
   "max_target_positions": 448,
   "vocab_size": 51865,
   "opset": 17,
@@ -112,7 +112,8 @@ The `manifest.json` uses format `"whisper-browser-self-export-v1"` and MUST incl
 - [ ] `special_tokens` object present
 - [ ] `alignment_heads` present (or baked into decoder_align via averaging)
 - [ ] `vocab_size` matches tokenizer.json vocabulary
-- [ ] `max_source_positions` typically 3000 (1500 encoder output frames after 2× downsampling)
+- [ ] `max_source_positions` typically 1500; the encoder graph still accepts
+      3000 mel frames and emits 1500 encoded positions after 2x downsampling
 - [ ] `max_target_positions` typically 448
 - [ ] All artifact filenames exist on disk (or at served URLs)
 
@@ -226,6 +227,11 @@ These optional environment variables enable fixture-based tests:
 | -------------------------------- | ----------------------------------------------- | -------------------------------------------------------- |
 | `WHISPER_SPLITGRAPH_FIXTURE_DIR` | `tests/whisper-splitgraph-smoke.test.ts`        | Encoder shape, init→step loop, alignment shape, row sums |
 | `WHISPER_REFERENCE_JSON`         | `tests/whisper-reproducibility-harness.test.ts` | Token match vs PyTorch/ONNX Python reference             |
+| `WHISPER_REFERENCE_MODEL_DIR`    | reproducibility harness                         | Override a single directory containing all graphs        |
+| `WHISPER_REFERENCE_ENCODER_DIR`  | reproducibility harness                         | Override only the encoder variant directory              |
+| `WHISPER_REFERENCE_DECODER_DIR`  | reproducibility harness                         | Override decoder/tokenizer/config directory              |
+| `WHISPER_REFERENCE_MEL`          | reproducibility harness                         | Override the exported `.mel.npy` path                    |
+| `WHISPER_REFERENCE_AUDIO`        | reproducibility harness                         | Override the WAV fixture path                            |
 
 ```bash
 # Export model + generate reference
@@ -244,6 +250,30 @@ WHISPER_SPLITGRAPH_FIXTURE_DIR=/tmp/tiny \
 WHISPER_REFERENCE_JSON=/tmp/ref.json \
   npx vitest run tests/whisper-reproducibility-harness.test.ts
 ```
+
+For large-v3-turbo exports that Python ONNX Runtime cannot load because its
+supported ONNX IR version is older than the graph, generate the HF oracle and
+mel without executing ONNX in Python:
+
+```powershell
+python tools/whisper-onnx-export/generate_hf_reference.py `
+  --model-dir N:\github\asrjs\webgpu-agent-test\public\models\fp32 `
+  --encoder-dir N:\github\asrjs\webgpu-agent-test\public\models\fp32 `
+  --decoder-dir N:\github\asrjs\webgpu-agent-test\public\models\fp32 `
+  --model-id openai/whisper-large-v3-turbo `
+  --audio N:\github\asrjs\webgpu-agent-test\public\audio\jfk2.en.wav `
+  --output $env:TEMP\asrjs-whisper-reference-large-v3-turbo\jfk2.reference.json `
+  --export-mel --skip-onnx
+
+$env:WHISPER_REFERENCE_JSON = "$env:TEMP\asrjs-whisper-reference-large-v3-turbo\jfk2.reference.json"
+$env:WHISPER_REFERENCE_ENCODER_DIR = 'N:\github\asrjs\webgpu-agent-test\public\models\fp32'
+$env:WHISPER_REFERENCE_DECODER_DIR = 'N:\github\asrjs\webgpu-agent-test\public\models\fp32'
+npm test -- --run tests/whisper-reproducibility-harness.test.ts
+```
+
+The test reads input/output dimensions from graph metadata. Do not use
+`manifest.max_source_positions` as the mel input-frame count: for this model it
+is 1500 encoded positions, while `input_features` is `[1, 128, 3000]`.
 
 ## Architecture
 

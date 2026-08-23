@@ -1,6 +1,6 @@
 # Whisper WebGPU Completion Plan
 
-Updated: 2026-06-19
+Updated: 2026-08-23
 Branch: `feat/whisper-cleanup-beam-temperature`
 
 ## Direction
@@ -26,8 +26,10 @@ unless a reproducible fixture shows a clear win.
   language detection hooks, and transcript assembly.
 - `src/models/whisper-seq2seq/core.ts` owns the backend-neutral decode loop for
   greedy, beam, temperature sampling, and best-of retries.
-- `src/models/whisper-seq2seq/beam-search.ts` owns beam ranking and length
-  penalty helpers.
+- `src/models/whisper-seq2seq/core.ts` owns the active/finished beam lifecycle,
+  candidate expansion, parent-index KV routing, patience budget, and final
+  sequence selection. `beam-search.ts` retains lower-level ranking helpers used
+  by focused tests and other callers.
 - `src/models/whisper-seq2seq/enhanced-executor.ts` wraps the vanilla executor
   with VAD chunking, quality gates, and temperature fallback.
 - `src/quality/*` owns model-agnostic quality math and the generic temperature
@@ -36,9 +38,10 @@ unless a reproducible fixture shows a clear win.
   drift, and transcript cleanup helpers.
 
 The GPU-KV path is greedy-only by design today. Beam search improves quality, but
-it currently belongs on the stable splitgraph path because each active beam still
-requires a separate decoder step. Batched beam decode should wait for an explicit
-graph/runtime change that supports beam-shaped decoder inputs and KV reordering.
+it currently belongs on the stable CPU-KV splitgraph path. An opt-in batched beam
+path now uses the existing batch-shaped decoder-step inputs and explicit parent
+KV routing; it remains experimental until broader fixture and model coverage is
+complete.
 
 ## Dependency Direction
 
@@ -70,6 +73,26 @@ graph/runtime change that supports beam-shaped decoder inputs and KV reordering.
 - Decode dispatch now follows Whisper/faster-whisper semantics: beam search is
   the `temperature=0` path, nonzero temperature uses sampling, and `bestOf`
   applies only to nonzero-temperature sampling.
+- Beam search now follows the OpenAI Whisper candidate lifecycle: EOS sequences
+  move to a separate finished set, active slots remain available to non-EOS
+  hypotheses, and `round(beamSize * patience)` is the finished-candidate budget.
+- Final candidate ranking now uses Whisper's simple length normalization when
+  no penalty is specified and the Google NMT formula for an explicit alpha;
+  explicit `lengthPenalty: 0` retains raw cumulative-score ranking.
+- Survivor KV caches are routed by explicit parent indexes instead of inferred
+  token-prefix matching. Stable and opt-in batched execution share this logic.
+- Timestamp processing now suppresses `<|notimestamps|>` during timestamped
+  decode and applies Whisper's aggregate timestamp-probability rule.
+- The reproducibility harness reads graph dimensions from ONNX metadata,
+  separates 3000 mel input frames from 1500 encoder output positions, supports
+  independent encoder/decoder variant directories, and loads the actual
+  `generation_config.json` policy.
+- Reference execution honors a single model-directory override ahead of paths
+  embedded in generated JSON and converts float32 mel to fp16 when the encoder
+  graph declares fp16 input.
+- A locally cached `openai/whisper-large-v3-turbo` reference on the JFK fixture
+  now matches the fp32 splitgraph path exactly: 31/31 normalized tokens and
+  identical text for both exported Python mel and the TypeScript WAV frontend.
 
 ## Priority Plan
 
@@ -84,8 +107,8 @@ Status: completed for the wrapper-level retry path.
 
 ### P1: True Language Auto-Detection
 
-Status: helper and private executor probe covered; public transcript-path
-coverage still pending.
+Status: implemented for splitgraph and merged-decoder compatibility paths;
+non-English browser fixture coverage is still pending.
 
 Goal: replace silent English/default fallback wherever splitgraph artifacts can
 detect language from encoder output.
@@ -102,13 +125,15 @@ detect language from encoder output.
 
 ### P2: Beam Search Correctness and Quality Parity
 
-Status: stable CPU-KV splitgraph path passes focused unit coverage and browser
-functional validation for fp16 WebGPU.
+Status: stable CPU-KV splitgraph path passes focused unit coverage and current
+browser functional validation for fp16 WebGPU. The corrected active/finished
+beam lifecycle produced the same 50-token sequence in greedy, stable beam, and
+experimental batched beam runs on 2026-08-23.
 
 Goal: make beam search a reliable accuracy option before optimizing it.
 
-- Extend beam decode tests for EOS, length penalty, patience, survivor KV-cache
-  alignment, and timestamp processor interaction.
+- Keep focused coverage for EOS separation, finished-candidate patience,
+  length penalty, survivor KV-cache alignment, and timestamp rules.
 - Keep `bestOf` as a sampling-only control. Do not combine it with beam search
   as a batched-beam proxy.
 - Add an integration-style splitgraph mock that checks token details and final
@@ -128,6 +153,20 @@ Browser validation on 2026-06-19:
   ORT calls dropped from `98` to `49`; paired browser measurement improved from
   about `15.16s` total / `1.98` RTFx to about `12.83s` total / `2.33` RTFx.
 
+Browser revalidation on 2026-08-23 after the beam lifecycle correction:
+
+- Greedy GPU-KV, stable beam, and batched beam produced the same 50 generated
+  tokens and transcript on the 29.9s JFK fixture. The harness reports `check`
+  because `maxNewTokens=50` truncates its longer text oracle.
+- Greedy GPU-KV: total `3291.080ms`, decode `2637.220ms`, `9.1304` RTFx,
+  zero GPU downloads.
+- Stable beam: total `14126.025ms`, decode `12577.285ms`, `2.1192` RTFx,
+  98 decoder-step ORT calls.
+- Batched beam: total `11841.205ms`, decode `10609.685ms`, `2.5276` RTFx,
+  49 decoder-step ORT calls.
+- In the paired beam run, batching cut ORT calls by 50%, decode time by 15.64%,
+  and transcription time by 16.17%, with exact token parity.
+
 ### P3: WebGPU-Safe Beam Optimization
 
 Status: experimental opt-in path implemented and browser-validated for CPU-KV
@@ -141,6 +180,15 @@ Goal: reduce beam cost after correctness is proven.
   `input_ids` and KV tensors.
 - Reorder KV by surviving beam parent after candidate selection.
 - Compare tokens against the stable beam path before taking timing wins.
+
+Current promotion gate:
+
+- Stable and batched beam must produce identical tokens and text on the same
+  artifact and fixture.
+- Validate `numBeams=2..5`, early EOS, timestamps, and at least one Turkish
+  fixture before making batched beam the default.
+- Measure ORT calls and wall time after token parity; a timing win cannot excuse
+  a decode-policy difference.
 
 Implemented experiment:
 
@@ -163,6 +211,19 @@ Goal: keep valuable extras, skip low-yield knobs.
 - Use WAV2VEC2 forced alignment only as an optional advanced pass.
 - Do not add framework-specific state, UI components, or adapter semantics to
   the core package.
+
+### P5: Quality Metrics From The Correct Decoder Positions
+
+Status: identified as the next compatibility blocker.
+
+- Capture no-speech probability from the raw decoder-init logits at the SOT
+  position, before suppression, using the model's configured no-speech token.
+- Do not infer no-speech from the processed next-token distribution or from a
+  hard-coded token ID.
+- Define selected-beam quality metrics without retaining every full-vocabulary
+  tensor for every hypothesis.
+- Add fixture gates proving compression/logprob rejection and temperature
+  recovery after the metric source is correct.
 
 ## Assumptions
 
