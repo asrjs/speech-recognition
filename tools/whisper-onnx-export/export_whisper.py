@@ -1439,14 +1439,20 @@ def export_all(
     def token_id(tok: str):
         return tokenizer.convert_tokens_to_ids(tok) if tok in vocab else None
 
+    generation_cfg = getattr(model, "generation_config", None)
+
+    def generation_value(name: str):
+        value = getattr(generation_cfg, name, None)
+        return value if value is not None else getattr(cfg, name, None)
+
     special_tokens = {
         "eos_token_id": cfg.eos_token_id,
         "bos_token_id": cfg.bos_token_id,
         "pad_token_id": cfg.pad_token_id,
         "decoder_start_token_id": cfg.decoder_start_token_id,
-        "forced_decoder_ids": getattr(cfg, "forced_decoder_ids", None),
-        "suppress_tokens": getattr(cfg, "suppress_tokens", None),
-        "begin_suppress_tokens": getattr(cfg, "begin_suppress_tokens", None),
+        "forced_decoder_ids": generation_value("forced_decoder_ids"),
+        "suppress_tokens": generation_value("suppress_tokens"),
+        "begin_suppress_tokens": generation_value("begin_suppress_tokens"),
         "no_timestamps_token_id": token_id("<|notimestamps|>"),
         "no_speech_token_id": token_id("<|nospeech|>"),
         "timestamp_begin": token_id("<|0.00|>"),

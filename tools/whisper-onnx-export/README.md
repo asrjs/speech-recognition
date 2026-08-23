@@ -78,6 +78,40 @@ python test_comprehensive.py
 python test_comprehensive.py --quantize
 ```
 
+### HF reference artifact
+
+`generate_hf_reference.py` records greedy no-timestamps and timestamped HF
+tokens, optionally runs the exported split graphs, and can save the exact mel
+input used by Transformers:
+
+```bash
+python generate_hf_reference.py \
+  --model-dir ./output/whisper-tiny \
+  --audio ./fixtures/jfk.wav \
+  --output ./output/jfk.reference.json \
+  --export-mel
+```
+
+Encoder and decoder variants may live in different directories:
+
+```bash
+python generate_hf_reference.py \
+  --model-dir ./output/whisper-large-v3-turbo \
+  --encoder-dir ./variants/fp32 \
+  --decoder-dir ./variants/fp32 \
+  --model-id openai/whisper-large-v3-turbo \
+  --audio ./fixtures/jfk.wav \
+  --output ./output/jfk.reference.json \
+  --export-mel --skip-onnx
+```
+
+Use `--skip-onnx` when the installed Python ONNX Runtime does not support the
+exported graph IR. The generated HF tokens and mel can still be consumed by
+`tests/whisper-reproducibility-harness.test.ts`, which runs the graphs with
+Node ORT. The TypeScript harness reads graph input/output dimensions directly;
+for large-v3-turbo, `input_features` has 3000 mel frames while the encoder emits
+1500 positions.
+
 ## Validation Results (whisper-tiny)
 
 | Test | Result |
