@@ -1015,24 +1015,31 @@ warm baseline; use paired measurements for optimization claims.
 
 The workstation restart restored the healthy NVIDIA WebGPU adapter. The active
 browser target is the custom `ysdede/whisper-large-v3-turbo-onnx-4graph` repo,
-not the merged `onnx-community/*` decoder family. Its production preset uses
-the `fp16_iofp32` encoder and `fp16` decoder. A warmed headless Chrome run on
+not the merged `onnx-community/*` decoder family. Its remote preset uses the
+`fp16_iofp32/encoder_model.onnx` artifact; the local harness maps that to the
+optimized fp16-output copy `fp16_iofp32_fp16out`, paired with the `fp16` decoder.
+A warmed headless Chrome run on
 the 10-second JFK fixture measured `863.540ms` total and `11.7391x` RTFx. The
 30-second fixture measured `1328.070ms` total and `22.7617x` RTFx; a profiling
 run with explicit encoder queue drain measured `1357.655ms` and `22.2738x`.
 Both 30-second runs had 49 decoder steps, zero GPU tensor downloads, and the
 GPU-KV cache remained on `gpu-buffer`. The drain is a metric-attribution flag,
-not a production setting.
+not a production setting. An independent manual repeat on the optimized local
+variant reached `1175.81ms` total and `25.6993x` RTFx on the 29.9043-second JFK
+clip, with `183.49ms` encoder time, `49` GPU-KV steps, p50/p95 step time of
+`13.395/15.430ms`, and zero downloads. Its 10-second repeat reached
+`13.856x`.
 
-ONNX inspection of the active files confirmed genuine FP16 weights: 487
+ONNX inspection confirmed genuine FP16 weights in the active files: 487
 `FLOAT16` encoder initializers, 101 decoder-init initializers, and 88
 decoder-step initializers. Decoder logits/KV interfaces are FP16 while the mel
 input remains FP32.
 
 The earlier `~8x` measurement was correctly classified as degraded GPU state.
-The historical `25-28x` results remain a best-case target, while `22-23x` is
-the current healthy rerun evidence. Longer clips are the right throughput test
-because fixed preprocessing, encoder, and decoder-init costs are amortized.
+The historical `25-28x` results are now corroborated by the independent
+`25.6993x` repeat, while `22-23x` remains valid for the alternate warmed run.
+Longer clips are the right throughput test because fixed preprocessing, encoder,
+and decoder-init costs are amortized.
 
 The next compatibility implementation also landed here: Whisper no-speech
 probability now comes from a copied raw decoder-init logit vector before

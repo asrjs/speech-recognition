@@ -88,10 +88,11 @@ CPU. No inference error occurred.
 The same headless Chrome harness was rerun after the workstation GPU restart.
 It reported `navigator.gpu=true`, `crossOriginIsolated=true`, NVIDIA vendor,
 Blackwell architecture, and `shader-f16`. The active model was the custom
-`ysdede/whisper-large-v3-turbo-onnx-4graph` splitgraph, with `fp16_iofp32`
-encoder weights and `fp16` decoder weights. This is the target model for the
-WebGPU speed path; `onnx-community/*` merged decoders are secondary
-compatibility paths.
+`ysdede/whisper-large-v3-turbo-onnx-4graph` splitgraph. The remote preset's
+encoder artifact is `fp16_iofp32/encoder_model.onnx`; the local harness uses
+the optimized fp16-output copy `fp16_iofp32_fp16out`, paired with the `fp16`
+decoder. This is the target model for the WebGPU speed path;
+`onnx-community/*` merged decoders are secondary compatibility paths.
 
 ONNX graph inspection confirms these are real FP16 artifacts, not naming-only
 aliases: the active encoder contains 487 `FLOAT16` initializers, decoder-init
@@ -113,9 +114,16 @@ flag is for metric attribution only and is not enabled in the production fast
 path. The 30-second warmed run reported decoder-step p50 `15.365ms`, p95
 `18.470ms`, and zero GPU downloads.
 
+An independent manual repeat selected the optimized local encoder variant and
+reported `1175.81ms` total and `25.6993x` RTFx on the 29.9043-second JFK clip.
+Encoder time was `183.49ms`; decoder time was `866.105ms`, including `49`
+steps at p50/p95 `13.395/15.430ms`. A 10.0043-second repeat measured
+`731.205ms` and `13.856x`. Both repeats kept KV on `gpu-buffer`, downloaded
+zero GPU tensors, and produced the same coherent JFK transcript prefix.
+
 This restores the expected throughput range: `22-23x` is reproducible on the
-current healthy run, while the older `26-28x` numbers are best-case historical
-observations. The earlier post-restart `~8x` run and a temporary fixed-`K=1`
+current healthy run, and the independent optimized-variant repeat reached
+`25.6993x`. The earlier post-restart `~8x` run and a temporary fixed-`K=1`
 probe were correctly discarded as degraded-GPU diagnostics, not code baselines.
 
 ## Local Verification Already Run
@@ -123,7 +131,7 @@ probe were correctly discarded as degraded-GPU diagnostics, not code baselines.
 Current resume-pass gates:
 
 ```text
-Vitest: 112 files passed, 1 skipped; 662 tests passed, 4 skipped
+Vitest: 112 files passed, 1 skipped; 666 tests passed, 4 skipped
 Typecheck: passed
 Lint: 0 errors, 6 existing warnings
 Build: passed

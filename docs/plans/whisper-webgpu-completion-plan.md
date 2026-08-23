@@ -101,13 +101,14 @@ complete.
 
 After the workstation restart, the existing WebGPU harness again exposed the
 NVIDIA Blackwell adapter with `shader-f16`. The active artifact was the custom
-`ysdede/whisper-large-v3-turbo-onnx-4graph` splitgraph, using the `fp16_iofp32`
-encoder and `fp16` decoder directories. A warmed 30-second JFK measurement
-reached `22.76x` RTFx without GPU tensor downloads; the profiled drain variant
-reported `22.27x`. This confirms the earlier ~8x result was a degraded GPU
-state, not a decoder code regression. Historical best-case runs remain around
-`26-28x`, so the next speed work should use repeated warmed runs rather than a
-single cold-tab result.
+`ysdede/whisper-large-v3-turbo-onnx-4graph` splitgraph. The remote encoder
+artifact is `fp16_iofp32/encoder_model.onnx`; the local harness uses its
+optimized fp16-output copy, `fp16_iofp32_fp16out`, paired with the `fp16`
+decoder. A warmed 30-second JFK measurement reached `22.76x` RTFx without GPU
+tensor downloads; an independent repeat on the optimized local variant reached
+`25.6993x` RTFx (`1175.81ms` total). This confirms the earlier ~8x result was a
+degraded GPU state, not a decoder code regression, and validates the historical
+`25-28x` range when the correct local variant is selected.
 
 ## Priority Plan
 

@@ -7,8 +7,10 @@ Updated: 2026-08-23 (healthy GPU rerun and raw no-speech provenance)
 
 The workstation restart restored the expected NVIDIA Blackwell WebGPU state.
 The browser harness used the real custom target
-`ysdede/whisper-large-v3-turbo-onnx-4graph`, with `fp16_iofp32` encoder weights
-and `fp16` decoder weights. Warmed 30-second JFK measurements reached:
+`ysdede/whisper-large-v3-turbo-onnx-4graph`. The remote preset names the
+encoder artifact `fp16_iofp32/encoder_model.onnx`; the local harness uses its
+optimized fp16-output copy, `fp16_iofp32_fp16out`, paired with the `fp16`
+decoder. Warmed 30-second JFK measurements reached:
 
 - `22.7617x` RTFx, `1328.07ms` total, `199.625ms` encoder, `49` decoder steps,
   `0` GPU tensor downloads.
@@ -18,6 +20,11 @@ and `fp16` decoder weights. Warmed 30-second JFK measurements reached:
 - A 10-second measurement reached `11.7391x` RTFx. Longer audio is the useful
   throughput signal because fixed preprocess/encoder/decoder-init costs are
   amortized.
+- An independent manual repeat on the optimized local variant reached
+  `25.6993x` RTFx (`1175.81ms` total) on the 29.9043-second clip, with
+  `183.49ms` encoder time, `49` GPU-KV steps, p50/p95 step time of
+  `13.395/15.430ms`, and `0` downloads. Its 10-second repeat reached
+  `13.856x`.
 
 The earlier post-restart failure-state run around `8x` was not used as a code
 baseline. Historical best-case runs around `26-28x` remain plausible, but
