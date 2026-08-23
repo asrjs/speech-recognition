@@ -168,9 +168,9 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
   readonly noTimestamps?: boolean;
   /** Number of beams for beam search (1 = greedy). WhisperX: beam_size */
   readonly numBeams?: number;
-  /** Length penalty for beam search (0 = no penalty). WhisperX: length_penalty */
+  /** Final beam rank penalty. Undefined = length normalization; 0 = raw score. */
   readonly lengthPenalty?: number;
-  /** Beam search patience: max consecutive EOS before stopping early. WhisperX: patience */
+  /** Beam search patience: multiplier for the finished-candidate budget. */
   readonly patience?: number;
   /** Decode temperature. 0 uses greedy/beam argmax; >0 samples from scaled logits and disables beam search. */
   readonly temperature?: number;

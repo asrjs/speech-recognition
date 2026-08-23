@@ -164,7 +164,7 @@ describe('whisperBeamDecode integration', () => {
     }
   });
 
-  it('keeps KV caches aligned when completed beams are retained with patience', async () => {
+  it('keeps KV caches aligned as active beams diverge', async () => {
     const seenActiveStepKv: Array<number | undefined> = [];
     const session: WhisperCoreSession = {
       async runInit() {
@@ -207,6 +207,125 @@ describe('whisperBeamDecode integration', () => {
 
     expect(result.tokens[result.tokens.length - 1]).toBe(EOS_TOKEN_ID);
     expect(seenActiveStepKv).toEqual([3]);
+  });
+
+  it('keeps completed hypotheses separate from active beam slots', async () => {
+    const steppedTokens: number[] = [];
+    const session: WhisperCoreSession = {
+      async runInit() {
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits.fill(-100);
+        logits[EOS_TOKEN_ID] = 10;
+        logits[2] = 9;
+        logits[3] = 8;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+      async runStep(tokenId) {
+        steppedTokens.push(tokenId);
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits.fill(-100);
+        logits[EOS_TOKEN_ID] = 10;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+    };
+
+    await whisperBeamDecode(session, {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 2,
+      maxNewTokens: 2,
+    });
+
+    expect(steppedTokens).toEqual([2, 3]);
+  });
+
+  it('uses patience to expand the finished-candidate budget', async () => {
+    const makeSession = () => {
+      let stepCalls = 0;
+      const session: WhisperCoreSession = {
+        async runInit() {
+          const logits = new Float32Array(VOCAB_SIZE);
+          logits.fill(-100);
+          logits[2] = 10;
+          logits[3] = 9;
+          return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+        },
+        async runStep() {
+          stepCalls += 1;
+          const logits = new Float32Array(VOCAB_SIZE);
+          logits.fill(-100);
+          logits[EOS_TOKEN_ID] = 10;
+          logits[4] = 9;
+          logits[6] = 8;
+          return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+        },
+      };
+      return { session, get stepCalls() { return stepCalls; } };
+    };
+
+    const standard = makeSession();
+    await whisperBeamDecode(standard.session, {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      maxNewTokens: 4,
+    });
+
+    const patient = makeSession();
+    await whisperBeamDecode(patient.session, {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 2,
+      maxNewTokens: 4,
+    });
+
+    expect(standard.stepCalls).toBe(2);
+    expect(patient.stepCalls).toBe(4);
+
+    const halfTie = makeSession();
+    await whisperBeamDecode(halfTie.session, {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1.25,
+      maxNewTokens: 4,
+    });
+    expect(halfTie.stepCalls).toBe(2);
+  });
+
+  it('uses Whisper length normalization by default and Google NMT penalty when explicit', async () => {
+    const makeSession = (): WhisperCoreSession => ({
+      async runInit() {
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits.fill(-100);
+        logits[2] = 0;
+        logits[3] = -0.4;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+      async runStep(tokenId) {
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits.fill(-100);
+        if (tokenId === 2 || tokenId === 4) logits[EOS_TOKEN_ID] = 10;
+        else logits[4] = 10;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+    });
+
+    const normalized = await whisperBeamDecode(makeSession(), {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      maxNewTokens: 3,
+    });
+    const raw = await whisperBeamDecode(makeSession(), {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      lengthPenalty: 0,
+      maxNewTokens: 3,
+    });
+
+    expect(normalized.tokens).toEqual([3, 4, EOS_TOKEN_ID]);
+    expect(raw.tokens).toEqual([2, EOS_TOKEN_ID]);
   });
 
   it('uses batched beam step hook only when explicitly enabled', async () => {

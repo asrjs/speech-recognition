@@ -539,7 +539,7 @@ export async function splitGraphDecodeLoop(params: {
   onTokenLogits?: (chosenTokenId: number, processedLogits: Float32Array, ctx: { readonly tokens: readonly number[]; readonly beginIndex: number }) => void;
   /** Beam search: number of beams (default: 1 = greedy) */
   numBeams?: number;
-  /** Length penalty for beam search (default: 0.0) */
+  /** Final ranking penalty. Undefined uses length normalization; 0 uses raw score. */
   lengthPenalty?: number;
   /** Beam search patience for early stopping. */
   patience?: number;
@@ -579,7 +579,7 @@ export async function splitGraphDecodeLoop(params: {
     promptTokens, encoderOutput: encoderHiddenStates, encoderDims, eosTokenId, maxNewTokens, processLogits, onTokenLogits,
     strategy: (numBeams ?? 1) > 1 ? 'beam' : 'greedy',
     beamSize: numBeams ?? 1,
-    lengthPenalty: lengthPenalty ?? 0,
+    lengthPenalty,
     patience: patience ?? 1,
     temperature: temperature ?? 0,
     bestOf: bestOf ?? 1,
@@ -2297,7 +2297,7 @@ export class WhisperOnnxExecutor {
           processLogits: processSplitGraphLogits,
           onTokenLogits: options.onTokenLogits,
           numBeams: requestedNumBeams,
-          lengthPenalty: options.lengthPenalty ?? 0,
+          lengthPenalty: options.lengthPenalty,
           patience: options.patience ?? 1,
           temperature: requestedTemperature,
           bestOf: requestedBestOf,

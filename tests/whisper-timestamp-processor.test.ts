@@ -92,6 +92,44 @@ describe('WhisperTimestampLogitProcessor', () => {
     expect(logits[TIMESTAMP_BEGIN + 3]).toBe(10.0);
   });
 
+  it('suppresses the no_timestamps control token during timestamped decoding', () => {
+    const processor = new WhisperTimestampLogitProcessor({
+      eosTokenId: EOS,
+      noTimestampsTokenId: NO_TIMESTAMPS,
+      timestampBegin: TIMESTAMP_BEGIN,
+      suppressTokens: [],
+      beginSuppressTokens: [],
+    });
+    const prompt = [50258, 50259, 50359];
+    const logits = makeLogits(NO_TIMESTAMPS, 10.0);
+
+    processor.process(logits, [...prompt, 42], prompt.length);
+
+    expect(logits[NO_TIMESTAMPS]).toBe(-Infinity);
+  });
+
+  it('forces a timestamp when aggregate timestamp probability exceeds every text token', () => {
+    const processor = new WhisperTimestampLogitProcessor({
+      eosTokenId: EOS,
+      noTimestampsTokenId: NO_TIMESTAMPS,
+      timestampBegin: TIMESTAMP_BEGIN,
+      suppressTokens: [],
+      beginSuppressTokens: [],
+    });
+    const prompt = [50258, 50259, 50359];
+    const logits = new Float32Array(VOCAB_SIZE);
+    logits.fill(-20);
+    logits[42] = 2.5;
+    logits[TIMESTAMP_BEGIN] = 2;
+    logits[TIMESTAMP_BEGIN + 1] = 2;
+    logits[TIMESTAMP_BEGIN + 2] = 2;
+
+    processor.process(logits, [...prompt, 42], prompt.length);
+
+    expect(logits[42]).toBe(-Infinity);
+    expect(logits[TIMESTAMP_BEGIN]).toBe(2);
+  });
+
   it('enforces monotonic timestamps — suppresses earlier values', () => {
     const processor = new WhisperTimestampLogitProcessor({
       eosTokenId: EOS,
@@ -141,6 +179,7 @@ describe('WhisperTimestampLogitProcessor', () => {
     const ts2 = TIMESTAMP_BEGIN + 2;
 
     const logits = makeLogits(100, 10.0);
+    logits[EOS] = 20;
     processor.process(logits, [...prompt, 42, ts2], beginIndex);
     for (let t = 0; t < EOS; t++) {
       expect(logits[t]).toBe(-Infinity);

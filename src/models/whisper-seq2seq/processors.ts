@@ -48,6 +48,11 @@ export class WhisperTimestampLogitProcessor {
       return;
     }
 
+    // The control token belongs in the prompt, never in timestamped output.
+    if (this.noTimestampsTokenId < logits.length) {
+      logits[this.noTimestampsTokenId] = -Infinity;
+    }
+
     // 4. Timestamp state processing (only when timestamps are allowed)
     const sampledTokens = generatedTokens.slice(beginIndex);
     const seq = sampledTokens;
@@ -100,5 +105,33 @@ export class WhisperTimestampLogitProcessor {
         logits[ts] = -Infinity;
       }
     }
+
+    // Whisper forces a timestamp when their aggregate probability exceeds the
+    // most likely text token. The common softmax denominator cancels, so the
+    // comparison can be performed directly in logit space.
+    const timestampLogSumExp = logSumExp(logits, this.timestampBegin, logits.length);
+    let maxTextLogit = Number.NEGATIVE_INFINITY;
+    for (let tokenId = 0; tokenId < this.timestampBegin; tokenId++) {
+      maxTextLogit = Math.max(maxTextLogit, logits[tokenId] ?? Number.NEGATIVE_INFINITY);
+    }
+    if (timestampLogSumExp > maxTextLogit) {
+      for (let tokenId = 0; tokenId < this.timestampBegin; tokenId++) {
+        logits[tokenId] = -Infinity;
+      }
+    }
   }
+}
+
+function logSumExp(values: Float32Array, start: number, end: number): number {
+  let max = Number.NEGATIVE_INFINITY;
+  for (let i = start; i < end; i++) {
+    max = Math.max(max, values[i] ?? Number.NEGATIVE_INFINITY);
+  }
+  if (!Number.isFinite(max)) return max;
+
+  let sum = 0;
+  for (let i = start; i < end; i++) {
+    sum += Math.exp((values[i] ?? Number.NEGATIVE_INFINITY) - max);
+  }
+  return max + Math.log(sum);
 }

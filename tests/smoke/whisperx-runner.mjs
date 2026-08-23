@@ -744,7 +744,7 @@ async function main() {
     console.error('  --beam_size <int>              Beam search width (1 = greedy)');
     console.error('  --best_of <int>                Independent decodings to pick best');
     console.error('  --patience <float>             Beam search patience');
-    console.error('  --length_penalty <float>       Beam search length penalty (0.0)');
+    console.error('  --length_penalty <float>       Beam search length penalty (1.0)');
     console.error('  --compression_ratio_threshold <float>  2.4');
     console.error('  --logprob_threshold <float>           -1.0');
     console.error('  --no_speech_threshold <float>         0.6');

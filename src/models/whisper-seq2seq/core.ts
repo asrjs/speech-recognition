@@ -12,11 +12,7 @@
  */
 
 import { argmax } from '../../inference/index.js';
-import {
-  createInitialWhisperBeam,
-  rankWhisperBeamCandidates,
-  selectBestWhisperBeam,
-} from './beam-search.js';
+import type { WhisperBeamState } from './beam-search.js';
 
 // ---------------------------------------------------------------------------
 // Session interface
@@ -121,7 +117,7 @@ export interface WhisperDecodeOptions {
   readonly strategy?: 'greedy' | 'beam';
   /** Beam size for beam search (default: 5) */
   readonly beamSize?: number;
-  /** Length penalty for beam search (default: 0.0) */
+  /** Final ranking penalty. Undefined uses length normalization; 0 uses raw score. */
   readonly lengthPenalty?: number;
   /** Patience for beam search early stopping (default: 1.0). */
   readonly patience?: number;
@@ -235,9 +231,15 @@ export async function whisperBeamDecode(
   const {
     promptTokens, encoderOutput, encoderDims,
     eosTokenId, maxNewTokens, processLogits,
-    beamSize = 5, lengthPenalty = 0,
+    beamSize = 5,
+    lengthPenalty,
     patience = 1,
   } = options;
+
+  if (beamSize <= 1) {
+    return whisperGreedyDecode(session, { ...options, strategy: 'greedy' });
+  }
+  if (maxNewTokens <= 0) return { tokens: [], score: 0 };
 
   const initResult = await session.runInit(promptTokens, encoderOutput, encoderDims);
   const vocabSize = initResult.vocabSize;
@@ -246,114 +248,98 @@ export async function whisperBeamDecode(
   const firstLogits = initResult.logits.subarray(lastLogitOffset);
   if (processLogits) processLogits(firstLogits, promptTokens, promptTokens.length);
 
-  const firstLogProbs = logSoftmax(firstLogits);
-  const topK = selectTopK(firstLogProbs, beamSize);
+  const normalizedPatience = Number.isFinite(patience) && patience > 0 ? patience : 1;
+  const maxFinishedCandidates = Math.max(1, roundToNearestEven(beamSize * normalizedPatience));
+  const finished: WhisperBeamState[] = [];
+  const finishedKeys = new Set<string>();
 
-  let beams = topK.map(({ tokenId, logProb }) =>
-    createInitialWhisperBeam([...promptTokens, tokenId], logProb) as any,
+  const firstExpansion = expandWhisperBeamStep(
+    [{ tokens: [...promptTokens], score: 0, completed: false }],
+    [firstLogits],
+    beamSize,
+    eosTokenId,
+  );
+  appendFinishedWhisperBeams(
+    finished,
+    finishedKeys,
+    firstExpansion.finished,
+    maxFinishedCandidates,
   );
 
-  // Clone KV cache per beam
-  let beamKvs: WhisperKvCache[] = beams.map(() => {
-    const c: WhisperKvCache = {};
-    for (const [k, v] of Object.entries(initResult.presentKv)) c[k] = cloneWhisperKvCacheValue(v);
-    return c;
-  });
-
-  let completedSteps = 0;
+  let beams = firstExpansion.active;
+  let beamKvs = firstExpansion.parentIndexes.map(() => cloneWhisperKvCache(initResult.presentKv));
 
   const useBatchedBeam = options.experimentalBatchedBeam === true && Boolean(session.runStepBatch);
 
   for (let s = 1; s < maxNewTokens; s++) {
-    if (beams.every(b => (b as any).completed)) break;
+    if (finished.length >= maxFinishedCandidates || beams.length === 0) break;
 
     const logitsByBeam: Float32Array[] = [];
-    const activeIndexes: number[] = [];
     const activeTokenIds: number[] = [];
-    const activeKvs: WhisperKvCache[] = [];
-
-    for (let bi = 0; bi < beams.length; bi++) {
-      const beam = beams[bi] as any;
-      logitsByBeam.push(new Float32Array(0));
-      if (beam.completed) continue;
-      activeIndexes.push(bi);
-      activeTokenIds.push(beam.tokens[beam.tokens.length - 1]);
-      activeKvs.push(beamKvs[bi]!);
+    for (const beam of beams) {
+      activeTokenIds.push(beam.tokens[beam.tokens.length - 1]!);
     }
 
-    if (useBatchedBeam && activeIndexes.length > 1) {
-      const stepResults = await session.runStepBatch!(activeTokenIds, activeKvs);
-      if (stepResults.length !== activeIndexes.length) {
+    if (useBatchedBeam && beams.length > 1) {
+      const stepResults = await session.runStepBatch!(activeTokenIds, beamKvs);
+      if (stepResults.length !== beams.length) {
         throw new Error(
-          `Batched Whisper beam step returned ${stepResults.length} results for ${activeIndexes.length} active beams.`,
+          `Batched Whisper beam step returned ${stepResults.length} results for ${beams.length} active beams.`,
         );
       }
-      for (let i = 0; i < activeIndexes.length; i++) {
-        const beamIndex = activeIndexes[i]!;
-        const beam = beams[beamIndex] as any;
-        const stepResult = stepResults[i]!;
+      for (let beamIndex = 0; beamIndex < beams.length; beamIndex++) {
+        const beam = beams[beamIndex]!;
+        const stepResult = stepResults[beamIndex]!;
         if (processLogits) processLogits(stepResult.logits, beam.tokens, promptTokens.length);
-        logitsByBeam[beamIndex] = stepResult.logits;
+        logitsByBeam.push(stepResult.logits);
         beamKvs[beamIndex] = stepResult.presentKv;
       }
     } else {
-      for (const beamIndex of activeIndexes) {
-        const beam = beams[beamIndex] as any;
-        const prevToken = beam.tokens[beam.tokens.length - 1];
+      for (let beamIndex = 0; beamIndex < beams.length; beamIndex++) {
+        const beam = beams[beamIndex]!;
+        const prevToken = beam.tokens[beam.tokens.length - 1]!;
         const stepResult = await session.runStep(prevToken, beamKvs[beamIndex]!);
-        const sl = stepResult.logits;
-        if (processLogits) processLogits(sl, beam.tokens, promptTokens.length);
-        logitsByBeam[beamIndex] = sl;
+        if (processLogits) processLogits(stepResult.logits, beam.tokens, promptTokens.length);
+        logitsByBeam.push(stepResult.logits);
         beamKvs[beamIndex] = stepResult.presentKv;
       }
     }
 
-    const candidates = rankWhisperBeamCandidates({
-      beams: beams as any,
+    const expansion = expandWhisperBeamStep(
+      beams,
       logitsByBeam,
-      beamWidth: beamSize,
+      beamSize,
       eosTokenId,
-      lengthPenalty,
-    });
-
-    // Rebuild KV cache for survivors
-    const newKvs: WhisperKvCache[] = [];
-    for (const cand of candidates) {
-      const cTokens = (cand as any).tokens as number[];
-      let matchedKv: WhisperKvCache | undefined;
-      for (let bi = 0; bi < beams.length; bi++) {
-        const parent = beams[bi] as any;
-        const pTokens = parent.tokens as number[];
-        const isExpandedFromParent = pTokens.length + 1 === cTokens.length &&
-          cTokens.slice(0, pTokens.length).every((t, i) => t === pTokens[i]);
-        const isRetainedParent = pTokens.length === cTokens.length &&
-          cTokens.every((t, i) => t === pTokens[i]);
-        if (isExpandedFromParent || isRetainedParent) {
-          const clone: WhisperKvCache = {};
-          for (const [k, v] of Object.entries(beamKvs[bi]!)) clone[k] = cloneWhisperKvCacheValue(v);
-          matchedKv = clone;
-          break;
-        }
-      }
-      newKvs.push(matchedKv ?? {});
-    }
-
-    beams = candidates as any[];
-    beamKvs = newKvs;
-
-    // Patience: stop early if best beam has been completed for N consecutive steps
-    const bestBeam = selectBestWhisperBeam(beams as any, lengthPenalty);
-    if (bestBeam && (bestBeam as any).completed) {
-      completedSteps++;
-      if (completedSteps >= patience) break;
-    } else {
-      completedSteps = 0;
-    }
-
-    if (beams.every(b => (b as any).completed)) break;
+    );
+    appendFinishedWhisperBeams(
+      finished,
+      finishedKeys,
+      expansion.finished,
+      maxFinishedCandidates,
+    );
+    beamKvs = expansion.parentIndexes.map((parentIndex) => cloneWhisperKvCache(beamKvs[parentIndex]!));
+    beams = expansion.active;
   }
 
-  const best = selectBestWhisperBeam(beams as any, lengthPenalty) as any;
+  if (finished.length < beamSize) {
+    const unfinished = [...beams].sort((a, b) => b.score - a.score);
+    for (const beam of unfinished) {
+      appendFinishedWhisperBeams(
+        finished,
+        finishedKeys,
+        [{ ...beam, tokens: [...beam.tokens, eosTokenId], completed: true }],
+        beamSize,
+      );
+      if (finished.length >= beamSize) break;
+    }
+  }
+
+  const best = selectBestFinishedWhisperBeam(
+    finished,
+    promptTokens.length,
+    eosTokenId,
+    lengthPenalty,
+  );
   if (!best) return whisperGreedyDecode(session, { ...options, strategy: 'greedy' });
 
   return { tokens: best.tokens.slice(promptTokens.length), score: best.score };
@@ -388,6 +374,118 @@ function selectTopK(logProbs: Float32Array, k: number): { tokenId: number; logPr
     if (top.length > limit) top.pop();
   }
   return top;
+}
+
+interface WhisperBeamExpansion {
+  readonly active: WhisperBeamState[];
+  readonly parentIndexes: number[];
+  readonly finished: WhisperBeamState[];
+}
+
+function expandWhisperBeamStep(
+  beams: readonly WhisperBeamState[],
+  logitsByBeam: readonly Float32Array[],
+  beamSize: number,
+  eosTokenId: number,
+): WhisperBeamExpansion {
+  const candidates: Array<{
+    readonly beam: WhisperBeamState;
+    readonly parentIndex: number;
+    readonly tokenId: number;
+    readonly score: number;
+  }> = [];
+
+  for (let parentIndex = 0; parentIndex < beams.length; parentIndex++) {
+    const beam = beams[parentIndex];
+    const logits = logitsByBeam[parentIndex];
+    if (!beam || !logits || logits.length === 0) continue;
+    const topTokens = selectTopK(logSoftmax(logits), beamSize + 1);
+    for (const { tokenId, logProb } of topTokens) {
+      candidates.push({ beam, parentIndex, tokenId, score: beam.score + logProb });
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  const active: WhisperBeamState[] = [];
+  const parentIndexes: number[] = [];
+  const finished: WhisperBeamState[] = [];
+
+  for (const candidate of candidates) {
+    const next: WhisperBeamState = {
+      tokens: [...candidate.beam.tokens, candidate.tokenId],
+      score: candidate.score,
+      completed: candidate.tokenId === eosTokenId,
+    };
+    if (next.completed) {
+      finished.push(next);
+      continue;
+    }
+    active.push(next);
+    parentIndexes.push(candidate.parentIndex);
+    if (active.length >= beamSize) break;
+  }
+
+  return { active, parentIndexes, finished };
+}
+
+function cloneWhisperKvCache(cache: WhisperKvCache): WhisperKvCache {
+  return Object.fromEntries(
+    Object.entries(cache).map(([key, value]) => [key, cloneWhisperKvCacheValue(value)]),
+  );
+}
+
+function appendFinishedWhisperBeams(
+  destination: WhisperBeamState[],
+  keys: Set<string>,
+  candidates: readonly WhisperBeamState[],
+  limit: number,
+): void {
+  for (const candidate of candidates) {
+    if (destination.length >= limit) return;
+    const key = candidate.tokens.join(',');
+    if (keys.has(key)) continue;
+    keys.add(key);
+    destination.push(candidate);
+  }
+}
+
+function selectBestFinishedWhisperBeam(
+  beams: readonly WhisperBeamState[],
+  promptLength: number,
+  eosTokenId: number,
+  lengthPenalty: number | undefined,
+): WhisperBeamState | undefined {
+  let best: WhisperBeamState | undefined;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const beam of beams) {
+    const hasEos = beam.tokens[beam.tokens.length - 1] === eosTokenId;
+    const generatedLength = Math.max(1, beam.tokens.length - promptLength - (hasEos ? 1 : 0));
+    const normalized = whisperSequenceRankScore(beam.score, generatedLength, lengthPenalty);
+    if (normalized > bestScore) {
+      best = beam;
+      bestScore = normalized;
+    }
+  }
+  return best;
+}
+
+function whisperSequenceRankScore(
+  cumulativeLogProb: number,
+  tokenCount: number,
+  lengthPenalty: number | undefined,
+): number {
+  const length = Math.max(1, tokenCount);
+  const penalty = lengthPenalty === undefined
+    ? length
+    : Math.pow((5 + length) / 6, lengthPenalty);
+  return cumulativeLogProb / penalty;
+}
+
+function roundToNearestEven(value: number): number {
+  const floor = Math.floor(value);
+  const fraction = value - floor;
+  if (fraction === 0.5) return floor % 2 === 0 ? floor : floor + 1;
+  return Math.round(value);
 }
 
 /**
@@ -445,7 +543,7 @@ async function whisperBestOfDecode(
   options: WhisperDecodeOptions,
   bestOf: number,
 ): Promise<WhisperDecodeResult> {
-  const lengthPenalty = options.lengthPenalty ?? 0;
+  const lengthPenalty = options.lengthPenalty;
   let bestResult: WhisperDecodeResult | null = null;
   let bestScore = -Infinity;
 
@@ -459,7 +557,7 @@ async function whisperBestOfDecode(
 
     const tokenCount = result.tokens.length;
     const normScore = result.score !== undefined
-      ? (lengthPenalty === 0 ? result.score : result.score / Math.pow(Math.max(1, tokenCount), lengthPenalty))
+      ? whisperSequenceRankScore(result.score, tokenCount, lengthPenalty)
       : -Infinity;
 
     if (normScore > bestScore) {
