@@ -1,7 +1,28 @@
 # Agent Task Coordination
 
 Branch: `feat/whisper-cleanup-beam-temperature`
-Updated: 2026-08-23 (reference decode parity and beam-state correction)
+Updated: 2026-08-23 (healthy GPU rerun and raw no-speech provenance)
+
+## POST-RESTART VALIDATION (2026-08-23)
+
+The workstation restart restored the expected NVIDIA Blackwell WebGPU state.
+The browser harness used the real custom target
+`ysdede/whisper-large-v3-turbo-onnx-4graph`, with `fp16_iofp32` encoder weights
+and `fp16` decoder weights. Warmed 30-second JFK measurements reached:
+
+- `22.7617x` RTFx, `1328.07ms` total, `199.625ms` encoder, `49` decoder steps,
+  `0` GPU tensor downloads.
+- `22.2738x` RTFx with the profiling-only encoder GPU drain enabled; the drain
+  moved `208.955ms` of queue work into the encoder metric without changing the
+  production path.
+- A 10-second measurement reached `11.7391x` RTFx. Longer audio is the useful
+  throughput signal because fixed preprocess/encoder/decoder-init costs are
+  amortized.
+
+The earlier post-restart failure-state run around `8x` was not used as a code
+baseline. Historical best-case runs around `26-28x` remain plausible, but
+future optimization comparisons must use repeated warmed runs on this same
+custom model and browser configuration.
 
 ## Context Recovery
 
@@ -287,10 +308,14 @@ hallucinations and recovers with higher temperature.
 - Verify retry temperatures are passed through correctly in single-chunk and
   VAD-chunk paths.
 - Verify caller `onTokenLogits` survives wrapper collection.
-- Replace the hard-coded no-speech token and processed-last-logit approximation.
-  Whisper measures no-speech from raw decoder-init logits at the SOT position,
-  before suppression; beam quality metrics also need a selected-sequence-safe
-  collection path.
+- [x] Replace the hard-coded no-speech approximation in the Whisper runtime.
+  The gate now receives raw decoder-init logits from the SOT position before
+  suppression and resolves the token from generation config or the tokenizer.
+- [x] Preserve raw-init quality context through temperature fallback and keep
+  the generic `50362` behavior for direct gate callers.
+- [ ] Define selected-beam logprob/entropy metrics without retaining every
+  full-vocabulary tensor for every hypothesis; add fixture validation for
+  compression/logprob rejection and temperature recovery.
 
 ### 4. Word Timestamp Parity
 

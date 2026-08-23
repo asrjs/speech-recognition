@@ -11,10 +11,8 @@
  *   5. Drift correction (whisper.cpp-style seek counter for long audio)
  *   6. Segment merging (stitch multi-chunk results)
  *
- * Deferred (needs vanilla executor logit collection):
- *   - Log probability gate
- *   - Entropy gate
- *   - No-speech gate
+ * Quality gates use processed per-token logits plus the raw decoder-init
+ * logits needed by Whisper's no-speech rule.
  *
  * Architecture: Composition over inheritance.
  * EnhancedWhisperExecutor wraps WhisperExecutor.
@@ -48,6 +46,10 @@ const MAX_SEGMENT_DURATION_MS=29000; // cap at 29s for Whisper's 30s window
 const SPEECH_PAD_MS=400; // WhisperX: 0.2s each side → 400ms total
 const MIN_SILENCE_MS=100;
 const MIN_SPEECH_MS=250;
+
+type WhisperDecoderInitLogitsContext = Parameters<
+  NonNullable<WhisperSeq2SeqTranscriptionOptions['onDecoderInitLogits']>
+>[1];
 
 // ---------------------------------------------------------------------------
 // EnhancedWhisperExecutor
@@ -161,7 +163,10 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
           async (_temp) => {
             const collectedLogits: Float32Array[] = [];
             const collectedTokens: number[] = [];
+            let decoderInitLogits: Float32Array | undefined;
+            let decoderInitNoSpeechTokenId: number | undefined;
             const callerOnTokenLogits = chunkOpts.onTokenLogits;
+            const callerOnDecoderInitLogits = chunkOpts.onDecoderInitLogits;
             const optsWithLogits = {
               ...chunkOpts,
               temperature: _temp,
@@ -170,9 +175,23 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
                 collectedTokens.push(tokenId);
                 callerOnTokenLogits?.(tokenId, logits, _ctx);
               },
+              onDecoderInitLogits: (rawLogits: Float32Array, initCtx: WhisperDecoderInitLogitsContext) => {
+                decoderInitLogits = new Float32Array(rawLogits);
+                decoderInitNoSpeechTokenId = initCtx.noSpeechTokenId;
+                callerOnDecoderInitLogits?.(rawLogits, initCtx);
+              },
             };
             const r = await this.vanilla.transcribe(chunk, optsWithLogits as any, context);
-            return { result: r, text: r.utteranceText, tokens: collectedTokens, logits: collectedLogits, vocabSize: 51865 };
+            return {
+              result: r,
+              text: r.utteranceText,
+              tokens: collectedTokens,
+              logits: collectedLogits,
+              vocabSize: 51865,
+              qualityContext: decoderInitLogits
+                ? { noSpeechLogits: decoderInitLogits, noSpeechTokenId: decoderInitNoSpeechTokenId }
+                : undefined,
+            };
           },
           gates,
           temps,
@@ -251,7 +270,10 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
         // Collect logits from the vanilla executor via onTokenLogits callback
         const collectedLogits: Float32Array[] = [];
         const collectedTokens: number[] = [];
+        let decoderInitLogits: Float32Array | undefined;
+        let decoderInitNoSpeechTokenId: number | undefined;
         const callerOnTokenLogits = options.onTokenLogits;
+        const callerOnDecoderInitLogits = options.onDecoderInitLogits;
         const optsWithLogits = {
           ...options,
           temperature: _temp,
@@ -259,6 +281,11 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
             collectedLogits.push(new Float32Array(logits)); // snapshot
             collectedTokens.push(tokenId);
             callerOnTokenLogits?.(tokenId, logits, _ctx);
+          },
+          onDecoderInitLogits: (rawLogits: Float32Array, initCtx: WhisperDecoderInitLogitsContext) => {
+            decoderInitLogits = new Float32Array(rawLogits);
+            decoderInitNoSpeechTokenId = initCtx.noSpeechTokenId;
+            callerOnDecoderInitLogits?.(rawLogits, initCtx);
           },
         };
         const r = await this.vanilla.transcribe(audio, optsWithLogits as any, context);
@@ -268,6 +295,9 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
           tokens: collectedTokens,
           logits: collectedLogits,
           vocabSize: 51865,
+          qualityContext: decoderInitLogits
+            ? { noSpeechLogits: decoderInitLogits, noSpeechTokenId: decoderInitNoSpeechTokenId }
+            : undefined,
         };
       },
       gates,

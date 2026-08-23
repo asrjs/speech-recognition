@@ -194,6 +194,19 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
     ctx: { readonly tokens: readonly number[]; readonly beginIndex: number },
   ) => void;
   /**
+   * Optional raw logits callback for Whisper's first decoder position.
+   * Fired before timestamp/suppression processing, once per decode attempt.
+   */
+  readonly onDecoderInitLogits?: (
+    rawLogits: Float32Array,
+    ctx: {
+      readonly tokens: readonly number[];
+      readonly beginIndex: number;
+      readonly vocabSize: number;
+      readonly noSpeechTokenId?: number;
+    },
+  ) => void;
+  /**
    * Extra tokens to append after the standard prompt.
    * Used by EnhancedWhisperExecutor for condition_on_previous_text.
    * Format: [<|0.00|>, ...previous_tokens]

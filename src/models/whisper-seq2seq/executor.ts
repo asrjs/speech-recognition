@@ -537,6 +537,16 @@ export async function splitGraphDecodeLoop(params: {
   runStepBatch?: SplitGraphDecodeCallbacks['runStepBatch'];
   processLogits?: (logits: Float32Array, generatedTokens: readonly number[], beginIndex: number) => void;
   onTokenLogits?: (chosenTokenId: number, processedLogits: Float32Array, ctx: { readonly tokens: readonly number[]; readonly beginIndex: number }) => void;
+  onDecoderInitLogits?: (
+    rawLogits: Float32Array,
+    ctx: {
+      readonly tokens: readonly number[];
+      readonly beginIndex: number;
+      readonly vocabSize: number;
+      readonly noSpeechTokenId?: number;
+    },
+  ) => void;
+  noSpeechTokenId?: number;
   /** Beam search: number of beams (default: 1 = greedy) */
   numBeams?: number;
   /** Final ranking penalty. Undefined uses length normalization; 0 uses raw score. */
@@ -561,6 +571,8 @@ export async function splitGraphDecodeLoop(params: {
     runStepBatch,
     processLogits,
     onTokenLogits,
+    onDecoderInitLogits,
+    noSpeechTokenId,
     numBeams,
     lengthPenalty,
     patience,
@@ -576,7 +588,15 @@ export async function splitGraphDecodeLoop(params: {
     ...(runStepBatch ? { runStepBatch: async (tids, kvs) => runStepBatch(tids, kvs) } : {}),
   };
   const result = await whisperDecode(session, {
-    promptTokens, encoderOutput: encoderHiddenStates, encoderDims, eosTokenId, maxNewTokens, processLogits, onTokenLogits,
+    promptTokens,
+    encoderOutput: encoderHiddenStates,
+    encoderDims,
+    eosTokenId,
+    maxNewTokens,
+    processLogits,
+    onTokenLogits,
+    onDecoderInitLogits,
+    noSpeechTokenId,
     strategy: (numBeams ?? 1) > 1 ? 'beam' : 'greedy',
     beamSize: numBeams ?? 1,
     lengthPenalty,
@@ -1615,6 +1635,9 @@ export class WhisperOnnxExecutor {
 
     // 4. Decode loop (greedy by default, beam search when numBeams > 1)
     const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
+    const noSpeechTokenId = loaded.generationConfig.noSpeechTokenId
+      ?? tokenizer.getTokenId('<|nospeech|>')
+      ?? 50362;
     const maxNewTokens = options.maxNewTokens ?? this.config.maxTargetPositions ?? 448;
     const numBeams = Math.max(1, Math.floor(options.numBeams ?? 1));
     const lengthPenalty = options.lengthPenalty ?? 0;
@@ -1647,6 +1670,14 @@ export class WhisperOnnxExecutor {
           step === 0,
         );
         pastKeyValues = result.pastKeyValues;
+        if (step === 0) {
+          options.onDecoderInitLogits?.(new Float32Array(result.lastLogits), {
+            tokens: promptTokens,
+            beginIndex: promptTokens.length,
+            vocabSize: result.vocabSize,
+            noSpeechTokenId,
+          });
+        }
         timestampProcessor.process(result.lastLogits, generatedTokens, promptTokens.length);
         const nextTokenId = argmax(result.lastLogits);
         generatedTokens.push(nextTokenId);
@@ -1693,6 +1724,14 @@ export class WhisperOnnxExecutor {
             beam.payload?.pastKeyValues ?? {},
             step === 0,
           );
+          if (step === 0) {
+            options.onDecoderInitLogits?.(new Float32Array(result.lastLogits), {
+              tokens: promptTokens,
+              beginIndex: promptTokens.length,
+              vocabSize: result.vocabSize,
+              noSpeechTokenId,
+            });
+          }
           timestampProcessor.process(result.lastLogits, beam.tokens, promptTokens.length);
           logitsByBeam.push(result.lastLogits);
           nextPastByBeam.set(beam, result.pastKeyValues);
@@ -1917,6 +1956,8 @@ export class WhisperOnnxExecutor {
     readonly maxNewTokens: number;
     readonly processLogits?: (logits: Float32Array, generatedTokens: readonly number[], beginIndex: number) => void;
     readonly onTokenLogits?: WhisperSeq2SeqTranscriptionOptions['onTokenLogits'];
+    readonly onDecoderInitLogits?: WhisperSeq2SeqTranscriptionOptions['onDecoderInitLogits'];
+    readonly noSpeechTokenId?: number;
     readonly onInitTiming?: (timings: DecoderSessionTiming, elapsedMs: number) => void;
     readonly onStepTiming?: (timings: DecoderSessionTiming, elapsedMs: number) => void;
   }): Promise<SplitGraphDecodeResult> {
@@ -1928,6 +1969,8 @@ export class WhisperOnnxExecutor {
       maxNewTokens,
       processLogits,
       onTokenLogits,
+      onDecoderInitLogits,
+      noSpeechTokenId,
       onInitTiming,
       onStepTiming,
     } = params;
@@ -1938,6 +1981,12 @@ export class WhisperOnnxExecutor {
 
     const vocabSize = init.vocabSize;
     const firstLogits = init.logits.subarray(init.logits.length - vocabSize);
+    onDecoderInitLogits?.(new Float32Array(firstLogits), {
+      tokens: promptTokens,
+      beginIndex: promptTokens.length,
+      vocabSize,
+      noSpeechTokenId,
+    });
     processLogits?.(firstLogits, promptTokens, promptTokens.length);
 
     const firstTokenId = argmax(firstLogits);
@@ -2186,6 +2235,9 @@ export class WhisperOnnxExecutor {
 
     // 4. Run 4-graph decode loop
     const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
+    const noSpeechTokenId = loaded.generationConfig.noSpeechTokenId
+      ?? tokenizer.getTokenId('<|nospeech|>')
+      ?? 50362;
     const maxNewTokens = options.maxNewTokens ?? this.config.maxTargetPositions ?? 448;
 
     // Greedy or beam search supported via splitgraph
@@ -2265,6 +2317,8 @@ export class WhisperOnnxExecutor {
           maxNewTokens,
           processLogits: processSplitGraphLogits,
           onTokenLogits: options.onTokenLogits,
+          onDecoderInitLogits: options.onDecoderInitLogits,
+          noSpeechTokenId,
           onInitTiming: (timings, elapsedMs) => {
             decoderInitMs += elapsedMs;
             decoderInitInputMs += timings.inputMs;
@@ -2296,6 +2350,8 @@ export class WhisperOnnxExecutor {
           modelConfig: loaded.modelConfig,
           processLogits: processSplitGraphLogits,
           onTokenLogits: options.onTokenLogits,
+          onDecoderInitLogits: options.onDecoderInitLogits,
+          noSpeechTokenId,
           numBeams: requestedNumBeams,
           lengthPenalty: options.lengthPenalty,
           patience: options.patience ?? 1,

@@ -1,6 +1,6 @@
 # Whisper WebGPU Completion Plan
 
-Updated: 2026-08-23
+Updated: 2026-08-23 (healthy GPU rerun and raw no-speech provenance)
 Branch: `feat/whisper-cleanup-beam-temperature`
 
 ## Direction
@@ -93,6 +93,21 @@ complete.
 - A locally cached `openai/whisper-large-v3-turbo` reference on the JFK fixture
   now matches the fp32 splitgraph path exactly: 31/31 normalized tokens and
   identical text for both exported Python mel and the TypeScript WAV frontend.
+- Raw decoder-init logits are now exposed before suppression through the core,
+  splitgraph, GPU-KV, and merged-decoder paths. The enhanced quality wrapper
+  passes that vector and the model-resolved no-speech token into its gates.
+
+## Healthy GPU Rerun
+
+After the workstation restart, the existing WebGPU harness again exposed the
+NVIDIA Blackwell adapter with `shader-f16`. The active artifact was the custom
+`ysdede/whisper-large-v3-turbo-onnx-4graph` splitgraph, using the `fp16_iofp32`
+encoder and `fp16` decoder directories. A warmed 30-second JFK measurement
+reached `22.76x` RTFx without GPU tensor downloads; the profiled drain variant
+reported `22.27x`. This confirms the earlier ~8x result was a degraded GPU
+state, not a decoder code regression. Historical best-case runs remain around
+`26-28x`, so the next speed work should use repeated warmed runs rather than a
+single cold-tab result.
 
 ## Priority Plan
 
@@ -214,12 +229,16 @@ Goal: keep valuable extras, skip low-yield knobs.
 
 ### P5: Quality Metrics From The Correct Decoder Positions
 
-Status: identified as the next compatibility blocker.
+Status: raw no-speech provenance implemented; selected-beam metrics and fixture
+acceptance remain pending.
 
-- Capture no-speech probability from the raw decoder-init logits at the SOT
+- [x] Capture no-speech probability from the raw decoder-init logits at the SOT
   position, before suppression, using the model's configured no-speech token.
-- Do not infer no-speech from the processed next-token distribution or from a
-  hard-coded token ID.
+- [x] Keep the compatibility fallback for direct generic gate callers while
+  resolving the actual token from generation config or the tokenizer in the
+  Whisper executor.
+- [x] Thread raw init logits through greedy, beam-init, GPU-KV, and merged
+  decoder paths without changing the default fast path when no callback is set.
 - Define selected-beam quality metrics without retaining every full-vocabulary
   tensor for every hypothesis.
 - Add fixture gates proving compression/logprob rejection and temperature

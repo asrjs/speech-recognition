@@ -11,7 +11,7 @@
  * Generic — no model coupling. Works with any transcribe function.
  */
 
-import type { QualityGate, QualityGateResult } from './types.js';
+import type { QualityGate, QualityGateContext, QualityGateResult } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -36,6 +36,7 @@ export interface TranscribeAttempt<T> {
   tokens: readonly number[];
   logits: readonly Float32Array[];
   vocabSize: number;
+  qualityContext?: QualityGateContext;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +59,13 @@ export async function withTemperatureFallback<T>(
 
     const verdicts: QualityGateResult[] = [];
     for (const gate of gates) {
-      const result = gate(attempt.text, attempt.tokens, attempt.logits, attempt.vocabSize);
+      const result = gate(
+        attempt.text,
+        attempt.tokens,
+        attempt.logits,
+        attempt.vocabSize,
+        attempt.qualityContext,
+      );
       verdicts.push(result);
       if (result.verdict !== 'accept') break;
     }

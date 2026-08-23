@@ -113,6 +113,18 @@ export interface WhisperDecodeOptions {
     processedLogits: Float32Array,
     ctx: { readonly tokens: readonly number[]; readonly beginIndex: number },
   ) => void;
+  /** Raw decoder-init logits callback, before model-specific logit processing. */
+  readonly onDecoderInitLogits?: (
+    rawLogits: Float32Array,
+    ctx: {
+      readonly tokens: readonly number[];
+      readonly beginIndex: number;
+      readonly vocabSize: number;
+      readonly noSpeechTokenId?: number;
+    },
+  ) => void;
+  /** Model-specific no-speech token used by the raw init-logit callback. */
+  readonly noSpeechTokenId?: number;
   /** Decoding strategy: greedy (argmax) or beam search */
   readonly strategy?: 'greedy' | 'beam';
   /** Beam size for beam search (default: 5) */
@@ -181,6 +193,8 @@ export async function whisperGreedyDecode(
     maxNewTokens,
     processLogits,
     onTokenLogits,
+    onDecoderInitLogits,
+    noSpeechTokenId,
     temperature = 0,
   } = options;
 
@@ -190,6 +204,12 @@ export async function whisperGreedyDecode(
 
   const lastLogitOffset = initResult.logits.length - vocabSize;
   const firstLogits = initResult.logits.subarray(lastLogitOffset);
+  onDecoderInitLogits?.(new Float32Array(firstLogits), {
+    tokens: promptTokens,
+    beginIndex: promptTokens.length,
+    vocabSize,
+    noSpeechTokenId,
+  });
   if (processLogits) processLogits(firstLogits, promptTokens, promptTokens.length);
   const firstTokenId = selectToken(firstLogits, temperature);
   const tokens: number[] = [firstTokenId];
@@ -231,6 +251,8 @@ export async function whisperBeamDecode(
   const {
     promptTokens, encoderOutput, encoderDims,
     eosTokenId, maxNewTokens, processLogits,
+    onDecoderInitLogits,
+    noSpeechTokenId,
     beamSize = 5,
     lengthPenalty,
     patience = 1,
@@ -246,6 +268,12 @@ export async function whisperBeamDecode(
 
   const lastLogitOffset = initResult.logits.length - vocabSize;
   const firstLogits = initResult.logits.subarray(lastLogitOffset);
+  onDecoderInitLogits?.(new Float32Array(firstLogits), {
+    tokens: promptTokens,
+    beginIndex: promptTokens.length,
+    vocabSize,
+    noSpeechTokenId,
+  });
   if (processLogits) processLogits(firstLogits, promptTokens, promptTokens.length);
 
   const normalizedPatience = Number.isFinite(patience) && patience > 0 ? patience : 1;

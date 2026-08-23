@@ -16,6 +16,7 @@
 export type {
   QualityVerdict,
   QualityGate,
+  QualityGateContext,
   QualityGateResult,
   SegmentQualityMetrics,
 } from './types.js';
@@ -40,11 +41,12 @@ export function evaluateGates(
   logits: readonly Float32Array[],
   vocabSize: number,
   gates: readonly import('./types.js').QualityGate[],
+  context?: import('./types.js').QualityGateContext,
 ): import('./types.js').QualityGateResult {
   let lastResult: import('./types.js').QualityGateResult = { verdict: 'accept' };
 
   for (const gate of gates) {
-    const result = gate(text, tokens, logits, vocabSize);
+    const result = gate(text, tokens, logits, vocabSize, context);
     if (result.verdict !== 'accept') {
       return result;
     }

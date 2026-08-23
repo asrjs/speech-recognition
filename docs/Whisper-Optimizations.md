@@ -1010,3 +1010,33 @@ Batched beam therefore halved ORT calls and improved paired decode time by
 reported `9.1304` RTFx, and kept GPU tensor downloads at zero. These absolute
 numbers are a new-run observation, not a replacement for the faster historical
 warm baseline; use paired measurements for optimization claims.
+
+## Healthy GPU rerun and quality provenance - 2026-08-23
+
+The workstation restart restored the healthy NVIDIA WebGPU adapter. The active
+browser target is the custom `ysdede/whisper-large-v3-turbo-onnx-4graph` repo,
+not the merged `onnx-community/*` decoder family. Its production preset uses
+the `fp16_iofp32` encoder and `fp16` decoder. A warmed headless Chrome run on
+the 10-second JFK fixture measured `863.540ms` total and `11.7391x` RTFx. The
+30-second fixture measured `1328.070ms` total and `22.7617x` RTFx; a profiling
+run with explicit encoder queue drain measured `1357.655ms` and `22.2738x`.
+Both 30-second runs had 49 decoder steps, zero GPU tensor downloads, and the
+GPU-KV cache remained on `gpu-buffer`. The drain is a metric-attribution flag,
+not a production setting.
+
+ONNX inspection of the active files confirmed genuine FP16 weights: 487
+`FLOAT16` encoder initializers, 101 decoder-init initializers, and 88
+decoder-step initializers. Decoder logits/KV interfaces are FP16 while the mel
+input remains FP32.
+
+The earlier `~8x` measurement was correctly classified as degraded GPU state.
+The historical `25-28x` results remain a best-case target, while `22-23x` is
+the current healthy rerun evidence. Longer clips are the right throughput test
+because fixed preprocessing, encoder, and decoder-init costs are amortized.
+
+The next compatibility implementation also landed here: Whisper no-speech
+probability now comes from a copied raw decoder-init logit vector before
+suppression, with the no-speech token resolved from generation config or the
+tokenizer. Generic quality-gate callers retain `50362` as a compatibility
+fallback. Selected-beam logprob/entropy collection remains pending until it
+can be implemented without retaining full-vocabulary logits for every beam.

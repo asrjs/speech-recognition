@@ -15,9 +15,23 @@ export type QualityVerdict = 'accept' | 'reject' | 'no_speech';
 // Quality Gate
 // ---------------------------------------------------------------------------
 
+/** Context from the model runtime for quality checks that need raw logits. */
+export interface QualityGateContext {
+  /** Raw decoder-init logits used by Whisper's no-speech test. */
+  readonly noSpeechLogits?: Float32Array | readonly number[];
+  /** Model-specific no-speech token ID. */
+  readonly noSpeechTokenId?: number;
+}
+
 /** A quality gate function — evaluates a decode result. */
 export interface QualityGate {
-  (text: string, tokens: readonly number[], logits: readonly Float32Array[], vocabSize: number): QualityGateResult;
+  (
+    text: string,
+    tokens: readonly number[],
+    logits: readonly Float32Array[],
+    vocabSize: number,
+    context?: QualityGateContext,
+  ): QualityGateResult;
 }
 
 /** Result of running one or more quality gates on a decode result. */

@@ -83,6 +83,41 @@ CPU. No inference error occurred.
   `experimentalBatchedBeam` is true and the model accepts batch-shaped step
   inputs.
 
+### Healthy GPU rerun after workstation restart - 2026-08-23
+
+The same headless Chrome harness was rerun after the workstation GPU restart.
+It reported `navigator.gpu=true`, `crossOriginIsolated=true`, NVIDIA vendor,
+Blackwell architecture, and `shader-f16`. The active model was the custom
+`ysdede/whisper-large-v3-turbo-onnx-4graph` splitgraph, with `fp16_iofp32`
+encoder weights and `fp16` decoder weights. This is the target model for the
+WebGPU speed path; `onnx-community/*` merged decoders are secondary
+compatibility paths.
+
+ONNX graph inspection confirms these are real FP16 artifacts, not naming-only
+aliases: the active encoder contains 487 `FLOAT16` initializers, decoder-init
+contains 101, and decoder-step contains 88. Decoder logits/KV interfaces are
+also `FLOAT16`; the mel input remains `FLOAT32` for the feature processor.
+
+Warmup model/session creation was excluded from the measurements. The measured
+JFK transcripts were coherent and stable, used `gpu-buffer` KV storage, and
+reported zero GPU tensor downloads:
+
+| Fixture / mode | Total | Prep | Encoder | Decoder init | Decoder steps | Steps | RTFx |
+| -------------- | ----: | ---: | ------: | -----------: | ------------: | ----: | ----: |
+| 10s, warmed | `863.540ms` | `43.375ms` | `199.595ms` | `216.890ms` | `370.660ms` | `18` | `11.7391` |
+| 30s, warmed | `1328.070ms` | `113.760ms` | `199.625ms` | `219.505ms` | `754.945ms` | `49` | `22.7617` |
+| 30s, profiling drain | `1357.655ms` | `94.925ms` | `405.810ms`* | `20.470ms` | `795.010ms` | `49` | `22.2738` |
+
+`*` The drain row includes `208.955ms` of explicit encoder queue drain. That
+flag is for metric attribution only and is not enabled in the production fast
+path. The 30-second warmed run reported decoder-step p50 `15.365ms`, p95
+`18.470ms`, and zero GPU downloads.
+
+This restores the expected throughput range: `22-23x` is reproducible on the
+current healthy run, while the older `26-28x` numbers are best-case historical
+observations. The earlier post-restart `~8x` run and a temporary fixed-`K=1`
+probe were correctly discarded as degraded-GPU diagnostics, not code baselines.
+
 ## Local Verification Already Run
 
 Current resume-pass gates:

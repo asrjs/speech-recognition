@@ -111,6 +111,20 @@ describe('noSpeechGate', () => {
     const result = gate('', [50362, 42], [firstLogits, genLogits], vocabSize);
     expect(result.verdict).toBe('no_speech');
   });
+
+  it('uses raw decoder-init logits and a model-provided token ID', () => {
+    const processedFirst = new Float32Array(16);
+    processedFirst[1] = 10.0;
+    const rawInit = new Float32Array(16);
+    rawInit[7] = 12.0;
+    const result = gate('', [1, 2], [processedFirst, uniformLogits(16)], 16, {
+      noSpeechLogits: rawInit,
+      noSpeechTokenId: 7,
+    });
+
+    expect(result.verdict).toBe('no_speech');
+    expect(result.noSpeechProb!).toBeGreaterThan(0.6);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -179,5 +193,33 @@ describe('evaluateGates', () => {
 
   it('accepts empty gates', () => {
     expect(evaluateGates('', [], [], 100, []).verdict).toBe('accept');
+  });
+});
+
+describe('withTemperatureFallback quality context', () => {
+  it('forwards raw-logit context to each gate', async () => {
+    const context = {
+      noSpeechLogits: new Float32Array([0, 1]),
+      noSpeechTokenId: 1,
+    };
+    let received: unknown;
+    const gate: QualityGate = (_text, _tokens, _logits, _vocabSize, qualityContext) => {
+      received = qualityContext;
+      return { verdict: 'accept' };
+    };
+
+    await withTemperatureFallback(
+      async () => ({
+        result: { text: 'hello' },
+        text: 'hello',
+        tokens: [1],
+        logits: [new Float32Array([0, 1])],
+        vocabSize: 2,
+        qualityContext: context,
+      }),
+      [gate],
+    );
+
+    expect(received).toBe(context);
   });
 });

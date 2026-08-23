@@ -58,10 +58,14 @@ const baseOptions = {
 
 describe('whisperBeamDecode integration', () => {
   it('produces a token sequence ending in EOS', async () => {
+    let initLogitCalls = 0;
     const result = await whisperBeamDecode(makeEosSession(2), {
       ...baseOptions,
       beamSize: 2,
       patience: 1,
+      onDecoderInitLogits: () => {
+        initLogitCalls++;
+      },
     });
 
     expect(result.tokens.length).toBeGreaterThan(0);
@@ -70,6 +74,7 @@ describe('whisperBeamDecode integration', () => {
     expect(result.tokens).toEqual([2, 3, EOS_TOKEN_ID]);
     expect(result.score).toBeTypeOf('number');
     expect(result.score).toBeLessThanOrEqual(0);
+    expect(initLogitCalls).toBe(1);
   });
 
   it('returns the same greedy path when beamSize is 1', async () => {
@@ -99,6 +104,26 @@ describe('whisperBeamDecode integration', () => {
     const result = await whisperDecode(makeMockSession(), baseOptions);
 
     expect(result.tokens).toEqual([2, 3, 3, 3, 3, 3, 3, 3]);
+  });
+
+  it('reports raw decoder-init logits before logit processing', async () => {
+    let captured: Float32Array | undefined;
+    let capturedNoSpeechTokenId: number | undefined;
+    await whisperGreedyDecode(makeMockSession(), {
+      ...baseOptions,
+      maxNewTokens: 1,
+      noSpeechTokenId: 7,
+      processLogits: (logits) => {
+        logits[2] = -100;
+      },
+      onDecoderInitLogits: (rawLogits, ctx) => {
+        captured = rawLogits;
+        capturedNoSpeechTokenId = ctx.noSpeechTokenId;
+      },
+    });
+
+    expect(captured?.[2]).toBe(8);
+    expect(capturedNoSpeechTokenId).toBe(7);
   });
 
   it('ignores bestOf when temperature is zero', async () => {
