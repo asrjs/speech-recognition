@@ -1,7 +1,7 @@
 # Agent Task Coordination
 
-Branch: `feat/whisper-cleanup-beam-temperature`
-Updated: 2026-08-25 (causal split-graph alignment and boundary benchmark)
+Branch: `feat/whisper-webgpu-artifact-boundaries`
+Updated: 2026-08-25 (causal alignment artifact gate, FP16 export, and beam-cache benchmark)
 
 ## POST-RESTART VALIDATION (2026-08-23)
 
@@ -212,6 +212,22 @@ Step 5: Token-by-token → first 5 tokens match fp32 baseline
 
 ## COMPLETED TASKS (this session)
 
+### Whisper continuation boundary closure
+
+- [x] Add `alignment_export.causal_self_attention` manifest metadata and make
+  legacy split-graph artifacts warn and fall back to generated timestamp
+  interpolation instead of claiming verified word alignment.
+- [x] Share immutable parent KV-cache objects during stable beam expansion;
+  decoder adapters retain ownership of cloning/repacking.
+- [x] Make the exporter compatible with Transformers 4.41 legacy cache tuples,
+  local model-snapshot paths, and true `--external-data always` output.
+- [x] Re-export the local FP16 4-graph artifact at
+  `N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r2`; all graphs pass
+  ONNX checker and CPU ORT load, and the exact external-data alignment graph
+  passes the browser WebGPU timestamp harness with first word `2.42s`.
+- [x] Re-measure warmed 29.904s English beam 2: stable `3.1242x` RTFx and
+  batched `3.8094x` RTFx, with exact stable/batched text parity.
+
 ### WebGPU Pipeline Fixes
 
 - [x] `begin_suppress_tokens [220, 50257]` — EOS blocked at step 0, text token selected
@@ -347,8 +363,11 @@ hallucinations and recovers with higher temperature.
   reference fixture; the first-word anchor now matches within normal DTW
   variation instead of starting at zero.
 - [x] Fix the systematic leading-boundary error in the runtime postprocessor
-  and alignment export. Re-export the published precision variants before
-  claiming remote-artifact parity.
+  and alignment export.
+- [x] Re-export and validate a complete local FP16 precision variant with
+  causal alignment and external-data metadata.
+- [ ] Re-export the published precision variants and validate the remote
+  preset; no model-hosting update has been performed.
 - Validate that word timestamps work with both splitgraph and merged-decoder paths.
 - Timestamp-token processing now includes `<|notimestamps|>` suppression and
   the aggregate timestamp-probability rule; retain focused tests for both.

@@ -10,6 +10,14 @@ export interface ParsedWhisperManifest {
   readonly modelConfig: WhisperModelConfig;
   readonly format: string;
   readonly modelId: string;
+  readonly alignmentExport?: WhisperAlignmentExportMetadata;
+}
+
+/** Export-time guarantees for the optional split-graph alignment decoder. */
+export interface WhisperAlignmentExportMetadata {
+  readonly causalSelfAttention: boolean;
+  readonly encoderHiddenStateDtype?: string;
+  readonly attentionImplementation?: string;
 }
 
 export function parseWhisperManifest(raw: Record<string, unknown>): ParsedWhisperManifest {
@@ -45,5 +53,28 @@ export function parseWhisperManifest(raw: Record<string, unknown>): ParsedWhispe
     max_length: raw.max_target_positions,
   });
 
-  return { generationConfig, modelConfig, format, modelId };
+  const rawAlignmentExport = raw.alignment_export;
+  const alignmentExport = rawAlignmentExport && typeof rawAlignmentExport === 'object'
+    ? (() => {
+        const value = rawAlignmentExport as Record<string, unknown>;
+        if (typeof value.causal_self_attention !== 'boolean') return undefined;
+        return {
+          causalSelfAttention: value.causal_self_attention,
+          ...(typeof value.encoder_hidden_state_dtype === 'string'
+            ? { encoderHiddenStateDtype: value.encoder_hidden_state_dtype }
+            : {}),
+          ...(typeof value.attention_implementation === 'string'
+            ? { attentionImplementation: value.attention_implementation }
+            : {}),
+        } satisfies WhisperAlignmentExportMetadata;
+      })()
+    : undefined;
+
+  return {
+    generationConfig,
+    modelConfig,
+    format,
+    modelId,
+    ...(alignmentExport ? { alignmentExport } : {}),
+  };
 }

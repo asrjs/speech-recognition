@@ -26,11 +26,16 @@ export interface WhisperCoreSession {
     encoderDims: readonly number[],
   ): Promise<WhisperInitResult>;
 
+  /**
+   * Implementations must treat pastKv as read-only. Backend adapters may
+   * clone/repack it while constructing their next decoder input.
+   */
   runStep(
     tokenId: number,
     pastKv: WhisperKvCache,
   ): Promise<WhisperStepResult>;
 
+  /** The same read-only cache contract applies to every batched input. */
   runStepBatch?(
     tokenIds: readonly number[],
     pastKvs: readonly WhisperKvCache[],
@@ -392,7 +397,11 @@ export async function whisperBeamDecode(
       expansion.finished,
       maxFinishedCandidates,
     );
-    beamKvs = expansion.parentIndexes.map((parentIndex) => cloneWhisperKvCache(beamKvs[parentIndex]!));
+    // Decoder sessions treat the cache as read-only and clone/repack it while
+    // building their next input tensors. Sibling hypotheses can therefore
+    // share the parent's immutable cache; cloning every layer here duplicated
+    // the full KV payload after every beam expansion.
+    beamKvs = expansion.parentIndexes.map((parentIndex) => beamKvs[parentIndex]!);
     beams = expansion.active;
   }
 

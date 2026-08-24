@@ -58,6 +58,7 @@ import {
   type WhisperGenerationConfig,
   type WhisperModelConfig,
 } from './generation-config.js';
+import { parseWhisperManifest } from './manifest.js';
 import type {
   WhisperArtifactSource,
   WhisperNativeSegment,
@@ -101,6 +102,8 @@ interface LoadedExecutorState {
   readonly decoderStepSession?: OrtSessionLike;
   readonly decoderAlignSession?: OrtSessionLike;
   readonly decoderAlignUrl?: string;
+  /** True only when manifest metadata proves decoder_align is causal. */
+  readonly decoderAlignCausalSelfAttention?: boolean;
   readonly enableProfiling?: boolean;
   readonly decoderAlignExternalData?: { readonly dataUrl: string; readonly path: string };
   readonly decoderBackendForOrt?: string;
@@ -1014,6 +1017,9 @@ export class WhisperOnnxExecutor {
       const decoderAlignUrl =
         (await resolveRemoteUrl(resolved.decoderAlignUrl, 'decoder_align.onnx')) ??
         resolved.decoderAlignUrl;
+      const manifestUrl =
+        (await resolveRemoteUrl(resolved.manifestUrl, 'manifest.json')) ??
+        resolved.manifestUrl;
 
       return {
         ...resolved,
@@ -1028,6 +1034,7 @@ export class WhisperOnnxExecutor {
         decoderInitUrl,
         decoderStepUrl,
         decoderAlignUrl,
+        manifestUrl,
         externalData:
           Object.keys(materializedExternalData).length > 0
             ? materializedExternalData
@@ -1124,7 +1131,7 @@ export class WhisperOnnxExecutor {
     });
 
     const tokenizer = await WhisperTokenizer.fromUrl(artifacts.tokenizerUrl);
-    const warnings = [...resolved.warnings];
+    const warnings: TranscriptWarning[] = [...resolved.warnings];
 
     // Time session creation
     const sessionStart = nowMs();
@@ -1160,6 +1167,17 @@ export class WhisperOnnxExecutor {
 
     const genConfig = await this.loadGenerationConfig(artifacts);
     const modelConfig = await this.loadModelConfig(artifacts);
+    const decoderAlignCausalSelfAttention = await this.loadDecoderAlignCausalSelfAttention(
+      resolved.manifestUrl,
+    );
+    if (resolved.decoderAlignUrl && decoderAlignCausalSelfAttention === false) {
+      warnings.push({
+        code: 'whisper.decoder-align-legacy',
+        message:
+          'decoder_align is missing the causal-self-attention export marker; using generated timestamp interpolation until the artifact is re-exported.',
+        recoverable: true,
+      });
+    }
 
     let decoderInitSession: OrtSessionLike | undefined;
     let decoderStepSession: OrtSessionLike | undefined;
@@ -1202,6 +1220,7 @@ export class WhisperOnnxExecutor {
       generationConfig: genConfig, modelConfig, warnings,
       isSplitGraph, decoderInitSession, decoderStepSession, decoderAlignSession,
       decoderAlignUrl: resolved.decoderAlignUrl,
+      decoderAlignCausalSelfAttention,
       enableProfiling: resolved.enableProfiling,
       decoderAlignExternalData: resolved.externalData?.decoder_align?.[0]
         ? {
@@ -1460,6 +1479,7 @@ export class WhisperOnnxExecutor {
     language: string,
     options: WhisperSeq2SeqTranscriptionOptions,
     audioDurationSeconds?: number,
+    warnings?: TranscriptWarning[],
   ): Promise<WhisperNativeTranscript['words']> {
     const { tokenIds: textTokenIds, rowIndices } = collectSplitGraphTextTokenRows(
       allTokens,
@@ -1468,9 +1488,34 @@ export class WhisperOnnxExecutor {
     );
     if (textTokenIds.length === 0) return [];
 
+    // Older published 4-graph artifacts used an unmasked teacher-forced
+    // decoder_align graph. Running it in WebGPU is both unsafe (future-token
+    // leakage) and numerically unreliable for the old fp16 export, so keep
+    // generated timestamp semantics until the artifact is re-exported.
+    if (loaded.decoderAlignCausalSelfAttention === false) {
+      warnings?.push({
+        code: 'whisper.decoder-align-legacy-fallback',
+        message:
+          'Legacy decoder_align cannot provide verified WebGPU word alignment; using generated timestamp interpolation until the artifact is re-exported.',
+        recoverable: true,
+      });
+      return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
+        timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
+        timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
+        language,
+      });
+    }
+
     try {
       const decoderAlignSession = await this.ensureDecoderAlignSession(loaded);
-      if (!decoderAlignSession) return [];
+      if (!decoderAlignSession) {
+        warnings?.push({
+          code: 'whisper.decoder-align-unavailable',
+          message: 'decoder_align is unavailable; using generated timestamp interpolation.',
+          recoverable: true,
+        });
+        return [];
+      }
       const encoderForAlign = await this.materializeCpuEncoderHiddenStates(
         loaded,
         encoderHiddenStates,
@@ -1521,7 +1566,14 @@ export class WhisperOnnxExecutor {
         dtwTimestamps,
         { language },
       );
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message) {
+        warnings?.push({
+          code: 'whisper.decoder-align-fallback',
+          message: `Whisper decoder alignment failed; using generated timestamp interpolation (${error.message}).`,
+          recoverable: true,
+        });
+      }
       return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
         timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
         timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
@@ -1708,6 +1760,20 @@ export class WhisperOnnxExecutor {
       return parseWhisperGenerationConfig(json);
     } catch {
       return parseWhisperGenerationConfig({});
+    }
+  }
+
+  private async loadDecoderAlignCausalSelfAttention(
+    manifestUrl: string | undefined,
+  ): Promise<boolean | undefined> {
+    if (!manifestUrl) return undefined;
+    try {
+      const raw = JSON.parse(await fetchText(manifestUrl)) as Record<string, unknown>;
+      return parseWhisperManifest(raw).alignmentExport?.causalSelfAttention === true;
+    } catch {
+      // A custom source may omit the optional manifest or use an older schema.
+      // Keep the existing alignment path when metadata cannot be inspected.
+      return undefined;
     }
   }
 
@@ -3163,6 +3229,7 @@ export class WhisperOnnxExecutor {
           language,
           options,
           audio.durationSeconds,
+          warnings,
         )
       : [];
     const words = this.shouldReturnWordTimestamps(options)

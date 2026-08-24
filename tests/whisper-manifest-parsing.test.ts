@@ -57,6 +57,27 @@ describe('Whisper manifest parsing (whisper-browser-self-export-v1)', () => {
     expect(genConfig.noTimestampsTokenId).toBe(50363);
   });
 
+  it('parses the causal alignment export marker', () => {
+    const parsed = parseWhisperManifest({
+      ...baseManifest,
+      alignment_export: {
+        causal_self_attention: true,
+        encoder_hidden_state_dtype: 'float32',
+        attention_implementation: 'eager',
+      },
+    });
+
+    expect(parsed.alignmentExport).toEqual({
+      causalSelfAttention: true,
+      encoderHiddenStateDtype: 'float32',
+      attentionImplementation: 'eager',
+    });
+  });
+
+  it('leaves legacy manifests unverified', () => {
+    expect(parseWhisperManifest(baseManifest).alignmentExport).toBeUndefined();
+  });
+
   it('parses model config from manifest', () => {
     const parsed = parseWhisperManifest(tinyManifest);
     const modelConfig = parsed.modelConfig;
