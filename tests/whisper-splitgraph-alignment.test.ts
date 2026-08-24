@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildWhisperForcedAlignmentTokenIds,
   collectSplitGraphTextTokenRows,
   extractSplitGraphAlignmentRows,
   processSplitGraphAlignment,
@@ -7,6 +8,25 @@ import {
 } from '../src/models/whisper-seq2seq/executor.js';
 
 describe('splitGraph alignment processing', () => {
+  it('builds the reference no-timestamps forced-alignment prompt', () => {
+    const ids = new Map([
+      ['<|startoftranscript|>', 50258],
+      ['<|en|>', 50259],
+      ['<|transcribe|>', 50360],
+      ['<|translate|>', 50359],
+      ['<|notimestamps|>', 50363],
+      ['<|endoftext|>', 50257],
+    ]);
+    const tokenizer = { getTokenId: (token: string) => ids.get(token) };
+
+    expect(buildWhisperForcedAlignmentTokenIds(tokenizer, 'en', [11, 12])).toEqual([
+      50258, 50259, 50360, 50363, 11, 12, 50257,
+    ]);
+    expect(buildWhisperForcedAlignmentTokenIds(tokenizer, 'en', [11], 'translate')).toEqual([
+      50258, 50259, 50359, 50363, 11, 50257,
+    ]);
+  });
+
   // Simulate a decoder_align output: [T_all=7, S=3] flat matrix
   // 7 total tokens = 4 prompt + 3 text
   const totalTokens = 7;
