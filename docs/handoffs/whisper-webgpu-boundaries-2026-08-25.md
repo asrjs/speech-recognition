@@ -29,14 +29,26 @@ Browser harness: `N:\github\asrjs\webgpu-agent-test`
   step, the active hypotheses are retried through the scalar path and the
   optimization is disabled for the rest of that decode. Wrong result counts
   still fail loudly.
+- Stable beam expansion now shares immutable parent KV-cache objects. The
+  decoder bridge owns cloning/repacking when it builds the next input, so the
+  core no longer duplicates every layer once per sibling hypothesis.
+- Split-graph manifests now carry an `alignment_export` marker. A manifest
+  without `causal_self_attention: true` is treated as a legacy alignment
+  artifact: the runtime emits recoverable warnings and uses generated
+  timestamp interpolation instead of claiming verified word alignment.
+- The exporter supports the installed Transformers 4.41 legacy cache API,
+  accepts a local model-snapshot path for tokenizer/config files, and makes
+  `--external-data always` externalize every initializer. This keeps large
+  encoder graphs browser-loadable and makes manifest external-data metadata
+  reflect the files that actually exist.
 - The GPU-KV policy guard runs before mel preprocessing and encoder inference.
   GPU-KV is still greedy argmax only; beam, `best_of`, and temperature remain
   rejected until cache cloning/reordering is proven correct.
 
 ## Validation
 
-Focused unit coverage: 28 tests passed for split-graph alignment and word
-duration handling. Typecheck and build passed.
+Focused unit coverage: 31 tests passed for manifest parsing, beam decode, and
+split-graph alignment. Typecheck and build passed.
 
 Real local runner artifacts:
 
@@ -94,6 +106,28 @@ harness artifacts were restored after validation. The published 4-graph model
 must be re-exported with the corrected exporter before this behavior is
 available from a remote preset. No model-hosting update was performed.
 
+The complete local export is at
+`N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r2`. It contains all
+four FP16 graphs, co-located `.onnx.data` files, the causal alignment marker,
+and tokenizer/config files. ONNX checker and CPU ONNX Runtime loading passed
+for every graph. Installing only its external-data `decoder_align` graph in
+the actual browser harness produced the following independent result:
+
+| Measurement | Value |
+| ----------- | -----: |
+| Warm WebGPU total | `730.51ms` |
+| RTFx | `13.695x` |
+| First word | `In 2.42–3.00s` |
+| Word count | `17` |
+| GPU KV / downloads | `gpu-buffer / 0` |
+| Warnings | none |
+
+With the restored legacy graph, the same harness emitted both
+`whisper.decoder-align-legacy` and
+`whisper.decoder-align-legacy-fallback`, and returned generated interpolation
+times. This is intentional compatibility behavior until the remote artifact
+is re-exported.
+
 ## Current performance reference
 
 Independent local faster-whisper CPU/int8 on the same 29.904s JFK fixture,
@@ -114,6 +148,18 @@ Current 10.004s WebGPU beam probes retained exact stable/batched text parity:
 | Stable beam 5 | `12318.94ms` | `0.8121x` | `85` | `18` |
 | Batched beam 5 | `10384.57ms` | `0.9634x` | `17` | `18` |
 
+After the immutable-cache sharing change, warmed 29.904s English beam 2
+repeats improved while retaining exact stable/batched text parity:
+
+| Browser mode | Total | RTFx | Decoder steps | Change vs prior reference |
+| ------------ | ----: | ---: | ------------: | -------------------------: |
+| Stable beam 2 | `9571.865ms` | `3.1242x` | `98` | `12.3%` faster |
+| Batched beam 2 | `7850.17ms` | `3.8094x` | `49` | `10.6%` faster |
+
+The run kept CPU KV for beam, zero GPU downloads, and identical generated
+text. The cache-sharing contract is therefore a measured optimization, not a
+change to beam ranking or output semantics.
+
 The 30s greedy GPU-KV repeat reached `1080.68ms` / `27.6718x`, with 49
 decoder steps and zero GPU downloads. The earlier 30s beam matrix remains the
 long-audio parity reference above; one repeat of stable beam 2 did not produce
@@ -125,7 +171,10 @@ claim.
 The corrected graph must still be regenerated for each published precision
 variant and validated on the remote model before the default preset can claim
 artifact-level timestamp parity. Merged-decoder timestamp behavior and a
-broader English/Turkish reference fixture remain open.
+broader English/Turkish reference fixture remain open. The package currently
+has FireRed VAD support but no artifact-backed FireRed ASR2 runtime, and its
+Qwen2-Audio material is documentation-only; implementing either model needs a
+specific local weight/conversion artifact plus parity fixtures.
 
 Keep `experimentalBatchedBeam` opt-in, stable CPU-KV beam as the correctness
 oracle, and GPU-KV greedy-only until broader model/reference coverage closes

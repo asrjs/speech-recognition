@@ -455,12 +455,24 @@ def to_legacy_cache(past_key_values: Any) -> LegacyCache:
 def build_encoder_decoder_cache_from_flat(
     flat: Sequence[torch.Tensor], num_layers: int
 ) -> Any:
-    """Build EncoderDecoderCache from flat [self_k, self_v, cross_k, cross_v] per layer."""
-    from transformers.cache_utils import DynamicCache, EncoderDecoderCache
+    """Build the decoder cache across Transformers 4.x cache APIs.
+
+    Transformers 4.42+ exposes ``EncoderDecoderCache``. Older 4.x Whisper
+    decoders still accept the equivalent legacy tuple directly, and do not
+    ship that class, so keep the exporter usable with both contracts.
+    """
 
     expected = num_layers * 4
     if len(flat) != expected:
         raise ValueError(f"Expected {expected} flat cache tensors, got {len(flat)}")
+
+    try:
+        from transformers.cache_utils import DynamicCache, EncoderDecoderCache
+    except ImportError:
+        return tuple(
+            tuple(flat[offset + index] for index in range(4))
+            for offset in range(0, expected, 4)
+        )
 
     self_cache = DynamicCache()
     cross_cache = DynamicCache()
@@ -925,10 +937,15 @@ def convert_int8_safe(model_dir: Path, names: list[str]):
 # ---------------------------------------------------------------------------
 
 def copy_tokenizer_files(model_id: str, output_dir: Path):
+    local_model_dir = Path(model_id)
     for filename in ["tokenizer.json", "generation_config.json", "config.json", "preprocessor_config.json"]:
         try:
-            local = hf_hub_download(model_id, filename)
-            shutil.copy(local, output_dir / filename)
+            local_path = local_model_dir / filename
+            if local_model_dir.is_dir() and local_path.exists():
+                source = local_path
+            else:
+                source = Path(hf_hub_download(model_id, filename))
+            shutil.copy(source, output_dir / filename)
             print(f"  {filename}")
         except Exception as e:
             print(f"  SKIP {filename}: {e}")
@@ -1178,8 +1195,11 @@ def export_all(
     print(f"  layers={num_layers}  heads={num_heads}  head_dim={head_dim}")
     print(f"  mel_bins={num_mel_bins}  max_source={max_source_positions}  max_target={max_target_positions}")
     print(f"  alignment_heads={alignment_heads}")
+    effective_external_data_threshold = (
+        0 if external_data == "always" else external_data_threshold
+    )
     print(f"  dtype={dtype}  external_data={external_data}"
-          f"  threshold={external_data_threshold / 1024 / 1024:.0f}MB"
+          f"  threshold={effective_external_data_threshold / 1024 / 1024:.0f}MB"
           f"  one_file={external_data_one_file}")
     print()
 
@@ -1192,6 +1212,11 @@ def export_all(
         use_external_data = False
     elif external_data == "always":
         use_external_data = True
+        # ``onnx.save_model(size_threshold=...)`` externalizes only tensors
+        # above the threshold.  ``always`` is the explicit artifact-layout
+        # contract, so use zero to externalize every initializer, including
+        # the many sub-100 MB encoder weights.
+        external_data_threshold = effective_external_data_threshold
     else:  # "auto"
         # Enable external data if the model has enough parameters to risk
         # exceeding the 2 GB protobuf limit.  Check both encoder and decoder
