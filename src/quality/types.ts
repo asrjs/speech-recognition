@@ -15,12 +15,24 @@ export type QualityVerdict = 'accept' | 'reject' | 'no_speech';
 // Quality Gate
 // ---------------------------------------------------------------------------
 
+/** Scalar per-token measurements for a selected decode sequence. */
+export interface TokenQualityTrace {
+  readonly tokenId: number;
+  readonly logProb: number;
+  readonly entropy: number;
+}
+
 /** Context from the model runtime for quality checks that need raw logits. */
 export interface QualityGateContext {
   /** Raw decoder-init logits used by Whisper's no-speech test. */
   readonly noSpeechLogits?: Float32Array | readonly number[];
   /** Model-specific no-speech token ID. */
   readonly noSpeechTokenId?: number;
+  /**
+   * Selected-sequence scalar traces. When present, logprob/entropy gates use
+   * these instead of retaining full-vocabulary logits.
+   */
+  readonly tokenTraces?: readonly TokenQualityTrace[];
 }
 
 /** A quality gate function — evaluates a decode result. */

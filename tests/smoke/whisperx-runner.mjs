@@ -28,6 +28,7 @@ const BOOLEAN_FLAGS = new Set([
   'verbose', 'noalign', 'suppressnumerals', 'conditiononprevioustext',
   'diarize', 'speakerembeddings', 'highlightwords', 'returncharalignments',
   'printprogress', 'modelcacheonly', 'fp16', 'wordtimestamps',
+  'nowordtimestamps',
 ]);
 
 const DEFAULT_OPTS = {
@@ -57,14 +58,14 @@ function parseArgs(customArgs) {
     const a = parsed[i];
     if (a.startsWith('--') && !localUsed.has(i)) {
       localUsed.add(i);
-      const key = a.slice(2).replace(/-/g, '');
+      const key = a.slice(2).replace(/[-_]/g, '');
       const isBool = BOOLEAN_FLAGS.has(key);
       const val = !isBool && i + 1 < parsed.length && !parsed[i + 1].startsWith('--')
         ? parsed[++i] : true;
       localUsed.add(i);
 
       const mapping = {
-        model: 'model', 'model-dir': 'modelDir',
+        model: 'model', modeldir: 'model',
         device: 'device', vadmethod: 'vadBackendType',
         vadonset: 'vadOnset', vadoffset: 'vadOffset', chunksize: 'chunkSize',
         temperature: 'temperature', temperatureincrementonfallback: 'temperatureIncrement',
@@ -77,11 +78,15 @@ function parseArgs(customArgs) {
         task: 'task', language: 'language',
         noalign: 'noAlign', outputformat: 'outputFormat',
         verbose: 'verbose', batchsize: 'batchSize',
-        'w2v-model': 'w2vModel',
+        'w2v-model': 'w2vModel', w2vmodel: 'w2vModel',
+        wordtimestamps: 'wordTimestamps',
+        nowordtimestamps: 'noWordTimestamps',
       };
 
       const optKey = mapping[key];
-      if (optKey) {
+      if (optKey === 'noWordTimestamps') {
+        opts.wordTimestamps = false;
+      } else if (optKey) {
         if (['noAlign', 'suppressNumerals', 'conditionOnPreviousText', 'verbose', 'wordTimestamps'].includes(optKey)) {
           opts[optKey] = val === true || val === 'true' || val === '1';
         } else if (typeof opts[optKey] === 'number') {
@@ -97,6 +102,8 @@ function parseArgs(customArgs) {
   return { opts, audioPath: audioFiles[0] };
 }
 
+export { parseArgs };
+
 // ──────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────
@@ -111,8 +118,8 @@ function formatTime(seconds) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${s.toFixed(3).padStart(7, '0')}`;
 }
 
-function toVtt(segments) {
-  const lines = ['WEBVTT', 'Kind: captions', 'Language: en', ''];
+function toVtt(segments, language = 'en') {
+  const lines = ['WEBVTT', 'Kind: captions', `Language: ${language || 'en'}`, ''];
   for (const seg of segments) {
     lines.push(`${formatTime(seg.start)} --> ${formatTime(seg.end)}`);
     lines.push(seg.text);
@@ -164,7 +171,10 @@ function argmax(arr) {
 function sample(logits, temperature) {
   const scaled = new Float32Array(logits.length);
   for (let i = 0; i < logits.length; i++) scaled[i] = logits[i] / temperature;
-  const maxVal = Math.max(...scaled);
+  let maxVal = -Infinity;
+  for (let i = 0; i < scaled.length; i++) {
+    if (scaled[i] > maxVal) maxVal = scaled[i];
+  }
   const exps = new Float32Array(scaled.length);
   let sumExp = 0;
   for (let i = 0; i < scaled.length; i++) {
@@ -180,6 +190,8 @@ function sample(logits, temperature) {
   }
   return exps.length - 1;
 }
+
+export { sample };
 
 function nextToken(logits, temperature) {
   return temperature <= 0 ? argmax(logits) : sample(logits, temperature);
@@ -216,6 +228,14 @@ function buildWordsFromTimestamps(
     words.push({ text: bufText.trim(), start: bufStart, end: segStart + dtwTimestamps[dtwTimestamps.length - 1] });
   }
   return words;
+}
+
+function nativeToRunnerWords(words, offsetSeconds = 0) {
+  return words.map((word) => ({
+    text: word.text,
+    start: offsetSeconds + word.startTime,
+    end: offsetSeconds + word.endTime,
+  }));
 }
 
 // ──────────────────────────────────────────────────────────
@@ -271,8 +291,18 @@ export async function runAsrPipeline(_opts) {
   const { parseWhisperGenerationConfig, parseWhisperModelConfig } = await import(
     path.join(dist, 'models/whisper-seq2seq/generation-config.js')
   );
-  const { processSplitGraphAlignment } = await import(
+  const {
+    collectSplitGraphTextTokenRows,
+    processSplitGraphAlignment,
+    processSplitGraphAlignmentByTimestampSpans,
+  } = await import(
     path.join(dist, 'models/whisper-seq2seq/executor.js')
+  );
+  const {
+    buildWhisperWordTimestampsFromDtwTokens,
+    refineWhisperWordsWithForcedAlignment,
+  } = await import(
+    path.join(dist, 'models/whisper-seq2seq/word-timestamps.js')
   );
   const { whisperDecode } = await import(
     path.join(dist, 'models/whisper-seq2seq/core.js')
@@ -290,10 +320,14 @@ export async function runAsrPipeline(_opts) {
   );
   const configRaw = JSON.parse(await fetchText(path.join(opts.model, 'config.json')));
   const modelConfig = parseWhisperModelConfig(configRaw);
+  const dModel = modelConfig.dModel ?? 384;
   const melBins = modelConfig.numMelBins ?? 80;
   const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
   const timestampBeginId = tokenizer.getTokenId('<|0.00|>') ?? 50364;
   const timestampEndId = tokenizer.getTokenId('<|30.00|>') ?? 51864;
+  const noSpeechTokenId = genConfig.noSpeechTokenId
+    ?? tokenizer.getTokenId('<|nospeech|>')
+    ?? 50362;
 
   // Load split-graph sessions
   const encSess = await ort.InferenceSession.create(path.join(opts.model, 'encoder_model.onnx'));
@@ -312,9 +346,6 @@ export async function runAsrPipeline(_opts) {
 
   log(`  Loaded in ${((performance.now() - tLoad) / 1000).toFixed(1)}s`, verbose);
 
-  // ── Wav2Vec2 forced alignment model (post-process pass) ──
-  let w2vSession = null;
-  let w2vTokenizer = null;
   const W2V_MODEL_BY_LANG = {
     en: {
       path: opts.w2vModel || '/tmp/wav2vec2-english-onnx/wav2vec2-base-960h.fp16.onnx',
@@ -327,27 +358,6 @@ export async function runAsrPipeline(_opts) {
       vocabUrl: '/tmp/wav2vec2-turkish-onnx/vocab.json',
     },
   };
-
-  if (!opts.noAlign && opts.wordTimestamps) {
-    const w2vCfg = W2V_MODEL_BY_LANG[language] || W2V_MODEL_BY_LANG.en;
-    try {
-      log(`Loading Wav2Vec2 aligner (${language})...`, verbose);
-      const w2vOpts = {};
-      if (fs.existsSync(w2vCfg.dataFile)) {
-        const data = fs.readFileSync(w2vCfg.dataFile);
-        w2vOpts.externalData = [{ path: path.basename(w2vCfg.path), data }];
-      }
-      w2vSession = await ort.InferenceSession.create(w2vCfg.path, w2vOpts);
-
-      const { Wav2Vec2CharTokenizer } = await import(
-        path.join(dist, 'models/wav2vec2/tokenizer.js')
-      );
-      w2vTokenizer = await Wav2Vec2CharTokenizer.fromUrl(w2vCfg.vocabUrl);
-      log(`  Wav2Vec2 ready (${language})`, verbose);
-    } catch (w2vErr) {
-      log(`  Wav2Vec2 not loaded (${w2vErr.message}) — falling back to DTW alignment`, verbose);
-    }
-  }
 
   const melProc = new WhisperMelProcessor({ nMels: melBins });
   const timestampProc = new WhisperTimestampLogitProcessor({
@@ -400,6 +410,30 @@ export async function runAsrPipeline(_opts) {
     } else {
       language = langIdRaw;
       langId = tokenizer.getTokenId(`<|${language}|>`) ?? tokenizer.getTokenId('<|en|>') ?? 50259;
+    }
+  }
+
+  // Load Wav2Vec2 after language detection so Turkish uses the XLS-R model.
+  let w2vSession = null;
+  let w2vTokenizer = null;
+  if (!opts.noAlign && opts.wordTimestamps) {
+    const w2vCfg = W2V_MODEL_BY_LANG[language] || W2V_MODEL_BY_LANG.en;
+    try {
+      log(`Loading Wav2Vec2 aligner (${language})...`, verbose);
+      const w2vOpts = {};
+      if (fs.existsSync(w2vCfg.dataFile)) {
+        const data = fs.readFileSync(w2vCfg.dataFile);
+        w2vOpts.externalData = [{ path: path.basename(w2vCfg.path), data }];
+      }
+      w2vSession = await ort.InferenceSession.create(w2vCfg.path, w2vOpts);
+
+      const { Wav2Vec2CharTokenizer } = await import(
+        path.join(dist, 'models/wav2vec2/tokenizer.js')
+      );
+      w2vTokenizer = await Wav2Vec2CharTokenizer.fromUrl(w2vCfg.vocabUrl);
+      log(`  Wav2Vec2 ready (${language})`, verbose);
+    } catch (w2vErr) {
+      log(`  Wav2Vec2 not loaded (${w2vErr.message}) — falling back to DTW alignment`, verbose);
     }
   }
 
@@ -500,6 +534,9 @@ export async function runAsrPipeline(_opts) {
 
       // Session adapter for whisperDecode
       const kvDims = {};
+      let decoderInitLogits;
+      let decoderInitVocabSize = 51865;
+      let decoderInitNoSpeechTokenId = noSpeechTokenId;
       const coreSession = {
         runInit: async (pt, _enc, _dims) => {
           const feeds = {
@@ -510,6 +547,7 @@ export async function runAsrPipeline(_opts) {
           const lk = Object.keys(out).find(k => k.startsWith('logits')) ?? Object.keys(out)[0];
           const lt = out[lk];
           const vSize = lt.dims[lt.dims.length - 1];
+          decoderInitVocabSize = vSize;
           const lastOff = lt.data.length - vSize;
           const logits = new Float32Array(lt.data.subarray(lastOff, lastOff + vSize));
           const pk = {};
@@ -549,9 +587,6 @@ export async function runAsrPipeline(_opts) {
         },
       };
 
-      // Collect per-step logits for quality gates
-      const stepLogits = [];
-
       const decodeResult = await whisperDecode(coreSession, {
         promptTokens,
         encoderOutput: encHs,
@@ -559,11 +594,15 @@ export async function runAsrPipeline(_opts) {
         eosTokenId: eosId,
         maxNewTokens,
         temperature,
+        trackQuality: true,
+        noSpeechTokenId,
         processLogits: (logits, genTokens, beginIdx) => {
           timestampProc.process(logits, genTokens, beginIdx);
         },
-        onTokenLogits: (_chosenId, processedLogits) => {
-          stepLogits.push(new Float32Array(processedLogits));
+        onDecoderInitLogits: (rawLogits, initCtx) => {
+          decoderInitLogits = new Float32Array(rawLogits);
+          decoderInitVocabSize = initCtx.vocabSize;
+          decoderInitNoSpeechTokenId = initCtx.noSpeechTokenId ?? noSpeechTokenId;
         },
         strategy: (opts.beamSize ?? 1) > 1 ? 'beam' : 'greedy',
         beamSize: opts.beamSize ?? 1,
@@ -572,6 +611,9 @@ export async function runAsrPipeline(_opts) {
       });
 
       const tokens = [...decodeResult.tokens];
+      const qualityTokens = decodeResult.tokenTraces && decodeResult.tokenTraces.length > 0
+        ? decodeResult.tokenTraces.map(trace => trace.tokenId)
+        : tokens;
 
       // Build segment text (needed for Wav2Vec2 alignment)
       const text = tokens
@@ -582,13 +624,21 @@ export async function runAsrPipeline(_opts) {
 
       // ── Word timestamps via decoder_align + DTW ──
       let segmentWords = [];
+      let nativeWords = [];
       if (alignSess && opts.wordTimestamps) {
         const allTokenIds = [...promptTokens, ...tokens];
-        const textIds = tokens.filter(t => {
-          const td = tokenizer.decode([t]) || '';
-          return td && !td.startsWith('<|') && !td.startsWith('[') && !td.startsWith('�');
-        });
-        const decodedTexts = textIds.map(t => tokenizer.decode([t]) || '');
+        const isTimestampToken = (id) => id >= timestampBeginId && id <= timestampEndId;
+        const isTextToken = (id) => {
+          const td = tokenizer.decode([id]) || '';
+          return Boolean(td && !td.startsWith('<|') && !td.startsWith('[') && !td.startsWith('�'));
+        };
+        const { tokenIds: textIds, rowIndices } = collectSplitGraphTextTokenRows(
+          allTokenIds,
+          promptTokens.length,
+          isTextToken,
+        );
+        const decodedTexts = textIds.map((id) => tokenizer.decode([id]) || '');
+        const cropFrameCount = Math.max(1, Math.round((chunk.length / sampleRate) / 0.02));
 
         try {
           const alignFeeds = {
@@ -599,24 +649,42 @@ export async function runAsrPipeline(_opts) {
           const alignKey = Object.keys(alignOut)[0];
           const alignmentData = new Float32Array(alignOut[alignKey].data);
 
-          const dtwTimestamps = processSplitGraphAlignment({
+          const dtwTimestamps = processSplitGraphAlignmentByTimestampSpans({
             alignmentData,
-            totalTokens: allTokenIds.length,
+            tokenIds: allTokenIds,
+            promptLen: promptTokens.length,
+            frameCount: encoderFrameCount,
+            timePrecisionSeconds: 0.02,
+            cropFrameCount,
+            isTextToken,
+            isTimestampToken,
+            timestampTokenToSeconds: (id) => (id - timestampBeginId) * 0.02,
+          }) ?? processSplitGraphAlignment({
+            alignmentData,
             promptLen: promptTokens.length,
             textTokenCount: textIds.length,
             frameCount: encoderFrameCount,
             timePrecisionSeconds: 0.02,
+            textTokenRowIndices: rowIndices,
+            cropFrameCount,
           });
 
-          segmentWords = buildWordsFromTimestamps(
-            textIds, decodedTexts, seg.startSeconds, dtwTimestamps, tokenizer,
+          nativeWords = buildWhisperWordTimestampsFromDtwTokens(
+            textIds.map((id, index) => ({
+              id,
+              text: decodedTexts[index] ?? '',
+              sourceIndex: index,
+            })),
+            dtwTimestamps,
+            { language },
           );
+          segmentWords = nativeToRunnerWords(nativeWords, seg.startSeconds);
         } catch (alignErr) {
           if (verbose) log(`    align fail on seg ${si}: ${alignErr.message}`);
         }
       }
 
-      // ── Wav2Vec2 forced alignment (overrides DTW when available) ──
+      // ── Wav2Vec2 forced alignment (refines DTW when available) ──
       if (w2vSession && w2vTokenizer && opts.wordTimestamps && !opts.noAlign) {
         try {
           const inputTensor = new ort.Tensor('float32', chunk, [1, chunk.length]);
@@ -642,24 +710,41 @@ export async function runAsrPipeline(_opts) {
           });
 
           if (alignment.words && alignment.words.length > 0) {
-            segmentWords = alignment.words.map(w => ({
-              text: w.text, start: seg.startSeconds + w.start, end: seg.startSeconds + w.end,
+            const aligned = alignment.words.map((word) => ({
+              text: word.text,
+              startTime: word.start,
+              endTime: word.end,
+              confidence: word.confidence,
             }));
+            const baseWords = nativeWords.length > 0
+              ? nativeWords
+              : aligned.map((word, index) => ({
+                  index,
+                  text: word.text,
+                  startTime: word.startTime,
+                  endTime: word.endTime,
+                }));
+            nativeWords = refineWhisperWordsWithForcedAlignment(baseWords, aligned);
+            segmentWords = nativeToRunnerWords(nativeWords, seg.startSeconds);
           }
         } catch (w2vErr) {
           if (verbose) log(`    w2v align fail on seg ${si}: ${w2vErr.message}`);
         }
       }
 
-      // Get vocabSize from last step logits
-      const vSize = stepLogits.length > 0 ? stepLogits[0].length : 51864;
-
       return {
         result: { text, start: seg.startSeconds, end: seg.endSeconds, words: segmentWords },
         text,
-        tokens,
-        logits: stepLogits,
-        vocabSize: vSize,
+        tokens: qualityTokens,
+        logits: [],
+        vocabSize: decoderInitVocabSize,
+        qualityContext: {
+          ...(decoderInitLogits ? { noSpeechLogits: decoderInitLogits } : {}),
+          noSpeechTokenId: decoderInitNoSpeechTokenId,
+          ...(decodeResult.tokenTraces && decodeResult.tokenTraces.length > 0
+            ? { tokenTraces: decodeResult.tokenTraces }
+            : {}),
+        },
       };
     };
 
@@ -700,10 +785,15 @@ export async function runAsrPipeline(_opts) {
       outputs.txt = toTxt(allSegments);
       break;
     case 'json':
-      outputs.json = toJson(allSegments, { audioDuration, asrTime, segments: allSegments.length });
+      outputs.json = toJson(allSegments, {
+        audioDuration,
+        asrTime,
+        language,
+        segments: allSegments.length,
+      });
       break;
     default:
-      outputs.vtt = toVtt(allSegments);
+      outputs.vtt = toVtt(allSegments, language);
       break;
   }
 
@@ -713,6 +803,7 @@ export async function runAsrPipeline(_opts) {
   return {
     segments: allSegments,
     fullText,
+    language,
     wordCount,
     asrTime,
     outputs,

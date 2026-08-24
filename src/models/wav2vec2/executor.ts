@@ -224,6 +224,66 @@ function toMonoPcm(audio: AudioBufferLike, destination?: Float32Array): Float32A
   throw new Error('Unsupported audio buffer shape for Wav2Vec2 executor.');
 }
 
+/**
+ * Linear resample used when the incoming buffer is not 16 kHz.
+ * HuggingFace Wav2Vec2 processors always resample before the CNN.
+ */
+export function resampleLinearWaveform(
+  samples: Float32Array,
+  sourceSampleRate: number,
+  targetSampleRate: number,
+): Float32Array {
+  if (sourceSampleRate === targetSampleRate) return samples;
+  if (!(sourceSampleRate > 0) || !(targetSampleRate > 0)) {
+    throw new Error(`Invalid Wav2Vec2 resample rates: ${sourceSampleRate} -> ${targetSampleRate}`);
+  }
+  const ratio = targetSampleRate / sourceSampleRate;
+  const outputLength = Math.max(1, Math.round(samples.length * ratio));
+  const output = new Float32Array(outputLength);
+  const sourceScale = sourceSampleRate / targetSampleRate;
+  for (let index = 0; index < outputLength; index += 1) {
+    const sourcePosition = index * sourceScale;
+    const leftIndex = Math.floor(sourcePosition);
+    const rightIndex = Math.min(leftIndex + 1, samples.length - 1);
+    const fraction = sourcePosition - leftIndex;
+    output[index] = (samples[leftIndex] ?? 0) * (1 - fraction) + (samples[rightIndex] ?? 0) * fraction;
+  }
+  return output;
+}
+
+/**
+ * HuggingFace `Wav2Vec2Processor` / WhisperX preprocessing:
+ * zero-mean, unit-variance waveform before the feature encoder.
+ */
+export function normalizeWav2Vec2Waveform(samples: Float32Array): Float32Array {
+  if (samples.length === 0) return samples;
+  let sum = 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    sum += samples[index] ?? 0;
+  }
+  const mean = sum / samples.length;
+  let varianceSum = 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    const delta = (samples[index] ?? 0) - mean;
+    varianceSum += delta * delta;
+  }
+  const std = Math.sqrt(varianceSum / samples.length + 1e-7);
+  const output = new Float32Array(samples.length);
+  const invStd = 1 / std;
+  for (let index = 0; index < samples.length; index += 1) {
+    output[index] = ((samples[index] ?? 0) - mean) * invStd;
+  }
+  return output;
+}
+
+export function prepareWav2Vec2Waveform(
+  samples: Float32Array,
+  sourceSampleRate: number,
+  targetSampleRate: number,
+): Float32Array {
+  return normalizeWav2Vec2Waveform(resampleLinearWaveform(samples, sourceSampleRate, targetSampleRate));
+}
+
 // ---------------------------------------------------------------------------
 // Logits helpers
 // ---------------------------------------------------------------------------
@@ -266,7 +326,9 @@ function normalizeLogitsData(logitsTensor: OrtTensorLike): Float32Array {
   const tensorType = logitsTensor.type ?? 'float32';
   if (tensorType !== 'float16') {
     const source = logitsTensor.data as Float32Array;
-    return source instanceof Float32Array ? source : Float32Array.from(source);
+    // Copy out of the ORT WASM heap. Returning a view lets the next inference
+    // (or tensor dispose) zero the logits before CTC Viterbi runs.
+    return source instanceof Float32Array ? new Float32Array(source) : Float32Array.from(source);
   }
 
   const source = logitsTensor.data as Uint16Array;
@@ -465,20 +527,13 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     const state = await this.getLoadedState();
     const warnings: TranscriptWarning[] = [...state.warnings];
 
-    if (audio.sampleRate !== state.config.sampleRate) {
-      warnings.push({
-        code: 'wav2vec2.sample-rate-mismatch',
-        message: `Expected ${state.config.sampleRate} Hz audio but received ${audio.sampleRate} Hz. No resampler is active on this path.`,
-        recoverable: true,
-      });
-    }
-
-    // Normalize audio to mono float32 PCM
+    // Normalize audio to mono float32 PCM, then resample + standardize like WhisperX.
     this.sharedMonoBuffer = ensureFloat32Buffer(audio.numberOfFrames, this.sharedMonoBuffer);
     const mono = toMonoPcm(audio, this.sharedMonoBuffer);
+    const prepared = prepareWav2Vec2Waveform(mono, audio.sampleRate, state.config.sampleRate);
 
     // Create ONNX tensor from waveform
-    const inputTensor = new state.ort.Tensor('float32', mono, [1, mono.length]);
+    const inputTensor = new state.ort.Tensor('float32', prepared, [1, prepared.length]);
 
     // Run ONNX session
     const encodeStart = nowMs();
@@ -506,7 +561,7 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
       throw new Error(`Wav2Vec2 logits shape is invalid: [${dims.join(', ')}].`);
     }
 
-    const audioDurationSeconds = mono.length / state.config.sampleRate;
+    const audioDurationSeconds = prepared.length / state.config.sampleRate;
 
     return {
       logits,
@@ -542,17 +597,10 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
       message: `Starting transcription for ${this.modelId}.`,
     });
 
-    if (audio.sampleRate !== state.config.sampleRate) {
-      warnings.push({
-        code: 'wav2vec2.sample-rate-mismatch',
-        message: `Expected ${state.config.sampleRate} Hz audio but received ${audio.sampleRate} Hz. No resampler is active on this path.`,
-        recoverable: true,
-      });
-    }
-
-    // 1. Normalize audio to mono float32 PCM
+    // 1. Normalize audio to mono float32 PCM, then resample + standardize like WhisperX.
     this.sharedMonoBuffer = ensureFloat32Buffer(audio.numberOfFrames, this.sharedMonoBuffer);
     const mono = toMonoPcm(audio, this.sharedMonoBuffer);
+    const prepared = prepareWav2Vec2Waveform(mono, audio.sampleRate, state.config.sampleRate);
 
     const preprocessElapsedMs = nowMs() - transcriptionStart;
     emitTranscriptionProgress(options, {
@@ -567,7 +615,7 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
 
     // 2. Create ONNX tensor from waveform
     //    Wav2Vec2 takes raw waveform — no mel features!
-    const inputTensor = new state.ort.Tensor('float32', mono, [1, mono.length]);
+    const inputTensor = new state.ort.Tensor('float32', prepared, [1, prepared.length]);
 
     // 3. Run ONNX session
     const encodeStart = nowMs();
@@ -615,7 +663,7 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     const { collapsedIds, tokenSpans } = ctcCollapseWithSpans(frameIds, selectedLogProbs, blankId);
 
     // 6. Compute timing
-    const audioDuration = mono.length / state.config.sampleRate;
+    const audioDuration = prepared.length / state.config.sampleRate;
     const secondsPerFrame = estimateSecondsPerOutputFrame({
       audioDurationSec: audioDuration,
       outFrames,

@@ -83,6 +83,46 @@ describe('groupCharAlignmentToWords', () => {
     expect(words[1]!.charFrames).toHaveLength(5);
   });
 
+  it('uses token endSeconds so words span until the next token', () => {
+    const frames: CtcAlignmentResult['alignedFrames'] = [
+      { char: 'h', tokenIdx: 1, frame: 0, seconds: 0.0, endSeconds: 0.02, confidence: 0.9 },
+      { char: 'i', tokenIdx: 2, frame: 1, seconds: 0.02, endSeconds: 0.10, confidence: 0.8 },
+    ];
+
+    const words = groupCharAlignmentToWords(frames, 'hi', ' ');
+    expect(words).toHaveLength(1);
+    expect(words[0]!.start).toBe(0.0);
+    expect(words[0]!.end).toBe(0.10);
+  });
+
+  it('skips wav2vec2 | delimiter frames when grouping space-separated words', () => {
+    const frames: CtcAlignmentResult['alignedFrames'] = [
+      { char: 'o', tokenIdx: 1, frame: 0, seconds: 1.60, endSeconds: 1.62, confidence: 0.9 },
+      { char: 'f', tokenIdx: 2, frame: 1, seconds: 1.62, endSeconds: 1.64, confidence: 0.9 },
+      { char: '|', tokenIdx: 4, frame: 30, seconds: 2.20, endSeconds: 2.22, confidence: 0.5 },
+      { char: 't', tokenIdx: 3, frame: 31, seconds: 2.22, endSeconds: 2.24, confidence: 0.8 },
+    ];
+
+    const words = groupCharAlignmentToWords(frames, 'of t', ' ');
+    expect(words).toHaveLength(2);
+    expect(words[0]!.text).toBe('of');
+    expect(words[0]!.end).toBeCloseTo(1.64, 5);
+    expect(words[1]!.text).toBe('t');
+    expect(words[1]!.start).toBeCloseTo(2.22, 5);
+  });
+
+  it('caps short-word duration when the last letter is parked far from the first', () => {
+    const frames: CtcAlignmentResult['alignedFrames'] = [
+      { char: 'o', tokenIdx: 1, frame: 80, seconds: 1.60, endSeconds: 1.62, confidence: 0.9 },
+      { char: 'f', tokenIdx: 2, frame: 109, seconds: 2.18, endSeconds: 2.20, confidence: 0.9 },
+    ];
+
+    const words = groupCharAlignmentToWords(frames, 'of', ' ');
+    expect(words).toHaveLength(1);
+    expect(words[0]!.start).toBeCloseTo(1.60, 5);
+    expect(words[0]!.end).toBeCloseTo(1.80, 5);
+  });
+
   it('handles single word', () => {
     const frames: CtcAlignmentResult['alignedFrames'] = [
       { char: 'a', tokenIdx: 1, frame: 0, seconds: 0.0, confidence: 0.9 },

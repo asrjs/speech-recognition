@@ -67,6 +67,25 @@ describe('logProbGate', () => {
     const result = gate('', [0], [uniformLogits(100)], 100);
     expect(result.verdict).toBe('reject');
   });
+
+  it('evaluates selected-sequence traces without full-vocabulary logits', () => {
+    const rejected = gate('', [1, 2], [], 100, {
+      tokenTraces: [
+        { tokenId: 1, logProb: -2.5, entropy: 0.2 },
+        { tokenId: 2, logProb: -2.5, entropy: 0.2 },
+      ],
+    });
+    expect(rejected.verdict).toBe('reject');
+    expect(rejected.avgLogProb).toBeCloseTo(-2.5);
+
+    const accepted = gate('', [1, 2], [], 100, {
+      tokenTraces: [
+        { tokenId: 1, logProb: -0.1, entropy: 0.2 },
+        { tokenId: 2, logProb: -0.2, entropy: 0.2 },
+      ],
+    });
+    expect(accepted.verdict).toBe('accept');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -85,6 +104,18 @@ describe('entropyGate', () => {
     const result = gate('', [], [uniformLogits(100)], 100);
     expect(result.verdict).toBe('reject');
     expect(result.entropy!).toBeGreaterThan(2.4);
+  });
+
+  it('evaluates selected-sequence entropy traces without logits', () => {
+    const rejected = gate('', [1], [], 100, {
+      tokenTraces: [{ tokenId: 1, logProb: -0.1, entropy: 3.1 }],
+    });
+    expect(rejected.verdict).toBe('reject');
+
+    const accepted = gate('', [1], [], 100, {
+      tokenTraces: [{ tokenId: 1, logProb: -0.1, entropy: 0.4 }],
+    });
+    expect(accepted.verdict).toBe('accept');
   });
 });
 
@@ -193,6 +224,39 @@ describe('evaluateGates', () => {
 
   it('accepts empty gates', () => {
     expect(evaluateGates('', [], [], 100, []).verdict).toBe('accept');
+  });
+});
+
+describe('selected-sequence token traces', () => {
+  it('rejects low logprob from scalar traces without logits', () => {
+    const result = logProbGate(-1.0)('', [1, 2], [], 100, {
+      tokenTraces: [
+        { tokenId: 1, logProb: -2.4, entropy: 0.3 },
+        { tokenId: 2, logProb: -2.1, entropy: 0.4 },
+      ],
+    });
+    expect(result.verdict).toBe('reject');
+    expect(result.avgLogProb).toBeCloseTo(-2.25, 5);
+  });
+
+  it('rejects high entropy from scalar traces without logits', () => {
+    const result = entropyGate(2.4)('', [1], [], 100, {
+      tokenTraces: [
+        { tokenId: 1, logProb: -0.2, entropy: 3.1 },
+        { tokenId: 2, logProb: -0.3, entropy: 2.8 },
+      ],
+    });
+    expect(result.verdict).toBe('reject');
+    expect(result.entropy).toBeCloseTo(2.95, 5);
+  });
+
+  it('prefers traces over full-vocabulary logits', () => {
+    const misleading = [uniformLogits(16)];
+    const result = logProbGate(-1.0)('', [0], misleading, 16, {
+      tokenTraces: [{ tokenId: 0, logProb: -0.05, entropy: 0.1 }],
+    });
+    expect(result.verdict).toBe('accept');
+    expect(result.avgLogProb).toBeCloseTo(-0.05, 5);
   });
 });
 

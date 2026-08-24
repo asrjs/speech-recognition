@@ -54,4 +54,17 @@ describe('whisperGreedyDecode scoring', () => {
     expect(result.score).toBeTypeOf('number');
     expect(result.score).toBeLessThanOrEqual(0);
   });
+
+  it('collects selected-sequence quality traces only when requested', async () => {
+    const plain = await whisperGreedyDecode(makeSession(), baseOptions);
+    const tracked = await whisperGreedyDecode(makeSession(), {
+      ...baseOptions,
+      trackQuality: true,
+    });
+
+    expect(plain.tokenTraces).toBeUndefined();
+    expect(tracked.tokenTraces?.map((trace) => trace.tokenId)).toEqual(tracked.tokens);
+    expect(tracked.tokenTraces?.every((trace) => trace.logProb <= 0)).toBe(true);
+    expect(tracked.tokenTraces?.every((trace) => trace.entropy >= 0)).toBe(true);
+  });
 });

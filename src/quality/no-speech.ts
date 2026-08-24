@@ -50,7 +50,7 @@ export function noSpeechGate(
     }
     const noSpeechProb = Math.exp(firstLogits[noSpeechIndex]! - maxLogit) / sumExp;
 
-    const logProbResult = logProbGate(logProbThreshold)(text, tokens, logits, vocabSize);
+    const logProbResult = logProbGate(logProbThreshold)(text, tokens, logits, vocabSize, context);
     const avgLogProb = logProbResult.avgLogProb ?? 0;
 
     if (noSpeechProb > noSpeechThreshold && avgLogProb < logProbThreshold) {

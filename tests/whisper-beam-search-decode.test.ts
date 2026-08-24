@@ -75,6 +75,9 @@ describe('whisperBeamDecode integration', () => {
     expect(result.score).toBeTypeOf('number');
     expect(result.score).toBeLessThanOrEqual(0);
     expect(initLogitCalls).toBe(1);
+    expect(result.tokenTraces?.map((trace) => trace.tokenId)).toEqual(result.tokens);
+    const traceSum = result.tokenTraces?.reduce((sum, trace) => sum + trace.logProb, 0);
+    expect(traceSum).toBeCloseTo(result.score!, 8);
   });
 
   it('returns the same greedy path when beamSize is 1', async () => {
@@ -424,6 +427,22 @@ describe('whisperBeamDecode integration', () => {
     expect(stable.singleCalls).toBeGreaterThan(1);
     expect(batched.batchCalls).toBeGreaterThan(0);
     expect(batched.singleCalls).toBeLessThan(stable.singleCalls);
+  });
+
+  it('records quality traces only for the selected beam', async () => {
+    const onTokenLogits = vi.fn();
+    const result = await whisperBeamDecode(makeEosSession(2), {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      onTokenLogits,
+    });
+
+    expect(onTokenLogits).not.toHaveBeenCalled();
+    expect(result.tokenTraces).toHaveLength(result.tokens.length);
+    expect(result.tokenTraces?.map((trace) => trace.tokenId)).toEqual(result.tokens);
+    expect(result.tokenTraces?.every((trace) => Number.isFinite(trace.logProb))).toBe(true);
+    expect(result.tokenTraces?.every((trace) => trace.entropy >= 0)).toBe(true);
   });
 
   it('throws if a batched beam step returns the wrong result count', async () => {

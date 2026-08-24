@@ -19,6 +19,7 @@ export type {
   QualityGateContext,
   QualityGateResult,
   SegmentQualityMetrics,
+  TokenQualityTrace,
 } from './types.js';
 
 export { compressionRatioGate } from './compression-ratio.js';

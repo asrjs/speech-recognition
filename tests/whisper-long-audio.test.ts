@@ -52,4 +52,24 @@ describe('Whisper native chunk transcript merge', () => {
       { index: 3, text: ' soon', startTime: 20.5 },
     ]);
   });
+
+  it('deduplicates overlapping native words while keeping the higher confidence copy', () => {
+    const lowerConfidence = chunk('world', 0, 1, 30);
+    const higherConfidence: WhisperNativeTranscript = {
+      ...chunk('world', 0, 1, 40),
+      words: [{
+        ...chunk('world', 0, 1, 40).words![0]!,
+        confidence: 0.95,
+      }],
+    };
+    const merged = mergeWhisperChunkTranscripts([
+      { chunkStartTime: 0, transcript: lowerConfidence },
+      { chunkStartTime: 0.2, transcript: higherConfidence },
+    ]);
+
+    expect(merged.words).toHaveLength(1);
+    expect(merged.words![0]!.confidence).toBe(0.95);
+    expect(merged.words![0]!.startTime).toBe(0.2);
+    expect(merged.words![0]!.index).toBe(0);
+  });
 });

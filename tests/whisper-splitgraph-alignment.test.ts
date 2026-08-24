@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { processSplitGraphAlignment } from '../src/models/whisper-seq2seq/executor.js';
+import {
+  collectSplitGraphTextTokenRows,
+  extractSplitGraphAlignmentRows,
+  processSplitGraphAlignment,
+  processSplitGraphAlignmentByTimestampSpans,
+} from '../src/models/whisper-seq2seq/executor.js';
 
 describe('splitGraph alignment processing', () => {
   // Simulate a decoder_align output: [T_all=7, S=3] flat matrix
@@ -96,5 +101,93 @@ describe('splitGraph alignment processing', () => {
     expect(timestamps).toHaveLength(textTokenCount + 1);
     expect(timestamps[0]!).toBeGreaterThanOrEqual(0);
     expect(timestamps[textTokenCount]!).toBeGreaterThan(timestamps[0]!);
+  });
+
+  it('skips timestamp-token rows instead of treating them as text', () => {
+    const timestampTokenId = 50_364;
+    const tokenIds = [1, 2, 3, 4, timestampTokenId, 11, 12, timestampTokenId];
+    const { tokenIds: textIds, rowIndices } = collectSplitGraphTextTokenRows(
+      tokenIds,
+      4,
+      (id) => id !== timestampTokenId && id > 4,
+    );
+    expect(textIds).toEqual([11, 12]);
+    expect(rowIndices).toEqual([5, 6]);
+
+    const data = new Float32Array(tokenIds.length * frameCount);
+    data[4 * frameCount + 0] = 1;
+    data[5 * frameCount + 1] = 1;
+    data[6 * frameCount + 2] = 1;
+
+    const extracted = extractSplitGraphAlignmentRows(data, rowIndices, frameCount);
+    const naiveSlice = data.subarray(4 * frameCount, 6 * frameCount);
+    expect(Array.from(extracted)).not.toEqual(Array.from(naiveSlice));
+    expect(extracted[1]).toBe(1);
+    expect(extracted[frameCount + 2]).toBe(1);
+
+    const timestamps = processSplitGraphAlignment({
+      alignmentData: data,
+      totalTokens: tokenIds.length,
+      promptLen: 4,
+      textTokenCount: 2,
+      frameCount,
+      timePrecisionSeconds: 0.02,
+      textTokenRowIndices: rowIndices,
+    });
+    expect(timestamps).toHaveLength(3);
+    expect(timestamps[2]!).toBeGreaterThan(timestamps[0]!);
+  });
+
+  it('crops padded encoder frames to the audio duration', () => {
+    const paddedFrames = 8;
+    const data = new Float32Array(totalTokens * paddedFrames);
+    data[4 * paddedFrames + 0] = 0.9;
+    data[5 * paddedFrames + 1] = 0.9;
+    data[6 * paddedFrames + 2] = 0.9;
+    const timestamps = processSplitGraphAlignment({
+      alignmentData: data,
+      totalTokens,
+      promptLen,
+      textTokenCount,
+      frameCount: paddedFrames,
+      timePrecisionSeconds: 0.02,
+      cropFrameCount: 3,
+    });
+    expect(timestamps).toHaveLength(textTokenCount + 1);
+    expect(timestamps[textTokenCount]!).toBeLessThanOrEqual(0.04);
+  });
+
+  it('DTW-aligns each timestamp span only against that span\'s encoder frames', () => {
+    const timestampBegin = 50_364;
+    const hop = 0.02;
+    const ts = (seconds: number) => timestampBegin + Math.round(seconds / hop);
+    const promptLen = 4;
+    const frameCount = 6;
+    const tokenIds = [1, 2, 3, 4, ts(0), 11, 12, ts(0.06), 13, ts(0.12)];
+    const data = new Float32Array(tokenIds.length * frameCount);
+    data[5 * frameCount + 0] = 1;
+    data[6 * frameCount + 1] = 1;
+    // Token 13 would steal early frames in a global DTW; the span window is [3, 6).
+    data[8 * frameCount + 1] = 1;
+    data[8 * frameCount + 4] = 0.2;
+
+    const timestamps = processSplitGraphAlignmentByTimestampSpans({
+      alignmentData: data,
+      tokenIds,
+      promptLen,
+      frameCount,
+      timePrecisionSeconds: hop,
+      medianFilterWidth: 1,
+      isTextToken: (id) => id === 11 || id === 12 || id === 13,
+      isTimestampToken: (id) => id >= timestampBegin,
+      timestampTokenToSeconds: (id) => (id - timestampBegin) * hop,
+    });
+
+    expect(timestamps).toBeDefined();
+    expect(timestamps).toHaveLength(4);
+    expect(timestamps![0]!).toBeGreaterThanOrEqual(0);
+    expect(timestamps![2]!).toBeGreaterThanOrEqual(0.06);
+    expect(timestamps![2]!).toBeLessThan(0.12);
+    expect(timestamps![3]!).toBeCloseTo(0.12, 5);
   });
 });

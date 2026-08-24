@@ -1,3 +1,4 @@
+import type { TokenQualityTrace } from '../../quality/types.js';
 import type {
   AssetProvider,
   AudioBufferLike,
@@ -158,6 +159,11 @@ export interface WhisperNativeTranscript {
   readonly tokens?: readonly WhisperNativeToken[];
   readonly metrics?: TranscriptMetrics;
   readonly warnings?: readonly { readonly code: string; readonly message: string }[];
+  /**
+   * Selected-sequence scalar quality traces. Native-only; not mapped into the
+   * canonical transcript contract.
+   */
+  readonly tokenTraces?: readonly TokenQualityTrace[];
 }
 
 export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOptions {
@@ -183,6 +189,11 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
    * correctness oracle.
    */
   readonly experimentalBatchedBeam?: boolean;
+  /**
+   * Collect scalar logprob/entropy traces for the selected decode sequence.
+   * Used by quality gates so beam search does not retain full-vocabulary logits.
+   */
+  readonly trackQuality?: boolean;
   /**
    * Optional per-token logit callback — fired after logit processing, before argmax.
    * Enables quality gates (logprob, entropy, no-speech) to collect per-token data.
@@ -212,6 +223,32 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
    * Format: [<|0.00|>, ...previous_tokens]
    */
   readonly extraPromptTokens?: readonly number[];
+  /**
+   * Optional WhisperX-style forced-alignment pass. When set, DTW/interpolated
+   * word timestamps are refined after decode. GPU-KV greedy is unchanged unless
+   * this aligner is provided.
+   */
+  readonly wordAligner?: WhisperWordAligner;
+}
+
+export interface WhisperForcedAlignmentWord {
+  readonly text: string;
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly confidence?: number;
+}
+
+export interface WhisperWordAlignerInput {
+  readonly transcript: string;
+  readonly audio: AudioBufferLike;
+  readonly durationSeconds: number;
+  readonly language?: string | null;
+}
+
+export interface WhisperWordAligner {
+  align(
+    input: WhisperWordAlignerInput,
+  ): Promise<readonly WhisperForcedAlignmentWord[]> | readonly WhisperForcedAlignmentWord[];
 }
 
 export interface WhisperSeq2SeqModelDependencies {

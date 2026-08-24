@@ -3,7 +3,10 @@ import { registerBuiltInModelFamilies, registerBuiltInPresets } from '@asrjs/spe
 import { createSpeechRuntime } from '@asrjs/speech-recognition';
 import {
   createWav2Vec2ModelFamily,
+  normalizeWav2Vec2Waveform,
   OrtWav2Vec2Executor,
+  prepareWav2Vec2Waveform,
+  resampleLinearWaveform,
   type Wav2Vec2ModelOptions,
   type Wav2Vec2NativeTranscript,
   type Wav2Vec2TranscriptionOptions,
@@ -193,5 +196,30 @@ describe('Wav2Vec2 preset', () => {
 
     await loaded.dispose();
     await runtime.dispose();
+  });
+});
+
+describe('Wav2Vec2 waveform preprocessing', () => {
+  it('zero-means and unit-variances like HuggingFace Wav2Vec2Processor', () => {
+    const samples = new Float32Array([1, 2, 3, 4, 5]);
+    const normalized = normalizeWav2Vec2Waveform(samples);
+    let sum = 0;
+    for (const value of normalized) sum += value;
+    expect(sum / normalized.length).toBeCloseTo(0, 6);
+
+    let varianceSum = 0;
+    for (const value of normalized) varianceSum += value * value;
+    const std = Math.sqrt(varianceSum / normalized.length + 1e-7);
+    expect(std).toBeCloseTo(1, 5);
+  });
+
+  it('resamples 48 kHz audio to 16 kHz before normalization', () => {
+    const source = new Float32Array(48000);
+    for (let index = 0; index < source.length; index += 1) {
+      source[index] = Math.sin((2 * Math.PI * 440 * index) / 48000);
+    }
+    const prepared = prepareWav2Vec2Waveform(source, 48000, 16000);
+    expect(prepared.length).toBe(16000);
+    expect(resampleLinearWaveform(source, 48000, 16000).length).toBe(16000);
   });
 });

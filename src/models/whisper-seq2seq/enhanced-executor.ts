@@ -11,8 +11,9 @@
  *   5. Drift correction (whisper.cpp-style seek counter for long audio)
  *   6. Segment merging (stitch multi-chunk results)
  *
- * Quality gates use processed per-token logits plus the raw decoder-init
- * logits needed by Whisper's no-speech rule.
+ * Quality gates use selected-sequence scalar logprob/entropy traces plus the
+ * raw decoder-init logits needed by Whisper's no-speech rule. Full-vocabulary
+ * per-token logits are not retained.
  *
  * Architecture: Composition over inheritance.
  * EnhancedWhisperExecutor wraps WhisperExecutor.
@@ -28,7 +29,7 @@ import {
   type WhisperVadBackend,
   type VadSpeechSegment,
 } from '../../chunking/index.js';
-import { mergeSegments, deduplicateWords } from '../../post-processing/index.js';
+import { mergeWhisperChunkTranscripts } from './chunking.js';
 import { ChunkContextBuilder } from './chunk-context.js';
 import type {
   WhisperExecutor,
@@ -50,6 +51,125 @@ const MIN_SPEECH_MS=250;
 type WhisperDecoderInitLogitsContext = Parameters<
   NonNullable<WhisperSeq2SeqTranscriptionOptions['onDecoderInitLogits']>
 >[1];
+
+function buildQualityGates(
+  options: WhisperSeq2SeqTranscriptionOptions & Partial<EnhancedDecodeOptions>,
+) {
+  return [
+    compressionRatioGate(options.compressionRatioThreshold ?? 2.4),
+    logProbGate(options.logProbThreshold ?? -1.0),
+    entropyGate(options.entropyThreshold ?? 2.4),
+    noSpeechGate(options.noSpeechThreshold ?? 0.6, options.logProbThreshold ?? -1.0),
+  ];
+}
+
+type WhisperAudioInput = AudioBufferLike | Float32Array | Float64Array;
+
+function audioFrameCount(audio: WhisperAudioInput): number {
+  return audio instanceof Float32Array || audio instanceof Float64Array
+    ? audio.length
+    : audio.numberOfFrames;
+}
+
+function audioSampleRate(audio: WhisperAudioInput): number {
+  return audio instanceof Float32Array || audio instanceof Float64Array
+    ? ((audio as Float32Array & { sampleRate?: number }).sampleRate ?? WHISPER_SAMPLE_RATE)
+    : audio.sampleRate;
+}
+
+/**
+ * Slice VAD ranges without losing the AudioBufferLike contract. The enhanced
+ * executor also accepts typed-array test/runtime inputs for compatibility with
+ * the low-level executor, while normal callers provide planar audio buffers.
+ */
+function sliceWhisperAudio(
+  audio: WhisperAudioInput,
+  startSeconds: number,
+  endSeconds: number,
+): AudioBufferLike {
+  const sampleRate = audio instanceof Float32Array || audio instanceof Float64Array
+    ? ((audio as Float32Array & { sampleRate?: number }).sampleRate ?? WHISPER_SAMPLE_RATE)
+    : audio.sampleRate;
+  const totalFrames = audioFrameCount(audio);
+  const startFrame = Math.min(totalFrames, Math.max(0, Math.floor(startSeconds * sampleRate)));
+  const endFrame = Math.max(
+    startFrame,
+    Math.min(totalFrames, Math.ceil(endSeconds * sampleRate)),
+  );
+
+  if (audio instanceof Float32Array || audio instanceof Float64Array) {
+    const sliced = audio instanceof Float32Array
+      ? audio.subarray(startFrame, endFrame)
+      : Float32Array.from(audio.subarray(startFrame, endFrame));
+    return {
+      sampleRate,
+      numberOfChannels: 1,
+      numberOfFrames: sliced.length,
+      durationSeconds: sliced.length / sampleRate,
+      channels: [sliced],
+      data: sliced,
+      format: 'f32-planar',
+    };
+  }
+
+  const channels = audio.channels?.map((channel) => channel.subarray(startFrame, endFrame));
+  const stride = audio.format === 'f32-interleaved' || audio.format === 'i16-interleaved'
+    ? audio.numberOfChannels
+    : 1;
+  const data = channels?.[0] ?? audio.data?.subarray(startFrame * stride, endFrame * stride);
+  const frameCount = endFrame - startFrame;
+
+  return {
+    sampleRate,
+    numberOfChannels: audio.numberOfChannels,
+    numberOfFrames: frameCount,
+    durationSeconds: frameCount / sampleRate,
+    ...(channels ? { channels } : {}),
+    ...(data ? { data, format: audio.format ?? 'f32-planar' } : {}),
+  };
+}
+
+async function transcribeQualityAttempt(
+  vanilla: WhisperExecutor,
+  audio: AudioBufferLike,
+  options: WhisperSeq2SeqTranscriptionOptions & Partial<EnhancedDecodeOptions>,
+  context: WhisperDecodeContext,
+  temperature: number,
+) {
+  let decoderInitLogits: Float32Array | undefined;
+  let decoderInitNoSpeechTokenId: number | undefined;
+  const callerOnTokenLogits = options.onTokenLogits;
+  const callerOnDecoderInitLogits = options.onDecoderInitLogits;
+  const result = await vanilla.transcribe(
+    audio,
+    {
+      ...options,
+      temperature,
+      trackQuality: true,
+      onTokenLogits: callerOnTokenLogits,
+      onDecoderInitLogits: (rawLogits, initCtx: WhisperDecoderInitLogitsContext) => {
+        decoderInitLogits = new Float32Array(rawLogits);
+        decoderInitNoSpeechTokenId = initCtx.noSpeechTokenId;
+        callerOnDecoderInitLogits?.(rawLogits, initCtx);
+      },
+    },
+    context,
+  );
+  const traces = result.tokenTraces ?? [];
+  return {
+    result,
+    text: result.utteranceText,
+    tokens: traces.map((trace) => trace.tokenId),
+    logits: [] as Float32Array[],
+    vocabSize: 51865,
+    qualityContext: {
+      ...(decoderInitLogits
+        ? { noSpeechLogits: decoderInitLogits, noSpeechTokenId: decoderInitNoSpeechTokenId }
+        : {}),
+      ...(traces.length > 0 ? { tokenTraces: traces } : {}),
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // EnhancedWhisperExecutor
@@ -118,28 +238,24 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
 
     // ── 3. Multi-chunk VAD pipeline ──
     this.contextBuilder.reset();
-    this.driftHandler.reset(audio instanceof Float32Array ? audio.length : 0);
+    this.driftHandler.reset(audioFrameCount(audio as WhisperAudioInput));
 
     const conditionOnPrev = options.conditionOnPreviousText !== false;
     const useFallback = options.temperatureFallback !== false;
     const temps = options.temperatures ?? [0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
 
     const perChunkResults: Array<{
-      segments: any[];
-      words: any[];
-      text: string;
-      timeOffsetSeconds: number;
+      chunkStartTime: number;
+      transcript: WhisperNativeTranscript;
     }> = [];
 
     for (const seg of segments) {
       // Extract audio chunk
-      const sr = (audio as any).sampleRate ?? WHISPER_SAMPLE_RATE;
-      const audioLength = (audio instanceof Float32Array) ? audio.length : ((audio as any).length ?? 0);
-      const startSample = Math.max(0, Math.floor(seg.startSeconds * sr));
-      const endSample = Math.min(audioLength, Math.ceil(seg.endSeconds * sr));
-      const chunk = (audio as any).subarray?.(startSample, endSample) ?? audio;
+      const sr = audioSampleRate(audio as WhisperAudioInput);
+      const chunk = sliceWhisperAudio(audio as WhisperAudioInput, seg.startSeconds, seg.endSeconds);
+      const executorChunk = chunk;
 
-      if (!chunk || chunk.length === 0) continue;
+      if (audioFrameCount(chunk) === 0) continue;
 
       // Build chunk options
       const chunkOpts = { ...options };
@@ -153,52 +269,20 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
       // Transcribe with temperature fallback + full quality gates
       let chunkResult: WhisperNativeTranscript;
       if (useFallback) {
-        const gates = [
-          compressionRatioGate(options.compressionRatioThreshold ?? 2.4),
-          logProbGate(options.logProbThreshold ?? -1.0),
-          entropyGate(options.entropyThreshold ?? 2.4),
-          noSpeechGate(options.noSpeechThreshold ?? 0.6, options.logProbThreshold ?? -1.0),
-        ];
         const fallback = await withTemperatureFallback(
-          async (_temp) => {
-            const collectedLogits: Float32Array[] = [];
-            const collectedTokens: number[] = [];
-            let decoderInitLogits: Float32Array | undefined;
-            let decoderInitNoSpeechTokenId: number | undefined;
-            const callerOnTokenLogits = chunkOpts.onTokenLogits;
-            const callerOnDecoderInitLogits = chunkOpts.onDecoderInitLogits;
-            const optsWithLogits = {
-              ...chunkOpts,
-              temperature: _temp,
-              onTokenLogits: (tokenId: number, logits: Float32Array, _ctx: any) => {
-                collectedLogits.push(new Float32Array(logits));
-                collectedTokens.push(tokenId);
-                callerOnTokenLogits?.(tokenId, logits, _ctx);
-              },
-              onDecoderInitLogits: (rawLogits: Float32Array, initCtx: WhisperDecoderInitLogitsContext) => {
-                decoderInitLogits = new Float32Array(rawLogits);
-                decoderInitNoSpeechTokenId = initCtx.noSpeechTokenId;
-                callerOnDecoderInitLogits?.(rawLogits, initCtx);
-              },
-            };
-            const r = await this.vanilla.transcribe(chunk, optsWithLogits as any, context);
-            return {
-              result: r,
-              text: r.utteranceText,
-              tokens: collectedTokens,
-              logits: collectedLogits,
-              vocabSize: 51865,
-              qualityContext: decoderInitLogits
-                ? { noSpeechLogits: decoderInitLogits, noSpeechTokenId: decoderInitNoSpeechTokenId }
-                : undefined,
-            };
-          },
-          gates,
+          async (temp) => transcribeQualityAttempt(
+            this.vanilla,
+            executorChunk,
+            chunkOpts,
+            context,
+            temp,
+          ),
+          buildQualityGates(options),
           temps,
         );
         chunkResult = fallback.result;
       } else {
-        chunkResult = await this.vanilla.transcribe(chunk, chunkOpts, context);
+        chunkResult = await this.vanilla.transcribe(executorChunk, chunkOpts, context);
       }
 
       // Feed context builder (tokens deferred until vanilla exposes them)
@@ -217,28 +301,21 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
       this.driftHandler.advanceBy(duration, sr);
 
       perChunkResults.push({
-        segments: [...(chunkResult.segments ?? [])],
-        words: [...(chunkResult.words ?? [])],
-        text: chunkResult.utteranceText,
-        timeOffsetSeconds: corrected.start,
+        chunkStartTime: corrected.start,
+        transcript: chunkResult,
       });
     }
 
     // ── 4. Merge all chunks ──
-    const merged = mergeSegments(perChunkResults);
-    const deduped = deduplicateWords(merged.words);
-
-    // Build final text from segments, fall back to joining chunk texts
-    const utteranceText = merged.segments.length > 0
-      ? merged.segments.map((s) => s.text).join(' ').trim()
-      : perChunkResults.map(c => c.text).join(' ').trim();
+    const merged = mergeWhisperChunkTranscripts(perChunkResults);
+    const language = merged.language
+      ?? (typeof options.language === 'string' && options.language !== 'auto' ? options.language : undefined);
 
     return {
-      utteranceText: utteranceText || '[no speech detected]',
+      ...merged,
+      utteranceText: merged.utteranceText || '[no speech detected]',
       isFinal: true,
-      language: (options as any).language ?? 'en',
-      segments: merged.segments as any,
-      words: deduped as any,
+      ...(language ? { language } : {}),
     };
   }
 
@@ -257,50 +334,9 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
       return this.vanilla.transcribe(audio, options, context);
     }
 
-    // Build quality gates
-    const gates = [
-      compressionRatioGate(options.compressionRatioThreshold ?? 2.4),
-      logProbGate(options.logProbThreshold ?? -1.0),
-      entropyGate(options.entropyThreshold ?? 2.4),
-      noSpeechGate(options.noSpeechThreshold ?? 0.6, options.logProbThreshold ?? -1.0),
-    ];
-
     const fallback = await withTemperatureFallback(
-      async (_temp) => {
-        // Collect logits from the vanilla executor via onTokenLogits callback
-        const collectedLogits: Float32Array[] = [];
-        const collectedTokens: number[] = [];
-        let decoderInitLogits: Float32Array | undefined;
-        let decoderInitNoSpeechTokenId: number | undefined;
-        const callerOnTokenLogits = options.onTokenLogits;
-        const callerOnDecoderInitLogits = options.onDecoderInitLogits;
-        const optsWithLogits = {
-          ...options,
-          temperature: _temp,
-          onTokenLogits: (tokenId: number, logits: Float32Array, _ctx: any) => {
-            collectedLogits.push(new Float32Array(logits)); // snapshot
-            collectedTokens.push(tokenId);
-            callerOnTokenLogits?.(tokenId, logits, _ctx);
-          },
-          onDecoderInitLogits: (rawLogits: Float32Array, initCtx: WhisperDecoderInitLogitsContext) => {
-            decoderInitLogits = new Float32Array(rawLogits);
-            decoderInitNoSpeechTokenId = initCtx.noSpeechTokenId;
-            callerOnDecoderInitLogits?.(rawLogits, initCtx);
-          },
-        };
-        const r = await this.vanilla.transcribe(audio, optsWithLogits as any, context);
-        return {
-          result: r,
-          text: r.utteranceText,
-          tokens: collectedTokens,
-          logits: collectedLogits,
-          vocabSize: 51865,
-          qualityContext: decoderInitLogits
-            ? { noSpeechLogits: decoderInitLogits, noSpeechTokenId: decoderInitNoSpeechTokenId }
-            : undefined,
-        };
-      },
-      gates,
+      async (temp) => transcribeQualityAttempt(this.vanilla, audio, options, context, temp),
+      buildQualityGates(options),
       temps,
     );
 

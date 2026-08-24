@@ -11,7 +11,8 @@
  * A "session" is any object that can run decoder_init and decoder_step.
  */
 
-import { argmax } from '../../inference/index.js';
+import { argmax, tokenQualityFromLogits } from '../../inference/index.js';
+import type { TokenQualityTrace } from '../../quality/types.js';
 import type { WhisperBeamState } from './beam-search.js';
 
 // ---------------------------------------------------------------------------
@@ -139,6 +140,12 @@ export interface WhisperDecodeOptions {
   readonly bestOf?: number;
   /** Track cumulative log-probability for best-of scoring. */
   readonly trackScore?: boolean;
+  /**
+   * Collect scalar logprob/entropy traces for the selected sequence.
+   * Greedy/sampling compute traces only when this is true. Beam search always
+   * records traces for the winning hypothesis.
+   */
+  readonly trackQuality?: boolean;
   /** Experimental: run active beam decoder steps in one batch when the session supports it. */
   readonly experimentalBatchedBeam?: boolean;
 }
@@ -147,6 +154,8 @@ export interface WhisperDecodeResult {
   readonly tokens: readonly number[];
   /** Cumulative log-probability score (sum of log probs per token). */
   readonly score?: number;
+  /** Selected-sequence scalar quality traces. Beam always includes these. */
+  readonly tokenTraces?: readonly TokenQualityTrace[];
 }
 
 // ---------------------------------------------------------------------------
@@ -215,7 +224,20 @@ export async function whisperGreedyDecode(
   const tokens: number[] = [firstTokenId];
 
   const trackScore = options.trackScore === true;
-  let cumulativeLogProb = trackScore ? logProbOfToken(firstLogits, firstTokenId) : 0;
+  const trackQuality = options.trackQuality === true;
+  const tokenTraces: TokenQualityTrace[] = [];
+  let cumulativeLogProb = 0;
+  if (trackScore || trackQuality) {
+    const firstQuality = tokenQualityFromLogits(firstLogits, firstTokenId);
+    if (trackScore) cumulativeLogProb = firstQuality.logProb;
+    if (trackQuality) {
+      tokenTraces.push({
+        tokenId: firstTokenId,
+        logProb: firstQuality.logProb,
+        entropy: firstQuality.entropy,
+      });
+    }
+  }
 
   if (onTokenLogits) onTokenLogits(firstTokenId, firstLogits, { tokens, beginIndex: promptTokens.length });
 
@@ -225,14 +247,26 @@ export async function whisperGreedyDecode(
     const nextTokenId = selectToken(stepResult.logits, temperature);
     tokens.push(nextTokenId);
     pastKv = stepResult.presentKv;
-    if (trackScore) {
-      cumulativeLogProb += logProbOfToken(stepResult.logits, nextTokenId);
+    if (trackScore || trackQuality) {
+      const stepQuality = tokenQualityFromLogits(stepResult.logits, nextTokenId);
+      if (trackScore) cumulativeLogProb += stepQuality.logProb;
+      if (trackQuality) {
+        tokenTraces.push({
+          tokenId: nextTokenId,
+          logProb: stepQuality.logProb,
+          entropy: stepQuality.entropy,
+        });
+      }
     }
     if (onTokenLogits) onTokenLogits(nextTokenId, stepResult.logits, { tokens, beginIndex: promptTokens.length });
     if (nextTokenId === eosTokenId) break;
   }
 
-  return trackScore ? { tokens, score: cumulativeLogProb } : { tokens };
+  return {
+    tokens,
+    ...(trackScore ? { score: cumulativeLogProb } : {}),
+    ...(trackQuality ? { tokenTraces } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -278,7 +312,7 @@ export async function whisperBeamDecode(
 
   const normalizedPatience = Number.isFinite(patience) && patience > 0 ? patience : 1;
   const maxFinishedCandidates = Math.max(1, roundToNearestEven(beamSize * normalizedPatience));
-  const finished: WhisperBeamState[] = [];
+  const finished: WhisperBeamState<TokenQualityTrace[]>[] = [];
   const finishedKeys = new Set<string>();
 
   const firstExpansion = expandWhisperBeamStep(
@@ -294,7 +328,7 @@ export async function whisperBeamDecode(
     maxFinishedCandidates,
   );
 
-  let beams = firstExpansion.active;
+  let beams: WhisperBeamState<TokenQualityTrace[]>[] = firstExpansion.active;
   let beamKvs = firstExpansion.parentIndexes.map(() => cloneWhisperKvCache(initResult.presentKv));
 
   const useBatchedBeam = options.experimentalBatchedBeam === true && Boolean(session.runStepBatch);
@@ -368,81 +402,134 @@ export async function whisperBeamDecode(
     eosTokenId,
     lengthPenalty,
   );
-  if (!best) return whisperGreedyDecode(session, { ...options, strategy: 'greedy' });
+  if (!best) {
+    return whisperGreedyDecode(session, { ...options, strategy: 'greedy', trackQuality: true });
+  }
 
-  return { tokens: best.tokens.slice(promptTokens.length), score: best.score };
+  return {
+    tokens: best.tokens.slice(promptTokens.length),
+    score: best.score,
+    tokenTraces: best.payload ?? [],
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function logSoftmax(logits: Float32Array): Float32Array {
+interface WhisperTopKToken {
+  readonly tokenId: number;
+  readonly logProb: number;
+}
+
+interface WhisperTopKSelection {
+  readonly topTokens: readonly WhisperTopKToken[];
+  readonly entropy: number;
+}
+
+/**
+ * Compute the scalar statistics needed by beam expansion without materializing
+ * a full-vocabulary log-softmax array. The old path allocated one Float32Array
+ * per active beam and then scanned it again for top-k. Beam quality only needs
+ * entropy plus the small candidate set, so keep the selector bounded by k.
+ */
+function selectTopKWithEntropy(logits: Float32Array, k: number): WhisperTopKSelection {
+  const limit = Math.max(0, k);
   let max = -Infinity;
   for (let i = 0; i < logits.length; i++) if (logits[i]! > max) max = logits[i]!;
+
+  // A fully suppressed row is not expected for a valid Whisper step, but keep
+  // the decode loop finite and deterministic if a custom processor produces it.
+  if (!Number.isFinite(max)) {
+    const topTokens: WhisperTopKToken[] = [];
+    for (let tokenId = 0; tokenId < logits.length && tokenId < limit; tokenId++) {
+      topTokens.push({ tokenId, logProb: Number.NEGATIVE_INFINITY });
+    }
+    return { topTokens, entropy: 0 };
+  }
+
   let sum = 0;
   for (let i = 0; i < logits.length; i++) sum += Math.exp(logits[i]! - max);
   const logSum = Math.log(sum);
-  const result = new Float32Array(logits.length);
-  for (let i = 0; i < logits.length; i++) result[i] = logits[i]! - max - logSum;
-  return result;
-}
+  const topTokens: WhisperTopKToken[] = [];
+  let entropy = 0;
+  for (let i = 0; i < logits.length; i++) {
+    const rawLogProb = logits[i]! - max - logSum;
+    const probability = Math.exp(rawLogProb);
+    if (probability > 0) entropy -= probability * Math.log(probability);
+    if (limit === 0) continue;
 
-function selectTopK(logProbs: Float32Array, k: number): { tokenId: number; logProb: number }[] {
-  const limit = Math.max(0, k);
-  const top: { tokenId: number; logProb: number }[] = [];
-  for (let tokenId = 0; tokenId < logProbs.length; tokenId++) {
-    const logProb = logProbs[tokenId] ?? Number.NEGATIVE_INFINITY;
-    let insertAt = top.length;
-    while (insertAt > 0 && logProb > (top[insertAt - 1]?.logProb ?? Number.NEGATIVE_INFINITY)) {
+    // Preserve the previous Float32Array rounding before ranking candidates.
+    // This keeps tie behavior stable against the old materialized path.
+    const logProb = Math.fround(rawLogProb);
+    let insertAt = topTokens.length;
+    while (insertAt > 0 && logProb > (topTokens[insertAt - 1]?.logProb ?? Number.NEGATIVE_INFINITY)) {
       insertAt--;
     }
     if (insertAt >= limit) continue;
-    top.splice(insertAt, 0, { tokenId, logProb });
-    if (top.length > limit) top.pop();
+    topTokens.splice(insertAt, 0, { tokenId: i, logProb });
+    if (topTokens.length > limit) topTokens.pop();
   }
-  return top;
+  return { topTokens, entropy };
 }
 
 interface WhisperBeamExpansion {
-  readonly active: WhisperBeamState[];
+  readonly active: WhisperBeamState<TokenQualityTrace[]>[];
   readonly parentIndexes: number[];
-  readonly finished: WhisperBeamState[];
+  readonly finished: WhisperBeamState<TokenQualityTrace[]>[];
 }
 
 function expandWhisperBeamStep(
-  beams: readonly WhisperBeamState[],
+  beams: readonly WhisperBeamState<TokenQualityTrace[]>[],
   logitsByBeam: readonly Float32Array[],
   beamSize: number,
   eosTokenId: number,
 ): WhisperBeamExpansion {
   const candidates: Array<{
-    readonly beam: WhisperBeamState;
+    readonly beam: WhisperBeamState<TokenQualityTrace[]>;
     readonly parentIndex: number;
     readonly tokenId: number;
     readonly score: number;
+    readonly logProb: number;
+    readonly entropy: number;
   }> = [];
 
   for (let parentIndex = 0; parentIndex < beams.length; parentIndex++) {
     const beam = beams[parentIndex];
     const logits = logitsByBeam[parentIndex];
     if (!beam || !logits || logits.length === 0) continue;
-    const topTokens = selectTopK(logSoftmax(logits), beamSize + 1);
+    const { topTokens, entropy } = selectTopKWithEntropy(logits, beamSize + 1);
     for (const { tokenId, logProb } of topTokens) {
-      candidates.push({ beam, parentIndex, tokenId, score: beam.score + logProb });
+      candidates.push({
+        beam,
+        parentIndex,
+        tokenId,
+        score: beam.score + logProb,
+        logProb,
+        entropy,
+      });
     }
   }
 
   candidates.sort((a, b) => b.score - a.score);
-  const active: WhisperBeamState[] = [];
+  const active: WhisperBeamState<TokenQualityTrace[]>[] = [];
   const parentIndexes: number[] = [];
-  const finished: WhisperBeamState[] = [];
+  const finished: WhisperBeamState<TokenQualityTrace[]>[] = [];
 
   for (const candidate of candidates) {
-    const next: WhisperBeamState = {
+    const traces: TokenQualityTrace[] = [
+      ...(candidate.beam.payload ?? []),
+      {
+        tokenId: candidate.tokenId,
+        logProb: candidate.logProb,
+        entropy: candidate.entropy,
+      },
+    ];
+    const next: WhisperBeamState<TokenQualityTrace[]> = {
       tokens: [...candidate.beam.tokens, candidate.tokenId],
       score: candidate.score,
       completed: candidate.tokenId === eosTokenId,
+      payload: traces,
     };
     if (next.completed) {
       finished.push(next);
@@ -463,9 +550,9 @@ function cloneWhisperKvCache(cache: WhisperKvCache): WhisperKvCache {
 }
 
 function appendFinishedWhisperBeams(
-  destination: WhisperBeamState[],
+  destination: WhisperBeamState<TokenQualityTrace[]>[],
   keys: Set<string>,
-  candidates: readonly WhisperBeamState[],
+  candidates: readonly WhisperBeamState<TokenQualityTrace[]>[],
   limit: number,
 ): void {
   for (const candidate of candidates) {
@@ -478,12 +565,12 @@ function appendFinishedWhisperBeams(
 }
 
 function selectBestFinishedWhisperBeam(
-  beams: readonly WhisperBeamState[],
+  beams: readonly WhisperBeamState<TokenQualityTrace[]>[],
   promptLength: number,
   eosTokenId: number,
   lengthPenalty: number | undefined,
-): WhisperBeamState | undefined {
-  let best: WhisperBeamState | undefined;
+): WhisperBeamState<TokenQualityTrace[]> | undefined {
+  let best: WhisperBeamState<TokenQualityTrace[]> | undefined;
   let bestScore = Number.NEGATIVE_INFINITY;
   for (const beam of beams) {
     const hasEos = beam.tokens[beam.tokens.length - 1] === eosTokenId;
@@ -514,18 +601,6 @@ function roundToNearestEven(value: number): number {
   const fraction = value - floor;
   if (fraction === 0.5) return floor % 2 === 0 ? floor : floor + 1;
   return Math.round(value);
-}
-
-/**
- * Compute log-probability of a specific token from raw logits.
- * Returns log_softmax(logits)[tokenId].
- */
-function logProbOfToken(logits: Float32Array, tokenId: number): number {
-  let max = -Infinity;
-  for (let i = 0; i < logits.length; i++) if (logits[i]! > max) max = logits[i]!;
-  let sum = 0;
-  for (let i = 0; i < logits.length; i++) sum += Math.exp(logits[i]! - max);
-  return (logits[tokenId] ?? -Infinity) - max - Math.log(sum);
 }
 
 function selectToken(logits: Float32Array, temperature: number): number {
@@ -581,6 +656,7 @@ async function whisperBestOfDecode(
       strategy: 'greedy',
       beamSize: 1,
       trackScore: true,
+      trackQuality: options.trackQuality === true,
     });
 
     const tokenCount = result.tokens.length;

@@ -21,3 +21,4 @@ export * from './tokenizer.js';
 export * from './types.js';
 export * from './vad-segmenter.js';
 export * from './word-timestamps.js';
+export * from './wav2vec2-word-aligner.js';
