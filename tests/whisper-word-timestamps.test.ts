@@ -123,6 +123,27 @@ describe('Whisper word duration constraints', () => {
     expect(words[4]!.startTime).toBeLessThan(1.2);
   });
 
+  it('keeps a leading DTW pause anchored instead of pulling the phrase to zero', () => {
+    const words = constrainWhisperWordDurations([
+      { index: 0, text: 'In', startTime: 0, endTime: 3.0 },
+      { index: 1, text: 'the', startTime: 3.0, endTime: 3.4 },
+      { index: 2, text: 'long', startTime: 3.4, endTime: 4.0 },
+      { index: 3, text: 'history', startTime: 4.0, endTime: 4.2 },
+      { index: 4, text: 'of', startTime: 4.2, endTime: 4.4 },
+      { index: 5, text: 'the', startTime: 4.4, endTime: 4.6 },
+      { index: 6, text: 'world,', startTime: 4.6, endTime: 5.0 },
+      { index: 7, text: 'only', startTime: 6.0, endTime: 6.3 },
+      { index: 8, text: 'a', startTime: 6.3, endTime: 6.5 },
+      { index: 9, text: 'few', startTime: 6.5, endTime: 6.8 },
+      { index: 10, text: 'generations', startTime: 6.8, endTime: 7.4 },
+      { index: 11, text: 'have', startTime: 7.4, endTime: 8.0 },
+    ]);
+
+    expect(words[0]!.startTime).toBeGreaterThan(2);
+    expect(words[0]!.endTime).toBe(3);
+    expect(words[1]!.startTime).toBeGreaterThanOrEqual(words[0]!.endTime);
+  });
+
   it('does not pull the next phrase across a comma pause', () => {
     const words = constrainWhisperWordDurations([
       { index: 0, text: 'world,', startTime: 0.5, endTime: 0.9 },

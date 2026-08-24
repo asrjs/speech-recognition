@@ -186,6 +186,29 @@ export function resolveWhisperLanguageTokenId(
 }
 
 /**
+ * Build the teacher-forced sequence used by Whisper's reference word
+ * alignment. Generated timestamp tokens are useful for segment boundaries,
+ * but they are not part of the cross-attention alignment prompt.
+ */
+export function buildWhisperForcedAlignmentTokenIds(
+  tokenizer: Pick<WhisperTokenizer, 'getTokenId'>,
+  language: string,
+  textTokenIds: readonly number[],
+  task: 'transcribe' | 'translate' = 'transcribe',
+): number[] {
+  const taskToken = task === 'translate' ? '<|translate|>' : '<|transcribe|>';
+  const fallbackTaskId = task === 'translate' ? 50359 : 50360;
+  return [
+    tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
+    resolveWhisperLanguageTokenId(tokenizer, language),
+    tokenizer.getTokenId(taskToken) ?? fallbackTaskId,
+    tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
+    ...textTokenIds,
+    tokenizer.getTokenId('<|endoftext|>') ?? 50257,
+  ];
+}
+
+/**
  * Convert a Float32Array to a Uint16Array of fp16 bits.
  * Uses round-to-nearest-even.
  */
@@ -252,41 +275,42 @@ function tensorDataAsFloat32(data: ArrayBufferView): Float32Array {
 }
 
 /**
- * If the decoder expects float16 encoder hidden states, cast the fp32 encoder output.
- * When the Cast-injected decoder_init model is used (accepts fp32 natively), this
- * is a no-op and the GPU tensor flows through with zero CPU touch.
+ * Match the encoder hidden-state tensor to the graph input contract.
+ *
+ * Split-graph exports are allowed to use different precision at the graph
+ * boundary.  The optimized decoder_init usually accepts fp32 (and can keep a
+ * GPU tensor), while decoder_align may be exported from the original fp32
+ * Transformers module even when the runtime encoder emits fp16.  ORT-WebGPU
+ * does not insert this boundary cast for us, so an otherwise valid alignment
+ * graph can fail and silently fall back to generated timestamp tokens.
  */
 async function maybeCastEncoderHiddenStates(
   encoderHiddenStates: OrtTensorLike<Float32Array>,
-  decoderInitSession: OrtSessionLike,
+  decoderSession: OrtSessionLike,
   ort: OrtModuleLike,
 ): Promise<OrtTensorLike<Float32Array>> {
-  const metadata = (decoderInitSession as unknown as { inputMetadata?: Array<{ name?: string; type?: string; shape?: number[] }> }).inputMetadata;
+  const metadata = (decoderSession as unknown as { inputMetadata?: Array<{ name?: string; type?: string; shape?: number[] }> }).inputMetadata;
   const encMeta = metadata?.find((m) => m.name === 'encoder_hidden_states');
-  // If decoder_init already accepts fp32 (Cast-injected model), skip the CPU cast.
-  // The encoder output flows directly from GPU to decoder_init with zero CPU touch.
-  if (!encMeta || encMeta.type !== 'float16') {
+  const expectedType = encMeta?.type;
+  if (expectedType !== 'float16' && expectedType !== 'float32') {
     return encoderHiddenStates;
   }
-  // If encoder already outputs fp16 (stripped encoder) and decoder accepts fp16,
-  // no cast needed — GPU tensor passes through directly.
-  if (encoderHiddenStates.type === 'float16') {
+  if (encoderHiddenStates.type === expectedType) {
     return encoderHiddenStates;
   }
-  // Decoder expects float16 but encoder outputs fp32 — CPU cast needed.
-  // If tensor is on GPU, download first (this path is only hit with the original
-  // fp32-output encoder + original fp16-input decoder_init combination).
-  const f32Data = isGpuBufferTensor(encoderHiddenStates) && encoderHiddenStates.getData
-    ? (await encoderHiddenStates.getData(true)) as Float32Array
-    : encoderHiddenStates.data as Float32Array;
+  // A precision cast necessarily materializes the tensor on CPU. This is
+  // limited to graph boundaries whose declared element types differ.
+  const rawData = isGpuBufferTensor(encoderHiddenStates) && encoderHiddenStates.getData
+    ? await encoderHiddenStates.getData(true)
+    : encoderHiddenStates.data;
   const dims = encoderHiddenStates.dims as number[];
   const size = dims.reduce((a, b) => a * b, 1);
-  const f16Bits = float32ToFloat16Bits(
-    (f32Data as Float32Array).length === size
-      ? (f32Data as Float32Array)
-      : (f32Data as Float32Array).subarray(0, size),
-  );
-  return new ort.Tensor('float16', f16Bits, dims) as unknown as OrtTensorLike<Float32Array>;
+  const f32Data = tensorDataAsFloat32(rawData as ArrayBufferView);
+  const boundedF32Data = f32Data.length === size ? f32Data : f32Data.subarray(0, size);
+  if (expectedType === 'float16') {
+    return new ort.Tensor('float16', float32ToFloat16Bits(boundedF32Data), dims) as unknown as OrtTensorLike<Float32Array>;
+  }
+  return new ort.Tensor('float32', boundedF32Data, dims) as unknown as OrtTensorLike<Float32Array>;
 }
 
 function createWhisperGpuKvOutputLocation(
@@ -1434,7 +1458,7 @@ export class WhisperOnnxExecutor {
     allTokens: readonly number[],
     promptLen: number,
     language: string,
-    _options: WhisperSeq2SeqTranscriptionOptions,
+    options: WhisperSeq2SeqTranscriptionOptions,
     audioDurationSeconds?: number,
   ): Promise<WhisperNativeTranscript['words']> {
     const { tokenIds: textTokenIds, rowIndices } = collectSplitGraphTextTokenRows(
@@ -1452,37 +1476,39 @@ export class WhisperOnnxExecutor {
         encoderHiddenStates,
         decoderAlignSession,
       );
+      // Match Whisper/faster-whisper's find_alignment contract: run the
+      // decoder-align graph once with a no-timestamps teacher-forced prompt.
+      // Generated timestamp tokens remain useful for segment boundaries, but
+      // using them here constrains a leading pause to the first timestamp
+      // span and anchors the first word at zero.
+      const alignmentTokenIds = buildWhisperForcedAlignmentTokenIds(
+        tokenizer,
+        language,
+        textTokenIds,
+        options.task ?? 'transcribe',
+      );
+      const alignmentPromptLen = 4;
+      const alignmentTextRowIndices = textTokenIds.map(
+        (_tokenId, index) => alignmentPromptLen + index,
+      );
       const { data: alignmentData, dims } = await this.runForcedAlignmentSplitGraph(
         { ...loaded, decoderAlignSession, ort: loaded.ort },
         encoderForAlign,
-        allTokens,
+        alignmentTokenIds,
       );
       const frameCount = dims.length > 0 ? Number(dims[dims.length - 1]) : 0;
       const cropFrameCount = audioDurationSeconds && audioDurationSeconds > 0
         ? Math.max(1, Math.round(audioDurationSeconds / 0.02))
         : undefined;
-      const isTextToken = (id: number) =>
-        !tokenizer.isSpecialTokenId(id) && !tokenizer.isTimestampTokenId(id);
-      const dtwTimestamps = processSplitGraphAlignmentByTimestampSpans({
+      const dtwTimestamps = processSplitGraphAlignment({
         alignmentData,
-        tokenIds: allTokens,
-        promptLen,
-        frameCount,
-        medianFilterWidth: loaded.modelConfig.medianFilterWidth,
-        timePrecisionSeconds: 0.02,
-        cropFrameCount,
-        isTextToken,
-        isTimestampToken: (id) => tokenizer.isTimestampTokenId(id),
-        timestampTokenToSeconds: (id) => tokenizer.timestampTokenIdToSeconds(id) ?? 0,
-      }) ?? processSplitGraphAlignment({
-        alignmentData,
-        totalTokens: allTokens.length,
-        promptLen,
+        totalTokens: alignmentTokenIds.length,
+        promptLen: alignmentPromptLen,
         textTokenCount: textTokenIds.length,
         frameCount,
         medianFilterWidth: loaded.modelConfig.medianFilterWidth,
         timePrecisionSeconds: 0.02,
-        textTokenRowIndices: rowIndices,
+        textTokenRowIndices: alignmentTextRowIndices,
         cropFrameCount,
       });
 
@@ -1940,7 +1966,7 @@ export class WhisperOnnxExecutor {
     const promptTokens: number[] = [
       tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
       resolveWhisperLanguageTokenId(tokenizer, language),
-      tokenizer.getTokenId(taskToken) ?? 50359,
+      tokenizer.getTokenId(taskToken) ?? 50360,
     ];
     if (noTimestampsToken) {
       const ntId = tokenizer.getTokenId(noTimestampsToken);
@@ -2676,7 +2702,7 @@ export class WhisperOnnxExecutor {
     const promptTokens: number[] = [
       tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
       resolveWhisperLanguageTokenId(tokenizer, language),
-      tokenizer.getTokenId(taskToken) ?? 50359,
+      tokenizer.getTokenId(taskToken) ?? 50360,
     ];
     if (noTimestampsToken) {
       const ntId = tokenizer.getTokenId(noTimestampsToken);

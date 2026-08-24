@@ -315,9 +315,9 @@ export async function runAsrPipeline(_opts) {
     'models/whisper-seq2seq/generation-config.js'
   );
   const {
+    buildWhisperForcedAlignmentTokenIds,
     collectSplitGraphTextTokenRows,
     processSplitGraphAlignment,
-    processSplitGraphAlignmentByTimestampSpans,
   } = await importDist(
     'models/whisper-seq2seq/executor.js'
   );
@@ -550,7 +550,7 @@ export async function runAsrPipeline(_opts) {
       const promptTokens = [
         tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
         langId,
-        tokenizer.getTokenId('<|transcribe|>') ?? 50359,
+        tokenizer.getTokenId('<|transcribe|>') ?? 50360,
         tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
       ];
       if (opts.initialPrompt) {
@@ -657,7 +657,6 @@ export async function runAsrPipeline(_opts) {
       let nativeWords = [];
       if (alignSess && opts.wordTimestamps) {
         const allTokenIds = [...promptTokens, ...tokens];
-        const isTimestampToken = (id) => id >= timestampBeginId && id <= timestampEndId;
         const isTextToken = (id) => {
           const td = tokenizer.decode([id]) || '';
           return Boolean(td && !td.startsWith('<|') && !td.startsWith('[') && !td.startsWith('�'));
@@ -669,33 +668,34 @@ export async function runAsrPipeline(_opts) {
         );
         const decodedTexts = textIds.map((id) => tokenizer.decode([id]) || '');
         const cropFrameCount = Math.max(1, Math.round((chunk.length / sampleRate) / 0.02));
+        const alignmentTokenIds = buildWhisperForcedAlignmentTokenIds(
+          tokenizer,
+          language,
+          textIds,
+          opts.task ?? 'transcribe',
+        );
+        const alignmentPromptLen = 4;
+        const alignmentTextRowIndices = textIds.map(
+          (_id, index) => alignmentPromptLen + index,
+        );
 
         try {
           const alignFeeds = {
-            input_ids: new ort.Tensor('int64', BigInt64Array.from(allTokenIds.map(BigInt)), [1, allTokenIds.length]),
+            input_ids: new ort.Tensor('int64', BigInt64Array.from(alignmentTokenIds.map(BigInt)), [1, alignmentTokenIds.length]),
             encoder_hidden_states: encTensor,
           };
           const alignOut = await alignSess.run(alignFeeds);
           const alignKey = Object.keys(alignOut)[0];
           const alignmentData = new Float32Array(alignOut[alignKey].data);
 
-          const dtwTimestamps = processSplitGraphAlignmentByTimestampSpans({
+          const dtwTimestamps = processSplitGraphAlignment({
             alignmentData,
-            tokenIds: allTokenIds,
-            promptLen: promptTokens.length,
-            frameCount: encoderFrameCount,
-            timePrecisionSeconds: 0.02,
-            cropFrameCount,
-            isTextToken,
-            isTimestampToken,
-            timestampTokenToSeconds: (id) => (id - timestampBeginId) * 0.02,
-          }) ?? processSplitGraphAlignment({
-            alignmentData,
-            promptLen: promptTokens.length,
+            totalTokens: alignmentTokenIds.length,
+            promptLen: alignmentPromptLen,
             textTokenCount: textIds.length,
             frameCount: encoderFrameCount,
             timePrecisionSeconds: 0.02,
-            textTokenRowIndices: rowIndices,
+            textTokenRowIndices: alignmentTextRowIndices,
             cropFrameCount,
           });
 

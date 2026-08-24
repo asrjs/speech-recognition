@@ -224,6 +224,22 @@ export function constrainWhisperWordDurations(
   if (!(maxDuration > 0)) return words.map((word) => ({ ...word }));
 
   const next = words.map((word) => ({ ...word }));
+  // A short clip can contain a long leading pause. Whisper's DTW path then
+  // assigns that pause to the first word, and OpenAI/faster-whisper shift the
+  // word start toward its end instead of clipping the end toward zero. Keep
+  // that boundary intact so the later gap-closing pass cannot pull the whole
+  // phrase into the leading silence.
+  const first = next[0];
+  if (first) {
+    const firstDuration = first.endTime - first.startTime;
+    if (firstDuration > maxDuration * 2) {
+      const startTime = Math.max(first.startTime, first.endTime - maxDuration);
+      next[0] = {
+        ...first,
+        startTime: Math.min(startTime, first.endTime - MIN_WORD_DURATION),
+      };
+    }
+  }
   for (let index = 0; index < next.length; index++) {
     const word = next[index]!;
     const duration = word.endTime - word.startTime;
@@ -482,11 +498,14 @@ function packWhisperAlignedWordTimestamps(
 export function clipShortWhisperWordDurations(
   words: readonly WhisperNativeWord[],
 ): WhisperNativeWord[] {
-  return words.map((word) => {
+  return words.map((word, index) => {
     const letters = normalizeAlignableWord(word.text).length;
     if (letters === 0 || letters > 3) return word;
     const maxDuration = Math.max(MIN_WORD_DURATION, letters * 0.1);
     const duration = word.endTime - word.startTime;
+    // Do not erase a verified leading pause from a first short word. The
+    // duration constraint has already moved its start toward the DTW end.
+    if (index === 0 && word.startTime > 0.4) return word;
     if (duration <= maxDuration) return word;
     return {
       ...word,

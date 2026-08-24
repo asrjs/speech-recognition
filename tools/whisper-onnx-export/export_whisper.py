@@ -633,6 +633,20 @@ class WhisperDecoderAlignWrapper(nn.Module):
         positions = decoder.embed_positions(input_ids)
         hidden_states = decoder.embed_tokens(input_ids) + positions
 
+        # Whisper's decoder self-attention is causal.  The normal decoder
+        # builds this mask in WhisperDecoder.forward, but this alignment graph
+        # runs the layers manually so it must provide the mask explicitly.
+        # Without it, teacher-forced alignment rows can attend to future text
+        # tokens and diverge from OpenAI/faster-whisper word timing.
+        target_length = input_ids.shape[1]
+        causal_mask = torch.full(
+            (target_length, target_length),
+            torch.finfo(hidden_states.dtype).min,
+            dtype=hidden_states.dtype,
+            device=hidden_states.device,
+        )
+        causal_mask = torch.triu(causal_mask, diagonal=1)[None, None, :, :]
+
         captured: List[torch.Tensor] = []
 
         for layer_idx, layer in enumerate(decoder.layers):
@@ -640,25 +654,27 @@ class WhisperDecoderAlignWrapper(nn.Module):
 
             # Self-attention (no need for attention weights)
             normed = layer.self_attn_layer_norm(hidden_states)
-            self_out, _self_weights = layer.self_attn(
+            self_result = layer.self_attn(
                 hidden_states=normed,
-                attention_mask=None,
-                past_key_values=None,
+                attention_mask=causal_mask,
+                past_key_value=None,
                 output_attentions=False,
             )
+            self_out = self_result[0]
             hidden_states = residual + self_out
 
             # Cross-attention — capture weights for alignment heads
             residual = hidden_states
             normed = layer.encoder_attn_layer_norm(hidden_states)
 
-            cross_out, cross_weights = layer.encoder_attn(
+            cross_result = layer.encoder_attn(
                 hidden_states=normed,
                 key_value_states=encoder_hidden_states,
                 attention_mask=None,
-                past_key_values=None,
+                past_key_value=None,
                 output_attentions=True,
             )
+            cross_out, cross_weights = cross_result[0], cross_result[1]
 
             hidden_states = residual + cross_out
 
@@ -1489,6 +1505,11 @@ def export_all(
         "vocab_size": cfg.vocab_size,
         "alignment_heads": alignment_heads,
         "alignment_heads_source": "manual" if manual_alignment_heads else "generation_config_or_config",
+        "alignment_export": {
+            "causal_self_attention": True,
+            "encoder_hidden_state_dtype": dtype,
+            "attention_implementation": "eager",
+        },
         "special_tokens": special_tokens,
         "artifacts": artifacts,
         "external_data": use_external_data,

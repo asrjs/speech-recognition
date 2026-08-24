@@ -63,6 +63,9 @@ All sizes for whisper-tiny fp32. Multiply by ~1.9x for whisper-base.
 - Inputs: `input_ids` [batch, T], `encoder_hidden_states`
 - Output: `alignment` [batch, T, 1500] — averaged across selected alignment_heads
 - No DTW, timestamp logic, or torch.diff in ONNX — all post-processing in TypeScript
+- The manually unrolled decoder supplies Whisper's causal self-attention mask;
+  re-export alignment graphs after changing Transformers versions and validate
+  them against the regular decoder before publishing.
 
 ## Verification
 

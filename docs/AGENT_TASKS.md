@@ -1,7 +1,7 @@
 # Agent Task Coordination
 
 Branch: `feat/whisper-cleanup-beam-temperature`
-Updated: 2026-08-24 (bounded beam selector and browser beam matrix)
+Updated: 2026-08-25 (causal split-graph alignment and boundary benchmark)
 
 ## POST-RESTART VALIDATION (2026-08-23)
 
@@ -343,9 +343,12 @@ hallucinations and recovers with higher temperature.
 - [x] Clip DTW outlier word durations using OpenAI Whisper's median*2 cap, and
   add optional `wordAligner` (Wav2Vec2 CTC Viterbi) as a WhisperX-style refine
   pass after decode. GPU-KV greedy is unchanged unless an aligner is provided.
-- Compare DTW/attention word timestamps against faster-whisper / WhisperX on
-  reference fixtures.
-- Fix any systematic drift or boundary errors.
+- [x] Compare DTW/attention word timestamps against faster-whisper on the JFK
+  reference fixture; the first-word anchor now matches within normal DTW
+  variation instead of starting at zero.
+- [x] Fix the systematic leading-boundary error in the runtime postprocessor
+  and alignment export. Re-export the published precision variants before
+  claiming remote-artifact parity.
 - Validate that word timestamps work with both splitgraph and merged-decoder paths.
 - Timestamp-token processing now includes `<|notimestamps|>` suppression and
   the aggregate timestamp-probability rule; retain focused tests for both.
