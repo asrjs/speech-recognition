@@ -445,6 +445,43 @@ describe('whisperBeamDecode integration', () => {
     expect(result.tokenTraces?.every((trace) => trace.entropy >= 0)).toBe(true);
   });
 
+  it('falls back to scalar beam steps when the backend rejects batched inputs', async () => {
+    let scalarCalls = 0;
+    let batchCalls = 0;
+    const session: WhisperCoreSession = {
+      async runInit() {
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits.fill(-100);
+        logits[2] = 8.0;
+        logits[3] = 7.0;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+      async runStep(tokenId) {
+        scalarCalls += 1;
+        const logits = new Float32Array(VOCAB_SIZE);
+        logits.fill(-100);
+        logits[tokenId === 2 ? 4 : EOS_TOKEN_ID] = 8.0;
+        return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
+      },
+      async runStepBatch() {
+        batchCalls += 1;
+        throw new Error('dynamic batch is unsupported');
+      },
+    };
+
+    const result = await whisperBeamDecode(session, {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      maxNewTokens: 3,
+      experimentalBatchedBeam: true,
+    });
+
+    expect(result.tokens).toEqual([2, 4, EOS_TOKEN_ID]);
+    expect(batchCalls).toBe(1);
+    expect(scalarCalls).toBeGreaterThan(0);
+  });
+
   it('throws if a batched beam step returns the wrong result count', async () => {
     const session: WhisperCoreSession = {
       async runInit() {

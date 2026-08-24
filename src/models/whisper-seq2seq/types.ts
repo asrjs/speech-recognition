@@ -185,8 +185,9 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
   /**
    * Experimental beam-search optimization. When true, active beam decoder-step
    * calls may be grouped into one ORT batch if the splitgraph model supports
-   * batch-shaped decoder_step inputs. Default false; stable beam remains the
-   * correctness oracle.
+   * batch-shaped decoder_step inputs. If the backend rejects a batch call, the
+   * decode retries the active hypotheses through scalar CPU-KV steps. Default
+   * false; stable beam remains the correctness oracle.
    */
   readonly experimentalBatchedBeam?: boolean;
   /**

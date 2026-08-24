@@ -34,7 +34,7 @@ export interface WhisperCoreSession {
   runStepBatch?(
     tokenIds: readonly number[],
     pastKvs: readonly WhisperKvCache[],
-  ): Promise<readonly WhisperStepResult[]>;
+  ): Promise<readonly WhisperStepResult[] | undefined>;
 }
 
 export interface WhisperKvCacheEntry {
@@ -331,7 +331,7 @@ export async function whisperBeamDecode(
   let beams: WhisperBeamState<TokenQualityTrace[]>[] = firstExpansion.active;
   let beamKvs = firstExpansion.parentIndexes.map(() => cloneWhisperKvCache(initResult.presentKv));
 
-  const useBatchedBeam = options.experimentalBatchedBeam === true && Boolean(session.runStepBatch);
+  let useBatchedBeam = options.experimentalBatchedBeam === true && Boolean(session.runStepBatch);
 
   for (let s = 1; s < maxNewTokens; s++) {
     if (finished.length >= maxFinishedCandidates || beams.length === 0) break;
@@ -342,8 +342,21 @@ export async function whisperBeamDecode(
       activeTokenIds.push(beam.tokens[beam.tokens.length - 1]!);
     }
 
+    let batchedStepResults: readonly WhisperStepResult[] | undefined;
     if (useBatchedBeam && beams.length > 1) {
-      const stepResults = await session.runStepBatch!(activeTokenIds, beamKvs);
+      try {
+        // Batching is an optimization boundary. A backend may reject dynamic
+        // batch-shaped KV inputs even though scalar decoder_step works; keep
+        // the active hypotheses untouched and retry this step scalarly.
+        batchedStepResults = await session.runStepBatch!(activeTokenIds, beamKvs);
+      } catch {
+        batchedStepResults = undefined;
+        useBatchedBeam = false;
+      }
+    }
+
+    if (batchedStepResults !== undefined) {
+      const stepResults = batchedStepResults;
       if (stepResults.length !== beams.length) {
         throw new Error(
           `Batched Whisper beam step returned ${stepResults.length} results for ${beams.length} active beams.`,

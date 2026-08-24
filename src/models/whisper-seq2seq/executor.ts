@@ -380,7 +380,7 @@ export interface SplitGraphDecodeCallbacks {
   runStepBatch?(
     tokenIds: readonly number[],
     pastKvs: readonly WhisperKvCache[],
-  ): Promise<readonly { logits: Float32Array; vocabSize: number; presentKv: WhisperKvCache }[]>;
+  ): Promise<readonly { logits: Float32Array; vocabSize: number; presentKv: WhisperKvCache }[] | undefined>;
 }
 
 export interface SplitGraphDecodeResult {
@@ -2480,6 +2480,24 @@ export class WhisperOnnxExecutor {
       message: `Starting transcription for ${this.modelId}.`,
     });
 
+    const requestedNumBeams = Math.max(1, Math.floor(options.numBeams ?? 1));
+    const requestedBestOf = Math.max(1, Math.floor(options.bestOf ?? 1));
+    const requestedTemperature = options.temperature ?? 0;
+    const useExperimentalGpuKvCache = Boolean(
+      splitLoaded.experimentalGpuKvCache &&
+      splitLoaded.decoderBackendForOrt === 'webgpu',
+    );
+
+    // Reject an unsupported decode policy before allocating mel/encoder work.
+    // GPU-KV remains a greedy-only fast path until cache cloning/reordering is
+    // proven correct for beams and sampling.
+    assertExperimentalGpuKvCacheIsGreedyOnly({
+      enabled: useExperimentalGpuKvCache,
+      numBeams: requestedNumBeams,
+      bestOf: requestedBestOf,
+      temperature: requestedTemperature,
+    });
+
     // 1. Preprocess audio to mel spectrogram
     const preprocessStart = nowMs();
     const melBins = loaded.modelConfig.numMelBins ?? this.config.melBins;
@@ -2713,13 +2731,6 @@ export class WhisperOnnxExecutor {
     let decoderStepLogitReadMs = 0;
     let decoderStepKvMergeMs = 0;
     const decoderStepTimings: number[] = [];
-    const requestedNumBeams = Math.max(1, Math.floor(options.numBeams ?? 1));
-    const requestedBestOf = Math.max(1, Math.floor(options.bestOf ?? 1));
-    const requestedTemperature = options.temperature ?? 0;
-    const useExperimentalGpuKvCache = Boolean(
-      splitLoaded.experimentalGpuKvCache &&
-      splitLoaded.decoderBackendForOrt === 'webgpu',
-    );
     const requestedDecoderKvCacheLocation = useExperimentalGpuKvCache ? 'gpu-buffer' : 'cpu';
     const recordDecoderTiming = (timings: DecoderSessionTiming): void => {
       decoderGpuTensorInputs += timings.gpuInputCount;
@@ -2728,13 +2739,6 @@ export class WhisperOnnxExecutor {
       decoderCpuTensorOutputs += timings.cpuOutputCount;
       decoderGpuTensorDownloads += timings.gpuDownloadCount;
     };
-
-    assertExperimentalGpuKvCacheIsGreedyOnly({
-      enabled: useExperimentalGpuKvCache,
-      numBeams: requestedNumBeams,
-      bestOf: requestedBestOf,
-      temperature: requestedTemperature,
-    });
 
     const decoderStart = nowMs();
     const processSplitGraphLogits = (logits: Float32Array, genTokens: readonly number[], beginIdx: number): void => {

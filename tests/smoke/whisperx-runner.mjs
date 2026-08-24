@@ -13,10 +13,34 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../..');
+const DIST_ROOT = path.join(REPO_ROOT, 'dist');
+const FFMPEG_STDERR_REDIRECT = process.platform === 'win32' ? '2>NUL' : '2>/dev/null';
+
+function importDist(relativePath) {
+  return import(pathToFileURL(path.join(DIST_ROOT, relativePath)).href);
+}
+
+function createRunnerKvEntry(tensor) {
+  return {
+    data: new Float32Array(tensor.data),
+    dims: [...tensor.dims],
+    type: 'float32',
+  };
+}
+
+function runnerKvData(value) {
+  return ArrayBuffer.isView(value) ? value : value.data;
+}
+
+function runnerKvDims(value, fallback) {
+  return ArrayBuffer.isView(value) ? fallback : value.dims ?? fallback;
+}
+
+export { createRunnerKvEntry, runnerKvData, runnerKvDims };
 
 // ──────────────────────────────────────────────────────────
 // CLI argument parsing
@@ -262,7 +286,7 @@ export async function runAsrPipeline(_opts) {
   if (ext === '.wav') {
     fs.copyFileSync(audioPath, tmpWav);
   } else {
-    execSync(`ffmpeg -y -i "${audioPath}" -ar 16000 -ac 1 -sample_fmt s16 -f wav "${tmpWav}" 2>/dev/null`, { stdio: 'ignore' });
+    execSync(`ffmpeg -y -i "${audioPath}" -ar 16000 -ac 1 -sample_fmt s16 -f wav "${tmpWav}" ${FFMPEG_STDERR_REDIRECT}`, { stdio: 'ignore' });
   }
 
   const buf = fs.readFileSync(tmpWav);
@@ -277,38 +301,37 @@ export async function runAsrPipeline(_opts) {
   log('Loading ONNX model...', verbose);
   const tLoad = performance.now();
   const ort = await import('onnxruntime-node');
-  const dist = REPO_ROOT + '/dist';
 
-  const { WhisperTokenizer, fetchText } = await import(
-    path.join(dist, 'models/whisper-seq2seq/index.js')
+  const { WhisperTokenizer, fetchText } = await importDist(
+    'models/whisper-seq2seq/index.js'
   );
-  const { WhisperMelProcessor } = await import(
-    path.join(dist, 'audio/whisper-mel.js')
+  const { WhisperMelProcessor } = await importDist(
+    'audio/whisper-mel.js'
   );
-  const { WhisperTimestampLogitProcessor } = await import(
-    path.join(dist, 'models/whisper-seq2seq/processors.js')
+  const { WhisperTimestampLogitProcessor } = await importDist(
+    'models/whisper-seq2seq/processors.js'
   );
-  const { parseWhisperGenerationConfig, parseWhisperModelConfig } = await import(
-    path.join(dist, 'models/whisper-seq2seq/generation-config.js')
+  const { parseWhisperGenerationConfig, parseWhisperModelConfig } = await importDist(
+    'models/whisper-seq2seq/generation-config.js'
   );
   const {
     collectSplitGraphTextTokenRows,
     processSplitGraphAlignment,
     processSplitGraphAlignmentByTimestampSpans,
-  } = await import(
-    path.join(dist, 'models/whisper-seq2seq/executor.js')
+  } = await importDist(
+    'models/whisper-seq2seq/executor.js'
   );
   const {
     buildWhisperWordTimestampsFromDtwTokens,
     refineWhisperWordsWithForcedAlignment,
-  } = await import(
-    path.join(dist, 'models/whisper-seq2seq/word-timestamps.js')
+  } = await importDist(
+    'models/whisper-seq2seq/word-timestamps.js'
   );
-  const { whisperDecode } = await import(
-    path.join(dist, 'models/whisper-seq2seq/core.js')
+  const { whisperDecode } = await importDist(
+    'models/whisper-seq2seq/core.js'
   );
-  const { createWav2Vec2AlignerFromLogits } = await import(
-    path.join(dist, 'alignment.js')
+  const { createWav2Vec2AlignerFromLogits } = await importDist(
+    'alignment.js'
   );
 
   const tokenizer = await WhisperTokenizer.fromUrl(path.join(opts.model, 'tokenizer.json'));
@@ -427,8 +450,8 @@ export async function runAsrPipeline(_opts) {
       }
       w2vSession = await ort.InferenceSession.create(w2vCfg.path, w2vOpts);
 
-      const { Wav2Vec2CharTokenizer } = await import(
-        path.join(dist, 'models/wav2vec2/tokenizer.js')
+      const { Wav2Vec2CharTokenizer } = await importDist(
+        'models/wav2vec2/tokenizer.js'
       );
       w2vTokenizer = await Wav2Vec2CharTokenizer.fromUrl(w2vCfg.vocabUrl);
       log(`  Wav2Vec2 ready (${language})`, verbose);
@@ -440,8 +463,12 @@ export async function runAsrPipeline(_opts) {
   // ── 3. VAD segmentation ──
   log('Running VAD...', verbose);
   const tVad = performance.now();
-  const { TenVadBackend } = await import(path.join(dist, 'chunking/backends/ten-vad.js'));
-  const { segmentAudio } = await import(path.join(dist, 'chunking/vad-segmenter.js'));
+  const { TenVadBackend } = await importDist(
+    'chunking/backends/ten-vad.js'
+  );
+  const { segmentAudio } = await importDist(
+    'chunking/vad-segmenter.js'
+  );
 
   const tenVad = await TenVadBackend.create({
     threshold: opts.vadOnset, hopSize: 512,
@@ -465,11 +492,11 @@ export async function runAsrPipeline(_opts) {
   }
 
   // ── 4. Quality gates ──
-  const { compressionRatioGate, logProbGate, noSpeechGate, entropyGate } = await import(
-    path.join(dist, 'quality/index.js')
+  const { compressionRatioGate, logProbGate, noSpeechGate, entropyGate } = await importDist(
+    'quality/index.js'
   );
-  const { withTemperatureFallback } = await import(
-    path.join(dist, 'quality/temperature-fallback.js')
+  const { withTemperatureFallback } = await importDist(
+    'quality/temperature-fallback.js'
   );
 
   const gates = [
@@ -552,7 +579,7 @@ export async function runAsrPipeline(_opts) {
           const logits = new Float32Array(lt.data.subarray(lastOff, lastOff + vSize));
           const pk = {};
           for (const k of Object.keys(out).filter(k => k.startsWith('present'))) {
-            pk[k] = new Float32Array(out[k].data);
+            pk[k] = createRunnerKvEntry(out[k]);
             kvDims[k] = out[k].dims;
             kvDims[k.replace(/^present\./, 'past_key_values.')] = out[k].dims;
           }
@@ -564,8 +591,11 @@ export async function runAsrPipeline(_opts) {
           };
           for (const [k, v] of Object.entries(pastKv)) {
             const sk = k.replace(/^present\./, 'past_key_values.');
-            const dims = kvDims[k] ?? kvDims[sk] ?? kvDims[k.replace(/^past_key_values\./, 'present.')];
-            if (dims) feeds[sk] = new ort.Tensor('float32', v, dims);
+            const dims = runnerKvDims(
+              v,
+              kvDims[k] ?? kvDims[sk] ?? kvDims[k.replace(/^past_key_values\./, 'present.')],
+            );
+            if (dims) feeds[sk] = new ort.Tensor('float32', runnerKvData(v), dims);
           }
           const out = await stepSess.run(feeds);
           const lk = Object.keys(out).find(k => k.startsWith('logits'));
@@ -575,7 +605,7 @@ export async function runAsrPipeline(_opts) {
           const slLast = sl.subarray(sl.length - vSize, sl.length);
           const pk = {};
           for (const k of Object.keys(out).filter(k => k.startsWith('present'))) {
-            pk[k] = new Float32Array(out[k].data);
+            pk[k] = createRunnerKvEntry(out[k]);
             kvDims[k] = out[k].dims;
             kvDims[k.replace(/^present\./, 'past_key_values.')] = out[k].dims;
           }
