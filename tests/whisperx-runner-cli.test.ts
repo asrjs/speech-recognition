@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { parseArgs, sample } from './smoke/whisperx-runner.mjs';
+import {
+  createRunnerKvEntry,
+  parseArgs,
+  runnerKvData,
+  runnerKvDims,
+  sample,
+} from './smoke/whisperx-runner.mjs';
 
 describe('whisperx-runner CLI', () => {
   it('parses language auto, beam size, and output format', () => {
@@ -38,5 +44,21 @@ describe('whisperx-runner CLI', () => {
     } finally {
       random.mockRestore();
     }
+  });
+
+  it('keeps decoder KV dimensions attached to each beam hypothesis', () => {
+    const entry = createRunnerKvEntry({
+      data: new Float32Array(8),
+      dims: [1, 2, 4, 1],
+    });
+    const laterEntry = createRunnerKvEntry({
+      data: new Float32Array(10),
+      dims: [1, 2, 5, 1],
+    });
+
+    expect(runnerKvData(entry)).toHaveLength(8);
+    expect(runnerKvDims(entry, [1, 2, 5, 1])).toEqual([1, 2, 4, 1]);
+    expect(runnerKvDims(laterEntry, [1, 2, 4, 1])).toEqual([1, 2, 5, 1]);
+    expect(runnerKvDims(new Float32Array(8), [1, 2, 4, 1])).toEqual([1, 2, 4, 1]);
   });
 });
