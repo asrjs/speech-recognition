@@ -67,6 +67,25 @@ describe('logProbGate', () => {
     const result = gate('', [0], [uniformLogits(100)], 100);
     expect(result.verdict).toBe('reject');
   });
+
+  it('evaluates selected-sequence traces without full-vocabulary logits', () => {
+    const rejected = gate('', [1, 2], [], 100, {
+      tokenTraces: [
+        { tokenId: 1, logProb: -2.5, entropy: 0.2 },
+        { tokenId: 2, logProb: -2.5, entropy: 0.2 },
+      ],
+    });
+    expect(rejected.verdict).toBe('reject');
+    expect(rejected.avgLogProb).toBeCloseTo(-2.5);
+
+    const accepted = gate('', [1, 2], [], 100, {
+      tokenTraces: [
+        { tokenId: 1, logProb: -0.1, entropy: 0.2 },
+        { tokenId: 2, logProb: -0.2, entropy: 0.2 },
+      ],
+    });
+    expect(accepted.verdict).toBe('accept');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -85,6 +104,18 @@ describe('entropyGate', () => {
     const result = gate('', [], [uniformLogits(100)], 100);
     expect(result.verdict).toBe('reject');
     expect(result.entropy!).toBeGreaterThan(2.4);
+  });
+
+  it('evaluates selected-sequence entropy traces without logits', () => {
+    const rejected = gate('', [1], [], 100, {
+      tokenTraces: [{ tokenId: 1, logProb: -0.1, entropy: 3.1 }],
+    });
+    expect(rejected.verdict).toBe('reject');
+
+    const accepted = gate('', [1], [], 100, {
+      tokenTraces: [{ tokenId: 1, logProb: -0.1, entropy: 0.4 }],
+    });
+    expect(accepted.verdict).toBe('accept');
   });
 });
 
@@ -111,6 +142,20 @@ describe('noSpeechGate', () => {
     const result = gate('', [50362, 42], [firstLogits, genLogits], vocabSize);
     expect(result.verdict).toBe('no_speech');
   });
+
+  it('uses raw decoder-init logits and a model-provided token ID', () => {
+    const processedFirst = new Float32Array(16);
+    processedFirst[1] = 10.0;
+    const rawInit = new Float32Array(16);
+    rawInit[7] = 12.0;
+    const result = gate('', [1, 2], [processedFirst, uniformLogits(16)], 16, {
+      noSpeechLogits: rawInit,
+      noSpeechTokenId: 7,
+    });
+
+    expect(result.verdict).toBe('no_speech');
+    expect(result.noSpeechProb!).toBeGreaterThan(0.6);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -126,6 +171,17 @@ describe('temperature fallback', () => {
     const acceptGate: QualityGate = () => ({ verdict: 'accept' });
     const result = await withTemperatureFallback(fn, [acceptGate]);
     expect(result.attempts).toBe(1);
+  });
+
+  it('counts decode attempts, not gate evaluations', async () => {
+    const fn = vi.fn(async () => ({
+      result: { text: 'hello' },
+      text: 'hello', tokens: [1], logits: [] as Float32Array[], vocabSize: 100,
+    }));
+    const acceptGate: QualityGate = () => ({ verdict: 'accept' });
+    const result = await withTemperatureFallback(fn, [acceptGate, acceptGate]);
+    expect(result.attempts).toBe(1);
+    expect(result.gateResults).toHaveLength(2);
   });
 
   it('retries on reject', async () => {
@@ -168,5 +224,66 @@ describe('evaluateGates', () => {
 
   it('accepts empty gates', () => {
     expect(evaluateGates('', [], [], 100, []).verdict).toBe('accept');
+  });
+});
+
+describe('selected-sequence token traces', () => {
+  it('rejects low logprob from scalar traces without logits', () => {
+    const result = logProbGate(-1.0)('', [1, 2], [], 100, {
+      tokenTraces: [
+        { tokenId: 1, logProb: -2.4, entropy: 0.3 },
+        { tokenId: 2, logProb: -2.1, entropy: 0.4 },
+      ],
+    });
+    expect(result.verdict).toBe('reject');
+    expect(result.avgLogProb).toBeCloseTo(-2.25, 5);
+  });
+
+  it('rejects high entropy from scalar traces without logits', () => {
+    const result = entropyGate(2.4)('', [1], [], 100, {
+      tokenTraces: [
+        { tokenId: 1, logProb: -0.2, entropy: 3.1 },
+        { tokenId: 2, logProb: -0.3, entropy: 2.8 },
+      ],
+    });
+    expect(result.verdict).toBe('reject');
+    expect(result.entropy).toBeCloseTo(2.95, 5);
+  });
+
+  it('prefers traces over full-vocabulary logits', () => {
+    const misleading = [uniformLogits(16)];
+    const result = logProbGate(-1.0)('', [0], misleading, 16, {
+      tokenTraces: [{ tokenId: 0, logProb: -0.05, entropy: 0.1 }],
+    });
+    expect(result.verdict).toBe('accept');
+    expect(result.avgLogProb).toBeCloseTo(-0.05, 5);
+  });
+});
+
+describe('withTemperatureFallback quality context', () => {
+  it('forwards raw-logit context to each gate', async () => {
+    const context = {
+      noSpeechLogits: new Float32Array([0, 1]),
+      noSpeechTokenId: 1,
+    };
+    let received: unknown;
+    const gate: QualityGate = (_text, _tokens, _logits, _vocabSize, qualityContext) => {
+      received = qualityContext;
+      return { verdict: 'accept' };
+    };
+
+    await withTemperatureFallback(
+      async () => ({
+        result: { text: 'hello' },
+        text: 'hello',
+        tokens: [1],
+        logits: [new Float32Array([0, 1])],
+        vocabSize: 2,
+        qualityContext: context,
+      }),
+      [gate],
+    );
+
+    expect(received).toBe(context);
   });
 });

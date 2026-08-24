@@ -109,4 +109,54 @@ describe('splitGraphDecodeLoop (4-graph init→step autoregressive)', () => {
 
     expect(result.tokens.length).toBeLessThanOrEqual(maxNewTokens);
   });
+
+  it('passes active beams through the optional batched step callback', async () => {
+    let batchCalls = 0;
+    let singleCalls = 0;
+    const result = await splitGraphDecodeLoop({
+      promptTokens: [50258, 50259, 50359],
+      encoderHiddenStates: new Float32Array(100),
+      eosTokenId: 5,
+      maxNewTokens: 4,
+      modelConfig: tinyConfig,
+      numBeams: 2,
+      experimentalBatchedBeam: true,
+      runInit: () => {
+        const logits = new Float32Array(10);
+        logits[2] = 10;
+        logits[3] = 9;
+        return {
+          logits,
+          vocabSize: 10,
+          presentKv: { 'present.0.decoder.key': new Float32Array([0]) },
+        };
+      },
+      runStep: (tokenId) => {
+        singleCalls += 1;
+        const logits = new Float32Array(10);
+        logits[tokenId === 2 ? 4 : 5] = 10;
+        return {
+          logits,
+          vocabSize: 10,
+          presentKv: { 'present.0.decoder.key': new Float32Array([tokenId]) },
+        };
+      },
+      runStepBatch: (tokenIds) => {
+        batchCalls += 1;
+        return tokenIds.map((tokenId) => {
+          const logits = new Float32Array(10);
+          logits[tokenId === 2 ? 4 : 5] = 10;
+          return {
+            logits,
+            vocabSize: 10,
+            presentKv: { 'present.0.decoder.key': new Float32Array([tokenId]) },
+          };
+        });
+      },
+    });
+
+    expect(result.tokens[result.tokens.length - 1]).toBe(5);
+    expect(batchCalls).toBeGreaterThan(0);
+    expect(singleCalls).toBeLessThan(batchCalls + 2);
+  });
 });

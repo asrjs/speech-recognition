@@ -10,7 +10,9 @@ Your current code already has the right 4-graph architecture, KV cache, beam sea
 
 * `runDecoderStepSplit()` reconstructs input tensors from JS typed-array data every step and then reads `logitsTensor.data` plus `presentKv` back into typed arrays.
 * `transcribeWithSplitGraph()` passes `encoderHiddenStates.data` into the splitgraph decode loop and converts `presentKv` tensors into raw `.data` objects across init/step boundaries.
-* Beam search in `core.ts` runs one decoder step per active beam, clones every KV cache into `new Float32Array(...)`, builds `Array.from(logProbs)`, and full-sorts the whole vocabulary for top-k.
+* Stable beam search still runs one decoder step per active beam, but candidate
+  expansion now uses bounded top-k selection and does not allocate a full
+  vocabulary log-softmax array per beam. Batched beam remains opt-in.
 
 That means the next speedup should focus on **GPU-resident tensors + scalar-only readback + batched beam execution**, before spending too much effort on speculative fused-attention exports.
 
@@ -827,8 +829,10 @@ investigation needed.
 | 5 | GPU ArgMax | Counterproductive standalone | ⚠️ infra committed |
 | 6 | GPU encoder→decoder Cast | Encode: 5.7×, RTFx: 10→21.5× | ✅ deployed |
 | 7 | Fast mel N_FFT=512 | Preprocess: 2.85×, RTFx: 21.5→25.3× | ✅ deployed |
-| 8 | Shared WebGPU device | Init regression persists | ⚠️ deployed, needs investigation |
+| 8 | Shared WebGPU device | Init regression persists, step regression | ❌ rejected, code removed |
 | 9 | Stripped fp16 encoder | Encode: 6.4× (1900→296ms), no Cast nodes | ✅ deployed |
+| 10 | Fused encoder_decoder_init | Slower than separate, +VRAM | ❌ rejected (perf/fused-encoder-decoder-init) |
+| 11 | GPU ArgMax Phase 2 (suppression mask + ArgMax) | Token parity ✅, step regression on long audio | ❌ rejected as default; infra kept (perf/gpu-argmax) |
 
 **Note:** Experiment 9 supersedes Experiment 6 (GPU encoder→decoder Cast). The stripped
 fp16-output encoder + original fp16-input decoder_init is the cleaner architecture —
@@ -843,10 +847,11 @@ zero dtype casts anywhere in the pipeline, no ONNX modifications to decoder_init
 - **Step P50: 80ms → 9.5ms (8.4× faster per token)**
 
 **Remaining high-impact opportunities:**
-1. GPU logit processing + ArgMax combined (eliminates 207KB/step download)
+1. ~GPU logit processing + ArgMax combined~~ — **TESTED, REJECTED** (perf/gpu-argmax). Token parity perfect but step regression on long audio (+11% Turkish). GPU-side Add(mask)+ArgMax overhead exceeds CPU-side JS argmax on already-downloaded fp16 logits. Future: needs custom WGSL shader.
 2. Batched beam graph (beam_size=5 → 5× fewer ORT calls)
 3. Static KV cache + graph capture (requires new ONNX export)
 4. Resolve decoder init regression (195ms → 69ms, cross-session GPU handoff)
+5. Reduce VRAM: gpu-argmax adds ~620MB (2 extra decoder_step sessions). Even without it, baseline is ~1.85GB + runtime = ~2.4GB peak — investigate whether encoder/decoder sessions can share weight buffers.
 
 ---
 
@@ -938,3 +943,135 @@ zero dtype casts anywhere in the pipeline, no ONNX modifications to decoder_init
 14. **Vite on Windows needs PTY.** Background Vite processes exit with "stdin is
     not a tty" unless launched with `pty=true`. Use `npx vite --host 0.0.0.0 --port
     8765 --strictPort --force` with `background=true, pty=true`.
+
+## Compatibility resume - 2026-08-23
+
+Optimization was intentionally paused to repair reference semantics around the
+working ~25x greedy WebGPU path. The custom splitgraph target is still
+`ysdede/whisper-large-v3-turbo-onnx-4graph`; merged `onnx-community` decoders are
+secondary compatibility targets.
+
+### Root causes corrected
+
+1. The beam loop allowed completed EOS hypotheses to consume active slots.
+2. `patience` counted consecutive completed steps instead of setting Whisper's
+   `round(beamSize * patience)` finished-candidate budget.
+3. Survivor KV caches were matched by token prefix instead of explicit parent
+   indexes.
+4. Final beam ranking used the old `length^alpha` helper and raw-score default
+   instead of Whisper's default length normalization / Google NMT formula.
+5. Timestamp processing omitted `<|notimestamps|>` suppression and the
+   aggregate timestamp-probability rule.
+6. The reference harness treated manifest `max_source_positions=1500` as 3000
+   mel input frames. The actual graph contract is input `[B, 128, 3000]` and
+   output `[B, 1500, 1280]`.
+7. The reference generator omitted `<|notimestamps|>` from its manual prompt,
+   did not persist the exported mel path, and assumed encoder/decoder graphs
+   shared one directory.
+
+### Verification
+
+- Full Vitest: 112 files passed, 1 skipped; 662 tests passed, 4 skipped.
+- TypeScript typecheck, build, and Python `py_compile` pass; lint reports zero
+  errors and six existing warnings.
+- A cached HF `openai/whisper-large-v3-turbo` oracle on `jfk2.en.wav` matches
+  local fp32 splitgraph decode exactly:
+  - Python mel input: 31/31 normalized tokens, exact text.
+  - TypeScript WAV/mel input: 31/31 normalized tokens, exact text.
+- Python ORT 1.22 rejects these IR-v13 graphs, so the generator now supports
+  `--skip-onnx` and the Vitest gate executes them with Node ORT 1.26.
+- Node ORT cannot materialize this artifact's fp16 encoder output on the host
+  (`expected 3840000, got 0`); Chrome WebGPU remains the fp16 execution gate.
+
+### Architecture decision
+
+Greedy GPU-KV remains untouched and is still the speed path. Stable CPU-KV beam
+is the correctness oracle. Experimental batched beam shares the same corrected
+candidate lifecycle and may be promoted only after stable/batched token parity
+across beam sizes, EOS/timestamp cases, English and Turkish fixtures, followed
+by wall-time measurement.
+
+The next compatibility issue is metric provenance: OpenAI measures no-speech
+from raw decoder-init logits at the SOT position before suppression. The current
+generic quality gate uses a hard-coded token and processed next-token logits;
+selected-beam logprob/entropy collection also needs a memory-conscious design.
+
+### Browser revalidation
+
+An independent headless Chromium run on the NVIDIA WebGPU adapter confirmed
+exact 50-token parity across greedy GPU-KV, stable beam, and batched beam. The
+paired beam measurements were:
+
+| Mode | Total | Decode | RTFx | Step ORT calls |
+| ---- | ----: | -----: | ----: | -------------: |
+| Stable CPU-KV beam | `14126.025ms` | `12577.285ms` | `2.1192` | `98` |
+| Batched CPU-KV beam | `11841.205ms` | `10609.685ms` | `2.5276` | `49` |
+
+Batched beam therefore halved ORT calls and improved paired decode time by
+15.64% with no token change. Greedy GPU-KV completed at `3291.080ms` total,
+reported `9.1304` RTFx, and kept GPU tensor downloads at zero. These absolute
+numbers are a new-run observation, not a replacement for the faster historical
+warm baseline; use paired measurements for optimization claims.
+
+## Healthy GPU rerun and quality provenance - 2026-08-23
+
+The workstation restart restored the healthy NVIDIA WebGPU adapter. The active
+browser target is the custom `ysdede/whisper-large-v3-turbo-onnx-4graph` repo,
+not the merged `onnx-community/*` decoder family. Its remote preset uses the
+`fp16_iofp32/encoder_model.onnx` artifact; the local harness maps that to the
+optimized fp16-output copy `fp16_iofp32_fp16out`, paired with the `fp16` decoder.
+A warmed headless Chrome run on
+the 10-second JFK fixture measured `863.540ms` total and `11.7391x` RTFx. The
+30-second fixture measured `1328.070ms` total and `22.7617x` RTFx; a profiling
+run with explicit encoder queue drain measured `1357.655ms` and `22.2738x`.
+Both 30-second runs had 49 decoder steps, zero GPU tensor downloads, and the
+GPU-KV cache remained on `gpu-buffer`. The drain is a metric-attribution flag,
+not a production setting. An independent manual repeat on the optimized local
+variant reached `1175.81ms` total and `25.6993x` RTFx on the 29.9043-second JFK
+clip, with `183.49ms` encoder time, `49` GPU-KV steps, p50/p95 step time of
+`13.395/15.430ms`, and zero downloads. Its 10-second repeat reached
+`13.856x`.
+
+ONNX inspection confirmed genuine FP16 weights in the active files: 487
+`FLOAT16` encoder initializers, 101 decoder-init initializers, and 88
+decoder-step initializers. Decoder logits/KV interfaces are FP16 while the mel
+input remains FP32.
+
+The earlier `~8x` measurement was correctly classified as degraded GPU state.
+The historical `25-28x` results are now corroborated by the independent
+`25.6993x` repeat, while `22-23x` remains valid for the alternate warmed run.
+Longer clips are the right throughput test because fixed preprocessing, encoder,
+and decoder-init costs are amortized.
+
+The next compatibility implementation also landed here: Whisper no-speech
+probability now comes from a copied raw decoder-init logit vector before
+suppression, with the no-speech token resolved from generation config or the
+tokenizer. Generic quality-gate callers retain `50362` as a compatibility
+fallback. Selected-beam logprob/entropy collection now uses scalar traces from
+the winning sequence, and beam expansion avoids a full-vocabulary temporary
+log-softmax array.
+
+### Beam candidate selector and compatibility matrix (2026-08-24)
+
+The selector computes log-sum-exp, entropy, and the bounded `beamSize + 1`
+candidate list in one pass after normalization. It keeps the previous
+Float32-ranked log-probabilities so candidate ordering remains compatible.
+
+The deterministic regression command is:
+
+```powershell
+npm run benchmark:whisper-beam
+```
+
+On the custom FP16 splitgraph model in headless Chrome, stable versus batched
+beam produced exact parity for English beam 5 (245 vs 49 step calls), English
+timestamped beam 2 (40 vs 20), and Turkish auto beam 2 (158 vs 79). All beam
+runs kept KV on CPU and reported zero GPU tensor downloads. These results are
+compatibility evidence; the experimental batched path remains opt-in.
+
+The runner and enhanced executor now use the same quality provenance: raw
+decoder-init logits for no-speech plus selected-sequence scalar traces for
+logprob/entropy fallback gates. VAD chunks preserve the `AudioBufferLike`
+contract, Whisper-native timings/warnings survive merging, and overlapping
+native words keep the higher-confidence copy. Real EN/TR runner fixture
+validation remains a separate report-only task.

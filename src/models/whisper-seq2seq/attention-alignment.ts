@@ -203,5 +203,27 @@ export function computeWhisperDtwTokenTimestamps(
   for (let i = 1; i < timestamps.length; i++) {
     if (timestamps[i]! < timestamps[i - 1]!) timestamps[i] = timestamps[i - 1]!;
   }
-  return timestamps;
+  return spreadWhisperDtwTimestamps(timestamps);
+}
+
+/** Linearly interpolate runs of identical jump times so no text token has zero duration. */
+export function spreadWhisperDtwTimestamps(timestamps: readonly number[]): number[] {
+  const output = [...timestamps];
+  let index = 0;
+  while (index < output.length - 1) {
+    let next = index + 1;
+    while (next < output.length && output[next] === output[index]) next++;
+    if (next > index + 1 && next < output.length) {
+      const start = output[index]!;
+      const end = output[next]!;
+      const steps = next - index;
+      if (end > start) {
+        for (let offset = 1; offset < steps; offset++) {
+          output[index + offset] = start + ((end - start) * offset) / steps;
+        }
+      }
+    }
+    index = next;
+  }
+  return output;
 }

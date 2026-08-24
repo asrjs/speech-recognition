@@ -1,3 +1,4 @@
+import type { TokenQualityTrace } from '../../quality/types.js';
 import type {
   AssetProvider,
   AudioBufferLike,
@@ -95,6 +96,23 @@ export interface WhisperSplitGraphArtifactSource {
   readonly enableProfiling?: boolean;
   readonly experimentalWebGpuEncoderGraphCapture?: boolean;
   readonly experimentalGpuKvCache?: boolean;
+  /** DIAGNOSTIC: Force encoder output to CPU (Track A2). When true, encoder
+   *  output is downloaded to CPU even with gpuKv enabled, to measure
+   *  cross-session GPU tensor handoff penalty. */
+  readonly encoderOutputCpu?: boolean;
+  /** DIAGNOSTIC (B2-C): Enable graph capture for decoder_step session. */
+  readonly decoderGraphCapture?: boolean;
+  /** DIAGNOSTIC (B2-B): freeDimensionOverrides for decoder_step session. */
+  readonly decoderFreeDimensionOverrides?: Record<string, number>;
+  /** DIAGNOSTIC (Edge A): Re-wrap encoder GPU output as fresh Tensor.fromGpuBuffer. */
+  readonly encoderBufferRewrap?: boolean;
+  /** DIAGNOSTIC (Edge B2): Force GPU flush before decoder_init. */
+  readonly encoderGpuFlush?: boolean;
+  /** PROFILING (encoderGpuDrain): Force GPU drain + re-wrap after encoder.
+   *  Calls getData(false) to drain the GPU queue, then re-wraps the same
+   *  GPUBuffer as a fresh tensor.  Adds ~18ms staging buffer overhead.
+   *  Use for honest per-phase profiling; leave off for production latency. */
+  readonly encoderGpuDrain?: boolean;
 }
 
 export interface WhisperSeq2SeqModelOptions {
@@ -141,6 +159,11 @@ export interface WhisperNativeTranscript {
   readonly tokens?: readonly WhisperNativeToken[];
   readonly metrics?: TranscriptMetrics;
   readonly warnings?: readonly { readonly code: string; readonly message: string }[];
+  /**
+   * Selected-sequence scalar quality traces. Native-only; not mapped into the
+   * canonical transcript contract.
+   */
+  readonly tokenTraces?: readonly TokenQualityTrace[];
 }
 
 export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOptions {
@@ -151,14 +174,26 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
   readonly noTimestamps?: boolean;
   /** Number of beams for beam search (1 = greedy). WhisperX: beam_size */
   readonly numBeams?: number;
-  /** Length penalty for beam search (0 = no penalty). WhisperX: length_penalty */
+  /** Final beam rank penalty. Undefined = length normalization; 0 = raw score. */
   readonly lengthPenalty?: number;
-  /** Beam search patience: max consecutive EOS before stopping early. WhisperX: patience */
+  /** Beam search patience: multiplier for the finished-candidate budget. */
   readonly patience?: number;
-  /** Greedy decoding temperature. 0 uses argmax; >0 samples from scaled logits. */
+  /** Decode temperature. 0 uses greedy/beam argmax; >0 samples from scaled logits and disables beam search. */
   readonly temperature?: number;
-  /** Number of independent decodings to run. WhisperX: best_of (default: null = numBeams) */
+  /** Number of independent sampling decodings when temperature > 0. Whisper: best_of. */
   readonly bestOf?: number;
+  /**
+   * Experimental beam-search optimization. When true, active beam decoder-step
+   * calls may be grouped into one ORT batch if the splitgraph model supports
+   * batch-shaped decoder_step inputs. Default false; stable beam remains the
+   * correctness oracle.
+   */
+  readonly experimentalBatchedBeam?: boolean;
+  /**
+   * Collect scalar logprob/entropy traces for the selected decode sequence.
+   * Used by quality gates so beam search does not retain full-vocabulary logits.
+   */
+  readonly trackQuality?: boolean;
   /**
    * Optional per-token logit callback — fired after logit processing, before argmax.
    * Enables quality gates (logprob, entropy, no-speech) to collect per-token data.
@@ -170,11 +205,50 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
     ctx: { readonly tokens: readonly number[]; readonly beginIndex: number },
   ) => void;
   /**
+   * Optional raw logits callback for Whisper's first decoder position.
+   * Fired before timestamp/suppression processing, once per decode attempt.
+   */
+  readonly onDecoderInitLogits?: (
+    rawLogits: Float32Array,
+    ctx: {
+      readonly tokens: readonly number[];
+      readonly beginIndex: number;
+      readonly vocabSize: number;
+      readonly noSpeechTokenId?: number;
+    },
+  ) => void;
+  /**
    * Extra tokens to append after the standard prompt.
    * Used by EnhancedWhisperExecutor for condition_on_previous_text.
    * Format: [<|0.00|>, ...previous_tokens]
    */
   readonly extraPromptTokens?: readonly number[];
+  /**
+   * Optional WhisperX-style forced-alignment pass. When set, DTW/interpolated
+   * word timestamps are refined after decode. GPU-KV greedy is unchanged unless
+   * this aligner is provided.
+   */
+  readonly wordAligner?: WhisperWordAligner;
+}
+
+export interface WhisperForcedAlignmentWord {
+  readonly text: string;
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly confidence?: number;
+}
+
+export interface WhisperWordAlignerInput {
+  readonly transcript: string;
+  readonly audio: AudioBufferLike;
+  readonly durationSeconds: number;
+  readonly language?: string | null;
+}
+
+export interface WhisperWordAligner {
+  align(
+    input: WhisperWordAlignerInput,
+  ): Promise<readonly WhisperForcedAlignmentWord[]> | readonly WhisperForcedAlignmentWord[];
 }
 
 export interface WhisperSeq2SeqModelDependencies {

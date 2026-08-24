@@ -21,6 +21,10 @@ export interface CtcAlignedFrame {
   readonly tokenIdx: number;
   readonly frame: number;
   readonly seconds: number;
+  /** Inclusive last frame occupied by this token (until the next token starts). */
+  readonly endFrame?: number;
+  /** Exclusive end time of this token's span. */
+  readonly endSeconds?: number;
   readonly confidence: number;
 }
 
@@ -276,13 +280,17 @@ export function ctcForceAlign(
       ? options.audioDurationSeconds / frameCount
       : 0;
     return {
-      alignedFrames: targets.map((tokenIdx) => ({
-        char: tokenLabel(tokenIdx, options),
-        tokenIdx,
-        frame: 0,
-        seconds: secondsPerFrame * 0.5,
-        confidence: 1.0,
-      })),
+      alignedFrames: attachTokenSpans(
+        targets.map((tokenIdx) => ({
+          char: tokenLabel(tokenIdx, options),
+          tokenIdx,
+          frame: 0,
+          seconds: secondsPerFrame * 0.5,
+          confidence: 1.0,
+        })),
+        frameCount,
+        secondsPerFrame,
+      ),
       totalFrames: frameCount,
       totalTokens: targets.length,
       audioDurationSeconds: options?.audioDurationSeconds,
@@ -321,9 +329,42 @@ export function ctcForceAlign(
   });
 
   return {
-    alignedFrames,
+    alignedFrames: attachTokenSpans(alignedFrames, frameCount, secondsPerFrame),
     totalFrames: frameCount,
     totalTokens: targets.length,
     audioDurationSeconds: options?.audioDurationSeconds,
   };
+}
+
+function isAlignmentSeparator(char: string): boolean {
+  return char === '|' || char === ' ' || char === '▁' || char.length === 0;
+}
+
+/** ~240ms at the usual 20ms wav2vec2 hop. Caps a letter that is missing a `|`. */
+const MAX_LETTER_SPAN_FRAMES = 12;
+
+function attachTokenSpans(
+  frames: readonly CtcAlignedFrame[],
+  frameCount: number,
+  secondsPerFrame: number,
+): CtcAlignedFrame[] {
+  return frames.map((frame, index) => {
+    const next = index + 1 < frames.length ? frames[index + 1] : undefined;
+    const nextStart = next ? next.frame : frameCount;
+    // Letters inside a word occupy frames until the next letter. Do not
+    // let the last letter absorb silence up to a following word separator.
+    // The final token still occupies frames through the end of the clip.
+    const absorbUntilNext = next === undefined || !isAlignmentSeparator(next.char);
+    const rawEndFrame = absorbUntilNext
+      ? Math.max(frame.frame, nextStart - 1)
+      : frame.frame;
+    const endFrame = absorbUntilNext
+      ? Math.min(rawEndFrame, frame.frame + MAX_LETTER_SPAN_FRAMES)
+      : rawEndFrame;
+    return {
+      ...frame,
+      endFrame,
+      endSeconds: (endFrame + 1) * secondsPerFrame,
+    };
+  });
 }

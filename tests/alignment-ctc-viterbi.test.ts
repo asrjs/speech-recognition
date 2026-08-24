@@ -152,6 +152,8 @@ describe('CTC Viterbi forced alignment', () => {
     // 'a' at frame 1 → 2.0s, 'b' at frame 3 → 6.0s
     expect(result.alignedFrames[0]!.seconds).toBeCloseTo(2.0, 0);
     expect(result.alignedFrames[1]!.seconds).toBeCloseTo(6.0, 0);
+    expect(result.alignedFrames[0]!.endSeconds).toBeCloseTo(6.0, 0);
+    expect(result.alignedFrames[1]!.endSeconds).toBeCloseTo(10.0, 0);
   });
 
   it('uses token labels from tokenToChar when provided', () => {
@@ -168,6 +170,45 @@ describe('CTC Viterbi forced alignment', () => {
 
     expect(result.alignedFrames.map((frame) => frame.char)).toEqual(['h', ' ', 'i']);
     expect(result.alignedFrames.map((frame) => frame.tokenIdx)).toEqual([1, 4, 2]);
+  });
+
+  it('does not let the last letter of a word absorb silence before a separator', () => {
+    const logits = makeSimpleLogits(8, VOCAB, new Map([
+      [1, [1]],
+      [4, [5]],
+      [2, [6]],
+    ]), BLANK);
+
+    const result = ctcForceAlign(logits, 8, VOCAB, [1, 4, 2], BLANK, {
+      audioDurationSeconds: 1.6,
+      tokenToChar: (tokenId) => ({ 1: 'h', 4: '|', 2: 'i' })[tokenId] ?? '?',
+    });
+
+    const [h, sep, i] = result.alignedFrames;
+    expect(h.char).toBe('h');
+    expect(sep.char).toBe('|');
+    expect(i.char).toBe('i');
+    expect(h.endFrame).toBe(h.frame);
+    expect(h.endSeconds).toBeCloseTo((h.frame + 1) * 0.2, 5);
+    expect(sep.endFrame).toBeGreaterThanOrEqual(sep.frame);
+  });
+
+  it('caps how far a letter can absorb when the next letter is far away', () => {
+    const logits = makeSimpleLogits(80, VOCAB, new Map([
+      [1, [1]],
+      [2, [40]],
+    ]), BLANK);
+
+    const result = ctcForceAlign(logits, 80, VOCAB, [1, 2], BLANK, {
+      audioDurationSeconds: 1.6,
+      tokenToChar: (tokenId) => ({ 1: 'a', 2: 'b' })[tokenId] ?? '?',
+    });
+
+    const a = result.alignedFrames[0]!;
+    expect(a.char).toBe('a');
+    expect(a.endFrame).toBe(a.frame + 12);
+    expect(a.endSeconds).toBeCloseTo((a.frame + 13) * 0.02, 5);
+    expect(a.endSeconds).toBeLessThan(0.5);
   });
 });
 

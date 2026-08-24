@@ -57,9 +57,9 @@ export interface WhisperDecodingOptions {
   readonly temperature?: number;
   /** Temperature increment on fallback. Default: 0.2 */
   readonly temperatureIncrementOnFallback?: number;
-  /** Number of independent decodings (best-of). Default: 5 */
+  /** Number of independent sampling decodings when temperature > 0. Default: 5 */
   readonly bestOf?: number;
-  /** Beam size for beam search. Default: 5 */
+  /** Beam size for temperature=0 beam search. Default: 5 */
   readonly beamSize?: number;
   /** Beam search patience. Default: 1.0 */
   readonly patience?: number;

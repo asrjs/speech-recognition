@@ -1,153 +1,226 @@
 # Whisper WebGPU Optimization — Handover Report
 
-**Date:** 2026-06-15
-**Branch merged:** `perf/whisper-webgpu-decode` → `main`
-**Commit on main:** `c1f50ce` (merge commit)
-**Tests:** 633 passed, 4 skipped
+**Date:** 2026-06-19 (updated)
+**Active branch:** `main`
+**Agent:** Bev (P520, Windows 11, RTX 5060 Ti)
+**Hermes:** v0.14.0 (Windows native)
 
 ---
 
-## What We Did
+## Current Production State
 
-Optimized Whisper large-v3-turbo ONNX 4-graph inference on WebGPU (ORT Web)
-in the browser. Three optimizations deployed, benchmarked, and merged to main.
-
-### Cumulative Results (RTX 5060 Ti, 29.9s JFK audio, fp16io-fp16, greedy)
-
-| Stage | Before | After | Speedup |
-|---|---|---|---|
-| Preprocess (mel) | 237ms | 81ms | 2.9× |
-| Encode | 1900ms | 277ms | 6.9× |
-| Decode | 4000ms | 698ms | 5.7× |
-| **Total** | **~6140ms** | **~1056ms** | **5.8×** |
-| **RTFx** | **4.8×** | **27.6×** | |
-| **Step P50** | **80ms** | **9.5ms** | **8.4×** |
-
-All features preserved: timestamps, beam search, temperature sampling, logit processing.
-All optimizations gated behind `experimentalGpuKvCache` flag.
-
----
-
-## Three Deployed Optimizations
-
-### 1. GPU KV Cache Bridge (`experimentalGpuKvCache`)
-- **File:** `src/models/whisper-seq2seq/executor.ts`
-- **Method:** `preferredOutputLocation` per-output map. Decoder KV tensors stay on GPU,
-  fed directly between `decoder_init` and `decoder_step` without CPU round-trip.
-  Logits intentionally kept on CPU (needed by timestamp processor).
-- **Gating:** `experimentalGpuKvCache=true` + WebGPU backend. Greedy-only (rejects
-  beam search, best_of, temperature > 0).
-
-### 2. Stripped fp16 Encoder
-- **Files:** `tools/whisper-onnx-export/strip_encoder_cast.py` (surgery script),
-  `src/models/whisper-seq2seq/executor.ts` (async cast skip),
-  `src/models/whisper-seq2seq/ort.ts` (encoder `preferredOutputLocation`)
-- **Method:** Remove final `Cast(f16→f32)` from fp16_iofp32 encoder ONNX graph.
-  Encoder outputs fp16 directly on GPU. Original fp16-input decoder_init works
-  without modifications. Zero dtype casts in pipeline.
-- **HF model:** `fp16_iofp32_fp16out/encoder_model.onnx` on
-  `ysdede/whisper-large-v3-turbo-onnx-4graph`
-- **Supersedes:** Cast-injected decoder_init approach (tool still exists:
-  `inject_decoder_init_cast.py`)
-
-### 3. Fast Mel Spectrogram (N_FFT=512)
-- **File:** `src/audio/whisper-mel.ts`
-- **Method:** Replace Bluestein FFT (N_FFT=400, non-power-of-2) with zero-padded
-  512-point radix-2 FFT. 400-point Hann window centered in 512-point buffer.
-  Matches parakeet.js approach.
-- **Gating:** `fastFft` option (default true). Legacy Bluestein via `fastFft: false`.
-
----
-
-## Key Architecture
-
+4-graph splitgraph Whisper WebGPU pipeline:
 ```
-Audio → Fast Mel (N_FFT=512, 81ms)
-     → Stripped fp16 encoder (GPU output, 277ms)
-     → Original fp16 decoder_init (GPU, no Cast needed)
-     → GPU KV decoder_step (per-output location map)
-     → Transcript (bit-identical to baseline)
+encoder.onnx (fp16_iofp32_fp16out) → decoder_init.onnx → decoder_step.onnx → decoder_align.onnx
 ```
 
-**Zero dtype casts.** Pipeline is fp16 end-to-end on GPU.
+**Flags:** `experimentalGpuKvCache=true` (others off by default)
+- `encoderGpuDrain`: PROFILING ONLY — forces GPU drain after encoder, adds ~18ms overhead. Off in production.
+- `encoderGpuFlush`: DIAGNOSTIC (Edge B2) — same as encoderGpuDrain, kept for backward compat.
+
+**Performance (RTX 5060 Ti, English JFK 29.9s, 50 tokens, GPU-warm, fp16 GPU KV):**
+
+| Phase | Time | % |
+|-------|------|---|
+| Audio prep | 81ms | 7% |
+| Mel preprocess | 97ms | 8.5% |
+| Encoder (run) | 185ms | 16% |
+| Decoder init | 15ms | 1.3% |
+| Decoder steps (49 × 12.6ms) | 620ms | 54% |
+| **Total** | **~1,137ms** | |
+| **RTFx** | **26.3x** | |
+
+**IMPORTANT: decoder_init is NOT a bottleneck.** The old ~196ms reading was the encoder's GPU async completion time being billed to decoder_init. This was a PROFILING ATTRIBUTION BUG, now fixed. See `docs/EDGE-HUNT-REPORT.md` and `docs/ORT-FLUSH-INVESTIGATION.md`.
 
 ---
 
-## Not Yet Done (Next Session Priorities)
+## Profiling Attribution Fix (2026-06-18)
 
-### High Priority
-1. **GPU logit processing + ArgMax combined** — Move `WhisperTimestampLogitProcessor`
-   suppression into ONNX graph. Apply mask before ArgMax. Output 4-byte token ID
-   instead of 207KB logits per step. Expected: ~150ms decode reduction.
-2. **Batched beam search** — Export decoder_step with batch=beam_size. Add
-   `beam_indices` for GPU-side KV `Gather`. Expected: ~5× beam search speedup.
-3. **Resolve decoder init regression** — Init time increased 69ms→195ms when
-   encoder output went to GPU. Cross-session tensor handoff overhead. One-time
-   cost per transcription but worth investigating.
+### The Bug
+`decoderInitMs` was reported as ~196ms. In reality, this was the encoder's GPU execution time (~178ms) surfacing at the first synchronization point after encoder submission. ORT's `device_queue_.Submit()` is non-blocking — the GPU hadn't finished when `session.run()` returned.
 
-### Medium Priority
-4. **Static KV cache + graph capture** — Export decoder_step with fixed KV shapes.
-   Enables `enableGraphCapture: true`.
-5. **Parallel mel processing** — Chunk audio for parallel mel computation.
-6. **Shared WebGPU device** — Create shared device with `shader-f16` feature.
-   Currently reverted due to fp16 Cast failures (needs `requiredFeatures`).
+### The Fix
+Added `encoderGpuDrainMs` metric (gated behind `encoderGpuDrain` flag). When enabled, it calls `getData(false)` on the encoder output to force GPU completion, then re-wraps the GPUBuffer. This moves the ~178ms wait from `decoderInitMs` to `encoderGpuDrainMs` where it belongs.
 
----
+### Why fp32 looked "fast"
+`maybeCastEncoderHiddenStates()` calls `getData(true)` when casting fp32→fp16, which forces the same GPU flush. The cost was hidden in `encoderOutputCastMs` instead of `decoderInitMs`. The fp16 path is actually more efficient (no unnecessary CPU round-trip).
 
-## Tools Committed
+### New Metrics (always reported)
+- `encoderRunMs` — `session.run()` wall time
+- `encoderOutputCastMs` — time in `maybeCastEncoderHiddenStates` (0ms for fp16→fp16)
+- `encoderGpuDrainMs` — GPU drain wait (0 when flag off, ~193ms when on)
+- `encoderTotalMs` — `encoderRunMs + encoderGpuDrainMs`
+- `encoderOutputLocation` — `'gpu-buffer'` or `'cpu'`
+- `encoderOutputDtype` — `'float16'` or `'float32'`
 
-| Script | Purpose |
-|---|---|
-| `tools/whisper-onnx-export/strip_encoder_cast.py` | Remove Cast(f16→f32) from encoder output |
-| `tools/whisper-onnx-export/inject_decoder_init_cast.py` | Inject Cast(f32→f16) at decoder_init entry |
-| `tools/whisper-onnx-export/append_argmax_to_decoder.py` | Append ArgMax+Cast to decoder_step output |
-| `tools/whisper-onnx-export/verify_cast_parity.py` | Verify Cast model produces identical output |
-| `tools/whisper-onnx-export/verify_argmax_parity.py` | Verify ArgMax model matches NumPy argmax |
+### Correct Interpretation
+```
+encoderRunMs      = ORT run wall time (command setup/submission)
+encoderGpuDrainMs = GPU async completion wait (PROFILING ONLY, gated)
+encoderTotalMs    = sync-to-completion wall time (honest encoder cost)
+decoderInitMs     = varies: ~196ms without drain (queue wait), ~15ms with drain (true cost)
+```
 
 ---
 
-## 14 Documented Pitfalls
+## Multi-Token Decoder Step (2026-06-19)
 
-See `docs/Whisper-Optimizations.md` § "Lessons Learned" for full details. Key ones:
+### What was done
+Patched `decoder_step.onnx` to support dynamic sequence length:
+- Changed `input_ids` dim[1] from hardcoded `1` to dynamic `sequence_length`
+- Model now accepts `[batch, K]` for any K (verified K=2,4,8)
+- Backward-compatible: K=1 path unchanged
+- Token parity confirmed: K=2 pos0 matches K=1 pos0 (fp16 tolerance)
 
-1. `onnx.save(save_as_external_data=True)` **corrupts weights** — use plain `save()` + copy `.data`
-2. **New ONNX outputs default to GPU-buffer** in per-output maps — must explicitly add to `'cpu'`
-3. **Deployed `.onnx` filename must match internal `external_data.location`**
-4. `preferredOutputLocation: 'gpu-buffer'` **eliminates GPU pipeline stalls** (the big encode win)
-5. **GPU ArgMax alone is counterproductive** — only wins combined with GPU logit processing
-6. **Stripped fp16 encoder > Cast-injected decoder_init** — cleaner architecture
-7. **Always warm up before benchmarking** — first run includes model loading overhead
-8. **Reuse browser tabs** — new tabs allocate fresh VRAM
-9. **Vite `.vite` cache corruption** → kill node, `rm -rf .vite`, restart `--force`
-10. **Vite on Windows needs PTY** for background processes
+### Verification (Python ORT, CPU EP)
+| Test | Result |
+|------|--------|
+| K=2: logits shape | [1, 2, 51866] ✓ |
+| K=4: logits shape | [1, 4, 51866] ✓ |
+| K=8: logits shape | [1, 8, 51866] ✓ |
+| Continuation (K=2→K=2→K=1) | KV 1→3→5→6 ✓ |
+| Token parity (K=2 pos0 vs K=1) | max diff 0.0078 ✓ |
 
----
+### Speed Impact
+**None yet.** The multi-token model is infrastructure — it *enables* batching but doesn't speed up single-token decode. Speedup requires a draft model (smaller/faster) for speculative decoding.
 
-## Test Harness
+### Code Ready
+- `runDecoderStepMultiToken()` in executor.ts — feeds K tokens in one ORT call
+- `secondArgmax()` helper — for future speculative decoding
+- Speculative greedy decode loop was prototyped and **REVERTED** — self-speculation breaks token parity because rejection changes KV context
 
-- **App:** `N:\github\asrjs\webgpu-agent-test\` — Vite dev server on port 8765
-- **Start:** `cd webgpu-agent-test && npx vite --host 0.0.0.0 --port 8765 --strictPort --force` (with `pty=true` on Windows)
-- **Benchmark URL:** `http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&gpuKv=1`
-- **Results:** `_results/*.json` + middleware at `GET /__test_results__`
-- **Fix 504 errors:** Kill all node, `rm -rf node_modules/.vite`, restart `--force`
-- **Models:** Local `public/models/` mirror + HF `ysdede/whisper-large-v3-turbo-onnx-4graph`
-- **Custom ORT build:** Required for WebGPU (npm package is WASM-only). Built in WSL2 at `/home/steam/github/onnxruntime`
-
----
-
-## Current Branch State
-
-- **main:** `c1f50ce` — merged, pushed
-- **perf/whisper-webgpu-decode:** 15 commits, merged into main
-- **Backup tag:** `backup/whisper-fp16-webgpu-working-2026-06-14` (pre-optimization baseline)
-- **Do NOT overwrite:** `ysdede/whisper-large-v3-turbo-onnx-4graph` (production models)
-- **Experimental models go to:** separate repo like `ysdede/whisper-large-v3-turbo-onnx-4graph-webgpu-opt`
+### Model Files
+- `public/models/fp16/decoder_step.onnx` — multi-token version (109KB + 635MB .data)
+- `public/models/fp16/decoder_step_k1.onnx` — original backup (hardcoded dim[1]=1)
+- `public/models/fp16/decoder_step_multi.onnx` — embedded-data copy for Python testing
 
 ---
 
-## Related Skills
+## Edge Hunt — Concluded (2026-06-18)
 
-- `porting-models-to-asrjs-webgpu` — Full fp16 porting reference, updated with optimizations
-- `onnx-webgpu-dtype-bridge` — Cast node insertion for dtype mismatches
-- `browser-inference-testing` — Automated browser-based ML inference testing
-- `parakeet-js-dev` — parakeet.js, keet, asrjs ecosystem workflows
+See `docs/EDGE-HUNT-REPORT.md` for full details.
+
+| Edge | Hypothesis | Result | Decision |
+|------|-----------|--------|----------|
+| A | Buffer re-wrap (strips session callbacks) | 197ms → 197ms | **REJECT** |
+| B2 | GPU pipeline flush via `getData()` | 196ms → 15ms | **DIAGNOSTIC ONLY** |
+| B | Copy bridge (GPU→GPU copy) | Not implemented | **NOT FEASIBLE** |
+| C | fp32 cast bridge (re-export decoder_init) | Not tested | **DEFER** |
+| D | Graph Identity/Cast tricks | Not tested | **REJECT** (penalty is pre-computation) |
+
+**Root cause:** ORT's `Submit()` is non-blocking. The encoder's GPU work hadn't finished when decoder_init started. Both sessions share the same `device_queue_`, so decoder's first compute dispatch waits behind encoder's pending work. This is correct behavior — the 178ms is real GPU time, not a bug.
+
+**ORT C++ fix available** (reference only, not deployed): `docs/ort-flush-fence.patch` adds `OnSubmittedWorkDone` fence in `Flush()`. Saves ~18ms vs JS `getData()` approach. Requires ORT Web rebuild.
+
+---
+
+## Optimization Sprint Results (2026-06-19)
+
+See `docs/OPTIMIZATION-SPRINT-REPORT.md` for full details.
+
+### P1: Multi-Token Decoder Step — ACCEPT (infra), DEFER (speedup)
+Model deployed. Speculative decode needs draft model.
+
+### P1-B: Encoder Scan — ACCEPT (q8 next), DEFER (graph capture)
+Encoder is 2,326 nodes, 1 Cast. q8 encoder exists (0.6GB). Graph capture only helps multi-chunk.
+
+### P1-C: CPU Prep — DEFER
+Mel processing already well-optimized (power-of-2 FFT, precomputed twiddles, cached filterbank, buffer reuse). Audio mono copy is necessary. WASM/WebGPU mel not justified yet.
+
+---
+
+## Three Deployed Optimizations (perf/whisper-webgpu-decode)
+
+1. **GPU KV Cache Bridge** — `preferredOutputLocation` per-output map, KV stays on GPU
+2. **Stripped fp16 Encoder** — removed Cast(f16→f32) from encoder output
+3. **Fast Mel N_FFT=512** — replaced Bluestein FFT with 512-point radix-2
+
+---
+
+## Rejected Experiments (branches preserved)
+
+| # | Experiment | Branch | Verdict |
+|---|-----------|--------|---------|
+| 4 | Shared WebGPU device (shader-f16) | `perf/shared-webgpu-device` | ❌ Step +22% regression |
+| 5 | Fused encoder_decoder_init ONNX | `perf/fused-encoder-decoder-init` | ❌ Init +19%, step +17% |
+| 6 | GPU suppression mask + ArgMax | `perf/gpu-argmax` | ❌ Step +11% Turkish |
+| 7 | ONNX "simple" buffer cache | main (reverted) | ❌ RTFx -12% |
+| 8 | Hot-loop KV precompute | `perf/hot-loop` | ❌ Broke session reuse |
+
+**Note:** Experiments 4-6 were tested BEFORE the harness fix (page reload degradation). Verdicts may shift with the fixed harness. Re-testing recommended.
+
+### Additionally Rejected/Closed (2026-06-19)
+- **decoder_init optimization** — only 15ms after profiling fix, not a bottleneck
+- **fused encoder_decoder_init** — already rejected above
+- **shared WebGPU device** — already rejected above
+- **GPU ArgMax for decoder_init** — 15ms is fine, parity already achieved
+- **Identity/Cast graph tricks** — penalty was profiling attribution, not real
+- **CPU pass-through for encoder output** — fp16 GPU pass-through is optimal
+
+---
+
+## Harness & Production Infrastructure
+
+### Test Harness
+- **Location:** `N:\github\asrjs\webgpu-agent-test\` (separate directory, not in git)
+- **Start:** `cd /n/github/asrjs/webgpu-agent-test && npm run dev` (port 8765)
+- **Benchmark URL:** `http://localhost:8765/?auto=fp16io-fp16-webgpu&local=1&gpuKv=1`
+- **Profiling URL:** Add `&encoderGpuDrain=1` for honest per-phase metrics
+- **Results:** `_results/*.json` + `GET /__test_results__`
+- **Auto-run-twice:** warmup + measurement in single page load
+- **Available URL params:** `auto`, `local`, `gpuKv`, `encoderGpuDrain`, `encoderGpuFlush`, `encoderBufferRewrap`, `encoderOutputCpu`, `profiling`, `language`, `maxNewTokens`, `numBeams`, `bestOf`, `temperature`
+
+### Production Additions (on main)
+- `flushAllModels()` in `DefaultSpeechPipeline` — VRAM cleanup between audio files
+- Profiling sub-buckets in `TranscriptMetrics`
+- `encoderGpuDrainMs`, `encoderTotalMs`, `encoderOutputCastMs` metrics
+- `encoderGpuDrain` flag (profiling only, off by default)
+- `runDecoderStepMultiToken()` — multi-token decoder step infrastructure
+
+---
+
+## Known Pitfalls
+
+1. `window.location.href` causes progressive GPU degradation (use auto-run-twice)
+2. `browser_navigate` strips URL params — use `browser_console` to set `location.href` instead
+3. ORT WebGPU "simple" buffer cache = 12% slowdown (reverted)
+4. ORT WebGPU REQUIRES `wasmPaths` even for WebGPU sessions
+5. `onnx.save(save_as_external_data=True)` corrupts weights — use `convert_model_to_external_data`
+6. New ONNX outputs default to `gpu-buffer` — must explicitly add to `'cpu'`
+7. Deployed `.onnx` filename must match internal `external_data.location`
+8. Reuse browser tabs — new tabs allocate fresh VRAM
+9. `flushModel()` between cache-key changes — pipeline leaks VRAM
+10. `getData()` adds ~18ms staging buffer overhead vs native fence — use only for profiling
+11. Self-speculative greedy decoding breaks token parity — needs draft model
+
+---
+
+## Key Artifacts
+
+| Path | Purpose |
+|------|---------|
+| `docs/HANDOVER.md` | This document |
+| `docs/EDGE-HUNT-REPORT.md` | Edge A/B/B2/C/D investigation — root cause proven |
+| `docs/ORT-FLUSH-INVESTIGATION.md` | ORT C++ command buffer audit |
+| `docs/PROFILING-REPORT-2026-06-19.md` | Honest profiling baseline (post-fix) |
+| `docs/OPTIMIZATION-SPRINT-REPORT.md` | P1/P1-B/P1-C with ACCEPT/REJECT/DEFER |
+| `docs/Whisper-Optimizations.md` | Full experiment tracker (11 experiments) |
+| `docs/STRUCTURAL-OPTIMIZATION-REPORT.md` | Structural optimization report |
+| `docs/ort-flush-fence.patch` | Fix A reference patch (C++ fence) |
+| `src/models/whisper-seq2seq/executor.ts` | Main executor: decode loop, profiling, multi-token |
+| `src/models/whisper-seq2seq/ort.ts` | ORT session creation, artifact resolution |
+| `src/models/whisper-seq2seq/types.ts` | Type definitions (all flags) |
+| `src/audio/whisper-mel.ts` | Mel preprocessing (power-of-2 FFT, optimized) |
+| `src/runtime/media.ts` | Audio decode + downmix |
+| `tools/whisper-onnx-export/` | ONNX export/modification tools |
+| `public/models/fp16/decoder_step.onnx` | Multi-token decoder_step (dynamic seq_len) |
+
+---
+
+## Remaining High-Impact Opportunities
+
+1. **Speculative decoding with draft model** — multi-token model deployed, needs draft model (e.g., 2-layer Whisper-tiny). Expected ~43% decoder speedup.
+2. **q8 encoder** — exists in `public/models/q8/`. Expected ~200ms encoder (half of fp16).
+3. **Graph capture for multi-chunk** — precompile shaders once, reuse across chunks.
+4. **VRAM optimization** — encoder/decoder sessions may share weight buffers (~1.85GB baseline).
+5. **WASM SIMD mel** — 30-50ms potential reduction in CPU prep.

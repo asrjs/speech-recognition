@@ -104,11 +104,24 @@ def onnx_infer(
     eos = manifest["special_tokens"]["eos_token_id"]
     suppress = manifest["special_tokens"].get("suppress_tokens")
     begin_suppress = manifest["special_tokens"].get("begin_suppress_tokens")
+    no_timestamps = manifest["special_tokens"].get("no_timestamps_token_id")
+    timestamp_begin = manifest["special_tokens"].get("timestamp_begin")
+    without_timestamps = no_timestamps in prompt_ids
 
-    mel_arr = mel_features.numpy().astype(np.float32)
+    def apply_decode_policy(token_logits: np.ndarray, first_step: bool = False):
+        suppress_logits(token_logits, suppress)
+        if first_step:
+            suppress_logits(token_logits, begin_suppress)
+        if without_timestamps and timestamp_begin is not None:
+            token_logits[..., timestamp_begin:] = -np.inf
+
+    encoder_input = enc_sess.get_inputs()[0]
+    mel_dtype = np.float16 if encoder_input.type == "tensor(float16)" else np.float32
+    mel_arr = mel_features.numpy().astype(mel_dtype)
 
     # Encoder
-    enc_out = enc_sess.run(["last_hidden_state"], {"input_features": mel_arr})[0]
+    encoder_output_name = enc_sess.get_outputs()[0].name
+    enc_out = enc_sess.run([encoder_output_name], {encoder_input.name: mel_arr})[0]
 
     # Decoder init
     prompt_arr = np.array([prompt_ids], dtype=np.int64)
@@ -117,28 +130,31 @@ def onnx_infer(
 
     logits = init_out[0]  # [1, prompt_len, vocab]
     last_logits = logits[0, -1, :].copy()
-    suppress_logits(last_logits, suppress)
-    suppress_logits(last_logits, begin_suppress)
+    apply_decode_policy(last_logits, first_step=True)
     next_token = int(np.argmax(last_logits))
 
     past_kv = {}
     for name, val in zip(init_names[1:], init_out[1:]):
         past_kv[name.replace("present.", "past_key_values.")] = val
 
-    generated = [next_token]
+    generated = []
+    eos_stopped = next_token == eos
+    if not eos_stopped:
+        generated.append(next_token)
 
     # Step loop
-    for _ in range(max_new_tokens - 1):
+    while not eos_stopped and len(generated) < max_new_tokens:
         step_input = np.array([[next_token]], dtype=np.int64)
         step_out = step_sess.run(None, {"input_ids": step_input, **past_kv})
         step_names = [o.name for o in step_sess.get_outputs()]
 
         logits_s = step_out[0]
         last_logits = logits_s[0, -1, :].copy()
-        suppress_logits(last_logits, suppress)
+        apply_decode_policy(last_logits)
         next_token = int(np.argmax(last_logits))
 
         if next_token == eos:
+            eos_stopped = True
             break
 
         generated.append(next_token)
@@ -169,6 +185,7 @@ def onnx_infer(
     return {
         "tokens": all_tokens,
         "generated": generated,
+        "eos_stopped": eos_stopped,
         "alignment": alignment_info,
     }
 
@@ -176,16 +193,25 @@ def onnx_infer(
 def main():
     parser = argparse.ArgumentParser(description="Generate HF Whisper reference JSON")
     parser.add_argument("--model-dir", required=True, help="Exported splitgraph model directory")
+    parser.add_argument("--encoder-dir", help="Optional encoder variant directory")
+    parser.add_argument("--decoder-dir", help="Optional decoder variant directory")
     parser.add_argument("--audio", required=True, help="Audio file (WAV, 16kHz mono preferred)")
     parser.add_argument("--output", required=True, help="Output JSON file")
     parser.add_argument("--model-id", default="openai/whisper-tiny", help="HF model ID")
     parser.add_argument("--language", default="en", help="Language code")
     parser.add_argument("--max-new-tokens", type=int, default=128)
+    parser.add_argument(
+        "--skip-onnx",
+        action="store_true",
+        help="Generate HF tokens/mel only; run exported graphs in the Node/Vitest harness",
+    )
     parser.add_argument("--export-mel", action="store_true",
                         help="Also export mel features as .npy for feature-input mode")
     args = parser.parse_args()
 
     model_dir = Path(args.model_dir)
+    encoder_dir = Path(args.encoder_dir) if args.encoder_dir else model_dir
+    decoder_dir = Path(args.decoder_dir) if args.decoder_dir else model_dir
     audio_path = args.audio
     output_path = Path(args.output)
 
@@ -214,7 +240,8 @@ def main():
     sot = tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
     lang = tokenizer.convert_tokens_to_ids(f"<|{args.language}|>")
     task_tok = tokenizer.convert_tokens_to_ids("<|transcribe|>")
-    prompt_ids = [sot, lang, task_tok]
+    no_timestamps = tokenizer.convert_tokens_to_ids("<|notimestamps|>")
+    prompt_ids = [sot, lang, task_tok, no_timestamps]
 
     # PyTorch: no_timestamps
     print("Running PyTorch generate (no_timestamps)...")
@@ -235,39 +262,56 @@ def main():
     print(f"  Timestamp tokens: {pt_with_ts.get('timestamp_tokens', [])[:10]}")
     print(f"  Text:   \"{pt_with_ts['text'][:100]}\"")
 
-    # ONNX splitgraph inference
-    print("Running ONNX splitgraph inference...")
-    manifest_path = model_dir / "manifest.json"
+    # Load export metadata even when ONNX execution is delegated to Node ORT.
+    manifest_path = decoder_dir / "manifest.json"
     with open(manifest_path) as f:
         manifest = json.load(f)
 
-    sess_opts = ort.SessionOptions()
-    sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    generation_config_path = decoder_dir / "generation_config.json"
+    if generation_config_path.exists():
+        with open(generation_config_path) as f:
+            generation_config = json.load(f)
+        special_tokens = manifest.setdefault("special_tokens", {})
+        for key in (
+            "suppress_tokens",
+            "begin_suppress_tokens",
+            "no_timestamps_token_id",
+        ):
+            if generation_config.get(key) is not None:
+                special_tokens[key] = generation_config[key]
 
-    ort_sessions = {
-        "encoder": ort.InferenceSession(
-            str(model_dir / "encoder_model.onnx"), sess_opts, providers=["CPUExecutionProvider"]
-        ),
-        "decoder_init": ort.InferenceSession(
-            str(model_dir / "decoder_init.onnx"), sess_opts, providers=["CPUExecutionProvider"]
-        ),
-        "decoder_step": ort.InferenceSession(
-            str(model_dir / "decoder_step.onnx"), sess_opts, providers=["CPUExecutionProvider"]
-        ),
-    }
-    if (model_dir / "decoder_align.onnx").exists():
-        ort_sessions["decoder_align"] = ort.InferenceSession(
-            str(model_dir / "decoder_align.onnx"), sess_opts, providers=["CPUExecutionProvider"]
-        )
+    onnx_no_ts = None
+    if args.skip_onnx:
+        print("Skipping Python ONNX Runtime; exported graphs will run in the Node/Vitest harness.")
+    else:
+        print("Running ONNX splitgraph inference...")
+        sess_opts = ort.SessionOptions()
+        sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
 
-    onnx_no_ts = onnx_infer(ort_sessions, manifest, mel, prompt_ids, args.max_new_tokens)
-    onnx_no_ts_text = tokenizer.decode(onnx_no_ts["tokens"], skip_special_tokens=True)
-    print(f"  ONNX tokens: {onnx_no_ts['tokens'][:20]}...")
-    print(f"  ONNX text:   \"{onnx_no_ts_text[:100]}\"")
-    if onnx_no_ts["alignment"]:
-        al = onnx_no_ts["alignment"]
-        print(f"  Alignment: shape={al['shape']}, text_shape={al['text_shape']}, "
-              f"row_sum=[{al['row_sum_min']:.4f}, {al['row_sum_max']:.4f}]")
+        ort_sessions = {
+            "encoder": ort.InferenceSession(
+                str(encoder_dir / "encoder_model.onnx"), sess_opts, providers=["CPUExecutionProvider"]
+            ),
+            "decoder_init": ort.InferenceSession(
+                str(decoder_dir / "decoder_init.onnx"), sess_opts, providers=["CPUExecutionProvider"]
+            ),
+            "decoder_step": ort.InferenceSession(
+                str(decoder_dir / "decoder_step.onnx"), sess_opts, providers=["CPUExecutionProvider"]
+            ),
+        }
+        if (decoder_dir / "decoder_align.onnx").exists():
+            ort_sessions["decoder_align"] = ort.InferenceSession(
+                str(decoder_dir / "decoder_align.onnx"), sess_opts, providers=["CPUExecutionProvider"]
+            )
+
+        onnx_no_ts = onnx_infer(ort_sessions, manifest, mel, prompt_ids, args.max_new_tokens)
+        onnx_no_ts_text = tokenizer.decode(onnx_no_ts["tokens"], skip_special_tokens=True)
+        print(f"  ONNX tokens: {onnx_no_ts['tokens'][:20]}...")
+        print(f"  ONNX text:   \"{onnx_no_ts_text[:100]}\"")
+        if onnx_no_ts["alignment"]:
+            al = onnx_no_ts["alignment"]
+            print(f"  Alignment: shape={al['shape']}, text_shape={al['text_shape']}, "
+                  f"row_sum=[{al['row_sum_min']:.4f}, {al['row_sum_max']:.4f}]")
 
     # Build reference
     reference = {
@@ -280,23 +324,27 @@ def main():
         "model": {
             "id": args.model_id,
             "export_dir": str(model_dir.resolve()),
+            "encoder_dir": str(encoder_dir.resolve()),
+            "decoder_dir": str(decoder_dir.resolve()),
             "format": manifest.get("format", "unknown"),
             "d_model": manifest.get("d_model"),
             "decoder_layers": manifest.get("decoder_layers"),
             "decoder_attention_heads": manifest.get("decoder_attention_heads"),
         },
         "prompt_ids": prompt_ids,
+        "decode": {
+            "max_new_tokens": args.max_new_tokens,
+            "language": args.language,
+            "task": "transcribe",
+            "no_timestamps": True,
+        },
         "pytorch": {
             "no_timestamps": pt_no_ts,
             "with_timestamps": pt_with_ts,
         },
-        "onnx_python": onnx_no_ts,
     }
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(reference, f, indent=2)
-    print(f"\nReference written to {output_path}")
+    if onnx_no_ts is not None:
+        reference["onnx_python"] = onnx_no_ts
 
     # Export mel features for feature-input mode
     if args.export_mel:
@@ -304,6 +352,11 @@ def main():
         np.save(mel_path, mel.numpy().astype(np.float32))
         print(f"Mel features exported to {mel_path}")
         reference["mel_features_path"] = str(mel_path.resolve())
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(reference, f, indent=2)
+    print(f"\nReference written to {output_path}")
 
 
 if __name__ == "__main__":

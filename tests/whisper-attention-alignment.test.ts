@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeWhisperDtwTokenTimestamps,
   medianFilterWhisperAttention,
+  spreadWhisperDtwTimestamps,
 } from '../src/models/whisper-seq2seq/index.js';
 
 describe('Whisper attention DTW alignment helpers', () => {
@@ -45,5 +46,9 @@ describe('Whisper attention DTW alignment helpers', () => {
     expect(timestamps[1]).toBeGreaterThanOrEqual(0.02);
     expect(timestamps[2]).toBeGreaterThanOrEqual(timestamps[1]!);
     expect(timestamps[3]).toBeCloseTo(0.1, 5);
+  });
+
+  it('spreads identical DTW jump times so tokens are not zero-duration', () => {
+    expect(spreadWhisperDtwTimestamps([0, 0.5, 0.5, 1.5])).toEqual([0, 0.5, 1, 1.5]);
   });
 });

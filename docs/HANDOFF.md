@@ -1,7 +1,7 @@
 # ASR.js Whisper Engine — Complete Handoff
 
-**Branch**: `main`
-**Date**: 2026-06-13 (Flexo → Bev migration)
+**Branch**: `feat/whisper-cleanup-beam-temperature`
+**Date**: 2026-08-23
 **Source machine**: P520 (WSL2, RTX 5060 Ti 8GB) → **Target**: P520 (Windows native, RTX 5060 Ti)
 
 ## Quick Recall (Bev için)
@@ -15,6 +15,105 @@
 **Amaç:** Whisper large-v3-turbo'yu browser'da WebGPU ile çalıştırmak. Model, HuggingFace'te `ysdede/whisper-large-v3-turbo-onnx-4graph` adresinde, 4-graph splitgraph formatında (encoder + decoder_init + decoder_step + decoder_align). 5 quantization variant: fp32, fp16, fp16io, q8, mixed.
 
 ## Zaman Çizelgesi
+
+### 23 August - Reference parity and beam lifecycle correction
+
+The primary model remains the custom splitgraph repository
+`ysdede/whisper-large-v3-turbo-onnx-4graph`. Do not substitute an
+`onnx-community/*` merged-decoder model when validating this WebGPU path.
+
+The abandoned decode work resumed with a source-level comparison against
+OpenAI Whisper. The old core beam loop mixed completed and active hypotheses,
+used patience as a consecutive-step counter, and inferred KV parents from token
+prefixes. It now:
+
+- moves EOS hypotheses to a separate finished-candidate set;
+- keeps `numBeams` non-EOS active slots while search continues;
+- uses `round(numBeams * patience)` as the finished-candidate budget;
+- carries explicit survivor parent indexes for CPU-KV cloning;
+- shares the same candidate semantics between stable and experimental batched
+  decoder-step execution;
+- applies Whisper's default length normalization and its Google NMT formula for
+  an explicit length-penalty alpha.
+
+Timestamped decode now suppresses `<|notimestamps|>` and applies Whisper's
+aggregate timestamp-probability rule. Focused beam/timestamp tests pass.
+
+The reference tooling was also repaired. It now distinguishes encoder graph
+input frames (`3000`) from encoder output positions (`1500`), reads graph
+metadata, loads the real `generation_config.json`, supports separate encoder and
+decoder variant directories, and can generate an HF-only oracle with
+`--skip-onnx`. It also honors a single model-directory override and types mel
+inputs from encoder metadata. On the JFK fixture, local fp32 splitgraph execution matched the
+cached `openai/whisper-large-v3-turbo` oracle exactly in both paths:
+
+| Input path | Result |
+| ---------- | ------ |
+| Exported Python mel | `31/31` normalized tokens, exact text |
+| WAV through `WhisperMelProcessor` | `31/31` normalized tokens, exact text |
+
+Python ORT 1.22 on this machine cannot load the IR-v13 graphs; Node ORT 1.26 is
+the local graph oracle. Node ORT also cannot materialize the fp16 encoder output
+for this artifact (`expected 3840000, got 0`), so fp32 Node establishes decode
+correctness and Chrome WebGPU remains the fp16 runtime gate.
+
+Next compatibility blocker: no-speech and selected-beam quality metrics must
+come from the correct decoder positions. Do not promote the current hard-coded
+no-speech approximation as reference behavior.
+
+Independent Chromium/WebGPU validation after the correction produced identical
+50-token output for greedy GPU-KV, stable CPU-KV beam, and experimental batched
+beam. Stable beam used 98 decoder-step ORT calls; batching used 49 and reduced
+paired decode time from `12577.285ms` to `10609.685ms` (15.64%). Greedy GPU-KV
+reported zero GPU downloads. The harness verdict remained `check` only because
+the explicit 50-token cap truncates its longer reference transcript.
+
+### 19 June — Model-source correction after merged-decoder compatibility pass
+
+The active WebGPU target remains
+`ysdede/whisper-large-v3-turbo-onnx-4graph` with splitgraph artifacts. The
+`onnx-community/*_timestamped` merged-decoder presets are secondary compatibility
+paths, not the browser performance target.
+
+After the merged-decoder language probe landed, prompt fallback handling was
+corrected so failed `language: "auto"` detection falls back to a real configured
+language, or English (`<|en|>` / `50259`) when no concrete language is
+configured, instead of forming `<|auto|>` or relying on a hard-coded Turkish
+fallback. Explicit or detected Turkish still resolves through the tokenizer
+normally.
+
+### 19 June — Whisper decode parity + fp16 WebGPU beam functional pass ✅
+
+Branch `feat/whisper-cleanup-beam-temperature` now has a correctness-first
+Whisper decode pass aligned with OpenAI Whisper/faster-whisper semantics:
+
+- `temperature=0` uses greedy or beam argmax.
+- `temperature>0` uses sampling and disables beam search.
+- `bestOf` is sampling-only and ignored for `temperature=0`.
+- Enhanced temperature fallback now passes each retry temperature to the
+  vanilla executor and preserves caller `onTokenLogits` callbacks.
+- Language auto-detection uses decoder-init SOT logits and filters real Whisper
+  language tokens.
+- Beam survivor KV caches stay aligned when completed beams are retained during
+  patience-based continuation.
+- fp16 splitgraph beam caches carry typed-array storage plus per-beam tensor
+  dims through the decoder-init -> decoder-step callback boundary.
+
+Windows Chrome headless harness (`N:\github\asrjs\webgpu-agent-test`) validated:
+
+- Greedy `fp16io-fp16-webgpu&gpuKv=1`: functional pass, zero GPU tensor
+  downloads, KV location `gpu-buffer`, RTFx about `28.29`.
+- Beam `fp16io-fp16-webgpu&numBeams=2&patience=1`: functional pass on stable
+  CPU-KV splitgraph path, KV location `cpu`.
+- Experimental batched beam
+  `fp16io-fp16-webgpu&numBeams=2&patience=1&batchedBeam=1`: functional pass
+  with the same transcript prefix as stable beam. Decoder-step ORT calls dropped
+  from `98` to `49`; paired measurement improved from about `15.16s` total /
+  `1.98` RTFx to about `12.83s` total / `2.33` RTFx.
+
+Important: stable CPU-KV beam remains the correctness oracle. The batched beam
+path is opt-in and experimental until more model variants, beam sizes,
+EOS/timestamp cases, and longer audio prove parity.
 
 ### 14 Haziran — Full fp16 WebGPU + mel perf ✅
 

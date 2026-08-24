@@ -5,6 +5,7 @@ describe('Whisper generation config parsing', () => {
   const tinyGenConfig = {
     alignment_heads: [[2, 2], [3, 0], [3, 2], [3, 3], [3, 4], [3, 5]],
     no_timestamps_token_id: 50363,
+    no_speech_token_id: 50362,
     begin_suppress_tokens: [220, 50257],
     suppress_tokens: [1, 2, 50257],
     max_length: 448,
@@ -33,6 +34,11 @@ describe('Whisper generation config parsing', () => {
     expect(parsed.noTimestampsTokenId).toBe(50363);
   });
 
+  it('exposes noSpeechTokenId', () => {
+    const parsed = parseWhisperGenerationConfig(tinyGenConfig);
+    expect(parsed.noSpeechTokenId).toBe(50362);
+  });
+
   it('exposes suppress token controls used by greedy decoding', () => {
     const parsed = parseWhisperGenerationConfig(tinyGenConfig);
     expect(parsed.suppressTokens).toEqual([1, 2, 50257]);
@@ -43,6 +49,7 @@ describe('Whisper generation config parsing', () => {
     const parsed = parseWhisperGenerationConfig({});
     expect(parsed.alignmentHeads).toEqual([]);
     expect(parsed.noTimestampsTokenId).toBeUndefined();
+    expect(parsed.noSpeechTokenId).toBeUndefined();
   });
 
   it('filters out non-pair alignment_heads entries', () => {

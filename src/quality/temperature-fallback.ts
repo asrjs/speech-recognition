@@ -11,7 +11,7 @@
  * Generic — no model coupling. Works with any transcribe function.
  */
 
-import type { QualityGate, QualityGateResult } from './types.js';
+import type { QualityGate, QualityGateContext, QualityGateResult } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -36,6 +36,7 @@ export interface TranscribeAttempt<T> {
   tokens: readonly number[];
   logits: readonly Float32Array[];
   vocabSize: number;
+  qualityContext?: QualityGateContext;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,14 +50,22 @@ export async function withTemperatureFallback<T>(
 ): Promise<FallbackResult<T>> {
   const gateResults: QualityGateResult[] = [];
   let lastAttempt: TranscribeAttempt<T> | null = null;
+  let attempts = 0;
 
   for (const temperature of temperatures) {
+    attempts++;
     const attempt = await transcribeFn(temperature);
     lastAttempt = attempt;
 
     const verdicts: QualityGateResult[] = [];
     for (const gate of gates) {
-      const result = gate(attempt.text, attempt.tokens, attempt.logits, attempt.vocabSize);
+      const result = gate(
+        attempt.text,
+        attempt.tokens,
+        attempt.logits,
+        attempt.vocabSize,
+        attempt.qualityContext,
+      );
       verdicts.push(result);
       if (result.verdict !== 'accept') break;
     }
@@ -64,13 +73,13 @@ export async function withTemperatureFallback<T>(
     const noSpeech = verdicts.find((v) => v.verdict === 'no_speech');
     if (noSpeech) {
       gateResults.push(...verdicts);
-      return { result: attempt.result, temperature, attempts: gateResults.length, gateResults };
+      return { result: attempt.result, temperature, attempts, gateResults };
     }
 
     const allAccepted = verdicts.every((v) => v.verdict === 'accept');
     if (allAccepted) {
       gateResults.push(...verdicts);
-      return { result: attempt.result, temperature, attempts: gateResults.length, gateResults };
+      return { result: attempt.result, temperature, attempts, gateResults };
     }
 
     gateResults.push(...verdicts);
@@ -82,7 +91,7 @@ export async function withTemperatureFallback<T>(
   return {
     result: lastAttempt.result,
     temperature: temperatures[temperatures.length - 1]!,
-    attempts: gateResults.length,
+    attempts,
     gateResults,
   };
 }

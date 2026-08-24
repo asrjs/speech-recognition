@@ -174,6 +174,8 @@ export interface SpeechPipeline {
   ): Promise<TranscriptResponse<TNative, TFlavor>>;
   listLoadedModels(): readonly string[];
   disposeModel(requestOrCacheKey: string | SpeechPipelineModelRequest<unknown>): Promise<void>;
+  /** Dispose all loaded models to free GPU memory without deleting IndexedDB cache. */
+  flushAllModels(): Promise<void>;
   dispose(): Promise<void>;
 }
 
@@ -456,6 +458,25 @@ class DefaultSpeechPipeline implements SpeechPipeline {
         await result.dispose();
       }
     }
+  }
+
+  /** Dispose all loaded models to free GPU memory without deleting IndexedDB cache.
+   *  The runtime stays alive — models can be reloaded from IndexedDB immediately.
+   *  Use this between audio files to prevent VRAM accumulation from cache-key changes. */
+  async flushAllModels(): Promise<void> {
+    // Dispose inflight loads first
+    const inflightResults = await Promise.allSettled(this.inflight.values());
+    this.inflight.clear();
+    for (const result of inflightResults) {
+      if (result.status === 'fulfilled') {
+        try { await result.value.dispose(); } catch { /* best-effort */ }
+      }
+    }
+    // Dispose all cached handles
+    for (const [, handle] of this.handles) {
+      try { await handle.dispose(); } catch { /* best-effort */ }
+    }
+    this.handles.clear();
   }
 
   async dispose(): Promise<void> {

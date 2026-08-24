@@ -113,8 +113,15 @@ export function groupCharAlignmentToWords(
 
     while (frameIdx < frames.length && charConsumed < word.charCount) {
       const frame = frames[frameIdx]!;
-      // Skip separator/space frames that may appear in alignment
-      if (frame.char === separator || frame.char === ' ') {
+      // Skip separator/space frames that may appear in alignment.
+      // Wav2Vec2-base-960h uses `|` as the word delimiter; decodeTokenPiece
+      // maps it to a space, but raw vocab labels may still be `|`.
+      if (
+        frame.char === separator ||
+        frame.char === ' ' ||
+        frame.char === '|' ||
+        frame.char.length === 0
+      ) {
         frameIdx++;
         continue;
       }
@@ -139,10 +146,15 @@ function buildWord(
   const last = charFrames[charFrames.length - 1]!;
   const avgConfidence = charFrames.reduce((s, f) => s + f.confidence, 0) / charFrames.length;
 
+  const rawEnd = last.endSeconds ?? last.seconds;
+  // q8 Viterbi often parks the last letter of a short word just before the
+  // next word. Cap duration by character count so "of" cannot eat 600ms.
+  const maxDuration = Math.max(0.2, charFrames.length * 0.1);
+  const end = Math.min(Math.max(rawEnd, first.seconds), first.seconds + maxDuration);
   return {
     text,
     start: first.seconds,
-    end: last.seconds,
+    end,
     confidence: Math.min(1.0, avgConfidence),
     charFrames,
   };
@@ -151,6 +163,18 @@ function buildWord(
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
+
+function tokenLabelFromTokenizer(
+  tokenizer: Wav2Vec2AlignerConfig['tokenizer'],
+  tokenId: number,
+): string {
+  if (tokenizer.decodeTokenPiece) {
+    return tokenizer.decodeTokenPiece(tokenId);
+  }
+  const decoded = tokenizer.decode([tokenId]);
+  // `decode()` trims, so a `|` / space piece becomes "". Keep it as a separator.
+  return decoded.length > 0 ? decoded : ' ';
+}
 
 /**
  * Create a WAV2VEC2 forced aligner.
@@ -195,10 +219,7 @@ export function createWav2Vec2Aligner(
         config.blankId,
         {
           audioDurationSeconds,
-          tokenToChar: (tokenId) =>
-            config.tokenizer.decodeTokenPiece?.(tokenId) ||
-            config.tokenizer.decode([tokenId]) ||
-            String(tokenId),
+          tokenToChar: (tokenId) => tokenLabelFromTokenizer(config.tokenizer, tokenId),
         },
       );
 

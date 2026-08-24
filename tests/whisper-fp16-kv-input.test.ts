@@ -1,0 +1,108 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import { cloneDecoderKvDataForInput, concatDecoderKvDataForBatch } from '../src/models/whisper-seq2seq/executor.js';
+import { WhisperOnnxExecutor } from '../src/models/whisper-seq2seq/index.js';
+
+const originalFloat16Array = (globalThis as any).Float16Array;
+
+afterEach(() => {
+  (globalThis as any).Float16Array = originalFloat16Array;
+});
+
+describe('Whisper fp16 decoder-step KV inputs', () => {
+  it('wraps raw fp16 KV bits with Float16Array for callback-based split decoding', () => {
+    (globalThis as any).Float16Array = class Float16Array extends Uint16Array {};
+
+    const source = new Uint16Array([1, 2, 3, 4]);
+    const cloned = cloneDecoderKvDataForInput(source, 'float16');
+
+    expect(cloned.type).toBe('float16');
+    expect(cloned.data.constructor.name).toBe('Float16Array');
+    expect(cloned.data).not.toBe(source);
+    expect(Array.from(cloned.data as Uint16Array)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('concatenates raw fp16 KV bits as Float16Array for batched beam inputs', () => {
+    (globalThis as any).Float16Array = class Float16Array extends Uint16Array {};
+
+    const batched = concatDecoderKvDataForBatch([
+      { data: new Uint16Array([1, 2]), type: 'float16' },
+      { data: new Uint16Array([3, 4]), type: 'float16' },
+    ], 'float16');
+
+    expect(batched.type).toBe('float16');
+    expect(batched.data.constructor.name).toBe('Float16Array');
+    expect(Array.from(batched.data as Uint16Array)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('re-wraps Uint16Array fp16 KV data with Float16Array when the runtime provides it', async () => {
+    (globalThis as any).Float16Array = class Float16Array extends Uint16Array {};
+
+    const feedTypes: Record<string, string> = {};
+    const executor = new WhisperOnnxExecutor(
+      'mock-whisper',
+      {},
+      {
+        ecosystem: 'openai',
+        architecture: 'whisper-seq2seq',
+        processorArchitecture: 'whisper-mel',
+        encoderArchitecture: 'whisper-transformer',
+        decoderArchitecture: 'transformer-decoder',
+        sampleRate: 16000,
+        melBins: 80,
+        maxSourcePositions: 1500,
+        maxTargetPositions: 448,
+        languages: ['en'],
+        tokenizer: { kind: 'tiktoken' },
+      },
+      'webgpu',
+      undefined,
+    );
+
+    const loaded = {
+      ort: {
+        Tensor: class Tensor {
+          readonly type: string;
+          readonly data: ArrayBufferView;
+          readonly dims: readonly number[];
+
+          constructor(type: string, data: ArrayBufferView, dims: readonly number[]) {
+            if (type === 'float16' && data.constructor.name !== 'Float16Array') {
+              throw new Error(`expected Float16Array, got ${data.constructor.name}`);
+            }
+            this.type = type;
+            this.data = data;
+            this.dims = dims;
+          }
+        },
+      },
+      decoderStepSession: {
+        async run(feeds: Record<string, { readonly type?: string; readonly data?: ArrayBufferView }>) {
+          for (const [name, value] of Object.entries(feeds)) {
+            feedTypes[name] = value.data?.constructor.name ?? '';
+          }
+          return {
+            logits: {
+              type: 'float32',
+              data: new Float32Array([0, 1, 0]),
+              dims: [1, 1, 3],
+            },
+          };
+        },
+      },
+    };
+
+    await (executor as any).runDecoderStepMultiToken(
+      loaded,
+      [2],
+      {
+        'past_key_values.0.decoder.key': {
+          type: 'float16',
+          data: new Uint16Array([1, 2, 3, 4]),
+          dims: [1, 1, 2, 2],
+        },
+      },
+    );
+
+    expect(feedTypes['past_key_values.0.decoder.key']).toBe('Float16Array');
+  });
+});

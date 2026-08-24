@@ -49,13 +49,26 @@ export interface OrtSessionLike {
   ): Promise<Record<string, OrtTensorLike>>;
 }
 
-export interface OrtModuleLike {
-  readonly env: OrtEnv;
-  readonly Tensor: new <TData extends ArrayBufferView>(
+export interface OrtTensorConstructor {
+  new <TData extends ArrayBufferView>(
     type: 'float32' | 'float16' | 'int32' | 'int64' | 'bool',
     data: TData,
     dims: readonly number[],
-  ) => OrtTensorLike<TData>;
+  ): OrtTensorLike<TData>;
+  fromGpuBuffer?(
+    buffer: unknown,
+    options: {
+      dataType?: string;
+      dims: readonly number[];
+      download?: () => Promise<ArrayBufferView>;
+      dispose?: () => void;
+    },
+  ): OrtTensorLike;
+}
+
+export interface OrtModuleLike {
+  readonly env: OrtEnv;
+  readonly Tensor: OrtTensorConstructor;
   readonly InferenceSession: {
     create(url: string, options?: Record<string, unknown>): Promise<OrtSessionLike>;
   };
@@ -81,6 +94,18 @@ export interface ResolvedWhisperArtifacts {
   readonly enableProfiling?: boolean;
   readonly experimentalWebGpuEncoderGraphCapture?: boolean;
   readonly experimentalGpuKvCache?: boolean;
+  /** DIAGNOSTIC: Force encoder output to CPU (Track A2). */
+  readonly encoderOutputCpu?: boolean;
+  /** DIAGNOSTIC (B2-C): Enable graph capture for decoder_step session. */
+  readonly decoderGraphCapture?: boolean;
+  /** DIAGNOSTIC (B2-B): freeDimensionOverrides for decoder_step session. */
+  readonly decoderFreeDimensionOverrides?: Record<string, number>;
+  /** DIAGNOSTIC (Edge A): Re-wrap encoder GPU output as fresh Tensor.fromGpuBuffer. */
+  readonly encoderBufferRewrap?: boolean;
+  /** DIAGNOSTIC (Edge B2): Force GPU flush before decoder_init. */
+  readonly encoderGpuFlush?: boolean;
+  /** PROFILING (encoderGpuDrain): Force GPU drain + re-wrap after encoder. */
+  readonly encoderGpuDrain?: boolean;
   readonly isSplitGraph: boolean;
   readonly decoderInitUrl?: string;
   readonly decoderStepUrl?: string;
@@ -266,6 +291,12 @@ function resolveSplitGraphArtifacts(
     enableProfiling: source.enableProfiling,
     experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
     experimentalGpuKvCache: source.experimentalGpuKvCache,
+    encoderOutputCpu: source.encoderOutputCpu,
+    decoderGraphCapture: source.decoderGraphCapture,
+    decoderFreeDimensionOverrides: source.decoderFreeDimensionOverrides,
+    encoderBufferRewrap: source.encoderBufferRewrap,
+    encoderGpuFlush: source.encoderGpuFlush,
+    encoderGpuDrain: source.encoderGpuDrain,
     isSplitGraph: true,
     decoderInitUrl,
     decoderStepUrl,
@@ -305,6 +336,15 @@ export async function initWhisperOrt(
   };
   const ort = imported.default ?? imported;
 
+  if (typeof SharedArrayBuffer !== 'undefined') {
+    ort.env.wasm.numThreads = options.cpuThreads ?? 1;
+    ort.env.wasm.simd = true;
+  } else {
+    ort.env.wasm.numThreads = 1;
+  }
+
+  ort.env.wasm.proxy = false;
+
   // Always override ORT's default wasmPaths (which is CDN and blocked by COEP).
   // User-provided path takes precedence; otherwise use local dist/.
   if (options.wasmPaths) {
@@ -318,51 +358,9 @@ export async function initWhisperOrt(
     ort.env.wasm.wasmPaths = '/node_modules/onnxruntime-web/dist/';
   }
 
-  if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads = options.cpuThreads ?? 1;
-    ort.env.wasm.simd = true;
-  } else {
-    ort.env.wasm.numThreads = 1;
-  }
-
-  ort.env.wasm.proxy = false;
-
   if (normalizeWhisperWeightBackend(backendId) === 'webgpu' && options.enableProfiling) {
     ort.env.webgpu ??= {};
     ort.env.webgpu.profiling = { mode: 'default' };
-  }
-
-  // Shared WebGPU device: create once and reuse across all ORT sessions.
-  // Without this, each InferenceSession.create() spawns a separate GPUDevice,
-  // causing cross-device buffer copies (~128ms overhead) when passing tensors
-  // between encoder and decoder sessions.
-  if (
-    normalizeWhisperWeightBackend(backendId) === 'webgpu' &&
-    typeof navigator !== 'undefined' &&
-    'gpu' in navigator &&
-    !ort.env.webgpu?.device
-  ) {
-    try {
-      const nav = navigator as { gpu?: { requestAdapter?(): Promise<{ requestDevice?(): Promise<unknown> } | null> } };
-      const gpu = nav.gpu;
-      const adapter = gpu?.requestAdapter ? await gpu.requestAdapter() : null;
-      if (adapter && typeof (adapter as { requestDevice?: unknown }).requestDevice === 'function') {
-        const device = await (adapter as { requestDevice(): Promise<unknown> }).requestDevice();
-        ort.env.webgpu ??= {};
-        ort.env.webgpu.device = device;
-      }
-    } catch {
-      // Adapter/device creation can fail on some configurations.
-      // ORT will fall back to creating its own device per session.
-    }
-  }
-
-  if (
-    normalizeWhisperWeightBackend(backendId) === 'webgpu' &&
-    typeof navigator !== 'undefined' &&
-    !('gpu' in navigator)
-  ) {
-    return ort;
   }
 
   return ort;
@@ -378,6 +376,8 @@ export async function createWhisperOrtSession(
     readonly externalDataPath?: string;
     readonly preferredOutputLocation?: OrtPreferredOutputLocation;
     readonly enableGraphCapture?: boolean;
+    /** DIAGNOSTIC (B2-B): Override symbolic dimensions at session creation. */
+    readonly freeDimensionOverrides?: Record<string, number>;
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
@@ -406,6 +406,10 @@ export async function createWhisperOrtSession(
   }
   if (options.enableGraphCapture && options.backendId.startsWith('webgpu')) {
     sessionOptions.enableGraphCapture = true;
+  }
+  // DIAGNOSTIC (B2-B): freeDimensionOverrides for shape specialization
+  if (options.freeDimensionOverrides) {
+    sessionOptions.freeDimensionOverrides = options.freeDimensionOverrides;
   }
 
   if (isNodeLikeRuntime()) {

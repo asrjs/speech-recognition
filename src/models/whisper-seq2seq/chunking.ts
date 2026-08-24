@@ -25,12 +25,23 @@ export function mergeWhisperChunkTranscripts(chunks: readonly WhisperChunkTransc
       });
     }
     for (const word of chunk.transcript.words ?? []) {
-      words.push({
+      const adjusted: WhisperNativeWord = {
         ...word,
-        index: words.length,
         startTime: offsetTime(word.startTime, offset),
         endTime: offsetTime(word.endTime, offset),
-      });
+      };
+      const previous = words[words.length - 1];
+      if (
+        previous &&
+        normalizeWhisperWordText(previous.text) === normalizeWhisperWordText(adjusted.text) &&
+        adjusted.startTime < previous.endTime
+      ) {
+        if ((adjusted.confidence ?? 0) > (previous.confidence ?? 0)) {
+          words[words.length - 1] = adjusted;
+        }
+        continue;
+      }
+      words.push(adjusted);
     }
     for (const token of chunk.transcript.tokens ?? []) {
       tokens.push({
@@ -42,6 +53,8 @@ export function mergeWhisperChunkTranscripts(chunks: readonly WhisperChunkTransc
     }
   }
 
+  const indexedWords = words.map((word, index) => ({ ...word, index }));
+
   const utteranceText = segments.length > 0
     ? segments.map((segment) => segment.text).join(' ').trim()
     : chunks.map((chunk) => chunk.transcript.utteranceText).filter(Boolean).join(' ').trim();
@@ -51,11 +64,15 @@ export function mergeWhisperChunkTranscripts(chunks: readonly WhisperChunkTransc
     isFinal: chunks.every((chunk) => chunk.transcript.isFinal),
     ...(language ? { language } : {}),
     ...(segments.length > 0 ? { segments } : {}),
-    ...(words.length > 0 ? { words } : {}),
+    ...(indexedWords.length > 0 ? { words: indexedWords } : {}),
     ...(tokens.length > 0 ? { tokens } : {}),
     ...(metrics ? { metrics } : {}),
     ...(warnings.length > 0 ? { warnings } : {}),
   };
+}
+
+function normalizeWhisperWordText(text: string): string {
+  return text.trim().toLowerCase();
 }
 
 function offsetTime(time: number, offset: number): number {

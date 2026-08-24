@@ -1,7 +1,35 @@
 # Agent Task Coordination
 
-Branch: `perf/whisper-webgpu-decode`
-Updated: 2026-06-14 (Codex, WebGPU GPU-KV optimization plan refresh)
+Branch: `feat/whisper-cleanup-beam-temperature`
+Updated: 2026-08-24 (bounded beam selector and browser beam matrix)
+
+## POST-RESTART VALIDATION (2026-08-23)
+
+The workstation restart restored the expected NVIDIA Blackwell WebGPU state.
+The browser harness used the real custom target
+`ysdede/whisper-large-v3-turbo-onnx-4graph`. The remote preset names the
+encoder artifact `fp16_iofp32/encoder_model.onnx`; the local harness uses its
+optimized fp16-output copy, `fp16_iofp32_fp16out`, paired with the `fp16`
+decoder. Warmed 30-second JFK measurements reached:
+
+- `22.7617x` RTFx, `1328.07ms` total, `199.625ms` encoder, `49` decoder steps,
+  `0` GPU tensor downloads.
+- `22.2738x` RTFx with the profiling-only encoder GPU drain enabled; the drain
+  moved `208.955ms` of queue work into the encoder metric without changing the
+  production path.
+- A 10-second measurement reached `11.7391x` RTFx. Longer audio is the useful
+  throughput signal because fixed preprocess/encoder/decoder-init costs are
+  amortized.
+- An independent manual repeat on the optimized local variant reached
+  `25.6993x` RTFx (`1175.81ms` total) on the 29.9043-second clip, with
+  `183.49ms` encoder time, `49` GPU-KV steps, p50/p95 step time of
+  `13.395/15.430ms`, and `0` downloads. Its 10-second repeat reached
+  `13.856x`.
+
+The earlier post-restart failure-state run around `8x` was not used as a code
+baseline. Historical best-case runs around `26-28x` remain plausible, but
+future optimization comparisons must use repeated warmed runs on this same
+custom model and browser configuration.
 
 ## Context Recovery
 
@@ -9,8 +37,8 @@ Updated: 2026-06-14 (Codex, WebGPU GPU-KV optimization plan refresh)
 **Verification skill**: Load `whisper-model-verification-pipeline` for model porting verification
 **Progress file**: `docs/Whisper-Optimizations.md`
 **HF models**: `ysdede/whisper-large-v3-turbo-onnx-4graph` (original, fixed fp16) + v2 backup
-**Local models (webgpu test)**: `/mnt/n/github/asrjs/webgpu-agent-test/models/` (fp32, fp16, fp16_iofp32, mixed, q8)
-**Test page**: `/mnt/n/github/asrjs/webgpu-agent-test/index.html` (library-synced)
+**Local models (webgpu test)**: `N:\github\asrjs\webgpu-agent-test\public\models\` (fp32, fp16, fp16_iofp32, mixed, q8)
+**Test page**: `N:\github\asrjs\webgpu-agent-test` (library-synced Vite harness)
 
 ## 🏆 MILESTONE: WebGPU large-v3-turbo pipeline WORKING (Entry 023)
 
@@ -226,71 +254,127 @@ Step 5: Token-by-token → first 5 tokens match fp32 baseline
 
 ## REMAINING TASKS (priority order)
 
-### 1. Preserve and broaden WebGPU GPU-KV validation
+> **Direction change (2026-06-19):** Pause broad optimization work. Finish practical
+> Whisper compatibility first, but keep the model target straight: the browser
+> WebGPU implementation target is the custom splitgraph repo
+> `ysdede/whisper-large-v3-turbo-onnx-4graph`. Merged-decoder
+> `onnx-community/*_timestamped` presets are secondary compatibility paths.
+> Optimization (batched beam, GPU-KV extensions, encoder graph capture) stays
+> experimental until correctness is proven on fixtures.
 
-Run the working `fp16io-fp16-webgpu` fast path on more fixtures up to 30s:
+### 1. Reference Decode Parity
 
-- fixed JFK 29.9s fixture
-- shorter 10s fixture
-- at least one non-JFK speech sample
-- `maxNewTokens=50` and a longer cap for EOS behavior
+Compare asr.js splitgraph decode output token-by-token against OpenAI Whisper /
+HF Transformers / faster-whisper on a curated fixture set (English + Turkish).
+Use the existing `WHISPER_REFERENCE_JSON` reproducibility harness with
+`ysdede/whisper-large-v3-turbo-onnx-4graph` artifacts or local exports from the
+same 4-graph layout.
 
-Keep token IDs, transcript prefix, RTFx, p50/p95 step timing, and tensor
-location metrics in results.
+- [x] Verify no-timestamps greedy decode against the locally cached HF
+  `openai/whisper-large-v3-turbo` oracle on JFK: 31/31 normalized tokens and
+  identical text for both Python mel and the TypeScript WAV frontend.
+- Verify beam search tokens match reference for `numBeams=2..5`.
+- Verify temperature sampling behavior matches Whisper/faster-whisper semantics.
+- Verify `bestOf` only applies to nonzero-temperature sampling.
 
-### 2. Encoder graph-capture A/B
+The reproducibility harness now supports separate encoder/decoder variant
+directories and reads `[mel frames]` and `[encoder positions]` from ONNX graph
+metadata. For large-v3-turbo, keep these distinct: 3000 input mel frames and
+1500 encoder output positions. Use `--skip-onnx` in the Python generator when
+the installed Python ORT cannot load the graph IR, then execute the graphs with
+the Node/Vitest harness.
 
-The source flag `experimentalWebGpuEncoderGraphCapture` is wired, but the
-Chrome automation retry was blocked by the Chrome extension not accepting
-automation after a fresh-window retry. Reinstall the Chrome plugin/extension
-from the Codex plugin UI before trying automation again.
+### 1a. Beam Semantics Revalidation
 
-Manual A/B URLs when the demo is running:
+- [x] Keep finished EOS hypotheses outside active beam slots.
+- [x] Use `round(numBeams * patience)` as the finished-candidate budget.
+- [x] Route survivor KV caches with explicit parent indexes.
+- [x] Run stable and batched execution through the same candidate lifecycle.
+- [x] Match Whisper final ranking: default length normalization and Google NMT
+  penalty for explicit `lengthPenalty`; use `0` only for raw-score ranking.
+- [x] Keep beam expansion bounded by `beamSize + 1` candidates without a
+  full-vocabulary log-softmax allocation per active beam.
+- [x] Revalidate stable versus batched tokens in Windows Chrome/WebGPU for
+  English beam 5, timestamped English beam 2, and Turkish auto beam 2; all
+  matched exactly, with decoder calls reduced 245→49, 40→20, and 158→79.
+- [ ] Add an HF/OpenAI beam reference fixture for `numBeams=2` and `5`.
 
-```text
-http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&gpuKv=1
-http://localhost:8765/?auto=fp16io-fp16-webgpu&maxNewTokens=50&gpuKv=1&encoderGraphCapture=1
-```
+### 2. True Language Auto-Detection
 
-Keep only if session creation succeeds, tokens match, and `encodeMs` improves
-on the same fixture.
+`language: "auto"` is wired for the splitgraph path and the merged-decoder
+compatibility path. Keep validating it against the custom 4-graph target first;
+use merged-decoder tests only to prevent regressions in secondary presets.
 
-### 3. Masked GPU ArgMax alternate artifact
+- Ensure failed auto-detection falls back to a real language token, never
+  `<|auto|>` or a hard-coded Turkish fallback.
+- [x] Browser validation with a non-English splitgraph fixture: Turkish TDK 18s
+  clip, `language=auto`, detected `tr`, GPU-KV greedy, zero GPU downloads.
 
-Create a separate local/HF model artifact before touching graph outputs. Do not
-overwrite `ysdede/whisper-large-v3-turbo-onnx-4graph`.
+### 3. Quality Gates + Temperature Fallback
 
-The experiment must use a masked ArgMax output and ORT `fetches`; raw ArgMax is
-not semantically equivalent to the library decoder.
+The wrapper exists but needs fixture-based validation that it actually rejects
+hallucinations and recovers with higher temperature.
 
-### 4. Batched beam decode
+- [x] Add fixture smoke tests for compression-ratio and logprob rejection.
+- [x] Verify retry temperatures are passed through correctly in single-chunk and
+  VAD-chunk paths.
+- [x] Verify caller `onTokenLogits` survives wrapper collection.
+- [x] Replace the hard-coded no-speech approximation in the Whisper runtime.
+  The gate now receives raw decoder-init logits from the SOT position before
+  suppression and resolves the token from generation config or the tokenizer.
+- [x] Preserve raw-init quality context through temperature fallback and keep
+  the generic `50362` behavior for direct gate callers.
+- [x] Define selected-beam logprob/entropy metrics without retaining every
+  full-vocabulary tensor for every hypothesis; add fixture validation for
+  compression/logprob rejection and temperature recovery.
 
-Beam search is implemented but still uses the stable CPU/WASM-style KV bridge.
-The measured WebGPU fast path is greedy-only. For beam speed, design a batched
-decoder step plus KV reorder path instead of multiplying ORT calls per beam.
+### 4. Word Timestamp Parity
 
-### 5. int8 (q8) Model Generation for WASM
+- [x] Emit word timestamps on the WebGPU splitgraph greedy path. If decoder-align
+  is missing or empty, interpolate from timestamp tokens (Whisper fallback).
+  Browser 10s JFK produced 17 timed words with GPU-KV still on GPU.
+- [x] Lazy-load `decoder_align` when word timestamps are requested, copy encoder
+  states to CPU for the align session, and DTW only generated text-token rows
+  (skip timestamp/special tokens). Interpolation remains the fallback.
+- [x] Align each timestamp-token span against only that span's encoder frames,
+  crop 30s padding to audio duration, and spread identical DTW jumps so tokens
+  are not zero-duration. Turbo often emits a single 0–10s pair, so some internal
+  boundaries still need faster-whisper / WhisperX (wav2vec2) comparison.
+- [x] Clip DTW outlier word durations using OpenAI Whisper's median*2 cap, and
+  add optional `wordAligner` (Wav2Vec2 CTC Viterbi) as a WhisperX-style refine
+  pass after decode. GPU-KV greedy is unchanged unless an aligner is provided.
+- Compare DTW/attention word timestamps against faster-whisper / WhisperX on
+  reference fixtures.
+- Fix any systematic drift or boundary errors.
+- Validate that word timestamps work with both splitgraph and merged-decoder paths.
+- Timestamp-token processing now includes `<|notimestamps|>` suppression and
+  the aggregate timestamp-probability rule; retain focused tests for both.
 
-Parakeet.js uses int8 for WASM compatibility. Whisper q8 already works identically to fp32.
-May need to generate proper int8 variants if q8 decoder has issues on specific WASM backends.
-Tool: `onnxruntime.quantization.quantize_dynamic` with `optimize_model` pass first.
+### 5. WhisperX Runner End-to-End Validation
 
-### 6. WebGPU Verification (Browser)
+- [x] Fix runner CLI underscore flags (`--beam_size`, `--no-word_timestamps`,
+  `--language auto`, `--output_format`) and load Wav2Vec2 only after language
+  detection so Turkish uses the XLS-R aligner. DTW words now use span-limited
+  alignment plus duration clipping; Wav2Vec2 refines those times when present.
+- [x] Harden the runner's temperature attempts with raw decoder-init no-speech
+  logits and selected-sequence quality traces, and make large-vocabulary
+  sampling safe without argument spreading. CLI regressions cover the
+  `--model-dir` spelling and the 51,865-token Whisper vocabulary.
+- Run `tests/smoke/whisperx-runner.mjs` on real speech files (English + Turkish).
+- Verify `--beam_size`, `--temperature`, `--language auto`, `--word_timestamps`,
+  and `--output_format` produce sane output on those files.
 
-Full verification suite at `/mnt/n/github/asrjs/webgpu-agent-test/index.html`:
+### 6. Deprioritized / Experimental (do not prioritize)
 
-- All variants: fp32, fp16, fp16io, q8, mixed
-- All backends: WebGPU, WASM (configurable per encoder/decoder)
-- Modes: Run Decode, Cross-Validate, Encoder-Only
-- Requires real browser with GPU (RTX 5060 Ti + Chrome)
-
-### 7. Batched Encoder
-
-Deferred — no CPU benefit. Would help with CUDA provider.
-
-### 8. Framework Adapters (React, Vue, Svelte)
-
-Separate packages — deferred.
+- Batched beam decode: implemented as opt-in `experimentalBatchedBeam`. Keep stable
+  CPU-KV beam as oracle. Only promote after more variants/fixtures prove parity.
+- GPU-KV beam support: not feasible without batched beam decode graph changes.
+- Encoder graph capture: fails on Reshape/Shape ops; revisit only after ORT updates.
+- Masked GPU ArgMax: requires alternate model artifact; not core compatibility.
+- Batched encoder: no CPU benefit.
+- Framework adapters: separate packages.
+- `condition_on_previous_text`, hotwords, numeral suppression: skip unless a fixture
+  proves they help.
 
 ## Shared Files (coordinate before modifying)
 

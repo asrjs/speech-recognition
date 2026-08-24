@@ -11,12 +11,9 @@
  * A "session" is any object that can run decoder_init and decoder_step.
  */
 
-import { argmax } from '../../inference/index.js';
-import {
-  createInitialWhisperBeam,
-  rankWhisperBeamCandidates,
-  selectBestWhisperBeam,
-} from './beam-search.js';
+import { argmax, tokenQualityFromLogits } from '../../inference/index.js';
+import type { TokenQualityTrace } from '../../quality/types.js';
+import type { WhisperBeamState } from './beam-search.js';
 
 // ---------------------------------------------------------------------------
 // Session interface
@@ -31,20 +28,64 @@ export interface WhisperCoreSession {
 
   runStep(
     tokenId: number,
-    pastKv: Record<string, Float32Array>,
+    pastKv: WhisperKvCache,
   ): Promise<WhisperStepResult>;
+
+  runStepBatch?(
+    tokenIds: readonly number[],
+    pastKvs: readonly WhisperKvCache[],
+  ): Promise<readonly WhisperStepResult[]>;
+}
+
+export interface WhisperKvCacheEntry {
+  readonly data: ArrayBufferView;
+  readonly dims?: readonly number[];
+  readonly type?: string;
+}
+
+export type WhisperKvCacheValue = ArrayBufferView | WhisperKvCacheEntry;
+export type WhisperKvCache = Record<string, WhisperKvCacheValue>;
+
+type WhisperKvDataView = ArrayBufferView & { readonly length?: number };
+type WhisperKvDataConstructor = {
+  new(buffer: ArrayBufferLike, byteOffset?: number, length?: number): ArrayBufferView;
+};
+
+function isWhisperKvCacheEntry(value: WhisperKvCacheValue): value is WhisperKvCacheEntry {
+  return !ArrayBuffer.isView(value);
+}
+
+function cloneWhisperKvData(data: ArrayBufferView): ArrayBufferView {
+  const view = data as WhisperKvDataView;
+  const buffer = (view.buffer as ArrayBuffer).slice(view.byteOffset, view.byteOffset + view.byteLength);
+  if (typeof view.length === 'number') {
+    const ctor = view.constructor as WhisperKvDataConstructor;
+    return new ctor(buffer, 0, view.length);
+  }
+  return new DataView(buffer);
+}
+
+function cloneWhisperKvCacheValue(value: WhisperKvCacheValue): WhisperKvCacheValue {
+  if (isWhisperKvCacheEntry(value)) {
+    return {
+      data: cloneWhisperKvData(value.data),
+      ...(value.dims ? { dims: value.dims } : {}),
+      ...(value.type ? { type: value.type } : {}),
+    };
+  }
+  return cloneWhisperKvData(value);
 }
 
 export interface WhisperInitResult {
   readonly logits: Float32Array;
   readonly vocabSize: number;
-  readonly presentKv: Record<string, Float32Array>;
+  readonly presentKv: WhisperKvCache;
 }
 
 export interface WhisperStepResult {
   readonly logits: Float32Array;
   readonly vocabSize: number;
-  readonly presentKv: Record<string, Float32Array>;
+  readonly presentKv: WhisperKvCache;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,26 +114,48 @@ export interface WhisperDecodeOptions {
     processedLogits: Float32Array,
     ctx: { readonly tokens: readonly number[]; readonly beginIndex: number },
   ) => void;
+  /** Raw decoder-init logits callback, before model-specific logit processing. */
+  readonly onDecoderInitLogits?: (
+    rawLogits: Float32Array,
+    ctx: {
+      readonly tokens: readonly number[];
+      readonly beginIndex: number;
+      readonly vocabSize: number;
+      readonly noSpeechTokenId?: number;
+    },
+  ) => void;
+  /** Model-specific no-speech token used by the raw init-logit callback. */
+  readonly noSpeechTokenId?: number;
   /** Decoding strategy: greedy (argmax) or beam search */
   readonly strategy?: 'greedy' | 'beam';
   /** Beam size for beam search (default: 5) */
   readonly beamSize?: number;
-  /** Length penalty for beam search (default: 0.0) */
+  /** Final ranking penalty. Undefined uses length normalization; 0 uses raw score. */
   readonly lengthPenalty?: number;
   /** Patience for beam search early stopping (default: 1.0). */
   readonly patience?: number;
-  /** Temperature (0 = greedy argmax, >0 = sample). Greedy mode only. */
+  /** Temperature (0 = greedy/beam argmax, >0 = sampling and disables beam search). */
   readonly temperature?: number;
-  /** Number of independent decodings to run, pick best by score. WhisperX: best_of */
+  /** Number of independent sampling decodings to run when temperature > 0. Whisper: best_of. */
   readonly bestOf?: number;
   /** Track cumulative log-probability for best-of scoring. */
   readonly trackScore?: boolean;
+  /**
+   * Collect scalar logprob/entropy traces for the selected sequence.
+   * Greedy/sampling compute traces only when this is true. Beam search always
+   * records traces for the winning hypothesis.
+   */
+  readonly trackQuality?: boolean;
+  /** Experimental: run active beam decoder steps in one batch when the session supports it. */
+  readonly experimentalBatchedBeam?: boolean;
 }
 
 export interface WhisperDecodeResult {
   readonly tokens: readonly number[];
   /** Cumulative log-probability score (sum of log probs per token). */
   readonly score?: number;
+  /** Selected-sequence scalar quality traces. Beam always includes these. */
+  readonly tokenTraces?: readonly TokenQualityTrace[];
 }
 
 // ---------------------------------------------------------------------------
@@ -103,10 +166,16 @@ export async function whisperDecode(
   session: WhisperCoreSession,
   options: WhisperDecodeOptions,
 ): Promise<WhisperDecodeResult> {
-  const bestOf = options.bestOf ?? 1;
-  if (bestOf > 1) {
+  const temperature = options.temperature ?? 0;
+  const isSampling = Number.isFinite(temperature) && temperature > 0;
+  const bestOf = isSampling ? options.bestOf ?? 1 : 1;
+  if (isSampling && bestOf > 1) {
     return whisperBestOfDecode(session, options, bestOf);
   }
+  if (isSampling) {
+    return whisperGreedyDecode(session, options);
+  }
+
   const strategy = options.strategy ?? 'greedy';
   if (strategy === 'beam' && (options.beamSize ?? 5) > 1) {
     return whisperBeamDecode(session, options);
@@ -133,6 +202,8 @@ export async function whisperGreedyDecode(
     maxNewTokens,
     processLogits,
     onTokenLogits,
+    onDecoderInitLogits,
+    noSpeechTokenId,
     temperature = 0,
   } = options;
 
@@ -142,12 +213,31 @@ export async function whisperGreedyDecode(
 
   const lastLogitOffset = initResult.logits.length - vocabSize;
   const firstLogits = initResult.logits.subarray(lastLogitOffset);
+  onDecoderInitLogits?.(new Float32Array(firstLogits), {
+    tokens: promptTokens,
+    beginIndex: promptTokens.length,
+    vocabSize,
+    noSpeechTokenId,
+  });
   if (processLogits) processLogits(firstLogits, promptTokens, promptTokens.length);
   const firstTokenId = selectToken(firstLogits, temperature);
   const tokens: number[] = [firstTokenId];
 
   const trackScore = options.trackScore === true;
-  let cumulativeLogProb = trackScore ? logProbOfToken(firstLogits, firstTokenId) : 0;
+  const trackQuality = options.trackQuality === true;
+  const tokenTraces: TokenQualityTrace[] = [];
+  let cumulativeLogProb = 0;
+  if (trackScore || trackQuality) {
+    const firstQuality = tokenQualityFromLogits(firstLogits, firstTokenId);
+    if (trackScore) cumulativeLogProb = firstQuality.logProb;
+    if (trackQuality) {
+      tokenTraces.push({
+        tokenId: firstTokenId,
+        logProb: firstQuality.logProb,
+        entropy: firstQuality.entropy,
+      });
+    }
+  }
 
   if (onTokenLogits) onTokenLogits(firstTokenId, firstLogits, { tokens, beginIndex: promptTokens.length });
 
@@ -157,14 +247,26 @@ export async function whisperGreedyDecode(
     const nextTokenId = selectToken(stepResult.logits, temperature);
     tokens.push(nextTokenId);
     pastKv = stepResult.presentKv;
-    if (trackScore) {
-      cumulativeLogProb += logProbOfToken(stepResult.logits, nextTokenId);
+    if (trackScore || trackQuality) {
+      const stepQuality = tokenQualityFromLogits(stepResult.logits, nextTokenId);
+      if (trackScore) cumulativeLogProb += stepQuality.logProb;
+      if (trackQuality) {
+        tokenTraces.push({
+          tokenId: nextTokenId,
+          logProb: stepQuality.logProb,
+          entropy: stepQuality.entropy,
+        });
+      }
     }
     if (onTokenLogits) onTokenLogits(nextTokenId, stepResult.logits, { tokens, beginIndex: promptTokens.length });
     if (nextTokenId === eosTokenId) break;
   }
 
-  return trackScore ? { tokens, score: cumulativeLogProb } : { tokens };
+  return {
+    tokens,
+    ...(trackScore ? { score: cumulativeLogProb } : {}),
+    ...(trackQuality ? { tokenTraces } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -183,135 +285,322 @@ export async function whisperBeamDecode(
   const {
     promptTokens, encoderOutput, encoderDims,
     eosTokenId, maxNewTokens, processLogits,
-    beamSize = 5, lengthPenalty = 0,
+    onDecoderInitLogits,
+    noSpeechTokenId,
+    beamSize = 5,
+    lengthPenalty,
     patience = 1,
   } = options;
+
+  if (beamSize <= 1) {
+    return whisperGreedyDecode(session, { ...options, strategy: 'greedy' });
+  }
+  if (maxNewTokens <= 0) return { tokens: [], score: 0 };
 
   const initResult = await session.runInit(promptTokens, encoderOutput, encoderDims);
   const vocabSize = initResult.vocabSize;
 
   const lastLogitOffset = initResult.logits.length - vocabSize;
   const firstLogits = initResult.logits.subarray(lastLogitOffset);
+  onDecoderInitLogits?.(new Float32Array(firstLogits), {
+    tokens: promptTokens,
+    beginIndex: promptTokens.length,
+    vocabSize,
+    noSpeechTokenId,
+  });
   if (processLogits) processLogits(firstLogits, promptTokens, promptTokens.length);
 
-  const firstLogProbs = logSoftmax(firstLogits);
-  const topK = selectTopK(firstLogProbs, beamSize);
+  const normalizedPatience = Number.isFinite(patience) && patience > 0 ? patience : 1;
+  const maxFinishedCandidates = Math.max(1, roundToNearestEven(beamSize * normalizedPatience));
+  const finished: WhisperBeamState<TokenQualityTrace[]>[] = [];
+  const finishedKeys = new Set<string>();
 
-  let beams = topK.map(({ tokenId, logProb }) =>
-    createInitialWhisperBeam([...promptTokens, tokenId], logProb) as any,
+  const firstExpansion = expandWhisperBeamStep(
+    [{ tokens: [...promptTokens], score: 0, completed: false }],
+    [firstLogits],
+    beamSize,
+    eosTokenId,
+  );
+  appendFinishedWhisperBeams(
+    finished,
+    finishedKeys,
+    firstExpansion.finished,
+    maxFinishedCandidates,
   );
 
-  // Clone KV cache per beam
-  let beamKvs: Record<string, Float32Array>[] = beams.map(() => {
-    const c: Record<string, Float32Array> = {};
-    for (const [k, v] of Object.entries(initResult.presentKv)) c[k] = new Float32Array(v);
-    return c;
-  });
+  let beams: WhisperBeamState<TokenQualityTrace[]>[] = firstExpansion.active;
+  let beamKvs = firstExpansion.parentIndexes.map(() => cloneWhisperKvCache(initResult.presentKv));
 
-  let completedSteps = 0;
+  const useBatchedBeam = options.experimentalBatchedBeam === true && Boolean(session.runStepBatch);
 
   for (let s = 1; s < maxNewTokens; s++) {
-    if (beams.every(b => (b as any).completed)) break;
+    if (finished.length >= maxFinishedCandidates || beams.length === 0) break;
 
     const logitsByBeam: Float32Array[] = [];
-    for (let bi = 0; bi < beams.length; bi++) {
-      const beam = beams[bi] as any;
-      if (beam.completed) { logitsByBeam.push(new Float32Array(0)); continue; }
-      const prevToken = beam.tokens[beam.tokens.length - 1];
-      const stepResult = await session.runStep(prevToken, beamKvs[bi]!);
-      const sl = stepResult.logits;
-      if (processLogits) processLogits(sl, beam.tokens, promptTokens.length);
-      logitsByBeam.push(sl);
-      beamKvs[bi] = stepResult.presentKv;
+    const activeTokenIds: number[] = [];
+    for (const beam of beams) {
+      activeTokenIds.push(beam.tokens[beam.tokens.length - 1]!);
     }
 
-    const candidates = rankWhisperBeamCandidates({
-      beams: beams as any,
-      logitsByBeam,
-      beamWidth: beamSize,
-      eosTokenId,
-      lengthPenalty,
-    });
-
-    // Rebuild KV cache for survivors
-    const newKvs: Record<string, Float32Array>[] = [];
-    for (const cand of candidates) {
-      const cTokens = (cand as any).tokens as number[];
-      for (let bi = 0; bi < beams.length; bi++) {
-        const parent = beams[bi] as any;
-        const pTokens = parent.tokens as number[];
-        if (pTokens.length + 1 === cTokens.length &&
-            cTokens.slice(0, pTokens.length).every((t, i) => t === pTokens[i])) {
-          const clone: Record<string, Float32Array> = {};
-          for (const [k, v] of Object.entries(beamKvs[bi]!)) clone[k] = new Float32Array(v);
-          newKvs.push(clone);
-          break;
-        }
+    if (useBatchedBeam && beams.length > 1) {
+      const stepResults = await session.runStepBatch!(activeTokenIds, beamKvs);
+      if (stepResults.length !== beams.length) {
+        throw new Error(
+          `Batched Whisper beam step returned ${stepResults.length} results for ${beams.length} active beams.`,
+        );
+      }
+      for (let beamIndex = 0; beamIndex < beams.length; beamIndex++) {
+        const beam = beams[beamIndex]!;
+        const stepResult = stepResults[beamIndex]!;
+        if (processLogits) processLogits(stepResult.logits, beam.tokens, promptTokens.length);
+        logitsByBeam.push(stepResult.logits);
+        beamKvs[beamIndex] = stepResult.presentKv;
+      }
+    } else {
+      for (let beamIndex = 0; beamIndex < beams.length; beamIndex++) {
+        const beam = beams[beamIndex]!;
+        const prevToken = beam.tokens[beam.tokens.length - 1]!;
+        const stepResult = await session.runStep(prevToken, beamKvs[beamIndex]!);
+        if (processLogits) processLogits(stepResult.logits, beam.tokens, promptTokens.length);
+        logitsByBeam.push(stepResult.logits);
+        beamKvs[beamIndex] = stepResult.presentKv;
       }
     }
 
-    beams = candidates as any[];
-    beamKvs = newKvs;
-
-    // Patience: stop early if best beam has been completed for N consecutive steps
-    const bestBeam = selectBestWhisperBeam(beams as any, lengthPenalty);
-    if (bestBeam && (bestBeam as any).completed) {
-      completedSteps++;
-      if (completedSteps >= patience) break;
-    } else {
-      completedSteps = 0;
-    }
-
-    if (beams.every(b => (b as any).completed)) break;
+    const expansion = expandWhisperBeamStep(
+      beams,
+      logitsByBeam,
+      beamSize,
+      eosTokenId,
+    );
+    appendFinishedWhisperBeams(
+      finished,
+      finishedKeys,
+      expansion.finished,
+      maxFinishedCandidates,
+    );
+    beamKvs = expansion.parentIndexes.map((parentIndex) => cloneWhisperKvCache(beamKvs[parentIndex]!));
+    beams = expansion.active;
   }
 
-  const best = selectBestWhisperBeam(beams as any, lengthPenalty) as any;
-  if (!best) return whisperGreedyDecode(session, { ...options, strategy: 'greedy' });
+  if (finished.length < beamSize) {
+    const unfinished = [...beams].sort((a, b) => b.score - a.score);
+    for (const beam of unfinished) {
+      appendFinishedWhisperBeams(
+        finished,
+        finishedKeys,
+        [{ ...beam, tokens: [...beam.tokens, eosTokenId], completed: true }],
+        beamSize,
+      );
+      if (finished.length >= beamSize) break;
+    }
+  }
 
-  return { tokens: best.tokens.slice(promptTokens.length), score: best.score };
+  const best = selectBestFinishedWhisperBeam(
+    finished,
+    promptTokens.length,
+    eosTokenId,
+    lengthPenalty,
+  );
+  if (!best) {
+    return whisperGreedyDecode(session, { ...options, strategy: 'greedy', trackQuality: true });
+  }
+
+  return {
+    tokens: best.tokens.slice(promptTokens.length),
+    score: best.score,
+    tokenTraces: best.payload ?? [],
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function logSoftmax(logits: Float32Array): Float32Array {
-  let max = -Infinity;
-  for (let i = 0; i < logits.length; i++) if (logits[i]! > max) max = logits[i]!;
-  let sum = 0;
-  for (let i = 0; i < logits.length; i++) sum += Math.exp(logits[i]! - max);
-  const logSum = Math.log(sum);
-  const result = new Float32Array(logits.length);
-  for (let i = 0; i < logits.length; i++) result[i] = logits[i]! - max - logSum;
-  return result;
+interface WhisperTopKToken {
+  readonly tokenId: number;
+  readonly logProb: number;
 }
 
-function selectTopK(logProbs: Float32Array, k: number): { tokenId: number; logProb: number }[] {
-  const limit = Math.max(0, k);
-  const top: { tokenId: number; logProb: number }[] = [];
-  for (let tokenId = 0; tokenId < logProbs.length; tokenId++) {
-    const logProb = logProbs[tokenId] ?? Number.NEGATIVE_INFINITY;
-    let insertAt = top.length;
-    while (insertAt > 0 && logProb > (top[insertAt - 1]?.logProb ?? Number.NEGATIVE_INFINITY)) {
-      insertAt--;
-    }
-    if (insertAt >= limit) continue;
-    top.splice(insertAt, 0, { tokenId, logProb });
-    if (top.length > limit) top.pop();
-  }
-  return top;
+interface WhisperTopKSelection {
+  readonly topTokens: readonly WhisperTopKToken[];
+  readonly entropy: number;
 }
 
 /**
- * Compute log-probability of a specific token from raw logits.
- * Returns log_softmax(logits)[tokenId].
+ * Compute the scalar statistics needed by beam expansion without materializing
+ * a full-vocabulary log-softmax array. The old path allocated one Float32Array
+ * per active beam and then scanned it again for top-k. Beam quality only needs
+ * entropy plus the small candidate set, so keep the selector bounded by k.
  */
-function logProbOfToken(logits: Float32Array, tokenId: number): number {
+function selectTopKWithEntropy(logits: Float32Array, k: number): WhisperTopKSelection {
+  const limit = Math.max(0, k);
   let max = -Infinity;
   for (let i = 0; i < logits.length; i++) if (logits[i]! > max) max = logits[i]!;
+
+  // A fully suppressed row is not expected for a valid Whisper step, but keep
+  // the decode loop finite and deterministic if a custom processor produces it.
+  if (!Number.isFinite(max)) {
+    const topTokens: WhisperTopKToken[] = [];
+    for (let tokenId = 0; tokenId < logits.length && tokenId < limit; tokenId++) {
+      topTokens.push({ tokenId, logProb: Number.NEGATIVE_INFINITY });
+    }
+    return { topTokens, entropy: 0 };
+  }
+
   let sum = 0;
   for (let i = 0; i < logits.length; i++) sum += Math.exp(logits[i]! - max);
-  return (logits[tokenId] ?? -Infinity) - max - Math.log(sum);
+  const logSum = Math.log(sum);
+  const topTokens: WhisperTopKToken[] = [];
+  let entropy = 0;
+  for (let i = 0; i < logits.length; i++) {
+    const rawLogProb = logits[i]! - max - logSum;
+    const probability = Math.exp(rawLogProb);
+    if (probability > 0) entropy -= probability * Math.log(probability);
+    if (limit === 0) continue;
+
+    // Preserve the previous Float32Array rounding before ranking candidates.
+    // This keeps tie behavior stable against the old materialized path.
+    const logProb = Math.fround(rawLogProb);
+    let insertAt = topTokens.length;
+    while (insertAt > 0 && logProb > (topTokens[insertAt - 1]?.logProb ?? Number.NEGATIVE_INFINITY)) {
+      insertAt--;
+    }
+    if (insertAt >= limit) continue;
+    topTokens.splice(insertAt, 0, { tokenId: i, logProb });
+    if (topTokens.length > limit) topTokens.pop();
+  }
+  return { topTokens, entropy };
+}
+
+interface WhisperBeamExpansion {
+  readonly active: WhisperBeamState<TokenQualityTrace[]>[];
+  readonly parentIndexes: number[];
+  readonly finished: WhisperBeamState<TokenQualityTrace[]>[];
+}
+
+function expandWhisperBeamStep(
+  beams: readonly WhisperBeamState<TokenQualityTrace[]>[],
+  logitsByBeam: readonly Float32Array[],
+  beamSize: number,
+  eosTokenId: number,
+): WhisperBeamExpansion {
+  const candidates: Array<{
+    readonly beam: WhisperBeamState<TokenQualityTrace[]>;
+    readonly parentIndex: number;
+    readonly tokenId: number;
+    readonly score: number;
+    readonly logProb: number;
+    readonly entropy: number;
+  }> = [];
+
+  for (let parentIndex = 0; parentIndex < beams.length; parentIndex++) {
+    const beam = beams[parentIndex];
+    const logits = logitsByBeam[parentIndex];
+    if (!beam || !logits || logits.length === 0) continue;
+    const { topTokens, entropy } = selectTopKWithEntropy(logits, beamSize + 1);
+    for (const { tokenId, logProb } of topTokens) {
+      candidates.push({
+        beam,
+        parentIndex,
+        tokenId,
+        score: beam.score + logProb,
+        logProb,
+        entropy,
+      });
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  const active: WhisperBeamState<TokenQualityTrace[]>[] = [];
+  const parentIndexes: number[] = [];
+  const finished: WhisperBeamState<TokenQualityTrace[]>[] = [];
+
+  for (const candidate of candidates) {
+    const traces: TokenQualityTrace[] = [
+      ...(candidate.beam.payload ?? []),
+      {
+        tokenId: candidate.tokenId,
+        logProb: candidate.logProb,
+        entropy: candidate.entropy,
+      },
+    ];
+    const next: WhisperBeamState<TokenQualityTrace[]> = {
+      tokens: [...candidate.beam.tokens, candidate.tokenId],
+      score: candidate.score,
+      completed: candidate.tokenId === eosTokenId,
+      payload: traces,
+    };
+    if (next.completed) {
+      finished.push(next);
+      continue;
+    }
+    active.push(next);
+    parentIndexes.push(candidate.parentIndex);
+    if (active.length >= beamSize) break;
+  }
+
+  return { active, parentIndexes, finished };
+}
+
+function cloneWhisperKvCache(cache: WhisperKvCache): WhisperKvCache {
+  return Object.fromEntries(
+    Object.entries(cache).map(([key, value]) => [key, cloneWhisperKvCacheValue(value)]),
+  );
+}
+
+function appendFinishedWhisperBeams(
+  destination: WhisperBeamState<TokenQualityTrace[]>[],
+  keys: Set<string>,
+  candidates: readonly WhisperBeamState<TokenQualityTrace[]>[],
+  limit: number,
+): void {
+  for (const candidate of candidates) {
+    if (destination.length >= limit) return;
+    const key = candidate.tokens.join(',');
+    if (keys.has(key)) continue;
+    keys.add(key);
+    destination.push(candidate);
+  }
+}
+
+function selectBestFinishedWhisperBeam(
+  beams: readonly WhisperBeamState<TokenQualityTrace[]>[],
+  promptLength: number,
+  eosTokenId: number,
+  lengthPenalty: number | undefined,
+): WhisperBeamState<TokenQualityTrace[]> | undefined {
+  let best: WhisperBeamState<TokenQualityTrace[]> | undefined;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const beam of beams) {
+    const hasEos = beam.tokens[beam.tokens.length - 1] === eosTokenId;
+    const generatedLength = Math.max(1, beam.tokens.length - promptLength - (hasEos ? 1 : 0));
+    const normalized = whisperSequenceRankScore(beam.score, generatedLength, lengthPenalty);
+    if (normalized > bestScore) {
+      best = beam;
+      bestScore = normalized;
+    }
+  }
+  return best;
+}
+
+function whisperSequenceRankScore(
+  cumulativeLogProb: number,
+  tokenCount: number,
+  lengthPenalty: number | undefined,
+): number {
+  const length = Math.max(1, tokenCount);
+  const penalty = lengthPenalty === undefined
+    ? length
+    : Math.pow((5 + length) / 6, lengthPenalty);
+  return cumulativeLogProb / penalty;
+}
+
+function roundToNearestEven(value: number): number {
+  const floor = Math.floor(value);
+  const fraction = value - floor;
+  if (fraction === 0.5) return floor % 2 === 0 ? floor : floor + 1;
+  return Math.round(value);
 }
 
 function selectToken(logits: Float32Array, temperature: number): number {
@@ -348,27 +637,31 @@ function sampleFromLogits(logits: Float32Array, temperature: number): number {
 /**
  * Run N independent decodings and return the one with the best score.
  *
- * Matches WhisperX/faster-whisper best_of behavior:
- * multiple independent beam/greedy decodes, pick the best by
- * normalized cumulative log-probability score.
+ * Matches Whisper/faster-whisper best_of behavior:
+ * multiple independent sampling decodes, pick the best by normalized
+ * cumulative log-probability score. Beam search is a temperature=0 path.
  */
 async function whisperBestOfDecode(
   session: WhisperCoreSession,
   options: WhisperDecodeOptions,
   bestOf: number,
 ): Promise<WhisperDecodeResult> {
-  const lengthPenalty = options.lengthPenalty ?? 0;
+  const lengthPenalty = options.lengthPenalty;
   let bestResult: WhisperDecodeResult | null = null;
   let bestScore = -Infinity;
 
   for (let i = 0; i < bestOf; i++) {
-    const result = await (options.strategy === 'beam' && (options.beamSize ?? 5) > 1
-      ? whisperBeamDecode(session, options)
-      : whisperGreedyDecode(session, { ...options, trackScore: true }));
+    const result = await whisperGreedyDecode(session, {
+      ...options,
+      strategy: 'greedy',
+      beamSize: 1,
+      trackScore: true,
+      trackQuality: options.trackQuality === true,
+    });
 
     const tokenCount = result.tokens.length;
     const normScore = result.score !== undefined
-      ? (lengthPenalty === 0 ? result.score : result.score / Math.pow(Math.max(1, tokenCount), lengthPenalty))
+      ? whisperSequenceRankScore(result.score, tokenCount, lengthPenalty)
       : -Infinity;
 
     if (normScore > bestScore) {
