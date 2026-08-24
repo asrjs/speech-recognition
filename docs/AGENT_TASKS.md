@@ -360,9 +360,14 @@ hallucinations and recovers with higher temperature.
   logits and selected-sequence quality traces, and make large-vocabulary
   sampling safe without argument spreading. CLI regressions cover the
   `--model-dir` spelling and the 51,865-token Whisper vocabulary.
-- Run `tests/smoke/whisperx-runner.mjs` on real speech files (English + Turkish).
-- Verify `--beam_size`, `--temperature`, `--language auto`, `--word_timestamps`,
-  and `--output_format` produce sane output on those files.
+- [x] Run `tests/smoke/whisperx-runner.mjs` on real speech files (English +
+  Turkish). The runner now uses Windows-safe FFmpeg redirection and file URLs
+  for dynamic ESM imports, and preserves per-beam KV dimensions for stable
+  beam. English OGG conversion and Turkish WAV both complete with beam 2.
+- [x] Verify `--beam_size`, `--language auto`, `--word_timestamps`, and
+  `--output_format` produce sane output on those files. Temperature remains
+  covered by the deterministic quality-gate tests; faster-whisper timestamp
+  comparison is recorded as the remaining alignment-quality boundary.
 
 ### 6. Deprioritized / Experimental (do not prioritize)
 
