@@ -1,6 +1,6 @@
 # Whisper WebGPU Completion Plan
 
-Updated: 2026-08-23 (healthy GPU rerun and raw no-speech provenance)
+Updated: 2026-08-24 (beam selector and browser parity matrix)
 Branch: `feat/whisper-cleanup-beam-temperature`
 
 ## Direction
@@ -96,6 +96,17 @@ complete.
 - Raw decoder-init logits are now exposed before suppression through the core,
   splitgraph, GPU-KV, and merged-decoder paths. The enhanced quality wrapper
   passes that vector and the model-resolved no-speech token into its gates.
+- Selected-beam quality now uses scalar per-token logprob/entropy traces for
+  the winning sequence only. Greedy traces are opt-in via `trackQuality`.
+  Logprob/entropy gates consume those traces, so the enhanced wrapper no longer
+  copies full-vocabulary logits per token.
+- Beam expansion now computes log-sum-exp/entropy and bounded top-k candidates
+  in one pass without allocating a full-vocabulary log-softmax array per beam.
+  Float32 rounding is preserved before ranking so candidate tie behavior stays
+  compatible with the previous implementation.
+- Added `npm run benchmark:whisper-beam`, a deterministic stable-vs-batched
+  contract test for beam sizes 2, 3, and 5. It checks exact token parity and
+  decoder-call reduction without asserting machine-dependent wall-clock times.
 
 ## Healthy GPU Rerun
 
@@ -124,7 +135,8 @@ Status: completed for the wrapper-level retry path.
 ### P1: True Language Auto-Detection
 
 Status: implemented for splitgraph and merged-decoder compatibility paths;
-non-English browser fixture coverage is still pending.
+non-English splitgraph browser coverage is validated with the Turkish TDK
+fixture (`language=auto` selects `tr`).
 
 Goal: replace silent English/default fallback wherever splitgraph artifacts can
 detect language from encoder output.
@@ -185,13 +197,14 @@ Browser revalidation on 2026-08-23 after the beam lifecycle correction:
 
 ### P3: WebGPU-Safe Beam Optimization
 
-Status: experimental opt-in path implemented and browser-validated for CPU-KV
-splitgraph beam with the current fp16 WebGPU artifact.
+Status: bounded candidate selection is implemented; the experimental opt-in
+path is browser-validated for CPU-KV splitgraph beam with the current fp16
+WebGPU artifact.
 
 Goal: reduce beam cost after correctness is proven.
 
-- First replace any remaining full-vocabulary sort/allocation hot spots with
-  fixed-size selection helpers.
+- [x] Replace the full-vocabulary log-softmax allocation in beam expansion with
+  a fixed-size top-k selector that retains only the candidate set.
 - Then design a batched decoder-step graph/API that accepts beam-shaped
   `input_ids` and KV tensors.
 - Reorder KV by surviving beam parent after candidate selection.
@@ -218,6 +231,17 @@ Implemented experiment:
   the option remains off by default until wider model/back-end validation is
   complete.
 
+Browser matrix revalidation on 2026-08-24:
+
+- English 30s, `numBeams=5`: stable and batched tokens matched exactly; stable
+  used 245 decoder-step calls and batched used 49. Total time was `24764.285ms`
+  versus `18703.1ms`; both used CPU KV and zero GPU downloads.
+- English 10s timestamped, `numBeams=2`: stable and batched tokens and all 17
+  word timestamps matched exactly; calls dropped from 40 to 20.
+- Turkish 18s, `language=auto`, `numBeams=2`: both paths detected `tr`, emitted
+  the same transcript, and calls dropped from 158 to 79. GPU-KV remained off for
+  both beam paths.
+
 ### P4: WhisperX-Style Extras With Clear Boundaries
 
 Goal: keep valuable extras, skip low-yield knobs.
@@ -230,8 +254,10 @@ Goal: keep valuable extras, skip low-yield knobs.
 
 ### P5: Quality Metrics From The Correct Decoder Positions
 
-Status: raw no-speech provenance implemented; selected-beam metrics and fixture
-acceptance remain pending.
+Status: raw no-speech provenance and selected-beam scalar traces implemented;
+browser English/Turkish revalidation completed on 2026-08-23 (greedy GPU-KV
+`30.4192x` on 29.9s JFK, exact token match vs stable beam 2, Turkish auto-detect
+`tr`). Word-timestamp interpolation fallback is in; DTW vs WhisperX remains.
 
 - [x] Capture no-speech probability from the raw decoder-init logits at the SOT
   position, before suppression, using the model's configured no-speech token.
@@ -240,9 +266,9 @@ acceptance remain pending.
   Whisper executor.
 - [x] Thread raw init logits through greedy, beam-init, GPU-KV, and merged
   decoder paths without changing the default fast path when no callback is set.
-- Define selected-beam quality metrics without retaining every full-vocabulary
+- [x] Define selected-beam quality metrics without retaining every full-vocabulary
   tensor for every hypothesis.
-- Add fixture gates proving compression/logprob rejection and temperature
+- [x] Add fixture gates proving compression/logprob rejection and temperature
   recovery after the metric source is correct.
 
 ## Assumptions

@@ -10,7 +10,9 @@ Your current code already has the right 4-graph architecture, KV cache, beam sea
 
 * `runDecoderStepSplit()` reconstructs input tensors from JS typed-array data every step and then reads `logitsTensor.data` plus `presentKv` back into typed arrays.
 * `transcribeWithSplitGraph()` passes `encoderHiddenStates.data` into the splitgraph decode loop and converts `presentKv` tensors into raw `.data` objects across init/step boundaries.
-* Beam search in `core.ts` runs one decoder step per active beam, clones every KV cache into `new Float32Array(...)`, builds `Array.from(logProbs)`, and full-sorts the whole vocabulary for top-k.
+* Stable beam search still runs one decoder step per active beam, but candidate
+  expansion now uses bounded top-k selection and does not allocate a full
+  vocabulary log-softmax array per beam. Batched beam remains opt-in.
 
 That means the next speedup should focus on **GPU-resident tensors + scalar-only readback + batched beam execution**, before spending too much effort on speculative fused-attention exports.
 
@@ -1045,5 +1047,31 @@ The next compatibility implementation also landed here: Whisper no-speech
 probability now comes from a copied raw decoder-init logit vector before
 suppression, with the no-speech token resolved from generation config or the
 tokenizer. Generic quality-gate callers retain `50362` as a compatibility
-fallback. Selected-beam logprob/entropy collection remains pending until it
-can be implemented without retaining full-vocabulary logits for every beam.
+fallback. Selected-beam logprob/entropy collection now uses scalar traces from
+the winning sequence, and beam expansion avoids a full-vocabulary temporary
+log-softmax array.
+
+### Beam candidate selector and compatibility matrix (2026-08-24)
+
+The selector computes log-sum-exp, entropy, and the bounded `beamSize + 1`
+candidate list in one pass after normalization. It keeps the previous
+Float32-ranked log-probabilities so candidate ordering remains compatible.
+
+The deterministic regression command is:
+
+```powershell
+npm run benchmark:whisper-beam
+```
+
+On the custom FP16 splitgraph model in headless Chrome, stable versus batched
+beam produced exact parity for English beam 5 (245 vs 49 step calls), English
+timestamped beam 2 (40 vs 20), and Turkish auto beam 2 (158 vs 79). All beam
+runs kept KV on CPU and reported zero GPU tensor downloads. These results are
+compatibility evidence; the experimental batched path remains opt-in.
+
+The runner and enhanced executor now use the same quality provenance: raw
+decoder-init logits for no-speech plus selected-sequence scalar traces for
+logprob/entropy fallback gates. VAD chunks preserve the `AudioBufferLike`
+contract, Whisper-native timings/warnings survive merging, and overlapping
+native words keep the higher-confidence copy. Real EN/TR runner fixture
+validation remains a separate report-only task.

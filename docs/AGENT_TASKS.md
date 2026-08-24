@@ -1,7 +1,7 @@
 # Agent Task Coordination
 
 Branch: `feat/whisper-cleanup-beam-temperature`
-Updated: 2026-08-23 (healthy GPU rerun and raw no-speech provenance)
+Updated: 2026-08-24 (bounded beam selector and browser beam matrix)
 
 ## POST-RESTART VALIDATION (2026-08-23)
 
@@ -292,7 +292,11 @@ the Node/Vitest harness.
 - [x] Run stable and batched execution through the same candidate lifecycle.
 - [x] Match Whisper final ranking: default length normalization and Google NMT
   penalty for explicit `lengthPenalty`; use `0` only for raw-score ranking.
-- [ ] Revalidate stable versus batched tokens in Windows Chrome/WebGPU.
+- [x] Keep beam expansion bounded by `beamSize + 1` candidates without a
+  full-vocabulary log-softmax allocation per active beam.
+- [x] Revalidate stable versus batched tokens in Windows Chrome/WebGPU for
+  English beam 5, timestamped English beam 2, and Turkish auto beam 2; all
+  matched exactly, with decoder calls reduced 245→49, 40→20, and 158→79.
 - [ ] Add an HF/OpenAI beam reference fixture for `numBeams=2` and `5`.
 
 ### 2. True Language Auto-Detection
@@ -303,29 +307,42 @@ use merged-decoder tests only to prevent regressions in secondary presets.
 
 - Ensure failed auto-detection falls back to a real language token, never
   `<|auto|>` or a hard-coded Turkish fallback.
-- Add browser/manual validation with a non-English splitgraph fixture when
-  available.
+- [x] Browser validation with a non-English splitgraph fixture: Turkish TDK 18s
+  clip, `language=auto`, detected `tr`, GPU-KV greedy, zero GPU downloads.
 
 ### 3. Quality Gates + Temperature Fallback
 
 The wrapper exists but needs fixture-based validation that it actually rejects
 hallucinations and recovers with higher temperature.
 
-- Add fixture smoke tests for compression-ratio and logprob rejection.
-- Verify retry temperatures are passed through correctly in single-chunk and
+- [x] Add fixture smoke tests for compression-ratio and logprob rejection.
+- [x] Verify retry temperatures are passed through correctly in single-chunk and
   VAD-chunk paths.
-- Verify caller `onTokenLogits` survives wrapper collection.
+- [x] Verify caller `onTokenLogits` survives wrapper collection.
 - [x] Replace the hard-coded no-speech approximation in the Whisper runtime.
   The gate now receives raw decoder-init logits from the SOT position before
   suppression and resolves the token from generation config or the tokenizer.
 - [x] Preserve raw-init quality context through temperature fallback and keep
   the generic `50362` behavior for direct gate callers.
-- [ ] Define selected-beam logprob/entropy metrics without retaining every
+- [x] Define selected-beam logprob/entropy metrics without retaining every
   full-vocabulary tensor for every hypothesis; add fixture validation for
   compression/logprob rejection and temperature recovery.
 
 ### 4. Word Timestamp Parity
 
+- [x] Emit word timestamps on the WebGPU splitgraph greedy path. If decoder-align
+  is missing or empty, interpolate from timestamp tokens (Whisper fallback).
+  Browser 10s JFK produced 17 timed words with GPU-KV still on GPU.
+- [x] Lazy-load `decoder_align` when word timestamps are requested, copy encoder
+  states to CPU for the align session, and DTW only generated text-token rows
+  (skip timestamp/special tokens). Interpolation remains the fallback.
+- [x] Align each timestamp-token span against only that span's encoder frames,
+  crop 30s padding to audio duration, and spread identical DTW jumps so tokens
+  are not zero-duration. Turbo often emits a single 0–10s pair, so some internal
+  boundaries still need faster-whisper / WhisperX (wav2vec2) comparison.
+- [x] Clip DTW outlier word durations using OpenAI Whisper's median*2 cap, and
+  add optional `wordAligner` (Wav2Vec2 CTC Viterbi) as a WhisperX-style refine
+  pass after decode. GPU-KV greedy is unchanged unless an aligner is provided.
 - Compare DTW/attention word timestamps against faster-whisper / WhisperX on
   reference fixtures.
 - Fix any systematic drift or boundary errors.
@@ -335,10 +352,17 @@ hallucinations and recovers with higher temperature.
 
 ### 5. WhisperX Runner End-to-End Validation
 
+- [x] Fix runner CLI underscore flags (`--beam_size`, `--no-word_timestamps`,
+  `--language auto`, `--output_format`) and load Wav2Vec2 only after language
+  detection so Turkish uses the XLS-R aligner. DTW words now use span-limited
+  alignment plus duration clipping; Wav2Vec2 refines those times when present.
+- [x] Harden the runner's temperature attempts with raw decoder-init no-speech
+  logits and selected-sequence quality traces, and make large-vocabulary
+  sampling safe without argument spreading. CLI regressions cover the
+  `--model-dir` spelling and the 51,865-token Whisper vocabulary.
 - Run `tests/smoke/whisperx-runner.mjs` on real speech files (English + Turkish).
 - Verify `--beam_size`, `--temperature`, `--language auto`, `--word_timestamps`,
-  and `--output_format` produce sane output.
-- Fix any runner bugs found during real-file testing.
+  and `--output_format` produce sane output on those files.
 
 ### 6. Deprioritized / Experimental (do not prioritize)
 
