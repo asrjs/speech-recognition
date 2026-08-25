@@ -154,6 +154,29 @@ def _audit_variant_dir(
 
     artifacts = manifest.get("artifacts", {})
 
+    # A decoder_align graph without the causal teacher-forced export marker is
+    # loadable but only supports the runtime's generated timestamp fallback.
+    # Keep that legacy state visible in development, but reject it as a
+    # publish-ready timestamp artifact.
+    has_decoder_align = "decoder_align" in artifacts or (vdir / "decoder_align.onnx").exists()
+    if has_decoder_align:
+        alignment_export = manifest.get("alignment_export")
+        check(
+            isinstance(alignment_export, dict)
+            and alignment_export.get("causal_self_attention") is True,
+            "alignment_export.causal_self_attention is true",
+        )
+        check(
+            isinstance(alignment_export, dict)
+            and alignment_export.get("attention_values") == "logits",
+            "alignment_export.attention_values is logits",
+        )
+        check(
+            isinstance(alignment_export, dict)
+            and alignment_export.get("attention_layout") == "selected_heads",
+            "alignment_export.attention_layout is selected_heads",
+        )
+
     # ---- 1b. No tensor-named files ----
     bad_files = [f.name for f in vdir.iterdir() if f.is_file() and _is_bad_filename(f.name)]
     check(len(bad_files) == 0, f"No tensor-named files in {vdir.name}/ ({len(bad_files)} found)")

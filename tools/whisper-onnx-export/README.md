@@ -73,7 +73,11 @@ All sizes for whisper-tiny fp32. Multiply by ~1.9x for whisper-base.
 - No DTW, timestamp logic, or torch.diff in ONNX — all post-processing in TypeScript
 - The manually unrolled decoder supplies Whisper's causal self-attention mask;
   re-export alignment graphs after changing Transformers versions and validate
-  them against the regular decoder before publishing.
+  them against the regular decoder before publishing. `test_kv_export.py` and
+  `audit_publish.py` require `alignment_export.causal_self_attention: true`,
+  `attention_values: "logits"`, and `attention_layout: "selected_heads"`
+  whenever `decoder_align.onnx` is shipped; otherwise the runtime can only use
+  its recoverable generated-timestamp fallback.
 
 ## Verification
 

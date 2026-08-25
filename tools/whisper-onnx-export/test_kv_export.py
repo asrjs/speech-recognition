@@ -188,6 +188,22 @@ def validate_manifest(export_dir: Path, model_id: str, expected_layers: int, exp
     assert "special_tokens" in manifest, "Missing special_tokens"
     assert "artifacts" in manifest, "Missing artifacts"
 
+    # The runtime may only use decoder_align for DTW when the exporter has
+    # explicitly recorded the causal teacher-forced attention contract. A
+    # legacy graph can still be loaded for generated timestamp fallback, but
+    # it must never pass the publish-time alignment validation as verified.
+    alignment_export = manifest.get("alignment_export")
+    assert isinstance(alignment_export, dict), "Missing alignment_export metadata"
+    assert alignment_export.get("causal_self_attention") is True, (
+        "alignment_export.causal_self_attention must be true"
+    )
+    assert alignment_export.get("attention_values") == "logits", (
+        "alignment_export.attention_values must be 'logits'"
+    )
+    assert alignment_export.get("attention_layout") == "selected_heads", (
+        "alignment_export.attention_layout must be 'selected_heads'"
+    )
+
     artifacts = manifest["artifacts"]
     def artifact_file(key: str) -> str:
         """Handle both old (string) and new ({file, externalData?}) artifact formats."""
