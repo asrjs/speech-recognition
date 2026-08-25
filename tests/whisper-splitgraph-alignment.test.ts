@@ -3,6 +3,7 @@ import {
   buildWhisperForcedAlignmentTokenIds,
   collectSplitGraphTextTokenRows,
   extractSplitGraphAlignmentRows,
+  getWhisperForcedAlignmentTextRowStart,
   processSplitGraphAlignment,
   processSplitGraphAlignmentByTimestampSpans,
 } from '../src/models/whisper-seq2seq/executor.js';
@@ -25,6 +26,12 @@ describe('splitGraph alignment processing', () => {
     expect(buildWhisperForcedAlignmentTokenIds(tokenizer, 'en', [11], 'translate')).toEqual([
       50258, 50259, 50359, 11, 50257,
     ]);
+  });
+
+  it('uses the final prompt row to predict the first text token', () => {
+    expect(getWhisperForcedAlignmentTextRowStart(3)).toBe(2);
+    expect(getWhisperForcedAlignmentTextRowStart(4)).toBe(3);
+    expect(getWhisperForcedAlignmentTextRowStart(0)).toBe(0);
   });
 
   // Simulate a decoder_align output: [T_all=7, S=3] flat matrix

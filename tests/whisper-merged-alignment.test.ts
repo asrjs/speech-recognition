@@ -316,12 +316,13 @@ describe('merged Whisper alignment boundaries', () => {
     };
     const attention = new Float32Array(6 * 8);
     // Prompt rows deliberately point at the padded tail. The alignment code
-    // must skip them and use rows 3 and 4 for the two text tokens.
+    // must use the causal prediction rows 2 and 3 for the two text tokens;
+    // row 2 is the final prompt row and predicts the first text token.
     attention[0 * 8 + 7] = 1;
     attention[1 * 8 + 7] = 1;
-    attention[2 * 8 + 7] = 1;
-    attention[3 * 8 + 0] = 1;
-    attention[4 * 8 + 1] = 1;
+    attention[2 * 8 + 0] = 1;
+    attention[3 * 8 + 1] = 1;
+    attention[4 * 8 + 7] = 1;
     attention[5 * 8 + 7] = 1;
 
     const executor = createExecutor() as unknown as {
