@@ -81,6 +81,26 @@ Whisper 4-graph encoder/decoder; it must not be routed through
 4. Add WebGPU only after the native and WASM paths agree. Keep timestamps as a
    separate alignment contract; do not infer Whisper-style timestamp tokens.
 
+## Tooling now available
+
+The repository now contains local-only reference and conversion helpers:
+
+- FireRed capture records checkpoint hashes, feature lengths, encoder states,
+  decoder teacher-forced logits, token IDs, text, and optional CTC timestamps.
+- FireRed export emits separate encoder, full-prefix AED decoder, and CTC ONNX
+  graphs. The full-prefix decoder is a parity boundary, not yet the final
+  cached browser decoder contract.
+- FireRed ONNX verification compares encoder states/lengths/masks, decoder
+  logits, and CTC logits against the captured reference.
+- The Qwen capture helper uses the official local qwen-asr Transformers API
+  with offline flags and preserves language, text, timestamps, and batch
+  order.
+- The shared Node ONNX auditor hashes local bundles, reports external-data
+  candidates, and loads each graph through native CPU ORT.
+
+These tools intentionally do not download a checkpoint or promote a
+third-party conversion to a supported artifact.
+
 ## Current decision
 
 The next code change for these models should be driven by an approved local

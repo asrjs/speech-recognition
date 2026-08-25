@@ -94,6 +94,31 @@ Important current rule:
 - more generally, do not treat `nemo80.onnx` or `nemo128.onnx` export as a
   porting goal for new NeMo models in this repo
 
+### fireredasr2-aed
+
+Useful for:
+
+- capturing FireRedASR2-AED native token/text/timestamp references;
+- recording the Kaldi fbank and CMVN contract;
+- preserving stable sample IDs and mixed-length batch order before an ONNX
+  export is accepted.
+
+Start with:
+
+- fireredasr2-aed/README.md
+
+### qwen3-asr-0.6b
+
+Useful for:
+
+- capturing the official local qwen-asr Transformers reference;
+- recording language detection, text, optional forced-alignment timestamps,
+  and batch order before an ONNX boundary is designed.
+
+Start with:
+
+- qwen3-asr-0.6b/README.md
+
 ## Rule
 
 Keep copied scripts here if they still teach us something.

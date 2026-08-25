@@ -52,6 +52,15 @@ Unlike `reference/`, this folder should trend toward:
   - useful when you want Node-produced results to be directly comparable with Python MedASR benchmark summaries
   - if auto-detection misses the leaderboard normalizer, pass `--open-asr-leaderboard-dir`
 
+## Candidate artifact audit
+
+- node-audit-onnx-artifact.mjs audits a local ONNX bundle without model-hub
+  access.
+- It hashes every file, checks likely external-data sidecars, and creates each
+  graph through the native CPU execution provider.
+- It records graph input/output names and fails by default when a graph cannot
+  be loaded.
+
 ## Metric Caveat
 
 Before treating WER/CER deltas as a model-quality regression, make sure both sides use the
