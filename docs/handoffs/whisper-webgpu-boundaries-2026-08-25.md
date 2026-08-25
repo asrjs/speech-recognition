@@ -542,6 +542,39 @@ reference points rather than interchangeable implementations. No local
 OpenAI Whisper checkpoint or whisper.cpp CLI was available, so those baselines
 were not fabricated or downloaded.
 
+## Follow-up: scalar decoder KV bridge (2026-08-25)
+
+The callback-based split-graph scalar path had been copying each CPU KV cache
+twice: once while normalizing raw callback values into step-input tensors, then
+again inside the generic decoder-step runner. The adapter now marks its freshly
+owned, correctly named tensors as prepared, so the generic runner forwards them
+without a second copy. All other callers retain the defensive cross-session
+clone, including CPU tensors on the GPU-KV fallback path. Token-ID tensor
+construction also no longer creates a temporary array through `map(BigInt)`.
+
+A same-build synthetic boundary benchmark over twenty large-cache iterations
+measured the defensive-versus-prepared bridge at `21.85ms → 11.18ms`,
+`10.0M → 5.0M` copied elements, and `60 → 40` tensor constructions. This is a
+feed-boundary measurement, not an end-to-end model claim. The focused fp16 KV
+test now asserts that prepared tensors are forwarded by identity and that only
+`input_ids` is constructed inside the generic step runner.
+
+Independent headless Chrome/WebGPU validation against the current local public
+model kept exact greedy/stable/batched transcript parity and zero GPU
+downloads. Warm measurement runs on the 29.9043s JFK fixture returned:
+
+| Case              |    Total |    RTFx | Step calls | Feed build | KV         |
+| ----------------- | -------: | ------: | ---------: | ---------: | ---------- |
+| EN greedy GPU-KV  |  `1.38s` | `21.77` |         49 |          — | GPU buffer |
+| EN stable beam 2  | `12.31s` | `2.431` |         98 |    `2.97s` | CPU        |
+| EN batched beam 2 |  `6.91s` | `4.332` |         49 |    `1.53s` | CPU        |
+
+The stable beam run reported only `3ms` of generic-step tensor-clone time;
+the remaining scalar feed-build time is the single required raw-cache copy.
+The batched run remains governed by its separate batch-packing path. GPU-KV
+greedy remains the fast path, stable CPU-KV beam remains the correctness
+oracle, and batched beam remains opt-in.
+
 ## Remaining boundary
 
 The local split-graph timestamp contract is now fixed and independently

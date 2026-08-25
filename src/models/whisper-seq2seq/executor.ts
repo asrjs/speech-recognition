@@ -508,6 +508,14 @@ function normalizeRepoPath(path: string): string {
   return String(path || '').replace(/^\.\/+/, '').replace(/\\/g, '/');
 }
 
+function createWhisperInt64TokenIds(tokenIds: readonly number[]): BigInt64Array {
+  const result = new BigInt64Array(tokenIds.length);
+  for (let index = 0; index < tokenIds.length; index++) {
+    result[index] = BigInt(tokenIds[index]!);
+  }
+  return result;
+}
+
 function hasListedRepoFile(files: readonly string[], filename: string): boolean {
   const target = normalizeRepoPath(filename);
   return files.some(
@@ -1629,7 +1637,7 @@ export class WhisperOnnxExecutor {
     pastKeyValues: Record<string, OrtTensorLike<Float32Array>>,
     isFirstStep: boolean,
   ): Promise<DecoderStepResult> {
-    const inputIds = new BigInt64Array(generatedTokens.map((id) => BigInt(id)));
+    const inputIds = createWhisperInt64TokenIds(generatedTokens);
     const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, generatedTokens.length]);
     const feeds: Record<string, unknown> = {
       input_ids: inputIdsTensor,
@@ -1736,7 +1744,7 @@ export class WhisperOnnxExecutor {
       loaded.generationConfig.noTimestampsTokenId,
     );
     const alignmentPromptLen = forcedIds.length - textTokenIds.length - 1;
-    const inputIds = new BigInt64Array(forcedIds.map((id) => BigInt(id)));
+    const inputIds = createWhisperInt64TokenIds(forcedIds);
     const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, forcedIds.length]);
     const decoderSession = loaded.decoderSession!;
     const encoderForAlignment = await maybeCastEncoderHiddenStates(
@@ -1825,7 +1833,7 @@ export class WhisperOnnxExecutor {
     encoderHiddenStates: OrtTensorLike<Float32Array>,
     allTokenIds: readonly number[],
   ): Promise<{ readonly data: Float32Array; readonly dims: readonly number[] }> {
-    const inputIds = new BigInt64Array(allTokenIds.map((id) => BigInt(id)));
+    const inputIds = createWhisperInt64TokenIds(allTokenIds);
     const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, allTokenIds.length]);
     const feeds: Record<string, unknown> = {
       input_ids: inputIdsTensor,
@@ -2289,7 +2297,7 @@ export class WhisperOnnxExecutor {
     timings: DecoderSessionTiming;
   }> {
     const inputStart = nowMs();
-    const inputIds = new BigInt64Array(promptTokens.map((id) => BigInt(id)));
+    const inputIds = createWhisperInt64TokenIds(promptTokens);
     const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, promptTokens.length]);
     const feeds: Record<string, unknown> = {
       input_ids: inputIdsTensor,
@@ -2343,6 +2351,7 @@ export class WhisperOnnxExecutor {
     loaded: Required<Pick<LoadedExecutorState, 'decoderStepSession' | 'ort'>> & LoadedExecutorState,
     tokenId: number,
     pastKv: Record<string, OrtTensorLike<Float32Array>>,
+    options: { readonly preparedPastKv?: boolean } = {},
   ): Promise<{
     logits: Float32Array;
     vocabSize: number;
@@ -2351,7 +2360,7 @@ export class WhisperOnnxExecutor {
     presentKv: Record<string, OrtTensorLike<Float32Array>>;
     timings: DecoderSessionTiming;
   }> {
-    return this.runDecoderStepMultiToken(loaded, [tokenId], pastKv);
+    return this.runDecoderStepMultiToken(loaded, [tokenId], pastKv, options);
   }
 
   /** Multi-token decoder_step: feeds K tokens at once, returns K logits vectors.
@@ -2360,8 +2369,9 @@ export class WhisperOnnxExecutor {
    *  GPU ArgMax (next_token_id) is only valid for K=1. */
   private async runDecoderStepMultiToken(
     loaded: Required<Pick<LoadedExecutorState, 'decoderStepSession' | 'ort'>> & LoadedExecutorState,
-    tokenIds: number[],
+    tokenIds: readonly number[],
     pastKv: Record<string, OrtTensorLike<Float32Array>>,
+    options: { readonly preparedPastKv?: boolean } = {},
   ): Promise<{
     logits: Float32Array;
     vocabSize: number;
@@ -2371,17 +2381,22 @@ export class WhisperOnnxExecutor {
   }> {
     const K = tokenIds.length;
     const inputStart = nowMs();
-    const inputIdsTensor = new loaded.ort.Tensor(
-      'int64',
-      new BigInt64Array(tokenIds.map((id) => BigInt(id))),
-      [1, K],
-    );
+    const inputIdsTensor = new loaded.ort.Tensor('int64', createWhisperInt64TokenIds(tokenIds), [1, K]);
     const feeds: Record<string, unknown> = { input_ids: inputIdsTensor };
 
     // Add all past_key_values (decoder + encoder KV). Step model expects both.
     // CRITICAL: Clone tensor data for cross-session safety. ORT WASM cannot
     // reuse tensor objects from one session as inputs to another.
     for (const [name, tensor] of Object.entries(pastKv)) {
+      // The callback-based split-graph adapter has already copied raw cache
+      // data into fresh ORT tensors and normalized the input names. Passing
+      // those tensors through avoids cloning the same KV payload a second
+      // time. The default path remains defensive for callers handing us
+      // tensors owned by another session.
+      if (options.preparedPastKv) {
+        feeds[name] = tensor;
+        continue;
+      }
       if (isGpuBufferTensor(tensor)) {
         feeds[name] = tensor;
       } else {
@@ -3459,7 +3474,7 @@ export class WhisperOnnxExecutor {
               }
             }
             decoderStepFeedBuildMs += nowMs() - feedBuildStart;
-            const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds);
+            const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds, { preparedPastKv: true });
             const decoderStepTotal = nowMs() - decoderStepStart;
             decoderStepMs += decoderStepTotal;
             decoderStepTensorCloneMs += step.timings.inputMs;
@@ -3496,7 +3511,7 @@ export class WhisperOnnxExecutor {
                 const feeds: Record<string, unknown> = {
                   input_ids: new splitLoaded.ort.Tensor(
                     'int64',
-                    new BigInt64Array(tokenIds.map((id) => BigInt(id))),
+                    createWhisperInt64TokenIds(tokenIds),
                     [batchSize, 1],
                   ),
                 };

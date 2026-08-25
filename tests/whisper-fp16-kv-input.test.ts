@@ -191,4 +191,72 @@ describe('Whisper fp16 decoder-step KV inputs', () => {
 
     expect(feedTypes['past_key_values.0.decoder.key']).toBe('Float16Array');
   });
+
+  it('passes adapter-prepared KV tensors without cloning them again', async () => {
+    let tensorCreateCount = 0;
+    let receivedPastKv: unknown;
+    class Tensor {
+      readonly type: string;
+      readonly data: ArrayBufferView;
+      readonly dims: readonly number[];
+
+      constructor(type: string, data: ArrayBufferView, dims: readonly number[]) {
+        tensorCreateCount += 1;
+        this.type = type;
+        this.data = data;
+        this.dims = dims;
+      }
+    }
+
+    const preparedPastKv = {
+      type: 'float16',
+      data: new Uint16Array([1, 2, 3, 4]),
+      dims: [1, 1, 2, 2],
+    };
+    const executor = new WhisperOnnxExecutor(
+      'mock-whisper',
+      {},
+      {
+        ecosystem: 'openai',
+        architecture: 'whisper-seq2seq',
+        processorArchitecture: 'whisper-mel',
+        encoderArchitecture: 'whisper-transformer',
+        decoderArchitecture: 'transformer-decoder',
+        sampleRate: 16000,
+        melBins: 80,
+        maxSourcePositions: 1500,
+        maxTargetPositions: 448,
+        languages: ['en'],
+        tokenizer: { kind: 'tiktoken' },
+      },
+      'webgpu',
+      undefined,
+    );
+
+    const loaded = {
+      ort: { Tensor },
+      decoderStepSession: {
+        async run(feeds: Record<string, unknown>) {
+          receivedPastKv = feeds['past_key_values.0.decoder.key'];
+          return {
+            logits: {
+              type: 'float32',
+              data: new Float32Array([0, 1, 0]),
+              dims: [1, 1, 3],
+            },
+          };
+        },
+      },
+    };
+
+    await (executor as any).runDecoderStepMultiToken(
+      loaded,
+      [2],
+      { 'past_key_values.0.decoder.key': preparedPastKv },
+      { preparedPastKv: true },
+    );
+
+    expect(tensorCreateCount).toBe(1); // input_ids only
+    expect(receivedPastKv).toBe(preparedPastKv);
+  });
 });
