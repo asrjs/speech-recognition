@@ -89,6 +89,51 @@ export function assertExperimentalGpuKvCacheIsGreedyOnly(input: {
   }
 }
 
+type WhisperOrtSessionOptions = Parameters<typeof createWhisperOrtSession>[2];
+
+/**
+ * Create an ORT session with an opt-in graph-capture request.
+ *
+ * Graph capture is deliberately diagnostic: ORT requires every graph node to
+ * be partitioned to the requested execution provider, which is not true for
+ * the current Whisper exports on all WebGPU bundles. Retrying without capture
+ * keeps that experiment from turning into a model-load failure while allowing
+ * the caller to surface the fallback as a recoverable warning.
+ */
+export async function createWhisperOrtSessionWithGraphCaptureFallback(
+  ort: OrtModuleLike,
+  url: string,
+  options: WhisperOrtSessionOptions,
+  onFallback?: (error: unknown) => void,
+): Promise<OrtSessionLike> {
+  try {
+    return await createWhisperOrtSession(ort, url, options);
+  } catch (error) {
+    if (
+      !options.enableGraphCapture ||
+      !options.backendId.startsWith('webgpu') ||
+      !isWhisperGraphCaptureUnavailableError(error)
+    ) {
+      throw error;
+    }
+    onFallback?.(error);
+    return createWhisperOrtSession(ort, url, {
+      ...options,
+      enableGraphCapture: false,
+    });
+  }
+}
+
+function isWhisperGraphCaptureUnavailableError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return message.includes('graph capture') || message.includes('enablegraphcapture');
+}
+
+function formatWhisperSessionError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.length > 240 ? `${message.slice(0, 237)}...` : message;
+}
+
 interface LoadedExecutorState {
   readonly ort: OrtModuleLike;
   readonly tokenizer: WhisperTokenizer;
@@ -1136,7 +1181,7 @@ export class WhisperOnnxExecutor {
     // Time session creation
     const sessionStart = nowMs();
     // Only create encoder session for now (decoder sessions created below if splitgraph)
-    const encoderSession = await createWhisperOrtSession(ort, artifacts.encoderUrl, {
+    const encoderSessionOptions: WhisperOrtSessionOptions = {
       backendId: resolved.encoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
       enableGraphCapture: resolved.experimentalWebGpuEncoderGraphCapture,
@@ -1150,7 +1195,19 @@ export class WhisperOnnxExecutor {
       ...(resolved.externalData?.encoder?.[0]
         ? { externalDataUrl: resolved.externalData.encoder[0].dataUrl, externalDataPath: resolved.externalData.encoder[0].path }
         : {}),
-    });
+    };
+    const encoderSession = await createWhisperOrtSessionWithGraphCaptureFallback(
+      ort,
+      artifacts.encoderUrl,
+      encoderSessionOptions,
+      resolved.experimentalWebGpuEncoderGraphCapture && resolved.encoderBackendForOrt === 'webgpu'
+        ? (error) => warnings.push({
+            code: 'whisper.encoder-graph-capture-fallback',
+            message: `WebGPU encoder graph capture was unavailable; using the regular encoder session (${formatWhisperSessionError(error)}).`,
+            recoverable: true,
+          })
+        : undefined,
+    );
 
     // Merged decoder session — only needed for non-splitgraph path
     let decoderSession: OrtSessionLike | undefined;
@@ -1200,7 +1257,7 @@ export class WhisperOnnxExecutor {
           ? { externalDataUrl: resolved.externalData.decoder_init[0].dataUrl, externalDataPath: resolved.externalData.decoder_init[0].path }
           : {}),
       });
-      decoderStepSession = await createWhisperOrtSession(ort, resolved.decoderStepUrl, {
+      const decoderStepSessionOptions: WhisperOrtSessionOptions = {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
         preferredOutputLocation: decoderStepPreferredOutputLocation,
@@ -1211,7 +1268,19 @@ export class WhisperOnnxExecutor {
         ...(resolved.externalData?.decoder_step?.[0]
           ? { externalDataUrl: resolved.externalData.decoder_step[0].dataUrl, externalDataPath: resolved.externalData.decoder_step[0].path }
           : {}),
-      });
+      };
+      decoderStepSession = await createWhisperOrtSessionWithGraphCaptureFallback(
+        ort,
+        resolved.decoderStepUrl,
+        decoderStepSessionOptions,
+        resolved.decoderGraphCapture && resolved.decoderBackendForOrt === 'webgpu'
+          ? (error) => warnings.push({
+              code: 'whisper.decoder-step-graph-capture-fallback',
+              message: `WebGPU decoder_step graph capture was unavailable; using the regular decoder_step session (${formatWhisperSessionError(error)}).`,
+              recoverable: true,
+            })
+          : undefined,
+      );
       // Defer decoder_align — only load when needed for alignment (saves VRAM)
     }
 
