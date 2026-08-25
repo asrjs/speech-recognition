@@ -772,3 +772,45 @@ The fixed-token safe path's batch feed-build time fell from about `3.42s` to
 `0.18s` over the 49-step decode after tensor reuse. This remains an opt-in
 optimization; the artifact capability gate prevents a silent wrong-transcript
 promotion.
+
+## Follow-up: FP16/FP32 timestamp boundary audit (2026-08-25)
+
+A fresh parity probe used an exact FFmpeg-decoded WAV (`160069` samples at
+16 kHz) so browser media decoding could not be confused with model variance.
+The native r4, r5, and causal FP32 r1 runners all placed the checked boundary
+at `world, 4.30-5.38s`. The r5 FP16 WebGPU path placed `long` at `2.98-3.44s`
+and `world,` at `4.30-5.40s`; the browser OGG path also moved `long` one frame
+later, while the exact WAV removed that media-decoder contribution.
+
+The full FP32 r1 WebGPU control returned all checked native anchors, including
+`world, 4.30-5.38s`. Repeating the r5 control with encoder output forced to
+CPU, an explicit GPU flush, a GPU drain, and a buffer re-wrap did not move the
+`world,` boundary. This keeps the diagnosis narrow: the residual is one
+20-millisecond frame from FP16 WebGPU encoder execution feeding the alignment
+graph, not a prompt row, crop, DTW, punctuation, or global offset error.
+
+No timestamp offset or one-frame correction is justified. The production
+contract remains frame-quantized timestamps with exact native parity gated on
+an FP32-accumulation encoder or an explicitly selected reference artifact.
+The existing `maybeCastEncoderHiddenStates` boundary support is sufficient for
+an alignment graph with a different declared input dtype; a separate reference
+encoder is intentionally not run by the fast default because it would duplicate
+the dominant encoder pass.
+
+The same local 10-second benchmark also records the performance ceiling without
+model-load time:
+
+| Backend / beam | Median inference | RTFx | Notes |
+| --- | ---: | ---: | --- |
+| Native Transformers/PyTorch FP16 / 1 | `188ms` | `53.17x` | Cached model, CUDA |
+| Native Transformers/PyTorch FP16 / 2 | `226ms` | `44.30x` | Cached model, CUDA |
+| Native Transformers/PyTorch FP16 / 5 | `295ms` | `33.86x` | Cached model, CUDA |
+| faster-whisper CUDA FP16 / 1 | `349ms` | `28.67x` | Cached model, CUDA |
+| faster-whisper CUDA FP16 / 2 | `371ms` | `26.97x` | Cached model, CUDA |
+| faster-whisper CUDA FP16 / 5 | `413ms` | `24.23x` | Cached model, CUDA |
+| r5 WebGPU FP16 / 1 | `~0.82-0.83s` | `~12.1-12.2x` | 20 steps, zero GPU downloads |
+
+The native measurements are decode-only after model load; WebGPU includes the
+runtime's transcription stages but not the separately reported session load.
+No local whisper.cpp executable was available, so no download or fabricated
+comparison was added.
