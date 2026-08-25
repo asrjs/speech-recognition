@@ -1,0 +1,90 @@
+# Candidate ASR artifact boundaries
+
+Date: 2026-08-25
+Workspace: `N:\github\asrjs\speech-recognition`
+
+This note records what is currently actionable for the next non-Whisper
+backends. It intentionally does not add a preset or runtime implementation
+without a local, reproducible model artifact.
+
+## FireRedASR2-AED
+
+The local reference source is `N:\github\ysdede\FireRedASR2S`. The AED model
+is a model-specific Conformer encoder plus Transformer decoder with a CTC head
+used for token timestamps. Its feature contract is also model-specific:
+
+- 80-bin Kaldi fbank, 25 ms frame length, 10 ms frame shift, `snip_edges=true`;
+- optional Kaldi CMVN from `cmvn.ark`;
+- encoder inputs `padded_input [batch, frames, 80]` and
+  `input_lengths [batch]`;
+- decoder output token IDs come from the AED vocabulary; timestamp refinement
+  uses the CTC branch and the encoder subsampling factor.
+
+The checked local checkout contains the implementation and TensorRT-oriented
+encoder export helper, but no FireRed ASR checkpoint files in its example
+`pretrained_models` directory. The package therefore has FireRed VAD support,
+not an artifact-backed FireRed ASR runtime.
+
+The official model source is
+[FireRedTeam/FireRedASR2-AED](https://huggingface.co/FireRedTeam/FireRedASR2-AED).
+There are also public third-party ONNX conversions, including
+[42ailab/FireRedASR2-AED-ONNX](https://huggingface.co/42ailab/FireRedASR2-AED-ONNX)
+and a batch-oriented int8 conversion at
+[Kn90688/FireRedASR2-AED-int8-batch-onnx](https://huggingface.co/Kn90688/FireRedASR2-AED-int8-batch-onnx).
+Neither conversion has been downloaded or accepted as a correctness artifact
+for this package. Their model cards are useful for understanding the required
+encoder/decoder/CTC file boundary, not as a substitute for upstream parity.
+
+### Required FireRed implementation sequence
+
+1. Obtain one approved local checkpoint or ONNX bundle and record its SHA-256,
+   source revision, vocabulary, CMVN, feature parameters, and export options.
+2. Add a FireRed-specific Python reference runner that emits token IDs,
+   decoded text, batch lengths, beam settings, CTC timestamps, and latency.
+3. Export/validate encoder, AED decoder, and CTC timestamp graphs separately.
+   Check dynamic batch with mixed lengths; padding must not alter a shorter
+   utterance's output.
+4. Compare PyTorch/reference, native ONNX Runtime, WASM, and WebGPU on the
+   same fixture set before adding `src/models/firered-aed` and a preset.
+
+The batch boundary is important: a public int8 conversion reports that its
+encoder mask and decoder batch dimensions were changed specifically to avoid
+padding pollution and mixed-length repetition. That behavior must be proven
+in our own parity fixture before exposing a `batchSize` option.
+
+## Qwen3-ASR-0.6B
+
+The current candidate is
+[Qwen/Qwen3-ASR-0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B), not the older
+Qwen2-Audio material in earlier notes. The official model card describes a
+BF16 speech model with language identification, offline/streaming inference,
+batch inference, and Turkish support. Its reference package is `qwen-asr`,
+with Transformers and vLLM backends.
+
+No Qwen3-ASR snapshot is present in the checked local model/cache directories,
+so there is currently no ground-truth output to use for an ONNX export or
+WebGPU claim. Qwen3-ASR is an audio-conditioned language model rather than a
+Whisper 4-graph encoder/decoder; it must not be routed through
+`whisper-seq2seq` merely because both produce token text.
+
+### Required Qwen implementation sequence
+
+1. Capture an approved `qwen-asr` reference environment and a fixed fixture
+   manifest containing audio identity, requested language, detected language,
+   text, timestamps, and batch order.
+2. Inspect the official model's audio frontend, multimodal input packing,
+   generation prompt, cache shapes, and stopping policy. Freeze those as a
+   Qwen-specific artifact manifest before writing a runtime bridge.
+3. Export the smallest independently testable graph boundary first, then run
+   token/logit parity in native ORT. Add dynamic batch only after batch-1
+   parity is exact and mixed-length attention masks are tested.
+4. Add WebGPU only after the native and WASM paths agree. Keep timestamps as a
+   separate alignment contract; do not infer Whisper-style timestamp tokens.
+
+## Current decision
+
+The next code change for these models should be driven by an approved local
+artifact and a reference transcript fixture. Until then, the high-confidence
+work remains the Whisper runtime and its artifact/export validation; adding
+empty model classes would make the public API look complete without providing
+an executable or verifiable backend.

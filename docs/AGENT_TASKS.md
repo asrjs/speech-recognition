@@ -366,6 +366,10 @@ hallucinations and recovers with higher temperature.
   and alignment export.
 - [x] Re-export and validate a complete local FP16 precision variant with
   causal alignment and external-data metadata.
+- [x] Keep opt-in WebGPU graph-capture probes recoverable: retry normal ORT
+  session creation when partitioning rejects capture and emit a warning; a
+  headless Chrome run completed with exact transcript behavior and zero GPU
+  downloads.
 - [ ] Re-export the published precision variants and validate the remote
   preset; no model-hosting update has been performed.
 - Validate that word timestamps work with both splitgraph and merged-decoder paths.
@@ -397,8 +401,12 @@ hallucinations and recovers with higher temperature.
   CPU-KV beam as oracle. Only promote after more variants/fixtures prove parity.
 - GPU-KV beam support: not feasible without batched beam decode graph changes.
 - Encoder graph capture: fails on Reshape/Shape ops; revisit only after ORT updates.
+- Decoder graph capture: remains diagnostic-only; failed partitioning now falls
+  back to the regular session with a recoverable warning.
 - Masked GPU ArgMax: requires alternate model artifact; not core compatibility.
 - Batched encoder: no CPU benefit.
+- FireRedASR2-AED and Qwen3-ASR-0.6B: artifact-backed porting boundary is
+  tracked in `docs/handoffs/asr-candidate-boundaries-2026-08-25.md`.
 - Framework adapters: separate packages.
 - `condition_on_previous_text`, hotwords, numeral suppression: skip unless a fixture
   proves they help.

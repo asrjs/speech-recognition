@@ -166,6 +166,28 @@ long-audio parity reference above; one repeat of stable beam 2 did not produce
 a result within 166s and was excluded rather than treated as a performance
 claim.
 
+### Live optimization audit (2026-08-25)
+
+The current browser harness was used for an A/B probe against the same local
+`fp16io-fp16-webgpu` artifact and 29.904s JFK fixture.
+
+- Enabling `decoderGraphCapture=1` originally failed during ORT session
+  creation: `all compute graph nodes have not been partitioned to the
+  WebGpuExecutionProvider`.
+- The runtime now retries that opt-in request without graph capture and emits
+  `whisper.decoder-step-graph-capture-fallback`. A headless Chrome/WebGPU run
+  completed with a coherent transcript, `27.5352x` RTFx, GPU-KV, and zero GPU
+  downloads. This is a compatibility fallback, not a graph-capture speedup.
+- `decoderFreeDimensionOverrides` was measured as an opt-in diagnostic. Actual
+  totals were `921.94ms`, `1033.535ms`, and `1095.44ms` for the override versus
+  `1085.835ms`, `1090.55ms`, and `1177.945ms` for paired baseline runs. The
+  variance is large enough that the override is not promoted or enabled by
+  default.
+- The local native reference remains faster-whisper CPU/int8 at about `1.84x`
+  to `1.87x` RTFx on this fixture. `N:\models\whisper-cpp` contains GGML
+  weights but no runnable `whisper-cli`/`main` executable, so no whisper.cpp
+  timing is claimed.
+
 ## Remaining boundary
 
 The corrected graph must still be regenerated for each published precision
@@ -173,7 +195,7 @@ variant and validated on the remote model before the default preset can claim
 artifact-level timestamp parity. Merged-decoder timestamp behavior and a
 broader English/Turkish reference fixture remain open. The package currently
 has FireRed VAD support but no artifact-backed FireRed ASR2 runtime, and its
-Qwen2-Audio material is documentation-only; implementing either model needs a
+Qwen ASR material is documentation-only; implementing either model needs a
 specific local weight/conversion artifact plus parity fixtures.
 
 Keep `experimentalBatchedBeam` opt-in, stable CPU-KV beam as the correctness
