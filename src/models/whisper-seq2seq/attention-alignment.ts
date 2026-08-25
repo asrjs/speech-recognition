@@ -120,13 +120,18 @@ function dynamicTimeWarpNegative(matrix: Float32Array, tokenCount: number, frame
       const diagonal = cost[row - 1]![col - 1]!;
       const up = cost[row - 1]![col]!;
       const left = cost[row]![col - 1]!;
-      let best = diagonal;
-      let direction = 0;
-      if (up < best) {
+      // Match OpenAI Whisper's dtw_cpu tie-breaking. In particular, a tie
+      // falls through to the horizontal move, which keeps this path aligned
+      // with the reference jump-time extraction on flat attention regions.
+      let best: number;
+      let direction: number;
+      if (diagonal < up && diagonal < left) {
+        best = diagonal;
+        direction = 0;
+      } else if (up < diagonal && up < left) {
         best = up;
         direction = 1;
-      }
-      if (left < best) {
+      } else {
         best = left;
         direction = 2;
       }
@@ -191,15 +196,19 @@ export function computeWhisperDtwTokenTimestamps(
   const { textIndices, timeIndices } = dynamicTimeWarpNegative(matrix, tokenCount, frameCount);
   const precision = options.timePrecisionSeconds ?? 0.02;
   const timestamps = new Array<number>(tokenCount + 1).fill(0);
-  const seen = new Set<number>();
+  let previousToken = -1;
   for (let i = 0; i < textIndices.length; i++) {
     const token = textIndices[i] ?? 0;
-    if (!seen.has(token)) {
+    // OpenAI Whisper and faster-whisper use the first frame of every DTW
+    // token-index jump as the token boundary. The path visits each row in
+    // order, so this is equivalent to a first-seen map while making the
+    // reference semantics explicit.
+    if (token !== previousToken && token >= 0 && token < tokenCount) {
       timestamps[token] = (timeIndices[i] ?? 0) * precision;
-      seen.add(token);
     }
+    previousToken = token;
   }
-  timestamps[tokenCount] = (frameCount - 1) * precision;
+  timestamps[tokenCount] = (timeIndices[timeIndices.length - 1] ?? 0) * precision;
   for (let i = 1; i < timestamps.length; i++) {
     if (timestamps[i]! < timestamps[i - 1]!) timestamps[i] = timestamps[i - 1]!;
   }
