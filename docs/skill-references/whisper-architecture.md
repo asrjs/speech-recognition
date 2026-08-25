@@ -76,9 +76,11 @@ Uploaded filenames MUST match ONNX graph's internal `external_data.location`. Ch
   output fp16 directly. Paired with the original fp16-input `decoder_init.onnx`,
   this gives zero dtype casts in the pipeline. Encode: 6.9× faster (1900→277ms).
   RTFx: 4.8→27.6×. Step P50: 80→9.5ms.
-- **Fast mel spectrogram** (`fastFft` option, default true): Uses N_FFT=512
-  (power-of-2) with zero-padded Hann window instead of Bluestein FFT for N_FFT=400.
-  Preprocess: 2.9× faster (237→81ms). Matches parakeet.js approach.
+- **Whisper mel spectrogram**: The default path preserves Whisper's exact
+  N_FFT=400 contract through the cached Bluestein FFT. `fastFft: true` remains
+  an explicit 512-point experiment only; its changed frequency-bin grid is not
+  a model-parity replacement. Benchmark both paths with
+  `npm run benchmark:whisper-mel` before making a performance claim.
 - **WebGPU optimization lessons**: See `docs/Whisper-Optimizations.md` §Lessons
   Learned for 14 documented pitfalls covering ONNX surgery, WebGPU execution,
   optimization methodology, and Vite dev server.

@@ -796,7 +796,7 @@ The internal `external_data.location` references stay intact. The deployed
 - **Total: ~6140ms → ~1192ms (5.1× faster, combined)**
 - **RTFx: ~4.8× → 25.3× (5.3× throughput improvement)**
 
-### Experiment 8: fast mel — power-of-2 FFT replacing Bluestein (2026-06-14) ✅ DEPLOYED
+### Experiment 8: fast mel — power-of-2 FFT replacing Bluestein (2026-06-14) ⚠️ OPT-IN ONLY
 
 Replaced the expensive Bluestein (chirp Z-transform) algorithm required by the
 non-power-of-2 N_FFT=400 with zero-padded 512-point standard radix-2 FFT.
@@ -806,7 +806,9 @@ Frame alignment preserved (reflect pad=200, same as original).
 
 **Chrome benchmark:** preprocessMs: 237ms → **83ms avg** (2.85× faster).
 Transcript: identical (token parity confirmed).
-Gate: `fastFft` option (default true); legacy Bluestein via `fastFft: false`.
+Gate: `fastFft: true` is an explicit experiment. The shipped default is the
+exact 400-point Bluestein path (`fastFft: false`) because 512-point zero
+padding changes Whisper's frequency-bin grid and model-input contract.
 
 ### Experiment 9: shared WebGPU device (2026-06-14)
 
@@ -828,7 +830,7 @@ investigation needed.
 | 4 | Encoder graph capture | Session creation fails | ❌ blocked |
 | 5 | GPU ArgMax | Counterproductive standalone | ⚠️ infra committed |
 | 6 | GPU encoder→decoder Cast | Encode: 5.7×, RTFx: 10→21.5× | ✅ deployed |
-| 7 | Fast mel N_FFT=512 | Preprocess: 2.85×, RTFx: 21.5→25.3× | ✅ deployed |
+| 7 | Fast mel N_FFT=512 | Preprocess: 2.85× in the historical A/B | ⚠️ opt-in only |
 | 8 | Shared WebGPU device | Init regression persists, step regression | ❌ rejected, code removed |
 | 9 | Stripped fp16 encoder | Encode: 6.4× (1900→296ms), no Cast nodes | ✅ deployed |
 | 10 | Fused encoder_decoder_init | Slower than separate, +VRAM | ❌ rejected (perf/fused-encoder-decoder-init) |

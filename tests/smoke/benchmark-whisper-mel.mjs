@@ -46,33 +46,46 @@ function summarize(values) {
 const durations = readDurations();
 const runs = Math.round(readNumberArg('runs', DEFAULT_RUNS));
 const nMels = Math.round(readNumberArg('mels', 128));
-const processor = new WhisperMelProcessor({ nMels, sampleRate: SAMPLE_RATE });
+const processorModes = [
+  {
+    label: 'exact-400-default',
+    processor: new WhisperMelProcessor({ nMels, sampleRate: SAMPLE_RATE }),
+  },
+  {
+    label: 'experimental-512',
+    processor: new WhisperMelProcessor({ nMels, sampleRate: SAMPLE_RATE, fastFft: true }),
+  },
+];
 
 console.log('Whisper mel benchmark');
 console.log(`n_mels=${nMels} sample_rate=${SAMPLE_RATE} runs=${runs}`);
 console.log('');
 
-for (const durationSec of durations) {
-  const audio = createSignal(durationSec);
-  processor.process(audio);
+for (const { label, processor } of processorModes) {
+  console.log(label);
+  for (const durationSec of durations) {
+    const audio = createSignal(durationSec);
+    processor.process(audio);
 
-  const times = [];
-  for (let run = 0; run < runs; run++) {
-    const started = performance.now();
-    const result = processor.process(audio);
-    const elapsed = performance.now() - started;
-    if (result.frameCount !== Math.floor(audio.length / 160)) {
-      throw new Error(`Unexpected frame count for ${durationSec}s audio: ${result.frameCount}`);
+    const times = [];
+    for (let run = 0; run < runs; run++) {
+      const started = performance.now();
+      const result = processor.process(audio);
+      const elapsed = performance.now() - started;
+      if (result.frameCount !== Math.floor(audio.length / 160)) {
+        throw new Error(`Unexpected frame count for ${durationSec}s audio: ${result.frameCount}`);
+      }
+      times.push(elapsed);
     }
-    times.push(elapsed);
-  }
 
-  const { avg, min, max } = summarize(times);
-  const rtf = avg / (durationSec * 1000);
-  const rtfX = 1 / rtf;
-  console.log(
-    `${durationSec.toFixed(1)}s audio: avg=${avg.toFixed(1)}ms min=${min.toFixed(1)}ms max=${max.toFixed(
-      1,
-    )}ms rtf=${rtf.toFixed(4)} rtfx=${rtfX.toFixed(1)}`,
-  );
+    const { avg, min, max } = summarize(times);
+    const rtf = avg / (durationSec * 1000);
+    const rtfX = 1 / rtf;
+    console.log(
+      `  ${durationSec.toFixed(1)}s audio: avg=${avg.toFixed(1)}ms min=${min.toFixed(1)}ms max=${max.toFixed(
+        1,
+      )}ms rtf=${rtf.toFixed(4)} rtfx=${rtfX.toFixed(1)}`,
+    );
+  }
+  console.log('');
 }
