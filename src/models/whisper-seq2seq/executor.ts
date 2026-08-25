@@ -338,7 +338,8 @@ function float16BitsToFloat32(src: Uint16Array): Float32Array {
   return dst;
 }
 
-function tensorDataAsFloat32(data: ArrayBufferView): Float32Array {
+/** Convert ORT float32/float16 backing views to a stable Float32Array. */
+export function tensorDataAsFloat32(data: ArrayBufferView): Float32Array {
   if (data instanceof Float32Array) return data;
   if (data instanceof Uint16Array) return float16BitsToFloat32(data);
   return Float32Array.from(data as unknown as ArrayLike<number>);
@@ -354,7 +355,14 @@ function tensorDataAsFloat32(data: ArrayBufferView): Float32Array {
  * does not insert this boundary cast for us, so an otherwise valid alignment
  * graph can fail and silently fall back to generated timestamp tokens.
  */
-async function maybeCastEncoderHiddenStates(
+/**
+ * Match encoder hidden states to a decoder graph's declared input dtype.
+ *
+ * This is exported for the standalone/WhisperX-compatible runners too: a
+ * runner that hand-rolls graph feeds must honor the same split-graph boundary
+ * contract as the main executor.
+ */
+export async function maybeCastEncoderHiddenStates(
   encoderHiddenStates: OrtTensorLike<Float32Array>,
   decoderSession: OrtSessionLike,
   ort: OrtModuleLike,

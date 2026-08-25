@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Buffer } from 'node:buffer';
 import {
   createRunnerKvEntry,
+  decodePcm16Wav,
   parseArgs,
   runnerKvData,
   runnerKvDims,
@@ -60,5 +62,52 @@ describe('whisperx-runner CLI', () => {
     expect(runnerKvDims(entry, [1, 2, 5, 1])).toEqual([1, 2, 4, 1]);
     expect(runnerKvDims(laterEntry, [1, 2, 4, 1])).toEqual([1, 2, 5, 1]);
     expect(runnerKvDims(new Float32Array(8), [1, 2, 4, 1])).toEqual([1, 2, 4, 1]);
+  });
+
+  it('preserves fp16 KV dtype instead of reinterpreting its backing view', () => {
+    const data = new Uint16Array([0x3c00, 0xc000]);
+    const entry = createRunnerKvEntry({
+      data,
+      dims: [1, 1, 2, 1],
+      type: 'float16',
+    });
+
+    expect(entry.type).toBe('float16');
+    expect(runnerKvData(entry)).toBe(data);
+  });
+
+  it('finds PCM samples after RIFF metadata chunks', () => {
+    const chunk = (name: string, payload: Buffer): Buffer => {
+      const header = Buffer.alloc(8);
+      header.write(name, 0, 4, 'ascii');
+      header.writeUInt32LE(payload.length, 4);
+      return payload.length % 2 === 0
+        ? Buffer.concat([header, payload])
+        : Buffer.concat([header, payload, Buffer.alloc(1)]);
+    };
+    const fmt = Buffer.alloc(16);
+    fmt.writeUInt16LE(1, 0);
+    fmt.writeUInt16LE(1, 2);
+    fmt.writeUInt32LE(16_000, 4);
+    fmt.writeUInt32LE(32_000, 8);
+    fmt.writeUInt16LE(2, 12);
+    fmt.writeUInt16LE(16, 14);
+    const samples = Buffer.alloc(4);
+    samples.writeInt16LE(16_384, 0);
+    samples.writeInt16LE(-16_384, 2);
+    const body = Buffer.concat([
+      chunk('fmt ', fmt),
+      chunk('LIST', Buffer.from('INFO!', 'ascii')),
+      chunk('data', samples),
+    ]);
+    const wav = Buffer.alloc(12 + body.length);
+    wav.write('RIFF', 0, 4, 'ascii');
+    wav.writeUInt32LE(body.length + 4, 4);
+    wav.write('WAVE', 8, 4, 'ascii');
+    body.copy(wav, 12);
+
+    const decoded = decodePcm16Wav(wav);
+    expect(decoded.sampleRate).toBe(16_000);
+    expect(Array.from(decoded.pcm)).toEqual([0.5, -0.5]);
   });
 });

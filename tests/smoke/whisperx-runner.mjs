@@ -26,9 +26,13 @@ function importDist(relativePath) {
 
 function createRunnerKvEntry(tensor) {
   return {
-    data: new Float32Array(tensor.data),
+    // Keep the graph-declared dtype with each hypothesis.  FP16 split graphs
+    // expose Float16Array/Uint16Array KV data; converting that view with
+    // `new Float32Array()` either reinterprets the values or feeds the next
+    // graph with the wrong element type.
+    data: tensor.data,
     dims: [...tensor.dims],
-    type: 'float32',
+    type: tensor.type || 'float32',
   };
 }
 
@@ -41,6 +45,71 @@ function runnerKvDims(value, fallback) {
 }
 
 export { createRunnerKvEntry, runnerKvData, runnerKvDims };
+
+/**
+ * Decode a PCM WAV buffer without assuming a 44-byte header.
+ *
+ * FFmpeg commonly inserts a LIST/INFO chunk between `fmt ` and `data`; the
+ * old runner started reading samples at byte 44 and shifted the waveform by
+ * the size of that metadata chunk.  The browser and native references then
+ * measured a different audio signal.
+ */
+export function decodePcm16Wav(buffer) {
+  if (!buffer || buffer.length < 12 || buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WAVE') {
+    throw new Error('Expected a RIFF/WAVE buffer.');
+  }
+
+  let format;
+  let dataOffset;
+  let dataSize;
+  let offset = 12;
+  while (offset + 8 <= buffer.length) {
+    const chunkId = buffer.toString('ascii', offset, offset + 4);
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+    const chunkDataOffset = offset + 8;
+    if (chunkDataOffset > buffer.length) break;
+
+    if (chunkId === 'fmt ' && chunkSize >= 16 && chunkDataOffset + 16 <= buffer.length) {
+      format = {
+        audioFormat: buffer.readUInt16LE(chunkDataOffset),
+        channels: buffer.readUInt16LE(chunkDataOffset + 2),
+        sampleRate: buffer.readUInt32LE(chunkDataOffset + 4),
+        blockAlign: buffer.readUInt16LE(chunkDataOffset + 12),
+        bitsPerSample: buffer.readUInt16LE(chunkDataOffset + 14),
+      };
+    } else if (chunkId === 'data') {
+      dataOffset = chunkDataOffset;
+      dataSize = Math.min(chunkSize, Math.max(0, buffer.length - dataOffset));
+      break;
+    }
+
+    // RIFF chunks are word-aligned, including metadata chunks with odd sizes.
+    offset = chunkDataOffset + chunkSize + (chunkSize & 1);
+  }
+
+  if (!format || dataOffset === undefined || dataSize === undefined) {
+    throw new Error('WAV buffer is missing a complete fmt/data chunk pair.');
+  }
+  if (format.audioFormat !== 1 || format.bitsPerSample !== 16 || format.channels < 1) {
+    throw new Error(
+      `Unsupported WAV format: audioFormat=${format.audioFormat}, channels=${format.channels}, bits=${format.bitsPerSample}.`,
+    );
+  }
+
+  const bytesPerSample = format.bitsPerSample / 8;
+  const blockAlign = format.blockAlign || format.channels * bytesPerSample;
+  const frameCount = Math.floor(dataSize / blockAlign);
+  const pcm = new Float32Array(frameCount);
+  for (let frame = 0; frame < frameCount; frame++) {
+    const frameOffset = dataOffset + frame * blockAlign;
+    let sum = 0;
+    for (let channel = 0; channel < format.channels; channel++) {
+      sum += buffer.readInt16LE(frameOffset + channel * bytesPerSample) / 32768;
+    }
+    pcm[frame] = sum / format.channels;
+  }
+  return { pcm, sampleRate: format.sampleRate, channels: format.channels };
+}
 
 // ──────────────────────────────────────────────────────────
 // CLI argument parsing
@@ -290,12 +359,11 @@ export async function runAsrPipeline(_opts) {
   }
 
   const buf = fs.readFileSync(tmpWav);
-  const frameCount = Math.floor((buf.length - 44) / 2);
-  const pcm = new Float32Array(frameCount);
-  for (let i = 0; i < frameCount; i++) pcm[i] = buf.readInt16LE(44 + i * 2) / 32768;
-  const sampleRate = 16000;
-  const audioDuration = frameCount / sampleRate;
-  log(`  ${frameCount} frames @ ${sampleRate}Hz = ${audioDuration.toFixed(1)}s`, verbose);
+  const decodedWav = decodePcm16Wav(buf);
+  const pcm = decodedWav.pcm;
+  const sampleRate = decodedWav.sampleRate;
+  const audioDuration = pcm.length / sampleRate;
+  log(`  ${pcm.length} frames @ ${sampleRate}Hz = ${audioDuration.toFixed(1)}s`, verbose);
 
   // ── 2. Load model ──
   log('Loading ONNX model...', verbose);
@@ -319,7 +387,10 @@ export async function runAsrPipeline(_opts) {
     buildWhisperForcedAlignmentTokenIds,
     collectSplitGraphTextTokenRows,
     getWhisperForcedAlignmentTextRowStart,
+    maybeCastEncoderHiddenStates,
+    maybeCastWhisperFeatureTensor,
     processSplitGraphAlignment,
+    tensorDataAsFloat32,
   } = await importDist(
     'models/whisper-seq2seq/executor.js'
   );
@@ -408,14 +479,27 @@ export async function runAsrPipeline(_opts) {
       const detectSamples = Math.min(pcm.length, 30 * sampleRate);
       try {
         const detectMel = WhisperMelProcessor.padToFrames(melProc.process(pcm.slice(0, detectSamples)), 3000);
+        const detectFeature = await maybeCastWhisperFeatureTensor(
+          new ort.Tensor('float32', detectMel, [1, melBins, 3000]),
+          encSess,
+          ort,
+        );
         const detectEncOut = await encSess.run({
-          input_features: new ort.Tensor('float32', detectMel, [1, melBins, 3000]),
+          input_features: detectFeature,
         });
         const detectEncKey = Object.keys(detectEncOut).find(k =>
           k === 'last_hidden_state' || k.includes('hidden') || k.includes('output')
         ) ?? Object.keys(detectEncOut)[0];
-        const detectEncHs = new Float32Array(detectEncOut[detectEncKey].data);
-        const detectEncTensor = new ort.Tensor('float32', detectEncHs, [1, detectEncHs.length / dModel, dModel]);
+        const detectEncOutput = detectEncOut[detectEncKey];
+        const detectEncTensor = await maybeCastEncoderHiddenStates(
+          new ort.Tensor(
+            detectEncOutput.type === 'float16' ? 'float16' : 'float32',
+            detectEncOutput.data,
+            [...detectEncOutput.dims],
+          ),
+          initSess,
+          ort,
+        );
 
         const sotId = tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
         const detectOut = await initSess.run({
@@ -423,8 +507,9 @@ export async function runAsrPipeline(_opts) {
           encoder_hidden_states: detectEncTensor,
         });
         const detectLogitsKey = Object.keys(detectOut).find(k => k.includes('logits')) ?? Object.keys(detectOut)[0];
-        const detectLogits = new Float32Array(detectOut[detectLogitsKey].data);
-        const vSize = detectOut[detectLogitsKey].dims[detectOut[detectLogitsKey].dims.length - 1];
+        const detectLogitsTensor = detectOut[detectLogitsKey];
+        const detectLogits = tensorDataAsFloat32(detectLogitsTensor.data);
+        const vSize = detectLogitsTensor.dims[detectLogitsTensor.dims.length - 1];
 
         let maxLogit = -Infinity, maxLangToken = -1;
         for (let i = 50259; i <= 50357 && i < vSize; i++) {
@@ -542,17 +627,31 @@ export async function runAsrPipeline(_opts) {
     const mel = WhisperMelProcessor.padToFrames(melProc.process(chunk), 3000);
 
     // Encoder (shared across fallback attempts)
+    const featureTensor = await maybeCastWhisperFeatureTensor(
+      new ort.Tensor('float32', mel, [1, melBins, 3000]),
+      encSess,
+      ort,
+    );
     const encOut = await encSess.run({
-      input_features: new ort.Tensor('float32', mel, [1, melBins, 3000]),
+      input_features: featureTensor,
     });
     const encKey = Object.keys(encOut).find(k =>
       k === 'last_hidden_state' || k.includes('hidden') || k.includes('output')
     ) ?? Object.keys(encOut)[0];
-    const encHs = new Float32Array(encOut[encKey].data);
+    const encOutput = encOut[encKey];
+    const encHs = tensorDataAsFloat32(encOutput.data);
     const dModel = modelConfig.dModel ?? 384;
-    const encoderFrameCount = encHs.length / dModel;
-    const encDims = [1, encoderFrameCount, dModel];
-    const encTensor = new ort.Tensor('float32', encHs, encDims);
+    const encoderFrameCount = encOutput.dims[1] ?? encHs.length / dModel;
+    const encDims = [...encOutput.dims];
+    const rawEncoderTensor = new ort.Tensor(
+      encOutput.type === 'float16' ? 'float16' : 'float32',
+      encOutput.data,
+      encDims,
+    );
+    const encTensor = await maybeCastEncoderHiddenStates(rawEncoderTensor, initSess, ort);
+    const alignTensor = alignSess
+      ? await maybeCastEncoderHiddenStates(rawEncoderTensor, alignSess, ort)
+      : encTensor;
 
     // Transcribe function for temperature fallback
     const transcribeFn = async (temperature) => {
@@ -585,7 +684,7 @@ export async function runAsrPipeline(_opts) {
           const vSize = lt.dims[lt.dims.length - 1];
           decoderInitVocabSize = vSize;
           const lastOff = lt.data.length - vSize;
-          const logits = new Float32Array(lt.data.subarray(lastOff, lastOff + vSize));
+          const logits = tensorDataAsFloat32(lt.data).subarray(lastOff, lastOff + vSize);
           const pk = {};
           for (const k of Object.keys(out).filter(k => k.startsWith('present'))) {
             pk[k] = createRunnerKvEntry(out[k]);
@@ -604,13 +703,17 @@ export async function runAsrPipeline(_opts) {
               v,
               kvDims[k] ?? kvDims[sk] ?? kvDims[k.replace(/^past_key_values\./, 'present.')],
             );
-            if (dims) feeds[sk] = new ort.Tensor('float32', runnerKvData(v), dims);
+            if (dims) feeds[sk] = new ort.Tensor(
+              ArrayBuffer.isView(v) ? 'float32' : (v.type || 'float32'),
+              runnerKvData(v),
+              dims,
+            );
           }
           const out = await stepSess.run(feeds);
           const lk = Object.keys(out).find(k => k.startsWith('logits'));
           const lt = out[lk];
           const vSize = lt.dims[lt.dims.length - 1];
-          const sl = new Float32Array(lt.data);
+          const sl = tensorDataAsFloat32(lt.data);
           const slLast = sl.subarray(sl.length - vSize, sl.length);
           const pk = {};
           for (const k of Object.keys(out).filter(k => k.startsWith('present'))) {
@@ -696,12 +799,12 @@ export async function runAsrPipeline(_opts) {
         try {
           const alignFeeds = {
             input_ids: new ort.Tensor('int64', BigInt64Array.from(alignmentTokenIds.map(BigInt)), [1, alignmentTokenIds.length]),
-            encoder_hidden_states: encTensor,
+            encoder_hidden_states: alignTensor,
           };
           const alignOut = await alignSess.run(alignFeeds);
           const alignKey = Object.keys(alignOut)[0];
           const alignTensor = alignOut[alignKey];
-          const alignmentData = new Float32Array(alignTensor.data);
+          const alignmentData = tensorDataAsFloat32(alignTensor.data);
           const alignmentHeadCount = alignTensor.dims.length === 4
             ? Number(alignTensor.dims[alignTensor.dims.length - 3])
             : 1;
