@@ -161,6 +161,17 @@ interface LoadedExecutorState {
   readonly decoderAlignAttentionLayout?: WhisperAlignmentAttentionLayout;
   readonly enableProfiling?: boolean;
   readonly decoderAlignExternalData?: readonly { readonly dataUrl: string; readonly path: string }[];
+  readonly alignmentReference?: {
+    readonly encoderUrl: string;
+    readonly decoderAlignUrl: string;
+    readonly manifestUrl?: string;
+    readonly backendForOrt: string;
+    readonly encoderExternalData?: readonly { readonly dataUrl: string; readonly path: string }[];
+    readonly decoderAlignExternalData?: readonly { readonly dataUrl: string; readonly path: string }[];
+    readonly decoderAlignCausalSelfAttention?: boolean;
+    readonly decoderAlignAttentionValues?: WhisperAlignmentAttentionValues;
+    readonly decoderAlignAttentionLayout?: WhisperAlignmentAttentionLayout;
+  };
   readonly decoderBackendForOrt?: string;
   readonly experimentalGpuKvCache?: boolean;
   readonly sessionCreateMs?: number;
@@ -170,6 +181,14 @@ interface LoadedExecutorState {
   readonly encoderGpuFlush?: boolean;
   /** PROFILING (encoderGpuDrain): Force GPU drain + re-wrap after encoder. */
   readonly encoderGpuDrain?: boolean;
+}
+
+interface WhisperAlignmentRuntime {
+  readonly decoderAlignSession: OrtSessionLike;
+  readonly decoderAlignCausalSelfAttention?: boolean;
+  readonly decoderAlignAttentionValues?: WhisperAlignmentAttentionValues;
+  readonly decoderAlignAttentionLayout?: WhisperAlignmentAttentionLayout;
+  readonly decoderAlignExternalData?: readonly { readonly dataUrl: string; readonly path: string }[];
 }
 
 interface DecoderStepResult {
@@ -588,6 +607,15 @@ export function hasVerifiedWhisperDecoderAlignment(
   causalSelfAttention: boolean | undefined,
 ): boolean {
   return causalSelfAttention === true;
+}
+
+export function resolveWhisperWordTimestampSource(
+  requested: WhisperSeq2SeqTranscriptionOptions['wordTimestampSource'] | undefined,
+  hasReference: boolean,
+): 'fast' | 'reference' {
+  if (requested === 'fast') return 'fast';
+  if (requested === 'reference') return 'reference';
+  return hasReference ? 'reference' : 'fast';
 }
 
 function isOrtTensorLike(value: unknown): value is OrtTensorLike {
@@ -1245,6 +1273,10 @@ export class WhisperOnnxExecutor {
   private readonly assetHandles: ResolvedAssetHandle[] = [];
   private decoderAlignSession?: OrtSessionLike;
   private decoderAlignLoadPromise?: Promise<OrtSessionLike | undefined>;
+  private alignmentReferenceEncoderSession?: OrtSessionLike;
+  private alignmentReferenceEncoderLoadPromise?: Promise<OrtSessionLike | undefined>;
+  private alignmentReferenceDecoderAlignSession?: OrtSessionLike;
+  private alignmentReferenceDecoderAlignLoadPromise?: Promise<OrtSessionLike | undefined>;
 
   constructor(
     private readonly modelId: string,
@@ -1311,23 +1343,31 @@ export class WhisperOnnxExecutor {
     };
 
     if (source.kind === 'splitgraph') {
-      const materializedExternalData: Record<string, { dataUrl: string; path: string }[]> = {};
-      for (const [graphName, entries] of Object.entries(resolved.externalData ?? {})) {
-        const nextEntries: { dataUrl: string; path: string }[] = [];
-        for (const entry of entries ?? []) {
-          nextEntries.push({
-            path: entry.path,
-            dataUrl:
-              (await resolveRemoteUrl(
-                entry.dataUrl,
-                `${graphName}/${entry.path.replace(/^\.\//, '')}`,
-              )) ?? entry.dataUrl,
-          });
+      const materializeExternalData = async (
+        externalData: ResolvedWhisperArtifacts['externalData'],
+        labelPrefix = '',
+      ): Promise<Record<string, { dataUrl: string; path: string }[]>> => {
+        const materialized: Record<string, { dataUrl: string; path: string }[]> = {};
+        for (const [graphName, entries] of Object.entries(externalData ?? {})) {
+          const nextEntries: { dataUrl: string; path: string }[] = [];
+          for (const entry of entries ?? []) {
+            nextEntries.push({
+              path: entry.path,
+              dataUrl:
+                (await resolveRemoteUrl(
+                  entry.dataUrl,
+                  `${labelPrefix}${graphName}/${entry.path.replace(/^\.\//, '')}`,
+                )) ?? entry.dataUrl,
+            });
+          }
+          if (nextEntries.length > 0) {
+            materialized[graphName] = nextEntries;
+          }
         }
-        if (nextEntries.length > 0) {
-          materializedExternalData[graphName] = nextEntries;
-        }
-      }
+        return materialized;
+      };
+
+      const materializedExternalData = await materializeExternalData(resolved.externalData);
 
       const encoderUrl =
         (await resolveRemoteUrl(resolved.artifacts.encoderUrl, 'encoder_model.onnx')) ??
@@ -1345,6 +1385,43 @@ export class WhisperOnnxExecutor {
         (await resolveRemoteUrl(resolved.manifestUrl, 'manifest.json')) ??
         resolved.manifestUrl;
 
+      let alignmentReference: ResolvedWhisperArtifacts['alignmentReference'];
+      if (resolved.alignmentReference) {
+        const referenceExternalData = await materializeExternalData(
+          resolved.alignmentReference.externalData,
+          'alignment-reference/',
+        );
+        alignmentReference = {
+          ...resolved.alignmentReference,
+          encoderUrl:
+            (await resolveRemoteUrl(
+              resolved.alignmentReference.encoderUrl,
+              'alignment-reference/encoder_model.onnx',
+            )) ?? resolved.alignmentReference.encoderUrl,
+          decoderAlignUrl:
+            (await resolveRemoteUrl(
+              resolved.alignmentReference.decoderAlignUrl,
+              'alignment-reference/decoder_align.onnx',
+            )) ?? resolved.alignmentReference.decoderAlignUrl,
+          manifestUrl:
+            (await resolveRemoteUrl(
+              resolved.alignmentReference.manifestUrl,
+              'alignment-reference/manifest.json',
+            )) ?? resolved.alignmentReference.manifestUrl,
+          externalData:
+            Object.keys(referenceExternalData).length > 0
+              ? {
+                  ...(referenceExternalData.encoder
+                    ? { encoder: referenceExternalData.encoder }
+                    : {}),
+                  ...(referenceExternalData.decoder_align
+                    ? { decoder_align: referenceExternalData.decoder_align }
+                    : {}),
+                }
+              : undefined,
+        };
+      }
+
       return {
         ...resolved,
         artifacts: {
@@ -1359,6 +1436,7 @@ export class WhisperOnnxExecutor {
         decoderStepUrl,
         decoderAlignUrl,
         manifestUrl,
+        alignmentReference,
         externalData:
           Object.keys(materializedExternalData).length > 0
             ? materializedExternalData
@@ -1505,11 +1583,27 @@ export class WhisperOnnxExecutor {
     const modelConfig = await this.loadModelConfig(artifacts);
     const decoderAlignMetadata = await this.loadDecoderAlignMetadata(resolved.manifestUrl);
     const decoderAlignCausalSelfAttention = decoderAlignMetadata?.causalSelfAttention;
-    if (resolved.decoderAlignUrl && !hasVerifiedWhisperDecoderAlignment(decoderAlignCausalSelfAttention)) {
+    if (
+      resolved.decoderAlignUrl &&
+      !hasVerifiedWhisperDecoderAlignment(decoderAlignCausalSelfAttention) &&
+      !resolved.alignmentReference
+    ) {
       warnings.push({
         code: 'whisper.decoder-align-legacy',
         message:
           'decoder_align is missing the causal-self-attention export marker; using generated timestamp interpolation until the artifact is re-exported.',
+        recoverable: true,
+      });
+    }
+
+    const alignmentReferenceMetadata = resolved.alignmentReference
+      ? await this.loadDecoderAlignMetadata(resolved.alignmentReference.manifestUrl)
+      : undefined;
+    if (resolved.alignmentReference && !hasVerifiedWhisperDecoderAlignment(alignmentReferenceMetadata?.causalSelfAttention)) {
+      warnings.push({
+        code: 'whisper.alignment-reference-invalid',
+        message:
+          'The alignment-reference decoder_align artifact is missing the causal-self-attention marker; reference word timestamps remain unavailable.',
         recoverable: true,
       });
     }
@@ -1572,6 +1666,19 @@ export class WhisperOnnxExecutor {
       decoderAlignAttentionLayout: decoderAlignMetadata?.attentionLayout,
       enableProfiling: resolved.enableProfiling,
       decoderAlignExternalData: resolved.externalData?.decoder_align,
+      alignmentReference: resolved.alignmentReference
+        ? {
+            encoderUrl: resolved.alignmentReference.encoderUrl,
+            decoderAlignUrl: resolved.alignmentReference.decoderAlignUrl,
+            manifestUrl: resolved.alignmentReference.manifestUrl,
+            backendForOrt: resolved.alignmentReference.backendForOrt,
+            encoderExternalData: resolved.alignmentReference.externalData?.encoder,
+            decoderAlignExternalData: resolved.alignmentReference.externalData?.decoder_align,
+            decoderAlignCausalSelfAttention: alignmentReferenceMetadata?.causalSelfAttention,
+            decoderAlignAttentionValues: alignmentReferenceMetadata?.attentionValues,
+            decoderAlignAttentionLayout: alignmentReferenceMetadata?.attentionLayout,
+          }
+        : undefined,
       decoderBackendForOrt: resolved.decoderBackendForOrt,
       experimentalGpuKvCache: resolved.experimentalGpuKvCache,
       encoderBufferRewrap: resolved.encoderBufferRewrap,
@@ -1619,6 +1726,124 @@ export class WhisperOnnxExecutor {
       }
     })();
     return this.decoderAlignLoadPromise;
+  }
+
+  private async ensureAlignmentReferenceEncoderSession(
+    loaded: LoadedExecutorState,
+  ): Promise<OrtSessionLike | undefined> {
+    const reference = loaded.alignmentReference;
+    if (!reference) return undefined;
+    if (this.alignmentReferenceEncoderSession) return this.alignmentReferenceEncoderSession;
+    this.alignmentReferenceEncoderLoadPromise ??= (async () => {
+      try {
+        const session = await createWhisperOrtSession(loaded.ort, reference.encoderUrl, {
+          backendId: reference.backendForOrt,
+          enableProfiling: loaded.enableProfiling,
+          ...(reference.backendForOrt.startsWith('webgpu')
+            ? { preferredOutputLocation: 'gpu-buffer' as const }
+            : {}),
+          ...(reference.encoderExternalData
+            ? { externalData: reference.encoderExternalData }
+            : {}),
+        });
+        this.alignmentReferenceEncoderSession = session;
+        return session;
+      } catch (error) {
+        this.alignmentReferenceEncoderLoadPromise = undefined;
+        throw error;
+      }
+    })();
+    return this.alignmentReferenceEncoderLoadPromise;
+  }
+
+  private async ensureAlignmentReferenceDecoderAlignSession(
+    loaded: LoadedExecutorState,
+  ): Promise<OrtSessionLike | undefined> {
+    const reference = loaded.alignmentReference;
+    if (!reference) return undefined;
+    if (this.alignmentReferenceDecoderAlignSession) {
+      return this.alignmentReferenceDecoderAlignSession;
+    }
+    this.alignmentReferenceDecoderAlignLoadPromise ??= (async () => {
+      try {
+        const session = await createWhisperOrtSession(loaded.ort, reference.decoderAlignUrl, {
+          backendId: reference.backendForOrt,
+          enableProfiling: loaded.enableProfiling,
+          ...(reference.decoderAlignExternalData
+            ? { externalData: reference.decoderAlignExternalData }
+            : {}),
+        });
+        this.alignmentReferenceDecoderAlignSession = session;
+        return session;
+      } catch (error) {
+        this.alignmentReferenceDecoderAlignLoadPromise = undefined;
+        throw error;
+      }
+    })();
+    return this.alignmentReferenceDecoderAlignLoadPromise;
+  }
+
+  private async ensureAlignmentReferenceRuntime(
+    loaded: LoadedExecutorState,
+  ): Promise<WhisperAlignmentRuntime | undefined> {
+    const reference = loaded.alignmentReference;
+    if (
+      !reference ||
+      !hasVerifiedWhisperDecoderAlignment(reference.decoderAlignCausalSelfAttention)
+    ) {
+      return undefined;
+    }
+    const decoderAlignSession = await this.ensureAlignmentReferenceDecoderAlignSession(loaded);
+    if (!decoderAlignSession) return undefined;
+    return {
+      decoderAlignSession,
+      decoderAlignCausalSelfAttention: reference.decoderAlignCausalSelfAttention,
+      decoderAlignAttentionValues: reference.decoderAlignAttentionValues,
+      decoderAlignAttentionLayout: reference.decoderAlignAttentionLayout,
+      decoderAlignExternalData: reference.decoderAlignExternalData,
+    };
+  }
+
+  private async runAlignmentReferenceEncoder(
+    loaded: LoadedExecutorState,
+    paddedFeatures: Float32Array,
+    melBins: number,
+    melInputFrames: number,
+  ): Promise<{
+    readonly encoderHiddenStates: OrtTensorLike<Float32Array>;
+    readonly alignmentRuntime: WhisperAlignmentRuntime;
+  }> {
+    const reference = loaded.alignmentReference;
+    if (!reference) {
+      throw new Error('No Whisper alignment-reference artifact is configured.');
+    }
+    const encoderSession = await this.ensureAlignmentReferenceEncoderSession(loaded);
+    const alignmentRuntime = await this.ensureAlignmentReferenceRuntime(loaded);
+    if (!encoderSession || !alignmentRuntime) {
+      throw new Error(
+        'Whisper alignment-reference artifacts are unavailable or lack a verified causal alignment graph.',
+      );
+    }
+    const featureTensor = await maybeCastWhisperFeatureTensor(
+      new loaded.ort.Tensor(
+        'float32',
+        paddedFeatures,
+        [1, melBins, melInputFrames],
+      ),
+      encoderSession,
+      loaded.ort,
+    );
+    const encoderOutputs = await encoderSession.run({ input_features: featureTensor });
+    const outputKey = Object.keys(encoderOutputs)[0];
+    if (!outputKey) {
+      throw new Error('Whisper alignment-reference encoder returned no output tensor.');
+    }
+    const encoderHiddenStates = await maybeCastEncoderHiddenStates(
+      encoderOutputs[outputKey] as OrtTensorLike<Float32Array>,
+      alignmentRuntime.decoderAlignSession,
+      loaded.ort,
+    );
+    return { encoderHiddenStates, alignmentRuntime };
   }
 
   private async materializeCpuEncoderHiddenStates(
@@ -1872,6 +2097,8 @@ export class WhisperOnnxExecutor {
     options: WhisperSeq2SeqTranscriptionOptions,
     audioDurationSeconds?: number,
     warnings?: TranscriptWarning[],
+    alignmentRuntime?: WhisperAlignmentRuntime,
+    alignmentReferenceRequiredButUnavailable = false,
   ): Promise<WhisperNativeTranscript['words']> {
     const { tokenIds: textTokenIds, rowIndices } = collectSplitGraphTextTokenRows(
       allTokens,
@@ -1880,11 +2107,28 @@ export class WhisperOnnxExecutor {
     );
     if (textTokenIds.length === 0) return [];
 
+    if (alignmentReferenceRequiredButUnavailable) {
+      warnings?.push({
+        code: 'whisper.alignment-reference-fallback',
+        message:
+          'The requested Whisper alignment-reference artifacts are unavailable; using generated timestamp interpolation.',
+        recoverable: true,
+      });
+      return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
+        timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
+        timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
+        language,
+      });
+    }
+
     // Older published 4-graph artifacts used an unmasked teacher-forced
     // decoder_align graph. Running it in WebGPU is both unsafe (future-token
     // leakage) and numerically unreliable for the old fp16 export, so keep
     // generated timestamp semantics until the artifact is re-exported.
-    if (!hasVerifiedWhisperDecoderAlignment(loaded.decoderAlignCausalSelfAttention)) {
+    if (
+      !alignmentRuntime &&
+      !hasVerifiedWhisperDecoderAlignment(loaded.decoderAlignCausalSelfAttention)
+    ) {
       warnings?.push({
         code: 'whisper.decoder-align-legacy-fallback',
         message:
@@ -1899,7 +2143,9 @@ export class WhisperOnnxExecutor {
     }
 
     try {
-      const decoderAlignSession = await this.ensureDecoderAlignSession(loaded);
+      const selectedAlignmentRuntime = alignmentRuntime;
+      const decoderAlignSession = selectedAlignmentRuntime?.decoderAlignSession
+        ?? await this.ensureDecoderAlignSession(loaded);
       if (!decoderAlignSession) {
         warnings?.push({
           code: 'whisper.decoder-align-unavailable',
@@ -1945,9 +2191,14 @@ export class WhisperOnnxExecutor {
       );
       const frameCount = dims.length > 0 ? Number(dims[dims.length - 1]) : 0;
       const alignmentHeadCount = dims.length === 4 ? Number(dims[dims.length - 3]) : 1;
-      const alignmentValuesAreLogits = loaded.decoderAlignAttentionValues === 'logits';
+      const alignmentValuesAreLogits =
+        (selectedAlignmentRuntime?.decoderAlignAttentionValues
+          ?? loaded.decoderAlignAttentionValues) === 'logits';
       if (alignmentValuesAreLogits && (
-        loaded.decoderAlignAttentionLayout !== 'selected_heads' || dims.length !== 4 || alignmentHeadCount < 1
+        (selectedAlignmentRuntime?.decoderAlignAttentionLayout
+          ?? loaded.decoderAlignAttentionLayout) !== 'selected_heads' ||
+        dims.length !== 4 ||
+        alignmentHeadCount < 1
       )) {
         throw new Error(
           `decoder_align manifest declares selected-head logits, but output shape [${dims.join(', ')}] ` +
@@ -3789,10 +4040,46 @@ export class WhisperOnnxExecutor {
     );
 
     // 7. Word timestamps via splitgraph alignment
-    const alignedWords = this.shouldReturnWordTimestamps(options)
+    const wantsWordTimestamps = this.shouldReturnWordTimestamps(options);
+    const requestedWordTimestampSource = resolveWhisperWordTimestampSource(
+      options.wordTimestampSource,
+      Boolean(loaded.alignmentReference),
+    );
+    let alignmentEncoderHiddenStates = encoderHiddenStates;
+    let alignmentRuntime: WhisperAlignmentRuntime | undefined;
+    let alignmentReferenceRequiredButUnavailable = false;
+    let wordAlignmentReferenceMs = 0;
+    let alignmentReferenceStartMs: number | undefined;
+    let wordAlignmentSource: 'fast' | 'reference' | 'interpolation' = 'fast';
+    if (wantsWordTimestamps && requestedWordTimestampSource === 'reference') {
+      alignmentReferenceStartMs = nowMs();
+      try {
+        const reference = await this.runAlignmentReferenceEncoder(
+          loaded,
+          paddedFeatures,
+          melBins,
+          melInputFrames,
+        );
+        alignmentEncoderHiddenStates = reference.encoderHiddenStates;
+        alignmentRuntime = reference.alignmentRuntime;
+        wordAlignmentSource = 'reference';
+      } catch (error) {
+        wordAlignmentReferenceMs = alignmentReferenceStartMs === undefined
+          ? 0
+          : nowMs() - alignmentReferenceStartMs;
+        alignmentReferenceRequiredButUnavailable = options.wordTimestampSource === 'reference';
+        warnings.push({
+          code: 'whisper.alignment-reference-unavailable',
+          message:
+            `Whisper alignment-reference inference was unavailable; ${alignmentReferenceRequiredButUnavailable ? 'using timestamp-token interpolation' : 'falling back to the primary alignment path'} (${formatWhisperSessionError(error)}).`,
+          recoverable: true,
+        });
+      }
+    }
+    const alignedWords = wantsWordTimestamps
       ? await this.computeAttentionWordTimestampsSplitGraph(
           loaded,
-          encoderHiddenStates,
+          alignmentEncoderHiddenStates,
           tokenizer,
           tokenDetails,
           generatedTokens,
@@ -3801,9 +4088,25 @@ export class WhisperOnnxExecutor {
           options,
           audio.durationSeconds,
           warnings,
+          alignmentRuntime,
+          alignmentReferenceRequiredButUnavailable,
         )
       : [];
-    const words = this.shouldReturnWordTimestamps(options)
+    if (
+      wantsWordTimestamps &&
+      wordAlignmentSource === 'reference' &&
+      alignmentReferenceStartMs !== undefined
+    ) {
+      // Include the reference decoder_align invocation as well as lazy session
+      // creation and the reference encoder run in the reported cost.
+      wordAlignmentReferenceMs = nowMs() - alignmentReferenceStartMs;
+    }
+    if (wantsWordTimestamps && wordAlignmentSource === 'fast' &&
+        (!loaded.decoderAlignUrl ||
+          !hasVerifiedWhisperDecoderAlignment(loaded.decoderAlignCausalSelfAttention))) {
+      wordAlignmentSource = 'interpolation';
+    }
+    const words = wantsWordTimestamps
       ? await this.finalizeWordTimestamps(
           alignedWords,
           tokenDetails,
@@ -3872,6 +4175,10 @@ export class WhisperOnnxExecutor {
       encoderGpuDrainMs: roundMetric(encoderGpuDrainMs),
       // PROFILING: encoder total when drain is active (encoderRunMs + encoderGpuDrainMs)
       encoderTotalMs: roundMetric(encoderRunMs + encoderGpuDrainMs),
+      wordAlignmentReferenceMs: wantsWordTimestamps && wordAlignmentReferenceMs > 0
+        ? roundMetric(wordAlignmentReferenceMs)
+        : undefined,
+      wordAlignmentSource: wantsWordTimestamps ? wordAlignmentSource : undefined,
       totalMs,
       wallMs: totalMs,
       audioDurationSec: roundMetric(audio.durationSeconds, 4),

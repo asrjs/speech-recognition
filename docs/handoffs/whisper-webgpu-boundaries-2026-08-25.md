@@ -814,3 +814,56 @@ The native measurements are decode-only after model load; WebGPU includes the
 runtime's transcription stages but not the separately reported session load.
 No local whisper.cpp executable was available, so no download or fabricated
 comparison was added.
+
+## Follow-up: lazy precision-reference word alignment (2026-08-25)
+
+The remaining one-frame FP16 WebGPU boundary is now represented explicitly in
+the runtime instead of being hidden behind a timestamp correction. Splitgraph
+sources may provide `artifacts.alignmentReference` with a matched higher-
+precision encoder and causal `decoder_align` graph, plus independent external
+data entries. `alignmentReferenceBackend` selects WebGPU or WASM for that
+pair. The reference sessions are lazy: text-only and fast word-timestamp
+requests do not load or execute them.
+
+`wordTimestampSource` controls the contract:
+
+- `fast` uses the primary inference encoder;
+- `reference` requires the configured reference pair and falls back to
+  generated timestamp interpolation with a recoverable warning if it is
+  unavailable;
+- `auto` uses the reference when configured and otherwise keeps the fast path.
+
+The extra reference stage cost is exposed as `wordAlignmentReferenceMs` and the selected
+source as `wordAlignmentSource` in transcript metrics. The primary decoder
+still uses the fast FP16 WebGPU encoder, GPU-KV greedy path, and zero-download
+behavior; only forced alignment is re-run from the reference hidden states.
+
+Independent browser validation used the local r5 FP16 fast graphs and the
+causal FP32 r1 reference pair, with the exact existing `jfk-10s.ogg` fixture,
+`wordTimestampSource: 'reference'`, and GPU-KV greedy decode. It produced no
+warnings and matched the native causal-FP32 anchors:
+
+| Word | Browser reference span |
+| --- | ---: |
+| `In` | `2.12–2.84s` |
+| `long` | `2.98–3.44s` |
+| `world,` | `4.30–5.38s` |
+| `have` | `7.46–8.86s` |
+| `role...` | `9.68–9.98s` |
+
+The latest repeat, with the corrected metric covering lazy reference-session
+creation, the reference encoder, and the reference `decoder_align` call,
+reported `4.626s` of reference-stage cost and `1.5091x` RTFx for the 10.004s
+clip (in-memory transcribe time `6.629s`; the separate model/session load was
+`11.383s`). An earlier cold repeat reported `16.652s` before the decoder-align
+cost was included, so those numbers are not directly comparable. This is an
+explicit correctness mode, not a default performance setting. The fast r5 path
+remains the production speed mode at roughly `11–12x` RTFx on the same short
+fixture and the previously measured `24–26x` range on the longer warmed
+fixture.
+
+The public preset remains unchanged because no reference artifact has been
+hosted. Remote promotion still requires an approved matched reference pair,
+published precision-variant validation, and a broader English/Turkish timing
+fixture. FireRed/Qwen remain artifact-gated as recorded in the candidate
+handoff.

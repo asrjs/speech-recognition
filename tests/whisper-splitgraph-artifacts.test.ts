@@ -9,6 +9,7 @@ import {
   type OrtModuleLike,
   type ResolvedWhisperArtifacts,
 } from '../src/models/whisper-seq2seq/ort.js';
+import { resolveWhisperWordTimestampSource } from '../src/models/whisper-seq2seq/executor.js';
 import { loadSplitGraphLocalModel } from '../src/models/whisper-seq2seq/local-file.js';
 import type { WhisperSplitGraphArtifactSource } from '../src/models/whisper-seq2seq/types.js';
 
@@ -203,6 +204,51 @@ describe('Whisper splitgraph external data resolution', () => {
     expect(resolved.externalData).toBeUndefined();
   });
 
+  it('resolves an optional alignment-reference pair independently from the fast graphs', () => {
+    const source: WhisperSplitGraphArtifactSource = {
+      ...withExternalData({
+        encoder: [{ path: './encoder_model.onnx.data', file: 'encoder_model.onnx.data' }],
+        decoder_align: [{ path: './decoder_align.onnx.data', file: 'decoder_align.onnx.data' }],
+      }),
+      alignmentReferenceBackend: 'wasm',
+      artifacts: {
+        ...withExternalData({}).artifacts,
+        alignmentReference: {
+          encoderUrl: 'https://example.com/models/reference/encoder_model.onnx',
+          decoderAlignUrl: 'https://example.com/models/reference/decoder_align.onnx',
+          manifestUrl: 'https://example.com/models/reference/manifest.json',
+          externalDataUrls: {
+            encoder: [{
+              path: './encoder_model.onnx.data',
+              file: 'encoder_model.onnx.data',
+            }],
+            decoder_align: [{
+              path: './decoder_align.onnx.data',
+              file: 'decoder_align.onnx.data',
+            }],
+          },
+        },
+      },
+    };
+
+    const resolved = resolveWhisperArtifacts(source, 'webgpu');
+
+    expect(resolved.ortBackend).toBe('webgpu');
+    expect(resolved.alignmentReference?.backendForOrt).toBe('wasm');
+    expect(resolved.alignmentReference?.encoderUrl).toBe(
+      'https://example.com/models/reference/encoder_model.onnx',
+    );
+    expect(resolved.alignmentReference?.decoderAlignUrl).toBe(
+      'https://example.com/models/reference/decoder_align.onnx',
+    );
+    expect(resolved.alignmentReference?.externalData?.encoder?.[0]?.dataUrl).toBe(
+      'https://example.com/models/reference/encoder_model.onnx.data',
+    );
+    expect(resolved.alignmentReference?.externalData?.decoder_align?.[0]?.dataUrl).toBe(
+      'https://example.com/models/reference/decoder_align.onnx.data',
+    );
+  });
+
   it('populates externalData only from splitgraph source manifest metadata', () => {
     const resolved = resolveWhisperArtifacts(
       withExternalData({
@@ -264,6 +310,13 @@ describe('Whisper splitgraph external data resolution', () => {
     );
     expect(resolved.externalData).toBeUndefined();
     expect(resolved.isSplitGraph).toBe(false);
+  });
+
+  it('selects the reference source only when requested or configured for auto mode', () => {
+    expect(resolveWhisperWordTimestampSource(undefined, false)).toBe('fast');
+    expect(resolveWhisperWordTimestampSource('auto', true)).toBe('reference');
+    expect(resolveWhisperWordTimestampSource('fast', true)).toBe('fast');
+    expect(resolveWhisperWordTimestampSource('reference', false)).toBe('reference');
   });
 });
 

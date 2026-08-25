@@ -73,6 +73,25 @@ export interface ExternalDataEntry {
   readonly sha256?: string;
 }
 
+/**
+ * Optional higher-precision artifact pair used only for Whisper word
+ * alignment. The normal encoder/decoder path remains the fast inference
+ * path; this pair is evaluated lazily when a caller selects reference word
+ * timestamps (or when `wordTimestampSource` is `auto`).
+ */
+export interface WhisperSplitGraphAlignmentReference {
+  /** Encoder with the precision/accumulation contract used by the reference. */
+  readonly encoderUrl: string;
+  /** Causal selected-head alignment graph paired with this encoder. */
+  readonly decoderAlignUrl: string;
+  /** Optional manifest; the primary splitgraph manifest is used otherwise. */
+  readonly manifestUrl?: string;
+  /** External-data shards for the reference encoder/alignment graphs. */
+  readonly externalDataUrls?: Partial<
+    Record<'encoder' | 'decoder_align', readonly ExternalDataEntry[]>
+  >;
+}
+
 export interface WhisperSplitGraphArtifacts {
   readonly encoderUrl: string;
   readonly decoderInitUrl: string;
@@ -84,6 +103,8 @@ export interface WhisperSplitGraphArtifacts {
    *  encoder, decoder_init, decoder_step, decoder_align.
    *  Populated from manifest.json when the model uses external ONNX data. */
   readonly externalDataUrls?: Partial<Record<'encoder' | 'decoder_init' | 'decoder_step' | 'decoder_align', readonly ExternalDataEntry[]>>;
+  /** Optional precision/reference pair used only for word alignment. */
+  readonly alignmentReference?: WhisperSplitGraphAlignmentReference;
 }
 
 export interface WhisperSplitGraphArtifactSource {
@@ -91,6 +112,8 @@ export interface WhisperSplitGraphArtifactSource {
   readonly artifacts: WhisperSplitGraphArtifacts;
   readonly encoderBackend?: WhisperExecutionBackend;
   readonly decoderBackend?: WhisperExecutionBackend;
+  /** Backend for the optional alignment-reference encoder and decoder_align. */
+  readonly alignmentReferenceBackend?: WhisperExecutionBackend;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
@@ -230,6 +253,12 @@ export interface WhisperSeq2SeqTranscriptionOptions extends BaseTranscriptionOpt
    * this aligner is provided.
    */
   readonly wordAligner?: WhisperWordAligner;
+  /**
+   * Word-timestamp encoder source. `fast` uses the primary inference encoder;
+   * `reference` requires the optional alignment-reference artifact; `auto`
+   * selects the reference when configured and otherwise uses `fast`.
+   */
+  readonly wordTimestampSource?: 'auto' | 'fast' | 'reference';
 }
 
 export interface WhisperForcedAlignmentWord {

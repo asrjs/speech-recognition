@@ -230,6 +230,51 @@ Word timestamps use cross-attention DTW alignment via `decoder_align.onnx`.
 If `decoder_align.onnx` is not available, word timestamps fall back to
 timestamp-token interpolation (less accurate).
 
+### Optional precision-reference alignment
+
+FP16 WebGPU encoder arithmetic can move an attention-DTW boundary by one
+20-millisecond frame even when decoding and the alignment graph are otherwise
+correct. When exact reference-quality word anchors matter, configure a paired
+higher-precision alignment artifact without slowing the normal text decode:
+
+```typescript
+const source = {
+  ...fastSource,
+  kind: 'splitgraph' as const,
+  artifacts: {
+    ...fastSource.artifacts,
+    alignmentReference: {
+      encoderUrl: 'https://example.com/models/whisper-fp32/encoder_model.onnx',
+      decoderAlignUrl: 'https://example.com/models/whisper-fp32/decoder_align.onnx',
+      manifestUrl: 'https://example.com/models/whisper-fp32/manifest.json',
+      externalDataUrls: {
+        encoder: [{ path: './encoder_model.onnx.data', file: 'encoder_model.onnx.data' }],
+        decoder_align: [{ path: './decoder_align.onnx.data', file: 'decoder_align.onnx.data' }],
+      },
+    },
+  },
+  alignmentReferenceBackend: 'webgpu',
+};
+```
+
+The `alignmentReference` encoder and causal `decoderAlignUrl` must be exported
+as a matched precision pair. Select it per transcription:
+
+```typescript
+await session.transcribe(audio, {
+  language: 'en',
+  detail: 'words',
+  returnTimestamps: 'word',
+  wordTimestampSource: 'reference',
+});
+```
+
+`wordTimestampSource: 'fast'` always uses the primary encoder. `auto` uses the
+reference pair when configured and otherwise keeps the fast path. Reference
+sessions are loaded lazily only when word timestamps are requested; the native
+metrics expose `wordAlignmentReferenceMs` and `wordAlignmentSource` so the
+extra cost is visible.
+
 ### Alignment tensor contracts
 
 The current exporter emits selected raw cross-attention logits with shape

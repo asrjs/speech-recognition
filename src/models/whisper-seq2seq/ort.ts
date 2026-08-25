@@ -93,6 +93,14 @@ export interface ExternalDataMap {
   readonly [graphName: string]: readonly WhisperExternalDataFile[];
 }
 
+export interface ResolvedWhisperAlignmentReference {
+  readonly encoderUrl: string;
+  readonly decoderAlignUrl: string;
+  readonly manifestUrl?: string;
+  readonly backendForOrt: string;
+  readonly externalData?: Partial<Pick<ExternalDataMap, 'encoder' | 'decoder_align'>>;
+}
+
 export interface ResolvedWhisperArtifacts {
   readonly artifacts: WhisperDirectArtifacts;
   readonly warnings: readonly { readonly code: string; readonly message: string }[];
@@ -121,6 +129,7 @@ export interface ResolvedWhisperArtifacts {
   readonly decoderStepUrl?: string;
   readonly decoderAlignUrl?: string;
   readonly manifestUrl?: string;
+  readonly alignmentReference?: ResolvedWhisperAlignmentReference;
   /** Per-graph external data mappings: graph name → [{ dataUrl, path }].
    *  For Node.js, ORT loads co-located .data files automatically. For browser,
    *  the executor passes these to InferenceSession.create() as externalData. */
@@ -281,6 +290,35 @@ function resolveSplitGraphArtifacts(
     addExternalData('decoder_align', source.artifacts.decoderAlignUrl);
   }
 
+  let alignmentReference: ResolvedWhisperAlignmentReference | undefined;
+  const reference = source.artifacts.alignmentReference;
+  if (reference) {
+    const referenceExternalDataBuild: Partial<Pick<ExternalDataMap, 'encoder' | 'decoder_align'>> = {};
+    const addReferenceExternalData = (
+      graphName: 'encoder' | 'decoder_align',
+      graphUrl: string,
+    ): void => {
+      const entries = reference.externalDataUrls?.[graphName];
+      if (!entries || entries.length === 0) return;
+      referenceExternalDataBuild[graphName] = entries.map((entry) => ({
+        dataUrl: resolveDataUrl(graphUrl, entry.file),
+        path: entry.path,
+      }));
+    };
+    addReferenceExternalData('encoder', reference.encoderUrl);
+    addReferenceExternalData('decoder_align', reference.decoderAlignUrl);
+
+    alignmentReference = {
+      encoderUrl: reference.encoderUrl,
+      decoderAlignUrl: reference.decoderAlignUrl,
+      manifestUrl: reference.manifestUrl ?? source.artifacts.manifestUrl,
+      backendForOrt: source.alignmentReferenceBackend ?? encoderBackendForOrt,
+      ...(Object.keys(referenceExternalDataBuild).length > 0
+        ? { externalData: referenceExternalDataBuild }
+        : {}),
+    };
+  }
+
   const externalData: ExternalDataMap | undefined = Object.keys(externalDataBuild).length > 0
     ? externalDataBuild
     : undefined;
@@ -293,7 +331,9 @@ function resolveSplitGraphArtifacts(
     },
     warnings: [],
     ortBackend:
-      encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
+      encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' || alignmentReference?.backendForOrt === 'webgpu'
+        ? 'webgpu'
+        : 'wasm',
     encoderBackendForOrt,
     decoderBackendForOrt,
     wasmPaths: source.wasmPaths,
@@ -312,6 +352,7 @@ function resolveSplitGraphArtifacts(
     decoderStepUrl,
     decoderAlignUrl: source.artifacts.decoderAlignUrl,
     manifestUrl: source.artifacts.manifestUrl,
+    alignmentReference,
     externalData: externalData,
   };
 }

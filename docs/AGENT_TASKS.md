@@ -382,6 +382,10 @@ hallucinations and recovers with higher temperature.
   session creation when partitioning rejects capture and emit a warning; a
   headless Chrome run completed with exact transcript behavior and zero GPU
   downloads.
+- [x] Add a lazy, artifact-gated precision-reference encoder/alignment pair
+  for the remaining FP16 WebGPU one-frame DTW boundary. `fast`, `reference`,
+  and `auto` timestamp-source policies are explicit, and the reference pair
+  has an independent browser parity smoke.
 - [ ] Re-export the published precision variants and validate the remote
   preset; no model-hosting update has been performed.
 - [ ] Validate word timestamps end-to-end on both splitgraph and merged-decoder

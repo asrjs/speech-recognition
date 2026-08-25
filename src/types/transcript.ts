@@ -129,6 +129,8 @@ export interface TranscriptMetrics {
   // Production GPU drain
   readonly encoderGpuDrainMs?: number;
   readonly encoderTotalMs?: number;
+  readonly wordAlignmentReferenceMs?: number;
+  readonly wordAlignmentSource?: string;
   readonly totalMs?: number;
   readonly wallMs?: number;
   readonly audioDurationSec?: number;
