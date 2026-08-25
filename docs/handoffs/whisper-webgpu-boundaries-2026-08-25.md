@@ -51,6 +51,15 @@ Browser harness: `N:\github\asrjs\webgpu-agent-test`
 - Encoder `input_features` are cast from float32 to float16 when a corrected
   fp16 export declares that input type. This keeps the preprocessor dtype-neutral
   while making the graph boundary explicit.
+- The merged-decoder forced-alignment path now shares the same reference prompt
+  builder and task selection as split-graph alignment. It derives the prompt
+  rows, filters cache feeds from the decoder's declared inputs, casts encoder
+  states at the merged decoder boundary, reads GPU attention/logit outputs
+  safely, and aligns only text rows against the attention graph's frame axis.
+- Merged-decoder alignment also crops padded frames to the actual audio duration;
+  it no longer halves the encoder hidden-state length as a proxy for attention
+  frames. Focused regression tests cover the prompt, causal logit rows, cache
+  inputs, text-row extraction, and duration crop.
 
 ## Validation
 
@@ -148,6 +157,23 @@ the corrected r2 artifact with the same transcript and alignment behavior:
 | GPU KV / downloads | `gpu-buffer / 0` |
 | Warnings | none |
 
+## Merged-decoder alignment boundary
+
+The merged-decoder path had a separate, untested alignment implementation that
+had drifted from the corrected split-graph contract. It inserted
+`<|notimestamps|>` into the teacher-forced sequence, hard-coded a four-token
+prompt, read attention rows beginning at row zero, and inferred the frame count
+by halving encoder hidden-state positions. The runtime now uses
+`[SOT, language, task, ...text, EOS]`, derives the prompt length from that
+sequence, reads the causal logit row that predicts each text token, skips prompt
+rows when building DTW matrices, and crops the attention frame axis to the
+input audio duration.
+
+This boundary is covered by
+`tests/whisper-merged-alignment.test.ts`. No local merged-decoder artifact with
+exported `cross_attentions.*` outputs is currently available, so the remaining
+end-to-end claim is artifact-gated rather than presented as a browser benchmark.
+
 ## Current performance reference
 
 The mel benchmark now reports both contracts explicitly (`n_mels=128`, five
@@ -231,11 +257,12 @@ The current browser harness was used for an A/B probe against the same local
 
 The corrected graph must still be regenerated for each published precision
 variant and validated on the remote model before the default preset can claim
-artifact-level timestamp parity. Merged-decoder timestamp behavior and a
-broader English/Turkish reference fixture remain open. The package currently
-has FireRed VAD support but no artifact-backed FireRed ASR2 runtime, and its
-Qwen ASR material is documentation-only; implementing either model needs a
-specific local weight/conversion artifact plus parity fixtures.
+artifact-level timestamp parity. Merged-decoder end-to-end validation still
+needs a timestamped merged graph with `cross_attentions.*` outputs and a broad
+English/Turkish reference fixture. The package currently has FireRed VAD
+support but no artifact-backed FireRed ASR2 runtime, and its Qwen ASR material
+is documentation-only; implementing either model needs a specific local
+weight/conversion artifact plus parity fixtures.
 
 Keep `experimentalBatchedBeam` opt-in, stable CPU-KV beam as the correctness
 oracle, and GPU-KV greedy-only until broader model/reference coverage closes

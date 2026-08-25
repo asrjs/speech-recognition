@@ -1487,30 +1487,40 @@ export class WhisperOnnxExecutor {
     encoderHiddenStates: OrtTensorLike<Float32Array>,
     language: string,
     textTokenIds: number[],
+    task: 'transcribe' | 'translate' = 'transcribe',
   ): Promise<{
     readonly crossAttentions: readonly OrtTensorLike<Float32Array>[];
     readonly logitsForText: Float32Array;
   }> {
     const tokenizer = loaded.tokenizer;
-    const sotId = tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
-    const langId = resolveWhisperLanguageTokenId(
-      tokenizer,
-      resolveWhisperLanguageCode(language, this.config.languages),
+    const resolvedLanguage = resolveWhisperLanguageCode(
+      language,
+      this.config.languages,
     );
-    const taskId = tokenizer.getTokenId('<|transcribe|>') ?? 50359;
-    const noTsId = tokenizer.getTokenId('<|notimestamps|>') ?? 50363;
-    const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
-
-    const forcedIds = [sotId, langId, taskId, noTsId, ...textTokenIds, eosId];
+    const forcedIds = buildWhisperForcedAlignmentTokenIds(
+      tokenizer,
+      resolvedLanguage,
+      textTokenIds,
+      task,
+    );
+    const alignmentPromptLen = forcedIds.length - textTokenIds.length - 1;
     const inputIds = new BigInt64Array(forcedIds.map((id) => BigInt(id)));
     const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, forcedIds.length]);
+    const decoderSession = loaded.decoderSession!;
+    const encoderForAlignment = await maybeCastEncoderHiddenStates(
+      encoderHiddenStates,
+      decoderSession,
+      loaded.ort,
+    );
 
     const feeds: Record<string, unknown> = {
       input_ids: inputIdsTensor,
-      encoder_hidden_states: encoderHiddenStates,
+      encoder_hidden_states: encoderForAlignment,
     };
 
-    const decoderInputNames = loaded.decoderSession!.inputNames ?? [];
+    const decoderInputNames = decoderSession.inputNames ?? [];
+    const shouldFeed = (name: string): boolean =>
+      decoderInputNames.length === 0 || decoderInputNames.includes(name);
     if (decoderInputNames.includes('use_cache_branch')) {
       feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([1]), [1]);
     }
@@ -1520,34 +1530,60 @@ export class WhisperOnnxExecutor {
     const numLayers = loaded.modelConfig.decoderLayers;
     const numHeads = loaded.modelConfig.decoderAttentionHeads;
     const headDim = loaded.modelConfig.headDim;
-    const encoderSeqLen = encoderHiddenStates.dims[1] as number;
+    const encoderSeqLen = encoderForAlignment.dims[1] as number;
     for (let i = 0; i < numLayers; i++) {
-      feeds[`past_key_values.${i}.decoder.key`] = new loaded.ort.Tensor(
-        'float32', new Float32Array(0), [1, numHeads, 0, headDim]);
-      feeds[`past_key_values.${i}.decoder.value`] = new loaded.ort.Tensor(
-        'float32', new Float32Array(0), [1, numHeads, 0, headDim]);
+      const decoderKey = `past_key_values.${i}.decoder.key`;
+      const decoderValue = `past_key_values.${i}.decoder.value`;
+      const encoderKey = `past_key_values.${i}.encoder.key`;
+      const encoderValue = `past_key_values.${i}.encoder.value`;
+      if (shouldFeed(decoderKey)) {
+        feeds[decoderKey] = new loaded.ort.Tensor(
+          'float32', new Float32Array(0), [1, numHeads, 0, headDim]);
+      }
+      if (shouldFeed(decoderValue)) {
+        feeds[decoderValue] = new loaded.ort.Tensor(
+          'float32', new Float32Array(0), [1, numHeads, 0, headDim]);
+      }
       const encoderCacheSize = 1 * numHeads * encoderSeqLen * headDim;
-      feeds[`past_key_values.${i}.encoder.key`] = new loaded.ort.Tensor(
-        'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]);
-      feeds[`past_key_values.${i}.encoder.value`] = new loaded.ort.Tensor(
-        'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]);
+      if (shouldFeed(encoderKey)) {
+        feeds[encoderKey] = new loaded.ort.Tensor(
+          'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]);
+      }
+      if (shouldFeed(encoderValue)) {
+        feeds[encoderValue] = new loaded.ort.Tensor(
+          'float32', new Float32Array(encoderCacheSize), [1, numHeads, encoderSeqLen, headDim]);
+      }
     }
 
-    const outputs = await loaded.decoderSession!.run(feeds);
-    const crossAttentions = extractCrossAttentions(outputs);
+    const outputs = await decoderSession.run(feeds);
+    const crossAttentions = await Promise.all(
+      extractCrossAttentions(outputs).map(async (tensor) => {
+        const { data } = await readOrtTensorData(tensor, { releaseGpu: true });
+        return {
+          data: tensorDataAsFloat32(data as ArrayBufferView),
+          dims: tensor.dims,
+          type: 'float32',
+        } satisfies OrtTensorLike<Float32Array>;
+      }),
+    );
 
-    // Extract logits for the text tokens (skip prompt + EOS)
+    // Decoder logits at row i predict the token after input_ids[i]. The first
+    // forced text token is therefore predicted at the final prompt row, not
+    // at the row containing that text token.
     const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
     const totalVocab = (logitsTensor.dims[logitsTensor.dims.length - 1] as number) ?? 51865;
+    const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
+    const logits = tensorDataAsFloat32(logitsData.data as ArrayBufferView);
+    const logitTimeSteps = Number(logitsTensor.dims[logitsTensor.dims.length - 2] ?? forcedIds.length);
 
-    // forcedIds: [SOT, lang, task, notimestamps, ...text, EOS]
-    const promptLen = 4; // SOT + lang + task + notimestamps
-    const textStart = promptLen;
+    // forcedIds: [SOT, lang, task, ...text, EOS]
+    const textLogitStart = Math.max(0, alignmentPromptLen - 1);
     const textCount = textTokenIds.length;
     const logitsForText = new Float32Array(textCount * totalVocab);
-    const srcOffset = textStart * totalVocab;
-    logitsForText.set(logitsTensor.data.subarray(srcOffset, srcOffset + textCount * totalVocab));
+    const availableRows = Math.max(0, Math.min(textCount, logitTimeSteps - textLogitStart));
+    const srcOffset = textLogitStart * totalVocab;
+    logitsForText.set(logits.subarray(srcOffset, srcOffset + availableRows * totalVocab));
 
     return { crossAttentions, logitsForText };
   }
@@ -1699,7 +1735,8 @@ export class WhisperOnnxExecutor {
     tokenDetails: WhisperNativeToken[],
     segments: WhisperNativeSegment[],
     language: string,
-    _options: WhisperSeq2SeqTranscriptionOptions,
+    options: WhisperSeq2SeqTranscriptionOptions,
+    audioDurationSeconds?: number,
   ): Promise<WhisperNativeTranscript['words']> {
     const alignmentHeads = loaded.generationConfig.alignmentHeads;
     if (alignmentHeads.length === 0) {
@@ -1722,10 +1759,21 @@ export class WhisperOnnxExecutor {
       }
     }
     if (textTokenIds.length === 0) return [];
+    const alignmentTokenIds = buildWhisperForcedAlignmentTokenIds(
+      tokenizer,
+      resolveWhisperLanguageCode(language, this.config.languages),
+      textTokenIds,
+      options.task ?? 'transcribe',
+    );
+    const alignmentPromptLen = alignmentTokenIds.length - textTokenIds.length - 1;
 
     try {
       const alignment = await this.runForcedAlignment(
-        loaded, encoderHiddenStates, language, textTokenIds,
+        loaded,
+        encoderHiddenStates,
+        language,
+        textTokenIds,
+        options.task ?? 'transcribe',
       );
       const crossAttentions = alignment.crossAttentions;
       if (crossAttentions.length === 0) {
@@ -1738,9 +1786,6 @@ export class WhisperOnnxExecutor {
       }
 
       // Build attention head matrices for DTW — select only alignment_heads
-      const encoderFrameCount = (encoderHiddenStates.dims[1] as number) ?? 0;
-      const croppedFrames = Math.floor(encoderFrameCount / 2); // Whisper encoder downsamples by 2
-
       const attentionHeads = alignmentHeads.map(({ layer, head }) => {
         const layerTensor = crossAttentions[layer];
         if (!layerTensor) {
@@ -1752,17 +1797,36 @@ export class WhisperOnnxExecutor {
         }
         const totalTokens = (layerTensor.dims[2] as number) ?? 0;
         const totalFramesPerHead = (layerTensor.dims[3] as number) ?? 0;
+        const croppedFrames = audioDurationSeconds && audioDurationSeconds > 0
+          ? Math.max(1, Math.min(
+              totalFramesPerHead,
+              Math.round(audioDurationSeconds / 0.02),
+            ))
+          : totalFramesPerHead;
+        if (totalTokens < alignmentPromptLen + textTokenIds.length) {
+          throw new Error(
+            `Cross-attention layer ${layer} has ${totalTokens} token rows; expected at least ${alignmentPromptLen + textTokenIds.length}.`,
+          );
+        }
         // Extract single head: tensor has shape [batch=1, heads, tokens, frames]
         const headSize = totalTokens * totalFramesPerHead;
         const headOffset = head * headSize;
-        const headValues = layerTensor.data.subarray(headOffset, headOffset + headSize);
+        const headValues = new Float32Array(textTokenIds.length * totalFramesPerHead);
+        for (let tokenIndex = 0; tokenIndex < textTokenIds.length; tokenIndex++) {
+          const sourceOffset = headOffset + (alignmentPromptLen + tokenIndex) * totalFramesPerHead;
+          headValues.set(
+            layerTensor.data.subarray(sourceOffset, sourceOffset + totalFramesPerHead),
+            tokenIndex * totalFramesPerHead,
+          );
+        }
         return {
-          values: new Float32Array(headValues),
-          tokenCount: totalTokens,
+          values: headValues,
+          tokenCount: textTokenIds.length,
           frameCount: croppedFrames,
         };
       });
 
+      const croppedFrames = attentionHeads[0]?.frameCount ?? 0;
       const dtwTimestamps = computeWhisperDtwTokenTimestamps({
         attentionHeads,
         tokenCount: textTokenIds.length,
@@ -2314,6 +2378,7 @@ export class WhisperOnnxExecutor {
           segments,
           language,
           options,
+          audio.durationSeconds,
         )
       : [];
     const words = this.shouldReturnWordTimestamps(options)
