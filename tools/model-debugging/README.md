@@ -156,6 +156,15 @@ Start with the curated reference set in:
 - Result JSONs in:
   - `tools/data/results/canary/`
 
+### Candidate ASR reference tooling
+
+- FireRedASR2-AED: local native token/text/timestamp capture with checkpoint
+  hashes, under reference/fireredasr2-aed.
+- Qwen3-ASR-0.6B: offline-only official qwen-asr batch capture, under
+  reference/qwen3-asr-0.6b.
+- node-audit-onnx-artifact.mjs: local ONNX inventory, SHA-256, external-data,
+  and native CPU load audit.
+
 ## Current Lessons
 
 ### Node-first audio prep debugging is worth it

@@ -1,0 +1,240 @@
+#!/usr/bin/env node
+
+/**
+ * Audit a local ONNX bundle before it becomes a runtime artifact.
+ *
+ * The command is intentionally local-only. It never resolves model IDs,
+ * contacts a model hub, or fills in missing external-data files.
+ */
+
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { performance } from 'node:perf_hooks';
+
+function parseArgs(argv) {
+  const options = {
+    modelDir: undefined,
+    output: undefined,
+    recursive: false,
+    allowLoadFailures: false,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--model-dir' && argv[index + 1]) {
+      options.modelDir = argv[++index];
+    } else if (arg === '--output' && argv[index + 1]) {
+      options.output = argv[++index];
+    } else if (arg === '--recursive') {
+      options.recursive = true;
+    } else if (arg === '--allow-load-failures') {
+      options.allowLoadFailures = true;
+    } else if (arg === '--help' || arg === '-h') {
+      printUsage();
+      process.exit(0);
+    } else {
+      throw new Error('Unknown argument: ' + arg);
+    }
+  }
+
+  if (!options.modelDir) {
+    throw new Error('--model-dir is required');
+  }
+  return options;
+}
+
+function printUsage() {
+  console.log(
+    [
+      'Usage:',
+      '  node node-audit-onnx-artifact.mjs --model-dir <directory> [options]',
+      '',
+      'Options:',
+      '  --output <file>           Write JSON to a file instead of stdout',
+      '  --recursive               Include ONNX files below nested directories',
+      '  --allow-load-failures     Report CPU ORT failures without a non-zero exit',
+    ].join('\n'),
+  );
+}
+
+async function walkFiles(directory, recursive) {
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (recursive) {
+        files.push(...(await walkFiles(entryPath, true)));
+      }
+    } else if (entry.isFile()) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+function sha256File(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    const stream = createReadStream(filePath);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
+
+function relativeArtifactPath(modelDir, filePath) {
+  return path.relative(modelDir, filePath).split(path.sep).join('/');
+}
+
+function sidecarCandidates(graphPath) {
+  const candidates = [
+    graphPath + '.data',
+    path.join(path.dirname(graphPath), path.basename(graphPath, '.onnx') + '.data'),
+  ];
+  return [...new Set(candidates)];
+}
+
+function sessionNames(session, key) {
+  const value = session?.[key];
+  return Array.isArray(value) ? [...value] : [];
+}
+
+async function auditGraph(ort, modelDir, graphPath) {
+  const relativePath = relativeArtifactPath(modelDir, graphPath);
+  const started = performance.now();
+  const sidecars = [];
+  for (const candidate of sidecarCandidates(graphPath)) {
+    try {
+      const stat = await fs.stat(candidate);
+      sidecars.push({
+        path: relativeArtifactPath(modelDir, candidate),
+        exists: true,
+        size_bytes: stat.size,
+        sha256: await sha256File(candidate),
+      });
+    } catch (error) {
+      if (error?.code !== 'ENOENT') {
+        sidecars.push({
+          path: relativeArtifactPath(modelDir, candidate),
+          exists: false,
+          error: String(error?.message ?? error),
+        });
+      }
+    }
+  }
+
+  try {
+    const session = await ort.InferenceSession.create(graphPath, {
+      executionProviders: ['cpu'],
+    });
+    return {
+      path: relativePath,
+      loaded: true,
+      execution_provider: 'cpu',
+      load_ms: Number((performance.now() - started).toFixed(3)),
+      input_names: sessionNames(session, 'inputNames'),
+      output_names: sessionNames(session, 'outputNames'),
+      external_data_candidates: sidecars,
+    };
+  } catch (error) {
+    return {
+      path: relativePath,
+      loaded: false,
+      execution_provider: 'cpu',
+      load_ms: Number((performance.now() - started).toFixed(3)),
+      external_data_candidates: sidecars,
+      error: String(error?.message ?? error),
+    };
+  }
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  const modelDir = path.resolve(options.modelDir);
+  const stat = await fs.stat(modelDir).catch(() => undefined);
+  if (!stat?.isDirectory()) {
+    throw new Error('Model directory not found: ' + modelDir);
+  }
+
+  const files = await walkFiles(modelDir, options.recursive);
+  const onnxFiles = files.filter((filePath) => filePath.toLowerCase().endsWith('.onnx'));
+  if (onnxFiles.length === 0) {
+    throw new Error(
+      'No ONNX files found in ' + modelDir + (options.recursive ? ' (recursive)' : ''),
+    );
+  }
+
+  let ort;
+  let ortImportError;
+  try {
+    const module = await import('onnxruntime-node');
+    ort = module.default ?? module;
+  } catch (error) {
+    ortImportError = String(error?.message ?? error);
+  }
+
+  const inventory = [];
+  for (const filePath of files) {
+    const fileStat = await fs.stat(filePath);
+    inventory.push({
+      path: relativeArtifactPath(modelDir, filePath),
+      size_bytes: fileStat.size,
+      sha256: await sha256File(filePath),
+    });
+  }
+
+  const graphs = ort
+    ? await Promise.all(onnxFiles.map((filePath) => auditGraph(ort, modelDir, filePath)))
+    : onnxFiles.map((filePath) => ({
+        path: relativeArtifactPath(modelDir, filePath),
+        loaded: false,
+        execution_provider: 'cpu',
+        load_ms: 0,
+        external_data_candidates: [],
+        error: 'onnxruntime-node import failed: ' + ortImportError,
+      }));
+
+  const failedGraphs = graphs.filter((graph) => !graph.loaded);
+  const report = {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    model_dir: modelDir,
+    recursive: options.recursive,
+    local_only: true,
+    inventory,
+    graphs,
+    summary: {
+      file_count: inventory.length,
+      onnx_count: graphs.length,
+      loaded_onnx_count: graphs.length - failedGraphs.length,
+      failed_onnx_count: failedGraphs.length,
+      ok: failedGraphs.length === 0,
+    },
+  };
+
+  const encoded = JSON.stringify(report, null, 2);
+  if (options.output) {
+    const outputPath = path.resolve(options.output);
+    const outputDirectory = path.dirname(outputPath);
+    const outputDirectoryStat = await fs.stat(outputDirectory).catch(() => undefined);
+    if (!outputDirectoryStat?.isDirectory()) {
+      await fs.mkdir(outputDirectory, { recursive: true });
+    }
+    await fs.writeFile(outputPath, encoded + '\n', 'utf8');
+    console.log('Wrote ONNX artifact audit to ' + outputPath);
+  } else {
+    console.log(encoded);
+  }
+
+  if (failedGraphs.length > 0 && !options.allowLoadFailures) {
+    process.exitCode = 1;
+  }
+}
+
+main().catch((error) => {
+  console.error(error?.stack ?? String(error));
+  process.exitCode = 1;
+});
