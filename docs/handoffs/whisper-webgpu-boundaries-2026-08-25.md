@@ -867,3 +867,56 @@ hosted. Remote promotion still requires an approved matched reference pair,
 published precision-variant validation, and a broader English/Turkish timing
 fixture. FireRed/Qwen remain artifact-gated as recorded in the candidate
 handoff.
+
+## Continuation audit: decoder compatibility and frontend benchmark (2026-08-25)
+
+The current committed runtime was rechecked in the independent Chrome/WebGPU
+harness after the lazy reference-alignment change. The warmed 29.9043-second
+JFK fixture produced the following results:
+
+| Case                                            |     Total |       RTFx |    Decode | Step calls | KV         | Downloads |
+| ----------------------------------------------- | --------: | ---------: | --------: | ---------: | ---------- | --------: |
+| FP16-I/O encoder + FP16 decoder, greedy GPU-KV  |  `1.321s` | `22.8136x` |   `864ms` |       `49` | GPU buffer |       `0` |
+| FP16-I/O encoder + FP32 decoder, greedy GPU-KV  |  `1.282s` | `23.5511x` |   `649ms` |       `49` | GPU buffer |       `0` |
+| FP32 encoder + FP32 decoder, greedy GPU-KV      |  `1.440s` | `20.9186x` |   `661ms` |       `49` | GPU buffer |       `0` |
+| FP16-I/O encoder + FP16 decoder, stable beam 5  | `20.137s` |  `1.4858x` | `19.500s` |      `250` | CPU        |       `0` |
+| FP16-I/O encoder + FP16 decoder, batched beam 5 |  `4.780s` |  `6.2694x` |  `4.154s` |       `50` | CPU        |       `0` |
+
+The batched beam transcript was coherent and matched the existing beam-5
+parity fixture. It is approximately `4.2x` faster than scalar beam 5 on this
+run, while greedy GPU-KV remains the production speed path. The FP32 decoder
+pair is a useful precision control, not a default promotion: its apparent
+speed lead over full FP16 is within browser/GPU run variance and does not
+remove the FP16 encoder timestamp boundary.
+
+Two ORT compatibility experiments were also closed:
+
+- `decoderGraphCapture=1` cannot partition the current decoder-step graph;
+  ORT falls back to the regular session with the recoverable
+  `whisper.decoder-step-graph-capture-fallback` warning and no demonstrated
+  speed gain.
+- The harness's `freeDimensionOverrides={batch:1}` diagnostic forces the
+  batched step contract back toward batch one. The beam-5 run fell back to
+  `250` scalar step calls and measured `33.778s` (`1.4238x`), versus `4.780s`
+  for the unmodified batched path. It is not a production setting.
+
+The exact frontend benchmark was repeated after rejecting a mixed-radix
+400-point FFT experiment. The experiment matched the direct DFT regression,
+but measured `241.9ms` for 30 seconds versus the committed Bluestein path at
+`188.6ms`; it was discarded and no frontend source change remains. The
+committed exact-400 path therefore remains the Whisper-compatible default.
+The opt-in 512-point path measured `56.7ms` on the same host, but changes the
+frequency-bin grid and remains unsuitable for model-parity inference.
+
+### Promotion boundary
+
+No safe runtime timestamp offset was found or added. The remaining one-frame
+`world,` endpoint difference is still an FP16 WebGPU encoder/artifact boundary;
+the explicit reference encoder plus causal alignment graph is the model-correct
+solution. The public manifest still lacks the matched reference pair and the
+causal alignment marker, so the public preset remains unchanged.
+
+Batched encoder across independent audio samples remains a separate API and
+artifact-capability project. The current completed batching work is active-beam
+decoder batching with explicit fallback and parity coverage; no unsupported
+GPU-KV beam reordering or fake batch-transcription claim was introduced.
