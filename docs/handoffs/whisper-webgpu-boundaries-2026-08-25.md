@@ -659,6 +659,25 @@ The r5 artifact remains local and was not copied into the public model folders
 or uploaded to a remote repository. The corrected graph still needs a fresh
 browser run for each published precision pairing before remote promotion.
 
+## Follow-up: mixed-precision encoder probe and external-data compatibility (2026-08-25)
+
+A controlled local graph rewrite was tested against r5 with FP32
+`LayerNormalization` and `Softmax` islands surrounded by FP16 casts. CPU ORT
+gave a small hidden-state improvement toward the FP32 reference (cosine
+`0.999989867` versus r5 `0.999985397` on the JFK mel fixture), and an
+independent browser run preserved the exact 16-word anchors:
+`In 2.12–2.84s`, `long 2.98–3.44s`, `world, 4.30–5.38s`, and
+`role... 9.68–9.98s`. It is not a production candidate: the mixed encoder
+measured roughly `568–1,420ms` on the 10s WebGPU fixture versus r5's warmed
+`191ms`, with no observable timestamp improvement. The temporary artifact was
+kept out of public model folders and remote hosting.
+
+The runtime also now forwards every manifest-declared external-data shard to
+ORT instead of selecting only the first entry. The one-file `.onnx.data`
+layout used by the current Whisper exports is unchanged, while multi-shard
+exports now remain loadable in browser and Node session paths. A focused
+artifact test covers the complete shard list.
+
 ## Remaining boundary
 
 The local split-graph timestamp contract is now fixed and independently
