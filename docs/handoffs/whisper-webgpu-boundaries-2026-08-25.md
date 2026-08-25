@@ -325,6 +325,47 @@ The current browser harness was used for an A/B probe against the same local
   for beam 5. Total WebGPU time remains variable, so this is kept inside the
   existing opt-in `experimentalBatchedBeam` path.
 
+## Continuation audit (2026-08-25)
+
+The remaining timestamp discrepancy was isolated with a complete local r4
+graph set and an independent CPU ONNX Runtime reference. The r4 artifacts
+were temporarily installed into both the decoder and encoder folders of the
+browser harness, then restored from backups after the probes.
+
+- The r4 CPU reference used the same 128-bin TypeScript-compatible Whisper mel
+  contract and returned the raw DTW sequence beginning `[0.00, 2.82, 3.00,
+  3.48, ...]` for the first text boundary. The Python/OpenAI mel output and
+  the TypeScript mel output matched within float32 roundoff (same frame count,
+  extrema, and first-frame values).
+- The complete r4 WebGPU browser run kept the transcript exact, GPU-KV, and
+  zero GPU downloads, but returned `In 2.32–2.84s`. Replacing the public
+  optimized encoder with the r4 encoder did not move that boundary.
+- A split-backend control with the r4 WebGPU encoder and r4 decoder/alignment
+  graph on WASM also returned `2.32–2.84s`. This rules out the WebGPU
+  `decoder_align` execution provider and the DTW row-selection implementation
+  as the source of the difference; the sensitivity is in the WebGPU encoder
+  numerical path feeding forced alignment. The r4 WASM fp16 encoder control
+  was not viable (`std::bad_alloc`), so it is not a performance or correctness
+  oracle.
+- The optional Wav2Vec2 refinement on the complete r4 set returned
+  `In 2.786–2.866s`, close to the CPU forced-alignment boundary. No timestamp
+  fudge was added: a model export with a verified fp32-accumulation encoder,
+  or an explicit alignment-only CPU reference path, is still required before
+  claiming native first-word parity.
+
+The portable `tests/smoke/whisperx-runner.mjs` was tightened as part of this
+audit. It now locates RIFF `fmt `/`data` chunks instead of assuming a 44-byte
+header, preserves declared fp16/fp32 KV dtypes, and uses the same encoder and
+alignment boundary casts as the main executor. New tests cover metadata-chunk
+WAV parsing and fp16 KV preservation. A real fp32 splitgraph smoke completed
+with the exact `10.0043125s` audio duration and the expected English
+transcript.
+
+The public harness was restored after validation. Original hashes remain:
+legacy `fp16/decoder_align.onnx` `2B730AE7...`, its data file
+`94AEB6AB...`, `fp16/manifest.json` `309FD78F...`, and the optimized encoder
+`20EDF7D5...`.
+
 ## Remaining boundary
 
 The local split-graph timestamp contract is now fixed and independently
