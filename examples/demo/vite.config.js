@@ -15,6 +15,9 @@ export default defineConfig({
     ],
   },
   server: {
+    fs: {
+      allow: ['N:/github/asrjs/speech-recognition', 'N:/models'],
+    },
     https: fs.existsSync(`${certDir}/key.pem`)
       ? { key: fs.readFileSync(`${certDir}/key.pem`), cert: fs.readFileSync(`${certDir}/cert.pem`) }
       : false,

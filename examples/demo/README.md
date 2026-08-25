@@ -21,3 +21,13 @@ ysdede/whisper-large-v3-turbo-onnx-4graph
 
 The q8 WASM preset is the safest browser fallback. The fp16io encoder + fp32
 decoder preset is the current WebGPU target.
+
+Canary 180M Flash smoke page:
+
+```text
+http://localhost:8767/canary-smoke.html
+```
+
+It uses the approved local smoke bundle under `N:/models` and the fixed
+`jfk-short.wav` fixture. The Vite filesystem allow-list is intentionally
+limited to this repository and `N:/models`.

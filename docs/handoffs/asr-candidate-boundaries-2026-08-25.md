@@ -99,6 +99,27 @@ workspace. See
 [`qwen3-asr-webgpu-2026-08-26.md`](qwen3-asr-webgpu-2026-08-26.md) for the
 artifact contract and verification gate.
 
+### Canary 180M Flash browser verification (2026-08-26)
+
+Canary is now the next fully exercised browser candidate rather than a
+scaffold. The existing `src/models/nemo-aed` implementation was run against
+the approved local smoke bundle at
+`N:/models/onnx/nemo/canary-180m-flash-smoke` with the JavaScript feature
+extractor and FP16 encoder/decoder graphs.
+
+The fixed 11-second `jfk-short.wav` fixture produced exact text in both local
+WASM and browser WebGPU. The browser run was cross-origin isolated and
+reported 30.355 ms preprocessing, 413.935 ms encoding, 774.925 ms decoding,
+1,219.88 ms total, and 9.0173x RTFx. It emitted 44 tokens over 45 decode
+iterations with no warnings. This is a smoke/reference result, not a claim of
+model-wide WER; broader language and quantization parity remain separate
+gates.
+
+The repeatable browser entry point is
+`examples/demo/public/canary-smoke.html`. It is deliberately artifact-gated:
+no model weights are downloaded or committed, and the Vite file allow-list
+only exposes the repository and `N:/models`.
+
 ### Required Qwen verification sequence
 
 1. Capture an approved `qwen-asr` reference environment and a fixed fixture
