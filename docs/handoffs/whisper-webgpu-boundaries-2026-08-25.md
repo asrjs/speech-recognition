@@ -946,3 +946,25 @@ error. The split graph also rejects concurrent `decoder_init` and
 metadata work and keeps encoder → decoder-init → decoder-step creation
 serialized. This is a safe cold-load improvement, not an inference-throughput
 claim.
+
+## Continuation audit: independent WebGPU encoder batch probe (2026-08-25)
+
+An independent Chrome/WebGPU probe exercised the checked-in FP16-I/O encoder
+directly with dynamic inputs `[batch,128,3000]` and outputs
+`[batch,1500,1280]`. Five warmed runs per batch size measured ORT execution
+before output readback:
+
+| Case | Median encoder time | Relative total | Per-item time |
+| ---- | ------------------: | --------------: | ------------: |
+| Batch 1 | `481.110ms` | `1.00x` | `481.110ms` |
+| Batch 2 | `847.495ms` | `1.76x` | `423.748ms` |
+
+The first output slice from batch 2 matched the separately-run batch-1 output
+with `maxAbs=0` on the synthetic mel-shaped probe input. This verifies the
+dynamic encoder contract and shows a modest throughput gain, but it is not a
+full transcription parity result: the probe used sparse synthetic features,
+did not run either decoder per item, and did not measure real independent
+audio. A public batch-transcription API therefore remains gated on real-audio
+preprocessing, decoder parity, memory/lifetime policy, and a documented
+fallback. Active-beam decoder batching remains the only promoted batching
+optimization.
