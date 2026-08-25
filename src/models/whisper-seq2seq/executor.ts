@@ -1532,12 +1532,24 @@ export class WhisperOnnxExecutor {
       enableProfiling: resolved.enableProfiling,
     });
 
-    const tokenizer = await WhisperTokenizer.fromUrl(artifacts.tokenizerUrl);
     const warnings: TranscriptWarning[] = [...resolved.warnings];
 
-    // Time session creation
+    // These small artifact reads are independent of ORT graph construction.
+    // Start them together so a cold load does not serialize tokenizer/config
+    // fetches in front of multi-second session creation.
+    const tokenizerPromise = WhisperTokenizer.fromUrl(artifacts.tokenizerUrl);
+    const genConfigPromise = this.loadGenerationConfig(artifacts);
+    const modelConfigPromise = this.loadModelConfig(artifacts);
+    const decoderAlignMetadataPromise = this.loadDecoderAlignMetadata(resolved.manifestUrl);
+    const alignmentReferenceMetadataPromise = resolved.alignmentReference
+      ? this.loadDecoderAlignMetadata(resolved.alignmentReference.manifestUrl)
+      : Promise.resolve(undefined);
+
+    // Time session creation. ORT's WebGPU EP currently permits only one
+    // InferenceSession.create call at a time, so graph creation remains
+    // serialized. The metadata promises above still overlap this expensive
+    // first graph build safely.
     const sessionStart = nowMs();
-    // Only create encoder session for now (decoder sessions created below if splitgraph)
     const encoderSessionOptions: WhisperOrtSessionOptions = {
       backendId: resolved.encoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
@@ -1553,7 +1565,7 @@ export class WhisperOnnxExecutor {
         ? { externalData: resolved.externalData.encoder }
         : {}),
     };
-    const encoderSession = await createWhisperOrtSessionWithGraphCaptureFallback(
+    const encoderSessionPromise = createWhisperOrtSessionWithGraphCaptureFallback(
       ort,
       artifacts.encoderUrl,
       encoderSessionOptions,
@@ -1566,22 +1578,19 @@ export class WhisperOnnxExecutor {
         : undefined,
     );
 
-    // Merged decoder session — only needed for non-splitgraph path
-    let decoderSession: OrtSessionLike | undefined;
+    // Merged decoder session — only needed for non-splitgraph path. It is
+    // created after the encoder to respect ORT WebGPU's single-session-create
+    // boundary.
     const isSplitGraph = resolved.isSplitGraph;
-    if (!isSplitGraph) {
-      decoderSession = await createWhisperOrtSession(ort, artifacts.decoderUrl, {
-        backendId: resolved.decoderBackendForOrt,
-        enableProfiling: resolved.enableProfiling,
-        ...(resolved.externalData?.decoder_init
-          ? { externalData: resolved.externalData.decoder_init }
-          : {}),
-      });
-    }
 
-    const genConfig = await this.loadGenerationConfig(artifacts);
-    const modelConfig = await this.loadModelConfig(artifacts);
-    const decoderAlignMetadata = await this.loadDecoderAlignMetadata(resolved.manifestUrl);
+    const [tokenizer, genConfig, modelConfig, decoderAlignMetadata, alignmentReferenceMetadata, encoderSession] = await Promise.all([
+      tokenizerPromise,
+      genConfigPromise,
+      modelConfigPromise,
+      decoderAlignMetadataPromise,
+      alignmentReferenceMetadataPromise,
+      encoderSessionPromise,
+    ]);
     const decoderAlignCausalSelfAttention = decoderAlignMetadata?.causalSelfAttention;
     if (
       resolved.decoderAlignUrl &&
@@ -1596,9 +1605,6 @@ export class WhisperOnnxExecutor {
       });
     }
 
-    const alignmentReferenceMetadata = resolved.alignmentReference
-      ? await this.loadDecoderAlignMetadata(resolved.alignmentReference.manifestUrl)
-      : undefined;
     if (resolved.alignmentReference && !hasVerifiedWhisperDecoderAlignment(alignmentReferenceMetadata?.causalSelfAttention)) {
       warnings.push({
         code: 'whisper.alignment-reference-invalid',
@@ -1608,6 +1614,7 @@ export class WhisperOnnxExecutor {
       });
     }
 
+    let decoderSession: OrtSessionLike | undefined;
     let decoderInitSession: OrtSessionLike | undefined;
     let decoderStepSession: OrtSessionLike | undefined;
     let decoderAlignSession: OrtSessionLike | undefined;
@@ -1654,6 +1661,14 @@ export class WhisperOnnxExecutor {
           : undefined,
       );
       // Defer decoder_align — only load when needed for alignment (saves VRAM)
+    } else {
+      decoderSession = await createWhisperOrtSession(ort, artifacts.decoderUrl, {
+        backendId: resolved.decoderBackendForOrt,
+        enableProfiling: resolved.enableProfiling,
+        ...(resolved.externalData?.decoder_init
+          ? { externalData: resolved.externalData.decoder_init }
+          : {}),
+      });
     }
 
     return {

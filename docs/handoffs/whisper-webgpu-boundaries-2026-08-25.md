@@ -920,3 +920,29 @@ Batched encoder across independent audio samples remains a separate API and
 artifact-capability project. The current completed batching work is active-beam
 decoder batching with explicit fallback and parity coverage; no unsupported
 GPU-KV beam reordering or fake batch-transcription claim was introduced.
+
+The checked-in fp16-I/O encoder was also inspected with native ORT. Its contract
+is dynamic `[batch,128,3000] -> [batch,1500,1280]`, but a CPU probe measured
+`6.753s` for batch 1 and `14.018s` for batch 2 (`2.08x`), confirming the
+existing warning that dynamic shape support alone does not make batching useful
+on CPU. A WebGPU independent-audio batch API remains gated on a browser batch
+benchmark plus per-item decoder parity; active-beam decoder batching is the
+only promoted batching optimization today.
+
+## Continuation audit: safe cold-load overlap (2026-08-25)
+
+The 10.004-second local JFK fixture was used to profile model-load scheduling.
+The warmed inference path remains about `0.75s` with the same transcript,
+`19` tokens, GPU-KV storage, and `0` GPU downloads. The earlier sequential load
+reported `15.753s` of `sessionCreateMs`; overlapping independent tokenizer,
+config, and manifest reads with the first encoder graph reduced the fresh
+repeat to `13.725s` while retaining serialized ORT session construction.
+
+The attempted stronger optimization was rejected by an explicit runtime
+boundary. Starting multiple WebGPU `InferenceSession.create` calls together
+reliably raised ORT's `another WebGPU EP inference session is being created`
+error. The split graph also rejects concurrent `decoder_init` and
+`decoder_step` creation. The committed implementation therefore overlaps only
+metadata work and keeps encoder → decoder-init → decoder-step creation
+serialized. This is a safe cold-load improvement, not an inference-throughput
+claim.
