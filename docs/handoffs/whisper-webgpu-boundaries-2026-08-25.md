@@ -1066,3 +1066,31 @@ the generated manifest; `audit_publish.py` rejects a publish-ready variant
 that ships `decoder_align.onnx` without those declarations. Legacy artifacts
 remain loadable for the runtime's recoverable generated-timestamp fallback,
 but cannot pass the timestamp-artifact publish audit.
+
+## Continuation audit: scalar beam encoder-KV reuse (2026-08-25)
+
+The scalar CPU-KV beam bridge had one remaining avoidable copy boundary: every
+`decoder_step` rebuilt the immutable encoder key/value tensors for every active
+beam, even though only decoder self-attention KV changes after `decoder_init`.
+The executor now keeps one shape- and dtype-checked ORT tensor per encoder-KV
+name for the lifetime of the current transcription. Decoder self-KV remains
+freshly cloned/reconstructed, the cache is never shared across audio sessions,
+and any shape or dtype mismatch takes the existing defensive path. The
+canonical decoder cache contract already marks past KV read-only, so this is a
+tensor-lifetime optimization rather than a graph-semantic change.
+
+Focused unit coverage and the full repository gates pass. Independent Chrome
+WebGPU validation against the public FP16-I/O/FP16 split graph retained the
+same 50-token English transcript, CPU-KV storage, zero GPU downloads, and 245
+scalar step calls. Two warmed measurement runs reported `14.392s` and
+`15.489s` total transcription, with `68.38ms` and `81.91ms` total scalar
+feed-build time; browser variance is material, so these runs are evidence of
+correctness and lower copy overhead rather than a controlled speedup claim.
+
+The separate opt-in batched beam path was rerun after the change. Beam 5
+returned the same transcript in `4.747s` and `5.500s`, with 49 batched step
+calls, CPU-KV, and zero GPU downloads. This confirms that scalar encoder-KV
+reuse does not alter the active-beam batching path. The public promotion
+boundaries remain unchanged: GPU-KV beam is still unsupported, independent
+audio batching is still artifact- and parity-gated, and the public alignment
+graphs are still legacy until causal variants are hosted and audited.

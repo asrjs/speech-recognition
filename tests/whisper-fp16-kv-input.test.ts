@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   cloneDecoderKvDataForInput,
+  canReuseWhisperEncoderKvTensor,
   canShareWhisperEncoderKvAcrossBatch,
   concatDecoderKvDataForBatch,
   float32ToFloat16Bits,
@@ -17,6 +18,23 @@ afterEach(() => {
 });
 
 describe('Whisper fp16 decoder-step KV inputs', () => {
+  it('reuses scalar encoder KV only when shape and dtype remain stable', () => {
+    const source = new Uint16Array([1, 2, 3, 4]);
+    const stable = new Uint16Array(source);
+    const cached = {
+      sourceData: source,
+      stableData: stable,
+      dims: [1, 20, 1500, 64],
+      type: 'float16' as const,
+    };
+    expect(canReuseWhisperEncoderKvTensor(cached, source, [1, 20, 1500, 64], 'float16')).toBe(true);
+    expect(canReuseWhisperEncoderKvTensor(cached, stable, [1, 20, 1500, 64], 'float16')).toBe(true);
+    expect(canReuseWhisperEncoderKvTensor(cached, source, [1, 20, 1500, 64], 'float32')).toBe(false);
+    expect(canReuseWhisperEncoderKvTensor(cached, source, [2, 20, 1500, 64], 'float16')).toBe(false);
+    expect(canReuseWhisperEncoderKvTensor(cached, new Uint16Array(source), [1, 20, 1500, 64], 'float16')).toBe(false);
+    expect(canReuseWhisperEncoderKvTensor(undefined, source, [1, 20, 1500, 64], 'float16')).toBe(false);
+  });
+
   it('only enables encoder-KV broadcast for a decoder graph with a dynamic token axis', () => {
     expect(
       supportsWhisperEncoderKvBroadcast({

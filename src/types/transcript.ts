@@ -116,6 +116,9 @@ export interface TranscriptMetrics {
   readonly decoderStepTensorCreateMs?: number;
   readonly decoderStepLogitReadMs?: number;
   readonly decoderStepKvMergeMs?: number;
+  /** Scalar split-graph beam telemetry for immutable encoder-KV tensor reuse. */
+  readonly decoderEncoderKvTensorReuses?: number;
+  readonly decoderEncoderKvTensorCreates?: number;
   readonly sessionCreateMs?: number;
   // Encoder sub-timing
   readonly encoderRunMs?: number;

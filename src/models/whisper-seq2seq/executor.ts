@@ -598,6 +598,16 @@ interface TensorLocationCounts {
   readonly cpu: number;
 }
 
+interface WhisperEncoderKvTensorCacheEntry {
+  readonly tensor: OrtTensorLike<Float32Array>;
+  /** First raw cache view observed before the ORT input copy. */
+  readonly sourceData: ArrayBufferView;
+  /** Stable copied view handed back to the core for subsequent steps. */
+  readonly stableData: ArrayBufferView;
+  readonly dims: readonly number[];
+  readonly type: 'float32' | 'float16';
+}
+
 /**
  * Alignment is verified only when the manifest explicitly proves that the
  * decoder_align graph uses causal self-attention. Missing metadata is a
@@ -874,6 +884,29 @@ export function supportsWhisperEncoderKvBroadcast(
   const inputIds = session.inputMetadata?.find((entry) => entry.name === 'input_ids');
   const tokenAxis = inputIds?.shape?.[1];
   return typeof tokenAxis === 'string' && tokenAxis.length > 0;
+}
+
+/**
+ * Scalar beam decoding can reuse an encoder-KV tensor for the lifetime of one
+ * transcription. The decoder contract treats encoder KV as immutable; only
+ * decoder self-attention KV advances. Keep shape and dtype checks here so a
+ * backend that changes the cache contract falls back to the defensive clone.
+ */
+export function canReuseWhisperEncoderKvTensor(
+  cached: Pick<WhisperEncoderKvTensorCacheEntry, 'sourceData' | 'stableData' | 'dims' | 'type'> | undefined,
+  data: ArrayBufferView | undefined,
+  dims: readonly number[] | undefined,
+  type: 'float32' | 'float16',
+): boolean {
+  return Boolean(
+    cached
+    && data
+    && (cached.sourceData === data || cached.stableData === data)
+    && cached.type === type
+    && dims
+    && cached.dims.length === dims.length
+    && cached.dims.every((dim, index) => dim === dims[index]),
+  );
 }
 
 export async function splitGraphDecodeLoop(params: {
@@ -3615,6 +3648,8 @@ export class WhisperOnnxExecutor {
     let decoderStepTensorCreateMs = 0;
     let decoderStepLogitReadMs = 0;
     let decoderStepKvMergeMs = 0;
+    let decoderEncoderKvTensorReuses = 0;
+    let decoderEncoderKvTensorCreates = 0;
     const decoderStepTimings: number[] = [];
     const requestedDecoderKvCacheLocation = useExperimentalGpuKvCache ? 'gpu-buffer' : 'cpu';
     const recordDecoderTiming = (timings: DecoderSessionTiming): void => {
@@ -3629,6 +3664,11 @@ export class WhisperOnnxExecutor {
       readonly sourceDims?: readonly number[];
       readonly tensor: OrtTensorLike<Float32Array>;
     }>();
+    // Scalar CPU-KV beam steps still receive the same immutable encoder cache
+    // once per beam. Keep one ORT tensor per encoder-KV name for this
+    // transcription so only decoder self-attention KV is cloned/rebuilt on
+    // each step. The map is scoped to the decode, never shared across audio.
+    const scalarEncoderKvTensors = new Map<string, WhisperEncoderKvTensorCacheEntry>();
 
     const decoderStart = nowMs();
     const processSplitGraphLogits = (logits: Float32Array, genTokens: readonly number[], beginIdx: number): void => {
@@ -3734,23 +3774,46 @@ export class WhisperOnnxExecutor {
             for (const [name, value] of Object.entries(pastKv)) {
               const kvValue = normalizeWhisperKvCacheValue(value);
               const stepName = name.replace(/^present\./, 'past_key_values.');
-              const cloned = cloneDecoderKvDataForInput(kvValue.data, kvValue.type ?? kvDtype);
               // Try multiple key formats for dims lookup (init uses present.*, step uses past_key_values.*)
               const dims = kvValue.dims
                 ?? kvDims[name]
                 ?? kvDims[stepName]
                 ?? kvDims[name.replace(/^past_key_values\./, 'present.')];
-              if (dims) {
-                feeds[stepName] = new splitLoaded.ort.Tensor(cloned.type, cloned.data, dims) as unknown as OrtTensorLike<Float32Array>;
-              } else {
+              const isEncoderKv = stepName.includes('.encoder.');
+              const requestedType = decoderKvDataLayout(
+                kvValue.data,
+                kvValue.type ?? kvDtype,
+              ).type;
+              const cachedEncoderKv = isEncoderKv ? scalarEncoderKvTensors.get(stepName) : undefined;
+              if (canReuseWhisperEncoderKvTensor(cachedEncoderKv, kvValue.data, dims, requestedType)) {
+                feeds[stepName] = cachedEncoderKv!.tensor;
+                decoderEncoderKvTensorReuses += 1;
+                continue;
+              }
+
+              const cloned = cloneDecoderKvDataForInput(kvValue.data, kvValue.type ?? kvDtype);
+              let resolvedDims = dims;
+              if (!resolvedDims) {
                 const numHeads = splitLoaded.modelConfig.decoderAttentionHeads;
                 const headDim = splitLoaded.modelConfig.headDim;
                 const seqLen = Math.round(cloned.data.length / (numHeads * headDim));
-                feeds[stepName] = new splitLoaded.ort.Tensor(
-                  cloned.type,
-                  cloned.data,
-                  [1, numHeads, seqLen, headDim],
-                ) as unknown as OrtTensorLike<Float32Array>;
+                resolvedDims = [1, numHeads, seqLen, headDim];
+              }
+              const tensor = new splitLoaded.ort.Tensor(
+                cloned.type,
+                cloned.data,
+                resolvedDims,
+              ) as unknown as OrtTensorLike<Float32Array>;
+              feeds[stepName] = tensor;
+              if (isEncoderKv) {
+                scalarEncoderKvTensors.set(stepName, {
+                  tensor,
+                  sourceData: kvValue.data,
+                  stableData: cloned.data,
+                  dims: resolvedDims,
+                  type: cloned.type,
+                });
+                decoderEncoderKvTensorCreates += 1;
               }
             }
             decoderStepFeedBuildMs += nowMs() - feedBuildStart;
@@ -3771,14 +3834,28 @@ export class WhisperOnnxExecutor {
               logits: step.logits,
               vocabSize: step.vocabSize,
               presentKv: Object.fromEntries(
-                Object.entries(step.presentKv).map(([k, v]) => [
-                  k,
-                  {
+                Object.entries(step.presentKv).map(([k, v]) => {
+                  const cachedEncoderKv = k.includes('.encoder.')
+                    ? scalarEncoderKvTensors.get(k)
+                    : undefined;
+                  if (cachedEncoderKv && canReuseWhisperEncoderKvTensor(
+                    cachedEncoderKv,
+                    v.data,
+                    v.dims,
+                    cachedEncoderKv.type,
+                  )) {
+                    return [k, {
+                      data: cachedEncoderKv.stableData,
+                      dims: cachedEncoderKv.dims,
+                      type: cachedEncoderKv.type,
+                    }];
+                  }
+                  return [k, {
                     data: v.data as ArrayBufferView,
                     dims: v.dims,
                     type: v.type,
-                  },
-                ]),
+                  }];
+                }),
               ),
             };
           },
@@ -4174,6 +4251,8 @@ export class WhisperOnnxExecutor {
       decoderStepTensorCreateMs: roundMetric(decoderStepTensorCreateMs),
       decoderStepLogitReadMs: roundMetric(decoderStepLogitReadMs),
       decoderStepKvMergeMs: roundMetric(decoderStepKvMergeMs),
+      decoderEncoderKvTensorReuses,
+      decoderEncoderKvTensorCreates,
       sessionCreateMs: roundMetric(loaded.sessionCreateMs ?? 0),
       // DIAGNOSTIC: encoder sub-timing (Track A)
       encoderRunMs: roundMetric(encoderRunMs),
