@@ -390,7 +390,7 @@ export async function createWhisperOrtSession(
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
-  let externalDataFiles = [...(options.externalData ?? [])];
+  const externalDataFiles = [...(options.externalData ?? [])];
   let externalDataUrl = options.externalDataUrl;
   let externalDataPath = options.externalDataPath;
   let fileUrlToPath: ((url: string) => string) | undefined;
