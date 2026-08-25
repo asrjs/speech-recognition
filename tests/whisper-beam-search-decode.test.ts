@@ -448,6 +448,24 @@ describe('whisperBeamDecode integration', () => {
     expect(result.tokenTraces?.every((trace) => trace.entropy >= 0)).toBe(true);
   });
 
+  it('skips beam quality traces when explicitly disabled without changing tokens', async () => {
+    const withQuality = await whisperBeamDecode(makeEosSession(2), {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      trackQuality: true,
+    });
+    const withoutQuality = await whisperBeamDecode(makeEosSession(2), {
+      ...baseOptions,
+      beamSize: 2,
+      patience: 1,
+      trackQuality: false,
+    });
+
+    expect(withoutQuality.tokens).toEqual(withQuality.tokens);
+    expect(withoutQuality.tokenTraces).toBeUndefined();
+  });
+
   it('falls back to scalar beam steps when the backend rejects batched inputs', async () => {
     let scalarCalls = 0;
     let batchCalls = 0;

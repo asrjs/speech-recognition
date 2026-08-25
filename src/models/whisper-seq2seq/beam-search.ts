@@ -134,18 +134,23 @@ function getLogSoftmaxNormalizers(logits: Float32Array): { readonly logSumExp: n
  * strict insertion behavior used by the previous implementation.
  */
 function selectTopWhisperTokenIds(logits: Float32Array, limit: number): number[] {
-  const topTokenIds: number[] = [];
   const candidateLimit = Math.max(1, limit);
+  // Keep the vocabulary scan allocation-free. The selector is also exported
+  // indirectly through the public beam helper, so it should retain the same
+  // bounded behavior as the production split-graph decoder rather than using
+  // Array.splice() for every surviving token.
+  const topTokenIds = new Int32Array(candidateLimit);
+  let topCount = 0;
 
   for (let tokenId = 0; tokenId < logits.length; tokenId++) {
     const logit = logits[tokenId] ?? Number.NEGATIVE_INFINITY;
-    if (topTokenIds.length >= candidateLimit) {
+    if (topCount >= candidateLimit) {
       const lastTokenId = topTokenIds[candidateLimit - 1]!;
       const lastLogit = logits[lastTokenId] ?? Number.NEGATIVE_INFINITY;
       if (logit < lastLogit || (logit === lastLogit && tokenId >= lastTokenId)) continue;
     }
 
-    let insertAt = topTokenIds.length;
+    let insertAt = topCount;
     while (insertAt > 0) {
       const previousTokenId = topTokenIds[insertAt - 1]!;
       const previousLogit = logits[previousTokenId] ?? Number.NEGATIVE_INFINITY;
@@ -154,11 +159,14 @@ function selectTopWhisperTokenIds(logits: Float32Array, limit: number): number[]
     }
 
     if (insertAt >= candidateLimit) continue;
-    topTokenIds.splice(insertAt, 0, tokenId);
-    if (topTokenIds.length > candidateLimit) topTokenIds.pop();
+    if (topCount < candidateLimit) topCount++;
+    for (let index = topCount - 1; index > insertAt; index--) {
+      topTokenIds[index] = topTokenIds[index - 1]!;
+    }
+    topTokenIds[insertAt] = tokenId;
   }
 
-  return topTokenIds;
+  return Array.from(topTokenIds.subarray(0, topCount));
 }
 
 function normalizeScore(score: number, tokenCount: number, lengthPenalty?: number): number {

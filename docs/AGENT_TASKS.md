@@ -231,6 +231,10 @@ Step 5: Token-by-token → first 5 tokens match fp32 baseline
   auto-detect beam 2, and timestamped beam 2. Stable and batched tokens/text
   matched exactly, timestamped words and EOS matched, batched decoder calls
   halved, and GPU tensor downloads remained zero.
+- [x] Make selected-beam quality tracing opt-in for ordinary splitgraph
+  inference: explicit `trackQuality: false` skips full-vocabulary entropy and
+  trace copies without changing tokens; enhanced quality-gated decoding still
+  requests traces explicitly.
 
 ### WebGPU Pipeline Fixes
 

@@ -1154,3 +1154,43 @@ only the current dynamic-token graph family has passed the batch-shaped decoder
 contract. `experimentalBatchedBeam` remains opt-in, stable CPU-KV remains the
 correctness oracle, and GPU-KV remains greedy-only until another artifact family
 and its EOS/cache behavior are independently validated.
+
+## Continuation audit: beam quality-trace hot path (2026-08-25)
+
+The split-graph executor passes `trackQuality: false` for ordinary inference
+unless a caller enables the quality gates. The core beam loop previously still
+computed Shannon entropy across all 51,866 vocabulary entries and copied a
+quality-trace array for every candidate, even when those traces were not
+consumed. The loop now skips that work when quality tracking is explicitly
+disabled. Direct core callers that omit the option retain the historical
+trace-by-default behavior; the enhanced quality-gated executor continues to
+pass `true`.
+
+The separately exported beam helper also had a second `Array.splice()`-based
+top-k scan. It now uses a fixed-capacity typed-array insertion with the same
+descending-score and ascending-token-ID tie order as the production selector.
+Focused beam coverage passed `22/22` tests, including token parity with
+`trackQuality: true` and `false`.
+
+A deterministic Node benchmark using a 51,866-token vocabulary, 50 generated
+steps, and beam 5 measured the core quality-trace path at a median of
+`712.7ms` (p95 `807.0ms`) versus `221.5ms` (p95 `245.5ms`) with
+`trackQuality: false`; both produced 51 tokens. This is a decoder-side CPU
+measurement, not a claim that ORT/WebGPU inference itself is 3.2x faster.
+
+The current-source headless Chrome matrix retained the same behavior on the
+real split graph:
+
+| Case | Total | RTFx | Steps | Result |
+| --- | ---: | ---: | ---: | --- |
+| English stable beam 2 | `6036.155ms` | `4.9542x` | `98` | oracle |
+| English batched beam 2 | `3423.56ms` | `8.7349x` | `49` | exact tokens |
+| English stable beam 5 | `12893.39ms` | `2.3194x` | `245` | oracle |
+| English batched beam 5 | `3747.16ms` | `7.9805x` | `49` | exact tokens |
+| Turkish auto stable/batched beam 2 | `9903.58/5484.3ms` | `1.8822/3.399x` | `158/79` | exact text, language `tr` |
+| English timestamped stable/batched beam 2 | `2724.715/1770.43ms` | `3.6717/5.6508x` | `40/20` | exact tokens, words, EOS |
+
+All browser cases retained CPU-KV for beam and zero GPU downloads. The public
+alignment graph continued to emit the expected legacy warning and use
+interpolation; the causal reference-pair and FP16 endpoint boundaries are
+unchanged.
