@@ -11,3 +11,4 @@ export * from './inference/backends/wasm/index.js';
 export * from './inference/backends/webgpu/index.js';
 export * from './inference/backends/webnn/index.js';
 export * from './inference/backends/webgl/index.js';
+export * from './models/qwen-asr/index.js';

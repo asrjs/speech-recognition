@@ -82,7 +82,24 @@ WebGPU claim. Qwen3-ASR is an audio-conditioned language model rather than a
 Whisper 4-graph encoder/decoder; it must not be routed through
 `whisper-seq2seq` merely because both produce token text.
 
-### Required Qwen implementation sequence
+### Qwen implementation update (2026-08-26)
+
+The artifact-gated browser integration is now implemented under
+`src/models/qwen-asr`. It uses the existing public browser ONNX conversion as
+an explicit source and does not download or commit its weights. The family
+implements the Qwen frontend, ByteLevel BPE, audio-token-mask trimming,
+prefill/KV-step greedy decode, canonical transcript mapping, and deterministic
+mock graph tests. It intentionally has no preset, no fake scaffold transcript,
+no batch option for the published batch-1 graph, and no Whisper-style
+timestamps.
+
+The implementation is a runtime boundary, not an end-to-end quality claim.
+There is still no local Qwen reference snapshot or browser run in this
+workspace. See
+[`qwen3-asr-webgpu-2026-08-26.md`](qwen3-asr-webgpu-2026-08-26.md) for the
+artifact contract and verification gate.
+
+### Required Qwen verification sequence
 
 1. Capture an approved `qwen-asr` reference environment and a fixed fixture
    manifest containing audio identity, requested language, detected language,
@@ -93,8 +110,9 @@ Whisper 4-graph encoder/decoder; it must not be routed through
 3. Export the smallest independently testable graph boundary first, then run
    token/logit parity in native ORT. Add dynamic batch only after batch-1
    parity is exact and mixed-length attention masks are tested.
-4. Add WebGPU only after the native and WASM paths agree. Keep timestamps as a
-   separate alignment contract; do not infer Whisper-style timestamp tokens.
+4. Run the implemented runtime against the approved artifact in native/WASM
+   first, then WebGPU. Keep timestamps as a separate alignment contract; do
+   not infer Whisper-style timestamp tokens.
 
 ## Tooling now available
 
@@ -118,8 +136,9 @@ third-party conversion to a supported artifact.
 
 ## Current decision
 
-The next code change for these models should be driven by an approved local
-artifact and a reference transcript fixture. Until then, the high-confidence
-work remains the Whisper runtime and its artifact/export validation; adding
-empty model classes would make the public API look complete without providing
-an executable or verifiable backend.
+The next Qwen change should be driven by an approved local artifact and a
+reference transcript fixture. The family is executable when that source is
+provided, but it must not be promoted to a preset or called quality-verified
+until the reference/browser matrix passes. FireRed remains artifact-gated and
+should follow the same sequence rather than receiving another empty model
+class.
