@@ -21,11 +21,18 @@ describe('splitGraph alignment processing', () => {
     const tokenizer = { getTokenId: (token: string) => ids.get(token) };
 
     expect(buildWhisperForcedAlignmentTokenIds(tokenizer, 'en', [11, 12])).toEqual([
-      50258, 50259, 50360, 11, 12, 50257,
+      50258, 50259, 50360, 50363, 11, 12, 50257,
     ]);
     expect(buildWhisperForcedAlignmentTokenIds(tokenizer, 'en', [11], 'translate')).toEqual([
-      50258, 50259, 50359, 11, 50257,
+      50258, 50259, 50359, 50363, 11, 50257,
     ]);
+    expect(buildWhisperForcedAlignmentTokenIds(
+      { getTokenId: (token: string) => token === '<|en|>' ? 50259 : undefined },
+      'en',
+      [11],
+      'transcribe',
+      50364,
+    )).toEqual([50258, 50259, 50360, 50364, 11, 50257]);
   });
 
   it('uses the final prompt row to predict the first text token', () => {

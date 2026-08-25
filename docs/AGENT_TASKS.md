@@ -402,8 +402,9 @@ hallucinations and recovers with higher temperature.
   beam. English OGG conversion and Turkish WAV both complete with beam 2.
 - [x] Verify `--beam_size`, `--language auto`, `--word_timestamps`, and
   `--output_format` produce sane output on those files. Temperature remains
-  covered by the deterministic quality-gate tests; faster-whisper timestamp
-  comparison is recorded as the remaining alignment-quality boundary.
+  covered by the deterministic quality-gate tests; local faster-whisper
+  timestamp and native-GPU comparisons are recorded in the current handoff.
+  Published-variant and merged-graph parity remain artifact-gated.
 
 ### 6. Deprioritized / Experimental (do not prioritize)
 

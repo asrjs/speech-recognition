@@ -236,15 +236,17 @@ export function resolveWhisperLanguageTokenId(
 
 /**
  * Build the teacher-forced sequence used by Whisper's reference word
- * alignment. This matches faster-whisper's `tokenizer.sot_sequence` contract:
- * SOT + language + task, followed by text and EOT. Generated timestamp and
- * no-timestamps control tokens are not part of the cross-attention prompt.
+ * alignment. OpenAI Whisper's `find_alignment` contract is
+ * `sot_sequence + no_timestamps + text + eot`; the no-timestamps row is an
+ * alignment anchor and must remain in the cross-attention matrix even though
+ * it is not a text token.
  */
 export function buildWhisperForcedAlignmentTokenIds(
   tokenizer: Pick<WhisperTokenizer, 'getTokenId'>,
   language: string,
   textTokenIds: readonly number[],
   task: 'transcribe' | 'translate' = 'transcribe',
+  noTimestampsTokenId?: number,
 ): number[] {
   const taskToken = task === 'translate' ? '<|translate|>' : '<|transcribe|>';
   const fallbackTaskId = task === 'translate' ? 50359 : 50360;
@@ -252,6 +254,7 @@ export function buildWhisperForcedAlignmentTokenIds(
     tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
     resolveWhisperLanguageTokenId(tokenizer, language),
     tokenizer.getTokenId(taskToken) ?? fallbackTaskId,
+    tokenizer.getTokenId('<|notimestamps|>') ?? noTimestampsTokenId ?? 50363,
     ...textTokenIds,
     tokenizer.getTokenId('<|endoftext|>') ?? 50257,
   ];
@@ -1576,6 +1579,7 @@ export class WhisperOnnxExecutor {
       resolvedLanguage,
       textTokenIds,
       task,
+      loaded.generationConfig.noTimestampsTokenId,
     );
     const alignmentPromptLen = forcedIds.length - textTokenIds.length - 1;
     const inputIds = new BigInt64Array(forcedIds.map((id) => BigInt(id)));
@@ -1651,7 +1655,7 @@ export class WhisperOnnxExecutor {
     const logits = tensorDataAsFloat32(logitsData.data as ArrayBufferView);
     const logitTimeSteps = Number(logitsTensor.dims[logitsTensor.dims.length - 2] ?? forcedIds.length);
 
-    // forcedIds: [SOT, lang, task, ...text, EOS]
+    // forcedIds: [SOT, lang, task, no_timestamps, ...text, EOS]
     const textLogitStart = Math.max(0, alignmentPromptLen - 1);
     const textCount = textTokenIds.length;
     const logitsForText = new Float32Array(textCount * totalVocab);
@@ -1748,17 +1752,20 @@ export class WhisperOnnxExecutor {
         language,
         textTokenIds,
         options.task ?? 'transcribe',
+        loaded.generationConfig.noTimestampsTokenId,
       );
-      // The prefix is SOT + language + task, matching faster-whisper's
-      // tokenizer.sot_sequence. Keep this derived from the actual sequence so
-      // row extraction cannot drift if the prompt contract changes.
+      // The prefix is SOT + language + task + no-timestamps. Keep this
+      // derived from the actual sequence so row extraction cannot drift if
+      // the prompt contract changes.
       const alignmentPromptLen = alignmentTokenIds.length - textTokenIds.length - 1;
       // Cross-attention at decoder row i predicts the token at i + 1. The
-      // first text token is therefore aligned by the final prompt row, just
-      // as the forced-logit extraction below starts at promptLen - 1.
+      // reference matrix keeps the no-timestamps prediction row as the first
+      // DTW row, followed by one row per text token. Its final row is the
+      // causal prediction row for the last text token.
       const alignmentTextRowStart = getWhisperForcedAlignmentTextRowStart(alignmentPromptLen);
-      const alignmentTextRowIndices = textTokenIds.map(
-        (_tokenId, index) => alignmentTextRowStart + index,
+      const alignmentRowIndices = Array.from(
+        { length: textTokenIds.length + 1 },
+        (_unused, index) => alignmentTextRowStart + index,
       );
       const { data: alignmentData, dims } = await this.runForcedAlignmentSplitGraph(
         { ...loaded, decoderAlignSession, ort: loaded.ort },
@@ -1773,11 +1780,11 @@ export class WhisperOnnxExecutor {
         alignmentData,
         totalTokens: alignmentTokenIds.length,
         promptLen: alignmentPromptLen,
-        textTokenCount: textTokenIds.length,
+        textTokenCount: alignmentRowIndices.length,
         frameCount,
         medianFilterWidth: loaded.modelConfig.medianFilterWidth,
         timePrecisionSeconds: 0.02,
-        textTokenRowIndices: alignmentTextRowIndices,
+        textTokenRowIndices: alignmentRowIndices,
         cropFrameCount,
       });
 
@@ -1787,8 +1794,11 @@ export class WhisperOnnxExecutor {
           text: tokenizer.decode([id]),
           sourceIndex: Math.max(0, (rowIndices[i] ?? promptLen) - promptLen),
         })),
-        dtwTimestamps,
-        { language },
+        // The first DTW row is Whisper's no-timestamps anchor. The helper's
+        // text-token contract consumes that anchor through the last text
+        // boundary, while the extra terminal timestamp is not a text row.
+        dtwTimestamps.slice(0, textTokenIds.length + 1),
+        { language, preserveLongDurations: true },
       );
     } catch (error) {
       if (error instanceof Error && error.message) {
@@ -1842,11 +1852,13 @@ export class WhisperOnnxExecutor {
       resolveWhisperLanguageCode(language, this.config.languages),
       textTokenIds,
       options.task ?? 'transcribe',
+      loaded.generationConfig.noTimestampsTokenId,
     );
     const alignmentPromptLen = alignmentTokenIds.length - textTokenIds.length - 1;
-    // The causal decoder row for the first text token is the last prompt row;
-    // the text-token input row predicts the following token.
+    // The causal decoder row for the first text token is the last prompt row.
+    // The reference DTW matrix also retains that no-timestamps anchor row.
     const alignmentTextRowStart = getWhisperForcedAlignmentTextRowStart(alignmentPromptLen);
+    const alignmentRowCount = textTokenIds.length + 1;
 
     try {
       const alignment = await this.runForcedAlignment(
@@ -1884,16 +1896,16 @@ export class WhisperOnnxExecutor {
               Math.round(audioDurationSeconds / 0.02),
             ))
           : totalFramesPerHead;
-        if (totalTokens < alignmentTextRowStart + textTokenIds.length) {
+        if (totalTokens < alignmentTextRowStart + alignmentRowCount) {
           throw new Error(
-            `Cross-attention layer ${layer} has ${totalTokens} token rows; expected at least ${alignmentTextRowStart + textTokenIds.length}.`,
+            `Cross-attention layer ${layer} has ${totalTokens} token rows; expected at least ${alignmentTextRowStart + alignmentRowCount}.`,
           );
         }
         // Extract single head: tensor has shape [batch=1, heads, tokens, frames]
         const headSize = totalTokens * totalFramesPerHead;
         const headOffset = head * headSize;
-        const headValues = new Float32Array(textTokenIds.length * totalFramesPerHead);
-        for (let tokenIndex = 0; tokenIndex < textTokenIds.length; tokenIndex++) {
+        const headValues = new Float32Array(alignmentRowCount * totalFramesPerHead);
+        for (let tokenIndex = 0; tokenIndex < alignmentRowCount; tokenIndex++) {
           const sourceOffset = headOffset + (alignmentTextRowStart + tokenIndex) * totalFramesPerHead;
           headValues.set(
             layerTensor.data.subarray(sourceOffset, sourceOffset + totalFramesPerHead),
@@ -1902,7 +1914,7 @@ export class WhisperOnnxExecutor {
         }
         return {
           values: headValues,
-          tokenCount: textTokenIds.length,
+          tokenCount: alignmentRowCount,
           frameCount: croppedFrames,
         };
       });
@@ -1910,7 +1922,7 @@ export class WhisperOnnxExecutor {
       const croppedFrames = attentionHeads[0]?.frameCount ?? 0;
       const dtwTimestamps = computeWhisperDtwTokenTimestamps({
         attentionHeads,
-        tokenCount: textTokenIds.length,
+        tokenCount: alignmentRowCount,
         frameCount: croppedFrames,
         timePrecisionSeconds: 0.02,
       });
@@ -1942,7 +1954,13 @@ export class WhisperOnnxExecutor {
 
       // Build word timestamps from token timestamps using tokenizer
       return this.buildWordsFromDtwTimestamps(
-        tokenizer, textTokenIds, dtwTimestamps, tokenLogprobs,
+        tokenizer,
+        textTokenIds,
+        // Keep the no-timestamps anchor through the final text boundary;
+        // discard only the terminal timestamp produced after the last
+        // alignment row.
+        dtwTimestamps.slice(0, textTokenIds.length + 1),
+        tokenLogprobs,
       );
     } catch {
       // Forced alignment failed — fall back to timestamp-token interpolation
@@ -2596,6 +2614,7 @@ export class WhisperOnnxExecutor {
       timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
       timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
       language,
+      preserveLongDurations: alignedWords !== undefined && alignedWords.length > 0,
     });
   }
 

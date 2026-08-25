@@ -11,7 +11,12 @@ import type {
   WhisperNativeWord,
 } from './types.js';
 
-export interface BuildWhisperWordTimestampOptions extends WhisperTimestampTokenOptions {
+export interface WhisperWordDurationOptions {
+  /** Keep long boundaries produced by a verified forced-DTW alignment. */
+  readonly preserveLongDurations?: boolean;
+}
+
+export interface BuildWhisperWordTimestampOptions extends WhisperTimestampTokenOptions, WhisperWordDurationOptions {
   readonly language?: string | null;
 }
 
@@ -26,7 +31,9 @@ export function coalesceWhisperWordTimestamps(
   options: BuildWhisperWordTimestampOptions,
 ): WhisperNativeWord[] {
   if (alignedWords && alignedWords.length > 0) {
-    return constrainWhisperWordDurations(alignedWords);
+    return constrainWhisperWordDurations(alignedWords, {
+      preserveLongDurations: options.preserveLongDurations,
+    });
   }
   return buildWhisperWordTimestampsFromTokenDetails(tokens, options);
 }
@@ -80,7 +87,7 @@ export interface WhisperDtwTokenTimestampInput {
 export function buildWhisperWordTimestampsFromDtwTokens(
   tokens: readonly WhisperDtwTokenTimestampInput[],
   dtwTimestamps: readonly number[],
-  options: Pick<BuildWhisperWordTimestampOptions, 'language'> = {},
+  options: Pick<BuildWhisperWordTimestampOptions, 'language' | 'preserveLongDurations'> = {},
 ): WhisperNativeWord[] {
   const tokenTimestamps: InterpolatedTokenTimestamp[] = tokens.flatMap((token, index) => {
     if (token.text.length === 0) return [];
@@ -119,7 +126,9 @@ export function buildWhisperWordTimestampsFromDtwTokens(
         : {}),
     };
   });
-  return constrainWhisperWordDurations(collated);
+  return constrainWhisperWordDurations(collated, {
+    preserveLongDurations: options.preserveLongDurations,
+  });
 }
 
 export function buildWhisperWordTimestampsFromTokenDetails(
@@ -253,6 +262,7 @@ function medianDuration(values: readonly number[]): number {
  */
 export function constrainWhisperWordDurations(
   words: readonly WhisperNativeWord[],
+  options: WhisperWordDurationOptions = {},
 ): WhisperNativeWord[] {
   if (words.length === 0) return [];
   const durations = words
@@ -288,7 +298,7 @@ export function constrainWhisperWordDurations(
       next[index] = { ...word, endTime: roundTime(word.startTime + maxDuration) };
     } else if (previous && isSentenceEndMark(previous.text)) {
       next[index] = { ...word, startTime: roundTime(Math.max(previous.endTime, word.endTime - maxDuration)) };
-    } else if (duration > maxDuration * 2) {
+    } else if ((!options.preserveLongDurations || hasTrailingPause(word.text)) && duration > maxDuration * 2) {
       next[index] = { ...word, endTime: roundTime(word.startTime + maxDuration) };
     }
   }

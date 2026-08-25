@@ -674,11 +674,15 @@ export async function runAsrPipeline(_opts) {
           language,
           textIds,
           opts.task ?? 'transcribe',
+          genConfig.noTimestampsTokenId,
         );
         const alignmentPromptLen = alignmentTokenIds.length - textIds.length - 1;
         const alignmentTextRowStart = getWhisperForcedAlignmentTextRowStart(alignmentPromptLen);
-        const alignmentTextRowIndices = textIds.map(
-          (_id, index) => alignmentTextRowStart + index,
+        // Keep Whisper's no-timestamps anchor row with the text rows. The
+        // terminal DTW timestamp is outside the text-token boundary contract.
+        const alignmentRowIndices = Array.from(
+          { length: textIds.length + 1 },
+          (_unused, index) => alignmentTextRowStart + index,
         );
 
         try {
@@ -694,10 +698,10 @@ export async function runAsrPipeline(_opts) {
             alignmentData,
             totalTokens: alignmentTokenIds.length,
             promptLen: alignmentPromptLen,
-            textTokenCount: textIds.length,
+            textTokenCount: alignmentRowIndices.length,
             frameCount: encoderFrameCount,
             timePrecisionSeconds: 0.02,
-            textTokenRowIndices: alignmentTextRowIndices,
+            textTokenRowIndices: alignmentRowIndices,
             cropFrameCount,
           });
 
@@ -707,8 +711,8 @@ export async function runAsrPipeline(_opts) {
               text: decodedTexts[index] ?? '',
               sourceIndex: index,
             })),
-            dtwTimestamps,
-            { language },
+            dtwTimestamps.slice(0, textIds.length + 1),
+            { language, preserveLongDurations: true },
           );
           segmentWords = nativeToRunnerWords(nativeWords, seg.startSeconds);
         } catch (alignErr) {

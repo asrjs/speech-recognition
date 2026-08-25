@@ -126,7 +126,7 @@ describe('merged Whisper alignment boundaries', () => {
     const tokenizer = createTokenizer();
     const feedsSeen: Record<string, FakeTensor> = {};
     const vocabSize = 8;
-    const forcedLength = 6;
+    const forcedLength = 7;
     const logits = new Float32Array(forcedLength * vocabSize);
     for (let row = 0; row < forcedLength; row++) {
       logits[row * vocabSize] = 100 + row;
@@ -191,15 +191,14 @@ describe('merged Whisper alignment boundaries', () => {
     ).runForcedAlignment(loaded, encoderHiddenStates, 'en', [11, 12], 'translate');
 
     const inputIds = feedsSeen.input_ids.data as BigInt64Array;
-    expect(Array.from(inputIds, Number)).toEqual([50258, 50259, 50359, 11, 12, 50257]);
-    expect(Array.from(inputIds, Number)).not.toContain(50363);
+    expect(Array.from(inputIds, Number)).toEqual([50258, 50259, 50359, 50363, 11, 12, 50257]);
     expect(feedsSeen.encoder_hidden_states.type).toBe('float16');
     expect(feedsSeen['past_key_values.0.decoder.key'].dims).toEqual([1, 1, 0, 4]);
     expect(feedsSeen.use_cache_branch.data).toEqual(new Uint8Array([1]));
 
-    // Row 2 (<|translate|>) predicts text token 11; row 3 predicts token 12.
-    expect(alignment.logitsForText[0]).toBe(102);
-    expect(alignment.logitsForText[vocabSize]).toBe(103);
+    // Row 3 (<|notimestamps|>) predicts text token 11; row 4 predicts token 12.
+    expect(alignment.logitsForText[0]).toBe(103);
+    expect(alignment.logitsForText[vocabSize]).toBe(104);
   });
 
   it('does not add cache feeds to a merged decoder that does not declare them', async () => {
@@ -314,16 +313,17 @@ describe('merged Whisper alignment boundaries', () => {
       isSpecialTokenId: () => false,
       isTimestampTokenId: () => false,
     };
-    const attention = new Float32Array(6 * 8);
+    const attention = new Float32Array(7 * 8);
     // Prompt rows deliberately point at the padded tail. The alignment code
-    // must use the causal prediction rows 2 and 3 for the two text tokens;
-    // row 2 is the final prompt row and predicts the first text token.
+    // must keep the no-timestamps anchor row 3, followed by the causal text
+    // prediction rows 4 and 5.
     attention[0 * 8 + 7] = 1;
     attention[1 * 8 + 7] = 1;
-    attention[2 * 8 + 0] = 1;
-    attention[3 * 8 + 1] = 1;
-    attention[4 * 8 + 7] = 1;
-    attention[5 * 8 + 7] = 1;
+    attention[2 * 8 + 7] = 1;
+    attention[3 * 8 + 0] = 1;
+    attention[4 * 8 + 0] = 1;
+    attention[5 * 8 + 1] = 1;
+    attention[6 * 8 + 7] = 1;
 
     const executor = createExecutor() as unknown as {
       runForcedAlignment: () => Promise<{
@@ -345,7 +345,7 @@ describe('merged Whisper alignment boundaries', () => {
       ) => Promise<readonly { readonly startTime: number; readonly endTime: number }[] | undefined>;
     };
     executor.runForcedAlignment = async () => ({
-      crossAttentions: [{ data: attention, dims: [1, 1, 6, 8] }],
+      crossAttentions: [{ data: attention, dims: [1, 1, 7, 8] }],
       logitsForText: new Float32Array(0),
     });
 

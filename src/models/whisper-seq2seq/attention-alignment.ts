@@ -1,4 +1,5 @@
 export interface WhisperAttentionHeadMatrix {
+  /** Post-softmax cross-attention weights, laid out as token-major rows. */
   readonly values: Float32Array;
   readonly tokenCount: number;
   readonly frameCount: number;
@@ -75,23 +76,31 @@ function normalizeOverTokens(values: Float32Array, tokenCount: number, frameCoun
   return output;
 }
 
-function softmaxOverFrames(values: Float32Array, tokenCount: number, frameCount: number): Float32Array {
+/**
+ * Restrict a padded attention row to the real encoder frames.
+ *
+ * decoder_align exports post-softmax cross-attention weights over the fixed
+ * 30-second encoder axis. When a short clip is cropped, the remaining mass
+ * must be renormalized; applying softmax again would treat probabilities as
+ * logits and flatten the alignment distribution.
+ */
+function renormalizeOverFrames(values: Float32Array, tokenCount: number, frameCount: number): Float32Array {
   const output = new Float32Array(values.length);
   for (let token = 0; token < tokenCount; token++) {
     const rowOffset = token * frameCount;
-    let maxVal = -Infinity;
-    for (let frame = 0; frame < frameCount; frame++) {
-      const v = values[rowOffset + frame] ?? 0;
-      if (v > maxVal) maxVal = v;
-    }
     let sum = 0;
     for (let frame = 0; frame < frameCount; frame++) {
-      const exp = Math.exp((values[rowOffset + frame] ?? 0) - maxVal);
-      output[rowOffset + frame] = exp;
-      sum += exp;
+      sum += Math.max(0, values[rowOffset + frame] ?? 0);
     }
-    for (let frame = 0; frame < frameCount; frame++) {
-      output[rowOffset + frame] = (output[rowOffset + frame] ?? 0) / sum;
+    if (sum > 0) {
+      for (let frame = 0; frame < frameCount; frame++) {
+        output[rowOffset + frame] = Math.max(0, values[rowOffset + frame] ?? 0) / sum;
+      }
+    } else {
+      const uniform = 1 / frameCount;
+      for (let frame = 0; frame < frameCount; frame++) {
+        output[rowOffset + frame] = uniform;
+      }
     }
   }
   return output;
@@ -183,8 +192,8 @@ export function computeWhisperDtwTokenTimestamps(
       const targetOffset = token * frameCount;
       cropped.set(head.values.subarray(sourceOffset, sourceOffset + frameCount), targetOffset);
     }
-    const softened = softmaxOverFrames(cropped, tokenCount, frameCount);
-    const normalized = normalizeOverTokens(softened, tokenCount, frameCount);
+    const renormalized = renormalizeOverFrames(cropped, tokenCount, frameCount);
+    const normalized = normalizeOverTokens(renormalized, tokenCount, frameCount);
     return medianFilterWhisperAttention(normalized, {
       tokenCount,
       frameCount,

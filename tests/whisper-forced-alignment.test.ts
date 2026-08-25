@@ -1,20 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { buildWhisperForcedAlignmentTokenIds } from '../src/models/whisper-seq2seq/executor.js';
 import { WhisperTokenizer } from '../src/models/whisper-seq2seq/tokenizer.js';
-
-// Duplicating the helper for focused TDD — will be moved into executor
-function buildForcedAlignmentTokens(
-  tokenizer: WhisperTokenizer,
-  language: string,
-  textTokenIds: readonly number[],
-): number[] {
-  const sotId = tokenizer.getTokenId('<|startoftranscript|>') ?? 50258;
-  const langToken = language === 'auto' ? '<|tr|>' : `<|${language}|>`;
-  const langId = tokenizer.getTokenId(langToken) ?? 50268;
-  const taskId = tokenizer.getTokenId('<|transcribe|>') ?? 50359;
-  const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
-
-  return [sotId, langId, taskId, ...textTokenIds, eosId];
-}
 
 function buildForcedAlignmentTextTokenIds(
   tokenizer: WhisperTokenizer,
@@ -48,15 +34,15 @@ const mockTokenizerJson = {
 };
 
 describe('Whisper forced alignment prompt', () => {
-  it('builds prompt with SOT + lang + task + text + EOT', () => {
+  it('builds prompt with SOT + lang + task + no-timestamps + text + EOT', () => {
     const tokenizer = new WhisperTokenizer(mockTokenizerJson);
-    const tokens = buildForcedAlignmentTokens(tokenizer, 'tr', [100, 200]);
-    expect(tokens).toEqual([50258, 50268, 50359, 100, 200, 50257]);
+    const tokens = buildWhisperForcedAlignmentTokenIds(tokenizer, 'tr', [100, 200]);
+    expect(tokens).toEqual([50258, 50268, 50359, 50363, 100, 200, 50257]);
   });
 
   it('uses en when language is en', () => {
     const tokenizer = new WhisperTokenizer(mockTokenizerJson);
-    const tokens = buildForcedAlignmentTokens(tokenizer, 'en', [100]);
+    const tokens = buildWhisperForcedAlignmentTokenIds(tokenizer, 'en', [100]);
     expect(tokens[1]).toBe(50259); // <|en|>
   });
 
