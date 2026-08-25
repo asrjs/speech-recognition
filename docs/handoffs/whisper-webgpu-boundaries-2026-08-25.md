@@ -307,6 +307,18 @@ The current browser harness was used for an A/B probe against the same local
   alignment model was available, so it is not used as a word-timestamp or
   performance claim.
 
+- The batched decoder-step path now returns zero-copy typed-array views when
+  splitting present KV outputs back into per-beam caches. Input packing still
+  clones into fresh batch storage, so the ORT input-safety boundary is
+  unchanged. In the same 30s browser harness, the measured
+  `decoderStepKvMergeMs` bucket fell from `12–47ms` per run before this change
+  to `3–5ms` after it; the post-change beam-2 and beam-5 runs retained exact
+  stable/batched token parity. A second direct-pack follow-up reduced the
+  `decoderStepFeedBuildMs` total over 49 batched calls from about
+  `2.9–3.1s` to `1.57s` for beam 2 and from `6.94–6.96s` to `3.57–3.63s`
+  for beam 5. Total WebGPU time remains variable, so this is kept inside the
+  existing opt-in `experimentalBatchedBeam` path.
+
 ## Remaining boundary
 
 The local row-anchor boundary is fixed and independently validated, but the

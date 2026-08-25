@@ -7,6 +7,21 @@ This note records what is currently actionable for the next non-Whisper
 backends. It intentionally does not add a preset or runtime implementation
 without a local, reproducible model artifact.
 
+## Continuation audit (2026-08-25)
+
+The FireRed source checkout was re-audited after the upstream repository added
+its model-release links. `N:\github\ysdede\FireRedASR2S` still contains source,
+runtime code, and example assets but no `pretrained_models` checkpoint bundle;
+the local `N:\models` and Hugging Face cache likewise contain no FireRed ASR2
+checkpoint, `cmvn.ark`, or Qwen3-ASR snapshot. The only cached Qwen model found
+is an unrelated text-instruction model. No model hub download or third-party
+ONNX conversion was performed.
+
+The checked-in FireRed capture/export/verify scripts and Qwen reference capture
+script pass Python 3.11 bytecode compilation and `--help` smoke checks. They
+remain ready for the first approved local artifact, but this audit does not
+create a correctness claim without native reference outputs.
+
 ## FireRedASR2-AED
 
 The local reference source is `N:\github\ysdede\FireRedASR2S`. The AED model

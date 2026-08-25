@@ -205,10 +205,10 @@ Goal: reduce beam cost after correctness is proven.
 
 - [x] Replace the full-vocabulary log-softmax allocation in beam expansion with
   a fixed-size top-k selector that retains only the candidate set.
-- Then design a batched decoder-step graph/API that accepts beam-shaped
+- [x] Design and implement a batched decoder-step graph/API that accepts beam-shaped
   `input_ids` and KV tensors.
-- Reorder KV by surviving beam parent after candidate selection.
-- Compare tokens against the stable beam path before taking timing wins.
+- [x] Reorder KV by surviving beam parent after candidate selection.
+- [x] Compare tokens against the stable beam path before taking timing wins.
 
 Current promotion gate:
 
@@ -227,9 +227,19 @@ Implemented experiment:
 - Splitgraph bridge builds `[activeBeams, 1]` decoder-step inputs and batched KV
   tensors, then splits logits and present KV back into per-beam caches.
 - fp16 KV batching preserves `Float16Array` inputs for browser ORT.
+- Batched present-KV outputs are split with zero-copy typed-array views; input
+  packing still clones into fresh storage before the next ORT call.
 - The current fp16 WebGPU artifact accepts batch-shaped decoder-step inputs, but
   the option remains off by default until wider model/back-end validation is
   complete.
+
+The 2026-08-25 follow-up measured the decoder-step KV merge bucket at `3–5ms`
+per batched run after the zero-copy split, versus `12–47ms` before it. Direct
+packing then reduced feed-build time over 49 batched calls from about
+`2.9–3.1s` to `1.57s` for beam 2 and from `6.94–6.96s` to `3.57–3.63s` for
+beam 5. A fresh timestamped 10s browser run retained exact stable/batched
+tokens and word timestamps; total wall time remains variable, so the path
+stays opt-in.
 
 Browser matrix revalidation on 2026-08-24:
 
