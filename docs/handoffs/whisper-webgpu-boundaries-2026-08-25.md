@@ -1094,3 +1094,28 @@ reuse does not alter the active-beam batching path. The public promotion
 boundaries remain unchanged: GPU-KV beam is still unsupported, independent
 audio batching is still artifact- and parity-gated, and the public alignment
 graphs are still legacy until causal variants are hosted and audited.
+
+## Continuation audit: native alignment forensic check and bounded beam selector (2026-08-25)
+
+The local causal FP16 r5 and FP32 r1 pairs were rerun on the same exact
+10-second JFK audio through the native ORT CPU path. Both produced the same
+19-token continuation, the same forced-alignment prompt (`promptLen=4`), the
+same selected text rows (`3..21`), and the same raw selected-head output shape
+`[1, 6, 23, 1500]`. Their DTW boundaries were identical, including
+`world, 4.30–5.38s`; the raw alignment tensors differed numerically
+(`maxAbs=0.6631`, `RMS=0.01475`) but not enough to change the CPU DTW path.
+This independently rules out another row-index, crop, terminal-row, or DTW
+rounding defect in the runtime. The remaining `5.38s` versus `5.40s` endpoint
+is specific to the WebGPU FP16 encoder execution boundary already recorded
+above; no offset or heuristic correction was added.
+
+The beam decoder's bounded top-k selector was also tightened. It now keeps
+candidate IDs and rounded log probabilities in fixed-capacity typed arrays
+while scanning the 51,866-token vocabulary, creating only the final bounded
+candidate objects. Stable beam ordering and all 21 focused beam tests remain
+unchanged. A local Node microbenchmark using one deterministic 50-token,
+beam-5 dummy decoder session measured a median of `664ms` after the change
+versus `718ms` in the immediately preceding implementation run; the
+corresponding batched proxy measured `678ms` versus `742ms`. These are JS
+decoder-selector measurements, not a browser/WebGPU end-to-end claim, so the
+browser promotion gates remain unchanged.
