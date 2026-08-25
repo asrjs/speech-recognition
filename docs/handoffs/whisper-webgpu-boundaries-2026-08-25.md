@@ -678,6 +678,20 @@ layout used by the current Whisper exports is unchanged, while multi-shard
 exports now remain loadable in browser and Node session paths. A focused
 artifact test covers the complete shard list.
 
+## Follow-up: committed-runtime browser smoke (2026-08-25)
+
+After the shard bridge fix was pushed, an independent browser matrix run loaded
+the current local `fp16io-fp16-webgpu` public-model variant from the sibling
+harness. The 29.904-second JFK fixture produced the expected transcript prefix
+(`In the long history of the world, only a few generations ...`) at `24.1657x`
+RTFx, with `1,237.47ms` total time, `183.49ms` encoder time, `812.02ms`
+decoder time, 49 decoder steps, GPU-KV location `gpu-buffer`, and zero GPU
+downloads. The harness status was `check` only because its 50-token cap
+truncated the longer text oracle. The model emitted the documented recoverable
+`whisper.decoder-align-legacy` warning because the currently published local
+alignment graph lacks the causal-self-attention export marker; timestamped
+artifact promotion remains gated on re-exporting that graph.
+
 ## Remaining boundary
 
 The local split-graph timestamp contract is now fixed and independently

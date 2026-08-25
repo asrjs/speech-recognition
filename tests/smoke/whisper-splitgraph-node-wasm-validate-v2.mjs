@@ -677,7 +677,7 @@ function generateReport({ modelDir, fixtures, results, maxNewTokens, align, repo
   lines.push('- Validates existing fp32/fp16/q8 splitgraph variants locally in Node CLI.');
   lines.push('- Uses fp32 as the Node CPU baseline; fp16 is also checked on Node CPU, and q8 is validated with the WASM CPU execution provider. No WebGPU/browser automation is included.');
   lines.push('- Uses language suffixes from fixture filenames: `.tr.*` → Turkish, `.en.*` → English.');
-  lines.push('- Decoding path is greedy `temperature=0`; beam search is not implemented here.');
+  lines.push('- Decoding path is greedy `temperature=0`; this report intentionally exercises `num_beams=1`.');
   lines.push('');
   lines.push('## Fixtures');
   lines.push('');
@@ -761,7 +761,7 @@ function generateReport({ modelDir, fixtures, results, maxNewTokens, align, repo
   lines.push('');
   lines.push('WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.');
   lines.push('');
-  lines.push('Beam search for the 4-graph splitgraph runtime is not implemented in this validation pass; keep it as the next decoding task after greedy parity is stable.');
+  lines.push('Beam search is implemented separately in the runtime; this validation report does not exercise it. See `tests/whisper-beam-search-decode.test.ts` and `tests/whisper-beam-search-benchmark.test.ts`.');
   lines.push('');
   lines.push('Mixed dtype, q4/q4f16, exporter changes, browser automation, and published HF artifact changes are out of scope for this report.');
   lines.push('');

@@ -11,7 +11,7 @@
 - Validates existing fp32/fp16/q8 splitgraph variants locally in Node CLI.
 - Uses fp32 as the Node CPU baseline; fp16 is also checked on Node CPU, and q8 is validated with the WASM CPU execution provider. No WebGPU/browser automation is included.
 - Uses language suffixes from fixture filenames: `.tr.*` → Turkish, `.en.*` → English.
-- Decoding path is greedy `temperature=0`; beam search is not implemented here.
+- Decoding path is greedy `temperature=0`; this historical report intentionally exercises `num_beams=1`.
 
 ## Fixtures
 
@@ -111,7 +111,7 @@ q8 uses ONNX Runtime Web WASM CPU. Extended greedy decoding can diverge from fp3
 
 WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.
 
-Beam search for the 4-graph splitgraph runtime is not implemented in this validation pass; keep it as the next decoding task after greedy parity is stable.
+Beam search is implemented separately in the runtime; this historical validation report does not exercise it. See `tests/whisper-beam-search-decode.test.ts` and `tests/whisper-beam-search-benchmark.test.ts`.
 
 Mixed dtype, q4/q4f16, exporter changes, browser automation, and published HF artifact changes are out of scope for this report.
 
@@ -133,4 +133,3 @@ Conclusion: q8 strict token parity with fp32 is not expected at extended `max_ne
 The q8 variant is validated as a compact quantized candidate, not a bit-exact drop-in for fp32.
 Short-sequence decoding is stable; extended decoding can differ at tight decision points.
 WebGPU testing should accept these known divergences as expected quantization sensitivity.
-

@@ -901,14 +901,14 @@ DEFERRED
   - External dataset benchmarks (LibriSpeech, AMI, Common Voice)
   - TS mel frontend parity with PyTorch WhisperFeatureExtractor
     (currently >=80% wav-input tolerance; target >=95-100%)
-  - Beam search for 4-graph path (greedy only)
+  - HF/OpenAI beam-reference fixtures for the 4-graph path
 
 NEXT STEPS (prioritized)
   1) Quantize fp32 models: fp16 + int8 variants (external-data-safe)
   2) Organize HF repo with fp16/int8/ subdirectories
   3) Verify quantized variants via fixture smoke tests
-  4) Beam search support for 4-graph path
-  5) Re-export fp32 to HF with --external-data auto (large-model safety)
+  4) Re-export and browser-validate each published precision variant
+  5) Validate a timestamped merged decoder with cross-attention outputs
 
 EXPORT WORKFLOW DOCS
   docs/whisper-export-workflow.md — full pipeline: export→verify→quantize→upload
@@ -988,7 +988,8 @@ VERIFICATION GATE
 - Regenerated `docs/reports/whisper-large-v3-turbo-variant-validation.md` with Node CLI results. Prompt/control parity passes for fp32/fp16/q8. q8 WASM matches fp32 on 4/5 fixtures for first 16 tokens; LibriVox differs by EOS/continuation. fp16 Node CPU currently produces garbage tokens; fp16 WASM fails allocation for this large artifact on this host.
 - Focused alignment validation was run on `jfk2.en.wav` for fp32 vs q8: shape `[1, 8, 1500]`, row sums `1/1/1`, non-negative `true`, monotonic DTW `true`.
 - WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.
-- Beam search remains a next task; not implemented in this pass.
+- Beam search is implemented in the runtime; this historical validation pass
+  intentionally exercised only greedy decoding.
 - Verification: `npm test -- tests/whisper-generation-config.test.ts --run`, Node validation report generation (`--max-new-tokens 16 --no-align --no-strict`), strict one-fixture validation fails as expected on fp16 mismatch, focused fp32/q8 alignment validation passes.
 - Intended commit subject: `test: add node wasm whisper variant validation`
 
@@ -1082,11 +1083,14 @@ Untracked fixtures from other agents remain uncommitted.
 
 Manual/deferred:
 - WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.
-- Beam search is not implemented yet; keep it as the next decoding task after greedy parity is stable.
+- Beam search is implemented in the runtime. The design notes below remain as
+  the provenance for the cache-routing and timestamp constraints that were
+  carried into the implementation.
 
-### Future Whisper splitgraph beam search design note
+### Historical Whisper splitgraph beam search design note
 
-Do not implement beam search before Node/WASM greedy validation and manual WebGPU smoke are settled. When it starts, cover:
+The following constraints were carried into the implemented splitgraph beam
+path after Node/WASM greedy validation and manual WebGPU smoke:
 - KV cache duplication per beam: duplicate decoder self-attention KV and preserve/reuse encoder cross-attention KV for each active beam.
 - Beam scores: maintain cumulative log-prob scores, apply length/EOS handling consistently with the target HF `generate()` behavior, and keep deterministic tie-breaking.
 - EOS handling: track finished beams separately, stop only when enough finished beams beat active candidates or max token budget is reached.

@@ -295,7 +295,10 @@ Current task explicitly did not change published HF artifacts.
 ## Deferred / manual steps
 
 - WebGPU smoke is intentionally not automated here. After Node/WASM validation passes, WebGPU should be tested manually in the browser/app.
-- Beam search is not implemented yet. Design note is in `docs/plans/asr-pipeline-roadmap.md`.
+- Beam search is implemented in the splitgraph runtime and is covered by
+  `tests/whisper-beam-search-decode.test.ts` and
+  `tests/whisper-beam-search-benchmark.test.ts`; this validator intentionally
+  exercises only the deterministic `num_beams=1` path.
 - Mixed dtype and q4/q4f16 are deferred.
 - External benchmark datasets are deferred until local runtime validation is stable.
 
