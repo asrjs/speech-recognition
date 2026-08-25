@@ -105,6 +105,37 @@ describe('Whisper word timestamp fallback', () => {
       { index: 1, text: 'world!', startTime: 0.4, endTime: 1.2, tokenIds: [12, 13], tokenIndices: [2, 3] },
     ]);
   });
+
+  it('merges a multi-character appended punctuation token into its word', () => {
+    expect(
+      buildWhisperWordTimestampsFromDtwTokens(
+        [
+          { id: 21, text: ' role', sourceIndex: 1 },
+          { id: 22, text: '...', sourceIndex: 2 },
+          { id: 23, text: ' continues', sourceIndex: 3 },
+        ],
+        [2.2, 2.8, 2.9, 3.2],
+        { language: 'en' },
+      ),
+    ).toEqual([
+      {
+        index: 0,
+        text: 'role...',
+        startTime: 2.2,
+        endTime: 2.9,
+        tokenIds: [21, 22],
+        tokenIndices: [1, 2],
+      },
+      {
+        index: 1,
+        text: 'continues',
+        startTime: 2.9,
+        endTime: 3.2,
+        tokenIds: [23],
+        tokenIndices: [3],
+      },
+    ]);
+  });
 });
 
 describe('Whisper word duration constraints', () => {

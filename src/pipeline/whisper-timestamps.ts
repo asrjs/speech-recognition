@@ -269,7 +269,7 @@ function mergeWhisperPunctuations(
   j = 1;
   while (j < merged.length) {
     const right = merged[j]!;
-    if (!merged[i]!.text.endsWith(' ') && appended.includes(right.text)) {
+    if (!merged[i]!.text.endsWith(' ') && isAppendedPunctuation(right.text, appended)) {
       mergeWordGroups(merged[i]!, right, 'append');
       clearWordGroup(right);
     } else {
@@ -301,6 +301,11 @@ function clearWordGroup(word: WordGroup): void {
 function isPunctuationOnly(text: string): boolean {
   PUNCTUATION_ONLY_REGEX.lastIndex = 0;
   return text.length > 0 && PUNCTUATION_ONLY_REGEX.test(text);
+}
+
+function isAppendedPunctuation(text: string, appended: string): boolean {
+  if (text.length === 0 || text !== text.trim() || !isPunctuationOnly(text)) return false;
+  return [...text].every((character) => appended.includes(character));
 }
 
 function roundTime(value: number): number {

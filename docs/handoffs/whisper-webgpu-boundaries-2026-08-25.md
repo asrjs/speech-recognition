@@ -173,13 +173,15 @@ remote artifact:
 
 Independent Chrome/WebGPU A/B probes installed each local graph only
 temporarily and restored the public model files afterward. Both r3 and r4
-preserved the transcript and still produced the first word as
-`In 2.32–2.84s`; the float32 alignment score path did not move that boundary.
-The local PyTorch forced-alignment reference produced a first text boundary
-near `2.82s`, which narrows the remaining discrepancy to the browser's
-audio/encoder numerical path rather than the tensor layout or row-selection
-contract. Do not publish r3/r4 or claim native first-word parity until that
-frontend/encoder boundary is independently measured and explained.
+preserved the transcript and, before the punctuation-collation fix, produced
+the first word as `In 2.32–2.84s`; the float32 alignment score path did not move
+that boundary. The local PyTorch forced-alignment reference produced a first
+text boundary near `2.82s`. The multi-character punctuation fix later moved the
+complete r4 browser output to `In 2.12–2.84s`, close to the faster-whisper
+`2.16–2.84s` reference, without changing the raw DTW anchor. The remaining
+hidden-state variance is still in the browser encoder path, so do not publish
+r3/r4 or claim exact native first-word parity until that numerical boundary is
+independently characterized.
 
 The TypeScript DTW recurrence now also matches OpenAI Whisper's float32 cost
 buffer and explicit zero-border backtrace. This is covered by the existing
@@ -217,10 +219,12 @@ timestamp-token fallback, not attention-DTW alignment.
 
 ## Current performance reference
 
-The mel benchmark now reports both contracts explicitly (`n_mels=128`, five
-runs on the local Node host): exact 400-point default `177.3ms` for 30s audio
-versus experimental 512-point `49.0ms`. The latter remains opt-in because the
-speedup changes the model's frequency-bin input contract.
+The mel benchmark reports both contracts explicitly (`n_mels=128`, five runs on
+the local Node host). A fresh sample measured exact 400-point default at
+`174.9ms` for 30s audio versus experimental 512-point at `56.0ms` (about 3.1x
+faster). The latter remains opt-in because the speedup changes the model's
+frequency-bin input contract; the earlier `177.3ms`/`49.0ms` sample remains a
+valid historical measurement, not a guaranteed throughput floor.
 
 Independent local faster-whisper CPU/int8 on the same 29.904s JFK fixture,
 with three warmed measurements per beam, produced:
@@ -395,22 +399,48 @@ parity:
 The raw WebGPU forced-alignment probe returned the anchor-containing DTW
 sequence `[0.00, 2.84, 2.98, 3.48, ...]`. The first output word therefore
 starts at the preserved anchor `0.00` before duration postprocessing. The
-reported `2.32` start is the intentional long-leading-pause clamp (`end -
+pre-fix `2.32` start was the intentional long-leading-pause clamp (`end -
 2*median_word_duration`) also used by the local OpenAI Whisper timing
 reference. This is an output-semantics clarification, not a timestamp offset
 to add.
+
+## Follow-up: multi-character punctuation collation (2026-08-25)
+
+The tokenizer can emit an appended punctuation run such as `...` as one BPE
+token. The previous punctuation merge checked membership of the entire token
+against the single-character punctuation string, so the run stayed as a
+separate word (`role` plus `...`). The merge now accepts a whitespace-free
+punctuation-only token when every character belongs to the configured appended
+punctuation set. A focused DTW regression covers the merged text, token IDs,
+source indices, and end boundary.
+
+The corrected r4 browser timestamp matrix produced one `role...` word and moved
+the first word to `2.12–2.84s`, close to the faster-whisper `2.16–2.84s`
+reference. Stable and batched beam 2 returned exact token and word parity:
+
+| Case                          |        Total |     RTFx | Steps | KV         | First word      |
+| ----------------------------- | -----------: | -------: | ----: | ---------- | --------------- |
+| EN timestamped greedy         |  `811.245ms` | `12.332` |    20 | GPU buffer | `In 2.12-2.84s` |
+| EN timestamped stable beam 2  |  `4030.81ms` |  `2.482` |    40 | CPU        | `In 2.12-2.84s` |
+| EN timestamped batched beam 2 | `2863.865ms` | `3.4933` |    20 | CPU        | `In 2.12-2.84s` |
+
+These are correctness-validation runs, not a new performance baseline; repeat
+warmed samples are still required for timing claims. The remaining small
+first-word difference is within one 20 ms timestamp quantum plus encoder
+numeric variance and does not justify a timestamp fudge.
 
 ## Remaining boundary
 
 The local split-graph timestamp contract is now fixed and independently
 validated: the no-timestamps anchor, model-specific fallback ID, post-softmax
-attention crop/renormalization, long non-punctuated DTW spans, and stable versus
-batched beam word parity all pass focused tests and the corrected r2 browser
-probe. The corrected graph must still be regenerated for each published
-precision variant and validated on the remote model before the default preset
-can claim artifact-level timestamp parity. Merged-decoder end-to-end validation
-still needs a timestamped merged graph with `cross_attentions.*` outputs and a
-broad English/Turkish reference fixture.
+attention crop/renormalization, multi-character punctuation collation, long
+non-punctuated DTW spans, and stable versus batched beam word parity all pass
+focused tests and the corrected r4 browser probe. The corrected graph must
+still be regenerated for each published precision variant and validated on the
+remote model before the default preset can claim artifact-level timestamp
+parity. Merged-decoder end-to-end validation still needs a timestamped merged
+graph with `cross_attentions.*` outputs and a broad English/Turkish reference
+fixture.
 
 The FireRedASR2S source tree is present at `N:\github\ysdede\FireRedASR2S`,
 but no ASR2 checkpoint, `cmvn.ark`, or converted runtime artifact is available
