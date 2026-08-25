@@ -457,7 +457,14 @@ function selectTopKWithEntropy(logits: Float32Array, k: number): WhisperTopKSele
   let sum = 0;
   for (let i = 0; i < logits.length; i++) sum += Math.exp(logits[i]! - max);
   const logSum = Math.log(sum);
-  const topTokens: WhisperTopKToken[] = [];
+  // Keep the hot scan allocation-free. The previous implementation used
+  // Array.splice() for every vocabulary item, which repeatedly shifted a
+  // small object array even though only `limit` candidates can survive. A
+  // fixed-capacity typed-array keeps the same descending-score / stable-tie
+  // ordering while moving object creation to the final bounded result.
+  const topTokenIds = new Int32Array(limit);
+  const topLogProbs = new Float32Array(limit);
+  let topCount = 0;
   let entropy = 0;
   for (let i = 0; i < logits.length; i++) {
     const rawLogProb = logits[i]! - max - logSum;
@@ -468,13 +475,23 @@ function selectTopKWithEntropy(logits: Float32Array, k: number): WhisperTopKSele
     // Preserve the previous Float32Array rounding before ranking candidates.
     // This keeps tie behavior stable against the old materialized path.
     const logProb = Math.fround(rawLogProb);
-    let insertAt = topTokens.length;
-    while (insertAt > 0 && logProb > (topTokens[insertAt - 1]?.logProb ?? Number.NEGATIVE_INFINITY)) {
+    if (topCount >= limit && !(logProb > topLogProbs[limit - 1]!)) continue;
+
+    let insertAt = topCount;
+    while (insertAt > 0 && logProb > topLogProbs[insertAt - 1]!) {
       insertAt--;
     }
-    if (insertAt >= limit) continue;
-    topTokens.splice(insertAt, 0, { tokenId: i, logProb });
-    if (topTokens.length > limit) topTokens.pop();
+    if (topCount < limit) topCount++;
+    for (let index = topCount - 1; index > insertAt; index--) {
+      topTokenIds[index] = topTokenIds[index - 1]!;
+      topLogProbs[index] = topLogProbs[index - 1]!;
+    }
+    topTokenIds[insertAt] = i;
+    topLogProbs[insertAt] = logProb;
+  }
+  const topTokens: WhisperTopKToken[] = [];
+  for (let index = 0; index < topCount; index++) {
+    topTokens.push({ tokenId: topTokenIds[index]!, logProb: topLogProbs[index]! });
   }
   return { topTokens, entropy };
 }
