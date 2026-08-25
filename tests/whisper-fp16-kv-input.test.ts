@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   cloneDecoderKvDataForInput,
   concatDecoderKvDataForBatch,
+  float32ToFloat16Bits,
   maybeCastWhisperFeatureTensor,
   sliceDecoderKvDataForBatch,
 } from '../src/models/whisper-seq2seq/executor.js';
@@ -14,6 +15,14 @@ afterEach(() => {
 });
 
 describe('Whisper fp16 decoder-step KV inputs', () => {
+  it('converts normal and subnormal values to IEEE fp16 with round-to-nearest-even', () => {
+    const values = new Float32Array([-2, 2, 2 ** -24, 2 ** -25, 1 + 2 ** -11, 1 + 3 * 2 ** -11]);
+
+    expect(Array.from(float32ToFloat16Bits(values))).toEqual([
+      0xc000, 0x4000, 0x0001, 0x0000, 0x3c00, 0x3c02,
+    ]);
+  });
+
   it('casts float32 mel features when the encoder declares a float16 input', async () => {
     class Tensor {
       readonly type: string;

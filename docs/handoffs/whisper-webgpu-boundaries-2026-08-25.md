@@ -79,13 +79,13 @@ Real local runner artifacts:
 Independent headless Chrome/WebGPU matrix on the custom
 `fp16io-fp16-webgpu` preset (`fp16_iofp32_fp16out` encoder + `fp16` decoder):
 
-| Case                                      |               Total |           RTFx | Steps | KV         | Downloads | Parity                  |
-| ----------------------------------------- | ------------------: | -------------: | ----: | ---------- | --------: | ----------------------- |
-| EN greedy GPU-KV, 30s                     |           1167.54ms |       25.6131x |    49 | gpu-buffer |         0 | coherent                |
-| EN stable beam 2, 30s                     |         10914.095ms |        2.7400x |    98 | cpu        |         0 | oracle                  |
-| EN batched beam 2, 30s                    |           8779.44ms |        3.4062x |    49 | cpu        |         0 | exact tokens            |
-| TR auto stable beam 2, 18s                |          16593.42ms |        1.1234x |   158 | cpu        |         0 | oracle                  |
-| TR auto batched beam 2, 18s               |          14348.08ms |        1.2992x |    79 | cpu        |         0 | exact tokens            |
+| Case                                      |             Total |           RTFx | Steps | KV         | Downloads | Parity                  |
+| ----------------------------------------- | ----------------: | -------------: | ----: | ---------- | --------: | ----------------------- |
+| EN greedy GPU-KV, 30s                     |         1167.54ms |       25.6131x |    49 | gpu-buffer |         0 | coherent                |
+| EN stable beam 2, 30s                     |       10914.095ms |        2.7400x |    98 | cpu        |         0 | oracle                  |
+| EN batched beam 2, 30s                    |         8779.44ms |        3.4062x |    49 | cpu        |         0 | exact tokens            |
+| TR auto stable beam 2, 18s                |        16593.42ms |        1.1234x |   158 | cpu        |         0 | oracle                  |
+| TR auto batched beam 2, 18s               |        14348.08ms |        1.2992x |    79 | cpu        |         0 | exact tokens            |
 | EN timestamped stable/batched beam 2, 10s | 3930.49/2802.21ms | 2.5453/3.5702x | 40/20 | cpu        |         0 | exact tokens + 17 words |
 
 The harness reports `check` because it deliberately caps generated tokens;
@@ -121,17 +121,17 @@ With only the corrected external-data `decoder_align` graph temporarily
 installed in the actual headless Chrome/WebGPU harness, the final 10.004s JFK
 measurement was:
 
-| Measurement | Value |
-| ----------- | -----: |
-| Warm WebGPU total | `776.315ms` |
-| RTFx | `12.8869x` |
-| Encode / decode | `184.105ms / 471.635ms` |
-| Decoder steps | `20` |
-| First word | `In 2.32–2.84s` |
-| Long-span check | `have 7.30–8.88s` |
-| Word count | `17` |
-| GPU KV / downloads | `gpu-buffer / 0` |
-| Warnings | none |
+| Measurement        |                   Value |
+| ------------------ | ----------------------: |
+| Warm WebGPU total  |             `776.315ms` |
+| RTFx               |              `12.8869x` |
+| Encode / decode    | `184.105ms / 471.635ms` |
+| Decoder steps      |                    `20` |
+| First word         |         `In 2.32–2.84s` |
+| Long-span check    |       `have 7.30–8.88s` |
+| Word count         |                    `17` |
+| GPU KV / downloads |        `gpu-buffer / 0` |
+| Warnings           |                    none |
 
 The cached faster-whisper CUDA reference produced the same transcript and
 began `In` at `2.16–2.84s`; its long `have` span was `7.46–8.86s`. Browser
@@ -225,11 +225,11 @@ speedup changes the model's frequency-bin input contract.
 Independent local faster-whisper CPU/int8 on the same 29.904s JFK fixture,
 with three warmed measurements per beam, produced:
 
-| Backend / beam | Median inference | RTFx | Text |
-| -------------- | ---------------: | ---: | ---- |
-| faster-whisper CPU int8 / 1 | `16.014s` | `1.867x` | identical |
-| faster-whisper CPU int8 / 2 | `16.055s` | `1.863x` | identical |
-| faster-whisper CPU int8 / 5 | `16.259s` | `1.839x` | identical |
+| Backend / beam              | Median inference |     RTFx | Text      |
+| --------------------------- | ---------------: | -------: | --------- |
+| faster-whisper CPU int8 / 1 |        `16.014s` | `1.867x` | identical |
+| faster-whisper CPU int8 / 2 |        `16.055s` | `1.863x` | identical |
+| faster-whisper CPU int8 / 5 |        `16.259s` | `1.839x` | identical |
 
 The same cached faster-whisper CUDA model was also measured on the 10.004s JFK
 clip: beam 1 `431.054ms` / `23.2082x` RTFx, beam 2 `495.882ms` / `20.1742x`,
@@ -239,11 +239,11 @@ not browser session-load timings.
 Final 10.004s WebGPU timestamped probes with the corrected local alignment
 graph retained exact stable/batched text and word parity:
 
-| Browser mode | Total | RTFx | Decoder steps | Tokens |
-| ------------ | ----: | ---: | ------------: | -----: |
-| Greedy GPU-KV | `776.315ms` | `12.8869x` | `20` | `18` |
-| Stable beam 2 | `3930.49ms` | `2.5453x` | `40` | `18` |
-| Batched beam 2 | `2802.21ms` | `3.5702x` | `20` | `18` |
+| Browser mode   |       Total |       RTFx | Decoder steps | Tokens |
+| -------------- | ----------: | ---------: | ------------: | -----: |
+| Greedy GPU-KV  | `776.315ms` | `12.8869x` |          `20` |   `18` |
+| Stable beam 2  | `3930.49ms` |  `2.5453x` |          `40` |   `18` |
+| Batched beam 2 | `2802.21ms` |  `3.5702x` |          `20` |   `18` |
 
 The final batched beam run was `1.40x` faster than stable beam 2, used half
 the decoder steps, kept CPU KV for correctness, and matched the stable words
@@ -253,10 +253,10 @@ reported `check` because its generated-token cap is deliberate.
 After the immutable-cache sharing change, warmed 29.904s English beam 2
 repeats improved while retaining exact stable/batched text parity:
 
-| Browser mode | Total | RTFx | Decoder steps | Change vs prior reference |
-| ------------ | ----: | ---: | ------------: | -------------------------: |
-| Stable beam 2 | `9571.865ms` | `3.1242x` | `98` | `12.3%` faster |
-| Batched beam 2 | `7850.17ms` | `3.8094x` | `49` | `10.6%` faster |
+| Browser mode   |        Total |      RTFx | Decoder steps | Change vs prior reference |
+| -------------- | -----------: | --------: | ------------: | ------------------------: |
+| Stable beam 2  | `9571.865ms` | `3.1242x` |          `98` |            `12.3%` faster |
+| Batched beam 2 |  `7850.17ms` | `3.8094x` |          `49` |            `10.6%` faster |
 
 The run kept CPU KV for beam, zero GPU downloads, and identical generated
 text. The cache-sharing contract is therefore a measured optimization, not a
@@ -271,11 +271,11 @@ claim.
 The current exact-mel follow-up on the same 30s fixture produced these warm
 measurements with the restored local harness:
 
-| Browser mode | Total | RTFx | Decoder steps | Token parity |
-| ------------ | ----: | ---: | ------------: | ------------ |
-| Greedy GPU-KV | `1215.745ms` | `24.5975x` | `49` | baseline |
-| Stable beam 2 | `8818.83ms` | `3.3910x` | `98` | oracle |
-| Batched beam 2 | `7455.44ms` | `4.0111x` | `49` | exact stable |
+| Browser mode   |        Total |       RTFx | Decoder steps | Token parity |
+| -------------- | -----------: | ---------: | ------------: | ------------ |
+| Greedy GPU-KV  | `1215.745ms` | `24.5975x` |          `49` | baseline     |
+| Stable beam 2  |  `8818.83ms` |  `3.3910x` |          `98` | oracle       |
+| Batched beam 2 |  `7455.44ms` |  `4.0111x` |          `49` | exact stable |
 
 The second measurement in each mode was `19.935x`, `3.2988x`, and `3.8424x`
 respectively; stable and batched beam produced identical token sequences.
@@ -289,7 +289,7 @@ The current browser harness was used for an A/B probe against the same local
 
 - Enabling `decoderGraphCapture=1` originally failed during ORT session
   creation: `all compute graph nodes have not been partitioned to the
-  WebGpuExecutionProvider`.
+WebGpuExecutionProvider`.
 - The runtime now retries that opt-in request without graph capture and emits
   `whisper.decoder-step-graph-capture-fallback`. A headless Chrome/WebGPU run
   completed with a coherent transcript, `27.5352x` RTFx, GPU-KV, and zero GPU
@@ -334,7 +334,7 @@ browser harness, then restored from backups after the probes.
 
 - The r4 CPU reference used the same 128-bin TypeScript-compatible Whisper mel
   contract and returned the raw DTW sequence beginning `[0.00, 2.82, 3.00,
-  3.48, ...]` for the first text boundary. The Python/OpenAI mel output and
+3.48, ...]` for the first text boundary. The Python/OpenAI mel output and
   the TypeScript mel output matched within float32 roundoff (same frame count,
   extrema, and first-frame values).
 - The complete r4 WebGPU browser run kept the transcript exact, GPU-KV, and
@@ -365,6 +365,40 @@ The public harness was restored after validation. Original hashes remain:
 legacy `fp16/decoder_align.onnx` `2B730AE7...`, its data file
 `94AEB6AB...`, `fp16/manifest.json` `309FD78F...`, and the optimized encoder
 `20EDF7D5...`.
+
+## Follow-up: FP16 feature boundary and raw first-word anchor (2026-08-25)
+
+An independent browser encoder probe found one additional runtime boundary bug
+before the encoder: the JavaScript float32-to-float16 helper used an incorrect
+shift for float32 subnormals. Padded Whisper mel frames contain values in this
+range, so the old conversion could turn values around `1e-5` into `+/-2`.
+`float32ToFloat16Bits()` now uses the IEEE-754 subnormal shift and
+round-to-nearest-even, reads source bits through one typed-array view, and has a
+regression test for normal values, subnormals, and ties. The browser probe
+reported zero differing FP16 bit patterns against NumPy after the fix.
+
+The corrected cast did not eliminate the remaining hidden-state difference:
+the same browser mel and r4 encoder input produced WebGPU-versus-CPU-ONNX
+cosine `0.9620`, while CPU-ONNX-versus-local-PyTorch-CUDA was `0.99948`.
+This isolates the residual variance to the WebGPU FP16 encoder execution path,
+not the mel/FP16 input boundary, decoder alignment graph, or DTW row selection.
+
+The complete corrected r4 browser run still retained exact transcript and word
+parity:
+
+| Case                          |        Total |       RTFx | Steps | KV         | First word      |
+| ----------------------------- | -----------: | ---------: | ----: | ---------- | --------------- |
+| EN timestamped greedy         |  `796.415ms` | `12.5617x` |    20 | GPU buffer | `In 2.32-2.84s` |
+| EN timestamped stable beam 2  | `3949.825ms` |  `2.5328x` |    40 | CPU        | `In 2.32-2.84s` |
+| EN timestamped batched beam 2 |  `2831.57ms` |  `3.5331x` |    20 | CPU        | `In 2.32-2.84s` |
+
+The raw WebGPU forced-alignment probe returned the anchor-containing DTW
+sequence `[0.00, 2.84, 2.98, 3.48, ...]`. The first output word therefore
+starts at the preserved anchor `0.00` before duration postprocessing. The
+reported `2.32` start is the intentional long-leading-pause clamp (`end -
+2*median_word_duration`) also used by the local OpenAI Whisper timing
+reference. This is an output-semantics clarification, not a timestamp offset
+to add.
 
 ## Remaining boundary
 

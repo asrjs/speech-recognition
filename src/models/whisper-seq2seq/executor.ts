@@ -282,38 +282,64 @@ export function getWhisperForcedAlignmentTextRowStart(promptLength: number): num
  * Convert a Float32Array to a Uint16Array of fp16 bits.
  * Uses round-to-nearest-even.
  */
-function float32ToFloat16Bits(src: Float32Array): Uint16Array {
+export function float32ToFloat16Bits(src: Float32Array): Uint16Array {
   const dst = new Uint16Array(src.length);
+  // Whisper's padded mel tail contains values in the fp16 subnormal range.
+  // Read the source bits directly so this boundary conversion remains both
+  // correct for subnormals and cheaper than allocating a DataView per value.
+  const sourceBits = new Uint32Array(src.buffer, src.byteOffset, src.length);
   for (let i = 0; i < src.length; i++) {
-    const x = src[i]!;
-    const b = new DataView(new ArrayBuffer(4));
-    b.setFloat32(0, x, true);
-    const uint32 = b.getUint32(0, true);
-    const sign = (uint32 >>> 31) & 0x1;
-    let exp = (uint32 >>> 23) & 0xff;
-    let mant = uint32 & 0x7fffff;
-    let fp16: number;
-    if (exp === 0xff) {
-      // Inf/NaN
-      fp16 = (sign << 15) | 0x7c00 | (mant ? 0x200 : 0);
-    } else if (exp > 142) {
-      // Overflow to infinity
-      fp16 = (sign << 15) | 0x7c00;
-    } else if (exp < 113) {
-      // Subnormal or zero
-      if (exp < 103) {
-        fp16 = sign << 15;
-      } else {
-        mant |= 0x800000;
-        const shift = 113 - exp - 1;
-        fp16 = (sign << 15) | (mant >>> shift);
-      }
-    } else {
-      exp -= 112;
-      mant >>= 13;
-      fp16 = (sign << 15) | (exp << 10) | mant;
+    const uint32 = sourceBits[i]!;
+    const sign = (uint32 >>> 16) & 0x8000;
+    const exponent = (uint32 >>> 23) & 0xff;
+    const mantissa = uint32 & 0x7fffff;
+
+    if (exponent === 0xff) {
+      // Preserve infinities and use a quiet NaN payload for NaNs.
+      dst[i] = sign | (mantissa === 0 ? 0x7c00 : 0x7e00);
+      continue;
     }
-    dst[i] = fp16;
+
+    let halfExponent = exponent - 127 + 15;
+    if (halfExponent >= 0x1f) {
+      // Values above the largest finite fp16 value round to infinity.
+      dst[i] = sign | 0x7c00;
+      continue;
+    }
+
+    if (halfExponent <= 0) {
+      // A half subnormal has an effective exponent of -14 and a 10-bit
+      // fraction. Include the hidden float32 bit and round the shifted value
+      // to nearest-even; the shift is 14-halfExponent (up to 24).
+      if (halfExponent < -10) {
+        dst[i] = sign;
+        continue;
+      }
+      const significand = mantissa | 0x800000;
+      const shift = 14 - halfExponent;
+      let halfMantissa = significand >>> shift;
+      const remainder = significand & ((1 << shift) - 1);
+      const halfway = 1 << (shift - 1);
+      if (remainder > halfway || (remainder === halfway && (halfMantissa & 1) !== 0)) {
+        halfMantissa += 1;
+      }
+      // Rounding the largest subnormal can carry into the smallest normal.
+      dst[i] = sign | halfMantissa;
+      continue;
+    }
+
+    let halfMantissa = mantissa >>> 13;
+    const remainder = mantissa & 0x1fff;
+    if (remainder > 0x1000 || (remainder === 0x1000 && (halfMantissa & 1) !== 0)) {
+      halfMantissa += 1;
+      if (halfMantissa === 0x400) {
+        halfMantissa = 0;
+        halfExponent += 1;
+      }
+    }
+    dst[i] = halfExponent >= 0x1f
+      ? sign | 0x7c00
+      : sign | (halfExponent << 10) | halfMantissa;
   }
   return dst;
 }
