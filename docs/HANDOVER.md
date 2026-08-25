@@ -125,7 +125,9 @@ Model deployed. Speculative decode needs draft model.
 Encoder is 2,326 nodes, 1 Cast. q8 encoder exists (0.6GB). Graph capture only helps multi-chunk.
 
 ### P1-C: CPU Prep — DEFER
-Mel processing already well-optimized (power-of-2 FFT, precomputed twiddles, cached filterbank, buffer reuse). Audio mono copy is necessary. WASM/WebGPU mel not justified yet.
+Mel processing already uses the exact Whisper N_FFT=400 contract through a
+cached Bluestein FFT, precomputed twiddles, cached filterbank, and buffer reuse.
+Audio mono copy is necessary. WASM/WebGPU mel is not justified yet.
 
 ---
 
@@ -133,7 +135,7 @@ Mel processing already well-optimized (power-of-2 FFT, precomputed twiddles, cac
 
 1. **GPU KV Cache Bridge** — `preferredOutputLocation` per-output map, KV stays on GPU
 2. **Stripped fp16 Encoder** — removed Cast(f16→f32) from encoder output
-3. **Fast Mel N_FFT=512** — replaced Bluestein FFT with 512-point radix-2
+3. **Exact Whisper Mel N_FFT=400** — cached Bluestein FFT with reusable buffers
 
 ---
 
@@ -210,7 +212,7 @@ Mel processing already well-optimized (power-of-2 FFT, precomputed twiddles, cac
 | `src/models/whisper-seq2seq/executor.ts` | Main executor: decode loop, profiling, multi-token |
 | `src/models/whisper-seq2seq/ort.ts` | ORT session creation, artifact resolution |
 | `src/models/whisper-seq2seq/types.ts` | Type definitions (all flags) |
-| `src/audio/whisper-mel.ts` | Mel preprocessing (power-of-2 FFT, optimized) |
+| `src/audio/whisper-mel.ts` | Exact 400-point Whisper mel preprocessing with cached FFT |
 | `src/runtime/media.ts` | Audio decode + downmix |
 | `tools/whisper-onnx-export/` | ONNX export/modification tools |
 | `public/models/fp16/decoder_step.onnx` | Multi-token decoder_step (dynamic seq_len) |

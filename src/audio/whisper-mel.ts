@@ -11,9 +11,9 @@ const WHISPER_HOP_LENGTH = 160;
 const WHISPER_WIN_LENGTH = 400;
 const WHISPER_N_FREQS = (WHISPER_N_FFT >> 1) + 1;
 
-// Power-of-two FFT for fast path: pad 400-point window → 512-point FFT.
-// Mathematically equivalent — zero-padding in time = interpolation in freq,
-// but the exact bin values at the original 201-bin grid are identical.
+// Optional power-of-two FFT for experiments: pad the 400-point window to a
+// 512-point FFT. This changes the frequency-bin grid and therefore is not a
+// Whisper-compatible replacement for the exact 400-point frontend.
 const WHISPER_FAST_N_FFT = 512;
 const WHISPER_FAST_N_FREQS = (WHISPER_FAST_N_FFT >> 1) + 1; // 257
 
@@ -311,10 +311,19 @@ export class WhisperMelProcessor {
   private readonly fftIm: Float64Array;
   private readonly powerBuf: Float32Array;
 
-  constructor(options: { readonly nMels?: number; readonly sampleRate?: number; readonly fastFft?: boolean } = {}) {
+  constructor(
+    options: {
+      readonly nMels?: number;
+      readonly sampleRate?: number;
+      readonly fastFft?: boolean;
+    } = {},
+  ) {
     this.sampleRate = options.sampleRate ?? WHISPER_SAMPLE_RATE;
     this.nMels = options.nMels ?? 80;
-    this.useFastFft = options.fastFft !== false; // default: fast path enabled
+    // Whisper's model contract is n_fft=400. Keep the faster 512-point path
+    // opt-in so callers cannot trade model-input parity for preprocessing
+    // throughput accidentally.
+    this.useFastFft = options.fastFft === true;
     this.hopLength = WHISPER_HOP_LENGTH;
     this.winLength = WHISPER_WIN_LENGTH;
 
@@ -377,7 +386,7 @@ export class WhisperMelProcessor {
       const workIm = this.fftWorkIm!;
       const paddedWin = this.paddedWindow!;
       const winLen = this.winLength; // 400
-      const fftSize = this.nFft;    // 512
+      const fftSize = this.nFft; // 512
 
       for (let frameIndex = 0; frameIndex < nFrames; frameIndex++) {
         const offset = frameIndex * this.hopLength;
@@ -404,7 +413,9 @@ export class WhisperMelProcessor {
 
         // Power spectrum
         for (let k = 0; k < nFreqs; k++) {
-          powerBuf[k] = (fftRe[k] as number) * (fftRe[k] as number) + (fftIm[k] as number) * (fftIm[k] as number);
+          powerBuf[k] =
+            (fftRe[k] as number) * (fftRe[k] as number) +
+            (fftIm[k] as number) * (fftIm[k] as number);
         }
 
         // Mel filterbank + log10 (same for both paths)
@@ -414,7 +425,9 @@ export class WhisperMelProcessor {
           const start = this.melFilterBounds[melIndex * 2] as number;
           const end = this.melFilterBounds[melIndex * 2 + 1] as number;
           for (let freqIndex = start; freqIndex < end; freqIndex++) {
-            melPower += (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
+            melPower +=
+              (powerBuf[freqIndex] as number) *
+              (this.melFilterbank[fbOffset + freqIndex] as number);
           }
           const logValue = melPower > 0 ? Math.log10(melPower) : -10;
           features[melIndex * nFrames + frameIndex] = logValue;
@@ -437,7 +450,9 @@ export class WhisperMelProcessor {
 
         // Power spectrum
         for (let k = 0; k < nFreqs; k++) {
-          powerBuf[k] = (fftRe[k] as number) * (fftRe[k] as number) + (fftIm[k] as number) * (fftIm[k] as number);
+          powerBuf[k] =
+            (fftRe[k] as number) * (fftRe[k] as number) +
+            (fftIm[k] as number) * (fftIm[k] as number);
         }
 
         // Mel filterbank + log10
@@ -447,7 +462,9 @@ export class WhisperMelProcessor {
           const start = this.melFilterBounds[melIndex * 2] as number;
           const end = this.melFilterBounds[melIndex * 2 + 1] as number;
           for (let freqIndex = start; freqIndex < end; freqIndex++) {
-            melPower += (powerBuf[freqIndex] as number) * (this.melFilterbank[fbOffset + freqIndex] as number);
+            melPower +=
+              (powerBuf[freqIndex] as number) *
+              (this.melFilterbank[fbOffset + freqIndex] as number);
           }
           const logValue = melPower > 0 ? Math.log10(melPower) : -10;
           features[melIndex * nFrames + frameIndex] = logValue;

@@ -87,7 +87,10 @@ q8 encoder is the quickest win — half the VRAM, potentially half the GPU time.
 
 ### What was done
 - Audited `whisper-mel.ts` (mel preprocessing) and `media.ts` (audio decode + downmix)
-- Mel processing: already uses power-of-2 FFT (fast path), precomputed twiddles, cached filterbank, constructor-level buffer reuse
+- Mel processing: the shipped path preserves Whisper's exact 400-point FFT
+  contract with cached Bluestein work buffers, precomputed twiddles, cached
+  filterbank, and constructor-level buffer reuse. The 512-point path is
+  opt-in only because it changes the frequency-bin grid.
 - Audio prep: mono copy is necessary (`AudioContext.close()` detaches internal buffers)
 - `padToFrames`: zero-copy when frameCount == targetFrames (common case)
 
@@ -95,7 +98,7 @@ q8 encoder is the quickest win — half the VRAM, potentially half the GPU time.
 
 | Area | Finding | Potential |
 |------|---------|-----------|
-| Mel FFT | Already power-of-2, precomputed | — |
+| Mel FFT | Exact 400-point Bluestein, precomputed | — |
 | Mel filterbank | Cached at construction | — |
 | Work buffers | Reused (constructor allocation) | — |
 | Audio mono copy | Necessary for AudioContext lifecycle | — |
@@ -105,7 +108,10 @@ q8 encoder is the quickest win — half the VRAM, potentially half the GPU time.
 
 ### Decision: **DEFER — low ROI for JS-level changes**
 
-The 97ms mel time is already well-optimized in pure JS. Reducing it further requires WASM SIMD or WebGPU compute shader — significant engineering for 30-50ms. Not justified given decoder steps (620ms) and encoder (381ms) dominate.
+The exact 400-point path is already well-optimized in pure JS. Reducing it
+further requires WASM SIMD or a WebGPU compute shader — significant engineering
+for a relatively small share of end-to-end time. The 512-point path remains an
+explicit opt-in benchmark, not a production default.
 
 ---
 

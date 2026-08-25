@@ -20,10 +20,10 @@ describe('splitGraph alignment processing', () => {
     const tokenizer = { getTokenId: (token: string) => ids.get(token) };
 
     expect(buildWhisperForcedAlignmentTokenIds(tokenizer, 'en', [11, 12])).toEqual([
-      50258, 50259, 50360, 50363, 11, 12, 50257,
+      50258, 50259, 50360, 11, 12, 50257,
     ]);
     expect(buildWhisperForcedAlignmentTokenIds(tokenizer, 'en', [11], 'translate')).toEqual([
-      50258, 50259, 50359, 50363, 11, 50257,
+      50258, 50259, 50359, 11, 50257,
     ]);
   });
 
@@ -177,7 +177,7 @@ describe('splitGraph alignment processing', () => {
     expect(timestamps[textTokenCount]!).toBeLessThanOrEqual(0.04);
   });
 
-  it('DTW-aligns each timestamp span only against that span\'s encoder frames', () => {
+  it("DTW-aligns each timestamp span only against that span's encoder frames", () => {
     const timestampBegin = 50_364;
     const hop = 0.02;
     const ts = (seconds: number) => timestampBegin + Math.round(seconds / hop);

@@ -180,6 +180,37 @@ describe('WhisperMelProcessor vs OpenAI reference', () => {
     expect(totalDiff / expected.length).toBeLessThan(1e-6);
   });
 
+  it('keeps the exact 400-point frontend as the default', () => {
+    const samples = new Float32Array(3200);
+    for (let i = 0; i < samples.length; i++) {
+      samples[i] =
+        0.2 * Math.sin((2 * Math.PI * 440 * i) / SAMPLE_RATE) +
+        0.1 * Math.sin((2 * Math.PI * 1200 * i) / SAMPLE_RATE);
+    }
+
+    const defaultResult = new WhisperMelProcessor({ nMels: 80 }).process(samples);
+    const exactResult = new WhisperMelProcessor({ nMels: 80, fastFft: false }).process(samples);
+    const experimentalResult = new WhisperMelProcessor({ nMels: 80, fastFft: true }).process(
+      samples,
+    );
+
+    let defaultMaxDiff = 0;
+    let experimentalMaxDiff = 0;
+    for (let i = 0; i < exactResult.features.length; i++) {
+      defaultMaxDiff = Math.max(
+        defaultMaxDiff,
+        Math.abs((defaultResult.features[i] as number) - (exactResult.features[i] as number)),
+      );
+      experimentalMaxDiff = Math.max(
+        experimentalMaxDiff,
+        Math.abs((experimentalResult.features[i] as number) - (exactResult.features[i] as number)),
+      );
+    }
+
+    expect(defaultMaxDiff).toBeLessThan(1e-7);
+    expect(experimentalMaxDiff).toBeGreaterThan(1e-3);
+  });
+
   it('produces mel features matching OpenAI within tolerance', () => {
     const ref = loadRef();
     if (!ref) {

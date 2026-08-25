@@ -44,6 +44,13 @@ Browser harness: `N:\github\asrjs\webgpu-agent-test`
 - The GPU-KV policy guard runs before mel preprocessing and encoder inference.
   GPU-KV is still greedy argmax only; beam, `best_of`, and temperature remain
   rejected until cache cloning/reordering is proven correct.
+- Whisper mel preprocessing now defaults to the exact N_FFT=400 contract. The
+  cached Bluestein implementation is still fast enough for the runtime; the
+  512-point radix-2 path remains available only as `fastFft: true` for explicit
+  experiments because its frequency-bin grid is not model-parity compatible.
+- Encoder `input_features` are cast from float32 to float16 when a corrected
+  fp16 export declares that input type. This keeps the preprocessor dtype-neutral
+  while making the graph boundary explicit.
 
 ## Validation
 
@@ -128,7 +135,25 @@ With the restored legacy graph, the same harness emitted both
 times. This is intentional compatibility behavior until the remote artifact
 is re-exported.
 
+The follow-up run after restoring the exact 400-point mel default completed on
+the corrected r2 artifact with the same transcript and alignment behavior:
+
+| Measurement | Value |
+| ----------- | -----: |
+| Warm WebGPU total | `983.37ms` |
+| RTFx | `10.1735x` |
+| Preprocess | `80.055ms` |
+| First word | `In 2.42–3.00s` |
+| Word count | `17` |
+| GPU KV / downloads | `gpu-buffer / 0` |
+| Warnings | none |
+
 ## Current performance reference
+
+The mel benchmark now reports both contracts explicitly (`n_mels=128`, five
+runs on the local Node host): exact 400-point default `177.3ms` for 30s audio
+versus experimental 512-point `49.0ms`. The latter remains opt-in because the
+speedup changes the model's frequency-bin input contract.
 
 Independent local faster-whisper CPU/int8 on the same 29.904s JFK fixture,
 with three warmed measurements per beam, produced:
@@ -165,6 +190,20 @@ decoder steps and zero GPU downloads. The earlier 30s beam matrix remains the
 long-audio parity reference above; one repeat of stable beam 2 did not produce
 a result within 166s and was excluded rather than treated as a performance
 claim.
+
+The current exact-mel follow-up on the same 30s fixture produced these warm
+measurements with the restored local harness:
+
+| Browser mode | Total | RTFx | Decoder steps | Token parity |
+| ------------ | ----: | ---: | ------------: | ------------ |
+| Greedy GPU-KV | `1215.745ms` | `24.5975x` | `49` | baseline |
+| Stable beam 2 | `8818.83ms` | `3.3910x` | `98` | oracle |
+| Batched beam 2 | `7455.44ms` | `4.0111x` | `49` | exact stable |
+
+The second measurement in each mode was `19.935x`, `3.2988x`, and `3.8424x`
+respectively; stable and batched beam produced identical token sequences.
+These remain opt-in/diagnostic beam modes, while GPU-KV greedy is the fast
+path.
 
 ### Live optimization audit (2026-08-25)
 

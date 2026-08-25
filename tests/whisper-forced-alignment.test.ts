@@ -11,10 +11,9 @@ function buildForcedAlignmentTokens(
   const langToken = language === 'auto' ? '<|tr|>' : `<|${language}|>`;
   const langId = tokenizer.getTokenId(langToken) ?? 50268;
   const taskId = tokenizer.getTokenId('<|transcribe|>') ?? 50359;
-  const noTsId = tokenizer.getTokenId('<|notimestamps|>') ?? 50363;
   const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
 
-  return [sotId, langId, taskId, noTsId, ...textTokenIds, eosId];
+  return [sotId, langId, taskId, ...textTokenIds, eosId];
 }
 
 function buildForcedAlignmentTextTokenIds(
@@ -49,10 +48,10 @@ const mockTokenizerJson = {
 };
 
 describe('Whisper forced alignment prompt', () => {
-  it('builds prompt with SOT + lang + task + notimestamps + text + EOT', () => {
+  it('builds prompt with SOT + lang + task + text + EOT', () => {
     const tokenizer = new WhisperTokenizer(mockTokenizerJson);
     const tokens = buildForcedAlignmentTokens(tokenizer, 'tr', [100, 200]);
-    expect(tokens).toEqual([50258, 50268, 50359, 50363, 100, 200, 50257]);
+    expect(tokens).toEqual([50258, 50268, 50359, 100, 200, 50257]);
   });
 
   it('uses en when language is en', () => {
@@ -72,9 +71,7 @@ describe('Whisper forced alignment prompt', () => {
       added_tokens: [{ id: 50257, content: '<|endoftext|>', special: true }],
     });
 
-    const ids = buildForcedAlignmentTextTokenIds(tokenizer, [
-      { text: 'hello' },
-    ]);
+    const ids = buildForcedAlignmentTextTokenIds(tokenizer, [{ text: 'hello' }]);
     // 'hello' encodes through BPE. With a vocab where hello→200 but
     // GPT-2 regex split produces ['hello'], and ByteLevel maps characters...
     // This is more of an integration test

@@ -235,8 +235,9 @@ export function resolveWhisperLanguageTokenId(
 
 /**
  * Build the teacher-forced sequence used by Whisper's reference word
- * alignment. Generated timestamp tokens are useful for segment boundaries,
- * but they are not part of the cross-attention alignment prompt.
+ * alignment. This matches faster-whisper's `tokenizer.sot_sequence` contract:
+ * SOT + language + task, followed by text and EOT. Generated timestamp and
+ * no-timestamps control tokens are not part of the cross-attention prompt.
  */
 export function buildWhisperForcedAlignmentTokenIds(
   tokenizer: Pick<WhisperTokenizer, 'getTokenId'>,
@@ -250,7 +251,6 @@ export function buildWhisperForcedAlignmentTokenIds(
     tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
     resolveWhisperLanguageTokenId(tokenizer, language),
     tokenizer.getTokenId(taskToken) ?? fallbackTaskId,
-    tokenizer.getTokenId('<|notimestamps|>') ?? 50363,
     ...textTokenIds,
     tokenizer.getTokenId('<|endoftext|>') ?? 50257,
   ];
@@ -352,6 +352,44 @@ async function maybeCastEncoderHiddenStates(
     ? await encoderHiddenStates.getData(true)
     : encoderHiddenStates.data;
   const dims = encoderHiddenStates.dims as number[];
+  const size = dims.reduce((a, b) => a * b, 1);
+  const f32Data = tensorDataAsFloat32(rawData as ArrayBufferView);
+  const boundedF32Data = f32Data.length === size ? f32Data : f32Data.subarray(0, size);
+  if (expectedType === 'float16') {
+    return new ort.Tensor('float16', float32ToFloat16Bits(boundedF32Data), dims) as unknown as OrtTensorLike<Float32Array>;
+  }
+  return new ort.Tensor('float32', boundedF32Data, dims) as unknown as OrtTensorLike<Float32Array>;
+}
+
+/**
+ * Match Whisper mel features to the encoder input contract.
+ *
+ * Export-time fp16 graphs may require float16 mel input, while the historical
+ * fp16-IO graph accepts float32. ORT-WebGPU does not insert this boundary cast
+ * for us, so detect the declared input type instead of making the preprocessor
+ * choose one dtype for every artifact.
+ */
+export async function maybeCastWhisperFeatureTensor(
+  featureTensor: OrtTensorLike<Float32Array>,
+  encoderSession: OrtSessionLike,
+  ort: OrtModuleLike,
+): Promise<OrtTensorLike<Float32Array>> {
+  const metadata = (encoderSession as unknown as {
+    inputMetadata?: Array<{ name?: string; type?: string; shape?: number[] }>;
+  }).inputMetadata;
+  const featureMeta = metadata?.find((entry) => entry.name === 'input_features');
+  const expectedType = featureMeta?.type;
+  if (expectedType !== 'float16' && expectedType !== 'float32') {
+    return featureTensor;
+  }
+  if (featureTensor.type === expectedType) {
+    return featureTensor;
+  }
+
+  const rawData = isGpuBufferTensor(featureTensor) && featureTensor.getData
+    ? await featureTensor.getData(true)
+    : featureTensor.data;
+  const dims = featureTensor.dims as number[];
   const size = dims.reduce((a, b) => a * b, 1);
   const f32Data = tensorDataAsFloat32(rawData as ArrayBufferView);
   const boundedF32Data = f32Data.length === size ? f32Data : f32Data.subarray(0, size);
@@ -1601,7 +1639,10 @@ export class WhisperOnnxExecutor {
         textTokenIds,
         options.task ?? 'transcribe',
       );
-      const alignmentPromptLen = 4;
+      // The prefix is SOT + language + task, matching faster-whisper's
+      // tokenizer.sot_sequence. Keep this derived from the actual sequence so
+      // row extraction cannot drift if the prompt contract changes.
+      const alignmentPromptLen = alignmentTokenIds.length - textTokenIds.length - 1;
       const alignmentTextRowIndices = textTokenIds.map(
         (_tokenId, index) => alignmentPromptLen + index,
       );
@@ -2072,11 +2113,11 @@ export class WhisperOnnxExecutor {
     const paddedFeatures = WhisperMelProcessor.padToFrames(melResult, melInputFrames);
 
     // Reshape to [1, n_mels, melInputFrames] channels-first
-    const featureTensor = new loaded.ort.Tensor(
+    const featureTensor = await maybeCastWhisperFeatureTensor(new loaded.ort.Tensor(
       'float32',
       paddedFeatures,
       [1, melBins, melInputFrames],
-    );
+    ), loaded.encoderSession, loaded.ort);
 
     // 2. Run encoder
     const encoderOutputs = await loaded.encoderSession.run({
@@ -2686,10 +2727,10 @@ export class WhisperOnnxExecutor {
       },
     });
 
-    const featureTensor = new loaded.ort.Tensor(
+    const featureTensor = await maybeCastWhisperFeatureTensor(new loaded.ort.Tensor(
       'float32', paddedFeatures,
       [1, melBins, melInputFrames],
-    );
+    ), loaded.encoderSession, loaded.ort);
 
     // 2. Run encoder
     const encodeStart = nowMs();

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { cloneDecoderKvDataForInput, concatDecoderKvDataForBatch } from '../src/models/whisper-seq2seq/executor.js';
+import {
+  cloneDecoderKvDataForInput,
+  concatDecoderKvDataForBatch,
+  maybeCastWhisperFeatureTensor,
+} from '../src/models/whisper-seq2seq/executor.js';
 import { WhisperOnnxExecutor } from '../src/models/whisper-seq2seq/index.js';
 
 const originalFloat16Array = (globalThis as any).Float16Array;
@@ -9,6 +13,36 @@ afterEach(() => {
 });
 
 describe('Whisper fp16 decoder-step KV inputs', () => {
+  it('casts float32 mel features when the encoder declares a float16 input', async () => {
+    class Tensor {
+      readonly type: string;
+      readonly data: ArrayBufferView;
+      readonly dims: readonly number[];
+
+      constructor(type: string, data: ArrayBufferView, dims: readonly number[]) {
+        this.type = type;
+        this.data = data;
+        this.dims = dims;
+      }
+    }
+
+    const source = {
+      type: 'float32',
+      data: new Float32Array([1, -2, 0.5, 4]),
+      dims: [1, 1, 4],
+    };
+    const cast = await maybeCastWhisperFeatureTensor(
+      source,
+      { inputMetadata: [{ name: 'input_features', type: 'float16' }] } as any,
+      { Tensor } as any,
+    );
+
+    expect(cast.type).toBe('float16');
+    expect(cast.dims).toEqual(source.dims);
+    expect(cast.data).toBeInstanceOf(Uint16Array);
+    expect(cast.data).not.toBe(source.data);
+  });
+
   it('wraps raw fp16 KV bits with Float16Array for callback-based split decoding', () => {
     (globalThis as any).Float16Array = class Float16Array extends Uint16Array {};
 
@@ -24,10 +58,13 @@ describe('Whisper fp16 decoder-step KV inputs', () => {
   it('concatenates raw fp16 KV bits as Float16Array for batched beam inputs', () => {
     (globalThis as any).Float16Array = class Float16Array extends Uint16Array {};
 
-    const batched = concatDecoderKvDataForBatch([
-      { data: new Uint16Array([1, 2]), type: 'float16' },
-      { data: new Uint16Array([3, 4]), type: 'float16' },
-    ], 'float16');
+    const batched = concatDecoderKvDataForBatch(
+      [
+        { data: new Uint16Array([1, 2]), type: 'float16' },
+        { data: new Uint16Array([3, 4]), type: 'float16' },
+      ],
+      'float16',
+    );
 
     expect(batched.type).toBe('float16');
     expect(batched.data.constructor.name).toBe('Float16Array');
@@ -76,7 +113,9 @@ describe('Whisper fp16 decoder-step KV inputs', () => {
         },
       },
       decoderStepSession: {
-        async run(feeds: Record<string, { readonly type?: string; readonly data?: ArrayBufferView }>) {
+        async run(
+          feeds: Record<string, { readonly type?: string; readonly data?: ArrayBufferView }>,
+        ) {
           for (const [name, value] of Object.entries(feeds)) {
             feedTypes[name] = value.data?.constructor.name ?? '';
           }
@@ -91,17 +130,13 @@ describe('Whisper fp16 decoder-step KV inputs', () => {
       },
     };
 
-    await (executor as any).runDecoderStepMultiToken(
-      loaded,
-      [2],
-      {
-        'past_key_values.0.decoder.key': {
-          type: 'float16',
-          data: new Uint16Array([1, 2, 3, 4]),
-          dims: [1, 1, 2, 2],
-        },
+    await (executor as any).runDecoderStepMultiToken(loaded, [2], {
+      'past_key_values.0.decoder.key': {
+        type: 'float16',
+        data: new Uint16Array([1, 2, 3, 4]),
+        dims: [1, 1, 2, 2],
       },
-    );
+    });
 
     expect(feedTypes['past_key_values.0.decoder.key']).toBe('Float16Array');
   });
