@@ -144,6 +144,47 @@ each probe. The published 4-graph model still must be re-exported and
 validated per precision variant before a remote preset can claim this
 artifact-level timestamp behavior. No model-hosting update was performed.
 
+## Follow-up: selected-head raw-logit alignment contract
+
+The legacy post-softmax averaged graph was not sufficient for short-clip
+parity: it discarded the selected-head axis before the runtime cropped the
+30-second encoder window. The exporter and runtime now support the reference
+contract directly. New `decoder_align` graphs return
+`[batch, selected_head, target_sequence, source_frames]` raw cross-attention
+logits and declare `attention_values: "logits"` plus
+`attention_layout: "selected_heads"` in `manifest.json`. The runtime then
+softmaxes each head after the frame crop, normalizes all teacher-forced rows,
+median-filters, averages heads, and selects the no-timestamps anchor plus text
+rows. Legacy `[batch, target_sequence, source_frames]` post-softmax graphs
+remain supported through the manifest-declared compatibility path.
+
+Two complete local exports were validated without changing the published
+remote artifact:
+
+- `N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r3`: FP16 raw-logit
+  alignment output. ONNX checker, external-data path validation, and ORT
+  loading passed for all four graphs.
+- `N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r4`: same contract
+  with the alignment q/k score accumulation exported as float32. Its
+  `decoder_align` output is `float32`; the other graph boundaries remain
+  unchanged. Random-input PyTorch/ORT alignment checks passed for both
+  variants (r4 max absolute difference `0.01616`, mean absolute difference
+  `0.00138`).
+
+Independent Chrome/WebGPU A/B probes installed each local graph only
+temporarily and restored the public model files afterward. Both r3 and r4
+preserved the transcript and still produced the first word as
+`In 2.32–2.84s`; the float32 alignment score path did not move that boundary.
+The local PyTorch forced-alignment reference produced a first text boundary
+near `2.82s`, which narrows the remaining discrepancy to the browser's
+audio/encoder numerical path rather than the tensor layout or row-selection
+contract. Do not publish r3/r4 or claim native first-word parity until that
+frontend/encoder boundary is independently measured and explained.
+
+The TypeScript DTW recurrence now also matches OpenAI Whisper's float32 cost
+buffer and explicit zero-border backtrace. This is covered by the existing
+alignment tests and does not change the public timestamp-array shape.
+
 ## Merged-decoder alignment boundary
 
 The merged-decoder path had a separate, untested alignment implementation that
@@ -153,8 +194,11 @@ rows, read attention rows beginning at row zero, and inferred the frame count by
 halving encoder hidden-state positions. The runtime now uses
 `[SOT, language, task, no_timestamps, text..., EOS]`, derives the prompt length
 from that sequence, reads the causal logit row that predicts each text token,
-retains the no-timestamps anchor plus text rows for DTW, and crops/renormalizes
-the attention frame axis to the input audio duration.
+retains the full teacher-forced attention rows for token-axis normalization,
+selects the no-timestamps anchor plus text rows for DTW, and crops/renormalizes
+the attention frame axis to the input audio duration. The merged path now uses
+the same full-row normalization contract as the split-graph WebGPU path,
+including the full-frame row stride when an audio-duration crop is requested.
 
 This boundary is covered by
 `tests/whisper-merged-alignment.test.ts`. No local merged-decoder artifact with

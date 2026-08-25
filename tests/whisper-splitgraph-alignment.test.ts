@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildWhisperForcedAlignmentTokenIds,
   collectSplitGraphTextTokenRows,
+  extractSplitGraphAlignmentHeadRows,
   extractSplitGraphAlignmentRows,
   getWhisperForcedAlignmentTextRowStart,
   processSplitGraphAlignment,
@@ -191,6 +192,43 @@ describe('splitGraph alignment processing', () => {
     expect(timestamps[textTokenCount]!).toBeLessThanOrEqual(0.04);
   });
 
+  it('extracts selected heads from a 4-D raw-logit alignment output', () => {
+    const totalTokens = 5;
+    const promptLen = 2;
+    const rows = [2, 4];
+    const frames = 3;
+    const heads = 2;
+    const data = new Float32Array(heads * totalTokens * frames);
+    const offset = (head: number, row: number, frame: number) =>
+      head * totalTokens * frames + row * frames + frame;
+    data[offset(0, 2, 0)] = 11;
+    data[offset(0, 4, 1)] = 12;
+    data[offset(1, 2, 2)] = 21;
+    data[offset(1, 4, 0)] = 22;
+
+    expect(Array.from(extractSplitGraphAlignmentHeadRows(data, rows, frames, totalTokens, 0))).toEqual([
+      11, 0, 0, 0, 12, 0,
+    ]);
+    expect(Array.from(extractSplitGraphAlignmentHeadRows(data, rows, frames, totalTokens, 1))).toEqual([
+      0, 0, 21, 22, 0, 0,
+    ]);
+
+    const timestamps = processSplitGraphAlignment({
+      alignmentData: data,
+      totalTokens,
+      promptLen,
+      textTokenCount: rows.length,
+      frameCount: frames,
+      textTokenRowIndices: rows,
+      alignmentHeadCount: heads,
+      alignmentValuesAreLogits: true,
+      medianFilterWidth: 1,
+      timePrecisionSeconds: 0.02,
+    });
+    expect(timestamps).toHaveLength(rows.length + 1);
+    expect(timestamps[1]!).toBeGreaterThanOrEqual(timestamps[0]!);
+    expect(timestamps[2]!).toBeGreaterThanOrEqual(timestamps[1]!);
+  });
   it("DTW-aligns each timestamp span only against that span's encoder frames", () => {
     const timestampBegin = 50_364;
     const hop = 0.02;

@@ -15,15 +15,15 @@ Implemented self-contained 4-graph Whisper ONNX export with proper KV-cache deco
 | `encoder_model.onnx` | Mel → hidden states | 31 MB | `input_features` [1,n_mels,3000] | `last_hidden_state` [1,1500,d] |
 | `decoder_init.onnx` | Prompt/prefill, creates KV cache | 189 MB | `input_ids`, `encoder_hidden_states` | `logits` + 4×4 KV per layer |
 | `decoder_step.onnx` | Single-token autoregressive | 108 MB | `input_ids` [1,1] + 4×4 past KV | `logits` [1,1,vocab] + self-attn KV |
-| `decoder_align.onnx` | Cross-attention for DTW | 107 MB | `input_ids`, `encoder_hidden_states` | `alignment` [1,T,1500] |
+| `decoder_align.onnx` | Cross-attention for DTW | 107 MB | `input_ids`, `encoder_hidden_states` | current: raw `alignment` [1,N,T,1500]; legacy: averaged [1,T,1500] |
 
 ### Key Design Decisions
 
 1. **Split init/step avoids DynamicCache tracing** — HF 5.x `EncoderDecoderCache` with data-dependent branching cannot be traced by `torch.onnx.export(dynamo=False)`
 2. **`decoder_step` needs NO `encoder_hidden_states`** — cross-attention K/V come from `past_key_values.{i}.encoder.{key,value}`. `cache_position` derived from cache length.
-3. **Manual alignment wrapper** — runs decoder blocks directly, captures only `encoder_attn` cross-attention weights. Avoids `aten::diff` which has no ONNX lowering. All DTW/median-filter/timestamp logic stays in TypeScript.
+3. **Manual alignment wrapper** — runs decoder blocks directly, captures only the selected `encoder_attn` cross-attention logits. Avoids `aten::diff` which has no ONNX lowering. All softmax, DTW, median-filter, and timestamp logic stays in TypeScript.
 4. **HF 5.x compat** — `EncoderDecoderCache` yields 6-element tuples `(self_k, self_v, None, cross_k, cross_v, None)`. `build_encoder_decoder_cache_from_flat()` constructs proper `DynamicCache` + `EncoderDecoderCache` objects.
-5. **`decoder_align` returns averaged `alignment [B, T, S]`** — not raw head matrices, not `alignment_heads`. Averaging happens in ONNX (mean across selected heads).
+5. **Current `decoder_align` returns selected raw logits `[B, N, T, S]`** — N is the selected `alignment_heads` count. The runtime performs crop, per-head softmax/normalization, median filtering, and head averaging. Older averaged `[B, T, S]` post-softmax artifacts remain a compatibility format.
 
 ### HF 5.x Pitfalls Encountered
 
@@ -53,7 +53,7 @@ Implemented self-contained 4-graph Whisper ONNX export with proper KV-cache deco
 | Synthetic (440Hz sine) | 5/5 tokens exact match |
 | Real speech (JFK, 11s) | 27/27 tokens (100%) exact match |
 | Alignment shape | [1, 27, 1500] ✓ |
-| Attention normalization | row sums = 1.0000 ✓ |
+| Legacy attention normalization | row sums = 1.0000 ✓ |
 | Alignment values | [0.0000, 0.1796] non-negative ✓ |
 | fp16 vs fp32 | 1/1 tokens (100%) ✓ |
 | int8 vs fp32 | 1/1 tokens (100%) ✓ |

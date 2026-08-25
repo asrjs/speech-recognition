@@ -614,8 +614,15 @@ class WhisperDecoderAlignWrapper(nn.Module):
     cross-attention weights. No DTW, torch.diff, timestamp extraction,
     word grouping, or jump detection — all post-processing lives in TypeScript.
 
-    Returns averaged alignment matrix:
-      alignment: [B, target_tokens, source_frames]
+    Returns selected pre-softmax cross-attention logits:
+      alignment: [B, selected_heads, target_tokens, source_frames]
+
+    Whisper's reference alignment path applies softmax, per-head token-axis
+    normalization, and median filtering after cropping the padded encoder
+    window.  Averaging post-softmax heads inside this graph loses that
+    per-head contract, especially for short clips whose crop removes tail
+    attention mass.  Keep the selected-head logits intact and perform the
+    numerically sensitive post-processing in the runtime instead.
     """
 
     def __init__(
@@ -679,14 +686,34 @@ class WhisperDecoderAlignWrapper(nn.Module):
             residual = hidden_states
             normed = layer.encoder_attn_layer_norm(hidden_states)
 
-            cross_result = layer.encoder_attn(
+            cross_attention = layer.encoder_attn
+            cross_result = cross_attention(
                 hidden_states=normed,
                 key_value_states=encoder_hidden_states,
                 attention_mask=None,
                 past_key_value=None,
-                output_attentions=True,
+                output_attentions=False,
             )
-            cross_out, cross_weights = cross_result[0], cross_result[1]
+            cross_out = cross_result[0]
+
+            # Match Transformers WhisperAttention's eager score construction:
+            # q is scaled before the head reshape, then q @ k^T.  Capture raw
+            # scores rather than the post-softmax tensor returned by
+            # output_attentions=True so the runtime can crop and normalize
+            # each selected head independently.
+            batch_size, target_length, _ = normed.shape
+            source_length = encoder_hidden_states.shape[1]
+            # Keep the main decoder hidden-state path in the model dtype, but
+            # accumulate alignment scores in float32.  Whisper's reference
+            # path converts qk to float before softmax; retaining FP16 logits
+            # here can move a DTW jump by a frame after short-clip cropping.
+            query = (cross_attention.q_proj(normed) * cross_attention.scaling).float()
+            key = cross_attention.k_proj(encoder_hidden_states).float()
+            query = query.view(batch_size, target_length, cross_attention.num_heads, cross_attention.head_dim)
+            query = query.transpose(1, 2)
+            key = key.view(batch_size, source_length, cross_attention.num_heads, cross_attention.head_dim)
+            key = key.transpose(1, 2)
+            cross_logits = torch.matmul(query, key.transpose(-1, -2))
 
             hidden_states = residual + cross_out
 
@@ -701,19 +728,17 @@ class WhisperDecoderAlignWrapper(nn.Module):
             # Capture selected alignment heads from this layer
             for selected_layer, selected_head in self.alignment_heads:
                 if selected_layer == layer_idx:
-                    # cross_weights: [B, H, T, S]
-                    captured.append(cross_weights[:, selected_head, :, :])
+                    # cross_logits: [B, H, T, S]
+                    captured.append(cross_logits[:, selected_head, :, :])
 
         hidden_states = decoder.layer_norm(hidden_states)
 
         if not captured:
             raise RuntimeError("No alignment heads captured.")
 
-        # [N, B, T, S] -> [B, N, T, S] -> average heads -> [B, T, S]
-        stacked = torch.stack(captured, dim=0).permute(1, 0, 2, 3)
-        alignment = stacked.mean(dim=1)
-
-        return alignment
+        # [N, B, T, S] -> [B, N, T, S]. Keep the head axis: the browser
+        # runtime must softmax and normalize each selected head separately.
+        return torch.stack(captured, dim=0).permute(1, 0, 2, 3)
 
 
 # ---------------------------------------------------------------------------
@@ -1346,7 +1371,7 @@ def export_all(
         dynamic_axes={
             "input_ids": {0: "batch", 1: "target_sequence"},
             "encoder_hidden_states": {0: "batch"},
-            "alignment": {0: "batch", 1: "target_sequence"},
+            "alignment": {0: "batch", 1: "alignment_head", 2: "target_sequence"},
         },
         opset_version=opset,
         do_constant_folding=True,
@@ -1534,6 +1559,8 @@ def export_all(
             "causal_self_attention": True,
             "encoder_hidden_state_dtype": dtype,
             "attention_implementation": "eager",
+            "attention_values": "logits",
+            "attention_layout": "selected_heads",
         },
         "special_tokens": special_tokens,
         "artifacts": artifacts,

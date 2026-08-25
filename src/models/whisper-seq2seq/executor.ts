@@ -59,7 +59,12 @@ import {
   type WhisperGenerationConfig,
   type WhisperModelConfig,
 } from './generation-config.js';
-import { parseWhisperManifest } from './manifest.js';
+import {
+  parseWhisperManifest,
+  type WhisperAlignmentAttentionLayout,
+  type WhisperAlignmentAttentionValues,
+  type WhisperAlignmentExportMetadata,
+} from './manifest.js';
 import type {
   WhisperArtifactSource,
   WhisperNativeSegment,
@@ -150,6 +155,10 @@ interface LoadedExecutorState {
   readonly decoderAlignUrl?: string;
   /** True only when manifest metadata proves decoder_align is causal. */
   readonly decoderAlignCausalSelfAttention?: boolean;
+  /** Alignment value semantics declared by the decoder_align manifest. */
+  readonly decoderAlignAttentionValues?: WhisperAlignmentAttentionValues;
+  /** Alignment tensor layout declared by the decoder_align manifest. */
+  readonly decoderAlignAttentionLayout?: WhisperAlignmentAttentionLayout;
   readonly enableProfiling?: boolean;
   readonly decoderAlignExternalData?: { readonly dataUrl: string; readonly path: string };
   readonly decoderBackendForOrt?: string;
@@ -865,6 +874,10 @@ export interface SplitGraphAlignmentOptions {
   /** Crop DTW to this many encoder frames (e.g. actual audio duration / 0.02).
    *  The alignment matrix may still be padded to the 30s Whisper window. */
   readonly cropFrameCount?: number;
+  /** Number of selected-head matrices in a [B, N, T, S] alignment output. */
+  readonly alignmentHeadCount?: number;
+  /** True when alignmentData contains raw cross-attention logits. */
+  readonly alignmentValuesAreLogits?: boolean;
 }
 
 export function collectSplitGraphTextTokenRows(
@@ -896,12 +909,38 @@ export function extractSplitGraphAlignmentRows(
   return textValues;
 }
 
+/** Extract token rows from one head of a flattened [B, N, T, S] output. */
+export function extractSplitGraphAlignmentHeadRows(
+  alignmentData: Float32Array,
+  rowIndices: readonly number[],
+  frameCount: number,
+  totalTokens: number,
+  headIndex: number,
+): Float32Array {
+  const headStride = totalTokens * frameCount;
+  const headOffset = headIndex * headStride;
+  const textValues = new Float32Array(rowIndices.length * frameCount);
+  for (let i = 0; i < rowIndices.length; i++) {
+    const srcOffset = headOffset + rowIndices[i]! * frameCount;
+    const source = alignmentData.subarray(srcOffset, srcOffset + frameCount);
+    if (source.length !== frameCount) {
+      throw new Error(
+        `Whisper alignment head ${headIndex} row ${rowIndices[i]} is truncated; ` +
+        `expected ${frameCount} frames.`,
+      );
+    }
+    textValues.set(source, i * frameCount);
+  }
+  return textValues;
+}
+
 export function processSplitGraphAlignment(
   options: SplitGraphAlignmentOptions,
 ): readonly number[] {
   const {
     alignmentData, promptLen, textTokenCount, frameCount,
     medianFilterWidth, timePrecisionSeconds, textTokenRowIndices, cropFrameCount,
+    alignmentHeadCount: requestedHeadCount, alignmentValuesAreLogits,
   } = options;
 
   if (textTokenCount === 0 && (textTokenRowIndices?.length ?? 0) === 0) return [0];
@@ -910,27 +949,40 @@ export function processSplitGraphAlignment(
     return Array.from({ length: count + 1 }, () => 0);
   }
 
-  const textValues = textTokenRowIndices && textTokenRowIndices.length > 0
-    ? extractSplitGraphAlignmentRows(alignmentData, textTokenRowIndices, frameCount)
-    : (() => {
-        const extracted = new Float32Array(textTokenCount * frameCount);
-        const srcOffset = promptLen * frameCount;
-        extracted.set(alignmentData.subarray(srcOffset, srcOffset + textTokenCount * frameCount));
-        return extracted;
-      })();
   const resolvedTextTokenCount = textTokenRowIndices?.length ?? textTokenCount;
   const cropFrames = Math.max(1, Math.min(frameCount, cropFrameCount ?? frameCount));
 
-  const headMatrix = {
-    values: textValues,
-    tokenCount: resolvedTextTokenCount,
+  const headCount = Math.max(1, Math.floor(requestedHeadCount ?? 1));
+  const resolvedRowIndices = textTokenRowIndices && textTokenRowIndices.length > 0
+    ? textTokenRowIndices
+    : Array.from({ length: textTokenCount }, (_unused, index) => promptLen + index);
+  const normalizationTokenCount = options.totalTokens;
+  const requiredValues = headCount * options.totalTokens * frameCount;
+  if (alignmentData.length < requiredValues) {
+    throw new Error(
+      `Whisper alignment output has ${alignmentData.length} values; expected at least ` +
+      `${requiredValues} for ${headCount} heads.`,
+    );
+  }
+
+  const attentionHeads = Array.from({ length: headCount }, (_unused, headIndex) => ({
+    values: headCount > 1
+      ? alignmentData.subarray(
+          headIndex * options.totalTokens * frameCount,
+          (headIndex + 1) * options.totalTokens * frameCount,
+        )
+      : alignmentData,
+    tokenCount: options.totalTokens,
     frameCount,
-  };
+    ...(alignmentValuesAreLogits ? { valuesAreLogits: true } : {}),
+  }));
 
   return computeWhisperDtwTokenTimestamps({
-    attentionHeads: [headMatrix],
+    attentionHeads,
     tokenCount: resolvedTextTokenCount,
     frameCount: cropFrames,
+    tokenRowIndices: resolvedRowIndices,
+    normalizationTokenCount,
     medianFilterWidth,
     timePrecisionSeconds,
   });
@@ -951,6 +1003,32 @@ export function extractSplitGraphAlignmentWindow(
   return output;
 }
 
+/** Extract a frame window from one head of a flattened [B, N, T, S] output. */
+export function extractSplitGraphAlignmentHeadWindow(
+  alignmentData: Float32Array,
+  rowIndices: readonly number[],
+  totalTokens: number,
+  fullFrameCount: number,
+  headIndex: number,
+  startFrame: number,
+  windowFrames: number,
+): Float32Array {
+  const headOffset = headIndex * totalTokens * fullFrameCount;
+  const output = new Float32Array(rowIndices.length * windowFrames);
+  for (let i = 0; i < rowIndices.length; i++) {
+    const srcOffset = headOffset + rowIndices[i]! * fullFrameCount + startFrame;
+    const source = alignmentData.subarray(srcOffset, srcOffset + windowFrames);
+    if (source.length !== windowFrames) {
+      throw new Error(
+        `Whisper alignment head ${headIndex} row ${rowIndices[i]} window is truncated; ` +
+        `expected ${windowFrames} frames.`,
+      );
+    }
+    output.set(source, i * windowFrames);
+  }
+  return output;
+}
+
 export interface SplitGraphTimestampSpanAlignmentOptions {
   readonly alignmentData: Float32Array;
   readonly tokenIds: readonly number[];
@@ -962,6 +1040,10 @@ export interface SplitGraphTimestampSpanAlignmentOptions {
   readonly isTextToken: (tokenId: number) => boolean;
   readonly isTimestampToken: (tokenId: number) => boolean;
   readonly timestampTokenToSeconds: (tokenId: number) => number;
+  /** Number of selected-head matrices in a [B, N, T, S] alignment output. */
+  readonly alignmentHeadCount?: number;
+  /** True when alignmentData contains raw cross-attention logits. */
+  readonly alignmentValuesAreLogits?: boolean;
 }
 
 /**
@@ -1004,19 +1086,31 @@ export function processSplitGraphAlignmentByTimestampSpans(
     const startFrame = Math.max(0, Math.min(cropFrames - 1, Math.round(span.start / hop)));
     const endFrame = Math.max(startFrame + 1, Math.min(cropFrames, Math.round(span.end / hop)));
     const windowFrames = endFrame - startFrame;
-    const window = extractSplitGraphAlignmentWindow(
-      options.alignmentData,
-      span.rowIndices,
-      options.frameCount,
-      startFrame,
-      windowFrames,
-    );
+    const headCount = Math.max(1, Math.floor(options.alignmentHeadCount ?? 1));
+    const attentionHeads = Array.from({ length: headCount }, (_unused, headIndex) => ({
+      values: headCount > 1
+        ? extractSplitGraphAlignmentHeadWindow(
+            options.alignmentData,
+            span.rowIndices,
+            options.tokenIds.length,
+            options.frameCount,
+            headIndex,
+            startFrame,
+            windowFrames,
+          )
+        : extractSplitGraphAlignmentWindow(
+            options.alignmentData,
+            span.rowIndices,
+            options.frameCount,
+            startFrame,
+            windowFrames,
+          ),
+      tokenCount: span.rowIndices.length,
+      frameCount: windowFrames,
+      ...(options.alignmentValuesAreLogits ? { valuesAreLogits: true } : {}),
+    }));
     const relative = computeWhisperDtwTokenTimestamps({
-      attentionHeads: [{
-        values: window,
-        tokenCount: span.rowIndices.length,
-        frameCount: windowFrames,
-      }],
+      attentionHeads,
       tokenCount: span.rowIndices.length,
       frameCount: windowFrames,
       medianFilterWidth: options.medianFilterWidth,
@@ -1325,9 +1419,8 @@ export class WhisperOnnxExecutor {
 
     const genConfig = await this.loadGenerationConfig(artifacts);
     const modelConfig = await this.loadModelConfig(artifacts);
-    const decoderAlignCausalSelfAttention = await this.loadDecoderAlignCausalSelfAttention(
-      resolved.manifestUrl,
-    );
+    const decoderAlignMetadata = await this.loadDecoderAlignMetadata(resolved.manifestUrl);
+    const decoderAlignCausalSelfAttention = decoderAlignMetadata?.causalSelfAttention;
     if (resolved.decoderAlignUrl && decoderAlignCausalSelfAttention === false) {
       warnings.push({
         code: 'whisper.decoder-align-legacy',
@@ -1391,6 +1484,8 @@ export class WhisperOnnxExecutor {
       isSplitGraph, decoderInitSession, decoderStepSession, decoderAlignSession,
       decoderAlignUrl: resolved.decoderAlignUrl,
       decoderAlignCausalSelfAttention,
+      decoderAlignAttentionValues: decoderAlignMetadata?.attentionValues,
+      decoderAlignAttentionLayout: decoderAlignMetadata?.attentionLayout,
       enableProfiling: resolved.enableProfiling,
       decoderAlignExternalData: resolved.externalData?.decoder_align?.[0]
         ? {
@@ -1773,6 +1868,16 @@ export class WhisperOnnxExecutor {
         alignmentTokenIds,
       );
       const frameCount = dims.length > 0 ? Number(dims[dims.length - 1]) : 0;
+      const alignmentHeadCount = dims.length === 4 ? Number(dims[dims.length - 3]) : 1;
+      const alignmentValuesAreLogits = loaded.decoderAlignAttentionValues === 'logits';
+      if (alignmentValuesAreLogits && (
+        loaded.decoderAlignAttentionLayout !== 'selected_heads' || dims.length !== 4 || alignmentHeadCount < 1
+      )) {
+        throw new Error(
+          `decoder_align manifest declares selected-head logits, but output shape [${dims.join(', ')}] ` +
+          `does not expose the required [batch, head, token, frame] layout.`,
+        );
+      }
       const cropFrameCount = audioDurationSeconds && audioDurationSeconds > 0
         ? Math.max(1, Math.round(audioDurationSeconds / 0.02))
         : undefined;
@@ -1786,6 +1891,8 @@ export class WhisperOnnxExecutor {
         timePrecisionSeconds: 0.02,
         textTokenRowIndices: alignmentRowIndices,
         cropFrameCount,
+        alignmentHeadCount,
+        alignmentValuesAreLogits,
       });
 
       return buildWhisperWordTimestampsFromDtwTokens(
@@ -1878,7 +1985,10 @@ export class WhisperOnnxExecutor {
         });
       }
 
-      // Build attention head matrices for DTW — select only alignment_heads
+      // Build full attention matrices for DTW, then select alignment rows after
+      // normalization. Whisper's reference implementation normalizes all
+      // teacher-forced rows before slicing [no_timestamps, text..., last_text];
+      // extracting only those rows first changes the token-axis distribution.
       const attentionHeads = alignmentHeads.map(({ layer, head }) => {
         const layerTensor = crossAttentions[layer];
         if (!layerTensor) {
@@ -1890,23 +2000,23 @@ export class WhisperOnnxExecutor {
         }
         const totalTokens = (layerTensor.dims[2] as number) ?? 0;
         const totalFramesPerHead = (layerTensor.dims[3] as number) ?? 0;
-        const croppedFrames = audioDurationSeconds && audioDurationSeconds > 0
-          ? Math.max(1, Math.min(
-              totalFramesPerHead,
-              Math.round(audioDurationSeconds / 0.02),
-            ))
-          : totalFramesPerHead;
-        if (totalTokens < alignmentTextRowStart + alignmentRowCount) {
+        const requiredTokenRows = Math.max(
+          alignmentTokenIds.length,
+          alignmentTextRowStart + alignmentRowCount,
+        );
+        if (totalTokens < requiredTokenRows) {
           throw new Error(
-            `Cross-attention layer ${layer} has ${totalTokens} token rows; expected at least ${alignmentTextRowStart + alignmentRowCount}.`,
+            `Cross-attention layer ${layer} has ${totalTokens} token rows; expected at least ${requiredTokenRows}.`,
           );
         }
-        // Extract single head: tensor has shape [batch=1, heads, tokens, frames]
+        // Extract a single head: tensor has shape [batch=1, heads, tokens, frames].
+        // Keep every teacher-forced row so prompt/EOT rows participate in the
+        // reference token-axis normalization before alignment rows are selected.
         const headSize = totalTokens * totalFramesPerHead;
         const headOffset = head * headSize;
-        const headValues = new Float32Array(alignmentRowCount * totalFramesPerHead);
-        for (let tokenIndex = 0; tokenIndex < alignmentRowCount; tokenIndex++) {
-          const sourceOffset = headOffset + (alignmentTextRowStart + tokenIndex) * totalFramesPerHead;
+        const headValues = new Float32Array(totalTokens * totalFramesPerHead);
+        for (let tokenIndex = 0; tokenIndex < totalTokens; tokenIndex++) {
+          const sourceOffset = headOffset + tokenIndex * totalFramesPerHead;
           headValues.set(
             layerTensor.data.subarray(sourceOffset, sourceOffset + totalFramesPerHead),
             tokenIndex * totalFramesPerHead,
@@ -1914,15 +2024,25 @@ export class WhisperOnnxExecutor {
         }
         return {
           values: headValues,
-          tokenCount: alignmentRowCount,
-          frameCount: croppedFrames,
+          tokenCount: totalTokens,
+          // frameCount describes the row stride in values; the requested DTW
+          // crop is passed separately below.
+          frameCount: totalFramesPerHead,
         };
       });
 
-      const croppedFrames = attentionHeads[0]?.frameCount ?? 0;
+      const fullFrameCount = attentionHeads[0]?.frameCount ?? 0;
+      const croppedFrames = audioDurationSeconds && audioDurationSeconds > 0
+        ? Math.max(1, Math.min(fullFrameCount, Math.round(audioDurationSeconds / 0.02)))
+        : fullFrameCount;
       const dtwTimestamps = computeWhisperDtwTokenTimestamps({
         attentionHeads,
         tokenCount: alignmentRowCount,
+        normalizationTokenCount: alignmentTokenIds.length,
+        tokenRowIndices: Array.from(
+          { length: alignmentRowCount },
+          (_unused, index) => alignmentTextRowStart + index,
+        ),
         frameCount: croppedFrames,
         timePrecisionSeconds: 0.02,
       });
@@ -2036,13 +2156,13 @@ export class WhisperOnnxExecutor {
     }
   }
 
-  private async loadDecoderAlignCausalSelfAttention(
+  private async loadDecoderAlignMetadata(
     manifestUrl: string | undefined,
-  ): Promise<boolean | undefined> {
+  ): Promise<WhisperAlignmentExportMetadata | undefined> {
     if (!manifestUrl) return undefined;
     try {
       const raw = JSON.parse(await fetchText(manifestUrl)) as Record<string, unknown>;
-      return parseWhisperManifest(raw).alignmentExport?.causalSelfAttention === true;
+      return parseWhisperManifest(raw).alignmentExport;
     } catch {
       // A custom source may omit the optional manifest or use an older schema.
       // Keep the existing alignment path when metadata cannot be inspected.

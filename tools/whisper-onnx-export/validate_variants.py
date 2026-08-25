@@ -419,15 +419,31 @@ def greedy_decode_with_alignment(
     align_tokens = prompt_ids + text_token_ids + [tokenizer.eos_token_id or 50257]
     alignment = run_forced_alignment(align_sess, align_tokens, enc_out)
 
-    # Basic sanity on alignment
-    align_arr = alignment[0]  # [T, S]
-    row_sums = align_arr.sum(axis=1)
+    # Basic sanity on alignment. Current exports are [B, N, T, S] raw logits;
+    # legacy exports are [B, T, S] averaged probabilities. Report both value
+    # and row-sum ranges without assuming that every graph is normalized.
+    if alignment.ndim == 4:
+        batch, head_count, token_count, frame_count = alignment.shape
+        rows = alignment.reshape(batch * head_count * token_count, frame_count)
+        layout = "selected_heads"
+    elif alignment.ndim == 3:
+        batch, token_count, frame_count = alignment.shape
+        head_count = 1
+        rows = alignment.reshape(batch * token_count, frame_count)
+        layout = "mean"
+    else:
+        raise ValueError(f"Unexpected decoder_align rank: {alignment.ndim}")
+    row_sums = rows.sum(axis=1)
     result["alignment"] = {
         "shape": list(alignment.shape),
+        "head_count": int(head_count),
+        "layout": layout,
+        "value_min": float(np.min(alignment)),
+        "value_max": float(np.max(alignment)),
         "row_sum_min": float(row_sums.min()),
         "row_sum_mean": float(row_sums.mean()),
         "row_sum_max": float(row_sums.max()),
-        "all_non_negative": bool((align_arr >= 0).all()),
+        "all_non_negative": bool((alignment >= 0).all()),
     }
 
     return result

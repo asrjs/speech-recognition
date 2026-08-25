@@ -469,21 +469,34 @@ async function runFixture(variantState, fixture, maxNewTokens, enableAlign, _deb
     });
     const alignTensor = alignOut[Object.keys(alignOut)[0]];
     const alignData = tensorDataAsFloat32(alignTensor);
-    const [batch, textSteps, frames] = alignTensor.dims;
+    const alignmentExport = variantState.manifestRaw?.alignment_export ?? {};
+    const alignmentValuesAreLogits = alignmentExport.attention_values === 'logits';
+    const alignmentHeadCount = alignTensor.dims.length === 4 ? Number(alignTensor.dims[1]) : 1;
+    const textSteps = alignTensor.dims.length === 4
+      ? Number(alignTensor.dims[2])
+      : Number(alignTensor.dims[1]);
+    const frames = Number(alignTensor.dims[alignTensor.dims.length - 1] ?? 0);
+    const headStride = allTokens.length * frames;
     let rowSumMin = Infinity;
     let rowSumMax = -Infinity;
     let rowSumTotal = 0;
     let nonNegative = true;
-    for (let t = 0; t < textSteps; t++) {
-      let sum = 0;
-      for (let f = 0; f < frames; f++) {
-        const value = alignData[t * frames + f] ?? 0;
-        if (value < 0) nonNegative = false;
-        sum += value;
+    let valueMin = Infinity;
+    let valueMax = -Infinity;
+    for (let head = 0; head < alignmentHeadCount; head++) {
+      for (let t = 0; t < textSteps; t++) {
+        let sum = 0;
+        for (let f = 0; f < frames; f++) {
+          const value = alignData[head * headStride + t * frames + f] ?? 0;
+          valueMin = Math.min(valueMin, value);
+          valueMax = Math.max(valueMax, value);
+          if (value < 0) nonNegative = false;
+          sum += value;
+        }
+        rowSumMin = Math.min(rowSumMin, sum);
+        rowSumMax = Math.max(rowSumMax, sum);
+        rowSumTotal += sum;
       }
-      rowSumMin = Math.min(rowSumMin, sum);
-      rowSumMax = Math.max(rowSumMax, sum);
-      rowSumTotal += sum;
     }
     const dtw = processSplitGraphAlignment({
       alignmentData: alignData,
@@ -492,17 +505,24 @@ async function runFixture(variantState, fixture, maxNewTokens, enableAlign, _deb
       textTokenCount: tokens.length,
       frameCount: frames,
       timePrecisionSeconds: 0.02,
+      alignmentHeadCount,
+      alignmentValuesAreLogits,
     });
     let monotonic = true;
     for (let i = 1; i < dtw.length; i++) {
       if (dtw[i] < dtw[i - 1]) monotonic = false;
     }
     alignment = {
-      shape: [batch, textSteps, frames],
-      row_sum_min: Number(rowSumMin.toFixed(4)),
-      row_sum_mean: Number((rowSumTotal / textSteps).toFixed(4)),
-      row_sum_max: Number(rowSumMax.toFixed(4)),
-      non_negative: nonNegative,
+      shape: Array.from(alignTensor.dims),
+      attention_values: alignmentValuesAreLogits ? 'logits' : 'post_softmax',
+      row_sum_min: alignmentValuesAreLogits ? null : Number(rowSumMin.toFixed(4)),
+      row_sum_mean: alignmentValuesAreLogits
+        ? null
+        : Number((rowSumTotal / (textSteps * alignmentHeadCount)).toFixed(4)),
+      row_sum_max: alignmentValuesAreLogits ? null : Number(rowSumMax.toFixed(4)),
+      non_negative: alignmentValuesAreLogits ? null : nonNegative,
+      value_min: Number(valueMin.toFixed(4)),
+      value_max: Number(valueMax.toFixed(4)),
       dtw_monotonic: monotonic,
       dtw_count: dtw.length,
     };
@@ -559,9 +579,17 @@ function assertValidationPasses(allResults) {
       if (!fixture.controls_match_fp32) failures.push(`${result.variant}/${fixture.filename}: generation controls mismatch vs fp32`);
       if (fixture.comparison_to_fp32 && !fixture.comparison_to_fp32.exact && !fixture.text_matches_fp32) failures.push(`${result.variant}/${fixture.filename}: token and text mismatch vs fp32 (${fixture.comparison_to_fp32.matches}/${fixture.comparison_to_fp32.compared})`);
       if (fixture.alignment) {
-        if (!fixture.alignment.non_negative) failures.push(`${result.variant}/${fixture.filename}: alignment has negative values`);
-        if (!fixture.alignment.dtw_monotonic) failures.push(`${result.variant}/${fixture.filename}: DTW timestamps not monotonic`);
-        if (fixture.alignment.row_sum_min < 0.99 || fixture.alignment.row_sum_max > 1.01) failures.push(`${result.variant}/${fixture.filename}: alignment row sums outside tolerance`);
+        if (!fixture.alignment.dtw_monotonic)
+          failures.push(`${result.variant}/${fixture.filename}: DTW timestamps not monotonic`);
+        if (fixture.alignment.attention_values !== 'logits' && !fixture.alignment.non_negative)
+          failures.push(`${result.variant}/${fixture.filename}: alignment has negative values`);
+        if (
+          fixture.alignment.attention_values !== 'logits' &&
+          (fixture.alignment.row_sum_min < 0.99 || fixture.alignment.row_sum_max > 1.01)
+        )
+          failures.push(
+            `${result.variant}/${fixture.filename}: alignment row sums outside tolerance`,
+          );
       }
     }
   }
@@ -638,12 +666,12 @@ function generateReport({ modelDir, fixtures, results, maxNewTokens, align, repo
   lines.push('');
   lines.push('## Alignment/DTW Validation');
   lines.push('');
-  lines.push('| Fixture | Variant | Shape | Row sums min/mean/max | Non-negative | Monotonic DTW |');
-  lines.push('|---------|---------|-------|-----------------------|--------------|---------------|');
+  lines.push('| Fixture | Variant | Shape | Values | Row sums min/mean/max | Non-negative | Monotonic DTW |');
+  lines.push('|---------|---------|-------|--------|-----------------------|--------------|---------------|');
   for (const result of results) {
     for (const f of result.fixtures) {
       const a = f.alignment;
-      lines.push(`| ${mdEscape(f.filename)} | ${result.variant} | ${a ? `[${a.shape.join(', ')}]` : 'n/a'} | ${a ? `${a.row_sum_min}/${a.row_sum_mean}/${a.row_sum_max}` : 'n/a'} | ${a?.non_negative ?? 'n/a'} | ${a?.dtw_monotonic ?? 'n/a'} |`);
+      lines.push(`| ${mdEscape(f.filename)} | ${result.variant} | ${a ? `[${a.shape.join(', ')}]` : 'n/a'} | ${a?.attention_values ?? 'n/a'} | ${a ? `${a.row_sum_min ?? '-'} / ${a.row_sum_mean ?? '-'} / ${a.row_sum_max ?? '-'}` : 'n/a'} | ${a?.non_negative ?? 'n/a'} | ${a?.dtw_monotonic ?? 'n/a'} |`);
     }
   }
   lines.push('');
@@ -654,7 +682,15 @@ function generateReport({ modelDir, fixtures, results, maxNewTokens, align, repo
   for (const result of results) {
     const promptOk = result.fixtures.every((f) => f.prompt_matches_fp32);
     const tokenOk = result.fixtures.every((f) => !f.comparison_to_fp32 || f.comparison_to_fp32.exact);
-    const alignOk = result.fixtures.every((f) => !f.alignment || (f.alignment.non_negative && f.alignment.dtw_monotonic && f.alignment.row_sum_min >= 0.99 && f.alignment.row_sum_max <= 1.01));
+    const alignOk = result.fixtures.every(
+      (f) =>
+        !f.alignment ||
+        (f.alignment.dtw_monotonic &&
+          (f.alignment.attention_values === 'logits' ||
+            (f.alignment.non_negative &&
+              f.alignment.row_sum_min >= 0.99 &&
+              f.alignment.row_sum_max <= 1.01))),
+    );
     const runtimeBackend = result.fixtures[0]?.runtime_backend ?? 'unknown';
     lines.push(`| ${result.variant} | pass | ${runtimeBackend} | ${promptOk ? 'pass' : 'fail'} | ${result.variant === 'fp32' ? 'baseline' : tokenOk ? 'pass' : 'fail'} | ${alignOk ? 'pass' : 'fail'} | ${promptOk && tokenOk && alignOk ? 'pass' : 'fail'} |`);
   }

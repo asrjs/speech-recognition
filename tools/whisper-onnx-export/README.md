@@ -61,7 +61,15 @@ All sizes for whisper-tiny fp32. Multiply by ~1.9x for whisper-base.
 
 #### decoder_align.onnx
 - Inputs: `input_ids` [batch, T], `encoder_hidden_states`
-- Output: `alignment` [batch, T, 1500] — averaged across selected alignment_heads
+- Output from the current exporter: `alignment` [batch, N, T, 1500], where N is the
+  selected alignment-head count and the values are raw cross-attention logits
+- The manifest declares this contract as `attention_values: "logits"` and
+  `attention_layout: "selected_heads"`. The TypeScript runtime crops the padded
+  frame axis, softmaxes each head, normalizes all teacher-forced rows, median
+  filters, averages heads, and then selects the no-timestamps anchor plus text
+  rows. This preserves the reference Whisper order of operations.
+- Older exports may still return `[batch, T, 1500]` post-softmax probabilities
+  with `attention_layout: "mean"`; the runtime keeps that compatibility path.
 - No DTW, timestamp logic, or torch.diff in ONNX — all post-processing in TypeScript
 - The manually unrolled decoder supplies Whisper's causal self-attention mask;
   re-export alignment graphs after changing Transformers versions and validate
@@ -121,8 +129,8 @@ for large-v3-turbo, `input_features` has 3000 mel frames while the encoder emits
 |------|--------|
 | Synthetic (440Hz sine) tokens | 5/5 exact match ONNX vs PyTorch |
 | Real speech (JFK, 11s) tokens | 27/27 (100%) exact match |
-| Alignment shape | [1, 27, 1500] correct |
-| Attention normalization | row sums = 1.0000 |
+| Alignment shape | legacy validation: [1, 27, 1500] |
+| Attention normalization | legacy post-softmax rows sum to 1.0000; current raw-logit rows are normalized at runtime |
 | fp16 parity | 100% token match |
 | int8 parity | 100% token match |
 

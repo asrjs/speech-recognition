@@ -85,6 +85,13 @@ The `manifest.json` uses format `"whisper-browser-self-export-v1"` and MUST incl
   "vocab_size": 51865,
   "opset": 17,
   "alignment_heads": [[2,2],[3,0],[3,2],[3,3],[3,4],[3,5]],
+  "alignment_export": {
+    "causal_self_attention": true,
+    "encoder_hidden_state_dtype": "float16",
+    "attention_implementation": "eager",
+    "attention_values": "logits",
+    "attention_layout": "selected_heads"
+  },
   "special_tokens": {
     "eos_token_id": 50257,
     "bos_token_id": 50257,
@@ -110,7 +117,11 @@ The `manifest.json` uses format `"whisper-browser-self-export-v1"` and MUST incl
 - [ ] `d_model`, `decoder_layers`, `decoder_attention_heads`, `head_dim` present
 - [ ] `d_model % decoder_attention_heads == 0`
 - [ ] `special_tokens` object present
-- [ ] `alignment_heads` present (or baked into decoder_align via averaging)
+- [ ] `alignment_heads` present and reflected in the alignment export contract
+- [ ] `alignment_export.causal_self_attention` is `true`
+- [ ] New exports declare `attention_values: "logits"` and
+      `attention_layout: "selected_heads"`; legacy averaged probability graphs
+      must declare `post_softmax` and `mean`
 - [ ] `vocab_size` matches tokenizer.json vocabulary
 - [ ] `max_source_positions` typically 1500; the encoder graph still accepts
       3000 mel frames and emits 1500 encoded positions after 2x downsampling
@@ -219,6 +230,23 @@ Word timestamps use cross-attention DTW alignment via `decoder_align.onnx`.
 If `decoder_align.onnx` is not available, word timestamps fall back to
 timestamp-token interpolation (less accurate).
 
+### Alignment tensor contracts
+
+The current exporter emits selected raw cross-attention logits with shape
+`[batch, alignment_head, target_sequence, source_frames]`. The runtime crops
+the fixed 30-second frame axis to the actual audio duration, applies softmax
+per head, normalizes every teacher-forced row, median-filters, averages the
+selected heads, and selects the rows corresponding to
+`[no_timestamps, text..., last_text]`. This ordering matches Whisper's
+`find_alignment` path and keeps the no-timestamps row as the leading DTW
+anchor.
+
+Older artifacts may emit an averaged post-softmax matrix with shape
+`[batch, target_sequence, source_frames]`. Those graphs remain readable when
+their manifest declares the legacy `post_softmax`/`mean` contract; they are
+renormalized after frame cropping but cannot recover per-head short-clip
+semantics.
+
 ## Verification env vars
 
 These optional environment variables enable fixture-based tests:
@@ -282,7 +310,7 @@ Audio → WhisperMelProcessor → mel spectrogram
   → encoder_model.onnx → hidden_states [1, 1500, d_model]
   → decoder_init.onnx(prompt) → logits + KV cache
   → decoder_step.onnx(token, KV) × N → tokens
-  → decoder_align.onnx(all_tokens) → alignment [1, T, 1500]
+  → decoder_align.onnx(all_tokens) → alignment [1, N, T, 1500] logits
   → processSplitGraphAlignment() → DTW → word timestamps
 ```
 

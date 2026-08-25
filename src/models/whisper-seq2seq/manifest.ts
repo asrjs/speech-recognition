@@ -13,11 +13,18 @@ export interface ParsedWhisperManifest {
   readonly alignmentExport?: WhisperAlignmentExportMetadata;
 }
 
+export type WhisperAlignmentAttentionValues = 'post_softmax' | 'logits';
+export type WhisperAlignmentAttentionLayout = 'mean' | 'selected_heads';
+
 /** Export-time guarantees for the optional split-graph alignment decoder. */
 export interface WhisperAlignmentExportMetadata {
   readonly causalSelfAttention: boolean;
   readonly encoderHiddenStateDtype?: string;
   readonly attentionImplementation?: string;
+  /** Whether alignment contains probabilities or pre-softmax attention logits. */
+  readonly attentionValues?: WhisperAlignmentAttentionValues;
+  /** Whether selected heads are averaged in the graph or retained as a head axis. */
+  readonly attentionLayout?: WhisperAlignmentAttentionLayout;
 }
 
 export function parseWhisperManifest(raw: Record<string, unknown>): ParsedWhisperManifest {
@@ -65,6 +72,12 @@ export function parseWhisperManifest(raw: Record<string, unknown>): ParsedWhispe
             : {}),
           ...(typeof value.attention_implementation === 'string'
             ? { attentionImplementation: value.attention_implementation }
+            : {}),
+          ...(value.attention_values === 'post_softmax' || value.attention_values === 'logits'
+            ? { attentionValues: value.attention_values }
+            : {}),
+          ...(value.attention_layout === 'mean' || value.attention_layout === 'selected_heads'
+            ? { attentionLayout: value.attention_layout }
             : {}),
         } satisfies WhisperAlignmentExportMetadata;
       })()

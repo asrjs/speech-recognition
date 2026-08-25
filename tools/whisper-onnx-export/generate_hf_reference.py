@@ -168,19 +168,34 @@ def onnx_infer(
     if align_sess and generated:
         align_input = np.array([all_tokens], dtype=np.int64)
         align_out = align_sess.run(None, {"input_ids": align_input, "encoder_hidden_states": enc_out})
-        alignment = align_out[0]  # [B, T, S]
-        b, t, s = alignment.shape
-        # Skip prompt rows: alignment[:, prompt_len:, :]
-        text_align = alignment[0, len(prompt_ids):, :]
-        text_t, text_s = text_align.shape
-        row_sums = text_align.sum(axis=1)
+        alignment = align_out[0]
+        alignment_export = manifest.get("alignment_export", {})
+        attention_values = alignment_export.get("attention_values", "post_softmax")
+        if alignment.ndim == 4:
+            b, head_count, t, s = alignment.shape
+            text_align = alignment[0, :, len(prompt_ids):, :]
+            text_shape = [head_count, text_align.shape[1], text_align.shape[2]]
+        else:
+            b, t, s = alignment.shape
+            text_align = alignment[0, len(prompt_ids):, :]
+            text_shape = [text_align.shape[0], text_align.shape[1]]
         alignment_info = {
-            "shape": [b, t, s],
-            "text_shape": [text_t, text_s],
-            "row_sum_min": float(row_sums.min()),
-            "row_sum_max": float(row_sums.max()),
-            "row_sum_mean": float(row_sums.mean()),
+            "shape": list(alignment.shape),
+            "text_shape": text_shape,
+            "attention_values": attention_values,
         }
+        if attention_values == "logits":
+            alignment_info.update({
+                "value_min": float(text_align.min()),
+                "value_max": float(text_align.max()),
+            })
+        else:
+            row_sums = text_align.sum(axis=-1)
+            alignment_info.update({
+                "row_sum_min": float(row_sums.min()),
+                "row_sum_max": float(row_sums.max()),
+                "row_sum_mean": float(row_sums.mean()),
+            })
 
     return {
         "tokens": all_tokens,
@@ -310,8 +325,12 @@ def main():
         print(f"  ONNX text:   \"{onnx_no_ts_text[:100]}\"")
         if onnx_no_ts["alignment"]:
             al = onnx_no_ts["alignment"]
-            print(f"  Alignment: shape={al['shape']}, text_shape={al['text_shape']}, "
-                  f"row_sum=[{al['row_sum_min']:.4f}, {al['row_sum_max']:.4f}]")
+            if al["attention_values"] == "logits":
+                print(f"  Alignment: shape={al['shape']}, text_shape={al['text_shape']}, "
+                      f"raw_logits=[{al['value_min']:.4f}, {al['value_max']:.4f}]")
+            else:
+                print(f"  Alignment: shape={al['shape']}, text_shape={al['text_shape']}, "
+                      f"row_sum=[{al['row_sum_min']:.4f}, {al['row_sum_max']:.4f}]")
 
     # Build reference
     reference = {

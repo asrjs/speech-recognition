@@ -712,11 +712,13 @@ Key decisions:
   `encoder_hidden_states` and `cache_position` are NOT graph inputs because cross-attention
   K/V are cached and position is derived from cache length
 - `decoder_align` uses manual decoder block iteration (no `output_attentions=True`) to avoid
-  `aten::diff` which has no ONNX lowering. Returns averaged alignment matrix `[B, T, S]`
+  `aten::diff` which has no ONNX lowering. Current exports retain selected raw logits
+  as `[B, N, T, S]`; older averaged `[B, T, S]` probability graphs remain compatible
 - HF 5.x `EncoderDecoderCache` yields 6-element tuples `(self_k, self_v, None, cross_k, cross_v, None)`
   — handled in `to_legacy_cache()` with explicit tuple indexing
 - `build_encoder_decoder_cache_from_flat()` constructs HF 5.x cache objects from flat ONNX tensors
-- `decoder_align` export produces `alignment` output (not `alignment_heads`) — averaged across selected heads
+- `decoder_align` export produces `alignment` output with the selected-head axis
+  (`[B, N, T, S]`); the runtime averages heads after crop/normalization
 - All fp32 exports: encoder 31MB, init 189MB, step 108MB, align 107MB (whisper-tiny)
 - Quantization (fp16/int8) still supported for all graphs
 
@@ -738,9 +740,9 @@ Verified:
 E2E validation results:
 - **Synthetic (440Hz sine):** 5/5 tokens exact match ONNX vs PyTorch
 - **Real speech (JFK, 11s):** 27/27 tokens (100%) exact match ONNX vs PyTorch
-- **Alignment shape:** [1, 27, 1500] — correct B×T×S
-- **Attention normalization:** row sums = 1.0000 (perfect softmax)
-- **Alignment values:** [0.0000, 0.1796] — non-negative, properly scaled
+- **Legacy alignment shape:** [1, 27, 1500] — correct B×T×S
+- **Legacy attention normalization:** row sums = 1.0000 (post-softmax graph)
+- **Current alignment values:** raw selected-head logits are normalized in the TypeScript runtime
 - **Alignment heads:** 6 heads from official generation_config.json
 - **Quantization:** fp16 conversion requires `onnxconverter-common` (installed); int8 uses built-in onnxruntime dynamic quantization
 
@@ -833,7 +835,8 @@ COMMIT HISTORY (feat/asr-pipeline-output-formats)
 E2E VALIDATION (Python exporter, all passing)
   - Synthetic (440Hz sine):  5/5  tokens exact match ONNX vs PyTorch
   - Real speech (JFK, 11s): 27/27 tokens (100%) exact match
-  - Alignment: [1, 27, 1500], row sums = 1.0000, non-negative
+  - Legacy alignment: [1, 27, 1500], row sums = 1.0000, non-negative
+  - Current exporter: selected raw-logit alignment `[1, N, T, 1500]`; runtime performs normalization
   - fp16 parity: 100%  |  int8 parity: 100%
 
 VERIFICATION TESTS (all passing, skipped without env vars)

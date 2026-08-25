@@ -314,6 +314,7 @@ export async function runAsrPipeline(_opts) {
   const { parseWhisperGenerationConfig, parseWhisperModelConfig } = await importDist(
     'models/whisper-seq2seq/generation-config.js'
   );
+  const { parseWhisperManifest } = await importDist('models/whisper-seq2seq/manifest.js');
   const {
     buildWhisperForcedAlignmentTokenIds,
     collectSplitGraphTextTokenRows,
@@ -344,6 +345,13 @@ export async function runAsrPipeline(_opts) {
   );
   const configRaw = JSON.parse(await fetchText(path.join(opts.model, 'config.json')));
   const modelConfig = parseWhisperModelConfig(configRaw);
+  let alignmentExport;
+  try {
+    const manifestRaw = JSON.parse(fs.readFileSync(path.join(opts.model, 'manifest.json'), 'utf8'));
+    alignmentExport = parseWhisperManifest(manifestRaw).alignmentExport;
+  } catch {
+    alignmentExport = undefined;
+  }
   const dModel = modelConfig.dModel ?? 384;
   const melBins = modelConfig.numMelBins ?? 80;
   const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
@@ -692,7 +700,19 @@ export async function runAsrPipeline(_opts) {
           };
           const alignOut = await alignSess.run(alignFeeds);
           const alignKey = Object.keys(alignOut)[0];
-          const alignmentData = new Float32Array(alignOut[alignKey].data);
+          const alignTensor = alignOut[alignKey];
+          const alignmentData = new Float32Array(alignTensor.data);
+          const alignmentHeadCount = alignTensor.dims.length === 4
+            ? Number(alignTensor.dims[alignTensor.dims.length - 3])
+            : 1;
+          const alignmentValuesAreLogits = alignmentExport?.attentionValues === 'logits';
+          if (alignmentValuesAreLogits && (
+            alignmentExport?.attentionLayout !== 'selected_heads' || alignTensor.dims.length !== 4
+          )) {
+            throw new Error(
+              `decoder_align manifest/output layout mismatch: [${alignTensor.dims.join(', ')}]`,
+            );
+          }
 
           const dtwTimestamps = processSplitGraphAlignment({
             alignmentData,
@@ -703,6 +723,8 @@ export async function runAsrPipeline(_opts) {
             timePrecisionSeconds: 0.02,
             textTokenRowIndices: alignmentRowIndices,
             cropFrameCount,
+            alignmentHeadCount,
+            alignmentValuesAreLogits,
           });
 
           nativeWords = buildWhisperWordTimestampsFromDtwTokens(

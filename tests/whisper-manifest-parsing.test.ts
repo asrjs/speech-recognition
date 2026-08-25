@@ -64,6 +64,8 @@ describe('Whisper manifest parsing (whisper-browser-self-export-v1)', () => {
         causal_self_attention: true,
         encoder_hidden_state_dtype: 'float32',
         attention_implementation: 'eager',
+        attention_values: 'logits',
+        attention_layout: 'selected_heads',
       },
     });
 
@@ -71,6 +73,8 @@ describe('Whisper manifest parsing (whisper-browser-self-export-v1)', () => {
       causalSelfAttention: true,
       encoderHiddenStateDtype: 'float32',
       attentionImplementation: 'eager',
+      attentionValues: 'logits',
+      attentionLayout: 'selected_heads',
     });
   });
 

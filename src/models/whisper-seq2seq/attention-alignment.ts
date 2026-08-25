@@ -1,8 +1,10 @@
 export interface WhisperAttentionHeadMatrix {
-  /** Post-softmax cross-attention weights, laid out as token-major rows. */
+  /** Cross-attention values, laid out as token-major rows. */
   readonly values: Float32Array;
   readonly tokenCount: number;
   readonly frameCount: number;
+  /** True when values are pre-softmax attention logits rather than probabilities. */
+  readonly valuesAreLogits?: boolean;
 }
 
 export interface WhisperMedianFilterOptions {
@@ -15,6 +17,10 @@ export interface WhisperDtwTokenTimestampOptions {
   readonly attentionHeads: readonly WhisperAttentionHeadMatrix[];
   readonly tokenCount: number;
   readonly frameCount: number;
+  /** Rows retained for DTW after all teacher-forced rows are normalized. */
+  readonly tokenRowIndices?: readonly number[];
+  /** Number of rows included in per-frame normalization. */
+  readonly normalizationTokenCount?: number;
   readonly medianFilterWidth?: number;
   readonly timePrecisionSeconds?: number;
 }
@@ -106,6 +112,48 @@ function renormalizeOverFrames(values: Float32Array, tokenCount: number, frameCo
   return output;
 }
 
+/**
+ * Convert cropped raw cross-attention logits to per-token frame probabilities.
+ *
+ * This deliberately happens after the encoder-window crop. Whisper's
+ * reference alignment path crops first, then applies softmax, so padding
+ * frames cannot retain probability mass for a short clip.
+ */
+function softmaxOverFrames(values: Float32Array, tokenCount: number, frameCount: number): Float32Array {
+  const output = new Float32Array(values.length);
+  for (let token = 0; token < tokenCount; token++) {
+    const rowOffset = token * frameCount;
+    let maximum = -Infinity;
+    for (let frame = 0; frame < frameCount; frame++) {
+      const value = values[rowOffset + frame] ?? -Infinity;
+      if (Number.isFinite(value) && value > maximum) maximum = value;
+    }
+    if (!Number.isFinite(maximum)) {
+      const uniform = 1 / frameCount;
+      for (let frame = 0; frame < frameCount; frame++) output[rowOffset + frame] = uniform;
+      continue;
+    }
+
+    let sum = 0;
+    for (let frame = 0; frame < frameCount; frame++) {
+      const value = values[rowOffset + frame] ?? -Infinity;
+      const weight = Number.isFinite(value) ? Math.exp(value - maximum) : 0;
+      output[rowOffset + frame] = weight;
+      sum += weight;
+    }
+    if (sum > 0 && Number.isFinite(sum)) {
+      for (let frame = 0; frame < frameCount; frame++) {
+        const index = rowOffset + frame;
+        output[index] = (output[index] ?? 0) / sum;
+      }
+    } else {
+      const uniform = 1 / frameCount;
+      for (let frame = 0; frame < frameCount; frame++) output[rowOffset + frame] = uniform;
+    }
+  }
+  return output;
+}
+
 function averageHeads(heads: readonly Float32Array[], tokenCount: number, frameCount: number): Float32Array {
   const output = new Float32Array(tokenCount * frameCount);
   for (const head of heads) {
@@ -120,8 +168,11 @@ function dynamicTimeWarpNegative(matrix: Float32Array, tokenCount: number, frame
 } {
   const rows = tokenCount;
   const cols = frameCount;
-  const cost = Array.from({ length: rows + 1 }, () => new Float64Array(cols + 1).fill(Infinity));
-  const trace = Array.from({ length: rows + 1 }, () => new Uint8Array(cols + 1));
+  // Match whisper.timing.dtw_cpu: the accumulated cost is float32 even
+  // though the normalized attention matrix is later consumed as a negative
+  // float64-like score by the reference implementation.
+  const cost = Array.from({ length: rows + 1 }, () => new Float32Array(cols + 1).fill(Infinity));
+  const trace = Array.from({ length: rows + 1 }, () => new Uint8Array(cols + 1).fill(255));
   cost[0]![0] = 0;
 
   for (let row = 1; row <= rows; row++) {
@@ -149,11 +200,17 @@ function dynamicTimeWarpNegative(matrix: Float32Array, tokenCount: number, frame
     }
   }
 
+  // The reference backtrace explicitly walks both zero-cost borders. Those
+  // dummy row indices are useful for finding the first real row's jump time;
+  // computeWhisperDtwTokenTimestamps ignores the negative row itself.
+  for (let col = 0; col <= cols; col++) trace[0]![col] = 2;
+  for (let row = 0; row <= rows; row++) trace[row]![0] = 1;
+
   const textIndices: number[] = [];
   const timeIndices: number[] = [];
   let row = rows;
   let col = cols;
-  while (row > 0 && col > 0) {
+  while (row > 0 || col > 0) {
     textIndices.push(row - 1);
     timeIndices.push(col - 1);
     const direction = trace[row]![col];
@@ -176,29 +233,49 @@ export function computeWhisperDtwTokenTimestamps(
 ): readonly number[] {
   const tokenCount = Math.max(0, Math.floor(options.tokenCount));
   const frameCount = Math.max(0, Math.floor(options.frameCount));
+  const normalizationTokenCount = Math.max(
+    tokenCount,
+    Math.floor(options.normalizationTokenCount ?? tokenCount),
+  );
+  const tokenRowIndices = options.tokenRowIndices
+    ? [...options.tokenRowIndices]
+    : Array.from({ length: tokenCount }, (_unused, index) => index);
   if (tokenCount === 0) return [0];
   if (frameCount === 0) return Array.from({ length: tokenCount + 1 }, () => 0);
+  if (tokenRowIndices.length !== tokenCount || tokenRowIndices.some(
+    (row) => row < 0 || row >= normalizationTokenCount,
+  )) {
+    throw new Error('Whisper DTW token rows must select exactly the requested normalized rows.');
+  }
   if (options.attentionHeads.length === 0) {
     throw new Error('At least one Whisper cross-attention head is required for DTW alignment.');
   }
 
   const processedHeads = options.attentionHeads.map((head) => {
-    if (head.tokenCount < tokenCount || head.frameCount < frameCount) {
+    if (head.tokenCount < normalizationTokenCount || head.frameCount < frameCount) {
       throw new Error('Whisper attention head is smaller than the requested DTW crop.');
     }
-    const cropped = new Float32Array(tokenCount * frameCount);
-    for (let token = 0; token < tokenCount; token++) {
+    const cropped = new Float32Array(normalizationTokenCount * frameCount);
+    for (let token = 0; token < normalizationTokenCount; token++) {
       const sourceOffset = token * head.frameCount;
       const targetOffset = token * frameCount;
       cropped.set(head.values.subarray(sourceOffset, sourceOffset + frameCount), targetOffset);
     }
-    const renormalized = renormalizeOverFrames(cropped, tokenCount, frameCount);
-    const normalized = normalizeOverTokens(renormalized, tokenCount, frameCount);
-    return medianFilterWhisperAttention(normalized, {
-      tokenCount,
+    const frameProbabilities = head.valuesAreLogits
+      ? softmaxOverFrames(cropped, normalizationTokenCount, frameCount)
+      : renormalizeOverFrames(cropped, normalizationTokenCount, frameCount);
+    const normalized = normalizeOverTokens(frameProbabilities, normalizationTokenCount, frameCount);
+    const filtered = medianFilterWhisperAttention(normalized, {
+      tokenCount: normalizationTokenCount,
       frameCount,
       width: options.medianFilterWidth ?? 7,
     });
+    const selected = new Float32Array(tokenCount * frameCount);
+    for (let token = 0; token < tokenCount; token++) {
+      const sourceOffset = (tokenRowIndices[token] ?? 0) * frameCount;
+      selected.set(filtered.subarray(sourceOffset, sourceOffset + frameCount), token * frameCount);
+    }
+    return selected;
   });
 
   const matrix = averageHeads(processedHeads, tokenCount, frameCount);

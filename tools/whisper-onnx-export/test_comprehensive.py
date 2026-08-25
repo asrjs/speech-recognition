@@ -227,13 +227,35 @@ class OnnxWhisperRunner:
             None,
             {"input_ids": align_input, "encoder_hidden_states": enc_out},
         )
-        alignment = align_out[0]  # [B, T, S] averaged alignment matrix
-        b, t, s = alignment.shape
+        alignment = align_out[0]
+        # Current exports retain the selected-head axis and return raw logits
+        # [B, N, T, S]. Older artifacts return an averaged probability matrix
+        # [B, T, S]. Keep this utility diagnostic-only: row sums are meaningful
+        # for the legacy contract, not for raw logits.
+        if alignment.ndim == 4:
+            batch, head_count, token_count, frame_count = alignment.shape
+            rows = alignment.reshape(batch * head_count * token_count, frame_count)
+            layout = "selected_heads"
+        elif alignment.ndim == 3:
+            batch, token_count, frame_count = alignment.shape
+            head_count = 1
+            rows = alignment.reshape(batch * token_count, frame_count)
+            layout = "mean"
+        else:
+            raise ValueError(f"Unexpected decoder_align rank: {alignment.ndim}")
+        row_sums = rows.sum(axis=1)
 
         return [{
-            "alignment_shape": [b, t, s],
+            "alignment_shape": list(alignment.shape),
+            "alignment_head_count": int(head_count),
+            "alignment_layout": layout,
             "alignment_mean": float(np.mean(alignment)),
             "alignment_std": float(np.std(alignment)),
+            "alignment_value_min": float(np.min(alignment)),
+            "alignment_value_max": float(np.max(alignment)),
+            "alignment_row_sum_min": float(np.min(row_sums)),
+            "alignment_row_sum_mean": float(np.mean(row_sums)),
+            "alignment_row_sum_max": float(np.max(row_sums)),
         }]
 
 
