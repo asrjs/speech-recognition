@@ -1119,3 +1119,38 @@ versus `718ms` in the immediately preceding implementation run; the
 corresponding batched proxy measured `678ms` versus `742ms`. These are JS
 decoder-selector measurements, not a browser/WebGPU end-to-end claim, so the
 browser promotion gates remain unchanged.
+
+## Continuation audit: current-source Chrome beam and timestamp matrix (2026-08-25)
+
+The independent terminal Chrome runner was rerun against the current TypeScript
+source through the sibling Vite harness. The public local
+`fp16io-fp16-webgpu` artifact was used with the existing 29.9043-second English,
+18.6409-second Turkish, and 10.0043-second English fixtures. The process exited
+with code 0 after all selected cases completed, and every case retained zero GPU
+tensor downloads.
+
+| Case | Total | RTFx | Decoder step calls | Cache | Parity result |
+| --- | ---: | ---: | ---: | --- | --- |
+| English stable beam 2 | `6154.315ms` | `4.8591x` | `98` | CPU | oracle |
+| English batched beam 2 | `3540.205ms` | `8.4471x` | `49` | CPU | exact tokens |
+| English stable beam 5 | `14542.625ms` | `2.0563x` | `245` | CPU | oracle |
+| English batched beam 5 | `4184.015ms` | `7.1473x` | `49` | CPU | exact tokens |
+| Turkish auto stable beam 2 | `9674.175ms` | `1.9269x` | `158` | CPU | language `tr` |
+| Turkish auto batched beam 2 | `5395.92ms` | `3.4546x` | `79` | CPU | exact tokens/text |
+| English stable beam 2 + timestamps | `2782.72ms` | `3.5952x` | `40` | CPU | oracle |
+| English batched beam 2 + timestamps | `1725.14ms` | `5.7991x` | `20` | CPU | exact tokens/words/EOS |
+
+The batched path therefore halves decoder-step calls for the tested beam sizes
+and preserved the stable CPU-KV oracle on English, Turkish auto-detection, and
+timestamped decoding. The public alignment artifact still emitted the expected
+`whisper.decoder-align-legacy` warnings and used generated timestamp
+interpolation; this matrix does not claim verified timestamps for that legacy
+artifact. The separately validated local causal FP16/FP32 alignment pairs remain
+the evidence for the causal DTW path and the known one-frame FP16 WebGPU
+endpoint boundary.
+
+This expands the fixture gate, but does not justify changing the public default:
+only the current dynamic-token graph family has passed the batch-shaped decoder
+contract. `experimentalBatchedBeam` remains opt-in, stable CPU-KV remains the
+correctness oracle, and GPU-KV remains greedy-only until another artifact family
+and its EOS/cache behavior are independently validated.

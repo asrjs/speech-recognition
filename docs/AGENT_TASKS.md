@@ -227,6 +227,10 @@ Step 5: Token-by-token → first 5 tokens match fp32 baseline
   passes the browser WebGPU timestamp harness with first word `2.42s`.
 - [x] Re-measure warmed 29.904s English beam 2: stable `3.1242x` RTFx and
   batched `3.8094x` RTFx, with exact stable/batched text parity.
+- [x] Rerun the current-source Chrome matrix across English beam 2/5, Turkish
+  auto-detect beam 2, and timestamped beam 2. Stable and batched tokens/text
+  matched exactly, timestamped words and EOS matched, batched decoder calls
+  halved, and GPU tensor downloads remained zero.
 
 ### WebGPU Pipeline Fixes
 
@@ -416,10 +420,13 @@ hallucinations and recovers with higher temperature.
 
 ### 6. Deprioritized / Experimental (do not prioritize)
 
-- Batched beam decode: implemented as opt-in `experimentalBatchedBeam`. Keep stable
-  CPU-KV beam as oracle. Encoder-KV broadcast is enabled only for the validated
-  dynamic-token graph family; fixed-token graphs use cached materialized KV to
-  preserve logits. Only promote after more variants/fixtures prove parity.
+- Batched beam decode: implemented as opt-in `experimentalBatchedBeam`. The
+  current Chrome matrix covers English beam 2/5, Turkish auto-detect beam 2,
+  and timestamped beam 2 with exact stable-oracle parity. Keep stable CPU-KV
+  beam as oracle and retain opt-in status until another graph family passes the
+  same EOS/cache contract. Encoder-KV broadcast is enabled only for the
+  validated dynamic-token graph family; fixed-token graphs use cached
+  materialized KV to preserve logits.
 - GPU-KV beam support: not feasible without batched beam decode graph changes.
 - Encoder graph capture: fails on Reshape/Shape ops; revisit only after ORT updates.
 - Decoder graph capture: remains diagnostic-only; failed partitioning now falls
