@@ -79,7 +79,7 @@ describe('splitGraphDecodeLoop (4-graph init→step autoregressive)', () => {
     // But init doesn't add token — we extract from logits
     // Actually: first token from init logits = 7
     // Step 1: token 7
-    // Step 2: token 7  
+    // Step 2: token 7
     // Step 3: EOS 5 → stop
     expect(result.tokens.length).toBe(4); // [7, 7, 7, 5]
     expect(result.tokens).toEqual([7, 7, 7, 5]);
@@ -113,6 +113,7 @@ describe('splitGraphDecodeLoop (4-graph init→step autoregressive)', () => {
   it('passes active beams through the optional batched step callback', async () => {
     let batchCalls = 0;
     let singleCalls = 0;
+    let initialCache: Record<string, Float32Array> | undefined;
     const result = await splitGraphDecodeLoop({
       promptTokens: [50258, 50259, 50359],
       encoderHiddenStates: new Float32Array(100),
@@ -125,10 +126,15 @@ describe('splitGraphDecodeLoop (4-graph init→step autoregressive)', () => {
         const logits = new Float32Array(10);
         logits[2] = 10;
         logits[3] = 9;
+        const cache = {
+          'present.0.decoder.key': new Float32Array([0]),
+          'present.0.encoder.key': new Float32Array([1]),
+        };
+        initialCache = cache;
         return {
           logits,
           vocabSize: 10,
-          presentKv: { 'present.0.decoder.key': new Float32Array([0]) },
+          presentKv: cache,
         };
       },
       runStep: (tokenId) => {
@@ -141,8 +147,12 @@ describe('splitGraphDecodeLoop (4-graph init→step autoregressive)', () => {
           presentKv: { 'present.0.decoder.key': new Float32Array([tokenId]) },
         };
       },
-      runStepBatch: (tokenIds) => {
+      runStepBatch: (tokenIds, pastKvs) => {
         batchCalls += 1;
+        if (batchCalls === 1) {
+          expect(pastKvs[0]).toBe(initialCache);
+          expect(pastKvs[1]).toBe(initialCache);
+        }
         return tokenIds.map((tokenId) => {
           const logits = new Float32Array(10);
           logits[tokenId === 2 ? 4 : 5] = 10;

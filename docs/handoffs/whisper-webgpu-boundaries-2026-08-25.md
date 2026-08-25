@@ -448,6 +448,34 @@ output, but took `47,745.245ms` for the warmed 10.004s clip, including
 therefore not a viable WebGPU optimization with the current ORT-WebGPU build;
 the fp16 split encoder remains the production candidate.
 
+## Follow-up: shared encoder KV for batched beams (2026-08-25)
+
+The batched decoder profile identified a safe memory-bandwidth waste: every
+active beam was repacking the same immutable encoder key/value cache on every
+`decoder_step`. The core read-only cache contract now shares the initial cache
+across sibling beams. The WebGPU split-graph adapter passes encoder KV with
+batch `1`, which ONNX attention broadcasts across the active token batch, while
+decoder self-attention KV remains fully batched. If sibling buffers are not the
+same backing view, or if a backend rejects the broadcast shape, the existing
+batched-step error path disables batching and retries the stable scalar CPU-KV
+path.
+
+An independent CPU ONNX probe accepted the `[1, heads, frames, head_dim]`
+encoder-KV input with `[2, 1]` token inputs. The browser harness then validated
+the optimized path against the unmodified public model:
+
+| Case                                  |         Total |      RTFx | Steps | Token/word parity | Downloads |
+| ------------------------------------- | ------------: | --------: | ----: | ----------------- | --------: |
+| EN timestamped batched beam 2, before |   `2928.82ms` | `3.4158x` |    20 | baseline          |         0 |
+| EN timestamped batched beam 2, after  |   `2059.86ms` | `4.8568x` |    20 | exact vs stable   |         0 |
+| EN beam 5, stable                     | `22919.805ms` | `1.3047x` |   245 | oracle            |         0 |
+| EN beam 5, batched                    |  `5038.375ms` | `5.9353x` |    49 | exact vs stable   |         0 |
+
+For beam 2, `decoderStepFeedBuildMs` fell from `638.29ms` to `335.045ms` and
+CPU tensor inputs fell from `682` to `342`. The optimization remains behind
+`experimentalBatchedBeam`; stable CPU-KV remains the correctness oracle and
+GPU-KV remains greedy-only.
+
 ## Remaining boundary
 
 The local split-graph timestamp contract is now fixed and independently

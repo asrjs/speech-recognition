@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   cloneDecoderKvDataForInput,
+  canShareWhisperEncoderKvAcrossBatch,
   concatDecoderKvDataForBatch,
   float32ToFloat16Bits,
   maybeCastWhisperFeatureTensor,
@@ -15,6 +16,29 @@ afterEach(() => {
 });
 
 describe('Whisper fp16 decoder-step KV inputs', () => {
+  it('only broadcasts encoder KV when sibling beams share the same batch-one buffer', () => {
+    const shared = new Float32Array([1, 2, 3, 4]);
+    expect(
+      canShareWhisperEncoderKvAcrossBatch([
+        { data: shared, dims: [1, 2, 2, 1], type: 'float32' },
+        { data: shared, dims: [1, 2, 2, 1], type: 'float32' },
+      ]),
+    ).toBe(true);
+
+    expect(
+      canShareWhisperEncoderKvAcrossBatch([
+        { data: shared, dims: [1, 2, 2, 1], type: 'float32' },
+        { data: new Float32Array(shared), dims: [1, 2, 2, 1], type: 'float32' },
+      ]),
+    ).toBe(false);
+    expect(
+      canShareWhisperEncoderKvAcrossBatch([
+        { data: shared, dims: [2, 2, 2, 1], type: 'float32' },
+        { data: shared, dims: [2, 2, 2, 1], type: 'float32' },
+      ]),
+    ).toBe(false);
+  });
+
   it('converts normal and subnormal values to IEEE fp16 with round-to-nearest-even', () => {
     const values = new Float32Array([-2, 2, 2 ** -24, 2 ** -25, 1 + 2 ** -11, 1 + 3 * 2 ** -11]);
 

@@ -51,36 +51,6 @@ export interface WhisperKvCacheEntry {
 export type WhisperKvCacheValue = ArrayBufferView | WhisperKvCacheEntry;
 export type WhisperKvCache = Record<string, WhisperKvCacheValue>;
 
-type WhisperKvDataView = ArrayBufferView & { readonly length?: number };
-type WhisperKvDataConstructor = {
-  new(buffer: ArrayBufferLike, byteOffset?: number, length?: number): ArrayBufferView;
-};
-
-function isWhisperKvCacheEntry(value: WhisperKvCacheValue): value is WhisperKvCacheEntry {
-  return !ArrayBuffer.isView(value);
-}
-
-function cloneWhisperKvData(data: ArrayBufferView): ArrayBufferView {
-  const view = data as WhisperKvDataView;
-  const buffer = (view.buffer as ArrayBuffer).slice(view.byteOffset, view.byteOffset + view.byteLength);
-  if (typeof view.length === 'number') {
-    const ctor = view.constructor as WhisperKvDataConstructor;
-    return new ctor(buffer, 0, view.length);
-  }
-  return new DataView(buffer);
-}
-
-function cloneWhisperKvCacheValue(value: WhisperKvCacheValue): WhisperKvCacheValue {
-  if (isWhisperKvCacheEntry(value)) {
-    return {
-      data: cloneWhisperKvData(value.data),
-      ...(value.dims ? { dims: value.dims } : {}),
-      ...(value.type ? { type: value.type } : {}),
-    };
-  }
-  return cloneWhisperKvData(value);
-}
-
 export interface WhisperInitResult {
   readonly logits: Float32Array;
   readonly vocabSize: number;
@@ -334,7 +304,11 @@ export async function whisperBeamDecode(
   );
 
   let beams: WhisperBeamState<TokenQualityTrace[]>[] = firstExpansion.active;
-  let beamKvs = firstExpansion.parentIndexes.map(() => cloneWhisperKvCache(initResult.presentKv));
+  // Decoder adapters promise to treat cache inputs as read-only. Keep the
+  // initial cache shared across sibling beams so immutable encoder KV does not
+  // get cloned once per beam before the first batched step. The adapter still
+  // clones/re-packs data when constructing backend inputs.
+  let beamKvs = firstExpansion.parentIndexes.map(() => initResult.presentKv);
 
   let useBatchedBeam = options.experimentalBatchedBeam === true && Boolean(session.runStepBatch);
 
@@ -563,12 +537,6 @@ function expandWhisperBeamStep(
   }
 
   return { active, parentIndexes, finished };
-}
-
-function cloneWhisperKvCache(cache: WhisperKvCache): WhisperKvCache {
-  return Object.fromEntries(
-    Object.entries(cache).map(([key, value]) => [key, cloneWhisperKvCacheValue(value)]),
-  );
 }
 
 function appendFinishedWhisperBeams(

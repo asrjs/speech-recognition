@@ -795,6 +795,23 @@ function normalizeWhisperKvCacheValue(
   return value;
 }
 
+/**
+ * Return true when a batched decoder can feed one immutable encoder-KV slice
+ * for all active beams. Identity, rather than value equality, is deliberate:
+ * the core decoder shares read-only cache entries, while distinct buffers must
+ * remain fully materialized to avoid changing model semantics.
+ */
+export function canShareWhisperEncoderKvAcrossBatch(
+  values: readonly WhisperKvCacheValue[],
+): boolean {
+  if (values.length < 2) return false;
+  const first = normalizeWhisperKvCacheValue(values[0]!);
+  return first.dims?.[0] === 1 && values.every((value) => {
+    const normalized = normalizeWhisperKvCacheValue(value);
+    return normalized.data === first.data && normalized.dims?.[0] === 1;
+  });
+}
+
 export async function splitGraphDecodeLoop(params: {
   promptTokens: readonly number[];
   encoderHiddenStates: Float32Array;
@@ -3462,6 +3479,16 @@ export class WhisperOnnxExecutor {
                     return normalizeWhisperKvCacheValue(value);
                   });
                   const firstValue = values[0]!;
+                  // Encoder KV is immutable after decoder_init. The core
+                  // decoder contract keeps the initial cache shared across
+                  // sibling beams, and ONNX attention broadcasts a [1, H, S,
+                  // D] encoder cache across the [B, ...] token batch. Avoid
+                  // copying that multi-hundred-MiB payload once per beam and
+                  // step. If a backend returns distinct encoder buffers, keep
+                  // the old fully materialized batch for correctness.
+                  const isEncoderKv = stepName.includes('.encoder.');
+                  const shareEncoderKv = isEncoderKv && canShareWhisperEncoderKvAcrossBatch(values);
+                  const valuesToBatch = shareEncoderKv ? [firstValue] : values;
                   const dims = firstValue.dims
                     ?? kvDims[name]
                     ?? kvDims[stepName]
@@ -3482,11 +3509,11 @@ export class WhisperOnnxExecutor {
                       throw new Error(`Cannot batch Whisper KV "${name}" with mismatched per-beam dims.`);
                     }
                   }
-                  const batched = concatDecoderKvDataForBatch(values, kvDtype);
+                  const batched = concatDecoderKvDataForBatch(valuesToBatch, kvDtype);
                   feeds[stepName] = new splitLoaded.ort.Tensor(
                     batched.type,
                     batched.data,
-                    [batchSize, ...perBeamDims.slice(1)],
+                    [shareEncoderKv ? 1 : batchSize, ...perBeamDims.slice(1)],
                   );
                 }
 
