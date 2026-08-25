@@ -7,9 +7,10 @@ Browser harness: `N:\github\asrjs\webgpu-agent-test`
 ## Landed in this continuation
 
 - Split-graph word alignment now follows Whisper/faster-whisper's
-  teacher-forced `find_alignment` contract: generated timestamp spans are
-  retained for segment context, while the alignment graph receives a
-  no-timestamps prompt containing only text tokens.
+  teacher-forced `find_alignment` contract: the alignment graph receives
+  `[SOT, language, task, no_timestamps, text..., EOT]`, retaining the
+  no-timestamps prediction row as the DTW anchor while generated timestamp
+  spans remain available for segment context.
 - Encoder hidden states are cast at graph boundaries in either direction
   (`float16` ↔ `float32`) using the graph's declared input metadata. This is
   required when the browser uses the fp16 encoder with a corrected fp32
@@ -55,7 +56,8 @@ Browser harness: `N:\github\asrjs\webgpu-agent-test`
   builder and task selection as split-graph alignment. It derives the prompt
   rows, filters cache feeds from the decoder's declared inputs, casts encoder
   states at the merged decoder boundary, reads GPU attention/logit outputs
-  safely, and aligns only text rows against the attention graph's frame axis.
+  safely, and aligns the no-timestamps anchor plus text rows against the
+  attention graph's frame axis.
 - Merged-decoder alignment also crops padded frames to the actual audio duration;
   it no longer halves the encoder hidden-state length as a proxy for attention
   frames. Focused regression tests cover the prompt, causal logit rows, cache
@@ -63,8 +65,8 @@ Browser harness: `N:\github\asrjs\webgpu-agent-test`
 
 ## Validation
 
-Focused unit coverage: 31 tests passed for manifest parsing, beam decode, and
-split-graph alignment. Typecheck and build passed.
+Current focused coverage: 43 alignment, timestamp, and forced-prompt tests
+passed. Typecheck and build passed.
 
 Real local runner artifacts:
 
@@ -84,7 +86,7 @@ Independent headless Chrome/WebGPU matrix on the custom
 | EN batched beam 2, 30s                    |           8779.44ms |        3.4062x |    49 | cpu        |         0 | exact tokens            |
 | TR auto stable beam 2, 18s                |          16593.42ms |        1.1234x |   158 | cpu        |         0 | oracle                  |
 | TR auto batched beam 2, 18s               |          14348.08ms |        1.2992x |    79 | cpu        |         0 | exact tokens            |
-| EN timestamped stable/batched beam 2, 10s | 4625.065/3946.905ms | 2.1631/2.5347x | 40/20 | cpu        |         0 | exact tokens + 17 words |
+| EN timestamped stable/batched beam 2, 10s | 3930.49/2802.21ms | 2.5453/3.5702x | 40/20 | cpu        |         0 | exact tokens + 17 words |
 
 The harness reports `check` because it deliberately caps generated tokens;
 there were no inference or page errors. GPU-KV greedy retained zero GPU
@@ -92,118 +94,67 @@ downloads.
 
 ## Timestamp boundary result
 
-The original alignment export had two independent problems. Its manually
-unrolled decoder omitted the causal self-attention mask, so teacher-forced
-alignment rows could see future text tokens. The runtime also aligned the
-generated timestamp spans directly and then clipped the long leading DTW
-duration. Together those choices anchored the first word at zero.
+The original alignment export omitted the causal self-attention mask, so
+teacher-forced rows could see future text tokens. The runtime also omitted
+Whisper's `<|notimestamps|>` anchor row, re-softmaxed already-normalized
+`decoder_align` weights, and applied a generic long-word clip to verified DTW
+boundaries. Those independent boundaries explain the former zero anchor and
+the later-span drift.
 
-The corrected exporter was checked against the regular Transformers decoder:
-the selected cross-attention output had maximum absolute difference `0.0`.
-With the corrected graph temporarily installed in the browser's actual `fp16`
-decoder folder, the 10.004s JFK run produced the same transcript, zero GPU
-downloads, and these words:
-
-These measurements are the pre-row-anchor runtime baseline. The graph export
-was causal, but the runtime still selected the row after the prompt when it
-built the DTW matrix.
-
-| Measurement | Value |
-| ----------- | -----: |
-| Warm WebGPU total | `779.90ms` |
-| RTFx | `12.8277x` |
-| First word | `In 2.42–3.00s` |
-| Word count | `17` |
-
-The faster-whisper CPU reference begins the same word at about `2.16s`; the
-remaining few hundred milliseconds are normal DTW/postprocessing variation,
-not the former zero-anchor failure.
-
-The checked-in change is the exporter/runtime fix, not a replacement model
-binary. The corrected local graph is at
-`N:\models\whisper-align-causal-20260825\decoder_align.onnx`; the checked-out
-harness artifacts were restored after validation. The published 4-graph model
-must be re-exported with the corrected exporter before this behavior is
-available from a remote preset. No model-hosting update was performed.
-
-The complete local export is at
+The corrected local export is at
 `N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r2`. It contains all
 four FP16 graphs, co-located `.onnx.data` files, the causal alignment marker,
 and tokenizer/config files. ONNX checker and CPU ONNX Runtime loading passed
-for every graph. Installing only its external-data `decoder_align` graph in
-the actual browser harness produced the following independent result:
+for every graph. A direct PyTorch/ONNX alignment check found maximum absolute
+output difference `5.2e-4` and mean absolute difference `6.9e-7`; the graph
+rows are post-softmax weights with row sums of 1.0 before short-clip cropping.
+
+The runtime now uses the reference sequence
+`[SOT, language, task, no_timestamps, text..., EOT]`, extracts the anchor plus
+text rows, crops and renormalizes padded attention rows, and preserves long
+non-punctuated boundaries from verified forced-DTW. The same row contract is
+used by the merged path and the portable WhisperX runner. The official
+reference constructs the same sequence and slices the same anchor-containing
+matrix; see [Whisper `timing.py`](https://github.com/openai/whisper/blob/main/whisper/timing.py).
+
+With only the corrected external-data `decoder_align` graph temporarily
+installed in the actual headless Chrome/WebGPU harness, the final 10.004s JFK
+measurement was:
 
 | Measurement | Value |
 | ----------- | -----: |
-| Warm WebGPU total | `730.51ms` |
-| RTFx | `13.695x` |
-| First word | `In 2.42–3.00s` |
-| Word count | `17` |
-| GPU KV / downloads | `gpu-buffer / 0` |
-| Warnings | none |
-
-With the restored legacy graph, the same harness emitted both
-`whisper.decoder-align-legacy` and
-`whisper.decoder-align-legacy-fallback`, and returned generated interpolation
-times. This is intentional compatibility behavior until the remote artifact
-is re-exported.
-
-The follow-up run after restoring the exact 400-point mel default completed on
-the corrected r2 artifact with the same transcript and alignment behavior:
-
-| Measurement | Value |
-| ----------- | -----: |
-| Warm WebGPU total | `983.37ms` |
-| RTFx | `10.1735x` |
-| Preprocess | `80.055ms` |
-| First word | `In 2.42–3.00s` |
-| Word count | `17` |
-| GPU KV / downloads | `gpu-buffer / 0` |
-| Warnings | none |
-
-### Causal prediction-row correction (2026-08-25)
-
-Whisper decoder row `i` predicts input token `i + 1`. The forced-alignment
-sequence used by this package is `[SOT, language, task, ...text, EOS]`, so the
-first text token is predicted by the final prompt row (`promptLength - 1`), not
-by the first text-token input row (`promptLength`). The split-graph runtime,
-merged-decoder runtime, and portable WhisperX-compatible runner now derive and
-share this row anchor through `getWhisperForcedAlignmentTextRowStart`.
-
-The same corrected r2 graph was temporarily installed in the actual headless
-Chrome/WebGPU harness for an A/B check. The transcript and word count stayed
-identical, while the first word moved from the pre-fix `2.42–3.00s` to
-`2.10–2.70s`, close to the independent faster-whisper CPU/int8 reference of
-`2.16–2.84s`:
-
-| Measurement | Value |
-| ----------- | -----: |
-| Warm WebGPU total | `775.48ms` |
-| RTFx | `12.9008x` |
-| Encode / decode | `184.46ms / 470.22ms` |
+| Warm WebGPU total | `776.315ms` |
+| RTFx | `12.8869x` |
+| Encode / decode | `184.105ms / 471.635ms` |
 | Decoder steps | `20` |
-| First word | `In 2.10–2.70s` |
+| First word | `In 2.32–2.84s` |
+| Long-span check | `have 7.30–8.88s` |
 | Word count | `17` |
 | GPU KV / downloads | `gpu-buffer / 0` |
 | Warnings | none |
 
-The corrected browser files were restored after the probe. Focused merged and
-split alignment tests pass, including a regression that proves the final
-prompt row is used for the first text token. The official Whisper reference
-uses the same causal teacher-forced alignment convention in its timing path;
-see [Whisper `timing.py`](https://github.com/openai/whisper/blob/main/whisper/timing.py).
+The cached faster-whisper CUDA reference produced the same transcript and
+began `In` at `2.16–2.84s`; its long `have` span was `7.46–8.86s`. Browser
+punctuation collation differs (`role` plus `...` versus `role...`), but the
+alignment remains anchored and the long non-punctuated span is preserved.
+
+The checked-in change is runtime/exporter-contract code, not a replacement
+model binary. The browser harness files were restored byte-for-byte after
+each probe. The published 4-graph model still must be re-exported and
+validated per precision variant before a remote preset can claim this
+artifact-level timestamp behavior. No model-hosting update was performed.
 
 ## Merged-decoder alignment boundary
 
 The merged-decoder path had a separate, untested alignment implementation that
-had drifted from the corrected split-graph contract. It inserted
-`<|notimestamps|>` into the teacher-forced sequence, hard-coded a four-token
-prompt, read attention rows beginning at row zero, and inferred the frame count
-by halving encoder hidden-state positions. The runtime now uses
-`[SOT, language, task, ...text, EOS]`, derives the prompt length from that
-sequence, reads the causal logit row that predicts each text token, skips prompt
-rows when building DTW matrices, and crops the attention frame axis to the
-input audio duration.
+had drifted from the corrected split-graph contract. It previously omitted
+`<|notimestamps|>` from the teacher-forced sequence, hard-coded the prompt
+rows, read attention rows beginning at row zero, and inferred the frame count by
+halving encoder hidden-state positions. The runtime now uses
+`[SOT, language, task, no_timestamps, text..., EOS]`, derives the prompt length
+from that sequence, reads the causal logit row that predicts each text token,
+retains the no-timestamps anchor plus text rows for DTW, and crops/renormalizes
+the attention frame axis to the input audio duration.
 
 This boundary is covered by
 `tests/whisper-merged-alignment.test.ts`. No local merged-decoder artifact with
@@ -236,14 +187,24 @@ with three warmed measurements per beam, produced:
 | faster-whisper CPU int8 / 2 | `16.055s` | `1.863x` | identical |
 | faster-whisper CPU int8 / 5 | `16.259s` | `1.839x` | identical |
 
-Current 10.004s WebGPU beam probes retained exact stable/batched text parity:
+The same cached faster-whisper CUDA model was also measured on the 10.004s JFK
+clip: beam 1 `431.054ms` / `23.2082x` RTFx, beam 2 `495.882ms` / `20.1742x`,
+and beam 5 `484.535ms` / `20.6466x`. These are native GPU inference timings,
+not browser session-load timings.
+
+Final 10.004s WebGPU timestamped probes with the corrected local alignment
+graph retained exact stable/batched text and word parity:
 
 | Browser mode | Total | RTFx | Decoder steps | Tokens |
 | ------------ | ----: | ---: | ------------: | -----: |
-| Stable beam 2 | `6741.01ms` | `1.4841x` | `34` | `18` |
-| Batched beam 2 | `6490.19ms` | `1.5415x` | `17` | `18` |
-| Stable beam 5 | `12318.94ms` | `0.8121x` | `85` | `18` |
-| Batched beam 5 | `10384.57ms` | `0.9634x` | `17` | `18` |
+| Greedy GPU-KV | `776.315ms` | `12.8869x` | `20` | `18` |
+| Stable beam 2 | `3930.49ms` | `2.5453x` | `40` | `18` |
+| Batched beam 2 | `2802.21ms` | `3.5702x` | `20` | `18` |
+
+The final batched beam run was `1.40x` faster than stable beam 2, used half
+the decoder steps, kept CPU KV for correctness, and matched the stable words
+exactly. The greedy run kept GPU KV with zero GPU downloads. The harness
+reported `check` because its generated-token cap is deliberate.
 
 After the immutable-cache sharing change, warmed 29.904s English beam 2
 repeats improved while retaining exact stable/batched text parity:
@@ -294,10 +255,11 @@ The current browser harness was used for an A/B probe against the same local
   `1085.835ms`, `1090.55ms`, and `1177.945ms` for paired baseline runs. The
   variance is large enough that the override is not promoted or enabled by
   default.
-- The local native reference remains faster-whisper CPU/int8 at about `1.84x`
-  to `1.87x` RTFx on this fixture. `N:\models\whisper-cpp` contains GGML
-  weights but no runnable `whisper-cli`/`main` executable, so no whisper.cpp
-  timing is claimed.
+- The local native references are faster-whisper CPU/int8 at about `1.84x` to
+  `1.87x` RTFx on the 30s fixture and faster-whisper CUDA float16 at about
+  `20.17x` to `23.21x` RTFx on the 10s fixture. `N:\models\whisper-cpp`
+  contains GGML weights but no runnable `whisper-cli`/`main` executable, so no
+  whisper.cpp timing is claimed.
 
 - A fresh 10.004s faster-whisper CPU/int8 check on the same JFK clip measured
   `7.954s`, `8.004s`, and `8.071s` for beams 1, 2, and 5 (`1.258x`, `1.250x`,
@@ -321,12 +283,15 @@ The current browser harness was used for an A/B probe against the same local
 
 ## Remaining boundary
 
-The local row-anchor boundary is fixed and independently validated, but the
-corrected graph must still be regenerated for each published precision variant
-and validated on the remote model before the default preset can claim
-artifact-level timestamp parity. Merged-decoder end-to-end validation still
-needs a timestamped merged graph with `cross_attentions.*` outputs and a broad
-English/Turkish reference fixture.
+The local split-graph timestamp contract is now fixed and independently
+validated: the no-timestamps anchor, model-specific fallback ID, post-softmax
+attention crop/renormalization, long non-punctuated DTW spans, and stable versus
+batched beam word parity all pass focused tests and the corrected r2 browser
+probe. The corrected graph must still be regenerated for each published
+precision variant and validated on the remote model before the default preset
+can claim artifact-level timestamp parity. Merged-decoder end-to-end validation
+still needs a timestamped merged graph with `cross_attentions.*` outputs and a
+broad English/Turkish reference fixture.
 
 The FireRedASR2S source tree is present at `N:\github\ysdede\FireRedASR2S`,
 but no ASR2 checkpoint, `cmvn.ark`, or converted runtime artifact is available

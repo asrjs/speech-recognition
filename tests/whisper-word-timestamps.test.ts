@@ -140,6 +140,17 @@ describe('Whisper word duration constraints', () => {
     expect(words[4]!.startTime).toBeLessThan(1.2);
   });
 
+  it('preserves long boundaries for verified forced-DTW results', () => {
+    const words = constrainWhisperWordDurations([
+      { index: 0, text: 'In', startTime: 2.3, endTime: 2.8 },
+      { index: 1, text: 'have', startTime: 2.8, endTime: 4.4 },
+      { index: 2, text: 'been', startTime: 4.4, endTime: 4.8 },
+    ], { preserveLongDurations: true });
+
+    expect(words[1]!.startTime).toBe(2.8);
+    expect(words[1]!.endTime).toBe(4.4);
+  });
+
   it('keeps a leading DTW pause anchored instead of pulling the phrase to zero', () => {
     const words = constrainWhisperWordDurations([
       { index: 0, text: 'In', startTime: 0, endTime: 3.0 },
