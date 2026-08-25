@@ -484,6 +484,41 @@ output, but took `47,745.245ms` for the warmed 10.004s clip, including
 therefore not a viable WebGPU optimization with the current ORT-WebGPU build;
 the fp16 split encoder remains the production candidate.
 
+## Follow-up: reproducible r5 browser validation and FP32 reference A/B (2026-08-25)
+
+The fresh offline export
+`N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r5` was validated in the
+actual headless Chrome/WebGPU harness by temporarily exposing the local artifact
+through a junction. The junction and harness changes were removed after the
+probe. The warmed 10.004s JFK run used r5 for all four graphs, greedy GPU-KV,
+timestamped decoding, and returned the exact baseline transcript plus 16 words
+with no warnings:
+
+| Case           |   Total |      RTFx | Encoder | Decoder | KV           | Downloads | First word      |
+| -------------- | ------: | --------: | ------: | ------: | ------------ | --------: | --------------- |
+| r5 FP16 WebGPU | `875ms` | `11.555x` | `191ms` | `482ms` | `gpu-buffer` |       `0` | `In 2.12-2.84s` |
+
+The native runner now loads the same FP16 artifact without a manual process
+shim. Its alignment result is also stable: `In 2.12-2.84s`, `long 2.98-3.44s`,
+and `role... 9.68-9.98s`. The runner fix was twofold: the decoder-align output
+tensor no longer shadows the encoder input tensor, and Node 26's native
+`Float16Array` is hidden before importing the installed ORT binding, which
+currently expects the portable `Uint16Array` FP16 representation.
+
+For the quality/performance boundary, the existing public full-FP32 WebGPU
+preset was warmed on the same 10.004s clip. It retained the exact transcript
+and timestamp-token sequence but measured `1.44s` / `6.972x`, including `923ms`
+of encoder time, versus r5's `875ms` / `11.555x`. Full FP32 is therefore a useful
+reference-quality diagnostic, not a practical default or an alignment-only
+replacement without a separate artifact and an explicit cost contract.
+
+The r5 result does not move the first-word boundary or eliminate the previously
+measured WebGPU-versus-CPU encoder hidden-state variance. No timestamp offset or
+fudge is introduced. The remaining exact-native-parity boundary is still an
+encoder export/runtime question: either a verified FP32-accumulation browser
+encoder or an explicit, opt-in CPU alignment reference is needed before making
+that claim.
+
 ## Follow-up: shared encoder KV for batched beams (2026-08-25)
 
 The batched decoder profile identified a safe memory-bandwidth waste: every

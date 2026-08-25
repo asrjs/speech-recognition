@@ -47,6 +47,20 @@ function runnerKvDims(value, fallback) {
 export { createRunnerKvEntry, runnerKvData, runnerKvDims };
 
 /**
+ * The installed onnxruntime-node build currently rejects Node 26's native
+ * Float16Array when constructing a float16 tensor (`expected 768000, got 0`).
+ * Whisper's split-graph bridge already uses the portable Uint16Array bit
+ * representation, so hide the native constructor before ORT is imported.
+ * Keep this scoped to the smoke runner: application code must not mutate the
+ * host's typed-array globals just to load a model.
+ */
+function prepareOnnxruntimeNodeFloat16Compatibility() {
+  const nodeMajor = Number(process.versions?.node?.split('.')[0] ?? 0);
+  if (nodeMajor < 26 || typeof globalThis.Float16Array !== 'function') return;
+  globalThis.Float16Array = undefined;
+}
+
+/**
  * Decode a PCM WAV buffer without assuming a 44-byte header.
  *
  * FFmpeg commonly inserts a LIST/INFO chunk between `fmt ` and `data`; the
@@ -368,6 +382,7 @@ export async function runAsrPipeline(_opts) {
   // ── 2. Load model ──
   log('Loading ONNX model...', verbose);
   const tLoad = performance.now();
+  prepareOnnxruntimeNodeFloat16Compatibility();
   const ort = await import('onnxruntime-node');
 
   const { WhisperTokenizer, fetchText } = await importDist(
@@ -803,17 +818,17 @@ export async function runAsrPipeline(_opts) {
           };
           const alignOut = await alignSess.run(alignFeeds);
           const alignKey = Object.keys(alignOut)[0];
-          const alignTensor = alignOut[alignKey];
-          const alignmentData = tensorDataAsFloat32(alignTensor.data);
-          const alignmentHeadCount = alignTensor.dims.length === 4
-            ? Number(alignTensor.dims[alignTensor.dims.length - 3])
+          const alignmentOutputTensor = alignOut[alignKey];
+          const alignmentData = tensorDataAsFloat32(alignmentOutputTensor.data);
+          const alignmentHeadCount = alignmentOutputTensor.dims.length === 4
+            ? Number(alignmentOutputTensor.dims[alignmentOutputTensor.dims.length - 3])
             : 1;
           const alignmentValuesAreLogits = alignmentExport?.attentionValues === 'logits';
           if (alignmentValuesAreLogits && (
-            alignmentExport?.attentionLayout !== 'selected_heads' || alignTensor.dims.length !== 4
+            alignmentExport?.attentionLayout !== 'selected_heads' || alignmentOutputTensor.dims.length !== 4
           )) {
             throw new Error(
-              `decoder_align manifest/output layout mismatch: [${alignTensor.dims.join(', ')}]`,
+              `decoder_align manifest/output layout mismatch: [${alignmentOutputTensor.dims.join(', ')}]`,
             );
           }
 
