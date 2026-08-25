@@ -519,6 +519,27 @@ encoder export/runtime question: either a verified FP32-accumulation browser
 encoder or an explicit, opt-in CPU alignment reference is needed before making
 that claim.
 
+## Follow-up: causal FP32 browser reference (2026-08-25)
+
+The fresh offline export
+`N:\models\whisper-large-v3-turbo-causal-fp32-20260825-r1` was then run through
+the same local Chrome/WebGPU harness. The temporary junction and result probe
+were removed after the run. With all four r1 graphs, greedy GPU-KV, and
+timestamped decoding, the browser returned the exact baseline transcript and
+token sequence plus all 16 native word anchors:
+
+| Case                  |   Total |     RTFx |  Encoder | Decoder | KV           | Downloads | First word      |
+| --------------------- | ------: | -------: | -------: | ------: | ------------ | --------: | --------------- |
+| r1 FP32 WebGPU causal | `4.82s` | `2.075x` | `1.493s` | `329ms` | `gpu-buffer` |       `0` | `In 2.12-2.84s` |
+
+The browser/native anchors agree at the checked boundaries: `In 2.12-2.84s`,
+`long 2.98-3.44s`, `world, 4.30-5.38s`, and `role... 9.68-9.98s`. This closes
+the causal FP32 artifact's timestamp parity boundary and isolates the remaining
+quality difference in r5 to the FP16 encoder path. r1 is a correctness
+reference, not a default performance target: its warmed browser encoder is
+about 7.8x slower than r5's `191ms` encoder on this clip. Neither local export
+was copied into a public model folder or uploaded.
+
 ## Follow-up: shared encoder KV for batched beams (2026-08-25)
 
 The batched decoder profile identified a safe memory-bandwidth waste: every
