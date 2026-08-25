@@ -317,6 +317,7 @@ export async function runAsrPipeline(_opts) {
   const {
     buildWhisperForcedAlignmentTokenIds,
     collectSplitGraphTextTokenRows,
+    getWhisperForcedAlignmentTextRowStart,
     processSplitGraphAlignment,
   } = await importDist(
     'models/whisper-seq2seq/executor.js'
@@ -674,9 +675,10 @@ export async function runAsrPipeline(_opts) {
           textIds,
           opts.task ?? 'transcribe',
         );
-        const alignmentPromptLen = 4;
+        const alignmentPromptLen = alignmentTokenIds.length - textIds.length - 1;
+        const alignmentTextRowStart = getWhisperForcedAlignmentTextRowStart(alignmentPromptLen);
         const alignmentTextRowIndices = textIds.map(
-          (_id, index) => alignmentPromptLen + index,
+          (_id, index) => alignmentTextRowStart + index,
         );
 
         try {

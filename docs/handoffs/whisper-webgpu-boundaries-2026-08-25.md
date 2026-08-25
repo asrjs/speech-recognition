@@ -104,6 +104,10 @@ With the corrected graph temporarily installed in the browser's actual `fp16`
 decoder folder, the 10.004s JFK run produced the same transcript, zero GPU
 downloads, and these words:
 
+These measurements are the pre-row-anchor runtime baseline. The graph export
+was causal, but the runtime still selected the row after the prompt when it
+built the DTW matrix.
+
 | Measurement | Value |
 | ----------- | -----: |
 | Warm WebGPU total | `779.90ms` |
@@ -156,6 +160,38 @@ the corrected r2 artifact with the same transcript and alignment behavior:
 | Word count | `17` |
 | GPU KV / downloads | `gpu-buffer / 0` |
 | Warnings | none |
+
+### Causal prediction-row correction (2026-08-25)
+
+Whisper decoder row `i` predicts input token `i + 1`. The forced-alignment
+sequence used by this package is `[SOT, language, task, ...text, EOS]`, so the
+first text token is predicted by the final prompt row (`promptLength - 1`), not
+by the first text-token input row (`promptLength`). The split-graph runtime,
+merged-decoder runtime, and portable WhisperX-compatible runner now derive and
+share this row anchor through `getWhisperForcedAlignmentTextRowStart`.
+
+The same corrected r2 graph was temporarily installed in the actual headless
+Chrome/WebGPU harness for an A/B check. The transcript and word count stayed
+identical, while the first word moved from the pre-fix `2.42–3.00s` to
+`2.10–2.70s`, close to the independent faster-whisper CPU/int8 reference of
+`2.16–2.84s`:
+
+| Measurement | Value |
+| ----------- | -----: |
+| Warm WebGPU total | `775.48ms` |
+| RTFx | `12.9008x` |
+| Encode / decode | `184.46ms / 470.22ms` |
+| Decoder steps | `20` |
+| First word | `In 2.10–2.70s` |
+| Word count | `17` |
+| GPU KV / downloads | `gpu-buffer / 0` |
+| Warnings | none |
+
+The corrected browser files were restored after the probe. Focused merged and
+split alignment tests pass, including a regression that proves the final
+prompt row is used for the first text token. The official Whisper reference
+uses the same causal teacher-forced alignment convention in its timing path;
+see [Whisper `timing.py`](https://github.com/openai/whisper/blob/main/whisper/timing.py).
 
 ## Merged-decoder alignment boundary
 
@@ -263,16 +299,28 @@ The current browser harness was used for an A/B probe against the same local
   weights but no runnable `whisper-cli`/`main` executable, so no whisper.cpp
   timing is claimed.
 
+- A fresh 10.004s faster-whisper CPU/int8 check on the same JFK clip measured
+  `7.954s`, `8.004s`, and `8.071s` for beams 1, 2, and 5 (`1.258x`, `1.250x`,
+  and `1.240x` RTFx). All three returned the same transcript and first-word
+  span `2.16–2.84s`. WhisperX's locally runnable no-align path produced only
+  a segment-level result (`2.613–10.021s`); no compatible cached English word
+  alignment model was available, so it is not used as a word-timestamp or
+  performance claim.
+
 ## Remaining boundary
 
-The corrected graph must still be regenerated for each published precision
-variant and validated on the remote model before the default preset can claim
+The local row-anchor boundary is fixed and independently validated, but the
+corrected graph must still be regenerated for each published precision variant
+and validated on the remote model before the default preset can claim
 artifact-level timestamp parity. Merged-decoder end-to-end validation still
 needs a timestamped merged graph with `cross_attentions.*` outputs and a broad
-English/Turkish reference fixture. The package currently has FireRed VAD
-support but no artifact-backed FireRed ASR2 runtime, and its Qwen ASR material
-is documentation-only; implementing either model needs a specific local
-weight/conversion artifact plus parity fixtures.
+English/Turkish reference fixture.
+
+The FireRedASR2S source tree is present at `N:\github\ysdede\FireRedASR2S`,
+but no ASR2 checkpoint, `cmvn.ark`, or converted runtime artifact is available
+locally. The cached Qwen material is an unrelated text model, so the package's
+FireRed VAD support and Qwen ASR documentation remain artifact-gated rather
+than being expanded with an unverified runtime.
 
 Keep `experimentalBatchedBeam` opt-in, stable CPU-KV beam as the correctness
 oracle, and GPU-KV greedy-only until broader model/reference coverage closes

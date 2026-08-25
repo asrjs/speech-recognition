@@ -258,6 +258,15 @@ export function buildWhisperForcedAlignmentTokenIds(
 }
 
 /**
+ * Return the decoder row whose causal logits/cross-attention predict the first
+ * text token in a forced-alignment sequence. Decoder row i predicts input
+ * token i + 1, so alignment starts at the final prompt row.
+ */
+export function getWhisperForcedAlignmentTextRowStart(promptLength: number): number {
+  return Math.max(0, Math.floor(promptLength) - 1);
+}
+
+/**
  * Convert a Float32Array to a Uint16Array of fp16 bits.
  * Uses round-to-nearest-even.
  */
@@ -1694,8 +1703,12 @@ export class WhisperOnnxExecutor {
       // tokenizer.sot_sequence. Keep this derived from the actual sequence so
       // row extraction cannot drift if the prompt contract changes.
       const alignmentPromptLen = alignmentTokenIds.length - textTokenIds.length - 1;
+      // Cross-attention at decoder row i predicts the token at i + 1. The
+      // first text token is therefore aligned by the final prompt row, just
+      // as the forced-logit extraction below starts at promptLen - 1.
+      const alignmentTextRowStart = getWhisperForcedAlignmentTextRowStart(alignmentPromptLen);
       const alignmentTextRowIndices = textTokenIds.map(
-        (_tokenId, index) => alignmentPromptLen + index,
+        (_tokenId, index) => alignmentTextRowStart + index,
       );
       const { data: alignmentData, dims } = await this.runForcedAlignmentSplitGraph(
         { ...loaded, decoderAlignSession, ort: loaded.ort },
@@ -1781,6 +1794,9 @@ export class WhisperOnnxExecutor {
       options.task ?? 'transcribe',
     );
     const alignmentPromptLen = alignmentTokenIds.length - textTokenIds.length - 1;
+    // The causal decoder row for the first text token is the last prompt row;
+    // the text-token input row predicts the following token.
+    const alignmentTextRowStart = getWhisperForcedAlignmentTextRowStart(alignmentPromptLen);
 
     try {
       const alignment = await this.runForcedAlignment(
@@ -1818,9 +1834,9 @@ export class WhisperOnnxExecutor {
               Math.round(audioDurationSeconds / 0.02),
             ))
           : totalFramesPerHead;
-        if (totalTokens < alignmentPromptLen + textTokenIds.length) {
+        if (totalTokens < alignmentTextRowStart + textTokenIds.length) {
           throw new Error(
-            `Cross-attention layer ${layer} has ${totalTokens} token rows; expected at least ${alignmentPromptLen + textTokenIds.length}.`,
+            `Cross-attention layer ${layer} has ${totalTokens} token rows; expected at least ${alignmentTextRowStart + textTokenIds.length}.`,
           );
         }
         // Extract single head: tensor has shape [batch=1, heads, tokens, frames]
@@ -1828,7 +1844,7 @@ export class WhisperOnnxExecutor {
         const headOffset = head * headSize;
         const headValues = new Float32Array(textTokenIds.length * totalFramesPerHead);
         for (let tokenIndex = 0; tokenIndex < textTokenIds.length; tokenIndex++) {
-          const sourceOffset = headOffset + (alignmentPromptLen + tokenIndex) * totalFramesPerHead;
+          const sourceOffset = headOffset + (alignmentTextRowStart + tokenIndex) * totalFramesPerHead;
           headValues.set(
             layerTensor.data.subarray(sourceOffset, sourceOffset + totalFramesPerHead),
             tokenIndex * totalFramesPerHead,
