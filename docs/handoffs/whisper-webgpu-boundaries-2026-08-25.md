@@ -174,6 +174,16 @@ This boundary is covered by
 exported `cross_attentions.*` outputs is currently available, so the remaining
 end-to-end claim is artifact-gated rather than presented as a browser benchmark.
 
+The ordinary merged decoder is now exercised end-to-end by the portable
+`tests/whisper-onnx-smoke.test.ts` fixture (set
+`WHISPER_MERGED_FIXTURE_DIR` on Windows). A direct local run against
+`N:\github\huggingface\whisper-small-dsntt1-tr-onnx` and the first six seconds
+of `tr-tdk-18s.wav` produced coherent Turkish text, nine words, and no warnings
+in Node/WASM. Before the duration-boundary fix, generated padded-window
+timestamps reached 8.0 seconds; after it, both the maximum word end and maximum
+segment end were exactly 6.0 seconds. This validates merged decode plus the
+timestamp-token fallback, not attention-DTW alignment.
+
 ## Current performance reference
 
 The mel benchmark now reports both contracts explicitly (`n_mels=128`, five
