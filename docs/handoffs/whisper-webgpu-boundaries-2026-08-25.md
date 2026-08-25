@@ -240,6 +240,42 @@ clip: beam 1 `431.054ms` / `23.2082x` RTFx, beam 2 `495.882ms` / `20.1742x`,
 and beam 5 `484.535ms` / `20.6466x`. These are native GPU inference timings,
 not browser session-load timings.
 
+## Follow-up: artifact capability audit and merged fallback warning (2026-08-25)
+
+The local ONNX audit now has a Whisper-specific contract mode:
+
+```text
+node tools/model-debugging/scripts/node-audit-onnx-artifact.mjs \
+  --model-dir <artifact-dir> --recursive --whisper-contract
+```
+
+It reports the layout, the explicit `alignment_export.causal_self_attention`
+marker, and every merged decoder's `cross_attentions.*` output names. Optional
+`--require-causal-alignment` and `--require-merged-cross-attention` flags fail
+the audit when a publish candidate does not meet those claims. This keeps an
+artifact filename or a generic `decoder_model_merged.onnx` from being treated
+as proof of attention alignment.
+
+The audit was run against the local artifacts currently available:
+
+| Artifact                                         | Graph result      | Timestamp capability                                                     |
+| ------------------------------------------------ | ----------------- | ------------------------------------------------------------------------ |
+| `whisper-large-v3-turbo-causal-fp16-20260825-r4` | 4/4 graphs loaded | `splitgraph-causal-attention-dtw`                                        |
+| `base-dsntt1-tr/onnx`                            | 8/8 graphs loaded | `merged-generated-timestamp-fallback`; zero `cross_attentions.*` outputs |
+
+The merged executor now emits a recoverable warning when alignment heads or
+`cross_attentions.*` are absent, while preserving timestamp-token interpolation
+and duration clipping. Focused tests cover the warning and the artifact
+classification. The local base merged graph therefore validates ordinary
+merged decode and bounded fallback timestamps, but it does not close the
+merged attention-DTW requirement.
+
+The opt-in merged timestamp smoke used `tr-tdk-18s.wav` (18.641 s) with the
+local base model and 96 new-token limit. Node/WASM produced 29 words in
+`59.291s`, with maximum word and segment end both `18.641s`, and emitted
+`whisper.decoder-cross-attention-unavailable`. The text is useful as a runtime
+smoke result, not as an attention-alignment quality claim.
+
 Final 10.004s WebGPU timestamped probes with the corrected local alignment
 graph retained exact stable/batched text and word parity:
 

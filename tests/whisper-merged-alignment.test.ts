@@ -367,4 +367,54 @@ describe('merged Whisper alignment boundaries', () => {
     expect(words?.[0]?.startTime).toBeLessThanOrEqual(0.02);
     expect(words?.[1]?.endTime).toBeLessThanOrEqual(0.06);
   });
+
+  it('reports interpolation when the merged decoder has no cross-attention outputs', async () => {
+    const tokenizer = createTokenizer();
+    const executor = createExecutor() as unknown as {
+      runForcedAlignment: () => Promise<{
+        readonly crossAttentions: readonly unknown[];
+        readonly logitsForText: Float32Array;
+      }>;
+      computeAttentionWordTimestamps: (
+        loadedState: unknown,
+        encoder: unknown,
+        tokenizerValue: unknown,
+        tokenDetails: readonly unknown[],
+        segments: readonly { readonly text: string }[],
+        language: string,
+        options: { readonly task: 'transcribe' | 'translate' },
+        audioDurationSeconds: number,
+        warnings?: { code: string; message: string; recoverable?: boolean }[],
+      ) => Promise<readonly unknown[] | undefined>;
+    };
+    executor.runForcedAlignment = async () => ({
+      crossAttentions: [],
+      logitsForText: new Float32Array(0),
+    });
+    const warnings: { code: string; message: string; recoverable?: boolean }[] = [];
+
+    await executor.computeAttentionWordTimestamps(
+      {
+        generationConfig: { alignmentHeads: [{ layer: 0, head: 0 }] },
+        modelConfig: { medianFilterWidth: 1 },
+      },
+      { dims: [1, 4, 2] },
+      tokenizer,
+      [{ id: 0, text: '!' }],
+      [{ text: '!' }],
+      'en',
+      { task: 'transcribe' },
+      1,
+      warnings,
+    );
+
+    expect(warnings).toEqual([
+      {
+        code: 'whisper.decoder-cross-attention-unavailable',
+        message:
+          'The merged Whisper decoder does not export cross_attentions.*; using generated timestamp interpolation for word timestamps.',
+        recoverable: true,
+      },
+    ]);
+  });
 });

@@ -1991,10 +1991,19 @@ export class WhisperOnnxExecutor {
     language: string,
     options: WhisperSeq2SeqTranscriptionOptions,
     audioDurationSeconds?: number,
+    warnings?: TranscriptWarning[],
   ): Promise<WhisperNativeTranscript['words']> {
     const alignmentHeads = loaded.generationConfig.alignmentHeads;
     if (alignmentHeads.length === 0) {
-      // No alignment heads configured — fall back to timestamp-token interpolation
+      // No alignment heads configured — fall back to timestamp-token
+      // interpolation. Keep the artifact capability boundary visible to
+      // callers: timestamps remain useful, but are not attention-DTW times.
+      warnings?.push({
+        code: 'whisper.decoder-attention-alignment-unavailable',
+        message:
+          'The merged Whisper artifact does not declare alignment heads; using generated timestamp interpolation for word timestamps.',
+        recoverable: true,
+      });
       return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
         timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
         timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
@@ -2036,7 +2045,14 @@ export class WhisperOnnxExecutor {
       );
       const crossAttentions = alignment.crossAttentions;
       if (crossAttentions.length === 0) {
-        // Decoder had no cross-attention outputs — fall back
+        // Regular merged ONNX exports expose logits and KV only. This is a
+        // normal compatibility path, not evidence of attention-DTW output.
+        warnings?.push({
+          code: 'whisper.decoder-cross-attention-unavailable',
+          message:
+            'The merged Whisper decoder does not export cross_attentions.*; using generated timestamp interpolation for word timestamps.',
+          recoverable: true,
+        });
         return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
           timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
           timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
@@ -2142,7 +2158,13 @@ export class WhisperOnnxExecutor {
         tokenLogprobs,
       );
     } catch {
-      // Forced alignment failed — fall back to timestamp-token interpolation
+      // Forced alignment failed — fall back to timestamp-token interpolation.
+      warnings?.push({
+        code: 'whisper.decoder-attention-alignment-fallback',
+        message:
+          'Merged Whisper attention alignment failed; using generated timestamp interpolation for word timestamps.',
+        recoverable: true,
+      });
       return buildWhisperWordTimestampsFromTokenDetails(tokenDetails, {
         timestampBegin: tokenizer.getTokenId('<|0.00|>') ?? 50364,
         timestampEnd: tokenizer.getTokenId('<|30.00|>') ?? 51864,
@@ -2663,6 +2685,7 @@ export class WhisperOnnxExecutor {
           language,
           options,
           audio.durationSeconds,
+          warnings,
         )
       : [];
     const words = this.shouldReturnWordTimestamps(options)

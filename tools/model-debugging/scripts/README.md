@@ -60,6 +60,10 @@ Unlike `reference/`, this folder should trend toward:
   graph through the native CPU execution provider.
 - It records graph input/output names and fails by default when a graph cannot
   be loaded.
+- Pass `--whisper-contract` to classify splitgraph causal alignment and merged
+  `cross_attentions.*` capability. Use `--require-causal-alignment` or
+  `--require-merged-cross-attention` as publish gates; legacy artifacts report
+  a warning instead of being treated as attention-aligned.
 
 ## Metric Caveat
 

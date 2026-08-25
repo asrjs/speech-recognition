@@ -12,6 +12,7 @@ import { createReadStream } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { inspectWhisperArtifactContract } from './whisper-artifact-contract.mjs';
 
 function parseArgs(argv) {
   const options = {
@@ -19,6 +20,9 @@ function parseArgs(argv) {
     output: undefined,
     recursive: false,
     allowLoadFailures: false,
+    whisperContract: false,
+    requireCausalAlignment: false,
+    requireMergedCrossAttention: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -31,6 +35,14 @@ function parseArgs(argv) {
       options.recursive = true;
     } else if (arg === '--allow-load-failures') {
       options.allowLoadFailures = true;
+    } else if (arg === '--whisper-contract') {
+      options.whisperContract = true;
+    } else if (arg === '--require-causal-alignment') {
+      options.whisperContract = true;
+      options.requireCausalAlignment = true;
+    } else if (arg === '--require-merged-cross-attention') {
+      options.whisperContract = true;
+      options.requireMergedCrossAttention = true;
     } else if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
@@ -55,6 +67,9 @@ function printUsage() {
       '  --output <file>           Write JSON to a file instead of stdout',
       '  --recursive               Include ONNX files below nested directories',
       '  --allow-load-failures     Report CPU ORT failures without a non-zero exit',
+      '  --whisper-contract        Report splitgraph/merged timestamp capabilities',
+      '  --require-causal-alignment  Fail unless split decoder_align is explicitly causal',
+      '  --require-merged-cross-attention  Fail unless every merged decoder exports cross_attentions.*',
     ].join('\n'),
   );
 }
@@ -87,6 +102,22 @@ function sha256File(filePath) {
 
 function relativeArtifactPath(modelDir, filePath) {
   return path.relative(modelDir, filePath).split(path.sep).join('/');
+}
+
+async function readJsonArtifact(modelDir, files, basenameToFind) {
+  const relativeFiles = files.map((filePath) => ({
+    filePath,
+    relativePath: relativeArtifactPath(modelDir, filePath),
+  }));
+  const match =
+    relativeFiles.find(({ relativePath }) => relativePath === basenameToFind) ??
+    relativeFiles.find(({ relativePath }) => path.posix.basename(relativePath) === basenameToFind);
+  if (!match) return undefined;
+  try {
+    return JSON.parse(await fs.readFile(match.filePath, 'utf8'));
+  } catch {
+    return undefined;
+  }
 }
 
 function sidecarCandidates(graphPath) {
@@ -198,6 +229,27 @@ async function main() {
       }));
 
   const failedGraphs = graphs.filter((graph) => !graph.loaded);
+  const whisperContract = options.whisperContract
+    ? inspectWhisperArtifactContract({
+        config: await readJsonArtifact(modelDir, files, 'config.json'),
+        manifest: await readJsonArtifact(modelDir, files, 'manifest.json'),
+        graphs,
+      })
+    : undefined;
+  const contractFailures = [];
+  if (
+    options.requireCausalAlignment &&
+    !whisperContract?.alignment.causal_self_attention_verified
+  ) {
+    contractFailures.push(
+      'Whisper causal alignment is not verified: decoder_align requires alignment_export.causal_self_attention=true.',
+    );
+  }
+  if (options.requireMergedCrossAttention && !whisperContract?.merged_cross_attention_verified) {
+    contractFailures.push(
+      'Whisper merged cross-attention is not verified: every merged decoder must export cross_attentions.*.',
+    );
+  }
   const report = {
     schema_version: 1,
     generated_at: new Date().toISOString(),
@@ -206,12 +258,14 @@ async function main() {
     local_only: true,
     inventory,
     graphs,
+    ...(whisperContract ? { whisper_contract: whisperContract } : {}),
     summary: {
       file_count: inventory.length,
       onnx_count: graphs.length,
       loaded_onnx_count: graphs.length - failedGraphs.length,
       failed_onnx_count: failedGraphs.length,
       ok: failedGraphs.length === 0,
+      ...(options.whisperContract ? { whisper_contract_ok: contractFailures.length === 0 } : {}),
     },
   };
 
@@ -230,6 +284,10 @@ async function main() {
   }
 
   if (failedGraphs.length > 0 && !options.allowLoadFailures) {
+    process.exitCode = 1;
+  }
+  if (contractFailures.length > 0) {
+    for (const failure of contractFailures) console.error('Whisper contract failure: ' + failure);
     process.exitCode = 1;
   }
 }
