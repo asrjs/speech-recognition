@@ -5,11 +5,18 @@ import {
   extractSplitGraphAlignmentHeadRows,
   extractSplitGraphAlignmentRows,
   getWhisperForcedAlignmentTextRowStart,
+  hasVerifiedWhisperDecoderAlignment,
   processSplitGraphAlignment,
   processSplitGraphAlignmentByTimestampSpans,
 } from '../src/models/whisper-seq2seq/executor.js';
 
 describe('splitGraph alignment processing', () => {
+  it('requires an explicit causal alignment marker', () => {
+    expect(hasVerifiedWhisperDecoderAlignment(true)).toBe(true);
+    expect(hasVerifiedWhisperDecoderAlignment(false)).toBe(false);
+    expect(hasVerifiedWhisperDecoderAlignment(undefined)).toBe(false);
+  });
+
   it('builds the reference no-timestamps forced-alignment prompt', () => {
     const ids = new Map([
       ['<|startoftranscript|>', 50258],
@@ -27,13 +34,15 @@ describe('splitGraph alignment processing', () => {
     expect(buildWhisperForcedAlignmentTokenIds(tokenizer, 'en', [11], 'translate')).toEqual([
       50258, 50259, 50359, 50363, 11, 50257,
     ]);
-    expect(buildWhisperForcedAlignmentTokenIds(
-      { getTokenId: (token: string) => token === '<|en|>' ? 50259 : undefined },
-      'en',
-      [11],
-      'transcribe',
-      50364,
-    )).toEqual([50258, 50259, 50360, 50364, 11, 50257]);
+    expect(
+      buildWhisperForcedAlignmentTokenIds(
+        { getTokenId: (token: string) => (token === '<|en|>' ? 50259 : undefined) },
+        'en',
+        [11],
+        'transcribe',
+        50364,
+      ),
+    ).toEqual([50258, 50259, 50360, 50364, 11, 50257]);
   });
 
   it('uses the final prompt row to predict the first text token', () => {
@@ -206,12 +215,12 @@ describe('splitGraph alignment processing', () => {
     data[offset(1, 2, 2)] = 21;
     data[offset(1, 4, 0)] = 22;
 
-    expect(Array.from(extractSplitGraphAlignmentHeadRows(data, rows, frames, totalTokens, 0))).toEqual([
-      11, 0, 0, 0, 12, 0,
-    ]);
-    expect(Array.from(extractSplitGraphAlignmentHeadRows(data, rows, frames, totalTokens, 1))).toEqual([
-      0, 0, 21, 22, 0, 0,
-    ]);
+    expect(
+      Array.from(extractSplitGraphAlignmentHeadRows(data, rows, frames, totalTokens, 0)),
+    ).toEqual([11, 0, 0, 0, 12, 0]);
+    expect(
+      Array.from(extractSplitGraphAlignmentHeadRows(data, rows, frames, totalTokens, 1)),
+    ).toEqual([0, 0, 21, 22, 0, 0]);
 
     const timestamps = processSplitGraphAlignment({
       alignmentData: data,

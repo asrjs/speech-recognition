@@ -1,19 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialWhisperBeam, rankWhisperBeamCandidates, selectBestWhisperBeam } from '../src/models/whisper-seq2seq/beam-search.js';
+import {
+  createInitialWhisperBeam,
+  rankWhisperBeamCandidates,
+  selectBestWhisperBeam,
+} from '../src/models/whisper-seq2seq/beam-search.js';
 
 describe('Whisper beam search helpers', () => {
   it('keeps the highest scoring expanded hypotheses across beams', () => {
-    const beams = [
-      createInitialWhisperBeam([10], 0),
-      createInitialWhisperBeam([20], -0.2),
-    ];
+    const beams = [createInitialWhisperBeam([10], 0), createInitialWhisperBeam([20], -0.2)];
 
     const next = rankWhisperBeamCandidates({
       beams,
-      logitsByBeam: [
-        new Float32Array([0, 2, 1]),
-        new Float32Array([0, 1, 5]),
-      ],
+      logitsByBeam: [new Float32Array([0, 2, 1]), new Float32Array([0, 1, 5])],
       beamWidth: 2,
       eosTokenId: 2,
     });
@@ -31,5 +29,19 @@ describe('Whisper beam search helpers', () => {
 
     expect(selectBestWhisperBeam([short, long], 0)?.tokens).toEqual([1, 2]);
     expect(selectBestWhisperBeam([short, long], 1)?.tokens).toEqual([1, 3, 4, 2]);
+  });
+
+  it('keeps ascending token-ID order for tied top vocabulary scores', () => {
+    const next = rankWhisperBeamCandidates({
+      beams: [createInitialWhisperBeam([10])],
+      logitsByBeam: [new Float32Array([4, 4, 4, 3])],
+      beamWidth: 2,
+      eosTokenId: 99,
+    });
+
+    expect(next.map((beam) => beam.tokens)).toEqual([
+      [10, 0],
+      [10, 1],
+    ]);
   });
 });

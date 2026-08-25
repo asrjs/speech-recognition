@@ -67,7 +67,12 @@ export function rankWhisperBeamCandidates<TToken = unknown>({
     if (!normalizers) continue;
 
     const candidateLength = beam.tokens.length + 1;
-    for (let tokenId = 0; tokenId < logits.length; tokenId++) {
+    // At most `candidateLimit` hypotheses from one beam can survive the
+    // global top-k selection. Keep the deterministic token-id tie order while
+    // scanning the vocabulary, then materialize scores only for those winners.
+    // This preserves the old ranking semantics without allocating/splicing a
+    // candidate object for every vocabulary entry.
+    for (const tokenId of selectTopWhisperTokenIds(logits, candidateLimit)) {
       const logProb = (logits[tokenId] ?? Number.NEGATIVE_INFINITY) - normalizers.logSumExp;
       const score = beam.score + logProb;
       insertRankedCandidate(candidates, {
@@ -116,6 +121,42 @@ function getLogSoftmaxNormalizers(logits: Float32Array): { readonly logSumExp: n
   }
 
   return { logSumExp: maxLogit + Math.log(expSum) };
+}
+
+/**
+ * Return the highest-scoring token IDs in descending logit order.
+ *
+ * Whisper beam ranking only retains `beamWidth` candidates globally, so a
+ * token below that rank within one source beam can never survive. Equal
+ * logits retain ascending token-ID order, matching the vocabulary scan and
+ * strict insertion behavior used by the previous implementation.
+ */
+function selectTopWhisperTokenIds(logits: Float32Array, limit: number): number[] {
+  const topTokenIds: number[] = [];
+  const candidateLimit = Math.max(1, limit);
+
+  for (let tokenId = 0; tokenId < logits.length; tokenId++) {
+    const logit = logits[tokenId] ?? Number.NEGATIVE_INFINITY;
+    if (topTokenIds.length >= candidateLimit) {
+      const lastTokenId = topTokenIds[candidateLimit - 1]!;
+      const lastLogit = logits[lastTokenId] ?? Number.NEGATIVE_INFINITY;
+      if (logit < lastLogit || (logit === lastLogit && tokenId >= lastTokenId)) continue;
+    }
+
+    let insertAt = topTokenIds.length;
+    while (insertAt > 0) {
+      const previousTokenId = topTokenIds[insertAt - 1]!;
+      const previousLogit = logits[previousTokenId] ?? Number.NEGATIVE_INFINITY;
+      if (logit < previousLogit || (logit === previousLogit && tokenId >= previousTokenId)) break;
+      insertAt--;
+    }
+
+    if (insertAt >= candidateLimit) continue;
+    topTokenIds.splice(insertAt, 0, tokenId);
+    if (topTokenIds.length > candidateLimit) topTokenIds.pop();
+  }
+
+  return topTokenIds;
 }
 
 function normalizeScore(score: number, tokenCount: number, lengthPenalty: number): number {

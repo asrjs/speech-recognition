@@ -476,6 +476,36 @@ CPU tensor inputs fell from `682` to `342`. The optimization remains behind
 `experimentalBatchedBeam`; stable CPU-KV remains the correctness oracle and
 GPU-KV remains greedy-only.
 
+## Follow-up: explicit alignment gating and beam candidate pruning (2026-08-25)
+
+The public `ysdede/whisper-large-v3-turbo-onnx-4graph` manifest still has no
+valid `alignment_export.causal_self_attention` marker. The executor previously
+treated only an explicit `false` as legacy, which left missing metadata
+eligible for `decoder_align`. The guard now requires an explicit `true`; a
+missing or malformed marker emits the recoverable legacy warning and uses
+generated timestamp interpolation. A live browser run against the public
+manifest produced both legacy warning codes and the expected `In 0.00–0.20s`
+interpolated first word. The local r4 manifest explicitly declares `true` and
+remains eligible for the causal DTW path; no timestamp offset or fudge was
+introduced.
+
+Beam ranking also now selects only the top `beamWidth` token IDs from each
+source beam before materializing score objects. This is equivalent to the
+previous exhaustive global top-k insertion because no lower-ranked token from
+one source beam can enter the global top-k set. Equal logits retain ascending
+token-ID order. A Node microbenchmark with five beams and the 51,866-token
+vocabulary measured `9.738ms → 6.260ms` per ranking call (`35.7%` lower), and
+1,000 randomized comparisons matched the exhaustive implementation exactly.
+The optimization is CPU-side; the real WebGPU matrix remains GPU-dominated, so
+no unsupported end-to-end speedup is claimed.
+
+For the same warmed 29.9043s JFK clip, local `faster-whisper` measured on CUDA
+FP16 at `0.914s` inference (`32.73x` RTFx) after a `1.925s` warm run. The
+existing independent WebGPU greedy reference is `25.6993x` RTFx; these are
+reference points rather than interchangeable implementations. No local
+OpenAI Whisper checkpoint or whisper.cpp CLI was available, so those baselines
+were not fabricated or downloaded.
+
 ## Remaining boundary
 
 The local split-graph timestamp contract is now fixed and independently

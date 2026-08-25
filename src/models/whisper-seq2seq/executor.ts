@@ -571,6 +571,17 @@ interface TensorLocationCounts {
   readonly cpu: number;
 }
 
+/**
+ * Alignment is verified only when the manifest explicitly proves that the
+ * decoder_align graph uses causal self-attention. Missing metadata is a
+ * legacy/unknown artifact, not evidence that the graph is safe to run.
+ */
+export function hasVerifiedWhisperDecoderAlignment(
+  causalSelfAttention: boolean | undefined,
+): boolean {
+  return causalSelfAttention === true;
+}
+
 function isOrtTensorLike(value: unknown): value is OrtTensorLike {
   return Boolean(value) && typeof value === 'object' && Array.isArray((value as { dims?: unknown }).dims);
 }
@@ -1469,7 +1480,7 @@ export class WhisperOnnxExecutor {
     const modelConfig = await this.loadModelConfig(artifacts);
     const decoderAlignMetadata = await this.loadDecoderAlignMetadata(resolved.manifestUrl);
     const decoderAlignCausalSelfAttention = decoderAlignMetadata?.causalSelfAttention;
-    if (resolved.decoderAlignUrl && decoderAlignCausalSelfAttention === false) {
+    if (resolved.decoderAlignUrl && !hasVerifiedWhisperDecoderAlignment(decoderAlignCausalSelfAttention)) {
       warnings.push({
         code: 'whisper.decoder-align-legacy',
         message:
@@ -1856,7 +1867,7 @@ export class WhisperOnnxExecutor {
     // decoder_align graph. Running it in WebGPU is both unsafe (future-token
     // leakage) and numerically unreliable for the old fp16 export, so keep
     // generated timestamp semantics until the artifact is re-exported.
-    if (loaded.decoderAlignCausalSelfAttention === false) {
+    if (!hasVerifiedWhisperDecoderAlignment(loaded.decoderAlignCausalSelfAttention)) {
       warnings?.push({
         code: 'whisper.decoder-align-legacy-fallback',
         message:
@@ -2213,7 +2224,8 @@ export class WhisperOnnxExecutor {
       return parseWhisperManifest(raw).alignmentExport;
     } catch {
       // A custom source may omit the optional manifest or use an older schema.
-      // Keep the existing alignment path when metadata cannot be inspected.
+      // The caller treats unknown alignment metadata as legacy and falls back
+      // to generated timestamp interpolation.
       return undefined;
     }
   }
