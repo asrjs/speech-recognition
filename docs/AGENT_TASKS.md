@@ -366,13 +366,19 @@ hallucinations and recovers with higher temperature.
   and alignment export.
 - [x] Re-export and validate a complete local FP16 precision variant with
   causal alignment and external-data metadata.
+- [x] Bring the merged-decoder alignment path onto the same forced-alignment
+  prompt/task contract: derive prompt rows, read causal text-token logits,
+  skip prompt attention rows, use the attention graph's frame axis, and crop
+  padded frames to the audio duration. Add focused feed/row regression tests.
 - [x] Keep opt-in WebGPU graph-capture probes recoverable: retry normal ORT
   session creation when partitioning rejects capture and emit a warning; a
   headless Chrome run completed with exact transcript behavior and zero GPU
   downloads.
 - [ ] Re-export the published precision variants and validate the remote
   preset; no model-hosting update has been performed.
-- Validate that word timestamps work with both splitgraph and merged-decoder paths.
+- [ ] Validate word timestamps end-to-end on both splitgraph and merged-decoder
+  artifacts. The merged runtime boundary is covered, but no local merged graph
+  exporting `cross_attentions.*` is available for an inference claim.
 - Timestamp-token processing now includes `<|notimestamps|>` suppression and
   the aggregate timestamp-probability rule; retain focused tests for both.
 
