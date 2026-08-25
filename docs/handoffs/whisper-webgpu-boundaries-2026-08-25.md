@@ -1029,3 +1029,40 @@ weights, so no whisper.cpp timing or parity claim is recorded. FireRed ASR2
 and Qwen3-ASR remain artifact-gated under
 `docs/handoffs/asr-candidate-boundaries-2026-08-25.md`; no approved checkpoint
 and native reference-output pair appeared during this audit.
+
+## Continuation audit: browser causal alignment-pair promotion boundary (2026-08-25)
+
+The local causal `decoder_align` export was paired with the existing public
+FP16-I/O encoder and the public FP16 `decoder_init`/`decoder_step` graphs in a
+temporary sibling-harness directory. The published model files were not
+modified and the temporary directory was removed from the harness's public
+model tree after the run.
+
+The warmed 10.0043-second English run returned 16 word spans with no
+`whisper.decoder-align-legacy` warning, `wordAlignmentSource: "fast"`, GPU-KV
+storage, and zero GPU downloads. Its total was `880.99ms` (`11.3558x` RTFx),
+with the expected frame-quantized anchors including `In 2.12–2.84s`,
+`world, 4.30–5.40s`, `have 7.46–8.86s`, and `role... 9.68–9.98s`.
+
+The same pair produced 35 English spans on the 29.9043-second fixture in
+`1,588.18ms` (`18.8294x` RTFx), and 27 Turkish spans on the 18.6409-second
+`tr-tdk-18s.wav` fixture in `1,890.41ms` (`9.9151x` RTFx). Both runs had no
+warnings, retained GPU-KV, and reported zero GPU downloads. This closes the
+browser compatibility boundary for the corrected alignment graph and shows
+that a public causal graph can be consumed without a second encoder pass.
+
+It does not remove the known FP16 encoder precision endpoint: the 10-second
+fast pair still places `world,` at `4.30–5.40s` versus the FP32 native/reference
+anchor `4.30–5.38s`. Exact native timing therefore remains the explicit lazy
+FP32 reference-encoder mode rather than a timestamp offset or a silent graph
+swap. The public HF preset remains unchanged until an approved causal graph is
+published for every precision variant and the remote artifact hashes are
+validated together.
+
+The exporter validation boundary is now enforced in code. `test_kv_export.py`
+requires `alignment_export.causal_self_attention: true`,
+`attention_values: "logits"`, and `attention_layout: "selected_heads"` for
+the generated manifest; `audit_publish.py` rejects a publish-ready variant
+that ships `decoder_align.onnx` without those declarations. Legacy artifacts
+remain loadable for the runtime's recoverable generated-timestamp fallback,
+but cannot pass the timestamp-artifact publish audit.
