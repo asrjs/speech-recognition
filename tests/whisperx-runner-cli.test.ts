@@ -8,6 +8,7 @@ import {
   runnerKvDims,
   sample,
 } from './smoke/whisperx-runner.mjs';
+import { tensorDataAsFloat32 } from '../src/models/whisper-seq2seq/executor.js';
 
 describe('whisperx-runner CLI', () => {
   it('parses language auto, beam size, and output format', () => {
@@ -74,6 +75,12 @@ describe('whisperx-runner CLI', () => {
 
     expect(entry.type).toBe('float16');
     expect(runnerKvData(entry)).toBe(data);
+  });
+
+  it('decodes fp16 tensor backing data before logit processing', () => {
+    const values = tensorDataAsFloat32(new Uint16Array([0x3c00, 0xc000]));
+
+    expect(Array.from(values)).toEqual([1, -2]);
   });
 
   it('finds PCM samples after RIFF metadata chunks', () => {

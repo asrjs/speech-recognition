@@ -346,17 +346,14 @@ export function tensorDataAsFloat32(data: ArrayBufferView): Float32Array {
 }
 
 /**
- * Match the encoder hidden-state tensor to the graph input contract.
+ * Match encoder hidden states to a decoder graph's declared input dtype.
  *
  * Split-graph exports are allowed to use different precision at the graph
- * boundary.  The optimized decoder_init usually accepts fp32 (and can keep a
+ * boundary. The optimized decoder_init usually accepts fp32 (and can keep a
  * GPU tensor), while decoder_align may be exported from the original fp32
- * Transformers module even when the runtime encoder emits fp16.  ORT-WebGPU
+ * Transformers module even when the runtime encoder emits fp16. ORT-WebGPU
  * does not insert this boundary cast for us, so an otherwise valid alignment
  * graph can fail and silently fall back to generated timestamp tokens.
- */
-/**
- * Match encoder hidden states to a decoder graph's declared input dtype.
  *
  * This is exported for the standalone/WhisperX-compatible runners too: a
  * runner that hand-rolls graph feeds must honor the same split-graph boundary
