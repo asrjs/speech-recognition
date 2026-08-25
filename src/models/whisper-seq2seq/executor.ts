@@ -615,7 +615,37 @@ function cloneTensorDataView(data: TensorDataView, ctor: TensorDataConstructor):
   return new ctor(buffer, 0, data.length);
 }
 
-function sliceTensorDataView(data: TensorDataView, elementOffset: number, length: number): TensorDataView {
+function decoderKvDataLayout(
+  data: ArrayBufferView,
+  tensorType?: string,
+): { readonly type: 'float32' | 'float16'; readonly ctor: TensorDataConstructor } {
+  const view = data as TensorDataView;
+  const dataCtor = view.constructor as TensorDataConstructor;
+  const isFloat16 = tensorType === 'float16' || dataCtor.name === 'Float16Array';
+  const globalFloat16Ctor = (globalThis as unknown as { readonly Float16Array?: TensorDataConstructor }).Float16Array;
+  return {
+    type: isFloat16 ? 'float16' : 'float32',
+    ctor: isFloat16 ? (globalFloat16Ctor ?? dataCtor) : dataCtor,
+  };
+}
+
+/**
+ * Split one batched decoder output into per-beam views without copying the
+ * full KV payload again. The output buffer is retained by each view until the
+ * next decoder call, which packs/clones it into fresh input storage. Keep the
+ * copy fallback for unusual ArrayBufferView implementations.
+ */
+export function sliceDecoderKvDataForBatch(
+  data: TensorDataView,
+  elementOffset: number,
+  length: number,
+): TensorDataView {
+  const sliceable = data as TensorDataView & {
+    readonly subarray?: (begin?: number, end?: number) => TensorDataView;
+  };
+  if (typeof sliceable.subarray === 'function') {
+    return sliceable.subarray(elementOffset, elementOffset + length);
+  }
   const bytesPerElement = data.byteLength / Math.max(1, data.length);
   const startByte = data.byteOffset + elementOffset * bytesPerElement;
   const endByte = startByte + length * bytesPerElement;
@@ -628,60 +658,80 @@ export function cloneDecoderKvDataForInput(
   tensorType?: string,
 ): { readonly type: 'float32' | 'float16'; readonly data: TensorDataView } {
   const view = data as TensorDataView;
-  const dataCtor = view.constructor as TensorDataConstructor;
-  const isFloat16 = tensorType === 'float16' || dataCtor.name === 'Float16Array';
-  if (isFloat16) {
-    const globalFloat16Ctor = (globalThis as unknown as { readonly Float16Array?: TensorDataConstructor }).Float16Array;
-    return {
-      type: 'float16',
-      data: cloneTensorDataView(view, globalFloat16Ctor ?? dataCtor),
-    };
-  }
-
+  const layout = decoderKvDataLayout(view, tensorType);
   return {
-    type: 'float32',
-    data: cloneTensorDataView(view, dataCtor),
+    type: layout.type,
+    data: cloneTensorDataView(view, layout.ctor),
   };
 }
 
-function concatTensorDataViews(parts: readonly TensorDataView[], ctor: TensorDataConstructor): TensorDataView {
-  const totalLength = parts.reduce((sum, part) => sum + part.length, 0);
-  const merged = new ctor(totalLength) as MutableTensorDataView;
-  let offset = 0;
-  for (const part of parts) {
-    if (merged.set) {
-      merged.set(part as unknown as ArrayLike<number>, offset);
-    } else {
-      const source = part as unknown as ArrayLike<number>;
-      for (let i = 0; i < part.length; i++) {
-        merged[offset + i] = source[i] ?? 0;
-      }
+function copyTensorDataViewInto(
+  target: MutableTensorDataView,
+  source: TensorDataView,
+  offset: number,
+): void {
+  const targetBytesPerElement = target.byteLength / Math.max(1, target.length);
+  if (source.byteLength % Math.max(1, targetBytesPerElement) !== 0) {
+    // This should not occur for a valid Whisper KV tensor, but preserve a
+    // deterministic fallback for unusual test/runtime views.
+    const sourceValues = source as unknown as ArrayLike<number>;
+    if (target.set) {
+      target.set(sourceValues, offset);
+      return;
     }
-    offset += part.length;
+    for (let i = 0; i < source.length; i++) {
+      target[offset + i] = sourceValues[i] ?? 0;
+    }
+    return;
   }
-  return merged;
+  const sourceBytes = new Uint8Array(
+    source.buffer as ArrayBufferLike,
+    source.byteOffset,
+    source.byteLength,
+  );
+  const targetBytes = new Uint8Array(
+    target.buffer as ArrayBufferLike,
+    target.byteOffset + offset * targetBytesPerElement,
+    source.byteLength,
+  );
+  targetBytes.set(sourceBytes);
 }
 
+/**
+ * Pack per-beam KV inputs into one fresh batch tensor. Allocate the final
+ * buffer once and copy each source directly; cloning each beam first and then
+ * concatenating the clones doubled the memory bandwidth of every batched step.
+ */
 export function concatDecoderKvDataForBatch(
   values: readonly { readonly data: ArrayBufferView; readonly type?: string }[],
   fallbackType: 'float32' | 'float16',
 ): { readonly type: 'float32' | 'float16'; readonly data: TensorDataView } {
-  const cloned = values.map((value) => cloneDecoderKvDataForInput(value.data, value.type ?? fallbackType));
-  const first = cloned[0];
-  if (!first) {
+  const firstValue = values[0];
+  if (!firstValue) {
     throw new Error('Cannot batch empty Whisper KV tensor data.');
   }
-  for (const value of cloned) {
-    if (value.type !== first.type) {
-      throw new Error(`Cannot batch mixed Whisper KV tensor dtypes: ${first.type} and ${value.type}.`);
+  const firstLayout = decoderKvDataLayout(firstValue.data, firstValue.type ?? fallbackType);
+  const layouts = values.map((value) => ({
+    value,
+    layout: decoderKvDataLayout(value.data, value.type ?? fallbackType),
+  }));
+  for (const { layout } of layouts) {
+    if (layout.type !== firstLayout.type) {
+      throw new Error(`Cannot batch mixed Whisper KV tensor dtypes: ${firstLayout.type} and ${layout.type}.`);
     }
   }
+  const merged = new firstLayout.ctor(
+    values.reduce((sum, value) => sum + (value.data as TensorDataView).length, 0),
+  ) as MutableTensorDataView;
+  let offset = 0;
+  for (const { value } of layouts) {
+    const source = value.data as TensorDataView;
+    copyTensorDataViewInto(merged, source, offset);
+    offset += source.length;
+  }
   return {
-    type: first.type,
-    data: concatTensorDataViews(
-      cloned.map((value) => value.data),
-      first.data.constructor as TensorDataConstructor,
-    ),
+    type: firstLayout.type,
+    data: merged,
   };
 }
 
@@ -3319,7 +3369,7 @@ export class WhisperOnnxExecutor {
                   const perBeamDims = [1, ...tensor.dims.slice(1)];
                   for (let beamIndex = 0; beamIndex < batchSize; beamIndex++) {
                     results[beamIndex]!.presentKv[pastName] = {
-                      data: sliceTensorDataView(data, beamIndex * perBeamLength, perBeamLength),
+                      data: sliceDecoderKvDataForBatch(data, beamIndex * perBeamLength, perBeamLength),
                       dims: perBeamDims,
                       type: tensor.type,
                     };
