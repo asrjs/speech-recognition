@@ -429,6 +429,25 @@ warmed samples are still required for timing claims. The remaining small
 first-word difference is within one 20 ms timestamp quantum plus encoder
 numeric variance and does not justify a timestamp fudge.
 
+## Follow-up: synchronization diagnostics and encoder quantization (2026-08-25)
+
+The remaining encoder-boundary probes were completed against the saved local
+r4 graph set. Forcing encoder output to CPU or re-wrapping the GPU buffer kept
+the same `In 2.12–2.84s` first-word span, while adding the explicit GPU drain
+added roughly 195 ms of profiling overhead without changing the words. The
+drain path had been dropping the already-downloaded CPU view when it re-wrapped
+the GPU buffer; the runtime now retains that view so decoder-align probes stay
+on the real alignment path instead of silently falling back to generated
+timestamp interpolation. The corrected flush probe returned 16 words,
+`In 2.12–2.84s`, GPU-KV, zero GPU downloads, and no warnings.
+
+The locally available q8 encoder was also tested with the fp32 decoder in the
+same headless WebGPU harness. It preserved the English transcript and GPU-KV
+output, but took `47,745.245ms` for the warmed 10.004s clip, including
+`47,395.12ms` in the encoder (`0.2095x` RTFx). Quantized encoder operators are
+therefore not a viable WebGPU optimization with the current ORT-WebGPU build;
+the fp16 split encoder remains the production candidate.
+
 ## Remaining boundary
 
 The local split-graph timestamp contract is now fixed and independently

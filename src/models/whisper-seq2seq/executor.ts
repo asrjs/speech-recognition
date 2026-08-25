@@ -3127,15 +3127,18 @@ export class WhisperOnnxExecutor {
       const dims = [...origTensor.dims] as readonly number[];
       const dtype = origTensor.type as string;
       // Force GPU pipeline flush by downloading to CPU
-      if (origTensor.getData) {
-        await origTensor.getData(false); // false = don't release GPU buffer
-      }
+      const flushedData = origTensor.getData
+        ? await origTensor.getData(false) // false = don't release GPU buffer
+        : undefined;
       // Re-wrap the SAME GPUBuffer as a fresh tensor (data is already computed on GPU)
       if (gpuBuffer && loaded.ort.Tensor.fromGpuBuffer) {
         encoderHiddenStates = loaded.ort.Tensor.fromGpuBuffer(gpuBuffer, {
           dataType: dtype,
           dims,
-          download: undefined,
+          // Keep alignment probes on the actual encoder output after the
+          // drain. getData(false) consumes the original downloader, so the
+          // re-wrapped tensor must retain the materialized view explicitly.
+          download: flushedData ? async () => flushedData : undefined,
           dispose: undefined,
         }) as unknown as OrtTensorLike<Float32Array>;
       }
@@ -3166,14 +3169,16 @@ export class WhisperOnnxExecutor {
       const gpuBuffer = (origTensor as unknown as { gpuBuffer: GPUBuffer }).gpuBuffer;
       const dims = [...origTensor.dims] as readonly number[];
       const dtype = origTensor.type as string;
-      if (origTensor.getData && gpuBuffer) {
-        await origTensor.getData(false); // force GPU drain, keep buffer alive
-      }
+      const drainedData = origTensor.getData && gpuBuffer
+        ? await origTensor.getData(false) // force GPU drain, keep buffer alive
+        : undefined;
       if (gpuBuffer && loaded.ort.Tensor.fromGpuBuffer) {
         encoderHiddenStates = loaded.ort.Tensor.fromGpuBuffer(gpuBuffer, {
           dataType: dtype,
           dims,
-          download: undefined,
+          // Preserve the drained CPU view for decoder_align, which may need
+          // to materialize the encoder states after this profiling probe.
+          download: drainedData ? async () => drainedData : undefined,
           dispose: undefined,
         }) as unknown as OrtTensorLike<Float32Array>;
       }
