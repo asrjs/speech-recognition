@@ -968,3 +968,64 @@ audio. A public batch-transcription API therefore remains gated on real-audio
 preprocessing, decoder parity, memory/lifetime policy, and a documented
 fallback. Active-beam decoder batching remains the only promoted batching
 optimization.
+
+## Continuation audit: fresh native comparators and decoder promotion boundary (2026-08-25)
+
+The native comparison was refreshed on the same local `jfk-10s.ogg` and
+`jfk-30s.ogg` fixtures. The host has PyTorch `2.7.1+cu128`, faster-whisper
+`1.1.0`/CTranslate2 `4.4.0`, and an NVIDIA GeForce RTX 5060 Ti. Each case
+used English decoding, one warmup, three warmed samples, and no model-load
+time. The Transformers/PyTorch runner used FP16 CUDA weights; faster-whisper
+used the local CTranslate2 FP16 conversion.
+
+| Fixture | Backend / beam | Median inference | RTFx |
+| --- | --- | ---: | ---: |
+| 10s | Transformers/PyTorch FP16 / 1 | `230.364ms` | `43.428x` |
+| 10s | Transformers/PyTorch FP16 / 2 | `265.431ms` | `37.691x` |
+| 10s | Transformers/PyTorch FP16 / 5 | `318.967ms` | `31.365x` |
+| 10s | faster-whisper CUDA FP16 / 1 | `379.138ms` | `26.387x` |
+| 10s | faster-whisper CUDA FP16 / 2 | `400.280ms` | `24.993x` |
+| 10s | faster-whisper CUDA FP16 / 5 | `428.760ms` | `23.333x` |
+| 30s | Transformers/PyTorch FP16 / 1 | `410.359ms` | `72.874x` |
+| 30s | Transformers/PyTorch FP16 / 2 | `497.964ms` | `60.053x` |
+| 30s | Transformers/PyTorch FP16 / 5 | `579.551ms` | `51.599x` |
+| 30s | faster-whisper CUDA FP16 / 1 | `773.212ms` | `38.675x` |
+| 30s | faster-whisper CUDA FP16 / 2 | `810.325ms` | `36.904x` |
+| 30s | faster-whisper CUDA FP16 / 5 | `926.518ms` | `32.276x` |
+
+The outputs were coherent and the beam ordering was stable. These are native
+decode-only ceilings, not apples-to-apples end-to-end browser timings: the
+WebGPU path includes audio preparation, mel extraction, and encoder execution.
+The refreshed values supersede the earlier CUDA rows in this document for
+current-host comparisons.
+
+A repeated independent Chrome/WebGPU run on the warmed 29.9043-second fixture
+compared the two checked-in decoder precision presets:
+
+| Preset | Total | Inference | RTFx | Mel | Encoder | Decoder | Step calls |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `fp16io-fp32-webgpu` | `1.31s` | `1.30s` | `23.081x` | `234ms` | `389ms` | `664ms` | `49` |
+| `fp16io-fp16-webgpu` | `1.27s` | `1.26s` | `23.721x` | `230ms` | `190ms` | `832ms` | `49` |
+
+Both runs used GPU-KV greedy decoding, zero GPU downloads, and a coherent
+transcript. Decoder-step ORT time was approximately `626ms` versus `617ms`
+(`p50=13ms`, `p95=15ms`, `max=16ms`) respectively. The FP32-decoder preset
+reduced decoder-init time on this repeat but did not improve end-to-end time,
+and it still uses the same FP16 encoder boundary for word alignment. It is
+therefore retained as a diagnostic preset; the public default remains FP16.
+
+The local draft-acceptance experiment also closed a tempting decoder
+optimization. A cached `openai/whisper-tiny` CUDA-FP16 model proposed tokens
+for the cached `whisper-large-v3-turbo` model. On the English 10-second and
+30-second fixtures, the generated continuations happened to match `18/18`
+and `50/50` tokens. On the Turkish `tr-tdk-18s.wav` fixture, the first token
+diverged and the continuation agreement was `0/80` (`tiny` generated 78
+tokens while `large` generated 80). The English-only agreement is not a
+correctness contract, so speculative/draft decoding remains research-only and
+was not added to the production executor.
+
+No local whisper.cpp executable was available beside the checked-in ggml
+weights, so no whisper.cpp timing or parity claim is recorded. FireRed ASR2
+and Qwen3-ASR remain artifact-gated under
+`docs/handoffs/asr-candidate-boundaries-2026-08-25.md`; no approved checkpoint
+and native reference-output pair appeared during this audit.
