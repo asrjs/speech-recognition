@@ -576,6 +576,29 @@ The batched run remains governed by its separate batch-packing path. GPU-KV
 greedy remains the fast path, stable CPU-KV beam remains the correctness
 oracle, and batched beam remains opt-in.
 
+## Follow-up: reproducible corrected fp16 export (2026-08-25)
+
+A fresh offline export from the cached local Whisper checkpoint produced
+`N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r5`. The exporter ran
+with the machine's CUDA-enabled Python 3.11 environment and emitted all four
+FP16 graphs with co-located external data. Path-based ONNX checking, CPU ORT
+loading, and the Whisper contract audit passed for all four graphs:
+`causal_self_attention=true`, raw-logit alignment, and six selected heads with
+alignment output shape `[1, 6, 20, 1500]`.
+
+The independent Node validator compared the r5 FP16 graphs with the current
+public FP32 baseline on three small English/Turkish fixtures at 16 generated
+tokens. All three had exact `16/16` token parity, matching text, monotonic
+alignment, and the expected raw-logit alignment contract. Node 26's native
+`Float16Array` is currently rejected by the installed `onnxruntime-node`
+binding; the validator therefore used a process-local compatibility shim that
+restores the established `Uint16Array` FP16 representation. This is a native
+validator/runtime limitation, not a browser WebGPU result.
+
+The r5 artifact remains local and was not copied into the public model folders
+or uploaded to a remote repository. The corrected graph still needs a fresh
+browser run for each published precision pairing before remote promotion.
+
 ## Remaining boundary
 
 The local split-graph timestamp contract is now fixed and independently
