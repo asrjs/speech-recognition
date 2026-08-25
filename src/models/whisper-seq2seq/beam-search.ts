@@ -22,9 +22,10 @@ export function createInitialWhisperBeam<TToken = unknown>(
   return { tokens: [...tokens], score, completed: false, payload };
 }
 
-export function normalizedBeamScore(beam: WhisperBeamState, lengthPenalty: number): number {
+export function normalizedBeamScore(beam: WhisperBeamState, lengthPenalty?: number): number {
   if (lengthPenalty === 0) return beam.score;
   const generatedLength = Math.max(1, beam.tokens.length);
+  if (lengthPenalty === undefined) return beam.score / generatedLength;
   return beam.score / Math.pow(generatedLength, lengthPenalty);
 }
 
@@ -32,9 +33,10 @@ export function normalizedBeamScore(beam: WhisperBeamState, lengthPenalty: numbe
 export function normalizedSequenceScore(
   cumulativeLogProb: number,
   tokenCount: number,
-  lengthPenalty: number,
+  lengthPenalty?: number,
 ): number {
   if (lengthPenalty === 0) return cumulativeLogProb;
+  if (lengthPenalty === undefined) return cumulativeLogProb / Math.max(1, tokenCount);
   return cumulativeLogProb / Math.pow(Math.max(1, tokenCount), lengthPenalty);
 }
 
@@ -43,7 +45,7 @@ export function rankWhisperBeamCandidates<TToken = unknown>({
   logitsByBeam,
   beamWidth,
   eosTokenId,
-  lengthPenalty = 0,
+  lengthPenalty,
   expandPayload,
 }: WhisperBeamCandidateOptions<TToken>): WhisperBeamState<TToken>[] {
   const candidateLimit = Math.max(1, beamWidth);
@@ -159,8 +161,10 @@ function selectTopWhisperTokenIds(logits: Float32Array, limit: number): number[]
   return topTokenIds;
 }
 
-function normalizeScore(score: number, tokenCount: number, lengthPenalty: number): number {
-  return lengthPenalty === 0 ? score : score / Math.pow(Math.max(1, tokenCount), lengthPenalty);
+function normalizeScore(score: number, tokenCount: number, lengthPenalty?: number): number {
+  if (lengthPenalty === 0) return score;
+  if (lengthPenalty === undefined) return score / Math.max(1, tokenCount);
+  return score / Math.pow(Math.max(1, tokenCount), lengthPenalty);
 }
 
 function insertRankedCandidate<TToken>(
@@ -185,7 +189,7 @@ function insertRankedCandidate<TToken>(
 
 export function selectBestWhisperBeam<TToken = unknown>(
   beams: readonly WhisperBeamState<TToken>[],
-  lengthPenalty = 0,
+  lengthPenalty?: number,
 ): WhisperBeamState<TToken> | undefined {
   return [...beams].sort(
     (a, b) => normalizedBeamScore(b, lengthPenalty) - normalizedBeamScore(a, lengthPenalty),

@@ -831,6 +831,23 @@ export function canShareWhisperEncoderKvAcrossBatch(
   });
 }
 
+/**
+ * Gate the encoder-KV broadcast optimization on the decoder-step graph's
+ * token-axis contract. The older public export has a dynamic token axis and
+ * its attention graph correctly broadcasts a batch-one encoder cache. The
+ * newer fixed-[B,1] export family can accept the same tensor shape but its
+ * reshape path treats the singleton batch as real data, producing wrong
+ * logits instead of an error. Unknown sessions stay on the materialized
+ * path; correctness is more important than a speculative copy elision.
+ */
+export function supportsWhisperEncoderKvBroadcast(
+  session: Pick<OrtSessionLike, 'inputMetadata'>,
+): boolean {
+  const inputIds = session.inputMetadata?.find((entry) => entry.name === 'input_ids');
+  const tokenAxis = inputIds?.shape?.[1];
+  return typeof tokenAxis === 'string' && tokenAxis.length > 0;
+}
+
 export async function splitGraphDecodeLoop(params: {
   promptTokens: readonly number[];
   encoderHiddenStates: Float32Array;
@@ -2530,7 +2547,7 @@ export class WhisperOnnxExecutor {
       ?? 50362;
     const maxNewTokens = options.maxNewTokens ?? this.config.maxTargetPositions ?? 448;
     const numBeams = Math.max(1, Math.floor(options.numBeams ?? 1));
-    const lengthPenalty = options.lengthPenalty ?? 0;
+    const lengthPenalty = options.lengthPenalty;
     const beamCandidateWidth = Math.max(
       numBeams,
       Math.ceil(numBeams * Math.max(1, options.patience ?? 1)),
@@ -3341,6 +3358,11 @@ export class WhisperOnnxExecutor {
       decoderCpuTensorOutputs += timings.cpuOutputCount;
       decoderGpuTensorDownloads += timings.gpuDownloadCount;
     };
+    const batchedEncoderKvTensors = new Map<string, {
+      readonly sourceData: ArrayBufferView;
+      readonly sourceDims?: readonly number[];
+      readonly tensor: OrtTensorLike<Float32Array>;
+    }>();
 
     const decoderStart = nowMs();
     const processSplitGraphLogits = (logits: Float32Array, genTokens: readonly number[], beginIdx: number): void => {
@@ -3529,7 +3551,9 @@ export class WhisperOnnxExecutor {
                   // step. If a backend returns distinct encoder buffers, keep
                   // the old fully materialized batch for correctness.
                   const isEncoderKv = stepName.includes('.encoder.');
-                  const shareEncoderKv = isEncoderKv && canShareWhisperEncoderKvAcrossBatch(values);
+                  const shareEncoderKv = isEncoderKv
+                    && supportsWhisperEncoderKvBroadcast(splitLoaded.decoderStepSession)
+                    && canShareWhisperEncoderKvAcrossBatch(values);
                   const valuesToBatch = shareEncoderKv ? [firstValue] : values;
                   const dims = firstValue.dims
                     ?? kvDims[name]
@@ -3551,12 +3575,34 @@ export class WhisperOnnxExecutor {
                       throw new Error(`Cannot batch Whisper KV "${name}" with mismatched per-beam dims.`);
                     }
                   }
+                  const sourceDataIsShared = values.every((value) => value.data === firstValue.data);
+                  const cacheKey = `${name}:${shareEncoderKv ? 'broadcast' : batchSize}`;
+                  const cachedEncoderKv = isEncoderKv && sourceDataIsShared
+                    ? batchedEncoderKvTensors.get(cacheKey)
+                    : undefined;
+                  if (
+                    cachedEncoderKv
+                    && cachedEncoderKv.sourceData === firstValue.data
+                    && cachedEncoderKv.sourceDims?.length === perBeamDims.length
+                    && cachedEncoderKv.sourceDims.every((dim, index) => dim === perBeamDims![index])
+                  ) {
+                    feeds[stepName] = cachedEncoderKv.tensor;
+                    continue;
+                  }
                   const batched = concatDecoderKvDataForBatch(valuesToBatch, kvDtype);
-                  feeds[stepName] = new splitLoaded.ort.Tensor(
+                  const batchedTensor = new splitLoaded.ort.Tensor(
                     batched.type,
                     batched.data,
                     [shareEncoderKv ? 1 : batchSize, ...perBeamDims.slice(1)],
-                  );
+                  ) as unknown as OrtTensorLike<Float32Array>;
+                  feeds[stepName] = batchedTensor;
+                  if (isEncoderKv && sourceDataIsShared) {
+                    batchedEncoderKvTensors.set(cacheKey, {
+                      sourceData: firstValue.data,
+                      sourceDims: perBeamDims,
+                      tensor: batchedTensor,
+                    });
+                  }
                 }
 
                 decoderStepFeedBuildMs += nowMs() - feedBuildStart;

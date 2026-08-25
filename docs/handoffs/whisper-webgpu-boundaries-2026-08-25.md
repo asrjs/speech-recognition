@@ -542,15 +542,16 @@ was copied into a public model folder or uploaded.
 
 ## Follow-up: shared encoder KV for batched beams (2026-08-25)
 
-The batched decoder profile identified a safe memory-bandwidth waste: every
-active beam was repacking the same immutable encoder key/value cache on every
-`decoder_step`. The core read-only cache contract now shares the initial cache
-across sibling beams. The WebGPU split-graph adapter passes encoder KV with
-batch `1`, which ONNX attention broadcasts across the active token batch, while
-decoder self-attention KV remains fully batched. If sibling buffers are not the
-same backing view, or if a backend rejects the broadcast shape, the existing
-batched-step error path disables batching and retries the stable scalar CPU-KV
-path.
+The batched decoder profile identified a safe memory-bandwidth waste for the
+validated dynamic-token graph: every active beam was repacking the same
+immutable encoder key/value cache on every `decoder_step`. The core read-only
+cache contract shares the initial cache across sibling beams. For that graph
+family the WebGPU split-graph adapter passes encoder KV with batch `1`, which
+ONNX attention broadcasts across the active token batch, while decoder
+self-attention KV remains fully batched. The later fixed-token r5 export showed
+that an accepted shape is not sufficient evidence of correct broadcast; the
+executor now gates this optimization by graph capability and uses a cached
+materialized fallback when needed.
 
 An independent CPU ONNX probe accepted the `[1, heads, frames, head_dim]`
 encoder-KV input with `[2, 1]` token inputs. The browser harness then validated
@@ -698,7 +699,7 @@ The local split-graph timestamp contract is now fixed and independently
 validated: the no-timestamps anchor, model-specific fallback ID, post-softmax
 attention crop/renormalization, multi-character punctuation collation, long
 non-punctuated DTW spans, and stable versus batched beam word parity all pass
-focused tests and the corrected r4 browser probe. The corrected graph must
+focused tests and the corrected r5 browser probe. The corrected graph must
 still be regenerated for each published precision variant and validated on the
 remote model before the default preset can claim artifact-level timestamp
 parity. Merged-decoder end-to-end validation still needs a timestamped merged
@@ -714,3 +715,60 @@ than being expanded with an unverified runtime.
 Keep `experimentalBatchedBeam` opt-in, stable CPU-KV beam as the correctness
 oracle, and GPU-KV greedy-only until broader model/reference coverage closes
 these boundaries.
+
+## Follow-up: HF beam oracle and score-based stopping (2026-08-25)
+
+The local HF checkpoint now has a committed deterministic reference at
+`tools/data/results/whisper/whisper-large-v3-turbo-jfk2-beams.json`. It records
+the JFK2 WAV SHA-256, the complete prompt `[50258, 50259, 50360, 50364]`, EOS,
+and exact token/text outputs for beam 1, 2, and 5. The generator can reproduce
+it with `--beam-sizes 2,5 --length-penalty 1`; the reference explicitly fixes
+`do_sample=false`, `length_penalty=1`, and `early_stopping=false`.
+
+The native r5 splitgraph runner exposed a real beam-5 boundary: the old loop
+stopped as soon as five EOS candidates existed and returned a sequence missing
+the comma token after `so`. The beam-2 output was unaffected. The core loop
+now retains finished candidates and applies a score-based stop heuristic after
+the patience target is filled, matching the default Transformers behavior
+while keeping explicit `patience` as the completion target. The runner also
+now exposes programmatic `tokenSequences` without changing CLI output files.
+
+Against `N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r5`, the native
+oracle passed exact token and text parity for beam 2 and beam 5. The focused
+Vitest fixture/provenance checks and the artifact-gated smoke are:
+
+```text
+npx vitest run tests/whisper-beam-reference.test.ts
+node tests/smoke/whisper-beam-reference.mjs --model N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r5
+```
+
+The fast path boundaries remain unchanged: GPU-KV is greedy-only, stable
+CPU-KV beam is the correctness oracle, and batched beam remains opt-in.
+
+## Follow-up: fixed-token r5 batched-KV compatibility (2026-08-25)
+
+The r5 `decoder_step.onnx` graph accepts batch-shaped token inputs but does not
+correctly broadcast a batch-one encoder KV tensor. A direct CPU ORT probe showed
+that the shared `[1, 20, 1500, 64]` cache changed the first-step top token from
+`370` to `11`/other values for different rows; fully materializing the same
+encoder cache to `[5, 20, 1500, 64]` matched the scalar logits exactly. The
+older public graph has a dynamic token axis and passed the broadcast probe.
+
+The executor now gates encoder-KV broadcast on that declared dynamic token
+axis, defaults unknown graph shapes to the safe materialized path, and retains
+the materialized immutable encoder tensors per active batch shape for the rest
+of the decode. Decoder self-attention KV remains fully batched and changing
+beam counts still rebuild the required shape.
+
+Independent Chrome/WebGPU validation against the local r5 junction produced
+exact transcript parity with no warnings or GPU downloads:
+
+| Case | Total | RTFx | Step calls | KV | Exact |
+| ---- | ----: | ---: | ---------: | -- | :---: |
+| EN stable beam 5 | `18.605s` | `1.6073` | 245 | CPU | oracle |
+| EN batched beam 5 | `7.110s` | `4.2062` | 49 | CPU | yes |
+
+The fixed-token safe path's batch feed-build time fell from about `3.42s` to
+`0.18s` over the 49-step decode after tensor reuse. This remains an opt-in
+optimization; the artifact capability gate prevents a silent wrong-transcript
+promotion.

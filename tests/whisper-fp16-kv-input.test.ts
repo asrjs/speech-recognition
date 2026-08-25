@@ -6,6 +6,7 @@ import {
   float32ToFloat16Bits,
   maybeCastWhisperFeatureTensor,
   sliceDecoderKvDataForBatch,
+  supportsWhisperEncoderKvBroadcast,
 } from '../src/models/whisper-seq2seq/executor.js';
 import { WhisperOnnxExecutor } from '../src/models/whisper-seq2seq/index.js';
 
@@ -16,6 +17,20 @@ afterEach(() => {
 });
 
 describe('Whisper fp16 decoder-step KV inputs', () => {
+  it('only enables encoder-KV broadcast for a decoder graph with a dynamic token axis', () => {
+    expect(
+      supportsWhisperEncoderKvBroadcast({
+        inputMetadata: [{ name: 'input_ids', shape: ['batch', 'sequence_length'] }],
+      }),
+    ).toBe(true);
+    expect(
+      supportsWhisperEncoderKvBroadcast({
+        inputMetadata: [{ name: 'input_ids', shape: ['batch', 1] }],
+      }),
+    ).toBe(false);
+    expect(supportsWhisperEncoderKvBroadcast({})).toBe(false);
+  });
+
   it('only broadcasts encoder KV when sibling beams share the same batch-one buffer', () => {
     const shared = new Float32Array([1, 2, 3, 4]);
     expect(

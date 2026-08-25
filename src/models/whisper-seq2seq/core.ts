@@ -300,7 +300,6 @@ export async function whisperBeamDecode(
     finished,
     finishedKeys,
     firstExpansion.finished,
-    maxFinishedCandidates,
   );
 
   let beams: WhisperBeamState<TokenQualityTrace[]>[] = firstExpansion.active;
@@ -313,7 +312,7 @@ export async function whisperBeamDecode(
   let useBatchedBeam = options.experimentalBatchedBeam === true && Boolean(session.runStepBatch);
 
   for (let s = 1; s < maxNewTokens; s++) {
-    if (finished.length >= maxFinishedCandidates || beams.length === 0) break;
+    if (beams.length === 0) break;
 
     const logitsByBeam: Float32Array[] = [];
     const activeTokenIds: number[] = [];
@@ -369,7 +368,6 @@ export async function whisperBeamDecode(
       finished,
       finishedKeys,
       expansion.finished,
-      maxFinishedCandidates,
     );
     // Decoder sessions treat the cache as read-only and clone/repack it while
     // building their next input tensors. Sibling hypotheses can therefore
@@ -377,18 +375,30 @@ export async function whisperBeamDecode(
     // the full KV payload after every beam expansion.
     beamKvs = expansion.parentIndexes.map((parentIndex) => beamKvs[parentIndex]!);
     beams = expansion.active;
+
+    // Do not stop merely because `beamSize` EOS hypotheses exist. That is
+    // equivalent to Transformers' `early_stopping=true` and can discard a
+    // higher-scoring continuation (notably a punctuation token on beam 5).
+    // Use the same score-based heuristic as the default HF beam scorer: once
+    // the requested patience target is filled, stop only when the best active
+    // hypothesis cannot overtake the worst retained finished hypothesis.
+    if (whisperBeamSearchIsDone(
+      finished,
+      beams,
+      maxFinishedCandidates,
+      promptTokens.length,
+      lengthPenalty,
+    )) break;
   }
 
-  if (finished.length < beamSize) {
+  if (finished.length < maxFinishedCandidates) {
     const unfinished = [...beams].sort((a, b) => b.score - a.score);
     for (const beam of unfinished) {
       appendFinishedWhisperBeams(
         finished,
         finishedKeys,
         [{ ...beam, tokens: [...beam.tokens, eosTokenId], completed: true }],
-        beamSize,
       );
-      if (finished.length >= beamSize) break;
     }
   }
 
@@ -543,15 +553,58 @@ function appendFinishedWhisperBeams(
   destination: WhisperBeamState<TokenQualityTrace[]>[],
   keys: Set<string>,
   candidates: readonly WhisperBeamState<TokenQualityTrace[]>[],
-  limit: number,
 ): void {
   for (const candidate of candidates) {
-    if (destination.length >= limit) return;
     const key = candidate.tokens.join(',');
     if (keys.has(key)) continue;
     keys.add(key);
     destination.push(candidate);
   }
+}
+
+function whisperBeamSearchIsDone(
+  finished: readonly WhisperBeamState<TokenQualityTrace[]>[],
+  active: readonly WhisperBeamState<TokenQualityTrace[]>[],
+  targetFinished: number,
+  promptLength: number,
+  lengthPenalty: number | undefined,
+): boolean {
+  if (finished.length < targetFinished || active.length === 0) return active.length === 0;
+
+  const rankedFinished = [...finished].sort((a, b) => (
+    whisperSequenceRankScoreForLength(b, promptLength, lengthPenalty)
+    - whisperSequenceRankScoreForLength(a, promptLength, lengthPenalty)
+  ));
+  const worstFinished = rankedFinished[targetFinished - 1];
+  if (!worstFinished) return false;
+
+  const bestActive = active.reduce((best, candidate) => (
+    candidate.score > best.score ? candidate : best
+  ), active[0]!);
+  const bestPossibleActiveScore = whisperSequenceRankScoreForLength(
+    bestActive,
+    promptLength,
+    lengthPenalty,
+  );
+  const worstFinishedScore = whisperSequenceRankScoreForLength(
+    worstFinished,
+    promptLength,
+    lengthPenalty,
+  );
+  return worstFinishedScore >= bestPossibleActiveScore;
+}
+
+function whisperSequenceRankScoreForLength(
+  beam: WhisperBeamState,
+  promptLength: number,
+  lengthPenalty: number | undefined,
+): number {
+  const generatedLength = Math.max(1, beam.tokens.length - promptLength - (
+    beam.completed && beam.tokens.length > promptLength ? 1 : 0
+  ));
+  if (lengthPenalty === 0) return beam.score;
+  if (lengthPenalty === undefined) return beam.score / generatedLength;
+  return beam.score / Math.pow((5 + generatedLength) / 6, lengthPenalty);
 }
 
 function selectBestFinishedWhisperBeam(

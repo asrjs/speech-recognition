@@ -303,7 +303,9 @@ the Node/Vitest harness.
 ### 1a. Beam Semantics Revalidation
 
 - [x] Keep finished EOS hypotheses outside active beam slots.
-- [x] Use `round(numBeams * patience)` as the finished-candidate budget.
+- [x] Use `round(numBeams * patience)` as the completion target, then apply
+  the score-based early-stop heuristic instead of stopping as soon as that
+  many EOS hypotheses exist.
 - [x] Route survivor KV caches with explicit parent indexes.
 - [x] Run stable and batched execution through the same candidate lifecycle.
 - [x] Match Whisper final ranking: default length normalization and Google NMT
@@ -313,7 +315,9 @@ the Node/Vitest harness.
 - [x] Revalidate stable versus batched tokens in Windows Chrome/WebGPU for
   English beam 5, timestamped English beam 2, and Turkish auto beam 2; all
   matched exactly, with decoder calls reduced 245→49, 40→20, and 158→79.
-- [ ] Add an HF/OpenAI beam reference fixture for `numBeams=2` and `5`.
+- [x] Add the deterministic HF/OpenAI beam reference fixture for
+  `numBeams=2` and `5`, including prompt/EOS IDs, audio SHA-256, explicit
+  length/stopping policy, and an artifact-gated native token/text oracle.
 
 ### 2. True Language Auto-Detection
 
@@ -409,7 +413,9 @@ hallucinations and recovers with higher temperature.
 ### 6. Deprioritized / Experimental (do not prioritize)
 
 - Batched beam decode: implemented as opt-in `experimentalBatchedBeam`. Keep stable
-  CPU-KV beam as oracle. Only promote after more variants/fixtures prove parity.
+  CPU-KV beam as oracle. Encoder-KV broadcast is enabled only for the validated
+  dynamic-token graph family; fixed-token graphs use cached materialized KV to
+  preserve logits. Only promote after more variants/fixtures prove parity.
 - GPU-KV beam support: not feasible without batched beam decode graph changes.
 - Encoder graph capture: fails on Reshape/Shape ops; revisit only after ORT updates.
 - Decoder graph capture: remains diagnostic-only; failed partitioning now falls

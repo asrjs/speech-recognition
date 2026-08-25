@@ -50,14 +50,24 @@ def pytorch_generate(
     language: str = "en",
     task: str = "transcribe",
     return_timestamps: bool = False,
+    num_beams: int = 1,
+    length_penalty: float = 1.0,
+    early_stopping: bool = False,
 ) -> dict:
     """Run PyTorch generate and return tokens, text, optional timestamps."""
+    if num_beams < 1:
+        raise ValueError(f"num_beams must be positive, got {num_beams}")
+
     with torch.no_grad():
         generated = model.generate(
             input_features=input_features,
             max_new_tokens=max_new_tokens,
             language=language,
             task=task,
+            num_beams=num_beams,
+            length_penalty=length_penalty,
+            early_stopping=early_stopping,
+            do_sample=False,
             return_timestamps=return_timestamps,
             output_scores=False,
             return_dict_in_generate=True,
@@ -216,6 +226,22 @@ def main():
     parser.add_argument("--language", default="en", help="Language code")
     parser.add_argument("--max-new-tokens", type=int, default=128)
     parser.add_argument(
+        "--length-penalty",
+        type=float,
+        default=1.0,
+        help="Deterministic HF beam length penalty (default: 1.0)",
+    )
+    parser.add_argument(
+        "--early-stopping",
+        action="store_true",
+        help="Stop HF beam search as soon as num_beams EOS hypotheses exist",
+    )
+    parser.add_argument(
+        "--beam-sizes",
+        default="",
+        help="Optional comma-separated deterministic HF beam widths to record, e.g. 2,5",
+    )
+    parser.add_argument(
         "--skip-onnx",
         action="store_true",
         help="Generate HF tokens/mel only; run exported graphs in the Node/Vitest harness",
@@ -223,6 +249,20 @@ def main():
     parser.add_argument("--export-mel", action="store_true",
                         help="Also export mel features as .npy for feature-input mode")
     args = parser.parse_args()
+
+    beam_sizes = []
+    if args.beam_sizes.strip():
+        for raw_size in args.beam_sizes.split(","):
+            try:
+                beam_size = int(raw_size.strip())
+            except ValueError as exc:
+                raise ValueError(f"Invalid beam size: {raw_size!r}") from exc
+            if beam_size < 2:
+                raise ValueError(
+                    "--beam-sizes is for beam references; each size must be at least 2"
+                )
+            if beam_size not in beam_sizes:
+                beam_sizes.append(beam_size)
 
     model_dir = Path(args.model_dir)
     encoder_dir = Path(args.encoder_dir) if args.encoder_dir else model_dir
@@ -276,6 +316,24 @@ def main():
     print(f"  Tokens: {pt_with_ts['tokens'][:20]}...")
     print(f"  Timestamp tokens: {pt_with_ts.get('timestamp_tokens', [])[:10]}")
     print(f"  Text:   \"{pt_with_ts['text'][:100]}\"")
+
+    pt_beams = {}
+    for beam_size in beam_sizes:
+        print(f"Running PyTorch generate (beam_size={beam_size}, no_timestamps)...")
+        beam_result = pytorch_generate(
+            model,
+            tokenizer,
+            mel,
+            max_new_tokens=args.max_new_tokens,
+            language=args.language,
+            return_timestamps=False,
+            num_beams=beam_size,
+            length_penalty=args.length_penalty,
+            early_stopping=args.early_stopping,
+        )
+        pt_beams[str(beam_size)] = beam_result
+        print(f"  Tokens: {beam_result['tokens'][:20]}...")
+        print(f"  Text:   \"{beam_result['text'][:100]}\"")
 
     # Load export metadata even when ONNX execution is delegated to Node ORT.
     manifest_path = decoder_dir / "manifest.json"
@@ -356,10 +414,13 @@ def main():
             "language": args.language,
             "task": "transcribe",
             "no_timestamps": True,
+            "length_penalty": args.length_penalty,
+            "early_stopping": args.early_stopping,
         },
         "pytorch": {
             "no_timestamps": pt_no_ts,
             "with_timestamps": pt_with_ts,
+            **({"beams": pt_beams} if pt_beams else {}),
         },
     }
     if onnx_no_ts is not None:

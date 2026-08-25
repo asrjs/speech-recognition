@@ -267,7 +267,7 @@ describe('whisperBeamDecode integration', () => {
     expect(steppedTokens).toEqual([2, 3]);
   });
 
-  it('uses patience to expand the finished-candidate budget', async () => {
+  it('uses patience as a finished target with score-based early stopping', async () => {
     const makeSession = () => {
       let stepCalls = 0;
       const session: WhisperCoreSession = {
@@ -283,8 +283,11 @@ describe('whisperBeamDecode integration', () => {
           const logits = new Float32Array(VOCAB_SIZE);
           logits.fill(-100);
           logits[EOS_TOKEN_ID] = 10;
-          logits[4] = 9;
-          logits[6] = 8;
+          // The active continuation remains possible but clearly below the
+          // finished candidates. This lets patience control whether the
+          // score-based stop can fire after two or four EOS hypotheses.
+          logits[4] = 5;
+          logits[6] = 4;
           return { logits, vocabSize: VOCAB_SIZE, presentKv: {} };
         },
       };

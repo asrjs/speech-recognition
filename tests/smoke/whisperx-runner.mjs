@@ -763,7 +763,7 @@ export async function runAsrPipeline(_opts) {
         },
         strategy: (opts.beamSize ?? 1) > 1 ? 'beam' : 'greedy',
         beamSize: opts.beamSize ?? 1,
-        lengthPenalty: opts.lengthPenalty ?? 0,
+        lengthPenalty: opts.lengthPenalty,
         bestOf: opts.bestOf ?? 1,
       });
 
@@ -909,7 +909,17 @@ export async function runAsrPipeline(_opts) {
       }
 
       return {
-        result: { text, start: seg.startSeconds, end: seg.endSeconds, words: segmentWords },
+        // Keep the complete prompt+generated sequence available to the
+        // programmatic smoke runner.  The file-format serializers below
+        // intentionally continue to expose only the stable transcript
+        // contract, so this does not change CLI JSON/SRT/VTT output.
+        result: {
+          text,
+          start: seg.startSeconds,
+          end: seg.endSeconds,
+          words: segmentWords,
+          tokens: [...promptTokens, ...tokens],
+        },
         text,
         tokens: qualityTokens,
         logits: [],
@@ -978,6 +988,7 @@ export async function runAsrPipeline(_opts) {
 
   return {
     segments: allSegments,
+    tokenSequences: allSegments.map((segment) => segment.tokens ?? []),
     fullText,
     language,
     wordCount,

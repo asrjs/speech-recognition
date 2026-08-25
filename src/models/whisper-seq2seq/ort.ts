@@ -42,6 +42,11 @@ export interface OrtTensorLike<TData extends ArrayBufferView = ArrayBufferView> 
 export interface OrtSessionLike {
   readonly inputNames?: readonly string[];
   readonly outputNames?: readonly string[];
+  readonly inputMetadata?: readonly {
+    readonly name?: string;
+    readonly type?: string;
+    readonly shape?: readonly (number | string)[];
+  }[];
   run(
     feeds: Record<string, unknown>,
     fetchesOrOptions?: unknown,

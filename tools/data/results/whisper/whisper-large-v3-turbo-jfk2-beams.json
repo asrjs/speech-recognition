@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "audio": {
+    "fixture": "tests/fixtures/jfk2.en.wav",
+    "sha256": "59DFB9A4ACB36FE2A2AFFC14BACBEE2920FF435CB13CC314A08C13F66BA7860E",
+    "sample_rate": 16000,
+    "duration_seconds": 11.0,
+    "num_samples": 176000
+  },
+  "model": {
+    "id": "openai/whisper-large-v3-turbo",
+    "revision": "41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
+    "backend": "transformers",
+    "dtype": "float16"
+  },
+  "decode": {
+    "language": "en",
+    "task": "transcribe",
+    "no_timestamps": true,
+    "max_new_tokens": 128,
+    "do_sample": false,
+    "length_penalty": 1.0,
+    "early_stopping": false
+  },
+  "prompt_ids": [50258, 50259, 50360, 50364],
+  "beams": {
+    "1": {
+      "tokens": [
+        50258, 50259, 50360, 50364, 400, 370, 11, 452, 7177, 6280, 11, 1029, 406, 437, 428, 1941,
+        393, 360, 337, 291, 11, 1029, 437, 291, 393, 360, 337, 428, 1941, 13, 50257
+      ],
+      "text": " And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+    },
+    "2": {
+      "tokens": [
+        50258, 50259, 50360, 50364, 400, 370, 11, 452, 7177, 6280, 11, 1029, 406, 437, 428, 1941,
+        393, 360, 337, 291, 11, 1029, 437, 291, 393, 360, 337, 428, 1941, 13, 50257
+      ],
+      "text": " And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+    },
+    "5": {
+      "tokens": [
+        50258, 50259, 50360, 50364, 400, 370, 11, 452, 7177, 6280, 11, 1029, 406, 437, 428, 1941,
+        393, 360, 337, 291, 11, 1029, 437, 291, 393, 360, 337, 428, 1941, 13, 50257
+      ],
+      "text": " And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+    }
+  }
+}
