@@ -563,11 +563,12 @@ Independent headless Chrome/WebGPU validation against the current local public
 model kept exact greedy/stable/batched transcript parity and zero GPU
 downloads. Warm measurement runs on the 29.9043s JFK fixture returned:
 
-| Case              |    Total |    RTFx | Step calls | Feed build | KV         |
-| ----------------- | -------: | ------: | ---------: | ---------: | ---------- |
-| EN greedy GPU-KV  |  `1.38s` | `21.77` |         49 |          — | GPU buffer |
-| EN stable beam 2  | `12.31s` | `2.431` |         98 |    `2.97s` | CPU        |
-| EN batched beam 2 |  `6.91s` | `4.332` |         49 |    `1.53s` | CPU        |
+| Case                       |    Total |    RTFx | Step calls | Feed build | KV         |
+| -------------------------- | -------: | ------: | ---------: | ---------: | ---------- |
+| EN greedy GPU-KV           |  `1.38s` | `21.77` |         49 |          — | GPU buffer |
+| EN full-fp16 stable beam 2 |  `8.42s` | `3.556` |         98 |    `1.54s` | CPU        |
+| EN stable beam 2           | `12.31s` | `2.431` |         98 |    `2.97s` | CPU        |
+| EN batched beam 2          |  `6.91s` | `4.332` |         49 |    `1.53s` | CPU        |
 
 The stable beam run reported only `3ms` of generic-step tensor-clone time;
 the remaining scalar feed-build time is the single required raw-cache copy.
