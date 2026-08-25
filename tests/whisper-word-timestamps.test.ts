@@ -4,6 +4,7 @@ import {
   buildWhisperWordTimestampsFromTokenDetails,
   coalesceWhisperWordTimestamps,
   constrainWhisperWordDurations,
+  constrainWhisperWordTimestampsToDuration,
   refineWhisperWordsWithForcedAlignment,
   splitWhisperWordsByPause,
   forcedAlignmentLooksAnchored,
@@ -107,6 +108,22 @@ describe('Whisper word timestamp fallback', () => {
 });
 
 describe('Whisper word duration constraints', () => {
+  it('clips generated timestamps to audio duration and drops padded-tail words', () => {
+    expect(
+      constrainWhisperWordTimestampsToDuration(
+        [
+          { index: 0, text: 'near', startTime: 5.6, endTime: 5.9 },
+          { index: 1, text: 'overlap', startTime: 5.9, endTime: 6.8 },
+          { index: 2, text: 'padding', startTime: 6.8, endTime: 8.0 },
+        ],
+        6,
+      ),
+    ).toEqual([
+      { index: 0, text: 'near', startTime: 5.6, endTime: 5.9 },
+      { index: 1, text: 'overlap', startTime: 5.9, endTime: 6 },
+    ]);
+  });
+
   it('clips DTW outlier words longer than twice the median duration', () => {
     const words = constrainWhisperWordDurations([
       { index: 0, text: 'In', startTime: 0, endTime: 0.16 },

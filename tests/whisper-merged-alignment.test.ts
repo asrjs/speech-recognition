@@ -56,6 +56,72 @@ function createExecutor(): WhisperOnnxExecutor {
 }
 
 describe('merged Whisper alignment boundaries', () => {
+  it('keeps finalized merged word timestamps inside the input clip', async () => {
+    const executor = createExecutor() as unknown as {
+      finalizeWordTimestamps: (
+        alignedWords: readonly {
+          readonly index: number;
+          readonly text: string;
+          readonly startTime: number;
+          readonly endTime: number;
+        }[],
+        tokens: readonly unknown[],
+        tokenizerValue: unknown,
+        language: string,
+        options: Record<string, never>,
+        audio: { readonly durationSeconds: number },
+        warnings: unknown[],
+      ) => Promise<readonly { readonly startTime: number; readonly endTime: number }[]>;
+    };
+
+    const words = await executor.finalizeWordTimestamps(
+      [
+        { index: 0, text: 'overlap', startTime: 5.9, endTime: 6.8 },
+        { index: 1, text: 'padding', startTime: 6.8, endTime: 8.0 },
+      ],
+      [],
+      { getTokenId: () => undefined },
+      'en',
+      {},
+      { durationSeconds: 6 },
+      [],
+    );
+
+    expect(words).toEqual([{ index: 0, text: 'overlap', startTime: 5.9, endTime: 6 }]);
+  });
+
+  it('keeps timestamp-token segments inside the input clip', () => {
+    const executor = createExecutor() as unknown as {
+      buildSegments: (
+        tokens: readonly { readonly id: number; readonly confidence?: number }[],
+        tokenizerValue: unknown,
+        noTimestamps: boolean,
+        durationSeconds: number,
+      ) => readonly { readonly startTime: number; readonly endTime: number }[];
+    };
+    const tokenizer = {
+      isTimestampTokenId: (id: number) => id >= 50_000,
+      timestampTokenIdToSeconds: (id: number) => (id === 50_000 ? 5.9 : 8),
+      decode: () => 'overlap padding',
+    };
+
+    const segments = executor.buildSegments(
+      [
+        { id: 50_000, confidence: 0.9 },
+        { id: 11, confidence: 0.9 },
+        { id: 12, confidence: 0.9 },
+        { id: 50_001, confidence: 0.9 },
+      ],
+      tokenizer,
+      false,
+      6,
+    );
+
+    expect(segments).toEqual([
+      { index: 0, text: 'overlap padding', startTime: 5.9, endTime: 6, confidence: 0.9 },
+    ]);
+  });
+
   it('uses the reference prompt, causal logit rows, and declared cache inputs', async () => {
     const tokenizer = createTokenizer();
     const feedsSeen: Record<string, FakeTensor> = {};
@@ -187,6 +253,52 @@ describe('merged Whisper alignment boundaries', () => {
       'en',
       [11],
       'transcribe',
+    );
+
+    expect(Object.keys(feedsSeen)).toEqual(['input_ids', 'encoder_hidden_states']);
+  });
+
+  it('does not add cache feeds to the regular merged decode step when absent', async () => {
+    const feedsSeen: Record<string, FakeTensor> = {};
+    const decoderSession = {
+      inputNames: ['input_ids', 'encoder_hidden_states'],
+      run: async (feeds: Record<string, FakeTensor>) => {
+        Object.assign(feedsSeen, feeds);
+        return {
+          logits: new FakeTensor('float32', new Float32Array([0, 1]), [1, 1, 2]),
+        };
+      },
+    };
+    const loaded = {
+      ort: { Tensor: FakeTensor },
+      tokenizer: createTokenizer(),
+      encoderSession: decoderSession,
+      decoderSession,
+      modelConfig: {
+        medianFilterWidth: 7,
+        decoderLayers: 1,
+        decoderAttentionHeads: 1,
+        dModel: 4,
+        headDim: 4,
+      },
+    } as never;
+
+    await (
+      createExecutor() as unknown as {
+        runDecoderStep: (
+          loadedState: unknown,
+          encoder: unknown,
+          generatedTokens: readonly number[],
+          pastKeyValues: Record<string, never>,
+          isFirstStep: boolean,
+        ) => Promise<unknown>;
+      }
+    ).runDecoderStep(
+      loaded,
+      new FakeTensor('float32', new Float32Array(4), [1, 2, 2]),
+      [50258],
+      {},
+      true,
     );
 
     expect(Object.keys(feedsSeen)).toEqual(['input_ids', 'encoder_hidden_states']);

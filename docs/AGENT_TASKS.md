@@ -370,6 +370,10 @@ hallucinations and recovers with higher temperature.
   prompt/task contract: derive prompt rows, read causal text-token logits,
   skip prompt attention rows, use the attention graph's frame axis, and crop
   padded frames to the audio duration. Add focused feed/row regression tests.
+- [x] Exercise the ordinary merged decoder against a real local Windows model
+  fixture and bound generated word/segment timestamps to the actual clip
+  duration; keep the `cross_attentions.*` alignment artifact requirement
+  explicit until a timestamped merged graph is available.
 - [x] Keep opt-in WebGPU graph-capture probes recoverable: retry normal ORT
   session creation when partitioning rejects capture and emit a warning; a
   headless Chrome run completed with exact transcript behavior and zero GPU

@@ -31,6 +31,45 @@ export function coalesceWhisperWordTimestamps(
   return buildWhisperWordTimestampsFromTokenDetails(tokens, options);
 }
 
+/**
+ * Keep word timestamps inside the actual audio window.
+ *
+ * Whisper always pads the feature input to its 30-second model window, so
+ * generated timestamp tokens can legitimately refer to padded silence after a
+ * short clip.  Native transcript consumers should receive clip-relative times
+ * instead: retain a word that overlaps the clip, clip its end, and discard
+ * words that are entirely in the padded tail.
+ */
+export function constrainWhisperWordTimestampsToDuration(
+  words: readonly WhisperNativeWord[],
+  durationSeconds: number,
+): WhisperNativeWord[] {
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 0) {
+    return words.map((word) => ({ ...word }));
+  }
+
+  const limit = durationSeconds;
+  const bounded: WhisperNativeWord[] = [];
+  for (const word of words) {
+    const rawStart = Number.isFinite(word.startTime) ? word.startTime : 0;
+    const rawEnd = Number.isFinite(word.endTime) ? word.endTime : rawStart;
+    const lower = Math.min(rawStart, rawEnd);
+    const upper = Math.max(rawStart, rawEnd);
+    if (upper <= 0 || lower >= limit) continue;
+
+    const startTime = Math.min(limit, Math.max(0, lower));
+    const endTime = Math.min(limit, Math.max(startTime, upper));
+    if (endTime <= 0 || startTime >= limit) continue;
+    bounded.push({
+      ...word,
+      index: bounded.length,
+      startTime,
+      endTime,
+    });
+  }
+  return bounded;
+}
+
 export interface WhisperDtwTokenTimestampInput {
   readonly id: number;
   readonly text: string;

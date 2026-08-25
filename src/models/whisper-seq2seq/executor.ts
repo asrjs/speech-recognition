@@ -40,6 +40,7 @@ import {
   buildWhisperWordTimestampsFromTokenDetails,
   clipShortWhisperWordDurations,
   coalesceWhisperWordTimestamps,
+  constrainWhisperWordTimestampsToDuration,
   forcedAlignmentLooksAnchored,
   refineWhisperWordsWithForcedAlignment,
   splitWhisperWordsByPause,
@@ -1420,13 +1421,15 @@ export class WhisperOnnxExecutor {
     };
 
     const decoderInputNames = loaded.decoderSession!.inputNames ?? [];
+    const shouldFeed = (name: string): boolean =>
+      decoderInputNames.length === 0 || decoderInputNames.includes(name);
     if (decoderInputNames.includes('use_cache_branch')) {
       feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([isFirstStep ? 1 : 0]), [1]);
     }
 
     if (!isFirstStep) {
       for (const [name, tensor] of Object.entries(pastKeyValues)) {
-        feeds[name] = tensor;
+        if (shouldFeed(name)) feeds[name] = tensor;
       }
     } else {
       const numLayers = loaded.modelConfig.decoderLayers;
@@ -1434,27 +1437,39 @@ export class WhisperOnnxExecutor {
       const headDim = loaded.modelConfig.headDim;
       const encoderSeqLen = encoderHiddenStates.dims[1] as number;
       for (let i = 0; i < numLayers; i++) {
-        feeds[`past_key_values.${i}.decoder.key`] = new loaded.ort.Tensor(
-          'float32',
-          new Float32Array(0),
-          [1, numHeads, 0, headDim],
-        );
-        feeds[`past_key_values.${i}.decoder.value`] = new loaded.ort.Tensor(
-          'float32',
-          new Float32Array(0),
-          [1, numHeads, 0, headDim],
-        );
+        const decoderKey = `past_key_values.${i}.decoder.key`;
+        const decoderValue = `past_key_values.${i}.decoder.value`;
+        if (shouldFeed(decoderKey)) {
+          feeds[decoderKey] = new loaded.ort.Tensor(
+            'float32',
+            new Float32Array(0),
+            [1, numHeads, 0, headDim],
+          );
+        }
+        if (shouldFeed(decoderValue)) {
+          feeds[decoderValue] = new loaded.ort.Tensor(
+            'float32',
+            new Float32Array(0),
+            [1, numHeads, 0, headDim],
+          );
+        }
         const encoderCacheSize = 1 * numHeads * encoderSeqLen * headDim;
-        feeds[`past_key_values.${i}.encoder.key`] = new loaded.ort.Tensor(
-          'float32',
-          new Float32Array(encoderCacheSize),
-          [1, numHeads, encoderSeqLen, headDim],
-        );
-        feeds[`past_key_values.${i}.encoder.value`] = new loaded.ort.Tensor(
-          'float32',
-          new Float32Array(encoderCacheSize),
-          [1, numHeads, encoderSeqLen, headDim],
-        );
+        const encoderKey = `past_key_values.${i}.encoder.key`;
+        const encoderValue = `past_key_values.${i}.encoder.value`;
+        if (shouldFeed(encoderKey)) {
+          feeds[encoderKey] = new loaded.ort.Tensor(
+            'float32',
+            new Float32Array(encoderCacheSize),
+            [1, numHeads, encoderSeqLen, headDim],
+          );
+        }
+        if (shouldFeed(encoderValue)) {
+          feeds[encoderValue] = new loaded.ort.Tensor(
+            'float32',
+            new Float32Array(encoderCacheSize),
+            [1, numHeads, encoderSeqLen, headDim],
+          );
+        }
       }
     }
 
@@ -2368,7 +2383,12 @@ export class WhisperOnnxExecutor {
     }
 
     // 5. Build segments from decoded tokens
-    const segments = this.buildSegments(tokenDetails, tokenizer, options.noTimestamps);
+    const segments = this.buildSegments(
+      tokenDetails,
+      tokenizer,
+      options.noTimestamps,
+      audio.durationSeconds,
+    );
     const alignedWords = this.shouldReturnWordTimestamps(options)
       ? await this.computeAttentionWordTimestamps(
           loaded,
@@ -2412,7 +2432,11 @@ export class WhisperOnnxExecutor {
     tokens: WhisperNativeToken[],
     tokenizer: WhisperTokenizer,
     noTimestamps?: boolean,
+    durationSeconds: number = 30,
   ): WhisperNativeSegment[] {
+    const clipEnd = Number.isFinite(durationSeconds) && durationSeconds >= 0
+      ? durationSeconds
+      : 30;
     if (noTimestamps) {
       // No timestamps: single segment with all text
       const text = tokenizer.decode(
@@ -2425,7 +2449,7 @@ export class WhisperOnnxExecutor {
           index: 0,
           text,
           startTime: 0,
-          endTime: 30,
+          endTime: clipEnd,
           confidence: tokens.length > 0 ? (tokens.reduce((s, t) => s + (t.confidence ?? 0), 0) / tokens.length) : 0,
         },
       ];
@@ -2478,13 +2502,18 @@ export class WhisperOnnxExecutor {
           index: segments.length,
           text,
           startTime: segmentStart,
-          endTime: 30,
+          endTime: clipEnd,
           confidence: avgConf,
         });
       }
     }
 
-    return segments;
+    return segments.flatMap((segment, index) => {
+      const startTime = Math.min(clipEnd, Math.max(0, segment.startTime));
+      const endTime = Math.min(clipEnd, Math.max(startTime, segment.endTime));
+      if (endTime <= startTime) return [];
+      return [{ ...segment, index, startTime, endTime }];
+    });
   }
 
   private shouldReturnWordTimestamps(options: WhisperSeq2SeqTranscriptionOptions): boolean {
@@ -2515,7 +2544,10 @@ export class WhisperOnnxExecutor {
   ): Promise<WhisperNativeWord[]> {
     const words = this.resolveWordTimestamps(alignedWords, tokens, tokenizer, language);
     if (!options.wordAligner || words.length === 0) {
-      return clipShortWhisperWordDurations(words);
+      return constrainWhisperWordTimestampsToDuration(
+        clipShortWhisperWordDurations(words),
+        audio.durationSeconds,
+      );
     }
 
     const groups = splitWhisperWordsByPause(words);
@@ -2559,7 +2591,10 @@ export class WhisperOnnxExecutor {
         recoverable: true,
       });
     }
-    return clipShortWhisperWordDurations(refined);
+    return constrainWhisperWordTimestampsToDuration(
+      clipShortWhisperWordDurations(refined),
+      audio.durationSeconds,
+    );
   }
 
   private shouldChunkAudio(audio: AudioBufferLike, options: WhisperSeq2SeqTranscriptionOptions): boolean {
@@ -3390,7 +3425,12 @@ export class WhisperOnnxExecutor {
     }
 
     // 6. Build segments
-    const segments = this.buildSegments(tokenDetails, tokenizer, options.noTimestamps);
+    const segments = this.buildSegments(
+      tokenDetails,
+      tokenizer,
+      options.noTimestamps,
+      audio.durationSeconds,
+    );
 
     // 7. Word timestamps via splitgraph alignment
     const alignedWords = this.shouldReturnWordTimestamps(options)

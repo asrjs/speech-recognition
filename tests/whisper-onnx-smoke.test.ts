@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
+import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { WhisperOnnxExecutor } from '../src/models/whisper-seq2seq/executor.js';
 import type {
   WhisperArtifactSource,
@@ -28,10 +30,23 @@ describe('Whisper ONNX end-to-end smoke', () => {
       tokenizer: { kind: 'tiktoken', vocabSize: 51865 },
     };
 
-    const fixtureDir = '/tmp/whisper-tiny-onnx';
-    const encoderPath = `${fixtureDir}/encoder_model_int8.onnx`;
-    const decoderPath = `${fixtureDir}/decoder_model_merged_int8.onnx`;
-    const tokenizerPath = `${fixtureDir}/tokenizer.json`;
+    const fixtureDir = process.env.WHISPER_MERGED_FIXTURE_DIR;
+    if (!fixtureDir) {
+      console.warn('Skipping: set WHISPER_MERGED_FIXTURE_DIR to a local merged Whisper fixture');
+      return;
+    }
+    const encoderPath = path.join(
+      fixtureDir,
+      process.env.WHISPER_MERGED_ENCODER ?? 'onnx/encoder_model.onnx',
+    );
+    const decoderPath = path.join(
+      fixtureDir,
+      process.env.WHISPER_MERGED_DECODER ?? 'onnx/decoder_model_merged.onnx',
+    );
+    const tokenizerPath = path.join(
+      fixtureDir,
+      process.env.WHISPER_MERGED_TOKENIZER ?? 'tokenizer.json',
+    );
     if (![encoderPath, decoderPath, tokenizerPath].every((file) => fs.existsSync(file))) {
       console.warn(`Skipping: Whisper ONNX fixture files not found under ${fixtureDir}`);
       return;
@@ -40,9 +55,9 @@ describe('Whisper ONNX end-to-end smoke', () => {
     const source: WhisperArtifactSource = {
       kind: 'direct',
       artifacts: {
-        encoderUrl: `file://${encoderPath}`,
-        decoderUrl: `file://${decoderPath}`,
-        tokenizerUrl: `file://${tokenizerPath}`,
+        encoderUrl: pathToFileURL(encoderPath).href,
+        decoderUrl: pathToFileURL(decoderPath).href,
+        tokenizerUrl: pathToFileURL(tokenizerPath).href,
       },
     };
 
@@ -88,5 +103,5 @@ describe('Whisper ONNX end-to-end smoke', () => {
     // For a sine wave, output may be empty or contain only special tokens,
     // but the pipeline should have produced tokens (including EOS).
     expect(Array.isArray(result.tokens)).toBe(true);
-  });
+  }, 240_000);
 });
