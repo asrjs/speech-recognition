@@ -160,7 +160,7 @@ interface LoadedExecutorState {
   /** Alignment tensor layout declared by the decoder_align manifest. */
   readonly decoderAlignAttentionLayout?: WhisperAlignmentAttentionLayout;
   readonly enableProfiling?: boolean;
-  readonly decoderAlignExternalData?: { readonly dataUrl: string; readonly path: string };
+  readonly decoderAlignExternalData?: readonly { readonly dataUrl: string; readonly path: string }[];
   readonly decoderBackendForOrt?: string;
   readonly experimentalGpuKvCache?: boolean;
   readonly sessionCreateMs?: number;
@@ -1454,8 +1454,8 @@ export class WhisperOnnxExecutor {
       ...((resolved.experimentalGpuKvCache && resolved.encoderBackendForOrt === 'webgpu' && !resolved.encoderOutputCpu)
         ? { preferredOutputLocation: 'gpu-buffer' as const }
         : {}),
-      ...(resolved.externalData?.encoder?.[0]
-        ? { externalDataUrl: resolved.externalData.encoder[0].dataUrl, externalDataPath: resolved.externalData.encoder[0].path }
+      ...(resolved.externalData?.encoder
+        ? { externalData: resolved.externalData.encoder }
         : {}),
     };
     const encoderSession = await createWhisperOrtSessionWithGraphCaptureFallback(
@@ -1478,8 +1478,8 @@ export class WhisperOnnxExecutor {
       decoderSession = await createWhisperOrtSession(ort, artifacts.decoderUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
-        ...(resolved.externalData?.decoder_init?.[0]
-          ? { externalDataUrl: resolved.externalData.decoder_init[0].dataUrl, externalDataPath: resolved.externalData.decoder_init[0].path }
+        ...(resolved.externalData?.decoder_init
+          ? { externalData: resolved.externalData.decoder_init }
           : {}),
       });
     }
@@ -1514,8 +1514,8 @@ export class WhisperOnnxExecutor {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
         preferredOutputLocation: decoderInitPreferredOutputLocation,
-        ...(resolved.externalData?.decoder_init?.[0]
-          ? { externalDataUrl: resolved.externalData.decoder_init[0].dataUrl, externalDataPath: resolved.externalData.decoder_init[0].path }
+        ...(resolved.externalData?.decoder_init
+          ? { externalData: resolved.externalData.decoder_init }
           : {}),
       });
       const decoderStepSessionOptions: WhisperOrtSessionOptions = {
@@ -1526,8 +1526,8 @@ export class WhisperOnnxExecutor {
         ...(resolved.decoderGraphCapture ? { enableGraphCapture: true } : {}),
         // DIAGNOSTIC (B2-B): freeDimensionOverrides for decoder_step
         ...(resolved.decoderFreeDimensionOverrides ? { freeDimensionOverrides: resolved.decoderFreeDimensionOverrides } : {}),
-        ...(resolved.externalData?.decoder_step?.[0]
-          ? { externalDataUrl: resolved.externalData.decoder_step[0].dataUrl, externalDataPath: resolved.externalData.decoder_step[0].path }
+        ...(resolved.externalData?.decoder_step
+          ? { externalData: resolved.externalData.decoder_step }
           : {}),
       };
       decoderStepSession = await createWhisperOrtSessionWithGraphCaptureFallback(
@@ -1554,12 +1554,7 @@ export class WhisperOnnxExecutor {
       decoderAlignAttentionValues: decoderAlignMetadata?.attentionValues,
       decoderAlignAttentionLayout: decoderAlignMetadata?.attentionLayout,
       enableProfiling: resolved.enableProfiling,
-      decoderAlignExternalData: resolved.externalData?.decoder_align?.[0]
-        ? {
-            dataUrl: resolved.externalData.decoder_align[0].dataUrl,
-            path: resolved.externalData.decoder_align[0].path,
-          }
-        : undefined,
+      decoderAlignExternalData: resolved.externalData?.decoder_align,
       decoderBackendForOrt: resolved.decoderBackendForOrt,
       experimentalGpuKvCache: resolved.experimentalGpuKvCache,
       encoderBufferRewrap: resolved.encoderBufferRewrap,
@@ -1596,10 +1591,7 @@ export class WhisperOnnxExecutor {
           backendId: loaded.decoderBackendForOrt ?? this.backendId,
           enableProfiling: loaded.enableProfiling,
           ...(loaded.decoderAlignExternalData
-            ? {
-                externalDataUrl: loaded.decoderAlignExternalData.dataUrl,
-                externalDataPath: loaded.decoderAlignExternalData.path,
-              }
+            ? { externalData: loaded.decoderAlignExternalData }
             : {}),
         });
         this.decoderAlignSession = session;

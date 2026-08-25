@@ -79,8 +79,13 @@ export type OrtPreferredOutputLocation =
   | OrtOutputLocation
   | Record<string, OrtOutputLocation>;
 
+export interface WhisperExternalDataFile {
+  readonly dataUrl: string;
+  readonly path: string;
+}
+
 export interface ExternalDataMap {
-  readonly [graphName: string]: readonly { readonly dataUrl: string; readonly path: string }[];
+  readonly [graphName: string]: readonly WhisperExternalDataFile[];
 }
 
 export interface ResolvedWhisperArtifacts {
@@ -372,7 +377,11 @@ export async function createWhisperOrtSession(
   options: {
     readonly backendId: string;
     readonly enableProfiling?: boolean;
+    /** All external-data shards declared by the graph manifest. */
+    readonly externalData?: readonly WhisperExternalDataFile[];
+    /** @deprecated Use externalData for graphs with one or more shards. */
     readonly externalDataUrl?: string;
+    /** @deprecated Use externalData for graphs with one or more shards. */
     readonly externalDataPath?: string;
     readonly preferredOutputLocation?: OrtPreferredOutputLocation;
     readonly enableGraphCapture?: boolean;
@@ -381,7 +390,10 @@ export async function createWhisperOrtSession(
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
+  let externalDataFiles = [...(options.externalData ?? [])];
   let externalDataUrl = options.externalDataUrl;
+  let externalDataPath = options.externalDataPath;
+  let fileUrlToPath: ((url: string) => string) | undefined;
   const executionProviders = options.backendId.startsWith('webgpu')
     ? [
         {
@@ -413,35 +425,40 @@ export async function createWhisperOrtSession(
   }
 
   if (isNodeLikeRuntime()) {
-    const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
+    const nodeUrl = await importNodeModule<typeof import('node:url')>('node:url');
     const { existsSync: fsExists } = await importNodeModule<typeof import('node:fs')>('node:fs');
+    fileUrlToPath = nodeUrl.fileURLToPath;
     if (/^file:/i.test(modelUrl)) {
-      modelUrl = fileURLToPath(modelUrl);
+      modelUrl = fileUrlToPath(modelUrl);
     }
     // Auto-detect co-located external data file
-    if (!externalDataUrl) {
+    if (externalDataFiles.length === 0 && !externalDataUrl) {
       const dataPath = modelUrl + '.data';
       if (fsExists(dataPath)) {
         externalDataUrl = dataPath;
         // Derive the relative path for ORT
-        if (!options.externalDataPath) {
-          const basename = modelUrl.split('/').pop() ?? 'model.onnx';
-          (options as Record<string, unknown>).externalDataPath = basename + '.data';
+        if (!externalDataPath) {
+          const basename = modelUrl.replace(/\\/g, '/').split('/').pop() ?? 'model.onnx';
+          externalDataPath = basename + '.data';
         }
       }
     }
     if (externalDataUrl && /^file:/i.test(externalDataUrl)) {
-      externalDataUrl = fileURLToPath(externalDataUrl);
+      externalDataUrl = fileUrlToPath(externalDataUrl);
     }
   }
 
-  if (externalDataUrl && options.externalDataPath) {
-    sessionOptions.externalData = [
-      {
-        data: externalDataUrl,
-        path: options.externalDataPath,
-      },
-    ];
+  if (externalDataUrl && externalDataPath) {
+    externalDataFiles.push({ dataUrl: externalDataUrl, path: externalDataPath });
+  }
+
+  if (externalDataFiles.length > 0) {
+    sessionOptions.externalData = externalDataFiles.map((entry) => ({
+      data: fileUrlToPath && /^file:/i.test(entry.dataUrl)
+        ? fileUrlToPath(entry.dataUrl)
+        : entry.dataUrl,
+      path: entry.path,
+    }));
   }
 
   return ort.InferenceSession.create(modelUrl, sessionOptions);

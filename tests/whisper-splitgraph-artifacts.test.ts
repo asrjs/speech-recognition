@@ -103,7 +103,11 @@ describe('Whisper splitgraph artifact resolution', () => {
       InferenceSession: {
         async create(_url: string, options?: Record<string, unknown>) {
           createdOptions.push(options ?? {});
-          return { async run() { return {}; } };
+          return {
+            async run() {
+              return {};
+            },
+          };
         },
       },
     } as unknown as OrtModuleLike;
@@ -119,6 +123,76 @@ describe('Whisper splitgraph artifact resolution', () => {
 
     expect(createdOptions[0]?.enableGraphCapture).toBe(true);
     expect(createdOptions[1]?.enableGraphCapture).toBeUndefined();
+  });
+
+  it('forwards every declared external-data shard to ORT', async () => {
+    const createdOptions: Record<string, unknown>[] = [];
+    const fakeOrt = {
+      env: { wasm: {} },
+      Tensor: class {},
+      InferenceSession: {
+        async create(_url: string, options?: Record<string, unknown>) {
+          createdOptions.push(options ?? {});
+          return {
+            async run() {
+              return {};
+            },
+          };
+        },
+      },
+    } as unknown as OrtModuleLike;
+
+    await createWhisperOrtSession(fakeOrt, 'https://example.com/encoder.onnx', {
+      backendId: 'wasm',
+      externalData: [
+        { dataUrl: 'https://example.com/encoder.onnx.data.0', path: './encoder.onnx.data.0' },
+        { dataUrl: 'https://example.com/encoder.onnx.data.1', path: './encoder.onnx.data.1' },
+      ],
+    });
+
+    expect(createdOptions[0]?.externalData).toEqual([
+      { data: 'https://example.com/encoder.onnx.data.0', path: './encoder.onnx.data.0' },
+      { data: 'https://example.com/encoder.onnx.data.1', path: './encoder.onnx.data.1' },
+    ]);
+  });
+
+  it('auto-detects a co-located shard from a file URL without mutating options', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'asrjs-whisper-ort-'));
+    try {
+      const modelPath = path.join(dir, 'encoder_model.onnx');
+      const dataPath = `${modelPath}.data`;
+      fs.writeFileSync(modelPath, 'onnx');
+      fs.writeFileSync(dataPath, 'external');
+
+      let createdUrl = '';
+      let createdOptions: Record<string, unknown> | undefined;
+      const fakeOrt = {
+        env: { wasm: {} },
+        Tensor: class {},
+        InferenceSession: {
+          async create(url: string, options?: Record<string, unknown>) {
+            createdUrl = url;
+            createdOptions = options;
+            return {
+              async run() {
+                return {};
+              },
+            };
+          },
+        },
+      } as unknown as OrtModuleLike;
+
+      await createWhisperOrtSession(fakeOrt, pathToFileURL(modelPath).href, {
+        backendId: 'wasm',
+      });
+
+      expect(createdUrl).toBe(modelPath);
+      expect(createdOptions?.externalData).toEqual([
+        { data: dataPath, path: 'encoder_model.onnx.data' },
+      ]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -215,7 +289,9 @@ describe('Browser externalData path matching (ONNX internal location)', () => {
     const resolved = resolveWhisperArtifacts(
       withExternalData({
         decoder_init: [{ path: './decoder_init.onnx.data', file: 'decoder_init.onnx.data' }],
-        decoder_step: [{ path: './nested/decoder_step.onnx.data', file: 'nested/decoder_step.onnx.data' }],
+        decoder_step: [
+          { path: './nested/decoder_step.onnx.data', file: 'nested/decoder_step.onnx.data' },
+        ],
       }),
       'wasm',
     );
@@ -255,9 +331,7 @@ describe('Local splitgraph manifest external data', () => {
             encoder: { file: 'encoder_model.onnx' },
             decoder_init: {
               file: 'decoder_init.onnx',
-              externalData: [
-                { path: './decoder_init.onnx.data', file: 'decoder_init.onnx.data' },
-              ],
+              externalData: [{ path: './decoder_init.onnx.data', file: 'decoder_init.onnx.data' }],
             },
             decoder_step: { file: 'decoder_step.onnx' },
             decoder_align: {
@@ -276,7 +350,9 @@ describe('Local splitgraph manifest external data', () => {
       expect(loaded.config.maxSourcePositions).toBe(3000);
       expect(loaded.source.artifacts.externalDataUrls?.encoder).toBeUndefined();
       expect(loaded.source.artifacts.externalDataUrls?.decoder_step).toBeUndefined();
-      expect(loaded.source.artifacts.externalDataUrls?.decoder_init?.[0]?.path).toBe('./decoder_init.onnx.data');
+      expect(loaded.source.artifacts.externalDataUrls?.decoder_init?.[0]?.path).toBe(
+        './decoder_init.onnx.data',
+      );
 
       const resolved = resolveWhisperArtifacts(loaded.source, 'webgpu');
       expect(resolved.externalData?.encoder).toBeUndefined();
