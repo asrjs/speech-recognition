@@ -135,6 +135,39 @@ only exposes the repository and `N:/models`.
    first, then WebGPU. Keep timestamps as a separate alignment contract; do
    not infer Whisper-style timestamp tokens.
 
+## GigaAM Multilingual CTC (next candidate)
+
+The current strongest follow-on candidate is GigaAM Multilingual CTC, not a
+new Whisper variant. The upstream family describes 220M and 600M Conformer
+encoders trained across 70+ languages, with character-wise CTC ASR heads. The
+upstream project documents ONNX export, FP16 export for GPU deployment, and a
+25-second short-clip limit; long-form composition is handled outside the model
+with VAD. This topology is a particularly good fit for the existing
+artifact-gated CTC runtime: one encoder graph, greedy decoding, frame-derived
+timestamps, and no autoregressive KV loop.
+
+The upstream repository is [GigaAM](https://github.com/salute-developers/GigaAM)
+(MIT license). A public ONNX conversion is available at
+[istupakov/gigaam-multilingual-ctc-onnx](https://huggingface.co/istupakov/gigaam-multilingual-ctc-onnx);
+its existence is a porting lead, not yet an approved artifact or a quality
+claim. The model card reports five languages, while the upstream family
+describes broader multilingual pretraining, so the exact ASR vocabulary and
+language list must be read from the artifact before API design.
+
+### Required GigaAM verification sequence
+
+1. Obtain approval for one local ONNX bundle or export the upstream CTC model;
+   record graph names, SHA-256, vocabulary, sample rate, fbank parameters, and
+   license metadata.
+2. Capture upstream reference logits, frame lengths, character IDs, decoded
+   text, and word-timestamp output on fixed English plus supported multilingual
+   fixtures.
+3. Compare frontend input, encoder output, CTC logits, and collapsed IDs in
+   native ORT, WASM, and WebGPU. Test mixed-length padding before exposing batch.
+4. Only if parity and latency justify it, add `src/models/gigaam-ctc` and a
+   preset; reuse shared CTC timing utilities while keeping GigaAM’s fbank and
+   vocabulary model-specific.
+
 ## Tooling now available
 
 The repository now contains local-only reference and conversion helpers:
@@ -157,9 +190,9 @@ third-party conversion to a supported artifact.
 
 ## Current decision
 
-The next Qwen change should be driven by an approved local artifact and a
-reference transcript fixture. The family is executable when that source is
-provided, but it must not be promoted to a preset or called quality-verified
-until the reference/browser matrix passes. FireRed remains artifact-gated and
-should follow the same sequence rather than receiving another empty model
-class.
+SenseVoice and Qwen changes should be driven by approved local artifacts and
+reference transcript fixtures. GigaAM is the next implementation candidate
+because its CTC/ONNX shape is browser-friendly and an ONNX conversion already
+exists, but it must follow the same artifact and parity gates. None of these
+artifact-gated prototypes should be promoted to a preset or called
+quality-verified until the reference/browser matrix passes.
