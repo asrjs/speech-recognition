@@ -42,6 +42,7 @@ describe('Hugging Face progress reporting', () => {
       readonly loadedMiB: number;
       readonly totalMiB?: number;
       readonly isComplete?: boolean;
+      readonly source?: 'cache' | 'network';
     }> = [];
 
     const text = await getModelText('ysdede/example', 'vocab.txt', {
@@ -58,6 +59,7 @@ describe('Hugging Face progress reporting', () => {
       file: 'vocab.txt',
       percent: 100,
       isComplete: true,
+      source: 'network',
     });
     expect(
       events.every(

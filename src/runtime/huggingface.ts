@@ -17,6 +17,7 @@ export interface ModelFileProgress {
   readonly loadedMiB: number;
   readonly totalMiB?: number;
   readonly isComplete?: boolean;
+  readonly source?: 'cache' | 'network';
 }
 
 const MEBIBYTE = 1024 * 1024;
@@ -29,7 +30,12 @@ function createProgressMilestoneReporter(
   filename: string,
   progress?: (progress: ModelFileProgress) => void,
 ):
-  | ((event: { readonly loaded: number; readonly total?: number; readonly done?: boolean }) => void)
+  | ((event: {
+      readonly loaded: number;
+      readonly total?: number;
+      readonly done?: boolean;
+      readonly source?: 'cache' | 'network';
+    }) => void)
   | undefined {
   if (!progress) {
     return undefined;
@@ -74,6 +80,7 @@ function createProgressMilestoneReporter(
       loadedMiB: bytesToMiB(loaded) ?? 0,
       totalMiB: bytesToMiB(total),
       isComplete: done,
+      source: event.source,
     });
   };
 }
@@ -127,9 +134,10 @@ function createModelAssetRequest(
     readonly revision?: string;
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
+    readonly preferBlobUrl?: boolean;
   } = {},
 ): AssetRequest {
-  const { revision = 'main', subfolder = '', progress } = options;
+  const { revision = 'main', subfolder = '', progress, preferBlobUrl } = options;
   const reportProgress = createProgressMilestoneReporter(filename, progress);
 
   return {
@@ -140,6 +148,7 @@ function createModelAssetRequest(
     filename,
     subfolder,
     cacheKey: `hf-${repoId}-${revision}-${subfolder}-${filename}`,
+    preferBlobUrl,
     onProgress: reportProgress,
   };
 }
@@ -264,6 +273,7 @@ export async function getModelAssetHandle(
     readonly revision?: string;
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
+    readonly preferBlobUrl?: boolean;
   } = {},
 ): Promise<ResolvedAssetHandle> {
   const provider = createDefaultHuggingFaceProvider();
@@ -277,6 +287,7 @@ export async function getModelFile(
     readonly revision?: string;
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
+    readonly preferBlobUrl?: boolean;
   } = {},
 ): Promise<string> {
   const handle = await getModelAssetHandle(repoId, filename, options);

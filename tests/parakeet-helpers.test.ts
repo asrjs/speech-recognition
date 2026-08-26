@@ -345,6 +345,35 @@ describe('Parakeet helpers', () => {
     }
   });
 
+  it('opts into cache-backed model locators only when requested', async () => {
+    const fetchModelFiles = vi
+      .spyOn(huggingface, 'fetchModelFiles')
+      .mockResolvedValue([
+        'encoder-model.fp16.onnx',
+        'decoder_joint-model.int8.onnx',
+        'vocab.txt',
+      ]);
+    const getModelFile = vi
+      .spyOn(huggingface, 'getModelFile')
+      .mockImplementation(async (_repoId, filename) => `https://example.test/${filename}`);
+
+    try {
+      const { getParakeetModel } = await import('../src/presets/parakeet.js');
+      await getParakeetModel('parakeet-tdt-0.6b-v3', {
+        encoderQuant: 'fp16',
+        decoderQuant: 'int8',
+        preprocessorBackend: 'js',
+        cacheModels: true,
+      });
+
+      expect(getModelFile).toHaveBeenCalled();
+      expect(getModelFile.mock.calls.every(([, , options]) => options?.preferBlobUrl === true)).toBe(true);
+    } finally {
+      fetchModelFiles.mockRestore();
+      getModelFile.mockRestore();
+    }
+  });
+
   it('uses the optimized Parakeet default weights for hub loading when quantization is not specified', async () => {
     const fetchModelFiles = vi
       .spyOn(huggingface, 'fetchModelFiles')

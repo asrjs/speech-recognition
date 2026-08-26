@@ -4,6 +4,7 @@ export interface AssetProgressEvent {
   readonly total?: number;
   readonly id?: string;
   readonly done?: boolean;
+  readonly source?: 'cache' | 'network';
 }
 
 /** Minimal browser file-handle shape used by local-entry loaders without depending on the full File System Access API. */

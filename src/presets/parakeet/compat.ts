@@ -111,6 +111,8 @@ export interface GetParakeetModelOptions {
   readonly preprocessorBackend?: 'js' | 'onnx';
   readonly backend?: ParakeetBackend;
   readonly progress?: (progress: ModelFileProgress) => void;
+  /** Materialize remote assets as cache-backed blob URLs for observable warm/cold loads. */
+  readonly cacheModels?: boolean;
   readonly verbose?: boolean;
 }
 
@@ -551,6 +553,11 @@ export async function getParakeetModel(
     pickPreferredQuant(decoderAvailable, decoderBackend, 'decoder');
   const encoderFilename = getQuantizedModelName('encoder-model', encoderQuant);
   const decoderFilename = getQuantizedModelName('decoder_joint-model', decoderQuant);
+  const assetOptions = {
+    revision,
+    progress: options.progress,
+    preferBlobUrl: options.cacheModels,
+  };
 
   if (
     encoderQuant === 'fp16' &&
@@ -579,25 +586,16 @@ export async function getParakeetModel(
     encoderDataUrl?: string | null;
     decoderDataUrl?: string | null;
   } = {
-    encoderUrl: await getModelFile(repoId, encoderFilename, {
-      revision,
-      progress: options.progress,
-    }),
-    decoderUrl: await getModelFile(repoId, decoderFilename, {
-      revision,
-      progress: options.progress,
-    }),
-    tokenizerUrl: await getModelFile(repoId, 'vocab.txt', { revision, progress: options.progress }),
+    encoderUrl: await getModelFile(repoId, encoderFilename, assetOptions),
+    decoderUrl: await getModelFile(repoId, decoderFilename, assetOptions),
+    tokenizerUrl: await getModelFile(repoId, 'vocab.txt', assetOptions),
   };
 
   if (preprocessorBackend === 'onnx') {
     urls.preprocessorUrl = await getModelFile(
       repoId,
       getRequiredPreprocessorFilename(preprocessor),
-      {
-        revision,
-        progress: options.progress,
-      },
+      assetOptions,
     );
   }
 
@@ -611,16 +609,10 @@ export async function getParakeetModel(
   );
 
   if (hasEncoderData) {
-    urls.encoderDataUrl = await getModelFile(repoId, encoderDataName, {
-      revision,
-      progress: options.progress,
-    });
+    urls.encoderDataUrl = await getModelFile(repoId, encoderDataName, assetOptions);
   }
   if (hasDecoderData) {
-    urls.decoderDataUrl = await getModelFile(repoId, decoderDataName, {
-      revision,
-      progress: options.progress,
-    });
+    urls.decoderDataUrl = await getModelFile(repoId, decoderDataName, assetOptions);
   }
 
   return {

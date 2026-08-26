@@ -359,6 +359,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         loaded: cached.value.bytes.byteLength,
         total: cached.value.bytes.byteLength,
         done: true,
+        source: 'cache',
       });
       yield* bytesToStream(cached.value.bytes);
       return;
@@ -380,6 +381,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         loaded: bytes.byteLength,
         total,
         done: true,
+        source: 'network',
       });
       yield bytes;
       return;
@@ -394,6 +396,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         id: this.request.id,
         loaded,
         total,
+        source: 'network',
       });
       yield chunk;
     }
@@ -403,6 +406,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
       loaded,
       total,
       done: true,
+      source: 'network',
     });
 
     if (this.cache && this.request.cacheKey) {
@@ -434,6 +438,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
             loaded: cached.value.bytes.byteLength,
             total: cached.value.bytes.byteLength,
             done: true,
+            source: 'cache',
           });
           return cached.value.bytes;
         }
@@ -451,6 +456,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
                   id: this.request.id,
                   loaded,
                   total,
+                  source: 'network',
                 });
               },
             )
@@ -461,6 +467,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
           loaded: bytes.byteLength,
           total,
           done: true,
+          source: 'network',
         });
 
         await writeCache(this.cache, this.request.cacheKey, {
@@ -515,6 +522,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
             loaded: cached.blob.size,
             total: cached.blob.size,
             done: true,
+            source: 'cache',
           });
           return cached.blob;
         }
@@ -533,6 +541,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
                   id: this.request.id,
                   loaded,
                   total,
+                  source: 'network',
                 });
               },
             )
@@ -543,6 +552,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
           loaded: blob.size,
           total,
           done: true,
+          source: 'network',
         });
 
         await writeBlobCache(this.cache, this.request.cacheKey, blob);

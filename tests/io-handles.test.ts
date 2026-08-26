@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { UrlAssetHandle } from '../src/io/handles.js';
-import type { AssetCache } from '../src/types/index.js';
+import type { AssetCache, AssetProgressEvent } from '../src/types/index.js';
 
 const originalFetch = globalThis.fetch;
 
@@ -138,7 +138,7 @@ describe('UrlAssetHandle', () => {
   });
 
   it('can materialize remote URL locators as blob URLs with progress', async () => {
-    const progressEvents: number[] = [];
+    const progressEvents: AssetProgressEvent[] = [];
     globalThis.fetch = vi.fn(async () => {
       return new Response(new Uint8Array([1, 2, 3, 4]), {
         status: 200,
@@ -158,7 +158,7 @@ describe('UrlAssetHandle', () => {
         filename: 'encoder-model.fp16.onnx',
         preferBlobUrl: true,
         onProgress(event) {
-          progressEvents.push(event.loaded);
+          progressEvents.push(event);
         },
       },
       'https://huggingface.co/ysdede/parakeet-tdt-0.6b-v3-onnx/resolve/feat%2Ffp16-canonical-v3/encoder-model.fp16.onnx',
@@ -167,7 +167,44 @@ describe('UrlAssetHandle', () => {
     const locator = await handle.getLocator('url');
     expect(locator).toMatch(/^blob:/);
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-    expect(progressEvents[progressEvents.length - 1]).toBe(4);
+    expect(progressEvents.at(-1)).toMatchObject({ loaded: 4, done: true, source: 'network' });
+    handle.dispose();
+  });
+
+  it('reports cache provenance when a blob URL locator is materialized from cache', async () => {
+    const progressEvents: AssetProgressEvent[] = [];
+    const cache: AssetCache = {
+      get: vi.fn(async () => null),
+      set: vi.fn(async () => undefined),
+      getBlob: vi.fn(async () => new Blob([new Uint8Array([1, 2, 3, 4])])),
+      setBlob: vi.fn(async () => undefined),
+      delete: vi.fn(async () => undefined),
+    };
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const handle = new UrlAssetHandle(
+      {
+        id: 'url:warm-blob-cache',
+        provider: 'url',
+        url: 'https://example.com/encoder_model.onnx',
+        preferBlobUrl: true,
+        cacheKey: 'cache:warm-blob',
+        onProgress(event) {
+          progressEvents.push(event);
+        },
+      },
+      'https://example.com/encoder_model.onnx',
+      cache,
+    );
+
+    const locator = await handle.getLocator('url');
+
+    expect(locator).toMatch(/^blob:/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(progressEvents).toEqual([
+      expect.objectContaining({ loaded: 4, total: 4, done: true, source: 'cache' }),
+    ]);
     handle.dispose();
   });
 
