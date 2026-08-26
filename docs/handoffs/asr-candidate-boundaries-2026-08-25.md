@@ -291,3 +291,24 @@ The remaining verification sequence is:
 The public X-ASR project reports Chinese-English coverage today, so it is not
 a Turkish replacement for Parakeet. Its value is a low-latency streaming
 track; multilingual expansion and actual browser compatibility remain gates.
+
+## Realtime latency instrumentation (2026-08-27)
+
+`RealtimeTranscriptionController` now accepts an opt-in `latency` option that
+attaches a `RealtimeLatencyTracker` (`src/runtime/realtime-latency.ts`). The
+tracker anchors wall-clock ingest marks to the audio timeline and folds every
+published update into:
+
+- first-partial latency (speech-start ingest to first partial emit),
+- end-of-utterance latency (speech-end ingest to final commit emit),
+- per-update emit lag and transcribe processing latency (p50/p95/mean),
+- committed-text stability counters (commit shrinks, stagnant updates).
+
+`getState().latency` returns a structured-clone-safe summary; it is `null`
+unless the controller is created with `latency: true` or tracker overrides,
+so existing consumers see no behavior change. The wall clock is injectable,
+and `tests/realtime-latency.test.ts` covers the metrics with a deterministic
+fake clock plus controller integration through the existing VAD-observation
+test pattern. This closes the goal's measurement gap for realtime pipelines
+(first-partial latency, end-of-utterance latency, committed-text stability)
+without touching decode semantics.

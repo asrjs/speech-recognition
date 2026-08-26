@@ -21,6 +21,11 @@ import {
   type VoiceActivityObservation,
   type VoiceActivityTimelineSnapshot,
 } from './vad.js';
+import {
+  RealtimeLatencyTracker,
+  type RealtimeLatencySummary,
+  type RealtimeLatencyTrackerOptions,
+} from './realtime-latency.js';
 
 export interface RealtimeTranscriptionRequest {
   readonly pcm: Float32Array;
@@ -55,6 +60,8 @@ export interface RealtimeTranscriptionControllerOptions {
   readonly window?: StreamingWindowBuilderOptions;
   readonly merger?: UtteranceTranscriptMerger;
   readonly mergerOptions?: UtteranceTranscriptMergerOptions;
+  /** Opt into realtime latency instrumentation, or pass tracker overrides. */
+  readonly latency?: boolean | Partial<RealtimeLatencyTrackerOptions>;
 }
 
 export interface RealtimeTranscriptionUpdate {
@@ -76,6 +83,8 @@ export interface RealtimeTranscriptionControllerState {
   readonly snapshot: UtteranceTranscriptSnapshot;
   readonly lastWindow: StreamingWindow | null;
   readonly activity: VoiceActivityTimelineSnapshot | null;
+  /** Latency summary when the controller was constructed with latency enabled. */
+  readonly latency: RealtimeLatencySummary | null;
 }
 
 function withTimeOffset(result: TranscriptResult, offsetSeconds: number): TranscriptResult {
@@ -157,6 +166,7 @@ export class RealtimeTranscriptionController {
   private isFinalized = false;
   private stateGeneration = 0;
   private operationTail: Promise<void> = Promise.resolve();
+  private readonly latencyTracker: RealtimeLatencyTracker | null;
 
   constructor(options: RealtimeTranscriptionControllerOptions) {
     if (!Number.isFinite(options.sampleRate) || options.sampleRate <= 0) {
@@ -188,6 +198,13 @@ export class RealtimeTranscriptionController {
       Math.round((options.finalizeSilenceSeconds ?? 0.8) * options.sampleRate),
     );
     this.lastSnapshot = this.merger.process(createEmptyCanonical('text'));
+    this.latencyTracker =
+      options.latency === undefined || options.latency === false
+        ? null
+        : new RealtimeLatencyTracker({
+            ...(typeof options.latency === 'object' ? options.latency : {}),
+            sampleRate: options.sampleRate,
+          });
   }
 
   async pushAudio(
@@ -228,6 +245,7 @@ export class RealtimeTranscriptionController {
     this.lastWindow = null;
     this.lastSnapshot = this.merger.process(createEmptyCanonical('text'));
     this.isFinalized = false;
+    this.latencyTracker?.reset();
   }
 
   getState(): RealtimeTranscriptionControllerState {
@@ -242,6 +260,7 @@ export class RealtimeTranscriptionController {
       snapshot: this.lastSnapshot,
       lastWindow: this.lastWindow,
       activity: this.activity?.createSnapshot() ?? null,
+      latency: this.latencyTracker?.getSummary() ?? null,
     };
   }
 
@@ -269,6 +288,7 @@ export class RealtimeTranscriptionController {
     const startFrame = this.audio.getCurrentFrame();
     this.audio.write(normalized.channels[0]!);
     const endFrame = this.audio.getCurrentFrame();
+    this.latencyTracker?.noteIngest(endFrame);
 
     const activity = options.vadObservation
       ? options.vadObservation
@@ -315,6 +335,7 @@ export class RealtimeTranscriptionController {
       reason,
     };
 
+    this.latencyTracker?.noteTranscribeStart();
     const canonical = withTimeOffset(
       await this.transcribeCallback(request),
       request.startTimeSeconds,
@@ -326,19 +347,42 @@ export class RealtimeTranscriptionController {
     this.lastSnapshot = snapshot;
     this.windowBuilder.advanceMatureCursorByTime(snapshot.matureCursorTime);
 
+    const silenceTailFrames =
+      this.activity && this.finalizeSilenceFrames > 0
+        ? this.activity.getSilenceTailDuration(this.speechThreshold)
+        : 0;
+    const noteLatency = (kind: 'partial' | 'final', trigger: string) => {
+      this.latencyTracker?.noteUpdate({
+        kind,
+        trigger,
+        windowStartFrame: window.startFrame,
+        windowEndFrame: window.endFrame,
+        speechEndFrame:
+          kind === 'final'
+            ? Math.max(window.startFrame, window.endFrame - silenceTailFrames)
+            : null,
+        revision: snapshot.revision,
+        committedText: snapshot.committedText,
+        previewText: snapshot.previewText,
+      });
+    };
+
     if (forceFinalizePending) {
+      noteLatency('final', 'finalize');
       return this.finalizePending('finalize', canonical);
     }
 
     if (
       this.activity &&
       this.finalizeSilenceFrames > 0 &&
-      this.activity.getSilenceTailDuration(this.speechThreshold) >= this.finalizeSilenceFrames &&
+      silenceTailFrames >= this.finalizeSilenceFrames &&
       snapshot.previewText
     ) {
+      noteLatency('final', 'silence-finalize');
       return this.finalizePending('silence-finalize', canonical);
     }
 
+    noteLatency('partial', reason);
     const partial = buildPartialTranscript(snapshot, canonical, 'partial');
     return {
       kind: 'partial',
