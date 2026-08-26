@@ -15,7 +15,7 @@ export class GigaAmJsPreprocessor implements LasrCtcFeaturePreprocessor {
     hopLength: 160,
     center: false,
     preemphasis: 0,
-    melScale: 'slaney',
+    melScale: 'htk',
     slaneyNorm: false,
     normalizeFeatures: false,
     logZeroGuard: 1e-9,

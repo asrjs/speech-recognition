@@ -168,6 +168,18 @@ language list must be read from the artifact before API design.
    preset; reuse shared CTC timing utilities while keeping GigaAM’s fbank and
    vocabulary model-specific.
 
+### GigaAM implementation update (2026-08-26)
+
+The artifact-gated `src/models/gigaam-ctc` family now has a first runtime
+slice: 64-bin 320/320/160 frontend, character tokenizer, `[B,64,T]` graph
+feeds (`features`, `feature_lengths`), CTC collapse/timing, WASM/WebGPU ORT
+selection, runtime discovery, and canonical transcript mapping. The frontend
+uses the upstream torchaudio-compatible HTK mel formula as a provisional
+fallback; the upstream ecosystem also publishes checkpoint-specific filterbank
+tables, so numerical parity must replace this formula before preset promotion.
+The non-power-of-two 320-point FFT currently uses a correctness-first direct
+DFT path and needs a measured FFT optimization before long-form browser use.
+
 ## Tooling now available
 
 The repository now contains local-only reference and conversion helpers:

@@ -7,7 +7,7 @@ const DEFAULT_HOP_LENGTH = 160;
 const PREEMPH = 0.97;
 const LOG_ZERO_GUARD = 2 ** -24;
 
-type MelScaleKind = 'slaney' | 'kaldi';
+type MelScaleKind = 'slaney' | 'kaldi' | 'htk';
 type WindowKind = 'hann' | 'hamming';
 
 interface MelTwiddles {
@@ -65,6 +65,14 @@ function melToHz(mel: number): number {
   return mel * F_SP;
 }
 
+function hzToMelHtk(frequencyHz: number): number {
+  return 2595 * Math.log10(1 + frequencyHz / 700);
+}
+
+function melToHzHtk(mel: number): number {
+  return 700 * (10 ** (mel / 2595) - 1);
+}
+
 function createMelFilterbank(
   nMels: number,
   melScale: MelScaleKind,
@@ -85,9 +93,15 @@ function createMelFilterbank(
   const toMel =
     melScale === 'kaldi'
       ? (frequency: number): number => 1127 * Math.log(1 + frequency / 700)
-      : hzToMel;
+      : melScale === 'htk'
+        ? hzToMelHtk
+        : hzToMel;
   const toHz =
-    melScale === 'kaldi' ? (mel: number): number => 700 * (Math.exp(mel / 1127) - 1) : melToHz;
+    melScale === 'kaldi'
+      ? (mel: number): number => 700 * (Math.exp(mel / 1127) - 1)
+      : melScale === 'htk'
+        ? melToHzHtk
+        : melToHz;
 
   const allFrequencies = new Float64Array(nFreqBins);
   for (let index = 0; index < nFreqBins; index += 1) {
