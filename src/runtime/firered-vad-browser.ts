@@ -1,4 +1,8 @@
-import type { StreamingTenVadLike, StreamingTenVadResultEvent, StreamingTenVadStatus } from './streaming-detector.js';
+import type {
+  StreamingTenVadLike,
+  StreamingTenVadResultEvent,
+  StreamingTenVadStatus,
+} from './streaming-detector.js';
 import {
   STREAMING_PROCESSING_SAMPLE_RATE,
   STREAMING_TIMELINE_CHUNK_FRAMES,
@@ -106,9 +110,7 @@ export function resolveSupportedFireRedVadHopSize(
   preferredHopSize?: number,
 ): number {
   const safeSampleRate =
-    Number.isFinite(sampleRate) && sampleRate > 0
-      ? sampleRate
-      : STREAMING_PROCESSING_SAMPLE_RATE;
+    Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : STREAMING_PROCESSING_SAMPLE_RATE;
   const defaultPreferredHopSize = Math.max(
     1,
     Math.round(
@@ -142,7 +144,10 @@ export function resolveDefaultFireRedVadModelUrls(): FireRedVadModelUrls {
 }
 
 export function resolveFireRedVadModelUrls(
-  config: Pick<FireRedVadAdapterConfig, 'assetBaseUrl' | 'scriptUrl' | 'wasmUrl' | 'fallbackToBundledAssets'> = {},
+  config: Pick<
+    FireRedVadAdapterConfig,
+    'assetBaseUrl' | 'scriptUrl' | 'wasmUrl' | 'fallbackToBundledAssets'
+  > = {},
 ): ResolvedFireRedVadModelUrls {
   const defaults = resolveDefaultFireRedVadModelUrls();
   const assetBaseUrl = config.assetBaseUrl ?? null;
@@ -189,7 +194,9 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
     const resolvedAssets = resolveFireRedVadModelUrls(config);
     const resolvedWasmPaths = config.wasmPaths ?? '';
     const sampleRate =
-      typeof config.sampleRate === 'number' && Number.isFinite(config.sampleRate) && config.sampleRate > 0
+      typeof config.sampleRate === 'number' &&
+      Number.isFinite(config.sampleRate) &&
+      config.sampleRate > 0
         ? config.sampleRate
         : DEFAULT_FIRERED_VAD_CONFIG.sampleRate;
     this.config = {
@@ -197,7 +204,8 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
       ...config,
       sampleRate,
       hopSize: resolveSupportedFireRedVadHopSize(sampleRate, config.hopSize),
-      assetBaseUrl: assetBaseUrl ?? defaults.scriptUrl.replace(/fireredvad_stream_vad_with_cache\.onnx$/, ''),
+      assetBaseUrl:
+        assetBaseUrl ?? defaults.scriptUrl.replace(/fireredvad_stream_vad_with_cache\.onnx$/, ''),
       scriptUrl: resolvedAssets.scriptUrl,
       wasmUrl: resolvedAssets.wasmUrl,
       wasmPaths: resolvedWasmPaths,
@@ -263,10 +271,17 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
   }
 
   private fail(error: unknown): void {
+    if (!this.worker) {
+      return;
+    }
     this.status = 'degraded';
     this.lastError = error instanceof Error ? error : new Error(String(error));
+    this.rejectPending(this.lastError);
+  }
+
+  private rejectPending(error: Error): void {
     for (const [, pending] of this.pending) {
-      pending.reject(this.lastError);
+      pending.reject(error);
     }
     this.pending.clear();
   }
@@ -300,12 +315,8 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
 
   private recordResult(result: any): void {
     const hopSize = this.config.hopSize;
-    const {
-      minSpeechHops,
-      minSilenceHops,
-      paddingFrames,
-      negativeThreshold,
-    } = this.getDerivedTemporalConfig();
+    const { minSpeechHops, minSilenceHops, paddingFrames, negativeThreshold } =
+      this.getDerivedTemporalConfig();
 
     for (let index = 0; index < result.hopCount; index += 1) {
       const startFrame = result.globalSampleOffset + index * hopSize;
@@ -351,7 +362,11 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
     this.recentResults = this.recentResults.filter((entry) => entry.createdAt >= cutoff);
 
     if (paddingFrames > 0 && this.latestSpeaking) {
-      for (let index = this.recentResults.length - 1; index >= 0 && index >= this.recentResults.length - paddingFrames; index -= 1) {
+      for (
+        let index = this.recentResults.length - 1;
+        index >= 0 && index >= this.recentResults.length - paddingFrames;
+        index -= 1
+      ) {
         const entry = this.recentResults[index]!;
         this.recentResults[index] = {
           ...entry,
@@ -389,16 +404,23 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
   }
 
   async dispose(): Promise<void> {
-    if (this.worker && this.status === 'ready') {
+    const worker = this.worker;
+    if (worker && this.status === 'ready') {
       try {
         await this.sendRequest('DISPOSE', {});
       } catch {
         // ignore dispose failures
       }
     }
-    this.worker?.terminate();
+    this.rejectPending(new Error('FireRed VAD adapter disposed.'));
+    if (worker) {
+      worker.onmessage = null;
+      worker.onerror = null;
+      worker.terminate();
+    }
     this.worker = null;
     this.status = 'idle';
+    this.resetTemporalState();
   }
 
   private resetTemporalState(): void {
@@ -414,7 +436,9 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
     const previousHopSize = this.config.hopSize;
     const previousThreshold = this.config.threshold;
     const nextSampleRate =
-      typeof config.sampleRate === 'number' && Number.isFinite(config.sampleRate) && config.sampleRate > 0
+      typeof config.sampleRate === 'number' &&
+      Number.isFinite(config.sampleRate) &&
+      config.sampleRate > 0
         ? config.sampleRate
         : this.config.sampleRate;
     this.config = {
@@ -427,8 +451,7 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
       ),
     } as Required<FireRedVadAdapterConfig>;
     const workerConfigChanged =
-      this.config.hopSize !== previousHopSize ||
-      this.config.threshold !== previousThreshold;
+      this.config.hopSize !== previousHopSize || this.config.threshold !== previousThreshold;
     if (workerConfigChanged) {
       this.resetTemporalState();
     }
@@ -469,8 +492,7 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
   hasRecentSpeech(endFrame: number, windowMs: number, sampleRate: number): boolean {
     const { minSpeechHops } = this.getDerivedTemporalConfig();
     const summary = this.getWindowSummary(endFrame, windowMs, sampleRate);
-    const speechRatio =
-      summary.totalHops > 0 ? summary.speechHopCount / summary.totalHops : 0;
+    const speechRatio = summary.totalHops > 0 ? summary.speechHopCount / summary.totalHops : 0;
     return (
       summary.speechHopCount >= minSpeechHops &&
       summary.maxConsecutiveSpeech >= minSpeechHops &&
@@ -535,11 +557,7 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
     });
   }
 
-  private waitWithTimeout<T>(
-    promise: Promise<T>,
-    timeoutMs: number,
-    message: string,
-  ): Promise<T> {
+  private waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         reject(new Error(message));
@@ -568,23 +586,13 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
     };
 
     return {
-      minSpeechHops: resolveHopCount(
-        this.config.minSpeechDurationMs,
-        this.config.minSpeechHops,
-      ),
-      minSilenceHops: resolveHopCount(
-        this.config.minSilenceDurationMs,
-        this.config.minSilenceHops,
-      ),
+      minSpeechHops: resolveHopCount(this.config.minSpeechDurationMs, this.config.minSpeechHops),
+      minSilenceHops: resolveHopCount(this.config.minSilenceDurationMs, this.config.minSilenceHops),
       paddingFrames: Math.max(
         0,
         Math.ceil(this.config.speechPaddingMs / Math.max(1, hopDurationMs)),
       ),
-      negativeThreshold: Math.max(
-        0,
-        this.config.threshold - this.config.negativeThresholdOffset,
-      ),
+      negativeThreshold: Math.max(0, this.config.threshold - this.config.negativeThresholdOffset),
     };
   }
 }
-

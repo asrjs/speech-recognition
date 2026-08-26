@@ -145,6 +145,21 @@ describe('TenVadAdapter', () => {
     expect(adapter.getStatus().state).toBe('degraded');
   });
 
+  it('rejects a pending init when disposed before the worker responds', async () => {
+    const worker = new FakeWorker();
+    worker.postMessage = (message) => {
+      worker.messages.push(message);
+    };
+    const adapter = new TenVadAdapter({}, { workerFactory: () => worker });
+
+    const initializing = adapter.init();
+    await Promise.resolve();
+    await adapter.dispose();
+
+    await expect(initializing).rejects.toThrow('disposed');
+    expect(worker.onmessage).toBeNull();
+  });
+
   it('does not reset the worker when only non-worker tuning changes', async () => {
     const worker = new FakeWorker();
     const adapter = new TenVadAdapter(
@@ -268,5 +283,20 @@ describe('FireRedVadAdapter', () => {
     expect(initMessage?.payload.cmvnJsonUrl).toBe('https://example.com/cmvn.json');
 
     await adapter.dispose();
+  });
+
+  it('rejects a pending init when disposed before the worker responds', async () => {
+    const worker = new FakeWorker();
+    worker.postMessage = (message) => {
+      worker.messages.push(message);
+    };
+    const adapter = new FireRedVadAdapter({}, { workerFactory: () => worker });
+
+    const initializing = adapter.init();
+    await Promise.resolve();
+    await adapter.dispose();
+
+    await expect(initializing).rejects.toThrow('disposed');
+    expect(worker.onmessage).toBeNull();
   });
 });
