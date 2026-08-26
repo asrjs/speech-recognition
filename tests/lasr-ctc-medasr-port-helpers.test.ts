@@ -11,6 +11,7 @@ import {
   ctcCollapseWithSpans,
 } from '../src/models/lasr-ctc/ctc.js';
 import { MedAsrTextTokenizer } from '../src/models/lasr-ctc/tokenizer.js';
+import { MedAsrJsPreprocessor } from '../src/models/lasr-ctc/mel.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +47,26 @@ function logitsFromFrameIds(
 }
 
 describe('MedASR port helper parity', () => {
+  test('supports model-specific FFT and frame geometry for CTC encoders', () => {
+    const processor = new MedAsrJsPreprocessor({
+      nMels: 64,
+      nFft: 320,
+      winLength: 320,
+      hopLength: 160,
+      center: false,
+      preemphasis: 0,
+      melScale: 'slaney',
+    });
+    const result = processor.process(new Float32Array(16000));
+
+    expect(processor.nFft).toBe(320);
+    expect(processor.winLength).toBe(320);
+    expect(processor.hopLength).toBe(160);
+    expect(result.featureSize).toBe(64);
+    expect(result.frameCount).toBe(99);
+    expect(result.features.length).toBe(99 * 64);
+  });
+
   test('keeps copied MedASR sanity fixture assets available for troubleshooting', () => {
     expect(fs.existsSync(MEDASR_FIXTURE_WAV)).toBe(true);
     expect(fs.statSync(MEDASR_FIXTURE_WAV).size).toBeGreaterThan(0);

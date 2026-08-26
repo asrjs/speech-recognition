@@ -1,12 +1,11 @@
 import type { LasrCtcFeatureBatch, LasrCtcFeaturePreprocessor } from './types.js';
 
 const SAMPLE_RATE = 16000;
-const N_FFT = 512;
-const WIN_LENGTH = 400;
-const HOP_LENGTH = 160;
+const DEFAULT_N_FFT = 512;
+const DEFAULT_WIN_LENGTH = 400;
+const DEFAULT_HOP_LENGTH = 160;
 const PREEMPH = 0.97;
 const LOG_ZERO_GUARD = 2 ** -24;
-const N_FREQ_BINS = (N_FFT >> 1) + 1;
 
 type MelScaleKind = 'slaney' | 'kaldi';
 type WindowKind = 'hann' | 'hamming';
@@ -18,6 +17,9 @@ interface MelTwiddles {
 }
 
 export interface MedAsrJsPreprocessorOptions {
+  readonly nFft?: number;
+  readonly winLength?: number;
+  readonly hopLength?: number;
   readonly nMels?: number;
   readonly center?: boolean;
   readonly preemphasis?: number;
@@ -40,6 +42,7 @@ export interface MedAsrJsPreprocessorOptions {
 const MEL_FILTERBANK_CACHE = new Map<string, Float32Array>();
 const FFT_TWIDDLE_CACHE = new Map<number, MelTwiddles>();
 const WINDOW_CACHE = new Map<string, Float64Array>();
+const DIRECT_DFT_CACHE = new Map<number, { readonly cos: Float64Array; readonly sin: Float64Array }>();
 
 const F_SP = 200 / 3;
 const MIN_LOG_HZ = 1000;
@@ -66,6 +69,7 @@ function createMelFilterbank(
   nMels: number,
   melScale: MelScaleKind,
   slaneyNorm: boolean,
+  nFreqBins: number,
   melLowHz?: number,
   melHighHz?: number,
 ): Float32Array {
@@ -85,9 +89,9 @@ function createMelFilterbank(
   const toHz =
     melScale === 'kaldi' ? (mel: number): number => 700 * (Math.exp(mel / 1127) - 1) : melToHz;
 
-  const allFrequencies = new Float64Array(N_FREQ_BINS);
-  for (let index = 0; index < N_FREQ_BINS; index += 1) {
-    allFrequencies[index] = ((SAMPLE_RATE / 2) * index) / (N_FREQ_BINS - 1);
+  const allFrequencies = new Float64Array(nFreqBins);
+  for (let index = 0; index < nFreqBins; index += 1) {
+    allFrequencies[index] = ((SAMPLE_RATE / 2) * index) / (nFreqBins - 1);
   }
 
   const melMin = toMel(frequencyMin);
@@ -105,16 +109,16 @@ function createMelFilterbank(
     melDifferences[index] = next - current;
   }
 
-  const filterbank = new Float32Array(nMels * N_FREQ_BINS);
+  const filterbank = new Float32Array(nMels * nFreqBins);
   for (let melIndex = 0; melIndex < nMels; melIndex += 1) {
     const centerLeft = melFrequencies[melIndex] ?? 0;
     const centerRight = melFrequencies[melIndex + 2] ?? centerLeft;
     const lowerDelta = melDifferences[melIndex] ?? 1;
     const upperDelta = melDifferences[melIndex + 1] ?? 1;
     const normalization = slaneyNorm ? 2 / Math.max(1e-12, centerRight - centerLeft) : 1;
-    const rowOffset = melIndex * N_FREQ_BINS;
+    const rowOffset = melIndex * nFreqBins;
 
-    for (let frequencyIndex = 0; frequencyIndex < N_FREQ_BINS; frequencyIndex += 1) {
+    for (let frequencyIndex = 0; frequencyIndex < nFreqBins; frequencyIndex += 1) {
       const frequency = allFrequencies[frequencyIndex] ?? 0;
       const downSlope = (frequency - centerLeft) / Math.max(1e-12, lowerDelta);
       const upSlope = (centerRight - frequency) / Math.max(1e-12, upperDelta);
@@ -130,40 +134,46 @@ function getCachedMelFilterbank(
   nMels: number,
   melScale: MelScaleKind,
   slaneyNorm: boolean,
+  nFreqBins: number,
   melLowHz?: number,
   melHighHz?: number,
 ): Float32Array {
-  const cacheKey = `${nMels}:${melScale}:${slaneyNorm}:${melLowHz ?? ''}:${melHighHz ?? ''}`;
+  const cacheKey = `${nMels}:${melScale}:${slaneyNorm}:${nFreqBins}:${melLowHz ?? ''}:${melHighHz ?? ''}`;
   const cached = MEL_FILTERBANK_CACHE.get(cacheKey);
   if (cached) {
     return cached;
   }
 
-  const created = createMelFilterbank(nMels, melScale, slaneyNorm, melLowHz, melHighHz);
+  const created = createMelFilterbank(nMels, melScale, slaneyNorm, nFreqBins, melLowHz, melHighHz);
   MEL_FILTERBANK_CACHE.set(cacheKey, created);
   return created;
 }
 
-function createPaddedWindow(centerWindow: boolean, windowKind: WindowKind): Float64Array {
-  const window = new Float64Array(N_FFT);
-  const leftPad = centerWindow ? (N_FFT - WIN_LENGTH) >> 1 : 0;
+function createPaddedWindow(
+  centerWindow: boolean,
+  windowKind: WindowKind,
+  nFft: number,
+  winLength: number,
+): Float64Array {
+  const window = new Float64Array(nFft);
+  const leftPad = centerWindow ? (nFft - winLength) >> 1 : 0;
 
-  for (let index = 0; index < WIN_LENGTH; index += 1) {
-    const cosine = Math.cos((2 * Math.PI * index) / (WIN_LENGTH - 1));
+  for (let index = 0; index < winLength; index += 1) {
+    const cosine = Math.cos((2 * Math.PI * index) / (winLength - 1));
     window[leftPad + index] = windowKind === 'hamming' ? 0.54 - 0.46 * cosine : 0.5 * (1 - cosine);
   }
 
   return window;
 }
 
-function getCachedWindow(centerWindow: boolean, windowKind: WindowKind): Float64Array {
-  const key = `${centerWindow ? 'center' : 'left'}:${windowKind}`;
+function getCachedWindow(centerWindow: boolean, windowKind: WindowKind, nFft: number, winLength: number): Float64Array {
+  const key = `${centerWindow ? 'center' : 'left'}:${windowKind}:${nFft}:${winLength}`;
   const cached = WINDOW_CACHE.get(key);
   if (cached) {
     return cached;
   }
 
-  const created = createPaddedWindow(centerWindow, windowKind);
+  const created = createPaddedWindow(centerWindow, windowKind, nFft, winLength);
   WINDOW_CACHE.set(key, created);
   return created;
 }
@@ -176,7 +186,7 @@ function precomputeFftTwiddles(size: number): MelTwiddles {
 
   const bits = Math.log2(size);
   if (1 << bits !== size) {
-    throw new Error(`FFT size must be a power-of-two. Received: ${size}.`);
+    return { cos: new Float64Array(0), sin: new Float64Array(0), bitReverse: new Uint32Array(0) };
   }
 
   const half = size >> 1;
@@ -204,12 +214,57 @@ function precomputeFftTwiddles(size: number): MelTwiddles {
   return twiddles;
 }
 
+function getDirectDftTwiddles(size: number): { readonly cos: Float64Array; readonly sin: Float64Array } {
+  const cached = DIRECT_DFT_CACHE.get(size);
+  if (cached) return cached;
+  const bins = (size >> 1) + 1;
+  const cos = new Float64Array(bins * size);
+  const sin = new Float64Array(bins * size);
+  for (let bin = 0; bin < bins; bin += 1) {
+    for (let sample = 0; sample < size; sample += 1) {
+      const angle = (-2 * Math.PI * bin * sample) / size;
+      cos[bin * size + sample] = Math.cos(angle);
+      sin[bin * size + sample] = Math.sin(angle);
+    }
+  }
+  const result = { cos, sin };
+  DIRECT_DFT_CACHE.set(size, result);
+  return result;
+}
+
 function fft(
   real: Float64Array,
   imaginary: Float64Array,
   size: number,
   twiddles: MelTwiddles,
 ): void {
+  if ((size & (size - 1)) !== 0) {
+    // Exact fallback for model geometries such as GigaAM's n_fft=320. Only
+    // the non-redundant real-spectrum bins are needed by the mel filterbank.
+    const direct = getDirectDftTwiddles(size);
+    const outputReal = new Float64Array(size);
+    const outputImaginary = new Float64Array(size);
+    const bins = (size >> 1) + 1;
+    for (let bin = 0; bin < bins; bin += 1) {
+      const offset = bin * size;
+      let sumReal = 0;
+      let sumImaginary = 0;
+      for (let sample = 0; sample < size; sample += 1) {
+        const sampleReal = real[sample] ?? 0;
+        const sampleImaginary = imaginary[sample] ?? 0;
+        const cosine = direct.cos[offset + sample] ?? 0;
+        const sine = direct.sin[offset + sample] ?? 0;
+        sumReal += sampleReal * cosine - sampleImaginary * sine;
+        sumImaginary += sampleReal * sine + sampleImaginary * cosine;
+      }
+      outputReal[bin] = sumReal;
+      outputImaginary[bin] = sumImaginary;
+    }
+    real.set(outputReal);
+    imaginary.set(outputImaginary);
+    return;
+  }
+
   for (let index = 0; index < size; index += 1) {
     const swappedIndex = twiddles.bitReverse[index] ?? index;
     if (index >= swappedIndex) {
@@ -278,6 +333,10 @@ interface RawMelOutput {
 
 export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   readonly nMels: number;
+  readonly nFft: number;
+  readonly winLength: number;
+  readonly hopLength: number;
+  private readonly nFreqBins: number;
   private readonly center: boolean;
   private readonly preemphasis: number;
   private readonly melScale: MelScaleKind;
@@ -292,9 +351,9 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly melFilterbank: Float32Array;
   private readonly hannWindow: Float64Array;
   private readonly fftTwiddles: MelTwiddles;
-  private readonly fftReal = new Float64Array(N_FFT);
-  private readonly fftImaginary = new Float64Array(N_FFT);
-  private readonly powerBuffer = new Float32Array(N_FREQ_BINS);
+  private readonly fftReal: Float64Array;
+  private readonly fftImaginary: Float64Array;
+  private readonly powerBuffer: Float32Array;
   private readonly filterbankBounds: Int32Array;
   private emphasizedBuffer: Float32Array | null = null;
   private paddedBuffer: Float64Array | null = null;
@@ -302,6 +361,19 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
 
   constructor(options: MedAsrJsPreprocessorOptions = {}) {
     this.nMels = options.nMels ?? 128;
+    this.nFft = options.nFft ?? DEFAULT_N_FFT;
+    this.winLength = options.winLength ?? DEFAULT_WIN_LENGTH;
+    this.hopLength = options.hopLength ?? DEFAULT_HOP_LENGTH;
+    if (!Number.isInteger(this.nFft) || this.nFft <= 0) {
+      throw new RangeError(`nFft must be positive. Received ${this.nFft}.`);
+    }
+    if (!Number.isInteger(this.winLength) || this.winLength <= 0 || this.winLength > this.nFft) {
+      throw new RangeError(`winLength must be between 1 and nFft. Received ${this.winLength}.`);
+    }
+    if (!Number.isInteger(this.hopLength) || this.hopLength <= 0) {
+      throw new RangeError(`hopLength must be positive. Received ${this.hopLength}.`);
+    }
+    this.nFreqBins = (this.nFft >> 1) + 1;
     this.center = options.center ?? false;
     this.preemphasis = options.preemphasis ?? PREEMPH;
     this.melScale = options.melScale ?? 'kaldi';
@@ -318,18 +390,22 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       this.nMels,
       this.melScale,
       this.slaneyNorm,
+      this.nFreqBins,
       this.melLowHz,
       this.melHighHz,
     );
-    this.hannWindow = getCachedWindow(this.center, this.windowKind);
-    this.fftTwiddles = precomputeFftTwiddles(N_FFT);
+    this.hannWindow = getCachedWindow(this.center, this.windowKind, this.nFft, this.winLength);
+    this.fftTwiddles = precomputeFftTwiddles(this.nFft);
+    this.fftReal = new Float64Array(this.nFft);
+    this.fftImaginary = new Float64Array(this.nFft);
+    this.powerBuffer = new Float32Array(this.nFreqBins);
 
     this.filterbankBounds = new Int32Array(this.nMels * 2);
     for (let melIndex = 0; melIndex < this.nMels; melIndex += 1) {
-      const offset = melIndex * N_FREQ_BINS;
+      const offset = melIndex * this.nFreqBins;
       let start = -1;
       let end = -1;
-      for (let frequencyIndex = 0; frequencyIndex < N_FREQ_BINS; frequencyIndex += 1) {
+      for (let frequencyIndex = 0; frequencyIndex < this.nFreqBins; frequencyIndex += 1) {
         if ((this.melFilterbank[offset + frequencyIndex] ?? 0) > 0) {
           if (start < 0) {
             start = frequencyIndex;
@@ -387,7 +463,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       emphasized.set(audio);
     }
 
-    const pad = this.center ? N_FFT >> 1 : 0;
+    const pad = this.center ? this.nFft >> 1 : 0;
     const paddedLength = sampleCount + pad * 2;
     if (!this.paddedBuffer || this.paddedBuffer.length < paddedLength) {
       this.paddedBuffer = new Float64Array(Math.ceil(paddedLength * 1.2));
@@ -398,8 +474,8 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       padded[index + pad] = emphasized[index] ?? 0;
     }
 
-    const frameCount = Math.floor((paddedLength - WIN_LENGTH) / HOP_LENGTH) + 1;
-    const validFrameCount = this.center ? Math.floor(sampleCount / HOP_LENGTH) : frameCount;
+    const frameCount = Math.floor((paddedLength - this.winLength) / this.hopLength) + 1;
+    const validFrameCount = this.center ? Math.floor(sampleCount / this.hopLength) : frameCount;
     if (validFrameCount <= 0 || frameCount <= 0) {
       return {
         rawMel: new Float32Array(0),
@@ -415,21 +491,21 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     const rawMel = this.rawMelBuffer.subarray(0, requiredRawMelSize);
 
     for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
-      const frameOffset = frameIndex * HOP_LENGTH;
+      const frameOffset = frameIndex * this.hopLength;
       let frameMean = 0;
       if (this.removeDcOffset) {
-        for (let fftIndex = 0; fftIndex < WIN_LENGTH; fftIndex += 1) {
+        for (let fftIndex = 0; fftIndex < this.winLength; fftIndex += 1) {
           const sourceIndex = frameOffset + fftIndex;
           frameMean += sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
         }
-        frameMean /= WIN_LENGTH;
+        frameMean /= this.winLength;
       }
       let previousSample = 0;
-      for (let fftIndex = 0; fftIndex < N_FFT; fftIndex += 1) {
+      for (let fftIndex = 0; fftIndex < this.nFft; fftIndex += 1) {
         const sourceIndex = frameOffset + fftIndex;
         let sample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
-        if (fftIndex < WIN_LENGTH && this.removeDcOffset) sample -= frameMean;
-        if (fftIndex < WIN_LENGTH && this.framePreemphasis && this.preemphasis > 0) {
+        if (fftIndex < this.winLength && this.removeDcOffset) sample -= frameMean;
+        if (fftIndex < this.winLength && this.framePreemphasis && this.preemphasis > 0) {
           sample -= this.preemphasis * (fftIndex === 0 ? sample : previousSample);
           previousSample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) - frameMean : -frameMean;
         }
@@ -437,16 +513,16 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
         this.fftImaginary[fftIndex] = 0;
       }
 
-      fft(this.fftReal, this.fftImaginary, N_FFT, this.fftTwiddles);
+      fft(this.fftReal, this.fftImaginary, this.nFft, this.fftTwiddles);
 
-      for (let frequencyIndex = 0; frequencyIndex < N_FREQ_BINS; frequencyIndex += 1) {
+      for (let frequencyIndex = 0; frequencyIndex < this.nFreqBins; frequencyIndex += 1) {
         const realValue = this.fftReal[frequencyIndex] ?? 0;
         const imaginaryValue = this.fftImaginary[frequencyIndex] ?? 0;
         this.powerBuffer[frequencyIndex] = realValue * realValue + imaginaryValue * imaginaryValue;
       }
 
       for (let melIndex = 0; melIndex < this.nMels; melIndex += 1) {
-        const melOffset = melIndex * N_FREQ_BINS;
+        const melOffset = melIndex * this.nFreqBins;
         const lower = this.filterbankBounds[melIndex * 2] ?? 0;
         const upper = this.filterbankBounds[melIndex * 2 + 1] ?? 0;
 
