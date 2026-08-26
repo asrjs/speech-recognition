@@ -50,9 +50,18 @@ async function streamToBytes(
     onChunk?.(chunk, loaded);
   }
 
+  if (chunks.length === 0) {
+    return new Uint8Array(0);
+  }
+
+  if (chunks.length === 1) {
+    return chunks[0]!;
+  }
+
   const bytes = new Uint8Array(loaded);
   let offset = 0;
-  for (const chunk of chunks) {
+  for (let index = 0; index < chunks.length; index += 1) {
+    const chunk = chunks[index]!;
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
@@ -410,11 +419,17 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
     });
 
     if (this.cache && this.request.cacheKey) {
-      const bytes = new Uint8Array(loaded);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.byteLength;
+      let bytes: Uint8Array;
+      if (chunks.length === 1) {
+        bytes = chunks[0]!;
+      } else {
+        bytes = new Uint8Array(loaded);
+        let offset = 0;
+        for (let index = 0; index < chunks.length; index += 1) {
+          const chunk = chunks[index]!;
+          bytes.set(chunk, offset);
+          offset += chunk.byteLength;
+        }
       }
       await writeCache(this.cache, this.request.cacheKey, {
         bytes,
