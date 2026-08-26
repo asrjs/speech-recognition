@@ -60,21 +60,41 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+function createMetricElement(label: string, value: string): HTMLSpanElement {
+  const span = document.createElement('span');
+  span.style.cssText = 'display:inline-flex;align-items:baseline;gap:4px;white-space:nowrap;';
+
+  const labelSpan = document.createElement('span');
+  labelSpan.style.cssText =
+    'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#64748b;';
+  labelSpan.textContent = label;
+
+  const valueSpan = document.createElement('span');
+  valueSpan.style.cssText =
+    'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:700;color:#0f172a;';
+  valueSpan.textContent = value;
+
+  span.appendChild(labelSpan);
+  span.appendChild(valueSpan);
+  return span;
 }
 
-function metricHtml(label: string, value: string): string {
-  return `<span style="display:inline-flex;align-items:baseline;gap:4px;white-space:nowrap;"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#64748b;">${escapeHtml(label)}</span><span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:700;color:#0f172a;">${escapeHtml(value)}</span></span>`;
-}
+function createMiniElement(label: string, value: string, active = false): HTMLSpanElement {
+  const span = document.createElement('span');
+  span.style.cssText = 'display:inline-flex;align-items:baseline;gap:4px;white-space:nowrap;';
 
-function miniHtml(label: string, value: string, active = false): string {
-  return `<span style="display:inline-flex;align-items:baseline;gap:4px;white-space:nowrap;"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#64748b;">${escapeHtml(label)}</span><span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700;color:${active ? '#047857' : '#0f172a'};">${escapeHtml(value)}</span></span>`;
+  const labelSpan = document.createElement('span');
+  labelSpan.style.cssText =
+    'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#64748b;';
+  labelSpan.textContent = label;
+
+  const valueSpan = document.createElement('span');
+  valueSpan.style.cssText = `font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700;color:${active ? '#047857' : '#0f172a'};`;
+  valueSpan.textContent = value;
+
+  span.appendChild(labelSpan);
+  span.appendChild(valueSpan);
+  return span;
 }
 
 export function resolveBrowserCompactStatsSnapshot(
@@ -168,34 +188,80 @@ export function createBrowserCompactStatsRenderer(
           ? clamp((snapshot.minSnrThreshold / 20) * 100, 0, 100)
           : 0;
 
-      container.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding:6px 8px;border-radius:8px;background:linear-gradient(180deg, rgba(59, 130, 246, 0.06), rgba(15, 23, 42, 0.02));border:1px solid rgba(148, 163, 184, 0.28);">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;">
-            <div style="display:flex;align-items:center;gap:6px;min-width:126px;flex-shrink:0;">
-              <span aria-hidden="true" style="width:8px;height:8px;border-radius:999px;flex-shrink:0;background:${snapshot?.speaking ? '#10b981' : 'rgba(148, 163, 184, 0.8)'};box-shadow:${snapshot?.speaking ? '0 0 0 2px rgba(16, 185, 129, 0.16)' : 'none'};"></span>
-              <span style="position:relative;width:72px;height:8px;overflow:hidden;border-radius:999px;background:rgba(51, 65, 85, 0.16);border:1px solid rgba(148, 163, 184, 0.22);">
-                <span style="display:block;height:100%;width:${snrPercent}%;background:linear-gradient(90deg, #ef4444 0%, #f59e0b 42%, #10b981 100%);box-shadow:${snrActive ? '0 0 6px rgba(16, 185, 129, 0.28)' : 'none'};"></span>
-                <span aria-hidden="true" style="position:absolute;top:-1px;bottom:-1px;width:1px;background:#38bdf8;left:${snrThresholdPercent}%;transform:translateX(-50%);"></span>
-                <span aria-hidden="true" style="position:absolute;top:-1px;bottom:-1px;width:1px;background:#10b981;opacity:0.85;left:${minThresholdPercent}%;transform:translateX(-50%);"></span>
-              </span>
-              <span style="min-width:24px;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;color:${snrActive ? '#047857' : '#0f172a'};">${escapeHtml(formatThreshold(snapshot?.currentSnr))}</span>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px 12px;min-width:0;">
-              ${metricHtml('Sig', formatCompactDbfs(snapshot?.signalDbfs))}
-              ${metricHtml('Avg', formatCompactDbfs(snapshot?.averageDbfs))}
-              ${metricHtml('Gate', formatCompactDbfs(snapshot?.gateDbfs))}
-              ${metricHtml('Noise', formatCompactDbfs(snapshot?.noiseDbfs))}
-              ${metricHtml('Segs', `${snapshot?.recentSegments ?? 0}/${snapshot?.recentRejected ?? 0}`)}
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding-top:4px;border-top:1px solid rgba(148, 163, 184, 0.22);">
-            ${miniHtml('Audio', formatCompactHz(snapshot?.targetRate))}
-            ${miniHtml('Buf', formatCompactSeconds(snapshot?.visibleSeconds))}
-            ${miniHtml('SNR', formatThreshold(snapshot?.currentSnr), snrActive)}
-            ${miniHtml('Thr', formatThreshold(snapshot?.snrThreshold))}
-          </div>
-        </div>
-      `;
+      const rootDiv = document.createElement('div');
+      rootDiv.style.cssText =
+        'display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding:6px 8px;border-radius:8px;background:linear-gradient(180deg, rgba(59, 130, 246, 0.06), rgba(15, 23, 42, 0.02));border:1px solid rgba(148, 163, 184, 0.28);';
+
+      const topRow = document.createElement('div');
+      topRow.style.cssText =
+        'display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;';
+
+      const leftSection = document.createElement('div');
+      leftSection.style.cssText =
+        'display:flex;align-items:center;gap:6px;min-width:126px;flex-shrink:0;';
+
+      const statusDot = document.createElement('span');
+      statusDot.setAttribute('aria-hidden', 'true');
+      statusDot.style.cssText = `width:8px;height:8px;border-radius:999px;flex-shrink:0;background:${
+        snapshot?.speaking ? '#10b981' : 'rgba(148, 163, 184, 0.8)'
+      };box-shadow:${snapshot?.speaking ? '0 0 0 2px rgba(16, 185, 129, 0.16)' : 'none'};`;
+
+      const barContainer = document.createElement('span');
+      barContainer.style.cssText =
+        'position:relative;width:72px;height:8px;overflow:hidden;border-radius:999px;background:rgba(51, 65, 85, 0.16);border:1px solid rgba(148, 163, 184, 0.22);';
+
+      const snrFillBar = document.createElement('span');
+      snrFillBar.style.cssText = `display:block;height:100%;width:${snrPercent}%;background:linear-gradient(90deg, #ef4444 0%, #f59e0b 42%, #10b981 100%);box-shadow:${
+        snrActive ? '0 0 6px rgba(16, 185, 129, 0.28)' : 'none'
+      };`;
+
+      const snrThresholdLine = document.createElement('span');
+      snrThresholdLine.setAttribute('aria-hidden', 'true');
+      snrThresholdLine.style.cssText = `position:absolute;top:-1px;bottom:-1px;width:1px;background:#38bdf8;left:${snrThresholdPercent}%;transform:translateX(-50%);`;
+
+      const minThresholdLine = document.createElement('span');
+      minThresholdLine.setAttribute('aria-hidden', 'true');
+      minThresholdLine.style.cssText = `position:absolute;top:-1px;bottom:-1px;width:1px;background:#10b981;opacity:0.85;left:${minThresholdPercent}%;transform:translateX(-50%);`;
+
+      barContainer.appendChild(snrFillBar);
+      barContainer.appendChild(snrThresholdLine);
+      barContainer.appendChild(minThresholdLine);
+
+      const snrValueSpan = document.createElement('span');
+      snrValueSpan.style.cssText = `min-width:24px;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;color:${
+        snrActive ? '#047857' : '#0f172a'
+      };`;
+      snrValueSpan.textContent = formatThreshold(snapshot?.currentSnr);
+
+      leftSection.appendChild(statusDot);
+      leftSection.appendChild(barContainer);
+      leftSection.appendChild(snrValueSpan);
+
+      const rightMetricsSection = document.createElement('div');
+      rightMetricsSection.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 12px;min-width:0;';
+      rightMetricsSection.appendChild(createMetricElement('Sig', formatCompactDbfs(snapshot?.signalDbfs)));
+      rightMetricsSection.appendChild(createMetricElement('Avg', formatCompactDbfs(snapshot?.averageDbfs)));
+      rightMetricsSection.appendChild(createMetricElement('Gate', formatCompactDbfs(snapshot?.gateDbfs)));
+      rightMetricsSection.appendChild(createMetricElement('Noise', formatCompactDbfs(snapshot?.noiseDbfs)));
+      rightMetricsSection.appendChild(
+        createMetricElement('Segs', `${snapshot?.recentSegments ?? 0}/${snapshot?.recentRejected ?? 0}`),
+      );
+
+      topRow.appendChild(leftSection);
+      topRow.appendChild(rightMetricsSection);
+
+      const bottomRow = document.createElement('div');
+      bottomRow.style.cssText =
+        'display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding-top:4px;border-top:1px solid rgba(148, 163, 184, 0.22);';
+      bottomRow.appendChild(createMiniElement('Audio', formatCompactHz(snapshot?.targetRate)));
+      bottomRow.appendChild(createMiniElement('Buf', formatCompactSeconds(snapshot?.visibleSeconds)));
+      bottomRow.appendChild(createMiniElement('SNR', formatThreshold(snapshot?.currentSnr), snrActive));
+      bottomRow.appendChild(createMiniElement('Thr', formatThreshold(snapshot?.snrThreshold)));
+
+      rootDiv.appendChild(topRow);
+      rootDiv.appendChild(bottomRow);
+
+      container.replaceChildren(rootDiv);
     },
     dispose(): void {
       container.innerHTML = '';
