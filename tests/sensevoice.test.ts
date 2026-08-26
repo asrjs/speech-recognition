@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   SenseVoiceJsPreprocessor,
   SenseVoiceTokenizer,
+  SenseVoiceSession,
   createSenseVoicePrompt,
   resolveSenseVoiceLanguage,
 } from '../src/models/sensevoice/index.js';
@@ -35,6 +36,33 @@ describe('SenseVoice prompt contract', () => {
 });
 
 describe('SenseVoice tokenizer and frontend', () => {
+  it('exposes a batch session boundary without changing the generic session API', async () => {
+    const calls: number[] = [];
+    const session = new SenseVoiceSession(
+      'sensevoice-test',
+      { family: 'sensevoice' },
+      {} as never,
+      'wasm',
+      {
+        async transcribeBatch(audio) {
+          calls.push(audio.length);
+          return audio.map(() => ({ utteranceText: 'ok', isFinal: true }));
+        },
+        async transcribe() {
+          return { utteranceText: 'ok', isFinal: true };
+        },
+        dispose() {},
+      },
+    );
+    const result = await session.transcribeBatch([
+      { sampleRate: 16000, numberOfChannels: 1, numberOfFrames: 160, durationSeconds: 0.01, channels: [new Float32Array(160)] },
+      { sampleRate: 16000, numberOfChannels: 1, numberOfFrames: 160, durationSeconds: 0.01, channels: [new Float32Array(160)] },
+    ]);
+    expect(calls).toEqual([2]);
+    expect(result.map((item) => item.utteranceText)).toEqual(['ok', 'ok']);
+    await session.dispose();
+  });
+
   it('decodes SentencePiece pieces while dropping CTC blank and prompt tags', () => {
     const tokenizer = SenseVoiceTokenizer.fromText(
       '<blk> 0\n<|en|> 1\n▁hello 2\n▁world 3\n',

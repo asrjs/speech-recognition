@@ -8,7 +8,6 @@ import type {
   SpeechModel,
   SpeechModelFactory,
   SpeechModelFactoryContext,
-  SpeechSession,
   TranscriptResponse,
   TranscriptResponseFlavor,
 } from '../../types/index.js';
@@ -17,6 +16,7 @@ import { OrtSenseVoiceExecutor } from './executor.js';
 import { mapSenseVoiceNativeToCanonical } from './mapping.js';
 import type {
   SenseVoiceExecutor,
+  SenseVoiceBatchSession,
   SenseVoiceModelConfig,
   SenseVoiceModelDependencies,
   SenseVoiceModelOptions,
@@ -66,7 +66,7 @@ function inferenceLimits(): ModelInferenceLimits {
   };
 }
 
-class SenseVoiceSession implements SpeechSession<SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript> {
+export class SenseVoiceSession implements SenseVoiceBatchSession {
   private disposed = false;
   constructor(
     private readonly modelId: string,
@@ -100,6 +100,17 @@ class SenseVoiceSession implements SpeechSession<SenseVoiceTranscriptionOptions,
     if (flavor === 'native') return native as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
     if (flavor === 'canonical+native') return { canonical, native } as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
     return canonical as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
+  }
+
+  async transcribeBatch(
+    inputs: readonly AudioInputLike[],
+    options: SenseVoiceTranscriptionOptions = {},
+  ): Promise<readonly SenseVoiceNativeTranscript[]> {
+    const audios = inputs.map((input) => normalizePcmInput(input).toMono());
+    if (this.executor.transcribeBatch) {
+      return this.executor.transcribeBatch(audios, options);
+    }
+    return Promise.all(audios.map((audio) => this.executor.transcribe(audio, options)));
   }
 
   async dispose(): Promise<void> {
@@ -145,7 +156,7 @@ class SenseVoiceModel implements SpeechModel<SenseVoiceModelOptions, SenseVoiceT
     };
   }
 
-  async createSession(_options: BaseSessionOptions = {}): Promise<SpeechSession<SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript>> {
+  async createSession(_options: BaseSessionOptions = {}): Promise<SenseVoiceBatchSession> {
     const executor = this.dependencies.executor ?? new OrtSenseVoiceExecutor(this.modelId, this.backend.id, this.loadOptions);
     const session = new SenseVoiceSession(this.modelId, this.classification, this.config, this.backend.id, executor, () => this.sessions.delete(session));
     this.sessions.add(session);

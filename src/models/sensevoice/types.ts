@@ -3,6 +3,7 @@ import type {
   AudioBufferLike,
   BaseTranscriptionOptions,
   ModelClassification,
+  SpeechSession,
   SpeechRuntimeHooks,
   TranscriptMetrics,
   TranscriptWarning,
@@ -135,6 +136,13 @@ export interface SenseVoiceModelDependencies {
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
   readonly executor?: SenseVoiceExecutor;
+}
+
+export interface SenseVoiceBatchSession extends SpeechSession<SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript> {
+  transcribeBatch(
+    audio: readonly AudioBufferLike[],
+    options?: SenseVoiceTranscriptionOptions,
+  ): Promise<readonly SenseVoiceNativeTranscript[]>;
 }
 
 export interface SenseVoiceModelFamilyOptions {
