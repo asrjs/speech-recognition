@@ -83,8 +83,10 @@ export interface BrowserMicrophoneCaptureHandle {
   stop(): Promise<void>;
 }
 
-export interface BrowserMicrophoneRingCaptureOptions
-  extends Omit<BrowserMicrophoneCaptureOptions, 'onChunk'> {
+export interface BrowserMicrophoneRingCaptureOptions extends Omit<
+  BrowserMicrophoneCaptureOptions,
+  'onChunk'
+> {
   readonly ringBufferDurationSeconds?: number;
   readonly onChunk?: (chunk: MicrophoneAudioChunk) => void;
 }
@@ -251,9 +253,7 @@ function createFixedChunkResampler(options: {
   const targetSampleRate = Math.max(1, options.targetSampleRate);
   const chunkFrames = Math.max(1, options.chunkFrames);
   const rateRatio = sourceSampleRate / targetSampleRate;
-  let sourceBuffer = new Float32Array(
-    Math.max(2048, Math.ceil(rateRatio * chunkFrames * 4) + 2),
-  );
+  let sourceBuffer = new Float32Array(Math.max(2048, Math.ceil(rateRatio * chunkFrames * 4) + 2));
   let sourceLength = 0;
   let sourceReadIndex = 0;
 
@@ -296,8 +296,7 @@ function createFixedChunkResampler(options: {
         const sourceIndex = Math.floor(sourcePosition);
         const fraction = sourcePosition - sourceIndex;
         const left = sourceBuffer[sourceIndex] ?? 0;
-        const right =
-          sourceBuffer[Math.min(sourceIndex + 1, sourceLength - 1)] ?? left;
+        const right = sourceBuffer[Math.min(sourceIndex + 1, sourceLength - 1)] ?? left;
         out[index] = left + (right - left) * fraction;
       }
 
@@ -346,19 +345,15 @@ async function createAudioWorkletCaptureNode(
     URL.revokeObjectURL(moduleUrl);
   }
 
-  return new globalThis.AudioWorkletNode(
-    audioContext as AudioContext,
-    'asrjs-capture-processor',
-    {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-      outputChannelCount: [1],
-      processorOptions: {
-        targetSampleRate: options.targetSampleRate ?? audioContext.sampleRate,
-        targetChunkFrames: options.chunkFrames ?? STREAMING_TIMELINE_CHUNK_FRAMES,
-      },
+  return new globalThis.AudioWorkletNode(audioContext as AudioContext, 'asrjs-capture-processor', {
+    numberOfInputs: 1,
+    numberOfOutputs: 1,
+    outputChannelCount: [1],
+    processorOptions: {
+      targetSampleRate: options.targetSampleRate ?? audioContext.sampleRate,
+      targetChunkFrames: options.chunkFrames ?? STREAMING_TIMELINE_CHUNK_FRAMES,
     },
-  ) as AudioWorkletNodeLike;
+  }) as AudioWorkletNodeLike;
 }
 
 export async function startMicrophoneCapture(
@@ -367,10 +362,7 @@ export async function startMicrophoneCapture(
   const processingSampleRate = options.targetSampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE;
   const chunkFrames =
     options.chunkFrames ??
-    resolveStreamingTimelineChunkFrames(
-      processingSampleRate,
-      options.chunkDurationMs,
-    );
+    resolveStreamingTimelineChunkFrames(processingSampleRate, options.chunkDurationMs);
   const bufferSize = options.bufferSize ?? resolveScriptProcessorBufferSize(chunkFrames);
   const createAudioContext = resolveCreateAudioContext(options.createAudioContext);
   const ownsStream = !options.stream;
@@ -383,11 +375,44 @@ export async function startMicrophoneCapture(
     typeof trackSettings?.sampleRate === 'number' ? trackSettings.sampleRate : null;
   const preferredContextSampleRate =
     deviceSampleRate ?? processingSampleRate ?? STREAMING_DEVICE_SAMPLE_RATE_FALLBACK;
-  const audioContext = createAudioContext(preferredContextSampleRate);
-  const source = audioContext.createMediaStreamSource(stream);
+  let audioContext: BrowserAudioContextLike | null = null;
+  let source: MediaStreamSourceNodeLike | null = null;
+  let workletNode: AudioWorkletNodeLike | null = null;
+  let scriptProcessor: ScriptProcessorAudioNodeLike | null = null;
+  let processor: AudioWorkletNodeLike | ScriptProcessorAudioNodeLike | null = null;
+  let stopped = false;
+
+  const stopResources = async (): Promise<void> => {
+    if (stopped) {
+      return;
+    }
+    stopped = true;
+    if (scriptProcessor) {
+      scriptProcessor.onaudioprocess = null;
+    }
+    if (workletNode) {
+      workletNode.port.onmessage = null;
+      workletNode.onprocessorerror = null;
+    }
+    processor?.disconnect();
+    source?.disconnect();
+    if (audioContext) {
+      await audioContext.close();
+    }
+
+    if (options.stopTracksOnStop ?? ownsStream) {
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+    }
+  };
+
   let currentFrame = 0;
 
   const emitChunk = (pcm: Float32Array, sampleRate: number) => {
+    if (stopped || !audioContext) {
+      return;
+    }
     const startFrame = currentFrame;
     currentFrame += pcm.length;
     options.onChunk({
@@ -402,59 +427,65 @@ export async function startMicrophoneCapture(
     });
   };
 
-  const workletNode = await createAudioWorkletCaptureNode(audioContext, {
-    ...options,
-    chunkFrames,
-    targetSampleRate: processingSampleRate,
-  });
-  const scriptProcessor =
-    workletNode ? null : audioContext.createScriptProcessor(bufferSize, 1, 1);
-  const processor = workletNode ?? scriptProcessor;
-  if (!processor) {
-    throw new Error('Unable to create a microphone capture processor.');
-  }
-
-  if (workletNode) {
-    workletNode.port.onmessage = (event) => {
-      try {
-        const payload = event.data as
-          | {
-              readonly type?: string;
-              readonly pcm?: Float32Array;
-              readonly sampleRate?: number;
-            }
-          | undefined;
-
-        if (payload?.type !== 'chunk' || !(payload.pcm instanceof Float32Array)) {
-          return;
-        }
-
-        emitChunk(payload.pcm, payload.sampleRate ?? processingSampleRate);
-      } catch (error) {
-        options.onError?.(error);
-      }
-    };
-    workletNode.onprocessorerror = (error) => {
-      options.onError?.(error);
-    };
-  } else {
-    const fallbackResampler = createFixedChunkResampler({
-      sourceSampleRate: audioContext.sampleRate,
-      targetSampleRate: processingSampleRate,
+  try {
+    audioContext = createAudioContext(preferredContextSampleRate);
+    source = audioContext.createMediaStreamSource(stream);
+    workletNode = await createAudioWorkletCaptureNode(audioContext, {
+      ...options,
       chunkFrames,
-      onChunk: (pcm) => emitChunk(pcm, processingSampleRate),
+      targetSampleRate: processingSampleRate,
     });
-    scriptProcessor!.onaudioprocess = (event: AudioProcessingEvent) => {
-      try {
-        fallbackResampler.push(mixAudioBufferChannelsToMono(event.inputBuffer));
-      } catch (error) {
-        options.onError?.(error);
-      }
-    };
-  }
+    scriptProcessor = workletNode ? null : audioContext.createScriptProcessor(bufferSize, 1, 1);
+    processor = workletNode ?? scriptProcessor;
+    if (!processor) {
+      throw new Error('Unable to create a microphone capture processor.');
+    }
 
-  source.connect(processor);
-  processor.connect(audioContext.destination);
+    if (workletNode) {
+      workletNode.port.onmessage = (event) => {
+        try {
+          const payload = event.data as
+            | {
+                readonly type?: string;
+                readonly pcm?: Float32Array;
+                readonly sampleRate?: number;
+              }
+            | undefined;
+
+          if (payload?.type !== 'chunk' || !(payload.pcm instanceof Float32Array)) {
+            return;
+          }
+
+          emitChunk(payload.pcm, payload.sampleRate ?? processingSampleRate);
+        } catch (error) {
+          options.onError?.(error);
+        }
+      };
+      workletNode.onprocessorerror = (error) => {
+        options.onError?.(error);
+      };
+    } else {
+      const fallbackResampler = createFixedChunkResampler({
+        sourceSampleRate: audioContext.sampleRate,
+        targetSampleRate: processingSampleRate,
+        chunkFrames,
+        onChunk: (pcm) => emitChunk(pcm, processingSampleRate),
+      });
+      scriptProcessor!.onaudioprocess = (event: AudioProcessingEvent) => {
+        try {
+          fallbackResampler.push(mixAudioBufferChannelsToMono(event.inputBuffer));
+        } catch (error) {
+          options.onError?.(error);
+        }
+      };
+    }
+
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+  } catch (error) {
+    await stopResources().catch(() => undefined);
+    throw error;
+  }
 
   return {
     sampleRate: processingSampleRate,
@@ -463,23 +494,7 @@ export async function startMicrophoneCapture(
     chunkFrames,
     chunkDurationMs: framesToMilliseconds(chunkFrames, processingSampleRate),
     stream,
-    async stop() {
-      if (scriptProcessor) {
-        scriptProcessor.onaudioprocess = null;
-      }
-      if (workletNode) {
-        workletNode.port.onmessage = null;
-      }
-      processor.disconnect();
-      source.disconnect();
-      await audioContext.close();
-
-      if (options.stopTracksOnStop ?? ownsStream) {
-        for (const track of stream.getTracks()) {
-          track.stop();
-        }
-      }
-    },
+    stop: stopResources,
   };
 }
 

@@ -60,6 +60,7 @@ describe('microphone capture helpers', () => {
     expect(Array.from(onChunk.mock.calls[0]?.[0].pcm ?? [])).toEqual([0.5, 0.5, 0.5, -0.5]);
 
     await handle.stop();
+    await handle.stop();
 
     expect(processorNode.disconnect).toHaveBeenCalledOnce();
     expect(sourceNode.disconnect).toHaveBeenCalledOnce();
@@ -115,6 +116,25 @@ describe('microphone capture helpers', () => {
     await handle.stop();
 
     expect(close).toHaveBeenCalledOnce();
+    expect(stopTrack).toHaveBeenCalledOnce();
+  });
+
+  it('cleans up an owned stream when audio context initialization fails', async () => {
+    const stopTrack = vi.fn();
+    const stream = {
+      getTracks: () => [{ stop: stopTrack }],
+    } as unknown as MediaStream;
+
+    await expect(
+      startMicrophoneCapture({
+        getUserMedia: async () => stream,
+        createAudioContext: () => {
+          throw new Error('context unavailable');
+        },
+        onChunk: vi.fn(),
+      }),
+    ).rejects.toThrow('context unavailable');
+
     expect(stopTrack).toHaveBeenCalledOnce();
   });
 });
