@@ -196,11 +196,14 @@ describe('realtime transcription controller', () => {
     });
 
     const inFlight = controller.pushAudio(new Float32Array([1, 1, 1, 1]));
-    await Promise.resolve();
+    await vi.waitFor(() => expect(transcribe).toHaveBeenCalledOnce());
+    const queued = controller.pushAudio(new Float32Array([1, 1, 1, 1]));
     controller.reset();
     release();
 
     expect(await inFlight).toBeNull();
+    expect(await queued).toBeNull();
+    expect(transcribe).toHaveBeenCalledOnce();
     expect(controller.getState().currentFrame).toBe(0);
     expect(controller.getState().snapshot.fullText).toBe('');
   });

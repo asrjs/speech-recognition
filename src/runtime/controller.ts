@@ -194,20 +194,21 @@ export class RealtimeTranscriptionController {
     input: AudioInputLike,
     options: RealtimeControllerPushOptions = {},
   ): Promise<RealtimeTranscriptionUpdate | null> {
-    return this.enqueue(() => this.pushAudioInternal(input, options));
+    const generation = this.stateGeneration;
+    return this.enqueue(() => this.pushAudioInternal(input, options, generation));
   }
 
   async flush(): Promise<RealtimeTranscriptionUpdate | null> {
+    const generation = this.stateGeneration;
     return this.enqueue(async () => {
-      const generation = this.stateGeneration;
       this.assertNotFinalized();
       return this.processWindow('flush', false, generation);
     });
   }
 
   async finalize(): Promise<RealtimeTranscriptionUpdate | null> {
+    const generation = this.stateGeneration;
     return this.enqueue(async () => {
-      const generation = this.stateGeneration;
       this.assertNotFinalized();
       const update = await this.processWindow('finalize', true, generation);
       if (generation !== this.stateGeneration) {
@@ -247,8 +248,11 @@ export class RealtimeTranscriptionController {
   private async pushAudioInternal(
     input: AudioInputLike,
     options: RealtimeControllerPushOptions,
+    generation: number,
   ): Promise<RealtimeTranscriptionUpdate | null> {
-    const generation = this.stateGeneration;
+    if (generation !== this.stateGeneration) {
+      return null;
+    }
     this.assertNotFinalized();
 
     const normalized = (
