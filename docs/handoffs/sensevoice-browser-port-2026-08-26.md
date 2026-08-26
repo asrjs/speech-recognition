@@ -74,10 +74,12 @@ short-clip oriented even though the upstream FunASR wrapper can compose VAD.
 The artifact-gated `src/models/sensevoice` family now includes the configured
 80-bin frontend, prompt mapping, SentencePiece vocabulary loading, direct and
 Hugging Face ONNX sources, WASM/WebGPU ORT execution, single-item canonical
-transcription, and a true padded `transcribeBatch` graph path. The batch path
-uses one graph invocation and trims each item with `logprobs_lens`. It is
-exposed on the family-specific `SenseVoiceBatchSession`; the package-wide
-generic batch contract still needs to be designed around mixed model families.
+transcription, and a true padded `transcribeBatch` graph path. Hugging Face
+assets now resolve through the runtime `AssetProvider`, forwarding download
+progress and disposing handles with the executor. The batch path uses one graph
+invocation and trims each item with `logprobs_lens`. It is exposed on the
+family-specific `SenseVoiceBatchSession`; the package-wide generic batch
+contract still needs to be designed around mixed model families.
 
 The contract layer and runtime registration are covered by local tests. No
 real SenseVoice artifact is present in the approved local model directories,
