@@ -15,3 +15,4 @@ export * from './models/qwen-asr/index.js';
 export * from './models/sensevoice/index.js';
 export * from './models/gigaam-ctc/index.js';
 export * from './models/gigaam-rnnt/index.js';
+export * from './models/x-asr/index.js';

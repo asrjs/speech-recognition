@@ -244,7 +244,24 @@ runtime instructions target sherpa-onnx CPU/CUDA and a WebSocket wrapper, not
 native ONNX Runtime Web/WebGPU, so browser support is precisely the part that
 still needs independent validation rather than an assumed compatibility claim.
 
-This is a candidate, not an implementation claim. Before adding a family:
+### X-ASR implementation update (2026-08-26)
+
+The artifact-gated `src/models/x-asr` family now provides a browser runtime
+boundary for the four-graph streaming deployment: Kaldi-style 80-bin fbank,
+explicit encoder cache-state specifications, fixed-frame encoder chunks,
+stateless decoder context, joiner greedy decoding, token-piece decoding, and
+an isolated stateful `StreamingTranscriber`. It is registered in the public
+runtime and root exports, but deliberately has no preset or default artifact.
+The graph contract requires state names/shapes and chunk geometry from the
+artifact manifest; this prevents silently guessing Zipformer cache layouts.
+
+The current JS frontend is a compatibility baseline using the repository's
+Povey-window fbank implementation. It still needs direct fbank tensor parity
+against sherpa-onnx, and the encoder state/output order must be verified from
+one local artifact before promotion. No real X-ASR weights were downloaded,
+and no WASM/WebGPU quality or latency result is claimed yet.
+
+The remaining verification sequence is:
 
 1. Obtain one approved local X-ASR artifact set and record graph inputs,
    state/cache shapes, tokenizer, feature contract, and SHA-256 values.

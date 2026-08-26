@@ -20,6 +20,7 @@ import { createNemoTdtModelFamily } from '../models/nemo-tdt/index.js';
 import { createWhisperSeq2SeqModelFamily } from '../models/whisper-seq2seq/index.js';
 import { createQwen3AsrModelFamily } from '../models/qwen-asr/index.js';
 import { createSenseVoiceModelFamily } from '../models/sensevoice/index.js';
+import { createXAsrModelFamily } from '../models/x-asr/index.js';
 import { createWav2Vec2ModelFamily } from '../models/wav2vec2/index.js';
 import { createCanaryPresetFactory } from '../presets/canary/factory.js';
 import { createMedAsrPresetFactory } from '../presets/medasr/factory.js';
@@ -256,6 +257,7 @@ export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): Def
   runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());
   runtime.registerModelFamily(createQwen3AsrModelFamily());
   runtime.registerModelFamily(createSenseVoiceModelFamily());
+  runtime.registerModelFamily(createXAsrModelFamily());
   runtime.registerModelFamily(createWav2Vec2ModelFamily());
   return runtime;
 }
