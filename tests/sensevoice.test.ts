@@ -5,8 +5,16 @@ import {
   createSenseVoicePrompt,
   resolveSenseVoiceLanguage,
 } from '../src/models/sensevoice/index.js';
+import { createBuiltInSpeechRuntime } from '../src/runtime/builtins.js';
 
 describe('SenseVoice prompt contract', () => {
+  it('is discoverable as a built-in model family without a fake preset', () => {
+    const runtime = createBuiltInSpeechRuntime({ useManifestSources: false });
+    const family = runtime.listModelFamilies().find((candidate) => candidate.family === 'sensevoice');
+    expect(family?.supports('OpenVoiceOS/SenseVoiceSmall')).toBe(true);
+    expect(family?.supports('nvidia/parakeet-tdt-0.6b-v3')).toBe(false);
+  });
+
   it('maps supported languages and ITN IDs to the ONNX prompt contract', () => {
     expect(createSenseVoicePrompt({ language: 'en' })).toEqual({
       language: 'en',

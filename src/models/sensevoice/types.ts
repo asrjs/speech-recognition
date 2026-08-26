@@ -124,6 +124,10 @@ export interface SenseVoiceExecutor {
     audio: AudioBufferLike,
     options: SenseVoiceTranscriptionOptions,
   ): Promise<SenseVoiceNativeTranscript>;
+  transcribeBatch?(
+    audio: readonly AudioBufferLike[],
+    options: SenseVoiceTranscriptionOptions,
+  ): Promise<readonly SenseVoiceNativeTranscript[]>;
   dispose(): Promise<void> | void;
 }
 

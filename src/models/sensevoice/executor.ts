@@ -81,11 +81,23 @@ function tensorFloat32(ort: OrtModuleLike, data: Float32Array, dims: readonly nu
   return new ort.Tensor('float32', data, dims);
 }
 
+function int64Batch(ort: OrtModuleLike, values: readonly number[]): OrtTensorLike {
+  return new ort.Tensor('int64', BigInt64Array.from(values, (value) => BigInt(value)), [values.length]);
+}
+
 function tensorLength(ortTensor: OrtTensorLike | undefined, fallback: number): number {
   const value = (ortTensor?.data as unknown as ArrayLike<number | bigint> | undefined)?.[0];
   if (typeof value === 'bigint') return Number(value);
   if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.floor(value));
   return fallback;
+}
+
+function tensorLengths(ortTensor: OrtTensorLike | undefined, count: number, fallback: number): number[] {
+  const data = ortTensor?.data as unknown as ArrayLike<number | bigint> | undefined;
+  return Array.from({ length: count }, (_, index) => {
+    const value = data?.[index];
+    return typeof value === 'bigint' ? Number(value) : typeof value === 'number' ? Math.floor(value) : fallback;
+  });
 }
 
 function readLogits(tensor: OrtTensorLike): Float32Array {
@@ -264,6 +276,81 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
       },
       warnings: [...state.warnings],
     };
+  }
+
+  /**
+   * Runs a true padded batch through one ONNX graph invocation. Each item is
+   * padded with its final valid fbank frame, matching the exported FunASR
+   * graph's LFR padding rule; `logprobs_lens` trims the result per item.
+   */
+  async transcribeBatch(
+    audioInputs: readonly AudioBufferLike[],
+    options: SenseVoiceTranscriptionOptions = {},
+  ): Promise<readonly SenseVoiceNativeTranscript[]> {
+    const state = await this.loadStatePromise;
+    if (!state) throw new Error(`No SenseVoice artifact source is configured for "${this.modelId}".`);
+    if (audioInputs.length === 0) return [];
+    const audios = audioInputs.map((input) => normalizePcmInput(input).toMono());
+    const prepared = audios.map((audio) => this.preprocessor.process(audio.channels[0] ?? new Float32Array(0)));
+    const maxFrames = Math.max(...prepared.map((item) => item.frameCount));
+    const batchFeatures = new Float32Array(audioInputs.length * maxFrames * 80);
+    const lengths = prepared.map((item) => item.frameCount);
+    prepared.forEach((item, batchIndex) => {
+      const targetOffset = batchIndex * maxFrames * 80;
+      for (let frame = 0; frame < maxFrames; frame += 1) {
+        const sourceFrame = Math.min(frame, Math.max(0, item.frameCount - 1));
+        const sourceOffset = sourceFrame * 80;
+        const destinationOffset = targetOffset + frame * 80;
+        for (let mel = 0; mel < 80; mel += 1) {
+          batchFeatures[destinationOffset + mel] = item.features[sourceOffset + mel] ?? 0;
+        }
+      }
+    });
+    const prompt = createSenseVoicePrompt({ language: options.language, useItn: options.useItn });
+    const features = tensorFloat32(state.ort, batchFeatures, [audioInputs.length, maxFrames, 80]);
+    const featureLengths = int64Batch(state.ort, lengths);
+    const languages = int64Batch(state.ort, audioInputs.map(() => prompt.languageId));
+    const textnorms = int64Batch(state.ort, audioInputs.map(() => prompt.textnormId));
+    let outputs: Record<string, OrtTensorLike>;
+    try {
+      outputs = await state.session.run({ features, features_lens: featureLengths, language: languages, textnorm: textnorms });
+    } finally {
+      features.dispose?.(); featureLengths.dispose?.(); languages.dispose?.(); textnorms.dispose?.();
+    }
+    const logitsTensor = findOutput(outputs, ['logprobs', 'logits']);
+    if (!logitsTensor) throw new Error('SenseVoice graph returned no logprobs output.');
+    const dims = [...logitsTensor.dims];
+    if (dims.length !== 3 || dims[0] !== audioInputs.length) throw new Error(`Unexpected SenseVoice batch logits shape: [${dims.join(', ')}].`);
+    const batchSize = dims[0] ?? 0;
+    const outFrames = dims[1] ?? 0;
+    const vocabSize = dims[2] ?? 0;
+    const lengthsTensor = findOutput(outputs, ['logprobs_lens', 'output_lens']);
+    const outputLengths = tensorLengths(lengthsTensor, batchSize, outFrames);
+    const allLogits = readLogits(logitsTensor);
+    return Array.from({ length: batchSize }, (_, batchIndex) => {
+      const frameCount = Math.min(outFrames, outputLengths[batchIndex] ?? outFrames);
+      const logits = new Float32Array(frameCount * vocabSize);
+      const sourceOffset = batchIndex * outFrames * vocabSize;
+      logits.set(allLogits.subarray(sourceOffset, sourceOffset + logits.length));
+      const { frameIds, selectedLogProbs } = argmaxAndSelectedLogProbs(logits, frameCount, vocabSize);
+      const { collapsedIds, tokenSpans } = ctcCollapseWithSpans(frameIds, selectedLogProbs, 0);
+      const tokenizer = state.tokenizer;
+      const text = tokenizer.decode(collapsedIds);
+      const audio = audios[batchIndex]!;
+      const secondsPerFrame = estimateSecondsPerOutputFrame({ audioDurationSec: audio.durationSeconds, inputFrames: lengths[batchIndex]!, inputFrameHopSeconds: this.config.featureHopSeconds, outFrames: frameCount });
+      const timedSpans = addTimesToTokenSpans(tokenizer, tokenSpans, secondsPerFrame);
+      const timing = buildUtteranceTiming(frameIds, selectedLogProbs, 0, secondsPerFrame);
+      const metadata = extractMetadata(tokenizer, collapsedIds);
+      return {
+        utteranceText: text,
+        isFinal: true,
+        language: metadata.language ?? prompt.language,
+        metadata,
+        tokens: timedSpans.filter((span) => span.text.length > 0).map((span, index) => ({ index, id: options.returnTokenIds ? span.tokenId : undefined, text: span.text, startTime: roundTimestampSeconds(span.startTime), endTime: roundTimestampSeconds(span.endTime), confidence: roundMetric(span.confidence, 4) })),
+        confidence: { utterance: timing.confidence, tokenAverage: timing.confidence },
+        warnings: [...state.warnings],
+      };
+    });
   }
 
   dispose(): void {
