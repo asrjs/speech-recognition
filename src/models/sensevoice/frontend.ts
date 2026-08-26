@@ -1,4 +1,4 @@
-import { MedAsrJsPreprocessor } from '../lasr-ctc/mel.js';
+import { MedAsrJsPreprocessor, transposeMelToTxM } from '../lasr-ctc/mel.js';
 import type { SenseVoiceFeatureBatch } from './types.js';
 
 /**
@@ -22,8 +22,10 @@ export class SenseVoiceJsPreprocessor {
 
   process(audio: Float32Array): SenseVoiceFeatureBatch {
     const result = this.delegate.process(audio);
+    const features = transposeMelToTxM(result.features, result.featureSize, result.frameCount);
     return {
       ...result,
+      features,
       validFrameCount: result.frameCount,
     };
   }
