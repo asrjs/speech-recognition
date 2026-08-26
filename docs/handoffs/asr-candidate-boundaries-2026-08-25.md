@@ -181,6 +181,19 @@ formula before preset promotion.
 The non-power-of-two 320-point FFT currently uses a correctness-first direct
 DFT path and needs a measured FFT optimization before long-form browser use.
 
+### GigaAM v3 E2E RNN-T implementation update (2026-08-26)
+
+The repository now also contains an artifact-gated `src/models/gigaam-rnnt`
+family for the upstream v3 E2E RNN-T export. Its graph boundary is three
+sessions: `audio_signal`/`length` to `encoded`/`encoded_len`, prediction
+network inputs `x`, `h.1`, `c.1`, and joint inputs `enc`, `dec`. Greedy
+decoding is capped at the upstream three tokens per encoder frame, and the
+final blank is represented as token 34 for the 34-character vocabulary.
+The implementation reuses the GigaAM periodic-Hann/64-bin frontend and
+supports WASM/WebGPU ORT selection, but no preset or quality claim is made
+until an approved v3 RNN-T artifact passes native/WASM/WebGPU tensor and
+transcript parity.
+
 ## Tooling now available
 
 The repository now contains local-only reference and conversion helpers:

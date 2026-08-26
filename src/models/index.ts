@@ -1,5 +1,6 @@
 export * from './lasr-ctc.js';
 export * from './gigaam-ctc/index.js';
+export * from './gigaam-rnnt/index.js';
 export * from './nemo-common/classification.js';
 export * from './nemo-aed.js';
 export * from './sensevoice/index.js';
