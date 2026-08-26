@@ -209,3 +209,30 @@ because its CTC/ONNX shape is browser-friendly and an ONNX conversion already
 exists, but it must follow the same artifact and parity gates. None of these
 artifact-gated prototypes should be promoted to a preset or called
 quality-verified until the reference/browser matrix passes.
+
+## Differentiated next journey: X-ASR streaming Zipformer
+
+The current external ecosystem review changes the next-candidate priority. A
+generic Qwen, SenseVoice, FireRedASR, or GigaAM ONNX wrapper would largely
+duplicate already-public implementations. The more differentiated candidate
+is [X-ASR-zh-en](https://github.com/Gilgamesh-J/X-ASR): an Apache-2.0
+icefall/k2 Zipformer transducer with one offline path and true streaming
+variants at 160, 480, 960, and 1920 ms chunks. It exposes encoder, decoder,
+joiner, and token assets through sherpa-onnx deployment artifacts, which maps
+better to the existing RNNT/session boundaries than another autoregressive
+decoder port.
+
+This is a candidate, not an implementation claim. Before adding a family:
+
+1. Obtain one approved local X-ASR artifact set and record graph inputs,
+   state/cache shapes, tokenizer, feature contract, and SHA-256 values.
+2. Compare one chunk against the reference/sherpa-onnx path at fbank,
+   encoder state, decoder state, joiner logits, token IDs, and endpointing.
+3. Prototype a batch-1 WASM executor first, then test WebGPU operator support;
+   streaming state must remain isolated per session.
+4. Benchmark chunk latency, first-token latency, endpoint stability, and
+   accuracy against Parakeet v3 and the existing browser realtime pipeline.
+
+The public X-ASR project reports Chinese-English coverage today, so it is not
+a Turkish replacement for Parakeet. Its value is a low-latency streaming
+track; multilingual expansion and actual browser compatibility remain gates.
