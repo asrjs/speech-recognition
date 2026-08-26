@@ -157,4 +157,66 @@ describe('browser realtime microphone controller', () => {
 
     await controller.dispose();
   });
+
+  it('stops a capture that resolves after stop invalidates start', async () => {
+    let resolveCapture!: (handle: any) => void;
+    const captureReady = new Promise<any>((resolve) => {
+      resolveCapture = resolve;
+    });
+    const startCapture = vi.fn(() => captureReady);
+    const stopCapture = vi.fn(async () => undefined);
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'manual',
+      createStarter: createFakeStarter,
+      createMonitor: createFakeMonitor,
+      startCapture,
+    });
+
+    const starting = controller.start();
+    await vi.waitFor(() => expect(startCapture).toHaveBeenCalledOnce());
+    const stopping = controller.stop({ flush: false });
+    resolveCapture({
+      sampleRate: 16000,
+      deviceSampleRate: 48000,
+      contextSampleRate: 48000,
+      stream: {} as MediaStream,
+      stop: stopCapture,
+    });
+
+    await Promise.all([starting, stopping]);
+    expect(stopCapture).toHaveBeenCalledOnce();
+    expect(controller.getState().isMicActive).toBe(false);
+    await controller.dispose();
+  });
+
+  it('ignores chunks from a capture callback after stop', async () => {
+    let onChunk: ((chunk: any) => void) | null = null;
+    const utterances: unknown[] = [];
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'manual',
+      createStarter: createFakeStarter,
+      createMonitor: createFakeMonitor,
+      startCapture: async (options) => {
+        onChunk = options.onChunk;
+        return {
+          sampleRate: 16000,
+          deviceSampleRate: 48000,
+          contextSampleRate: 48000,
+          stream: {} as MediaStream,
+          stop: async () => undefined,
+        };
+      },
+      onUtterance(utterance) {
+        utterances.push(utterance);
+      },
+    });
+
+    await controller.start();
+    await controller.stop({ flush: false });
+    onChunk?.({ pcm: new Float32Array([1, 2, 3]), sampleRate: 16000 });
+    controller.flush('late-callback');
+
+    expect(utterances).toHaveLength(0);
+    await controller.dispose();
+  });
 });

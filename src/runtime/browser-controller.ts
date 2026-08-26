@@ -20,7 +20,10 @@ import {
   STREAMING_TIMELINE_CHUNK_MS,
   resolveStreamingTimelineChunkFrames,
 } from './audio-timeline.js';
-import type { StreamingDetectorConfig, StreamingDetectorConfigOverrides } from './streaming-config.js';
+import type {
+  StreamingDetectorConfig,
+  StreamingDetectorConfigOverrides,
+} from './streaming-config.js';
 import { mergeStreamingConfig, resolveStreamingProfileId } from './streaming-config.js';
 
 export type BrowserRealtimeMicrophoneMode = 'manual' | 'speech-detect';
@@ -51,8 +54,10 @@ export interface BrowserRealtimeMicrophoneControllerState {
   readonly captureInfo: BrowserRealtimeCaptureInfo;
 }
 
-export interface BrowserRealtimeMicrophoneControllerOptions
-  extends Omit<BrowserRealtimeStarterOptions, 'profileId' | 'config'> {
+export interface BrowserRealtimeMicrophoneControllerOptions extends Omit<
+  BrowserRealtimeStarterOptions,
+  'profileId' | 'config'
+> {
   readonly profileId?: string;
   readonly config?: StreamingDetectorConfigOverrides | StreamingDetectorConfig;
   readonly micMode?: BrowserRealtimeMicrophoneMode;
@@ -132,11 +137,15 @@ export function createBrowserRealtimeMicrophoneController(
   const onUtterance = options.onUtterance ?? (() => undefined);
   const onStatus = options.onStatus ?? (() => undefined);
   let micMode: BrowserRealtimeMicrophoneMode = options.micMode ?? 'speech-detect';
-  let profileId = options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true);
+  let profileId =
+    options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true);
   let resolvedConfig = mergeStreamingConfig(profileId, options.config);
   let captureHandle: BrowserMicrophoneCaptureHandle | null = null;
   let sampleRate = STREAMING_PROCESSING_SAMPLE_RATE;
   let manualChunks: Float32Array[] = [];
+  let lifecycleGeneration = 0;
+  let lifecycleOperationTail: Promise<void> = Promise.resolve();
+  let disposed = false;
   let state = createInitialState(micMode);
 
   const starter = createStarter({
@@ -157,7 +166,9 @@ export function createBrowserRealtimeMicrophoneController(
   const setState = (
     patch:
       | Partial<BrowserRealtimeMicrophoneControllerState>
-      | ((current: BrowserRealtimeMicrophoneControllerState) => BrowserRealtimeMicrophoneControllerState),
+      | ((
+          current: BrowserRealtimeMicrophoneControllerState,
+        ) => BrowserRealtimeMicrophoneControllerState),
   ): void => {
     state =
       typeof patch === 'function'
@@ -174,7 +185,9 @@ export function createBrowserRealtimeMicrophoneController(
     onStatus(appStatus);
   };
 
-  const updateCaptureInfo = (partial: Partial<BrowserRealtimeCaptureInfo> = {}): BrowserRealtimeCaptureInfo => {
+  const updateCaptureInfo = (
+    partial: Partial<BrowserRealtimeCaptureInfo> = {},
+  ): BrowserRealtimeCaptureInfo => {
     const nextCaptureInfo = {
       ...state.captureInfo,
       ...partial,
@@ -192,7 +205,10 @@ export function createBrowserRealtimeMicrophoneController(
       getConfiguredChunkDurationMs(),
     );
 
-  const handleChunk = (input: MicrophoneAudioChunk): void => {
+  const handleChunk = (input: MicrophoneAudioChunk, generation: number): void => {
+    if (disposed || generation !== lifecycleGeneration || !state.isMicActive) {
+      return;
+    }
     const chunk = input?.pcm instanceof Float32Array ? input.pcm : null;
     if (!chunk?.length) {
       return;
@@ -218,6 +234,15 @@ export function createBrowserRealtimeMicrophoneController(
       startFrame: input.startFrame,
       endFrame: input.endFrame,
     });
+  };
+
+  const enqueueLifecycleOperation = <T>(operation: () => Promise<T>): Promise<T> => {
+    const result = lifecycleOperationTail.then(operation, operation);
+    lifecycleOperationTail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   };
 
   const starterUnsubscribe = starter.subscribe((event) => {
@@ -308,96 +333,142 @@ export function createBrowserRealtimeMicrophoneController(
       setState({ micMode: mode });
     },
     async start(): Promise<void> {
-      manualChunks = [];
-      setState({ micError: '' });
-
-      const handle = await startCapture({
-        constraints: {
-          audio: {
-            channelCount: 1,
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false,
-            ...options.microphoneConstraints,
-          },
-        },
-        chunkFrames: getConfiguredChunkFrames(),
-        chunkDurationMs: getConfiguredChunkDurationMs(),
-        targetSampleRate: STREAMING_PROCESSING_SAMPLE_RATE,
-        stopTracksOnStop: true,
-        onChunk: handleChunk,
-        onError: (error) => {
-          setState({
-            micError: error instanceof Error ? error.message : String(error),
-          });
-        },
-      });
-
-      captureHandle = handle;
-      sampleRate = handle.sampleRate || STREAMING_PROCESSING_SAMPLE_RATE;
-      const audioTrack = handle.stream.getAudioTracks?.()[0] ?? null;
-      updateCaptureInfo({
-        inputSampleRate: handle.deviceSampleRate,
-        contextSampleRate: handle.contextSampleRate,
-        processingSampleRate: sampleRate,
-        chunkFrames: handle.chunkFrames ?? STREAMING_TIMELINE_CHUNK_FRAMES,
-        chunkDurationMs: handle.chunkDurationMs ?? STREAMING_TIMELINE_CHUNK_MS,
-        deviceLabel: audioTrack?.label ?? '',
-      });
-      setState({ isMicActive: true });
-      monitor.flush();
-
-      if (micMode === 'speech-detect') {
-        await starter.start({ sampleRate });
-        const tenVadState = starter.getSnapshot()?.tenVad?.state;
-        updateStatus(
-          tenVadState === 'degraded'
-            ? `Listening for speech at ${sampleRate} Hz with rough fallback…`
-            : `Listening for speech at ${sampleRate} Hz with FireRed VAD segmenter…`,
-          'Microphone active',
-        );
-        return;
+      if (disposed) {
+        throw new Error('BrowserRealtimeMicrophoneController has been disposed.');
       }
+      const generation = ++lifecycleGeneration;
+      return enqueueLifecycleOperation(async () => {
+        if (generation !== lifecycleGeneration || disposed || state.isMicActive) {
+          return;
+        }
+        manualChunks = [];
+        setState({ micError: '' });
 
-      updateStatus(
-        `Recording microphone at ${sampleRate} Hz. Stop to transcribe the captured audio.`,
-        'Microphone active',
-      );
+        const handle = await startCapture({
+          constraints: {
+            audio: {
+              channelCount: 1,
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+              ...options.microphoneConstraints,
+            },
+          },
+          chunkFrames: getConfiguredChunkFrames(),
+          chunkDurationMs: getConfiguredChunkDurationMs(),
+          targetSampleRate: STREAMING_PROCESSING_SAMPLE_RATE,
+          stopTracksOnStop: true,
+          onChunk: (input) => handleChunk(input, generation),
+          onError: (error) => {
+            if (generation !== lifecycleGeneration || disposed) {
+              return;
+            }
+            setState({
+              micError: error instanceof Error ? error.message : String(error),
+            });
+          },
+        });
+
+        if (generation !== lifecycleGeneration || disposed) {
+          await handle.stop();
+          return;
+        }
+
+        captureHandle = handle;
+        sampleRate = handle.sampleRate || STREAMING_PROCESSING_SAMPLE_RATE;
+        const audioTrack = handle.stream.getAudioTracks?.()[0] ?? null;
+        updateCaptureInfo({
+          inputSampleRate: handle.deviceSampleRate,
+          contextSampleRate: handle.contextSampleRate,
+          processingSampleRate: sampleRate,
+          chunkFrames: handle.chunkFrames ?? STREAMING_TIMELINE_CHUNK_FRAMES,
+          chunkDurationMs: handle.chunkDurationMs ?? STREAMING_TIMELINE_CHUNK_MS,
+          deviceLabel: audioTrack?.label ?? '',
+        });
+        setState({ isMicActive: true });
+        monitor.flush();
+
+        try {
+          if (micMode === 'speech-detect') {
+            await starter.start({ sampleRate });
+            if (generation !== lifecycleGeneration || disposed) {
+              await starter.stop({ flush: false });
+              await handle.stop();
+              captureHandle = null;
+              return;
+            }
+            const tenVadState = starter.getSnapshot()?.tenVad?.state;
+            updateStatus(
+              tenVadState === 'degraded'
+                ? `Listening for speech at ${sampleRate} Hz with rough fallback…`
+                : `Listening for speech at ${sampleRate} Hz with FireRed VAD segmenter…`,
+              'Microphone active',
+            );
+            return;
+          }
+
+          updateStatus(
+            `Recording microphone at ${sampleRate} Hz. Stop to transcribe the captured audio.`,
+            'Microphone active',
+          );
+        } catch (error) {
+          if (captureHandle === handle) {
+            captureHandle = null;
+          }
+          await handle.stop().catch(() => undefined);
+          if (generation === lifecycleGeneration && !disposed) {
+            setState({
+              isMicActive: false,
+              micError: error instanceof Error ? error.message : String(error),
+            });
+          }
+          throw error;
+        }
+      });
     },
     async stop({ flush = true }: { readonly flush?: boolean } = {}): Promise<void> {
+      if (disposed) {
+        return;
+      }
+      const generation = ++lifecycleGeneration;
       setState({ isMicActive: false });
+      return enqueueLifecycleOperation(async () => {
+        if (generation !== lifecycleGeneration && !captureHandle && !manualChunks.length) {
+          return;
+        }
 
-      const handle = captureHandle;
-      captureHandle = null;
-      if (handle) {
-        await handle.stop();
-      }
+        const handle = captureHandle;
+        captureHandle = null;
+        if (handle) {
+          await handle.stop();
+        }
 
-      updateCaptureInfo({
-        inputSampleRate: null,
-        contextSampleRate: null,
-        deviceLabel: '',
-      });
-
-      if (micMode === 'speech-detect') {
-        await starter.stop({ flush });
-      } else if (flush && manualChunks.length > 0) {
-        const pcm = concatFloat32Chunks(manualChunks);
-        manualChunks = [];
-        onUtterance({
-          pcm,
-          sampleRate,
-          reason: 'stop',
-          durationSeconds: pcm.length / sampleRate,
-          sourceLabel: `microphone-stop-${new Date().toLocaleTimeString()}`,
-          metadata: null,
+        updateCaptureInfo({
+          inputSampleRate: null,
+          contextSampleRate: null,
+          deviceLabel: '',
         });
-      } else {
-        manualChunks = [];
-      }
 
-      updateStatus('Microphone stopped', 'Model ready');
-      monitor.flush();
+        if (micMode === 'speech-detect') {
+          await starter.stop({ flush });
+        } else if (flush && manualChunks.length > 0) {
+          const pcm = concatFloat32Chunks(manualChunks);
+          manualChunks = [];
+          onUtterance({
+            pcm,
+            sampleRate,
+            reason: 'stop',
+            durationSeconds: pcm.length / sampleRate,
+            sourceLabel: `microphone-stop-${new Date().toLocaleTimeString()}`,
+            metadata: null,
+          });
+        } else {
+          manualChunks = [];
+        }
+
+        updateStatus('Microphone stopped', 'Model ready');
+        monitor.flush();
+      });
     },
     flush(reason = 'manual'): void {
       if (micMode === 'speech-detect') {
@@ -420,14 +491,24 @@ export function createBrowserRealtimeMicrophoneController(
       });
     },
     async dispose(): Promise<void> {
-      if (captureHandle) {
-        await captureHandle.stop();
-        captureHandle = null;
+      if (disposed) {
+        return;
       }
-      starterUnsubscribe();
-      monitor.dispose();
-      await starter.dispose();
-      listeners.clear();
+      disposed = true;
+      ++lifecycleGeneration;
+      setState({ isMicActive: false });
+      return enqueueLifecycleOperation(async () => {
+        const handle = captureHandle;
+        captureHandle = null;
+        if (handle) {
+          await handle.stop();
+        }
+        manualChunks = [];
+        starterUnsubscribe();
+        monitor.dispose();
+        await starter.dispose();
+        listeners.clear();
+      });
     },
   };
 }
