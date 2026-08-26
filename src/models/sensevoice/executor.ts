@@ -113,7 +113,20 @@ function readLogits(tensor: OrtTensorLike): Float32Array {
     const sign = (bits & 0x8000) << 16;
     const exponent = (bits >>> 10) & 0x1f;
     const mantissa = bits & 0x3ff;
-    if (exponent === 0) result[index] = mantissa === 0 ? (sign ? -0 : 0) : (sign ? -1 : 1) * mantissa * 2 ** -24;
+    if (exponent === 0) {
+      if (mantissa === 0) {
+        result[index] = sign ? -0 : 0;
+      } else {
+        let normalized = mantissa;
+        let exponentValue = -14;
+        while ((normalized & 0x400) === 0) {
+          normalized <<= 1;
+          exponentValue -= 1;
+        }
+        normalized &= 0x3ff;
+        result[index] = (sign ? -1 : 1) * (1 + normalized / 1024) * 2 ** exponentValue;
+      }
+    }
     else if (exponent === 0x1f) result[index] = mantissa === 0 ? (sign ? -Infinity : Infinity) : NaN;
     else result[index] = (sign ? -1 : 1) * (1 + mantissa / 1024) * 2 ** (exponent - 15);
   }
