@@ -8,7 +8,7 @@ const PREEMPH = 0.97;
 const LOG_ZERO_GUARD = 2 ** -24;
 
 type MelScaleKind = 'slaney' | 'kaldi' | 'htk';
-type WindowKind = 'hann' | 'hamming';
+type WindowKind = 'hann' | 'hann-periodic' | 'hamming';
 
 interface MelTwiddles {
   readonly cos: Float64Array;
@@ -27,7 +27,7 @@ export interface MedAsrJsPreprocessorOptions {
   readonly slaneyNorm?: boolean;
   readonly logZeroGuard?: number;
   readonly normalizeFeatures?: boolean;
-  /** Window used for each frame. Existing callers retain the Hann default. */
+  /** Window used for each frame. Existing callers retain the symmetric Hann default. */
   readonly windowKind?: WindowKind;
   /** Remove each frame's DC offset before optional frame-local preemphasis. */
   readonly removeDcOffset?: boolean;
@@ -173,7 +173,7 @@ function createPaddedWindow(
   const leftPad = centerWindow ? (nFft - winLength) >> 1 : 0;
 
   for (let index = 0; index < winLength; index += 1) {
-    const cosine = Math.cos((2 * Math.PI * index) / (winLength - 1));
+    const cosine = Math.cos((2 * Math.PI * index) / (windowKind === 'hann-periodic' ? winLength : winLength - 1));
     window[leftPad + index] = windowKind === 'hamming' ? 0.54 - 0.46 * cosine : 0.5 * (1 - cosine);
   }
 

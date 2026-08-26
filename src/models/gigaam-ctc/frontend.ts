@@ -19,6 +19,8 @@ export class GigaAmJsPreprocessor implements LasrCtcFeaturePreprocessor {
     slaneyNorm: false,
     normalizeFeatures: false,
     logZeroGuard: 1e-9,
+    // GigaAM v3 uses np.hanning(winLength + 1)[:-1], i.e. periodic Hann.
+    windowKind: 'hann-periodic',
   });
 
   process(audio: Float32Array): LasrCtcFeatureBatch {
