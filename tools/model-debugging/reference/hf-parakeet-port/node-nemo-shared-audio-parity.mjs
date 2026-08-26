@@ -3,6 +3,7 @@ import os from 'os';
 import path from 'path';
 import process from 'process';
 import { spawnSync } from 'child_process';
+import { fileURLToPath } from 'url';
 
 const PYTHON = 'C:\\Users\\steam\\anaconda3\\envs\\nemo\\python.exe';
 const DEFAULT_AUDIO = path.resolve(process.cwd(), 'tools/data/fixtures/audio/librivox.org.wav');
@@ -10,8 +11,34 @@ const DEFAULT_NODE_MODEL = 'N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v2-onnx-tf
 const DEFAULT_ONNX_ASR_MODEL = 'N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v2-onnx';
 const DEFAULT_NEMO_MODEL = 'nvidia/parakeet-tdt-0.6b-v2';
 
-function parseArgs() {
-  const args = process.argv.slice(2);
+export function validateCommandArg(val, label = 'argument') {
+  if (typeof val !== 'string') {
+    throw new Error(`Invalid ${label}: expected string, got ${typeof val}`);
+  }
+  if (val.includes('\0')) {
+    throw new Error(`Null bytes forbidden in ${label}`);
+  }
+  return val;
+}
+
+export function validatePath(val, label = 'path') {
+  validateCommandArg(val, label);
+  if (!val.trim()) {
+    throw new Error(`Empty ${label}`);
+  }
+  return path.isAbsolute(val) ? path.normalize(val) : path.resolve(process.cwd(), val);
+}
+
+export function validateSampleRate(val) {
+  const num = typeof val === 'number' ? val : Number(val);
+  if (!Number.isFinite(num) || num <= 0 || !Number.isInteger(num)) {
+    throw new Error(`Invalid sample rate: expected positive integer, got ${val}`);
+  }
+  return num;
+}
+
+export function parseArgs(rawArgs = process.argv.slice(2)) {
+  const args = rawArgs;
   const out = {
     audio: DEFAULT_AUDIO,
     sampleRate: 16000,
@@ -23,18 +50,38 @@ function parseArgs() {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === '--audio') out.audio = path.resolve(process.cwd(), args[++i]);
-    else if (arg === '--sample-rate') out.sampleRate = Number(args[++i]);
-    else if (arg === '--node-model') out.nodeModel = args[++i];
-    else if (arg === '--onnx-asr-model-path') out.onnxAsrModelPath = args[++i];
-    else if (arg === '--nemo-model') out.nemoModel = args[++i];
-    else if (arg === '--keep-artifacts') out.keepArtifacts = true;
+    if (arg === '--audio') {
+      const val = args[++i];
+      out.audio = validatePath(val, 'audio');
+    } else if (arg === '--sample-rate') {
+      const val = args[++i];
+      out.sampleRate = validateSampleRate(val);
+    } else if (arg === '--node-model') {
+      const val = args[++i];
+      out.nodeModel = validatePath(val, 'nodeModel');
+    } else if (arg === '--onnx-asr-model-path') {
+      const val = args[++i];
+      out.onnxAsrModelPath = validatePath(val, 'onnxAsrModelPath');
+    } else if (arg === '--nemo-model') {
+      const val = args[++i];
+      out.nemoModel = validateCommandArg(val, 'nemoModel');
+    } else if (arg === '--keep-artifacts') {
+      out.keepArtifacts = true;
+    }
   }
 
   return out;
 }
 
-function runOrThrow(command, args, label) {
+export function runOrThrow(command, args, label) {
+  validateCommandArg(command, 'command');
+  if (!Array.isArray(args)) {
+    throw new Error('args must be an array');
+  }
+  for (let i = 0; i < args.length; i++) {
+    validateCommandArg(args[i], `argument [${i}]`);
+  }
+
   const result = spawnSync(command, args, {
     cwd: process.cwd(),
     encoding: 'utf8',
@@ -176,9 +223,11 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (error) {
-  console.error('[node-nemo-shared-audio-parity] failed:', error);
-  process.exitCode = 1;
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  try {
+    main();
+  } catch (error) {
+    console.error('[node-nemo-shared-audio-parity] failed:', error);
+    process.exitCode = 1;
+  }
 }
