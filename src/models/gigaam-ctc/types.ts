@@ -3,6 +3,7 @@ import type {
   LasrCtcModelConfig,
   LasrCtcModelOptions,
 } from '../lasr-ctc/types.js';
+import type { AssetProvider, SpeechRuntimeHooks } from '../../types/index.js';
 
 export interface GigaAmModelConfig extends Omit<
   LasrCtcModelConfig,
@@ -23,3 +24,11 @@ export type GigaAmModelOptions = Omit<LasrCtcModelOptions, 'config' | 'source'> 
   readonly source?: GigaAmArtifactSource;
   readonly config?: Partial<GigaAmModelConfig>;
 };
+
+export interface GigaAmModelFamilyOptions {
+  readonly dependencies?: {
+    readonly executor?: import('./executor.js').OrtGigaAmCtcExecutor;
+    readonly assetProvider?: AssetProvider;
+    readonly runtimeHooks?: SpeechRuntimeHooks;
+  };
+}

@@ -12,6 +12,7 @@ import {
   withResolvedTranscriptDetail,
 } from '../pipeline/index.js';
 import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
+import { createGigaAmCtcModelFamily } from '../models/gigaam-ctc/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
 import { createNemoTdtModelFamily } from '../models/nemo-tdt/index.js';
@@ -248,6 +249,7 @@ export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): Def
   runtime.registerModelFamily(createNemoAedModelFamily());
   runtime.registerModelFamily(createNemoRnntModelFamily());
   runtime.registerModelFamily(createNemoTdtModelFamily());
+  runtime.registerModelFamily(createGigaAmCtcModelFamily());
   runtime.registerModelFamily(createLasrCtcModelFamily());
   runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());
   runtime.registerModelFamily(createQwen3AsrModelFamily());

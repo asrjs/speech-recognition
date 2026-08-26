@@ -13,3 +13,4 @@ export * from './inference/backends/webnn/index.js';
 export * from './inference/backends/webgl/index.js';
 export * from './models/qwen-asr/index.js';
 export * from './models/sensevoice/index.js';
+export * from './models/gigaam-ctc/index.js';

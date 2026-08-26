@@ -358,10 +358,11 @@ export function createLasrCtcModelFamily(
 
       const normalizedModelId = modelId.toLowerCase();
       return (
-        normalizedModelId.includes('medasr') ||
-        normalizedModelId.includes('lasr') ||
-        normalizedModelId.includes('conformer') ||
-        normalizedModelId.includes('ctc')
+        !normalizedModelId.includes('gigaam') &&
+        (normalizedModelId.includes('medasr') ||
+          normalizedModelId.includes('lasr') ||
+          normalizedModelId.includes('conformer') ||
+          normalizedModelId.includes('ctc'))
       );
     },
     matchesClassification(classification: Partial<ModelClassification>): boolean {
