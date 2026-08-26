@@ -29,6 +29,19 @@ The fp32 encoder uses co-located external data. The audited sidecar is
 2,435,420,160 bytes with SHA-256
 `9a22d372c51455c34f13405da2520baefb7125bd16981397561423ed32d24f36`.
 
+### Operator inventory
+
+The optional Python ONNX inspection completed for all seven graphs. Every
+graph uses ONNX opset 17. The fp32/fp16 encoders contain 4,491/4,493 nodes;
+the int8 encoder contains 5,654 nodes and includes dynamic quantization and
+integer matrix multiplication. The int8 decoder imports the `com.microsoft`
+domain, while `nemo128.onnx` contains the custom `this:nemo_preprocessor`
+operator domain.
+
+These are provider-risk hints, not failures. The measured int8 WASM run below
+proves this exact composition works there; WebGPU still requires its own exact
+artifact/provider run before promotion.
+
 ## Library run
 
 Command:

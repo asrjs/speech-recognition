@@ -8,15 +8,18 @@
  */
 
 import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { createReadStream } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { inspectWhisperArtifactContract } from './whisper-artifact-contract.mjs';
 import { inspectXAsrArtifactContract } from './x-asr-artifact-contract.mjs';
 
 const IGNORED_AUDIT_DIRECTORIES = new Set(['.git', '.hg', '.svn', 'node_modules']);
+const execFileAsync = promisify(execFile);
 
 export function shouldSkipAuditDirectory(name) {
   return IGNORED_AUDIT_DIRECTORIES.has(String(name).toLowerCase());
@@ -36,6 +39,8 @@ function parseArgs(argv) {
     requireCausalAlignment: false,
     requireMergedCrossAttention: false,
     xAsrContract: false,
+    operatorInventory: false,
+    requireOperatorInventory: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -58,6 +63,11 @@ function parseArgs(argv) {
       options.requireMergedCrossAttention = true;
     } else if (arg === '--x-asr-contract') {
       options.xAsrContract = true;
+    } else if (arg === '--operator-inventory') {
+      options.operatorInventory = true;
+    } else if (arg === '--require-operator-inventory') {
+      options.operatorInventory = true;
+      options.requireOperatorInventory = true;
     } else if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
@@ -86,6 +96,8 @@ function printUsage() {
       '  --require-causal-alignment  Fail unless split decoder_align is explicitly causal',
       '  --require-merged-cross-attention  Fail unless every merged decoder exports cross_attentions.*',
       '  --x-asr-contract         Validate the four-variant X-ASR streaming artifact layout',
+      '  --operator-inventory     Add opset/operator counts using the local Python onnx module',
+      '  --require-operator-inventory  Fail if the Python operator inventory cannot run',
     ].join('\n'),
   );
 }
@@ -210,6 +222,22 @@ async function auditGraph(ort, modelDir, graphPath) {
   }
 }
 
+async function inspectOperators(graphPath) {
+  const helperPath = fileURLToPath(new URL('./audit-onnx-operators.py', import.meta.url));
+  try {
+    const { stdout } = await execFileAsync('python', [helperPath, graphPath], {
+      maxBuffer: 4 * 1024 * 1024,
+      windowsHide: true,
+    });
+    return JSON.parse(stdout);
+  } catch (error) {
+    return {
+      status: 'unavailable',
+      error: String(error?.stderr || error?.message || error),
+    };
+  }
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const modelDir = path.resolve(options.modelDir);
@@ -248,8 +276,16 @@ async function main() {
     });
   }
 
+  const operatorInventory = options.operatorInventory
+    ? await Promise.all(onnxFiles.map((filePath) => inspectOperators(filePath)))
+    : [];
   const graphs = ort
-    ? await Promise.all(onnxFiles.map((filePath) => auditGraph(ort, modelDir, filePath)))
+    ? await Promise.all(
+        onnxFiles.map(async (filePath, index) => ({
+          ...(await auditGraph(ort, modelDir, filePath)),
+          ...(options.operatorInventory ? { operator_inventory: operatorInventory[index] } : {}),
+        })),
+      )
     : onnxFiles.map((filePath) => ({
         path: relativeArtifactPath(modelDir, filePath),
         loaded: false,
@@ -257,6 +293,9 @@ async function main() {
         load_ms: 0,
         external_data_candidates: [],
         error: 'onnxruntime-node import failed: ' + ortImportError,
+        ...(options.operatorInventory
+          ? { operator_inventory: operatorInventory[onnxFiles.indexOf(filePath)] }
+          : {}),
       }));
 
   const failedGraphs = graphs.filter((graph) => !graph.loaded);
@@ -271,6 +310,9 @@ async function main() {
     ? inspectXAsrArtifactContract({ modelDir, files, graphs })
     : undefined;
   const contractFailures = [];
+  const operatorInventoryFailures = options.requireOperatorInventory
+    ? graphs.filter((graph) => graph.operator_inventory?.status !== 'ok')
+    : [];
   if (
     options.requireCausalAlignment &&
     !whisperContract?.alignment.causal_self_attention_verified
@@ -302,6 +344,13 @@ async function main() {
       ok: failedGraphs.length === 0,
       ...(options.whisperContract ? { whisper_contract_ok: contractFailures.length === 0 } : {}),
       ...(xAsrContract ? { x_asr_contract_ok: xAsrContract.ok } : {}),
+      ...(options.operatorInventory
+        ? {
+            operator_inventory_ok: graphs.every(
+              (graph) => graph.operator_inventory?.status === 'ok',
+            ),
+          }
+        : {}),
     },
   };
 
@@ -329,6 +378,14 @@ async function main() {
   if (xAsrContract && !xAsrContract.ok) {
     for (const failure of xAsrContract.failures)
       console.error('X-ASR contract failure: ' + failure);
+    process.exitCode = 1;
+  }
+  if (operatorInventoryFailures.length > 0) {
+    for (const graph of operatorInventoryFailures) {
+      console.error(
+        'Operator inventory failure for ' + graph.path + ': ' + graph.operator_inventory?.error,
+      );
+    }
     process.exitCode = 1;
   }
 }

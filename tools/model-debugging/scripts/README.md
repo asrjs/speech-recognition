@@ -110,6 +110,11 @@ remain separate quality evidence.
 - It records graph input/output names plus ORT-discovered dtypes/shapes, and
   checks the minimum encoder/decoder/joiner boundary. It fails by default when
   a graph cannot be loaded.
+- Pass `--operator-inventory` to add ONNX IR/opset versions, operator/domain
+  counts, and conservative provider-risk hints from the local Python `onnx`
+  module. Use `--require-operator-inventory` when the audit environment must
+  have that parser; otherwise an unavailable parser is reported without
+  invalidating the native graph audit.
 - Pass `--whisper-contract` to classify splitgraph causal alignment and merged
   `cross_attentions.*` capability. Use `--require-causal-alignment` or
   `--require-merged-cross-attention` as publish gates; legacy artifacts report
