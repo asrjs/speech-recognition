@@ -73,9 +73,9 @@ The artifact-gated `src/models/sensevoice` family now includes the configured
 80-bin frontend, prompt mapping, SentencePiece vocabulary loading, direct and
 Hugging Face ONNX sources, WASM/WebGPU ORT execution, single-item canonical
 transcription, and a true padded `transcribeBatch` graph path. The batch path
-uses one graph invocation and trims each item with `logprobs_lens`; it is not
-yet exposed as a generic `SpeechSession` method because the package-wide batch
-contract still needs to be designed around mixed model families.
+uses one graph invocation and trims each item with `logprobs_lens`. It is
+exposed on the family-specific `SenseVoiceBatchSession`; the package-wide
+generic batch contract still needs to be designed around mixed model families.
 
 The contract layer and runtime registration are covered by local tests. No
 real SenseVoice artifact is present in the approved local model directories,
