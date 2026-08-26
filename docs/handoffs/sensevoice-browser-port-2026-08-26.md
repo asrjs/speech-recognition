@@ -43,8 +43,9 @@ The `onnx-asr` conversion exposes:
 
 The graph folds the FunASR low-frame-rate stack (`lfr_m=7`, `lfr_n=6`),
 CMVN, and four prompt frames into the ONNX graph. The JavaScript processor must
-only reproduce the 16 kHz Kaldi fbank: 400-sample window, 160-sample hop,
-512-point FFT, 80 bins, dither 0, preemphasis 0.97, and `snip_edges` behavior.
+only reproduce the 16 kHz Wespeaker/Kaldi fbank: 400-sample Hamming window,
+160-sample hop, 512-point FFT, 80 bins, dither 0, per-frame DC removal,
+per-frame preemphasis 0.97, and `snip_edges` behavior.
 The graph pads each item with its last valid frame, so mixed-length batch
 results must be compared against equivalent single-item runs.
 
@@ -80,6 +81,12 @@ generic batch contract still needs to be designed around mixed model families.
 The contract layer and runtime registration are covered by local tests. No
 real SenseVoice artifact is present in the approved local model directories,
 so no quality or browser parity result is claimed yet.
+
+The first processor draft used the existing MedASR Hann/global-preemphasis
+defaults. That was rejected after comparison with the onnx-asr
+`KaldiPreprocessorNumpy(name="wespeaker")` source; SenseVoice now selects the
+Hamming, frame-local DC/preemphasis path explicitly while existing MedASR
+callers retain their defaults.
 
 ## Verification gate
 

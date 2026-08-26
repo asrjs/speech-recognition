@@ -18,6 +18,9 @@ export class SenseVoiceJsPreprocessor {
     slaneyNorm: false,
     logZeroGuard: 1e-5,
     normalizeFeatures: false,
+    windowKind: 'hamming',
+    removeDcOffset: true,
+    framePreemphasis: true,
   });
 
   process(audio: Float32Array): SenseVoiceFeatureBatch {

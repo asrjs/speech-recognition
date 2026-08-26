@@ -9,6 +9,7 @@ const LOG_ZERO_GUARD = 2 ** -24;
 const N_FREQ_BINS = (N_FFT >> 1) + 1;
 
 type MelScaleKind = 'slaney' | 'kaldi';
+type WindowKind = 'hann' | 'hamming';
 
 interface MelTwiddles {
   readonly cos: Float64Array;
@@ -24,11 +25,17 @@ export interface MedAsrJsPreprocessorOptions {
   readonly slaneyNorm?: boolean;
   readonly logZeroGuard?: number;
   readonly normalizeFeatures?: boolean;
+  /** Window used for each frame. Existing callers retain the Hann default. */
+  readonly windowKind?: WindowKind;
+  /** Remove each frame's DC offset before optional frame-local preemphasis. */
+  readonly removeDcOffset?: boolean;
+  /** Apply preemphasis independently inside every frame (Kaldi/Wespeaker). */
+  readonly framePreemphasis?: boolean;
 }
 
 const MEL_FILTERBANK_CACHE = new Map<string, Float32Array>();
 const FFT_TWIDDLE_CACHE = new Map<number, MelTwiddles>();
-const HANN_WINDOW_CACHE = new Map<'center' | 'left', Float64Array>();
+const WINDOW_CACHE = new Map<string, Float64Array>();
 
 const F_SP = 200 / 3;
 const MIN_LOG_HZ = 1000;
@@ -123,26 +130,27 @@ function getCachedMelFilterbank(
   return created;
 }
 
-function createPaddedHannWindow(centerWindow: boolean): Float64Array {
+function createPaddedWindow(centerWindow: boolean, windowKind: WindowKind): Float64Array {
   const window = new Float64Array(N_FFT);
   const leftPad = centerWindow ? (N_FFT - WIN_LENGTH) >> 1 : 0;
 
   for (let index = 0; index < WIN_LENGTH; index += 1) {
-    window[leftPad + index] = 0.5 * (1 - Math.cos((2 * Math.PI * index) / (WIN_LENGTH - 1)));
+    const cosine = Math.cos((2 * Math.PI * index) / (WIN_LENGTH - 1));
+    window[leftPad + index] = windowKind === 'hamming' ? 0.54 - 0.46 * cosine : 0.5 * (1 - cosine);
   }
 
   return window;
 }
 
-function getCachedPaddedHannWindow(centerWindow: boolean): Float64Array {
-  const key: 'center' | 'left' = centerWindow ? 'center' : 'left';
-  const cached = HANN_WINDOW_CACHE.get(key);
+function getCachedWindow(centerWindow: boolean, windowKind: WindowKind): Float64Array {
+  const key = `${centerWindow ? 'center' : 'left'}:${windowKind}`;
+  const cached = WINDOW_CACHE.get(key);
   if (cached) {
     return cached;
   }
 
-  const created = createPaddedHannWindow(centerWindow);
-  HANN_WINDOW_CACHE.set(key, created);
+  const created = createPaddedWindow(centerWindow, windowKind);
+  WINDOW_CACHE.set(key, created);
   return created;
 }
 
@@ -262,6 +270,9 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly slaneyNorm: boolean;
   private readonly logZeroGuard: number;
   private readonly normalizeFeatures: boolean;
+  private readonly windowKind: WindowKind;
+  private readonly removeDcOffset: boolean;
+  private readonly framePreemphasis: boolean;
   private readonly melFilterbank: Float32Array;
   private readonly hannWindow: Float64Array;
   private readonly fftTwiddles: MelTwiddles;
@@ -281,9 +292,12 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     this.slaneyNorm = options.slaneyNorm ?? false;
     this.logZeroGuard = options.logZeroGuard ?? LOG_ZERO_GUARD;
     this.normalizeFeatures = options.normalizeFeatures ?? false;
+    this.windowKind = options.windowKind ?? 'hann';
+    this.removeDcOffset = options.removeDcOffset ?? false;
+    this.framePreemphasis = options.framePreemphasis ?? false;
 
     this.melFilterbank = getCachedMelFilterbank(this.nMels, this.melScale, this.slaneyNorm);
-    this.hannWindow = getCachedPaddedHannWindow(this.center);
+    this.hannWindow = getCachedWindow(this.center, this.windowKind);
     this.fftTwiddles = precomputeFftTwiddles(N_FFT);
 
     this.filterbankBounds = new Int32Array(this.nMels * 2);
@@ -341,7 +355,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     }
     const emphasized = this.emphasizedBuffer;
     emphasized[0] = audio[0] ?? 0;
-    if (this.preemphasis > 0) {
+    if (this.preemphasis > 0 && !this.framePreemphasis) {
       for (let index = 1; index < sampleCount; index += 1) {
         emphasized[index] = (audio[index] ?? 0) - this.preemphasis * (audio[index - 1] ?? 0);
       }
@@ -378,9 +392,23 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
 
     for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
       const frameOffset = frameIndex * HOP_LENGTH;
+      let frameMean = 0;
+      if (this.removeDcOffset) {
+        for (let fftIndex = 0; fftIndex < WIN_LENGTH; fftIndex += 1) {
+          const sourceIndex = frameOffset + fftIndex;
+          frameMean += sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
+        }
+        frameMean /= WIN_LENGTH;
+      }
+      let previousSample = 0;
       for (let fftIndex = 0; fftIndex < N_FFT; fftIndex += 1) {
         const sourceIndex = frameOffset + fftIndex;
-        const sample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
+        let sample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
+        if (fftIndex < WIN_LENGTH && this.removeDcOffset) sample -= frameMean;
+        if (fftIndex < WIN_LENGTH && this.framePreemphasis && this.preemphasis > 0) {
+          sample -= this.preemphasis * (fftIndex === 0 ? sample : previousSample);
+          previousSample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) - frameMean : -frameMean;
+        }
         this.fftReal[fftIndex] = sample * (this.hannWindow[fftIndex] ?? 0);
         this.fftImaginary[fftIndex] = 0;
       }
