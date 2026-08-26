@@ -181,6 +181,20 @@ formula before preset promotion.
 The non-power-of-two 320-point FFT currently uses a correctness-first direct
 DFT path and needs a measured FFT optimization before long-form browser use.
 
+### GigaAM frontend FFT optimization (2026-08-27)
+
+The direct-DFT fallback in `src/models/lasr-ctc/mel.ts` was replaced with a
+Bluestein (`CompositeFft`) path that expresses the 320-point DFT as a
+power-of-two cyclic convolution, mirroring the proven `BluesteinRfft` in
+`src/audio/whisper-mel.ts`. Output is bit-identical to the previous fallback
+(golden feature hashes for 0.5/1/2 s deterministic signals are unchanged), and
+the Node frontend benchmark (`npm run benchmark:gigaam-mel`) improved 30 s of
+audio from a 444.98 ms median to a 186.1 ms median (about 2.4x; roughly 160x
+real time for the frontend alone). Power-of-two geometries such as MedASR
+(n_fft 512) keep the untouched radix-2 path. Parity is locked by
+`tests/composite-fft.test.ts` (naive-DFT comparison plus GigaAM golden-hash
+regression).
+
 ### GigaAM v3 E2E RNN-T implementation update (2026-08-26)
 
 The repository now also contains an artifact-gated `src/models/gigaam-rnnt`

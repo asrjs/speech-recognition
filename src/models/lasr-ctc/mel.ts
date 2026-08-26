@@ -42,7 +42,7 @@ export interface MedAsrJsPreprocessorOptions {
 const MEL_FILTERBANK_CACHE = new Map<string, Float32Array>();
 const FFT_TWIDDLE_CACHE = new Map<number, MelTwiddles>();
 const WINDOW_CACHE = new Map<string, Float64Array>();
-const DIRECT_DFT_CACHE = new Map<number, { readonly cos: Float64Array; readonly sin: Float64Array }>();
+const INVERSE_FFT_TWIDDLE_CACHE = new Map<number, MelTwiddles>();
 
 const F_SP = 200 / 3;
 const MIN_LOG_HZ = 1000;
@@ -192,26 +192,14 @@ function getCachedWindow(centerWindow: boolean, windowKind: WindowKind, nFft: nu
   return created;
 }
 
-function precomputeFftTwiddles(size: number): MelTwiddles {
-  const cached = FFT_TWIDDLE_CACHE.get(size);
-  if (cached) {
-    return cached;
+function assertPowerOfTwo(size: number): void {
+  if (!Number.isInteger(size) || size < 1 || (size & (size - 1)) !== 0) {
+    throw new RangeError(`Radix-2 FFT requires a power-of-two size. Received ${size}.`);
   }
+}
 
+function createBitReverseTable(size: number): Uint32Array {
   const bits = Math.log2(size);
-  if (1 << bits !== size) {
-    return { cos: new Float64Array(0), sin: new Float64Array(0), bitReverse: new Uint32Array(0) };
-  }
-
-  const half = size >> 1;
-  const cos = new Float64Array(half);
-  const sin = new Float64Array(half);
-  for (let index = 0; index < half; index += 1) {
-    const angle = (-2 * Math.PI * index) / size;
-    cos[index] = Math.cos(angle);
-    sin[index] = Math.sin(angle);
-  }
-
   const bitReverse = new Uint32Array(size);
   for (let index = 0; index < size; index += 1) {
     let value = index;
@@ -222,28 +210,43 @@ function precomputeFftTwiddles(size: number): MelTwiddles {
     }
     bitReverse[index] = reversed;
   }
+  return bitReverse;
+}
 
-  const twiddles = { cos, sin, bitReverse };
+function createFftTwiddles(size: number, inverse: boolean): MelTwiddles {
+  const half = size >> 1;
+  const cos = new Float64Array(half);
+  const sin = new Float64Array(half);
+  for (let index = 0; index < half; index += 1) {
+    const angle = ((inverse ? 2 : -2) * Math.PI * index) / size;
+    cos[index] = Math.cos(angle);
+    sin[index] = Math.sin(angle);
+  }
+  return { cos, sin, bitReverse: createBitReverseTable(size) };
+}
+
+function precomputeFftTwiddles(size: number): MelTwiddles {
+  const cached = FFT_TWIDDLE_CACHE.get(size);
+  if (cached) {
+    return cached;
+  }
+
+  assertPowerOfTwo(size);
+  const twiddles = createFftTwiddles(size, false);
   FFT_TWIDDLE_CACHE.set(size, twiddles);
   return twiddles;
 }
 
-function getDirectDftTwiddles(size: number): { readonly cos: Float64Array; readonly sin: Float64Array } {
-  const cached = DIRECT_DFT_CACHE.get(size);
-  if (cached) return cached;
-  const bins = (size >> 1) + 1;
-  const cos = new Float64Array(bins * size);
-  const sin = new Float64Array(bins * size);
-  for (let bin = 0; bin < bins; bin += 1) {
-    for (let sample = 0; sample < size; sample += 1) {
-      const angle = (-2 * Math.PI * bin * sample) / size;
-      cos[bin * size + sample] = Math.cos(angle);
-      sin[bin * size + sample] = Math.sin(angle);
-    }
+function precomputeInverseFftTwiddles(size: number): MelTwiddles {
+  const cached = INVERSE_FFT_TWIDDLE_CACHE.get(size);
+  if (cached) {
+    return cached;
   }
-  const result = { cos, sin };
-  DIRECT_DFT_CACHE.set(size, result);
-  return result;
+
+  assertPowerOfTwo(size);
+  const twiddles = createFftTwiddles(size, true);
+  INVERSE_FFT_TWIDDLE_CACHE.set(size, twiddles);
+  return twiddles;
 }
 
 function fft(
@@ -252,32 +255,7 @@ function fft(
   size: number,
   twiddles: MelTwiddles,
 ): void {
-  if ((size & (size - 1)) !== 0) {
-    // Exact fallback for model geometries such as GigaAM's n_fft=320. Only
-    // the non-redundant real-spectrum bins are needed by the mel filterbank.
-    const direct = getDirectDftTwiddles(size);
-    const outputReal = new Float64Array(size);
-    const outputImaginary = new Float64Array(size);
-    const bins = (size >> 1) + 1;
-    for (let bin = 0; bin < bins; bin += 1) {
-      const offset = bin * size;
-      let sumReal = 0;
-      let sumImaginary = 0;
-      for (let sample = 0; sample < size; sample += 1) {
-        const sampleReal = real[sample] ?? 0;
-        const sampleImaginary = imaginary[sample] ?? 0;
-        const cosine = direct.cos[offset + sample] ?? 0;
-        const sine = direct.sin[offset + sample] ?? 0;
-        sumReal += sampleReal * cosine - sampleImaginary * sine;
-        sumImaginary += sampleReal * sine + sampleImaginary * cosine;
-      }
-      outputReal[bin] = sumReal;
-      outputImaginary[bin] = sumImaginary;
-    }
-    real.set(outputReal);
-    imaginary.set(outputImaginary);
-    return;
-  }
+  assertPowerOfTwo(size);
 
   for (let index = 0; index < size; index += 1) {
     const swappedIndex = twiddles.bitReverse[index] ?? index;
@@ -316,6 +294,106 @@ function fft(
         real[second] = uReal - tReal;
         imaginary[second] = uImaginary - tImaginary;
       }
+    }
+  }
+}
+
+function nextPowerOfTwo(size: number): number {
+  let power = 1;
+  while (power < size) {
+    power <<= 1;
+  }
+  return power;
+}
+
+/**
+ * Bluestein (chirp-z) FFT for arbitrary, non-power-of-two transform sizes.
+ *
+ * The radix-2 loop above only accepts power-of-two sizes, while model
+ * geometries such as GigaAM's n_fft=320 do not. A naive O(N^2) DFT is exact
+ * but becomes the frontend bottleneck for long-form audio, so this class
+ * expresses the N-point DFT as a cyclic convolution of length
+ * nextPowerOfTwo(2N - 1) and reuses the fast radix-2 kernel. The result is a
+ * full N-bin complex spectrum, matching the previous direct-DFT fallback.
+ */
+export class CompositeFft {
+  private readonly fftSize: number;
+  private readonly forwardTwiddles: MelTwiddles;
+  private readonly inverseTwiddles: MelTwiddles;
+  private readonly chirpCos: Float64Array;
+  private readonly chirpSin: Float64Array;
+  private readonly kernelReal: Float64Array;
+  private readonly kernelImaginary: Float64Array;
+  private readonly workReal: Float64Array;
+  private readonly workImaginary: Float64Array;
+
+  constructor(readonly size: number) {
+    this.fftSize = nextPowerOfTwo(size * 2 - 1);
+    this.forwardTwiddles = precomputeFftTwiddles(this.fftSize);
+    this.inverseTwiddles = precomputeInverseFftTwiddles(this.fftSize);
+    this.chirpCos = new Float64Array(size);
+    this.chirpSin = new Float64Array(size);
+    this.kernelReal = new Float64Array(this.fftSize);
+    this.kernelImaginary = new Float64Array(this.fftSize);
+    this.workReal = new Float64Array(this.fftSize);
+    this.workImaginary = new Float64Array(this.fftSize);
+
+    this.kernelReal[0] = 1;
+    for (let index = 0; index < size; index += 1) {
+      const angle = (Math.PI * index * index) / size;
+      const cosine = Math.cos(angle);
+      const sine = Math.sin(angle);
+      this.chirpCos[index] = cosine;
+      this.chirpSin[index] = sine;
+      if (index > 0) {
+        this.kernelReal[index] = cosine;
+        this.kernelImaginary[index] = sine;
+        this.kernelReal[this.fftSize - index] = cosine;
+        this.kernelImaginary[this.fftSize - index] = sine;
+      }
+    }
+
+    fft(this.kernelReal, this.kernelImaginary, this.fftSize, this.forwardTwiddles);
+  }
+
+  /** In-place N-point complex DFT over the first `size` entries of the buffers. */
+  transform(real: Float64Array, imaginary: Float64Array): void {
+    this.workReal.fill(0);
+    this.workImaginary.fill(0);
+
+    // Multiply the input by the chirp exp(+i*pi*n^2/N) and zero-pad to fftSize.
+    for (let index = 0; index < this.size; index += 1) {
+      const realValue = real[index] ?? 0;
+      const imaginaryValue = imaginary[index] ?? 0;
+      const cosine = this.chirpCos[index] ?? 0;
+      const sine = this.chirpSin[index] ?? 0;
+      this.workReal[index] = realValue * cosine + imaginaryValue * sine;
+      this.workImaginary[index] = imaginaryValue * cosine - realValue * sine;
+    }
+
+    fft(this.workReal, this.workImaginary, this.fftSize, this.forwardTwiddles);
+
+    for (let index = 0; index < this.fftSize; index += 1) {
+      const leftReal = this.workReal[index] ?? 0;
+      const leftImaginary = this.workImaginary[index] ?? 0;
+      const rightReal = this.kernelReal[index] ?? 0;
+      const rightImaginary = this.kernelImaginary[index] ?? 0;
+      this.workReal[index] = leftReal * rightReal - leftImaginary * rightImaginary;
+      this.workImaginary[index] = leftReal * rightImaginary + leftImaginary * rightReal;
+    }
+
+    fft(this.workReal, this.workImaginary, this.fftSize, this.inverseTwiddles);
+
+    // The inverse radix-2 pass is unnormalized, so divide by fftSize while
+    // demodulating with the conjugate chirp exp(-i*pi*k^2/N).
+    const scale = 1 / this.fftSize;
+    for (let bin = 0; bin < this.size; bin += 1) {
+      const convolutionReal = (this.workReal[bin] ?? 0) * scale;
+      const convolutionImaginary = (this.workImaginary[bin] ?? 0) * scale;
+      const cosine = this.chirpCos[bin] ?? 0;
+      const sine = this.chirpSin[bin] ?? 0;
+      real[bin] = convolutionReal * cosine + convolutionImaginary * sine;
+      imaginary[bin] = convolutionImaginary * cosine - convolutionReal * sine;
     }
   }
 }
@@ -364,7 +442,8 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly melHighHz?: number;
   private readonly melFilterbank: Float32Array;
   private readonly hannWindow: Float64Array;
-  private readonly fftTwiddles: MelTwiddles;
+  private readonly fftTwiddles: MelTwiddles | null;
+  private readonly compositeFft: CompositeFft | null;
   private readonly fftReal: Float64Array;
   private readonly fftImaginary: Float64Array;
   private readonly powerBuffer: Float32Array;
@@ -409,7 +488,9 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
       this.melHighHz,
     );
     this.hannWindow = getCachedWindow(this.center, this.windowKind, this.nFft, this.winLength);
-    this.fftTwiddles = precomputeFftTwiddles(this.nFft);
+    const isPowerOfTwo = (this.nFft & (this.nFft - 1)) === 0;
+    this.fftTwiddles = isPowerOfTwo ? precomputeFftTwiddles(this.nFft) : null;
+    this.compositeFft = isPowerOfTwo ? null : new CompositeFft(this.nFft);
     this.fftReal = new Float64Array(this.nFft);
     this.fftImaginary = new Float64Array(this.nFft);
     this.powerBuffer = new Float32Array(this.nFreqBins);
@@ -527,7 +608,11 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
         this.fftImaginary[fftIndex] = 0;
       }
 
-      fft(this.fftReal, this.fftImaginary, this.nFft, this.fftTwiddles);
+      if (this.compositeFft) {
+        this.compositeFft.transform(this.fftReal, this.fftImaginary);
+      } else {
+        fft(this.fftReal, this.fftImaginary, this.nFft, this.fftTwiddles!);
+      }
 
       for (let frequencyIndex = 0; frequencyIndex < this.nFreqBins; frequencyIndex += 1) {
         const realValue = this.fftReal[frequencyIndex] ?? 0;

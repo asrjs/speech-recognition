@@ -151,6 +151,7 @@
     "test:offline-output-smoke": "npm run build && node tests/smoke/offline-output-smoke.mjs",
     "test:fixture-smoke": "npm run build && node tests/smoke/transcribe-fixture.mjs",
     "benchmark:whisper-mel": "npm run build && node tests/smoke/benchmark-whisper-mel.mjs",
+    "benchmark:gigaam-mel": "npm run build && node tests/smoke/benchmark-gigaam-mel.mjs",
     "benchmark:whisper-beam": "vitest run tests/whisper-beam-search-benchmark.test.ts",
     "test:whisper-beam-reference": "npm run build && node tests/smoke/whisper-beam-reference.mjs",
     "docs:clean": "node -e \"require('fs').rmSync('.typedoc-site', { recursive: true, force: true })\"",
