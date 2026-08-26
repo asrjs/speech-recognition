@@ -125,4 +125,22 @@ describe('pluggable pipeline composition', () => {
       runPipelineStages(createPipelineContext({ signal }), [first, second]),
     ).rejects.toBeInstanceOf(PipelineAbortedError);
   });
+
+  it('does not publish a stage result when the signal aborts during that stage', async () => {
+    const signal = { aborted: false };
+    const stage: PipelineStage = {
+      id: 'decode',
+      run() {
+        signal.aborted = true;
+        return { transcript: transcript('discarded') };
+      },
+    };
+
+    await expect(
+      runPipelineStages(createPipelineContext({ signal }), [stage]),
+    ).rejects.toMatchObject({
+      constructor: PipelineAbortedError,
+      stageId: 'decode',
+    });
+  });
 });

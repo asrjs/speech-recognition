@@ -96,6 +96,7 @@ export async function runPipelineStages<
       throw new PipelineStageError(stage.id, error);
     }
 
+    throwIfAborted(context.signal, stage.id);
     context = mergePipelineStageResult(context, stage.id, stageResult);
   }
 

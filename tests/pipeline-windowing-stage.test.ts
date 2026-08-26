@@ -1,6 +1,7 @@
 import {
   createPipelineContext,
   createWindowingStage,
+  PipelineAbortedError,
   PipelineStageError,
   runPipelineStages,
   type ModelInferenceLimits,
@@ -114,6 +115,33 @@ describe('windowing pipeline stage', () => {
     );
 
     expect(seenSignal).toBe(signal);
+  });
+
+  it('stops before merging another window when transcription is aborted', async () => {
+    const audio = new Float32Array(4 * 16000);
+    const signal = { aborted: false };
+    let calls = 0;
+
+    await expect(
+      runPipelineStages(
+        createPipelineContext({ input: audio, options: { detail: 'words' }, signal }),
+        [
+          createWindowingStage({
+            inference,
+            async transcribeWindow() {
+              calls += 1;
+              signal.aborted = true;
+              return transcript([word(0, 'discarded', 0, 0.2)]);
+            },
+          }),
+        ],
+      ),
+    ).rejects.toMatchObject({
+      constructor: PipelineAbortedError,
+      stageId: 'windowing',
+    });
+
+    expect(calls).toBe(1);
   });
 
   it('throws a useful stage error when input is missing', async () => {

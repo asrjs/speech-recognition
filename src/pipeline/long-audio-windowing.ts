@@ -1,5 +1,7 @@
 import { PcmAudioBuffer, normalizePcmInput } from '../audio/index.js';
+import { PipelineAbortedError } from './composition.js';
 import type {
+  AbortSignalLike,
   AudioInputLike,
   BaseTranscriptionOptions,
   ModelInferenceLimits,
@@ -21,6 +23,12 @@ const CURSOR_MIN_ADVANCE_SECONDS = 1;
 const CURSOR_GAP_THRESHOLD_SECONDS = 0.2;
 const CURSOR_SNAP_WINDOW_SECONDS = 0.5;
 const SEGMENT_DEDUP_TOLERANCE_SECONDS = 0.15;
+
+function throwIfAborted(signal: AbortSignalLike | null | undefined): void {
+  if (signal?.aborted) {
+    throw new PipelineAbortedError('windowing');
+  }
+}
 
 export interface WindowedTranscriptionContext<TOptions extends BaseTranscriptionOptions> {
   readonly input: AudioInputLike;
@@ -209,9 +217,12 @@ export function planWindowedTranscription<TOptions extends BaseTranscriptionOpti
 export async function transcribeWithWindowing<TOptions extends BaseTranscriptionOptions>(
   context: WindowedTranscriptionContext<TOptions>,
 ): Promise<TranscriptResult> {
+  throwIfAborted(context.options?.signal);
   const decision = planWindowedTranscription(context.input, context.options, context.inference);
   if (!decision.shouldWindow) {
-    return context.transcribeWindow(decision.audio, decision.options);
+    const result = await context.transcribeWindow(decision.audio, decision.options);
+    throwIfAborted(context.options?.signal);
+    return result;
   }
 
   const { audio, policy } = decision;
@@ -235,6 +246,7 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
     windowIndex < maxWindows && startSeconds < audio.durationSeconds - EPSILON_SECONDS;
     windowIndex += 1
   ) {
+    throwIfAborted(context.options?.signal);
     const endSeconds = Math.min(audio.durationSeconds, startSeconds + policy.windowDurationSec);
     const startFrame = Math.max(0, Math.min(audio.numberOfFrames - 1, Math.floor(startSeconds * audio.sampleRate)));
     const endFrame = Math.max(startFrame + 1, Math.min(audio.numberOfFrames, Math.ceil(endSeconds * audio.sampleRate)));
@@ -247,6 +259,7 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
       }),
       startSeconds,
     );
+    throwIfAborted(context.options?.signal);
 
     addWindowMetrics(accumulator, windowResult.meta.metrics);
     warnings = [...warnings, ...windowResult.warnings];
