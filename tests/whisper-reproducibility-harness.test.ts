@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as ort from 'onnxruntime-node';
+import type * as OrtNode from 'onnxruntime-node';
 import { parseWhisperManifest } from '../src/models/whisper-seq2seq/manifest.js';
 import { parseWhisperGenerationConfig } from '../src/models/whisper-seq2seq/generation-config.js';
 import { WhisperTokenizer } from '../src/models/whisper-seq2seq/tokenizer.js';
@@ -16,6 +16,18 @@ function argmax(arr: Float32Array): number {
     if ((arr[i] ?? -Infinity) > maxVal) { maxVal = arr[i]!; maxIdx = i; }
   }
   return maxIdx;
+}
+
+/**
+ * onnxruntime-node resolves native binaries at import time, so this harness
+ * loads it lazily. The artifact-gated tests below only reach it after the
+ * WHISPER_REFERENCE_JSON gate passes, which keeps plain `npm test` runnable
+ * in environments installed with ONNXRUNTIME_NODE_INSTALL=skip.
+ */
+let ort: typeof OrtNode;
+async function ensureOrt(): Promise<typeof OrtNode> {
+  ort ??= await import('onnxruntime-node');
+  return ort;
 }
 
 /**
@@ -348,6 +360,7 @@ async function createSessions(ref: ReferenceJson) {
   expect(manifest.modelConfig.decoderLayers).toBe(ref.model.decoder_layers);
   expect(manifest.modelConfig.decoderAttentionHeads).toBe(ref.model.decoder_attention_heads);
 
+  await ensureOrt();
   const sessionOpts = { graphOptimizationLevel: 'all' as const, executionMode: 'parallel' as const };
   const encSess = await ort.InferenceSession.create(encoderFile('encoder_model.onnx'), sessionOpts);
   const initSess = await ort.InferenceSession.create(decoderFile('decoder_init.onnx'), sessionOpts);
@@ -364,8 +377,8 @@ async function createSessions(ref: ReferenceJson) {
 }
 
 function readWhisperGraphDimensions(
-  encSess: ort.InferenceSession,
-  initSess: ort.InferenceSession,
+  encSess: OrtNode.InferenceSession,
+  initSess: OrtNode.InferenceSession,
 ): WhisperGraphDimensions {
   const encoderInput = encSess.inputMetadata.find((entry) => entry.name === 'input_features');
   const encoderOutput = encSess.outputMetadata.find((entry) => entry.name.startsWith('last_hidden_state'));
@@ -400,9 +413,9 @@ function requireStaticDimension(
 }
 
 async function runDecodeLoop(params: {
-  encSess: ort.InferenceSession;
-  initSess: ort.InferenceSession;
-  stepSess: ort.InferenceSession;
+  encSess: OrtNode.InferenceSession;
+  initSess: OrtNode.InferenceSession;
+  stepSess: OrtNode.InferenceSession;
   tokenizer: WhisperTokenizer;
   melData: Float32Array;
   encoderInputType: 'float16' | 'float32';
@@ -429,7 +442,7 @@ async function runDecodeLoop(params: {
   const encoderOutputs = await encSess.run({ input_features: melTensor });
   const encoderOutputName = Object.keys(encoderOutputs).find((name) => name.startsWith('last_hidden_state'))
     ?? Object.keys(encoderOutputs)[0]!;
-  const encOut = encoderOutputs[encoderOutputName] as ort.Tensor;
+  const encOut = encoderOutputs[encoderOutputName] as OrtNode.Tensor;
   expect(encOut.dims).toEqual([1, encoderSequenceLength, dModel]);
 
   const eosId = tokenizer.getTokenId('<|endoftext|>') ?? 50257;
@@ -448,13 +461,13 @@ async function runDecodeLoop(params: {
     encoder_hidden_states: encOut,
   });
   const logitsKey = Object.keys(initOut).find((k) => k.includes('logits'))!;
-  const initLogits = (initOut[logitsKey] as ort.Tensor).data as Float32Array;
-  const tsVocabSize = (initOut[logitsKey] as ort.Tensor).dims[2] ?? 51865;
+  const initLogits = (initOut[logitsKey] as OrtNode.Tensor).data as Float32Array;
+  const tsVocabSize = (initOut[logitsKey] as OrtNode.Tensor).dims[2] ?? 51865;
   expect(tsVocabSize).toBe(vocabSize);
 
-  const pastKv: Record<string, ort.Tensor> = {};
+  const pastKv: Record<string, OrtNode.Tensor> = {};
   for (const [k, v] of Object.entries(initOut)) {
-    if (k.startsWith('present')) pastKv[k.replace('present.', 'past_key_values.')] = v as ort.Tensor;
+    if (k.startsWith('present')) pastKv[k.replace('present.', 'past_key_values.')] = v as OrtNode.Tensor;
   }
   expect(Object.keys(pastKv).length).toBe(4 * decoderLayers);
 
@@ -473,7 +486,7 @@ async function runDecodeLoop(params: {
     for (const [k, v] of Object.entries(pastKv)) stepFeeds[k] = v;
     const stepOut = await stepSess.run(stepFeeds);
     const sLogitsKey = Object.keys(stepOut).find((k) => k.includes('logits'))!;
-    const sLogits = (stepOut[sLogitsKey] as ort.Tensor).data as Float32Array;
+    const sLogits = (stepOut[sLogitsKey] as OrtNode.Tensor).data as Float32Array;
     processor.process(sLogits, [...promptIds, ...generated], promptIds.length);
     nextToken = argmax(sLogits);
     if (nextToken === eosId) {
@@ -482,7 +495,7 @@ async function runDecodeLoop(params: {
     }
     generated.push(nextToken);
     for (const [k, v] of Object.entries(stepOut)) {
-      if (k.startsWith('present')) pastKv[k.replace('present.', 'past_key_values.')] = v as ort.Tensor;
+      if (k.startsWith('present')) pastKv[k.replace('present.', 'past_key_values.')] = v as OrtNode.Tensor;
     }
   }
 
@@ -577,8 +590,8 @@ describe('Whisper reference mel dtype conversion', () => {
 });
 
 async function validateAlignment(
-  alignSess: ort.InferenceSession | null,
-  allTokens: number[], encOut: ort.Tensor,
+  alignSess: OrtNode.InferenceSession | null,
+  allTokens: number[], encOut: OrtNode.Tensor,
   generated: number[], ref: ReferenceJson, maxSrcPos: number,
 ) {
   if (!alignSess || generated.length === 0) return;
@@ -589,7 +602,7 @@ async function validateAlignment(
     encoder_hidden_states: encOut,
   });
   const alignKey = Object.keys(alignOut)[0]!;
-  const alignment = alignOut[alignKey] as ort.Tensor;
+  const alignment = alignOut[alignKey] as OrtNode.Tensor;
 
   // dims may be a number[] or readonly number[]
   const dims = alignment.dims;

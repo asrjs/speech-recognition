@@ -24,7 +24,14 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - name: Install dependencies
+        # The pinned onnxruntime-node dev build resolves binaries from the
+        # ORT nightly NuGet feed, which has already expired that build.
+        # Library code only path-resolves the package (require.resolve), and
+        # the one native-bound test suite imports it lazily behind artifact
+        # gates, so CI skips the native download.
         run: npm ci
+        env:
+          ONNXRUNTIME_NODE_INSTALL: skip
       - name: Build
         run: npm run build
       - name: Typecheck
