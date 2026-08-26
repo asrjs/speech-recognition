@@ -84,6 +84,8 @@ export async function runPipelineStages<
 ): Promise<PipelineContext<TOptions>> {
   let context = createPipelineContext(initialContext);
 
+  // Stages run sequentially because subsequent stages depend on context updates
+  // (e.g. transcript, options, sidecars) and completed stage ordering from prior stages.
   for (const stage of stages) {
     throwIfAborted(context.signal, stage.id);
     let stageResult: PipelineStageResult<TOptions> | void;
