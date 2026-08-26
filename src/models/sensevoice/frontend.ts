@@ -21,6 +21,8 @@ export class SenseVoiceJsPreprocessor {
     windowKind: 'hamming',
     removeDcOffset: true,
     framePreemphasis: true,
+    melLowHz: 20,
+    melHighHz: -400,
   });
 
   process(audio: Float32Array): SenseVoiceFeatureBatch {

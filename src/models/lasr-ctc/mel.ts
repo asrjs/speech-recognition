@@ -31,6 +31,10 @@ export interface MedAsrJsPreprocessorOptions {
   readonly removeDcOffset?: boolean;
   /** Apply preemphasis independently inside every frame (Kaldi/Wespeaker). */
   readonly framePreemphasis?: boolean;
+  /** Kaldi mel lower edge in Hz; existing callers retain 125 Hz. */
+  readonly melLowHz?: number;
+  /** Kaldi mel upper edge in Hz; negative values are relative to Nyquist. */
+  readonly melHighHz?: number;
 }
 
 const MEL_FILTERBANK_CACHE = new Map<string, Float32Array>();
@@ -62,9 +66,17 @@ function createMelFilterbank(
   nMels: number,
   melScale: MelScaleKind,
   slaneyNorm: boolean,
+  melLowHz?: number,
+  melHighHz?: number,
 ): Float32Array {
-  const frequencyMin = melScale === 'kaldi' ? 125 : 0;
-  const frequencyMax = melScale === 'kaldi' ? 7500 : SAMPLE_RATE / 2;
+  const frequencyMin = melScale === 'kaldi' ? melLowHz ?? 125 : 0;
+  const requestedMax = melHighHz ?? 7500;
+  const frequencyMax =
+    melScale === 'kaldi'
+      ? requestedMax < 0
+        ? SAMPLE_RATE / 2 + requestedMax
+        : requestedMax
+      : SAMPLE_RATE / 2;
 
   const toMel =
     melScale === 'kaldi'
@@ -118,14 +130,16 @@ function getCachedMelFilterbank(
   nMels: number,
   melScale: MelScaleKind,
   slaneyNorm: boolean,
+  melLowHz?: number,
+  melHighHz?: number,
 ): Float32Array {
-  const cacheKey = `${nMels}:${melScale}:${slaneyNorm}`;
+  const cacheKey = `${nMels}:${melScale}:${slaneyNorm}:${melLowHz ?? ''}:${melHighHz ?? ''}`;
   const cached = MEL_FILTERBANK_CACHE.get(cacheKey);
   if (cached) {
     return cached;
   }
 
-  const created = createMelFilterbank(nMels, melScale, slaneyNorm);
+  const created = createMelFilterbank(nMels, melScale, slaneyNorm, melLowHz, melHighHz);
   MEL_FILTERBANK_CACHE.set(cacheKey, created);
   return created;
 }
@@ -273,6 +287,8 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly windowKind: WindowKind;
   private readonly removeDcOffset: boolean;
   private readonly framePreemphasis: boolean;
+  private readonly melLowHz?: number;
+  private readonly melHighHz?: number;
   private readonly melFilterbank: Float32Array;
   private readonly hannWindow: Float64Array;
   private readonly fftTwiddles: MelTwiddles;
@@ -295,8 +311,16 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     this.windowKind = options.windowKind ?? 'hann';
     this.removeDcOffset = options.removeDcOffset ?? false;
     this.framePreemphasis = options.framePreemphasis ?? false;
+    this.melLowHz = options.melLowHz;
+    this.melHighHz = options.melHighHz;
 
-    this.melFilterbank = getCachedMelFilterbank(this.nMels, this.melScale, this.slaneyNorm);
+    this.melFilterbank = getCachedMelFilterbank(
+      this.nMels,
+      this.melScale,
+      this.slaneyNorm,
+      this.melLowHz,
+      this.melHighHz,
+    );
     this.hannWindow = getCachedWindow(this.center, this.windowKind);
     this.fftTwiddles = precomputeFftTwiddles(N_FFT);
 

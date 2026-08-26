@@ -45,7 +45,8 @@ The graph folds the FunASR low-frame-rate stack (`lfr_m=7`, `lfr_n=6`),
 CMVN, and four prompt frames into the ONNX graph. The JavaScript processor must
 only reproduce the 16 kHz Wespeaker/Kaldi fbank: 400-sample Hamming window,
 160-sample hop, 512-point FFT, 80 bins, dither 0, per-frame DC removal,
-per-frame preemphasis 0.97, and `snip_edges` behavior.
+per-frame preemphasis 0.97, Kaldi mel edges `low_freq=20` and
+`high_freq=-400` (7600 Hz), and `snip_edges` behavior.
 The graph pads each item with its last valid frame, so mixed-length batch
 results must be compared against equivalent single-item runs.
 
