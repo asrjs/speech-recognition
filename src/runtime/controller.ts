@@ -155,6 +155,8 @@ export class RealtimeTranscriptionController {
   private lastWindow: StreamingWindow | null = null;
   private lastSnapshot: UtteranceTranscriptSnapshot;
   private isFinalized = false;
+  private stateGeneration = 0;
+  private operationTail: Promise<void> = Promise.resolve();
 
   constructor(options: RealtimeTranscriptionControllerOptions) {
     if (!Number.isFinite(options.sampleRate) || options.sampleRate <= 0) {
@@ -192,46 +194,32 @@ export class RealtimeTranscriptionController {
     input: AudioInputLike,
     options: RealtimeControllerPushOptions = {},
   ): Promise<RealtimeTranscriptionUpdate | null> {
-    this.assertNotFinalized();
-
-    const normalized = (
-      input instanceof Float32Array || input instanceof Float64Array
-        ? PcmAudioBuffer.fromMono(input, this.sampleRate)
-        : normalizePcmInput(input)
-    ).toMono();
-    if (normalized.sampleRate !== this.sampleRate) {
-      throw new RangeError(
-        `RealtimeTranscriptionController expected ${this.sampleRate} Hz audio, received ${normalized.sampleRate} Hz.`,
-      );
-    }
-
-    const startFrame = this.audio.getCurrentFrame();
-    this.audio.write(normalized.channels[0]!);
-    const endFrame = this.audio.getCurrentFrame();
-
-    const activity = options.vadObservation
-      ? options.vadObservation
-      : await this.detectVoiceActivity(input, startFrame, endFrame);
-    if (activity && this.activity) {
-      this.activity.appendObservation(activity);
-    }
-
-    return this.processWindow('push');
+    return this.enqueue(() => this.pushAudioInternal(input, options));
   }
 
   async flush(): Promise<RealtimeTranscriptionUpdate | null> {
-    this.assertNotFinalized();
-    return this.processWindow('flush');
+    return this.enqueue(async () => {
+      const generation = this.stateGeneration;
+      this.assertNotFinalized();
+      return this.processWindow('flush', false, generation);
+    });
   }
 
   async finalize(): Promise<RealtimeTranscriptionUpdate | null> {
-    this.assertNotFinalized();
-    const update = await this.processWindow('finalize', true);
-    this.isFinalized = true;
-    return update;
+    return this.enqueue(async () => {
+      const generation = this.stateGeneration;
+      this.assertNotFinalized();
+      const update = await this.processWindow('finalize', true, generation);
+      if (generation !== this.stateGeneration) {
+        return null;
+      }
+      this.isFinalized = true;
+      return update;
+    });
   }
 
   reset(): void {
+    this.stateGeneration += 1;
     this.audio.reset();
     this.activity?.reset();
     this.windowBuilder.reset();
@@ -256,10 +244,49 @@ export class RealtimeTranscriptionController {
     };
   }
 
+  private async pushAudioInternal(
+    input: AudioInputLike,
+    options: RealtimeControllerPushOptions,
+  ): Promise<RealtimeTranscriptionUpdate | null> {
+    const generation = this.stateGeneration;
+    this.assertNotFinalized();
+
+    const normalized = (
+      input instanceof Float32Array || input instanceof Float64Array
+        ? PcmAudioBuffer.fromMono(input, this.sampleRate)
+        : normalizePcmInput(input)
+    ).toMono();
+    if (normalized.sampleRate !== this.sampleRate) {
+      throw new RangeError(
+        `RealtimeTranscriptionController expected ${this.sampleRate} Hz audio, received ${normalized.sampleRate} Hz.`,
+      );
+    }
+
+    const startFrame = this.audio.getCurrentFrame();
+    this.audio.write(normalized.channels[0]!);
+    const endFrame = this.audio.getCurrentFrame();
+
+    const activity = options.vadObservation
+      ? options.vadObservation
+      : await this.detectVoiceActivity(input, startFrame, endFrame);
+    if (generation !== this.stateGeneration) {
+      return null;
+    }
+    if (activity && this.activity) {
+      this.activity.appendObservation(activity);
+    }
+
+    return this.processWindow('push', false, generation);
+  }
+
   private async processWindow(
     reason: 'push' | 'flush' | 'finalize',
     forceFinalizePending = false,
+    generation = this.stateGeneration,
   ): Promise<RealtimeTranscriptionUpdate | null> {
+    if (generation !== this.stateGeneration) {
+      return null;
+    }
     const window = this.windowBuilder.buildWindow();
     if (!window) {
       if (forceFinalizePending) {
@@ -288,6 +315,9 @@ export class RealtimeTranscriptionController {
       await this.transcribeCallback(request),
       request.startTimeSeconds,
     );
+    if (generation !== this.stateGeneration) {
+      return null;
+    }
     const snapshot = this.merger.process(canonical);
     this.lastSnapshot = snapshot;
     this.windowBuilder.advanceMatureCursorByTime(snapshot.matureCursorTime);
@@ -315,6 +345,15 @@ export class RealtimeTranscriptionController {
       window,
       activity: this.activity?.createSnapshot() ?? null,
     };
+  }
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.operationTail.then(operation, operation);
+    this.operationTail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   private finalizePending(

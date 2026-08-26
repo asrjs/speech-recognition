@@ -149,4 +149,59 @@ describe('realtime transcription controller', () => {
     expect(finalized?.partial.previewText).toBe('');
     expect(controller.getState().trailingSilenceSeconds).toBeCloseTo(1, 5);
   });
+
+  it('serializes concurrent audio pushes so inference observes capture order', async () => {
+    let releaseFirst!: () => void;
+    const firstFinished = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const transcribe = vi.fn(async (): Promise<TranscriptResult> => {
+      if (transcribe.mock.calls.length === 1) {
+        await firstFinished;
+      }
+      return {
+        text: 'ordered',
+        warnings: [],
+        meta: { detailLevel: 'text', isFinal: false },
+      };
+    });
+    const controller = new RealtimeTranscriptionController({
+      sampleRate: 4,
+      transcribe,
+      window: { sampleRate: 4, minInitialDurationSec: 1, minDurationSec: 1, maxDurationSec: 6 },
+    });
+
+    const first = controller.pushAudio(new Float32Array([1, 1, 1, 1]));
+    const second = controller.pushAudio(new Float32Array([1, 1, 1, 1]));
+    await vi.waitFor(() => expect(transcribe).toHaveBeenCalledOnce());
+
+    releaseFirst();
+    await Promise.all([first, second]);
+    expect(transcribe).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not publish an in-flight result after reset starts a new session', async () => {
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const transcribe = vi.fn(async (): Promise<TranscriptResult> => {
+      await pending;
+      return { text: 'stale', warnings: [], meta: { detailLevel: 'text', isFinal: false } };
+    });
+    const controller = new RealtimeTranscriptionController({
+      sampleRate: 4,
+      transcribe,
+      window: { sampleRate: 4, minInitialDurationSec: 1, minDurationSec: 1, maxDurationSec: 6 },
+    });
+
+    const inFlight = controller.pushAudio(new Float32Array([1, 1, 1, 1]));
+    await Promise.resolve();
+    controller.reset();
+    release();
+
+    expect(await inFlight).toBeNull();
+    expect(controller.getState().currentFrame).toBe(0);
+    expect(controller.getState().snapshot.fullText).toBe('');
+  });
 });
