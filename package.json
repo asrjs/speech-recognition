@@ -4,6 +4,9 @@
   "description": "Speech-first TypeScript runtime for browser and local Node.js inference",
   "type": "module",
   "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/asrjs/speech-recognition.git"
