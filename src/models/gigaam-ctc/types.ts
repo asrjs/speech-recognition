@@ -3,7 +3,8 @@ import type {
   LasrCtcModelConfig,
   LasrCtcModelOptions,
 } from '../lasr-ctc/types.js';
-import type { AssetProvider, SpeechRuntimeHooks } from '../../types/index.js';
+import type { AssetProvider, AudioInputLike, SpeechRuntimeHooks, SpeechSession } from '../../types/index.js';
+import type { LasrCtcNativeTranscript, LasrCtcTranscriptionOptions } from '../lasr-ctc/types.js';
 
 export interface GigaAmModelConfig extends Omit<
   LasrCtcModelConfig,
@@ -31,4 +32,11 @@ export interface GigaAmModelFamilyOptions {
     readonly assetProvider?: AssetProvider;
     readonly runtimeHooks?: SpeechRuntimeHooks;
   };
+}
+
+export interface GigaAmBatchSession extends SpeechSession<LasrCtcTranscriptionOptions, LasrCtcNativeTranscript> {
+  transcribeBatch(
+    audio: readonly AudioInputLike[],
+    options?: LasrCtcTranscriptionOptions,
+  ): Promise<readonly LasrCtcNativeTranscript[]>;
 }

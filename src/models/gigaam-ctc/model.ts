@@ -13,7 +13,7 @@ import type {
 } from '../../types/index.js';
 import { createModelArchitecture } from '../../types/index.js';
 import { OrtGigaAmCtcExecutor } from './executor.js';
-import type { GigaAmModelConfig, GigaAmModelFamilyOptions, GigaAmModelOptions } from './types.js';
+import type { GigaAmBatchSession, GigaAmModelConfig, GigaAmModelFamilyOptions, GigaAmModelOptions } from './types.js';
 import type { LasrCtcNativeTranscript, LasrCtcTranscriptionOptions } from '../lasr-ctc/types.js';
 
 const DEFAULT_CONFIG: GigaAmModelConfig = {
@@ -29,7 +29,7 @@ const CLASSIFICATION: ModelClassification = {
   family: 'gigaam-ctc', ecosystem: 'gigaam', processor: 'gigaam-fbank', encoder: 'conformer', decoder: 'ctc', topology: 'ctc', task: 'asr',
 };
 
-class GigaAmSession implements SpeechSession<LasrCtcTranscriptionOptions, LasrCtcNativeTranscript> {
+class GigaAmSession implements GigaAmBatchSession {
   private disposed = false;
   constructor(private readonly modelId: string, private readonly backendId: string, private readonly executor: OrtGigaAmCtcExecutor, private readonly onDispose: () => void) {}
   async initialize(): Promise<void> { await this.executor.ready(); }
@@ -41,6 +41,10 @@ class GigaAmSession implements SpeechSession<LasrCtcTranscriptionOptions, LasrCt
     if (flavor === 'native') return native as TranscriptResponse<LasrCtcNativeTranscript, TFlavor>;
     if (flavor === 'canonical+native') return { canonical, native } as TranscriptResponse<LasrCtcNativeTranscript, TFlavor>;
     return canonical as TranscriptResponse<LasrCtcNativeTranscript, TFlavor>;
+  }
+  async transcribeBatch(inputs: readonly AudioInputLike[], options: LasrCtcTranscriptionOptions = {}): Promise<readonly LasrCtcNativeTranscript[]> {
+    const audios = inputs.map((input) => normalizePcmInput(input).toMono());
+    return this.executor.transcribeBatch(audios, options);
   }
   async dispose(): Promise<void> { if (this.disposed) return; this.disposed = true; this.executor.dispose(); this.onDispose(); }
 }

@@ -84,4 +84,32 @@ describe('GigaAM Multilingual CTC contract', () => {
     expect(tokenizer.blankId).toBe(70);
     expect(tokenizer.decode([0, 2, 1, 70])).toBe("a'");
   });
+
+  it('packs mixed-length audio into one padded CTC graph call', async () => {
+    class Tensor<TData extends ArrayBufferView = ArrayBufferView> implements OrtTensorLike<TData> {
+      constructor(readonly type: string, readonly data: TData, readonly dims: readonly number[]) {}
+    }
+    let feeds: Record<string, OrtTensorLike> = {};
+    const session: OrtSessionLike = {
+      async run(input) {
+        feeds = input as Record<string, OrtTensorLike>;
+        const logits = new Float32Array(2 * 25 * 71).fill(-10);
+        logits[2] = 10;
+        logits[25 * 71 + 1] = 10;
+        return { log_probs: new Tensor('float32', logits, [2, 25, 71]) };
+      },
+    };
+    const ort: OrtModuleLike = { env: { wasm: {} }, Tensor, InferenceSession: { create: async () => session } };
+    const executor = new OrtGigaAmCtcExecutor('gigaam-batch-test', 'wasm', {
+      ecosystem: 'gigaam', architecture: 'gigaam-ctc', processorArchitecture: 'gigaam-fbank', encoderArchitecture: 'gigaam-conformer', decoderArchitecture: 'ctc', sampleRate: 16000, rawStride: 4, nMels: 64, featureHopSeconds: 0.01, vocabularySize: 71, languages: ['ru'], tokenizer: { kind: 'sentencepiece', blankTokenId: 70 }, nFft: 320, winLength: 320, hopLength: 160, featureLayout: 'mel-major',
+    }, undefined);
+    (executor as unknown as { loadStatePromise: Promise<unknown> }).loadStatePromise = Promise.resolve({ ort, session, tokenizer: GigaAmTokenizer.fromText("▁ 0\na 2\n' 1\n<blk> 70\n"), warnings: [] });
+
+    const audio = (frames: number) => ({ sampleRate: 16000, numberOfChannels: 1, numberOfFrames: frames, durationSeconds: frames / 16000, channels: [new Float32Array(frames)] });
+    const result = await executor.transcribeBatch([audio(16000), audio(8000)]);
+
+    expect((feeds.features?.dims)).toEqual([2, 64, 99]);
+    expect(Array.from((feeds.feature_lengths?.data as BigInt64Array))).toEqual([99n, 49n]);
+    expect(result.map((item) => item.utteranceText)).toEqual(['a', "'"]);
+  });
 });

@@ -36,6 +36,10 @@ function int64Tensor(ort: OrtModuleLike, value: number): OrtTensorLike {
   return new ort.Tensor('int64', BigInt64Array.from([BigInt(value)]), [1]);
 }
 
+function int64BatchTensor(ort: OrtModuleLike, values: readonly number[]): OrtTensorLike {
+  return new ort.Tensor('int64', BigInt64Array.from(values, (value) => BigInt(value)), [values.length]);
+}
+
 function findOutput(outputs: Record<string, OrtTensorLike>): OrtTensorLike {
   const output = outputs.log_probs ?? outputs.logprobs ?? outputs.logits ?? Object.values(outputs)[0];
   if (!output) throw new Error('GigaAM CTC graph returned no logits output.');
@@ -162,21 +166,89 @@ export class OrtGigaAmCtcExecutor {
     } finally {
       featureTensor.dispose?.(); lengthTensor.dispose?.();
     }
+    return this.decodeOne(state, audio, features.frameCount, findOutput(outputs), options, started);
+  }
+
+  /** Run mixed-length inputs through one padded GigaAM CTC graph call. */
+  async transcribeBatch(
+    audioInputs: readonly AudioBufferLike[],
+    options: LasrCtcTranscriptionOptions = {},
+  ): Promise<readonly LasrCtcNativeTranscript[]> {
+    const state = await this.loadStatePromise;
+    if (!state) throw new Error(`No GigaAM artifact source is configured for "${this.modelId}".`);
+    if (audioInputs.length === 0) return [];
+    const started = nowMs();
+    const audios = audioInputs.map((input) => normalizePcmInput(input).toMono());
+    const prepared = audios.map((audio) => this.preprocessor.process(audio.channels[0] ?? new Float32Array(0)));
+    const maxFrames = Math.max(...prepared.map((item) => item.frameCount));
+    if (maxFrames <= 0) return audios.map(() => ({ utteranceText: '', isFinal: true, warnings: [...state.warnings] }));
+    const lengths = prepared.map((item) => item.frameCount);
+    const batchFeatures = new Float32Array(audios.length * this.config.nMels * maxFrames);
+    prepared.forEach((item, batchIndex) => {
+      for (let mel = 0; mel < this.config.nMels; mel += 1) {
+        const sourceOffset = mel * item.frameCount;
+        const targetOffset = batchIndex * this.config.nMels * maxFrames + mel * maxFrames;
+        batchFeatures.set(item.features.subarray(sourceOffset, sourceOffset + item.frameCount), targetOffset);
+      }
+    });
+    const features = float32Tensor(state.ort, batchFeatures, [audios.length, this.config.nMels, maxFrames]);
+    const featureLengths = int64BatchTensor(state.ort, lengths);
+    let outputs: Record<string, OrtTensorLike>;
+    try {
+      outputs = await state.session.run({ features, feature_lengths: featureLengths });
+    } finally {
+      features.dispose?.(); featureLengths.dispose?.();
+    }
     const logitsTensor = findOutput(outputs);
+    const dims = [...logitsTensor.dims];
+    if (dims.length !== 3 || dims[0] !== audios.length) throw new Error(`Unexpected GigaAM batch logits shape: [${dims.join(', ')}].`);
+    const outFrames = dims[1] ?? 0;
+    const vocabSize = dims[2] ?? 0;
+    const allLogits = readTensor(logitsTensor);
+    const perItemMs = nowMs() - started;
+    return audios.map((audio, batchIndex) => {
+      const itemOutFrames = Math.min(outFrames, Math.max(0, Math.floor((lengths[batchIndex]! - 1) / this.config.rawStride) + 1));
+      const offset = batchIndex * outFrames * vocabSize;
+      const logits = allLogits.subarray(offset, offset + itemOutFrames * vocabSize);
+      return this.decodeLogits(state, audio, lengths[batchIndex]!, logits, itemOutFrames, vocabSize, options, started, perItemMs);
+    });
+  }
+
+  private decodeOne(
+    state: LoadedState,
+    audio: ReturnType<ReturnType<typeof normalizePcmInput>['toMono']>,
+    inputFrames: number,
+    logitsTensor: OrtTensorLike,
+    options: LasrCtcTranscriptionOptions,
+    started: number,
+  ): LasrCtcNativeTranscript {
     const dims = [...logitsTensor.dims];
     if (dims.length !== 3 || dims[0] !== 1) throw new Error(`Unexpected GigaAM logits shape: [${dims.join(', ')}].`);
     const outFrames = dims[1] ?? 0;
     const vocabSize = dims[2] ?? 0;
-    const logits = readTensor(logitsTensor).subarray(0, outFrames * vocabSize);
+    return this.decodeLogits(state, audio, inputFrames, readTensor(logitsTensor).subarray(0, outFrames * vocabSize), outFrames, vocabSize, options, started, nowMs() - started);
+  }
+
+  private decodeLogits(
+    state: LoadedState,
+    audio: ReturnType<ReturnType<typeof normalizePcmInput>['toMono']>,
+    inputFrames: number,
+    logits: Float32Array,
+    outFrames: number,
+    vocabSize: number,
+    options: LasrCtcTranscriptionOptions,
+    started: number,
+    elapsedMs: number,
+  ): LasrCtcNativeTranscript {
     const { frameIds, selectedLogProbs } = argmaxAndSelectedLogProbs(logits, outFrames, vocabSize);
     const { collapsedIds, tokenSpans } = ctcCollapseWithSpans(frameIds, selectedLogProbs, state.tokenizer.blankId);
     const text = state.tokenizer.decode(collapsedIds);
-    const secondsPerFrame = estimateSecondsPerOutputFrame({ audioDurationSec: audio.durationSeconds, inputFrames: features.frameCount, inputFrameHopSeconds: this.config.featureHopSeconds, outFrames });
+    const secondsPerFrame = estimateSecondsPerOutputFrame({ audioDurationSec: audio.durationSeconds, inputFrames, inputFrameHopSeconds: this.config.featureHopSeconds, outFrames });
     const timedSpans = addTimesToTokenSpans(state.tokenizer, tokenSpans, secondsPerFrame);
     const utterance = buildUtteranceTiming(frameIds, selectedLogProbs, state.tokenizer.blankId, secondsPerFrame);
     const sentences = buildSentenceTimings(text, state.tokenizer, collapsedIds, timedSpans);
     const tokens = timedSpans.map((span, index) => ({ index, id: options.returnTokenIds ? span.tokenId : undefined, text: span.text, startTime: roundTimestampSeconds(span.startTime), endTime: roundTimestampSeconds(span.endTime), confidence: roundMetric(span.confidence, 4), logitIndex: options.returnLogitIndices ? span.startFrame : undefined }));
-    const totalMs = nowMs() - started;
+    const totalMs = elapsedMs || nowMs() - started;
     return {
       utteranceText: text, isFinal: true, tokens,
       confidence: { utterance: utterance.confidence, tokenAverage: utterance.confidence, wordAverage: sentences.length ? sentences.reduce((sum, item) => sum + item.confidence, 0) / sentences.length : 0 },
