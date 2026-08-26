@@ -43,11 +43,27 @@ function findOutput(outputs: Record<string, OrtTensorLike>): OrtTensorLike {
 }
 
 function readTensor(tensor: OrtTensorLike): Float32Array {
-  return tensor.type === 'float16'
-    ? Float32Array.from(tensor.data as unknown as ArrayLike<number>)
-    : tensor.data instanceof Float32Array
+  if (tensor.type !== 'float16') {
+    return tensor.data instanceof Float32Array
       ? tensor.data
       : Float32Array.from(tensor.data as unknown as ArrayLike<number>);
+  }
+  const source = tensor.data as unknown as ArrayLike<number>;
+  const result = new Float32Array(source.length);
+  for (let index = 0; index < source.length; index += 1) {
+    const bits = Number(source[index] ?? 0);
+    const sign = (bits & 0x8000) !== 0 ? -1 : 1;
+    const exponent = (bits >>> 10) & 0x1f;
+    const mantissa = bits & 0x3ff;
+    if (exponent === 0) {
+      result[index] = mantissa === 0 ? (sign < 0 ? -0 : 0) : sign * (mantissa / 1024) * 2 ** -14;
+    } else if (exponent === 0x1f) {
+      result[index] = mantissa === 0 ? (sign < 0 ? -Infinity : Infinity) : NaN;
+    } else {
+      result[index] = sign * (1 + mantissa / 1024) * 2 ** (exponent - 15);
+    }
+  }
+  return result;
 }
 
 export class OrtGigaAmCtcExecutor {
