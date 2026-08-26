@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getModelText } from '../src/runtime/huggingface.js';
+import { getModelFile, getModelText } from '../src/runtime/huggingface.js';
 
 function createChunkedResponse(totalBytes: number, chunkBytes: number): Response {
   const stream = new ReadableStream<Uint8Array>({
@@ -106,5 +106,25 @@ describe('Hugging Face progress reporting', () => {
       percent: 100,
       isComplete: true,
     });
+  });
+
+  it('can transfer blob locator ownership for deterministic disposal', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { 'content-length': '3', 'content-type': 'application/octet-stream' },
+      })),
+    );
+    const handles: Array<{ dispose(): Promise<void> | void }> = [];
+
+    const locator = await getModelFile('ysdede/example', 'encoder.onnx', {
+      preferBlobUrl: true,
+      onResolvedHandle: (handle) => handles.push(handle),
+    });
+
+    expect(locator).toMatch(/^blob:/);
+    expect(handles).toHaveLength(1);
+    await handles[0]!.dispose();
   });
 });

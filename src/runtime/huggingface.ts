@@ -288,13 +288,32 @@ export async function getModelFile(
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
     readonly preferBlobUrl?: boolean;
+    /** Transfers URL-handle ownership to the caller for deterministic disposal. */
+    readonly onResolvedHandle?: (handle: ResolvedAssetHandle) => void;
   } = {},
 ): Promise<string> {
-  const handle = await getModelAssetHandle(repoId, filename, options);
-  const locator = await handle.getLocator('url');
+  const { onResolvedHandle, ...handleOptions } = options;
+  const handle = await getModelAssetHandle(repoId, filename, handleOptions);
+  let locator: string | null;
+  try {
+    locator = await handle.getLocator('url');
+  } catch (error) {
+    await handle.dispose();
+    throw error;
+  }
   if (!locator) {
     await handle.dispose();
     throw new Error(`Could not create a URL locator for ${filename}.`);
+  }
+  if (onResolvedHandle) {
+    try {
+      onResolvedHandle(handle);
+    } catch (error) {
+      await handle.dispose();
+      throw error;
+    }
+  } else if (!options.preferBlobUrl) {
+    handle.dispose();
   }
   return locator;
 }

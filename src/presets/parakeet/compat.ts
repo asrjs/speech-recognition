@@ -98,6 +98,8 @@ export interface ParakeetModelUrls {
   };
   readonly modelConfig: ReturnType<typeof getModelConfig>;
   readonly preprocessorBackend: 'js' | 'onnx';
+  /** Handles retained for cache-backed blob locators and owned by the loaded model. */
+  readonly assetHandles?: readonly ResolvedAssetHandle[];
 }
 
 /** Options for resolving a Parakeet model bundle from the Hugging Face hub. */
@@ -137,6 +139,8 @@ export interface ParakeetFromUrlsConfig {
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
   readonly runtime?: DefaultSpeechRuntime;
+  /** Handles retained while resolving cache-backed blob locators. */
+  readonly assetHandles?: readonly ResolvedAssetHandle[];
 }
 
 /** Legacy metrics shape preserved for compatibility with earlier Parakeet.js consumers. */
@@ -405,6 +409,21 @@ function revokeBlobUrls(urls: Record<string, unknown>): void {
   }
 }
 
+async function disposeAssetHandles(handles: readonly ResolvedAssetHandle[] | undefined): Promise<void> {
+  if (!handles || handles.length === 0) {
+    return;
+  }
+  await Promise.all(handles.map(async (handle) => handle.dispose()));
+}
+
+async function disposeResolvedModelAssets(modelUrls: ParakeetModelUrls): Promise<void> {
+  if (modelUrls.assetHandles && modelUrls.assetHandles.length > 0) {
+    await disposeAssetHandles(modelUrls.assetHandles);
+    return;
+  }
+  revokeBlobUrls(modelUrls.urls);
+}
+
 function toFromUrlsConfig(
   modelUrls: ParakeetModelUrls,
   options: GetParakeetModelOptions = {},
@@ -418,6 +437,7 @@ function toFromUrlsConfig(
     preprocessorBackend: modelUrls.preprocessorBackend,
     backend: options.backend,
     verbose: options.verbose,
+    assetHandles: modelUrls.assetHandles,
   };
 }
 
@@ -553,10 +573,12 @@ export async function getParakeetModel(
     pickPreferredQuant(decoderAvailable, decoderBackend, 'decoder');
   const encoderFilename = getQuantizedModelName('encoder-model', encoderQuant);
   const decoderFilename = getQuantizedModelName('decoder_joint-model', decoderQuant);
+  const assetHandles: ResolvedAssetHandle[] = [];
   const assetOptions = {
     revision,
     progress: options.progress,
     preferBlobUrl: options.cacheModels,
+    onResolvedHandle: (handle: ResolvedAssetHandle) => assetHandles.push(handle),
   };
 
   if (
@@ -578,56 +600,62 @@ export async function getParakeetModel(
     );
   }
 
-  const urls: {
-    encoderUrl: string;
-    decoderUrl: string;
-    tokenizerUrl: string;
-    preprocessorUrl?: string;
-    encoderDataUrl?: string | null;
-    decoderDataUrl?: string | null;
-  } = {
-    encoderUrl: await getModelFile(repoId, encoderFilename, assetOptions),
-    decoderUrl: await getModelFile(repoId, decoderFilename, assetOptions),
-    tokenizerUrl: await getModelFile(repoId, 'vocab.txt', assetOptions),
-  };
+  try {
+    const urls: {
+      encoderUrl: string;
+      decoderUrl: string;
+      tokenizerUrl: string;
+      preprocessorUrl?: string;
+      encoderDataUrl?: string | null;
+      decoderDataUrl?: string | null;
+    } = {
+      encoderUrl: await getModelFile(repoId, encoderFilename, assetOptions),
+      decoderUrl: await getModelFile(repoId, decoderFilename, assetOptions),
+      tokenizerUrl: await getModelFile(repoId, 'vocab.txt', assetOptions),
+    };
 
-  if (preprocessorBackend === 'onnx') {
-    urls.preprocessorUrl = await getModelFile(
-      repoId,
-      getRequiredPreprocessorFilename(preprocessor),
-      assetOptions,
+    if (preprocessorBackend === 'onnx') {
+      urls.preprocessorUrl = await getModelFile(
+        repoId,
+        getRequiredPreprocessorFilename(preprocessor),
+        assetOptions,
+      );
+    }
+
+    const encoderDataName = `${encoderFilename}.data`;
+    const decoderDataName = `${decoderFilename}.data`;
+    const hasEncoderData = repoFiles.some(
+      (path) => path === encoderDataName || path.endsWith(`/${encoderDataName}`),
     );
-  }
+    const hasDecoderData = repoFiles.some(
+      (path) => path === decoderDataName || path.endsWith(`/${decoderDataName}`),
+    );
 
-  const encoderDataName = `${encoderFilename}.data`;
-  const decoderDataName = `${decoderFilename}.data`;
-  const hasEncoderData = repoFiles.some(
-    (path) => path === encoderDataName || path.endsWith(`/${encoderDataName}`),
-  );
-  const hasDecoderData = repoFiles.some(
-    (path) => path === decoderDataName || path.endsWith(`/${decoderDataName}`),
-  );
+    if (hasEncoderData) {
+      urls.encoderDataUrl = await getModelFile(repoId, encoderDataName, assetOptions);
+    }
+    if (hasDecoderData) {
+      urls.decoderDataUrl = await getModelFile(repoId, decoderDataName, assetOptions);
+    }
 
-  if (hasEncoderData) {
-    urls.encoderDataUrl = await getModelFile(repoId, encoderDataName, assetOptions);
+    return {
+      urls,
+      filenames: {
+        encoder: encoderFilename,
+        decoder: decoderFilename,
+      },
+      quantisation: {
+        encoder: encoderQuant,
+        decoder: decoderQuant,
+      },
+      modelConfig,
+      preprocessorBackend,
+      assetHandles,
+    };
+  } catch (error) {
+    await disposeAssetHandles(assetHandles);
+    throw error;
   }
-  if (hasDecoderData) {
-    urls.decoderDataUrl = await getModelFile(repoId, decoderDataName, assetOptions);
-  }
-
-  return {
-    urls,
-    filenames: {
-      encoder: encoderFilename,
-      decoder: decoderFilename,
-    },
-    quantisation: {
-      encoder: encoderQuant,
-      decoder: decoderQuant,
-    },
-    modelConfig,
-    preprocessorBackend,
-  };
 }
 
 /**
@@ -665,7 +693,7 @@ export async function loadModelWithFallback({
       throw firstError;
     }
 
-    revokeBlobUrls(firstModelUrls.urls);
+    await disposeResolvedModelAssets(firstModelUrls);
 
     const retryOptions = buildRetryOptions(options, firstModelUrls.quantisation);
     let retryModelUrls: ParakeetModelUrls;
@@ -879,33 +907,46 @@ export class ParakeetModel {
       });
 
     const modelId = config.modelId ?? DEFAULT_MODEL;
-    const model = await runtime.loadModel<NemoTdtModelOptions, NemoTdtNativeTranscript>({
-      preset: 'parakeet',
-      modelId,
-      backend: normalizeBackendId(config.backend),
-      options: {
-        source: {
-          kind: 'direct',
-          encoderBackend: config.encoderBackend,
-          decoderBackend: config.decoderBackend,
-          artifacts: {
-            encoderUrl: config.encoderUrl,
-            decoderUrl: config.decoderUrl,
-            tokenizerUrl: config.tokenizerUrl,
-            preprocessorUrl: config.preprocessorUrl,
-            encoderDataUrl: config.encoderDataUrl ?? undefined,
-            decoderDataUrl: config.decoderDataUrl ?? undefined,
-            encoderFilename: config.filenames?.encoder,
-            decoderFilename: config.filenames?.decoder,
+    let model: SpeechModel<
+      NemoTdtModelOptions,
+      NemoTdtTranscriptionOptions,
+      NemoTdtNativeTranscript
+    > | undefined;
+    try {
+      model = await runtime.loadModel<NemoTdtModelOptions, NemoTdtNativeTranscript>({
+        preset: 'parakeet',
+        modelId,
+        backend: normalizeBackendId(config.backend),
+        options: {
+          source: {
+            kind: 'direct',
+            encoderBackend: config.encoderBackend,
+            decoderBackend: config.decoderBackend,
+            artifacts: {
+              encoderUrl: config.encoderUrl,
+              decoderUrl: config.decoderUrl,
+              tokenizerUrl: config.tokenizerUrl,
+              preprocessorUrl: config.preprocessorUrl,
+              encoderDataUrl: config.encoderDataUrl ?? undefined,
+              decoderDataUrl: config.decoderDataUrl ?? undefined,
+              encoderFilename: config.filenames?.encoder,
+              decoderFilename: config.filenames?.decoder,
+            },
+            preprocessorBackend: config.preprocessorBackend,
+            cpuThreads: config.cpuThreads,
+            enableProfiling: config.enableProfiling,
           },
-          preprocessorBackend: config.preprocessorBackend,
-          cpuThreads: config.cpuThreads,
-          enableProfiling: config.enableProfiling,
         },
-      },
-    });
-    const session = await model.createSession();
-    return new ParakeetModel(runtime, model, session);
+      });
+      const session = await model.createSession();
+      return new ParakeetModel(runtime, model, session, async () => {
+        await disposeAssetHandles(config.assetHandles);
+      });
+    } catch (error) {
+      await model?.dispose();
+      await disposeAssetHandles(config.assetHandles);
+      throw error;
+    }
   }
 
   /** Creates a Parakeet model from a local folder represented by collected entries. */
