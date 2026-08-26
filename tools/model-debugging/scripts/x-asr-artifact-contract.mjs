@@ -13,6 +13,11 @@ function normalize(value) {
 }
 
 function relative(modelDir, filePath) {
+  const normDir = normalize(modelDir).replace(/\/$/, '');
+  const normFile = normalize(filePath);
+  if (normFile.startsWith(`${normDir}/`)) {
+    return normFile.slice(normDir.length + 1);
+  }
   return normalize(path.relative(modelDir, filePath));
 }
 
