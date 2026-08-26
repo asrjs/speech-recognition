@@ -8,6 +8,9 @@ function capture(logit = 1, sampleId = 'clip-a') {
       {
         sample_id: sampleId,
         audio: { sha256: 'audio-a' },
+        tokens: [10, 11, 12],
+        transcript: 'hello world',
+        eos: 99,
         stages: {
           features: { data: [0.25, 0.5], shape: [1, 2], dtype: 'float32' },
           logits: { data: [logit, 0.2, -0.1], shape: [1, 3], dtype: 'float32' },
@@ -24,6 +27,9 @@ describe('stage capture comparator', () => {
     expect(report.samples[0]?.first_failed_stage).toBeNull();
     expect(report.samples[0]?.stages.logits.stats.argmax.match).toBe(true);
     expect(report.samples[0]?.stages.logits.stats.cosine).toBeCloseTo(1, 6);
+    expect(report.samples[0]?.outputs.tokens.firstMismatch).toBeNull();
+    expect(report.samples[0]?.outputs.transcript.match).toBe(true);
+    expect(report.samples[0]?.outputs.eos.match).toBe(true);
   });
 
   it('identifies the earliest failed stage without relying on row order or text', () => {
@@ -48,6 +54,21 @@ describe('stage capture comparator', () => {
     expect(report.samples[0]?.first_failed_stage).toBe('features');
     expect(report.samples[0]?.stages.features.stats.firstMismatch?.index).toBe(1);
     expect(report.samples[0]?.stages.logits.stats.argmax.match).toBe(false);
+  });
+
+  it('reports the first token divergence after tensor stages pass', () => {
+    const candidate = {
+      ...capture(),
+      samples: [{ ...capture().samples[0], tokens: [10, 77, 12] }],
+    };
+    const report = compareStageCaptures(capture(), candidate);
+    expect(report.comparison.pass).toBe(false);
+    expect(report.samples[0]?.first_failed_stage).toBe('tokens');
+    expect(report.samples[0]?.outputs.tokens.firstMismatch).toEqual({
+      index: 1,
+      reference: 11,
+      candidate: 77,
+    });
   });
 
   it('makes missing and extra stable sample ids visible', () => {

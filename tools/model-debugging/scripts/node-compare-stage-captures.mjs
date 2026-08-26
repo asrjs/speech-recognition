@@ -189,6 +189,63 @@ function audioIdentity(sample) {
   return sample?.audio?.sha256 ?? sample?.audio?.audio_sha256 ?? sample?.audio?.identity ?? null;
 }
 
+function optionalTokenIds(sample, label) {
+  const value = sample?.tokens ?? sample?.token_ids;
+  if (value == null) return null;
+  const ids = Array.isArray(value) ? value : value?.ids;
+  if (!Array.isArray(ids) || ids.some((id) => !Number.isInteger(id))) {
+    throw new Error(`${label} tokens must be an integer array or an object with an ids array`);
+  }
+  return ids;
+}
+
+function compareTokenIds(referenceSample, candidateSample, sampleId) {
+  const reference = optionalTokenIds(referenceSample, `reference sample ${sampleId}`);
+  const candidate = optionalTokenIds(candidateSample, `candidate sample ${sampleId}`);
+  if (reference == null && candidate == null) return { pass: true, present: false };
+  if (reference == null || candidate == null) {
+    return {
+      pass: false,
+      present: true,
+      failure: reference == null ? 'missing_reference_tokens' : 'missing_candidate_tokens',
+    };
+  }
+  const compared = Math.min(reference.length, candidate.length);
+  let firstMismatch = null;
+  for (let index = 0; index < compared; index += 1) {
+    if (reference[index] !== candidate[index]) {
+      firstMismatch = { index, reference: reference[index], candidate: candidate[index] };
+      break;
+    }
+  }
+  return {
+    pass: reference.length === candidate.length && firstMismatch == null,
+    present: true,
+    count: { reference: reference.length, candidate: candidate.length, compared },
+    firstMismatch,
+  };
+}
+
+function compareOptionalText(referenceSample, candidateSample) {
+  const reference = referenceSample?.transcript;
+  const candidate = candidateSample?.transcript;
+  if (reference == null && candidate == null) return { pass: true, present: false };
+  if (typeof reference !== 'string' || typeof candidate !== 'string') {
+    return { pass: false, present: true, failure: 'missing_transcript' };
+  }
+  return {
+    pass: reference === candidate,
+    present: true,
+    reference,
+    candidate,
+    match: reference === candidate,
+  };
+}
+
+function optionalEos(sample) {
+  return sample?.eos ?? sample?.generation?.eos ?? sample?.generation?.eos_id ?? null;
+}
+
 export function compareStageCaptures(referenceCapture, candidateCapture, options = {}) {
   const resolved = {
     absTolerance: options.absTolerance ?? DEFAULT_ABS_TOLERANCE,
@@ -233,13 +290,28 @@ export function compareStageCaptures(referenceCapture, candidateCapture, options
         );
     }
     const failedStage = stageNames.find((stageName) => stages[stageName].pass !== true);
+    const tokens = compareTokenIds(referenceSample, candidateSample, sampleId);
+    const transcript = compareOptionalText(referenceSample, candidateSample);
+    const referenceEos = optionalEos(referenceSample);
+    const candidateEos = optionalEos(candidateSample);
+    const eos = {
+      present: referenceEos != null || candidateEos != null,
+      reference: referenceEos,
+      candidate: candidateEos,
+      match: referenceEos === candidateEos,
+    };
+    const firstFailedStage = !audioMatch
+      ? 'audio_identity'
+      : (failedStage ??
+        (!tokens.pass ? 'tokens' : !transcript.pass ? 'transcript' : !eos.match ? 'eos' : null));
     samples.push({
       sample_id: sampleId,
-      pass: audioMatch && !failedStage,
+      pass: audioMatch && firstFailedStage == null,
       failure: audioMatch ? null : 'audio_identity_mismatch',
       audio: { reference: referenceAudio, candidate: candidateAudio, match: audioMatch },
-      first_failed_stage: audioMatch ? (failedStage ?? null) : 'audio_identity',
+      first_failed_stage: firstFailedStage,
       stages,
+      outputs: { tokens, transcript, eos },
     });
   }
   return {

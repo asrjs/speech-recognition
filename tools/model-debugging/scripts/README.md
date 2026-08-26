@@ -50,7 +50,8 @@ Unlike `reference/`, this folder should trend toward:
   - compares reference and implementation captures by stable `sample_id`,
     optionally checking `audio.sha256` identity
   - reports shape/length/dtype metadata, max/mean absolute error, RMSE,
-    cosine similarity, argmax agreement, top-k values, and the first mismatch
+    cosine similarity, argmax agreement, top-k values, token/EOS/text parity,
+    and the first mismatch
   - exposes the earliest failed stage without aligning rows by order or text
 - [score-transcripts-python.py](./score-transcripts-python.py)
   - scores a transcript JSON with the copied MedASR Python normalizer stack
@@ -69,6 +70,9 @@ The generic comparator expects a small JSON envelope:
     {
       "sample_id": "stable-clip-id",
       "audio": { "sha256": "..." },
+      "tokens": [101, 102],
+      "transcript": "reference text",
+      "eos": 2,
       "stages": {
         "features": { "data": [0.1], "shape": [1, 1], "dtype": "float32" },
         "logits": { "data": [0.2], "shape": [1, 1], "dtype": "float32" }
