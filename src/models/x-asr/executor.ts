@@ -1,5 +1,5 @@
 import { argmax } from '../../inference/index.js';
-import { nowMs, roundMetric, roundTimestampSeconds } from '../../runtime/timing.js';
+import { nowMs, roundMetric } from '../../runtime/timing.js';
 import type { AssetProvider, AudioBufferLike, ResolvedAssetHandle, SpeechRuntimeHooks } from '../../types/index.js';
 import { createOrtSession, initOrt, type OrtModuleLike, type OrtSessionLike, type OrtTensorLike } from '../lasr-ctc/ort.js';
 import type { XAsrArtifactSource, XAsrModelConfig, XAsrModelOptions, XAsrNativeTranscript, XAsrStateTensorSpec, XAsrTranscriptionOptions } from './types.js';
@@ -13,6 +13,13 @@ export interface XAsrStreamState {
   readonly inputFrames: number;
   readonly tokenIds: readonly number[];
   readonly encoderStates: readonly OrtTensorLike[];
+}
+
+function disposeStreamTensors(state: XAsrStreamState, retained?: XAsrStreamState): void {
+  const retainedTensors = new Set(retained?.encoderStates ?? []);
+  for (const value of state.encoderStates) {
+    if (!retainedTensors.has(value)) value?.dispose?.();
+  }
 }
 
 interface LoadedState {
@@ -60,6 +67,7 @@ export interface XAsrExecutor {
   transcribe(audio: AudioBufferLike, options?: XAsrTranscriptionOptions): Promise<XAsrNativeTranscript>;
   createStream(): XAsrStreamState;
   pushStream(state: XAsrStreamState, audio: Float32Array, final?: boolean, options?: XAsrTranscriptionOptions): Promise<{ state: XAsrStreamState; transcript: XAsrNativeTranscript }>;
+  disposeStream(state: XAsrStreamState): void;
   dispose(): void;
 }
 
@@ -68,6 +76,7 @@ export class OrtXAsrExecutor implements XAsrExecutor {
   private readonly provider?: AssetProvider;
   private readonly hooks?: SpeechRuntimeHooks;
   private readonly handles: ResolvedAssetHandle[] = [];
+  private readonly activeStreams = new Set<XAsrStreamState>();
   private readonly frontend = new XAsrJsFrontend();
   private readonly state?: Promise<LoadedState>;
 
@@ -113,14 +122,16 @@ export class OrtXAsrExecutor implements XAsrExecutor {
 
   createStream(): XAsrStreamState {
     if (!this.source) throw new Error(`No X-ASR artifact source is configured for "${this.modelId}".`);
-    return { audio: new Float32Array(0), features: new Float32Array(0), encodedFrames: 0, inputFrames: 0, tokenIds: [], encoderStates: this.config.graph.encoderStateInputs.map(() => undefined as unknown as OrtTensorLike) as OrtTensorLike[] };
+    const state = { audio: new Float32Array(0), features: new Float32Array(0), encodedFrames: 0, inputFrames: 0, tokenIds: [], encoderStates: this.config.graph.encoderStateInputs.map(() => undefined as unknown as OrtTensorLike) as OrtTensorLike[] };
+    this.activeStreams.add(state);
+    return state;
   }
 
   private async decodeFeatures(state: XAsrStreamState, features: Float32Array, final: boolean): Promise<XAsrStreamState> {
     const loaded = await this.state!; const graph = this.config.graph;
     let pending = features; let nextState = [...state.encoderStates]; let encodedFrames = state.encodedFrames; const tokens = [...state.tokenIds];
     while (pending.length >= graph.encoderFrameSize * this.config.featureDim || (final && pending.length > 0)) {
-      const needed = graph.encoderFrameSize * this.config.featureDim; const chunk = new Float32Array(needed); chunk.set(pending.subarray(0, Math.min(needed, pending.length))); pending = pending.subarray(Math.min(needed, pending.length));
+      const needed = graph.encoderFrameSize * this.config.featureDim; const chunk = new Float32Array(needed); chunk.set(pending.subarray(0, Math.min(needed, pending.length))); const advance = Math.min(graph.encoderFrameShift * this.config.featureDim, pending.length); pending = pending.subarray(advance);
       const featureTensor = new loaded.ort.Tensor('float32', chunk, [1, graph.encoderFrameSize, this.config.featureDim]);
       const feeds: Record<string, unknown> = { [graph.featureInputName ?? 'features']: featureTensor };
       graph.encoderStateInputs.forEach((spec, index) => { feeds[spec.name] = nextState[index] ?? cloneState(loaded.ort, spec); });
@@ -146,9 +157,10 @@ export class OrtXAsrExecutor implements XAsrExecutor {
   }
 
   async pushStream(state: XAsrStreamState, audio: Float32Array, final = false, options: XAsrTranscriptionOptions = {}): Promise<{ state: XAsrStreamState; transcript: XAsrNativeTranscript }> {
-    const started = nowMs(); const allAudio = new Float32Array(state.audio.length + audio.length); allAudio.set(state.audio); allAudio.set(audio, state.audio.length); const allFeatures = this.frontend.process(allAudio); const newFeatures = allFeatures.subarray(state.inputFrames * this.config.featureDim); const combined = new Float32Array(state.features.length + newFeatures.length); combined.set(state.features); combined.set(newFeatures, state.features.length); const next = await this.decodeFeatures({ ...state, audio: allAudio }, combined, final); const ids = [...next.tokenIds]; const tokenizer = (await this.state!).tokenizer; const transcript: XAsrNativeTranscript = { utteranceText: tokenizer.decode(ids), isFinal: final, tokens: options.returnTokenIds ? ids.map((id, index) => ({ index, id, text: tokenizer.decodeTokenPiece(id), startTime: roundTimestampSeconds(index * this.config.featureHopSeconds), endTime: roundTimestampSeconds((index + 1) * this.config.featureHopSeconds) })) : undefined, metrics: { preprocessMs: 0, encodeMs: roundMetric(nowMs() - started), decodeMs: 0, totalMs: roundMetric(nowMs() - started), wallMs: roundMetric(nowMs() - started), audioDurationSec: roundMetric(allAudio.length / this.config.sampleRate, 4), encoderFrameCount: next.encodedFrames, emittedTokenCount: ids.length, preprocessorBackend: 'js' }, warnings: [] }; return { state: { ...next, features: next.features, inputFrames: allFeatures.length / this.config.featureDim }, transcript };
+    const started = nowMs(); const allAudio = new Float32Array(state.audio.length + audio.length); allAudio.set(state.audio); allAudio.set(audio, state.audio.length); const allFeatures = this.frontend.process(allAudio); const newFeatures = allFeatures.subarray(state.inputFrames * this.config.featureDim); const combined = new Float32Array(state.features.length + newFeatures.length); combined.set(state.features); combined.set(newFeatures, state.features.length); const next = await this.decodeFeatures({ ...state, audio: allAudio }, combined, final); const ids = [...next.tokenIds]; const tokenizer = (await this.state!).tokenizer; const transcript: XAsrNativeTranscript = { utteranceText: tokenizer.decode(ids), isFinal: final, tokens: options.returnTokenIds ? ids.map((id, index) => ({ index, id, text: tokenizer.decodeTokenPiece(id) })) : undefined, metrics: { preprocessMs: 0, encodeMs: roundMetric(nowMs() - started), decodeMs: 0, totalMs: roundMetric(nowMs() - started), wallMs: roundMetric(nowMs() - started), audioDurationSec: roundMetric(allAudio.length / this.config.sampleRate, 4), encoderFrameCount: next.encodedFrames, emittedTokenCount: ids.length, preprocessorBackend: 'js' }, warnings: [] }; const nextState = { ...next, features: next.features, inputFrames: allFeatures.length / this.config.featureDim }; this.activeStreams.delete(state); disposeStreamTensors(state, nextState); this.activeStreams.add(nextState); return { state: nextState, transcript };
   }
 
-  async transcribe(audio: AudioBufferLike, options: XAsrTranscriptionOptions = {}): Promise<XAsrNativeTranscript> { const state = this.createStream(); const pcm = audio.channels?.[0] ?? (audio.data instanceof Float32Array ? audio.data : Float32Array.from(audio.data ?? [])); return (await this.pushStream(state, pcm, true, options)).transcript; }
-  dispose(): void { this.handles.forEach((handle) => void handle.dispose()); }
+  async transcribe(audio: AudioBufferLike, options: XAsrTranscriptionOptions = {}): Promise<XAsrNativeTranscript> { const state = this.createStream(); const pcm = audio.channels?.[0] ?? (audio.data instanceof Float32Array ? audio.data : Float32Array.from(audio.data ?? [])); const result = await this.pushStream(state, pcm, true, options); this.disposeStream(result.state); return result.transcript; }
+  disposeStream(state: XAsrStreamState): void { this.activeStreams.delete(state); disposeStreamTensors(state); }
+  dispose(): void { for (const state of this.activeStreams) disposeStreamTensors(state); this.activeStreams.clear(); this.handles.forEach((handle) => void handle.dispose()); }
 }

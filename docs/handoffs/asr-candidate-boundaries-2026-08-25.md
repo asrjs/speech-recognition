@@ -249,8 +249,10 @@ still needs independent validation rather than an assumed compatibility claim.
 The artifact-gated `src/models/x-asr` family now provides a browser runtime
 boundary for the four-graph streaming deployment: Kaldi-style 80-bin fbank,
 explicit encoder cache-state specifications, fixed-frame encoder chunks,
-stateless decoder context, joiner greedy decoding, token-piece decoding, and
-an isolated stateful `StreamingTranscriber`. It is registered in the public
+frame-size/frame-shift overlap, stateless decoder context, joiner greedy
+decoding, token-piece decoding, and an isolated stateful
+`StreamingTranscriber`. Stream state tensors are now explicitly released on
+state replacement, reset, finalization, and executor disposal. It is registered in the public
 runtime and root exports, but deliberately has no preset or default artifact.
 The graph contract requires state names/shapes and chunk geometry from the
 artifact manifest; this prevents silently guessing Zipformer cache layouts.
