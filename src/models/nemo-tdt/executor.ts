@@ -16,7 +16,6 @@ import {
   createOrtSession,
   initOrt,
   resolveNemoTdtArtifacts,
-  type OrtModuleLike,
   type OrtSessionLike,
   type OrtTensorLike,
 } from './ort.js';
