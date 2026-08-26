@@ -40,6 +40,8 @@ export interface BenchmarkRunRecord {
   readonly error?: string;
   readonly modelKey?: string;
   readonly backend?: string;
+  readonly encoderBackend?: string;
+  readonly decoderBackend?: string;
   readonly encoderQuant?: string;
   readonly decoderQuant?: string;
   readonly preprocessor?: string;
@@ -83,6 +85,8 @@ export const BENCHMARK_RUN_CSV_COLUMNS = [
   'error',
   'model_key',
   'backend',
+  'encoder_backend',
+  'decoder_backend',
   'encoder_quant',
   'decoder_quant',
   'preprocessor',
@@ -275,6 +279,8 @@ export function flattenBenchmarkRunRecord(run: BenchmarkRunRecord): Record<strin
     error: run.error || '',
     model_key: run.modelKey,
     backend: run.backend,
+    encoder_backend: run.encoderBackend,
+    decoder_backend: run.decoderBackend,
     encoder_quant: run.encoderQuant,
     decoder_quant: run.decoderQuant,
     preprocessor: run.preprocessor,

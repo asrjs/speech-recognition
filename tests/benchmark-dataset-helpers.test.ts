@@ -37,6 +37,9 @@ describe('benchmark and dataset helpers', () => {
       sampleKey: 'sample-a',
       audioDurationSec: 12,
       transcription: 'hello',
+      backend: 'webgpu-hybrid',
+      encoderBackend: 'webgpu',
+      decoderBackend: 'wasm',
       metrics: {
         encode_ms: 1000,
         decode_ms: 500,
@@ -45,6 +48,9 @@ describe('benchmark and dataset helpers', () => {
     });
     expect(flattened.encode_rtfx).toBe(12);
     expect(flattened.decode_rtfx).toBe(24);
+    expect(flattened.backend).toBe('webgpu-hybrid');
+    expect(flattened.encoder_backend).toBe('webgpu');
+    expect(flattened.decoder_backend).toBe('wasm');
 
     const csv = benchmarkRunRecordsToCsv([
       {
