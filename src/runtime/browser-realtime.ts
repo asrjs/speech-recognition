@@ -2,6 +2,7 @@ import {
   RealtimeTranscriptionController,
   type RealtimeTranscriptionControllerOptions,
 } from './controller.js';
+import type { RealtimeLatencySummary } from './realtime-latency.js';
 import {
   StreamingSpeechDetector,
   type StreamingSpeechDetectorEvent,
@@ -58,6 +59,11 @@ export interface BrowserRealtimeStarterSnapshot extends StreamingSpeechDetectorS
     readonly timeline: readonly VoiceActivityProbabilityTimelinePoint[];
   };
   readonly plot: BrowserRealtimePlot;
+  /**
+   * Realtime latency summary from the transcription controller, or null when
+   * no controller exists or it was created without the `latency` option.
+   */
+  readonly latency: RealtimeLatencySummary | null;
 }
 
 export interface BrowserRealtimePlotColumn {
@@ -518,6 +524,7 @@ export function createBrowserRealtimeStarter(
           timeline: vadTimeline,
         },
         plot: buildAlignedPlot(snapshot, vadTimeline),
+        latency: controller?.getState().latency ?? null,
       };
     },
     async dispose(): Promise<void> {

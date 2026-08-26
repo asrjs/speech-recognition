@@ -5,6 +5,7 @@ import {
 } from '@asrjs/speech-recognition/browser';
 import { DEFAULT_STREAMING_DETECTOR_CONFIG } from '../src/runtime/streaming-config.js';
 import { describe, expect, it } from 'vitest';
+import type { TranscriptResult } from '@asrjs/speech-recognition';
 
 class FakeFireRedWorker {
   onmessage: ((event: MessageEvent) => void) | null = null;
@@ -180,6 +181,37 @@ describe('browser realtime starter', () => {
     expect(snapshot.config.vadVisualBucketDurationMs).toBe(20);
     expect(starter.tenVad).toBeInstanceOf(FireRedVadAdapter);
     expect(starter.vadBuffer.hopFrames).toBe(320);
+
+    await starter.dispose();
+  });
+
+  it('surfaces realtime controller latency in the starter snapshot', async () => {
+    const withoutController = createBrowserRealtimeStarter();
+    expect(withoutController.controller).toBeNull();
+    expect(withoutController.getSnapshot().latency).toBeNull();
+    await withoutController.dispose();
+
+    const transcribe = (): TranscriptResult => ({
+      text: 'merhaba dünya',
+      warnings: [],
+      meta: { detailLevel: 'text', isFinal: false },
+    });
+    const starter = createBrowserRealtimeStarter({
+      transcribe,
+      controllerOptions: { latency: true },
+    });
+
+    const idle = starter.getSnapshot().latency;
+    expect(idle).not.toBeNull();
+    expect(idle?.totalUpdates).toBe(0);
+
+    const frames = Math.round(1.6 * DEFAULT_STREAMING_DETECTOR_CONFIG.sampleRate);
+    const update = await starter.controller!.pushAudio(new Float32Array(frames).fill(0.2));
+    expect(update?.kind).toBe('partial');
+
+    const latency = starter.getSnapshot().latency;
+    expect(latency?.totalUpdates).toBe(1);
+    expect(latency?.inProgressUtterance?.updates[0]?.emitLagMs).toBeTypeOf('number');
 
     await starter.dispose();
   });
