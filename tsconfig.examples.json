@@ -11,6 +11,7 @@
       "@asrjs/speech-recognition/io": ["./src/io.ts"],
       "@asrjs/speech-recognition/inference": ["./src/inference.ts"],
       "@asrjs/speech-recognition/browser": ["./src/browser.ts"],
+      "@asrjs/speech-recognition/browser/media": ["./src/browser-media.ts"],
       "@asrjs/speech-recognition/realtime": ["./src/realtime.ts"],
       "@asrjs/speech-recognition/bench": ["./src/bench.ts"],
       "@asrjs/speech-recognition/datasets": ["./src/datasets.ts"],

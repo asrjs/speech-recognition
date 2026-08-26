@@ -462,7 +462,7 @@ Transcript results can now carry richer timing metadata in `meta.metrics`, inclu
 Browser audio decoding helpers also expose a preparation profile:
 
 ```ts
-import { decodeAudioSourceToMonoPcm } from '@asrjs/speech-recognition/browser';
+import { decodeAudioSourceToMonoPcm } from '@asrjs/speech-recognition/browser/media';
 
 const decoded = await decodeAudioSourceToMonoPcm(file);
 console.log(decoded.metrics);

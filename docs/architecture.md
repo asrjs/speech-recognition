@@ -327,6 +327,8 @@ Keep the root entry narrow and runtime-critical:
   - descriptors, generic math, and shared streaming primitives
 - `@asrjs/speech-recognition/browser`
   - browser-only helpers such as microphone capture and audio decoding
+- `@asrjs/speech-recognition/browser/media`
+  - lightweight audio decoding helpers without capture, realtime, or VAD worker imports
 - `@asrjs/speech-recognition/realtime`
   - app-facing live transcription helpers
 - `@asrjs/speech-recognition/bench`

@@ -47,6 +47,7 @@ describe('public exports', () => {
     const ioNode = await import('@asrjs/speech-recognition/io/node');
     const inference = await import('@asrjs/speech-recognition/inference');
     const browser = await import('@asrjs/speech-recognition/browser');
+    const browserMedia = await import('@asrjs/speech-recognition/browser/media');
     const realtime = await import('@asrjs/speech-recognition/realtime');
     const bench = await import('@asrjs/speech-recognition/bench');
     const datasets = await import('@asrjs/speech-recognition/datasets');
@@ -86,6 +87,9 @@ describe('public exports', () => {
     expect(inference.LcsPtfaTokenMerger).toBeTypeOf('function');
 
     expect(browser.decodeAudioSourceToMonoPcm).toBeTypeOf('function');
+    expect(browserMedia.decodeAudioSourceToMonoPcm).toBeTypeOf('function');
+    expect(browserMedia.decodeAudioBufferToMonoPcm).toBeTypeOf('function');
+    expect(browserMedia.createBrowserRealtimeStarter).toBeUndefined();
     expect(browser.createSpeechModelLocalEntries).toBeTypeOf('function');
     expect(browser.collectSpeechModelLocalEntries).toBeTypeOf('function');
     expect(browser.inspectSpeechModelLocalEntries).toBeTypeOf('function');
