@@ -7,7 +7,6 @@ import type {
   ModelClassification,
   SpeechModel,
   SpeechModelFactory,
-  SpeechSession,
   TranscriptResponse,
   TranscriptResponseFlavor,
 } from '../../types/index.js';
@@ -58,7 +57,7 @@ class GigaAmModel implements SpeechModel<GigaAmModelOptions, LasrCtcTranscriptio
     this.loadOptions = loadOptions;
     this.info = { family, modelId, classification: CLASSIFICATION, architecture: createModelArchitecture({ processor: { layer: 'processor', module: 'audio', implementation: config.processorArchitecture, shared: false }, encoder: { layer: 'encoder', module: CONFORMER_ENCODER.sharedModule, implementation: config.encoderArchitecture, shared: false }, decoder: { layer: 'decoder', module: CTC_HEAD_DECODER.sharedModule, implementation: 'ctc', shared: true }, decoding: { layer: 'decoding', module: 'inference', implementation: CTC_GREEDY_DECODING.strategy, shared: true }, tokenizer: { layer: 'tokenizer', module: 'inference', implementation: 'character', shared: false } }), description: `GigaAM Multilingual character CTC model for ${modelId}.`, nativeOutputName: 'LasrCtcNativeTranscript' };
   }
-  async createSession(_options: BaseSessionOptions = {}): Promise<SpeechSession<LasrCtcTranscriptionOptions, LasrCtcNativeTranscript>> {
+  async createSession(_options: BaseSessionOptions = {}): Promise<GigaAmBatchSession> {
     const executor = this.dependencies.executor ?? new OrtGigaAmCtcExecutor(this.modelId, this.backend.id, this.config, this.loadOptions, { assetProvider: this.dependencies.assetProvider, runtimeHooks: this.dependencies.runtimeHooks });
     const session = new GigaAmSession(this.modelId, this.backend.id, executor, () => this.sessions.delete(session));
     this.sessions.add(session); await session.initialize(); return session;
