@@ -222,6 +222,15 @@ joiner, and token assets through sherpa-onnx deployment artifacts, which maps
 better to the existing RNNT/session boundaries than another autoregressive
 decoder port.
 
+The upstream deployment contains four separately released model directories
+(`chunk-160ms-model`, `chunk-480ms-model`, `chunk-960ms-model`, and
+`chunk-1920ms-model`). Each contains a matching `encoder-*.onnx`,
+`decoder-*.onnx`, `joiner-*.onnx`, and `tokens.txt`; the published deployment
+expects 16 kHz mono audio and 80-dimensional log-mel/fbank input. Its current
+runtime instructions target sherpa-onnx CPU/CUDA and a WebSocket wrapper, not
+native ONNX Runtime Web/WebGPU, so browser support is precisely the part that
+still needs independent validation rather than an assumed compatibility claim.
+
 This is a candidate, not an implementation claim. Before adding a family:
 
 1. Obtain one approved local X-ASR artifact set and record graph inputs,
