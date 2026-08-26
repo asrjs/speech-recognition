@@ -12,8 +12,19 @@ import { createReadStream } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { fileURLToPath } from 'node:url';
 import { inspectWhisperArtifactContract } from './whisper-artifact-contract.mjs';
 import { inspectXAsrArtifactContract } from './x-asr-artifact-contract.mjs';
+
+const IGNORED_AUDIT_DIRECTORIES = new Set(['.git', '.hg', '.svn', 'node_modules']);
+
+export function shouldSkipAuditDirectory(name) {
+  return IGNORED_AUDIT_DIRECTORIES.has(String(name).toLowerCase());
+}
+
+export function shouldExcludeAuditFile(filePath, outputPath) {
+  return Boolean(outputPath) && path.resolve(filePath) === path.resolve(outputPath);
+}
 
 function parseArgs(argv) {
   const options = {
@@ -85,7 +96,7 @@ async function walkFiles(directory, recursive) {
   for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (recursive) {
+      if (recursive && !shouldSkipAuditDirectory(entry.name)) {
         files.push(...(await walkFiles(entryPath, true)));
       }
     } else if (entry.isFile()) {
@@ -207,7 +218,10 @@ async function main() {
     throw new Error('Model directory not found: ' + modelDir);
   }
 
-  const files = await walkFiles(modelDir, options.recursive);
+  const outputPath = options.output ? path.resolve(options.output) : undefined;
+  const files = (await walkFiles(modelDir, options.recursive)).filter(
+    (filePath) => !shouldExcludeAuditFile(filePath, outputPath),
+  );
   const onnxFiles = files.filter((filePath) => filePath.toLowerCase().endsWith('.onnx'));
   if (onnxFiles.length === 0) {
     throw new Error(
@@ -313,12 +327,18 @@ async function main() {
     process.exitCode = 1;
   }
   if (xAsrContract && !xAsrContract.ok) {
-    for (const failure of xAsrContract.failures) console.error('X-ASR contract failure: ' + failure);
+    for (const failure of xAsrContract.failures)
+      console.error('X-ASR contract failure: ' + failure);
     process.exitCode = 1;
   }
 }
 
-main().catch((error) => {
-  console.error(error?.stack ?? String(error));
-  process.exitCode = 1;
-});
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))
+) {
+  main().catch((error) => {
+    console.error(error?.stack ?? String(error));
+    process.exitCode = 1;
+  });
+}
