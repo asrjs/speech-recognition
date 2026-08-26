@@ -20,6 +20,7 @@ import type {
   SenseVoiceModelConfig,
   SenseVoiceModelDependencies,
   SenseVoiceModelOptions,
+  SenseVoiceModelFamilyOptions,
   SenseVoiceNativeTranscript,
   SenseVoiceTranscriptionOptions,
 } from './types.js';
@@ -157,7 +158,15 @@ class SenseVoiceModel implements SpeechModel<SenseVoiceModelOptions, SenseVoiceT
   }
 
   async createSession(_options: BaseSessionOptions = {}): Promise<SenseVoiceBatchSession> {
-    const executor = this.dependencies.executor ?? new OrtSenseVoiceExecutor(this.modelId, this.backend.id, this.loadOptions);
+    const executor = this.dependencies.executor ?? new OrtSenseVoiceExecutor(
+        this.modelId,
+        this.backend.id,
+        this.loadOptions,
+        {
+          assetProvider: this.dependencies.assetProvider,
+          runtimeHooks: this.dependencies.runtimeHooks,
+        },
+      );
     const session = new SenseVoiceSession(this.modelId, this.classification, this.config, this.backend.id, executor, () => this.sessions.delete(session));
     this.sessions.add(session);
     await session.initialize();
@@ -172,7 +181,9 @@ class SenseVoiceModel implements SpeechModel<SenseVoiceModelOptions, SenseVoiceT
   }
 }
 
-export function createSenseVoiceModelFamily(): SpeechModelFactory<SenseVoiceModelOptions, SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript> {
+export function createSenseVoiceModelFamily(
+  options: SenseVoiceModelFamilyOptions = {},
+): SpeechModelFactory<SenseVoiceModelOptions, SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript> {
   return {
     family: 'sensevoice',
     classification: DEFAULT_CLASSIFICATION,
@@ -187,8 +198,9 @@ export function createSenseVoiceModelFamily(): SpeechModelFactory<SenseVoiceMode
       const classification = { ...DEFAULT_CLASSIFICATION, ...(request.classification ?? {}) };
       const config = { ...DEFAULT_CONFIG, ...(request.options?.config ?? {}) };
       const dependencies: SenseVoiceModelDependencies = {
-        assetProvider: context.assetProvider,
-        runtimeHooks: context.hooks,
+        ...(options.dependencies ?? {}),
+        assetProvider: options.dependencies?.assetProvider ?? context.assetProvider,
+        runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks,
       };
       context.hooks.logger?.info?.('Creating SenseVoice CTC model', {
         family: 'sensevoice', modelId: request.modelId, backendId: context.backend.id,

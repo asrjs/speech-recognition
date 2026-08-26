@@ -7,7 +7,14 @@ import {
   estimateSecondsPerOutputFrame,
 } from '../../ctc/index.js';
 import { nowMs, roundMetric, roundTimestampSeconds } from '../../runtime/timing.js';
-import type { AudioBufferLike } from '../../types/index.js';
+import type {
+  AssetProvider,
+  AudioBufferLike,
+  ResolvedAssetHandle,
+  RuntimeProgressEvent,
+  SpeechRuntimeHooks,
+  TranscriptWarning,
+} from '../../types/index.js';
 import { createOrtSession, initOrt, type OrtModuleLike, type OrtSessionLike, type OrtTensorLike } from '../lasr-ctc/ort.js';
 import { SenseVoiceJsPreprocessor } from './frontend.js';
 import { createSenseVoicePrompt } from './prompt.js';
@@ -27,7 +34,27 @@ interface LoadedState {
   readonly ort: OrtModuleLike;
   readonly session: OrtSessionLike;
   readonly tokenizer: SenseVoiceTokenizer;
-  readonly warnings: readonly { readonly code: string; readonly message: string }[];
+  readonly warnings: readonly TranscriptWarning[];
+}
+
+function roundMiB(bytes: number | undefined): number | undefined {
+  return Number.isFinite(bytes) ? roundMetric((bytes as number) / (1024 * 1024), 2) : undefined;
+}
+
+function createAssetProgressEvent(
+  modelId: string,
+  file: string,
+  event: { readonly loaded: number; readonly total?: number; readonly done?: boolean },
+): RuntimeProgressEvent {
+  const percent = event.total && event.total > 0
+    ? Math.min(100, Math.round((event.loaded / event.total) * 100))
+    : event.done ? 100 : undefined;
+  return {
+    phase: 'asset:download', modelId, file, loaded: event.loaded, total: event.total,
+    percent, loadedMiB: roundMiB(event.loaded), totalMiB: roundMiB(event.total),
+    isComplete: event.done,
+    message: event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
+  };
 }
 
 function hfUrl(repoId: string, revision: string, filename: string): string {
@@ -164,13 +191,19 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
   private readonly loadStatePromise?: Promise<LoadedState>;
   private readonly preprocessor = new SenseVoiceJsPreprocessor();
   private readonly config: SenseVoiceModelConfig;
+  private readonly assetProvider?: AssetProvider;
+  private readonly runtimeHooks?: SpeechRuntimeHooks;
+  private readonly assetHandles: ResolvedAssetHandle[] = [];
 
   constructor(
     private readonly modelId: string,
     private readonly backendId: string,
     options: SenseVoiceModelOptions | undefined,
+    dependencies: { readonly assetProvider?: AssetProvider; readonly runtimeHooks?: SpeechRuntimeHooks } = {},
   ) {
     this.source = options?.source;
+    this.assetProvider = dependencies.assetProvider;
+    this.runtimeHooks = dependencies.runtimeHooks;
     this.config = {
       ecosystem: 'funasr',
       architecture: 'sensevoice',
@@ -188,21 +221,72 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     if (this.source) this.loadStatePromise = this.initialize();
   }
 
+  private async materializeHuggingFaceArtifacts(
+    source: Extract<SenseVoiceArtifactSource, { kind: 'huggingface' }>,
+    artifacts: ReturnType<typeof resolveSource>,
+  ): Promise<{ readonly artifacts: ReturnType<typeof resolveSource>; readonly warnings: readonly TranscriptWarning[] }> {
+    if (!this.assetProvider) return { artifacts, warnings: [] };
+    const warnings: TranscriptWarning[] = [];
+    const revision = source.revision ?? 'main';
+    const handles = this.assetHandles;
+    const resolveFile = async (filename: string, optional = false): Promise<string | undefined> => {
+      try {
+        const handle = await this.assetProvider!.resolve({
+          id: `huggingface:${source.repoId}:${revision}:${filename}`,
+          provider: 'huggingface', repoId: source.repoId, revision, filename,
+          cacheKey: `huggingface:${source.repoId}:${revision}:${filename}`,
+          onProgress: (event) => this.runtimeHooks?.onProgress?.(
+            createAssetProgressEvent(this.modelId, filename, event),
+          ),
+        });
+        handles.push(handle);
+        const locator = await handle.getLocator('url');
+        if (!locator) throw new Error(`Could not create a URL locator for "${filename}".`);
+        return locator;
+      } catch (error) {
+        if (!optional) throw error;
+        warnings.push({
+          code: 'sensevoice.optional-asset-missing',
+          message: `Optional asset "${filename}" was not found for ${this.modelId}.`,
+          recoverable: true,
+        });
+        return undefined;
+      }
+    };
+    const modelFilename = source.modelFilename ?? 'model.onnx';
+    const tokenizerFilename = source.tokenizerFilename ?? 'vocab.txt';
+    const modelDataFilename = source.modelDataFilename ?? artifacts.modelDataFilename;
+    const tokenizerUrl = await resolveFile(tokenizerFilename);
+    const modelUrl = await resolveFile(modelFilename);
+    const modelDataUrl = modelDataFilename ? await resolveFile(modelDataFilename, true) : undefined;
+    return {
+      artifacts: { ...artifacts, modelUrl: modelUrl ?? artifacts.modelUrl, tokenizerUrl: tokenizerUrl ?? artifacts.tokenizerUrl, modelDataUrl, modelDataFilename },
+      warnings,
+    };
+  }
+
   private async initialize(): Promise<LoadedState> {
     if (!this.source) throw new Error(`No SenseVoice artifact source is configured for "${this.modelId}".`);
     const resolved = resolveSource(this.source);
+    let artifacts = resolved;
+    const warnings: TranscriptWarning[] = [];
+    if (this.source.kind === 'huggingface') {
+      const materialized = await this.materializeHuggingFaceArtifacts(this.source, resolved);
+      artifacts = materialized.artifacts;
+      warnings.push(...materialized.warnings);
+    }
     const ort = await initOrt(this.backendId, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
     });
-    const session = await createOrtSession(ort, resolved.modelUrl, {
+    const session = await createOrtSession(ort, artifacts.modelUrl, {
       backendId: this.backendId.startsWith('webgpu') ? 'webgpu' : 'wasm',
       enableProfiling: resolved.enableProfiling,
-      externalDataUrl: resolved.modelDataUrl,
-      externalDataPath: resolved.modelDataFilename,
+      externalDataUrl: artifacts.modelDataUrl,
+      externalDataPath: artifacts.modelDataFilename,
     });
-    const tokenizer = await SenseVoiceTokenizer.fromUrl(resolved.tokenizerUrl);
-    return { ort, session, tokenizer, warnings: [] };
+    const tokenizer = await SenseVoiceTokenizer.fromUrl(artifacts.tokenizerUrl);
+    return { ort, session, tokenizer, warnings };
   }
 
   async ready(): Promise<void> {
@@ -367,7 +451,6 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
   }
 
   dispose(): void {
-    // ORT sessions are released when their owning model/session is disposed.
-    // Tensor feeds and outputs are short-lived and disposed at the graph boundary.
+    for (const handle of this.assetHandles) void handle.dispose();
   }
 }
