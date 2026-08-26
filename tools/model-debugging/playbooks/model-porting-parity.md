@@ -17,7 +17,11 @@ Use this playbook when adding a new model family and you need reproducible parit
 3. Compare final transcript text before comparing WER/CER if the stacks use different scoring or normalization pipelines.
 4. Port core logic checks into `tests/*.test.ts` for CI coverage.
 5. Preserve original tests and artifacts in `tools/model-debugging/reference/` as debugging references.
-6. Document entry points in:
+6. For stage captures, use `node-compare-stage-captures.mjs` and keep the
+   `sample_id` plus audio identity in both captures. Treat its
+   `first_failed_stage` as the next debugging boundary; do not join rows by
+   order or transcript text.
+7. Document entry points in:
    - `tools/model-debugging/README.md`
    - `tools/model-debugging/reference/README.md`
    - model-specific `README.md` under that reference folder

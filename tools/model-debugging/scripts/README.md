@@ -46,11 +46,50 @@ Unlike `reference/`, this folder should trend toward:
   - compares two transcript JSON outputs by shared `file` key
   - supports `*.rows[]` debug JSON or plain benchmark arrays
   - useful when two stacks appear to disagree on WER, and you want to prove whether the transcript text actually changed
+- [node-compare-stage-captures.mjs](./node-compare-stage-captures.mjs)
+  - compares reference and implementation captures by stable `sample_id`,
+    optionally checking `audio.sha256` identity
+  - reports shape/length/dtype metadata, max/mean absolute error, RMSE,
+    cosine similarity, argmax agreement, top-k values, and the first mismatch
+  - exposes the earliest failed stage without aligning rows by order or text
 - [score-transcripts-python.py](./score-transcripts-python.py)
   - scores a transcript JSON with the copied MedASR Python normalizer stack
   - accepts dotted `--prediction-path` and `--reference-path`
   - useful when you want Node-produced results to be directly comparable with Python MedASR benchmark summaries
   - if auto-detection misses the leaderboard normalizer, pass `--open-asr-leaderboard-dir`
+
+### Stage-capture contract
+
+The generic comparator expects a small JSON envelope:
+
+```json
+{
+  "schema_version": 1,
+  "samples": [
+    {
+      "sample_id": "stable-clip-id",
+      "audio": { "sha256": "..." },
+      "stages": {
+        "features": { "data": [0.1], "shape": [1, 1], "dtype": "float32" },
+        "logits": { "data": [0.2], "shape": [1, 1], "dtype": "float32" }
+      }
+    }
+  ]
+}
+```
+
+Run it after the native/reference and library captures exist:
+
+```powershell
+node node-compare-stage-captures.mjs `
+  --reference reference.json `
+  --candidate asrjs.json `
+  --output stage-parity.json
+```
+
+This is a diagnostic report, not a quality score. The upstream/reference
+capture remains an implementation oracle, while human or benchmark labels
+remain separate quality evidence.
 
 ## Candidate artifact audit
 
@@ -63,6 +102,7 @@ Unlike `reference/`, this folder should trend toward:
   and native CPU graph loading without downloading anything:
 
   `node node-audit-onnx-artifact.mjs --model-dir <deployment/models> --recursive --x-asr-contract`
+
 - It records graph input/output names plus ORT-discovered dtypes/shapes, and
   checks the minimum encoder/decoder/joiner boundary. It fails by default when
   a graph cannot be loaded.
