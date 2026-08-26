@@ -7,6 +7,7 @@ import {
   resolveSenseVoiceLanguage,
 } from '../src/models/sensevoice/index.js';
 import { createBuiltInSpeechRuntime } from '../src/runtime/builtins.js';
+import { loadSpeechModel } from '../src/runtime/load.js';
 
 describe('SenseVoice prompt contract', () => {
   it('is discoverable as a built-in model family without a fake preset', () => {
@@ -14,6 +15,12 @@ describe('SenseVoice prompt contract', () => {
     const family = runtime.listModelFamilies().find((candidate) => candidate.family === 'sensevoice');
     expect(family?.supports('OpenVoiceOS/SenseVoiceSmall')).toBe(true);
     expect(family?.supports('nvidia/parakeet-tdt-0.6b-v3')).toBe(false);
+  });
+
+  it('fails artifact-free loading instead of returning a scaffold transcript', async () => {
+    await expect(
+      loadSpeechModel({ family: 'sensevoice', modelId: 'SenseVoiceSmall', backend: 'wasm' }),
+    ).rejects.toThrow(/No SenseVoice artifact source/);
   });
 
   it('maps supported languages and ITN IDs to the ONNX prompt contract', () => {
