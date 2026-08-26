@@ -1,8 +1,12 @@
 import {
+  BENCHMARK_LIFECYCLE_CSV_COLUMNS,
   BENCHMARK_RUN_CSV_COLUMNS,
+  benchmarkLifecycleRecordsToCsv,
+  benchmarkMemoryDeltaBytes,
   benchmarkRunRecordsToCsv,
   calcRtfx,
   flattenBenchmarkRunRecord,
+  flattenBenchmarkLifecycleRecord,
   levenshteinDistance,
   normalizeBenchmarkText,
   summarizeNumericSeries,
@@ -66,6 +70,52 @@ describe('benchmark and dataset helpers', () => {
     ]);
     expect(csv.startsWith(BENCHMARK_RUN_CSV_COLUMNS.join(','))).toBe(true);
     expect(toCsv([{ alpha: 'a', beta: 2 }], ['alpha', 'beta'])).toContain('alpha,beta');
+  });
+
+  it('exports model lifecycle timing and comparable memory deltas', () => {
+    const before = {
+      capturedAt: '2026-08-26T00:00:00.000Z',
+      source: 'measure-user-agent-specific-memory' as const,
+      scope: 'process' as const,
+      bytes: 100,
+    };
+    const after = {
+      capturedAt: '2026-08-26T00:00:01.000Z',
+      source: 'measure-user-agent-specific-memory' as const,
+      scope: 'process' as const,
+      bytes: 175,
+    };
+    const record = {
+      id: 'load-1',
+      phase: 'model-load' as const,
+      totalMs: 900,
+      initialArtifactResolutionMs: 600,
+      initializationAndRetryMs: 300,
+      attemptCount: 1,
+      retryUsed: false,
+      completedAssetCount: 4,
+      reportedAssetBytes: 1024,
+      cacheStatus: 'unknown' as const,
+      memoryBefore: before,
+      memoryAfter: after,
+      modelKey: 'parakeet-tdt-0.6b-v3',
+      encoderBackend: 'webgpu',
+      decoderBackend: 'wasm',
+    };
+
+    expect(benchmarkMemoryDeltaBytes(before, after)).toBe(75);
+    expect(
+      benchmarkMemoryDeltaBytes(before, { ...after, source: 'unavailable', bytes: null }),
+    ).toBeNull();
+
+    const flattened = flattenBenchmarkLifecycleRecord(record);
+    expect(flattened.memory_delta_bytes).toBe(75);
+    expect(flattened.cache_status).toBe('unknown');
+    expect(flattened.initialization_and_retry_ms).toBe(300);
+
+    const csv = benchmarkLifecycleRecordsToCsv([record]);
+    expect(csv.startsWith(BENCHMARK_LIFECYCLE_CSV_COLUMNS.join(','))).toBe(true);
+    expect(csv).toContain('model-load');
   });
 
   it('normalizes dataset rows and extracts audio urls from nested shapes', () => {

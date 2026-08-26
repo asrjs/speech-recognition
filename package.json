@@ -70,6 +70,11 @@
       "import": "./dist/bench.js",
       "default": "./dist/bench.js"
     },
+    "./bench/browser": {
+      "types": "./dist/bench-browser.d.ts",
+      "import": "./dist/bench-browser.js",
+      "default": "./dist/bench-browser.js"
+    },
     "./datasets": {
       "types": "./dist/datasets.d.ts",
       "import": "./dist/datasets.js",

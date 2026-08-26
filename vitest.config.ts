@@ -16,6 +16,10 @@ export default defineConfig({
       },
       { find: /^asr\.js\/realtime$/, replacement: resolve(__dirname, 'src/realtime.ts') },
       { find: /^asr\.js\/bench$/, replacement: resolve(__dirname, 'src/bench.ts') },
+      {
+        find: /^asr\.js\/bench\/browser$/,
+        replacement: resolve(__dirname, 'src/bench-browser.ts'),
+      },
       { find: /^asr\.js\/datasets$/, replacement: resolve(__dirname, 'src/datasets.ts') },
       { find: /^asr\.js\/alignment$/, replacement: resolve(__dirname, 'src/alignment.ts') },
       { find: /^asr\.js\/quality$/, replacement: resolve(__dirname, 'src/quality.ts') },
@@ -58,6 +62,10 @@ export default defineConfig({
       {
         find: /^@asrjs\/speech-recognition\/bench$/,
         replacement: resolve(__dirname, 'src/bench.ts'),
+      },
+      {
+        find: /^@asrjs\/speech-recognition\/bench\/browser$/,
+        replacement: resolve(__dirname, 'src/bench-browser.ts'),
       },
       {
         find: /^@asrjs\/speech-recognition\/datasets$/,

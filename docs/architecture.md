@@ -333,6 +333,8 @@ Keep the root entry narrow and runtime-critical:
   - app-facing live transcription helpers
 - `@asrjs/speech-recognition/bench`
   - benchmark and evaluation utilities
+- `@asrjs/speech-recognition/bench/browser`
+  - browser-only benchmark measurements such as capability-gated process memory snapshots
 - `@asrjs/speech-recognition/datasets`
   - dataset helpers
 - `@asrjs/speech-recognition/models/*`

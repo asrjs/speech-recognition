@@ -18,6 +18,45 @@ export interface BenchmarkStageMetrics {
   readonly preprocessor_backend?: string;
 }
 
+export type BenchmarkLifecyclePhase = 'model-load' | 'model-dispose';
+
+export type BenchmarkCacheStatus = 'hit' | 'miss' | 'mixed' | 'disabled' | 'unknown';
+
+export interface BenchmarkMemorySnapshot {
+  readonly capturedAt: string;
+  readonly source: 'measure-user-agent-specific-memory' | 'unavailable';
+  readonly scope: 'process' | 'unavailable';
+  readonly bytes: number | null;
+  readonly reason?: 'unsupported' | 'measurement-failed' | 'invalid-result';
+}
+
+export interface BenchmarkLifecycleRecord {
+  readonly id?: string;
+  readonly phase: BenchmarkLifecyclePhase;
+  readonly startedAt?: string;
+  readonly finishedAt?: string;
+  readonly totalMs?: number;
+  /** Time from load start until the first runtime initialization attempt begins. */
+  readonly initialArtifactResolutionMs?: number;
+  /** Time after first artifact resolution through final initialization, including any retry path. */
+  readonly initializationAndRetryMs?: number;
+  readonly attemptCount?: number;
+  readonly retryUsed?: boolean;
+  readonly completedAssetCount?: number;
+  readonly reportedAssetBytes?: number;
+  readonly cacheStatus?: BenchmarkCacheStatus;
+  readonly memoryBefore?: BenchmarkMemorySnapshot;
+  readonly memoryAfter?: BenchmarkMemorySnapshot;
+  readonly error?: string;
+  readonly modelKey?: string;
+  readonly backend?: string;
+  readonly encoderBackend?: string;
+  readonly decoderBackend?: string;
+  readonly encoderQuant?: string;
+  readonly decoderQuant?: string;
+  readonly preprocessorBackend?: string;
+}
+
 export interface BenchmarkRunRecord {
   readonly batchId?: string;
   readonly startedAt?: string;
@@ -98,6 +137,36 @@ export const BENCHMARK_RUN_CSV_COLUMNS = [
   'hardware_vram',
   'hardware_memory',
   'hardware_webgpu',
+] as const;
+
+export const BENCHMARK_LIFECYCLE_CSV_COLUMNS = [
+  'lifecycle_id',
+  'phase',
+  'started_at',
+  'finished_at',
+  'total_ms',
+  'initial_artifact_resolution_ms',
+  'initialization_and_retry_ms',
+  'attempt_count',
+  'retry_used',
+  'completed_asset_count',
+  'reported_asset_bytes',
+  'cache_status',
+  'memory_before_bytes',
+  'memory_after_bytes',
+  'memory_delta_bytes',
+  'memory_source',
+  'memory_scope',
+  'memory_before_reason',
+  'memory_after_reason',
+  'error',
+  'model_key',
+  'backend',
+  'encoder_backend',
+  'decoder_backend',
+  'encoder_quant',
+  'decoder_quant',
+  'preprocessor_backend_setting',
 ] as const;
 
 export function normalizeBenchmarkText(value: string | null | undefined): string {
@@ -245,6 +314,66 @@ export function toCsv(
   const header = columns.join(',');
   const lines = rows.map((row) => columns.map((column) => escapeCsv(row[column])).join(','));
   return [header, ...lines].join('\n');
+}
+
+export function benchmarkMemoryDeltaBytes(
+  before: BenchmarkMemorySnapshot | null | undefined,
+  after: BenchmarkMemorySnapshot | null | undefined,
+): number | null {
+  if (
+    before?.bytes === null ||
+    before?.bytes === undefined ||
+    after?.bytes === null ||
+    after?.bytes === undefined ||
+    before.source !== after.source ||
+    before.scope !== after.scope
+  ) {
+    return null;
+  }
+  return after.bytes - before.bytes;
+}
+
+export function flattenBenchmarkLifecycleRecord(
+  record: BenchmarkLifecycleRecord,
+): Record<string, unknown> {
+  return {
+    lifecycle_id: record.id,
+    phase: record.phase,
+    started_at: record.startedAt,
+    finished_at: record.finishedAt,
+    total_ms: record.totalMs,
+    initial_artifact_resolution_ms: record.initialArtifactResolutionMs,
+    initialization_and_retry_ms: record.initializationAndRetryMs,
+    attempt_count: record.attemptCount,
+    retry_used: record.retryUsed,
+    completed_asset_count: record.completedAssetCount,
+    reported_asset_bytes: record.reportedAssetBytes,
+    cache_status: record.cacheStatus,
+    memory_before_bytes: record.memoryBefore?.bytes,
+    memory_after_bytes: record.memoryAfter?.bytes,
+    memory_delta_bytes: benchmarkMemoryDeltaBytes(record.memoryBefore, record.memoryAfter),
+    memory_source: record.memoryAfter?.source ?? record.memoryBefore?.source,
+    memory_scope: record.memoryAfter?.scope ?? record.memoryBefore?.scope,
+    memory_before_reason: record.memoryBefore?.reason,
+    memory_after_reason: record.memoryAfter?.reason,
+    error: record.error || '',
+    model_key: record.modelKey,
+    backend: record.backend,
+    encoder_backend: record.encoderBackend,
+    decoder_backend: record.decoderBackend,
+    encoder_quant: record.encoderQuant,
+    decoder_quant: record.decoderQuant,
+    preprocessor_backend_setting: record.preprocessorBackend,
+  };
+}
+
+export function benchmarkLifecycleRecordsToCsv(
+  records: readonly BenchmarkLifecycleRecord[],
+): string {
+  return toCsv(
+    records.map((record) => flattenBenchmarkLifecycleRecord(record)),
+    [...BENCHMARK_LIFECYCLE_CSV_COLUMNS],
+  );
 }
 
 export function flattenBenchmarkRunRecord(run: BenchmarkRunRecord): Record<string, unknown> {

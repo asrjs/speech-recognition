@@ -50,6 +50,7 @@ describe('public exports', () => {
     const browserMedia = await import('@asrjs/speech-recognition/browser/media');
     const realtime = await import('@asrjs/speech-recognition/realtime');
     const bench = await import('@asrjs/speech-recognition/bench');
+    const browserBench = await import('@asrjs/speech-recognition/bench/browser');
     const datasets = await import('@asrjs/speech-recognition/datasets');
     const nemoTdt = await import('@asrjs/speech-recognition/models/nemo-tdt');
     const nemoAed = await import('@asrjs/speech-recognition/models/nemo-aed');
@@ -132,6 +133,8 @@ describe('public exports', () => {
     expect(realtime.getStreamingSegmentDurationSeconds).toBeTypeOf('function');
     expect(bench.summarizeNumericSeries).toBeTypeOf('function');
     expect(bench.benchmarkRunRecordsToCsv).toBeTypeOf('function');
+    expect(bench.benchmarkLifecycleRecordsToCsv).toBeTypeOf('function');
+    expect(browserBench.measureBrowserMemory).toBeTypeOf('function');
     expect(datasets.fetchDatasetSplits).toBeTypeOf('function');
     expect(datasets.fetchRandomRows).toBeTypeOf('function');
 
