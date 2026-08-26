@@ -23,4 +23,5 @@ tools/whisper-onnx-export/__pycache__/
 *.wav
 *.vtt
 tests/fixtures/
-models/
+# Only the root-level local model-weight directory, not `src/models` source files.
+/models/
