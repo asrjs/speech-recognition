@@ -28,6 +28,23 @@ function findVariantFile(modelDir, files, variantDir, prefix, suffix) {
   });
 }
 
+function graphBoundaryCheck(name, graph) {
+  if (!graph) return { status: 'missing', code: 'ONNX_GRAPH_INVALID', message: `${name} graph was not discovered.` };
+  if (!graph.loaded) return { status: 'failed', code: 'ONNX_GRAPH_INVALID', message: `${name} graph did not load.` };
+  const inputs = graph.input_names ?? [];
+  const outputs = graph.output_names ?? [];
+  const minimumInputs = name === 'encoder' ? 2 : name === 'joiner' ? 2 : 1;
+  const minimumOutputs = name === 'encoder' ? 2 : 1;
+  if (inputs.length < minimumInputs || outputs.length < minimumOutputs) {
+    return {
+      status: 'failed',
+      code: 'ONNX_GRAPH_INVALID',
+      message: `${name} graph boundary is incomplete (inputs=${inputs.length}, outputs=${outputs.length}).`,
+    };
+  }
+  return { status: 'pass', code: null, message: `${name} graph exposes the expected input/output boundary.` };
+}
+
 export function inspectXAsrArtifactContract({ modelDir, files, graphs }) {
   const graphByPath = new Map(graphs.map((graph) => [normalize(graph.path), graph]));
   const variants = VARIANTS.map((chunkMs) => {
@@ -48,22 +65,27 @@ export function inspectXAsrArtifactContract({ modelDir, files, graphs }) {
             loaded: graph.loaded,
             input_names: graph.input_names ?? [],
             output_names: graph.output_names ?? [],
+            input_metadata: graph.input_metadata ?? [],
+            output_metadata: graph.output_metadata ?? [],
           } : { path: relative(modelDir, filePath), loaded: false, error: 'Graph was not discovered by the ONNX audit.' }];
         }),
     );
+    const boundaryChecks = Object.entries(graphReports).map(([name, graph]) => ({ name, ...graphBoundaryCheck(name, graph) }));
     return {
       chunk_ms: chunkMs,
       directory: variantDir,
       files: Object.fromEntries(Object.entries(required).map(([name, filePath]) => [name, filePath ? relative(modelDir, filePath) : null])),
       missing,
       graphs: graphReports,
+      boundary_checks: boundaryChecks,
       tokens_present: Boolean(tokens),
-      ok: missing.length === 0 && Object.values(graphReports).every((graph) => graph.loaded),
+      ok: missing.length === 0 && boundaryChecks.every((check) => check.status === 'pass'),
     };
   });
   const failures = variants.flatMap((variant) => [
     ...variant.missing.map((name) => `${variant.directory}: missing ${name}`),
     ...Object.values(variant.graphs).filter((graph) => !graph.loaded).map((graph) => `${variant.directory}: graph failed to load (${graph.path})`),
+    ...variant.boundary_checks.filter((check) => check.status !== 'pass').map((check) => `${variant.directory}: ${check.code} ${check.message}`),
   ]);
   return {
     schema_version: 1,

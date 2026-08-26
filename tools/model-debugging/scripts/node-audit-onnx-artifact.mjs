@@ -138,6 +138,16 @@ function sessionNames(session, key) {
   return Array.isArray(value) ? [...value] : [];
 }
 
+function sessionMetadata(session, key) {
+  const metadata = session?.[key];
+  if (!metadata || typeof metadata !== 'object') return [];
+  return Object.entries(metadata).map(([name, value]) => ({
+    name,
+    type: value?.type,
+    dimensions: value?.dimensions ?? value?.shape,
+  }));
+}
+
 async function auditGraph(ort, modelDir, graphPath) {
   const relativePath = relativeArtifactPath(modelDir, graphPath);
   const started = performance.now();
@@ -173,6 +183,8 @@ async function auditGraph(ort, modelDir, graphPath) {
       load_ms: Number((performance.now() - started).toFixed(3)),
       input_names: sessionNames(session, 'inputNames'),
       output_names: sessionNames(session, 'outputNames'),
+      input_metadata: sessionMetadata(session, 'inputMetadata'),
+      output_metadata: sessionMetadata(session, 'outputMetadata'),
       external_data_candidates: sidecars,
     };
   } catch (error) {
