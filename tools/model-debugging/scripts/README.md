@@ -58,6 +58,11 @@ Unlike `reference/`, this folder should trend toward:
   access.
 - It hashes every file, checks likely external-data sidecars, and creates each
   graph through the native CPU execution provider.
+- Add `--x-asr-contract` for a local X-ASR-zh-en deployment. This validates all
+  four chunk directories, matching encoder/decoder/joiner graphs, token files,
+  and native CPU graph loading without downloading anything:
+
+  `node node-audit-onnx-artifact.mjs --model-dir <deployment/models> --recursive --x-asr-contract`
 - It records graph input/output names and fails by default when a graph cannot
   be loaded.
 - Pass `--whisper-contract` to classify splitgraph causal alignment and merged

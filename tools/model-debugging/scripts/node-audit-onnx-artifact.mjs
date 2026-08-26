@@ -13,6 +13,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { inspectWhisperArtifactContract } from './whisper-artifact-contract.mjs';
+import { inspectXAsrArtifactContract } from './x-asr-artifact-contract.mjs';
 
 function parseArgs(argv) {
   const options = {
@@ -23,6 +24,7 @@ function parseArgs(argv) {
     whisperContract: false,
     requireCausalAlignment: false,
     requireMergedCrossAttention: false,
+    xAsrContract: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -43,6 +45,8 @@ function parseArgs(argv) {
     } else if (arg === '--require-merged-cross-attention') {
       options.whisperContract = true;
       options.requireMergedCrossAttention = true;
+    } else if (arg === '--x-asr-contract') {
+      options.xAsrContract = true;
     } else if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
@@ -70,6 +74,7 @@ function printUsage() {
       '  --whisper-contract        Report splitgraph/merged timestamp capabilities',
       '  --require-causal-alignment  Fail unless split decoder_align is explicitly causal',
       '  --require-merged-cross-attention  Fail unless every merged decoder exports cross_attentions.*',
+      '  --x-asr-contract         Validate the four-variant X-ASR streaming artifact layout',
     ].join('\n'),
   );
 }
@@ -236,6 +241,9 @@ async function main() {
         graphs,
       })
     : undefined;
+  const xAsrContract = options.xAsrContract
+    ? inspectXAsrArtifactContract({ modelDir, files, graphs })
+    : undefined;
   const contractFailures = [];
   if (
     options.requireCausalAlignment &&
@@ -259,6 +267,7 @@ async function main() {
     inventory,
     graphs,
     ...(whisperContract ? { whisper_contract: whisperContract } : {}),
+    ...(xAsrContract ? { x_asr_contract: xAsrContract } : {}),
     summary: {
       file_count: inventory.length,
       onnx_count: graphs.length,
@@ -266,6 +275,7 @@ async function main() {
       failed_onnx_count: failedGraphs.length,
       ok: failedGraphs.length === 0,
       ...(options.whisperContract ? { whisper_contract_ok: contractFailures.length === 0 } : {}),
+      ...(xAsrContract ? { x_asr_contract_ok: xAsrContract.ok } : {}),
     },
   };
 
@@ -288,6 +298,10 @@ async function main() {
   }
   if (contractFailures.length > 0) {
     for (const failure of contractFailures) console.error('Whisper contract failure: ' + failure);
+    process.exitCode = 1;
+  }
+  if (xAsrContract && !xAsrContract.ok) {
+    for (const failure of xAsrContract.failures) console.error('X-ASR contract failure: ' + failure);
     process.exitCode = 1;
   }
 }
