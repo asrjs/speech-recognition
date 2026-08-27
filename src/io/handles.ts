@@ -50,6 +50,10 @@ async function streamToBytes(
     onChunk?.(chunk, loaded);
   }
 
+  if (chunks.length === 1) {
+    return chunks[0]!;
+  }
+
   const bytes = new Uint8Array(loaded);
   let offset = 0;
   for (const chunk of chunks) {

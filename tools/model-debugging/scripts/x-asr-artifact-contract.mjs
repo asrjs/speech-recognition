@@ -13,7 +13,7 @@ function normalize(value) {
 }
 
 function relative(modelDir, filePath) {
-  return normalize(path.relative(modelDir, filePath));
+  return path.posix.relative(normalize(modelDir), normalize(filePath));
 }
 
 function findExact(modelDir, files, expected) {
