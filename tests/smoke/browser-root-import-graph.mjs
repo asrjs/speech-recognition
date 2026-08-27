@@ -4,7 +4,28 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const distRoot = resolve(repositoryRoot, 'dist');
-const entryPoint = resolve(distRoot, 'index.js');
+const defaultEntryPoints = [
+  'index.js',
+  'builtins.js',
+  'io.js',
+  'inference.js',
+  'browser.js',
+  'browser-media.js',
+  'realtime.js',
+  'bench.js',
+  'bench-browser.js',
+  'datasets.js',
+  'quality.js',
+  'chunking.js',
+  'post-processing.js',
+  'pipeline.js',
+  'tokenizers.js',
+  'alignment.js',
+];
+const requestedEntryPoints = process.argv.slice(2);
+const entryPoints = (
+  requestedEntryPoints.length > 0 ? requestedEntryPoints : defaultEntryPoints
+).map((entryPoint) => resolve(distRoot, entryPoint));
 
 const staticModulePattern =
   /^(?:\s*)(?:import|export)\s+(?:(?!\bfrom\b)[^;\r\n])*?\bfrom\s+['"]([^'"]+)['"]\s*;?\s*$|^(?:\s*)import\s+['"]([^'"]+)['"]\s*;?\s*$/gm;
@@ -35,7 +56,7 @@ function collectStaticImports(source) {
 }
 
 async function main() {
-  const queue = [entryPoint];
+  const queue = [...entryPoints];
   const visited = new Set();
   const violations = [];
 
@@ -75,7 +96,9 @@ async function main() {
   }
 
   console.log(
-    `[browser-root-import-graph] ok: ${visited.size} local modules reachable from dist/index.js`,
+    `[browser-root-import-graph] ok: ${visited.size} local modules reachable from ${
+      entryPoints.length
+    } browser-safe dist entries`,
   );
 }
 
