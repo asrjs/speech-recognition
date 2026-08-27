@@ -16,7 +16,7 @@ import {
   importNodeModule,
   isNodeLikeRuntime,
   resolveNodePackageSubpathUrl,
-} from '../../io/node.js';
+} from '../../io/node-compat.js';
 
 interface OrtEnv {
   wasm: {

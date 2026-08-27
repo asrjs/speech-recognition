@@ -1,5 +1,5 @@
 import type { NemoTokenizer } from '../nemo-common/index.js';
-import { importNodeModule, isNodeLikeRuntime } from '../../io/node.js';
+import { importNodeModule, isNodeLikeRuntime } from '../../io/node-compat.js';
 import {
   fetchTextHonoringAbort,
   rethrowIfAssetAborted,

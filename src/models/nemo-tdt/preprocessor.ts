@@ -3,7 +3,7 @@ import { JSMelProcessor } from '../../audio/js-mel.js';
 import type { OrtModuleLike, OrtSessionLike, OrtTensorLike } from './ort.js';
 import { releaseOrtSession } from './ort.js';
 import { honorAbortAfterCreate, withNativeAbortSignalOption } from '../../io/abort.js';
-import { importNodeModule, isNodeLikeRuntime } from '../../io/node.js';
+import { importNodeModule, isNodeLikeRuntime } from '../../io/node-compat.js';
 
 export interface NemoPreprocessorResult {
   readonly features: Float32Array;

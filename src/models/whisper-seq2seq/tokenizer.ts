@@ -1,4 +1,4 @@
-import { isNodeLikeRuntime, importNodeModule } from '../../io/node.js';
+import { isNodeLikeRuntime, importNodeModule } from '../../io/node-compat.js';
 import type { TextTokenizer } from '../../tokenizers/index.js';
 import {
   fetchTextHonoringAbort,

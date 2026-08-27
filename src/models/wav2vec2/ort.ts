@@ -8,7 +8,7 @@ import {
   importNodeModule,
   isNodeLikeRuntime,
   resolveNodePackageSubpathUrl,
-} from '../../io/node.js';
+} from '../../io/node-compat.js';
 
 // ---------------------------------------------------------------------------
 // ORT type shims (mirror lasr-ctc/ort.ts)

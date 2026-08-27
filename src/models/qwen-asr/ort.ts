@@ -1,5 +1,5 @@
 import { honorAbortAfterCreate, withNativeAbortSignalOption, withOrtCreateAbort } from '../../io/abort.js';
-import { importNodeModule, isNodeLikeRuntime, resolveNodePackageSubpathUrl } from '../../io/node.js';
+import { importNodeModule, isNodeLikeRuntime, resolveNodePackageSubpathUrl } from '../../io/node-compat.js';
 import type {
   Qwen3AsrArtifactSource,
   Qwen3AsrDirectArtifacts,

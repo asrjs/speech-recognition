@@ -7,7 +7,7 @@ import {
   estimateSecondsPerOutputFrame,
 } from '../../ctc/index.js';
 import { nowMs, roundMetric, roundTimestampSeconds } from '../../runtime/timing.js';
-import { importNodeModule } from '../../io/node.js';
+import { importNodeModule } from '../../io/node-compat.js';
 import { createExperimentalArtifactMissingError } from '../../runtime/experimental-families.js';
 import type {
   AssetProvider,

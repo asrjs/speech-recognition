@@ -1,5 +1,5 @@
 import type { TextTokenizer } from '../../tokenizers/index.js';
-import { importNodeModule } from '../../io/node.js';
+import { importNodeModule } from '../../io/node-compat.js';
 import {
   fetchTextHonoringAbort,
   rethrowIfAssetAborted,
