@@ -32,7 +32,9 @@ type BrowserTranscriptionWorkerState = 'idle' | 'loading' | 'ready' | 'error' | 
 type BrowserTranscriptionBuiltInLoadRequest<TLoadOptions = unknown> = Omit<
   LoadSpeechModelOptions<TLoadOptions>,
   'runtime' | 'hooks' | 'onProgress'
->;
+> & {
+  readonly signal?: { readonly aborted: boolean } | null;
+};
 
 type BrowserTranscriptionLocalLoadRequest = Omit<
   LoadSpeechModelFromLocalEntriesOptions,
