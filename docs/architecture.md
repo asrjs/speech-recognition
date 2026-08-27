@@ -126,6 +126,7 @@ Core contracts:
 `ResolvedAssetHandle` is stream-first:
 
 - `openStream()` is the primary large-asset path
+- uncached URL streams forward chunks without retaining the full payload
 - `readBytes()` is convenience for eager consumers
 - `readText()` and `readJson()` build on the same handle
 - `getLocator('url' | 'path')` supports runtimes like ORT that still need a concrete locator

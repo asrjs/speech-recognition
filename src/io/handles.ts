@@ -459,13 +459,16 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         return;
       }
 
-      const chunks: Uint8Array[] = [];
+      // `openStream()` is the large-asset path. Retaining every chunk here
+      // would double the live payload for callers that did not request a
+      // cache write, so only collect when there is an actual cache target.
+      const cacheChunks: Uint8Array[] | null = this.cache && this.request.cacheKey ? [] : null;
       let loaded = 0;
       for await (const chunk of readReadableStream(
         body as ReadableStream<Uint8Array>,
         this.request.signal,
       )) {
-        chunks.push(chunk);
+        cacheChunks?.push(chunk);
         loaded += chunk.byteLength;
         emitAssetProgress(this.request, {
           id: this.request.id,
@@ -485,10 +488,10 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         source: 'network',
       });
 
-      if (this.cache && this.request.cacheKey) {
+      if (cacheChunks) {
         const bytes = new Uint8Array(loaded);
         let offset = 0;
-        for (const chunk of chunks) {
+        for (const chunk of cacheChunks) {
           bytes.set(chunk, offset);
           offset += chunk.byteLength;
         }

@@ -137,6 +137,91 @@ describe('UrlAssetHandle', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('streams network chunks without retaining them when caching is disabled', async () => {
+    const chunks = [new Uint8Array([1, 2]), new Uint8Array([3, 4])];
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) {
+          controller.enqueue(chunk);
+        }
+        controller.close();
+      },
+    });
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(stream, {
+          status: 200,
+          headers: { 'content-type': 'application/octet-stream' },
+        }),
+    ) as typeof fetch;
+
+    const handle = new UrlAssetHandle(
+      {
+        id: 'url:stream-no-cache',
+        provider: 'url',
+        url: 'https://example.com/model.onnx',
+      },
+      'https://example.com/model.onnx',
+    );
+
+    const received: Uint8Array[] = [];
+    for await (const chunk of handle.openStream()) {
+      received.push(chunk);
+    }
+
+    expect(received).toHaveLength(2);
+    expect(received.map((chunk) => Array.from(chunk))).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+  });
+
+  it('assembles streamed chunks before writing a requested cache entry', async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([5, 6]));
+        controller.enqueue(new Uint8Array([7, 8]));
+        controller.close();
+      },
+    });
+    const cache: AssetCache = {
+      get: vi.fn(async () => null),
+      set: vi.fn(async () => undefined),
+    };
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(stream, {
+          status: 200,
+          headers: { 'content-type': 'application/octet-stream' },
+        }),
+    ) as typeof fetch;
+
+    const handle = new UrlAssetHandle(
+      {
+        id: 'url:stream-cache',
+        provider: 'url',
+        url: 'https://example.com/model.onnx',
+        cacheKey: 'cache:stream-cache',
+      },
+      'https://example.com/model.onnx',
+      cache,
+    );
+
+    const received: number[] = [];
+    for await (const chunk of handle.openStream()) {
+      received.push(...chunk);
+    }
+
+    expect(received).toEqual([5, 6, 7, 8]);
+    expect(cache.set).toHaveBeenCalledWith('cache:stream-cache', {
+      bytes: expect.any(Uint8Array),
+      contentType: 'application/octet-stream',
+    });
+    expect(Array.from((cache.set as ReturnType<typeof vi.fn>).mock.calls[0]![1].bytes)).toEqual([
+      5, 6, 7, 8,
+    ]);
+  });
+
   it('can materialize remote URL locators as blob URLs with progress', async () => {
     const progressEvents: AssetProgressEvent[] = [];
     globalThis.fetch = vi.fn(async () => {
