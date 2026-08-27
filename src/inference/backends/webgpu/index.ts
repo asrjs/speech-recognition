@@ -1,10 +1,10 @@
-import { NotImplementedSpeechFeatureError } from '../../../runtime/errors.js';
 import type {
   BackendCapabilities,
   BackendEnvironment,
   BackendExecutionRequest,
   ExecutionBackend,
 } from '../../../types/index.js';
+import { createBackendExecutionContext } from '../execution-context.js';
 
 interface NavigatorWithGpu extends Navigator {
   gpu?: {
@@ -85,14 +85,7 @@ export function createWebGpuBackend(): ExecutionBackend {
     probeCapabilities: probeWebGpuCapabilities,
     async createExecutionContext(request: BackendExecutionRequest) {
       const capabilities = await probeWebGpuCapabilities();
-      throw new NotImplementedSpeechFeatureError(
-        'WebGPU backend execution context creation is not implemented in this scaffold.',
-        {
-          backendId: 'webgpu',
-          modelId: request.modelId,
-          capabilities,
-        },
-      );
+      return createBackendExecutionContext(request, capabilities);
     },
   };
 }

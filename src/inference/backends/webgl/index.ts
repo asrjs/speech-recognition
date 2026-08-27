@@ -1,10 +1,10 @@
-import { NotImplementedSpeechFeatureError } from '../../../runtime/errors.js';
 import type {
   BackendCapabilities,
   BackendEnvironment,
   BackendExecutionRequest,
   ExecutionBackend,
 } from '../../../types/index.js';
+import { createBackendExecutionContext } from '../execution-context.js';
 
 function detectEnvironments(): BackendEnvironment[] {
   const environments: BackendEnvironment[] = [];
@@ -60,14 +60,7 @@ export function createWebGlBackend(): ExecutionBackend {
     probeCapabilities: probeWebGlCapabilities,
     async createExecutionContext(request: BackendExecutionRequest) {
       const capabilities = await probeWebGlCapabilities();
-      throw new NotImplementedSpeechFeatureError(
-        'WebGL backend execution context creation is not implemented in this scaffold.',
-        {
-          backendId: 'webgl',
-          modelId: request.modelId,
-          capabilities,
-        },
-      );
+      return createBackendExecutionContext(request, capabilities);
     },
   };
 }

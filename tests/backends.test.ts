@@ -1,7 +1,13 @@
-import { createWebGlBackend, probeWebGlCapabilities } from '@asrjs/speech-recognition';
-import { probeWasmCapabilities } from '@asrjs/speech-recognition';
-import { probeWebGpuCapabilities } from '@asrjs/speech-recognition';
-import { probeWebNnCapabilities } from '@asrjs/speech-recognition';
+import {
+  createWasmBackend,
+  createWebGlBackend,
+  createWebGpuBackend,
+  createWebNnBackend,
+  probeWebGlCapabilities,
+  probeWasmCapabilities,
+  probeWebGpuCapabilities,
+  probeWebNnCapabilities,
+} from '@asrjs/speech-recognition';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
@@ -33,6 +39,32 @@ describe('backend probes', () => {
     expect(caps.fallbackSuitable).toBe(true);
   });
 
+  it('creates an idempotently disposable WASM execution context', async () => {
+    const context = await createWasmBackend().createExecutionContext({
+      modelFamily: 'test-family',
+      modelId: 'test-model',
+      precision: 'fp32',
+    });
+
+    expect(context.backendId).toBe('wasm');
+    expect(context.capabilities.id).toBe('wasm');
+    expect(() => context.dispose()).not.toThrow();
+    expect(() => context.dispose()).not.toThrow();
+  });
+
+  it('rejects unsupported precision at context creation', async () => {
+    await expect(
+      createWasmBackend().createExecutionContext({
+        modelFamily: 'test-family',
+        modelId: 'test-model',
+        precision: 'fp16',
+      }),
+    ).rejects.toMatchObject({
+      name: 'CapabilityMismatchError',
+      code: 'capability-mismatch',
+    });
+  });
+
   it('detects WebGPU capabilities from a mocked navigator', async () => {
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
@@ -59,6 +91,14 @@ describe('backend probes', () => {
     expect(caps.available).toBe(true);
     expect(caps.supportsFp16).toBe(true);
     expect(caps.provider).toBe('MockVendor');
+
+    const context = await createWebGpuBackend().createExecutionContext({
+      modelFamily: 'test-family',
+      modelId: 'test-model',
+      precision: 'fp16',
+    });
+    expect(context.provider).toBe('MockVendor');
+    await context.dispose();
   });
 
   it('detects WebNN from a mocked navigator', async () => {
@@ -72,6 +112,14 @@ describe('backend probes', () => {
     const caps = await probeWebNnCapabilities();
     expect(caps.available).toBe(true);
     expect(caps.experimental).toBe(true);
+
+    const context = await createWebNnBackend().createExecutionContext({
+      modelFamily: 'test-family',
+      modelId: 'test-model',
+      precision: 'fp16',
+    });
+    expect(context.backendId).toBe('webnn');
+    await context.dispose();
   });
 
   it('detects WebGL from a mocked document', async () => {

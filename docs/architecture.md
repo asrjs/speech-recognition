@@ -403,3 +403,10 @@ rejects Node builtins plus the Node-only `io-node` entry. Node capability
 lookups used by root-reachable model code must remain lazy and go through the
 browser-safe compatibility bridge; the explicit `@asrjs/speech-recognition/io/node`
 subpath remains the opt-in Node surface.
+
+Backend probes and capability-scoped execution contexts live under
+`src/inference/backends`. A context validates availability and requested
+precision, and owns only its disposable capability lease. Model-family
+executors continue to own ORT sessions, tensors, and model-specific lifecycle
+because Whisper split graphs, CTC encoders, and stateful transducers have
+different resource boundaries.

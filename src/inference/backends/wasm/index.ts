@@ -1,10 +1,10 @@
-import { NotImplementedSpeechFeatureError } from '../../../runtime/errors.js';
 import type {
   BackendCapabilities,
   BackendEnvironment,
   BackendExecutionRequest,
   ExecutionBackend,
 } from '../../../types/index.js';
+import { createBackendExecutionContext } from '../execution-context.js';
 
 function detectEnvironments(): BackendEnvironment[] {
   const environments: BackendEnvironment[] = [];
@@ -62,14 +62,7 @@ export function createWasmBackend(): ExecutionBackend {
     probeCapabilities: probeWasmCapabilities,
     async createExecutionContext(request: BackendExecutionRequest) {
       const capabilities = await probeWasmCapabilities();
-      throw new NotImplementedSpeechFeatureError(
-        'WASM backend execution context creation is not implemented in this scaffold.',
-        {
-          backendId: 'wasm',
-          modelId: request.modelId,
-          capabilities,
-        },
-      );
+      return createBackendExecutionContext(request, capabilities);
     },
   };
 }

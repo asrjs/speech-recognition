@@ -1,10 +1,10 @@
-import { NotImplementedSpeechFeatureError } from '../../../runtime/errors.js';
 import type {
   BackendCapabilities,
   BackendEnvironment,
   BackendExecutionRequest,
   ExecutionBackend,
 } from '../../../types/index.js';
+import { createBackendExecutionContext } from '../execution-context.js';
 
 interface NavigatorWithMl extends Navigator {
   ml?: object;
@@ -58,14 +58,7 @@ export function createWebNnBackend(): ExecutionBackend {
     probeCapabilities: probeWebNnCapabilities,
     async createExecutionContext(request: BackendExecutionRequest) {
       const capabilities = await probeWebNnCapabilities();
-      throw new NotImplementedSpeechFeatureError(
-        'WebNN backend execution context creation is not implemented in this scaffold.',
-        {
-          backendId: 'webnn',
-          modelId: request.modelId,
-          capabilities,
-        },
-      );
+      return createBackendExecutionContext(request, capabilities);
     },
   };
 }
