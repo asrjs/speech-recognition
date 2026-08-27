@@ -1,4 +1,5 @@
 import { SAMPLE_RATE } from './constants.js';
+import { getNodeBuiltin } from '../../../io/node-builtin.js';
 import { isLikelyHttpUrl, isNodeRuntime, looksLikeFileUrl } from './util.js';
 
 export interface ParsedWavPcm16 {
@@ -68,7 +69,9 @@ export function parseWavPcm16(bytes: Uint8Array): ParsedWavPcm16 {
 }
 
 async function readNodeFileBytes(pathLike: string): Promise<Uint8Array> {
-  const fs = await import('node:fs/promises');
+  const fs = getNodeBuiltin<{
+    readFile(path: string | URL): Promise<Uint8Array>;
+  }>('fs/promises');
   const path = pathLike.startsWith('file://') ? new URL(pathLike) : pathLike;
   const content = await fs.readFile(path);
   return new Uint8Array(content.buffer, content.byteOffset, content.byteLength);
@@ -82,7 +85,9 @@ async function fetchBytes(url: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-export async function loadPcm16Wav(input: string | Uint8Array | ArrayBuffer): Promise<ParsedWavPcm16> {
+export async function loadPcm16Wav(
+  input: string | Uint8Array | ArrayBuffer,
+): Promise<ParsedWavPcm16> {
   if (input instanceof Uint8Array) {
     return parseWavPcm16(input);
   }

@@ -1,4 +1,5 @@
 import type { TextTokenizer } from '../../tokenizers/index.js';
+import { importNodeModule } from '../../io/node.js';
 import {
   fetchTextHonoringAbort,
   rethrowIfAssetAborted,
@@ -36,8 +37,9 @@ export async function readTokenizerSourceText(
   throwIfAssetAborted(signal);
   if (/^file:/i.test(url)) {
     try {
-      const { readFile } = await import('node:fs/promises');
-      const { fileURLToPath } = await import('node:url');
+      const { readFile } =
+        await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+      const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
       const text = await readFile(fileURLToPath(url), 'utf8');
       throwIfAssetAborted(signal);
       return text;

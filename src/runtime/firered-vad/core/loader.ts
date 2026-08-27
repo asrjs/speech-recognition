@@ -1,4 +1,5 @@
 import type { FireRedAssetCache } from '../types.js';
+import { getNodeBuiltin } from '../../../io/node-builtin.js';
 import { isLikelyHttpUrl, isNodeRuntime, looksLikeFileUrl } from './util.js';
 import {
   fetchBytesHonoringAbort,
@@ -12,7 +13,9 @@ function toCacheKey(source: string): string {
 }
 
 async function readNodeFile(pathLike: string): Promise<Uint8Array> {
-  const fs = await import('node:fs/promises');
+  const fs = getNodeBuiltin<{
+    readFile(path: string | URL): Promise<Uint8Array>;
+  }>('fs/promises');
   const normalized = pathLike.startsWith('file://') ? new URL(pathLike) : pathLike;
   const bytes = await fs.readFile(normalized);
   return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -45,7 +48,11 @@ export async function loadBinaryResource(
   }
 
   let bytes: Uint8Array;
-  if (isLikelyHttpUrl(source) || looksLikeFileUrl(source) || (!isNodeRuntime() && !source.startsWith('.'))) {
+  if (
+    isLikelyHttpUrl(source) ||
+    looksLikeFileUrl(source) ||
+    (!isNodeRuntime() && !source.startsWith('.'))
+  ) {
     bytes = await fetchBytes(source, signal);
   } else if (isNodeRuntime()) {
     throwIfAssetAborted(signal, 'download');

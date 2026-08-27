@@ -7,6 +7,7 @@ import {
   estimateSecondsPerOutputFrame,
 } from '../../ctc/index.js';
 import { nowMs, roundMetric, roundTimestampSeconds } from '../../runtime/timing.js';
+import { importNodeModule } from '../../io/node.js';
 import { createExperimentalArtifactMissingError } from '../../runtime/experimental-families.js';
 import type {
   AssetProvider,
@@ -173,8 +174,8 @@ function intVector(ort: OrtModuleLike, session: OrtSessionLike, name: string, va
 
 async function readTextUrl(url: string): Promise<string> {
   if (/^file:/i.test(url)) {
-    const { readFile } = await import('node:fs/promises');
-    const { fileURLToPath } = await import('node:url');
+    const { readFile } = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+    const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
     return readFile(fileURLToPath(url), 'utf8');
   }
   const response = await fetch(url);
