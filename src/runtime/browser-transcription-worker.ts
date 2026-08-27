@@ -6,6 +6,7 @@ import type {
 } from '../types/index.js';
 import type { LoadSpeechModelOptions } from './load.js';
 import type { LoadSpeechModelFromLocalEntriesOptions } from './local-browser.js';
+import { AssetLoadAbortedError, toFetchAbortSignal } from '../io/abort.js';
 
 interface BrowserTranscriptionWorkerLike {
   onmessage: ((event: MessageEvent) => void) | null;
@@ -17,6 +18,7 @@ interface BrowserTranscriptionWorkerLike {
 interface PendingWorkerRequest {
   readonly resolve: (value: unknown) => void;
   readonly reject: (reason?: unknown) => void;
+  readonly cleanup: () => void;
 }
 
 type BrowserTranscriptionWorkerRequestType =
@@ -35,7 +37,9 @@ type BrowserTranscriptionBuiltInLoadRequest<TLoadOptions = unknown> = Omit<
 type BrowserTranscriptionLocalLoadRequest = Omit<
   LoadSpeechModelFromLocalEntriesOptions,
   'runtime' | 'hooks' | 'onProgress'
->;
+> & {
+  readonly signal?: { readonly aborted: boolean } | null;
+};
 
 interface BrowserTranscriptionWorkerInfo {
   readonly modelId?: string;
@@ -76,6 +80,7 @@ export interface BrowserTranscriptionWorkerClientStatus {
 
 export interface BrowserTranscriptionWorkerClientOptions {
   readonly workerFactory?: () => BrowserTranscriptionWorkerLike;
+  readonly signal?: { readonly aborted: boolean } | null;
 }
 
 export interface BrowserTranscriptionWorkerClient {
@@ -105,10 +110,56 @@ function defaultWorkerFactory(): BrowserTranscriptionWorkerLike {
   });
 }
 
+function createBrowserTranscriptionAbortedError(
+  stage: 'browser-transcription-load' | 'browser-transcription-transcribe',
+): AssetLoadAbortedError {
+  return new AssetLoadAbortedError(stage);
+}
+
+function abortStageFor(
+  type: BrowserTranscriptionWorkerRequestType,
+): 'browser-transcription-load' | 'browser-transcription-transcribe' {
+  return type === 'TRANSCRIBE_MONO_PCM'
+    ? 'browser-transcription-transcribe'
+    : 'browser-transcription-load';
+}
+
+function omitSignal<T extends Record<string, unknown>>(value: T): Omit<T, 'signal'> {
+  const { signal: _signal, ...rest } = value;
+  return rest;
+}
+
+function clonePayloadForWorker(
+  type: BrowserTranscriptionWorkerRequestType,
+  payload: unknown,
+): unknown {
+  if (!payload || typeof payload !== 'object') {
+    return payload;
+  }
+  if (type === 'TRANSCRIBE_MONO_PCM') {
+    const request = payload as {
+      pcm: Float32Array;
+      sampleRate: number;
+      options?: Record<string, unknown> | null;
+    };
+    const options = request.options;
+    return {
+      pcm: request.pcm,
+      sampleRate: request.sampleRate,
+      options:
+        options && typeof options === 'object'
+          ? omitSignal(options as Record<string, unknown>)
+          : (options ?? null),
+    };
+  }
+  return omitSignal(payload as Record<string, unknown>);
+}
+
 export function createBrowserTranscriptionWorkerClient(
   options: BrowserTranscriptionWorkerClientOptions = {},
 ): BrowserTranscriptionWorkerClient {
   const workerFactory = options.workerFactory ?? defaultWorkerFactory;
+  const clientSignal = options.signal;
   let worker: BrowserTranscriptionWorkerLike | null = null;
   let requestId = 0;
   let disposed = false;
@@ -138,6 +189,7 @@ export function createBrowserTranscriptionWorkerClient(
       error: message,
     };
     for (const [, request] of pending) {
+      request.cleanup();
       request.reject(new Error(message));
     }
     pending.clear();
@@ -149,6 +201,7 @@ export function createBrowserTranscriptionWorkerClient(
       return;
     }
     pending.delete(message.id);
+    request.cleanup();
 
     if (message.type === 'ERROR') {
       const error = new Error(String(message.payload ?? 'Worker request failed.'));
@@ -191,15 +244,87 @@ export function createBrowserTranscriptionWorkerClient(
     type: BrowserTranscriptionWorkerRequestType,
     payload: unknown,
     transfer: Transferable[] = [],
+    signal?: { readonly aborted: boolean } | null,
   ): Promise<unknown> => {
+    const abortSignal = signal ?? clientSignal;
+    const stage = abortStageFor(type);
+    if (abortSignal?.aborted) {
+      throw createBrowserTranscriptionAbortedError(stage);
+    }
     const activeWorker = ensureWorker();
+    if (abortSignal?.aborted) {
+      resetWorker();
+      throw createBrowserTranscriptionAbortedError(stage);
+    }
     const id = ++requestId;
     return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
+      const native = toFetchAbortSignal(abortSignal);
+      const onAbort = () => {
+        native?.removeEventListener('abort', onAbort);
+        const pendingRequest = pending.get(id);
+        if (!pendingRequest) {
+          return;
+        }
+        const error = createBrowserTranscriptionAbortedError(stage);
+
+        // A transcription can be canceled cooperatively because the worker
+        // owns the loaded model. Reject this caller immediately, then let the
+        // worker abort its model-level decode without tearing down the model
+        // or forcing the next request to reload it.
+        if (type === 'TRANSCRIBE_MONO_PCM') {
+          pending.delete(id);
+          pendingRequest.cleanup();
+          pendingRequest.reject(error);
+          try {
+            activeWorker.postMessage({
+              id: ++requestId,
+              type: 'CANCEL_TRANSCRIBE',
+              payload: { requestId: id },
+            });
+            status = {
+              ...status,
+              error: null,
+            };
+          } catch {
+            // A worker that cannot accept the cancellation command is no
+            // longer safe to reuse. Preserve the old teardown fallback only
+            // for this transport failure.
+            resetWorker();
+            status = {
+              state: disposed ? 'disposed' : 'idle',
+              error: null,
+              model: null,
+            };
+          }
+          return;
+        }
+
+        resetWorker();
+        status = {
+          state: disposed ? 'disposed' : 'idle',
+          error: null,
+          model: null,
+        };
+        for (const [, request] of pending) {
+          request.cleanup();
+          request.reject(error);
+        }
+        pending.clear();
+      };
+      pending.set(id, {
+        resolve,
+        reject,
+        cleanup: () => native?.removeEventListener('abort', onAbort),
+      });
+      native?.addEventListener('abort', onAbort);
       try {
-        activeWorker.postMessage({ id, type, payload }, transfer);
+        activeWorker.postMessage(
+          { id, type, payload: clonePayloadForWorker(type, payload) },
+          transfer,
+        );
       } catch (error) {
         pending.delete(id);
+        native?.removeEventListener('abort', onAbort);
         resetWorker();
         fail(error);
         reject(error);
@@ -214,22 +339,40 @@ export function createBrowserTranscriptionWorkerClient(
     async loadBuiltInModel<TLoadOptions = unknown>(
       request: BrowserTranscriptionBuiltInLoadRequest<TLoadOptions>,
     ): Promise<BrowserTranscriptionWorkerInfo> {
+      const abortSignal = request.signal ?? clientSignal;
+      if (abortSignal?.aborted) {
+        throw createBrowserTranscriptionAbortedError('browser-transcription-load');
+      }
       status = {
         ...status,
         state: 'loading',
         error: null,
       };
-      return (await sendRequest('LOAD_BUILT_IN_MODEL', request)) as BrowserTranscriptionWorkerInfo;
+      return (await sendRequest(
+        'LOAD_BUILT_IN_MODEL',
+        request,
+        [],
+        abortSignal,
+      )) as BrowserTranscriptionWorkerInfo;
     },
     async loadLocalModel(
       request: BrowserTranscriptionLocalLoadRequest,
     ): Promise<BrowserTranscriptionWorkerInfo> {
+      const abortSignal = request.signal ?? clientSignal;
+      if (abortSignal?.aborted) {
+        throw createBrowserTranscriptionAbortedError('browser-transcription-load');
+      }
       status = {
         ...status,
         state: 'loading',
         error: null,
       };
-      return (await sendRequest('LOAD_LOCAL_MODEL', request)) as BrowserTranscriptionWorkerInfo;
+      return (await sendRequest(
+        'LOAD_LOCAL_MODEL',
+        request,
+        [],
+        abortSignal,
+      )) as BrowserTranscriptionWorkerInfo;
     },
     async transcribeMonoPcm<
       TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
@@ -240,6 +383,10 @@ export function createBrowserTranscriptionWorkerClient(
       sampleRate: number,
       options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
     ): Promise<TranscriptResponse<TNative, TFlavor>> {
+      const abortSignal = options?.signal ?? clientSignal;
+      if (abortSignal?.aborted) {
+        throw createBrowserTranscriptionAbortedError('browser-transcription-transcribe');
+      }
       const chunk = new Float32Array(pcm);
       return (await sendRequest(
         'TRANSCRIBE_MONO_PCM',
@@ -249,6 +396,7 @@ export function createBrowserTranscriptionWorkerClient(
           options: options ?? null,
         },
         [chunk.buffer],
+        abortSignal,
       )) as TranscriptResponse<TNative, TFlavor>;
     },
     async disposeModel(): Promise<void> {

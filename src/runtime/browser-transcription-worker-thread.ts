@@ -34,6 +34,11 @@ type WorkerRequestMessage =
     }
   | {
       readonly id: number;
+      readonly type: 'CANCEL_TRANSCRIBE';
+      readonly payload: { readonly requestId: number };
+    }
+  | {
+      readonly id: number;
       readonly type: 'DISPOSE_MODEL';
       readonly payload: null;
     };
@@ -66,6 +71,7 @@ type LoadedModelLike = {
 const workerScope = self as unknown as WorkerScopeLike;
 let loadedModel: LoadedModelLike | null = null;
 let loadSource: 'built-in' | 'local' | null = null;
+const activeTranscribes = new Map<number, AbortController>();
 
 function assertNever(value: never): never {
   throw new Error(`Unknown browser transcription worker request: ${String(value)}`);
@@ -130,11 +136,24 @@ async function handleRequest(message: WorkerRequestMessage): Promise<unknown> {
       if (!loadedModel) {
         throw new Error('No worker transcription model is loaded.');
       }
-      return await loadedModel.transcribeMonoPcm(
-        message.payload.pcm,
-        message.payload.sampleRate,
-        message.payload.options ?? undefined,
-      );
+      const controller = new AbortController();
+      activeTranscribes.set(message.id, controller);
+      try {
+        return await loadedModel.transcribeMonoPcm(
+          message.payload.pcm,
+          message.payload.sampleRate,
+          {
+            ...(message.payload.options ?? {}),
+            signal: controller.signal,
+          },
+        );
+      } finally {
+        activeTranscribes.delete(message.id);
+      }
+    }
+    case 'CANCEL_TRANSCRIBE': {
+      activeTranscribes.get(message.payload.requestId)?.abort();
+      return null;
     }
     case 'DISPOSE_MODEL': {
       await disposeLoadedModel();
@@ -148,6 +167,24 @@ let requestChain = Promise.resolve();
 
 workerScope.onmessage = (event: MessageEvent<unknown>) => {
   const rawMessage = event.data;
+
+  // Cancellation must bypass requestChain: a transcribe request is awaited
+  // there, so queueing the cancel behind it would never reach the active
+  // AbortController until inference had already finished.
+  if (
+    typeof rawMessage === 'object' &&
+    rawMessage !== null &&
+    (rawMessage as { type?: unknown }).type === 'CANCEL_TRANSCRIBE' &&
+    typeof (rawMessage as { payload?: unknown }).payload === 'object' &&
+    (rawMessage as { payload?: { requestId?: unknown } }).payload !== null &&
+    typeof (rawMessage as { payload: { requestId?: unknown } }).payload.requestId === 'number'
+  ) {
+    activeTranscribes
+      .get((rawMessage as { payload: { requestId: number } }).payload.requestId)
+      ?.abort();
+    return;
+  }
+
   const requestId =
     typeof rawMessage === 'object' &&
     rawMessage !== null &&

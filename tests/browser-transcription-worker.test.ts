@@ -6,10 +6,16 @@ class FakeWorker {
   onerror: ((event: ErrorEvent) => void) | null = null;
   public readonly messages: any[] = [];
   public terminated = false;
+  public holdTranscribe = false;
 
   postMessage(message: any, transfer: Transferable[] = []): void {
     const request = structuredClone(message, { transfer });
     this.messages.push(request);
+
+    if (request.type === 'TRANSCRIBE_MONO_PCM' && this.holdTranscribe) {
+      return;
+    }
+
     queueMicrotask(() => {
       if (request.type === 'LOAD_BUILT_IN_MODEL') {
         this.onmessage?.({
@@ -197,5 +203,122 @@ describe('BrowserTranscriptionWorkerClient', () => {
       modelId: 'parakeet',
       source: 'built-in',
     });
+  });
+
+  it('does not create a worker when load is already aborted', async () => {
+    let created = 0;
+    const client = createBrowserTranscriptionWorkerClient({
+      workerFactory: () => {
+        created += 1;
+        return new FakeWorker();
+      },
+    });
+
+    await expect(
+      client.loadBuiltInModel({
+        modelId: 'parakeet',
+        backend: 'webgpu',
+        signal: { aborted: true },
+      }),
+    ).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(created).toBe(0);
+    expect(client.getStatus().state).toBe('idle');
+  });
+
+  it('terminates the worker when load is aborted before LOAD returns', async () => {
+    const worker = new FakeWorker();
+    worker.postMessage = (message) => {
+      worker.messages.push(message);
+    };
+    const controller = new AbortController();
+    const client = createBrowserTranscriptionWorkerClient({
+      workerFactory: () => worker,
+    });
+
+    const loading = client.loadBuiltInModel({
+      modelId: 'parakeet',
+      backend: 'webgpu',
+      signal: controller.signal,
+    });
+    await Promise.resolve();
+    controller.abort();
+
+    await expect(loading).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(worker.terminated).toBe(true);
+    expect(client.getStatus().state).toBe('idle');
+  });
+
+  it('does not transcribe when the signal is already aborted', async () => {
+    const worker = new FakeWorker();
+    const client = createBrowserTranscriptionWorkerClient({
+      workerFactory: () => worker,
+    });
+
+    await client.loadBuiltInModel({
+      modelId: 'parakeet',
+      backend: 'webgpu',
+    });
+    worker.messages.length = 0;
+
+    await expect(
+      client.transcribeMonoPcm(new Float32Array([0, 0.1]), 16000, { signal: { aborted: true } }),
+    ).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(worker.messages).toEqual([]);
+    expect(worker.terminated).toBe(false);
+
+    await client.dispose();
+  });
+
+  it('cancels transcribe cooperatively and reuses the loaded worker', async () => {
+    const worker = new FakeWorker();
+    const client = createBrowserTranscriptionWorkerClient({
+      workerFactory: () => worker,
+    });
+
+    await client.loadBuiltInModel({
+      modelId: 'parakeet',
+      backend: 'webgpu',
+    });
+
+    worker.messages.length = 0;
+    worker.holdTranscribe = true;
+    const controller = new AbortController();
+    const transcribing = client.transcribeMonoPcm(new Float32Array([0, 0.1]), 16000, {
+      signal: controller.signal,
+    });
+    await Promise.resolve();
+    controller.abort();
+
+    await expect(transcribing).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(worker.messages.map((message) => message.type)).toEqual([
+      'TRANSCRIBE_MONO_PCM',
+      'CANCEL_TRANSCRIBE',
+    ]);
+    expect(worker.messages[1]?.payload).toEqual({ requestId: worker.messages[0]?.id });
+    expect(worker.terminated).toBe(false);
+    expect(client.getStatus()).toMatchObject({
+      state: 'ready',
+      model: { modelId: 'parakeet' },
+    });
+
+    worker.holdTranscribe = false;
+    await expect(
+      client.transcribeMonoPcm(new Float32Array([0, 0.1]), 16000),
+    ).resolves.toMatchObject({ text: 'ok' });
+    expect(worker.terminated).toBe(false);
+
+    await client.dispose();
   });
 });
