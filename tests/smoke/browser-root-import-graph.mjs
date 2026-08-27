@@ -21,6 +21,20 @@ const defaultEntryPoints = [
   'pipeline.js',
   'tokenizers.js',
   'alignment.js',
+  // Model-family subpaths are browser-facing package entry points too. Keep
+  // them in the default graph so a new Node-only dependency cannot silently
+  // break direct browser imports while the root entry remains clean.
+  'models/lasr-ctc.js',
+  'models/gigaam-ctc.js',
+  'models/gigaam-rnnt.js',
+  'models/x-asr.js',
+  'models/nemo-aed.js',
+  'models/nemo-rnnt.js',
+  'models/nemo-tdt.js',
+  'models/sensevoice.js',
+  'models/qwen-asr.js',
+  'models/wav2vec2.js',
+  'models/whisper-seq2seq.js',
 ];
 const requestedEntryPoints = process.argv.slice(2);
 const entryPoints = (
