@@ -1,0 +1,47 @@
+{
+  "preset": "qwen3-asr-0.6b-official-wasm",
+  "timestamp": "2026-08-27T02:30:48.357Z",
+  "status": "pass",
+  "transcript": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "language": "English",
+  "expected": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "baselineMatch": true,
+  "backend": "wasm",
+  "dtype": "float32",
+  "sequentialSessions": true,
+  "experimental": true,
+  "memory": {
+    "sharedArrayBuffer": true,
+    "jsHeapSizeLimit": 4395630592,
+    "totalJSHeapSize": 975241965,
+    "usedJSHeapSize": 973838381,
+    "usedJsHeapMb": 929,
+    "jsHeapLimitMb": 4192
+  },
+  "metrics": {
+    "loadMs": 5883.644999999553,
+    "transcribeMs": 47672.425000000745,
+    "totalMs": 47672.07,
+    "preprocessMs": 103.555,
+    "encodeMs": 4129.875,
+    "decodeMs": 15093.27,
+    "decoderInitMs": 6375.505,
+    "decoderStepMs": 8717.765,
+    "decoderStepAvgMs": 290.592,
+    "decoderStepCount": 30,
+    "decoderKvCacheLocation": "cpu",
+    "wallMs": 47672.07,
+    "audioDurationSec": 11,
+    "rtf": 4.333824545454545,
+    "rtfx": 0.23074307450882667,
+    "encoderFrameCount": 1100,
+    "emittedTokenCount": 30,
+    "decodeIterations": 30
+  },
+  "log": [
+    "dtype: float32",
+    "memory: {\"sharedArrayBuffer\":true,\"jsHeapSizeLimit\":4395630592,\"totalJSHeapSize\":3016591,\"usedJSHeapSize\":2166059,\"usedJsHeapMb\":2,\"jsHeapLimitMb\":4192}",
+    "encoder session ready in 5884ms",
+    "memory after ready: {\"sharedArrayBuffer\":true,\"jsHeapSizeLimit\":4395630592,\"totalJSHeapSize\":802651803,\"usedJSHeapSize\":776348519,\"usedJsHeapMb\":740,\"jsHeapLimitMb\":4192}"
+  ]
+}

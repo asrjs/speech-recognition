@@ -1,5 +1,5 @@
 import { PcmAudioBuffer } from '../../audio/index.js';
-import { createBlobAssetProvider } from '../../io/index.js';
+import { createBlobAssetProvider, throwIfAssetAborted } from '../../io/index.js';
 import { createBuiltInSpeechRuntime } from '../../runtime/index.js';
 import {
   fetchModelFiles,
@@ -62,6 +62,7 @@ export interface ResolveParakeetLocalEntriesOptions {
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
   readonly runtime?: DefaultSpeechRuntime;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }
 
 /** Fully resolved local Parakeet artifact selection plus owned asset handles. */
@@ -113,6 +114,7 @@ export interface GetParakeetModelOptions {
   readonly preprocessorBackend?: 'js' | 'onnx';
   readonly backend?: ParakeetBackend;
   readonly progress?: (progress: ModelFileProgress) => void;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   /** Materialize remote assets as cache-backed blob URLs for observable warm/cold loads. */
   readonly cacheModels?: boolean;
   readonly verbose?: boolean;
@@ -141,6 +143,7 @@ export interface ParakeetFromUrlsConfig {
   readonly runtime?: DefaultSpeechRuntime;
   /** Handles retained while resolving cache-backed blob locators. */
   readonly assetHandles?: readonly ResolvedAssetHandle[];
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }
 
 /** Legacy metrics shape preserved for compatibility with earlier Parakeet.js consumers. */
@@ -288,9 +291,12 @@ export function createParakeetLocalEntries(files: readonly File[]): ParakeetLoca
 export async function collectParakeetLocalEntries(
   dirHandle: ParakeetLocalDirectoryHandleLike,
   prefix = '',
+  signal?: import('../../types/index.js').AbortSignalLike | null,
 ): Promise<ParakeetLocalEntry[]> {
+  throwIfAssetAborted(signal, 'download');
   const entries: ParakeetLocalEntry[] = [];
   for await (const [name, handle] of dirHandle.entries()) {
+    throwIfAssetAborted(signal, 'download');
     if (handle.kind === 'directory' && name === '.git') {
       continue;
     }
@@ -307,7 +313,7 @@ export async function collectParakeetLocalEntries(
     }
 
     if (handle.kind === 'directory') {
-      const nested = await collectParakeetLocalEntries(handle, relativePath);
+      const nested = await collectParakeetLocalEntries(handle, relativePath, signal);
       entries.push(...nested);
     }
   }
@@ -438,6 +444,7 @@ function toFromUrlsConfig(
     backend: options.backend,
     verbose: options.verbose,
     assetHandles: modelUrls.assetHandles,
+    signal: options.signal,
   };
 }
 
@@ -553,7 +560,7 @@ export async function getParakeetModel(
   const preprocessorBackend = options.preprocessorBackend ?? 'js';
   const encoderBackend = resolveEncoderBackend(options);
   const decoderBackend = resolveDecoderBackend(options);
-  const repoFiles = await fetchModelFiles(repoId, revision);
+  const repoFiles = await fetchModelFiles(repoId, revision, { signal: options.signal });
 
   const encoderSetup = getParakeetDefaultWeightSetup(repoIdOrModelKey, encoderBackend);
   const decoderSetup = getParakeetDefaultWeightSetup(repoIdOrModelKey, decoderBackend);
@@ -578,6 +585,7 @@ export async function getParakeetModel(
     revision,
     progress: options.progress,
     preferBlobUrl: options.cacheModels,
+    signal: options.signal,
     onResolvedHandle: (handle: ResolvedAssetHandle) => assetHandles.push(handle),
   };
 
@@ -746,6 +754,7 @@ export async function resolveParakeetLocalEntries(
   entries: readonly ParakeetLocalEntry[],
   options: ResolveParakeetLocalEntriesOptions = {},
 ): Promise<ResolvedParakeetLocalArtifacts> {
+  throwIfAssetAborted(options.signal, 'download');
   if (entries.length === 0) {
     throw new Error('Pick a local model folder first.');
   }
@@ -799,17 +808,22 @@ export async function resolveParakeetLocalEntries(
   const assetProvider = createBlobAssetProvider();
   const assetHandles: ResolvedAssetHandle[] = [];
   const toLocator = async (entry: ParakeetLocalEntry): Promise<string> => {
+    throwIfAssetAborted(options.signal, 'download');
     const file = await getParakeetLocalEntryFile(entry);
+    throwIfAssetAborted(options.signal, 'download');
     const handle = await assetProvider.resolve({
       id: entry.path,
       provider: 'blob',
       blob: file instanceof Blob ? file : new Blob([file]),
+      signal: options.signal,
     });
     assetHandles.push(handle);
+    throwIfAssetAborted(options.signal, 'download');
     const locator = await handle.getLocator('url');
     if (!locator) {
       throw new Error(`Could not create a URL locator for local asset "${entry.path}".`);
     }
+    throwIfAssetAborted(options.signal, 'download');
     return locator;
   };
 
@@ -843,6 +857,7 @@ export async function resolveParakeetLocalEntries(
       cpuThreads: options.cpuThreads,
       enableProfiling: options.enableProfiling,
       runtime: options.runtime,
+      signal: options.signal,
     };
 
     return {
@@ -898,25 +913,28 @@ export class ParakeetModel {
 
   /** Creates a Parakeet model from explicitly provided artifact URLs. */
   static async fromUrls(config: ParakeetFromUrlsConfig): Promise<ParakeetModel> {
-    const runtime =
-      config.runtime ??
-      createBuiltInSpeechRuntime({
-        hooks: {
-          logger: createConsoleLogger(config.verbose),
-        },
-      });
-
     const modelId = config.modelId ?? DEFAULT_MODEL;
     let model: SpeechModel<
       NemoTdtModelOptions,
       NemoTdtTranscriptionOptions,
       NemoTdtNativeTranscript
     > | undefined;
+    let session: SpeechSession<NemoTdtTranscriptionOptions, NemoTdtNativeTranscript> | undefined;
     try {
+      throwIfAssetAborted(config.signal, 'download');
+      const runtime =
+        config.runtime ??
+        createBuiltInSpeechRuntime({
+          hooks: {
+            logger: createConsoleLogger(config.verbose),
+          },
+        });
+      throwIfAssetAborted(config.signal, 'download');
       model = await runtime.loadModel<NemoTdtModelOptions, NemoTdtNativeTranscript>({
         preset: 'parakeet',
         modelId,
         backend: normalizeBackendId(config.backend),
+        signal: config.signal,
         options: {
           source: {
             kind: 'direct',
@@ -938,11 +956,14 @@ export class ParakeetModel {
           },
         },
       });
-      const session = await model.createSession();
+      throwIfAssetAborted(config.signal, 'download');
+      session = await model.createSession();
+      throwIfAssetAborted(config.signal, 'download');
       return new ParakeetModel(runtime, model, session, async () => {
         await disposeAssetHandles(config.assetHandles);
       });
     } catch (error) {
+      await session?.dispose();
       await model?.dispose();
       await disposeAssetHandles(config.assetHandles);
       throw error;

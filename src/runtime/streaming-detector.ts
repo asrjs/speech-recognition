@@ -1,4 +1,10 @@
 import { AudioRingBuffer } from './realtime.js';
+import {
+  AssetLoadAbortedError,
+  isAssetLoadAbortedError,
+  isDomAbortError,
+  toFetchAbortSignal,
+} from '../io/abort.js';
 
 import {
   durationMsToAlignedFrameCount,
@@ -98,7 +104,7 @@ export interface StreamingTenVadResultEvent {
 
 export interface StreamingTenVadLike {
   subscribe(listener: (event: StreamingTenVadResultEvent) => void): () => void;
-  init(): Promise<void>;
+  init(signal?: { readonly aborted: boolean } | null): Promise<void>;
   reset(): Promise<void>;
   dispose(): Promise<void>;
   updateConfig(config?: Record<string, unknown>): void;
@@ -222,6 +228,18 @@ export interface StreamingSpeechDetectorOptions {
     options?: unknown,
   ) => StreamingTenVadLike;
   readonly tenVadOptions?: unknown;
+  readonly signal?: { readonly aborted: boolean } | null;
+}
+
+function createStreamingVadInitAbortedError(): AssetLoadAbortedError {
+  return new AssetLoadAbortedError('streaming-vad-init');
+}
+
+function isStreamingVadInitAborted(
+  error: unknown,
+  signal?: { readonly aborted: boolean } | null,
+): boolean {
+  return isAssetLoadAbortedError(error) || isDomAbortError(error) || Boolean(signal?.aborted);
 }
 
 function cloneEntries<T extends Record<string, unknown>>(entries: readonly T[]): T[] {
@@ -269,6 +287,9 @@ export class StreamingSpeechDetector {
   private tenVadUnsubscribe: (() => void) | null = null;
   private lastDebugTraceAt = 0;
   private lastAcceptedLogicalEndFrame: number | null = null;
+  private readonly initSignal?: { readonly aborted: boolean } | null;
+  private startAbort: AbortController | null = null;
+  private startCancelled = false;
 
   constructor(options: StreamingSpeechDetectorOptions = {}) {
     this.createTenVad =
@@ -289,6 +310,7 @@ export class StreamingSpeechDetector {
       ? this.createTenVad(this.buildTenVadConfig(), options.tenVadOptions)
       : null;
     this.tenVadOptions = options.tenVadOptions;
+    this.initSignal = options.signal;
     this.tenVadUnsubscribe = this.subscribeTenVad(this.tenVad);
   }
 
@@ -428,56 +450,100 @@ export class StreamingSpeechDetector {
     console.debug(`[StreamingSpeechDetector] ${message}`, meta);
   }
 
-  async start({ sampleRate }: { readonly sampleRate?: number } = {}): Promise<void> {
+  async start({
+    sampleRate,
+    signal,
+  }: {
+    readonly sampleRate?: number;
+    readonly signal?: { readonly aborted: boolean } | null;
+  } = {}): Promise<void> {
     if (this.disposed) {
       throw new Error('StreamingSpeechDetector has been disposed.');
     }
 
-    if (sampleRate && sampleRate !== this.sampleRate) {
-      this.sampleRate = sampleRate;
-      this.ringBuffer = new AudioRingBuffer({
-        sampleRate: this.sampleRate,
-        durationSeconds: this.config.ringBufferDurationMs / 1000,
-      });
-      this.roughGate = new RoughSpeechGate(this.buildRoughGateConfig());
-      this.tenVad?.updateConfig(this.buildTenVadConfig());
+    const callerSignal = signal ?? this.initSignal;
+    this.startCancelled = false;
+    const startAbort = new AbortController();
+    this.startAbort = startAbort;
+    const callerNative = toFetchAbortSignal(callerSignal);
+    const onCallerAbort = () => startAbort.abort();
+    if (callerSignal?.aborted) {
+      startAbort.abort();
     }
+    callerNative?.addEventListener('abort', onCallerAbort);
 
-    this.state = 'listening';
-    this.activeSegment = null;
-    this.pendingSegmentStartFrame = null;
-    this.lastMetrics = null;
-    this.lastAcceptanceInfo = null;
-    this.lastForegroundResult = null;
-    this.lastError = null;
-    this.lastAcceptedLogicalEndFrame = null;
-    this.ringBuffer.reset();
-    this.roughGate.reset();
+    try {
+      if (sampleRate && sampleRate !== this.sampleRate) {
+        this.sampleRate = sampleRate;
+        this.ringBuffer = new AudioRingBuffer({
+          sampleRate: this.sampleRate,
+          durationSeconds: this.config.ringBufferDurationMs / 1000,
+        });
+        this.roughGate = new RoughSpeechGate(this.buildRoughGateConfig());
+        this.tenVad?.updateConfig(this.buildTenVadConfig());
+      }
 
-    if (this.tenVad) {
-      try {
-        await this.tenVad.init();
-        await this.tenVad.reset();
-        this.recordDecision(
-          'FireRed VAD ready for diagnostics',
-          this.tenVad.getStatus() as unknown as Record<string, unknown>,
-        );
-      } catch (error) {
-        this.lastError = error instanceof Error ? error : new Error(String(error));
-        this.recordDecision('FireRed VAD degraded; segmentation remains on rough gate', {
-          error: this.lastError.message,
-        });
-        this.emit({
-          type: 'error',
-          payload: this.lastError,
-        });
+      this.state = 'listening';
+      this.activeSegment = null;
+      this.pendingSegmentStartFrame = null;
+      this.lastMetrics = null;
+      this.lastAcceptanceInfo = null;
+      this.lastForegroundResult = null;
+      this.lastError = null;
+      this.lastAcceptedLogicalEndFrame = null;
+      this.ringBuffer.reset();
+      this.roughGate.reset();
+
+      if (this.tenVad) {
+        try {
+          await this.tenVad.init(startAbort.signal);
+          if (this.startCancelled || this.disposed) {
+            return;
+          }
+          if (startAbort.signal.aborted || callerSignal?.aborted) {
+            this.state = 'idle';
+            await this.tenVad.dispose().catch(() => undefined);
+            throw createStreamingVadInitAbortedError();
+          }
+          await this.tenVad.reset();
+          this.recordDecision(
+            'FireRed VAD ready for diagnostics',
+            this.tenVad.getStatus() as unknown as Record<string, unknown>,
+          );
+        } catch (error) {
+          if (this.startCancelled || this.disposed) {
+            return;
+          }
+          if (isStreamingVadInitAborted(error, startAbort.signal) || callerSignal?.aborted) {
+            this.state = 'idle';
+            await this.tenVad.dispose().catch(() => undefined);
+            throw createStreamingVadInitAbortedError();
+          }
+          this.lastError = error instanceof Error ? error : new Error(String(error));
+          this.recordDecision('FireRed VAD degraded; segmentation remains on rough gate', {
+            error: this.lastError.message,
+          });
+          this.emit({
+            type: 'error',
+            payload: this.lastError,
+          });
+        }
+      }
+
+      if (this.startCancelled || this.disposed) {
+        return;
+      }
+
+      this.emit({
+        type: 'metrics',
+        payload: this.getSnapshot(),
+      });
+    } finally {
+      callerNative?.removeEventListener('abort', onCallerAbort);
+      if (this.startAbort === startAbort) {
+        this.startAbort = null;
       }
     }
-
-    this.emit({
-      type: 'metrics',
-      payload: this.getSnapshot(),
-    });
   }
 
   processChunk(
@@ -764,6 +830,8 @@ export class StreamingSpeechDetector {
   }: {
     readonly flush?: boolean;
   } = {}): Promise<StreamingDetectorSegment | null> {
+    this.startCancelled = true;
+    this.startAbort?.abort();
     let segment: StreamingDetectorSegment | null = null;
     if (flush) {
       segment = this.finalizeSegment('stop');
@@ -994,6 +1062,8 @@ export class StreamingSpeechDetector {
       return;
     }
     this.disposed = true;
+    this.startCancelled = true;
+    this.startAbort?.abort();
     this.tenVadUnsubscribe?.();
     this.tenVadUnsubscribe = null;
     await this.tenVad?.dispose();

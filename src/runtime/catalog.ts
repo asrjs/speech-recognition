@@ -15,6 +15,17 @@ import {
   type BuiltInModelOption,
 } from '../presets/descriptors.js';
 
+export {
+  createExperimentalArtifactMissingError,
+  getExperimentalSpeechFamily,
+  hasExperimentalArtifactSource,
+  listExperimentalSpeechFamilies,
+  type ExperimentalSpeechAudioContract,
+  type ExperimentalSpeechFamilyDescriptor,
+  type ExperimentalSpeechFamilyLocator,
+  type ExperimentalSpeechFamilyStatus,
+} from './experimental-families.js';
+
 /** Root-friendly alias for built-in speech model metadata. */
 export type SpeechModelDescriptor = BuiltInModelDescriptor;
 

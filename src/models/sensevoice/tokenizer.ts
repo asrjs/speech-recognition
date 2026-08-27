@@ -1,4 +1,5 @@
-import { MedAsrTextTokenizer } from '../lasr-ctc/tokenizer.js';
+import { MedAsrTextTokenizer, readTokenizerSourceText } from '../lasr-ctc/tokenizer.js';
+import type { AssetAbortSignalLike } from '../../io/abort.js';
 
 /** SentencePiece vocabulary reader used by the SenseVoice ONNX export. */
 export class SenseVoiceTokenizer extends MedAsrTextTokenizer {
@@ -15,9 +16,12 @@ export class SenseVoiceTokenizer extends MedAsrTextTokenizer {
     return new SenseVoiceTokenizer(idToToken);
   }
 
-  static override async fromUrl(url: string): Promise<SenseVoiceTokenizer> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch SenseVoice vocabulary at "${url}".`);
-    return SenseVoiceTokenizer.fromText(await response.text());
+  static override async fromUrl(
+    url: string,
+    signal?: AssetAbortSignalLike | null,
+  ): Promise<SenseVoiceTokenizer> {
+    return SenseVoiceTokenizer.fromText(
+      await readTokenizerSourceText(url, signal, `Failed to fetch SenseVoice vocabulary at "${url}".`),
+    );
   }
 }

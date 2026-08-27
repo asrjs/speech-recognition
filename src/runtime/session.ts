@@ -1,7 +1,15 @@
 import { createDefaultAssetProvider } from '../io/index.js';
+import {
+  isAssetLoadAbortedError,
+  throwIfAssetAborted,
+  type AssetAbortSignalLike,
+} from '../io/abort.js';
+import { PipelineAbortedError } from '../pipeline/composition.js';
 import type {
+  AbortSignalLike,
   AssetCache,
   AssetProvider,
+  AssetRequest,
   BackendCapabilities,
   BackendProbeContext,
   BackendSelectionCriteria,
@@ -23,6 +31,32 @@ import {
 } from './backend.js';
 import { BackendUnavailableError, ModelLoadError } from './errors.js';
 import { createRuntimeHooks } from './logging.js';
+
+function wrapAssetProviderWithAbort(
+  provider: AssetProvider | undefined,
+  signal?: AbortSignalLike | null,
+): AssetProvider | undefined {
+  if (!provider || !signal) {
+    return provider;
+  }
+
+  return {
+    canResolve(request: AssetRequest): boolean {
+      return provider.canResolve(request);
+    },
+    async resolve(request: AssetRequest) {
+      throwIfAssetAborted(signal as AssetAbortSignalLike, 'download');
+      return provider.resolve({
+        ...request,
+        signal: request.signal ?? signal,
+      });
+    },
+  };
+}
+
+function isLoadAbortError(error: unknown): boolean {
+  return error instanceof PipelineAbortedError || isAssetLoadAbortedError(error);
+}
 
 export interface DefaultSpeechRuntimeOptions {
   readonly hooks?: SpeechRuntimeHooks;
@@ -174,16 +208,35 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
       message: `Loading ${familyRequest.modelId} with ${backend.id}.`,
     });
 
+    const signal = familyRequest.signal;
+    if (signal?.aborted) {
+      this.hooks.onProgress({
+        phase: 'model-load:cancelled',
+        backendId: backend.id,
+        modelId: familyRequest.modelId,
+        isComplete: false,
+        aborted: true,
+        message: `Cancelled loading ${familyRequest.modelId}.`,
+      });
+      throw new PipelineAbortedError('load');
+    }
+
     try {
       const model = await family.createModel(familyRequest, {
         runtime: this,
         backend,
         hooks: this.hooks,
-        assetProvider: this.assetProvider,
+        assetProvider: wrapAssetProviderWithAbort(this.assetProvider, signal),
         assetCache: this.assetCache,
+        signal,
       });
 
-      this.loadedModels.add(model);
+      if (signal?.aborted) {
+        await model.dispose();
+        throw new PipelineAbortedError('load');
+      }
+
+      this.trackLoadedModel(model);
 
       this.hooks.onProgress({
         phase: 'model-load:complete',
@@ -194,6 +247,17 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
 
       return model as SpeechModel<TLoadOptions, any, TNative>;
     } catch (error) {
+      if (isLoadAbortError(error)) {
+        this.hooks.onProgress({
+          phase: 'model-load:cancelled',
+          backendId: backend.id,
+          modelId: familyRequest.modelId,
+          isComplete: false,
+          aborted: true,
+          message: `Cancelled loading ${familyRequest.modelId}.`,
+        });
+        throw error instanceof PipelineAbortedError ? error : new PipelineAbortedError('load');
+      }
       throw new ModelLoadError(`Failed to load model "${familyRequest.modelId}".`, {
         backendId: backend.id,
         family: family.family,
@@ -220,6 +284,16 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
     );
   }
 
+  private trackLoadedModel(model: SpeechModel<any, any, any>): SpeechModel<any, any, any> {
+    const originalDispose = model.dispose.bind(model);
+    (model as { dispose: SpeechModel['dispose'] }).dispose = () => {
+      this.loadedModels.delete(model);
+      return originalDispose();
+    };
+    this.loadedModels.add(model);
+    return model;
+  }
+
   private async resolveLoadRequest(
     request: ModelLoadRequest<unknown>,
   ): Promise<FamilyModelLoadRequest<any>> {
@@ -244,14 +318,16 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
     const resolved = await preset.resolveModelRequest(request, {
       runtime: this,
       hooks: this.hooks,
-      assetProvider: this.assetProvider,
+      assetProvider: wrapAssetProviderWithAbort(this.assetProvider, request.signal),
       assetCache: this.assetCache,
+      signal: request.signal,
     });
 
     return {
       ...resolved,
       backend: resolved.backend ?? request.backend,
       selectionCriteria: resolved.selectionCriteria ?? request.selectionCriteria,
+      signal: resolved.signal ?? request.signal,
       classification: {
         ...resolved.classification,
         ...request.classification,

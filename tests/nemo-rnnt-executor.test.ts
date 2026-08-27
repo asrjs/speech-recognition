@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PipelineAbortedError } from '../src/pipeline/composition.js';
 import { fetchModelFiles } from '../src/runtime/huggingface.js';
 import {
   DEFAULT_NEMO_RNNT_CLASSIFICATION,
@@ -58,6 +59,13 @@ class MockDecoderSession implements OrtSessionLike {
     private readonly stateDims: readonly number[],
     private readonly throwOnCallIndex?: number,
   ) {}
+
+  resetCalls(): void {
+    this.callIndex = 0;
+    this.targetHistory.length = 0;
+    this.emittedStates.length = 0;
+    this.emittedLogits.length = 0;
+  }
 
   async run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>> {
     if (this.throwOnCallIndex && this.callIndex + 1 === this.throwOnCallIndex) {
@@ -447,5 +455,45 @@ describe('nemo-rnnt executor decode loop', () => {
     expect(harness.decoderSession.emittedLogits[0]?.disposed).toBe(true);
     expect(harness.decoderSession.emittedStates).toHaveLength(2);
     expect(harness.decoderSession.emittedStates.every((state) => state.disposed)).toBe(true);
+  });
+
+  it('stops the joint/decoder loop on abort, disposes tensors, and can decode again', async () => {
+    const harness = createExecutorHarness({
+      logits: [
+        { logits: [10.0, 0.0, 0.0, 0.0] },
+        { logits: [0.0, 10.0, 0.0, 0.0] },
+        { logits: [0.0, 0.0, 0.0, 10.0] },
+        { logits: [0.0, 0.0, 10.0, 0.0] },
+        { logits: [0.0, 0.0, 0.0, 10.0] },
+      ],
+    });
+    const signal = { aborted: false };
+    let abortAfterFirst = true;
+    const originalRun = harness.decoderSession.run.bind(harness.decoderSession);
+    harness.decoderSession.run = async (feeds: Record<string, unknown>) => {
+      const result = await originalRun(feeds);
+      if (abortAfterFirst && harness.decoderSession.targetHistory.length === 1) signal.aborted = true;
+      return result;
+    };
+
+    await expect(
+      harness.executor.transcribe(createAudio(), { signal }, {} as never),
+    ).rejects.toBeInstanceOf(PipelineAbortedError);
+    expect(harness.decoderSession.targetHistory).toHaveLength(1);
+    expect(harness.decoderSession.emittedLogits).toHaveLength(1);
+    expect(harness.decoderSession.emittedLogits.every((tensor) => tensor.disposed)).toBe(true);
+    expect(harness.decoderSession.emittedStates.every((state) => state.disposed)).toBe(true);
+
+    abortAfterFirst = false;
+    signal.aborted = false;
+    harness.decoderSession.resetCalls();
+    const result = await harness.executor.transcribe(
+      createAudio(),
+      { returnTokenIds: true },
+      {} as never,
+    );
+    expect(result.utteranceText).toBe('hello world');
+    expect(result.debug?.tokenIds).toEqual([0, 1, 2]);
+    await harness.executor.dispose();
   });
 });

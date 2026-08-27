@@ -1,5 +1,5 @@
 import type { ModelClassification } from '../../types/index.js';
-import type { Qwen3AsrModelConfig } from './types.js';
+import type { Qwen3AsrGraphContract, Qwen3AsrModelConfig } from './types.js';
 
 export const DEFAULT_QWEN3_ASR_CLASSIFICATION: ModelClassification = {
   ecosystem: 'qwen',
@@ -84,7 +84,18 @@ export const DEFAULT_QWEN3_ASR_CONFIG: Qwen3AsrModelConfig = {
     imEndTokenId: 151645,
     logitsOutputLocation: 'cpu',
     cacheOutputLocation: 'gpu-buffer',
+    kvLayout: 'per-layer',
   },
+};
+
+/** Official stacked prefill/step graphs: pad leftover mel frames to 100, not a fixed T=1100 window. */
+export const OFFICIAL_QWEN3_ASR_GRAPH_DEFAULTS: Pick<
+  Qwen3AsrGraphContract,
+  'kvLayout' | 'audioFramesMultiple' | 'pastSeedLength'
+> = {
+  kvLayout: 'stacked',
+  audioFramesMultiple: 100,
+  pastSeedLength: 0,
 };
 
 export function parseQwen3AsrConfig(
@@ -102,8 +113,23 @@ export function parseQwen3AsrConfig(
       ...DEFAULT_QWEN3_ASR_CONFIG.graph,
       ...override.graph,
       eosTokenIds: override.graph?.eosTokenIds ?? DEFAULT_QWEN3_ASR_CONFIG.graph.eosTokenIds,
-    },
+    } as Qwen3AsrGraphContract,
   };
+}
+
+/** Config helper for official stacked ONNX (dynamic encoder, pad-to-100, token crop). */
+export function parseOfficialQwen3AsrConfig(
+  modelId = 'Qwen/Qwen3-ASR-0.6B',
+  override: Partial<Qwen3AsrModelConfig> = {},
+): Qwen3AsrModelConfig {
+  return parseQwen3AsrConfig(modelId, {
+    ...override,
+    graph: {
+      ...DEFAULT_QWEN3_ASR_CONFIG.graph,
+      ...OFFICIAL_QWEN3_ASR_GRAPH_DEFAULTS,
+      ...override.graph,
+    },
+  });
 }
 
 export function describeQwen3AsrModel(

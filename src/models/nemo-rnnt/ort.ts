@@ -1,6 +1,8 @@
 export {
   createOrtSession,
+  disposeOrtOutputs,
   initOrt,
+  releaseOrtSession,
   resolveNemoTdtArtifacts as resolveNemoRnntArtifacts,
 } from '../nemo-tdt/ort.js';
 export type {

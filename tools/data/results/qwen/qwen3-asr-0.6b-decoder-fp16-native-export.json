@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "family": "qwen3-asr-0.6b",
+  "source": "official qwen-asr 0.0.6 thinker with explicit KV (no DynamicCache in-graph)",
+  "prompt_preview": "<|im_start|>system\n<|im_end|>\n<|im_start|>user\n<|audio_start|><|audio_pad|><|audio_end|><|im_end|>\n<|im_start|>assistant\n",
+  "seq_len": 158,
+  "feature_len": 1100,
+  "audio_token_count": 143,
+  "input_features_shape": [
+    1,
+    128,
+    1100
+  ],
+  "attempts": [
+    {
+      "name": "explicit_prefill_vs_official",
+      "ok": true,
+      "audio_features_shape": [
+        143,
+        1024
+      ],
+      "logits": {
+        "max_abs": 0.00011241436004638672,
+        "mean_abs": 3.374678999534808e-05,
+        "left_shape": [
+          1,
+          1,
+          151936
+        ],
+        "right_shape": [
+          1,
+          1,
+          151936
+        ]
+      },
+      "keys": {
+        "max_abs": 0.0015630722045898438,
+        "mean_abs": 1.7027606418196228e-06,
+        "left_shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ],
+        "right_shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ]
+      },
+      "values": {
+        "max_abs": 0.0017681121826171875,
+        "mean_abs": 3.6619987895392114e-06,
+        "left_shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ],
+        "right_shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ]
+      },
+      "rope_cos": {
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "left_shape": [
+          1,
+          158,
+          128
+        ],
+        "right_shape": [
+          1,
+          158,
+          128
+        ]
+      },
+      "rope_sin": {
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "left_shape": [
+          1,
+          158,
+          128
+        ],
+        "right_shape": [
+          1,
+          158,
+          128
+        ]
+      },
+      "official_first_token": 11528,
+      "explicit_first_token": 11528
+    },
+    {
+      "name": "explicit_greedy_jfk",
+      "ok": true,
+      "token_count": 29,
+      "raw": "language English<asr_text>And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "language": "English",
+      "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "matches_oracle": true
+    },
+    {
+      "name": "pad_crop_greedy_t1050",
+      "ok": true,
+      "feature_len": 1050,
+      "formula_tokens": 137,
+      "official_tokens": [
+        137,
+        1024
+      ],
+      "padded_tokens": [
+        137,
+        1024
+      ],
+      "emb_max_abs": 0.05401162430644035,
+      "emb_mean_abs": 0.0008755610324442387,
+      "official_text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "padded_text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "text_match": true,
+      "matches_oracle": true
+    },
+    {
+      "name": "save_tokenizer",
+      "ok": true,
+      "dir": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\tokenizer",
+      "files": [
+        "added_tokens.json",
+        "merges.txt",
+        "special_tokens_map.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "vocab.json"
+      ]
+    },
+    {
+      "name": "cleanup_stray_external",
+      "ok": true,
+      "removed": []
+    },
+    {
+      "name": "decoder_prefill_onnx",
+      "ok": true,
+      "onnx_path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-prefill-fp16.onnx",
+      "size_bytes": 732464,
+      "sha256": "b92c4f74b5ddd7a6a0bff2f931bf60805d03bba6a112ccbd3a0ebcb0a4b71029",
+      "external_data": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-fp16.onnx.data",
+      "external_size_bytes": 1503250432,
+      "external_sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675",
+      "logits_shape": [
+        1,
+        1,
+        151936
+      ],
+      "kv_shape": [
+        28,
+        1,
+        8,
+        158,
+        128
+      ],
+      "logits_dtype": "torch.float16"
+    },
+    {
+      "name": "decoder_step_onnx",
+      "ok": true,
+      "onnx_path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-step-fp16.onnx",
+      "size_bytes": 741089,
+      "sha256": "ac8bf15321d8166043d0a05a88a6f7da56b42c271e4b05c2c74f12a36992119e",
+      "external_data": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-fp16.onnx.data",
+      "external_size_bytes": 1503250432,
+      "external_sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675",
+      "shared_weights": true
+    },
+    {
+      "name": "decoder_prefill_onnxruntime_cpu",
+      "ok": true,
+      "logits": {
+        "max_abs": 0.1552734375,
+        "mean_abs": 0.02501068264245987,
+        "left_shape": [
+          1,
+          1,
+          151936
+        ],
+        "right_shape": [
+          1,
+          1,
+          151936
+        ]
+      },
+      "keys": {
+        "max_abs": 1.7265625,
+        "mean_abs": 0.00315869995392859,
+        "left_shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ],
+        "right_shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ]
+      },
+      "values": {
+        "max_abs": 2.25,
+        "mean_abs": 0.006614026613533497,
+        "left_shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ],
+        "right_shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ]
+      },
+      "inputs": [
+        "input_ids:tensor(int64)",
+        "audio_embeddings:tensor(float16)",
+        "position_ids:tensor(int64)"
+      ],
+      "outputs": [
+        "logits:tensor(float16)",
+        "present_keys:tensor(float16)",
+        "present_values:tensor(float16)"
+      ]
+    },
+    {
+      "name": "decoder_onnxruntime_greedy_jfk",
+      "ok": true,
+      "token_count": 29,
+      "raw": "language English<asr_text>And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "language": "English",
+      "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "matches_oracle": true,
+      "dtype": "float16"
+    }
+  ],
+  "export_dtype": "float16",
+  "failureClass": null,
+  "status": "exported-decoder"
+}

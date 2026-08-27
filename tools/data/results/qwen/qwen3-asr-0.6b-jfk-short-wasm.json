@@ -1,0 +1,58 @@
+{
+  "backend": "wasm",
+  "engine": "onnxruntime-web",
+  "sequential_sessions": true,
+  "encoder_variant": "audio-encoder-dynamic.onnx",
+  "input_samples": 168000,
+  "input_frames": 1050,
+  "padded_frames": 1100,
+  "artifacts": {
+    "dtype": "float16",
+    "encoder": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\audio-encoder-dynamic.onnx",
+      "size_bytes": 751103768
+    },
+    "prefill": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-prefill-fp16.onnx",
+      "size_bytes": 732464
+    },
+    "step": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-step-fp16.onnx",
+      "size_bytes": 741089
+    },
+    "prefill_data": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-fp16.onnx.data",
+      "size_bytes": 1503250432
+    },
+    "step_data": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-fp16.onnx.data",
+      "size_bytes": 1503250432
+    }
+  },
+  "fp16_wasm_fallback": false,
+  "rss_mb": 4334,
+  "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "language": "English",
+  "expected": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "text_match": true,
+  "failureClass": null,
+  "metrics": {
+    "preprocessMs": 166.223,
+    "encodeMs": 7583.269,
+    "decodeMs": 14351.439,
+    "decoderInitMs": 6147.082,
+    "decoderStepMs": 8204.357,
+    "decoderStepAvgMs": 273.479,
+    "decoderStepCount": 30,
+    "decoderKvCacheLocation": "cpu",
+    "totalMs": 36250.33,
+    "wallMs": 36250.33,
+    "audioDurationSec": 10.5,
+    "rtf": 3.4524123809523815,
+    "rtfx": 0.28965253557691745,
+    "encoderFrameCount": 1100,
+    "emittedTokenCount": 30,
+    "decodeIterations": 30
+  },
+  "status": "experimental"
+}

@@ -39,11 +39,20 @@ export interface RealtimeTranscriptionRequest {
   readonly matureCursorFrame: number;
   readonly matureCursorTimeSeconds: number;
   readonly reason: 'push' | 'flush' | 'finalize';
+  /** Detector or manual flush reason for segmented utterances (`pause`, `stop`, …). */
+  readonly segmentReason?: string;
 }
 
 export type RealtimeTranscriptionCallback = (
   request: RealtimeTranscriptionRequest,
 ) => Promise<TranscriptResult> | TranscriptResult;
+
+export interface RealtimeUtteranceTranscriptionOptions {
+  readonly startFrame: number;
+  readonly endFrame: number;
+  readonly sampleRate?: number;
+  readonly reason?: string;
+}
 
 export interface RealtimeControllerPushOptions {
   readonly vadObservation?: VoiceActivityObservation;
@@ -261,6 +270,105 @@ export class RealtimeTranscriptionController {
       lastWindow: this.lastWindow,
       activity: this.activity?.createSnapshot() ?? null,
       latency: this.latencyTracker?.getSummary() ?? null,
+    };
+  }
+
+  /**
+   * Record that captured audio has reached `endFrame`. Used by VAD-segmented
+   * microphone apps so first-partial and end-of-utterance latency are anchored
+   * to ingest time rather than to the later transcribe call.
+   */
+  noteIngest(endFrame: number): void {
+    this.latencyTracker?.noteIngest(endFrame);
+  }
+
+  /**
+   * Transcribe one already-segmented utterance through the official `transcribe`
+   * callback and emit both a partial and a final latency update. Does not run
+   * the rolling-window path, so VAD-segmented apps keep one ASR call per clip.
+   */
+  async transcribeUtterance(
+    pcm: Float32Array,
+    options: RealtimeUtteranceTranscriptionOptions,
+  ): Promise<RealtimeTranscriptionUpdate | null> {
+    const generation = this.stateGeneration;
+    return this.enqueue(() => this.transcribeUtteranceInternal(pcm, options, generation));
+  }
+
+  private async transcribeUtteranceInternal(
+    pcm: Float32Array,
+    options: RealtimeUtteranceTranscriptionOptions,
+    generation: number,
+  ): Promise<RealtimeTranscriptionUpdate | null> {
+    if (generation !== this.stateGeneration) {
+      return null;
+    }
+    if (!(pcm instanceof Float32Array) || pcm.length === 0) {
+      return null;
+    }
+    const sampleRate = options.sampleRate ?? this.sampleRate;
+    const startFrame = Math.max(0, Math.floor(options.startFrame));
+    const endFrame = Math.max(startFrame + 1, Math.floor(options.endFrame));
+    this.latencyTracker?.noteIngest(endFrame);
+    this.merger.reset();
+    const request: RealtimeTranscriptionRequest = {
+      pcm,
+      sampleRate,
+      startFrame,
+      endFrame,
+      startTimeSeconds: startFrame / sampleRate,
+      endTimeSeconds: endFrame / sampleRate,
+      durationSeconds: pcm.length / sampleRate,
+      isInitialWindow: true,
+      matureCursorFrame: endFrame,
+      matureCursorTimeSeconds: endFrame / sampleRate,
+      reason: 'flush',
+      segmentReason: options.reason,
+    };
+    this.latencyTracker?.noteTranscribeStart();
+    const canonical = await this.transcribeCallback(request);
+    if (generation !== this.stateGeneration) {
+      return null;
+    }
+    const snapshot = this.merger.process(canonical);
+    const finalized = this.merger.forceFinalizePending() ?? snapshot;
+    this.lastSnapshot = finalized;
+    this.lastWindow = {
+      startFrame,
+      endFrame,
+      durationSeconds: pcm.length / sampleRate,
+      isInitial: true,
+      matureCursorFrame: endFrame,
+    };
+    const previewText = snapshot.previewText || snapshot.fullText;
+    this.latencyTracker?.noteUpdate({
+      kind: 'partial',
+      trigger: 'flush',
+      windowStartFrame: startFrame,
+      windowEndFrame: endFrame,
+      revision: snapshot.revision,
+      committedText: snapshot.committedText,
+      previewText,
+    });
+    this.latencyTracker?.noteUpdate({
+      kind: 'final',
+      trigger: options.reason === 'stop' ? 'finalize' : 'silence-finalize',
+      windowStartFrame: startFrame,
+      windowEndFrame: endFrame,
+      speechEndFrame: endFrame,
+      revision: finalized.revision,
+      committedText: finalized.committedText || finalized.fullText,
+      previewText: '',
+    });
+    const partial = buildPartialTranscript(finalized, canonical, 'final');
+    return {
+      kind: 'final',
+      trigger: options.reason === 'stop' ? 'finalize' : 'silence-finalize',
+      partial,
+      snapshot: finalized,
+      canonical,
+      window: this.lastWindow,
+      activity: this.activity?.createSnapshot() ?? null,
     };
   }
 

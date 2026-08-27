@@ -4,7 +4,15 @@ export interface AssetProgressEvent {
   readonly total?: number;
   readonly id?: string;
   readonly done?: boolean;
+  /** Terminal cancel. Must not be treated as a successful `done` download. */
+  readonly aborted?: boolean;
   readonly source?: 'cache' | 'network';
+}
+
+export function isSuccessfulAssetProgress(
+  event: Pick<AssetProgressEvent, 'done' | 'aborted'>,
+): boolean {
+  return Boolean(event.done) && !event.aborted;
 }
 
 /** Minimal browser file-handle shape used by local-entry loaders without depending on the full File System Access API. */
@@ -45,6 +53,11 @@ export interface AssetRequest {
   readonly cacheKeyFallbacks?: readonly string[];
   readonly contentType?: string;
   readonly onProgress?: (event: AssetProgressEvent) => void;
+  /**
+   * Cancels in-flight `fetch` and streaming body reads. Native `AbortSignal`
+   * is forwarded to `fetch`; `{ aborted }` mocks are polled per chunk.
+   */
+  readonly signal?: { readonly aborted: boolean } | null;
 }
 
 /** Cache payload stored for a resolved asset. */

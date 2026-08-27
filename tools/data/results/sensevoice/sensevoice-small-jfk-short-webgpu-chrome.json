@@ -1,0 +1,35 @@
+{
+  "preset": "sensevoice-small-webgpu",
+  "timestamp": "2026-08-27T00:20:42.895Z",
+  "status": "pass",
+  "transcript": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "webgpu": true,
+  "backend": "webgpu",
+  "language": "en",
+  "metadata": {
+    "language": "en",
+    "emotion": "EMO_UNKNOWN",
+    "event": "Speech"
+  },
+  "metrics": {
+    "loadMs": 17026.16500000283,
+    "transcribeMs": 2263.609999999404,
+    "totalMs": 19619.58999999985,
+    "rtf": 0.2056,
+    "rtfx": 4.8628
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 17026ms"
+  ]
+}

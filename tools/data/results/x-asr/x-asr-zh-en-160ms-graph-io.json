@@ -1,0 +1,3413 @@
+{
+  "schema_version": 1,
+  "chunk_ms": 160,
+  "graphs": {
+    "encoder": {
+      "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\encoder-160ms.onnx",
+      "size_bytes": 592967053,
+      "inputs": [
+        {
+          "name": "x",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "29",
+            "80"
+          ]
+        },
+        {
+          "name": "cached_key_0",
+          "type": "tensor(float)",
+          "shape": [
+            "96",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_0",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "96",
+            "144"
+          ]
+        },
+        {
+          "name": "cached_val1_0",
+          "type": "tensor(float)",
+          "shape": [
+            "96",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_0",
+          "type": "tensor(float)",
+          "shape": [
+            "96",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_0",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "192",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_conv2_0",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "192",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_key_1",
+          "type": "tensor(float)",
+          "shape": [
+            "96",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_1",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "96",
+            "144"
+          ]
+        },
+        {
+          "name": "cached_val1_1",
+          "type": "tensor(float)",
+          "shape": [
+            "96",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_1",
+          "type": "tensor(float)",
+          "shape": [
+            "96",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_1",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "192",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_conv2_1",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "192",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_key_2",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_2",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "48",
+            "192"
+          ]
+        },
+        {
+          "name": "cached_val1_2",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_2",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_2",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_conv2_2",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_key_3",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_3",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "48",
+            "192"
+          ]
+        },
+        {
+          "name": "cached_val1_3",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_3",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_3",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_conv2_3",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_key_4",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_4",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "24",
+            "384"
+          ]
+        },
+        {
+          "name": "cached_val1_4",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_4",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_4",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_4",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_5",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_5",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "24",
+            "384"
+          ]
+        },
+        {
+          "name": "cached_val1_5",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_5",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_5",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_5",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_6",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_6",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "24",
+            "384"
+          ]
+        },
+        {
+          "name": "cached_val1_6",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_6",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_6",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_6",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_7",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_7",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "24",
+            "384"
+          ]
+        },
+        {
+          "name": "cached_val1_7",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_7",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_7",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_7",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_8",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_8",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "12",
+            "576"
+          ]
+        },
+        {
+          "name": "cached_val1_8",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_val2_8",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_conv1_8",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_8",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_9",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_9",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "12",
+            "576"
+          ]
+        },
+        {
+          "name": "cached_val1_9",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_val2_9",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_conv1_9",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_9",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_10",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_10",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "12",
+            "576"
+          ]
+        },
+        {
+          "name": "cached_val1_10",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_val2_10",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_conv1_10",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_10",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_11",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_11",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "12",
+            "576"
+          ]
+        },
+        {
+          "name": "cached_val1_11",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_val2_11",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_conv1_11",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_11",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_12",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_12",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "12",
+            "576"
+          ]
+        },
+        {
+          "name": "cached_val1_12",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_val2_12",
+          "type": "tensor(float)",
+          "shape": [
+            "12",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "cached_conv1_12",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_12",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_13",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_13",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "24",
+            "384"
+          ]
+        },
+        {
+          "name": "cached_val1_13",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_13",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_13",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_13",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_14",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_14",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "24",
+            "384"
+          ]
+        },
+        {
+          "name": "cached_val1_14",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_14",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_14",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_14",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_15",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_15",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "24",
+            "384"
+          ]
+        },
+        {
+          "name": "cached_val1_15",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_15",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_15",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_15",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_16",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_16",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "24",
+            "384"
+          ]
+        },
+        {
+          "name": "cached_val1_16",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_16",
+          "type": "tensor(float)",
+          "shape": [
+            "24",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_16",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_conv2_16",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "7"
+          ]
+        },
+        {
+          "name": "cached_key_17",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_17",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "48",
+            "192"
+          ]
+        },
+        {
+          "name": "cached_val1_17",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_17",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_17",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_conv2_17",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_key_18",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "cached_nonlin_attn_18",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "48",
+            "192"
+          ]
+        },
+        {
+          "name": "cached_val1_18",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_val2_18",
+          "type": "tensor(float)",
+          "shape": [
+            "48",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "cached_conv1_18",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "15"
+          ]
+        },
+        {
+          "name": "cached_conv2_18",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "15"
+          ]
+        },
+        {
+          "name": "embed_states",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "128",
+            "3",
+            "19"
+          ]
+        },
+        {
+          "name": "processed_lens",
+          "type": "tensor(int64)",
+          "shape": [
+            "N"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "encoder_out",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "Addencoder_out_dim_1",
+            "512"
+          ]
+        },
+        {
+          "name": "new_cached_key_0",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_0_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_0",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_0_dim_2",
+            "144"
+          ]
+        },
+        {
+          "name": "new_cached_val1_0",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_0_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_0",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_0_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_0",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "192",
+            "Slicenew_cached_conv1_0_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_0",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "192",
+            "Slicenew_cached_conv2_0_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_1",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_1_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_1",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_1_dim_2",
+            "144"
+          ]
+        },
+        {
+          "name": "new_cached_val1_1",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_1_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_1",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_1_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_1",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "192",
+            "Slicenew_cached_conv1_1_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_1",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "192",
+            "Slicenew_cached_conv2_1_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_2",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_2_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_2",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_2_dim_2",
+            "192"
+          ]
+        },
+        {
+          "name": "new_cached_val1_2",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_2_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_2",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_2_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_2",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "Slicenew_cached_conv1_2_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_2",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "Slicenew_cached_conv2_2_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_3",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_3_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_3",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_3_dim_2",
+            "192"
+          ]
+        },
+        {
+          "name": "new_cached_val1_3",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_3_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_3",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_3_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_3",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "Slicenew_cached_conv1_3_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_3",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "Slicenew_cached_conv2_3_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_4",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_4_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_4",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_4_dim_2",
+            "384"
+          ]
+        },
+        {
+          "name": "new_cached_val1_4",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_4_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_4",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_4_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_4",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv1_4_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_4",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv2_4_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_5",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_5_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_5",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_5_dim_2",
+            "384"
+          ]
+        },
+        {
+          "name": "new_cached_val1_5",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_5_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_5",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_5_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_5",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv1_5_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_5",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv2_5_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_6",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_6_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_6",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_6_dim_2",
+            "384"
+          ]
+        },
+        {
+          "name": "new_cached_val1_6",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_6_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_6",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_6_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_6",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv1_6_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_6",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv2_6_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_7",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_7_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_7",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_7_dim_2",
+            "384"
+          ]
+        },
+        {
+          "name": "new_cached_val1_7",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_7_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_7",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_7_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_7",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv1_7_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_7",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv2_7_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_8",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_8_dim_0",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_8",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_8_dim_2",
+            "576"
+          ]
+        },
+        {
+          "name": "new_cached_val1_8",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_8_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_val2_8",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_8_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_8",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv1_8_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_8",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv2_8_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_9",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_9_dim_0",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_9",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_9_dim_2",
+            "576"
+          ]
+        },
+        {
+          "name": "new_cached_val1_9",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_9_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_val2_9",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_9_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_9",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv1_9_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_9",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv2_9_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_10",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_10_dim_0",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_10",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_10_dim_2",
+            "576"
+          ]
+        },
+        {
+          "name": "new_cached_val1_10",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_10_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_val2_10",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_10_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_10",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv1_10_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_10",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv2_10_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_11",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_11_dim_0",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_11",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_11_dim_2",
+            "576"
+          ]
+        },
+        {
+          "name": "new_cached_val1_11",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_11_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_val2_11",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_11_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_11",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv1_11_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_11",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv2_11_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_12",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_12_dim_0",
+            "N",
+            "256"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_12",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_12_dim_2",
+            "576"
+          ]
+        },
+        {
+          "name": "new_cached_val1_12",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_12_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_val2_12",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_12_dim_0",
+            "N",
+            "96"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_12",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv1_12_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_12",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "768",
+            "Slicenew_cached_conv2_12_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_13",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_13_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_13",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_13_dim_2",
+            "384"
+          ]
+        },
+        {
+          "name": "new_cached_val1_13",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_13_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_13",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_13_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_13",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv1_13_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_13",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv2_13_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_14",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_14_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_14",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_14_dim_2",
+            "384"
+          ]
+        },
+        {
+          "name": "new_cached_val1_14",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_14_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_14",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_14_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_14",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv1_14_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_14",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv2_14_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_15",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_15_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_15",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_15_dim_2",
+            "384"
+          ]
+        },
+        {
+          "name": "new_cached_val1_15",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_15_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_15",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_15_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_15",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv1_15_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_15",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv2_15_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_16",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_16_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_16",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_16_dim_2",
+            "384"
+          ]
+        },
+        {
+          "name": "new_cached_val1_16",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_16_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_16",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_16_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_16",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv1_16_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_16",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512",
+            "Slicenew_cached_conv2_16_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_17",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_17_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_17",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_17_dim_2",
+            "192"
+          ]
+        },
+        {
+          "name": "new_cached_val1_17",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_17_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_17",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_17_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_17",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "Slicenew_cached_conv1_17_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_17",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "Slicenew_cached_conv2_17_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_key_18",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_key_18_dim_0",
+            "N",
+            "128"
+          ]
+        },
+        {
+          "name": "new_cached_nonlin_attn_18",
+          "type": "tensor(float)",
+          "shape": [
+            "1",
+            "N",
+            "Slicenew_cached_nonlin_attn_18_dim_2",
+            "192"
+          ]
+        },
+        {
+          "name": "new_cached_val1_18",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val1_18_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_val2_18",
+          "type": "tensor(float)",
+          "shape": [
+            "Slicenew_cached_val2_18_dim_0",
+            "N",
+            "48"
+          ]
+        },
+        {
+          "name": "new_cached_conv1_18",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "Slicenew_cached_conv1_18_dim_2"
+          ]
+        },
+        {
+          "name": "new_cached_conv2_18",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "256",
+            "Slicenew_cached_conv2_18_dim_2"
+          ]
+        },
+        {
+          "name": "new_embed_states",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "128",
+            "Slicenew_embed_states_dim_2",
+            "19"
+          ]
+        },
+        {
+          "name": "new_processed_lens",
+          "type": "tensor(int64)",
+          "shape": [
+            "N"
+          ]
+        }
+      ]
+    },
+    "decoder": {
+      "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\decoder-160ms.onnx",
+      "size_bytes": 11309084,
+      "inputs": [
+        {
+          "name": "y",
+          "type": "tensor(int64)",
+          "shape": [
+            "N",
+            "2"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "decoder_out",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512"
+          ]
+        }
+      ]
+    },
+    "joiner": {
+      "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\joiner-160ms.onnx",
+      "size_bytes": 10260467,
+      "inputs": [
+        {
+          "name": "encoder_out",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512"
+          ]
+        },
+        {
+          "name": "decoder_out",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "512"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "logit",
+          "type": "tensor(float)",
+          "shape": [
+            "N",
+            "5000"
+          ]
+        }
+      ]
+    }
+  },
+  "library_contract": {
+    "featureInputName": "x",
+    "featureLengthInputName": null,
+    "encoderOutputName": "encoder_out",
+    "encoderStateInputs": [
+      {
+        "name": "cached_key_0",
+        "type": "float32",
+        "shape": [
+          "96",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_0",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "96",
+          "144"
+        ]
+      },
+      {
+        "name": "cached_val1_0",
+        "type": "float32",
+        "shape": [
+          "96",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_0",
+        "type": "float32",
+        "shape": [
+          "96",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_0",
+        "type": "float32",
+        "shape": [
+          "N",
+          "192",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_conv2_0",
+        "type": "float32",
+        "shape": [
+          "N",
+          "192",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_key_1",
+        "type": "float32",
+        "shape": [
+          "96",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_1",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "96",
+          "144"
+        ]
+      },
+      {
+        "name": "cached_val1_1",
+        "type": "float32",
+        "shape": [
+          "96",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_1",
+        "type": "float32",
+        "shape": [
+          "96",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_1",
+        "type": "float32",
+        "shape": [
+          "N",
+          "192",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_conv2_1",
+        "type": "float32",
+        "shape": [
+          "N",
+          "192",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_key_2",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_2",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "48",
+          "192"
+        ]
+      },
+      {
+        "name": "cached_val1_2",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_2",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_2",
+        "type": "float32",
+        "shape": [
+          "N",
+          "256",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_conv2_2",
+        "type": "float32",
+        "shape": [
+          "N",
+          "256",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_key_3",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_3",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "48",
+          "192"
+        ]
+      },
+      {
+        "name": "cached_val1_3",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_3",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_3",
+        "type": "float32",
+        "shape": [
+          "N",
+          "256",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_conv2_3",
+        "type": "float32",
+        "shape": [
+          "N",
+          "256",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_key_4",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_4",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "24",
+          "384"
+        ]
+      },
+      {
+        "name": "cached_val1_4",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_4",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_4",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_4",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_5",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_5",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "24",
+          "384"
+        ]
+      },
+      {
+        "name": "cached_val1_5",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_5",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_5",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_5",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_6",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_6",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "24",
+          "384"
+        ]
+      },
+      {
+        "name": "cached_val1_6",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_6",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_6",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_6",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_7",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_7",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "24",
+          "384"
+        ]
+      },
+      {
+        "name": "cached_val1_7",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_7",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_7",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_7",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_8",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "256"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_8",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "12",
+          "576"
+        ]
+      },
+      {
+        "name": "cached_val1_8",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_val2_8",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_conv1_8",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_8",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_9",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "256"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_9",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "12",
+          "576"
+        ]
+      },
+      {
+        "name": "cached_val1_9",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_val2_9",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_conv1_9",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_9",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_10",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "256"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_10",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "12",
+          "576"
+        ]
+      },
+      {
+        "name": "cached_val1_10",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_val2_10",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_conv1_10",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_10",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_11",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "256"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_11",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "12",
+          "576"
+        ]
+      },
+      {
+        "name": "cached_val1_11",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_val2_11",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_conv1_11",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_11",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_12",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "256"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_12",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "12",
+          "576"
+        ]
+      },
+      {
+        "name": "cached_val1_12",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_val2_12",
+        "type": "float32",
+        "shape": [
+          "12",
+          "N",
+          "96"
+        ]
+      },
+      {
+        "name": "cached_conv1_12",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_12",
+        "type": "float32",
+        "shape": [
+          "N",
+          "768",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_13",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_13",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "24",
+          "384"
+        ]
+      },
+      {
+        "name": "cached_val1_13",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_13",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_13",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_13",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_14",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_14",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "24",
+          "384"
+        ]
+      },
+      {
+        "name": "cached_val1_14",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_14",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_14",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_14",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_15",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_15",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "24",
+          "384"
+        ]
+      },
+      {
+        "name": "cached_val1_15",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_15",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_15",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_15",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_16",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_16",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "24",
+          "384"
+        ]
+      },
+      {
+        "name": "cached_val1_16",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_16",
+        "type": "float32",
+        "shape": [
+          "24",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_16",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_conv2_16",
+        "type": "float32",
+        "shape": [
+          "N",
+          "512",
+          "7"
+        ]
+      },
+      {
+        "name": "cached_key_17",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_17",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "48",
+          "192"
+        ]
+      },
+      {
+        "name": "cached_val1_17",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_17",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_17",
+        "type": "float32",
+        "shape": [
+          "N",
+          "256",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_conv2_17",
+        "type": "float32",
+        "shape": [
+          "N",
+          "256",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_key_18",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "128"
+        ]
+      },
+      {
+        "name": "cached_nonlin_attn_18",
+        "type": "float32",
+        "shape": [
+          "1",
+          "N",
+          "48",
+          "192"
+        ]
+      },
+      {
+        "name": "cached_val1_18",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_val2_18",
+        "type": "float32",
+        "shape": [
+          "48",
+          "N",
+          "48"
+        ]
+      },
+      {
+        "name": "cached_conv1_18",
+        "type": "float32",
+        "shape": [
+          "N",
+          "256",
+          "15"
+        ]
+      },
+      {
+        "name": "cached_conv2_18",
+        "type": "float32",
+        "shape": [
+          "N",
+          "256",
+          "15"
+        ]
+      },
+      {
+        "name": "embed_states",
+        "type": "float32",
+        "shape": [
+          "N",
+          "128",
+          "3",
+          "19"
+        ]
+      },
+      {
+        "name": "processed_lens",
+        "type": "int64",
+        "shape": [
+          "N"
+        ]
+      }
+    ],
+    "encoderStateOutputs": [
+      "new_cached_key_0",
+      "new_cached_nonlin_attn_0",
+      "new_cached_val1_0",
+      "new_cached_val2_0",
+      "new_cached_conv1_0",
+      "new_cached_conv2_0",
+      "new_cached_key_1",
+      "new_cached_nonlin_attn_1",
+      "new_cached_val1_1",
+      "new_cached_val2_1",
+      "new_cached_conv1_1",
+      "new_cached_conv2_1",
+      "new_cached_key_2",
+      "new_cached_nonlin_attn_2",
+      "new_cached_val1_2",
+      "new_cached_val2_2",
+      "new_cached_conv1_2",
+      "new_cached_conv2_2",
+      "new_cached_key_3",
+      "new_cached_nonlin_attn_3",
+      "new_cached_val1_3",
+      "new_cached_val2_3",
+      "new_cached_conv1_3",
+      "new_cached_conv2_3",
+      "new_cached_key_4",
+      "new_cached_nonlin_attn_4",
+      "new_cached_val1_4",
+      "new_cached_val2_4",
+      "new_cached_conv1_4",
+      "new_cached_conv2_4",
+      "new_cached_key_5",
+      "new_cached_nonlin_attn_5",
+      "new_cached_val1_5",
+      "new_cached_val2_5",
+      "new_cached_conv1_5",
+      "new_cached_conv2_5",
+      "new_cached_key_6",
+      "new_cached_nonlin_attn_6",
+      "new_cached_val1_6",
+      "new_cached_val2_6",
+      "new_cached_conv1_6",
+      "new_cached_conv2_6",
+      "new_cached_key_7",
+      "new_cached_nonlin_attn_7",
+      "new_cached_val1_7",
+      "new_cached_val2_7",
+      "new_cached_conv1_7",
+      "new_cached_conv2_7",
+      "new_cached_key_8",
+      "new_cached_nonlin_attn_8",
+      "new_cached_val1_8",
+      "new_cached_val2_8",
+      "new_cached_conv1_8",
+      "new_cached_conv2_8",
+      "new_cached_key_9",
+      "new_cached_nonlin_attn_9",
+      "new_cached_val1_9",
+      "new_cached_val2_9",
+      "new_cached_conv1_9",
+      "new_cached_conv2_9",
+      "new_cached_key_10",
+      "new_cached_nonlin_attn_10",
+      "new_cached_val1_10",
+      "new_cached_val2_10",
+      "new_cached_conv1_10",
+      "new_cached_conv2_10",
+      "new_cached_key_11",
+      "new_cached_nonlin_attn_11",
+      "new_cached_val1_11",
+      "new_cached_val2_11",
+      "new_cached_conv1_11",
+      "new_cached_conv2_11",
+      "new_cached_key_12",
+      "new_cached_nonlin_attn_12",
+      "new_cached_val1_12",
+      "new_cached_val2_12",
+      "new_cached_conv1_12",
+      "new_cached_conv2_12",
+      "new_cached_key_13",
+      "new_cached_nonlin_attn_13",
+      "new_cached_val1_13",
+      "new_cached_val2_13",
+      "new_cached_conv1_13",
+      "new_cached_conv2_13",
+      "new_cached_key_14",
+      "new_cached_nonlin_attn_14",
+      "new_cached_val1_14",
+      "new_cached_val2_14",
+      "new_cached_conv1_14",
+      "new_cached_conv2_14",
+      "new_cached_key_15",
+      "new_cached_nonlin_attn_15",
+      "new_cached_val1_15",
+      "new_cached_val2_15",
+      "new_cached_conv1_15",
+      "new_cached_conv2_15",
+      "new_cached_key_16",
+      "new_cached_nonlin_attn_16",
+      "new_cached_val1_16",
+      "new_cached_val2_16",
+      "new_cached_conv1_16",
+      "new_cached_conv2_16",
+      "new_cached_key_17",
+      "new_cached_nonlin_attn_17",
+      "new_cached_val1_17",
+      "new_cached_val2_17",
+      "new_cached_conv1_17",
+      "new_cached_conv2_17",
+      "new_cached_key_18",
+      "new_cached_nonlin_attn_18",
+      "new_cached_val1_18",
+      "new_cached_val2_18",
+      "new_cached_conv1_18",
+      "new_cached_conv2_18",
+      "new_embed_states",
+      "new_processed_lens"
+    ],
+    "decoderInputs": [
+      "y"
+    ],
+    "decoderOutputs": [
+      "decoder_out"
+    ],
+    "joinerInputs": [
+      "encoder_out",
+      "decoder_out"
+    ],
+    "joinerOutputs": [
+      "logit"
+    ],
+    "note": "encoderFrameSize/Shift must be confirmed from sherpa-onnx zipformer2 chunk config, not guessed from ONNX dynamic axes alone."
+  }
+}

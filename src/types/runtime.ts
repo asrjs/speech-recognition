@@ -30,6 +30,7 @@ export interface RuntimeProgressEvent {
   readonly loadedMiB?: number;
   readonly totalMiB?: number;
   readonly isComplete?: boolean;
+  readonly aborted?: boolean;
   readonly modelId?: string;
   readonly backendId?: string;
   readonly message?: string;
@@ -151,6 +152,7 @@ export interface FamilyModelLoadRequest<TLoadOptions = unknown> {
   readonly options?: TLoadOptions;
   readonly selectionCriteria?: BackendSelectionCriteria;
   readonly resolvedPreset?: string;
+  readonly signal?: AbortSignalLike | null;
 }
 
 /** Branded preset load request that resolves into a technical family request. */
@@ -162,6 +164,7 @@ export interface PresetModelLoadRequest<TLoadOptions = unknown> {
   readonly backend?: string;
   readonly options?: TLoadOptions;
   readonly selectionCriteria?: BackendSelectionCriteria;
+  readonly signal?: AbortSignalLike | null;
 }
 
 /** Discriminated union for model loading through either a family or a preset. */
@@ -179,6 +182,7 @@ export interface SpeechRuntimeIoContext {
 export interface SpeechPresetFactoryContext extends SpeechRuntimeIoContext {
   readonly runtime: SpeechRuntime;
   readonly hooks: SpeechRuntimeHooks;
+  readonly signal?: AbortSignalLike | null;
 }
 
 /** Context object passed to model-family creation. */
@@ -186,6 +190,7 @@ export interface SpeechModelFactoryContext extends SpeechRuntimeIoContext {
   readonly runtime: SpeechRuntime;
   readonly backend: ExecutionBackend;
   readonly hooks: SpeechRuntimeHooks;
+  readonly signal?: AbortSignalLike | null;
 }
 
 /** Per-model inference session. Sessions own backend resources and must be disposed explicitly. */

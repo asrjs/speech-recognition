@@ -1,0 +1,6 @@
+{
+  "backend": "webgpu",
+  "failureClass": "WEBGPU_NO_ADAPTER",
+  "message": "no available backend found. ERR: [webgpu] Error: WebGPU is not supported in current environment",
+  "status": "experimental-blocked"
+}

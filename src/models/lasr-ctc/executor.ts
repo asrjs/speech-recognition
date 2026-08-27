@@ -19,8 +19,10 @@ import {
 } from '../../ctc/index.js';
 import { MedAsrJsPreprocessor, transposeMelToTxM } from './mel.js';
 import {
-  createOrtSession,
-  initOrt,
+    createOrtSession,
+    disposeOrtOutputs,
+    initOrt,
+    releaseOrtSession,
   resolveLasrCtcArtifacts,
   type OrtModuleLike,
   type OrtSessionLike,
@@ -28,6 +30,7 @@ import {
   type ResolvedLasrCtcArtifacts,
 } from './ort.js';
 import { MedAsrTextTokenizer } from './tokenizer.js';
+import { rethrowIfAssetAborted } from '../../io/abort.js';
 import type {
   LasrCtcArtifactSource,
   LasrCtcExecutor,
@@ -86,12 +89,13 @@ function createAssetProgressEvent(
     readonly loaded: number;
     readonly total?: number;
     readonly done?: boolean;
+    readonly aborted?: boolean;
   },
 ): RuntimeProgressEvent {
   const percent =
     event.total && event.total > 0
       ? Math.min(100, Math.round((event.loaded / event.total) * 100))
-      : event.done
+      : event.done && !event.aborted
         ? 100
         : undefined;
 
@@ -104,8 +108,9 @@ function createAssetProgressEvent(
     percent,
     loadedMiB: roundMiB(event.loaded),
     totalMiB: roundMiB(event.total),
-    isComplete: event.done,
-    message: event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
+    isComplete: Boolean(event.done) && !event.aborted,
+    aborted: event.aborted,
+    message: event.aborted ? `Cancelled ${file}.` : event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
   };
 }
 
@@ -341,7 +346,7 @@ function normalizeLogitsData(logitsTensor: OrtTensorLike): Float32Array {
   const tensorType = logitsTensor.type ?? 'float32';
   if (tensorType !== 'float16') {
     const source = logitsTensor.data as Float32Array;
-    return source instanceof Float32Array ? source : Float32Array.from(source);
+    return source instanceof Float32Array ? new Float32Array(source) : Float32Array.from(source);
   }
 
   const source = logitsTensor.data as Uint16Array;
@@ -371,10 +376,13 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
   private readonly loadStatePromise?: Promise<LoadedExecutorState>;
   private readonly assetProvider?: AssetProvider;
   private readonly runtimeHooks?: SpeechRuntimeHooks;
+  private readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   private readonly preprocessor?: LasrCtcFeaturePreprocessor;
   private readonly assetHandles: ResolvedAssetHandle[] = [];
   private sharedMonoBuffer?: Float32Array;
   private featuresTxMBuffer?: Float32Array;
+  private disposed = false;
+  private disposePromise?: Promise<void>;
 
   constructor(
     private readonly modelId: string,
@@ -386,12 +394,14 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
       readonly assetProvider?: AssetProvider;
       readonly runtimeHooks?: SpeechRuntimeHooks;
       readonly preprocessor?: LasrCtcFeaturePreprocessor;
+      readonly signal?: import('../../types/index.js').AbortSignalLike | null;
     } = {},
   ) {
     this.sourceOptions = loadOptions?.source;
     this.assetProvider = dependencies.assetProvider;
     this.runtimeHooks = dependencies.runtimeHooks;
     this.preprocessor = dependencies.preprocessor;
+    this.signal = dependencies.signal;
 
     if (this.sourceOptions) {
       this.loadStatePromise = this.initialize();
@@ -503,6 +513,7 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
     const ort = await initOrt(this.backendId, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
+      signal: this.signal,
     });
 
     let session: OrtSessionLike;
@@ -512,6 +523,7 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
         enableProfiling: resolved.enableProfiling,
         externalDataUrl: artifacts.modelDataUrl,
         externalDataPath: artifacts.modelDataFilename,
+        signal: this.signal,
       });
     } catch (error) {
       if (!artifacts.modelDataUrl) {
@@ -521,6 +533,7 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
       session = await createOrtSession(ort, artifacts.modelUrl, {
         backendId: resolved.backendForOrt,
         enableProfiling: resolved.enableProfiling,
+        signal: this.signal,
       });
       warnings.push({
         code: 'lasr-ctc.external-data-fallback',
@@ -529,16 +542,21 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
         recoverable: true,
       });
     }
+    if (this.disposed) {
+      releaseOrtSession(session);
+      throw new Error(`LASR CTC executor was disposed during load for "${this.modelId}".`);
+    }
 
     let tokenizer: MedAsrTextTokenizer;
     try {
-      tokenizer = await MedAsrTextTokenizer.fromUrl(artifacts.tokenizerUrl);
+      tokenizer = await MedAsrTextTokenizer.fromUrl(artifacts.tokenizerUrl, this.signal);
     } catch (error) {
+      rethrowIfAssetAborted(error);
       if (!artifacts.tokenizerFallbackUrl) {
         throw error;
       }
 
-      tokenizer = await MedAsrTextTokenizer.fromUrl(artifacts.tokenizerFallbackUrl);
+      tokenizer = await MedAsrTextTokenizer.fromUrl(artifacts.tokenizerFallbackUrl, this.signal);
       warnings.push({
         code: 'lasr-ctc.tokenizer-fallback',
         message:
@@ -569,6 +587,9 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
   }
 
   private async getLoadedState(): Promise<LoadedExecutorState> {
+    if (this.disposed) {
+      throw new Error(`LASR CTC executor is disposed for "${this.modelId}".`);
+    }
     if (!this.loadStatePromise) {
       throw new Error(`No artifact source is configured for "${this.modelId}".`);
     }
@@ -725,18 +746,19 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
       },
     });
 
-    const logitsTensor = findLogitsTensor(outputs);
-    const logits = normalizeLogitsData(logitsTensor);
-    const dims = [...logitsTensor.dims];
-    if (dims.length !== 3 || (dims[0] ?? 0) !== 1) {
-      throw new Error(`Unexpected LASR CTC logits shape: [${dims.join(', ')}].`);
-    }
+    try {
+      const logitsTensor = findLogitsTensor(outputs);
+      const logits = normalizeLogitsData(logitsTensor);
+      const dims = [...logitsTensor.dims];
+      if (dims.length !== 3 || (dims[0] ?? 0) !== 1) {
+        throw new Error(`Unexpected LASR CTC logits shape: [${dims.join(', ')}].`);
+      }
 
-    const outFrames = dims[1] ?? 0;
-    const vocabSize = dims[2] ?? 0;
-    if (outFrames <= 0 || vocabSize <= 0) {
-      throw new Error(`LASR CTC logits shape is invalid: [${dims.join(', ')}].`);
-    }
+      const outFrames = dims[1] ?? 0;
+      const vocabSize = dims[2] ?? 0;
+      if (outFrames <= 0 || vocabSize <= 0) {
+        throw new Error(`LASR CTC logits shape is invalid: [${dims.join(', ')}].`);
+      }
 
     const decodeStart = nowMs();
     const { frameIds, selectedLogProbs } = argmaxAndSelectedLogProbs(logits, outFrames, vocabSize);
@@ -860,11 +882,28 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
     });
 
     return nativeTranscript;
+    } finally {
+      disposeOrtOutputs(outputs);
+    }
   }
 
-  dispose(): void {
-    for (const handle of this.assetHandles) {
-      handle.dispose();
+  async dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    this.disposed = true;
+    this.disposePromise = this.flushDispose();
+    return this.disposePromise;
+  }
+
+  private async flushDispose(): Promise<void> {
+    if (this.loadStatePromise) {
+      try {
+        const loaded = await this.loadStatePromise;
+        releaseOrtSession(loaded.session);
+      } catch {
+        // Keep the original load error; still drop asset handles.
+      }
     }
+    const handles = this.assetHandles.splice(0);
+    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
   }
 }

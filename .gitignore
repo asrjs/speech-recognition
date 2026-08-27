@@ -17,6 +17,7 @@ tools/model-debugging/reference/medasrjs/upstream-tests/reference_medasr/feature
 tools/model-debugging/reference/medasrjs/upstream-tests/reference_medasr/logits.json
 .serena/
 tools/whisper-onnx-export/.venv/
+tools/model-debugging/reference/qwen3-asr-0.6b/.venv/
 tools/whisper-onnx-export/__pycache__/
 *.m4a
 *.mp3

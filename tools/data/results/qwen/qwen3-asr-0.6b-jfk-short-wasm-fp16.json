@@ -1,0 +1,15 @@
+{
+  "backend": "wasm",
+  "engine": "onnxruntime-web",
+  "dtype": "float16",
+  "export": "pytorch-half",
+  "failureClass": null,
+  "native_ort_fp16_greedy": "pass exact JFK oracle",
+  "wasm_e2e": "pass sequential sessions exact JFK",
+  "chrome_wasm": "pass exact JFK, usedJsHeapMb 2082 / limit 4192",
+  "shared_weights": true,
+  "external_size_bytes": 1503250432,
+  "external_sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675",
+  "status": "experimental",
+  "note": "PyTorch .half() export loads on onnxruntime-web. convert_float_to_float16 remains ORT_WEB_UNSUPPORTED_OP."
+}

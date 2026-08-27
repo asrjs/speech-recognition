@@ -16,6 +16,7 @@ export interface FireRedRuntimeOptions {
   readonly wasmNumThreads?: number;
   readonly cacheAssets?: boolean;
   readonly backend?: 'wasm';
+  readonly signal?: { readonly aborted: boolean } | null;
   readonly cmvn?: {
     readonly means: ArrayLike<number>;
     readonly istd: ArrayLike<number>;

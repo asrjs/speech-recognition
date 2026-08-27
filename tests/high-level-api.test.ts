@@ -4,6 +4,7 @@ import {
   loadSpeechModel,
   transcribeSpeech,
   transcribeSpeechFromMonoPcm,
+  PipelineAbortedError,
   type BackendCapabilities,
   type ExecutionBackend,
 } from '@asrjs/speech-recognition';
@@ -221,5 +222,22 @@ describe('high-level model-agnostic APIs', () => {
 
     await pipeline.dispose();
     await runtime.dispose();
+  });
+
+  it('honors options.signal on loadSpeechModel before creating a session', async () => {
+    const progressEvents: Array<{ phase: string; aborted?: boolean }> = [];
+    await expect(
+      loadSpeechModel({
+        modelId: 'parakeet-tdt-0.6b-v3',
+        backend: 'wasm',
+        signal: { aborted: true },
+        onProgress(event) {
+          progressEvents.push({ phase: event.phase, aborted: event.aborted });
+        },
+      }),
+    ).rejects.toBeInstanceOf(PipelineAbortedError);
+    expect(progressEvents.map((event) => event.phase)).toEqual(['cancelled']);
+    expect(progressEvents.at(-1)?.aborted).toBe(true);
+    expect(progressEvents.some((event) => event.phase === 'ready')).toBe(false);
   });
 });

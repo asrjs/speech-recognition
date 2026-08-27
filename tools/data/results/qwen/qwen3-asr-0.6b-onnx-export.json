@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "family": "qwen3-asr-0.6b",
+  "source": "official qwen-asr Transformers Qwen3ASRForConditionalGeneration",
+  "mel_frames": 800,
+  "attempts": [
+    {
+      "name": "encoder_jit_trace_onnx",
+      "ok": false,
+      "error_type": "UnsupportedOperatorError",
+      "error": "Exporting the operator 'aten::pad_sequence' to ONNX opset version 17 is not supported",
+      "traceback": "Traceback (most recent call last):\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\export_qwen_onnx.py\", line 83, in try_export\n    details = fn()\n              ^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\export_qwen_onnx.py\", line 137, in export_encoder_onnx\n    torch.onnx.export(\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\onnx\\__init__.py\", line 334, in export\n    export(\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\onnx\\_internal\\torchscript_exporter\\utils.py\", line 547, in export\n    _export(\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\onnx\\_internal\\torchscript_exporter\\utils.py\", line 1510, in _export\n    graph, params_dict, torch_out = _model_to_graph(\n                                    ^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\onnx\\_internal\\torchscript_exporter\\utils.py\", line 1112, in _model_to_graph\n    graph = _optimize_graph(\n            ^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\onnx\\_internal\\torchscript_exporter\\utils.py\", line 684, in _optimize_graph\n    graph = _C._jit_pass_onnx(graph, operator_export_type)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\onnx\\_internal\\torchscript_exporter\\utils.py\", line 1792, in _run_symbolic_function\n    raise errors.UnsupportedOperatorError(\ntorch.onnx.errors.UnsupportedOperatorError: Exporting the operator 'aten::pad_sequence' to ONNX opset version 17 is not supported\n"
+    },
+    {
+      "name": "encoder_dynamo_onnx",
+      "ok": false,
+      "error_type": "ModuleNotFoundError",
+      "error": "No module named 'onnxscript'",
+      "traceback": "Traceback (most recent call last):\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\export_qwen_onnx.py\", line 83, in try_export\n    details = fn()\n              ^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\export_qwen_onnx.py\", line 149, in export_encoder_dynamo\n    torch.onnx.export(\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\onnx\\__init__.py\", line 286, in export\n    from torch.onnx._internal.exporter import _compat\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\onnx\\_internal\\exporter\\_compat.py\", line 16, in <module>\n    from torch.onnx._internal.exporter import (\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\onnx\\_internal\\exporter\\_core.py\", line 19, in <module>\n    import onnxscript\nModuleNotFoundError: No module named 'onnxscript'\n"
+    },
+    {
+      "name": "encoder_jit_script_onnx",
+      "ok": false,
+      "error_type": "NotSupportedError",
+      "error": "Compiled functions can't take variable number of arguments or use keyword-only arguments with defaults:\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\qwen_asr\\core\\transformers_backend\\configuration_qwen3_asr.py\", line 102\n        conv_chunksize=500,\n        downsample_hidden_size=480,\n        **kwargs,\n         ~~~~~~~ <--- HERE\n    ):\n        super().__init__(**kwargs)\n",
+      "traceback": "ile \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\export_qwen_onnx.py\", line 162, in export_encoder_script\n    scripted = torch.jit.script(wrapper)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_script.py\", line 1498, in script\n    ret = _script_impl(\n          ^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_script.py\", line 1196, in _script_impl\n    return torch.jit._recursive.create_script_module(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_recursive.py\", line 563, in create_script_module\n    concrete_type = get_module_concrete_type(nn_module, share_types)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_recursive.py\", line 511, in get_module_concrete_type\n    concrete_type = concrete_type_store.get_or_create_concrete_type(nn_module)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_recursive.py\", line 442, in get_or_create_concrete_type\n    concrete_type_builder = infer_concrete_type_builder(nn_module)\n                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_recursive.py\", line 290, in infer_concrete_type_builder\n    sub_concrete_type = get_module_concrete_type(item, share_types)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_recursive.py\", line 511, in get_module_concrete_type\n    concrete_type = concrete_type_store.get_or_create_concrete_type(nn_module)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_recursive.py\", line 442, in get_or_create_concrete_type\n    concrete_type_builder = infer_concrete_type_builder(nn_module)\n                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_recursive.py\", line 402, in infer_concrete_type_builder\n    attr_type, inferred = infer_type(name, value)\n                          ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_recursive.py\", line 223, in infer_type\n    ann_to_type = torch.jit.annotations.ann_to_type(\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\annotations.py\", line 522, in ann_to_type\n    the_type = try_ann_to_type(ann, loc, rcb)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\annotations.py\", line 512, in try_ann_to_type\n    return torch.jit._script._recursive_compile_class(ann, loc)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_script.py\", line 1680, in _recursive_compile_class\n    return _compile_and_register_class(obj, rcb, _qual_name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\_recursive.py\", line 57, in _compile_and_register_class\n    ast = get_jit_class_def(obj, obj.__name__)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\frontend.py\", line 307, in get_jit_class_def\n    method_defs = [\n                  ^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\frontend.py\", line 308, in <listcomp>\n    get_jit_def(obj, name, self_name=self_name, is_classmethod=is_classmethod(obj))\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\frontend.py\", line 380, in get_jit_def\n    return build_def(\n           ^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\frontend.py\", line 430, in build_def\n    param_list = build_param_list(ctx, py_def.args, self_name, pdt_arg_types)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\jit\\frontend.py\", line 460, in build_param_list\n    raise NotSupportedError(ctx_range, _vararg_kwarg_err)\ntorch.jit.frontend.NotSupportedError: Compiled functions can't take variable number of arguments or use keyword-only arguments with defaults:\n  File \"N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\qwen_asr\\core\\transformers_backend\\configuration_qwen3_asr.py\", line 102\n        conv_chunksize=500,\n        downsample_hidden_size=480,\n        **kwargs,\n         ~~~~~~~ <--- HERE\n    ):\n        super().__init__(**kwargs)\n\n"
+    },
+    {
+      "name": "encoder_eager_forward",
+      "ok": true,
+      "output_shape": [
+        104,
+        1024
+      ],
+      "output_dtype": "torch.float32"
+    },
+    {
+      "name": "encoder_static_vs_official",
+      "ok": true,
+      "official_shape": [
+        104,
+        1024
+      ],
+      "static_shape": [
+        104,
+        1024
+      ],
+      "max_abs": 0.0,
+      "mean_abs": 0.0
+    },
+    {
+      "name": "encoder_static_onnx",
+      "ok": true,
+      "onnx_path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\audio-encoder-static-t800.onnx",
+      "size_bytes": 746483426
+    },
+    {
+      "name": "encoder_static_onnxruntime_cpu",
+      "ok": true,
+      "max_abs": 8.195638656616211e-07,
+      "mean_abs": 4.99391958896922e-08,
+      "shape": [
+        104,
+        1024
+      ]
+    }
+  ],
+  "failureClass": null,
+  "status": "exported-encoder"
+}

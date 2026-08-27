@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PipelineAbortedError } from '../src/pipeline/composition.js';
 import { confidenceFromLogits } from '../src/inference/index.js';
 import { fetchModelFiles } from '../src/runtime/huggingface.js';
 import {
@@ -54,12 +55,21 @@ class MockEncoderSession implements OrtSessionLike {
 
 class MockDecoderSession implements OrtSessionLike {
   readonly targetHistory: number[] = [];
+  readonly emittedStates: MockTensor<Float32Array>[] = [];
+  readonly emittedLogits: MockTensor<Float32Array>[] = [];
   private callIndex = 0;
 
   constructor(
     private readonly steps: readonly MockDecoderStep[],
     private readonly stateDims: readonly number[],
   ) {}
+
+  resetCalls(): void {
+    this.callIndex = 0;
+    this.targetHistory.length = 0;
+    this.emittedStates.length = 0;
+    this.emittedLogits.length = 0;
+  }
 
   async run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>> {
     const step = this.steps[this.callIndex];
@@ -71,16 +81,22 @@ class MockDecoderSession implements OrtSessionLike {
     const targetTensor = feeds.targets as OrtTensorLike<Int32Array>;
     this.targetHistory.push(Number(targetTensor.data[0] ?? -1));
 
+    const outputLogits = new MockTensor(new Float32Array(step.logits), [1, step.logits.length]);
+    const outputState1 = new MockTensor(
+      new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
+      this.stateDims,
+    );
+    const outputState2 = new MockTensor(
+      new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
+      this.stateDims,
+    );
+    this.emittedLogits.push(outputLogits);
+    this.emittedStates.push(outputState1, outputState2);
+
     return {
-      outputs: new MockTensor(new Float32Array(step.logits), [1, step.logits.length]),
-      output_states_1: new MockTensor(
-        new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
-        this.stateDims,
-      ),
-      output_states_2: new MockTensor(
-        new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
-        this.stateDims,
-      ),
+      outputs: outputLogits,
+      output_states_1: outputState1,
+      output_states_2: outputState2,
     };
   }
 }
@@ -583,5 +599,44 @@ describe('nemo-tdt executor decode loop', () => {
 
     expect(result.metrics?.requestedPreprocessorBackend).toBe('js');
     expect(result.metrics?.preprocessorBackend).toBe('js');
+  });
+
+  it('stops the duration/step loop on abort, disposes tensors, and can decode again', async () => {
+    const harness = createExecutorHarness({
+      frameCount: 3,
+      logits: [
+        { logits: [0.1, 10.0, 0.0, 8.0, 1.0, 0.5] },
+        { logits: [9.0, 0.0, 0.0, 0.0, 8.0, 0.0] },
+        { logits: [0.0, 0.0, 10.0, 0.0, 0.0, 9.0] },
+      ],
+    });
+    const signal = { aborted: false };
+    let abortAfterFirst = true;
+    const originalRun = harness.decoderSession.run.bind(harness.decoderSession);
+    harness.decoderSession.run = async (feeds: Record<string, unknown>) => {
+      const result = await originalRun(feeds);
+      if (abortAfterFirst && harness.decoderSession.targetHistory.length === 1) signal.aborted = true;
+      return result;
+    };
+
+    await expect(
+      harness.executor.transcribe(createAudio(), { signal }, {} as never),
+    ).rejects.toBeInstanceOf(PipelineAbortedError);
+    expect(harness.decoderSession.targetHistory).toHaveLength(1);
+    expect(harness.decoderSession.emittedLogits).toHaveLength(1);
+    expect(harness.decoderSession.emittedLogits.every((tensor) => tensor.disposed)).toBe(true);
+    expect(harness.decoderSession.emittedStates.every((state) => state.disposed)).toBe(true);
+
+    abortAfterFirst = false;
+    signal.aborted = false;
+    harness.decoderSession.resetCalls();
+    const result = await harness.executor.transcribe(
+      createAudio(),
+      { returnTokenIds: true },
+      {} as never,
+    );
+    expect(result.utteranceText).toBe('hello world');
+    expect(result.debug?.tokenIds).toEqual([1, 2]);
+    await harness.executor.dispose();
   });
 });

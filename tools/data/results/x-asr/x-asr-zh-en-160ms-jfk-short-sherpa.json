@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "reference_kind": "x-asr-zh-en-sherpa-onnx",
+  "streaming": "true-stateful-zipformer2",
+  "chunk_ms": 160,
+  "oracle": "sherpa_onnx.OnlineRecognizer.from_transducer",
+  "provider": "cpu",
+  "audio": {
+    "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+    "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "samples": 176000,
+    "duration_sec": 11.0
+  },
+  "artifacts": {
+    "encoder": {
+      "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\encoder-160ms.onnx",
+      "size_bytes": 592967053,
+      "sha256": "821a1dfb9027915ca014080abfa658346be0e2d0bf8b2027f0b6dd29fffe0c4b"
+    },
+    "decoder": {
+      "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\decoder-160ms.onnx",
+      "size_bytes": 11309084,
+      "sha256": "3658368d274a5d5fd39a7ac20c46bed0ad9cfea1f0feddef30d5d89797c1f499"
+    },
+    "joiner": {
+      "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\joiner-160ms.onnx",
+      "size_bytes": 10260467,
+      "sha256": "03781c98165a2385024c9cecdd2b6b13310d81db23a62c7da420782c2915cf81"
+    },
+    "tokens": {
+      "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\tokens.txt",
+      "size_bytes": 58806,
+      "sha256": "b818a60878b9aae978cbb8ad594acbd403d76d1af2e31ef4197c84e2dbdba27c"
+    }
+  },
+  "text": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "partials": [
+    {
+      "offset_samples": 5120,
+      "text": ""
+    },
+    {
+      "offset_samples": 17920,
+      "text": "And"
+    },
+    {
+      "offset_samples": 25600,
+      "text": "And so"
+    },
+    {
+      "offset_samples": 28160,
+      "text": "And so my"
+    },
+    {
+      "offset_samples": 30720,
+      "text": "And so my fe"
+    },
+    {
+      "offset_samples": 33280,
+      "text": "And so my fellow"
+    },
+    {
+      "offset_samples": 38400,
+      "text": "And so my fellow american"
+    },
+    {
+      "offset_samples": 53760,
+      "text": "And so my fellow americans"
+    },
+    {
+      "offset_samples": 71680,
+      "text": "And so my fellow americans ask"
+    },
+    {
+      "offset_samples": 84480,
+      "text": "And so my fellow americans ask not"
+    },
+    {
+      "offset_samples": 97280,
+      "text": "And so my fellow americans ask not what"
+    },
+    {
+      "offset_samples": 104960,
+      "text": "And so my fellow americans ask not what your"
+    },
+    {
+      "offset_samples": 110080,
+      "text": "And so my fellow americans ask not what your country"
+    },
+    {
+      "offset_samples": 115200,
+      "text": "And so my fellow americans ask not what your country can"
+    },
+    {
+      "offset_samples": 120320,
+      "text": "And so my fellow americans ask not what your country can do"
+    },
+    {
+      "offset_samples": 122880,
+      "text": "And so my fellow americans ask not what your country can do for"
+    },
+    {
+      "offset_samples": 130560,
+      "text": "And so my fellow americans ask not what your country can do for you"
+    },
+    {
+      "offset_samples": 145920,
+      "text": "And so my fellow americans ask not what your country can do for you ask"
+    },
+    {
+      "offset_samples": 151040,
+      "text": "And so my fellow americans ask not what your country can do for you ask what"
+    },
+    {
+      "offset_samples": 153600,
+      "text": "And so my fellow americans ask not what your country can do for you ask what you"
+    },
+    {
+      "offset_samples": 158720,
+      "text": "And so my fellow americans ask not what your country can do for you ask what you can"
+    },
+    {
+      "offset_samples": 161280,
+      "text": "And so my fellow americans ask not what your country can do for you ask what you can do"
+    },
+    {
+      "offset_samples": 163840,
+      "text": "And so my fellow americans ask not what your country can do for you ask what you can do for"
+    },
+    {
+      "offset_samples": 168960,
+      "text": "And so my fellow americans ask not what your country can do for you ask what you can do for your"
+    },
+    {
+      "offset_samples": 174080,
+      "text": "And so my fellow americans ask not what your country can do for you ask what you can do for your country"
+    }
+  ],
+  "metrics": {
+    "inference_seconds": 4.834484,
+    "rtf": 0.439499,
+    "partial_updates": 25
+  }
+}

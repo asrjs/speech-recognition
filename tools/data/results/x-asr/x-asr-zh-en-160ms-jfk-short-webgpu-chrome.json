@@ -1,0 +1,28 @@
+{
+  "preset": "x-asr-zh-en-160ms-webgpu",
+  "timestamp": "2026-08-27T01:13:13.204Z",
+  "status": "pass",
+  "failureClass": null,
+  "streaming": "true-stateful-zipformer2",
+  "chunk_ms": 160,
+  "oracle": "sherpa_onnx.OnlineRecognizer.from_transducer",
+  "transcript": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "webgpu": true,
+  "backend": "webgpu",
+  "engine": "onnxruntime-web Chrome WebGPU",
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "metrics": {
+    "loadMs": 10536.384999997914,
+    "transcribeMs": 34281.585000000894,
+    "totalMs": 45607.5
+  },
+  "note": "JS fbank matched sherpa knf (snip_edges=false, high_freq=-400, Kaldi preemphasis, float32 log floor)."
+}

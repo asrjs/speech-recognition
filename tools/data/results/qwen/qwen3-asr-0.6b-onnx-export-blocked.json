@@ -1,0 +1,23 @@
+{
+  "family": "qwen3-asr-0.6b",
+  "status": "experimental",
+  "unmodified_forward": {
+    "failureClass": "EXPORT_BLOCKED",
+    "missing": "aten::pad_sequence (opset 17), chunk_lengths.tolist() split, ragged CNN pad_sequence, Python cu_seqlens."
+  },
+  "static_encoder": {
+    "failureClass": null,
+    "note": "Official audio_tower weights. T multiple of 100. T=800 and T=1100 exported. Native ORT max_abs ~1e-6."
+  },
+  "decoder": {
+    "failureClass": null,
+    "note": "Explicit stacked KV prefill+step from official thinker weights. Native ORT greedy matches qwen-asr JFK. Unmodified DynamicCache path is still not serializable."
+  },
+  "wasm_e2e": {
+    "failureClass": "WASM_MEMORY_LIMIT",
+    "evidence": "onnxruntime-web session create on decoder-prefill.onnx: ERROR_CODE 6 std::bad_alloc. External data is 3006500864 bytes (fp32, embed+lm_head both stored)."
+  },
+  "node_webgpu": {
+    "failureClass": "WEBGPU_NO_ADAPTER"
+  }
+}

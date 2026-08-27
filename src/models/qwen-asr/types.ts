@@ -35,6 +35,8 @@ export interface Qwen3AsrGraphContract {
   readonly imEndTokenId: number;
   readonly logitsOutputLocation: 'cpu';
   readonly cacheOutputLocation: QwenCacheOutputLocation;
+  /** per-layer matches the experimental third-party graph; stacked is the official export. */
+  readonly kvLayout: 'per-layer' | 'stacked';
 }
 
 export interface Qwen3AsrModelConfig {
@@ -63,6 +65,12 @@ export interface Qwen3AsrDirectArtifacts {
   /** ONNX external-data `location` values, normally the data-file basenames. */
   readonly encoderDataPath?: string;
   readonly decoderDataPath?: string;
+  readonly decoderPrefillUrl?: string;
+  readonly decoderStepUrl?: string;
+  readonly decoderPrefillDataUrl?: string;
+  readonly decoderStepDataUrl?: string;
+  readonly decoderPrefillDataPath?: string;
+  readonly decoderStepDataPath?: string;
   readonly processorConfigUrl?: string;
   readonly manifestUrl?: string;
 }
@@ -155,6 +163,7 @@ export interface Qwen3AsrModelDependencies {
   };
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }
 
 export interface Qwen3AsrExecutor {

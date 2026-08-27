@@ -1,5 +1,6 @@
 import { createHuggingFaceAssetProvider, getDefaultIndexedDbAssetCache } from '../io/index.js';
-import type { AssetRequest, ResolvedAssetHandle } from '../types/index.js';
+import { isAssetLoadAbortedError, isDomAbortError, throwAssetLoadAborted } from '../io/abort.js';
+import type { AbortSignalLike, AssetRequest, ResolvedAssetHandle } from '../types/index.js';
 
 export const DEFAULT_MODEL_REVISIONS = ['main'] as const;
 export const QUANTIZATION_ORDER = ['fp16', 'int8', 'fp32'] as const;
@@ -17,6 +18,7 @@ export interface ModelFileProgress {
   readonly loadedMiB: number;
   readonly totalMiB?: number;
   readonly isComplete?: boolean;
+  readonly aborted?: boolean;
   readonly source?: 'cache' | 'network';
 }
 
@@ -34,6 +36,7 @@ function createProgressMilestoneReporter(
       readonly loaded: number;
       readonly total?: number;
       readonly done?: boolean;
+      readonly aborted?: boolean;
       readonly source?: 'cache' | 'network';
     }) => void)
   | undefined {
@@ -49,6 +52,26 @@ function createProgressMilestoneReporter(
     const loaded = event.loaded;
     const total = event.total ?? 0;
     const percent = total > 0 ? Math.floor((loaded / total) * 100) : undefined;
+
+    if (event.aborted) {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      progress({
+        loaded,
+        total,
+        file: filename,
+        percent,
+        loadedMiB: bytesToMiB(loaded) ?? 0,
+        totalMiB: bytesToMiB(total),
+        isComplete: false,
+        aborted: true,
+        source: event.source,
+      });
+      return;
+    }
+
     const done = Boolean(event.done) || (total > 0 && loaded >= total);
 
     if (done && completed) {
@@ -135,9 +158,10 @@ function createModelAssetRequest(
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
     readonly preferBlobUrl?: boolean;
+    readonly signal?: AbortSignalLike | null;
   } = {},
 ): AssetRequest {
-  const { revision = 'main', subfolder = '', progress, preferBlobUrl } = options;
+  const { revision = 'main', subfolder = '', progress, preferBlobUrl, signal } = options;
   const reportProgress = createProgressMilestoneReporter(filename, progress);
 
   return {
@@ -149,6 +173,7 @@ function createModelAssetRequest(
     subfolder,
     cacheKey: `hf-${repoId}-${revision}-${subfolder}-${filename}`,
     preferBlobUrl,
+    signal: signal ?? undefined,
     onProgress: reportProgress,
   };
 }
@@ -189,6 +214,7 @@ export async function fetchModelRevisions(repoId: string): Promise<readonly stri
 export async function fetchModelFiles(
   repoId: string,
   revision = 'main',
+  options: { readonly signal?: AbortSignalLike | null } = {},
 ): Promise<readonly string[]> {
   if (!repoId) {
     return [];
@@ -202,9 +228,10 @@ export async function fetchModelFiles(
   const encodedRevision = encodeURIComponent(revision);
   const treeUrl = `https://huggingface.co/api/models/${repoPath}/tree/${encodedRevision}?recursive=1`;
   const metadataUrl = `https://huggingface.co/api/models/${repoPath}?revision=${encodedRevision}`;
+  const fetchInit = options.signal instanceof AbortSignal ? { signal: options.signal } : undefined;
 
   try {
-    const response = await fetch(treeUrl);
+    const response = await fetch(treeUrl, fetchInit);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -212,6 +239,9 @@ export async function fetchModelFiles(
     MODEL_FILES_CACHE.set(cacheKey, files);
     return files;
   } catch (treeError) {
+    if (isDomAbortError(treeError) || isAssetLoadAbortedError(treeError)) {
+      throwAssetLoadAborted(treeError, 'download');
+    }
     console.warn(
       `[huggingface] Tree listing failed for ${repoId}@${revision}; trying metadata.`,
       treeError,
@@ -219,7 +249,7 @@ export async function fetchModelFiles(
   }
 
   try {
-    const response = await fetch(metadataUrl);
+    const response = await fetch(metadataUrl, fetchInit);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -227,6 +257,9 @@ export async function fetchModelFiles(
     MODEL_FILES_CACHE.set(cacheKey, files);
     return files;
   } catch (metadataError) {
+    if (isDomAbortError(metadataError) || isAssetLoadAbortedError(metadataError)) {
+      throwAssetLoadAborted(metadataError, 'download');
+    }
     console.warn(`[huggingface] Metadata listing failed for ${repoId}@${revision}.`, metadataError);
     return [];
   }
@@ -274,6 +307,7 @@ export async function getModelAssetHandle(
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
     readonly preferBlobUrl?: boolean;
+    readonly signal?: AbortSignalLike | null;
   } = {},
 ): Promise<ResolvedAssetHandle> {
   const provider = createDefaultHuggingFaceProvider();
@@ -288,11 +322,20 @@ export async function getModelFile(
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
     readonly preferBlobUrl?: boolean;
-    /** Transfers URL-handle ownership to the caller for deterministic disposal. */
+    readonly signal?: AbortSignalLike | null;
+    /**
+     * Transfers URL-handle ownership to the caller for deterministic disposal.
+     * Required when `preferBlobUrl` is true; otherwise the blob URL would leak.
+     */
     readonly onResolvedHandle?: (handle: ResolvedAssetHandle) => void;
   } = {},
 ): Promise<string> {
   const { onResolvedHandle, ...handleOptions } = options;
+  if (options.preferBlobUrl && !onResolvedHandle) {
+    throw new Error(
+      'getModelFile({ preferBlobUrl: true }) requires onResolvedHandle so the blob URL can be revoked. Pass onResolvedHandle to take ownership of the asset handle, or omit preferBlobUrl to use the remote HTTP URL.',
+    );
+  }
   const handle = await getModelAssetHandle(repoId, filename, handleOptions);
   let locator: string | null;
   try {
@@ -312,7 +355,7 @@ export async function getModelFile(
       await handle.dispose();
       throw error;
     }
-  } else if (!options.preferBlobUrl) {
+  } else {
     handle.dispose();
   }
   return locator;
@@ -325,6 +368,7 @@ export async function getModelText(
     readonly revision?: string;
     readonly subfolder?: string;
     readonly progress?: (progress: ModelFileProgress) => void;
+    readonly signal?: AbortSignalLike | null;
   } = {},
 ): Promise<string> {
   const handle = await getModelAssetHandle(repoId, filename, options);

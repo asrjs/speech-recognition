@@ -8,6 +8,11 @@ import type {
 } from './types.js';
 import { getDefaultNemoTdtWeightSetup, normalizeNemoTdtWeightBackend } from './weights.js';
 import {
+  honorAbortAfterCreate,
+  withNativeAbortSignalOption,
+  withOrtCreateAbort,
+} from '../../io/abort.js';
+import {
   importNodeModule,
   isNodeLikeRuntime,
   resolveNodePackageSubpathUrl,
@@ -34,6 +39,7 @@ export interface OrtTensorLike<TData extends ArrayBufferView = ArrayBufferView> 
 export interface OrtSessionLike {
   readonly inputNames?: readonly string[];
   run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>>;
+  release?(): void | Promise<void>;
 }
 
 export interface OrtModuleLike {
@@ -182,6 +188,7 @@ export async function initOrt(
   options: {
     readonly wasmPaths?: string;
     readonly cpuThreads?: number;
+    readonly signal?: { readonly aborted: boolean } | null;
   } = {},
 ): Promise<OrtModuleLike> {
   const imported = (await import('onnxruntime-web')) as unknown as OrtModuleLike & {
@@ -217,10 +224,10 @@ export async function initOrt(
     typeof navigator !== 'undefined' &&
     !('gpu' in navigator)
   ) {
-    return ort;
+    return withOrtCreateAbort(ort, options.signal);
   }
 
-  return ort;
+  return withOrtCreateAbort(ort, options.signal);
 }
 
 export async function createOrtSession(
@@ -231,6 +238,7 @@ export async function createOrtSession(
     readonly enableProfiling?: boolean;
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
+    readonly signal?: { readonly aborted: boolean } | null;
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
@@ -273,5 +281,23 @@ export async function createOrtSession(
     ];
   }
 
-  return ort.InferenceSession.create(modelUrl, sessionOptions);
+  const createOptions = withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
+  return honorAbortAfterCreate(
+    () => ort.InferenceSession.create(modelUrl, createOptions),
+    options.signal,
+    (session) => releaseOrtSession(session),
+  );
+}
+
+/** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
+export function releaseOrtSession(session: OrtSessionLike | undefined): void {
+  void session?.release?.();
+}
+
+/** Drop `session.run()` output tensors after their JS data has been copied. */
+export function disposeOrtOutputs(
+  outputs: Record<string, { dispose?: () => void } | undefined> | undefined,
+): void {
+  if (!outputs) return;
+  for (const tensor of Object.values(outputs)) tensor?.dispose?.();
 }

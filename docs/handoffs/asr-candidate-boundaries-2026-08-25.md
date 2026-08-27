@@ -177,9 +177,14 @@ selection, runtime discovery, and canonical transcript mapping. The frontend
 uses the upstream periodic-Hann framing and a torchaudio-compatible HTK mel
 formula as a provisional fallback; the upstream ecosystem also publishes
 checkpoint-specific filterbank tables, so numerical parity must replace this
-formula before preset promotion.
-The non-power-of-two 320-point FFT currently uses a correctness-first direct
-DFT path and needs a measured FFT optimization before long-form browser use.
+formula before preset promotion. Official multilingual CTC geometry is
+`center=false`, 64 bins, 320/320/160. JS vs official `jfk-short` features after
+matching official `SpecScaler` (`log(clamp(x, 1e-9, 1e9))`) is mean-abs
+~1.4e-5 and max-abs ~0.007 (`CompositeFft` vs `torch.stft`). JS features
+through native ORT and onnxruntime-web WASM both reproduce the official
+transcript and token ids. Node WebGPU is `WEBGPU_NO_ADAPTER`; browser WebGPU
+is still required before promotion. The 320-point FFT already uses the
+measured Bluestein path.
 
 ### GigaAM frontend FFT optimization (2026-08-27)
 
@@ -194,6 +199,62 @@ real time for the frontend alone). Power-of-two geometries such as MedASR
 (n_fft 512) keep the untouched radix-2 path. Parity is locked by
 `tests/composite-fft.test.ts` (naive-DFT comparison plus GigaAM golden-hash
 regression).
+
+### GigaAM official reference chain (2026-08-27)
+
+GigaAM multilingual CTC was selected first among GigaAM / X-ASR / Qwen /
+SenseVoice: one encoder+CTC graph, MIT license, official `model.to_onnx`.
+Families remain on the root API. This run used the official checkpoint, not a
+third-party ONNX oracle.
+
+- Weights: `https://cdn.chatwm.opensmodel.sberdevices.ru/GigaAM/multilingual_ctc.ckpt`
+- MD5 `5379d887c53ccd9cb95981e2a1832720`; SHA-256
+  `24aa92be5994fa8b9f1ce40fe59fc9693de0ce6af415011b7c0b4480c7fcf733`
+- GigaAM git `7447938d791c4f3e643386ee22c33777004293a5`
+- Official PyTorch on `jfk-short.wav`:
+  `and so my fellow americans ask not what your country can do for you ask what you can do for your country`
+- Official fp32 ONNX 885,388,621 bytes, SHA-256
+  `fb9a3fe73862bc75dacbcab751405af5334967d86289cd6512bbf2597bb6734b`
+- Official fp16 ONNX 443,915,609 bytes, SHA-256
+  `f7cb6a4743d9942d09bce2b8210bd364a2c116bcabc540bb0680f999eda4bd67`
+- Native ORT CPU: exact text and token match; log_probs max-abs `7.63e-5`,
+  cosine `1.0`
+- JS features → native ORT: exact text and token match; log_probs max-abs
+  `3.34e-4` vs PyTorch
+- onnxruntime-web WASM fp32 and official fp16: exact jfk-short text match
+- Node WebGPU: `WEBGPU_NO_ADAPTER` (onnxruntime-web in Node)
+- Chrome WebGPU fp16 (NVIDIA Blackwell): exact jfk-short text match;
+  load 6.44s, transcribe 2.88s, RTF 0.261, RTFx 3.83. Result:
+  `tools/data/results/gigaam/multilingual-ctc-jfk-short-webgpu-chrome.json`
+
+Still experimental: no preset yet. Browser WebGPU text match is now proven
+for the official fp16 graph. X-ASR and Qwen remain intact.
+
+### SenseVoiceSmall official reference chain (2026-08-27)
+
+SenseVoice is the second family: same encoder+CTC shape as GigaAM, FunASR
+license, CJK-first. OpenVoiceOS ONNX is not the oracle. Official FunASR
+export keeps LFR+CMVN outside the graph (`speech` `[B,T,560]`).
+
+- HF `FunAudioLLM/SenseVoiceSmall` revision
+  `3847d57b6bdf2dd8875cb1508d2af43d80a16bf7`; git clone
+  `6991744856587fa44379e8b5dcc432debffeb1be`
+- `model.pt` 936,291,369 bytes, SHA-256
+  `833ca2dcfdf8ec91bd4f31cfac36d6124e0c459074d5e909aec9cabe6204a3ea`
+- License: FunASR Model Open Source License (`model-license`)
+- Official FunASR 1.4.4 on `jfk-short.wav`: tagged JFK text with
+  `<|en|><|EMO_UNKNOWN|><|Speech|><|woitn|>` prefix, body matches GigaAM
+- Official unquantized ONNX 937,615,562 bytes, SHA-256
+  `8fc794f08c390ce26f0c8878904a2e0a63214faaa53e2354245a50c0d2b65700`
+- Native ORT CPU: exact tagged text match
+- onnxruntime-web WASM: exact JFK body match; load+encode ~4.07s, RTF 0.370
+- Node WebGPU: `WEBGPU_NO_ADAPTER`
+- Chrome WebGPU (NVIDIA Blackwell, official fp32): exact JFK body match;
+  load 17.03s, transcribe 2.26s, RTF 0.206, RTFx 4.86
+
+Library frontend now applies FunASR LFR (`m=7,n=6`) + `am.mvn` when the
+session exposes `speech`; folded OpenVoiceOS `features` `[B,T,80]` is
+still accepted. Experimental, no preset. X-ASR and Qwen left intact.
 
 ### GigaAM v3 E2E RNN-T implementation update (2026-08-26)
 

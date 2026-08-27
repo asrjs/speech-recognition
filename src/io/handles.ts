@@ -1,6 +1,14 @@
+import {
+  isAssetLoadAbortedError,
+  throwIfAssetAborted,
+  toAssetLoadAbortedError,
+  toFetchAbortSignal,
+  throwAssetLoadAborted,
+} from './abort.js';
 import type {
   AssetCache,
   AssetCacheValue,
+  AssetProgressEvent,
   AssetRequest,
   ResolvedAssetHandle,
 } from '../types/index.js';
@@ -15,25 +23,63 @@ interface BlobCacheReadHit {
   readonly blob: Blob;
 }
 
+function emitAssetProgress(
+  request: AssetRequest,
+  event: AssetProgressEvent,
+): void {
+  if (event.aborted) {
+    request.onProgress?.({
+      id: request.id,
+      ...event,
+      done: true,
+      aborted: true,
+    });
+    return;
+  }
+  if (request.signal?.aborted) {
+    return;
+  }
+  request.onProgress?.({
+    id: request.id,
+    ...event,
+  });
+}
+
 async function* bytesToStream(bytes: Uint8Array): AsyncIterable<Uint8Array> {
   yield bytes;
 }
 
-async function* readReadableStream(stream: ReadableStream<Uint8Array>): AsyncIterable<Uint8Array> {
+async function* readReadableStream(
+  stream: ReadableStream<Uint8Array>,
+  signal?: AssetRequest['signal'],
+): AsyncIterable<Uint8Array> {
   const reader = stream.getReader();
 
   try {
     while (true) {
+      throwIfAssetAborted(signal, 'download');
       const { done, value } = await reader.read();
       if (done) {
         return;
       }
+      throwIfAssetAborted(signal, 'download');
       if (value) {
         yield value;
       }
     }
+  } catch (error) {
+    try {
+      await reader.cancel();
+    } catch {
+      // already closed or cancelled
+    }
+    throwAssetLoadAborted(error, 'download');
   } finally {
-    reader.releaseLock();
+    try {
+      reader.releaseLock();
+    } catch {
+      // cancel() already released the lock
+    }
   }
 }
 
@@ -257,10 +303,18 @@ async function fetchWithCandidates(request: AssetRequest, primaryUrl: string): P
   const candidateUrls = getFetchCandidateUrls(request, primaryUrl);
   let lastStatus: number | null = null;
   let lastStatusText = '';
+  const fetchSignal = toFetchAbortSignal(request.signal);
+  const fetchInit = fetchSignal ? { signal: fetchSignal } : undefined;
 
   for (let index = 0; index < candidateUrls.length; index += 1) {
+    throwIfAssetAborted(request.signal, 'download');
     const candidateUrl = candidateUrls[index]!;
-    const response = await fetch(candidateUrl);
+    let response: Response;
+    try {
+      response = await fetch(candidateUrl, fetchInit);
+    } catch (error) {
+      throwAssetLoadAborted(error, 'download');
+    }
     if (response.ok) {
       return response;
     }
@@ -278,8 +332,15 @@ async function fetchWithCandidates(request: AssetRequest, primaryUrl: string): P
   );
 }
 
+function createDisposedAssetHandleError(request: AssetRequest): Error {
+  return new Error(
+    `Asset handle "${request.id}" has been disposed; blob URL locators cannot be created.`,
+  );
+}
+
 export class BlobAssetHandle implements ResolvedAssetHandle {
   private locatorUrl: string | null = null;
+  private disposed = false;
 
   constructor(
     readonly request: AssetRequest,
@@ -296,11 +357,14 @@ export class BlobAssetHandle implements ResolvedAssetHandle {
 
   openStream(): AsyncIterable<Uint8Array> {
     const stream = this.blob.stream();
-    return readReadableStream(stream as ReadableStream<Uint8Array>);
+    return readReadableStream(stream as ReadableStream<Uint8Array>, this.request.signal);
   }
 
   async readBytes(): Promise<Uint8Array> {
-    return new Uint8Array(await this.blob.arrayBuffer());
+    throwIfAssetAborted(this.request.signal, 'download');
+    const bytes = new Uint8Array(await this.blob.arrayBuffer());
+    throwIfAssetAborted(this.request.signal, 'download');
+    return bytes;
   }
 
   async readText(): Promise<string> {
@@ -315,7 +379,9 @@ export class BlobAssetHandle implements ResolvedAssetHandle {
     if (target === 'path') {
       return null;
     }
-
+    if (this.disposed) {
+      throw createDisposedAssetHandleError(this.request);
+    }
     if (!this.locatorUrl) {
       this.locatorUrl = URL.createObjectURL(this.blob);
     }
@@ -324,6 +390,7 @@ export class BlobAssetHandle implements ResolvedAssetHandle {
   }
 
   dispose(): void {
+    this.disposed = true;
     if (this.locatorUrl) {
       URL.revokeObjectURL(this.locatorUrl);
       this.locatorUrl = null;
@@ -335,6 +402,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
   private blobUrl: string | null = null;
   private bytesPromise: Promise<Uint8Array> | null = null;
   private blobPromise: Promise<Blob> | null = null;
+  private disposed = false;
 
   constructor(
     readonly request: AssetRequest,
@@ -347,6 +415,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
   }
 
   async *openStream(): AsyncIterable<Uint8Array> {
+    throwIfAssetAborted(this.request.signal, 'download');
     const cached = await readCache(
       this.cache,
       this.request.cacheKey,
@@ -354,7 +423,8 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
     );
     if (cached) {
       await migrateCacheHit(this.cache, this.request.cacheKey, cached);
-      this.request.onProgress?.({
+      throwIfAssetAborted(this.request.signal, 'download');
+      emitAssetProgress(this.request, {
         id: this.request.id,
         loaded: cached.value.bytes.byteLength,
         total: cached.value.bytes.byteLength,
@@ -365,67 +435,77 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
       return;
     }
 
-    const response = await fetchWithCandidates(this.request, this.url);
+    try {
+      const response = await fetchWithCandidates(this.request, this.url);
 
-    const totalHeader = response.headers.get('content-length');
-    const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
-    const body = response.body;
-    if (!body) {
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      await writeCache(this.cache, this.request.cacheKey, {
-        bytes,
-        contentType: response.headers.get('content-type') || undefined,
-      });
-      this.request.onProgress?.({
+      const totalHeader = response.headers.get('content-length');
+      const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
+      const body = response.body;
+      if (!body) {
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        throwIfAssetAborted(this.request.signal, 'download');
+        await writeCache(this.cache, this.request.cacheKey, {
+          bytes,
+          contentType: response.headers.get('content-type') || undefined,
+        });
+        emitAssetProgress(this.request, {
+          id: this.request.id,
+          loaded: bytes.byteLength,
+          total,
+          done: true,
+          source: 'network',
+        });
+        yield bytes;
+        return;
+      }
+
+      const chunks: Uint8Array[] = [];
+      let loaded = 0;
+      for await (const chunk of readReadableStream(
+        body as ReadableStream<Uint8Array>,
+        this.request.signal,
+      )) {
+        chunks.push(chunk);
+        loaded += chunk.byteLength;
+        emitAssetProgress(this.request, {
+          id: this.request.id,
+          loaded,
+          total,
+          source: 'network',
+        });
+        yield chunk;
+      }
+
+      throwIfAssetAborted(this.request.signal, 'download');
+      emitAssetProgress(this.request, {
         id: this.request.id,
-        loaded: bytes.byteLength,
+        loaded,
         total,
         done: true,
         source: 'network',
       });
-      yield bytes;
-      return;
-    }
 
-    const chunks: Uint8Array[] = [];
-    let loaded = 0;
-    for await (const chunk of readReadableStream(body as ReadableStream<Uint8Array>)) {
-      chunks.push(chunk);
-      loaded += chunk.byteLength;
-      this.request.onProgress?.({
-        id: this.request.id,
-        loaded,
-        total,
-        source: 'network',
-      });
-      yield chunk;
-    }
-
-    this.request.onProgress?.({
-      id: this.request.id,
-      loaded,
-      total,
-      done: true,
-      source: 'network',
-    });
-
-    if (this.cache && this.request.cacheKey) {
-      const bytes = new Uint8Array(loaded);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.byteLength;
+      if (this.cache && this.request.cacheKey) {
+        const bytes = new Uint8Array(loaded);
+        let offset = 0;
+        for (const chunk of chunks) {
+          bytes.set(chunk, offset);
+          offset += chunk.byteLength;
+        }
+        await writeCache(this.cache, this.request.cacheKey, {
+          bytes,
+          contentType: response.headers.get('content-type') || undefined,
+        });
       }
-      await writeCache(this.cache, this.request.cacheKey, {
-        bytes,
-        contentType: response.headers.get('content-type') || undefined,
-      });
+    } catch (error) {
+      this.failDownload(error);
     }
   }
 
   async readBytes(): Promise<Uint8Array> {
     if (!this.bytesPromise) {
       this.bytesPromise = (async () => {
+        throwIfAssetAborted(this.request.signal, 'download');
         const cached = await readCache(
           this.cache,
           this.request.cacheKey,
@@ -433,7 +513,8 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         );
         if (cached) {
           await migrateCacheHit(this.cache, this.request.cacheKey, cached);
-          this.request.onProgress?.({
+          throwIfAssetAborted(this.request.signal, 'download');
+          emitAssetProgress(this.request, {
             id: this.request.id,
             loaded: cached.value.bytes.byteLength,
             total: cached.value.bytes.byteLength,
@@ -443,39 +524,46 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
           return cached.value.bytes;
         }
 
-        const response = await fetchWithCandidates(this.request, this.url);
+        try {
+          const response = await fetchWithCandidates(this.request, this.url);
 
-        const totalHeader = response.headers.get('content-length');
-        const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
-        const body = response.body;
-        const bytes = body
-          ? await streamToBytes(
-              readReadableStream(body as ReadableStream<Uint8Array>),
-              (_chunk, loaded) => {
-                this.request.onProgress?.({
-                  id: this.request.id,
-                  loaded,
-                  total,
-                  source: 'network',
-                });
-              },
-            )
-          : new Uint8Array(await response.arrayBuffer());
+          const totalHeader = response.headers.get('content-length');
+          const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
+          const body = response.body;
+          const bytes = body
+            ? await streamToBytes(
+                readReadableStream(body as ReadableStream<Uint8Array>, this.request.signal),
+                (_chunk, loaded) => {
+                  emitAssetProgress(this.request, {
+                    id: this.request.id,
+                    loaded,
+                    total,
+                    source: 'network',
+                  });
+                },
+              )
+            : new Uint8Array(await response.arrayBuffer());
 
-        this.request.onProgress?.({
-          id: this.request.id,
-          loaded: bytes.byteLength,
-          total,
-          done: true,
-          source: 'network',
-        });
+          throwIfAssetAborted(this.request.signal, 'download');
 
-        await writeCache(this.cache, this.request.cacheKey, {
-          bytes,
-          contentType: response.headers.get('content-type') || undefined,
-        });
+          emitAssetProgress(this.request, {
+            id: this.request.id,
+            loaded: bytes.byteLength,
+            total,
+            done: true,
+            source: 'network',
+          });
 
-        return bytes;
+          await writeCache(this.cache, this.request.cacheKey, {
+            bytes,
+            contentType: response.headers.get('content-type') || undefined,
+          });
+
+          return bytes;
+        } catch (error) {
+          this.bytesPromise = null;
+          this.failDownload(error);
+        }
       })();
     }
 
@@ -495,13 +583,29 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
       return null;
     }
 
+    throwIfAssetAborted(this.request.signal, 'download');
+
+    if (this.disposed) {
+      throw createDisposedAssetHandleError(this.request);
+    }
+
     if (/^https?:\/\//i.test(this.url) && !this.request.preferBlobUrl) {
       return this.url;
     }
 
     if (!this.blobUrl) {
       const blob = await this.readBlob();
-      this.blobUrl = URL.createObjectURL(blob);
+      if (this.disposed) {
+        throw createDisposedAssetHandleError(this.request);
+      }
+      if (!this.blobUrl) {
+        const blobUrl = URL.createObjectURL(blob);
+        if (this.disposed) {
+          URL.revokeObjectURL(blobUrl);
+          throw createDisposedAssetHandleError(this.request);
+        }
+        this.blobUrl = blobUrl;
+      }
     }
 
     return this.blobUrl;
@@ -510,6 +614,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
   private async readBlob(): Promise<Blob> {
     if (!this.blobPromise) {
       this.blobPromise = (async () => {
+        throwIfAssetAborted(this.request.signal, 'download');
         const cached = await readBlobCache(
           this.cache,
           this.request.cacheKey,
@@ -517,7 +622,8 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         );
         if (cached) {
           await migrateBlobCacheHit(this.cache, this.request.cacheKey, cached);
-          this.request.onProgress?.({
+          throwIfAssetAborted(this.request.signal, 'download');
+          emitAssetProgress(this.request, {
             id: this.request.id,
             loaded: cached.blob.size,
             total: cached.blob.size,
@@ -527,44 +633,69 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
           return cached.blob;
         }
 
-        const response = await fetchWithCandidates(this.request, this.url);
-        const contentType = response.headers.get('content-type') || this.request.contentType;
-        const totalHeader = response.headers.get('content-length');
-        const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
-        const body = response.body;
-        const blob = body
-          ? await streamToBlob(
-              readReadableStream(body as ReadableStream<Uint8Array>),
-              contentType || undefined,
-              (_chunk, loaded) => {
-                this.request.onProgress?.({
-                  id: this.request.id,
-                  loaded,
-                  total,
-                  source: 'network',
-                });
-              },
-            )
-          : await response.blob();
+        try {
+          const response = await fetchWithCandidates(this.request, this.url);
+          const contentType = response.headers.get('content-type') || this.request.contentType;
+          const totalHeader = response.headers.get('content-length');
+          const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
+          const body = response.body;
+          const blob = body
+            ? await streamToBlob(
+                readReadableStream(body as ReadableStream<Uint8Array>, this.request.signal),
+                contentType || undefined,
+                (_chunk, loaded) => {
+                  emitAssetProgress(this.request, {
+                    id: this.request.id,
+                    loaded,
+                    total,
+                    source: 'network',
+                  });
+                },
+              )
+            : await response.blob();
 
-        this.request.onProgress?.({
-          id: this.request.id,
-          loaded: blob.size,
-          total,
-          done: true,
-          source: 'network',
-        });
+          throwIfAssetAborted(this.request.signal, 'download');
 
-        await writeBlobCache(this.cache, this.request.cacheKey, blob);
+          emitAssetProgress(this.request, {
+            id: this.request.id,
+            loaded: blob.size,
+            total,
+            done: true,
+            source: 'network',
+          });
 
-        return blob;
+          await writeBlobCache(this.cache, this.request.cacheKey, blob);
+
+          return blob;
+        } catch (error) {
+          this.blobPromise = null;
+          this.failDownload(error);
+        }
       })();
     }
 
     return this.blobPromise;
   }
 
+  private failDownload(error: unknown): never {
+    const aborted = toAssetLoadAbortedError(error, 'download');
+    if (isAssetLoadAbortedError(aborted)) {
+      emitAssetProgress(this.request, {
+        loaded: 0,
+        done: true,
+        aborted: true,
+        source: 'network',
+      });
+      this.bytesPromise = null;
+      this.blobPromise = null;
+      this.dispose();
+      throw aborted;
+    }
+    throw error;
+  }
+
   dispose(): void {
+    this.disposed = true;
     if (this.blobUrl) {
       URL.revokeObjectURL(this.blobUrl);
       this.blobUrl = null;

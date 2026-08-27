@@ -66,7 +66,7 @@ describe('SenseVoice artifact executor', () => {
     expect(progress).toHaveLength(6);
     expect(progress.at(-1)).toMatchObject({ phase: 'asset:download', file: 'model.onnx_data', percent: 100, isComplete: true });
 
-    executor.dispose();
+    await executor.dispose();
     expect(disposed).toEqual(['vocab.txt', 'model.onnx', 'model.onnx_data']);
   });
 });

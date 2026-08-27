@@ -12,8 +12,16 @@
  */
 
 import { argmax, tokenQualityFromLogits } from '../../inference/index.js';
+import { PipelineAbortedError } from '../../pipeline/composition.js';
 import type { TokenQualityTrace } from '../../quality/types.js';
+import type { AbortSignalLike } from '../../types/index.js';
 import type { WhisperBeamState } from './beam-search.js';
+
+function throwIfDecodeAborted(signal: AbortSignalLike | null | undefined): void {
+  if (signal?.aborted) {
+    throw new PipelineAbortedError('decode');
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Session interface
@@ -125,6 +133,8 @@ export interface WhisperDecodeOptions {
   readonly trackQuality?: boolean;
   /** Experimental: run active beam decoder steps in one batch when the session supports it. */
   readonly experimentalBatchedBeam?: boolean;
+  /** Abort in-flight decode between decoder-init/step calls. */
+  readonly signal?: AbortSignalLike | null;
 }
 
 export interface WhisperDecodeResult {
@@ -184,6 +194,7 @@ export async function whisperGreedyDecode(
     temperature = 0,
   } = options;
 
+  throwIfDecodeAborted(options.signal);
   const initResult = await session.runInit(promptTokens, encoderOutput, encoderDims);
   const vocabSize = initResult.vocabSize;
   let pastKv = initResult.presentKv;
@@ -219,6 +230,7 @@ export async function whisperGreedyDecode(
   if (onTokenLogits) onTokenLogits(firstTokenId, firstLogits, { tokens, beginIndex: promptTokens.length });
 
   for (let step = 1; step < maxNewTokens; step++) {
+    throwIfDecodeAborted(options.signal);
     const stepResult = await session.runStep(tokens[tokens.length - 1]!, pastKv);
     if (processLogits) processLogits(stepResult.logits, [...promptTokens, ...tokens], promptTokens.length);
     const nextTokenId = selectToken(stepResult.logits, temperature);
@@ -278,6 +290,7 @@ export async function whisperBeamDecode(
   }
   if (maxNewTokens <= 0) return { tokens: [], score: 0 };
 
+  throwIfDecodeAborted(options.signal);
   const initResult = await session.runInit(promptTokens, encoderOutput, encoderDims);
   const vocabSize = initResult.vocabSize;
 
@@ -319,6 +332,7 @@ export async function whisperBeamDecode(
   let useBatchedBeam = options.experimentalBatchedBeam === true && Boolean(session.runStepBatch);
 
   for (let s = 1; s < maxNewTokens; s++) {
+    throwIfDecodeAborted(options.signal);
     if (beams.length === 0) break;
 
     const logitsByBeam: Float32Array[] = [];
@@ -728,6 +742,7 @@ async function whisperBestOfDecode(
   let bestScore = -Infinity;
 
   for (let i = 0; i < bestOf; i++) {
+    throwIfDecodeAborted(options.signal);
     const result = await whisperGreedyDecode(session, {
       ...options,
       strategy: 'greedy',

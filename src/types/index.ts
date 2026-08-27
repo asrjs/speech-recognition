@@ -2,6 +2,7 @@ export * from './architecture.js';
 export * from './audio.js';
 export * from './backend.js';
 export * from './classification.js';
+export * from './experimental.js';
 export * from './io.js';
 export * from './latency.js';
 export * from './model.js';

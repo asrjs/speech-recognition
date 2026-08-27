@@ -1,6 +1,8 @@
 import type { AudioBufferLike } from '../../types/index.js';
 import { JSMelProcessor } from '../../audio/js-mel.js';
 import type { OrtModuleLike, OrtSessionLike, OrtTensorLike } from './ort.js';
+import { releaseOrtSession } from './ort.js';
+import { honorAbortAfterCreate, withNativeAbortSignalOption } from '../../io/abort.js';
 import { importNodeModule, isNodeLikeRuntime } from '../../io/node.js';
 
 export interface NemoPreprocessorResult {
@@ -11,18 +13,24 @@ export interface NemoPreprocessorResult {
 
 export interface NemoPreprocessor {
   process(audio: AudioBufferLike): Promise<NemoPreprocessorResult> | NemoPreprocessorResult;
+  dispose?(): Promise<void> | void;
 }
 
 export class OnnxNemoPreprocessor implements NemoPreprocessor {
   private sessionPromise?: Promise<OrtSessionLike>;
+  private disposed = false;
 
   constructor(
     private readonly ort: OrtModuleLike,
     private readonly modelUrl: string,
     private readonly enableProfiling = false,
+    private readonly signal?: { readonly aborted: boolean } | null,
   ) {}
 
   private async getSession(): Promise<OrtSessionLike> {
+    if (this.disposed) {
+      throw new Error('NeMo preprocessor is disposed.');
+    }
     this.sessionPromise ??= (async () => {
       let modelUrl = this.modelUrl;
       if (isNodeLikeRuntime() && /^file:/i.test(modelUrl)) {
@@ -30,13 +38,40 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
         modelUrl = fileURLToPath(modelUrl);
       }
 
-      return this.ort.InferenceSession.create(modelUrl, {
+      const sessionOptions = {
         executionProviders: ['wasm'],
         enableProfiling: this.enableProfiling,
-      });
+      };
+      const session = await honorAbortAfterCreate(
+        () =>
+          this.ort.InferenceSession.create(
+            modelUrl,
+            withNativeAbortSignalOption(sessionOptions, this.signal) ?? sessionOptions,
+          ),
+        this.signal,
+        (value) => releaseOrtSession(value),
+      );
+      if (this.disposed) {
+        releaseOrtSession(session);
+        throw new Error('NeMo preprocessor is disposed.');
+      }
+      return session;
     })();
 
     return this.sessionPromise;
+  }
+
+  async dispose(): Promise<void> {
+    this.disposed = true;
+    if (!this.sessionPromise) {
+      return;
+    }
+    try {
+      releaseOrtSession(await this.sessionPromise);
+    } catch {
+      // Keep the original load error; preprocessor session may never have opened.
+    }
+    this.sessionPromise = undefined;
   }
 
   async process(audio: AudioBufferLike): Promise<NemoPreprocessorResult> {

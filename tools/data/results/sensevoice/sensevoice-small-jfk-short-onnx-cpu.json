@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "reference_kind": "sensevoice-small-native-ort",
+  "onnx": {
+    "path": "N:\\models\\onnx\\sensevoice\\small\\model.onnx",
+    "sha256": "8fc794f08c390ce26f0c8878904a2e0a63214faaa53e2354245a50c0d2b65700",
+    "size_bytes": 937615562
+  },
+  "pass": true,
+  "samples": [
+    {
+      "sample_id": "jfk-short",
+      "audio_path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+      "audio_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "pytorch_text": "<|en|><|EMO_UNKNOWN|><|Speech|><|woitn|>and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+      "onnx_text": "<|en|><|EMO_UNKNOWN|><|Speech|><|woitn|>and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+      "onnx_token_ids": [
+        24885,
+        25009,
+        24993,
+        25017,
+        311,
+        59,
+        44,
+        3527,
+        8,
+        1256,
+        196,
+        241,
+        4,
+        608,
+        30,
+        63,
+        33,
+        624,
+        34,
+        58,
+        17,
+        14,
+        608,
+        63,
+        14,
+        34,
+        58,
+        17,
+        33,
+        624
+      ],
+      "speech_shape": [
+        1,
+        183,
+        560
+      ],
+      "encoder_out_lens": [
+        187
+      ],
+      "text_match": true
+    }
+  ]
+}

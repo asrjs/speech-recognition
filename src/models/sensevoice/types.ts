@@ -63,6 +63,7 @@ export interface SenseVoiceDirectArtifacts {
   readonly tokenizerUrl: string;
   readonly modelDataUrl?: string;
   readonly modelDataFilename?: string;
+  readonly cmvnUrl?: string;
 }
 
 export interface SenseVoiceDirectSource {
@@ -80,6 +81,7 @@ export interface SenseVoiceHuggingFaceSource {
   readonly modelFilename?: string;
   readonly modelDataFilename?: string;
   readonly tokenizerFilename?: string;
+  readonly cmvnFilename?: string;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
@@ -136,6 +138,7 @@ export interface SenseVoiceModelDependencies {
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
   readonly executor?: SenseVoiceExecutor;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }
 
 export interface SenseVoiceBatchSession extends SpeechSession<SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript> {

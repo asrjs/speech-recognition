@@ -199,4 +199,5 @@ export interface NemoAedModelDependencies extends NemoModelDependencies<
   readonly executor?: NemoAedExecutor;
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }

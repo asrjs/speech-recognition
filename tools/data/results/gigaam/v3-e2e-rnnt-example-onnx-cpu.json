@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "engine": "official-gigaam-onnxruntime-cpu",
+  "onnx_dir": "N:\\models\\onnx\\gigaam\\v3-e2e-rnnt",
+  "providers": [
+    "CPUExecutionProvider"
+  ],
+  "samples": [
+    {
+      "sample_id": "example",
+      "pytorch_text": "Ничьих не требуя похвал, Счастлив уж я надеждой сладкой, Что дева с трепетом любви Посмотрит, может быть, украдкой На песни грешные мои. У лукоморья дуб зелёный.",
+      "onnx_text": "Ничьих не требуя похвал, Счастлив уж я надеждой сладкой, Что дева с трепетом любви Посмотрит, может быть, украдкой На песни грешные мои. У лукоморья дуб зелёный.",
+      "text_match": true,
+      "encoded": {
+        "shape": {
+          "reference": [
+            1,
+            768,
+            282
+          ],
+          "candidate": [
+            1,
+            768,
+            282
+          ]
+        },
+        "max_abs": 3.039836883544922e-06,
+        "mean_abs": 3.6809765902034997e-07,
+        "rmse": 4.742632029319793e-07,
+        "cosine": 0.999999999999551,
+        "count": 216576
+      },
+      "encoded_lengths": {
+        "reference": [
+          282
+        ],
+        "onnx": [
+          282
+        ]
+      }
+    }
+  ],
+  "pass": true
+}

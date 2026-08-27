@@ -102,12 +102,12 @@ describe('GigaAM frontend numerical regression', () => {
     );
   }
 
-  // Hashes captured from the previous direct-DFT frontend on 2026-08-27; the
-  // Bluestein swap must keep the GigaAM feature contract bit-compatible.
+  // Hashes captured after matching official SpecScaler clamp (2026-08-27).
+  // These lock the Bluestein n_fft=320 path plus GigaAM log(clamp) contract.
   const goldenHashes: Record<number, number> = {
-    0.5: -151381685,
-    1: 46842901,
-    2: 335665501,
+    0.5: -312547205,
+    1: 806888655,
+    2: -1839250859,
   };
 
   it('reproduces the captured feature hashes for the Bluestein path (nFft=320)', () => {

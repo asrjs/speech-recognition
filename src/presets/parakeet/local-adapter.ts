@@ -53,8 +53,8 @@ export const parakeetBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
   createEntries(files) {
     return createParakeetLocalEntries(files);
   },
-  async collectEntries(dirHandle, prefix = '') {
-    return await collectParakeetLocalEntries(dirHandle, prefix);
+  async collectEntries(dirHandle, prefix = '', signal) {
+    return await collectParakeetLocalEntries(dirHandle, prefix, signal);
   },
   inspectEntries(entries) {
     return normalizeSpeechModelLocalInspection(inspectParakeetLocalEntries(entries));
@@ -78,6 +78,7 @@ export const parakeetBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
       verbose: options.verbose,
       cpuThreads: options.cpuThreads,
       enableProfiling: options.enableProfiling,
+      signal: options.signal,
     });
 
     return {

@@ -8,14 +8,24 @@ import type {
 } from './types.js';
 import {
   createOrtSession,
+  disposeOrtOutputs,
   initOrt,
+  releaseOrtSession,
   type OrtModuleLike,
   type OrtSessionLike,
   type OrtTensorLike,
 } from '../nemo-tdt/ort.js';
 import { getDefaultNemoAedWeightSetup, normalizeNemoAedWeightBackend } from './weights.js';
 
-export { createOrtSession, initOrt, type OrtModuleLike, type OrtSessionLike, type OrtTensorLike };
+export {
+  createOrtSession,
+  disposeOrtOutputs,
+  initOrt,
+  releaseOrtSession,
+  type OrtModuleLike,
+  type OrtSessionLike,
+  type OrtTensorLike,
+};
 
 export interface ResolvedNemoAedArtifacts {
   readonly artifacts: NemoAedDirectArtifacts;

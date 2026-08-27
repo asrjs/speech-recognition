@@ -1,4 +1,5 @@
 import type {
+  AbortSignalLike,
   AssetProvider,
   AudioBufferLike,
   ModelClassification,
@@ -10,6 +11,7 @@ import type {
 import type { NemoDecodeContext } from '../nemo-common/index.js';
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
+import { PipelineAbortedError } from '../../pipeline/composition.js';
 import type { TranscriptMetrics, TranscriptionProgressEvent } from '../../types/index.js';
 import {
   JsNemoPreprocessor,
@@ -17,9 +19,12 @@ import {
   OnnxNemoPreprocessor,
 } from '../nemo-tdt/preprocessor.js';
 import { CanaryTokenizer } from './tokenizer.js';
+import { rethrowIfAssetAborted } from '../../io/abort.js';
 import {
   createOrtSession,
+  disposeOrtOutputs,
   initOrt,
+  releaseOrtSession,
   resolveNemoAedArtifacts,
   type OrtModuleLike,
   type OrtSessionLike,
@@ -65,6 +70,12 @@ function emitTranscriptionProgress(
   options.onProgress?.(event);
 }
 
+function throwIfDecodeAborted(signal: AbortSignalLike | null | undefined): void {
+  if (signal?.aborted) {
+    throw new PipelineAbortedError('decode');
+  }
+}
+
 function roundMiB(bytes: number | undefined): number | undefined {
   if (!Number.isFinite(bytes)) {
     return undefined;
@@ -79,12 +90,13 @@ function createAssetProgressEvent(
     readonly loaded: number;
     readonly total?: number;
     readonly done?: boolean;
+    readonly aborted?: boolean;
   },
 ): RuntimeProgressEvent {
   const percent =
     event.total && event.total > 0
       ? Math.min(100, Math.round((event.loaded / event.total) * 100))
-      : event.done
+      : event.done && !event.aborted
         ? 100
         : undefined;
 
@@ -97,8 +109,9 @@ function createAssetProgressEvent(
     percent,
     loadedMiB: roundMiB(event.loaded),
     totalMiB: roundMiB(event.total),
-    isComplete: event.done,
-    message: event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
+    isComplete: Boolean(event.done) && !event.aborted,
+    aborted: event.aborted,
+    message: event.aborted ? `Cancelled ${file}.` : event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
   };
 }
 
@@ -177,7 +190,10 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
   private readonly loadStatePromise?: Promise<LoadedExecutorState>;
   private readonly assetProvider?: AssetProvider;
   private readonly runtimeHooks?: SpeechRuntimeHooks;
+  private readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   private readonly assetHandles: ResolvedAssetHandle[] = [];
+  private disposed = false;
+  private disposePromise?: Promise<void>;
 
   constructor(
     private readonly modelId: string,
@@ -188,11 +204,13 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
     dependencies: {
       readonly assetProvider?: AssetProvider;
       readonly runtimeHooks?: SpeechRuntimeHooks;
+      readonly signal?: import('../../types/index.js').AbortSignalLike | null;
     } = {},
   ) {
     this.sourceOptions = loadOptions?.source;
     this.assetProvider = dependencies.assetProvider;
     this.runtimeHooks = dependencies.runtimeHooks;
+    this.signal = dependencies.signal;
     if (this.sourceOptions) {
       this.loadStatePromise = this.initialize();
     }
@@ -259,8 +277,9 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
     const ort = await initOrt(resolved.ortBackend, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
+      signal: this.signal,
     });
-    const tokenizer = await CanaryTokenizer.fromUrl(artifacts.tokenizerUrl);
+    const tokenizer = await CanaryTokenizer.fromUrl(artifacts.tokenizerUrl, this.signal);
     const warnings = resolved.warnings.map((warning) => ({
       ...warning,
       recoverable: true,
@@ -273,6 +292,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
         enableProfiling: resolved.enableProfiling,
       });
     } catch (error) {
+      rethrowIfAssetAborted(error);
       const source = this.sourceOptions;
       const implicitFp16Encoder =
         source.kind === 'huggingface' &&
@@ -304,6 +324,11 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       });
     }
 
+    if (this.disposed) {
+      releaseOrtSession(encoderSession);
+      throw new Error(`NeMo AED executor was disposed during load for "${this.modelId}".`);
+    }
+
     let decoderSession: OrtSessionLike;
     try {
       decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
@@ -311,6 +336,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
         enableProfiling: resolved.enableProfiling,
       });
     } catch (error) {
+      rethrowIfAssetAborted(error);
       const source = this.sourceOptions;
       const implicitFp16Decoder =
         source.kind === 'huggingface' &&
@@ -342,6 +368,12 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       });
     }
 
+    if (this.disposed) {
+      releaseOrtSession(encoderSession);
+      releaseOrtSession(decoderSession);
+      throw new Error(`NeMo AED executor was disposed during load for "${this.modelId}".`);
+    }
+
     const preprocessor: NemoPreprocessor =
       resolved.preprocessorBackend === 'js'
         ? new JsNemoPreprocessor({
@@ -349,7 +381,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
             validLengthMode: this.config.preprocessorValidLengthMode,
             normalization: this.config.preprocessorNormalization,
           })
-        : new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl!, resolved.enableProfiling);
+        : new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl!, resolved.enableProfiling, this.signal);
 
     return {
       ort,
@@ -363,6 +395,9 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
   }
 
   private async getLoadedState(): Promise<LoadedExecutorState> {
+    if (this.disposed) {
+      throw new Error(`NeMo AED executor is disposed for "${this.modelId}".`);
+    }
     if (!this.loadStatePromise) {
       throw new Error(`No artifact source is configured for "${this.modelId}".`);
     }
@@ -478,19 +513,33 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       },
     });
 
-    const encoderTensor = resolveOutputTensor<OrtTensorLike<Float32Array>>(
-      encoderOutputs,
-      'encoder_states',
-      0,
-    );
-    const encodedLengthTensorOut = resolveOutputTensor<
-      OrtTensorLike<BigInt64Array | Int32Array>
-    >(encoderOutputs, 'encoded_length', 1);
-    const encoderMaskTensor = resolveOutputTensor<OrtTensorLike<Float32Array>>(
-      encoderOutputs,
-      'encoder_mask',
-      2,
-    );
+    let encoderTensor: OrtTensorLike<Float32Array>;
+    let encodedLengthTensorOut: OrtTensorLike<BigInt64Array | Int32Array>;
+    let encoderMaskTensor: OrtTensorLike<Float32Array>;
+    try {
+      encoderTensor = resolveOutputTensor<OrtTensorLike<Float32Array>>(
+        encoderOutputs,
+        'encoder_states',
+        0,
+      );
+      encodedLengthTensorOut = resolveOutputTensor<
+        OrtTensorLike<BigInt64Array | Int32Array>
+      >(encoderOutputs, 'encoded_length', 1);
+      encoderMaskTensor = resolveOutputTensor<OrtTensorLike<Float32Array>>(
+        encoderOutputs,
+        'encoder_mask',
+        2,
+      );
+    } catch (error) {
+      disposeOrtOutputs(encoderOutputs);
+      throw error;
+    }
+    for (const tensor of Object.values(encoderOutputs)) {
+      if (tensor !== encoderTensor && tensor !== encodedLengthTensorOut && tensor !== encoderMaskTensor) {
+        tensor.dispose?.();
+      }
+    }
+
     const encoderDims = [...encoderTensor.dims];
     if (encoderDims.length !== 3 || encoderDims[0] !== 1) {
       throw new Error(`Unexpected NeMo AED encoder output shape: [${encoderDims.join(', ')}].`);
@@ -521,6 +570,7 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
 
     try {
       for (let stepIndex = 0; stepIndex < maxNewTokens; stepIndex += 1) {
+        throwIfDecodeAborted(options.signal);
         const inputIds = [...promptIds, ...generatedTokenIds];
         const inputIdTensor = new loaded.ort.Tensor(
           'int64',
@@ -544,19 +594,28 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
           'next_logits',
           0,
         );
-        const logitsData = logits.data;
-        if (logitsData.length < vocabSize) {
-          throw new Error(
-            `NeMo AED decoder output is too small (${logitsData.length}) for tokenizer vocabulary size ${vocabSize}.`,
-          );
-        }
+        let tokenId: number;
+        try {
+          const logitsData = logits.data instanceof Float32Array
+            ? new Float32Array(logits.data)
+            : Float32Array.from(logits.data as ArrayLike<number>);
+          if (logitsData.length < vocabSize) {
+            throw new Error(
+              `NeMo AED decoder output is too small (${logitsData.length}) for tokenizer vocabulary size ${vocabSize}.`,
+            );
+          }
 
-        const tokenId = argmax(logitsData, 0, vocabSize);
-        const confidence = confidenceFromLogits(logitsData, tokenId, vocabSize);
-        generatedTokenIds.push(tokenId);
-        generatedLogProbs.push(confidence.logProb);
-        generatedConfidences.push(confidence.confidence);
-        logits.dispose?.();
+          tokenId = argmax(logitsData, 0, vocabSize);
+          const confidence = confidenceFromLogits(logitsData, tokenId, vocabSize);
+          generatedTokenIds.push(tokenId);
+          generatedLogProbs.push(confidence.logProb);
+          generatedConfidences.push(confidence.confidence);
+        } finally {
+          logits.dispose?.();
+          for (const tensor of Object.values(decoderOutputs)) {
+            if (tensor !== logits) tensor.dispose?.();
+          }
+        }
 
         const completedUnits = stepIndex + 1;
         if (completedUnits > lastReportedDecodeUnits) {
@@ -719,9 +778,25 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
     return transcript;
   }
 
-  dispose(): void {
-    for (const handle of this.assetHandles) {
-      handle.dispose();
+  async dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    this.disposed = true;
+    this.disposePromise = this.flushDispose();
+    return this.disposePromise;
+  }
+
+  private async flushDispose(): Promise<void> {
+    if (this.loadStatePromise) {
+      try {
+        const loaded = await this.loadStatePromise;
+        releaseOrtSession(loaded.encoderSession);
+        releaseOrtSession(loaded.decoderSession);
+        await loaded.preprocessor.dispose?.();
+      } catch {
+        // Keep the original load error; still drop asset handles.
+      }
     }
+    const handles = this.assetHandles.splice(0);
+    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
   }
 }

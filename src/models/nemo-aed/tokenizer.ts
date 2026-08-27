@@ -1,5 +1,11 @@
 import type { NemoTokenizer } from '../nemo-common/index.js';
 import { importNodeModule, isNodeLikeRuntime } from '../../io/node.js';
+import {
+  fetchTextHonoringAbort,
+  rethrowIfAssetAborted,
+  throwIfAssetAborted,
+  type AssetAbortSignalLike,
+} from '../../io/abort.js';
 import type {
   NemoAedModelConfig,
   NemoAedPromptSettings,
@@ -32,23 +38,29 @@ interface TokenRange {
   readonly pieces: readonly string[];
 }
 
-async function fetchText(url: string): Promise<string> {
+async function fetchText(
+  url: string,
+  signal?: AssetAbortSignalLike | null,
+): Promise<string> {
+  throwIfAssetAborted(signal);
   if (isNodeLikeRuntime() && /^file:/i.test(url)) {
     const [{ fileURLToPath }, fs] = await Promise.all([
       importNodeModule<typeof import('node:url')>('node:url'),
       importNodeModule<typeof import('node:fs/promises')>('node:fs/promises'),
     ]);
-    return fs.readFile(fileURLToPath(url), 'utf8');
+    try {
+      const text = await fs.readFile(fileURLToPath(url), 'utf8');
+      throwIfAssetAborted(signal);
+      return text;
+    } catch (error) {
+      rethrowIfAssetAborted(error);
+      throw error;
+    }
   }
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch Canary tokenizer metadata from ${url}: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  return response.text();
+  return fetchTextHonoringAbort(url, signal, {
+    errorMessage: `Failed to fetch Canary tokenizer metadata from ${url}`,
+  });
 }
 
 function normalizeLanguageToken(language: string): string {
@@ -168,8 +180,11 @@ export class CanaryTokenizer implements NemoTokenizer {
     return new CanaryTokenizer(payload);
   }
 
-  static async fromUrl(url: string): Promise<CanaryTokenizer> {
-    const payload = JSON.parse(await fetchText(url)) as CanaryTokenizerPayload;
+  static async fromUrl(
+    url: string,
+    signal?: AssetAbortSignalLike | null,
+  ): Promise<CanaryTokenizer> {
+    const payload = JSON.parse(await fetchText(url, signal)) as CanaryTokenizerPayload;
     return CanaryTokenizer.fromPayload(payload);
   }
 

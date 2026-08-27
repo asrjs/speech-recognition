@@ -1,4 +1,5 @@
 import type {
+  AbortSignalLike,
   AssetProvider,
   AudioBufferLike,
   ModelClassification,
@@ -10,10 +11,13 @@ import type {
   TranscriptionProgressEvent,
 } from '../../types/index.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
+import { PipelineAbortedError } from '../../pipeline/composition.js';
 import { fetchModelFiles } from '../../runtime/huggingface.js';
+import { createExperimentalArtifactMissingError } from '../../runtime/experimental-families.js';
 import {
   createQwenOrtSession,
   initQwenOrt,
+  releaseQwenOrtSession,
   resolveQwen3AsrArtifacts,
   type QwenOrtModuleLike,
   type QwenOrtSessionLike,
@@ -21,6 +25,7 @@ import {
   type ResolvedQwen3AsrArtifacts,
 } from './ort.js';
 import { normalizeQwenLanguage } from './config.js';
+import { applyOfficialQwen3AsrGraphDefaults } from './official.js';
 import { Qwen3AsrFeatureProcessor, getQwenAudioTokenCount } from './processor.js';
 import { Qwen3AsrTokenizer } from './tokenizer.js';
 import type {
@@ -38,10 +43,12 @@ interface LoadedQwenState {
   readonly ort: QwenOrtModuleLike;
   readonly tokenizer: Qwen3AsrTokenizer;
   readonly processor: Qwen3AsrFeatureProcessor;
-  readonly encoderSession: QwenOrtSessionLike;
-  readonly decoderSession: QwenOrtSessionLike;
+  encoderSession?: QwenOrtSessionLike;
+  decoderSession?: QwenOrtSessionLike;
+  decoderStepSession?: QwenOrtSessionLike;
   readonly resolved: ResolvedQwen3AsrArtifacts;
-  readonly warnings: readonly TranscriptWarning[];
+  readonly warnings: TranscriptWarning[];
+  readonly sequentialSessions: boolean;
 }
 
 interface PromptTensors {
@@ -56,11 +63,11 @@ interface PromptTensors {
 function createAssetProgressEvent(
   modelId: string,
   file: string,
-  event: { readonly loaded: number; readonly total?: number; readonly done?: boolean },
+  event: { readonly loaded: number; readonly total?: number; readonly done?: boolean; readonly aborted?: boolean },
 ): RuntimeProgressEvent {
   const percent = event.total && event.total > 0
     ? Math.min(100, Math.round((event.loaded / event.total) * 100))
-    : event.done
+    : event.done && !event.aborted
       ? 100
       : undefined;
   return {
@@ -72,8 +79,9 @@ function createAssetProgressEvent(
     percent,
     loadedMiB: roundMetric(event.loaded / (1024 * 1024), 2),
     totalMiB: event.total === undefined ? undefined : roundMetric(event.total / (1024 * 1024), 2),
-    isComplete: event.done,
-    message: event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
+    isComplete: Boolean(event.done) && !event.aborted,
+    aborted: event.aborted,
+    message: event.aborted ? `Cancelled ${file}.` : event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
   };
 }
 
@@ -161,6 +169,11 @@ async function readTensorData(tensor: QwenOrtTensorLike): Promise<ArrayBufferVie
   return tensor.data;
 }
 
+/** Owned float32 copy so Ort logits can be disposed without freeing the argmax view. */
+export async function copyQwenLogits(tensor: QwenOrtTensorLike): Promise<Float32Array> {
+  return new Float32Array(asFloat32(await readTensorData(tensor), tensor.type));
+}
+
 function disposeTensor(tensor: QwenOrtTensorLike | undefined): void {
   tensor?.dispose?.();
 }
@@ -171,6 +184,37 @@ function disposeTensorRecord(tensors: Record<string, QwenOrtTensorLike>): void {
 
 function tokenId(tokenizer: Qwen3AsrTokenizer, token: string, fallback: number): number {
   return tokenizer.getTokenId(token) ?? fallback;
+}
+
+function toInt64(ids: ArrayLike<number>): BigInt64Array {
+  const output = new BigInt64Array(ids.length);
+  for (let index = 0; index < ids.length; index += 1) output[index] = BigInt(ids[index] as number);
+  return output;
+}
+
+function sessionInputType(session: QwenOrtSessionLike, name: string, fallback: 'float16' | 'float32'): 'float16' | 'float32' {
+  const meta = session.inputMetadata?.find((item) => item.name === name);
+  const raw = `${meta?.type ?? ''}`.toLowerCase();
+  if (raw.includes('float16')) return 'float16';
+  if (raw.includes('float')) return 'float32';
+  return fallback;
+}
+
+function floatFeed(
+  ort: QwenOrtModuleLike,
+  session: QwenOrtSessionLike,
+  name: string,
+  data: Float32Array,
+  dims: readonly number[],
+  fallback: 'float16' | 'float32' = 'float32',
+): QwenOrtTensorLike {
+  const type = sessionInputType(session, name, fallback);
+  if (type === 'float16') return new ort.Tensor('float16', float32ToFloat16Bits(data), dims);
+  return new ort.Tensor('float32', data, dims);
+}
+
+function isStackedKv(config: Qwen3AsrModelConfig): boolean {
+  return config.graph.kvLayout === 'stacked';
 }
 
 function buildPrompt(
@@ -247,6 +291,13 @@ function parseQwenOutput(
       text: match[2]?.trim() ?? '',
     };
   }
+  const glued = text.match(/^language\s+([A-Za-z]+)(?=[A-Z“"‘])([\s\S]*)$/);
+  if (glued) {
+    return {
+      language: normalizeQwenLanguage(glued[1]),
+      text: glued[2]?.trim() ?? '',
+    };
+  }
   return { text };
 }
 
@@ -264,6 +315,12 @@ function argmaxLastRow(logits: Float32Array, vocabularySize: number): number {
   return bestId;
 }
 
+function throwIfDecodeAborted(signal: AbortSignalLike | null | undefined): void {
+  if (signal?.aborted) {
+    throw new PipelineAbortedError('decode');
+  }
+}
+
 function emitProgress(
   options: Qwen3AsrTranscriptionOptions,
   event: TranscriptionProgressEvent,
@@ -276,18 +333,23 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
   private readonly loadStatePromise?: Promise<LoadedQwenState>;
   private readonly assetProvider?: AssetProvider;
   private readonly runtimeHooks?: SpeechRuntimeHooks;
+  private readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   private readonly dependencies: {
     readonly tokenizer?: Qwen3AsrTokenizer;
     readonly featureProcessor?: Qwen3AsrFeatureProcessor;
     readonly ort?: QwenOrtModuleLike;
     readonly encoderSession?: QwenOrtSessionLike;
     readonly decoderSession?: QwenOrtSessionLike;
+    readonly decoderStepSession?: QwenOrtSessionLike;
   };
   private readonly assetHandles: ResolvedAssetHandle[] = [];
+  private readonly config: Qwen3AsrModelConfig;
+  private disposed = false;
+  private disposePromise?: Promise<void>;
 
   constructor(
     private readonly modelId: string,
-    private readonly config: Qwen3AsrModelConfig,
+    config: Qwen3AsrModelConfig,
     private readonly backendId: string,
     loadOptions: Qwen3AsrModelOptions | undefined,
     dependencies: {
@@ -299,17 +361,22 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       readonly ort?: QwenOrtModuleLike;
       readonly encoderSession?: QwenOrtSessionLike;
       readonly decoderSession?: QwenOrtSessionLike;
+      readonly decoderStepSession?: QwenOrtSessionLike;
+      readonly signal?: import('../../types/index.js').AbortSignalLike | null;
     } = {},
   ) {
+    this.config = applyOfficialQwen3AsrGraphDefaults(config, loadOptions?.source);
     this.sourceOptions = loadOptions?.source;
     this.assetProvider = dependencies.assetProvider;
     this.runtimeHooks = dependencies.runtimeHooks;
+    this.signal = dependencies.signal;
     this.dependencies = {
       tokenizer: dependencies.tokenizer,
       featureProcessor: dependencies.featureProcessor,
       ort: dependencies.ort,
       encoderSession: dependencies.encoderSession,
       decoderSession: dependencies.decoderSession,
+      decoderStepSession: dependencies.decoderStepSession,
     };
     if (this.sourceOptions || (dependencies.ort && dependencies.encoderSession && dependencies.decoderSession)) {
       this.loadStatePromise = this.initialize();
@@ -386,15 +453,16 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
   }
 
   private async initialize(): Promise<LoadedQwenState> {
-    if (!this.sourceOptions) throw new Error(`No Qwen3-ASR artifact source is configured for "${this.modelId}".`);
+    if (!this.sourceOptions) throw createExperimentalArtifactMissingError('qwen-asr', this.modelId);
     const resolved = resolveQwen3AsrArtifacts(this.sourceOptions, this.backendId);
     const artifacts = await this.materializeHuggingFaceArtifacts(resolved);
     const ort = this.dependencies.ort ?? await initQwenOrt(resolved.ortBackend, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
       enableProfiling: resolved.enableProfiling,
+      signal: this.signal,
     });
-    const tokenizer = this.dependencies.tokenizer ?? await Qwen3AsrTokenizer.fromUrl(artifacts.tokenizerUrl);
+    const tokenizer = this.dependencies.tokenizer ?? await Qwen3AsrTokenizer.fromUrl(artifacts.tokenizerUrl, this.signal);
     const processor = this.dependencies.featureProcessor ?? new Qwen3AsrFeatureProcessor(this.config);
     const warnings: TranscriptWarning[] = [];
     const cacheLocation = resolved.decoderBackendForOrt === 'webgpu'
@@ -407,25 +475,82 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
         recoverable: true,
       });
     }
+    const sequentialSessions = resolved.ortBackend === 'wasm'
+      && isStackedKv(this.config)
+      && !this.dependencies.encoderSession
+      && !this.dependencies.decoderSession;
+    const sessionExtras = sequentialSessions ? { lowMemory: true } as const : {};
     const encoderSession = this.dependencies.encoderSession ?? await createQwenOrtSession(ort, artifacts.encoderUrl, {
       backendId: resolved.encoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
       externalDataUrl: artifacts.encoderDataUrl,
       externalDataPath: artifacts.encoderDataPath,
       preferredOutputLocation: resolved.decoderBackendForOrt === 'webgpu' ? 'cpu' : undefined,
+      ...sessionExtras,
     });
+    if (this.disposed) {
+      releaseQwenOrtSession(encoderSession);
+      throw new Error(`Qwen3-ASR executor was disposed during load for "${this.modelId}".`);
+    }
+    if (sequentialSessions) {
+      return {
+        ort,
+        tokenizer,
+        processor,
+        encoderSession,
+        decoderSession: undefined,
+        decoderStepSession: undefined,
+        resolved,
+        warnings,
+        sequentialSessions: true,
+      };
+    }
     const decoderSession = this.dependencies.decoderSession ?? await createQwenOrtSession(ort, artifacts.decoderUrl, {
       backendId: resolved.decoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
-      externalDataUrl: artifacts.decoderDataUrl,
-      externalDataPath: artifacts.decoderDataPath,
-      preferredOutputLocation: outputLocationMap(this.config, cacheLocation),
+      externalDataUrl: artifacts.decoderPrefillDataUrl ?? artifacts.decoderDataUrl,
+      externalDataPath: artifacts.decoderPrefillDataPath ?? artifacts.decoderDataPath,
+      preferredOutputLocation: this.config.graph.kvLayout === 'stacked'
+        ? { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation }
+        : outputLocationMap(this.config, cacheLocation),
     });
-    return { ort, tokenizer, processor, encoderSession, decoderSession, resolved, warnings };
+    if (this.disposed) {
+      releaseQwenOrtSession(encoderSession);
+      releaseQwenOrtSession(decoderSession);
+      throw new Error(`Qwen3-ASR executor was disposed during load for "${this.modelId}".`);
+    }
+    const decoderStepSession = this.dependencies.decoderStepSession
+      ?? (artifacts.decoderStepUrl
+        ? await createQwenOrtSession(ort, artifacts.decoderStepUrl, {
+          backendId: resolved.decoderBackendForOrt,
+          enableProfiling: resolved.enableProfiling,
+          externalDataUrl: artifacts.decoderStepDataUrl,
+          externalDataPath: artifacts.decoderStepDataPath,
+          preferredOutputLocation: { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation },
+        })
+        : undefined);
+    if (this.disposed) {
+      releaseQwenOrtSession(encoderSession);
+      releaseQwenOrtSession(decoderSession);
+      releaseQwenOrtSession(decoderStepSession);
+      throw new Error(`Qwen3-ASR executor was disposed during load for "${this.modelId}".`);
+    }
+    return {
+      ort,
+      tokenizer,
+      processor,
+      encoderSession,
+      decoderSession,
+      decoderStepSession,
+      resolved,
+      warnings,
+      sequentialSessions: false,
+    };
   }
 
   private async loaded(): Promise<LoadedQwenState> {
-    if (!this.loadStatePromise) throw new Error(`No Qwen3-ASR artifact source is configured for "${this.modelId}".`);
+    if (this.disposed) throw new Error(`Qwen3-ASR executor is disposed for "${this.modelId}".`);
+    if (!this.loadStatePromise) throw createExperimentalArtifactMissingError('qwen-asr', this.modelId);
     return this.loadStatePromise;
   }
 
@@ -433,11 +558,130 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     await this.loaded();
   }
 
+  private stackedCacheLocation(loaded: LoadedQwenState, options?: Qwen3AsrTranscriptionOptions): QwenCacheOutputLocation {
+    return loaded.resolved.decoderBackendForOrt === 'webgpu'
+      ? (options?.cacheOutputLocation ?? loaded.resolved.cacheOutputLocation)
+      : 'cpu';
+  }
+
+  private async createArtifactSession(
+    loaded: LoadedQwenState,
+    url: string,
+    extras: {
+      readonly externalDataUrl?: string;
+      readonly externalDataPath?: string;
+      readonly preferredOutputLocation?: QwenCacheOutputLocation | Record<string, QwenCacheOutputLocation>;
+      readonly encoder?: boolean;
+    },
+  ): Promise<QwenOrtSessionLike> {
+    if (this.disposed) {
+      throw new Error(`Qwen3-ASR executor is disposed for "${this.modelId}".`);
+    }
+    const session = await createQwenOrtSession(loaded.ort, url, {
+      backendId: extras.encoder ? loaded.resolved.encoderBackendForOrt : loaded.resolved.decoderBackendForOrt,
+      enableProfiling: loaded.resolved.enableProfiling,
+      externalDataUrl: extras.externalDataUrl,
+      externalDataPath: extras.externalDataPath,
+      preferredOutputLocation: extras.preferredOutputLocation,
+      lowMemory: loaded.sequentialSessions,
+    });
+    if (this.disposed) {
+      releaseQwenOrtSession(session);
+      throw new Error(`Qwen3-ASR executor was disposed during load for "${this.modelId}".`);
+    }
+    return session;
+  }
+
+  private async ensureEncoderSession(loaded: LoadedQwenState): Promise<QwenOrtSessionLike> {
+    if (loaded.encoderSession) return loaded.encoderSession;
+    if (loaded.sequentialSessions) {
+      this.releaseLoadedSession(loaded, 'prefill');
+      this.releaseLoadedSession(loaded, 'step');
+    }
+    const artifacts = loaded.resolved.artifacts;
+    loaded.encoderSession = await this.createArtifactSession(loaded, artifacts.encoderUrl, {
+      encoder: true,
+      externalDataUrl: artifacts.encoderDataUrl,
+      externalDataPath: artifacts.encoderDataPath,
+      preferredOutputLocation: loaded.resolved.decoderBackendForOrt === 'webgpu' ? 'cpu' : undefined,
+    });
+    return loaded.encoderSession;
+  }
+
+  private async ensurePrefillSession(loaded: LoadedQwenState, cacheLocation: QwenCacheOutputLocation): Promise<QwenOrtSessionLike> {
+    if (loaded.decoderSession) return loaded.decoderSession;
+    const artifacts = loaded.resolved.artifacts;
+    loaded.decoderSession = await this.createArtifactSession(loaded, artifacts.decoderUrl, {
+      externalDataUrl: artifacts.decoderPrefillDataUrl ?? artifacts.decoderDataUrl,
+      externalDataPath: artifacts.decoderPrefillDataPath ?? artifacts.decoderDataPath,
+      preferredOutputLocation: this.config.graph.kvLayout === 'stacked'
+        ? { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation }
+        : outputLocationMap(this.config, cacheLocation),
+    });
+    return loaded.decoderSession;
+  }
+
+  private async ensureStepSession(loaded: LoadedQwenState, cacheLocation: QwenCacheOutputLocation): Promise<QwenOrtSessionLike> {
+    if (loaded.decoderStepSession) return loaded.decoderStepSession;
+    const stepUrl = loaded.resolved.artifacts.decoderStepUrl;
+    if (!stepUrl) throw new Error('Official Qwen decoder requires decoder-prefill and decoder-step sessions.');
+    loaded.decoderStepSession = await this.createArtifactSession(loaded, stepUrl, {
+      externalDataUrl: loaded.resolved.artifacts.decoderStepDataUrl,
+      externalDataPath: loaded.resolved.artifacts.decoderStepDataPath,
+      preferredOutputLocation: { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation },
+    });
+    return loaded.decoderStepSession;
+  }
+
+  private releaseLoadedSession(loaded: LoadedQwenState, which: 'encoder' | 'prefill' | 'step'): void {
+    if (which === 'encoder') {
+      releaseQwenOrtSession(loaded.encoderSession);
+      loaded.encoderSession = undefined;
+      return;
+    }
+    if (which === 'prefill') {
+      releaseQwenOrtSession(loaded.decoderSession);
+      loaded.decoderSession = undefined;
+      return;
+    }
+    releaseQwenOrtSession(loaded.decoderStepSession);
+    loaded.decoderStepSession = undefined;
+  }
+
   private async encodeAudio(
     loaded: LoadedQwenState,
     features: Qwen3AsrFeatureResult,
   ): Promise<{ readonly embeddings: Float32Array; readonly tokenCount: number; readonly encodeMs: number }> {
     const encodeStart = nowMs();
+    const encoderSession = await this.ensureEncoderSession(loaded);
+    if (isStackedKv(this.config)) {
+      const featureTensor = new loaded.ort.Tensor(
+        'float32',
+        features.features,
+        [features.nMels, features.frameCount],
+      );
+      let outputs: Record<string, QwenOrtTensorLike> | undefined;
+      try {
+        outputs = await encoderSession.run({ input_features: featureTensor });
+        const embeddingsTensor = outputs.audio_embeddings;
+        if (!embeddingsTensor) throw new Error('Qwen audio encoder did not return audio_embeddings.');
+        const embeddingData = asFloat32(await readTensorData(embeddingsTensor), embeddingsTensor.type);
+        const rawCount = embeddingsTensor.dims.length >= 2
+          ? embeddingsTensor.dims[0] ?? 0
+          : Math.floor(embeddingData.length / this.config.graph.hiddenSize);
+        const expected = getQwenAudioTokenCount(features.validFrameCount);
+        const tokenCount = expected > 0 && expected <= rawCount ? expected : rawCount;
+        const embeddings = new Float32Array(embeddingData.subarray(0, tokenCount * this.config.graph.hiddenSize));
+        return {
+          embeddings,
+          tokenCount,
+          encodeMs: roundMetric(nowMs() - encodeStart, 3),
+        };
+      } finally {
+        disposeTensor(featureTensor);
+        for (const tensor of Object.values(outputs ?? {})) disposeTensor(tensor);
+      }
+    }
     const featureTensor = new loaded.ort.Tensor(
       'float16',
       float32ToFloat16Bits(features.features),
@@ -446,7 +690,7 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     const maskTensor = new loaded.ort.Tensor('int32', features.inputFeaturesMask, [1, features.frameCount]);
     let outputs: Record<string, QwenOrtTensorLike> | undefined;
     try {
-      outputs = await loaded.encoderSession.run({
+      outputs = await encoderSession.run({
         input_features: featureTensor,
         input_features_mask: maskTensor,
       });
@@ -529,6 +773,142 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     return data;
   }
 
+  private async runOfficialDecoder(
+    loaded: LoadedQwenState,
+    prompt: PromptTensors,
+    audioEmbeddings: Float32Array,
+    options: Qwen3AsrTranscriptionOptions,
+  ): Promise<{
+    readonly tokenIds: readonly number[];
+    readonly decoderInitMs: number;
+    readonly decoderStepMs: number;
+    readonly decoderStepCount: number;
+    readonly kvLocation: QwenCacheOutputLocation;
+  }> {
+    const graph = this.config.graph;
+    const cacheLocation = this.stackedCacheLocation(loaded, options);
+    throwIfDecodeAborted(options.signal);
+    if (loaded.sequentialSessions) this.releaseLoadedSession(loaded, 'encoder');
+    const prefillSession = await this.ensurePrefillSession(loaded, cacheLocation);
+    const aligned = new Float32Array(prompt.inputIds.length * graph.hiddenSize);
+    for (let index = 0; index < prompt.audioTokenPositions.length; index += 1) {
+      const sourceOffset = index * graph.hiddenSize;
+      const targetOffset = (prompt.audioTokenPositions[index] as number) * graph.hiddenSize;
+      aligned.set(audioEmbeddings.subarray(sourceOffset, sourceOffset + graph.hiddenSize), targetOffset);
+    }
+    const positionIds = toInt64(Array.from({ length: prompt.inputIds.length }, (_, index) => index));
+    const inputs: Record<string, unknown> = {
+      input_ids: new loaded.ort.Tensor('int64', toInt64(prompt.inputIds), [1, prompt.inputIds.length]),
+      audio_embeddings: floatFeed(
+        loaded.ort,
+        prefillSession,
+        'audio_embeddings',
+        aligned,
+        [1, prompt.inputIds.length, graph.hiddenSize],
+      ),
+      position_ids: new loaded.ort.Tensor('int64', positionIds, [1, prompt.inputIds.length]),
+    };
+    let initOutputs: Record<string, QwenOrtTensorLike> | undefined;
+    const tokenIds: number[] = [];
+    const decoderInitStart = nowMs();
+    let decoderInitMs = 0;
+    let pastKeys: QwenOrtTensorLike | undefined;
+    let pastValues: QwenOrtTensorLike | undefined;
+    let keepPrefillPresent = false;
+    try {
+      initOutputs = await prefillSession.run(inputs);
+      const initLogits = initOutputs.logits;
+      if (!initLogits) throw new Error('Qwen official prefill did not return logits.');
+      const firstToken = argmaxLastRow(await copyQwenLogits(initLogits), graph.vocabularySize);
+      pastKeys = initOutputs.present_keys;
+      pastValues = initOutputs.present_values;
+      if (!pastKeys || !pastValues) throw new Error('Qwen official prefill did not return present_keys/present_values.');
+      decoderInitMs = nowMs() - decoderInitStart;
+      if (graph.eosTokenIds.includes(firstToken)) {
+        return {
+          tokenIds,
+          decoderInitMs: roundMetric(decoderInitMs, 3),
+          decoderStepMs: 0,
+          decoderStepCount: 0,
+          kvLocation: cacheLocation,
+        };
+      }
+      tokenIds.push(firstToken);
+      keepPrefillPresent = true;
+    } finally {
+      for (const tensor of Object.values(inputs)) {
+        if (this.isTensor(tensor)) disposeTensor(tensor);
+      }
+      if (initOutputs) {
+        for (const [name, tensor] of Object.entries(initOutputs)) {
+          if (keepPrefillPresent && (name === 'present_keys' || name === 'present_values')) continue;
+          disposeTensor(tensor);
+        }
+      }
+    }
+
+    let decoderStepMs = 0;
+    let decoderStepCount = 0;
+    const maxNewTokens = Math.max(1, Math.floor(options.maxNewTokens ?? 512));
+    let seq = prompt.inputIds.length;
+    try {
+      throwIfDecodeAborted(options.signal);
+      if (loaded.sequentialSessions) this.releaseLoadedSession(loaded, 'prefill');
+      const stepSession = await this.ensureStepSession(loaded, cacheLocation);
+      while (tokenIds.length < maxNewTokens) {
+        throwIfDecodeAborted(options.signal);
+        const lastToken = tokenIds[tokenIds.length - 1] as number;
+        const stepInputs: Record<string, unknown> = {
+          input_ids: new loaded.ort.Tensor('int64', toInt64([lastToken]), [1, 1]),
+          position_ids: new loaded.ort.Tensor('int64', toInt64([seq]), [1, 1]),
+          past_keys: pastKeys,
+          past_values: pastValues,
+        };
+        let stepOutputs: Record<string, QwenOrtTensorLike> | undefined;
+        const stepStart = nowMs();
+        let transferred = false;
+        try {
+          stepOutputs = await stepSession.run(stepInputs);
+          const logits = stepOutputs.logits;
+          if (!logits) throw new Error('Qwen official step did not return logits.');
+          const nextToken = argmaxLastRow(await copyQwenLogits(logits), graph.vocabularySize);
+          decoderStepCount += 1;
+          decoderStepMs += nowMs() - stepStart;
+          const nextKeys = stepOutputs.present_keys;
+          const nextValues = stepOutputs.present_values;
+          if (!nextKeys || !nextValues) throw new Error('Qwen official step did not return present_keys/present_values.');
+          disposeTensor(pastKeys);
+          disposeTensor(pastValues);
+          pastKeys = nextKeys;
+          pastValues = nextValues;
+          transferred = true;
+          if (graph.eosTokenIds.includes(nextToken)) break;
+          tokenIds.push(nextToken);
+          seq += 1;
+        } finally {
+          disposeTensor(stepInputs.input_ids as QwenOrtTensorLike);
+          disposeTensor(stepInputs.position_ids as QwenOrtTensorLike);
+          if (stepOutputs) {
+            for (const [name, tensor] of Object.entries(stepOutputs)) {
+              if (transferred && (name === 'present_keys' || name === 'present_values')) continue;
+              disposeTensor(tensor);
+            }
+          }
+        }
+      }
+    } finally {
+      disposeTensor(pastKeys);
+      disposeTensor(pastValues);
+    }
+    return {
+      tokenIds,
+      decoderInitMs: roundMetric(decoderInitMs, 3),
+      decoderStepMs: roundMetric(decoderStepMs, 3),
+      decoderStepCount,
+      kvLocation: cacheLocation,
+    };
+  }
+
   private async runDecoder(
     loaded: LoadedQwenState,
     prompt: PromptTensors,
@@ -543,6 +923,7 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
   }> {
     const graph = this.config.graph;
     const requestedCacheLocation = options.cacheOutputLocation ?? loaded.resolved.cacheOutputLocation;
+    throwIfDecodeAborted(options.signal);
     const cacheLocation: QwenCacheOutputLocation = loaded.resolved.decoderBackendForOrt === 'webgpu'
       ? requestedCacheLocation
       : 'cpu';
@@ -567,17 +948,14 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     const tokenIds: number[] = [];
     const decoderInitStart = nowMs();
     let decoderInitMs = 0;
+    let keepPrefillPresent = false;
     try {
-      initOutputs = await loaded.decoderSession.run(inputs);
+      initOutputs = await loaded.decoderSession!.run(inputs);
       const initLogits = initOutputs.logits;
       if (!initLogits) throw new Error('Qwen decoder did not return logits during prefill.');
-      const initLogitsData = asFloat32(await readTensorData(initLogits), initLogits.type);
-      const firstToken = argmaxLastRow(initLogitsData, graph.vocabularySize);
+      const firstToken = argmaxLastRow(await copyQwenLogits(initLogits), graph.vocabularySize);
       if (graph.eosTokenIds.includes(firstToken)) {
         decoderInitMs = nowMs() - decoderInitStart;
-        for (const [name, tensor] of Object.entries(initOutputs)) {
-          if (name.startsWith('present.')) disposeTensor(tensor);
-        }
         return {
           tokenIds,
           decoderInitMs: roundMetric(decoderInitMs, 3),
@@ -594,6 +972,7 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
         past[`past.${layer}.key`] = key;
         past[`past.${layer}.value`] = value;
       }
+      keepPrefillPresent = true;
       decoderInitMs = nowMs() - decoderInitStart;
     } finally {
       for (const tensor of Object.values(inputs)) {
@@ -601,7 +980,8 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       }
       if (initOutputs) {
         for (const [name, tensor] of Object.entries(initOutputs)) {
-          if (!name.startsWith('present.')) disposeTensor(tensor);
+          if (keepPrefillPresent && name.startsWith('present.')) continue;
+          disposeTensor(tensor);
         }
       }
     }
@@ -609,61 +989,63 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     let decoderStepMs = 0;
     let decoderStepCount = 0;
     const maxNewTokens = Math.max(1, Math.floor(options.maxNewTokens ?? 512));
-    while (tokenIds.length < maxNewTokens) {
-      const representativePast = past['past.0.key'];
-      const pastSequenceLength = representativePast?.dims[2] ?? graph.pastSeedLength + prompt.inputIds.length;
-      const attention = new Float32Array(pastSequenceLength + 1);
-      attention.fill(graph.pastSeedAttentionMask);
-      attention.fill(0, graph.pastSeedLength);
-      const stepInputs: Record<string, unknown> = {
-        input_ids: new loaded.ort.Tensor('int32', Int32Array.of(tokenIds[tokenIds.length - 1] as number), [1, 1]),
-        audio_embeddings: new loaded.ort.Tensor('float16', new Uint16Array(graph.hiddenSize), [1, 1, graph.hiddenSize]),
-        audio_mask: new loaded.ort.Tensor('float16', new Uint16Array(1), [1, 1, 1]),
-        attention_mask: new loaded.ort.Tensor('float16', float32ToFloat16Bits(attention), [1, 1, 1, pastSequenceLength + 1]),
-        position_ids: new loaded.ort.Tensor('int32', Int32Array.of(pastSequenceLength), [1, 1]),
-        ...past,
-      };
-      let stepOutputs: Record<string, QwenOrtTensorLike> | undefined;
-      const stepStart = nowMs();
-      try {
-        stepOutputs = await loaded.decoderSession.run(stepInputs);
-        const logits = stepOutputs.logits;
-        if (!logits) throw new Error('Qwen decoder did not return logits during autoregressive decoding.');
-        const nextToken = argmaxLastRow(asFloat32(await readTensorData(logits), logits.type), graph.vocabularySize);
-        decoderStepCount += 1;
-        decoderStepMs += nowMs() - stepStart;
-        if (graph.eosTokenIds.includes(nextToken)) {
+    try {
+      throwIfDecodeAborted(options.signal);
+      while (tokenIds.length < maxNewTokens) {
+        throwIfDecodeAborted(options.signal);
+        const representativePast = past['past.0.key'];
+        const pastSequenceLength = representativePast?.dims[2] ?? graph.pastSeedLength + prompt.inputIds.length;
+        const attention = new Float32Array(pastSequenceLength + 1);
+        attention.fill(graph.pastSeedAttentionMask);
+        attention.fill(0, graph.pastSeedLength);
+        const stepInputs: Record<string, unknown> = {
+          input_ids: new loaded.ort.Tensor('int32', Int32Array.of(tokenIds[tokenIds.length - 1] as number), [1, 1]),
+          audio_embeddings: new loaded.ort.Tensor('float16', new Uint16Array(graph.hiddenSize), [1, 1, graph.hiddenSize]),
+          audio_mask: new loaded.ort.Tensor('float16', new Uint16Array(1), [1, 1, 1]),
+          attention_mask: new loaded.ort.Tensor('float16', float32ToFloat16Bits(attention), [1, 1, 1, pastSequenceLength + 1]),
+          position_ids: new loaded.ort.Tensor('int32', Int32Array.of(pastSequenceLength), [1, 1]),
+          ...past,
+        };
+        let stepOutputs: Record<string, QwenOrtTensorLike> | undefined;
+        const stepStart = nowMs();
+        let transferred = false;
+        try {
+          stepOutputs = await loaded.decoderSession!.run(stepInputs);
+          const logits = stepOutputs.logits;
+          if (!logits) throw new Error('Qwen decoder did not return logits during autoregressive decoding.');
+          const nextToken = argmaxLastRow(await copyQwenLogits(logits), graph.vocabularySize);
+          decoderStepCount += 1;
+          decoderStepMs += nowMs() - stepStart;
+          if (graph.eosTokenIds.includes(nextToken)) break;
+          tokenIds.push(nextToken);
+          const nextPast: Record<string, QwenOrtTensorLike> = {};
           for (let layer = 0; layer < graph.numLayers; layer += 1) {
-            disposeTensor(stepOutputs[`present.${layer}.key`]);
-            disposeTensor(stepOutputs[`present.${layer}.value`]);
+            const key = stepOutputs[`present.${layer}.key`];
+            const value = stepOutputs[`present.${layer}.value`];
+            if (!key || !value) throw new Error(`Qwen decoder step is missing present.${layer}.key/value outputs.`);
+            nextPast[`past.${layer}.key`] = key;
+            nextPast[`past.${layer}.value`] = value;
           }
-          break;
-        }
-        tokenIds.push(nextToken);
-        const nextPast: Record<string, QwenOrtTensorLike> = {};
-        for (let layer = 0; layer < graph.numLayers; layer += 1) {
-          const key = stepOutputs[`present.${layer}.key`];
-          const value = stepOutputs[`present.${layer}.value`];
-          if (!key || !value) throw new Error(`Qwen decoder step is missing present.${layer}.key/value outputs.`);
-          nextPast[`past.${layer}.key`] = key;
-          nextPast[`past.${layer}.value`] = value;
-        }
-        disposeTensorRecord(past);
-        past = nextPast;
-      } finally {
-        for (const [name, tensor] of Object.entries(stepInputs)) {
-          if (!name.startsWith('past.')) {
-            if (this.isTensor(tensor)) disposeTensor(tensor);
+          disposeTensorRecord(past);
+          past = nextPast;
+          transferred = true;
+        } finally {
+          for (const [name, tensor] of Object.entries(stepInputs)) {
+            if (!name.startsWith('past.')) {
+              if (this.isTensor(tensor)) disposeTensor(tensor);
+            }
           }
-        }
-        if (stepOutputs) {
-          for (const [name, tensor] of Object.entries(stepOutputs)) {
-            if (!name.startsWith('present.')) disposeTensor(tensor);
+          if (stepOutputs) {
+            for (const [name, tensor] of Object.entries(stepOutputs)) {
+              if (transferred && name.startsWith('present.')) continue;
+              disposeTensor(tensor);
+            }
           }
         }
       }
+    } finally {
+      disposeTensorRecord(past);
     }
-    disposeTensorRecord(past);
     return {
       tokenIds,
       decoderInitMs: roundMetric(decoderInitMs, 3),
@@ -719,7 +1101,9 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       forcedLanguage,
       options.context ?? '',
     );
-    const decoded = await this.runDecoder(loaded, prompt, encoded.embeddings, options);
+    const decoded = isStackedKv(context.config)
+      ? await this.runOfficialDecoder(loaded, prompt, encoded.embeddings, options)
+      : await this.runDecoder(loaded, prompt, encoded.embeddings, options);
     const rawText = loaded.tokenizer.decode(decoded.tokenIds, { skipSpecialTokens: true });
     const parsed = parseQwenOutput(rawText, forcedLanguage);
     const tokens: Qwen3AsrNativeToken[] = decoded.tokenIds.map((id, index) => ({
@@ -780,16 +1164,27 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
   }
 
   async dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    this.disposed = true;
+    this.disposePromise = this.flushDispose();
+    return this.disposePromise;
+  }
+
+  private async flushDispose(): Promise<void> {
     if (this.loadStatePromise) {
       try {
         const loaded = await this.loadStatePromise;
-        loaded.encoderSession.release?.();
-        loaded.decoderSession.release?.();
+        releaseQwenOrtSession(loaded.encoderSession);
+        releaseQwenOrtSession(loaded.decoderSession);
+        releaseQwenOrtSession(loaded.decoderStepSession);
+        loaded.encoderSession = undefined;
+        loaded.decoderSession = undefined;
+        loaded.decoderStepSession = undefined;
       } catch {
-        // Preserve the original initialization error during disposal.
+        // Keep the original load error; still drop asset handles.
       }
     }
     const handles = this.assetHandles.splice(0);
-    await Promise.all(handles.map(async (handle) => handle.dispose()));
+    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
   }
 }

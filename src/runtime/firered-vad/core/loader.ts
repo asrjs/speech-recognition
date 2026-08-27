@@ -1,5 +1,11 @@
 import type { FireRedAssetCache } from '../types.js';
 import { isLikelyHttpUrl, isNodeRuntime, looksLikeFileUrl } from './util.js';
+import {
+  fetchBytesHonoringAbort,
+  rethrowIfAssetAborted,
+  throwIfAssetAborted,
+  type AssetAbortSignalLike,
+} from '../../../io/abort.js';
 
 function toCacheKey(source: string): string {
   return `firered:${source}`;
@@ -12,18 +18,16 @@ async function readNodeFile(pathLike: string): Promise<Uint8Array> {
   return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
 
-async function fetchBytes(url: string): Promise<Uint8Array> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
-  }
-  return new Uint8Array(await response.arrayBuffer());
+async function fetchBytes(url: string, signal?: AssetAbortSignalLike | null): Promise<Uint8Array> {
+  return fetchBytesHonoringAbort(url, signal);
 }
 
 export async function loadBinaryResource(
   source: string | Uint8Array,
   cache?: FireRedAssetCache,
+  signal?: AssetAbortSignalLike | null,
 ): Promise<Uint8Array> {
+  throwIfAssetAborted(signal, 'download');
   if (source instanceof Uint8Array) {
     return source;
   }
@@ -34,24 +38,29 @@ export async function loadBinaryResource(
       if (cached) {
         return cached.bytes;
       }
-    } catch {
+    } catch (error) {
+      rethrowIfAssetAborted(error, 'download');
       // Cache issues should not block model loading.
     }
   }
 
   let bytes: Uint8Array;
   if (isLikelyHttpUrl(source) || looksLikeFileUrl(source) || (!isNodeRuntime() && !source.startsWith('.'))) {
-    bytes = await fetchBytes(source);
+    bytes = await fetchBytes(source, signal);
   } else if (isNodeRuntime()) {
+    throwIfAssetAborted(signal, 'download');
     bytes = await readNodeFile(source);
+    throwIfAssetAborted(signal, 'download');
   } else {
-    bytes = await fetchBytes(source);
+    bytes = await fetchBytes(source, signal);
   }
 
+  throwIfAssetAborted(signal, 'download');
   if (cache) {
     try {
       await cache.set(key, { bytes });
-    } catch {
+    } catch (error) {
+      rethrowIfAssetAborted(error, 'download');
       // Cache issues should not block model loading.
     }
   }

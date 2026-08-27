@@ -8,7 +8,10 @@ import {
   Qwen3AsrTokenizer,
   createQwen3AsrModelFamily,
   getQwenAudioTokenCount,
+  parseOfficialQwen3AsrConfig,
   parseQwen3AsrConfig,
+  resolveOfficialQwen3AsrDirectArtifacts,
+  applyOfficialQwen3AsrGraphDefaults,
   type QwenOrtModuleLike,
   type QwenOrtSessionLike,
   type QwenOrtTensorLike,
@@ -44,8 +47,17 @@ describe('Qwen3-ASR feature contract', () => {
   it('matches the upstream placeholder-length formula at graph boundaries', () => {
     expect(getQwenAudioTokenCount(50)).toBe(7);
     expect(getQwenAudioTokenCount(100)).toBe(13);
-    expect(getQwenAudioTokenCount(800)).toBe(104);
+    expect(getQwenAudioTokenCount(1050)).toBe(137);
+    expect(getQwenAudioTokenCount(1100)).toBe(143);
     expect(getQwenAudioTokenCount(0)).toBe(0);
+  });
+
+  it('pads leftover frames to the next 100-frame chunk for official graphs', () => {
+    const processor = new Qwen3AsrFeatureProcessor(parseOfficialQwen3AsrConfig());
+    const result = processor.process(PcmAudioBuffer.fromMono(new Float32Array(168000), 16000));
+    expect(result.validFrameCount).toBe(1050);
+    expect(result.frameCount).toBe(1100);
+    expect(getQwenAudioTokenCount(result.validFrameCount)).toBe(137);
   });
 });
 
@@ -118,7 +130,7 @@ describe('Qwen3-ASR model family boundary', () => {
     );
     const session = await model.createSession();
     await expect(session.transcribe(new Float32Array(1600))).rejects.toThrow(
-      /explicit ONNX artifact source/,
+      /No Qwen3-ASR artifact source/,
     );
     await model.dispose();
   });
@@ -301,5 +313,37 @@ describe('Qwen3-ASR ONNX prefill and KV-cache contract', () => {
     expect((decoderFeeds[1]?.attention_mask as FakeTensor).dims[3]).toBeGreaterThan(1);
     expect(result.metrics?.decoderStepCount).toBe(3);
     await executor.dispose();
+  });
+});
+
+describe('Qwen3-ASR official stacked artifact defaults', () => {
+  it('defaults official encoder URLs to the dynamic graph, not static T=1100', () => {
+    const artifacts = resolveOfficialQwen3AsrDirectArtifacts({
+      baseUrl: '/qwen3-asr-official',
+    });
+    expect(artifacts.encoderUrl).toBe('/qwen3-asr-official/audio-encoder-dynamic.onnx');
+    expect(artifacts.decoderStepUrl).toBe('/qwen3-asr-official/decoder-step.onnx');
+    expect(
+      resolveOfficialQwen3AsrDirectArtifacts({
+        baseUrl: '/qwen3-asr-official',
+        encoder: 'static-t1100',
+      }).encoderUrl,
+    ).toBe('/qwen3-asr-official/audio-encoder-static-t1100.onnx');
+  });
+
+  it('applies pad-to-100 stacked graph defaults when decoder-step artifacts are present', () => {
+    const config = applyOfficialQwen3AsrGraphDefaults(DEFAULT_QWEN3_ASR_CONFIG, {
+      kind: 'direct',
+      artifacts: {
+        encoderUrl: '/qwen3-asr-official/audio-encoder-dynamic.onnx',
+        decoderUrl: '/qwen3-asr-official/decoder-prefill.onnx',
+        decoderStepUrl: '/qwen3-asr-official/decoder-step.onnx',
+        tokenizerUrl: '/qwen3-asr-official/tokenizer/tokenizer.json',
+      },
+    });
+    expect(config.graph.kvLayout).toBe('stacked');
+    expect(config.graph.audioFramesMultiple).toBe(100);
+    expect(config.graph.pastSeedLength).toBe(0);
+    expect(parseOfficialQwen3AsrConfig().graph.audioWindowFrames).not.toBe(1100);
   });
 });

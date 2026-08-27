@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "family": "x-asr-zh-en",
+  "status": "experimental",
+  "preset": false,
+  "streaming": "true-stateful-zipformer2",
+  "chunk_ms": 160,
+  "oracle": {
+    "kind": "sherpa_onnx.OnlineRecognizer.from_transducer",
+    "model_type": "zipformer2",
+    "provider": "cpu",
+    "repo": "https://github.com/Gilgamesh-J/X-ASR",
+    "license": "Apache-2.0",
+    "weights": "https://huggingface.co/GilgameshWind/X-ASR-zh-en",
+    "weights_revision": "689ff18c584d29910da37b6fe904db0c1489c9d1",
+    "source_git_revision": "838297cd47fed858e6cf72eaf5a52f948a3edd73"
+  },
+  "artifacts": {
+    "encoder": {
+      "file": "encoder-160ms.onnx",
+      "size_bytes": 592967053,
+      "sha256": "821a1dfb9027915ca014080abfa658346be0e2d0bf8b2027f0b6dd29fffe0c4b"
+    },
+    "decoder": {
+      "file": "decoder-160ms.onnx",
+      "size_bytes": 11309084,
+      "sha256": "3658368d274a5d5fd39a7ac20c46bed0ad9cfea1f0feddef30d5d89797c1f499"
+    },
+    "joiner": {
+      "file": "joiner-160ms.onnx",
+      "size_bytes": 10260467,
+      "sha256": "03781c98165a2385024c9cecdd2b6b13310d81db23a62c7da420782c2915cf81"
+    },
+    "tokens": {
+      "file": "tokens.txt",
+      "size_bytes": 58806,
+      "sha256": "b818a60878b9aae978cbb8ad594acbd403d76d1af2e31ef4197c84e2dbdba27c"
+    }
+  },
+  "audio": {
+    "path": "tools/data/fixtures/audio/jfk-short.wav",
+    "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e"
+  },
+  "graph": {
+    "encoder_x": "float [N, 29, 80]",
+    "encoder_caches": 116,
+    "decode_chunk_len": 16,
+    "T": 29,
+    "decoder_y": "int64 [N, 2]",
+    "joiner_logit": "float [N, 5000]",
+    "vocab_size": 5000,
+    "context_size": 2
+  }
+}

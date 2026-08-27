@@ -375,4 +375,109 @@ describe('DefaultSpeechRuntime', () => {
     expect(whisperEnvelope.native?.warnings?.[0]?.code).toBe('whisper-seq2seq.stubbed-decoder');
     expectTypeOf(whisperEnvelope).toMatchTypeOf<TranscriptionEnvelope<WhisperNativeTranscript>>();
   });
+
+  it('does not double-dispose a model after explicit dispose then runtime.dispose', async () => {
+    const runtime = createSpeechRuntime();
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+
+    let disposeCount = 0;
+    runtime.registerModelFamily({
+      family: 'dispose-probe',
+      supports(modelId: string) {
+        return modelId === 'dispose-probe-1';
+      },
+      async createModel(request, context) {
+        return {
+          info: {
+            family: 'dispose-probe',
+            modelId: request.modelId,
+            classification: { ecosystem: 'test', task: 'asr' },
+          },
+          backend: context.backend,
+          async createSession() {
+            return {
+              async transcribe() {
+                throw new Error('unused');
+              },
+              dispose() {
+                return undefined;
+              },
+            };
+          },
+          dispose() {
+            disposeCount += 1;
+          },
+        };
+      },
+    });
+
+    const model = await runtime.loadModel({
+      family: 'dispose-probe',
+      modelId: 'dispose-probe-1',
+    });
+    await model.dispose();
+    expect(disposeCount).toBe(1);
+    await runtime.dispose();
+    expect(disposeCount).toBe(1);
+  });
+
+  it('allows repeated load and dispose of a built-in stub family', async () => {
+    const runtime = createSpeechRuntime();
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32', 'int8'],
+        supportsFp16: false,
+        supportsInt8: true,
+        supportsSharedArrayBuffer: true,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+    runtime.registerModelFamily(createNemoTdtModelFamily());
+
+    for (let index = 0; index < 2; index += 1) {
+      const model = await runtime.loadModel({
+        family: 'nemo-tdt',
+        modelId: 'nemo-fastconformer-tdt-scaffold',
+        classification: {
+          ecosystem: 'nemo',
+          encoder: 'fastconformer',
+          decoder: 'tdt',
+          task: 'asr',
+        },
+      });
+      const session = await model.createSession();
+      const result = await session.transcribe(new Float32Array(16000), {
+        detail: 'detailed',
+      });
+      expect(result.text.length).toBeGreaterThan(0);
+      await session.dispose();
+      await model.dispose();
+    }
+
+    await runtime.dispose();
+  });
 });

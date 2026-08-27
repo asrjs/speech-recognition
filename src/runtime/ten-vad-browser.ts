@@ -8,6 +8,12 @@ import {
   STREAMING_TIMELINE_CHUNK_FRAMES,
   framesToMilliseconds,
 } from './audio-timeline.js';
+import {
+  AssetLoadAbortedError,
+  isAssetLoadAbortedError,
+  isDomAbortError,
+  toFetchAbortSignal,
+} from '../io/abort.js';
 
 export interface TenVadAdapterConfig {
   readonly sampleRate?: number;
@@ -39,6 +45,7 @@ interface TenVadWorkerLike {
 export interface TenVadAdapterOptions {
   readonly workerFactory?: () => TenVadWorkerLike;
   readonly now?: () => number;
+  readonly signal?: { readonly aborted: boolean } | null;
 }
 
 export interface TenVadRecentResult {
@@ -154,10 +161,22 @@ function defaultWorkerFactory(): TenVadWorkerLike {
   return new Worker(new URL('./ten-vad-worker.js', import.meta.url), { type: 'module' });
 }
 
+function createTenVadInitAbortedError(): AssetLoadAbortedError {
+  return new AssetLoadAbortedError('ten-vad-init');
+}
+
+function isTenVadInitAborted(
+  error: unknown,
+  signal?: { readonly aborted: boolean } | null,
+): boolean {
+  return isAssetLoadAbortedError(error) || isDomAbortError(error) || Boolean(signal?.aborted);
+}
+
 export class TenVadAdapter implements StreamingTenVadLike {
   private config: Required<TenVadAdapterConfig>;
   private readonly workerFactory: () => TenVadWorkerLike;
   private readonly now: () => number;
+  private readonly initSignal?: { readonly aborted: boolean } | null;
   private worker: TenVadWorkerLike | null = null;
   private messageId = 0;
   private pending = new Map<number, PendingRequest>();
@@ -192,6 +211,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     };
     this.workerFactory = options.workerFactory ?? defaultWorkerFactory;
     this.now = options.now ?? (() => Date.now());
+    this.initSignal = options.signal;
   }
 
   subscribe(listener: (event: StreamingTenVadResultEvent) => void): () => void {
@@ -207,7 +227,11 @@ export class TenVadAdapter implements StreamingTenVadLike {
     }
   }
 
-  async init(): Promise<void> {
+  async init(signal?: { readonly aborted: boolean } | null): Promise<void> {
+    const abortSignal = signal ?? this.initSignal;
+    if (abortSignal?.aborted) {
+      throw createTenVadInitAbortedError();
+    }
     if (this.worker) {
       return;
     }
@@ -221,6 +245,9 @@ export class TenVadAdapter implements StreamingTenVadLike {
     };
 
     try {
+      if (abortSignal?.aborted) {
+        throw createTenVadInitAbortedError();
+      }
       const resolvedAssets = resolveTenVadAssetUrls(this.config);
       const initRequest = this.sendRequest('INIT', {
         hopSize: this.config.hopSize,
@@ -230,10 +257,22 @@ export class TenVadAdapter implements StreamingTenVadLike {
         fallbackScriptUrl: resolvedAssets.fallbackScriptUrl,
         fallbackWasmUrl: resolvedAssets.fallbackWasmUrl,
       });
-      await this.waitWithTimeout(initRequest, TEN_VAD_INIT_TIMEOUT_MS, 'TEN-VAD init timed out.');
+      await this.waitWithTimeout(
+        initRequest,
+        TEN_VAD_INIT_TIMEOUT_MS,
+        'TEN-VAD init timed out.',
+        abortSignal,
+      );
+      if (abortSignal?.aborted) {
+        throw createTenVadInitAbortedError();
+      }
       this.status = 'ready';
       this.lastError = null;
     } catch (error) {
+      if (isTenVadInitAborted(error, abortSignal)) {
+        await this.dispose();
+        throw createTenVadInitAbortedError();
+      }
       this.fail(error);
       throw error;
     }
@@ -526,19 +565,42 @@ export class TenVadAdapter implements StreamingTenVadLike {
     });
   }
 
-  private waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  private waitWithTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    message: string,
+    signal?: { readonly aborted: boolean } | null,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(createTenVadInitAbortedError());
+        return;
+      }
+
       const timeoutId = setTimeout(() => {
         reject(new Error(message));
       }, timeoutMs);
+      const native = toFetchAbortSignal(signal);
+      const onAbort = () => {
+        clearTimeout(timeoutId);
+        native?.removeEventListener('abort', onAbort);
+        reject(createTenVadInitAbortedError());
+      };
+      native?.addEventListener('abort', onAbort);
 
       promise.then(
         (value) => {
           clearTimeout(timeoutId);
+          native?.removeEventListener('abort', onAbort);
+          if (signal?.aborted) {
+            reject(createTenVadInitAbortedError());
+            return;
+          }
           resolve(value);
         },
         (error) => {
           clearTimeout(timeoutId);
+          native?.removeEventListener('abort', onAbort);
           reject(error);
         },
       );

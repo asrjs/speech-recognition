@@ -11,6 +11,9 @@ class FakeTenVad {
   private readonly behavior: Record<string, unknown>;
   private readonly listeners = new Set<(event: { type: 'result'; payload: unknown }) => void>();
   public updateCalls: Array<Record<string, unknown>> = [];
+  public lastInitSignal: { readonly aborted: boolean } | null = null;
+  public terminated = false;
+  private hangReject: ((error: Error) => void) | null = null;
   private status = {
     state: 'ready',
     error: null as string | null,
@@ -28,7 +31,42 @@ class FakeTenVad {
     return () => this.listeners.delete(listener);
   }
 
-  async init(): Promise<void> {
+  async init(signal?: { readonly aborted: boolean } | null): Promise<void> {
+    this.lastInitSignal = signal ?? null;
+    if (signal?.aborted) {
+      this.status = {
+        ...this.status,
+        state: 'idle',
+        error: null,
+      };
+      const error = new Error('Asset load aborted during "streaming-vad-init".');
+      error.name = 'AssetLoadAbortedError';
+      (error as Error & { code: string }).code = 'asset-load-aborted';
+      throw error;
+    }
+    if (this.behavior.hangInit) {
+      await new Promise<void>((_resolve, reject) => {
+        this.hangReject = reject;
+        const native = signal instanceof AbortSignal ? signal : null;
+        native?.addEventListener(
+          'abort',
+          () => {
+            this.terminated = true;
+            this.status = {
+              ...this.status,
+              state: 'idle',
+              error: null,
+            };
+            const error = new Error('Asset load aborted during "streaming-vad-init".');
+            error.name = 'AssetLoadAbortedError';
+            (error as Error & { code: string }).code = 'asset-load-aborted';
+            reject(error);
+          },
+          { once: true },
+        );
+      });
+      return;
+    }
     if (this.behavior.failInit) {
       this.status = {
         ...this.status,
@@ -40,7 +78,16 @@ class FakeTenVad {
   }
 
   async reset(): Promise<void> {}
-  async dispose(): Promise<void> {}
+  async dispose(): Promise<void> {
+    this.terminated = true;
+    if (this.hangReject) {
+      const error = new Error('Asset load aborted during "streaming-vad-init".');
+      error.name = 'AssetLoadAbortedError';
+      (error as Error & { code: string }).code = 'asset-load-aborted';
+      this.hangReject(error);
+      this.hangReject = null;
+    }
+  }
 
   updateConfig(config: Record<string, unknown> = {}): void {
     this.updateCalls.push(config);
@@ -138,6 +185,45 @@ describe('StreamingSpeechDetector', () => {
     expect(snapshot.tenVad.state).toBe('degraded');
     expect(snapshot.gate.effectiveMode).toBe('rough-only');
     expect(events.some((event) => event.type === 'segment-ready')).toBe(true);
+  });
+
+  it('throws and stays idle when start is already aborted', async () => {
+    const fakeTenVad = new FakeTenVad();
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        tenVadEnabled: true,
+      },
+      tenVadFactory: () => fakeTenVad as any,
+    });
+
+    await expect(detector.start({ sampleRate: 16000, signal: { aborted: true } })).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(fakeTenVad.lastInitSignal?.aborted).toBe(true);
+    expect(detector.getSnapshot().state).toBe('idle');
+    expect(detector.getSnapshot().tenVad.state).toBe('idle');
+  });
+
+  it('aborts in-flight VAD init when stop runs during start', async () => {
+    const fakeTenVad = new FakeTenVad({ hangInit: true });
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        tenVadEnabled: true,
+      },
+      tenVadFactory: () => fakeTenVad as any,
+    });
+
+    const starting = detector.start({ sampleRate: 16000 });
+    await Promise.resolve();
+    await detector.stop({ flush: false });
+    await starting;
+
+    expect(fakeTenVad.terminated).toBe(true);
+    expect(detector.getSnapshot().state).toBe('idle');
+    expect(detector.getSnapshot().tenVad.state).toBe('idle');
   });
 
   it('keeps requested TEN-VAD-only mode for UI state but runs detection in rough-only mode', async () => {

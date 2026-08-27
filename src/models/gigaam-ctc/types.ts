@@ -14,9 +14,10 @@ export interface GigaAmModelConfig extends Omit<
   readonly architecture: 'gigaam-ctc';
   readonly processorArchitecture: 'gigaam-fbank';
   readonly encoderArchitecture: 'gigaam-conformer';
-  readonly nFft: 320;
-  readonly winLength: 320;
-  readonly hopLength: 160;
+  readonly nFft: number;
+  readonly winLength: number;
+  readonly hopLength: number;
+  readonly center?: boolean;
   readonly featureLayout: 'mel-major';
 }
 
@@ -31,6 +32,7 @@ export interface GigaAmModelFamilyOptions {
     readonly executor?: import('./executor.js').OrtGigaAmCtcExecutor;
     readonly assetProvider?: AssetProvider;
     readonly runtimeHooks?: SpeechRuntimeHooks;
+    readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   };
 }
 

@@ -191,12 +191,12 @@ class WhisperSeq2SeqSpeechSession implements SpeechSession<
     };
   }
 
-  dispose(): void {
+  async dispose(): Promise<void> {
     if (this.disposed) {
       return;
     }
     this.disposed = true;
-    this.executor?.dispose();
+    await Promise.resolve(this.executor?.dispose());
     this.onDispose?.();
   }
 }
@@ -383,6 +383,7 @@ export function createWhisperSeq2SeqModelFamily(
           ...options.dependencies,
           assetProvider: options.dependencies?.assetProvider ?? context.assetProvider,
           runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks,
+          signal: options.dependencies?.signal ?? context.signal,
         },
         options.describeModel ?? describeWhisperSeq2SeqModel,
       );

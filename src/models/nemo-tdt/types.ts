@@ -137,4 +137,5 @@ export interface NemoTdtModelDependencies extends NemoModelDependencies<
   readonly executor?: NemoTdtExecutor;
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }

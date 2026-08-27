@@ -160,6 +160,51 @@ describe('TenVadAdapter', () => {
     expect(worker.onmessage).toBeNull();
   });
 
+  it('does not create a worker when init is already aborted', async () => {
+    let created = 0;
+    const adapter = new TenVadAdapter(
+      {},
+      {
+        workerFactory: () => {
+          created += 1;
+          return new FakeWorker();
+        },
+      },
+    );
+
+    await expect(adapter.init({ aborted: true })).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(created).toBe(0);
+    expect(adapter.getStatus().state).toBe('idle');
+  });
+
+  it('terminates the worker when init is aborted before INIT returns', async () => {
+    const worker = new FakeWorker();
+    let terminated = false;
+    worker.terminate = () => {
+      terminated = true;
+    };
+    worker.postMessage = (message) => {
+      worker.messages.push(message);
+    };
+    const controller = new AbortController();
+    const adapter = new TenVadAdapter({}, { workerFactory: () => worker });
+
+    const initializing = adapter.init(controller.signal);
+    await Promise.resolve();
+    controller.abort();
+
+    await expect(initializing).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(terminated).toBe(true);
+    expect(worker.onmessage).toBeNull();
+    expect(adapter.getStatus().state).toBe('idle');
+  });
+
   it('does not reset the worker when only non-worker tuning changes', async () => {
     const worker = new FakeWorker();
     const adapter = new TenVadAdapter(
@@ -298,5 +343,50 @@ describe('FireRedVadAdapter', () => {
 
     await expect(initializing).rejects.toThrow('disposed');
     expect(worker.onmessage).toBeNull();
+  });
+
+  it('does not create a worker when init is already aborted', async () => {
+    let created = 0;
+    const adapter = new FireRedVadAdapter(
+      {},
+      {
+        workerFactory: () => {
+          created += 1;
+          return new FakeWorker();
+        },
+      },
+    );
+
+    await expect(adapter.init({ aborted: true })).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(created).toBe(0);
+    expect(adapter.getStatus().state).toBe('idle');
+  });
+
+  it('terminates the worker when init is aborted before INIT returns', async () => {
+    const worker = new FakeWorker();
+    let terminated = false;
+    worker.terminate = () => {
+      terminated = true;
+    };
+    worker.postMessage = (message) => {
+      worker.messages.push(message);
+    };
+    const controller = new AbortController();
+    const adapter = new FireRedVadAdapter({}, { workerFactory: () => worker });
+
+    const initializing = adapter.init(controller.signal);
+    await Promise.resolve();
+    controller.abort();
+
+    await expect(initializing).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(terminated).toBe(true);
+    expect(worker.onmessage).toBeNull();
+    expect(adapter.getStatus().state).toBe('idle');
   });
 });

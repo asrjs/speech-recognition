@@ -348,12 +348,12 @@ export class NemoTdtSpeechSession implements SpeechSession<
     });
   }
 
-  dispose(): void {
+  async dispose(): Promise<void> {
     if (this.disposed) {
       return;
     }
     this.disposed = true;
-    this.executor?.dispose();
+    await Promise.resolve(this.executor?.dispose());
     this.onDispose?.();
   }
 }
@@ -522,6 +522,7 @@ export function createNemoTdtModelFamily(
         ...(options.dependencies ?? {}),
         assetProvider: options.dependencies?.assetProvider ?? context.assetProvider,
         runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks,
+        signal: options.dependencies?.signal ?? context.signal,
       };
 
       context.hooks.logger?.info?.('Creating NeMo TDT model', {

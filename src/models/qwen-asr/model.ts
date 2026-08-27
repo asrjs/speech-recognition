@@ -11,7 +11,9 @@ import type {
   TranscriptResponseFlavor,
 } from '../../types/index.js';
 import { createModelArchitecture } from '../../types/index.js';
+import { createExperimentalArtifactMissingError } from '../../runtime/experimental-families.js';
 import { DEFAULT_QWEN3_ASR_CLASSIFICATION, describeQwen3AsrModel, parseQwen3AsrConfig } from './config.js';
+import { applyOfficialQwen3AsrGraphDefaults } from './official.js';
 import { mapQwen3AsrNativeToCanonical } from './mapping.js';
 import { OrtQwen3AsrExecutor } from './executor.js';
 import type { Qwen3AsrFeatureProcessor } from './processor.js';
@@ -55,6 +57,7 @@ function createExecutor(
     runtimeHooks: dependencies.runtimeHooks,
     tokenizer: dependencies.tokenizer as Qwen3AsrTokenizer | undefined,
     featureProcessor: dependencies.featureProcessor as Qwen3AsrFeatureProcessor | undefined,
+    signal: dependencies.signal,
   });
 }
 
@@ -84,9 +87,7 @@ export class Qwen3AsrSpeechSession
     options: Qwen3AsrTranscriptionOptions & { readonly responseFlavor?: TFlavor } = {},
   ): Promise<TranscriptResponse<Qwen3AsrNativeTranscript, TFlavor>> {
     if (!this.executor) {
-      throw new Error(
-        'Qwen3-ASR execution requires an explicit ONNX artifact source. Provide options.source; no scaffold transcript is returned.',
-      );
+      throw createExperimentalArtifactMissingError('qwen-asr', this.modelId);
     }
     const audio = normalizePcmInput(input).toMono();
     const nativeTranscript = await this.executor.transcribe(audio, options, {
@@ -272,13 +273,17 @@ export function createQwen3AsrModelFamily(
     },
     async createModel(request, context): Promise<Qwen3AsrSpeechModel> {
       const classification = resolveClassification(factoryClassification, request.classification);
-      const config = options.resolveConfig
-        ? options.resolveConfig(request.modelId, request)
-        : parseQwen3AsrConfig(request.modelId, request.options?.config);
+      const config = applyOfficialQwen3AsrGraphDefaults(
+        options.resolveConfig
+          ? options.resolveConfig(request.modelId, request)
+          : parseQwen3AsrConfig(request.modelId, request.options?.config),
+        request.options?.source,
+      );
       const dependencies: Qwen3AsrModelDependencies = {
         ...(options.dependencies ?? {}),
         assetProvider: options.dependencies?.assetProvider ?? context.assetProvider,
         runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks,
+        signal: options.dependencies?.signal ?? context.signal,
       };
       context.hooks.logger?.info?.('Creating Qwen3-ASR model', {
         family,

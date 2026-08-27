@@ -1,0 +1,8 @@
+{
+  "backend": "webgpu",
+  "failureClass": "WEBGPU_NO_ADAPTER",
+  "message": "no available backend found. ERR: [webgpu] backend not found.",
+  "onnx_path": "N:\\models\\onnx\\gigaam\\multilingual-ctc\\multilingual_ctc.onnx",
+  "dtype": "float32",
+  "status": "experimental-blocked"
+}

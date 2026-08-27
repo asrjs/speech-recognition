@@ -12,6 +12,7 @@ export interface GigaAmRnntModelConfig extends Omit<LasrCtcModelConfig, 'ecosyst
   readonly hopLength: 160;
   readonly featureLayout: 'mel-major';
   readonly predictionHiddenSize: number;
+  readonly predictionRnnLayers?: number;
   readonly maxTokensPerFrame: number;
 }
 
@@ -51,6 +52,7 @@ export interface GigaAmRnntModelFamilyOptions {
     readonly executor?: import('./executor.js').OrtGigaAmRnntExecutor;
     readonly assetProvider?: AssetProvider;
     readonly runtimeHooks?: SpeechRuntimeHooks;
+    readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   };
 }
 

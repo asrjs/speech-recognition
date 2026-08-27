@@ -130,6 +130,7 @@ def main() -> None:
         vad_model=None,
         trust_remote_code=True,
         remote_code=str(model_dir / "model.py"),
+        disable_update=True,
     )
     rows: list[dict[str, Any]] = []
     batches: list[dict[str, Any]] = []

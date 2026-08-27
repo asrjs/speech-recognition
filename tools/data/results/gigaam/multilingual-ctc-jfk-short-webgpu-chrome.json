@@ -1,0 +1,32 @@
+{
+  "preset": "gigaam-ctc-fp16-webgpu",
+  "timestamp": "2026-08-26T23:55:49.491Z",
+  "status": "pass",
+  "transcript": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "webgpu": true,
+  "backend": "webgpu",
+  "encoderFolder": "multilingual-ctc-fp16",
+  "decoderFolder": "ctc",
+  "tokens": [],
+  "metrics": {
+    "loadMs": 6441.304999999702,
+    "transcribeMs": 2876.27499999851,
+    "totalMs": 9654.004999998957,
+    "rtf": 0.261,
+    "rtfx": 3.8308
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 6441ms"
+  ]
+}

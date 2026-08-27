@@ -128,6 +128,11 @@
       "import": "./dist/models/whisper-seq2seq/index.js",
       "default": "./dist/models/whisper-seq2seq/index.js"
     },
+    "./models/gigaam-rnnt": {
+      "types": "./dist/models/gigaam-rnnt/index.d.ts",
+      "import": "./dist/models/gigaam-rnnt/index.js",
+      "default": "./dist/models/gigaam-rnnt/index.js"
+    },
     "./presets/*": {
       "types": "./dist/presets/*.d.ts",
       "import": "./dist/presets/*.js",

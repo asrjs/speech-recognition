@@ -103,6 +103,7 @@ function createExecutor(
     assetProvider: dependencies.assetProvider,
     runtimeHooks: dependencies.runtimeHooks,
     preprocessor: dependencies.preprocessor,
+    signal: dependencies.signal,
   });
 }
 
@@ -380,6 +381,7 @@ export function createLasrCtcModelFamily(
         ...(options.dependencies ?? {}),
         assetProvider: options.dependencies?.assetProvider ?? context.assetProvider,
         runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks,
+        signal: options.dependencies?.signal ?? context.signal,
       };
 
       context.hooks.logger?.info?.('Creating LASR CTC model', {

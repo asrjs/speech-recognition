@@ -90,6 +90,7 @@ interface IngestMark {
 
 const DEFAULT_HISTORY = 50;
 const MAX_INGEST_MARKS = 4096;
+const MAX_LATENCY_SAMPLES = 1024;
 
 function percentile(values: readonly number[], quantile: number): number | null {
   if (values.length === 0) {
@@ -171,7 +172,9 @@ export class RealtimeLatencyTracker {
     }
     this.ingestMarks.push({ frame: endFrame, wallMs: this.now() });
     if (this.ingestMarks.length > MAX_INGEST_MARKS) {
-      this.ingestMarks = this.ingestMarks.slice(-MAX_INGEST_MARKS / 2);
+      const first = this.ingestMarks[0]!;
+      const tail = this.ingestMarks.slice(-Math.floor(MAX_INGEST_MARKS / 2));
+      this.ingestMarks = first.frame < (tail[0]?.frame ?? first.frame) ? [first, ...tail] : tail;
     }
   }
 
@@ -191,8 +194,14 @@ export class RealtimeLatencyTracker {
 
     this.totalUpdates += 1;
     this.processSamples.push(processLatencyMs);
+    if (this.processSamples.length > MAX_LATENCY_SAMPLES) {
+      this.processSamples = this.processSamples.slice(-Math.floor(MAX_LATENCY_SAMPLES / 2));
+    }
     if (emitLagMs !== null) {
       this.emitLagSamples.push(emitLagMs);
+      if (this.emitLagSamples.length > MAX_LATENCY_SAMPLES) {
+        this.emitLagSamples = this.emitLagSamples.slice(-Math.floor(MAX_LATENCY_SAMPLES / 2));
+      }
     }
     if (record.kind === 'final') {
       this.totalFinals += 1;
@@ -239,6 +248,7 @@ export class RealtimeLatencyTracker {
         state.endOfUtteranceLatencyMs = emitWall - speechEndWall;
       }
       this.closeUtterance();
+      this.ingestMarks = this.ingestMarks.filter((mark) => mark.frame >= speechEndFrame);
     }
   }
 

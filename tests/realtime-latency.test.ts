@@ -93,6 +93,26 @@ describe('RealtimeLatencyTracker', () => {
     expect(summary.meanEmitLagMs).toBeNull();
     expect(summary.inProgressUtterance?.updates[0]?.emitLagMs).toBeNull();
   });
+
+  it('keeps the first ingest mark when the mark buffer overflows', () => {
+    let clock = 1000;
+    const tracker = new RealtimeLatencyTracker({ sampleRate: 16_000, now: () => clock });
+    tracker.noteIngest(256);
+    for (let i = 2; i <= 5_000; i += 1) {
+      clock = 1000 + i;
+      tracker.noteIngest(i * 256);
+    }
+    clock = 20_000;
+    tracker.noteUpdate(
+      baseRecord({
+        windowStartFrame: 0,
+        windowEndFrame: 5_000 * 256,
+      }),
+    );
+
+    const summary = tracker.getSummary();
+    expect(summary.inProgressUtterance?.firstPartialLatencyMs).toBe(19_000);
+  });
 });
 
 describe('RealtimeTranscriptionController latency integration', () => {
@@ -161,5 +181,41 @@ describe('RealtimeTranscriptionController latency integration', () => {
     const restarted = controller.getState().latency!;
     expect(restarted.totalUpdates).toBe(2);
     expect(restarted.inProgressUtterance?.updates[0]?.emitLagMs).toBeTypeOf('number');
+  });
+
+  it('transcribeUtterance records first-partial and EOU from ingest marks with one ASR call', async () => {
+    let clock = 1000;
+    const transcribe = vi.fn(() => {
+      clock += 80;
+      return makeTranscript('hello there.', true);
+    });
+    const controller = new RealtimeTranscriptionController({
+      sampleRate: 16_000,
+      latency: { now: () => clock },
+      transcribe,
+    });
+
+    controller.noteIngest(8_000);
+    clock = 1100;
+    controller.noteIngest(16_000);
+    clock = 1250;
+    const update = await controller.transcribeUtterance(new Float32Array(16_000).fill(0.1), {
+      startFrame: 0,
+      endFrame: 16_000,
+      sampleRate: 16_000,
+      reason: 'pause',
+    });
+
+    expect(update?.kind).toBe('final');
+    expect(transcribe).toHaveBeenCalledOnce();
+    expect(transcribe.mock.calls[0]?.[0]?.segmentReason).toBe('pause');
+    expect(transcribe.mock.calls[0]?.[0]?.reason).toBe('flush');
+    const latency = controller.getState().latency!;
+    expect(latency.totalPartials).toBe(1);
+    expect(latency.totalFinals).toBe(1);
+    expect(latency.lastFirstPartialLatencyMs).toBe(330);
+    expect(latency.lastEndOfUtteranceLatencyMs).toBe(230);
+    expect(latency.p50ProcessLatencyMs).toBe(80);
+    expect(latency.completedUtterances).toHaveLength(1);
   });
 });

@@ -254,4 +254,102 @@ describe('Canary helpers', () => {
       fromPretrained.mockRestore();
     }
   });
+
+  it('forwards abort signal into runtime.loadModel from CanaryModel.fromUrls', async () => {
+    const signal = { aborted: false };
+    const disposeModel = vi.fn(async () => undefined);
+    const disposeSession = vi.fn(async () => undefined);
+    const createSession = vi.fn(async () => ({ dispose: disposeSession }));
+    const loadModel = vi.fn(async (request: { signal?: { aborted: boolean } | null }) => {
+      expect(request.signal).toBe(signal);
+      return {
+        createSession,
+        dispose: disposeModel,
+      };
+    });
+
+    const model = await CanaryModel.fromUrls({
+      encoderUrl: 'blob:encoder',
+      decoderUrl: 'blob:decoder',
+      tokenizerUrl: 'blob:tokenizer',
+      runtime: { loadModel } as never,
+      signal,
+    });
+
+    expect(loadModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preset: 'canary',
+        signal,
+      }),
+    );
+    expect(createSession).toHaveBeenCalledTimes(1);
+    await model.dispose();
+  });
+
+  it('does not call loadModel when fromUrls is already aborted', async () => {
+    const loadModel = vi.fn();
+
+    await expect(
+      CanaryModel.fromUrls({
+        encoderUrl: 'blob:encoder',
+        decoderUrl: 'blob:decoder',
+        tokenizerUrl: 'blob:tokenizer',
+        runtime: { loadModel } as never,
+        signal: { aborted: true },
+      }),
+    ).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(loadModel).not.toHaveBeenCalled();
+  });
+
+  it('disposes the session when abort is observed after createSession', async () => {
+    const signal = { aborted: false };
+    const disposeModel = vi.fn(async () => undefined);
+    const disposeSession = vi.fn(async () => undefined);
+    const loadModel = vi.fn(async () => ({
+      createSession: async () => {
+        signal.aborted = true;
+        return { dispose: disposeSession };
+      },
+      dispose: disposeModel,
+    }));
+
+    await expect(
+      CanaryModel.fromUrls({
+        encoderUrl: 'blob:encoder',
+        decoderUrl: 'blob:decoder',
+        tokenizerUrl: 'blob:tokenizer',
+        runtime: { loadModel } as never,
+        signal,
+      }),
+    ).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(disposeSession).toHaveBeenCalledTimes(1);
+    expect(disposeModel).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards abort signal from fromPretrained into runtime.loadModel', async () => {
+    const signal = { aborted: false };
+    const loadModel = vi.fn(async () => ({
+      createSession: async () => ({ dispose: vi.fn() }),
+      dispose: vi.fn(),
+    }));
+
+    await CanaryModel.fromPretrained('nvidia/canary-180m-flash', {
+      runtime: { loadModel } as never,
+      backend: 'wasm',
+      signal,
+    });
+
+    expect(loadModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preset: 'canary',
+        signal,
+      }),
+    );
+  });
 });

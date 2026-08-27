@@ -198,7 +198,6 @@ describe('browser realtime starter', () => {
     });
     const starter = createBrowserRealtimeStarter({
       transcribe,
-      controllerOptions: { latency: true },
     });
 
     const idle = starter.getSnapshot().latency;

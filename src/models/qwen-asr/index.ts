@@ -2,6 +2,7 @@ export * from './config.js';
 export * from './executor.js';
 export * from './mapping.js';
 export * from './model.js';
+export * from './official.js';
 export * from './ort.js';
 export * from './processor.js';
 export * from './tokenizer.js';

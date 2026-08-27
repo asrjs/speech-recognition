@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "reference_kind": "qwen3-asr-0.6b-native-inference",
+  "generated_at": "2026-08-27T01:03:59.181989+00:00",
+  "local_only": true,
+  "source": {
+    "model_dir": "N:\\models\\Qwen3-ASR-0.6B",
+    "model_files": [
+      {
+        "path": ".cache/huggingface/.gitignore",
+        "size_bytes": 1
+      },
+      {
+        "path": ".cache/huggingface/download/.gitattributes.metadata",
+        "size_bytes": 104
+      },
+      {
+        "path": ".cache/huggingface/download/chat_template.json.metadata",
+        "size_bytes": 104
+      },
+      {
+        "path": ".cache/huggingface/download/config.json.metadata",
+        "size_bytes": 104
+      },
+      {
+        "path": ".cache/huggingface/download/generation_config.json.metadata",
+        "size_bytes": 104
+      },
+      {
+        "path": ".cache/huggingface/download/merges.txt.metadata",
+        "size_bytes": 104
+      },
+      {
+        "path": ".cache/huggingface/download/model.safetensors.metadata",
+        "size_bytes": 127
+      },
+      {
+        "path": ".cache/huggingface/download/preprocessor_config.json.metadata",
+        "size_bytes": 104
+      },
+      {
+        "path": ".cache/huggingface/download/README.md.metadata",
+        "size_bytes": 104
+      },
+      {
+        "path": ".cache/huggingface/download/tokenizer_config.json.metadata",
+        "size_bytes": 104
+      },
+      {
+        "path": ".cache/huggingface/download/vocab.json.metadata",
+        "size_bytes": 104
+      },
+      {
+        "path": ".gitattributes",
+        "size_bytes": 1519
+      },
+      {
+        "path": "_hf-file-list.json",
+        "size_bytes": 398
+      },
+      {
+        "path": "chat_template.json",
+        "size_bytes": 1161
+      },
+      {
+        "path": "config.json",
+        "size_bytes": 6193
+      },
+      {
+        "path": "generation_config.json",
+        "size_bytes": 142
+      },
+      {
+        "path": "merges.txt",
+        "size_bytes": 1671853
+      },
+      {
+        "path": "model.safetensors",
+        "size_bytes": 1876091704
+      },
+      {
+        "path": "preprocessor_config.json",
+        "size_bytes": 330
+      },
+      {
+        "path": "README.md",
+        "size_bytes": 57456
+      },
+      {
+        "path": "tokenizer_config.json",
+        "size_bytes": 12487
+      },
+      {
+        "path": "vocab.json",
+        "size_bytes": 2776833
+      }
+    ],
+    "forced_aligner_dir": null
+  },
+  "runtime": {
+    "python": "3.11.4",
+    "torch": "2.13.0+cpu",
+    "qwen_asr": "0.0.6",
+    "device_map": "cpu",
+    "dtype": "float32"
+  },
+  "inference": {
+    "max_inference_batch_size": 1,
+    "max_new_tokens": 256,
+    "language": null,
+    "timestamps_requested": false,
+    "batch_size": 1,
+    "batches": [
+      {
+        "sample_ids": [
+          "0000-jfk-short"
+        ],
+        "batch_size": 1,
+        "inference_seconds": 13.243062,
+        "batch_index": 0
+      }
+    ]
+  },
+  "samples": [
+    {
+      "sample_id": "0000-jfk-short",
+      "audio_path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+      "audio_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "language_requested": null,
+      "language_detected": "English",
+      "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "timestamps": null,
+      "native_result": {
+        "language": "English",
+        "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+        "time_stamps": null
+      },
+      "batch_size": 1,
+      "batch_inference_seconds": 13.243062,
+      "batch_index": 0
+    }
+  ]
+}

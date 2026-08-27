@@ -21,7 +21,7 @@ const DEFAULT_CONFIG: GigaAmModelConfig = {
   rawStride: 4, nMels: 64, featureHopSeconds: 0.01, vocabularySize: 71,
   languages: ['ru', 'en', 'kk', 'ky', 'uz'],
   tokenizer: { kind: 'sentencepiece', blankTokenId: 70 },
-  nFft: 320, winLength: 320, hopLength: 160, featureLayout: 'mel-major',
+  nFft: 320, winLength: 320, hopLength: 160, center: false, featureLayout: 'mel-major',
 };
 
 const CLASSIFICATION: ModelClassification = {
@@ -45,7 +45,7 @@ class GigaAmSession implements GigaAmBatchSession {
     const audios = inputs.map((input) => normalizePcmInput(input).toMono());
     return this.executor.transcribeBatch(audios, options);
   }
-  async dispose(): Promise<void> { if (this.disposed) return; this.disposed = true; this.executor.dispose(); this.onDispose(); }
+  async dispose(): Promise<void> { if (this.disposed) return; this.disposed = true; await Promise.resolve(this.executor.dispose()); this.onDispose(); }
 }
 
 class GigaAmModel implements SpeechModel<GigaAmModelOptions, LasrCtcTranscriptionOptions, LasrCtcNativeTranscript> {
@@ -58,7 +58,7 @@ class GigaAmModel implements SpeechModel<GigaAmModelOptions, LasrCtcTranscriptio
     this.info = { family, modelId, classification: CLASSIFICATION, architecture: createModelArchitecture({ processor: { layer: 'processor', module: 'audio', implementation: config.processorArchitecture, shared: false }, encoder: { layer: 'encoder', module: CONFORMER_ENCODER.sharedModule, implementation: config.encoderArchitecture, shared: false }, decoder: { layer: 'decoder', module: CTC_HEAD_DECODER.sharedModule, implementation: 'ctc', shared: true }, decoding: { layer: 'decoding', module: 'inference', implementation: CTC_GREEDY_DECODING.strategy, shared: true }, tokenizer: { layer: 'tokenizer', module: 'inference', implementation: 'character', shared: false } }), description: `GigaAM Multilingual character CTC model for ${modelId}.`, nativeOutputName: 'LasrCtcNativeTranscript' };
   }
   async createSession(_options: BaseSessionOptions = {}): Promise<GigaAmBatchSession> {
-    const executor = this.dependencies.executor ?? new OrtGigaAmCtcExecutor(this.modelId, this.backend.id, this.config, this.loadOptions, { assetProvider: this.dependencies.assetProvider, runtimeHooks: this.dependencies.runtimeHooks });
+    const executor = this.dependencies.executor ?? new OrtGigaAmCtcExecutor(this.modelId, this.backend.id, this.config, this.loadOptions, { assetProvider: this.dependencies.assetProvider, runtimeHooks: this.dependencies.runtimeHooks, signal: this.dependencies.signal });
     const session = new GigaAmSession(this.modelId, this.backend.id, executor, () => this.sessions.delete(session));
     this.sessions.add(session); await session.initialize(); return session;
   }
@@ -71,7 +71,7 @@ export function createGigaAmCtcModelFamily(options: GigaAmModelFamilyOptions = {
     supports(modelId: string): boolean { const value = modelId.toLowerCase(); return value.includes('gigaam') && value.includes('ctc'); },
     matchesClassification(classification): boolean { return Object.entries(classification).every(([key, value]) => CLASSIFICATION[key as keyof ModelClassification] === value); },
     async createModel(request, context) {
-      const dependencies = { ...(options.dependencies ?? {}), assetProvider: options.dependencies?.assetProvider ?? context.assetProvider, runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks };
+      const dependencies = { ...(options.dependencies ?? {}), assetProvider: options.dependencies?.assetProvider ?? context.assetProvider, runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks, signal: options.dependencies?.signal ?? context.signal };
       return new GigaAmModel(context.backend, 'gigaam-ctc', request.modelId, { ...DEFAULT_CONFIG, ...(request.options?.config ?? {}) }, request.options, dependencies);
     },
   };

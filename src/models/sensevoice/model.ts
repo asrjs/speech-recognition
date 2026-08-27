@@ -165,6 +165,7 @@ class SenseVoiceModel implements SpeechModel<SenseVoiceModelOptions, SenseVoiceT
         {
           assetProvider: this.dependencies.assetProvider,
           runtimeHooks: this.dependencies.runtimeHooks,
+          signal: this.dependencies.signal,
         },
       );
     const session = new SenseVoiceSession(this.modelId, this.classification, this.config, this.backend.id, executor, () => this.sessions.delete(session));
@@ -201,6 +202,7 @@ export function createSenseVoiceModelFamily(
         ...(options.dependencies ?? {}),
         assetProvider: options.dependencies?.assetProvider ?? context.assetProvider,
         runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks,
+        signal: options.dependencies?.signal ?? context.signal,
       };
       context.hooks.logger?.info?.('Creating SenseVoice CTC model', {
         family: 'sensevoice', modelId: request.modelId, backendId: context.backend.id,

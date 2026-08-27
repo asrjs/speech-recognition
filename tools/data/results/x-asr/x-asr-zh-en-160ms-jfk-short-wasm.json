@@ -1,0 +1,21 @@
+{
+  "backend": "wasm",
+  "engine": "onnxruntime-web",
+  "streaming": "true-stateful-zipformer2",
+  "text": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "text_match": true,
+  "failureClass": null,
+  "metrics": {
+    "preprocessMs": 0,
+    "encodeMs": 9842.285,
+    "decodeMs": 0,
+    "totalMs": 9842.348,
+    "wallMs": 9842.353,
+    "audioDurationSec": 11,
+    "encoderFrameCount": 272,
+    "emittedTokenCount": 26,
+    "preprocessorBackend": "js"
+  },
+  "status": "experimental-js-frontend-wasm"
+}

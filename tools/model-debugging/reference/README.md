@@ -112,6 +112,7 @@ Start with:
 Useful for:
 
 - capturing the official local qwen-asr Transformers reference;
+- exporting a static encoder and explicit-KV decoder from those weights;
 - recording language detection, text, optional forced-alignment timestamps,
   and batch order before an ONNX boundary is designed.
 

@@ -1,0 +1,29 @@
+{
+  "backend": "wasm",
+  "engine": "onnxruntime-web",
+  "text": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "text_match": true,
+  "language": "en",
+  "metadata": {
+    "language": "en",
+    "emotion": "EMO_UNKNOWN",
+    "event": "Speech"
+  },
+  "metrics": {
+    "preprocessMs": 70.674,
+    "encodeMs": 6682.846,
+    "decodeMs": 122.388,
+    "totalMs": 6881.971,
+    "wallMs": 6881.971,
+    "audioDurationSec": 11,
+    "rtf": 0.6256,
+    "rtfx": 1.5984,
+    "preprocessorBackend": "js",
+    "encoderFrameCount": 187,
+    "decodeIterations": 187,
+    "emittedTokenCount": 26
+  },
+  "onnx_path": "N:\\models\\onnx\\sensevoice\\small\\model.onnx",
+  "status": "experimental-js-frontend-wasm"
+}

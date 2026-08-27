@@ -127,4 +127,35 @@ describe('Hugging Face progress reporting', () => {
     expect(handles).toHaveLength(1);
     await handles[0]!.dispose();
   });
+
+  it('refuses preferBlobUrl without onResolvedHandle so blob URLs cannot leak', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL');
+
+    await expect(
+      getModelFile('ysdede/example', 'encoder.onnx', { preferBlobUrl: true }),
+    ).rejects.toThrow(/requires onResolvedHandle so the blob URL can be revoked/);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('disposes the asset handle when returning a remote HTTP locator', async () => {
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL');
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { 'content-length': '3', 'content-type': 'application/octet-stream' },
+      })),
+    );
+
+    const locator = await getModelFile('ysdede/example', 'encoder.onnx');
+
+    expect(locator).toMatch(/^https?:\/\//);
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+  });
 });

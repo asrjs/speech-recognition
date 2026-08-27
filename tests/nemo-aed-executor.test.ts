@@ -9,6 +9,7 @@ import { CanaryTokenizer, type CanaryTokenizerPayload } from '../src/models/nemo
 import type { OrtModuleLike, OrtSessionLike, OrtTensorLike } from '../src/models/nemo-aed/ort.js';
 import type { NemoAedArtifactSource } from '../src/models/nemo-aed/types.js';
 import type { AudioBufferLike, TranscriptionProgressEvent } from '../src/types/index.js';
+import { PipelineAbortedError } from '../src/pipeline/composition.js';
 
 class MockTensor<TData extends ArrayBufferView = ArrayBufferView> implements OrtTensorLike<TData> {
   disposed = false;
@@ -38,6 +39,11 @@ class MockDecoderSession implements OrtSessionLike {
   private callIndex = 0;
 
   constructor(private readonly stepTokenIds: readonly number[]) {}
+
+  resetCalls(): void {
+    this.callIndex = 0;
+    this.inputHistory.length = 0;
+  }
 
   async run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>> {
     const inputIds = feeds.input_ids as OrtTensorLike<BigInt64Array>;
@@ -356,5 +362,34 @@ describe('nemo-aed executor decode loop', () => {
     ).rejects.toThrow('decoder failed');
 
     expect((decoderSession.lastInputTensor as MockTensor<BigInt64Array> | null)?.disposed).toBe(true);
+  });
+
+  it('stops the autoregressive loop on abort, disposes decoder tensors, and can decode again', async () => {
+    const harness = createExecutorHarness();
+    const signal = { aborted: false };
+    let abortAfterFirst = true;
+    const originalRun = harness.decoderSession.run.bind(harness.decoderSession);
+    harness.decoderSession.run = async (feeds: Record<string, unknown>) => {
+      const result = await originalRun(feeds);
+      if (abortAfterFirst && harness.decoderSession.inputHistory.length === 1) signal.aborted = true;
+      return result;
+    };
+
+    await expect(
+      harness.executor.transcribe(createAudio(), { targetLanguage: 'en', signal }, {} as never),
+    ).rejects.toBeInstanceOf(PipelineAbortedError);
+    expect(harness.decoderSession.inputHistory).toHaveLength(1);
+
+    abortAfterFirst = false;
+    signal.aborted = false;
+    harness.decoderSession.resetCalls();
+    const result = await harness.executor.transcribe(
+      createAudio(),
+      { targetLanguage: 'en', returnTokenIds: true },
+      {} as never,
+    );
+    expect(result.utteranceText).toBe('Hello, world!');
+    expect(result.debug?.tokenIds).toEqual([80, 81, 82, 83, 3]);
+    await harness.executor.dispose();
   });
 });

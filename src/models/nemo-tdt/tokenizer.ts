@@ -1,23 +1,35 @@
 import type { NemoTokenizer } from '../nemo-common/index.js';
 import { importNodeModule, isNodeLikeRuntime } from '../../io/node.js';
+import {
+  fetchTextHonoringAbort,
+  rethrowIfAssetAborted,
+  throwIfAssetAborted,
+  type AssetAbortSignalLike,
+} from '../../io/abort.js';
 
-async function fetchText(url: string): Promise<string> {
+async function fetchText(
+  url: string,
+  signal?: AssetAbortSignalLike | null,
+): Promise<string> {
+  throwIfAssetAborted(signal);
   if (isNodeLikeRuntime() && /^file:/i.test(url)) {
     const [{ fileURLToPath }, fs] = await Promise.all([
       importNodeModule<typeof import('node:url')>('node:url'),
       importNodeModule<typeof import('node:fs/promises')>('node:fs/promises'),
     ]);
-    return fs.readFile(fileURLToPath(url), 'utf8');
+    try {
+      const text = await fs.readFile(fileURLToPath(url), 'utf8');
+      throwIfAssetAborted(signal);
+      return text;
+    } catch (error) {
+      rethrowIfAssetAborted(error);
+      throw error;
+    }
   }
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch tokenizer vocabulary from ${url}: ${response.status} ${response.statusText}`,
-    );
-  }
-
-  return response.text();
+  return fetchTextHonoringAbort(url, signal, {
+    errorMessage: `Failed to fetch tokenizer vocabulary from ${url}`,
+  });
 }
 
 export class ParakeetTokenizer implements NemoTokenizer {
@@ -54,9 +66,10 @@ export class ParakeetTokenizer implements NemoTokenizer {
     url: string,
     options: {
       readonly blankId?: number;
+      readonly signal?: AssetAbortSignalLike | null;
     } = {},
   ): Promise<ParakeetTokenizer> {
-    const text = await fetchText(url);
+    const text = await fetchText(url, options.signal);
     const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
 
     const indexedVocabulary = lines.every((line) => {

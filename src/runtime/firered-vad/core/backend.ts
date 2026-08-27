@@ -1,6 +1,12 @@
 import * as ort from 'onnxruntime-web';
 import type { FireRedRuntimeOptions } from '../types.js';
 import {
+  honorAbortAfterCreate,
+  rethrowIfAssetAborted,
+  throwIfAssetAborted,
+  withNativeAbortSignalOption,
+} from '../../../io/abort.js';
+import {
   DEFAULT_MODEL_URLS,
   STREAM_CACHE_BATCH,
   STREAM_CACHE_LAYERS,
@@ -144,25 +150,57 @@ class OrtFireRedBackend implements FireRedBackend {
 
 export async function createOrtFireRedBackend(options: FireRedRuntimeOptions = {}): Promise<FireRedBackend> {
   configureOrtEnvironment(options);
+  const signal = options.signal;
+  throwIfAssetAborted(signal, 'download');
   const modelUrls = getModelUrls(options);
   const cache = options.cacheAssets === false ? undefined : getDefaultAssetCache(true);
 
   const [streamModel, vadModel, aedModel] = await Promise.all([
-    loadBinaryResource(modelUrls.streamVadWithCacheUrl, cache),
-    loadBinaryResource(modelUrls.vadUrl, cache),
-    loadBinaryResource(modelUrls.aedUrl, cache),
+    loadBinaryResource(modelUrls.streamVadWithCacheUrl, cache, signal),
+    loadBinaryResource(modelUrls.vadUrl, cache, signal),
+    loadBinaryResource(modelUrls.aedUrl, cache, signal),
   ]);
+  throwIfAssetAborted(signal, 'session-create');
 
-  const sessionOptions: ort.InferenceSession.SessionOptions = {
-    executionProviders: ['wasm'],
+  const sessionOptions = (withNativeAbortSignalOption(
+    { executionProviders: ['wasm'] },
+    signal,
+  ) ?? { executionProviders: ['wasm'] }) as ort.InferenceSession.SessionOptions;
+
+  const created: ort.InferenceSession[] = [];
+  const createOne = async (model: Uint8Array): Promise<ort.InferenceSession> => {
+    const session = await honorAbortAfterCreate(
+      () => ort.InferenceSession.create(model, sessionOptions),
+      signal,
+      (value) => {
+        void value.release();
+      },
+    );
+    created.push(session);
+    return session;
   };
-  const [streamSession, vadSession, aedSession] = await Promise.all([
-    ort.InferenceSession.create(streamModel, sessionOptions),
-    ort.InferenceSession.create(vadModel, sessionOptions),
-    ort.InferenceSession.create(aedModel, sessionOptions),
-  ]);
 
-  return new OrtFireRedBackend(streamSession, vadSession, aedSession);
+  try {
+    const [streamSession, vadSession, aedSession] = await Promise.all([
+      createOne(streamModel),
+      createOne(vadModel),
+      createOne(aedModel),
+    ]);
+    throwIfAssetAborted(signal, 'session-create');
+    return new OrtFireRedBackend(streamSession, vadSession, aedSession);
+  } catch (error) {
+    await Promise.all(
+      created.map(async (session) => {
+        try {
+          await session.release();
+        } catch {
+          // best-effort teardown of sessions that must not outlive abort/failure
+        }
+      }),
+    );
+    rethrowIfAssetAborted(error, 'session-create');
+    throw error;
+  }
 }
 
 export function flattenFeatFrames(frames: Float32Array[]): Float32Array {

@@ -1,5 +1,6 @@
 import type { QuantizationMode } from './huggingface.js';
 import type {
+  AbortSignalLike,
   BaseSessionOptions,
   ResolvedAssetHandle,
   RuntimeProgressEvent,
@@ -47,6 +48,7 @@ export interface LoadSpeechModelFromLocalEntriesOptions
   readonly enableProfiling?: boolean;
   readonly sessionOptions?: BaseSessionOptions;
   readonly onProgress?: (event: RuntimeProgressEvent) => void;
+  readonly signal?: AbortSignalLike | null;
 }
 
 export interface ResolvedBuiltInLocalArtifacts {
@@ -63,6 +65,7 @@ export interface BuiltInLocalModelAdapter {
   collectEntries(
     dirHandle: SpeechModelLocalDirectoryHandleLike,
     prefix?: string,
+    signal?: AbortSignalLike | null,
   ): Promise<SpeechModelLocalEntry[]>;
   inspectEntries(entries: readonly SpeechModelLocalEntry[]): SpeechModelLocalInspection;
   resolveEntries(

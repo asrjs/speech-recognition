@@ -106,6 +106,7 @@ function createExecutor(
   return new OrtWav2Vec2Executor(modelId, classification, config, backendId, loadOptions, {
     assetProvider: dependencies.assetProvider,
     runtimeHooks: dependencies.runtimeHooks,
+    signal: dependencies.signal,
   });
 }
 
@@ -404,6 +405,7 @@ export function createWav2Vec2ModelFamily(
         ...(options.dependencies ?? {}),
         assetProvider: options.dependencies?.assetProvider ?? context.assetProvider,
         runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks,
+        signal: options.dependencies?.signal ?? context.signal,
       };
 
       context.hooks.logger?.info?.('Creating Wav2Vec2 CTC model', {

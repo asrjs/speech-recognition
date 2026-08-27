@@ -1,3 +1,4 @@
+import { honorAbortAfterCreate, withNativeAbortSignalOption, withOrtCreateAbort } from '../../io/abort.js';
 import { importNodeModule, isNodeLikeRuntime, resolveNodePackageSubpathUrl } from '../../io/node.js';
 import type {
   Qwen3AsrArtifactSource,
@@ -154,7 +155,12 @@ export function resolveQwen3AsrArtifacts(
 
 export async function initQwenOrt(
   backendId: QwenExecutionBackend,
-  options: { readonly wasmPaths?: string; readonly cpuThreads?: number; readonly enableProfiling?: boolean } = {},
+  options: {
+    readonly wasmPaths?: string;
+    readonly cpuThreads?: number;
+    readonly enableProfiling?: boolean;
+    readonly signal?: { readonly aborted: boolean } | null;
+  } = {},
 ): Promise<QwenOrtModuleLike> {
   const imported = (await (
     backendId === 'webgpu' ? import('onnxruntime-web/webgpu') : import('onnxruntime-web')
@@ -178,7 +184,12 @@ export async function initQwenOrt(
     ort.env.webgpu ??= {};
     ort.env.webgpu.profiling = { mode: 'default' };
   }
-  return ort;
+  return withOrtCreateAbort(ort, options.signal);
+}
+
+/** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
+export function releaseQwenOrtSession(session: QwenOrtSessionLike | undefined): void {
+  void session?.release?.();
 }
 
 export async function createQwenOrtSession(
@@ -190,6 +201,8 @@ export async function createQwenOrtSession(
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
     readonly preferredOutputLocation?: QwenCacheOutputLocation | Record<string, QwenCacheOutputLocation>;
+    readonly lowMemory?: boolean;
+    readonly signal?: { readonly aborted: boolean } | null;
   },
 ): Promise<QwenOrtSessionLike> {
   let modelUrl = url;
@@ -197,12 +210,13 @@ export async function createQwenOrtSession(
   const executionProviders = options.backendId === 'webgpu'
     ? [{ name: 'webgpu', deviceType: 'gpu', powerPreference: 'high-performance' }]
     : ['wasm'];
+  const lowMemory = options.lowMemory === true;
   const sessionOptions: Record<string, unknown> = {
     executionProviders,
     graphOptimizationLevel: 'all',
-    executionMode: 'parallel',
-    enableCpuMemArena: true,
-    enableMemPattern: true,
+    executionMode: lowMemory ? 'sequential' : 'parallel',
+    enableCpuMemArena: !lowMemory,
+    enableMemPattern: !lowMemory,
     enableProfiling: options.enableProfiling ?? false,
   };
   if (options.preferredOutputLocation) sessionOptions.preferredOutputLocation = options.preferredOutputLocation;
@@ -214,5 +228,10 @@ export async function createQwenOrtSession(
   if (externalDataUrl && options.externalDataPath) {
     sessionOptions.externalData = [{ data: externalDataUrl, path: options.externalDataPath }];
   }
-  return ort.InferenceSession.create(modelUrl, sessionOptions);
+  const createOptions = withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
+  return honorAbortAfterCreate(
+    () => ort.InferenceSession.create(modelUrl, createOptions),
+    options.signal,
+    (session) => releaseQwenOrtSession(session),
+  );
 }

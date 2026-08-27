@@ -1,0 +1,21 @@
+{
+  "repo_id": "Qwen/Qwen3-ASR-0.6B",
+  "revision": "main",
+  "commit_sha": "5eb144179a02acc5e5ba31e748d22b0cf3e303b0",
+  "license": "apache-2.0",
+  "file_count": 10,
+  "files": [
+    ".gitattributes",
+    "README.md",
+    "chat_template.json",
+    "config.json",
+    "generation_config.json",
+    "merges.txt",
+    "model.safetensors",
+    "preprocessor_config.json",
+    "tokenizer_config.json",
+    "vocab.json"
+  ],
+  "onnx_files": [],
+  "has_official_onnx": false
+}

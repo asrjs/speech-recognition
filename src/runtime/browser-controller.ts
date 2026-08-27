@@ -25,6 +25,7 @@ import type {
   StreamingDetectorConfigOverrides,
 } from './streaming-config.js';
 import { mergeStreamingConfig, resolveStreamingProfileId } from './streaming-config.js';
+import type { RealtimeLatencySummary } from './realtime-latency.js';
 
 export type BrowserRealtimeMicrophoneMode = 'manual' | 'speech-detect';
 
@@ -52,6 +53,8 @@ export interface BrowserRealtimeMicrophoneControllerState {
   readonly micError: string;
   readonly micMode: BrowserRealtimeMicrophoneMode;
   readonly captureInfo: BrowserRealtimeCaptureInfo;
+  /** From the inner transcription controller when a transcribe callback is attached. */
+  readonly latency: RealtimeLatencySummary | null;
 }
 
 export interface BrowserRealtimeMicrophoneControllerOptions extends Omit<
@@ -124,6 +127,7 @@ function createInitialState(
     micError: '',
     micMode,
     captureInfo: createInitialCaptureInfo(),
+    latency: null,
   };
 }
 
@@ -143,9 +147,11 @@ export function createBrowserRealtimeMicrophoneController(
   let captureHandle: BrowserMicrophoneCaptureHandle | null = null;
   let sampleRate = STREAMING_PROCESSING_SAMPLE_RATE;
   let manualChunks: Float32Array[] = [];
+  let manualIngestFrame = 0;
   let lifecycleGeneration = 0;
   let lifecycleOperationTail: Promise<void> = Promise.resolve();
   let disposed = false;
+  let startAbort: AbortController | null = null;
   let state = createInitialState(micMode);
 
   const starter = createStarter({
@@ -157,9 +163,17 @@ export function createBrowserRealtimeMicrophoneController(
     frameIntervalMs: options.frameIntervalMs ?? DEFAULT_FRAME_INTERVAL_MS,
   });
 
+  const withLatency = (
+    current: BrowserRealtimeMicrophoneControllerState,
+  ): BrowserRealtimeMicrophoneControllerState => ({
+    ...current,
+    latency: starter.getSnapshot().latency ?? null,
+  });
+
   const emit = (): void => {
+    const nextState = withLatency(state);
     for (const listener of listeners) {
-      listener(state);
+      listener(nextState);
     }
   };
 
@@ -226,6 +240,8 @@ export function createBrowserRealtimeMicrophoneController(
 
     if (micMode === 'manual') {
       manualChunks.push(chunk);
+      manualIngestFrame += chunk.length;
+      starter.controller?.noteIngest(manualIngestFrame);
       updateStatus(`Recording microphone at ${sampleRate} Hz…`, 'Microphone active');
       return;
     }
@@ -243,6 +259,43 @@ export function createBrowserRealtimeMicrophoneController(
       () => undefined,
     );
     return result;
+  };
+
+  const publishCapturedAudio = (
+    pcm: Float32Array,
+    details: {
+      readonly sampleRate: number;
+      readonly reason: string;
+      readonly startFrame: number;
+      readonly endFrame: number;
+      readonly metadata: unknown;
+    },
+  ): void => {
+    onUtterance({
+      pcm,
+      sampleRate: details.sampleRate,
+      reason: details.reason,
+      durationSeconds: pcm.length / details.sampleRate,
+      sourceLabel: `microphone-${details.reason}-${new Date().toLocaleTimeString()}`,
+      metadata: details.metadata,
+    });
+    const transcription = starter.controller;
+    if (!transcription || pcm.length === 0) {
+      return;
+    }
+    void transcription
+      .transcribeUtterance(pcm, {
+        startFrame: details.startFrame,
+        endFrame: details.endFrame,
+        sampleRate: details.sampleRate,
+        reason: details.reason,
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!disposed) {
+          emit();
+        }
+      });
   };
 
   const starterUnsubscribe = starter.subscribe((event) => {
@@ -267,13 +320,11 @@ export function createBrowserRealtimeMicrophoneController(
       return;
     }
     if (event.type === 'segment-ready') {
-      const pcm = event.payload.readPcm();
-      onUtterance({
-        pcm,
+      publishCapturedAudio(event.payload.readPcm(), {
         sampleRate: event.payload.sampleRate,
         reason: event.payload.reason,
-        durationSeconds: pcm.length / event.payload.sampleRate,
-        sourceLabel: `microphone-${event.payload.reason}-${new Date().toLocaleTimeString()}`,
+        startFrame: event.payload.startFrame,
+        endFrame: event.payload.endFrame,
         metadata: event.payload.metadata,
       });
       return;
@@ -307,13 +358,13 @@ export function createBrowserRealtimeMicrophoneController(
     starter,
     subscribe(listener: (state: BrowserRealtimeMicrophoneControllerState) => void): () => void {
       listeners.add(listener);
-      listener(state);
+      listener(withLatency(state));
       return () => {
         listeners.delete(listener);
       };
     },
     getState(): BrowserRealtimeMicrophoneControllerState {
-      return state;
+      return withLatency(state);
     },
     configure(
       next: {
@@ -342,6 +393,7 @@ export function createBrowserRealtimeMicrophoneController(
           return;
         }
         manualChunks = [];
+        manualIngestFrame = 0;
         setState({ micError: '' });
 
         const handle = await startCapture({
@@ -390,7 +442,24 @@ export function createBrowserRealtimeMicrophoneController(
 
         try {
           if (micMode === 'speech-detect') {
-            await starter.start({ sampleRate });
+            const abort = new AbortController();
+            startAbort = abort;
+            try {
+              await starter.start({ sampleRate, signal: abort.signal });
+            } catch (error) {
+              if (generation !== lifecycleGeneration || disposed) {
+                await starter.stop({ flush: false }).catch(() => undefined);
+                await handle.stop().catch(() => undefined);
+                captureHandle = null;
+                setState({ isMicActive: false });
+                return;
+              }
+              throw error;
+            } finally {
+              if (startAbort === abort) {
+                startAbort = null;
+              }
+            }
             if (generation !== lifecycleGeneration || disposed) {
               await starter.stop({ flush: false });
               await handle.stop();
@@ -431,6 +500,7 @@ export function createBrowserRealtimeMicrophoneController(
         return;
       }
       const generation = ++lifecycleGeneration;
+      startAbort?.abort();
       setState({ isMicActive: false });
       return enqueueLifecycleOperation(async () => {
         if (generation !== lifecycleGeneration && !captureHandle && !manualChunks.length) {
@@ -453,17 +523,19 @@ export function createBrowserRealtimeMicrophoneController(
           await starter.stop({ flush });
         } else if (flush && manualChunks.length > 0) {
           const pcm = concatFloat32Chunks(manualChunks);
+          const endFrame = manualIngestFrame;
           manualChunks = [];
-          onUtterance({
-            pcm,
+          manualIngestFrame = 0;
+          publishCapturedAudio(pcm, {
             sampleRate,
             reason: 'stop',
-            durationSeconds: pcm.length / sampleRate,
-            sourceLabel: `microphone-stop-${new Date().toLocaleTimeString()}`,
+            startFrame: Math.max(0, endFrame - pcm.length),
+            endFrame: Math.max(pcm.length, endFrame),
             metadata: null,
           });
         } else {
           manualChunks = [];
+          manualIngestFrame = 0;
         }
 
         updateStatus('Microphone stopped', 'Model ready');
@@ -480,13 +552,14 @@ export function createBrowserRealtimeMicrophoneController(
         return;
       }
       const pcm = concatFloat32Chunks(manualChunks);
+      const endFrame = manualIngestFrame;
       manualChunks = [];
-      onUtterance({
-        pcm,
+      manualIngestFrame = 0;
+      publishCapturedAudio(pcm, {
         sampleRate,
         reason,
-        durationSeconds: pcm.length / sampleRate,
-        sourceLabel: `microphone-${reason}-${new Date().toLocaleTimeString()}`,
+        startFrame: Math.max(0, endFrame - pcm.length),
+        endFrame: Math.max(pcm.length, endFrame),
         metadata: null,
       });
     },
@@ -496,6 +569,7 @@ export function createBrowserRealtimeMicrophoneController(
       }
       disposed = true;
       ++lifecycleGeneration;
+      startAbort?.abort();
       setState({ isMicActive: false });
       return enqueueLifecycleOperation(async () => {
         const handle = captureHandle;
@@ -504,6 +578,7 @@ export function createBrowserRealtimeMicrophoneController(
           await handle.stop();
         }
         manualChunks = [];
+        manualIngestFrame = 0;
         starterUnsubscribe();
         monitor.dispose();
         await starter.dispose();

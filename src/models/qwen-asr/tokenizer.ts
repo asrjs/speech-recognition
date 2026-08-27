@@ -1,5 +1,11 @@
 import { isNodeLikeRuntime, importNodeModule } from '../../io/node.js';
 import type { TextTokenizer } from '../../tokenizers/index.js';
+import {
+  fetchTextHonoringAbort,
+  rethrowIfAssetAborted,
+  throwIfAssetAborted,
+  type AssetAbortSignalLike,
+} from '../../io/abort.js';
 
 interface QwenTokenizerJson {
   readonly model?: {
@@ -13,23 +19,43 @@ interface QwenTokenizerJson {
   }>;
 }
 
-async function fetchText(url: string): Promise<string> {
+async function fetchText(
+  url: string,
+  signal?: AssetAbortSignalLike | null,
+): Promise<string> {
+  throwIfAssetAborted(signal);
   if (isNodeLikeRuntime()) {
     const [{ fileURLToPath }, fs] = await Promise.all([
       importNodeModule<typeof import('node:url')>('node:url'),
       importNodeModule<typeof import('node:fs/promises')>('node:fs/promises'),
     ]);
-    if (/^file:/i.test(url)) return fs.readFile(fileURLToPath(url), 'utf8');
+    if (/^file:/i.test(url)) {
+      try {
+        const text = await fs.readFile(fileURLToPath(url), 'utf8');
+        throwIfAssetAborted(signal);
+        return text;
+      } catch (error) {
+        rethrowIfAssetAborted(error);
+        throw error;
+      }
+    }
     if (/^(?:\/|[A-Za-z]:\\|\.\.?[\\/])/.test(url)) {
       const { existsSync } = await importNodeModule<typeof import('node:fs')>('node:fs');
-      if (existsSync(url)) return fs.readFile(url, 'utf8');
+      if (existsSync(url)) {
+        try {
+          const text = await fs.readFile(url, 'utf8');
+          throwIfAssetAborted(signal);
+          return text;
+        } catch (error) {
+          rethrowIfAssetAborted(error);
+          throw error;
+        }
+      }
     }
   }
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch Qwen tokenizer from ${url}: ${response.status} ${response.statusText}`);
-  }
-  return response.text();
+  return fetchTextHonoringAbort(url, signal, {
+    errorMessage: `Failed to fetch Qwen tokenizer from ${url}`,
+  });
 }
 
 function createByteToUnicodeMap(): ReadonlyMap<number, string> {
@@ -80,7 +106,7 @@ export class Qwen3AsrTokenizer implements TextTokenizer {
     for (const entry of data.added_tokens ?? []) {
       idToToken.set(entry.id, entry.content);
       tokenToId.set(entry.content, entry.id);
-      if (entry.special || /^<[^>]+>$/.test(entry.content)) specialIds.add(entry.id);
+      if (entry.special || /^\<\|[^|]+\|\>$/.test(entry.content)) specialIds.add(entry.id);
     }
     this.idToToken = idToToken;
     this.tokenToId = tokenToId;
@@ -89,7 +115,11 @@ export class Qwen3AsrTokenizer implements TextTokenizer {
       .map((id) => idToToken.get(id))
       .filter((token): token is string => token !== undefined)
       .sort((left, right) => right.length - left.length);
-    this.vocabSize = Math.max(...idToToken.keys(), 0) + 1;
+    let maxId = 0;
+    for (const id of idToToken.keys()) {
+      if (id > maxId) maxId = id;
+    }
+    this.vocabSize = maxId + 1;
     this.byteToUnicode = createByteToUnicodeMap();
     this.unicodeToByte = createUnicodeToByteMap(this.byteToUnicode);
     this.bpeMerges = new Map(
@@ -101,8 +131,11 @@ export class Qwen3AsrTokenizer implements TextTokenizer {
     return new Qwen3AsrTokenizer(JSON.parse(text) as QwenTokenizerJson);
   }
 
-  static async fromUrl(url: string): Promise<Qwen3AsrTokenizer> {
-    return Qwen3AsrTokenizer.fromJson(await fetchText(url));
+  static async fromUrl(
+    url: string,
+    signal?: AssetAbortSignalLike | null,
+  ): Promise<Qwen3AsrTokenizer> {
+    return Qwen3AsrTokenizer.fromJson(await fetchText(url, signal));
   }
 
   getTokenId(token: string): number | undefined {

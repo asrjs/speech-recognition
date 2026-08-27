@@ -8,6 +8,12 @@ import {
   STREAMING_TIMELINE_CHUNK_FRAMES,
   framesToMilliseconds,
 } from './audio-timeline.js';
+import {
+  AssetLoadAbortedError,
+  isAssetLoadAbortedError,
+  isDomAbortError,
+  toFetchAbortSignal,
+} from '../io/abort.js';
 
 export interface FireRedVadAdapterConfig {
   readonly sampleRate?: number;
@@ -46,6 +52,7 @@ interface FireRedVadWorkerLike {
 export interface FireRedVadAdapterOptions {
   readonly workerFactory?: () => FireRedVadWorkerLike;
   readonly now?: () => number;
+  readonly signal?: { readonly aborted: boolean } | null;
 }
 
 export interface FireRedVadRecentResult {
@@ -171,10 +178,22 @@ function defaultWorkerFactory(): FireRedVadWorkerLike {
   return new Worker(new URL('./firered-vad-worker.js', import.meta.url), { type: 'module' });
 }
 
+function createFireRedVadInitAbortedError(): AssetLoadAbortedError {
+  return new AssetLoadAbortedError('firered-vad-init');
+}
+
+function isFireRedVadInitAborted(
+  error: unknown,
+  signal?: { readonly aborted: boolean } | null,
+): boolean {
+  return isAssetLoadAbortedError(error) || isDomAbortError(error) || Boolean(signal?.aborted);
+}
+
 export class FireRedVadAdapter implements StreamingTenVadLike {
   private config: Required<FireRedVadAdapterConfig>;
   private readonly workerFactory: () => FireRedVadWorkerLike;
   private readonly now: () => number;
+  private readonly initSignal?: { readonly aborted: boolean } | null;
   private worker: FireRedVadWorkerLike | null = null;
   private messageId = 0;
   private pending = new Map<number, PendingRequest>();
@@ -212,6 +231,7 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
     };
     this.workerFactory = options.workerFactory ?? defaultWorkerFactory;
     this.now = options.now ?? (() => Date.now());
+    this.initSignal = options.signal;
   }
 
   subscribe(listener: (event: StreamingTenVadResultEvent) => void): () => void {
@@ -227,7 +247,11 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
     }
   }
 
-  async init(): Promise<void> {
+  async init(signal?: { readonly aborted: boolean } | null): Promise<void> {
+    const abortSignal = signal ?? this.initSignal;
+    if (abortSignal?.aborted) {
+      throw createFireRedVadInitAbortedError();
+    }
     if (this.worker) {
       return;
     }
@@ -241,6 +265,9 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
     };
 
     try {
+      if (abortSignal?.aborted) {
+        throw createFireRedVadInitAbortedError();
+      }
       const resolvedAssets = resolveFireRedVadModelUrls(this.config);
       const wasmPaths =
         typeof this.config.wasmPaths === 'string' && this.config.wasmPaths.length === 0
@@ -261,10 +288,18 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
         initRequest,
         FIRERED_VAD_INIT_TIMEOUT_MS,
         'FireRed VAD init timed out.',
+        abortSignal,
       );
+      if (abortSignal?.aborted) {
+        throw createFireRedVadInitAbortedError();
+      }
       this.status = 'ready';
       this.lastError = null;
     } catch (error) {
+      if (isFireRedVadInitAborted(error, abortSignal)) {
+        await this.dispose();
+        throw createFireRedVadInitAbortedError();
+      }
       this.fail(error);
       throw error;
     }
@@ -557,19 +592,42 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
     });
   }
 
-  private waitWithTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  private waitWithTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    message: string,
+    signal?: { readonly aborted: boolean } | null,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(createFireRedVadInitAbortedError());
+        return;
+      }
+
       const timeoutId = setTimeout(() => {
         reject(new Error(message));
       }, timeoutMs);
+      const native = toFetchAbortSignal(signal);
+      const onAbort = () => {
+        clearTimeout(timeoutId);
+        native?.removeEventListener('abort', onAbort);
+        reject(createFireRedVadInitAbortedError());
+      };
+      native?.addEventListener('abort', onAbort);
 
       promise.then(
         (value) => {
           clearTimeout(timeoutId);
+          native?.removeEventListener('abort', onAbort);
+          if (signal?.aborted) {
+            reject(createFireRedVadInitAbortedError());
+            return;
+          }
           resolve(value);
         },
         (error) => {
           clearTimeout(timeoutId);
+          native?.removeEventListener('abort', onAbort);
           reject(error);
         },
       );

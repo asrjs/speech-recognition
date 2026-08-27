@@ -1,5 +1,11 @@
 import { isNodeLikeRuntime, importNodeModule } from '../../io/node.js';
 import type { TextTokenizer } from '../../tokenizers/index.js';
+import {
+  fetchTextHonoringAbort,
+  rethrowIfAssetAborted,
+  throwIfAssetAborted,
+  type AssetAbortSignalLike,
+} from '../../io/abort.js';
 
 interface WhisperTokenizerJson {
   readonly model?: {
@@ -14,28 +20,44 @@ interface WhisperTokenizerJson {
   }>;
 }
 
-export async function fetchText(url: string): Promise<string> {
+export async function fetchText(
+  url: string,
+  signal?: AssetAbortSignalLike | null,
+): Promise<string> {
+  throwIfAssetAborted(signal);
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
     const fs = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
 
     if (/^file:/i.test(url)) {
-      return fs.readFile(fileURLToPath(url), 'utf8');
+      try {
+        const text = await fs.readFile(fileURLToPath(url), 'utf8');
+        throwIfAssetAborted(signal);
+        return text;
+      } catch (error) {
+        rethrowIfAssetAborted(error);
+        throw error;
+      }
     }
 
     // Handle bare file paths (no protocol) — check filesystem directly
     if (/^(?:\/|[A-Za-z]:\\|\.\.?[\\/])/.test(url)) {
       const { existsSync } = await importNodeModule<typeof import('node:fs')>('node:fs');
       if (existsSync(url)) {
-        return fs.readFile(url, 'utf8');
+        try {
+          const text = await fs.readFile(url, 'utf8');
+          throwIfAssetAborted(signal);
+          return text;
+        } catch (error) {
+          rethrowIfAssetAborted(error);
+          throw error;
+        }
       }
     }
   }
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch tokenizer from ${url}: ${response.status} ${response.statusText}`);
-  }
-  return response.text();
+  return fetchTextHonoringAbort(url, signal, {
+    errorMessage: `Failed to fetch tokenizer from ${url}`,
+  });
 }
 
 // GPT-2 style byte-to-unicode mapping
@@ -126,8 +148,11 @@ export class WhisperTokenizer implements TextTokenizer {
     this.bpeMerges = bpeMerges;
   }
 
-  static async fromUrl(url: string): Promise<WhisperTokenizer> {
-    const text = await fetchText(url);
+  static async fromUrl(
+    url: string,
+    signal?: AssetAbortSignalLike | null,
+  ): Promise<WhisperTokenizer> {
+    const text = await fetchText(url, signal);
     const data = JSON.parse(text) as WhisperTokenizerJson;
     return new WhisperTokenizer(data);
   }

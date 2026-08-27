@@ -10,7 +10,9 @@ import {
   planWindowedTranscription,
   transcribeWithWindowing,
   withResolvedTranscriptDetail,
+  PipelineAbortedError,
 } from '../pipeline/index.js';
+import { isAssetLoadAbortedError } from '../io/abort.js';
 import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
 import { createGigaAmCtcModelFamily } from '../models/gigaam-ctc/index.js';
 import { createGigaAmRnntModelFamily } from '../models/gigaam-rnnt/index.js';
@@ -28,7 +30,13 @@ import { createParakeetPresetFactory } from '../presets/parakeet/factory.js';
 import { createWhisperPresetFactory } from '../presets/whisper/factory.js';
 import { createWav2Vec2PresetFactory } from '../presets/wav2vec2/factory.js';
 import { getBuiltInModelDescriptor } from '../presets/descriptors.js';
+import {
+  createExperimentalArtifactMissingError,
+  getExperimentalSpeechFamily,
+  hasExperimentalArtifactSource,
+} from './experimental-families.js';
 import type {
+  AbortSignalLike,
   BackendSelectionCriteria,
   BaseSessionOptions,
   BaseTranscriptionOptions,
@@ -60,6 +68,7 @@ export interface LoadBuiltInSpeechModelOptions<
   readonly selectionCriteria?: BackendSelectionCriteria;
   readonly sessionOptions?: BaseSessionOptions;
   readonly onProgress?: (event: RuntimeProgressEvent) => void;
+  readonly signal?: AbortSignalLike | null;
 }
 
 export interface BuiltInSpeechModelHandle<
@@ -107,6 +116,29 @@ function emitProgress(
 ): void {
   options.hooks?.onProgress?.(event);
   options.onProgress?.(event);
+}
+
+function emitLoadCancelled(
+  options: Pick<CreateBuiltInSpeechRuntimeOptions, 'hooks'> & {
+    readonly onProgress?: (event: RuntimeProgressEvent) => void;
+  },
+  modelId?: string,
+  backendId?: string,
+): void {
+  emitProgress(options, {
+    phase: 'cancelled',
+    modelId,
+    backendId,
+    isComplete: false,
+    aborted: true,
+    message: 'Load cancelled.',
+  });
+}
+
+function throwIfLoadAborted(signal: AbortSignalLike | null | undefined): void {
+  if (signal?.aborted) {
+    throw new PipelineAbortedError('load');
+  }
 }
 
 function resolveBuiltInBackendRequest(
@@ -210,6 +242,11 @@ function resolveBuiltInModelRequest<TLoadOptions>(
     throw new Error(
       `Model "${options.modelId}" matches multiple model families (${familyMatches.map((family) => family.family).join(', ')}). Pass \`family\` explicitly.`,
     );
+  }
+
+  const experimental = getExperimentalSpeechFamily(options.modelId);
+  if (experimental && !hasExperimentalArtifactSource(options.options)) {
+    throw createExperimentalArtifactMissingError(experimental.family, options.modelId);
   }
 
   throw new Error(
@@ -320,19 +357,29 @@ export async function loadBuiltInSpeechModel<
   options: LoadBuiltInSpeechModelOptions<TLoadOptions>,
 ): Promise<BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative>> {
   const ownsRuntime = !options.runtime;
-  const runtime =
-    options.runtime ??
-    createBuiltInSpeechRuntime({
-      hooks: mergeRuntimeHooks(options.hooks, options.onProgress),
-      useManifestSources: options.useManifestSources,
-    });
+  let runtime = options.runtime;
+  let model: SpeechModel<TLoadOptions, TTranscriptionOptions, TNative> | undefined;
 
-  emitProgress(options, {
-    phase: 'resolve:start',
-    modelId: options.modelId,
-    message: 'Resolving model request.',
-  });
-  const resolved = resolveBuiltInModelRequest(runtime, options);
+  try {
+    throwIfLoadAborted(options.signal);
+    runtime =
+      runtime ??
+      createBuiltInSpeechRuntime({
+        hooks: mergeRuntimeHooks(options.hooks, options.onProgress),
+        useManifestSources: options.useManifestSources,
+      });
+    if (!runtime) {
+      throw new Error('Speech runtime is unavailable.');
+    }
+    const activeRuntime = runtime;
+
+    emitProgress(options, {
+      phase: 'resolve:start',
+      modelId: options.modelId,
+      message: 'Resolving model request.',
+    });
+    const resolved = resolveBuiltInModelRequest(activeRuntime, options);
+  throwIfLoadAborted(options.signal);
   const resolvedDescriptor = resolved.modelId ? getBuiltInModelDescriptor(resolved.modelId) : undefined;
   emitProgress(options, {
     phase: 'resolve:complete',
@@ -342,10 +389,17 @@ export async function loadBuiltInSpeechModel<
       : `Resolved model family "${resolved.family}".`,
   });
 
-  let model: SpeechModel<TLoadOptions, TTranscriptionOptions, TNative> | undefined;
+  const experimentalFamily = isFamilyBuiltInModelRequest(resolved)
+    ? getExperimentalSpeechFamily(resolved.family) ?? getExperimentalSpeechFamily(resolved.modelId)
+    : resolved.modelId
+      ? getExperimentalSpeechFamily(resolved.modelId)
+      : null;
+  if (experimentalFamily && !hasExperimentalArtifactSource(options.options)) {
+    throw createExperimentalArtifactMissingError(experimentalFamily.family, resolved.modelId);
+  }
+
   const resolvedBackend = resolveBuiltInBackendRequest(options.backend, options.selectionCriteria);
 
-  try {
     if (options.runtime) {
       emitProgress(options, {
         phase: 'model-load:start',
@@ -356,22 +410,24 @@ export async function loadBuiltInSpeechModel<
     }
 
     if (isFamilyBuiltInModelRequest(resolved)) {
-      model = (await runtime.loadModel<TLoadOptions, TNative>({
+      model = (await activeRuntime.loadModel<TLoadOptions, TNative>({
         family: resolved.family,
         modelId: resolved.modelId,
         backend: resolvedBackend.backend,
         classification: options.classification,
         options: options.options,
         selectionCriteria: resolvedBackend.selectionCriteria,
+        signal: options.signal,
       })) as unknown as SpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
     } else {
-      model = (await runtime.loadModel<TLoadOptions, TNative>({
+      model = (await activeRuntime.loadModel<TLoadOptions, TNative>({
         preset: resolved.preset,
         modelId: resolved.modelId,
         backend: resolvedBackend.backend,
         classification: options.classification,
         options: options.options,
         selectionCriteria: resolvedBackend.selectionCriteria,
+        signal: options.signal,
       })) as unknown as SpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
     }
 
@@ -384,6 +440,7 @@ export async function loadBuiltInSpeechModel<
       });
     }
 
+    throwIfLoadAborted(options.signal);
     emitProgress(options, {
       phase: 'session-create:start',
       modelId: model.info.modelId,
@@ -391,6 +448,7 @@ export async function loadBuiltInSpeechModel<
       message: `Creating a ready session for ${model.info.modelId}.`,
     });
     const session = await model.createSession(options.sessionOptions);
+    throwIfLoadAborted(options.signal);
     emitProgress(options, {
       phase: 'session-create:complete',
       modelId: model.info.modelId,
@@ -406,7 +464,7 @@ export async function loadBuiltInSpeechModel<
     const loadedModel = model;
 
     return {
-      runtime,
+      runtime: activeRuntime,
       model: loadedModel,
       session,
       async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
@@ -451,7 +509,7 @@ export async function loadBuiltInSpeechModel<
       },
       async dispose(): Promise<void> {
         if (ownsRuntime) {
-          await runtime.dispose();
+          await activeRuntime.dispose();
           return;
         }
         await loadedModel.dispose();
@@ -459,9 +517,17 @@ export async function loadBuiltInSpeechModel<
     };
   } catch (error) {
     if (ownsRuntime) {
-      await runtime.dispose();
+      await runtime?.dispose();
     } else if (model) {
       await model.dispose();
+    }
+    if (error instanceof PipelineAbortedError || isAssetLoadAbortedError(error)) {
+      emitLoadCancelled(
+        options,
+        options.modelId ?? model?.info.modelId,
+        model?.backend.id,
+      );
+      throw error instanceof PipelineAbortedError ? error : new PipelineAbortedError('load');
     }
     throw error;
   }

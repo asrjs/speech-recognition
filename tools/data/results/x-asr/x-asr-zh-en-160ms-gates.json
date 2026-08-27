@@ -1,0 +1,16 @@
+{
+  "family": "x-asr-zh-en-chunk-160ms",
+  "status": "experimental",
+  "preset": false,
+  "streaming": "true-stateful-zipformer2",
+  "gates": {
+    "official_onnx": "pass",
+    "sherpa_onnx_cpu": "pass",
+    "library_wasm": "pass",
+    "node_webgpu": "WEBGPU_NO_ADAPTER",
+    "chrome_webgpu": "pass NVIDIA Blackwell"
+  },
+  "oracle_text": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "library_text": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "frontend": "kaldi-native-fbank contract: snip_edges=false, high_freq=-400, dither=0, povey, log floor float32 epsilon"
+}

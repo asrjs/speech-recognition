@@ -1,4 +1,10 @@
 import type { TextTokenizer } from '../../tokenizers/index.js';
+import {
+  fetchTextHonoringAbort,
+  rethrowIfAssetAborted,
+  throwIfAssetAborted,
+  type AssetAbortSignalLike,
+} from '../../io/abort.js';
 
 /** Decoder for the token.txt format emitted by icefall/sherpa-onnx. */
 export class XAsrTokenizer implements TextTokenizer {
@@ -18,10 +24,25 @@ export class XAsrTokenizer implements TextTokenizer {
     return new XAsrTokenizer(tokens);
   }
 
-  static async fromUrl(url: string): Promise<XAsrTokenizer> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch X-ASR tokens at "${url}".`);
-    return XAsrTokenizer.fromText(await response.text());
+  static async fromUrl(url: string, signal?: AssetAbortSignalLike | null): Promise<XAsrTokenizer> {
+    throwIfAssetAborted(signal);
+    if (/^file:/i.test(url)) {
+      try {
+        const { readFile } = await import('node:fs/promises');
+        const { fileURLToPath } = await import('node:url');
+        const text = await readFile(fileURLToPath(url), 'utf8');
+        throwIfAssetAborted(signal);
+        return XAsrTokenizer.fromText(text);
+      } catch (error) {
+        rethrowIfAssetAborted(error);
+        throw error;
+      }
+    }
+    return XAsrTokenizer.fromText(
+      await fetchTextHonoringAbort(url, signal, {
+        errorMessage: `Failed to fetch X-ASR tokens at "${url}".`,
+      }),
+    );
   }
 
   decode(ids: readonly number[]): string {

@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "reference_kind": "sensevoice-small-funasr-native",
+  "generated_at": "2026-08-27T00:02:56.546844+00:00",
+  "local_only": true,
+  "source": {
+    "model_dir": "N:\\models\\sensevoice\\SenseVoiceSmall",
+    "model_files": [
+      {
+        "path": "am.mvn",
+        "size_bytes": 11203
+      },
+      {
+        "path": "chn_jpn_yue_eng_ko_spectok.bpe.model",
+        "size_bytes": 377341
+      },
+      {
+        "path": "config.yaml",
+        "size_bytes": 1855
+      },
+      {
+        "path": "configuration.json",
+        "size_bytes": 396
+      },
+      {
+        "path": "demo.py",
+        "size_bytes": 612
+      },
+      {
+        "path": "model.pt",
+        "size_bytes": 936291369
+      },
+      {
+        "path": "model.py",
+        "size_bytes": 34191
+      },
+      {
+        "path": "README.md",
+        "size_bytes": 11952
+      },
+      {
+        "path": "requirements.txt",
+        "size_bytes": 96
+      }
+    ]
+  },
+  "runtime": {
+    "python": "3.11.4",
+    "funasr": "1.4.4",
+    "device": "cpu"
+  },
+  "inference": {
+    "language": "en",
+    "use_itn": false,
+    "batch_size": 1,
+    "batches": [
+      {
+        "batch_index": 0,
+        "batch_size": 1,
+        "inference_seconds": 0.586015
+      }
+    ]
+  },
+  "samples": [
+    {
+      "sample_id": "jfk-short",
+      "audio_path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+      "audio_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "language_requested": "en",
+      "text": "<|en|><|EMO_UNKNOWN|><|Speech|><|woitn|>and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+      "native_result": {
+        "key": "jfk-short",
+        "text": "<|en|><|EMO_UNKNOWN|><|Speech|><|woitn|>and so my fellow americans ask not what your country can do for you ask what you can do for your country"
+      },
+      "batch_size": 1,
+      "batch_inference_seconds": 0.586015,
+      "batch_index": 0
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "preset": "qwen3-asr-0.6b-official-webgpu",
+  "timestamp": "2026-08-27T01:48:28.968Z",
+  "status": "pass",
+  "transcript": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "language": "English",
+  "expected": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "baselineMatch": true,
+  "webgpu": true,
+  "backend": "webgpu",
+  "experimental": true,
+  "metrics": {
+    "loadMs": 34108.38000000268,
+    "transcribeMs": 9765.269999999553,
+    "totalMs": 9764.92,
+    "preprocessMs": 129.28,
+    "encodeMs": 2047.205,
+    "decodeMs": 7578.44,
+    "decoderInitMs": 2130.4,
+    "decoderStepMs": 5448.04,
+    "decoderStepAvgMs": 181.601,
+    "decoderStepCount": 30,
+    "decoderKvCacheLocation": "cpu",
+    "wallMs": 9764.92,
+    "audioDurationSec": 11,
+    "rtf": 0.88772,
+    "rtfx": 1.1264813229396657,
+    "encoderFrameCount": 1100,
+    "emittedTokenCount": 30,
+    "decodeIterations": 30
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 34108ms"
+  ]
+}

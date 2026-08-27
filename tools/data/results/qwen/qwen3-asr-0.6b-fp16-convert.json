@@ -1,0 +1,46 @@
+{
+  "family": "qwen3-asr-0.6b",
+  "status": "fp16-oracle-match",
+  "onnx_dir": "N:\\models\\onnx\\qwen3-asr-0.6b-official",
+  "attempts": [
+    {
+      "name": "decoder_prefill_fp16",
+      "ok": true,
+      "onnx_path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-prefill-fp16.onnx",
+      "size_bytes": 805628,
+      "sha256": "0f07ceb6a72bb44f713588ff3e309b67a76f9a9442c8e6b2b5bb39f37e419f0a",
+      "external_data": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-fp16.onnx.data",
+      "external_size_bytes": 1503250432,
+      "external_sha256": "35fa91e26c699375760fb64f80c9c4808dcc491c027b7a635e713f4c6d9f59ff",
+      "source": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-prefill.onnx",
+      "source_size_bytes": 821791
+    },
+    {
+      "name": "decoder_step_fp16_shared",
+      "ok": true,
+      "onnx_path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-step-fp16.onnx",
+      "size_bytes": 814485,
+      "sha256": "57c4ad2e0fb1a9071688563813afb6851c7571fb7243e670c1925c52effbe7d9",
+      "external_data": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-fp16.onnx.data",
+      "external_size_bytes": 1503250432,
+      "external_sha256": "35fa91e26c699375760fb64f80c9c4808dcc491c027b7a635e713f4c6d9f59ff",
+      "shared_data_name": "decoder-fp16.onnx.data",
+      "shared_weights": true,
+      "tmp_sha256": "35fa91e26c699375760fb64f80c9c4808dcc491c027b7a635e713f4c6d9f59ff"
+    },
+    {
+      "name": "native_ort_fp16_greedy_jfk",
+      "ok": true,
+      "token_count": 29,
+      "raw": "language English<asr_text>And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "language": "English",
+      "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "matches_oracle": true,
+      "encoder_tokens": 143,
+      "prompt_len": 158,
+      "first_token": 11528,
+      "io_kept_float32": false
+    }
+  ],
+  "failureClass": null
+}

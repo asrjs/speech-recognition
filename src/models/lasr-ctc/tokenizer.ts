@@ -1,4 +1,10 @@
 import type { TextTokenizer } from '../../tokenizers/index.js';
+import {
+  fetchTextHonoringAbort,
+  rethrowIfAssetAborted,
+  throwIfAssetAborted,
+  type AssetAbortSignalLike,
+} from '../../io/abort.js';
 
 function parseTokensText(text: string): string[] {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
@@ -20,6 +26,29 @@ function parseTokensText(text: string): string[] {
   }
 
   return idToToken;
+}
+
+export async function readTokenizerSourceText(
+  url: string,
+  signal?: AssetAbortSignalLike | null,
+  errorMessage?: string,
+): Promise<string> {
+  throwIfAssetAborted(signal);
+  if (/^file:/i.test(url)) {
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const { fileURLToPath } = await import('node:url');
+      const text = await readFile(fileURLToPath(url), 'utf8');
+      throwIfAssetAborted(signal);
+      return text;
+    } catch (error) {
+      rethrowIfAssetAborted(error);
+      throw error;
+    }
+  }
+  return fetchTextHonoringAbort(url, signal, {
+    errorMessage: errorMessage ?? `Failed to fetch tokenizer vocabulary at "${url}".`,
+  });
 }
 
 function normalizeSentencePieceToken(token: string): string {
@@ -60,14 +89,11 @@ export class MedAsrTextTokenizer implements TextTokenizer {
     return new MedAsrTextTokenizer(parseTokensText(text));
   }
 
-  static async fromUrl(tokensUrl: string): Promise<MedAsrTextTokenizer> {
-    const response = await fetch(tokensUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch tokenizer vocabulary at "${tokensUrl}".`);
-    }
-
-    const text = await response.text();
-    return MedAsrTextTokenizer.fromText(text);
+  static async fromUrl(
+    tokensUrl: string,
+    signal?: AssetAbortSignalLike | null,
+  ): Promise<MedAsrTextTokenizer> {
+    return MedAsrTextTokenizer.fromText(await readTokenizerSourceText(tokensUrl, signal));
   }
 
   isSpecialToken(token: string): boolean {

@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "hf_repo": "FunAudioLLM/SenseVoiceSmall",
+  "hf_revision": "3847d57b6bdf2dd8875cb1508d2af43d80a16bf7",
+  "git_clone": "N:\\github\\FunAudioLLM\\SenseVoice",
+  "git_revision": "6991744856587fa44379e8b5dcc432debffeb1be",
+  "license": "FunASR Model Open Source License (model-license)",
+  "model_dir": "N:\\models\\sensevoice\\SenseVoiceSmall",
+  "files": [
+    {
+      "path": "am.mvn",
+      "size_bytes": 11203,
+      "sha256": "29b3c740a2c0cfc6b308126d31d7f265fa2be74f3bb095cd2f143ea970896ae5"
+    },
+    {
+      "path": "chn_jpn_yue_eng_ko_spectok.bpe.model",
+      "size_bytes": 377341,
+      "sha256": "aa87f86064c3730d799ddf7af3c04659151102cba548bce325cf06ba4da4e6a8"
+    },
+    {
+      "path": "config.yaml",
+      "size_bytes": 1855,
+      "sha256": "f71e239ba36705564b5bf2d2ffd07eece07b8e3f2bbf6d2c99d8df856339ac19"
+    },
+    {
+      "path": "configuration.json",
+      "size_bytes": 396,
+      "sha256": "02810a7f8e9e8aee10370a265f7e799728ce25b4c00cdbf4602b303ee395a38e"
+    },
+    {
+      "path": "demo.py",
+      "size_bytes": 612,
+      "sha256": "91ed1e4d492fc2884017afc419e19e29a43bd01677c4539881d91dd856f8816d"
+    },
+    {
+      "path": "model.pt",
+      "size_bytes": 936291369,
+      "sha256": "833ca2dcfdf8ec91bd4f31cfac36d6124e0c459074d5e909aec9cabe6204a3ea"
+    },
+    {
+      "path": "model.py",
+      "size_bytes": 34191,
+      "sha256": "f7116fd1a33fe12daefb1f03842d99d9b563fd57242423ffbe1e1039b4b67662"
+    },
+    {
+      "path": "README.md",
+      "size_bytes": 11952,
+      "sha256": "6add90487ea3d685b6604ad0932b565fc5cf7e9daaf8aebc674de49da4560958"
+    },
+    {
+      "path": "requirements.txt",
+      "size_bytes": 96,
+      "sha256": "1965bedc0dd2a101bceab6568362cc08e343d02723dde44e8d66e22eeb46dc00"
+    }
+  ]
+}

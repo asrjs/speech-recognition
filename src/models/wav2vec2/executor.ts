@@ -20,7 +20,9 @@ import {
 } from '../../ctc/index.js';
 import {
   createOrtSession,
+  disposeOrtOutputs,
   initOrt,
+  releaseOrtSession,
   resolveWav2Vec2Artifacts,
   type OrtModuleLike,
   type OrtSessionLike,
@@ -98,12 +100,13 @@ function createAssetProgressEvent(
     readonly loaded: number;
     readonly total?: number;
     readonly done?: boolean;
+    readonly aborted?: boolean;
   },
 ): RuntimeProgressEvent {
   const percent =
     event.total && event.total > 0
       ? Math.min(100, Math.round((event.loaded / event.total) * 100))
-      : event.done
+      : event.done && !event.aborted
         ? 100
         : undefined;
 
@@ -116,8 +119,9 @@ function createAssetProgressEvent(
     percent,
     loadedMiB: roundMiB(event.loaded),
     totalMiB: roundMiB(event.total),
-    isComplete: event.done,
-    message: event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
+    isComplete: Boolean(event.done) && !event.aborted,
+    aborted: event.aborted,
+    message: event.aborted ? `Cancelled ${file}.` : event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
   };
 }
 
@@ -362,8 +366,11 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
   private readonly loadStatePromise?: Promise<LoadedExecutorState>;
   private readonly assetProvider?: AssetProvider;
   private readonly runtimeHooks?: SpeechRuntimeHooks;
+  private readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   private readonly assetHandles: ResolvedAssetHandle[] = [];
   private sharedMonoBuffer?: Float32Array;
+  private disposed = false;
+  private disposePromise?: Promise<void>;
 
   constructor(
     private readonly modelId: string,
@@ -376,6 +383,7 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     this.sourceOptions = loadOptions?.source;
     this.assetProvider = dependencies.assetProvider;
     this.runtimeHooks = dependencies.runtimeHooks;
+    this.signal = dependencies.signal;
 
     if (this.sourceOptions) {
       this.loadStatePromise = this.initialize();
@@ -484,6 +492,7 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     const ort = await initOrt(this.backendId, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
+      signal: this.signal,
     });
 
     const session = await createOrtSession(ort, artifacts.modelUrl, {
@@ -491,9 +500,14 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
       enableProfiling: resolved.enableProfiling,
       externalDataUrl: artifacts.modelDataUrl,
       externalDataPath: artifacts.modelDataFilename,
+      signal: this.signal,
     });
+    if (this.disposed) {
+      releaseOrtSession(session);
+      throw new Error(`Wav2Vec2 executor was disposed during load for "${this.modelId}".`);
+    }
 
-    const tokenizer = await Wav2Vec2CharTokenizer.fromUrl(artifacts.tokenizerUrl);
+    const tokenizer = await Wav2Vec2CharTokenizer.fromUrl(artifacts.tokenizerUrl, this.signal);
 
     return {
       ort,
@@ -505,6 +519,9 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
   }
 
   private async getLoadedState(): Promise<LoadedExecutorState> {
+    if (this.disposed) {
+      throw new Error(`Wav2Vec2 executor is disposed for "${this.modelId}".`);
+    }
     if (!this.loadStatePromise) {
       throw new Error(`No artifact source is configured for "${this.modelId}".`);
     }
@@ -547,6 +564,7 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     }
     const encodeMs = nowMs() - encodeStart;
 
+    try {
     // Extract logits
     const logitsTensor = findLogitsTensor(outputs);
     const logits = normalizeLogitsData(logitsTensor);
@@ -574,6 +592,9 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
       warnings: warnings.length > 0 ? warnings : undefined,
       encodeMs: roundMetric(encodeMs),
     };
+    } finally {
+      disposeOrtOutputs(outputs);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -643,6 +664,7 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     });
 
     // 4. Extract logits
+    try {
     const logitsTensor = findLogitsTensor(outputs);
     const logits = normalizeLogitsData(logitsTensor);
     const dims = [...logitsTensor.dims];
@@ -776,15 +798,32 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
     });
 
     return nativeTranscript;
+    } finally {
+      disposeOrtOutputs(outputs);
+    }
   }
 
   // -------------------------------------------------------------------------
   // Cleanup
   // -------------------------------------------------------------------------
 
-  dispose(): void {
-    for (const handle of this.assetHandles) {
-      handle.dispose();
+  async dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    this.disposed = true;
+    this.disposePromise = this.flushDispose();
+    return this.disposePromise;
+  }
+
+  private async flushDispose(): Promise<void> {
+    if (this.loadStatePromise) {
+      try {
+        const loaded = await this.loadStatePromise;
+        releaseOrtSession(loaded.session);
+      } catch {
+        // Keep the original load error; still drop asset handles.
+      }
     }
+    const handles = this.assetHandles.splice(0);
+    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
   }
 }

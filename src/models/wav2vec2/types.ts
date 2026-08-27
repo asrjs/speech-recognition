@@ -192,6 +192,7 @@ export interface Wav2Vec2ModelDependencies {
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
   readonly executor?: Wav2Vec2Executor;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }
 
 // ---------------------------------------------------------------------------

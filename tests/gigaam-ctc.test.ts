@@ -1,3 +1,7 @@
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { GigaAmJsPreprocessor, GigaAmTokenizer, OrtGigaAmCtcExecutor } from '../src/models/gigaam-ctc/index.js';
@@ -43,14 +47,56 @@ describe('GigaAM Multilingual CTC contract', () => {
     expect(result.utteranceText).toBe('a');
   });
 
+  it('packs float16 feature feeds when the official graph declares tensor(float16)', async () => {
+    class Tensor<TData extends ArrayBufferView = ArrayBufferView> implements OrtTensorLike<TData> {
+      constructor(readonly type: string, readonly data: TData, readonly dims: readonly number[]) {}
+    }
+    const feeds: Record<string, OrtTensorLike> = {};
+    const session: OrtSessionLike = {
+      inputMetadata: { features: { type: 'tensor(float16)' } },
+      async run(input) {
+        Object.assign(feeds, input);
+        const logits = new Float32Array(99 * 71).fill(-10);
+        for (let frame = 0; frame < 99; frame += 1) logits[frame * 71 + 70] = 10;
+        logits[2] = 10;
+        logits[70] = -10;
+        return { log_probs: new Tensor('float32', logits, [1, 99, 71]) };
+      },
+    };
+    const ort: OrtModuleLike = {
+      env: { wasm: {} },
+      Tensor,
+      InferenceSession: { create: async () => session },
+    };
+    const executor = new OrtGigaAmCtcExecutor('gigaam-fp16-features', 'wasm', {
+      ecosystem: 'gigaam', architecture: 'gigaam-ctc', processorArchitecture: 'gigaam-fbank',
+      encoderArchitecture: 'gigaam-conformer', decoderArchitecture: 'ctc', sampleRate: 16000,
+      rawStride: 4, nMels: 64, featureHopSeconds: 0.01, vocabularySize: 71,
+      languages: ['ru'], tokenizer: { kind: 'sentencepiece', blankTokenId: 70 },
+      nFft: 320, winLength: 320, hopLength: 160, featureLayout: 'mel-major',
+    }, undefined);
+    (executor as unknown as { loadStatePromise: Promise<unknown> }).loadStatePromise = Promise.resolve({
+      ort, session, tokenizer: GigaAmTokenizer.fromText("▁ 0\na 2\n<blk> 70\n"), warnings: [],
+    });
+    await executor.transcribe({
+      sampleRate: 16000, numberOfChannels: 1, numberOfFrames: 16000, durationSeconds: 1,
+      channels: [new Float32Array(16000)],
+    });
+    expect(feeds.features?.type).toBe('float16');
+    expect(feeds.features?.data).toBeInstanceOf(Uint16Array);
+  });
+
   it('decodes FP16 logits before CTC argmax', async () => {
     class Tensor<TData extends ArrayBufferView = ArrayBufferView> implements OrtTensorLike<TData> {
       constructor(readonly type: string, readonly data: TData, readonly dims: readonly number[]) {}
     }
     const session: OrtSessionLike = {
       async run() {
-        const logits = new Uint16Array(99 * 71).fill(0xbc00); // -1
+        const logits = new Uint16Array(99 * 71).fill(0x5140); // 70 as fp16 is not this; use -1 then set blank
+        logits.fill(0xbc00); // -1
+        for (let frame = 0; frame < 99; frame += 1) logits[frame * 71 + 70] = 0x4900; // blank
         logits[2] = 0x4900; // 10
+        logits[70] = 0xbc00;
         return { log_probs: new Tensor('float16', logits, [1, 99, 71]) };
       },
     };
@@ -78,11 +124,25 @@ describe('GigaAM Multilingual CTC contract', () => {
     expect(result.features.length).toBe(64 * 99);
   });
 
+  it('loads a local file:// vocabulary', async () => {
+    const filePath = path.join(os.tmpdir(), 'gigaam-vocab-file-url.txt');
+    fs.writeFileSync(filePath, "  0\na 1\n<blk> 2\n");
+    const tokenizer = await GigaAmTokenizer.fromUrl(pathToFileURL(filePath).href);
+    expect(tokenizer.blankId).toBe(2);
+    expect(tokenizer.decode([1, 0, 1])).toBe('a a');
+  });
+
   it('decodes the character vocabulary and final CTC blank', () => {
     const tokenizer = GigaAmTokenizer.fromText("▁ 0\na 2\n' 1\n<blk> 70\n");
 
     expect(tokenizer.blankId).toBe(70);
-    expect(tokenizer.decode([0, 2, 1, 70])).toBe("a'");
+    expect(tokenizer.decode([0, 2, 1, 70])).toBe(" a'");
+  });
+
+  it('treats official character vocab blank as len(vocab)', () => {
+    const tokenizer = GigaAmTokenizer.fromVocabulary([' ', 'a', 'b']);
+    expect(tokenizer.blankId).toBe(3);
+    expect(tokenizer.decode([1, 0, 2, 3])).toBe('a b');
   });
 
   it('packs mixed-length audio into one padded CTC graph call', async () => {
@@ -94,8 +154,14 @@ describe('GigaAM Multilingual CTC contract', () => {
       async run(input) {
         feeds = input as Record<string, OrtTensorLike>;
         const logits = new Float32Array(2 * 25 * 71).fill(-10);
-        logits[2] = 10;
-        logits[25 * 71 + 1] = 10;
+        for (let frame = 0; frame < 25; frame += 1) {
+          logits[frame * 71 + 70] = 10;
+          logits[25 * 71 + frame * 71 + 70] = 10;
+        }
+        logits[2] = 20;
+        logits[70] = -10;
+        logits[25 * 71 + 1] = 20;
+        logits[25 * 71 + 70] = -10;
         return { log_probs: new Tensor('float32', logits, [2, 25, 71]) };
       },
     };

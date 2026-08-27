@@ -285,6 +285,7 @@ export interface WhisperSeq2SeqModelDependencies {
   readonly tokenizer?: TextTokenizer;
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }
 
 export interface WhisperExecutor {

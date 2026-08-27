@@ -104,7 +104,10 @@ export interface BrowserRealtimeStarter {
   readonly vadBuffer: VoiceActivityProbabilityBuffer;
   readonly controller: RealtimeTranscriptionController | null;
   subscribe(listener: (event: StreamingSpeechDetectorEvent) => void): () => void;
-  start(options?: { readonly sampleRate?: number }): Promise<void>;
+  start(options?: {
+    readonly sampleRate?: number;
+    readonly signal?: { readonly aborted: boolean } | null;
+  }): Promise<void>;
   processChunk(
     chunk: Float32Array,
     meta?: { readonly startFrame?: number; readonly endFrame?: number },
@@ -419,6 +422,7 @@ export function createBrowserRealtimeStarter(
         sampleRate: resolvedConfig.sampleRate ?? STREAMING_PROCESSING_SAMPLE_RATE,
         bufferDurationSeconds: options.bufferDurationSeconds,
         transcribe: options.transcribe,
+        latency: true,
         ...options.controllerOptions,
       })
     : null;
@@ -435,8 +439,14 @@ export function createBrowserRealtimeStarter(
     subscribe(listener: (event: StreamingSpeechDetectorEvent) => void): () => void {
       return detector.subscribe(listener);
     },
-    async start({ sampleRate }: { readonly sampleRate?: number } = {}): Promise<void> {
-      await detector.start({ sampleRate });
+    async start({
+      sampleRate,
+      signal,
+    }: {
+      readonly sampleRate?: number;
+      readonly signal?: { readonly aborted: boolean } | null;
+    } = {}): Promise<void> {
+      await detector.start({ sampleRate, signal });
       if (controller) {
         controller.reset();
       }
@@ -449,6 +459,9 @@ export function createBrowserRealtimeStarter(
       meta: { readonly startFrame?: number; readonly endFrame?: number } = {},
     ): void {
       detector.processChunk(chunk, meta);
+      if (typeof meta.endFrame === 'number') {
+        controller?.noteIngest(meta.endFrame);
+      }
     },
     flush(reason = 'manual') {
       return detector.flush(reason);

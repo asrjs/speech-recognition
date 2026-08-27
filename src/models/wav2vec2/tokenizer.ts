@@ -1,5 +1,10 @@
 /** Character-level CTC tokenizer for Wav2Vec2 models. */
 
+import {
+  fetchTextHonoringAbort,
+  type AssetAbortSignalLike,
+} from '../../io/abort.js';
+
 const WORD_SEPARATOR_TOKEN = '|';
 
 export class Wav2Vec2CharTokenizer {
@@ -115,13 +120,14 @@ export class Wav2Vec2CharTokenizer {
   /**
    * Load tokenizer from a vocab.json URL (HF format: { token: id, ... }).
    */
-  static async fromUrl(url: string): Promise<Wav2Vec2CharTokenizer> {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Wav2Vec2 vocabulary at "${url}" (${response.status}).`);
-    }
-
-    const vocab = (await response.json()) as Record<string, number>;
+  static async fromUrl(
+    url: string,
+    signal?: AssetAbortSignalLike | null,
+  ): Promise<Wav2Vec2CharTokenizer> {
+    const text = await fetchTextHonoringAbort(url, signal, {
+      errorMessage: `Failed to fetch Wav2Vec2 vocabulary at "${url}".`,
+    });
+    const vocab = JSON.parse(text) as Record<string, number>;
     return new Wav2Vec2CharTokenizer(vocab);
   }
 }

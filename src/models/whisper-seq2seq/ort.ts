@@ -8,6 +8,11 @@ import type {
   WhisperSplitGraphArtifactSource,
 } from './types.js';
 import {
+  honorAbortAfterCreate,
+  withNativeAbortSignalOption,
+  withOrtCreateAbort,
+} from '../../io/abort.js';
+import {
   importNodeModule,
   isNodeLikeRuntime,
   resolveNodePackageSubpathUrl,
@@ -52,6 +57,7 @@ export interface OrtSessionLike {
     fetchesOrOptions?: unknown,
     options?: Record<string, unknown>,
   ): Promise<Record<string, OrtTensorLike>>;
+  release?(): void | Promise<void>;
 }
 
 export interface OrtTensorConstructor {
@@ -376,6 +382,7 @@ export async function initWhisperOrt(
     readonly wasmPaths?: string;
     readonly cpuThreads?: number;
     readonly enableProfiling?: boolean;
+    readonly signal?: { readonly aborted: boolean } | null;
   } = {},
 ): Promise<OrtModuleLike> {
   const imported = (await (
@@ -414,7 +421,7 @@ export async function initWhisperOrt(
     ort.env.webgpu.profiling = { mode: 'default' };
   }
 
-  return ort;
+  return withOrtCreateAbort(ort, options.signal);
 }
 
 export async function createWhisperOrtSession(
@@ -433,6 +440,7 @@ export async function createWhisperOrtSession(
     readonly enableGraphCapture?: boolean;
     /** DIAGNOSTIC (B2-B): Override symbolic dimensions at session creation. */
     readonly freeDimensionOverrides?: Record<string, number>;
+    readonly signal?: { readonly aborted: boolean } | null;
   },
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
@@ -507,5 +515,15 @@ export async function createWhisperOrtSession(
     }));
   }
 
-  return ort.InferenceSession.create(modelUrl, sessionOptions);
+  const createOptions = withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
+  return honorAbortAfterCreate(
+    () => ort.InferenceSession.create(modelUrl, createOptions),
+    options.signal,
+    (session) => releaseOrtSession(session),
+  );
+}
+
+/** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
+export function releaseOrtSession(session: OrtSessionLike | undefined): void {
+  void session?.release?.();
 }

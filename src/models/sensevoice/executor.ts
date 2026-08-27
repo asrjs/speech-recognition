@@ -7,6 +7,7 @@ import {
   estimateSecondsPerOutputFrame,
 } from '../../ctc/index.js';
 import { nowMs, roundMetric, roundTimestampSeconds } from '../../runtime/timing.js';
+import { createExperimentalArtifactMissingError } from '../../runtime/experimental-families.js';
 import type {
   AssetProvider,
   AudioBufferLike,
@@ -15,8 +16,8 @@ import type {
   SpeechRuntimeHooks,
   TranscriptWarning,
 } from '../../types/index.js';
-import { createOrtSession, initOrt, type OrtModuleLike, type OrtSessionLike, type OrtTensorLike } from '../lasr-ctc/ort.js';
-import { SenseVoiceJsPreprocessor } from './frontend.js';
+import { createOrtSession, disposeOrtOutputs, initOrt, releaseOrtSession, type OrtModuleLike, type OrtSessionLike, type OrtTensorLike } from '../lasr-ctc/ort.js';
+import { SenseVoiceJsPreprocessor, parseSenseVoiceCmvn, type SenseVoiceCmvn } from './frontend.js';
 import { createSenseVoicePrompt } from './prompt.js';
 import { SenseVoiceTokenizer } from './tokenizer.js';
 import type {
@@ -35,7 +36,11 @@ interface LoadedState {
   readonly session: OrtSessionLike;
   readonly tokenizer: SenseVoiceTokenizer;
   readonly warnings: readonly TranscriptWarning[];
+  readonly cmvn?: SenseVoiceCmvn;
+  readonly graph: SenseVoiceGraphContract;
 }
+
+type SenseVoiceGraphContract = 'official' | 'folded';
 
 function roundMiB(bytes: number | undefined): number | undefined {
   return Number.isFinite(bytes) ? roundMetric((bytes as number) / (1024 * 1024), 2) : undefined;
@@ -44,16 +49,22 @@ function roundMiB(bytes: number | undefined): number | undefined {
 function createAssetProgressEvent(
   modelId: string,
   file: string,
-  event: { readonly loaded: number; readonly total?: number; readonly done?: boolean },
+  event: {
+    readonly loaded: number;
+    readonly total?: number;
+    readonly done?: boolean;
+    readonly aborted?: boolean;
+  },
 ): RuntimeProgressEvent {
   const percent = event.total && event.total > 0
     ? Math.min(100, Math.round((event.loaded / event.total) * 100))
-    : event.done ? 100 : undefined;
+    : event.done && !event.aborted ? 100 : undefined;
   return {
     phase: 'asset:download', modelId, file, loaded: event.loaded, total: event.total,
     percent, loadedMiB: roundMiB(event.loaded), totalMiB: roundMiB(event.total),
-    isComplete: event.done,
-    message: event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
+    isComplete: Boolean(event.done) && !event.aborted,
+    aborted: event.aborted,
+    message: event.aborted ? `Cancelled ${file}.` : event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
   };
 }
 
@@ -70,6 +81,7 @@ function resolveSource(source: SenseVoiceArtifactSource): {
   readonly tokenizerUrl: string;
   readonly modelDataUrl?: string;
   readonly modelDataFilename?: string;
+  readonly cmvnUrl?: string;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
@@ -80,6 +92,7 @@ function resolveSource(source: SenseVoiceArtifactSource): {
       tokenizerUrl: source.artifacts.tokenizerUrl,
       modelDataUrl: source.artifacts.modelDataUrl,
       modelDataFilename: source.artifacts.modelDataFilename ?? source.artifacts.modelDataUrl?.split('/').pop(),
+      cmvnUrl: source.artifacts.cmvnUrl,
       wasmPaths: source.wasmPaths,
       cpuThreads: source.cpuThreads,
       enableProfiling: source.enableProfiling,
@@ -94,6 +107,7 @@ function resolveSource(source: SenseVoiceArtifactSource): {
     tokenizerUrl: hfUrl(source.repoId, revision, source.tokenizerFilename ?? 'vocab.txt'),
     modelDataUrl: hfUrl(source.repoId, revision, modelDataFilename),
     modelDataFilename,
+    cmvnUrl: source.cmvnFilename ? hfUrl(source.repoId, revision, source.cmvnFilename) : undefined,
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
@@ -102,6 +116,70 @@ function resolveSource(source: SenseVoiceArtifactSource): {
 
 function toInt64(ort: OrtModuleLike, value: number): OrtTensorLike {
   return new ort.Tensor('int64', BigInt64Array.from([BigInt(value)]), [1]);
+}
+
+function toInt32(ort: OrtModuleLike, value: number): OrtTensorLike {
+  return new ort.Tensor('int32', Int32Array.from([value]), [1]);
+}
+
+function int32Batch(ort: OrtModuleLike, values: readonly number[]): OrtTensorLike {
+  return new ort.Tensor('int32', Int32Array.from(values), [values.length]);
+}
+
+function parseOrtTensorElementType(ortType: string | undefined, fallback: string): string {
+  if (!ortType) return fallback;
+  const match = /^tensor\((.+)\)$/.exec(ortType.trim());
+  const elementType = (match?.[1] ?? ortType).trim();
+  return elementType === 'float' ? 'float32' : elementType;
+}
+
+function sessionInputNames(session: OrtSessionLike): readonly string[] {
+  const metadata = session.inputMetadata as
+    | Record<string, { readonly type?: string; readonly name?: string }>
+    | Array<{ readonly name?: string; readonly type?: string }>
+    | undefined;
+  if (!metadata) return [];
+  if (Array.isArray(metadata)) return metadata.map((entry) => entry.name).filter((name): name is string => Boolean(name));
+  return Object.keys(metadata);
+}
+
+function getInputElementType(session: OrtSessionLike, inputName: string, fallback: string): string {
+  const metadata = session.inputMetadata as
+    | Record<string, { readonly type?: string; readonly name?: string }>
+    | Array<{ readonly name?: string; readonly type?: string }>
+    | undefined;
+  if (!metadata) return fallback;
+  if (Array.isArray(metadata)) {
+    const found = metadata.find((entry) => entry.name === inputName);
+    return parseOrtTensorElementType(found?.type, fallback);
+  }
+  return parseOrtTensorElementType(metadata[inputName]?.type, fallback);
+}
+
+function detectGraphContract(session: OrtSessionLike): SenseVoiceGraphContract {
+  const names = sessionInputNames(session);
+  return names.includes('speech') ? 'official' : 'folded';
+}
+
+function intScalar(ort: OrtModuleLike, session: OrtSessionLike, name: string, value: number, fallback: 'int32' | 'int64'): OrtTensorLike {
+  const type = getInputElementType(session, name, fallback);
+  return type === 'int32' ? toInt32(ort, value) : toInt64(ort, value);
+}
+
+function intVector(ort: OrtModuleLike, session: OrtSessionLike, name: string, values: readonly number[], fallback: 'int32' | 'int64'): OrtTensorLike {
+  const type = getInputElementType(session, name, fallback);
+  return type === 'int32' ? int32Batch(ort, values) : int64Batch(ort, values);
+}
+
+async function readTextUrl(url: string): Promise<string> {
+  if (/^file:/i.test(url)) {
+    const { readFile } = await import('node:fs/promises');
+    const { fileURLToPath } = await import('node:url');
+    return readFile(fileURLToPath(url), 'utf8');
+  }
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch SenseVoice CMVN at "${url}".`);
+  return response.text();
 }
 
 function tensorFloat32(ort: OrtModuleLike, data: Float32Array, dims: readonly number[]): OrtTensorLike {
@@ -130,7 +208,7 @@ function tensorLengths(ortTensor: OrtTensorLike | undefined, count: number, fall
 function readLogits(tensor: OrtTensorLike): Float32Array {
   if (tensor.type !== 'float16') {
     return tensor.data instanceof Float32Array
-      ? tensor.data
+      ? new Float32Array(tensor.data)
       : Float32Array.from(tensor.data as unknown as ArrayLike<number>);
   }
   const source = tensor.data as Uint16Array;
@@ -193,17 +271,21 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
   private readonly config: SenseVoiceModelConfig;
   private readonly assetProvider?: AssetProvider;
   private readonly runtimeHooks?: SpeechRuntimeHooks;
+  private readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   private readonly assetHandles: ResolvedAssetHandle[] = [];
+  private disposed = false;
+  private disposePromise?: Promise<void>;
 
   constructor(
     private readonly modelId: string,
     private readonly backendId: string,
     options: SenseVoiceModelOptions | undefined,
-    dependencies: { readonly assetProvider?: AssetProvider; readonly runtimeHooks?: SpeechRuntimeHooks } = {},
+    dependencies: { readonly assetProvider?: AssetProvider; readonly runtimeHooks?: SpeechRuntimeHooks; readonly signal?: import('../../types/index.js').AbortSignalLike | null } = {},
   ) {
     this.source = options?.source;
     this.assetProvider = dependencies.assetProvider;
     this.runtimeHooks = dependencies.runtimeHooks;
+    this.signal = dependencies.signal;
     this.config = {
       ecosystem: 'funasr',
       architecture: 'sensevoice',
@@ -259,14 +341,15 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     const tokenizerUrl = await resolveFile(tokenizerFilename);
     const modelUrl = await resolveFile(modelFilename);
     const modelDataUrl = modelDataFilename ? await resolveFile(modelDataFilename, true) : undefined;
+    const cmvnUrl = source.cmvnFilename ? await resolveFile(source.cmvnFilename, true) : artifacts.cmvnUrl;
     return {
-      artifacts: { ...artifacts, modelUrl: modelUrl ?? artifacts.modelUrl, tokenizerUrl: tokenizerUrl ?? artifacts.tokenizerUrl, modelDataUrl, modelDataFilename },
+      artifacts: { ...artifacts, modelUrl: modelUrl ?? artifacts.modelUrl, tokenizerUrl: tokenizerUrl ?? artifacts.tokenizerUrl, modelDataUrl, modelDataFilename, cmvnUrl },
       warnings,
     };
   }
 
   private async initialize(): Promise<LoadedState> {
-    if (!this.source) throw new Error(`No SenseVoice artifact source is configured for "${this.modelId}".`);
+    if (!this.source) throw createExperimentalArtifactMissingError('sensevoice', this.modelId);
     const resolved = resolveSource(this.source);
     let artifacts = resolved;
     const warnings: TranscriptWarning[] = [];
@@ -278,53 +361,75 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     const ort = await initOrt(this.backendId, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
+      signal: this.signal,
     });
     const session = await createOrtSession(ort, artifacts.modelUrl, {
       backendId: this.backendId.startsWith('webgpu') ? 'webgpu' : 'wasm',
       enableProfiling: resolved.enableProfiling,
       externalDataUrl: artifacts.modelDataUrl,
       externalDataPath: artifacts.modelDataFilename,
+      signal: this.signal,
     });
-    const tokenizer = await SenseVoiceTokenizer.fromUrl(artifacts.tokenizerUrl);
-    return { ort, session, tokenizer, warnings };
+    if (this.disposed) {
+      releaseOrtSession(session);
+      throw new Error(`SenseVoice executor was disposed during load for "${this.modelId}".`);
+    }
+    const tokenizer = await SenseVoiceTokenizer.fromUrl(artifacts.tokenizerUrl, this.signal);
+    const graph = detectGraphContract(session);
+    let cmvn: SenseVoiceCmvn | undefined;
+    if (artifacts.cmvnUrl) {
+      cmvn = parseSenseVoiceCmvn(await readTextUrl(artifacts.cmvnUrl));
+    } else if (graph === 'official') {
+      throw new Error(
+        'Official SenseVoice ONNX expects LFR+CMVN features. Provide artifacts.cmvnUrl (am.mvn).',
+      );
+    }
+    return { ort, session, tokenizer, warnings, cmvn, graph };
   }
 
   async ready(): Promise<void> {
-    if (!this.loadStatePromise) throw new Error(`No SenseVoice artifact source is configured for "${this.modelId}".`);
+    if (!this.loadStatePromise) throw createExperimentalArtifactMissingError('sensevoice', this.modelId);
     await this.loadStatePromise;
   }
 
   async transcribe(audioInput: AudioBufferLike, options: SenseVoiceTranscriptionOptions = {}): Promise<SenseVoiceNativeTranscript> {
+    if (this.disposed) throw new Error(`SenseVoice executor is disposed for "${this.modelId}".`);
     const state = await this.loadStatePromise;
-    if (!state) throw new Error(`No SenseVoice artifact source is configured for "${this.modelId}".`);
+    if (!state) throw createExperimentalArtifactMissingError('sensevoice', this.modelId);
     const audio = normalizePcmInput(audioInput).toMono();
     const started = nowMs();
     const prompt = createSenseVoicePrompt({ language: options.language, useItn: options.useItn });
     const featuresStart = nowMs();
-    const featureBatch = this.preprocessor.process(audio.channels[0] ?? new Float32Array(0));
+    const featureBatch = state.graph === 'official'
+      ? this.preprocessor.processOfficial(audio.channels[0] ?? new Float32Array(0), state.cmvn!)
+      : this.preprocessor.process(audio.channels[0] ?? new Float32Array(0));
     const preprocessMs = nowMs() - featuresStart;
     if (featureBatch.frameCount <= 0) {
       return { utteranceText: '', isFinal: true, language: prompt.language, warnings: [...state.warnings] };
     }
-    const features = tensorFloat32(state.ort, featureBatch.features, [1, featureBatch.frameCount, 80]);
-    const lengths = toInt64(state.ort, featureBatch.validFrameCount);
-    const language = toInt64(state.ort, prompt.languageId);
-    const textnorm = toInt64(state.ort, prompt.textnormId);
+    const featureWidth = state.graph === 'official' ? featureBatch.featureSize : 80;
+    const speechName = state.graph === 'official' ? 'speech' : 'features';
+    const lengthName = state.graph === 'official' ? 'speech_lengths' : 'features_lens';
+    const features = tensorFloat32(state.ort, featureBatch.features, [1, featureBatch.frameCount, featureWidth]);
+    const lengths = intScalar(state.ort, state.session, lengthName, featureBatch.validFrameCount, state.graph === 'official' ? 'int32' : 'int64');
+    const language = intScalar(state.ort, state.session, 'language', prompt.languageId, state.graph === 'official' ? 'int32' : 'int64');
+    const textnorm = intScalar(state.ort, state.session, 'textnorm', prompt.textnormId, state.graph === 'official' ? 'int32' : 'int64');
     const encodeStart = nowMs();
     let outputs: Record<string, OrtTensorLike>;
     try {
-      outputs = await state.session.run({ features, features_lens: lengths, language, textnorm });
+      outputs = await state.session.run({ [speechName]: features, [lengthName]: lengths, language, textnorm });
     } finally {
       features.dispose?.(); lengths.dispose?.(); language.dispose?.(); textnorm.dispose?.();
     }
     const encodeMs = nowMs() - encodeStart;
-    const logitsTensor = findOutput(outputs, ['logprobs', 'logits']);
+    try {
+    const logitsTensor = findOutput(outputs, ['ctc_logits', 'logprobs', 'logits']);
     if (!logitsTensor) throw new Error('SenseVoice graph returned no logprobs output.');
     const dims = [...logitsTensor.dims];
     if (dims.length !== 3 || dims[0] !== 1) throw new Error(`Unexpected SenseVoice logits shape: [${dims.join(', ')}].`);
     const outFrames = dims[1] ?? 0;
     const vocabSize = dims[2] ?? 0;
-    const frameLength = Math.min(outFrames, tensorLength(findOutput(outputs, ['logprobs_lens', 'output_lens']), outFrames));
+    const frameLength = Math.min(outFrames, tensorLength(findOutput(outputs, ['encoder_out_lens', 'logprobs_lens', 'output_lens']), outFrames));
     const logits = readLogits(logitsTensor).subarray(0, frameLength * vocabSize);
     const decodeStart = nowMs();
     const { frameIds, selectedLogProbs } = argmaxAndSelectedLogProbs(logits, frameLength, vocabSize);
@@ -373,6 +478,9 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
       },
       warnings: [...state.warnings],
     };
+    } finally {
+      disposeOrtOutputs(outputs);
+    }
   }
 
   /**
@@ -384,44 +492,57 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     audioInputs: readonly AudioBufferLike[],
     options: SenseVoiceTranscriptionOptions = {},
   ): Promise<readonly SenseVoiceNativeTranscript[]> {
+    if (this.disposed) throw new Error(`SenseVoice executor is disposed for "${this.modelId}".`);
     const state = await this.loadStatePromise;
-    if (!state) throw new Error(`No SenseVoice artifact source is configured for "${this.modelId}".`);
+    if (!state) throw createExperimentalArtifactMissingError('sensevoice', this.modelId);
     if (audioInputs.length === 0) return [];
     const audios = audioInputs.map((input) => normalizePcmInput(input).toMono());
-    const prepared = audios.map((audio) => this.preprocessor.process(audio.channels[0] ?? new Float32Array(0)));
+    const prepared = audios.map((audio) => (
+      state.graph === 'official'
+        ? this.preprocessor.processOfficial(audio.channels[0] ?? new Float32Array(0), state.cmvn!)
+        : this.preprocessor.process(audio.channels[0] ?? new Float32Array(0))
+    ));
+    const featureWidth = state.graph === 'official' ? (prepared[0]?.featureSize ?? 560) : 80;
     const maxFrames = Math.max(...prepared.map((item) => item.frameCount));
-    const batchFeatures = new Float32Array(audioInputs.length * maxFrames * 80);
+    const batchFeatures = new Float32Array(audioInputs.length * maxFrames * featureWidth);
     const lengths = prepared.map((item) => item.frameCount);
     prepared.forEach((item, batchIndex) => {
-      const targetOffset = batchIndex * maxFrames * 80;
+      const targetOffset = batchIndex * maxFrames * featureWidth;
       for (let frame = 0; frame < maxFrames; frame += 1) {
-        const sourceFrame = Math.min(frame, Math.max(0, item.frameCount - 1));
-        const sourceOffset = sourceFrame * 80;
-        const destinationOffset = targetOffset + frame * 80;
-        for (let mel = 0; mel < 80; mel += 1) {
-          batchFeatures[destinationOffset + mel] = item.features[sourceOffset + mel] ?? 0;
+        const padWithLast = state.graph === 'folded';
+        const sourceFrame = padWithLast
+          ? Math.min(frame, Math.max(0, item.frameCount - 1))
+          : frame;
+        if (sourceFrame >= item.frameCount) continue;
+        const sourceOffset = sourceFrame * featureWidth;
+        const destinationOffset = targetOffset + frame * featureWidth;
+        for (let dim = 0; dim < featureWidth; dim += 1) {
+          batchFeatures[destinationOffset + dim] = item.features[sourceOffset + dim] ?? 0;
         }
       }
     });
     const prompt = createSenseVoicePrompt({ language: options.language, useItn: options.useItn });
-    const features = tensorFloat32(state.ort, batchFeatures, [audioInputs.length, maxFrames, 80]);
-    const featureLengths = int64Batch(state.ort, lengths);
-    const languages = int64Batch(state.ort, audioInputs.map(() => prompt.languageId));
-    const textnorms = int64Batch(state.ort, audioInputs.map(() => prompt.textnormId));
+    const speechName = state.graph === 'official' ? 'speech' : 'features';
+    const lengthName = state.graph === 'official' ? 'speech_lengths' : 'features_lens';
+    const features = tensorFloat32(state.ort, batchFeatures, [audioInputs.length, maxFrames, featureWidth]);
+    const featureLengths = intVector(state.ort, state.session, lengthName, lengths, state.graph === 'official' ? 'int32' : 'int64');
+    const languages = intVector(state.ort, state.session, 'language', audioInputs.map(() => prompt.languageId), state.graph === 'official' ? 'int32' : 'int64');
+    const textnorms = intVector(state.ort, state.session, 'textnorm', audioInputs.map(() => prompt.textnormId), state.graph === 'official' ? 'int32' : 'int64');
     let outputs: Record<string, OrtTensorLike>;
     try {
-      outputs = await state.session.run({ features, features_lens: featureLengths, language: languages, textnorm: textnorms });
+      outputs = await state.session.run({ [speechName]: features, [lengthName]: featureLengths, language: languages, textnorm: textnorms });
     } finally {
       features.dispose?.(); featureLengths.dispose?.(); languages.dispose?.(); textnorms.dispose?.();
     }
-    const logitsTensor = findOutput(outputs, ['logprobs', 'logits']);
+    try {
+    const logitsTensor = findOutput(outputs, ['ctc_logits', 'logprobs', 'logits']);
     if (!logitsTensor) throw new Error('SenseVoice graph returned no logprobs output.');
     const dims = [...logitsTensor.dims];
     if (dims.length !== 3 || dims[0] !== audioInputs.length) throw new Error(`Unexpected SenseVoice batch logits shape: [${dims.join(', ')}].`);
     const batchSize = dims[0] ?? 0;
     const outFrames = dims[1] ?? 0;
     const vocabSize = dims[2] ?? 0;
-    const lengthsTensor = findOutput(outputs, ['logprobs_lens', 'output_lens']);
+    const lengthsTensor = findOutput(outputs, ['encoder_out_lens', 'logprobs_lens', 'output_lens']);
     const outputLengths = tensorLengths(lengthsTensor, batchSize, outFrames);
     const allLogits = readLogits(logitsTensor);
     return Array.from({ length: batchSize }, (_, batchIndex) => {
@@ -448,9 +569,28 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
         warnings: [...state.warnings],
       };
     });
+    } finally {
+      disposeOrtOutputs(outputs);
+    }
   }
 
-  dispose(): void {
-    for (const handle of this.assetHandles) void handle.dispose();
+  async dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    this.disposed = true;
+    this.disposePromise = this.flushDispose();
+    return this.disposePromise;
+  }
+
+  private async flushDispose(): Promise<void> {
+    if (this.loadStatePromise) {
+      try {
+        const loaded = await this.loadStatePromise;
+        releaseOrtSession(loaded.session);
+      } catch {
+        // Keep the original load error; still drop asset handles.
+      }
+    }
+    const handles = this.assetHandles.splice(0);
+    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
   }
 }

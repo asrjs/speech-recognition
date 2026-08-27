@@ -1,4 +1,5 @@
 import { PcmAudioBuffer } from '../../audio/index.js';
+import { throwIfAssetAborted } from '../../io/index.js';
 import { createBuiltInSpeechRuntime } from '../../runtime/index.js';
 import {
   fetchModelFiles,
@@ -70,6 +71,7 @@ export interface CanaryFromHubOptions {
   readonly preprocessorName?: 'nemo128';
   readonly backend?: CanaryBackend;
   readonly progress?: (progress: ModelFileProgress) => void;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   readonly verbose?: boolean;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
@@ -99,6 +101,7 @@ export interface CanaryFromUrlsConfig {
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
   readonly runtime?: DefaultSpeechRuntime;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }
 
 export type CanaryTranscribeOptions = NemoAedTranscriptionOptions;
@@ -271,7 +274,7 @@ export async function getCanaryModel(
   const revision = options.revision ?? 'main';
   const encoderBackend = resolveEncoderBackend(options);
   const decoderBackend = resolveDecoderBackend(options);
-  const repoFiles = await fetchModelFiles(repoId, revision);
+  const repoFiles = await fetchModelFiles(repoId, revision, { signal: options.signal });
   const encoderAvailable = getAvailableQuantModes(repoFiles, 'encoder-model');
   const decoderAvailable = getAvailableQuantModes(repoFiles, 'decoder-model');
   const encoderSetup = getDefaultNemoAedWeightSetup(encoderBackend);
@@ -312,24 +315,29 @@ export async function getCanaryModel(
     encoderUrl: await getModelFile(repoId, encoderFilename, {
       revision,
       progress: options.progress,
+      signal: options.signal,
     }),
     decoderUrl: await getModelFile(repoId, decoderFilename, {
       revision,
       progress: options.progress,
+      signal: options.signal,
     }),
     tokenizerUrl: await getModelFile(repoId, tokenizerFilename, {
       revision,
       progress: options.progress,
+      signal: options.signal,
     }),
     configUrl: await getModelFile(repoId, configFilename, {
       revision,
       progress: options.progress,
+      signal: options.signal,
     }),
     preprocessorUrl:
       preprocessorBackend === 'onnx'
         ? await getModelFile(repoId, `${preprocessorName}.onnx`, {
             revision,
             progress: options.progress,
+            signal: options.signal,
           })
         : undefined,
   };
@@ -340,12 +348,14 @@ export async function getCanaryModel(
     encoderDataUrl = await getModelFile(repoId, encoderDataName, {
       revision,
       progress: options.progress,
+      signal: options.signal,
     });
   }
   if (repoFiles.some((path) => path === decoderDataName || path.endsWith(`/${decoderDataName}`))) {
     decoderDataUrl = await getModelFile(repoId, decoderDataName, {
       revision,
       progress: options.progress,
+      signal: options.signal,
     });
   }
 
@@ -385,82 +395,114 @@ export class CanaryModel {
   ) {}
 
   static async fromUrls(config: CanaryFromUrlsConfig): Promise<CanaryModel> {
-    const runtime =
-      config.runtime ??
-      createBuiltInSpeechRuntime({
-        hooks: {
-          logger: createConsoleLogger(config.verbose),
+    const modelId = config.modelId ?? DEFAULT_MODEL;
+    let model: SpeechModel<
+      NemoAedModelOptions,
+      NemoAedTranscriptionOptions,
+      NemoAedNativeTranscript
+    > | undefined;
+    let session: SpeechSession<NemoAedTranscriptionOptions, NemoAedNativeTranscript> | undefined;
+    try {
+      throwIfAssetAborted(config.signal, 'download');
+      const runtime =
+        config.runtime ??
+        createBuiltInSpeechRuntime({
+          hooks: {
+            logger: createConsoleLogger(config.verbose),
+          },
+        });
+      throwIfAssetAborted(config.signal, 'download');
+      model = await runtime.loadModel<NemoAedModelOptions, NemoAedNativeTranscript>({
+        preset: 'canary',
+        modelId,
+        backend: normalizeBackendId(config.backend),
+        signal: config.signal,
+        options: {
+          source: {
+            kind: 'direct',
+            encoderBackend: config.encoderBackend,
+            decoderBackend: config.decoderBackend,
+            artifacts: {
+              encoderUrl: config.encoderUrl,
+              decoderUrl: config.decoderUrl,
+              tokenizerUrl: config.tokenizerUrl,
+              configUrl: config.configUrl,
+              preprocessorUrl: config.preprocessorUrl,
+              encoderDataUrl: config.encoderDataUrl ?? undefined,
+              decoderDataUrl: config.decoderDataUrl ?? undefined,
+              encoderFilename: config.filenames?.encoder,
+              decoderFilename: config.filenames?.decoder,
+              tokenizerFilename: config.filenames?.tokenizer,
+              configFilename: config.filenames?.config,
+            },
+            preprocessorBackend: config.preprocessorBackend,
+            cpuThreads: config.cpuThreads,
+            enableProfiling: config.enableProfiling,
+          },
         },
       });
-
-    const modelId = config.modelId ?? DEFAULT_MODEL;
-    const model = await runtime.loadModel<NemoAedModelOptions, NemoAedNativeTranscript>({
-      preset: 'canary',
-      modelId,
-      backend: normalizeBackendId(config.backend),
-      options: {
-        source: {
-          kind: 'direct',
-          encoderBackend: config.encoderBackend,
-          decoderBackend: config.decoderBackend,
-          artifacts: {
-            encoderUrl: config.encoderUrl,
-            decoderUrl: config.decoderUrl,
-            tokenizerUrl: config.tokenizerUrl,
-            configUrl: config.configUrl,
-            preprocessorUrl: config.preprocessorUrl,
-            encoderDataUrl: config.encoderDataUrl ?? undefined,
-            decoderDataUrl: config.decoderDataUrl ?? undefined,
-            encoderFilename: config.filenames?.encoder,
-            decoderFilename: config.filenames?.decoder,
-            tokenizerFilename: config.filenames?.tokenizer,
-            configFilename: config.filenames?.config,
-          },
-          preprocessorBackend: config.preprocessorBackend,
-          cpuThreads: config.cpuThreads,
-          enableProfiling: config.enableProfiling,
-        },
-      },
-    });
-    const session = await model.createSession();
-    return new CanaryModel(runtime, model, session);
+      throwIfAssetAborted(config.signal, 'download');
+      session = await model.createSession();
+      throwIfAssetAborted(config.signal, 'download');
+      return new CanaryModel(runtime, model, session);
+    } catch (error) {
+      await session?.dispose();
+      await model?.dispose();
+      throw error;
+    }
   }
 
   static async fromPretrained(
     modelId: string = DEFAULT_MODEL,
     options: CanaryFromHubOptions = {},
   ): Promise<CanaryModel> {
-    const runtime =
-      options.runtime ??
-      createBuiltInSpeechRuntime({
-        hooks: {
-          logger: createConsoleLogger(options.verbose),
+    let model: SpeechModel<
+      NemoAedModelOptions,
+      NemoAedTranscriptionOptions,
+      NemoAedNativeTranscript
+    > | undefined;
+    let session: SpeechSession<NemoAedTranscriptionOptions, NemoAedNativeTranscript> | undefined;
+    try {
+      throwIfAssetAborted(options.signal, 'download');
+      const runtime =
+        options.runtime ??
+        createBuiltInSpeechRuntime({
+          hooks: {
+            logger: createConsoleLogger(options.verbose),
+          },
+        });
+      throwIfAssetAborted(options.signal, 'download');
+      const repoId = resolveRepoId(modelId);
+      model = await runtime.loadModel<NemoAedModelOptions, NemoAedNativeTranscript>({
+        preset: 'canary',
+        modelId: getDefaultModelId(modelId),
+        backend: normalizeBackendId(options.backend),
+        signal: options.signal,
+        options: {
+          source: {
+            kind: 'huggingface',
+            repoId,
+            revision: options.revision,
+            encoderBackend: options.encoderBackend,
+            decoderBackend: options.decoderBackend,
+            encoderQuant: options.encoderQuant ? toNemoQuantization(options.encoderQuant) : undefined,
+            decoderQuant: options.decoderQuant ? toNemoQuantization(options.decoderQuant) : undefined,
+            preprocessorName: options.preprocessorName,
+            preprocessorBackend: options.preprocessorBackend,
+            cpuThreads: options.cpuThreads,
+            enableProfiling: options.enableProfiling,
+          },
         },
       });
-
-    const repoId = resolveRepoId(modelId);
-    const model = await runtime.loadModel<NemoAedModelOptions, NemoAedNativeTranscript>({
-      preset: 'canary',
-      modelId: getDefaultModelId(modelId),
-      backend: normalizeBackendId(options.backend),
-      options: {
-        source: {
-          kind: 'huggingface',
-          repoId,
-          revision: options.revision,
-          encoderBackend: options.encoderBackend,
-          decoderBackend: options.decoderBackend,
-          encoderQuant: options.encoderQuant ? toNemoQuantization(options.encoderQuant) : undefined,
-          decoderQuant: options.decoderQuant ? toNemoQuantization(options.decoderQuant) : undefined,
-          preprocessorName: options.preprocessorName,
-          preprocessorBackend: options.preprocessorBackend,
-          cpuThreads: options.cpuThreads,
-          enableProfiling: options.enableProfiling,
-        },
-      },
-    });
-    const session = await model.createSession();
-    return new CanaryModel(runtime, model, session);
+      throwIfAssetAborted(options.signal, 'download');
+      session = await model.createSession();
+      throwIfAssetAborted(options.signal, 'download');
+      return new CanaryModel(runtime, model, session);
+    } catch (error) {
+      await session?.dispose();
+      await model?.dispose();
+      throw error;
+    }
   }
 
   static async fromHub(

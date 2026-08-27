@@ -110,4 +110,5 @@ export interface NemoRnntModelDependencies extends NemoModelDependencies<
   readonly executor?: NemoRnntExecutor;
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }

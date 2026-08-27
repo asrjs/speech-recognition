@@ -11,6 +11,7 @@ import {
   listModels,
   loadModelWithFallback,
   loadParakeetModelFromLocalEntries,
+  collectParakeetLocalEntries,
   resolveParakeetArtifactSource,
   resolveParakeetLocalEntries,
   supportsLanguage,
@@ -411,5 +412,141 @@ describe('Parakeet helpers', () => {
       fetchModelFiles.mockRestore();
       getModelFile.mockRestore();
     }
+  });
+
+  it('forwards abort signal into runtime.loadModel from ParakeetModel.fromUrls', async () => {
+    const signal = { aborted: false };
+    const disposeModel = vi.fn(async () => undefined);
+    const disposeSession = vi.fn(async () => undefined);
+    const createSession = vi.fn(async () => ({ dispose: disposeSession }));
+    const loadModel = vi.fn(async (request: { signal?: { aborted: boolean } | null }) => {
+      expect(request.signal).toBe(signal);
+      return {
+        createSession,
+        dispose: disposeModel,
+      };
+    });
+
+    const model = await ParakeetModel.fromUrls({
+      encoderUrl: 'blob:encoder',
+      decoderUrl: 'blob:decoder',
+      tokenizerUrl: 'blob:vocab',
+      runtime: { loadModel } as never,
+      signal,
+    });
+
+    expect(loadModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preset: 'parakeet',
+        signal,
+      }),
+    );
+    expect(createSession).toHaveBeenCalledTimes(1);
+    await model.dispose();
+  });
+
+  it('does not call loadModel when fromUrls is already aborted', async () => {
+    const loadModel = vi.fn();
+    const assetHandleDispose = vi.fn(async () => undefined);
+
+    await expect(
+      ParakeetModel.fromUrls({
+        encoderUrl: 'blob:encoder',
+        decoderUrl: 'blob:decoder',
+        tokenizerUrl: 'blob:vocab',
+        runtime: { loadModel } as never,
+        signal: { aborted: true },
+        assetHandles: [{ dispose: assetHandleDispose }] as never,
+      }),
+    ).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(loadModel).not.toHaveBeenCalled();
+    expect(assetHandleDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('disposes the session when abort is observed after createSession', async () => {
+    const signal = { aborted: false };
+    const disposeModel = vi.fn(async () => undefined);
+    const disposeSession = vi.fn(async () => undefined);
+    const loadModel = vi.fn(async () => ({
+      createSession: async () => {
+        signal.aborted = true;
+        return { dispose: disposeSession };
+      },
+      dispose: disposeModel,
+    }));
+
+    await expect(
+      ParakeetModel.fromUrls({
+        encoderUrl: 'blob:encoder',
+        decoderUrl: 'blob:decoder',
+        tokenizerUrl: 'blob:vocab',
+        runtime: { loadModel } as never,
+        signal,
+      }),
+    ).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(disposeSession).toHaveBeenCalledTimes(1);
+    expect(disposeModel).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards abort signal from loadParakeetModelFromLocalEntries into fromUrls', async () => {
+    const signal = { aborted: false };
+    const fromUrls = vi.spyOn(ParakeetModel, 'fromUrls').mockResolvedValue({
+      dispose: vi.fn(),
+    } as unknown as ParakeetModel);
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation((blob) => `blob:${(blob as Blob).size}:${Math.random()}`);
+
+    try {
+      const entries = createParakeetLocalEntries([
+        new File(['enc'], 'encoder-model.onnx'),
+        new File(['dec'], 'decoder_joint-model.int8.onnx'),
+        new File(['vocab'], 'vocab.txt'),
+      ]);
+
+      await loadParakeetModelFromLocalEntries(entries, {
+        encoderQuant: 'fp32',
+        decoderQuant: 'int8',
+        preprocessorBackend: 'js',
+        signal,
+      });
+
+      expect(fromUrls).toHaveBeenCalledWith(expect.objectContaining({ signal }));
+    } finally {
+      fromUrls.mockRestore();
+      createObjectURL.mockRestore();
+    }
+  });
+
+  it('stops a local directory walk when collect is aborted', async () => {
+    const signal = { aborted: false };
+    let nestedWalked = false;
+    const nested = {
+      kind: 'directory' as const,
+      async *entries() {
+        nestedWalked = true;
+        yield ['nested.bin', { kind: 'file' as const, getFile: async () => new File(['x'], 'nested.bin') }];
+      },
+    };
+    const root = {
+      kind: 'directory' as const,
+      async *entries() {
+        yield ['encoder-model.onnx', { kind: 'file' as const, getFile: async () => new File(['e'], 'encoder-model.onnx') }];
+        signal.aborted = true;
+        yield ['weights', nested];
+      },
+    };
+
+    await expect(collectParakeetLocalEntries(root, '', signal)).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(nestedWalked).toBe(false);
   });
 });

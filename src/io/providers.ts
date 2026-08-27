@@ -1,3 +1,4 @@
+import { throwIfAssetAborted } from './abort.js';
 import { getDefaultIndexedDbAssetCache } from './cache.js';
 import { BlobAssetHandle, UrlAssetHandle } from './handles.js';
 import type {
@@ -71,30 +72,46 @@ class BlobAssetProvider implements AssetProvider {
   }
 
   async resolve(request: AssetRequest): Promise<ResolvedAssetHandle> {
+    throwIfAssetAborted(request.signal, 'download');
     if (request.blob) {
-      return new BlobAssetHandle(request, request.blob);
+      return this.finish(request, new BlobAssetHandle(request, request.blob));
     }
     if (request.bytes) {
-      return new BlobAssetHandle(
+      return this.finish(
         request,
-        new Blob([request.bytes.slice().buffer], {
-          type: request.contentType ?? 'application/octet-stream',
-        }),
+        new BlobAssetHandle(
+          request,
+          new Blob([request.bytes.slice().buffer], {
+            type: request.contentType ?? 'application/octet-stream',
+          }),
+        ),
       );
     }
     if (request.fileHandle) {
       const file = await request.fileHandle.getFile();
-      return new BlobAssetHandle(
+      throwIfAssetAborted(request.signal, 'download');
+      return this.finish(
         request,
-        file instanceof Blob
-          ? file
-          : new Blob([file], {
-              type: request.contentType ?? 'application/octet-stream',
-            }),
+        new BlobAssetHandle(
+          request,
+          file instanceof Blob
+            ? file
+            : new Blob([file], {
+                type: request.contentType ?? 'application/octet-stream',
+              }),
+        ),
       );
     }
 
     throw new Error(`Blob asset provider cannot resolve "${request.id}".`);
+  }
+
+  private finish(request: AssetRequest, handle: ResolvedAssetHandle): ResolvedAssetHandle {
+    if (request.signal?.aborted) {
+      handle.dispose();
+      throwIfAssetAborted(request.signal, 'download');
+    }
+    return handle;
   }
 }
 

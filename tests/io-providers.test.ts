@@ -51,6 +51,55 @@ describe('createBlobAssetProvider', () => {
     expect(handle.contentType).toBe('text/csv');
   });
 
+  it('does not create a handle when resolve is already aborted', async () => {
+    const provider = createBlobAssetProvider();
+    const getFile = vi.fn(async () => new Blob(['file text'], { type: 'text/csv' }));
+
+    await expect(
+      provider.resolve({
+        id: 'test-file-handle',
+        fileHandle: { getFile },
+        signal: { aborted: true },
+      }),
+    ).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(getFile).not.toHaveBeenCalled();
+  });
+
+  it('disposes a blob handle when abort is observed after file read', async () => {
+    const provider = createBlobAssetProvider();
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation(() => 'blob:aborted');
+    const signal = { aborted: false };
+
+    try {
+      await expect(
+        provider.resolve({
+          id: 'test-file-handle',
+          fileHandle: {
+            async getFile() {
+              signal.aborted = true;
+              return new Blob(['file text'], { type: 'text/csv' });
+            },
+          },
+          signal,
+        }),
+      ).rejects.toMatchObject({
+        name: 'AssetLoadAbortedError',
+        code: 'asset-load-aborted',
+      });
+      expect(createObjectURL).not.toHaveBeenCalled();
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+    } finally {
+      createObjectURL.mockRestore();
+      revokeObjectURL.mockRestore();
+    }
+  });
+
   it('rejects unresolvable requests', async () => {
     const provider = createBlobAssetProvider();
     const request: AssetRequest = {

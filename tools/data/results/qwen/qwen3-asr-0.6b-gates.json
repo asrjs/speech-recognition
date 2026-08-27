@@ -1,0 +1,51 @@
+{
+  "family": "qwen3-asr-0.6b",
+  "status": "experimental",
+  "preset": false,
+  "streaming": "short-clip-offline-speech-llm",
+  "oracle_text_jfk_short": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "gates": {
+    "official_weights": "pass Qwen/Qwen3-ASR-0.6B@5eb144179a02acc5e5ba31e748d22b0cf3e303b0",
+    "official_qwen_asr": "pass qwen-asr==0.0.6 CPU",
+    "unmodified_encoder_onnx": "EXPORT_BLOCKED aten::pad_sequence + Python chunking",
+    "static_t1100_encoder_onnx": "pass 0 max-abs vs official; native ORT ~8e-7",
+    "dynamic_encoder_onnx": "pass T=800 and T=1100 native ORT ~7e-7; caller pads T to a 100-frame multiple",
+    "pad_crop_t1050": "emb max_abs 0.054 vs official ragged last chunk; greedy text exact JFK identity",
+    "explicit_kv_greedy_pytorch": "pass exact JFK oracle",
+    "decoder_onnx_fp32": "pass prefill+step, ~3.006 GB external data each",
+    "decoder_fp16_native": "pass PyTorch .half() export; native ORT greedy exact JFK; shared 1.503 GB",
+    "decoder_fp16_convert": "ORT_WEB_UNSUPPORTED_OP SimplifiedLayerNormFusion; superseded by native .half()",
+    "native_ort_e2e": "pass exact JFK oracle fp32 and fp16",
+    "wasm_e2e_fp16": "pass sequential sessions, exact JFK, rss 4254 MB, total 30.7s",
+    "wasm_e2e_fp32": "pass sequential sessions, exact JFK, rss 4156 MB, total 36.5s",
+    "chrome_wasm_fp16": "pass sequential, exact JFK, JS heap 2082/4192 MB after decode, 46.5s",
+    "chrome_wasm_fp32": "pass sequential, exact JFK, JS heap 929/4192 MB (WASM heap not in JS counter), 47.7s",
+    "node_webgpu": "WEBGPU_NO_ADAPTER",
+    "chrome_webgpu_e2e": "pass NVIDIA Blackwell, exact JFK, load 34.1s, transcribe 9.8s"
+  },
+  "encoder_dynamic": {
+    "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\audio-encoder-dynamic.onnx",
+    "size_bytes": 751103768,
+    "sha256": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6",
+    "input": "input_features float [128, T] T%100==0",
+    "output": "audio_embeddings float [T/100*13, 1024]"
+  },
+  "encoder_t1100": {
+    "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\audio-encoder-static-t1100.onnx",
+    "size_bytes": 747177039,
+    "sha256": "37b562fe9f4eb207a3ed5f3ec41938e528e503be29a8f9d2fe71f103d7707444"
+  },
+  "decoder_fp16_native": {
+    "prefill_path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-prefill-fp16.onnx",
+    "prefill_size_bytes": 732464,
+    "prefill_sha256": "b92c4f74b5ddd7a6a0bff2f931bf60805d03bba6a112ccbd3a0ebcb0a4b71029",
+    "step_path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-step-fp16.onnx",
+    "step_size_bytes": 741089,
+    "step_sha256": "ac8bf15321d8166043d0a05a88a6f7da56b42c271e4b05c2c74f12a36992119e",
+    "external_data": "decoder-fp16.onnx.data",
+    "external_size_bytes": 1503250432,
+    "external_sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675",
+    "shared_weights": true,
+    "io": "audio_embeddings/logits/KV float16; ids int64"
+  }
+}

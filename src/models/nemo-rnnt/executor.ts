@@ -1,4 +1,5 @@
 import type {
+  AbortSignalLike,
   AssetProvider,
   AudioBufferLike,
   ModelClassification,
@@ -12,10 +13,13 @@ import type {
 import { argmax, confidenceFromLogits } from '../../inference/index.js';
 import { fetchModelFiles } from '../../runtime/huggingface.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
+import { PipelineAbortedError } from '../../pipeline/composition.js';
 import type { NemoDecodeContext } from '../nemo-common/index.js';
 import {
   createOrtSession,
+  disposeOrtOutputs,
   initOrt,
+  releaseOrtSession,
   resolveNemoRnntArtifacts,
   type OrtModuleLike,
   type OrtSessionLike,
@@ -27,6 +31,7 @@ import {
   OnnxNemoPreprocessor,
 } from '../nemo-tdt/preprocessor.js';
 import { ParakeetTokenizer } from '../nemo-tdt/tokenizer.js';
+import { rethrowIfAssetAborted } from '../../io/abort.js';
 import { buildEmptyTranscript, buildRnntTranscriptDetails } from './transcript-details.js';
 import { getDefaultNemoRnntWeightSetup } from './weights.js';
 import type {
@@ -66,6 +71,12 @@ function emitTranscriptionProgress(
   options.onProgress?.(event);
 }
 
+function throwIfDecodeAborted(signal: AbortSignalLike | null | undefined): void {
+  if (signal?.aborted) {
+    throw new PipelineAbortedError('decode');
+  }
+}
+
 function roundMiB(bytes: number | undefined): number | undefined {
   if (!Number.isFinite(bytes)) {
     return undefined;
@@ -80,12 +91,13 @@ function createAssetProgressEvent(
     readonly loaded: number;
     readonly total?: number;
     readonly done?: boolean;
+    readonly aborted?: boolean;
   },
 ): RuntimeProgressEvent {
   const percent =
     event.total && event.total > 0
       ? Math.min(100, Math.round((event.loaded / event.total) * 100))
-      : event.done
+      : event.done && !event.aborted
         ? 100
         : undefined;
 
@@ -98,8 +110,9 @@ function createAssetProgressEvent(
     percent,
     loadedMiB: roundMiB(event.loaded),
     totalMiB: roundMiB(event.total),
-    isComplete: event.done,
-    message: event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
+    isComplete: Boolean(event.done) && !event.aborted,
+    aborted: event.aborted,
+    message: event.aborted ? `Cancelled ${file}.` : event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
   };
 }
 
@@ -147,7 +160,10 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
   private readonly loadStatePromise?: Promise<LoadedExecutorState>;
   private readonly assetProvider?: AssetProvider;
   private readonly runtimeHooks?: SpeechRuntimeHooks;
+  private readonly signal?: import('../../types/index.js').AbortSignalLike | null;
   private readonly assetHandles: ResolvedAssetHandle[] = [];
+  private disposed = false;
+  private disposePromise?: Promise<void>;
 
   constructor(
     private readonly modelId: string,
@@ -158,11 +174,13 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
     dependencies: {
       readonly assetProvider?: AssetProvider;
       readonly runtimeHooks?: SpeechRuntimeHooks;
+      readonly signal?: import('../../types/index.js').AbortSignalLike | null;
     } = {},
   ) {
     this.sourceOptions = loadOptions?.source;
     this.assetProvider = dependencies.assetProvider;
     this.runtimeHooks = dependencies.runtimeHooks;
+    this.signal = dependencies.signal;
     if (this.sourceOptions) {
       this.loadStatePromise = this.initialize();
     }
@@ -271,9 +289,11 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
     const ort = await initOrt(resolved.ortBackend, {
       wasmPaths: resolved.wasmPaths,
       cpuThreads: resolved.cpuThreads,
+      signal: this.signal,
     });
     const tokenizer = await ParakeetTokenizer.fromUrl(artifacts.tokenizerUrl, {
       blankId: this.config.tokenizer.blankTokenId,
+      signal: this.signal,
     });
     const warnings = resolved.warnings.map((warning) => ({
       ...warning,
@@ -290,6 +310,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
           : undefined,
       });
     } catch (error) {
+      rethrowIfAssetAborted(error);
       const implicitFp16Encoder =
         this.sourceOptions.kind === 'huggingface' &&
         !this.sourceOptions.encoderQuant &&
@@ -332,12 +353,22 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       });
     }
 
+    if (this.disposed) {
+      releaseOrtSession(encoderSession);
+      throw new Error(`NeMo RNNT executor was disposed during load for "${this.modelId}".`);
+    }
+
     const decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
       backendId: resolved.decoderBackendForOrt,
       enableProfiling: resolved.enableProfiling,
       externalDataUrl: artifacts.decoderDataUrl,
       externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,
     });
+    if (this.disposed) {
+      releaseOrtSession(encoderSession);
+      releaseOrtSession(decoderSession);
+      throw new Error(`NeMo RNNT executor was disposed during load for "${this.modelId}".`);
+    }
     const preprocessor: NemoPreprocessor =
       resolved.preprocessorBackend === 'js'
         ? new JsNemoPreprocessor({
@@ -345,7 +376,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
             validLengthMode: this.config.preprocessorValidLengthMode,
             normalization: this.config.preprocessorNormalization,
           })
-        : new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl!, resolved.enableProfiling);
+        : new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl!, resolved.enableProfiling, this.signal);
 
     return {
       ort,
@@ -359,6 +390,9 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
   }
 
   private async getLoadedState(): Promise<LoadedExecutorState> {
+    if (this.disposed) {
+      throw new Error(`NeMo RNNT executor is disposed for "${this.modelId}".`);
+    }
     if (!this.loadStatePromise) {
       throw new Error(`No artifact source is configured for "${this.modelId}".`);
     }
@@ -485,11 +519,20 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       },
     });
 
-    const encoderTensor = (encoderOutputs.outputs ??
-      Object.values(encoderOutputs)[0]) as OrtTensorLike<Float32Array>;
-    const dims = [...encoderTensor.dims];
-    if (dims.length !== 3 || dims[0] !== 1) {
-      throw new Error(`Unexpected NeMo RNNT encoder output shape: [${dims.join(', ')}].`);
+    let encoderData: Float32Array;
+    let dims: number[];
+    try {
+      const encoderTensor = (encoderOutputs.outputs ??
+        Object.values(encoderOutputs)[0]) as OrtTensorLike<Float32Array>;
+      dims = [...encoderTensor.dims];
+      if (dims.length !== 3 || dims[0] !== 1) {
+        throw new Error(`Unexpected NeMo RNNT encoder output shape: [${dims.join(', ')}].`);
+      }
+      encoderData = encoderTensor.data instanceof Float32Array
+        ? new Float32Array(encoderTensor.data)
+        : Float32Array.from(encoderTensor.data as ArrayLike<number>);
+    } finally {
+      disposeOrtOutputs(encoderOutputs);
     }
 
     // The exported NeMo RNNT encoder uses [batch, features, frames] (BDT).
@@ -572,13 +615,15 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       let lastReportedDecodeUnits = -1;
       try {
         for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+          throwIfDecodeAborted(options.signal);
           for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
             encoderFrameBuffer[featureIndex] =
-              encoderTensor.data[featureIndex * frameCount + frameIndex] ?? 0;
+            encoderData[featureIndex * frameCount + frameIndex] ?? 0;
           }
 
           let emittedOnFrame = 0;
           while (emittedOnFrame < (this.config.maxSymbolsPerStep ?? 10)) {
+            throwIfDecodeAborted(options.signal);
             decodeIterations += 1;
             targetIdBuffer[0] = tokenIds.length > 0 ? tokenIds[tokenIds.length - 1]! : blankId;
             const decoderFeeds: Record<string, unknown> = {
@@ -632,6 +677,11 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
                 disposeDecoderState(nextState);
               }
               disposeTensor(logits);
+              for (const tensor of Object.values(decoderOutputs)) {
+                if (tensor !== logits && tensor !== nextState.state1 && tensor !== nextState.state2) {
+                  disposeTensor(tensor);
+                }
+              }
             }
 
             if (!transferredNextState) {
@@ -663,7 +713,6 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
           }
         }
       } finally {
-        disposeTensor(encoderTensor);
         targetTensor.dispose?.();
         targetLengthTensor.dispose?.();
         encoderFrameTensor.dispose?.();
@@ -812,9 +861,25 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
     }
   }
 
-  dispose(): void {
-    for (const handle of this.assetHandles) {
-      handle.dispose();
+  async dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
+    this.disposed = true;
+    this.disposePromise = this.flushDispose();
+    return this.disposePromise;
+  }
+
+  private async flushDispose(): Promise<void> {
+    if (this.loadStatePromise) {
+      try {
+        const loaded = await this.loadStatePromise;
+        releaseOrtSession(loaded.encoderSession);
+        releaseOrtSession(loaded.decoderSession);
+        await loaded.preprocessor.dispose?.();
+      } catch {
+        // Keep the original load error; still drop asset handles.
+      }
     }
+    const handles = this.assetHandles.splice(0);
+    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
   }
 }

@@ -33,6 +33,7 @@ import { loadBinaryResource, resolveModelUrl } from '../core/loader.js';
 import { StreamVadPostprocessor } from '../core/stream-postprocessor.js';
 import { roundTo } from '../core/util.js';
 import { VadPostprocessor } from '../core/vad-postprocessor.js';
+import { rethrowIfAssetAborted } from '../../../io/abort.js';
 
 interface RuntimeInit {
   readonly backend: FireRedBackend;
@@ -49,24 +50,27 @@ async function loadCmvnFromRuntimeOptions(
     return cmvnFromArrays(runtimeOptions.cmvn.means, runtimeOptions.cmvn.istd);
   }
   const explicitUrl = runtimeOptions.modelUrls?.cmvnJsonUrl;
+  const signal = runtimeOptions.signal;
   if (explicitUrl) {
     try {
-      const bytes = await loadBinaryResource(explicitUrl);
+      const bytes = await loadBinaryResource(explicitUrl, undefined, signal);
       const text = new TextDecoder().decode(bytes);
       const parsed = JSON.parse(text) as { means: number[]; istd: number[] };
       return cmvnFromArrays(parsed.means, parsed.istd);
-    } catch {
+    } catch (error) {
+      rethrowIfAssetAborted(error, 'download');
       // fallback to defaults below
     }
   }
   if (modelDir) {
     const maybeCmvnUrl = resolveModelUrl(modelDir, 'cmvn.json');
     try {
-      const bytes = await loadBinaryResource(maybeCmvnUrl);
+      const bytes = await loadBinaryResource(maybeCmvnUrl, undefined, signal);
       const text = new TextDecoder().decode(bytes);
       const parsed = JSON.parse(text) as { means: number[]; istd: number[] };
       return cmvnFromArrays(parsed.means, parsed.istd);
-    } catch {
+    } catch (error) {
+      rethrowIfAssetAborted(error, 'download');
       // use default cmvn below
     }
   }
@@ -100,8 +104,17 @@ async function initRuntime(
 ): Promise<RuntimeInit> {
   const merged = withModelDirOverrides(runtimeOptions, modelDir);
   const backend = await createOrtFireRedBackend(merged);
-  const cmvn = await loadCmvnFromRuntimeOptions(merged, modelDir);
-  return { backend, cmvn };
+  try {
+    const cmvn = await loadCmvnFromRuntimeOptions(merged, modelDir);
+    return { backend, cmvn };
+  } catch (error) {
+    try {
+      await backend.dispose();
+    } catch {
+      // best-effort teardown if CMVN/abort fails after session create
+    }
+    throw error;
+  }
 }
 
 function makeStreamResult(

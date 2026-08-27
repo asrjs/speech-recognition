@@ -9,6 +9,11 @@ describe('public exports', () => {
     expect(module.createSpeechRuntime).toBeTypeOf('function');
     expect(module.listSpeechModels).toBeTypeOf('function');
     expect(module.listSpeechModelOptions).toBeTypeOf('function');
+    expect(module.listExperimentalSpeechFamilies).toBeTypeOf('function');
+    expect(module.getExperimentalSpeechFamily).toBeTypeOf('function');
+    expect(module.ExperimentalArtifactMissingError).toBeTypeOf('function');
+    expect(module.isExperimentalArtifactMissingError).toBeTypeOf('function');
+    expect(module.EXPERIMENTAL_ARTIFACT_MISSING_CODE).toBe('experimental-artifact-missing');
     expect(module.getSpeechModelDescriptor).toBeTypeOf('function');
     expect(module.getSpeechModelLanguageName).toBeTypeOf('function');
     expect(module.resolveSpeechModelComponentBackends).toBeTypeOf('function');
@@ -56,6 +61,7 @@ describe('public exports', () => {
     const nemoAed = await import('@asrjs/speech-recognition/models/nemo-aed');
     const lasrCtc = await import('@asrjs/speech-recognition/models/lasr-ctc');
     const whisperModel = await import('@asrjs/speech-recognition/models/whisper-seq2seq');
+    const gigaamRnnt = await import('@asrjs/speech-recognition/models/gigaam-rnnt');
     const wav2Vec2Model = await import('@asrjs/speech-recognition/models/wav2vec2');
     const presets = await import('@asrjs/speech-recognition/presets');
     const canaryPreset = await import('@asrjs/speech-recognition/presets/canary');
@@ -143,6 +149,7 @@ describe('public exports', () => {
     expect(lasrCtc.createLasrCtcModelFamily).toBeTypeOf('function');
     expect(whisperModel.createWhisperSeq2SeqModelFamily).toBeTypeOf('function');
     expect('loadSplitGraphLocalModel' in whisperModel).toBe(false);
+    expect(gigaamRnnt.createGigaAmRnntModelFamily).toBeTypeOf('function');
     expect(wav2Vec2Model.createWav2Vec2ModelFamily).toBeTypeOf('function');
     expect(presets.listBuiltInModelDescriptors).toBeTypeOf('function');
     expect(presets.getBuiltInModelDescriptor).toBeTypeOf('function');
@@ -161,5 +168,29 @@ describe('public exports', () => {
     expect(medasrPreset.createMedAsrPresetFactory).toBeTypeOf('function');
     expect(whisperPreset.createWhisperPresetFactory).toBeTypeOf('function');
     expect(wav2Vec2Preset.createWav2Vec2PresetFactory).toBeTypeOf('function');
+  }, 15_000);
+
+  it('root-exports ExperimentalArtifactMissingError with a typed catchable code', async () => {
+    const {
+      ExperimentalArtifactMissingError,
+      EXPERIMENTAL_ARTIFACT_MISSING_CODE,
+      ModelLoadError,
+      isExperimentalArtifactMissingError,
+    } = await import('@asrjs/speech-recognition');
+
+    const error = new ExperimentalArtifactMissingError('missing onnx', { family: 'qwen-asr' });
+    expect(error).toBeInstanceOf(ModelLoadError);
+    expect(error.code).toBe('experimental-artifact-missing');
+    expect(error.code).toBe(EXPERIMENTAL_ARTIFACT_MISSING_CODE);
+    expect(isExperimentalArtifactMissingError(error)).toBe(true);
+    expect(
+      isExperimentalArtifactMissingError({
+        name: 'ExperimentalArtifactMissingError',
+        code: 'experimental-artifact-missing',
+        message: 'cloned',
+      }),
+    ).toBe(true);
+    expect(isExperimentalArtifactMissingError(new Error('nope'))).toBe(false);
+    expect(isExperimentalArtifactMissingError({ code: 'model-load-error' })).toBe(false);
   }, 15_000);
 });

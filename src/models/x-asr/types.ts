@@ -98,4 +98,5 @@ export interface XAsrModelDependencies {
   readonly executor?: import('./executor.js').XAsrExecutor;
   readonly assetProvider?: AssetProvider;
   readonly runtimeHooks?: SpeechRuntimeHooks;
+  readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }

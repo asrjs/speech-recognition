@@ -26,6 +26,8 @@ export interface MedAsrJsPreprocessorOptions {
   readonly melScale?: MelScaleKind;
   readonly slaneyNorm?: boolean;
   readonly logZeroGuard?: number;
+  /** Official GigaAM SpecScaler uses clamp; MedASR keeps additive floor. */
+  readonly logCombine?: 'add' | 'clamp';
   readonly normalizeFeatures?: boolean;
   /** Window used for each frame. Existing callers retain the symmetric Hann default. */
   readonly windowKind?: WindowKind;
@@ -434,6 +436,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly melScale: MelScaleKind;
   private readonly slaneyNorm: boolean;
   private readonly logZeroGuard: number;
+  private readonly logCombine: 'add' | 'clamp';
   private readonly normalizeFeatures: boolean;
   private readonly windowKind: WindowKind;
   private readonly removeDcOffset: boolean;
@@ -472,6 +475,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     this.melScale = options.melScale ?? 'kaldi';
     this.slaneyNorm = options.slaneyNorm ?? false;
     this.logZeroGuard = options.logZeroGuard ?? LOG_ZERO_GUARD;
+    this.logCombine = options.logCombine ?? 'add';
     this.normalizeFeatures = options.normalizeFeatures ?? false;
     this.windowKind = options.windowKind ?? 'hann';
     this.removeDcOffset = options.removeDcOffset ?? false;
@@ -633,9 +637,11 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
         }
 
         rawMel[melIndex * frameCount + frameIndex] =
-          this.logZeroGuard === 1e-5
-            ? Math.log(Math.max(melValue, 1e-5))
-            : Math.log(melValue + this.logZeroGuard);
+          this.logCombine === 'clamp'
+            ? Math.log(Math.min(Math.max(melValue, this.logZeroGuard), 1e9))
+            : this.logZeroGuard === 1e-5
+              ? Math.log(Math.max(melValue, 1e-5))
+              : Math.log(melValue + this.logZeroGuard);
       }
     }
 
