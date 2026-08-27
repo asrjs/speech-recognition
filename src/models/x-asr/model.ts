@@ -1,7 +1,7 @@
 import { normalizePcmInput } from '../../audio/index.js';
 import { RNNT_GREEDY_DECODING, RNNT_TRANSDUCER_DECODER } from '../../inference/index.js';
 import { TranscriptAccumulator } from '../../inference/streaming/accumulator.js';
-import { mapLasrCtcNativeToCanonical } from '../lasr-ctc/mapping.js';
+import { mapXAsrNativeToCanonical } from './mapping.js';
 import type { AudioInputLike, BaseSessionOptions, ModelClassification, PartialTranscript, SpeechModel, SpeechModelFactory, SpeechSession, StreamingSessionOptions, StreamingTranscriber, StreamingTranscriberState, TranscriptResponse, TranscriptResponseFlavor } from '../../types/index.js';
 import { createModelArchitecture } from '../../types/index.js';
 import { OrtXAsrExecutor, type XAsrExecutor, type XAsrStreamState } from './executor.js';
@@ -13,7 +13,7 @@ const DEFAULT_GRAPH = { encoderStateInputs: [], encoderFrameSize: 29, encoderFra
 const DEFAULT_CONFIG: XAsrModelConfig = { ecosystem: 'x-asr', architecture: 'zipformer2-streaming-rnnt', processorArchitecture: 'kaldi-fbank', encoderArchitecture: 'zipformer2', decoderArchitecture: 'stateless-rnnt', sampleRate: 16000, featureDim: 80, featureHopSeconds: 0.01, rawStride: 1, languages: ['zh', 'en'], chunkMs: 160, graph: DEFAULT_GRAPH };
 
 function canonical(native: XAsrNativeTranscript, modelId: string, backendId: string, sampleRate: number, durationSeconds: number, detail: XAsrTranscriptionOptions['detail']) {
-  return mapLasrCtcNativeToCanonical(native, CLASSIFICATION, { detailLevel: detail, backendId, modelId, sampleRate, durationSeconds, metrics: native.metrics });
+  return mapXAsrNativeToCanonical(native, CLASSIFICATION, { detailLevel: detail, backendId, modelId, sampleRate, durationSeconds, metrics: native.metrics });
 }
 
 class XAsrSpeechSession implements SpeechSession<XAsrTranscriptionOptions, XAsrNativeTranscript> {

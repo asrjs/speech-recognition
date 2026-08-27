@@ -1,8 +1,9 @@
-import type { AssetProvider, SpeechRuntimeHooks } from '../../types/index.js';
 import type {
-  LasrCtcNativeTranscript,
-  LasrCtcTranscriptionOptions,
-} from '../lasr-ctc/types.js';
+  AssetProvider,
+  BaseTranscriptionOptions,
+  SpeechRuntimeHooks,
+  TranscriptMetrics,
+} from '../../types/index.js';
 
 export type XAsrChunkVariant = 160 | 480 | 960 | 1920;
 export type XAsrTensorType = 'float32' | 'float16' | 'int32' | 'int64';
@@ -91,8 +92,44 @@ export interface XAsrModelOptions {
   };
 }
 
-export type XAsrNativeTranscript = LasrCtcNativeTranscript;
-export type XAsrTranscriptionOptions = LasrCtcTranscriptionOptions;
+export interface XAsrNativeToken {
+  readonly index: number;
+  readonly id?: number;
+  readonly text: string;
+  readonly startTime?: number;
+  readonly endTime?: number;
+  readonly confidence?: number;
+  readonly logitIndex?: number;
+}
+
+export interface XAsrNativeWord {
+  readonly index: number;
+  readonly text: string;
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly confidence?: number;
+}
+
+/** Native output owned by the X-ASR RNN-T family, independent of CTC output contracts. */
+export interface XAsrNativeTranscript {
+  readonly utteranceText: string;
+  readonly isFinal: boolean;
+  readonly words?: readonly XAsrNativeWord[];
+  readonly tokens?: readonly XAsrNativeToken[];
+  readonly confidence?: {
+    readonly utterance?: number;
+    readonly tokenAverage?: number;
+    readonly wordAverage?: number;
+  };
+  readonly metrics?: TranscriptMetrics;
+  readonly warnings?: readonly { readonly code: string; readonly message: string }[];
+}
+
+export interface XAsrTranscriptionOptions extends BaseTranscriptionOptions {
+  readonly returnTokenIds?: boolean;
+  readonly returnLogitIndices?: boolean;
+  readonly returnFrameIds?: boolean;
+}
 
 export interface XAsrModelDependencies {
   readonly executor?: import('./executor.js').XAsrExecutor;

@@ -1,8 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { XAsrTokenizer, createXAsrModelFamily, type XAsrExecutor, type XAsrStreamState } from '../src/models/x-asr/index.js';
+import { mapXAsrNativeToCanonical, XAsrTokenizer, createXAsrModelFamily, type XAsrExecutor, type XAsrStreamState } from '../src/models/x-asr/index.js';
 import { createBuiltInSpeechRuntime } from '../src/runtime/builtins.js';
 
 describe('X-ASR artifact-gated family', () => {
+  it('maps transducer-native output through the X-ASR family contract', () => {
+    const result = mapXAsrNativeToCanonical(
+      {
+        utteranceText: 'hello world',
+        isFinal: true,
+        words: [{ index: 0, text: 'hello world', startTime: 0, endTime: 1 }],
+        tokens: [
+          { index: 0, id: 1, text: 'hello', startTime: 0, endTime: 0.5 },
+          { index: 1, id: 2, text: ' world', startTime: 0.5, endTime: 1 },
+        ],
+        warnings: [],
+      },
+      {
+        family: 'x-asr',
+        ecosystem: 'x-asr',
+        processor: 'kaldi-fbank',
+        encoder: 'zipformer2',
+        decoder: 'stateless-rnnt',
+        topology: 'stateless-rnnt',
+        task: 'asr',
+      },
+      { detailLevel: 'detailed', modelId: 'x-asr-test', backendId: 'wasm', sampleRate: 16000, durationSeconds: 1 },
+    );
+
+    expect(result.text).toBe('hello world');
+    expect(result.meta.modelFamily).toBe('x-asr');
+    expect(result.words?.[0]?.tokenIndices).toEqual([0, 1]);
+    expect(result.tokens?.map((token) => token.id)).toEqual([1, 2]);
+  });
+
   it('decodes icefall token text without exposing blank/control pieces', () => {
     const tokenizer = XAsrTokenizer.fromText('<blk> 0\n▁hello 1\n▁world 2\n<eps> 3\n');
     expect(tokenizer.decode([0, 1, 2, 3])).toBe('hello world');
