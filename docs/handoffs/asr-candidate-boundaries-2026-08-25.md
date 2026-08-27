@@ -204,8 +204,10 @@ regression).
 
 GigaAM multilingual CTC was selected first among GigaAM / X-ASR / Qwen /
 SenseVoice: one encoder+CTC graph, MIT license, official `model.to_onnx`.
-Families remain on the root API. This run used the official checkpoint, not a
-third-party ONNX oracle.
+At the time of this handoff the experimental families were still on the root
+API. Current main keeps them on intentional `models/<family>` subpaths and
+keeps the root runtime entrypoint model-family-free. This run used the official
+checkpoint, not a third-party ONNX oracle.
 
 - Weights: `https://cdn.chatwm.opensmodel.sberdevices.ru/GigaAM/multilingual_ctc.ckpt`
 - MD5 `5379d887c53ccd9cb95981e2a1832720`; SHA-256

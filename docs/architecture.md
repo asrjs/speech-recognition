@@ -320,6 +320,11 @@ Keep the root entry narrow and runtime-critical:
 
 ### Secondary subpaths
 
+Model-family implementations, including artifact-gated experimental families,
+are exposed through explicit `models/<family>` subpaths. They are intentionally
+not part of the root entrypoint, so consumers that only need runtime helpers do
+not load model-family code into their default browser bundle.
+
 - `@asrjs/speech-recognition/builtins`
   - built-in family/preset registration and convenience runtime composition
 - `@asrjs/speech-recognition/io`

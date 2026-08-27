@@ -38,6 +38,11 @@ describe('public exports', () => {
     expect(module.FASTCONFORMER_ENCODER).toBeUndefined();
     expect(module.DefaultStreamingTranscriber).toBeUndefined();
     expect(module.createNemoTdtModelFamily).toBeUndefined();
+    expect(module.createQwen3AsrModelFamily).toBeUndefined();
+    expect(module.createSenseVoiceModelFamily).toBeUndefined();
+    expect(module.createGigaAmCtcModelFamily).toBeUndefined();
+    expect(module.createGigaAmRnntModelFamily).toBeUndefined();
+    expect(module.createXAsrModelFamily).toBeUndefined();
     expect(module.createParakeetPresetFactory).toBeUndefined();
     expect(module.ParakeetModel).toBeUndefined();
     expect(module.decodeAudioSourceToMonoPcm).toBeUndefined();
@@ -61,7 +66,11 @@ describe('public exports', () => {
     const nemoAed = await import('@asrjs/speech-recognition/models/nemo-aed');
     const lasrCtc = await import('@asrjs/speech-recognition/models/lasr-ctc');
     const whisperModel = await import('@asrjs/speech-recognition/models/whisper-seq2seq');
+    const qwenAsr = await import('@asrjs/speech-recognition/models/qwen-asr');
+    const senseVoice = await import('@asrjs/speech-recognition/models/sensevoice');
+    const gigaamCtc = await import('@asrjs/speech-recognition/models/gigaam-ctc');
     const gigaamRnnt = await import('@asrjs/speech-recognition/models/gigaam-rnnt');
+    const xAsr = await import('@asrjs/speech-recognition/models/x-asr');
     const wav2Vec2Model = await import('@asrjs/speech-recognition/models/wav2vec2');
     const presets = await import('@asrjs/speech-recognition/presets');
     const canaryPreset = await import('@asrjs/speech-recognition/presets/canary');
@@ -149,7 +158,11 @@ describe('public exports', () => {
     expect(lasrCtc.createLasrCtcModelFamily).toBeTypeOf('function');
     expect(whisperModel.createWhisperSeq2SeqModelFamily).toBeTypeOf('function');
     expect('loadSplitGraphLocalModel' in whisperModel).toBe(false);
+    expect(qwenAsr.createQwen3AsrModelFamily).toBeTypeOf('function');
+    expect(senseVoice.createSenseVoiceModelFamily).toBeTypeOf('function');
+    expect(gigaamCtc.createGigaAmCtcModelFamily).toBeTypeOf('function');
     expect(gigaamRnnt.createGigaAmRnntModelFamily).toBeTypeOf('function');
+    expect(xAsr.createXAsrModelFamily).toBeTypeOf('function');
     expect(wav2Vec2Model.createWav2Vec2ModelFamily).toBeTypeOf('function');
     expect(presets.listBuiltInModelDescriptors).toBeTypeOf('function');
     expect(presets.getBuiltInModelDescriptor).toBeTypeOf('function');
