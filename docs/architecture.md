@@ -396,3 +396,10 @@ This architecture is intentionally optimized for speech workloads:
 5. Browser-only code must stay off the root import path.
 6. Shared model logic moves upward only after reuse is proven.
 7. `src/inference` must stay descriptive and generic, not policy-heavy.
+
+The built root entry is checked in CI by `tests/smoke/browser-root-import-graph.mjs`.
+That guard follows the static local import closure from `dist/index.js` and
+rejects Node builtins plus the Node-only `io-node` entry. Node capability
+lookups used by root-reachable model code must remain lazy and go through the
+browser-safe compatibility bridge; the explicit `@asrjs/speech-recognition/io/node`
+subpath remains the opt-in Node surface.

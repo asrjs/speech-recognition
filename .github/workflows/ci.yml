@@ -42,3 +42,5 @@ jobs:
         run: npm test
       - name: Node import smoke
         run: npm run test:node-smoke
+      - name: Browser root import graph
+        run: node tests/smoke/browser-root-import-graph.mjs
