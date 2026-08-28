@@ -94,13 +94,34 @@ For a local ONNX/WASM baseline once the artifact is approved:
 ```powershell
 npm run build
 node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs `
-  --model-dir N:\models\onnx\qwen3-asr-0.6b-webgpu `
+  --model-dir N:\models\onnx\qwen3-asr-0.6b-official `
   --audio tests\fixtures\jfk2.en.wav `
   --backend wasm --warmup 1 --runs 3
 ```
 
 The harness requires all graph, external-data, and tokenizer files locally;
-it has no implicit model download path.
+it has no implicit model download path. It accepts both the current official
+dynamic/static encoder plus prefill/step graph layout and the older merged
+decoder layout. To measure the library long-audio route explicitly, use a
+forced model-safe window, for example:
+
+```powershell
+node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs `
+  --model-dir N:\models\onnx\qwen3-asr-0.6b-official `
+  --audio tests\fixtures\00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en.wav `
+  --backend wasm --warmup 0 --runs 1 --window-seconds 10 --overlap-seconds 2
+```
+
+That route is a runtime/windowing compatibility check unless the audio has a
+separately captured oracle transcript; its output must not be presented as a
+quality score by itself.
 
 If this gate shows no quality or compatibility advantage over Parakeet v3,
 close Qwen as a documented candidate rather than expanding the public API.
+
+2026-08-28 continuation: the public `LoadedSpeechModel.transcribeMonoPcm()`
+path now uses the same model-aware windowing planner as `transcribe()`. The
+official dynamic/FP16 benchmark passed on the 26.45-second fixture with four
+forced windows (109.2 seconds total, RTFx 0.242). The short JFK oracle also
+remained exact (11 seconds, 32.97 seconds total, RTFx 0.334). These are local
+measurements, not hosted CI claims; the long medical fixture has no gold text.

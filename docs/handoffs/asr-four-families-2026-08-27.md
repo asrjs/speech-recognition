@@ -185,7 +185,8 @@ This is **mic-blocked**, not a human speech pass. No demo wiring fix was require
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.
-- Qwen long-audio / T not from this 11s clip beyond the T=1050 pad-crop identity check.
+- Qwen long-audio quality/oracle coverage remains open; runtime window routing
+  is now covered by the loaded-handle regression and the forced-window CLI run.
 - Node WebGPU still `WEBGPU_NO_ADAPTER`.
 - All five families stay experimental; no presets. Discover via `listExperimentalSpeechFamilies()`, not `listSpeechModels()`.
 - GigaAM RNN-T is Russian-only (`example.wav`); do not cite it as a JFK / English result.

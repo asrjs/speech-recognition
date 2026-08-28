@@ -15,10 +15,14 @@ function parseArgs(argv) {
     modelDir: process.env.QWEN3_ASR_MODEL_DIR,
     audio: process.env.QWEN3_ASR_AUDIO ?? 'tests/fixtures/jfk2.en.wav',
     backend: process.env.QWEN3_ASR_BACKEND ?? 'wasm',
+    encoder: process.env.QWEN3_ASR_ENCODER ?? 'dynamic',
+    dtype: process.env.QWEN3_ASR_DTYPE ?? 'fp16',
     warmup: 1,
     runs: 3,
     language: undefined,
     maxNewTokens: 256,
+    windowSeconds: undefined,
+    overlapSeconds: undefined,
     help: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -26,10 +30,14 @@ function parseArgs(argv) {
     if (arg === '--model-dir') args.modelDir = valueAfter(argv, ++index, arg);
     else if (arg === '--audio') args.audio = valueAfter(argv, ++index, arg);
     else if (arg === '--backend') args.backend = valueAfter(argv, ++index, arg);
+    else if (arg === '--encoder') args.encoder = valueAfter(argv, ++index, arg);
+    else if (arg === '--dtype') args.dtype = valueAfter(argv, ++index, arg);
     else if (arg === '--warmup') args.warmup = Number(valueAfter(argv, ++index, arg));
     else if (arg === '--runs') args.runs = Number(valueAfter(argv, ++index, arg));
     else if (arg === '--language') args.language = valueAfter(argv, ++index, arg);
     else if (arg === '--max-new-tokens') args.maxNewTokens = Number(valueAfter(argv, ++index, arg));
+    else if (arg === '--window-seconds') args.windowSeconds = Number(valueAfter(argv, ++index, arg));
+    else if (arg === '--overlap-seconds') args.overlapSeconds = Number(valueAfter(argv, ++index, arg));
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
@@ -37,7 +45,7 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  return `Usage: npm run build && node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs --model-dir <artifact-dir> [options]\n\nOptions:\n  --model-dir <dir>       Local goryodog-style artifact directory (required; no download)\n  --audio <wav>           WAV fixture (default: tests/fixtures/jfk2.en.wav)\n  --backend <id>          wasm or webgpu (default: wasm)\n  --warmup <n>            Warmup runs (default: 1)\n  --runs <n>              Measured runs (default: 3)\n  --language <name|code>  Optional forced language, e.g. Turkish or tr\n  --max-new-tokens <n>    Generation cap (default: 256)\n`;
+  return `Usage: npm run build && node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs --model-dir <artifact-dir> [options]\n\nOptions:\n  --model-dir <dir>       Local official or legacy artifact directory (required; no download)\n  --audio <wav>           WAV fixture (default: tests/fixtures/jfk2.en.wav)\n  --backend <id>          wasm or webgpu (default: wasm)\n  --encoder <variant>     dynamic or static-t1100 (default: dynamic)\n  --dtype <dtype>         fp16 or fp32 (default: fp16)\n  --warmup <n>            Warmup runs (default: 1)\n  --runs <n>              Measured runs (default: 3)\n  --language <name|code>  Optional forced language, e.g. Turkish or tr\n  --max-new-tokens <n>    Generation cap (default: 256)\n  --window-seconds <n>   Force model-safe windows of this length for long-audio measurement\n  --overlap-seconds <n>  Optional overlap for forced windows (default: model policy)\n`;
 }
 
 async function firstExisting(candidates, label) {
@@ -50,6 +58,18 @@ async function firstExisting(candidates, label) {
     }
   }
   throw new Error(`Could not find ${label}. Tried:\n${candidates.join('\n')}`);
+}
+
+async function findExisting(candidates) {
+  for (const candidate of candidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // Optional companion data may be absent for self-contained graphs.
+    }
+  }
+  return undefined;
 }
 
 function readPcmSample(data, offset, format, bits) {
@@ -118,6 +138,10 @@ async function main() {
     throw new Error('--model-dir is required; this harness never downloads Qwen weights.');
   if (!['wasm', 'webgpu'].includes(args.backend))
     throw new Error('--backend must be wasm or webgpu.');
+  if (!['dynamic', 'static-t1100'].includes(args.encoder))
+    throw new Error('--encoder must be dynamic or static-t1100.');
+  if (!['fp16', 'fp32'].includes(args.dtype))
+    throw new Error('--dtype must be fp16 or fp32.');
   if (
     !Number.isInteger(args.runs) ||
     args.runs < 1 ||
@@ -128,61 +152,124 @@ async function main() {
   }
   if (!Number.isInteger(args.maxNewTokens) || args.maxNewTokens < 1)
     throw new Error('--max-new-tokens must be positive.');
+  if (args.windowSeconds !== undefined && (!Number.isFinite(args.windowSeconds) || args.windowSeconds <= 0))
+    throw new Error('--window-seconds must be positive.');
+  if (args.overlapSeconds !== undefined && (!Number.isFinite(args.overlapSeconds) || args.overlapSeconds < 0))
+    throw new Error('--overlap-seconds must be non-negative.');
+  if (args.overlapSeconds !== undefined && args.windowSeconds === undefined)
+    throw new Error('--overlap-seconds requires --window-seconds.');
+  if (args.windowSeconds !== undefined && args.overlapSeconds !== undefined && args.overlapSeconds >= args.windowSeconds)
+    throw new Error('--overlap-seconds must be smaller than --window-seconds.');
 
   const modelDir = path.resolve(args.modelDir);
+  const officialEncoder = args.encoder === 'static-t1100'
+    ? ['audio-encoder-static-t1100.onnx', 'audio-encoder-static-t1100-fp16.onnx']
+    : ['audio-encoder-dynamic.onnx'];
   const encoder = await firstExisting(
     [
-      path.join(modelDir, 'onnx', 'audio_encoder_fp16.onnx'),
-      path.join(modelDir, 'audio_encoder_fp16.onnx'),
+      ...officialEncoder.flatMap((filename) => [path.join(modelDir, filename), path.join(modelDir, 'onnx', filename)]),
+      ...(args.encoder === 'dynamic'
+        ? [path.join(modelDir, 'onnx', 'audio_encoder_fp16.onnx'), path.join(modelDir, 'audio_encoder_fp16.onnx')]
+        : []),
     ],
     'Qwen encoder graph',
   );
+  const decoderSuffix = args.dtype === 'fp16' ? '-fp16' : '';
   const decoder = await firstExisting(
     [
-      path.join(modelDir, 'onnx', 'decoder_with_past_fp16.onnx'),
-      path.join(modelDir, 'decoder_with_past_fp16.onnx'),
+      path.join(modelDir, `decoder-prefill${decoderSuffix}.onnx`),
+      path.join(modelDir, 'onnx', `decoder-prefill${decoderSuffix}.onnx`),
+      path.join(modelDir, `decoder_with_past${decoderSuffix}.onnx`),
+      path.join(modelDir, 'onnx', `decoder_with_past${decoderSuffix}.onnx`),
     ],
-    'Qwen decoder graph',
+    'Qwen decoder prefill graph',
   );
+  const decoderStep = await findExisting([
+    path.join(modelDir, `decoder-step${decoderSuffix}.onnx`),
+    path.join(modelDir, 'onnx', `decoder-step${decoderSuffix}.onnx`),
+  ]);
   const tokenizer = await firstExisting(
-    [path.join(modelDir, 'processor', 'tokenizer.json'), path.join(modelDir, 'tokenizer.json')],
+    [
+      path.join(modelDir, 'tokenizer', 'tokenizer.json'),
+      path.join(modelDir, 'processor', 'tokenizer.json'),
+      path.join(modelDir, 'tokenizer.json'),
+    ],
     'Qwen tokenizer',
   );
-  const encoderData = await firstExisting(
+  const encoderData = await findExisting(
     [
+      `${encoder}.data`,
       path.join(modelDir, 'onnx', 'audio_encoder_fp16.onnx_data'),
       path.join(modelDir, 'audio_encoder_fp16.onnx_data'),
     ],
-    'Qwen encoder external data',
   );
-  const decoderData = await firstExisting(
-    [
-      path.join(modelDir, 'onnx', 'decoder_with_past_fp16.onnx_data'),
-      path.join(modelDir, 'decoder_with_past_fp16.onnx_data'),
-    ],
-    'Qwen decoder external data',
-  );
+  const decoderData = decoderStep
+    ? undefined
+    : await firstExisting(
+      [
+        `${decoder}.data`,
+        path.join(modelDir, `decoder${decoderSuffix}.onnx.data`),
+        path.join(modelDir, 'onnx', `decoder${decoderSuffix}.onnx.data`),
+        path.join(modelDir, `decoder_with_past${decoderSuffix}.onnx_data`),
+        path.join(modelDir, 'onnx', `decoder_with_past${decoderSuffix}.onnx_data`),
+      ],
+      'Qwen decoder external data',
+    );
+  const decoderPrefillData = decoderStep
+    ? await firstExisting(
+      [
+        path.join(modelDir, `decoder${decoderSuffix}.onnx.data`),
+        `${decoder}.data`,
+        path.join(modelDir, `decoder-prefill${decoderSuffix}.onnx.data`),
+        path.join(modelDir, 'onnx', `decoder-prefill${decoderSuffix}.onnx.data`),
+      ],
+      'Qwen decoder prefill external data',
+    )
+    : undefined;
+  const decoderStepData = decoderStep
+    ? await firstExisting(
+      [
+        path.join(modelDir, `decoder${decoderSuffix}.onnx.data`),
+        `${decoderStep}.data`,
+        path.join(modelDir, `decoder-step${decoderSuffix}.onnx.data`),
+        path.join(modelDir, 'onnx', `decoder-step${decoderSuffix}.onnx.data`),
+      ],
+      'Qwen decoder step external data',
+    )
+    : undefined;
   const audioPath = path.resolve(args.audio);
   await access(audioPath);
   const audio = decodeWav(await readFile(audioPath));
 
   const { loadSpeechModel } = await import('../../dist/index.js');
+  const directArtifacts = {
+    encoderUrl: pathToFileURL(encoder).href,
+    decoderUrl: pathToFileURL(decoder).href,
+    tokenizerUrl: pathToFileURL(tokenizer).href,
+    ...(encoderData
+      ? { encoderDataUrl: pathToFileURL(encoderData).href, encoderDataPath: path.basename(encoderData) }
+      : {}),
+    ...(decoderStep
+      ? {
+          decoderStepUrl: pathToFileURL(decoderStep).href,
+          decoderPrefillDataUrl: pathToFileURL(decoderPrefillData).href,
+          decoderPrefillDataPath: path.basename(decoderPrefillData),
+          decoderStepDataUrl: pathToFileURL(decoderStepData).href,
+          decoderStepDataPath: path.basename(decoderStepData),
+        }
+      : {
+          decoderDataUrl: pathToFileURL(decoderData).href,
+          decoderDataPath: path.basename(decoderData),
+        }),
+  };
   const loaded = await loadSpeechModel({
     family: 'qwen-asr',
-    modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
+    modelId: 'Qwen/Qwen3-ASR-0.6B',
     backend: args.backend,
     options: {
       source: {
         kind: 'direct',
-        artifacts: {
-          encoderUrl: pathToFileURL(encoder).href,
-          decoderUrl: pathToFileURL(decoder).href,
-          tokenizerUrl: pathToFileURL(tokenizer).href,
-          encoderDataUrl: pathToFileURL(encoderData).href,
-          decoderDataUrl: pathToFileURL(decoderData).href,
-          encoderDataPath: path.basename(encoderData),
-          decoderDataPath: path.basename(decoderData),
-        },
+        artifacts: directArtifacts,
         encoderBackend: args.backend,
         decoderBackend: args.backend,
         cpuThreads: 1,
@@ -193,6 +280,13 @@ async function main() {
     detail: 'segments',
     language: args.language,
     maxNewTokens: args.maxNewTokens,
+    ...(args.windowSeconds !== undefined
+      ? {
+          windowing: 'force',
+          windowDurationSeconds: args.windowSeconds,
+          ...(args.overlapSeconds !== undefined ? { overlapSeconds: args.overlapSeconds } : {}),
+        }
+      : {}),
   };
   try {
     for (let index = 0; index < args.warmup; index += 1) {
@@ -214,6 +308,8 @@ async function main() {
         {
           model: 'Qwen3-ASR-0.6B',
           backend: args.backend,
+          encoder: args.encoder,
+          dtype: args.dtype,
           audio: audioPath,
           durationSeconds: audio.durationSeconds,
           warmup: args.warmup,
@@ -224,6 +320,9 @@ async function main() {
             p95: percentile(elapsed, 0.95),
           },
           rtfx: audio.durationSeconds > 0 ? audio.durationSeconds / (meanMs / 1000) : null,
+          windowing: args.windowSeconds === undefined
+            ? null
+            : { windowDurationSeconds: args.windowSeconds, overlapSeconds: args.overlapSeconds ?? null },
           text: last?.text ?? '',
           language: last?.meta?.language,
           metrics: last?.meta?.metrics,
