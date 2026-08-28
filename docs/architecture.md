@@ -368,6 +368,9 @@ Subpath separation is the primary bundling boundary. Lazy imports inside built-i
 - `BROWSER_WAVEFORM_SCALE_OPTIONS`
 
 These are intentionally separated from the root API because they are higher-level application helpers, not the minimal runtime core.
+Realtime transcription callbacks receive a controller-owned abort signal; a
+reset invalidates and cooperatively cancels the previous generation before a
+new session begins.
 
 ## Built-In Composition vs Explicit Composition
 

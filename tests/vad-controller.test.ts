@@ -207,4 +207,46 @@ describe('realtime transcription controller', () => {
     expect(controller.getState().currentFrame).toBe(0);
     expect(controller.getState().snapshot.fullText).toBe('');
   });
+
+  it('aborts an in-flight callback on reset and allows a fresh session', async () => {
+    let callCount = 0;
+    const transcribe = vi.fn(
+      (request: { readonly signal: AbortSignal }): Promise<TranscriptResult> =>
+        new Promise<TranscriptResult>((resolve, reject) => {
+          callCount += 1;
+          if (callCount > 1) {
+            resolve({
+              text: 'fresh',
+              warnings: [],
+              meta: { detailLevel: 'text', isFinal: false },
+            });
+            return;
+          }
+          if (request.signal.aborted) {
+            reject(new Error('transcription aborted'));
+            return;
+          }
+          request.signal.addEventListener('abort', () => reject(new Error('transcription aborted')), {
+            once: true,
+          });
+        }),
+    );
+    const controller = new RealtimeTranscriptionController({
+      sampleRate: 4,
+      transcribe,
+      window: { sampleRate: 4, minInitialDurationSec: 1, minDurationSec: 1, maxDurationSec: 6 },
+    });
+
+    const inFlight = controller.pushAudio(new Float32Array([1, 1, 1, 1]));
+    await vi.waitFor(() => expect(transcribe).toHaveBeenCalledOnce());
+    const signal = transcribe.mock.calls[0]?.[0]?.signal;
+    controller.reset();
+
+    expect(signal?.aborted).toBe(true);
+    await expect(inFlight).resolves.toBeNull();
+
+    const fresh = await controller.pushAudio(new Float32Array([1, 1, 1, 1]));
+    expect(fresh?.partial.text).toBe('fresh');
+    expect(transcribe).toHaveBeenCalledTimes(2);
+  });
 });

@@ -1,5 +1,6 @@
 import { normalizePcmInput, PcmAudioBuffer } from '../audio/index.js';
 import type {
+  AbortSignalLike,
   AudioInputLike,
   PartialTranscript,
   TranscriptMeta,
@@ -29,6 +30,8 @@ import {
 
 export interface RealtimeTranscriptionRequest {
   readonly pcm: Float32Array;
+  /** Aborted when the controller is reset while this request is in flight. */
+  readonly signal: AbortSignalLike;
   readonly sampleRate: number;
   readonly startFrame: number;
   readonly endFrame: number;
@@ -174,6 +177,7 @@ export class RealtimeTranscriptionController {
   private lastSnapshot: UtteranceTranscriptSnapshot;
   private isFinalized = false;
   private stateGeneration = 0;
+  private operationAbortController = new AbortController();
   private operationTail: Promise<void> = Promise.resolve();
   private readonly latencyTracker: RealtimeLatencyTracker | null;
 
@@ -247,6 +251,8 @@ export class RealtimeTranscriptionController {
 
   reset(): void {
     this.stateGeneration += 1;
+    this.operationAbortController.abort();
+    this.operationAbortController = new AbortController();
     this.audio.reset();
     this.activity?.reset();
     this.windowBuilder.reset();
@@ -313,6 +319,7 @@ export class RealtimeTranscriptionController {
     this.merger.reset();
     const request: RealtimeTranscriptionRequest = {
       pcm,
+      signal: this.operationAbortController.signal,
       sampleRate,
       startFrame,
       endFrame,
@@ -326,7 +333,15 @@ export class RealtimeTranscriptionController {
       segmentReason: options.reason,
     };
     this.latencyTracker?.noteTranscribeStart();
-    const canonical = await this.transcribeCallback(request);
+    let canonical: TranscriptResult;
+    try {
+      canonical = await this.transcribeCallback(request);
+    } catch (error) {
+      if (generation !== this.stateGeneration || request.signal.aborted) {
+        return null;
+      }
+      throw error;
+    }
     if (generation !== this.stateGeneration) {
       return null;
     }
@@ -431,6 +446,7 @@ export class RealtimeTranscriptionController {
     const pcm = this.audio.read(window.startFrame, window.endFrame);
     const request: RealtimeTranscriptionRequest = {
       pcm,
+      signal: this.operationAbortController.signal,
       sampleRate: this.sampleRate,
       startFrame: window.startFrame,
       endFrame: window.endFrame,
@@ -444,10 +460,18 @@ export class RealtimeTranscriptionController {
     };
 
     this.latencyTracker?.noteTranscribeStart();
-    const canonical = withTimeOffset(
-      await this.transcribeCallback(request),
-      request.startTimeSeconds,
-    );
+    let canonical: TranscriptResult;
+    try {
+      canonical = withTimeOffset(
+        await this.transcribeCallback(request),
+        request.startTimeSeconds,
+      );
+    } catch (error) {
+      if (generation !== this.stateGeneration || request.signal.aborted) {
+        return null;
+      }
+      throw error;
+    }
     if (generation !== this.stateGeneration) {
       return null;
     }

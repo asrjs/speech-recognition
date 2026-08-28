@@ -321,6 +321,11 @@ Waveform history is derived from `ringBufferDurationMs` and the realtime
 timeline chunk size; there is no separate waveform point-count knob for the
 primary chunk-aligned view.
 
+The realtime controller passes an abortable `request.signal` to each
+transcription callback. Forward it to the underlying model or worker request;
+calling `controller.reset()` then cancels stale in-flight work while keeping
+the controller and loaded model reusable.
+
 ## Quick Start
 
 ### Explicit runtime composition
