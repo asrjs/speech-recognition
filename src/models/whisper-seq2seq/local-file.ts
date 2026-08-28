@@ -83,22 +83,35 @@ function readWhisperFeatureFrameCount(manifestRaw: Record<string, unknown>): num
   return maxSourcePositions <= 1500 ? maxSourcePositions * 2 : maxSourcePositions;
 }
 
-export function loadSplitGraphLocalModel(
+async function existsAsync(p: string): Promise<boolean> {
+  try {
+    await fs.promises.access(p, fs.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function loadSplitGraphLocalModel(
   dirPath: string,
   options: SplitGraphLocalOptions = {},
-): SplitGraphLocalModel {
+): Promise<SplitGraphLocalModel> {
   const variant = options.variant === undefined ? DEFAULT_VARIANT : options.variant;
   let resolved = path.resolve(dirPath);
 
   // If variant is specified, resolve into the variant subdirectory
   if (variant !== null && variant !== '') {
     const variantDir = path.join(resolved, variant);
-    if (fs.existsSync(variantDir) && fs.existsSync(path.join(variantDir, 'manifest.json'))) {
+    if (await existsAsync(variantDir) && await existsAsync(path.join(variantDir, 'manifest.json'))) {
       resolved = variantDir;
     } else if (options.variant !== undefined) {
       // User explicitly requested a variant that doesn't exist
-      const available = ['fp32', 'fp16', 'q8']
-        .filter((v) => fs.existsSync(path.join(resolved, v, 'manifest.json')));
+      const availableVariants = ['fp32', 'fp16', 'q8'];
+      const availablePromises = availableVariants.map(async (v) => {
+        return (await existsAsync(path.join(resolved, v, 'manifest.json'))) ? v : null;
+      });
+      const available = (await Promise.all(availablePromises)).filter((v): v is string => v !== null);
+
       throw new Error(
         `Variant "${variant}" not found in ${resolved}. ` +
         `Available variants: ${available.length > 0 ? available.join(', ') : 'none'}. ` +
@@ -108,11 +121,11 @@ export function loadSplitGraphLocalModel(
   }
 
   const manifestPath = path.join(resolved, 'manifest.json');
-  if (!fs.existsSync(manifestPath)) {
+  if (!(await existsAsync(manifestPath))) {
     throw new Error(`manifest.json not found in ${resolved}. Is this a self-exported Whisper directory?`);
   }
 
-  const manifestRaw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Record<string, unknown>;
+  const manifestRaw = JSON.parse(await fs.promises.readFile(manifestPath, 'utf-8')) as Record<string, unknown>;
   const manifest = parseWhisperManifest(manifestRaw);
 
   // Warn on variant selection based on validation status
@@ -148,9 +161,9 @@ export function loadSplitGraphLocalModel(
 
   const modelId = manifest.modelId || path.basename(resolved);
 
-  const fileUrl = (name: string): string => {
+  const fileUrl = async (name: string): Promise<string> => {
     const fullPath = path.join(resolved, name);
-    if (!fs.existsSync(fullPath)) {
+    if (!(await existsAsync(fullPath))) {
       throw new Error(`Missing artifact: ${name} in ${resolved}`);
     }
     return pathToFileURL(fullPath).href;
@@ -177,14 +190,14 @@ export function loadSplitGraphLocalModel(
   const source: WhisperArtifactSource = {
     kind: 'splitgraph',
     artifacts: {
-      encoderUrl: fileUrl('encoder_model.onnx'),
-      decoderInitUrl: fileUrl('decoder_init.onnx'),
-      decoderStepUrl: fileUrl('decoder_step.onnx'),
-      decoderAlignUrl: fs.existsSync(path.join(resolved, 'decoder_align.onnx'))
-        ? fileUrl('decoder_align.onnx')
+      encoderUrl: await fileUrl('encoder_model.onnx'),
+      decoderInitUrl: await fileUrl('decoder_init.onnx'),
+      decoderStepUrl: await fileUrl('decoder_step.onnx'),
+      decoderAlignUrl: (await existsAsync(path.join(resolved, 'decoder_align.onnx')))
+        ? await fileUrl('decoder_align.onnx')
         : undefined,
-      tokenizerUrl: fileUrl('tokenizer.json'),
-      manifestUrl: fileUrl('manifest.json'),
+      tokenizerUrl: await fileUrl('tokenizer.json'),
+      manifestUrl: await fileUrl('manifest.json'),
       externalDataUrls: readExternalDataUrls(manifestRaw),
     },
   };
