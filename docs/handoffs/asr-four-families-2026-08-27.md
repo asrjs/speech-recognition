@@ -210,6 +210,19 @@ TEN-VAD init, FireRed VAD init, or streaming detector start reaches the same
 idle/teardown contract as a native `AbortSignal`. Core validation after this
 slice: 957 passed, 15 skipped; typecheck, build, and lint (0 errors) pass.
 
+## X-ASR public streaming artifact validation (2026-08-28)
+
+The artifact-gated `tests/x-asr-onnx-backends.test.ts` suite now constructs the
+public X-ASR model family with the official local Zipformer2 artifacts and
+exercises `model.createStreamingTranscriber()` through `pushAudio()` and
+`finalize()`, followed by transcriber and model disposal. The 11-second JFK
+fixture produced the exact expected transcript. The same suite also retains the
+direct executor WASM check and the classified Node WebGPU probe; all three tests
+passed on the current workstation. This is public model/session-boundary
+evidence for the streaming lifecycle, not a claim of broad X-ASR quality.
+
+Current commit: `f00ce92 test(x-asr): cover public streaming artifact path`.
+
 ## Package-level optional batch capability (2026-08-28)
 
 The package now exposes an optional `SpeechSession.transcribeBatch` capability,
