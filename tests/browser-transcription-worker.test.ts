@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createBrowserTranscriptionWorkerClient } from '@asrjs/speech-recognition/browser';
 
 class FakeWorker {
@@ -320,5 +320,58 @@ describe('BrowserTranscriptionWorkerClient', () => {
     expect(worker.terminated).toBe(false);
 
     await client.dispose();
+  });
+
+  it('observes asynchronous changes on an abort-like signal', async () => {
+    const worker = new FakeWorker();
+    const client = createBrowserTranscriptionWorkerClient({
+      workerFactory: () => worker,
+    });
+
+    await client.loadBuiltInModel({
+      modelId: 'parakeet',
+      backend: 'webgpu',
+    });
+
+    worker.messages.length = 0;
+    worker.holdTranscribe = true;
+    const signal = { aborted: false };
+    const transcribing = client.transcribeMonoPcm(new Float32Array([0, 0.1]), 16000, {
+      signal,
+    });
+    const transcribingSettled = transcribing.then(
+      (value) => ({ status: 'fulfilled' as const, value }),
+      (reason: unknown) => ({ status: 'rejected' as const, reason }),
+    );
+
+    try {
+      await vi.waitFor(() => expect(worker.messages[0]?.type).toBe('TRANSCRIBE_MONO_PCM'));
+      signal.aborted = true;
+
+      await vi.waitFor(
+        () =>
+          expect(worker.messages.some((message) => message.type === 'CANCEL_TRANSCRIBE')).toBe(
+            true,
+          ),
+        { timeout: 250 },
+      );
+      await expect(transcribingSettled).resolves.toMatchObject({
+        status: 'rejected',
+        reason: {
+          name: 'AssetLoadAbortedError',
+          code: 'asset-load-aborted',
+        },
+      });
+      expect(worker.terminated).toBe(false);
+
+      worker.holdTranscribe = false;
+      await expect(
+        client.transcribeMonoPcm(new Float32Array([0, 0.1]), 16000),
+      ).resolves.toMatchObject({ text: 'ok' });
+    } finally {
+      worker.holdTranscribe = false;
+      await client.dispose();
+      await transcribingSettled;
+    }
   });
 });

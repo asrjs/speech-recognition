@@ -182,6 +182,20 @@ and latency fields `first partial --` / `eou --` / `p50 process --` / `p95 emit 
 available` / `Browser view not found`); HUD check used system Chrome via CDP instead.
 This is **mic-blocked**, not a human speech pass. No demo wiring fix was required.
 
+## Worker cancellation signal compatibility (2026-08-28)
+
+`createBrowserTranscriptionWorkerClient()` now observes all signal shapes
+accepted by its public contract: native `AbortSignal` events, structurally
+compatible cross-realm abort events, and minimal `{ aborted }` signals through
+a 25 ms polling fallback. Cancellation still sends `CANCEL_TRANSCRIBE`,
+rejects only the caller's request, keeps the worker/model alive, and allows the
+next transcription to reuse the loaded model.
+
+Regression coverage includes the browser transport, worker-thread active and
+queued cancellation, and the realtime controller reset path. The minimal
+signal case was previously able to leave an in-flight worker request pending;
+the test now proves that it is canceled without worker teardown.
+
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.
