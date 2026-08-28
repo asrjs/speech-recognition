@@ -427,7 +427,12 @@ class DefaultSpeechPipeline implements SpeechPipeline {
   private readonly useManifestSources: boolean;
   private readonly handles = new Map<string, UnknownLoadedModelHandle>();
   private readonly inflight = new Map<string, Promise<UnknownLoadedModelHandle>>();
+  private readonly generations = new Map<string, number>();
+  private readonly pendingDisposals = new Map<string, Promise<void>>();
+  private readonly handleDisposals = new WeakMap<UnknownLoadedModelHandle, Promise<void>>();
   private disposed = false;
+  private disposePromise: Promise<void> | null = null;
+  private flushPromise: Promise<void> | null = null;
 
   constructor(options: SpeechPipelineOptions = {}) {
     this.ownsRuntime = !options.runtime;
@@ -446,12 +451,22 @@ class DefaultSpeechPipeline implements SpeechPipeline {
   ): Promise<LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>> {
     this.assertNotDisposed();
 
+    if (this.flushPromise) {
+      await this.flushPromise;
+      this.assertNotDisposed();
+    }
+
     const cacheKey = this.cacheModels
       ? resolveAutomaticCacheKey(request as SpeechPipelineModelRequest<unknown>)
       : null;
 
     if (!cacheKey) {
-      return (await this.createModelHandle(request)) as LoadedSpeechModel<
+      const handle = await this.createModelHandle(request);
+      if (this.disposed) {
+        await this.disposeHandle(handle);
+        throw this.createInvalidationError();
+      }
+      return handle as LoadedSpeechModel<
         TLoadOptions,
         TTranscriptionOptions,
         TNative
@@ -460,8 +475,10 @@ class DefaultSpeechPipeline implements SpeechPipeline {
 
     if (request.forceReload) {
       await this.disposeModel(cacheKey);
+      this.assertNotDisposed();
     }
 
+    const generation = this.getGeneration(cacheKey);
     const existing = this.handles.get(cacheKey);
     if (existing) {
       return existing as LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
@@ -469,7 +486,12 @@ class DefaultSpeechPipeline implements SpeechPipeline {
 
     const inflight = this.inflight.get(cacheKey);
     if (inflight) {
-      return (await inflight) as LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
+      const handle = await inflight;
+      if (!this.isGenerationCurrent(cacheKey, generation)) {
+        await this.disposeHandle(handle);
+        throw this.createInvalidationError();
+      }
+      return handle as LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
     }
 
     const created = this.createModelHandle(request);
@@ -477,10 +499,16 @@ class DefaultSpeechPipeline implements SpeechPipeline {
 
     try {
       const handle = await created;
+      if (!this.isGenerationCurrent(cacheKey, generation)) {
+        await this.disposeHandle(handle);
+        throw this.createInvalidationError();
+      }
       this.handles.set(cacheKey, handle);
       return handle as LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
     } finally {
-      this.inflight.delete(cacheKey);
+      if (this.inflight.get(cacheKey) === created) {
+        this.inflight.delete(cacheKey);
+      }
     }
   }
 
@@ -508,7 +536,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
           TFlavor
         >;
       } finally {
-        await handle.dispose();
+        await this.disposeHandle(handle);
       }
     }
 
@@ -556,7 +584,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
           transcribeOptions,
         )) as readonly TranscriptResponse<TNative, TFlavor>[];
       } finally {
-        await handle.dispose();
+        await this.disposeHandle(handle);
       }
     }
 
@@ -580,18 +608,65 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       return;
     }
 
+    if (this.disposed) {
+      await this.disposePromise;
+      return;
+    }
+
+    this.invalidateGeneration(cacheKey);
+
     const existing = this.handles.get(cacheKey);
     if (existing) {
-      await existing.dispose();
       this.handles.delete(cacheKey);
     }
 
     const inflight = this.inflight.get(cacheKey);
     if (inflight) {
       this.inflight.delete(cacheKey);
-      const result = await Promise.resolve(inflight).catch(() => null);
-      if (result) {
-        await result.dispose();
+    }
+
+    const previousDisposal = this.pendingDisposals.get(cacheKey);
+    const disposal = (async () => {
+      const errors: unknown[] = [];
+
+      if (previousDisposal) {
+        try {
+          await previousDisposal;
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+
+      if (existing) {
+        try {
+          await this.disposeHandle(existing);
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+
+      if (inflight) {
+        const result = await Promise.resolve(inflight).catch(() => null);
+        if (result) {
+          try {
+            await this.disposeHandle(result);
+          } catch (error) {
+            errors.push(error);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw errors[0];
+      }
+    })();
+    this.pendingDisposals.set(cacheKey, disposal);
+
+    try {
+      await disposal;
+    } finally {
+      if (this.pendingDisposals.get(cacheKey) === disposal) {
+        this.pendingDisposals.delete(cacheKey);
       }
     }
   }
@@ -600,52 +675,144 @@ class DefaultSpeechPipeline implements SpeechPipeline {
    *  The runtime stays alive — models can be reloaded from IndexedDB immediately.
    *  Use this between audio files to prevent VRAM accumulation from cache-key changes. */
   async flushAllModels(): Promise<void> {
-    // Dispose inflight loads first
-    const inflightResults = await Promise.allSettled(this.inflight.values());
-    this.inflight.clear();
-    for (const result of inflightResults) {
-      if (result.status === 'fulfilled') {
-        try {
-          await result.value.dispose();
-        } catch {
-          /* best-effort */
-        }
+    if (this.disposed) {
+      await this.disposePromise;
+      return;
+    }
+    if (this.flushPromise) {
+      await this.flushPromise;
+      return;
+    }
+
+    const flush = this.flushAllModelsInternal();
+    this.flushPromise = flush;
+    try {
+      await flush;
+    } finally {
+      if (this.flushPromise === flush) {
+        this.flushPromise = null;
       }
     }
-    // Dispose all cached handles
-    for (const [, handle] of this.handles) {
-      try {
-        await handle.dispose();
-      } catch {
-        /* best-effort */
-      }
-    }
-    this.handles.clear();
   }
 
   async dispose(): Promise<void> {
+    if (this.disposePromise) {
+      await this.disposePromise;
+      return;
+    }
     if (this.disposed) {
       return;
     }
-    this.disposed = true;
 
-    const inflightResults = await Promise.allSettled(this.inflight.values());
+    this.disposed = true;
+    const disposal = this.disposeInternal();
+    this.disposePromise = disposal;
+    await disposal;
+  }
+
+  private async flushAllModelsInternal(): Promise<void> {
+    const keys = new Set<string>([
+      ...this.handles.keys(),
+      ...this.inflight.keys(),
+    ]);
+    for (const cacheKey of keys) {
+      this.invalidateGeneration(cacheKey);
+    }
+
+    const cachedHandles = [...this.handles.values()];
+    const inflightLoads = [...this.inflight.values()];
+    const pendingDisposals = [...this.pendingDisposals.values()];
+    this.handles.clear();
     this.inflight.clear();
 
+    const inflightResults = await Promise.allSettled(inflightLoads);
+    const uniqueHandles = new Set<UnknownLoadedModelHandle>(cachedHandles);
+
+    for (const result of inflightResults) {
+      if (result.status === 'fulfilled') {
+        uniqueHandles.add(result.value);
+      }
+    }
+
+    await Promise.allSettled(pendingDisposals);
+    await Promise.all(
+      [...uniqueHandles].map(async (handle) => {
+        try {
+          await this.disposeHandle(handle);
+        } catch {
+          /* best-effort */
+        }
+      }),
+    );
+  }
+
+  private async disposeInternal(): Promise<void> {
+    if (this.flushPromise) {
+      await this.flushPromise;
+    }
+
+    const keys = new Set<string>([
+      ...this.handles.keys(),
+      ...this.inflight.keys(),
+    ]);
+    for (const cacheKey of keys) {
+      this.invalidateGeneration(cacheKey);
+    }
+
+    const cachedHandles = [...this.handles.values()];
+    const inflightLoads = [...this.inflight.values()];
+    const pendingDisposals = [...this.pendingDisposals.values()];
+    this.handles.clear();
+    this.inflight.clear();
+
+    const inflightResults = await Promise.allSettled(inflightLoads);
+    await Promise.allSettled(pendingDisposals);
+
     if (!this.ownsRuntime) {
-      const uniqueHandles = new Set<UnknownLoadedModelHandle>(this.handles.values());
+      const uniqueHandles = new Set<UnknownLoadedModelHandle>(cachedHandles);
       for (const result of inflightResults) {
         if (result.status === 'fulfilled') {
           uniqueHandles.add(result.value);
         }
       }
-      this.handles.clear();
-      await Promise.all([...uniqueHandles].map((handle) => Promise.resolve(handle.dispose())));
+      await Promise.all(
+        [...uniqueHandles].map(async (handle) => {
+          await this.disposeHandle(handle);
+        }),
+      );
       return;
     }
 
-    this.handles.clear();
     await this.runtime.dispose();
+  }
+
+  private getGeneration(cacheKey: string): number {
+    return this.generations.get(cacheKey) ?? 0;
+  }
+
+  private invalidateGeneration(cacheKey: string): void {
+    this.generations.set(cacheKey, this.getGeneration(cacheKey) + 1);
+  }
+
+  private isGenerationCurrent(cacheKey: string, generation: number): boolean {
+    return !this.disposed && this.getGeneration(cacheKey) === generation;
+  }
+
+  private createInvalidationError(): Error {
+    return this.disposed
+      ? new Error('Speech pipeline is disposed.')
+      : new Error('Speech model load was disposed or invalidated before it completed.');
+  }
+
+  private disposeHandle(handle: UnknownLoadedModelHandle): Promise<void> {
+    const existing = this.handleDisposals.get(handle);
+    if (existing) {
+      return existing;
+    }
+
+    const disposal = Promise.resolve().then(() => handle.dispose());
+    this.handleDisposals.set(handle, disposal);
+    return disposal;
   }
 
   private async createModelHandle<TLoadOptions>(
