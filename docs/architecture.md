@@ -276,6 +276,8 @@ Ownership rules:
 
 - models track and dispose sessions they create
 - runtimes track and dispose models they load
+- streaming transcribers may expose idempotent `dispose()` to release an
+  owned session or streaming state; `reset()` is stateful reuse, not disposal
 - asset handles clean up temporary locators and owned resources
 
 `Symbol.asyncDispose` may be implemented as optional sugar, but it is not the primary or required API.

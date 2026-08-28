@@ -389,6 +389,11 @@ transcription callback. Forward it to the underlying model or worker request;
 calling `controller.reset()` then cancels stale in-flight work while keeping
 the controller and loaded model reusable.
 
+`StreamingTranscriber.reset()` clears buffered transcript state and keeps the
+session reusable. When a transcriber owns a session created by
+`model.createStreamingTranscriber()`, call its optional `dispose()` method when
+finished; it is idempotent and releases the underlying streaming resources.
+
 ## Quick Start
 
 ### Explicit runtime composition

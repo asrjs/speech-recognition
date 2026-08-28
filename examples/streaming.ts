@@ -8,22 +8,28 @@ export async function streamingExample() {
   const runtime = createSpeechRuntime({
     backends: [createWasmBackend()],
     modelFamilies: [createNemoTdtModelFamily()],
-    presets: [createParakeetPresetFactory({ useManifestSource: true })]
+    presets: [createParakeetPresetFactory({ useManifestSource: true })],
   });
 
   const model = await runtime.loadModel({
     preset: 'parakeet',
-    modelId: 'parakeet-tdt-0.6b-v3'
+    modelId: 'parakeet-tdt-0.6b-v3',
   });
   const session = await model.createSession();
   const streaming = new DefaultStreamingTranscriber(session, {
     detail: 'words',
     overlapMs: 500,
-    maxWindowMs: 5000
+    maxWindowMs: 5000,
   });
 
-  const partial = await streaming.pushAudio(new Float32Array(8000));
-  const final = await streaming.finalize();
+  try {
+    const partial = await streaming.pushAudio(new Float32Array(8000));
+    const final = await streaming.finalize();
 
-  return { partial, final };
+    return { partial, final };
+  } finally {
+    await streaming.dispose?.();
+    await model.dispose();
+    await runtime.dispose();
+  }
 }
