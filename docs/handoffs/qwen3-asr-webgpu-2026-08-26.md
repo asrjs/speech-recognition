@@ -139,6 +139,19 @@ the native oracle. This documents a real limitation of segment-only overlap
 composition: Qwen has no word timestamps in this graph, so forced windows can
 change boundary text even when the direct within-limit route is exact.
 
+## Current-checkout parity refresh (2026-08-28)
+
+The official-artifact smoke was rerun against the current checkout at commit
+`0ba481b` using `audio-encoder-dynamic.onnx`, the fp16 prefill/step graphs, and
+the local external-data files. The 10.5-second JFK fixture matched the native
+Qwen oracle exactly (`text_match=true`, 30 emitted tokens), with WASM metrics of
+29.522 s total, RTFx 0.3567, 3.949 s encoder time, 14.004 s decoder time, and
+approximately 4,337 MiB resident memory. This is an artifact-local parity
+refresh, not a representative benchmark or a public preset gate.
+
+The same run recorded Node WebGPU as `WEBGPU_NO_ADAPTER`; this host-level
+adapter limitation remains separate from the successful Chrome WebGPU evidence.
+
 2026-08-28 long-audio label comparison: the benchmark now auto-loads an
 adjacent fixture JSON (or accepts `--reference`) and reports Unicode-safe WER /
 CER as `fixture-sidecar-dataset-label`, never as an official Qwen oracle. On
