@@ -1001,14 +1001,15 @@ export class ParakeetModel {
   static async fromResolvedLocalArtifacts(
     resolved: ResolvedParakeetLocalArtifacts,
   ): Promise<ParakeetModel> {
-    const model = await ParakeetModel.fromUrls(resolved.config);
-    return new ParakeetModel(model.runtime, model.model, model.session, async () => {
-      await Promise.all(
-        resolved.assetHandles.map(async (handle) => {
-          await handle.dispose();
-        }),
-      );
-    });
+    try {
+      const model = await ParakeetModel.fromUrls(resolved.config);
+      return new ParakeetModel(model.runtime, model.model, model.session, async () => {
+        await disposeAssetHandles(resolved.assetHandles);
+      });
+    } catch (error) {
+      await disposeAssetHandles(resolved.assetHandles);
+      throw error;
+    }
   }
 
   /** Resolves and loads a Parakeet model directly from the Hugging Face hub. */

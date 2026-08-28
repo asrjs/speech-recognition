@@ -479,6 +479,38 @@ describe('Parakeet helpers', () => {
     expect(assetHandleDispose).toHaveBeenCalledTimes(1);
   });
 
+  it('disposes resolved local artifact handles when fromUrls fails', async () => {
+    const assetHandleDispose = vi.fn(async () => undefined);
+    const fromUrls = vi
+      .spyOn(ParakeetModel, 'fromUrls')
+      .mockRejectedValue(new Error('model construction failed'));
+
+    try {
+      await expect(
+        ParakeetModel.fromResolvedLocalArtifacts({
+          config: {
+            encoderUrl: 'blob:encoder',
+            decoderUrl: 'blob:decoder',
+            tokenizerUrl: 'blob:vocab',
+          },
+          assetHandles: [{ dispose: assetHandleDispose }] as never,
+          selection: {
+            encoderName: 'encoder-model.onnx',
+            decoderName: 'decoder_joint-model.int8.onnx',
+            tokenizerName: 'vocab.txt',
+            encoderQuant: 'fp32',
+            decoderQuant: 'int8',
+          },
+        })
+      ).rejects.toThrow('model construction failed');
+
+      expect(fromUrls).toHaveBeenCalledTimes(1);
+      expect(assetHandleDispose).toHaveBeenCalledTimes(1);
+    } finally {
+      fromUrls.mockRestore();
+    }
+  });
+
   it('disposes the session when abort is observed after createSession', async () => {
     const signal = { aborted: false };
     const disposeModel = vi.fn(async () => undefined);
