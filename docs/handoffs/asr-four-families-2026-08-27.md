@@ -280,6 +280,34 @@ structured result. This is representative label evidence, not a public Qwen
 long-audio quality claim: the family remains short-clip/within-model-limit
 experimental support and has no verified encoder-cache streaming contract.
 
+## Deterministic browser microphone acceptance (2026-08-29)
+
+`tools/browser-validation/streaming-demo-mic-smoke.py` now provides a reusable
+headless Chromium acceptance probe. Chromium's fake microphone is fed the
+speech fixture `tests/fixtures/ItsLifeJim.en.wav` (SHA-256
+`720029790d0718aff094b0e1c353d7890bce1c9feba0029f935cd82b3a804e66`) while the
+streaming-demo uses its normal `getUserMedia` capture path. The probe selects
+the local `parakeet-realtime-eou-120m-v1` artifact, WASM runtime, and
+`speech-detect` mode, then verifies model load, worker readiness, a non-empty
+transcript, a completed segment, and all four HUD latency fields.
+
+The run is recorded in
+`tools/data/results/browser/streaming-demo-mic-smoke-parakeet-realtime-speech-detect-2026-08-29.json`:
+
+| Metric | Result |
+| --- | ---: |
+| Model load | 4443 ms |
+| Segment duration | 2.85 s |
+| First partial | 1899 ms |
+| End of utterance | 1086 ms |
+| p50 processing | 1085 ms |
+| p95 emit lag | 1086 ms |
+
+This closes the reproducible fake-device browser acceptance gap for capture →
+segmenter → worker/model → HUD. It is not a physical human-microphone pass,
+and the fixture has no paired quality label, so neither hardware behavior nor
+ASR quality is claimed from this run.
+
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.
@@ -289,8 +317,8 @@ experimental support and has no verified encoder-cache streaming contract.
 - Node WebGPU still `WEBGPU_NO_ADAPTER`.
 - All five families stay experimental; no presets. Discover via `listExperimentalSpeechFamilies()`, not `listSpeechModels()`.
 - GigaAM RNN-T is Russian-only (`example.wav`); do not cite it as a JFK / English result.
-- Human microphone pass for the streaming-demo latency HUD is still required. `--` at idle is not a speech-path pass.
+- Deterministic fake-device browser acceptance for the streaming-demo latency HUD is now recorded; a physical human-microphone pass remains a manual device check. `--` at idle is not a speech-path pass.
 - Historical note: this handoff originally recorded experimental families on the root for WebGPU discovery. Current main keeps them on intentional `models/<family>` subpaths; they remain experimental and are not presets.
 - X-ASR now owns its native transcript/options contracts and canonical mapper under `src/models/x-asr`; it no longer reuses the LASR-CTC family contract.
 - Realtime transcription requests now carry a controller-owned abort signal; `reset()` aborts stale in-flight callbacks before clearing state, so browser worker/model callbacks can cancel cooperatively and reuse the loaded model.
-- Experimental family executors now call ORT `session.release()` on dispose. Whisper encoder mel feeds, decoder-step owned feeds/logits/replaced KV (CPU+GPU), and split-graph callback present-KV Ort wrappers are `dispose()`d after copy; next-step encoder KV is retained until replaced. CTC/transducer `session.run()` output logits (GigaAM CTC/RNN-T, SenseVoice, X-ASR, LASR, Wav2Vec2, NeMo TDT/RNN-T/AED) and Qwen prefill/step decoder logits are copied then disposed; Qwen next-step KV is retained until replaced. Browser capture worklet URLs, decode AudioContext `close()`, and TEN/FireRed VAD `worker.terminate()` on adapter dispose were already present. `UrlAssetHandle` / `BlobAssetHandle` now refuse post-dispose locators and revoke blob URLs on dispose even when `getLocator('url')` is concurrent or still in-flight. `getModelFile({ preferBlobUrl: true })` now requires `onResolvedHandle` and always disposes the handle when ownership is not transferred. Whisper, Qwen, GigaAM RNN-T joint/decoder, NeMo AED decoder, NeMo RNN-T joint/decoder, NeMo TDT duration/step, and X-ASR streaming step loops honor `options.signal` between steps (`PipelineAbortedError`). X-ASR abort does not commit the in-flight chunk or dispose caller encoder-state tensors; the leftover stream can be retried (`reset()` optional). Experimental families now expose structured `languages` / `audioContract` / `limitations` on `listExperimentalSpeechFamilies()`, and missing local ONNX throws root-exported `ExperimentalArtifactMissingError` (`code === 'experimental-artifact-missing'`, `isExperimentalArtifactMissingError()`). `loadSpeechModel({ signal })` aborts with `PipelineAbortedError('load')`. Remaining product gaps: human mic HUD, Node WebGPU adapter, Qwen long-audio.
+- Experimental family executors now call ORT `session.release()` on dispose. Whisper encoder mel feeds, decoder-step owned feeds/logits/replaced KV (CPU+GPU), and split-graph callback present-KV Ort wrappers are `dispose()`d after copy; next-step encoder KV is retained until replaced. CTC/transducer `session.run()` output logits (GigaAM CTC/RNN-T, SenseVoice, X-ASR, LASR, Wav2Vec2, NeMo TDT/RNN-T/AED) and Qwen prefill/step decoder logits are copied then disposed; Qwen next-step KV is retained until replaced. Browser capture worklet URLs, decode AudioContext `close()`, and TEN/FireRed VAD `worker.terminate()` on adapter dispose were already present. `UrlAssetHandle` / `BlobAssetHandle` now refuse post-dispose locators and revoke blob URLs on dispose even when `getLocator('url')` is concurrent or still in-flight. `getModelFile({ preferBlobUrl: true })` now requires `onResolvedHandle` and always disposes the handle when ownership is not transferred. Whisper, Qwen, GigaAM RNN-T joint/decoder, NeMo AED decoder, NeMo RNN-T joint/decoder, NeMo TDT duration/step, and X-ASR streaming step loops honor `options.signal` between steps (`PipelineAbortedError`). X-ASR abort does not commit the in-flight chunk or dispose caller encoder-state tensors; the leftover stream can be retried (`reset()` optional). Experimental families now expose structured `languages` / `audioContract` / `limitations` on `listExperimentalSpeechFamilies()`, and missing local ONNX throws root-exported `ExperimentalArtifactMissingError` (`code === 'experimental-artifact-missing'`, `isExperimentalArtifactMissingError()`). `loadSpeechModel({ signal })` aborts with `PipelineAbortedError('load')`. Remaining product gaps: physical human-microphone check, Node WebGPU adapter, Qwen long-audio.
