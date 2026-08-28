@@ -394,6 +394,12 @@ session reusable. When a transcriber owns a session created by
 `model.createStreamingTranscriber()`, call its optional `dispose()` method when
 finished; it is idempotent and releases the underlying streaming resources.
 
+High-level handles also expose the same capability without reaching through
+`loaded.model`: check `loaded.supportsStreaming`, then call
+`loaded.createStreamingTranscriber()`. The handle tracks every transcriber it
+creates and disposes them before its model/session resources, so this is the
+preferred ownership boundary for applications using `loadSpeechModel()`.
+
 ## Quick Start
 
 ### Explicit runtime composition
