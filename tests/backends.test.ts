@@ -66,11 +66,13 @@ describe('backend probes', () => {
   });
 
   it('detects WebGPU capabilities from a mocked navigator', async () => {
+    const adapterRequests: unknown[] = [];
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
         gpu: {
-          async requestAdapter() {
+          async requestAdapter(options?: unknown) {
+            adapterRequests.push(options);
             return {
               features: {
                 has(feature: string) {
@@ -91,6 +93,7 @@ describe('backend probes', () => {
     expect(caps.available).toBe(true);
     expect(caps.supportsFp16).toBe(true);
     expect(caps.provider).toBe('MockVendor');
+    expect(adapterRequests).toEqual([{ powerPreference: 'high-performance' }]);
 
     const context = await createWebGpuBackend().createExecutionContext({
       modelFamily: 'test-family',
@@ -99,6 +102,58 @@ describe('backend probes', () => {
     });
     expect(context.provider).toBe('MockVendor');
     await context.dispose();
+  });
+
+  it('falls back to default adapter selection when high-performance selection is unavailable', async () => {
+    const adapterRequests: unknown[] = [];
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        gpu: {
+          async requestAdapter(options?: { readonly powerPreference?: string }) {
+            adapterRequests.push(options);
+            if (options?.powerPreference === 'high-performance') return null;
+            return { info: { vendor: 'FallbackVendor' } };
+          },
+        },
+      },
+    });
+
+    const caps = await probeWebGpuCapabilities();
+
+    expect(caps.available).toBe(true);
+    expect(caps.provider).toBe('FallbackVendor');
+    expect(adapterRequests).toEqual([{ powerPreference: 'high-performance' }, undefined]);
+    expect(caps.notes).toContain(
+      'High-performance adapter selection returned null; retrying default WebGPU adapter selection.',
+    );
+  });
+
+  it('falls back when a browser rejects the high-performance adapter option', async () => {
+    const adapterRequests: unknown[] = [];
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        gpu: {
+          async requestAdapter(options?: { readonly powerPreference?: string }) {
+            adapterRequests.push(options);
+            if (options?.powerPreference === 'high-performance') {
+              throw new TypeError('powerPreference is not supported');
+            }
+            return { info: { vendor: 'RejectedPreferenceFallback' } };
+          },
+        },
+      },
+    });
+
+    const caps = await probeWebGpuCapabilities();
+
+    expect(caps.available).toBe(true);
+    expect(caps.provider).toBe('RejectedPreferenceFallback');
+    expect(adapterRequests).toEqual([{ powerPreference: 'high-performance' }, undefined]);
+    expect(caps.notes).toContain(
+      'High-performance WebGPU adapter probe failed: TypeError: powerPreference is not supported; retrying default adapter selection.',
+    );
   });
 
   it('detects WebNN from a mocked navigator', async () => {

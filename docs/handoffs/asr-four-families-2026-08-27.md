@@ -308,6 +308,21 @@ segmenter → worker/model → HUD. It is not a physical human-microphone pass,
 and the fixture has no paired quality label, so neither hardware behavior nor
 ASR quality is claimed from this run.
 
+## WebGPU adapter selection resilience (2026-08-29)
+
+`probeWebGpuCapabilities()` now requests the `high-performance` WebGPU adapter
+first, which is the appropriate preference for sustained ASR inference. If a
+browser or driver returns `null` or rejects that preference, the probe retries
+the browser's default adapter selection and preserves the fallback reason in
+`capabilities.notes`. This avoids classifying WebGPU as unavailable solely
+because the preferred adapter selection is unsupported.
+
+The backend unit suite covers both fallback forms (`null` and rejected option),
+and a system-Chrome browser module smoke imported the built source against a
+mocked `navigator.gpu`: high-performance selection returned `null`, default
+selection succeeded, and the probe reported WebGPU/FP16 available. This is
+adapter-selection coverage, not a hardware performance claim.
+
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.
