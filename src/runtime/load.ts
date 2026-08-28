@@ -192,55 +192,56 @@ export function createLoadedSpeechModelHandle<
 >(
   handle: BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative>,
 ): LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative> {
+  async function transcribeAudio<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+    input: AudioInputLike,
+    options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+  ): Promise<TranscriptResponse<TNative, TFlavor>> {
+    const resolvedOptions = withResolvedTranscriptDetail(options);
+    if (resolvedOptions?.responseFlavor === 'native') {
+      return handle.transcribe(input, resolvedOptions);
+    }
+
+    const inference =
+      handle.model.info.inference ??
+      createDefaultModelInferenceLimits({
+        family: handle.model.info.family,
+        modelId: handle.model.info.modelId,
+      });
+    const decision = planWindowedTranscription(input, resolvedOptions, inference);
+    if (!decision.shouldWindow) {
+      return handle.transcribe(input, resolvedOptions);
+    }
+
+    const canonical = await transcribeWithWindowing({
+      input: decision.audio,
+      options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
+      inference,
+      transcribeWindow: async (windowInput, windowOptions) =>
+        (await handle.transcribe(windowInput, {
+          ...windowOptions,
+          responseFlavor: 'canonical',
+        } as TTranscriptionOptions & {
+          readonly responseFlavor: 'canonical';
+        })) as TranscriptResponse<TNative, 'canonical'>,
+    });
+
+    if (resolvedOptions?.responseFlavor === 'canonical+native') {
+      return { canonical } as TranscriptResponse<TNative, TFlavor>;
+    }
+    return canonical as TranscriptResponse<TNative, TFlavor>;
+  }
+
   return {
     runtime: handle.runtime,
     model: handle.model,
     session: handle.session,
-    async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
-      input: AudioInputLike,
-      options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
-    ): Promise<TranscriptResponse<TNative, TFlavor>> {
-      const resolvedOptions = withResolvedTranscriptDetail(options);
-      if (resolvedOptions?.responseFlavor === 'native') {
-        return handle.transcribe(input, resolvedOptions);
-      }
-
-      const inference =
-        handle.model.info.inference ??
-        createDefaultModelInferenceLimits({
-          family: handle.model.info.family,
-          modelId: handle.model.info.modelId,
-        });
-      const decision = planWindowedTranscription(input, resolvedOptions, inference);
-      if (!decision.shouldWindow) {
-        return handle.transcribe(input, resolvedOptions);
-      }
-
-      const canonical = await transcribeWithWindowing({
-        input: decision.audio,
-        options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
-        inference,
-        transcribeWindow: async (windowInput, windowOptions) =>
-          (await handle.transcribe(windowInput, {
-            ...windowOptions,
-            responseFlavor: 'canonical',
-          } as TTranscriptionOptions & { readonly responseFlavor: 'canonical' })) as TranscriptResponse<
-            TNative,
-            'canonical'
-          >,
-      });
-
-      if (resolvedOptions?.responseFlavor === 'canonical+native') {
-        return { canonical } as TranscriptResponse<TNative, TFlavor>;
-      }
-      return canonical as TranscriptResponse<TNative, TFlavor>;
-    },
+    transcribe: transcribeAudio,
     async transcribeMonoPcm<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
       pcm: MonoPcmInput,
       sampleRate: number,
       options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
     ): Promise<TranscriptResponse<TNative, TFlavor>> {
-      return handle.transcribe(createMonoPcmAudioBuffer(pcm, sampleRate), options);
+      return transcribeAudio(createMonoPcmAudioBuffer(pcm, sampleRate), options);
     },
     async dispose(): Promise<void> {
       await handle.dispose();

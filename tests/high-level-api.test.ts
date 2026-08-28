@@ -1,12 +1,14 @@
 import {
   createSpeechPipeline,
   createSpeechRuntime,
+  createLoadedSpeechModelHandle,
   loadSpeechModel,
   transcribeSpeech,
   transcribeSpeechFromMonoPcm,
   PipelineAbortedError,
   type BackendCapabilities,
   type ExecutionBackend,
+  type BuiltInSpeechModelHandle,
 } from '@asrjs/speech-recognition';
 import { registerBuiltInModelFamilies, registerBuiltInPresets } from '@asrjs/speech-recognition/builtins';
 import { describe, expect, it } from 'vitest';
@@ -106,6 +108,95 @@ describe('high-level model-agnostic APIs', () => {
     });
 
     expect(result.text.length).toBeGreaterThan(0);
+
+    await loaded.dispose();
+    await runtime.dispose();
+  });
+
+  it('loaded model handles window long raw mono PCM using model inference limits', async () => {
+    const runtime = createSpeechRuntime();
+    const backend = createStaticBackend({
+      id: 'test',
+      displayName: 'Test',
+      available: true,
+      priority: 1,
+      environments: ['node'],
+      acceleration: ['cpu'],
+      supportedPrecisions: ['fp32'],
+      supportsFp16: false,
+      supportsInt8: false,
+      supportsSharedArrayBuffer: false,
+      requiresSharedArrayBuffer: false,
+      fallbackSuitable: true,
+      notes: [],
+    });
+    const calls: number[] = [];
+    const session = {
+      async transcribe(input: { readonly durationSeconds: number }) {
+        calls.push(input.durationSeconds);
+        return {
+          text: 'window',
+          warnings: [],
+          meta: {
+            detailLevel: 'words' as const,
+            isFinal: true,
+            durationSeconds: input.durationSeconds,
+          },
+          words: [{ index: 0, text: 'window', startTime: 0, endTime: 0.5 }],
+        };
+      },
+      dispose() {
+        return undefined;
+      },
+    };
+    const model = {
+      info: {
+        family: 'test-family',
+        modelId: 'test-long-audio',
+        classification: { ecosystem: 'test', task: 'asr' },
+        inference: {
+          sampleRate: 16_000,
+          maxInputDurationSec: 2,
+          recommendedWindowDurationSec: 2,
+          minWindowDurationSec: 1,
+          maxWindowDurationSec: 2,
+          autoWindowThresholdSec: 2,
+          defaultOverlapSec: 0.5,
+          supportsWordTimestamps: true,
+          supportsSegmentTimestamps: true,
+          defaultSegmentationStrategy: 'word-punctuation' as const,
+          defaultMergeStrategy: 'word-dedupe' as const,
+        },
+      },
+      backend,
+      async createSession() {
+        return session;
+      },
+      dispose() {
+        return undefined;
+      },
+    };
+    const builtInHandle = {
+      runtime,
+      model,
+      session,
+      async transcribe(
+        input: { readonly durationSeconds: number },
+        options?: { readonly responseFlavor?: string },
+      ) {
+        return session.transcribe(input, options);
+      },
+      async dispose() {
+        return undefined;
+      },
+    } satisfies BuiltInSpeechModelHandle;
+    const loaded = createLoadedSpeechModelHandle(builtInHandle);
+
+    const transcript = await loaded.transcribeMonoPcm(new Float32Array(4 * 16_000), 16_000);
+
+    expect(calls.length).toBeGreaterThan(1);
+    expect(calls.every((duration) => duration <= 2)).toBe(true);
+    expect(transcript.text).toContain('window');
 
     await loaded.dispose();
     await runtime.dispose();

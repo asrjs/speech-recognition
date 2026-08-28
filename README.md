@@ -139,6 +139,10 @@ const result = await loaded.transcribeMonoPcm(pcm, 16000, {
 await loaded.dispose();
 ```
 
+`transcribeMonoPcm` follows the same model-aware long-audio windowing policy as
+`transcribe`. Audio longer than a model's supported input window is split and
+merged into one canonical transcript when the model exposes inference limits.
+
 #### One-shot automatic transcription
 
 If you want a single call that handles model loading, transcription, and
