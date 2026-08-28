@@ -2,6 +2,9 @@ import {
   createSpeechPipeline,
   createSpeechRuntime,
   loadSpeechModel,
+  transcribeSpeech,
+  transcribeSpeechBatch,
+  PipelineAbortedError,
   type BackendCapabilities,
   type ExecutionBackend,
 } from '@asrjs/speech-recognition';
@@ -28,8 +31,8 @@ function createStaticBackend(capabilities: BackendCapabilities): ExecutionBacken
 function createProbeRuntime(options: {
   onCreateModel: () => Promise<void>;
   onDisposeModel: () => void;
-  onTranscribe?: () => Promise<void>;
-  onTranscribeBatch?: () => Promise<void>;
+  onTranscribe?: (signal?: { readonly aborted: boolean } | null) => Promise<void>;
+  onTranscribeBatch?: (signal?: { readonly aborted: boolean } | null) => Promise<void>;
 }) {
   const runtime = createSpeechRuntime();
   runtime.registerBackend(
@@ -65,16 +68,22 @@ function createProbeRuntime(options: {
         backend: context.backend,
         async createSession() {
           return {
-            async transcribe() {
-              await options.onTranscribe?.();
+            async transcribe(
+              _input: Float32Array,
+              transcribeOptions?: { readonly signal?: { readonly aborted: boolean } | null },
+            ) {
+              await options.onTranscribe?.(transcribeOptions?.signal);
               return {
                 text: 'probe',
                 warnings: [],
                 meta: { detailLevel: 'text' as const, isFinal: true },
               };
             },
-            async transcribeBatch(inputs: readonly Float32Array[]) {
-              await options.onTranscribeBatch?.();
+            async transcribeBatch(
+              inputs: readonly Float32Array[],
+              transcribeOptions?: { readonly signal?: { readonly aborted: boolean } | null },
+            ) {
+              await options.onTranscribeBatch?.(transcribeOptions?.signal);
               return inputs.map(() => ({
                 text: 'probe',
                 warnings: [],
@@ -322,6 +331,76 @@ describe('SpeechPipeline lifecycle races', () => {
     await disposing;
     expect(disposeCount).toBe(1);
 
+    await runtime.dispose();
+  });
+
+  it('propagates one-shot load cancellation into an in-flight transcription', async () => {
+    let releaseTranscribe!: () => void;
+    const transcribeGate = new Promise<void>((resolve) => {
+      releaseTranscribe = resolve;
+    });
+    let transcribeStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      transcribeStarted = resolve;
+    });
+    const controller = new AbortController();
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onDisposeModel: () => undefined,
+      onTranscribe: async (signal) => {
+        transcribeStarted();
+        await transcribeGate;
+        if (signal?.aborted) {
+          throw new PipelineAbortedError('probe-transcribe');
+        }
+      },
+    });
+
+    const transcribing = transcribeSpeech(new Float32Array(16000), {
+      ...REQUEST,
+      runtime,
+      signal: controller.signal,
+    });
+    await started;
+    controller.abort();
+    releaseTranscribe();
+
+    await expect(transcribing).rejects.toBeInstanceOf(PipelineAbortedError);
+    await runtime.dispose();
+  });
+
+  it('propagates one-shot batch cancellation into an in-flight transcription', async () => {
+    let releaseBatch!: () => void;
+    const batchGate = new Promise<void>((resolve) => {
+      releaseBatch = resolve;
+    });
+    let batchStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      batchStarted = resolve;
+    });
+    const controller = new AbortController();
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onDisposeModel: () => undefined,
+      onTranscribeBatch: async (signal) => {
+        batchStarted();
+        await batchGate;
+        if (signal?.aborted) {
+          throw new PipelineAbortedError('probe-transcribe-batch');
+        }
+      },
+    });
+
+    const transcribing = transcribeSpeechBatch([new Float32Array(16000)], {
+      ...REQUEST,
+      runtime,
+      signal: controller.signal,
+    });
+    await started;
+    controller.abort();
+    releaseBatch();
+
+    await expect(transcribing).rejects.toBeInstanceOf(PipelineAbortedError);
     await runtime.dispose();
   });
 

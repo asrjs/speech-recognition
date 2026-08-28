@@ -14,6 +14,7 @@ import {
 } from '../pipeline/index.js';
 import type {
   AudioInputLike,
+  AbortSignalLike,
   BaseTranscriptionOptions,
   MonoPcmInput,
   SpeechBatchSession,
@@ -100,7 +101,10 @@ export async function transcribeSpeech<
   const loaded = await loadSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(loadOptions);
 
   try {
-    return await loaded.transcribe(input, transcribeOptions);
+    return await loaded.transcribe(
+      input,
+      withInheritedTranscriptionSignal(transcribeOptions, options.signal),
+    );
   } finally {
     await loaded.dispose();
   }
@@ -146,7 +150,10 @@ export async function transcribeSpeechBatch<
   const loaded = await loadSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(loadOptions);
 
   try {
-    return await loaded.transcribeBatch(inputs, transcribeOptions);
+    return await loaded.transcribeBatch(
+      inputs,
+      withInheritedTranscriptionSignal(transcribeOptions, options.signal),
+    );
   } finally {
     await loaded.dispose();
   }
@@ -227,6 +234,30 @@ type UnknownLoadedModelHandle = LoadedSpeechModel<unknown, BaseTranscriptionOpti
 
 function createMonoPcmAudioBuffer(pcm: MonoPcmInput, sampleRate: number): PcmAudioBuffer {
   return PcmAudioBuffer.fromMono(pcm, sampleRate);
+}
+
+function withInheritedTranscriptionSignal<
+  TOptions extends BaseTranscriptionOptions,
+>(
+  options: (TOptions & { readonly responseFlavor?: TranscriptResponseFlavor }) | undefined,
+  inheritedSignal: AbortSignalLike | null | undefined,
+): (TOptions & { readonly responseFlavor?: TranscriptResponseFlavor }) | undefined {
+  if (!inheritedSignal || options?.signal === inheritedSignal) {
+    return options;
+  }
+  if (!options?.signal) {
+    return { ...(options ?? {}), signal: inheritedSignal } as TOptions & {
+      readonly responseFlavor?: TranscriptResponseFlavor;
+    };
+  }
+
+  const explicitSignal = options.signal;
+  const combinedSignal: AbortSignalLike = {
+    get aborted(): boolean {
+      return inheritedSignal.aborted || explicitSignal.aborted;
+    },
+  };
+  return { ...options, signal: combinedSignal };
 }
 
 function assertBatchSession<TTranscriptionOptions extends BaseTranscriptionOptions, TNative>(
