@@ -22,6 +22,7 @@ import type {
   TranscriptResponseFlavor,
 } from '../types/index.js';
 import { NotImplementedSpeechFeatureError } from './errors.js';
+import { createActiveOperationLease, createGuardedSpeechSession } from './operation-lease.js';
 import type { DefaultSpeechRuntime } from './session.js';
 
 /**
@@ -273,67 +274,87 @@ export function createLoadedSpeechModelHandle<
 >(
   handle: BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative>,
 ): LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative> {
+  const operationLease = createActiveOperationLease();
+  const guardedSession = createGuardedSpeechSession(handle.session, operationLease);
+  let disposePromise: Promise<void> | null = null;
+
   async function transcribeAudio<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
     input: AudioInputLike,
     options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
   ): Promise<TranscriptResponse<TNative, TFlavor>> {
-    const resolvedOptions = withResolvedTranscriptDetail(options);
-    if (resolvedOptions?.responseFlavor === 'native') {
-      return handle.transcribe(input, resolvedOptions);
+    const releaseOperation = operationLease.enter();
+    if (!releaseOperation) {
+      throw new Error('Loaded speech model handle is disposed.');
     }
+    try {
+      const resolvedOptions = withResolvedTranscriptDetail(options);
+      if (resolvedOptions?.responseFlavor === 'native') {
+        return await handle.transcribe(input, resolvedOptions);
+      }
 
-    const inference =
-      handle.model.info.inference ??
-      createDefaultModelInferenceLimits({
-        family: handle.model.info.family,
-        modelId: handle.model.info.modelId,
+      const inference =
+        handle.model.info.inference ??
+        createDefaultModelInferenceLimits({
+          family: handle.model.info.family,
+          modelId: handle.model.info.modelId,
+        });
+      const decision = planWindowedTranscription(input, resolvedOptions, inference);
+      if (!decision.shouldWindow) {
+        return await handle.transcribe(input, resolvedOptions);
+      }
+
+      const canonical = await transcribeWithWindowing({
+        input: decision.audio,
+        options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
+        inference,
+        transcribeWindow: async (windowInput, windowOptions) =>
+          (await handle.transcribe(windowInput, {
+            ...windowOptions,
+            responseFlavor: 'canonical',
+          } as TTranscriptionOptions & {
+            readonly responseFlavor: 'canonical';
+          })) as TranscriptResponse<TNative, 'canonical'>,
       });
-    const decision = planWindowedTranscription(input, resolvedOptions, inference);
-    if (!decision.shouldWindow) {
-      return handle.transcribe(input, resolvedOptions);
-    }
 
-    const canonical = await transcribeWithWindowing({
-      input: decision.audio,
-      options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
-      inference,
-      transcribeWindow: async (windowInput, windowOptions) =>
-        (await handle.transcribe(windowInput, {
-          ...windowOptions,
-          responseFlavor: 'canonical',
-        } as TTranscriptionOptions & {
-          readonly responseFlavor: 'canonical';
-        })) as TranscriptResponse<TNative, 'canonical'>,
-    });
-
-    if (resolvedOptions?.responseFlavor === 'canonical+native') {
-      return { canonical } as TranscriptResponse<TNative, TFlavor>;
+      if (resolvedOptions?.responseFlavor === 'canonical+native') {
+        return { canonical } as TranscriptResponse<TNative, TFlavor>;
+      }
+      return canonical as TranscriptResponse<TNative, TFlavor>;
+    } finally {
+      releaseOperation();
     }
-    return canonical as TranscriptResponse<TNative, TFlavor>;
   }
 
-  const supportsBatch = typeof handle.session.transcribeBatch === 'function';
+  const supportsBatch = typeof guardedSession.transcribeBatch === 'function';
 
   async function transcribeBatchAudio<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
     inputs: readonly AudioInputLike[],
     options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
   ): Promise<readonly TranscriptResponse<TNative, TFlavor>[]> {
-    const batchSession = assertBatchSession(handle.session, handle.model.info.modelId);
-    const resolvedOptions = withResolvedTranscriptDetail(options);
-    const inference =
-      handle.model.info.inference ??
-      createDefaultModelInferenceLimits({
-        family: handle.model.info.family,
-        modelId: handle.model.info.modelId,
-      });
-    assertBatchInputsAreDirect(inputs, resolvedOptions, inference, handle.model.info.modelId);
-    return batchSession.transcribeBatch(inputs, resolvedOptions);
+    const releaseOperation = operationLease.enter();
+    if (!releaseOperation) {
+      throw new Error('Loaded speech model handle is disposed.');
+    }
+    try {
+      const batchSession = assertBatchSession(guardedSession, handle.model.info.modelId);
+      const resolvedOptions = withResolvedTranscriptDetail(options);
+      const inference =
+        handle.model.info.inference ??
+        createDefaultModelInferenceLimits({
+          family: handle.model.info.family,
+          modelId: handle.model.info.modelId,
+        });
+      assertBatchInputsAreDirect(inputs, resolvedOptions, inference, handle.model.info.modelId);
+      return await batchSession.transcribeBatch(inputs, resolvedOptions);
+    } finally {
+      releaseOperation();
+    }
   }
 
   return {
     runtime: handle.runtime,
     model: handle.model,
-    session: handle.session,
+    session: guardedSession,
     supportsBatch,
     transcribe: transcribeAudio,
     transcribeBatch: transcribeBatchAudio,
@@ -345,7 +366,13 @@ export function createLoadedSpeechModelHandle<
       return transcribeAudio(createMonoPcmAudioBuffer(pcm, sampleRate), options);
     },
     async dispose(): Promise<void> {
-      await handle.dispose();
+      if (!disposePromise) {
+        disposePromise = (async () => {
+          await operationLease.closeAndWait();
+          await handle.dispose();
+        })();
+      }
+      await disposePromise;
     },
   };
 }

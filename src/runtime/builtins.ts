@@ -49,6 +49,7 @@ import type {
   RuntimeProgressEvent,
 } from '../types/index.js';
 import { createSpeechRuntime, type DefaultSpeechRuntime } from './session.js';
+import { createActiveOperationLease, createGuardedSpeechSession } from './operation-lease.js';
 
 export interface CreateBuiltInSpeechRuntimeOptions {
   readonly hooks?: SpeechRuntimeHooks;
@@ -357,6 +358,7 @@ export async function loadBuiltInSpeechModel<
   options: LoadBuiltInSpeechModelOptions<TLoadOptions>,
 ): Promise<BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative>> {
   const ownsRuntime = !options.runtime;
+  const operationLease = createActiveOperationLease();
   let runtime = options.runtime;
   let model: SpeechModel<TLoadOptions, TTranscriptionOptions, TNative> | undefined;
 
@@ -462,57 +464,73 @@ export async function loadBuiltInSpeechModel<
       message: `${model.info.modelId} is ready for transcription.`,
     });
     const loadedModel = model;
+    const guardedSession = createGuardedSpeechSession(session, operationLease);
+    let disposePromise: Promise<void> | null = null;
 
     return {
       runtime: activeRuntime,
       model: loadedModel,
-      session,
+      session: guardedSession,
       async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
         input: AudioInputLike,
         transcribeOptions?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
       ): Promise<TranscriptResponse<TNative, TFlavor>> {
-        const resolvedOptions = withResolvedTranscriptDetail(transcribeOptions);
-        if (resolvedOptions?.responseFlavor === 'native') {
-          return session.transcribe(input, resolvedOptions);
+        const releaseOperation = operationLease.enter();
+        if (!releaseOperation) {
+          throw new Error('Speech model handle is disposed.');
         }
+        try {
+          const resolvedOptions = withResolvedTranscriptDetail(transcribeOptions);
+          if (resolvedOptions?.responseFlavor === 'native') {
+            return await guardedSession.transcribe(input, resolvedOptions);
+          }
 
-        const inference =
-          loadedModel.info.inference ??
-          resolvedDescriptor?.inference ??
-          createDefaultModelInferenceLimits({
-            family: loadedModel.info.family,
-            modelId: loadedModel.info.modelId,
+          const inference =
+            loadedModel.info.inference ??
+            resolvedDescriptor?.inference ??
+            createDefaultModelInferenceLimits({
+              family: loadedModel.info.family,
+              modelId: loadedModel.info.modelId,
+            });
+          const decision = planWindowedTranscription(input, resolvedOptions, inference);
+          if (!decision.shouldWindow) {
+            return await guardedSession.transcribe(input, resolvedOptions);
+          }
+
+          const canonical = await transcribeWithWindowing({
+            input: decision.audio,
+            options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
+            inference,
+            transcribeWindow: async (windowInput, windowOptions) =>
+              (await guardedSession.transcribe(windowInput, {
+                ...windowOptions,
+                responseFlavor: 'canonical',
+              } as TTranscriptionOptions & { readonly responseFlavor: 'canonical' })) as TranscriptResponse<
+                TNative,
+                'canonical'
+              >,
           });
-        const decision = planWindowedTranscription(input, resolvedOptions, inference);
-        if (!decision.shouldWindow) {
-          return session.transcribe(input, resolvedOptions);
-        }
 
-        const canonical = await transcribeWithWindowing({
-          input: decision.audio,
-          options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
-          inference,
-          transcribeWindow: async (windowInput, windowOptions) =>
-            (await session.transcribe(windowInput, {
-              ...windowOptions,
-              responseFlavor: 'canonical',
-            } as TTranscriptionOptions & { readonly responseFlavor: 'canonical' })) as TranscriptResponse<
-              TNative,
-              'canonical'
-            >,
-        });
-
-        if (resolvedOptions?.responseFlavor === 'canonical+native') {
-          return { canonical } as TranscriptResponse<TNative, TFlavor>;
+          if (resolvedOptions?.responseFlavor === 'canonical+native') {
+            return { canonical } as TranscriptResponse<TNative, TFlavor>;
+          }
+          return canonical as TranscriptResponse<TNative, TFlavor>;
+        } finally {
+          releaseOperation();
         }
-        return canonical as TranscriptResponse<TNative, TFlavor>;
       },
       async dispose(): Promise<void> {
-        if (ownsRuntime) {
-          await activeRuntime.dispose();
-          return;
+        if (!disposePromise) {
+          disposePromise = (async () => {
+            await operationLease.closeAndWait();
+            if (ownsRuntime) {
+              await activeRuntime.dispose();
+              return;
+            }
+            await loadedModel.dispose();
+          })();
         }
-        await loadedModel.dispose();
+        await disposePromise;
       },
     };
   } catch (error) {
