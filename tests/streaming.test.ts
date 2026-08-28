@@ -63,6 +63,34 @@ describe('streaming orchestration', () => {
     expect((await transcriber.pushAudio(new Float32Array(8000))).text).toBe('new');
   });
 
+  it('serializes concurrent audio pushes through one rolling window', async () => {
+    let resolveFirst!: (result: { text: string; warnings: []; meta: { detailLevel: 'text'; isFinal: true } }) => void;
+    let transcribeCalls = 0;
+    const firstResult = new Promise<{ text: string; warnings: []; meta: { detailLevel: 'text'; isFinal: true } }>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const session = {
+      async transcribe() {
+        transcribeCalls += 1;
+        if (transcribeCalls === 1) return firstResult;
+        return { text: 'second', warnings: [], meta: { detailLevel: 'text' as const, isFinal: true } };
+      },
+      dispose() {},
+    };
+    const transcriber = new DefaultStreamingTranscriber(session, { maxWindowMs: 1000 });
+
+    const first = transcriber.pushAudio(new Float32Array(8000));
+    const second = transcriber.pushAudio(new Float32Array(8000));
+    await Promise.resolve();
+    expect(transcribeCalls).toBe(1);
+
+    resolveFirst({ text: 'first', warnings: [], meta: { detailLevel: 'text', isFinal: true } });
+    await first;
+    await second;
+    expect(transcribeCalls).toBe(2);
+    await transcriber.dispose();
+  });
+
   it('maintains partial and final transcript state', async () => {
     const runtime = createSpeechRuntime({
       backends: [createWasmBackend()],

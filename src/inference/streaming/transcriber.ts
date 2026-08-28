@@ -34,6 +34,7 @@ export class DefaultStreamingTranscriber<
   private heardSpeech = false;
   private stateGeneration = 0;
   private operationAbortController = new AbortController();
+  private operationTail: Promise<void> = Promise.resolve();
   private disposed = false;
 
   constructor(
@@ -52,7 +53,15 @@ export class DefaultStreamingTranscriber<
 
   async pushAudio(input: AudioInputLike): Promise<PartialTranscript> {
     const generation = this.stateGeneration;
+    return this.enqueue(() => this.pushAudioInternal(input, generation));
+  }
+
+  private async pushAudioInternal(
+    input: AudioInputLike,
+    generation: number,
+  ): Promise<PartialTranscript> {
     this.assertNotFinalized();
+    if (generation !== this.stateGeneration) return this.staleUpdate();
 
     const normalized = normalizePcmInput(input);
     const chunkStartTime = this.totalDurationSeconds;
@@ -68,7 +77,7 @@ export class DefaultStreamingTranscriber<
         this.heardSpeech &&
         normalized.durationSeconds * 1000 >= this.minFinalSilenceMs
       ) {
-        return this.finalize();
+        return this.finalizeInternal(generation);
       }
     }
 
@@ -83,17 +92,15 @@ export class DefaultStreamingTranscriber<
 
   async flush(): Promise<PartialTranscript> {
     const generation = this.stateGeneration;
-    this.assertNotFinalized();
-    return this.transcribeBuffered('partial', generation);
+    return this.enqueue(() => {
+      this.assertNotFinalized();
+      return this.transcribeBuffered('partial', generation);
+    });
   }
 
   async finalize(): Promise<PartialTranscript> {
     const generation = this.stateGeneration;
-    this.assertNotFinalized();
-    const update = await this.transcribeBuffered('final', generation);
-    if (generation !== this.stateGeneration) return update;
-    this.isFinalized = true;
-    return update;
+    return this.enqueue(() => this.finalizeInternal(generation));
   }
 
   /** Reset transcript/window state while retaining the injected session. */
@@ -115,6 +122,7 @@ export class DefaultStreamingTranscriber<
     this.disposed = true;
     this.stateGeneration += 1;
     this.operationAbortController.abort();
+    await this.operationTail;
     await this.session.dispose();
   }
 
@@ -151,6 +159,14 @@ export class DefaultStreamingTranscriber<
     if (generation !== this.stateGeneration) return this.staleUpdate();
 
     return this.accumulator.update(canonical, kind);
+  }
+
+  private async finalizeInternal(generation: number): Promise<PartialTranscript> {
+    this.assertNotFinalized();
+    const update = await this.transcribeBuffered('final', generation);
+    if (generation !== this.stateGeneration) return update;
+    this.isFinalized = true;
+    return update;
   }
 
   private async canonicalTranscribe(
@@ -204,5 +220,14 @@ export class DefaultStreamingTranscriber<
     if (this.disposed) {
       throw new Error('Streaming transcriber is disposed.');
     }
+  }
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const run = this.operationTail.then(operation, operation);
+    this.operationTail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
   }
 }
