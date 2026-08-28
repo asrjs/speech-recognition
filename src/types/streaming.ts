@@ -35,5 +35,7 @@ export interface StreamingTranscriber {
   flush(): Promise<PartialTranscript>;
   finalize(): Promise<PartialTranscript>;
   reset(): Promise<void> | void;
+  /** Release the transcriber-owned session/stream resources when available. */
+  dispose?(): Promise<void> | void;
   getState(): StreamingTranscriberState;
 }

@@ -34,6 +34,7 @@ export class DefaultStreamingTranscriber<
   private heardSpeech = false;
   private stateGeneration = 0;
   private operationAbortController = new AbortController();
+  private disposed = false;
 
   constructor(
     private readonly session: SpeechSession<TOptions, TNative>,
@@ -97,6 +98,7 @@ export class DefaultStreamingTranscriber<
 
   /** Reset transcript/window state while retaining the injected session. */
   async reset(): Promise<void> {
+    this.assertNotDisposed();
     this.stateGeneration += 1;
     this.operationAbortController.abort();
     this.operationAbortController = new AbortController();
@@ -105,6 +107,15 @@ export class DefaultStreamingTranscriber<
     this.totalDurationSeconds = 0;
     this.heardSpeech = false;
     this.isFinalized = false;
+  }
+
+  /** Release the injected session; repeated disposal is harmless. */
+  async dispose(): Promise<void> {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.stateGeneration += 1;
+    this.operationAbortController.abort();
+    await this.session.dispose();
   }
 
   getState(): StreamingTranscriberState {
@@ -183,8 +194,15 @@ export class DefaultStreamingTranscriber<
   }
 
   private assertNotFinalized(): void {
+    this.assertNotDisposed();
     if (this.isFinalized) {
       throw new Error('Streaming transcriber is finalized. Call reset() before pushing new audio.');
+    }
+  }
+
+  private assertNotDisposed(): void {
+    if (this.disposed) {
+      throw new Error('Streaming transcriber is disposed.');
     }
   }
 }

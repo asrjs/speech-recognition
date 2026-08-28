@@ -26,7 +26,7 @@ class XAsrSpeechSession implements SpeechSession<XAsrTranscriptionOptions, XAsrN
     return value as TranscriptResponse<XAsrNativeTranscript, TFlavor>;
   }
   async dispose(): Promise<void> { if (this.disposed) return; this.disposed = true; await Promise.resolve(this.executor.dispose()); this.onDispose(); }
-  createStreamingTranscriber(options: StreamingSessionOptions = {}): StreamingTranscriber { return new XAsrStreamingTranscriber(this.modelId, this.backendId, this.config, this.executor, options); }
+  createStreamingTranscriber(options: StreamingSessionOptions = {}): StreamingTranscriber { return new XAsrStreamingTranscriber(this.modelId, this.backendId, this.config, this.executor, options, () => this.dispose()); }
 }
 
 class XAsrStreamingTranscriber implements StreamingTranscriber {
@@ -37,15 +37,17 @@ class XAsrStreamingTranscriber implements StreamingTranscriber {
   private finalized = false;
   private durationSeconds = 0;
   private revision = 0;
-  constructor(private readonly modelId: string, private readonly backendId: string, private readonly config: XAsrModelConfig, private readonly executor: XAsrExecutor, options: StreamingSessionOptions) { this.detail = options.detail ?? 'segments'; this.emitPartials = options.emitPartials ?? true; this.stream = executor.createStream(); }
+  private disposed = false;
+  constructor(private readonly modelId: string, private readonly backendId: string, private readonly config: XAsrModelConfig, private readonly executor: XAsrExecutor, options: StreamingSessionOptions, private readonly onDispose?: () => Promise<void> | void) { this.detail = options.detail ?? 'segments'; this.emitPartials = options.emitPartials ?? true; this.stream = executor.createStream(); }
   async pushAudio(input: AudioInputLike): Promise<PartialTranscript> { this.assertOpen(); const audio = normalizePcmInput(input).toMono(); this.durationSeconds += audio.durationSeconds; const pcm = audio.channels?.[0] ?? new Float32Array(0); if (!this.emitPartials) return this.blank('partial'); return this.update(await this.executor.pushStream(this.stream, pcm, false, { detail: this.detail })); }
   async flush(): Promise<PartialTranscript> { this.assertOpen(); return this.update(await this.executor.pushStream(this.stream, new Float32Array(0), false, { detail: this.detail })); }
   async finalize(): Promise<PartialTranscript> { this.assertOpen(); const result = await this.executor.pushStream(this.stream, new Float32Array(0), true, { detail: this.detail }); const update = this.update(result, 'final'); this.executor.disposeStream(result.state); this.finalized = true; return update; }
   async reset(): Promise<void> { this.assertOpen(); this.executor.disposeStream(this.stream); this.stream = this.executor.createStream(); this.accumulator.reset(); this.durationSeconds = 0; this.revision = 0; }
+  async dispose(): Promise<void> { if (this.disposed) return; this.disposed = true; this.executor.disposeStream(this.stream); await this.onDispose?.(); }
   getState(): StreamingTranscriberState { const state = this.accumulator.getState(); return { revision: state.revision, bufferedDurationSeconds: this.durationSeconds, committedText: state.committedText, previewText: state.previewText, isFinalized: this.finalized }; }
   private update(result: Awaited<ReturnType<XAsrExecutor['pushStream']>>, kind: 'partial' | 'final' = 'partial'): PartialTranscript { this.stream = result.state; const audioSeconds = this.durationSeconds; const value = canonical(result.transcript, this.modelId, this.backendId, this.config.sampleRate, audioSeconds, this.detail); return this.accumulator.update(value, kind); }
   private blank(kind: 'partial' | 'final'): PartialTranscript { this.revision += 1; return { kind, revision: this.revision, text: '', committedText: '', previewText: '', warnings: [], meta: { detailLevel: this.detail, isFinal: kind === 'final', modelFamily: 'x-asr', modelId: this.modelId, durationSeconds: this.durationSeconds } }; }
-  private assertOpen(): void { if (this.finalized) throw new Error('Streaming transcriber is finalized. Call reset() before pushing new audio.'); }
+  private assertOpen(): void { if (this.disposed) throw new Error('Streaming transcriber is disposed.'); if (this.finalized) throw new Error('Streaming transcriber is finalized. Call reset() before pushing new audio.'); }
 }
 
 class XAsrSpeechModel implements SpeechModel<XAsrModelOptions, XAsrTranscriptionOptions, XAsrNativeTranscript> {

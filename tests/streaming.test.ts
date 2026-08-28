@@ -30,6 +30,10 @@ describe('streaming orchestration', () => {
     await transcriber.pushAudio(new Float32Array(8000));
 
     expect(transcribeCalls).toBe(2);
+    await transcriber.dispose();
+    await transcriber.dispose();
+    expect(disposed).toBe(true);
+    await expect(transcriber.pushAudio(new Float32Array(8000))).rejects.toThrow(/disposed/);
   });
 
   it('does not commit an in-flight result after reset', async () => {
