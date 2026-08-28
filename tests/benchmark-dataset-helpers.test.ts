@@ -5,6 +5,7 @@ import {
   benchmarkMemoryDeltaBytes,
   benchmarkRunRecordsToCsv,
   calcRtfx,
+  createBenchmarkStageMetrics,
   flattenBenchmarkRunRecord,
   flattenBenchmarkLifecycleRecord,
   levenshteinDistance,
@@ -49,6 +50,8 @@ describe('benchmark and dataset helpers', () => {
         decode_ms: 500,
         total_ms: 1700,
         window_count: 3,
+        decoder_step_count: 6,
+        encoder_frame_count: 300,
       },
     });
     expect(flattened.encode_rtfx).toBe(12);
@@ -57,6 +60,8 @@ describe('benchmark and dataset helpers', () => {
     expect(flattened.encoder_backend).toBe('webgpu');
     expect(flattened.decoder_backend).toBe('wasm');
     expect(flattened.window_count).toBe(3);
+    expect(flattened.decoder_step_count).toBe(6);
+    expect(flattened.encoder_frame_count).toBe(300);
 
     const csv = benchmarkRunRecordsToCsv([
       {
@@ -68,13 +73,48 @@ describe('benchmark and dataset helpers', () => {
           encode_ms: 1000,
           decode_ms: 500,
           window_count: 2,
+          decoder_gpu_tensor_downloads: 8,
         },
       },
     ]);
     expect(csv.startsWith(BENCHMARK_RUN_CSV_COLUMNS.join(','))).toBe(true);
     expect(csv).toContain('window_count');
+    expect(csv).toContain('decoder_gpu_tensor_downloads');
     expect(csv).toContain(',2,');
+    expect(csv).toContain(',8,');
     expect(toCsv([{ alpha: 'a', beta: 2 }], ['alpha', 'beta'])).toContain('alpha,beta');
+  });
+
+  it('projects canonical long-audio telemetry into benchmark rows', () => {
+    const metrics = createBenchmarkStageMetrics({
+      totalMs: 300,
+      rtf: 0.15,
+      windowCount: 2,
+      decoderStepMs: 30,
+      decoderStepCount: 6,
+      decoderStepAvgMs: 5,
+      decoderGpuTensorDownloads: 8,
+      decoderKvCacheLocation: 'cpu',
+      encoderRunMs: 120,
+      encoderTotalMs: 125,
+      encoderFrameCount: 300,
+      decodeIterations: 6,
+      preprocessorBackend: 'js',
+    });
+
+    expect(metrics).toMatchObject({
+      window_count: 2,
+      decoder_step_ms: 30,
+      decoder_step_count: 6,
+      decoder_step_avg_ms: 5,
+      decoder_gpu_tensor_downloads: 8,
+      decoder_kv_cache_location: 'cpu',
+      encoder_run_ms: 120,
+      encoder_total_ms: 125,
+      encoder_frame_count: 300,
+      decode_iterations: 6,
+      preprocessor_backend: 'js',
+    });
   });
 
   it('exports model lifecycle timing and comparable memory deltas', () => {

@@ -1,5 +1,8 @@
 import {
   createDefaultModelInferenceLimits,
+  addWindowMetrics,
+  buildWindowedMetrics,
+  createWindowedMetricsAccumulator,
   dedupeWindowWords,
   partitionWordsIntoSegments,
   resolveWindowPolicy,
@@ -30,6 +33,50 @@ function result(words: ReturnType<typeof word>[], offsetText = ''): TranscriptRe
 }
 
 describe('pipeline windowing primitives', () => {
+  it('preserves additive decoder and encoder telemetry across windows', () => {
+    const accumulator = createWindowedMetricsAccumulator(20);
+    accumulator.windowCount = 2;
+    addWindowMetrics(accumulator, {
+      decoderStepMs: 10,
+      decoderStepCount: 2,
+      decoderGpuTensorDownloads: 3,
+      encoderFrameCount: 100,
+      decodeIterations: 2,
+      decoderKvCacheLocation: 'cpu',
+      preprocessorBackend: 'js',
+      totalMs: 100,
+    });
+    addWindowMetrics(accumulator, {
+      decoderStepMs: 20,
+      decoderStepCount: 4,
+      decoderGpuTensorDownloads: 5,
+      encoderFrameCount: 200,
+      decodeIterations: 4,
+      decoderKvCacheLocation: 'cpu',
+      preprocessorBackend: 'js',
+      totalMs: 200,
+    });
+
+    expect(buildWindowedMetrics(accumulator)).toMatchObject({
+      decoderStepMs: 30,
+      decoderStepCount: 6,
+      decoderStepAvgMs: 5,
+      decoderGpuTensorDownloads: 8,
+      encoderFrameCount: 300,
+      decodeIterations: 6,
+      decoderKvCacheLocation: 'cpu',
+      preprocessorBackend: 'js',
+      windowCount: 2,
+      totalMs: 300,
+    });
+
+    const mixedAccumulator = createWindowedMetricsAccumulator(2);
+    mixedAccumulator.windowCount = 2;
+    addWindowMetrics(mixedAccumulator, { decoderKvCacheLocation: 'cpu' });
+    addWindowMetrics(mixedAccumulator, { decoderKvCacheLocation: 'gpu' });
+    expect(buildWindowedMetrics(mixedAccumulator)?.decoderKvCacheLocation).toBe('mixed');
+  });
+
   it('maps transformers-style return options onto canonical detail levels', () => {
     expect(resolveTranscriptDetail({ returnTimestamps: true })).toBe('segments');
     expect(resolveTranscriptDetail({ returnTimestamps: 'word' })).toBe('words');
@@ -41,12 +88,17 @@ describe('pipeline windowing primitives', () => {
 
   it('resolves model-specific Parakeet and Whisper defaults', () => {
     const parakeet = createDefaultModelInferenceLimits({ family: 'nemo-tdt', modelId: 'parakeet' });
-    const whisper = createDefaultModelInferenceLimits({ family: 'whisper-seq2seq', modelId: 'whisper' });
+    const whisper = createDefaultModelInferenceLimits({
+      family: 'whisper-seq2seq',
+      modelId: 'whisper',
+    });
 
     expect(resolveWindowPolicy({ inference: parakeet }).windowDurationSec).toBe(90);
     expect(resolveWindowPolicy({ inference: parakeet }).maxWindowDurationSec).toBe(180);
     expect(resolveWindowPolicy({ inference: whisper }).windowDurationSec).toBe(30);
-    expect(resolveWindowPolicy({ inference: whisper, windowDurationSeconds: 90 }).windowDurationSec).toBe(30);
+    expect(
+      resolveWindowPolicy({ inference: whisper, windowDurationSeconds: 90 }).windowDurationSec,
+    ).toBe(30);
     expect(
       resolveWindowPolicy({
         inference: whisper,

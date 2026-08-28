@@ -1,3 +1,5 @@
+import type { TranscriptMetrics } from '../types/index.js';
+
 export interface NumericSummary {
   readonly count: number;
   readonly min: number | null;
@@ -17,7 +19,48 @@ export interface BenchmarkStageMetrics {
   readonly rtf?: number;
   /** Number of model inference windows used to compose this benchmark run. */
   readonly window_count?: number;
+  readonly decoder_step_ms?: number;
+  readonly decoder_step_count?: number;
+  readonly decoder_step_avg_ms?: number;
+  readonly decoder_gpu_tensor_downloads?: number;
+  readonly decoder_kv_cache_location?: string;
+  readonly encoder_run_ms?: number;
+  readonly encoder_total_ms?: number;
+  readonly encoder_frame_count?: number;
+  readonly decode_iterations?: number;
   readonly preprocessor_backend?: string;
+}
+
+/**
+ * Projects canonical transcript telemetry into the stable benchmark row shape.
+ * Derived percentile fields are intentionally not represented because they
+ * cannot be reconstructed from window-level totals.
+ */
+export function createBenchmarkStageMetrics(
+  metrics: TranscriptMetrics | undefined,
+): BenchmarkStageMetrics | undefined {
+  if (!metrics) {
+    return undefined;
+  }
+  return {
+    preprocess_ms: metrics.preprocessMs,
+    encode_ms: metrics.encodeMs,
+    decode_ms: metrics.decodeMs,
+    tokenize_ms: metrics.tokenizeMs,
+    total_ms: metrics.totalMs,
+    rtf: metrics.rtf,
+    window_count: metrics.windowCount,
+    decoder_step_ms: metrics.decoderStepMs,
+    decoder_step_count: metrics.decoderStepCount,
+    decoder_step_avg_ms: metrics.decoderStepAvgMs,
+    decoder_gpu_tensor_downloads: metrics.decoderGpuTensorDownloads,
+    decoder_kv_cache_location: metrics.decoderKvCacheLocation,
+    encoder_run_ms: metrics.encoderRunMs,
+    encoder_total_ms: metrics.encoderTotalMs,
+    encoder_frame_count: metrics.encoderFrameCount,
+    decode_iterations: metrics.decodeIterations,
+    preprocessor_backend: metrics.preprocessorBackend,
+  };
 }
 
 export type BenchmarkLifecyclePhase = 'model-load' | 'model-dispose';
@@ -121,6 +164,15 @@ export const BENCHMARK_RUN_CSV_COLUMNS = [
   'total_ms',
   'rtf',
   'window_count',
+  'decoder_step_ms',
+  'decoder_step_count',
+  'decoder_step_avg_ms',
+  'decoder_gpu_tensor_downloads',
+  'decoder_kv_cache_location',
+  'encoder_run_ms',
+  'encoder_total_ms',
+  'encoder_frame_count',
+  'decode_iterations',
   'encode_rtfx',
   'decode_rtfx',
   'preprocessor_backend',
@@ -406,6 +458,15 @@ export function flattenBenchmarkRunRecord(run: BenchmarkRunRecord): Record<strin
     total_ms: metrics.total_ms,
     rtf: metrics.rtf,
     window_count: metrics.window_count,
+    decoder_step_ms: metrics.decoder_step_ms,
+    decoder_step_count: metrics.decoder_step_count,
+    decoder_step_avg_ms: metrics.decoder_step_avg_ms,
+    decoder_gpu_tensor_downloads: metrics.decoder_gpu_tensor_downloads,
+    decoder_kv_cache_location: metrics.decoder_kv_cache_location,
+    encoder_run_ms: metrics.encoder_run_ms,
+    encoder_total_ms: metrics.encoder_total_ms,
+    encoder_frame_count: metrics.encoder_frame_count,
+    decode_iterations: metrics.decode_iterations,
     encode_rtfx: calcRtfx(run.audioDurationSec, metrics.encode_ms),
     decode_rtfx: calcRtfx(run.audioDurationSec, metrics.decode_ms),
     preprocessor_backend: metrics.preprocessor_backend,

@@ -477,7 +477,15 @@ Transcript results can now carry richer timing metadata in `meta.metrics`, inclu
 - end-to-end timings: `totalMs`, `wallMs`
 - throughput: `rtf`, `rtfx`
 - model/runtime details: `preprocessorBackend`, `encoderFrameCount`, `decodeIterations`, `emittedTokenCount`, `emittedWordCount`
+- decoder/encoder diagnostics when a backend reports them: `decoderStepMs`,
+  `decoderStepCount`, `decoderStepAvgMs`, `decoderGpuTensorDownloads`, `decoderKvCacheLocation`,
+  `encoderRunMs`, and `encoderTotalMs`
 - optional audio-prep details when available: `decodeAudioMs`, `downmixMs`, `resampleMs`, `audioPreparationMs`, `inputSampleRate`, `outputSampleRate`, `resampler`
+
+For benchmark exports, `createBenchmarkStageMetrics(metrics)` projects these
+canonical fields to the snake-case `BenchmarkStageMetrics` contract, and the
+CSV helpers preserve the long-audio window count plus decoder/encoder cost
+counters.
 
 Browser audio decoding helpers also expose a preparation profile:
 
