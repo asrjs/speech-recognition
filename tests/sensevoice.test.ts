@@ -84,6 +84,7 @@ describe('SenseVoice tokenizer and frontend', () => {
 
     const native = await session.transcribeBatch([], { responseFlavor: 'native' });
     expect(native).toEqual([]);
+    expect(calls).toEqual([2]);
 
     const envelope = await session.transcribeBatch(
       [

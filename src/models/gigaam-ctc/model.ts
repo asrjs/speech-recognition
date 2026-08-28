@@ -86,6 +86,7 @@ class GigaAmSession implements GigaAmBatchSession {
     inputs: readonly AudioInputLike[],
     options: LasrCtcTranscriptionOptions & { readonly responseFlavor?: TFlavor } = {},
   ): Promise<readonly TranscriptResponse<LasrCtcNativeTranscript, TFlavor>[]> {
+    if (inputs.length === 0) return [];
     const audios = inputs.map((input) => normalizePcmInput(input).toMono());
     const nativeTranscripts = await this.executor.transcribeBatch(audios, options);
     if (nativeTranscripts.length !== audios.length) {

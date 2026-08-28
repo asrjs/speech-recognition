@@ -276,9 +276,9 @@ export class OrtGigaAmCtcExecutor {
     options: LasrCtcTranscriptionOptions = {},
   ): Promise<readonly LasrCtcNativeTranscript[]> {
     if (this.disposed) throw new Error(`GigaAM CTC executor is disposed for "${this.modelId}".`);
+    if (audioInputs.length === 0) return [];
     const state = await this.loadStatePromise;
     if (!state) throw createExperimentalArtifactMissingError('gigaam-ctc', this.modelId);
-    if (audioInputs.length === 0) return [];
     const started = nowMs();
     const audios = audioInputs.map((input) => normalizePcmInput(input).toMono());
     const prepared = audios.map((audio) => this.preprocessor.process(audio.channels[0] ?? new Float32Array(0)));

@@ -207,7 +207,7 @@ export interface SpeechSession<
     input: AudioInputLike,
     options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
   ): Promise<TranscriptResponse<TNative, TFlavor>>;
-  /** Optional mixed-length batch capability exposed by batch-capable families. */
+  /** Optional mixed-length batch capability; an empty input returns [] without inference. */
   transcribeBatch?<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
     input: readonly AudioInputLike[],
     options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },

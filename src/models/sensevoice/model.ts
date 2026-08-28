@@ -109,6 +109,7 @@ export class SenseVoiceSession implements SenseVoiceBatchSession {
     inputs: readonly AudioInputLike[],
     options: SenseVoiceTranscriptionOptions & { readonly responseFlavor?: TFlavor } = {},
   ): Promise<readonly TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>[]> {
+    if (inputs.length === 0) return [];
     const audios = inputs.map((input) => normalizePcmInput(input).toMono());
     const nativeTranscripts = this.executor.transcribeBatch
       ? await this.executor.transcribeBatch(audios, options)

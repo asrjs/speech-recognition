@@ -178,4 +178,22 @@ describe('GigaAM Multilingual CTC contract', () => {
     expect(Array.from((feeds.feature_lengths?.data as BigInt64Array))).toEqual([99n, 49n]);
     expect(result.map((item) => item.utteranceText)).toEqual(['a', "'"]);
   });
+
+  it('returns an empty batch without loading or invoking the graph', async () => {
+    let runCount = 0;
+    const session: OrtSessionLike = {
+      async run() {
+        runCount += 1;
+        return {};
+      },
+    };
+    const ort: OrtModuleLike = { env: { wasm: {} }, InferenceSession: { create: async () => session } };
+    const executor = new OrtGigaAmCtcExecutor('gigaam-empty-batch-test', 'wasm', {
+      ecosystem: 'gigaam', architecture: 'gigaam-ctc', processorArchitecture: 'gigaam-fbank', encoderArchitecture: 'gigaam-conformer', decoderArchitecture: 'ctc', sampleRate: 16000, rawStride: 4, nMels: 64, featureHopSeconds: 0.01, vocabularySize: 71, languages: ['ru'], tokenizer: { kind: 'sentencepiece', blankTokenId: 70 }, nFft: 320, winLength: 320, hopLength: 160, featureLayout: 'mel-major',
+    }, undefined);
+    (executor as unknown as { loadStatePromise: Promise<unknown> }).loadStatePromise = Promise.resolve({ ort, session, tokenizer: GigaAmTokenizer.fromText("▁ 0\na 2\n' 1\n<blk> 70\n"), warnings: [] });
+
+    await expect(executor.transcribeBatch([])).resolves.toEqual([]);
+    expect(runCount).toBe(0);
+  });
 });

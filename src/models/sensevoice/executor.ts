@@ -494,9 +494,9 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     options: SenseVoiceTranscriptionOptions = {},
   ): Promise<readonly SenseVoiceNativeTranscript[]> {
     if (this.disposed) throw new Error(`SenseVoice executor is disposed for "${this.modelId}".`);
+    if (audioInputs.length === 0) return [];
     const state = await this.loadStatePromise;
     if (!state) throw createExperimentalArtifactMissingError('sensevoice', this.modelId);
-    if (audioInputs.length === 0) return [];
     const audios = audioInputs.map((input) => normalizePcmInput(input).toMono());
     const prepared = audios.map((audio) => (
       state.graph === 'official'
