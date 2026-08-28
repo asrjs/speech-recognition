@@ -86,6 +86,9 @@ export function createGuardedSpeechSession<
       throw new Error('Speech model handle is disposed.');
     }
     try {
+      if (input.length === 0) {
+        return [] as readonly TranscriptResponse<TNative, TFlavor>[];
+      }
       if (typeof session.transcribeBatch !== 'function') {
         throw new Error('Speech session does not expose batch transcription.');
       }

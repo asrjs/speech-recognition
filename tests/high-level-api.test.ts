@@ -138,6 +138,7 @@ describe('high-level model-agnostic APIs', () => {
       notes: [],
     });
     const nativeTranscript = { utteranceText: 'batch', isFinal: true };
+    let batchCalls = 0;
     const session = {
       async transcribe() {
         return {
@@ -150,6 +151,7 @@ describe('high-level model-agnostic APIs', () => {
         inputs: readonly unknown[],
         options?: { readonly responseFlavor?: string },
       ) {
+        batchCalls += 1;
         if (options?.responseFlavor === 'native') {
           return inputs.map(() => nativeTranscript);
         }
@@ -203,6 +205,9 @@ describe('high-level model-agnostic APIs', () => {
     } satisfies BuiltInSpeechModelHandle);
 
     expect(loaded.supportsBatch).toBe(true);
+    expect(await loaded.transcribeBatch([])).toEqual([]);
+    expect(await loaded.session.transcribeBatch?.([])).toEqual([]);
+    expect(batchCalls).toBe(0);
     const canonical = await loaded.transcribeBatch(
       [new Float32Array(16000), new Float32Array(8000)],
       {
