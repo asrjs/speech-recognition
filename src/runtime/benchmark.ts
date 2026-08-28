@@ -232,6 +232,19 @@ export function normalizeBenchmarkText(value: string | null | undefined): string
     .trim();
 }
 
+/**
+ * Normalizes transcript text for multilingual quality comparisons without
+ * discarding non-ASCII letters or digits.
+ */
+export function normalizeBenchmarkTranscript(value: string | null | undefined): string {
+  return String(value || '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
 export function levenshteinDistance(
   left: string | null | undefined,
   right: string | null | undefined,
@@ -265,6 +278,61 @@ export function levenshteinDistance(
   }
 
   return previous[b.length]!;
+}
+
+function sequenceLevenshteinDistance(left: readonly string[], right: readonly string[]): number {
+  if (left.length === 0) return right.length;
+  if (right.length === 0) return left.length;
+
+  const previous = new Array<number>(right.length + 1);
+  const current = new Array<number>(right.length + 1);
+  for (let index = 0; index <= right.length; index += 1) {
+    previous[index] = index;
+  }
+
+  for (let row = 1; row <= left.length; row += 1) {
+    current[0] = row;
+    for (let column = 1; column <= right.length; column += 1) {
+      const substitutionCost = left[row - 1] === right[column - 1] ? 0 : 1;
+      current[column] = Math.min(
+        previous[column]! + 1,
+        current[column - 1]! + 1,
+        previous[column - 1]! + substitutionCost,
+      );
+    }
+    for (let column = 0; column <= right.length; column += 1) {
+      previous[column] = current[column]!;
+    }
+  }
+  return previous[right.length]!;
+}
+
+/** Returns word-level edit distance divided by the reference word count. */
+export function wordErrorRate(
+  reference: string | null | undefined,
+  hypothesis: string | null | undefined,
+): number {
+  const referenceWords = normalizeBenchmarkTranscript(reference).split(' ').filter(Boolean);
+  const hypothesisWords = normalizeBenchmarkTranscript(hypothesis).split(' ').filter(Boolean);
+  if (referenceWords.length === 0) {
+    return hypothesisWords.length === 0 ? 0 : 1;
+  }
+  return sequenceLevenshteinDistance(referenceWords, hypothesisWords) / referenceWords.length;
+}
+
+/** Returns character-level edit distance divided by the reference length. */
+export function characterErrorRate(
+  reference: string | null | undefined,
+  hypothesis: string | null | undefined,
+): number {
+  const normalizedReference = normalizeBenchmarkTranscript(reference);
+  const normalizedHypothesis = normalizeBenchmarkTranscript(hypothesis);
+  const referenceCharacters = Array.from(normalizedReference);
+  const hypothesisCharacters = Array.from(normalizedHypothesis);
+  if (referenceCharacters.length === 0) {
+    return hypothesisCharacters.length === 0 ? 0 : 1;
+  }
+  return sequenceLevenshteinDistance(referenceCharacters, hypothesisCharacters) / referenceCharacters.length;
 }
 
 export function textSimilarity(

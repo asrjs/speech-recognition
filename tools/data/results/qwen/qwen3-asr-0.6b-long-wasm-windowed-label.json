@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "measurement_kind": "local-long-audio-windowed-label-comparison",
+  "captured_on": "2026-08-28",
+  "model": "Qwen3-ASR-0.6B",
+  "artifact": {
+    "encoder": "audio-encoder-dynamic.onnx",
+    "decoder_prefill": "decoder-prefill-fp16.onnx",
+    "decoder_step": "decoder-step-fp16.onnx",
+    "source": "N:\\models\\onnx\\qwen3-asr-0.6b-official",
+    "encoder_graph_sha256": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6",
+    "decoder_fp16_data_sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675"
+  },
+  "audio": {
+    "path": "tests/fixtures/00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en.wav",
+    "sha256": "58ce74b97dfb2c459966baf899a98e217d14130f23dc431b8b86aba121da4335",
+    "duration_seconds": 26.45,
+    "sample_rate": 16000
+  },
+  "runtime": {
+    "backend": "wasm",
+    "warmup": 0,
+    "runs": 1,
+    "window_seconds": 10,
+    "overlap_seconds": 2
+  },
+  "performance": {
+    "elapsed_ms": 106281.862,
+    "rtfx": 0.24886654695605542,
+    "window_count": 4,
+    "decoder_step_count": 105,
+    "decoder_step_ms": 29002.935,
+    "decoder_step_avg_ms": 276.2184285714286,
+    "decoder_init_ms": 18966.359,
+    "encode_ms": 15332.110999999999,
+    "decode_ms": 47969.294,
+    "total_ms": 106264.513,
+    "encoder_frame_count": 3300,
+    "decoder_kv_cache_location": "cpu"
+  },
+  "quality": {
+    "reference_kind": "fixture-sidecar-dataset-label",
+    "reference_path": "tests/fixtures/00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en.json",
+    "reference_field": "normalized",
+    "word_error_rate": 0.2537313432835821,
+    "character_error_rate": 0.13753581661891118,
+    "normalized_exact_match": false
+  },
+  "text": "Functionally, the lower leg is supplied by two vessels: ITP and fibular artery. There is a significant delay in the flow of the ITI. but no narrowing or stenosis was detected along the vessel. The fibular artery terminates at the OSG. The ITP is patent and traceable up to the planter arteries. The ITI is poorly contrasted. central",
+  "limitations": [
+    "This is one local WASM run, not a representative quality benchmark.",
+    "The reference is a fixture/TTS dataset label, not an official Qwen long-audio oracle.",
+    "The long-audio output still contains the extra token 'central'."
+  ]
+}

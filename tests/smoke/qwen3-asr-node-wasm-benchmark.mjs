@@ -23,6 +23,7 @@ function parseArgs(argv) {
     maxNewTokens: 256,
     windowSeconds: undefined,
     overlapSeconds: undefined,
+    reference: undefined,
     help: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -38,6 +39,7 @@ function parseArgs(argv) {
     else if (arg === '--max-new-tokens') args.maxNewTokens = Number(valueAfter(argv, ++index, arg));
     else if (arg === '--window-seconds') args.windowSeconds = Number(valueAfter(argv, ++index, arg));
     else if (arg === '--overlap-seconds') args.overlapSeconds = Number(valueAfter(argv, ++index, arg));
+    else if (arg === '--reference') args.reference = valueAfter(argv, ++index, arg);
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
@@ -45,7 +47,7 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  return `Usage: npm run build && node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs --model-dir <artifact-dir> [options]\n\nOptions:\n  --model-dir <dir>       Local official or legacy artifact directory (required; no download)\n  --audio <wav>           WAV fixture (default: tests/fixtures/jfk2.en.wav)\n  --backend <id>          wasm or webgpu (default: wasm)\n  --encoder <variant>     dynamic or static-t1100 (default: dynamic)\n  --dtype <dtype>         fp16 or fp32 (default: fp16)\n  --warmup <n>            Warmup runs (default: 1)\n  --runs <n>              Measured runs (default: 3)\n  --language <name|code>  Optional forced language, e.g. Turkish or tr\n  --max-new-tokens <n>    Generation cap (default: 256)\n  --window-seconds <n>   Force model-safe windows of this length for long-audio measurement\n  --overlap-seconds <n>  Optional overlap for forced windows (default: model policy)\n`;
+  return `Usage: npm run build && node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs --model-dir <artifact-dir> [options]\n\nOptions:\n  --model-dir <dir>       Local official or legacy artifact directory (required; no download)\n  --audio <wav>           WAV fixture (default: tests/fixtures/jfk2.en.wav)\n  --backend <id>          wasm or webgpu (default: wasm)\n  --encoder <variant>     dynamic or static-t1100 (default: dynamic)\n  --dtype <dtype>         fp16 or fp32 (default: fp16)\n  --warmup <n>            Warmup runs (default: 1)\n  --runs <n>              Measured runs (default: 3)\n  --language <name|code>  Optional forced language, e.g. Turkish or tr\n  --max-new-tokens <n>    Generation cap (default: 256)\n  --window-seconds <n>   Force model-safe windows of this length for long-audio measurement\n  --overlap-seconds <n>  Optional overlap for forced windows (default: model policy)\n  --reference <json>     Optional fixture reference JSON; adjacent .json is used when present\n`;
 }
 
 async function firstExisting(candidates, label) {
@@ -70,6 +72,25 @@ async function findExisting(candidates) {
     }
   }
   return undefined;
+}
+
+async function loadFixtureReference(referencePath) {
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFile(referencePath, 'utf8'));
+  } catch (error) {
+    throw new Error(`Could not read benchmark reference ${referencePath}: ${error?.message ?? error}`);
+  }
+  const fields = ['normalized', 'transcription', 'text'];
+  const field = fields.find(
+    (candidate) => typeof parsed?.[candidate] === 'string' && parsed[candidate].trim(),
+  );
+  if (!field) {
+    throw new Error(
+      `Benchmark reference ${referencePath} has no non-empty normalized, transcription, or text field.`,
+    );
+  }
+  return { path: referencePath, field, text: parsed[field] };
 }
 
 function readPcmSample(data, offset, format, bits) {
@@ -240,8 +261,18 @@ async function main() {
   const audioPath = path.resolve(args.audio);
   await access(audioPath);
   const audio = decodeWav(await readFile(audioPath));
+  const referencePath = args.reference
+    ? path.resolve(args.reference)
+    : audioPath.replace(/\.wav$/i, '.json');
+  let reference;
+  if (args.reference) {
+    reference = await loadFixtureReference(referencePath);
+  } else if (await findExisting([referencePath])) {
+    reference = await loadFixtureReference(referencePath);
+  }
 
   const { loadSpeechModel } = await import('../../dist/index.js');
+  const { characterErrorRate, normalizeBenchmarkTranscript, wordErrorRate } = await import('../../dist/bench.js');
   const directArtifacts = {
     encoderUrl: pathToFileURL(encoder).href,
     decoderUrl: pathToFileURL(decoder).href,
@@ -303,6 +334,14 @@ async function main() {
     }
     const last = results.at(-1);
     const meanMs = elapsed.reduce((sum, value) => sum + value, 0) / elapsed.length;
+    const qualityRuns = reference
+      ? results.map((result) => ({
+          wordErrorRate: wordErrorRate(reference.text, result.text),
+          characterErrorRate: characterErrorRate(reference.text, result.text),
+          normalizedExactMatch:
+            normalizeBenchmarkTranscript(reference.text) === normalizeBenchmarkTranscript(result.text),
+        }))
+      : undefined;
     console.log(
       JSON.stringify(
         {
@@ -325,6 +364,14 @@ async function main() {
             : { windowDurationSeconds: args.windowSeconds, overlapSeconds: args.overlapSeconds ?? null },
           text: last?.text ?? '',
           language: last?.meta?.language,
+          quality: reference
+            ? {
+                referenceKind: 'fixture-sidecar-dataset-label',
+                referencePath: reference.path,
+                referenceField: reference.field,
+                runs: qualityRuns,
+              }
+            : null,
           metrics: last?.meta?.metrics,
         },
         null,

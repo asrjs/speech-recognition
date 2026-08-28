@@ -23,6 +23,7 @@ const CURSOR_MIN_ADVANCE_SECONDS = 1;
 const CURSOR_GAP_THRESHOLD_SECONDS = 0.2;
 const CURSOR_SNAP_WINDOW_SECONDS = 0.5;
 const SEGMENT_DEDUP_TOLERANCE_SECONDS = 0.15;
+const MIN_TEXT_OVERLAP_WORDS = 2;
 
 function throwIfAborted(signal: AbortSignalLike | null | undefined): void {
   if (signal?.aborted) {
@@ -165,9 +166,65 @@ function normalizeSegmentText(text: string): string {
     .toLowerCase();
 }
 
+function normalizeSegmentToken(token: string): string {
+  return token
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
+}
+
+function findTextOverlap(previousText: string, currentText: string): number {
+  const previousWords = previousText.split(/\s+/).filter(Boolean);
+  const currentWords = currentText.split(/\s+/).filter(Boolean);
+  const maximum = Math.min(previousWords.length, currentWords.length);
+  for (let size = maximum; size >= MIN_TEXT_OVERLAP_WORDS; size -= 1) {
+    const previousStart = previousWords.length - size;
+    let matches = true;
+    for (let index = 0; index < size; index += 1) {
+      const previousToken = normalizeSegmentToken(previousWords[previousStart + index]!);
+      const currentToken = normalizeSegmentToken(currentWords[index]!);
+      if (!previousToken || !currentToken || previousToken !== currentToken) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) {
+      return size;
+    }
+  }
+  return 0;
+}
+
+function mergeOverlappingSegmentText(previous: TranscriptSegment, current: TranscriptSegment): TranscriptSegment | undefined {
+  if (
+    (previous.wordIndices?.length ?? 0) > 0 ||
+    (current.wordIndices?.length ?? 0) > 0 ||
+    current.startTime >= previous.endTime - EPSILON_SECONDS
+  ) {
+    return undefined;
+  }
+  const previousWords = previous.text.trim().split(/\s+/).filter(Boolean);
+  const currentWords = current.text.trim().split(/\s+/).filter(Boolean);
+  const overlap = findTextOverlap(previous.text, current.text);
+  if (overlap < MIN_TEXT_OVERLAP_WORDS) {
+    return undefined;
+  }
+  return {
+    ...previous,
+    text: [...previousWords, ...currentWords.slice(overlap)].join(' ').trim(),
+    endTime: Math.max(previous.endTime, current.endTime),
+  };
+}
+
 function appendFinalizedSegment(segments: TranscriptSegment[], segment: TranscriptSegment): void {
   const normalized = normalizeSegmentText(segment.text);
   if (!normalized) {
+    return;
+  }
+  const previous = segments.at(-1);
+  const merged = previous ? mergeOverlappingSegmentText(previous, segment) : undefined;
+  if (merged) {
+    segments[segments.length - 1] = merged;
     return;
   }
   const duplicate = segments.some(

@@ -9,10 +9,13 @@ import {
   flattenBenchmarkRunRecord,
   flattenBenchmarkLifecycleRecord,
   levenshteinDistance,
+  characterErrorRate,
   normalizeBenchmarkText,
+  normalizeBenchmarkTranscript,
   summarizeNumericSeries,
   textSimilarity,
   toCsv,
+  wordErrorRate,
 } from '@asrjs/speech-recognition/bench';
 import {
   extractAudioUrl,
@@ -26,8 +29,12 @@ import { describe, expect, it, vi } from 'vitest';
 describe('benchmark and dataset helpers', () => {
   it('normalizes text and computes similarity metrics for benchmark comparisons', () => {
     expect(normalizeBenchmarkText('Hello,   World!')).toBe('hello world');
+    expect(normalizeBenchmarkTranscript('İstanbul — güzel şehir')).toBe('i̇stanbul güzel şehir');
     expect(levenshteinDistance('kitten', 'sitting')).toBe(3);
     expect(textSimilarity('Hello world', 'hello, world!')).toBeCloseTo(1, 5);
+    expect(wordErrorRate('one two three', 'one three')).toBeCloseTo(1 / 3, 5);
+    expect(characterErrorRate('şarkı', 'şarki')).toBeCloseTo(1 / 5, 5);
+    expect(characterErrorRate('𠀀', '𠀁')).toBe(1);
   });
 
   it('summarizes numeric series and exports flat run csv', () => {

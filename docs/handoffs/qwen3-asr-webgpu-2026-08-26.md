@@ -124,4 +124,25 @@ path now uses the same model-aware windowing planner as `transcribe()`. The
 official dynamic/FP16 benchmark passed on the 26.45-second fixture with four
 forced windows (109.2 seconds total, RTFx 0.242). The short JFK oracle also
 remained exact (11 seconds, 32.97 seconds total, RTFx 0.334). These are local
-measurements, not hosted CI claims; the long medical fixture has no gold text.
+measurements, not hosted CI claims; the long medical fixture has a sidecar
+dataset/TTS label but no official Qwen long-audio oracle.
+
+2026-08-28 long-audio label comparison: the benchmark now auto-loads an
+adjacent fixture JSON (or accepts `--reference`) and reports Unicode-safe WER /
+CER as `fixture-sidecar-dataset-label`, never as an official Qwen oracle. On
+`00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en.wav`
+with the official dynamic encoder, native-fp16 decoder, WASM, no warmup, one
+run, and forced 10-second windows with 2-second overlap:
+
+| Measurement | Before segment-overlap merge | After segment-overlap merge |
+| --- | ---: | ---: |
+| WER against sidecar `normalized` | 28.36% | 25.37% |
+| CER against sidecar `normalized` | 17.19% | 13.75% |
+| elapsed time | 105.9999 s | 106.2819 s |
+| composed windows / decoder steps | 4 / 105 | 4 / 105 |
+
+The after output removes duplicated overlap phrases such as `Flow of the ITI`
+and `Terminates at the OSG`; it still ends with an extra `central` token and
+does not establish representative Qwen quality. The sidecar is a local
+dataset/TTS label, so official long-audio reference capture and broader quality
+coverage remain open.

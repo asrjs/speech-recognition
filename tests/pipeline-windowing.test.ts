@@ -32,6 +32,22 @@ function result(words: ReturnType<typeof word>[], offsetText = ''): TranscriptRe
   };
 }
 
+function segmentOnlyResult(text: string): TranscriptResult {
+  return {
+    text,
+    warnings: [],
+    meta: {
+      detailLevel: 'segments',
+      isFinal: true,
+      metrics: {
+        totalMs: 10,
+        audioDurationSec: 2,
+      },
+    },
+    segments: [{ index: 0, text, startTime: 0, endTime: 2 }],
+  };
+}
+
 describe('pipeline windowing primitives', () => {
   it('preserves additive decoder and encoder telemetry across windows', () => {
     const accumulator = createWindowedMetricsAccumulator(20);
@@ -168,5 +184,39 @@ describe('pipeline windowing primitives', () => {
     expect(transcript.text).toContain('Hello world.');
     expect(transcript.words?.length).toBeGreaterThan(2);
     expect(transcript.meta.metrics?.rtf).toBeGreaterThan(0);
+  });
+
+  it('suppresses token overlap for segment-only long-audio results', async () => {
+    const audio = new Float32Array(4 * 16000);
+    let calls = 0;
+    const transcript = await transcribeWithWindowing({
+      input: audio,
+      inference: {
+        sampleRate: 16000,
+        maxInputDurationSec: 2,
+        recommendedWindowDurationSec: 2,
+        minWindowDurationSec: 1,
+        maxWindowDurationSec: 2,
+        autoWindowThresholdSec: 2,
+        defaultOverlapSec: 0.5,
+        supportsWordTimestamps: false,
+        supportsSegmentTimestamps: true,
+        defaultSegmentationStrategy: 'word-punctuation',
+        defaultMergeStrategy: 'word-dedupe',
+      },
+      options: { detail: 'segments' },
+      async transcribeWindow() {
+        const texts = ['alpha beta gamma', 'beta gamma delta', 'gamma delta epsilon'];
+        const text = texts[Math.min(calls, texts.length - 1)]!;
+        calls += 1;
+        return segmentOnlyResult(text);
+      },
+    });
+
+    expect(calls).toBe(3);
+    expect(transcript.text).toBe('alpha beta gamma delta epsilon');
+    expect(transcript.segments?.map((segment) => segment.text)).toEqual([
+      'alpha beta gamma delta epsilon',
+    ]);
   });
 });

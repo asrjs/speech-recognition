@@ -485,7 +485,10 @@ Transcript results can now carry richer timing metadata in `meta.metrics`, inclu
 For benchmark exports, `createBenchmarkStageMetrics(metrics)` projects these
 canonical fields to the snake-case `BenchmarkStageMetrics` contract, and the
 CSV helpers preserve the long-audio window count plus decoder/encoder cost
-counters.
+counters. The `@asrjs/speech-recognition/bench` entry also exposes
+`wordErrorRate` and `characterErrorRate` with Unicode-aware transcript
+normalization; callers should record whether a reference is a dataset label or
+an official-model oracle.
 
 Browser audio decoding helpers also expose a preparation profile:
 

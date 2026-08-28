@@ -14,6 +14,7 @@ describe('Qwen benchmark CLI', () => {
     expect(result.stdout).toContain('--encoder');
     expect(result.stdout).toContain('--dtype');
     expect(result.stdout).toContain('--window-seconds');
+    expect(result.stdout).toContain('--reference');
     expect(result.stdout).toContain('official or legacy');
   });
 
