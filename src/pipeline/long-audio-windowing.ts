@@ -23,6 +23,7 @@ const CURSOR_MIN_ADVANCE_SECONDS = 1;
 const CURSOR_GAP_THRESHOLD_SECONDS = 0.2;
 const CURSOR_SNAP_WINDOW_SECONDS = 0.5;
 const SEGMENT_DEDUP_TOLERANCE_SECONDS = 0.15;
+const MIN_TEMPORAL_OVERLAP_SECONDS = 0.2;
 const MIN_TEXT_OVERLAP_WORDS = 2;
 
 function throwIfAborted(signal: AbortSignalLike | null | undefined): void {
@@ -195,6 +196,25 @@ function findTextOverlap(previousText: string, currentText: string): number {
   return 0;
 }
 
+function estimateTemporalOverlapWordCount(
+  previous: TranscriptSegment,
+  current: TranscriptSegment,
+  currentWordCount: number,
+): number {
+  const overlapSeconds = Math.min(previous.endTime, current.endTime) - current.startTime;
+  const currentDurationSeconds = current.endTime - current.startTime;
+  if (overlapSeconds < MIN_TEMPORAL_OVERLAP_SECONDS || currentDurationSeconds <= EPSILON_SECONDS) {
+    return 0;
+  }
+
+  const overlapRatio = Math.min(0.75, Math.max(0, overlapSeconds / currentDurationSeconds));
+  const estimated = Math.round(currentWordCount * overlapRatio);
+  if (estimated < MIN_TEXT_OVERLAP_WORDS || estimated >= currentWordCount) {
+    return 0;
+  }
+  return estimated;
+}
+
 function mergeOverlappingSegmentText(previous: TranscriptSegment, current: TranscriptSegment): TranscriptSegment | undefined {
   if (
     (previous.wordIndices?.length ?? 0) > 0 ||
@@ -205,7 +225,21 @@ function mergeOverlappingSegmentText(previous: TranscriptSegment, current: Trans
   }
   const previousWords = previous.text.trim().split(/\s+/).filter(Boolean);
   const currentWords = current.text.trim().split(/\s+/).filter(Boolean);
-  const overlap = findTextOverlap(previous.text, current.text);
+  const exactOverlap = findTextOverlap(previous.text, current.text);
+  let overlap = exactOverlap;
+  if (exactOverlap === 0) {
+    const estimatedTemporalOverlap = estimateTemporalOverlapWordCount(
+      previous,
+      current,
+      currentWords.length,
+    );
+    overlap =
+      estimatedTemporalOverlap +
+      findTextOverlap(
+        previous.text,
+        currentWords.slice(estimatedTemporalOverlap).join(' '),
+      );
+  }
   if (overlap < MIN_TEXT_OVERLAP_WORDS) {
     return undefined;
   }

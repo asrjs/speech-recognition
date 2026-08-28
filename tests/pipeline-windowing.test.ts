@@ -219,4 +219,91 @@ describe('pipeline windowing primitives', () => {
       'alpha beta gamma delta epsilon',
     ]);
   });
+
+  it('uses temporal overlap to trim divergent segment-only window prefixes', async () => {
+    const audio = new Float32Array(9 * 16000);
+    let calls = 0;
+    const texts = [
+      'alpha beta gamma delta epsilon zeta',
+      'noise artifact theta iota kappa lambda',
+      'other artifact mu nu xi omicron',
+      'tail artifact pi rho sigma tau',
+    ];
+    const transcript = await transcribeWithWindowing({
+      input: audio,
+      inference: {
+        sampleRate: 16000,
+        maxInputDurationSec: 3,
+        recommendedWindowDurationSec: 3,
+        minWindowDurationSec: 1,
+        maxWindowDurationSec: 3,
+        autoWindowThresholdSec: 3,
+        defaultOverlapSec: 1,
+        supportsWordTimestamps: false,
+        supportsSegmentTimestamps: true,
+        defaultSegmentationStrategy: 'word-punctuation',
+        defaultMergeStrategy: 'concat',
+      },
+      options: { detail: 'segments' },
+      async transcribeWindow(windowAudio) {
+        const text = texts[Math.min(calls, texts.length - 1)]!;
+        calls += 1;
+        return {
+          text,
+          warnings: [],
+          meta: {
+            detailLevel: 'segments' as const,
+            isFinal: true,
+            metrics: { totalMs: 10, audioDurationSec: windowAudio.durationSeconds },
+          },
+          segments: [{ index: 0, text, startTime: 0, endTime: windowAudio.durationSeconds }],
+        };
+      },
+    });
+
+    expect(calls).toBe(4);
+    expect(transcript.text).toBe(
+      'alpha beta gamma delta epsilon zeta theta iota kappa lambda mu nu xi omicron pi rho sigma tau',
+    );
+  });
+
+  it('removes an exact overlap that starts after a divergent temporal prefix', async () => {
+    const audio = new Float32Array(5 * 16000);
+    let calls = 0;
+    const texts = ['alpha beta gamma delta epsilon zeta', 'noise artifact epsilon zeta theta iota'];
+    const transcript = await transcribeWithWindowing({
+      input: audio,
+      inference: {
+        sampleRate: 16000,
+        maxInputDurationSec: 3,
+        recommendedWindowDurationSec: 3,
+        minWindowDurationSec: 1,
+        maxWindowDurationSec: 3,
+        autoWindowThresholdSec: 3,
+        defaultOverlapSec: 1,
+        supportsWordTimestamps: false,
+        supportsSegmentTimestamps: true,
+        defaultSegmentationStrategy: 'word-punctuation',
+        defaultMergeStrategy: 'concat',
+      },
+      options: { detail: 'segments' },
+      async transcribeWindow(windowAudio) {
+        const text = texts[Math.min(calls, texts.length - 1)]!;
+        calls += 1;
+        return {
+          text,
+          warnings: [],
+          meta: {
+            detailLevel: 'segments' as const,
+            isFinal: true,
+            metrics: { totalMs: 10, audioDurationSec: windowAudio.durationSeconds },
+          },
+          segments: [{ index: 0, text, startTime: 0, endTime: windowAudio.durationSeconds }],
+        };
+      },
+    });
+
+    expect(calls).toBe(2);
+    expect(transcript.text).toBe('alpha beta gamma delta epsilon zeta theta iota');
+  });
 });
