@@ -72,6 +72,8 @@ const workerScope = self as unknown as WorkerScopeLike;
 let loadedModel: LoadedModelLike | null = null;
 let loadSource: 'built-in' | 'local' | null = null;
 const activeTranscribes = new Map<number, AbortController>();
+const queuedTranscribes = new Set<number>();
+const canceledTranscribes = new Set<number>();
 
 function assertNever(value: never): never {
   throw new Error(`Unknown browser transcription worker request: ${String(value)}`);
@@ -133,6 +135,10 @@ async function handleRequest(message: WorkerRequestMessage): Promise<unknown> {
       return getMeta().model;
     }
     case 'TRANSCRIBE_MONO_PCM': {
+      queuedTranscribes.delete(message.id);
+      if (canceledTranscribes.delete(message.id)) {
+        throw new Error('Browser transcription request was canceled before decode began.');
+      }
       if (!loadedModel) {
         throw new Error('No worker transcription model is loaded.');
       }
@@ -179,9 +185,13 @@ workerScope.onmessage = (event: MessageEvent<unknown>) => {
     (rawMessage as { payload?: { requestId?: unknown } }).payload !== null &&
     typeof (rawMessage as { payload: { requestId?: unknown } }).payload.requestId === 'number'
   ) {
-    activeTranscribes
-      .get((rawMessage as { payload: { requestId: number } }).payload.requestId)
-      ?.abort();
+    const requestId = (rawMessage as { payload: { requestId: number } }).payload.requestId;
+    const active = activeTranscribes.get(requestId);
+    if (active) {
+      active.abort();
+    } else if (queuedTranscribes.has(requestId)) {
+      canceledTranscribes.add(requestId);
+    }
     return;
   }
 
@@ -192,6 +202,14 @@ workerScope.onmessage = (event: MessageEvent<unknown>) => {
     typeof (rawMessage as { id?: unknown }).id === 'number'
       ? (rawMessage as { id: number }).id
       : -1;
+  if (
+    typeof rawMessage === 'object' &&
+    rawMessage !== null &&
+    (rawMessage as { type?: unknown }).type === 'TRANSCRIBE_MONO_PCM' &&
+    typeof (rawMessage as { id?: unknown }).id === 'number'
+  ) {
+    queuedTranscribes.add(requestId);
+  }
   requestChain = requestChain
     .catch(() => undefined)
     .then(async () => {
