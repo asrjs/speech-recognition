@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { OrtXAsrExecutor } from '../src/models/x-asr/executor.js';
+import { createXAsrModelFamily } from '../src/models/x-asr/model.js';
 import type { XAsrModelConfig } from '../src/models/x-asr/types.js';
 
 const MODEL_DIR = 'N:/models/x-asr/zh-en/chunk-160ms-model';
@@ -172,6 +173,47 @@ describe.skipIf(
         );
       } finally {
         executor.dispose();
+      }
+    },
+  );
+  it(
+    'runs the public model-created streaming transcriber on the real artifact',
+    { timeout: 600_000 },
+    async () => {
+      const waveform = loadNpyFloat32(WAVEFORM);
+      const executor = new OrtXAsrExecutor('X-ASR-zh-en', 'wasm', CONFIG, {
+        source: {
+          kind: 'direct',
+          cpuThreads: 1,
+          artifacts: {
+            encoderUrl: pathToFileURL(ENCODER).href,
+            decoderUrl: pathToFileURL(DECODER).href,
+            joinerUrl: pathToFileURL(JOINER).href,
+            tokenizerUrl: pathToFileURL(TOKENS).href,
+          },
+        },
+      });
+      const model = await createXAsrModelFamily({ dependencies: { executor } }).createModel(
+        { modelId: 'X-ASR-zh-en' },
+        {
+          runtime: {} as never,
+          backend: { id: 'wasm', displayName: 'WASM' } as never,
+          assetProvider: undefined,
+          hooks: {},
+        },
+      );
+      try {
+        const transcriber = await model.createStreamingTranscriber();
+        try {
+          await transcriber.pushAudio(waveform);
+          const result = await transcriber.finalize();
+          expect(result.kind).toBe('final');
+          expect(result.text).toBe(EXPECTED);
+        } finally {
+          await transcriber.dispose?.();
+        }
+      } finally {
+        await model.dispose();
       }
     },
   );
