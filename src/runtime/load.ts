@@ -429,6 +429,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
   private readonly inflight = new Map<string, Promise<UnknownLoadedModelHandle>>();
   private readonly generations = new Map<string, number>();
   private readonly pendingDisposals = new Map<string, Promise<void>>();
+  private readonly activeOperations = new Map<string, Set<Promise<void>>>();
   private readonly handleDisposals = new WeakMap<UnknownLoadedModelHandle, Promise<void>>();
   private disposed = false;
   private disposePromise: Promise<void> | null = null;
@@ -449,16 +450,42 @@ class DefaultSpeechPipeline implements SpeechPipeline {
   >(
     request: SpeechPipelineModelRequest<TLoadOptions>,
   ): Promise<LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>> {
-    this.assertNotDisposed();
+    return this.loadModelInternal<TLoadOptions, TTranscriptionOptions, TNative>(request, false);
+  }
 
-    if (this.flushPromise) {
-      await this.flushPromise;
-      this.assertNotDisposed();
-    }
+  private async loadModelInternal<
+    TLoadOptions = unknown,
+    TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+    TNative = unknown,
+  >(
+    request: SpeechPipelineModelRequest<TLoadOptions>,
+    skipMutationWait: boolean,
+    expectedGeneration?: number,
+  ): Promise<LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>> {
+    this.assertNotDisposed();
 
     const cacheKey = this.cacheModels
       ? resolveAutomaticCacheKey(request as SpeechPipelineModelRequest<unknown>)
       : null;
+
+    if (cacheKey && !skipMutationWait) {
+      await this.waitForCacheMutation(cacheKey);
+      if (this.hasCacheMutation(cacheKey)) {
+        await this.waitForCacheMutation(cacheKey);
+      }
+      this.assertNotDisposed();
+    } else if (!skipMutationWait && this.flushPromise) {
+      await this.flushPromise;
+      this.assertNotDisposed();
+    }
+
+    if (
+      cacheKey &&
+      expectedGeneration !== undefined &&
+      !this.isGenerationCurrent(cacheKey, expectedGeneration)
+    ) {
+      throw this.createInvalidationError();
+    }
 
     if (!cacheKey) {
       const handle = await this.createModelHandle(request);
@@ -494,7 +521,9 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       return handle as LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
     }
 
-    const created = this.createModelHandle(request);
+    const created = this.createModelHandle(request).then((handle) =>
+      this.createCachedModelHandle(cacheKey, handle),
+    );
     this.inflight.set(cacheKey, created);
 
     try {
@@ -540,7 +569,28 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       }
     }
 
-    const handle = await this.loadModel<TLoadOptions, TTranscriptionOptions, TNative>(modelRequest);
+    if (modelRequest.forceReload) {
+      const handle = await this.loadModel<TLoadOptions, TTranscriptionOptions, TNative>(modelRequest);
+      if (this.disposed || this.handles.get(cacheKey) !== handle) {
+        throw this.createInvalidationError();
+      }
+      return await handle.transcribe<TFlavor>(input, transcribeOptions);
+    }
+
+    await this.waitForCacheMutation(cacheKey);
+    if (this.hasCacheMutation(cacheKey)) {
+      await this.waitForCacheMutation(cacheKey);
+    }
+    this.assertNotDisposed();
+    const generation = this.getGeneration(cacheKey);
+    const handle = await this.loadModelInternal<TLoadOptions, TTranscriptionOptions, TNative>(
+      modelRequest,
+      true,
+      generation,
+    );
+    if (!this.isGenerationCurrent(cacheKey, generation) || this.handles.get(cacheKey) !== handle) {
+      throw this.createInvalidationError();
+    }
     return await handle.transcribe<TFlavor>(input, transcribeOptions);
   }
 
@@ -588,8 +638,29 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       }
     }
 
-    const handle = await this.loadModel<TLoadOptions, TTranscriptionOptions, TNative>(modelRequest);
-    return handle.transcribeBatch<TFlavor>(inputs, transcribeOptions);
+    if (modelRequest.forceReload) {
+      const handle = await this.loadModel<TLoadOptions, TTranscriptionOptions, TNative>(modelRequest);
+      if (this.disposed || this.handles.get(cacheKey) !== handle) {
+        throw this.createInvalidationError();
+      }
+      return await handle.transcribeBatch<TFlavor>(inputs, transcribeOptions);
+    }
+
+    await this.waitForCacheMutation(cacheKey);
+    if (this.hasCacheMutation(cacheKey)) {
+      await this.waitForCacheMutation(cacheKey);
+    }
+    this.assertNotDisposed();
+    const generation = this.getGeneration(cacheKey);
+    const handle = await this.loadModelInternal<TLoadOptions, TTranscriptionOptions, TNative>(
+      modelRequest,
+      true,
+      generation,
+    );
+    if (!this.isGenerationCurrent(cacheKey, generation) || this.handles.get(cacheKey) !== handle) {
+      throw this.createInvalidationError();
+    }
+    return await handle.transcribeBatch<TFlavor>(inputs, transcribeOptions);
   }
 
   listLoadedModels(): readonly string[] {
@@ -613,6 +684,8 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       return;
     }
 
+    const previousDisposal = this.pendingDisposals.get(cacheKey);
+    const activeOperations = [...(this.activeOperations.get(cacheKey) ?? [])];
     this.invalidateGeneration(cacheKey);
 
     const existing = this.handles.get(cacheKey);
@@ -625,9 +698,10 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       this.inflight.delete(cacheKey);
     }
 
-    const previousDisposal = this.pendingDisposals.get(cacheKey);
     const disposal = (async () => {
       const errors: unknown[] = [];
+
+      await Promise.allSettled(activeOperations);
 
       if (previousDisposal) {
         try {
@@ -714,6 +788,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     const keys = new Set<string>([
       ...this.handles.keys(),
       ...this.inflight.keys(),
+      ...this.activeOperations.keys(),
     ]);
     for (const cacheKey of keys) {
       this.invalidateGeneration(cacheKey);
@@ -722,9 +797,13 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     const cachedHandles = [...this.handles.values()];
     const inflightLoads = [...this.inflight.values()];
     const pendingDisposals = [...this.pendingDisposals.values()];
+    const activeOperations = [...this.activeOperations.values()].flatMap((operations) => [
+      ...operations,
+    ]);
     this.handles.clear();
     this.inflight.clear();
 
+    await Promise.allSettled(activeOperations);
     const inflightResults = await Promise.allSettled(inflightLoads);
     const uniqueHandles = new Set<UnknownLoadedModelHandle>(cachedHandles);
 
@@ -754,6 +833,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     const keys = new Set<string>([
       ...this.handles.keys(),
       ...this.inflight.keys(),
+      ...this.activeOperations.keys(),
     ]);
     for (const cacheKey of keys) {
       this.invalidateGeneration(cacheKey);
@@ -762,9 +842,13 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     const cachedHandles = [...this.handles.values()];
     const inflightLoads = [...this.inflight.values()];
     const pendingDisposals = [...this.pendingDisposals.values()];
+    const activeOperations = [...this.activeOperations.values()].flatMap((operations) => [
+      ...operations,
+    ]);
     this.handles.clear();
     this.inflight.clear();
 
+    await Promise.allSettled(activeOperations);
     const inflightResults = await Promise.allSettled(inflightLoads);
     await Promise.allSettled(pendingDisposals);
 
@@ -798,6 +882,46 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     return !this.disposed && this.getGeneration(cacheKey) === generation;
   }
 
+  private async waitForCacheMutation(cacheKey: string): Promise<void> {
+    if (this.flushPromise) {
+      await this.flushPromise;
+    }
+    const pendingDisposal = this.pendingDisposals.get(cacheKey);
+    if (pendingDisposal) {
+      await pendingDisposal;
+    }
+  }
+
+  private hasCacheMutation(cacheKey: string): boolean {
+    return this.flushPromise !== null || this.pendingDisposals.has(cacheKey);
+  }
+
+  private beginActiveOperation(cacheKey: string): () => void {
+    let resolveCompletion!: () => void;
+    const completion = new Promise<void>((resolve) => {
+      resolveCompletion = resolve;
+    });
+    let operations = this.activeOperations.get(cacheKey);
+    if (!operations) {
+      operations = new Set<Promise<void>>();
+      this.activeOperations.set(cacheKey, operations);
+    }
+    operations.add(completion);
+    let released = false;
+    return () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      resolveCompletion();
+      const operations = this.activeOperations.get(cacheKey);
+      operations?.delete(completion);
+      if (operations?.size === 0) {
+        this.activeOperations.delete(cacheKey);
+      }
+    };
+  }
+
   private createInvalidationError(): Error {
     return this.disposed
       ? new Error('Speech pipeline is disposed.')
@@ -813,6 +937,68 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     const disposal = Promise.resolve().then(() => handle.dispose());
     this.handleDisposals.set(handle, disposal);
     return disposal;
+  }
+
+  private createCachedModelHandle(
+    cacheKey: string,
+    handle: UnknownLoadedModelHandle,
+  ): UnknownLoadedModelHandle {
+    let disposePromise: Promise<void> | null = null;
+    const invoke = (method: unknown, args: unknown[]): Promise<unknown> =>
+      Reflect.apply(method as (...values: unknown[]) => Promise<unknown>, handle, args);
+    const assertCurrent = (): void => {
+      if (this.disposed || this.handles.get(cacheKey) !== cachedHandle) {
+        throw this.createInvalidationError();
+      }
+    };
+    const guardedTranscribe = async (...args: unknown[]): Promise<unknown> => {
+      assertCurrent();
+      const releaseOperation = this.beginActiveOperation(cacheKey);
+      try {
+        return await invoke(handle.transcribe, args);
+      } finally {
+        releaseOperation();
+      }
+    };
+    const guardedTranscribeBatch = async (...args: unknown[]): Promise<unknown> => {
+      assertCurrent();
+      const releaseOperation = this.beginActiveOperation(cacheKey);
+      try {
+        return await invoke(handle.transcribeBatch, args);
+      } finally {
+        releaseOperation();
+      }
+    };
+    const guardedTranscribeMonoPcm = async (...args: unknown[]): Promise<unknown> => {
+      assertCurrent();
+      const releaseOperation = this.beginActiveOperation(cacheKey);
+      try {
+        return await invoke(handle.transcribeMonoPcm, args);
+      } finally {
+        releaseOperation();
+      }
+    };
+    const cachedHandle = {
+      ...handle,
+      transcribe: guardedTranscribe,
+      transcribeBatch: guardedTranscribeBatch,
+      transcribeMonoPcm: guardedTranscribeMonoPcm,
+      dispose: async (): Promise<void> => {
+        if (!disposePromise) {
+          if (this.handles.get(cacheKey) === cachedHandle) {
+            this.invalidateGeneration(cacheKey);
+            this.handles.delete(cacheKey);
+          }
+          const activeOperations = [...(this.activeOperations.get(cacheKey) ?? [])];
+          disposePromise = (async () => {
+            await Promise.allSettled(activeOperations);
+            await handle.dispose();
+          })();
+        }
+        await disposePromise;
+      },
+    } as unknown as UnknownLoadedModelHandle;
+    return cachedHandle;
   }
 
   private async createModelHandle<TLoadOptions>(

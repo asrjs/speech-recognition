@@ -26,6 +26,7 @@ function createStaticBackend(capabilities: BackendCapabilities): ExecutionBacken
 function createProbeRuntime(options: {
   onCreateModel: () => Promise<void>;
   onDisposeModel: () => void;
+  onTranscribe?: () => Promise<void>;
 }) {
   const runtime = createSpeechRuntime();
   runtime.registerBackend(
@@ -62,6 +63,7 @@ function createProbeRuntime(options: {
         async createSession() {
           return {
             async transcribe() {
+              await options.onTranscribe?.();
               return {
                 text: 'probe',
                 warnings: [],
@@ -223,6 +225,215 @@ describe('SpeechPipeline lifecycle races', () => {
     await Promise.all([firstDispose, secondDispose]);
     expect(disposeCount).toBe(1);
     expect(pipeline.listLoadedModels()).toEqual([]);
+
+    await runtime.dispose();
+  });
+
+  it('waits for active pipeline transcription before disposeModel disposes the handle', async () => {
+    let releaseTranscribe!: () => void;
+    const transcribeGate = new Promise<void>((resolve) => {
+      releaseTranscribe = resolve;
+    });
+    let transcribeStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      transcribeStarted = resolve;
+    });
+    let disposeCount = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onDisposeModel: () => {
+        disposeCount += 1;
+      },
+      onTranscribe: async () => {
+        transcribeStarted();
+        await transcribeGate;
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime });
+    await pipeline.loadModel(REQUEST);
+
+    const loaded = await pipeline.loadModel(REQUEST);
+    const transcribing = loaded.transcribe(new Float32Array(16000));
+    await started;
+    let disposed = false;
+    const disposing = pipeline.disposeModel(REQUEST).then(() => {
+      disposed = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(disposed).toBe(false);
+    expect(disposeCount).toBe(0);
+    releaseTranscribe();
+
+    await expect(transcribing).resolves.toMatchObject({ text: 'probe' });
+    await disposing;
+    expect(disposeCount).toBe(1);
+
+    await pipeline.dispose();
+    await runtime.dispose();
+  });
+
+  it('makes direct cached-handle disposal wait for its active transcription', async () => {
+    let releaseTranscribe!: () => void;
+    const transcribeGate = new Promise<void>((resolve) => {
+      releaseTranscribe = resolve;
+    });
+    let transcribeStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      transcribeStarted = resolve;
+    });
+    let disposeCount = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onDisposeModel: () => {
+        disposeCount += 1;
+      },
+      onTranscribe: async () => {
+        transcribeStarted();
+        await transcribeGate;
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime });
+    const loaded = await pipeline.loadModel(REQUEST);
+
+    const transcribing = loaded.transcribe(new Float32Array(16000));
+    await started;
+    let disposed = false;
+    const disposing = loaded.dispose().then(() => {
+      disposed = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(disposed).toBe(false);
+    expect(disposeCount).toBe(0);
+    releaseTranscribe();
+
+    await expect(transcribing).resolves.toMatchObject({ text: 'probe' });
+    await disposing;
+    expect(disposeCount).toBe(1);
+    expect(pipeline.listLoadedModels()).toEqual([]);
+
+    await pipeline.dispose();
+    await runtime.dispose();
+  });
+
+  it('does not let a queued transcription recreate a model after disposeModel begins', async () => {
+    let releaseCreate!: () => void;
+    let createStarted!: () => void;
+    const createGate = new Promise<void>((resolve) => {
+      releaseCreate = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      createStarted = resolve;
+    });
+    let disposeCount = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => {
+        createStarted();
+        await createGate;
+      },
+      onDisposeModel: () => {
+        disposeCount += 1;
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime });
+
+    const transcribing = pipeline.transcribe(new Float32Array(16000), REQUEST);
+    await started;
+    const disposing = pipeline.disposeModel(REQUEST);
+    releaseCreate();
+
+    await expect(transcribing).rejects.toThrow('disposed');
+    await disposing;
+    expect(disposeCount).toBe(1);
+    expect(pipeline.listLoadedModels()).toEqual([]);
+
+    await pipeline.dispose();
+    await runtime.dispose();
+  });
+
+  it('waits for active pipeline transcription before flushAllModels disposes the handle', async () => {
+    let releaseTranscribe!: () => void;
+    const transcribeGate = new Promise<void>((resolve) => {
+      releaseTranscribe = resolve;
+    });
+    let transcribeStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      transcribeStarted = resolve;
+    });
+    let disposeCount = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onDisposeModel: () => {
+        disposeCount += 1;
+      },
+      onTranscribe: async () => {
+        transcribeStarted();
+        await transcribeGate;
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime });
+    await pipeline.loadModel(REQUEST);
+
+    const transcribing = pipeline.transcribe(new Float32Array(16000), REQUEST);
+    await started;
+    let flushed = false;
+    const flushing = pipeline.flushAllModels().then(() => {
+      flushed = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(flushed).toBe(false);
+    expect(disposeCount).toBe(0);
+    releaseTranscribe();
+
+    await expect(transcribing).resolves.toMatchObject({ text: 'probe' });
+    await flushing;
+    expect(disposeCount).toBe(1);
+    expect(pipeline.listLoadedModels()).toEqual([]);
+
+    await pipeline.dispose();
+    await runtime.dispose();
+  });
+
+  it('waits for active pipeline transcription before dispose shuts down the runtime', async () => {
+    let releaseTranscribe!: () => void;
+    const transcribeGate = new Promise<void>((resolve) => {
+      releaseTranscribe = resolve;
+    });
+    let transcribeStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      transcribeStarted = resolve;
+    });
+    let disposeCount = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onDisposeModel: () => {
+        disposeCount += 1;
+      },
+      onTranscribe: async () => {
+        transcribeStarted();
+        await transcribeGate;
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime });
+    await pipeline.loadModel(REQUEST);
+
+    const transcribing = pipeline.transcribe(new Float32Array(16000), REQUEST);
+    await started;
+    let disposed = false;
+    const disposing = pipeline.dispose().then(() => {
+      disposed = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(disposed).toBe(false);
+    expect(disposeCount).toBe(0);
+    releaseTranscribe();
+
+    await expect(transcribing).resolves.toMatchObject({ text: 'probe' });
+    await disposing;
+    expect(disposeCount).toBe(1);
 
     await runtime.dispose();
   });
