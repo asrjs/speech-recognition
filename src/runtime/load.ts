@@ -19,11 +19,17 @@ import type {
   MonoPcmInput,
   SpeechBatchSession,
   SpeechSession,
+  StreamingSessionOptions,
+  StreamingTranscriber,
   TranscriptResponse,
   TranscriptResponseFlavor,
 } from '../types/index.js';
 import { NotImplementedSpeechFeatureError } from './errors.js';
-import { createActiveOperationLease, createGuardedSpeechSession } from './operation-lease.js';
+import {
+  createActiveOperationLease,
+  createGuardedSpeechSession,
+  createTrackedStreamingTranscriberFactory,
+} from './operation-lease.js';
 import type { DefaultSpeechRuntime } from './session.js';
 
 /**
@@ -39,6 +45,8 @@ export interface LoadedSpeechModel<
 > extends BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative> {
   /** True when the loaded session exposes mixed-length batch execution. */
   readonly supportsBatch: boolean;
+  /** True when the loaded model exposes a stateful streaming transcriber. */
+  readonly supportsStreaming: boolean;
   transcribeBatch<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
     inputs: readonly AudioInputLike[],
     options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
@@ -48,6 +56,7 @@ export interface LoadedSpeechModel<
     sampleRate: number,
     options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
   ): Promise<TranscriptResponse<TNative, TFlavor>>;
+  createStreamingTranscriber(options?: StreamingSessionOptions): Promise<StreamingTranscriber>;
 }
 
 /** Root-level convenience options for loading a built-in speech model. */
@@ -307,6 +316,18 @@ export function createLoadedSpeechModelHandle<
 ): LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative> {
   const operationLease = createActiveOperationLease();
   const guardedSession = createGuardedSpeechSession(handle.session, operationLease);
+  const streamingTranscribers = createTrackedStreamingTranscriberFactory(
+    operationLease,
+    async (streamingOptions) => {
+      if (!handle.model.createStreamingTranscriber) {
+        throw new NotImplementedSpeechFeatureError(
+          `Model "${handle.model.info.modelId}" does not expose a streaming transcription capability.`,
+          { feature: 'createStreamingTranscriber', modelId: handle.model.info.modelId },
+        );
+      }
+      return handle.model.createStreamingTranscriber(streamingOptions);
+    },
+  );
   let disposePromise: Promise<void> | null = null;
 
   async function transcribeAudio<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
@@ -386,6 +407,7 @@ export function createLoadedSpeechModelHandle<
     runtime: handle.runtime,
     model: handle.model,
     session: guardedSession,
+    supportsStreaming: typeof handle.model.createStreamingTranscriber === 'function',
     supportsBatch,
     transcribe: transcribeAudio,
     transcribeBatch: transcribeBatchAudio,
@@ -396,10 +418,16 @@ export function createLoadedSpeechModelHandle<
     ): Promise<TranscriptResponse<TNative, TFlavor>> {
       return transcribeAudio(createMonoPcmAudioBuffer(pcm, sampleRate), options);
     },
+    createStreamingTranscriber(
+      streamingOptions: StreamingSessionOptions = {},
+    ): Promise<StreamingTranscriber> {
+      return streamingTranscribers.create(streamingOptions);
+    },
     async dispose(): Promise<void> {
       if (!disposePromise) {
         disposePromise = (async () => {
           await operationLease.closeAndWait();
+          await streamingTranscribers.disposeAll();
           await handle.dispose();
         })();
       }

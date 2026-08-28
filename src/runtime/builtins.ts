@@ -44,12 +44,19 @@ import type {
   SpeechModel,
   SpeechRuntimeHooks,
   SpeechSession,
+  StreamingSessionOptions,
+  StreamingTranscriber,
   TranscriptResponse,
   TranscriptResponseFlavor,
   RuntimeProgressEvent,
 } from '../types/index.js';
 import { createSpeechRuntime, type DefaultSpeechRuntime } from './session.js';
-import { createActiveOperationLease, createGuardedSpeechSession } from './operation-lease.js';
+import { NotImplementedSpeechFeatureError } from './errors.js';
+import {
+  createActiveOperationLease,
+  createGuardedSpeechSession,
+  createTrackedStreamingTranscriberFactory,
+} from './operation-lease.js';
 
 export interface CreateBuiltInSpeechRuntimeOptions {
   readonly hooks?: SpeechRuntimeHooks;
@@ -80,10 +87,13 @@ export interface BuiltInSpeechModelHandle<
   readonly runtime: DefaultSpeechRuntime;
   readonly model: SpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
   readonly session: SpeechSession<TTranscriptionOptions, TNative>;
+  /** True when the loaded model exposes a stateful streaming transcriber. */
+  readonly supportsStreaming?: boolean;
   transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
     input: AudioInputLike,
     options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
   ): Promise<TranscriptResponse<TNative, TFlavor>>;
+  createStreamingTranscriber?(options?: StreamingSessionOptions): Promise<StreamingTranscriber>;
   dispose(): Promise<void>;
 }
 
@@ -465,12 +475,25 @@ export async function loadBuiltInSpeechModel<
     });
     const loadedModel = model;
     const guardedSession = createGuardedSpeechSession(session, operationLease);
+    const streamingTranscribers = createTrackedStreamingTranscriberFactory(
+      operationLease,
+      async (streamingOptions) => {
+        if (!loadedModel.createStreamingTranscriber) {
+          throw new NotImplementedSpeechFeatureError(
+            `Model "${loadedModel.info.modelId}" does not expose a streaming transcription capability.`,
+            { feature: 'createStreamingTranscriber', modelId: loadedModel.info.modelId },
+          );
+        }
+        return loadedModel.createStreamingTranscriber(streamingOptions);
+      },
+    );
     let disposePromise: Promise<void> | null = null;
 
     return {
       runtime: activeRuntime,
       model: loadedModel,
       session: guardedSession,
+      supportsStreaming: typeof loadedModel.createStreamingTranscriber === 'function',
       async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
         input: AudioInputLike,
         transcribeOptions?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
@@ -519,10 +542,14 @@ export async function loadBuiltInSpeechModel<
           releaseOperation();
         }
       },
+      createStreamingTranscriber(streamingOptions = {}): Promise<StreamingTranscriber> {
+        return streamingTranscribers.create(streamingOptions);
+      },
       async dispose(): Promise<void> {
         if (!disposePromise) {
           disposePromise = (async () => {
             await operationLease.closeAndWait();
+            await streamingTranscribers.disposeAll();
             if (ownsRuntime) {
               await activeRuntime.dispose();
               return;

@@ -112,11 +112,154 @@ describe('high-level model-agnostic APIs', () => {
 
     expect(result.text.length).toBeGreaterThan(0);
     expect(loaded.supportsBatch).toBe(false);
+    expect(loaded.supportsStreaming).toBe(false);
     await expect(loaded.transcribeBatch([new Float32Array(16000)])).rejects.toMatchObject({
+      code: 'not-implemented-speech-feature',
+    });
+    await expect(loaded.createStreamingTranscriber()).rejects.toMatchObject({
       code: 'not-implemented-speech-feature',
     });
 
     await loaded.dispose();
+    await runtime.dispose();
+  });
+
+  it('tracks high-level streaming transcribers and disposes them before the model', async () => {
+    const runtime = createSpeechRuntime();
+    const backend = createStaticBackend({
+      id: 'test',
+      displayName: 'Test',
+      available: true,
+      priority: 1,
+      environments: ['node'],
+      acceleration: ['cpu'],
+      supportedPrecisions: ['fp32'],
+      supportsFp16: false,
+      supportsInt8: false,
+      supportsSharedArrayBuffer: false,
+      requiresSharedArrayBuffer: false,
+      fallbackSuitable: true,
+      notes: [],
+    });
+    let transcriberDisposeCount = 0;
+    let modelDisposeCount = 0;
+    let transcriberDisposed = false;
+    let holdPush = false;
+    let releasePush!: () => void;
+    const pushGate = new Promise<void>((resolve) => {
+      releasePush = resolve;
+    });
+    let releaseTranscriberDispose!: () => void;
+    const transcriberDisposeGate = new Promise<void>((resolve) => {
+      releaseTranscriberDispose = resolve;
+    });
+    const partial = {
+      kind: 'partial' as const,
+      revision: 0,
+      text: '',
+      committedText: '',
+      previewText: '',
+      warnings: [],
+      meta: { detailLevel: 'text' as const, isFinal: false },
+    };
+    const streaming = {
+      async pushAudio() {
+        if (holdPush) {
+          await pushGate;
+        }
+        if (transcriberDisposed) throw new Error('stream disposed');
+        return partial;
+      },
+      async flush() {
+        return partial;
+      },
+      async finalize() {
+        return partial;
+      },
+      reset() {},
+      getState() {
+        return {
+          revision: 0,
+          bufferedDurationSeconds: 0,
+          committedText: '',
+          previewText: '',
+          isFinalized: false,
+        };
+      },
+      async dispose() {
+        if (!transcriberDisposed) {
+          await transcriberDisposeGate;
+          transcriberDisposed = true;
+          transcriberDisposeCount += 1;
+        }
+      },
+    };
+    const session = {
+      async transcribe() {
+        return {
+          text: 'single',
+          warnings: [],
+          meta: { detailLevel: 'text' as const, isFinal: true },
+        };
+      },
+      dispose() {},
+    };
+    const model = {
+      info: {
+        family: 'streaming-test',
+        modelId: 'streaming-test-model',
+        classification: { ecosystem: 'test', task: 'asr' },
+      },
+      backend,
+      async createSession() {
+        return session;
+      },
+      async createStreamingTranscriber() {
+        return streaming;
+      },
+      async dispose() {
+        expect(transcriberDisposed).toBe(true);
+        modelDisposeCount += 1;
+      },
+    };
+    const loaded = createLoadedSpeechModelHandle({
+      runtime,
+      model,
+      session,
+      async transcribe() {
+        return session.transcribe();
+      },
+      async dispose() {
+        await model.dispose();
+      },
+    } satisfies BuiltInSpeechModelHandle);
+
+    expect(loaded.supportsStreaming).toBe(true);
+    const transcriber = await loaded.createStreamingTranscriber();
+    await expect(transcriber.pushAudio(new Float32Array(16000))).resolves.toMatchObject({
+      kind: 'partial',
+    });
+
+    holdPush = true;
+    const pushing = transcriber.pushAudio(new Float32Array(16000));
+    await Promise.resolve();
+    const disposingHandle = loaded.dispose();
+    await Promise.resolve();
+    expect(modelDisposeCount).toBe(0);
+    releasePush();
+    await Promise.resolve();
+    expect(modelDisposeCount).toBe(0);
+    releaseTranscriberDispose();
+    await Promise.all([pushing, disposingHandle]);
+    expect(transcriberDisposeCount).toBe(1);
+    expect(modelDisposeCount).toBe(1);
+    await expect(transcriber.pushAudio(new Float32Array(16000))).rejects.toThrow(
+      'Streaming transcriber is disposed',
+    );
+    await expect(loaded.createStreamingTranscriber()).rejects.toThrow('disposed');
+
+    await transcriber.dispose?.();
+    expect(transcriberDisposeCount).toBe(1);
     await runtime.dispose();
   });
 

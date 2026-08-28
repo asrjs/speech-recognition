@@ -2,6 +2,8 @@ import type {
   AudioInputLike,
   BaseTranscriptionOptions,
   SpeechSession,
+  StreamingSessionOptions,
+  StreamingTranscriber,
   TranscriptResponse,
   TranscriptResponseFlavor,
 } from '../types/index.js';
@@ -15,6 +17,11 @@ import type {
 export interface ActiveOperationLease {
   enter(): (() => void) | undefined;
   closeAndWait(): Promise<void>;
+}
+
+export interface TrackedStreamingTranscriberFactory {
+  create(options?: StreamingSessionOptions): Promise<StreamingTranscriber>;
+  disposeAll(): Promise<void>;
 }
 
 export function createActiveOperationLease(): ActiveOperationLease {
@@ -49,6 +56,72 @@ export function createActiveOperationLease(): ActiveOperationLease {
         closePromise = Promise.allSettled([...active]).then(() => undefined);
       }
       return closePromise;
+    },
+  };
+}
+
+/**
+ * Tracks streaming transcribers created through a high-level model handle.
+ *
+ * Streaming work is owned by the transcriber rather than by the short-lived
+ * creation call, so the owner closes its operation lease first and then calls
+ * {@link disposeAll} before releasing the model/session resources underneath.
+ */
+export function createTrackedStreamingTranscriberFactory(
+  operationLease: ActiveOperationLease,
+  createTranscriber: (options: StreamingSessionOptions) => Promise<StreamingTranscriber>,
+): TrackedStreamingTranscriberFactory {
+  const owned = new Set<StreamingTranscriber>();
+
+  const create = async (options: StreamingSessionOptions = {}): Promise<StreamingTranscriber> => {
+    const releaseOperation = operationLease.enter();
+    if (!releaseOperation) {
+      throw new Error('Speech model handle is disposed.');
+    }
+
+    try {
+      const transcriber = await createTranscriber(options);
+      const transcriberLease = createActiveOperationLease();
+      const runTranscriberOperation = async <T>(operation: () => Promise<T>): Promise<T> => {
+        const releaseOperation = transcriberLease.enter();
+        if (!releaseOperation) {
+          throw new Error('Streaming transcriber is disposed.');
+        }
+        try {
+          return await operation();
+        } finally {
+          releaseOperation();
+        }
+      };
+      let disposePromise: Promise<void> | null = null;
+      const ownedTranscriber: StreamingTranscriber = {
+        pushAudio: (input) => runTranscriberOperation(() => transcriber.pushAudio(input)),
+        flush: () => runTranscriberOperation(() => transcriber.flush()),
+        finalize: () => runTranscriberOperation(() => transcriber.finalize()),
+        reset: () => runTranscriberOperation(async () => await transcriber.reset()),
+        getState: () => transcriber.getState(),
+        dispose: async () => {
+          if (!disposePromise) {
+            disposePromise = (async () => {
+              await transcriberLease.closeAndWait();
+              await transcriber.dispose?.();
+              owned.delete(ownedTranscriber);
+            })();
+          }
+          await disposePromise;
+        },
+      };
+      owned.add(ownedTranscriber);
+      return ownedTranscriber;
+    } finally {
+      releaseOperation();
+    }
+  };
+
+  return {
+    create,
+    async disposeAll(): Promise<void> {
+      await Promise.all([...owned].map((transcriber) => transcriber.dispose?.()));
     },
   };
 }
