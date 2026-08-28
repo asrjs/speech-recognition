@@ -59,6 +59,7 @@ Use the root entry for runtime-critical surfaces only:
 - `buildSpeechTranscriptionOptions`
 - `loadSpeechModel`
 - `transcribeSpeech`
+- `transcribeSpeechBatch`
 - `transcribeSpeechFromMonoPcm`
 - `createSpeechPipeline`
 - backend factories
@@ -73,6 +74,7 @@ import {
   buildSpeechModelLoadOptions,
   loadSpeechModel,
   transcribeSpeech,
+  transcribeSpeechBatch,
   transcribeSpeechFromMonoPcm,
   createSpeechPipeline,
   PcmAudioBuffer,
@@ -97,10 +99,12 @@ if (!modelId) {
   throw new Error('No built-in Parakeet model is available.');
 }
 
-const loaded = await loadSpeechModel(buildSpeechModelLoadOptions({
-  modelId,
-  backend: 'webgpu-hybrid',
-}));
+const loaded = await loadSpeechModel(
+  buildSpeechModelLoadOptions({
+    modelId,
+    backend: 'webgpu-hybrid',
+  }),
+);
 
 const result = await loaded.transcribeMonoPcm(pcm, 16000, {
   responseFlavor: 'canonical',
@@ -168,6 +172,41 @@ console.log(canonical.text);
 `transcribeSpeech` still accepts `AudioInputLike` directly when you already have
 an `AudioBufferLike` or want the default 16 kHz mono PCM shorthand.
 
+#### Batch transcription
+
+Batching is an optional session capability. The currently validated padded
+batch graph paths are exposed by the experimental GigaAM CTC and SenseVoice
+families; production presets and autoregressive families do not claim batch
+support. Check `loaded.supportsBatch` before calling the method:
+
+```ts
+const loaded = await loadSpeechModel({
+  family: 'sensevoice',
+  modelId: 'OpenVoiceOS/SenseVoiceSmall',
+  backend: 'webgpu',
+  options: { source },
+});
+
+if (!loaded.supportsBatch) {
+  throw new Error('This model does not expose batch transcription.');
+}
+
+const results = await loaded.transcribeBatch([firstAudio, secondAudio], {
+  responseFlavor: 'canonical+native',
+  detail: 'segments',
+});
+
+await loaded.dispose();
+```
+
+`transcribeSpeechBatch(inputs, options)` provides the same one-shot load,
+batch, and cleanup flow. Batch inputs may have different lengths, but
+automatic long-audio windowing is intentionally not performed inside a batch
+call; transcribe long inputs individually, or explicitly use
+`windowing: 'disabled'` when the model graph supports direct execution.
+Unsupported sessions fail with `NotImplementedSpeechFeatureError` rather than
+silently falling back to serial inference.
+
 #### Cached model-agnostic pipeline
 
 If you need repeated transcriptions across one or more model families, use
@@ -190,7 +229,18 @@ const parakeet = await pipeline.transcribeMonoPcm(pcm, 16000, {
   backend: 'webgpu-hybrid',
 });
 
-console.log(med.text, parakeet.text);
+const batch = await pipeline.transcribeBatch([firstAudio, secondAudio], {
+  family: 'sensevoice',
+  modelId: 'OpenVoiceOS/SenseVoiceSmall',
+  backend: 'webgpu',
+  options: { source },
+});
+
+console.log(
+  med.text,
+  parakeet.text,
+  batch.map((item) => item.text),
+);
 await pipeline.dispose();
 ```
 
@@ -199,7 +249,10 @@ await pipeline.dispose();
 Use the builtins entry for convenience composition:
 
 ```ts
-import { createBuiltInSpeechRuntime, loadBuiltInSpeechModel } from '@asrjs/speech-recognition/builtins';
+import {
+  createBuiltInSpeechRuntime,
+  loadBuiltInSpeechModel,
+} from '@asrjs/speech-recognition/builtins';
 ```
 
 Use `loadBuiltInSpeechModel` when you want the same convenience path but prefer
@@ -294,7 +347,11 @@ import {
 Use the inference entry for shared descriptors, generic math, and shared streaming primitives:
 
 ```ts
-import { FASTCONFORMER_ENCODER, argmax, DefaultStreamingTranscriber } from '@asrjs/speech-recognition/inference';
+import {
+  FASTCONFORMER_ENCODER,
+  argmax,
+  DefaultStreamingTranscriber,
+} from '@asrjs/speech-recognition/inference';
 ```
 
 ### Other subpaths

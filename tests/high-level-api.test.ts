@@ -10,7 +10,10 @@ import {
   type ExecutionBackend,
   type BuiltInSpeechModelHandle,
 } from '@asrjs/speech-recognition';
-import { registerBuiltInModelFamilies, registerBuiltInPresets } from '@asrjs/speech-recognition/builtins';
+import {
+  registerBuiltInModelFamilies,
+  registerBuiltInPresets,
+} from '@asrjs/speech-recognition/builtins';
 import { describe, expect, it } from 'vitest';
 
 function createStaticBackend(capabilities: BackendCapabilities): ExecutionBackend {
@@ -108,8 +111,222 @@ describe('high-level model-agnostic APIs', () => {
     });
 
     expect(result.text.length).toBeGreaterThan(0);
+    expect(loaded.supportsBatch).toBe(false);
+    await expect(loaded.transcribeBatch([new Float32Array(16000)])).rejects.toMatchObject({
+      code: 'not-implemented-speech-feature',
+    });
 
     await loaded.dispose();
+    await runtime.dispose();
+  });
+
+  it('loaded model handles preserve canonical/native flavors for batch-capable sessions', async () => {
+    const runtime = createSpeechRuntime();
+    const backend = createStaticBackend({
+      id: 'test',
+      displayName: 'Test',
+      available: true,
+      priority: 1,
+      environments: ['node'],
+      acceleration: ['cpu'],
+      supportedPrecisions: ['fp32'],
+      supportsFp16: false,
+      supportsInt8: false,
+      supportsSharedArrayBuffer: false,
+      requiresSharedArrayBuffer: false,
+      fallbackSuitable: true,
+      notes: [],
+    });
+    const nativeTranscript = { utteranceText: 'batch', isFinal: true };
+    const session = {
+      async transcribe() {
+        return {
+          text: 'single',
+          warnings: [],
+          meta: { detailLevel: 'text' as const, isFinal: true },
+        };
+      },
+      async transcribeBatch(
+        inputs: readonly unknown[],
+        options?: { readonly responseFlavor?: string },
+      ) {
+        if (options?.responseFlavor === 'native') {
+          return inputs.map(() => nativeTranscript);
+        }
+        if (options?.responseFlavor === 'canonical+native') {
+          return inputs.map(() => ({
+            canonical: {
+              text: 'batch',
+              warnings: [],
+              meta: { detailLevel: 'text' as const, isFinal: true },
+            },
+            native: nativeTranscript,
+          }));
+        }
+        return inputs.map(() => ({
+          text: 'batch',
+          warnings: [],
+          meta: { detailLevel: 'text' as const, isFinal: true },
+        }));
+      },
+      dispose() {},
+    };
+    const model = {
+      info: {
+        family: 'batch-test',
+        modelId: 'batch-test-model',
+        classification: { ecosystem: 'test', task: 'asr' },
+        inference: {
+          sampleRate: 16000,
+          maxInputDurationSec: 30,
+          autoWindowThresholdSec: 30,
+          supportsWordTimestamps: false,
+          supportsSegmentTimestamps: false,
+          defaultSegmentationStrategy: 'none' as const,
+          defaultMergeStrategy: 'concat' as const,
+        },
+      },
+      backend,
+      async createSession() {
+        return session;
+      },
+      dispose() {},
+    };
+    const loaded = createLoadedSpeechModelHandle({
+      runtime,
+      model,
+      session,
+      async transcribe(input: unknown, options?: { readonly responseFlavor?: string }) {
+        return session.transcribe(input, options);
+      },
+      async dispose() {},
+    } satisfies BuiltInSpeechModelHandle);
+
+    expect(loaded.supportsBatch).toBe(true);
+    const canonical = await loaded.transcribeBatch(
+      [new Float32Array(16000), new Float32Array(8000)],
+      {
+        detail: 'text',
+      },
+    );
+    expect(canonical.map((item) => item.text)).toEqual(['batch', 'batch']);
+    const native = await loaded.transcribeBatch([new Float32Array(16000)], {
+      responseFlavor: 'native',
+    });
+    expect(native[0]).toEqual(nativeTranscript);
+    const envelope = await loaded.transcribeBatch([new Float32Array(16000)], {
+      responseFlavor: 'canonical+native',
+    });
+    expect(envelope[0]).toMatchObject({
+      canonical: { text: 'batch' },
+      native: nativeTranscript,
+    });
+    await expect(loaded.transcribeBatch([new Float32Array(31 * 16_000)])).rejects.toMatchObject({
+      code: 'not-implemented-speech-feature',
+      details: { inputIndex: 0 },
+    });
+
+    await loaded.dispose();
+    await runtime.dispose();
+  });
+
+  it('speech pipeline batches through cached and uncached model handles', async () => {
+    const runtime = createSpeechRuntime();
+    const backend = createStaticBackend({
+      id: 'test',
+      displayName: 'Test',
+      available: true,
+      priority: 1,
+      environments: ['node'],
+      acceleration: ['cpu'],
+      supportedPrecisions: ['fp32'],
+      supportsFp16: false,
+      supportsInt8: false,
+      supportsSharedArrayBuffer: false,
+      requiresSharedArrayBuffer: false,
+      fallbackSuitable: true,
+      notes: [],
+    });
+    let batchCalls = 0;
+    let modelCreates = 0;
+    const nativeTranscript = { utteranceText: 'pipeline-batch', isFinal: true };
+    const model = {
+      info: {
+        family: 'batch-test',
+        modelId: 'batch-test-model',
+        classification: { ecosystem: 'test', task: 'asr' },
+        inference: {
+          sampleRate: 16000,
+          maxInputDurationSec: 30,
+          autoWindowThresholdSec: 30,
+          supportsWordTimestamps: false,
+          supportsSegmentTimestamps: false,
+          defaultSegmentationStrategy: 'none' as const,
+          defaultMergeStrategy: 'concat' as const,
+        },
+      },
+      backend,
+      async createSession() {
+        return {
+          async transcribe() {
+            return {
+              text: 'single',
+              warnings: [],
+              meta: { detailLevel: 'text' as const, isFinal: true },
+            };
+          },
+          async transcribeBatch(
+            inputs: readonly unknown[],
+            options?: { readonly responseFlavor?: string },
+          ) {
+            batchCalls += 1;
+            if (options?.responseFlavor === 'native') return inputs.map(() => nativeTranscript);
+            return inputs.map(() => ({
+              text: 'pipeline-batch',
+              warnings: [],
+              meta: { detailLevel: 'text' as const, isFinal: true },
+            }));
+          },
+          dispose() {},
+        };
+      },
+      dispose() {},
+    };
+    runtime.registerBackend(backend);
+    runtime.registerModelFamily({
+      family: 'batch-test',
+      supports(modelId: string) {
+        return modelId === 'batch-test-model';
+      },
+      async createModel() {
+        modelCreates += 1;
+        return model;
+      },
+    });
+
+    const pipeline = createSpeechPipeline({ runtime, cacheModels: true });
+    const request = { family: 'batch-test', modelId: 'batch-test-model', backend: 'test' };
+    const first = await pipeline.transcribeBatch(
+      [new Float32Array(16000), new Float32Array(8000)],
+      request,
+    );
+    const second = await pipeline.transcribeBatch([new Float32Array(4000)], request);
+
+    expect(first.map((item) => item.text)).toEqual(['pipeline-batch', 'pipeline-batch']);
+    expect(second[0]?.text).toBe('pipeline-batch');
+    expect(batchCalls).toBe(2);
+    expect(modelCreates).toBe(1);
+    expect(pipeline.listLoadedModels()).toHaveLength(1);
+
+    await pipeline.dispose();
+
+    const uncachedPipeline = createSpeechPipeline({ runtime, cacheModels: false });
+    const uncached = await uncachedPipeline.transcribeBatch([new Float32Array(16000)], request);
+    expect(uncached[0]?.text).toBe('pipeline-batch');
+    expect(batchCalls).toBe(3);
+    expect(modelCreates).toBe(2);
+    expect(uncachedPipeline.listLoadedModels()).toHaveLength(0);
+    await uncachedPipeline.dispose();
     await runtime.dispose();
   });
 

@@ -82,7 +82,12 @@ export interface BaseSessionOptions {
   readonly locale?: string;
 }
 
-export type SegmentationStrategy = 'word-punctuation' | 'ctc-frame' | 'whisper-token' | 'vad' | 'none';
+export type SegmentationStrategy =
+  | 'word-punctuation'
+  | 'ctc-frame'
+  | 'whisper-token'
+  | 'vad'
+  | 'none';
 export type WindowMergeStrategy = 'word-dedupe' | 'ctc-collapse' | 'whisper-stride' | 'concat';
 export type PipelineWindowingMode = 'auto' | 'disabled' | 'force';
 
@@ -202,7 +207,23 @@ export interface SpeechSession<
     input: AudioInputLike,
     options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
   ): Promise<TranscriptResponse<TNative, TFlavor>>;
+  /** Optional mixed-length batch capability exposed by batch-capable families. */
+  transcribeBatch?<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+    input: readonly AudioInputLike[],
+    options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+  ): Promise<readonly TranscriptResponse<TNative, TFlavor>[]>;
   dispose(): Promise<void> | void;
+}
+
+/** A speech session whose batch execution capability is present. */
+export interface SpeechBatchSession<
+  TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+  TNative = unknown,
+> extends SpeechSession<TTranscriptionOptions, TNative> {
+  transcribeBatch<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+    input: readonly AudioInputLike[],
+    options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+  ): Promise<readonly TranscriptResponse<TNative, TFlavor>[]>;
 }
 
 /** Loaded model instance produced by a model family. */

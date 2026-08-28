@@ -98,20 +98,46 @@ export class SenseVoiceSession implements SenseVoiceBatchSession {
       metrics: native.metrics,
     });
     const flavor = options.responseFlavor ?? 'canonical';
-    if (flavor === 'native') return native as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
-    if (flavor === 'canonical+native') return { canonical, native } as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
+    if (flavor === 'native')
+      return native as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
+    if (flavor === 'canonical+native')
+      return { canonical, native } as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
     return canonical as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
   }
 
-  async transcribeBatch(
+  async transcribeBatch<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
     inputs: readonly AudioInputLike[],
-    options: SenseVoiceTranscriptionOptions = {},
-  ): Promise<readonly SenseVoiceNativeTranscript[]> {
+    options: SenseVoiceTranscriptionOptions & { readonly responseFlavor?: TFlavor } = {},
+  ): Promise<readonly TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>[]> {
     const audios = inputs.map((input) => normalizePcmInput(input).toMono());
-    if (this.executor.transcribeBatch) {
-      return this.executor.transcribeBatch(audios, options);
+    const nativeTranscripts = this.executor.transcribeBatch
+      ? await this.executor.transcribeBatch(audios, options)
+      : await Promise.all(audios.map((audio) => this.executor.transcribe(audio, options)));
+    if (nativeTranscripts.length !== audios.length) {
+      throw new Error(
+        `SenseVoice batch returned ${nativeTranscripts.length} results for ${audios.length} inputs.`,
+      );
     }
-    return Promise.all(audios.map((audio) => this.executor.transcribe(audio, options)));
+    const responseFlavor = options.responseFlavor ?? 'canonical';
+    return nativeTranscripts.map((native, index) => {
+      const audio = audios[index]!;
+      const canonical = mapSenseVoiceNativeToCanonical(native, this.classification, {
+        detailLevel: options.detail,
+        backendId: this.backendId,
+        modelId: this.modelId,
+        language: native.language,
+        sampleRate: audio.sampleRate,
+        durationSeconds: audio.durationSeconds,
+        metrics: native.metrics,
+      });
+      if (responseFlavor === 'native') {
+        return native as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
+      }
+      if (responseFlavor === 'canonical+native') {
+        return { canonical, native } as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
+      }
+      return canonical as TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>;
+    });
   }
 
   async dispose(): Promise<void> {
@@ -122,14 +148,22 @@ export class SenseVoiceSession implements SenseVoiceBatchSession {
   }
 }
 
-class SenseVoiceModel implements SpeechModel<SenseVoiceModelOptions, SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript> {
+class SenseVoiceModel implements SpeechModel<
+  SenseVoiceModelOptions,
+  SenseVoiceTranscriptionOptions,
+  SenseVoiceNativeTranscript
+> {
   readonly loadOptions?: SenseVoiceModelOptions;
   readonly info;
   private readonly sessions = new Set<SenseVoiceSession>();
   private disposed = false;
 
   constructor(
-    readonly backend: SpeechModel<SenseVoiceModelOptions, SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript>['backend'],
+    readonly backend: SpeechModel<
+      SenseVoiceModelOptions,
+      SenseVoiceTranscriptionOptions,
+      SenseVoiceNativeTranscript
+    >['backend'],
     readonly family: string,
     readonly modelId: string,
     readonly classification: ModelClassification,
@@ -145,11 +179,36 @@ class SenseVoiceModel implements SpeechModel<SenseVoiceModelOptions, SenseVoiceT
       classification,
       preset: resolvedPreset,
       architecture: createModelArchitecture({
-        processor: { layer: 'processor', module: 'audio', implementation: 'kaldi-fbank', shared: false },
-        encoder: { layer: 'encoder', module: CONFORMER_ENCODER.sharedModule, implementation: config.encoderArchitecture, shared: false },
-        decoder: { layer: 'decoder', module: CTC_HEAD_DECODER.sharedModule, implementation: CTC_HEAD_DECODER.kind, shared: true },
-        decoding: { layer: 'decoding', module: 'inference', implementation: CTC_GREEDY_DECODING.strategy, shared: true },
-        tokenizer: { layer: 'tokenizer', module: 'inference', implementation: 'sentencepiece', shared: false },
+        processor: {
+          layer: 'processor',
+          module: 'audio',
+          implementation: 'kaldi-fbank',
+          shared: false,
+        },
+        encoder: {
+          layer: 'encoder',
+          module: CONFORMER_ENCODER.sharedModule,
+          implementation: config.encoderArchitecture,
+          shared: false,
+        },
+        decoder: {
+          layer: 'decoder',
+          module: CTC_HEAD_DECODER.sharedModule,
+          implementation: CTC_HEAD_DECODER.kind,
+          shared: true,
+        },
+        decoding: {
+          layer: 'decoding',
+          module: 'inference',
+          implementation: CTC_GREEDY_DECODING.strategy,
+          shared: true,
+        },
+        tokenizer: {
+          layer: 'tokenizer',
+          module: 'inference',
+          implementation: 'sentencepiece',
+          shared: false,
+        },
       }),
       description: `SenseVoiceSmall non-autoregressive CTC family for ${modelId}.`,
       nativeOutputName: 'SenseVoiceNativeTranscript',
@@ -158,17 +217,21 @@ class SenseVoiceModel implements SpeechModel<SenseVoiceModelOptions, SenseVoiceT
   }
 
   async createSession(_options: BaseSessionOptions = {}): Promise<SenseVoiceBatchSession> {
-    const executor = this.dependencies.executor ?? new OrtSenseVoiceExecutor(
-        this.modelId,
-        this.backend.id,
-        this.loadOptions,
-        {
-          assetProvider: this.dependencies.assetProvider,
-          runtimeHooks: this.dependencies.runtimeHooks,
-          signal: this.dependencies.signal,
-        },
-      );
-    const session = new SenseVoiceSession(this.modelId, this.classification, this.config, this.backend.id, executor, () => this.sessions.delete(session));
+    const executor =
+      this.dependencies.executor ??
+      new OrtSenseVoiceExecutor(this.modelId, this.backend.id, this.loadOptions, {
+        assetProvider: this.dependencies.assetProvider,
+        runtimeHooks: this.dependencies.runtimeHooks,
+        signal: this.dependencies.signal,
+      });
+    const session = new SenseVoiceSession(
+      this.modelId,
+      this.classification,
+      this.config,
+      this.backend.id,
+      executor,
+      () => this.sessions.delete(session),
+    );
     this.sessions.add(session);
     await session.initialize();
     return session;
@@ -184,7 +247,11 @@ class SenseVoiceModel implements SpeechModel<SenseVoiceModelOptions, SenseVoiceT
 
 export function createSenseVoiceModelFamily(
   options: SenseVoiceModelFamilyOptions = {},
-): SpeechModelFactory<SenseVoiceModelOptions, SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript> {
+): SpeechModelFactory<
+  SenseVoiceModelOptions,
+  SenseVoiceTranscriptionOptions,
+  SenseVoiceNativeTranscript
+> {
   return {
     family: 'sensevoice',
     classification: DEFAULT_CLASSIFICATION,
@@ -193,9 +260,20 @@ export function createSenseVoiceModelFamily(
       return normalized.includes('sensevoice');
     },
     matchesClassification(classification: Partial<ModelClassification>): boolean {
-      return Object.entries(classification).every(([key, value]) => DEFAULT_CLASSIFICATION[key as keyof ModelClassification] === value);
+      return Object.entries(classification).every(
+        ([key, value]) => DEFAULT_CLASSIFICATION[key as keyof ModelClassification] === value,
+      );
     },
-    async createModel(request, context: SpeechModelFactoryContext): Promise<SpeechModel<SenseVoiceModelOptions, SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript>> {
+    async createModel(
+      request,
+      context: SpeechModelFactoryContext,
+    ): Promise<
+      SpeechModel<
+        SenseVoiceModelOptions,
+        SenseVoiceTranscriptionOptions,
+        SenseVoiceNativeTranscript
+      >
+    > {
       const classification = { ...DEFAULT_CLASSIFICATION, ...(request.classification ?? {}) };
       const config = { ...DEFAULT_CONFIG, ...(request.options?.config ?? {}) };
       const dependencies: SenseVoiceModelDependencies = {
@@ -205,10 +283,21 @@ export function createSenseVoiceModelFamily(
         signal: options.dependencies?.signal ?? context.signal,
       };
       context.hooks.logger?.info?.('Creating SenseVoice CTC model', {
-        family: 'sensevoice', modelId: request.modelId, backendId: context.backend.id,
+        family: 'sensevoice',
+        modelId: request.modelId,
+        backendId: context.backend.id,
         artifactSource: request.options?.source?.kind ?? 'none',
       });
-      return new SenseVoiceModel(context.backend, 'sensevoice', request.modelId, classification, config, request.resolvedPreset, request.options, dependencies);
+      return new SenseVoiceModel(
+        context.backend,
+        'sensevoice',
+        request.modelId,
+        classification,
+        config,
+        request.resolvedPreset,
+        request.options,
+        dependencies,
+      );
     },
   };
 }

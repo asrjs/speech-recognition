@@ -16,12 +16,12 @@ X-ASR zh-en 160ms, Qwen3-ASR 0.6B):
 
 ## Provenance
 
-| Family | Official source | Oracle |
-| --- | --- | --- |
-| GigaAM CTC | GigaAM `multilingual_ctc` + `to_onnx` | official PyTorch / native ORT |
-| SenseVoiceSmall | FunAudioLLM `model.export` | FunASR, not OpenVoiceOS ONNX |
-| X-ASR zh-en 160ms | sherpa-onnx Zipformer2 streaming | sherpa; JS fbank = knf `snip_edges=false`, `high_freq=-400` |
-| Qwen3-ASR 0.6B | `Qwen/Qwen3-ASR-0.6B@5eb144179a02acc5e5ba31e748d22b0cf3e303b0`, `qwen-asr==0.0.6` | official CPU; third-party ONNX is not the oracle |
+| Family            | Official source                                                                   | Oracle                                                      |
+| ----------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| GigaAM CTC        | GigaAM `multilingual_ctc` + `to_onnx`                                             | official PyTorch / native ORT                               |
+| SenseVoiceSmall   | FunAudioLLM `model.export`                                                        | FunASR, not OpenVoiceOS ONNX                                |
+| X-ASR zh-en 160ms | sherpa-onnx Zipformer2 streaming                                                  | sherpa; JS fbank = knf `snip_edges=false`, `high_freq=-400` |
+| Qwen3-ASR 0.6B    | `Qwen/Qwen3-ASR-0.6B@5eb144179a02acc5e5ba31e748d22b0cf3e303b0`, `qwen-asr==0.0.6` | official CPU; third-party ONNX is not the oracle            |
 
 Qwen ONNX lives at `N:\models\onnx\qwen3-asr-0.6b-official\`. Unmodified encoder
 `aten::pad_sequence` remains `EXPORT_BLOCKED`. Decoder is explicit stacked KV
@@ -53,12 +53,12 @@ Sequential session load (encoder → release → prefill → release → step) i
 
 ## Browser results (JFK)
 
-| Family | Chrome WebGPU | WASM |
-| --- | --- | --- |
-| GigaAM CTC | exact, official fp16 | exact (fp32 and official fp16) |
-| SenseVoiceSmall | exact | exact |
-| X-ASR zh-en 160ms | exact | exact (same as sherpa, no extra comma) |
-| Qwen3-ASR 0.6B | exact, 34.1s load / 9.8s transcribe | sequential fp16 and fp32 exact; Chrome fp16 JS heap 2082/4192 MB; Chrome fp32 also passed (WASM linear memory is outside `performance.memory`) |
+| Family            | Chrome WebGPU                       | WASM                                                                                                                                           |
+| ----------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| GigaAM CTC        | exact, official fp16                | exact (fp32 and official fp16)                                                                                                                 |
+| SenseVoiceSmall   | exact                               | exact                                                                                                                                          |
+| X-ASR zh-en 160ms | exact                               | exact (same as sherpa, no extra comma)                                                                                                         |
+| Qwen3-ASR 0.6B    | exact, 34.1s load / 9.8s transcribe | sequential fp16 and fp32 exact; Chrome fp16 JS heap 2082/4192 MB; Chrome fp32 also passed (WASM linear memory is outside `performance.memory`) |
 
 Qwen Node WASM fp16: RSS 4254 MB, 30.7s, RTFx 0.36. Chrome WASM fp16: 46.5s, RTFx 0.24. WebGPU remains the faster browser path.
 
@@ -112,12 +112,12 @@ Official GigaAM `example.wav` (Pushkin), 11.29s, SHA-256
 - ONNX dir: `N:\models\onnx\gigaam\v3-e2e-rnnt` (`model.to_onnx`, opset 17, float32)
 - Export status in `provenance.json`: `experimental-official-export`
 
-| Artifact | Bytes | SHA-256 |
-| --- | --- | --- |
+| Artifact                   | Bytes       | SHA-256                                                            |
+| -------------------------- | ----------- | ------------------------------------------------------------------ |
 | `v3_e2e_rnnt_encoder.onnx` | 885,093,282 | `41ef815cebb6cdc7158321ec2a8b4d1ab04d1eb55f1c36ff98b428d39d0866a7` |
-| `v3_e2e_rnnt_decoder.onnx` | 4,599,970 | `fa95ac0997e621ebee4156fc9295e57407549e2d5c20ed548626ea1e4f20a09c` |
-| `v3_e2e_rnnt_joint.onnx` | 2,712,926 | `2ead0f16a18554b8d557875110da4b1e964441f617cdd95d0b4b45ac999c60a9` |
-| `v3_e2e_rnnt_vocab.txt` | 14,379 | `b98730cffb0bb782f505003caff8b4ba03ef6c9baf6b799572af3191f42fe098` |
+| `v3_e2e_rnnt_decoder.onnx` | 4,599,970   | `fa95ac0997e621ebee4156fc9295e57407549e2d5c20ed548626ea1e4f20a09c` |
+| `v3_e2e_rnnt_joint.onnx`   | 2,712,926   | `2ead0f16a18554b8d557875110da4b1e964441f617cdd95d0b4b45ac999c60a9` |
+| `v3_e2e_rnnt_vocab.txt`    | 14,379      | `b98730cffb0bb782f505003caff8b4ba03ef6c9baf6b799572af3191f42fe098` |
 
 Graph I/O:
 
@@ -130,13 +130,13 @@ WebGPU sessions must load **sequentially** (`another WebGPU EP inference session
 
 ### Gates (exact greedy text vs official `example.wav`)
 
-| Gate | Result |
-| --- | --- |
-| PyTorch `transcribe` | exact |
-| Native ORT greedy | exact; encoder max-abs ~3e-6 vs PyTorch |
-| Node WASM (`GIGAAM_RNNT_ONNX_SMOKE=1`) | exact |
-| Chrome WebGPU (NVIDIA Blackwell) | exact; load ~8.0s, transcribe ~5.3s, RTF 0.47 |
-| Node WebGPU | `WEBGPU_NO_ADAPTER` |
+| Gate                                   | Result                                        |
+| -------------------------------------- | --------------------------------------------- |
+| PyTorch `transcribe`                   | exact                                         |
+| Native ORT greedy                      | exact; encoder max-abs ~3e-6 vs PyTorch       |
+| Node WASM (`GIGAAM_RNNT_ONNX_SMOKE=1`) | exact                                         |
+| Chrome WebGPU (NVIDIA Blackwell)       | exact; load ~8.0s, transcribe ~5.3s, RTF 0.47 |
+| Node WebGPU                            | `WEBGPU_NO_ADAPTER`                           |
 
 Chrome result: `tools/data/results/gigaam/v3-e2e-rnnt-example-webgpu-chrome.json`
 Harness: `N:\github\asrjs\webgpu-agent-test` — `gigaam-rnnt.html`, asset route `/gigaam-rnnt/` + `/gigaam-audio/example.wav`.
@@ -209,6 +209,24 @@ Regression coverage proves that a minimal signal changed during an in-flight
 TEN-VAD init, FireRed VAD init, or streaming detector start reaches the same
 idle/teardown contract as a native `AbortSignal`. Core validation after this
 slice: 957 passed, 15 skipped; typecheck, build, and lint (0 errors) pass.
+
+## Package-level optional batch capability (2026-08-28)
+
+The package now exposes an optional `SpeechSession.transcribeBatch` capability,
+with `SpeechBatchSession` as the required-method type for family-specific
+consumers. `LoadedSpeechModel` adds `supportsBatch` and a batch method, and
+`SpeechPipeline.transcribeBatch` / `transcribeSpeechBatch` reuse the same
+cache, lifecycle, response-flavor, and canonical transcript boundaries as
+single-item calls.
+
+GigaAM CTC and SenseVoice map each native batch item through their existing
+single-item canonical mappers. `canonical`, `native`, and `canonical+native`
+therefore have the same meaning for one item and a batch. Batch calls accept
+mixed-length short inputs; automatic long-audio windowing remains a separate
+per-input runtime operation and is rejected explicitly in a batch call rather
+than silently becoming serial inference. Whisper, Qwen, NeMo, and other
+families are not advertised as batch-capable until their graph and output
+parity contracts are independently proven.
 
 ## Remaining gaps
 

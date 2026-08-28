@@ -22,6 +22,7 @@ describe('public exports', () => {
     expect(module.buildSpeechTranscriptionOptions).toBeTypeOf('function');
     expect(module.loadSpeechModel).toBeTypeOf('function');
     expect(module.transcribeSpeech).toBeTypeOf('function');
+    expect(module.transcribeSpeechBatch).toBeTypeOf('function');
     expect(module.transcribeSpeechFromMonoPcm).toBeTypeOf('function');
     expect(module.createSpeechPipeline).toBeTypeOf('function');
     expect(module.PcmAudioBuffer).toBeTypeOf('function');

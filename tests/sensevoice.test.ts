@@ -12,7 +12,9 @@ import { loadSpeechModel } from '../src/runtime/load.js';
 describe('SenseVoice prompt contract', () => {
   it('is discoverable as a built-in model family without a fake preset', () => {
     const runtime = createBuiltInSpeechRuntime({ useManifestSources: false });
-    const family = runtime.listModelFamilies().find((candidate) => candidate.family === 'sensevoice');
+    const family = runtime
+      .listModelFamilies()
+      .find((candidate) => candidate.family === 'sensevoice');
     expect(family?.supports('OpenVoiceOS/SenseVoiceSmall')).toBe(true);
     expect(family?.supports('nvidia/parakeet-tdt-0.6b-v3')).toBe(false);
   });
@@ -43,7 +45,7 @@ describe('SenseVoice prompt contract', () => {
 });
 
 describe('SenseVoice tokenizer and frontend', () => {
-  it('exposes a batch session boundary without changing the generic session API', async () => {
+  it('exposes a batch session with the same response-flavor contract as single transcription', async () => {
     const calls: number[] = [];
     const session = new SenseVoiceSession(
       'sensevoice-test',
@@ -62,18 +64,46 @@ describe('SenseVoice tokenizer and frontend', () => {
       },
     );
     const result = await session.transcribeBatch([
-      { sampleRate: 16000, numberOfChannels: 1, numberOfFrames: 160, durationSeconds: 0.01, channels: [new Float32Array(160)] },
-      { sampleRate: 16000, numberOfChannels: 1, numberOfFrames: 160, durationSeconds: 0.01, channels: [new Float32Array(160)] },
+      {
+        sampleRate: 16000,
+        numberOfChannels: 1,
+        numberOfFrames: 160,
+        durationSeconds: 0.01,
+        channels: [new Float32Array(160)],
+      },
+      {
+        sampleRate: 16000,
+        numberOfChannels: 1,
+        numberOfFrames: 160,
+        durationSeconds: 0.01,
+        channels: [new Float32Array(160)],
+      },
     ]);
     expect(calls).toEqual([2]);
-    expect(result.map((item) => item.utteranceText)).toEqual(['ok', 'ok']);
+    expect(result.map((item) => item.text)).toEqual(['ok', 'ok']);
+
+    const native = await session.transcribeBatch([], { responseFlavor: 'native' });
+    expect(native).toEqual([]);
+
+    const envelope = await session.transcribeBatch(
+      [
+        {
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          numberOfFrames: 160,
+          durationSeconds: 0.01,
+          channels: [new Float32Array(160)],
+        },
+      ],
+      { responseFlavor: 'canonical+native' },
+    );
+    expect(envelope[0]?.canonical.text).toBe('ok');
+    expect(envelope[0]?.native?.utteranceText).toBe('ok');
     await session.dispose();
   });
 
   it('decodes SentencePiece pieces while dropping CTC blank and prompt tags', () => {
-    const tokenizer = SenseVoiceTokenizer.fromText(
-      '<blk> 0\n<|en|> 1\n▁hello 2\n▁world 3\n',
-    );
+    const tokenizer = SenseVoiceTokenizer.fromText('<blk> 0\n<|en|> 1\n▁hello 2\n▁world 3\n');
     expect(tokenizer.blankId).toBe(0);
     expect(tokenizer.decode([1, 2, 3, 0])).toBe('hello world');
   });

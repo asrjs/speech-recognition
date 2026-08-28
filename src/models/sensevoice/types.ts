@@ -1,11 +1,14 @@
 import type {
   AssetProvider,
   AudioBufferLike,
+  AudioInputLike,
   BaseTranscriptionOptions,
   ModelClassification,
-  SpeechSession,
+  SpeechBatchSession,
   SpeechRuntimeHooks,
   TranscriptMetrics,
+  TranscriptResponse,
+  TranscriptResponseFlavor,
   TranscriptWarning,
 } from '../../types/index.js';
 import type { LasrCtcFeatureBatch } from '../lasr-ctc/types.js';
@@ -141,11 +144,14 @@ export interface SenseVoiceModelDependencies {
   readonly signal?: import('../../types/index.js').AbortSignalLike | null;
 }
 
-export interface SenseVoiceBatchSession extends SpeechSession<SenseVoiceTranscriptionOptions, SenseVoiceNativeTranscript> {
-  transcribeBatch(
-    audio: readonly AudioBufferLike[],
-    options?: SenseVoiceTranscriptionOptions,
-  ): Promise<readonly SenseVoiceNativeTranscript[]>;
+export interface SenseVoiceBatchSession extends SpeechBatchSession<
+  SenseVoiceTranscriptionOptions,
+  SenseVoiceNativeTranscript
+> {
+  transcribeBatch<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+    audio: readonly AudioInputLike[],
+    options?: SenseVoiceTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+  ): Promise<readonly TranscriptResponse<SenseVoiceNativeTranscript, TFlavor>[]>;
 }
 
 export interface SenseVoiceModelFamilyOptions {

@@ -16,9 +16,12 @@ import type {
   AudioInputLike,
   BaseTranscriptionOptions,
   MonoPcmInput,
+  SpeechBatchSession,
+  SpeechSession,
   TranscriptResponse,
   TranscriptResponseFlavor,
 } from '../types/index.js';
+import { NotImplementedSpeechFeatureError } from './errors.js';
 import type { DefaultSpeechRuntime } from './session.js';
 
 /**
@@ -32,6 +35,12 @@ export interface LoadedSpeechModel<
   TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
   TNative = unknown,
 > extends BuiltInSpeechModelHandle<TLoadOptions, TTranscriptionOptions, TNative> {
+  /** True when the loaded session exposes mixed-length batch execution. */
+  readonly supportsBatch: boolean;
+  transcribeBatch<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+    inputs: readonly AudioInputLike[],
+    options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+  ): Promise<readonly TranscriptResponse<TNative, TFlavor>[]>;
   transcribeMonoPcm<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
     pcm: MonoPcmInput,
     sampleRate: number,
@@ -57,7 +66,9 @@ export async function loadSpeechModel<
 >(
   options: LoadSpeechModelOptions<TLoadOptions>,
 ): Promise<LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>> {
-  const handle = await loadBuiltInSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(options);
+  const handle = await loadBuiltInSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(
+    options,
+  );
   return createLoadedSpeechModelHandle(handle);
 }
 
@@ -116,6 +127,30 @@ export async function transcribeSpeechFromMonoPcm<
   );
 }
 
+/**
+ * One-shot batch helper for model families that expose a batch-capable
+ * session. The helper preserves the same response-flavor contract as
+ * `transcribeSpeech()` and disposes the loaded model after the batch.
+ */
+export async function transcribeSpeechBatch<
+  TLoadOptions = unknown,
+  TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+  TNative = unknown,
+  TFlavor extends TranscriptResponseFlavor = 'canonical',
+>(
+  inputs: readonly AudioInputLike[],
+  options: TranscribeSpeechOptions<TLoadOptions, TTranscriptionOptions, TFlavor>,
+): Promise<readonly TranscriptResponse<TNative, TFlavor>[]> {
+  const { transcribeOptions, ...loadOptions } = options;
+  const loaded = await loadSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(loadOptions);
+
+  try {
+    return await loaded.transcribeBatch(inputs, transcribeOptions);
+  } finally {
+    await loaded.dispose();
+  }
+}
+
 export interface SpeechPipelineOptions extends CreateBuiltInSpeechRuntimeOptions {
   readonly runtime?: DefaultSpeechRuntime;
   /**
@@ -126,11 +161,10 @@ export interface SpeechPipelineOptions extends CreateBuiltInSpeechRuntimeOptions
   readonly cacheModels?: boolean;
 }
 
-export interface SpeechPipelineModelRequest<TLoadOptions = unknown>
-  extends Omit<
-    LoadSpeechModelOptions<TLoadOptions>,
-    'runtime' | 'hooks' | 'useManifestSources'
-  > {
+export interface SpeechPipelineModelRequest<TLoadOptions = unknown> extends Omit<
+  LoadSpeechModelOptions<TLoadOptions>,
+  'runtime' | 'hooks' | 'useManifestSources'
+> {
   readonly cacheKey?: string;
   readonly forceReload?: boolean;
 }
@@ -172,6 +206,15 @@ export interface SpeechPipeline {
     sampleRate: number,
     request: SpeechPipelineTranscribeRequest<TLoadOptions, TTranscriptionOptions, TFlavor>,
   ): Promise<TranscriptResponse<TNative, TFlavor>>;
+  transcribeBatch<
+    TLoadOptions = unknown,
+    TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+    TNative = unknown,
+    TFlavor extends TranscriptResponseFlavor = 'canonical',
+  >(
+    inputs: readonly AudioInputLike[],
+    request: SpeechPipelineTranscribeRequest<TLoadOptions, TTranscriptionOptions, TFlavor>,
+  ): Promise<readonly TranscriptResponse<TNative, TFlavor>[]>;
   listLoadedModels(): readonly string[];
   disposeModel(requestOrCacheKey: string | SpeechPipelineModelRequest<unknown>): Promise<void>;
   /** Dispose all loaded models to free GPU memory without deleting IndexedDB cache. */
@@ -179,10 +222,48 @@ export interface SpeechPipeline {
   dispose(): Promise<void>;
 }
 
-type UnknownLoadedModelHandle = BuiltInSpeechModelHandle<unknown, BaseTranscriptionOptions, unknown>;
+type UnknownLoadedModelHandle = LoadedSpeechModel<unknown, BaseTranscriptionOptions, unknown>;
 
 function createMonoPcmAudioBuffer(pcm: MonoPcmInput, sampleRate: number): PcmAudioBuffer {
   return PcmAudioBuffer.fromMono(pcm, sampleRate);
+}
+
+function assertBatchSession<TTranscriptionOptions extends BaseTranscriptionOptions, TNative>(
+  session: SpeechSession<TTranscriptionOptions, TNative>,
+  modelId: string,
+): SpeechBatchSession<TTranscriptionOptions, TNative> {
+  if (typeof session.transcribeBatch !== 'function') {
+    throw new NotImplementedSpeechFeatureError(
+      `Model "${modelId}" does not expose a batch transcription capability.`,
+      { feature: 'transcribeBatch', modelId },
+    );
+  }
+  return session as SpeechBatchSession<TTranscriptionOptions, TNative>;
+}
+
+function assertBatchInputsAreDirect<TOptions extends BaseTranscriptionOptions>(
+  inputs: readonly AudioInputLike[],
+  options: TOptions | undefined,
+  inference: ReturnType<typeof createDefaultModelInferenceLimits>,
+  modelId: string,
+): void {
+  if (options?.windowing === 'disabled') {
+    return;
+  }
+  for (const [index, input] of inputs.entries()) {
+    const decision = planWindowedTranscription(input, options, inference);
+    if (decision.shouldWindow) {
+      throw new NotImplementedSpeechFeatureError(
+        `Batch transcription does not support automatic long-audio windowing for model "${modelId}"; transcribe long inputs individually or set windowing to "disabled".`,
+        {
+          feature: 'transcribeBatch',
+          modelId,
+          inputIndex: index,
+          durationSeconds: decision.audio.durationSeconds,
+        },
+      );
+    }
+  }
 }
 
 export function createLoadedSpeechModelHandle<
@@ -231,11 +312,31 @@ export function createLoadedSpeechModelHandle<
     return canonical as TranscriptResponse<TNative, TFlavor>;
   }
 
+  const supportsBatch = typeof handle.session.transcribeBatch === 'function';
+
+  async function transcribeBatchAudio<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+    inputs: readonly AudioInputLike[],
+    options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+  ): Promise<readonly TranscriptResponse<TNative, TFlavor>[]> {
+    const batchSession = assertBatchSession(handle.session, handle.model.info.modelId);
+    const resolvedOptions = withResolvedTranscriptDetail(options);
+    const inference =
+      handle.model.info.inference ??
+      createDefaultModelInferenceLimits({
+        family: handle.model.info.family,
+        modelId: handle.model.info.modelId,
+      });
+    assertBatchInputsAreDirect(inputs, resolvedOptions, inference, handle.model.info.modelId);
+    return batchSession.transcribeBatch(inputs, resolvedOptions);
+  }
+
   return {
     runtime: handle.runtime,
     model: handle.model,
     session: handle.session,
+    supportsBatch,
     transcribe: transcribeAudio,
+    transcribeBatch: transcribeBatchAudio,
     async transcribeMonoPcm<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
       pcm: MonoPcmInput,
       sampleRate: number,
@@ -402,10 +503,10 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     if (!cacheKey) {
       const handle = await this.createModelHandle(modelRequest);
       try {
-        return (await handle.transcribe(
-          input,
-          transcribeOptions,
-        )) as TranscriptResponse<TNative, TFlavor>;
+        return (await handle.transcribe(input, transcribeOptions)) as TranscriptResponse<
+          TNative,
+          TFlavor
+        >;
       } finally {
         await handle.dispose();
       }
@@ -431,11 +532,45 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     );
   }
 
+  async transcribeBatch<
+    TLoadOptions = unknown,
+    TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+    TNative = unknown,
+    TFlavor extends TranscriptResponseFlavor = 'canonical',
+  >(
+    inputs: readonly AudioInputLike[],
+    request: SpeechPipelineTranscribeRequest<TLoadOptions, TTranscriptionOptions, TFlavor>,
+  ): Promise<readonly TranscriptResponse<TNative, TFlavor>[]> {
+    this.assertNotDisposed();
+
+    const { transcribeOptions, ...modelRequest } = request;
+    const cacheKey = this.cacheModels
+      ? resolveAutomaticCacheKey(modelRequest as SpeechPipelineModelRequest<unknown>)
+      : null;
+
+    if (!cacheKey) {
+      const handle = await this.createModelHandle(modelRequest);
+      try {
+        return (await handle.transcribeBatch(
+          inputs,
+          transcribeOptions,
+        )) as readonly TranscriptResponse<TNative, TFlavor>[];
+      } finally {
+        await handle.dispose();
+      }
+    }
+
+    const handle = await this.loadModel<TLoadOptions, TTranscriptionOptions, TNative>(modelRequest);
+    return handle.transcribeBatch<TFlavor>(inputs, transcribeOptions);
+  }
+
   listLoadedModels(): readonly string[] {
     return [...this.handles.keys()];
   }
 
-  async disposeModel(requestOrCacheKey: string | SpeechPipelineModelRequest<unknown>): Promise<void> {
+  async disposeModel(
+    requestOrCacheKey: string | SpeechPipelineModelRequest<unknown>,
+  ): Promise<void> {
     const cacheKey =
       typeof requestOrCacheKey === 'string'
         ? requestOrCacheKey
@@ -470,12 +605,20 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     this.inflight.clear();
     for (const result of inflightResults) {
       if (result.status === 'fulfilled') {
-        try { await result.value.dispose(); } catch { /* best-effort */ }
+        try {
+          await result.value.dispose();
+        } catch {
+          /* best-effort */
+        }
       }
     }
     // Dispose all cached handles
     for (const [, handle] of this.handles) {
-      try { await handle.dispose(); } catch { /* best-effort */ }
+      try {
+        await handle.dispose();
+      } catch {
+        /* best-effort */
+      }
     }
     this.handles.clear();
   }
