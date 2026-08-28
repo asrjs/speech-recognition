@@ -611,6 +611,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     this.assertNotDisposed();
 
     const { transcribeOptions, ...modelRequest } = request;
+    const effectiveTranscribeOptions = withInheritedTranscriptionSignal(transcribeOptions, request.signal);
     const cacheKey = this.cacheModels
       ? resolveAutomaticCacheKey(modelRequest as SpeechPipelineModelRequest<unknown>)
       : null;
@@ -618,7 +619,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     if (!cacheKey) {
       const handle = await this.createModelHandle(modelRequest);
       try {
-        return (await handle.transcribe(input, transcribeOptions)) as TranscriptResponse<
+        return (await handle.transcribe(input, effectiveTranscribeOptions)) as TranscriptResponse<
           TNative,
           TFlavor
         >;
@@ -632,7 +633,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       if (this.disposed || this.handles.get(cacheKey) !== handle) {
         throw this.createInvalidationError();
       }
-      return await handle.transcribe<TFlavor>(input, transcribeOptions);
+      return await handle.transcribe<TFlavor>(input, effectiveTranscribeOptions);
     }
 
     await this.waitForCacheMutation(cacheKey);
@@ -649,7 +650,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     if (!this.isGenerationCurrent(cacheKey, generation) || this.handles.get(cacheKey) !== handle) {
       throw this.createInvalidationError();
     }
-    return await handle.transcribe<TFlavor>(input, transcribeOptions);
+    return await handle.transcribe<TFlavor>(input, effectiveTranscribeOptions);
   }
 
   async transcribeMonoPcm<
@@ -680,6 +681,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     this.assertNotDisposed();
 
     const { transcribeOptions, ...modelRequest } = request;
+    const effectiveTranscribeOptions = withInheritedTranscriptionSignal(transcribeOptions, request.signal);
     const cacheKey = this.cacheModels
       ? resolveAutomaticCacheKey(modelRequest as SpeechPipelineModelRequest<unknown>)
       : null;
@@ -689,7 +691,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       try {
         return (await handle.transcribeBatch(
           inputs,
-          transcribeOptions,
+          effectiveTranscribeOptions,
         )) as readonly TranscriptResponse<TNative, TFlavor>[];
       } finally {
         await this.disposeHandle(handle);
@@ -701,7 +703,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       if (this.disposed || this.handles.get(cacheKey) !== handle) {
         throw this.createInvalidationError();
       }
-      return await handle.transcribeBatch<TFlavor>(inputs, transcribeOptions);
+      return await handle.transcribeBatch<TFlavor>(inputs, effectiveTranscribeOptions);
     }
 
     await this.waitForCacheMutation(cacheKey);
@@ -718,7 +720,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     if (!this.isGenerationCurrent(cacheKey, generation) || this.handles.get(cacheKey) !== handle) {
       throw this.createInvalidationError();
     }
-    return await handle.transcribeBatch<TFlavor>(inputs, transcribeOptions);
+    return await handle.transcribeBatch<TFlavor>(inputs, effectiveTranscribeOptions);
   }
 
   listLoadedModels(): readonly string[] {

@@ -404,6 +404,78 @@ describe('SpeechPipeline lifecycle races', () => {
     await runtime.dispose();
   });
 
+  it('propagates pipeline cancellation into an in-flight cached transcription', async () => {
+    let releaseTranscribe!: () => void;
+    const transcribeGate = new Promise<void>((resolve) => {
+      releaseTranscribe = resolve;
+    });
+    let transcribeStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      transcribeStarted = resolve;
+    });
+    const controller = new AbortController();
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onDisposeModel: () => undefined,
+      onTranscribe: async (signal) => {
+        transcribeStarted();
+        await transcribeGate;
+        if (signal?.aborted) {
+          throw new PipelineAbortedError('probe-transcribe');
+        }
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime, cacheModels: true });
+
+    const transcribing = pipeline.transcribe(new Float32Array(16000), {
+      ...REQUEST,
+      signal: controller.signal,
+    });
+    await started;
+    controller.abort();
+    releaseTranscribe();
+
+    await expect(transcribing).rejects.toBeInstanceOf(PipelineAbortedError);
+    await pipeline.dispose();
+    await runtime.dispose();
+  });
+
+  it('propagates pipeline cancellation into an in-flight batch transcription', async () => {
+    let releaseBatch!: () => void;
+    const batchGate = new Promise<void>((resolve) => {
+      releaseBatch = resolve;
+    });
+    let batchStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      batchStarted = resolve;
+    });
+    const controller = new AbortController();
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onDisposeModel: () => undefined,
+      onTranscribeBatch: async (signal) => {
+        batchStarted();
+        await batchGate;
+        if (signal?.aborted) {
+          throw new PipelineAbortedError('probe-transcribe-batch');
+        }
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime, cacheModels: true });
+
+    const transcribing = pipeline.transcribeBatch([new Float32Array(16000)], {
+      ...REQUEST,
+      signal: controller.signal,
+    });
+    await started;
+    controller.abort();
+    releaseBatch();
+
+    await expect(transcribing).rejects.toBeInstanceOf(PipelineAbortedError);
+    await pipeline.dispose();
+    await runtime.dispose();
+  });
+
   it('waits for active exposed-session transcription before disposing the loaded handle', async () => {
     let releaseTranscribe!: () => void;
     const transcribeGate = new Promise<void>((resolve) => {
