@@ -437,6 +437,157 @@ describe('DefaultSpeechRuntime', () => {
     expect(disposeCount).toBe(1);
   });
 
+  it('coalesces concurrent model disposal before runtime disposal', async () => {
+    const runtime = createSpeechRuntime();
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32'],
+        supportsFp16: false,
+        supportsInt8: false,
+        supportsSharedArrayBuffer: false,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+
+    let disposeCount = 0;
+    let releaseDispose!: () => void;
+    const disposeGate = new Promise<void>((resolve) => {
+      releaseDispose = resolve;
+    });
+    runtime.registerModelFamily({
+      family: 'concurrent-dispose-probe',
+      supports(modelId: string) {
+        return modelId === 'concurrent-dispose-probe-1';
+      },
+      async createModel(request, context) {
+        return {
+          info: {
+            family: 'concurrent-dispose-probe',
+            modelId: request.modelId,
+            classification: { ecosystem: 'test', task: 'asr' },
+          },
+          backend: context.backend,
+          async createSession() {
+            return {
+              async transcribe() {
+                throw new Error('unused');
+              },
+              dispose() {},
+            };
+          },
+          async dispose() {
+            disposeCount += 1;
+            await disposeGate;
+          },
+        };
+      },
+    });
+
+    const model = await runtime.loadModel({
+      family: 'concurrent-dispose-probe',
+      modelId: 'concurrent-dispose-probe-1',
+    });
+    const first = model.dispose();
+    const second = model.dispose();
+
+    await Promise.resolve();
+    expect(disposeCount).toBe(1);
+    releaseDispose();
+    await Promise.all([first, second]);
+    await runtime.dispose();
+
+    expect(disposeCount).toBe(1);
+  });
+
+  it('drains and disposes a model when runtime disposal races an in-flight load', async () => {
+    const runtime = createSpeechRuntime();
+    runtime.registerBackend(
+      createStaticBackend({
+        id: 'wasm',
+        displayName: 'WASM',
+        available: true,
+        priority: 60,
+        environments: ['browser', 'node'],
+        acceleration: ['cpu'],
+        supportedPrecisions: ['fp32'],
+        supportsFp16: false,
+        supportsInt8: false,
+        supportsSharedArrayBuffer: false,
+        requiresSharedArrayBuffer: false,
+        fallbackSuitable: true,
+        notes: [],
+      }),
+    );
+
+    let loadStarted!: () => void;
+    let releaseLoad!: () => void;
+    const loadStartedPromise = new Promise<void>((resolve) => {
+      loadStarted = resolve;
+    });
+    const loadGate = new Promise<void>((resolve) => {
+      releaseLoad = resolve;
+    });
+    let disposeCount = 0;
+    runtime.registerModelFamily({
+      family: 'inflight-load-probe',
+      supports(modelId: string) {
+        return modelId === 'inflight-load-probe-1';
+      },
+      async createModel(request, context) {
+        loadStarted();
+        await loadGate;
+        return {
+          info: {
+            family: 'inflight-load-probe',
+            modelId: request.modelId,
+            classification: { ecosystem: 'test', task: 'asr' },
+          },
+          backend: context.backend,
+          async createSession() {
+            return {
+              async transcribe() {
+                throw new Error('unused');
+              },
+              dispose() {},
+            };
+          },
+          dispose() {
+            disposeCount += 1;
+          },
+        };
+      },
+    });
+
+    const loading = runtime.loadModel({
+      family: 'inflight-load-probe',
+      modelId: 'inflight-load-probe-1',
+    });
+    await loadStartedPromise;
+    const disposing = runtime.dispose();
+    const disposingAgain = runtime.dispose();
+    let secondDisposalSettled = false;
+    void disposingAgain.then(() => {
+      secondDisposalSettled = true;
+    });
+
+    expect(disposeCount).toBe(0);
+    await Promise.resolve();
+    expect(secondDisposalSettled).toBe(false);
+    releaseLoad();
+
+    await expect(loading).rejects.toThrow('disposed');
+    await Promise.all([disposing, disposingAgain]);
+    expect(disposeCount).toBe(1);
+  });
+
   it('allows repeated load and dispose of a built-in stub family', async () => {
     const runtime = createSpeechRuntime();
     runtime.registerBackend(

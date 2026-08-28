@@ -58,6 +58,8 @@ function isLoadAbortError(error: unknown): boolean {
   return error instanceof PipelineAbortedError || isAssetLoadAbortedError(error);
 }
 
+const RUNTIME_DISPOSED_DURING_LOAD_CODE = 'runtime-disposed-during-load';
+
 export interface DefaultSpeechRuntimeOptions {
   readonly hooks?: SpeechRuntimeHooks;
   readonly backends?: readonly ExecutionBackend[];
@@ -83,7 +85,9 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
   private readonly modelFamilies = new Map<string, SpeechModelFactory<any, any, any>>();
   private readonly presets = new Map<string, SpeechPresetFactory<any, any>>();
   private readonly loadedModels = new Set<SpeechModel<any, any, any>>();
+  private readonly inflightLoads = new Set<Promise<SpeechModel<any, any, any>>>();
   private disposed = false;
+  private disposePromise: Promise<void> | null = null;
 
   constructor(options: DefaultSpeechRuntimeOptions = {}) {
     this.hooks = createRuntimeHooks(options.hooks);
@@ -184,7 +188,27 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
       throw new ModelLoadError('Cannot load a model from a disposed runtime.');
     }
 
+    const loading = this.loadModelInternal<TLoadOptions, TNative>(request);
+    const trackedLoad = loading as Promise<SpeechModel<any, any, any>>;
+    this.inflightLoads.add(trackedLoad);
+    try {
+      return await loading;
+    } finally {
+      this.inflightLoads.delete(trackedLoad);
+    }
+  }
+
+  private async loadModelInternal<TLoadOptions = unknown, TNative = unknown>(
+    request: ModelLoadRequest<TLoadOptions>,
+  ): Promise<SpeechModel<TLoadOptions, any, TNative>> {
+    if (this.disposed) {
+      throw new ModelLoadError('Cannot load a model from a disposed runtime.');
+    }
+
     const familyRequest = await this.resolveLoadRequest(request);
+    if (this.disposed) {
+      throw new ModelLoadError('Cannot complete model load because the runtime was disposed.');
+    }
     const family = this.resolveModelFamily(familyRequest);
     if (!family) {
       throw new ModelLoadError(
@@ -200,6 +224,10 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
     const backend = familyRequest.backend
       ? await this.requireBackend(familyRequest.backend, familyRequest.selectionCriteria)
       : await this.selectBackend(familyRequest.selectionCriteria);
+
+    if (this.disposed) {
+      throw new ModelLoadError('Cannot complete model load because the runtime was disposed.');
+    }
 
     this.hooks.onProgress({
       phase: 'model-load:start',
@@ -236,6 +264,15 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
         throw new PipelineAbortedError('load');
       }
 
+      if (this.disposed) {
+        await model.dispose();
+        throw new ModelLoadError(
+          `Runtime was disposed during model load for "${familyRequest.modelId}".`,
+          { backendId: backend.id, family: family.family },
+          RUNTIME_DISPOSED_DURING_LOAD_CODE,
+        );
+      }
+
       this.trackLoadedModel(model);
 
       this.hooks.onProgress({
@@ -258,6 +295,9 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
         });
         throw error instanceof PipelineAbortedError ? error : new PipelineAbortedError('load');
       }
+      if (error instanceof ModelLoadError && error.code === RUNTIME_DISPOSED_DURING_LOAD_CODE) {
+        throw error;
+      }
       throw new ModelLoadError(`Failed to load model "${familyRequest.modelId}".`, {
         backendId: backend.id,
         family: family.family,
@@ -269,10 +309,17 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
 
   async dispose(): Promise<void> {
     if (this.disposed) {
-      return;
+      return this.disposePromise ?? Promise.resolve();
     }
 
     this.disposed = true;
+    this.disposePromise = this.disposeInternal();
+    return this.disposePromise;
+  }
+
+  private async disposeInternal(): Promise<void> {
+    const inflightLoads = [...this.inflightLoads];
+    await Promise.allSettled(inflightLoads);
 
     const models = [...this.loadedModels];
     this.loadedModels.clear();
@@ -286,9 +333,21 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
 
   private trackLoadedModel(model: SpeechModel<any, any, any>): SpeechModel<any, any, any> {
     const originalDispose = model.dispose.bind(model);
+    let disposePromise: Promise<void> | null = null;
     (model as { dispose: SpeechModel['dispose'] }).dispose = () => {
+      if (!disposePromise) {
+        disposePromise = Promise.resolve()
+          .then(() => originalDispose())
+          .then(
+            () => undefined,
+            (error) => {
+              this.loadedModels.delete(model);
+              throw error;
+            },
+          );
+      }
       this.loadedModels.delete(model);
-      return originalDispose();
+      return disposePromise;
     };
     this.loadedModels.add(model);
     return model;
