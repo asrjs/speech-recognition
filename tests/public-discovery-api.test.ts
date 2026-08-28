@@ -110,7 +110,9 @@ describe('root speech model discovery helpers', () => {
     expect(qwen?.audioContract).toBe('short-clip-speech-llm');
     expect(qwen?.languages).toEqual(['multilingual']);
     expect(qwen?.limitations.some((item) => /short-clip/i.test(item))).toBe(true);
-    expect(qwen?.limitations.some((item) => /not encoder-cache streaming/i.test(item))).toBe(true);
+    expect(qwen?.limitations.some((item) => /no encoder-cache streaming/i.test(item))).toBe(true);
+    expect(qwen?.limitations.some((item) => /verified long-audio quality/i.test(item))).toBe(true);
+    expect(qwen?.notes).toContain('30-second model limit');
 
     const rnnt = getExperimentalSpeechFamily('gigaam-rnnt');
     expect(rnnt?.modelIdHint).toBe('gigaam-v3-e2e-rnnt');

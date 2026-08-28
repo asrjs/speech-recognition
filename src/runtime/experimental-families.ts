@@ -104,11 +104,12 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     languages: ['multilingual'],
     audioContract: 'short-clip-speech-llm',
     limitations: [
-      'Short-clip offline speech-LLM, not encoder-cache streaming or long-audio windowing.',
+      'Short-clip/within-model-limit offline speech-LLM; no encoder-cache streaming or verified long-audio quality contract.',
       'Not a public preset; listSpeechModels() will not list this family.',
       'Requires a local ONNX directory; no hosted weights.',
     ],
-    notes: 'Official stacked Qwen3-ASR 0.6B. Default encoder is audio-encoder-dynamic.onnx with pad-to-100 and official token crop. Short-clip offline speech-LLM; local ONNX only.',
+    notes:
+      'Official stacked Qwen3-ASR 0.6B. Default encoder is audio-encoder-dynamic.onnx with pad-to-100 and official token crop. Direct requests are validated through the 30-second model limit; generic window composition beyond that remains compatibility-only. Local ONNX only.',
   },
 ];
 

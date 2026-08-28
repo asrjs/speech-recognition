@@ -70,7 +70,7 @@ Keep all four **experimental**. A public preset needs:
 2. At least one supported browser path (Chrome WebGPU is that path for all four; Qwen sequential WASM is an extra fallback, not a reason to drop WebGPU).
 3. Qwen additionally needs the dynamic encoder in the default load path (done: library `resolveOfficialQwen3AsrDirectArtifacts` and Chrome/Qwen harness default to `audio-encoder-dynamic.onnx`; static T=1100 is opt-in).
 4. No third-party ONNX as the Qwen oracle.
-5. Streaming/long-audio contracts remain family-specific (X-ASR is true encoder-cache streaming; Qwen is short-clip offline speech-LLM).
+5. Streaming/long-audio contracts remain family-specific (X-ASR is true encoder-cache streaming; Qwen is a within-model-limit offline speech-LLM, while generic composition beyond 30 seconds remains compatibility-only until broader oracle coverage exists).
 
 ## Commands
 
