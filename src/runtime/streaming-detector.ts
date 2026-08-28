@@ -3,7 +3,7 @@ import {
   AssetLoadAbortedError,
   isAssetLoadAbortedError,
   isDomAbortError,
-  toFetchAbortSignal,
+  subscribeToAbortSignal,
 } from '../io/abort.js';
 
 import {
@@ -465,12 +465,11 @@ export class StreamingSpeechDetector {
     this.startCancelled = false;
     const startAbort = new AbortController();
     this.startAbort = startAbort;
-    const callerNative = toFetchAbortSignal(callerSignal);
     const onCallerAbort = () => startAbort.abort();
+    const cleanupCallerAbort = subscribeToAbortSignal(callerSignal, onCallerAbort);
     if (callerSignal?.aborted) {
       startAbort.abort();
     }
-    callerNative?.addEventListener('abort', onCallerAbort);
 
     try {
       if (sampleRate && sampleRate !== this.sampleRate) {
@@ -539,7 +538,7 @@ export class StreamingSpeechDetector {
         payload: this.getSnapshot(),
       });
     } finally {
-      callerNative?.removeEventListener('abort', onCallerAbort);
+      cleanupCallerAbort();
       if (this.startAbort === startAbort) {
         this.startAbort = null;
       }

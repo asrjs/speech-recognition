@@ -6,7 +6,7 @@ import type {
 } from '../types/index.js';
 import type { LoadSpeechModelOptions } from './load.js';
 import type { LoadSpeechModelFromLocalEntriesOptions } from './local-browser.js';
-import { AssetLoadAbortedError } from '../io/abort.js';
+import { AssetLoadAbortedError, subscribeToAbortSignal } from '../io/abort.js';
 
 interface BrowserTranscriptionWorkerLike {
   onmessage: ((event: MessageEvent) => void) | null;
@@ -129,53 +129,6 @@ function abortStageFor(
 function omitSignal<T extends Record<string, unknown>>(value: T): Omit<T, 'signal'> {
   const { signal: _signal, ...rest } = value;
   return rest;
-}
-
-type ObservableAbortSignalLike = {
-  readonly aborted: boolean;
-  readonly addEventListener?: (
-    type: 'abort',
-    listener: () => void,
-    options?: { readonly once?: boolean },
-  ) => void;
-  readonly removeEventListener?: (type: 'abort', listener: () => void) => void;
-};
-
-const ABORT_SIGNAL_POLL_INTERVAL_MS = 25;
-
-/**
- * Observe native, cross-realm, and minimal `{ aborted }` signals.
- *
- * The public runtime contracts intentionally accept a small AbortSignalLike
- * shape for worker-safe callers. Native AbortSignal events are preferred, but
- * a polling fallback is required for plain objects whose `aborted` property
- * can change without an event source.
- */
-function subscribeToAbortSignal(
-  signal: { readonly aborted: boolean } | null | undefined,
-  onAbort: () => void,
-): () => void {
-  if (!signal) {
-    return () => undefined;
-  }
-
-  const observable = signal as ObservableAbortSignalLike;
-  if (typeof observable.addEventListener === 'function') {
-    const listener = () => onAbort();
-    observable.addEventListener('abort', listener, { once: true });
-    return () => observable.removeEventListener?.('abort', listener);
-  }
-
-  const interval = setInterval(() => {
-    if (!observable.aborted) {
-      return;
-    }
-    clearInterval(interval);
-    onAbort();
-  }, ABORT_SIGNAL_POLL_INTERVAL_MS);
-  const maybeNodeTimer = interval as unknown as { readonly unref?: () => void };
-  maybeNodeTimer.unref?.();
-  return () => clearInterval(interval);
 }
 
 function clonePayloadForWorker(

@@ -10,7 +10,7 @@ import {
   resolveTenVadAssetUrls,
 } from '@asrjs/speech-recognition/browser';
 
-type FakeWorkerMode = 'ok' | 'fail-init';
+type FakeWorkerMode = 'ok' | 'fail-init' | 'hold-init';
 
 class FakeWorker {
   onmessage: ((event: MessageEvent) => void) | null = null;
@@ -27,6 +27,8 @@ class FakeWorker {
     if (message.type === 'INIT') {
       if (this.mode === 'fail-init') {
         this.onmessage?.({ data: { type: 'ERROR', id: message.id, payload: 'init failed' } });
+      } else if (this.mode === 'hold-init') {
+        return;
       } else {
         this.onmessage?.({
           data: { type: 'INIT', id: message.id, payload: { success: true, version: 'test' } },
@@ -201,6 +203,23 @@ describe('TenVadAdapter', () => {
       code: 'asset-load-aborted',
     });
     expect(terminated).toBe(true);
+    expect(worker.onmessage).toBeNull();
+    expect(adapter.getStatus().state).toBe('idle');
+  });
+
+  it('observes asynchronous changes on a minimal abort-like signal during init', async () => {
+    const worker = new FakeWorker('hold-init');
+    const signal = { aborted: false };
+    const adapter = new TenVadAdapter({}, { workerFactory: () => worker });
+
+    const initializing = adapter.init(signal);
+    await Promise.resolve();
+    signal.aborted = true;
+
+    await expect(initializing).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
     expect(worker.onmessage).toBeNull();
     expect(adapter.getStatus().state).toBe('idle');
   });
@@ -386,6 +405,23 @@ describe('FireRedVadAdapter', () => {
       code: 'asset-load-aborted',
     });
     expect(terminated).toBe(true);
+    expect(worker.onmessage).toBeNull();
+    expect(adapter.getStatus().state).toBe('idle');
+  });
+
+  it('observes asynchronous changes on a minimal abort-like signal during FireRed init', async () => {
+    const worker = new FakeWorker('hold-init');
+    const signal = { aborted: false };
+    const adapter = new FireRedVadAdapter({}, { workerFactory: () => worker });
+
+    const initializing = adapter.init(signal);
+    await Promise.resolve();
+    signal.aborted = true;
+
+    await expect(initializing).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
     expect(worker.onmessage).toBeNull();
     expect(adapter.getStatus().state).toBe('idle');
   });

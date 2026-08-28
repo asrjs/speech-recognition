@@ -12,7 +12,7 @@ import {
   AssetLoadAbortedError,
   isAssetLoadAbortedError,
   isDomAbortError,
-  toFetchAbortSignal,
+  subscribeToAbortSignal,
 } from '../io/abort.js';
 
 export interface TenVadAdapterConfig {
@@ -577,30 +577,51 @@ export class TenVadAdapter implements StreamingTenVadLike {
         return;
       }
 
+      let settled = false;
+      let cleanupAbort = (): void => undefined;
       const timeoutId = setTimeout(() => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanupAbort();
         reject(new Error(message));
       }, timeoutMs);
-      const native = toFetchAbortSignal(signal);
       const onAbort = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
         clearTimeout(timeoutId);
-        native?.removeEventListener('abort', onAbort);
+        cleanupAbort();
         reject(createTenVadInitAbortedError());
       };
-      native?.addEventListener('abort', onAbort);
+      cleanupAbort = subscribeToAbortSignal(signal, onAbort);
+      if (signal?.aborted) {
+        onAbort();
+      }
 
       promise.then(
         (value) => {
-          clearTimeout(timeoutId);
-          native?.removeEventListener('abort', onAbort);
-          if (signal?.aborted) {
-            reject(createTenVadInitAbortedError());
+          if (settled) {
             return;
           }
+          clearTimeout(timeoutId);
+          if (signal?.aborted) {
+            onAbort();
+            return;
+          }
+          settled = true;
+          cleanupAbort();
           resolve(value);
         },
         (error) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
           clearTimeout(timeoutId);
-          native?.removeEventListener('abort', onAbort);
+          cleanupAbort();
           reject(error);
         },
       );

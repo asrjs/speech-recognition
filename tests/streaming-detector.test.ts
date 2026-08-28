@@ -226,6 +226,30 @@ describe('StreamingSpeechDetector', () => {
     expect(detector.getSnapshot().tenVad.state).toBe('idle');
   });
 
+  it('observes asynchronous changes on a minimal abort-like signal during start', async () => {
+    const fakeTenVad = new FakeTenVad({ hangInit: true });
+    const signal = { aborted: false };
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        tenVadEnabled: true,
+      },
+      tenVadFactory: () => fakeTenVad as any,
+    });
+
+    const starting = detector.start({ sampleRate: 16000, signal });
+    await Promise.resolve();
+    signal.aborted = true;
+
+    await expect(starting).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(fakeTenVad.terminated).toBe(true);
+    expect(detector.getSnapshot().state).toBe('idle');
+    expect(detector.getSnapshot().tenVad.state).toBe('idle');
+  });
+
   it('keeps requested TEN-VAD-only mode for UI state but runs detection in rough-only mode', async () => {
     const detector = new StreamingSpeechDetector({
       profileId: 'generic-streaming',

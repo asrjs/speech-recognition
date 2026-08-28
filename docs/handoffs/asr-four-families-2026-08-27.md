@@ -196,6 +196,20 @@ queued cancellation, and the realtime controller reset path. The minimal
 signal case was previously able to leave an in-flight worker request pending;
 the test now proves that it is canceled without worker teardown.
 
+## Realtime abort-like signal compatibility (2026-08-28)
+
+The abort observer is now shared by the browser transcription worker client,
+`StreamingSpeechDetector.start()`, TEN-VAD init, and FireRed VAD init. Native
+and cross-realm abort events remain event-driven; minimal `{ aborted }` objects
+are observed with the same 25 ms polling fallback. VAD init timeout wrappers
+also remove their observer on every settle path, including timeout, abort,
+success, and worker failure.
+
+Regression coverage proves that a minimal signal changed during an in-flight
+TEN-VAD init, FireRed VAD init, or streaming detector start reaches the same
+idle/teardown contract as a native `AbortSignal`. Core validation after this
+slice: 957 passed, 15 skipped; typecheck, build, and lint (0 errors) pass.
+
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.

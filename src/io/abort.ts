@@ -53,6 +53,52 @@ export function toFetchAbortSignal(signal?: AssetAbortSignalLike | null): AbortS
   return undefined;
 }
 
+type ObservableAbortSignalLike = AssetAbortSignalLike & {
+  readonly addEventListener?: (
+    type: 'abort',
+    listener: () => void,
+    options?: { readonly once?: boolean },
+  ) => void;
+  readonly removeEventListener?: (type: 'abort', listener: () => void) => void;
+};
+
+const ABORT_SIGNAL_POLL_INTERVAL_MS = 25;
+
+/**
+ * Observe native, cross-realm, and minimal `{ aborted }` signals.
+ *
+ * Public browser APIs accept a small signal shape so callers can use
+ * worker-safe and cross-realm cancellation objects. Native abort events are
+ * preferred, while a short polling fallback covers plain objects whose
+ * `aborted` property changes without an event source.
+ */
+export function subscribeToAbortSignal(
+  signal: AssetAbortSignalLike | null | undefined,
+  onAbort: () => void,
+): () => void {
+  if (!signal) {
+    return () => undefined;
+  }
+
+  const observable = signal as ObservableAbortSignalLike;
+  if (typeof observable.addEventListener === 'function') {
+    const listener = () => onAbort();
+    observable.addEventListener('abort', listener, { once: true });
+    return () => observable.removeEventListener?.('abort', listener);
+  }
+
+  const interval = setInterval(() => {
+    if (!observable.aborted) {
+      return;
+    }
+    clearInterval(interval);
+    onAbort();
+  }, ABORT_SIGNAL_POLL_INTERVAL_MS);
+  const maybeNodeTimer = interval as unknown as { readonly unref?: () => void };
+  maybeNodeTimer.unref?.();
+  return () => clearInterval(interval);
+}
+
 export function isDomAbortError(error: unknown): boolean {
   if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
     return error.name === 'AbortError';
