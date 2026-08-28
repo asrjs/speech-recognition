@@ -44,6 +44,37 @@ describe('UrlAssetHandle', () => {
     expect(calls[1]).toContain('/resolve/main/');
   });
 
+  it('returns a single streamed response chunk without an extra materialization copy', async () => {
+    const payload = new Uint8Array([11, 22, 33, 44]);
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(payload);
+        controller.close();
+      },
+    });
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(stream, {
+          status: 200,
+          headers: { 'content-type': 'application/octet-stream' },
+        }),
+    ) as typeof fetch;
+
+    const handle = new UrlAssetHandle(
+      {
+        id: 'url:single-chunk',
+        provider: 'url',
+        url: 'https://example.com/single-chunk.onnx',
+      },
+      'https://example.com/single-chunk.onnx',
+    );
+
+    const bytes = await handle.readBytes();
+
+    expect(bytes).toBe(payload);
+    expect(Array.from(bytes)).toEqual([11, 22, 33, 44]);
+  });
+
   it('continues with network when cache read throws and evicts the broken key', async () => {
     const cache: AssetCache = {
       get: vi.fn(async () => {
