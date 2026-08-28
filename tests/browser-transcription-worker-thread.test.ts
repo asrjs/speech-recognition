@@ -115,4 +115,111 @@ describe('browser transcription worker thread cancellation', () => {
       expect.objectContaining({ id: 4, type: 'SUCCESS', payload: { text: 'ok' } }),
     ]);
   });
+
+  it('aborts an active model decode and reuses the loaded model', async () => {
+    type WorkerTranscriptionOptions = {
+      readonly signal?: AbortSignal;
+    };
+
+    const transcribeMonoPcm = vi.fn(
+      async (_pcm: Float32Array, _sampleRate: number, options?: WorkerTranscriptionOptions) => {
+        if (transcribeMonoPcm.mock.calls.length === 1) {
+          const signal = options?.signal;
+          await new Promise<never>((_resolve, reject) => {
+            if (signal?.aborted) {
+              reject(new Error('cooperative abort'));
+              return;
+            }
+            signal?.addEventListener('abort', () => reject(new Error('cooperative abort')), {
+              once: true,
+            });
+          });
+        }
+        return { text: 'ok' };
+      },
+    );
+    const dispose = vi.fn(async () => undefined);
+    const model = {
+      model: { id: 'parakeet', info: { family: 'nemo-tdt' } },
+      transcribeMonoPcm,
+      dispose,
+    };
+
+    vi.doMock('../src/runtime/load.js', () => ({
+      loadSpeechModel: vi.fn(async () => model),
+    }));
+    vi.doMock('../src/runtime/local-browser.js', () => ({
+      loadSpeechModelFromLocalEntries: vi.fn(),
+    }));
+
+    const scope: WorkerScope = {
+      onmessage: null,
+      postMessage: vi.fn(),
+    };
+    Object.defineProperty(globalThis, 'self', {
+      configurable: true,
+      value: scope,
+    });
+
+    await import('../src/runtime/browser-transcription-worker-thread.js');
+
+    send(scope, {
+      id: 1,
+      type: 'LOAD_BUILT_IN_MODEL',
+      payload: { modelId: 'parakeet' },
+    });
+    await waitFor(() =>
+      scope.postMessage.mock.calls.some(
+        ([message]) => message?.id === 1 && message?.type === 'SUCCESS',
+      ),
+    );
+
+    send(scope, {
+      id: 2,
+      type: 'TRANSCRIBE_MONO_PCM',
+      payload: { pcm: new Float32Array([0, 0.1]), sampleRate: 16000, options: null },
+    });
+    await waitFor(() => transcribeMonoPcm.mock.calls.length === 1);
+    const signal = transcribeMonoPcm.mock.calls[0]?.[2]?.signal;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal?.aborted).toBe(false);
+
+    send(scope, {
+      id: 3,
+      type: 'CANCEL_TRANSCRIBE',
+      payload: { requestId: 2 },
+    });
+    await waitFor(() =>
+      scope.postMessage.mock.calls.some(
+        ([message]) => message?.id === 2 && message?.type === 'ERROR',
+      ),
+    );
+
+    expect(signal?.aborted).toBe(true);
+    expect(dispose).not.toHaveBeenCalled();
+
+    send(scope, {
+      id: 4,
+      type: 'TRANSCRIBE_MONO_PCM',
+      payload: { pcm: new Float32Array([0, 0.1]), sampleRate: 16000, options: null },
+    });
+    await waitFor(() =>
+      scope.postMessage.mock.calls.some(
+        ([message]) => message?.id === 4 && message?.type === 'SUCCESS',
+      ),
+    );
+
+    expect(transcribeMonoPcm).toHaveBeenCalledTimes(2);
+    expect(scope.postMessage.mock.calls).toContainEqual([
+      expect.objectContaining({ id: 4, type: 'SUCCESS', payload: { text: 'ok' } }),
+    ]);
+
+    send(scope, { id: 5, type: 'DISPOSE_MODEL', payload: null });
+    await waitFor(() =>
+      scope.postMessage.mock.calls.some(
+        ([message]) => message?.id === 5 && message?.type === 'SUCCESS',
+      ),
+    );
+    expect(dispose).toHaveBeenCalledOnce();
+  });
 });
