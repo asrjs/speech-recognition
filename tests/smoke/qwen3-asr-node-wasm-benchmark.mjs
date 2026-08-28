@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { access, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -37,8 +38,10 @@ function parseArgs(argv) {
     else if (arg === '--runs') args.runs = Number(valueAfter(argv, ++index, arg));
     else if (arg === '--language') args.language = valueAfter(argv, ++index, arg);
     else if (arg === '--max-new-tokens') args.maxNewTokens = Number(valueAfter(argv, ++index, arg));
-    else if (arg === '--window-seconds') args.windowSeconds = Number(valueAfter(argv, ++index, arg));
-    else if (arg === '--overlap-seconds') args.overlapSeconds = Number(valueAfter(argv, ++index, arg));
+    else if (arg === '--window-seconds')
+      args.windowSeconds = Number(valueAfter(argv, ++index, arg));
+    else if (arg === '--overlap-seconds')
+      args.overlapSeconds = Number(valueAfter(argv, ++index, arg));
     else if (arg === '--reference') args.reference = valueAfter(argv, ++index, arg);
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
@@ -47,7 +50,24 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  return `Usage: npm run build && node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs --model-dir <artifact-dir> [options]\n\nOptions:\n  --model-dir <dir>       Local official or legacy artifact directory (required; no download)\n  --audio <wav>           WAV fixture (default: tests/fixtures/jfk2.en.wav)\n  --backend <id>          wasm or webgpu (default: wasm)\n  --encoder <variant>     dynamic or static-t1100 (default: dynamic)\n  --dtype <dtype>         fp16 or fp32 (default: fp16)\n  --warmup <n>            Warmup runs (default: 1)\n  --runs <n>              Measured runs (default: 3)\n  --language <name|code>  Optional forced language, e.g. Turkish or tr\n  --max-new-tokens <n>    Generation cap (default: 256)\n  --window-seconds <n>   Force model-safe windows of this length for long-audio measurement\n  --overlap-seconds <n>  Optional overlap for forced windows (default: model policy)\n  --reference <json>     Optional fixture reference JSON; adjacent .json is used when present\n`;
+  return [
+    'Usage: npm run build && node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs --model-dir <artifact-dir> [options]',
+    '',
+    'Options:',
+    '  --model-dir <dir>       Local official or legacy artifact directory (required; no download)',
+    '  --audio <wav>           WAV fixture (default: tests/fixtures/jfk2.en.wav)',
+    '  --backend <id>          wasm or webgpu (default: wasm)',
+    '  --encoder <variant>     dynamic or static-t1100 (default: dynamic)',
+    '  --dtype <dtype>         fp16 or fp32 (default: fp16)',
+    '  --warmup <n>            Warmup runs (default: 1)',
+    '  --runs <n>              Measured runs (default: 3)',
+    '  --language <name|code>  Optional forced language, e.g. Turkish or tr',
+    '  --max-new-tokens <n>    Generation cap (default: 256)',
+    '  --window-seconds <n>    Force model-safe windows of this length for long-audio measurement',
+    '  --overlap-seconds <n>   Optional overlap for forced windows (default: model policy)',
+    '  --reference <json>      Optional fixture or captured Qwen reference JSON; adjacent .json is used when present',
+    '',
+  ].join('\n');
 }
 
 async function firstExisting(candidates, label) {
@@ -74,23 +94,69 @@ async function findExisting(candidates) {
   return undefined;
 }
 
-async function loadFixtureReference(referencePath) {
+function sha256(buffer) {
+  return createHash('sha256').update(buffer).digest('hex');
+}
+
+function referenceText(candidate) {
+  const fields = ['normalized', 'transcription', 'text'];
+  const field = fields.find(
+    (name) => typeof candidate?.[name] === 'string' && candidate[name].trim(),
+  );
+  if (!field) return undefined;
+  return { field, text: candidate[field] };
+}
+
+export async function loadFixtureReference(referencePath, audioSha256) {
   let parsed;
   try {
     parsed = JSON.parse(await readFile(referencePath, 'utf8'));
   } catch (error) {
-    throw new Error(`Could not read benchmark reference ${referencePath}: ${error?.message ?? error}`);
+    throw new Error(
+      `Could not read benchmark reference ${referencePath}: ${error?.message ?? error}`,
+    );
   }
-  const fields = ['normalized', 'transcription', 'text'];
-  const field = fields.find(
-    (candidate) => typeof parsed?.[candidate] === 'string' && parsed[candidate].trim(),
-  );
-  if (!field) {
+
+  if (Array.isArray(parsed?.samples)) {
+    const sample = parsed.samples.find((candidate) => candidate?.audio_sha256 === audioSha256);
+    if (!sample) {
+      const hashes = parsed.samples
+        .map((candidate) => candidate?.audio_sha256)
+        .filter((candidate) => typeof candidate === 'string');
+      throw new Error(
+        `Benchmark reference ${referencePath} has no sample matching audio SHA-256 ${audioSha256}. ` +
+          (hashes.length
+            ? `Available hashes: ${hashes.join(', ')}`
+            : 'The reference has no audio hashes.'),
+      );
+    }
+    const resolved = referenceText(sample);
+    if (!resolved) {
+      throw new Error(
+        `Benchmark reference ${referencePath} sample ${sample.sample_id ?? '<unknown>'} has no non-empty text field.`,
+      );
+    }
+    return {
+      path: referencePath,
+      field: `samples[${parsed.samples.indexOf(sample)}].${resolved.field}`,
+      text: resolved.text,
+      kind: parsed.reference_kind ?? 'structured-reference',
+      sampleId: sample.sample_id,
+    };
+  }
+
+  const resolved = referenceText(parsed);
+  if (!resolved) {
     throw new Error(
       `Benchmark reference ${referencePath} has no non-empty normalized, transcription, or text field.`,
     );
   }
-  return { path: referencePath, field, text: parsed[field] };
+  return {
+    path: referencePath,
+    field: resolved.field,
+    text: resolved.text,
+    kind: parsed?.reference_kind ?? 'fixture-sidecar-dataset-label',
+  };
 }
 
 function readPcmSample(data, offset, format, bits) {
@@ -161,8 +227,7 @@ async function main() {
     throw new Error('--backend must be wasm or webgpu.');
   if (!['dynamic', 'static-t1100'].includes(args.encoder))
     throw new Error('--encoder must be dynamic or static-t1100.');
-  if (!['fp16', 'fp32'].includes(args.dtype))
-    throw new Error('--dtype must be fp16 or fp32.');
+  if (!['fp16', 'fp32'].includes(args.dtype)) throw new Error('--dtype must be fp16 or fp32.');
   if (
     !Number.isInteger(args.runs) ||
     args.runs < 1 ||
@@ -173,24 +238,41 @@ async function main() {
   }
   if (!Number.isInteger(args.maxNewTokens) || args.maxNewTokens < 1)
     throw new Error('--max-new-tokens must be positive.');
-  if (args.windowSeconds !== undefined && (!Number.isFinite(args.windowSeconds) || args.windowSeconds <= 0))
+  if (
+    args.windowSeconds !== undefined &&
+    (!Number.isFinite(args.windowSeconds) || args.windowSeconds <= 0)
+  )
     throw new Error('--window-seconds must be positive.');
-  if (args.overlapSeconds !== undefined && (!Number.isFinite(args.overlapSeconds) || args.overlapSeconds < 0))
+  if (
+    args.overlapSeconds !== undefined &&
+    (!Number.isFinite(args.overlapSeconds) || args.overlapSeconds < 0)
+  )
     throw new Error('--overlap-seconds must be non-negative.');
   if (args.overlapSeconds !== undefined && args.windowSeconds === undefined)
     throw new Error('--overlap-seconds requires --window-seconds.');
-  if (args.windowSeconds !== undefined && args.overlapSeconds !== undefined && args.overlapSeconds >= args.windowSeconds)
+  if (
+    args.windowSeconds !== undefined &&
+    args.overlapSeconds !== undefined &&
+    args.overlapSeconds >= args.windowSeconds
+  )
     throw new Error('--overlap-seconds must be smaller than --window-seconds.');
 
   const modelDir = path.resolve(args.modelDir);
-  const officialEncoder = args.encoder === 'static-t1100'
-    ? ['audio-encoder-static-t1100.onnx', 'audio-encoder-static-t1100-fp16.onnx']
-    : ['audio-encoder-dynamic.onnx'];
+  const officialEncoder =
+    args.encoder === 'static-t1100'
+      ? ['audio-encoder-static-t1100.onnx', 'audio-encoder-static-t1100-fp16.onnx']
+      : ['audio-encoder-dynamic.onnx'];
   const encoder = await firstExisting(
     [
-      ...officialEncoder.flatMap((filename) => [path.join(modelDir, filename), path.join(modelDir, 'onnx', filename)]),
+      ...officialEncoder.flatMap((filename) => [
+        path.join(modelDir, filename),
+        path.join(modelDir, 'onnx', filename),
+      ]),
       ...(args.encoder === 'dynamic'
-        ? [path.join(modelDir, 'onnx', 'audio_encoder_fp16.onnx'), path.join(modelDir, 'audio_encoder_fp16.onnx')]
+        ? [
+            path.join(modelDir, 'onnx', 'audio_encoder_fp16.onnx'),
+            path.join(modelDir, 'audio_encoder_fp16.onnx'),
+          ]
         : []),
     ],
     'Qwen encoder graph',
@@ -217,68 +299,72 @@ async function main() {
     ],
     'Qwen tokenizer',
   );
-  const encoderData = await findExisting(
-    [
-      `${encoder}.data`,
-      path.join(modelDir, 'onnx', 'audio_encoder_fp16.onnx_data'),
-      path.join(modelDir, 'audio_encoder_fp16.onnx_data'),
-    ],
-  );
+  const encoderData = await findExisting([
+    `${encoder}.data`,
+    path.join(modelDir, 'onnx', 'audio_encoder_fp16.onnx_data'),
+    path.join(modelDir, 'audio_encoder_fp16.onnx_data'),
+  ]);
   const decoderData = decoderStep
     ? undefined
     : await firstExisting(
-      [
-        `${decoder}.data`,
-        path.join(modelDir, `decoder${decoderSuffix}.onnx.data`),
-        path.join(modelDir, 'onnx', `decoder${decoderSuffix}.onnx.data`),
-        path.join(modelDir, `decoder_with_past${decoderSuffix}.onnx_data`),
-        path.join(modelDir, 'onnx', `decoder_with_past${decoderSuffix}.onnx_data`),
-      ],
-      'Qwen decoder external data',
-    );
+        [
+          `${decoder}.data`,
+          path.join(modelDir, `decoder${decoderSuffix}.onnx.data`),
+          path.join(modelDir, 'onnx', `decoder${decoderSuffix}.onnx.data`),
+          path.join(modelDir, `decoder_with_past${decoderSuffix}.onnx_data`),
+          path.join(modelDir, 'onnx', `decoder_with_past${decoderSuffix}.onnx_data`),
+        ],
+        'Qwen decoder external data',
+      );
   const decoderPrefillData = decoderStep
     ? await firstExisting(
-      [
-        path.join(modelDir, `decoder${decoderSuffix}.onnx.data`),
-        `${decoder}.data`,
-        path.join(modelDir, `decoder-prefill${decoderSuffix}.onnx.data`),
-        path.join(modelDir, 'onnx', `decoder-prefill${decoderSuffix}.onnx.data`),
-      ],
-      'Qwen decoder prefill external data',
-    )
+        [
+          path.join(modelDir, `decoder${decoderSuffix}.onnx.data`),
+          `${decoder}.data`,
+          path.join(modelDir, `decoder-prefill${decoderSuffix}.onnx.data`),
+          path.join(modelDir, 'onnx', `decoder-prefill${decoderSuffix}.onnx.data`),
+        ],
+        'Qwen decoder prefill external data',
+      )
     : undefined;
   const decoderStepData = decoderStep
     ? await firstExisting(
-      [
-        path.join(modelDir, `decoder${decoderSuffix}.onnx.data`),
-        `${decoderStep}.data`,
-        path.join(modelDir, `decoder-step${decoderSuffix}.onnx.data`),
-        path.join(modelDir, 'onnx', `decoder-step${decoderSuffix}.onnx.data`),
-      ],
-      'Qwen decoder step external data',
-    )
+        [
+          path.join(modelDir, `decoder${decoderSuffix}.onnx.data`),
+          `${decoderStep}.data`,
+          path.join(modelDir, `decoder-step${decoderSuffix}.onnx.data`),
+          path.join(modelDir, 'onnx', `decoder-step${decoderSuffix}.onnx.data`),
+        ],
+        'Qwen decoder step external data',
+      )
     : undefined;
   const audioPath = path.resolve(args.audio);
   await access(audioPath);
-  const audio = decodeWav(await readFile(audioPath));
+  const audioBuffer = await readFile(audioPath);
+  const audio = decodeWav(audioBuffer);
+  const audioSha256 = sha256(audioBuffer);
   const referencePath = args.reference
     ? path.resolve(args.reference)
     : audioPath.replace(/\.wav$/i, '.json');
   let reference;
   if (args.reference) {
-    reference = await loadFixtureReference(referencePath);
+    reference = await loadFixtureReference(referencePath, audioSha256);
   } else if (await findExisting([referencePath])) {
-    reference = await loadFixtureReference(referencePath);
+    reference = await loadFixtureReference(referencePath, audioSha256);
   }
 
   const { loadSpeechModel } = await import('../../dist/index.js');
-  const { characterErrorRate, normalizeBenchmarkTranscript, wordErrorRate } = await import('../../dist/bench.js');
+  const { characterErrorRate, normalizeBenchmarkTranscript, wordErrorRate } =
+    await import('../../dist/bench.js');
   const directArtifacts = {
     encoderUrl: pathToFileURL(encoder).href,
     decoderUrl: pathToFileURL(decoder).href,
     tokenizerUrl: pathToFileURL(tokenizer).href,
     ...(encoderData
-      ? { encoderDataUrl: pathToFileURL(encoderData).href, encoderDataPath: path.basename(encoderData) }
+      ? {
+          encoderDataUrl: pathToFileURL(encoderData).href,
+          encoderDataPath: path.basename(encoderData),
+        }
       : {}),
     ...(decoderStep
       ? {
@@ -339,7 +425,8 @@ async function main() {
           wordErrorRate: wordErrorRate(reference.text, result.text),
           characterErrorRate: characterErrorRate(reference.text, result.text),
           normalizedExactMatch:
-            normalizeBenchmarkTranscript(reference.text) === normalizeBenchmarkTranscript(result.text),
+            normalizeBenchmarkTranscript(reference.text) ===
+            normalizeBenchmarkTranscript(result.text),
         }))
       : undefined;
     console.log(
@@ -350,6 +437,7 @@ async function main() {
           encoder: args.encoder,
           dtype: args.dtype,
           audio: audioPath,
+          audioSha256,
           durationSeconds: audio.durationSeconds,
           warmup: args.warmup,
           runs: args.runs,
@@ -359,16 +447,21 @@ async function main() {
             p95: percentile(elapsed, 0.95),
           },
           rtfx: audio.durationSeconds > 0 ? audio.durationSeconds / (meanMs / 1000) : null,
-          windowing: args.windowSeconds === undefined
-            ? null
-            : { windowDurationSeconds: args.windowSeconds, overlapSeconds: args.overlapSeconds ?? null },
+          windowing:
+            args.windowSeconds === undefined
+              ? null
+              : {
+                  windowDurationSeconds: args.windowSeconds,
+                  overlapSeconds: args.overlapSeconds ?? null,
+                },
           text: last?.text ?? '',
           language: last?.meta?.language,
           quality: reference
             ? {
-                referenceKind: 'fixture-sidecar-dataset-label',
+                referenceKind: reference.kind,
                 referencePath: reference.path,
                 referenceField: reference.field,
+                ...(reference.sampleId ? { referenceSampleId: reference.sampleId } : {}),
                 runs: qualityRuns,
               }
             : null,
@@ -383,7 +476,12 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error?.stack ?? error);
-  process.exit(1);
-});
+const invokedAsScript =
+  process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+
+if (invokedAsScript) {
+  main().catch((error) => {
+    console.error(error?.stack ?? error);
+    process.exit(1);
+  });
+}

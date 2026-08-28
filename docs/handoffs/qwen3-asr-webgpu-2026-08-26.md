@@ -75,12 +75,12 @@ license/provenance.
 
 ## Verification gate
 
-The code and mocked graph boundary pass locally, but the real model is not
-yet marked end-to-end verified because no approved local Qwen snapshot or
-reference JSON exists in this workspace. The next run, after an approved
-artifact is available, is:
+The code and mocked graph boundary pass locally. A local official snapshot and
+native reference JSON are now available for one fixed 26.45-second fixture;
+the result below is still an artifact-local acceptance run, not a hosted or
+representative benchmark. The remaining verification work is:
 
-1. run the offline `capture_qwen_reference.py` tool on several fixed audio
+1. run the offline `capture_qwen_reference.py` tool on more fixed audio
    samples, recording audio hashes, language, text, and optional alignments;
 2. run the same sample through native ORT, WASM, and WebGPU with the exact
    conversion manifest;
@@ -121,11 +121,23 @@ close Qwen as a documented candidate rather than expanding the public API.
 
 2026-08-28 continuation: the public `LoadedSpeechModel.transcribeMonoPcm()`
 path now uses the same model-aware windowing planner as `transcribe()`. The
-official dynamic/FP16 benchmark passed on the 26.45-second fixture with four
-forced windows (109.2 seconds total, RTFx 0.242). The short JFK oracle also
-remained exact (11 seconds, 32.97 seconds total, RTFx 0.334). These are local
-measurements, not hosted CI claims; the long medical fixture has a sidecar
-dataset/TTS label but no official Qwen long-audio oracle.
+offline native capture is recorded at
+`tools/data/results/qwen/qwen3-asr-0.6b-long-native-reference-2026-08-28.json`
+with audio SHA-256
+`58ce74b97dfb2c459966baf899a98e217d14130f23dc431b8b86aba121da4335`.
+
+On that fixture, native `qwen-asr` 0.0.6 CPU/float32 completed in 15.948 s.
+The official dynamic-encoder/FP16-decoder/WASM library path, with default
+windowing disabled by the 30-second model limit (one 26.45-second request),
+completed in 63.183 s at RTFx 0.419 and matched the native oracle exactly
+(WER 0%, CER 0%, normalized exact match). This is an artifact-local
+acceptance result, not a hosted or representative benchmark.
+
+The same path with explicitly forced 10-second windows and 2-second overlap
+completed in 105.899 s at RTFx 0.250 and scored WER 3.51% / CER 2.85% against
+the native oracle. This documents a real limitation of segment-only overlap
+composition: Qwen has no word timestamps in this graph, so forced windows can
+change boundary text even when the direct within-limit route is exact.
 
 2026-08-28 long-audio label comparison: the benchmark now auto-loads an
 adjacent fixture JSON (or accepts `--reference`) and reports Unicode-safe WER /
@@ -134,15 +146,17 @@ CER as `fixture-sidecar-dataset-label`, never as an official Qwen oracle. On
 with the official dynamic encoder, native-fp16 decoder, WASM, no warmup, one
 run, and forced 10-second windows with 2-second overlap:
 
-| Measurement | Before segment-overlap merge | After segment-overlap merge |
-| --- | ---: | ---: |
-| WER against sidecar `normalized` | 28.36% | 25.37% |
-| CER against sidecar `normalized` | 17.19% | 13.75% |
-| elapsed time | 105.9999 s | 106.2819 s |
-| composed windows / decoder steps | 4 / 105 | 4 / 105 |
+| Measurement                      | Before segment-overlap merge | After segment-overlap merge |
+| -------------------------------- | ---------------------------: | --------------------------: |
+| WER against sidecar `normalized` |                       28.36% |                      25.37% |
+| CER against sidecar `normalized` |                       17.19% |                      13.75% |
+| elapsed time                     |                   105.9999 s |                  106.2819 s |
+| composed windows / decoder steps |                      4 / 105 |                     4 / 105 |
 
 The after output removes duplicated overlap phrases such as `Flow of the ITI`
-and `Terminates at the OSG`; it still ends with an extra `central` token and
-does not establish representative Qwen quality. The sidecar is a local
-dataset/TTS label, so official long-audio reference capture and broader quality
-coverage remain open.
+and `Terminates at the OSG`; it still ends with an extra `central` token. The
+native-oracle run shows that this is introduced by the forced window route,
+not by the within-limit direct Qwen graph. Official oracle coverage beyond the
+30-second model limit, WebGPU validation, and human-microphone validation
+remain open. The sidecar comparison remains a local dataset/TTS label and is
+not a model-quality claim.

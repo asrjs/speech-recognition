@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "reference_kind": "qwen3-asr-0.6b-native-inference",
+  "generated_at": "2026-08-28T03:57:46.131562+00:00",
+  "local_only": true,
+  "source": {
+    "model_dir": "N:\\models\\Qwen3-ASR-0.6B",
+    "model_files": [
+      {
+        "path": ".cache/huggingface/.gitignore",
+        "size_bytes": 1,
+        "sha256": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1"
+      },
+      {
+        "path": ".cache/huggingface/download/.gitattributes.metadata",
+        "size_bytes": 104,
+        "sha256": "0454b47115c818b71e77b74a0315f5adf39ae735a43ff0969148b092ab9a4f91"
+      },
+      {
+        "path": ".cache/huggingface/download/chat_template.json.metadata",
+        "size_bytes": 104,
+        "sha256": "a6ff92953dff058f75bec8372794616fd49b33f5c72c9fe77fdcd2fe4c6a3648"
+      },
+      {
+        "path": ".cache/huggingface/download/config.json.metadata",
+        "size_bytes": 104,
+        "sha256": "d04fb56ef8d0f216226c00ec843ce4c627ccf4558b533207a77931f6f1a39578"
+      },
+      {
+        "path": ".cache/huggingface/download/generation_config.json.metadata",
+        "size_bytes": 104,
+        "sha256": "23ab528ae688aaa42dfa26a4f21cc5b5dfae7659fac7e6b8109c5f3a04424865"
+      },
+      {
+        "path": ".cache/huggingface/download/merges.txt.metadata",
+        "size_bytes": 104,
+        "sha256": "6414187153814274c24089b64b1c39a87a371c28679ef75b9efbd4a0aa714985"
+      },
+      {
+        "path": ".cache/huggingface/download/model.safetensors.metadata",
+        "size_bytes": 127,
+        "sha256": "9ca528100ffef8f302bca550377d1ac15387dfd7c996466abf9cacddebdaabcf"
+      },
+      {
+        "path": ".cache/huggingface/download/preprocessor_config.json.metadata",
+        "size_bytes": 104,
+        "sha256": "79d40940463341f113648f7bee3afd291fb60de5323703a2faa346927b0a8b09"
+      },
+      {
+        "path": ".cache/huggingface/download/README.md.metadata",
+        "size_bytes": 104,
+        "sha256": "04afa3d6109bc3efd05032cddf7e6954306b743656c43208ef564b1d1813e23c"
+      },
+      {
+        "path": ".cache/huggingface/download/tokenizer_config.json.metadata",
+        "size_bytes": 104,
+        "sha256": "af6778c498160ab2a9b528fb47a4c8b2626fc2db6bd3f03aa9b1021daa13104c"
+      },
+      {
+        "path": ".cache/huggingface/download/vocab.json.metadata",
+        "size_bytes": 104,
+        "sha256": "9d22095a7bb69db0a77f88163ab045e5a989105a30fbf1ccec60e945700ee42a"
+      },
+      {
+        "path": ".gitattributes",
+        "size_bytes": 1519,
+        "sha256": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361"
+      },
+      {
+        "path": "_hf-file-list.json",
+        "size_bytes": 464,
+        "sha256": "c13527f2090e8763214fba44b20aa8afbd03c5165ae239ee17b19f9cddd8a15b"
+      },
+      {
+        "path": "chat_template.json",
+        "size_bytes": 1161,
+        "sha256": "75a8cfca24f00de72d796fbfed6858fc9614ef3dabd8696684cc3bc03a9c58ff"
+      },
+      {
+        "path": "config.json",
+        "size_bytes": 6193,
+        "sha256": "76d3ae4601ce939830b2517f4a6cadb86cc51316c3900af6b020b051c21a478c"
+      },
+      {
+        "path": "generation_config.json",
+        "size_bytes": 142,
+        "sha256": "1da527824d81e07118facff437e03f2e24a23311e3bdeb2368973fe77e5f275c"
+      },
+      {
+        "path": "merges.txt",
+        "size_bytes": 1671853,
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+      },
+      {
+        "path": "model.safetensors",
+        "size_bytes": 1876091704,
+        "sha256": "79d6cbd4c98c7bbffe9db2edac07f56cd6637d0d5944b27f6c2b8353840323ea"
+      },
+      {
+        "path": "preprocessor_config.json",
+        "size_bytes": 330,
+        "sha256": "45e120a4eda2c20c5d7f2ea9354e63536bf35e27aa573fb7cdf78017b378770d"
+      },
+      {
+        "path": "README.md",
+        "size_bytes": 57456,
+        "sha256": "5058416891bc47a2051557765997e8c42f8eb78a0e33c3e775bd17d4b0ba4d50"
+      },
+      {
+        "path": "tokenizer_config.json",
+        "size_bytes": 12487,
+        "sha256": "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c"
+      },
+      {
+        "path": "vocab.json",
+        "size_bytes": 2776833,
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    ],
+    "forced_aligner_dir": null
+  },
+  "runtime": {
+    "python": "3.11.4",
+    "torch": "2.13.0+cpu",
+    "qwen_asr": "0.0.6",
+    "device_map": "cpu",
+    "dtype": "float32"
+  },
+  "inference": {
+    "max_inference_batch_size": 1,
+    "max_new_tokens": 256,
+    "language": null,
+    "timestamps_requested": false,
+    "batch_size": 1,
+    "batches": [
+      {
+        "sample_ids": [
+          "0000-00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en"
+        ],
+        "batch_size": 1,
+        "inference_seconds": 15.947942,
+        "batch_index": 0
+      }
+    ]
+  },
+  "samples": [
+    {
+      "sample_id": "0000-00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en",
+      "audio_path": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en.wav",
+      "audio_sha256": "58ce74b97dfb2c459966baf899a98e217d14130f23dc431b8b86aba121da4335",
+      "language_requested": null,
+      "language_detected": "English",
+      "text": "Functionally, the lower leg is supplied by two vessels: ITP and fibular artery. There is a significant delay in the flow of the ITI, but no narrowing or stenosis was detected along the vessel. The fibular artery terminates at the OSG. The ITP is patent and traceable up to the plantar arteries. The ITI is poorly contrasted.",
+      "timestamps": null,
+      "native_result": {
+        "language": "English",
+        "text": "Functionally, the lower leg is supplied by two vessels: ITP and fibular artery. There is a significant delay in the flow of the ITI, but no narrowing or stenosis was detected along the vessel. The fibular artery terminates at the OSG. The ITP is patent and traceable up to the plantar arteries. The ITI is poorly contrasted.",
+        "time_stamps": null
+      },
+      "batch_size": 1,
+      "batch_inference_seconds": 15.947942,
+      "batch_index": 0
+    }
+  ]
+}
