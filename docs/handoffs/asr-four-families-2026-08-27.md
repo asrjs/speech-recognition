@@ -323,6 +323,24 @@ mocked `navigator.gpu`: high-performance selection returned `null`, default
 selection succeeded, and the probe reported WebGPU/FP16 available. This is
 adapter-selection coverage, not a hardware performance claim.
 
+## Current artifact-gated WASM rerun (2026-08-29)
+
+The official/local artifacts were rerun against the current source after the
+adapter probe change. Functional WASM assertions remained green:
+
+| Family | Current functional evidence |
+| --- | --- |
+| GigaAM multilingual CTC | fp32 JFK exact, fp16 JFK exact, and mixed-length batch output exact/non-empty |
+| GigaAM v3 E2E RNN-T | Official Russian `example.wav` exact |
+| SenseVoiceSmall | JFK exact with `en` metadata and mixed-length batch output exact/non-empty |
+| X-ASR zh-en 160 ms | JFK exact through both direct WASM and the public stateful streaming transcriber |
+
+The accompanying Node/WebGPU cases still classify this workstation as
+`WEBGPU_NO_ADAPTER`, which is an environment result rather than an inference
+failure. No Qwen long-audio rerun was needed in this slice; its existing
+official-native comparison and label-backed windowed result remain the
+authoritative long-audio evidence.
+
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.
