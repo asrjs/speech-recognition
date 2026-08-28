@@ -48,6 +48,7 @@ describe('benchmark and dataset helpers', () => {
         encode_ms: 1000,
         decode_ms: 500,
         total_ms: 1700,
+        window_count: 3,
       },
     });
     expect(flattened.encode_rtfx).toBe(12);
@@ -55,6 +56,7 @@ describe('benchmark and dataset helpers', () => {
     expect(flattened.backend).toBe('webgpu-hybrid');
     expect(flattened.encoder_backend).toBe('webgpu');
     expect(flattened.decoder_backend).toBe('wasm');
+    expect(flattened.window_count).toBe(3);
 
     const csv = benchmarkRunRecordsToCsv([
       {
@@ -65,10 +67,13 @@ describe('benchmark and dataset helpers', () => {
         metrics: {
           encode_ms: 1000,
           decode_ms: 500,
+          window_count: 2,
         },
       },
     ]);
     expect(csv.startsWith(BENCHMARK_RUN_CSV_COLUMNS.join(','))).toBe(true);
+    expect(csv).toContain('window_count');
+    expect(csv).toContain(',2,');
     expect(toCsv([{ alpha: 'a', beta: 2 }], ['alpha', 'beta'])).toContain('alpha,beta');
   });
 

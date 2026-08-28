@@ -15,6 +15,8 @@ export interface BenchmarkStageMetrics {
   readonly tokenize_ms?: number;
   readonly total_ms?: number;
   readonly rtf?: number;
+  /** Number of model inference windows used to compose this benchmark run. */
+  readonly window_count?: number;
   readonly preprocessor_backend?: string;
 }
 
@@ -118,6 +120,7 @@ export const BENCHMARK_RUN_CSV_COLUMNS = [
   'tokenize_ms',
   'total_ms',
   'rtf',
+  'window_count',
   'encode_rtfx',
   'decode_rtfx',
   'preprocessor_backend',
@@ -402,6 +405,7 @@ export function flattenBenchmarkRunRecord(run: BenchmarkRunRecord): Record<strin
     tokenize_ms: metrics.tokenize_ms,
     total_ms: metrics.total_ms,
     rtf: metrics.rtf,
+    window_count: metrics.window_count,
     encode_rtfx: calcRtfx(run.audioDurationSec, metrics.encode_ms),
     decode_rtfx: calcRtfx(run.audioDurationSec, metrics.decode_ms),
     preprocessor_backend: metrics.preprocessor_backend,

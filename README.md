@@ -469,6 +469,10 @@ including preprocess, encode, decode, postprocess, and complete stages.
 
 Transcript results can now carry richer timing metadata in `meta.metrics`, including:
 
+- `windowCount` for the number of model-safe inference windows used by a
+  composed long-audio transcription. Benchmark CSV exports preserve this as
+  `window_count`.
+
 - phase timings: `preprocessMs`, `encodeMs`, `decodeMs`, `tokenizeMs`, `postprocessMs`
 - end-to-end timings: `totalMs`, `wallMs`
 - throughput: `rtf`, `rtfx`
