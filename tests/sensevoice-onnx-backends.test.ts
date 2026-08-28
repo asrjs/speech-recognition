@@ -27,6 +27,16 @@ function loadNpyFloat32(filePath: string): Float32Array {
   );
 }
 
+function audioInput(waveform: Float32Array) {
+  return {
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    numberOfFrames: waveform.length,
+    durationSeconds: waveform.length / 16000,
+    channels: [waveform],
+  };
+}
+
 function classifyOrtFailure(error: unknown, backend: 'wasm' | 'webgpu'): Record<string, unknown> {
   const message = error instanceof Error ? error.message : String(error);
   const lowered = message.toLowerCase();
@@ -158,6 +168,62 @@ describe.skipIf(
         expect(payload.failureClass).toMatch(
           /WEBGPU_NO_ADAPTER|WEBGPU_UNSUPPORTED_DTYPE|WEBGPU_MEMORY_LIMIT|ORT_WEB_UNSUPPORTED_OP|ORT_SESSION_FAILED/,
         );
+      } finally {
+        executor.dispose();
+      }
+    },
+  );
+
+  it(
+    'runs mixed-length inputs through one official WASM batch graph call',
+    { timeout: 600_000 },
+    async () => {
+      const waveform = loadNpyFloat32(WAVEFORM_PATH);
+      const shorterWaveform = waveform.subarray(0, Math.floor(waveform.length * 0.6));
+      const executor = new OrtSenseVoiceExecutor('sensevoice-small', 'wasm', {
+        source: {
+          kind: 'direct',
+          cpuThreads: 1,
+          artifacts: {
+            modelUrl: pathToFileURL(ONNX_PATH).href,
+            tokenizerUrl: pathToFileURL(VOCAB_PATH).href,
+            cmvnUrl: pathToFileURL(CMVN_PATH).href,
+          },
+        },
+      });
+      const outPath = path.resolve(
+        'tools/data/results/sensevoice/sensevoice-small-jfk-short-batch-wasm.json',
+      );
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      try {
+        await executor.ready();
+        const results = await executor.transcribeBatch(
+          [audioInput(waveform), audioInput(shorterWaveform)],
+          { language: 'en', useItn: false },
+        );
+        const payload = {
+          backend: 'wasm',
+          engine: 'onnxruntime-web',
+          batch_size: results.length,
+          texts: results.map((result) => result.utteranceText),
+          expected_first: EXPECTED,
+          first_text_match: results[0]?.utteranceText === EXPECTED,
+          second_text_non_empty: Boolean(results[1]?.utteranceText),
+          onnx_path: ONNX_PATH,
+          status: 'experimental-js-frontend-wasm-batch',
+        };
+        fs.writeFileSync(outPath, `${JSON.stringify(payload, null, 2)}\n`);
+        expect(results).toHaveLength(2);
+        expect(results[0]?.utteranceText).toBe(EXPECTED);
+        expect(results[1]?.utteranceText.length).toBeGreaterThan(0);
+      } catch (error) {
+        const payload = {
+          ...classifyOrtFailure(error, 'wasm'),
+          onnx_path: ONNX_PATH,
+          status: 'experimental-blocked',
+        };
+        fs.writeFileSync(outPath, `${JSON.stringify(payload, null, 2)}\n`);
+        throw error;
       } finally {
         executor.dispose();
       }

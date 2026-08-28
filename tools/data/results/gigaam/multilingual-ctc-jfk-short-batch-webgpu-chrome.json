@@ -1,0 +1,36 @@
+{
+  "preset": "gigaam-ctc-fp16-webgpu-batch",
+  "timestamp": "2026-08-28T06:19:39.391Z",
+  "status": "pass",
+  "transcript": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "batch": true,
+  "batchSize": 2,
+  "batchTexts": [
+    "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+    "and so my fellow americans ask not that your country can"
+  ],
+  "batchFirstMatch": true,
+  "batchSecondNonEmpty": true,
+  "webgpu": true,
+  "backend": "webgpu",
+  "encoderFolder": "multilingual-ctc-fp16",
+  "decoderFolder": "ctc",
+  "tokens": [],
+  "metrics": {
+    "loadMs": 5683.225,
+    "transcribeMs": 723.64,
+    "totalMs": 6723.425,
+    "rtf": 0.0654,
+    "rtfx": 15.3013
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "source": "N:/github/asrjs/webgpu-agent-test/scripts/run-gigaam-webgpu.mjs --batch"
+}

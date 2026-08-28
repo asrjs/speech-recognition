@@ -1,7 +1,7 @@
 # Experimental model browser matrix — 2026-08-28
 
 This report records a fresh artifact-backed smoke pass against the current
-`main` source at commit `bd72f21`. It validates runtime graph execution and
+`main` source at commit `ecf251e`. It validates runtime graph execution and
 fixture transcript parity; it is not a representative WER study and does not
 promote any family to a public preset.
 
@@ -23,9 +23,9 @@ promote any family to a public preset.
 
 | Family / artifact | WASM result | Chrome WebGPU result | Chrome load / transcribe | Notes |
 | --- | --- | --- | ---: | --- |
-| GigaAM multilingual CTC, official fp32 and fp16 exports | Exact JFK transcript | Exact JFK transcript | 5.437 s / 0.408 s | fp16 WebGPU, RTFx 27.26 |
+| GigaAM multilingual CTC, official fp32 and fp16 exports | Exact JFK transcript | Exact JFK transcript | 5.437 s / 0.408 s | fp16 WebGPU, RTFx 27.26; mixed-length batch also passes |
 | GigaAM v3 E2E RNN-T, official `model.to_onnx` export | Exact official `example.wav` transcript | Exact official `example.wav` transcript | 8.476 s / 4.220 s | Russian-only fixture, RTFx 2.68 |
-| SenseVoiceSmall, official FunASR ONNX export | Exact JFK transcript and `en` metadata | Exact JFK transcript and `en` metadata | 15.208 s / 2.240 s | RTFx 4.91 |
+| SenseVoiceSmall, official FunASR ONNX export | Exact JFK transcript and `en` metadata | Exact JFK transcript and `en` metadata | 15.208 s / 2.240 s | RTFx 4.91; mixed-length batch also passes |
 | X-ASR zh-en 160 ms, local Zipformer2 streaming graphs | Exact JFK transcript | Exact JFK transcript | 9.571 s / 38.007 s | Stateful encoder-cache path, RTFx is not reported by the harness |
 | Qwen3-ASR 0.6B, official stacked graphs with dynamic encoder | Exact JFK transcript | Exact JFK transcript | 36.041 s / 5.940 s | Dynamic encoder, fp16 decoder, RTFx 1.85; 30-second model limit |
 
@@ -37,6 +37,22 @@ the model's 1,100-frame encoder shape and emitted 30 tokens.
 Node-side WebGPU smoke remains classified as `WEBGPU_NO_ADAPTER` on this host.
 That is an environment limitation and is kept separate from the successful
 Chrome WebGPU evidence.
+
+## Batch evidence
+
+The two CTC families that expose `transcribeBatch()` were also tested with the
+official graphs using the full JFK clip plus its first 60%. Both WASM and
+independent Chrome WebGPU runs returned two results, preserved exact parity on
+the full clip, and returned non-empty text for the shorter clip:
+
+| Family | WASM batch result | Chrome WebGPU batch result |
+| --- | --- | --- |
+| GigaAM multilingual CTC fp32 | `batch_size=2`, first exact | `batchSize=2`, first exact, 0.724 s |
+| SenseVoiceSmall | `batch_size=2`, first exact | `batchSize=2`, first exact, 1.088 s |
+
+These measurements validate batch graph execution and output cardinality, not
+batch scaling or broad quality. GigaAM RNN-T and Qwen remain offline single-clip
+paths; X-ASR remains stateful encoder-cache streaming.
 
 ## Reproduction commands
 
@@ -67,6 +83,8 @@ With the independent Vite server running from
 node scripts/run-gigaam-webgpu.mjs
 node scripts/run-gigaam-rnnt-webgpu.mjs
 node scripts/run-sensevoice-webgpu.mjs
+node scripts/run-gigaam-webgpu.mjs --batch
+node scripts/run-sensevoice-webgpu.mjs --batch
 node scripts/run-xasr-webgpu.mjs
 node scripts/run-qwen-webgpu.mjs
 ```

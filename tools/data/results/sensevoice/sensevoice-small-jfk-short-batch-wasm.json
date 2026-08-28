@@ -1,0 +1,14 @@
+{
+  "backend": "wasm",
+  "engine": "onnxruntime-web",
+  "batch_size": 2,
+  "texts": [
+    "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+    "and so my fellow americans ask not what your country can"
+  ],
+  "expected_first": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "first_text_match": true,
+  "second_text_non_empty": true,
+  "onnx_path": "N:\\models\\onnx\\sensevoice\\small\\model.onnx",
+  "status": "experimental-js-frontend-wasm-batch"
+}

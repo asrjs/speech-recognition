@@ -1,0 +1,37 @@
+{
+  "preset": "sensevoice-small-webgpu-batch",
+  "timestamp": "2026-08-28T06:20:09.993Z",
+  "status": "pass",
+  "transcript": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "batch": true,
+  "batchSize": 2,
+  "batchTexts": [
+    "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+    "and so my fellow americans ask not what your country can"
+  ],
+  "batchFirstMatch": true,
+  "batchSecondNonEmpty": true,
+  "webgpu": true,
+  "backend": "webgpu",
+  "language": "en",
+  "metadata": {
+    "language": "en",
+    "emotion": "EMO_UNKNOWN",
+    "event": "Speech"
+  },
+  "metrics": {
+    "loadMs": 15407.995,
+    "transcribeMs": 1088.24,
+    "totalMs": 16758.385
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "source": "N:/github/asrjs/webgpu-agent-test/scripts/run-sensevoice-webgpu.mjs --batch"
+}
