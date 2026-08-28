@@ -259,6 +259,7 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
       }),
       startSeconds,
     );
+    accumulator.windowCount += 1;
     throwIfAborted(context.options?.signal);
 
     addWindowMetrics(accumulator, windowResult.meta.metrics);

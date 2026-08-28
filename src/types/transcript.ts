@@ -151,6 +151,8 @@ export interface TranscriptMetrics {
   readonly resamplerQuality?: string | null;
   readonly encoderFrameCount?: number;
   readonly decodeIterations?: number;
+  /** Number of model inference windows used to compose this transcript. */
+  readonly windowCount?: number;
   readonly emittedTokenCount?: number;
   readonly emittedWordCount?: number;
 }

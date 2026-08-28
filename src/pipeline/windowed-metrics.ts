@@ -2,6 +2,7 @@ import type { TranscriptMetrics } from '../types/index.js';
 
 export interface WindowedMetricsAccumulator {
   readonly audioDurationSec: number;
+  windowCount: number;
   preprocessMs: number;
   encodeMs: number;
   decodeMs: number;
@@ -17,6 +18,7 @@ export interface WindowedMetricsAccumulator {
 export function createWindowedMetricsAccumulator(audioDurationSec: number): WindowedMetricsAccumulator {
   return {
     audioDurationSec,
+    windowCount: 0,
     preprocessMs: 0,
     encodeMs: 0,
     decodeMs: 0,
@@ -32,7 +34,7 @@ export function createWindowedMetricsAccumulator(audioDurationSec: number): Wind
 
 function addMetricValue(
   accumulator: WindowedMetricsAccumulator,
-  key: keyof Omit<WindowedMetricsAccumulator, 'audioDurationSec' | 'hasMetrics'>,
+  key: keyof Omit<WindowedMetricsAccumulator, 'audioDurationSec' | 'hasMetrics' | 'windowCount'>,
   value: number | undefined,
 ): void {
   if (value !== undefined && Number.isFinite(value)) {
@@ -62,7 +64,7 @@ export function addWindowMetrics(
 export function buildWindowedMetrics(
   accumulator: WindowedMetricsAccumulator,
 ): TranscriptMetrics | undefined {
-  if (!accumulator.hasMetrics) {
+  if (!accumulator.hasMetrics && accumulator.windowCount === 0) {
     return undefined;
   }
 
@@ -77,6 +79,7 @@ export function buildWindowedMetrics(
     totalMs: totalMs || undefined,
     wallMs: accumulator.wallMs || undefined,
     audioDurationSec: accumulator.audioDurationSec,
+    windowCount: accumulator.windowCount,
     rtf,
     rtfx: rtf && rtf > 0 ? 1 / rtf : undefined,
     emittedTokenCount: accumulator.emittedTokenCount || undefined,

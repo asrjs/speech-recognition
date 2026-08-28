@@ -112,6 +112,7 @@ describe('pipeline windowing primitives', () => {
     });
 
     expect(calls).toBeGreaterThan(1);
+    expect(transcript.meta.metrics?.windowCount).toBe(calls);
     expect(transcript.text).toContain('Hello world.');
     expect(transcript.words?.length).toBeGreaterThan(2);
     expect(transcript.meta.metrics?.rtf).toBeGreaterThan(0);

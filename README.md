@@ -142,6 +142,8 @@ await loaded.dispose();
 `transcribeMonoPcm` follows the same model-aware long-audio windowing policy as
 `transcribe`. Audio longer than a model's supported input window is split and
 merged into one canonical transcript when the model exposes inference limits.
+Windowed responses also expose the number of successful model calls as
+`result.meta.metrics.windowCount`.
 
 #### One-shot automatic transcription
 
