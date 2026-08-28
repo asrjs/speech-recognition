@@ -241,11 +241,51 @@ than silently becoming serial inference. Whisper, Qwen, NeMo, and other
 families are not advertised as batch-capable until their graph and output
 parity contracts are independently proven.
 
+## Qwen long-audio window-merge evidence (2026-08-29)
+
+The official local Qwen3-ASR 0.6B model (`qwen-asr==0.0.6`, CPU, 1024-token
+cap) was run against `tests/fixtures/end-of-chapter-4.en.mp3` before comparing
+the browser-compatible ONNX path. The source audio is 167.471 seconds,
+mono/22050 Hz, SHA-256
+`bcb1544bedab93c7ec97734dce50316bbaef5ca59377f75d0f9e1eff4dac784c`; the
+paired text label SHA-256 is
+`4c47b22678017452ec1f459eeef10adb865ce6ac56f9902c3f8fc5f2a355ac4`.
+
+The generic window merge previously concatenated divergent segment-only
+prefixes across overlapping windows. `src/pipeline/long-audio-windowing.ts`
+now uses the known temporal overlap to trim a conservative prefix and then
+removes any exact overlap that begins after that divergent prefix. The focused
+regression tests cover both cases in `tests/pipeline-windowing.test.ts`.
+
+Using the official dynamic encoder and native fp16 decoder graphs in
+`N:\models\onnx\qwen3-asr-0.6b-official`, one sequential Node/WASM run with
+25-second windows and 5-second overlap produced:
+
+| Metric | Result |
+| --- | ---: |
+| Window count | 9 |
+| Total time | 627.78 s |
+| RTFx | 0.267 |
+| Label WER | 4.16% |
+| Label CER | 1.53% |
+| Implementation vs official-native text WER | 3.73% |
+
+The structured run is
+`tools/data/results/qwen/qwen3-asr-0.6b-long-wasm-windowed-end-of-chapter-4-2026-08-29.json`.
+The official native reference is
+`tools/data/results/qwen/qwen3-asr-0.6b-long-native-reference-end-of-chapter-4-1024-2026-08-29.json`.
+The ONNX run used a temporary 16 kHz WAV generated from the immutable MP3 with
+FFmpeg (`-ar 16000 -ac 1`); its converted WAV SHA-256 is recorded in the
+structured result. This is representative label evidence, not a public Qwen
+long-audio quality claim: the family remains short-clip/within-model-limit
+experimental support and has no verified encoder-cache streaming contract.
+
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.
-- Qwen long-audio quality/oracle coverage remains open; runtime window routing
-  is now covered by the loaded-handle regression and the forced-window CLI run.
+- Qwen long-audio is now covered by one official-native comparison and one
+  label-backed window-merge run; broader language/domain and repeated-run
+  coverage remains open, so it is still not a promotion gate.
 - Node WebGPU still `WEBGPU_NO_ADAPTER`.
 - All five families stay experimental; no presets. Discover via `listExperimentalSpeechFamilies()`, not `listSpeechModels()`.
 - GigaAM RNN-T is Russian-only (`example.wav`); do not cite it as a JFK / English result.

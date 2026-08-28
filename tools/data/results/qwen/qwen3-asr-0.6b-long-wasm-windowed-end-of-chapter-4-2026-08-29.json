@@ -1,0 +1,53 @@
+{
+  "model": "Qwen3-ASR-0.6B",
+  "backend": "wasm",
+  "encoder": "dynamic",
+  "dtype": "fp16",
+  "audio": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-qwen-long-8aabb68acd784aa8a27ac9531355715e.wav",
+  "audioSha256": "11670ad545157c29c15e692066a857761d533053eac73dc30a13226a6d9993d9",
+  "durationSeconds": 167.4710625,
+  "warmup": 0,
+  "runs": 1,
+  "elapsedMs": {
+    "mean": 627781.52,
+    "p50": 627781.52,
+    "p95": 627781.52
+  },
+  "rtfx": 0.26676647394781544,
+  "windowing": {
+    "windowDurationSeconds": 25,
+    "overlapSeconds": 5
+  },
+  "text": "The very close examination thus afforded me of this living young robin disclosed a strong Rufus tint on the tail coverts of which I can find nothing in descriptions of the bird. If this is usually the case, it should indicate a close connection with the redstarts, the young of which resemble the young robin also in the mottled brown of the rest of their plumage. Our meadows are liable to flood occasionally in the winter and also in a. summer wetter than usual. One stormy day in July, some years ago, I spied two common gulls standing in the water of a slight flood, apparently quite at home. But our rooks found them out, and considering the yantle sacred to themselves and such small birds as they might be graciously pleased to allow there. proceeded to worry them by flying round and round above them incessantly until the poor birds were fain to depart. Rooks are very hostile to intruders, and quite capable of continued teasing. I have watched them for a whole morning persecuting a kestrel. No sooner did the kestrel alight on the ground than the rook. went for it and drove it away. And wherever it went, they pursued it backwards and forwards over a space of two or three miles. In winter, the floods will sometimes freeze. One very cold day, as I was about to cross the ice-bound meadow, I saw some little things in motion at the further end, like feathers. dancing about on the ice, which my glass discovered to be the tails of a family of long-tailed tits. They were pecking away at the ice with their tails high in the air. As I neared them, they flew away, and marking the place where they were at work, I knelt down on the ice and examined it with the greatest care. Not a trace of anything. edible was to be found. Were they trying to substitute ice for water? Not a drop of water was to be found anywhere near. I have seen field fairs and red wings doing the same thing in Christ Church Meadow at Oxford, but the unfrozen Cherwell was within a few yards of them. Whether or no the long tails were trying to appease their. thirst. I may suggest to those who feed the starving birds in winter that they should remember that water as well as food is necessary to support life. The antelope is a great favorite with plovers, turtle doves, and wood pigeons, and in the winter it is much patronized by field fairs and red wings and a day or two. ago, I surprised four curlew here on March twenty-first on their way from the sea to their inland breeding places. But enough of the village and its gardens and outlying meadows. In the next chapter, we will stroll further afield. End of chapter four.",
+  "quality": {
+    "referenceKind": "fixture-text-label",
+    "referencePath": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\end-of-chapter-4.en.txt",
+    "referenceField": "text",
+    "runs": [
+      {
+        "wordErrorRate": 0.04158004158004158,
+        "characterErrorRate": 0.015324165029469547,
+        "normalizedExactMatch": false
+      }
+    ]
+  },
+  "metrics": {
+    "preprocessMs": 1529.943,
+    "encodeMs": 101429.199,
+    "decodeMs": 414779.228,
+    "decoderInitMs": 131678.164,
+    "decoderStepMs": 283101.064,
+    "decoderStepAvgMs": 366.2368227684347,
+    "decoderStepCount": 773,
+    "decoderKvCacheLocation": "cpu",
+    "totalMs": 627710.9850000001,
+    "wallMs": 627710.9850000001,
+    "audioDurationSec": 167.4710625,
+    "windowCount": 9,
+    "rtf": 3.748175807984738,
+    "rtfx": 0.2667964501210696,
+    "encoderFrameCount": 20800,
+    "decodeIterations": 773,
+    "emittedTokenCount": 773
+  }
+}

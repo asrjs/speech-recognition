@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { access, readFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -25,6 +25,7 @@ function parseArgs(argv) {
     windowSeconds: undefined,
     overlapSeconds: undefined,
     reference: undefined,
+    output: process.env.QWEN3_ASR_OUTPUT,
     help: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -43,6 +44,7 @@ function parseArgs(argv) {
     else if (arg === '--overlap-seconds')
       args.overlapSeconds = Number(valueAfter(argv, ++index, arg));
     else if (arg === '--reference') args.reference = valueAfter(argv, ++index, arg);
+    else if (arg === '--output') args.output = valueAfter(argv, ++index, arg);
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
@@ -65,7 +67,8 @@ function usage() {
     '  --max-new-tokens <n>    Generation cap (default: 256)',
     '  --window-seconds <n>    Force model-safe windows of this length for long-audio measurement',
     '  --overlap-seconds <n>   Optional overlap for forced windows (default: model policy)',
-    '  --reference <json>      Optional fixture or captured Qwen reference JSON; adjacent .json is used when present',
+    '  --reference <json|txt>  Optional fixture/reference JSON or plain-text label; adjacent .json is used when present',
+    '  --output <json>         Optional path for the structured benchmark result',
     '',
   ].join('\n');
 }
@@ -108,10 +111,20 @@ function referenceText(candidate) {
 }
 
 export async function loadFixtureReference(referencePath, audioSha256) {
+  const raw = await readFile(referencePath, 'utf8');
   let parsed;
   try {
-    parsed = JSON.parse(await readFile(referencePath, 'utf8'));
+    parsed = JSON.parse(raw);
   } catch (error) {
+    const text = raw.trim();
+    if (text && /\.txt$/i.test(referencePath)) {
+      return {
+        path: referencePath,
+        field: 'text',
+        text,
+        kind: 'fixture-text-label',
+      };
+    }
     throw new Error(
       `Could not read benchmark reference ${referencePath}: ${error?.message ?? error}`,
     );
@@ -429,48 +442,49 @@ async function main() {
             normalizeBenchmarkTranscript(result.text),
         }))
       : undefined;
-    console.log(
-      JSON.stringify(
-        {
-          model: 'Qwen3-ASR-0.6B',
-          backend: args.backend,
-          encoder: args.encoder,
-          dtype: args.dtype,
-          audio: audioPath,
-          audioSha256,
-          durationSeconds: audio.durationSeconds,
-          warmup: args.warmup,
-          runs: args.runs,
-          elapsedMs: {
-            mean: meanMs,
-            p50: percentile(elapsed, 0.5),
-            p95: percentile(elapsed, 0.95),
-          },
-          rtfx: audio.durationSeconds > 0 ? audio.durationSeconds / (meanMs / 1000) : null,
-          windowing:
-            args.windowSeconds === undefined
-              ? null
-              : {
-                  windowDurationSeconds: args.windowSeconds,
-                  overlapSeconds: args.overlapSeconds ?? null,
-                },
-          text: last?.text ?? '',
-          language: last?.meta?.language,
-          quality: reference
-            ? {
-                referenceKind: reference.kind,
-                referencePath: reference.path,
-                referenceField: reference.field,
-                ...(reference.sampleId ? { referenceSampleId: reference.sampleId } : {}),
-                runs: qualityRuns,
-              }
-            : null,
-          metrics: last?.meta?.metrics,
-        },
-        null,
-        2,
-      ),
-    );
+    const payload = {
+      model: 'Qwen3-ASR-0.6B',
+      backend: args.backend,
+      encoder: args.encoder,
+      dtype: args.dtype,
+      audio: audioPath,
+      audioSha256,
+      durationSeconds: audio.durationSeconds,
+      warmup: args.warmup,
+      runs: args.runs,
+      elapsedMs: {
+        mean: meanMs,
+        p50: percentile(elapsed, 0.5),
+        p95: percentile(elapsed, 0.95),
+      },
+      rtfx: audio.durationSeconds > 0 ? audio.durationSeconds / (meanMs / 1000) : null,
+      windowing:
+        args.windowSeconds === undefined
+          ? null
+          : {
+              windowDurationSeconds: args.windowSeconds,
+              overlapSeconds: args.overlapSeconds ?? null,
+            },
+      text: last?.text ?? '',
+      language: last?.meta?.language,
+      quality: reference
+        ? {
+            referenceKind: reference.kind,
+            referencePath: reference.path,
+            referenceField: reference.field,
+            ...(reference.sampleId ? { referenceSampleId: reference.sampleId } : {}),
+            runs: qualityRuns,
+          }
+        : null,
+      metrics: last?.meta?.metrics,
+    };
+    const serialized = JSON.stringify(payload, null, 2);
+    if (args.output) {
+      const outputPath = path.resolve(args.output);
+      await mkdir(path.dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, `${serialized}\n`, 'utf8');
+    }
+    console.log(serialized);
   } finally {
     await loaded.dispose();
   }
