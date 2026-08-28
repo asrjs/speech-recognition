@@ -155,6 +155,7 @@
     "format:check": "node ./node_modules/prettier/bin/prettier.cjs --check \"src/**/*.ts\" \"tests/**/*.{ts,mjs}\" \"*.{json,md}\" \"docs/**/*.md\"",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:package": "npm run build && node tests/smoke/package-tarball-smoke.mjs",
     "test:node-smoke": "npm run build && node tests/smoke/node-import-smoke.mjs",
     "test:browser-root": "npm run build && node tests/smoke/browser-root-import-graph.mjs",
     "test:offline-output-smoke": "npm run build && node tests/smoke/offline-output-smoke.mjs",

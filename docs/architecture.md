@@ -413,6 +413,13 @@ lookups used by root-reachable model code must remain lazy and go through the
 browser-safe compatibility bridge; the explicit `@asrjs/speech-recognition/io/node`
 subpath remains the opt-in Node surface.
 
+The publish boundary is checked separately by
+`tests/smoke/package-tarball-smoke.mjs`. CI runs `npm pack --json --dry-run`
+against the built package and verifies that every concrete export target,
+declaration pair, model/preset wildcard entry, and the package metadata are
+actually included in the npm payload. This catches a clean source-tree import
+that would still fail for a consumer installing the published package.
+
 Backend probes and capability-scoped execution contexts live under
 `src/inference/backends`. A context validates availability and requested
 precision, and owns only its disposable capability lease. Model-family
