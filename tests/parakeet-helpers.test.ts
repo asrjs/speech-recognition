@@ -21,6 +21,7 @@ import { createBuiltInSpeechRuntime } from '@asrjs/speech-recognition/builtins';
 import { pickPreferredQuant } from '@asrjs/speech-recognition/io';
 import { describe, expect, it, vi } from 'vitest';
 import * as huggingface from '../src/runtime/huggingface.js';
+import { parakeetBuiltInLocalModelAdapter } from '../src/presets/parakeet/local-adapter.js';
 
 describe('Parakeet helpers', () => {
   it('exposes preset model metadata without duplicating implementation families', () => {
@@ -182,6 +183,18 @@ describe('Parakeet helpers', () => {
     expect(inspection.preprocessorNames).toEqual([]);
     await expect(resolveParakeetLocalEntries(entries)).rejects.toThrow(
       'Pick a local model folder first.',
+    );
+  });
+
+  it('rejects unsupported local preprocessorName values instead of silently falling back', async () => {
+    await expect(
+      parakeetBuiltInLocalModelAdapter.resolveEntries({
+        modelId: 'parakeet-tdt-0.6b-v2',
+        entries: [],
+        preprocessorName: 'nemo256',
+      }),
+    ).rejects.toThrow(
+      'Unsupported Parakeet preprocessorName "nemo256". Expected "nemo80" or "nemo128".',
     );
   });
 

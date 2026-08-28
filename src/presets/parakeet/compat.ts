@@ -55,7 +55,8 @@ export interface ResolveParakeetLocalEntriesOptions {
   readonly encoderQuant?: QuantizationMode;
   readonly decoderQuant?: QuantizationMode;
   readonly tokenizerName?: string;
-  readonly preprocessorName?: 'nemo80' | 'nemo128';
+  /** Runtime input is validated so JavaScript callers do not silently fall back. */
+  readonly preprocessorName?: string;
   readonly preprocessorBackend?: 'js' | 'onnx';
   readonly backend?: ParakeetBackend;
   readonly verbose?: boolean;
@@ -222,6 +223,20 @@ function getRequiredPreprocessorFilename(
   preprocessor: 'nemo80' | 'nemo128',
 ): `${'nemo80' | 'nemo128'}.onnx` {
   return `${preprocessor}.onnx`;
+}
+
+function normalizeRequestedPreprocessorName(
+  value: unknown,
+): 'nemo80' | 'nemo128' | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === 'nemo80' || value === 'nemo128') {
+    return value;
+  }
+  throw new Error(
+    `Unsupported Parakeet preprocessorName "${String(value)}". Expected "nemo80" or "nemo128".`,
+  );
 }
 
 const QUANT_SUFFIX: Record<QuantizationMode, string> = {
@@ -755,6 +770,9 @@ export async function resolveParakeetLocalEntries(
   options: ResolveParakeetLocalEntriesOptions = {},
 ): Promise<ResolvedParakeetLocalArtifacts> {
   throwIfAssetAborted(options.signal, 'download');
+  const requestedPreprocessorName = normalizeRequestedPreprocessorName(
+    options.preprocessorName,
+  );
   if (entries.length === 0) {
     throw new Error('Pick a local model folder first.');
   }
@@ -787,7 +805,7 @@ export async function resolveParakeetLocalEntries(
   const preprocessorName =
     preprocessorBackend === 'onnx'
       ? getRequiredPreprocessorFilename(
-          options.preprocessorName ?? inspection.preprocessorNames[0] ?? 'nemo128',
+          requestedPreprocessorName ?? inspection.preprocessorNames[0] ?? 'nemo128',
         )
       : undefined;
 

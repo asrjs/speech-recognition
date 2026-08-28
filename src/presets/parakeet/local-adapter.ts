@@ -69,10 +69,8 @@ export const parakeetBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
       encoderQuant: options.encoderQuant,
       decoderQuant: options.decoderQuant,
       tokenizerName: options.tokenizerName,
-      preprocessorName:
-        options.preprocessorName === 'nemo80' || options.preprocessorName === 'nemo128'
-          ? options.preprocessorName
-          : undefined,
+      // Preserve raw runtime input; compat.ts owns validation and error wording.
+      preprocessorName: options.preprocessorName,
       preprocessorBackend: options.preprocessorBackend,
       backend: options.backend,
       verbose: options.verbose,
