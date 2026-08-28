@@ -86,6 +86,7 @@ export interface TranscriptMetrics {
   readonly encodeMs?: number;
   readonly decodeMs?: number;
   readonly tokenizeMs?: number;
+  /** Set only when post-processing is measured separately from tokenization. */
   readonly postprocessMs?: number;
   readonly languageDetectionMs?: number;
   readonly decoderInitMs?: number;

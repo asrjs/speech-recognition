@@ -827,7 +827,6 @@ export class OrtLasrCtcExecutor implements LasrCtcExecutor {
         preprocessMs: roundMetric(totalPreprocessMs),
         encodeMs: roundMetric(encodeMs),
         decodeMs: roundMetric(decodeMs),
-        postprocessMs: 0,
         totalMs,
         wallMs: totalMs,
         audioDurationSec: roundMetric(audio.durationSeconds, 4),

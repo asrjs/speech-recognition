@@ -4466,7 +4466,6 @@ export class WhisperOnnxExecutor {
       encodeMs: roundMetric(encodeMs),
       decodeMs: roundMetric(decodeMs),
       tokenizeMs: roundMetric(tokenizeMs),
-      postprocessMs: roundMetric(tokenizeMs),
       languageDetectionMs: roundMetric(languageDetectionMs),
       decoderInitMs: roundMetric(decoderInitMs),
       decoderInitInputMs: roundMetric(decoderInitInputMs),

@@ -746,7 +746,6 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
           preprocessMs: roundMetric(preprocessMs),
           encodeMs: roundMetric(encodeMs),
           decodeMs: roundMetric(decodeMs),
-          postprocessMs: roundMetric(tokenizeMs),
         },
       });
 
@@ -780,7 +779,6 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
         encodeMs: roundMetric(encodeMs),
         decodeMs: roundMetric(decodeMs),
         tokenizeMs: roundMetric(tokenizeMs),
-        postprocessMs: roundMetric(tokenizeMs),
         totalMs,
         wallMs: totalMs,
         audioDurationSec: roundMetric(audio.durationSeconds, 4),

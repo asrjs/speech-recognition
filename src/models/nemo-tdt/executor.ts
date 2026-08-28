@@ -810,7 +810,6 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         preprocessMs: roundMetric(preprocessMs),
         encodeMs: roundMetric(encodeMs),
         decodeMs: roundMetric(decodeMs),
-        postprocessMs: roundMetric(tokenizeMs),
       },
     });
 
@@ -838,7 +837,6 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       encodeMs: roundMetric(encodeMs),
       decodeMs: roundMetric(decodeMs),
       tokenizeMs: roundMetric(tokenizeMs),
-      postprocessMs: roundMetric(tokenizeMs),
       totalMs,
       wallMs: totalMs,
       audioDurationSec: roundMetric(audio.durationSeconds, 4),

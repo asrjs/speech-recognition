@@ -251,7 +251,6 @@ export class NemoRnntSpeechSession implements SpeechSession<
               encodeMs: nativeTranscript.metrics.encodeMs,
               decodeMs: nativeTranscript.metrics.decodeMs,
               tokenizeMs: nativeTranscript.metrics.tokenizeMs,
-              postprocessMs: nativeTranscript.metrics.tokenizeMs,
               totalMs: nativeTranscript.metrics.totalMs,
               wallMs: nativeTranscript.metrics.wallMs,
               audioDurationSec: nativeTranscript.metrics.audioDurationSec,

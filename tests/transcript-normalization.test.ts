@@ -65,6 +65,10 @@ describe('transcript normalization helpers', () => {
         wordAverage: 0.85,
         tokenAverage: 0.9,
       },
+      metrics: {
+        tokenizeMs: 4,
+        totalMs: 9,
+      },
     };
 
     const canonical = createNemoTdtTranscriptNormalizer().toCanonical(native, {
@@ -76,6 +80,8 @@ describe('transcript normalization helpers', () => {
     expect(canonical.text).toBe('hello world. Next sentence');
     expect(canonical.meta.modelFamily).toBe('nemo-tdt');
     expect(canonical.meta.averageConfidence).toBe(0.85);
+    expect(canonical.meta.metrics?.tokenizeMs).toBe(4);
+    expect(canonical.meta.metrics?.postprocessMs).toBeUndefined();
     expect(canonical.segments?.map((segment) => segment.text)).toEqual([
       'hello world.',
       'Next sentence',
@@ -206,6 +212,7 @@ describe('transcript normalization helpers', () => {
     expect(getCanonicalTranscript(envelope).text).toBe('legacy parakeet');
     expect(envelope.canonical.meta.modelFamily).toBe('parakeet');
     expect(envelope.canonical.meta.metrics?.totalMs).toBe(7);
+    expect(envelope.canonical.meta.metrics?.postprocessMs).toBeUndefined();
     expect(envelope.canonical.meta.metrics?.wallMs).toBe(7.5);
     expect(envelope.canonical.meta.metrics?.audioDurationSec).toBe(3.2);
     expect(envelope.canonical.meta.metrics?.rtfx).toBe(10);

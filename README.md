@@ -531,6 +531,8 @@ Transcript results can now carry richer timing metadata in `meta.metrics`, inclu
   `window_count`.
 
 - phase timings: `preprocessMs`, `encodeMs`, `decodeMs`, `tokenizeMs`, `postprocessMs`
+  All timing fields are optional; `postprocessMs` is reported only when it is
+  measured separately from tokenization.
 - end-to-end timings: `totalMs`, `wallMs`
 - throughput: `rtf`, `rtfx`
 - model/runtime details: `preprocessorBackend`, `encoderFrameCount`, `decodeIterations`, `emittedTokenCount`, `emittedWordCount`
