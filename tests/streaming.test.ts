@@ -6,6 +6,32 @@ import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/p
 import { describe, expect, it } from 'vitest';
 
 describe('streaming orchestration', () => {
+  it('resets state without disposing the caller-owned session', async () => {
+    let transcribeCalls = 0;
+    let disposed = false;
+    const session = {
+      async transcribe() {
+        transcribeCalls += 1;
+        return {
+          text: 'hello',
+          warnings: [],
+          meta: { detailLevel: 'text' as const, isFinal: true },
+        };
+      },
+      dispose() {
+        disposed = true;
+      },
+    };
+    const transcriber = new DefaultStreamingTranscriber(session, { maxWindowMs: 1000 });
+
+    await transcriber.pushAudio(new Float32Array(8000));
+    await transcriber.reset();
+    expect(disposed).toBe(false);
+    await transcriber.pushAudio(new Float32Array(8000));
+
+    expect(transcribeCalls).toBe(2);
+  });
+
   it('maintains partial and final transcript state', async () => {
     const runtime = createSpeechRuntime({
       backends: [createWasmBackend()],

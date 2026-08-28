@@ -86,13 +86,13 @@ export class DefaultStreamingTranscriber<
     return update;
   }
 
+  /** Reset transcript/window state while retaining the injected session. */
   async reset(): Promise<void> {
     this.window.reset();
     this.accumulator.reset();
     this.totalDurationSeconds = 0;
     this.heardSpeech = false;
     this.isFinalized = false;
-    await this.session.dispose();
   }
 
   getState(): StreamingTranscriberState {
