@@ -14,6 +14,13 @@ import {
   isDomAbortError,
   subscribeToAbortSignal,
 } from '../io/abort.js';
+import type {
+  TenVadControlMessage,
+  TenVadRequestMessage,
+  TenVadResponsePayload,
+  TenVadResultPayload,
+} from './ten-vad-protocol.js';
+import { isTenVadWorkerResponse } from './ten-vad-protocol.js';
 
 export interface TenVadAdapterConfig {
   readonly sampleRate?: number;
@@ -36,9 +43,9 @@ export interface TenVadAdapterConfig {
 }
 
 interface TenVadWorkerLike {
-  onmessage: ((event: MessageEvent) => void) | null;
+  onmessage: ((event: MessageEvent<unknown>) => void) | null;
   onerror: ((event: ErrorEvent) => void) | null;
-  postMessage(message: unknown, transfer?: Transferable[]): void;
+  postMessage(message: TenVadRequestMessage, transfer?: Transferable[]): void;
   terminate(): void;
 }
 
@@ -58,7 +65,7 @@ export interface TenVadRecentResult {
 }
 
 interface PendingRequest {
-  readonly resolve: (value: unknown) => void;
+  readonly resolve: (value: TenVadResponsePayload) => void;
   readonly reject: (reason?: unknown) => void;
 }
 
@@ -249,13 +256,16 @@ export class TenVadAdapter implements StreamingTenVadLike {
         throw createTenVadInitAbortedError();
       }
       const resolvedAssets = resolveTenVadAssetUrls(this.config);
-      const initRequest = this.sendRequest('INIT', {
-        hopSize: this.config.hopSize,
-        threshold: this.config.threshold,
-        scriptUrl: resolvedAssets.scriptUrl,
-        wasmUrl: resolvedAssets.wasmUrl,
-        fallbackScriptUrl: resolvedAssets.fallbackScriptUrl,
-        fallbackWasmUrl: resolvedAssets.fallbackWasmUrl,
+      const initRequest = this.sendRequest({
+        type: 'INIT',
+        payload: {
+          hopSize: this.config.hopSize,
+          threshold: this.config.threshold,
+          scriptUrl: resolvedAssets.scriptUrl,
+          wasmUrl: resolvedAssets.wasmUrl,
+          fallbackScriptUrl: resolvedAssets.fallbackScriptUrl,
+          fallbackWasmUrl: resolvedAssets.fallbackWasmUrl,
+        },
       });
       await this.waitWithTimeout(
         initRequest,
@@ -294,7 +304,11 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.pending.clear();
   }
 
-  private handleMessage(message: any): void {
+  private handleMessage(message: unknown): void {
+    if (!isTenVadWorkerResponse(message)) {
+      return;
+    }
+
     if (message.type === 'RESULT') {
       this.recordResult(message.payload);
       this.emit({
@@ -321,7 +335,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     }
   }
 
-  private recordResult(result: any): void {
+  private recordResult(result: TenVadResultPayload): void {
     const hopSize = this.config.hopSize;
     const { minSpeechHops, minSilenceHops, paddingFrames, negativeThreshold } =
       this.getDerivedTemporalConfig();
@@ -329,8 +343,8 @@ export class TenVadAdapter implements StreamingTenVadLike {
     for (let index = 0; index < result.hopCount; index += 1) {
       const startFrame = result.globalSampleOffset + index * hopSize;
       const endFrame = startFrame + hopSize;
-      const probability = result.probabilities[index];
-      const rawSpeaking = result.flags[index] === 1 || probability >= this.config.threshold;
+      const probability = result.probabilities[index] ?? 0;
+      const rawSpeaking = (result.flags[index] ?? 0) === 1 || probability >= this.config.threshold;
 
       if (rawSpeaking) {
         this.speechRunHops += 1;
@@ -390,16 +404,14 @@ export class TenVadAdapter implements StreamingTenVadLike {
     }
 
     const copy = new Float32Array(samples);
-    this.worker.postMessage(
-      {
-        type: 'PROCESS',
-        payload: {
-          samples: copy,
-          globalSampleOffset,
-        },
+    const request: TenVadRequestMessage = {
+      type: 'PROCESS',
+      payload: {
+        samples: copy,
+        globalSampleOffset,
       },
-      [copy.buffer],
-    );
+    };
+    this.worker.postMessage(request, [copy.buffer]);
     return true;
   }
 
@@ -407,7 +419,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     this.resetTemporalState();
 
     if (this.worker && this.status === 'ready') {
-      await this.sendRequest('RESET', {});
+      await this.sendRequest({ type: 'RESET', payload: null });
     }
   }
 
@@ -415,7 +427,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     const worker = this.worker;
     if (worker && this.status === 'ready') {
       try {
-        await this.sendRequest('DISPOSE', {});
+        await this.sendRequest({ type: 'DISPOSE', payload: null });
       } catch {
         // ignore dispose failures
       }
@@ -464,9 +476,12 @@ export class TenVadAdapter implements StreamingTenVadLike {
       this.resetTemporalState();
     }
     if (this.worker && this.status === 'ready' && workerConfigChanged) {
-      void this.sendRequest('UPDATE_CONFIG', {
-        hopSize: this.config.hopSize,
-        threshold: this.config.threshold,
+      void this.sendRequest({
+        type: 'UPDATE_CONFIG',
+        payload: {
+          hopSize: this.config.hopSize,
+          threshold: this.config.threshold,
+        },
       }).catch((error) => {
         this.fail(error);
       });
@@ -553,7 +568,7 @@ export class TenVadAdapter implements StreamingTenVadLike {
     };
   }
 
-  private sendRequest(type: string, payload: unknown): Promise<unknown> {
+  private sendRequest(message: TenVadControlMessage): Promise<TenVadResponsePayload> {
     return new Promise((resolve, reject) => {
       if (!this.worker) {
         reject(new Error('TEN-VAD worker is not initialized.'));
@@ -561,7 +576,8 @@ export class TenVadAdapter implements StreamingTenVadLike {
       }
       const id = ++this.messageId;
       this.pending.set(id, { resolve, reject });
-      this.worker.postMessage({ type, payload, id });
+      const request: TenVadRequestMessage = { ...message, id };
+      this.worker.postMessage(request);
     });
   }
 

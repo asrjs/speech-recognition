@@ -1,8 +1,14 @@
 import { STREAMING_TIMELINE_CHUNK_FRAMES } from './audio-timeline.js';
+import type {
+  TenVadInitPayload,
+  TenVadResponseMessage,
+  TenVadUpdateConfigPayload,
+} from './ten-vad-protocol.js';
+import { isTenVadWorkerRequest } from './ten-vad-protocol.js';
 
 interface WorkerScopeLike {
-  onmessage: ((event: MessageEvent) => void) | null;
-  postMessage(message: unknown, transfer?: Transferable[]): void;
+  onmessage: ((event: MessageEvent<unknown>) => void) | null;
+  postMessage(message: TenVadResponseMessage, transfer?: Transferable[]): void;
   location: Location;
 }
 
@@ -19,25 +25,25 @@ let handlePtr = 0;
 let accumulator: Float32Array | null = null;
 let accumulatorPos = 0;
 
-workerScope.onmessage = async (event: MessageEvent) => {
-  const message = event.data as any;
+workerScope.onmessage = async (event: MessageEvent<unknown>) => {
+  const message = event.data;
+  if (!isTenVadWorkerRequest(message)) {
+    return;
+  }
 
   try {
     switch (message.type) {
       case 'INIT':
-        await handleInit(message.id, message.payload ?? {});
+        await handleInit(message.id, message.payload);
         break;
       case 'PROCESS':
-        handleProcess(
-          message.payload?.samples ?? new Float32Array(0),
-          message.payload?.globalSampleOffset ?? 0,
-        );
+        handleProcess(message.payload.samples, message.payload.globalSampleOffset);
         break;
       case 'RESET':
         handleReset(message.id);
         break;
       case 'UPDATE_CONFIG':
-        handleUpdateConfig(message.id, message.payload ?? {});
+        handleUpdateConfig(message.id, message.payload);
         break;
       case 'DISPOSE':
         handleDispose(message.id);
@@ -54,16 +60,10 @@ workerScope.onmessage = async (event: MessageEvent) => {
   }
 };
 
-async function handleInit(id: number, config: Record<string, unknown>) {
-  hopSize = Number(config.hopSize) || STREAMING_TIMELINE_CHUNK_FRAMES;
-  threshold = Number(config.threshold) || 0.5;
-  const scriptUrl = typeof config.scriptUrl === 'string' ? config.scriptUrl : null;
-  const wasmUrl = typeof config.wasmUrl === 'string' ? config.wasmUrl : null;
-  const fallbackScriptUrl = typeof config.fallbackScriptUrl === 'string' ? config.fallbackScriptUrl : null;
-  const fallbackWasmUrl = typeof config.fallbackWasmUrl === 'string' ? config.fallbackWasmUrl : null;
-  if (!scriptUrl || !wasmUrl) {
-    throw new Error('TEN-VAD init requires scriptUrl and wasmUrl.');
-  }
+async function handleInit(id: number, config: TenVadInitPayload) {
+  hopSize = config.hopSize;
+  threshold = config.threshold;
+  const { scriptUrl, wasmUrl, fallbackScriptUrl, fallbackWasmUrl } = config;
 
   try {
     moduleInstance = await loadTenVadModule(scriptUrl, wasmUrl);
@@ -197,17 +197,13 @@ function handleReset(id: number) {
   respond({ type: 'RESET', id, payload: { success: true } });
 }
 
-function handleUpdateConfig(id: number, config: Record<string, unknown>) {
-  const nextHopSize = Number(config.hopSize);
-  const nextThreshold = Number(config.threshold);
-  const hopSizeChanged = Number.isFinite(nextHopSize) && nextHopSize > 0 && nextHopSize !== hopSize;
+function handleUpdateConfig(id: number, config: TenVadUpdateConfigPayload) {
+  const hopSizeChanged = config.hopSize !== hopSize;
 
   if (hopSizeChanged) {
-    hopSize = Math.floor(nextHopSize);
+    hopSize = Math.floor(config.hopSize);
   }
-  if (Number.isFinite(nextThreshold) && nextThreshold >= 0) {
-    threshold = nextThreshold;
-  }
+  threshold = config.threshold;
 
   if (!moduleInstance) {
     respond({ type: 'UPDATE_CONFIG', id, payload: { success: true } });
@@ -241,7 +237,7 @@ function handleDispose(id: number) {
   respond({ type: 'DISPOSE', id, payload: { success: true } });
 }
 
-function respond(message: unknown) {
+function respond(message: TenVadResponseMessage) {
   workerScope.postMessage(message);
 }
 
@@ -252,9 +248,7 @@ async function loadTenVadModule(scriptUrl: string, wasmUrl: string) {
   }
 
   const jsText = await response.text();
-  const blobUrl = URL.createObjectURL(
-    new Blob([jsText], { type: 'application/javascript' }),
-  );
+  const blobUrl = URL.createObjectURL(new Blob([jsText], { type: 'application/javascript' }));
 
   try {
     const moduleImport = await import(/* @vite-ignore */ blobUrl);
