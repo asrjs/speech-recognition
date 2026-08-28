@@ -32,6 +32,33 @@ describe('streaming orchestration', () => {
     expect(transcribeCalls).toBe(2);
   });
 
+  it('does not commit an in-flight result after reset', async () => {
+    let resolveFirst!: (result: { text: string; warnings: []; meta: { detailLevel: 'text'; isFinal: true } }) => void;
+    let transcribeCalls = 0;
+    const firstResult = new Promise<{ text: string; warnings: []; meta: { detailLevel: 'text'; isFinal: true } }>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const session = {
+      async transcribe() {
+        transcribeCalls += 1;
+        if (transcribeCalls === 1) return firstResult;
+        return { text: 'new', warnings: [], meta: { detailLevel: 'text' as const, isFinal: true } };
+      },
+      dispose() {},
+    };
+    const transcriber = new DefaultStreamingTranscriber(session, { maxWindowMs: 1000 });
+
+    const staleCall = transcriber.pushAudio(new Float32Array(8000));
+    await Promise.resolve();
+    await transcriber.reset();
+    resolveFirst({ text: 'stale', warnings: [], meta: { detailLevel: 'text', isFinal: true } });
+
+    const stale = await staleCall;
+    expect(stale.text).toBe('');
+    expect(transcriber.getState().committedText).toBe('');
+    expect((await transcriber.pushAudio(new Float32Array(8000))).text).toBe('new');
+  });
+
   it('maintains partial and final transcript state', async () => {
     const runtime = createSpeechRuntime({
       backends: [createWasmBackend()],

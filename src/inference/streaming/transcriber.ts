@@ -12,6 +12,7 @@ import type {
   VoiceActivityDetector,
 } from '../../types/index.js';
 import { TranscriptAccumulator } from './accumulator.js';
+import { joinTranscriptFragments } from './merge.js';
 import { RollingAudioWindow } from './rolling-window.js';
 
 export interface DefaultStreamingTranscriberOptions extends StreamingSessionOptions {
@@ -31,6 +32,8 @@ export class DefaultStreamingTranscriber<
   private isFinalized = false;
   private totalDurationSeconds = 0;
   private heardSpeech = false;
+  private stateGeneration = 0;
+  private operationAbortController = new AbortController();
 
   constructor(
     private readonly session: SpeechSession<TOptions, TNative>,
@@ -47,6 +50,7 @@ export class DefaultStreamingTranscriber<
   }
 
   async pushAudio(input: AudioInputLike): Promise<PartialTranscript> {
+    const generation = this.stateGeneration;
     this.assertNotFinalized();
 
     const normalized = normalizePcmInput(input);
@@ -67,27 +71,35 @@ export class DefaultStreamingTranscriber<
       }
     }
 
+    if (generation !== this.stateGeneration) return this.staleUpdate();
+
     if (!this.emitPartials) {
       return this.accumulator.update(this.blankResult(), 'partial');
     }
 
-    return this.transcribeBuffered('partial');
+    return this.transcribeBuffered('partial', generation);
   }
 
   async flush(): Promise<PartialTranscript> {
+    const generation = this.stateGeneration;
     this.assertNotFinalized();
-    return this.transcribeBuffered('partial');
+    return this.transcribeBuffered('partial', generation);
   }
 
   async finalize(): Promise<PartialTranscript> {
+    const generation = this.stateGeneration;
     this.assertNotFinalized();
-    const update = await this.transcribeBuffered('final');
+    const update = await this.transcribeBuffered('final', generation);
+    if (generation !== this.stateGeneration) return update;
     this.isFinalized = true;
     return update;
   }
 
   /** Reset transcript/window state while retaining the injected session. */
   async reset(): Promise<void> {
+    this.stateGeneration += 1;
+    this.operationAbortController.abort();
+    this.operationAbortController = new AbortController();
     this.window.reset();
     this.accumulator.reset();
     this.totalDurationSeconds = 0;
@@ -106,19 +118,56 @@ export class DefaultStreamingTranscriber<
     };
   }
 
-  private async transcribeBuffered(kind: 'partial' | 'final'): Promise<PartialTranscript> {
+  private async transcribeBuffered(
+    kind: 'partial' | 'final',
+    generation: number,
+  ): Promise<PartialTranscript> {
     const audio = this.window.toPcmAudioBuffer();
-    const canonical =
-      audio.numberOfFrames > 0 ? await this.canonicalTranscribe(audio) : this.blankResult();
+    const signal = this.operationAbortController.signal;
+    let canonical: TranscriptResult;
+    try {
+      canonical =
+        audio.numberOfFrames > 0
+          ? await this.canonicalTranscribe(audio, signal)
+          : this.blankResult();
+    } catch (error) {
+      if (generation !== this.stateGeneration || signal.aborted) {
+        return this.staleUpdate();
+      }
+      throw error;
+    }
+
+    if (generation !== this.stateGeneration) return this.staleUpdate();
 
     return this.accumulator.update(canonical, kind);
   }
 
-  private async canonicalTranscribe(input: AudioInputLike): Promise<TranscriptResult> {
+  private async canonicalTranscribe(
+    input: AudioInputLike,
+    signal: AbortSignal,
+  ): Promise<TranscriptResult> {
     return this.session.transcribe(input, {
       detail: this.detail,
       responseFlavor: 'canonical',
-    } as TOptions & { readonly responseFlavor: 'canonical' });
+      signal,
+    } as unknown as TOptions & { readonly responseFlavor: 'canonical' });
+  }
+
+  private staleUpdate(): PartialTranscript {
+    const state = this.accumulator.getState();
+    return {
+      kind: 'partial',
+      revision: state.revision,
+      text: joinTranscriptFragments(state.committedText, state.previewText),
+      committedText: state.committedText,
+      previewText: state.previewText,
+      warnings: [],
+      meta: {
+        detailLevel: this.detail,
+        isFinal: false,
+        durationSeconds: this.window.getBufferedDurationSeconds(),
+      },
+    };
   }
 
   private blankResult(): TranscriptResult {
