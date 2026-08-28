@@ -8,10 +8,10 @@
   "failureClass": null,
   "metrics": {
     "preprocessMs": 0,
-    "encodeMs": 9842.285,
+    "encodeMs": 6492.608,
     "decodeMs": 0,
-    "totalMs": 9842.348,
-    "wallMs": 9842.353,
+    "totalMs": 6492.639,
+    "wallMs": 6492.643,
     "audioDurationSec": 11,
     "encoderFrameCount": 272,
     "emittedTokenCount": 26,
