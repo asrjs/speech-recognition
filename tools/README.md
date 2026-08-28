@@ -20,6 +20,7 @@ tools/
   data/
     fixtures/
     results/
+  browser-validation/
   model-debugging/
     README.md
     SKILL.md
@@ -60,6 +61,19 @@ Start with:
 - [SKILL.md](N:\github\asrjs\speech-recognition\tools\model-debugging\SKILL.md)
 - [playbooks/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\README.md)
 - [scripts/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\README.md)
+
+### `tools/browser-validation`
+
+Contains browser-level acceptance probes for sibling applications. The
+`streaming-demo-mic-smoke.py` probe launches Chromium with a deterministic fake
+microphone, then drives the demo's normal `getUserMedia` capture, model worker,
+segmenter, transcription queue, and latency HUD. It can run without a model to
+isolate capture/controller behavior or with a local Parakeet artifact directory
+to exercise the real browser inference path.
+
+The probe is intentionally outside the published runtime and does not replace
+physical-device testing. Fake-device results are reproducible integration
+evidence; they are not a claim about microphone hardware or broad ASR quality.
 
 ## Recommended Workflow
 
