@@ -918,6 +918,8 @@ export async function loadParakeetModelFromLocalEntries(
  * transcript output on top of the `@asrjs/speech-recognition` runtime.
  */
 export class ParakeetModel {
+  private disposePromise: Promise<void> | null = null;
+
   constructor(
     private readonly runtime: DefaultSpeechRuntime,
     private readonly model: SpeechModel<
@@ -1036,9 +1038,14 @@ export class ParakeetModel {
 
   /** Releases the session, model, and any temporary local asset handles owned by this wrapper. */
   async dispose(): Promise<void> {
-    await this.session.dispose();
-    await this.model.dispose();
-    await this.onDispose?.();
-    void this.runtime;
+    if (!this.disposePromise) {
+      this.disposePromise = (async () => {
+        await this.session.dispose();
+        await this.model.dispose();
+        await this.onDispose?.();
+        void this.runtime;
+      })();
+    }
+    return this.disposePromise;
   }
 }

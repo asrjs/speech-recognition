@@ -458,6 +458,30 @@ describe('Parakeet helpers', () => {
     await model.dispose();
   });
 
+  it('coalesces concurrent dispose calls for the legacy wrapper', async () => {
+    const disposeModel = vi.fn(async () => undefined);
+    const disposeSession = vi.fn(async () => undefined);
+    const assetHandleDispose = vi.fn(async () => undefined);
+    const loadModel = vi.fn(async () => ({
+      createSession: async () => ({ dispose: disposeSession }),
+      dispose: disposeModel,
+    }));
+
+    const model = await ParakeetModel.fromUrls({
+      encoderUrl: 'blob:encoder',
+      decoderUrl: 'blob:decoder',
+      tokenizerUrl: 'blob:vocab',
+      runtime: { loadModel } as never,
+      assetHandles: [{ dispose: assetHandleDispose }] as never,
+    });
+
+    await Promise.all([model.dispose(), model.dispose()]);
+
+    expect(disposeSession).toHaveBeenCalledTimes(1);
+    expect(disposeModel).toHaveBeenCalledTimes(1);
+    expect(assetHandleDispose).toHaveBeenCalledTimes(1);
+  });
+
   it('does not call loadModel when fromUrls is already aborted', async () => {
     const loadModel = vi.fn();
     const assetHandleDispose = vi.fn(async () => undefined);
