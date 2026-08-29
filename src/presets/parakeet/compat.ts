@@ -25,6 +25,7 @@ import type {
   NemoTdtNativeTranscript,
   NemoTdtOutputLocation,
   NemoTdtTranscriptionOptions,
+  NemoTdtWebGpuOptions,
 } from '../../models/nemo-tdt/index.js';
 import {
   DEFAULT_MODEL,
@@ -55,6 +56,7 @@ export interface ResolveParakeetLocalEntriesOptions {
   readonly decoderBackend?: ParakeetExecutionBackend;
   /** Experimental recurrent-state placement; effective only for a WebGPU decoder. */
   readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
+  readonly webgpuOptions?: NemoTdtWebGpuOptions;
   readonly encoderQuant?: QuantizationMode;
   readonly decoderQuant?: QuantizationMode;
   readonly tokenizerName?: string;
@@ -114,6 +116,7 @@ export interface GetParakeetModelOptions {
   readonly decoderBackend?: ParakeetExecutionBackend;
   /** Experimental recurrent-state placement; effective only for a WebGPU decoder. */
   readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
+  readonly webgpuOptions?: NemoTdtWebGpuOptions;
   readonly encoderQuant?: QuantizationMode;
   readonly decoderQuant?: QuantizationMode;
   readonly preprocessor?: 'nemo80' | 'nemo128';
@@ -133,6 +136,7 @@ export interface ParakeetFromUrlsConfig {
   readonly decoderBackend?: ParakeetExecutionBackend;
   /** Experimental recurrent-state placement; effective only for a WebGPU decoder. */
   readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
+  readonly webgpuOptions?: NemoTdtWebGpuOptions;
   readonly encoderUrl: string;
   readonly decoderUrl: string;
   readonly tokenizerUrl: string;
@@ -463,6 +467,7 @@ function toFromUrlsConfig(
     encoderBackend: options.encoderBackend,
     decoderBackend: options.decoderBackend,
     decoderStateOutputLocation: options.decoderStateOutputLocation,
+    webgpuOptions: options.webgpuOptions,
     preprocessorBackend: modelUrls.preprocessorBackend,
     backend: options.backend,
     verbose: options.verbose,
@@ -868,6 +873,7 @@ export async function resolveParakeetLocalEntries(
       encoderBackend,
       decoderBackend,
       decoderStateOutputLocation: options.decoderStateOutputLocation,
+      webgpuOptions: options.webgpuOptions,
       encoderUrl: await toLocator(encoderEntry),
       decoderUrl: await toLocator(decoderEntry),
       tokenizerUrl: await toLocator(tokenizerEntry),
@@ -970,6 +976,7 @@ export class ParakeetModel {
             encoderBackend: config.encoderBackend,
             decoderBackend: config.decoderBackend,
             decoderStateOutputLocation: config.decoderStateOutputLocation,
+            webgpuOptions: config.webgpuOptions,
             artifacts: {
               encoderUrl: config.encoderUrl,
               decoderUrl: config.decoderUrl,

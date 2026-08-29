@@ -283,6 +283,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
         backendId: resolved.encoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        webgpuOptions: resolved.webgpuOptions,
         externalDataUrl: artifacts.encoderDataUrl,
         externalDataPath: artifacts.encoderFilename
           ? `${artifacts.encoderFilename}.data`
@@ -344,6 +345,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
           encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
             backendId: resolved.encoderBackendForOrt,
             enableProfiling: resolved.enableProfiling,
+            webgpuOptions: resolved.webgpuOptions,
             externalDataUrl: artifacts.encoderDataUrl,
             externalDataPath: artifacts.encoderFilename
               ? `${artifacts.encoderFilename}.data`
@@ -385,6 +387,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        webgpuOptions: resolved.webgpuOptions,
         preferredOutputLocation: decoderPreferredOutputLocation,
         externalDataUrl: artifacts.decoderDataUrl,
         externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,
@@ -418,6 +421,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        webgpuOptions: resolved.webgpuOptions,
         preferredOutputLocation: decoderPreferredOutputLocation,
         externalDataUrl: artifacts.decoderDataUrl,
         externalDataPath: artifacts.decoderFilename

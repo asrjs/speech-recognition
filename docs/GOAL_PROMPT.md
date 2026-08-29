@@ -440,6 +440,14 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   secondary checks are recorded as `WEBGPU_NO_ADAPTER` rather than treated as
   performance failures.
 
+- ORT 1.29 storage-cache sweep (2026-08-29): explicit `bucket`, `simple`,
+  `disabled`, and `lazyRelease` modes all preserved exact Parakeet TDT
+  transcripts on the same Chrome/NVIDIA fixture, but no cache-only mode beat
+  the bucket control repeatably; `simple` plus GPU-state was also slightly
+  slower than the prior bucket-default GPU-state run. The library exposes the
+  knobs for model-specific experiments while retaining ORT defaults. Evidence:
+  `docs/reports/parakeet-tdt-v3-webgpu-cache-sweep-2026-08-29.json`.
+
 - [Completed 2026-08-29] GigaAM RNN-T phase profile and provider matrix: the
   official v3 E2E artifact and
   captured waveform pass exact 78-token parity on Node WASM. Three measured

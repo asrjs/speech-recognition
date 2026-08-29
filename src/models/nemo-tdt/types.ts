@@ -35,6 +35,26 @@ export type NemoTdtExecutionBackend = 'webgpu' | 'wasm';
  */
 export type NemoTdtOutputLocation = 'cpu' | 'gpu-buffer';
 
+export type NemoTdtWebGpuBufferCacheMode =
+  | 'disabled'
+  | 'lazyRelease'
+  | 'simple'
+  | 'bucket';
+
+/**
+ * Optional ORT WebGPU EP tuning knobs for model-specific experiments.
+ *
+ * ORT 1.29 defaults to bucketed storage buffers. Keep these unset unless a
+ * matched benchmark demonstrates a quality-safe win for the target graph.
+ */
+export interface NemoTdtWebGpuOptions {
+  readonly storageBufferCacheMode?: NemoTdtWebGpuBufferCacheMode;
+  readonly uniformBufferCacheMode?: NemoTdtWebGpuBufferCacheMode;
+  readonly queryResolveBufferCacheMode?: NemoTdtWebGpuBufferCacheMode;
+  readonly defaultBufferCacheMode?: NemoTdtWebGpuBufferCacheMode;
+  readonly validationMode?: 'disabled' | 'wgpuOnly' | 'basic' | 'full';
+}
+
 export interface NemoTdtDirectArtifacts {
   readonly encoderUrl: string;
   readonly decoderUrl: string;
@@ -53,6 +73,8 @@ export interface NemoTdtDirectArtifactSource {
   readonly decoderBackend?: NemoTdtExecutionBackend;
   /** Experimental decoder state placement; effective only for a WebGPU decoder. */
   readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
+  /** Optional ORT WebGPU EP tuning; unset preserves ORT defaults. */
+  readonly webgpuOptions?: NemoTdtWebGpuOptions;
   readonly preprocessorBackend?: NemoTdtPreprocessorBackend;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
@@ -68,6 +90,8 @@ export interface NemoTdtHuggingFaceSource {
   readonly decoderBackend?: NemoTdtExecutionBackend;
   /** Experimental decoder state placement; effective only for a WebGPU decoder. */
   readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
+  /** Optional ORT WebGPU EP tuning; unset preserves ORT defaults. */
+  readonly webgpuOptions?: NemoTdtWebGpuOptions;
   readonly encoderQuant?: NemoTdtQuantization;
   readonly decoderQuant?: NemoTdtQuantization;
   readonly preprocessorName?: 'nemo80' | 'nemo128';

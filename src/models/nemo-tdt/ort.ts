@@ -6,6 +6,7 @@ import type {
   NemoTdtOutputLocation,
   NemoTdtPreprocessorBackend,
   NemoTdtQuantization,
+  NemoTdtWebGpuOptions,
 } from './types.js';
 import { getDefaultNemoTdtWeightSetup, normalizeNemoTdtWeightBackend } from './weights.js';
 import {
@@ -65,6 +66,7 @@ export interface ResolvedNemoTdtArtifacts {
   readonly encoderBackendForOrt: NemoTdtExecutionBackend;
   readonly decoderBackendForOrt: NemoTdtExecutionBackend;
   readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
+  readonly webgpuOptions?: NemoTdtWebGpuOptions;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
@@ -152,6 +154,7 @@ function resolveHuggingFaceArtifacts(
     encoderBackendForOrt,
     decoderBackendForOrt,
     decoderStateOutputLocation: source.decoderStateOutputLocation,
+    webgpuOptions: source.webgpuOptions,
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
@@ -174,6 +177,7 @@ function resolveDirectArtifacts(
     encoderBackendForOrt,
     decoderBackendForOrt,
     decoderStateOutputLocation: source.decoderStateOutputLocation,
+    webgpuOptions: source.webgpuOptions,
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
@@ -247,6 +251,7 @@ export async function createOrtSession(
     readonly preferredOutputLocation?:
       | OrtOutputLocation
       | Readonly<Record<string, OrtOutputLocation>>;
+    readonly webgpuOptions?: NemoTdtWebGpuOptions;
     readonly signal?: { readonly aborted: boolean } | null;
   },
 ): Promise<OrtSessionLike> {
@@ -258,6 +263,7 @@ export async function createOrtSession(
           name: 'webgpu',
           deviceType: 'gpu',
           powerPreference: 'high-performance',
+          ...(options.webgpuOptions ?? {}),
         },
       ]
     : ['wasm'];

@@ -446,6 +446,7 @@ describe('Parakeet helpers', () => {
       tokenizerUrl: 'blob:vocab',
       decoderBackend: 'webgpu',
       decoderStateOutputLocation: 'gpu-buffer',
+      webgpuOptions: { storageBufferCacheMode: 'simple' },
       runtime: { loadModel } as never,
       signal,
     });
@@ -458,6 +459,7 @@ describe('Parakeet helpers', () => {
           source: expect.objectContaining({
             decoderBackend: 'webgpu',
             decoderStateOutputLocation: 'gpu-buffer',
+            webgpuOptions: { storageBufferCacheMode: 'simple' },
           }),
         },
       }),

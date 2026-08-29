@@ -60,6 +60,7 @@ describe('browser local model helpers', () => {
         encoderBackend: 'webgpu',
         decoderBackend: 'wasm',
         decoderStateOutputLocation: 'gpu-buffer',
+        webgpuOptions: { storageBufferCacheMode: 'simple' },
         encoderUrl: 'blob:encoder',
         decoderUrl: 'blob:decoder',
         tokenizerUrl: 'blob:vocab',
@@ -100,6 +101,7 @@ describe('browser local model helpers', () => {
       encoderQuant: 'fp16',
       decoderQuant: 'int8',
       decoderStateOutputLocation: 'gpu-buffer',
+      webgpuOptions: { storageBufferCacheMode: 'simple' },
       tokenizerName: 'vocab.txt',
       preprocessorBackend: 'js',
     });
@@ -122,6 +124,7 @@ describe('browser local model helpers', () => {
             encoderBackend: 'webgpu',
             decoderBackend: 'wasm',
             decoderStateOutputLocation: 'gpu-buffer',
+            webgpuOptions: { storageBufferCacheMode: 'simple' },
             artifacts: expect.objectContaining({
               encoderUrl: 'blob:encoder',
               decoderUrl: 'blob:decoder',

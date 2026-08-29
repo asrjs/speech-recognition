@@ -72,10 +72,12 @@ describe('nemo-tdt weight defaults', () => {
         },
         decoderBackend: 'webgpu',
         decoderStateOutputLocation: 'gpu-buffer',
+        webgpuOptions: { storageBufferCacheMode: 'simple' },
       },
       'webgpu',
     );
 
     expect(resolved.decoderStateOutputLocation).toBe('gpu-buffer');
+    expect(resolved.webgpuOptions).toEqual({ storageBufferCacheMode: 'simple' });
   });
 });

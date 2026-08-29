@@ -173,3 +173,28 @@ transcription/heap/disposal soak before changing the production default.
 Chrome Vulkan and D3D12 ANGLE attempts on this host returned
 `WEBGPU_NO_ADAPTER`; those negative controls are retained in the report and
 must not be interpreted as model or graph failures.
+
+## ORT 1.29 storage-buffer cache sweep (2026-08-29)
+
+ORT Web 1.29 exposes model-specific WebGPU buffer-cache modes. The library
+now forwards these options through the Parakeet source, preset, local adapter,
+and NeMo TDT executor, while leaving them unset by default. A matched Chrome
+headless/NVIDIA Blackwell/native-rate fixture used the same fp16 WebGPU
+encoder, fp32 WebGPU decoder, JavaScript preprocessor, artifact, and three
+warmed transcriptions per condition:
+
+| Storage cache mode | State output | Median transcribe (ms) | Median RTFx |
+| ------------------ | ------------ | ----------------------: | ----------: |
+| `bucket` (explicit control) | `cpu` | 3498.960 | 5.3538 |
+| `simple` | `cpu` | 3525.735 | 5.3133 |
+| `disabled` | `cpu` | 3482.320 | 5.3804 |
+| `lazyRelease` | `cpu` | 3506.150 | 5.3441 |
+| `simple` | `gpu-buffer` | 2886.670 | 6.4920 |
+
+Every condition preserved the exact 91-token transcript. The cache-only
+variants show no repeatable win over ORT's bucket default; the small disabled
+delta is within run variance. Combining `simple` with the positive GPU-state
+path was 0.5149% slower than the prior bucket-default GPU-state control. Keep
+the ORT bucket default and the cache knobs opt-in until a longer,
+model-specific sweep demonstrates a stable latency or memory benefit.
+Evidence: `docs/reports/parakeet-tdt-v3-webgpu-cache-sweep-2026-08-29.json`.

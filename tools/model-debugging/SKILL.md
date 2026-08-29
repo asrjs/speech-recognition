@@ -124,6 +124,14 @@ safe replacement/disposal, and a measured latency/RTFx win against the same
 artifact and audio control. If a host lacks a second WebGPU adapter, record the
 typed `WEBGPU_NO_ADAPTER` boundary instead of treating it as a model failure.
 
+When probing ORT WebGPU buffer-cache modes, include the runtime default as an
+explicit control and compare `bucket`, `simple`, `disabled`, and `lazyRelease`
+on the same model artifact, audio fixture, browser/adapter, backend placement,
+and warmed-repeat schedule. Capture latency/RTFx, load time, memory, and exact
+transcript parity. Do not promote a cache mode from one faster run; preserve
+the default or keep the candidate opt-in until the result is repeatable and
+model-specific.
+
 ## Recommended Entry Points
 
 - [README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\README.md)

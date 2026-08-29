@@ -40,6 +40,14 @@ export interface LoadSpeechModelFromLocalEntriesOptions
   readonly decoderBackend?: 'wasm' | 'webgpu';
   /** Optional model-specific recurrent-state placement experiment (Parakeet TDT). */
   readonly decoderStateOutputLocation?: 'cpu' | 'gpu-buffer';
+  /** Optional model-specific WebGPU EP cache tuning (Parakeet TDT). */
+  readonly webgpuOptions?: {
+    readonly storageBufferCacheMode?: 'disabled' | 'lazyRelease' | 'simple' | 'bucket';
+    readonly uniformBufferCacheMode?: 'disabled' | 'lazyRelease' | 'simple' | 'bucket';
+    readonly queryResolveBufferCacheMode?: 'disabled' | 'lazyRelease' | 'simple' | 'bucket';
+    readonly defaultBufferCacheMode?: 'disabled' | 'lazyRelease' | 'simple' | 'bucket';
+    readonly validationMode?: 'disabled' | 'wgpuOnly' | 'basic' | 'full';
+  };
   readonly encoderQuant?: QuantizationMode;
   readonly decoderQuant?: QuantizationMode;
   readonly tokenizerName?: string;

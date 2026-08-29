@@ -71,6 +71,7 @@ describe('NeMo TDT decoder output placement', () => {
           output_states_1: 'gpu-buffer',
           output_states_2: 'gpu-buffer',
         },
+        webgpuOptions: { storageBufferCacheMode: 'simple' },
       },
     );
 
@@ -82,6 +83,12 @@ describe('NeMo TDT decoder output placement', () => {
           output_states_1: 'cpu',
           output_states_2: 'cpu',
         },
+        executionProviders: [
+          expect.objectContaining({
+            name: 'webgpu',
+            storageBufferCacheMode: 'simple',
+          }),
+        ],
       }),
     );
   });

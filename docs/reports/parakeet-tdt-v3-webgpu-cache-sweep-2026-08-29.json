@@ -1,0 +1,92 @@
+{
+  "schema": "asrjs.parakeet.tdt.webgpu-cache-sweep.v1",
+  "date": "2026-08-29",
+  "model": "parakeet-tdt-0.6b-v3",
+  "fixture": "LibriVox A Year with the Birds",
+  "environment": {
+    "browser": "Chrome headless new",
+    "adapter": "NVIDIA Blackwell",
+    "ortVersion": "1.29.0",
+    "audioStrategy": "native-rate",
+    "preprocessor": "js",
+    "encoderBackend": "webgpu",
+    "encoderQuantization": "fp16",
+    "decoderBackend": "webgpu",
+    "decoderQuantization": "fp32",
+    "repeatCount": 3,
+    "audioDurationSec": 18.714058956916098,
+    "emittedTokenCount": 91,
+    "decodeIterations": 107
+  },
+  "controls": [
+    {
+      "storageBufferCacheMode": "bucket",
+      "decoderStateOutputLocation": "cpu",
+      "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-50-21-227Z.json",
+      "loadMs": 9842.535,
+      "transcribeMs": [3708.41, 3429.94, 3498.96],
+      "medianTranscribeMs": 3498.96,
+      "rtfx": [5.056, 5.4617, 5.3538],
+      "medianRtfX": 5.3538,
+      "exactMatchEveryRun": true,
+      "memoryUsedJsHeapBytes": [1350687282, 1357037526, 1365576722]
+    },
+    {
+      "storageBufferCacheMode": "simple",
+      "decoderStateOutputLocation": "cpu",
+      "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-48-32-954Z.json",
+      "loadMs": 10216.215,
+      "transcribeMs": [3623.33, 3438.395, 3525.735],
+      "medianTranscribeMs": 3525.735,
+      "rtfx": [5.1756, 5.4498, 5.3133],
+      "medianRtfX": 5.3133,
+      "exactMatchEveryRun": true,
+      "memoryUsedJsHeapBytes": [1350587150, 1352661126, 1363164834]
+    },
+    {
+      "storageBufferCacheMode": "disabled",
+      "decoderStateOutputLocation": "cpu",
+      "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-49-09-291Z.json",
+      "loadMs": 10579.72,
+      "transcribeMs": [3626.76, 3395.53, 3482.32],
+      "medianTranscribeMs": 3482.32,
+      "rtfx": [5.1693, 5.5173, 5.3804],
+      "medianRtfX": 5.3804,
+      "exactMatchEveryRun": true,
+      "memoryUsedJsHeapBytes": [1348048782, 1354832230, 1366092446]
+    },
+    {
+      "storageBufferCacheMode": "lazyRelease",
+      "decoderStateOutputLocation": "cpu",
+      "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-49-45-544Z.json",
+      "loadMs": 10559.59,
+      "transcribeMs": [3705.7, 3506.15, 3388.9],
+      "medianTranscribeMs": 3506.15,
+      "rtfx": [5.0604, 5.3441, 5.529],
+      "medianRtfX": 5.3441,
+      "exactMatchEveryRun": true,
+      "memoryUsedJsHeapBytes": [1345482202, 1353723410, 1364020058]
+    }
+  ],
+  "gpuStateComposition": {
+    "storageBufferCacheMode": "simple",
+    "decoderStateOutputLocation": "gpu-buffer",
+    "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-50-57-588Z.json",
+    "loadMs": 10422.825,
+    "transcribeMs": [3092.385, 2886.67, 2883.725],
+    "medianTranscribeMs": 2886.67,
+    "rtfx": [6.064, 6.492, 6.499],
+    "medianRtfX": 6.492,
+    "exactMatchEveryRun": true,
+    "memoryUsedJsHeapBytes": [1345122870, 1359002254, 1367192194]
+  },
+  "deltaAgainstExplicitBucketControl": {
+    "simpleCpuMedianLatencyPct": 0.7649,
+    "disabledCpuMedianLatencyPct": -0.4756,
+    "lazyReleaseCpuMedianLatencyPct": 0.2055,
+    "simpleGpuStateMedianLatencyPct": -17.5027,
+    "simpleGpuStateVsPriorBucketGpuStatePct": 0.5149
+  },
+  "decision": "reject-cache-mode-promotion",
+  "interpretation": "All cache-mode variants preserved exact 91-token parity. The three-repeat samples show no repeatable cache-only win over the bucket default; the small disabled-mode difference is within run variance and is not a promotion signal. Combining simple caching with the positive GPU-state path was slightly slower than the prior bucket-default GPU-state control. Keep ORT defaults unless a future model-specific sweep with longer repeats shows a stable memory or latency benefit."
+}
