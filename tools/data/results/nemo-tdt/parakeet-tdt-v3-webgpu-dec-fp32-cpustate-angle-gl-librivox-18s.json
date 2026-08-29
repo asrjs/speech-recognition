@@ -1,0 +1,28 @@
+{
+  "preset": "parakeet-tdt-v3-decoder-webgpu",
+  "timestamp": "2026-08-29T20:08:05.273Z",
+  "status": "error",
+  "failureClass": "WEBGPU_NO_ADAPTER",
+  "message": "no available backend found. ERR: [webgpu] backend not found.",
+  "transcript": "",
+  "expected": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit LibriVox.org. Read by Olivia. A Year with the Birds by W. Ward Fowler.",
+  "qualityOracle": "fixed-transcript",
+  "transcriptAvailable": false,
+  "audioUrl": "/parakeet-audio/librivox.org.wav",
+  "requestedClipSec": null,
+  "decoderBackend": "webgpu",
+  "adapter": {
+    "available": false
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":false}",
+    "crossOriginIsolated: true, hardwareConcurrency: 12",
+    "decoder backend: webgpu"
+  ],
+  "teardown": {
+    "modelDisposeAttempted": false,
+    "runtimeDisposeAttempted": false,
+    "errors": []
+  }
+}

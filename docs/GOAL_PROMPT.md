@@ -239,7 +239,31 @@ Parakeet TDT clip-length scaling and v2/v3 decoder gap (2026-08-29):
   parameters in embedding + joint MatMul). This is intrinsic to v3's
   8192-class SentencePiece vocabulary, not a graph defect. int8 WASM
   (~36x) is near this graph's practical ceiling here; the remaining
-  high-leverage lever is GPU-state placement (29-41% decoder-only win,+  gated on the ORT disposal lifecycle fix and second-adapter soak).
+  high-leverage lever is GPU-state placement (29-41% decoder-only win,
+  gated on the ORT disposal lifecycle fix and second-adapter soak).
+
+Parakeet TDT GPU-state second-browser and soak gates (2026-08-29):
+
+- The harness runner now supports --browser=edge (reusable second-browser
+  acceptance path). Chrome ANGLE vulkan and gl backends are unavailable on
+  this host (WEBGPU_NO_ADAPTER), so the second-engine evidence comes from
+  Edge on the same NVIDIA Blackwell/D3D11 adapter.
+- Edge library-path A/B: GPU-state decoderStateOutputLocation='gpu-buffer'
+  measured 2214.5 ms median / 8.47x RTFx versus 2512.5 ms / 7.46x for the
+  cpu control - an 11.9% latency reduction reproducing the Chrome result
+  (17.3%), with the exact 91-token transcript and zero disposal errors on
+  both browsers.
+- Edge lifecycle soak: 8 same-session GPU-state runs, 8/8 exact, transcribe
+  times stable in a 1860-2164 ms band with no drift, JS heap showing normal
+  GC behavior (no monotonic leak signature), and clean model/runtime
+  teardown.
+- Both stated promotion gates (second browser, longer soak) have now
+  passed. The placement remains opt-in solely because all evidence is one
+  GPU vendor (NVIDIA Blackwell/D3D11); AMD/Intel and non-Chromium engines
+  are untested. Promote after a non-NVIDIA adapter pass or an explicit
+  decision to accept single-vendor evidence.
+- Evidence: docs/reports/parakeet-tdt-gpu-state-second-browser-2026-08-29.md
+  and tools/data/results/nemo-tdt/parakeet-tdt-v3-webgpu-dec-fp32-*-edge-*.json
 
 - Experimental family descriptors are clone-safe, and all model families now
   share session release, abort, and dispose coverage; disposing a model no
