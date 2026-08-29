@@ -138,6 +138,35 @@ actual GPU resource reclamation. Report load time separately from warmed
 transcription latency, and require exact parity on every repeated run before
 considering a state-placement change for promotion.
 
+### 7. Prove incremental frontend work before optimizing the encoder
+
+Streaming frontends must not recompute the complete accumulated waveform on
+every chunk. First establish the frame contract against a full-buffer
+reference, including `snip_edges`, left/right reflection, frame count, feature
+layout, and finalization behavior. For a frontend whose right-edge padding
+depends on future samples (for example Kaldi `snip_edges=false`), emit only
+fully sample-backed frames during ordinary pushes, retain the smallest bounded
+raw-audio tail that covers the next frame, and flush the reflected boundary
+frames exactly once when `final=true`.
+
+The incremental path must be tested with uneven chunk sizes, tiny initial
+chunks, a final empty push, and a deterministic waveform. Compare every
+feature value with one full-buffer run (`maxAbs` must be within the documented
+floating-point tolerance) before measuring speed. The benchmark must include
+the same residual costs on both sides—such as cumulative audio-copy work—so a
+frontend result is not accidentally reported as an end-to-end RTFx gain. Use
+the X-ASR reference harness as the template:
+
+```powershell
+npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json
+```
+
+Record baseline/candidate medians, chunk schedule, parity error, and the
+remaining allocation caveats in `docs/reports/`. Only after this CPU contract
+is proven should the same chunk schedule be run through the real browser
+encoder-cache path; report that browser run as a separate artifact-parity
+checkpoint unless a pre-change browser control exists.
+
 ## Recommended Entry Points
 
 - [README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\README.md)
