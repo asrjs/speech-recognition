@@ -408,9 +408,26 @@ Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
   (2.74-2.86x), reflecting decoder optimizations landed since.
 - The remaining recoverable warning is whisper.decoder-align-legacy
   (decoder_align export marker; timestamp interpolation fallback) - an
-  artifact re-export item, not a runtime defect.
+  artifact re-export item, not a runtime defect. CLOSED for the runtime side:
+  the causal r5 artifact now passes the browser harness with zero warnings
+  and identical throughput (see the causal decoder-align slice below).
 - Evidence: docs/reports/whisper-4graph-ort129-revalidation-2026-08-30.md
   and tools/data/results/whisper/*revalidation-2026-08-30.*
+
+Whisper causal decoder-align browser validation (2026-08-30):
+
+- The r5 causal family (N:\models\whisper-large-v3-turbo-causal-fp16-20260825-r5)
+  is a first-class persistent route in the browser harness (/models/fp16-causal/;
+  presets fp16io-causal-webgpu and causal-r5-full-webgpu). Timestamped runs on
+  the causal decoder_align produce wordAlignmentSource=fast, first-word anchor
+  In 2.12-2.84 s (faster-whisper ref 2.16-2.84 s), and an EMPTY warnings array
+  on all five cells (greedy GPU-KV, stable beam 2, batched beam 2, r5-full,
+  30 s greedy at 27.02x - identical to the no-timestamps revalidation).
+- Remaining boundary is artifact publishing only: the public HF preset still
+  ships the legacy align graph, so default downloads keep the recoverable
+  fallback warning until an approved re-export (audit_publish.py gates).
+- Evidence: docs/reports/whisper-causal-decoder-align-browser-2026-08-30.md
+  and tools/data/results/whisper/*causal*-2026-08-30.json
 
 Whisper frontend mixed-radix FFT slice (2026-08-30):
 

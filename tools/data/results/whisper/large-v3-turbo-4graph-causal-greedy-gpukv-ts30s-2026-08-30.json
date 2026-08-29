@@ -1,0 +1,514 @@
+{
+  "preset": "fp16io-causal-webgpu",
+  "timestamp": "2026-08-29T23:03:45.857Z",
+  "status": "check",
+  "transcript": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger.  I do not shrink from this responsibility. I welcome it.",
+  "baselineMatch": false,
+  "tokens": [
+    50365,
+    682,
+    264,
+    938,
+    2503,
+    295,
+    264,
+    1002,
+    11,
+    787,
+    257,
+    1326,
+    10593,
+    362,
+    668,
+    12344,
+    264,
+    3090,
+    295,
+    21377,
+    5645,
+    294,
+    1080,
+    1773,
+    295,
+    6674,
+    4330,
+    13,
+    51106,
+    51156,
+    286,
+    360,
+    406,
+    23060,
+    490,
+    341,
+    6357,
+    13,
+    286,
+    2928,
+    309,
+    13,
+    51354,
+    51604,
+    50257
+  ],
+  "detectedLanguage": "en",
+  "audioUrl": "/audio/jfk-30s.ogg",
+  "audioStrategy": "browser-target-rate",
+  "audioDurationSec": 29.9043125,
+  "qualityOracle": "baseline-text",
+  "transcriptAvailable": true,
+  "runRole": "measurement",
+  "words": [
+    {
+      "index": 0,
+      "text": "In",
+      "startTime": 2.04,
+      "endTime": 2.84,
+      "tokenIndices": [
+        1
+      ]
+    },
+    {
+      "index": 1,
+      "text": "the",
+      "startTime": 2.84,
+      "endTime": 2.98,
+      "tokenIndices": [
+        2
+      ]
+    },
+    {
+      "index": 2,
+      "text": "long",
+      "startTime": 2.98,
+      "endTime": 3.48,
+      "tokenIndices": [
+        3
+      ]
+    },
+    {
+      "index": 3,
+      "text": "history",
+      "startTime": 3.48,
+      "endTime": 4.02,
+      "tokenIndices": [
+        4
+      ]
+    },
+    {
+      "index": 4,
+      "text": "of",
+      "startTime": 4.02,
+      "endTime": 4.22,
+      "tokenIndices": [
+        5
+      ]
+    },
+    {
+      "index": 5,
+      "text": "the",
+      "startTime": 4.22,
+      "endTime": 4.3,
+      "tokenIndices": [
+        6
+      ]
+    },
+    {
+      "index": 6,
+      "text": "world,",
+      "startTime": 4.3,
+      "endTime": 4.78,
+      "tokenIndices": [
+        7,
+        8
+      ]
+    },
+    {
+      "index": 7,
+      "text": "only",
+      "startTime": 5.46,
+      "endTime": 6.3,
+      "tokenIndices": [
+        9
+      ]
+    },
+    {
+      "index": 8,
+      "text": "a",
+      "startTime": 6.3,
+      "endTime": 6.4,
+      "tokenIndices": [
+        10
+      ]
+    },
+    {
+      "index": 9,
+      "text": "few",
+      "startTime": 6.5,
+      "endTime": 6.74,
+      "tokenIndices": [
+        11
+      ]
+    },
+    {
+      "index": 10,
+      "text": "generations",
+      "startTime": 6.74,
+      "endTime": 7.44,
+      "tokenIndices": [
+        12
+      ]
+    },
+    {
+      "index": 11,
+      "text": "have",
+      "startTime": 7.44,
+      "endTime": 8.84,
+      "tokenIndices": [
+        13
+      ]
+    },
+    {
+      "index": 12,
+      "text": "been",
+      "startTime": 8.84,
+      "endTime": 9.04,
+      "tokenIndices": [
+        14
+      ]
+    },
+    {
+      "index": 13,
+      "text": "granted",
+      "startTime": 9.04,
+      "endTime": 9.46,
+      "tokenIndices": [
+        15
+      ]
+    },
+    {
+      "index": 14,
+      "text": "the",
+      "startTime": 9.46,
+      "endTime": 9.68,
+      "tokenIndices": [
+        16
+      ]
+    },
+    {
+      "index": 15,
+      "text": "role",
+      "startTime": 9.68,
+      "endTime": 10.06,
+      "tokenIndices": [
+        17
+      ]
+    },
+    {
+      "index": 16,
+      "text": "of",
+      "startTime": 10.06,
+      "endTime": 10.26,
+      "tokenIndices": [
+        18
+      ]
+    },
+    {
+      "index": 17,
+      "text": "defending",
+      "startTime": 10.28,
+      "endTime": 10.82,
+      "tokenIndices": [
+        19
+      ]
+    },
+    {
+      "index": 18,
+      "text": "freedom",
+      "startTime": 10.84,
+      "endTime": 11.38,
+      "tokenIndices": [
+        20
+      ]
+    },
+    {
+      "index": 19,
+      "text": "in",
+      "startTime": 11.4,
+      "endTime": 11.6,
+      "tokenIndices": [
+        21
+      ]
+    },
+    {
+      "index": 20,
+      "text": "its",
+      "startTime": 11.62,
+      "endTime": 11.78,
+      "tokenIndices": [
+        22
+      ]
+    },
+    {
+      "index": 21,
+      "text": "hour",
+      "startTime": 11.8,
+      "endTime": 12.04,
+      "tokenIndices": [
+        23
+      ]
+    },
+    {
+      "index": 22,
+      "text": "of",
+      "startTime": 12.06,
+      "endTime": 12.26,
+      "tokenIndices": [
+        24
+      ]
+    },
+    {
+      "index": 23,
+      "text": "maximum",
+      "startTime": 12.28,
+      "endTime": 12.62,
+      "tokenIndices": [
+        25
+      ]
+    },
+    {
+      "index": 24,
+      "text": "danger.",
+      "startTime": 12.64,
+      "endTime": 13.12,
+      "tokenIndices": [
+        26,
+        27
+      ]
+    },
+    {
+      "index": 25,
+      "text": "I",
+      "startTime": 15.32,
+      "endTime": 15.42,
+      "tokenIndices": [
+        30
+      ]
+    },
+    {
+      "index": 26,
+      "text": "do",
+      "startTime": 15.44,
+      "endTime": 15.64,
+      "tokenIndices": [
+        31
+      ]
+    },
+    {
+      "index": 27,
+      "text": "not",
+      "startTime": 15.66,
+      "endTime": 15.96,
+      "tokenIndices": [
+        32
+      ]
+    },
+    {
+      "index": 28,
+      "text": "shrink",
+      "startTime": 15.98,
+      "endTime": 16.38,
+      "tokenIndices": [
+        33
+      ]
+    },
+    {
+      "index": 29,
+      "text": "from",
+      "startTime": 16.4,
+      "endTime": 16.62,
+      "tokenIndices": [
+        34
+      ]
+    },
+    {
+      "index": 30,
+      "text": "this",
+      "startTime": 16.64,
+      "endTime": 16.84,
+      "tokenIndices": [
+        35
+      ]
+    },
+    {
+      "index": 31,
+      "text": "responsibility.",
+      "startTime": 16.86,
+      "endTime": 17.34,
+      "tokenIndices": [
+        36,
+        37
+      ]
+    },
+    {
+      "index": 32,
+      "text": "I",
+      "startTime": 18.75,
+      "endTime": 18.85,
+      "tokenIndices": [
+        38
+      ]
+    },
+    {
+      "index": 33,
+      "text": "welcome",
+      "startTime": 19.1,
+      "endTime": 19.54,
+      "tokenIndices": [
+        39
+      ]
+    },
+    {
+      "index": 34,
+      "text": "it.",
+      "startTime": 19.54,
+      "endTime": 19.74,
+      "tokenIndices": [
+        40,
+        41
+      ]
+    }
+  ],
+  "warnings": [],
+  "metrics": {
+    "loadMs": 0.0949999988079071,
+    "transcribeMs": 1118.7150000035763,
+    "totalMs": 1118.8100000023842,
+    "cacheEntries": 0
+  },
+  "stageMetrics": {
+    "preprocessMs": 111.835,
+    "audioDurationSec": 29.9043,
+    "encodeMs": 176.915,
+    "encoderFrameCount": 1500,
+    "decodeMs": 610.505,
+    "decoderInitMs": 198.715,
+    "decoderInitInputMs": 0.02,
+    "decoderInitRunMs": 197.695,
+    "decoderInitOutputMs": 0.97,
+    "decoderStepMs": 396.835,
+    "decoderStepFeedBuildMs": 0,
+    "decoderStepTensorCloneMs": 0.805,
+    "decoderStepRunMs": 387.64,
+    "decoderStepOutputMs": 7.78,
+    "decoderStepAvgMs": 9.019,
+    "decoderStepP50Ms": 8.675,
+    "decoderStepP95Ms": 10.365,
+    "decoderStepMaxMs": 12.69,
+    "decoderLogitProcessMs": 10.695,
+    "decoderStepCount": 44,
+    "decoderGpuTensorInputs": 705,
+    "decoderCpuTensorInputs": 45,
+    "decoderGpuTensorOutputs": 368,
+    "decoderCpuTensorOutputs": 45,
+    "decoderGpuTensorDownloads": 0,
+    "decoderKvCacheLocation": "gpu-buffer",
+    "decodeIterations": 45,
+    "tokenizeMs": 200.67,
+    "languageDetectionMs": 0,
+    "decoderInitTensorCreateMs": 0.02,
+    "decoderInitLogitReadMs": 0.005,
+    "decoderInitKvExtractMs": 0.065,
+    "decoderStepTensorCreateMs": 0.805,
+    "decoderStepLogitReadMs": 0.105,
+    "decoderStepKvMergeMs": 1.165,
+    "decoderEncoderKvTensorReuses": 0,
+    "decoderEncoderKvTensorCreates": 0,
+    "sessionCreateMs": 13055.1,
+    "encoderRunMs": 176.895,
+    "encoderOutputMs": 0.02,
+    "encoderOutputCastMs": 0.02,
+    "encoderOutputLocation": "gpu-buffer",
+    "encoderOutputDtype": "float16",
+    "encoderBufferRewrapMs": 0,
+    "encoderGpuFlushMs": 0,
+    "encoderGpuDrainMs": 0,
+    "encoderTotalMs": 176.895,
+    "wordAlignmentSource": "fast",
+    "totalMs": 1106.76,
+    "wallMs": 1106.76,
+    "rtf": 0.037,
+    "rtfx": 27.0197,
+    "preprocessorBackend": "js-whisper-mel",
+    "requestedPreprocessorBackend": "js-whisper-mel",
+    "emittedTokenCount": 44,
+    "emittedWordCount": 35,
+    "detectedLanguage": "en"
+  },
+  "audioMetrics": {
+    "backend": "browser",
+    "strategy": "audiocontext-target-rate",
+    "outputSampleRate": 16000,
+    "decodeMs": 91.49500000476837,
+    "downmixMs": 1.145000010728836,
+    "resampleMs": 0,
+    "totalMs": 92.64000001549721,
+    "wallMs": 530,
+    "resampler": "browser-audiocontext",
+    "resamplerQuality": null,
+    "audioDurationSec": 29.9043125
+  },
+  "webgpu": true,
+  "encoderFolder": "fp16_iofp32",
+  "decoderFolder": "fp16-causal",
+  "decoding": {
+    "maxNewTokens": 50,
+    "numBeams": 1,
+    "bestOf": 1,
+    "temperature": 0,
+    "lengthPenalty": 0,
+    "patience": 1,
+    "enableOrtProfiling": false,
+    "experimentalGpuKvCache": true,
+    "experimentalBatchedBeam": false,
+    "experimentalWebGpuEncoderGraphCapture": false,
+    "encoderOutputCpu": false,
+    "encoderBufferRewrap": false,
+    "encoderGpuFlush": false,
+    "encoderGpuDrain": false,
+    "noTimestamps": false,
+    "language": "en"
+  },
+  "log": [
+    "Ready.",
+    "[02:03:25] Model source overridden via URL: local",
+    "[02:03:26] Audio source overridden via URL: /audio/jfk-30s.ogg",
+    "[02:03:26] Max tokens overridden via URL: 50",
+    "[02:03:26] Experimental GPU KV cache enabled via URL parameter.",
+    "[02:03:26] Language set to: en",
+    "[02:03:26] Timestamp tokens enabled via URL parameter.",
+    "[02:03:26] Auto-run mode: fp16io-causal-webgpu",
+    "[02:03:26] === Warmup run ===",
+    "[02:03:26] Auto-run: loading audio for fp16io-causal-webgpu...",
+    "[02:03:27] Loaded sample audio (29.9s, 16000 Hz).",
+    "[02:03:27] Auto-run: transcribing with fp16io-causal-webgpu...",
+    "[02:03:40] Starting transcription for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:40] Prepared Whisper mel features for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:41] Encoded Whisper frames for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:41] Decoded 45 Whisper tokens for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:43] Built Whisper transcript details for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:43] Finished transcription for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:43] Auto-run fp16io-causal-webgpu: check lang=en words=35 — \"In the long history of the world, only a few generations have been granted the r...\"",
+    "[02:03:44] Result posted to server.",
+    "[02:03:44] === Measurement run (GPU-warm, pipeline-warm) ===",
+    "[02:03:44] Auto-run: loading audio for fp16io-causal-webgpu...",
+    "[02:03:44] Auto-run: transcribing with fp16io-causal-webgpu...",
+    "[02:03:44] Starting transcription for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:44] Prepared Whisper mel features for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:45] Encoded Whisper frames for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:45] Decoded 45 Whisper tokens for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:45] Built Whisper transcript details for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:45] Finished transcription for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:03:45] Auto-run fp16io-causal-webgpu: check lang=en words=35 — \"In the long history of the world, only a few generations have been granted the r...\""
+  ]
+}

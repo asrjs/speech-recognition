@@ -1,0 +1,317 @@
+{
+  "preset": "fp16io-causal-webgpu",
+  "timestamp": "2026-08-29T23:01:46.844Z",
+  "status": "check",
+  "transcript": "In the long history of the world, only a few generations have been granted the role...",
+  "baselineMatch": false,
+  "tokens": [
+    50365,
+    682,
+    264,
+    938,
+    2503,
+    295,
+    264,
+    1002,
+    11,
+    787,
+    257,
+    1326,
+    10593,
+    362,
+    668,
+    12344,
+    264,
+    3090,
+    485,
+    50865,
+    50257
+  ],
+  "detectedLanguage": "en",
+  "audioUrl": "/audio/jfk-10s.ogg",
+  "audioStrategy": "browser-target-rate",
+  "audioDurationSec": 10.0043125,
+  "qualityOracle": "baseline-text",
+  "transcriptAvailable": true,
+  "runRole": "measurement",
+  "words": [
+    {
+      "index": 0,
+      "text": "In",
+      "startTime": 2.12,
+      "endTime": 2.84,
+      "tokenIndices": [
+        1
+      ]
+    },
+    {
+      "index": 1,
+      "text": "the",
+      "startTime": 2.84,
+      "endTime": 2.98,
+      "tokenIndices": [
+        2
+      ]
+    },
+    {
+      "index": 2,
+      "text": "long",
+      "startTime": 2.98,
+      "endTime": 3.46,
+      "tokenIndices": [
+        3
+      ]
+    },
+    {
+      "index": 3,
+      "text": "history",
+      "startTime": 3.46,
+      "endTime": 4.02,
+      "tokenIndices": [
+        4
+      ]
+    },
+    {
+      "index": 4,
+      "text": "of",
+      "startTime": 4.02,
+      "endTime": 4.22,
+      "tokenIndices": [
+        5
+      ]
+    },
+    {
+      "index": 5,
+      "text": "the",
+      "startTime": 4.22,
+      "endTime": 4.3,
+      "tokenIndices": [
+        6
+      ]
+    },
+    {
+      "index": 6,
+      "text": "world,",
+      "startTime": 4.3,
+      "endTime": 5.4,
+      "tokenIndices": [
+        7,
+        8
+      ]
+    },
+    {
+      "index": 7,
+      "text": "only",
+      "startTime": 5.4,
+      "endTime": 6.32,
+      "tokenIndices": [
+        9
+      ]
+    },
+    {
+      "index": 8,
+      "text": "a",
+      "startTime": 6.32,
+      "endTime": 6.42,
+      "tokenIndices": [
+        10
+      ]
+    },
+    {
+      "index": 9,
+      "text": "few",
+      "startTime": 6.5,
+      "endTime": 6.76,
+      "tokenIndices": [
+        11
+      ]
+    },
+    {
+      "index": 10,
+      "text": "generations",
+      "startTime": 6.76,
+      "endTime": 7.46,
+      "tokenIndices": [
+        12
+      ]
+    },
+    {
+      "index": 11,
+      "text": "have",
+      "startTime": 7.46,
+      "endTime": 8.86,
+      "tokenIndices": [
+        13
+      ]
+    },
+    {
+      "index": 12,
+      "text": "been",
+      "startTime": 8.86,
+      "endTime": 9.04,
+      "tokenIndices": [
+        14
+      ]
+    },
+    {
+      "index": 13,
+      "text": "granted",
+      "startTime": 9.04,
+      "endTime": 9.46,
+      "tokenIndices": [
+        15
+      ]
+    },
+    {
+      "index": 14,
+      "text": "the",
+      "startTime": 9.46,
+      "endTime": 9.68,
+      "tokenIndices": [
+        16
+      ]
+    },
+    {
+      "index": 15,
+      "text": "role...",
+      "startTime": 9.68,
+      "endTime": 9.98,
+      "tokenIndices": [
+        17,
+        18
+      ]
+    }
+  ],
+  "warnings": [],
+  "metrics": {
+    "loadMs": 0.12000000476837158,
+    "transcribeMs": 727.3399999886751,
+    "totalMs": 727.4599999934435,
+    "cacheEntries": 0
+  },
+  "stageMetrics": {
+    "preprocessMs": 38.655,
+    "audioDurationSec": 10.0043,
+    "encodeMs": 186.875,
+    "encoderFrameCount": 1500,
+    "decodeMs": 427.5,
+    "decoderInitMs": 193.54,
+    "decoderInitInputMs": 0.015,
+    "decoderInitRunMs": 193.075,
+    "decoderInitOutputMs": 0.425,
+    "decoderStepMs": 225.455,
+    "decoderStepFeedBuildMs": 0,
+    "decoderStepTensorCloneMs": 0.48,
+    "decoderStepRunMs": 221.185,
+    "decoderStepOutputMs": 3.48,
+    "decoderStepAvgMs": 11.273,
+    "decoderStepP50Ms": 11.2,
+    "decoderStepP95Ms": 13.32,
+    "decoderStepMaxMs": 13.695,
+    "decoderLogitProcessMs": 5.705,
+    "decoderStepCount": 20,
+    "decoderGpuTensorInputs": 321,
+    "decoderCpuTensorInputs": 21,
+    "decoderGpuTensorOutputs": 176,
+    "decoderCpuTensorOutputs": 21,
+    "decoderGpuTensorDownloads": 0,
+    "decoderKvCacheLocation": "gpu-buffer",
+    "decodeIterations": 21,
+    "tokenizeMs": 60.6,
+    "languageDetectionMs": 0,
+    "decoderInitTensorCreateMs": 0.015,
+    "decoderInitLogitReadMs": 0,
+    "decoderInitKvExtractMs": 0.04,
+    "decoderStepTensorCreateMs": 0.48,
+    "decoderStepLogitReadMs": 0.055,
+    "decoderStepKvMergeMs": 0.645,
+    "decoderEncoderKvTensorReuses": 0,
+    "decoderEncoderKvTensorCreates": 0,
+    "sessionCreateMs": 14522.705,
+    "encoderRunMs": 186.85,
+    "encoderOutputMs": 0.02,
+    "encoderOutputCastMs": 0.02,
+    "encoderOutputLocation": "gpu-buffer",
+    "encoderOutputDtype": "float16",
+    "encoderBufferRewrapMs": 0,
+    "encoderGpuFlushMs": 0,
+    "encoderGpuDrainMs": 0,
+    "encoderTotalMs": 186.85,
+    "wordAlignmentSource": "fast",
+    "totalMs": 720.655,
+    "wallMs": 720.655,
+    "rtf": 0.072,
+    "rtfx": 13.8822,
+    "preprocessorBackend": "js-whisper-mel",
+    "requestedPreprocessorBackend": "js-whisper-mel",
+    "emittedTokenCount": 20,
+    "emittedWordCount": 16,
+    "detectedLanguage": "en"
+  },
+  "audioMetrics": {
+    "backend": "browser",
+    "strategy": "audiocontext-target-rate",
+    "outputSampleRate": 16000,
+    "decodeMs": 21.375,
+    "downmixMs": 0.39000000059604645,
+    "resampleMs": 0,
+    "totalMs": 21.765000000596046,
+    "wallMs": 647.8400000035763,
+    "resampler": "browser-audiocontext",
+    "resamplerQuality": null,
+    "audioDurationSec": 10.0043125
+  },
+  "webgpu": true,
+  "encoderFolder": "fp16_iofp32",
+  "decoderFolder": "fp16-causal",
+  "decoding": {
+    "maxNewTokens": 80,
+    "numBeams": 1,
+    "bestOf": 1,
+    "temperature": 0,
+    "lengthPenalty": 0,
+    "patience": 1,
+    "enableOrtProfiling": false,
+    "experimentalGpuKvCache": true,
+    "experimentalBatchedBeam": false,
+    "experimentalWebGpuEncoderGraphCapture": false,
+    "encoderOutputCpu": false,
+    "encoderBufferRewrap": false,
+    "encoderGpuFlush": false,
+    "encoderGpuDrain": false,
+    "noTimestamps": false,
+    "language": "en"
+  },
+  "log": [
+    "Ready.",
+    "[02:01:26] Model source overridden via URL: local",
+    "[02:01:26] Audio source overridden via URL: /audio/jfk-10s.ogg",
+    "[02:01:26] Max tokens overridden via URL: 80",
+    "[02:01:26] Experimental GPU KV cache enabled via URL parameter.",
+    "[02:01:26] Language set to: en",
+    "[02:01:26] Timestamp tokens enabled via URL parameter.",
+    "[02:01:26] Auto-run mode: fp16io-causal-webgpu",
+    "[02:01:26] === Warmup run ===",
+    "[02:01:27] Auto-run: loading audio for fp16io-causal-webgpu...",
+    "[02:01:27] Loaded sample audio (10.0s, 16000 Hz).",
+    "[02:01:27] Auto-run: transcribing with fp16io-causal-webgpu...",
+    "[02:01:42] Starting transcription for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:42] Prepared Whisper mel features for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:42] Encoded Whisper frames for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:43] Decoded 21 Whisper tokens for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:45] Built Whisper transcript details for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:45] Finished transcription for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:45] Auto-run fp16io-causal-webgpu: check lang=en words=16 — \"In the long history of the world, only a few generations have been granted the r...\"",
+    "[02:01:45] Result posted to server.",
+    "[02:01:45] === Measurement run (GPU-warm, pipeline-warm) ===",
+    "[02:01:46] Auto-run: loading audio for fp16io-causal-webgpu...",
+    "[02:01:46] Auto-run: transcribing with fp16io-causal-webgpu...",
+    "[02:01:46] Starting transcription for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:46] Prepared Whisper mel features for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:46] Encoded Whisper frames for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:46] Decoded 21 Whisper tokens for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:46] Built Whisper transcript details for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:46] Finished transcription for ysdede/whisper-large-v3-turbo-onnx-4graph.",
+    "[02:01:46] Auto-run fp16io-causal-webgpu: check lang=en words=16 — \"In the long history of the world, only a few generations have been granted the r...\""
+  ]
+}
