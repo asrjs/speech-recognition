@@ -1,0 +1,83 @@
+{
+  "preset": "gigaam-v3-e2e-rnnt-webgpu-encoder-webgpu-decoder-wasm-joint-wasm",
+  "composition": "encoder-webgpu-decoder-wasm-joint-wasm",
+  "timestamp": "2026-08-29T20:22:14.713Z",
+  "status": "pass",
+  "transcript": "Ничьих не требуя похвал, Счастлив уж я надеждой сладкой, Что дева с трепетом любви Посмотрит, может быть, украдкой На песни грешные мои. У лукоморья дуб зелёный.",
+  "expected": "Ничьих не требуя похвал, Счастлив уж я надеждой сладкой, Что дева с трепетом любви Посмотрит, может быть, украдкой На песни грешные мои. У лукоморья дуб зелёный.",
+  "baselineMatch": true,
+  "qualityOracle": "fixed",
+  "transcriptAvailable": true,
+  "audio": {
+    "audioUrl": "/gigaam-audio/example.wav",
+    "sourceDurationSec": 11.29,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 11.29,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 765.140000000596,
+        "rtfx": 14.7974
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 765.140000000596,
+      "rtfx": 14.7974
+    }
+  ],
+  "webgpu": true,
+  "backend": "webgpu",
+  "encoderFolder": "v3-e2e-rnnt",
+  "decoderFolder": "rnnt",
+  "metrics": {
+    "loadMs": 8682.469999998808,
+    "transcribeMs": 449.2849999964237,
+    "totalMs": 11074.40000000596,
+    "rtf": 0.03979495128400565,
+    "rtfx": 25.12881578528076,
+    "preprocessMs": 130.77,
+    "encodeMs": 68.37,
+    "decodeMs": 235.965,
+    "encoderBackend": "webgpu",
+    "decoderBackend": "wasm",
+    "jointBackend": "wasm",
+    "repeat": 3,
+    "runs": [
+      {
+        "runIndex": 1,
+        "transcribeMs": 472.875,
+        "rtfx": 23.9339,
+        "textMatch": true
+      },
+      {
+        "runIndex": 2,
+        "transcribeMs": 449.2849999964237,
+        "rtfx": 25.1602,
+        "textMatch": true
+      },
+      {
+        "runIndex": 3,
+        "transcribeMs": 435.794999986887,
+        "rtfx": 25.9469,
+        "textMatch": true
+      }
+    ]
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 8682ms"
+  ]
+}

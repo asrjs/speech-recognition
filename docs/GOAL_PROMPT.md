@@ -280,6 +280,27 @@ Parakeet TDT preprocessor A/B and variance methodology (2026-08-29):
 - Heap snapshots were nearly identical between preprocessor modes, ruling
   out GC pressure as the decode-phase confound.
 
+GigaAM RNN-T placement and threads matrix (2026-08-29):
+
+- Re-measured with per-component provider overrides on the 11.29 s exact
+  Russian oracle fixture: the default hybrid (encoder WebGPU, decoder+joint
+  WASM) runs at 449.3 ms median / 25.13x RTFx with exact parity - the
+  family is healthy, not the 0.55x of the early all-WebGPU matrix entry.
+- The all-WebGPU composition still measures 3889.4 ms / 2.90x: the tiny
+  per-token decoder/joint steps pay a 16x decode-loop penalty on GPU
+  (3748.8 ms vs 236.0 ms). Same one-frame-step lesson as Parakeet TDT;
+  hybrid placement is validated by a measured 8.7x end-to-end gap.
+- The GigaAM browser runner no longer hardcodes cpuThreads: 1; the CLI
+  exposes --cpu-threads=N. Eight threads left the end-to-end median flat
+  (451.8 vs 449.3 ms); the decode drop sits inside documented variance.
+- Preprocessing is JS-only (no ONNX preprocessor ships with the model) and
+  measured 75-131 ms across sessions (17-29% of total). An ONNX/WebGPU
+  fbank export mirroring the Parakeet nemo128 pattern is the remaining
+  stage lever; an int8/fp16 encoder export (844 MB fp32 today) is the
+  VRAM/size lever.
+- Evidence: docs/reports/gigaam-rnnt-placement-threads-matrix-2026-08-29.md
+  and tools/data/results/gigaam/v3-rnnt-*.json
+
 - Experimental family descriptors are clone-safe, and all model families now
   share session release, abort, and dispose coverage; disposing a model no
   longer double-releases ORT sessions during `runtime.dispose()`
