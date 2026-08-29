@@ -265,6 +265,21 @@ Parakeet TDT GPU-state second-browser and soak gates (2026-08-29):
 - Evidence: docs/reports/parakeet-tdt-gpu-state-second-browser-2026-08-29.md
   and tools/data/results/nemo-tdt/parakeet-tdt-v3-webgpu-dec-fp32-*-edge-*.json
 
+Parakeet TDT preprocessor A/B and variance methodology (2026-08-29):
+
+- The old parakeet.js short-clip lesson (JS mel beat ONNX preprocessing)
+  does not transfer to 18.7 s clips: JS reliably saves ~20 ms at the
+  preprocess stage but the end-to-end median is inside cross-session
+  noise, with exact parity on both paths. Keep the ONNX preprocessor
+  default; revisit JS mel only for short-clip latency products.
+- Cross-session variance is now bounded with three same-config sessions:
+  medians 508.1 / 636.7 / 574.0 ms (about +-11%) and decode-phase averages
+  255.7 / 385.9 / 312.6 ms (about +-20%). Phase-level A/B claims on this
+  host require same-launch paired sessions; cross-session decode
+  comparisons are unreliable.
+- Heap snapshots were nearly identical between preprocessor modes, ruling
+  out GC pressure as the decode-phase confound.
+
 - Experimental family descriptors are clone-safe, and all model families now
   share session release, abort, and dispose coverage; disposing a model no
   longer double-releases ORT sessions during `runtime.dispose()`

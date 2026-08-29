@@ -140,3 +140,37 @@ Practical consequences for v3 optimization:
 - Full WebGPU decoding measured slower (~6x) for this one-frame GRU step;
   WASM remains the right placement for the step loop.
 
+## Preprocessor A/B and cross-session variance bounds
+
+The original parakeet.js metrics analysis found the JS mel filterbank beat
+the ONNX preprocessor on short clips (mean RTFx delta +1.8). The same A/B
+was run here on the fast path (v3, fp16/WebGPU encoder, int8/WASM decoder,
+8 threads, 18.714 s clip, 1 warm-up + 5 measured runs, back-to-back):
+
+| Preprocessor | Median ms | RTFx | Prep ms | Encode ms | Decode ms | Parity |
+|---|---|---|---|---|---|---|
+| ONNX (default) | 636.7 | 29.6x | 66.8 | 189.7 | 385.9 | exact |
+| JS mel | 723.5 | 26.1x | 46.7 | 194.0 | 463.9 | exact |
+
+Three same-config ONNX-prep sessions across the day measured medians of
+508.1 / 636.7 / 574.0 ms and decode-phase averages of 255.7 / 385.9 /
+312.6 ms. The decode phase alone drifts up to ~50% across sessions, far
+more than the ~15% total-median variance documented earlier. JS-prep heap
+snapshots (1245-1261 MB) were nearly identical to ONNX (1237-1253 MB), so
+GC pressure does not explain the decode difference.
+
+Verdicts:
+
+1. JS preprocessing reliably wins its own stage by ~20 ms (~30% of stage
+   time) but the end-to-end result is inside cross-session noise on this
+   clip length; the old short-clip lesson does not transfer to 18.7 s
+   clips where preprocessing is only ~10% of total. Keep the ONNX
+   preprocessor default; revisit JS mel only for short-clip latency
+   products.
+2. Methodology: phase-level comparisons across sessions are unreliable on
+   this host (decode +-20%, total +-11% around the session mean). Any
+   phase-level A/B claim requires same-launch paired sessions, as the
+   GPU-state Edge A/B used.
+
+Artifacts: tools/data/results/nemo-tdt/parakeet-tdt-v3-fp16gpu-enc-int8-wasm-dec-8t-{jsprep,onnxprep-rerun,onnxprep-session3}-librivox-18s.json
+
