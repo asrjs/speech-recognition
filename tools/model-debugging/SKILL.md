@@ -153,16 +153,19 @@ The incremental path must be tested with uneven chunk sizes, tiny initial
 chunks, a final empty push, and a deterministic waveform. Compare every
 feature value with one full-buffer run (`maxAbs` must be within the documented
 floating-point tolerance) before measuring speed. The benchmark must include
-the same residual costs on both sides—such as cumulative audio-copy work—so a
-frontend result is not accidentally reported as an end-to-end RTFx gain. Use
-the X-ASR reference harness as the template:
+the same residual costs on both sides—such as cumulative audio-copy work—when
+isolating frontend speed. If the storage strategy is also being optimized,
+label the result as a combined frontend/storage comparison and keep a separate
+frontend-only control; never report either microbenchmark as end-to-end RTFx.
+Use the X-ASR reference harness as the template:
 
 ```powershell
 npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json
 ```
 
-Record baseline/candidate medians, chunk schedule, parity error, and the
-remaining allocation caveats in `docs/reports/`. Only after this CPU contract
+Record baseline/candidate medians for both the frontend-only control and any
+combined storage comparison, along with the chunk schedule and parity error,
+in `docs/reports/`. Only after this CPU contract
 is proven should the same chunk schedule be run through the real browser
 encoder-cache path; report that browser run as a separate artifact-parity
 checkpoint unless a pre-change browser control exists.

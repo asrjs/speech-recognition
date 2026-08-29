@@ -10,6 +10,11 @@ import { XAsrTokenizer } from './tokenizer.js';
 
 export interface XAsrStreamState {
   readonly audio: Float32Array;
+  /**
+   * Amortized backing storage for cumulative audio. The public `audio` view
+   * keeps its exact logical length while appends reuse this capacity buffer.
+   */
+  readonly audioBuffer?: ArrayBuffer;
   readonly features: Float32Array;
   /** Bounded raw-audio tail used by the incremental fbank frontend. */
   readonly frontendTail?: Float32Array;
@@ -17,6 +22,35 @@ export interface XAsrStreamState {
   readonly inputFrames: number;
   readonly tokenIds: readonly number[];
   readonly encoderStates: readonly OrtTensorLike[];
+}
+
+interface AppendedStreamAudio {
+  readonly audio: Float32Array;
+  readonly audioBuffer?: ArrayBuffer;
+}
+
+function appendStreamAudio(state: XAsrStreamState, appended: Float32Array): AppendedStreamAudio {
+  const previous = state.audio;
+  const required = previous.length + appended.length;
+  if (required === 0) return { audio: previous, audioBuffer: state.audioBuffer };
+
+  const reusable = state.audioBuffer && previous.buffer === state.audioBuffer && previous.byteOffset === 0
+    ? state.audioBuffer
+    : undefined;
+  const currentCapacity = reusable ? Math.floor(reusable.byteLength / Float32Array.BYTES_PER_ELEMENT) : 0;
+  if (reusable && currentCapacity >= required) {
+    const view = new Float32Array(reusable, 0, required);
+    view.set(appended, previous.length);
+    return { audio: view, audioBuffer: reusable };
+  }
+
+  let capacity = Math.max(required, currentCapacity > 0 ? Math.ceil(currentCapacity * 1.5) : required);
+  while (capacity < required) capacity = Math.max(required, Math.ceil(capacity * 1.5));
+  const buffer = new ArrayBuffer(capacity * Float32Array.BYTES_PER_ELEMENT);
+  const view = new Float32Array(buffer, 0, required);
+  view.set(previous);
+  view.set(appended, previous.length);
+  return { audio: view, audioBuffer: buffer };
 }
 
 function disposeStreamTensors(state: XAsrStreamState, retained?: XAsrStreamState): void {
@@ -416,9 +450,7 @@ export class OrtXAsrExecutor implements XAsrExecutor {
 
   async pushStream(state: XAsrStreamState, audio: Float32Array, final = false, options: XAsrTranscriptionOptions = {}): Promise<{ state: XAsrStreamState; transcript: XAsrNativeTranscript }> {
     const started = nowMs();
-    const allAudio = new Float32Array(state.audio.length + audio.length);
-    allAudio.set(state.audio);
-    allAudio.set(audio, state.audio.length);
+    const appendedAudio = appendStreamAudio(state, audio);
     const incremental = this.frontend.processIncremental(
       state.frontendTail ?? state.audio.subarray(Math.max(0, state.audio.length - 400)),
       state.audio.length,
@@ -430,7 +462,7 @@ export class OrtXAsrExecutor implements XAsrExecutor {
     const combined = new Float32Array(state.features.length + newFeatures.length);
     combined.set(state.features);
     combined.set(newFeatures, state.features.length);
-    const next = await this.decodeFeatures({ ...state, audio: allAudio }, combined, final, options.signal);
+    const next = await this.decodeFeatures({ ...state, audio: appendedAudio.audio, audioBuffer: appendedAudio.audioBuffer }, combined, final, options.signal);
     const ids = [...next.tokenIds];
     const tokenizer = (await this.state!).tokenizer;
     const transcript: XAsrNativeTranscript = {
@@ -443,14 +475,14 @@ export class OrtXAsrExecutor implements XAsrExecutor {
         decodeMs: 0,
         totalMs: roundMetric(nowMs() - started),
         wallMs: roundMetric(nowMs() - started),
-        audioDurationSec: roundMetric(allAudio.length / this.config.sampleRate, 4),
+        audioDurationSec: roundMetric(appendedAudio.audio.length / this.config.sampleRate, 4),
         encoderFrameCount: next.encodedFrames,
         emittedTokenCount: ids.length,
         preprocessorBackend: 'js',
       },
       warnings: [],
     };
-    const nextState = { ...next, features: next.features, frontendTail: incremental.tail, inputFrames: state.inputFrames + incremental.frameCount };
+    const nextState = { ...next, audio: appendedAudio.audio, audioBuffer: appendedAudio.audioBuffer, features: next.features, frontendTail: incremental.tail, inputFrames: state.inputFrames + incremental.frameCount };
     this.activeStreams.delete(state);
     disposeStreamTensors(state, nextState);
     this.activeStreams.add(nextState);

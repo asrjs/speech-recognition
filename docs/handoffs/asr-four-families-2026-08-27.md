@@ -462,27 +462,29 @@ raw-audio tail. With `snip_edges=false`, right-edge reflected frames are held
 until the next chunk or finalization; this is required because their values
 change as future samples arrive.
 
-The uneven-chunk parity test is exact (`maxAbs=0`). The Node CPU microbenchmark
-uses deterministic synthetic audio, 200 ms chunks, three timed runs after one
-warm-up, and compares the former full-buffer-per-chunk loop with the incremental
-loop:
+The uneven-chunk parity test is exact (`maxAbs=0`). The executor also keeps the
+exact logical cumulative audio view while appending into amortized backing
+storage, so repeated pushes no longer allocate and copy the complete audio
+buffer. The Node CPU microbenchmark uses deterministic synthetic audio, 200 ms
+chunks, three timed runs after one warm-up, and compares the former
+full-buffer-per-chunk loop with the incremental loop:
 
 | Audio | Chunks | Full recompute median | Incremental median | Speedup |
 | ---: | ---: | ---: | ---: | ---: |
-| 2 s | 10 | 22.6525 ms | 8.9217 ms | 2.5390x |
-| 10 s | 50 | 543.2119 ms | 49.9958 ms | 10.8652x |
+| 2 s | 10 | 22.8828 ms | 5.0927 ms | 4.4933x |
+| 10 s | 50 | 543.0221 ms | 22.9987 ms | 23.6110x |
 
-This is frontend-only CPU evidence. Both sides include the executor's
-cumulative-audio copy, so the speedup is conservative; it is not an end-to-end
-RTFx claim. The executor still retains cumulative audio for stream-duration
-metadata, so removing that remaining O(n²) copy/allocation is a separate
-optimization task. Reproduce with
+This is frontend/storage CPU evidence, not an end-to-end RTFx claim. The
+frontend-only controls measured 4.5512x and 17.5392x speedups at 2 s and 10 s;
+the combined candidate uses amortized capacity growth while preserving the
+logical `Float32Array` view. Retained capacity can exceed logical length until
+stream disposal. Reproduce with
 `npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json`.
 Evidence: `docs/reports/x-asr-incremental-frontend-benchmark-2026-08-29.json`.
 
 The opt-in streaming browser checkpoint also passes on the local real artifact:
 Chrome headless/WebGPU, ORT Web 1.29.0, NVIDIA Blackwell, 55 x 200 ms chunks,
-exact oracle text, 9,142.85 ms (`1.2031x` RTFx). This is a parity and end-to-end
+exact oracle text, 8,981.14 ms (`1.2248x` RTFx). This is a parity and end-to-end
 behavior checkpoint rather than a browser before/after claim. Evidence:
 `docs/reports/x-asr-webgpu-streaming-parity-2026-08-29.json` and
 `tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu-stream-chrome.json`.

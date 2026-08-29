@@ -126,6 +126,25 @@ const audio = {
 };
 
 describe('X-ASR streaming decode abort', () => {
+  it('amortizes cumulative stream-audio storage without changing the logical view', async () => {
+    const { executor } = createExecutor();
+    const initial = await executor.pushStream(executor.createStream(), new Float32Array(160), false);
+    const firstBuffer = initial.state.audioBuffer;
+    expect(firstBuffer).toBeDefined();
+
+    const grown = await executor.pushStream(initial.state, new Float32Array(80), false);
+    const grownBuffer = grown.state.audioBuffer;
+    expect(grownBuffer).not.toBe(firstBuffer);
+
+    const expanded = await executor.pushStream(grown.state, new Float32Array(80), false);
+    const next = await executor.pushStream(expanded.state, new Float32Array(80), false);
+    const reused = await executor.pushStream(next.state, new Float32Array(80), false);
+    expect(reused.state.audio.length).toBe(480);
+    expect(reused.state.audioBuffer).toBe(next.state.audioBuffer);
+    executor.disposeStream(reused.state);
+    await executor.dispose();
+  });
+
   it('stops the streaming step loop on abort without corrupting leftover encoder state', async () => {
     const { executor, logitsAndStates, getJoinerCalls, resetJoiner } = createExecutor();
     const original = new TrackingTensor('float32', new Float32Array([9]), [1]);

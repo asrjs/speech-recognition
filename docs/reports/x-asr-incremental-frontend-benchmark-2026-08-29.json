@@ -1,7 +1,7 @@
 {
   "schema": "asrjs.x-asr.frontend-streaming-benchmark.v1",
   "date": "2026-08-29",
-  "description": "Node CPU microbenchmark comparing the former full-buffer frontend recomputation on every streaming chunk with the incremental X-ASR frontend. This isolates feature extraction; it is not an end-to-end transcription RTFx claim.",
+  "description": "Node CPU microbenchmark comparing the former full-buffer frontend recomputation and exact cumulative-audio append on every streaming chunk with the incremental X-ASR frontend and amortized audio backing buffer. It reports both a frontend-only control and the combined shipped path; neither is an end-to-end transcription RTFx claim.",
   "runtime": {
     "node": ">=22",
     "sampleRate": 16000,
@@ -14,30 +14,34 @@
   },
   "method": {
     "baseline": "append each chunk to a growing Float32Array and run frontend.process() over the complete accumulated audio",
-    "candidate": "append each chunk to the same growing audio buffer (matching the executor's current metadata cost), then run frontend.processIncremental() over only newly stable frames with a bounded 400-sample tail; flush reflected boundary frames once with final=true",
+    "candidate": "append each chunk through the same amortized backing-buffer strategy used by the executor, then run frontend.processIncremental() over only newly stable frames with a bounded 400-sample tail; flush reflected boundary frames once with final=true",
     "correctness": "candidate features are compared with one full-buffer process() result; max absolute error must be < 1e-6"
   },
   "scenarios": [
     {
       "durationSec": 2,
       "chunkCount": 10,
-      "baselineMedianMs": 22.6525,
-      "incrementalMedianMs": 8.9217,
-      "speedup": 2.5390,
+      "baselineMedianMs": 22.8828,
+      "frontendOnlyMedianMs": 5.0279,
+      "incrementalMedianMs": 5.0927,
+      "frontendOnlySpeedup": 4.5512,
+      "speedup": 4.4933,
       "maxAbs": 0
     },
     {
       "durationSec": 10,
       "chunkCount": 50,
-      "baselineMedianMs": 543.2119,
-      "incrementalMedianMs": 49.9958,
-      "speedup": 10.8652,
+      "baselineMedianMs": 543.0221,
+      "frontendOnlyMedianMs": 30.9605,
+      "incrementalMedianMs": 22.9987,
+      "frontendOnlySpeedup": 17.5392,
+      "speedup": 23.6110,
       "maxAbs": 0
     }
   ],
-  "decision": "PROMOTE_INCREMENTAL_FRONTEND",
+  "decision": "PROMOTE_INCREMENTAL_FRONTEND_AND_AUDIO_STORAGE",
   "caveats": [
-    "The executor still retains a cumulative audio Float32Array for stream metadata, so this slice removes O(n^2) frontend FFT work but does not yet eliminate cumulative audio-copy allocation.",
+    "The logical cumulative audio view remains available for stream metadata while capacity growth is amortized; retained capacity can exceed the logical length until stream disposal.",
     "End-to-end X-ASR encoder and decoder timing must be remeasured on a real artifact before claiming an RTFx improvement.",
     "Right-edge reflected frames are intentionally delayed until the next chunk or finalization to preserve full-buffer parity."
   ],

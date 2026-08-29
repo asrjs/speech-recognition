@@ -206,21 +206,24 @@ X-ASR incremental frontend slice (2026-08-29):
   keeps a bounded 400-sample raw tail; reflected right-edge frames are held
   until the next chunk or `final=true` so full-buffer semantics remain exact.
 - Deterministic parity across uneven chunks is exact (`maxAbs=0`). The
-  reproducible Node CPU microbenchmark shows 2.5390x lower frontend wall time
-  at 2 seconds (22.6525 -> 8.9217 ms) and 10.8652x lower time at 10 seconds
-  (543.2119 -> 49.9958 ms), using 200 ms chunks and three timed runs after one
-  warm-up. Both sides include the executor's cumulative audio-copy cost, so
-  this is a conservative frontend-only result, not an end-to-end RTFx claim.
+  reproducible Node CPU microbenchmark shows 4.4933x lower combined
+  frontend/storage wall time at 2 seconds (22.8828 -> 5.0927 ms) and 23.6110x
+  lower time at 10 seconds (543.0221 -> 22.9987 ms), using 200 ms chunks and
+  three timed runs after one warm-up. The separate frontend-only controls are
+  4.5512x and 17.5392x faster; the baseline uses exact cumulative copies while
+  the candidate uses amortized capacity growth. These are frontend/storage
+  results, not end-to-end RTFx claims.
 - Evidence and rerun command: `docs/reports/x-asr-incremental-frontend-benchmark-2026-08-29.json`
   and `npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json`.
 - Real-artifact browser checkpoint also passes: Chrome headless/WebGPU on
   NVIDIA Blackwell, ORT Web 1.29.0, 55 x 200 ms streaming chunks, and the
-  exact 55-token X-ASR oracle (`9,142.85 ms`, `1.2031x` RTFx). This validates
+  exact 55-token X-ASR oracle (`8,981.14 ms`, `1.2248x` RTFx). This validates
   the new frame-boundary behavior in the actual encoder-cache path; it is not
   a browser before/after speed claim. Evidence:
   `docs/reports/x-asr-webgpu-streaming-parity-2026-08-29.json`.
-- The executor still retains cumulative audio for stream duration metadata, so
-  eliminating that O(n^2) copy/allocation remains a separate measured task.
+- The executor retains the exact logical cumulative audio view for stream
+  duration metadata while reusing an amortized backing buffer; retained
+  capacity can exceed logical length until stream disposal.
 
 Earlier streaming and validation slices:
 
