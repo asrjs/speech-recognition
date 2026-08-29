@@ -360,8 +360,26 @@ GigaAM shared preprocessing radix-5 FFT (2026-08-30):
   earlier constant-factor pass on the windowing/mel loops moved nothing
   because the FFT dominated; measure the stage, then the algorithm.
 - Evidence: docs/reports/gigaam-preprocess-radix5-fft-2026-08-30.md,
-  tools/scripts/benchmark-gigaam-preprocess.mjs, and
-  tools/data/results/gigaam/*radix5*.json
+ tools/scripts/benchmark-gigaam-preprocess.mjs, and
+ tools/data/results/gigaam/*radix5*.json
+
+Cross-family optimization playbook (2026-08-30):
+
+- Consolidated the Whisper 2x to 26x case study, the Parakeet TDT
+  hybrid-placement work, and the 2026-08-29/30 family matrices into
+  docs/OPTIMIZATION_PLAYBOOK.md: measurement discipline (variance bounds,
+  same-launch pairing, stage attribution), placement rules with the
+  measured both-direction evidence, precision/quantization rules, JS
+  hot-path discipline, algorithmic-fix precedence (radix-5 FFT), WebGPU
+  execution lessons, and a new-port optimization checklist.
+- SenseVoice preprocessing measured at the same time: 22.33 ms p50 in Node
+  for the 11.29 s shape (nFft 512 is already power-of-two fast; LFR/CMVN
+  included). No algorithmic target remains there; the earlier browser
+  57.6 ms is environment overhead, not a code lever. Recorded to prevent
+  re-investigation.
+- Evidence: docs/OPTIMIZATION_PLAYBOOK.md and
+  tools/scripts/benchmark-sensevoice-preprocess.mjs
+
 
 
 
