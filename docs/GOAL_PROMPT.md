@@ -301,6 +301,29 @@ GigaAM RNN-T placement and threads matrix (2026-08-29):
 - Evidence: docs/reports/gigaam-rnnt-placement-threads-matrix-2026-08-29.md
   and tools/data/results/gigaam/v3-rnnt-*.json
 
+SenseVoice placement correction (2026-08-29):
+
+- Re-measured on the 11.3 s jfk-short exact-oracle fixture: the WebGPU
+  default runs at 435.0 ms median / 25.29x RTFx, superseding the stale
+  701 ms / 15.7x matrix entry. No regression.
+- WebGPU placement is decisively correct for this single-graph encoder
+  model: encode is roughly 10x faster than 8-thread WASM (205.5 vs
+  ~1945 ms). This is the mirror image of the one-frame-step families
+  (Parakeet TDT, GigaAM RNN-T) where WASM wins the decode loop - the
+  workload-specific placement rule now has measured evidence in both
+  directions across four families.
+- decodeMs (160.9 ms) is JS post-processing (full-vocabulary argmax, CTC
+  collapse with spans, tokenizer decode, confidence/timing construction),
+  not an autoregressive loop. It is the next phase-level target and best
+  measured with the Node hot-path microbenchmark harness.
+- The phase-sum vs native-total gap is ~10 ms, so the logits readback is
+  essentially attributed. The model ships fp32-only (894 MB); int8/fp16
+  export remains the VRAM/size lever.
+- The SenseVoice browser runner now accepts backend and cpuThreads options
+  (--backend=wasm, --cpu-threads=N), matching the other family harnesses.
+- Evidence: docs/reports/sensevoice-placement-correction-2026-08-29.md
+  and tools/data/results/sensevoice/small-{webgpu,wasm-8t}-jfk-3run.json
+
 - Experimental family descriptors are clone-safe, and all model families now
   share session release, abort, and dispose coverage; disposing a model no
   longer double-releases ORT sessions during `runtime.dispose()`

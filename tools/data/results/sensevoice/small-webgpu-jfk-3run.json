@@ -1,0 +1,85 @@
+{
+  "preset": "sensevoice-small-webgpu",
+  "timestamp": "2026-08-29T20:28:32.368Z",
+  "status": "pass",
+  "transcript": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "qualityOracle": "fixed",
+  "transcriptAvailable": true,
+  "audio": {
+    "audioUrl": "/gigaam-audio/jfk-short.wav",
+    "sourceDurationSec": 11,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 11,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 552.1349999904633,
+        "rtfx": 19.9789
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 552.1349999904633,
+      "rtfx": 19.9789
+    }
+  ],
+  "runMetrics": [
+    {
+      "run": 1,
+      "transcribeMs": 518.4599999934435,
+      "rtfx": 21.2462
+    },
+    {
+      "run": 2,
+      "transcribeMs": 408.955000013113,
+      "rtfx": 26.979
+    },
+    {
+      "run": 3,
+      "transcribeMs": 435.02999998629093,
+      "rtfx": 25.3194
+    }
+  ],
+  "batch": false,
+  "batchSize": 1,
+  "webgpu": true,
+  "backend": "webgpu",
+  "cpuThreads": 1,
+  "language": "en",
+  "metadata": {
+    "language": "en",
+    "emotion": "EMO_UNKNOWN",
+    "event": "Speech"
+  },
+  "metrics": {
+    "loadMs": 12672.29999999702,
+    "transcribeMs": 435.02999998629093,
+    "totalMs": 15044.214999988675,
+    "rtf": 0.03954818181693554,
+    "rtfx": 25.285612487292006,
+    "preprocessMs": 57.64,
+    "encodeMs": 205.505,
+    "decodeMs": 160.94,
+    "nativeTotalMs": 434.45,
+    "encoderFrameCount": 187,
+    "emittedTokenCount": 26
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 12672ms"
+  ]
+}

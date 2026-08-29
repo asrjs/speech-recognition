@@ -1,0 +1,85 @@
+{
+  "preset": "sensevoice-small-wasm",
+  "timestamp": "2026-08-29T20:29:09.870Z",
+  "status": "pass",
+  "transcript": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "qualityOracle": "fixed",
+  "transcriptAvailable": true,
+  "audio": {
+    "audioUrl": "/gigaam-audio/jfk-short.wav",
+    "sourceDurationSec": 11,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 11,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 1938.0750000029802,
+        "rtfx": 5.6805
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 1938.0750000029802,
+      "rtfx": 5.6805
+    }
+  ],
+  "runMetrics": [
+    {
+      "run": 1,
+      "transcribeMs": 1375.6150000095367,
+      "rtfx": 7.9995
+    },
+    {
+      "run": 2,
+      "transcribeMs": 1294.3049999922514,
+      "rtfx": 8.5018
+    },
+    {
+      "run": 3,
+      "transcribeMs": 2116.295000001788,
+      "rtfx": 5.1984
+    }
+  ],
+  "batch": false,
+  "batchSize": 1,
+  "webgpu": false,
+  "backend": "wasm",
+  "cpuThreads": 8,
+  "language": "en",
+  "metadata": {
+    "language": "en",
+    "emotion": "EMO_UNKNOWN",
+    "event": "Speech"
+  },
+  "metrics": {
+    "loadMs": 10165.844999998808,
+    "transcribeMs": 1375.6150000095367,
+    "totalMs": 17327.155000001192,
+    "rtf": 0.12505590909177608,
+    "rtfx": 7.9964234178340154,
+    "preprocessMs": 37.79,
+    "encodeMs": 1945.475,
+    "decodeMs": 119.695,
+    "nativeTotalMs": 2116.045,
+    "encoderFrameCount": 187,
+    "emittedTokenCount": 26
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 10166ms"
+  ]
+}
