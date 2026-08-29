@@ -10,6 +10,7 @@ import {
   isNodeLikeRuntime,
   resolveNodePackageSubpathUrl,
 } from '../../io/node-compat.js';
+import { resolveOrtExternalDataMounts } from '../../io/ort-external-data.js';
 
 interface OrtEnv {
   wasm: {
@@ -279,36 +280,14 @@ export async function createOrtSession(
   }
 
   if (externalDataUrl && options.externalDataPath) {
-    if (isNodeLikeRuntime()) {
-      // The Node binding only accepts byte buffers in externalData, while
-      // native ORT resolves external initializers relative to the model file.
-      // Colocated data files therefore need no option at all.
-      const nodePath = await importNodeModule<typeof import('node:path')>('node:path');
-      const colocatedPath = nodePath.join(
-        nodePath.dirname(sessionModelUrl),
-        nodePath.basename(options.externalDataPath),
-      );
-      const fsModule = await importNodeModule<typeof import('node:fs')>('node:fs');
-      if (options.backendId === 'webgpu' && fsModule.existsSync(colocatedPath)) {
-        // Native ORT loads colocated external data automatically. Node-hosted
-        // ORT Web WASM still needs the bytes mounted explicitly.
-      } else {
-        const promises =
-          await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
-        sessionOptions.externalData = [
-          {
-            data: await promises.readFile(externalDataUrl),
-            path: options.externalDataPath,
-          },
-        ];
-      }
-    } else {
-      sessionOptions.externalData = [
-        {
-          data: externalDataUrl,
-          path: options.externalDataPath,
-        },
-      ];
+    const externalData = await resolveOrtExternalDataMounts({
+      backendId: options.backendId,
+      sessionModelUrl,
+      externalDataUrl,
+      externalDataPath: options.externalDataPath,
+    });
+    if (externalData) {
+      sessionOptions.externalData = externalData;
     }
   }
 
