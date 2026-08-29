@@ -2,6 +2,7 @@ import { normalizePcmInput } from '../../audio/index.js';
 import {
   addTimesToTokenSpans,
   argmaxAndSelectedLogProbs,
+  argmaxAndSelectedLogProbsFp16,
   buildUtteranceTiming,
   ctcCollapseWithSpans,
   estimateSecondsPerOutputFrame,
@@ -239,6 +240,25 @@ function readLogits(tensor: OrtTensorLike): Float32Array {
   return result;
 }
 
+/**
+ * Greedy frame decode for one logits row-block. float16 tensors keep their
+ * raw half-bit representation and go through the lookup-table fast path in
+ * the shared CTC decoder; float32 tensors keep the generic pipeline.
+ */
+function decodeLogitsBlock(
+  tensor: OrtTensorLike,
+  start: number,
+  frameCount: number,
+  vocabSize: number,
+): { frameIds: number[]; selectedLogProbs: Float32Array } {
+  if (tensor.type === 'float16') {
+    const source = tensor.data as Uint16Array;
+    return argmaxAndSelectedLogProbsFp16(source.subarray(start), frameCount, vocabSize);
+  }
+  const logits = readLogits(tensor).subarray(start, start + frameCount * vocabSize);
+  return argmaxAndSelectedLogProbs(logits, frameCount, vocabSize);
+}
+
 function findOutput(outputs: Record<string, OrtTensorLike>, names: readonly string[]): OrtTensorLike | undefined {
   for (const name of names) if (outputs[name]) return outputs[name];
   return Object.values(outputs)[0];
@@ -431,9 +451,8 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     const outFrames = dims[1] ?? 0;
     const vocabSize = dims[2] ?? 0;
     const frameLength = Math.min(outFrames, tensorLength(findOutput(outputs, ['encoder_out_lens', 'logprobs_lens', 'output_lens']), outFrames));
-    const logits = readLogits(logitsTensor).subarray(0, frameLength * vocabSize);
     const decodeStart = nowMs();
-    const { frameIds, selectedLogProbs } = argmaxAndSelectedLogProbs(logits, frameLength, vocabSize);
+    const { frameIds, selectedLogProbs } = decodeLogitsBlock(logitsTensor, 0, frameLength, vocabSize);
     const { collapsedIds, tokenSpans } = ctcCollapseWithSpans(frameIds, selectedLogProbs, 0);
     const text = state.tokenizer.decode(collapsedIds);
     const secondsPerFrame = estimateSecondsPerOutputFrame({
@@ -550,14 +569,19 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     const vocabSize = dims[2] ?? 0;
     const lengthsTensor = findOutput(outputs, ['encoder_out_lens', 'logprobs_lens', 'output_lens']);
     const outputLengths = tensorLengths(lengthsTensor, batchSize, outFrames);
-    const allLogits = readLogits(logitsTensor);
+    const fp16Bits = logitsTensor.type === 'float16' ? (logitsTensor.data as Uint16Array) : null;
+    const fp32Logits = fp16Bits === null ? readLogits(logitsTensor) : null;
     return Array.from({ length: batchSize }, (_, batchIndex) => {
       const decodeStarted = nowMs();
       const frameCount = Math.min(outFrames, outputLengths[batchIndex] ?? outFrames);
-      const logits = new Float32Array(frameCount * vocabSize);
       const sourceOffset = batchIndex * outFrames * vocabSize;
-      logits.set(allLogits.subarray(sourceOffset, sourceOffset + logits.length));
-      const { frameIds, selectedLogProbs } = argmaxAndSelectedLogProbs(logits, frameCount, vocabSize);
+      const { frameIds, selectedLogProbs } = fp16Bits !== null
+        ? argmaxAndSelectedLogProbsFp16(fp16Bits.subarray(sourceOffset), frameCount, vocabSize)
+        : argmaxAndSelectedLogProbs(
+            fp32Logits!.subarray(sourceOffset, sourceOffset + frameCount * vocabSize),
+            frameCount,
+            vocabSize,
+          );
       const { collapsedIds, tokenSpans } = ctcCollapseWithSpans(frameIds, selectedLogProbs, 0);
       const tokenizer = state.tokenizer;
       const text = tokenizer.decode(collapsedIds);

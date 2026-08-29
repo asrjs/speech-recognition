@@ -204,6 +204,164 @@ export function argmaxAndSelectedLogProbs(
   };
 }
 
+// ---------------------------------------------------------------------------
+// float16 fast path for CTC argmax + log-softmax
+// ---------------------------------------------------------------------------
+
+/**
+ * Conservative safe zone for the fp16 exp lookup table: as long as a frame
+ * maximum stays within [-FP16_EXP_LUT_SAFE_MAX, FP16_EXP_LUT_SAFE_MAX] the
+ * unshifted exp sum cannot overflow or underflow float64 for realistic
+ * vocabularies. Rows whose maximum leaves the zone fall back to the generic
+ * float pipeline, so raw-logit graphs keep identical semantics.
+ */
+const FP16_EXP_LUT_SAFE_MAX = 80;
+
+function fp16BitsToFloat(bits: number): number {
+  const sign = (bits & 0x8000) << 16;
+  const exponent = (bits >>> 10) & 0x1f;
+  const mantissa = bits & 0x3ff;
+  if (exponent === 0) {
+    if (mantissa === 0) {
+      return sign ? -0 : 0;
+    }
+    let normalized = mantissa;
+    let exponentValue = -14;
+    while ((normalized & 0x400) === 0) {
+      normalized <<= 1;
+      exponentValue -= 1;
+    }
+    normalized &= 0x3ff;
+    return (sign ? -1 : 1) * (1 + normalized / 1024) * 2 ** exponentValue;
+  }
+  if (exponent === 0x1f) {
+    return mantissa === 0 ? (sign ? -Infinity : Infinity) : NaN;
+  }
+  return (sign ? -1 : 1) * (1 + mantissa / 1024) * 2 ** (exponent - 15);
+}
+
+let fp16ExpLutCache: Float64Array | null = null;
+
+function fp16ExpLookupTable(): Float64Array {
+  if (fp16ExpLutCache === null) {
+    const table = new Float64Array(0x10000);
+    for (let bits = 0; bits < 0x10000; bits += 1) {
+      table[bits] = Math.exp(fp16BitsToFloat(bits));
+    }
+    fp16ExpLutCache = table;
+  }
+  return fp16ExpLutCache;
+}
+
+/**
+ * Ordering key for finite IEEE-754 half bits: a larger key means a larger
+ * float value, and -0/+0 collapse to the same key so the first strict
+ * maximum wins exactly like the generic float scan. NaN and infinity codes
+ * never reach this function; callers detect them via isFp16SpecialCode.
+ */
+function fp16FiniteOrderingKey(bits: number): number {
+  return (bits & 0x8000) !== 0 ? 0x8000 - (bits & 0x7fff) : 0x8000 + bits;
+}
+
+/** True for plus/minus infinity and NaN half codes (all exponent bits set). */
+function isFp16SpecialCode(bits: number): boolean {
+  return (bits & 0x7c00) === 0x7c00;
+}
+
+function convertFp16BitsRange(bits: Uint16Array, start: number, end: number): Float32Array {
+  const out = new Float32Array(end - start);
+  for (let index = start; index < end; index += 1) {
+    out[index - start] = fp16BitsToFloat(bits[index]!);
+  }
+  return out;
+}
+
+/**
+ * Argmax + selected log-probability directly on raw float16 bit patterns.
+ *
+ * ONNX CTC graphs that emit float16 log-probabilities hand back a
+ * Uint16Array of half-precision bits. The generic pipeline first converts
+ * every element to float32 and then runs two float passes (max, then sum of
+ * exp(x - max)). Because an fp16 code is a 16-bit index, both passes can
+ * instead run on integer keys and a precomputed 65536-entry exp lookup
+ * table:
+ *
+ * - max: strict scan over the integer ordering key of the raw bits;
+ * - sum: table lookups of Math.exp(fp16ToFloat(bits)) accumulated per row;
+ * - score: best - log(sum) is algebraically identical to the reference
+ *   -log(sum(exp(x - best))) formulation in argmaxAndSelectedLogProbs.
+ *
+ * Parity fallbacks: rows containing NaN or infinity codes and rows whose
+ * maximum leaves the exp safe zone are recomputed through the converting
+ * generic pipeline so the result stays faithful to the float path.
+ *
+ * @param bits Flat float16 bit patterns [frameCount * vocabSize], row-major.
+ * @param frameCount Number of output frames.
+ * @param vocabSize Vocabulary size.
+ * @returns Per-frame argmax IDs and selected log probabilities.
+ */
+export function argmaxAndSelectedLogProbsFp16(
+  bits: Uint16Array,
+  frameCount: number,
+  vocabSize: number,
+): CtcArgmaxResult {
+  const frameIds = new Array<number>(frameCount).fill(0);
+  const selectedLogProbs = new Float32Array(frameCount);
+  const expLut = fp16ExpLookupTable();
+  const log = Math.log;
+
+  const decodeFallbackRow = (rowOffset: number, rowEnd: number, frameIndex: number): void => {
+    const converted = convertFp16BitsRange(bits, rowOffset, rowEnd);
+    const generic = argmaxAndSelectedLogProbs(converted, 1, rowEnd - rowOffset);
+    frameIds[frameIndex] = generic.frameIds[0]!;
+    selectedLogProbs[frameIndex] = generic.selectedLogProbs[0]!;
+  };
+
+  for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+    const rowOffset = frameIndex * vocabSize;
+    if (rowOffset >= bits.length) {
+      // Row entirely past the buffer: mirror the generic padded scan,
+      // which selects id 0 and produces a NaN score.
+      selectedLogProbs[frameIndex] = NaN;
+      continue;
+    }
+    const rowEnd = Math.min(rowOffset + vocabSize, bits.length);
+    let bestId = 0;
+    let bestBits = bits[rowOffset]!;
+    let bestKey = -1;
+    let sawSpecial = false;
+    for (let index = rowOffset; index < rowEnd; index += 1) {
+      const code = bits[index]!;
+      if (isFp16SpecialCode(code)) {
+        sawSpecial = true;
+        continue;
+      }
+      const key = fp16FiniteOrderingKey(code);
+      if (key > bestKey) {
+        bestKey = key;
+        bestBits = code;
+        bestId = index - rowOffset;
+      }
+    }
+    const bestValue = bestKey >= 0 ? fp16BitsToFloat(bestBits) : Number.NEGATIVE_INFINITY;
+    if (sawSpecial || !(bestValue >= -FP16_EXP_LUT_SAFE_MAX && bestValue <= FP16_EXP_LUT_SAFE_MAX)) {
+      decodeFallbackRow(rowOffset, rowEnd, frameIndex);
+      continue;
+    }
+    let expSum = 0;
+    for (let index = rowOffset; index < rowEnd; index += 1) {
+      expSum += expLut[bits[index]!] ?? 0;
+    }
+    frameIds[frameIndex] = bestId;
+    selectedLogProbs[frameIndex] = bestValue - log(expSum || 1);
+  }
+
+  return {
+    frameIds,
+    selectedLogProbs,
+  };
+}
+
 /**
  * CTC collapse: remove blanks and consecutive duplicate tokens, producing
  * raw token spans with frame-level timing and confidence.

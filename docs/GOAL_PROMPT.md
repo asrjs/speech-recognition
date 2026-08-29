@@ -339,9 +339,12 @@ SenseVoice decode hot-path optimization (2026-08-29):
   tools/scripts/benchmark-ctc-decode.mjs; per the same-launch variance
   methodology, the Node microbenchmark - not a noisy browser phase A/B -
   is the authoritative before/after evidence for this hot path.
-- Remaining decode cost is the intrinsic 4.68M Math.exp calls of exact
- log-softmax; an exact underflow-threshold skip (delta <= -40) would help
- raw-logit graphs but not SenseVoice's narrow log-prob range.
+- Remaining decode cost was attributed to the intrinsic 4.68M Math.exp
+  calls of exact log-softmax; an exact underflow-threshold skip
+  (delta <= -40) would help raw-logit graphs but not SenseVoice's narrow
+  log-prob range. SUPERSEDED 2026-08-30: the fp16 exp lookup-table fast
+  path (see the SenseVoice fp16 CTC decode hot-path slice below) removes
+  both the fp16->fp32 conversion and the per-element exp calls.
 
 GigaAM shared preprocessing radix-5 FFT (2026-08-30):
 
@@ -428,6 +431,35 @@ Whisper causal decoder-align browser validation (2026-08-30):
   fallback warning until an approved re-export (audit_publish.py gates).
 - Evidence: docs/reports/whisper-causal-decoder-align-browser-2026-08-30.md
   and tools/data/results/whisper/*causal*-2026-08-30.json
+
+SenseVoice fp16 CTC decode hot path (2026-08-30):
+
+- argmaxAndSelectedLogProbsFp16 (src/ctc/decoder.ts, exported via
+  src/ctc/index.ts) decodes raw float16 logit bits directly: integer
+  ordering-key max scan + a lazily built Float64Array(65536) exp lookup
+  table, with score best - log(sum) algebraically identical to the
+  reference formulation. Per-row parity fallbacks (NaN/inf codes,
+  maxima outside the [-80, +80] exp safe zone, truncated rows) reroute
+  through the converting generic pipeline, so raw-logit graphs keep
+  identical semantics.
+- SenseVoice executor routes single and batch paths through
+  decodeLogitsBlock: fp16 tensors stay Uint16Array bit subarrays (no
+  float materialization, zero-copy per batch row); fp32 tensors keep
+  the generic pipeline.
+- Node microbenchmark (same-launch, realistic bits): 187 x 25055
+  149.7 -> 13.1 ms (11.4x); 316 x 25055 260.0 -> 22.0 ms (11.8x);
+  parity gate ids equal, max score diff 0.00e+0.
+- Chrome headless WebGPU (Blackwell, warmup+3 runs, 18.7 s librivox):
+  decodeMs 385.6 -> 163.8-178.8, median-run RTFx 26.42 -> 43.1-48.7,
+  transcript byte-identical (59 tokens). Evidence:
+  tools/data/results/sensevoice/sensevoice-small-librivox-18s-warmed{-fp16-lut,}-webgpu-chrome.json
+  and docs/reports/sensevoice-fp16-decode-hotpath-2026-08-30.md.
+- Validated by tests/ctc-decoder-fp16.test.ts (5 parity tests) and a 6-shape
+  adversarial Node probe (wide +-60000 logits, safe-zone-edge tails,
+  all-zeros, denormal soup, truncated buffer): ids equal, maxDiff 0.
+  Full suite green: 1033 passed / 18 artifact-gated skips.
+- GigaAM CTC browser graphs emit fp32 logits today, so no wiring change
+  was needed there; the fast path is available if fp16 logits ship.
 
 Whisper frontend mixed-radix FFT slice (2026-08-30):
 

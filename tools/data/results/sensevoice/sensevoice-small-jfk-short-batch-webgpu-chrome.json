@@ -1,10 +1,46 @@
 {
   "preset": "sensevoice-small-webgpu-batch",
-  "timestamp": "2026-08-28T06:20:09.993Z",
+  "timestamp": "2026-08-29T23:55:07.733Z",
   "status": "pass",
   "transcript": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
   "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
-  "baselineMatch": true,
+  "baselineMatch": null,
+  "qualityOracle": "none",
+  "transcriptAvailable": true,
+  "audio": {
+    "audioUrl": "/gigaam-audio/jfk-short.wav",
+    "sourceDurationSec": 11,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 11,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 518.4350000023842,
+        "rtfx": 21.2857
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 518.4350000023842,
+      "rtfx": 21.2857
+    }
+  ],
+  "runMetrics": [
+    {
+      "run": 1,
+      "transcribeMs": 579.309999987483,
+      "rtfx": 21.2883
+    },
+    {
+      "run": 2,
+      "transcribeMs": 425.22499999403954,
+      "rtfx": 32.5237
+    }
+  ],
   "batch": true,
   "batchSize": 2,
   "batchTexts": [
@@ -15,6 +51,7 @@
   "batchSecondNonEmpty": true,
   "webgpu": true,
   "backend": "webgpu",
+  "cpuThreads": 1,
   "language": "en",
   "metadata": {
     "language": "en",
@@ -22,9 +59,17 @@
     "event": "Speech"
   },
   "metrics": {
-    "loadMs": 15407.995,
-    "transcribeMs": 1088.24,
-    "totalMs": 16758.385
+    "loadMs": 9096.59999999404,
+    "transcribeMs": 579.309999987483,
+    "totalMs": 10941.040000006557,
+    "rtf": 0.05266454545340755,
+    "rtfx": 18.98810654094988,
+    "preprocessMs": 53.895,
+    "encodeMs": 152.385,
+    "decodeMs": 114.375,
+    "nativeTotalMs": 338.215,
+    "encoderFrameCount": 187,
+    "emittedTokenCount": 26
   },
   "adapter": {
     "available": true,
@@ -33,5 +78,9 @@
     "device": "",
     "description": ""
   },
-  "source": "N:/github/asrjs/webgpu-agent-test/scripts/run-sensevoice-webgpu.mjs --batch"
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 9097ms"
+  ]
 }

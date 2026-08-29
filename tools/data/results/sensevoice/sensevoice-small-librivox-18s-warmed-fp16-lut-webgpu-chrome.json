@@ -1,0 +1,85 @@
+{
+  "preset": "sensevoice-small-webgpu",
+  "timestamp": "2026-08-29T23:49:57.458Z",
+  "status": "pass",
+  "transcript": "preface of a year with the birds this is a libre vox recording all libre vox recordings are in the public domain for more information or to volunteer please visit librevooxorg read byolivia a year with the birds by w ward fowler",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": null,
+  "qualityOracle": "none",
+  "transcriptAvailable": true,
+  "audio": {
+    "audioUrl": "/parakeet-audio/librivox.org.wav",
+    "sourceDurationSec": 18.714,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 18.714,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 628.2800000011921,
+        "rtfx": 29.9185
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 628.2800000011921,
+      "rtfx": 29.9185
+    }
+  ],
+  "runMetrics": [
+    {
+      "run": 1,
+      "transcribeMs": 436.2800000011921,
+      "rtfx": 43.0598
+    },
+    {
+      "run": 2,
+      "transcribeMs": 433.97999998927116,
+      "rtfx": 43.2794
+    },
+    {
+      "run": 3,
+      "transcribeMs": 415.0400000065565,
+      "rtfx": 45.2855
+    }
+  ],
+  "batch": false,
+  "batchSize": 1,
+  "webgpu": true,
+  "backend": "webgpu",
+  "cpuThreads": 1,
+  "language": "en",
+  "metadata": {
+    "language": "en",
+    "emotion": "EMO_UNKNOWN",
+    "event": "Speech"
+  },
+  "metrics": {
+    "loadMs": 9741.394999995828,
+    "transcribeMs": 433.97999998927116,
+    "totalMs": 11947.75,
+    "rtf": 0.023190125039503646,
+    "rtfx": 43.12180284912357,
+    "preprocessMs": 68.935,
+    "encodeMs": 165.39,
+    "decodeMs": 178.835,
+    "nativeTotalMs": 413.245,
+    "encoderFrameCount": 316,
+    "emittedTokenCount": 59
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 9741ms"
+  ]
+}

@@ -21,6 +21,7 @@ export type {
 export {
   CtcDecoder,
   argmaxAndSelectedLogProbs,
+  argmaxAndSelectedLogProbsFp16,
   buildSentenceTimings,
   buildUtteranceTiming,
   buildWordsFromCharSpans,
