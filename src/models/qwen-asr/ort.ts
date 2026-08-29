@@ -72,6 +72,8 @@ export interface ResolvedQwen3AsrArtifacts {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  readonly decoderGraphCapture?: boolean;
+  readonly decoderFreeDimensionOverrides?: Record<string, number>;
 }
 
 const DEFAULT_REPO_REVISION = 'main';
@@ -151,6 +153,8 @@ function resolveHuggingFaceArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    decoderGraphCapture: source.decoderGraphCapture,
+    decoderFreeDimensionOverrides: source.decoderFreeDimensionOverrides,
   };
 }
 
@@ -171,6 +175,8 @@ function resolveDirectArtifacts(
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
+    decoderGraphCapture: source.decoderGraphCapture,
+    decoderFreeDimensionOverrides: source.decoderFreeDimensionOverrides,
   };
 }
 
@@ -253,6 +259,10 @@ export async function createQwenOrtSession(
     readonly preferredOutputLocation?:
       | QwenCacheOutputLocation
       | Record<string, QwenCacheOutputLocation>;
+    /** Diagnostic-only WebGPU graph-capture request. */
+    readonly enableGraphCapture?: boolean;
+    /** Optional symbolic-dimension specialization for graph capture probes. */
+    readonly freeDimensionOverrides?: Record<string, number>;
     readonly lowMemory?: boolean;
     readonly signal?: { readonly aborted: boolean } | null;
   },
@@ -285,6 +295,12 @@ export async function createQwenOrtSession(
           )
       : options.preferredOutputLocation;
   }
+  if (options.enableGraphCapture && options.backendId === 'webgpu') {
+    sessionOptions.enableGraphCapture = true;
+  }
+  if (options.freeDimensionOverrides) {
+    sessionOptions.freeDimensionOverrides = options.freeDimensionOverrides;
+  }
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
     if (/^file:/i.test(modelUrl)) modelUrl = fileURLToPath(modelUrl);
@@ -309,4 +325,39 @@ export async function createQwenOrtSession(
     options.signal,
     (session) => releaseQwenOrtSession(session),
   );
+}
+
+function isQwenGraphCaptureUnavailableError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return message.includes('graph capture') || message.includes('enablegraphcapture');
+}
+
+/**
+ * Create a Qwen session with an opt-in graph-capture request and a narrow
+ * compatibility fallback. Dynamic decoder cache dimensions commonly prevent
+ * capture; retrying without it keeps the diagnostic probe from breaking a
+ * working model while preserving the original error for unrelated failures.
+ */
+export async function createQwenOrtSessionWithGraphCaptureFallback(
+  ort: QwenOrtModuleLike,
+  url: string,
+  options: Parameters<typeof createQwenOrtSession>[2],
+  onFallback?: (error: unknown) => void,
+): Promise<QwenOrtSessionLike> {
+  try {
+    return await createQwenOrtSession(ort, url, options);
+  } catch (error) {
+    if (
+      !options.enableGraphCapture ||
+      options.backendId !== 'webgpu' ||
+      !isQwenGraphCaptureUnavailableError(error)
+    ) {
+      throw error;
+    }
+    onFallback?.(error);
+    return createQwenOrtSession(ort, url, {
+      ...options,
+      enableGraphCapture: false,
+    });
+  }
 }

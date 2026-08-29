@@ -16,6 +16,7 @@ import { fetchModelFiles } from '../../runtime/huggingface.js';
 import { createExperimentalArtifactMissingError } from '../../runtime/experimental-families.js';
 import {
   createQwenOrtSession,
+  createQwenOrtSessionWithGraphCaptureFallback,
   initQwenOrt,
   releaseQwenOrtSession,
   resolveQwen3AsrArtifacts,
@@ -96,6 +97,11 @@ function hasListedRepoFile(files: readonly string[], filename: string): boolean 
 
 function isMissingAssetError(error: unknown): boolean {
   return error instanceof Error && (/\b404\b/.test(error.message) || /not found/i.test(error.message));
+}
+
+function formatQwenSessionError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.length > 240 ? `${message.slice(0, 237)}...` : message;
 }
 
 function float32ToFloat16Bits(input: Float32Array): Uint16Array {
@@ -475,6 +481,16 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
         recoverable: true,
       });
     }
+    const decoderGraphCapture = resolved.decoderGraphCapture === true
+      && resolved.decoderBackendForOrt === 'webgpu';
+    const onDecoderGraphCaptureFallback = (error: unknown): void => {
+      warnings.push({
+        code: 'qwen3-asr.decoder-graph-capture-fallback',
+        message:
+          `Qwen decoder graph capture was unavailable; using the regular decoder session (${formatQwenSessionError(error)}).`,
+        recoverable: true,
+      });
+    };
     const sequentialSessions = resolved.ortBackend === 'wasm'
       && isStackedKv(this.config)
       && !this.dependencies.encoderSession
@@ -505,15 +521,22 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
         sequentialSessions: true,
       };
     }
-    const decoderSession = this.dependencies.decoderSession ?? await createQwenOrtSession(ort, artifacts.decoderUrl, {
-      backendId: resolved.decoderBackendForOrt,
-      enableProfiling: resolved.enableProfiling,
-      externalDataUrl: artifacts.decoderPrefillDataUrl ?? artifacts.decoderDataUrl,
-      externalDataPath: artifacts.decoderPrefillDataPath ?? artifacts.decoderDataPath,
-      preferredOutputLocation: this.config.graph.kvLayout === 'stacked'
-        ? { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation }
-        : outputLocationMap(this.config, cacheLocation),
-    });
+    const decoderSession = this.dependencies.decoderSession ?? await createQwenOrtSessionWithGraphCaptureFallback(
+      ort,
+      artifacts.decoderUrl,
+      {
+        backendId: resolved.decoderBackendForOrt,
+        enableProfiling: resolved.enableProfiling,
+        externalDataUrl: artifacts.decoderPrefillDataUrl ?? artifacts.decoderDataUrl,
+        externalDataPath: artifacts.decoderPrefillDataPath ?? artifacts.decoderDataPath,
+        preferredOutputLocation: this.config.graph.kvLayout === 'stacked'
+          ? { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation }
+          : outputLocationMap(this.config, cacheLocation),
+        enableGraphCapture: decoderGraphCapture,
+        freeDimensionOverrides: resolved.decoderFreeDimensionOverrides,
+      },
+      decoderGraphCapture ? onDecoderGraphCaptureFallback : undefined,
+    );
     if (this.disposed) {
       releaseQwenOrtSession(encoderSession);
       releaseQwenOrtSession(decoderSession);
@@ -521,13 +544,20 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     }
     const decoderStepSession = this.dependencies.decoderStepSession
       ?? (artifacts.decoderStepUrl
-        ? await createQwenOrtSession(ort, artifacts.decoderStepUrl, {
-          backendId: resolved.decoderBackendForOrt,
-          enableProfiling: resolved.enableProfiling,
-          externalDataUrl: artifacts.decoderStepDataUrl,
-          externalDataPath: artifacts.decoderStepDataPath,
-          preferredOutputLocation: { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation },
-        })
+        ? await createQwenOrtSessionWithGraphCaptureFallback(
+          ort,
+          artifacts.decoderStepUrl,
+          {
+            backendId: resolved.decoderBackendForOrt,
+            enableProfiling: resolved.enableProfiling,
+            externalDataUrl: artifacts.decoderStepDataUrl,
+            externalDataPath: artifacts.decoderStepDataPath,
+            preferredOutputLocation: { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation },
+            enableGraphCapture: decoderGraphCapture,
+            freeDimensionOverrides: resolved.decoderFreeDimensionOverrides,
+          },
+          decoderGraphCapture ? onDecoderGraphCaptureFallback : undefined,
+        )
         : undefined);
     if (this.disposed) {
       releaseQwenOrtSession(encoderSession);
@@ -572,19 +602,37 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       readonly externalDataPath?: string;
       readonly preferredOutputLocation?: QwenCacheOutputLocation | Record<string, QwenCacheOutputLocation>;
       readonly encoder?: boolean;
+      readonly enableGraphCapture?: boolean;
+      readonly freeDimensionOverrides?: Record<string, number>;
     },
   ): Promise<QwenOrtSessionLike> {
     if (this.disposed) {
       throw new Error(`Qwen3-ASR executor is disposed for "${this.modelId}".`);
     }
-    const session = await createQwenOrtSession(loaded.ort, url, {
-      backendId: extras.encoder ? loaded.resolved.encoderBackendForOrt : loaded.resolved.decoderBackendForOrt,
-      enableProfiling: loaded.resolved.enableProfiling,
-      externalDataUrl: extras.externalDataUrl,
-      externalDataPath: extras.externalDataPath,
-      preferredOutputLocation: extras.preferredOutputLocation,
-      lowMemory: loaded.sequentialSessions,
-    });
+    const graphCaptureRequested = extras.enableGraphCapture === true
+      && loaded.resolved.decoderBackendForOrt === 'webgpu';
+    const session = await createQwenOrtSessionWithGraphCaptureFallback(
+      loaded.ort,
+      url,
+      {
+        backendId: extras.encoder ? loaded.resolved.encoderBackendForOrt : loaded.resolved.decoderBackendForOrt,
+        enableProfiling: loaded.resolved.enableProfiling,
+        externalDataUrl: extras.externalDataUrl,
+        externalDataPath: extras.externalDataPath,
+        preferredOutputLocation: extras.preferredOutputLocation,
+        enableGraphCapture: graphCaptureRequested,
+        freeDimensionOverrides: extras.freeDimensionOverrides,
+        lowMemory: loaded.sequentialSessions,
+      },
+      graphCaptureRequested
+        ? (error) => loaded.warnings.push({
+          code: 'qwen3-asr.decoder-graph-capture-fallback',
+          message:
+            `Qwen decoder graph capture was unavailable; using the regular decoder session (${formatQwenSessionError(error)}).`,
+          recoverable: true,
+        })
+        : undefined,
+    );
     if (this.disposed) {
       releaseQwenOrtSession(session);
       throw new Error(`Qwen3-ASR executor was disposed during load for "${this.modelId}".`);
@@ -617,6 +665,8 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       preferredOutputLocation: this.config.graph.kvLayout === 'stacked'
         ? { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation }
         : outputLocationMap(this.config, cacheLocation),
+      enableGraphCapture: loaded.resolved.decoderGraphCapture,
+      freeDimensionOverrides: loaded.resolved.decoderFreeDimensionOverrides,
     });
     return loaded.decoderSession;
   }
@@ -629,6 +679,8 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       externalDataUrl: loaded.resolved.artifacts.decoderStepDataUrl,
       externalDataPath: loaded.resolved.artifacts.decoderStepDataPath,
       preferredOutputLocation: { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation },
+      enableGraphCapture: loaded.resolved.decoderGraphCapture,
+      freeDimensionOverrides: loaded.resolved.decoderFreeDimensionOverrides,
     });
     return loaded.decoderStepSession;
   }

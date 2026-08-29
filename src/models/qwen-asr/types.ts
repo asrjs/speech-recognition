@@ -91,6 +91,10 @@ export interface Qwen3AsrHuggingFaceSource {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  /** Diagnostic-only WebGPU graph-capture request for decoder sessions. */
+  readonly decoderGraphCapture?: boolean;
+  /** Optional symbolic-dimension specialization paired with graph capture. */
+  readonly decoderFreeDimensionOverrides?: Record<string, number>;
 }
 
 export interface Qwen3AsrDirectArtifactSource {
@@ -102,6 +106,10 @@ export interface Qwen3AsrDirectArtifactSource {
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  /** Diagnostic-only WebGPU graph-capture request for decoder sessions. */
+  readonly decoderGraphCapture?: boolean;
+  /** Optional symbolic-dimension specialization paired with graph capture. */
+  readonly decoderFreeDimensionOverrides?: Record<string, number>;
 }
 
 export type Qwen3AsrArtifactSource =

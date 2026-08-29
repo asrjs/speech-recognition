@@ -11,6 +11,7 @@ import {
   Qwen3AsrTokenizer,
   createQwen3AsrModelFamily,
   createQwenOrtSession,
+  createQwenOrtSessionWithGraphCaptureFallback,
   getQwenAudioTokenCount,
   parseOfficialQwen3AsrConfig,
   parseQwen3AsrConfig,
@@ -352,6 +353,48 @@ describe('Qwen3-ASR official stacked artifact defaults', () => {
       resolveQwen3AsrArtifacts({ ...source, cacheOutputLocation: 'cpu' }, 'webgpu')
         .cacheOutputLocation,
     ).toBe('cpu');
+  });
+
+  it('preserves decoder graph-capture diagnostics in the resolved source', () => {
+    const artifacts = resolveOfficialQwen3AsrDirectArtifacts({
+      baseUrl: '/qwen3-asr-official',
+    });
+    const resolved = resolveQwen3AsrArtifacts({
+      kind: 'direct',
+      artifacts,
+      decoderGraphCapture: true,
+      decoderFreeDimensionOverrides: { batch: 1 },
+    }, 'webgpu');
+    expect(resolved.decoderGraphCapture).toBe(true);
+    expect(resolved.decoderFreeDimensionOverrides).toEqual({ batch: 1 });
+  });
+
+  it('falls back from an unavailable WebGPU graph-capture request', async () => {
+    const create = vi.fn(async (_url: string, options?: Record<string, unknown>) => {
+      if (options?.enableGraphCapture === true) {
+        throw new Error('This session cannot use the graph capture feature as requested.');
+      }
+      return { run: async () => ({}) };
+    });
+    const ort = {
+      env: { wasm: {} },
+      Tensor: class {},
+      InferenceSession: { create },
+    } as unknown as QwenOrtModuleLike;
+    const onFallback = vi.fn();
+
+    const session = await createQwenOrtSessionWithGraphCaptureFallback(
+      ort,
+      pathToFileURL(path.resolve('package.json')).href,
+      { backendId: 'webgpu', enableGraphCapture: true },
+      onFallback,
+    );
+
+    expect(session).toBeTruthy();
+    expect(create).toHaveBeenCalledTimes(2);
+    expect((create.mock.calls[0]?.[1] as Record<string, unknown>).enableGraphCapture).toBe(true);
+    expect((create.mock.calls[1]?.[1] as Record<string, unknown>).enableGraphCapture).toBeUndefined();
+    expect(onFallback).toHaveBeenCalledOnce();
   });
 
   it('defaults official encoder URLs to the dynamic graph, not static T=1100', () => {
