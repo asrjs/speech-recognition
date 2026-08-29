@@ -297,7 +297,9 @@ GigaAM RNN-T placement and threads matrix (2026-08-29):
   measured 75-131 ms across sessions (17-29% of total). An ONNX/WebGPU
   fbank export mirroring the Parakeet nemo128 pattern is the remaining
   stage lever; an int8/fp16 encoder export (844 MB fp32 today) is the
-  VRAM/size lever.
+  VRAM/size lever. [Update 2026-08-30: the JS fbank now uses the shared
+  radix-5/mixed-radix FFT, so the remaining RNN-T levers are the encoder
+  export (fp16/int8) and decode step cost, not mel math.]
 - Evidence: docs/reports/gigaam-rnnt-placement-threads-matrix-2026-08-29.md
   and tools/data/results/gigaam/v3-rnnt-*.json
 
@@ -827,7 +829,7 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   preprocessing `74.295 ms` (20.42%), encoder `283.050 ms` (77.81%), and
   decode/readback `2.820 ms` (0.78%), with exact JFK parity in every run.
   This rejects CTC tensor-copy/argmax surgery as a high-value target for this
-  family; future work should target the mel path and encoder graph/provider
+  family; future work should target the encoder graph/provider
   behavior. Evidence: `docs/reports/gigaam-ctc-webgpu-phase-profile-2026-08-29.json`.
 
 - [Probe 2026-08-29] GigaAM RNN-T all-WebGPU session initialization: an
