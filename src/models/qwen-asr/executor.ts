@@ -781,7 +781,13 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
   ): Promise<{
     readonly tokenIds: readonly number[];
     readonly decoderInitMs: number;
+    readonly decoderInitInputMs: number;
+    readonly decoderInitRunMs: number;
+    readonly decoderInitOutputMs: number;
     readonly decoderStepMs: number;
+    readonly decoderStepFeedBuildMs: number;
+    readonly decoderStepRunMs: number;
+    readonly decoderStepOutputMs: number;
     readonly decoderStepCount: number;
     readonly kvLocation: QwenCacheOutputLocation;
   }> {
@@ -790,6 +796,8 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     throwIfDecodeAborted(options.signal);
     if (loaded.sequentialSessions) this.releaseLoadedSession(loaded, 'encoder');
     const prefillSession = await this.ensurePrefillSession(loaded, cacheLocation);
+    const decoderInitStart = nowMs();
+    const decoderInitInputStart = nowMs();
     const aligned = new Float32Array(prompt.inputIds.length * graph.hiddenSize);
     for (let index = 0; index < prompt.audioTokenPositions.length; index += 1) {
       const sourceOffset = index * graph.hiddenSize;
@@ -808,27 +816,39 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       ),
       position_ids: new loaded.ort.Tensor('int64', positionIds, [1, prompt.inputIds.length]),
     };
+    const decoderInitInputMs = nowMs() - decoderInitInputStart;
     let initOutputs: Record<string, QwenOrtTensorLike> | undefined;
     const tokenIds: number[] = [];
-    const decoderInitStart = nowMs();
     let decoderInitMs = 0;
+    let decoderInitRunMs = 0;
+    let decoderInitOutputMs = 0;
     let pastKeys: QwenOrtTensorLike | undefined;
     let pastValues: QwenOrtTensorLike | undefined;
     let keepPrefillPresent = false;
     try {
+      const initRunStart = nowMs();
       initOutputs = await prefillSession.run(inputs);
+      decoderInitRunMs = nowMs() - initRunStart;
+      const initOutputStart = nowMs();
       const initLogits = initOutputs.logits;
       if (!initLogits) throw new Error('Qwen official prefill did not return logits.');
       const firstToken = argmaxLastRow(await copyQwenLogits(initLogits), graph.vocabularySize);
       pastKeys = initOutputs.present_keys;
       pastValues = initOutputs.present_values;
       if (!pastKeys || !pastValues) throw new Error('Qwen official prefill did not return present_keys/present_values.');
+      decoderInitOutputMs = nowMs() - initOutputStart;
       decoderInitMs = nowMs() - decoderInitStart;
       if (graph.eosTokenIds.includes(firstToken)) {
         return {
           tokenIds,
           decoderInitMs: roundMetric(decoderInitMs, 3),
+          decoderInitInputMs: roundMetric(decoderInitInputMs, 3),
+          decoderInitRunMs: roundMetric(decoderInitRunMs, 3),
+          decoderInitOutputMs: roundMetric(decoderInitOutputMs, 3),
           decoderStepMs: 0,
+          decoderStepFeedBuildMs: 0,
+          decoderStepRunMs: 0,
+          decoderStepOutputMs: 0,
           decoderStepCount: 0,
           kvLocation: cacheLocation,
         };
@@ -848,6 +868,9 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     }
 
     let decoderStepMs = 0;
+    let decoderStepFeedBuildMs = 0;
+    let decoderStepRunMs = 0;
+    let decoderStepOutputMs = 0;
     let decoderStepCount = 0;
     const maxNewTokens = Math.max(1, Math.floor(options.maxNewTokens ?? 512));
     let seq = prompt.inputIds.length;
@@ -857,6 +880,7 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       const stepSession = await this.ensureStepSession(loaded, cacheLocation);
       while (tokenIds.length < maxNewTokens) {
         throwIfDecodeAborted(options.signal);
+        const feedBuildStart = nowMs();
         const lastToken = tokenIds[tokenIds.length - 1] as number;
         const stepInputs: Record<string, unknown> = {
           input_ids: new loaded.ort.Tensor('int64', toInt64([lastToken]), [1, 1]),
@@ -866,14 +890,17 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
         };
         let stepOutputs: Record<string, QwenOrtTensorLike> | undefined;
         const stepStart = nowMs();
+        decoderStepFeedBuildMs += stepStart - feedBuildStart;
         let transferred = false;
         try {
+          const runStart = nowMs();
           stepOutputs = await stepSession.run(stepInputs);
+          decoderStepRunMs += nowMs() - runStart;
+          const outputStart = nowMs();
           const logits = stepOutputs.logits;
           if (!logits) throw new Error('Qwen official step did not return logits.');
           const nextToken = argmaxLastRow(await copyQwenLogits(logits), graph.vocabularySize);
           decoderStepCount += 1;
-          decoderStepMs += nowMs() - stepStart;
           const nextKeys = stepOutputs.present_keys;
           const nextValues = stepOutputs.present_values;
           if (!nextKeys || !nextValues) throw new Error('Qwen official step did not return present_keys/present_values.');
@@ -882,6 +909,8 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
           pastKeys = nextKeys;
           pastValues = nextValues;
           transferred = true;
+          decoderStepOutputMs += nowMs() - outputStart;
+          decoderStepMs += nowMs() - stepStart;
           if (graph.eosTokenIds.includes(nextToken)) break;
           tokenIds.push(nextToken);
           seq += 1;
@@ -903,7 +932,13 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     return {
       tokenIds,
       decoderInitMs: roundMetric(decoderInitMs, 3),
+      decoderInitInputMs: roundMetric(decoderInitInputMs, 3),
+      decoderInitRunMs: roundMetric(decoderInitRunMs, 3),
+      decoderInitOutputMs: roundMetric(decoderInitOutputMs, 3),
       decoderStepMs: roundMetric(decoderStepMs, 3),
+      decoderStepFeedBuildMs: roundMetric(decoderStepFeedBuildMs, 3),
+      decoderStepRunMs: roundMetric(decoderStepRunMs, 3),
+      decoderStepOutputMs: roundMetric(decoderStepOutputMs, 3),
       decoderStepCount,
       kvLocation: cacheLocation,
     };
@@ -917,7 +952,13 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
   ): Promise<{
     readonly tokenIds: readonly number[];
     readonly decoderInitMs: number;
+    readonly decoderInitInputMs: number;
+    readonly decoderInitRunMs: number;
+    readonly decoderInitOutputMs: number;
     readonly decoderStepMs: number;
+    readonly decoderStepFeedBuildMs: number;
+    readonly decoderStepRunMs: number;
+    readonly decoderStepOutputMs: number;
     readonly decoderStepCount: number;
     readonly kvLocation: QwenCacheOutputLocation;
   }> {
@@ -927,6 +968,8 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     const cacheLocation: QwenCacheOutputLocation = loaded.resolved.decoderBackendForOrt === 'webgpu'
       ? requestedCacheLocation
       : 'cpu';
+    const decoderInitStart = nowMs();
+    const decoderInitInputStart = nowMs();
     const inputs: Record<string, unknown> = {
       input_ids: new loaded.ort.Tensor('int32', prompt.inputIds, [1, prompt.inputIds.length]),
       audio_embeddings: new loaded.ort.Tensor(
@@ -943,23 +986,35 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       position_ids: new loaded.ort.Tensor('int32', prompt.positionIds, [1, prompt.inputIds.length]),
       ...this.createPastSeed(loaded.ort),
     };
+    const decoderInitInputMs = nowMs() - decoderInitInputStart;
     let initOutputs: Record<string, QwenOrtTensorLike> | undefined;
     let past: Record<string, QwenOrtTensorLike> = {};
     const tokenIds: number[] = [];
-    const decoderInitStart = nowMs();
     let decoderInitMs = 0;
+    let decoderInitRunMs = 0;
+    let decoderInitOutputMs = 0;
     let keepPrefillPresent = false;
     try {
+      const initRunStart = nowMs();
       initOutputs = await loaded.decoderSession!.run(inputs);
+      decoderInitRunMs = nowMs() - initRunStart;
+      const initOutputStart = nowMs();
       const initLogits = initOutputs.logits;
       if (!initLogits) throw new Error('Qwen decoder did not return logits during prefill.');
       const firstToken = argmaxLastRow(await copyQwenLogits(initLogits), graph.vocabularySize);
+      decoderInitOutputMs = nowMs() - initOutputStart;
       if (graph.eosTokenIds.includes(firstToken)) {
         decoderInitMs = nowMs() - decoderInitStart;
         return {
           tokenIds,
           decoderInitMs: roundMetric(decoderInitMs, 3),
+          decoderInitInputMs: roundMetric(decoderInitInputMs, 3),
+          decoderInitRunMs: roundMetric(decoderInitRunMs, 3),
+          decoderInitOutputMs: roundMetric(decoderInitOutputMs, 3),
           decoderStepMs: 0,
+          decoderStepFeedBuildMs: 0,
+          decoderStepRunMs: 0,
+          decoderStepOutputMs: 0,
           decoderStepCount: 0,
           kvLocation: cacheLocation,
         };
@@ -987,12 +1042,16 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     }
 
     let decoderStepMs = 0;
+    let decoderStepFeedBuildMs = 0;
+    let decoderStepRunMs = 0;
+    let decoderStepOutputMs = 0;
     let decoderStepCount = 0;
     const maxNewTokens = Math.max(1, Math.floor(options.maxNewTokens ?? 512));
     try {
       throwIfDecodeAborted(options.signal);
       while (tokenIds.length < maxNewTokens) {
         throwIfDecodeAborted(options.signal);
+        const feedBuildStart = nowMs();
         const representativePast = past['past.0.key'];
         const pastSequenceLength = representativePast?.dims[2] ?? graph.pastSeedLength + prompt.inputIds.length;
         const attention = new Float32Array(pastSequenceLength + 1);
@@ -1006,18 +1065,19 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
           position_ids: new loaded.ort.Tensor('int32', Int32Array.of(pastSequenceLength), [1, 1]),
           ...past,
         };
-        let stepOutputs: Record<string, QwenOrtTensorLike> | undefined;
         const stepStart = nowMs();
+        decoderStepFeedBuildMs += stepStart - feedBuildStart;
+        let stepOutputs: Record<string, QwenOrtTensorLike> | undefined;
         let transferred = false;
         try {
+          const runStart = nowMs();
           stepOutputs = await loaded.decoderSession!.run(stepInputs);
+          decoderStepRunMs += nowMs() - runStart;
+          const outputStart = nowMs();
           const logits = stepOutputs.logits;
           if (!logits) throw new Error('Qwen decoder did not return logits during autoregressive decoding.');
           const nextToken = argmaxLastRow(await copyQwenLogits(logits), graph.vocabularySize);
           decoderStepCount += 1;
-          decoderStepMs += nowMs() - stepStart;
-          if (graph.eosTokenIds.includes(nextToken)) break;
-          tokenIds.push(nextToken);
           const nextPast: Record<string, QwenOrtTensorLike> = {};
           for (let layer = 0; layer < graph.numLayers; layer += 1) {
             const key = stepOutputs[`present.${layer}.key`];
@@ -1029,6 +1089,10 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
           disposeTensorRecord(past);
           past = nextPast;
           transferred = true;
+          decoderStepOutputMs += nowMs() - outputStart;
+          decoderStepMs += nowMs() - stepStart;
+          if (graph.eosTokenIds.includes(nextToken)) break;
+          tokenIds.push(nextToken);
         } finally {
           for (const [name, tensor] of Object.entries(stepInputs)) {
             if (!name.startsWith('past.')) {
@@ -1049,7 +1113,13 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     return {
       tokenIds,
       decoderInitMs: roundMetric(decoderInitMs, 3),
+      decoderInitInputMs: roundMetric(decoderInitInputMs, 3),
+      decoderInitRunMs: roundMetric(decoderInitRunMs, 3),
+      decoderInitOutputMs: roundMetric(decoderInitOutputMs, 3),
       decoderStepMs: roundMetric(decoderStepMs, 3),
+      decoderStepFeedBuildMs: roundMetric(decoderStepFeedBuildMs, 3),
+      decoderStepRunMs: roundMetric(decoderStepRunMs, 3),
+      decoderStepOutputMs: roundMetric(decoderStepOutputMs, 3),
       decoderStepCount,
       kvLocation: cacheLocation,
     };
@@ -1126,7 +1196,13 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       encodeMs: encoded.encodeMs,
       decodeMs: roundMetric(decoded.decoderInitMs + decoded.decoderStepMs, 3),
       decoderInitMs: decoded.decoderInitMs,
+      decoderInitInputMs: decoded.decoderInitInputMs,
+      decoderInitRunMs: decoded.decoderInitRunMs,
+      decoderInitOutputMs: decoded.decoderInitOutputMs,
       decoderStepMs: decoded.decoderStepMs,
+      decoderStepFeedBuildMs: decoded.decoderStepFeedBuildMs,
+      decoderStepRunMs: decoded.decoderStepRunMs,
+      decoderStepOutputMs: decoded.decoderStepOutputMs,
       decoderStepAvgMs: decoded.decoderStepCount > 0
         ? roundMetric(decoded.decoderStepMs / decoded.decoderStepCount, 3)
         : undefined,
