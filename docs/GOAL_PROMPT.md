@@ -378,7 +378,24 @@ Cross-family optimization playbook (2026-08-30):
   57.6 ms is environment overhead, not a code lever. Recorded to prevent
   re-investigation.
 - Evidence: docs/OPTIMIZATION_PLAYBOOK.md and
-  tools/scripts/benchmark-sensevoice-preprocess.mjs
+ tools/scripts/benchmark-sensevoice-preprocess.mjs
+
+GigaAM RNN-T encoder fp16 quantization probe (2026-08-30):
+
+- Produced a local fp16 encoder (442.8 MB vs 844 MB fp32) with
+  onnxruntime.transformers.float16 (keep_io_types=True) via the
+  reproducible tool tools/scripts/convert_gigaam_rnnt_encoder_fp16.py.
+- Numerical parity on real example.wav features (library preprocessor,
+  ORT CPU): cosine 0.9999987, max abs diff 2.3e-3.
+- Browser end-to-end: exact Russian oracle parity on both encoders; fp16
+  load is ~34% faster (8.0 -> 5.3 s) but encode is ~2x slower on WebGPU
+  (70.1 -> 130.7 ms), net 28.7x -> 27.4x RTFx.
+- Verdict: fp16 is a valid size/load/VRAM alternative, not a speed win;
+  fp32 stays the default. The harness runner now accepts --encoder-file
+  for alternate-artifact probes.
+- Evidence: docs/reports/gigaam-rnnt-encoder-fp16-probe-2026-08-30.md and
+  tools/data/results/gigaam/v3-rnnt-fp16-enc-gpu-decwasm-librivox.json
+
 
 
 
