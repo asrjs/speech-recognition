@@ -216,6 +216,31 @@ Parakeet TDT decoder quantization and v2/v3 matrix (2026-08-29):
 - Evidence: docs/reports/parakeet-tdt-decoder-quantization-matrix-2026-08-29.md
   and tools/data/results/nemo-tdt/parakeet-tdt-v*-librivox-18s.json
 
+Parakeet TDT clip-length scaling and v2/v3 decoder gap (2026-08-29):
+
+- A 38.04 s synthetic throughput fixture (LibriVox clip doubled with a
+  0.6 s silence gap, oracle disabled) shows RTFx does not grow with clip
+  length in this range: v3 int8 hybrid measures 35.8x on 38 s versus 37.2x
+  on 18.7 s. Encode and decode both scale linearly; fixed overhead is
+  already small.
+- v2 reproduces the historical headline band with the current library:
+  55.4x RTFx on the 38 s clip (696.3 ms median) with the same hybrid
+  composition. There is no library regression behind the old 45-90x
+  memories.
+- The entire v2/v3 gap is the decoder graph: encoders are identical
+  (~280 ms), step counts match (202 vs 203), but per-step decode cost is
+  ~1.47 ms (v2) vs ~3.48 ms (v3) - a 2.4x heavier step - and v3 emits more
+  tokens for the same audio (182 vs 153). The v3 decoder (vocabulary
+  projection size, GPU-state placement, step batching) is the next
+  model-specific optimization target with the highest measured leverage.
+- Structural root cause: the two decoder_joint graphs are otherwise
+  identical (2x LSTM(640) prednet, same ops and states); the gap is the
+  vocabulary - v2 projects to 1,030 classes, v3 to 8,198 (~8.5M extra
+  parameters in embedding + joint MatMul). This is intrinsic to v3's
+  8192-class SentencePiece vocabulary, not a graph defect. int8 WASM
+  (~36x) is near this graph's practical ceiling here; the remaining
+  high-leverage lever is GPU-state placement (29-41% decoder-only win,+  gated on the ORT disposal lifecycle fix and second-adapter soak).
+
 - Experimental family descriptors are clone-safe, and all model families now
   share session release, abort, and dispose coverage; disposing a model no
   longer double-releases ORT sessions during `runtime.dispose()`
