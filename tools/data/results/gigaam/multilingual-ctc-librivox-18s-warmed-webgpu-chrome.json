@@ -1,0 +1,78 @@
+{
+  "preset": "gigaam-ctc-fp16-webgpu",
+  "timestamp": "2026-08-29T17:30:36.944Z",
+  "status": "pass",
+  "transcript": " ",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": null,
+  "qualityOracle": "none",
+  "transcriptAvailable": false,
+  "audio": {
+    "audioUrl": "/parakeet-audio/librivox.org.wav",
+    "sourceDurationSec": 18.714,
+    "requestedClipSec": 18.714,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 18.714,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 711.0049999952316,
+        "rtfx": 26.5167
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 711.0049999952316,
+      "rtfx": 26.5167
+    }
+  ],
+  "runMetrics": [
+    {
+      "run": 1,
+      "transcribeMs": 440.98499999940395,
+      "rtfx": 42.706
+    },
+    {
+      "run": 2,
+      "transcribeMs": 440.7749999910593,
+      "rtfx": 42.7416
+    },
+    {
+      "run": 3,
+      "transcribeMs": 408.0600000023842,
+      "rtfx": 46.1698
+    }
+  ],
+  "batch": false,
+  "batchSize": 1,
+  "webgpu": true,
+  "backend": "webgpu",
+  "encoderFolder": "multilingual-ctc-fp16",
+  "decoderFolder": "ctc",
+  "tokens": [],
+  "metrics": {
+    "loadMs": 7235.42499999702,
+    "transcribeMs": 440.7749999910593,
+    "totalMs": 9711.469999998808,
+    "rtf": 0.023553222186120517,
+    "rtfx": 42.45703590353263,
+    "preprocessMs": 220.885,
+    "encodeMs": 179.865,
+    "decodeMs": 0.62
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 7235ms"
+  ]
+}
