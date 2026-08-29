@@ -56,3 +56,20 @@ result is
 
 This playbook captures a runtime-entry correction and a placement measurement;
 it does not imply that every ORT bundle or every model has the same failure.
+
+## Graph-capture boundary
+
+Graph capture is a separate, opt-in experiment. Request it only for the exact
+WebGPU decoder/encoder session under test and keep a fallback that retries the
+same session without capture when ORT reports that graph nodes were not fully
+partitioned. Measure session creation independently from warmed inference;
+capture can add a large cold-start cost even when the fallback is correct.
+
+The official Qwen3-ASR stacked decoder is a concrete negative control on ORT
+Web 1.29.0: both prefill and one-token sessions rejected capture because the
+dynamic `past_len`/`present_len` cache dimensions and/or other nodes were not
+fully assigned to `WebGpuExecutionProvider`. The fallback preserved exact
+tokens, but load increased from `35.74 s` to `62.52 s`, so capture was not
+promoted. Record the warning and keep the regular session as the default until
+a static-shape export or a newer EP passes exact-token, repeated-run, and
+disposal checks.

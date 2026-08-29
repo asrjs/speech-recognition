@@ -107,6 +107,21 @@ Qwen model-specific decoder phase profile (2026-08-29):
   Preserve exact-token, cache-lifecycle, and browser entry-point controls.
   Evidence: `docs/reports/qwen3-asr-webgpu-decoder-profile-2026-08-29.json`.
 
+Qwen decoder graph-capture compatibility probe (2026-08-29):
+
+- Added an opt-in `decoderGraphCapture` source flag plus optional
+  `decoderFreeDimensionOverrides`, with the same narrow retry/fallback
+  boundary used by Whisper. Capture is never enabled by default.
+- Real Chrome/WebGPU ORT 1.29.0 rejected capture for both official stacked
+  decoder sessions because not all nodes partitioned to
+  `WebGpuExecutionProvider`; the fallback preserved exact 30-token parity.
+  Cold load was `62.52 s` with capture requested versus `35.74 s` regular, so
+  this is a measured compatibility rejection, not a speedup.
+- The decoder has dynamic `past_len`/`present_len` dimensions. Revisit only
+  with a static-shape export or a future EP partitioning change, and compare
+  full-cache memory traffic before promotion.
+  Evidence: `docs/reports/qwen3-asr-webgpu-graph-capture-2026-08-29.json`.
+
 Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
 
 - Corrected Chrome A/B confirms the Parakeet v3 GRU decoder graph runs on both
@@ -310,7 +325,8 @@ surfaces. Work items, in order:
    first-run, warm-step latency, memory, finite logits, vocabulary-sliced token
    parity, and disposal against the built-in ORT Web 1.29 path. Do not add the
    plugin as a browser dependency or block library work on its availability.
-4. [In progress] Promote only lifecycle-safe, end-to-end-proven state/cache
+4. [Qwen graph-capture probe completed 2026-08-29; promotion remains open]
+   Promote only lifecycle-safe, end-to-end-proven state/cache
    placement. Track tensor ownership and disposal explicitly; a decoder-only
    GPU-state win is not sufficient for production promotion. For each model,
    use the phase telemetry to select the next bottleneck and record rejected

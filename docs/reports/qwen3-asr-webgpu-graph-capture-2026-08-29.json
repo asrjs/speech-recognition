@@ -1,0 +1,66 @@
+{
+  "schema": "asrjs.qwen.webgpu-graph-capture.v1",
+  "capturedAt": "2026-08-29T13:38:40Z",
+  "libraryCommit": "cabc095",
+  "scope": "Diagnostic graph-capture request for the official Qwen3-ASR stacked prefill and decoder-step sessions",
+  "harness": {
+    "path": "N:\\github\\asrjs\\webgpu-agent-test",
+    "runner": "scripts/run-qwen-webgpu.mjs --graph-capture",
+    "browser": "Chrome headless new",
+    "adapter": {
+      "vendor": "nvidia",
+      "architecture": "blackwell"
+    },
+    "ortWebVersion": "1.29.0",
+    "audio": "/gigaam-audio/jfk-short.wav",
+    "audioDurationSec": 11,
+    "expectedTranscript": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country."
+  },
+  "artifactShapeAudit": {
+    "decoderStep": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-step.onnx",
+    "inputs": {
+      "input_ids": [1, 1],
+      "position_ids": [1, 1],
+      "past_keys": [28, 1, 8, "past_len", 128],
+      "past_values": [28, 1, 8, "past_len", 128]
+    },
+    "outputs": {
+      "logits": ["MatMullogits_dim_0", "MatMullogits_dim_1", 151936],
+      "present_keys": [28, 1, 8, "present_len", 128],
+      "present_values": [28, 1, 8, "present_len", 128]
+    },
+    "dynamicDimensions": ["past_len", "present_len"]
+  },
+  "graphCaptureProbe": {
+    "requested": true,
+    "status": "fallback",
+    "fallbackCount": 2,
+    "fallbackReason": "This session cannot use the graph capture feature as requested by the user as all compute graph nodes have not been partitioned to the WebGpuExecutionProvider.",
+    "loadMs": 62519.905,
+    "transcribeMs": 2520.105,
+    "rtfx": 4.3656,
+    "decoderStepRunMs": 1574.995,
+    "decoderStepCount": 30,
+    "tokenCount": 30,
+    "transcriptExact": true
+  },
+  "regularControl": {
+    "requested": false,
+    "runsMs": [2500.305, 1959.985, 1640.005],
+    "medianTranscribeMs": 1959.985,
+    "medianRtfx": 5.6124,
+    "medianLoadMs": 35737.84,
+    "allRunsExact": true,
+    "sourceResult": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\qwen\\qwen3-asr-0.6b-jfk-short-webgpu-chrome.json"
+  },
+  "decision": {
+    "promotion": "rejected",
+    "reason": "Both the prefill and step sessions rejected graph capture because the dynamic cache dimensions and/or other graph nodes were not fully partitioned to WebGPU. The narrow fallback preserved exact output but added roughly 26.8 seconds to cold load in this probe and produced no demonstrated steady-state win.",
+    "productionDefaultChanged": false,
+    "reusableLesson": "Keep graph capture opt-in, model-specific, and fallback-safe. Measure session creation separately from warmed inference; do not force static KV shapes without a new export and a memory-traffic comparison.",
+    "nextTarget": "Only revisit after an ONNX decoder-step export with static cache shapes or an ORT WebGPU EP release that partitions the complete graph; repeat exact-token and disposal checks before promotion."
+  },
+  "sourceResults": [
+    "N:\\github\\asrjs\\webgpu-agent-test\\_results\\qwen3-asr-0.6b-official-webgpu-2026-08-29T13-38-40-079Z.json"
+  ]
+}

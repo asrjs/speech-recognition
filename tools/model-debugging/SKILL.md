@@ -72,6 +72,12 @@ for the plain package import. See
 [ort-webgpu-entrypoint.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\ort-webgpu-entrypoint.md)
 for the reproducible Qwen 1.29 case.
 
+For graph-capture experiments, keep the request opt-in and model-specific.
+Record the exact partitioning error, dynamic dimensions, cold session-create
+time, warmed inference time, token parity, and disposal result. Retry without
+capture only for a graph-capture partitioning error; never hide unrelated
+session failures or promote a fallback as a capture speedup.
+
 ### 4. Save artifacts
 
 Write results into `tools/data/results/...` whenever the run is useful for:

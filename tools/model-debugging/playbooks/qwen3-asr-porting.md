@@ -14,7 +14,11 @@ Use this for the official `qwen-asr` 0.0.6 chain. Do not start from
 7. Native fp16 decoder (`--dtype float16` PyTorch `.half()`, not `convert_float_to_float16`). onnxruntime-web loads these graphs. Shared `decoder-fp16.onnx.data` ~1.503 GB.
 8. Dynamic encoder ONNX (`audio-encoder-dynamic.onnx`) with T % 100 == 0 after JS pad-to-chunk. T=1050 pad/crop greedy matches JFK; embeddings are not bit-exact vs the official ragged last chunk.
 9. Chrome WebGPU and Chrome sequential WASM via `webgpu-agent-test` `:8765`
-10. Preset only after a product decision; family stays experimental. Dynamic encoder is exported but JFK harness still loads the static T=1100 graph.
+10. Optional decoder graph-capture probe: pass `decoderGraphCapture: true`
+    only for a controlled WebGPU run; keep the fallback warning and record
+    dynamic cache dimensions, cold-load cost, warmed steps, parity, and
+    disposal before drawing a performance conclusion.
+11. Preset only after a product decision; family stays experimental. Dynamic encoder is exported but JFK harness still loads the static T=1100 graph.
 
 ## Failure classes seen
 

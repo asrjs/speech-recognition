@@ -234,3 +234,28 @@ disposal controls around every experiment.
 Machine-readable evidence is in
 `docs/reports/qwen3-asr-webgpu-decoder-profile-2026-08-29.json` and the tracked
 Chrome controls in `tools/data/results/qwen/`.
+
+## Decoder graph-capture probe (2026-08-29)
+
+Qwen direct and Hugging Face artifact sources now accept the diagnostic-only
+`decoderGraphCapture` flag and optional `decoderFreeDimensionOverrides`. The
+session helper mirrors Whisper's narrow behavior: request capture only on
+WebGPU, retry without it only when ORT reports a graph-capture/partitioning
+failure, and surface a recoverable warning. The production default remains
+unchanged.
+
+The real Chrome probe requested capture for both the official prefill and
+decoder-step sessions. ORT Web 1.29.0 rejected both because not all graph nodes
+were partitioned to `WebGpuExecutionProvider`; the fallback then completed with
+exact 30-token parity. The capture request took `62519.905 ms` to load versus
+`35737.84 ms` for the regular control, and the one captured run was only
+`4.3656x` RTFx. This is a compatibility boundary, not a performance win.
+
+The decoder-step artifact also has dynamic `past_len`/`present_len` dimensions,
+so static-shape graph capture would require a new export and a memory-traffic
+comparison. Do not force static KV shapes or enable capture by default until a
+future export or ORT EP partitions the complete graph and exact-token,
+repeated-run, and disposal checks pass.
+
+Machine-readable evidence:
+`docs/reports/qwen3-asr-webgpu-graph-capture-2026-08-29.json`.
