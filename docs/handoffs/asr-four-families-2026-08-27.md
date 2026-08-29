@@ -63,6 +63,17 @@ Sequential session load (encoder → release → prefill → release → step) i
 Fresh Qwen Node WASM fp16: RSS 4317 MB, 33.15 s, RTFx 0.317. Chrome WASM
 fp16: 46.5 s, RTFx 0.24. WebGPU remains the faster browser path.
 
+### GigaAM CTC phase profile (2026-08-29)
+
+The CTC executor now exposes distinct preprocessing, ORT encoder, and
+readback/decode metrics. Three fresh Chrome/NVIDIA Blackwell runs of the
+official fp16 graph had a warm median of `363.755 ms` (`31.8025x` RTFx):
+`74.295 ms` preprocessing (20.42%), `283.050 ms` encoder (77.81%), and
+`2.820 ms` CTC decode/readback (0.78%), with exact JFK parity in all runs.
+The measured bottleneck is the encoder, so CTC tensor-copy/argmax surgery is
+deferred until a graph/provider experiment can move that larger phase.
+Evidence: `docs/reports/gigaam-ctc-webgpu-phase-profile-2026-08-29.json`.
+
 ## Promotion criteria (do not invent presets)
 
 Keep all four **experimental**. A public preset needs:

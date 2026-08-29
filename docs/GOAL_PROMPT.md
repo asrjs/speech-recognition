@@ -506,6 +506,16 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   (all exact), while all-WebGPU and all-WASM medians were 2.64x and 1.98x.
   Repeat across browsers and sessions before changing a preset default.
 
+- [Profile 2026-08-29] GigaAM multilingual CTC now reports separate
+  preprocessing, ORT encoder, and CTC readback/decode phases instead of
+  attributing the entire call to `encodeMs`. On three fresh Chrome/NVIDIA
+  Blackwell runs, the warm median was `363.755 ms` (`31.8025x` RTFx):
+  preprocessing `74.295 ms` (20.42%), encoder `283.050 ms` (77.81%), and
+  decode/readback `2.820 ms` (0.78%), with exact JFK parity in every run.
+  This rejects CTC tensor-copy/argmax surgery as a high-value target for this
+  family; future work should target the mel path and encoder graph/provider
+  behavior. Evidence: `docs/reports/gigaam-ctc-webgpu-phase-profile-2026-08-29.json`.
+
 - [Probe 2026-08-29] GigaAM RNN-T all-WebGPU session initialization: an
   opt-in `parallelSessionInitialization` flag overlaps creation of the
   independent encoder, decoder, and joint graphs. Three fresh Chrome/NVIDIA

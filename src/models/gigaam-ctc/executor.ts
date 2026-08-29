@@ -245,16 +245,20 @@ export class OrtGigaAmCtcExecutor {
     if (!state) throw createExperimentalArtifactMissingError('gigaam-ctc', this.modelId);
     const audio = normalizePcmInput(audioInput).toMono();
     const started = nowMs();
+    const preprocessStarted = nowMs();
     const features = this.preprocessor.process(audio.channels[0] ?? new Float32Array(0));
+    const preprocessMs = nowMs() - preprocessStarted;
     if (features.frameCount <= 0) return { utteranceText: '', isFinal: true, warnings: [...state.warnings] };
     const featureTensor = featuresTensor(state.ort, state.session, features.features, [1, features.featureSize, features.frameCount]);
     const lengthTensor = int64Tensor(state.ort, features.frameCount);
     let outputs: Record<string, OrtTensorLike>;
+    const encodeStarted = nowMs();
     try {
       outputs = await state.session.run({ features: featureTensor, feature_lengths: lengthTensor });
     } finally {
       featureTensor.dispose?.(); lengthTensor.dispose?.();
     }
+    const encodeMs = nowMs() - encodeStarted;
     try {
       return this.decodeOne(
         state,
@@ -264,6 +268,8 @@ export class OrtGigaAmCtcExecutor {
         options,
         started,
         readEncodedLength(outputs, 0),
+        preprocessMs,
+        encodeMs,
       );
     } finally {
       disposeOrtOutputs(outputs);
@@ -280,6 +286,7 @@ export class OrtGigaAmCtcExecutor {
     const state = await this.loadStatePromise;
     if (!state) throw createExperimentalArtifactMissingError('gigaam-ctc', this.modelId);
     const started = nowMs();
+    const preprocessStarted = nowMs();
     const audios = audioInputs.map((input) => normalizePcmInput(input).toMono());
     const prepared = audios.map((audio) => this.preprocessor.process(audio.channels[0] ?? new Float32Array(0)));
     const maxFrames = Math.max(...prepared.map((item) => item.frameCount));
@@ -293,14 +300,17 @@ export class OrtGigaAmCtcExecutor {
         batchFeatures.set(item.features.subarray(sourceOffset, sourceOffset + item.frameCount), targetOffset);
       }
     });
+    const preprocessMs = nowMs() - preprocessStarted;
     const features = featuresTensor(state.ort, state.session, batchFeatures, [audios.length, this.config.nMels, maxFrames]);
     const featureLengths = int64BatchTensor(state.ort, lengths);
     let outputs: Record<string, OrtTensorLike>;
+    const encodeStarted = nowMs();
     try {
       outputs = await state.session.run({ features, feature_lengths: featureLengths });
     } finally {
       features.dispose?.(); featureLengths.dispose?.();
     }
+    const encodeMs = nowMs() - encodeStarted;
     try {
       const logitsTensor = findOutput(outputs);
       const encodedLengths = outputs.encoded_lengths ?? outputs.encoded_len;
@@ -326,7 +336,7 @@ export class OrtGigaAmCtcExecutor {
         );
         const offset = batchIndex * outFrames * vocabSize;
         const logits = allLogits.subarray(offset, offset + itemOutFrames * vocabSize);
-        return this.decodeLogits(state, audio, lengths[batchIndex]!, logits, itemOutFrames, vocabSize, options, started, perItemMs);
+        return this.decodeLogits(state, audio, lengths[batchIndex]!, logits, itemOutFrames, vocabSize, options, started, perItemMs, preprocessMs, encodeMs);
       });
     } finally {
       disposeOrtOutputs(outputs);
@@ -341,13 +351,15 @@ export class OrtGigaAmCtcExecutor {
     options: LasrCtcTranscriptionOptions,
     started: number,
     encodedLength = 0,
+    preprocessMs = 0,
+    encodeMs = 0,
   ): LasrCtcNativeTranscript {
     const dims = [...logitsTensor.dims];
     if (dims.length !== 3 || dims[0] !== 1) throw new Error(`Unexpected GigaAM logits shape: [${dims.join(', ')}].`);
     const vocabSize = dims[2] ?? 0;
     const rawFrames = dims[1] ?? 0;
     const outFrames = encodedLength > 0 ? Math.min(rawFrames, encodedLength) : rawFrames;
-    return this.decodeLogits(state, audio, inputFrames, readTensor(logitsTensor).subarray(0, outFrames * vocabSize), outFrames, vocabSize, options, started, nowMs() - started);
+    return this.decodeLogits(state, audio, inputFrames, readTensor(logitsTensor).subarray(0, outFrames * vocabSize), outFrames, vocabSize, options, started, nowMs() - started, preprocessMs, encodeMs);
   }
 
   private decodeLogits(
@@ -360,7 +372,10 @@ export class OrtGigaAmCtcExecutor {
     options: LasrCtcTranscriptionOptions,
     started: number,
     elapsedMs: number,
+    preprocessMs: number,
+    encodeMs: number,
   ): LasrCtcNativeTranscript {
+    const decodeStarted = nowMs();
     const { frameIds, selectedLogProbs } = argmaxAndSelectedLogProbs(logits, outFrames, vocabSize);
     const { collapsedIds, tokenSpans } = ctcCollapseWithSpans(frameIds, selectedLogProbs, state.tokenizer.blankId);
     const text = state.tokenizer.decode(collapsedIds);
@@ -369,11 +384,12 @@ export class OrtGigaAmCtcExecutor {
     const utterance = buildUtteranceTiming(frameIds, selectedLogProbs, state.tokenizer.blankId, secondsPerFrame);
     const sentences = buildSentenceTimings(text, state.tokenizer, collapsedIds, timedSpans);
     const tokens = timedSpans.map((span, index) => ({ index, id: options.returnTokenIds ? span.tokenId : undefined, text: span.text, startTime: roundTimestampSeconds(span.startTime), endTime: roundTimestampSeconds(span.endTime), confidence: roundMetric(span.confidence, 4), logitIndex: options.returnLogitIndices ? span.startFrame : undefined }));
-    const totalMs = elapsedMs || nowMs() - started;
+    const finished = nowMs();
+    const totalMs = elapsedMs || finished - started;
     return {
       utteranceText: text, isFinal: true, tokens,
       confidence: { utterance: utterance.confidence, tokenAverage: utterance.confidence, wordAverage: sentences.length ? sentences.reduce((sum, item) => sum + item.confidence, 0) / sentences.length : 0 },
-      metrics: { preprocessMs: 0, encodeMs: roundMetric(totalMs), decodeMs: 0, totalMs: roundMetric(totalMs), wallMs: roundMetric(totalMs), audioDurationSec: roundMetric(audio.durationSeconds, 4), rtf: audio.durationSeconds ? roundMetric(totalMs / (audio.durationSeconds * 1000), 4) : 0, rtfx: audio.durationSeconds ? roundMetric(audio.durationSeconds / (totalMs / 1000), 4) : undefined, preprocessorBackend: 'js', encoderFrameCount: outFrames, decodeIterations: outFrames, emittedTokenCount: tokens.length, emittedWordCount: sentences.length },
+      metrics: { preprocessMs: roundMetric(preprocessMs), encodeMs: roundMetric(encodeMs), decodeMs: roundMetric(finished - decodeStarted), totalMs: roundMetric(totalMs), wallMs: roundMetric(totalMs), audioDurationSec: roundMetric(audio.durationSeconds, 4), rtf: audio.durationSeconds ? roundMetric(totalMs / (audio.durationSeconds * 1000), 4) : 0, rtfx: audio.durationSeconds ? roundMetric(audio.durationSeconds / (totalMs / 1000), 4) : undefined, preprocessorBackend: 'js', encoderFrameCount: outFrames, decodeIterations: outFrames, emittedTokenCount: tokens.length, emittedWordCount: sentences.length },
       ctc: { frameIds: options.returnFrameIds ? frameIds : undefined, collapsedIds: options.returnTokenIds ? collapsedIds : undefined, secondsPerFrame, utterance, tokenSpans: timedSpans, sentences },
       warnings: [...state.warnings],
     };

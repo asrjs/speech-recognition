@@ -45,6 +45,11 @@ describe('GigaAM Multilingual CTC contract', () => {
     expect(featureTensor.dims).toEqual([1, 64, 99]);
     expect(lengthTensor.data[0]).toBe(99n);
     expect(result.utteranceText).toBe('a');
+    expect(result.metrics).toMatchObject({
+      preprocessMs: expect.any(Number),
+      encodeMs: expect.any(Number),
+      decodeMs: expect.any(Number),
+    });
   });
 
   it('packs float16 feature feeds when the official graph declares tensor(float16)', async () => {

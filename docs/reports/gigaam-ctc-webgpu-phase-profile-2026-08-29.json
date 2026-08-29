@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-29",
+  "model": "gigaam-multilingual-ctc",
+  "scope": "official fp16 CTC Chrome WebGPU phase attribution",
+  "artifacts": {
+    "model": "multilingual_ctc.onnx",
+    "audio": "jfk-short.wav",
+    "transcriptParity": "exact"
+  },
+  "environment": {
+    "harness": "N:/github/asrjs/webgpu-agent-test/scripts/run-gigaam-webgpu.mjs",
+    "ortWeb": "1.29.0",
+    "browser": "Chrome headless WebGPU",
+    "adapter": "NVIDIA Blackwell"
+  },
+  "method": {
+    "measuredRuns": 3,
+    "freshChromeProcessPerRun": true,
+    "phaseMetrics": "executor metrics now separate JS preprocessing, ORT encoder session.run(), and CTC decode/readback",
+    "note": "The browser profile uses the local official fp16 artifact and exact JFK fixture. Absolute timings include provider/shader-cache variance; phase shares guide prioritization rather than serving as a cross-device benchmark."
+  },
+  "runs": [
+    { "loadMs": 5073.675, "transcribeMs": 349.955, "preprocessMs": 74.295, "encodeMs": 268.665, "decodeMs": 2.67, "textMatch": true },
+    { "loadMs": 5080.535, "transcribeMs": 363.755, "preprocessMs": 73.255, "encodeMs": 283.05, "decodeMs": 3.265, "textMatch": true },
+    { "loadMs": 4892.51, "transcribeMs": 428.42, "preprocessMs": 107.09, "encodeMs": 302.405, "decodeMs": 2.82, "textMatch": true }
+  ],
+  "median": {
+    "loadMs": 5073.675,
+    "transcribeMs": 363.755,
+    "preprocessMs": 74.295,
+    "encodeMs": 283.05,
+    "decodeMs": 2.82,
+    "phaseSharePct": { "preprocess": 20.42, "encode": 77.81, "decode": 0.78 },
+    "allTextMatch": true
+  },
+  "decision": {
+    "status": "DEFER_JS_DECODE_OPTIMIZATION",
+    "reason": "The WebGPU encoder dominates the measured warm transcribe path. CTC readback/argmax is under 1% of wall time, so tensor-copy or decoder-loop surgery is not a high-value target for this family. Prioritize the mel path and encoder graph/provider behavior, then re-profile before changing placement."
+  }
+}
