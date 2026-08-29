@@ -7,6 +7,12 @@ export interface GigaAmRnntBackendSelection {
   readonly encoderBackend?: GigaAmRnntExecutionBackend;
   readonly decoderBackend?: GigaAmRnntExecutionBackend;
   readonly jointBackend?: GigaAmRnntExecutionBackend;
+  /**
+   * Experimental all-WebGPU startup probe. Mixed and WASM compositions stay
+   * serial because ORT may initialize WASM fallback kernels from a WebGPU
+   * session and rejects concurrent provider initialization.
+   */
+  readonly parallelSessionInitialization?: boolean;
 }
 
 export interface ResolvedGigaAmRnntBackends {
@@ -72,6 +78,7 @@ export type GigaAmRnntArtifactSource =
       readonly encoderBackend?: GigaAmRnntExecutionBackend;
       readonly decoderBackend?: GigaAmRnntExecutionBackend;
       readonly jointBackend?: GigaAmRnntExecutionBackend;
+      readonly parallelSessionInitialization?: boolean;
       readonly encoderFilename?: string;
       readonly decoderFilename?: string;
       readonly jointFilename?: string;

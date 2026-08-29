@@ -506,6 +506,18 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   (all exact), while all-WebGPU and all-WASM medians were 2.64x and 1.98x.
   Repeat across browsers and sessions before changing a preset default.
 
+- [Probe 2026-08-29] GigaAM RNN-T all-WebGPU session initialization: an
+  opt-in `parallelSessionInitialization` flag overlaps creation of the
+  independent encoder, decoder, and joint graphs. Three fresh Chrome/NVIDIA
+  Blackwell runs reduced median load from `8,821.245 ms` (serial) to
+  `7,556.690 ms` (parallel, `14.3353%` lower) while preserving exact 91-token
+  parity. The probe is deliberately opt-in: a mixed WebGPU/WASM attempt
+  reproduced ORT's `multiple calls to initWasm()` race, and earlier WebGPU
+  runs reported concurrent EP-creation failures. Mixed and WASM compositions
+  therefore remain serial. Do not promote the flag to a default until another
+  browser/adapter and a longer lifecycle soak pass. Evidence:
+  `docs/reports/gigaam-rnnt-session-init-concurrency-2026-08-29.json`.
+
 ## First inspect the real repository
 
 Before changing anything:

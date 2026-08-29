@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-29",
+  "model": "gigaam-v3-e2e-rnnt",
+  "scope": "all-WebGPU session initialization concurrency probe",
+  "artifacts": {
+    "encoder": "v3_e2e_rnnt_encoder.onnx",
+    "decoder": "v3_e2e_rnnt_decoder.onnx",
+    "joint": "v3_e2e_rnnt_joint.onnx",
+    "audio": "example.wav",
+    "transcriptParity": "exact"
+  },
+  "environment": {
+    "harness": "N:/github/asrjs/webgpu-agent-test/scripts/run-gigaam-rnnt-webgpu.mjs",
+    "ortWeb": "1.29.0",
+    "browser": "Chrome headless WebGPU",
+    "adapter": "NVIDIA Blackwell"
+  },
+  "method": {
+    "warmupRuns": 0,
+    "measuredRuns": 3,
+    "repeatPerBrowserLoad": 1,
+    "control": "serial graph creation (parallelSessionInitialization omitted)",
+    "candidate": "parallel graph creation (parallelSessionInitialization=true)",
+    "note": "The control and candidate were run as fresh Chrome processes against the same local fixture. Browser cache and shader-cache state can affect absolute startup time; treat this as a bounded compatibility/performance probe, not a cross-machine guarantee."
+  },
+  "control": {
+    "loadMs": [9177.38, 8536.12, 8821.245],
+    "transcribeMs": [4463.755, 4360.275, 4204.735],
+    "medianLoadMs": 8821.245,
+    "medianTranscribeMs": 4360.275,
+    "allTextMatch": true
+  },
+  "candidate": {
+    "loadMs": [7912.055, 7556.69, 7328],
+    "transcribeMs": [4273.545, 4224.535, 4226.87],
+    "medianLoadMs": 7556.69,
+    "medianTranscribeMs": 4226.87,
+    "allTextMatch": true
+  },
+  "comparison": {
+    "medianLoadReductionPct": 14.3353,
+    "medianLoadSpeedup": 1.1673,
+    "medianTranscribeChangePct": -3.0596,
+    "decision": "PROMOTE_AS_OPT_IN_EXPERIMENT_ONLY",
+    "reason": "All three candidate sessions created concurrently and preserved the exact 91-token transcript. Keep the flag opt-in: a mixed WebGPU/WASM attempt reproduced ORT's multiple calls to initWasm() failure, and earlier WebGPU runs reported concurrent EP creation errors. No public default change is justified without another browser/adapter and lifecycle soak."
+  }
+}

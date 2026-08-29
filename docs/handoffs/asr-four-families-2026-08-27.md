@@ -127,7 +127,12 @@ Graph I/O:
 - joint `enc` / `dec` → `joint`
 
 Official greedy: blank does **not** update predictor LSTM state. `hi`/`ci` are `[layers, batch, hidden]`.
-WebGPU sessions must load **sequentially** (`another WebGPU EP inference session is being created` if `Promise.all`).
+Mixed WebGPU/WASM sessions must load **sequentially**: ORT can initialize WASM
+fallback kernels from a WebGPU session, and concurrent creation reproduces
+`multiple calls to 'initWasm()' detected`. An opt-in all-WebGPU startup probe
+(`parallelSessionInitialization: true`) overlaps the three independent graph
+loads; keep it experimental because earlier ORT builds also reported
+`another WebGPU EP inference session is being created` for `Promise.all`.
 
 ### Gates (exact greedy text vs official `example.wav`)
 
@@ -141,6 +146,17 @@ WebGPU sessions must load **sequentially** (`another WebGPU EP inference session
 
 Chrome result: `tools/data/results/gigaam/v3-e2e-rnnt-example-webgpu-chrome.json`
 Harness: `N:\github\asrjs\webgpu-agent-test` — `gigaam-rnnt.html`, asset route `/gigaam-rnnt/` + `/gigaam-audio/example.wav`.
+
+### Startup concurrency probe (2026-08-29)
+
+On the same Chrome headless/NVIDIA Blackwell fixture, three fresh all-WebGPU
+loads measured a serial median of `8,821.245 ms` versus an opt-in parallel
+median of `7,556.690 ms` (`14.3353%` lower); all six runs preserved exact
+transcript parity. The transcribe medians were `4,360.275 ms` and `4,226.870
+ms`, respectively, so this is a startup-only signal rather than an
+end-to-end throughput claim. Keep the flag off for mixed/WASM compositions
+and repeat on another adapter before any default change. Structured evidence:
+`docs/reports/gigaam-rnnt-session-init-concurrency-2026-08-29.json`.
 
 Limitation: **Russian-only** punctuation model. No English JFK claim. No preset.
 

@@ -161,25 +161,70 @@ export class OrtGigaAmRnntExecutor {
       externalDataPath: dataPath,
       signal: this.signal,
     });
-    const encoder = await make(encoderUrl, backends.encoderBackend, encoderDataUrl, encoderDataFilename);
-    if (this.disposed) {
-      releaseOrtSession(encoder);
-      throw new Error(`GigaAM RNN-T executor was disposed during load for "${this.modelId}".`);
+    // ORT's WASM provider rejects concurrent initWasm() calls, and a WebGPU
+    // session can still initialize WASM for fallback kernels. Keep mixed and
+    // all-WASM loads serial; only the all-WebGPU composition is safe to probe
+    // concurrently. This preserves the historical hybrid path while making
+    // the fully GPU composition's startup overlap an evidence-backed option.
+    type SessionName = 'encoder' | 'decoder' | 'joint';
+    type SessionSpec = {
+      readonly name: SessionName;
+      readonly backend: 'webgpu' | 'wasm';
+      readonly url: string;
+      readonly dataUrl?: string;
+      readonly dataPath?: string;
+    };
+    const specs: readonly SessionSpec[] = [
+      { name: 'encoder', backend: backends.encoderBackend, url: encoderUrl, dataUrl: encoderDataUrl, dataPath: encoderDataFilename },
+      { name: 'decoder', backend: backends.decoderBackend, url: decoderUrl, dataUrl: decoderDataUrl, dataPath: decoderDataFilename },
+      { name: 'joint', backend: backends.jointBackend, url: jointUrl, dataUrl: jointDataUrl, dataPath: jointDataFilename },
+    ];
+    const created = new Map<SessionName, OrtSessionLike>();
+    if (this.source.parallelSessionInitialization === true && specs.every((spec) => spec.backend === 'webgpu')) {
+      const results = await Promise.allSettled(specs.map((spec) => make(spec.url, spec.backend, spec.dataUrl, spec.dataPath)));
+      const failed = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+      if (failed) {
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') releaseOrtSession(result.value);
+        });
+        throw failed.reason;
+      }
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') created.set(specs[index]!.name, result.value);
+      });
+    } else {
+      try {
+        for (const spec of specs) created.set(spec.name, await make(spec.url, spec.backend, spec.dataUrl, spec.dataPath));
+      } catch (error) {
+        created.forEach((session) => releaseOrtSession(session));
+        throw error;
+      }
     }
-    const decoder = await make(decoderUrl, backends.decoderBackend, decoderDataUrl, decoderDataFilename);
-    if (this.disposed) {
-      releaseOrtSession(encoder);
-      releaseOrtSession(decoder);
-      throw new Error(`GigaAM RNN-T executor was disposed during load for "${this.modelId}".`);
-    }
-    const joint = await make(jointUrl, backends.jointBackend, jointDataUrl, jointDataFilename);
+    const encoder = created.get('encoder')!;
+    const decoder = created.get('decoder')!;
+    const joint = created.get('joint')!;
     if (this.disposed) {
       releaseOrtSession(encoder);
       releaseOrtSession(decoder);
       releaseOrtSession(joint);
       throw new Error(`GigaAM RNN-T executor was disposed during load for "${this.modelId}".`);
     }
-    return { ort, encoder, decoder, joint, tokenizer: await GigaAmRnntTokenizer.fromUrl(tokenizerUrl, this.signal), warnings: [], backends };
+    let tokenizer: GigaAmRnntTokenizer;
+    try {
+      tokenizer = await GigaAmRnntTokenizer.fromUrl(tokenizerUrl, this.signal);
+    } catch (error) {
+      releaseOrtSession(encoder);
+      releaseOrtSession(decoder);
+      releaseOrtSession(joint);
+      throw error;
+    }
+    if (this.disposed) {
+      releaseOrtSession(encoder);
+      releaseOrtSession(decoder);
+      releaseOrtSession(joint);
+      throw new Error(`GigaAM RNN-T executor was disposed during load for "${this.modelId}".`);
+    }
+    return { ort, encoder, decoder, joint, tokenizer, warnings: [], backends };
   }
 
   async ready(): Promise<void> {
