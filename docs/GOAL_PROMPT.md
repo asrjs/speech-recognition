@@ -212,6 +212,12 @@ X-ASR incremental frontend slice (2026-08-29):
   warm-up. This is a frontend-only result, not an end-to-end RTFx claim.
 - Evidence and rerun command: `docs/reports/x-asr-incremental-frontend-benchmark-2026-08-29.json`
   and `npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json`.
+- Real-artifact browser checkpoint also passes: Chrome headless/WebGPU on
+  NVIDIA Blackwell, ORT Web 1.29.0, 55 x 200 ms streaming chunks, and the
+  exact 55-token X-ASR oracle (`9,142.85 ms`, `1.2031x` RTFx). This validates
+  the new frame-boundary behavior in the actual encoder-cache path; it is not
+  a browser before/after speed claim. Evidence:
+  `docs/reports/x-asr-webgpu-streaming-parity-2026-08-29.json`.
 - The executor still retains cumulative audio for stream duration metadata, so
   eliminating that O(n^2) copy/allocation remains a separate measured task.
 

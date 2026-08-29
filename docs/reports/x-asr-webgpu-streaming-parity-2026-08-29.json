@@ -1,0 +1,31 @@
+{
+  "schema": "asrjs.x-asr.webgpu-streaming-parity.v1",
+  "date": "2026-08-29",
+  "status": "pass",
+  "model": "X-ASR-zh-en 160 ms Zipformer2 streaming RNNT",
+  "artifact": "x-asr-160ms encoder/decoder/joiner from the local sibling Chrome harness",
+  "runtime": {
+    "browser": "Chrome headless",
+    "engine": "onnxruntime-web",
+    "ortVersion": "1.29.0",
+    "adapter": "NVIDIA Blackwell",
+    "backend": "WebGPU",
+    "encoderStateOutputLocation": "gpu-buffer",
+    "audioStrategy": "native-rate WAV decode at 16000 Hz",
+    "streamChunkMs": 200,
+    "streamChunkCount": 55
+  },
+  "oracle": {
+    "expected": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+    "transcript": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+    "exact": true
+  },
+  "metrics": {
+    "loadMs": 8472.13,
+    "transcribeMs": 9142.85,
+    "rtfx": 1.20312594
+  },
+  "interpretation": "This is a real-artifact browser streaming parity and end-to-end timing checkpoint for the incremental frontend. It is not a before/after browser speed claim because no pre-change streaming capture was available; the controlled before/after result is the Node CPU frontend microbenchmark.",
+  "harness": "N:/github/asrjs/webgpu-agent-test/scripts/run-xasr-webgpu.mjs --streaming",
+  "sourceResult": "tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu-stream-chrome.json"
+}

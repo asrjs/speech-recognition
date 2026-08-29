@@ -478,6 +478,13 @@ remaining O(n²) copy/allocation is a separate optimization task. Reproduce with
 `npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json`.
 Evidence: `docs/reports/x-asr-incremental-frontend-benchmark-2026-08-29.json`.
 
+The opt-in streaming browser checkpoint also passes on the local real artifact:
+Chrome headless/WebGPU, ORT Web 1.29.0, NVIDIA Blackwell, 55 x 200 ms chunks,
+exact oracle text, 9,142.85 ms (`1.2031x` RTFx). This is a parity and end-to-end
+behavior checkpoint rather than a browser before/after claim. Evidence:
+`docs/reports/x-asr-webgpu-streaming-parity-2026-08-29.json` and
+`tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu-stream-chrome.json`.
+
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.
