@@ -51,7 +51,6 @@ interface LoadedQwenState {
   readonly warnings: TranscriptWarning[];
   readonly sequentialSessions: boolean;
 }
-
 interface PromptTensors {
   readonly inputIds: Int32Array;
   readonly audioEmbeddings: Uint16Array;
@@ -180,6 +179,49 @@ export async function copyQwenLogits(tensor: QwenOrtTensorLike): Promise<Float32
   return new Float32Array(asFloat32(await readTensorData(tensor), tensor.type));
 }
 
+/**
+ * Read the optional graph-computed greedy token without downloading the full
+ * vocabulary logits tensor. Graph-surgery candidates may expose this as an
+ * INT64 (the ONNX ArgMax default) or INT32 scalar; both are accepted, but an
+ * invalid value is surfaced instead of silently falling back to a wrong
+ * transcript.
+ */
+async function readQwenTokenId(tensor: QwenOrtTensorLike): Promise<number> {
+  const data = await readTensorData(tensor);
+  const raw = (data as unknown as ArrayLike<number | bigint>)[0];
+  const token = typeof raw === 'bigint' ? Number(raw) : Number(raw);
+  if (!Number.isSafeInteger(token) || token < 0) {
+    throw new Error(`Qwen graph-computed token id is invalid: ${String(raw)}.`);
+  }
+  return token;
+}
+
+/**
+ * Prefer a model-computed scalar token id and retain the logits path for the
+ * unmodified official graphs and older third-party artifacts.
+ *
+ * @internal Exported for the graph-output contract tests.
+ */
+export async function qwenNextTokenFromOutputs(
+  outputs: Record<string, QwenOrtTensorLike>,
+  vocabularySize: number,
+  missingLogitsMessage: string,
+): Promise<number> {
+  const tokenTensor = outputs.next_token_id;
+  if (tokenTensor) {
+    const token = await readQwenTokenId(tokenTensor);
+    if (token >= vocabularySize) {
+      throw new Error(
+        `Qwen graph-computed token id ${token} exceeds vocabulary size ${vocabularySize}.`,
+      );
+    }
+    return token;
+  }
+  const logits = outputs.logits;
+  if (!logits) throw new Error(missingLogitsMessage);
+  return argmaxLastRow(await copyQwenLogits(logits), vocabularySize);
+}
+
 function disposeTensor(tensor: QwenOrtTensorLike | undefined): void {
   tensor?.dispose?.();
 }
@@ -276,7 +318,12 @@ function outputLocationMap(
   config: Qwen3AsrModelConfig,
   location: QwenCacheOutputLocation,
 ): Record<string, QwenCacheOutputLocation> {
-  const map: Record<string, QwenCacheOutputLocation> = { logits: 'cpu' };
+  const map: Record<string, QwenCacheOutputLocation> = {
+    logits: 'cpu',
+    // Graph-surgery candidates expose a CPU scalar instead of a full logits
+    // download. Keeping this explicit also documents the intended boundary.
+    next_token_id: 'cpu',
+  };
   for (let layer = 0; layer < config.graph.numLayers; layer += 1) {
     map[`present.${layer}.key`] = location;
     map[`present.${layer}.value`] = location;
@@ -530,7 +577,7 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
         externalDataUrl: artifacts.decoderPrefillDataUrl ?? artifacts.decoderDataUrl,
         externalDataPath: artifacts.decoderPrefillDataPath ?? artifacts.decoderDataPath,
         preferredOutputLocation: this.config.graph.kvLayout === 'stacked'
-          ? { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation }
+          ? { logits: 'cpu', next_token_id: 'cpu', present_keys: cacheLocation, present_values: cacheLocation }
           : outputLocationMap(this.config, cacheLocation),
         enableGraphCapture: decoderGraphCapture,
         freeDimensionOverrides: resolved.decoderFreeDimensionOverrides,
@@ -552,7 +599,7 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
             enableProfiling: resolved.enableProfiling,
             externalDataUrl: artifacts.decoderStepDataUrl,
             externalDataPath: artifacts.decoderStepDataPath,
-            preferredOutputLocation: { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation },
+            preferredOutputLocation: { logits: 'cpu', next_token_id: 'cpu', present_keys: cacheLocation, present_values: cacheLocation },
             enableGraphCapture: decoderGraphCapture,
             freeDimensionOverrides: resolved.decoderFreeDimensionOverrides,
           },
@@ -663,7 +710,7 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       externalDataUrl: artifacts.decoderPrefillDataUrl ?? artifacts.decoderDataUrl,
       externalDataPath: artifacts.decoderPrefillDataPath ?? artifacts.decoderDataPath,
       preferredOutputLocation: this.config.graph.kvLayout === 'stacked'
-        ? { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation }
+        ? { logits: 'cpu', next_token_id: 'cpu', present_keys: cacheLocation, present_values: cacheLocation }
         : outputLocationMap(this.config, cacheLocation),
       enableGraphCapture: loaded.resolved.decoderGraphCapture,
       freeDimensionOverrides: loaded.resolved.decoderFreeDimensionOverrides,
@@ -678,7 +725,7 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
     loaded.decoderStepSession = await this.createArtifactSession(loaded, stepUrl, {
       externalDataUrl: loaded.resolved.artifacts.decoderStepDataUrl,
       externalDataPath: loaded.resolved.artifacts.decoderStepDataPath,
-      preferredOutputLocation: { logits: 'cpu', present_keys: cacheLocation, present_values: cacheLocation },
+      preferredOutputLocation: { logits: 'cpu', next_token_id: 'cpu', present_keys: cacheLocation, present_values: cacheLocation },
       enableGraphCapture: loaded.resolved.decoderGraphCapture,
       freeDimensionOverrides: loaded.resolved.decoderFreeDimensionOverrides,
     });
@@ -882,9 +929,11 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       initOutputs = await prefillSession.run(inputs);
       decoderInitRunMs = nowMs() - initRunStart;
       const initOutputStart = nowMs();
-      const initLogits = initOutputs.logits;
-      if (!initLogits) throw new Error('Qwen official prefill did not return logits.');
-      const firstToken = argmaxLastRow(await copyQwenLogits(initLogits), graph.vocabularySize);
+      const firstToken = await qwenNextTokenFromOutputs(
+        initOutputs,
+        graph.vocabularySize,
+        'Qwen official prefill did not return logits or next_token_id.',
+      );
       pastKeys = initOutputs.present_keys;
       pastValues = initOutputs.present_values;
       if (!pastKeys || !pastValues) throw new Error('Qwen official prefill did not return present_keys/present_values.');
@@ -949,9 +998,11 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
           stepOutputs = await stepSession.run(stepInputs);
           decoderStepRunMs += nowMs() - runStart;
           const outputStart = nowMs();
-          const logits = stepOutputs.logits;
-          if (!logits) throw new Error('Qwen official step did not return logits.');
-          const nextToken = argmaxLastRow(await copyQwenLogits(logits), graph.vocabularySize);
+          const nextToken = await qwenNextTokenFromOutputs(
+            stepOutputs,
+            graph.vocabularySize,
+            'Qwen official step did not return logits or next_token_id.',
+          );
           decoderStepCount += 1;
           const nextKeys = stepOutputs.present_keys;
           const nextValues = stepOutputs.present_values;
@@ -1051,9 +1102,11 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       initOutputs = await loaded.decoderSession!.run(inputs);
       decoderInitRunMs = nowMs() - initRunStart;
       const initOutputStart = nowMs();
-      const initLogits = initOutputs.logits;
-      if (!initLogits) throw new Error('Qwen decoder did not return logits during prefill.');
-      const firstToken = argmaxLastRow(await copyQwenLogits(initLogits), graph.vocabularySize);
+      const firstToken = await qwenNextTokenFromOutputs(
+        initOutputs,
+        graph.vocabularySize,
+        'Qwen decoder did not return logits or next_token_id during prefill.',
+      );
       decoderInitOutputMs = nowMs() - initOutputStart;
       if (graph.eosTokenIds.includes(firstToken)) {
         decoderInitMs = nowMs() - decoderInitStart;
@@ -1126,9 +1179,11 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
           stepOutputs = await loaded.decoderSession!.run(stepInputs);
           decoderStepRunMs += nowMs() - runStart;
           const outputStart = nowMs();
-          const logits = stepOutputs.logits;
-          if (!logits) throw new Error('Qwen decoder did not return logits during autoregressive decoding.');
-          const nextToken = argmaxLastRow(await copyQwenLogits(logits), graph.vocabularySize);
+          const nextToken = await qwenNextTokenFromOutputs(
+            stepOutputs,
+            graph.vocabularySize,
+            'Qwen decoder did not return logits or next_token_id during autoregressive decoding.',
+          );
           decoderStepCount += 1;
           const nextPast: Record<string, QwenOrtTensorLike> = {};
           for (let layer = 0; layer < graph.numLayers; layer += 1) {

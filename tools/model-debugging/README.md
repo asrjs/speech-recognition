@@ -38,6 +38,7 @@ tools/model-debugging/
     canary-180m-flash/
     hf-parakeet-port/
     legacy-nemo-tdt-tests/
+    qwen3-asr-0.6b/
     medasrjs/
     parakeet-realtime-eou-120m-v1/
 ```
@@ -162,7 +163,11 @@ Start with the curated reference set in:
 - FireRedASR2-AED: local native token/text/timestamp capture with checkpoint
   hashes, under reference/fireredasr2-aed.
 - Qwen3-ASR-0.6B: offline-only official qwen-asr batch capture, under
-  reference/qwen3-asr-0.6b.
+  reference/qwen3-asr-0.6b. Its `append_argmax_output.py` helper is a
+  reversible decoder graph-surgery probe: it can add a scalar greedy token
+  output without rewriting the original external-data shards. Keep logits as
+  the control and benchmark the real provider because a GPU reduction kernel
+  can cost more than the avoided readback.
 - node-audit-onnx-artifact.mjs: local ONNX inventory, SHA-256, external-data,
   and native CPU load audit.
 

@@ -78,6 +78,16 @@ time, warmed inference time, token parity, and disposal result. Retry without
 capture only for a graph-capture partitioning error; never hide unrelated
 session failures or promote a fallback as a capture speedup.
 
+For greedy decoder graph surgery, first measure the output-transfer share. An
+`ArgMax` output such as `next_token_id` can avoid downloading a full logits
+row, but it may introduce an expensive provider reduction or inhibit graph
+fusion. Generate candidates with
+`reference/qwen3-asr-0.6b/append_argmax_output.py` without overwriting the
+original graph or external data, then compare exact token parity, provider
+partitioning, warmed `session.run()` time, output handling, load time, and
+disposal. Keep scalar-output support as an optional compatibility path and
+reject it when total latency regresses, even if the readback phase improves.
+
 ### 4. Save artifacts
 
 Write results into `tools/data/results/...` whenever the run is useful for:

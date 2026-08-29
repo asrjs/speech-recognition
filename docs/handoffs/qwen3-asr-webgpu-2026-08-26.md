@@ -259,3 +259,49 @@ repeated-run, and disposal checks pass.
 
 Machine-readable evidence:
 `docs/reports/qwen3-asr-webgpu-graph-capture-2026-08-29.json`.
+
+## Decoder ArgMax graph-surgery probe (2026-08-29)
+
+The measured decoder profile showed that the library only needs one greedy
+token id, while the official prefill/step graphs expose a complete
+151,936-wide `logits` output. The reusable
+`tools/model-debugging/reference/qwen3-asr-0.6b/append_argmax_output.py`
+tool now appends an ONNX `ArgMax(axis=-1, keepdims=1)` output named
+`next_token_id`. It can retain logits for an A/B control or remove the logits
+graph output for the scalar-fetch candidate; both variants reuse the original
+external-data shards without overwriting them.
+
+The Qwen executor accepts the optional scalar output for both stacked and
+legacy decoder loops. It reads an INT64/INT32 scalar directly and validates it
+against the configured vocabulary. Unmodified graphs continue through the
+owned float32 logits copy and JavaScript argmax path. Preferred-output maps
+explicitly keep `next_token_id` on CPU while KV tensors remain at the selected
+cache location.
+
+The float32 candidate was checked with native `onnxruntime-node` CPU session
+creation and then run through the same Chrome headless/NVIDIA Blackwell/
+ORT Web 1.29.0 WebGPU harness as the regular graph. Both prefill and step
+graphs loaded with outputs `[present_keys, present_values, next_token_id]` and
+the complete 30-token JFK transcript was exact. Five-run same-session controls
+(runs 2–5 as warmed samples) measured:
+
+| Metric                         | Official logits output | ArgMax-only candidate |
+| ------------------------------ | ---------------------: | --------------------: |
+| Load time                      |          37,622.665 ms |         38,678.630 ms |
+| Median transcription           |           1,623.058 ms |          2,619.933 ms |
+| Median RTFx                    |                6.7778× |               4.1992× |
+| Median decoder `session.run()` |           1,420.995 ms |          2,374.170 ms |
+| Median output handling         |              22.225 ms |              0.655 ms |
+
+The scalar readback itself is 97.05% cheaper, but the added reduction kernel /
+graph plan increases decoder execution 67.08% and total transcription 61.42%
+on this artifact, so the candidate is classified
+`PERFORMANCE_NOT_VIABLE` and is not a production default. This is a useful
+negative result: minimizing a transfer does not guarantee a WebGPU win when
+the provider must perform a full-vocabulary reduction. Revisit only after a
+provider-level ArgMax fusion/reduction improvement or a model graph that can
+produce a token without an expensive GPU reduction.
+
+Machine-readable evidence:
+`docs/reports/qwen3-asr-webgpu-argmax-surgery-2026-08-29.json` and the paired
+browser captures in `tools/data/results/qwen/`.

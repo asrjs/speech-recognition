@@ -12,7 +12,7 @@ snapshot. Official inference is `qwen_asr.Qwen3ASRModel.from_pretrained` from
 PyPI `qwen-asr` (Apache-2.0). HuggingFace `Qwen/Qwen3-ASR-0.6B` has no ONNX
 files; third-party graphs are not the oracle.
 
-~~~powershell
+```powershell
 $PYTHON = 'N:\github\asrjs\speech-recognition\tools\model-debugging\reference\qwen3-asr-0.6b\.venv\Scripts\python.exe'
 $MODEL = 'N:\models\Qwen3-ASR-0.6B'
 
@@ -29,7 +29,7 @@ $MODEL = 'N:\models\Qwen3-ASR-0.6B'
   --batch-size 1 ~
   --max-inference-batch-size 1 ~
   --max-new-tokens 256
-~~~
+```
 
 For a fixed language, add --language English (or another model-supported
 language). To capture timestamps, pass a complete local
@@ -61,7 +61,7 @@ contains no `.onnx` files. Export from `qwen-asr` 0.0.6:
   to 100 and crops tokens; T=1050 greedy matches JFK.
 - Chrome WebGPU and Chrome sequential WASM (fp16 and fp32) exact JFK. Experimental, no preset.
 
-~~~powershell
+```powershell
 $PYTHON = 'N:\github\asrjs\speech-recognition\tools\model-debugging\reference\qwen3-asr-0.6b\.venv\Scripts\python.exe'
 & $PYTHON tools/model-debugging/reference/qwen3-asr-0.6b/export_qwen_onnx.py `
   --model-dir N:\models\Qwen3-ASR-0.6B `
@@ -80,9 +80,36 @@ npx vitest run tests/qwen3-asr-onnx-backends.test.ts
 # Chrome: cd N:\github\asrjs\webgpu-agent-test
 # node scripts/run-qwen-webgpu.mjs
 # node scripts/run-qwen-wasm.mjs --fp16
-~~~
+```
 
 The family stays experimental. WASM and WebGPU match on JFK. Official-graph
 loads default to `audio-encoder-dynamic.onnx` (pad leftover frames to 100,
 then crop tokens). Static T=1100 is opt-in (`encoder=static-t1100`). No
 weights in git.
+
+## Optional decoder graph surgery
+
+`append_argmax_output.py` creates a copy of an explicit-KV decoder graph with
+an `INT64 next_token_id` output computed by ONNX `ArgMax`. Use
+`--remove-logits` only for the candidate measurement; the default retains
+`logits` as a control. The tool loads with external data disabled and saves
+without rewriting the referenced shard, then checks the serialized candidate.
+
+```powershell
+$PYTHON = 'N:\github\asrjs\speech-recognition\tools\model-debugging\reference\qwen3-asr-0.6b\.venv\Scripts\python.exe'
+$DIR = 'N:\models\onnx\qwen3-asr-0.6b-official'
+& $PYTHON tools/model-debugging/reference/qwen3-asr-0.6b/append_argmax_output.py `
+  --input "$DIR\decoder-prefill.onnx" `
+  --output "$DIR\decoder-prefill-argmax.onnx" `
+  --remove-logits
+& $PYTHON tools/model-debugging/reference/qwen3-asr-0.6b/append_argmax_output.py `
+  --input "$DIR\decoder-step.onnx" `
+  --output "$DIR\decoder-step-argmax.onnx" `
+  --remove-logits
+```
+
+This is not automatically faster. The 2026-08-29 Chrome/ORT Web 1.29 probe
+preserved exact JFK text but lowered warmed RTFx from 6.7778x to 4.1992x as
+the provider's reduction work outweighed the cheaper output handling. Keep
+the original graphs as the production control until a provider-specific
+fusion/reduction improvement is measured.

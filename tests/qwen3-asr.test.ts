@@ -7,6 +7,7 @@ import {
   DEFAULT_QWEN3_ASR_CLASSIFICATION,
   DEFAULT_QWEN3_ASR_CONFIG,
   OrtQwen3AsrExecutor,
+  qwenNextTokenFromOutputs,
   Qwen3AsrFeatureProcessor,
   Qwen3AsrTokenizer,
   createQwen3AsrModelFamily,
@@ -320,6 +321,26 @@ describe('Qwen3-ASR ONNX prefill and KV-cache contract', () => {
     expect(result.metrics?.decoderStepCount).toBe(3);
     await executor.dispose();
   });
+
+  it('prefers a graph-computed INT64 token and does not read full logits', async () => {
+    const scalar = new FakeTensor('int64', new BigInt64Array([3n]), [1, 1, 1]);
+    const logits = {
+      get data(): Float32Array {
+        throw new Error('full logits should not be read when next_token_id is present');
+      },
+      dims: [1, 1, 5],
+      type: 'float32',
+    } as unknown as QwenOrtTensorLike;
+
+    await expect(
+      qwenNextTokenFromOutputs({ next_token_id: scalar, logits }, 5, 'logits missing'),
+    ).resolves.toBe(3);
+  });
+
+  it('retains the logits fallback for unmodified decoder graphs', async () => {
+    const logits = new FakeTensor('float32', new Float32Array([0, 2, 5, 1, 4]), [1, 1, 5]);
+    await expect(qwenNextTokenFromOutputs({ logits }, 5, 'logits missing')).resolves.toBe(2);
+  });
 });
 
 describe('Qwen3-ASR official stacked artifact defaults', () => {
@@ -359,12 +380,15 @@ describe('Qwen3-ASR official stacked artifact defaults', () => {
     const artifacts = resolveOfficialQwen3AsrDirectArtifacts({
       baseUrl: '/qwen3-asr-official',
     });
-    const resolved = resolveQwen3AsrArtifacts({
-      kind: 'direct',
-      artifacts,
-      decoderGraphCapture: true,
-      decoderFreeDimensionOverrides: { batch: 1 },
-    }, 'webgpu');
+    const resolved = resolveQwen3AsrArtifacts(
+      {
+        kind: 'direct',
+        artifacts,
+        decoderGraphCapture: true,
+        decoderFreeDimensionOverrides: { batch: 1 },
+      },
+      'webgpu',
+    );
     expect(resolved.decoderGraphCapture).toBe(true);
     expect(resolved.decoderFreeDimensionOverrides).toEqual({ batch: 1 });
   });
@@ -393,7 +417,9 @@ describe('Qwen3-ASR official stacked artifact defaults', () => {
     expect(session).toBeTruthy();
     expect(create).toHaveBeenCalledTimes(2);
     expect((create.mock.calls[0]?.[1] as Record<string, unknown>).enableGraphCapture).toBe(true);
-    expect((create.mock.calls[1]?.[1] as Record<string, unknown>).enableGraphCapture).toBeUndefined();
+    expect(
+      (create.mock.calls[1]?.[1] as Record<string, unknown>).enableGraphCapture,
+    ).toBeUndefined();
     expect(onFallback).toHaveBeenCalledOnce();
   });
 

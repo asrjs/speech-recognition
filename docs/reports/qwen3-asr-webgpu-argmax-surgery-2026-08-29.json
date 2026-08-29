@@ -1,0 +1,103 @@
+{
+  "schema": "asrjs.qwen.webgpu-argmax-surgery.v1",
+  "date": "2026-08-29",
+  "libraryCommit": "working-tree-after-ac8e190",
+  "candidate": "append ONNX ArgMax and remove the full logits graph output",
+  "decision": "rejected-performance-not-viable",
+  "reason": "The scalar output reduced JS output handling but made the WebGPU decoder graph substantially slower on the controlled Chrome run.",
+  "model": {
+    "modelId": "Qwen/Qwen3-ASR-0.6B",
+    "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+    "audioDurationSec": 11,
+    "expectedTranscript": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+    "artifactDirectory": "N:/models/onnx/qwen3-asr-0.6b-official",
+    "decoderDtype": "float32",
+    "prefillData": {
+      "name": "decoder-prefill.onnx.data",
+      "sizeBytes": 3006500864,
+      "sha256": "2d86c0640759029532d224922a4248e07dace21887dda8dff63ffd7b61d8eae0"
+    },
+    "stepData": {
+      "name": "decoder-step.onnx.data",
+      "sizeBytes": 3006500864,
+      "sha256": "2d86c0640759029532d224922a4248e07dace21887dda8dff63ffd7b61d8eae0"
+    }
+  },
+  "surgery": {
+    "tool": "tools/model-debugging/reference/qwen3-asr-0.6b/append_argmax_output.py",
+    "operator": {
+      "name": "qwen_greedy_argmax",
+      "opType": "ArgMax",
+      "axis": -1,
+      "keepdims": 1,
+      "output": "next_token_id",
+      "outputType": "int64"
+    },
+    "prefill": {
+      "input": "decoder-prefill.onnx",
+      "output": "decoder-prefill-argmax.onnx",
+      "inputSizeBytes": 821791,
+      "outputSizeBytes": 821888,
+      "inputSha256": "fff534b790630cabd6ac388f95d67393ced00769891ff54bc6d23227414c4695",
+      "outputSha256": "57196a0a3abd7e90c40c77b2be5e03923f6c3c54ae0812550d5ef4d18b05a693",
+      "outputs": ["present_keys", "present_values", "next_token_id"]
+    },
+    "step": {
+      "input": "decoder-step.onnx",
+      "output": "decoder-step-argmax.onnx",
+      "inputSizeBytes": 829881,
+      "outputSizeBytes": 829978,
+      "inputSha256": "c86ab33ee9d4f36521029c0180078a586d0774d4571dc8ecce08811a9325159b",
+      "outputSha256": "18f2e2aa0a1e2b8d5cb360b235a09f8ca598b4c9ebf81e22b531e3e6ec9534f6",
+      "outputs": ["present_keys", "present_values", "next_token_id"]
+    },
+    "externalDataRewritten": false
+  },
+  "environment": {
+    "browser": "Chrome headless new",
+    "adapter": "NVIDIA Blackwell",
+    "executionProvider": "onnxruntime-web WebGPU",
+    "ortVersion": "1.29.0",
+    "cacheOutputLocation": "gpu-buffer",
+    "runsPerCondition": 5,
+    "warmRunsUsedForMedian": "runs 2-5",
+    "exactTranscriptParity": true,
+    "nativeSessionLoad": {
+      "provider": "onnxruntime-node CPU",
+      "prefillOutputs": ["present_keys", "present_values", "next_token_id"],
+      "stepOutputs": ["present_keys", "present_values", "next_token_id"]
+    }
+  },
+  "before": {
+    "result": "tools/data/results/qwen/qwen3-asr-0.6b-jfk-short-webgpu-chrome.json",
+    "loadMs": 37622.665,
+    "warmedMedianTranscribeMs": 1623.0575,
+    "warmedMedianRtfX": 6.777799,
+    "warmedMedianDecoderStepRunMs": 1420.995,
+    "warmedMedianDecoderStepOutputMs": 22.225,
+    "warmedTranscribeMs": [1600.245, 1612.07, 1634.045, 1644.37],
+    "warmedDecoderStepRunMs": [1392.375, 1415.08, 1426.91, 1429.52],
+    "warmedDecoderStepOutputMs": [21.095, 21.965, 22.485, 25.935]
+  },
+  "after": {
+    "result": "tools/data/results/qwen/qwen3-asr-0.6b-jfk-short-webgpu-argmax-chrome.json",
+    "loadMs": 38678.63,
+    "warmedMedianTranscribeMs": 2619.9325,
+    "warmedMedianRtfX": 4.199187,
+    "warmedMedianDecoderStepRunMs": 2374.17,
+    "warmedMedianDecoderStepOutputMs": 0.655,
+    "warmedTranscribeMs": [2507.62, 2590.525, 2649.34, 2654.765],
+    "warmedDecoderStepRunMs": [2272.85, 2329.39, 2418.95, 2419.37],
+    "warmedDecoderStepOutputMs": [0.57, 0.61, 0.7, 0.73]
+  },
+  "comparison": {
+    "outputHandlingReductionPct": 97.0529,
+    "decoderStepRunChangePct": 67.078,
+    "transcribeChangePct": 61.4196,
+    "rtfxChangePct": -38.0435,
+    "loadChangePct": 2.8067,
+    "tokenCount": 30,
+    "status": "exact-parity-but-slower"
+  },
+  "conclusion": "ArgMax output wiring is retained as a reusable, opt-in graph-surgery and executor capability, but this ORT Web 1.29 WebGPU candidate is not promoted. The added reduction kernel/graph plan costs far more than the logits readback on this artifact. Revisit only with a provider-level reduction/fusion change or a graph that can compute the token without a full-vocabulary GPU reduction."
+}

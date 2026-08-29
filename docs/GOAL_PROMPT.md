@@ -122,6 +122,22 @@ Qwen decoder graph-capture compatibility probe (2026-08-29):
   full-cache memory traffic before promotion.
   Evidence: `docs/reports/qwen3-asr-webgpu-graph-capture-2026-08-29.json`.
 
+Qwen decoder ArgMax graph-surgery probe (2026-08-29):
+
+- Added the reusable `append_argmax_output.py` tool and optional executor
+  support for an INT64/INT32 `next_token_id` output. The candidate removes
+  the full 151,936-wide logits graph output while preserving the original
+  external-data shards; legacy graphs still use the validated logits fallback.
+- Native ONNX Runtime CPU session creation accepted both candidate graphs, and
+  the real Chrome/WebGPU run preserved exact 30-token JFK parity. Five-run
+  warmed controls measured 1,623.058 ms / 6.7778x RTFx for the official graph
+  versus 2,619.933 ms / 4.1992x for ArgMax-only. Output handling fell 97.05%
+  (22.225 -> 0.655 ms), but decoder `session.run()` rose 67.08% and total
+  transcription rose 61.42%; classify this as `PERFORMANCE_NOT_VIABLE` and do
+  not promote it. The result demonstrates that a smaller readback can lose to
+  a provider reduction kernel, and should guide future graph/EP experiments.
+  Evidence: `docs/reports/qwen3-asr-webgpu-argmax-surgery-2026-08-29.json`.
+
 Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
 
 - Corrected Chrome A/B confirms the Parakeet v3 GRU decoder graph runs on both
@@ -325,12 +341,15 @@ surfaces. Work items, in order:
    first-run, warm-step latency, memory, finite logits, vocabulary-sliced token
    parity, and disposal against the built-in ORT Web 1.29 path. Do not add the
    plugin as a browser dependency or block library work on its availability.
-4. [Qwen graph-capture probe completed 2026-08-29; promotion remains open]
+4. [Qwen graph-capture and ArgMax probes completed 2026-08-29; promotion remains open]
    Promote only lifecycle-safe, end-to-end-proven state/cache
    placement. Track tensor ownership and disposal explicitly; a decoder-only
    GPU-state win is not sufficient for production promotion. For each model,
    use the phase telemetry to select the next bottleneck and record rejected
-   low-yield hypotheses instead of optimizing unmeasured hot paths.
+   low-yield hypotheses instead of optimizing unmeasured hot paths. Keep
+   graph-surgery candidates reversible and require provider-specific evidence;
+   ArgMax/readback reduction is not a win when the added reduction kernel
+   dominates execution.
 
 Local availability check (2026-08-29): the separate native Plugin EP 0.3.0 is
 not installed on this host. Python ONNX Runtime exposes TensorRT/CUDA/CPU only,
