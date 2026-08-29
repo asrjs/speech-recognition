@@ -110,4 +110,6 @@ node scripts/run-parakeet-tdt-webgpu.mjs --mode=spike --gpu-state
 ```
 
 The browser runner uses `--enable-unsafe-webgpu`, Vulkan/D3D11 ANGLE flags,
-and writes JSON evidence to `webgpu-agent-test/_results/`.
+and writes JSON evidence to `webgpu-agent-test/_results/`. The Parakeet runner
+defaults to deterministic `native-rate` linear WAV preparation; pass
+`--audio-strategy=target` only for the explicit AudioContext-resampler control.

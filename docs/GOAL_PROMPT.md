@@ -103,6 +103,10 @@ Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
   Web external-data mounting (`Module.MountedFiles is not available`). Full
   details and JSON controls are in
   `docs/reports/parakeet-tdt-v3-browser-full-model-2026-08-29.md`.
+- The reusable Parakeet Chrome runner now defaults to deterministic
+  `native-rate` linear WAV preparation; `--audio-strategy=target` is reserved
+  for an explicit resampler diagnostic. This keeps future browser acceptance
+  runs on the same audio contract as the native reference by default.
 
 Lifecycle hardening and cancellation slice (`8552eec`, `e8624e6`):
 

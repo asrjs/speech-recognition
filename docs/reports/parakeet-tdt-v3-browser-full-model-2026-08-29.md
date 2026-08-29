@@ -25,6 +25,10 @@ Raw browser captures remain in
 the audio strategy, sample count, decoded duration, provider placement, and
 transcript status.
 
+The validation runner now defaults to `native-rate` for this model. Use
+`--audio-strategy=target` only when intentionally measuring the browser
+AudioContext resampler as a diagnostic control.
+
 ## Native reference controls
 
 The same library path was run through Node WASM with the exact v3 artifacts.
