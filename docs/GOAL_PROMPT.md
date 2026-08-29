@@ -193,6 +193,29 @@ Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
 
 Lifecycle hardening and cancellation slice (`8552eec`, `e8624e6`):
 
+Parakeet TDT decoder quantization and v2/v3 matrix (2026-08-29):
+
+- Reproduced the historical parakeet.js throughput band in the current
+  browser harness: on the shared 18.714 s LibriVox fixture, v2 hybrid runs
+  reach ~35-41x RTFx, confirming the 45-90x memories were v2 + longer clips,
+  not a library regression. Session-to-session variance on this host is
+  ~10-15%.
+- INT8 decoder is the dominant, reproducible v3 win: fp16/WebGPU encoder +
+  int8/WASM decoder measures 508 ms median / 37.2x RTFx with the exact
+  91-token transcript preserved, versus 832 ms / 22.8x for the fp32 decoder
+  probe; decode phase roughly halves (565 -> 256 ms). The library browser
+  default (int8 decoder) is validated as the fast exact path; the slow
+  ~18-28x observations came from parity probes pinning fp32.
+- The v3 GRU decoder graph is genuinely heavier per step than v2 at fp32
+  (~4.3-5.2 ms vs ~2.1-2.9 ms); INT8 recovers most of the gap.
+- The returnConfidence=false gate is a measured end-to-end no-op (within
+  session noise); it stays an opt-in throughput option with no speed claim.
+- The fp32 browser encoder control remains blocked by ORT Web
+  external-data mounting (Module.MountedFiles is not available) on both
+  v2 and v3.
+- Evidence: docs/reports/parakeet-tdt-decoder-quantization-matrix-2026-08-29.md
+  and tools/data/results/nemo-tdt/parakeet-tdt-v*-librivox-18s.json
+
 - Experimental family descriptors are clone-safe, and all model families now
   share session release, abort, and dispose coverage; disposing a model no
   longer double-releases ORT sessions during `runtime.dispose()`
