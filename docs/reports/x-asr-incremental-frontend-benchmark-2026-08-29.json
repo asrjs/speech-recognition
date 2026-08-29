@@ -21,17 +21,17 @@
     {
       "durationSec": 2,
       "chunkCount": 10,
-      "baselineMedianMs": 27.6353,
-      "incrementalMedianMs": 9.187,
-      "speedup": 3.0081,
+      "baselineMedianMs": 22.6525,
+      "incrementalMedianMs": 8.9217,
+      "speedup": 2.5390,
       "maxAbs": 0
     },
     {
       "durationSec": 10,
       "chunkCount": 50,
-      "baselineMedianMs": 552.8687,
-      "incrementalMedianMs": 50.5441,
-      "speedup": 10.9383,
+      "baselineMedianMs": 543.2119,
+      "incrementalMedianMs": 49.9958,
+      "speedup": 10.8652,
       "maxAbs": 0
     }
   ],

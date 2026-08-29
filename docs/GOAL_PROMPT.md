@@ -206,9 +206,9 @@ X-ASR incremental frontend slice (2026-08-29):
   keeps a bounded 400-sample raw tail; reflected right-edge frames are held
   until the next chunk or `final=true` so full-buffer semantics remain exact.
 - Deterministic parity across uneven chunks is exact (`maxAbs=0`). The
-  reproducible Node CPU microbenchmark shows 3.0081x lower frontend wall time
-  at 2 seconds (27.6353 -> 9.1870 ms) and 10.9383x lower time at 10 seconds
-  (552.8687 -> 50.5441 ms), using 200 ms chunks and three timed runs after one
+  reproducible Node CPU microbenchmark shows 2.5390x lower frontend wall time
+  at 2 seconds (22.6525 -> 8.9217 ms) and 10.8652x lower time at 10 seconds
+  (543.2119 -> 49.9958 ms), using 200 ms chunks and three timed runs after one
   warm-up. Both sides include the executor's cumulative audio-copy cost, so
   this is a conservative frontend-only result, not an end-to-end RTFx claim.
 - Evidence and rerun command: `docs/reports/x-asr-incremental-frontend-benchmark-2026-08-29.json`

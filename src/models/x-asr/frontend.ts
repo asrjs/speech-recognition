@@ -109,6 +109,7 @@ export class XAsrJsFrontend {
     frameCount: number,
     sampleCount: number,
     sampleAt: (index: number) => number,
+    directSamples?: Float32Array,
   ): Float32Array {
     const output = new Float32Array(frameCount * this.numBins);
     const fftReal = new Float32Array(this.fftPoints);
@@ -124,7 +125,7 @@ export class XAsrJsFrontend {
         const reflected = source >= 0 && source < sampleCount
           ? source
           : reflectIndex(source, sampleCount);
-        windowBuf[i] = sampleAt(reflected);
+        windowBuf[i] = directSamples ? directSamples[reflected] ?? 0 : sampleAt(reflected);
       }
 
       let mean = 0;
@@ -165,7 +166,7 @@ export class XAsrJsFrontend {
   process(audio: Float32Array): Float32Array {
     const frames = numFrames(audio.length, this.frameShift, this.frameLength, this.snipEdges);
     if (frames <= 0) return new Float32Array(0);
-    return this.processFrames(0, frames, audio.length, (index) => audio[index] ?? 0);
+    return this.processFrames(0, frames, audio.length, () => 0, audio);
   }
 
   /**
