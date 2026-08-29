@@ -326,9 +326,10 @@ surfaces. Work items, in order:
 
 1. [Completed 2026-08-29] Probe the Parakeet TDT decoder/joint graphs on the
    built-in WebGPU EP in Chrome via an opt-in decoder-backend override. The
-   corrected controlled A/B is recorded below; default behavior remains
-   encoder-WebGPU/decoder-WASM until full-model parity and a measured win
-   exist.
+   corrected controlled A/B and the library-entry GPU-state A/B are recorded
+   below. The `decoderStateOutputLocation` path is opt-in and preserves the
+   default encoder-WebGPU/decoder-WASM composition until cross-adapter
+   lifecycle evidence justifies promotion.
 2. [Qwen placement/profile sub-slice completed 2026-08-29] Measure
    per-component placement again for every family on 1.29.0 — the X-ASR
    WASM-vs-WebGPU and buffer-cache conclusions may shift with the new EP;
