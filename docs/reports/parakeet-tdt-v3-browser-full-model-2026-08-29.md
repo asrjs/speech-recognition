@@ -94,6 +94,25 @@ decoder path (16–19x RTFx). Second, int8 is correct but slow on this WebGPU
 encoder (2.02x RTFx), so quantization is a memory/size option rather than an
 assumed throughput optimization.
 
+## Same-session repeat and memory probe
+
+The updated runner supports `--repeat=N` and captures one loaded model's
+sequential transcriptions, per-run timings, parity, and (when exposed by
+Chrome) `performance.memory` snapshots. With native-rate/linear audio and a
+fresh headless Chrome profile:
+
+| Composition | Runs | Transcribe range | Warm behavior | Quality |
+| ----------- | ---: | ---------------: | ------------- | ------- |
+| fp16 WebGPU encoder + fp32 WASM decoder | 8 | 729–979 ms | runs 2–8 median 746 ms (~25.1x RTFx) | 8/8 exact |
+| fp16 WebGPU encoder + fp16 WebGPU decoder | 8 | 3,044–3,353 ms | runs 2–8 median 3,149 ms (~5.95x RTFx) | 8/8 exact |
+
+The hybrid run's reported used-JS-heap snapshots rose from 1.347 GB to
+1.383 GB without a forced collection. In the full-WebGPU run, snapshots rose
+from about 1.315 GB to 1.335 GB through run 4, then Chrome collected and
+reported 38–56 MB for runs 5–8. These measurements are GC-sensitive and do
+not prove a leak or leak-freedom; they do show that memory must be sampled
+over a longer soak and around explicit model disposal/reload.
+
 These are validated placement candidates for this artifact and adapter, not a
 blanket default change. Repeat them across browsers and artifacts, capture
 warm-cache/memory behavior, and compare against the accepted int8/int8 Node

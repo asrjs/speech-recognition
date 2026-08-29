@@ -86,6 +86,12 @@ existing executor tests and full suite remain the correctness gate.
    preparation the leading cause of the earlier mismatch and confirms ORT
    1.29 decoder correctness without a decoder speed win. Details are in
    `docs/reports/parakeet-tdt-v3-browser-full-model-2026-08-29.md`.
+   The repeatable runner now supports `--repeat=N`: eight same-session runs
+   were exact for both compositions. Hybrid transcribe times warmed to
+   729–802 ms (~25x RTFx), while full WebGPU decoding stayed around
+   3,044–3,353 ms (~6x RTFx). Chrome heap snapshots are GC-sensitive (the
+   full-WebGPU run dropped from ~1.33 GB to ~38 MB after collection), so this
+   is a baseline rather than a leak verdict.
 2. The earlier “more than ten minutes” fp16 session-create statement was an
    invalid harness run: the page failed before valid model creation. The
    corrected harness reaches model-ready in 7–12 seconds. The fp32 external-

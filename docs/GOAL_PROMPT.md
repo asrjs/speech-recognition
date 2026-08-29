@@ -107,6 +107,11 @@ Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
   `native-rate` linear WAV preparation; `--audio-strategy=target` is reserved
   for an explicit resampler diagnostic. This keeps future browser acceptance
   runs on the same audio contract as the native reference by default.
+- Its `--repeat=N` mode now records same-session warm-up, parity, and
+  `performance.memory` snapshots. Eight-run probes stayed exact: hybrid
+  fp16/WebGPU-encoder + WASM-decoder warmed to about 25x RTFx, full WebGPU
+  decoding to about 6x; GC caused a large heap drop, so longer soak/disposal
+  checks remain required before lifecycle promotion.
 
 Lifecycle hardening and cancellation slice (`8552eec`, `e8624e6`):
 
