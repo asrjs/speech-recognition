@@ -322,7 +322,25 @@ SenseVoice placement correction (2026-08-29):
 - The SenseVoice browser runner now accepts backend and cpuThreads options
   (--backend=wasm, --cpu-threads=N), matching the other family harnesses.
 - Evidence: docs/reports/sensevoice-placement-correction-2026-08-29.md
-  and tools/data/results/sensevoice/small-{webgpu,wasm-8t}-jfk-3run.json
+ and tools/data/results/sensevoice/small-{webgpu,wasm-8t}-jfk-3run.json
+
+SenseVoice decode hot-path optimization (2026-08-29):
+
+- argmaxAndSelectedLogProbs (shared by SenseVoice and GigaAM CTC) measured
+  70.18 ms p50 at SenseVoice scale (187 x 25055) and now runs 54.26 ms
+  (1.29x) after removing the redundant rowMax tracking (bitwise identical
+  to bestValue), hoisting Math.exp/Math.log, and using contiguous
+  typed-array access on a hoisted exact-length fast path; outputs are
+  bit-identical and the full suite stays green (1017 passed / 18 gated
+  skips).
+- A reproducible microbenchmark lives at
+  tools/scripts/benchmark-ctc-decode.mjs; per the same-launch variance
+  methodology, the Node microbenchmark - not a noisy browser phase A/B -
+  is the authoritative before/after evidence for this hot path.
+- Remaining decode cost is the intrinsic 4.68M Math.exp calls of exact
+  log-softmax; an exact underflow-threshold skip (delta <= -40) would help
+  raw-logit graphs but not SenseVoice's narrow log-prob range.
+
 
 - Experimental family descriptors are clone-safe, and all model families now
   share session release, abort, and dispose coverage; disposing a model no

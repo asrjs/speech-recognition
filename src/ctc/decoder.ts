@@ -152,31 +152,50 @@ export function argmaxAndSelectedLogProbs(
 ): CtcArgmaxResult {
   const frameIds = new Array<number>(frameCount).fill(0);
   const selectedLogProbs = new Float32Array(frameCount);
+  const exp = Math.exp;
+  const log = Math.log;
 
   for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
     const rowOffset = frameIndex * vocabSize;
+    const rowEnd = rowOffset + vocabSize;
     let bestId = 0;
     let bestValue = Number.NEGATIVE_INFINITY;
-    let rowMax = Number.NEGATIVE_INFINITY;
 
-    for (let vocabIndex = 0; vocabIndex < vocabSize; vocabIndex += 1) {
-      const value = logits[rowOffset + vocabIndex] ?? Number.NEGATIVE_INFINITY;
-      if (value > bestValue) {
-        bestValue = value;
-        bestId = vocabIndex;
+    if (rowEnd <= logits.length) {
+      for (let index = rowOffset; index < rowEnd; index += 1) {
+        const value = logits[index]!;
+        if (value > bestValue) {
+          bestValue = value;
+          bestId = index - rowOffset;
+        }
       }
-      if (value > rowMax) {
-        rowMax = value;
+    } else {
+      for (let index = rowOffset; index < rowEnd; index += 1) {
+        const value = index < logits.length ? logits[index]! : Number.NEGATIVE_INFINITY;
+        if (value > bestValue) {
+          bestValue = value;
+          bestId = index - rowOffset;
+        }
       }
     }
 
+    // rowMax in the original formulation is bitwise identical to bestValue
+    // (one strict maximum over the same elements), so the normalized score
+    // keeps the original expression shape while the exp pass reuses a single
+    // hoisted Math.exp over contiguous typed-array access.
     let expSum = 0;
-    for (let vocabIndex = 0; vocabIndex < vocabSize; vocabIndex += 1) {
-      expSum += Math.exp((logits[rowOffset + vocabIndex] ?? Number.NEGATIVE_INFINITY) - rowMax);
+    if (rowEnd <= logits.length) {
+      for (let index = rowOffset; index < rowEnd; index += 1) {
+        expSum += exp(logits[index]! - bestValue);
+      }
+    } else {
+      for (let index = rowOffset; index < rowEnd; index += 1) {
+        expSum += exp((index < logits.length ? logits[index]! : Number.NEGATIVE_INFINITY) - bestValue);
+      }
     }
 
     frameIds[frameIndex] = bestId;
-    selectedLogProbs[frameIndex] = bestValue - (rowMax + Math.log(expSum || 1));
+    selectedLogProbs[frameIndex] = bestValue - (bestValue + log(expSum || 1));
   }
 
   return {
