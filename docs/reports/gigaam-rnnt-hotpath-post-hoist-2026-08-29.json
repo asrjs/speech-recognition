@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-29T12:25:24.860Z",
+  "model": {
+    "modelId": "gigaam-v3-e2e-rnnt",
+    "modelDir": "N:\\models\\onnx\\gigaam\\v3-e2e-rnnt",
+    "backend": "wasm",
+    "engine": "onnxruntime-web"
+  },
+  "artifact": {
+    "encoder": "v3_e2e_rnnt_encoder.onnx",
+    "decoder": "v3_e2e_rnnt_decoder.onnx",
+    "joint": "v3_e2e_rnnt_joint.onnx"
+  },
+  "audio": {
+    "sampleRate": 16000,
+    "frames": 180640,
+    "durationSeconds": 11.29,
+    "reference": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\gigaam\\v3-e2e-rnnt-example-reference.json"
+  },
+  "benchmark": {
+    "warmupRuns": 1,
+    "measuredRuns": 3,
+    "loadMs": 2858.26,
+    "minMs": 6382.722,
+    "p50Ms": 6585.631,
+    "p90Ms": 6689.771,
+    "maxMs": 6689.771,
+    "p50Rtfx": 1.7147,
+    "allTextMatch": true
+  },
+  "runs": [
+    {
+      "runIndex": 1,
+      "elapsedMs": 6585.631,
+      "rtfx": 1.7147,
+      "preprocessMs": 115.963,
+      "encodeMs": 6197.84,
+      "decodeMs": 270.256,
+      "tokens": 78,
+      "textMatch": true,
+      "text": "Ничьих не требуя похвал, Счастлив уж я надеждой сладкой, Что дева с трепетом любви Посмотрит, может быть, украдкой На песни грешные мои. У лукоморья дуб зелёный.",
+      "memory": {
+        "rssBytes": 1966034944,
+        "heapUsedBytes": 12101648,
+        "externalBytes": 11223100,
+        "arrayBuffersBytes": 9187311
+      }
+    },
+    {
+      "runIndex": 2,
+      "elapsedMs": 6689.771,
+      "rtfx": 1.6879,
+      "preprocessMs": 89.692,
+      "encodeMs": 6327.537,
+      "decodeMs": 271.598,
+      "tokens": 78,
+      "textMatch": true,
+      "text": "Ничьих не требуя похвал, Счастлив уж я надеждой сладкой, Что дева с трепетом любви Посмотрит, может быть, украдкой На песни грешные мои. У лукоморья дуб зелёный.",
+      "memory": {
+        "rssBytes": 1970642944,
+        "heapUsedBytes": 11211536,
+        "externalBytes": 12428760,
+        "arrayBuffersBytes": 10392931
+      }
+    },
+    {
+      "runIndex": 3,
+      "elapsedMs": 6382.722,
+      "rtfx": 1.769,
+      "preprocessMs": 83.584,
+      "encodeMs": 6058.125,
+      "decodeMs": 240.333,
+      "tokens": 78,
+      "textMatch": true,
+      "text": "Ничьих не требуя похвал, Счастлив уж я надеждой сладкой, Что дева с трепетом любви Посмотрит, может быть, украдкой На песни грешные мои. У лукоморья дуб зелёный.",
+      "memory": {
+        "rssBytes": 1960464384,
+        "heapUsedBytes": 10840264,
+        "externalBytes": 8169337,
+        "arrayBuffersBytes": 6133508
+      }
+    }
+  ]
+}

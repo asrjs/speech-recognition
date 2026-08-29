@@ -145,7 +145,9 @@ Earlier streaming and validation slices:
 - Optimize the newly ported families (GigaAM, SenseVoice, X-ASR, Qwen):
   current throughput is low and may be ORT CPU/WASM-bound; reproduce with
   real WebGPU in the browser before changing code, then apply the hybrid
-  backend composition where measurements justify it
+  backend composition where measurements justify it. GigaAM RNN-T now exposes
+  explicit encoder/decoder/joiner provider overrides so this comparison can be
+  made without changing the all-one-backend default.
 - Validate WebGPU work with the existing Chrome headless real-WebGPU browser
   smoke harness (the same approach used for the Whisper split-graph port);
   ORT-node fp16 binding support is not urgent and not mandatory
@@ -325,6 +327,22 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   mounting/provider behavior before changing any preset default. Until exact
   parity and end-to-end GPU-state lifecycle proof exist, keep the production
   default `encoder-WebGPU/decoder-WASM` composition.
+
+- [Completed 2026-08-29] GigaAM RNN-T phase profile and provider matrix: the
+  official v3 E2E artifact and
+  captured waveform pass exact 78-token parity on Node WASM. Three measured
+  runs attribute roughly 93% of transcribe time to the encoder (5.25–5.61 s),
+  versus about 3–5% to decoder/joiner work (0.19–0.26 s) and 1–3% to JS
+  preprocessing. A frame-extraction/tensor-hoist candidate was rejected after
+  its 3-run median moved from 6.158 s to 6.105 s but p90 regressed from 6.171
+  s to 6.593 s; this is not a promotion-quality win. The next bounded test is
+  real Chrome WebGPU encoder + WASM decoder/joiner; it measured 1,910 ms / 5.92x
+  RTFx, versus 4,638 ms / 2.44x all-WebGPU and 5,948 ms / 1.90x all-WASM;
+  all three were exact on NVIDIA Blackwell with ORT Web 1.29.0. The matrix is
+  in `tools/data/results/gigaam/gigaam-rnnt-browser-component-matrix-2026-08-29.json`.
+  Same-session repeats warmed the hybrid path to a 455 ms median / 24.87x RTFx
+  (all exact), while all-WebGPU and all-WASM medians were 2.64x and 1.98x.
+  Repeat across browsers and sessions before changing a preset default.
 
 ## First inspect the real repository
 

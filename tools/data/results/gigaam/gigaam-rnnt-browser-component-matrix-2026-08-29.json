@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-29",
+  "model": "gigaam-v3-e2e-rnnt",
+  "artifacts": {
+    "encoder": "v3_e2e_rnnt_encoder.onnx",
+    "decoder": "v3_e2e_rnnt_decoder.onnx",
+    "joint": "v3_e2e_rnnt_joint.onnx",
+    "audio": "example.wav",
+    "audioSampleRate": 16000,
+    "transcriptParity": "exact"
+  },
+  "browser": {
+    "harness": "N:/github/asrjs/webgpu-agent-test/scripts/run-gigaam-rnnt-webgpu.mjs",
+    "ortWeb": "1.29.0",
+    "adapter": "NVIDIA Blackwell",
+    "chrome": "headless WebGPU"
+  },
+  "runs": [
+    {
+      "composition": "encoder-webgpu-decoder-wasm-joint-wasm",
+      "status": "pass",
+      "loadMs": 7893.055,
+      "transcribeMs": 1909.75,
+      "rtfx": 5.9189,
+      "preprocessMs": 108.71,
+      "encodeMs": 1511.575,
+      "decodeMs": 286.84,
+      "encoderBackend": "webgpu",
+      "decoderBackend": "wasm",
+      "jointBackend": "wasm",
+      "textMatch": true
+    },
+    {
+      "composition": "encoder-webgpu-decoder-webgpu-joint-webgpu",
+      "status": "pass",
+      "loadMs": 7955.09,
+      "transcribeMs": 4637.875,
+      "rtfx": 2.4354,
+      "preprocessMs": 81.205,
+      "encodeMs": 241.785,
+      "decodeMs": 4312.43,
+      "encoderBackend": "webgpu",
+      "decoderBackend": "webgpu",
+      "jointBackend": "webgpu",
+      "textMatch": true
+    },
+    {
+      "composition": "encoder-wasm-decoder-wasm-joint-wasm",
+      "status": "pass",
+      "loadMs": 7411.96,
+      "transcribeMs": 5948.175,
+      "rtfx": 1.8986,
+      "preprocessMs": 95.34,
+      "encodeMs": 5467.89,
+      "decodeMs": 382.95,
+      "encoderBackend": "wasm",
+      "decoderBackend": "wasm",
+      "jointBackend": "wasm",
+      "textMatch": true
+    }
+  ],
+  "repeatValidation": [
+    {
+      "composition": "encoder-webgpu-decoder-wasm-joint-wasm",
+      "repeat": 5,
+      "status": "pass",
+      "transcribeMs": [743.92, 454.585, 480.53, 387.43, 366.475],
+      "rtfx": [15.2076, 24.8678, 23.5213, 29.1867, 30.8542],
+      "medianMs": 454.585,
+      "medianRtfx": 24.8678,
+      "allTextMatch": true
+    },
+    {
+      "composition": "encoder-webgpu-decoder-webgpu-joint-webgpu",
+      "repeat": 3,
+      "status": "pass",
+      "transcribeMs": [4270.715, 4370.05, 4177.165],
+      "rtfx": [2.6447, 2.5841, 2.7032],
+      "medianMs": 4270.715,
+      "medianRtfx": 2.6447,
+      "allTextMatch": true
+    },
+    {
+      "composition": "encoder-wasm-decoder-wasm-joint-wasm",
+      "repeat": 3,
+      "status": "pass",
+      "transcribeMs": [5703.48, 5744.03, 5116.54],
+      "rtfx": [1.9802, 1.9658, 2.2068],
+      "medianMs": 5703.48,
+      "medianRtfx": 1.9802,
+      "allTextMatch": true
+    }
+  ],
+  "interpretation": {
+    "hybridVsAllWebgpuSpeedup": 9.4,
+    "hybridVsAllWasmSpeedup": 12.55,
+    "defaultChange": false,
+    "note": "Repeated same-session probes confirm a large warm hybrid win on this adapter; repeat across browsers and sessions before changing a preset default."
+  }
+}
