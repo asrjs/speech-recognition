@@ -1,0 +1,96 @@
+{
+  "schema": "asrjs.qwen.webgpu-bundle-boundary.v1",
+  "capturedAt": "2026-08-29T13:04:49Z",
+  "libraryCommit": "a300511dd9ff219d0b540e08242c860c0b10e14d",
+  "harness": {
+    "path": "N:\\github\\asrjs\\webgpu-agent-test",
+    "browser": "Chrome headless new",
+    "adapter": {
+      "vendor": "nvidia",
+      "architecture": "blackwell"
+    },
+    "ortWebVersion": "1.29.0",
+    "audio": "/gigaam-audio/jfk-short.wav",
+    "expectedTranscript": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country."
+  },
+  "artifacts": {
+    "encoder": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\audio-encoder-dynamic.onnx",
+      "sha256": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6"
+    },
+    "decoderPrefill": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-prefill.onnx",
+      "sha256": "fff534b790630cabd6ac388f95d67393ced00769891ff54bc6d23227414c4695"
+    },
+    "decoderStep": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-step.onnx",
+      "sha256": "c86ab33ee9d4f36521029c0180078a586d0774d4571dc8ecce08811a9325159b"
+    },
+    "decoderExternalDataSha256": "2d86c0640759029532d224922a4248e07dace21887dda8dff63ffd7b61d8eae0"
+  },
+  "diagnosis": {
+    "rootCause": "The browser harness aliased both onnxruntime-web and onnxruntime-web/webgpu to ort.all.bundle.min.mjs. Session creation succeeded, but the provider registration boundary produced corrupted autoregressive logits.",
+    "controlAlias": {
+      "onnxruntime-web": "ort.all.bundle.min.mjs",
+      "onnxruntime-web/webgpu": "ort.all.bundle.min.mjs"
+    },
+    "fixedAlias": {
+      "onnxruntime-web": "ort.all.bundle.min.mjs",
+      "onnxruntime-web/webgpu": "ort.webgpu.min.mjs"
+    },
+    "controlResult": {
+      "status": "fail",
+      "emittedTokenCount": 13,
+      "transcript": "钊NFughard殷аж殷ु>+]+'Abammedorges",
+      "transcribeMs": 4181.94,
+      "rtfx": 2.6304,
+      "cacheOutputLocation": "gpu-buffer"
+    },
+    "fixedResult": {
+      "status": "pass",
+      "emittedTokenCount": 30,
+      "transcriptExact": true,
+      "transcribeMs": 2356.945,
+      "rtfx": 4.6678,
+      "cacheOutputLocation": "gpu-buffer"
+    }
+  },
+  "fixedGpuRepeat3": {
+    "runsMs": [
+      2686.75,
+      1854.6,
+      1792.43
+    ],
+    "medianMs": 1854.6,
+    "medianRtfx": 5.9314,
+    "decoderStepAvgMs": [
+      59.46,
+      54.475,
+      52.507
+    ],
+    "allExact": true,
+    "tokenCount": 30
+  },
+  "fixedCpuKvRepeat3": {
+    "runsMs": [
+      4885.94,
+      3880.65,
+      3802.04
+    ],
+    "medianMs": 3880.65,
+    "medianRtfx": 2.8346,
+    "allExact": true,
+    "tokenCount": 30
+  },
+  "interpretation": {
+    "gpuKvVsCpuKvSpeedup": 2.0924,
+    "promotion": "The fixed WebGPU subpath is correctness-safe on this Chrome/NVIDIA Blackwell run. Keep alias separation as a harness invariant; repeat on another browser/adapter before changing a public preset.",
+    "scope": "This is a browser runtime/harness correctness and placement result, not a graph or decoder algorithm change."
+  },
+  "sourceResults": [
+    "N:\\github\\asrjs\\webgpu-agent-test\\_results\\qwen3-asr-0.6b-official-webgpu-2026-08-29T12-54-50-414Z.json",
+    "N:\\github\\asrjs\\webgpu-agent-test\\_results\\qwen3-asr-0.6b-official-webgpu-2026-08-29T13-02-40-353Z.json",
+    "N:\\github\\asrjs\\webgpu-agent-test\\_results\\qwen3-asr-0.6b-official-webgpu-2026-08-29T13-03-43-533Z.json",
+    "N:\\github\\asrjs\\webgpu-agent-test\\_results\\qwen3-asr-0.6b-official-webgpu-cpu-kv-2026-08-29T13-04-49-122Z.json"
+  ]
+}

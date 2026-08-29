@@ -173,3 +173,29 @@ not by the within-limit direct Qwen graph. Official oracle coverage beyond the
 30-second model limit, WebGPU validation, and human-microphone validation
 remain open. The sidecar comparison remains a local dataset/TTS label and is
 not a model-quality claim.
+
+## Browser WebGPU bundle boundary refresh (2026-08-29)
+
+A fresh Chrome headless rerun initially produced a reproducible corrupted
+13-token transcript on ORT Web 1.29.0 even though the Qwen sessions created
+successfully. Artifact hashes and the library source matched the earlier exact
+run. The failing difference was in the sibling browser harness: it aliased
+both `onnxruntime-web` and `onnxruntime-web/webgpu` to
+`ort.all.bundle.min.mjs`. Mapping the WebGPU subpath to the all-backend bundle
+is not a safe provider substitution for autoregressive graphs.
+
+The harness now keeps the imports separate: plain `onnxruntime-web` resolves
+to `ort.all.bundle.min.mjs`, while `onnxruntime-web/webgpu` resolves to
+`ort.webgpu.min.mjs`. On the same official dynamic encoder and fp32 explicit-KV
+decoder artifacts, NVIDIA Blackwell, and ORT Web 1.29.0, the corrected path
+restored exact 30-token parity. Three same-session GPU-KV runs measured
+`2686.75`, `1854.60`, and `1792.43` ms (median `1854.60` ms, `5.93x` RTFx);
+the CPU-KV control measured `4885.94`, `3880.65`, and `3802.04` ms (median
+`3880.65` ms, `2.83x` RTFx). Every run was exact. The GPU-KV median was
+`2.09x` faster than CPU-KV on this session.
+
+This is a harness/runtime-entry correction, not a decoder graph or model
+algorithm change. Keep the alias separation as a browser acceptance invariant
+and repeat it on another browser/adapter before changing a public preset.
+Machine-readable evidence is in
+`tools/data/results/qwen/qwen3-asr-webgpu-bundle-boundary-2026-08-29.json`.

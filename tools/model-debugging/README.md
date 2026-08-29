@@ -28,6 +28,7 @@ tools/model-debugging/
     huggingface-model-publishing.md
     librivox-domain-parity.md
     nemo-rnnt-porting.md
+    ort-webgpu-entrypoint.md
   scripts/
     README.md
     node-asrjs-nemo-inspect.mjs

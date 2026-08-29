@@ -65,6 +65,13 @@ Use the reference scripts and `@asrjs/speech-recognition` scripts to compare:
 - timestamps
 - final transcript text
 
+When the browser session creates but tokens are corrupted or unexpectedly
+slow, verify the ORT package entry point before changing model code. Keep
+`onnxruntime-web/webgpu` mapped to the WebGPU bundle and use the all bundle only
+for the plain package import. See
+[ort-webgpu-entrypoint.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\ort-webgpu-entrypoint.md)
+for the reproducible Qwen 1.29 case.
+
 ### 4. Save artifacts
 
 Write results into `tools/data/results/...` whenever the run is useful for:

@@ -27,6 +27,8 @@ from a proven path instead of rediscovering the workflow.
   - official X-ASR-zh-en sherpa-onnx Zipformer2 streaming chain; true encoder-cache streaming
 - [qwen3-asr-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\qwen3-asr-porting.md)
   - official Qwen3-ASR-0.6B chain: qwen-asr capture, static encoder, explicit KV decoder, sequential WASM, Chrome WebGPU
+- [ort-webgpu-entrypoint.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\ort-webgpu-entrypoint.md)
+  - keep `onnxruntime-web/webgpu` on the WebGPU bundle; diagnose provider-alias regressions before changing model code
 - [huggingface-model-publishing.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\huggingface-model-publishing.md)
   - adapt a validated local model folder into our ONNX repo card format and publish it with `hf` CLI
 

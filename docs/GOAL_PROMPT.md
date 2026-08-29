@@ -71,6 +71,22 @@ ORT Web 1.29.0 stable upgrade (2026-08-29):
   `tools/data/results/x-asr/`, `tools/data/results/gigaam/`,
   `tools/data/results/sensevoice/`
 
+Qwen WebGPU entry-point boundary refresh (2026-08-29):
+
+- A reproducible Chrome/ORT 1.29 failure (corrupted 13-token output with
+  successful session creation) was traced to the sibling harness aliasing both
+  `onnxruntime-web` and `onnxruntime-web/webgpu` to `ort.all.bundle.min.mjs`.
+  The corrected harness keeps the plain import on the all bundle and maps the
+  WebGPU subpath to `ort.webgpu.min.mjs`.
+- With the corrected entry point, the official dynamic encoder plus explicit-KV
+  decoder restored exact 30-token parity. Three same-session GPU-KV runs had a
+  1,854.6 ms median (`5.93x` RTFx); CPU-KV controls had a 3,880.65 ms median
+  (`2.83x` RTFx), for a measured `2.09x` GPU-KV speedup on NVIDIA Blackwell.
+- This is a browser runtime-entry/harness correction, not a model or graph
+  algorithm change. Keep alias separation as a browser acceptance invariant;
+  repeat on another browser/adapter before changing a public preset.
+  Evidence: `docs/reports/qwen3-asr-webgpu-bundle-boundary-2026-08-29.json`.
+
 Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
 
 - Corrected Chrome A/B confirms the Parakeet v3 GRU decoder graph runs on both
@@ -262,9 +278,11 @@ surfaces. Work items, in order:
    corrected controlled A/B is recorded below; default behavior remains
    encoder-WebGPU/decoder-WASM until full-model parity and a measured win
    exist.
-2. Measure per-component placement again for every family on 1.29.0 — the
-   X-ASR WASM-vs-WebGPU and buffer-cache conclusions may shift with the new
-   EP; re-benchmark instead of inheriting old verdicts.
+2. [Qwen sub-slice completed 2026-08-29] Measure per-component placement again
+   for every family on 1.29.0 — the X-ASR WASM-vs-WebGPU and buffer-cache
+   conclusions may shift with the new EP; re-benchmark instead of inheriting
+   old verdicts. Qwen's corrected browser entry-point A/B is recorded above;
+   remaining family measurements and cross-browser repetition stay open.
 3. [Research boundary] Run a bounded compatibility spike against the separate
    native WebGPU Plugin EP 0.3.0 (Python/.NET, not npm) only when the plugin is
    available locally. Compare Parakeet decoder/joiner session creation,
