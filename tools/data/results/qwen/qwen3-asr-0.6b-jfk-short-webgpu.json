@@ -1,6 +1,51 @@
 {
   "backend": "webgpu",
-  "failureClass": "WEBGPU_NO_ADAPTER",
-  "message": "no available backend found. ERR: [webgpu] Error: WebGPU is not supported in current environment",
-  "status": "experimental-blocked"
+  "engine": "onnxruntime-node",
+  "artifacts": {
+    "dtype": "float32",
+    "encoder": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\audio-encoder-dynamic.onnx",
+      "size_bytes": 751103768
+    },
+    "prefill": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-prefill.onnx",
+      "size_bytes": 821791
+    },
+    "step": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-step.onnx",
+      "size_bytes": 829881
+    },
+    "prefill_data": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-prefill.onnx.data",
+      "size_bytes": 3006500864
+    },
+    "step_data": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-step.onnx.data",
+      "size_bytes": 3006500864
+    }
+  },
+  "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "language": "English",
+  "expected": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "text_match": true,
+  "failureClass": null,
+  "metrics": {
+    "preprocessMs": 96.199,
+    "encodeMs": 868.571,
+    "decodeMs": 6836.462,
+    "decoderInitMs": 2202.31,
+    "decoderStepMs": 4634.152,
+    "decoderStepAvgMs": 154.472,
+    "decoderStepCount": 30,
+    "decoderKvCacheLocation": "cpu",
+    "totalMs": 7810.614,
+    "wallMs": 7810.614,
+    "audioDurationSec": 11,
+    "rtf": 0.7100558181818181,
+    "rtfx": 1.4083399845389877,
+    "encoderFrameCount": 1100,
+    "emittedTokenCount": 30,
+    "decodeIterations": 30
+  },
+  "status": "experimental"
 }

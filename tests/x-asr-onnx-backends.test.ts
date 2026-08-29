@@ -1,7 +1,17 @@
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+function webgpuEngineLabel(): 'onnxruntime-node' | 'onnxruntime-web' {
+  try {
+    createRequire(import.meta.url).resolve('onnxruntime-node');
+    return 'onnxruntime-node';
+  } catch {
+    return 'onnxruntime-web';
+  }
+}
 
 import { OrtXAsrExecutor } from '../src/models/x-asr/executor.js';
 import { createXAsrModelFamily } from '../src/models/x-asr/model.js';
@@ -163,7 +173,7 @@ describe.skipIf(
           durationSeconds: waveform.length / 16000,
           channels: [waveform],
         });
-        fs.writeFileSync(outPath, `${JSON.stringify({ backend: 'webgpu', text: result.utteranceText, expected: EXPECTED, text_match: result.utteranceText === EXPECTED, status: 'experimental-js-frontend-webgpu' }, null, 2)}\n`);
+        fs.writeFileSync(outPath, `${JSON.stringify({ backend: 'webgpu', engine: webgpuEngineLabel(), text: result.utteranceText, expected: EXPECTED, text_match: result.utteranceText === EXPECTED, status: 'experimental-js-frontend-webgpu' }, null, 2)}\n`);
         expect(result.utteranceText).toBe(EXPECTED);
       } catch (error) {
         const payload = { ...classifyOrtFailure(error, 'webgpu'), status: 'experimental-blocked' };

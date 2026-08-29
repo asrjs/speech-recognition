@@ -153,13 +153,18 @@ export function resolveLasrCtcArtifacts(
 }
 
 export async function initOrt(
-  _backendId: string,
+  backendId: string,
   options: {
     readonly wasmPaths?: string;
     readonly cpuThreads?: number;
     readonly signal?: { readonly aborted: boolean } | null;
   } = {},
 ): Promise<OrtModuleLike> {
+  if (backendId.startsWith('webgpu') && isNodeLikeRuntime()) {
+    const nodeOrt = await tryImportNodeOrt();
+    if (nodeOrt) return withOrtCreateAbort(nodeOrt, options.signal);
+  }
+
   const imported = (await import('onnxruntime-web')) as unknown as OrtModuleLike & {
     readonly default?: OrtModuleLike;
   };
@@ -191,6 +196,24 @@ export async function initOrt(
   return withOrtCreateAbort(ort, options.signal);
 }
 
+/**
+ * Prefer the native ORT build for WebGPU in Node-like runtimes: onnxruntime-web
+ * resolves WebGPU through navigator.gpu, which Node does not provide, while
+ * onnxruntime-node ships its own wgpu adapter. Falls back to onnxruntime-web
+ * when the native package is unavailable so the caller classifies the backend
+ * as before.
+ */
+async function tryImportNodeOrt(): Promise<OrtModuleLike | undefined> {
+  try {
+    const imported = (await import('onnxruntime-node')) as unknown as OrtModuleLike & {
+      readonly default?: OrtModuleLike;
+    };
+    return imported.default ?? imported;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function createOrtSession(
   ort: OrtModuleLike,
   modelUrl: string,
@@ -207,13 +230,15 @@ export async function createOrtSession(
 
   const executionProviders =
     options.backendId === 'webgpu'
-      ? [
-          {
-            name: 'webgpu',
-            deviceType: 'gpu',
-            powerPreference: 'high-performance',
-          },
-        ]
+      ? isNodeLikeRuntime()
+        ? ['webgpu']
+        : [
+            {
+              name: 'webgpu',
+              deviceType: 'gpu',
+              powerPreference: 'high-performance',
+            },
+          ]
       : ['wasm'];
 
   const sessionOptions: Record<string, unknown> = {
@@ -236,12 +261,35 @@ export async function createOrtSession(
   }
 
   if (externalDataUrl && options.externalDataPath) {
-    sessionOptions.externalData = [
-      {
-        data: externalDataUrl,
-        path: options.externalDataPath,
-      },
-    ];
+    if (isNodeLikeRuntime()) {
+      // The Node binding only accepts byte buffers in externalData, while
+      // native ORT resolves external initializers relative to the model file.
+      // Colocated data files therefore need no option at all.
+      const nodePath = await importNodeModule<typeof import('node:path')>('node:path');
+      const colocatedPath = nodePath.join(
+        nodePath.dirname(sessionModelUrl),
+        nodePath.basename(options.externalDataPath),
+      );
+      const fsModule = await importNodeModule<typeof import('node:fs')>('node:fs');
+      if (fsModule.existsSync(colocatedPath)) {
+        // Native ORT loads the colocated external data automatically.
+      } else {
+        const promises = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+        sessionOptions.externalData = [
+          {
+            data: await promises.readFile(externalDataUrl),
+            path: options.externalDataPath,
+          },
+        ];
+      }
+    } else {
+      sessionOptions.externalData = [
+        {
+          data: externalDataUrl,
+          path: options.externalDataPath,
+        },
+      ];
+    }
   }
 
   const createOptions = withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;

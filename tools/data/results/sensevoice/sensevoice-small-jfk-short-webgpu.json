@@ -1,7 +1,9 @@
 {
   "backend": "webgpu",
-  "failureClass": "WEBGPU_NO_ADAPTER",
-  "message": "no available backend found. ERR: [webgpu] backend not found.",
+  "engine": "onnxruntime-node",
+  "text": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "text_match": true,
   "onnx_path": "N:\\models\\onnx\\sensevoice\\small\\model.onnx",
-  "status": "experimental-blocked"
+  "status": "experimental-js-frontend-webgpu"
 }

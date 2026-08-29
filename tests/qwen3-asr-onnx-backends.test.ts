@@ -1,7 +1,17 @@
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+function webgpuEngineLabel(): 'onnxruntime-node' | 'onnxruntime-web' {
+  try {
+    createRequire(import.meta.url).resolve('onnxruntime-node');
+    return 'onnxruntime-node';
+  } catch {
+    return 'onnxruntime-web';
+  }
+}
 
 import { OrtQwen3AsrExecutor, parseOfficialQwen3AsrConfig } from '../src/models/qwen-asr/index.js';
 import {
@@ -86,6 +96,13 @@ function fp32Artifacts(): SmokeArtifacts | undefined {
 
 const PRIMARY = fp16Artifacts() ?? fp32Artifacts();
 const T1050_SAMPLES = 1050 * 160;
+
+function nodeWebgpuArtifacts(): SmokeArtifacts | undefined {
+  // The pinned onnxruntime-node nightly demands Float16Array backing for
+  // float16 tensors but its native buffer extraction cannot read that type,
+  // so fp16 graphs fail on every EP. Use the official fp32 graphs instead.
+  return fp32Artifacts();
+}
 
 const CONFIG = parseOfficialQwen3AsrConfig();
 
@@ -273,7 +290,7 @@ describe.skipIf(
     { timeout: 900_000 },
     async () => {
       const waveform = loadNpyFloat32(WAVEFORM);
-      const artifacts = PRIMARY;
+      const artifacts = nodeWebgpuArtifacts();
       if (!artifacts) return;
       const executor = createExecutor('webgpu', artifacts);
       const outPath = path.resolve('tools/data/results/qwen/qwen3-asr-0.6b-jfk-short-webgpu.json');
@@ -298,7 +315,7 @@ describe.skipIf(
         const match = result.utteranceText === EXPECTED;
         fs.writeFileSync(outPath, `${JSON.stringify({
           backend: 'webgpu',
-          engine: 'onnxruntime-web',
+          engine: webgpuEngineLabel(),
           artifacts: artifactPayload(artifacts),
           text: result.utteranceText,
           language: result.language,

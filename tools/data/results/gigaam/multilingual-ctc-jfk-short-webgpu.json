@@ -1,8 +1,10 @@
 {
   "backend": "webgpu",
-  "failureClass": "WEBGPU_NO_ADAPTER",
-  "message": "no available backend found. ERR: [webgpu] backend not found.",
+  "engine": "onnxruntime-web",
+  "text": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "text_match": true,
   "onnx_path": "N:\\models\\onnx\\gigaam\\multilingual-ctc\\multilingual_ctc.onnx",
   "dtype": "float32",
-  "status": "experimental-blocked"
+  "status": "experimental-js-frontend-webgpu"
 }

@@ -162,6 +162,20 @@ export async function initQwenOrt(
     readonly signal?: { readonly aborted: boolean } | null;
   } = {},
 ): Promise<QwenOrtModuleLike> {
+  if (backendId === 'webgpu' && isNodeLikeRuntime()) {
+    // onnxruntime-web resolves WebGPU through navigator.gpu, which Node does
+    // not provide; the native package ships its own wgpu adapter. Fall back to
+    // the web build when the native package is unavailable so callers classify
+    // the backend as before.
+    try {
+      const imported = (await import('onnxruntime-node')) as unknown as QwenOrtModuleLike & {
+        readonly default?: QwenOrtModuleLike;
+      };
+      return withOrtCreateAbort(imported.default ?? imported, options.signal);
+    } catch {
+      // fall through to onnxruntime-web.
+    }
+  }
   const imported = (await (
     backendId === 'webgpu' ? import('onnxruntime-web/webgpu') : import('onnxruntime-web')
   )) as unknown as QwenOrtModuleLike & { readonly default?: QwenOrtModuleLike };
@@ -208,7 +222,9 @@ export async function createQwenOrtSession(
   let modelUrl = url;
   let externalDataUrl = options.externalDataUrl;
   const executionProviders = options.backendId === 'webgpu'
-    ? [{ name: 'webgpu', deviceType: 'gpu', powerPreference: 'high-performance' }]
+    ? isNodeLikeRuntime()
+      ? ['webgpu']
+      : [{ name: 'webgpu', deviceType: 'gpu', powerPreference: 'high-performance' }]
     : ['wasm'];
   const lowMemory = options.lowMemory === true;
   const sessionOptions: Record<string, unknown> = {
@@ -219,14 +235,45 @@ export async function createQwenOrtSession(
     enableMemPattern: !lowMemory,
     enableProfiling: options.enableProfiling ?? false,
   };
-  if (options.preferredOutputLocation) sessionOptions.preferredOutputLocation = options.preferredOutputLocation;
+  if (options.preferredOutputLocation) {
+    // Native ORT in Node does not implement gpu-buffer output locations; keep
+    // every output on the CPU so parity runs stay on the copy-to-JS path.
+    sessionOptions.preferredOutputLocation = isNodeLikeRuntime()
+      ? typeof options.preferredOutputLocation === 'string'
+        ? 'cpu'
+        : Object.fromEntries(
+          Object.entries(options.preferredOutputLocation).map(([name]) => [name, 'cpu']),
+        )
+      : options.preferredOutputLocation;
+  }
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
     if (/^file:/i.test(modelUrl)) modelUrl = fileURLToPath(modelUrl);
     if (externalDataUrl && /^file:/i.test(externalDataUrl)) externalDataUrl = fileURLToPath(externalDataUrl);
   }
   if (externalDataUrl && options.externalDataPath) {
-    sessionOptions.externalData = [{ data: externalDataUrl, path: options.externalDataPath }];
+    if (isNodeLikeRuntime()) {
+      // The Node binding only accepts byte buffers in externalData, while
+      // native ORT resolves external initializers relative to the model file.
+      // Colocated data files therefore need no option at all.
+      const nodePath = await importNodeModule<typeof import('node:path')>('node:path');
+      const colocatedPath = nodePath.join(
+        nodePath.dirname(modelUrl),
+        nodePath.basename(options.externalDataPath),
+      );
+      const fsModule = await importNodeModule<typeof import('node:fs')>('node:fs');
+      if (fsModule.existsSync(colocatedPath)) {
+        // Native ORT loads the colocated external data automatically.
+      } else {
+        const promises = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+        sessionOptions.externalData = [{
+          data: await promises.readFile(externalDataUrl),
+          path: options.externalDataPath,
+        }];
+      }
+    } else {
+      sessionOptions.externalData = [{ data: externalDataUrl, path: options.externalDataPath }];
+    }
   }
   const createOptions = withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
   return honorAbortAfterCreate(

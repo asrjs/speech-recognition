@@ -1,6 +1,8 @@
 {
   "backend": "webgpu",
-  "failureClass": "WEBGPU_NO_ADAPTER",
-  "message": "no available backend found. ERR: [webgpu] backend not found.",
-  "status": "experimental-blocked"
+  "engine": "onnxruntime-node",
+  "text": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "text_match": true,
+  "status": "experimental-js-frontend-webgpu"
 }

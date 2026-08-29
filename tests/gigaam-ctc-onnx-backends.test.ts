@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -55,6 +56,15 @@ function audioInput(waveform: Float32Array) {
     durationSeconds: waveform.length / 16000,
     channels: [waveform],
   };
+}
+
+function webgpuEngineLabel(): 'onnxruntime-node' | 'onnxruntime-web' {
+  try {
+    createRequire(import.meta.url).resolve('onnxruntime-node');
+    return 'onnxruntime-node';
+  } catch {
+    return 'onnxruntime-web';
+  }
 }
 
 function classifyOrtFailure(error: unknown, backend: 'wasm' | 'webgpu'): Record<string, unknown> {
@@ -186,7 +196,7 @@ describe.skipIf(
         });
         const payload = {
           backend: 'webgpu',
-          engine: 'onnxruntime-web',
+          engine: webgpuEngineLabel(),
           text: result.utteranceText,
           expected: sample.text,
           text_match: result.utteranceText === sample.text,

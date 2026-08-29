@@ -341,17 +341,54 @@ failure. No Qwen long-audio rerun was needed in this slice; its existing
 official-native comparison and label-backed windowed result remain the
 authoritative long-audio evidence.
 
+## Node WebGPU parity via onnxruntime-node (2026-08-29)
+
+The earlier `WEBGPU_NO_ADAPTER` classification was an artifact of the shared
+executors loading `onnxruntime-web` inside Node: that build resolves WebGPU
+through `navigator.gpu`, which Node does not provide, while the native
+`onnxruntime-node` package ships its own wgpu adapter. `initOrt` and
+`initQwenOrt` now prefer `onnxruntime-node` for WebGPU backends in Node-like
+runtimes and fall back to `onnxruntime-web` when the native package is
+missing, so browser behavior and CI classifications are unchanged.
+
+Node sessions pass a plain `webgpu` execution provider string and keep all
+outputs on the CPU because the native build does not implement gpu-buffer
+output locations; KV caches therefore stay CPU-resident in Node runs while
+GPU compute executes on the adapter. Colocated `.onnx.data` files are left to
+the native loader, because the Node binding only accepts byte buffers for
+explicit `externalData` options.
+
+Fresh Node WebGPU evidence on the same official artifacts, exact transcript
+match on real GPU:
+
+| Family | Node WebGPU evidence |
+| --- | --- |
+| GigaAM multilingual CTC | `tools/data/results/gigaam/multilingual-ctc-jfk-short-webgpu.json` (fp32) |
+| GigaAM v3 E2E RNN-T | `tools/data/results/gigaam/v3-e2e-rnnt-example-webgpu.json` (fp32, exact Russian) |
+| SenseVoiceSmall | `tools/data/results/sensevoice/sensevoice-small-jfk-short-webgpu.json` |
+| X-ASR zh-en 160 ms | `tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu.json` |
+| Qwen3-ASR 0.6B | `tools/data/results/qwen/qwen3-asr-0.6b-jfk-short-webgpu.json` (official fp32, RTFx 1.41, CPU KV) |
+
+Classified limitation: the pinned `onnxruntime-node` nightly requires
+`Float16Array` backing for float16 tensors, but its native buffer extraction
+cannot read that type, so fp16 graphs fail on every EP with a
+"not enough space: expected N, got 0" binding error. The Node WebGPU Qwen
+probe therefore uses the official fp32 decoder graphs; fp16 remains
+browser-only until the ORT-node binding supports Float16Array buffers.
+
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.
 - Qwen long-audio is now covered by one official-native comparison and one
   label-backed window-merge run; broader language/domain and repeated-run
   coverage remains open, so it is still not a promotion gate.
-- Node WebGPU still `WEBGPU_NO_ADAPTER`.
+- Node WebGPU now passes through `onnxruntime-node` for all five families
+  (2026-08-29); Node KV caches stay on the CPU and fp16 graphs remain blocked
+  by the ORT-node Float16Array binding gap.
 - All five families stay experimental; no presets. Discover via `listExperimentalSpeechFamilies()`, not `listSpeechModels()`.
 - GigaAM RNN-T is Russian-only (`example.wav`); do not cite it as a JFK / English result.
 - Deterministic fake-device browser acceptance for the streaming-demo latency HUD is now recorded; a physical human-microphone pass remains a manual device check. `--` at idle is not a speech-path pass.
 - Historical note: this handoff originally recorded experimental families on the root for WebGPU discovery. Current main keeps them on intentional `models/<family>` subpaths; they remain experimental and are not presets.
 - X-ASR now owns its native transcript/options contracts and canonical mapper under `src/models/x-asr`; it no longer reuses the LASR-CTC family contract.
 - Realtime transcription requests now carry a controller-owned abort signal; `reset()` aborts stale in-flight callbacks before clearing state, so browser worker/model callbacks can cancel cooperatively and reuse the loaded model.
-- Experimental family executors now call ORT `session.release()` on dispose. Whisper encoder mel feeds, decoder-step owned feeds/logits/replaced KV (CPU+GPU), and split-graph callback present-KV Ort wrappers are `dispose()`d after copy; next-step encoder KV is retained until replaced. CTC/transducer `session.run()` output logits (GigaAM CTC/RNN-T, SenseVoice, X-ASR, LASR, Wav2Vec2, NeMo TDT/RNN-T/AED) and Qwen prefill/step decoder logits are copied then disposed; Qwen next-step KV is retained until replaced. Browser capture worklet URLs, decode AudioContext `close()`, and TEN/FireRed VAD `worker.terminate()` on adapter dispose were already present. `UrlAssetHandle` / `BlobAssetHandle` now refuse post-dispose locators and revoke blob URLs on dispose even when `getLocator('url')` is concurrent or still in-flight. `getModelFile({ preferBlobUrl: true })` now requires `onResolvedHandle` and always disposes the handle when ownership is not transferred. Whisper, Qwen, GigaAM RNN-T joint/decoder, NeMo AED decoder, NeMo RNN-T joint/decoder, NeMo TDT duration/step, and X-ASR streaming step loops honor `options.signal` between steps (`PipelineAbortedError`). X-ASR abort does not commit the in-flight chunk or dispose caller encoder-state tensors; the leftover stream can be retried (`reset()` optional). Experimental families now expose structured `languages` / `audioContract` / `limitations` on `listExperimentalSpeechFamilies()`, and missing local ONNX throws root-exported `ExperimentalArtifactMissingError` (`code === 'experimental-artifact-missing'`, `isExperimentalArtifactMissingError()`). `loadSpeechModel({ signal })` aborts with `PipelineAbortedError('load')`. Remaining product gaps: physical human-microphone check, Node WebGPU adapter, Qwen long-audio.
+- Experimental family executors now call ORT `session.release()` on dispose. Whisper encoder mel feeds, decoder-step owned feeds/logits/replaced KV (CPU+GPU), and split-graph callback present-KV Ort wrappers are `dispose()`d after copy; next-step encoder KV is retained until replaced. CTC/transducer `session.run()` output logits (GigaAM CTC/RNN-T, SenseVoice, X-ASR, LASR, Wav2Vec2, NeMo TDT/RNN-T/AED) and Qwen prefill/step decoder logits are copied then disposed; Qwen next-step KV is retained until replaced. Browser capture worklet URLs, decode AudioContext `close()`, and TEN/FireRed VAD `worker.terminate()` on adapter dispose were already present. `UrlAssetHandle` / `BlobAssetHandle` now refuse post-dispose locators and revoke blob URLs on dispose even when `getLocator('url')` is concurrent or still in-flight. `getModelFile({ preferBlobUrl: true })` now requires `onResolvedHandle` and always disposes the handle when ownership is not transferred. Whisper, Qwen, GigaAM RNN-T joint/decoder, NeMo AED decoder, NeMo RNN-T joint/decoder, NeMo TDT duration/step, and X-ASR streaming step loops honor `options.signal` between steps (`PipelineAbortedError`). X-ASR abort does not commit the in-flight chunk or dispose caller encoder-state tensors; the leftover stream can be retried (`reset()` optional). Experimental families now expose structured `languages` / `audioContract` / `limitations` on `listExperimentalSpeechFamilies()`, and missing local ONNX throws root-exported `ExperimentalArtifactMissingError` (`code === 'experimental-artifact-missing'`, `isExperimentalArtifactMissingError()`). `loadSpeechModel({ signal })` aborts with `PipelineAbortedError('load')`. Remaining product gaps: physical human-microphone check, ORT-node fp16 binding support, Qwen long-audio.
