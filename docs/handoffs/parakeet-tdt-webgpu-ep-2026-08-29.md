@@ -198,3 +198,21 @@ path was 0.5149% slower than the prior bucket-default GPU-state control. Keep
 the ORT bucket default and the cache knobs opt-in until a longer,
 model-specific sweep demonstrates a stable latency or memory benefit.
 Evidence: `docs/reports/parakeet-tdt-v3-webgpu-cache-sweep-2026-08-29.json`.
+
+## Five-run GPU-state lifecycle soak (2026-08-29)
+
+The same Chrome headless/NVIDIA Blackwell/native-rate fixture was repeated
+five times through `loadSpeechModel` for both CPU and GPU recurrent-state
+outputs. Every run emitted the exact 91-token transcript and completed 107
+decode iterations. The bucket-default control had a 3,491.575 ms median
+transcription (5.3655x RTFx); `gpu-buffer` state had a 2,907.200 ms median
+(6.4454x RTFx), a 16.7367% latency reduction and 20.1267% RTFx increase. GPU
+state loaded 7.3665% faster in this repeat (9,794.690 ms vs 10,573.590 ms).
+
+The browser harness invokes both model and runtime disposal, records teardown
+errors, and reported none for either condition. This is still not proof of GPU
+resource reclamation. Heap readings rose for the first four runs and dropped
+sharply on the fifth in both conditions; treat them as diagnostic samples,
+not a leak verdict. Keep GPU-state placement opt-in until the result is
+repeated on another browser or adapter.
+Evidence: `docs/reports/parakeet-tdt-v3-webgpu-lifecycle-soak-2026-08-29.json`.

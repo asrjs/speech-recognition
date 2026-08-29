@@ -132,6 +132,12 @@ transcript parity. Do not promote a cache mode from one faster run; preserve
 the default or keep the candidate opt-in until the result is repeatable and
 model-specific.
 
+For lifecycle soaks, make teardown observable: record model/runtime disposal
+errors instead of swallowing them, and distinguish a browser heap sample from
+actual GPU resource reclamation. Report load time separately from warmed
+transcription latency, and require exact parity on every repeated run before
+considering a state-placement change for promotion.
+
 ## Recommended Entry Points
 
 - [README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\README.md)

@@ -1,0 +1,90 @@
+{
+  "schema": "asrjs.parakeet.tdt.webgpu-lifecycle-soak.v1",
+  "date": "2026-08-29",
+  "model": "parakeet-tdt-0.6b-v3",
+  "fixture": "LibriVox A Year with the Birds",
+  "environment": {
+    "browser": "Chrome headless new",
+    "adapter": "NVIDIA Blackwell",
+    "ortVersion": "1.29.0",
+    "audioStrategy": "native-rate",
+    "preprocessor": "js",
+    "encoderBackend": "webgpu",
+    "encoderQuantization": "fp16",
+    "decoderBackend": "webgpu",
+    "decoderQuantization": "fp32",
+    "repeatCount": 5,
+    "audioDurationSec": 18.714058956916098,
+    "emittedTokenCount": 91,
+    "decodeIterations": 107
+  },
+  "controls": [
+    {
+      "decoderStateOutputLocation": "cpu",
+      "webgpuStorageBufferCacheMode": "bucket-default",
+      "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T15-04-55-739Z.json",
+      "loadMs": 10573.590000003576,
+      "transcribeMs": [
+        3752.015000000596,
+        3434.939999997616,
+        3491.5750000029802,
+        3468.544999986887,
+        3540.045000001788
+      ],
+      "medianTranscribeMs": 3491.5750000029802,
+      "rtfx": [4.9957, 5.4542, 5.3655, 5.4014, 5.2925],
+      "medianRtfX": 5.3655,
+      "exactMatchEveryRun": true,
+      "memoryUsedJsHeapBytes": [
+        1346333307,
+        1353521383,
+        1363988643,
+        1367340691,
+        32820198
+      ]
+    },
+    {
+      "decoderStateOutputLocation": "gpu-buffer",
+      "webgpuStorageBufferCacheMode": "bucket-default",
+      "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T15-05-35-690Z.json",
+      "loadMs": 9794.689999997616,
+      "transcribeMs": [
+        3132.7099999934435,
+        2907.2000000029802,
+        2821.75,
+        2808.9000000059605,
+        2972.005000010133
+      ],
+      "medianTranscribeMs": 2907.2000000029802,
+      "rtfx": [5.9845, 6.4454, 6.6405, 6.6711, 6.3055],
+      "medianRtfX": 6.4454,
+      "exactMatchEveryRun": true,
+      "memoryUsedJsHeapBytes": [
+        1345662999,
+        1353136619,
+        1363112843,
+        1365985851,
+        32367686
+      ]
+    }
+  ],
+  "deltaGpuStateVsCpuState": {
+    "medianTranscribeLatencyPct": -16.7367,
+    "medianRtfXPct": 20.1267,
+    "loadLatencyPct": -7.3665
+  },
+  "quality": {
+    "exactTranscriptParity": true,
+    "runsPerCondition": 5,
+    "allDecodeIterations": 107,
+    "allEmittedTokenCounts": 91
+  },
+  "teardown": {
+    "harnessInvokesModelAndRuntimeDispose": true,
+    "harnessRecordsTeardownErrors": true,
+    "surfacedTeardownError": false,
+    "caveat": "No teardown error was reported in this run; browser heap samples are not a direct GPU resource-reclamation measurement."
+  },
+  "decision": "retain-opt-in",
+  "interpretation": "The five-run same-adapter soak preserved exact transcript parity for both state placements. GPU-resident recurrent state reduced median warm transcribe latency by 16.7367% and increased median RTFx by 20.1267%, while loading 7.3665% faster in this repeat. Browser heap readings rose across the first four runs and then dropped sharply on the fifth run in both conditions, so they are not a reliable leak verdict. The strengthened harness recorded no teardown errors. Keep the path opt-in pending a second browser or adapter and longer cross-session resource validation."
+}

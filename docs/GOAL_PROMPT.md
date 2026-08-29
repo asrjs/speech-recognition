@@ -447,6 +447,15 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   slower than the prior bucket-default GPU-state run. The library exposes the
   knobs for model-specific experiments while retaining ORT defaults. Evidence:
   `docs/reports/parakeet-tdt-v3-webgpu-cache-sweep-2026-08-29.json`.
+- Five-run Parakeet GPU-state soak (2026-08-29): the same library-entry
+  fixture preserved exact 91-token parity for all five CPU-state and
+  `gpu-buffer`-state runs. GPU-state reduced median warm latency from
+  `3,491.575 ms` to `2,907.200 ms` (`16.7367%`) and improved median RTFx from
+  `5.3655x` to `6.4454x` (`20.1267%`); load time was also `7.3665%` lower in
+  this repeat. The strengthened harness records model/runtime disposal errors
+  and found none, but the final heap sample drops sharply in both controls;
+  retain the path opt-in pending another browser/adapter.
+  Evidence: `docs/reports/parakeet-tdt-v3-webgpu-lifecycle-soak-2026-08-29.json`.
 
 - [Completed 2026-08-29] GigaAM RNN-T phase profile and provider matrix: the
   official v3 E2E artifact and
