@@ -157,6 +157,11 @@ Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
   and removes redundant disposal promise wrappers; the 5,000-run Node harness
   records the before/after controls in
   `docs/handoffs/parakeet-tdt-webgpu-ep-2026-08-29.md`
+- NeMo TDT now accepts `returnConfidence` (default true). Setting it false
+  skips the per-step full-vocabulary softmax/entropy pass after token and
+  duration argmax, leaving the native confidence summary undefined. This is a
+  backward-compatible throughput-only path that matches the `wav2vec2` option
+  and the gated softmax in the faster `parakeet.js` reference.
 - Validation after this slice: full suite 1008 passed / 18 artifact-gated
   skips; typecheck and build clean; lint remains 0 errors / 11 warnings
 - Corrected full-model browser probe: native WASM controls for v3 fp16/fp16,
@@ -367,10 +372,20 @@ Shared short-window benchmark and RTFx regression probe (2026-08-29):
   the historical Parakeet.js v2 benchmark on 15–30 s samples reports a median
   of 80.71x with fp32 encoder/int8 decoder and 11-thread-class browser
   settings. This is a real configuration/runtime regression candidate, not a
-  short-audio explanation alone. The current harness's explicit `cpuThreads`
-  values above one did not complete within the bounded browser probe and are
-  retained as `WASM_THREADS_UNAVAILABLE` evidence until the ORT 1.29 worker
-  setup is fixed; do not silently change the default.
+  short-audio explanation alone.
+- Threaded-WASM worker path root cause fixed in the sibling Chrome harness
+  (2026-08-29): `crossOriginIsolated` was already true, but the `/ort-dist/*`
+  static responses only sent `Cross-Origin-Resource-Policy`; ORT's module
+  workers need their sibling `.mjs`/`.wasm` subresources to also carry
+  `Cross-Origin-Embedder-Policy: require-corp`, otherwise Chrome blocks them
+  with `coep-frame-resource-needs-coep-header` and the probe never completes.
+  After the header fix, `cpuThreads=4` completes with exact 91-token parity but
+  is measurably slower than single-thread for this GRU decoder (about 14.2x vs
+  17.7x warmed RTFx, decoder 950 ms vs 720 ms), so the production Parakeet
+  default stays single-threaded WASM until a larger decode workload justifies
+  threads. The benchmark harness now omits `cpuThreads` by default so it uses
+  the library's `navigator.hardwareConcurrency` value; explicit
+  `--cpu-threads=N` remains the diagnostic control.
 - The 146.326 s JFK source is retained for provenance, but the Parakeet v3
   encoder rejects its 1830-frame unwindowed input (static limit 1024). Use
   supported sub-30-second clips or a verified long-audio windowing pipeline;

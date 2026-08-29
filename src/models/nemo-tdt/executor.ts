@@ -499,6 +499,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     _context: NemoDecodeContext<NemoTdtModelConfig>,
   ): Promise<NemoTdtNativeTranscript> {
     const transcriptionStart = nowMs();
+    const computeConfidence = options.returnConfidence ?? true;
     const loaded = await this.getLoadedState();
     const warnings = [...loaded.warnings];
     emitTranscriptionProgress(options, {
@@ -726,14 +727,17 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         const durationOffset = vocabSize;
         const step =
           argmax(logitsData, durationOffset, logitsData.length - durationOffset) - durationOffset;
-        const confidence = confidenceFromLogits(logitsData, tokenId, vocabSize);
-
-        const existingFrameConfidence = frameConfidenceStats.get(frameIndex);
-        if (existingFrameConfidence) {
-          existingFrameConfidence.sum += confidence.confidence;
-          existingFrameConfidence.count += 1;
-        } else {
-          frameConfidenceStats.set(frameIndex, { sum: confidence.confidence, count: 1 });
+        const stepConfidence = computeConfidence
+          ? confidenceFromLogits(logitsData, tokenId, vocabSize)
+          : undefined;
+        if (stepConfidence) {
+          const existingFrameConfidence = frameConfidenceStats.get(frameIndex);
+          if (existingFrameConfidence) {
+            existingFrameConfidence.sum += stepConfidence.confidence;
+            existingFrameConfidence.count += 1;
+          } else {
+            frameConfidenceStats.set(frameIndex, { sum: stepConfidence.confidence, count: 1 });
+          }
         }
 
         if (tokenId !== blankId) {
@@ -743,9 +747,11 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
             roundTimestampSeconds(frameIndex * frameTime),
             roundTimestampSeconds(Math.min(frameCount, frameIndex + durationFrames) * frameTime),
           ]);
-          tokenConfidences.push(confidence.confidence);
+          if (stepConfidence) {
+            tokenConfidences.push(stepConfidence.confidence);
+            tokenLogProbs.push(stepConfidence.logProb);
+          }
           tokenFrameIndices.push(frameIndex);
-          tokenLogProbs.push(confidence.logProb);
           tokenTdtSteps.push(step);
           emittedOnFrame += 1;
 
@@ -876,20 +882,22 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       isFinal: true,
       words: details.words,
       tokens: details.tokens,
-      confidence: {
-        utterance: utteranceConfidence,
-        wordAverage,
-        tokenAverage,
-        frameAverage:
-          frameConfidences.length > 0
-            ? frameConfidences.reduce((sum, value) => sum + value, 0) / frameConfidences.length
-            : undefined,
-        averageLogProb:
-          tokenLogProbs.length > 0
-            ? tokenLogProbs.reduce((sum, value) => sum + value, 0) / tokenLogProbs.length
-            : undefined,
-        frames: frameConfidences,
-      },
+      confidence: computeConfidence
+        ? {
+            utterance: utteranceConfidence,
+            wordAverage,
+            tokenAverage,
+            frameAverage:
+              frameConfidences.length > 0
+                ? frameConfidences.reduce((sum, value) => sum + value, 0) / frameConfidences.length
+                : undefined,
+            averageLogProb:
+              tokenLogProbs.length > 0
+                ? tokenLogProbs.reduce((sum, value) => sum + value, 0) / tokenLogProbs.length
+                : undefined,
+            frames: frameConfidences,
+          }
+        : undefined,
       metrics: {
         preprocessMs: totalMetrics.preprocessMs,
         encodeMs: totalMetrics.encodeMs,

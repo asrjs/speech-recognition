@@ -59,11 +59,14 @@ total than CPU-KV); it does not invalidate the earlier JFK GPU-KV win.
    int8 decoder, while the browser fp32 external-data encoder currently fails
    under ORT Web 1.29 (`Module.MountedFiles is not available`). This is an
    explicit compatibility boundary, not a silent substitution.
-3. The current browser runner forces `cpuThreads: 1`. Probes with values above
-   one did not complete within the bounded 120-second observation window and
-   are retained as `WASM_THREADS_UNAVAILABLE` evidence. Do not change the
-   library default until the ORT 1.29 threaded-worker path is repaired and
-   validated.
+3. The current browser runner forced `cpuThreads: 1`. Probes with values above
+   one stalled because the harness served `/ort-dist/*` without a
+   `Cross-Origin-Embedder-Policy: require-corp` header, so ORT's module workers
+   were blocked with `coep-frame-resource-needs-coep-header`. After adding the
+   header, `cpuThreads=4` completes with exact parity but is slower than
+   single-thread for this GRU decoder (about 14.2x vs 17.7x warmed RTFx). The
+   runner now omits `cpuThreads` by default and keeps `--cpu-threads=N` as the
+   explicit diagnostic.
 4. Decoder time remains the largest measured Parakeet phase. Next optimization
    work should profile WASM SIMD/thread viability, decoder graph/provider
    placement, and tensor allocation/state reuse using the same warm-up and
@@ -109,9 +112,11 @@ audio hashes, model/backend settings, and measured values.
 
 ## Remaining work
 
-- Repair or explicitly document the ORT Web 1.29 multi-threaded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decoder and 4–12 threads when it is
-  safe.
+- Multi-threaded WASM worker path is repaired at the harness level: the
+  `/ort-dist/*` static responses now send `Cross-Origin-Embedder-Policy:
+  require-corp`. Threaded Parakeet decode is slower than single-thread for
+  this workload, so re-run v2 with fp32 encoder/int8 decoder and 4–12 threads
+  only as a larger-workload comparison, not as an assumed win.
 - Add the shared audio/role/warm-up parameters to the remaining family pages
   (GigaAM, SenseVoice, X-ASR, Qwen) and collect the same-window matrix.
 - Compare Parakeet v3 decoder WebGPU and hybrid placements on this contract,

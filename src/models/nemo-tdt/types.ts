@@ -134,6 +134,7 @@ export interface NemoTdtNativeTranscript extends Omit<NemoNativeTranscript, 'tok
 export interface NemoTdtTranscriptionOptions extends BaseTranscriptionOptions {
   readonly temperature?: number;
   readonly returnTokenIds?: boolean;
+  readonly returnConfidence?: boolean;
   readonly returnFrameIndices?: boolean;
   readonly returnLogProbs?: boolean;
   readonly returnTdtSteps?: boolean;
