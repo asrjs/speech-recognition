@@ -146,3 +146,30 @@ but it does not prove that full-model GPU-state retention is production-safe.
 Keep the default encoder-WebGPU/decoder-WASM composition and require an
 opt-in library path plus repeated full-model parity and disposal checks before
 promoting decoder GPU-state output.
+
+## Library-entry GPU-state A/B (2026-08-29)
+
+The new `decoderStateOutputLocation` option was exercised through the actual
+`loadSpeechModel` library path, not only a direct ORT spike. On the same
+Chrome headless/NVIDIA Blackwell/ORT 1.29.0/native-rate fixture, fp16 WebGPU
+encoder + fp32 WebGPU decoder produced the exact 91-token transcript for all
+three runs in both controls:
+
+| Decoder state output | Warm transcribe runs (ms) | Median | Median RTFx | Load (ms) |
+| -------------------- | -------------------------: | ------: | ----------: | --------: |
+| `cpu` (control)       | 3808.445 / 3474.620 / 3443.575 | 3474.620 | 5.3918 | 10698.940 |
+| `gpu-buffer` (opt-in) | 3114.505 / 2871.875 / 2811.170 | 2871.875 | 6.5244 | 10550.080 |
+
+The opt-in path therefore reduced median latency by `17.3471%` and increased
+median RTFx by `21.006%`; the 107 decode iterations and 91 emitted tokens
+matched on every run. JS-heap snapshots were comparable (about 1.345–1.364
+GB), and the executor's normal replacement/disposal path completed without
+error. The raw captures are retained in the sibling harness and summarized in
+`docs/reports/parakeet-tdt-v3-library-gpu-state-ab-2026-08-29.json`.
+
+This is a meaningful single-adapter end-to-end win, but it remains opt-in.
+Repeat it on another browser or adapter and perform a longer repeated-
+transcription/heap/disposal soak before changing the production default.
+Chrome Vulkan and D3D12 ANGLE attempts on this host returned
+`WEBGPU_NO_ADAPTER`; those negative controls are retained in the report and
+must not be interpreted as model or graph failures.

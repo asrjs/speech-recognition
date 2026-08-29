@@ -112,6 +112,18 @@ For Parakeet/NeMo quality work:
 
 Then move the same case into the browser demo.
 
+### 6. Treat recurrent-state placement as a model-specific experiment
+
+For Parakeet TDT WebGPU work, the library's `decoderStateOutputLocation` option
+is deliberately opt-in. Keep decoder logits on CPU while testing only
+`output_states_1` and `output_states_2` on `gpu-buffer`; this isolates the
+state-transfer hypothesis and keeps vocabulary/duration post-processing
+observable. A state-placement candidate is promotion-ready only when the
+library entry point shows exact token parity, stable repeated transcriptions,
+safe replacement/disposal, and a measured latency/RTFx win against the same
+artifact and audio control. If a host lacks a second WebGPU adapter, record the
+typed `WEBGPU_NO_ADAPTER` boundary instead of treating it as a model failure.
+
 ## Recommended Entry Points
 
 - [README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\README.md)

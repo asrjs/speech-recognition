@@ -419,6 +419,19 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   parity, repeated transcriptions, and disposal must still be repeated on more
   than one browser/adapter before changing the default. Evidence:
   `docs/reports/parakeet-tdt-v3-webgpu-lifecycle-refresh-2026-08-29.json`.
+- Library opt-in state A/B (2026-08-29): the new `decoderStateOutputLocation`
+  path was exercised through `loadSpeechModel` on the same Chrome/NVIDIA
+  Blackwell fixture. GPU-state output preserved the exact 91-token transcript
+  for 3/3 runs and reduced the warm median from `3,474.620 ms` (`5.3918x`
+  RTFx) to `2,871.875 ms` (`6.5244x` RTFx): `17.3471%` lower latency and
+  `21.006%` higher RTFx, with comparable JS-heap snapshots and no disposal
+  error. This is strong single-adapter evidence for an opt-in optimization,
+  not a default change; repeat on another browser/adapter and run a longer
+  lifecycle soak before promotion. Evidence:
+  `docs/reports/parakeet-tdt-v3-library-gpu-state-ab-2026-08-29.json`.
+  The same host exposed no adapter under Chrome Vulkan or D3D12 ANGLE, so those
+  secondary checks are recorded as `WEBGPU_NO_ADAPTER` rather than treated as
+  performance failures.
 
 - [Completed 2026-08-29] GigaAM RNN-T phase profile and provider matrix: the
   official v3 E2E artifact and

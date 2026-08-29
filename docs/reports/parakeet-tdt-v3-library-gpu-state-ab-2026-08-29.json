@@ -1,0 +1,65 @@
+{
+  "schema": "asrjs.parakeet.tdt.library-gpu-state-ab.v1",
+  "date": "2026-08-29",
+  "model": "parakeet-tdt-0.6b-v3",
+  "fixture": "LibriVox A Year with the Birds",
+  "environment": {
+    "browser": "Chrome headless new",
+    "adapter": "NVIDIA Blackwell",
+    "ortVersion": "1.29.0",
+    "audioStrategy": "native-rate",
+    "preprocessor": "js",
+    "encoderBackend": "webgpu",
+    "encoderQuantization": "fp16",
+    "decoderBackend": "webgpu",
+    "decoderQuantization": "fp32",
+    "repeatCount": 3,
+    "audioDurationSec": 18.714058956916098,
+    "emittedTokenCount": 91
+  },
+  "control": {
+    "decoderStateOutputLocation": "cpu",
+    "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-35-09-973Z.json",
+    "loadMs": 10698.94,
+    "transcribeMs": [3808.445, 3474.62, 3443.575],
+    "medianTranscribeMs": 3474.62,
+    "rtfx": [4.9248, 5.3918, 5.4413],
+    "medianRtfX": 5.3918,
+    "memoryUsedJsHeapBytes": [1347104431, 1353736959, 1363277027],
+    "exactMatchEveryRun": true,
+    "decodeIterationsEveryRun": 107
+  },
+  "candidate": {
+    "decoderStateOutputLocation": "gpu-buffer",
+    "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-35-49-190Z.json",
+    "loadMs": 10550.08,
+    "transcribeMs": [3114.505, 2871.875, 2811.17],
+    "medianTranscribeMs": 2871.875,
+    "rtfx": [6.0236, 6.5244, 6.6665],
+    "medianRtfX": 6.5244,
+    "memoryUsedJsHeapBytes": [1345228103, 1353630035, 1363938355],
+    "exactMatchEveryRun": true,
+    "decodeIterationsEveryRun": 107
+  },
+  "delta": {
+    "medianTranscribeReductionPct": 17.3471,
+    "medianRtfXIncreasePct": 21.006,
+    "loadMsDeltaPct": -1.3914,
+    "tokenParity": true,
+    "stateOwnership": "executor disposes replaced state tensors; no error observed"
+  },
+  "secondaryAdapterAttempts": [
+    {
+      "chromeAngle": "vulkan",
+      "status": "WEBGPU_NO_ADAPTER",
+      "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-38-00-363Z.json"
+    },
+    {
+      "chromeAngle": "d3d12",
+      "status": "WEBGPU_NO_ADAPTER",
+      "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-38-14-905Z.json"
+    }
+  ],
+  "decision": "promote-opt-in-only",
+  "interpretation": "The library entry-point A/B shows a meaningful end-to-end win on this Chrome/NVIDIA Blackwell fixture without quality regression. Keep decoderStateOutputLocation unset by default; this host exposed no WebGPU adapter under Vulkan or D3D12 ANGLE, so require a second browser or adapter plus longer repeated-transcription disposal/heap checks before changing the production composition."
+}
