@@ -17,11 +17,222 @@ the highest expected user value:
 5. realtime, streaming, long-audio, VAD, chunking, timestamps, alignment,
    language detection, confidence, and quality behavior;
 6. excellent examples, demos, documentation, benchmarks, and diagnostics;
-7. reusable model-porting and verification infrastructure.
+7. reusable model-porting, conversion, debugging, and parity infrastructure.
 
 This is a single-package, ESM-first, speech-focused, headless and
 framework-neutral runtime. It is not a generic model zoo or multimodal
 framework.
+
+## Completed (2026-08-29 recent slices)
+
+The following work is done and pushed on `main` (backup branch
+`backup/pre-browser-webgpu-state-push-2026-08-29`). Details:
+`docs/handoffs/asr-four-families-2026-08-27.md`.
+
+Browser WebGPU state slice (`4856dc8`, `f965e6e`):
+
+- X-ASR GPU-resident streaming state: 32.10s → 9.26s (71.14% reduction /
+  3.46× speedup)
+- Qwen GPU KV validation: median 7.12s → 4.86s (31.75% reduction / 1.47×
+  speedup)
+- Exact transcript parity preserved in both A/B comparisons
+- Fixed Qwen Node-hosted ORT Web WASM external-data loading; real 1.50 GB
+  fp16 decoder passes again
+- Browser bundles no longer attempt to include native ORT `.node` binaries
+- X-ASR WASM remains faster at 6.84s for small streaming graph — backend
+  selection remains workload-specific
+- Validation: 1003 tests passed, 18 artifact-gated skips; Qwen real artifacts
+  WASM+Node WebGPU passed; X-ASR real artifacts WASM/WebGPU/stateful
+  streaming passed; build/typecheck clean; lint 0 errors 11 warnings;
+  browser root import graph and Chrome/WebGPU compatibility passed
+- ORT 1.29.0 note: npm reported `ETARGET` at the time of this slice; the
+  upgrade was completed separately in the slice below
+
+ORT Web 1.29.0 stable upgrade (2026-08-29):
+
+- `onnxruntime-web` 1.27.0-dev → 1.29.0 stable with `onnxruntime-common`
+  1.29.0; the `onnxruntime-node` nightly stays pinned (nested 1.24-dev
+  common). npm's CLI cannot reach the registry on this host, so the install
+  used the registry tarballs directly with hand-authored lock entries
+  carrying the real resolved/integrity values
+- Validation: full suite 1007 passed / 18 artifact-gated skips; typecheck
+  clean; lint 0 errors / 11 warnings; production build clean
+- Real-artifact backend suites all green on 1.29.0: GigaAM CTC 4/4, GigaAM
+  RNN-T 2/2, SenseVoice 3/3, X-ASR 3/3 including public stateful streaming,
+  Qwen 2/2 including the 1.5 GB fp16 decoder external-data mounts
+- Chrome WebGPU matrix, exact transcript parity on every family:
+  Qwen GPU-KV 3-run median 4,558.9 ms / RTFx 2.41 (about 6% faster than the
+  nightly's 4,856 ms / 2.27); GigaAM CTC fp16 281 ms (RTFx 39.8);
+  SenseVoice 701 ms (RTFx 15.7); GigaAM RNN-T 6,163 ms (RTF 0.55); X-ASR
+  10,103 ms single-run (WASM remains faster for that graph; placement
+  verdicts stay workload-specific); Qwen sequential WASM fp16 browser leg
+  passed
+- Evidence: fresh harness JSONs plus `tools/data/results/qwen/`,
+  `tools/data/results/x-asr/`, `tools/data/results/gigaam/`,
+  `tools/data/results/sensevoice/`
+
+Lifecycle hardening and cancellation slice (`8552eec`, `e8624e6`):
+
+- Experimental family descriptors are clone-safe, and all model families now
+  share session release, abort, and dispose coverage; disposing a model no
+  longer double-releases ORT sessions during `runtime.dispose()`
+- In-flight browser transcription can be aborted without killing the worker,
+  so a loaded model stays loaded (`e8624e6`, `b8dc570`, `f657522`,
+  `9bd6fd0`, `bacab6e`)
+- Artifact-gated real-artifact WASM rerun (`3de0bd7`): GigaAM CTC 4/4
+  (fp32, fp16, mixed-length batch), SenseVoice 3/3 (WASM, batch), X-ASR 3/3
+  (WASM + public stateful streaming), GigaAM RNN-T 2/2 (WASM)
+
+Earlier streaming and validation slices:
+
+- High-level owned streaming exposed on loaded handles (`a1264ca`,
+  `db6e709`) and divergent overlapping-window text merge fixed
+  (`a0818f1`, `3ea33b6`)
+- Fake-microphone browser smoke probe and acceptance evidence
+  (`c19014a`, `27fdc7c`); high-performance WebGPU adapter preference
+  (`97139dc`); Node WebGPU routed through `onnxruntime-native`
+  (`7ef50d2`)
+
+## Ongoing principles and direction
+
+- Reuse well-designed library tools and design within `speech-recognition`
+  itself
+- Create the most effective ONNX graphs (like Whisper Large V3 Turbo)
+- Use the best backend combination when needed: encoder on WebGPU, decoder on
+  WASM
+- Optimize the newly ported families (GigaAM, SenseVoice, X-ASR, Qwen):
+  current throughput is low and may be ORT CPU/WASM-bound; reproduce with
+  real WebGPU in the browser before changing code, then apply the hybrid
+  backend composition where measurements justify it
+- Validate WebGPU work with the existing Chrome headless real-WebGPU browser
+  smoke harness (the same approach used for the Whisper split-graph port);
+  ORT-node fp16 binding support is not urgent and not mandatory
+- Update `onnxruntime-web` dependencies only carefully; keep the working
+  pin until a reproducible upgrade passes the full browser matrix
+- Experimental implementations remain clearly marked until the completion
+  gates in this document are satisfied
+- Single-package ESM-first speech-focused headless framework-neutral runtime
+- Mission priorities: public API/DX, runtime reliability, verified ASR
+  models, WebGPU/WASM perf, realtime/streaming, examples/docs/benchmarks,
+  reusable porting/parity infrastructure
+- Respect folder boundaries per `AGENTS.md` and `docs/architecture.md`
+
+## Model-specific performance optimization (primary directive)
+
+For every supported or newly ported ASR model, working correctly is the
+starting line, not the finish line. After correctness is verified,
+systematically investigate optimization opportunities and keep going until
+measurements show the remaining bottlenecks are not worth the engineering
+cost. Correctness first, optimization second, measurement throughout.
+
+Investigate, in rough priority order:
+
+- WebGPU execution and ONNX Runtime Web/WebGPU EP behavior for the exact
+  artifact and browser;
+- graph structure and unnecessary CPU↔GPU synchronization or tensor
+  transfers (keep state GPU-resident; read back the minimum: one token id,
+  not a full logits vector);
+- preprocessing, encoder, decoder, joiner, and postprocessing bottlenecks,
+  attributed by measured phase shares before choosing what to optimize;
+- incremental computation, reusable caches, KV/state/cache reuse, and
+  redundant computation across streaming windows;
+- tensor allocation, copying, disposal, and memory lifetime in hot loops;
+- JavaScript/TypeScript hot paths (allocation-free step loops, precomputed
+  session input/output names, bounded top-k instead of full sorts);
+- WASM vs WebGPU placement per component; backend choice is
+  workload-specific and must be re-validated per artifact;
+- model initialization, warm-up, load size, and startup latency;
+- WebGPU dispatch overhead and command-buffer behavior;
+- ONNX graph surgery (strip unnecessary casts, patch dynamic dimensions,
+  append argmax, fuse or restructure hot subgraphs) when it unlocks a
+  measured win;
+- precision reduction and mixed precision (fp16 I/O, pure fp16, int8, int4);
+  quantize where it usefully reduces VRAM/memory/size without unacceptable
+  accuracy or speed regressions, and never assume quantization is faster —
+  benchmark it;
+- VRAM and system-memory usage as first-class metrics.
+
+Maintain before/after benchmarks for every optimization: RTFx/latency,
+memory or VRAM where measurable, model size, initialization time when
+relevant, and recognition-quality regressions. An optimization without a
+before/after measurement is not an optimization; it is a hypothesis.
+
+### Reference case studies (study before optimizing a new model)
+
+Whisper Large V3 Turbo — RTFx 4.8× → 27.6× (30 s audio in ~1.1 s). Sources:
+`docs/Whisper-Optimizations.md` (14 documented pitfalls),
+`docs/OPTIMIZATION-SPRINT-REPORT.md`, merge `c1f50ce`. What produced the
+jump:
+
+1. GPU KV cache bridge — decoder state stayed in gpu-buffer tensors across
+   steps; decode phase 5.7×;
+2. stripped fp16 encoder graph — removed the input Cast by exporting fp16
+   directly; encode phase 6.9×;
+3. fast mel — power-of-2 FFT path; preprocess 2.9×;
+4. scalar-only readback and scalar beam: immutable encoder KV shared and
+   broadcast across beams, bounded top-k, no per-beam full-vocabulary
+   log-softmax;
+5. hot-loop hygiene: precomputed KV input names, allocation-free step loop,
+   async model loading with overlapped metadata.
+
+Negative results to remember: the WebGPU 'simple' buffer-cache mode regressed
+RTFx ~12% and was reverted; self-speculative decoding breaks token parity and
+needs a real draft model (the multi-token decoder-step graph is kept as
+backward-compatible infrastructure); graph capture only helps multi-chunk
+audio; pure-JS mel was already good enough to defer WASM/WebGPU mel.
+
+Parakeet TDT v3 — the proven hybrid composition: encoder on WebGPU, decoder
+and joint on WASM, per-component backend selection as a library capability.
+int8 WASM runs at RTFx ~4.6× with roughly half the memory (baseline report
+`docs/reports/parakeet-tdt-v3-local-baseline-2026-08-26.md`). The decoder was
+kept on WASM because the WebGPU EP lacked GRU/LSTM support; ORT Web 1.29.0
+added GRU and LSTM to the WebGPU EP, so the decoder-on-WebGPU composition must
+be re-probed per artifact instead of assumed impossible. The same
+GPU-resident-state technique produced the X-ASR streaming win (3.46×) recorded
+above.
+
+Turn recurring lessons into reusable tools, tests, fixtures, and playbooks
+(`tools/model-debugging/playbooks/`, stage comparator, benchmark harness) so
+each new port inherits the methodology automatically. Keep refining the
+methodology as new ORT behaviors, graph patterns, and bottlenecks are found.
+
+## Current WebGPU EP optimization task
+
+ORT Web was upgraded 1.27-nightly → 1.29.0 stable and validated end-to-end
+(see Completed below). The release adds GRU and LSTM support to the WebGPU EP,
+deferred dispatch for parallel shader compilation, configurable GPU buffer
+cache controls, and improved FP16/MatMul kernels. Work items, in order:
+
+1. Probe the Parakeet TDT decoder/joint graphs on the built-in WebGPU EP in
+   Chrome via an opt-in decoder-backend override (default behavior must remain
+   encoder-WebGPU/decoder-WASM until parity and a measured win exist).
+2. Measure per-component placement again for every family on 1.29.0 — the
+   X-ASR WASM-vs-WebGPU and buffer-cache conclusions may shift with the new
+   EP; re-benchmark instead of inheriting old verdicts.
+3. The separate native WebGPU Plugin EP 0.3.0 (Python/.NET, not npm) is a
+   research reference for GRU parity spikes only; it is not a browser
+   integration path for this library.
+
+Probe status (2026-08-29, first pass):
+
+- Native WebGPU probe (`onnxruntime-node` wgpu adapter): the Parakeet v3
+  `decoder_joint-model.onnx` GRU graph RUNS on a GPU EP. Session creation
+  479 ms, warm steps 7–9 ms, outputs finite, logits dims `[1,1,1,8198]`
+  (8193 vocab + 5 TDT duration logits — argmax must slice to vocabSize). The
+  graph itself is WebGPU-fast; GPU decode is a real option, not a Wasm-only
+  constraint.
+- Browser spike harness built in `webgpu-agent-test`:
+  `parakeet-tdt.html` + `src/parakeet-tdt-webgpu.js` +
+  `scripts/run-parakeet-tdt-webgpu.mjs` (full-model and decoder-only spike
+  modes). Asset routes `/parakeet-v3/` and `/parakeet-audio/` added.
+- Negative/open results: (a) the full-model probe with the fp16 encoder on
+  WebGPU did not complete session creation within 10 minutes of CPU-heavy
+  shader compilation in headless Chrome — treat fp16 FastConformer-on-WebGPU
+  first-load cost as unresolved and measure with a warm cache before any
+  claim; (b) the decoder-only ORT-Web spike currently hangs without posting
+  (suspect ORT Web 1.29 session-create behavior for this GRU graph in the
+  JS WebGPU EP). Next step: debug via CDP console output, and compare
+  against 1.27 behavior before blaming 1.29.
 
 ## First inspect the real repository
 
@@ -419,4 +630,3 @@ If the selected work is a model port, also show:
 3. which ONNX graph variants will be produced and why;
 4. how native, WASM, and WebGPU parity will be tested;
 5. what will count as promotion or closure.
-
