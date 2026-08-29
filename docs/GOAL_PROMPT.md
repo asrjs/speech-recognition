@@ -338,8 +338,31 @@ SenseVoice decode hot-path optimization (2026-08-29):
   methodology, the Node microbenchmark - not a noisy browser phase A/B -
   is the authoritative before/after evidence for this hot path.
 - Remaining decode cost is the intrinsic 4.68M Math.exp calls of exact
-  log-softmax; an exact underflow-threshold skip (delta <= -40) would help
-  raw-logit graphs but not SenseVoice's narrow log-prob range.
+ log-softmax; an exact underflow-threshold skip (delta <= -40) would help
+ raw-logit graphs but not SenseVoice's narrow log-prob range.
+
+GigaAM shared preprocessing radix-5 FFT (2026-08-30):
+
+- Root-caused GigaAM preprocessing cost: for the non-power-of-two nFft
+  (320), MedAsrJsPreprocessor used Bluestein's chirp-z, which spends three
+  1024-point FFTs per frame. The FFT alone was 64.22 of 69.49 ms p50 in a
+  Node microbenchmark at the real 11.29 s / 64-mel / nFft-320 shape.
+- Added RadixFivePowerOfTwoFft (direct Cooley-Tukey for N = 5 * 2^m) with
+  fully precomputed twiddle and 5-point factor tables; selection is
+  power-of-two, then radix-5, then Bluestein fallback. Preprocess process()
+  dropped 69.49 -> 24.51 ms p50 (2.84x) with an identical feature checksum
+  and 2.659e-12 max relative agreement vs Bluestein.
+- Browser end-to-end with exact oracles: GigaAM RNN-T 449.3 -> 342.8 ms
+  (25.1x -> 32.9x), preprocess phase 130.8 -> 31.7 ms; GigaAM CTC 180.3 ms
+  / 61.0x exact. The win applies to every family using this shared frontend
+  with nFft = 5 * 2^m.
+- Lesson recorded: stage attribution must precede hot-path edits - an
+  earlier constant-factor pass on the windowing/mel loops moved nothing
+  because the FFT dominated; measure the stage, then the algorithm.
+- Evidence: docs/reports/gigaam-preprocess-radix5-fft-2026-08-30.md,
+  tools/scripts/benchmark-gigaam-preprocess.mjs, and
+  tools/data/results/gigaam/*radix5*.json
+
 
 
 - Experimental family descriptors are clone-safe, and all model families now

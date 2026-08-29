@@ -1,0 +1,78 @@
+{
+  "preset": "gigaam-ctc-fp16-webgpu",
+  "timestamp": "2026-08-29T20:59:04.080Z",
+  "status": "pass",
+  "transcript": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "qualityOracle": "fixed",
+  "transcriptAvailable": true,
+  "audio": {
+    "audioUrl": "/gigaam-audio/jfk-short.wav",
+    "sourceDurationSec": 11,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 11,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 402.3699999898672,
+        "rtfx": 27.5969
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 402.3699999898672,
+      "rtfx": 27.5969
+    }
+  ],
+  "runMetrics": [
+    {
+      "run": 1,
+      "transcribeMs": 161.66499999165535,
+      "rtfx": 68.4654
+    },
+    {
+      "run": 2,
+      "transcribeMs": 189.98999999463558,
+      "rtfx": 58.3245
+    },
+    {
+      "run": 3,
+      "transcribeMs": 180.3449999988079,
+      "rtfx": 61.5144
+    }
+  ],
+  "batch": false,
+  "batchSize": 1,
+  "webgpu": true,
+  "backend": "webgpu",
+  "encoderFolder": "multilingual-ctc-fp16",
+  "decoderFolder": "ctc",
+  "tokens": [],
+  "metrics": {
+    "loadMs": 4895.95000000298,
+    "transcribeMs": 180.3449999988079,
+    "totalMs": 6119.015000000596,
+    "rtf": 0.016394999999891628,
+    "rtfx": 60.99420555087588,
+    "preprocessMs": 39.845,
+    "encodeMs": 136.84,
+    "decodeMs": 0.855
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 4896ms"
+  ]
+}

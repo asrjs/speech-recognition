@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CompositeFft, MedAsrJsPreprocessor } from '../src/models/lasr-ctc/mel.js';
+import { CompositeFft, MedAsrJsPreprocessor, RadixFivePowerOfTwoFft } from '../src/models/lasr-ctc/mel.js';
 import { GigaAmJsPreprocessor } from '../src/models/gigaam-ctc/frontend.js';
 
 function naiveDft(
@@ -75,6 +75,58 @@ describe('CompositeFft (Bluestein)', () => {
       expect(Math.abs((actualReal[bin] ?? 0) - (expected.re[bin] ?? 0))).toBeLessThan(1e-8);
       expect(Math.abs((actualImaginary[bin] ?? 0) - (expected.im[bin] ?? 0))).toBeLessThan(1e-8);
     }
+  });
+});
+
+describe('RadixFivePowerOfTwoFft', () => {
+  it('matches a naive DFT for sizes 5 * 2^m', () => {
+    for (const size of [5, 10, 40, 80, 160, 320]) {
+      const random = seededRandom(size * 13 + 5);
+      const real = new Float64Array(size);
+      const imaginary = new Float64Array(size);
+      for (let index = 0; index < size; index += 1) {
+        real[index] = random() * 2 - 1;
+        imaginary[index] = random() * 2 - 1;
+      }
+      const expected = naiveDft(real, imaginary, size);
+
+      const actualReal = real.slice();
+      const actualImaginary = imaginary.slice();
+      new RadixFivePowerOfTwoFft(size).transform(actualReal, actualImaginary);
+
+      for (let bin = 0; bin < size; bin += 1) {
+        expect(Math.abs((actualReal[bin] ?? 0) - (expected.re[bin] ?? 0))).toBeLessThan(1e-8);
+        expect(Math.abs((actualImaginary[bin] ?? 0) - (expected.im[bin] ?? 0))).toBeLessThan(1e-8);
+      }
+    }
+  });
+
+  it('agrees with the Bluestein CompositeFft at GigaAM scale', () => {
+    for (const size of [160, 320]) {
+      const mixed = new RadixFivePowerOfTwoFft(size);
+      const bluestein = new CompositeFft(size);
+      for (let trial = 0; trial < 5; trial += 1) {
+        const reA = new Float64Array(size);
+        const imA = new Float64Array(size);
+        for (let index = 0; index < size; index += 1) {
+          reA[index] = Math.sin(index * (0.7 + trial * 0.13)) + Math.cos(index * 0.021 + trial);
+          imA[index] = Math.cos(index * (0.3 + trial * 0.07)) * 0.5;
+        }
+        const reB = reA.slice();
+        const imB = imA.slice();
+        mixed.transform(reA, imA);
+        bluestein.transform(reB, imB);
+        for (let index = 0; index < size; index += 1) {
+          expect(Math.abs((reA[index] ?? 0) - (reB[index] ?? 0))).toBeLessThan(1e-9);
+          expect(Math.abs((imA[index] ?? 0) - (imB[index] ?? 0))).toBeLessThan(1e-9);
+        }
+      }
+    }
+  });
+
+  it('rejects sizes that are not 5 * 2^m', () => {
+    expect(() => new RadixFivePowerOfTwoFft(12)).toThrow(RangeError);
+    expect(() => new RadixFivePowerOfTwoFft(400)).toThrow(RangeError);
   });
 });
 

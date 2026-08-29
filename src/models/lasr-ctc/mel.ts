@@ -399,6 +399,102 @@ export class CompositeFft {
     }
   }
 }
+/** Direct mixed-radix DFT for sizes N = 5 * 2^m (GigaAM 320 = 5 * 64).
+ * Cooley-Tukey: N = N1 * N2 with N1 = 5. Replaces Bluestein's three
+ * (2*size)-point FFTs with one N2-point power-of-two FFT per strided
+ * subsequence plus a 5-point direct DFT - the same mathematical DFT up to
+ * floating-point rounding. */
+export class RadixFivePowerOfTwoFft {
+  private readonly n2: number;
+  private readonly pow2Twiddles: MelTwiddles;
+  private readonly subsequenceReal: Float64Array;
+  private readonly subsequenceImaginary: Float64Array;
+  private readonly partReal: Float64Array;
+  private readonly partImaginary: Float64Array;
+  private readonly outReal: Float64Array;
+  private readonly outImaginary: Float64Array;
+  private readonly phaseCos: Float64Array;
+  private readonly phaseSin: Float64Array;
+  private readonly partCos: Float64Array;
+  private readonly partSin: Float64Array;
+
+  constructor(readonly size: number) {
+    const n2 = size / 5;
+    if (!Number.isInteger(n2) || (n2 & (n2 - 1)) !== 0) {
+      throw new RangeError('RadixFivePowerOfTwoFft requires size = 5 * 2^m. Received ' + String(size) + '.');
+    }
+    this.n2 = n2;
+    this.pow2Twiddles = precomputeFftTwiddles(n2);
+    this.subsequenceReal = new Float64Array(n2);
+    this.subsequenceImaginary = new Float64Array(n2);
+    this.partReal = new Float64Array(5 * n2);
+    this.partImaginary = new Float64Array(5 * n2);
+    this.outReal = new Float64Array(size);
+    this.outImaginary = new Float64Array(size);
+    this.phaseCos = new Float64Array(5 * size);
+    this.phaseSin = new Float64Array(5 * size);
+    this.partCos = new Float64Array(25);
+    this.partSin = new Float64Array(25);
+    // Twiddle is W_N^(n1*k2) = e^{-2pi*i*n1*k2/N}; the 5-point factor
+    // W_5^(n1*k1) is applied in transform via cos/sin, so store the
+    // conjugate sine to keep both factors with the forward-DFT sign.
+    for (let n1 = 0; n1 < 5; n1 += 1) {
+      for (let k2 = 0; k2 < n2; k2 += 1) {
+        const offset = n1 * size + k2;
+        const angle = (2 * Math.PI * n1 * k2) / size;
+        this.phaseCos[offset] = Math.cos(angle);
+        this.phaseSin[offset] = -Math.sin(angle);
+      }
+      for (let k1 = 0; k1 < 5; k1 += 1) {
+        const fiveAngle = (2 * Math.PI * n1 * k1) / 5;
+        this.partCos[n1 * 5 + k1] = Math.cos(fiveAngle);
+        this.partSin[n1 * 5 + k1] = -Math.sin(fiveAngle);
+      }
+    }
+  }
+
+  transform(real: Float64Array, imaginary: Float64Array): void {
+    const n2 = this.n2;
+    for (let n1 = 0; n1 < 5; n1 += 1) {
+      for (let n2Index = 0; n2Index < n2; n2Index += 1) {
+        this.subsequenceReal[n2Index] = real[n1 + 5 * n2Index]!;
+        this.subsequenceImaginary[n2Index] = imaginary[n1 + 5 * n2Index]!;
+      }
+      fft(this.subsequenceReal, this.subsequenceImaginary, n2, this.pow2Twiddles);
+      const partOffset = n1 * n2;
+      for (let k2 = 0; k2 < n2; k2 += 1) {
+        this.partReal[partOffset + k2] = this.subsequenceReal[k2]!;
+        this.partImaginary[partOffset + k2] = this.subsequenceImaginary[k2]!;
+      }
+    }
+
+    for (let k2 = 0; k2 < n2; k2 += 1) {
+      for (let k1 = 0; k1 < 5; k1 += 1) {
+        const outputIndex = k2 + n2 * k1;
+        let sumReal = 0;
+        let sumImaginary = 0;
+        for (let n1 = 0; n1 < 5; n1 += 1) {
+          const phaseOffset = n1 * this.size + k2;
+          const cosine = this.phaseCos[phaseOffset]!;
+          const sine = this.phaseSin[phaseOffset]!;
+          const fiveOffset = n1 * 5 + k1;
+          const twiddleReal = cosine * this.partCos[fiveOffset]! - sine * this.partSin[fiveOffset]!;
+          const twiddleImaginary = cosine * this.partSin[fiveOffset]! + sine * this.partCos[fiveOffset]!;
+          const partIndex = n1 * n2 + k2;
+          const partValueReal = this.partReal[partIndex]!;
+          const partValueImaginary = this.partImaginary[partIndex]!;
+          sumReal += partValueReal * twiddleReal - partValueImaginary * twiddleImaginary;
+          sumImaginary += partValueReal * twiddleImaginary + partValueImaginary * twiddleReal;
+        }
+        this.outReal[outputIndex] = sumReal;
+        this.outImaginary[outputIndex] = sumImaginary;
+      }
+    }
+
+    real.set(this.outReal.subarray(0, this.size));
+    imaginary.set(this.outImaginary.subarray(0, this.size));
+  }
+}
 
 export function transposeMelToTxM(
   featuresMxT: Float32Array,
@@ -447,6 +543,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly hannWindow: Float64Array;
   private readonly fftTwiddles: MelTwiddles | null;
   private readonly compositeFft: CompositeFft | null;
+  private readonly radixFiveFft: RadixFivePowerOfTwoFft | null;
   private readonly fftReal: Float64Array;
   private readonly fftImaginary: Float64Array;
   private readonly powerBuffer: Float32Array;
@@ -494,7 +591,10 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     this.hannWindow = getCachedWindow(this.center, this.windowKind, this.nFft, this.winLength);
     const isPowerOfTwo = (this.nFft & (this.nFft - 1)) === 0;
     this.fftTwiddles = isPowerOfTwo ? precomputeFftTwiddles(this.nFft) : null;
-    this.compositeFft = isPowerOfTwo ? null : new CompositeFft(this.nFft);
+    const nFftDiv5 = this.nFft / 5;
+    const isFiveTimesPowerOfTwo = Number.isInteger(nFftDiv5) && (nFftDiv5 & (nFftDiv5 - 1)) === 0;
+    this.compositeFft = isPowerOfTwo || isFiveTimesPowerOfTwo ? null : new CompositeFft(this.nFft);
+    this.radixFiveFft = !isPowerOfTwo && isFiveTimesPowerOfTwo ? new RadixFivePowerOfTwoFft(this.nFft) : null;
     this.fftReal = new Float64Array(this.nFft);
     this.fftImaginary = new Float64Array(this.nFft);
     this.powerBuffer = new Float32Array(this.nFreqBins);
@@ -589,51 +689,70 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     }
     const rawMel = this.rawMelBuffer.subarray(0, requiredRawMelSize);
 
+    // Common-config fast path (GigaAM/lasr defaults: no DC removal, no
+    // frame preemphasis, nFft === winLength). Every frame satisfies
+    // frameOffset + nFft <= paddedLength by the frameCount formula, and
+    // hannWindow covers [0, winLength), so the guarded generic loop below
+    // produces bitwise-identical values without the per-element bounds
+    // branches.
+    const simpleWindowing =
+      !this.removeDcOffset &&
+      !(this.framePreemphasis && this.preemphasis > 0) &&
+      this.nFft === this.winLength;
+
     for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
       const frameOffset = frameIndex * this.hopLength;
-      let frameMean = 0;
-      if (this.removeDcOffset) {
-        for (let fftIndex = 0; fftIndex < this.winLength; fftIndex += 1) {
+      if (simpleWindowing) {
+        for (let fftIndex = 0; fftIndex < this.nFft; fftIndex += 1) {
+          this.fftReal[fftIndex] = padded[frameOffset + fftIndex]! * this.hannWindow[fftIndex]!;
+          this.fftImaginary[fftIndex] = 0;
+        }
+      } else {
+        let frameMean = 0;
+        if (this.removeDcOffset) {
+          for (let fftIndex = 0; fftIndex < this.winLength; fftIndex += 1) {
+            const sourceIndex = frameOffset + fftIndex;
+            frameMean += sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
+          }
+          frameMean /= this.winLength;
+        }
+        let previousSample = 0;
+        for (let fftIndex = 0; fftIndex < this.nFft; fftIndex += 1) {
           const sourceIndex = frameOffset + fftIndex;
-          frameMean += sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
+          let sample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
+          if (fftIndex < this.winLength && this.removeDcOffset) sample -= frameMean;
+          if (fftIndex < this.winLength && this.framePreemphasis && this.preemphasis > 0) {
+            sample -= this.preemphasis * (fftIndex === 0 ? sample : previousSample);
+            previousSample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) - frameMean : -frameMean;
+          }
+          this.fftReal[fftIndex] = sample * (this.hannWindow[fftIndex] ?? 0);
+          this.fftImaginary[fftIndex] = 0;
         }
-        frameMean /= this.winLength;
-      }
-      let previousSample = 0;
-      for (let fftIndex = 0; fftIndex < this.nFft; fftIndex += 1) {
-        const sourceIndex = frameOffset + fftIndex;
-        let sample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) : 0;
-        if (fftIndex < this.winLength && this.removeDcOffset) sample -= frameMean;
-        if (fftIndex < this.winLength && this.framePreemphasis && this.preemphasis > 0) {
-          sample -= this.preemphasis * (fftIndex === 0 ? sample : previousSample);
-          previousSample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) - frameMean : -frameMean;
-        }
-        this.fftReal[fftIndex] = sample * (this.hannWindow[fftIndex] ?? 0);
-        this.fftImaginary[fftIndex] = 0;
       }
 
       if (this.compositeFft) {
         this.compositeFft.transform(this.fftReal, this.fftImaginary);
+      } else if (this.radixFiveFft) {
+        this.radixFiveFft.transform(this.fftReal, this.fftImaginary);
       } else {
         fft(this.fftReal, this.fftImaginary, this.nFft, this.fftTwiddles!);
       }
 
       for (let frequencyIndex = 0; frequencyIndex < this.nFreqBins; frequencyIndex += 1) {
-        const realValue = this.fftReal[frequencyIndex] ?? 0;
-        const imaginaryValue = this.fftImaginary[frequencyIndex] ?? 0;
-        this.powerBuffer[frequencyIndex] = realValue * realValue + imaginaryValue * imaginaryValue;
+        this.powerBuffer[frequencyIndex] =
+          this.fftReal[frequencyIndex]! * this.fftReal[frequencyIndex]! +
+          this.fftImaginary[frequencyIndex]! * this.fftImaginary[frequencyIndex]!;
       }
 
       for (let melIndex = 0; melIndex < this.nMels; melIndex += 1) {
         const melOffset = melIndex * this.nFreqBins;
-        const lower = this.filterbankBounds[melIndex * 2] ?? 0;
-        const upper = this.filterbankBounds[melIndex * 2 + 1] ?? 0;
+        const lower = this.filterbankBounds[melIndex * 2]!;
+        const upper = this.filterbankBounds[melIndex * 2 + 1]!;
 
         let melValue = 0;
         for (let frequencyIndex = lower; frequencyIndex < upper; frequencyIndex += 1) {
           melValue +=
-            (this.powerBuffer[frequencyIndex] ?? 0) *
-            (this.melFilterbank[melOffset + frequencyIndex] ?? 0);
+            this.powerBuffer[frequencyIndex]! * this.melFilterbank[melOffset + frequencyIndex]!;
         }
 
         rawMel[melIndex * frameCount + frameIndex] =
