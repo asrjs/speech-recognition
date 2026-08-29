@@ -53,14 +53,15 @@ Sequential session load (encoder → release → prefill → release → step) i
 
 ## Browser results (JFK)
 
-| Family            | Chrome WebGPU                       | WASM                                                                                                                                           |
-| ----------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| GigaAM CTC        | exact, official fp16                | exact (fp32 and official fp16)                                                                                                                 |
-| SenseVoiceSmall   | exact                               | exact                                                                                                                                          |
-| X-ASR zh-en 160ms | exact                               | exact (same as sherpa, no extra comma)                                                                                                         |
-| Qwen3-ASR 0.6B    | exact, 34.1s load / 9.8s transcribe | sequential fp16 and fp32 exact; Chrome fp16 JS heap 2082/4192 MB; Chrome fp32 also passed (WASM linear memory is outside `performance.memory`) |
+| Family            | Chrome WebGPU                                              | WASM                                                                                                                                           |
+| ----------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| GigaAM CTC        | exact, official fp16                                       | exact (fp32 and official fp16)                                                                                                                 |
+| SenseVoiceSmall   | exact                                                      | exact                                                                                                                                          |
+| X-ASR zh-en 160ms | exact                                                      | exact (same as sherpa, no extra comma)                                                                                                         |
+| Qwen3-ASR 0.6B    | exact; GPU-KV median 4.86 s over three loaded-session runs | sequential fp16 and fp32 exact; Chrome fp16 JS heap 2082/4192 MB; Chrome fp32 also passed (WASM linear memory is outside `performance.memory`) |
 
-Qwen Node WASM fp16: RSS 4254 MB, 30.7s, RTFx 0.36. Chrome WASM fp16: 46.5s, RTFx 0.24. WebGPU remains the faster browser path.
+Fresh Qwen Node WASM fp16: RSS 4317 MB, 33.15 s, RTFx 0.317. Chrome WASM
+fp16: 46.5 s, RTFx 0.24. WebGPU remains the faster browser path.
 
 ## Promotion criteria (do not invent presets)
 
@@ -261,14 +262,14 @@ Using the official dynamic encoder and native fp16 decoder graphs in
 `N:\models\onnx\qwen3-asr-0.6b-official`, one sequential Node/WASM run with
 25-second windows and 5-second overlap produced:
 
-| Metric | Result |
-| --- | ---: |
-| Window count | 9 |
-| Total time | 627.78 s |
-| RTFx | 0.267 |
-| Label WER | 4.16% |
-| Label CER | 1.53% |
-| Implementation vs official-native text WER | 3.73% |
+| Metric                                     |   Result |
+| ------------------------------------------ | -------: |
+| Window count                               |        9 |
+| Total time                                 | 627.78 s |
+| RTFx                                       |    0.267 |
+| Label WER                                  |    4.16% |
+| Label CER                                  |    1.53% |
+| Implementation vs official-native text WER |    3.73% |
 
 The structured run is
 `tools/data/results/qwen/qwen3-asr-0.6b-long-wasm-windowed-end-of-chapter-4-2026-08-29.json`.
@@ -294,14 +295,14 @@ transcript, a completed segment, and all four HUD latency fields.
 The run is recorded in
 `tools/data/results/browser/streaming-demo-mic-smoke-parakeet-realtime-speech-detect-2026-08-29.json`:
 
-| Metric | Result |
-| --- | ---: |
-| Model load | 4443 ms |
-| Segment duration | 2.85 s |
-| First partial | 1899 ms |
+| Metric           |  Result |
+| ---------------- | ------: |
+| Model load       | 4443 ms |
+| Segment duration |  2.85 s |
+| First partial    | 1899 ms |
 | End of utterance | 1086 ms |
-| p50 processing | 1085 ms |
-| p95 emit lag | 1086 ms |
+| p50 processing   | 1085 ms |
+| p95 emit lag     | 1086 ms |
 
 This closes the reproducible fake-device browser acceptance gap for capture →
 segmenter → worker/model → HUD. It is not a physical human-microphone pass,
@@ -328,12 +329,12 @@ adapter-selection coverage, not a hardware performance claim.
 The official/local artifacts were rerun against the current source after the
 adapter probe change. Functional WASM assertions remained green:
 
-| Family | Current functional evidence |
-| --- | --- |
-| GigaAM multilingual CTC | fp32 JFK exact, fp16 JFK exact, and mixed-length batch output exact/non-empty |
-| GigaAM v3 E2E RNN-T | Official Russian `example.wav` exact |
-| SenseVoiceSmall | JFK exact with `en` metadata and mixed-length batch output exact/non-empty |
-| X-ASR zh-en 160 ms | JFK exact through both direct WASM and the public stateful streaming transcriber |
+| Family                  | Current functional evidence                                                      |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| GigaAM multilingual CTC | fp32 JFK exact, fp16 JFK exact, and mixed-length batch output exact/non-empty    |
+| GigaAM v3 E2E RNN-T     | Official Russian `example.wav` exact                                             |
+| SenseVoiceSmall         | JFK exact with `en` metadata and mixed-length batch output exact/non-empty       |
+| X-ASR zh-en 160 ms      | JFK exact through both direct WASM and the public stateful streaming transcriber |
 
 The accompanying Node/WebGPU cases still classify this workstation as
 `WEBGPU_NO_ADAPTER`, which is an environment result rather than an inference
@@ -361,13 +362,13 @@ explicit `externalData` options.
 Fresh Node WebGPU evidence on the same official artifacts, exact transcript
 match on real GPU:
 
-| Family | Node WebGPU evidence |
-| --- | --- |
-| GigaAM multilingual CTC | `tools/data/results/gigaam/multilingual-ctc-jfk-short-webgpu.json` (fp32) |
-| GigaAM v3 E2E RNN-T | `tools/data/results/gigaam/v3-e2e-rnnt-example-webgpu.json` (fp32, exact Russian) |
-| SenseVoiceSmall | `tools/data/results/sensevoice/sensevoice-small-jfk-short-webgpu.json` |
-| X-ASR zh-en 160 ms | `tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu.json` |
-| Qwen3-ASR 0.6B | `tools/data/results/qwen/qwen3-asr-0.6b-jfk-short-webgpu.json` (official fp32, RTFx 1.41, CPU KV) |
+| Family                  | Node WebGPU evidence                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| GigaAM multilingual CTC | `tools/data/results/gigaam/multilingual-ctc-jfk-short-webgpu.json` (fp32)                         |
+| GigaAM v3 E2E RNN-T     | `tools/data/results/gigaam/v3-e2e-rnnt-example-webgpu.json` (fp32, exact Russian)                 |
+| SenseVoiceSmall         | `tools/data/results/sensevoice/sensevoice-small-jfk-short-webgpu.json`                            |
+| X-ASR zh-en 160 ms      | `tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu.json`                                |
+| Qwen3-ASR 0.6B          | `tools/data/results/qwen/qwen3-asr-0.6b-jfk-short-webgpu.json` (official fp32, RTFx 1.41, CPU KV) |
 
 Classified limitation: the pinned `onnxruntime-node` nightly requires
 `Float16Array` backing for float16 tensors, but its native buffer extraction
@@ -375,6 +376,79 @@ cannot read that type, so fp16 graphs fail on every EP with a
 "not enough space: expected N, got 0" binding error. The Node WebGPU Qwen
 probe therefore uses the official fp32 decoder graphs; fp16 remains
 browser-only until the ORT-node binding supports Float16Array buffers.
+
+## Browser WebGPU optimization pass (2026-08-29)
+
+Browser performance is measured through the existing
+`N:\github\asrjs\webgpu-agent-test` system-Chrome harness, not the Node WebGPU
+binding. The harness now bundles and serves the exact ORT Web version installed
+by this library (`1.27.0-dev.20260506-673c3320fc`) instead of silently
+overriding it with its stale ORT 1.26 copy. Result payloads record the engine and
+version. A Vite regression from literal `import('onnxruntime-node')` calls was
+also fixed: Node package loading now crosses the browser-safe `node-compat`
+bridge, so the harness build no longer tries to bundle native `.node` binaries.
+
+The workstation also had SportsQuant bound to `127.0.0.1:8765` while Vite held
+the wildcard listener. Harness runners now accept `ASRJS_WEBGPU_HOST`; the runs
+below used `127.0.0.2` and reached Vite deterministically. Production bundle
+validation skips copying local multi-gigabyte fixtures (`copyPublicDir: false`)
+and passes; dev asset middleware remains the real model-serving path.
+
+### Qwen GPU-resident KV
+
+The Qwen harness had forced `cacheOutputLocation: 'cpu'`, masking the library's
+existing WebGPU default (`gpu-buffer`). Both variants were run three times on
+one loaded executor, with exact oracle text on every run:
+
+| Qwen3-ASR 0.6B        |       CPU KV |       GPU KV (default) |
+| --------------------- | -----------: | ---------------------: |
+| Median inference      | 7,115.205 ms |           4,856.355 ms |
+| Median RTFx           |       1.546x |                 2.265x |
+| Median wall reduction |            - | 31.75% (1.47x speedup) |
+
+Evidence:
+
+- `tools/data/results/qwen/qwen3-asr-0.6b-jfk-short-webgpu-cpu-kv-chrome.json`
+- `tools/data/results/qwen/qwen3-asr-0.6b-jfk-short-webgpu-chrome.json`
+
+### X-ASR GPU-resident encoder state
+
+The X-ASR 160 ms encoder returned 116 cache tensors to CPU after every tiny
+streaming step, then uploaded them again on the next step. The family-specific
+default graph now names those state outputs, and the shared ORT session bridge
+supports a per-output location map. Only `encoder_out` is downloaded; cache
+outputs remain as GPU buffers and are passed directly into the next encoder
+step. Exact transcript parity is preserved:
+
+| X-ASR zh-en 160 ms |     CPU state |    GPU state (default) |
+| ------------------ | ------------: | ---------------------: |
+| Inference          | 32,095.140 ms |           9,263.655 ms |
+| RTFx               |        0.343x |                 1.187x |
+| Wall reduction     |             - | 71.14% (3.46x speedup) |
+
+Evidence:
+
+- `tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu-cpu-state-chrome.json`
+- `tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu-chrome.json`
+
+The fresh Node/WASM evidence is still faster for this small, high-frequency
+graph (6.84 s), so the result does not justify a universal WebGPU preference.
+It closes most of the WebGPU state-transfer penalty and leaves backend choice
+artifact- and workload-specific.
+
+The artifact matrix also exposed and closed a Node-hosted ORT Web regression:
+colocated Qwen decoder external data was incorrectly omitted for the WASM
+engine as though native ORT would resolve it. WASM now mounts the external data
+bytes explicitly, with focused regression tests in both the Qwen and shared
+ORT bridges. The real fp16 Qwen WASM decoder (1.50 GB external data) and the
+paired Node WebGPU leg both pass with exact text after the fix.
+
+GigaAM CTC, SenseVoiceSmall, and GigaAM RNN-T were also rerun through Chrome
+after ORT alignment and remained exact. Their single-run timings are retained
+as compatibility evidence, not promoted as before/after performance claims.
+ORT Web 1.29.0 was identified as the current stable candidate, but npm on this
+host returned `ETARGET` while the registry tarball was reachable. No dependency
+version was changed without a reproducible install and full artifact matrix.
 
 ## Remaining gaps
 
@@ -384,7 +458,10 @@ browser-only until the ORT-node binding supports Float16Array buffers.
   coverage remains open, so it is still not a promotion gate.
 - Node WebGPU now passes through `onnxruntime-node` for all five families
   (2026-08-29); Node KV caches stay on the CPU and fp16 graphs remain blocked
-  by the ORT-node Float16Array binding gap.
+  by the ORT-node Float16Array binding gap. This is non-urgent and is not a
+  browser promotion gate; real browser WebGPU remains the performance path.
+- A controlled ORT Web 1.29 stable upgrade remains open after the local npm
+  metadata `ETARGET` issue is resolved; do not jump directly to a nightly.
 - All five families stay experimental; no presets. Discover via `listExperimentalSpeechFamilies()`, not `listSpeechModels()`.
 - GigaAM RNN-T is Russian-only (`example.wav`); do not cite it as a JFK / English result.
 - Deterministic fake-device browser acceptance for the streaming-demo latency HUD is now recorded; a physical human-microphone pass remains a manual device check. `--` at idle is not a speech-path pass.

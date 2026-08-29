@@ -1,6 +1,6 @@
 {
-  "preset": "x-asr-zh-en-160ms-webgpu",
-  "timestamp": "2026-08-29T00:45:27.206Z",
+  "preset": "x-asr-zh-en-160ms-webgpu-cpu-state",
+  "timestamp": "2026-08-29T00:46:21.870Z",
   "status": "pass",
   "transcript": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
   "expected": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
@@ -10,13 +10,13 @@
   "engine": "onnxruntime-web",
   "ortVersion": "1.27.0-dev.20260506-673c3320fc",
   "streaming": "true-stateful-zipformer2",
-  "encoderStateOutputLocation": "gpu-buffer",
+  "encoderStateOutputLocation": "cpu",
   "metrics": {
-    "loadMs": 8710.10000000149,
-    "transcribeMs": 9263.654999997467,
-    "totalMs": 18500.98999999836,
-    "rtf": 0.8421504545452243,
-    "rtfx": 1.187436276502418
+    "loadMs": 8839.980000000447,
+    "transcribeMs": 32095.140000000596,
+    "totalMs": 41488.140000000596,
+    "rtf": 2.9177400000000544,
+    "rtfx": 0.34273101784257043
   },
   "adapter": {
     "available": true,
@@ -29,6 +29,6 @@
     "navigator.gpu: true",
     "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
     "onnxruntime-web: 1.27.0-dev.20260506-673c3320fc",
-    "session ready in 8710ms"
+    "session ready in 8840ms"
   ]
 }
