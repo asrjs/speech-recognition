@@ -8,7 +8,7 @@ import { createOrtSession, disposeOrtOutputs, initOrt, releaseOrtSession, type O
 import { GigaAmJsPreprocessor } from './frontend.js';
 import { GigaAmRnntTokenizer } from './tokenizer.js';
 import type { LasrCtcNativeToken } from '../lasr-ctc/types.js';
-import type { GigaAmRnntArtifactSource, GigaAmRnntModelConfig, GigaAmRnntModelOptions, GigaAmRnntNativeTranscript, GigaAmRnntTranscriptionOptions } from './types.js';
+import { resolveGigaAmRnntBackends, type GigaAmRnntArtifactSource, type GigaAmRnntModelConfig, type GigaAmRnntModelOptions, type GigaAmRnntNativeTranscript, type GigaAmRnntTranscriptionOptions, type ResolvedGigaAmRnntBackends } from './types.js';
 
 interface LoadedState {
   readonly ort: OrtModuleLike;
@@ -17,6 +17,7 @@ interface LoadedState {
   readonly joint: OrtSessionLike;
   readonly tokenizer: GigaAmRnntTokenizer;
   readonly warnings: readonly TranscriptWarning[];
+  readonly backends: ResolvedGigaAmRnntBackends;
 }
 
 function tensor(ort: OrtModuleLike, type: 'float32' | 'int64' | 'int32', data: ArrayBufferView, dims: readonly number[]): OrtTensorLike {
@@ -148,37 +149,37 @@ export class OrtGigaAmRnntExecutor {
       if (decoderDataFilename) decoderDataUrl = await this.resolve(this.source, decoderDataFilename);
       if (jointDataFilename) jointDataUrl = await this.resolve(this.source, jointDataFilename);
     }
-    const ort = await initOrt(this.backendId, {
+    const backends = resolveGigaAmRnntBackends(this.source, this.backendId);
+    const ort = await initOrt(backends.ortBackend, {
       wasmPaths: this.source.wasmPaths,
       cpuThreads: this.source.cpuThreads,
       signal: this.signal,
     });
-    const backendId = this.backendId.startsWith('webgpu') ? 'webgpu' : 'wasm';
-    const make = (url: string, dataUrl?: string, dataPath?: string) => createOrtSession(ort, url, {
+    const make = (url: string, backendId: 'webgpu' | 'wasm', dataUrl?: string, dataPath?: string) => createOrtSession(ort, url, {
       backendId,
       externalDataUrl: dataUrl,
       externalDataPath: dataPath,
       signal: this.signal,
     });
-    const encoder = await make(encoderUrl, encoderDataUrl, encoderDataFilename);
+    const encoder = await make(encoderUrl, backends.encoderBackend, encoderDataUrl, encoderDataFilename);
     if (this.disposed) {
       releaseOrtSession(encoder);
       throw new Error(`GigaAM RNN-T executor was disposed during load for "${this.modelId}".`);
     }
-    const decoder = await make(decoderUrl, decoderDataUrl, decoderDataFilename);
+    const decoder = await make(decoderUrl, backends.decoderBackend, decoderDataUrl, decoderDataFilename);
     if (this.disposed) {
       releaseOrtSession(encoder);
       releaseOrtSession(decoder);
       throw new Error(`GigaAM RNN-T executor was disposed during load for "${this.modelId}".`);
     }
-    const joint = await make(jointUrl, jointDataUrl, jointDataFilename);
+    const joint = await make(jointUrl, backends.jointBackend, jointDataUrl, jointDataFilename);
     if (this.disposed) {
       releaseOrtSession(encoder);
       releaseOrtSession(decoder);
       releaseOrtSession(joint);
       throw new Error(`GigaAM RNN-T executor was disposed during load for "${this.modelId}".`);
     }
-    return { ort, encoder, decoder, joint, tokenizer: await GigaAmRnntTokenizer.fromUrl(tokenizerUrl, this.signal), warnings: [] };
+    return { ort, encoder, decoder, joint, tokenizer: await GigaAmRnntTokenizer.fromUrl(tokenizerUrl, this.signal), warnings: [], backends };
   }
 
   async ready(): Promise<void> {
@@ -192,12 +193,15 @@ export class OrtGigaAmRnntExecutor {
     if (!state) throw createExperimentalArtifactMissingError('gigaam-rnnt', this.modelId);
     const audio = normalizePcmInput(input).toMono();
     const started = nowMs();
+    const preprocessStarted = nowMs();
     const prepared = this.preprocessor.process(audio.channels[0] ?? new Float32Array(0));
+    const preprocessMs = nowMs() - preprocessStarted;
     if (prepared.frameCount <= 0) return { utteranceText: '', isFinal: true, warnings: [...state.warnings] };
 
     const featureTensor = tensor(state.ort, 'float32', prepared.features, [1, this.config.nMels, prepared.frameCount]);
     const lengthTensor = tensor(state.ort, 'int64', BigInt64Array.from([BigInt(prepared.frameCount)]), [1]);
     let encoderOutputs: Record<string, OrtTensorLike>;
+    const encodeStarted = nowMs();
     try {
       encoderOutputs = await state.encoder.run({ audio_signal: featureTensor, length: lengthTensor });
     } finally {
@@ -223,6 +227,7 @@ export class OrtGigaAmRnntExecutor {
     } finally {
       disposeOrtOutputs(encoderOutputs);
     }
+    const encodeMs = nowMs() - encodeStarted;
     const blankId = state.tokenizer.blankId;
     const layers = Math.max(1, this.config.predictionRnnLayers ?? 1);
     const predHidden = this.config.predictionHiddenSize;
@@ -233,6 +238,7 @@ export class OrtGigaAmRnntExecutor {
     const h = new Float32Array(layers * predHidden);
     const c = new Float32Array(layers * predHidden);
     let decodeIterations = 0;
+    const decodeStarted = nowMs();
 
     for (let frame = 0; frame < frames; frame += 1) {
       throwIfDecodeAborted(options.signal);
@@ -309,22 +315,28 @@ export class OrtGigaAmRnntExecutor {
       }
     }
 
-    const totalMs = nowMs() - started;
+    const finished = nowMs();
+    const totalMs = finished - started;
+    const decodeMs = finished - decodeStarted;
+    const componentBackends = state.backends ?? resolveGigaAmRnntBackends(undefined, this.backendId);
     return {
       utteranceText: state.tokenizer.decode(ids),
       isFinal: true,
       tokens,
       confidence: { tokenAverage: tokens.length ? tokens.reduce((sum, item) => sum + (item.confidence ?? 0), 0) / tokens.length : 0 },
       metrics: {
-        preprocessMs: 0,
-        encodeMs: roundMetric(totalMs),
-        decodeMs: 0,
+        preprocessMs: roundMetric(preprocessMs),
+        encodeMs: roundMetric(encodeMs),
+        decodeMs: roundMetric(decodeMs),
         totalMs: roundMetric(totalMs),
         wallMs: roundMetric(totalMs),
         audioDurationSec: roundMetric(audio.durationSeconds, 4),
         rtf: audio.durationSeconds ? roundMetric(totalMs / (audio.durationSeconds * 1000), 4) : 0,
         rtfx: audio.durationSeconds ? roundMetric(audio.durationSeconds / (totalMs / 1000), 4) : undefined,
         preprocessorBackend: 'js',
+        encoderBackend: componentBackends.encoderBackend,
+        decoderBackend: componentBackends.decoderBackend,
+        jointBackend: componentBackends.jointBackend,
         encoderFrameCount: frames,
         decodeIterations,
         emittedTokenCount: tokens.length,

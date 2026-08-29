@@ -1,6 +1,42 @@
 import type { AssetProvider, SpeechRuntimeHooks } from '../../types/index.js';
 import type { LasrCtcArtifactSource, LasrCtcModelConfig, LasrCtcModelOptions, LasrCtcNativeTranscript, LasrCtcTranscriptionOptions } from '../lasr-ctc/types.js';
 
+export type GigaAmRnntExecutionBackend = 'webgpu' | 'wasm';
+
+export interface GigaAmRnntBackendSelection {
+  readonly encoderBackend?: GigaAmRnntExecutionBackend;
+  readonly decoderBackend?: GigaAmRnntExecutionBackend;
+  readonly jointBackend?: GigaAmRnntExecutionBackend;
+}
+
+export interface ResolvedGigaAmRnntBackends {
+  readonly ortBackend: GigaAmRnntExecutionBackend;
+  readonly encoderBackend: GigaAmRnntExecutionBackend;
+  readonly decoderBackend: GigaAmRnntExecutionBackend;
+  readonly jointBackend: GigaAmRnntExecutionBackend;
+}
+
+/**
+ * Resolve per-component execution providers without changing the historical
+ * all-on-one-backend default. Explicit component overrides enable measured
+ * hybrid compositions such as WebGPU encoder + WASM decoder/joiner.
+ */
+export function resolveGigaAmRnntBackends(
+  requested: GigaAmRnntBackendSelection | undefined,
+  fallbackBackend: string,
+): ResolvedGigaAmRnntBackends {
+  const fallback: GigaAmRnntExecutionBackend = fallbackBackend.startsWith('webgpu') ? 'webgpu' : 'wasm';
+  const encoderBackend = requested?.encoderBackend ?? fallback;
+  const decoderBackend = requested?.decoderBackend ?? fallback;
+  const jointBackend = requested?.jointBackend ?? fallback;
+  return {
+    ortBackend: encoderBackend === 'webgpu' || decoderBackend === 'webgpu' || jointBackend === 'webgpu' ? 'webgpu' : 'wasm',
+    encoderBackend,
+    decoderBackend,
+    jointBackend,
+  };
+}
+
 export interface GigaAmRnntModelConfig extends Omit<LasrCtcModelConfig, 'ecosystem' | 'architecture' | 'processorArchitecture' | 'encoderArchitecture' | 'decoderArchitecture'> {
   readonly ecosystem: 'gigaam';
   readonly architecture: 'gigaam-rnnt';
@@ -30,9 +66,12 @@ export interface GigaAmRnntDirectArtifacts {
 }
 
 export type GigaAmRnntArtifactSource =
-  | (Omit<Extract<LasrCtcArtifactSource, { kind: 'direct' }>, 'artifacts'> & { readonly kind: 'direct'; readonly artifacts: GigaAmRnntDirectArtifacts })
+  | (Omit<Extract<LasrCtcArtifactSource, { kind: 'direct' }>, 'artifacts'> & GigaAmRnntBackendSelection & { readonly kind: 'direct'; readonly artifacts: GigaAmRnntDirectArtifacts })
   | (Omit<Extract<LasrCtcArtifactSource, { kind: 'huggingface' }>, 'modelFilename' | 'tokenizerFilename'> & {
       readonly kind: 'huggingface';
+      readonly encoderBackend?: GigaAmRnntExecutionBackend;
+      readonly decoderBackend?: GigaAmRnntExecutionBackend;
+      readonly jointBackend?: GigaAmRnntExecutionBackend;
       readonly encoderFilename?: string;
       readonly decoderFilename?: string;
       readonly jointFilename?: string;

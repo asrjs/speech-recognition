@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { GigaAmRnntTokenizer, OrtGigaAmRnntExecutor } from '../src/models/gigaam-rnnt/index.js';
+import { GigaAmRnntTokenizer, OrtGigaAmRnntExecutor, resolveGigaAmRnntBackends } from '../src/models/gigaam-rnnt/index.js';
 import type { OrtModuleLike, OrtSessionLike, OrtTensorLike } from '../src/models/lasr-ctc/ort.js';
 import { PipelineAbortedError } from '../src/pipeline/composition.js';
 import { createBuiltInSpeechRuntime } from '../src/runtime/builtins.js';
@@ -28,6 +28,18 @@ const config = {
 };
 
 describe('GigaAM v3 RNN-T contract', () => {
+  it('resolves explicit hybrid component providers while preserving backend defaults', () => {
+    expect(resolveGigaAmRnntBackends(undefined, 'wasm')).toEqual({
+      ortBackend: 'wasm', encoderBackend: 'wasm', decoderBackend: 'wasm', jointBackend: 'wasm',
+    });
+    expect(resolveGigaAmRnntBackends({ encoderBackend: 'webgpu', decoderBackend: 'wasm', jointBackend: 'wasm' }, 'wasm')).toEqual({
+      ortBackend: 'webgpu', encoderBackend: 'webgpu', decoderBackend: 'wasm', jointBackend: 'wasm',
+    });
+    expect(resolveGigaAmRnntBackends(undefined, 'webgpu')).toEqual({
+      ortBackend: 'webgpu', encoderBackend: 'webgpu', decoderBackend: 'webgpu', jointBackend: 'webgpu',
+    });
+  });
+
   it('adds the implicit final blank to the published piece vocabulary', () => {
     const tokenizer = GigaAmRnntTokenizer.fromText('  0\na 2\n<blk> 34\n');
     expect(tokenizer.blankId).toBe(34);
@@ -104,6 +116,10 @@ describe('GigaAM v3 RNN-T contract', () => {
     expect(Object.keys(feeds.decoder ?? {})).toEqual(['x', 'hi', 'ci']);
     expect(Object.keys(feeds.joint ?? {})).toEqual(['enc', 'dec']);
     expect(jointCalls).toBe(2);
+    expect(result.metrics?.preprocessMs).toBeGreaterThanOrEqual(0);
+    expect(result.metrics?.encodeMs).toBeGreaterThanOrEqual(0);
+    expect(result.metrics?.decodeMs).toBeGreaterThanOrEqual(0);
+    expect(result.metrics).toMatchObject({ encoderBackend: 'wasm', decoderBackend: 'wasm', jointBackend: 'wasm' });
   });
 
   it('stops the joint/decoder loop on abort, disposes tensors, and can decode again', async () => {

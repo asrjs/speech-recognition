@@ -142,6 +142,10 @@ export interface TranscriptMetrics {
   readonly rtfx?: number;
   readonly requestedPreprocessorBackend?: string;
   readonly preprocessorBackend?: string;
+  /** Actual ORT provider selected for each model-specific component. */
+  readonly encoderBackend?: string;
+  readonly decoderBackend?: string;
+  readonly jointBackend?: string;
   readonly decodeAudioMs?: number;
   readonly downmixMs?: number;
   readonly resampleMs?: number;
