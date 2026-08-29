@@ -55,7 +55,7 @@ ORT Web 1.29.0 stable upgrade (2026-08-29):
   common). npm's CLI cannot reach the registry on this host, so the install
   used the registry tarballs directly with hand-authored lock entries
   carrying the real resolved/integrity values
-- Validation: full suite 1007 passed / 18 artifact-gated skips; typecheck
+- Validation: full suite 1008 passed / 18 artifact-gated skips; typecheck
   clean; lint 0 errors / 11 warnings; production build clean
 - Real-artifact backend suites all green on 1.29.0: GigaAM CTC 4/4, GigaAM
   RNN-T 2/2, SenseVoice 3/3, X-ASR 3/3 including public stateful streaming,
@@ -70,6 +70,22 @@ ORT Web 1.29.0 stable upgrade (2026-08-29):
 - Evidence: fresh harness JSONs plus `tools/data/results/qwen/`,
   `tools/data/results/x-asr/`, `tools/data/results/gigaam/`,
   `tools/data/results/sensevoice/`
+
+Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
+
+- Corrected Chrome A/B confirms the Parakeet v3 GRU decoder graph runs on both
+  WebGPU and WASM with ORT Web 1.27 nightly and 1.29.0 stable; the raw TDT
+  duration head is excluded from vocabulary argmax selection
+- Opt-in GPU-state outputs reproduce the token sequence and reduce the
+  decoder-only warm-step microbenchmark by roughly 29–41%, but disposal
+  surfaced an ORT `null function` failure, so production placement remains
+  unchanged until lifecycle and full-model parity are proven
+- TDT now borrows float32 logits views, uses the confidence-only softmax path,
+  and removes redundant disposal promise wrappers; the 5,000-run Node harness
+  records the before/after controls in
+  `docs/handoffs/parakeet-tdt-webgpu-ep-2026-08-29.md`
+- Validation after this slice: full suite 1008 passed / 18 artifact-gated
+  skips; typecheck and build clean; lint remains 0 errors / 11 warnings
 
 Lifecycle hardening and cancellation slice (`8552eec`, `e8624e6`):
 
@@ -203,17 +219,22 @@ ORT Web was upgraded 1.27-nightly → 1.29.0 stable and validated end-to-end
 deferred dispatch for parallel shader compilation, configurable GPU buffer
 cache controls, and improved FP16/MatMul kernels. Work items, in order:
 
-1. Probe the Parakeet TDT decoder/joint graphs on the built-in WebGPU EP in
-   Chrome via an opt-in decoder-backend override (default behavior must remain
-   encoder-WebGPU/decoder-WASM until parity and a measured win exist).
+1. [Completed 2026-08-29] Probe the Parakeet TDT decoder/joint graphs on the
+   built-in WebGPU EP in Chrome via an opt-in decoder-backend override. The
+   corrected controlled A/B is recorded below; default behavior remains
+   encoder-WebGPU/decoder-WASM until full-model parity and a measured win
+   exist.
 2. Measure per-component placement again for every family on 1.29.0 — the
    X-ASR WASM-vs-WebGPU and buffer-cache conclusions may shift with the new
    EP; re-benchmark instead of inheriting old verdicts.
-3. The separate native WebGPU Plugin EP 0.3.0 (Python/.NET, not npm) is a
-   research reference for GRU parity spikes only; it is not a browser
-   integration path for this library.
+3. [Research boundary] The separate native WebGPU Plugin EP 0.3.0 (Python/.NET,
+   not npm) is a research reference for GRU parity spikes only; it is not a
+   browser integration path for this library.
+4. [In progress] Promote only lifecycle-safe, end-to-end-proven state/cache
+   placement. Track tensor ownership and disposal explicitly; a decoder-only
+   GPU-state win is not sufficient for production promotion.
 
-Probe status (2026-08-29, first pass):
+Probe status (2026-08-29, corrected controlled browser A/B):
 
 - Native WebGPU probe (`onnxruntime-node` wgpu adapter): the Parakeet v3
   `decoder_joint-model.onnx` GRU graph RUNS on a GPU EP. Session creation
@@ -225,14 +246,45 @@ Probe status (2026-08-29, first pass):
   `parakeet-tdt.html` + `src/parakeet-tdt-webgpu.js` +
   `scripts/run-parakeet-tdt-webgpu.mjs` (full-model and decoder-only spike
   modes). Asset routes `/parakeet-v3/` and `/parakeet-audio/` added.
-- Negative/open results: (a) the full-model probe with the fp16 encoder on
-  WebGPU did not complete session creation within 10 minutes of CPU-heavy
-  shader compilation in headless Chrome — treat fp16 FastConformer-on-WebGPU
-  first-load cost as unresolved and measure with a warm cache before any
-  claim; (b) the decoder-only ORT-Web spike currently hangs without posting
-  (suspect ORT Web 1.29 session-create behavior for this GRU graph in the
-  JS WebGPU EP). Next step: debug via CDP console output, and compare
-  against 1.27 behavior before blaming 1.29.
+- Corrected browser A/B: on a real NVIDIA Blackwell adapter, both ORT Web
+  `1.27.0-dev.20260506-673c3320fc` and stable `1.29.0` completed the
+  decoder-only GRU spike on both WebGPU and WASM. Three corrected runs per
+  version/backend passed with finite outputs and identical vocabulary-sliced
+  token IDs (`8192`); the raw argmax was duration logit `8194` in the
+  `[1,1,1,8198]` output, so the probe now limits token selection to the 8193
+  vocabulary entries. Representative medians were WebGPU session-load
+  `1.41 s` (1.27) vs `1.46 s` (1.29), with warm-step means varying from
+  `14.0–32.2 ms` (1.27) and `9.9–14.9 ms` (1.29); WASM warm-step means were
+  `5.5–5.8 ms` (1.27) and `5.5–6.5 ms` (1.29). This disproves the earlier
+  uncorrected “1.29 session-create hang” classification.
+- The spike harness was repaired before accepting that evidence: spike mode
+  no longer imports the full library before the direct ORT probe, its result
+  logger is defined, and the runner recognizes its two per-EP result records.
+  These fixes are validation infrastructure only and do not change the
+  library's default backend composition.
+- Opt-in 1.29 GPU-state experiment: `preferredOutputLocation` kept both GRU
+  state outputs on `gpu-buffer` and preserved the same five-step vocabulary
+  argmax sequence. Three WebGPU runs had warm-step means `9.01`, `8.26`, and
+  `7.78 ms`, versus `12.73–13.14 ms` across comparable CPU-state baselines
+  (about 29–41% lower in this decoder-only microbenchmark). This is a hypothesis for
+  the library's next Parakeet optimization slice, not an end-to-end promotion:
+  full-model transcript parity, repeated-transcription memory behavior, and
+  safe GPU-tensor disposal remain unverified.
+- Model-specific decode hot path (library, 2026-08-29): TDT now borrows
+  float32 logits views before synchronous disposal, and the shared
+  `confidenceFromLogits` helper skips entropy work that its API does not return.
+  The 10,000-run Node harness measured `0.0849 ms` p50 for confidence-only
+  versus `0.3970 ms` p50 for full TDT-vocabulary quality (about 79% lower), and
+  `0.0928 ms` p50 for borrowed logits versus `0.1114 ms` for the copy control
+  (about 17% lower). This is post-processing evidence, not an end-to-end RTFx
+  claim; full-suite correctness remains required.
+- Open result: the full-model probe with the 1.24 GB fp16 FastConformer encoder
+  on WebGPU did not complete session creation within 10 minutes of CPU-heavy
+  shader compilation in headless Chrome. Treat fp16 first-load cost as
+  unresolved; compare warm-cache fp16 against the available fp32/int8 encoder
+  artifacts before making a placement or quantization claim. Until that
+  measurement and end-to-end GPU-state lifecycle proof exist, keep the
+  production default `encoder-WebGPU/decoder-WASM` composition.
 
 ## First inspect the real repository
 

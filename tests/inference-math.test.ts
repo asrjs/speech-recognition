@@ -16,6 +16,15 @@ describe('inference math helpers', () => {
     expect(result.logProb).toBeLessThan(0);
   });
 
+  it('keeps the confidence-only fast path numerically aligned with full quality', () => {
+    const logits = new Float32Array([0.25, -1.5, 4.75, 0.5, 2.25]);
+    const confidence = confidenceFromLogits(logits, 2, logits.length);
+    const quality = tokenQualityFromLogits(logits, 2, logits.length);
+
+    expect(confidence.confidence).toBeCloseTo(quality.confidence, 10);
+    expect(confidence.logProb).toBeCloseTo(quality.logProb, 10);
+  });
+
   it('computes chosen-token logprob and distribution entropy together', () => {
     const peaked = new Float32Array([1, 8, 2]);
     const uniform = new Float32Array([1, 1, 1]);

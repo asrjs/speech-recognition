@@ -23,11 +23,29 @@ export function confidenceFromLogits(
   tokenId: number,
   vocabSize: number,
 ): { confidence: number; logProb: number } {
-  const quality = tokenQualityFromLogits(logits, tokenId, vocabSize);
-  return {
-    confidence: quality.confidence,
-    logProb: quality.logProb,
-  };
+  // Decoder hot loops only need the selected-token probability. Avoid the
+  // entropy pass performed by tokenQualityFromLogits; TDT/RNNT/AED call this
+  // once per emitted decoder step, so the saved O(vocab) traversal matters.
+  let maxLogit = Number.NEGATIVE_INFINITY;
+  for (let index = 0; index < vocabSize; index += 1) {
+    const value = logits[index] ?? Number.NEGATIVE_INFINITY;
+    if (value > maxLogit) {
+      maxLogit = value;
+    }
+  }
+
+  let expSum = 0;
+  for (let index = 0; index < vocabSize; index += 1) {
+    expSum += Math.exp((logits[index] ?? 0) - maxLogit);
+  }
+
+  if (!Number.isFinite(expSum) || expSum <= 0) {
+    return { confidence: 0, logProb: Number.NEGATIVE_INFINITY };
+  }
+
+  const logSumExp = maxLogit + Math.log(expSum);
+  const logProb = (logits[tokenId] ?? Number.NEGATIVE_INFINITY) - logSumExp;
+  return { confidence: Math.exp(logProb), logProb };
 }
 
 /**

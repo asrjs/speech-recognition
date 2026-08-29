@@ -351,7 +351,7 @@ export class NemoTdtSpeechSession implements SpeechSession<
       return;
     }
     this.disposed = true;
-    await Promise.resolve(this.executor?.dispose());
+    await this.executor?.dispose();
     this.onDispose?.();
   }
 }
@@ -460,11 +460,7 @@ export class NemoTdtSpeechModel implements SpeechModel<
     const sessions = [...this.sessions];
     this.sessions.clear();
 
-    await Promise.all(
-      sessions.map(async (session) => {
-        await session.dispose();
-      }),
-    );
+    await Promise.all(sessions.map((session) => session.dispose()));
   }
 }
 

@@ -690,8 +690,12 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
           state2: decoderOutputs.output_states_2 as OrtTensorLike<Float32Array>,
         };
         try {
+        // ORT already exposes float32 logits as a typed-array view. Consume
+        // that view synchronously before disposing the output tensor instead
+        // of allocating a full per-step copy. Non-float32-compatible output
+        // views still get normalized into an owned Float32Array.
         const logitsData = logits.data instanceof Float32Array
-          ? new Float32Array(logits.data)
+          ? logits.data
           : Float32Array.from(logits.data as ArrayLike<number>);
         if (logitsData.length < vocabSize) {
           throw new Error(

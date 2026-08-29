@@ -81,12 +81,18 @@ function createInputs(PcmAudioBuffer) {
     logits[index] = Math.sin(index * 0.017) * 3;
   }
 
+  const tdtLogits = new Float32Array(8198);
+  for (let index = 0; index < tdtLogits.length; index += 1) {
+    tdtLogits[index] = Math.sin(index * 0.011) * 3;
+  }
+
   return {
     mergeResults: Array.from({ length: 48 }, (_, index) => createTranscript(index)),
     normalizationText:
       'İstanbul’da hızlı konuşma — ölçüm için normalize edilen bir Türkçe cümle. '.repeat(24),
     audio: new PcmAudioBuffer({ sampleRate: SAMPLE_RATE, channels: [left, right] }),
     logits,
+    tdtLogits,
   };
 }
 
@@ -196,6 +202,16 @@ function runBenchmarks(inputs, runs, runtime) {
     benchmark('audio-stereo-downmix', () => inputs.audio.toMono(), runs),
     benchmark('inference-argmax', () => runtime.argmax(inputs.logits), runs),
     benchmark(
+      'inference-confidence',
+      () => runtime.confidenceFromLogits(inputs.tdtLogits, 123, 8193),
+      runs,
+    ),
+    benchmark(
+      'inference-token-quality-tdt-vocab',
+      () => runtime.tokenQualityFromLogits(inputs.tdtLogits, 123, 8193),
+      runs,
+    ),
+    benchmark(
       'inference-token-quality',
       () => runtime.tokenQualityFromLogits(inputs.logits, 123, inputs.logits.length),
       runs,
@@ -205,6 +221,24 @@ function runBenchmarks(inputs, runs, runtime) {
       () => {
         const logits = new Float32Array(inputs.logits);
         timestampProcessor.process(logits, [2048, 2050], 2);
+      },
+      runs,
+    ),
+    benchmark(
+      'nemo-tdt-logits-borrow-float32',
+      () => {
+        const logits = inputs.tdtLogits;
+        const token = runtime.argmax(logits, 0, 8193);
+        runtime.confidenceFromLogits(logits, token, 8193);
+      },
+      runs,
+    ),
+    benchmark(
+      'nemo-tdt-logits-copy-float32',
+      () => {
+        const logits = new Float32Array(inputs.tdtLogits);
+        const token = runtime.argmax(logits, 0, 8193);
+        runtime.confidenceFromLogits(logits, token, 8193);
       },
       runs,
     ),
@@ -228,6 +262,7 @@ const [audioRuntime, mathRuntime, mergeRuntime, processorRuntime, benchmarkRunti
 const runtime = {
   PcmAudioBuffer: audioRuntime.PcmAudioBuffer,
   argmax: mathRuntime.argmax,
+  confidenceFromLogits: mathRuntime.confidenceFromLogits,
   tokenQualityFromLogits: mathRuntime.tokenQualityFromLogits,
   mergeTranscriptResults: mergeRuntime.mergeTranscriptResults,
   WhisperTimestampLogitProcessor: processorRuntime.WhisperTimestampLogitProcessor,
