@@ -216,3 +216,6 @@ sharply on the fifth in both conditions; treat them as diagnostic samples,
 not a leak verdict. Keep GPU-state placement opt-in until the result is
 repeated on another browser or adapter.
 Evidence: `docs/reports/parakeet-tdt-v3-webgpu-lifecycle-soak-2026-08-29.json`.
+The additional Chrome SwiftShader adapter attempt also returned
+`WEBGPU_NO_ADAPTER` (raw capture retained in the sibling harness), so this
+host still cannot supply a second usable adapter for promotion testing.

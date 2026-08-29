@@ -456,6 +456,8 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   and found none, but the final heap sample drops sharply in both controls;
   retain the path opt-in pending another browser/adapter.
   Evidence: `docs/reports/parakeet-tdt-v3-webgpu-lifecycle-soak-2026-08-29.json`.
+  A Chrome SwiftShader attempt also returned `WEBGPU_NO_ADAPTER`; the host
+  therefore still lacks a second usable adapter for the promotion gate.
 
 - [Completed 2026-08-29] GigaAM RNN-T phase profile and provider matrix: the
   official v3 E2E artifact and

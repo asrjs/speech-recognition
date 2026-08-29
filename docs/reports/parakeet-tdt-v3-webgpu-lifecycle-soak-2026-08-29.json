@@ -79,6 +79,14 @@
     "allDecodeIterations": 107,
     "allEmittedTokenCounts": 91
   },
+  "secondaryAdapterChecks": [
+    {
+      "angle": "swiftshader",
+      "status": "error",
+      "failureClass": "WEBGPU_NO_ADAPTER",
+      "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T15-10-05-762Z.json"
+    }
+  ],
   "teardown": {
     "harnessInvokesModelAndRuntimeDispose": true,
     "harnessRecordsTeardownErrors": true,
