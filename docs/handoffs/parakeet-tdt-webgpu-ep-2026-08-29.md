@@ -77,13 +77,24 @@ existing executor tests and full suite remain the correctness gate.
 
 ## Remaining work
 
-1. Compare warm-cache full-model fp16 against the available fp32 and int8
-   encoder artifacts; the 1.24 GB fp16 FastConformer graph previously spent
-   more than ten minutes in headless Chrome session creation.
-2. Add an opt-in, lifecycle-safe TDT GPU-state path only after end-to-end
+1. Repeat the full-model browser pass with deterministic `native-rate` linear
+   audio preparation across browsers and the available v3 artifacts. The
+   default target-rate AudioContext path produced only 74 tokens, but native-
+   rate restored exact 91-token parity for fp16/WebGPU encoder + WASM decoder
+   (16–19x RTFx), the full WebGPU decoder (three-run median 5.64x RTFx), and
+   int8/WebGPU encoder + int8/WASM decoder (2.02x RTFx). This makes audio
+   preparation the leading cause of the earlier mismatch and confirms ORT
+   1.29 decoder correctness without a decoder speed win. Details are in
+   `docs/reports/parakeet-tdt-v3-browser-full-model-2026-08-29.md`.
+2. The earlier “more than ten minutes” fp16 session-create statement was an
+   invalid harness run: the page failed before valid model creation. The
+   corrected harness reaches model-ready in 7–12 seconds. The fp32 external-
+   data browser control is separately blocked by `Module.MountedFiles is not
+   available`.
+3. Add an opt-in, lifecycle-safe TDT GPU-state path only after end-to-end
    transcript parity, repeated-transcription memory checks, and disposal
    behavior are measured.
-3. Keep backend placement workload-specific: the direct spike is faster on
+4. Keep backend placement workload-specific: the direct spike is faster on
    WASM for this one-frame GRU workload, while GPU-state retention is a
    promising optimization for larger decode loops.
 

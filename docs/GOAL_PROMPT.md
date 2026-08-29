@@ -86,6 +86,23 @@ Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
   `docs/handoffs/parakeet-tdt-webgpu-ep-2026-08-29.md`
 - Validation after this slice: full suite 1008 passed / 18 artifact-gated
   skips; typecheck and build clean; lint remains 0 errors / 11 warnings
+- Corrected full-model browser probe: native WASM controls for v3 fp16/fp16,
+  fp16/fp32, and int8/fp32 all reproduce the exact 91-token transcript, while
+  browser target-rate runs reach 6.98–17.47x RTFx but emit only 74
+  tokens. A follow-up with deterministic `native-rate` linear WAV resampling
+  reaches exact 91-token parity at 18.66x RTFx (fp16/WebGPU encoder, ONNX
+  preprocessor, WASM/fp32 decoder); the same audio strategy makes the full
+  WebGPU decoder exact at a three-run median 5.64x RTFx and int8/WebGPU
+  encoder + int8/WASM decoder exact at 2.02x RTFx. Treat target-rate numbers
+  as a measured preprocessing mismatch; treat int8 as a memory/size option
+  rather than an assumed speedup. These are not blanket quantization or
+  placement wins. The earlier
+  “more than ten minutes” fp16 session-create note was invalid because the old
+  page failed before valid model creation; the corrected harness reaches
+  model-ready in 7–12 seconds. The fp32 browser control remains blocked by ORT
+  Web external-data mounting (`Module.MountedFiles is not available`). Full
+  details and JSON controls are in
+  `docs/reports/parakeet-tdt-v3-browser-full-model-2026-08-29.md`.
 
 Lifecycle hardening and cancellation slice (`8552eec`, `e8624e6`):
 
@@ -150,6 +167,9 @@ Investigate, in rough priority order:
   not a full logits vector);
 - preprocessing, encoder, decoder, joiner, and postprocessing bottlenecks,
   attributed by measured phase shares before choosing what to optimize;
+- audio preparation parity (source-rate decode, channel mixing, resampling,
+  and feature lengths) before changing model math; browser AudioContext
+  resampling can change tokens even when duration and backend are unchanged;
 - incremental computation, reusable caches, KV/state/cache reuse, and
   redundant computation across streaming windows;
 - tensor allocation, copying, disposal, and memory lifetime in hot loops;
@@ -205,7 +225,11 @@ kept on WASM because the WebGPU EP lacked GRU/LSTM support; ORT Web 1.29.0
 added GRU and LSTM to the WebGPU EP, so the decoder-on-WebGPU composition must
 be re-probed per artifact instead of assumed impossible. The same
 GPU-resident-state technique produced the X-ASR streaming win (3.46×) recorded
-above.
+above. The 2026-08-29 full-model probe adds a reusable warning: compare
+browser audio preparation against the native/reference resampler first. The
+default target-rate AudioContext path stopped at 74 tokens, while deterministic
+WAV parsing plus linear resampling restored exact 91-token parity and 18.66x
+RTFx with the same fp16/WebGPU encoder composition.
 
 Turn recurring lessons into reusable tools, tests, fixtures, and playbooks
 (`tools/model-debugging/playbooks/`, stage comparator, benchmark harness) so
@@ -215,9 +239,12 @@ methodology as new ORT behaviors, graph patterns, and bottlenecks are found.
 ## Current WebGPU EP optimization task
 
 ORT Web was upgraded 1.27-nightly → 1.29.0 stable and validated end-to-end
-(see Completed below). The release adds GRU and LSTM support to the WebGPU EP,
-deferred dispatch for parallel shader compilation, configurable GPU buffer
-cache controls, and improved FP16/MatMul kernels. Work items, in order:
+(see Completed below). The built-in WebGPU EP exposes the GRU/LSTM support used
+by the decoder spike. Separately, the native ONNX Runtime WebGPU Plugin EP
+0.3.0 release adds GRU and DFT support, deferred dispatch for parallel shader
+compilation, configurable GPU-buffer caching, improved FP16/MatMul kernels,
+and broader integer coverage. Treat those as two different compatibility
+surfaces. Work items, in order:
 
 1. [Completed 2026-08-29] Probe the Parakeet TDT decoder/joint graphs on the
    built-in WebGPU EP in Chrome via an opt-in decoder-backend override. The
@@ -227,9 +254,12 @@ cache controls, and improved FP16/MatMul kernels. Work items, in order:
 2. Measure per-component placement again for every family on 1.29.0 — the
    X-ASR WASM-vs-WebGPU and buffer-cache conclusions may shift with the new
    EP; re-benchmark instead of inheriting old verdicts.
-3. [Research boundary] The separate native WebGPU Plugin EP 0.3.0 (Python/.NET,
-   not npm) is a research reference for GRU parity spikes only; it is not a
-   browser integration path for this library.
+3. [Research boundary] Run a bounded compatibility spike against the separate
+   native WebGPU Plugin EP 0.3.0 (Python/.NET, not npm) only when the plugin is
+   available locally. Compare Parakeet decoder/joiner session creation,
+   first-run, warm-step latency, memory, finite logits, vocabulary-sliced token
+   parity, and disposal against the built-in ORT Web 1.29 path. Do not add the
+   plugin as a browser dependency or block library work on its availability.
 4. [In progress] Promote only lifecycle-safe, end-to-end-proven state/cache
    placement. Track tensor ownership and disposal explicitly; a decoder-only
    GPU-state win is not sufficient for production promotion.
@@ -278,13 +308,14 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   `0.0928 ms` p50 for borrowed logits versus `0.1114 ms` for the copy control
   (about 17% lower). This is post-processing evidence, not an end-to-end RTFx
   claim; full-suite correctness remains required.
-- Open result: the full-model probe with the 1.24 GB fp16 FastConformer encoder
-  on WebGPU did not complete session creation within 10 minutes of CPU-heavy
-  shader compilation in headless Chrome. Treat fp16 first-load cost as
-  unresolved; compare warm-cache fp16 against the available fp32/int8 encoder
-  artifacts before making a placement or quantization claim. Until that
-  measurement and end-to-end GPU-state lifecycle proof exist, keep the
-  production default `encoder-WebGPU/decoder-WASM` composition.
+- Open result: the corrected full-model browser probe reaches model-ready and
+  shows large WebGPU-encoder latency gains. Target-rate AudioContext runs fail
+  transcript parity, while the deterministic native-rate WAV path now passes
+  exact parity at 18.66x RTFx for one fp16/WebGPU composition. Repeat that
+  result across browsers and artifact variants, and diagnose external-data
+  mounting/provider behavior before changing any preset default. Until exact
+  parity and end-to-end GPU-state lifecycle proof exist, keep the production
+  default `encoder-WebGPU/decoder-WASM` composition.
 
 ## First inspect the real repository
 

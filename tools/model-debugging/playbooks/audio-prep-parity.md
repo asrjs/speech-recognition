@@ -58,3 +58,20 @@ First check:
 - channel downmixing
 - sample-rate conversion
 - browser-specific decode behavior
+
+## Parakeet TDT v3 finding (2026-08-29)
+
+On the 18.714-second `librivox.org.wav` fixture, native Node WASM controls
+produced the complete 91-token transcript for fp16 and int8 artifact mixes.
+The Chrome harness used the default target-rate `AudioContext` decode and
+stopped at 74 tokens even when the encoder ran on WebGPU. Switching only the
+audio preparation to the deterministic WAV parser plus the shared linear
+resampler restored exact 91-token parity and measured 18.66x RTFx with the
+fp16/WebGPU encoder, ONNX preprocessor, and WASM decoder. Both paths retained
+the same 18.714-second duration; the mismatch was in sample values, not
+truncation.
+
+For model-specific browser acceptance, record the audio strategy and compare
+native-rate/linear against browser target-rate before changing graph or
+decoder code. Promote a default only after repeating this check across the
+target browsers and artifact variants.
