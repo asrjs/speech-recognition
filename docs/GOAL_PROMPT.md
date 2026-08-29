@@ -394,7 +394,22 @@ GigaAM RNN-T encoder fp16 quantization probe (2026-08-30):
   fp32 stays the default. The harness runner now accepts --encoder-file
   for alternate-artifact probes.
 - Evidence: docs/reports/gigaam-rnnt-encoder-fp16-probe-2026-08-30.md and
-  tools/data/results/gigaam/v3-rnnt-fp16-enc-gpu-decwasm-librivox.json
+ tools/data/results/gigaam/v3-rnnt-fp16-enc-gpu-decwasm-librivox.json
+
+Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
+
+- Greedy + GPU-KV on the 30 s JFK clip measures 27.02x RTFx (1106.6 ms
+  total: 183.2 encode, 707.1 decode over 49 steps) - the documented ~26x
+  target holds on the current stack; no regression from the ORT upgrade.
+- Stable beam 2 measures 5370.4 ms / 5.57x with the identical 50-token
+  sequence - roughly 2x faster than the recorded 2026-08-23/25 baselines
+  (2.74-2.86x), reflecting decoder optimizations landed since.
+- The remaining recoverable warning is whisper.decoder-align-legacy
+  (decoder_align export marker; timestamp interpolation fallback) - an
+  artifact re-export item, not a runtime defect.
+- Evidence: docs/reports/whisper-4graph-ort129-revalidation-2026-08-30.md
+  and tools/data/results/whisper/*revalidation-2026-08-30.*
+
 
 
 

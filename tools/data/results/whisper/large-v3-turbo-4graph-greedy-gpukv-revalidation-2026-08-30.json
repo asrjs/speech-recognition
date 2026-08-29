@@ -1,0 +1,1 @@
+{"caseId":"en-greedy-gpu-kv","preset":"fp16io-fp16-webgpu","status":"check","detectedLanguage":"en","rtfx":27.0235,"totalMs":1106.605,"encodeMs":183.155,"decodeMs":707.06,"stepCount":49,"kv":"gpu-buffer","gpuDownloads":0,"numBeams":1,"gpuKv":true,"audio":"/audio/jfk-30s.ogg","validated":"2026-08-30","stack":"ORT Web 1.29.0 stable, Chrome headless, NVIDIA Blackwell D3D11"}

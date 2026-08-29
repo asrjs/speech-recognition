@@ -1,0 +1,29 @@
+[
+  {
+    "caseId": "en-stable-beam-2",
+    "id": "en",
+    "preset": "fp16io-fp16-webgpu",
+    "status": "check",
+    "detectedLanguage": "en",
+    "transcript": "In the long history of the world, only a few generations have been granted the role of defending freedom in its hour of maximum danger. I do not shrink from this responsibility. I welcome it. I do not believe that any of us would exchange",
+    "rtfx": 5.5684,
+    "totalMs": 5370.385,
+    "encodeMs": 375.535,
+    "decodeMs": 4764.305,
+    "stepCount": 98,
+    "kv": "cpu",
+    "gpuDownloads": 0,
+    "languageDetectionMs": 0,
+    "numBeams": 2,
+    "gpuKv": false,
+    "wordCount": 0,
+    "firstWord": null,
+    "warnings": [
+      {
+        "code": "whisper.decoder-align-legacy",
+        "message": "decoder_align is missing the causal-self-attention export marker; using generated timestamp interpolation until the artifact is re-exported.",
+        "recoverable": true
+      }
+    ]
+  }
+]
