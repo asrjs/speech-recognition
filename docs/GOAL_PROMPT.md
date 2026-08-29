@@ -87,6 +87,26 @@ Qwen WebGPU entry-point boundary refresh (2026-08-29):
   repeat on another browser/adapter before changing a public preset.
   Evidence: `docs/reports/qwen3-asr-webgpu-bundle-boundary-2026-08-29.json`.
 
+Qwen model-specific decoder phase profile (2026-08-29):
+
+- Added phase telemetry to the official stacked and legacy decoder loops:
+  input/feed construction, ORT `session.run()`, output/logit handling, step
+  count, and cache location. The telemetry is part of the canonical transcript
+  metrics and does not alter tensor ownership or output semantics.
+- Real Chrome/WebGPU controls (ORT Web 1.29.0, NVIDIA Blackwell, exact
+  official artifacts) show a warmed GPU-KV median of `1753.825 ms` / `6.2722x`
+  RTFx for the 11-second fixture, with 30/30 exact tokens. Decoder-step work is
+  dominated by ORT execution: `1520.570 ms` in `session.run()` versus
+  `0.235 ms` feed construction and `24.240 ms` output handling.
+- The CPU-KV control is also exact at `3885.960 ms` / `2.8308x` RTFx; GPU-KV
+  is a measured `2.2157x` total and `2.3604x` step-loop win. Reusing mutable
+  one-token input tensors was rejected because feed construction is only
+  `0.0152%` of step time and the ownership risk is not justified.
+- The next Qwen target is decoder-step graph/WebGPU EP execution (fusion,
+  graph capture, dispatch, and kernel behavior), not JavaScript allocation.
+  Preserve exact-token, cache-lifecycle, and browser entry-point controls.
+  Evidence: `docs/reports/qwen3-asr-webgpu-decoder-profile-2026-08-29.json`.
+
 Parakeet TDT WebGPU EP probe and decode hot path (2026-08-29):
 
 - Corrected Chrome A/B confirms the Parakeet v3 GRU decoder graph runs on both
@@ -278,11 +298,12 @@ surfaces. Work items, in order:
    corrected controlled A/B is recorded below; default behavior remains
    encoder-WebGPU/decoder-WASM until full-model parity and a measured win
    exist.
-2. [Qwen sub-slice completed 2026-08-29] Measure per-component placement again
-   for every family on 1.29.0 — the X-ASR WASM-vs-WebGPU and buffer-cache
-   conclusions may shift with the new EP; re-benchmark instead of inheriting
-   old verdicts. Qwen's corrected browser entry-point A/B is recorded above;
-   remaining family measurements and cross-browser repetition stay open.
+2. [Qwen placement/profile sub-slice completed 2026-08-29] Measure
+   per-component placement again for every family on 1.29.0 — the X-ASR
+   WASM-vs-WebGPU and buffer-cache conclusions may shift with the new EP;
+   re-benchmark instead of inheriting old verdicts. Qwen's corrected browser
+   entry-point A/B and decoder phase profile are recorded above; remaining
+   family measurements and cross-browser repetition stay open.
 3. [Research boundary] Run a bounded compatibility spike against the separate
    native WebGPU Plugin EP 0.3.0 (Python/.NET, not npm) only when the plugin is
    available locally. Compare Parakeet decoder/joiner session creation,
@@ -291,7 +312,9 @@ surfaces. Work items, in order:
    plugin as a browser dependency or block library work on its availability.
 4. [In progress] Promote only lifecycle-safe, end-to-end-proven state/cache
    placement. Track tensor ownership and disposal explicitly; a decoder-only
-   GPU-state win is not sufficient for production promotion.
+   GPU-state win is not sufficient for production promotion. For each model,
+   use the phase telemetry to select the next bottleneck and record rejected
+   low-yield hypotheses instead of optimizing unmeasured hot paths.
 
 Local availability check (2026-08-29): the separate native Plugin EP 0.3.0 is
 not installed on this host. Python ONNX Runtime exposes TensorRT/CUDA/CPU only,

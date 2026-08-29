@@ -199,3 +199,38 @@ algorithm change. Keep the alias separation as a browser acceptance invariant
 and repeat it on another browser/adapter before changing a public preset.
 Machine-readable evidence is in
 `tools/data/results/qwen/qwen3-asr-webgpu-bundle-boundary-2026-08-29.json`.
+
+## Decoder phase profile and allocation hypothesis (2026-08-29)
+
+The Qwen executor now exposes model-specific decoder phase buckets for both
+the official stacked graphs and the legacy per-layer graph:
+`decoderInitInputMs`, `decoderInitRunMs`, `decoderInitOutputMs`,
+`decoderStepFeedBuildMs`, `decoderStepRunMs`, and `decoderStepOutputMs`.
+This makes the hot loop measurable without changing the transcript contract or
+cache ownership. The instrumentation was validated with the focused Qwen test
+set (20/20) and a real Chrome/WebGPU run.
+
+On the exact official dynamic encoder plus stacked prefill/step artifacts,
+Chrome headless, NVIDIA Blackwell, and ORT Web 1.29.0, three same-session
+GPU-KV runs were exact (30 tokens) with a `1753.825 ms` median transcription
+time (`6.2722x` RTFx). The median decoder-step profile was:
+
+| Phase | Median | Share of decoder steps |
+| --- | ---: | ---: |
+| Step feed construction | `0.235 ms` | `0.0152%` |
+| ORT `session.run()` | `1520.570 ms` | `98.43%` |
+| Logit/state output handling | `24.240 ms` | `1.57%` |
+| All decoder steps | `1544.880 ms` | `100%` |
+
+The CPU-KV control was also exact and measured `3885.960 ms` median (`2.8308x`
+RTFx), so GPU-resident KV remains the material placement win (`2.2157x` total
+speedup; `2.3604x` on the step loop). Reusing the one-element input tensors or
+typed-array wrappers was therefore rejected: the measured feed-build share is
+too small to justify additional mutable-tensor ownership risk. Future Qwen
+optimization should target the decoder-step graph and WebGPU EP execution
+(fusion, graph capture, dispatch, and kernel behavior), with exact-token and
+disposal controls around every experiment.
+
+Machine-readable evidence is in
+`docs/reports/qwen3-asr-webgpu-decoder-profile-2026-08-29.json` and the tracked
+Chrome controls in `tools/data/results/qwen/`.

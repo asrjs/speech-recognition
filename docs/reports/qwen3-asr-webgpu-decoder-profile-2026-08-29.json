@@ -1,0 +1,87 @@
+{
+  "schema": "asrjs.qwen.webgpu-decoder-profile.v1",
+  "capturedAt": "2026-08-29T13:22:35Z",
+  "libraryCommit": "2a4c299",
+  "scope": "Qwen3-ASR-0.6B official stacked decoder phase attribution and feed-allocation hypothesis test",
+  "harness": {
+    "path": "N:\\github\\asrjs\\webgpu-agent-test",
+    "runner": "scripts/run-qwen-webgpu.mjs",
+    "browser": "Chrome headless new",
+    "adapter": {
+      "vendor": "nvidia",
+      "architecture": "blackwell"
+    },
+    "ortWebVersion": "1.29.0",
+    "audio": "/gigaam-audio/jfk-short.wav",
+    "audioDurationSec": 11,
+    "expectedTranscript": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country."
+  },
+  "artifacts": {
+    "encoder": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\audio-encoder-dynamic.onnx",
+      "sha256": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6"
+    },
+    "decoderPrefill": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-prefill.onnx",
+      "sha256": "fff534b790630cabd6ac388f95d67393ced00769891ff54bc6d23227414c4695"
+    },
+    "decoderStep": {
+      "path": "N:\\models\\onnx\\qwen3-asr-0.6b-official\\decoder-step.onnx",
+      "sha256": "c86ab33ee9d4f36521029c0180078a586d0774d4571dc8ecce08811a9325159b"
+    },
+    "decoderExternalDataSha256": "2d86c0640759029532d224922a4248e07dace21887dda8dff63ffd7b61d8eae0"
+  },
+  "gpuKv": {
+    "cacheOutputLocation": "gpu-buffer",
+    "runsMs": [2452.765, 1738.78, 1753.825],
+    "medianTranscribeMs": 1753.825,
+    "medianRtfx": 6.2722,
+    "medianDecoderInitMs": 58.025,
+    "medianDecoderStepMs": 1544.88,
+    "medianDecoderStepAvgMs": 51.496,
+    "medianDecoderInitInputMs": 0.605,
+    "medianDecoderInitRunMs": 56.425,
+    "medianDecoderInitOutputMs": 0.945,
+    "medianDecoderStepFeedBuildMs": 0.235,
+    "medianDecoderStepRunMs": 1520.57,
+    "medianDecoderStepOutputMs": 24.24,
+    "decoderStepCount": 30,
+    "tokenCount": 30,
+    "transcriptExact": true
+  },
+  "cpuKvControl": {
+    "cacheOutputLocation": "cpu",
+    "runsMs": [4814.22, 3865.655, 3885.96],
+    "medianTranscribeMs": 3885.96,
+    "medianRtfx": 2.8308,
+    "medianDecoderInitMs": 117.215,
+    "medianDecoderStepMs": 3646.47,
+    "medianDecoderStepAvgMs": 121.549,
+    "medianDecoderInitInputMs": 0.19,
+    "medianDecoderInitRunMs": 115.595,
+    "medianDecoderInitOutputMs": 1.43,
+    "medianDecoderStepFeedBuildMs": 0.34,
+    "medianDecoderStepRunMs": 3615.55,
+    "medianDecoderStepOutputMs": 30.795,
+    "decoderStepCount": 30,
+    "tokenCount": 30,
+    "transcriptExact": true
+  },
+  "comparison": {
+    "gpuKvTotalSpeedup": 2.2157,
+    "gpuKvDecoderStepSpeedup": 2.3604,
+    "gpuKvFeedBuildShareOfStepPercent": 0.0152,
+    "gpuKvOutputShareOfStepPercent": 1.569,
+    "allRunsExact": true
+  },
+  "hypothesis": {
+    "name": "reuse sequential input tensors and typed-array wrappers",
+    "decision": "rejected",
+    "reason": "On the warmed GPU-KV median, feed construction is 0.235 ms across 30 steps (0.0152% of decoder-step time), while ORT session.run is 1520.57 ms and accounts for the measurable bottleneck. Reusing wrappers would add ownership and mutation risk without a meaningful expected RTFx gain.",
+    "nextTarget": "Investigate decoder-step graph and WebGPU EP execution (kernel fusion, graph capture, and dispatch behavior) with exact-token parity controls before changing cache ownership."
+  },
+  "sourceResults": [
+    "N:\\github\\asrjs\\webgpu-agent-test\\_results\\qwen3-asr-0.6b-official-webgpu-2026-08-29T13-20-45-336Z.json",
+    "N:\\github\\asrjs\\webgpu-agent-test\\_results\\qwen3-asr-0.6b-official-webgpu-cpu-kv-2026-08-29T13-22-35-184Z.json"
+  ]
+}
