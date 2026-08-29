@@ -524,6 +524,12 @@ Earlier streaming and validation slices:
   ORT-node fp16 binding support is not urgent and not mandatory
 - Update `onnxruntime-web` dependencies only carefully; keep the working
   pin until a reproducible upgrade passes the full browser matrix
+- Frontend/mel feature extraction is CLOSED for optimization purposes unless a
+  new measurement shows it is >15% of a model's end-to-end time. The exact
+  n_fft=400 path is now a mixed-radix FFT at ~319x RTFx in Node (~7% of the
+  Whisper 30 s browser run), the 512 experimental path is ~595x, and the
+  GigaAM 320 path already got its radix-5 pass. Spend optimization effort on
+  encoder/decoder graph execution, backend placement, and lifecycle instead.
 - Experimental implementations remain clearly marked until the completion
   gates in this document are satisfied
 - Single-package ESM-first speech-focused headless framework-neutral runtime
