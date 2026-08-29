@@ -275,6 +275,12 @@ surfaces. Work items, in order:
    placement. Track tensor ownership and disposal explicitly; a decoder-only
    GPU-state win is not sufficient for production promotion.
 
+Local availability check (2026-08-29): the separate native Plugin EP 0.3.0 is
+not installed on this host. Python ONNX Runtime exposes TensorRT/CUDA/CPU only,
+and the Node workspace contains the built-in `onnxruntime-web` 1.29.0 plus the
+existing nightly `onnxruntime-node`; no plugin package or .NET project is
+available. Do not block browser optimization on this research boundary.
+
 Probe status (2026-08-29, corrected controlled browser A/B):
 
 - Native WebGPU probe (`onnxruntime-node` wgpu adapter): the Parakeet v3
