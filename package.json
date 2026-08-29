@@ -162,6 +162,7 @@
     "test:fixture-smoke": "npm run build && node tests/smoke/transcribe-fixture.mjs",
     "benchmark:whisper-mel": "npm run build && node tests/smoke/benchmark-whisper-mel.mjs",
     "benchmark:gigaam-mel": "npm run build && node tests/smoke/benchmark-gigaam-mel.mjs",
+    "benchmark:x-asr-frontend": "npm run build && node tests/smoke/benchmark-x-asr-frontend.mjs",
     "benchmark:whisper-beam": "vitest run tests/whisper-beam-search-benchmark.test.ts",
     "benchmark:hot-paths": "npm run build && node tests/smoke/benchmark-hot-paths.mjs",
     "test:whisper-beam-reference": "npm run build && node tests/smoke/whisper-beam-reference.mjs",

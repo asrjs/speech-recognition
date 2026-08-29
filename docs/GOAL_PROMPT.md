@@ -198,6 +198,23 @@ Lifecycle hardening and cancellation slice (`8552eec`, `e8624e6`):
   (fp32, fp16, mixed-length batch), SenseVoice 3/3 (WASM, batch), X-ASR 3/3
   (WASM + public stateful streaming), GigaAM RNN-T 2/2 (WASM)
 
+X-ASR incremental frontend slice (2026-08-29):
+
+- Streaming `pushStream()` no longer reruns the complete accumulated waveform
+  through the 80-bin Kaldi-compatible fbank frontend on every chunk. The
+  family-specific frontend now processes only newly sample-backed frames and
+  keeps a bounded 400-sample raw tail; reflected right-edge frames are held
+  until the next chunk or `final=true` so full-buffer semantics remain exact.
+- Deterministic parity across uneven chunks is exact (`maxAbs=0`). The
+  reproducible Node CPU microbenchmark shows 2.8943x lower frontend wall time
+  at 2 seconds (29.3235 -> 10.1313 ms) and 12.4636x lower time at 10 seconds
+  (553.7899 -> 44.4326 ms), using 200 ms chunks and three timed runs after one
+  warm-up. This is a frontend-only result, not an end-to-end RTFx claim.
+- Evidence and rerun command: `docs/reports/x-asr-incremental-frontend-benchmark-2026-08-29.json`
+  and `npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json`.
+- The executor still retains cumulative audio for stream duration metadata, so
+  eliminating that O(n^2) copy/allocation remains a separate measured task.
+
 Earlier streaming and validation slices:
 
 - High-level owned streaming exposed on loaded handles (`a1264ca`,
@@ -221,6 +238,10 @@ Earlier streaming and validation slices:
   backend composition where measurements justify it. GigaAM RNN-T now exposes
   explicit encoder/decoder/joiner provider overrides so this comparison can be
   made without changing the all-one-backend default.
+- Treat incremental frontend/state work as a required model-specific pass for
+  streaming families: establish frame-boundary semantics first, delay unstable
+  reflected frames, retain only bounded context, and measure parity and CPU
+  savings before touching encoder placement.
 - Validate WebGPU work with the existing Chrome headless real-WebGPU browser
   smoke harness (the same approach used for the Whisper split-graph port);
   ORT-node fp16 binding support is not urgent and not mandatory

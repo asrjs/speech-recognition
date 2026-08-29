@@ -11,6 +11,8 @@ import { XAsrTokenizer } from './tokenizer.js';
 export interface XAsrStreamState {
   readonly audio: Float32Array;
   readonly features: Float32Array;
+  /** Bounded raw-audio tail used by the incremental fbank frontend. */
+  readonly frontendTail?: Float32Array;
   readonly encodedFrames: number;
   readonly inputFrames: number;
   readonly tokenIds: readonly number[];
@@ -272,7 +274,7 @@ export class OrtXAsrExecutor implements XAsrExecutor {
   createStream(): XAsrStreamState {
     if (this.disposed) throw new Error(`X-ASR executor is disposed for "${this.modelId}".`);
     if (!this.source) throw createExperimentalArtifactMissingError('x-asr', this.modelId);
-    const state = { audio: new Float32Array(0), features: new Float32Array(0), encodedFrames: 0, inputFrames: 0, tokenIds: [], encoderStates: [] as OrtTensorLike[] };
+    const state = { audio: new Float32Array(0), features: new Float32Array(0), frontendTail: new Float32Array(0), encodedFrames: 0, inputFrames: 0, tokenIds: [], encoderStates: [] as OrtTensorLike[] };
     this.activeStreams.add(state);
     return state;
   }
@@ -417,8 +419,14 @@ export class OrtXAsrExecutor implements XAsrExecutor {
     const allAudio = new Float32Array(state.audio.length + audio.length);
     allAudio.set(state.audio);
     allAudio.set(audio, state.audio.length);
-    const allFeatures = this.frontend.process(allAudio);
-    const newFeatures = allFeatures.subarray(state.inputFrames * this.config.featureDim);
+    const incremental = this.frontend.processIncremental(
+      state.frontendTail ?? state.audio.subarray(Math.max(0, state.audio.length - 400)),
+      state.audio.length,
+      audio,
+      state.inputFrames,
+      final,
+    );
+    const newFeatures = incremental.features;
     const combined = new Float32Array(state.features.length + newFeatures.length);
     combined.set(state.features);
     combined.set(newFeatures, state.features.length);
@@ -442,7 +450,7 @@ export class OrtXAsrExecutor implements XAsrExecutor {
       },
       warnings: [],
     };
-    const nextState = { ...next, features: next.features, inputFrames: allFeatures.length / this.config.featureDim };
+    const nextState = { ...next, features: next.features, frontendTail: incremental.tail, inputFrames: state.inputFrames + incremental.frameCount };
     this.activeStreams.delete(state);
     disposeStreamTensors(state, nextState);
     this.activeStreams.add(nextState);

@@ -104,21 +104,27 @@ export class XAsrJsFrontend {
     this.bins = initKaldiMelBins(this.numBins, this.sampleRate, this.fftPoints, 20, -400);
   }
 
-  process(audio: Float32Array): Float32Array {
-    const samples = audio;
-    const frames = numFrames(samples.length, this.frameShift, this.frameLength, this.snipEdges);
-    const output = new Float32Array(frames * this.numBins);
+  private processFrames(
+    frameStart: number,
+    frameCount: number,
+    sampleCount: number,
+    sampleAt: (index: number) => number,
+  ): Float32Array {
+    const output = new Float32Array(frameCount * this.numBins);
     const fftReal = new Float32Array(this.fftPoints);
     const fftImag = new Float32Array(this.fftPoints);
     const power = new Float32Array(this.fftPoints / 2);
     const windowBuf = new Float32Array(this.frameLength);
 
-    for (let frameIndex = 0; frameIndex < frames; frameIndex += 1) {
+    for (let outputFrame = 0; outputFrame < frameCount; outputFrame += 1) {
+      const frameIndex = frameStart + outputFrame;
       const start = firstSampleOfFrame(frameIndex, this.frameShift, this.frameLength, this.snipEdges);
       for (let i = 0; i < this.frameLength; i += 1) {
         const source = start + i;
-        windowBuf[i] =
-          source >= 0 && source < samples.length ? samples[source]! : samples[reflectIndex(source, samples.length)]!;
+        const reflected = source >= 0 && source < sampleCount
+          ? source
+          : reflectIndex(source, sampleCount);
+        windowBuf[i] = sampleAt(reflected);
       }
 
       let mean = 0;
@@ -143,7 +149,7 @@ export class XAsrJsFrontend {
         power[i] = fftReal[i]! * fftReal[i]! + fftImag[i]! * fftImag[i]!;
       }
 
-      const dest = frameIndex * this.numBins;
+      const dest = outputFrame * this.numBins;
       for (let bin = 0; bin < this.numBins; bin += 1) {
         const spec = this.bins[bin]!;
         let energy = 0;
@@ -154,5 +160,57 @@ export class XAsrJsFrontend {
       }
     }
     return output;
+  }
+
+  process(audio: Float32Array): Float32Array {
+    const frames = numFrames(audio.length, this.frameShift, this.frameLength, this.snipEdges);
+    if (frames <= 0) return new Float32Array(0);
+    return this.processFrames(0, frames, audio.length, (index) => audio[index] ?? 0);
+  }
+
+  /**
+   * Process only the feature frames made available by an appended audio chunk.
+   * The caller supplies the previous 400-sample tail so frame reflection at a
+   * chunk boundary remains identical to a single full-buffer `process()` call.
+   */
+  processIncremental(
+    previousTail: Float32Array,
+    previousSampleCount: number,
+    appendedAudio: Float32Array,
+    previousFrameCount: number,
+    final = false,
+  ): { readonly features: Float32Array; readonly frameCount: number; readonly tail: Float32Array } {
+    const priorSamples = Math.max(0, Math.floor(previousSampleCount));
+    const totalSamples = priorSamples + appendedAudio.length;
+    const firstFrame = Math.max(0, Math.floor(previousFrameCount));
+    const totalFrames = numFrames(totalSamples, this.frameShift, this.frameLength, this.snipEdges);
+    // With snip_edges=false, the last frame(s) use reflection at the right
+    // edge. Their values change when another chunk arrives, so keep them
+    // pending until they are fully sample-backed or the stream is final.
+    const stableFrames = this.snipEdges
+      ? totalFrames
+      : Math.max(
+          0,
+          Math.floor(
+            (totalSamples - firstSampleOfFrame(0, this.frameShift, this.frameLength, false) - this.frameLength) /
+              this.frameShift,
+          ) + 1,
+        );
+    const availableFrames = final ? totalFrames : Math.min(totalFrames, stableFrames);
+    const frameCount = Math.max(0, availableFrames - firstFrame);
+    const historyLength = Math.min(previousTail.length, priorSamples);
+    const historyStart = priorSamples - historyLength;
+    const context = new Float32Array(historyLength + appendedAudio.length);
+    context.set(previousTail.subarray(previousTail.length - historyLength), 0);
+    context.set(appendedAudio, historyLength);
+    const features = frameCount <= 0
+      ? new Float32Array(0)
+      : this.processFrames(firstFrame, frameCount, totalSamples, (index) => {
+          const localIndex = index - historyStart;
+          return localIndex >= 0 && localIndex < context.length ? context[localIndex] ?? 0 : 0;
+        });
+    const tailLength = Math.min(this.frameLength, totalSamples);
+    const tail = tailLength <= 0 ? new Float32Array(0) : context.slice(context.length - tailLength);
+    return { features, frameCount, tail };
   }
 }

@@ -37,3 +37,50 @@ describe.skipIf(!fs.existsSync(WAVEFORM) || !fs.existsSync(REFERENCE))(
     });
   },
 );
+
+describe('X-ASR incremental frontend', () => {
+  it('matches full-buffer features across uneven streaming chunks', () => {
+    const waveform = Float32Array.from({ length: 16000 * 2 + 137 }, (_, index) =>
+      Math.sin(index / 17) * 0.2 + Math.cos(index / 43) * 0.03,
+    );
+    const frontend = new XAsrJsFrontend();
+    const full = frontend.process(waveform);
+    let previousTail = new Float32Array(0);
+    let previousSamples = 0;
+    let previousFrames = 0;
+    const pieces: Float32Array[] = [];
+    let audioOffset = 0;
+    for (const requestedChunkSize of [37, 241, 1600, 79, 4096, 503, 7777, 991, 8192]) {
+      if (audioOffset >= waveform.length) break;
+      const chunkSize = Math.min(requestedChunkSize, waveform.length - audioOffset);
+      const start = audioOffset;
+      const chunk = waveform.subarray(start, Math.min(waveform.length, start + chunkSize));
+      const result = frontend.processIncremental(previousTail, previousSamples, chunk, previousFrames);
+      pieces.push(result.features);
+      previousTail = result.tail;
+      previousSamples += chunk.length;
+      previousFrames += result.frameCount;
+      audioOffset += chunk.length;
+    }
+    if (audioOffset < waveform.length) {
+      const result = frontend.processIncremental(previousTail, previousSamples, waveform.subarray(audioOffset), previousFrames, true);
+      pieces.push(result.features);
+    } else {
+      const result = frontend.processIncremental(previousTail, previousSamples, new Float32Array(0), previousFrames, true);
+      pieces.push(result.features);
+    }
+    const streamed = new Float32Array(pieces.reduce((sum, piece) => sum + piece.length, 0));
+    let offset = 0;
+    for (const piece of pieces) {
+      streamed.set(piece, offset);
+      offset += piece.length;
+    }
+    expect(streamed.length).toBe(full.length);
+    let maxAbs = 0;
+    for (let index = 0; index < full.length; index += 1) {
+      const delta = Math.abs((streamed[index] ?? 0) - (full[index] ?? 0));
+      maxAbs = Math.max(maxAbs, delta);
+    }
+    expect(maxAbs).toBeLessThan(1e-6);
+  });
+});

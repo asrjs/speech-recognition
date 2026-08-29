@@ -446,9 +446,37 @@ paired Node WebGPU leg both pass with exact text after the fix.
 GigaAM CTC, SenseVoiceSmall, and GigaAM RNN-T were also rerun through Chrome
 after ORT alignment and remained exact. Their single-run timings are retained
 as compatibility evidence, not promoted as before/after performance claims.
-ORT Web 1.29.0 was identified as the current stable candidate, but npm on this
-host returned `ETARGET` while the registry tarball was reachable. No dependency
-version was changed without a reproducible install and full artifact matrix.
+ORT Web 1.29.0 was initially identified as the current stable candidate while
+npm on this host returned `ETARGET` and the registry tarball remained reachable.
+The follow-up resolved the lock metadata, pinned `onnxruntime-web` and
+`onnxruntime-common` to 1.29.0, and validated offline install, build, full
+tests, and the real-artifact browser matrix. See the lockfile follow-up in
+`docs/GOAL_PROMPT.md` and commit `2ed88b9`.
+
+## X-ASR incremental frontend optimization (2026-08-29)
+
+The X-ASR streaming executor previously rebuilt the complete accumulated audio
+feature matrix on every `pushStream()` call. The family-specific fbank frontend
+now processes only newly sample-backed frames and retains a bounded 400-sample
+raw-audio tail. With `snip_edges=false`, right-edge reflected frames are held
+until the next chunk or finalization; this is required because their values
+change as future samples arrive.
+
+The uneven-chunk parity test is exact (`maxAbs=0`). The Node CPU microbenchmark
+uses deterministic synthetic audio, 200 ms chunks, three timed runs after one
+warm-up, and compares the former full-buffer-per-chunk loop with the incremental
+loop:
+
+| Audio | Chunks | Full recompute median | Incremental median | Speedup |
+| ---: | ---: | ---: | ---: | ---: |
+| 2 s | 10 | 29.3235 ms | 10.1313 ms | 2.8943x |
+| 10 s | 50 | 553.7899 ms | 44.4326 ms | 12.4636x |
+
+This is frontend-only CPU evidence, not an end-to-end RTFx claim. The executor
+still retains cumulative audio for stream-duration metadata, so removing that
+remaining O(n²) copy/allocation is a separate optimization task. Reproduce with
+`npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json`.
+Evidence: `docs/reports/x-asr-incremental-frontend-benchmark-2026-08-29.json`.
 
 ## Remaining gaps
 
@@ -460,12 +488,13 @@ version was changed without a reproducible install and full artifact matrix.
   (2026-08-29); Node KV caches stay on the CPU and fp16 graphs remain blocked
   by the ORT-node Float16Array binding gap. This is non-urgent and is not a
   browser promotion gate; real browser WebGPU remains the performance path.
-- A controlled ORT Web 1.29 stable upgrade remains open after the local npm
-  metadata `ETARGET` issue is resolved; do not jump directly to a nightly.
+- ORT Web 1.29 stable upgrade is complete and validated. Keep the separate
+  `onnxruntime-node` nightly dependency isolated; its Float16Array binding gap
+  is non-urgent and not a browser promotion gate.
 - All five families stay experimental; no presets. Discover via `listExperimentalSpeechFamilies()`, not `listSpeechModels()`.
 - GigaAM RNN-T is Russian-only (`example.wav`); do not cite it as a JFK / English result.
 - Deterministic fake-device browser acceptance for the streaming-demo latency HUD is now recorded; a physical human-microphone pass remains a manual device check. `--` at idle is not a speech-path pass.
 - Historical note: this handoff originally recorded experimental families on the root for WebGPU discovery. Current main keeps them on intentional `models/<family>` subpaths; they remain experimental and are not presets.
 - X-ASR now owns its native transcript/options contracts and canonical mapper under `src/models/x-asr`; it no longer reuses the LASR-CTC family contract.
 - Realtime transcription requests now carry a controller-owned abort signal; `reset()` aborts stale in-flight callbacks before clearing state, so browser worker/model callbacks can cancel cooperatively and reuse the loaded model.
-- Experimental family executors now call ORT `session.release()` on dispose. Whisper encoder mel feeds, decoder-step owned feeds/logits/replaced KV (CPU+GPU), and split-graph callback present-KV Ort wrappers are `dispose()`d after copy; next-step encoder KV is retained until replaced. CTC/transducer `session.run()` output logits (GigaAM CTC/RNN-T, SenseVoice, X-ASR, LASR, Wav2Vec2, NeMo TDT/RNN-T/AED) and Qwen prefill/step decoder logits are copied then disposed; Qwen next-step KV is retained until replaced. Browser capture worklet URLs, decode AudioContext `close()`, and TEN/FireRed VAD `worker.terminate()` on adapter dispose were already present. `UrlAssetHandle` / `BlobAssetHandle` now refuse post-dispose locators and revoke blob URLs on dispose even when `getLocator('url')` is concurrent or still in-flight. `getModelFile({ preferBlobUrl: true })` now requires `onResolvedHandle` and always disposes the handle when ownership is not transferred. Whisper, Qwen, GigaAM RNN-T joint/decoder, NeMo AED decoder, NeMo RNN-T joint/decoder, NeMo TDT duration/step, and X-ASR streaming step loops honor `options.signal` between steps (`PipelineAbortedError`). X-ASR abort does not commit the in-flight chunk or dispose caller encoder-state tensors; the leftover stream can be retried (`reset()` optional). Experimental families now expose structured `languages` / `audioContract` / `limitations` on `listExperimentalSpeechFamilies()`, and missing local ONNX throws root-exported `ExperimentalArtifactMissingError` (`code === 'experimental-artifact-missing'`, `isExperimentalArtifactMissingError()`). `loadSpeechModel({ signal })` aborts with `PipelineAbortedError('load')`. Remaining product gaps: physical human-microphone check, ORT-node fp16 binding support, Qwen long-audio.
+- Experimental family executors now call ORT `session.release()` on dispose. Whisper encoder mel feeds, decoder-step owned feeds/logits/replaced KV (CPU+GPU), and split-graph callback present-KV Ort wrappers are `dispose()`d after copy; next-step encoder KV is retained until replaced. CTC/transducer `session.run()` output logits (GigaAM CTC/RNN-T, SenseVoice, X-ASR, LASR, Wav2Vec2, NeMo TDT/RNN-T/AED) and Qwen prefill/step decoder logits are copied then disposed; Qwen next-step KV is retained until replaced. Browser capture worklet URLs, decode AudioContext `close()`, and TEN/FireRed VAD `worker.terminate()` on adapter dispose were already present. `UrlAssetHandle` / `BlobAssetHandle` now refuse post-dispose locators and revoke blob URLs on dispose even when `getLocator('url')` is concurrent or still in-flight. `getModelFile({ preferBlobUrl: true })` now requires `onResolvedHandle` and always disposes the handle when ownership is not transferred. Whisper, Qwen, GigaAM RNN-T joint/decoder, NeMo AED decoder, NeMo RNN-T joint/decoder, NeMo TDT duration/step, and X-ASR streaming step loops honor `options.signal` between steps (`PipelineAbortedError`). X-ASR abort does not commit the in-flight chunk or dispose caller encoder-state tensors; the leftover stream can be retried (`reset()` optional). Experimental families now expose structured `languages` / `audioContract` / `limitations` on `listExperimentalSpeechFamilies()`, and missing local ONNX throws root-exported `ExperimentalArtifactMissingError` (`code === 'experimental-artifact-missing'`, `isExperimentalArtifactMissingError()`). `loadSpeechModel({ signal })` aborts with `PipelineAbortedError('load')`. Remaining product gaps: physical human-microphone check and Qwen long-audio; ORT-node Float16Array binding remains optional backlog work.

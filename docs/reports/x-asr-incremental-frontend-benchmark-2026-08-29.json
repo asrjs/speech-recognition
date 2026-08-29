@@ -1,0 +1,45 @@
+{
+  "schema": "asrjs.x-asr.frontend-streaming-benchmark.v1",
+  "date": "2026-08-29",
+  "description": "Node CPU microbenchmark comparing the former full-buffer frontend recomputation on every streaming chunk with the incremental X-ASR frontend. This isolates feature extraction; it is not an end-to-end transcription RTFx claim.",
+  "runtime": {
+    "node": ">=22",
+    "sampleRate": 16000,
+    "chunkSamples": 3200,
+    "chunkDurationMs": 200,
+    "runs": 3,
+    "warmup": 1,
+    "waveform": "deterministic two-tone synthetic Float32Array",
+    "hardware": "local Windows workstation; CPU model not captured"
+  },
+  "method": {
+    "baseline": "append each chunk to a growing Float32Array and run frontend.process() over the complete accumulated audio",
+    "candidate": "run frontend.processIncremental() over only newly stable frames with a bounded 400-sample tail; flush reflected boundary frames once with final=true",
+    "correctness": "candidate features are compared with one full-buffer process() result; max absolute error must be < 1e-6"
+  },
+  "scenarios": [
+    {
+      "durationSec": 2,
+      "chunkCount": 10,
+      "baselineMedianMs": 29.3235,
+      "incrementalMedianMs": 10.1313,
+      "speedup": 2.8943,
+      "maxAbs": 0
+    },
+    {
+      "durationSec": 10,
+      "chunkCount": 50,
+      "baselineMedianMs": 553.7899,
+      "incrementalMedianMs": 44.4326,
+      "speedup": 12.4636,
+      "maxAbs": 0
+    }
+  ],
+  "decision": "PROMOTE_INCREMENTAL_FRONTEND",
+  "caveats": [
+    "The executor still retains a cumulative audio Float32Array for stream metadata, so this slice removes O(n^2) frontend FFT work but does not yet eliminate cumulative audio-copy allocation.",
+    "End-to-end X-ASR encoder and decoder timing must be remeasured on a real artifact before claiming an RTFx improvement.",
+    "Right-edge reflected frames are intentionally delayed until the next chunk or finalization to preserve full-buffer parity."
+  ],
+  "command": "npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json"
+}
