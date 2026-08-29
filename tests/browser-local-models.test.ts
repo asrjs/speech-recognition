@@ -59,6 +59,7 @@ describe('browser local model helpers', () => {
         modelId: 'parakeet-tdt-0.6b-v2',
         encoderBackend: 'webgpu',
         decoderBackend: 'wasm',
+        decoderStateOutputLocation: 'gpu-buffer',
         encoderUrl: 'blob:encoder',
         decoderUrl: 'blob:decoder',
         tokenizerUrl: 'blob:vocab',
@@ -98,6 +99,7 @@ describe('browser local model helpers', () => {
       backend: 'webgpu-hybrid',
       encoderQuant: 'fp16',
       decoderQuant: 'int8',
+      decoderStateOutputLocation: 'gpu-buffer',
       tokenizerName: 'vocab.txt',
       preprocessorBackend: 'js',
     });
@@ -119,6 +121,7 @@ describe('browser local model helpers', () => {
             kind: 'direct',
             encoderBackend: 'webgpu',
             decoderBackend: 'wasm',
+            decoderStateOutputLocation: 'gpu-buffer',
             artifacts: expect.objectContaining({
               encoderUrl: 'blob:encoder',
               decoderUrl: 'blob:decoder',

@@ -23,6 +23,7 @@ import type {
 import type {
   NemoTdtModelOptions,
   NemoTdtNativeTranscript,
+  NemoTdtOutputLocation,
   NemoTdtTranscriptionOptions,
 } from '../../models/nemo-tdt/index.js';
 import {
@@ -52,6 +53,8 @@ export interface ResolveParakeetLocalEntriesOptions {
   readonly modelId?: string;
   readonly encoderBackend?: ParakeetExecutionBackend;
   readonly decoderBackend?: ParakeetExecutionBackend;
+  /** Experimental recurrent-state placement; effective only for a WebGPU decoder. */
+  readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
   readonly encoderQuant?: QuantizationMode;
   readonly decoderQuant?: QuantizationMode;
   readonly tokenizerName?: string;
@@ -109,6 +112,8 @@ export interface GetParakeetModelOptions {
   readonly revision?: string;
   readonly encoderBackend?: ParakeetExecutionBackend;
   readonly decoderBackend?: ParakeetExecutionBackend;
+  /** Experimental recurrent-state placement; effective only for a WebGPU decoder. */
+  readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
   readonly encoderQuant?: QuantizationMode;
   readonly decoderQuant?: QuantizationMode;
   readonly preprocessor?: 'nemo80' | 'nemo128';
@@ -126,6 +131,8 @@ export interface ParakeetFromUrlsConfig {
   readonly modelId?: string;
   readonly encoderBackend?: ParakeetExecutionBackend;
   readonly decoderBackend?: ParakeetExecutionBackend;
+  /** Experimental recurrent-state placement; effective only for a WebGPU decoder. */
+  readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
   readonly encoderUrl: string;
   readonly decoderUrl: string;
   readonly tokenizerUrl: string;
@@ -455,6 +462,7 @@ function toFromUrlsConfig(
     filenames: modelUrls.filenames,
     encoderBackend: options.encoderBackend,
     decoderBackend: options.decoderBackend,
+    decoderStateOutputLocation: options.decoderStateOutputLocation,
     preprocessorBackend: modelUrls.preprocessorBackend,
     backend: options.backend,
     verbose: options.verbose,
@@ -859,6 +867,7 @@ export async function resolveParakeetLocalEntries(
       modelId: options.modelId,
       encoderBackend,
       decoderBackend,
+      decoderStateOutputLocation: options.decoderStateOutputLocation,
       encoderUrl: await toLocator(encoderEntry),
       decoderUrl: await toLocator(decoderEntry),
       tokenizerUrl: await toLocator(tokenizerEntry),
@@ -960,6 +969,7 @@ export class ParakeetModel {
             kind: 'direct',
             encoderBackend: config.encoderBackend,
             decoderBackend: config.decoderBackend,
+            decoderStateOutputLocation: config.decoderStateOutputLocation,
             artifacts: {
               encoderUrl: config.encoderUrl,
               decoderUrl: config.decoderUrl,

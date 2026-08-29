@@ -38,6 +38,8 @@ export interface LoadSpeechModelFromLocalEntriesOptions
   readonly backend?: 'wasm' | 'webgpu' | 'webgpu-hybrid' | 'webgpu-strict';
   readonly encoderBackend?: 'wasm' | 'webgpu';
   readonly decoderBackend?: 'wasm' | 'webgpu';
+  /** Optional model-specific recurrent-state placement experiment (Parakeet TDT). */
+  readonly decoderStateOutputLocation?: 'cpu' | 'gpu-buffer';
   readonly encoderQuant?: QuantizationMode;
   readonly decoderQuant?: QuantizationMode;
   readonly tokenizerName?: string;

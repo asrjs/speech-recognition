@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AssetLoadAbortedError } from '../src/io/abort.js';
 import { createOrtSession, type OrtModuleLike } from '../src/models/lasr-ctc/ort.js';
+import {
+  createOrtSession as createNemoTdtOrtSession,
+  type OrtModuleLike as NemoTdtOrtModuleLike,
+} from '../src/models/nemo-tdt/ort.js';
 import { OnnxNemoPreprocessor } from '../src/models/nemo-tdt/preprocessor.js';
 import type { OrtModuleLike as NemoOrtModuleLike } from '../src/models/nemo-tdt/ort.js';
 
@@ -45,6 +49,41 @@ describe('createOrtSession abort', () => {
       }),
     ).rejects.toBeInstanceOf(AssetLoadAbortedError);
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe('NeMo TDT decoder output placement', () => {
+  it('keeps gpu-buffer diagnostics CPU-backed in Node', async () => {
+    const create = vi.fn(async () => ({ release: vi.fn() }));
+    const ort = {
+      env: { wasm: {} },
+      Tensor: class {},
+      InferenceSession: { create },
+    };
+
+    await createNemoTdtOrtSession(
+      ort as unknown as NemoTdtOrtModuleLike,
+      'https://example.com/decoder.onnx',
+      {
+        backendId: 'webgpu',
+        preferredOutputLocation: {
+          outputs: 'cpu',
+          output_states_1: 'gpu-buffer',
+          output_states_2: 'gpu-buffer',
+        },
+      },
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      'https://example.com/decoder.onnx',
+      expect.objectContaining({
+        preferredOutputLocation: {
+          outputs: 'cpu',
+          output_states_1: 'cpu',
+          output_states_2: 'cpu',
+        },
+      }),
+    );
   });
 });
 

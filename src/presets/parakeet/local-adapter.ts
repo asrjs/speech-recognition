@@ -31,6 +31,7 @@ function toBuiltInDirectLoadOptions(
       kind: 'direct',
       encoderBackend: resolved.config.encoderBackend,
       decoderBackend: resolved.config.decoderBackend,
+      decoderStateOutputLocation: resolved.config.decoderStateOutputLocation,
       artifacts: {
         encoderUrl: resolved.config.encoderUrl,
         decoderUrl: resolved.config.decoderUrl,
@@ -66,6 +67,7 @@ export const parakeetBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
       modelId: options.modelId,
       encoderBackend: options.encoderBackend,
       decoderBackend: options.decoderBackend,
+      decoderStateOutputLocation: options.decoderStateOutputLocation,
       encoderQuant: options.encoderQuant,
       decoderQuant: options.decoderQuant,
       tokenizerName: options.tokenizerName,

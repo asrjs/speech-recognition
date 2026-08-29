@@ -97,9 +97,13 @@ existing executor tests and full suite remain the correctness gate.
    corrected harness reaches model-ready in 7–12 seconds. The fp32 external-
    data browser control is separately blocked by `Module.MountedFiles is not
    available`.
-3. Add an opt-in, lifecycle-safe TDT GPU-state path only after end-to-end
-   transcript parity, repeated-transcription memory checks, and disposal
-   behavior are measured.
+3. The library now exposes an opt-in `decoderStateOutputLocation` source/config
+   option for hub, local, and direct Parakeet loading. It maps only
+   `output_states_1/2` to the requested location while keeping decoder logits
+   on CPU; Node sessions defensively map the diagnostic request back to CPU.
+   Exercise this path in the browser library entry point, then require
+   end-to-end transcript parity, repeated-transcription memory checks, and
+   disposal behavior before promotion.
 4. Keep backend placement workload-specific: the direct spike is faster on
    WASM for this one-frame GRU workload, while GPU-state retention is a
    promising optimization for larger decode loops.

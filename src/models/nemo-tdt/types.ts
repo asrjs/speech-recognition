@@ -27,6 +27,13 @@ export interface NemoTdtModelConfig extends NemoModelConfig {
 export type NemoTdtQuantization = 'int8' | 'fp32' | 'fp16';
 export type NemoTdtPreprocessorBackend = 'js' | 'onnx';
 export type NemoTdtExecutionBackend = 'webgpu' | 'wasm';
+/**
+ * Requested location for the recurrent decoder state outputs.
+ *
+ * `gpu-buffer` is an opt-in WebGPU experiment. The production default stays
+ * CPU state because full-model lifecycle promotion is still pending.
+ */
+export type NemoTdtOutputLocation = 'cpu' | 'gpu-buffer';
 
 export interface NemoTdtDirectArtifacts {
   readonly encoderUrl: string;
@@ -44,6 +51,8 @@ export interface NemoTdtDirectArtifactSource {
   readonly artifacts: NemoTdtDirectArtifacts;
   readonly encoderBackend?: NemoTdtExecutionBackend;
   readonly decoderBackend?: NemoTdtExecutionBackend;
+  /** Experimental decoder state placement; effective only for a WebGPU decoder. */
+  readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
   readonly preprocessorBackend?: NemoTdtPreprocessorBackend;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
@@ -57,6 +66,8 @@ export interface NemoTdtHuggingFaceSource {
   readonly cacheKeyFallbackRevisions?: readonly string[];
   readonly encoderBackend?: NemoTdtExecutionBackend;
   readonly decoderBackend?: NemoTdtExecutionBackend;
+  /** Experimental decoder state placement; effective only for a WebGPU decoder. */
+  readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
   readonly encoderQuant?: NemoTdtQuantization;
   readonly decoderQuant?: NemoTdtQuantization;
   readonly preprocessorName?: 'nemo80' | 'nemo128';

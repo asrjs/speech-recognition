@@ -60,4 +60,22 @@ describe('nemo-tdt weight defaults', () => {
     expect(wasmResolved.artifacts.encoderFilename).toBe('encoder-model.int8.onnx');
     expect(wasmResolved.artifacts.decoderFilename).toBe('decoder_joint-model.int8.onnx');
   });
+
+  it('preserves the opt-in decoder state output location in resolved artifacts', () => {
+    const resolved = resolveNemoTdtArtifacts(
+      {
+        kind: 'direct',
+        artifacts: {
+          encoderUrl: 'https://example.test/encoder.onnx',
+          decoderUrl: 'https://example.test/decoder.onnx',
+          tokenizerUrl: 'https://example.test/vocab.txt',
+        },
+        decoderBackend: 'webgpu',
+        decoderStateOutputLocation: 'gpu-buffer',
+      },
+      'webgpu',
+    );
+
+    expect(resolved.decoderStateOutputLocation).toBe('gpu-buffer');
+  });
 });

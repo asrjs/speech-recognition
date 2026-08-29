@@ -21,6 +21,7 @@ import {
   releaseOrtSession,
   resolveNemoTdtArtifacts,
   type OrtModuleLike,
+  type OrtOutputLocation,
   type OrtSessionLike,
   type OrtTensorLike,
 } from './ort.js';
@@ -370,10 +371,21 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       throw new Error(`NeMo TDT executor was disposed during load for "${this.modelId}".`);
     }
     let decoderSession: OrtSessionLike;
+    const decoderPreferredOutputLocation:
+      | Readonly<Record<string, OrtOutputLocation>>
+      | undefined =
+      resolved.decoderBackendForOrt === 'webgpu' && this.sourceOptions.decoderStateOutputLocation
+        ? {
+            outputs: 'cpu',
+            output_states_1: this.sourceOptions.decoderStateOutputLocation,
+            output_states_2: this.sourceOptions.decoderStateOutputLocation,
+          }
+        : undefined;
     try {
       decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        preferredOutputLocation: decoderPreferredOutputLocation,
         externalDataUrl: artifacts.decoderDataUrl,
         externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,
       });
@@ -406,6 +418,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
         backendId: resolved.decoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        preferredOutputLocation: decoderPreferredOutputLocation,
         externalDataUrl: artifacts.decoderDataUrl,
         externalDataPath: artifacts.decoderFilename
           ? `${artifacts.decoderFilename}.data`

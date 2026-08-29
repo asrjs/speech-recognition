@@ -444,6 +444,8 @@ describe('Parakeet helpers', () => {
       encoderUrl: 'blob:encoder',
       decoderUrl: 'blob:decoder',
       tokenizerUrl: 'blob:vocab',
+      decoderBackend: 'webgpu',
+      decoderStateOutputLocation: 'gpu-buffer',
       runtime: { loadModel } as never,
       signal,
     });
@@ -452,6 +454,12 @@ describe('Parakeet helpers', () => {
       expect.objectContaining({
         preset: 'parakeet',
         signal,
+        options: {
+          source: expect.objectContaining({
+            decoderBackend: 'webgpu',
+            decoderStateOutputLocation: 'gpu-buffer',
+          }),
+        },
       }),
     );
     expect(createSession).toHaveBeenCalledTimes(1);

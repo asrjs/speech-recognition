@@ -414,9 +414,10 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   (median 3,420.915 ms / 5.477x RTFx) and completed model disposal; the
   explicit GPU-state replacement/disposal diagnostic also passed all five
   steps twice without the historical `null function` failure. Treat this as
-  refreshed evidence, not a promotion: add an opt-in library state-location
-  path, then repeat full-model parity, repeated transcriptions, and disposal
-  on more than one browser/adapter before changing the default. Evidence:
+  refreshed evidence, not a promotion: the opt-in library state-location path
+  is now wired through hub, local, and direct Parakeet loading, but full-model
+  parity, repeated transcriptions, and disposal must still be repeated on more
+  than one browser/adapter before changing the default. Evidence:
   `docs/reports/parakeet-tdt-v3-webgpu-lifecycle-refresh-2026-08-29.json`.
 
 - [Completed 2026-08-29] GigaAM RNN-T phase profile and provider matrix: the

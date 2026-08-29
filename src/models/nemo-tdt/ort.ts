@@ -3,6 +3,7 @@ import type {
   NemoTdtDirectArtifacts,
   NemoTdtExecutionBackend,
   NemoTdtHuggingFaceSource,
+  NemoTdtOutputLocation,
   NemoTdtPreprocessorBackend,
   NemoTdtQuantization,
 } from './types.js';
@@ -36,6 +37,8 @@ export interface OrtTensorLike<TData extends ArrayBufferView = ArrayBufferView> 
   dispose?(): void;
 }
 
+export type OrtOutputLocation = NemoTdtOutputLocation;
+
 export interface OrtSessionLike {
   readonly inputNames?: readonly string[];
   run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>>;
@@ -61,6 +64,7 @@ export interface ResolvedNemoTdtArtifacts {
   readonly ortBackend: NemoTdtExecutionBackend;
   readonly encoderBackendForOrt: NemoTdtExecutionBackend;
   readonly decoderBackendForOrt: NemoTdtExecutionBackend;
+  readonly decoderStateOutputLocation?: NemoTdtOutputLocation;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
@@ -147,6 +151,7 @@ function resolveHuggingFaceArtifacts(
     ortBackend,
     encoderBackendForOrt,
     decoderBackendForOrt,
+    decoderStateOutputLocation: source.decoderStateOutputLocation,
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
@@ -168,6 +173,7 @@ function resolveDirectArtifacts(
       encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
     encoderBackendForOrt,
     decoderBackendForOrt,
+    decoderStateOutputLocation: source.decoderStateOutputLocation,
     wasmPaths: source.wasmPaths,
     cpuThreads: source.cpuThreads,
     enableProfiling: source.enableProfiling,
@@ -238,6 +244,9 @@ export async function createOrtSession(
     readonly enableProfiling?: boolean;
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
+    readonly preferredOutputLocation?:
+      | OrtOutputLocation
+      | Readonly<Record<string, OrtOutputLocation>>;
     readonly signal?: { readonly aborted: boolean } | null;
   },
 ): Promise<OrtSessionLike> {
@@ -261,6 +270,18 @@ export async function createOrtSession(
     enableMemPattern: true,
     enableProfiling: options.enableProfiling ?? false,
   };
+
+  if (options.preferredOutputLocation) {
+    // The browser WebGPU EP supports gpu-buffer outputs. Node's onnxruntime-
+    // web path does not, so keep diagnostic options CPU-backed in local runs.
+    sessionOptions.preferredOutputLocation = isNodeLikeRuntime()
+      ? typeof options.preferredOutputLocation === 'string'
+        ? 'cpu'
+        : Object.fromEntries(
+            Object.keys(options.preferredOutputLocation).map((name) => [name, 'cpu']),
+          )
+      : options.preferredOutputLocation;
+  }
 
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
