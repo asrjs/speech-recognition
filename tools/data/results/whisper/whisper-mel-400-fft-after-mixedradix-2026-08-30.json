@@ -1,0 +1,18 @@
+{
+  "date": "2026-08-30",
+  "note": "post-change dist (MixedRadixFft exact-400 path), node tests/smoke/benchmark-whisper-mel.mjs --runs=7 --mels=128",
+  "exact400": {
+    "oneSecAvgMs": 4.6,
+    "tenSecAvgMs": 30.6,
+    "thirtySecAvgMs": 94.1,
+    "thirtySecRtfX": 318.7
+  },
+  "experimental512": {
+    "thirtySecAvgMs": 50.4,
+    "thirtySecRtfX": 595.2
+  },
+  "correctness": {
+    "naiveDftOracleMaxAbsErr": "3.8e-11 (N in 5..1600 incl. 400/200)",
+    "transformRealInput400MaxAbsErr": "1.35e-12"
+  }
+}

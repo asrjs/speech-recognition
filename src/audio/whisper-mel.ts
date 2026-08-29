@@ -5,6 +5,8 @@
  * from 16 kHz mono PCM, matching OpenAI Whisper's preprocessing.
  */
 
+import { isMixedRadixSize, MixedRadixFft } from './mixed-radix-fft.js';
+
 const WHISPER_SAMPLE_RATE = 16000;
 const WHISPER_N_FFT = 400;
 const WHISPER_HOP_LENGTH = 160;
@@ -300,8 +302,10 @@ export class WhisperMelProcessor {
   private readonly melFilterbank: Float32Array;
   private readonly melFilterBounds: Int32Array;
   private readonly dftWindowed: Float32Array;
-  /** Fast path: power-of-2 FFT (512 → 257 bins) instead of Bluestein (400 → 201 bins). */
+  /** Fast path: power-of-2 FFT (512 → 257 bins) instead of the exact 400-point mixed-radix/Bluestein path. */
   private readonly useFastFft: boolean;
+  /** Exact frontend: mixed-radix 5^a*2^b kernel for real input frames. */
+  private readonly realFft?: MixedRadixFft;
   private readonly rfft?: BluesteinRfft;
   private readonly fftTwiddles?: FftTwiddles;
   private readonly paddedWindow?: Float32Array;
@@ -354,7 +358,15 @@ export class WhisperMelProcessor {
       this.melFilterbank = createMelFilterbank(this.nMels, this.sampleRate, this.nFft);
       this.melFilterBounds = createMelFilterBounds(this.melFilterbank, this.nMels, WHISPER_N_FREQS);
       this.dftWindowed = new Float32Array(this.winLength);
-      this.rfft = new BluesteinRfft(this.nFft);
+      // n_fft=400 = 25*16 factors exactly, so the default Whisper geometry
+      // (and any other 5^a*2^b size) avoids the Bluestein chirp-z path,
+      // which costs three 1024-point FFTs per frame. Sizes outside
+      // 5^a*2^b still fall back to Bluestein.
+      if (isMixedRadixSize(this.nFft)) {
+        this.realFft = new MixedRadixFft(this.nFft);
+      } else {
+        this.rfft = new BluesteinRfft(this.nFft);
+      }
       this.fftRe = new Float64Array(WHISPER_N_FREQS);
       this.fftIm = new Float64Array(WHISPER_N_FREQS);
       this.powerBuf = new Float32Array(WHISPER_N_FREQS);
@@ -434,7 +446,8 @@ export class WhisperMelProcessor {
         }
       }
     } else {
-      // Legacy path: Bluestein FFT for N_FFT=400 (non-power-of-2)
+      // Exact path: mixed-radix (400 = 25*16) or Bluestein FFT for
+      // N_FFT=400 (non-power-of-2)
       const winLen = this.winLength;
       for (let frameIndex = 0; frameIndex < nFrames; frameIndex++) {
         const offset = frameIndex * this.hopLength;
@@ -446,7 +459,16 @@ export class WhisperMelProcessor {
           this.dftWindowed[i] = sample * (this.window[i] as number);
         }
 
-        this.rfft!.transform(this.dftWindowed, fftRe, fftIm);
+        if (this.realFft) {
+          this.realFft.transformRealInput(
+            this.dftWindowed,
+            fftRe,
+            fftIm,
+            WHISPER_N_FREQS,
+          );
+        } else {
+          this.rfft!.transform(this.dftWindowed, fftRe, fftIm);
+        }
 
         // Power spectrum
         for (let k = 0; k < nFreqs; k++) {

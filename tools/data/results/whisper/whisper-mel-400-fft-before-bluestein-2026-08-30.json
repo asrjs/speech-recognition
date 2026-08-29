@@ -1,0 +1,14 @@
+{
+  "date": "2026-08-30",
+  "note": "pre-change dist baseline (Bluestein exact-400 path), node tests/smoke/benchmark-whisper-mel.mjs --runs=7 --mels=128",
+  "exact400": {
+    "oneSecAvgMs": 7.2,
+    "tenSecAvgMs": 56.6,
+    "thirtySecAvgMs": 173,
+    "thirtySecRtfX": 173.5
+  },
+  "experimental512": {
+    "thirtySecAvgMs": 49.1,
+    "thirtySecRtfX": 611.1
+  }
+}

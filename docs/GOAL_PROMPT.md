@@ -410,10 +410,50 @@ Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 - Evidence: docs/reports/whisper-4graph-ort129-revalidation-2026-08-30.md
   and tools/data/results/whisper/*revalidation-2026-08-30.*
 
+Whisper frontend mixed-radix FFT slice (2026-08-30):
 
+- The exact n_fft=400 mel path (Whisper default and the Qwen frontend reuse)
+  previously ran Bluestein chirp-z: three 1024-point radix-2 FFTs per frame for
+  a size that factors cleanly as 25 * 16. New src/audio/mixed-radix-fft.ts
+  implements an exact N = 5^a * 2^b Cooley-Tukey decomposition (recursive
+  radix-5 down to a cached radix-2 kernel), and src/audio/whisper-mel.ts
+  selects it whenever isMixedRadixSize(nFft) holds, keeping BluesteinRfft as
+  the fallback for uncovered sizes.
+- Node mel bench (node tests/smoke/benchmark-whisper-mel.mjs --runs=7
+  --mels=128): 30 s exact-400 avg 173.0 ms -> 94.1 ms (RTFx 173.5 -> ~319;
+  ~1.7-1.8x). 1 s 7.2 -> 4.6 ms, 10 s 56.6 -> 30.6 ms. The experimental 512
+  path is untouched (~50 ms). Evidence:
+  tools/data/results/whisper/whisper-mel-400-fft-before-bluestein-2026-08-30.json
+  and whisper-mel-400-fft-after-mixedradix-2026-08-30.json.
+- Correctness first: naive-DFT oracle max abs error 3.8e-11 across N in
+  5..1600 (incl. 400/200); transformRealInput(400) error 1.35e-12;
+  tests/mixed-radix-fft.test.ts locks oracle parity, Bluestein agreement at
+  200/400, zeroImaginary equivalence, and RangeError rejection. Full suite
+  green: 1028 passed, 18 skipped; typecheck clean.
+- Browser A/B control run deliberately skipped: the expected end-to-end saving
+  is ~78 ms of the 1106.6 ms 30 s greedy GPU-KV run (~7%), inside the
+  documented +/-11% cross-session variance, so a same-launch A/B would not be
+  honest evidence. The mel code is identical JS in browser and Node.
+- Future consolidation candidate (not done this slice to minimize risk):
+  RadixFivePowerOfTwoFft in src/models/lasr-ctc/mel.ts could be replaced by
+  MixedRadixFft, which strictly generalizes it (5^a * 2^b vs 5 * 2^m); no
+  current model uses the extra 25 * 2^m coverage there.
 
+Browser revalidation evidence commit (2026-08-30):
 
-
+- Committed `aea2029` records the four verified warmed Chrome/WebGPU runs from
+  the artifact revalidation pass: GigaAM CTC 42.74x and SenseVoice 26.42x on
+  the shared 18.7 s clip (throughput-only, `qualityOracle: none`), and the
+  GigaAM RNN-T default-hybrid (28.74x) vs all-WebGPU (2.90x) compositions on
+  the official Russian `example.wav` with exact parity. Backup branch
+  `backup/pre-evidence-commit-revalidation-2026-08-30`.
+- Three working-tree files were restored to HEAD instead of committed: their
+  contents mismatched their filenames (a WASM SenseVoice run had overwritten
+  `sensevoice-small-jfk-short-webgpu-chrome.json`; the X-ASR webgpu-chrome file
+  held a LibriVox-clip run against the JFK oracle, marked
+  `PREPROCESSING_MISMATCH`; the GigaAM jfk file duplicated a rerun already
+  evidenced elsewhere). Lesson: harness result paths must be derived from the
+  actual run config (backend + audio + oracle), not only from CLI defaults.
 
 - Experimental family descriptors are clone-safe, and all model families now
   share session release, abort, and dispose coverage; disposing a model no
