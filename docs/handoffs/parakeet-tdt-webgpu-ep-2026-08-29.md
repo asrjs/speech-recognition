@@ -119,3 +119,26 @@ The browser runner uses `--enable-unsafe-webgpu`, Vulkan/D3D11 ANGLE flags,
 and writes JSON evidence to `webgpu-agent-test/_results/`. The Parakeet runner
 defaults to deterministic `native-rate` linear WAV preparation; pass
 `--audio-strategy=target` only for the explicit AudioContext-resampler control.
+
+## Lifecycle refresh after Qwen optimization work (2026-08-29)
+
+The corrected Chrome harness was rerun after the Qwen WebGPU graph probes. A
+three-repeat full-model all-WebGPU run (fp16 encoder, fp32 decoder, JS
+preprocessor, native-rate audio) produced the exact 91-token LibriVox
+transcript on every run and completed the normal model-disposal `finally`
+path. Transcription times were `3608.435`, `3400.030`, and `3420.915 ms`
+(median `3420.915 ms`, `5.477x` RTFx); model load was `13623.170 ms`.
+Browser JS-heap snapshots rose from about `1.350 GB` to `1.366 GB` across the
+three same-session runs, so this is a repeatability signal rather than a leak
+verdict. The raw capture is retained in the sibling harness and summarized in
+`docs/reports/parakeet-tdt-v3-webgpu-lifecycle-refresh-2026-08-29.json`.
+
+The earlier GPU-state diagnostic was also repeated with explicit disposal of
+each replaced GPU state tensor. Two fresh runs completed all five WebGPU
+steps with `gpu-buffer/gpu-buffer` state outputs, vocabulary argmax parity,
+and no `null function` error; the paired WASM controls remained exact. This
+narrowly localizes the old failure to an earlier harness/runtime condition,
+but it does not prove that full-model GPU-state retention is production-safe.
+Keep the default encoder-WebGPU/decoder-WASM composition and require an
+opt-in library path plus repeated full-model parity and disposal checks before
+promoting decoder GPU-state output.

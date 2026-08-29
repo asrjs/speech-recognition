@@ -1,0 +1,51 @@
+{
+  "schema": "asrjs.parakeet.tdt.webgpu-lifecycle-refresh.v1",
+  "date": "2026-08-29",
+  "model": "parakeet-tdt-0.6b-v3",
+  "fixture": "LibriVox A Year with the Birds (browser harness)",
+  "environment": {
+    "browser": "Chrome headless new",
+    "adapter": "NVIDIA Blackwell",
+    "ortVersion": "1.29.0",
+    "audioStrategy": "native-rate",
+    "preprocessor": "js"
+  },
+  "fullModelWebgpu": {
+    "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-webgpu-2026-08-29T14-18-03-617Z.json",
+    "encoderBackend": "webgpu",
+    "decoderBackend": "webgpu",
+    "encoderQuantization": "fp16",
+    "decoderQuantization": "fp32",
+    "repeatCount": 3,
+    "audioDurationSec": 18.7140589569,
+    "emittedTokenCount": 91,
+    "exactMatchEveryRun": true,
+    "loadMs": 13623.17,
+    "transcribeMs": [3608.435, 3400.03, 3420.915],
+    "rtfx": [5.201, 5.5123, 5.477],
+    "medianTranscribeMs": 3420.915,
+    "medianRtfX": 5.477,
+    "memoryUsedJsHeapBytes": [1349886877, 1354203881, 1365990865],
+    "modelDispose": "completed by harness finally block"
+  },
+  "gpuStateDisposalRecheck": {
+    "source": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-spike-webgpu-2026-08-29T14-16-48-107Z.json",
+    "command": "node scripts/run-parakeet-tdt-webgpu.mjs --mode=spike --gpu-state --dispose-gpu-state",
+    "webgpu": {
+      "status": "pass",
+      "stateLocations": "gpu-buffer/gpu-buffer for all five steps",
+      "stepMs": [127.69, 22, 24.63, 23.82, 24.18],
+      "vocabularyArgmaxParity": true,
+      "nullFunctionObserved": false
+    },
+    "wasmControl": {
+      "status": "pass",
+      "stateLocations": "cpu/cpu for all five steps",
+      "stepMs": [15.16, 5.28, 5.66, 5.36, 6.35],
+      "vocabularyArgmaxParity": true
+    },
+    "interpretation": "The previously reported null-function failure was not reproduced with the corrected WebGPU entry point and explicit replacement-state disposal. This is a diagnostic recheck, not proof that full-model GPU-state retention is ready for promotion."
+  },
+  "decision": "keep-production-state-placement-unchanged",
+  "nextGate": "Add an opt-in library decoder-state output-location path, then prove full-model exact parity, repeated transcriptions, and disposal on more than one browser/adapter before changing the encoder-WebGPU/decoder-WASM default."
+}

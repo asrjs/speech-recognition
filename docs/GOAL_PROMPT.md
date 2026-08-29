@@ -409,6 +409,15 @@ Probe status (2026-08-29, corrected controlled browser A/B):
   mounting/provider behavior before changing any preset default. Until exact
   parity and end-to-end GPU-state lifecycle proof exist, keep the production
   default `encoder-WebGPU/decoder-WASM` composition.
+- Lifecycle refresh (2026-08-29): the corrected all-WebGPU Parakeet browser
+  harness reproduced the exact 91-token transcript for 3/3 native-rate runs
+  (median 3,420.915 ms / 5.477x RTFx) and completed model disposal; the
+  explicit GPU-state replacement/disposal diagnostic also passed all five
+  steps twice without the historical `null function` failure. Treat this as
+  refreshed evidence, not a promotion: add an opt-in library state-location
+  path, then repeat full-model parity, repeated transcriptions, and disposal
+  on more than one browser/adapter before changing the default. Evidence:
+  `docs/reports/parakeet-tdt-v3-webgpu-lifecycle-refresh-2026-08-29.json`.
 
 - [Completed 2026-08-29] GigaAM RNN-T phase profile and provider matrix: the
   official v3 E2E artifact and
