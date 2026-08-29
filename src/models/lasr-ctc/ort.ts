@@ -6,6 +6,7 @@ import {
 } from '../../io/abort.js';
 import {
   importNodeModule,
+  importNodePackage,
   isNodeLikeRuntime,
   resolveNodePackageSubpathUrl,
 } from '../../io/node-compat.js';
@@ -28,6 +29,8 @@ export interface OrtTensorLike<TData extends ArrayBufferView = ArrayBufferView> 
   readonly type?: string;
   dispose?(): void;
 }
+
+export type OrtOutputLocation = 'cpu' | 'gpu-buffer';
 
 export interface OrtSessionLike {
   readonly inputMetadata?: Record<string, { readonly type?: string }>;
@@ -205,9 +208,11 @@ export async function initOrt(
  */
 async function tryImportNodeOrt(): Promise<OrtModuleLike | undefined> {
   try {
-    const imported = (await import('onnxruntime-node')) as unknown as OrtModuleLike & {
-      readonly default?: OrtModuleLike;
-    };
+    const imported = importNodePackage<
+      OrtModuleLike & {
+        readonly default?: OrtModuleLike;
+      }
+    >('onnxruntime-node');
     return imported.default ?? imported;
   } catch {
     return undefined;
@@ -222,6 +227,9 @@ export async function createOrtSession(
     readonly enableProfiling?: boolean;
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
+    readonly preferredOutputLocation?:
+      | OrtOutputLocation
+      | Readonly<Record<string, OrtOutputLocation>>;
     readonly signal?: { readonly aborted: boolean } | null;
   },
 ): Promise<OrtSessionLike> {
@@ -250,6 +258,16 @@ export async function createOrtSession(
     enableProfiling: options.enableProfiling ?? false,
   };
 
+  if (options.preferredOutputLocation) {
+    sessionOptions.preferredOutputLocation = isNodeLikeRuntime()
+      ? typeof options.preferredOutputLocation === 'string'
+        ? 'cpu'
+        : Object.fromEntries(
+            Object.keys(options.preferredOutputLocation).map((name) => [name, 'cpu']),
+          )
+      : options.preferredOutputLocation;
+  }
+
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
     if (/^file:/i.test(sessionModelUrl)) {
@@ -271,10 +289,12 @@ export async function createOrtSession(
         nodePath.basename(options.externalDataPath),
       );
       const fsModule = await importNodeModule<typeof import('node:fs')>('node:fs');
-      if (fsModule.existsSync(colocatedPath)) {
-        // Native ORT loads the colocated external data automatically.
+      if (options.backendId === 'webgpu' && fsModule.existsSync(colocatedPath)) {
+        // Native ORT loads colocated external data automatically. Node-hosted
+        // ORT Web WASM still needs the bytes mounted explicitly.
       } else {
-        const promises = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+        const promises =
+          await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
         sessionOptions.externalData = [
           {
             data: await promises.readFile(externalDataUrl),
@@ -292,7 +312,8 @@ export async function createOrtSession(
     }
   }
 
-  const createOptions = withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
+  const createOptions =
+    withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
   return honorAbortAfterCreate(
     () => ort.InferenceSession.create(sessionModelUrl, createOptions),
     options.signal,

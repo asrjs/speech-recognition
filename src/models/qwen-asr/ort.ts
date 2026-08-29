@@ -1,5 +1,14 @@
-import { honorAbortAfterCreate, withNativeAbortSignalOption, withOrtCreateAbort } from '../../io/abort.js';
-import { importNodeModule, isNodeLikeRuntime, resolveNodePackageSubpathUrl } from '../../io/node-compat.js';
+import {
+  honorAbortAfterCreate,
+  withNativeAbortSignalOption,
+  withOrtCreateAbort,
+} from '../../io/abort.js';
+import {
+  importNodeModule,
+  importNodePackage,
+  isNodeLikeRuntime,
+  resolveNodePackageSubpathUrl,
+} from '../../io/node-compat.js';
 import type {
   Qwen3AsrArtifactSource,
   Qwen3AsrDirectArtifacts,
@@ -72,9 +81,15 @@ const DEFAULT_ENCODER_DATA_PATH = 'audio_encoder_fp16.onnx_data';
 const DEFAULT_DECODER_DATA_PATH = 'decoder_with_past_fp16.onnx_data';
 
 function buildResolveUrl(repoId: string, revision: string, filename: string): string {
-  const repo = repoId.split('/').map((part) => encodeURIComponent(part)).join('/');
+  const repo = repoId
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
   const rev = encodeURIComponent(revision);
-  const path = filename.split('/').map((part) => encodeURIComponent(part)).join('/');
+  const path = filename
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
   return `https://huggingface.co/${repo}/resolve/${rev}/${path}`;
 }
 
@@ -99,9 +114,21 @@ function resolveHuggingFaceArtifacts(
   const decoderBackendForOrt = resolveBackend(source.decoderBackend, fallback);
   return {
     artifacts: {
-      encoderUrl: buildResolveUrl(source.repoId, revision, source.encoderPath ?? DEFAULT_ENCODER_PATH),
-      decoderUrl: buildResolveUrl(source.repoId, revision, source.decoderPath ?? DEFAULT_DECODER_PATH),
-      tokenizerUrl: buildResolveUrl(source.repoId, revision, source.tokenizerPath ?? DEFAULT_TOKENIZER_PATH),
+      encoderUrl: buildResolveUrl(
+        source.repoId,
+        revision,
+        source.encoderPath ?? DEFAULT_ENCODER_PATH,
+      ),
+      decoderUrl: buildResolveUrl(
+        source.repoId,
+        revision,
+        source.decoderPath ?? DEFAULT_DECODER_PATH,
+      ),
+      tokenizerUrl: buildResolveUrl(
+        source.repoId,
+        revision,
+        source.tokenizerPath ?? DEFAULT_TOKENIZER_PATH,
+      ),
       encoderDataUrl: buildResolveUrl(
         source.repoId,
         revision,
@@ -115,7 +142,8 @@ function resolveHuggingFaceArtifacts(
       encoderDataPath: source.encoderDataPath ?? DEFAULT_ENCODER_DATA_PATH,
       decoderDataPath: source.decoderDataPath ?? DEFAULT_DECODER_DATA_PATH,
     },
-    ortBackend: encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
+    ortBackend:
+      encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
     encoderBackendForOrt,
     decoderBackendForOrt,
     cacheOutputLocation: source.cacheOutputLocation ?? 'gpu-buffer',
@@ -134,7 +162,8 @@ function resolveDirectArtifacts(
   const decoderBackendForOrt = resolveBackend(source.decoderBackend, fallback);
   return {
     artifacts: source.artifacts,
-    ortBackend: encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
+    ortBackend:
+      encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
     encoderBackendForOrt,
     decoderBackendForOrt,
     cacheOutputLocation: source.cacheOutputLocation ?? 'gpu-buffer',
@@ -168,20 +197,25 @@ export async function initQwenOrt(
     // the web build when the native package is unavailable so callers classify
     // the backend as before.
     try {
-      const imported = (await import('onnxruntime-node')) as unknown as QwenOrtModuleLike & {
-        readonly default?: QwenOrtModuleLike;
-      };
+      const imported = importNodePackage<
+        QwenOrtModuleLike & {
+          readonly default?: QwenOrtModuleLike;
+        }
+      >('onnxruntime-node');
       return withOrtCreateAbort(imported.default ?? imported, options.signal);
     } catch {
       // fall through to onnxruntime-web.
     }
   }
-  const imported = (await (
-    backendId === 'webgpu' ? import('onnxruntime-web/webgpu') : import('onnxruntime-web')
-  )) as unknown as QwenOrtModuleLike & { readonly default?: QwenOrtModuleLike };
+  const imported = (await (backendId === 'webgpu'
+    ? import('onnxruntime-web/webgpu')
+    : import('onnxruntime-web'))) as unknown as QwenOrtModuleLike & {
+    readonly default?: QwenOrtModuleLike;
+  };
   const ort = imported.default ?? imported;
   if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads = options.cpuThreads ??
+    ort.env.wasm.numThreads =
+      options.cpuThreads ??
       (typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number'
         ? navigator.hardwareConcurrency
         : 4);
@@ -190,7 +224,8 @@ export async function initQwenOrt(
     ort.env.wasm.numThreads = 1;
   }
   ort.env.wasm.proxy = false;
-  ort.env.wasm.wasmPaths = options.wasmPaths ??
+  ort.env.wasm.wasmPaths =
+    options.wasmPaths ??
     (isNodeLikeRuntime()
       ? await resolveNodePackageSubpathUrl('onnxruntime-web', 'dist')
       : '/node_modules/onnxruntime-web/dist/');
@@ -214,18 +249,21 @@ export async function createQwenOrtSession(
     readonly enableProfiling?: boolean;
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
-    readonly preferredOutputLocation?: QwenCacheOutputLocation | Record<string, QwenCacheOutputLocation>;
+    readonly preferredOutputLocation?:
+      | QwenCacheOutputLocation
+      | Record<string, QwenCacheOutputLocation>;
     readonly lowMemory?: boolean;
     readonly signal?: { readonly aborted: boolean } | null;
   },
 ): Promise<QwenOrtSessionLike> {
   let modelUrl = url;
   let externalDataUrl = options.externalDataUrl;
-  const executionProviders = options.backendId === 'webgpu'
-    ? isNodeLikeRuntime()
-      ? ['webgpu']
-      : [{ name: 'webgpu', deviceType: 'gpu', powerPreference: 'high-performance' }]
-    : ['wasm'];
+  const executionProviders =
+    options.backendId === 'webgpu'
+      ? isNodeLikeRuntime()
+        ? ['webgpu']
+        : [{ name: 'webgpu', deviceType: 'gpu', powerPreference: 'high-performance' }]
+      : ['wasm'];
   const lowMemory = options.lowMemory === true;
   const sessionOptions: Record<string, unknown> = {
     executionProviders,
@@ -242,14 +280,15 @@ export async function createQwenOrtSession(
       ? typeof options.preferredOutputLocation === 'string'
         ? 'cpu'
         : Object.fromEntries(
-          Object.entries(options.preferredOutputLocation).map(([name]) => [name, 'cpu']),
-        )
+            Object.entries(options.preferredOutputLocation).map(([name]) => [name, 'cpu']),
+          )
       : options.preferredOutputLocation;
   }
   if (isNodeLikeRuntime()) {
     const { fileURLToPath } = await importNodeModule<typeof import('node:url')>('node:url');
     if (/^file:/i.test(modelUrl)) modelUrl = fileURLToPath(modelUrl);
-    if (externalDataUrl && /^file:/i.test(externalDataUrl)) externalDataUrl = fileURLToPath(externalDataUrl);
+    if (externalDataUrl && /^file:/i.test(externalDataUrl))
+      externalDataUrl = fileURLToPath(externalDataUrl);
   }
   if (externalDataUrl && options.externalDataPath) {
     if (isNodeLikeRuntime()) {
@@ -262,20 +301,25 @@ export async function createQwenOrtSession(
         nodePath.basename(options.externalDataPath),
       );
       const fsModule = await importNodeModule<typeof import('node:fs')>('node:fs');
-      if (fsModule.existsSync(colocatedPath)) {
-        // Native ORT loads the colocated external data automatically.
+      if (options.backendId === 'webgpu' && fsModule.existsSync(colocatedPath)) {
+        // Native ORT loads colocated external data automatically. Node-hosted
+        // ORT Web WASM still needs the bytes mounted explicitly.
       } else {
-        const promises = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
-        sessionOptions.externalData = [{
-          data: await promises.readFile(externalDataUrl),
-          path: options.externalDataPath,
-        }];
+        const promises =
+          await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+        sessionOptions.externalData = [
+          {
+            data: await promises.readFile(externalDataUrl),
+            path: options.externalDataPath,
+          },
+        ];
       }
     } else {
       sessionOptions.externalData = [{ data: externalDataUrl, path: options.externalDataPath }];
     }
   }
-  const createOptions = withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
+  const createOptions =
+    withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
   return honorAbortAfterCreate(
     () => ort.InferenceSession.create(modelUrl, createOptions),
     options.signal,

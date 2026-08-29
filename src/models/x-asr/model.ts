@@ -37,8 +37,20 @@ const CLASSIFICATION: ModelClassification = {
   task: 'asr',
 };
 
+/** State outputs for the official 19-layer X-ASR Zipformer2 graph family. */
+export const DEFAULT_XASR_ENCODER_STATE_OUTPUTS = [
+  ...Array.from({ length: 19 }, (_, layer) =>
+    ['key', 'nonlin_attn', 'val1', 'val2', 'conv1', 'conv2'].map(
+      (kind) => `new_cached_${kind}_${layer}`,
+    ),
+  ).flat(),
+  'new_embed_states',
+  'new_processed_lens',
+] as const;
+
 const DEFAULT_GRAPH = {
   encoderStateInputs: [],
+  encoderStateOutputs: DEFAULT_XASR_ENCODER_STATE_OUTPUTS,
   encoderFrameSize: 29,
   encoderFrameShift: 16,
   decoderContextSize: 2,

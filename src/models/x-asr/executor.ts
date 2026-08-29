@@ -3,7 +3,7 @@ import { nowMs, roundMetric } from '../../runtime/timing.js';
 import { createExperimentalArtifactMissingError } from '../../runtime/experimental-families.js';
 import type { AbortSignalLike, AssetProvider, AudioBufferLike, ResolvedAssetHandle, SpeechRuntimeHooks } from '../../types/index.js';
 import { PipelineAbortedError } from '../../pipeline/composition.js';
-import { createOrtSession, initOrt, releaseOrtSession, type OrtModuleLike, type OrtSessionLike, type OrtTensorLike } from '../lasr-ctc/ort.js';
+import { createOrtSession, initOrt, releaseOrtSession, type OrtModuleLike, type OrtOutputLocation, type OrtSessionLike, type OrtTensorLike } from '../lasr-ctc/ort.js';
 import type { XAsrArtifactSource, XAsrModelConfig, XAsrModelOptions, XAsrNativeTranscript, XAsrStateTensorSpec, XAsrTranscriptionOptions } from './types.js';
 import { XAsrJsFrontend } from './frontend.js';
 import { XAsrTokenizer } from './tokenizer.js';
@@ -225,9 +225,26 @@ export class OrtXAsrExecutor implements XAsrExecutor {
     }
     const ort = await initOrt(this.backendId, { cpuThreads: this.source.cpuThreads, wasmPaths: this.source.wasmPaths, signal: this.signal });
     const backend = this.backendId.startsWith('webgpu') ? 'webgpu' : 'wasm';
-    const make = (url: string, dataUrl?: string, dataPath?: string) => createOrtSession(ort, url, { backendId: backend, enableProfiling: this.source?.enableProfiling, externalDataUrl: dataUrl, externalDataPath: dataPath, signal: this.signal });
+    const make = (
+      url: string,
+      dataUrl?: string,
+      dataPath?: string,
+      preferredOutputLocation?: Readonly<Record<string, OrtOutputLocation>>,
+    ) => createOrtSession(ort, url, { backendId: backend, enableProfiling: this.source?.enableProfiling, externalDataUrl: dataUrl, externalDataPath: dataPath, preferredOutputLocation, signal: this.signal });
     const tokenizerPromise = XAsrTokenizer.fromUrl(tokenizerUrl, this.signal);
-    const encoder = await make(encoderUrl, encoderDataUrl, encoderDataFilename);
+    const encoderStateOutputs = this.config.graph.encoderStateOutputs ?? [];
+    const encoderOutputLocations = backend === 'webgpu' && encoderStateOutputs.length > 0
+      ? {
+          [this.config.graph.encoderOutputName ?? 'encoder_out']: 'cpu' as const,
+          ...Object.fromEntries(encoderStateOutputs.map((name) => [name, 'gpu-buffer' as const])),
+        }
+      : undefined;
+    const encoder = await make(
+      encoderUrl,
+      encoderDataUrl,
+      encoderDataFilename,
+      encoderOutputLocations,
+    );
     if (this.disposed) {
       releaseOrtSession(encoder);
       throw new Error(`X-ASR executor was disposed during load for "${this.modelId}".`);

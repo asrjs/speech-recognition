@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+import { describe, expect, it, vi } from 'vitest';
 import { PcmAudioBuffer } from '../src/audio/index.js';
 import {
   DEFAULT_QWEN3_ASR_CLASSIFICATION,
@@ -7,9 +10,11 @@ import {
   Qwen3AsrFeatureProcessor,
   Qwen3AsrTokenizer,
   createQwen3AsrModelFamily,
+  createQwenOrtSession,
   getQwenAudioTokenCount,
   parseOfficialQwen3AsrConfig,
   parseQwen3AsrConfig,
+  resolveQwen3AsrArtifacts,
   resolveOfficialQwen3AsrDirectArtifacts,
   applyOfficialQwen3AsrGraphDefaults,
   type QwenOrtModuleLike,
@@ -317,6 +322,38 @@ describe('Qwen3-ASR ONNX prefill and KV-cache contract', () => {
 });
 
 describe('Qwen3-ASR official stacked artifact defaults', () => {
+  it('mounts colocated external decoder data for Node-hosted ORT Web WASM', async () => {
+    const create = vi.fn(async () => ({ run: async () => ({}) }));
+    const ort = {
+      env: { wasm: {} },
+      Tensor: class {},
+      InferenceSession: { create },
+    } as unknown as QwenOrtModuleLike;
+
+    await createQwenOrtSession(ort, pathToFileURL(path.resolve('package.json')).href, {
+      backendId: 'wasm',
+      externalDataUrl: pathToFileURL(path.resolve('package-lock.json')).href,
+      externalDataPath: 'package-lock.json',
+    });
+
+    const [, options] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    const externalData = options.externalData as Array<{ data: Uint8Array; path: string }>;
+    expect(externalData[0]?.path).toBe('package-lock.json');
+    expect(externalData[0]?.data.byteLength).toBeGreaterThan(0);
+  });
+
+  it('keeps WebGPU KV on the GPU unless a caller explicitly selects CPU output', () => {
+    const artifacts = resolveOfficialQwen3AsrDirectArtifacts({
+      baseUrl: '/qwen3-asr-official',
+    });
+    const source = { kind: 'direct', artifacts } as const;
+    expect(resolveQwen3AsrArtifacts(source, 'webgpu').cacheOutputLocation).toBe('gpu-buffer');
+    expect(
+      resolveQwen3AsrArtifacts({ ...source, cacheOutputLocation: 'cpu' }, 'webgpu')
+        .cacheOutputLocation,
+    ).toBe('cpu');
+  });
+
   it('defaults official encoder URLs to the dynamic graph, not static T=1100', () => {
     const artifacts = resolveOfficialQwen3AsrDirectArtifacts({
       baseUrl: '/qwen3-asr-official',

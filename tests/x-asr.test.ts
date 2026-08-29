@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   mapXAsrNativeToCanonical,
+  DEFAULT_XASR_ENCODER_STATE_OUTPUTS,
   XAsrTokenizer,
   createXAsrModelFamily,
   type XAsrExecutor,
@@ -9,6 +10,12 @@ import {
 import { createBuiltInSpeechRuntime } from '../src/runtime/builtins.js';
 
 describe('X-ASR artifact-gated family', () => {
+  it('defines every official Zipformer2 state output for GPU-resident streaming caches', () => {
+    expect(DEFAULT_XASR_ENCODER_STATE_OUTPUTS).toHaveLength(116);
+    expect(DEFAULT_XASR_ENCODER_STATE_OUTPUTS[0]).toBe('new_cached_key_0');
+    expect(DEFAULT_XASR_ENCODER_STATE_OUTPUTS.at(-1)).toBe('new_processed_lens');
+  });
+
   it('maps transducer-native output through the X-ASR family contract', () => {
     const result = mapXAsrNativeToCanonical(
       {

@@ -36,6 +36,21 @@ export async function importNodeModule<T = unknown>(specifier: string): Promise<
   }
 }
 
+/**
+ * Resolve an installed package through Node's CommonJS bridge without exposing
+ * a literal package import to browser bundlers. Callers must guard this with
+ * `isNodeLikeRuntime()` before invoking it.
+ */
+export function importNodePackage<T = unknown>(specifier: string): T {
+  if (!isNodeLikeRuntime()) {
+    throw new Error(`Node package imports are unavailable outside Node.js: ${specifier}`);
+  }
+  const nodeModule = getNodeBuiltin<{
+    createRequire(url: string): (id: string) => unknown;
+  }>('module');
+  return nodeModule.createRequire(import.meta.url)(specifier) as T;
+}
+
 export async function resolveNodePackageSubpathUrl(
   packageName: string,
   subpath: string,
