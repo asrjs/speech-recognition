@@ -174,7 +174,7 @@
   },
   "dependencies": {
     "onnxruntime-node": "1.25.0-dev.20260228-6e72d31970",
-    "onnxruntime-web": "^1.27.0-dev.20260506-673c3320fc",
+    "onnxruntime-web": "1.29.0",
     "pako": "^2.1.0"
   },
   "devDependencies": {

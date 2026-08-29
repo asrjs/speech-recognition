@@ -1,6 +1,6 @@
 {
   "backend": "webgpu",
-  "engine": "onnxruntime-web",
+  "engine": "onnxruntime-node",
   "text": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
   "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
   "text_match": true,
