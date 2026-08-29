@@ -497,6 +497,8 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     if (audioInputs.length === 0) return [];
     const state = await this.loadStatePromise;
     if (!state) throw createExperimentalArtifactMissingError('sensevoice', this.modelId);
+    const started = nowMs();
+    const preprocessStarted = nowMs();
     const audios = audioInputs.map((input) => normalizePcmInput(input).toMono());
     const prepared = audios.map((audio) => (
       state.graph === 'official'
@@ -522,6 +524,7 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
         }
       }
     });
+    const preprocessMs = nowMs() - preprocessStarted;
     const prompt = createSenseVoicePrompt({ language: options.language, useItn: options.useItn });
     const speechName = state.graph === 'official' ? 'speech' : 'features';
     const lengthName = state.graph === 'official' ? 'speech_lengths' : 'features_lens';
@@ -530,11 +533,13 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     const languages = intVector(state.ort, state.session, 'language', audioInputs.map(() => prompt.languageId), state.graph === 'official' ? 'int32' : 'int64');
     const textnorms = intVector(state.ort, state.session, 'textnorm', audioInputs.map(() => prompt.textnormId), state.graph === 'official' ? 'int32' : 'int64');
     let outputs: Record<string, OrtTensorLike>;
+    const encodeStarted = nowMs();
     try {
       outputs = await state.session.run({ [speechName]: features, [lengthName]: featureLengths, language: languages, textnorm: textnorms });
     } finally {
       features.dispose?.(); featureLengths.dispose?.(); languages.dispose?.(); textnorms.dispose?.();
     }
+    const encodeMs = nowMs() - encodeStarted;
     try {
     const logitsTensor = findOutput(outputs, ['ctc_logits', 'logprobs', 'logits']);
     if (!logitsTensor) throw new Error('SenseVoice graph returned no logprobs output.');
@@ -547,6 +552,7 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
     const outputLengths = tensorLengths(lengthsTensor, batchSize, outFrames);
     const allLogits = readLogits(logitsTensor);
     return Array.from({ length: batchSize }, (_, batchIndex) => {
+      const decodeStarted = nowMs();
       const frameCount = Math.min(outFrames, outputLengths[batchIndex] ?? outFrames);
       const logits = new Float32Array(frameCount * vocabSize);
       const sourceOffset = batchIndex * outFrames * vocabSize;
@@ -560,13 +566,38 @@ export class OrtSenseVoiceExecutor implements SenseVoiceExecutor {
       const timedSpans = addTimesToTokenSpans(tokenizer, tokenSpans, secondsPerFrame);
       const timing = buildUtteranceTiming(frameIds, selectedLogProbs, 0, secondsPerFrame);
       const metadata = extractMetadata(tokenizer, collapsedIds);
+      const tokens = timedSpans
+        .filter((span) => span.text.length > 0)
+        .map((span, index) => ({
+          index,
+          id: options.returnTokenIds ? span.tokenId : undefined,
+          text: span.text,
+          startTime: roundTimestampSeconds(span.startTime),
+          endTime: roundTimestampSeconds(span.endTime),
+          confidence: roundMetric(span.confidence, 4),
+        }));
+      const totalMs = nowMs() - started;
       return {
         utteranceText: text,
         isFinal: true,
         language: metadata.language ?? prompt.language,
         metadata,
-        tokens: timedSpans.filter((span) => span.text.length > 0).map((span, index) => ({ index, id: options.returnTokenIds ? span.tokenId : undefined, text: span.text, startTime: roundTimestampSeconds(span.startTime), endTime: roundTimestampSeconds(span.endTime), confidence: roundMetric(span.confidence, 4) })),
+        tokens,
         confidence: { utterance: timing.confidence, tokenAverage: timing.confidence },
+        metrics: {
+          preprocessMs: roundMetric(preprocessMs),
+          encodeMs: roundMetric(encodeMs),
+          decodeMs: roundMetric(nowMs() - decodeStarted),
+          totalMs: roundMetric(totalMs),
+          wallMs: roundMetric(totalMs),
+          audioDurationSec: roundMetric(audio.durationSeconds, 4),
+          rtf: audio.durationSeconds > 0 ? roundMetric(totalMs / (audio.durationSeconds * 1000), 4) : 0,
+          rtfx: audio.durationSeconds > 0 ? roundMetric(audio.durationSeconds / (totalMs / 1000), 4) : undefined,
+          preprocessorBackend: 'js',
+          encoderFrameCount: frameCount,
+          decodeIterations: frameCount,
+          emittedTokenCount: tokens.length,
+        },
         warnings: [...state.warnings],
       };
     });

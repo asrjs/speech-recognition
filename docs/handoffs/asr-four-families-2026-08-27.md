@@ -516,6 +516,37 @@ behavior checkpoint rather than a browser before/after claim. Evidence:
 `docs/reports/x-asr-webgpu-streaming-parity-2026-08-29.json` and
 `tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu-stream-chrome.json`.
 
+## Shared short-window throughput and regression probe (2026-08-29)
+
+The browser benchmark contract now uses the same deterministic
+`librivox.org.wav` clip (18.714 s) for cross-model throughput, executes one
+same-session warm-up, and marks unlabeled runs with `qualityOracle: null`.
+Shared windows stay below 30 s so Whisper and the other families can use the
+same audio; the 146.326 s JFK recording is retained only as a clipped source
+because Parakeet v3 rejects its 1830 frames against a 1024-frame graph limit.
+
+On Chrome/WebGPU + NVIDIA Blackwell + ORT Web 1.29.0, warmed medians are:
+
+| Configuration | Median RTFx | Correctness |
+| --- | ---: | --- |
+| Parakeet v3, fp16 WebGPU encoder + fp32 WASM decoder + ONNX preprocessor | 18.07x | exact 91-token oracle |
+| Parakeet v2, fp16 WebGPU encoder + int8 WASM decoder + JS preprocessor | 28.24x | normalized oracle (capitalization only) |
+| Whisper 4-graph, CPU-KV decoder | 12.37x | throughput-only |
+| Whisper 4-graph, GPU-KV candidate | 8.42x | throughput-only; negative on this clip |
+
+The historical Parakeet.js benchmark's 15–30 s subset has a median of 80.71x
+(74 runs, fp32 encoder/int8 decoder, 11-thread-class settings). Current v2 is
+therefore a real configuration/runtime regression candidate, not merely a
+short-audio artifact. The current runner forces one WASM thread; probes above
+one did not complete within a bounded 120 s observation and are retained as a
+threaded-worker compatibility gap until repaired. The browser fp32 external
+data encoder is separately blocked by ORT Web 1.29's
+`Module.MountedFiles is not available` boundary.
+
+Reproduction and raw-result bindings are in
+`docs/reports/cross-model-audio-window-benchmark-2026-08-29.md` and
+`docs/reports/cross-model-audio-window-benchmark-2026-08-29.json`.
+
 ## Remaining gaps
 
 - Dynamic encoder is now the default official-graph load (library helper + Chrome/Qwen harness). Static T=1100 remains opt-in via `encoder=static-t1100` / `QWEN_OFFICIAL_ENCODER=static-t1100`.

@@ -351,6 +351,37 @@ Turn recurring lessons into reusable tools, tests, fixtures, and playbooks
 each new port inherits the methodology automatically. Keep refining the
 methodology as new ORT behaviors, graph patterns, and bottlenecks are found.
 
+Shared short-window benchmark and RTFx regression probe (2026-08-29):
+
+- The browser benchmark contract now uses the same deterministic
+  `librivox.org.wav` window (18.714 s, SHA-256
+  `2F6886C1956765B56B996BD6FBB00C5E4001368DB8CB4BE94987CA2E3166B8B4`) for
+  cross-model throughput, performs one same-session warm-up, and reports
+  warm-up separately from measured repetitions. Correctness remains a separate
+  labeled oracle; unlabeled runs carry `qualityOracle: null` and must not be
+  treated as WER evidence. Keep all shared benchmark windows below 30 s.
+- Parakeet runs on the shared window preserve v3 exact text parity (fp16
+  WebGPU encoder + fp32 WASM decoder, ONNX preprocessor) and v2 normalized
+  parity (fp16 WebGPU encoder + int8 WASM decoder, JS preprocessor). Current
+  warmed medians are approximately 18.1x and 28.2x native RTFx respectively;
+  the historical Parakeet.js v2 benchmark on 15–30 s samples reports a median
+  of 80.71x with fp32 encoder/int8 decoder and 11-thread-class browser
+  settings. This is a real configuration/runtime regression candidate, not a
+  short-audio explanation alone. The current harness's explicit `cpuThreads`
+  values above one did not complete within the bounded browser probe and are
+  retained as `WASM_THREADS_UNAVAILABLE` evidence until the ORT 1.29 worker
+  setup is fixed; do not silently change the default.
+- The 146.326 s JFK source is retained for provenance, but the Parakeet v3
+  encoder rejects its 1830-frame unwindowed input (static limit 1024). Use
+  supported sub-30-second clips or a verified long-audio windowing pipeline;
+  never report that shape failure as throughput.
+- The same warmed shared-window Whisper control is measurable at about 12.4x
+  native RTFx with CPU KV; the GPU-KV candidate is about 8.4x on this clip and
+  is therefore a workload-specific negative result, despite its earlier JFK
+  win. Keep per-model/backend placement decisions evidence-driven.
+- Evidence and exact commands: `docs/reports/cross-model-audio-window-benchmark-2026-08-29.md`
+  and its JSON manifest.
+
 ## Current WebGPU EP optimization task
 
 ORT Web was upgraded 1.27-nightly → 1.29.0 stable and validated end-to-end
@@ -689,6 +720,15 @@ independent Git state and avoid unrelated rewrites.
 - Build layered tests: pure unit tests, deterministic fixtures, artifact-gated
   parity tests, Node smoke tests, and independent browser/WebGPU checks.
 - Benchmark exact artifact/backend combinations with warmed repeated runs.
+- Use a shared cross-model audio window shorter than 30 seconds for comparable
+  throughput measurements (the current canonical clip is the 18.714-second
+  `librivox.org.wav`; the 11-second JFK fixture remains the labeled smoke
+  oracle where a family has one). Run at least one same-session warm-up before
+  recording measured repetitions, report warm-up separately, and keep model
+  correctness/parity checks distinct from unlabeled throughput runs. Longer
+  source recordings such as the 146-second JFK asset may be clipped into
+  supported windows, but must not be passed through a graph whose static frame
+  limit it exceeds; record the source identity and measured clip duration.
 - Track accuracy and output semantics as well as latency, throughput, memory,
   transfers, loading, and cleanup.
 - Prefer changes that create measurable correctness, quality, performance,

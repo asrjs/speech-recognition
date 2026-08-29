@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-29",
+  "host": {
+    "os": "Windows",
+    "browser": "Chrome headless",
+    "adapter": "NVIDIA Blackwell",
+    "onnxruntimeWeb": "1.29.0"
+  },
+  "contract": {
+    "sharedAudio": "tools/data/fixtures/audio/librivox.org.wav",
+    "sharedAudioSha256": "2F6886C1956765B56B996BD6FBB00C5E4001368DB8CB4BE94987CA2E3166B8B4",
+    "sharedDurationSec": 18.714058956916098,
+    "maximumSharedWindowSec": 30,
+    "warmupCount": 1,
+    "correctnessAndThroughputSeparated": true,
+    "unlabeledQualityOracle": null
+  },
+  "sourceAudio": {
+    "longJfk": {
+      "path": "tools/data/fixtures/audio/JFK.ogg",
+      "sha256": "AB126000032326B5AC98FAF187BC8F8506E78C6FD7A1F9600C0C945E4E52284C",
+      "durationSec": 146.326,
+      "use": "provenance and clipped-window source only"
+    }
+  },
+  "historicalReference": {
+    "path": "N:/github/ysdede/parakeet.js-benchmark/metrics/parakeet-benchmark-1772221557947.json",
+    "model": "parakeet-tdt-0.6b-v2",
+    "backend": "webgpu-hybrid",
+    "configuration": "fp32 encoder, int8 decoder, JS preprocessor",
+    "durationFilterSec": [15, 30],
+    "sampleCount": 74,
+    "rtfx": {
+      "min": 49.18,
+      "mean": 78.95486486486485,
+      "median": 80.71,
+      "p90": 87.86,
+      "max": 101.87
+    }
+  },
+  "runs": [
+    {
+      "family": "parakeet-tdt-v3",
+      "resultPath": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v3-decoder-wasm-2026-08-29T16-48-01-762Z.json",
+      "resultSha256": "38AF020F2A757BFEDEA2F29161CF67A6C75501DAB7C4122F75D9C118C8064599",
+      "audioDurationSec": 18.714058956916098,
+      "qualityOracle": "fixed-transcript",
+      "status": "pass",
+      "parity": "exact",
+      "configuration": "fp16 WebGPU encoder, fp32 WASM decoder, ONNX preprocessor",
+      "warmupMs": 1456.805,
+      "measured": {
+        "repeatCount": 3,
+        "medianMs": 1040.92,
+        "nativeRtfxMedian": 18.0707,
+        "wallRtfxMedian": 17.97838350390419,
+        "phaseMedianMs": { "preprocess": 79.935, "encode": 204.505, "decode": 750.755 },
+        "decodeIterations": 108,
+        "emittedTokenCount": 91
+      }
+    },
+    {
+      "family": "parakeet-tdt-v2",
+      "resultPath": "N:/github/asrjs/webgpu-agent-test/_results/parakeet-tdt-v2-decoder-wasm-2026-08-29T16-48-35-745Z.json",
+      "resultSha256": "8B35812102E164294FA3CD4AA1BFB31F5C48C32A852B5217279064B1160BC8BE",
+      "audioDurationSec": 18.714058956916098,
+      "qualityOracle": "fixed-transcript",
+      "status": "pass",
+      "parity": "normalized (capitalization differs)",
+      "configuration": "fp16 WebGPU encoder, int8 WASM decoder, JS preprocessor",
+      "warmupMs": 1080.62,
+      "measured": {
+        "repeatCount": 3,
+        "medianMs": 666.78,
+        "nativeRtfxMedian": 28.237,
+        "wallRtfxMedian": 28.066317161406523,
+        "phaseMedianMs": { "preprocess": 40.62, "encode": 190.005, "decode": 380.665 },
+        "decodeIterations": 123,
+        "emittedTokenCount": 109
+      }
+    },
+    {
+      "family": "whisper-large-v3-turbo-4graph",
+      "resultPath": "N:/github/asrjs/webgpu-agent-test/_results/fp16io-fp32-webgpu-2026-08-29T16-58-47-346Z.json",
+      "resultSha256": "55C4F9B1754E9A56F61AC77675D86E9CD8D14A711C97F1C38E3E103ADBDA9D59",
+      "audioDurationSec": 18.714058956916098,
+      "qualityOracle": null,
+      "status": "pass",
+      "parity": "not assessed (unlabeled throughput run)",
+      "configuration": "fp16-I/O WebGPU encoder, fp32 CPU-KV decoder, native-rate audio",
+      "warmupMs": 3895.385,
+      "measured": {
+        "medianMs": 1526.58,
+        "nativeRtfx": 12.3668,
+        "wallRtfx": 12.253,
+        "phaseMs": { "preprocess": 136.675, "encode": 391.635, "decode": 976.91 },
+        "decodeIterations": 13,
+        "emittedTokenCount": 12
+      }
+    },
+    {
+      "family": "whisper-large-v3-turbo-4graph",
+      "resultPath": "N:/github/asrjs/webgpu-agent-test/_results/fp16io-fp32-webgpu-2026-08-29T17-01-42-580Z.json",
+      "resultSha256": null,
+      "audioDurationSec": 18.714058956916098,
+      "qualityOracle": null,
+      "status": "pass",
+      "parity": "not assessed (unlabeled throughput run)",
+      "configuration": "fp16-I/O WebGPU encoder, fp32 GPU-KV decoder, native-rate audio",
+      "warmupMs": 2537.35,
+      "measured": {
+        "medianMs": 2237.63,
+        "nativeRtfx": 8.4166,
+        "wallRtfx": 8.36,
+        "phaseMs": { "preprocess": 339.18, "encode": 607.245, "decode": 1264.56 },
+        "decodeIterations": 13,
+        "emittedTokenCount": 12,
+        "negativeResult": "GPU-KV is slower than CPU-KV on this clip; do not promote globally"
+      }
+    }
+  ],
+  "boundedFailures": [
+    {
+      "experiment": "whole 146.326 s JFK source",
+      "failureClass": "ONNX_GRAPH_INVALID",
+      "message": "encoder_outputs dimension 1: got 1830, expected 1024",
+      "interpretation": "static frame limit; use verified windows, not a throughput regression"
+    },
+    {
+      "experiment": "Parakeet v2 fp32 encoder browser load",
+      "failureClass": "ORT_EXTERNAL_DATA_UNAVAILABLE",
+      "message": "Module.MountedFiles is not available",
+      "interpretation": "current ORT Web 1.29 external-data boundary; historical fp32 comparison is blocked"
+    },
+    {
+      "experiment": "Parakeet v2 WASM cpuThreads > 1",
+      "failureClass": "WASM_THREADS_UNAVAILABLE",
+      "observation": "no result within a bounded 120 s browser observation",
+      "interpretation": "do not change the library default until threaded worker setup is repaired"
+    }
+  ]
+}
