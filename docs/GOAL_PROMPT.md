@@ -57,6 +57,12 @@ ORT Web 1.29.0 stable upgrade (2026-08-29):
   carrying the real resolved/integrity values
 - Validation: full suite 1008 passed / 18 artifact-gated skips; typecheck
   clean; lint 0 errors / 11 warnings; production build clean
+- Lockfile consistency follow-up (2026-08-29): the root lock declaration now
+  pins `onnxruntime-web` to the same exact `1.29.0` version as `package.json`
+  and records the existing Node `>=22` engine. Offline `npm install
+  --package-lock-only` and `npm ci --dry-run` both complete successfully;
+  `onnxruntime-node` retains its intentionally separate nightly
+  `onnxruntime-common` dependency.
 - Real-artifact backend suites all green on 1.29.0: GigaAM CTC 4/4, GigaAM
   RNN-T 2/2, SenseVoice 3/3, X-ASR 3/3 including public stateful streaming,
   Qwen 2/2 including the 1.5 GB fp16 decoder external-data mounts
