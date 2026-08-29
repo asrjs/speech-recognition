@@ -14,24 +14,24 @@
   },
   "method": {
     "baseline": "append each chunk to a growing Float32Array and run frontend.process() over the complete accumulated audio",
-    "candidate": "run frontend.processIncremental() over only newly stable frames with a bounded 400-sample tail; flush reflected boundary frames once with final=true",
+    "candidate": "append each chunk to the same growing audio buffer (matching the executor's current metadata cost), then run frontend.processIncremental() over only newly stable frames with a bounded 400-sample tail; flush reflected boundary frames once with final=true",
     "correctness": "candidate features are compared with one full-buffer process() result; max absolute error must be < 1e-6"
   },
   "scenarios": [
     {
       "durationSec": 2,
       "chunkCount": 10,
-      "baselineMedianMs": 29.3235,
-      "incrementalMedianMs": 10.1313,
-      "speedup": 2.8943,
+      "baselineMedianMs": 27.6353,
+      "incrementalMedianMs": 9.187,
+      "speedup": 3.0081,
       "maxAbs": 0
     },
     {
       "durationSec": 10,
       "chunkCount": 50,
-      "baselineMedianMs": 553.7899,
-      "incrementalMedianMs": 44.4326,
-      "speedup": 12.4636,
+      "baselineMedianMs": 552.8687,
+      "incrementalMedianMs": 50.5441,
+      "speedup": 10.9383,
       "maxAbs": 0
     }
   ],

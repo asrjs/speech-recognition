@@ -62,12 +62,17 @@ function runBaseline(frontend, audio) {
 
 function runIncremental(frontend, audio) {
   let tail = new Float32Array(0);
+  let accumulated = new Float32Array(0);
   let sampleCount = 0;
   let frameCount = 0;
   const pieces = [];
   const started = performance.now();
   for (let offset = 0; offset < audio.length; offset += CHUNK_SAMPLES) {
     const chunk = audio.subarray(offset, Math.min(audio.length, offset + CHUNK_SAMPLES));
+    // Match the executor's current cumulative-audio metadata copy. The
+    // benchmark isolates frontend work while keeping this known residual cost
+    // equal between baseline and candidate.
+    accumulated = append(accumulated, chunk);
     const result = frontend.processIncremental(tail, sampleCount, chunk, frameCount);
     pieces.push(result.features);
     tail = result.tail;

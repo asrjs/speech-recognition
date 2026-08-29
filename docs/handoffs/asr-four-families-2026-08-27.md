@@ -469,12 +469,14 @@ loop:
 
 | Audio | Chunks | Full recompute median | Incremental median | Speedup |
 | ---: | ---: | ---: | ---: | ---: |
-| 2 s | 10 | 29.3235 ms | 10.1313 ms | 2.8943x |
-| 10 s | 50 | 553.7899 ms | 44.4326 ms | 12.4636x |
+| 2 s | 10 | 27.6353 ms | 9.1870 ms | 3.0081x |
+| 10 s | 50 | 552.8687 ms | 50.5441 ms | 10.9383x |
 
-This is frontend-only CPU evidence, not an end-to-end RTFx claim. The executor
-still retains cumulative audio for stream-duration metadata, so removing that
-remaining O(n²) copy/allocation is a separate optimization task. Reproduce with
+This is frontend-only CPU evidence. Both sides include the executor's
+cumulative-audio copy, so the speedup is conservative; it is not an end-to-end
+RTFx claim. The executor still retains cumulative audio for stream-duration
+metadata, so removing that remaining O(n²) copy/allocation is a separate
+optimization task. Reproduce with
 `npm run benchmark:x-asr-frontend -- --runs=3 --durations=2,10 --json`.
 Evidence: `docs/reports/x-asr-incremental-frontend-benchmark-2026-08-29.json`.
 
