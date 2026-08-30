@@ -23,6 +23,20 @@ This is a single-package, ESM-first, speech-focused, headless and
 framework-neutral runtime. It is not a generic model zoo or multimodal
 framework.
 
+## Standing operating directives
+
+- Apply this goal continuously across sessions. Re-read this file at the
+  start of every session and resume from the current checkpoint / "Next
+  session tasks" section instead of restarting from scratch.
+- Prioritize work that makes measurable progress toward this goal. A turn
+  that only restates status or leaves unexecuted plans is not progress;
+  authoritative state changes, completed work, and new verified evidence are.
+- Keep this goal file current: record completed slices, measured findings,
+  negative results, and reusable lessons as work ships, and maintain the
+  stronger emphasis on model-specific performance optimization (the primary
+  directive below). The goal file is the source of truth for continuation;
+  external prompts should stay short and reference it.
+
 ## Current checkpoint and next bounded task (2026-08-30)
 
 The current mainline checkpoint is `f908346` (backup branch
