@@ -25,6 +25,20 @@ framework.
 
 ## Completed (2026-08-30 recent slices)
 
+eou-120m browser harness slice - HANDED OVER, not started in code
+(2026-08-30):
+
+- Operator correction (binding): model assets load from Hugging Face remote
+  repos and/or local HF model folders via the library source resolution and
+  JS-compatible fs paths - never direct N:/models vite routes or raw URL
+  artifacts. A first attempt using direct URLs produced a bogus
+  external-data locator (no repo-listing guard) and was fully rolled back;
+  webgpu-agent-test is back to its pre-slice state.
+- Full failure-chain diagnosis, the correct HF-source retry recipe, the
+  streaming-demo integration reference (which already wires eou-120m), and
+  the verified Node A/B context are recorded in
+  docs/handoffs/nemo-rnnt-browser-harness-handoff-2026-08-30.md. Pick the
+  slice up from that document.
 NeMo RNNT (eou-120m v1) speculative grid batching - shipped OPT-IN
 (2026-08-30):
 
