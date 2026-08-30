@@ -453,6 +453,24 @@ Qwen3-ASR decoder INT4 probe (2026-08-30, deferred - hangs):
 - Revisit only with a new ORT Web release, a static-shape decoder export,
   or fp16-first evidence; do not retry the same conversion blind.
 
+Qwen3-ASR decoder fp16 browser leg (2026-08-30, negative):
+
+- The resolver already ships an fp16 decoder variant
+  (decoder-*-fp16.onnx + 1.5 GB decoder-fp16.onnx.data) and the harness
+  now exposes it via --decoder-dtype=fp16 / ?decoderDtype=fp16 (result id
+  qwen3-asr-0.6b-official-webgpu-fp16dec). This composition had never
+  been measured in the browser; it was the natural non-INT4 test of the
+  decoder weight-bandwidth hypothesis.
+- Result: no payload within the 15-minute runner timeout (no render, no
+  posted result, exit 1), so the fp16 decoder does not complete on this
+  Chrome/ORT 1.29/Blackwell setup - same practical outcome as INT4.
+  Keep fp32 weights as the only completing browser decoder; recorded so
+  the fp16 path is not retried blind on this stack.
+- Qwen state after this round: argmax graph surgery rejected (reduction
+  kernel cost), graph capture rejected (dynamic KV shapes), INT4 hangs,
+  fp16 hangs. The remaining lever is a new artifact export (static cache
+  shapes, fused kernels) or a newer ORT Web - not runtime tuning.
+
 Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 
 - Greedy + GPU-KV on the 30 s JFK clip measures 27.02x RTFx (1106.6 ms
