@@ -1,0 +1,73 @@
+{
+  "preset": "x-asr-zh-en-160ms-wasm-stream",
+  "timestamp": "2026-08-30T01:12:49.507Z",
+  "status": "pass",
+  "transcript": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "qualityOracle": "fixed",
+  "transcriptAvailable": true,
+  "audio": {
+    "audioUrl": "/gigaam-audio/jfk-short.wav",
+    "sourceDurationSec": 11,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 11,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 6750.355000004172,
+        "rtfx": 1.6295439276887216,
+        "streamChunkCount": 55
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 6750.355000004172,
+      "rtfx": 1.6295439276887216,
+      "streamChunkCount": 55
+    }
+  ],
+  "runMetrics": [
+    {
+      "run": 1,
+      "transcribeMs": 6995.280000001192,
+      "rtfx": 1.572488878214757,
+      "streamChunkCount": 55
+    }
+  ],
+  "webgpu": false,
+  "backend": "wasm",
+  "engine": "onnxruntime-web",
+  "ortVersion": "1.29.0",
+  "streaming": "true-stateful-zipformer2",
+  "streamChunkCount": 55,
+  "encoderStateOutputLocation": "cpu",
+  "metrics": {
+    "loadMs": 6726.100000008941,
+    "transcribeMs": 6995.280000001192,
+    "totalMs": 20718.155000001192,
+    "rtf": 0.6359345454546538,
+    "rtfx": 1.572488878214757
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "onnxruntime-web: 1.29.0",
+    "session ready in 6726ms",
+    "encoder: runs=136 totalMs=13266 avgMs=97.54",
+    "decoder: runs=188 totalMs=97 avgMs=0.52",
+    "joiner: runs=175 totalMs=265 avgMs=1.52",
+    "joinerRows=622"
+  ]
+}

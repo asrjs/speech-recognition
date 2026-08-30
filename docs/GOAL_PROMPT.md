@@ -489,6 +489,23 @@ X-ASR speculative batched joiner decode (2026-08-30):
   WASM + streaming parity (XASR_ONNX_SMOKE=1, 3). Full suite green:
   1037 passed / 18 artifact-gated skips.
 
+X-ASR backend placement after batching (2026-08-30, deprioritized):
+
+- The Chrome harness gained an explicit --backend=wasm control (WebGPU
+  stays the default). On the 11.29 s / 55-chunk JFK fixture both paths are
+  exact: WebGPU 8336 ms / 1.3196x RTFx; all-WASM 6822 ms / 1.6124x RTFx
+  (~18% faster on this Blackwell/ORT 1.29 host). Profiled two-pass
+  encoder totals: WebGPU ~110.17 ms/run vs WASM ~97.54 ms/run; the
+  encoder dominates both backends.
+- Per user direction, X-ASR is deprioritized: it is a niche streaming
+  model whose README advertises streaming latency, so RTFx is not its
+  native metric. If revisited, measure per-chunk (algorithmic) latency
+  and first-token latency alongside throughput; until then no further
+  optimization cycles.
+- Evidence: docs/reports/x-asr-backend-placement-2026-08-30.md and
+  tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-wasm-stream
+  {-profiled,}-chrome.json.
+
 SenseVoice fp16 CTC decode hot path (2026-08-30):
 
 - argmaxAndSelectedLogProbsFp16 (src/ctc/decoder.ts, exported via

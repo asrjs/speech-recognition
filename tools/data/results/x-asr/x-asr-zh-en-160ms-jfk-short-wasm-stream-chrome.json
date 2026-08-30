@@ -1,0 +1,81 @@
+{
+  "preset": "x-asr-zh-en-160ms-wasm-stream",
+  "timestamp": "2026-08-30T01:13:54.164Z",
+  "status": "pass",
+  "transcript": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "expected": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+  "baselineMatch": true,
+  "qualityOracle": "fixed",
+  "transcriptAvailable": true,
+  "audio": {
+    "audioUrl": "/gigaam-audio/jfk-short.wav",
+    "sourceDurationSec": 11,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 11,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 6875.024999991059,
+        "rtfx": 1.5999941818414194,
+        "streamChunkCount": 55
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 6875.024999991059,
+      "rtfx": 1.5999941818414194,
+      "streamChunkCount": 55
+    }
+  ],
+  "runMetrics": [
+    {
+      "run": 1,
+      "transcribeMs": 7124.280000001192,
+      "rtfx": 1.5440156759698047,
+      "streamChunkCount": 55
+    },
+    {
+      "run": 2,
+      "transcribeMs": 6468.939999997616,
+      "rtfx": 1.70043314669854,
+      "streamChunkCount": 55
+    },
+    {
+      "run": 3,
+      "transcribeMs": 6822.125,
+      "rtfx": 1.6124008281876983,
+      "streamChunkCount": 55
+    }
+  ],
+  "webgpu": false,
+  "backend": "wasm",
+  "engine": "onnxruntime-web",
+  "ortVersion": "1.29.0",
+  "streaming": "true-stateful-zipformer2",
+  "streamChunkCount": 55,
+  "encoderStateOutputLocation": "cpu",
+  "metrics": {
+    "loadMs": 6952.719999998808,
+    "transcribeMs": 6822.125,
+    "totalMs": 34502.86500000954,
+    "rtf": 0.6201931818181818,
+    "rtfx": 1.6124008281876983
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "onnxruntime-web: 1.29.0",
+    "session ready in 6953ms"
+  ]
+}
