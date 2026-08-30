@@ -65,7 +65,12 @@ NeMo RNNT (eou-120m v1) speculative grid batching - shipped OPT-IN
   filename), fp16/int8 stay sequential unless explicitly opted in. Small
   models like eou-120m have no quantization pressure: fp32 is the fastest
   AND the only grid-safe decoder quant measured.
-- Validation: tests/nemo-rnnt-grid-batching.test.ts (7 tests, incl.
+- Follow-up shipped same day: grid batching is now REFUSED for int8 RNNT
+  decoders even when explicitly requested (recoverable warning
+  'nemo-rnnt.grid-batching-int8-unsupported'), enforcing the
+  options-must-not-change-semantics contract after the proven int8
+  transcript divergence. Suite 1062 passed / 18 skipped.
+- Validation: tests/nemo-rnnt-grid-batching.test.ts (9 tests, incl.
   decodeIterations equality with the sequential path and the fp32-on /
   int8-off default wiring); legacy executor mock now rejects grid requests
   shape-first without consuming scripted steps (pins sequential through

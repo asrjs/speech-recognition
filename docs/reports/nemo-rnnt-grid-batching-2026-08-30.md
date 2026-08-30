@@ -97,9 +97,11 @@ Evidence JSONs:
 
 ## Next steps
 
-1. Consider a hard safety net: refuse grid batching for int8 RNNT decoders
-   even when explicitly opted in, or gate it behind a warning, given the
-   proven transcript divergence.
+1. [Shipped same day] Hard safety net: grid batching is refused for int8
+   RNNT decoders even when explicitly opted in (recoverable warning
+   'nemo-rnnt.grid-batching-int8-unsupported'), because the tr-tdk-18s A/B
+   proved transcript divergence. fp16 stays explicitly opt-in (probe rows
+   are bit-exact; decode was parity).
 2. Browser demo page for the eou-120m preset in 'webgpu-agent-test'
    (none exists today; 'N:/github/asrjs/streaming-demo' already wires the
    eou-120m preset alongside TDT v2/v3 and is the integration reference)

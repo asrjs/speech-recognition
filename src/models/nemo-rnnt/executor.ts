@@ -647,19 +647,30 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       try {
         let frameIndex = 0;
         let emittedOnFrame = 0;
+        // Real-artifact A/B (eou-120m v1, Node WASM): fp32 decoder wins
+        // ~16-18% (jfk-short 216 vs 265 ms; tr-tdk-18s 342 vs 408 ms) with
+        // identical transcripts. fp16 rows are bit-exact (probe-verified)
+        // but decode was parity at best, so fp16 stays opt-in. int8 rows
+        // are NOT row-independent: dynamic-range requantization spans the
+        // wider [1, features, width] batched input and produced a DIFFERENT
+        // transcript than sequential decoding on tr-tdk-18s. Because
+        // options must not change output semantics, grid batching is
+        // refused for int8 decoders even when explicitly requested, and a
+        // recoverable warning is surfaced.
+        if (options.gridBatching === true && loaded.decoderQuantization === 'int8') {
+          warnings.push({
+            code: 'nemo-rnnt.grid-batching-int8-unsupported',
+            message:
+              'Speculative grid batching was requested but is refused for int8 RNNT decoders: dynamic-range requantization over the wider batched encoder input breaks row independence and produced divergent transcripts on real audio. Decoding sequentially.',
+            recoverable: true,
+          });
+        }
+        const gridBatchingSupported = loaded.decoderQuantization !== 'int8';
+        const gridBatchingEnabled =
+          (options.gridBatching ?? loaded.decoderQuantization === 'fp32') &&
+          gridBatchingSupported;
         while (frameIndex < frameCount) {
           throwIfDecodeAborted(options.signal);
-          // Real-artifact A/B (eou-120m v1, Node WASM): fp32 decoder
-          // wins ~16-18% (jfk-short 216 vs 265 ms; tr-tdk-18s 342 vs 408
-          // ms) with identical transcripts. int8 regressed on jfk-short
-          // (~40%) and produced a DIFFERENT transcript on tr-tdk-18s
-          // (dynamic-range requantization spans the wider
-          // [1, features, width] input, so rows are not independent).
-          // fp16 was parity at best. Default: grid batching ON for fp32
-          // decoders only; other quants stay sequential unless explicitly
-          // opted in via options.gridBatching.
-          const gridBatchingEnabled =
-            options.gridBatching ?? loaded.decoderQuantization === 'fp32';
           if (
             this.rnntBatchAllowed &&
             gridBatchingEnabled &&

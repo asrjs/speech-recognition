@@ -304,6 +304,49 @@ describe('nemo-rnnt speculative grid batching', () => {
     await fixture.executor.dispose();
   });
 
+  it('refuses explicit grid batching on int8 decoders with a recoverable warning', async () => {
+    const script: RnntScript = (frame, target) =>
+      frame === 6 && target === BLANK ? HELLO : BLANK;
+    const fixture = createFixture({
+      frameCount: 12,
+      script,
+      decoderQuantization: 'int8',
+    });
+    const result = await fixture.executor.transcribe(
+      createAudio(),
+      { gridBatching: true },
+      {} as never,
+    );
+    expect((result.metrics as Record<string, unknown>).decoderGridBatchRuns)
+      .toBe(0);
+    expect(fixture.decoderSession.calls.every((call) => call.width === 1)).toBe(true);
+    const warningCodes = ((result.warnings as Array<{ code: string }>) ?? [])
+      .map((warning) => warning.code);
+    expect(warningCodes).toContain('nemo-rnnt.grid-batching-int8-unsupported');
+    await fixture.executor.dispose();
+  });
+
+  it('allows explicit grid batching on fp16 decoders (bit-exact rows, parity timing)', async () => {
+    const script: RnntScript = (frame, target) =>
+      frame === 6 && target === BLANK ? HELLO : BLANK;
+    const fixture = createFixture({
+      frameCount: 12,
+      script,
+      decoderQuantization: 'fp16',
+    });
+    const result = await fixture.executor.transcribe(
+      createAudio(),
+      { gridBatching: true },
+      {} as never,
+    );
+    expect((result.metrics as Record<string, unknown>).decoderGridBatchRuns)
+      .toBeGreaterThan(0);
+    const warningCodes = ((result.warnings as Array<{ code: string }>) ?? [])
+      .map((warning) => warning.code);
+    expect(warningCodes).not.toContain('nemo-rnnt.grid-batching-int8-unsupported');
+    await fixture.executor.dispose();
+  });
+
   it('keeps int8 decoders sequential by default', async () => {
     const script: RnntScript = (frame, target) =>
       frame === 6 && target === BLANK ? HELLO : BLANK;
