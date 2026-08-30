@@ -68,3 +68,24 @@ search:
 - Batched GPU beam (batch>1 per step) remains future work; scalar GPU beam
   steps already remove the dominant CPU-KV round-trip cost.
 
+## Wider-beam coverage + guard-divergence correction (later the same day)
+
+- Audit finding: the `numBeams <= 2` guard added by the beam-5 failure
+  guard (commit 4d55b30) was never actually removed, even though the
+  follow-up fix commit (687f39d, 3x prune lag) and docs claimed "all beam
+  sizes validated". Every beam-3/beam-5 page hit the greedy-only assert
+  and errored; the committed "beam5-gpu-kv-jfk-30s.json" recorded
+  decoding.numBeams=2. Lesson: verify evidence JSON fields against the
+  claimed config before writing "validated".
+- The guard is now genuinely removed (executor.ts gpuKvBeamActive gate).
+- Re-measured on the current build (Chrome headless, fp16io, 3x-lag code):
+  - beam-3 jfk-30s: 2234.1 ms measurement run (~13.4x RTFx), 50 tokens,
+    byte-identical to beam-2 GPU-KV (beam3-gpu-kv-jfk-30s.json)
+  - beam-5 jfk-30s: 3090.0 ms measurement run (~9.7x RTFx), 50 tokens,
+    byte-identical; this is the first genuine numBeams=5 GPU-KV pass
+    (beam5-gpu-kv-jfk-30s.json, overwritten with the real beam-5 run)
+  - beam-2 + word timestamps jfk-10s (noTimestamps=0): pass, 16 words with
+    sane spans ("In" 0-0.2 s ... "role..." 8.062-9.173 s), same 50-token
+    prefix (beam2-gpu-kv-timestamps-jfk-10s.json)
+- No premature-disposal errors appeared at beam-3 or beam-5 with the 3x
+  lag, confirming the root-cause fix across beam sizes.

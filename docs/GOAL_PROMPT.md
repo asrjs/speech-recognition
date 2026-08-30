@@ -611,20 +611,29 @@ Whisper stable-beam GPU-KV implementation (2026-08-30, SHIPPED):
   premature decoder-KV disposal - the prune lag of exactly numBeams
   generations is too tight because beam position shifts between strategy
   steps push a live beam's next feed beyond the lag. Fix: 3x numBeams lag
-  (validated beam-2 and beam-5, byte-exact transcripts, no 'none' errors);
+  (the lag fix itself is real, but the "beam-5 validated" wording was
+  premature: the numBeams<=2 guard was never removed from code at that
+  point, so every beam-3/5 page was rejected by the greedy-only assert and
+  the beam5 evidence JSON actually recorded numBeams=2);
   PipelineAbortedError now re-throws from the gpu-beam catch so abort
   semantics hold; error messages carry generation + feed locations for
-  future diagnosis. numBeams<=2 restriction removed - all beam sizes
-  validated with the wider lag.
+  future diagnosis.
 - Boundary found and guarded: beam-5 GPU-KV hits a premature-disposal bug -
   at ~gen 30 ALL decoder KV feeds report location 'none' (disposed) while
   encoder KV stays gpu-buffer; the generation pruner collects a
   still-referenced record in the 5-beam case (per-feed touch refresh makes
   2-beam safe but not 5-beam). Guarded: experimentalGpuKvBeam now requires
   numBeams <= 2 (invalid configs fall back to the CPU-KV oracle path).
-  Open: root-cause the 5-beam lifetime (hypothesis: multi-beam shared
-  records + per-runStep generation refresh interact badly with the lag
-  threshold); diagnostics enrichment remains in the error path.
+  Root-caused by the 3x-numBeams prune lag. RESOLVED with genuine wider
+  coverage (2026-08-30 same day): the numBeams<=2 guard is now actually
+  removed and beam-3/beam-5 measured on Chrome headless (fp16io, 3x-lag
+  code): beam-3 2234.1 ms (~13.4x RTFx) and beam-5 3090.0 ms (~9.7x) on
+  jfk-30s, both 50 tokens byte-identical to the beam-2 GPU-KV transcript;
+  beam-2 + word timestamps (jfk-10s) passes with 16 sane word spans.
+  Evidence: tools/data/results/whisper/beam{3,5}-gpu-kv-jfk-30s.json and
+  beam2-gpu-kv-timestamps-jfk-10s.json. Process lesson: check the
+  evidence JSON's decoding.numBeams against the claimed config before
+  writing "validated"; that check is how this false-complete was caught.
 
 Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 

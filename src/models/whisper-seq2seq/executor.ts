@@ -3645,11 +3645,12 @@ export class WhisperOnnxExecutor {
     const gpuKvBeamActive = splitLoaded.experimentalGpuKvBeam === true
       && splitLoaded.decoderBackendForOrt === 'webgpu'
       && requestedNumBeams > 1
-      // VALIDATED CONFIGURATION: beam-5 GPU-KV hits a premature-disposal bug
-      // (decoder KV tensors report location 'none' at ~gen 30 while encoder
-      // KV stays gpu-buffer). Restricted until root-caused; see
-      // docs/reports/whisper-beam2-gpu-kv-2026-08-30.md.
-      && requestedNumBeams <= 2
+      // Root cause of the earlier beam-5 premature-disposal failure was a
+      // prune lag of exactly numBeams generations; 3x numBeams (below) fixes
+      // it. The former numBeams<=2 restriction was never validated at wider
+      // beam sizes while the guard was active, so it is removed here and
+      // beam-3/beam-5 coverage is re-measured in the same change (see
+      // docs/reports/whisper-beam2-gpu-kv-2026-08-30.md evidence).
       && requestedBestOf <= 1
       && requestedTemperature === 0;
 
