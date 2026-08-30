@@ -293,8 +293,17 @@ export async function createOrtSession(
 
   const createOptions =
     withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
+  // Low-noise lifecycle marker (one line per session, not per run): makes
+  // hangs and slow creates attributable to a specific artifact in headless
+  // captures without changing any behavior.
+  console.info('[ort] session create start', options.backendId, sessionModelUrl);
+  const createStarted = Date.now();
   return honorAbortAfterCreate(
-    () => ort.InferenceSession.create(sessionModelUrl, createOptions),
+    () =>
+      ort.InferenceSession.create(sessionModelUrl, createOptions).then((session) => {
+        console.info('[ort] session created', options.backendId, sessionModelUrl, `${Date.now() - createStarted}ms`);
+        return session;
+      }),
     options.signal,
     (session) => releaseOrtSession(session),
   );

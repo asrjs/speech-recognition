@@ -429,7 +429,40 @@ GigaAM RNN-T encoder INT8 probe (2026-08-30):
   int8-matmul-encgpu-decwasm-example,
   int8-matmul-encwasm-decwasm-example}.json.
 
-Qwen3-ASR decoder INT4 probe (2026-08-30, deferred - hangs):
+CORRECTION (2026-08-30): Qwen decoder variants fp32/fp16/INT4 complete in
+the browser; earlier "hang" conclusions were a harness defect.
+
+- Evidence-integrity note: the syntax error in
+  webgpu-agent-test/src/qwen-asr-webgpu.js (a stray brace introduced by the
+  INT4 patch) prevented the page module from evaluating at all, so the page
+  posted no payload and every leg timed out - that defect, not the
+  artifacts or ORT, produced the "int4 hangs" / "fp16 hangs" conclusions
+  and the nightly "still hangs" reading below. Found via a control leg:
+  the fp32 composition went silent the same way, and vite reported a
+  transform error. All harness pages now pass esbuild parse gates.
+- Corrected browser results (Chrome, ORT Web 1.29, Blackwell, jfk 11 s,
+  warmup + 3, exact fixed oracle):
+  - fp32 decoder: median 5276 ms / 2.08x RTFx, stepAvg 101.8-105.3 ms;
+  - fp16 decoder: median 5185 ms / 2.12x RTFx, stepAvg 101.9-103.6 ms;
+  - INT4 MatMulNBits decoder: median 5106 ms / 2.19x RTFx, stepAvg
+    97.1-102.5 ms.
+- Interpretation: all three precisions complete and are precision-
+  insensitive (~100 ms/step each today), so precision reduction is not a
+  Qwen speed lever in this environment state. INT4 additionally carries
+  real numerical drift on synthetic CPU probes (max abs ~20.4, cosine
+  ~0.63) - keep it off by default. fp16 offers no benefit. No promotion.
+- Environment warning (matches the Parakeet v3 check below): yesterday's
+  fp32 control measured 1612 ms / 6.82x (stepAvg ~48-55 ms) on the same
+  fixture and stack; today it is 5276 ms / 2.08x - a ~2.2x session-level
+  swing. Cross-day RTFx comparisons for decode-loop-heavy models must
+  cite capture date and re-run through the unified matrix.
+- Still true: ORT 1.29.0 remains the pin (latest stable); the 1.30-dev
+  nightly remains unpromoted (dev build, no demonstrated win - though its
+  "still hangs" rejection is withdrawn as measured against the broken
+  page). Real numerical drift rules INT4 out on quality grounds
+  regardless of speed.
+
+Qwen3-ASR decoder INT4 probe (2026-08-30, SUPERSEDED - see correction):
 
 - Hypothesis: the 0.6B decoder step is weight-read-bound (30 steps x
   ~47-54 ms with 3 GB fp32 external weights matches an effective
@@ -453,7 +486,7 @@ Qwen3-ASR decoder INT4 probe (2026-08-30, deferred - hangs):
 - Revisit only with a new ORT Web release, a static-shape decoder export,
   or fp16-first evidence; do not retry the same conversion blind.
 
-Qwen3-ASR decoder fp16 browser leg (2026-08-30, negative):
+Qwen3-ASR decoder fp16 browser leg (2026-08-30, SUPERSEDED - see correction):
 
 - The resolver already ships an fp16 decoder variant
   (decoder-*-fp16.onnx + 1.5 GB decoder-fp16.onnx.data) and the harness
@@ -471,7 +504,7 @@ Qwen3-ASR decoder fp16 browser leg (2026-08-30, negative):
   fp16 hangs. The remaining lever is a new artifact export (static cache
   shapes, fused kernels) or a newer ORT Web - not runtime tuning.
 
-Qwen hang isolation and ORT 1.30-dev nightly probe (2026-08-30, negative):
+Qwen hang isolation and ORT 1.30-dev nightly probe (2026-08-30, SUPERSEDED - see correction; CPU isolation finding remains valid):
 
 - Refined diagnosis: the fp16 decoder-step artifact is healthy on ORT CPU
   (one step in 0.33 s, fp16 logits argmax matches the fp32 reference on
@@ -500,7 +533,10 @@ Unified all-models shared-window benchmark (2026-08-30):
   37.15x normalized-exact, Parakeet v3 int8 hybrid 20.44x exact,
   GigaAM CTC 90.11x, GigaAM RNN-T 32.41x, SenseVoice 46.79x. Qwen posted
   no payload within 15 minutes on this window and is recorded as
-  artifact-fragile beyond the 11 s fixture.
+  artifact-fragile beyond the 11 s fixture. [CORRECTION: the Qwen "no
+  payload" cause was the harness page defect (see the correction section
+  above), not the artifact; re-measure Qwen on this window with the fixed
+  page before drawing window-length conclusions.]
 - Two methodology catches from the first bring-up: (1) the Parakeet
   runner defaults to the full-WebGPU decoder composition - the hybrid
   requires --mode=wasm, and running the wrong one initially looked like a
