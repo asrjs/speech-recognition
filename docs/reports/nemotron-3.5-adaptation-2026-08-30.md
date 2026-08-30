@@ -65,6 +65,46 @@ Contract facts, all consistent with the published `nemotron_onnx_config.json`:
   `f3d333391852ba876df169dcc9ba902d25b6ab0b`). No original-engine output has
   been captured yet.
 
+## Official reference capture (2026-08-30, this turn)
+
+Step 3a complete. The official NeMo reference runner
+(`tools/model-debugging/reference/nemotron-3.5-asr-streaming/run_reference.py`)
+was executed on both committed fixtures using an isolated venv (NeMo 3.0.0
+shadowing conda 2.4.0, `use_lhotse=False` to avoid the Windows
+`WinError 267` temp-dir + Lhotse bug). Results in
+`tools/data/results/nemotron/nemotron-3.5-official-reference-2026-08-30.json`:
+
+| Fixture | Tokens | Score | Text |
+| --- | ---: | ---: | --- |
+| jfk-short.wav | 48 | −7.06 | And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your country. <en-US> |
+| librivox-blankgaps-synthetic.wav | 111 | −10.12 | Preface of a year with the birds this is a Librivox recording. <en-US> All Librivox recording. <en-US> Links are in the public domain. <en-US> For more information or to volunteer, please visit librivox dot org read by Olivia. <en-US> |
+
+Key findings:
+
+- The prompt system injects `<en-US>` language-ID tags at chunk boundaries;
+  this is expected cache-aware streaming behavior, not a tokenizer artifact.
+- The official NeMo preprocessor uses 128-bin mel, 25 ms window, 10 ms
+  stride, NA normalization, dither 1e-5. The JS frontend must match these
+  exact parameters before any ONNX graph execution claims.
+- The prompt dictionary has 128 entries (`auto=101`, `tr=18`, `en=0`),
+  matching the community export's `nemotron_onnx_config.json`.
+- Streaming API is available: `conformer_stream_step`,
+  `transcribe_simulate_cache_aware_streaming`. The offline runner is a
+  stepping stone, not the final streaming adapter.
+
+Reusable lessons:
+
+- NeMo 2.4.0 lacks the prompt-RNNT class (`rnnt_bpe_models_prompt`);
+  the required module only exists on NeMo `main` / PyPI 3.0.0. Create an
+  isolated venv with `--system-site-packages` to inherit torch/numpy from
+  conda, then `pip install --no-deps` the 3.0.0 wheel. This avoids
+  upgrading the conda env and breaking other projects.
+- NeMo's `transcribe()` writes a temp `manifest.json` for the Lhotse
+  dataloader; this path is broken on Windows (`WinError 267`). Always
+  pass `use_lhotse=False` in the Windows reference runner.
+- For per-fixture transcription, pass a single-element list and read
+  `hypotheses[0]` (NeMo returns a list of lists).
+
 ## Next steps (in order)
 
 1. Run official NeMo inference on jfk-short plus a speech/silence streaming

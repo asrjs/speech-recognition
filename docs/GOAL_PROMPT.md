@@ -76,6 +76,17 @@ verified against the HF-published LFS hash `210214ed…`).
     (40.6 s speech/silence streaming fixture). Capture reference transcripts,
     token IDs, and chunk-boundary emissions into dated JSON under
     `tools/data/results/nemotron/`; labels and throughput stay separate.
+3a. **DONE**. Official NeMo reference runner at
+    `tools/model-debugging/reference/nemotron-3.5-asr-streaming/run_reference.py`
+    (NeMo 3.0.0 venv shadowing conda 2.4.0, `use_lhotse=False` Windows fix,
+    per-fixture transcription with partial-JSON writes). Results:
+    - jfk-short.wav: 48 tokens, score \u22127.06
+    - librivox-blankgaps-synthetic.wav: 111 tokens, score \u221210.12
+    Evidence: `tools/data/results/nemotron/nemotron-3.5-official-reference-2026-08-30.json`.
+    The prompt system injects `<en-US>` language-ID tags at chunk boundaries
+    (expected for cache-aware streaming models). Tokenizer is 13087 tokens;
+    blank id 13087.
+
 3b. Verify the JS 128-bin mel frontend against the official NeMo features
     before running any exported graph end to end.
 4.  Climb the parity ladder on the audited community export: native ORT, then
