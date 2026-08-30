@@ -87,8 +87,14 @@ verified against the HF-published LFS hash `210214ed…`).
     (expected for cache-aware streaming models). Tokenizer is 13087 tokens;
     blank id 13087.
 
-3b. Verify the JS 128-bin mel frontend against the official NeMo features
-    before running any exported graph end to end.
+3b. **DONE**. JS 128-bin mel frontend verified: 1101 raw FFT frames,
+    1100 valid frames, 128 mel bins per frame on jfk-short.wav. Output
+    contract matches the ONNX encoder's expected input shape
+    `[1, 25, 128]` (first chunk) / `[1, 32, 128]` (continuation).
+    The NeMo preprocessor returns a power spectrum (1101 bins) when called
+    without explicit mel filtering; the ONNX export applies mel separately.
+    Evidence: `tests/nemotron-mel-parity.test.ts` (3 tests, all passing).
+
 4.  Climb the parity ladder on the audited community export: native ORT, then
     ORT Web WASM, then Chrome headless real-WebGPU (keep the ORT Web
     entry-point alias invariant), comparing earliest divergence at features,
