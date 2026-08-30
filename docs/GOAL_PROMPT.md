@@ -559,6 +559,31 @@ Parakeet v3 20x-vs-37x reproducibility check (2026-08-30):
   should cite the capture date and be re-verified through the unified
   matrix before being used as promotion baselines.
 
+Whisper stable-beam gap attribution (2026-08-30, design recorded):
+
+- Beam 2 measures 5.57x vs greedy 27.02x on the same fixture. Attribution
+  complete: GPU-KV hard-rejects beam search (assert in
+  src/models/whisper-seq2seq/executor.ts before the runGreedyGpuKvDecode
+  dispatch), so beams run the snapshot-based CPU-KV path. Every beam step
+  round-trips the whole KV to CPU: copyAndReleaseWhisperPresentKv copies
+  gpu buffers into plain snapshots and releases them, then runStep
+  re-materializes fresh tensors via cloneDecoderKvDataForInput. Cost grows
+  with sequence length and explains ~48 ms/step x 98 executions vs
+  greedy's ~14 ms x 49 on GPU-resident KV.
+- Designed fix (next Whisper slice, not yet implemented): a tensor-
+  carrying KV variant for beams. Requires (1) extending
+  WhisperKvCacheValue/core.ts contract to allow gpu tensor handles beside
+  ArrayBufferView snapshots, (2) runInit/runStep callbacks that pass
+  gpu-buffer present tensors through without copy/release, (3) refcounted
+  disposal because sibling beams legally share one parent KV tensor
+  (read-only feeds), (4) decoder init/step sessions created with the
+  existing createWhisperGpuKvOutputLocation wiring, behind a new opt-in
+  flag (experimentalGpuKvBeam), greedy path untouched.
+- Expected win if parity holds: beam 2 decode ~4.8 s -> ~1.5-2 s
+  (RTFx ~5.6x -> ~10-14x), keeping the CPU-KV stable beam as the
+  correctness oracle. Gates: identical token transcript vs CPU beam 2,
+  disposal soak without gpu-buffer double-free, abort mid-beam.
+
 Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 
 - Greedy + GPU-KV on the 30 s JFK clip measures 27.02x RTFx (1106.6 ms
