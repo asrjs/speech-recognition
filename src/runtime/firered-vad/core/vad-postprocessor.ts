@@ -77,15 +77,15 @@ export class VadPostprocessor {
       return probs.slice();
     }
     const out = new Array<number>(probs.length);
-    const window: number[] = [];
     let sum = 0;
+    const windowSize = this.smoothWindowSize;
     for (let i = 0; i < probs.length; i += 1) {
-      window.push(probs[i]!);
       sum += probs[i]!;
-      if (window.length > this.smoothWindowSize) {
-        sum -= window.shift() ?? 0;
+      if (i >= windowSize) {
+        sum -= probs[i - windowSize]!;
       }
-      out[i] = sum / window.length;
+      const len = i < windowSize ? i + 1 : windowSize;
+      out[i] = sum / len;
     }
     return out;
   }
