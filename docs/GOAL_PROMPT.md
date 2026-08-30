@@ -25,8 +25,8 @@ framework.
 
 ## Current checkpoint and next bounded task (2026-08-30)
 
-The current mainline checkpoint is `5cb3b78` (backup branch
-`backup/pre-hf-candidate-survey-push-2026-08-30`). The multilingual candidate
+The current mainline checkpoint is `f908346` (backup branch
+`backup/pre-nemotron-audit-push-2026-08-30`). The multilingual candidate
 survey slice is complete: the reusable Hugging Face survey CLI
 (`tools/scripts/survey-hf-asr-candidates.mjs`, npm script
 `survey:asr-candidates`), three dated JSON snapshots, the promote/adapt/defer
@@ -51,9 +51,31 @@ audited and recorded in
 The `conda env nemo` (NeMo 2.4.0, torch 2.6.0) is confirmed ready for the
 official reference chain, and the official NVIDIA checkpoint is downloaded at
 `N:/models/nemo/nemotron-3.5-asr-streaming-0.6b/` (2.26 GB `.nemo`, SHA-256
-verified against the HF-published LFS hash `210214ed…`). Next: capture
-original-engine references on jfk-short and a speech/silence fixture
-(step 3), then the parity ladder (step 4).
+verified against the HF-published LFS hash `210214ed…`).
+
+**Next session tasks, in this exact order (do not skip ahead):**
+
+3a. Write the official NeMo reference runner under
+    `tools/model-debugging/reference/nemotron-3.5-asr-streaming/` and run it on
+    the committed fixtures `tools/data/fixtures/audio/jfk-short.wav` (labeled
+    transcript oracle) and `tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav`
+    (40.6 s speech/silence streaming fixture). Capture reference transcripts,
+    token IDs, and chunk-boundary emissions into dated JSON under
+    `tools/data/results/nemotron/`; labels and throughput stay separate.
+3b. Verify the JS 128-bin mel frontend against the official NeMo features
+    before running any exported graph end to end.
+4.  Climb the parity ladder on the audited community export: native ORT, then
+    ORT Web WASM, then Chrome headless real-WebGPU (keep the ORT Web
+    entry-point alias invariant), comparing earliest divergence at features,
+    encoder caches, predictor state, joint logits, tokens, and text.
+5.  Only after exact-token parity: design the Nemotron RNNT adapter (reuse
+    NeMo RNNT predictor/joint machinery where proven shared; cache-aware
+    chunked encoder stays model-specific), then measure streaming latency
+    (first-partial, per-chunk, steady-state RTFx, memory) in the browser
+    harness.
+
+No adapter code and no performance claims are permitted before step 4 parity
+evidence exists.
 
 1. Acquire artifacts into a local HF-compatible model folder: the community
    streaming export (`codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx`,
