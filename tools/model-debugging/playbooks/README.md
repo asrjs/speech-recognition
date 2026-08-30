@@ -31,6 +31,8 @@ from a proven path instead of rediscovering the workflow.
   - keep `onnxruntime-web/webgpu` on the WebGPU bundle; diagnose provider-alias regressions before changing model code
 - [huggingface-model-publishing.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\huggingface-model-publishing.md)
   - adapt a validated local model folder into our ONNX repo card format and publish it with `hf` CLI
+- [candidate-discovery.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\candidate-discovery.md)
+  - snapshot Hugging Face ASR popularity and artifact signals, then choose promote/adapt/defer before a new port
 
 ## When To Create A New Playbook
 

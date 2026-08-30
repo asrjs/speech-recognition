@@ -23,6 +23,36 @@ This is a single-package, ESM-first, speech-focused, headless and
 framework-neutral runtime. It is not a generic model zoo or multimodal
 framework.
 
+## Current checkpoint and next bounded task (2026-08-30)
+
+The current mainline checkpoint is `7d967e2` (with backup branch
+`backup/pre-rnnt-reprobe-push-2026-08-30`). The NeMo TDT and RNNT speculative
+grid-batching gates are now complete across both executors: sustained blank
+runs re-open the utilization probe, quantized RNNT graphs refuse unsafe int8
+row batching, and real-artifact A/B measurements preserve transcripts while
+showing 29% blank-dominant browser improvement for TDT and 36-52% natural-audio
+decode improvement for RNNT. The complete evidence and 1064-pass validation
+are recorded in the two grid-batching reports and result JSONs below.
+
+The next bounded objective is a recurring **multilingual ASR candidate survey**
+driven by the Hugging Face model index and the local/sibling implementation
+catalog. For each snapshot, record download signal, language scope, license,
+original/reference engine, ONNX/external-data availability, WASM/WebGPU or
+Transformers.js evidence, model size, and whether this library already covers
+the family. Classify candidates before implementation:
+
+- promote an artifact-backed candidate only when it adds differentiated value
+  (quality, language coverage, streaming, or a materially better graph);
+- adapt and benchmark an existing ONNX/WebGPU implementation rather than
+  duplicating it;
+- defer candidates with no browser-ready path until an approved reference
+  chain and export plan exist; preserve the reason and failure category.
+
+The survey is an input to one bounded port at a time, not permission to start
+many model ports concurrently. Re-run it when model popularity or browser
+artifacts change, and keep the snapshot separate from quality labels and
+throughput claims.
+
 ## Completed (2026-08-30 recent slices)
 
 NeMo RNNT gate re-probe port; natural-audio decode win doubled
@@ -200,7 +230,7 @@ Speculative batched joiner for GigaAM RNN-T (2026-08-30):
   WASM-jointed RNN-T needs bounded/adaptive batch width. The per-step
   tiny-dispatch floor remains (~100 emissions x 2 small runs); the next
   decoder-side candidate is a GRU-capable decoder-on-GPU placement once
-  dispatch overhead improves (built-in or plugin EP kernel work).
+  dispatch overhead and provider coverage justify another measured probe.
 
 The following work is done and pushed on `main` (backup branch
 `backup/pre-browser-webgpu-state-push-2026-08-29`). Details:
@@ -1054,6 +1084,12 @@ Earlier streaming and validation slices:
   re-deriving them. Every slice that debugged something non-obvious must end
   with at least one written, reusable lesson.
 
+- Candidate-discovery learning directive: keep the Hugging Face popularity
+  snapshot, artifact/file signals, local sibling-repo evidence, and the
+  resulting promote/adapt/defer decision together. A model page or a demo is
+  not proof of ONNX/WebGPU parity; verify the exact files, source revision,
+  graph contract, and browser behavior before calling a candidate viable.
+
 ## Model-specific performance optimization (primary directive)
 
 For every supported or newly ported ASR model, working correctly is the
@@ -1516,6 +1552,29 @@ kernels, and similar optimizations opt-in until token/text parity, cache
 safety, and memory behavior are independently proven.
 
 ## Candidate selection and failure handling
+
+### Recurring multilingual candidate survey
+
+Use `tools/scripts/survey-hf-asr-candidates.mjs` to capture a dated,
+machine-readable snapshot from the Hugging Face automatic-speech-recognition
+index. The script also inspects selected repository file lists for ONNX,
+external data, GGUF, and WASM signals. Supplement those signals with model
+cards, official repositories, and the sibling `onnx-asr`, `parakeet.js`, and
+Transformers.js-derived demos. Explicitly check whether a browser/WebGPU
+implementation already exists (including ONNX Community artifacts and HF
+Spaces) before selecting a port.
+
+The survey's first review set should include the high-signal multilingual or
+recent families found in the snapshot: NVIDIA Nemotron 3.5 streaming 0.6B,
+Fun-ASR MLT Nano 2512, IBM Granite Speech 4.1 (AR and NAR), GLM-ASR Nano,
+Voxtral, Canary variants, Qwen3-ASR variants, and the existing Parakeet,
+Whisper, GigaAM, and SenseVoice families for duplicate detection. Record
+whether each is already implemented here and choose at most one bounded next
+port/adaptation after the mandatory original-weight/reference/export/parity
+chain is satisfied. Small models such as eou-120m should remain fp32 when
+measurements show that fp32 is fastest and quantization gives no useful memory
+benefit; never quantize solely because a candidate table lists a quantized
+file.
 
 Evaluate FireRedASR2-AED, FireRedASR2-LLM, Qwen3-ASR 0.6B, SenseVoice,
 X-ASR, newer streaming models, and other candidates by:

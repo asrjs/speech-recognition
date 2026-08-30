@@ -85,6 +85,11 @@ For most debugging or parity tasks:
 4. compare against a reference script set only if needed
 5. save useful output under `tools/data/results`
 
+Before opening a new model-port branch, run the dated candidate survey and
+read [candidate-discovery.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\candidate-discovery.md).
+It separates Hugging Face popularity from verified ONNX/WebGPU evidence and
+helps avoid duplicating an existing browser implementation.
+
 ## Current Lesson From LibriVox
 
 The recent `LibriVox.org` debugging work reinforced an important rule for

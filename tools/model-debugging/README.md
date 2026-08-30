@@ -25,6 +25,7 @@ tools/model-debugging/
     README.md
     audio-prep-parity.md
     canary-aed-porting.md
+    candidate-discovery.md
     huggingface-model-publishing.md
     librivox-domain-parity.md
     nemo-rnnt-porting.md
@@ -134,6 +135,7 @@ Start with the curated reference set in:
 
 - [audio-prep-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\audio-prep-parity.md)
 - [canary-aed-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\canary-aed-porting.md)
+- [candidate-discovery.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\candidate-discovery.md)
 - [huggingface-model-publishing.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\huggingface-model-publishing.md)
 - [librivox-domain-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\librivox-domain-parity.md)
 - [nemo-rnnt-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\nemo-rnnt-porting.md)

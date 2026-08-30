@@ -165,6 +165,7 @@
     "benchmark:x-asr-frontend": "npm run build && node tests/smoke/benchmark-x-asr-frontend.mjs",
     "benchmark:whisper-beam": "vitest run tests/whisper-beam-search-benchmark.test.ts",
     "benchmark:hot-paths": "npm run build && node tests/smoke/benchmark-hot-paths.mjs",
+    "survey:asr-candidates": "node tools/scripts/survey-hf-asr-candidates.mjs",
     "test:whisper-beam-reference": "npm run build && node tests/smoke/whisper-beam-reference.mjs",
     "docs:clean": "node -e \"require('fs').rmSync('.typedoc-site', { recursive: true, force: true })\"",
     "docs:api": "node ./node_modules/typedoc/bin/typedoc --options typedoc.json",
