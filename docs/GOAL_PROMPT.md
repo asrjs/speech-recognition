@@ -1012,12 +1012,22 @@ surfaces. Work items, in order:
    below. The `decoderStateOutputLocation` path is opt-in and preserves the
    default encoder-WebGPU/decoder-WASM composition until cross-adapter
    lifecycle evidence justifies promotion.
-2. [Qwen placement/profile sub-slice completed 2026-08-29] Measure
+2. [Qwen placement/profile sub-slice completed 2026-08-29; GigaAM RNN-T
+   per-component 18 s placement A/B completed 2026-08-30] Measure
    per-component placement again for every family on 1.29.0 — the X-ASR
    WASM-vs-WebGPU and buffer-cache conclusions may shift with the new EP;
    re-benchmark instead of inheriting old verdicts. Qwen's corrected browser
-   entry-point A/B and decoder phase profile are recorded above; remaining
-   family measurements and cross-browser repetition stay open.
+   entry-point A/B and decoder phase profile are recorded above. GigaAM RNN-T
+   per-component placement was re-measured on the shared 18.7 s warmed fixture
+   on 2026-08-30: shipped hybrid 27.9x, decoder-GPU 4.19x, all-GPU 2.63x, and
+   joint-GPU timing out beyond the 600 s harness budget (bounded to 5.11x on a
+   5 s clip); all four placements produced identical transcripts, confirming
+   parity. Verdict: the hybrid composition is placement-optimal; the GPU
+   penalty is per-step dispatch on tiny recurrence graphs, consistent with the
+   Parakeet GRU and plugin-EP findings. Evidence:
+   docs/reports/gigaam-rnnt-placement-ab-18s-2026-08-30.md and
+   tools/data/results/gigaam/gigaam-rnnt-librivox-*-warmed-*.json. Remaining
+   sub-item: cross-browser repetition.
 3. [Completed 2026-08-30] Bounded compatibility spike against the separate
    native WebGPU Plugin EP 0.3.0 (onnxruntime-ep-webgpu, Python) executed on
    the real Parakeet v3 decoder_joint graphs. Findings: the EP registers only
