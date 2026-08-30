@@ -1,6 +1,6 @@
 {
   "preset": "x-asr-zh-en-160ms-webgpu-stream",
-  "timestamp": "2026-08-30T00:42:26.456Z",
+  "timestamp": "2026-08-30T00:40:22.855Z",
   "status": "pass",
   "transcript": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
   "expected": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
@@ -17,8 +17,8 @@
     "warmupRuns": [
       {
         "run": 1,
-        "transcribeMs": 9110.559999987483,
-        "rtfx": 1.2073901055495067,
+        "transcribeMs": 8524.059999987483,
+        "rtfx": 1.2904648723749192,
         "streamChunkCount": 55
       }
     ]
@@ -26,28 +26,16 @@
   "warmupRuns": [
     {
       "run": 1,
-      "transcribeMs": 9110.559999987483,
-      "rtfx": 1.2073901055495067,
+      "transcribeMs": 8524.059999987483,
+      "rtfx": 1.2904648723749192,
       "streamChunkCount": 55
     }
   ],
   "runMetrics": [
     {
       "run": 1,
-      "transcribeMs": 8443.379999995232,
-      "rtfx": 1.3027957997870772,
-      "streamChunkCount": 55
-    },
-    {
-      "run": 2,
-      "transcribeMs": 8252.039999991655,
-      "rtfx": 1.3330037178698992,
-      "streamChunkCount": 55
-    },
-    {
-      "run": 3,
-      "transcribeMs": 8336.094999998808,
-      "rtfx": 1.3195626969224286,
+      "transcribeMs": 7980.105000004172,
+      "rtfx": 1.378427978077262,
       "streamChunkCount": 55
     }
   ],
@@ -59,11 +47,11 @@
   "streamChunkCount": 55,
   "encoderStateOutputLocation": "gpu-buffer",
   "metrics": {
-    "loadMs": 8753.92499999702,
-    "transcribeMs": 8336.094999998808,
-    "totalMs": 43157.739999994636,
-    "rtf": 0.7578268181817098,
-    "rtfx": 1.3195626969224286
+    "loadMs": 8152.4150000065565,
+    "transcribeMs": 7980.105000004172,
+    "totalMs": 24935.859999999404,
+    "rtf": 0.7254640909094703,
+    "rtfx": 1.378427978077262
   },
   "adapter": {
     "available": true,
@@ -76,6 +64,10 @@
     "navigator.gpu: true",
     "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
     "onnxruntime-web: 1.29.0",
-    "session ready in 8754ms"
+    "session ready in 8152ms",
+    "encoder: runs=136 totalMs=14983 avgMs=110.17",
+    "decoder: runs=188 totalMs=757 avgMs=4.03",
+    "joiner: runs=175 totalMs=626 avgMs=3.57",
+    "joinerRows=622"
   ]
 }

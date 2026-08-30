@@ -227,6 +227,13 @@ export class OrtXAsrExecutor implements XAsrExecutor {
   private readonly state?: Promise<LoadedState>;
   private disposed = false;
   private disposePromise?: Promise<void>;
+  /**
+   * Speculative joiner batching calibration. The row size is learned from the
+   * first single-frame joiner output; the flag is latched off permanently for
+   * this executor when a batch run fails or returns non-row-parallel shapes.
+   */
+  private joinerRowSize?: number;
+  private joinerBatchAllowed = true;
 
   constructor(private readonly modelId: string, private readonly backendId: string, private readonly config: XAsrModelConfig, options?: XAsrModelOptions, dependencies: { readonly assetProvider?: AssetProvider; readonly runtimeHooks?: SpeechRuntimeHooks; readonly signal?: import('../../types/index.js').AbortSignalLike | null } = {}) {
     this.source = options?.source; this.provider = dependencies.assetProvider; this.hooks = dependencies.runtimeHooks; this.signal = dependencies.signal;
@@ -400,8 +407,86 @@ export class OrtXAsrExecutor implements XAsrExecutor {
         liveDecoderValue = first(liveDecoderOutput, graph.decoderOutputName);
         let decoderData = readFloat(liveDecoderValue);
 
-        for (let frame = 0; frame < frames; frame += 1) {
+        // Greedy RNNT decode over the frames produced by this chunk. The joiner
+        // graph is row-parallel (leading dimension is the frame batch), so all
+        // remaining frames are scored speculatively against the current
+        // decoder state in one run. Blank rows never change the decoder state,
+        // so the first non-blank row is exactly what the per-frame sequential
+        // loop would emit; after an emission the decoder advances and the
+        // suffix of frames is re-batched. This is token-for-token equivalent
+        // to the sequential loop while replacing up to `frames` tiny
+        // dispatches per chunk with one run per emitted token. Graphs that
+        // reject batch shapes fall back to the sequential path permanently.
+        let frame = 0;
+        while (frame < frames) {
           throwIfDecodeAborted(signal);
+          const remaining = frames - frame;
+          let consumedByBatch = 0;
+          if (this.joinerBatchAllowed && this.joinerRowSize !== undefined && dims.length === 3 && remaining > 1) {
+            const rowSize = this.joinerRowSize;
+            const encBatch = encodedData.subarray(frame * hidden, frame * hidden + remaining * hidden);
+            const decBatch = new Float32Array(remaining * decoderData.length);
+            for (let row = 0; row < remaining; row += 1) decBatch.set(decoderData, row * decoderData.length);
+            const encTensor = new loaded.ort.Tensor('float32', encBatch, [remaining, hidden]);
+            const decTensor = new loaded.ort.Tensor('float32', decBatch, [remaining, decoderData.length]);
+            let batchValues: Float32Array | undefined;
+            let batchRowParallel = false;
+            try {
+              const batchOutput = await loaded.joiner.run({
+                [graph.joinerEncoderInputName]: encTensor,
+                [graph.joinerDecoderInputName]: decTensor,
+              });
+              const batchLogits = first(batchOutput, graph.joinerOutputName);
+              batchValues = readFloat(batchLogits);
+              const batchDims = batchLogits.dims;
+              const rowParallel = batchDims.length === 2
+                && batchDims[0] === remaining
+                && batchDims[1] === rowSize
+                && batchValues.length >= remaining * rowSize;
+              if (!rowParallel) this.joinerBatchAllowed = false;
+              batchRowParallel = rowParallel;
+              batchLogits.dispose?.();
+              Object.values(batchOutput).forEach((value) => { if (value !== batchLogits) value.dispose?.(); });
+            } catch (error) {
+              if (error instanceof PipelineAbortedError) throw error;
+              this.joinerBatchAllowed = false;
+              batchValues = undefined;
+            } finally {
+              encTensor.dispose?.();
+              decTensor.dispose?.();
+            }
+            if (batchValues && batchRowParallel) {
+              // A rejected batch run leaves batchValues undefined, and a
+              // non-row-parallel output latches batching off above; in both
+              // cases the identical sequential path below takes over.
+              let emission: { row: number; id: number } | undefined;
+              for (let row = 0; row < remaining; row += 1) {
+                // The shared argmax returns an absolute index; the row-local
+                // token id is the offset within the flattened logits block.
+                const id = argmax(batchValues, row * rowSize, rowSize) - row * rowSize;
+                if (id !== 0) {
+                  emission = { row, id };
+                  break;
+                }
+              }
+              if (emission) {
+                disposeLiveDecoder();
+                tokens.push(emission.id);
+                decoderTensor = decoderContextTensor(loaded.ort, graph, tokens);
+                liveDecoderOutput = await loaded.decoder.run({ [graph.decoderInputName]: decoderTensor });
+                decoderTensor.dispose?.();
+                liveDecoderValue = first(liveDecoderOutput, graph.decoderOutputName);
+                decoderData = readFloat(liveDecoderValue);
+                consumedByBatch = emission.row + 1;
+              } else {
+                consumedByBatch = remaining;
+              }
+            }
+          }
+          if (consumedByBatch > 0) {
+            frame += consumedByBatch;
+            continue;
+          }
           const enc = encodedData.subarray(frame * hidden, frame * hidden + hidden);
           const encTensor = new loaded.ort.Tensor('float32', enc, dims.length === 3 ? [1, hidden] : [...dims]);
           const decTensor = new loaded.ort.Tensor('float32', decoderData, liveDecoderValue.dims);
@@ -417,6 +502,9 @@ export class OrtXAsrExecutor implements XAsrExecutor {
           }
           const logits = first(joinerOutput, graph.joinerOutputName);
           const values = readFloat(logits);
+          if (this.joinerRowSize === undefined && logits.dims.length === 2 && logits.dims[0] === 1) {
+            this.joinerRowSize = logits.dims[1];
+          }
           const id = argmax(values, 0, values.length);
           logits.dispose?.();
           Object.values(joinerOutput).forEach((value) => { if (value !== logits) value.dispose?.(); });
@@ -429,6 +517,7 @@ export class OrtXAsrExecutor implements XAsrExecutor {
             liveDecoderValue = first(liveDecoderOutput, graph.decoderOutputName);
             decoderData = readFloat(liveDecoderValue);
           }
+          frame += 1;
         }
         disposeLiveDecoder();
         disposeLiveEncoder();

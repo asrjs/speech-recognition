@@ -432,6 +432,35 @@ Whisper causal decoder-align browser validation (2026-08-30):
 - Evidence: docs/reports/whisper-causal-decoder-align-browser-2026-08-30.md
   and tools/data/results/whisper/*causal*-2026-08-30.json
 
+X-ASR speculative batched joiner decode (2026-08-30):
+
+- Greedy RNNT decode of one chunk's frames against an unchanged decoder
+  state is row-parallel (joiner graph leading dim is N: encoder_out
+  [N,512], decoder_out [N,512], logit [N,5000]), so the per-frame joiner
+  runs are replaced by one speculative batch run: blank rows never change
+  the decoder state, the first non-blank row is exactly the sequential
+  emission, and the frame suffix is re-batched after each token. Output is
+  token-for-token identical by construction.
+- Sticky fallback: a batched run that throws or returns non-row-parallel
+  shapes latches batching off for the executor and the identical
+  sequential path takes over mid-chunk. Abort semantics unchanged
+  (PipelineAbortedError propagates, caller state tensors stay intact).
+- Chrome headless WebGPU (Blackwell, 11.29 s jfk-short, 55 chunks,
+  warmup+3 runs): joiner dispatches per pass 311 -> ~88; median
+  transcribeMs 8981 -> 8336 (RTFx 1.22 -> 1.32; 7716/1.43 in the profiled
+  session; +-10% cross-session variance applies). Transcript byte-identical.
+- Phase profile (new --profile harness mode, 2 passes): encoder 136 runs
+  14,983 ms (~110 ms/run), decoder 188 runs 757 ms, joiner 175 runs
+  626 ms. Streaming is now ~90% encoder-bound; the joiner win is real but
+  bounded. Next X-ASR lever: attribute the ~110 ms stateful Zipformer2
+  encoder run (dispatch vs 116-tensor GPU state I/O vs kernels) before
+  touching chunk-window sizes.
+- Evidence: docs/reports/x-asr-joiner-batching-2026-08-30.md,
+  tools/data/results/x-asr/x-asr-zh-en-160ms-jfk-short-webgpu-stream{,-profiled}-chrome.json.
+  Validation: tests/x-asr-joiner-batching.test.ts (4), real-artifact Node
+  WASM + streaming parity (XASR_ONNX_SMOKE=1, 3). Full suite green:
+  1037 passed / 18 artifact-gated skips.
+
 SenseVoice fp16 CTC decode hot path (2026-08-30):
 
 - argmaxAndSelectedLogProbsFp16 (src/ctc/decoder.ts, exported via
