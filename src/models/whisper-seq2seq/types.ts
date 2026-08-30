@@ -42,6 +42,7 @@ export interface WhisperDirectArtifactSource {
   readonly enableProfiling?: boolean;
   readonly experimentalWebGpuEncoderGraphCapture?: boolean;
   readonly experimentalGpuKvCache?: boolean;
+  readonly experimentalGpuKvBeam?: boolean;
 }
 
 export interface WhisperHuggingFaceSource {
@@ -58,6 +59,7 @@ export interface WhisperHuggingFaceSource {
   readonly enableProfiling?: boolean;
   readonly experimentalWebGpuEncoderGraphCapture?: boolean;
   readonly experimentalGpuKvCache?: boolean;
+  readonly experimentalGpuKvBeam?: boolean;
 }
 
 export type WhisperArtifactSource = WhisperDirectArtifactSource | WhisperHuggingFaceSource | WhisperSplitGraphArtifactSource;
@@ -119,6 +121,7 @@ export interface WhisperSplitGraphArtifactSource {
   readonly enableProfiling?: boolean;
   readonly experimentalWebGpuEncoderGraphCapture?: boolean;
   readonly experimentalGpuKvCache?: boolean;
+  readonly experimentalGpuKvBeam?: boolean;
   /** DIAGNOSTIC: Force encoder output to CPU (Track A2). When true, encoder
    *  output is downloaded to CPU even with gpuKv enabled, to measure
    *  cross-session GPU tensor handoff penalty. */

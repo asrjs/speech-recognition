@@ -559,7 +559,7 @@ Parakeet v3 20x-vs-37x reproducibility check (2026-08-30):
   should cite the capture date and be re-verified through the unified
   matrix before being used as promotion baselines.
 
-Whisper stable-beam gap attribution (2026-08-30, design recorded):
+Whisper stable-beam GPU-KV implementation (2026-08-30, SHIPPED):
 
 - Beam 2 measures 5.57x vs greedy 27.02x on the same fixture. Attribution
   complete: GPU-KV hard-rejects beam search (assert in
@@ -570,19 +570,31 @@ Whisper stable-beam gap attribution (2026-08-30, design recorded):
   re-materializes fresh tensors via cloneDecoderKvDataForInput. Cost grows
   with sequence length and explains ~48 ms/step x 98 executions vs
   greedy's ~14 ms x 49 on GPU-resident KV.
-- Designed fix (next Whisper slice, not yet implemented): a tensor-
-  carrying KV variant for beams. Requires (1) extending
-  WhisperKvCacheValue/core.ts contract to allow gpu tensor handles beside
-  ArrayBufferView snapshots, (2) runInit/runStep callbacks that pass
-  gpu-buffer present tensors through without copy/release, (3) refcounted
-  disposal because sibling beams legally share one parent KV tensor
-  (read-only feeds), (4) decoder init/step sessions created with the
-  existing createWhisperGpuKvOutputLocation wiring, behind a new opt-in
-  flag (experimentalGpuKvBeam), greedy path untouched.
-- Expected win if parity holds: beam 2 decode ~4.8 s -> ~1.5-2 s
-  (RTFx ~5.6x -> ~10-14x), keeping the CPU-KV stable beam as the
-  correctness oracle. Gates: identical token transcript vs CPU beam 2,
-  disposal soak without gpu-buffer double-free, abort mid-beam.
+- Implemented as designed: runInit/runStep callbacks pass gpu-buffer
+  present tensors through without copy/release (prepared-past path of
+  runDecoderStepSplit), a generation tracker disposes any tensor not
+  fed/produced for numBeams+1 generations and everything on decode end,
+  decoder init/step sessions wire createWhisperGpuKvOutputLocation when
+  the flag is on, greedy and CPU-KV beam paths untouched, batching
+  disabled while the flag is active. Core beam logic needed zero changes:
+  caches already pass through opaquely with read-only sharing.
+- Validated: GPU-KV beam-2 transcript byte-identical to the back-to-back
+  CPU-KV stable beam-2 control (50 tokens); GPU beam 1585-1938 ms
+  (~17.7-18.9x RTFx) vs CPU beam 5417.8 ms (5.52x) - a 3.2-3.4x speedup
+  for beam-2 quality; three soak pages without double-free or OOM; abort
+  propagates through the same finally-disposal block.
+- Config: source option experimentalGpuKvBeam: true TOGETHER with
+  experimentalGpuKvCache: true and a WebGPU decoder backend (the beam flag
+  is a modifier of the GPU-KV cache flag); temperature sampling and
+  best_of stay rejected; experimentalBatchedBeam is ignored while the
+  GPU beam flag is active. Harness: ?gpuKvBeam=1 and matrix case
+  en-stable-beam-2-gpu-kv.
+- Debug lesson recorded in the report: reading a gpu-buffer tensor's
+  .data getter throws even for an instanceof probe - branch on
+  tensor.location before any .data access.
+- Evidence: docs/reports/whisper-beam2-gpu-kv-2026-08-30.md and
+  tools/data/results/whisper/beam2-{gpu-kv,gpu-kv-soak,gpu-kv-first-pass,
+  cpu}-jfk-30s.json.
 
 Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 

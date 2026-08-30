@@ -118,6 +118,7 @@ export interface ResolvedWhisperArtifacts {
   readonly enableProfiling?: boolean;
   readonly experimentalWebGpuEncoderGraphCapture?: boolean;
   readonly experimentalGpuKvCache?: boolean;
+  readonly experimentalGpuKvBeam?: boolean;
   /** DIAGNOSTIC: Force encoder output to CPU (Track A2). */
   readonly encoderOutputCpu?: boolean;
   /** DIAGNOSTIC (B2-C): Enable graph capture for decoder_step session. */
@@ -231,6 +232,7 @@ function resolveHuggingFaceArtifacts(
     enableProfiling: source.enableProfiling,
     experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
     experimentalGpuKvCache: source.experimentalGpuKvCache,
+    experimentalGpuKvBeam: source.experimentalGpuKvBeam,
     isSplitGraph: false,
   };
 }
@@ -254,6 +256,7 @@ function resolveDirectArtifacts(
     enableProfiling: source.enableProfiling,
     experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
     experimentalGpuKvCache: source.experimentalGpuKvCache,
+    experimentalGpuKvBeam: source.experimentalGpuKvBeam,
     isSplitGraph: false,
   };
 }
@@ -347,6 +350,7 @@ function resolveSplitGraphArtifacts(
     enableProfiling: source.enableProfiling,
     experimentalWebGpuEncoderGraphCapture: source.experimentalWebGpuEncoderGraphCapture,
     experimentalGpuKvCache: source.experimentalGpuKvCache,
+    experimentalGpuKvBeam: source.experimentalGpuKvBeam,
     encoderOutputCpu: source.encoderOutputCpu,
     decoderGraphCapture: source.decoderGraphCapture,
     decoderFreeDimensionOverrides: source.decoderFreeDimensionOverrides,

@@ -178,6 +178,7 @@ interface LoadedExecutorState {
   };
   readonly decoderBackendForOrt?: string;
   readonly experimentalGpuKvCache?: boolean;
+  readonly experimentalGpuKvBeam?: boolean;
   readonly sessionCreateMs?: number;
   /** DIAGNOSTIC (Edge A): Re-wrap encoder GPU buffer as fresh tensor. */
   readonly encoderBufferRewrap?: boolean;
@@ -1761,11 +1762,11 @@ export class WhisperOnnxExecutor {
     let decoderStepSession: OrtSessionLike | undefined;
     let decoderAlignSession: OrtSessionLike | undefined;
     const decoderInitPreferredOutputLocation =
-      resolved.experimentalGpuKvCache && resolved.decoderBackendForOrt === 'webgpu'
+      (resolved.experimentalGpuKvCache || resolved.experimentalGpuKvBeam) && resolved.decoderBackendForOrt === 'webgpu'
         ? createWhisperGpuKvOutputLocation(modelConfig, 'init')
         : undefined;
     const decoderStepPreferredOutputLocation =
-      resolved.experimentalGpuKvCache && resolved.decoderBackendForOrt === 'webgpu'
+      (resolved.experimentalGpuKvCache || resolved.experimentalGpuKvBeam) && resolved.decoderBackendForOrt === 'webgpu'
         ? createWhisperGpuKvOutputLocation(modelConfig, 'step')
         : undefined;
 
@@ -1854,6 +1855,7 @@ export class WhisperOnnxExecutor {
         : undefined,
       decoderBackendForOrt: resolved.decoderBackendForOrt,
       experimentalGpuKvCache: resolved.experimentalGpuKvCache,
+      experimentalGpuKvBeam: resolved.experimentalGpuKvBeam,
       encoderBufferRewrap: resolved.encoderBufferRewrap,
       encoderGpuFlush: resolved.encoderGpuFlush,
       encoderGpuDrain: resolved.encoderGpuDrain,
@@ -3636,12 +3638,21 @@ export class WhisperOnnxExecutor {
       splitLoaded.experimentalGpuKvCache &&
       splitLoaded.decoderBackendForOrt === 'webgpu',
     );
+    // Tensor-carrying GPU-KV beam search: opt-in, scalar steps only, and
+    // mutually compatible with the greedy GPU-KV bridge. Shared parent KV
+    // tensors are legal because sessions treat caches as read-only; the
+    // tracker below prunes generations once no active beam feeds them.
+    const gpuKvBeamActive = splitLoaded.experimentalGpuKvBeam === true
+      && splitLoaded.decoderBackendForOrt === 'webgpu'
+      && requestedNumBeams > 1
+      && requestedBestOf <= 1
+      && requestedTemperature === 0;
 
     // Reject an unsupported decode policy before allocating mel/encoder work.
     // GPU-KV remains a greedy-only fast path until cache cloning/reordering is
     // proven correct for beams and sampling.
     assertExperimentalGpuKvCacheIsGreedyOnly({
-      enabled: useExperimentalGpuKvCache,
+      enabled: useExperimentalGpuKvCache && !gpuKvBeamActive,
       numBeams: requestedNumBeams,
       bestOf: requestedBestOf,
       temperature: requestedTemperature,
@@ -3887,7 +3898,7 @@ export class WhisperOnnxExecutor {
     let decoderEncoderKvTensorReuses = 0;
     let decoderEncoderKvTensorCreates = 0;
     const decoderStepTimings: number[] = [];
-    const requestedDecoderKvCacheLocation = useExperimentalGpuKvCache ? 'gpu-buffer' : 'cpu';
+    const requestedDecoderKvCacheLocation = useExperimentalGpuKvCache || gpuKvBeamActive ? 'gpu-buffer' : 'cpu';
     const recordDecoderTiming = (timings: DecoderSessionTiming): void => {
       decoderGpuTensorInputs += timings.gpuInputCount;
       decoderCpuTensorInputs += timings.cpuInputCount;
@@ -3905,6 +3916,31 @@ export class WhisperOnnxExecutor {
     // transcription so only decoder self-attention KV is cloned/rebuilt on
     // each step. The map is scoped to the decode, never shared across audio.
     const scalarEncoderKvTensors = new Map<string, WhisperEncoderKvTensorCacheEntry>();
+    // GPU-KV beam tracker: every gpu-buffer KV tensor created for this
+    // transcription, keyed to the decoder-step generation that last fed or
+    // produced it. A live beam feeds its cache once per strategy step, so a
+    // tensor untouched for numBeams+1 generations is provably garbage
+    // (superseded by expansion) and can be disposed. Everything is disposed
+    // unconditionally when the decode ends, success or abort.
+    const gpuKvBeamTracker = {
+      touched: new Map<OrtTensorLike, number>(),
+      generation: 0,
+      register(tensors: readonly OrtTensorLike[], generation: number): void {
+        for (const tensor of tensors) this.touched.set(tensor, generation);
+      },
+      pruneIdle(minGeneration: number): void {
+        for (const [tensor, generation] of [...this.touched]) {
+          if (generation <= minGeneration) {
+            this.touched.delete(tensor);
+            tensor.dispose?.();
+          }
+        }
+      },
+      disposeAll(): void {
+        for (const [tensor] of this.touched) tensor.dispose?.();
+        this.touched.clear();
+      },
+    };
 
     const decoderStart = nowMs();
     const processSplitGraphLogits = (logits: Float32Array, genTokens: readonly number[], beginIdx: number): void => {
@@ -3912,8 +3948,9 @@ export class WhisperOnnxExecutor {
       splitTimestampProcessor.process(logits, genTokens, beginIdx);
       decoderLogitProcessMs += nowMs() - logitsStart;
     };
-    const result = useExperimentalGpuKvCache
-      ? await this.runGreedyGpuKvDecode({
+    let result: SplitGraphDecodeResult;
+    if (useExperimentalGpuKvCache && requestedNumBeams === 1) {
+      result = await this.runGreedyGpuKvDecode({
           loaded: splitLoaded,
           encoderHiddenStates,
           promptTokens,
@@ -3947,10 +3984,21 @@ export class WhisperOnnxExecutor {
             recordDecoderTiming(timings);
           },
           signal: options.signal,
-        })
-      : await splitGraphDecodeLoop({
+      });
+    } else {
+      try {
+      // GPU beam mode keeps the encoder output on the GPU. The strategy only
+      // derives encoder dims from this array (the runInit callback below uses
+      // the real tensor), so a correctly sized placeholder is sufficient.
+      const encDims = encoderHiddenStates.dims;
+      // Never touch .data here: reading a gpu-buffer tensor's data getter
+      // throws. The dims alone size the placeholder.
+      const encoderHiddenStatesData = new Float32Array(
+        encDims.slice(1).reduce((product, dim) => product * (dim || 1), 1),
+      );
+      result = await splitGraphDecodeLoop({
           promptTokens,
-          encoderHiddenStates: encoderHiddenStates.data,
+          encoderHiddenStates: encoderHiddenStatesData,
           eosTokenId: eosId,
           maxNewTokens,
           modelConfig: loaded.modelConfig,
@@ -3987,6 +4035,19 @@ export class WhisperOnnxExecutor {
             if (firstKv) {
               kvDtype = firstKv.type === 'float16' || firstKv.data.constructor.name === 'Float16Array' ? 'float16' : 'float32';
             }
+            if (gpuKvBeamActive) {
+              // GPU-resident beam mode: keep present tensors on the GPU and
+              // hand references to the strategy, which passes them back
+              // read-only. The tracker prunes generations once no active
+              // beam feeds them.
+              const pastKv = mapPresentKvToPastKv(init.presentKv);
+              gpuKvBeamTracker.register(Object.values(pastKv), 0);
+              return {
+                logits: init.logits,
+                vocabSize: init.vocabSize,
+                presentKv: pastKv,
+              };
+            }
             return {
               logits: init.logits,
               vocabSize: init.vocabSize,
@@ -3995,6 +4056,26 @@ export class WhisperOnnxExecutor {
           },
           runStep: async (tokenId, pastKv) => {
             const decoderStepStart = nowMs();
+            if (gpuKvBeamActive) {
+              gpuKvBeamTracker.generation += 1;
+              const generation = gpuKvBeamTracker.generation;
+              const feeds: Record<string, OrtTensorLike<Float32Array>> = {};
+              for (const [name, tensor] of Object.entries(pastKv)) {
+                // The strategy hands back the exact gpu tensors this mode
+                // returned; feed them read-only without any copy.
+                const gpuTensor = tensor as OrtTensorLike<Float32Array>;
+                feeds[name] = gpuTensor;
+                gpuKvBeamTracker.register([gpuTensor], generation);
+              }
+              const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds, { preparedPastKv: true });
+              gpuKvBeamTracker.register(Object.values(step.presentKv), generation);
+              gpuKvBeamTracker.pruneIdle(generation - requestedNumBeams);
+              return {
+                logits: step.logits,
+                vocabSize: step.vocabSize,
+                presentKv: step.presentKv,
+              };
+            }
             // Reconstruct tensors from raw data + stored dims.
             // Init outputs present.* prefix; step model expects past_key_values.* prefix.
             // Convert prefix and clone tensor data for cross-session safety.
@@ -4091,7 +4172,7 @@ export class WhisperOnnxExecutor {
               presentKv: copyAndReleaseWhisperPresentKv(step.presentKv, retained),
             };
           },
-          runStepBatch: options.experimentalBatchedBeam
+          runStepBatch: options.experimentalBatchedBeam && !gpuKvBeamActive
             ? async (tokenIds, pastKvs) => {
                 const batchSize = tokenIds.length;
                 if (batchSize === 0) return [];
@@ -4304,7 +4385,11 @@ export class WhisperOnnxExecutor {
                 }
               }
             : undefined,
-        });
+      });
+      } finally {
+        gpuKvBeamTracker.disposeAll();
+      }
+    }
     const decodeMs = nowMs() - decoderStart;
     const decoderStepAvgMs = decoderStepCount > 0 ? decoderStepMs / decoderStepCount : undefined;
     const decoderStepP50Ms = percentile(decoderStepTimings, 50);
