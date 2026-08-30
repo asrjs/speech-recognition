@@ -73,6 +73,20 @@ export class OrtGigaAmRnntExecutor {
   private readonly state?: Promise<LoadedState>;
   private disposed = false;
   private disposePromise?: Promise<void>;
+  // Speculative batch widths grow geometrically from the minimum when a
+  // batch window finds no emission (the predictor state is unchanged, so the
+  // scored blank rows are exact progress) and reset on every emission, so
+  // wasted pre-emission rows stay proportional to the blank-run length. Full
+  // suffix batching is free for a dispatch-bound GPU joint but compute-bound
+  // waste for a WASM joint, hence the bounded growth.
+  private static readonly joinerBatchMinRows = 2;
+  private static readonly joinerBatchMaxRows = 64;
+  // Speculative batched-joiner state. The joint graph is row-parallel (the
+  // leading dimension is the frame batch); a graph that rejects batched
+  // shapes latches batching off permanently for this executor.
+  private joinerRowSize?: number;
+  private joinerBatchAllowed = true;
+  private joinerBatchWidth = OrtGigaAmRnntExecutor.joinerBatchMinRows;
 
   constructor(
     private readonly modelId: string,
@@ -285,44 +299,171 @@ export class OrtGigaAmRnntExecutor {
     let decodeIterations = 0;
     const decodeStarted = nowMs();
 
-    for (let frame = 0; frame < frames; frame += 1) {
-      throwIfDecodeAborted(options.signal);
-      for (let emitted = 0; emitted < this.config.maxTokensPerFrame; emitted += 1) {
-        throwIfDecodeAborted(options.signal);
-        const label = hasState ? lastLabel : blankId;
-        const target = tensor(state.ort, 'int64', BigInt64Array.from([BigInt(label)]), [1, 1]);
-        const hTensor = tensor(state.ort, 'float32', hasState ? h.slice() : new Float32Array(layers * predHidden), [layers, 1, predHidden]);
-        const cTensor = tensor(state.ort, 'float32', hasState ? c.slice() : new Float32Array(layers * predHidden), [layers, 1, predHidden]);
-        let decoderOutputs: Record<string, OrtTensorLike>;
-        try {
-          decoderOutputs = await state.decoder.run({ x: target, hi: hTensor, ci: cTensor });
-        } catch {
-          decoderOutputs = await state.decoder.run({ x: target, 'h.1': hTensor, 'c.1': cTensor });
-        } finally {
-          target.dispose?.();
-          hTensor.dispose?.();
-          cTensor.dispose?.();
-        }
-        let nextH: Float32Array;
-        let nextC: Float32Array;
-        let decData: Float32Array;
-        try {
-          const decoderOut = firstOutput(decoderOutputs, 'dec');
-          const nextHOutput = firstOutput(decoderOutputs, 'ho', 'h');
-          const nextCOutput = firstOutput(decoderOutputs, 'co', 'c');
-          nextH = tensorData(nextHOutput);
-          nextC = tensorData(nextCOutput);
-          decData = tensorData(decoderOut);
-        } finally {
-          disposeOrtOutputs(decoderOutputs);
-        }
+    // Greedy RNN-T decode. The joint graph is row-parallel: its leading
+    // dimension is the frame batch, so all remaining frames can be scored
+    // speculatively against the current predictor state in one run. Blank
+    // rows never change the predictor state, so the first non-blank row is
+    // exactly what the per-frame sequential loop would emit. After an
+    // emission the predictor advances and the suffix of frames INCLUDING the
+    // emitting frame is re-batched, so a second token on the same frame is
+    // still found. Frames that hit maxTokensPerFrame advance without further
+    // scoring, matching the sequential loop. Predictor outputs for the
+    // current (label, h, c) are cached, so a run of blank frames costs one
+    // joint dispatch per frame and zero decoder dispatches. Graphs that
+    // reject batched shapes latch batching off permanently and take the
+    // identical sequential path.
+    let frame = 0;
+    let frameEmitted = 0;
+    let joinerBatchRuns = 0;
+    let predictor: {
+      readonly label: number;
+      readonly dec: Float32Array;
+      readonly nextH: Float32Array;
+      readonly nextC: Float32Array;
+    } | undefined;
 
-        const encFrame = new Float32Array(hidden);
-        for (let index = 0; index < hidden; index += 1) {
-          encFrame[index] = encData[index * timeSteps + frame] ?? 0;
+    const runPredictor = async (label: number): Promise<{ dec: Float32Array; nextH: Float32Array; nextC: Float32Array }> => {
+      const target = tensor(state.ort, 'int64', BigInt64Array.from([BigInt(label)]), [1, 1]);
+      const hTensor = tensor(state.ort, 'float32', hasState ? h.slice() : new Float32Array(layers * predHidden), [layers, 1, predHidden]);
+      const cTensor = tensor(state.ort, 'float32', hasState ? c.slice() : new Float32Array(layers * predHidden), [layers, 1, predHidden]);
+      let decoderOutputs: Record<string, OrtTensorLike>;
+      try {
+        decoderOutputs = await state.decoder.run({ x: target, hi: hTensor, ci: cTensor });
+      } catch {
+        decoderOutputs = await state.decoder.run({ x: target, 'h.1': hTensor, 'c.1': cTensor });
+      } finally {
+        target.dispose?.();
+        hTensor.dispose?.();
+        cTensor.dispose?.();
+      }
+      try {
+        const decoderOut = firstOutput(decoderOutputs, 'dec');
+        const nextHOutput = firstOutput(decoderOutputs, 'ho', 'h');
+        const nextCOutput = firstOutput(decoderOutputs, 'co', 'c');
+        return { dec: tensorData(decoderOut), nextH: tensorData(nextHOutput), nextC: tensorData(nextCOutput) };
+      } finally {
+        disposeOrtOutputs(decoderOutputs);
+      }
+    };
+
+    const ensurePredictor = async (): Promise<NonNullable<typeof predictor>> => {
+      const label = hasState ? lastLabel : blankId;
+      if (!predictor || predictor.label !== label) {
+        const run = await runPredictor(label);
+        predictor = { label, ...run };
+      }
+      return predictor;
+    };
+
+    const gatherEncoderRow = (atFrame: number, target: Float32Array, offset: number): void => {
+      for (let index = 0; index < hidden; index += 1) {
+        target[offset + index] = encData[index * timeSteps + atFrame] ?? 0;
+      }
+    };
+
+    const advancePredictor = (nextH: Float32Array, nextC: Float32Array, tokenId: number): void => {
+      lastLabel = tokenId;
+      hasState = true;
+      h.set(nextH.subarray(0, h.length));
+      c.set(nextC.subarray(0, c.length));
+      predictor = undefined;
+    };
+
+    const pushToken = (atFrame: number, tokenId: number, logits: Float32Array, logitsOffset: number, vocab: number): void => {
+      const confidence = confidenceFromLogits(logits.subarray(logitsOffset, logitsOffset + vocab), tokenId, vocab);
+      ids.push(tokenId);
+      const startTime = roundTimestampSeconds(atFrame * this.config.featureHopSeconds * this.config.rawStride);
+      tokens.push({
+        index: tokens.length,
+        id: options.returnTokenIds ? tokenId : undefined,
+        text: state.tokenizer.decodeTokenPiece(tokenId),
+        startTime,
+        endTime: roundTimestampSeconds((atFrame + 1) * this.config.featureHopSeconds * this.config.rawStride),
+        confidence: roundMetric(confidence.confidence, 4),
+        logitIndex: options.returnLogitIndices ? atFrame : undefined,
+      });
+    };
+
+    while (frame < frames) {
+      throwIfDecodeAborted(options.signal);
+      if (frameEmitted >= this.config.maxTokensPerFrame) {
+        frame += 1;
+        frameEmitted = 0;
+        continue;
+      }
+      const remaining = frames - frame;
+      if (this.joinerBatchAllowed && this.joinerRowSize !== undefined && remaining > 1) {
+        const rowSize = this.joinerRowSize;
+        const width = Math.min(remaining, this.joinerBatchWidth, OrtGigaAmRnntExecutor.joinerBatchMaxRows);
+        const current = await ensurePredictor();
+        const encBatch = new Float32Array(width * hidden);
+        for (let row = 0; row < width; row += 1) gatherEncoderRow(frame + row, encBatch, row * hidden);
+        const decBatch = new Float32Array(width * current.dec.length);
+        for (let row = 0; row < width; row += 1) decBatch.set(current.dec, row * current.dec.length);
+        const encTensor = tensor(state.ort, 'float32', encBatch, [width, hidden, 1]);
+        const decTensor = tensor(state.ort, 'float32', decBatch, [width, current.dec.length, 1]);
+        let batchValues: Float32Array | undefined;
+        let batchRowParallel = false;
+        try {
+          const batchOutputs = await state.joint.run({ enc: encTensor, dec: decTensor });
+          const batchLogits = firstOutput(batchOutputs, 'joint');
+          batchValues = tensorData(batchLogits);
+          const batchDims = [...batchLogits.dims];
+          batchRowParallel = batchDims.length >= 2
+            && batchDims[0] === width
+            && batchDims[batchDims.length - 1] === rowSize
+            && batchValues.length >= width * rowSize;
+          if (!batchRowParallel) this.joinerBatchAllowed = false;
+          disposeOrtOutputs(batchOutputs);
+        } catch (error) {
+          if (error instanceof PipelineAbortedError) throw error;
+          this.joinerBatchAllowed = false;
+          batchValues = undefined;
+        } finally {
+          encTensor.dispose?.();
+          decTensor.dispose?.();
         }
+        if (batchValues && batchRowParallel) {
+          joinerBatchRuns += 1;
+          let emissionRow = -1;
+          let emissionToken = blankId;
+          for (let row = 0; row < width; row += 1) {
+            // The shared argmax returns an absolute index; the row-local
+            // token id is the offset within the flattened logits block.
+            const tokenId = argmax(batchValues, row * rowSize, rowSize) - row * rowSize;
+            if (tokenId !== blankId) {
+              emissionRow = row;
+              emissionToken = tokenId;
+              break;
+            }
+          }
+          if (emissionRow === -1) {
+            // The whole window was blank: the predictor state is unchanged,
+            // so these frames need no further scoring. Widen the window for
+            // the next run (the blank run may continue) and keep going.
+            decodeIterations += width;
+            frame += width;
+            frameEmitted = 0;
+            this.joinerBatchWidth = Math.min(width * 2, OrtGigaAmRnntExecutor.joinerBatchMaxRows);
+            continue;
+          }
+          this.joinerBatchWidth = OrtGigaAmRnntExecutor.joinerBatchMinRows;
+          decodeIterations += emissionRow + 1;
+          const emissionFrame = frame + emissionRow;
+          pushToken(emissionFrame, emissionToken, batchValues, emissionRow * rowSize, rowSize);
+          advancePredictor(current.nextH, current.nextC, emissionToken);
+          frame = emissionFrame;
+          frameEmitted = emissionRow === 0 ? frameEmitted + 1 : 1;
+          continue;
+        }
+      }
+      for (let emitted = frameEmitted; emitted < this.config.maxTokensPerFrame; emitted += 1) {
+        throwIfDecodeAborted(options.signal);
+        const current = await ensurePredictor();
+        const encFrame = new Float32Array(hidden);
+        gatherEncoderRow(frame, encFrame, 0);
         const encTensor = tensor(state.ort, 'float32', encFrame, [1, hidden, 1]);
-        const decTensor = tensor(state.ort, 'float32', decData, [1, predHidden, 1]);
+        const decTensor = tensor(state.ort, 'float32', current.dec, [1, current.dec.length, 1]);
         let jointOutputs: Record<string, OrtTensorLike>;
         try {
           jointOutputs = await state.joint.run({ enc: encTensor, dec: decTensor });
@@ -331,33 +472,26 @@ export class OrtGigaAmRnntExecutor {
           decTensor.dispose?.();
         }
         let logits: Float32Array;
+        let logitsDims: readonly number[];
         try {
           const logitsTensor = firstOutput(jointOutputs, 'joint');
           logits = tensorData(logitsTensor);
+          logitsDims = [...logitsTensor.dims];
         } finally {
           disposeOrtOutputs(jointOutputs);
         }
+        if (this.joinerRowSize === undefined && logitsDims.length >= 2 && logitsDims[0] === 1) {
+          this.joinerRowSize = logitsDims[logitsDims.length - 1];
+        }
         const vocab = logits.length;
         const tokenId = argmax(logits, 0, vocab);
-        const confidence = confidenceFromLogits(logits, tokenId, vocab);
         decodeIterations += 1;
         if (tokenId === blankId) break;
-        lastLabel = tokenId;
-        hasState = true;
-        h.set(nextH.subarray(0, h.length));
-        c.set(nextC.subarray(0, c.length));
-        ids.push(tokenId);
-        const startTime = roundTimestampSeconds(frame * this.config.featureHopSeconds * this.config.rawStride);
-        tokens.push({
-          index: tokens.length,
-          id: options.returnTokenIds ? tokenId : undefined,
-          text: state.tokenizer.decodeTokenPiece(tokenId),
-          startTime,
-          endTime: roundTimestampSeconds((frame + 1) * this.config.featureHopSeconds * this.config.rawStride),
-          confidence: roundMetric(confidence.confidence, 4),
-          logitIndex: options.returnLogitIndices ? frame : undefined,
-        });
+        pushToken(frame, tokenId, logits, 0, vocab);
+        advancePredictor(current.nextH, current.nextC, tokenId);
       }
+      frame += 1;
+      frameEmitted = 0;
     }
 
     const finished = nowMs();
@@ -384,6 +518,7 @@ export class OrtGigaAmRnntExecutor {
         jointBackend: componentBackends.jointBackend,
         encoderFrameCount: frames,
         decodeIterations,
+        joinerBatchRuns,
         emittedTokenCount: tokens.length,
       },
       warnings: [...state.warnings],

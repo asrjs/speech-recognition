@@ -25,6 +25,32 @@ framework.
 
 ## Completed (2026-08-30 recent slices)
 
+Speculative batched joiner for GigaAM RNN-T (2026-08-30):
+
+- Ported the X-ASR batched-joiner idea to the GigaAM v3 E2E RNN-T executor
+  and adapted it: row-parallel batch scoring of the joint graph, predictor
+  (label, h, c) output caching across blank frames, re-batch INCLUDING the
+  emitting frame (multi-token-per-frame parity), maxTokensPerFrame clamp
+  parity, and adaptive batch width (2 -> 64 rows, doubling on blank windows,
+  reset on emission). The naive full-suffix batch that works for X-ASR's
+  streaming path collapsed to 5.4x on the hybrid composition because every
+  emission re-scored the whole remaining suffix on the compute-bound WASM
+  joint; the adaptive width policy fixes that.
+- Measured (shared 18.714 s warmed LibriVox fixture, hybrid
+  enc-GPU/dec-WASM/joint-WASM, ORT Web 1.29, --oracle=none): Chrome
+  27.88x -> 47.31x, Edge 28.02x -> 48.75x; decodeMs ~510 -> ~260. Exact
+  transcript identity with the committed placement-A/B baselines.
+- Validation: 6 new parity/fallback/abort tests
+  (tests/gigaam-rnnt-joiner-batching.test.ts); full suite 1043 passed / 18
+  artifact-gated skips; tsc clean; real-artifact Node smoke 2/2 after the
+  change. Evidence: docs/reports/gigaam-rnnt-joiner-batching-2026-08-30.md,
+  tools/data/results/gigaam/gigaam-rnnt-librivox-*-warmed*.json.
+- Reusable lesson: speculative full-suffix batching is a GPU-joint strategy;
+  WASM-jointed RNN-T needs bounded/adaptive batch width. The per-step
+  tiny-dispatch floor remains (~100 emissions x 2 small runs); the next
+  decoder-side candidate is a GRU-capable decoder-on-GPU placement once
+  dispatch overhead improves (built-in or plugin EP kernel work).
+
 The following work is done and pushed on `main` (backup branch
 `backup/pre-browser-webgpu-state-push-2026-08-29`). Details:
 `docs/handoffs/asr-four-families-2026-08-27.md`.
@@ -1030,6 +1056,10 @@ surfaces. Work items, in order:
    repetition completed the same day on Edge (runner gained --browser=edge):
    hybrid 28.02x and decoder-GPU 3.97x reproduced the Chrome verdicts with
    identical transcripts. Work item 2 is now closed for GigaAM RNN-T.
+   Same-day follow-up: the speculative batched joiner lifted the shipped
+   hybrid to 47.31x (Chrome) / 48.75x (Edge) with identical transcripts;
+   the placement verdict is unchanged (hybrid remains optimal). See the
+   completed-slice entry at the top of this section.
 3. [Completed 2026-08-30] Bounded compatibility spike against the separate
    native WebGPU Plugin EP 0.3.0 (onnxruntime-ep-webgpu, Python) executed on
    the real Parakeet v3 decoder_joint graphs. Findings: the EP registers only

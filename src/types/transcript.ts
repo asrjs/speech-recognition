@@ -156,6 +156,8 @@ export interface TranscriptMetrics {
   readonly resamplerQuality?: string | null;
   readonly encoderFrameCount?: number;
   readonly decodeIterations?: number;
+  /** Speculative batched joint-graph runs used by row-parallel RNN-T decoders. */
+  readonly joinerBatchRuns?: number;
   /** Number of model inference windows used to compose this transcript. */
   readonly windowCount?: number;
   readonly emittedTokenCount?: number;
