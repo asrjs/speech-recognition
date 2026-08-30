@@ -7,45 +7,40 @@ other families run three measured repetitions.
 
 | family | composition | median ms | median RTFx | oracle | status |
 | --- | --- | ---: | ---: | --- | --- |
-| whisper-large-v3-turbo | fp16io WebGPU encoder + GPU-KV greedy decoder | 682 | 27.45x | none | check |
-| parakeet-tdt-v3 | fp16 WebGPU encoder + int8 WASM decoder (hybrid) | 923 | 20.44x | exact | pass |
-| parakeet-tdt-v2 | fp16 WebGPU encoder + int8 WASM decoder (hybrid) | 510 | 37.15x | normalized | pass |
-| gigaam-ctc | fp16 WebGPU encoder + CTC decode | 208 | 90.11x | none | pass |
-| gigaam-rnnt | fp32 WebGPU encoder + WASM decoder/joint | 577 | 32.41x | none | pass |
-| sensevoice-small | fp16 WebGPU + fp16 LUT CTC decode | 400 | 46.79x | none | pass |
-| qwen3-asr-0.6b | fp32 WebGPU encoder + fp32 GPU-KV decoder | - | -x | none | error |
+| whisper-large-v3-turbo | fp16io WebGPU encoder + GPU-KV greedy decoder | 681 | 27.49x | none | check |
+| parakeet-tdt-v3 | fp16 WebGPU encoder + int8 WASM decoder (hybrid) | 843 | 22.33x | exact | pass |
+| parakeet-tdt-v2 | fp16 WebGPU encoder + int8 WASM decoder (hybrid) | 613 | 30.75x | normalized | pass |
+| gigaam-ctc | fp16 WebGPU encoder + CTC decode | 190 | 98.36x | none | pass |
+| gigaam-rnnt | fp32 WebGPU encoder + WASM decoder/joint | 579 | 32.30x | none | pass |
+| sensevoice-small | fp16 WebGPU + fp16 LUT CTC decode | 381 | 49.07x | none | pass |
+| qwen3-asr-0.6b | fp32 WebGPU encoder + fp32 GPU-KV decoder | 6996 | 2.65x | none | pass |
 
 Manifest: tools/data/results/cross-model/all-models-shared-window-2026-08-30.json
 
-## Notes
+## Same-day repeat run (page-fix validation + variance sample)
 
-- Parakeet v3 int8 hybrid passed the exact 91-token oracle at 20.44x in this
-  snapshot versus the 37.2x recorded on 2026-08-29. Follow-up paired probes
-  (same session, back-to-back) reproduce 20-23x across every configuration
-  variant: ONNX preprocessor 955.7 ms / 19.70x, JS preprocessor 828.5 ms /
-  22.76x, single-thread WASM 892.9 ms / 21.05x, default 12-thread 923.0 ms /
-  20.44x - all exact. Preprocessor choice and thread count are therefore
-  ruled out, and v2 hitting 37.15x today proves the environment still reaches
-  the band for the lighter decoder. The 37.2x v3 record did not reproduce;
-  suspected environment drift (Chrome auto-update, driver, or thermal state)
-  rather than a library regression. Keep watching v3 via this matrix instead
-  of treating either number as permanent.
-- int8 decoder on the full-WebGPU composition produced garbled transcripts
-  ("Prex rec public vol. or. b Wow") at ~5-8x during orchestrator bring-up.
-  The INT8 decoder is transcript-safe only on WASM; keep it there (the
-  library default already does).
-- Qwen3-ASR 0.6B posted no result within the 15-minute runner budget on this
-  window (no payload, exit 1); it completes only on the 11 s JFK fixture
-  today. Consistent with the artifact-fragility pattern recorded in
-  docs/GOAL_PROMPT.md (int4 hangs, fp16 hangs, graph capture rejected).
-- Whisper 'check' status is the page's throughput-only label (oracle none),
-  not a failure. Command history: this run used the fp16io-fp16 GPU-KV greedy
-  composition (the 27x flagship path).
+A second full run of the orchestrator on the same day, after fixing the
+harness page defect and with the repaired page filling the Qwen row:
 
-## Reproduction
+| family | run 1 RTFx | run 2 RTFx | delta |
+| --- | ---: | ---: | --- |
+| whisper-large-v3-turbo | 27.45x | 27.49x | +-0.1% |
+| parakeet-tdt-v3 | 20.44x | 22.33x | +9% |
+| parakeet-tdt-v2 | 37.15x | 30.75x | -17% |
+| gigaam-ctc | 90.11x | 98.36x | +9% |
+| gigaam-rnnt | 32.41x | 32.30x | -0.3% |
+| sensevoice-small | 46.79x | 49.07x | +5% |
+| qwen3-asr-0.6b | error | 2.65x (6996 ms) | first valid sample |
 
-Orchestrator: `webgpu-agent-test/scripts/run-all-models.mjs` (requires Vite
-dev server on :8765). It sequences the per-family runners with the shared
-window, parses each runner's payload, and writes this report plus the JSON
-manifest. Whisper matrix case `en-greedy-gpu-kv-librivox` was added to
-`scripts/run-webgpu-matrix.mjs` for this benchmark.
+Takeaways:
+
+- Whisper GPU-KV greedy is extremely stable across sessions on this window
+  (and matches the 27.02x 30 s revalidation), making it the best reference
+  leg for detecting machine-state drift.
+- The WASM-decode-loop families (Parakeet v2/v3) swing the most between
+  sessions (up to ~20%); treat their single-session numbers as bands, not
+  points, and prefer paired same-session A/Bs for promotion decisions.
+- Qwen now completes on the shared 18.7 s window at 2.65x, consistent with
+  its 2.08-2.19x on the 11 s JFK fixture within the same environment state;
+  the earlier "no payload" row was the harness page defect, not a window-
+  length or artifact limitation.
