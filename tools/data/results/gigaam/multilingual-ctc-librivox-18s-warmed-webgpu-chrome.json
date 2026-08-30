@@ -1,6 +1,6 @@
 {
   "preset": "gigaam-ctc-fp16-webgpu",
-  "timestamp": "2026-08-30T02:45:00.398Z",
+  "timestamp": "2026-08-30T04:27:09.593Z",
   "status": "pass",
   "transcript": " ",
   "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
@@ -17,33 +17,33 @@
     "warmupRuns": [
       {
         "run": 1,
-        "transcribeMs": 394.07999999821186,
-        "rtfx": 47.895
+        "transcribeMs": 396.7450000047684,
+        "rtfx": 47.5917
       }
     ]
   },
   "warmupRuns": [
     {
       "run": 1,
-      "transcribeMs": 394.07999999821186,
-      "rtfx": 47.895
+      "transcribeMs": 396.7450000047684,
+      "rtfx": 47.5917
     }
   ],
   "runMetrics": [
     {
       "run": 1,
-      "transcribeMs": 211.63500000536442,
-      "rtfx": 89.2929
+      "transcribeMs": 184.93000000715256,
+      "rtfx": 102.0838
     },
     {
       "run": 2,
-      "transcribeMs": 207.6899999976158,
-      "rtfx": 90.7587
+      "transcribeMs": 208.61499999463558,
+      "rtfx": 90.3556
     },
     {
       "run": 3,
-      "transcribeMs": 188.0400000065565,
-      "rtfx": 100.5453
+      "transcribeMs": 190.26000000536442,
+      "rtfx": 99.2101
     }
   ],
   "batch": false,
@@ -54,14 +54,14 @@
   "decoderFolder": "ctc",
   "tokens": [],
   "metrics": {
-    "loadMs": 4762.870000004768,
-    "transcribeMs": 207.6899999976158,
-    "totalMs": 6041.515000000596,
-    "rtf": 0.011098108367939287,
-    "rtfx": 90.10544561709676,
-    "preprocessMs": 45.425,
-    "encodeMs": 138.31,
-    "decodeMs": 0.32
+    "loadMs": 4810.814999997616,
+    "transcribeMs": 190.26000000536442,
+    "totalMs": 6065.810000002384,
+    "rtf": 0.01016672010288364,
+    "rtfx": 98.36013875471646,
+    "preprocessMs": 44.965,
+    "encodeMs": 141.775,
+    "decodeMs": 0.34
   },
   "adapter": {
     "available": true,
@@ -73,6 +73,6 @@
   "log": [
     "navigator.gpu: true",
     "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
-    "session ready in 4763ms"
+    "session ready in 4811ms"
   ]
 }

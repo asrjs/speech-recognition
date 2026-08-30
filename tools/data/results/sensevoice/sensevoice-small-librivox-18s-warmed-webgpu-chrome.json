@@ -1,6 +1,6 @@
 {
   "preset": "sensevoice-small-webgpu",
-  "timestamp": "2026-08-30T02:45:30.452Z",
+  "timestamp": "2026-08-30T04:27:39.635Z",
   "status": "pass",
   "transcript": "preface of a year with the birds this is a libre vox recording all libre vox recordings are in the public domain for more information or to volunteer please visit librevooxorg read byolivia a year with the birds by w ward fowler",
   "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
@@ -17,33 +17,33 @@
     "warmupRuns": [
       {
         "run": 1,
-        "transcribeMs": 553.440000012517,
-        "rtfx": 33.9403
+        "transcribeMs": 527.375,
+        "rtfx": 35.6077
       }
     ]
   },
   "warmupRuns": [
     {
       "run": 1,
-      "transcribeMs": 553.440000012517,
-      "rtfx": 33.9403
+      "transcribeMs": 527.375,
+      "rtfx": 35.6077
     }
   ],
   "runMetrics": [
     {
       "run": 1,
-      "transcribeMs": 425.66499999165535,
-      "rtfx": 44.0931
+      "transcribeMs": 390.08500000834465,
+      "rtfx": 48.1247
     },
     {
       "run": 2,
-      "transcribeMs": 399.940000012517,
-      "rtfx": 46.9334
+      "transcribeMs": 360.3049999922514,
+      "rtfx": 52.131
     },
     {
       "run": 3,
-      "transcribeMs": 385.875,
-      "rtfx": 48.6919
+      "transcribeMs": 381.35499998927116,
+      "rtfx": 49.2506
     }
   ],
   "batch": false,
@@ -58,15 +58,15 @@
     "event": "Speech"
   },
   "metrics": {
-    "loadMs": 8583.015000000596,
-    "transcribeMs": 399.940000012517,
-    "totalMs": 10621.17499999702,
-    "rtf": 0.02137116597266843,
-    "rtfx": 46.792018801355965,
-    "preprocessMs": 60.645,
-    "encodeMs": 149.15,
-    "decodeMs": 174.485,
-    "nativeTotalMs": 384.335,
+    "loadMs": 8694.35000000894,
+    "transcribeMs": 381.35499998927116,
+    "totalMs": 10609.755000010133,
+    "rtf": 0.02037805920643749,
+    "rtfx": 49.0723866227701,
+    "preprocessMs": 64.775,
+    "encodeMs": 146.615,
+    "decodeMs": 168.515,
+    "nativeTotalMs": 379.975,
     "encoderFrameCount": 316,
     "emittedTokenCount": 59
   },
@@ -80,6 +80,6 @@
   "log": [
     "navigator.gpu: true",
     "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
-    "session ready in 8583ms"
+    "session ready in 8694ms"
   ]
 }
