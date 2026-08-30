@@ -87,6 +87,7 @@ export interface NemoNativeTranscriptMetrics {
   readonly resamplerQuality?: string | null;
   readonly encoderFrameCount?: number;
   readonly decodeIterations?: number;
+  readonly decoderGridBatchRuns?: number;
   readonly emittedTokenCount?: number;
   readonly emittedWordCount?: number;
 }

@@ -158,6 +158,8 @@ export interface TranscriptMetrics {
   readonly decodeIterations?: number;
   /** Speculative batched joint-graph runs used by row-parallel RNN-T decoders. */
   readonly joinerBatchRuns?: number;
+  /** Speculative batched decoder-joint grid runs used by fused TDT decoders. */
+  readonly decoderGridBatchRuns?: number;
   /** Number of model inference windows used to compose this transcript. */
   readonly windowCount?: number;
   readonly emittedTokenCount?: number;

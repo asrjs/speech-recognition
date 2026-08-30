@@ -1,0 +1,158 @@
+{
+  "preset": "parakeet-tdt-v3-decoder-wasm",
+  "timestamp": "2026-08-30T16:36:55.660Z",
+  "status": "pass",
+  "exactMatch": null,
+  "normalizedMatch": true,
+  "transcript": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit LibriVox.org. Read by Olivia. A Year with the Birds by W. Ward Fowler.",
+  "expected": null,
+  "qualityOracle": null,
+  "transcriptAvailable": true,
+  "audioUrl": "/parakeet-audio/librivox.org.wav",
+  "requestedClipSec": null,
+  "webgpu": true,
+  "backend": "webgpu",
+  "encoderBackend": "webgpu",
+  "encoderQuantization": "fp16",
+  "preprocessorBackend": "js",
+  "decoderBackend": "wasm",
+  "decoderStateOutputLocation": "cpu",
+  "webgpuStorageBufferCacheMode": "bucket-default",
+  "decoderQuantization": "int8",
+  "returnConfidence": true,
+  "audioStrategy": "native-rate",
+  "repeatCount": 3,
+  "warmupCount": 1,
+  "cpuThreads": 12,
+  "audio": {
+    "sampleRate": 16000,
+    "samples": 299425,
+    "durationSec": 18.714058956916098,
+    "sourceDurationSec": 18.714058956916098,
+    "numberOfChannels": 1,
+    "decodeMetrics": {
+      "backend": "browser",
+      "strategy": "audiocontext-native-rate",
+      "inputSampleRate": 22050,
+      "outputSampleRate": 16000,
+      "decodeMs": 6.944999992847443,
+      "downmixMs": 0,
+      "resampleMs": 4.240000009536743,
+      "totalMs": 11.185000002384186,
+      "wallMs": 20.014999985694885,
+      "resampler": "linear-parity",
+      "resamplerQuality": "linear",
+      "audioDurationSec": 18.714058956916098
+    }
+  },
+  "metrics": {
+    "loadMs": 9684.969999998808,
+    "transcribeMs": 942.4300000071526,
+    "totalMs": 13600.319999992847,
+    "rtfx": 19.9697,
+    "wallRtfx": 19.857240279674954,
+    "decodeIterations": 105,
+    "emittedTokenCount": 91,
+    "warmupRuns": [
+      {
+        "runIndex": 1,
+        "transcribeMs": 1078.6500000059605,
+        "rtfx": 17.4532,
+        "wallRtfx": 17.349519266502284,
+        "preprocessMs": 35.515,
+        "encodeMs": 391.16,
+        "decodeMs": 643.275,
+        "totalMs": 1072.24,
+        "decodeIterations": 105,
+        "emittedTokenCount": 91
+      }
+    ],
+    "transcribeRuns": [
+      {
+        "runIndex": 1,
+        "transcribeMs": 942.4300000071526,
+        "rtfx": 19.9697,
+        "wallRtfx": 19.857240279674954,
+        "preprocessMs": 50.09,
+        "encodeMs": 181.89,
+        "decodeMs": 703.98,
+        "totalMs": 937.125,
+        "nativeWallMs": 937.125,
+        "decodeIterations": 105,
+        "emittedTokenCount": 91,
+        "decoderGridBatchRuns": 7,
+        "exactMatch": null,
+        "normalizedMatch": null,
+        "transcript": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit LibriVox.org. Read by Olivia. A Year with the Birds by W. Ward Fowler.",
+        "memory": {
+          "usedJSHeapSize": 1305016313,
+          "totalJSHeapSize": 1317917277,
+          "jsHeapSizeLimit": 4395630592
+        }
+      },
+      {
+        "runIndex": 2,
+        "transcribeMs": 977.0699999928474,
+        "rtfx": 19.255,
+        "wallRtfx": 19.15324281479637,
+        "preprocessMs": 66.485,
+        "encodeMs": 196.635,
+        "decodeMs": 705.79,
+        "totalMs": 971.905,
+        "nativeWallMs": 971.905,
+        "decodeIterations": 105,
+        "emittedTokenCount": 91,
+        "decoderGridBatchRuns": 7,
+        "exactMatch": null,
+        "normalizedMatch": null,
+        "transcript": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit LibriVox.org. Read by Olivia. A Year with the Birds by W. Ward Fowler.",
+        "memory": {
+          "usedJSHeapSize": 1310668921,
+          "totalJSHeapSize": 1324841753,
+          "jsHeapSizeLimit": 4395630592
+        }
+      },
+      {
+        "runIndex": 3,
+        "transcribeMs": 788.875,
+        "rtfx": 23.8764,
+        "wallRtfx": 23.722464214122766,
+        "preprocessMs": 45.735,
+        "encodeMs": 241.81,
+        "decodeMs": 495.81,
+        "totalMs": 783.79,
+        "nativeWallMs": 783.79,
+        "decodeIterations": 105,
+        "emittedTokenCount": 91,
+        "decoderGridBatchRuns": 7,
+        "exactMatch": null,
+        "normalizedMatch": null,
+        "transcript": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit LibriVox.org. Read by Olivia. A Year with the Birds by W. Ward Fowler.",
+        "memory": {
+          "usedJSHeapSize": 39920413,
+          "totalJSHeapSize": 55042645,
+          "jsHeapSizeLimit": 4395630592
+        }
+      }
+    ]
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "crossOriginIsolated: true, hardwareConcurrency: 12",
+    "decoder backend: wasm",
+    "model ready in 9685ms"
+  ],
+  "teardown": {
+    "modelDisposeAttempted": true,
+    "runtimeDisposeAttempted": true,
+    "errors": []
+  }
+}

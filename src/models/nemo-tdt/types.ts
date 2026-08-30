@@ -135,6 +135,8 @@ export interface NemoTdtTranscriptionOptions extends BaseTranscriptionOptions {
   readonly temperature?: number;
   readonly returnTokenIds?: boolean;
   readonly returnConfidence?: boolean;
+  /** Disable speculative grid batching of the fused decoder-joint graph (A/B). */
+  readonly gridBatching?: boolean;
   readonly returnFrameIndices?: boolean;
   readonly returnLogProbs?: boolean;
   readonly returnTdtSteps?: boolean;

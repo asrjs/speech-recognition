@@ -25,6 +25,47 @@ framework.
 
 ## Completed (2026-08-30 recent slices)
 
+Parakeet TDT speculative grid batching with utilization gate (2026-08-30,
+this slice, evidence pending commit):
+
+- One [1, features, width] decoder-joint run now scores a window of frames
+  against the current (target, GRU state) pair: blank rows are consumed
+  (duration-skip jumps reuse already-scored rows), an emission commits its
+  token, transfers the grid output states, and re-batches from the emitting
+  frame; no-emission windows double the width (2 -> 32).
+- Critical bug found and fixed during bring-up: the batch tensor is declared
+  [1, features, width] and the graph transposes with perm (0,2,1), so the
+  flat layout must be feature-major (element (f, w) at f*width + w). A
+  row-major fill silently transposes width > 1 grids (width 1 is
+  layout-invariant, so layout-blind mocks passed while the browser produced
+  an EMPTY transcript). Both gather branches were fixed and the unit mock now
+  asserts the per-column layout and throws on violation. Generalize this
+  assertion pattern to every future batched-decode port (RNNT joiner next).
+- Adaptive utilization gate added after the browser A/B showed speculative
+  columns are wasted on emission-dense audio: after a 24-column sampling
+  window, batching latches off when useful columns fall below 70% of scored
+  columns. options.gridBatching=false pins the sequential path. The gate
+  bounds wasted speculation to the sampling window while keeping the
+  dispatch win for blank-dominant audio.
+- Browser A/B (Chrome headless, real Blackwell WebGPU host, LibriVox 18.7 s,
+  v3 int8 decoder WASM, --oracle=none): gate-on 7 grid runs then sequential,
+  transcript exactly identical to baseline, decodeMs 496-706 vs baseline
+  643-704 (parity on dense audio); the pre-gate implementation ran 98 grid
+  runs on the same fixture. Correctness first held throughout.
+- Validation: 10 unit tests in tests/nemo-tdt-grid-batching.test.ts
+  (parity, duration-skip reuse, multi-token frames, maxSymbolsPerStep, latch
+  on rejection/corruption, abort re-throw without latch, tensor disposal,
+  gate latch on dense audio, gate stays open for blank-dominant audio,
+  gridBatching=false pin); full suite 1053 passed / 18 artifact-gated skips;
+  tsc clean; dist rebuilt.
+- Finding for the porting methodology: emission-dense audio cannot win from
+  speculative width (utilization ~= 1/width); the same gate+layout-assertion
+  template applies to the GigaAM RNN-T joiner follow-ups and any future
+  TDT/RNN-T ports. Open follow-up: port the same template to
+  src/models/nemo-rnnt/executor.ts (eou-120m fused graph; no duration head,
+  so utilization counts emission-rows only).
+
+
 Speculative batched joiner for GigaAM RNN-T (2026-08-30):
 
 - Ported the X-ASR batched-joiner idea to the GigaAM v3 E2E RNN-T executor
@@ -895,6 +936,14 @@ Earlier streaming and validation slices:
   reusable porting/parity infrastructure
 - Respect folder boundaries per `AGENTS.md` and `docs/architecture.md`
 
+- Standing learning-capture directive: while working, continuously extract
+  experiences, issues, root causes, new findings, optimization methods, and
+  workflow/tooling improvements into reusable form (report docs, report
+  "reusable lesson" lines, this goal file, and skills/benchmarks). Future
+  model ports must be able to consume these lessons automatically instead of
+  re-deriving them. Every slice that debugged something non-obvious must end
+  with at least one written, reusable lesson.
+
 ## Model-specific performance optimization (primary directive)
 
 For every supported or newly ported ASR model, working correctly is the
@@ -1021,206 +1070,6 @@ Shared short-window benchmark and RTFx regression probe (2026-08-29):
   win. Keep per-model/backend placement decisions evidence-driven.
 - Evidence and exact commands: `docs/reports/cross-model-audio-window-benchmark-2026-08-29.md`
   and its JSON manifest.
-
-## Current WebGPU EP optimization task
-
-ORT Web was upgraded 1.27-nightly → 1.29.0 stable and validated end-to-end
-(see Completed below). The built-in WebGPU EP exposes the GRU/LSTM support used
-by the decoder spike. Separately, the native ONNX Runtime WebGPU Plugin EP
-0.3.0 release adds GRU and DFT support, deferred dispatch for parallel shader
-compilation, configurable GPU-buffer caching, improved FP16/MatMul kernels,
-and broader integer coverage. Treat those as two different compatibility
-surfaces. Work items, in order:
-
-1. [Completed 2026-08-29] Probe the Parakeet TDT decoder/joint graphs on the
-   built-in WebGPU EP in Chrome via an opt-in decoder-backend override. The
-   corrected controlled A/B and the library-entry GPU-state A/B are recorded
-   below. The `decoderStateOutputLocation` path is opt-in and preserves the
-   default encoder-WebGPU/decoder-WASM composition until cross-adapter
-   lifecycle evidence justifies promotion.
-2. [Qwen placement/profile sub-slice completed 2026-08-29; GigaAM RNN-T
-   per-component 18 s placement A/B completed 2026-08-30] Measure
-   per-component placement again for every family on 1.29.0 — the X-ASR
-   WASM-vs-WebGPU and buffer-cache conclusions may shift with the new EP;
-   re-benchmark instead of inheriting old verdicts. Qwen's corrected browser
-   entry-point A/B and decoder phase profile are recorded above. GigaAM RNN-T
-   per-component placement was re-measured on the shared 18.7 s warmed fixture
-   on 2026-08-30: shipped hybrid 27.9x, decoder-GPU 4.19x, all-GPU 2.63x, and
-   joint-GPU timing out beyond the 600 s harness budget (bounded to 5.11x on a
-   5 s clip); all four placements produced identical transcripts, confirming
-   parity. Verdict: the hybrid composition is placement-optimal; the GPU
-   penalty is per-step dispatch on tiny recurrence graphs, consistent with the
-   Parakeet GRU and plugin-EP findings. Evidence:
-   docs/reports/gigaam-rnnt-placement-ab-18s-2026-08-30.md and
-   tools/data/results/gigaam/gigaam-rnnt-librivox-*-warmed*.json. Cross-browser
-   repetition completed the same day on Edge (runner gained --browser=edge):
-   hybrid 28.02x and decoder-GPU 3.97x reproduced the Chrome verdicts with
-   identical transcripts. Work item 2 is now closed for GigaAM RNN-T.
-   Same-day follow-up: the speculative batched joiner lifted the shipped
-   hybrid to 47.31x (Chrome) / 48.75x (Edge) with identical transcripts;
-   the placement verdict is unchanged (hybrid remains optimal). See the
-   completed-slice entry at the top of this section.
-3. [Completed 2026-08-30] Bounded compatibility spike against the separate
-   native WebGPU Plugin EP 0.3.0 (onnxruntime-ep-webgpu, Python) executed on
-   the real Parakeet v3 decoder_joint graphs. Findings: the EP registers only
-   via register_execution_provider_library + add_provider_for_devices (the
-   providers= name silently falls back to CPU); fp32 decoder-joint achieves
-   100% GPU partition including both LSTM kernels (3.7e-3 parity vs CPU) but
-   is latency-bound on tiny single-step graphs (3.15 ms/step GPU vs 1.66 ms
-   CPU); int8 keeps 9 nodes on CPU including both LSTM_quant kernels - the
-   same quantized-recurrence gap we measured for GigaAM INT8 on the browser
-   EP. Verdict: no browser plan change (plugin is Python-only; built-in ORT
-   Web 1.29 already covers the graph), keep as a kernel-coverage diagnostic
-   oracle. Evidence: docs/reports/webgpu-plugin-ep-parakeet-spike-2026-08-30.md,
-   tools/spikes/parakeet-webgpu-plugin-ep*.py.
-4. [Qwen graph-capture and ArgMax probes completed 2026-08-29; promotion remains open]
-   Promote only lifecycle-safe, end-to-end-proven state/cache
-   placement. Track tensor ownership and disposal explicitly; a decoder-only
-   GPU-state win is not sufficient for production promotion. For each model,
-   use the phase telemetry to select the next bottleneck and record rejected
-   low-yield hypotheses instead of optimizing unmeasured hot paths. Keep
-   graph-surgery candidates reversible and require provider-specific evidence;
-   ArgMax/readback reduction is not a win when the added reduction kernel
-   dominates execution.
-
-Local availability check (2026-08-29): the separate native Plugin EP 0.3.0 is
-not installed on this host. Python ONNX Runtime exposes TensorRT/CUDA/CPU only,
-and the Node workspace contains the built-in `onnxruntime-web` 1.29.0 plus the
-existing nightly `onnxruntime-node`; no plugin package or .NET project is
-available. Do not block browser optimization on this research boundary.
-
-Probe status (2026-08-29, corrected controlled browser A/B):
-
-- Native WebGPU probe (`onnxruntime-node` wgpu adapter): the Parakeet v3
-  `decoder_joint-model.onnx` GRU graph RUNS on a GPU EP. Session creation
-  479 ms, warm steps 7–9 ms, outputs finite, logits dims `[1,1,1,8198]`
-  (8193 vocab + 5 TDT duration logits — argmax must slice to vocabSize). The
-  graph itself is WebGPU-fast; GPU decode is a real option, not a Wasm-only
-  constraint.
-- Browser spike harness built in `webgpu-agent-test`:
-  `parakeet-tdt.html` + `src/parakeet-tdt-webgpu.js` +
-  `scripts/run-parakeet-tdt-webgpu.mjs` (full-model and decoder-only spike
-  modes). Asset routes `/parakeet-v3/` and `/parakeet-audio/` added.
-- Corrected browser A/B: on a real NVIDIA Blackwell adapter, both ORT Web
-  `1.27.0-dev.20260506-673c3320fc` and stable `1.29.0` completed the
-  decoder-only GRU spike on both WebGPU and WASM. Three corrected runs per
-  version/backend passed with finite outputs and identical vocabulary-sliced
-  token IDs (`8192`); the raw argmax was duration logit `8194` in the
-  `[1,1,1,8198]` output, so the probe now limits token selection to the 8193
-  vocabulary entries. Representative medians were WebGPU session-load
-  `1.41 s` (1.27) vs `1.46 s` (1.29), with warm-step means varying from
-  `14.0–32.2 ms` (1.27) and `9.9–14.9 ms` (1.29); WASM warm-step means were
-  `5.5–5.8 ms` (1.27) and `5.5–6.5 ms` (1.29). This disproves the earlier
-  uncorrected “1.29 session-create hang” classification.
-- The spike harness was repaired before accepting that evidence: spike mode
-  no longer imports the full library before the direct ORT probe, its result
-  logger is defined, and the runner recognizes its two per-EP result records.
-  These fixes are validation infrastructure only and do not change the
-  library's default backend composition.
-- Opt-in 1.29 GPU-state experiment: `preferredOutputLocation` kept both GRU
-  state outputs on `gpu-buffer` and preserved the same five-step vocabulary
-  argmax sequence. Three WebGPU runs had warm-step means `9.01`, `8.26`, and
-  `7.78 ms`, versus `12.73–13.14 ms` across comparable CPU-state baselines
-  (about 29–41% lower in this decoder-only microbenchmark). This is a hypothesis for
-  the library's next Parakeet optimization slice, not an end-to-end promotion:
-  full-model transcript parity, repeated-transcription memory behavior, and
-  safe GPU-tensor disposal remain unverified.
-- Model-specific decode hot path (library, 2026-08-29): TDT now borrows
-  float32 logits views before synchronous disposal, and the shared
-  `confidenceFromLogits` helper skips entropy work that its API does not return.
-  The 10,000-run Node harness measured `0.0849 ms` p50 for confidence-only
-  versus `0.3970 ms` p50 for full TDT-vocabulary quality (about 79% lower), and
-  `0.0928 ms` p50 for borrowed logits versus `0.1114 ms` for the copy control
-  (about 17% lower). This is post-processing evidence, not an end-to-end RTFx
-  claim; full-suite correctness remains required.
-- Open result: the corrected full-model browser probe reaches model-ready and
-  shows large WebGPU-encoder latency gains. Target-rate AudioContext runs fail
-  transcript parity, while the deterministic native-rate WAV path now passes
-  exact parity at 18.66x RTFx for one fp16/WebGPU composition. Repeat that
-  result across browsers and artifact variants, and diagnose external-data
-  mounting/provider behavior before changing any preset default. Until exact
-  parity and end-to-end GPU-state lifecycle proof exist, keep the production
-  default `encoder-WebGPU/decoder-WASM` composition.
-- Lifecycle refresh (2026-08-29): the corrected all-WebGPU Parakeet browser
-  harness reproduced the exact 91-token transcript for 3/3 native-rate runs
-  (median 3,420.915 ms / 5.477x RTFx) and completed model disposal; the
-  explicit GPU-state replacement/disposal diagnostic also passed all five
-  steps twice without the historical `null function` failure. Treat this as
-  refreshed evidence, not a promotion: the opt-in library state-location path
-  is now wired through hub, local, and direct Parakeet loading, but full-model
-  parity, repeated transcriptions, and disposal must still be repeated on more
-  than one browser/adapter before changing the default. Evidence:
-  `docs/reports/parakeet-tdt-v3-webgpu-lifecycle-refresh-2026-08-29.json`.
-- Library opt-in state A/B (2026-08-29): the new `decoderStateOutputLocation`
-  path was exercised through `loadSpeechModel` on the same Chrome/NVIDIA
-  Blackwell fixture. GPU-state output preserved the exact 91-token transcript
-  for 3/3 runs and reduced the warm median from `3,474.620 ms` (`5.3918x`
-  RTFx) to `2,871.875 ms` (`6.5244x` RTFx): `17.3471%` lower latency and
-  `21.006%` higher RTFx, with comparable JS-heap snapshots and no disposal
-  error. This is strong single-adapter evidence for an opt-in optimization,
-  not a default change; repeat on another browser/adapter and run a longer
-  lifecycle soak before promotion. Evidence:
-  `docs/reports/parakeet-tdt-v3-library-gpu-state-ab-2026-08-29.json`.
-  The same host exposed no adapter under Chrome Vulkan or D3D12 ANGLE, so those
-  secondary checks are recorded as `WEBGPU_NO_ADAPTER` rather than treated as
-  performance failures.
-
-- ORT 1.29 storage-cache sweep (2026-08-29): explicit `bucket`, `simple`,
-  `disabled`, and `lazyRelease` modes all preserved exact Parakeet TDT
-  transcripts on the same Chrome/NVIDIA fixture, but no cache-only mode beat
-  the bucket control repeatably; `simple` plus GPU-state was also slightly
-  slower than the prior bucket-default GPU-state run. The library exposes the
-  knobs for model-specific experiments while retaining ORT defaults. Evidence:
-  `docs/reports/parakeet-tdt-v3-webgpu-cache-sweep-2026-08-29.json`.
-- Five-run Parakeet GPU-state soak (2026-08-29): the same library-entry
-  fixture preserved exact 91-token parity for all five CPU-state and
-  `gpu-buffer`-state runs. GPU-state reduced median warm latency from
-  `3,491.575 ms` to `2,907.200 ms` (`16.7367%`) and improved median RTFx from
-  `5.3655x` to `6.4454x` (`20.1267%`); load time was also `7.3665%` lower in
-  this repeat. The strengthened harness records model/runtime disposal errors
-  and found none, but the final heap sample drops sharply in both controls;
-  retain the path opt-in pending another browser/adapter.
-  Evidence: `docs/reports/parakeet-tdt-v3-webgpu-lifecycle-soak-2026-08-29.json`.
-  A Chrome SwiftShader attempt also returned `WEBGPU_NO_ADAPTER`; the host
-  therefore still lacks a second usable adapter for the promotion gate.
-
-- [Completed 2026-08-29] GigaAM RNN-T phase profile and provider matrix: the
-  official v3 E2E artifact and
-  captured waveform pass exact 78-token parity on Node WASM. Three measured
-  runs attribute roughly 93% of transcribe time to the encoder (5.25–5.61 s),
-  versus about 3–5% to decoder/joiner work (0.19–0.26 s) and 1–3% to JS
-  preprocessing. A frame-extraction/tensor-hoist candidate was rejected after
-  its 3-run median moved from 6.158 s to 6.105 s but p90 regressed from 6.171
-  s to 6.593 s; this is not a promotion-quality win. The next bounded test is
-  real Chrome WebGPU encoder + WASM decoder/joiner; it measured 1,910 ms / 5.92x
-  RTFx, versus 4,638 ms / 2.44x all-WebGPU and 5,948 ms / 1.90x all-WASM;
-  all three were exact on NVIDIA Blackwell with ORT Web 1.29.0. The matrix is
-  in `tools/data/results/gigaam/gigaam-rnnt-browser-component-matrix-2026-08-29.json`.
-  Same-session repeats warmed the hybrid path to a 455 ms median / 24.87x RTFx
-  (all exact), while all-WebGPU and all-WASM medians were 2.64x and 1.98x.
-  Repeat across browsers and sessions before changing a preset default.
-
-- [Profile 2026-08-29] GigaAM multilingual CTC now reports separate
-  preprocessing, ORT encoder, and CTC readback/decode phases instead of
-  attributing the entire call to `encodeMs`. On three fresh Chrome/NVIDIA
-  Blackwell runs, the warm median was `363.755 ms` (`31.8025x` RTFx):
-  preprocessing `74.295 ms` (20.42%), encoder `283.050 ms` (77.81%), and
-  decode/readback `2.820 ms` (0.78%), with exact JFK parity in every run.
-  This rejects CTC tensor-copy/argmax surgery as a high-value target for this
-  family; future work should target the encoder graph/provider
-  behavior. Evidence: `docs/reports/gigaam-ctc-webgpu-phase-profile-2026-08-29.json`.
-
-- [Probe 2026-08-29] GigaAM RNN-T all-WebGPU session initialization: an
-  opt-in `parallelSessionInitialization` flag overlaps creation of the
-  independent encoder, decoder, and joint graphs. Three fresh Chrome/NVIDIA
-  Blackwell runs reduced median load from `8,821.245 ms` (serial) to
-  `7,556.690 ms` (parallel, `14.3353%` lower) while preserving exact 91-token
-  parity. The probe is deliberately opt-in: a mixed WebGPU/WASM attempt
-  reproduced ORT's `multiple calls to initWasm()` race, and earlier WebGPU
-  runs reported concurrent EP-creation failures. Mixed and WASM compositions
-  therefore remain serial. Do not promote the flag to a default until another
-  browser/adapter and a longer lifecycle soak pass. Evidence:
-  `docs/reports/gigaam-rnnt-session-init-concurrency-2026-08-29.json`.
 
 ## First inspect the real repository
 

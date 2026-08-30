@@ -178,6 +178,7 @@ function createExecutorHarness(options: {
   readonly logits: readonly MockDecoderStep[];
   readonly vocab?: readonly string[];
   readonly source?: NemoTdtArtifactSource;
+  readonly batching?: boolean;
 }) {
   const config = parseNemoTdtConfig('test-nemo-tdt', {
     subsamplingFactor: 4,
@@ -213,6 +214,11 @@ function createExecutorHarness(options: {
     'wasm',
     options.source ? { source: options.source } : undefined,
   ) as OrtNemoTdtExecutor & { loadStatePromise?: Promise<unknown> };
+  // The script-driven mock decoder above cannot serve speculative grid
+  // shapes, so the harness pins the executor to the sequential decode
+  // path unless a test opts into the batched path explicitly.
+  (executor as unknown as { tdtBatchAllowed: boolean }).tdtBatchAllowed =
+    options.batching === true;
 
   executor.loadStatePromise = Promise.resolve({
     ort: createMockOrt(),

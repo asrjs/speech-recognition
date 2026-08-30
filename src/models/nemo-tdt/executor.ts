@@ -146,6 +146,14 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
   private readonly assetHandles: ResolvedAssetHandle[] = [];
   private disposed = false;
   private disposePromise?: Promise<void>;
+  private tdtBatchAllowed = true;
+  private static readonly tdtBatchMinFrames = 2;
+  private static readonly tdtBatchMaxFrames = 32;
+  private tdtBatchWidth = OrtNemoTdtExecutor.tdtBatchMinFrames;
+  private static readonly tdtBatchMinSampleColumns = 24;
+  private static readonly tdtBatchMinColumnUtilization = 0.7;
+  private tdtBatchColumnsScored = 0;
+  private tdtBatchColumnsUseful = 0;
 
   constructor(
     private readonly modelId: string,
@@ -679,9 +687,226 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
 
     const decoderStart = nowMs();
     let lastReportedDecodeUnits = -1;
+    let decoderGridBatchRuns = 0;
+    this.tdtBatchColumnsScored = 0;
+    this.tdtBatchColumnsUseful = 0;
     try {
       for (let frameIndex = 0; frameIndex < frameCount; ) {
         throwIfDecodeAborted(options.signal);
+        if (
+          this.tdtBatchAllowed &&
+          options.gridBatching !== false &&
+          emittedOnFrame === 0 &&
+          frameCount - frameIndex > 1 &&
+          (this.tdtBatchColumnsScored <
+            OrtNemoTdtExecutor.tdtBatchMinSampleColumns ||
+            this.tdtBatchColumnsUseful >=
+              OrtNemoTdtExecutor.tdtBatchMinColumnUtilization *
+                this.tdtBatchColumnsScored)
+        ) {
+          const width = Math.min(
+            frameCount - frameIndex,
+            this.tdtBatchWidth,
+            OrtNemoTdtExecutor.tdtBatchMaxFrames,
+          );
+          const batchData = new Float32Array(width * featureSize);
+          if (encoderIsBdt) {
+            // The batch tensor is declared [1, features, width] and the graph
+            // transposes it with perm (0,2,1), so the flat layout must be
+            // feature-major: element (f, w) lives at f * width + w. A
+            // row-major fill silently transposes the grid for width > 1
+            // (width 1 is layout-invariant, which is why the sequential path
+            // never hits this and layout-blind unit mocks pass).
+            for (let fIdx = 0; fIdx < featureSize; fIdx += 1) {
+              const sourceRow = fIdx * frameCount + frameIndex;
+              batchData.set(encoderData.subarray(sourceRow, sourceRow + width), fIdx * width);
+            }
+          } else {
+            // Source is frame-major [1, frames, features]; the target
+            // tensor is feature-major [1, features, width], so scatter the
+            // copy instead of a flat memcpy (a memcpy transposes width > 1).
+            for (let row = 0; row < width; row += 1) {
+              const sourceOffset = (frameIndex + row) * featureSize;
+              for (let fIdx = 0; fIdx < featureSize; fIdx += 1) {
+                batchData[fIdx * width + row] = encoderData[sourceOffset + fIdx] ?? 0;
+              }
+            }
+          }
+          const batchEncoderTensor = new loaded.ort.Tensor("float32", batchData, [
+            1,
+            featureSize,
+            width,
+          ]);
+          const batchTargetBuffer = new Int32Array(1);
+          batchTargetBuffer[0] =
+            tokenIds.length > 0 ? tokenIds[tokenIds.length - 1]! : blankId;
+          const batchTargetTensor = new loaded.ort.Tensor("int32", batchTargetBuffer, [1, 1]);
+          let batchOutputs: Record<string, OrtTensorLike> | undefined;
+          try {
+            batchOutputs = await loaded.decoderSession.run({
+              encoder_outputs: batchEncoderTensor,
+              targets: batchTargetTensor,
+              target_length: targetLengthTensor,
+              input_states_1: decoderState?.state1,
+              input_states_2: decoderState?.state2,
+            });
+            const gridLogits = batchOutputs.outputs as OrtTensorLike<Float32Array>;
+            const gridRawData = gridLogits.data;
+            const gridTotal =
+              gridRawData instanceof Float32Array
+                ? gridRawData
+                : Float32Array.from(gridRawData as ArrayLike<number>);
+            const rowLength = Math.floor(gridTotal.length / width);
+            if (
+              rowLength <= 0 ||
+              gridTotal.length !== rowLength * width ||
+              rowLength <= vocabSize
+            ) {
+              // The graph did not return the per-frame row layout the
+              // speculative scan needs; permanently fall back to the
+              // sequential single-frame loop below.
+              this.tdtBatchAllowed = false;
+            } else {
+              decoderGridBatchRuns += 1;
+              let cursor = frameIndex;
+              let examined = 0;
+              let emissionRow = -1;
+              let emissionToken = 0;
+              let emissionStep = 0;
+              while (cursor - frameIndex < width) {
+                const rowIndex = cursor - frameIndex;
+                const rowView = gridTotal.subarray(
+                  rowIndex * rowLength,
+                  (rowIndex + 1) * rowLength,
+                );
+                examined += 1;
+                const tokenId = argmax(rowView, 0, vocabSize);
+                const step =
+                  argmax(rowView, vocabSize, rowLength - vocabSize) - vocabSize;
+                if (computeConfidence) {
+                  const scanConfidence = confidenceFromLogits(
+                    rowView,
+                    tokenId,
+                    vocabSize,
+                  );
+                  const existingScanStats = frameConfidenceStats.get(cursor);
+                  if (existingScanStats) {
+                    existingScanStats.sum += scanConfidence.confidence;
+                    existingScanStats.count += 1;
+                  } else {
+                    frameConfidenceStats.set(cursor, {
+                      sum: scanConfidence.confidence,
+                      count: 1,
+                    });
+                  }
+                }
+                if (tokenId !== blankId) {
+                  emissionRow = rowIndex;
+                  emissionToken = tokenId;
+                  emissionStep = step;
+                  break;
+                }
+                // Blank rows keep the predictor state, so a duration
+                // skip lands on another row that is already scored by
+                // this same run.
+                cursor += step > 0 ? step : 1;
+              }
+              decodeIterations += examined;
+              this.tdtBatchColumnsScored += width;
+              this.tdtBatchColumnsUseful += examined;
+              if (emissionRow === -1) {
+                frameIndex = cursor;
+                emittedOnFrame = 0;
+                this.tdtBatchWidth = Math.min(
+                  width * 2,
+                  OrtNemoTdtExecutor.tdtBatchMaxFrames,
+                );
+              } else {
+                this.tdtBatchWidth = OrtNemoTdtExecutor.tdtBatchMinFrames;
+                const emissionFrame = frameIndex + emissionRow;
+                const rowView = gridTotal.subarray(
+                  emissionRow * rowLength,
+                  (emissionRow + 1) * rowLength,
+                );
+                if (computeConfidence) {
+                  const stepConfidence = confidenceFromLogits(
+                    rowView,
+                    emissionToken,
+                    vocabSize,
+                  );
+                  tokenConfidences.push(stepConfidence.confidence);
+                  tokenLogProbs.push(stepConfidence.logProb);
+                }
+                const durationFrames = Math.max(1, emissionStep);
+                tokenIds.push(emissionToken);
+                tokenTimestamps.push([
+                  roundTimestampSeconds(emissionFrame * frameTime),
+                  roundTimestampSeconds(
+                    Math.min(frameCount, emissionFrame + durationFrames) * frameTime,
+                  ),
+                ]);
+                tokenFrameIndices.push(emissionFrame);
+                tokenTdtSteps.push(emissionStep);
+                const nextState = {
+                  state1: batchOutputs.output_states_1 as OrtTensorLike<Float32Array>,
+                  state2: batchOutputs.output_states_2 as OrtTensorLike<Float32Array>,
+                };
+                disposeDecoderState(decoderState, nextState);
+                decoderState = nextState;
+                delete batchOutputs.output_states_1;
+                delete batchOutputs.output_states_2;
+                if (emissionStep > 0) {
+                  frameIndex = emissionFrame + emissionStep;
+                  emittedOnFrame = 0;
+                } else if (1 >= (this.config.maxSymbolsPerStep ?? 10)) {
+                  frameIndex = emissionFrame + 1;
+                  emittedOnFrame = 0;
+                } else {
+                  frameIndex = emissionFrame;
+                  emittedOnFrame = 1;
+                }
+              }
+            }
+          } catch (error) {
+            if (error instanceof PipelineAbortedError) {
+              throw error;
+            }
+            this.tdtBatchAllowed = false;
+          } finally {
+            if (batchOutputs) {
+              for (const tensor of Object.values(batchOutputs)) {
+                disposeTensor(tensor);
+              }
+            }
+            batchEncoderTensor.dispose?.();
+            batchTargetTensor.dispose?.();
+          }
+          const batchCompletedUnits = Math.min(frameCount, frameIndex);
+          if (batchCompletedUnits > lastReportedDecodeUnits) {
+            lastReportedDecodeUnits = batchCompletedUnits;
+            const decodeProgress = clampProgress(
+              0.4 + (batchCompletedUnits / frameCount) * 0.5,
+            );
+            const decodeElapsedMs = nowMs() - transcriptionStart;
+            emitTranscriptionProgress(options, {
+              stage: "decode",
+              progress: decodeProgress,
+              elapsedMs: roundMetric(decodeElapsedMs),
+              remainingMs: estimateRemainingMs(decodeElapsedMs, decodeProgress),
+              completedUnits: batchCompletedUnits,
+              totalUnits: frameCount,
+              modelId: this.modelId,
+              backendId: this.backendId,
+              message: "Decoded " + batchCompletedUnits + "/" + frameCount + " encoder frames for " + this.modelId + ".",
+              metrics: {
+                preprocessMs: roundMetric(preprocessMs),
+                encodeMs: roundMetric(encodeMs),
+                decodeMs: roundMetric(nowMs() - decoderStart),
+              },
+            });
+          }
+          continue;
+        }
         decodeIterations += 1;
         if (encoderIsBdt) {
           for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
@@ -873,6 +1098,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       preprocessorBackend: loaded.preprocessorBackend,
       encoderFrameCount: frameCount,
       decodeIterations,
+      decoderGridBatchRuns,
       emittedTokenCount: tokenIds.length,
       emittedWordCount: details.words?.length,
     };
@@ -912,6 +1138,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         preprocessorBackend: totalMetrics.preprocessorBackend,
         encoderFrameCount: totalMetrics.encoderFrameCount,
         decodeIterations: totalMetrics.decodeIterations,
+        decoderGridBatchRuns: totalMetrics.decoderGridBatchRuns,
         emittedTokenCount: totalMetrics.emittedTokenCount,
         emittedWordCount: totalMetrics.emittedWordCount,
       },
