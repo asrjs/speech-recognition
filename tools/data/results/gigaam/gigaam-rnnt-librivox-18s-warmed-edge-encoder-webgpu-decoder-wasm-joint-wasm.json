@@ -2,7 +2,7 @@
   "preset": "gigaam-v3-e2e-rnnt-webgpu-encoder-webgpu-decoder-wasm-joint-wasm",
   "composition": "encoder-webgpu-decoder-wasm-joint-wasm",
   "cpuThreads": 1,
-  "timestamp": "2026-08-30T13:44:30.853Z",
+  "timestamp": "2026-08-30T12:38:41.898Z",
   "status": "pass",
   "transcript": "Profice of a Hear with the Birds. This is A Libravax recording. All Libervax Recordings in the Public To Main. From or information or to valanter. Please visit librevax Datworg by Olivia. Aer with the Birds by W Word Fauler.",
   "expected": "Ничьих не требуя похвал, Счастлив уж я надеждой сладкой, Что дева с трепетом любви Посмотрит, может быть, украдкой На песни грешные мои. У лукоморья дуб зелёный.",
@@ -19,16 +19,16 @@
     "warmupRuns": [
       {
         "run": 1,
-        "transcribeMs": 601.3049999773502,
-        "rtfx": 31.2335
+        "transcribeMs": 2925.7999999821186,
+        "rtfx": 6.4031
       }
     ]
   },
   "warmupRuns": [
     {
       "run": 1,
-      "transcribeMs": 601.3049999773502,
-      "rtfx": 31.2335
+      "transcribeMs": 2925.7999999821186,
+      "rtfx": 6.4031
     }
   ],
   "webgpu": true,
@@ -36,23 +36,29 @@
   "encoderFolder": "v3-e2e-rnnt",
   "decoderFolder": "rnnt",
   "metrics": {
-    "loadMs": 7327.069999992847,
-    "transcribeMs": 383.8649999797344,
-    "totalMs": 8602.515000015497,
-    "rtf": 0.020512183391029948,
-    "rtfx": 48.751514206786176,
-    "preprocessMs": 46.73,
-    "encodeMs": 85.03,
-    "decodeMs": 250.765,
+    "loadMs": 9065.370000004768,
+    "transcribeMs": 667.9299999773502,
+    "totalMs": 13629.734999984503,
+    "rtf": 0.03569146093712462,
+    "rtfx": 28.017906068951234,
+    "preprocessMs": 74.945,
+    "encodeMs": 82.375,
+    "decodeMs": 509.095,
     "encoderBackend": "webgpu",
     "decoderBackend": "wasm",
     "jointBackend": "wasm",
-    "repeat": 1,
+    "repeat": 2,
     "runs": [
       {
         "runIndex": 1,
-        "transcribeMs": 383.8649999797344,
-        "rtfx": 48.9172,
+        "transcribeMs": 642.8400000035763,
+        "rtfx": 29.187,
+        "textMatch": false
+      },
+      {
+        "runIndex": 2,
+        "transcribeMs": 667.9299999773502,
+        "rtfx": 28.0805,
         "textMatch": false
       }
     ]
@@ -67,6 +73,6 @@
   "log": [
     "navigator.gpu: true",
     "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
-    "session ready in 7327ms"
+    "session ready in 9065ms"
   ]
 }

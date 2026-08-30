@@ -55,9 +55,11 @@ median-repeat legs.
   and full tensor-disposal tracking.
 - Real artifacts Node: GIGAAM_RNNT_ONNX_SMOKE=1 tests/gigaam-rnnt-onnx-backends.test.ts
   2/2 (WASM official example.wav + WebGPU session class) after the change.
-- Browser: tools/data/results/gigaam/gigaam-rnnt-librivox-18s-warmed-{,edge-}encoder-webgpu-decoder-wasm-joint-wasm.json
-  (run via N:\github\asrjs\webgpu-agent-test harness, --oracle=none;
-  correctness by transcript identity against the committed baselines).
+- Browser: post-change legs live in tools/data/results/gigaam/
+  gigaam-rnnt-librivox-18s-warmed-joiner-batching-{,edge-}encoder-webgpu-decoder-wasm-joint-wasm.json
+  while the pre-change placement-A/B baselines keep their original filenames
+  (run via N:\github\asrjs\webgpu-agent-test harness, --oracle=none; correctness by
+  transcript identity across all four files).
 - Suite: 1043 passed / 18 artifact-gated skips; tsc clean.
 
 ## Follow-ups this unlocks
