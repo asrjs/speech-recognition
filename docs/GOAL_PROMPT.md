@@ -1018,12 +1018,19 @@ surfaces. Work items, in order:
    re-benchmark instead of inheriting old verdicts. Qwen's corrected browser
    entry-point A/B and decoder phase profile are recorded above; remaining
    family measurements and cross-browser repetition stay open.
-3. [Research boundary] Run a bounded compatibility spike against the separate
-   native WebGPU Plugin EP 0.3.0 (Python/.NET, not npm) only when the plugin is
-   available locally. Compare Parakeet decoder/joiner session creation,
-   first-run, warm-step latency, memory, finite logits, vocabulary-sliced token
-   parity, and disposal against the built-in ORT Web 1.29 path. Do not add the
-   plugin as a browser dependency or block library work on its availability.
+3. [Completed 2026-08-30] Bounded compatibility spike against the separate
+   native WebGPU Plugin EP 0.3.0 (onnxruntime-ep-webgpu, Python) executed on
+   the real Parakeet v3 decoder_joint graphs. Findings: the EP registers only
+   via register_execution_provider_library + add_provider_for_devices (the
+   providers= name silently falls back to CPU); fp32 decoder-joint achieves
+   100% GPU partition including both LSTM kernels (3.7e-3 parity vs CPU) but
+   is latency-bound on tiny single-step graphs (3.15 ms/step GPU vs 1.66 ms
+   CPU); int8 keeps 9 nodes on CPU including both LSTM_quant kernels - the
+   same quantized-recurrence gap we measured for GigaAM INT8 on the browser
+   EP. Verdict: no browser plan change (plugin is Python-only; built-in ORT
+   Web 1.29 already covers the graph), keep as a kernel-coverage diagnostic
+   oracle. Evidence: docs/reports/webgpu-plugin-ep-parakeet-spike-2026-08-30.md,
+   tools/spikes/parakeet-webgpu-plugin-ep*.py.
 4. [Qwen graph-capture and ArgMax probes completed 2026-08-29; promotion remains open]
    Promote only lifecycle-safe, end-to-end-proven state/cache
    placement. Track tensor ownership and disposal explicitly; a decoder-only
