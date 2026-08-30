@@ -57,8 +57,8 @@ def main() -> None:
     diff = np.abs(reference.astype(np.float64) - candidate.astype(np.float64))
     dot = float(np.sum(reference.astype(np.float64) * candidate.astype(np.float64)))
     norm = float(np.linalg.norm(reference) * np.linalg.norm(candidate))
-    top5_ref = np.argsort(reference[0])[::-1][:5].tolist()
-    top5_cand = np.argsort(candidate[0])[::-1][:5].tolist()
+    top5_ref = np.argsort(reference, axis=None)[::-1][:5].tolist()
+    top5_cand = np.argsort(candidate, axis=None)[::-1][:5].tolist()
     result = {
         "schema": "asrjs.qwen.decoder-int4-parity.v1",
         "reference": args.reference.as_posix(),
