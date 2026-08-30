@@ -580,6 +580,21 @@ GPU-resident KV bridge. Keep this distinction explicit in demos and reports:
 | Beam search | CPU/WASM-style KV bridge | Supported, not part of the measured `11x` path |
 | `best_of` / temperature sampling | CPU/WASM-style KV bridge | Supported, not part of the measured `11x` path |
 
+**Update 2026-08-30: GPU-KV beam search is now available behind
+`experimentalGpuKvBeam`.** Setting both `experimentalGpuKvCache` and
+`experimentalGpuKvBeam` (source options; harness `?gpuKv=1&gpuKvBeam=1`)
+keeps the beam caches GPU-resident across beam steps and removes the
+per-step full-KV CPU snapshot round-trip. Measured on jfk-30s (29.9 s,
+fp16io encoder + fp16 decoder, ORT Web 1.29, Blackwell): beam-2 decode
+drops from 5418 ms to a 1585-1938 ms band (~17.7-18.9x RTFx vs 5.52x) with
+a byte-identical transcript vs the CPU-KV stable beam control measured
+back-to-back. Constraints: validated for `numBeams <= 2` (beam-5 hits a
+premature gpu-tensor disposal bug - location 'none' on decoder KV feeds at
+~gen 30 - and the flag falls back to the CPU-KV oracle path for larger
+beams until root-caused); `temperature > 0` and `bestOf > 1` remain
+rejected; `experimentalBatchedBeam` is ignored while the flag is active.
+Details: docs/reports/whisper-beam2-gpu-kv-2026-08-30.md.
+
 This mirrors the broader transformer-inference pattern: fast paths usually
 require static or carefully managed cache state. Hugging Face Transformers
 documents separate dynamic, static, and quantized KV cache strategies, where
