@@ -595,6 +595,15 @@ Whisper stable-beam GPU-KV implementation (2026-08-30, SHIPPED):
 - Evidence: docs/reports/whisper-beam2-gpu-kv-2026-08-30.md and
   tools/data/results/whisper/beam2-{gpu-kv,gpu-kv-soak,gpu-kv-first-pass,
   cpu}-jfk-30s.json.
+- Boundary found and guarded: beam-5 GPU-KV hits a premature-disposal bug -
+  at ~gen 30 ALL decoder KV feeds report location 'none' (disposed) while
+  encoder KV stays gpu-buffer; the generation pruner collects a
+  still-referenced record in the 5-beam case (per-feed touch refresh makes
+  2-beam safe but not 5-beam). Guarded: experimentalGpuKvBeam now requires
+  numBeams <= 2 (invalid configs fall back to the CPU-KV oracle path).
+  Open: root-cause the 5-beam lifetime (hypothesis: multi-beam shared
+  records + per-runStep generation refresh interact badly with the lag
+  threshold); diagnostics enrichment remains in the error path.
 
 Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 

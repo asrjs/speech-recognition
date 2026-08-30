@@ -3645,6 +3645,11 @@ export class WhisperOnnxExecutor {
     const gpuKvBeamActive = splitLoaded.experimentalGpuKvBeam === true
       && splitLoaded.decoderBackendForOrt === 'webgpu'
       && requestedNumBeams > 1
+      // VALIDATED CONFIGURATION: beam-5 GPU-KV hits a premature-disposal bug
+      // (decoder KV tensors report location 'none' at ~gen 30 while encoder
+      // KV stays gpu-buffer). Restricted until root-caused; see
+      // docs/reports/whisper-beam2-gpu-kv-2026-08-30.md.
+      && requestedNumBeams <= 2
       && requestedBestOf <= 1
       && requestedTemperature === 0;
 
@@ -3925,6 +3930,7 @@ export class WhisperOnnxExecutor {
     const gpuKvBeamTracker = {
       touched: new Map<OrtTensorLike, number>(),
       generation: 0,
+      lastPruned: [] as string[],
       register(tensors: readonly OrtTensorLike[], generation: number): void {
         for (const tensor of tensors) this.touched.set(tensor, generation);
       },
@@ -3933,6 +3939,9 @@ export class WhisperOnnxExecutor {
           if (generation <= minGeneration) {
             this.touched.delete(tensor);
             tensor.dispose?.();
+            if (this.lastPruned.length < 40) {
+              this.lastPruned.push(`gen${generation}`);
+            }
           }
         }
       },
@@ -4067,7 +4076,17 @@ export class WhisperOnnxExecutor {
                 feeds[name] = gpuTensor;
                 gpuKvBeamTracker.register([gpuTensor], generation);
               }
-              const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds, { preparedPastKv: true });
+              let step;
+              try {
+                step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds, { preparedPastKv: true });
+              } catch (error) {
+                const locations = Object.entries(feeds)
+                  .map(([name, tensor]) => `${name}=${(tensor as OrtTensorLike).location ?? 'unknown'}`)
+                  .join(' ');
+                const message = error instanceof Error ? error.message : String(error);
+                const pruned = gpuKvBeamTracker.lastPruned.join(',');
+                throw new Error(`gpu-kv beam step failed (gen ${generation}): ${message}; feeds: ${locations}; pruned-so-far: ${pruned}`);
+              }
               gpuKvBeamTracker.register(Object.values(step.presentKv), generation);
               gpuKvBeamTracker.pruneIdle(generation - requestedNumBeams);
               return {
