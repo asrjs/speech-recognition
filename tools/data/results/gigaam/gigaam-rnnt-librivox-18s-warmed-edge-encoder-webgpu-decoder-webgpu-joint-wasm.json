@@ -1,0 +1,72 @@
+{
+  "preset": "gigaam-v3-e2e-rnnt-webgpu-encoder-webgpu-decoder-webgpu-joint-wasm",
+  "composition": "encoder-webgpu-decoder-webgpu-joint-wasm",
+  "cpuThreads": 1,
+  "timestamp": "2026-08-30T12:40:24.055Z",
+  "status": "pass",
+  "transcript": "Profice of a Hear with the Birds. This is A Libravax recording. All Libervax Recordings in the Public To Main. From or information or to valanter. Please visit librevax Datworg by Olivia. Aer with the Birds by W Word Fauler.",
+  "expected": "Ничьих не требуя похвал, Счастлив уж я надеждой сладкой, Что дева с трепетом любви Посмотрит, может быть, украдкой На песни грешные мои. У лукоморья дуб зелёный.",
+  "baselineMatch": null,
+  "qualityOracle": "none",
+  "transcriptAvailable": true,
+  "audio": {
+    "audioUrl": "/parakeet-audio/librivox.org.wav",
+    "sourceDurationSec": 18.714,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 18.714,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 4913.379999995232,
+        "rtfx": 3.8104
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 4913.379999995232,
+      "rtfx": 3.8104
+    }
+  ],
+  "webgpu": true,
+  "backend": "webgpu",
+  "encoderFolder": "v3-e2e-rnnt",
+  "decoderFolder": "rnnt",
+  "metrics": {
+    "loadMs": 7775.1050000190735,
+    "transcribeMs": 4710.840000003576,
+    "totalMs": 17659.664999991655,
+    "rtf": 0.25172811798672523,
+    "rtfx": 3.9725399291815884,
+    "preprocessMs": 53.685,
+    "encodeMs": 83.855,
+    "decodeMs": 4571.9,
+    "encoderBackend": "webgpu",
+    "decoderBackend": "webgpu",
+    "jointBackend": "wasm",
+    "repeat": 1,
+    "runs": [
+      {
+        "runIndex": 1,
+        "transcribeMs": 4710.840000003576,
+        "rtfx": 3.9737,
+        "textMatch": false
+      }
+    ]
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "session ready in 7775ms"
+  ]
+}

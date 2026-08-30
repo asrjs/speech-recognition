@@ -1026,8 +1026,10 @@ surfaces. Work items, in order:
    penalty is per-step dispatch on tiny recurrence graphs, consistent with the
    Parakeet GRU and plugin-EP findings. Evidence:
    docs/reports/gigaam-rnnt-placement-ab-18s-2026-08-30.md and
-   tools/data/results/gigaam/gigaam-rnnt-librivox-*-warmed-*.json. Remaining
-   sub-item: cross-browser repetition.
+   tools/data/results/gigaam/gigaam-rnnt-librivox-*-warmed*.json. Cross-browser
+   repetition completed the same day on Edge (runner gained --browser=edge):
+   hybrid 28.02x and decoder-GPU 3.97x reproduced the Chrome verdicts with
+   identical transcripts. Work item 2 is now closed for GigaAM RNN-T.
 3. [Completed 2026-08-30] Bounded compatibility spike against the separate
    native WebGPU Plugin EP 0.3.0 (onnxruntime-ep-webgpu, Python) executed on
    the real Parakeet v3 decoder_joint graphs. Findings: the EP registers only

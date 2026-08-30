@@ -58,6 +58,24 @@ time.
   identical mechanism - per-step dispatch and readback overhead dominates
   tiny single-frame graphs regardless of vendor engine.
 
+## Cross-browser repetition (Edge, same session window)
+
+The runner gained a --browser=edge option (mirroring the Parakeet TDT
+runner). The two decisive cells re-ran on Microsoft Edge (same Chromium
+D3D11/WebGPU adapter):
+
+| Composition | Chrome RTFx | Edge RTFx |
+|---|---|---|
+| hybrid (shipped default) | 27.9 | 28.02 |
+| decoder GPU + joint WASM | 4.19 | 3.97 |
+
+Both Edge runs produced the identical transcript, and the decoder-GPU
+regression (~7x) reproduces on the second browser. Evidence:
+tools/data/results/gigaam/gigaam-rnnt-librivox-18s-warmed-edge-*.json.
+The remaining two cells (all-GPU, joint-GPU) were not re-run on Edge: both
+are rejected placements, and the joint-GPU leg exceeds the 600 s harness
+budget per browser.
+
 ## Decision
 
 The shipped GigaAM RNN-T composition (WebGPU encoder + WASM decoder + WASM
