@@ -23,7 +23,7 @@ This is a single-package, ESM-first, speech-focused, headless and
 framework-neutral runtime. It is not a generic model zoo or multimodal
 framework.
 
-## Completed (2026-08-29 recent slices)
+## Completed (2026-08-30 recent slices)
 
 The following work is done and pushed on `main` (backup branch
 `backup/pre-browser-webgpu-state-push-2026-08-29`). Details:
@@ -399,7 +399,35 @@ GigaAM RNN-T encoder fp16 quantization probe (2026-08-30):
   fp32 stays the default. The harness runner now accepts --encoder-file
   for alternate-artifact probes.
 - Evidence: docs/reports/gigaam-rnnt-encoder-fp16-probe-2026-08-30.md and
- tools/data/results/gigaam/v3-rnnt-fp16-enc-gpu-decwasm-librivox.json
+  tools/data/results/gigaam/v3-rnnt-fp16-enc-gpu-decwasm-librivox.json
+
+GigaAM RNN-T encoder INT8 probe (2026-08-30):
+
+- Dynamic per-channel QInt8 conversion was tested against the untouched
+  844.1 MB fp32 encoder. A MatMul-only graph is 320.1 MB (62.1% smaller);
+  the initial MatMul+Conv graph was rejected because ORT CPU has no
+  ConvInteger(10) implementation. The converter defaults to the supported
+  MatMul-only surface and records the operator choice explicitly.
+- Captured official features preserve output shape/length ([1,768,282] /
+  282), but encoder values show material quantization drift (max abs
+  0.471812, cosine 0.992093). Both exact fixed Russian transcripts still
+  pass in the browser, so transcript parity is recorded separately from
+  numerical parity.
+- Chrome WebGPU, ORT Web 1.29, Blackwell, 11.29 s example.wav, warmup+3:
+  fp32 WebGPU hybrid 449.3 ms / 25.13x; MatMul-only INT8 WebGPU
+  2676.1 ms / 4.22x. The dynamic-quantized WebGPU path is ~6x slower
+  despite the size reduction, so fp32 remains the performance default.
+- CPU/WASM control is a valid fallback trade-off: fp32 WASM 5059.9 ms /
+  2.23x versus INT8 MatMul WASM 3466.3 ms / 3.26x (exact oracle). Keep the
+  candidate experimental and size/CPU-oriented; do not promote it to
+  WebGPU without a different graph (e.g. static or weight-only) and new
+  evidence.
+- Reproduction/evidence: tools/scripts/convert_gigaam_rnnt_encoder_int8.py,
+  tools/scripts/check_gigaam_rnnt_encoder_int8_parity.py,
+  docs/reports/gigaam-rnnt-encoder-int8-probe-2026-08-30.md, and
+  tools/data/results/gigaam/v3-rnnt-{encoder-int8-matmul-parity,
+  int8-matmul-encgpu-decwasm-example,
+  int8-matmul-encwasm-decwasm-example}.json.
 
 Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 

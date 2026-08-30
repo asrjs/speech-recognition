@@ -1,0 +1,34 @@
+{
+  "schema": "asrjs.gigaam-rnnt.encoder-int8-parity.v1",
+  "reference": "N:/models/onnx/gigaam/v3-e2e-rnnt/v3_e2e_rnnt_encoder.onnx",
+  "candidate": "N:/models/onnx/gigaam/v3-e2e-rnnt/v3_e2e_rnnt_encoder.int8-matmul.onnx",
+  "features": "N:/models/gigaam/v3-e2e-rnnt/captures/example.features.npy",
+  "featureShape": [
+    1,
+    64,
+    1128
+  ],
+  "featureSha256": "d3701379f5717c1d039fee8d039e56c333aa44f74fbd22df8356558c83f3525e",
+  "referenceShape": [
+    1,
+    768,
+    282
+  ],
+  "candidateShape": [
+    1,
+    768,
+    282
+  ],
+  "referenceLength": [
+    282
+  ],
+  "candidateLength": [
+    282
+  ],
+  "maxAbsDiff": 0.47181234508752823,
+  "meanAbsDiff": 0.0466612822217427,
+  "cosine": 0.9920934292161344,
+  "referenceMs": 427.4113999999827,
+  "candidateMs": 351.76570000476204,
+  "exactLength": true
+}
