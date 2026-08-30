@@ -492,6 +492,19 @@ Unified all-models shared-window benchmark (2026-08-30):
 - Evidence: docs/reports/all-models-shared-window-benchmark-2026-08-30.md
   and tools/data/results/cross-model/all-models-shared-window-2026-08-30.json.
 
+Parakeet v3 20x-vs-37x reproducibility check (2026-08-30):
+
+- Paired same-session probes of the v3 int8 hybrid on the shared window are
+  all exact and all land at 20-23x: ONNX preprocessor 955.7 ms / 19.70x,
+  JS preprocessor 828.5 ms / 22.76x, 1-thread WASM 892.9 ms / 21.05x,
+  12-thread 923.0 ms / 20.44x. Preprocessor and thread count are ruled out;
+  v2 reaching 37.15x today rules out a machine-wide slowdown. The 37.2x
+  2026-08-29 v3 record is therefore an environment-dependent number
+  (Chrome/driver/thermal drift suspected), not a library regression.
+- Methodology note: single-session records for decode-loop-heavy models
+  should cite the capture date and be re-verified through the unified
+  matrix before being used as promotion baselines.
+
 Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 
 - Greedy + GPU-KV on the 30 s JFK clip measures 27.02x RTFx (1106.6 ms

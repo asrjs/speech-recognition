@@ -20,11 +20,16 @@ Manifest: tools/data/results/cross-model/all-models-shared-window-2026-08-30.jso
 ## Notes
 
 - Parakeet v3 int8 hybrid passed the exact 91-token oracle at 20.44x in this
-  snapshot versus the 37.2x recorded on 2026-08-29, while v2 hit 37.15x in the
-  same session - so the environment reaches the band and the v3 delta is
-  either session variance beyond the documented 10-15% or a preprocessor
-  difference to pin down (this run used the JS fbank; re-verify with the ONNX
-  preprocessor before drawing conclusions).
+  snapshot versus the 37.2x recorded on 2026-08-29. Follow-up paired probes
+  (same session, back-to-back) reproduce 20-23x across every configuration
+  variant: ONNX preprocessor 955.7 ms / 19.70x, JS preprocessor 828.5 ms /
+  22.76x, single-thread WASM 892.9 ms / 21.05x, default 12-thread 923.0 ms /
+  20.44x - all exact. Preprocessor choice and thread count are therefore
+  ruled out, and v2 hitting 37.15x today proves the environment still reaches
+  the band for the lighter decoder. The 37.2x v3 record did not reproduce;
+  suspected environment drift (Chrome auto-update, driver, or thermal state)
+  rather than a library regression. Keep watching v3 via this matrix instead
+  of treating either number as permanent.
 - int8 decoder on the full-WebGPU composition produced garbled transcripts
   ("Prex rec public vol. or. b Wow") at ~5-8x during orchestrator bring-up.
   The INT8 decoder is transcript-safe only on WASM; keep it there (the
