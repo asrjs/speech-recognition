@@ -471,6 +471,24 @@ Qwen3-ASR decoder fp16 browser leg (2026-08-30, negative):
   fp16 hangs. The remaining lever is a new artifact export (static cache
   shapes, fused kernels) or a newer ORT Web - not runtime tuning.
 
+Qwen hang isolation and ORT 1.30-dev nightly probe (2026-08-30, negative):
+
+- Refined diagnosis: the fp16 decoder-step artifact is healthy on ORT CPU
+  (one step in 0.33 s, fp16 logits argmax matches the fp32 reference on
+  the same feed), so the browser hang is specific to ORT-Web's WebGPU/JSEP
+  handling of this graph - not a broken artifact.
+- Probed onnxruntime-web 1.30.0-dev.20260826 (latest nightly) with the
+  1.29 tree backed up and fully restored afterwards: the Qwen
+  --decoder-dtype=fp16 leg still produced no payload within 900 s
+  (identical hang). The blocker is not fixed upstream as of this nightly;
+  the production pin stays 1.29.0 stable (also confirmed still the latest
+  stable on the registry).
+- Candidate external action: file an upstream ORT-Web issue with the
+  minimal repro (Chrome, decoder-step fp16 graph with dynamic past_len KV
+  via session.run; completes on CPU, hangs in JSEP). Re-test the fp16 or
+  INT4 decoder legs only after an upstream fix or a new stable release,
+  using the same harness flags.
+
 Unified all-models shared-window benchmark (2026-08-30):
 
 - New orchestrator webgpu-agent-test/scripts/run-all-models.mjs runs every
