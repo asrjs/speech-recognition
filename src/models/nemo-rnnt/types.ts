@@ -71,6 +71,7 @@ export interface NemoRnntNativeTranscript extends Omit<NemoNativeTranscript, 'to
 
 export interface NemoRnntTranscriptionOptions extends BaseTranscriptionOptions {
   readonly temperature?: number;
+  readonly gridBatching?: boolean;
   readonly returnTokenIds?: boolean;
   readonly returnFrameIndices?: boolean;
   readonly returnLogProbs?: boolean;

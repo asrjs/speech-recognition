@@ -25,6 +25,40 @@ framework.
 
 ## Completed (2026-08-30 recent slices)
 
+NeMo RNNT (eou-120m v1) speculative grid batching - shipped OPT-IN
+(2026-08-30):
+
+- Ported the TDT grid template to src/models/nemo-rnnt/executor.ts: joint
+  run scores '[1, features, width]' against the current (target, GRU state);
+  blank rows consume frames (no duration head), first emission commits and
+  re-batches from the EMITTING frame (multi-token parity, maxSymbolsPerStep
+  cap), no-emission windows double width 2 -> 32; same 24-column/70%
+  utilization gate and sticky malformed-shape latch.
+- Graph truths verified on real artifacts
+  (N:/models/onnx/nemo/parakeet-realtime-eou-120m-v1-onnx): joint consumes
+  512-dim ENCODER OUTPUTS; output is '[1, W, 2, 1027]' row-major, per-row
+  trailing distribution slice matches the sequential read; fp32/fp16 rows
+  are BIT-EXACT vs single-frame runs (zero AND random non-zero states);
+  int8 rows differ numerically (dynamic-range quantization spans the wider
+  batched input) though argmax parity held in all probes.
+- Real-artifact A/B (Node WASM, jfk-short 11 s, exact reference transcript
+  parity in every cell): fp32 decoder 216.2 ms ON vs 265.0 OFF (~18% win);
+  fp16 637.3 vs 635.0 (parity); int8 354.7 vs 211.0 (~40% regression).
+  Grid batching therefore ships OPT-IN (options.gridBatching === true) for
+  RNNT; quant-aware default (fp32 on) is queued pending multi-clip
+  confirmation.
+- Validation: tests/nemo-rnnt-grid-batching.test.ts (5 tests, incl.
+  decodeIterations equality with the sequential path); legacy executor
+  mock now rejects grid requests shape-first without consuming scripted
+  steps (pins sequential through the real latch); suite 1058 passed /
+  18 skipped; tsc + build clean. Evidence:
+  docs/reports/nemo-rnnt-grid-batching-2026-08-30.md and
+  tools/data/results/nemo-rnnt/parakeet-eou120m-grid-ab-*.json.
+- Reusable lessons: (1) never assume quantized-row independence - A/B
+  transcript AND timing per quant; (2) decodeIterations must count the
+  emission row or parity assertions catch the undercount; (3) on emission,
+  resume AT the emitting frame or consumed frames get re-decoded with a
+  wrong target.
 Parakeet TDT speculative grid batching with utilization gate (2026-08-30,
 this slice, evidence pending commit):
 

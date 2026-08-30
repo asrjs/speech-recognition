@@ -164,6 +164,14 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
   private readonly assetHandles: ResolvedAssetHandle[] = [];
   private disposed = false;
   private disposePromise?: Promise<void>;
+  private rnntBatchAllowed = true;
+  private static readonly rnntBatchMinFrames = 2;
+  private static readonly rnntBatchMaxFrames = 32;
+  private rnntBatchWidth = OrtNemoRnntExecutor.rnntBatchMinFrames;
+  private static readonly rnntBatchMinSampleColumns = 24;
+  private static readonly rnntBatchMinColumnUtilization = 0.7;
+  private rnntBatchColumnsScored = 0;
+  private rnntBatchColumnsUseful = 0;
 
   constructor(
     private readonly modelId: string,
@@ -589,6 +597,9 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
     const tokenLogProbs: number[] = [];
     const frameConfidenceStats = new Map<number, { sum: number; count: number }>();
     let decodeIterations = 0;
+    let decoderGridBatchRuns = 0;
+    this.rnntBatchColumnsScored = 0;
+    this.rnntBatchColumnsUseful = 0;
 
     const disposeTensor = (tensor: OrtTensorLike | undefined): void => {
       tensor?.dispose?.();
@@ -614,14 +625,178 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       const decoderStart = nowMs();
       let lastReportedDecodeUnits = -1;
       try {
-        for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+        let frameIndex = 0;
+        let emittedOnFrame = 0;
+        while (frameIndex < frameCount) {
           throwIfDecodeAborted(options.signal);
+          // Real-artifact A/B (eou-120m v1, Node WASM, jfk-short 11 s):
+          // fp32 decoder wins ~18% (216 vs 265 ms), fp16 is parity, int8
+          // regresses ~40% (355 vs 211 ms) because dynamic-range
+          // requantization scales with the wider [1, features, width]
+          // input. Grid batching is therefore opt-in for RNNT until a
+          // quant-aware default is measured across clips.
+          if (
+            this.rnntBatchAllowed &&
+            options.gridBatching === true &&
+            frameCount - frameIndex > 1 &&
+            (this.rnntBatchColumnsScored <
+              OrtNemoRnntExecutor.rnntBatchMinSampleColumns ||
+              this.rnntBatchColumnsUseful >=
+                OrtNemoRnntExecutor.rnntBatchMinColumnUtilization *
+                  this.rnntBatchColumnsScored)
+          ) {
+            const width = Math.min(
+              frameCount - frameIndex,
+              this.rnntBatchWidth,
+              OrtNemoRnntExecutor.rnntBatchMaxFrames,
+            );
+            const batchData = new Float32Array(featureSize * width);
+            // The encoder output is [1, features, frames] (BDT) and the
+            // batch tensor is [1, features, width], so the flat layout is
+            // feature-major: element (f, w) lives at f * width + w.
+            for (let fIdx = 0; fIdx < featureSize; fIdx += 1) {
+              const sourceRow = fIdx * frameCount + frameIndex;
+              batchData.set(encoderData.subarray(sourceRow, sourceRow + width), fIdx * width);
+            }
+            const batchEncoderTensor = new loaded.ort.Tensor('float32', batchData, [
+              1,
+              featureSize,
+              width,
+            ]);
+            const batchTargetBuffer = new Int32Array(1);
+            batchTargetBuffer[0] =
+              tokenIds.length > 0 ? tokenIds[tokenIds.length - 1]! : blankId;
+            const batchTargetTensor = new loaded.ort.Tensor('int32', batchTargetBuffer, [1, 1]);
+            const batchLengthTensor = new loaded.ort.Tensor('int32', new Int32Array([1]), [1]);
+            let batchOutputs: Record<string, OrtTensorLike> | undefined;
+            try {
+              const batchFeeds: Record<string, unknown> = {
+                encoder_outputs: batchEncoderTensor,
+                targets: batchTargetTensor,
+                input_states_1: decoderState?.state1,
+                input_states_2: decoderState?.state2,
+              };
+              if (
+                !loaded.decoderSession.inputNames ||
+                loaded.decoderSession.inputNames.includes('target_length')
+              ) {
+                batchFeeds.target_length = batchLengthTensor;
+              }
+              batchOutputs = await loaded.decoderSession.run(batchFeeds);
+              const gridLogits = batchOutputs.outputs as OrtTensorLike<Float32Array>;
+              const gridRawData = gridLogits.data;
+              const gridTotal = gridRawData instanceof Float32Array
+                ? gridRawData
+                : Float32Array.from(gridRawData as ArrayLike<number>);
+              // Row layout is [width, extras, distribution] row-major: row w
+              // occupies w * rowLength elements, and the sequential path
+              // reads the last distribution slice of its [1,1,2,dist]
+              // output, so read the same trailing slice per row. Verified
+              // slot-exact against single-frame runs for the eou-120m v1
+              // fp32/fp16 graphs (int8 rows differ in logit scale only,
+              // argmax parity held across targets and states).
+              const rowLength = Math.floor(gridTotal.length / width);
+              if (rowLength <= distributionSize || gridTotal.length !== rowLength * width) {
+                this.rnntBatchAllowed = false;
+              } else {
+                decoderGridBatchRuns += 1;
+                let examined = 0;
+                let emissionRow = -1;
+                let emissionToken = 0;
+                let emissionConfidence: ReturnType<typeof confidenceFromLogits> | undefined;
+                while (examined < width) {
+                  // Count every row the scan consumes (including the
+                  // eventual emission row) so decodeIterations and the
+                  // utilization gate match the sequential joint-call count.
+                  const rowIndex = examined;
+                  examined += 1;
+                  const rowStart = rowIndex * rowLength;
+                  const rowView = gridTotal.subarray(
+                    rowStart + rowLength - distributionSize,
+                    rowStart + rowLength,
+                  );
+                  const tokenId = argmax(rowView, 0, distributionSize);
+                  const confidence = confidenceFromLogits(rowView, tokenId, distributionSize);
+                  const frame = frameIndex + rowIndex;
+                  const existingFrameConfidence = frameConfidenceStats.get(frame);
+                  if (existingFrameConfidence) {
+                    existingFrameConfidence.sum += confidence.confidence;
+                    existingFrameConfidence.count += 1;
+                  } else {
+                    frameConfidenceStats.set(frame, {
+                      sum: confidence.confidence,
+                      count: 1,
+                    });
+                  }
+                  if (tokenId === blankId) {
+                    continue;
+                  }
+                  emissionRow = rowIndex;
+                  emissionToken = tokenId;
+                  emissionConfidence = confidence;
+                  break;
+                }
+                decodeIterations += examined;
+                this.rnntBatchColumnsScored += width;
+                this.rnntBatchColumnsUseful += examined;
+                if (emissionRow >= 0) {
+                  this.rnntBatchWidth = OrtNemoRnntExecutor.rnntBatchMinFrames;
+                  const emissionFrame = frameIndex + emissionRow;
+                  const nextState = {
+                    state1: batchOutputs.output_states_1 as OrtTensorLike<Float32Array>,
+                    state2: batchOutputs.output_states_2 as OrtTensorLike<Float32Array>,
+                  };
+                  disposeDecoderState(decoderState, nextState);
+                  decoderState = nextState;
+                  delete batchOutputs.output_states_1;
+                  delete batchOutputs.output_states_2;
+                  tokenIds.push(emissionToken);
+                  tokenConfidences.push(emissionConfidence!.confidence);
+                  tokenLogProbs.push(emissionConfidence!.logProb);
+                  tokenFrameIndices.push(emissionFrame);
+                  emittedOnFrame += 1;
+                  // Blank rows before the emission row are consumed frames;
+                  // resume at the emitting frame (or advance past it when
+                  // the per-frame symbol cap is reached), mirroring the
+                  // sequential loop exactly.
+                  if (emittedOnFrame >= (this.config.maxSymbolsPerStep ?? 10)) {
+                    frameIndex = emissionFrame + 1;
+                    emittedOnFrame = 0;
+                  } else {
+                    frameIndex = emissionFrame;
+                  }
+                } else {
+                  frameIndex += width;
+                  emittedOnFrame = 0;
+                  this.rnntBatchWidth = Math.min(
+                    width * 2,
+                    OrtNemoRnntExecutor.rnntBatchMaxFrames,
+                  );
+                }
+              }
+            } catch (error) {
+              if (error instanceof PipelineAbortedError) {
+                throw error;
+              }
+              this.rnntBatchAllowed = false;
+            } finally {
+              batchTargetTensor.dispose?.();
+              batchLengthTensor.dispose?.();
+              batchEncoderTensor.dispose?.();
+              if (batchOutputs) {
+                for (const tensor of Object.values(batchOutputs)) {
+                  disposeTensor(tensor);
+                }
+              }
+            }
+            if (this.rnntBatchAllowed) {
+              continue;
+            }
+          }
           for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
             encoderFrameBuffer[featureIndex] =
             encoderData[featureIndex * frameCount + frameIndex] ?? 0;
           }
-
-          let emittedOnFrame = 0;
           while (emittedOnFrame < (this.config.maxSymbolsPerStep ?? 10)) {
             throwIfDecodeAborted(options.signal);
             decodeIterations += 1;
@@ -711,6 +886,8 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
               },
             });
           }
+          emittedOnFrame = 0;
+          frameIndex += 1;
         }
       } finally {
         targetTensor.dispose?.();
@@ -788,6 +965,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
         preprocessorBackend: loaded.preprocessorBackend,
         encoderFrameCount: frameCount,
         decodeIterations,
+        decoderGridBatchRuns,
         emittedTokenCount: details.tokens?.length,
         emittedWordCount: details.words?.length,
       };
@@ -828,6 +1006,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
           preprocessorBackend: totalMetrics.preprocessorBackend,
           encoderFrameCount: totalMetrics.encoderFrameCount,
           decodeIterations: totalMetrics.decodeIterations,
+          decoderGridBatchRuns: totalMetrics.decoderGridBatchRuns,
           emittedTokenCount: totalMetrics.emittedTokenCount,
           emittedWordCount: totalMetrics.emittedWordCount,
         },

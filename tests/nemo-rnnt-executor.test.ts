@@ -68,6 +68,23 @@ class MockDecoderSession implements OrtSessionLike {
   }
 
   async run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>> {
+    // Speculative grid requests get a shape-invalid reply without
+    // consuming scripted steps: the executor's validation latches
+    // batching off and these tests pin the sequential decode semantics.
+    const encoderTensor = feeds.encoder_outputs as OrtTensorLike<Float32Array>;
+    if ((([...encoderTensor.dims].at(-1)) ?? 1) > 1) {
+      return {
+        outputs: new MockTensor(new Float32Array(0), [1, 1, 2, 0]),
+        output_states_1: new MockTensor(
+          new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
+          this.stateDims,
+        ),
+        output_states_2: new MockTensor(
+          new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
+          this.stateDims,
+        ),
+      };
+    }
     if (this.throwOnCallIndex && this.callIndex + 1 === this.throwOnCallIndex) {
       this.callIndex += 1;
       throw new Error(`Forced decoder failure on invocation #${this.callIndex}.`);

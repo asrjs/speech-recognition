@@ -63,6 +63,7 @@ function parseArgs() {
     else if (arg === '--preprocessor-backend') options.preprocessorBackend = args[++index];
     else if (arg === '--cpu-threads') options.cpuThreads = Number(args[++index]);
     else if (arg === '--output') options.output = path.resolve(args[++index]);
+    else if (arg === '--grid-batching=off') options.gridBatchingOff = true;
     else if (arg.startsWith('--')) throw new Error(`Unknown argument: ${arg}`);
   }
 
@@ -309,6 +310,7 @@ async function main() {
       returnFrameIndices: true,
       returnLogProbs: true,
       returnDecoderState: true,
+      ...(options.gridBatchingOff ? { gridBatching: false } : {}),
     },
   );
   const transcribeMs = performance.now() - transcribeStart;
