@@ -1194,6 +1194,7 @@ Earlier streaming and validation slices:
   models, WebGPU/WASM perf, realtime/streaming, examples/docs/benchmarks,
   reusable porting/parity infrastructure
 - Respect folder boundaries per `AGENTS.md` and `docs/architecture.md`
+- Read and follow `docs/AGENT_SAFETY_RULES.md` before any edit: surgical edits only, revert before retry, max two failed attempts per location, never rewrite tracked files as recovery, inspect real APIs instead of guessing, numerical parity metrics only, and honest partial-pass labeling
 
 - Standing learning-capture directive: while working, continuously extract
   experiences, issues, root causes, new findings, optimization methods, and
