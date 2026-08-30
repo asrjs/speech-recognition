@@ -25,35 +25,88 @@ framework.
 
 ## Current checkpoint and next bounded task (2026-08-30)
 
-The current mainline checkpoint is `7d967e2` (with backup branch
-`backup/pre-rnnt-reprobe-push-2026-08-30`). The NeMo TDT and RNNT speculative
-grid-batching gates are now complete across both executors: sustained blank
-runs re-open the utilization probe, quantized RNNT graphs refuse unsafe int8
-row batching, and real-artifact A/B measurements preserve transcripts while
-showing 29% blank-dominant browser improvement for TDT and 36-52% natural-audio
-decode improvement for RNNT. The complete evidence and 1064-pass validation
-are recorded in the two grid-batching reports and result JSONs below.
+The current mainline checkpoint is `5cb3b78` (backup branch
+`backup/pre-hf-candidate-survey-push-2026-08-30`). The multilingual candidate
+survey slice is complete: the reusable Hugging Face survey CLI
+(`tools/scripts/survey-hf-asr-candidates.mjs`, npm script
+`survey:asr-candidates`), three dated JSON snapshots, the promote/adapt/defer
+decision table, and the candidate-discovery playbook are shipped and validated
+(1064 tests passed / 18 artifact-gated skips, typecheck and build clean).
+Evidence: `docs/reports/hf-multilingual-asr-candidate-survey-2026-08-30.md`,
+`tools/data/results/model-candidates/hf-asr-*-2026-08-30.json`, and
+`tools/model-debugging/playbooks/candidate-discovery.md`. Re-run the survey
+periodically; it remains a triage input, not a quality claim.
 
-The next bounded objective is a recurring **multilingual ASR candidate survey**
-driven by the Hugging Face model index and the local/sibling implementation
-catalog. For each snapshot, record download signal, language scope, license,
-original/reference engine, ONNX/external-data availability, WASM/WebGPU or
-Transformers.js evidence, model size, and whether this library already covers
-the family. Classify candidates before implementation:
+The active next bounded objective is the **Nemotron 3.5 streaming 0.6B
+adaptation/validation slice** (decision: ADAPT, not a duplicate export):
 
-- promote an artifact-backed candidate only when it adds differentiated value
-  (quality, language coverage, streaming, or a materially better graph);
-- adapt and benchmark an existing ONNX/WebGPU implementation rather than
-  duplicating it;
-- defer candidates with no browser-ready path until an approved reference
-  chain and export plan exist; preserve the reason and failure category.
+Progress (2026-08-30, this turn): steps 1-2 are complete. The community
+streaming export is acquired at
+`N:/models/onnx/nemo/nemotron-3.5-asr-streaming-0.6b-onnx` with all LFS hashes
+verified against the HF API (the duplicate 1.17 GB encoder data blob is an
+NTFS hard link); 4/4 graphs load on native CPU ORT; the full contract is
+audited and recorded in
+`docs/reports/nemotron-3.5-adaptation-2026-08-30.md` plus
+`tools/data/results/nemotron/nemotron-3.5-{onnx-audit,artifact-provenance}-2026-08-30.json`.
+The `conda env nemo` (NeMo 2.4.0, torch 2.6.0) is confirmed ready for the
+official reference chain. Next: download the official `.nemo` checkpoint and
+capture original-engine references (step 3), then the parity ladder (step 4).
 
-The survey is an input to one bounded port at a time, not permission to start
-many model ports concurrently. Re-run it when model popularity or browser
-artifacts change, and keep the snapshot separate from quality labels and
-throughput claims.
+1. Acquire artifacts into a local HF-compatible model folder: the community
+   streaming export (`codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx`,
+   source revision `f3d333391852ba876df169dcc9ba902d25b6ab0b`) and the FP16
+   WebGPU export (`goryodog/tokihisu-nemotron-3.5-asr-streaming-0.6b-webgpu-fp16`).
+   Record every file's SHA-256, byte size, and source URL in a provenance
+   manifest; keep the artifacts clearly third-party until license (OpenMDW-1.1)
+   and provenance checks pass.
+2. Audit the graphs with `node-audit-onnx-artifact.mjs`: inputs/outputs,
+   dtypes, dynamic axes, external-data placement, op inventory (GRU/LSTM
+   coverage), and cross-check against the published contracts
+   (`nemotron_onnx_config.json`, `manifest.json`): 128-bin mel, subsampling 8,
+   80-1120 ms chunks, left-context 56 frames, 24-layer K/V caches, prompt IDs
+   (auto=101, tr=18, en=0), blank 13087, vocab 13088, max 10 symbols/step.
+3. Establish the original NVIDIA reference chain: download the official
+   `nvidia/nemotron-3.5-asr-streaming-0.6b` checkpoint and run official NeMo
+   inference on fixed fixtures (jfk-short plus a speech/silence streaming
+   fixture) to capture reference transcripts/tokens before trusting the
+   third-party export.
+4. Climb the parity ladder on the audited artifacts: native ORT, then WASM,
+   then WebGPU (remember the ORT Web entry-point alias invariant), comparing
+   the earliest divergence at features, encoder cache, predictor state, joint
+   logits, tokens, and text.
+5. Only after parity: library adapter work (cache-aware chunked RNNT executor
+   reusing NeMo RNNT state machinery where proven shared), then streaming
+   latency measurement (first-partial, per-chunk, steady-state RTFx, memory)
+   in the Chrome headless real-WebGPU harness.
+
+Do not start Fun-ASR MLT or any other new family until this slice reaches an
+explicit decision (integrated, adapted-with-evidence, or classified failure).
 
 ## Completed (2026-08-30 recent slices)
+
+Hugging Face multilingual ASR candidate survey (2026-08-30, this slice):
+
+- Shipped as `5cb3b78` with backup branch
+  `backup/pre-hf-candidate-survey-push-2026-08-30`. Added the reusable survey
+  CLI `tools/scripts/survey-hf-asr-candidates.mjs` (ranked HF ASR index,
+  `--search`, `--include`, license/language/size metadata, ONNX/external-data/
+  WASM/GGUF file signals) plus npm script `survey:asr-candidates`, three dated
+  JSON snapshots under `tools/data/results/model-candidates/`, the dated
+  promote/adapt/defer decision report, and the candidate-discovery playbook.
+- Decision outcome: Nemotron 3.5 streaming 0.6B is the priority ADAPT target
+  (multilingual, cache-aware RNNT, independent ONNX and FP16 WebGPU exports
+  already exist); Fun-ASR MLT Nano is the next genuine export spike; Granite,
+  Voxtral, and VibeVoice already have browser-oriented implementations and must
+  be adapted/benchmarked, not re-exported; GLM-ASR deferred (size, no browser
+  artifact); Canary 1B v2 ONNX is a later NeMo AED extension candidate; Qwen
+  1.7B is a later comparison, INT4 stays paused.
+- Validation: 1064 tests passed / 18 artifact-gated skips; typecheck and build
+  clean; all 58 metadata records fetched without errors; local preflight found
+  no candidate weights under N:/models or C:/Drive/hf_cache, so no quality or
+  parity claims were made.
+- Reusable lesson: a model card, HF Space, or `.onnx` filename is not parity
+  evidence - inspect exact files/manifests and run the validation ladder before
+  believing any browser implementation claim.
 
 NeMo RNNT gate re-probe port; natural-audio decode win doubled
 (2026-08-30, later):

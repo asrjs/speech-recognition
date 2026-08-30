@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-30T19:47:51.1950074Z",
+  "purpose": "Third-party Nemotron 3.5 ONNX acquisition provenance; NOT a quality or parity claim",
+  "target": {
+    "officialModel": "nvidia/nemotron-3.5-asr-streaming-0.6b",
+    "officialRevision": "f3d333391852ba876df169dcc9ba902d25b6ab0b",
+    "license": "OpenMDW-1.1"
+  },
+  "sources": [
+    {
+      "repo": "codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx",
+      "url": "https://huggingface.co/codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx",
+      "role": "streaming ONNX export (encoder first/continuation, LSTM predictor decoder, joiner)",
+      "downloadedAt": "2026-08-30"
+    }
+  ],
+  "localDir": "N:/models/onnx/nemo/nemotron-3.5-asr-streaming-0.6b-onnx",
+  "notes": [
+    "encoder_320ms_first_fp16.onnx.data is an NTFS hard link to encoder_320ms_fp16.onnx.data (identical LFS blob sha256 159887b7...) to avoid a duplicate 1.17 GB download.",
+    "All downloaded LFS hashes verified against the HF API lfs.sha256 values."
+  ],
+  "files": [
+    {
+      "path": "decoder.onnx",
+      "sizeBytes": 61405357,
+      "sha256": "784fdad7f6d510057ddb58467b7cd1500de03fc4517d90a1654858d870175113"
+    },
+    {
+      "path": "encoder_320ms_first_fp16.onnx",
+      "sizeBytes": 668361,
+      "sha256": "1df652c127ecbfd5fb7fd8975f3444f487dffe971613aeea68f54a969de218b7"
+    },
+    {
+      "path": "encoder_320ms_first_fp16.onnx.data",
+      "sizeBytes": 1228512000,
+      "sha256": "159887b78f1e36fd59f5cf17be810fd61e98a96b61673b6de0dbe2b8dfb47a31"
+    },
+    {
+      "path": "encoder_320ms_fp16.onnx",
+      "sizeBytes": 610572,
+      "sha256": "78af98ec11d27975e3e8fdc7bc480c6e3c174f3eb8a4d21cc52541db8b4912e3"
+    },
+    {
+      "path": "encoder_320ms_fp16.onnx.data",
+      "sizeBytes": 1228512000,
+      "sha256": "159887b78f1e36fd59f5cf17be810fd61e98a96b61673b6de0dbe2b8dfb47a31"
+    },
+    {
+      "path": "joiner.onnx",
+      "sizeBytes": 33558071,
+      "sha256": "2d8d8ccef0a655a59be23c1aaa89fb10927d7057da3c3a49ae67e3d7756db489"
+    },
+    {
+      "path": "LICENSE-OpenMDW-1.1",
+      "sizeBytes": 2649,
+      "sha256": "cc66dc17fcccd959c9749222445f6525ca448d575892d6925b4c5519221ec906"
+    },
+    {
+      "path": "nemotron_onnx_config.json",
+      "sizeBytes": 8287,
+      "sha256": "81fcb81636c4915fd1600fb877b9935f5e73da693554b2c91c8bcb791f248f5c"
+    },
+    {
+      "path": "NOTICE",
+      "sizeBytes": 859,
+      "sha256": "b74ed89c5f5157d4355da5c447c7e1f403abd0b30dfd19a008be97c305ccb1f6"
+    },
+    {
+      "path": "README.md",
+      "sizeBytes": 7890,
+      "sha256": "b6f6caa27557ec3b8b99b4b81efb6f50fe60c449a5f145355be70f30cb15bd7c"
+    },
+    {
+      "path": "tokens.txt",
+      "sizeBytes": 144528,
+      "sha256": "2b485ebebc4d2f592237f3b6bcd3c75bc354980b2f696dbeb2fc2d5f7eb9c9ab"
+    }
+  ]
+}

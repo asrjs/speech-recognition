@@ -1,0 +1,3514 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-30T19:46:03.623Z",
+  "model_dir": "N:\\models\\onnx\\nemo\\nemotron-3.5-asr-streaming-0.6b-onnx",
+  "recursive": false,
+  "local_only": true,
+  "inventory": [
+    {
+      "path": "decoder.onnx",
+      "size_bytes": 61405357,
+      "sha256": "784fdad7f6d510057ddb58467b7cd1500de03fc4517d90a1654858d870175113"
+    },
+    {
+      "path": "encoder_320ms_first_fp16.onnx",
+      "size_bytes": 668361,
+      "sha256": "1df652c127ecbfd5fb7fd8975f3444f487dffe971613aeea68f54a969de218b7"
+    },
+    {
+      "path": "encoder_320ms_first_fp16.onnx.data",
+      "size_bytes": 1228512000,
+      "sha256": "159887b78f1e36fd59f5cf17be810fd61e98a96b61673b6de0dbe2b8dfb47a31"
+    },
+    {
+      "path": "encoder_320ms_fp16.onnx",
+      "size_bytes": 610572,
+      "sha256": "78af98ec11d27975e3e8fdc7bc480c6e3c174f3eb8a4d21cc52541db8b4912e3"
+    },
+    {
+      "path": "encoder_320ms_fp16.onnx.data",
+      "size_bytes": 1228512000,
+      "sha256": "159887b78f1e36fd59f5cf17be810fd61e98a96b61673b6de0dbe2b8dfb47a31"
+    },
+    {
+      "path": "joiner.onnx",
+      "size_bytes": 33558071,
+      "sha256": "2d8d8ccef0a655a59be23c1aaa89fb10927d7057da3c3a49ae67e3d7756db489"
+    },
+    {
+      "path": "LICENSE-OpenMDW-1.1",
+      "size_bytes": 2649,
+      "sha256": "cc66dc17fcccd959c9749222445f6525ca448d575892d6925b4c5519221ec906"
+    },
+    {
+      "path": "nemotron_onnx_config.json",
+      "size_bytes": 8287,
+      "sha256": "81fcb81636c4915fd1600fb877b9935f5e73da693554b2c91c8bcb791f248f5c"
+    },
+    {
+      "path": "NOTICE",
+      "size_bytes": 859,
+      "sha256": "b74ed89c5f5157d4355da5c447c7e1f403abd0b30dfd19a008be97c305ccb1f6"
+    },
+    {
+      "path": "README.md",
+      "size_bytes": 7890,
+      "sha256": "b6f6caa27557ec3b8b99b4b81efb6f50fe60c449a5f145355be70f30cb15bd7c"
+    },
+    {
+      "path": "tokens.txt",
+      "size_bytes": 144528,
+      "sha256": "2b485ebebc4d2f592237f3b6bcd3c75bc354980b2f696dbeb2fc2d5f7eb9c9ab"
+    }
+  ],
+  "graphs": [
+    {
+      "path": "decoder.onnx",
+      "loaded": true,
+      "execution_provider": "cpu",
+      "load_ms": 203.403,
+      "input_names": [
+        "token",
+        "h_in",
+        "c_in"
+      ],
+      "output_names": [
+        "decoder_out",
+        "h_out",
+        "c_out"
+      ],
+      "input_metadata": [
+        {
+          "name": "0",
+          "type": "int64",
+          "dimensions": [
+            1,
+            1
+          ]
+        },
+        {
+          "name": "1",
+          "type": "float32",
+          "dimensions": [
+            2,
+            1,
+            640
+          ]
+        },
+        {
+          "name": "2",
+          "type": "float32",
+          "dimensions": [
+            2,
+            1,
+            640
+          ]
+        }
+      ],
+      "output_metadata": [
+        {
+          "name": "0",
+          "type": "float32",
+          "dimensions": [
+            1,
+            640
+          ]
+        },
+        {
+          "name": "1",
+          "type": "float32",
+          "dimensions": [
+            2,
+            1,
+            640
+          ]
+        },
+        {
+          "name": "2",
+          "type": "float32",
+          "dimensions": [
+            2,
+            1,
+            640
+          ]
+        }
+      ],
+      "external_data_candidates": []
+    },
+    {
+      "path": "encoder_320ms_first_fp16.onnx",
+      "loaded": true,
+      "execution_provider": "cpu",
+      "load_ms": 11210.38,
+      "input_names": [
+        "input_features",
+        "prompt_ids",
+        "cache_mask",
+        "k_cache_0",
+        "k_cache_1",
+        "k_cache_2",
+        "k_cache_3",
+        "k_cache_4",
+        "k_cache_5",
+        "k_cache_6",
+        "k_cache_7",
+        "k_cache_8",
+        "k_cache_9",
+        "k_cache_10",
+        "k_cache_11",
+        "k_cache_12",
+        "k_cache_13",
+        "k_cache_14",
+        "k_cache_15",
+        "k_cache_16",
+        "k_cache_17",
+        "k_cache_18",
+        "k_cache_19",
+        "k_cache_20",
+        "k_cache_21",
+        "k_cache_22",
+        "k_cache_23",
+        "v_cache_0",
+        "v_cache_1",
+        "v_cache_2",
+        "v_cache_3",
+        "v_cache_4",
+        "v_cache_5",
+        "v_cache_6",
+        "v_cache_7",
+        "v_cache_8",
+        "v_cache_9",
+        "v_cache_10",
+        "v_cache_11",
+        "v_cache_12",
+        "v_cache_13",
+        "v_cache_14",
+        "v_cache_15",
+        "v_cache_16",
+        "v_cache_17",
+        "v_cache_18",
+        "v_cache_19",
+        "v_cache_20",
+        "v_cache_21",
+        "v_cache_22",
+        "v_cache_23",
+        "conv2d_cache_0",
+        "conv2d_cache_1",
+        "conv2d_cache_2",
+        "conv1d_cache_0",
+        "conv1d_cache_1",
+        "conv1d_cache_2",
+        "conv1d_cache_3",
+        "conv1d_cache_4",
+        "conv1d_cache_5",
+        "conv1d_cache_6",
+        "conv1d_cache_7",
+        "conv1d_cache_8",
+        "conv1d_cache_9",
+        "conv1d_cache_10",
+        "conv1d_cache_11",
+        "conv1d_cache_12",
+        "conv1d_cache_13",
+        "conv1d_cache_14",
+        "conv1d_cache_15",
+        "conv1d_cache_16",
+        "conv1d_cache_17",
+        "conv1d_cache_18",
+        "conv1d_cache_19",
+        "conv1d_cache_20",
+        "conv1d_cache_21",
+        "conv1d_cache_22",
+        "conv1d_cache_23"
+      ],
+      "output_names": [
+        "encoder_out",
+        "k_cache_out_0",
+        "k_cache_out_1",
+        "k_cache_out_2",
+        "k_cache_out_3",
+        "k_cache_out_4",
+        "k_cache_out_5",
+        "k_cache_out_6",
+        "k_cache_out_7",
+        "k_cache_out_8",
+        "k_cache_out_9",
+        "k_cache_out_10",
+        "k_cache_out_11",
+        "k_cache_out_12",
+        "k_cache_out_13",
+        "k_cache_out_14",
+        "k_cache_out_15",
+        "k_cache_out_16",
+        "k_cache_out_17",
+        "k_cache_out_18",
+        "k_cache_out_19",
+        "k_cache_out_20",
+        "k_cache_out_21",
+        "k_cache_out_22",
+        "k_cache_out_23",
+        "v_cache_out_0",
+        "v_cache_out_1",
+        "v_cache_out_2",
+        "v_cache_out_3",
+        "v_cache_out_4",
+        "v_cache_out_5",
+        "v_cache_out_6",
+        "v_cache_out_7",
+        "v_cache_out_8",
+        "v_cache_out_9",
+        "v_cache_out_10",
+        "v_cache_out_11",
+        "v_cache_out_12",
+        "v_cache_out_13",
+        "v_cache_out_14",
+        "v_cache_out_15",
+        "v_cache_out_16",
+        "v_cache_out_17",
+        "v_cache_out_18",
+        "v_cache_out_19",
+        "v_cache_out_20",
+        "v_cache_out_21",
+        "v_cache_out_22",
+        "v_cache_out_23",
+        "conv2d_cache_out_0",
+        "conv2d_cache_out_1",
+        "conv2d_cache_out_2",
+        "conv1d_cache_out_0",
+        "conv1d_cache_out_1",
+        "conv1d_cache_out_2",
+        "conv1d_cache_out_3",
+        "conv1d_cache_out_4",
+        "conv1d_cache_out_5",
+        "conv1d_cache_out_6",
+        "conv1d_cache_out_7",
+        "conv1d_cache_out_8",
+        "conv1d_cache_out_9",
+        "conv1d_cache_out_10",
+        "conv1d_cache_out_11",
+        "conv1d_cache_out_12",
+        "conv1d_cache_out_13",
+        "conv1d_cache_out_14",
+        "conv1d_cache_out_15",
+        "conv1d_cache_out_16",
+        "conv1d_cache_out_17",
+        "conv1d_cache_out_18",
+        "conv1d_cache_out_19",
+        "conv1d_cache_out_20",
+        "conv1d_cache_out_21",
+        "conv1d_cache_out_22",
+        "conv1d_cache_out_23"
+      ],
+      "input_metadata": [
+        {
+          "name": "0",
+          "type": "float32",
+          "dimensions": [
+            1,
+            25,
+            128
+          ]
+        },
+        {
+          "name": "1",
+          "type": "int64",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "name": "2",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1,
+            1,
+            60
+          ]
+        },
+        {
+          "name": "3",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "4",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "5",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "6",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "7",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "8",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "9",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "10",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "11",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "12",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "13",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "14",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "15",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "16",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "17",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "18",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "19",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "20",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "21",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "22",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "23",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "24",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "25",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "26",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "27",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "28",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "29",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "30",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "31",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "32",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "33",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "34",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "35",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "36",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "37",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "38",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "39",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "40",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "41",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "42",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "43",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "44",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "45",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "46",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "47",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "48",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "49",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "50",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "51",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1,
+            1,
+            131
+          ]
+        },
+        {
+          "name": "52",
+          "type": "float32",
+          "dimensions": [
+            1,
+            256,
+            1,
+            68
+          ]
+        },
+        {
+          "name": "53",
+          "type": "float32",
+          "dimensions": [
+            1,
+            256,
+            1,
+            36
+          ]
+        },
+        {
+          "name": "54",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "55",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "56",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "57",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "58",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "59",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "60",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "61",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "62",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "63",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "64",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "65",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "66",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "67",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "68",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "69",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "70",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "71",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "72",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "73",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "74",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "75",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "76",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "77",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        }
+      ],
+      "output_metadata": [
+        {
+          "name": "0",
+          "type": "float32",
+          "dimensions": [
+            1,
+            4,
+            640
+          ]
+        },
+        {
+          "name": "1",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "2",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "3",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "4",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "5",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "6",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "7",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "8",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "9",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "10",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "11",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "12",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "13",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "14",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "15",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "16",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "17",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "18",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "19",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "20",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "21",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "22",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "23",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "24",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "25",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "26",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "27",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "28",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "29",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "30",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "31",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "32",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "33",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "34",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "35",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "36",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "37",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "38",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "39",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "40",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "41",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "42",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "43",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "44",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "45",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "46",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "47",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "48",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "49",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1,
+            1,
+            131
+          ]
+        },
+        {
+          "name": "50",
+          "type": "float32",
+          "dimensions": [
+            1,
+            256,
+            1,
+            68
+          ]
+        },
+        {
+          "name": "51",
+          "type": "float32",
+          "dimensions": [
+            1,
+            256,
+            1,
+            36
+          ]
+        },
+        {
+          "name": "52",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "53",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "54",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "55",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "56",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "57",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "58",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "59",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "60",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "61",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "62",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "63",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "64",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "65",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "66",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "67",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "68",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "69",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "70",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "71",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "72",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "73",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "74",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "75",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        }
+      ],
+      "external_data_candidates": [
+        {
+          "path": "encoder_320ms_first_fp16.onnx.data",
+          "exists": true,
+          "size_bytes": 1228512000,
+          "sha256": "159887b78f1e36fd59f5cf17be810fd61e98a96b61673b6de0dbe2b8dfb47a31"
+        }
+      ]
+    },
+    {
+      "path": "encoder_320ms_fp16.onnx",
+      "loaded": true,
+      "execution_provider": "cpu",
+      "load_ms": 16224.526,
+      "input_names": [
+        "input_features",
+        "prompt_ids",
+        "cache_mask",
+        "k_cache_0",
+        "k_cache_1",
+        "k_cache_2",
+        "k_cache_3",
+        "k_cache_4",
+        "k_cache_5",
+        "k_cache_6",
+        "k_cache_7",
+        "k_cache_8",
+        "k_cache_9",
+        "k_cache_10",
+        "k_cache_11",
+        "k_cache_12",
+        "k_cache_13",
+        "k_cache_14",
+        "k_cache_15",
+        "k_cache_16",
+        "k_cache_17",
+        "k_cache_18",
+        "k_cache_19",
+        "k_cache_20",
+        "k_cache_21",
+        "k_cache_22",
+        "k_cache_23",
+        "v_cache_0",
+        "v_cache_1",
+        "v_cache_2",
+        "v_cache_3",
+        "v_cache_4",
+        "v_cache_5",
+        "v_cache_6",
+        "v_cache_7",
+        "v_cache_8",
+        "v_cache_9",
+        "v_cache_10",
+        "v_cache_11",
+        "v_cache_12",
+        "v_cache_13",
+        "v_cache_14",
+        "v_cache_15",
+        "v_cache_16",
+        "v_cache_17",
+        "v_cache_18",
+        "v_cache_19",
+        "v_cache_20",
+        "v_cache_21",
+        "v_cache_22",
+        "v_cache_23",
+        "conv2d_cache_0",
+        "conv2d_cache_1",
+        "conv2d_cache_2",
+        "conv1d_cache_0",
+        "conv1d_cache_1",
+        "conv1d_cache_2",
+        "conv1d_cache_3",
+        "conv1d_cache_4",
+        "conv1d_cache_5",
+        "conv1d_cache_6",
+        "conv1d_cache_7",
+        "conv1d_cache_8",
+        "conv1d_cache_9",
+        "conv1d_cache_10",
+        "conv1d_cache_11",
+        "conv1d_cache_12",
+        "conv1d_cache_13",
+        "conv1d_cache_14",
+        "conv1d_cache_15",
+        "conv1d_cache_16",
+        "conv1d_cache_17",
+        "conv1d_cache_18",
+        "conv1d_cache_19",
+        "conv1d_cache_20",
+        "conv1d_cache_21",
+        "conv1d_cache_22",
+        "conv1d_cache_23"
+      ],
+      "output_names": [
+        "encoder_out",
+        "k_cache_out_0",
+        "k_cache_out_1",
+        "k_cache_out_2",
+        "k_cache_out_3",
+        "k_cache_out_4",
+        "k_cache_out_5",
+        "k_cache_out_6",
+        "k_cache_out_7",
+        "k_cache_out_8",
+        "k_cache_out_9",
+        "k_cache_out_10",
+        "k_cache_out_11",
+        "k_cache_out_12",
+        "k_cache_out_13",
+        "k_cache_out_14",
+        "k_cache_out_15",
+        "k_cache_out_16",
+        "k_cache_out_17",
+        "k_cache_out_18",
+        "k_cache_out_19",
+        "k_cache_out_20",
+        "k_cache_out_21",
+        "k_cache_out_22",
+        "k_cache_out_23",
+        "v_cache_out_0",
+        "v_cache_out_1",
+        "v_cache_out_2",
+        "v_cache_out_3",
+        "v_cache_out_4",
+        "v_cache_out_5",
+        "v_cache_out_6",
+        "v_cache_out_7",
+        "v_cache_out_8",
+        "v_cache_out_9",
+        "v_cache_out_10",
+        "v_cache_out_11",
+        "v_cache_out_12",
+        "v_cache_out_13",
+        "v_cache_out_14",
+        "v_cache_out_15",
+        "v_cache_out_16",
+        "v_cache_out_17",
+        "v_cache_out_18",
+        "v_cache_out_19",
+        "v_cache_out_20",
+        "v_cache_out_21",
+        "v_cache_out_22",
+        "v_cache_out_23",
+        "conv2d_cache_out_0",
+        "conv2d_cache_out_1",
+        "conv2d_cache_out_2",
+        "conv1d_cache_out_0",
+        "conv1d_cache_out_1",
+        "conv1d_cache_out_2",
+        "conv1d_cache_out_3",
+        "conv1d_cache_out_4",
+        "conv1d_cache_out_5",
+        "conv1d_cache_out_6",
+        "conv1d_cache_out_7",
+        "conv1d_cache_out_8",
+        "conv1d_cache_out_9",
+        "conv1d_cache_out_10",
+        "conv1d_cache_out_11",
+        "conv1d_cache_out_12",
+        "conv1d_cache_out_13",
+        "conv1d_cache_out_14",
+        "conv1d_cache_out_15",
+        "conv1d_cache_out_16",
+        "conv1d_cache_out_17",
+        "conv1d_cache_out_18",
+        "conv1d_cache_out_19",
+        "conv1d_cache_out_20",
+        "conv1d_cache_out_21",
+        "conv1d_cache_out_22",
+        "conv1d_cache_out_23"
+      ],
+      "input_metadata": [
+        {
+          "name": "0",
+          "type": "float32",
+          "dimensions": [
+            1,
+            32,
+            128
+          ]
+        },
+        {
+          "name": "1",
+          "type": "int64",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "name": "2",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1,
+            1,
+            60
+          ]
+        },
+        {
+          "name": "3",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "4",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "5",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "6",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "7",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "8",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "9",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "10",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "11",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "12",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "13",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "14",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "15",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "16",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "17",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "18",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "19",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "20",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "21",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "22",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "23",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "24",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "25",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "26",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "27",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "28",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "29",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "30",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "31",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "32",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "33",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "34",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "35",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "36",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "37",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "38",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "39",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "40",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "41",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "42",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "43",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "44",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "45",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "46",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "47",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "48",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "49",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "50",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "51",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1,
+            1,
+            131
+          ]
+        },
+        {
+          "name": "52",
+          "type": "float32",
+          "dimensions": [
+            1,
+            256,
+            1,
+            68
+          ]
+        },
+        {
+          "name": "53",
+          "type": "float32",
+          "dimensions": [
+            1,
+            256,
+            1,
+            36
+          ]
+        },
+        {
+          "name": "54",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "55",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "56",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "57",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "58",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "59",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "60",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "61",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "62",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "63",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "64",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "65",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "66",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "67",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "68",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "69",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "70",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "71",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "72",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "73",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "74",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "75",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "76",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "77",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        }
+      ],
+      "output_metadata": [
+        {
+          "name": "0",
+          "type": "float32",
+          "dimensions": [
+            1,
+            4,
+            640
+          ]
+        },
+        {
+          "name": "1",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "2",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "3",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "4",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "5",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "6",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "7",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "8",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "9",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "10",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "11",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "12",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "13",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "14",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "15",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "16",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "17",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "18",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "19",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "20",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "21",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "22",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "23",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "24",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "25",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "26",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "27",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "28",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "29",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "30",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "31",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "32",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "33",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "34",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "35",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "36",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "37",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "38",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "39",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "40",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "41",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "42",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "43",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "44",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "45",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "46",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "47",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "48",
+          "type": "float32",
+          "dimensions": [
+            1,
+            8,
+            56,
+            128
+          ]
+        },
+        {
+          "name": "49",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1,
+            1,
+            131
+          ]
+        },
+        {
+          "name": "50",
+          "type": "float32",
+          "dimensions": [
+            1,
+            256,
+            1,
+            68
+          ]
+        },
+        {
+          "name": "51",
+          "type": "float32",
+          "dimensions": [
+            1,
+            256,
+            1,
+            36
+          ]
+        },
+        {
+          "name": "52",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "53",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "54",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "55",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "56",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "57",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "58",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "59",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "60",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "61",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "62",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "63",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "64",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "65",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "66",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "67",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "68",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "69",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "70",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "71",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "72",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "73",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "74",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        },
+        {
+          "name": "75",
+          "type": "float32",
+          "dimensions": [
+            1,
+            1024,
+            8
+          ]
+        }
+      ],
+      "external_data_candidates": [
+        {
+          "path": "encoder_320ms_fp16.onnx.data",
+          "exists": true,
+          "size_bytes": 1228512000,
+          "sha256": "159887b78f1e36fd59f5cf17be810fd61e98a96b61673b6de0dbe2b8dfb47a31"
+        }
+      ]
+    },
+    {
+      "path": "joiner.onnx",
+      "loaded": true,
+      "execution_provider": "cpu",
+      "load_ms": 257.448,
+      "input_names": [
+        "encoder_frame",
+        "decoder_out"
+      ],
+      "output_names": [
+        "logits"
+      ],
+      "input_metadata": [
+        {
+          "name": "0",
+          "type": "float32",
+          "dimensions": [
+            1,
+            640
+          ]
+        },
+        {
+          "name": "1",
+          "type": "float32",
+          "dimensions": [
+            1,
+            640
+          ]
+        }
+      ],
+      "output_metadata": [
+        {
+          "name": "0",
+          "type": "float32",
+          "dimensions": [
+            1,
+            13088
+          ]
+        }
+      ],
+      "external_data_candidates": []
+    }
+  ],
+  "summary": {
+    "file_count": 11,
+    "onnx_count": 4,
+    "loaded_onnx_count": 4,
+    "failed_onnx_count": 0,
+    "ok": true
+  }
+}
