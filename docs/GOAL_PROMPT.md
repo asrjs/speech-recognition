@@ -25,6 +25,31 @@ framework.
 
 ## Completed (2026-08-30 recent slices)
 
+NeMo RNNT gate re-probe port; natural-audio decode win doubled
+(2026-08-30, later):
+
+- Ported the TDT regime-change fix to src/models/nemo-rnnt/executor.ts:
+  after six consecutive sequential blank visits (~0.5 s) the utilization
+  sampling window resets and the grid re-probes, so speech/silence
+  alternation (the realtime EOU norm) no longer strands the gate in the
+  opening dense speech. Fluke re-probes stay bounded by the sampling
+  window.
+- Real-artifact re-measurement (Node WASM, fp32 decoder, char-identical
+  transcripts, decodeIterations unchanged): tr-tdk-18s 52% decode win
+  (179.5 vs 377.4 ms, 2.1x; was ~16% pre-fix, 19 -> 70 grid runs);
+  jfk-short 36% win (166.0 vs 257.5 ms, 8 -> 29 grid runs,
+  exact-reference match). Evidence:
+  docs/reports/nemo-rnnt-grid-batching-2026-08-30.md addendum and
+  tools/data/results/nemo-rnnt/parakeet-eou120m-grid-reprobe-*.json.
+- Validation: tests/nemo-rnnt-grid-batching.test.ts now 10 tests (new
+  latched-dense-then-blank re-probe pin); suite 1064 passed / 18
+  skipped; tsc + build clean.
+- Lesson reaffirmed: port optimization fixes across sibling executors,
+  not just the one where the flaw was measured - the same warmup-window
+  gate flaw cost the RNNT family half its potential win.
+
+
+
 Parakeet TDT grid-batching gate re-probe + blank-dominant browser win
 (2026-08-30, later):
 

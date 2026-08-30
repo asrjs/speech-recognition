@@ -191,6 +191,8 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
   private static readonly rnntBatchMinColumnUtilization = 0.7;
   private rnntBatchColumnsScored = 0;
   private rnntBatchColumnsUseful = 0;
+private rnntSequentialBlankVisits = 0;
+private static readonly rnntBlankReprobeVisits = 6;
 
   constructor(
     private readonly modelId: string,
@@ -620,6 +622,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
     let decoderGridBatchRuns = 0;
     this.rnntBatchColumnsScored = 0;
     this.rnntBatchColumnsUseful = 0;
+this.rnntSequentialBlankVisits = 0;
 
     const disposeTensor = (tensor: OrtTensorLike | undefined): void => {
       tensor?.dispose?.();
@@ -791,6 +794,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
                   tokenLogProbs.push(emissionConfidence!.logProb);
                   tokenFrameIndices.push(emissionFrame);
                   emittedOnFrame += 1;
+this.rnntSequentialBlankVisits = 0;
                   // Blank rows before the emission row are consumed frames;
                   // resume at the emitting frame (or advance past it when
                   // the per-frame symbol cap is reached), mirroring the
@@ -870,15 +874,29 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
                 frameConfidenceStats.set(frameIndex, { sum: confidence.confidence, count: 1 });
               }
 
-              if (tokenId === blankId) {
-                break;
-              }
+if (tokenId === blankId) {
+  // A sustained sequential blank run means the audio entered a
+  // blank-dominant region after the gate closed (typical for
+  // speech/silence alternation and realtime EOU chunks). Re-open
+  // the sampling window so the grid can cross the silence; a fluke
+  // re-probe stays bounded by the sampling window before the gate
+  // closes again. Mirrors the verified TDT gate fix.
+  this.rnntSequentialBlankVisits += 1;
+  if (this.rnntSequentialBlankVisits >= OrtNemoRnntExecutor.rnntBlankReprobeVisits) {
+    this.rnntSequentialBlankVisits = 0;
+    this.rnntBatchColumnsScored = 0;
+    this.rnntBatchColumnsUseful = 0;
+    this.rnntBatchWidth = OrtNemoRnntExecutor.rnntBatchMinFrames;
+  }
+  break;
+}
 
               tokenIds.push(tokenId);
               tokenConfidences.push(confidence.confidence);
               tokenFrameIndices.push(frameIndex);
               tokenLogProbs.push(confidence.logProb);
               emittedOnFrame += 1;
+              this.rnntSequentialBlankVisits = 0;
 
               disposeDecoderState(decoderState, nextState);
               decoderState = nextState;

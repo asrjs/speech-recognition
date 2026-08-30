@@ -304,6 +304,50 @@ describe('nemo-rnnt speculative grid batching', () => {
     await fixture.executor.dispose();
   });
 
+  it('re-opens the gate after a latched dense phase once the audio goes blank', async () => {
+    // Frames 0-11 emit on every visit (the fp32-default gate latches
+    // during the sampling window), frames 12+ are blank. After six
+    // sequential blank visits the executor must re-open the sampling
+    // window and cross the remaining silence with widening grid runs
+    // instead of one dispatch per frame.
+    const script: RnntScript = (frame, target) => {
+      if (frame < 12 && target === BLANK) {
+        return HELLO;
+      }
+      return BLANK;
+    };
+    const sequential = createFixture({
+      frameCount: 64,
+      script,
+      decoderQuantization: 'fp32',
+    });
+    const batched = createFixture({
+      frameCount: 64,
+      script,
+      decoderQuantization: 'fp32',
+    });
+    const seqResult = await sequential.executor.transcribe(
+      createAudio(),
+      { gridBatching: false },
+      {} as never,
+    );
+    const batchResult = await batched.executor.transcribe(createAudio(), {}, {} as never);
+
+    expect(tokenShape(batchResult)).toEqual(tokenShape(seqResult));
+    const calls = batched.decoderSession.calls;
+    const wideRuns = calls.filter((call) => call.width >= 8);
+    expect(wideRuns.length).toBeGreaterThan(0);
+    // The latched dense phase decodes sequentially (12 dense frames plus
+    // the six blank visits before the re-probe), but the 40+ blank tail
+    // must be crossed by grids: far fewer dispatches than the 64 the
+    // sequential loop needs.
+    expect(calls.length).toBeLessThan(40);
+    const maxGridWidth = Math.max(...calls.map((call) => call.width));
+    expect(maxGridWidth).toBeGreaterThanOrEqual(8);
+    await sequential.executor.dispose();
+    await batched.executor.dispose();
+  });
+
   it('refuses explicit grid batching on int8 decoders with a recoverable warning', async () => {
     const script: RnntScript = (frame, target) =>
       frame === 6 && target === BLANK ? HELLO : BLANK;

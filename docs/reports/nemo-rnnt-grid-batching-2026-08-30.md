@@ -107,3 +107,28 @@ Evidence JSONs:
    eou-120m preset alongside TDT v2/v3 and is the integration reference)
    to extend the A/B to Chrome headless WebGPU hosts.
 
+## Addendum: gate re-probe ported from TDT; natural-audio decode win doubled (2026-08-30 later)
+
+The RNNT gate had the same once-per-utterance warmup flaw the TDT fix
+exposed: the 24-column sampling window accumulated during dense opening
+speech and latched batching off before any pause. Ported the fix: the
+sequential fallback counts consecutive blank visits and resets the
+sampling window after six blanks (~0.5 s at 80 ms/frame), letting the
+grid re-probe each silence gap; fluke re-probes stay bounded by the
+sampling window. Both the grid and sequential emission paths reset the
+blank-run counter.
+
+Real-artifact re-measurement (Node WASM, encoder fp32, char-identical
+transcripts and unchanged decodeIterations in every cell):
+
+| Clip | grid runs (before -> after) | decodeMs ON | decodeMs OFF | win |
+| --- | --- | --- | --- | --- |
+| tr-tdk-18s 18.6 s | 19 -> 70 | 179.5 | 377.4 | 52% (2.1x) |
+| jfk-short 11 s | 8 -> 29 | 166.0 | 257.5 | 36% |
+
+The tr-tdk-18s fp32 win more than doubled (was ~16% with the
+once-per-utterance gate). jfk-short stays exact-reference-matched
+(tokenIds + visibleText + EOU). The re-probe is especially relevant for
+the realtime EOU use case, where alternating speech/silence chunks are
+the norm. Evidence:
+'tools/data/results/nemo-rnnt/parakeet-eou120m-grid-reprobe-*.json'.
