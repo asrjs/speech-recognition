@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-30T21:28:18.221692+00:00",
+  "purpose": "ONNX encoder parity probe (native ORT, step 4 rung 1)",
+  "onnxDir": "N:/models/onnx/nemo/nemotron-3.5-asr-streaming-0.6b-onnx",
+  "note": "Synthetic features; verifies shape, magnitude, and cache-output contract.",
+  "firstChunk": {
+    "label": "encoder_first_chunk",
+    "featureShape": [
+      1,
+      25,
+      128
+    ],
+    "encoderOutShape": [
+      1,
+      4,
+      640
+    ],
+    "encoderOutMaxAbs": 0.5751953125,
+    "encoderOutMeanAbs": 0.08536794036626816,
+    "cacheOutputCount": 76,
+    "firstEncoderRow": [
+      -0.141845703125,
+      0.0069580078125,
+      -0.0093841552734375,
+      -0.1993408203125,
+      -0.036865234375
+    ]
+  },
+  "continuation": {
+    "label": "encoder_continuation",
+    "featureShape": [
+      1,
+      32,
+      128
+    ],
+    "encoderOutShape": [
+      1,
+      4,
+      640
+    ],
+    "encoderOutMaxAbs": 0.5615234375,
+    "encoderOutMeanAbs": 0.08545340597629547,
+    "cacheOutputCount": 76,
+    "firstEncoderRow": [
+      -0.14208984375,
+      0.00786590576171875,
+      -0.00872039794921875,
+      -0.1981201171875,
+      -0.03619384765625
+    ]
+  }
+}

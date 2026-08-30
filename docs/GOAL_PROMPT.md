@@ -99,6 +99,16 @@ verified against the HF-published LFS hash `210214ed…`).
     ORT Web WASM, then Chrome headless real-WebGPU (keep the ORT Web
     entry-point alias invariant), comparing earliest divergence at features,
     encoder caches, predictor state, joint logits, tokens, and text.
+4.  **IN PROGRESS (rung 1 done)**. ONNX encoder parity probe via native ORT
+    passes: both first-chunk and continuation encoders produce correct shape
+    `[1, 4, 640]` (4 frames x 640 dims for 320 ms chunks), 76 cache outputs,
+    reasonable magnitudes (maxAbs ~0.56, meanAbs ~0.085). Evidence:
+    `tools/data/results/nemotron/nemotron-3.5-encoder-parity-2026-08-31.json`.
+    Predictor/joiner parity deferred: NeMo decoder's internal predict() returns
+    `(g, hid)` where `hid` shape is `[num_layers, batch, hidden]` (h only, no
+    separate c tensor in the LSTM output), so component parity needs a
+    follow-up probe with the correct state tuple. WASM and WebGPU rungs
+    deferred until component parity is closed.
 5.  Only after exact-token parity: design the Nemotron RNNT adapter (reuse
     NeMo RNNT predictor/joint machinery where proven shared; cache-aware
     chunked encoder stays model-specific), then measure streaming latency
