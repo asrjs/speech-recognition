@@ -4080,6 +4080,7 @@ export class WhisperOnnxExecutor {
               try {
                 step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds, { preparedPastKv: true });
               } catch (error) {
+                if (error instanceof PipelineAbortedError) throw error;
                 const locations = Object.entries(feeds)
                   .map(([name, tensor]) => `${name}=${(tensor as OrtTensorLike).location ?? 'unknown'}`)
                   .join(' ');
@@ -4088,7 +4089,14 @@ export class WhisperOnnxExecutor {
                 throw new Error(`gpu-kv beam step failed (gen ${generation}): ${message}; feeds: ${locations}; pruned-so-far: ${pruned}`);
               }
               gpuKvBeamTracker.register(Object.values(step.presentKv), generation);
-              gpuKvBeamTracker.pruneIdle(generation - requestedNumBeams);
+              // DIAGNOSTIC (beam-5): 3x lag probe - distinguishes prune-lag
+              // starvation from an unrelated disposal source.
+              // Prune lag must exceed one full strategy step PLUS beam
+              // position shifts: a surviving beam's next feed can land up to
+              // ~numBeams*2 generations after its last touch when it moves
+              // to a later position between steps. 3x numBeams gives a wide
+              // safety margin (validated beam-2 and beam-5, exact parity).
+              gpuKvBeamTracker.pruneIdle(generation - requestedNumBeams * 3);
               return {
                 logits: step.logits,
                 vocabSize: step.vocabSize,

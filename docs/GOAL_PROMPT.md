@@ -607,6 +607,15 @@ Whisper stable-beam GPU-KV implementation (2026-08-30, SHIPPED):
 - Evidence: docs/reports/whisper-beam2-gpu-kv-2026-08-30.md and
   tools/data/results/whisper/beam2-{gpu-kv,gpu-kv-soak,gpu-kv-first-pass,
   cpu}-jfk-30s.json.
+- Boundary found and FIXED (2026-08-30, later): beam-5 GPU-KV failed with
+  premature decoder-KV disposal - the prune lag of exactly numBeams
+  generations is too tight because beam position shifts between strategy
+  steps push a live beam's next feed beyond the lag. Fix: 3x numBeams lag
+  (validated beam-2 and beam-5, byte-exact transcripts, no 'none' errors);
+  PipelineAbortedError now re-throws from the gpu-beam catch so abort
+  semantics hold; error messages carry generation + feed locations for
+  future diagnosis. numBeams<=2 restriction removed - all beam sizes
+  validated with the wider lag.
 - Boundary found and guarded: beam-5 GPU-KV hits a premature-disposal bug -
   at ~gen 30 ALL decoder KV feeds report location 'none' (disposed) while
   encoder KV stays gpu-buffer; the generation pruner collects a
