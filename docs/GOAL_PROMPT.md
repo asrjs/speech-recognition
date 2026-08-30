@@ -25,6 +25,32 @@ framework.
 
 ## Completed (2026-08-30 recent slices)
 
+Parakeet TDT grid-batching gate re-probe + blank-dominant browser win
+(2026-08-30, later):
+
+- First blank-heavy measurement (synthetic 40.6 s clip, 63% blank duty,
+  generator committed) exposed that the utilization gate sampled its
+  24-column window during the opening speech and latched batching off
+  after 7 grid runs before reaching any silence - the gate never
+  re-evaluated.
+- Fix: the sequential fallback counts consecutive blank visits and resets
+  the sampling window after six blanks (~0.5 s), letting the grid re-probe
+  each silence gap; fluke re-probes stay bounded by the sampling window.
+  New unit test pins the latched-dense-then-blank behavior.
+- Browser A/B (TDT v3 int8 WASM decoder, Chrome headless): decodeMs
+  median 854 vs 1194 baseline (~29% faster; best 626 vs 990 = 37%),
+  RTFx 33.2x vs 25.7x, 53 grid runs vs 7 pre-fix, identical transcripts,
+  decodeIterations unchanged. This is the blank-dominant dispatch win the
+  grid was designed for. Evidence:
+  docs/reports/parakeet-tdt-grid-batching-2026-08-30.md addendum and
+  tools/data/results/nemo-tdt/parakeet-tdt-v3-blankgaps-*.json.
+- Reusable lesson: warmup-window gates must re-open on evidence of regime
+  change (sustained blank runs); a once-per-utterance sample permanently
+  disables an optimization for alternating speech/silence audio, which is
+  the common streaming case.
+
+
+
 eou-120m browser harness slice - HANDED OVER, not started in code
 (2026-08-30):
 

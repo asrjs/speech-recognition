@@ -367,6 +367,38 @@ describe('nemo-tdt speculative grid batching', () => {
     await batched.executor.dispose();
   });
 
+  it("re-opens the gate after a latched dense phase once the audio goes blank", async () => {
+    // Frames 0-11 emit on every visit (the gate latches during the
+    // sampling window), frames 12+ are blank. After six sequential blank
+    // visits the executor must re-open the sampling window and cross the
+    // remaining silence with widening grid runs instead of one dispatch
+    // per frame.
+    const script: DecoderScript = (frame, target) => {
+      if (frame < 12 && target === BLANK) {
+        return { token: HELLO, step: 1 };
+      }
+      return { token: BLANK, step: 0 };
+    };
+    const sequential = createFixture({ frameCount: 64, script, batching: false });
+    const batched = createFixture({ frameCount: 64, script, batching: true });
+    const seqResult = await sequential.executor.transcribe(createAudio(), {}, {} as never);
+    const batchResult = await batched.executor.transcribe(createAudio(), {}, {} as never);
+
+    expect(tokenShape(batchResult)).toEqual(tokenShape(seqResult));
+    const calls = batched.decoderSession.calls;
+    const wideRuns = calls.filter((call) => call.width >= 8);
+    expect(wideRuns.length).toBeGreaterThan(0);
+    // The latched dense phase decodes sequentially (12 dense frames plus
+    // the six blank visits before the re-probe), but the 40+ blank tail
+    // must be crossed by grids: far fewer dispatches than the 64 the
+    // sequential loop needs.
+    expect(calls.length).toBeLessThan(40);
+    const maxGridWidth = Math.max(...calls.map((call) => call.width));
+    expect(maxGridWidth).toBeGreaterThanOrEqual(8);
+    await sequential.executor.dispose();
+    await batched.executor.dispose();
+  });
+
   it("keeps grid runs active for blank-dominant audio past the sampling window", async () => {
     // A long leading blank run followed by two emissions near the end of
     // the widest speculative grid: the scans examine almost every column

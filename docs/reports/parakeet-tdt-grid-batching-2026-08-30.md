@@ -98,9 +98,45 @@ and
    fused graph): feature-major fill pattern 'f * width + w', layout-asserting
    mock, and a utilization gate without a duration head (useful rows are
    emission-rows only; blank breaks the inner loop).
-2. Find or generate a blank-heavy sub-45 s clip to demonstrate the
-   blank-dominant dispatch win in the browser (candidate: silence-inserted
-   variants of the LibriVox fixture, provenance-labeled as synthetic).
-3. If a real blank-heavy win is measured, consider exposing the gate
+2. [Completed same day] Blank-dominant browser win measured (details in
+   the addendum below).
+3. If more blank-heavy clips appear, consider exposing the gate
    thresholds as preset tuning rather than constants.
 
+## Addendum: blank-dominant browser win and the gate re-probe fix (2026-08-30 later)
+
+Fixture: 'tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav' -
+SYNTHETIC measurement clip (generator:
+'tools/scripts/make_librivox_blankgaps_fixture.py'): first 15 s of the
+LibriVox speech with nine 3.2 s silence gaps, 40.6 s total, ~63% blank
+duty. Not a benchmark-quality fixture; used only for dispatch mechanics.
+
+First measurement with the shipped gate exposed a real design flaw: the
+24-column sampling window accumulated during the OPENING SPEECH segment
+(dense, ~50% utilization) and latched batching off after just 7 grid runs,
+before any silence was reached - the gate never re-evaluated, so the
+blank-dominant dispatch win could not materialize.
+
+Fix shipped: the sequential fallback now counts consecutive blank visits;
+after six blanks (about 0.5 s) it resets the sampling window (scored/useful
+counters and width), letting the grid re-probe. A fluke re-probe costs at
+most the bounded sampling window before the gate closes again; the dense
+phase still latches as designed. Verified by a new unit test
+('re-opens the gate after a latched dense phase once the audio goes blank').
+
+Browser A/B after the fix (Chrome headless, real WebGPU host, TDT v3,
+encoder fp16 WebGPU + decoder int8 WASM, repeat 3, warmup 1):
+
+| Variant | grid runs | decodeMs (runs) | median | transcripts |
+| --- | --- | --- | --- | --- |
+| gate-off baseline | 0 | 1219.8 / 1194.3 / 990.5 | 1194.3 | identical |
+| gate-on (pre-fix) | 7 | 1365.7 / 901.9 / 994.6 | ~950 | identical |
+| gate-on (fixed) | 53 | 862.4 / 853.9 / 625.7 | 853.9 | identical |
+
+Result: ~29% faster decode at the median (854 vs 1194 ms; best runs 626 vs
+990 ms = 37%), RTFx median 33.2x vs 25.7x, decodeIterations unchanged
+(183 - same rows examined), transcripts identical in every run. The gate
+now re-opens per silence gap and crosses the gaps with widening grids.
+
+Evidence JSONs:
+'tools/data/results/nemo-tdt/parakeet-tdt-v3-blankgaps-grid-{off,on,on-pregatefix}-2026-08-30.json'.

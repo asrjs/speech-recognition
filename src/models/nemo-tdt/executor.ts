@@ -154,6 +154,8 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
   private static readonly tdtBatchMinColumnUtilization = 0.7;
   private tdtBatchColumnsScored = 0;
   private tdtBatchColumnsUseful = 0;
+private tdtSequentialBlankVisits = 0;
+private static readonly tdtBlankReprobeVisits = 6;
 
   constructor(
     private readonly modelId: string,
@@ -690,6 +692,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     let decoderGridBatchRuns = 0;
     this.tdtBatchColumnsScored = 0;
     this.tdtBatchColumnsUseful = 0;
+this.tdtSequentialBlankVisits = 0;
     try {
       for (let frameIndex = 0; frameIndex < frameCount; ) {
         throwIfDecodeAborted(options.signal);
@@ -979,11 +982,25 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
           tokenFrameIndices.push(frameIndex);
           tokenTdtSteps.push(step);
           emittedOnFrame += 1;
+this.tdtSequentialBlankVisits = 0;
 
           disposeDecoderState(decoderState, nextState);
           decoderState = nextState;
         } else {
-          disposeDecoderState(nextState, decoderState);
+disposeDecoderState(nextState, decoderState);
+// A sustained sequential blank run means the audio entered a
+// blank-dominant region after the gate closed (typical for
+// speech/silence alternation and streaming chunks). Re-open the
+// sampling window so the grid can cross the silence; a fluke
+// re-probe costs at most tdtBatchMinSampleColumns wasted
+// columns before the gate closes again.
+this.tdtSequentialBlankVisits += 1;
+if (this.tdtSequentialBlankVisits >= OrtNemoTdtExecutor.tdtBlankReprobeVisits) {
+  this.tdtSequentialBlankVisits = 0;
+  this.tdtBatchColumnsScored = 0;
+  this.tdtBatchColumnsUseful = 0;
+  this.tdtBatchWidth = OrtNemoTdtExecutor.tdtBatchMinFrames;
+}
         }
 
         if (step > 0) {

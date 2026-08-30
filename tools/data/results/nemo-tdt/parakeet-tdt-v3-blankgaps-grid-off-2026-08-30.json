@@ -1,0 +1,158 @@
+{
+  "preset": "parakeet-tdt-v3-decoder-wasm",
+  "timestamp": "2026-08-30T17:33:38.069Z",
+  "status": "pass",
+  "exactMatch": null,
+  "normalizedMatch": true,
+  "transcript": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings. For more information, or to follow volunteer, please visit Libravox.org. Read by Olivia.",
+  "expected": null,
+  "qualityOracle": null,
+  "transcriptAvailable": true,
+  "audioUrl": "/parakeet-audio/librivox-blankgaps-synthetic.wav",
+  "requestedClipSec": null,
+  "webgpu": true,
+  "backend": "webgpu",
+  "encoderBackend": "webgpu",
+  "encoderQuantization": "fp16",
+  "preprocessorBackend": "js",
+  "decoderBackend": "wasm",
+  "decoderStateOutputLocation": "cpu",
+  "webgpuStorageBufferCacheMode": "bucket-default",
+  "decoderQuantization": "int8",
+  "returnConfidence": true,
+  "audioStrategy": "native-rate",
+  "repeatCount": 3,
+  "warmupCount": 1,
+  "cpuThreads": 12,
+  "audio": {
+    "sampleRate": 16000,
+    "samples": 649600,
+    "durationSec": 40.6,
+    "sourceDurationSec": 40.6,
+    "numberOfChannels": 1,
+    "decodeMetrics": {
+      "backend": "browser",
+      "strategy": "audiocontext-native-rate",
+      "inputSampleRate": 22050,
+      "outputSampleRate": 16000,
+      "decodeMs": 13.155000001192093,
+      "downmixMs": 0,
+      "resampleMs": 7.810000002384186,
+      "totalMs": 20.96500000357628,
+      "wallMs": 34.110000014305115,
+      "resampler": "linear-parity",
+      "resamplerQuality": "linear",
+      "audioDurationSec": 40.6
+    }
+  },
+  "metrics": {
+    "loadMs": 9772.034999996424,
+    "transcribeMs": 1452.0550000071526,
+    "totalMs": 16172.314999997616,
+    "rtfx": 28.5049,
+    "wallRtfx": 27.960373401696224,
+    "decodeIterations": 183,
+    "emittedTokenCount": 69,
+    "warmupRuns": [
+      {
+        "runIndex": 1,
+        "transcribeMs": 1810.344999998808,
+        "rtfx": 22.5653,
+        "wallRtfx": 22.426664530808623,
+        "preprocessMs": 68.22,
+        "encodeMs": 508.36,
+        "decodeMs": 1219.785,
+        "totalMs": 1799.225,
+        "decodeIterations": 183,
+        "emittedTokenCount": 69
+      }
+    ],
+    "transcribeRuns": [
+      {
+        "runIndex": 1,
+        "transcribeMs": 1593.2349999845028,
+        "rtfx": 25.668,
+        "wallRtfx": 25.482744228186622,
+        "preprocessMs": 86.68,
+        "encodeMs": 298.675,
+        "decodeMs": 1194.3,
+        "totalMs": 1581.735,
+        "nativeWallMs": 1581.735,
+        "decodeIterations": 183,
+        "emittedTokenCount": 69,
+        "decoderGridBatchRuns": 0,
+        "exactMatch": null,
+        "normalizedMatch": null,
+        "transcript": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings. For more information, or to follow volunteer, please visit Libravox.org. Read by Olivia.",
+        "memory": {
+          "usedJSHeapSize": 1318035386,
+          "totalJSHeapSize": 1335932210,
+          "jsHeapSizeLimit": 4395630592
+        }
+      },
+      {
+        "runIndex": 2,
+        "transcribeMs": 1393.3899999856949,
+        "rtfx": 29.376,
+        "wallRtfx": 29.137570960331864,
+        "preprocessMs": 93.375,
+        "encodeMs": 296.425,
+        "decodeMs": 990.475,
+        "totalMs": 1382.08,
+        "nativeWallMs": 1382.08,
+        "decodeIterations": 183,
+        "emittedTokenCount": 69,
+        "decoderGridBatchRuns": 0,
+        "exactMatch": null,
+        "normalizedMatch": null,
+        "transcript": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings. For more information, or to follow volunteer, please visit Libravox.org. Read by Olivia.",
+        "memory": {
+          "usedJSHeapSize": 1343833470,
+          "totalJSHeapSize": 1354376406,
+          "jsHeapSizeLimit": 4395630592
+        }
+      },
+      {
+        "runIndex": 3,
+        "transcribeMs": 1452.0550000071526,
+        "rtfx": 28.5049,
+        "wallRtfx": 27.960373401696224,
+        "preprocessMs": 85.855,
+        "encodeMs": 394.115,
+        "decodeMs": 941.7,
+        "totalMs": 1424.315,
+        "nativeWallMs": 1424.315,
+        "decodeIterations": 183,
+        "emittedTokenCount": 69,
+        "decoderGridBatchRuns": 0,
+        "exactMatch": null,
+        "normalizedMatch": null,
+        "transcript": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings. For more information, or to follow volunteer, please visit Libravox.org. Read by Olivia.",
+        "memory": {
+          "usedJSHeapSize": 1348495498,
+          "totalJSHeapSize": 1362281014,
+          "jsHeapSizeLimit": 4395630592
+        }
+      }
+    ]
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "crossOriginIsolated: true, hardwareConcurrency: 12",
+    "decoder backend: wasm",
+    "model ready in 9772ms"
+  ],
+  "teardown": {
+    "modelDisposeAttempted": true,
+    "runtimeDisposeAttempted": true,
+    "errors": []
+  }
+}
