@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-30T22:50:19.008553+00:00",
+  "purpose": "numerical parity NeMo vs ONNX: predictor (projected) and joiner",
+  "note": "ONNX decoder_out includes a folded 640x640 decoder_projector (== NeMo joint.pred weights, verified allclose). Parity compares projected outputs on both sides.",
+  "atol": 0.0001,
+  "rtol": 0.0001,
+  "results": [
+    {
+      "component": "predictor.decoder_out_projected",
+      "maxAbsErr": 4.887580871582031e-06,
+      "meanAbsErr": 4.791487299371511e-07,
+      "cosineSim": 0.9999999999997171,
+      "allclose": true
+    },
+    {
+      "component": "predictor.h_out",
+      "maxAbsErr": 2.4745240807533264e-06,
+      "meanAbsErr": 1.273918958043622e-07,
+      "cosineSim": 0.9999999999996995,
+      "allclose": true
+    },
+    {
+      "component": "predictor.c_out",
+      "maxAbsErr": 5.9604644775390625e-06,
+      "meanAbsErr": 2.6920119393738626e-07,
+      "cosineSim": 0.999999999999799,
+      "allclose": true
+    },
+    {
+      "component": "joiner.logits",
+      "maxAbsErr": 0.001708984375,
+      "meanAbsErr": 0.00019244168381819224,
+      "cosineSim": 0.9999999999999917,
+      "allclose": true,
+      "refArgmax": 13087,
+      "targetArgmax": 13087,
+      "argmaxAgree": true
+    }
+  ],
+  "overall": {
+    "allComponentsAllclose": true,
+    "argmaxAgree": true
+  }
+}

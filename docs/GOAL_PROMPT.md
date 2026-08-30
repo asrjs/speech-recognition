@@ -99,16 +99,27 @@ verified against the HF-published LFS hash `210214ed…`).
     ORT Web WASM, then Chrome headless real-WebGPU (keep the ORT Web
     entry-point alias invariant), comparing earliest divergence at features,
     encoder caches, predictor state, joint logits, tokens, and text.
-4.  **IN PROGRESS (rung 1 done)**. ONNX encoder parity probe via native ORT
-    passes: both first-chunk and continuation encoders produce correct shape
-    `[1, 4, 640]` (4 frames x 640 dims for 320 ms chunks), 76 cache outputs,
-    reasonable magnitudes (maxAbs ~0.56, meanAbs ~0.085). Evidence:
+4.  **NATIVE-ORT PARITY: PASS (all component rungs, 2026-08-31).**
+    Numerical parity between NeMo (PyTorch reference) and the community ONNX
+    export on native ORT, all at atol=1e-4, rtol=1e-4, cosineSim=1.0:
+    - predictor.decoder_out_projected: maxAbsErr 4.9e-06, allclose PASS
+    - predictor.h_out: maxAbsErr 2.5e-06, allclose PASS
+    - predictor.c_out: maxAbsErr 6.0e-06, allclose PASS
+    - joiner.logits (13088 classes): maxAbsErr 1.7e-03, allclose PASS,
+      argmaxAgree True
+    Encoder rung (shape + magnitude, no numerical reference yet):
     `tools/data/results/nemotron/nemotron-3.5-encoder-parity-2026-08-31.json`.
-    Predictor/joiner parity deferred: NeMo decoder's internal predict() returns
-    `(g, hid)` where `hid` shape is `[num_layers, batch, hidden]` (h only, no
-    separate c tensor in the LSTM output), so component parity needs a
-    follow-up probe with the correct state tuple. WASM and WebGPU rungs
-    deferred until component parity is closed.
+    Predictor/joiner evidence:
+    `tools/data/results/nemotron/nemotron-3.5-predictor-joiner-parity-2026-08-31.json`.
+    ROOT CAUSE of the earlier mismatch: the community decoder.onnx graph folds
+    an extra 640x640 `decoder_projector` Linear that equals NeMo `joint.pred`
+    weights (verified allclose). Parity must compare ONNX decoder_out (already
+    projected) against NeMo `joint.pred(raw_lstm_h)`, not raw LSTM output. The
+    joiner therefore consumes projected 640-dim inputs on both sides and its
+    enc projection (1024->640) is folded into the encoder graph.
+    Remaining rungs: encoder numerical parity (needs NeMo encoder reference
+    outputs), token sequence, final text; then ORT Web WASM and Chrome
+    headless real-WebGPU rungs.
 5.  Only after exact-token parity: design the Nemotron RNNT adapter (reuse
     NeMo RNNT predictor/joint machinery where proven shared; cache-aware
     chunked encoder stays model-specific), then measure streaming latency
