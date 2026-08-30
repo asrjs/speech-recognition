@@ -558,6 +558,18 @@ Parakeet v3 20x-vs-37x reproducibility check (2026-08-30):
 - Methodology note: single-session records for decode-loop-heavy models
   should cite the capture date and be re-verified through the unified
   matrix before being used as promotion baselines.
+- Environment drift diagnostic (2026-08-30, later): Chrome (151.0.7922.174,
+  installed 08-25), ORT 1.29.0, and the NVIDIA driver (591.59, 2025-12-11)
+  are all unchanged across the drifting sessions, and the GPU idles cool at
+  max clocks - so the swing is not a version update or sustained thermal
+  throttle. What IS present during the slow sessions: heavy concurrent GPU
+  consumers (Blender 5.2, Epic Games Launcher + overlay, Codex app, Edge
+  WebView) holding VRAM alongside the browser. The degraded models are
+  exactly the largest-VRAM ones (Qwen ~3.7 GB, Parakeet v3), while small-
+  footprint families held or improved (GigaAM CTC 90-98x). Methodology
+  going forward: record nvidia-smi process/memory state alongside browser
+  evidence and close heavy GPU apps before absolute-number comparisons;
+  relative same-session A/Bs remain the promotion authority.
 
 Whisper stable-beam GPU-KV implementation (2026-08-30, SHIPPED):
 
