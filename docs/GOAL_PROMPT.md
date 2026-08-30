@@ -49,8 +49,11 @@ audited and recorded in
 `docs/reports/nemotron-3.5-adaptation-2026-08-30.md` plus
 `tools/data/results/nemotron/nemotron-3.5-{onnx-audit,artifact-provenance}-2026-08-30.json`.
 The `conda env nemo` (NeMo 2.4.0, torch 2.6.0) is confirmed ready for the
-official reference chain. Next: download the official `.nemo` checkpoint and
-capture original-engine references (step 3), then the parity ladder (step 4).
+official reference chain, and the official NVIDIA checkpoint is downloaded at
+`N:/models/nemo/nemotron-3.5-asr-streaming-0.6b/` (2.26 GB `.nemo`, SHA-256
+verified against the HF-published LFS hash `210214ed…`). Next: capture
+original-engine references on jfk-short and a speech/silence fixture
+(step 3), then the parity ladder (step 4).
 
 1. Acquire artifacts into a local HF-compatible model folder: the community
    streaming export (`codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx`,

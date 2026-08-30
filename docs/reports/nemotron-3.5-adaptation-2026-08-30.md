@@ -58,15 +58,18 @@ Contract facts, all consistent with the published `nemotron_onnx_config.json`:
 
 - `conda env nemo` has NeMo 2.4.0 + torch 2.6.0+cu118, so the official
   reference chain can run locally without new installs.
-- The official `.nemo` checkpoint (~3.8 GB) has **not** been downloaded yet;
-  no original-engine output exists on this host.
+- The official checkpoint is downloaded to
+  `N:/models/nemo/nemotron-3.5-asr-streaming-0.6b/` (`nemotron-3.5-asr-streaming-0.6b.nemo`,
+  2,258.6 MB, SHA-256 `210214ed94039bf6bfbb9a047c7fa289628db75b103e2bf6381fa78285436a74`
+  verified against the HF-published LFS hash, revision
+  `f3d333391852ba876df169dcc9ba902d25b6ab0b`). No original-engine output has
+  been captured yet.
 
 ## Next steps (in order)
 
-1. Download the official `nvidia/nemotron-3.5-asr-streaming-0.6b` checkpoint;
-   run official NeMo inference on jfk-short plus a speech/silence streaming
+1. Run official NeMo inference on jfk-short plus a speech/silence streaming
    fixture; capture reference transcripts/tokens (labeled oracle separate from
-   throughput runs).
+   throughput runs). The checkpoint is local and hash-verified.
 2. Port/verify the JS 128-bin mel against the official feature pipeline before
    any graph execution claims.
 3. Native-ORT parity of the audited graphs against step 1, then WASM, then
