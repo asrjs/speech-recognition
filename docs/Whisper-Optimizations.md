@@ -588,12 +588,12 @@ per-step full-KV CPU snapshot round-trip. Measured on jfk-30s (29.9 s,
 fp16io encoder + fp16 decoder, ORT Web 1.29, Blackwell): beam-2 decode
 drops from 5418 ms to a 1585-1938 ms band (~17.7-18.9x RTFx vs 5.52x) with
 a byte-identical transcript vs the CPU-KV stable beam control measured
-back-to-back. Constraints: validated for `numBeams <= 2` (beam-5 hits a
-premature gpu-tensor disposal bug - location 'none' on decoder KV feeds at
-~gen 30 - and the flag falls back to the CPU-KV oracle path for larger
-beams until root-caused); `temperature > 0` and `bestOf > 1` remain
-rejected; `experimentalBatchedBeam` is ignored while the flag is active.
-Details: docs/reports/whisper-beam2-gpu-kv-2026-08-30.md.
+back-to-back. Beam-5 is also validated (18131 ms with the exact transcript)
+after fixing a premature gpu-tensor disposal bug - the prune lag must
+exceed numBeams x 3 generations because beam position shifts between
+strategy steps delay a live beam's next feed. `temperature > 0` and
+`bestOf > 1` remain rejected; `experimentalBatchedBeam` is ignored while
+the flag is active. Details: docs/reports/whisper-beam2-gpu-kv-2026-08-30.md.
 
 This mirrors the broader transformer-inference pattern: fast paths usually
 require static or carefully managed cache state. Hugging Face Transformers
