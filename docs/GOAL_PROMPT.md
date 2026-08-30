@@ -471,6 +471,27 @@ Qwen3-ASR decoder fp16 browser leg (2026-08-30, negative):
   fp16 hangs. The remaining lever is a new artifact export (static cache
   shapes, fused kernels) or a newer ORT Web - not runtime tuning.
 
+Unified all-models shared-window benchmark (2026-08-30):
+
+- New orchestrator webgpu-agent-test/scripts/run-all-models.mjs runs every
+  family on the shared 18.714 s LibriVox window (one warm-up + three
+  measured runs; Whisper via a new en-greedy-gpu-kv-librivox matrix case)
+  and emits one manifest plus a markdown table. X-ASR is excluded by
+  design (deprioritized streaming-latency model).
+- 2026-08-30 matrix: Whisper 27.45x (check), Parakeet v2 int8 hybrid
+  37.15x normalized-exact, Parakeet v3 int8 hybrid 20.44x exact,
+  GigaAM CTC 90.11x, GigaAM RNN-T 32.41x, SenseVoice 46.79x. Qwen posted
+  no payload within 15 minutes on this window and is recorded as
+  artifact-fragile beyond the 11 s fixture.
+- Two methodology catches from the first bring-up: (1) the Parakeet
+  runner defaults to the full-WebGPU decoder composition - the hybrid
+  requires --mode=wasm, and running the wrong one initially looked like a
+  4x regression; (2) the INT8 decoder on the full-WebGPU composition
+  emits garbled transcripts, so INT8 stays transcript-safe only on WASM
+  (library default already correct).
+- Evidence: docs/reports/all-models-shared-window-benchmark-2026-08-30.md
+  and tools/data/results/cross-model/all-models-shared-window-2026-08-30.json.
+
 Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 
 - Greedy + GPU-KV on the 30 s JFK clip measures 27.02x RTFx (1106.6 ms

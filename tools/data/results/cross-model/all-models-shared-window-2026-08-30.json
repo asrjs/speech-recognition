@@ -1,0 +1,119 @@
+{
+  "schema": "asrjs.cross-model.shared-window.v2",
+  "date": "2026-08-30",
+  "audio": {
+    "url": "/parakeet-audio/librivox.org.wav",
+    "clipSec": 18.714,
+    "sha256Source": "docs/reports/cross-model-audio-window-benchmark-2026-08-29.md"
+  },
+  "protocol": "one same-session warm-up, three measured runs (whisper: single matrix pass), median reported",
+  "excluded": [
+    {
+      "family": "x-asr",
+      "reason": "deprioritized streaming-latency model (RTFx is not its native metric)"
+    }
+  ],
+  "legs": [
+    {
+      "family": "whisper-large-v3-turbo",
+      "composition": "fp16io WebGPU encoder + GPU-KV greedy decoder",
+      "status": "check",
+      "exitCode": 0,
+      "elapsedSec": 26,
+      "oracle": "none",
+      "medianMs": 681.81,
+      "medianRtfx": 27.4475,
+      "runs": [],
+      "command": "scripts/run-webgpu-matrix.mjs en-greedy-gpu-kv-librivox"
+    },
+    {
+      "family": "parakeet-tdt-v3",
+      "composition": "fp16 WebGPU encoder + int8 WASM decoder (hybrid)",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedSec": 18,
+      "oracle": "exact",
+      "medianMs": 922.9950000047684,
+      "medianRtfx": 20.436,
+      "runs": [],
+      "transcript": "Preface of A Year with the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit LibriVox.org. Read by Olivia. A Ye",
+      "command": "scripts/run-parakeet-tdt-webgpu.mjs --model=v3 --mode=wasm --encoder=fp16 --encoder-backend=webgpu --decoder-quant=int8 --preprocessor=js --repeat=3 --warmup=1 --audio=/parakeet-audio/librivox.org.wav --oracle=fixed"
+    },
+    {
+      "family": "parakeet-tdt-v2",
+      "composition": "fp16 WebGPU encoder + int8 WASM decoder (hybrid)",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedSec": 18,
+      "oracle": "normalized",
+      "medianMs": 509.6550000011921,
+      "medianRtfx": 37.151,
+      "runs": [],
+      "transcript": "Preface of A Year With the Birds. This is a LibriVox recording. All LibriVox recordings are in the public domain. For more information, or to volunteer, please visit LibriVox.org. Read by Olivia. A Ye",
+      "command": "scripts/run-parakeet-tdt-webgpu.mjs --model=v2 --mode=wasm --encoder=fp16 --encoder-backend=webgpu --decoder-quant=int8 --preprocessor=js --repeat=3 --warmup=1 --audio=/parakeet-audio/librivox.org.wav --oracle=fixed"
+    },
+    {
+      "family": "gigaam-ctc",
+      "composition": "fp16 WebGPU encoder + CTC decode",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedSec": 11,
+      "oracle": "none",
+      "medianMs": 207.6899999976158,
+      "medianRtfx": 90.10544561709676,
+      "runs": [
+        89.2929,
+        90.7587,
+        100.5453
+      ],
+      "transcript": " ",
+      "command": "scripts/run-gigaam-webgpu.mjs --audio=/parakeet-audio/librivox.org.wav --oracle=none --warmup=1 --runs=3"
+    },
+    {
+      "family": "gigaam-rnnt",
+      "composition": "fp32 WebGPU encoder + WASM decoder/joint",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedSec": 14,
+      "oracle": "none",
+      "medianMs": 577.4950000047684,
+      "medianRtfx": 32.405475371813566,
+      "runs": [
+        29.796,
+        32.4896,
+        33.4068
+      ],
+      "transcript": "Profice of a Hear with the Birds. This is A Libravax recording. All Libervax Recordings in the Public To Main. From or information or to valanter. Please visit librevax Datworg by Olivia. Aer with the",
+      "command": "scripts/run-gigaam-rnnt-webgpu.mjs --audio=/parakeet-audio/librivox.org.wav --oracle=none --warmup=1 --repeat=3"
+    },
+    {
+      "family": "sensevoice-small",
+      "composition": "fp16 WebGPU + fp16 LUT CTC decode",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedSec": 14,
+      "oracle": "none",
+      "medianMs": 399.940000012517,
+      "medianRtfx": 46.792018801355965,
+      "runs": [
+        44.0931,
+        46.9334,
+        48.6919
+      ],
+      "transcript": "preface of a year with the birds this is a libre vox recording all libre vox recordings are in the public domain for more information or to volunteer please visit librevooxorg read byolivia a year wit",
+      "command": "scripts/run-sensevoice-webgpu.mjs --audio=/parakeet-audio/librivox.org.wav --oracle=none --warmup=1 --runs=3"
+    },
+    {
+      "family": "qwen3-asr-0.6b",
+      "composition": "fp32 WebGPU encoder + fp32 GPU-KV decoder",
+      "status": "error",
+      "exitCode": 1,
+      "elapsedSec": 904,
+      "oracle": "none",
+      "medianMs": null,
+      "medianRtfx": null,
+      "runs": [],
+      "command": "scripts/run-qwen-webgpu.mjs --audio=/parakeet-audio/librivox.org.wav --oracle=none --warmup=1 --runs=3"
+    }
+  ]
+}

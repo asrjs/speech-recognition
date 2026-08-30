@@ -1,6 +1,6 @@
 {
   "preset": "sensevoice-small-webgpu",
-  "timestamp": "2026-08-29T17:31:14.637Z",
+  "timestamp": "2026-08-30T02:45:30.452Z",
   "status": "pass",
   "transcript": "preface of a year with the birds this is a libre vox recording all libre vox recordings are in the public domain for more information or to volunteer please visit librevooxorg read byolivia a year with the birds by w ward fowler",
   "expected": "and so my fellow americans ask not what your country can do for you ask what you can do for your country",
@@ -10,46 +10,47 @@
   "audio": {
     "audioUrl": "/parakeet-audio/librivox.org.wav",
     "sourceDurationSec": 18.714,
-    "requestedClipSec": 18.714,
+    "requestedClipSec": null,
     "clippedFromDurationSec": null,
     "audioDurationSec": 18.714,
     "maxClipSec": 29.9,
     "warmupRuns": [
       {
         "run": 1,
-        "transcribeMs": 1016.5099999904633,
-        "rtfx": 18.503
+        "transcribeMs": 553.440000012517,
+        "rtfx": 33.9403
       }
     ]
   },
   "warmupRuns": [
     {
       "run": 1,
-      "transcribeMs": 1016.5099999904633,
-      "rtfx": 18.503
+      "transcribeMs": 553.440000012517,
+      "rtfx": 33.9403
     }
   ],
   "runMetrics": [
     {
       "run": 1,
-      "transcribeMs": 689.9899999946356,
-      "rtfx": 27.203
+      "transcribeMs": 425.66499999165535,
+      "rtfx": 44.0931
     },
     {
       "run": 2,
-      "transcribeMs": 709.9350000023842,
-      "rtfx": 26.4193
+      "transcribeMs": 399.940000012517,
+      "rtfx": 46.9334
     },
     {
       "run": 3,
-      "transcribeMs": 738.7750000059605,
-      "rtfx": 25.3844
+      "transcribeMs": 385.875,
+      "rtfx": 48.6919
     }
   ],
   "batch": false,
   "batchSize": 1,
   "webgpu": true,
   "backend": "webgpu",
+  "cpuThreads": 1,
   "language": "en",
   "metadata": {
     "language": "en",
@@ -57,15 +58,15 @@
     "event": "Speech"
   },
   "metrics": {
-    "loadMs": 16917.535000011325,
-    "transcribeMs": 709.9350000023842,
-    "totalMs": 20640.765000000596,
-    "rtf": 0.037936037191534905,
-    "rtfx": 26.360159732844767,
-    "preprocessMs": 81.025,
-    "encodeMs": 250,
-    "decodeMs": 385.595,
-    "nativeTotalMs": 737.225,
+    "loadMs": 8583.015000000596,
+    "transcribeMs": 399.940000012517,
+    "totalMs": 10621.17499999702,
+    "rtf": 0.02137116597266843,
+    "rtfx": 46.792018801355965,
+    "preprocessMs": 60.645,
+    "encodeMs": 149.15,
+    "decodeMs": 174.485,
+    "nativeTotalMs": 384.335,
     "encoderFrameCount": 316,
     "emittedTokenCount": 59
   },
@@ -79,6 +80,6 @@
   "log": [
     "navigator.gpu: true",
     "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
-    "session ready in 16918ms"
+    "session ready in 8583ms"
   ]
 }
