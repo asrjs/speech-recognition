@@ -429,6 +429,30 @@ GigaAM RNN-T encoder INT8 probe (2026-08-30):
   int8-matmul-encgpu-decwasm-example,
   int8-matmul-encwasm-decwasm-example}.json.
 
+Qwen3-ASR decoder INT4 probe (2026-08-30, deferred - hangs):
+
+- Hypothesis: the 0.6B decoder step is weight-read-bound (30 steps x
+  ~47-54 ms with 3 GB fp32 external weights matches an effective
+  weight-streaming rate), so MatMulNBits INT4 weights should cut traffic
+  ~4x. ORT Web 1.29 does ship MatMulNBits in the JSEP bundle (kernel
+  registration plus 56 wasm references), and 196 of 253 MatMuls converted
+  cleanly with lm_head excluded (1,479.7 MB total output).
+- Result: the browser leg produced no result within three five-minute
+  polls (no render, no posted payload) and was aborted - classify as
+  HANGS_IN_BROWSER, per user direction deferred. The CPU parity probe was
+  also inconclusive-negative: fp32-vs-INT4 logits showed max abs diff
+  ~20.4 and cosine ~0.63 on a controlled step, though that probe's feed
+  (zero/near-zero KV) is far outside real decoder state distributions, so
+  treat the numbers as a red flag, not a quality verdict.
+- Kept as opt-in tooling, off by default:
+  tools/scripts/convert_qwen3_asr_decoder_int4.py,
+  tools/scripts/check_qwen3_asr_decoder_int4_parity.py, and the harness
+  ?decoderQuant=int4 override (scripts/run-qwen-webgpu.mjs
+  --decoder-quant=int4). The qwen runner also persists error payloads now
+  (writes a *-error.json) so future failures are not invisible.
+- Revisit only with a new ORT Web release, a static-shape decoder export,
+  or fp16-first evidence; do not retry the same conversion blind.
+
 Whisper 4-graph revalidation on ORT Web 1.29 (2026-08-30):
 
 - Greedy + GPU-KV on the 30 s JFK clip measures 27.02x RTFx (1106.6 ms
