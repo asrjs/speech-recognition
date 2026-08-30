@@ -43,12 +43,32 @@ in every cell:
 | fp16 | 637.3 | 635.0 | parity |
 | fp32 | 216.2 | 265.0 | win ~18% |
 
-Decision: grid batching ships OPT-IN for RNNT. The measured int8 regression
-(dynamic-range requantization scales with the wider '[1, features, width]'
-input) outweighs the dispatch win on the likely default preset; the fp32
-win justifies keeping the implementation and the option. A quant-aware
-default (on for fp32, off for int8/fp16) is the follow-up once more clips
-confirm the fp32 win.
+## Multi-clip confirmation and quant-aware default (shipped same day)
+
+Second clip A/B (tr-tdk-18s.wav, 18.6 s, Node WASM; ON vs OFF transcripts
+compared char-exact):
+
+| decoder | grid ON decodeMs | grid OFF decodeMs | transcripts |
+| --- | --- | --- | --- |
+| fp32 | 342.5 (19 grid runs) | 408.0 | SAME (win ~16%) |
+| int8 | 281.8 (35 grid runs) | 297.5 | **DIFF** (267 vs 269 iterations) |
+
+The int8 transcript DIFF is the decisive finding: dynamic-range
+requantization over the wider '[1, features, width]' input breaks row
+independence badly enough to flip a near-tie on real audio, violating the
+"backend differences must not change output semantics" contract. Combined
+with jfk-short (fp32 +18%), the fp32 win is confirmed on two clips and the
+int8 risk is proven real.
+
+Shipped default (quant-aware, derived from the loaded decoder filename):
+grid batching defaults ON for fp32 decoders; fp16/int8 stay sequential
+unless explicitly opted in via 'options.gridBatching'. This also matches
+the operating guidance that small models like eou-120m should just run
+fp32 - there is no quantization pressure on a 120M model, and fp32 is both
+the fastest and the only grid-safe decoder quant measured here.
+
+End-to-end default verification (parity script, no flags): fp32 default run
+reports 19 grid runs; int8 default run reports 0 grid runs.
 
 ## Validation
 
@@ -77,8 +97,11 @@ Evidence JSONs:
 
 ## Next steps
 
-1. Quant-aware default for nemo-rnnt grid batching (fp32 on) after a
-   multi-clip confirmation, incl. a blank-heavy clip.
+1. Consider a hard safety net: refuse grid batching for int8 RNNT decoders
+   even when explicitly opted in, or gate it behind a warning, given the
+   proven transcript divergence.
 2. Browser demo page for the eou-120m preset in 'webgpu-agent-test'
-   (none exists today) to extend the A/B to Chrome headless WebGPU hosts.
+   (none exists today; 'N:/github/asrjs/streaming-demo' already wires the
+   eou-120m preset alongside TDT v2/v3 and is the integration reference)
+   to extend the A/B to Chrome headless WebGPU hosts.
 

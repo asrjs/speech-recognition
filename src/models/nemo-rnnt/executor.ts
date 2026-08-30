@@ -50,6 +50,25 @@ interface LoadedExecutorState {
   readonly preprocessor: NemoPreprocessor;
   readonly preprocessorBackend: string;
   readonly warnings: readonly TranscriptWarning[];
+  readonly decoderQuantization?: 'fp32' | 'fp16' | 'int8';
+}
+
+function decoderQuantizationFromFilename(
+  filename: string | undefined,
+): 'fp32' | 'fp16' | 'int8' | undefined {
+  if (!filename) {
+    return undefined;
+  }
+  if (filename.includes('.int8.')) {
+    return 'int8';
+  }
+  if (filename.includes('.fp16.')) {
+    return 'fp16';
+  }
+  if (filename.endsWith('.onnx')) {
+    return 'fp32';
+  }
+  return undefined;
 }
 
 function clampProgress(value: number): number {
@@ -394,6 +413,7 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
       preprocessor,
       preprocessorBackend: resolved.preprocessorBackend,
       warnings,
+      decoderQuantization: decoderQuantizationFromFilename(artifacts.decoderFilename),
     };
   }
 
@@ -629,15 +649,20 @@ export class OrtNemoRnntExecutor implements NemoRnntExecutor {
         let emittedOnFrame = 0;
         while (frameIndex < frameCount) {
           throwIfDecodeAborted(options.signal);
-          // Real-artifact A/B (eou-120m v1, Node WASM, jfk-short 11 s):
-          // fp32 decoder wins ~18% (216 vs 265 ms), fp16 is parity, int8
-          // regresses ~40% (355 vs 211 ms) because dynamic-range
-          // requantization scales with the wider [1, features, width]
-          // input. Grid batching is therefore opt-in for RNNT until a
-          // quant-aware default is measured across clips.
+          // Real-artifact A/B (eou-120m v1, Node WASM): fp32 decoder
+          // wins ~16-18% (jfk-short 216 vs 265 ms; tr-tdk-18s 342 vs 408
+          // ms) with identical transcripts. int8 regressed on jfk-short
+          // (~40%) and produced a DIFFERENT transcript on tr-tdk-18s
+          // (dynamic-range requantization spans the wider
+          // [1, features, width] input, so rows are not independent).
+          // fp16 was parity at best. Default: grid batching ON for fp32
+          // decoders only; other quants stay sequential unless explicitly
+          // opted in via options.gridBatching.
+          const gridBatchingEnabled =
+            options.gridBatching ?? loaded.decoderQuantization === 'fp32';
           if (
             this.rnntBatchAllowed &&
-            options.gridBatching === true &&
+            gridBatchingEnabled &&
             frameCount - frameIndex > 1 &&
             (this.rnntBatchColumnsScored <
               OrtNemoRnntExecutor.rnntBatchMinSampleColumns ||

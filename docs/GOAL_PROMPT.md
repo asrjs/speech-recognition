@@ -41,17 +41,23 @@ NeMo RNNT (eou-120m v1) speculative grid batching - shipped OPT-IN
   are BIT-EXACT vs single-frame runs (zero AND random non-zero states);
   int8 rows differ numerically (dynamic-range quantization spans the wider
   batched input) though argmax parity held in all probes.
-- Real-artifact A/B (Node WASM, jfk-short 11 s, exact reference transcript
-  parity in every cell): fp32 decoder 216.2 ms ON vs 265.0 OFF (~18% win);
-  fp16 637.3 vs 635.0 (parity); int8 354.7 vs 211.0 (~40% regression).
-  Grid batching therefore ships OPT-IN (options.gridBatching === true) for
-  RNNT; quant-aware default (fp32 on) is queued pending multi-clip
-  confirmation.
-- Validation: tests/nemo-rnnt-grid-batching.test.ts (5 tests, incl.
-  decodeIterations equality with the sequential path); legacy executor
-  mock now rejects grid requests shape-first without consuming scripted
-  steps (pins sequential through the real latch); suite 1058 passed /
-  18 skipped; tsc + build clean. Evidence:
+- Real-artifact A/B, exact transcript parity unless noted: jfk-short 11 s
+  (fp32 216.2 ms ON vs 265.0 OFF, ~18% win; fp16 parity; int8 354.7 vs
+  211.0, ~40% regression); tr-tdk-18s 18.6 s (fp32 342.5 vs 408.0, ~16%
+  win, SAME text; int8 ON produced a DIFFERENT transcript than OFF -
+  dynamic-range requantization over the wider batched input breaks row
+  independence on real audio). Quant-aware default SHIPPED: grid batching
+  defaults ON for fp32 RNNT decoders (derived from the loaded decoder
+  filename), fp16/int8 stay sequential unless explicitly opted in. Small
+  models like eou-120m have no quantization pressure: fp32 is the fastest
+  AND the only grid-safe decoder quant measured.
+- Validation: tests/nemo-rnnt-grid-batching.test.ts (7 tests, incl.
+  decodeIterations equality with the sequential path and the fp32-on /
+  int8-off default wiring); legacy executor mock now rejects grid requests
+  shape-first without consuming scripted steps (pins sequential through
+  the real latch); suite 1060 passed / 18 skipped; tsc + build clean;
+  end-to-end default check via the parity script (fp32 default 19 grid
+  runs, int8 default 0). Evidence:
   docs/reports/nemo-rnnt-grid-batching-2026-08-30.md and
   tools/data/results/nemo-rnnt/parakeet-eou120m-grid-ab-*.json.
 - Reusable lessons: (1) never assume quantized-row independence - A/B

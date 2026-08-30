@@ -64,6 +64,7 @@ function parseArgs() {
     else if (arg === '--cpu-threads') options.cpuThreads = Number(args[++index]);
     else if (arg === '--output') options.output = path.resolve(args[++index]);
     else if (arg === '--grid-batching=off') options.gridBatchingOff = true;
+    else if (arg === '--grid-batching=on') options.gridBatchingOn = true;
     else if (arg.startsWith('--')) throw new Error(`Unknown argument: ${arg}`);
   }
 
@@ -311,6 +312,7 @@ async function main() {
       returnLogProbs: true,
       returnDecoderState: true,
       ...(options.gridBatchingOff ? { gridBatching: false } : {}),
+      ...(options.gridBatchingOn ? { gridBatching: true } : {}),
     },
   );
   const transcribeMs = performance.now() - transcribeStart;

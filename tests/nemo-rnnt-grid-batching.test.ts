@@ -117,6 +117,7 @@ function createFixture(options: {
   readonly frameCount: number;
   readonly script: RnntScript;
   readonly config?: Partial<NemoRnntModelConfig>;
+  readonly decoderQuantization?: 'fp32' | 'fp16' | 'int8';
 }) {
   const config = parseNemoRnntConfig('test-rnnt-grid', {
     subsamplingFactor: 4,
@@ -177,6 +178,7 @@ function createFixture(options: {
       },
     },
     warnings: [],
+    decoderQuantization: options.decoderQuantization,
   });
   return { executor, decoderSession };
 }
@@ -286,6 +288,35 @@ describe('nemo-rnnt speculative grid batching', () => {
       .toBeGreaterThan(20);
     await sequential.executor.dispose();
     await batched.executor.dispose();
+  });
+
+  it('defaults grid batching on for fp32 decoders', async () => {
+    const script: RnntScript = (frame, target) =>
+      frame === 6 && target === BLANK ? HELLO : BLANK;
+    const fixture = createFixture({
+      frameCount: 12,
+      script,
+      decoderQuantization: 'fp32',
+    });
+    const result = await fixture.executor.transcribe(createAudio(), {}, {} as never);
+    expect((result.metrics as Record<string, unknown>).decoderGridBatchRuns)
+      .toBeGreaterThan(0);
+    await fixture.executor.dispose();
+  });
+
+  it('keeps int8 decoders sequential by default', async () => {
+    const script: RnntScript = (frame, target) =>
+      frame === 6 && target === BLANK ? HELLO : BLANK;
+    const fixture = createFixture({
+      frameCount: 12,
+      script,
+      decoderQuantization: 'int8',
+    });
+    const result = await fixture.executor.transcribe(createAudio(), {}, {} as never);
+    expect((result.metrics as Record<string, unknown>).decoderGridBatchRuns)
+      .toBe(0);
+    expect(fixture.decoderSession.calls.every((call) => call.width === 1)).toBe(true);
+    await fixture.executor.dispose();
   });
 
   it('pins the sequential path when gridBatching is disabled', async () => {
