@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-31T00:55:22.390953+00:00",
+  "purpose": "INT4 Nemotron 3.5 ONNX encoder parity vs NeMo reference",
+  "onnxSource": "onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "langId": 0,
+  "nemoEncShape": [
+    1,
+    1024,
+    139
+  ],
+  "int4EncShape": [
+    119,
+    1024
+  ],
+  "framesCompared": 119,
+  "maxAbsErr": 1.438667893409729,
+  "meanAbsErr": 0.05711667239665985,
+  "cosineSim": 0.04979082305663604,
+  "verdict": "FAIL"
+}
