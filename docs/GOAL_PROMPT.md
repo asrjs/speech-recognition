@@ -134,12 +134,31 @@ verified against the HF-published LFS hash `210214ed…`).
     external data + manual streaming cache wiring). The streaming conformer
     expects cache_last_channel/cache_last_time inputs that aren't part of the
     community ONNX's flat k_cache_*/v_cache_* naming, so even a partial export
-    won't drop-in to the existing pipeline.
+    cache_last_* inputs re-mapped to flat tensors;
+    (c) skip the community export entirely and use NeMo's encoder inside a
+        thin Python shim that produces projected 640-dim features on demand
+        for the JS pipeline (large first-run latency, no streaming).
+    Alternative encoder source (2026-08-31, probed): tried
+    `pantinor/nemotron-3.5-asr-streaming-0.6b-onnx` (used by sherpa-onnx and
+    parakeet-rs; streaming-conformer encoder + batched decoder_joint
+    architecture, NVIDIA Open Model License). Encoder parity also FAIL
+    (cosSim 0.03, maxAbsErr 7.7 vs NeMo reference; pantinor encoder outputs
+    a different feature distribution even with proper cache management).
+    BUT — the full pipeline (pantinor encoder + decoder_joint) DOES
+    produce real English text from jfk-short.wav ("And I mean, it's a
+    little A fellow and ..."), recognizably from the JFK inaugural
+    (the NeMo oracle is "And so my fellow Americans ask not what your
+    country can do for you ..."). This is a usable pipeline but NOT
+    character-identical to the NeMo oracle, so the parity ladder still
+    fails this rung.
+    Models downloaded at N:/models/onnx/nemo/nemotron-3.5-asr-streaming-pantinor/
+    (encoder.onnx+data 2.4 GB, decoder_joint.onnx 93 MB, tokenizer.model 400 KB).
     Evidence:
-    `tools/data/results/nemotron/nemotron-3.5-encoder-parity-vs-nemo-2026-08-31.json`.
-    Diagnostic scripts (reusable):
-    `compare_nemo_onnx_encoder.py`, `sweep_prompt_ids.py`,
-    `dump_nemo_mel.py`, `probe_pipeline.py`.
+    `tools/data/results/nemotron/nemotron-3.5-pantinor-encoder-parity-2026-08-31.json`,
+    `tools/data/results/nemotron/nemotron-3.5-pantinor-streaming-parity-2026-08-31.json`,
+    `tools/data/results/nemotron/nemotron-3.5-pantinor-pipeline-2026-08-31.json`.
+    Diagnostic scripts: `parity_pantinor_encoder.py`,
+    `parity_pantinor_streaming.py`, `run_pantinor_pipeline.py`.
     Unblock options for next session:
     (a) file an issue against codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx
         and wait for a fixed export;
@@ -148,6 +167,11 @@ verified against the HF-published LFS hash `210214ed…`).
     (c) skip the community export entirely and use NeMo's encoder inside a
         thin Python shim that produces projected 640-dim features on demand
         for the JS pipeline (large first-run latency, no streaming).
+    (d) try `onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4` (INT4
+        quantized, different export pipeline that may sidestep the bug);
+    (e) accept the pantinor pipeline as "functionally working, not
+        char-identical" and document the parity delta in the adapter design
+        (still blocked by the goal gate that requires step 4 parity PASS).
     Token sequence parity (2026-08-31, BLOCKED — downstream of encoder):
     `run_onnx_full_pipeline.py` ran end-to-end (NeMo mel → ONNX encoder/decoder/
     joiner greedy decode) on `jfk-short.wav` and emitted 9 tokens vs the NeMo
