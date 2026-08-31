@@ -268,7 +268,7 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     }
 
     const predictorSession = await createOrtSession(ort, artifacts.decoderUrl, {
-      backendId: options.encoderBackend,
+      backendId: options.decoderBackend,
       enableProfiling: options.enableProfiling,
       externalDataUrl: artifacts.decoderDataUrl,
       externalDataPath: artifacts.decoderFilename
@@ -282,7 +282,7 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     }
 
     const jointSession = await createOrtSession(ort, artifacts.jointUrl, {
-      backendId: options.encoderBackend,
+      backendId: options.decoderBackend,
       enableProfiling: options.enableProfiling,
       externalDataUrl: artifacts.jointDataUrl,
       externalDataPath: artifacts.jointFilename

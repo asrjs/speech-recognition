@@ -193,6 +193,40 @@ describe('Nemotron RNNT config and artifact contract', () => {
     expect(artifacts.tokenizerUrl).toBe('file:///m/vocab.txt');
     expect(artifacts.encoderDataUrl).toBeUndefined();
   });
+
+  it('defaults to a hybrid split under a webgpu backend: webgpu encoder, wasm predictor/joint', () => {
+    const source: NemotronRnntArtifactSource = {
+      kind: 'huggingface',
+      repoId: 'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4',
+    };
+    const { options } = resolveNemotronRnntArtifacts(source, 'webgpu');
+    expect(options.ortBackend).toBe('webgpu');
+    expect(options.encoderBackend).toBe('webgpu');
+    expect(options.decoderBackend).toBe('wasm');
+  });
+
+  it('honors explicit decoder backend requests and wasm fallbacks', () => {
+    const base: NemotronRnntArtifactSource = {
+      kind: 'direct',
+      artifacts: {
+        encoderUrl: 'file:///m/encoder.onnx',
+        decoderUrl: 'file:///m/decoder.onnx',
+        jointUrl: 'file:///m/joint.onnx',
+        tokenizerUrl: 'file:///m/vocab.txt',
+      },
+    };
+    const fullWebgpu = resolveNemotronRnntArtifacts(
+      { ...base, encoderBackend: 'webgpu', decoderBackend: 'webgpu' },
+      'wasm',
+    );
+    expect(fullWebgpu.options.ortBackend).toBe('webgpu');
+    expect(fullWebgpu.options.decoderBackend).toBe('webgpu');
+
+    const allWasm = resolveNemotronRnntArtifacts(base, 'wasm');
+    expect(allWasm.options.ortBackend).toBe('wasm');
+    expect(allWasm.options.encoderBackend).toBe('wasm');
+    expect(allWasm.options.decoderBackend).toBe('wasm');
+  });
 });
 
 describe('Nemotron tokenizer.json loading', () => {

@@ -288,9 +288,59 @@ verified against the HF-published LFS hash `210214ed…`).
     export, not a decode bug. Gated tests: ASRJS_FIXTURE_SMOKE (jfk,
     exact parity) and ASRJS_FIXTURE_SMOKE_LONG (librivox, deterministic
     88 tokens + content assertions).
-    Remaining for this family: streaming/first-partial latency in the
-    browser harness, encoder cost on WASM (now the dominant term),
-    and speculative batching only after parity-safe A/B.
+    PIVOT (2026-08-31, user directive): INT4 is RETIRED as an artifact path.
+    WebGPU is primary, WASM is a fallback (hybrid per-component backends like
+    parakeet-tdt). fp32 first, then fp16; no integer quantization (int4 was
+    measured slower than fp16/fp32 on prior models and quantization accuracy
+    loss is not tolerated). Prefer our own surgically optimized ONNX exports
+    from official weights (Whisper 4-graph pattern) over adapting third-party
+    export contracts. Recorded in AGENTS.md "Artifact precision stance".
+
+    OWN EXPORT SHIPPED (2026-08-31, this slice): tools/nemotron-onnx-export/
+    now exports the official NeMo checkpoint directly as three fp32 graphs
+    with the EXECUTOR'S OWN I/O contract (encoder: audio_signal [B,T,128]
+    frame-major + length + cache_last_channel/time/len [B,N,...] + lang_id ->
+    outputs [B,T',1024] frame-major prompt-projected + cache_*_next, output
+    named cache_last_channel_len_next; decoder: targets int64 + h_in/c_in ->
+    decoder_output/h_out/c_out; joint: encoder_output/decoder_output ->
+    joint_output; no log-softmax). Key export lessons: NeMo's
+    ConformerEncoder.forward is @typecheck()-wrapped (kwargs-only, breaks
+    torch.onnx.export) — trace forward_internal instead and bridge layouts in
+    a wrapper (audio frame-major<->feature-major, caches [B,N,..]<->[N,B,..]);
+    the prompt MLP (model.prompt_kernel, one-hot by lang_id) is folded after
+    the encoder step inside the same graph; torch.onnx.export writes
+    per-weight external files — repack with onnx.save_model(all_tensors_to_one_file).
+    Artifacts: N:/models/onnx/nemo/nemotron-3.5-asr-streaming-fp32-nemo/
+    (encoder 2.45 GB) and ...-fp16-nemo/ (encoder 1.23 GB, Softmax kept fp32,
+    fp32 graph IO) plus ...-fp16-nemo-singles/ for Node WASM.
+    VALIDATION LADDER (all PASS, 2026-08-31):
+    1. fp32 native ORT python pipeline: jfk 44 tokens = exact 41-token body
+       oracle prefix + trailing ". <en-US>" boundary segment matching the
+       official NeMo reference structure.
+       Evidence: nemotron-3.5-nemo-fp32-pipeline-2026-08-31.json
+    2. fp16 native ORT: token-identical to fp32 (same 44 tokens/text).
+       Evidence: nemotron-3.5-nemo-fp16-pipeline-2026-08-31.json
+    3. fp16 singles through the PUBLIC API (JS executor, ORT Web WASM 1.29,
+       Node, 6 threads): ORACLE PASS — exact canonical transcript.
+       Evidence: nemotron-3.5-export-smoke-...-fp16-nemo-singles-2026-08-31.json
+    Hybrid backend split landed in the family: encoderBackend and
+    decoderBackend resolve independently (decoder defaults to wasm under a
+    webgpu encoder, mirroring parakeet-tdt); pinned by new contract tests
+    (tests/nemotron-rnnt.test.ts, 21 tests PASS).
+    Correctness note (2026-08-31): the earlier 88-vs-91-token "nondeterminism"
+    on the 40.6 s fixture was NOT session state — a fresh process reproduces
+    91 tokens on call 0 at 6 threads with all calls bit-identical; the delta
+    tracks ORT WASM numerical environment (thread count) flipping argmax in
+    the community INT4 encoder's degraded region. Moot for our own export;
+    keep jfk as the strict oracle, treat long-fixture counts as
+    thread-config-sensitive.
+    Remaining for this family: (1) browser rung — fp16 encoder on WebGPU +
+    decoder/joint on WASM via the webgpu-agent-test harness (hybrid default
+    already wired); (2) publish fp32/fp16 exports to our HF repo and flip the
+    preset default source off the retired INT4 repo; (3) streaming
+    first-partial latency; (4) the 160/560 ms window settings from the
+    official config (att_context_size [56, {0,3,6,13}], sliding_window 57)
+    should become executor-configurable streaming windows.
 
 No adapter code and no performance claims are permitted before step 4 parity
 evidence exists.

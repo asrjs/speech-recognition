@@ -91,6 +91,7 @@ export interface NemotronRnntHuggingFaceSource {
   readonly revision?: string;
   readonly cacheKeyFallbackRevisions?: readonly string[];
   readonly encoderBackend?: NemotronRnntExecutionBackend;
+  readonly decoderBackend?: NemotronRnntExecutionBackend;
   readonly preprocessorBackend?: NemotronRnntPreprocessorBackend;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
@@ -101,6 +102,7 @@ export interface NemotronRnntDirectArtifactSource {
   readonly kind: 'direct';
   readonly artifacts: NemotronRnntDirectArtifacts;
   readonly encoderBackend?: NemotronRnntExecutionBackend;
+  readonly decoderBackend?: NemotronRnntExecutionBackend;
   readonly preprocessorBackend?: NemotronRnntPreprocessorBackend;
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;

@@ -28,6 +28,7 @@ export interface ResolvedNemotronRnntArtifacts {
 export interface ResolvedNemotronRnntOptions {
   readonly ortBackend: 'webgpu' | 'wasm';
   readonly encoderBackend: NemotronRnntExecutionBackend;
+  readonly decoderBackend: NemotronRnntExecutionBackend;
   readonly preprocessorBackend: 'js' | 'onnx';
   readonly wasmPaths?: string;
   readonly cpuThreads?: number;
@@ -96,13 +97,18 @@ export function resolveNemotronRnntArtifacts(
 
   const encoderBackend = normalizeEncoderBackend(backendId, source.encoderBackend);
   const preprocessorBackend = source.preprocessorBackend ?? 'js';
-  const ortBackend: 'webgpu' | 'wasm' = encoderBackend;
+  // Hybrid default (mirrors the parakeet-tdt family): the WebGPU encoder
+  // pairs with WASM predictor/joint unless a decoder backend is requested.
+  const decoderBackend = source.decoderBackend ?? 'wasm';
+  const ortBackend: 'webgpu' | 'wasm' =
+    encoderBackend === 'webgpu' || decoderBackend === 'webgpu' ? 'webgpu' : 'wasm';
 
   return {
     artifacts,
     options: {
       ortBackend,
       encoderBackend,
+      decoderBackend,
       preprocessorBackend,
       wasmPaths: source.wasmPaths,
       cpuThreads: source.cpuThreads,
