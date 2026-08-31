@@ -1,28 +1,33 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-31T04:08:00.000000+00:00",
-  "purpose": "Document ORT Web WASM rung blocker for INT4 export",
-  "status": "BLOCKED_BY_INFRASTRUCTURE",
-  "rung": "ORT Web WASM (Node)",
-  "model": "onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4",
-  "runtime": "onnxruntime-web@1.29.0",
-  "finding": "INT4 export uses external data files (encoder.onnx.data, decoder.onnx.data, joint.onnx.data) totaling ~755 MB. ORT Web WASM in Node fails with: 'Failed to load external data file encoder.onnx.data, error: Module.MountedFiles is not available.' This is because ORT Web uses an Emscripten-emulated filesystem (Module.MountedFiles) that doesn't work in Node.js by default for external data files.",
-  "testedPaths": [
-    "plain Windows path (N:/models/.../encoder.onnx)",
-    "backslash path (N:\\\\models\\\\...\\\\encoder.onnx)",
-    "file:// URL (file:///N:/models/.../encoder.onnx)"
-  ],
-  "results": {
-    "plain_path": "FAILS on external data load: Module.MountedFiles unavailable",
-    "backslash_path": "FAILS on external data load: Module.MountedFiles unavailable",
-    "file_url": "FAILS with ENOENT: path treated as relative (cwd-joined)"
+  "generatedAt": "2026-08-31T05:20:00.000000+00:00",
+  "purpose": "ORT Web WASM rung for INT4 Nemotron 3.5 — final status",
+  "status": "PASS",
+  "rung": "ORT Web WASM (Node, onnxruntime-web@1.29.0)",
+  "model": "onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4, repacked to single-file ONNX",
+  "evidence": "tools/data/results/nemotron/nemotron-3.5-int4-wasm-pipeline-2026-08-31.json",
+  "result": {
+    "wasmTokens": 44,
+    "nativeTokens": 41,
+    "identicalPrefix": 41,
+    "wasmText": "And so my fellow Americans ask not what your country can do for you at what you can do for your country. <en-US>",
+    "nativeText": "And so my fellow Americans ask not what your country can do for you at what you can do for your country",
+    "note": "WASM == native for the full 41-token native sequence; WASM emits 3 extra trailing tokens ('.', '<en-US>') at the exhausted-frames boundary. NeMo oracle text has the same '. <en-US>' segment structure."
   },
-  "workaround_options": [
-    "Convert INT4 to single-file ONNX (no external data) — would require re-export from PyTorch with use_external_data_format=False",
-    "Use onnxruntime-node (native binding, not WASM) — bypasses the Emscripten limitation but isn't the WASM rung",
-    "Use onnxruntime-web in a browser environment where Module.MountedFiles works natively",
-    "Pre-load external data into memory and pass as Tensor inputs instead of file paths"
+  "history": [
+    {
+      "blocker": "Original blocker: ORT Web WASM in Node cannot load external ONNX data files ('Module.MountedFiles is not available').",
+      "resolution": "Repacked INT4 models to single-file ONNX (onnx.load(load_external_data=True) + onnx.save(save_as_external_data=False)) into N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4-singles/ (encoder 660 MB, decoder 57 MB, joint 36 MB)."
+    },
+    {
+      "blocker": "Second blocker (false alarm): WASM/node pipeline appeared to diverge from Python ORT (encoder cos 0.07, all-blank step 0). Investigated as suspected ORT 1.23.2 vs 1.25+/1.29 numerical regression across MatMulNBits, Conv, graph optimization levels, and graph-prefix bisects.",
+      "resolution": "Root cause was a harness bug, NOT a runtime difference: dump_nemo_mel.py saves _tmp_mel.npy with fortran_order=True; the JS parseNpy ignored the flag and read column-major data as row-major, feeding scrambled mel to WASM/node. Python probes used np.load (honors fortran_order) and were correct. After fixing parseNpy to transpose fortran-order data, WASM produced token-identical output to native ORT."
+    }
   ],
-  "next_session": "Pick a workaround. The most practical: try onnxruntime-web in a headless browser environment (Playwright/puppeteer) to verify the WASM rung in-browser. The Node WASM approach is blocked by infrastructure, not by model parity.",
-  "scripts": "tools/model-debugging/reference/nemotron-3.5-asr-streaming/run_int4_wasm.mjs (working pipeline logic, blocked by ORT Web external data loading)"
+  "lessons": [
+    "ORT Web WASM in Node requires single-file ONNX models (no external data) — or a browser harness where Emscripten's mounted files work.",
+    "When native and JS harnesses share .npy fixtures, JS parsers MUST honor fortran_order; a C-order misread silently scrambles 2-D arrays and mimics numerical-parity failures.",
+    "Single-op A/B models (MatMulNBits, Conv) and graph-prefix truncations confirmed ORT 1.23.2 / 1.25-dev / 1.29.0 compute this model identically when inputs match."
+  ],
+  "script": "tools/model-debugging/reference/nemotron-3.5-asr-streaming/run_int4_wasm.mjs"
 }

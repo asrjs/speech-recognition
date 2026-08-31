@@ -11,7 +11,7 @@ ort.env.wasm.numThreads = 1;
 ort.env.wasm.simd = true;
 ort.env.logLevel = 'warning';
 
-const ONNX_DIR = 'N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4';
+const ONNX_DIR = 'N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4-singles';
 const FIXTURE = 'tools/data/fixtures/audio/jfk-short.wav';
 const MEL_NPY = 'tools/data/results/nemotron/_tmp_mel.npy';
 const OUT = 'tools/data/results/nemotron/nemotron-3.5-int4-wasm-pipeline-2026-08-31.json';
@@ -23,7 +23,7 @@ function fileUrl(p) {
 
 function parseNpy(buf) {
   if (buf[0] !== 0x93 || buf[1] !== 0x4e) throw new Error('Not a npy file');
-  const version = buf[2];
+  const version = buf[6]; // magic is \x93NUMPY (6 bytes); version at offset 6
   const headerLen = version >= 2
     ? Number(buf[10] | (buf[11] << 8) | (buf[12] << 16) | (buf[13] << 24))
     : Number(buf[8] | (buf[9] << 8));
@@ -31,20 +31,30 @@ function parseNpy(buf) {
   const header = buf.slice(headerStart, headerStart + headerLen).toString('utf-8');
   const shapeMatch = header.match(/'shape':\s*\(([^)]+)\)/);
   const shape = shapeMatch[1].split(',').map(s => Number(s.trim())).filter(n => !isNaN(n));
-  // descr is like '<f4' - the dtype is the contents between < and first whitespace or end
+  const fortran = /'fortran_order':\s*True/.test(header);
   const descrMatch = header.match(/'descr':\s*'([^']+)'/);
-  const descr = descrMatch ? descrMatch[1] : '';
-  const dtype = descr.replace(/[<>]/g, '');
-  const dataStart = 128;
+  const dtype = descrMatch ? descrMatch[1].replace(/[<>]/g, '') : '';
+  // npy v1.0 pads the header so data starts at a 64-byte-aligned offset
+  const dataStart = Math.ceil((headerStart + headerLen) / 64) * 64;
   if (!(dtype.includes('f4') || dtype.includes('float32'))) {
     throw new Error(`Unsupported dtype: ${dtype}`);
   }
   const total = shape.reduce((a, b) => a * b, 1);
   const f32 = new Float32Array(buf.buffer, buf.byteOffset + dataStart, total);
+  const rows = shape[0];
+  const cols = shape[1] || 1;
   const arr = [];
-  const stride = shape[1] || 1;
-  for (let i = 0; i < shape[0]; i++) {
-    arr.push(f32.slice(i * stride, (i + 1) * stride));
+  if (fortran && shape.length === 2) {
+    // column-major storage: element (i, j) lives at j * rows + i
+    for (let i = 0; i < rows; i++) {
+      const row = new Float32Array(cols);
+      for (let j = 0; j < cols; j++) row[j] = f32[j * rows + i];
+      arr.push(row);
+    }
+  } else {
+    for (let i = 0; i < rows; i++) {
+      arr.push(f32.slice(i * cols, (i + 1) * cols));
+    }
   }
   return arr;
 }
@@ -75,17 +85,17 @@ async function main() {
   const mel = parseNpy(fs.readFileSync(MEL_NPY));
   console.log(`Mel shape: ${mel.length} x ${mel[0].length}`);
 
-  const vocabText = fs.readFileSync(path.join(ONNX_DIR, 'vocab.txt'), 'utf-8');
+  const vocabText = fs.readFileSync(path.resolve('N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4/vocab.txt'), 'utf-8');
   const vocabLines = vocabText.split(/\r?\n/).filter(l => l.length > 0);
   const blankId = vocabLines.indexOf('<blank>');
   console.log(`Vocab: ${vocabLines.length} tokens, blank_id=${blankId}`);
 
-  console.log('Loading INT4 encoder (WASM) ...');
-  const enc = await ort.InferenceSession.create(fileUrl(path.join(ONNX_DIR, 'encoder.onnx')), { executionProviders: ['wasm'] });
+  // ORT Web in Node: pass plain Windows path; loadModel does fs.open directly.
+  const enc = await ort.InferenceSession.create(path.resolve(ONNX_DIR, 'encoder.onnx'), { executionProviders: ['wasm'] });
   console.log('Loading INT4 decoder (WASM) ...');
-  const dec = await ort.InferenceSession.create(fileUrl(path.join(ONNX_DIR, 'decoder.onnx')), { executionProviders: ['wasm'] });
+  const dec = await ort.InferenceSession.create(path.resolve(ONNX_DIR, 'decoder.onnx'), { executionProviders: ['wasm'] });
   console.log('Loading INT4 joint (WASM) ...');
-  const jnt = await ort.InferenceSession.create(fileUrl(path.join(ONNX_DIR, 'joint.onnx')), { executionProviders: ['wasm'] });
+  const jnt = await ort.InferenceSession.create(path.resolve(ONNX_DIR, 'joint.onnx'), { executionProviders: ['wasm'] });
 
   // Stream encoder
   const chunkSize = 65;
