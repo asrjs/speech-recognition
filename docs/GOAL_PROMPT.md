@@ -148,6 +148,22 @@ verified against the HF-published LFS hash `210214ed…`).
     (c) skip the community export entirely and use NeMo's encoder inside a
         thin Python shim that produces projected 640-dim features on demand
         for the JS pipeline (large first-run latency, no streaming).
+    Token sequence parity (2026-08-31, BLOCKED — downstream of encoder):
+    `run_onnx_full_pipeline.py` ran end-to-end (NeMo mel → ONNX encoder/decoder/
+    joiner greedy decode) on `jfk-short.wav` and emitted 9 tokens vs the NeMo
+    oracle's 48. Some are real (1179, 2810, 2813) but most frames decode to
+    BLANK, yielding "sk what your can   for yousk" instead of the full jfk
+    quote. First-token diff at index 0 (ONNX=1179 vs NeMo=2860). Same root
+    cause as the encoder rung: community encoder produces features the joiner
+    can't usefully classify. No reason to chase this further until the encoder
+    is correct.
+    Evidence:
+    `tools/data/results/nemotron/nemotron-3.5-onnx-pipeline-2026-08-31.json`,
+    `tools/data/results/nemotron/nemotron-3.5-hybrid-pipeline-2026-08-31.json`.
+    ORT Web WASM and Chrome headless real-WebGPU rungs: **NOT RUN** —
+    gated by step 4 parity (encoder + token sequence) which is BLOCKED on
+    the community ONNX encoder. The goal explicitly forbids adapter code
+    and performance claims before step 4 parity evidence exists.
 5.  Only after exact-token parity: design the Nemotron RNNT adapter (reuse
     NeMo RNNT predictor/joint machinery where proven shared; cache-aware
     chunked encoder stays model-specific), then measure streaming latency
