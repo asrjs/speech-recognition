@@ -19,6 +19,7 @@ import { createGigaAmRnntModelFamily } from '../models/gigaam-rnnt/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
 import { createNemoTdtModelFamily } from '../models/nemo-tdt/index.js';
+import { createNemotronRnntModelFamily } from '../models/nemotron-rnnt/index.js';
 import { createWhisperSeq2SeqModelFamily } from '../models/whisper-seq2seq/index.js';
 import { createQwen3AsrModelFamily } from '../models/qwen-asr/index.js';
 import { createSenseVoiceModelFamily } from '../models/sensevoice/index.js';
@@ -27,6 +28,7 @@ import { createWav2Vec2ModelFamily } from '../models/wav2vec2/index.js';
 import { createCanaryPresetFactory } from '../presets/canary/factory.js';
 import { createMedAsrPresetFactory } from '../presets/medasr/factory.js';
 import { createParakeetPresetFactory } from '../presets/parakeet/factory.js';
+import { createNemotronPresetFactory } from '../presets/nemotron/factory.js';
 import { createWhisperPresetFactory } from '../presets/whisper/factory.js';
 import { createWav2Vec2PresetFactory } from '../presets/wav2vec2/factory.js';
 import { getBuiltInModelDescriptor } from '../presets/descriptors.js';
@@ -298,6 +300,7 @@ export function registerBuiltInBackends(runtime: DefaultSpeechRuntime): DefaultS
 export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): DefaultSpeechRuntime {
   runtime.registerModelFamily(createNemoAedModelFamily());
   runtime.registerModelFamily(createNemoRnntModelFamily());
+  runtime.registerModelFamily(createNemotronRnntModelFamily());
   runtime.registerModelFamily(createNemoTdtModelFamily());
   runtime.registerModelFamily(createGigaAmCtcModelFamily());
   runtime.registerModelFamily(createGigaAmRnntModelFamily());
@@ -323,6 +326,11 @@ export function registerBuiltInPresets(
   runtime.registerPreset(
     createParakeetPresetFactory({
       useManifestSource: options.useManifestSources ?? true,
+    }),
+  );
+  runtime.registerPreset(
+    createNemotronPresetFactory({
+      useManifestSource: options.useManifestSources ?? false,
     }),
   );
   runtime.registerPreset(createMedAsrPresetFactory());

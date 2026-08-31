@@ -238,6 +238,33 @@ verified against the HF-published LFS hash `210214ed…`).
     to produce near-perfect transcripts. The next-session work is to
     port the INT4 decoder+joint (and possibly a JS-conformant encoder)
     to the JS pipeline and measure browser parity + latency.
+    Nemotron RNNT adapter (2026-08-31, **IMPLEMENTED + NODE SMOKE PASS**):
+    New family `src/models/nemotron-rnnt/` (types, config, ort artifact
+    resolution, 3-session executor, model/session/factory) plus a
+    `nemotron` preset and builtins registration. The executor streams
+    the cache-aware encoder over 65-frame mel chunks (7 encoder frames
+    per chunk, caches carried across chunks, lang_id forwarded) and
+    runs the proven greedy loop (predictor targets grow; joint over
+    remaining encoder frames; first non-blank argmax of last decoder
+    column; resume at the emission frame).
+    PUBLIC-API SMOKE (Node, ORT WASM 1.29, INT4 singles, jfk-short.wav):
+    41 tokens, utterance "And so my fellow Americans ask not what your
+    country can do for you at what you can do for your country" —
+    token-identical to the proven native-ORT pipeline
+    (nemotron-3.5-int4-pipeline-2026-08-31.json). Evidence:
+    tools/data/results/nemotron/nemotron-3.5-node-smoke-2026-08-31.json.
+    Runner: tools/model-debugging/reference/nemotron-3.5-asr-streaming/smoke_node.mjs.
+    Adapter lessons: (1) JSMelProcessor emits BIN-MAJOR features
+    [bin * frameCount + frame]; the encoder wants frame-major
+    [1, T, bins] rows — transposing per chunk is mandatory, and the
+    un-transposed first run reproduced the all-blank symptom. (2) vocab.txt
+    must ship next to the repacked singles (tokenizer loads via file://).
+    (3) Nemotron-specific decode differs from the nemo-rnnt fused
+    decoder graph enough to justify a separate family, per the
+    "decoder internals stay model-specific" rule.
+    Remaining for this family: streaming/first-partial latency in the
+    browser harness, HF-source wiring for the preset (direct source
+    works today), and speculative batching only after parity-safe A/B.
 
 No adapter code and no performance claims are permitted before step 4 parity
 evidence exists.
