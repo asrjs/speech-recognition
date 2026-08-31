@@ -199,6 +199,32 @@ verified against the HF-published LFS hash `210214ed…`).
     with the first ~35 tokens identical (2860=▁And, 2=▁, 1290=▁so, etc.).
     First-token matches NeMo oracle (2860 vs 2860). This satisfies
     the step 4 token-sequence rung.
+    ORT Web WASM rung (2026-08-31, **PASS — exact token parity with native**):
+    Full INT4 pipeline (encoder+decoder+joint) runs on ORT Web WASM 1.29.0
+    in Node: 44 tokens vs native's 41, with the ENTIRE 41-token native
+    sequence identical; WASM adds 3 trailing boundary tokens (".", "<en-US>")
+    matching the NeMo oracle's segment structure. Text: "And so my fellow
+    Americans ask not what your country can do for you at what you can do
+    for your country. <en-US>".
+    Two fixes were required:
+    1. External data: ORT Web WASM in Node cannot load external ONNX data
+       files (Module.MountedFiles is browser-only). Repacked the INT4 export
+       to single-file ONNX (onnx.load(load_external_data=True) +
+       onnx.save(save_as_external_data=False)) under
+       N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4-singles/.
+    2. Harness bug (the real "parity failure"): _tmp_mel.npy is saved with
+       fortran_order=True; the JS parseNpy read column-major data as
+       row-major, silently scrambling the mel and mimicking a numerical
+       parity failure (encoder cos 0.07, all-blank decode). Single-op A/B
+       models (MatMulNBits, Conv) and graph-prefix bisects confirmed ORT
+       1.23.2 / 1.25-dev / 1.29.0 compute this model identically when fed
+       identical inputs.
+    Evidence: nemotron-3.5-wasm-status-2026-08-31.json,
+    nemotron-3.5-int4-wasm-pipeline-2026-08-31.json. Script: run_int4_wasm.mjs.
+    Chrome headless real-WebGPU rung: NOT RUN (out of scope for this repo).
+    INT4 export is CPU-oriented; the WebGPU-compatible export is a separate
+    model (goryodog/tokihisu-...-webgpu-fp16), and the browser harness lives
+    in the separate webgpu-agent-test repo.
 5.  Only after exact-token parity: design the Nemotron RNNT adapter (reuse
     NeMo RNNT predictor/joint machinery where proven shared; cache-aware
     chunked encoder stays model-specific), then measure streaming latency
