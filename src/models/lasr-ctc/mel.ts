@@ -780,9 +780,7 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     for (let melIndex = 0; melIndex < this.nMels; melIndex += 1) {
       const sourceBase = melIndex * frameCount;
       const destinationBase = melIndex * validFrameCount;
-      for (let frameIndex = 0; frameIndex < validFrameCount; frameIndex += 1) {
-        copied[destinationBase + frameIndex] = rawMel[sourceBase + frameIndex] ?? 0;
-      }
+      copied.set(rawMel.subarray(sourceBase, sourceBase + validFrameCount), destinationBase);
     }
 
     return copied;
