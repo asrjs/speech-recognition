@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-31T04:08:00.000000+00:00",
+  "purpose": "Document ORT Web WASM rung blocker for INT4 export",
+  "status": "BLOCKED_BY_INFRASTRUCTURE",
+  "rung": "ORT Web WASM (Node)",
+  "model": "onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4",
+  "runtime": "onnxruntime-web@1.29.0",
+  "finding": "INT4 export uses external data files (encoder.onnx.data, decoder.onnx.data, joint.onnx.data) totaling ~755 MB. ORT Web WASM in Node fails with: 'Failed to load external data file encoder.onnx.data, error: Module.MountedFiles is not available.' This is because ORT Web uses an Emscripten-emulated filesystem (Module.MountedFiles) that doesn't work in Node.js by default for external data files.",
+  "testedPaths": [
+    "plain Windows path (N:/models/.../encoder.onnx)",
+    "backslash path (N:\\\\models\\\\...\\\\encoder.onnx)",
+    "file:// URL (file:///N:/models/.../encoder.onnx)"
+  ],
+  "results": {
+    "plain_path": "FAILS on external data load: Module.MountedFiles unavailable",
+    "backslash_path": "FAILS on external data load: Module.MountedFiles unavailable",
+    "file_url": "FAILS with ENOENT: path treated as relative (cwd-joined)"
+  },
+  "workaround_options": [
+    "Convert INT4 to single-file ONNX (no external data) — would require re-export from PyTorch with use_external_data_format=False",
+    "Use onnxruntime-node (native binding, not WASM) — bypasses the Emscripten limitation but isn't the WASM rung",
+    "Use onnxruntime-web in a browser environment where Module.MountedFiles works natively",
+    "Pre-load external data into memory and pass as Tensor inputs instead of file paths"
+  ],
+  "next_session": "Pick a workaround. The most practical: try onnxruntime-web in a headless browser environment (Playwright/puppeteer) to verify the WASM rung in-browser. The Node WASM approach is blocked by infrastructure, not by model parity.",
+  "scripts": "tools/model-debugging/reference/nemotron-3.5-asr-streaming/run_int4_wasm.mjs (working pipeline logic, blocked by ORT Web external data loading)"
+}
