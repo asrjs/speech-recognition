@@ -1,8 +1,11 @@
 import type {
   AbortSignalLike,
+  AssetProvider,
   AudioBufferLike,
   ModelClassification,
   ResolvedAssetHandle,
+  RuntimeProgressEvent,
+  SpeechRuntimeHooks,
   TranscriptMetrics,
   TranscriptWarning,
   TranscriptionProgressEvent,
@@ -21,6 +24,7 @@ import {
 } from '../nemo-tdt/ort.js';
 import {
   resolveNemotronRnntArtifacts,
+  type ResolvedNemotronRnntArtifacts,
   type ResolvedNemotronRnntOptions,
 } from './ort.js';
 import type {
@@ -139,11 +143,77 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     private readonly config: NemotronRnntModelConfig,
     private readonly backendId: string,
     private readonly sourceOptions: NemotronRnntArtifactSource | undefined,
-    dependencies: { readonly signal?: AbortSignalLike | null } = {},
+    private readonly dependencies: {
+      readonly assetProvider?: AssetProvider;
+      readonly runtimeHooks?: SpeechRuntimeHooks;
+      readonly signal?: AbortSignalLike | null;
+    } = {},
   ) {
     if (this.sourceOptions) {
-      this.loadStatePromise = this.initialize(dependencies.signal ?? null);
+      this.loadStatePromise = this.initialize(this.dependencies.signal ?? null);
     }
+  }
+
+  /**
+   * Materializes HuggingFace artifacts through the runtime asset
+   * provider (cache + progress + abort) and rewrites the resolved URLs
+   * to the cached locations. Direct sources pass through untouched.
+   */
+  private async materializeHuggingFaceArtifacts(
+    artifacts: ResolvedNemotronRnntArtifacts,
+  ): Promise<ResolvedNemotronRnntArtifacts> {
+    const source = this.sourceOptions;
+    if (!this.dependencies.assetProvider || !source || source.kind !== 'huggingface') {
+      return artifacts;
+    }
+
+    const revision = source.revision ?? 'main';
+    const resolveFile = async (filename: string): Promise<string> => {
+      const cacheKey = `huggingface:${source.repoId}:${revision}:${filename}`;
+      const cacheKeyFallbacks = (source.cacheKeyFallbackRevisions ?? [])
+        .filter((fallbackRevision) => fallbackRevision !== revision)
+        .map(
+          (fallbackRevision) =>
+            `huggingface:${source.repoId}:${fallbackRevision}:${filename}`,
+        );
+      const handle = await this.dependencies.assetProvider!.resolve({
+        id: `huggingface:${source.repoId}:${revision}:${filename}`,
+        provider: 'huggingface',
+        repoId: source.repoId,
+        revision,
+        filename,
+        preferBlobUrl: true,
+        cacheKey,
+        cacheKeyFallbacks,
+        onProgress: (event) => {
+          this.dependencies.runtimeHooks?.onProgress?.({
+            phase: 'asset:progress',
+            modelId: this.modelId,
+            file: filename,
+            ...event,
+          } as RuntimeProgressEvent);
+        },
+      });
+      this.assetHandles.push(handle);
+      const locator = await handle.getLocator('url');
+      if (!locator) {
+        throw new Error(`Could not create a URL locator for "${filename}".`);
+      }
+      return locator;
+    };
+
+    return {
+      encoderUrl: await resolveFile('encoder.onnx'),
+      decoderUrl: await resolveFile('decoder.onnx'),
+      jointUrl: await resolveFile('joint.onnx'),
+      tokenizerUrl: await resolveFile('tokenizer.json'),
+      encoderDataUrl: await resolveFile('encoder.onnx.data'),
+      decoderDataUrl: await resolveFile('decoder.onnx.data'),
+      jointDataUrl: await resolveFile('joint.onnx.data'),
+      encoderFilename: 'encoder.onnx',
+      decoderFilename: 'decoder.onnx',
+      jointFilename: 'joint.onnx',
+    };
   }
 
   private async initialize(
@@ -153,10 +223,11 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       throw new Error(`No artifact source is configured for "${this.modelId}".`);
     }
 
-    const { artifacts, options } = resolveNemotronRnntArtifacts(
+    const { artifacts: resolvedArtifacts, options } = resolveNemotronRnntArtifacts(
       this.sourceOptions,
       this.backendId,
     );
+    const artifacts = await this.materializeHuggingFaceArtifacts(resolvedArtifacts);
     const warnings: TranscriptWarning[] = [];
 
     const ort = await initOrt(options.ortBackend, {
@@ -165,10 +236,15 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       signal,
     });
 
-    const tokenizer = await ParakeetTokenizer.fromUrl(artifacts.tokenizerUrl, {
-      blankId: this.config.blankTokenId,
-      signal,
-    });
+    const tokenizer = /tokenizer\.json(?:$|[?#])/.test(artifacts.tokenizerUrl)
+      ? await ParakeetTokenizer.fromTokenizerJson(artifacts.tokenizerUrl, {
+          blankId: this.config.blankTokenId,
+          signal,
+        })
+      : await ParakeetTokenizer.fromUrl(artifacts.tokenizerUrl, {
+          blankId: this.config.blankTokenId,
+          signal,
+        });
 
     if (tokenizer.vocabSize !== this.config.vocabularySize) {
       warnings.push({

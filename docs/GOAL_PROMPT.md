@@ -262,9 +262,19 @@ verified against the HF-published LFS hash `210214ed…`).
     (3) Nemotron-specific decode differs from the nemo-rnnt fused
     decoder graph enough to justify a separate family, per the
     "decoder internals stay model-specific" rule.
+    HF-source wiring (2026-08-31, **DONE**): the preset's HuggingFace
+    source now resolves the upstream onnx-community INT4 contract
+    (encoder/decoder/joint .onnx + .onnx.data external files +
+    tokenizer.json); the executor materializes through the runtime
+    assetProvider (cache/progress/abort) like the nemo-rnnt family.
+    ParakeetTokenizer gained `fromTokenizerJson`, which handles BOTH
+    upstream tokenizer.json shapes: object-map vocab and the
+    array-of-pairs shape where pair ids are -1 placeholders and the
+    ARRAY INDEX is the authoritative id (verified 13088/13088 against
+    the local vocab.txt). Direct-source smoke re-verified after the
+    changes (41 tokens, same transcript).
     Remaining for this family: streaming/first-partial latency in the
-    browser harness, HF-source wiring for the preset (direct source
-    works today), and speculative batching only after parity-safe A/B.
+    browser harness, and speculative batching only after parity-safe A/B.
 
 No adapter code and no performance claims are permitted before step 4 parity
 evidence exists.

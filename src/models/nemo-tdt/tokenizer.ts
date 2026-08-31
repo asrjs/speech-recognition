@@ -99,6 +99,53 @@ export class ParakeetTokenizer implements NemoTokenizer {
     return new ParakeetTokenizer(idToToken, options);
   }
 
+  /**
+   * Loads a HuggingFace fast-tokenizer file (`tokenizer.json`). The
+   * `model.vocab` mapping appears in two upstream shapes: a
+   * token->id object map, or an array of [token, id] pairs. Some
+   * exports (Nemotron 3.5 INT4) fill the pair ids with placeholders
+   * (-1), so for array-shaped vocab the array INDEX is the
+   * authoritative id — HF serializes vocab in id order.
+   */
+  static async fromTokenizerJson(
+    url: string,
+    options: {
+      readonly blankId?: number;
+      readonly signal?: AssetAbortSignalLike | null;
+    } = {},
+  ): Promise<ParakeetTokenizer> {
+    const text = await fetchText(url, options.signal);
+    const parsed = JSON.parse(text) as {
+      model?: {
+        vocab?: Record<string, number> | ReadonlyArray<readonly [string, number]>;
+      };
+      vocab?: Record<string, number> | ReadonlyArray<readonly [string, number]>;
+    };
+    const vocab = parsed.model?.vocab ?? parsed.vocab;
+    if (!vocab) {
+      throw new Error(`tokenizer.json at ${url} has no model.vocab mapping.`);
+    }
+    const idToToken: string[] = [];
+    if (Array.isArray(vocab)) {
+      for (let index = 0; index < vocab.length; index += 1) {
+        const token = vocab[index]?.[0];
+        if (typeof token === 'string') {
+          idToToken[index] = token;
+        }
+      }
+    } else {
+      for (const [token, id] of Object.entries(vocab)) {
+        if (Number.isInteger(id) && id >= 0) {
+          idToToken[id] = token;
+        }
+      }
+    }
+    if (idToToken.length === 0) {
+      throw new Error(`tokenizer.json at ${url} produced an empty vocabulary.`);
+    }
+    return new ParakeetTokenizer(idToToken, options);
+  }
+
   getTokenId(token: string): number | undefined {
     return this.tokenToId.get(token);
   }

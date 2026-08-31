@@ -52,11 +52,19 @@ function resolveHuggingFaceArtifacts(
   source: NemotronRnntHuggingFaceSource,
 ): ResolvedNemotronRnntArtifacts {
   const revision = source.revision ?? 'main';
+  // Upstream onnx-community INT4 layout: encoder.onnx(+.data),
+  // decoder.onnx(+.data), joint.onnx(+.data), tokenizer.json.
   return {
-    encoderUrl: buildResolveUrl(source.repoId, revision, 'encoder-model.onnx'),
-    decoderUrl: buildResolveUrl(source.repoId, revision, 'decoder_joint-model.onnx'),
-    jointUrl: buildResolveUrl(source.repoId, revision, 'decoder_joint-model.onnx'),
-    tokenizerUrl: buildResolveUrl(source.repoId, revision, 'vocab.txt'),
+    encoderUrl: buildResolveUrl(source.repoId, revision, 'encoder.onnx'),
+    decoderUrl: buildResolveUrl(source.repoId, revision, 'decoder.onnx'),
+    jointUrl: buildResolveUrl(source.repoId, revision, 'joint.onnx'),
+    tokenizerUrl: buildResolveUrl(source.repoId, revision, 'tokenizer.json'),
+    encoderDataUrl: buildResolveUrl(source.repoId, revision, 'encoder.onnx.data'),
+    decoderDataUrl: buildResolveUrl(source.repoId, revision, 'decoder.onnx.data'),
+    jointDataUrl: buildResolveUrl(source.repoId, revision, 'joint.onnx.data'),
+    encoderFilename: 'encoder.onnx',
+    decoderFilename: 'decoder.onnx',
+    jointFilename: 'joint.onnx',
   };
 }
 

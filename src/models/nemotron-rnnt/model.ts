@@ -174,7 +174,11 @@ function createExecutor(
     config,
     backendId,
     loadOptions.source,
-    { signal: dependencies.signal ?? null },
+    {
+      assetProvider: dependencies.assetProvider,
+      runtimeHooks: dependencies.runtimeHooks,
+      signal: dependencies.signal ?? null,
+    },
   );
 }
 
