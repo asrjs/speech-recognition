@@ -120,6 +120,34 @@ verified against the HF-published LFS hash `210214ed…`).
     Remaining rungs: encoder numerical parity (needs NeMo encoder reference
     outputs), token sequence, final text; then ORT Web WASM and Chrome
     headless real-WebGPU rungs.
+    Encoder numerical parity (2026-08-31, **BLOCKED — community export broken**):
+    The community `codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx`
+    encoder.onnx outputs are essentially uncorrelated with the NeMo reference
+    on real NeMo preprocessor mel (cosine similarity 0.05, maxAbsErr 3.3 on
+    first chunk). prompt_id sweep [0, 1, 100, 101, 18, 64, -1, 127, 999]
+    yields cosSim 0.01–0.43 (best only with out-of-range IDs that the encoder
+    folds to similar garbage). Encoder shape (1, 4, 640) and per-chunk
+    maxAbs magnitudes look plausible, so a naive integration returns mostly
+    BLANK tokens.
+    NeMo conformer encoder cannot be exported cleanly via torch.onnx.export
+    in this session (serialized model > 2 GiB protobuf limit; would need
+    external data + manual streaming cache wiring). The streaming conformer
+    expects cache_last_channel/cache_last_time inputs that aren't part of the
+    community ONNX's flat k_cache_*/v_cache_* naming, so even a partial export
+    won't drop-in to the existing pipeline.
+    Evidence:
+    `tools/data/results/nemotron/nemotron-3.5-encoder-parity-vs-nemo-2026-08-31.json`.
+    Diagnostic scripts (reusable):
+    `compare_nemo_onnx_encoder.py`, `sweep_prompt_ids.py`,
+    `dump_nemo_mel.py`, `probe_pipeline.py`.
+    Unblock options for next session:
+    (a) file an issue against codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx
+        and wait for a fixed export;
+    (b) build our own streaming-conformer export with external data and the
+        cache_last_* inputs re-mapped to flat tensors;
+    (c) skip the community export entirely and use NeMo's encoder inside a
+        thin Python shim that produces projected 640-dim features on demand
+        for the JS pipeline (large first-run latency, no streaming).
 5.  Only after exact-token parity: design the Nemotron RNNT adapter (reuse
     NeMo RNNT predictor/joint machinery where proven shared; cache-aware
     chunked encoder stays model-specific), then measure streaming latency
@@ -128,7 +156,6 @@ verified against the HF-published LFS hash `210214ed…`).
 
 No adapter code and no performance claims are permitted before step 4 parity
 evidence exists.
-
 1. Acquire artifacts into a local HF-compatible model folder: the community
    streaming export (`codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx`,
    source revision `f3d333391852ba876df169dcc9ba902d25b6ab0b`) and the FP16

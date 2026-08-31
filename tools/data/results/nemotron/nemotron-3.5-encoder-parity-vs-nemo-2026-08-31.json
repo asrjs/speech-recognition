@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-30T23:50:00.000000+00:00",
+  "purpose": "ONNX encoder parity vs NeMo encoder (numerical reference)",
+  "onnxDir": "N:/models/onnx/nemo/nemotron-3.5-asr-streaming-0.6b-onnx",
+  "neMoCheckpoint": "N:/models/nemo/nemotron-3.5-asr-streaming-0.6b/nemotron-3.5-asr-streaming-0.6b.nemo",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "firstChunk": {
+    "featureShape": [1, 25, 128],
+    "onnxEncoderOutShape": [1, 4, 640],
+    "nemoEncoderOutShape": [1, 139, 640],
+    "nemoEncoderOutMaxAbs": 0.272,
+    "onnxEncoderOutMaxAbs": 3.135,
+    "maxAbsErr": 3.301,
+    "cosineSim": 0.0533
+  },
+  "verdict": "FAIL",
+  "rootCause": "Community ONNX encoder (codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx) produces outputs that are essentially uncorrelated with the NeMo reference encoder (cosine similarity 0.05 across the prompt_id sweep [0,1,100,101]). Out-of-range prompt_ids (999, -1, 127) give marginally better cosine sim (~0.43) but are not valid for inference.",
+  "predictorJoinerParity": "PASS (separate evidence at tools/data/results/nemotron/nemotron-3.5-predictor-joiner-parity-2026-08-31.json)",
+  "nextAction": "Export encoder ourselves from NeMo (tools/model-debugging/reference/nemotron-3.5-asr-streaming/export_nemo_encoder.py) and re-run parity.",
+  "tooling": {
+    "compareScript": "tools/model-debugging/reference/nemotron-3.5-asr-streaming/compare_nemo_onnx_encoder.py",
+    "promptSweepScript": "tools/model-debugging/reference/nemotron-3.5-asr-streaming/sweep_prompt_ids.py"
+  }
+}
