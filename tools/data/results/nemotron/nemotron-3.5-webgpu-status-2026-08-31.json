@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-31T04:10:00.000000+00:00",
+  "purpose": "Document Chrome headless real-WebGPU rung status for Nemotron 3.5 INT4",
+  "status": "NOT_RUN_OUT_OF_SCOPE",
+  "rung": "Chrome headless real-WebGPU",
+  "blockers": [
+    "No WebGPU-compatible Nemotron 3.5 ONNX model: the INT4 export is CPU-only (no WebGPU EP tested). The webgpu-agent-test repo uses the goryodog/tokihisu-nemotron-3.5-asr-streaming-0.6b-webgpu-fp16 export, which is a separate model.",
+    "No browser harness in this repo: the @asrjs/speech-recognition package is the JS library; the browser harness for parity+latency measurement lives in N:/github/asrjs/webgpu-agent-test (separate repo)."
+  ],
+  "evidence": "tools/data/results/nemotron/nemotron-3.5-wasm-status-2026-08-31.json (preceding WASM rung is also blocked by external data loading)",
+  "next_session_options": [
+    "(a) Download the goryodog/tokihisu-nemotron-3.5-asr-streaming-0.6b-webgpu-fp16 export and test in this repo's WASM harness",
+    "(b) Port the parakeet-rnnt browser harness pattern from docs/handoffs/nemo-rnnt-browser-harness-handoff-2026-08-30.md and adapt for INT4",
+    "(c) Defer the WebGPU rung until the webgpu-agent-test repo has a working Nemotron 3.5 page"
+  ]
+}
