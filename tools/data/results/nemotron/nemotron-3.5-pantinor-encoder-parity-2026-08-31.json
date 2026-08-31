@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-31T00:39:18.026380+00:00",
+  "purpose": "Pantinor Nemotron 3.5 ONNX encoder parity vs NeMo reference",
+  "onnxSource": "pantinor/nemotron-3.5-asr-streaming-0.6b-onnx (sherpa-onnx/parakeet-rs architecture)",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "promptId": 0,
+  "nemoEncoderOutShape": [
+    1,
+    1024,
+    139
+  ],
+  "nemoEncoderOutMaxAbs": 0.9068241119384766,
+  "nemoEncoderOutMeanAbs": 0.016625477001070976,
+  "pantinorEncoderOutShape": [
+    1,
+    1024,
+    7
+  ],
+  "pantinorEncoderOutMaxAbs": 0.43983566761016846,
+  "pantinorEncoderOutMeanAbs": 0.0239992905408144,
+  "framesCompared": 7,
+  "maxAbsErr": 0.926122784614563,
+  "meanAbsErr": 0.034043241292238235,
+  "cosineSim": 0.04422402996287346,
+  "verdict": "FAIL"
+}
