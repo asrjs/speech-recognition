@@ -20,6 +20,7 @@ import {
 } from '../src/presets/nemotron/factory.js';
 import { ParakeetTokenizer } from '../src/models/nemo-tdt/tokenizer.js';
 import type { NemotronRnntArtifactSource } from '../src/models/nemotron-rnnt/types.js';
+import { listSpeechModels, getSpeechModelDescriptor } from '../src/runtime/catalog.js';
 
 describe('Nemotron RNNT built-in family', () => {
   it('is discoverable as a built-in model family', () => {
@@ -37,6 +38,23 @@ describe('Nemotron RNNT built-in family', () => {
     const runtime = createBuiltInSpeechRuntime({ useManifestSources: false });
     const presets = runtime.listPresets().map((factory) => factory.preset);
     expect(presets).toContain('nemotron');
+  });
+
+  it('is discoverable through the built-in model catalog (listSpeechModels)', () => {
+    const nemotron = listSpeechModels().find(
+      (model) => model.preset === 'nemotron',
+    );
+    expect(nemotron).toBeDefined();
+    expect(nemotron?.modelId).toBe('nemotron-3.5-asr-streaming-0.6b');
+    expect(nemotron?.displayName).toBe('Nemotron 3.5 ASR Streaming 0.6B');
+    expect(nemotron?.languages).toEqual(
+      expect.arrayContaining(['en', 'tr', 'auto']),
+    );
+    // repoId is populated only when manifest sources are enabled;
+    // the catalog still discovers the model by id/alias regardless.
+    // Aliases resolve through the catalog too.
+    const aliased = getSpeechModelDescriptor('nvidia/nemotron-3.5-asr-streaming-0.6b');
+    expect(aliased?.modelId).toBe('nemotron-3.5-asr-streaming-0.6b');
   });
 
   it('exposes a stub scaffold (honestly labeled) when no artifact source is given', async () => {

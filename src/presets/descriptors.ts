@@ -24,8 +24,18 @@ import {
 } from './parakeet/manifest.js';
 import { resolveWhisperPresetManifest } from './whisper/manifest.js';
 import { resolveWav2Vec2PresetManifest } from './wav2vec2/manifest.js';
+import {
+  resolveNemotronArtifactSource,
+  resolveNemotronPresetManifest,
+} from './nemotron/factory.js';
 
-export type BuiltInPresetId = 'parakeet' | 'canary' | 'medasr' | 'whisper' | 'wav2vec2';
+export type BuiltInPresetId =
+  | 'parakeet'
+  | 'canary'
+  | 'medasr'
+  | 'nemotron'
+  | 'whisper'
+  | 'wav2vec2';
 export type BuiltInModelTask = 'asr' | 'speech-translation';
 export type BuiltInWarmupMode = 'expected-text' | 'non-empty';
 export type BuiltInControlType = 'boolean' | 'enum' | 'language';
@@ -620,14 +630,98 @@ function createWhisperDescriptors(): BuiltInModelDescriptor[] {
     };
   });
 }
+function createNemotronInferenceLimits(): ModelInferenceLimits {
+  return {
+    sampleRate: 16000,
+    // Streaming-designed encoder: long inputs are valid; the runtime
+    // still VAD-segments for canonical transcript stitching.
+    maxInputDurationSec: 3600,
+    recommendedWindowDurationSec: 30,
+    minWindowDurationSec: 5,
+    maxWindowDurationSec: 60,
+    autoWindowThresholdSec: 30,
+    defaultOverlapSec: 2,
+    preferVadSegmentWindowing: true,
+    supportsWordTimestamps: true,
+    supportsTokenTimestamps: true,
+    supportsSegmentTimestamps: true,
+    supportsConfidence: true,
+    defaultSegmentationStrategy: 'vad',
+    defaultMergeStrategy: 'concat',
+  };
+}
+
+function createNemotronDescriptors(): BuiltInModelDescriptor[] {
+  const modelId = 'nemotron-3.5-asr-streaming-0.6b';
+  const manifest = resolveNemotronPresetManifest(modelId);
+  const source = resolveNemotronArtifactSource(modelId);
+
+  return [
+    {
+      modelId,
+      aliases: manifest?.aliases ?? [],
+      preset: 'nemotron',
+      displayName: 'Nemotron 3.5 ASR Streaming 0.6B',
+      description:
+        manifest?.description ??
+        'Nemotron streaming RNNT preset (cache-aware encoder, prompt tokens).',
+      classification: manifest?.classification ?? {},
+      languages: ['en', 'tr', 'auto'],
+      defaultSourceLanguage: 'auto',
+      capabilities: {
+        supportedTasks: ['asr'],
+        supportsTranslation: false,
+        supportsPunctuationCapitalization: false,
+        supportsInverseTextNormalization: false,
+        supportsWordTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsPromptControls: false,
+      },
+      inference: createNemotronInferenceLimits(),
+      loading: {
+        repoId:
+          source?.kind === 'huggingface' ? source.repoId : undefined,
+        supportsHubSource: true,
+        supportsLocalSource: true,
+        // Single-file INT4 repack; no int8/fp16 variant selection yet.
+        supportsSplitQuantization: false,
+        supportsSplitBackends: false,
+        availableEncoderBackends: ['wasm'],
+        availableDecoderBackends: ['wasm'],
+        defaultEncoderBackend: 'wasm',
+        defaultDecoderBackend: 'wasm',
+        availableEncoderQuantizations: ['fp32'],
+        availableDecoderQuantizations: ['fp32'],
+        defaultEncoderQuantization: 'fp32',
+        defaultDecoderQuantization: 'fp32',
+        supportsPreprocessorBackend: true,
+        preprocessorBackends: ['js'],
+        defaultPreprocessorBackend: 'js',
+        defaultPreprocessorName: null,
+        defaultRevision: 'main',
+      },
+      controls: [],
+      warmup: {
+        mode: 'non-empty',
+      },
+      docs: {
+        modelCardUrl: 'https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b',
+        architectureSummary:
+          'FastConformer cache-aware streaming encoder (24 layers, 65-frame chunks -> 7 frames) + LSTM predictor + joint; prompt ids auto=101/en=0/tr=18.',
+      },
+    },
+  ];
+}
 
 const BUILT_IN_MODEL_DESCRIPTORS = [
   ...createParakeetDescriptors(),
   ...createCanaryDescriptors(),
   ...createMedAsrDescriptors(),
+  ...createNemotronDescriptors(),
   ...createWav2Vec2Descriptors(),
   ...createWhisperDescriptors(),
 ] as const;
+
 
 const LANGUAGE_NAME_RESOLVERS = [getParakeetLanguageName, getCanaryLanguageName] as const;
 
@@ -847,6 +941,23 @@ export function buildBuiltInHubLoadOptions(
       const source = manifest?.source;
       if (!source || source.kind !== 'huggingface') {
         throw new Error(`Could not resolve MedASR artifact source for "${descriptor.modelId}".`);
+      }
+      return {
+        ...base,
+        options: {
+          source: {
+            ...source,
+            revision: input.revision || source.revision || descriptor.loading.defaultRevision,
+            cpuThreads: input.cpuThreads,
+            enableProfiling: input.enableProfiling,
+          },
+        },
+      };
+    }
+    case 'nemotron': {
+      const source = resolveNemotronArtifactSource(descriptor.modelId);
+      if (!source || source.kind !== 'huggingface') {
+        throw new Error(`Could not resolve Nemotron artifact source for "${descriptor.modelId}".`);
       }
       return {
         ...base,
