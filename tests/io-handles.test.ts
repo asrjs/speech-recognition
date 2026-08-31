@@ -76,6 +76,7 @@ describe('UrlAssetHandle', () => {
   });
 
   it('continues with network when cache read throws and evicts the broken key', async () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const cache: AssetCache = {
       get: vi.fn(async () => {
         throw new Error('cache blob invalid');
@@ -107,6 +108,11 @@ describe('UrlAssetHandle', () => {
     expect(cache.get).toHaveBeenCalledTimes(1);
     expect(cache.delete).toHaveBeenCalledTimes(1);
     expect(cache.set).toHaveBeenCalledTimes(1);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[assets] Cache read failed for "cache:broken". Falling back to network.',
+      expect.any(Error)
+    );
+    consoleWarnSpy.mockRestore();
   });
 
   it('reads fallback cache keys and migrates hits to the primary key', async () => {
