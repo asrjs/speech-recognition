@@ -56,6 +56,14 @@ export interface NemotronRnntModelConfig extends NemoModelConfig {
   readonly encoderCache: NemotronRnntEncoderCache;
   readonly promptIds: NemotronRnntPromptIds;
   readonly defaultPromptId: number;
+  /**
+   * Encoder frames scanned per joint call during greedy decoding.
+   * Joint logits are position-wise independent given the decoder
+   * state, so block-scanning in windows of this size produces the
+   * exact same token stream as scanning all remaining frames while
+   * keeping decode cost linear in utterance length.
+   */
+  readonly jointWindowFrames: number;
   readonly maxDecodeSteps: number;
   readonly maxOutputTokens: number;
   readonly blankTokenId: number;

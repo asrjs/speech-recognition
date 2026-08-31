@@ -45,6 +45,7 @@ const BASE_NEMOTRON_RNNT_CONFIG: NemotronRnntModelConfig = {
   encoderCache: DEFAULT_NEMOTRON_RNNT_ENCODER_CACHE,
   promptIds: DEFAULT_NEMOTRON_RNNT_PROMPT_IDS,
   defaultPromptId: DEFAULT_NEMOTRON_RNNT_PROMPT_IDS.auto,
+  jointWindowFrames: 16,
   maxDecodeSteps: 200,
   maxOutputTokens: 200,
   blankTokenId: 13087,

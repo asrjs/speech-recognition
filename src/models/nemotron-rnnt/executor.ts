@@ -762,98 +762,111 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
         break;
       }
 
-      const encRemOffset = lastT * hiddenDim;
-      const encRemLength = T_remain * hiddenDim;
-      const encRem = new Float32Array(new ArrayBuffer(encRemLength * 4));
-      encRem.set(encFlat.subarray(encRemOffset, encRemOffset + encRemLength));
-
-      const encTensor = new loaded.ort.Tensor('float32', encRem, [
-        1,
-        T_remain,
-        hiddenDim,
-      ]);
-      const decTensor = new loaded.ort.Tensor('float32', decoderT, [
-        1,
-        targets.length,
-        640,
-      ]);
-
-      let jointOut: Record<string, OrtTensorLike> | undefined;
-      let logits: Float32Array;
-      try {
-        jointOut = await loaded.jointSession.run({
-          encoder_output: encTensor,
-          decoder_output: decTensor,
-        });
-        const logitsTensor = jointOut.joint_output as OrtTensorLike<Float32Array>;
-        logits = copyTensorData(logitsTensor);
-      } finally {
-        encTensor.dispose?.();
-        decTensor.dispose?.();
-        disposeOrtOutputs(jointOut);
-      }
-
-      // Scan T_remain frames of the last column (u = targets.length - 1)
-      // joint logits for the first non-blank argmax; identical to the
-      // proven Python pipeline.
+      // Joint logits are position-wise independent given the decoder
+      // state, so scanning in fixed-size windows yields the exact same
+      // token stream as one joint call over all remaining frames while
+      // keeping decode cost linear in utterance length. Each window
+      // scans the last decoder column (u = targets.length - 1) for the
+      // first non-blank argmax, mirroring the proven Python pipeline.
       const lastU = targets.length - 1;
       const V = distributionSize;
+      const windowFrames = Math.max(1, this.config.jointWindowFrames);
       let emittedToken = -1;
       let emittedFrame = -1;
       let emittedConf: RowConfidence | undefined;
 
-      for (let t = 0; t < T_remain; t += 1) {
-        const rowBase = t * targets.length * V + lastU * V;
-        let maxV = -Infinity;
-        let maxIdx = -1;
-        for (let v = 0; v < V; v += 1) {
-          const x = logits[rowBase + v] ?? -Infinity;
-          if (x > maxV) {
-            maxV = x;
-            maxIdx = v;
+      while (lastT < T_enc && emittedToken < 0) {
+        throwIfDecodeAborted(signal);
+        iterations += 1;
+
+        const windowEnd = Math.min(lastT + windowFrames, T_enc);
+        const T_window = windowEnd - lastT;
+        const encRemOffset = lastT * hiddenDim;
+        const encRemLength = T_window * hiddenDim;
+        const encRem = new Float32Array(new ArrayBuffer(encRemLength * 4));
+        encRem.set(encFlat.subarray(encRemOffset, encRemOffset + encRemLength));
+
+        const encTensor = new loaded.ort.Tensor('float32', encRem, [
+          1,
+          T_window,
+          hiddenDim,
+        ]);
+        const decTensor = new loaded.ort.Tensor('float32', decoderT, [
+          1,
+          targets.length,
+          640,
+        ]);
+
+        let jointOut: Record<string, OrtTensorLike> | undefined;
+        let logits: Float32Array;
+        try {
+          jointOut = await loaded.jointSession.run({
+            encoder_output: encTensor,
+            decoder_output: decTensor,
+          });
+          const logitsTensor = jointOut.joint_output as OrtTensorLike<Float32Array>;
+          logits = copyTensorData(logitsTensor);
+        } finally {
+          encTensor.dispose?.();
+          decTensor.dispose?.();
+          disposeOrtOutputs(jointOut);
+        }
+
+        for (let t = 0; t < T_window; t += 1) {
+          const rowBase = t * targets.length * V + lastU * V;
+          let maxV = -Infinity;
+          let maxIdx = -1;
+          for (let v = 0; v < V; v += 1) {
+            const x = logits[rowBase + v] ?? -Infinity;
+            if (x > maxV) {
+              maxV = x;
+              maxIdx = v;
+            }
           }
+          if (maxIdx === blankId) {
+            continue;
+          }
+          emittedToken = maxIdx;
+          emittedFrame = lastT + t;
+          const row = new Float32Array(new ArrayBuffer(V * 4));
+          for (let v = 0; v < V; v += 1) {
+            row[v] = logits[rowBase + v] ?? 0;
+          }
+          emittedConf = rowConfidence(row, maxIdx);
+          break;
         }
-        if (maxIdx === blankId) {
-          continue;
+
+        if (emittedToken < 0) {
+          // Window was all-blank: those frames are consumed. A later
+          // window may still produce an emission.
+          lastT = windowEnd;
         }
-        emittedToken = maxIdx;
-        emittedFrame = t;
-        const row = new Float32Array(new ArrayBuffer(V * 4));
-        for (let v = 0; v < V; v += 1) {
-          row[v] = logits[rowBase + v] ?? 0;
-        }
-        emittedConf = rowConfidence(row, maxIdx);
-        break;
       }
 
       if (emittedToken < 0) {
-        // Advance past all remaining frames and continue the loop;
-        // the next predictor step will extend targets so a later
-        // emission can fire against later frames.
-        lastT = T_enc;
-        continue;
+        // Frames exhausted without an emission; decoding is complete.
+        break;
       }
 
       tokenIds.push(emittedToken);
-      tokenFrameIndices.push(emittedFrame + lastT);
+      tokenFrameIndices.push(emittedFrame);
       tokenConfidences.push(emittedConf?.confidence ?? 0);
       tokenLogProbs.push(emittedConf?.logProb ?? 0);
 
-      const stats = frameConfidenceStats.get(emittedFrame + lastT) ?? {
+      const stats = frameConfidenceStats.get(emittedFrame) ?? {
         sum: 0,
         count: 0,
       };
       stats.sum += emittedConf?.confidence ?? 0;
       stats.count += 1;
-      frameConfidenceStats.set(emittedFrame + lastT, stats);
+      frameConfidenceStats.set(emittedFrame, stats);
 
       targets.push(emittedToken);
 
       // Resume AT the emission frame (the next predictor call may
       // extend targets and the same audio frame may produce another
-      // non-blank token on the next joint invocation). The T_remain
-      // slice above then keeps the emitting frame visible.
-      lastT += emittedFrame;
+      // non-blank token on the next joint invocation).
+      lastT = emittedFrame;
 
       if (tokenIds.length >= this.config.maxOutputTokens) {
         break;

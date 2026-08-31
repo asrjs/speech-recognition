@@ -273,8 +273,24 @@ verified against the HF-published LFS hash `210214ed…`).
     ARRAY INDEX is the authoritative id (verified 13088/13088 against
     the local vocab.txt). Direct-source smoke re-verified after the
     changes (41 tokens, same transcript).
+    Long-audio decode windowing (2026-08-31, **DONE, parity-safe**):
+    the greedy joint scan now runs in fixed windows
+    (`jointWindowFrames`, default 16) instead of one joint call over
+    all remaining encoder frames. Joint logits are position-wise
+    independent given decoder state, so the token stream is provably
+    identical; measured on the 40.6 s librivox fixture (Node WASM,
+    INT4): decode 170 s -> 18.9 s, total 315 s -> 157 s, IDENTICAL
+    88-token output. jfk-short re-verified (41 tokens, same text).
+    Honest quality note: on the long fixture the community INT4
+    streaming encoder degrades vs the NeMo full-context oracle (some
+    words drop/garble, e.g. "Pref a year with the Birdship recording");
+    that is the documented encoder-parity limitation of the third-party
+    export, not a decode bug. Gated tests: ASRJS_FIXTURE_SMOKE (jfk,
+    exact parity) and ASRJS_FIXTURE_SMOKE_LONG (librivox, deterministic
+    88 tokens + content assertions).
     Remaining for this family: streaming/first-partial latency in the
-    browser harness, and speculative batching only after parity-safe A/B.
+    browser harness, encoder cost on WASM (now the dominant term),
+    and speculative batching only after parity-safe A/B.
 
 No adapter code and no performance claims are permitted before step 4 parity
 evidence exists.

@@ -275,79 +275,76 @@ describe('Nemotron transcript helpers', () => {
   });
 });
 
+function readWavPcm16Mono(filePath: string): { pcm: Float32Array; sampleRate: number } {
+  const buf = fs.readFileSync(filePath);
+  let offset = 12;
+  let dataOffset = 0;
+  let dataLength = 0;
+  let sampleRate = 16000;
+  while (offset < buf.length - 8) {
+    const id = buf.toString('ascii', offset, offset + 4);
+    const size = buf.readUInt32LE(offset + 4);
+    if (id === 'fmt ') {
+      sampleRate = buf.readUInt32LE(offset + 12);
+    } else if (id === 'data') {
+      dataOffset = offset + 8;
+      dataLength = size;
+      break;
+    }
+    offset += 8 + size + (size % 2);
+  }
+  const samples = dataLength / 2;
+  const pcm = new Float32Array(samples);
+  for (let i = 0; i < samples; i += 1) {
+    pcm[i] = buf.readInt16LE(dataOffset + i * 2) / 32768;
+  }
+  return { pcm, sampleRate };
+}
+
+async function loadNemotronDirect(modelDir: string) {
+  const fileUrl = (p: string) => pathToFileURL(p).toString();
+  return loadSpeechModel({
+    family: 'nemotron-rnnt',
+    modelId: 'nemotron-3.5-asr-streaming-0.6b',
+    backend: 'wasm',
+    options: {
+      source: {
+        kind: 'direct',
+        artifacts: {
+          encoderUrl: fileUrl(path.join(modelDir, 'encoder.onnx')),
+          decoderUrl: fileUrl(path.join(modelDir, 'decoder.onnx')),
+          jointUrl: fileUrl(path.join(modelDir, 'joint.onnx')),
+          tokenizerUrl: fileUrl(path.join(modelDir, 'vocab.txt')),
+        },
+      },
+    },
+  } as never);
+}
+
 describe('Nemotron ONNX fixture smoke', () => {
+  const modelDir =
+    process.env.NEMOTRON_INT4_DIR ??
+    'N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4-singles';
+
+  function weightsAvailable(): boolean {
+    return ['encoder.onnx', 'decoder.onnx', 'joint.onnx', 'vocab.txt']
+      .map((file) => path.join(modelDir, file))
+      .every((file) => fs.existsSync(file));
+  }
+
   it('reproduces the parity transcript through the public API', async () => {
     if (!process.env.ASRJS_FIXTURE_SMOKE) {
       return; // Skipped unless explicitly requested; real weights required.
     }
-    const modelDir =
-      process.env.NEMOTRON_INT4_DIR ??
-      'N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4-singles';
-    const required = ['encoder.onnx', 'decoder.onnx', 'joint.onnx', 'vocab.txt'].map(
-      (file) => path.join(modelDir, file),
-    );
-    if (!required.every((file) => fs.existsSync(file))) {
-      return; // Weights not present on this machine.
+    if (!weightsAvailable()) {
+      return;
     }
-    const fixture = path.resolve(
-      'tools/data/fixtures/audio/jfk-short.wav',
-    );
+    const fixture = path.resolve('tools/data/fixtures/audio/jfk-short.wav');
     if (!fs.existsSync(fixture)) {
       return;
     }
-
-    const runtime = createBuiltInSpeechRuntime({
-      backends: [],
-      modelFamilies: [],
-      presets: [],
-      useManifestSources: false,
-    });
-    void runtime;
-
-    // Read the 16 kHz mono PCM16 fixture directly.
-    const buf = fs.readFileSync(fixture);
-    let offset = 12;
-    let dataOffset = 0;
-    let dataLength = 0;
-    let sampleRate = 16000;
-    while (offset < buf.length - 8) {
-      const id = buf.toString('ascii', offset, offset + 4);
-      const size = buf.readUInt32LE(offset + 4);
-      if (id === 'fmt ') {
-        sampleRate = buf.readUInt32LE(offset + 12);
-      } else if (id === 'data') {
-        dataOffset = offset + 8;
-        dataLength = size;
-        break;
-      }
-      offset += 8 + size + (size % 2);
-    }
-    const samples = dataLength / 2;
-    const pcm = new Float32Array(samples);
-    for (let i = 0; i < samples; i += 1) {
-      pcm[i] = buf.readInt16LE(dataOffset + i * 2) / 32768;
-    }
-
-    const fileUrl = (p: string) => pathToFileURL(p).toString();
-    const model = await loadSpeechModel<
-      { source: NemotronRnntArtifactSource },
-      { utteranceText: string; tokenCount?: number }
-    >({
-      family: 'nemotron-rnnt',
-      modelId: 'nemotron-3.5-asr-streaming-0.6b',
-      backend: 'wasm',
-      options: {
-        source: {
-          kind: 'direct',
-          artifacts: {
-            encoderUrl: fileUrl(path.join(modelDir, 'encoder.onnx')),
-            decoderUrl: fileUrl(path.join(modelDir, 'decoder.onnx')),
-            jointUrl: fileUrl(path.join(modelDir, 'joint.onnx')),
-            tokenizerUrl: fileUrl(path.join(modelDir, 'vocab.txt')),
-          },
-        },
-      },
-    } as never);
+    const { pcm } = readWavPcm16Mono(fixture);
+    const model = await loadNemotronDirect(modelDir);
     const result = (await model.transcribe(pcm, { responseFlavor: 'native' })) as {
       utteranceText: string;
       tokens?: readonly unknown[];
@@ -359,4 +356,33 @@ describe('Nemotron ONNX fixture smoke', () => {
     );
     expect(result.tokens?.length).toBe(41);
   }, 600_000);
+
+  it('decodes the 40.6 s speech/silence fixture with windowed joint scanning', async () => {
+    if (!process.env.ASRJS_FIXTURE_SMOKE_LONG) {
+      return; // Opt-in: real weights over ~160 s of WASM compute.
+    }
+    if (!weightsAvailable()) {
+      return;
+    }
+    const fixture = path.resolve(
+      'tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav',
+    );
+    if (!fs.existsSync(fixture)) {
+      return;
+    }
+    const { pcm } = readWavPcm16Mono(fixture);
+    const model = await loadNemotronDirect(modelDir);
+    const result = (await model.transcribe(pcm, { responseFlavor: 'native' })) as {
+      utteranceText: string;
+      tokens?: readonly unknown[];
+    };
+    await model.dispose();
+
+    // Deterministic on fixed weights. Note honestly: the community INT4
+    // streaming encoder degrades on this fixture relative to the NeMo
+    // full-context oracle (some words drop/garble); that is a model
+    // parity limitation documented in the goal file, not a decode bug.
+    expect(result.tokens?.length).toBe(88);
+    expect(result.utteranceText).toContain('Librivox recordings are in the public domain');
+  }, 900_000);
 });
