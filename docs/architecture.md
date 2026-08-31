@@ -207,6 +207,8 @@ If shared descriptors become too broad later, the next split should be within `s
 Owns architecture-based implementation families such as:
 
 - `nemo-tdt`
+- `nemo-rnnt`
+- `nemotron-rnnt`
 - `lasr-ctc`
 - `whisper-seq2seq`
 - `firered-llm`
@@ -222,11 +224,35 @@ Family packages own:
 
 Shared helpers move upward only after reuse is proven across multiple families.
 
+#### `nemotron-rnnt` boundary notes
+
+`nemotron-rnnt` implements the Nemotron 3.5 ASR Streaming prompt-RNNT layout:
+three ONNX graphs (cache-aware streaming encoder, LSTM predictor, joint) driven
+by a per-chunk greedy loop.
+
+- Depends on `nemo-tdt` for the mel preprocessor (`JsNemoPreprocessor`), the
+  tokenizer (`ParakeetTokenizer`, including `fromTokenizerJson`), and ORT
+  session/env plumbing (`initOrt`, `createOrtSession`). It depends on
+  `nemo-common` for classification and canonical mapping.
+- It deliberately does NOT reuse the `nemo-rnnt` fused decoder executor: the
+  Nemotron contract splits predictor and joint into separate graphs, carries
+  encoder channel/time caches across 65-frame mel chunks, and takes a
+  `lang_id` prompt input. Those differences are model-specific by rule, so
+  the family owns its own executor rather than widening the shared one.
+- Feature-layout invariants: the JS mel processor emits bin-major features
+  (`[bin * frameCount + frame]`), while this encoder consumes frame-major
+  `[1, chunkFrames, bins]` rows; the executor transposes per chunk. Offline
+  `.npy` fixtures saved by Python may be fortran-order — JS readers must
+  honor that flag. Both layout mismatches historically mimic numerical
+  parity failures (all-blank decodes) and are checked first when a port
+  diverges.
+
 ### `src/presets`
 
 Owns branded presets such as:
 
 - `parakeet`
+- `nemotron`
 - `medasr`
 - `whisper`
 
@@ -252,6 +278,13 @@ Examples:
   - `nemo-tdt`
 - branded preset:
   - `parakeet`
+
+A second pairing covers prompt-based streaming RNNT:
+
+- technical family:
+  - `nemotron-rnnt`
+- branded preset:
+  - `nemotron`
 
 When a model is loaded through a preset:
 
