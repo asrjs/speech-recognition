@@ -445,7 +445,7 @@ async function disposeAssetHandles(handles: readonly ResolvedAssetHandle[] | und
   if (!handles || handles.length === 0) {
     return;
   }
-  await Promise.all(handles.map(async (handle) => handle.dispose()));
+  await Promise.all(handles.map((handle) => handle.dispose()));
 }
 
 async function disposeResolvedModelAssets(modelUrls: ParakeetModelUrls): Promise<void> {

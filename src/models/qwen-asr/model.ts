@@ -228,7 +228,7 @@ export class Qwen3AsrSpeechModel
     this.disposed = true;
     const sessions = [...this.sessions];
     this.sessions.clear();
-    await Promise.all(sessions.map(async (session) => session.dispose()));
+    await Promise.all(sessions.map((session) => session.dispose()));
   }
 }
 
