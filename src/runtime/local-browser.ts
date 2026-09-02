@@ -41,7 +41,7 @@ export interface LoadedLocalSpeechModel<
 async function disposeResolvedLocalArtifacts(
   assetHandles: readonly ResolvedAssetHandle[],
 ): Promise<void> {
-  await Promise.all(assetHandles.map(async (handle) => await handle.dispose()));
+  await Promise.all(assetHandles.map((handle) => handle.dispose()));
 }
 
 function resolveLocalModelLoadBackend(
