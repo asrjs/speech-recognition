@@ -17,6 +17,20 @@ export interface ProductionTranscriptMetrics {
   readonly sentenceCount: number;
 }
 
+export interface ProductionWord {
+  readonly word: string;
+  readonly start: number;
+  readonly end: number;
+  readonly probability: number;
+}
+
+export interface ProductionSegment {
+  readonly text: string;
+  readonly start: number;
+  readonly end: number;
+  readonly words?: readonly ProductionWord[];
+}
+
 export interface ProductionTranscript {
   /** Full transcript text with sentences separated by newlines */
   readonly text: string;
@@ -29,9 +43,9 @@ export interface ProductionTranscript {
   /** Sentences with word-level timestamps */
   readonly sentences: readonly Sentence[];
   /** Words with timestamps */
-  readonly words: readonly unknown[];
+  readonly words: readonly ProductionWord[];
   /** Segments from the executor */
-  readonly segments: readonly unknown[];
+  readonly segments: readonly ProductionSegment[];
   /** Subtitles (SRT + VTT) */
   readonly subtitles: ProductionTranscriptSubtitles;
   /** Metrics */
