@@ -21,6 +21,8 @@ import type {
   ProductionTranscript,
   ProductionTranscriptMetrics,
   ProductionTranscriptSubtitles,
+  ProductionWord,
+  ProductionSegment,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -53,8 +55,8 @@ export interface ProductionWhisperTranscribeOptions {
 export interface ProductionWhisperExecutorLike {
   transcribe(
     audio: Float32Array,
-    options?: any,
-    context?: any,
+    options?: ProductionWhisperTranscribeOptions & { temperatures?: readonly number[] },
+    context?: unknown,
   ): Promise<WhisperNativeTranscriptLike>;
   dispose(): Promise<void>;
 }
@@ -106,14 +108,15 @@ export class ProductionWhisperPipeline {
 
     // 1. Run enhanced executor (VAD → gates → fallback → drift → context → merge)
     const nativeResult = await this.executor.transcribe(audio, {
+      sampleRate: options.sampleRate,
       language: options.language ?? 'en',
       returnWordTimestamps: options.returnWordTimestamps ?? true,
       vadConfig: options.vadConfig ?? this.defaultVadConfig,
       temperatures: this.defaultTemperatures,
-    } as any);
+    });
 
     // 2. Extract words for post-processing
-    const words: DedupWordLike[] = (nativeResult.words ?? []).map((w: WordLike) => ({
+    const words: ProductionWord[] = (nativeResult.words ?? []).map((w: WordLike) => ({
       word: w.word,
       start: w.start,
       end: w.end,
@@ -149,8 +152,8 @@ export class ProductionWhisperPipeline {
       raw: nativeResult.utteranceText,
       language: nativeResult.language,
       sentences: formatted.sentences,
-      words: words as any,
-      segments: nativeResult.segments as any,
+      words: words,
+      segments: (nativeResult.segments ?? []) as readonly ProductionSegment[],
       subtitles,
       metrics: {
         ...metrics,
@@ -170,7 +173,7 @@ export class ProductionWhisperPipeline {
 
   private generateSubtitles(
     sentences: readonly Sentence[],
-    _words: readonly DedupWordLike[],
+    _words: readonly ProductionWord[],
   ): ProductionTranscriptSubtitles {
     let srt = '';
     let vtt = '';
@@ -203,17 +206,6 @@ export function createWhisperProductionPipeline(
   options: ProductionWhisperPipelineOptions,
 ): ProductionWhisperPipeline {
   return new ProductionWhisperPipeline(options);
-}
-
-// ---------------------------------------------------------------------------
-// Types used for post-processing
-// ---------------------------------------------------------------------------
-
-interface DedupWordLike {
-  word: string;
-  start: number;
-  end: number;
-  probability: number;
 }
 
 // ---------------------------------------------------------------------------
