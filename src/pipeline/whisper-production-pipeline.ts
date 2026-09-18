@@ -20,7 +20,9 @@ import {
 import type {
   ProductionTranscript,
   ProductionTranscriptMetrics,
+  ProductionTranscriptSegment,
   ProductionTranscriptSubtitles,
+  ProductionTranscriptWord,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -53,8 +55,8 @@ export interface ProductionWhisperTranscribeOptions {
 export interface ProductionWhisperExecutorLike {
   transcribe(
     audio: Float32Array,
-    options?: any,
-    context?: any,
+    options?: unknown,
+    context?: unknown,
   ): Promise<WhisperNativeTranscriptLike>;
   dispose(): Promise<void>;
 }
@@ -63,22 +65,8 @@ interface WhisperNativeTranscriptLike {
   readonly utteranceText: string;
   readonly isFinal: boolean;
   readonly language: string;
-  readonly segments?: readonly SegmentLike[];
-  readonly words?: readonly WordLike[];
-}
-
-interface SegmentLike {
-  readonly text: string;
-  readonly start: number;
-  readonly end: number;
-  readonly words?: readonly WordLike[];
-}
-
-interface WordLike {
-  readonly word: string;
-  readonly start: number;
-  readonly end: number;
-  readonly probability?: number;
+  readonly segments?: readonly ProductionTranscriptSegment[];
+  readonly words?: readonly ProductionTranscriptWord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -110,10 +98,10 @@ export class ProductionWhisperPipeline {
       returnWordTimestamps: options.returnWordTimestamps ?? true,
       vadConfig: options.vadConfig ?? this.defaultVadConfig,
       temperatures: this.defaultTemperatures,
-    } as any);
+    });
 
     // 2. Extract words for post-processing
-    const words: DedupWordLike[] = (nativeResult.words ?? []).map((w: WordLike) => ({
+    const words: DedupWordLike[] = (nativeResult.words ?? []).map((w: ProductionTranscriptWord) => ({
       word: w.word,
       start: w.start,
       end: w.end,
@@ -149,8 +137,8 @@ export class ProductionWhisperPipeline {
       raw: nativeResult.utteranceText,
       language: nativeResult.language,
       sentences: formatted.sentences,
-      words: words as any,
-      segments: nativeResult.segments as any,
+      words,
+      segments: nativeResult.segments ?? [],
       subtitles,
       metrics: {
         ...metrics,
