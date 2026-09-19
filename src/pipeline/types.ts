@@ -29,11 +29,25 @@ export interface ProductionTranscript {
   /** Sentences with word-level timestamps */
   readonly sentences: readonly Sentence[];
   /** Words with timestamps */
-  readonly words: readonly unknown[];
+  readonly words: readonly ProductionTranscriptWord[];
   /** Segments from the executor */
-  readonly segments: readonly unknown[];
+  readonly segments: readonly ProductionTranscriptSegment[];
   /** Subtitles (SRT + VTT) */
   readonly subtitles: ProductionTranscriptSubtitles;
   /** Metrics */
   readonly metrics: ProductionTranscriptMetrics;
+}
+
+export interface ProductionTranscriptWord {
+  readonly word: string;
+  readonly start: number;
+  readonly end: number;
+  readonly probability?: number;
+}
+
+export interface ProductionTranscriptSegment {
+  readonly text: string;
+  readonly start: number;
+  readonly end: number;
+  readonly words?: readonly ProductionTranscriptWord[];
 }
