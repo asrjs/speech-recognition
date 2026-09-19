@@ -125,7 +125,7 @@ export class ProductionWhisperPipeline {
     // 3. Format transcript (sentence boundary + normalization)
     let formatted: FormattedTranscript;
     if (words.length > 0) {
-      formatted = formatTranscript(words, audioDurationSeconds);
+      formatted = formatTranscript(words as any, audioDurationSeconds);
     } else {
       formatted = {
         text: nativeResult.utteranceText ?? '',
