@@ -406,10 +406,38 @@ export class WhisperMelProcessor {
         // Copy reflect-padded + windowed samples into zero-padded buffer
         this.dftWindowed.fill(0);
         const padOffset = (fftSize - winLen) >> 1; // 56
-        for (let i = 0; i < winLen; i++) {
-          const paddedIdx = offset + i;
-          const sample = this.getReflectPaddedSample(audio, paddedIdx, pad);
-          this.dftWindowed[padOffset + i] = sample * (paddedWin[padOffset + i] as number);
+        let startIdx = offset - pad;
+        let i = 0;
+
+        // Pre-padding logic
+        if (startIdx < 0) {
+          const limit = Math.min(winLen, -startIdx);
+          while (i < limit) {
+            this.dftWindowed[padOffset + i] =
+              (audio[-startIdx] as number) * (paddedWin[padOffset + i] as number);
+            i++;
+            startIdx++;
+          }
+        }
+
+        // Main logic
+        const endIdx = Math.min(sampleCount, startIdx + winLen - i);
+        while (startIdx < endIdx) {
+          this.dftWindowed[padOffset + i] =
+            (audio[startIdx] as number) * (paddedWin[padOffset + i] as number);
+          i++;
+          startIdx++;
+        }
+
+        // Post-padding logic
+        if (i < winLen) {
+          while (i < winLen) {
+            const dist = startIdx - sampleCount + 1;
+            this.dftWindowed[padOffset + i] =
+              (audio[sampleCount - 1 - dist] as number) * (paddedWin[padOffset + i] as number);
+            i++;
+            startIdx++;
+          }
         }
 
         // Standard radix-2 FFT (fast — power of 2)
@@ -453,10 +481,35 @@ export class WhisperMelProcessor {
         const offset = frameIndex * this.hopLength;
 
         // Window samples with reflect padding
-        for (let i = 0; i < winLen; i++) {
-          const paddedIdx = offset + i;
-          const sample = this.getReflectPaddedSample(audio, paddedIdx, pad);
-          this.dftWindowed[i] = sample * (this.window[i] as number);
+        let startIdx = offset - pad;
+        let i = 0;
+
+        // Pre-padding logic
+        if (startIdx < 0) {
+          const limit = Math.min(winLen, -startIdx);
+          while (i < limit) {
+            this.dftWindowed[i] = (audio[-startIdx] as number) * (this.window[i] as number);
+            i++;
+            startIdx++;
+          }
+        }
+
+        // Main logic
+        const endIdx = Math.min(sampleCount, startIdx + winLen - i);
+        while (startIdx < endIdx) {
+          this.dftWindowed[i] = (audio[startIdx] as number) * (this.window[i] as number);
+          i++;
+          startIdx++;
+        }
+
+        // Post-padding logic
+        if (i < winLen) {
+          while (i < winLen) {
+            const dist = startIdx - sampleCount + 1;
+            this.dftWindowed[i] = (audio[sampleCount - 1 - dist] as number) * (this.window[i] as number);
+            i++;
+            startIdx++;
+          }
         }
 
         if (this.realFft) {
@@ -511,22 +564,6 @@ export class WhisperMelProcessor {
     }
 
     return { features, frameCount: nFrames, nMels: this.nMels };
-  }
-
-  private getReflectPaddedSample(audio: Float32Array, paddedIdx: number, pad: number): number {
-    const sampleCount = audio.length;
-    const originalStart = pad;
-    const originalEnd = pad + sampleCount - 1;
-
-    if (paddedIdx < originalStart) {
-      const dist = originalStart - paddedIdx;
-      return audio[dist] as number;
-    } else if (paddedIdx > originalEnd) {
-      const dist = paddedIdx - originalEnd;
-      return audio[sampleCount - 1 - dist] as number;
-    } else {
-      return audio[paddedIdx - pad] as number;
-    }
   }
 
   /**
