@@ -223,8 +223,10 @@ function handleUpdateConfig(id: number, config: TenVadUpdateConfigPayload) {
 }
 
 function handleDispose(id: number) {
-  if (moduleInstance && vadHandle) {
-    moduleInstance._ten_vad_destroy(vadHandle);
+  if (moduleInstance) {
+    if (vadHandle) {
+      moduleInstance._ten_vad_destroy(vadHandle);
+    }
     moduleInstance._free(audioPtr);
     moduleInstance._free(probPtr);
     moduleInstance._free(flagPtr);
