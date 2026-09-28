@@ -493,11 +493,16 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
       });
 
       if (cacheChunks) {
-        const bytes = new Uint8Array(loaded);
-        let offset = 0;
-        for (const chunk of cacheChunks) {
-          bytes.set(chunk, offset);
-          offset += chunk.byteLength;
+        let bytes: Uint8Array;
+        if (cacheChunks.length === 1) {
+          bytes = cacheChunks[0]!;
+        } else {
+          bytes = new Uint8Array(loaded);
+          let offset = 0;
+          for (const chunk of cacheChunks) {
+            bytes.set(chunk, offset);
+            offset += chunk.byteLength;
+          }
         }
         await writeCache(this.cache, this.request.cacheKey, {
           bytes,
