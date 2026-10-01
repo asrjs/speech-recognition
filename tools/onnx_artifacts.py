@@ -21,7 +21,9 @@ def iter_tensors(message):
     for field, value in message.ListFields():
         if field.type != field.TYPE_MESSAGE:
             continue
-        children = value if field.label == field.LABEL_REPEATED else (value,)
+        # Protobuf 7 removed label; older installed runtimes lack is_repeated.
+        repeated = field.is_repeated if hasattr(field, "is_repeated") else field.label == field.LABEL_REPEATED
+        children = value if repeated else (value,)
         for child in children:
             yield from iter_tensors(child)
 

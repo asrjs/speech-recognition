@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from types import SimpleNamespace
 
 import numpy as np
 import onnx
@@ -39,6 +40,20 @@ def save_fixture(root):
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_reflection_supports_modern_and_legacy_repeated_field_descriptors(self):
+        child = helper.make_tensor("child", TensorProto.FLOAT, [1], [1])
+        for repeated in (False, True):
+            for modern in (False, True):
+                field = SimpleNamespace(type=11, TYPE_MESSAGE=11)
+                if modern:
+                    field.is_repeated = repeated
+                else:
+                    field.label, field.LABEL_REPEATED = (3 if repeated else 1), 3
+                message = SimpleNamespace(DESCRIPTOR=SimpleNamespace(full_name="test.Container"),
+                                          ListFields=lambda: [(field, [child] if repeated else child)])
+                with self.subTest(repeated=repeated, modern=modern):
+                    self.assertEqual(list(iter_tensors(message)), [child])
+
     def test_repack_preserves_initializer_attribute_inline_and_slice_values(self):
         with TemporaryDirectory() as root:
             source = save_fixture(Path(root) / "source")
