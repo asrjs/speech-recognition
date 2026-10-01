@@ -32,7 +32,10 @@ creates a real local archive with scripts disabled, extracts it outside the
 checkout and links only existing browser dependencies/type helpers. With native
 ORT physically absent, actual package root/browser imports, explicit native
 unavailable rejection and strict NodeNext public declarations passed (no
-`skipLibCheck`). No model inference or browser GPU execution is certified.
+`skipLibCheck`). The public `runtime.loadModel()` control explicitly requests
+native CPU with an available WASM backend also registered: it rejects with
+`backend-unavailable` before model creation or asset resolution, without fallback.
+No model inference or browser GPU execution is certified.
 Fixtures are retained in the printed temporary directory for inspection.
 
 Next bounded step: compare actual package-manager install footprints and repeat native Node/Bun local
