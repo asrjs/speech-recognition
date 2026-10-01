@@ -7,6 +7,8 @@ import json
 import math
 from pathlib import Path
 import subprocess
+import gzip
+import tempfile
 import unittest
 
 MODULE_PATH = Path(__file__).with_name("compare_js_feature_boundaries.py")
@@ -162,6 +164,26 @@ class FeatureBoundaryProbeTests(unittest.TestCase):
         empty = {**capture, "frames": [], "frameBytesF64LE": "", "frameShape": [1, 0, 512]}
         with self.assertRaises(ValueError):
             probe_module.read_production_frames(empty, 512, 0)
+
+    def test_frame_arithmetic_controls_preserve_existing_feature_experiments(self):
+        import numpy as np
+        for name, experiment in (("preemphasis", "fp32_preemphasis"),
+                ("window", "reference_window"), ("windowProduct", "fp32_window_product")):
+            with self.subTest(stage=name):
+                capture = self.result["frameArithmeticCaptures"][name]
+                self.assertEqual(capture["features"], self.result["experiments"][experiment])
+                frames = probe_module.read_production_frames(capture, 512, 11)
+                self.assertTrue(np.isfinite(frames).all())
+                real = np.asarray(capture["real"], dtype=np.float64)
+                imag = np.asarray(capture["imag"], dtype=np.float64)
+                np.testing.assert_array_equal(capture["power"], np.float32(real * real + imag * imag))
+
+    def test_final_frame_arithmetic_control_reaches_canonical_aligned_input(self):
+        import numpy as np
+        final = probe_module.read_production_frames(self.result["frameArithmeticCaptures"]["windowProduct"], 512, 11)
+        aligned = probe_module.read_windowed_frames(self.result["complexPowerCapture"], 512, 11)
+        self.assertEqual(final.astype("<f4").tobytes(), aligned.astype("<f4").tobytes())
+        np.testing.assert_array_equal(final, aligned.astype(np.float64))
 
     def test_official_complex_injection_preserves_layout_and_library_power_arithmetic(self):
         import numpy as np
@@ -703,6 +725,27 @@ class PowerErrorAttributionTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     probe_module.power_error_attribution(*original, mismatch_coordinates=[],
                         valid_length=length, log_zero_guard=guard)
+
+
+class DiagnosticOutputTests(unittest.TestCase):
+    def test_gzip_report_preserves_complete_payload_and_refuses_existing_output(self):
+        report = {"status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE", "values": [0, -0.0, 1.5], "text": "Türkçe"}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sub" / "receipt.json.gz"
+            probe_module.write_diagnostic_report(path, report)
+            before = path.read_bytes()
+            with gzip.open(path, "rt", encoding="utf-8") as file:
+                self.assertEqual(json.load(file), report)
+            with self.assertRaises(FileExistsError):
+                probe_module.write_diagnostic_report(path, {"replacement": True})
+            self.assertEqual(path.read_bytes(), before)
+
+    def test_plain_report_keeps_existing_json_format(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "receipt.json"
+            report = {"values": [1, 2, 3]}
+            probe_module.write_diagnostic_report(path, report)
+            self.assertEqual(path.read_text(encoding="utf-8"), json.dumps(report, indent=2) + "\n")
 
 
 if __name__ == "__main__":

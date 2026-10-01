@@ -63,7 +63,10 @@ for (const [before, after] of [
 }
 async function experiment(name, { window = false, windowProduct = false, filterbank = false,
   referencePower = false, magnitudeRoundTrip = false, capturePower = false, complexPower = false,
-  fullFft = null, referenceComplexPower = null, production = false } = {}) {
+  fullFft = null, referenceComplexPower = null, production = false, capturePacked = false } = {}) {
+  if (capturePacked && (!capturePower || referencePower || magnitudeRoundTrip || complexPower ||
+      fullFft || referenceComplexPower || production))
+    throw new Error('Packed arithmetic capture must retain original power expressions');
   if (production && (!capturePower || window || windowProduct || filterbank || referencePower ||
       magnitudeRoundTrip || complexPower || fullFft || referenceComplexPower))
     throw new Error('Production capture must preserve unmodified arithmetic');
@@ -123,7 +126,7 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       }
     ` + candidateSource.slice(stop + end.length);
   }
-  if (complexPower || production) {
+  if (complexPower || production || capturePacked) {
     const fftBoundary = 'fft(this.fftRe, this.fftIm, halfN, this.twiddlesHalf);';
     if (candidateSource.split(fftBoundary).length !== 2) throw new Error('Packed FFT input capture contract changed');
     candidateSource = candidateSource.replace(fftBoundary, `for (let sample = 0; sample < N_FFT; sample++) {
@@ -217,14 +220,15 @@ async function experiment(name, { window = false, windowProduct = false, filterb
     };
   }
   const result = processor.process(pcm);
-  const frameBytes = fullFft || complexPower || production
-    ? Buffer.alloc(variant.capturedFrames.length * (production ? 8 : 4)) : null;
-  if (frameBytes) variant.capturedFrames.forEach((value, index) => production
+  const unroundedFrames = production || capturePacked;
+  const frameBytes = fullFft || complexPower || unroundedFrames
+    ? Buffer.alloc(variant.capturedFrames.length * (unroundedFrames ? 8 : 4)) : null;
+  if (frameBytes) variant.capturedFrames.forEach((value, index) => unroundedFrames
     ? frameBytes.writeDoubleLE(value, index * 8) : frameBytes.writeFloatLE(value, index * 4));
   return capturePower ? { features: Array.from(result.features), raw: capturedRaw, power: variant.capturedPower,
     shape: [1, (variant.MEL_CONSTANTS.N_FFT >> 1) + 1, result.frameCount],
     ...(referenceComplexPower ? { real: variant.capturedReal, imag: variant.capturedImag } : {}),
-    ...(production ? { real: variant.capturedReal, imag: variant.capturedImag,
+    ...(unroundedFrames ? { real: variant.capturedReal, imag: variant.capturedImag,
       frames: variant.capturedFrames, frameShape: [1, result.frameCount, variant.MEL_CONSTANTS.N_FFT],
       frameDtype: 'float64', frameLayout: 'batch-frame-sample',
       frameBytesEncoding: 'base64-f64le', frameBytesF64LE: frameBytes.toString('base64') } : {}),
@@ -244,6 +248,12 @@ const experiments = {
 const powerCapture = await experiment('power-capture', { window: true, windowProduct: true,
   filterbank: true, magnitudeRoundTrip: true, capturePower: true });
 const productionCapture = await experiment('production-capture', { production: true, capturePower: true });
+const frameArithmeticCaptures = {
+  preemphasis: await experiment('frame-preemphasis', { capturePacked: true, capturePower: true }),
+  window: await experiment('frame-window', { window: true, capturePacked: true, capturePower: true }),
+  windowProduct: await experiment('frame-window-product', {
+    window: true, windowProduct: true, capturePacked: true, capturePower: true }),
+};
 const complexPowerCapture = await experiment('complex-power-capture', { window: true,
   windowProduct: true, filterbank: true, complexPower: true, capturePower: true });
 const fullFftF32Capture = await experiment('full-fft-f32', { window: true,
@@ -256,7 +266,7 @@ const referenceComplexRoundedCapture = await experiment('reference-complex-round
   windowProduct: true, filterbank: true, referenceComplexPower: 'fp32-rounded', capturePower: true });
 console.log(JSON.stringify({ raw: Array.from(raw.features), normalized: Array.from(normalized.features),
   sameRawNormalized: Array.from(sameRawNormalized), frameCount: raw.frameCount, validLength: raw.length,
-  experiments, powerCapture, productionCapture, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
+  experiments, powerCapture, productionCapture, frameArithmeticCaptures, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
   referenceComplexLibraryCapture, referenceComplexRoundedCapture,
   logZeroGuard: MEL_CONSTANTS.LOG_ZERO_GUARD, nodeVersion: process.version }));
 '''
@@ -679,6 +689,17 @@ def power_error_attribution(reference_power, candidate_power, filterbank,
         "per_mel": per_mel, "mismatches": points}
 
 
+def write_diagnostic_report(path, report):
+    """Preserve full evidence with optional gzip, never overwrite an earlier run."""
+    if path.suffix == ".gz":
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with gzip.open(path, "xt", encoding="utf-8") as file:
+            json.dump(report, file, indent=2)
+            file.write("\n")
+    else:
+        write_new_text(path, json.dumps(report, indent=2) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--audio", type=Path, required=True)
@@ -686,6 +707,7 @@ def main():
     parser.add_argument("--official-capture", type=Path, required=True)
     parser.add_argument("--sample-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--summary-only", action="store_true", help="Print only receipt path/status; full evidence remains in output")
     args = parser.parse_args()
     require_new_outputs([args.output], protected_inputs=[args.audio, args.source_config, args.official_capture])
     config = json.loads(args.source_config.read_text(encoding="utf-8"))["preprocessor"]
@@ -809,6 +831,26 @@ def main():
     production_diagnostic["unchanged_valid_raw_mel"] = production_raw_control
     production_diagnostic["official_stft_components"] = compare_fft_components(
         production_capture, official_complex_array, atol=1e-5, rtol=1e-4)
+    frame_arithmetic_controls = {}
+    previous_frames = read_production_frames(production_capture, processor.n_fft, raw.shape[2])
+    for name, capture in js["frameArithmeticCaptures"].items():
+        frames = read_production_frames(capture, processor.n_fft, raw.shape[2])
+        phase_features = compare_tensors(expected_tensor, reshape(capture["features"]), atol=1e-5, rtol=1e-4)
+        experiment_key = {"preemphasis": "fp32_preemphasis", "window": "reference_window",
+            "windowProduct": "fp32_window_product"}[name]
+        invariant = compare_tensors(reshape(js["experiments"][experiment_key]),
+            reshape(capture["features"]), atol=0, rtol=0)
+        if not invariant["allclose"]:
+            raise ValueError("Packed frame observations changed the existing arithmetic experiment")
+        frame_arithmetic_controls[name] = {
+            "scope": "Cumulative isolated arithmetic control, original packed FFT and power; not changed production",
+            "frame_sha256_f64le": hashlib.sha256(frames.tobytes()).hexdigest(),
+            "frame_values_vs_official": compare_tensors(official_frames_array.astype(np.float64), frames, atol=0, rtol=0),
+            "explicit_f32_cast_frame_bits_vs_official": compare_tensors(
+                official_frames_array.astype("<f4", copy=False).view("<u4"), frames.astype("<f4").view("<u4"), atol=0, rtol=0),
+            "frame_delta_from_previous_control": compare_tensors(previous_frames, frames, atol=0, rtol=0),
+            "features_vs_official": phase_features, "unchanged_existing_experiment": invariant}
+        previous_frames = frames
     # Separately cross-check the independent unfold/window reconstruction against
     # NeMo's actual STFT call; matching JS frames alone does not certify this seam.
     stft_control = {"shape": list(official_complex.shape),
@@ -886,10 +928,13 @@ def main():
         "mel_power_attribution": attribution,
         "selected_bin_dft": dft_diagnostic,
         "production_input_diagnostic": production_diagnostic,
+        "frame_arithmetic_controls": frame_arithmetic_controls,
         "diagnostic_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "comparisons": metrics}
-    write_new_text(args.output, json.dumps(report, indent=2) + "\n")
-    print(json.dumps(report, indent=2))
+    write_diagnostic_report(args.output, report)
+    print(json.dumps({"status": report["status"], "output": str(args.output),
+        "all_comparisons_pass": all(metric["allclose"] for metric in metrics.values())}
+        if args.summary_only else report, indent=2))
     return 0 if all(metric["allclose"] for metric in metrics.values()) else 1
 
 

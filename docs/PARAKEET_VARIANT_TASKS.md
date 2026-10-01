@@ -348,8 +348,8 @@ mel/log/statistics amplification separate. Existing P02–P08 gates remain open.
   contain 464 numerical stages, 40 predictor calls, 46 joint calls, token
   durations, audio/source hashes and exact baseline/captured/after token-text
   controls. The official greedy-batch decoder is retained, not reimplemented.
-  Pure silence and long-audio fixtures remain to be captured; the speech/silence
-  continuation is recorded above.
+  Pure silence is now captured separately (see the checkpoint below). Long-audio
+  fixtures remain to be captured; the speech/silence continuation is recorded above.
 - P09: the stage comparator now rejects empty captures and supports required
   `stage_order`; earliest divergence follows processing order rather than
   alphabetical stage names. Compressed JSON is supported; duration/frame
@@ -374,6 +374,33 @@ mel/log/statistics amplification separate. Existing P02–P08 gates remain open.
   opt-in real-model/reference tests remain unexecuted without fixtures, so this
   is not all-model parity certification. Small machine-readable handoff:
   `tools/data/results/orukeet/harness-validation-2026-10-01.json`.
+
+### Frame arithmetic and pure-silence checkpoint (2026-10-01)
+
+The cumulative JFK diagnostic preserves original packed power expressions:
+production / f32 preemphasis / official window / rounded window products fail
+at 313 / 200 / 139 / 121 normalized-feature coordinates respectively. The last
+control has exactly the official FFT input values; this is still not feature
+acceptance. These are temporary diagnostic modules, not production changes.
+
+An exact-zero 1-second, mono 16 kHz PCM16 fixture now has an original-weight
+official NeMo capture: empty text/tokens, 60 stages and all six instrumentation
+controls PASS. Own fp32 native ORT recorded-boundary replay passes 50 numerical
+comparisons and 12 token/duration decisions. This is PARTIAL PASS, not an
+end-to-end library, WASM or Orukeet browser certification.
+
+The same silence feature diagnostic exposes a separate earlier-boundary issue:
+frames and raw mel match exactly, but all 12,800 valid normalized values fail
+(`atol=1e-5`, `rtol=1e-4`, max error `0.1600533276796341`). Official float32
+masked mean/std reductions differ from the JS double reductions even for a
+constant row. Next inspect and test reference-equivalent reduction semantics
+over varying valid and physical lengths; do not hardcode a silence offset or
+relax acceptance. Re-test speech and silence before production edits.
+
+Lossless gzip reports and opt-in `--summary-only` keep full numerical evidence
+while reducing output overhead. 53 focused probe/output tests and eight output
+safety tests pass; core typecheck passes. Full suite was not rerun for this
+checkpoint. Receipt: `tools/data/results/orukeet/frame-arithmetic-and-silence-handoff-2026-10-01.json`.
 
 ## Upstream recipes to inspect during export
 

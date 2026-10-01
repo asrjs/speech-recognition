@@ -349,6 +349,40 @@ Production features still fail at 313 coordinates, aligned packed features at
 120. The successful diagnostic exits 1 because acceptance remains incomplete.
 Forty-nine probe tests pass, including source/output immutability, exact original
 power reconstruction, f64 byte/mirror checks and malformed shape/coercion
-refusal. Next separate preemphasis and window deltas before testing a production
-arithmetic candidate on the broader fixtures. No production code or tolerances
+refusal. The cumulative controls below now separate preemphasis and window deltas.
+No production code or tolerances
 changed. Earlier preliminary receipts remain preserved, not overwritten.
+
+### Cumulative arithmetic and original-weight pure silence
+
+The final JFK matrix retains original packed power arithmetic and gives
+313 → 200 → 139 → 121 failed feature coordinates as f32 preemphasis, official
+window values and rounded products are introduced cumulatively. Final window
+products equal the official FFT inputs exactly; features still FAIL.
+
+Pure silence uses a fresh generated 1-second 16 kHz mono PCM16 exact-zero WAV:
+
+```powershell
+ffmpeg -hide_banner -loglevel error -f lavfi -i anullsrc=r=16000:cl=mono -t 1 -c:a pcm_s16le -n tools/data/results/orukeet/pure-silence-1s-16k-pcm16.wav
+```
+
+The WAV SHA-256 is `57d8dd674034eb744bd8dfa71344ee02e1a8e709563cef10108eda63663675c8`.
+`official-pure-silence-1s-summary-2026-10-01.json` binds the original-weight
+NeMo capture (empty transcript/tokens, 60 stages, six exact instrumentation
+controls). Own fp32 native stage replay passes 50 numerical comparisons and
+12 exact decoding decisions; accumulated library decoding and browser remain
+UNTESTED by this replay.
+
+All silence frame controls and raw mel match the reference exactly, but
+normalization fails at 12,800 coordinates (max `0.1600533276796341`). For the
+first constant raw row, reference mean is `-16.635530471801758` and guarded std
+`1.1916957191715483e-5`, while JS mean is `-16.63553237915039` and guarded std
+`1e-5`. Inspect official float32 masked reductions before proposing a shared
+processor fix. No silence offset, tolerance adjustment or production patch is
+justified by this diagnostic alone.
+
+Reports accept fresh `.json.gz` paths with exclusive creation; `--summary-only`
+only shortens console output, not evidence or exit criteria. Final local
+silence/JFK compressed receipts preserve full diagnostics in approximately
+1.53 MB / 0.72 MB. Both exit 1 because feature acceptance fails. 53 focused
+tests pass. Hashes and next steps are in the frame-arithmetic-and-silence handoff.

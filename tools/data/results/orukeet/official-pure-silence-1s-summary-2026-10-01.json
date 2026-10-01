@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "python": "3.10.12",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "torch": "2.6.0+cu118",
+    "nemo_toolkit": "3.0.0",
+    "audio": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\pure-silence-1s-16k-pcm16.wav",
+    "model": "oruk/orukeet",
+    "model_revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+    "restore_path": "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\source\\orukeet-v0.1.0.nemo",
+    "device": "cpu",
+    "cuda_available": true,
+    "batch_size": 1,
+    "cpu_threads": 4,
+    "numba_cache": "N:\\github\\asrjs\\speech-recognition\\.cache\\nemo-reference\\numba",
+    "timestamps": false,
+    "audio_sha256": "57d8dd674034eb744bd8dfa71344ee02e1a8e709563cef10108eda63663675c8",
+    "weight_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
+  },
+  "result": {
+    "text": "",
+    "normalized_text": "",
+    "token_ids": [],
+    "token_pieces": null,
+    "score": 0.0,
+    "timestamp": [],
+    "timestep": null,
+    "token_duration": [],
+    "context_librivox": null,
+    "context_domain": null
+  },
+  "stage_capture": {
+    "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\official-pure-silence-1s-stages-2026-10-01.json.gz",
+    "stage_count": 60,
+    "call_counts": {
+      "predictor": 2,
+      "joint": 12,
+      "encoder_projection": 1,
+      "predictor_projection": 2
+    },
+    "instrumentation_control": {
+      "baseline_tokens_match": true,
+      "baseline_text_match": true,
+      "baseline_frames_match": true,
+      "after_tokens_match": true,
+      "after_text_match": true,
+      "after_durations_match": true
+    },
+    "model_input": {
+      "boundary": "preprocessor_input_signal",
+      "sample_rate": 16000,
+      "channels": 1,
+      "dtype": "float32",
+      "encoding": "f32le",
+      "shape": [
+        1,
+        16000
+      ],
+      "samples": 16000,
+      "valid_samples": 16000,
+      "right_padding_samples": 0,
+      "sha256": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74"
+    },
+    "numerical_export_parity": "UNTESTED",
+    "browser_parity": "UNTESTED"
+  }
+}
