@@ -115,6 +115,22 @@ powers and filterbank before revisiting the upstream FFT rounding mismatch.
 Do not hardcode corrections for the six log cells or infer active GEMM kernel
 dispatch from installed MKL availability.
 
+Mel product/add discrimination (2026-10-01): on byte-identical official powers,
+official filterbank coefficients and validated cached support, the diagnostic
+`f64-product-f32-sum` reproduces all 140,800 valid float32 linear-mel and rounded
+guarded-input cells exactly. The `f32-product-f64-sum` / `f32-product-f32-sum`
+controls have 33,329 / 27,171 nonidentical linear-mel cells. The matching linear
+control still has 741 nonidentical raw-log cells because its unchanged JS log
+receives an unrounded double guard addition; this is separate from the previous
+identical-f32-log-input control's six differences. All three raw-log controls
+pass the unchanged tolerances. This is scalar mixed-precision evidence, not
+proof of FMA emulation, active GEMM dispatch or production/model parity.
+Production remains at 313 failed feature coordinates. 73 probe, 6 Python
+reduction and 8 Node tests pass; the real run exits 1 at unchanged production
+gates. Receipt: `mel-arithmetic-handoff-2026-10-01.json`.
+Next validate the same arithmetic on silence, then isolate guard rounding and
+normalization with actual library spectra before any shared processor change.
+
 ## Ordered tasks
 
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and

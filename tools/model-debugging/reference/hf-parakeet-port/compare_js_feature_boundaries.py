@@ -80,7 +80,11 @@ for (const [before, after] of [
 async function experiment(name, { window = false, windowProduct = false, filterbank = false,
   referencePower = false, magnitudeRoundTrip = false, capturePower = false, complexPower = false,
   fullFft = null, referenceComplexPower = null, production = false, capturePacked = false, packedF32 = false,
-  powerOverrides = null } = {}) {
+  powerOverrides = null, melArithmetic = null } = {}) {
+  if (melArithmetic !== null && (!['f32-product-f64-sum', 'f32-product-f32-sum', 'f64-product-f32-sum'].includes(melArithmetic) ||
+      !referencePower || !capturePower || !window || !windowProduct || !filterbank || production ||
+      complexPower || magnitudeRoundTrip || fullFft || referenceComplexPower || powerOverrides !== null))
+    throw new Error('Mel arithmetic requires an isolated official-power capture');
   if (powerOverrides !== null) {
     if (!window || !windowProduct || !filterbank || !complexPower || !capturePower || packedF32 || fullFft || production || referencePower ||
         referenceComplexPower || !Array.isArray(powerOverrides) || powerOverrides.length === 0)
@@ -107,6 +111,15 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       magnitudeRoundTrip || complexPower || fullFft || referenceComplexPower))
     throw new Error('Production capture must preserve unmodified arithmetic');
   let candidateSource = production ? productionSource : source;
+  if (melArithmetic) {
+    const boundary = 'melValue +=\n                        this.powerBuf[freqIndex] * this.melFilterbank[filterbankOffset + freqIndex];';
+    if (candidateSource.split(boundary).length !== 2) throw new Error('Mel accumulator contract changed');
+    const product = 'this.powerBuf[freqIndex] * this.melFilterbank[filterbankOffset + freqIndex]';
+    const term = melArithmetic.startsWith('f32-product') ? `Math.fround(${product})` : product;
+    const replacement = melArithmetic.endsWith('f32-sum')
+      ? `melValue = Math.fround(melValue + ${term});` : `melValue += ${term};`;
+    candidateSource = candidateSource.replace(boundary, replacement);
+  }
   if (packedF32) candidateSource = packedF32Source(candidateSource);
   if (referenceComplexPower !== null && !['library', 'fp32-rounded'].includes(referenceComplexPower))
     throw new Error('Invalid reference complex power control');
@@ -285,6 +298,7 @@ async function experiment(name, { window = false, windowProduct = false, filterb
     ? frameBytes.writeDoubleLE(value, index * 8) : frameBytes.writeFloatLE(value, index * 4));
   return capturePower ? { features: Array.from(result.features), raw: capturedRaw, power: variant.capturedPower,
     ...(referencePower ? { linearMel: variant.capturedMel, logInput: variant.capturedLogInput,
+        filterbankBounds: Array.from(processor.fbBounds),
       f32LogInputRaw: Array.from(Float32Array.from(variant.capturedLogInput, value => Math.log(Math.fround(value)))) } : {}),
     ...(powerOverrides !== null ? { effectivePower: variant.effectivePower, powerOverrides } : {}),
     shape: [1, (variant.MEL_CONSTANTS.N_FFT >> 1) + 1, result.frameCount],
@@ -310,6 +324,11 @@ const powerCapture = await experiment('power-capture', { window: true, windowPro
   filterbank: true, magnitudeRoundTrip: true, capturePower: true });
 const referencePowerCapture = await experiment('reference-power-capture', { window: true, windowProduct: true,
   filterbank: true, referencePower: true, capturePower: true });
+const melArithmeticCaptures = {};
+for (const melArithmetic of ['f32-product-f64-sum', 'f32-product-f32-sum', 'f64-product-f32-sum']) {
+  melArithmeticCaptures[melArithmetic] = await experiment('mel-' + melArithmetic, { window: true,
+    windowProduct: true, filterbank: true, referencePower: true, capturePower: true, melArithmetic });
+}
 const productionCapture = await experiment('production-capture', { production: true, capturePower: true });
 const frameArithmeticCaptures = {
   preemphasis: await experiment('frame-preemphasis', { capturePacked: true, capturePower: true }),
@@ -349,7 +368,7 @@ for (const [name, values] of Object.entries(normalizationInputs)) {
   normalizationControls[name] = { features: Array.from(result.features), mean: Array.from(result.mean), std: Array.from(result.std) };
 }
 console.log(JSON.stringify({ raw: Array.from(raw.features), normalized: Array.from(normalized.features),
-  referencePowerCapture, officialLogInputControl,
+  referencePowerCapture, officialLogInputControl, melArithmeticCaptures,
   powerOverrideCapture, powerOverrideNormalization: powerOverrideNormalization ? Object.fromEntries(
     ['features', 'mean', 'std'].map(key => [key, Array.from(powerOverrideNormalization[key])])) : null,
   sameRawNormalized: Array.from(sameRawNormalized), normalizationControls, frameCount: raw.frameCount, validLength: raw.length,
@@ -883,6 +902,21 @@ def compare_raw_valid_prefix(reference, candidate, valid_length):
         "exact": compare_tensors(left, right, atol=0, rtol=0)}
 
 
+def validate_filterbank_support(filterbank, bounds):
+    """Gate real official comparisons, not intentionally synthetic probe fixtures."""
+    weights = np.asarray(filterbank)
+    intervals = np.asarray(bounds)
+    if weights.ndim != 2 or not np.isfinite(weights).all():
+        raise ValueError('Invalid official filterbank')
+    if intervals.shape != (weights.shape[0] * 2,) or intervals.dtype.kind not in 'iu':
+        raise ValueError('Invalid cached filterbank bounds')
+    for mel, (start, end) in enumerate(intervals.reshape(-1, 2)):
+        if not 0 <= start <= end <= weights.shape[1]:
+            raise ValueError('Cached filterbank bounds out of range')
+        if np.any(weights[mel, :start] != 0) or np.any(weights[mel, end:] != 0):
+            raise ValueError('Official filterbank support falls outside cached mel bounds')
+
+
 def write_diagnostic_report(path, report):
     """Preserve full evidence with optional gzip, never overwrite an earlier run."""
     if path.suffix == ".gz":
@@ -993,6 +1027,7 @@ def main():
         raise ValueError("JS/reference frame or valid-length mismatch")
     reshape = lambda values: np.asarray(values, dtype=np.float32).reshape(raw.shape)
     capture = js['referencePowerCapture']
+    validate_filterbank_support(processor.fb.numpy()[0], capture['filterbankBounds'])
     if capture['shape'] != list(power.shape) or not np.array_equal(
             np.asarray(capture['power'], dtype='<f4').view('<u4'), power.numpy().astype('<f4').ravel().view('<u4')):
         raise ValueError('Global official-power control did not preserve exact power bits')
@@ -1005,6 +1040,7 @@ def main():
     reference_power_mel_log = {
         'scope': 'Diagnostic global official-power injection; unchanged JS accumulation/log, not production parity',
         'official_raw_reconstruction_exact': True, 'official_power_bits_exact': True,
+        'official_filterbank_support_covered': True,
         'unchanged_existing_reference_power_features': True,
         'linear_mel_f32_vs_official': compare_raw_valid_prefix(official_linear_mel.numpy()[0], reshape(capture['linearMel'])[0], int(valid_length[0])),
         'guarded_log_input_f32_vs_official': compare_raw_valid_prefix(official_log_input.numpy()[0], reshape(capture['logInput'])[0], int(valid_length[0])),
@@ -1013,6 +1049,24 @@ def main():
         'capture': capture,
         'official_linear_mel': official_linear_mel.flatten().tolist(),
         'official_log_input': official_log_input.flatten().tolist()}
+    mel_arithmetic_controls = {}
+    for name, observation in js['melArithmeticCaptures'].items():
+        if observation['filterbankBounds'] != capture['filterbankBounds']:
+            raise ValueError(f'Mel arithmetic changed cached filterbank bounds: {name}')
+        if observation['shape'] != capture['shape'] or np.asarray(observation['power'], dtype='<f4').tobytes() != np.asarray(capture['power'], dtype='<f4').tobytes():
+            raise ValueError(f'Mel arithmetic changed official power input: {name}')
+        for key in ('linearMel', 'logInput', 'raw'):
+            values = np.asarray(observation[key], dtype=np.float64)
+            if values.size != raw.numel() or not np.isfinite(values).all():
+                raise ValueError(f'Invalid mel arithmetic boundary: {name}/{key}')
+        mel_arithmetic_controls[name] = {
+            'scope': 'Isolated scalar product/add rounding on official powers; same filterbank, ascending bounds and unchanged log; not GEMM dispatch or production',
+            'official_power_bits_exact': True,
+            'linear_mel_f32_vs_official': compare_raw_valid_prefix(official_linear_mel.numpy()[0], reshape(observation['linearMel'])[0], int(valid_length[0])),
+            'guarded_input_f32_vs_official': compare_raw_valid_prefix(official_log_input.numpy()[0], reshape(observation['logInput'])[0], int(valid_length[0])),
+            'raw_log_vs_official': compare_raw_valid_prefix(raw.numpy()[0], reshape(observation['raw'])[0], int(valid_length[0])),
+            'capture': observation}
+    reference_power_mel_log['mel_arithmetic_controls'] = mel_arithmetic_controls
     log_control = js['officialLogInputControl']
     if not log_control or not np.array_equal(np.asarray(log_control['input'], dtype='<f4').view('<u4'),
             official_log_input.numpy().astype('<f4').ravel().view('<u4')):

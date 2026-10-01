@@ -32,6 +32,67 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_official_filterbank_support_gate_accepts_covered_and_empty_rows(self):
+        probe_module.validate_filterbank_support([[0, 1, 0], [0, 0, 0]], [1, 2, 0, 0])
+        probe_module.validate_filterbank_support([[0, 1, 0]], [0, 3])
+
+    def test_official_filterbank_support_gate_rejects_missing_or_invalid_bounds(self):
+        for bounds in ([0, 1], [2, 3], [-1, 3], [0, 4], [2, 1], [0], [[0, 3]], [0.0, 3.0]):
+            with self.subTest(bounds=bounds), self.assertRaises(ValueError):
+                probe_module.validate_filterbank_support([[0, 1, 0]], bounds)
+        for weights in ([0, 1, 0], [[0, float('nan'), 0]], [[0, float('inf'), 0]]):
+            with self.subTest(weights=weights), self.assertRaises(ValueError):
+                probe_module.validate_filterbank_support(weights, [0, 3])
+
+    def test_mel_rounding_controls_distinguish_half_ulp_boundary(self):
+        data = inputs()
+        # Mel 0 of the eight-bin fixture visits both spectral bins 1 and 2.
+        data['referenceFilterbank'][1:3] = [1, 2 ** -24 + 2 ** -47]
+        data['referencePower'][11:22] = [1] * 11
+        data['referencePower'][22:33] = [1 - 2 ** -24] * 11
+        completed = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30, check=True)
+        result = json.loads(completed.stdout)
+        expected = {'f32-product-f64-sum': 1 + 2 ** -24, 'f32-product-f32-sum': 1,
+            'f64-product-f32-sum': 1 + 2 ** -23}
+        for name, total in expected.items():
+            self.assertEqual(result['melArithmeticCaptures'][name]['linearMel'][:11], [total] * 11)
+
+    def test_mel_arithmetic_controls_match_independent_scalar_rounding(self):
+        import numpy as np
+        data = inputs()
+        weights = [float(np.float32(value)) for value in (0.1, 0.2, 0.3)]
+        powers = [float(np.float32(value)) for value in (0.7, 0.9, 1.1)]
+        data['referenceFilterbank'][1:4] = weights
+        for bin_index, value in enumerate(powers, 1):
+            data['referencePower'][bin_index * 11:(bin_index + 1) * 11] = [value] * 11
+        completed = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30, check=True)
+        result = json.loads(completed.stdout)
+        controls = result['melArithmeticCaptures']
+        self.assertEqual(set(controls), {'f32-product-f64-sum', 'f32-product-f32-sum', 'f64-product-f32-sum'})
+        totals = []
+        for name, capture in controls.items():
+            total = 0.0
+            for weight, power in zip(weights, powers):
+                term = weight * power
+                if name.startswith('f32-product'):
+                    term = float(np.float32(term))
+                total += term
+                if name.endswith('f32-sum'):
+                    total = float(np.float32(total))
+            totals.append(total)
+            self.assertEqual(capture['power'], data['referencePower'])
+            self.assertEqual(capture['shape'], result['referencePowerCapture']['shape'])
+            self.assertEqual(capture['linearMel'][:11], [total] * 11)
+            self.assertEqual(capture['linearMel'][11:], [0] * 77)
+            self.assertEqual(capture['logInput'][:11], [total + result['logZeroGuard']] * 11)
+            self.assertEqual(capture['raw'][:11], [float(np.float32(math.log(total + result['logZeroGuard'])))] * 11)
+        self.assertGreater(len(set(totals)), 1, 'Fixture must distinguish rounding controls')
+        self.assertEqual(result['productionCapture']['features'], self.result['productionCapture']['features'])
+
     def test_official_log_input_control_preserves_inputs_and_uses_js_log(self):
         import numpy as np
         data = inputs()

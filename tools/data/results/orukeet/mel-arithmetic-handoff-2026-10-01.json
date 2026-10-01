@@ -1,0 +1,22 @@
+{
+  "status": "DIAGNOSTIC_LINEAR_MEL_EXACT_PRODUCTION_FEATURES_FAIL",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "receipt": "mel-arithmetic-jfk-final-2026-10-01.json.gz",
+  "receipt_sha256": "7f88b4015dc7d2bb97f6a3f0e8e43d5820c589807cff0642c8f3b85f124a0966",
+  "diagnostic_sha256": "f4b35009c856ea0d4f509d12e42db51053503b4bcd2e232a75161f26d60e89ca",
+  "official_power_bits_exact": true,
+  "official_filterbank_support_covered": true,
+  "valid_prefix_cells": 140800,
+  "controls": {
+    "f32-product-f64-sum": {"linear_mel_f32_exact_mismatches": 33329, "guarded_input_f32_exact_mismatches": 31623, "raw_log_exact_mismatches": 6331},
+    "f32-product-f32-sum": {"linear_mel_f32_exact_mismatches": 27171, "guarded_input_f32_exact_mismatches": 25638, "raw_log_exact_mismatches": 4162},
+    "f64-product-f32-sum": {"linear_mel_f32_exact_mismatches": 0, "guarded_input_f32_exact_mismatches": 0, "raw_log_exact_mismatches": 741}
+  },
+  "raw_log_tolerance_failures_all_controls": 0,
+  "raw_log_max_abs_error_all_controls": 1.9073486328125e-6,
+  "production_feature_failures": 313,
+  "validation": {"probe_tests": 73, "python_reduction_tests": 6, "node_tests": 8, "real_exit_code": 1, "full_suite": "NOT_RUN"},
+  "limits": ["Official power injection bypasses upstream FFT", "Rounded guarded-input comparison does not mean JS log consumed rounded inputs", "Mixed precision is not a proven exact FMA emulation", "No active GEMM kernel dispatch or production/model/browser acceptance claim"],
+  "next": "Validate silence, then guard rounding and normalization with actual library spectra before shared processor changes."
+}
