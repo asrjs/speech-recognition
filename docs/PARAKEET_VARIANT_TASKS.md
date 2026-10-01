@@ -166,6 +166,26 @@ Next apply the selected downstream arithmetic to actual official-aligned JS FFT
 spectra, preserving each prior FFT baseline and separating frame/complex/power
 errors. Do not promote the rejected packed-f32 FFT or hardcode mel corrections.
 
+Aligned JS packed-real FFT follow-up (2026-10-02): the named `aligned-packed`
+control retains the existing aligned preemphasis/window/filterbank and f32
+complex-power conversion, without injecting reference powers or complex values.
+Both selected mel/guard variants preserve baseline spectra and still fail the
+same 121 JFK feature coordinates as `complexPowerCapture` with width-8
+normalization (zero added/removed coordinates; max `2.52336e-4`). Raw log values
+pass their own tolerances, but this does not override normalized-feature FAIL.
+Mel 0/frame 346 and mel 127/frame 551 retain raw deltas `2.46048e-4` and
+`6.10352e-5` against the separately verified official-input log control.
+Silence raw/normalized values match exactly; unmodified production remains
+JFK 313 / silence 12,800 failures. This closes mel/guard-only fixes as a
+demonstrated solution for the current support. Continue at FFT/complex/power
+rounding on exact aligned frames, not another mel-specific correction.
+
+79 probe, 6 Python reduction and 8 Node tests pass. A mutation test proves
+reference spectrum changes do not affect the aligned-packed controls. Slim
+mel captures omit duplicate FFT/frame payloads while baselines retain them.
+Both real runs exit 1 at unchanged production gates; full suite and browser
+inference were NOT_RUN. Receipt: `aligned-packed-mel-handoff-2026-10-02.json`.
+
 ## Ordered tasks
 
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and

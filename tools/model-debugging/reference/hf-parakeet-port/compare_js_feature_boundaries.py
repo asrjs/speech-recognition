@@ -81,11 +81,12 @@ async function experiment(name, { window = false, windowProduct = false, filterb
   referencePower = false, magnitudeRoundTrip = false, capturePower = false, complexPower = false,
   fullFft = null, referenceComplexPower = null, production = false, capturePacked = false, packedF32 = false,
   powerOverrides = null, melArithmetic = null, melSpectrum = null, roundLogGuard = false } = {}) {
-  if (melSpectrum !== null && (!['production', 'official-complex-rounded'].includes(melSpectrum) ||
+  if (melSpectrum !== null && (!['production', 'official-complex-rounded', 'aligned-packed'].includes(melSpectrum) ||
       melArithmetic !== 'f64-product-f32-sum' || !capturePower || referencePower || production ||
-      complexPower || magnitudeRoundTrip || fullFft || packedF32 || capturePacked || powerOverrides !== null ||
-      (melSpectrum === 'production' ? (window || windowProduct || filterbank || referenceComplexPower) :
-        (!window || !windowProduct || !filterbank || referenceComplexPower !== 'fp32-rounded'))))
+      magnitudeRoundTrip || fullFft || packedF32 || capturePacked || powerOverrides !== null ||
+      (melSpectrum === 'production' ? (window || windowProduct || filterbank || referenceComplexPower || complexPower) :
+        (!window || !windowProduct || !filterbank || (melSpectrum === 'aligned-packed'
+          ? (!complexPower || referenceComplexPower) : (complexPower || referenceComplexPower !== 'fp32-rounded'))))))
     throw new Error('Mel spectrum control must preserve its named upstream boundary');
   if (roundLogGuard && melSpectrum === null) throw new Error('Guard rounding requires an isolated mel spectrum control');
   if (melArithmetic !== null && melSpectrum === null && (!['f32-product-f64-sum', 'f32-product-f32-sum', 'f64-product-f32-sum'].includes(melArithmetic) ||
@@ -363,15 +364,20 @@ const referenceComplexLibraryCapture = await experiment('reference-complex-libra
 const referenceComplexRoundedCapture = await experiment('reference-complex-rounded', { window: true,
   windowProduct: true, filterbank: true, referenceComplexPower: 'fp32-rounded', capturePower: true });
 const melSpectrumControls = {};
-for (const melSpectrum of ['production', 'official-complex-rounded']) {
+for (const melSpectrum of ['production', 'official-complex-rounded', 'aligned-packed']) {
   for (const roundLogGuard of [false, true]) {
     const capture = await experiment(`mel-spectrum-${melSpectrum}-${roundLogGuard}`, {
       ...(melSpectrum === 'official-complex-rounded' ? { window: true, windowProduct: true,
         filterbank: true, referenceComplexPower: 'fp32-rounded' } : {}),
+      ...(melSpectrum === 'aligned-packed' ? { window: true, windowProduct: true,
+        filterbank: true, complexPower: true } : {}),
       melSpectrum, roundLogGuard, melArithmetic: 'f64-product-f32-sum', capturePower: true });
     const normalized = normalizeCandidate(Float32Array.from(capture.raw), raw.frameCount, raw.length, 8);
+    // Baselines already retain FFT/frame evidence; do not duplicate it per mel control.
+    const melCapture = Object.fromEntries(['raw', 'power', 'shape', 'filterbank', 'filterbankBounds',
+      'linearMel', 'logInput', 'f32LogInputRaw'].map(key => [key, capture[key]]));
     melSpectrumControls[`${melSpectrum}-${roundLogGuard ? 'f32-guard' : 'original-guard'}`] = {
-      capture, normalization: Object.fromEntries(['features', 'mean', 'std'].map(key => [key, Array.from(normalized[key])])) };
+      capture: melCapture, normalization: Object.fromEntries(['features', 'mean', 'std'].map(key => [key, Array.from(normalized[key])])) };
   }
 }
 const normalizationInputs = {
@@ -951,7 +957,8 @@ def validate_filterbank_support(filterbank, bounds):
 def mel_spectrum_diagnostic(js, reference_raw, reference_features, valid_length):
     """Separate local spectra, mel/guard arithmetic and diagnostic normalization."""
     baselines = {'production': js['productionCapture'],
-        'official-complex-rounded': js['referenceComplexRoundedCapture']}
+        'official-complex-rounded': js['referenceComplexRoundedCapture'],
+        'aligned-packed': js['complexPowerCapture']}
     expected = {f'{name}-{guard}' for name in baselines for guard in ('original-guard', 'f32-guard')}
     if set(js['melSpectrumControls']) != expected:
         raise ValueError('Mel spectrum control matrix differs')

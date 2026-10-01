@@ -32,6 +32,30 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_aligned_packed_mel_controls_do_not_inject_reference_spectra(self):
+        import numpy as np
+        data = inputs()
+        data['referencePower'] = [1] * (257 * 11)
+        zero = base64.b64encode(np.zeros(257 * 11, dtype='<f4').tobytes()).decode('ascii')
+        data['referenceComplex']['realF32LE'] = zero
+        data['referenceComplex']['imagF32LE'] = zero
+        result = json.loads(subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30, check=True).stdout)
+        for guard in ('original-guard', 'f32-guard'):
+            name = 'aligned-packed-' + guard
+            self.assertEqual(result['melSpectrumControls'][name], self.result['melSpectrumControls'][name])
+            self.assertEqual(result['melSpectrumControls'][name]['capture']['power'], result['complexPowerCapture']['power'])
+        self.assertNotEqual(result['referenceComplexRoundedCapture']['power'], self.result['referenceComplexRoundedCapture']['power'])
+
+    def test_mel_controls_do_not_duplicate_baseline_fft_frame_payloads(self):
+        for guard in ('original-guard', 'f32-guard'):
+            capture = self.result['melSpectrumControls']['aligned-packed-' + guard]['capture']
+            self.assertEqual(set(capture), {'raw', 'power', 'shape', 'filterbank', 'filterbankBounds',
+                'linearMel', 'logInput', 'f32LogInputRaw'})
+        self.assertIn('frameBytesF32LE', self.result['complexPowerCapture'])
+        self.assertIn('frames', self.result['complexPowerCapture'])
+
     def test_probe_streams_complete_json_without_aggregate_stringify(self):
         # Simulate the observed aggregate V8 string limit without allocating 512 MiB.
         guard = """const originalStringify = JSON.stringify;
@@ -49,7 +73,8 @@ JSON.stringify = (value, ...args) => {
     def test_mel_spectrum_controls_preserve_upstream_and_match_scalar_oracle(self):
         import numpy as np
         for name, entry in self.result['melSpectrumControls'].items():
-            baseline = self.result['productionCapture' if name.startswith('production-') else 'referenceComplexRoundedCapture']
+            baseline = self.result['productionCapture' if name.startswith('production-') else
+                'complexPowerCapture' if name.startswith('aligned-packed-') else 'referenceComplexRoundedCapture']
             capture = entry['capture']
             for key in ('power', 'filterbank', 'filterbankBounds', 'shape'):
                 self.assertEqual(capture[key], baseline[key])

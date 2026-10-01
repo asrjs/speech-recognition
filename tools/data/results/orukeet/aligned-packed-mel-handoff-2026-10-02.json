@@ -1,0 +1,32 @@
+{
+  "status": "DIAGNOSTIC_ALIGNED_JS_FFT_FEATURES_FAIL_SAME_SUPPORT",
+  "diagnostic_sha256": "45251eb287e11c78fb2c4557269f5405218df67bd04027747db6223ef9022553",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "receipts": {
+    "jfk": {"path": "aligned-packed-mel-jfk-2026-10-02.json.gz", "sha256": "0a47ff78b7bda5647bd54cb30e8f0d325004dd6ed6a5d5e5f5eccd309c0bc096"},
+    "silence": {"path": "aligned-packed-mel-silence-2026-10-02.json.gz", "sha256": "ae4590f5ef88c685d9c59955cecbd8ced81a5d205c94026820aafbb9b74e392b"}
+  },
+  "control": "Existing JS packed-real FFT with aligned frame arithmetic and f32 complex-power conversion; selected mixed-precision mel, optional f32 guard and width8 diagnostic normalization",
+  "reference_power_and_complex_injection": false,
+  "baseline": "complexPowerCapture",
+  "power_filterbank_bounds_unchanged": true,
+  "normalization_python_byte_exact": true,
+  "jfk": {
+    "baseline_and_both_candidate_feature_failures": 121,
+    "candidate_failed_coordinates_equal_baseline": true,
+    "added_failed_coordinates": 0,
+    "removed_failed_coordinates": 0,
+    "max_feature_error_both_candidates": 0.0002523362636566162,
+    "raw_tolerance_failures_both_candidates": 0,
+    "original_guard_raw_exact_mismatches": 48113,
+    "f32_guard_raw_exact_mismatches": 47759,
+    "production_unchanged_feature_failures": 313,
+    "failures_by_mel": {"0": 32, "1": 19, "2": 15, "3": 1, "4": 1, "113": 1, "115": 1, "117": 2, "119": 1, "121": 1, "122": 2, "124": 6, "125": 9, "126": 5, "127": 25},
+    "targets": [{"mel": 0, "frame": 346, "candidate_raw": -14.250283241271973, "verified_official_input_log_raw": -14.250529289245605}, {"mel": 127, "frame": 551, "candidate_raw": -15.953190803527832, "verified_official_input_log_raw": -15.953251838684082}]
+  },
+  "silence": {"both_candidate_raw_and_normalized_exact": true, "production_unchanged_feature_failures": 12800},
+  "validation": {"probe_tests": 79, "python_reduction_tests": 6, "node_tests": 8, "both_real_exit_codes": 1, "reference_spectrum_mutation_invariance": true, "baseline_frame_evidence_retained_without_duplicate_candidate_payloads": true, "full_suite_and_browser": "NOT_RUN"},
+  "limits": ["Aligned frame and complex-power arithmetic is diagnostic, not production", "Raw allclose does not override normalized-feature FAIL", "No model/browser or performance acceptance"],
+  "next": "Inspect FFT/complex/power rounding at unchanged failed support on exact aligned frames; stop mel/guard-only fixes for this support."
+}
