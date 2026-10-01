@@ -52,3 +52,30 @@ model-specific tests. See `docs/MODEL_HARNESS_CONTRACT.md`.
   missing/empty/malformed reference JSON, missing audio, and invalid required
   mel values fail. `WHISPER_REFERENCE_AUDIO` overrides the reference audio path.
   A prerequisite failure or skip is not executed numerical evidence.
+
+## Native resource lifecycle (Node/Bun)
+
+Build first with `npm run build`. The resource smoke imports the built library.
+`tests/native-resource-smoke.test.ts` keeps Node prerequisite checks always on;
+actual native session checks are opt-in. A portable, repository-owned 125-byte
+Identity ONNX graph and synthetic vocabulary are materialized in a unique
+temporary directory and removed after each case. No model download, local
+Python environment, or original vocabulary is needed. This graph certifies
+acquisition/cleanup only, never ASR inference or numerical parity.
+
+PowerShell, with an already installed native optional peer and Bun:
+
+```powershell
+$env:ASRJS_NATIVE_RESOURCE_NODE = '1'
+$env:ASRJS_NATIVE_RESOURCE_BUN = '1'
+$env:ASRJS_BUN_EXECUTABLE = 'C:\path\to\bun.exe'
+node node_modules/vitest/vitest.mjs run tests/native-resource-smoke.test.ts tests/native-resource-fixture.test.ts
+```
+
+Leave the opt-ins unset for genuine SKIP of native integration. Requested Bun
+tests require an explicit executable; missing/invalid executables fail, not
+skip or fall back to Node. Existing native sessions run through the family
+executor using CPU and verify success plus partial-acquisition rollback and
+repeated disposal. The fixture integrity/overwrite unit test runs without
+native bindings. Test environment settings above apply only to that shell;
+do not set global environment variables or install a missing engine silently.

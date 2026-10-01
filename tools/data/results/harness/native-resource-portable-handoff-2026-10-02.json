@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "status": "PASS_RESOURCE_ONLY",
+  "scope": "Portable automatic Node/Bun real native CPU lifecycle checks; no ASR inference or install-footprint acceptance",
+  "fixture": {"bytes": 125, "sha256": "b75fcc0af0e7502837826693e7abc70e0df19266fb324f8ca2d88e7e423e8fdc", "source": "Own Identity ONNX encoded in tests/support/native-resource-fixture.ts; synthetic vocabulary"},
+  "positive": {"path": "native-resource-portable-positive-2026-10-02.json", "sha256": "72085f4e4322106f8f751995ac9475e4fb00e199bfa6a76e6ade66fc0c144a2e", "passed": 11, "failed": 0, "skipped": 0},
+  "default_smoke": {"passed": 4, "failed": 0, "skipped": 6},
+  "negative_controls": [
+    {"path": "native-resource-missing-bun-2026-10-02.json", "sha256": "0bc38838478bdfcd6731610911235bd5408bec2442ce2ce47ea11f122524695c", "expected_failed": 5, "passed": 4, "skipped": 1},
+    {"path": "native-resource-invalid-bun-2026-10-02.json", "sha256": "9c6cea43edc16e7c0e91c00e79e5d4f2d64e7717e55581729f283164d463e4f1", "expected_failed": 5, "passed": 4, "skipped": 1}
+  ],
+  "strict_changed_test_compilation": "PASS",
+  "shared_gate_regression": {"passed": 8, "skipped": 1},
+  "remaining": ["Model numerical/token/text validation separate", "C01 comparable install footprints UNTESTED", "Fixture is not an ASR graph"]
+}

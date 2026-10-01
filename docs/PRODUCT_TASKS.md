@@ -75,3 +75,18 @@ a local ONNX virtual environment. Add an explicit opt-in Bun prerequisite path
 and a portable repository-owned fixture; retain requested-missing-fixture FAIL
 and optional-unrequested SKIP semantics. Existing manual Bun evidence is valid
 but does not make that automatic test path implemented.
+
+### C01 portable automatic resource controls (2026-10-02)
+
+Implemented the bounded portability slice: own 125-byte Identity graph and
+synthetic vocabulary, temporary exclusive writes and hash/overwrite controls,
+Node/Bun opt-in real executor checks, and the same four prerequisite negatives
+under explicitly requested Bun. No local model/Python fixture dependency or
+native engine install was introduced. Strict changed-test compilation passes.
+Both requested hosts pass all 10 smoke checks; opt-ins unset gives 4 PASS /
+6 SKIP. Explicitly requested Bun without an executable produces 5 FAIL, never
+an accidental PASS/SKIP (negative-run JSON retained locally). Fixture unit
+control passes; shared gate regression gives 8 PASS / 1 intentional SKIP.
+See `tests/fixtures/README.md` for build prerequisite and opt-in commands.
+This closes the automatic resource-fixture gap, not C01 install-footprint or
+full model/native/browser acceptance.
