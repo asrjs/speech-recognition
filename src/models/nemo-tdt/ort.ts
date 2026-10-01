@@ -9,10 +9,13 @@ import type {
   NemoTdtWebGpuOptions,
 } from './types.js';
 import { getDefaultNemoTdtWeightSetup, normalizeNemoTdtWeightBackend } from './weights.js';
+import { loadNativeCpuOrt } from '../../inference/backends/native-cpu/ort.js';
+import { CapabilityMismatchError } from '../../runtime/errors.js';
 import {
   honorAbortAfterCreate,
   withNativeAbortSignalOption,
   withOrtCreateAbort,
+  throwIfAssetAborted,
 } from '../../io/abort.js';
 import {
   importNodeModule,
@@ -116,7 +119,7 @@ function resolveComponentBackend(
   if (requested) {
     return requested;
   }
-  return role === 'decoder' ? 'wasm' : fallback;
+  return role === 'decoder' && fallback !== 'native-cpu' ? 'wasm' : fallback;
 }
 
 function resolveHuggingFaceArtifacts(
@@ -124,17 +127,31 @@ function resolveHuggingFaceArtifacts(
   backendId: string,
 ): ResolvedNemoTdtArtifacts {
   const revision = source.revision ?? 'main';
-  const fallbackBackend = normalizeNemoTdtWeightBackend(backendId);
-  const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend, 'encoder');
-  const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend, 'decoder');
+  const fallbackBackend =
+    backendId === 'native-cpu' ? 'native-cpu' : normalizeNemoTdtWeightBackend(backendId);
+  const encoderBackendForOrt = resolveComponentBackend(
+    source.encoderBackend,
+    fallbackBackend,
+    'encoder',
+  );
+  const decoderBackendForOrt = resolveComponentBackend(
+    source.decoderBackend,
+    fallbackBackend,
+    'decoder',
+  );
   const ortBackend =
-    encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm';
+    fallbackBackend === 'native-cpu'
+      ? 'native-cpu'
+      : encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu'
+        ? 'webgpu'
+        : 'wasm';
   const encoderQuant = resolveQuantization(source.encoderQuant, encoderBackendForOrt, 'encoder');
   const decoderQuant = resolveQuantization(source.decoderQuant, decoderBackendForOrt, 'decoder');
   const encoderFilename = getQuantizedFilename('encoder-model', encoderQuant);
   const decoderFilename = getQuantizedFilename('decoder_joint-model', decoderQuant);
   const preprocessorName = source.preprocessorName ?? 'nemo128';
-  const preprocessorBackend = source.preprocessorBackend ?? 'onnx';
+  const preprocessorBackend =
+    source.preprocessorBackend ?? (fallbackBackend === 'native-cpu' ? 'js' : 'onnx');
 
   return {
     artifacts: {
@@ -165,15 +182,29 @@ function resolveDirectArtifacts(
   source: Extract<NemoTdtArtifactSource, { kind: 'direct' }>,
   backendId: string,
 ): ResolvedNemoTdtArtifacts {
-  const fallbackBackend = normalizeNemoTdtWeightBackend(backendId);
-  const encoderBackendForOrt = resolveComponentBackend(source.encoderBackend, fallbackBackend, 'encoder');
-  const decoderBackendForOrt = resolveComponentBackend(source.decoderBackend, fallbackBackend, 'decoder');
+  const fallbackBackend =
+    backendId === 'native-cpu' ? 'native-cpu' : normalizeNemoTdtWeightBackend(backendId);
+  const encoderBackendForOrt = resolveComponentBackend(
+    source.encoderBackend,
+    fallbackBackend,
+    'encoder',
+  );
+  const decoderBackendForOrt = resolveComponentBackend(
+    source.decoderBackend,
+    fallbackBackend,
+    'decoder',
+  );
   return {
     artifacts: source.artifacts,
-    preprocessorBackend: source.preprocessorBackend ?? 'onnx',
+    preprocessorBackend:
+      source.preprocessorBackend ?? (fallbackBackend === 'native-cpu' ? 'js' : 'onnx'),
     warnings: [],
     ortBackend:
-      encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm',
+      fallbackBackend === 'native-cpu'
+        ? 'native-cpu'
+        : encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu'
+          ? 'webgpu'
+          : 'wasm',
     encoderBackendForOrt,
     decoderBackendForOrt,
     decoderStateOutputLocation: source.decoderStateOutputLocation,
@@ -188,6 +219,22 @@ export function resolveNemoTdtArtifacts(
   source: NemoTdtArtifactSource,
   backendId: string,
 ): ResolvedNemoTdtArtifacts {
+  const native = backendId === 'native-cpu';
+  const components = [source.encoderBackend, source.decoderBackend];
+  if (components.some((component) => component && (component === 'native-cpu') !== native)) {
+    throw new CapabilityMismatchError(
+      'native-cpu requires both graph components to use native-cpu; mixed native/Web engines are not supported.',
+      { backendId, encoderBackend: source.encoderBackend, decoderBackend: source.decoderBackend },
+    );
+  }
+  if (
+    native &&
+    (source.webgpuOptions || source.decoderStateOutputLocation === 'gpu-buffer' || source.wasmPaths)
+  ) {
+    throw new CapabilityMismatchError(
+      'native-cpu cannot honor WebGPU output/tuning or WASM path options.',
+    );
+  }
   return source.kind === 'huggingface'
     ? resolveHuggingFaceArtifacts(source, backendId)
     : resolveDirectArtifacts(source, backendId);
@@ -201,6 +248,10 @@ export async function initOrt(
     readonly signal?: { readonly aborted: boolean } | null;
   } = {},
 ): Promise<OrtModuleLike> {
+  throwIfAssetAborted(options.signal, 'session-create');
+  if (backendId === 'native-cpu') {
+    return withOrtCreateAbort(loadNativeCpuOrt() as unknown as OrtModuleLike, options.signal);
+  }
   const imported = (await import('onnxruntime-web')) as unknown as OrtModuleLike & {
     readonly default?: OrtModuleLike;
   };
@@ -245,6 +296,7 @@ export async function createOrtSession(
   url: string,
   options: {
     readonly backendId: string;
+    readonly cpuThreads?: number;
     readonly enableProfiling?: boolean;
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
@@ -257,24 +309,46 @@ export async function createOrtSession(
 ): Promise<OrtSessionLike> {
   let modelUrl = url;
   let externalDataUrl = options.externalDataUrl;
-  const executionProviders = options.backendId.startsWith('webgpu')
-    ? [
-        {
-          name: 'webgpu',
-          deviceType: 'gpu',
-          powerPreference: 'high-performance',
-          ...(options.webgpuOptions ?? {}),
-        },
-      ]
-    : ['wasm'];
+  const native = options.backendId === 'native-cpu';
+  if (
+    native &&
+    options.cpuThreads !== undefined &&
+    (!Number.isInteger(options.cpuThreads) || options.cpuThreads < 1)
+  ) {
+    throw new Error('Native CPU thread count must be a positive integer.');
+  }
+  if (
+    native &&
+    (options.webgpuOptions ||
+      (typeof options.preferredOutputLocation === 'string'
+        ? options.preferredOutputLocation === 'gpu-buffer'
+        : Object.values(options.preferredOutputLocation ?? {}).includes('gpu-buffer')))
+  ) {
+    throw new CapabilityMismatchError(
+      'native-cpu does not support WebGPU output placement or tuning.',
+    );
+  }
+  const executionProviders = native
+    ? ['cpu']
+    : options.backendId.startsWith('webgpu')
+      ? [
+          {
+            name: 'webgpu',
+            deviceType: 'gpu',
+            powerPreference: 'high-performance',
+            ...(options.webgpuOptions ?? {}),
+          },
+        ]
+      : ['wasm'];
 
   const sessionOptions: Record<string, unknown> = {
     executionProviders,
     graphOptimizationLevel: 'all',
-    executionMode: 'parallel',
+    executionMode: native ? 'sequential' : 'parallel',
     enableCpuMemArena: true,
     enableMemPattern: true,
     enableProfiling: options.enableProfiling ?? false,
+    ...(native ? { intraOpNumThreads: options.cpuThreads ?? 4, interOpNumThreads: 1 } : {}),
   };
 
   if (options.preferredOutputLocation) {
@@ -299,7 +373,27 @@ export async function createOrtSession(
     }
   }
 
-  if (externalDataUrl && options.externalDataPath) {
+  if (native) {
+    const nodePath = await importNodeModule<typeof import('node:path')>('node:path');
+    if (!nodePath.isAbsolute(modelUrl)) {
+      throw new Error('Native CPU inference requires a local absolute model path or file URL.');
+    }
+    if (externalDataUrl) {
+      const graphRelativePath = options.externalDataPath;
+      const expectedPath = graphRelativePath
+        ? nodePath.resolve(nodePath.dirname(modelUrl), graphRelativePath)
+        : undefined;
+      if (!expectedPath || nodePath.resolve(externalDataUrl) !== expectedPath) {
+        throw new Error('Native external data must be colocated at its graph-relative location.');
+      }
+      const fs = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
+      if (!(await fs.stat(expectedPath)).isFile()) {
+        throw new Error('Native external data locator is not a regular file.');
+      }
+    }
+    // Native ORT resolves graph-referenced sidecars from the model's directory.
+    // Do not read multi-GB data into JS or pass ORT Web's externalData mounts.
+  } else if (externalDataUrl && options.externalDataPath) {
     sessionOptions.externalData = [
       {
         data: externalDataUrl,
@@ -308,17 +402,18 @@ export async function createOrtSession(
     ];
   }
 
-  const createOptions = withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
+  const createOptions =
+    withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
   return honorAbortAfterCreate(
     () => ort.InferenceSession.create(modelUrl, createOptions),
     options.signal,
-    (session) => releaseOrtSession(session),
+    (session) => session.release?.(),
   );
 }
 
-/** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
-export function releaseOrtSession(session: OrtSessionLike | undefined): void {
-  void session?.release?.();
+/** Return ORT teardown so an owning lifecycle can await native/GPU/WASM release. */
+export function releaseOrtSession(session: OrtSessionLike | undefined): void | Promise<void> {
+  return session?.release?.();
 }
 
 /** Drop `session.run()` output tensors after their JS data has been copied. */

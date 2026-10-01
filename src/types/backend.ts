@@ -52,6 +52,8 @@ export interface BackendExecutionContext {
 export interface ExecutionBackend {
   readonly id: string;
   readonly displayName: string;
+  /** Require an explicit family supportedBackendIds declaration before model loading. */
+  readonly requiresModelOptIn?: boolean;
   probeCapabilities(context?: BackendProbeContext): Promise<BackendCapabilities>;
   createExecutionContext(request: BackendExecutionRequest): Promise<BackendExecutionContext>;
 }

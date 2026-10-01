@@ -439,6 +439,39 @@ try {
 }
 ```
 
+### Local native Node/Bun (experimental)
+
+The [local NeMo TDT example](./examples/nemo-tdt-native-local.mjs) uses only
+public package imports and explicitly composes `createNativeCpuBackend()`, the
+NeMo TDT family and the Node filesystem asset provider. Build this checkout first:
+
+```sh
+npm run build
+node examples/nemo-tdt-native-local.mjs --help
+```
+
+For the locally exported Orukeet candidate and its fixed-rate fixture:
+
+```powershell
+node examples/nemo-tdt-native-local.mjs `
+  --model-dir models/orukeet/onnx/fp32-packed-2026-10-01 `
+  --config tools/model-debugging/reference/orukeet/runtime-config-jfk.json `
+  --model-id oruk/orukeet --audio tools/data/fixtures/audio/jfk-short.wav
+```
+
+Replace `node` with `bun` for the same public API recipe. Model files and fixtures
+are local prerequisites, not bundled downloads. Supply an audited candidate
+runtime config and fp32 encoder/decoder-joint graphs with colocated `.data`
+sidecars where needed; backend precision selection does not audit graph dtypes.
+The example accepts PCM/IEEE-float WAV, averages channels and requires the
+configured sample rate. It does not silently resample, normalize loudness,
+download weights or fall back to WASM. Progress goes to stderr; full
+canonical/native JSON goes to stdout only after awaited runtime-owned cleanup.
+
+Native CPU remains explicit and experimental, not a built-in default. Verified
+Node/Bun output controls do not establish all-family native support, numerical
+model parity or browser acceptance. See the [Orukeet validation recipe](./tools/model-debugging/reference/orukeet/README.md).
+
 ### Built-in convenience runtime
 
 ```ts

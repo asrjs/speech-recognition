@@ -250,6 +250,8 @@ export interface SpeechModelFactory<
 > {
   readonly family: string;
   readonly classification?: Partial<ModelClassification>;
+  /** Explicit backend allowlist. Required for backends with requiresModelOptIn. */
+  readonly supportedBackendIds?: readonly string[];
   supports(modelId: string): boolean;
   matchesClassification?(classification: Partial<ModelClassification>): boolean;
   createModel(

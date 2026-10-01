@@ -18,6 +18,11 @@ import type {
 } from '../../types/index.js';
 import { createModelArchitecture } from '../../types/index.js';
 import {
+  assertSessionOwnerActive,
+  disposeOwnedResources,
+  initializeOwnedSession,
+} from '../../runtime/owned-session.js';
+import {
   DEFAULT_WHISPER_CLASSIFICATION,
   describeWhisperSeq2SeqModel,
   parseWhisperSeq2SeqConfig,
@@ -81,7 +86,7 @@ class WhisperSeq2SeqSpeechSession implements SpeechSession<
   WhisperNativeTranscript
 > {
   private readonly executor?: WhisperOnnxExecutor;
-  private disposed = false;
+  private disposePromise: Promise<void> | undefined;
 
   constructor(
     private readonly modelId: string,
@@ -192,12 +197,16 @@ class WhisperSeq2SeqSpeechSession implements SpeechSession<
   }
 
   async dispose(): Promise<void> {
-    if (this.disposed) {
-      return;
+    if (!this.disposePromise) {
+      this.disposePromise = Promise.resolve().then(async () => {
+        try {
+          await this.executor?.dispose();
+        } finally {
+          this.onDispose?.();
+        }
+      });
     }
-    this.disposed = true;
-    await Promise.resolve(this.executor?.dispose());
-    this.onDispose?.();
+    await this.disposePromise;
   }
 }
 
@@ -210,6 +219,7 @@ class WhisperSeq2SeqSpeechModel implements SpeechModel<
   readonly loadOptions?: WhisperSeq2SeqModelOptions;
   private readonly sessions = new Set<WhisperSeq2SeqSpeechSession>();
   private disposed = false;
+  private disposePromise: Promise<void> | undefined;
 
   constructor(
     readonly backend: SpeechModel<
@@ -278,6 +288,7 @@ class WhisperSeq2SeqSpeechModel implements SpeechModel<
   async createSession(
     _options: BaseSessionOptions = {},
   ): Promise<SpeechSession<WhisperSeq2SeqTranscriptionOptions, WhisperNativeTranscript>> {
+    assertSessionOwnerActive(this.disposed);
     const session = new WhisperSeq2SeqSpeechSession(
       this.modelId,
       this.classification,
@@ -289,25 +300,20 @@ class WhisperSeq2SeqSpeechModel implements SpeechModel<
         this.sessions.delete(session);
       },
     );
-    this.sessions.add(session);
-    await session.initialize();
-    return session;
+    return initializeOwnedSession(session, this.sessions, () => this.disposed);
   }
 
   async dispose(): Promise<void> {
-    if (this.disposed) {
-      return;
+    if (this.disposePromise) {
+      return this.disposePromise;
     }
     this.disposed = true;
 
     const sessions = [...this.sessions];
     this.sessions.clear();
 
-    await Promise.all(
-      sessions.map(async (session) => {
-        await session.dispose();
-      }),
-    );
+    this.disposePromise = disposeOwnedResources(sessions);
+    return this.disposePromise;
   }
 }
 

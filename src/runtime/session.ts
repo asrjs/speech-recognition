@@ -29,8 +29,18 @@ import {
   sortBackendCandidates,
   type BackendCandidate,
 } from './backend.js';
-import { BackendUnavailableError, ModelLoadError } from './errors.js';
+import { BackendUnavailableError, CapabilityMismatchError, ModelLoadError } from './errors.js';
 import { createRuntimeHooks } from './logging.js';
+import { disposeOwnedResources } from './owned-session.js';
+
+function familyAllowsBackend(
+  family: SpeechModelFactory<any, any, any>,
+  backend: ExecutionBackend,
+): boolean {
+  return family.supportedBackendIds
+    ? family.supportedBackendIds.includes(backend.id)
+    : !backend.requiresModelOptIn;
+}
 
 function wrapAssetProviderWithAbort(
   provider: AssetProvider | undefined,
@@ -174,10 +184,25 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
   }
 
   async selectBackend(criteria: BackendSelectionCriteria = {}): Promise<ExecutionBackend> {
+    return this.selectBackendForFamily(criteria);
+  }
+
+  private async selectBackendForFamily(
+    criteria: BackendSelectionCriteria = {},
+    family?: SpeechModelFactory<any, any, any>,
+  ): Promise<ExecutionBackend> {
     const candidates = await this.collectBackendCandidates({
       environment: criteria.environment,
     });
-    const supported = ensureAvailableBackendCandidates(candidates, criteria);
+    const supported = ensureAvailableBackendCandidates(candidates, criteria).filter(
+      (candidate) => !family || familyAllowsBackend(family, candidate.backend),
+    );
+    if (supported.length === 0) {
+      throw new CapabilityMismatchError('No available backend is supported by this model family.', {
+        family: family?.family,
+        supportedBackendIds: family?.supportedBackendIds,
+      });
+    }
     return sortBackendCandidates(supported, criteria)[0]!.backend;
   }
 
@@ -223,7 +248,18 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
 
     const backend = familyRequest.backend
       ? await this.requireBackend(familyRequest.backend, familyRequest.selectionCriteria)
-      : await this.selectBackend(familyRequest.selectionCriteria);
+      : await this.selectBackendForFamily(familyRequest.selectionCriteria, family);
+
+    if (!familyAllowsBackend(family, backend)) {
+      throw new CapabilityMismatchError(
+        `Model family "${family.family}" has not opted in to backend "${backend.id}".`,
+        {
+          family: family.family,
+          backendId: backend.id,
+          supportedBackendIds: family.supportedBackendIds,
+        },
+      );
+    }
 
     if (this.disposed) {
       throw new ModelLoadError('Cannot complete model load because the runtime was disposed.');
@@ -324,11 +360,7 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
     const models = [...this.loadedModels];
     this.loadedModels.clear();
 
-    await Promise.all(
-      models.map(async (model) => {
-        await model.dispose();
-      }),
-    );
+    await disposeOwnedResources(models);
   }
 
   private trackLoadedModel(model: SpeechModel<any, any, any>): SpeechModel<any, any, any> {

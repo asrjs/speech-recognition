@@ -245,9 +245,7 @@ export function withOrtCreateAbort<
       honorAbortAfterCreate(
         () => create(url, withNativeAbortSignalOption(options, signal)),
         signal,
-        (session) => {
-          void session?.release?.();
-        },
+        (session) => session.release?.(),
       ),
   };
 

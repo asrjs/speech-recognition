@@ -26,7 +26,7 @@ export interface NemoTdtModelConfig extends NemoModelConfig {
 
 export type NemoTdtQuantization = 'int8' | 'fp32' | 'fp16';
 export type NemoTdtPreprocessorBackend = 'js' | 'onnx';
-export type NemoTdtExecutionBackend = 'webgpu' | 'wasm';
+export type NemoTdtExecutionBackend = 'webgpu' | 'wasm' | 'native-cpu';
 /**
  * Requested location for the recurrent decoder state outputs.
  *
@@ -35,11 +35,7 @@ export type NemoTdtExecutionBackend = 'webgpu' | 'wasm';
  */
 export type NemoTdtOutputLocation = 'cpu' | 'gpu-buffer';
 
-export type NemoTdtWebGpuBufferCacheMode =
-  | 'disabled'
-  | 'lazyRelease'
-  | 'simple'
-  | 'bucket';
+export type NemoTdtWebGpuBufferCacheMode = 'disabled' | 'lazyRelease' | 'simple' | 'bucket';
 
 /**
  * Optional ORT WebGPU EP tuning knobs for model-specific experiments.

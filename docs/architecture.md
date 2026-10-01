@@ -105,6 +105,12 @@ Owns reusable audio and feature-preprocessing primitives:
 - chunking and framing
 - audio containers such as `PcmAudioBuffer`
 
+`audio/wav.ts` owns the pure RIFF PCM/IEEE-float WAV decoder shared by browser
+media preparation and local native consumers. It returns owned mono float32
+samples with the original rate/channel metadata, without resampling, loudness
+normalization, filesystem access, DOM APIs or engine imports. Its public opt-in
+exports are `browser/media` and `io/node`, not the root entrypoint.
+
 ### `src/io`
 
 Owns the environment boundary for model assets.
@@ -313,6 +319,15 @@ Ownership rules:
   owned session or streaming state; `reset()` is stateful reuse, not disposal
 - asset handles clean up temporary locators and owned resources
 
+NeMo TDT and Whisper currently use the internal `runtime/owned-session` helper
+to register sessions before asynchronous initialization, roll back failed
+creation, and reject a session if its model was disposed while initialization
+was pending. They reject creation after model disposal before acquiring engine
+resources. Their session/model disposal awaits the memoized cleanup on repeated
+calls. Families still construct and release their own executors; the helper has
+no graph, tokenizer or decoder policy and is not a public API. Other families
+and actual partial engine-resource cleanup require their own coverage.
+
 `Symbol.asyncDispose` may be implemented as optional sugar, but it is not the primary or required API.
 
 ## Canonical Transcript Boundary
@@ -461,3 +476,11 @@ precision, and owns only its disposable capability lease. Model-family
 executors continue to own ORT sessions, tensors, and model-specific lifecycle
 because Whisper split graphs, CTC encoders, and stateful transducers have
 different resource boundaries.
+
+The experimental `native-cpu` factory is explicitly composed; built-in runtimes
+do not automatically register it. NeMo TDT's family-owned ORT bridge selects
+native CPU sessions without copying decoding into a host-specific executor.
+`examples/nemo-tdt-native-local.mjs` demonstrates public API composition and
+awaited runtime ownership in Node/Bun. Backend precision capability checks are
+not ONNX graph-dtype audits. The native engine is currently a regular package
+dependency; lazy browser-safe imports do not eliminate its installation cost.

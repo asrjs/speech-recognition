@@ -37,6 +37,12 @@ import {
   parseNemoTdtConfig,
 } from './config.js';
 import { OrtNemoTdtExecutor } from './executor.js';
+import { ExperimentalArtifactMissingError } from '../../runtime/errors.js';
+import {
+  assertSessionOwnerActive,
+  disposeOwnedResources,
+  initializeOwnedSession,
+} from '../../runtime/owned-session.js';
 import type {
   NemoTdtDecoder,
   NemoTdtExecutor,
@@ -182,7 +188,7 @@ export class NemoTdtSpeechSession implements SpeechSession<
   >;
   private readonly confidenceReconstructor: NemoConfidenceReconstructor<NemoTdtNativeTranscript>;
   private readonly tokenizer: NemoTokenizer;
-  private disposed = false;
+  private disposePromise: Promise<void> | undefined;
 
   constructor(
     private readonly modelId: string,
@@ -347,12 +353,16 @@ export class NemoTdtSpeechSession implements SpeechSession<
   }
 
   async dispose(): Promise<void> {
-    if (this.disposed) {
-      return;
+    if (!this.disposePromise) {
+      this.disposePromise = Promise.resolve().then(async () => {
+        try {
+          await this.executor?.dispose();
+        } finally {
+          this.onDispose?.();
+        }
+      });
     }
-    this.disposed = true;
-    await this.executor?.dispose();
-    this.onDispose?.();
+    await this.disposePromise;
   }
 }
 
@@ -365,6 +375,7 @@ export class NemoTdtSpeechModel implements SpeechModel<
   readonly loadOptions?: NemoTdtModelOptions;
   private readonly sessions = new Set<NemoTdtSpeechSession>();
   private disposed = false;
+  private disposePromise: Promise<void> | undefined;
 
   constructor(
     readonly backend: SpeechModel<
@@ -435,6 +446,7 @@ export class NemoTdtSpeechModel implements SpeechModel<
   async createSession(
     _options: BaseSessionOptions = {},
   ): Promise<SpeechSession<NemoTdtTranscriptionOptions, NemoTdtNativeTranscript>> {
+    assertSessionOwnerActive(this.disposed);
     const session = new NemoTdtSpeechSession(
       this.modelId,
       this.classification,
@@ -446,27 +458,28 @@ export class NemoTdtSpeechModel implements SpeechModel<
         this.sessions.delete(session);
       },
     );
-    this.sessions.add(session);
-    await session.initialize();
-    return session;
+    return initializeOwnedSession(session, this.sessions, () => this.disposed);
   }
 
   async dispose(): Promise<void> {
-    if (this.disposed) {
-      return;
+    if (this.disposePromise) {
+      return this.disposePromise;
     }
     this.disposed = true;
 
     const sessions = [...this.sessions];
     this.sessions.clear();
 
-    await Promise.all(sessions.map((session) => session.dispose()));
+    this.disposePromise = disposeOwnedResources(sessions);
+    return this.disposePromise;
   }
 }
 
 export interface CreateNemoTdtModelFamilyOptions {
   readonly dependencies?: NemoTdtModelDependencies;
   readonly family?: string;
+  /** Override only when a custom backend has been adapted to this family. */
+  readonly supportedBackendIds?: readonly string[];
   readonly classification?: Partial<ModelClassification>;
   readonly supportsModel?: (
     modelId: string,
@@ -492,6 +505,7 @@ export function createNemoTdtModelFamily(
   return {
     family,
     classification: factoryClassification,
+    supportedBackendIds: options.supportedBackendIds ?? ['wasm', 'webgpu', 'native-cpu'],
     supports(modelId: string): boolean {
       if (options.supportsModel) {
         return options.supportsModel(modelId);
@@ -508,6 +522,15 @@ export function createNemoTdtModelFamily(
       return classificationContains(factoryClassification, classification);
     },
     async createModel(request, context: SpeechModelFactoryContext): Promise<NemoTdtSpeechModel> {
+      if (
+        context.backend.id === 'native-cpu' &&
+        !request.options?.source &&
+        !options.dependencies?.executor
+      ) {
+        throw new ExperimentalArtifactMissingError(
+          'Native NeMo TDT requires real model artifacts; scaffold inference is not a native port.',
+        );
+      }
       const classification = resolveClassification(factoryClassification, request.classification);
       const config = options.resolveConfig
         ? options.resolveConfig(request.modelId, request)

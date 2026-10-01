@@ -1,7 +1,7 @@
 import type { AudioBufferLike } from '../../types/index.js';
 import { JSMelProcessor } from '../../audio/js-mel.js';
 import type { OrtModuleLike, OrtSessionLike, OrtTensorLike } from './ort.js';
-import { releaseOrtSession } from './ort.js';
+import { disposeOrtOutputs, releaseOrtSession } from './ort.js';
 import { honorAbortAfterCreate, withNativeAbortSignalOption } from '../../io/abort.js';
 import { importNodeModule, isNodeLikeRuntime } from '../../io/node-compat.js';
 
@@ -18,6 +18,7 @@ export interface NemoPreprocessor {
 
 export class OnnxNemoPreprocessor implements NemoPreprocessor {
   private sessionPromise?: Promise<OrtSessionLike>;
+  private disposePromise?: Promise<void>;
   private disposed = false;
 
   constructor(
@@ -25,6 +26,8 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
     private readonly modelUrl: string,
     private readonly enableProfiling = false,
     private readonly signal?: { readonly aborted: boolean } | null,
+    private readonly executionProvider: 'wasm' | 'cpu' = 'wasm',
+    private readonly cpuThreads?: number,
   ) {}
 
   private async getSession(): Promise<OrtSessionLike> {
@@ -39,8 +42,11 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
       }
 
       const sessionOptions = {
-        executionProviders: ['wasm'],
+        executionProviders: [this.executionProvider],
         enableProfiling: this.enableProfiling,
+        ...(this.executionProvider === 'cpu'
+          ? { intraOpNumThreads: this.cpuThreads ?? 4, interOpNumThreads: 1 }
+          : {}),
       };
       const session = await honorAbortAfterCreate(
         () =>
@@ -52,7 +58,7 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
         (value) => releaseOrtSession(value),
       );
       if (this.disposed) {
-        releaseOrtSession(session);
+        await releaseOrtSession(session);
         throw new Error('NeMo preprocessor is disposed.');
       }
       return session;
@@ -63,15 +69,19 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
 
   async dispose(): Promise<void> {
     this.disposed = true;
-    if (!this.sessionPromise) {
-      return;
-    }
+    this.disposePromise ??= this.flushDispose();
+    return this.disposePromise;
+  }
+
+  private async flushDispose(): Promise<void> {
+    let session: OrtSessionLike | undefined;
     try {
-      releaseOrtSession(await this.sessionPromise);
+      session = await this.sessionPromise;
     } catch {
       // Keep the original load error; preprocessor session may never have opened.
     }
     this.sessionPromise = undefined;
+    await releaseOrtSession(session);
   }
 
   async process(audio: AudioBufferLike): Promise<NemoPreprocessorResult> {
@@ -88,8 +98,9 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
       [1],
     );
 
+    let outputs: Record<string, OrtTensorLike> | undefined;
     try {
-      const outputs = await session.run({
+      outputs = await session.run({
         waveforms: waveformTensor,
         waveforms_lens: lengthTensor,
       });
@@ -104,6 +115,7 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
         validLength: Number(lengthsTensor.data[0] ?? 0),
       };
     } finally {
+      disposeOrtOutputs(outputs);
       waveformTensor.dispose?.();
       lengthTensor.dispose?.();
     }

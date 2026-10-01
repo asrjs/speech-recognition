@@ -109,7 +109,11 @@ function createAssetProgressEvent(
     totalMiB: roundMiB(event.total),
     isComplete: Boolean(event.done) && !event.aborted,
     aborted: event.aborted,
-    message: event.aborted ? `Cancelled ${file}.` : event.done ? `Prepared ${file}.` : `Downloading ${file}.`,
+    message: event.aborted
+      ? `Cancelled ${file}.`
+      : event.done
+        ? `Prepared ${file}.`
+        : `Downloading ${file}.`,
   };
 }
 
@@ -121,12 +125,16 @@ function isAssetMissingError(error: unknown): boolean {
 }
 
 function normalizeRepoPath(path: string): string {
-  return String(path || '').replace(/^\.\/+/, '').replace(/\\/g, '/');
+  return String(path || '')
+    .replace(/^\.\/+/, '')
+    .replace(/\\/g, '/');
 }
 
 function hasListedRepoFile(files: readonly string[], filename: string): boolean {
   const target = normalizeRepoPath(filename);
-  return files.some((path) => normalizeRepoPath(path) === target || normalizeRepoPath(path).endsWith(`/${target}`));
+  return files.some(
+    (path) => normalizeRepoPath(path) === target || normalizeRepoPath(path).endsWith(`/${target}`),
+  );
 }
 
 function isExternalDataLoadError(error: unknown): boolean {
@@ -154,8 +162,8 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
   private static readonly tdtBatchMinColumnUtilization = 0.7;
   private tdtBatchColumnsScored = 0;
   private tdtBatchColumnsUseful = 0;
-private tdtSequentialBlankVisits = 0;
-private static readonly tdtBlankReprobeVisits = 6;
+  private tdtSequentialBlankVisits = 0;
+  private static readonly tdtBlankReprobeVisits = 6;
 
   constructor(
     private readonly modelId: string,
@@ -222,7 +230,9 @@ private static readonly tdtBlankReprobeVisits = 6;
       }
       return locator;
     };
-    const resolveOptionalFile = async (filename: string | undefined): Promise<string | undefined> => {
+    const resolveOptionalFile = async (
+      filename: string | undefined,
+    ): Promise<string | undefined> => {
       if (!filename) {
         return undefined;
       }
@@ -292,6 +302,8 @@ private static readonly tdtBlankReprobeVisits = 6;
     try {
       encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
         backendId: resolved.encoderBackendForOrt,
+        cpuThreads: resolved.cpuThreads,
+        signal: this.signal,
         enableProfiling: resolved.enableProfiling,
         webgpuOptions: resolved.webgpuOptions,
         externalDataUrl: artifacts.encoderDataUrl,
@@ -354,6 +366,8 @@ private static readonly tdtBlankReprobeVisits = 6;
         try {
           encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
             backendId: resolved.encoderBackendForOrt,
+            cpuThreads: resolved.cpuThreads,
+            signal: this.signal,
             enableProfiling: resolved.enableProfiling,
             webgpuOptions: resolved.webgpuOptions,
             externalDataUrl: artifacts.encoderDataUrl,
@@ -378,96 +392,128 @@ private static readonly tdtBlankReprobeVisits = 6;
         throw fallbackError;
       }
     }
-    if (this.disposed) {
-      releaseOrtSession(encoderSession);
-      throw new Error(`NeMo TDT executor was disposed during load for "${this.modelId}".`);
-    }
-    let decoderSession: OrtSessionLike;
-    const decoderPreferredOutputLocation:
-      | Readonly<Record<string, OrtOutputLocation>>
-      | undefined =
-      resolved.decoderBackendForOrt === 'webgpu' && this.sourceOptions.decoderStateOutputLocation
-        ? {
-            outputs: 'cpu',
-            output_states_1: this.sourceOptions.decoderStateOutputLocation,
-            output_states_2: this.sourceOptions.decoderStateOutputLocation,
-          }
-        : undefined;
+    let decoderSession: OrtSessionLike | undefined;
     try {
-      decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
-        backendId: resolved.decoderBackendForOrt,
-        enableProfiling: resolved.enableProfiling,
-        webgpuOptions: resolved.webgpuOptions,
-        preferredOutputLocation: decoderPreferredOutputLocation,
-        externalDataUrl: artifacts.decoderDataUrl,
-        externalDataPath: artifacts.decoderFilename ? `${artifacts.decoderFilename}.data` : undefined,
-      });
-    } catch (error) {
-      rethrowIfAssetAborted(error);
-      const canFallbackDecoderToInt8 =
-        this.sourceOptions.kind === 'huggingface' && this.sourceOptions.decoderQuant !== 'int8';
-
-      if (!canFallbackDecoderToInt8 || !isExternalDataLoadError(error)) {
-        throw error;
+      if (this.disposed) {
+        throw new Error(`NeMo TDT executor was disposed during load for "${this.modelId}".`);
       }
+      const decoderPreferredOutputLocation:
+        | Readonly<Record<string, OrtOutputLocation>>
+        | undefined =
+        resolved.decoderBackendForOrt === 'webgpu' && this.sourceOptions.decoderStateOutputLocation
+          ? {
+              outputs: 'cpu',
+              output_states_1: this.sourceOptions.decoderStateOutputLocation,
+              output_states_2: this.sourceOptions.decoderStateOutputLocation,
+            }
+          : undefined;
+      try {
+        decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
+          backendId: resolved.decoderBackendForOrt,
+          cpuThreads: resolved.cpuThreads,
+          signal: this.signal,
+          enableProfiling: resolved.enableProfiling,
+          webgpuOptions: resolved.webgpuOptions,
+          preferredOutputLocation: decoderPreferredOutputLocation,
+          externalDataUrl: artifacts.decoderDataUrl,
+          externalDataPath: artifacts.decoderFilename
+            ? `${artifacts.decoderFilename}.data`
+            : undefined,
+        });
+      } catch (error) {
+        rethrowIfAssetAborted(error);
+        const canFallbackDecoderToInt8 =
+          resolved.decoderBackendForOrt !== 'native-cpu' &&
+          this.sourceOptions.kind === 'huggingface' &&
+          this.sourceOptions.decoderQuant !== 'int8';
 
-      const fallbackResolved = resolveNemoTdtArtifacts(
-        {
-          ...this.sourceOptions,
-          decoderQuant: 'int8',
-        },
-        this.backendId,
-      );
-      const fallbackArtifacts = await this.materializeHuggingFaceArtifacts(
-        fallbackResolved.artifacts,
-      );
-      artifacts = {
-        ...artifacts,
-        decoderUrl: fallbackArtifacts.decoderUrl,
-        decoderDataUrl: fallbackArtifacts.decoderDataUrl,
-        decoderFilename: fallbackArtifacts.decoderFilename,
+        if (!canFallbackDecoderToInt8 || !isExternalDataLoadError(error)) {
+          throw error;
+        }
+
+        const fallbackResolved = resolveNemoTdtArtifacts(
+          {
+            ...this.sourceOptions,
+            decoderQuant: 'int8',
+          },
+          this.backendId,
+        );
+        const fallbackArtifacts = await this.materializeHuggingFaceArtifacts(
+          fallbackResolved.artifacts,
+        );
+        artifacts = {
+          ...artifacts,
+          decoderUrl: fallbackArtifacts.decoderUrl,
+          decoderDataUrl: fallbackArtifacts.decoderDataUrl,
+          decoderFilename: fallbackArtifacts.decoderFilename,
+        };
+
+        decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
+          backendId: resolved.decoderBackendForOrt,
+          cpuThreads: resolved.cpuThreads,
+          signal: this.signal,
+          enableProfiling: resolved.enableProfiling,
+          webgpuOptions: resolved.webgpuOptions,
+          preferredOutputLocation: decoderPreferredOutputLocation,
+          externalDataUrl: artifacts.decoderDataUrl,
+          externalDataPath: artifacts.decoderFilename
+            ? `${artifacts.decoderFilename}.data`
+            : undefined,
+        });
+        warnings.push({
+          code: 'nemo-tdt.decoder-fp32-fallback',
+          message:
+            'Decoder weights required missing external data at the selected quantization. Falling back to INT8 decoder weights.',
+          recoverable: true,
+        });
+      }
+      if (this.disposed) {
+        throw new Error(`NeMo TDT executor was disposed during load for "${this.modelId}".`);
+      }
+      const preprocessor: NemoPreprocessor =
+        resolved.preprocessorBackend === 'js'
+          ? new JsNemoPreprocessor({
+              melBins: this.config.melBins,
+              validLengthMode: this.config.preprocessorValidLengthMode,
+              normalization: this.config.preprocessorNormalization,
+            })
+          : new OnnxNemoPreprocessor(
+              ort,
+              artifacts.preprocessorUrl!,
+              resolved.enableProfiling,
+              this.signal,
+              resolved.ortBackend === 'native-cpu' ? 'cpu' : 'wasm',
+              resolved.cpuThreads,
+            );
+
+      return {
+        ort,
+        tokenizer,
+        encoderSession,
+        decoderSession,
+        preprocessor,
+        preprocessorBackend: resolved.preprocessorBackend,
+        warnings,
       };
-
-      decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
-        backendId: resolved.decoderBackendForOrt,
-        enableProfiling: resolved.enableProfiling,
-        webgpuOptions: resolved.webgpuOptions,
-        preferredOutputLocation: decoderPreferredOutputLocation,
-        externalDataUrl: artifacts.decoderDataUrl,
-        externalDataPath: artifacts.decoderFilename
-          ? `${artifacts.decoderFilename}.data`
-          : undefined,
-      });
-      warnings.push({
-        code: 'nemo-tdt.decoder-fp32-fallback',
-        message:
-          'Decoder weights required missing external data at the selected quantization. Falling back to INT8 decoder weights.',
-        recoverable: true,
-      });
+    } catch (error) {
+      // Initialization owns these sessions until the loaded state is returned.
+      // Preserve the load error and expose failed cleanup of acquired resources.
+      const results = await Promise.allSettled([
+        Promise.resolve().then(() => releaseOrtSession(encoderSession)),
+        Promise.resolve().then(() => releaseOrtSession(decoderSession)),
+      ]);
+      const failures = results.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason] : [],
+      );
+      if (failures.length) {
+        throw new AggregateError(
+          [error, ...failures],
+          `NeMo TDT initialization and cleanup failed for "${this.modelId}".`,
+          { cause: error },
+        );
+      }
+      throw error;
     }
-    if (this.disposed) {
-      releaseOrtSession(encoderSession);
-      releaseOrtSession(decoderSession);
-      throw new Error(`NeMo TDT executor was disposed during load for "${this.modelId}".`);
-    }
-    const preprocessor: NemoPreprocessor =
-      resolved.preprocessorBackend === 'js'
-        ? new JsNemoPreprocessor({
-            melBins: this.config.melBins,
-            validLengthMode: this.config.preprocessorValidLengthMode,
-            normalization: this.config.preprocessorNormalization,
-          })
-        : new OnnxNemoPreprocessor(ort, artifacts.preprocessorUrl!, resolved.enableProfiling, this.signal);
-
-    return {
-      ort,
-      tokenizer,
-      encoderSession,
-      decoderSession,
-      preprocessor,
-      preprocessorBackend: resolved.preprocessorBackend,
-      warnings,
-    };
   }
 
   private async getLoadedState(): Promise<LoadedExecutorState> {
@@ -609,9 +655,10 @@ private static readonly tdtBlankReprobeVisits = 6;
       if (dims.length !== 3 || dims[0] !== 1) {
         throw new Error(`Unexpected NeMo TDT encoder output shape: [${dims.join(', ')}].`);
       }
-      encoderData = encoderTensor.data instanceof Float32Array
-        ? new Float32Array(encoderTensor.data)
-        : Float32Array.from(encoderTensor.data as ArrayLike<number>);
+      encoderData =
+        encoderTensor.data instanceof Float32Array
+          ? new Float32Array(encoderTensor.data)
+          : Float32Array.from(encoderTensor.data as ArrayLike<number>);
     } finally {
       disposeOrtOutputs(encoderOutputs);
     }
@@ -692,7 +739,7 @@ private static readonly tdtBlankReprobeVisits = 6;
     let decoderGridBatchRuns = 0;
     this.tdtBatchColumnsScored = 0;
     this.tdtBatchColumnsUseful = 0;
-this.tdtSequentialBlankVisits = 0;
+    this.tdtSequentialBlankVisits = 0;
     try {
       for (let frameIndex = 0; frameIndex < frameCount; ) {
         throwIfDecodeAborted(options.signal);
@@ -701,11 +748,9 @@ this.tdtSequentialBlankVisits = 0;
           options.gridBatching !== false &&
           emittedOnFrame === 0 &&
           frameCount - frameIndex > 1 &&
-          (this.tdtBatchColumnsScored <
-            OrtNemoTdtExecutor.tdtBatchMinSampleColumns ||
+          (this.tdtBatchColumnsScored < OrtNemoTdtExecutor.tdtBatchMinSampleColumns ||
             this.tdtBatchColumnsUseful >=
-              OrtNemoTdtExecutor.tdtBatchMinColumnUtilization *
-                this.tdtBatchColumnsScored)
+              OrtNemoTdtExecutor.tdtBatchMinColumnUtilization * this.tdtBatchColumnsScored)
         ) {
           const width = Math.min(
             frameCount - frameIndex,
@@ -735,15 +780,14 @@ this.tdtSequentialBlankVisits = 0;
               }
             }
           }
-          const batchEncoderTensor = new loaded.ort.Tensor("float32", batchData, [
+          const batchEncoderTensor = new loaded.ort.Tensor('float32', batchData, [
             1,
             featureSize,
             width,
           ]);
           const batchTargetBuffer = new Int32Array(1);
-          batchTargetBuffer[0] =
-            tokenIds.length > 0 ? tokenIds[tokenIds.length - 1]! : blankId;
-          const batchTargetTensor = new loaded.ort.Tensor("int32", batchTargetBuffer, [1, 1]);
+          batchTargetBuffer[0] = tokenIds.length > 0 ? tokenIds[tokenIds.length - 1]! : blankId;
+          const batchTargetTensor = new loaded.ort.Tensor('int32', batchTargetBuffer, [1, 1]);
           let batchOutputs: Record<string, OrtTensorLike> | undefined;
           try {
             batchOutputs = await loaded.decoderSession.run({
@@ -784,14 +828,9 @@ this.tdtSequentialBlankVisits = 0;
                 );
                 examined += 1;
                 const tokenId = argmax(rowView, 0, vocabSize);
-                const step =
-                  argmax(rowView, vocabSize, rowLength - vocabSize) - vocabSize;
+                const step = argmax(rowView, vocabSize, rowLength - vocabSize) - vocabSize;
                 if (computeConfidence) {
-                  const scanConfidence = confidenceFromLogits(
-                    rowView,
-                    tokenId,
-                    vocabSize,
-                  );
+                  const scanConfidence = confidenceFromLogits(rowView, tokenId, vocabSize);
                   const existingScanStats = frameConfidenceStats.get(cursor);
                   if (existingScanStats) {
                     existingScanStats.sum += scanConfidence.confidence;
@@ -820,10 +859,7 @@ this.tdtSequentialBlankVisits = 0;
               if (emissionRow === -1) {
                 frameIndex = cursor;
                 emittedOnFrame = 0;
-                this.tdtBatchWidth = Math.min(
-                  width * 2,
-                  OrtNemoTdtExecutor.tdtBatchMaxFrames,
-                );
+                this.tdtBatchWidth = Math.min(width * 2, OrtNemoTdtExecutor.tdtBatchMaxFrames);
               } else {
                 this.tdtBatchWidth = OrtNemoTdtExecutor.tdtBatchMinFrames;
                 const emissionFrame = frameIndex + emissionRow;
@@ -832,11 +868,7 @@ this.tdtSequentialBlankVisits = 0;
                   (emissionRow + 1) * rowLength,
                 );
                 if (computeConfidence) {
-                  const stepConfidence = confidenceFromLogits(
-                    rowView,
-                    emissionToken,
-                    vocabSize,
-                  );
+                  const stepConfidence = confidenceFromLogits(rowView, emissionToken, vocabSize);
                   tokenConfidences.push(stepConfidence.confidence);
                   tokenLogProbs.push(stepConfidence.logProb);
                 }
@@ -887,12 +919,10 @@ this.tdtSequentialBlankVisits = 0;
           const batchCompletedUnits = Math.min(frameCount, frameIndex);
           if (batchCompletedUnits > lastReportedDecodeUnits) {
             lastReportedDecodeUnits = batchCompletedUnits;
-            const decodeProgress = clampProgress(
-              0.4 + (batchCompletedUnits / frameCount) * 0.5,
-            );
+            const decodeProgress = clampProgress(0.4 + (batchCompletedUnits / frameCount) * 0.5);
             const decodeElapsedMs = nowMs() - transcriptionStart;
             emitTranscriptionProgress(options, {
-              stage: "decode",
+              stage: 'decode',
               progress: decodeProgress,
               elapsedMs: roundMetric(decodeElapsedMs),
               remainingMs: estimateRemainingMs(decodeElapsedMs, decodeProgress),
@@ -900,7 +930,14 @@ this.tdtSequentialBlankVisits = 0;
               totalUnits: frameCount,
               modelId: this.modelId,
               backendId: this.backendId,
-              message: "Decoded " + batchCompletedUnits + "/" + frameCount + " encoder frames for " + this.modelId + ".",
+              message:
+                'Decoded ' +
+                batchCompletedUnits +
+                '/' +
+                frameCount +
+                ' encoder frames for ' +
+                this.modelId +
+                '.',
               metrics: {
                 preprocessMs: roundMetric(preprocessMs),
                 encodeMs: roundMetric(encodeMs),
@@ -914,7 +951,7 @@ this.tdtSequentialBlankVisits = 0;
         if (encoderIsBdt) {
           for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
             encoderFrameBuffer[featureIndex] =
-            encoderData[featureIndex * frameCount + frameIndex] ?? 0;
+              encoderData[featureIndex * frameCount + frameIndex] ?? 0;
           }
         } else {
           const offset = frameIndex * featureSize;
@@ -936,103 +973,107 @@ this.tdtSequentialBlankVisits = 0;
           state2: decoderOutputs.output_states_2 as OrtTensorLike<Float32Array>,
         };
         try {
-        // ORT already exposes float32 logits as a typed-array view. Consume
-        // that view synchronously before disposing the output tensor instead
-        // of allocating a full per-step copy. Non-float32-compatible output
-        // views still get normalized into an owned Float32Array.
-        const logitsData = logits.data instanceof Float32Array
-          ? logits.data
-          : Float32Array.from(logits.data as ArrayLike<number>);
-        if (logitsData.length < vocabSize) {
-          throw new Error(
-            `NeMo TDT decoder output is too small (${logitsData.length}) for tokenizer vocabulary size ${vocabSize}.`,
-          );
-        }
-        if (logitsData.length === vocabSize) {
-          throw new Error('NeMo TDT decoder output is missing required TDT duration logits.');
-        }
-        const tokenId = argmax(logitsData, 0, vocabSize);
-        const durationOffset = vocabSize;
-        const step =
-          argmax(logitsData, durationOffset, logitsData.length - durationOffset) - durationOffset;
-        const stepConfidence = computeConfidence
-          ? confidenceFromLogits(logitsData, tokenId, vocabSize)
-          : undefined;
-        if (stepConfidence) {
-          const existingFrameConfidence = frameConfidenceStats.get(frameIndex);
-          if (existingFrameConfidence) {
-            existingFrameConfidence.sum += stepConfidence.confidence;
-            existingFrameConfidence.count += 1;
-          } else {
-            frameConfidenceStats.set(frameIndex, { sum: stepConfidence.confidence, count: 1 });
+          // ORT already exposes float32 logits as a typed-array view. Consume
+          // that view synchronously before disposing the output tensor instead
+          // of allocating a full per-step copy. Non-float32-compatible output
+          // views still get normalized into an owned Float32Array.
+          const logitsData =
+            logits.data instanceof Float32Array
+              ? logits.data
+              : Float32Array.from(logits.data as ArrayLike<number>);
+          if (logitsData.length < vocabSize) {
+            throw new Error(
+              `NeMo TDT decoder output is too small (${logitsData.length}) for tokenizer vocabulary size ${vocabSize}.`,
+            );
           }
-        }
-
-        if (tokenId !== blankId) {
-          const durationFrames = Math.max(1, step);
-          tokenIds.push(tokenId);
-          tokenTimestamps.push([
-            roundTimestampSeconds(frameIndex * frameTime),
-            roundTimestampSeconds(Math.min(frameCount, frameIndex + durationFrames) * frameTime),
-          ]);
+          if (logitsData.length === vocabSize) {
+            throw new Error('NeMo TDT decoder output is missing required TDT duration logits.');
+          }
+          const tokenId = argmax(logitsData, 0, vocabSize);
+          const durationOffset = vocabSize;
+          const step =
+            argmax(logitsData, durationOffset, logitsData.length - durationOffset) - durationOffset;
+          const stepConfidence = computeConfidence
+            ? confidenceFromLogits(logitsData, tokenId, vocabSize)
+            : undefined;
           if (stepConfidence) {
-            tokenConfidences.push(stepConfidence.confidence);
-            tokenLogProbs.push(stepConfidence.logProb);
+            const existingFrameConfidence = frameConfidenceStats.get(frameIndex);
+            if (existingFrameConfidence) {
+              existingFrameConfidence.sum += stepConfidence.confidence;
+              existingFrameConfidence.count += 1;
+            } else {
+              frameConfidenceStats.set(frameIndex, { sum: stepConfidence.confidence, count: 1 });
+            }
           }
-          tokenFrameIndices.push(frameIndex);
-          tokenTdtSteps.push(step);
-          emittedOnFrame += 1;
-this.tdtSequentialBlankVisits = 0;
 
-          disposeDecoderState(decoderState, nextState);
-          decoderState = nextState;
-        } else {
-disposeDecoderState(nextState, decoderState);
-// A sustained sequential blank run means the audio entered a
-// blank-dominant region after the gate closed (typical for
-// speech/silence alternation and streaming chunks). Re-open the
-// sampling window so the grid can cross the silence; a fluke
-// re-probe costs at most tdtBatchMinSampleColumns wasted
-// columns before the gate closes again.
-this.tdtSequentialBlankVisits += 1;
-if (this.tdtSequentialBlankVisits >= OrtNemoTdtExecutor.tdtBlankReprobeVisits) {
-  this.tdtSequentialBlankVisits = 0;
-  this.tdtBatchColumnsScored = 0;
-  this.tdtBatchColumnsUseful = 0;
-  this.tdtBatchWidth = OrtNemoTdtExecutor.tdtBatchMinFrames;
-}
-        }
+          if (tokenId !== blankId) {
+            const durationFrames = Math.max(1, step);
+            tokenIds.push(tokenId);
+            tokenTimestamps.push([
+              roundTimestampSeconds(frameIndex * frameTime),
+              roundTimestampSeconds(Math.min(frameCount, frameIndex + durationFrames) * frameTime),
+            ]);
+            if (stepConfidence) {
+              tokenConfidences.push(stepConfidence.confidence);
+              tokenLogProbs.push(stepConfidence.logProb);
+            }
+            tokenFrameIndices.push(frameIndex);
+            tokenTdtSteps.push(step);
+            emittedOnFrame += 1;
+            this.tdtSequentialBlankVisits = 0;
 
-        if (step > 0) {
-          frameIndex += step;
-          emittedOnFrame = 0;
-        } else if (tokenId === blankId || emittedOnFrame >= (this.config.maxSymbolsPerStep ?? 10)) {
-          frameIndex += 1;
-          emittedOnFrame = 0;
-        }
+            disposeDecoderState(decoderState, nextState);
+            decoderState = nextState;
+          } else {
+            disposeDecoderState(nextState, decoderState);
+            // A sustained sequential blank run means the audio entered a
+            // blank-dominant region after the gate closed (typical for
+            // speech/silence alternation and streaming chunks). Re-open the
+            // sampling window so the grid can cross the silence; a fluke
+            // re-probe costs at most tdtBatchMinSampleColumns wasted
+            // columns before the gate closes again.
+            this.tdtSequentialBlankVisits += 1;
+            if (this.tdtSequentialBlankVisits >= OrtNemoTdtExecutor.tdtBlankReprobeVisits) {
+              this.tdtSequentialBlankVisits = 0;
+              this.tdtBatchColumnsScored = 0;
+              this.tdtBatchColumnsUseful = 0;
+              this.tdtBatchWidth = OrtNemoTdtExecutor.tdtBatchMinFrames;
+            }
+          }
 
-        const completedUnits = Math.min(frameCount, frameIndex);
-        if (completedUnits > lastReportedDecodeUnits) {
-          lastReportedDecodeUnits = completedUnits;
-          const decodeProgress = clampProgress(0.4 + (completedUnits / frameCount) * 0.5);
-          const decodeElapsedMs = nowMs() - transcriptionStart;
-          emitTranscriptionProgress(options, {
-            stage: 'decode',
-            progress: decodeProgress,
-            elapsedMs: roundMetric(decodeElapsedMs),
-            remainingMs: estimateRemainingMs(decodeElapsedMs, decodeProgress),
-            completedUnits,
-            totalUnits: frameCount,
-            modelId: this.modelId,
-            backendId: this.backendId,
-            message: `Decoded ${completedUnits}/${frameCount} encoder frames for ${this.modelId}.`,
-            metrics: {
-              preprocessMs: roundMetric(preprocessMs),
-              encodeMs: roundMetric(encodeMs),
-              decodeMs: roundMetric(nowMs() - decoderStart),
-            },
-          });
-        }
+          if (step > 0) {
+            frameIndex += step;
+            emittedOnFrame = 0;
+          } else if (
+            tokenId === blankId ||
+            emittedOnFrame >= (this.config.maxSymbolsPerStep ?? 10)
+          ) {
+            frameIndex += 1;
+            emittedOnFrame = 0;
+          }
+
+          const completedUnits = Math.min(frameCount, frameIndex);
+          if (completedUnits > lastReportedDecodeUnits) {
+            lastReportedDecodeUnits = completedUnits;
+            const decodeProgress = clampProgress(0.4 + (completedUnits / frameCount) * 0.5);
+            const decodeElapsedMs = nowMs() - transcriptionStart;
+            emitTranscriptionProgress(options, {
+              stage: 'decode',
+              progress: decodeProgress,
+              elapsedMs: roundMetric(decodeElapsedMs),
+              remainingMs: estimateRemainingMs(decodeElapsedMs, decodeProgress),
+              completedUnits,
+              totalUnits: frameCount,
+              modelId: this.modelId,
+              backendId: this.backendId,
+              message: `Decoded ${completedUnits}/${frameCount} encoder frames for ${this.modelId}.`,
+              metrics: {
+                preprocessMs: roundMetric(preprocessMs),
+                encodeMs: roundMetric(encodeMs),
+                decodeMs: roundMetric(nowMs() - decoderStart),
+              },
+            });
+          }
         } finally {
           disposeTensor(logits);
           for (const tensor of Object.values(decoderOutputs)) {
@@ -1195,17 +1236,31 @@ if (this.tdtSequentialBlankVisits >= OrtNemoTdtExecutor.tdtBlankReprobeVisits) {
   }
 
   private async flushDispose(): Promise<void> {
+    let loaded: LoadedExecutorState | undefined;
     if (this.loadStatePromise) {
       try {
-        const loaded = await this.loadStatePromise;
-        releaseOrtSession(loaded.encoderSession);
-        releaseOrtSession(loaded.decoderSession);
-        await loaded.preprocessor.dispose?.();
+        loaded = await this.loadStatePromise;
       } catch {
-        // Keep the original load error; still drop asset handles.
+        // initialize() already settled partial sessions; retain its load error.
       }
     }
+    const results: PromiseSettledResult<void>[] = loaded
+      ? await Promise.allSettled([
+          Promise.resolve().then(() => releaseOrtSession(loaded.encoderSession)),
+          Promise.resolve().then(() => releaseOrtSession(loaded.decoderSession)),
+          Promise.resolve().then(() => loaded.preprocessor.dispose?.()),
+        ])
+      : [];
     const handles = this.assetHandles.splice(0);
-    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
+    results.push(
+      ...(await Promise.allSettled(
+        handles.map((handle) => Promise.resolve().then(() => handle.dispose())),
+      )),
+    );
+    const failures = results.flatMap((result) =>
+      result.status === 'rejected' ? [result.reason] : [],
+    );
+    if (failures.length)
+      throw new AggregateError(failures, `NeMo TDT disposal failed for "${this.modelId}".`);
   }
 }

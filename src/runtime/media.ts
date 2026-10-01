@@ -1,3 +1,5 @@
+import { decodeWavToMonoPcm } from '../audio/wav.js';
+
 export interface AudioBufferLikeForDecode {
   readonly numberOfChannels: number;
   readonly length: number;
@@ -153,106 +155,6 @@ function isWavArrayBuffer(arrayBuffer: ArrayBuffer): boolean {
   return readAscii(view, 0, 4) === 'RIFF' && readAscii(view, 8, 4) === 'WAVE';
 }
 
-function pcmSampleToFloat(view: DataView, offset: number, bitsPerSample: number): number {
-  switch (bitsPerSample) {
-    case 8:
-      return (view.getUint8(offset) - 128) / 128;
-    case 16:
-      return view.getInt16(offset, true) / 32768;
-    case 24: {
-      const b0 = view.getUint8(offset);
-      const b1 = view.getUint8(offset + 1);
-      const b2 = view.getUint8(offset + 2);
-      let value = b0 | (b1 << 8) | (b2 << 16);
-      if (value & 0x800000) value |= ~0xffffff;
-      return value / 8388608;
-    }
-    case 32:
-      return view.getInt32(offset, true) / 2147483648;
-    default:
-      throw new Error(`Unsupported PCM WAV bits per sample: ${bitsPerSample}`);
-  }
-}
-
-function floatSampleToFloat(view: DataView, offset: number, bitsPerSample: number): number {
-  if (bitsPerSample === 32) return view.getFloat32(offset, true);
-  if (bitsPerSample === 64) return view.getFloat64(offset, true);
-  throw new Error(`Unsupported float WAV bits per sample: ${bitsPerSample}`);
-}
-
-function decodeWavArrayBuffer(arrayBuffer: ArrayBuffer): {
-  readonly audio: Float32Array;
-  readonly sampleRate: number;
-  readonly numberOfChannels: number;
-} {
-  const view = new DataView(arrayBuffer);
-  if (!isWavArrayBuffer(arrayBuffer)) {
-    throw new Error('Invalid WAV: expected RIFF/WAVE header.');
-  }
-
-  let offset = WAV_HEADER_SIZE;
-  let audioFormat: number | null = null;
-  let numberOfChannels: number | null = null;
-  let sampleRate: number | null = null;
-  let bitsPerSample: number | null = null;
-  let dataOffset: number | null = null;
-  let dataSize: number | null = null;
-
-  while (offset + 8 <= arrayBuffer.byteLength) {
-    const chunkId = readAscii(view, offset, 4);
-    const chunkSize = view.getUint32(offset + 4, true);
-    const chunkDataStart = offset + 8;
-    const nextOffset = chunkDataStart + chunkSize + (chunkSize % 2);
-
-    if (chunkId === 'fmt ') {
-      audioFormat = view.getUint16(chunkDataStart, true);
-      numberOfChannels = view.getUint16(chunkDataStart + 2, true);
-      sampleRate = view.getUint32(chunkDataStart + 4, true);
-      bitsPerSample = view.getUint16(chunkDataStart + 14, true);
-    } else if (chunkId === 'data') {
-      dataOffset = chunkDataStart;
-      dataSize = chunkSize;
-    }
-
-    offset = nextOffset;
-  }
-
-  if (
-    audioFormat == null ||
-    numberOfChannels == null ||
-    sampleRate == null ||
-    bitsPerSample == null ||
-    dataOffset == null ||
-    dataSize == null
-  ) {
-    throw new Error('Invalid WAV: missing fmt or data chunk.');
-  }
-
-  const bytesPerSample = bitsPerSample / 8;
-  const totalSamples = Math.floor(dataSize / bytesPerSample);
-  const totalFrames = Math.floor(totalSamples / numberOfChannels);
-  const mono = new Float32Array(totalFrames);
-
-  let sampleOffset = dataOffset;
-  for (let frameIndex = 0; frameIndex < totalFrames; frameIndex += 1) {
-    let sum = 0;
-    for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex += 1) {
-      sum +=
-        audioFormat === 3
-          ? floatSampleToFloat(view, sampleOffset, bitsPerSample)
-          : pcmSampleToFloat(view, sampleOffset, bitsPerSample);
-      sampleOffset += bytesPerSample;
-    }
-    mono[frameIndex] = sum / numberOfChannels;
-  }
-
-  return {
-    audio: mono,
-    sampleRate,
-    numberOfChannels,
-  };
-}
-
 function resampleLinear(audio: Float32Array, fromRate: number, toRate: number): Float32Array {
   if (fromRate === toRate) {
     return audio;
@@ -301,13 +203,13 @@ export async function decodeAudioSourceToMonoPcm(
 
   if (strategy === 'native-rate' && isWavArrayBuffer(arrayBuffer)) {
     const decodeStartMs = nowMs();
-    const decoded = decodeWavArrayBuffer(arrayBuffer);
+    const decoded = decodeWavToMonoPcm(arrayBuffer);
     const decodeMs = nowMs() - decodeStartMs;
     const resampleStartMs = nowMs();
-    const pcm = resampleLinear(decoded.audio, decoded.sampleRate, targetSampleRate);
+    const pcm = resampleLinear(decoded.pcm, decoded.sampleRate, targetSampleRate);
     const resampleMs = nowMs() - resampleStartMs;
     const wallMs = nowMs() - startMs;
-    const durationSec = decoded.audio.length / decoded.sampleRate;
+    const durationSec = decoded.pcm.length / decoded.sampleRate;
 
     return {
       pcm,

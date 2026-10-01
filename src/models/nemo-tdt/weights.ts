@@ -1,7 +1,7 @@
 import type { NemoTdtQuantization } from './types.js';
 
 export interface NemoTdtWeightSetup {
-  readonly backend: 'webgpu' | 'wasm';
+  readonly backend: 'webgpu' | 'wasm' | 'native-cpu';
   readonly encoderDefault: NemoTdtQuantization;
   readonly decoderDefault: NemoTdtQuantization;
   readonly encoderFallback: NemoTdtQuantization;
@@ -14,6 +14,16 @@ export function normalizeNemoTdtWeightBackend(backendId: string): 'webgpu' | 'wa
 }
 
 export function getDefaultNemoTdtWeightSetup(backendId: string): NemoTdtWeightSetup {
+  if (backendId === 'native-cpu') {
+    return {
+      backend: 'native-cpu',
+      encoderDefault: 'fp32',
+      decoderDefault: 'fp32',
+      encoderFallback: 'fp32',
+      encoderPreferred: ['fp32', 'fp16', 'int8'],
+      decoderPreferred: ['fp32', 'fp16', 'int8'],
+    };
+  }
   const backend = normalizeNemoTdtWeightBackend(backendId);
   if (backend === 'webgpu') {
     return {
