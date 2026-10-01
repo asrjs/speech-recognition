@@ -1,0 +1,21 @@
+{
+  "status": "DIAGNOSTIC_SILENCE_MEL_EXACT_PRODUCTION_FEATURES_FAIL",
+  "tested_commit": "6b931266b6c33519729f0a32ab18f5eb8c0552cc",
+  "diagnostic_sha256": "f4b35009c856ea0d4f509d12e42db51053503b4bcd2e232a75161f26d60e89ca",
+  "silence_receipt": "mel-arithmetic-silence-2026-10-01.json.gz",
+  "silence_receipt_sha256": "b9726f88eccfffb406184ab823c6b0c9ee40a74609b4e9c7aea042a44b5a8740",
+  "official_sample_id": "pure-silence-1s-16k",
+  "official_filterbank_support_covered": true,
+  "valid_silence_cells": 12800,
+  "all_three_controls_linear_input_raw_exact_mismatches": 0,
+  "production_silence_feature_failures": 12800,
+  "silence_real_exit_code": 1,
+  "jfk_receipt": "mel-arithmetic-jfk-final-2026-10-01.json.gz",
+  "jfk_mixed_precision_f32_guard_raw_equals_independent_official_input_log_bytes": true,
+  "jfk_f32_guard_raw_exact_mismatches": 6,
+  "jfk_f32_guard_raw_tolerance_failures": 0,
+  "production_changed": false,
+  "tolerances_changed": false,
+  "limits": ["Official power injection, not real production preprocessing", "Silent raw features do not certify normalization", "No browser/model acceptance"],
+  "next": "Combine isolated mel/add/guard arithmetic with diagnostic normalization on actual library spectra; keep upstream FFT and production gates separate."
+}

@@ -131,6 +131,16 @@ gates. Receipt: `mel-arithmetic-handoff-2026-10-01.json`.
 Next validate the same arithmetic on silence, then isolate guard rounding and
 normalization with actual library spectra before any shared processor change.
 
+Post-commit continuation (2026-10-02): all three mel arithmetic controls match
+all 12,800 valid silence linear/input/raw-log cells exactly, with official
+support coverage verified. Production still fails 12,800 normalized-feature
+cells. On JFK, the matching mixed-precision control's existing f32-guard-log
+counterfactual is byte-identical to the independent official-input JS-log
+control (six exact differences, zero tolerance failures). Receipt:
+`mel-arithmetic-continuation-2026-10-02.json`. Next combine these isolated
+arithmetic/guard controls with diagnostic normalization on actual library
+spectra, retaining separate upstream FFT and production acceptance gates.
+
 ## Ordered tasks
 
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and
