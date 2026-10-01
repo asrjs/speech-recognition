@@ -270,6 +270,138 @@ def read_windowed_frames(capture, n_fft, frame_count):
     return exact_frames.reshape(1, frame_count, n_fft)
 
 
+def direct_dft_bins(frames, coordinates):
+    """Independent selected-bin DFT on canonical f32 input, not an FFT engine.
+
+    Float64 sin/cos and math.fsum approximate the mathematical transform;
+    this is not an exact-arithmetic oracle or a production replacement.
+    Modular phases keep high-bin angle reduction bounded to one turn.
+    """
+    frames = np.asarray(frames)
+    if (frames.dtype != np.float32 or frames.ndim != 3 or frames.shape[0] != 1
+            or not frames.size or frames.shape[2] < 2 or frames.shape[2] % 2
+            or not np.isfinite(frames).all()):
+        raise ValueError("Direct DFT requires finite nonempty batch-one float32 windowed frames and even FFT size")
+    selected, seen = [], set()
+    for coordinate in coordinates:
+        if (not isinstance(coordinate, (tuple, list)) or len(coordinate) != 2
+                or any(type(value) is not int for value in coordinate)
+                or not 0 <= coordinate[0] < frames.shape[1]
+                or not 0 <= coordinate[1] <= frames.shape[2] // 2
+                or tuple(coordinate) in seen):
+            raise ValueError("Direct DFT frame/bin coordinate is invalid, duplicate or out of range")
+        seen.add(tuple(coordinate))
+        selected.append(tuple(coordinate))
+    values = []
+    size = frames.shape[2]
+    for frame, bin_index in selected:
+        samples = frames[0, frame]
+        angles = [2 * math.pi * ((bin_index * sample) % size) / size for sample in range(size)]
+        real = math.fsum(float(value) * math.cos(angle) for value, angle in zip(samples, angles))
+        imag = -math.fsum(float(value) * math.sin(angle) for value, angle in zip(samples, angles))
+        values.append(complex(real, imag))
+    return values
+
+
+def fft_dft_diagnostic(frames, official_complex, official_power, controls, mismatch_support):
+    """Compare engine spectra with a DFT at every selected failed-mel support bin.
+
+    Exact input bytes are mandatory. Differences from the float64 DFT estimate
+    are diagnostic evidence, never altered feature tolerances or port acceptance.
+    """
+    direct_dft_bins(frames, [])  # Validate canonical input even for empty support.
+    frames = np.asarray(frames)
+    shape = (1, frames.shape[2] // 2 + 1, frames.shape[1])
+    official_complex, official_power = np.asarray(official_complex), np.asarray(official_power)
+    if (official_complex.shape != shape or official_complex.dtype != np.complex64
+            or official_power.shape != shape or official_power.dtype != np.float32
+            or not np.isfinite(official_complex).all() or not np.isfinite(official_power).all()
+            or np.any(official_power < 0)):
+        raise ValueError("Direct DFT diagnostic requires matching finite official complex64/f32 power boundaries")
+    if (not isinstance(controls, dict) or not controls or set(controls) != set(mismatch_support)
+            or "official_complex64" in controls):
+        raise ValueError("Direct DFT controls and mismatch support must have distinct matching names")
+    spectra = {"official_complex64": (official_complex.real.astype(np.float64),
+        official_complex.imag.astype(np.float64), official_power)}
+    pairs = set()
+    canonical_bytes = frames.astype("<f4", copy=False).tobytes()
+    for name, capture in controls.items():
+        captured_frames = read_windowed_frames(capture, frames.shape[2], frames.shape[1])
+        if captured_frames.astype("<f4", copy=False).tobytes() != canonical_bytes:
+            raise ValueError("Direct DFT comparisons require identical canonical windowed frame bytes")
+        if capture.get("shape") != list(shape):
+            raise ValueError("Direct DFT candidate complex layout/shape differs")
+        arrays = []
+        for component in ("real", "imag", "power"):
+            values = np.asarray(capture.get(component))
+            if (values.ndim != 1 or values.size != np.prod(shape) or values.dtype.kind not in "fi"
+                    or not np.isfinite(values).all()):
+                raise ValueError("Direct DFT candidate components must be finite full bin-major numeric arrays")
+            arrays.append(values.astype(np.float64).reshape(shape))
+        if np.any(arrays[2] < 0):
+            raise ValueError("Direct DFT captured powers must be nonnegative")
+        spectra[name] = tuple(arrays)
+        seen = set()
+        for point in mismatch_support[name]:
+            coordinate, active = point.get("coordinate"), point.get("active_bins")
+            if (not isinstance(coordinate, (list, tuple)) or len(coordinate) != 3
+                    or any(type(value) is not int for value in coordinate)
+                    or coordinate[0] != 0 or coordinate[1] < 0
+                    or not 0 <= coordinate[2] < frames.shape[1] or tuple(coordinate) in seen
+                    or not isinstance(active, list)
+                    or any(type(value) is not int or not 0 <= value < shape[1] for value in active)
+                    or len(set(active)) != len(active)):
+                raise ValueError("Direct DFT mismatch support coordinate/bins are invalid or duplicate")
+            seen.add(tuple(coordinate))
+            pairs.update((coordinate[2], bin_index) for bin_index in active)
+    pairs = sorted(pairs)
+    dft = direct_dft_bins(frames, pairs)
+    rows = []
+    errors = {name: [] for name in spectra}
+    closest_counts = {name: 0 for name in spectra}
+    rounded_counts = {name: 0 for name in spectra}
+    for (frame, bin_index), estimate in zip(pairs, dft):
+        dft_power = estimate.real ** 2 + estimate.imag ** 2
+        rounded = np.asarray([estimate.real, estimate.imag], dtype="<f4")
+        if not np.isfinite(rounded).all():
+            raise ValueError("Direct DFT estimate cannot be represented by finite reference float32 components")
+        engine_values = {}
+        for name, (real, imag, boundary_power) in spectra.items():
+            re, im = float(real[0, bin_index, frame]), float(imag[0, bin_index, frame])
+            real_error, imag_error = re - estimate.real, im - estimate.imag
+            complex_error = math.hypot(real_error, imag_error)
+            errors[name].extend((abs(real_error), abs(imag_error)))
+            rounded_equal = np.asarray([re, im], dtype="<f4").tobytes() == rounded.tobytes()
+            rounded_counts[name] += int(rounded_equal)
+            engine_values[name] = {"real": re, "imag": im, "real_error": real_error,
+                "imag_error": imag_error, "complex_abs_error": complex_error,
+                "component_squared_power": re ** 2 + im ** 2,
+                "component_squared_power_error": re ** 2 + im ** 2 - dft_power,
+                "boundary_power": float(boundary_power[0, bin_index, frame]),
+                "boundary_power_error": float(boundary_power[0, bin_index, frame]) - dft_power,
+                "rounded_dft_components_equal": rounded_equal}
+        nearest_error = min(value["complex_abs_error"] for value in engine_values.values())
+        nearest = [name for name, value in engine_values.items() if value["complex_abs_error"] == nearest_error]
+        for name in nearest:
+            closest_counts[name] += 1
+        rows.append({"coordinate": [0, bin_index, frame],
+            "dft": {"real": estimate.real, "imag": estimate.imag, "power": dft_power},
+            "engines": engine_values, "closest_to_dft": nearest})
+    return {"status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE",
+        "method": "Selected-bin float64 sin/cos with modular phases and math.fsum; not exact arithmetic",
+        "scope": "Complex accuracy estimate on identical f32 frames; no production FFT replacement or feature acceptance",
+        "frame_sha256_f32le": hashlib.sha256(canonical_bytes).hexdigest(),
+        "frame_shape": list(frames.shape), "complex_shape": list(shape),
+        "selected_frame_bin_count": len(pairs), "failure_support": mismatch_support,
+        "engine_summaries": {name: {"component_count": len(values),
+            "max_abs_component_error": max(values) if values else None,
+            "mean_abs_component_error": math.fsum(values) / len(values) if values else None,
+            "rms_component_error": math.sqrt(math.fsum(value ** 2 for value in values) / len(values)) if values else None,
+            "closest_to_dft_bins": closest_counts[name],
+            "rounded_dft_equal_bins": rounded_counts[name]} for name, values in errors.items()},
+        "bins": rows}
+
+
 def compare_fft_components(capture, reference, *, atol, rtol):
     """Compare raw bin-major complex components without discarding f64 scratch bits."""
     reference = np.asarray(reference)
@@ -617,6 +749,11 @@ def main():
             mismatch_coordinates=[point["coordinate"] for point in decomposition[key]["mismatches"]],
             valid_length=int(valid_length[0]), log_zero_guard=js["logZeroGuard"])
         metrics[f"{key}_raw_power_projection"] = attribution[key]["candidate_raw_reconstruction"]
+    fft_controls = {key: js[key] for key in ("fullFftF32Capture", "fullFftF64Capture")}
+    dft_diagnostic = fft_dft_diagnostic(official_frames_array, official_complex_array,
+        power.numpy(), fft_controls, {key: [{"coordinate": point["coordinate"],
+            "active_bins": point["active_bins"]} for point in attribution[key]["mismatches"]]
+            for key in fft_controls})
     report = {"schema_version": 1, "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE", "sample_id": args.sample_id,
         "audio_sha256": audio_sha, "source_config_sha256": hashlib.sha256(args.source_config.read_bytes()).hexdigest(),
         "official_capture_sha256": hashlib.sha256(captured_bytes).hexdigest(),
@@ -640,6 +777,7 @@ def main():
             "scope": "Only isolated diagnostic module power buffer is overwritten; production is unchanged"},
         "normalization_decomposition": decomposition,
         "mel_power_attribution": attribution,
+        "selected_bin_dft": dft_diagnostic,
         "diagnostic_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "comparisons": metrics}
     write_new_text(args.output, json.dumps(report, indent=2) + "\n")

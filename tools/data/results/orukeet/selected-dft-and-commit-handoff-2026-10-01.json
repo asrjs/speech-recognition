@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE",
+  "source_commit_base": "c3eba39",
+  "scope": "Reviewed commits plus independent selected-bin FFT diagnostic; not completion of Orukeet or whole library goal",
+  "commits": {
+    "project_goal_and_charter": "1d636a2",
+    "native_runtime_and_resource_ownership": "32722da",
+    "shared_fixture_and_native_harness": "01e7dd2",
+    "official_export_reference_and_output_safety": "c3eba39"
+  },
+  "diagnostic": {
+    "script": "tools/model-debugging/reference/hf-parakeet-port/compare_js_feature_boundaries.py",
+    "script_sha256": "696fb0c1898d886cb7a54a2102e4c19c99407886fdc3138472974c6e27852a89",
+    "local_full_receipt": "tools/data/results/orukeet/library-feature-selected-dft-jfk-2026-10-01.json",
+    "local_full_receipt_sha256": "9af07c39d8af19e1bef73969693bcdaf7a5226f55b2893b6179296e2f699b490",
+    "method": "Selected-bin float64 sin/cos, modular phases, math.fsum; approximate DFT, not exact arithmetic",
+    "sample_id": "jfk-short",
+    "audio_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "source_config_sha256": "344297eaf9e28d7f849e099c06535fbb0df978926e1b5f753b6aa836d05acdb3",
+    "official_capture_sha256": "7b0463f0b69d376e8cc4b1b855a211de974f716e5d02cc6fb38ed51d33c8bcc7",
+    "canonical_frame_sha256_f32le": "e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30",
+    "source_processor_sha256": "81f29b27f40a3ae8a5a4d4ab3387b4ec19b233d41efa4c89d7ee36d7755a1514",
+    "compiled_processor_sha256": "067a902ceea1f260ce811f2bc04a7112e1a3a0e0cc17b99c6da9aa15a1a6a32f",
+    "production_processor_changed": false,
+    "selected_frame_bin_pairs": 1003,
+    "selection": "Union of every active filterbank bin at all 129 Float32 and 120 Float64 control failure coordinates; mel 0 through 127",
+    "max_abs_component_error_to_dft": {
+      "official_complex64": 8.215078953299846e-7,
+      "full_fft_float32": 5.135908003857728e-7,
+      "full_fft_float64": 1.9099305470504646e-15
+    },
+    "float64_control_closest_bins": 1003,
+    "float64_control_rounded_dft_equal_bins": 1003,
+    "feature_mismatches": { "production": 313, "full_fft_float32": 129, "full_fft_float64": 120 },
+    "tolerances": { "atol": 0.00001, "rtol": 0.0001 },
+    "exit_code": 1,
+    "interpretation": "Incorrect full-Float64 FFT algorithm is weakened as an explanation for this control. Official complex64 arithmetic differs from the DFT estimate and downstream features still fail. This is not universal production FFT correctness or acceptance.",
+    "input_limitations": "Canonical frames match the independently reproduced official processor, not an original JFK effective-PCM capture. Config and capture hashes are separate; this diagnostic does not verify config-to-original-weight provenance."
+  },
+  "validation": {
+    "feature_probe_tests_passed": 42,
+    "new_dft_tests_failed_before_implementation": 9,
+    "artifact_output_safety_tests_passed": 8,
+    "official_capture_simulation_tests_passed": 12,
+    "export_safety_tests_passed": 8,
+    "replay_contract_tests_passed": 7,
+    "onnx_artifact_tests_passed": 9,
+    "tensor_metric_tests_passed": 5,
+    "full_working_tree_suite": {
+      "passed": 1303,
+      "skipped": 27,
+      "failed": 0,
+      "local_receipt": "tools/data/results/harness/commit-output-safety-full-suite-2026-10-01.json",
+      "sha256": "321233ce8a5e9e494ba54f4d80cec8c3850684a33a370e718883593b115dc829",
+      "scope": "Working tree including inherited paused Nemotron edits; not a clean-checkout release certification"
+    },
+    "core_and_example_typecheck": "PASS",
+    "browser_safe_import_guard": "PASS; 297 local modules across 27 entries; not browser inference",
+    "node_import_smoke": "PASS",
+    "package_tarball_smoke": "PASS; 1401 files, targets and declarations checked; not install-size optimization"
+  },
+  "native_controls": {
+    "node_speech_silence": {
+      "runtime": "Node 26.2.0",
+      "status": "PARTIAL_PASS_OUTPUT_ONLY",
+      "tokens": 69,
+      "effective_pcm": "PASS",
+      "output_and_cleanup": "PASS",
+      "local_receipt": "tools/data/results/orukeet/public-example-node-speech-silence-committed-2026-10-01.json",
+      "sha256": "bfb3ad8511461c3b636ee7d0c1cf2f76557ef2f713661f25c5ab9c72d91f8a55"
+    },
+    "bun_speech_silence": {
+      "runtime": "Bun 1.3.14",
+      "status": "PARTIAL_PASS_OUTPUT_ONLY",
+      "tokens": 69,
+      "effective_pcm": "PASS",
+      "output_and_cleanup": "PASS",
+      "local_receipt": "tools/data/results/orukeet/public-example-bun-speech-silence-committed-2026-10-01.json",
+      "sha256": "8f3d13ab6f72b0b0ec5492863c5c558c6c25d56734e8ae7c70b99f9aae5ae140"
+    },
+    "identity_graph_resource_controls": {
+      "status": "PASS_RESOURCE_ONLY",
+      "hosts": ["Node 26.2.0", "Bun 1.3.14"],
+      "engine": "onnxruntime-node CPU",
+      "cases_per_host": 2,
+      "local_receipts": [
+        "tools/data/results/harness/nemo-tdt-node-native-resource-commit-2026-10-01.json",
+        "tools/data/results/harness/nemo-tdt-bun-native-resource-commit-2026-10-01.json"
+      ],
+      "scope": "Real session acquisition, successful release and failed second-graph cleanup; no ASR graph execution or parity"
+    }
+  },
+  "remaining": [
+    "Production feature numerical parity",
+    "Pure silence and long-audio official oracle coverage",
+    "Original source-resampling acceptance beyond frozen PCM controls",
+    "Orukeet real WASM, browser WebGPU and hybrid acceptance",
+    "Held-out multilingual quality, fp16 revalidation and public preset promotion",
+    "Whole-product API, examples, compactness and remaining native-family portability work"
+  ],
+  "next": "Capture the actual packed-real FFT complex boundary before rounding/power on identical canonical aligned frames and compare all failed-coordinate support against the validated DFT. Keep reference complex64 arithmetic and mel/log/statistics amplification separate. No speculative production replacement or relaxed oracle.",
+  "preserved": "Paused Nemotron work, original weights, failed receipts and large local traces were not overwritten or included wholesale in commits. No push, publish, upload or dependency installation."
+}

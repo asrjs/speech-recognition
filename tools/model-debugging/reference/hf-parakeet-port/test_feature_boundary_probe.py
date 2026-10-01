@@ -317,6 +317,118 @@ class FeatureBoundaryProbeTests(unittest.TestCase):
         self.assertIn("Window contract differs", completed.stderr)
 
 
+class SelectedDftTests(unittest.TestCase):
+    def fixture(self):
+        import numpy as np
+        frames = np.zeros((1, 3, 8), dtype=np.float32)
+        frames[0, 0, 2] = 1
+        frames[0, 1, 0] = 2
+        frames[0, 2, 0] = -0.0
+        exact = np.fft.rfft(frames.astype(np.float64), axis=2).transpose(0, 2, 1)
+        official = exact.astype(np.complex64)
+        official[0, 1, 0] = 0.125 - 1j
+        controls = {}
+        for name, perturbation in (("f32", 0.25), ("f64", 0)):
+            candidate = exact.copy()
+            candidate[0, 1, 0] = perturbation - 1j
+            controls[name] = {"shape": list(candidate.shape),
+                "real": candidate.real.ravel().tolist(), "imag": candidate.imag.ravel().tolist(),
+                "power": np.float32(abs(candidate) ** 2).ravel().tolist(),
+                "frameShape": list(frames.shape), "frameDtype": "float32",
+                "frameLayout": "batch-frame-sample", "frames": frames.ravel().tolist(),
+                "frameBytesEncoding": "base64-f32le",
+                "frameBytesF32LE": base64.b64encode(frames.astype("<f4").tobytes()).decode("ascii")}
+        support = {name: [{"coordinate": [0, 0, 0], "active_bins": [1]},
+                {"coordinate": [0, 1, 1], "active_bins": [2, 3]}] for name in controls}
+        return frames, official, np.float32(abs(official) ** 2), controls, support
+
+    def test_report_deduplicates_shared_support_and_keeps_engine_errors_separate(self):
+        frames, official, power, controls, support = self.fixture()
+        report = probe_module.fft_dft_diagnostic(frames, official, power, controls, support)
+        self.assertEqual(report["selected_frame_bin_count"], 3)
+        self.assertEqual([point["coordinate"] for point in report["bins"]], [[0, 1, 0], [0, 2, 1], [0, 3, 1]])
+        first = report["bins"][0]
+        self.assertAlmostEqual(first["engines"]["official_complex64"]["complex_abs_error"], 0.125, places=12)
+        self.assertAlmostEqual(first["engines"]["f32"]["complex_abs_error"], 0.25, places=12)
+        self.assertLess(first["engines"]["f64"]["complex_abs_error"], 1e-14)
+        self.assertEqual(first["closest_to_dft"], ["f64"])
+        self.assertEqual(first["engines"]["f32"]["boundary_power"], controls["f32"]["power"][3])
+        self.assertEqual(report["frame_sha256_f32le"], hashlib.sha256(frames.astype("<f4").tobytes()).hexdigest())
+        self.assertEqual(report["status"], "DIAGNOSTIC_NOT_PORT_ACCEPTANCE")
+
+    def test_report_rejects_different_frame_bytes_even_when_numeric_zero_matches(self):
+        import numpy as np
+        frames, official, power, controls, support = self.fixture()
+        other = frames.copy()
+        other[0, 2, 0] = 0.0
+        controls["f64"]["frameBytesF32LE"] = base64.b64encode(other.astype("<f4").tobytes()).decode("ascii")
+        with self.assertRaisesRegex(ValueError, "identical canonical"):
+            probe_module.fft_dft_diagnostic(frames, official, power, controls, support)
+
+    def test_report_rejects_invalid_support_and_component_shapes(self):
+        for field, invalid in (("coordinate", [0, 0, 3]), ("active_bins", [1, 1]), ("active_bins", [5]),
+                ("active_bins", [True]), ("coordinate", [1, 0, 0])):
+            frames, official, power, controls, support = self.fixture()
+            support["f32"][0][field] = invalid
+            with self.subTest(field=field, value=invalid), self.assertRaises(ValueError):
+                probe_module.fft_dft_diagnostic(frames, official, power, controls, support)
+        frames, official, power, controls, support = self.fixture()
+        controls["f64"]["real"].pop()
+        with self.assertRaises(ValueError):
+            probe_module.fft_dft_diagnostic(frames, official, power, controls, support)
+
+    def test_empty_support_is_unknown_not_a_pass_claim(self):
+        frames, official, power, controls, support = self.fixture()
+        report = probe_module.fft_dft_diagnostic(frames, official, power, controls, {name: [] for name in support})
+        self.assertEqual(report["bins"], [])
+        self.assertEqual(report["selected_frame_bin_count"], 0)
+        self.assertIsNone(report["engine_summaries"]["official_complex64"]["max_abs_component_error"])
+
+    def test_impulse_has_analytic_sign_bin_and_frame_results(self):
+        import numpy as np
+        frames = np.zeros((1, 2, 8), dtype=np.float32)
+        frames[0, 0, 2] = 1
+        frames[0, 1, 0] = 3
+        values = probe_module.direct_dft_bins(frames, [(0, 0), (0, 1), (0, 3), (0, 4), (1, 1)])
+        np.testing.assert_allclose(values, [1, -1j, 1j, 1, 3], atol=1e-14, rtol=0)
+
+    def test_dc_and_nyquist_do_not_lose_cancelling_terms(self):
+        import numpy as np
+        frames = np.asarray([[[32768, 1, -32768, 1]]], dtype=np.float32)
+        values = probe_module.direct_dft_bins(frames, [(0, 0), (0, 2)])
+        self.assertAlmostEqual(values[0].real, 2, places=12)
+        self.assertAlmostEqual(values[1].real, -2, places=12)
+        self.assertLess(abs(values[0].imag), 1e-12)
+        self.assertLess(abs(values[1].imag), 1e-10)
+
+    def test_dft_does_not_modify_canonical_input_or_signed_zero(self):
+        import numpy as np
+        frames = np.asarray([[[-0.0, 1, -1, 0.5]]], dtype=np.float32)
+        before = frames.tobytes()
+        frames.flags.writeable = False
+        self.assertEqual(probe_module.direct_dft_bins(frames, []), [])
+        probe_module.direct_dft_bins(frames, [(0, 1)])
+        self.assertEqual(frames.tobytes(), before)
+
+    def test_dft_rejects_noncanonical_nonfinite_and_wrong_shape_inputs(self):
+        import numpy as np
+        for frames in (np.ones((1, 2, 8), dtype=np.float64), np.ones((2, 8), dtype=np.float32),
+                np.ones((2, 1, 8), dtype=np.float32), np.ones((1, 1, 7), dtype=np.float32),
+                np.ones((1, 0, 8), dtype=np.float32), np.full((1, 1, 8), np.nan, dtype=np.float32)):
+            with self.subTest(shape=frames.shape, dtype=frames.dtype):
+                with self.assertRaises(ValueError):
+                    probe_module.direct_dft_bins(frames, [])
+
+    def test_dft_rejects_bad_duplicate_or_out_of_range_coordinates(self):
+        import numpy as np
+        frames = np.ones((1, 2, 8), dtype=np.float32)
+        for coordinates in ([(0, 1), (0, 1)], [(2, 1)], [(0, 5)], [(-1, 0)], [(0, -1)],
+                [(0, True)], [(0.5, 1)], [(0, 1, 2)], [None]):
+            with self.subTest(coordinates=coordinates):
+                with self.assertRaises(ValueError):
+                    probe_module.direct_dft_bins(frames, coordinates)
+
+
 class NormalizationDecompositionTests(unittest.TestCase):
     def run_control(self, raw, candidate, *, valid_length=3, atol=1e-6, rtol=1e-6):
         import numpy as np

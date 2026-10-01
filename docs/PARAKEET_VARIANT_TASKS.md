@@ -20,6 +20,28 @@ unfinished task and record commands, result files, and blockers here.
 The recommended whole-product goal is `GOAL_PROMPT_RECOMMENDED.md`; this task
 list is one workstream, not the complete web/Node/Bun library backlog.
 
+Latest continuation (2026-10-01): ready docs, native runtime, harness and official
+export tooling are committed as `1d636a2`, `32722da`, `01e7dd2` and `c3eba39`.
+Paused Nemotron edits and large local artifacts remain deliberately unstaged.
+The refreshed suite has 1,303 PASS / 27 SKIP / 0 FAIL; actual native Node/Bun
+speech/silence consumers each match all 69 tokens on the captured official PCM.
+Real native identity-graph acquisition and partial-failure cleanup also pass,
+but these are output-only and resource-only controls, not model acceptance.
+
+The independent direct-DFT diagnostic covers all 1,003 unique frame/bin pairs
+supporting the full-FFT controls' 129/120 failed coordinates (mel bands 0–127).
+On identical canonical float32 frame bytes, the Float64 JS control's maximum
+DFT component error is `1.91e-15`; official complex64 and JS Float32 controls
+are `8.22e-7` and `5.14e-7`. This weakens an incorrect full-Float64 FFT algorithm
+hypothesis, not every possible production processor defect. Production still
+has 313 feature mismatches at unchanged tolerances. See the small
+`tools/data/results/orukeet/selected-dft-and-commit-handoff-2026-10-01.json`.
+Next bounded P03 experiment: capture the actual packed-real FFT's complex
+components before rounding/power, using the same canonical aligned frame bytes,
+and compare its failed-coordinate support against this DFT control. Keep
+reference complex64 rounding and mel/log/statistics amplification separate;
+do not replace production math or relax the oracle from this diagnostic alone.
+
 ## Ordered tasks
 
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and

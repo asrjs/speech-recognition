@@ -227,7 +227,7 @@ representative-quality, browser or fp16 acceptance. Preserve earlier failures.
 
 `compare_js_feature_boundaries.py` reproduces official features from the saved
 source configuration without loading ASR weights. Its guarded isolated module
-experiments never write the production processor. Thirty-three probe tests include
+experiments never write the production processor. Forty-two probe tests include
 independent direct-DFT checks, shape/masked-tail and complex/power layout,
 rounding, source/cache immutability and fail-closed contract changes.
 Build this checkout before running the probe tests: they exercise the actual
@@ -283,10 +283,32 @@ power/log term dominates the reference projection-rounding residual; failures
 include low and high bands. Full-FFT controls still fail at 129/120, and
 production still fails at 313. This is diagnostic evidence, not port acceptance.
 
-Next compare an independent direct DFT with both JS FFT controls and the
-official float32 FFT on the exact canonical windowed frame bytes at failed
-coordinates. This can distinguish mathematical FFT error from engine rounding;
-it does not justify a production replacement by itself.
+`library-feature-selected-dft-jfk-2026-10-01.json` now compares an independent
+float64 sin/cos + `math.fsum` DFT at every active bin of both full-FFT controls'
+failed coordinates. All 1,003 unique frame/bin pairs use identical canonical
+windowed float32 bytes. The Float64 JS control's maximum component error to
+this approximation is `1.91e-15`, versus official complex64 `8.22e-7` and JS
+Float32 `5.14e-7`; every Float64 control bin matches the DFT after f32 rounding.
+This weakens a wrong full-Float64 FFT algorithm hypothesis. It does not prove
+every production FFT path correct, exact arithmetic, or model acceptance.
+Production/full-FFT features still fail at 313/129/120; the command exits 1.
+
+Reproduce with a fresh output, after building:
+
+```powershell
+& $orukeetPython tools/model-debugging/reference/hf-parakeet-port/compare_js_feature_boundaries.py `
+  --audio tools/data/fixtures/audio/jfk-short.wav `
+  --source-config models/orukeet/onnx/fp32-packed-2026-10-01/source-config.json `
+  --official-capture tools/data/results/orukeet/official-jfk-stages-2026-09-30.json.gz `
+  --sample-id jfk-short --output tools/data/results/orukeet/feature-selected-dft-jfk-fresh.json
+```
+
+Nine additional weight-free regressions cover analytic DFT sign/bin/frame
+values, cancellation, immutable canonical inputs, invalid inputs, support union,
+engine-error separation, signed-zero byte differences, and unknown empty
+support. Next capture the actual packed-real FFT's complex components before
+rounding/power on identical aligned frame bytes; compare against this control
+without speculative production edits or tolerance changes.
 
 All reference/diagnostic commands now require fresh receipt paths and reject
 output/input aliases before work. Source acquisition updates only the new
