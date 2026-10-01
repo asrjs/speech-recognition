@@ -141,6 +141,31 @@ control (six exact differences, zero tolerance failures). Receipt:
 arithmetic/guard controls with diagnostic normalization on actual library
 spectra, retaining separate upstream FFT and production acceptance gates.
 
+Actual-spectrum follow-up (2026-10-02): selected mixed-precision mel plus
+optional f32 guard is now isolated on untouched production spectra and on the
+existing official-complex-rounded path (JS computes power; no official-power
+injection). Every candidate preserves its own baseline power/filterbank/bounds
+bytes; width-8 normalization independently matches Python bytes. On JFK,
+both production-spectrum variants still have 315 normalized-feature failures,
+like the baseline width-8 production-raw control. Official-complex-rounded
+variants have zero failures; f32 guard reduces maximum feature error from
+`2.86102e-6` to `1.43051e-6`, without establishing an actual FFT implementation.
+All four silence controls match raw and normalized values exactly. Unmodified
+production remains FAIL: JFK 313, silence 12,800. Mel/guard rounding alone is
+not a demonstrated production fix. 77 probe, 6 Python reduction and 8 Node tests
+pass; both real runs exit 1 at unchanged production gates. Full suite and
+companion/browser/model inference were NOT_RUN for this tooling-only change.
+
+The expanded JFK probe exposed `RangeError: Invalid string length` when one
+aggregate JSON string exceeded V8's limit. The slice was reverted before retry;
+awaited per-field JSON output preserves all evidence and passes a simulated
+aggregate-limit regression plus both real fixtures. Individual top-level fields
+still have a string-size bound; this is not an unbounded streaming serializer.
+Receipt: `mel-spectrum-handoff-2026-10-02.json`.
+Next apply the selected downstream arithmetic to actual official-aligned JS FFT
+spectra, preserving each prior FFT baseline and separating frame/complex/power
+errors. Do not promote the rejected packed-f32 FFT or hardcode mel corrections.
+
 ## Ordered tasks
 
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and

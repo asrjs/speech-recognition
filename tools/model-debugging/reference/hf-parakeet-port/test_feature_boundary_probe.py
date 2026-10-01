@@ -32,6 +32,84 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_probe_streams_complete_json_without_aggregate_stringify(self):
+        # Simulate the observed aggregate V8 string limit without allocating 512 MiB.
+        guard = """const originalStringify = JSON.stringify;
+JSON.stringify = (value, ...args) => {
+  if (value && typeof value === 'object' && 'productionCapture' in value && 'melSpectrumControls' in value)
+    throw new RangeError('simulated aggregate string limit');
+  return originalStringify(value, ...args);
+};
+"""
+        completed = subprocess.run(['node', '--input-type=module', '-e', guard + probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(inputs()), text=True, encoding='utf-8',
+            capture_output=True, timeout=30, check=True)
+        self.assertEqual(json.loads(completed.stdout), self.result)
+
+    def test_mel_spectrum_controls_preserve_upstream_and_match_scalar_oracle(self):
+        import numpy as np
+        for name, entry in self.result['melSpectrumControls'].items():
+            baseline = self.result['productionCapture' if name.startswith('production-') else 'referenceComplexRoundedCapture']
+            capture = entry['capture']
+            for key in ('power', 'filterbank', 'filterbankBounds', 'shape'):
+                self.assertEqual(capture[key], baseline[key])
+            powers = np.asarray(capture['power']).reshape(257, 11)
+            weights = np.asarray(capture['filterbank']).reshape(8, 257)
+            expected = []
+            for mel in range(8):
+                start, end = capture['filterbankBounds'][mel * 2:mel * 2 + 2]
+                for frame in range(11):
+                    total = 0.0
+                    for bin in range(start, end):
+                        total = float(np.float32(total + float(powers[bin, frame]) * float(weights[mel, bin])))
+                    self.assertEqual(capture['linearMel'][mel * 11 + frame], total)
+                    guarded = total + self.result['logZeroGuard']
+                    if name.endswith('f32-guard'):
+                        guarded = float(np.float32(guarded))
+                    self.assertEqual(capture['logInput'][mel * 11 + frame], guarded)
+                    expected.append(np.float32(math.log(guarded)))
+            np.testing.assert_array_equal(capture['raw'], expected)
+
+    def test_mel_spectrum_guard_rounding_isolated_at_half_ulp(self):
+        import numpy as np
+        data = inputs()
+        real = np.zeros(257 * 11, dtype='<f4')
+        real[11:22] = 1
+        data['referenceComplex']['realF32LE'] = base64.b64encode(real.tobytes()).decode('ascii')
+        data['referenceComplex']['imagF32LE'] = base64.b64encode(np.zeros_like(real).tobytes()).decode('ascii')
+        data['referenceFilterbank'][1] = 1
+        result = json.loads(subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30, check=True).stdout)
+        original = result['melSpectrumControls']['official-complex-rounded-original-guard']['capture']
+        rounded = result['melSpectrumControls']['official-complex-rounded-f32-guard']['capture']
+        self.assertEqual(original['power'], rounded['power'])
+        self.assertEqual(original['linearMel'], rounded['linearMel'])
+        self.assertEqual(original['linearMel'][:11], [1] * 11)
+        self.assertEqual(original['logInput'][:11], [1 + 2 ** -24] * 11)
+        self.assertEqual(rounded['logInput'][:11], [1] * 11)
+        self.assertTrue(all(value > 0 for value in original['raw'][:11]))
+        self.assertEqual(rounded['raw'][:11], [0] * 11)
+
+    def test_mel_spectrum_report_checks_python_normalization_and_upstream_identity(self):
+        import copy
+        import numpy as np
+        raw = np.asarray(self.result['productionCapture']['raw'], dtype=np.float32).reshape(8, 11)
+        features = np.asarray(self.result['productionCapture']['features'], dtype=np.float32).reshape(8, 11)
+        report = probe_module.mel_spectrum_diagnostic(self.result, raw, features, 10)
+        self.assertEqual(set(report), set(self.result['melSpectrumControls']))
+        for entry in report.values():
+            self.assertTrue(entry['normalization_python_byte_exact'])
+        for field in ('power', 'filterbank', 'filterbankBounds'):
+            changed = copy.deepcopy(self.result)
+            changed['melSpectrumControls']['production-f32-guard']['capture'][field][0] += 1
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                probe_module.mel_spectrum_diagnostic(changed, raw, features, 10)
+        changed = copy.deepcopy(self.result)
+        changed['melSpectrumControls']['production-f32-guard']['normalization']['features'][0] += 1
+        with self.assertRaises(ValueError):
+            probe_module.mel_spectrum_diagnostic(changed, raw, features, 10)
+
     def test_official_filterbank_support_gate_accepts_covered_and_empty_rows(self):
         probe_module.validate_filterbank_support([[0, 1, 0], [0, 0, 0]], [1, 2, 0, 0])
         probe_module.validate_filterbank_support([[0, 1, 0]], [0, 3])

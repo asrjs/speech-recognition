@@ -80,8 +80,15 @@ for (const [before, after] of [
 async function experiment(name, { window = false, windowProduct = false, filterbank = false,
   referencePower = false, magnitudeRoundTrip = false, capturePower = false, complexPower = false,
   fullFft = null, referenceComplexPower = null, production = false, capturePacked = false, packedF32 = false,
-  powerOverrides = null, melArithmetic = null } = {}) {
-  if (melArithmetic !== null && (!['f32-product-f64-sum', 'f32-product-f32-sum', 'f64-product-f32-sum'].includes(melArithmetic) ||
+  powerOverrides = null, melArithmetic = null, melSpectrum = null, roundLogGuard = false } = {}) {
+  if (melSpectrum !== null && (!['production', 'official-complex-rounded'].includes(melSpectrum) ||
+      melArithmetic !== 'f64-product-f32-sum' || !capturePower || referencePower || production ||
+      complexPower || magnitudeRoundTrip || fullFft || packedF32 || capturePacked || powerOverrides !== null ||
+      (melSpectrum === 'production' ? (window || windowProduct || filterbank || referenceComplexPower) :
+        (!window || !windowProduct || !filterbank || referenceComplexPower !== 'fp32-rounded'))))
+    throw new Error('Mel spectrum control must preserve its named upstream boundary');
+  if (roundLogGuard && melSpectrum === null) throw new Error('Guard rounding requires an isolated mel spectrum control');
+  if (melArithmetic !== null && melSpectrum === null && (!['f32-product-f64-sum', 'f32-product-f32-sum', 'f64-product-f32-sum'].includes(melArithmetic) ||
       !referencePower || !capturePower || !window || !windowProduct || !filterbank || production ||
       complexPower || magnitudeRoundTrip || fullFft || referenceComplexPower || powerOverrides !== null))
     throw new Error('Mel arithmetic requires an isolated official-power capture');
@@ -110,7 +117,7 @@ async function experiment(name, { window = false, windowProduct = false, filterb
   if (production && (!capturePower || window || windowProduct || filterbank || referencePower ||
       magnitudeRoundTrip || complexPower || fullFft || referenceComplexPower))
     throw new Error('Production capture must preserve unmodified arithmetic');
-  let candidateSource = production ? productionSource : source;
+  let candidateSource = production || melSpectrum === 'production' ? productionSource : source;
   if (melArithmetic) {
     const boundary = 'melValue +=\n                        this.powerBuf[freqIndex] * this.melFilterbank[filterbankOffset + freqIndex];';
     if (candidateSource.split(boundary).length !== 2) throw new Error('Mel accumulator contract changed');
@@ -260,12 +267,14 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       complexInjection + `for (let bin = 0; bin < N_FREQ_BINS; bin++) {
         capturedPower[bin * nFrames + frameIndex] = this.powerBuf[bin]; ${complexCapture}
       }\n` + selectedInjection + melBoundary);
-    if (referencePower) {
+    if (referencePower || melArithmetic) {
       const logBoundary = 'rawMel[melIndex * nFrames + frameIndex] = Math.log(melValue + LOG_ZERO_GUARD);';
       if (candidateSource.split(logBoundary).length !== 2) throw new Error('Mel/log capture boundary contract changed');
+      const logInput = roundLogGuard ? 'Math.fround(melValue + LOG_ZERO_GUARD)' : 'melValue + LOG_ZERO_GUARD';
       candidateSource = 'export const capturedMel = [], capturedLogInput = [];\n' + candidateSource.replace(logBoundary,
         'capturedMel[melIndex * nFrames + frameIndex] = melValue;\n' +
-        'capturedLogInput[melIndex * nFrames + frameIndex] = melValue + LOG_ZERO_GUARD;\n' + logBoundary);
+        `capturedLogInput[melIndex * nFrames + frameIndex] = ${logInput};\n` +
+        (roundLogGuard ? `rawMel[melIndex * nFrames + frameIndex] = Math.log(${logInput});` : logBoundary));
     }
   }
   // Separate module instances isolate private caches; production code stays unchanged.
@@ -297,8 +306,8 @@ async function experiment(name, { window = false, windowProduct = false, filterb
   if (frameBytes) variant.capturedFrames.forEach((value, index) => unroundedFrames
     ? frameBytes.writeDoubleLE(value, index * 8) : frameBytes.writeFloatLE(value, index * 4));
   return capturePower ? { features: Array.from(result.features), raw: capturedRaw, power: variant.capturedPower,
-    ...(referencePower ? { linearMel: variant.capturedMel, logInput: variant.capturedLogInput,
-        filterbankBounds: Array.from(processor.fbBounds),
+    filterbankBounds: Array.from(processor.fbBounds), filterbank: Array.from(processor.melFilterbank),
+    ...(referencePower || melArithmetic ? { linearMel: variant.capturedMel, logInput: variant.capturedLogInput,
       f32LogInputRaw: Array.from(Float32Array.from(variant.capturedLogInput, value => Math.log(Math.fround(value)))) } : {}),
     ...(powerOverrides !== null ? { effectivePower: variant.effectivePower, powerOverrides } : {}),
     shape: [1, (variant.MEL_CONSTANTS.N_FFT >> 1) + 1, result.frameCount],
@@ -353,6 +362,18 @@ const referenceComplexLibraryCapture = await experiment('reference-complex-libra
   windowProduct: true, filterbank: true, referenceComplexPower: 'library', capturePower: true });
 const referenceComplexRoundedCapture = await experiment('reference-complex-rounded', { window: true,
   windowProduct: true, filterbank: true, referenceComplexPower: 'fp32-rounded', capturePower: true });
+const melSpectrumControls = {};
+for (const melSpectrum of ['production', 'official-complex-rounded']) {
+  for (const roundLogGuard of [false, true]) {
+    const capture = await experiment(`mel-spectrum-${melSpectrum}-${roundLogGuard}`, {
+      ...(melSpectrum === 'official-complex-rounded' ? { window: true, windowProduct: true,
+        filterbank: true, referenceComplexPower: 'fp32-rounded' } : {}),
+      melSpectrum, roundLogGuard, melArithmetic: 'f64-product-f32-sum', capturePower: true });
+    const normalized = normalizeCandidate(Float32Array.from(capture.raw), raw.frameCount, raw.length, 8);
+    melSpectrumControls[`${melSpectrum}-${roundLogGuard ? 'f32-guard' : 'original-guard'}`] = {
+      capture, normalization: Object.fromEntries(['features', 'mean', 'std'].map(key => [key, Array.from(normalized[key])])) };
+  }
+}
 const normalizationInputs = {
   officialRaw: data.referenceRaw, productionRaw: productionCapture.raw,
   alignedWindowProducts: frameArithmeticCaptures.windowProduct.raw,
@@ -367,14 +388,24 @@ for (const [name, values] of Object.entries(normalizationInputs)) {
   const result = normalizeCandidate(Float32Array.from(values), raw.frameCount, raw.length, 8);
   normalizationControls[name] = { features: Array.from(result.features), mean: Array.from(result.mean), std: Array.from(result.std) };
 }
-console.log(JSON.stringify({ raw: Array.from(raw.features), normalized: Array.from(normalized.features),
-  referencePowerCapture, officialLogInputControl, melArithmeticCaptures,
+const output = { raw: Array.from(raw.features), normalized: Array.from(normalized.features),
+  referencePowerCapture, officialLogInputControl, melArithmeticCaptures, melSpectrumControls,
   powerOverrideCapture, powerOverrideNormalization: powerOverrideNormalization ? Object.fromEntries(
     ['features', 'mean', 'std'].map(key => [key, Array.from(powerOverrideNormalization[key])])) : null,
   sameRawNormalized: Array.from(sameRawNormalized), normalizationControls, frameCount: raw.frameCount, validLength: raw.length,
   experiments, powerCapture, productionCapture, frameArithmeticCaptures, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
   referenceComplexLibraryCapture, referenceComplexRoundedCapture, packedF32Capture,
-  logZeroGuard: MEL_CONSTANTS.LOG_ZERO_GUARD, nodeVersion: process.version }));
+  logZeroGuard: MEL_CONSTANTS.LOG_ZERO_GUARD, nodeVersion: process.version };
+// Keep full evidence, without constructing one V8-size-limited JSON string.
+const write = chunk => new Promise((resolve, reject) => process.stdout.write(chunk,
+  error => error ? reject(error) : resolve()));
+await write('{');
+let first = true;
+for (const [key, value] of Object.entries(output)) {
+  await write((first ? '' : ',') + JSON.stringify(key) + ':' + JSON.stringify(value));
+  first = false;
+}
+await write('}\n');
 '''
 
 
@@ -917,6 +948,46 @@ def validate_filterbank_support(filterbank, bounds):
             raise ValueError('Official filterbank support falls outside cached mel bounds')
 
 
+def mel_spectrum_diagnostic(js, reference_raw, reference_features, valid_length):
+    """Separate local spectra, mel/guard arithmetic and diagnostic normalization."""
+    baselines = {'production': js['productionCapture'],
+        'official-complex-rounded': js['referenceComplexRoundedCapture']}
+    expected = {f'{name}-{guard}' for name in baselines for guard in ('original-guard', 'f32-guard')}
+    if set(js['melSpectrumControls']) != expected:
+        raise ValueError('Mel spectrum control matrix differs')
+    rows, frames = reference_raw.shape
+    report = {}
+    for name, entry in js['melSpectrumControls'].items():
+        baseline_name = name.rsplit('-', 2)[0] if name.endswith('original-guard') else name[:-len('-f32-guard')]
+        baseline, capture = baselines[baseline_name], entry['capture']
+        if capture['shape'] != baseline['shape'] or capture['shape'][0] != 1 or capture['shape'][2] != frames:
+            raise ValueError('Mel spectrum shape changed')
+        for key in ('power', 'filterbank', 'filterbankBounds'):
+            if np.asarray(capture[key], dtype='<f4').tobytes() != np.asarray(baseline[key], dtype='<f4').tobytes():
+                raise ValueError(f'Mel spectrum changed upstream {key}: {name}')
+        bins = capture['shape'][1]
+        if len(capture['power']) != bins * frames or not np.isfinite(capture['power']).all():
+            raise ValueError('Invalid mel spectrum powers')
+        validate_filterbank_support(np.asarray(capture['filterbank']).reshape(rows, bins), capture['filterbankBounds'])
+        for key in ('raw', 'linearMel', 'logInput'):
+            if len(capture[key]) != rows * frames or not np.isfinite(capture[key]).all():
+                raise ValueError(f'Invalid mel spectrum boundary: {key}')
+        raw = np.asarray(capture['raw'], dtype=np.float32).reshape(rows, frames)
+        features, mean, std = normalize_candidate(raw, valid_length, 8)
+        for key, values in (('features', features), ('mean', mean), ('std', std)):
+            observed = np.asarray(entry['normalization'][key], dtype='<f4')
+            if observed.size != values.size or observed.tobytes() != values.astype('<f4').tobytes():
+                raise ValueError(f'Mel spectrum normalization differs from independent Python: {key}')
+        report[name] = {'scope': 'Local spectrum with isolated mixed-precision mel and optional f32 guard; width-8 diagnostic normalization, not production/model acceptance',
+            'baseline': baseline_name, 'power_filterbank_bounds_unchanged': True,
+            'filterbank_support_covered': True, 'normalization_python_byte_exact': True,
+            'raw_vs_baseline': compare_raw_valid_prefix(np.asarray(baseline['raw'], dtype=np.float32).reshape(rows, frames), raw, valid_length),
+            'raw_vs_official': compare_raw_valid_prefix(reference_raw, raw, valid_length),
+            'features_vs_official': compare_tensors(reference_features, features, atol=1e-5, rtol=1e-4),
+            'capture': capture, 'normalization': entry['normalization']}
+    return report
+
+
 def write_diagnostic_report(path, report):
     """Preserve full evidence with optional gzip, never overwrite an earlier run."""
     if path.suffix == ".gz":
@@ -1270,6 +1341,7 @@ def main():
             "active_bins": point["active_bins"]} for point in cascade_attribution[key]["mismatches"]]
             for key in fft_controls})
     report = {"schema_version": 1, "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE", "sample_id": args.sample_id,
+        'mel_spectrum_controls': mel_spectrum_diagnostic(js, raw.numpy()[0], normalized.numpy()[0], int(valid_length[0])),
         'reference_power_mel_log': reference_power_mel_log,
         "selected_power_intervention": selected_power_intervention(js, power.numpy(), raw.numpy(),
             normalized.numpy(), int(valid_length[0])) if args.power_override else None,

@@ -1,0 +1,28 @@
+{
+  "status": "DIAGNOSTIC_LOCAL_SPECTRUM_FEATURES_FAIL_ALIGNED_COMPLEX_CONTROL_PASS",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "diagnostic_sha256": "fa04a86bc7d0c4df82da23af18d5a76daa2b5a0d86fabecbf7ee976b326d41d6",
+  "receipts": {
+    "jfk": {"path": "mel-spectrum-jfk-final-2026-10-02.json.gz", "sha256": "4dbf757101cbe4604e4b0f72fc91a9872c4ed5b29ba33a86637ccaa1c02c2bec"},
+    "silence": {"path": "mel-spectrum-silence-final-2026-10-02.json.gz", "sha256": "94d9bd1de86becad0ad28fa5de2ec626cd7d1636d71e1c1bf1fd99d02e1470c6"}
+  },
+  "all_controls_baseline_power_filterbank_bounds_exact": true,
+  "all_controls_filterbank_support_covered": true,
+  "all_controls_python_normalization_byte_exact": true,
+  "jfk": {
+    "production_unchanged_feature_failures": 313,
+    "diagnostic_width8_baseline_production_raw_feature_failures": 315,
+    "controls": {
+      "production-original-guard": {"raw_exact_mismatches": 67352, "raw_tolerance_failures": 0, "feature_failures": 315, "max_feature_error": 0.0003428459167480469},
+      "production-f32-guard": {"raw_exact_mismatches": 67091, "raw_tolerance_failures": 0, "feature_failures": 315, "max_feature_error": 0.0003428459167480469},
+      "official-complex-rounded-original-guard": {"raw_exact_mismatches": 1018, "raw_tolerance_failures": 0, "feature_failures": 0, "max_feature_error": 0.00000286102294921875},
+      "official-complex-rounded-f32-guard": {"raw_exact_mismatches": 289, "raw_tolerance_failures": 0, "feature_failures": 0, "max_feature_error": 0.000001430511474609375}
+    }
+  },
+  "silence": {"all_controls_raw_and_normalized_exact": true, "production_unchanged_feature_failures": 12800},
+  "validation": {"probe_tests": 77, "python_reduction_tests": 6, "node_tests": 8, "both_real_exit_codes": 1, "full_suite_and_browser": "NOT_RUN"},
+  "harness_fix": {"observed_failure": "Node JSON.stringify aggregate RangeError: Invalid string length", "reverted_before_retry": true, "full_evidence_per_field_output": true, "simulated_aggregate_limit_regression": true, "individual_field_string_limit_remains": true},
+  "limits": ["Official complex control bypasses local FFT", "Width8 normalization is diagnostic, not production", "No production/model/browser parity or performance claim"],
+  "next": "Apply selected downstream arithmetic to actual official-aligned JS FFT spectra, preserving prior baselines and isolating frame/complex/power errors."
+}
