@@ -28,6 +28,8 @@ import { normalizeCandidate } from './tools/model-debugging/reference/hf-parakee
 import { packedF32Source } from './tools/model-debugging/reference/hf-parakeet-port/packed-f32-source.mjs';
 let input = ''; for await (const chunk of process.stdin) input += chunk;
 const data = JSON.parse(input);
+if (data.powerOverrides !== undefined && !Array.isArray(data.powerOverrides))
+  throw new Error('Selected power overrides must be an array');
 const pcm = Float32Array.from(data.pcm);
 const options = { nMels: data.bins, validLengthMode: 'onnx' };
 const raw = new JSMelProcessor({ ...options, normalization: 'none' }).process(pcm);
@@ -66,7 +68,24 @@ for (const [before, after] of [
 }
 async function experiment(name, { window = false, windowProduct = false, filterbank = false,
   referencePower = false, magnitudeRoundTrip = false, capturePower = false, complexPower = false,
-  fullFft = null, referenceComplexPower = null, production = false, capturePacked = false, packedF32 = false } = {}) {
+  fullFft = null, referenceComplexPower = null, production = false, capturePacked = false, packedF32 = false,
+  powerOverrides = null } = {}) {
+  if (powerOverrides !== null) {
+    if (!window || !windowProduct || !filterbank || !complexPower || !capturePower || packedF32 || fullFft || production || referencePower ||
+        referenceComplexPower || !Array.isArray(powerOverrides) || powerOverrides.length === 0)
+      throw new Error('Selected power overrides require the aligned complex-power control');
+    const seen = new Set(), count = ((MEL_CONSTANTS.N_FFT >> 1) + 1) * raw.frameCount;
+    if (!Array.isArray(data.referencePower) || data.referencePower.length !== count ||
+        data.referencePower.some(value => !Number.isFinite(value) || value < 0 || Math.fround(value) !== value))
+      throw new Error('Selected power reference must be finite nonnegative full float32 spectrum');
+    for (const coordinate of powerOverrides) {
+      if (!Array.isArray(coordinate) || coordinate.length !== 2 || !coordinate.every(Number.isSafeInteger) ||
+          coordinate[0] < 0 || coordinate[0] >= raw.length || coordinate[1] < 0 ||
+          coordinate[1] > (MEL_CONSTANTS.N_FFT >> 1) || seen.has(coordinate.join(':')))
+        throw new Error('Selected power coordinate invalid, duplicate or out of valid range');
+      seen.add(coordinate.join(':'));
+    }
+  }
   if (packedF32 && (!complexPower || !window || !windowProduct || !filterbank || !capturePower ||
       fullFft || referencePower || referenceComplexPower || production || capturePacked))
     throw new Error('Packed f32 control requires the identical aligned complex-power boundary');
@@ -199,10 +218,19 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       capturedImag[bin * nFrames + frameIndex] = this.fftIm[bin];` : referenceComplexPower
       ? `capturedReal[bin * nFrames + frameIndex] = referenceComplex.real[bin * nFrames + frameIndex];
         capturedImag[bin * nFrames + frameIndex] = referenceComplex.imag[bin * nFrames + frameIndex];` : '';
-    candidateSource = 'export const capturedPower = [], capturedReal = [], capturedImag = [], capturedFrames = [];\n' + candidateSource.replace(melBoundary,
+    let selectedInjection = '';
+    if (powerOverrides !== null) {
+      candidateSource = 'const selectedPower = ' + JSON.stringify({ coordinates: powerOverrides,
+        reference: data.referencePower }) + ';\n' + candidateSource;
+      selectedInjection = `for (const [frame, bin] of selectedPower.coordinates) {
+        if (frame === frameIndex) this.powerBuf[bin] = selectedPower.reference[bin * nFrames + frame];
+      }
+      for (let bin = 0; bin < N_FREQ_BINS; bin++) effectivePower[bin * nFrames + frameIndex] = this.powerBuf[bin];\n`;
+    }
+    candidateSource = 'export const capturedPower = [], capturedReal = [], capturedImag = [], capturedFrames = [], effectivePower = [];\n' + candidateSource.replace(melBoundary,
       complexInjection + `for (let bin = 0; bin < N_FREQ_BINS; bin++) {
         capturedPower[bin * nFrames + frameIndex] = this.powerBuf[bin]; ${complexCapture}
-      }\n` + melBoundary);
+      }\n` + selectedInjection + melBoundary);
   }
   // Separate module instances isolate private caches; production code stays unchanged.
   const variant = await import('data:text/javascript;base64,' + Buffer.from(candidateSource).toString('base64') + '#' + name);
@@ -233,6 +261,7 @@ async function experiment(name, { window = false, windowProduct = false, filterb
   if (frameBytes) variant.capturedFrames.forEach((value, index) => unroundedFrames
     ? frameBytes.writeDoubleLE(value, index * 8) : frameBytes.writeFloatLE(value, index * 4));
   return capturePower ? { features: Array.from(result.features), raw: capturedRaw, power: variant.capturedPower,
+    ...(powerOverrides !== null ? { effectivePower: variant.effectivePower, powerOverrides } : {}),
     shape: [1, (variant.MEL_CONSTANTS.N_FFT >> 1) + 1, result.frameCount],
     ...(referenceComplexPower ? { real: variant.capturedReal, imag: variant.capturedImag } : {}),
     ...(unroundedFrames ? { real: variant.capturedReal, imag: variant.capturedImag,
@@ -263,6 +292,11 @@ const frameArithmeticCaptures = {
 };
 const complexPowerCapture = await experiment('complex-power-capture', { window: true,
   windowProduct: true, filterbank: true, complexPower: true, capturePower: true });
+const powerOverrideCapture = data.powerOverrides?.length
+  ? await experiment('selected-power-overrides', { window: true, windowProduct: true,
+      filterbank: true, complexPower: true, capturePower: true, powerOverrides: data.powerOverrides }) : null;
+const powerOverrideNormalization = powerOverrideCapture
+  ? normalizeCandidate(Float32Array.from(powerOverrideCapture.raw), raw.frameCount, raw.length, 8) : null;
 const packedF32Capture = await experiment('packed-f32-stage', { window: true,
   windowProduct: true, filterbank: true, complexPower: true, capturePower: true, packedF32: true });
 const fullFftF32Capture = await experiment('full-fft-f32', { window: true,
@@ -288,11 +322,74 @@ for (const [name, values] of Object.entries(normalizationInputs)) {
   normalizationControls[name] = { features: Array.from(result.features), mean: Array.from(result.mean), std: Array.from(result.std) };
 }
 console.log(JSON.stringify({ raw: Array.from(raw.features), normalized: Array.from(normalized.features),
+  powerOverrideCapture, powerOverrideNormalization: powerOverrideNormalization ? Object.fromEntries(
+    ['features', 'mean', 'std'].map(key => [key, Array.from(powerOverrideNormalization[key])])) : null,
   sameRawNormalized: Array.from(sameRawNormalized), normalizationControls, frameCount: raw.frameCount, validLength: raw.length,
   experiments, powerCapture, productionCapture, frameArithmeticCaptures, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
   referenceComplexLibraryCapture, referenceComplexRoundedCapture, packedF32Capture,
   logZeroGuard: MEL_CONSTANTS.LOG_ZERO_GUARD, nodeVersion: process.version }));
 '''
+
+
+def selected_power_intervention(js, reference_power, reference_raw, reference_features, valid_length):
+    """Audit a diagnostic intervention; never fold it into production acceptance."""
+    baseline, candidate = js["complexPowerCapture"], js["powerOverrideCapture"]
+    shape = reference_power.shape
+    if candidate["shape"] != list(shape) or baseline["shape"] != list(shape):
+        raise ValueError("Intervention power shape differs")
+    arrays = [np.asarray(values, dtype=np.float32).reshape(shape) for values in
+        (baseline["power"], candidate["power"], candidate["effectivePower"])]
+    before, captured_before, effective = arrays
+    if not all(np.isfinite(values).all() for values in arrays):
+        raise ValueError("Intervention spectrum nonfinite")
+    if before.tobytes() != captured_before.tobytes() or (
+            baseline["frameBytesF32LE"] != candidate["frameBytesF32LE"]):
+        raise ValueError("Intervention changed pre-injection power or FFT inputs")
+    mask = np.zeros(shape, dtype=bool)
+    coordinates = candidate["powerOverrides"]
+    seen = set()
+    for frame, bin_index in coordinates:
+        if (type(frame) is not int or type(bin_index) is not int or
+                not 0 <= frame < valid_length or not 0 <= bin_index < shape[1] or
+                (frame, bin_index) in seen):
+            raise ValueError("Intervention coordinate invalid or duplicate")
+        seen.add((frame, bin_index))
+        mask[0, bin_index, frame] = True
+    if not seen or (before.view(np.uint32)[~mask] != effective.view(np.uint32)[~mask]).any():
+        raise ValueError("Intervention changed power outside the exact selected mask")
+    if (reference_power.view(np.uint32)[mask] != effective.view(np.uint32)[mask]).any():
+        raise ValueError("Intervention selected powers differ from official float32 values")
+    raw_shape = reference_raw.shape
+    raw_before = np.asarray(baseline["raw"], dtype=np.float32).reshape(raw_shape)
+    raw_after = np.asarray(candidate["raw"], dtype=np.float32).reshape(raw_shape)
+    observation = js["powerOverrideNormalization"]
+    normalized = np.asarray(observation["features"], dtype=np.float32).reshape(raw_shape)
+    expected, mean, std = normalize_candidate(raw_after[0], valid_length, 8)
+    for key, values in (("features", expected.ravel()), ("mean", mean), ("std", std)):
+        if np.asarray(observation[key], dtype="<f4").tobytes() != values.astype("<f4").tobytes():
+            raise ValueError("Intervention actual JS normalization differs from independent candidate")
+    original_norm = js["normalizationControls"]["alignedComplexPower"]
+    original_features = np.asarray(original_norm["features"], dtype=np.float32).reshape(raw_shape)
+    changed_raw = np.argwhere(raw_before.view(np.uint32) != raw_after.view(np.uint32))
+    selected_frames = {frame for frame, _ in seen}
+    if any(int(coordinate[2]) not in selected_frames for coordinate in changed_raw):
+        raise ValueError("Intervention changed raw mel outside selected frames")
+    return {"status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE", "coordinates_frame_bin": coordinates,
+        "fft_input_bytes_unchanged": True, "pre_injection_power_bits_unchanged": True,
+        "unselected_power_bits_unchanged": True, "selected_power_bits_official_exact": True,
+        "power_points": [{"frame": frame, "bin": bin_index,
+            "before": float(before[0, bin_index, frame]), "after": float(effective[0, bin_index, frame])}
+            for frame, bin_index in coordinates],
+        "changed_raw_points": [{"coordinate": coordinate.tolist(),
+            "reference_raw": float(reference_raw[tuple(coordinate)]),
+            "before_raw": float(raw_before[tuple(coordinate)]), "after_raw": float(raw_after[tuple(coordinate)]),
+            "reference_feature": float(reference_features[tuple(coordinate)]),
+            "before_feature": float(original_features[tuple(coordinate)]),
+            "after_feature": float(normalized[tuple(coordinate)])} for coordinate in changed_raw],
+        "mean_before": original_norm["mean"], "std_before": original_norm["std"],
+        "mean_after": observation["mean"], "std_after": observation["std"],
+        "features_before_vs_official": compare_tensors(reference_features, original_features, atol=1e-5, rtol=1e-4),
+        "features_after_vs_official": compare_tensors(reference_features, normalized, atol=1e-5, rtol=1e-4)}
 
 
 def encode_complex_boundary(values):
@@ -778,6 +875,8 @@ def main():
     parser.add_argument("--sample-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--summary-only", action="store_true", help="Print only receipt path/status; full evidence remains in output")
+    parser.add_argument("--power-override", nargs=2, type=int, action="append", default=[],
+        metavar=("FRAME", "BIN"), help="Diagnostic-only selected official-power substitution; repeat for each coordinate")
     args = parser.parse_args()
     require_new_outputs([args.output], protected_inputs=[args.audio, args.source_config, args.official_capture])
     config = json.loads(args.source_config.read_text(encoding="utf-8"))["preprocessor"]
@@ -850,7 +949,8 @@ def main():
     probe = subprocess.run(["node", "--input-type=module", "-e", NODE_PROBE], cwd=ROOT,
         input=json.dumps({"pcm": pcm.tolist(), "bins": config["features"], "referenceRaw": raw.flatten().tolist(),
             "referenceWindow": processor.window.tolist(), "referenceFilterbank": processor.fb.flatten().tolist(),
-            "referencePower": power.flatten().tolist(), "referenceComplex": complex_boundary}),
+            "referencePower": power.flatten().tolist(), "referenceComplex": complex_boundary,
+            "powerOverrides": args.power_override}),
         text=True, encoding="utf-8", capture_output=True, check=True, timeout=60)
     js = json.loads(probe.stdout)
     if js["frameCount"] != raw.shape[2] or js["validLength"] != int(valid_length[0]):
@@ -1039,6 +1139,8 @@ def main():
             "active_bins": point["active_bins"]} for point in cascade_attribution[key]["mismatches"]]
             for key in fft_controls})
     report = {"schema_version": 1, "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE", "sample_id": args.sample_id,
+        "selected_power_intervention": selected_power_intervention(js, power.numpy(), raw.numpy(),
+            normalized.numpy(), int(valid_length[0])) if args.power_override else None,
         "audio_sha256": audio_sha, "source_config_sha256": hashlib.sha256(args.source_config.read_bytes()).hexdigest(),
         "official_capture_sha256": hashlib.sha256(captured_bytes).hexdigest(),
         "library_processor_sha256": hashlib.sha256((ROOT / "dist/audio/js-mel.js").read_bytes()).hexdigest(),

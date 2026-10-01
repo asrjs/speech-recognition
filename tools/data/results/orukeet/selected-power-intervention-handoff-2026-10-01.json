@@ -1,0 +1,16 @@
+{
+  "status": "DIAGNOSTIC_CAUSAL_CONTROL_PASS_PRODUCTION_FEATURES_FAIL",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "receipt": "cascade-power-override-jfk-final-2026-10-01.json.gz",
+  "receipt_sha256": "260327342071dc0f76a9c76b61a58df75b8c7b4d3d7e7ef23ca000e46e1e615b",
+  "diagnostic_sha256": "7cd9d003f946709f3619d0ed0710d1dfaf4944ae1ae4ac07cae4aa407cb7fe12",
+  "selected_power_coordinates": {"frame_346": [1], "frame_551": [244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255]},
+  "invariants": ["FFT input bytes unchanged", "pre-injection powers unchanged", "all unselected power bits unchanged", "selected power bits official exact", "JS normalization matches independent Python candidate exactly"],
+  "changed_raw_coordinates": [[0, 0, 346], [0, 1, 346], [0, 126, 551], [0, 127, 551]],
+  "feature_mismatches": {"before": 121, "after": 118},
+  "target_raw_abs_error": {"mel0_frame346_before": 0.0002460479736328125, "mel0_frame346_after": 0, "mel127_frame551_before": 0.00006103515625, "mel127_frame551_after": 0.00000095367431640625},
+  "validation": {"probe_tests": 65, "python_reduction_tests": 6, "node_tests": 8, "real_final_exit_code": 1, "full_suite": "NOT_RUN"},
+  "limits": ["Official power substitution is a diagnostic intervention, not a production processor", "Changing shared spectral bins also affects adjacent mel bands", "Remaining normalized differences include global mean/std propagation", "Browser/WASM/full-model acceptance remains open"],
+  "next": "Isolate actual 12-bin mel accumulation and final log rounding at mel127/frame551 on identical official power; keep upstream complex64 FFT rounding separate."
+}

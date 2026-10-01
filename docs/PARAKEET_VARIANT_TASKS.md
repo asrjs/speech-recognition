@@ -68,6 +68,25 @@ FFT rounding from mel/log accumulation before any production processor change.
 Keep the aligned control's residual reference complex64 differences and
 mel/log/statistics amplification separate. Existing P02–P08 gates remain open.
 
+Selected-power causal control: `cascade-power-override-jfk-final-2026-10-01.json.gz`
+replaces only bin 1/frame 346 and bins 244–255/frame 551 with official float32
+powers, after the original power snapshot and before unchanged JS mel/log.
+FFT input bytes, pre-injection powers and all unselected power bits are exact
+to the baseline. Four raw-mel cells change (shared filters affect adjacent
+mel bands); fresh cascade statistics are independently checked. Mel 0/frame
+346 raw error falls from `2.46048e-4` to zero. Mel 127/frame 551 retains only
+`9.53674e-7`; its normalized error falls from `9.06587e-5` to `1.31130e-6`.
+The diagnostic control's feature mismatches fall from 121 to 118, not zero.
+This proves causal power sensitivity at selected points, not production parity
+or a usable implementation: reference power injection must remain diagnostic.
+65 probe tests, 6 Python reduction tests and 8 Node tests pass; the real run
+exits 1 because the unchanged production gates still fail. Small receipt:
+`selected-power-intervention-handoff-2026-10-01.json`.
+Next bounded P03 step: isolate actual 12-bin mel accumulation and final log
+rounding at mel 127/frame 551 using identical official power, while keeping
+the still-open FFT complex64 rounding mismatch separate. No production change,
+fp16 promotion or tolerance relaxation is justified by this control.
+
 ## Ordered tasks
 
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and

@@ -32,6 +32,64 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_selected_power_override_is_local_and_recomputes_normalization(self):
+        import numpy as np
+        data = inputs()
+        data['referenceFilterbank'][1] = 1
+        data['referencePower'] = [9] * (257 * 11)
+        data['powerOverrides'] = [[3, 1]]
+        completed = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30, check=True)
+        result = json.loads(completed.stdout)
+        baseline, candidate = result['complexPowerCapture'], result['powerOverrideCapture']
+        self.assertEqual(candidate['power'], baseline['power'])
+        self.assertEqual(candidate['frameBytesF32LE'], baseline['frameBytesF32LE'])
+        changed = [index for index, (before, after) in enumerate(zip(
+            baseline['power'], candidate['effectivePower'])) if before != after]
+        self.assertEqual(changed, [1 * 11 + 3])
+        changed_raw = [index for index, (before, after) in enumerate(zip(
+            baseline['raw'], candidate['raw'])) if before != after]
+        self.assertEqual(changed_raw, [3])
+        self.assertEqual(candidate['raw'][3], float(np.float32(math.log(9 + result['logZeroGuard']))))
+        report = probe_module.selected_power_intervention(result,
+            np.asarray(data['referencePower'], dtype=np.float32).reshape(1, 257, 11),
+            np.zeros((1, 8, 11), dtype=np.float32), np.zeros((1, 8, 11), dtype=np.float32), 10)
+        self.assertTrue(report['unselected_power_bits_unchanged'])
+        self.assertEqual(report['changed_raw_points'][0]['coordinate'], [0, 0, 3])
+        self.assertNotEqual(report['mean_before'], report['mean_after'])
+        candidate['effectivePower'][4] += 1
+        with self.assertRaisesRegex(ValueError, 'outside the exact selected mask'):
+            probe_module.selected_power_intervention(result,
+                np.asarray(data['referencePower'], dtype=np.float32).reshape(1, 257, 11),
+                np.zeros((1, 8, 11), dtype=np.float32), np.zeros((1, 8, 11), dtype=np.float32), 10)
+
+    def test_selected_power_override_rejects_invalid_coordinates(self):
+        for coordinates in ([[3, 1], [3, 1]], [[10, 1]], [[3, 257]], [[True, 1]], [[3, -1]]):
+            with self.subTest(coordinates=coordinates):
+                data = inputs()
+                data['powerOverrides'] = coordinates
+                completed = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+                    cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+                    capture_output=True, timeout=30)
+                self.assertNotEqual(completed.returncode, 0)
+                self.assertIn('Selected power coordinate', completed.stderr)
+
+    def test_selected_power_override_rejects_malformed_reference(self):
+        for invalid in ('short', 'negative', 'null'):
+            with self.subTest(invalid=invalid):
+                data = inputs()
+                data['powerOverrides'] = [[3, 1]]
+                if invalid == 'short':
+                    data['referencePower'].pop()
+                else:
+                    data['referencePower'][0] = -1 if invalid == 'negative' else None
+                completed = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+                    cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+                    capture_output=True, timeout=30)
+                self.assertNotEqual(completed.returncode, 0)
+                self.assertIn('Selected power reference', completed.stderr)
+
     def test_packed_f32_control_preserves_aligned_input_bytes_and_f32_components(self):
         import numpy as np
         capture = self.result['packedF32Capture']
