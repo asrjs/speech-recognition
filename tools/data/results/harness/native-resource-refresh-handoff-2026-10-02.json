@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "status": "PASS_RESOURCE_ONLY",
+  "scope": "Existing native CPU session ownership harness rerun; no model inference or package installation acceptance",
+  "results": [
+    {"path": "nemo-tdt-node-native-resource-2026-10-02.json", "sha256": "a8f9359f50ee80a6929a7610c88b89eb824b5f607299fb4b0a741fb3fb60e2a1", "runtime": "Node v26.2.0"},
+    {"path": "nemo-tdt-bun-native-resource-2026-10-02.json", "sha256": "e89a8b923851f2266b6e0a785fec88a4f29378ea0261ffd1845a9d0768d9e96e", "runtime": "Bun 1.3.14"}
+  ],
+  "engine": "onnxruntime-node 1.25.0-dev.20260228-6e72d31970",
+  "providers": ["cpu"],
+  "cases_per_runtime": [
+    {"name": "successful-acquisition", "acquired": 2, "release_attempts": 2, "released": 2},
+    {"name": "partial-acquisition", "acquired": 1, "release_attempts": 1, "released": 1}
+  ],
+  "fixture": "Existing 115-byte ONNX Identity graph from local ONNX test data; actual path/hash and code hashes are in raw receipts",
+  "next": "Add a portable repo-owned lifecycle fixture and explicit opt-in Bun prerequisite test path; do not confuse Node-only Vitest child launches with Bun coverage",
+  "remaining": ["C01 install footprint comparison UNTESTED", "Full native inference acceptance remains separate"]
+}

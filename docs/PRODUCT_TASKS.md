@@ -58,3 +58,20 @@ Relevant existing checks: `tests/smoke/browser-root-import-graph.mjs`,
 `tests/smoke/package-tarball-smoke.mjs`, `tests/package-tarball-contract.test.ts`,
 `tests/native-cpu-backend.test.ts`, `tests/native-resource-smoke.test.ts`, and
 `examples/nemo-tdt-native-local.mjs`.
+
+### C01 resource refresh (2026-10-02)
+
+The existing real native resource harness was rerun explicitly with Node
+v26.2.0 and Bun 1.3.14 against the same small ONNX Identity fixture. Both
+successful acquisition (two sessions) and partial acquisition failure (one
+session) pass exact acquired/release-attempt/released counts. Repeated dispose
+does not add releases. These are resource-only controls, not model inference,
+numerical parity, or install-footprint acceptance. Small evidence pointer:
+`tools/data/results/harness/native-resource-refresh-handoff-2026-10-02.json`.
+
+Next portability gap: the prerequisite Vitest tests currently spawn
+`process.execPath` (Node), and the manually used Identity fixture lives under
+a local ONNX virtual environment. Add an explicit opt-in Bun prerequisite path
+and a portable repository-owned fixture; retain requested-missing-fixture FAIL
+and optional-unrequested SKIP semantics. Existing manual Bun evidence is valid
+but does not make that automatic test path implemented.
