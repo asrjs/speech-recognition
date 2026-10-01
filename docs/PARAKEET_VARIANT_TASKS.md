@@ -43,11 +43,23 @@ all 1,003 selected frame/bin pairs; all rounded components match. This control
 uses official-aligned float32 preemphasis/window products and rounded power,
 not the unmodified production pipeline. Its 120 feature mismatches persist;
 production still has 313. Forty-four weight-free probe tests pass.
-Next bounded P03 experiment: capture unmodified production windowed frames
-and complex components, then isolate its preemphasis/window-product deltas
-from the aligned control's remaining reference complex64 arithmetic deltas.
-Keep mel/log/statistics amplification separate; do not replace production
-math or relax the oracle from this diagnostic alone.
+The unmodified production capture is now recorded in
+`tools/data/results/orukeet/library-feature-production-frames-final-jfk-2026-10-01.json`.
+It preserves all normalized features, valid raw mel and original power exactly.
+Production's Float64 frame products differ from official Float32 frame values
+at 435,823 / 563,712 positions (max `9.44e-8`, mean `1.54e-9`); an explicitly
+cast f32 control still has 365,586 differing bit patterns. On the exact original
+production f64 frames, packed FFT versus independent NumPy FFT has max component
+errors `7.11e-15` / `6.22e-15`. This is diagnostic evidence of input arithmetic
+differences, not proof that these alone cause all 313 feature mismatches.
+Forty-nine probe tests pass; the f64 reader rejects coerced mirrors, empty
+frames and boolean/float metadata dimensions. Full suite was not rerun for this
+tool-only slice. Small receipt: `production-frames-handoff-2026-10-01.json`.
+Next bounded P03 experiment: isolate preemphasis-only and window-only frame
+deltas using the same observations; test a reference-aligned arithmetic
+candidate across the fixture matrix before any production processor change.
+Keep the aligned control's residual reference complex64 differences and
+mel/log/statistics amplification separate. Existing P02–P08 gates remain open.
 
 ## Ordered tasks
 

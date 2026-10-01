@@ -36,12 +36,14 @@ class FeatureBoundaryProbeTests(unittest.TestCase):
         cls.before_sha = hashlib.sha256(processor.read_bytes()).hexdigest()
         completed = subprocess.run(
             ["node", "--input-type=module", "-e", probe_module.NODE_PROBE +
-                "\nconsole.error(JSON.stringify(Array.from(processor.process(pcm).features)));"],
+                "\nconsole.error(JSON.stringify({ features: Array.from(processor.process(pcm).features), "
+                "raw: Array.from(processor.computeRawMel(pcm).rawMel) }));"],
             cwd=probe_module.ROOT, input=json.dumps(inputs()), text=True, encoding="utf-8",
             capture_output=True, timeout=30, check=True,
         )
         cls.result = json.loads(completed.stdout)
-        cls.after_features = json.loads(completed.stderr)
+        after = json.loads(completed.stderr)
+        cls.after_features, cls.unmasked_raw = after["features"], after["raw"]
         cls.after_sha = hashlib.sha256(processor.read_bytes()).hexdigest()
 
     def test_experiments_keep_full_feature_shape_and_masked_tail(self):
@@ -107,6 +109,59 @@ class FeatureBoundaryProbeTests(unittest.TestCase):
         squared = np.float32(np.float32(real * real) + np.float32(imag * imag))
         magnitude = np.asarray([np.float32(math.sqrt(float(value))) for value in squared])
         np.testing.assert_array_equal(capture["power"], np.float32(magnitude * magnitude))
+
+    def test_production_capture_preserves_actual_raw_and_normalized_features(self):
+        capture = self.result["productionCapture"]
+        self.assertEqual(capture["features"], self.result["normalized"])
+        self.assertEqual(capture["raw"], self.unmasked_raw)
+        self.assertEqual(capture["shape"], [1, 257, 11])
+
+    def test_production_capture_preserves_double_frames_and_original_power(self):
+        import numpy as np
+        capture = self.result["productionCapture"]
+        frames = probe_module.read_production_frames(capture, 512, 11)
+        self.assertEqual(frames.dtype, np.dtype("<f8"))
+        np.testing.assert_array_equal(frames.ravel(), capture["frames"])
+        self.assertTrue(np.any(frames != frames.astype(np.float32).astype(np.float64)))
+        real = np.asarray(capture["real"], dtype=np.float64)
+        imag = np.asarray(capture["imag"], dtype=np.float64)
+        np.testing.assert_array_equal(capture["power"], np.float32(real * real + imag * imag))
+        spectrum = np.fft.rfft(frames, axis=-1).transpose(0, 2, 1)
+        np.testing.assert_allclose(real.reshape(1, 257, 11), spectrum.real, atol=1e-12, rtol=1e-12)
+        np.testing.assert_allclose(imag.reshape(1, 257, 11), spectrum.imag, atol=1e-12, rtol=1e-12)
+
+    def test_production_frame_reader_rejects_float32_and_corrupt_bytes(self):
+        capture = self.result["productionCapture"]
+        for field, value in (("frameDtype", "float32"), ("frameShape", [1, 512, 11]),
+                ("frameShape", [True, 11, 512]), ("frameShape", [1.0, 11, 512]),
+                ("frameLayout", "batch-bin-frame"), ("frameBytesEncoding", "base64-f32le"),
+                ("frameBytesF64LE", "!")):
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError):
+                    probe_module.read_production_frames({**capture, field: value}, 512, 11)
+
+    def test_production_diagnostic_separates_changed_inputs_from_fft_error(self):
+        import numpy as np
+        capture = self.result["productionCapture"]
+        aligned = probe_module.read_windowed_frames(self.result["complexPowerCapture"], 512, 11)
+        report = probe_module.production_frame_diagnostic(capture, aligned)
+        self.assertFalse(report["original_frame_values"]["allclose"])
+        self.assertGreater(report["explicit_f32_cast_frame_bits"]["mismatch_count"], 0)
+        self.assertTrue(report["same_production_frames_numpy_fft"]["real"]["allclose"])
+        self.assertTrue(report["same_production_frames_numpy_fft"]["imag"]["allclose"])
+        self.assertEqual(report["original_power_reconstruction"]["max_abs_error"], 0)
+        frames = probe_module.read_production_frames(capture, 512, 11)
+        self.assertEqual(report["production_frame_sha256_f64le"], hashlib.sha256(frames.tobytes()).hexdigest())
+        self.assertEqual(report["status"], "DIAGNOSTIC_NOT_PORT_ACCEPTANCE")
+
+    def test_production_frame_reader_rejects_coerced_mirrors_and_empty_shapes(self):
+        capture = self.result["productionCapture"]
+        for mirror in ([str(value) for value in capture["frames"]], [False] * len(capture["frames"])):
+            with self.subTest(kind=type(mirror[0]).__name__), self.assertRaises(ValueError):
+                probe_module.read_production_frames({**capture, "frames": mirror}, 512, 11)
+        empty = {**capture, "frames": [], "frameBytesF64LE": "", "frameShape": [1, 0, 512]}
+        with self.assertRaises(ValueError):
+            probe_module.read_production_frames(empty, 512, 0)
 
     def test_official_complex_injection_preserves_layout_and_library_power_arithmetic(self):
         import numpy as np

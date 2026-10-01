@@ -53,6 +53,7 @@ function readReferenceComplex(boundary, expectedShape) {
 }
 // An isolated arithmetic experiment, not a mutation of the library/oracle.
 let source = readFileSync('./dist/audio/js-mel.js', 'utf8');
+const productionSource = source;
 for (const [before, after] of [
   ['const PREEMPH = MEL_CONSTANTS.PREEMPH;', 'const PREEMPH = Math.fround(MEL_CONSTANTS.PREEMPH);'],
   ['audio[index] - PREEMPH * audio[index - 1]', 'audio[index] - Math.fround(PREEMPH * audio[index - 1])'],
@@ -62,8 +63,11 @@ for (const [before, after] of [
 }
 async function experiment(name, { window = false, windowProduct = false, filterbank = false,
   referencePower = false, magnitudeRoundTrip = false, capturePower = false, complexPower = false,
-  fullFft = null, referenceComplexPower = null } = {}) {
-  let candidateSource = source;
+  fullFft = null, referenceComplexPower = null, production = false } = {}) {
+  if (production && (!capturePower || window || windowProduct || filterbank || referencePower ||
+      magnitudeRoundTrip || complexPower || fullFft || referenceComplexPower))
+    throw new Error('Production capture must preserve unmodified arithmetic');
+  let candidateSource = production ? productionSource : source;
   if (referenceComplexPower !== null && !['library', 'fp32-rounded'].includes(referenceComplexPower))
     throw new Error('Invalid reference complex power control');
   if (referenceComplexPower && (fullFft || referencePower || magnitudeRoundTrip || complexPower || !capturePower))
@@ -119,14 +123,14 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       }
     ` + candidateSource.slice(stop + end.length);
   }
-  if (complexPower) {
+  if (complexPower || production) {
     const fftBoundary = 'fft(this.fftRe, this.fftIm, halfN, this.twiddlesHalf);';
     if (candidateSource.split(fftBoundary).length !== 2) throw new Error('Packed FFT input capture contract changed');
     candidateSource = candidateSource.replace(fftBoundary, `for (let sample = 0; sample < N_FFT; sample++) {
       capturedFrames[frameIndex * N_FFT + sample] = sample % 2 === 0
         ? this.fftRe[sample >> 1] : this.fftIm[sample >> 1];
     }\n` + fftBoundary);
-    for (const [before, after] of [
+    if (complexPower) for (const [before, after] of [
       ['this.powerBuf[0] = (z0r + z0i) * (z0r + z0i);', 'this.powerBuf[0] = diagnosticComplexPower(z0r + z0i, 0);'],
       ['this.powerBuf[halfN] = (z0r - z0i) * (z0r - z0i);', 'this.powerBuf[halfN] = diagnosticComplexPower(z0r - z0i, 0);'],
       ['this.powerBuf[k] = xkR * xkR + xkI * xkI;', 'this.powerBuf[k] = diagnosticComplexPower(xkR, xkI);'],
@@ -141,7 +145,7 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       ['k', 'xkR', 'xkI'], ['halfN - k', 'xnkR', '-xnkI'],
       ['quarterN', 'quarterRe', '-quarterIm'],
     ]) {
-      const boundary = `this.powerBuf[${bin}] = diagnosticComplexPower(`;
+      const boundary = `this.powerBuf[${bin}] = `;
       if (candidateSource.split(boundary).length !== 2) throw new Error('Packed complex capture contract changed');
       // Paired upper/quarter bins require conjugation for the negative-exponent
       // DFT convention. The original power expression remains unchanged.
@@ -213,11 +217,17 @@ async function experiment(name, { window = false, windowProduct = false, filterb
     };
   }
   const result = processor.process(pcm);
-  const frameBytes = fullFft || complexPower ? Buffer.alloc(variant.capturedFrames.length * 4) : null;
-  if (frameBytes) variant.capturedFrames.forEach((value, index) => frameBytes.writeFloatLE(value, index * 4));
+  const frameBytes = fullFft || complexPower || production
+    ? Buffer.alloc(variant.capturedFrames.length * (production ? 8 : 4)) : null;
+  if (frameBytes) variant.capturedFrames.forEach((value, index) => production
+    ? frameBytes.writeDoubleLE(value, index * 8) : frameBytes.writeFloatLE(value, index * 4));
   return capturePower ? { features: Array.from(result.features), raw: capturedRaw, power: variant.capturedPower,
     shape: [1, (variant.MEL_CONSTANTS.N_FFT >> 1) + 1, result.frameCount],
     ...(referenceComplexPower ? { real: variant.capturedReal, imag: variant.capturedImag } : {}),
+    ...(production ? { real: variant.capturedReal, imag: variant.capturedImag,
+      frames: variant.capturedFrames, frameShape: [1, result.frameCount, variant.MEL_CONSTANTS.N_FFT],
+      frameDtype: 'float64', frameLayout: 'batch-frame-sample',
+      frameBytesEncoding: 'base64-f64le', frameBytesF64LE: frameBytes.toString('base64') } : {}),
     ...(fullFft || complexPower ? { real: variant.capturedReal, imag: variant.capturedImag,
       frames: variant.capturedFrames, frameShape: [1, result.frameCount, variant.MEL_CONSTANTS.N_FFT],
       frameDtype: 'float32', frameLayout: 'batch-frame-sample',
@@ -233,6 +243,7 @@ const experiments = {
 };
 const powerCapture = await experiment('power-capture', { window: true, windowProduct: true,
   filterbank: true, magnitudeRoundTrip: true, capturePower: true });
+const productionCapture = await experiment('production-capture', { production: true, capturePower: true });
 const complexPowerCapture = await experiment('complex-power-capture', { window: true,
   windowProduct: true, filterbank: true, complexPower: true, capturePower: true });
 const fullFftF32Capture = await experiment('full-fft-f32', { window: true,
@@ -245,7 +256,7 @@ const referenceComplexRoundedCapture = await experiment('reference-complex-round
   windowProduct: true, filterbank: true, referenceComplexPower: 'fp32-rounded', capturePower: true });
 console.log(JSON.stringify({ raw: Array.from(raw.features), normalized: Array.from(normalized.features),
   sameRawNormalized: Array.from(sameRawNormalized), frameCount: raw.frameCount, validLength: raw.length,
-  experiments, powerCapture, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
+  experiments, powerCapture, productionCapture, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
   referenceComplexLibraryCapture, referenceComplexRoundedCapture,
   logZeroGuard: MEL_CONSTANTS.LOG_ZERO_GUARD, nodeVersion: process.version }));
 '''
@@ -287,6 +298,71 @@ def read_windowed_frames(capture, n_fft, frame_count):
         raise ValueError("JS windowed-frame numeric mirror and float32 bytes disagree")
     # JSON numbers erase -0. Read canonical bytes rather than that lossy mirror.
     return exact_frames.reshape(1, frame_count, n_fft)
+
+
+def read_production_frames(capture, n_fft, frame_count):
+    """Unrounded production f64 window products; never cast them to f32 here."""
+    if (type(n_fft) is not int or type(frame_count) is not int
+            or n_fft < 2 or n_fft % 2 or frame_count < 1):
+        raise ValueError("Production frame dimensions must be positive integers with even FFT size")
+    shape = capture.get("frameShape")
+    if (not isinstance(shape, list) or any(type(value) is not int for value in shape)
+            or shape != [1, frame_count, n_fft]
+            or capture.get("frameDtype") != "float64"
+            or capture.get("frameLayout") != "batch-frame-sample"
+            or capture.get("frameBytesEncoding") != "base64-f64le"):
+        raise ValueError("Production frame metadata must describe canonical float64 products")
+    encoded = capture.get("frameBytesF64LE")
+    if not isinstance(encoded, str):
+        raise ValueError("Production float64 frame bytes missing")
+    try:
+        frame_bytes = base64.b64decode(encoded, validate=True)
+    except ValueError as error:
+        raise ValueError("Production float64 frame bytes malformed") from error
+    if len(frame_bytes) != frame_count * n_fft * 8:
+        raise ValueError("Production float64 frame byte count differs")
+    frames = np.frombuffer(frame_bytes, dtype="<f8")
+    mirror = np.asarray(capture.get("frames"))
+    if (mirror.ndim != 1 or mirror.dtype.kind not in "fi" or not np.isfinite(frames).all()
+            or not np.array_equal(frames, mirror)):
+        raise ValueError("Production frame bytes and finite numeric mirror disagree")
+    return frames.reshape(1, frame_count, n_fft)
+
+
+def production_frame_diagnostic(capture, aligned_frames):
+    """Separate input arithmetic differences from packed FFT on its own input."""
+    aligned_frames = np.asarray(aligned_frames)
+    if (aligned_frames.dtype != np.float32 or aligned_frames.ndim != 3
+            or aligned_frames.shape[0] != 1 or not aligned_frames.size
+            or not np.isfinite(aligned_frames).all()):
+        raise ValueError("Aligned control frames must be finite nonempty batch-one float32")
+    frames = read_production_frames(capture, aligned_frames.shape[2], aligned_frames.shape[1])
+    shape = (1, frames.shape[2] // 2 + 1, frames.shape[1])
+    if capture.get("shape") != list(shape):
+        raise ValueError("Production spectrum shape differs from captured frames")
+    arrays = {}
+    for component in ("real", "imag", "power"):
+        values = np.asarray(capture.get(component))
+        if (values.ndim != 1 or values.size != np.prod(shape)
+                or values.dtype.kind not in "fi" or not np.isfinite(values).all()):
+            raise ValueError("Production spectrum must have finite full bin-major components")
+        arrays[component] = values.astype(np.float64).reshape(shape)
+    reconstructed_power = np.float32(arrays["real"] ** 2 + arrays["imag"] ** 2)
+    independent_fft = np.fft.rfft(frames, axis=-1).transpose(0, 2, 1)
+    return {"status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE",
+        "scope": "Different production f64 and aligned f32 inputs; NumPy FFT is a same-input diagnostic, not an official-engine substitute",
+        "production_frame_sha256_f64le": hashlib.sha256(frames.tobytes()).hexdigest(),
+        "aligned_frame_sha256_f32le": hashlib.sha256(aligned_frames.astype("<f4", copy=False).tobytes()).hexdigest(),
+        "frame_shape": list(frames.shape),
+        "original_frame_values": compare_tensors(aligned_frames.astype(np.float64), frames, atol=0, rtol=0),
+        "explicit_f32_cast_frame_bits": compare_tensors(
+            aligned_frames.astype("<f4", copy=False).view("<u4"),
+            frames.astype("<f4").view("<u4"), atol=0, rtol=0),
+        "original_power_reconstruction": compare_tensors(
+            arrays["power"].astype(np.float32), reconstructed_power, atol=0, rtol=0),
+        "same_production_frames_numpy_fft": compare_fft_components(
+            capture, independent_fft, atol=1e-12, rtol=1e-12),
+        "numpy_version": np.__version__}
 
 
 def direct_dft_bins(frames, coordinates):
@@ -721,6 +797,18 @@ def main():
     frame_evidence = {}
     official_frames_array = official_frames.numpy()
     official_complex_array = official_complex.numpy()
+    production_capture = js["productionCapture"]
+    production_feature_control = compare_tensors(reshape(js["normalized"]),
+        reshape(production_capture["features"]), atol=0, rtol=0)
+    production_raw_control = compare_tensors(reshape(js["raw"])[:, :, :int(valid_length[0])],
+        reshape(production_capture["raw"])[:, :, :int(valid_length[0])], atol=0, rtol=0)
+    if not production_feature_control["allclose"] or not production_raw_control["allclose"]:
+        raise ValueError("Production instrumentation changed raw/normalized features")
+    production_diagnostic = production_frame_diagnostic(production_capture, official_frames_array)
+    production_diagnostic["unchanged_normalized_features"] = production_feature_control
+    production_diagnostic["unchanged_valid_raw_mel"] = production_raw_control
+    production_diagnostic["official_stft_components"] = compare_fft_components(
+        production_capture, official_complex_array, atol=1e-5, rtol=1e-4)
     # Separately cross-check the independent unfold/window reconstruction against
     # NeMo's actual STFT call; matching JS frames alone does not certify this seam.
     stft_control = {"shape": list(official_complex.shape),
@@ -797,6 +885,7 @@ def main():
         "normalization_decomposition": decomposition,
         "mel_power_attribution": attribution,
         "selected_bin_dft": dft_diagnostic,
+        "production_input_diagnostic": production_diagnostic,
         "diagnostic_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "comparisons": metrics}
     write_new_text(args.output, json.dumps(report, indent=2) + "\n")

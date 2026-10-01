@@ -328,3 +328,27 @@ All reference/diagnostic commands now require fresh receipt paths and reject
 output/input aliases before work. Source acquisition updates only the new
 receipt handle it owns; ordinary JSON and gzip writes use exclusive creation.
 Run `tools/test_artifact_outputs.py -v` for these small safety contracts.
+
+The unchanged production path is now observed in
+`library-feature-production-frames-final-jfk-2026-10-01.json`. The temporary
+module starts from the original source before preemphasis substitutions and
+only records windowed inputs and packed complex components; original power
+expressions remain intact. Canonical little-endian float64 frame bytes preserve
+the actual window products (including signed zeros). Exact raw-valid-prefix,
+normalized-feature and reconstructed-power controls pass. Raw full-buffer test
+uses `computeRawMel`, since even `normalization: none` finalization masks the
+invalid tail; confusing these boundaries would create a false regression.
+
+Official f32 frame values differ from production f64 products at 435,823 of
+563,712 values (max `9.44e-8`, mean `1.54e-9`). Explicitly casting production
+frames to f32 still gives 365,586 bit differences; this is not same-input proof.
+Independent NumPy FFT on the captured production f64 frames agrees with packed
+components within `7.11e-15` real / `6.22e-15` imaginary across all 282,957 bins.
+NumPy is a same-input arithmetic diagnostic, not a replacement official oracle.
+Production features still fail at 313 coordinates, aligned packed features at
+120. The successful diagnostic exits 1 because acceptance remains incomplete.
+Forty-nine probe tests pass, including source/output immutability, exact original
+power reconstruction, f64 byte/mirror checks and malformed shape/coercion
+refusal. Next separate preemphasis and window deltas before testing a production
+arithmetic candidate on the broader fixtures. No production code or tolerances
+changed. Earlier preliminary receipts remain preserved, not overwritten.
