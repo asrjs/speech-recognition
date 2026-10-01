@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_PATH_LOCALIZED_RUNTIME_PROVIDER_UNVERIFIED",
+  "scope": "Installed ORT source and original graph inspection; not runtime provider certification",
+  "source_graph": "models/orukeet/onnx/fp32-packed-2026-10-01/decoder_joint-model.onnx",
+  "source_graph_sha256": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90",
+  "lstm_nodes": ["/decoder/dec_rnn/lstm/LSTM", "/decoder/dec_rnn/lstm/LSTM_1"],
+  "hidden_size": 640,
+  "failed_layer_2_features": [462, 497],
+  "webgpu_resolver": {"path": "node_modules/onnxruntime-web/lib/wasm/jsep/webgpu/op-resolve-rules.ts", "sha256": "6895744d74d1a8771c4744648ed62dcc4cca2d2a1a6d9f582930e98a9c7b4cf3", "direct_lstm_registration": false},
+  "backend_source": {"path": "node_modules/onnxruntime-web/lib/wasm/jsep/backend-webgpu.ts", "sha256": "4232f0cb7d18942f11b72f10376b88dbda636980c7abfd0c1da7a7df48fe0735"},
+  "interpretation": "29 dispatches do not prove LSTM GPU execution; optimized runtime partition not captured",
+  "profiling_attempt": {
+    "path": "browser-head-webgpu-kernel-profile-2026-10-02.json",
+    "sha256": "bbcbb31d5101edb89238f63357834014d92120b327bb81b27e05b902f68d606f",
+    "status": "BROWSER_REPLAY_FAILED",
+    "error": "Page.wait_for_function: Timeout 180000ms exceeded.",
+    "browser_errors": [],
+    "runtime_provider_evidence": "MISSING",
+    "edits": "Fully reverted before retry; original harness syntax and 11 focused tests PASS",
+    "source_lifetime_risk": "Profiling mapAsync callback looks up kernels; releaseKernel deletes them. Cause of observed timeout is UNPROVEN."
+  },
+  "next": "Capture diagnostic layer-2 inputs and state outputs on both backends; alternatively drain profiling callbacks before release with a bounded diagnostic timeout",
+  "unchanged": ["WebGPU speech/silence numerical FAIL", "WASM head matrix PASS", "Production feature FAIL", "No tolerance relaxation, dependency change or model promotion"]
+}

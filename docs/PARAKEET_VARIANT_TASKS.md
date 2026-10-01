@@ -40,6 +40,19 @@ Next localize the LSTM provider arithmetic, including the first-layer hidden
 input to layer 2. This does not prove the underlying shader/operator cause.
 Receipt: `browser-head-isolated-cells-handoff-2026-10-02.json`.
 
+Provider audit: the original head graph contains two LSTM nodes, but installed
+ORT Web 1.29.0's WebGPU resolver has no direct LSTM registration. Do not call
+the state mismatch a proven GPU LSTM shader defect. The optimized runtime
+partition remains UNVERIFIED. An opt-in kernel-profile experiment timed out
+waiting for callback completeness; no profiling result was certified. Its
+source edits were fully reverted and 11 original focused tests passed.
+Async callback lookup versus kernel release is a source-level lifecycle risk,
+not the proven cause of this timeout. Next capture layer-2 input/state taps on
+both backends, or drain profiler callbacks before release in a bounded diagnostic.
+Receipt: `browser-head-provider-audit-2026-10-02.json`. Feature parity remains
+the earlier production failure; this independent provider investigation does
+not replace its gate or the compact-runtime product queue.
+
 Task P01 is complete; P02 and P03 are partial. Existing Nemotron changes on `main` are preserved.
 Orukeet remains an experimental candidate until P08 passes. Resume the first
 unfinished task and record commands, result files, and blockers here.
