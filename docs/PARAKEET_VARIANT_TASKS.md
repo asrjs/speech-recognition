@@ -188,6 +188,24 @@ inference were NOT_RUN. Receipt: `aligned-packed-mel-handoff-2026-10-02.json`.
 
 ## Ordered tasks
 
+P06/P09 browser head checkpoint (2026-10-02): `browser_head_replay.py` now
+replays first/middle/last official joint bindings twice through the compiled
+NeMo TDT ORT bridge, with no duplicated decoder. One initial Chrome 154 /
+ORT Web 1.29 WebGPU run on NVIDIA Blackwell passed scores/states/lengths and
+exact token/duration decisions (29 compute dispatches per call). Its receipt
+predates full tool-hash/raw-output binding. Subsequent WASM runs failed ESM or
+WASM fetch; the hash-bound WebGPU repeat failed ONNX fetch. All had
+`ERR_CONNECTION_RESET`, zero graph calls, no cleanup errors. Standalone Chrome
+fetch and ESM import controls succeeded, so the delivery failure is not yet
+localized. **INCONSISTENT / NOT ACCEPTED**, not model-op failure or full port
+PASS. No active run remains. Next instrument/isolate loopback asset delivery
+or reuse the existing Vite delivery with repo-local output; no precision,
+tolerance or backend fallback workaround. Strict production features remain
+313 JFK failures. Seven new browser-tool tests and all 23 shared + 22 family
+Python tool tests pass. Protobuf 7 reflection incompatibility was reproduced
+and fixed in shared `onnx_artifacts.py`; 10 tests pass on Protobuf 5 and 7.
+Small receipt: `browser-head-handoff-2026-10-02.json`. P05/P06 remain open.
+
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and
       SHA-256, download original `.nemo` weights into ignored local model storage,
       retain license/attribution and compare config/tokenizer with Parakeet v3.

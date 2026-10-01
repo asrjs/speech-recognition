@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "INCONSISTENT_BROWSER_COMPONENT_NOT_ACCEPTED",
+  "scope": "Three recorded NeMo TDT joint bindings, two repeats, internal compiled library ORT bridge; no ASR search",
+  "tool_sha256": "265a2273f66be9a41f33047a237a225819e838ec0222cfae678b3868807fe31c",
+  "browser_module_sha256": "091c2052667b0000dcf9b4df9f6b9c751c10b97c837830b47531837a025fc884",
+  "receipts": [
+    {"path": "browser-head-webgpu-jfk-2026-10-02.json", "sha256": "276139575b95057c17e31035d73c7bf2e1310841ef7ca83711ab65d04c095c65", "status": "RECORDED_HEAD_COMPONENT_PASS", "limit": "Predates complete tool hash and raw output binding"},
+    {"path": "browser-head-wasm-jfk-network-2026-10-02.json", "sha256": "4b4948b28d64ba42e34473ddd641863c351fcd6d280944ecf85021ed4098ad9a", "status": "RECORDED_HEAD_COMPONENT_FAIL", "failure": "ESM fetch ERR_CONNECTION_RESET"},
+    {"path": "browser-head-wasm-jfk-recheck-2026-10-02.json", "sha256": "7cc5c84d8d6e5219316df1250e6eeaeb09a7d1135a168f19f8bff490832f1536", "status": "RECORDED_HEAD_COMPONENT_FAIL", "failure": "WASM fetch ERR_CONNECTION_RESET"},
+    {"path": "browser-head-webgpu-jfk-bound-2026-10-02.json", "sha256": "bf6ebfe14cf2a403d1c993e59a911d004d56b3da00fafd414b41d89d0d6f3298", "status": "RECORDED_HEAD_COMPONENT_FAIL", "failure": "ONNX fetch ERR_CONNECTION_RESET"}
+  ],
+  "initial_webgpu": {"browser": "154.0.8037.58", "ort_web": "1.29.0", "adapter": "nvidia blackwell", "calls": 6, "compute_dispatches_per_call": 29, "atol": 0.00001, "rtol": 0.0001, "all_numerical_comparisons_pass": true, "all_token_duration_decisions_exact": true, "max_normalized_score_abs_error": 0.00006103515625, "max_state_abs_error": 0.00003337860107421875},
+  "all_terminal_cleanup_errors": [],
+  "standalone_delivery_controls": {"python_bundle_get": "HTTP 200, 865147 bytes, text/javascript", "chrome_bundle_fetch": "HTTP 200, 865147 bytes", "chrome_esm_import": "ORT common/web 1.29.0", "scope": "Read-only one-off controls, not model or general delivery acceptance"},
+  "tests": {"browser_tool": 7, "shared_python_tools": 23, "family_python_tools": 22, "reflection_tests_per_protobuf_5_and_7": 10},
+  "production_changed": false,
+  "precision_or_tolerances_changed": false,
+  "full_suite_public_api_encoder_features_application_acceptance": "NOT_RUN",
+  "strict_production_jfk_features": "FAIL 313",
+  "next": "Localize intermittent loopback asset reset with server/browser evidence or existing Vite delivery; rerun both explicit backends with bound receipts. No automatic fallback or model promotion."
+}

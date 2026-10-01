@@ -81,3 +81,43 @@ tooling evidence only. Run `tools/test_onnx_artifacts.py` (9),
 the additional small tooling contracts; they require no ASR weights and are
 not real inference evidence. Follow `docs/PARAKEET_VARIANT_TASKS.md` for remaining
 original-engine, native, WASM and real-browser acceptance.
+
+## Recorded browser head gate
+
+`browser_head_replay.py` runs three captured first/middle/last joint calls twice
+in headless installed Chrome, through the compiled library's internal ORT
+session bridge. It reuses `replay_bindings` and the native score comparator;
+there is no alternate ASR search loop. It uses a loopback-only, allowlisted
+ephemeral server and does not edit/start sibling projects or download assets.
+The system Python needs existing ONNX/NumPy/ORT and Playwright dependencies;
+the older NeMo environment does not currently contain Playwright. Run `--help`
+first. Do not install dependencies implicitly or reuse an output path.
+
+```powershell
+python tools/nemo-tdt-onnx-export/browser_head_replay.py `
+  --capture tools/data/results/orukeet/official-jfk-stages-2026-09-30.json.gz `
+  --summary tools/data/results/orukeet/official-jfk-stage-summary-2026-09-30.json `
+  --audio tools/data/fixtures/audio/jfk-short.wav `
+  --artifact-dir models/orukeet/onnx/fp32-packed-2026-10-01 `
+  --export-receipt models/orukeet/onnx/fp32-nemo-2026-10-01/export-receipt.json `
+  --backend webgpu --output tools/data/results/orukeet/browser-head-new-run.json
+```
+
+Use `--backend wasm` separately. Receipts include source/artifact/fixture/tool
+hashes, actual browser/ORT versions, all returned tensor data and comparisons,
+exact decisions, repeated calls, cleanup errors and failed browser requests.
+WebGPU additionally requires compute dispatches during every graph call;
+this is not proof that every graph node executes on GPU. Original CPU scores
+are all-channel log probabilities; exported raw scores are normalized before
+comparison at the existing `atol=1e-5, rtol=1e-4`. Predictor raw output is not
+exposed. This does not certify features, encoder, accumulated sequence, public
+API, application integration or performance. Seven weight-free tests validate
+mapping, fail-closed controls/identity/outputs, repeats, cleanup and routes.
+
+2026-10-02: one initial WebGPU run passed six numerical/decision checks, but
+subsequent WASM and hash-bound WebGPU runs failed local asset fetches with
+`ERR_CONNECTION_RESET`, before graph calls. Component browser acceptance is
+therefore inconsistent/unaccepted, not a demonstrated unsupported operator.
+The original pass predates complete tool-hash/raw-output receipt binding.
+See `browser-head-handoff-2026-10-02.json`; investigate local delivery before
+another model or precision experiment. No backend fallback or tolerance change.
