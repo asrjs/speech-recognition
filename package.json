@@ -157,6 +157,7 @@
     "test:watch": "vitest",
     "test:package": "npm run build && node tests/smoke/package-tarball-smoke.mjs",
     "test:node-smoke": "npm run build && node tests/smoke/node-import-smoke.mjs",
+    "test:native-optional-peer": "npm run build && node tests/smoke/native-optional-peer-smoke.mjs",
     "test:browser-root": "npm run build && node tests/smoke/browser-root-import-graph.mjs",
     "test:offline-output-smoke": "npm run build && node tests/smoke/offline-output-smoke.mjs",
     "test:fixture-smoke": "npm run build && node tests/smoke/transcribe-fixture.mjs",
@@ -176,15 +177,23 @@
     "benchmark:nemotron-wasm": "npm run build && node tools/scripts/benchmark-nemotron-wasm.mjs"
   },
   "dependencies": {
-    "onnxruntime-node": "1.25.0-dev.20260228-6e72d31970",
     "onnxruntime-web": "1.29.0",
     "pako": "^2.1.0"
+  },
+  "peerDependencies": {
+    "onnxruntime-node": "1.25.0-dev.20260228-6e72d31970"
+  },
+  "peerDependenciesMeta": {
+    "onnxruntime-node": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
     "@types/node": "24.1.0",
     "@types/pako": "^2.0.4",
     "eslint": "^9.22.0",
+    "onnxruntime-node": "1.25.0-dev.20260228-6e72d31970",
     "prettier": "^3.6.2",
     "typedoc": "^0.28.17",
     "typescript": "5.9.3",

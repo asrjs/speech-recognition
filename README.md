@@ -441,6 +441,18 @@ try {
 
 ### Local native Node/Bun (experimental)
 
+Native CPU inference requires an explicitly installed optional peer:
+
+```sh
+npm install onnxruntime-node@1.25.0-dev.20260228-6e72d31970
+```
+
+Browser/WebGPU/WASM consumers do not need this engine. The repository keeps
+the same version as a development dependency for native checks. Installing it
+does not automatically register native CPU or enable unsupported model families.
+If it is missing or its CPU binding is unavailable, an explicit native request
+fails with `backend-unavailable`; it does not install packages or switch to WASM.
+
 The [local NeMo TDT example](./examples/nemo-tdt-native-local.mjs) uses only
 public package imports and explicitly composes `createNativeCpuBackend()`, the
 NeMo TDT family and the Node filesystem asset provider. Build this checkout first:
