@@ -114,6 +114,11 @@ async function experiment(name, { window = false, windowProduct = false, filterb
     }
   }
   if (referencePower || magnitudeRoundTrip) {
+    if (referencePower && (!Array.isArray(data.referencePower) ||
+        data.referencePower.length !== ((MEL_CONSTANTS.N_FFT >> 1) + 1) * raw.frameCount ||
+        data.referencePower.some(value => !Number.isFinite(value) || value < 0 || Math.fround(value) !== value)))
+      throw new Error((data.powerOverrides?.length ? 'Selected power reference' : 'Reference power') +
+        ' must be finite nonnegative full float32 spectrum');
     const boundary = 'this.powerBuf[quarterN] = quarterRe * quarterRe + quarterIm * quarterIm;';
     if (candidateSource.split(boundary).length !== 2) throw new Error('Power boundary contract changed');
     const injected = referencePower
@@ -231,6 +236,13 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       complexInjection + `for (let bin = 0; bin < N_FREQ_BINS; bin++) {
         capturedPower[bin * nFrames + frameIndex] = this.powerBuf[bin]; ${complexCapture}
       }\n` + selectedInjection + melBoundary);
+    if (referencePower) {
+      const logBoundary = 'rawMel[melIndex * nFrames + frameIndex] = Math.log(melValue + LOG_ZERO_GUARD);';
+      if (candidateSource.split(logBoundary).length !== 2) throw new Error('Mel/log capture boundary contract changed');
+      candidateSource = 'export const capturedMel = [], capturedLogInput = [];\n' + candidateSource.replace(logBoundary,
+        'capturedMel[melIndex * nFrames + frameIndex] = melValue;\n' +
+        'capturedLogInput[melIndex * nFrames + frameIndex] = melValue + LOG_ZERO_GUARD;\n' + logBoundary);
+    }
   }
   // Separate module instances isolate private caches; production code stays unchanged.
   const variant = await import('data:text/javascript;base64,' + Buffer.from(candidateSource).toString('base64') + '#' + name);
@@ -261,6 +273,8 @@ async function experiment(name, { window = false, windowProduct = false, filterb
   if (frameBytes) variant.capturedFrames.forEach((value, index) => unroundedFrames
     ? frameBytes.writeDoubleLE(value, index * 8) : frameBytes.writeFloatLE(value, index * 4));
   return capturePower ? { features: Array.from(result.features), raw: capturedRaw, power: variant.capturedPower,
+    ...(referencePower ? { linearMel: variant.capturedMel, logInput: variant.capturedLogInput,
+      f32LogInputRaw: Array.from(Float32Array.from(variant.capturedLogInput, value => Math.log(Math.fround(value)))) } : {}),
     ...(powerOverrides !== null ? { effectivePower: variant.effectivePower, powerOverrides } : {}),
     shape: [1, (variant.MEL_CONSTANTS.N_FFT >> 1) + 1, result.frameCount],
     ...(referenceComplexPower ? { real: variant.capturedReal, imag: variant.capturedImag } : {}),
@@ -283,6 +297,8 @@ const experiments = {
 };
 const powerCapture = await experiment('power-capture', { window: true, windowProduct: true,
   filterbank: true, magnitudeRoundTrip: true, capturePower: true });
+const referencePowerCapture = await experiment('reference-power-capture', { window: true, windowProduct: true,
+  filterbank: true, referencePower: true, capturePower: true });
 const productionCapture = await experiment('production-capture', { production: true, capturePower: true });
 const frameArithmeticCaptures = {
   preemphasis: await experiment('frame-preemphasis', { capturePacked: true, capturePower: true }),
@@ -322,6 +338,7 @@ for (const [name, values] of Object.entries(normalizationInputs)) {
   normalizationControls[name] = { features: Array.from(result.features), mean: Array.from(result.mean), std: Array.from(result.std) };
 }
 console.log(JSON.stringify({ raw: Array.from(raw.features), normalized: Array.from(normalized.features),
+  referencePowerCapture,
   powerOverrideCapture, powerOverrideNormalization: powerOverrideNormalization ? Object.fromEntries(
     ['features', 'mean', 'std'].map(key => [key, Array.from(powerOverrideNormalization[key])])) : null,
   sameRawNormalized: Array.from(sameRawNormalized), normalizationControls, frameCount: raw.frameCount, validLength: raw.length,
@@ -917,6 +934,11 @@ def main():
             raise ValueError("Raw/statistics attribution currently requires per_feature normalization")
         normalized, reference_mean, reference_std = normalize_batch(raw, valid_length, config["normalize"])
         power, power_length = processor(waveform, lengths, linear_spec=True)
+        if not processor.log or processor.log_zero_guard_type != 'add':
+            raise ValueError('Mel/log attribution requires the actual additive log guard contract')
+        official_linear_mel = torch.matmul(processor.fb.to(power.dtype), power)
+        official_log_input = official_linear_mel + processor.log_zero_guard_value_fn(official_linear_mel)
+        official_log_mel = torch.log(official_log_input)
         # Inspect the actual pre-magnitude STFT boundary on the same full-length input.
         if processor.exact_pad or processor.stft_pad_amount is not None or processor.frame_splicing != 1:
             raise ValueError("Re-inspect non-centered/spliced STFT before using this framed-input diagnostic")
@@ -932,6 +954,8 @@ def main():
         official_frame_fft = torch.fft.rfft(official_frames, n=processor.n_fft, dim=-1).transpose(1, 2)
     if power.shape != (1, config["n_fft"] // 2 + 1, raw.shape[2]) or not torch.equal(power_length, valid_length):
         raise ValueError("Official power/feature boundary contract differs")
+    if not torch.equal(official_log_mel[:, :, :int(valid_length[0])], raw[:, :, :int(valid_length[0])]):
+        raise ValueError('Official mel/log reconstruction differs from actual processor raw output')
     expected = official["stages"]["features"]
     expected_tensor = np.asarray(expected["data"], dtype=np.float32).reshape(expected["shape"])
     control = compare_tensors(expected_tensor, normalized.numpy(), atol=1e-5, rtol=1e-4)
@@ -956,6 +980,27 @@ def main():
     if js["frameCount"] != raw.shape[2] or js["validLength"] != int(valid_length[0]):
         raise ValueError("JS/reference frame or valid-length mismatch")
     reshape = lambda values: np.asarray(values, dtype=np.float32).reshape(raw.shape)
+    capture = js['referencePowerCapture']
+    if capture['shape'] != list(power.shape) or not np.array_equal(
+            np.asarray(capture['power'], dtype='<f4').view('<u4'), power.numpy().astype('<f4').ravel().view('<u4')):
+        raise ValueError('Global official-power control did not preserve exact power bits')
+    if capture['features'] != js['experiments']['reference_power']:
+        raise ValueError('Mel/log observations changed the existing official-power control')
+    for key in ('linearMel', 'logInput', 'raw', 'f32LogInputRaw'):
+        values = np.asarray(capture[key], dtype=np.float64)
+        if values.size != raw.numel() or not np.isfinite(values).all():
+            raise ValueError(f'Invalid mel/log capture: {key}')
+    reference_power_mel_log = {
+        'scope': 'Diagnostic global official-power injection; unchanged JS accumulation/log, not production parity',
+        'official_raw_reconstruction_exact': True, 'official_power_bits_exact': True,
+        'unchanged_existing_reference_power_features': True,
+        'linear_mel_f32_vs_official': compare_raw_valid_prefix(official_linear_mel.numpy()[0], reshape(capture['linearMel'])[0], int(valid_length[0])),
+        'guarded_log_input_f32_vs_official': compare_raw_valid_prefix(official_log_input.numpy()[0], reshape(capture['logInput'])[0], int(valid_length[0])),
+        'raw_log_mel_vs_official': compare_raw_valid_prefix(raw.numpy()[0], reshape(capture['raw'])[0], int(valid_length[0])),
+        'f32_input_js_log_vs_official': compare_raw_valid_prefix(raw.numpy()[0], reshape(capture['f32LogInputRaw'])[0], int(valid_length[0])),
+        'capture': capture,
+        'official_linear_mel': official_linear_mel.flatten().tolist(),
+        'official_log_input': official_log_input.flatten().tolist()}
     normalization_input_keys = {
         "officialRaw": raw.numpy()[0], "productionRaw": reshape(js["productionCapture"]["raw"])[0],
         "alignedWindowProducts": reshape(js["frameArithmeticCaptures"]["windowProduct"]["raw"])[0],
@@ -1139,6 +1184,7 @@ def main():
             "active_bins": point["active_bins"]} for point in cascade_attribution[key]["mismatches"]]
             for key in fft_controls})
     report = {"schema_version": 1, "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE", "sample_id": args.sample_id,
+        'reference_power_mel_log': reference_power_mel_log,
         "selected_power_intervention": selected_power_intervention(js, power.numpy(), raw.numpy(),
             normalized.numpy(), int(valid_length[0])) if args.power_override else None,
         "audio_sha256": audio_sha, "source_config_sha256": hashlib.sha256(args.source_config.read_bytes()).hexdigest(),

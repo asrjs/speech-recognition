@@ -87,6 +87,20 @@ rounding at mel 127/frame 551 using identical official power, while keeping
 the still-open FFT complex64 rounding mismatch separate. No production change,
 fp16 promotion or tolerance relaxation is justified by this control.
 
+Global official-power mel/log control (2026-10-01):
+`reference-power-mel-log-jfk-2026-10-01.json.gz` verifies all injected power bits
+and exact valid-prefix reconstruction of the actual NeMo matmul/add/log boundary.
+Observation hooks preserve the existing reference-power features exactly.
+Raw mel/log has zero tolerance failures but 7,201 nonidentical valid cells
+(max `1.90735e-6`); rounding only the JS log input reduces nonidentical cells
+to 3,801, not zero. At mel 127/frame 551, both rounded linear mel and guarded
+input already differ from NeMo, so this does not isolate a log-only defect.
+The official-power feature control passes; unchanged production still has
+313 feature failures. 67 weight-free probe tests pass; the real run exits 1
+at the unchanged production gates. Small receipt: `reference-power-mel-log-handoff-2026-10-01.json`.
+Next: evaluate JS log on identical official guarded inputs, separately from
+the float32 matmul accumulation and still-open FFT rounding mismatch.
+
 ## Ordered tasks
 
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and

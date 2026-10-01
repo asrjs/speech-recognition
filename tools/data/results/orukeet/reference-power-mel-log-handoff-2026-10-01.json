@@ -1,0 +1,17 @@
+{
+  "status": "DIAGNOSTIC_BOUNDARY_CONTROL_PASS_PRODUCTION_FEATURES_FAIL",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "receipt": "reference-power-mel-log-jfk-2026-10-01.json.gz",
+  "receipt_sha256": "07a1a534f39c520aa8e368ee6727ebccc1000be62d9a3614d2a57c9446956606",
+  "diagnostic_sha256": "ec42a92e6a1ba477c8e6a3b0fffce65c45b1441a7806af411939c98c31db9022",
+  "invariants": ["all injected official power bits exact", "official matmul/add/log reconstruction exact on valid prefix", "captured features unchanged from existing reference-power experiment", "production source and compiled processor hashes unchanged"],
+  "valid_prefix_cells": 140800,
+  "exact_mismatch_counts": {"linear_mel_f32": 27918, "guarded_log_input_f32": 26677, "raw_log_mel": 7201, "f32_input_js_log": 3801},
+  "raw_log_mel_max_abs_error": 0.0000019073486328125,
+  "tolerance_failures": {"linear_mel": 0, "guarded_log_input": 0, "raw_log_mel": 0, "f32_input_js_log": 0, "reference_power_features": 0, "production_features": 313},
+  "mel127_frame551": {"linear_js_f32": 5.8316306450478805e-8, "linear_official": 5.8316302897765127e-8, "guarded_js_f32": 1.1792095477858311e-7, "guarded_official": 1.1792094767315575e-7, "raw_js": -15.953250885009766},
+  "validation": {"probe_tests": 67, "real_exit_code": 1, "full_suite": "NOT_RUN"},
+  "limits": ["Reference power injection is diagnostic, not a deployable processor", "Rounded JS log input still includes upstream mel/guard differences", "No log-only defect established", "WASM/browser/full-model acceptance remains open"],
+  "next": "Compare JS log on identical official guarded inputs, then isolate float32 matmul accumulation from upstream FFT rounding."
+}

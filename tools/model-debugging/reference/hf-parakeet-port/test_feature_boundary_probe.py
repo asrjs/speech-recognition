@@ -32,6 +32,45 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_reference_power_capture_records_actual_mel_and_log_boundaries(self):
+        import numpy as np
+        data = inputs()
+        data['referenceFilterbank'][1:3] = [0.25, 0.5]
+        data['referencePower'][11:22] = [3] * 11
+        data['referencePower'][22:33] = [7] * 11
+        completed = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30, check=True)
+        result = json.loads(completed.stdout)
+        capture = result['referencePowerCapture']
+        self.assertEqual(capture['power'], data['referencePower'])
+        self.assertEqual(capture['features'], result['experiments']['reference_power'])
+        for index in range(88):
+            linear = 4.25 if index < 11 else 0
+            guarded = linear + result['logZeroGuard']
+            self.assertEqual(capture['linearMel'][index], linear)
+            self.assertEqual(capture['logInput'][index], guarded)
+            self.assertEqual(capture['raw'][index], float(np.float32(math.log(guarded))))
+            self.assertEqual(capture['f32LogInputRaw'][index],
+                float(np.float32(math.log(float(np.float32(guarded))))))
+        # Guard addition is deliberately double in the observed JS path;
+        # the separate f32-input control must not round the original capture.
+        self.assertNotEqual(capture['logInput'][0], float(np.float32(capture['logInput'][0])))
+
+    def test_reference_power_capture_rejects_invalid_spectrum(self):
+        for invalid in ('short', 'negative', 'null', 'non-f32'):
+            with self.subTest(invalid=invalid):
+                data = inputs()
+                if invalid == 'short':
+                    data['referencePower'].pop()
+                else:
+                    data['referencePower'][0] = {'negative': -1, 'null': None, 'non-f32': 0.1}[invalid]
+                completed = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+                    cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+                    capture_output=True, timeout=30)
+                self.assertNotEqual(completed.returncode, 0)
+                self.assertIn('Reference power must be', completed.stderr)
+
     def test_selected_power_override_is_local_and_recomputes_normalization(self):
         import numpy as np
         data = inputs()
