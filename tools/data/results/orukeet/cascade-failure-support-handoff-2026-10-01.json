@@ -1,0 +1,27 @@
+{
+  "status": "DIAGNOSTIC_ONLY_PRODUCTION_FEATURES_FAIL",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "diagnostic_sha256": "0ee7cbe078589b56f1eafc5eafffa6d33ec2ae38858fb8aab4b9eb0257c88819",
+  "support_source": "Actual temporary JS width-8 cascade normalized features, not old JS normalization failures",
+  "jfk": {
+    "receipt": "cascade-failure-support-jfk-2026-10-01.json.gz",
+    "sha256": "1fdefc1aa0d4e0f03ce442b521d01f7d82c5ba8da63816454c78ef35444fec16",
+    "selected_frame_bin_pairs": 1035,
+    "feature_failures": {"packed": 121, "full_f32": 129, "full_f64": 121},
+    "dft_component_max_abs_error": {"official_complex64": 8.215078953299846e-7, "packed": 2.470205572209505e-15, "full_f32": 5.135908003857728e-7, "full_f64": 1.9099305470504646e-15},
+    "rounded_dft_equal_pairs": {"packed": 1035, "full_f64": 1035},
+    "unchanged_production_feature_failures": 313
+  },
+  "silence": {
+    "receipt": "cascade-failure-support-silence-2026-10-01.json.gz",
+    "sha256": "e056327faa82c2a32574d17c858fed2784ade28d30918dca4a5e49ec3712ae3d",
+    "selected_frame_bin_pairs": 0,
+    "feature_failures_all_three_controls": 0,
+    "unchanged_production_feature_failures": 12800,
+    "empty_dft_support": "No selected observations; not FFT parity proof"
+  },
+  "validation": {"probe_tests": 58, "python_reduction_tests": 6, "node_reduction_tests": 5, "artifact_output_tests": 8, "syntax_diff": "PASS", "real_diagnostic_exit_codes": [1, 1], "full_suite": "NOT_RUN"},
+  "limits": ["Independent DFT is not the official model arithmetic oracle", "Capture-key mapping reviewed and exercised on real fixtures but no dedicated mapping integration test", "Full Orukeet native/WASM/browser acceptance remains incomplete"],
+  "next": "Test one isolated packed-f32 twiddle/butterfly/recombination candidate with identical f32 windowed input bytes and unchanged downstream arithmetic. Do not replace production or export a new ONNX feature graph on this evidence."
+}

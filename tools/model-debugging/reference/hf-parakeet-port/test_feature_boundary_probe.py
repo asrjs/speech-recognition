@@ -748,6 +748,28 @@ class PowerErrorAttributionTests(unittest.TestCase):
 
 
 class DiagnosticOutputTests(unittest.TestCase):
+    def test_normalized_support_uses_candidate_features_and_fixed_tolerance(self):
+        import numpy as np
+        reference = np.zeros((1, 2, 3), dtype=np.float32)
+        candidate = reference.copy()
+        candidate[0, 0, 0] = 9e-6
+        candidate[0, 1, 1] = 2e-5
+        before = candidate.tobytes()
+        self.assertEqual(probe_module.normalized_failure_coordinates(reference, candidate, 2), [[0, 1, 1]])
+        self.assertEqual(candidate.tobytes(), before)
+        self.assertEqual(probe_module.normalized_failure_coordinates(reference, reference, 2), [])
+
+    def test_normalized_support_refuses_unmasked_tail_and_invalid_contract(self):
+        import numpy as np
+        reference = np.zeros((1, 2, 3), dtype=np.float32)
+        invalid = reference.copy()
+        invalid[0, 0, 2] = 1
+        for candidate, length in ((invalid, 2), (reference, True), (reference, 0),
+                (reference, 4), (reference.astype(np.float64), 2), (reference[:, :, :2], 2),
+                (np.full_like(reference, np.nan), 2)):
+            with self.subTest(length=length), self.assertRaises(ValueError):
+                probe_module.normalized_failure_coordinates(reference, candidate, length)
+
     def test_raw_prefix_comparator_excludes_only_invalid_tail(self):
         import numpy as np
         reference = np.asarray([[1, 2, 0]], dtype=np.float32)

@@ -424,3 +424,22 @@ physical tails. Earlier `*-final` raw full-buffer comparisons are superseded
 and must not be treated as an equivalent-boundary regression. 56 feature-probe
 tests include a regression for this distinction. Tolerances and old acceptance
 gates remain unchanged; full diagnostics still exit 1.
+
+### DFT support after cascade normalization
+
+The probe now reports `cascade_normalized_failure_power_attribution` and
+`cascade_normalized_failure_dft` separately from the older normalizer's support.
+Coordinates come from the actual temporary JS cascade features at unchanged
+`atol=1e-5`, `rtol=1e-4`; malformed/nonfinite features or unmasked tails fail
+closed. The original production acceptance and exit gates remain untouched.
+
+The fresh local `cascade-failure-support-jfk-2026-10-01.json.gz` selects 1,035
+distinct frame/bin pairs from 121 packed, 129 full-f32 and 121 full-f64 failed
+feature coordinates. Packed/full-f64 components agree with the independent
+f64 DFT estimate within `2.48e-15` and `1.91e-15`; all 1,035 rounded component
+pairs equal the rounded estimate. Official complex64 differs by up to
+`8.22e-7`. This is rounding-path evidence, not proof that a mathematically
+closer FFT matches the official model. Production still has 313 failed JFK
+feature coordinates. Keep pure-JS preprocessing; next isolate f32 packed
+butterfly/recombination arithmetic without changing input frames, power/mel
+contracts, tolerances, or the production implementation.

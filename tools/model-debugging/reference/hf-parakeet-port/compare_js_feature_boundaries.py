@@ -704,6 +704,19 @@ def power_error_attribution(reference_power, candidate_power, filterbank,
         "per_mel": per_mel, "mismatches": points}
 
 
+def normalized_failure_coordinates(reference, candidate, valid_length):
+    """Select actual f32 control failures, never the older normalizer's support."""
+    arrays = [np.asarray(value) for value in (reference, candidate)]
+    left, right = arrays
+    if (left.ndim != 3 or left.shape[0] != 1 or not left.size or right.shape != left.shape
+            or any(value.dtype != np.float32 or not np.isfinite(value).all() for value in arrays)
+            or type(valid_length) is not int or not 1 <= valid_length <= left.shape[2]
+            or any(np.any(value[:, :, valid_length:] != 0) for value in arrays)):
+        raise ValueError("Normalized failure support requires finite batch-one f32 features and masked tails")
+    return np.argwhere(~np.isclose(right.astype(np.float64), left.astype(np.float64),
+        atol=1e-5, rtol=1e-4)).tolist()
+
+
 def compare_raw_valid_prefix(reference, candidate, valid_length):
     """Compare equivalent raw samples, excluding differently masked physical tails."""
     if (type(valid_length) is not int or reference.ndim != 2 or candidate.shape != reference.shape
@@ -961,6 +974,21 @@ def main():
         power.numpy(), fft_controls, {key: [{"coordinate": point["coordinate"],
             "active_bins": point["active_bins"]} for point in attribution[key]["mismatches"]]
             for key in fft_controls})
+    cascade_attribution = {}
+    for key, name in (("complexPowerCapture", "alignedComplexPower"),
+            ("fullFftF32Capture", "fullFftF32"), ("fullFftF64Capture", "fullFftF64")):
+        capture = js[key]
+        coordinates = normalized_failure_coordinates(normalized.numpy(),
+            reshape(js["normalizationControls"][name]["features"]), int(valid_length[0]))
+        cascade_attribution[key] = power_error_attribution(power.numpy(),
+            np.asarray(capture["power"], dtype=np.float32).reshape(power.shape),
+            processor.fb.numpy().reshape(config["features"], power.shape[1]),
+            raw.numpy(), reshape(capture["raw"]), mismatch_coordinates=coordinates,
+            valid_length=int(valid_length[0]), log_zero_guard=js["logZeroGuard"])
+    cascade_dft = fft_dft_diagnostic(official_frames_array, official_complex_array,
+        power.numpy(), fft_controls, {key: [{"coordinate": point["coordinate"],
+            "active_bins": point["active_bins"]} for point in cascade_attribution[key]["mismatches"]]
+            for key in fft_controls})
     report = {"schema_version": 1, "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE", "sample_id": args.sample_id,
         "audio_sha256": audio_sha, "source_config_sha256": hashlib.sha256(args.source_config.read_bytes()).hexdigest(),
         "official_capture_sha256": hashlib.sha256(captured_bytes).hexdigest(),
@@ -985,6 +1013,8 @@ def main():
         "normalization_decomposition": decomposition,
         "mel_power_attribution": attribution,
         "selected_bin_dft": dft_diagnostic,
+        "cascade_normalized_failure_power_attribution": cascade_attribution,
+        "cascade_normalized_failure_dft": cascade_dft,
         "production_input_diagnostic": production_diagnostic,
         "frame_arithmetic_controls": frame_arithmetic_controls,
         "normalization_reduction_candidates": normalization_candidates,
