@@ -766,3 +766,25 @@ diagnostic evidence, not whole-model parity or performance acceptance.
 
 Small receipt: `layer2-matched-input-handoff-2026-10-02.json`; raw local cases
 and graph: `tools/data/results/orukeet/layer2-matched-input-2026-10-02/`.
+
+### First-LSTM matched-input control and reusable extraction (2026-10-02)
+
+On the same two recorded bindings, extracted first-LSTM native CPU outputs
+match full native taps exactly. Both browser backends run each input twice;
+standalone outputs reproduce their own full-browser taps exactly and repeats
+are exact. Same-input CPU tolerance checks pass, but WebGPU hidden differences
+are `7.21216e-6` / `6.79493e-6`, versus WASM `7.60891e-7` / `1.01328e-6`.
+The small first-layer arithmetic difference is therefore independently
+reproduced, and its downstream amplification was measured by the preceding
+second-layer control. Matrix reduction versus nonlinear arithmetic is still
+unproven; inspect the actual LSTM contract before any production graph change.
+
+`tools/onnx_subgraph.py` now provides model-neutral named-boundary extraction:
+pin the source with `--expected-sha256`, repeat `--input` / `--output`, and use
+a fresh `--output-dir`. It rejects external weights and unknown/duplicate
+boundaries, checks retained node/weight bytes and emits an explicitly unvalidated
+diagnostic receipt. Six tests include a real matched-input CPU control and CLI
+hash/overwrite failures. Its CLI reproduced the first-layer diagnostic graph
+hash exactly. Shared tools: 35 PASS; family tools: 26 PASS. Browser probes remain
+inline experiments using the existing session bridge, not a persistent browser
+diagnostic CLI. Small receipt: `layer1-matched-input-handoff-2026-10-02.json`.

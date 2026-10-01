@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "status": "FIRST_LSTM_BROWSER_DIFFERENCE_REPRODUCED",
+  "scope": "Two recorded first-LSTM inputs; diagnostic only, not whole-model acceptance",
+  "graph_sha256": "d1ce344ea2171c70ea9218288e1916cb14e6ef2f446067ae976d60bc2628402c",
+  "native_control": {"path": "layer1-matched-input-2026-10-02/native-control.json", "sha256": "34857d84b3b56ecf55305075af559e85d515abc0853c70d8b04361701e1e948e"},
+  "browser_results": [
+    {"path": "layer1-matched-input-2026-10-02/browser-wasm.json", "sha256": "c7de90885477deaa75a76ac0a20609f3b9a75918df28f7ef41003c6eca013452", "calls": 4, "same_input_cpu_comparisons": "PASS", "own_full_graph_outputs_exact": true, "hidden_max_abs": [0.000000760890543460846, 0.0000010132789611816406]},
+    {"path": "layer1-matched-input-2026-10-02/browser-webgpu.json", "sha256": "bb3baae40165321af40d8487799cde4dbae11083e88b56e934124f77917b8df0", "calls": 4, "same_input_cpu_comparisons": "PASS", "own_full_graph_outputs_exact": true, "hidden_max_abs": [0.000007212162017822266, 0.000006794929504394531], "dispatches_per_call": 5}
+  ],
+  "native_extraction_exact": true,
+  "repeat_outputs_exact": true,
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "reusable_tool": "tools/onnx_subgraph.py",
+  "tool_sha256": "81601231201e271571bf76334454e0505284af7db75a0f28442b6ae9893b22c3",
+  "cli_reproduction": "Named X/h0/c0 and Y_h/Y_c extraction from hash-pinned tap graph reproduced diagnostic graph SHA exactly",
+  "tool_tests": {"targeted": 6, "shared": 35, "family": 26, "status": "PASS"},
+  "conclusion": "First-LSTM same-input browser arithmetic reproduces the full head upstream difference. Its isolated outputs pass tolerance, but the small hidden error is amplified by the second layer as previously measured",
+  "root_cause": "UNPROVEN; matrix reduction versus nonlinear arithmetic remains to be discriminated",
+  "provider_attribution": "UNPROVEN; compute dispatch is not per-node proof",
+  "errors": [],
+  "remaining": ["Production features FAIL", "Full original WebGPU head matrix FAIL", "Browser encoder/live sequence/public API not certified"],
+  "next": "Inspect real ORT LSTM arithmetic contract and isolate linear/gate boundaries with full-output controls before proposing a graph change"
+}
