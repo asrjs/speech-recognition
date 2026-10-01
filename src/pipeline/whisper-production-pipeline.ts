@@ -20,7 +20,9 @@ import {
 import type {
   ProductionTranscript,
   ProductionTranscriptMetrics,
+  ProductionTranscriptSegment,
   ProductionTranscriptSubtitles,
+  ProductionTranscriptWord,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -113,11 +115,23 @@ export class ProductionWhisperPipeline {
     } as any);
 
     // 2. Extract words for post-processing
-    const words: DedupWordLike[] = (nativeResult.words ?? []).map((w: WordLike) => ({
+    const words: ProductionTranscriptWord[] = (nativeResult.words ?? []).map((w: WordLike) => ({
       word: w.word,
       start: w.start,
       end: w.end,
       probability: w.probability ?? 0.9,
+    }));
+
+    const segments: ProductionTranscriptSegment[] = (nativeResult.segments ?? []).map((s: SegmentLike) => ({
+      text: s.text,
+      start: s.start,
+      end: s.end,
+      words: s.words ? s.words.map((w: WordLike) => ({
+        word: w.word,
+        start: w.start,
+        end: w.end,
+        probability: w.probability ?? 0.9,
+      })) : undefined,
     }));
 
     // 3. Format transcript (sentence boundary + normalization)
@@ -149,8 +163,8 @@ export class ProductionWhisperPipeline {
       raw: nativeResult.utteranceText,
       language: nativeResult.language,
       sentences: formatted.sentences,
-      words: words as any,
-      segments: nativeResult.segments as any,
+      words,
+      segments,
       subtitles,
       metrics: {
         ...metrics,
@@ -170,7 +184,7 @@ export class ProductionWhisperPipeline {
 
   private generateSubtitles(
     sentences: readonly Sentence[],
-    _words: readonly DedupWordLike[],
+    _words: readonly ProductionTranscriptWord[],
   ): ProductionTranscriptSubtitles {
     let srt = '';
     let vtt = '';
@@ -203,17 +217,6 @@ export function createWhisperProductionPipeline(
   options: ProductionWhisperPipelineOptions,
 ): ProductionWhisperPipeline {
   return new ProductionWhisperPipeline(options);
-}
-
-// ---------------------------------------------------------------------------
-// Types used for post-processing
-// ---------------------------------------------------------------------------
-
-interface DedupWordLike {
-  word: string;
-  start: number;
-  end: number;
-  probability: number;
 }
 
 // ---------------------------------------------------------------------------
