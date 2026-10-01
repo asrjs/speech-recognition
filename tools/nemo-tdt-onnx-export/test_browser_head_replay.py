@@ -55,6 +55,30 @@ class BrowserHeadTests(unittest.TestCase):
                          {"dtype": "float32", "shape": [1, 2, 1], "data": [2, 4]})
         self.assertEqual(self.fixture["steps"][0]["feeds"]["targets"]["dtype"], "int32")
 
+    def test_all_steps_preserves_every_binding_and_rejects_missing_call(self):
+        reference, summary, cfg, identity = copy.deepcopy(self.documents)
+        sample = reference["samples"][0]
+        for index in (2, 3):
+            for suffix in ("input_f", "input_g", "output"):
+                sample["stages"][f"joint/{index:04d}/{suffix}"] = copy.deepcopy(sample["stages"][f"joint/0001/{suffix}"])
+            sample["calls"].append({"kind": "joint", "index": index, "stage_prefix": f"joint/{index:04d}"})
+        reference["stage_order"] = list(sample["stages"])
+        summary["stage_capture"].update(stage_count=len(sample["stages"]))
+        summary["stage_capture"]["call_counts"]["joint"] = 4
+        selected = make_fixture(reference, summary, cfg, identity, "audio")
+        complete = make_fixture(reference, summary, cfg, identity, "audio", all_steps=True)
+        self.assertEqual(selected["selection"], "first-middle-last")
+        self.assertEqual([s["binding"]["joint"] for s in selected["steps"]], ["joint/0000", "joint/0002", "joint/0003"])
+        self.assertEqual(complete["selection"], "all-recorded")
+        self.assertEqual(complete["recorded_joint_calls"], 4)
+        self.assertEqual([s["binding"]["joint"] for s in complete["steps"]], [f"joint/{i:04d}" for i in range(4)])
+        self.assertEqual([s["binding"]["predictor"] for s in complete["steps"]], ["predictor/0000"] * 4)
+        self.assertTrue(evaluate_result(result_fixture(complete), complete))
+        result = result_fixture(complete)
+        result["runs"].pop(1)
+        with self.assertRaisesRegex(ValueError, "Missing repeated graph calls"):
+            evaluate_result(result, complete)
+
     def test_identity_control_and_summary_fail_before_browser(self):
         for mutate in (lambda d: d[0]["meta"].update(model_revision="other"),
                        lambda d: d[1]["stage_capture"]["instrumentation_control"].update(after_text_match=False),

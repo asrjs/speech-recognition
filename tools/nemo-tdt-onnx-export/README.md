@@ -134,3 +134,11 @@ acceptance or a proof of the underlying OS/network-filter cause. Nine focused
 tool tests include HTTP response framing and connection reuse. See
 `browser-head-http11-handoff-2026-10-02.json`. Next cover all recorded calls and
 additional official fixtures; retain feature/encoder/public API gates separately.
+
+Use `--all-steps` to replay every validated chronological joint binding twice
+instead of the default first/middle/last selection. Receipts name the selection
+and total recorded joint-call count. This still feeds recorded encoder frames,
+labels and recurrent states: it is not a state-propagating decode sequence.
+The comparator rejects missing or reordered calls. Ten focused weight-free
+tests cover both selection modes and missing-call rejection; they are not GPU
+or model parity evidence. Raw result receipts grow with the complete call count.

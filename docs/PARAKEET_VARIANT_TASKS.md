@@ -14,6 +14,21 @@ Orukeet retains 627M parameters; it is not a small student model.
 
 ## Current checkpoint
 
+2026-10-02 all-recorded browser head follow-up: `--all-steps` now selects every
+validated joint binding, with selection/count metadata and missing-call tests.
+JFK (46), pure silence (12) and speech/silence (182) ran twice per backend:
+960 real graph calls total. WASM passes all three fixtures; WebGPU passes JFK
+and pure silence, but speech/silence FAILS on cell-state output at joint 139
+and 173 in both repeats. All token/duration argmax decisions are exact; scores,
+hidden-h and lengths pass. No fetch or cleanup errors. Tolerances remain
+`atol=1e-5, rtol=1e-4`; do not replace numerical acceptance with exact decisions.
+This is recorded-input component evidence, not a live recurrent decode or
+full-model port. Existing feature, encoder, long-reference and application gates
+remain open. Small receipt: `browser-head-all-handoff-2026-10-02.json`.
+Next isolate those two predictor bindings on a fresh WebGPU session, then
+compare actual graph arithmetic/provider partitioning with the passing WASM
+control. Keep shared-feature work and compact-runtime tasks in the queue.
+
 Task P01 is complete; P02 and P03 are partial. Existing Nemotron changes on `main` are preserved.
 Orukeet remains an experimental candidate until P08 passes. Resume the first
 unfinished task and record commands, result files, and blockers here.

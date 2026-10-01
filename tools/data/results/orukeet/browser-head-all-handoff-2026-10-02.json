@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "status": "RECORDED_HEAD_MATRIX_PARTIAL_PASS",
+  "scope": "Original captured frames, labels and states; no live state propagation or ASR search",
+  "tool_sha256": "7a04c9b6b54a738f4c72832d483d7e5d94abd35b1e64bb6bdbf70c11d8443c67",
+  "selection": "all-recorded",
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "repeats_per_backend": 2,
+  "total_graph_calls": 960,
+  "results": [
+    {"path": "browser-head-wasm-all-jfk-2026-10-02.json", "sha256": "f922b6fe034acda61a76bf8b6397422f437ec38f3b0959c62420b384f875a81a", "calls": 92, "status": "PASS"},
+    {"path": "browser-head-webgpu-all-jfk-2026-10-02.json", "sha256": "20bc88f8aab5bcd99d52995f27bd4575bf84d7d7ae0d6efed59d47c699fa6810", "calls": 92, "status": "PASS"},
+    {"path": "browser-head-wasm-all-pure-silence-2026-10-02.json", "sha256": "b5d9302d2438c51eaf4613fa3707f221d6cfbba7e8d60b944fba2f7a9e80120e", "calls": 24, "status": "PASS"},
+    {"path": "browser-head-webgpu-all-pure-silence-2026-10-02.json", "sha256": "84aa7827ed0b83e0dc19dd469c1deef4d6fe1fbb9503f872cee9ff9312eba7e6", "calls": 24, "status": "PASS"},
+    {"path": "browser-head-wasm-all-speech-silence-2026-10-02.json", "sha256": "d504492030ffcc8687970454d7e5f9ecbe19731e06900db3f4eadae623182ba9", "calls": 364, "status": "PASS"},
+    {"path": "browser-head-webgpu-all-speech-silence-2026-10-02.json", "sha256": "0ac2c1a36af1a22aa83a8b18c6c35a2b6d09f81626565f3f662c4d442365c63f", "calls": 364, "status": "FAIL"}
+  ],
+  "webgpu_speech_silence_failure": {
+    "output": "output_states_2",
+    "failed_calls": 4,
+    "unique_bindings": 2,
+    "same_values_in_both_repeats": true,
+    "coordinates": [
+      {"joint": "joint/0139", "predictor": "predictor/0051", "frame": 378, "flat_index": 1102, "expected": 0.0010283614974468946, "actual": 0.0010398328304290771, "abs_error": 0.000011471332982182503, "allowed_error": 0.00001010283614974469},
+      {"joint": "joint/0173", "predictor": "predictor/0063", "frame": 489, "flat_index": 1137, "expected": 0.029785435646772385, "actual": 0.029798440635204315, "abs_error": 0.000013004988431930542, "allowed_error": 0.000012978543564677239}
+    ],
+    "normalized_scores_hidden_h_lengths": "PASS",
+    "token_duration_argmax": "EXACT",
+    "root_cause": "UNPROVEN; localize predictor arithmetic without relaxing acceptance"
+  },
+  "browser_and_cleanup_errors": [],
+  "independent_saved_raw_tensor_recomparison": "Six statuses reproduced; fixtures and current tool hashes verified",
+  "remaining": ["Production features still fail", "Browser encoder and live sequence untested", "Public API and applications not certified by this component replay", "Long reference fixture remains open", "Performance not assessed"]
+}
