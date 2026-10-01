@@ -206,6 +206,30 @@ Python tool tests pass. Protobuf 7 reflection incompatibility was reproduced
 and fixed in shared `onnx_artifacts.py`; 10 tests pass on Protobuf 5 and 7.
 Small receipt: `browser-head-handoff-2026-10-02.json`. P05/P06 remain open.
 
+HTTP delivery follow-up (2026-10-02): the instrumented HTTP/1.0 control
+reproduced a standalone WASM fetch reset with no ORT inference. The server
+wrote its full 27,797,172 bytes with the correct hash; browser delivery failed.
+Changing only the child-process handler protocol to HTTP/1.1 made nine ESM /
+WASM / ONNX fetches in three clean Chrome cycles byte/hash-exact. The tool now
+uses HTTP/1.1 with existing Content-Length framing and records per-request
+status, written bytes/hash, elapsed time and errors. This bounds the local
+delivery remedy; the underlying Windows TCP/filter cause is not proven.
+
+Four hash-bound actual head runs now PASS: WASM and WebGPU each in two fresh
+Chrome instances, three official JFK bindings replayed twice per instance.
+All normalized scores, predictor h/c states and lengths pass existing
+`atol=1e-5, rtol=1e-4`; all token/duration decisions are exact. Max score error
+WASM `2.67029e-5`, WebGPU `6.10352e-5`; WebGPU has 29 compute dispatches per
+call on NVIDIA Blackwell. No fetch failures or cleanup errors. This supersedes
+the prior delivery-blocked selected-head checkpoint, **not** full browser
+model acceptance. Features, encoder, all recorded head calls, accumulated
+sequence, public API/application and performance gates remain open.
+Nine tool tests cover HTTP framing/reuse and delivery receipts; all 24 family
+and 23 shared Python tool tests pass. No runtime, model, precision, tolerance,
+security setting or backend fallback changed. Next expand browser head replay
+to the complete recorded fixture matrix, then continue feature/encoder and
+public API rungs. Receipt: `browser-head-http11-handoff-2026-10-02.json`.
+
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and
       SHA-256, download original `.nemo` weights into ignored local model storage,
       retain license/attribution and compare config/tokenizer with Parakeet v3.

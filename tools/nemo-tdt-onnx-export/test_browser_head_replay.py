@@ -1,11 +1,16 @@
 """Weight-free prerequisite/receipt tests; not real browser acceptance."""
 import copy
+import hashlib
+import http.client
 from pathlib import Path
+from tempfile import TemporaryDirectory
+import threading
 import unittest
+import urllib.request
 
 import numpy as np
 
-from browser_head_replay import make_fixture, evaluate_result, resolve_route, tensor
+from browser_head_replay import Handler, ThreadingHTTPServer, make_fixture, evaluate_result, resolve_route, tensor
 from test_validate_stage_replay import sample_fixture
 from validate_stage_replay import CONTROL_KEYS, log_softmax
 
@@ -103,6 +108,62 @@ class BrowserHeadTests(unittest.TestCase):
         for url in ("/dist/../../package.json", "/dist/%2e%2e/package.json", "/ort-dist/../package.json", "/source-config.json"):
             with self.assertRaises(ValueError):
                 resolve_route(url, graph)
+
+    def test_server_records_complete_response_bytes_hash_and_missing_route(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "graph.onnx"
+            payload = b"synthetic graph delivery, not inference"
+            path.write_bytes(payload)
+            server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+            server.graph, server.backend, server.http_events = path, "wasm", []
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                base = f"http://127.0.0.1:{server.server_port}"
+                with urllib.request.urlopen(base + "/graph.onnx", timeout=5) as response:
+                    self.assertEqual(response.version, 11)
+                    self.assertEqual(response.read(), payload)
+                    self.assertEqual(response.headers["Cross-Origin-Embedder-Policy"], "require-corp")
+                with self.assertRaises(urllib.error.HTTPError):
+                    urllib.request.urlopen(base + "/not-allowed", timeout=5)
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+            complete, missing = server.http_events
+            self.assertTrue(complete["body_complete"])
+            self.assertEqual(complete["bytes_written"], len(payload))
+            self.assertEqual(complete["body_sha256"], hashlib.sha256(payload).hexdigest())
+            self.assertEqual(missing["status"], 404)
+            self.assertFalse(missing["body_complete"])
+
+    def test_http11_reuses_connection_with_exact_response_framing(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "graph.onnx"
+            payload = b"two responses on one connection"
+            path.write_bytes(payload)
+            server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+            server.graph, server.backend, server.http_events = path, "wasm", []
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+            try:
+                connection.request("GET", "/graph.onnx")
+                response = connection.getresponse()
+                self.assertEqual(response.version, 11)
+                self.assertEqual(response.read(), payload)
+                socket = connection.sock
+                self.assertIsNotNone(socket)
+                connection.request("GET", "/graph.onnx")
+                self.assertEqual(connection.getresponse().read(), payload)
+                self.assertIs(connection.sock, socket)
+            finally:
+                connection.close()
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+            self.assertEqual(len(server.http_events), 2)
+            self.assertTrue(all(event["body_complete"] for event in server.http_events))
 
 
 if __name__ == "__main__":

@@ -121,3 +121,16 @@ therefore inconsistent/unaccepted, not a demonstrated unsupported operator.
 The original pass predates complete tool-hash/raw-output receipt binding.
 See `browser-head-handoff-2026-10-02.json`; investigate local delivery before
 another model or precision experiment. No backend fallback or tolerance change.
+
+Follow-up on the same date: HTTP/1.0 reproduced a standalone WASM reset even
+though server byte/hash logging showed a complete write. An HTTP/1.1-only
+child-process intervention passed nine exact asset fetches in three clean
+Chrome cycles. The handler now uses HTTP/1.1 with Content-Length and records
+each request's status, written byte count/hash and write errors. Four subsequent
+actual selected-head runs passed (WASM/WebGPU, two fresh Chrome instances each,
+six calls each) with full source/tool/output binding, no fetch or cleanup errors.
+This supersedes the delivery-blocked selected-head status above, not full port
+acceptance or a proof of the underlying OS/network-filter cause. Nine focused
+tool tests include HTTP response framing and connection reuse. See
+`browser-head-http11-handoff-2026-10-02.json`. Next cover all recorded calls and
+additional official fixtures; retain feature/encoder/public API gates separately.

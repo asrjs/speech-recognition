@@ -10,6 +10,7 @@ import hashlib
 import json
 import mimetypes
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -94,7 +95,35 @@ def resolve_route(url, graph):
 
 
 class Handler(BaseHTTPRequestHandler):
+    # All successful routes have Content-Length; keep browser asset connections
+    # alive instead of the HTTP/1.0 close-delimited lifecycle that reset locally.
+    protocol_version = "HTTP/1.1"
+
     def do_GET(self):
+        self.event = {"path": self.path, "started_at": time.time(), "bytes_written": 0}
+        self.body_hash = hashlib.sha256()
+        self.server.http_events.append(self.event)
+        try:
+            self.serve_get()
+            self.event["body_complete"] = self.event.get("status") == 200
+        except Exception as error:
+            self.event["error"] = {"type": type(error).__name__, "message": str(error)}
+            raise
+        finally:
+            self.event["body_sha256"] = self.body_hash.hexdigest()
+            self.event["elapsed_ms"] = (time.time() - self.event["started_at"]) * 1000
+
+    def send_response(self, code, message=None):
+        if hasattr(self, "event"):
+            self.event["status"] = code
+        super().send_response(code, message)
+
+    def write_body(self, data):
+        self.wfile.write(data)
+        self.event["bytes_written"] += len(data)
+        self.body_hash.update(data)
+
+    def serve_get(self):
         if self.path == "/":
             module = "ort.webgpu.min.mjs" if self.server.backend == "webgpu" else "ort.all.bundle.min.mjs"
             data = ('<!doctype html><script type="importmap">' + json.dumps({"imports": {
@@ -103,7 +132,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
-            self.wfile.write(data)
+            self.write_body(data)
             return
         try:
             path = resolve_route(self.path, self.server.graph)
@@ -116,7 +145,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         with path.open("rb") as stream:
             for block in iter(lambda: stream.read(1024 * 1024), b""):
-                self.wfile.write(block)
+                self.write_body(block)
 
     def end_headers(self):
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
@@ -196,6 +225,9 @@ def main():
     with args.output.open("x", encoding="utf-8") as output:
         server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         server.graph, server.backend = graph, args.backend
+        server.http_events = receipt["http_events"] = []
+        receipt["server_request_queue_size"] = server.request_queue_size
+        receipt["server_protocol"] = Handler.protocol_version
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
