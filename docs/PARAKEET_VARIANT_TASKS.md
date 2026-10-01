@@ -788,3 +788,35 @@ hash/overwrite failures. Its CLI reproduced the first-layer diagnostic graph
 hash exactly. Shared tools: 35 PASS; family tools: 26 PASS. Browser probes remain
 inline experiments using the existing session bridge, not a persistent browser
 diagnostic CLI. Small receipt: `layer1-matched-input-handoff-2026-10-02.json`.
+
+### Explicit-equation fp32 head candidate (2026-10-02)
+
+The one-step first-LSTM equation diagnostic matches fused CPU hidden/cell
+outputs within `1.94e-7` / `3.58e-7`. Explicit WebGPU matrix taps differ from
+CPU by up to `3.05e-5`, while fixed-preactivation hidden differences are at
+most `2.38e-7`. Both experiments repeat exactly with clean resource controls.
+The expansion is not bit-identical to fused WebGPU, so it is not proof of
+the fused kernel's internal cause or provider attribution.
+
+A separate own fp32 head candidate replaces both default forward LSTMs with
+explicit IOFC equations and fixes only predictor target sequence width to one,
+matching current executor calls. Batch/encoder-frame-width contracts stay
+unchanged. Source non-LSTM node bytes and transposed/split weight reversibility
+were checked; no quantization or production source change was made.
+
+On all 182 official speech/silence recorded bindings, native CPU passes. Both
+WASM and WebGPU run the matrix twice (364 calls each) and pass the original
+`atol=1e-5, rtol=1e-4`, exact length and token/duration argmax gates. Raw-array
+re-evaluation with the existing family evaluator passes, repeats are exact,
+and the fixture hash matches the original failing matrix. This improves the
+candidate head evidence but does not change the original production graph's
+FAIL status. The first generation had duplicate node names and was rejected
+by ORT before inference; its invalid artifact was preserved and a fresh
+candidate was rebuilt from the original with unique-name validation.
+
+Next persist/test the opt-in family transformation, validate JFK/pure-silence
+matrices, candidate-fed recurrent decoding and encoder-grid widths, then
+measure matched performance/memory. Forty-seven WebGPU dispatches/call are
+observed, not a speedup claim. Production features, encoder and live public
+API acceptance remain open. Large candidate/traces stay local. Small receipt:
+`linear-gate-head-candidate-handoff-2026-10-02.json`.

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "status": "PARTIAL_PASS_SPEECH_SILENCE_RECORDED_HEAD_CANDIDATE",
+  "scope": "Official recorded inputs, not live recurrent decoding or full ASR acceptance",
+  "fixture_sha256": "fe8ca74da16e0ebbd060782028594ac1845b2177aeb595bddfcf25612e44b8bb",
+  "source_sha256": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90",
+  "candidate_sha256": "11edfab34f71fb2d436567cdb90f52de05c33579ae828af436b56a1335fcf43b",
+  "candidate_directory": "single-step-head-candidate-unique-names-2026-10-02",
+  "native": {"path": "native-control.json", "sha256": "9bfa4260f7b411e8ecf0ef61bce7a84354cabb2b087e3f13dff483a9bcd30147", "calls": 182, "status": "PASS"},
+  "browser": [
+    {"path": "browser-wasm.json", "sha256": "b6719ed350b7b0543e439fc77ec4f76858286133888537f4dfe30b5ade18883c", "calls": 364, "status": "PASS", "repeat_outputs_exact": true},
+    {"path": "browser-webgpu.json", "sha256": "0867349fec6252750ee1f01ba34509013cc49382f222b0019f2e2dd84e8c2cb7", "calls": 364, "status": "PASS", "repeat_outputs_exact": true, "dispatches_per_call": 47}
+  ],
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "constraints": "Only targets sequence dimension fixed to one; source batch/encoder width contract unchanged. Both default forward LSTMs replaced by explicit float32 IOFC equations. Weight transpose/split reversibility and all retained non-LSTM node bytes checked",
+  "linearity_evidence": {
+    "linear_graph_sha256": "91a276c480733c4e52184db395d1ec706764e7754805a9d544702defd5a5a420",
+    "linear_native_sha256": "41e9a1853c848899957ce052e267c67985ee254a6233e67aa3d8c7b4ea3dc650",
+    "linear_wasm_sha256": "5a1228b4da783f4975b14db784f52a266e9b1cccddeeeac3de66b909420504a1",
+    "linear_webgpu_sha256": "354aaa376233735a48a4d02cb9f0ca16825afb7d04e97cc189203e6b92875c21",
+    "activation_graph_sha256": "ec13dfd2ffa92bd78a4698aa920a198e4eb92b0515aea54dad64c38c656012a6",
+    "activation_native_sha256": "d621ddd58bc726640c1c87cd7f3a1022de7a8ae2d83421f86b98111dcb45e963",
+    "activation_wasm_sha256": "41f571254a0ecd5061fd28a97909b332998bededd4a92a85fc663e6ca022bb75",
+    "activation_webgpu_sha256": "357023cf784b3f42baa5cbc7f2694f973f757cdf5a6f6d8ff47b5d11fee28221",
+    "scope": "Explicit graph matrix deltas are larger than fixed-preactivation hidden deltas; expansion does not reproduce fused WebGPU bitwise, so fused kernel cause remains unproven"
+  },
+  "negative_experiment": "Initial candidate generation duplicated node names and ORT rejected before inference; invalid graph preserved under single-step-head-candidate-2026-10-02. Corrected candidate rebuilt from original into a fresh directory with unique-name assertion",
+  "execution": "Inline diagnostic recipes and existing browser replay/library bridge; transformation is not yet a persistent exporter option",
+  "errors_in_passing_runs": [],
+  "next": ["Persist a tested, opt-in single-step family transformation with source/config receipts", "Run JFK and pure-silence regression matrices", "Validate candidate-fed recurrent/token/text behavior and grid width contract", "Measure matched performance and memory before promotion"],
+  "remaining": ["Original production WebGPU head graph still FAIL", "Production features FAIL", "Encoder/live public API not certified", "No fp16 promotion"]
+}
