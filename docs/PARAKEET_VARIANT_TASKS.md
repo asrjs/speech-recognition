@@ -461,6 +461,23 @@ remain open. Receipt: `js-normalization-cascade-handoff-2026-10-01.json`.
 
 ## Upstream recipes to inspect during export
 
+### Observed cascade statistics attribution (2026-10-01)
+
+The new separate cascade report injects the actual JS candidate mean/std into
+the existing diagnostic; its legacy scalar-f64 mode remains available. For
+JFK aligned complex-power, every one of 121 failed feature coordinates is
+dominated by pointwise raw-mel error, not mean/std or final f32 arithmetic.
+Maximum pointwise contribution is `2.521e-4`; mean/std contributions are at
+most `7.984e-7` / `4.043e-6`. Official-statistics counterfactual still fails at
+121 coordinates. Closure is below `9e-16` across all ten JFK controls; all ten
+silence controls match with zero closure. This does not change production FAIL.
+
+Next inspect weighted power/log terms at those exact coordinates, beginning
+with mel 0/frame 346 (raw delta `2.46048e-4`), then high mel edge bands. Do not
+attempt another normalizer or precision-only FFT patch on this evidence.
+Receipt: `cascade-statistics-decomposition-handoff-2026-10-01.json`.
+The parallel compact-install work item is tracked in [PRODUCT_TASKS.md](./PRODUCT_TASKS.md).
+
 ### Packed f32 FFT precision hypothesis — rejected (2026-10-01)
 
 The diagnostic preserves the packed 256-point algorithm, exact official f32

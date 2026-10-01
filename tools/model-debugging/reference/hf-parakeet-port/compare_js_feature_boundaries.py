@@ -553,7 +553,8 @@ def compare_fft_components(capture, reference, *, atol, rtol):
 
 
 def normalization_decomposition(reference_raw, candidate_raw, reference_features,
-        candidate_features, reference_mean, reference_std, *, valid_length, atol, rtol):
+        candidate_features, reference_mean, reference_std, *, valid_length, atol, rtol,
+        observed_statistics=None):
     """Diagnostic attribution, not a new normalizer or a relaxed parity gate.
 
     Official statistics are captured float32 (std includes NeMo's 1e-5).
@@ -572,6 +573,14 @@ def normalization_decomposition(reference_raw, candidate_raw, reference_features
         raise ValueError("Normalization diagnostic valid length is outside the captured frame contract")
     if np.any(expected[:, :, valid_length:] != 0) or np.any(actual[:, :, valid_length:] != 0):
         raise ValueError("Normalized feature tails must be masked to zero")
+    observed = None
+    if observed_statistics is not None:
+        if not isinstance(observed_statistics, dict) or set(observed_statistics) != {"mean", "std"}:
+            raise ValueError("Observed candidate statistics require exactly mean and std")
+        observed = [np.asarray(observed_statistics[key]) for key in ("mean", "std")]
+        if (any(value.shape != mean.shape or value.dtype != np.float32
+                or not np.isfinite(value).all() for value in observed) or np.any(observed[1] <= 0)):
+            raise ValueError("Observed candidate statistics must be matching finite f32 with positive std")
     feature_metrics = compare_tensors(expected, actual, atol=atol, rtol=rtol)
     r, c = raw.astype(np.float64), candidate.astype(np.float64)
     reference_reconstruction = np.zeros_like(r)
@@ -581,10 +590,13 @@ def normalization_decomposition(reference_raw, candidate_raw, reference_features
     for mel in range(raw.shape[1]):
         values = c[0, mel, :valid_length]
         # Same scalar accumulation order as JS, not NumPy's reduction algorithm.
-        candidate_mean = sum(float(value) for value in values) / valid_length
-        variance = sum((float(value) - candidate_mean) ** 2 for value in values)
-        candidate_std = math.sqrt(variance / (valid_length - 1)) + 1e-5 if valid_length > 1 else 1e-5
-        inv_std = 1 / candidate_std if valid_length > 1 else 0
+        if observed is None:
+            candidate_mean = sum(float(value) for value in values) / valid_length
+            variance = sum((float(value) - candidate_mean) ** 2 for value in values)
+            candidate_std = math.sqrt(variance / (valid_length - 1)) + 1e-5 if valid_length > 1 else 1e-5
+        else:
+            candidate_mean, candidate_std = (float(value[0, mel]) for value in observed)
+        inv_std = 1 / candidate_std if observed is not None or valid_length > 1 else 0
         candidate_means.append(candidate_mean)
         candidate_stds.append(candidate_std)
         own[0, mel, :valid_length] = (values - candidate_mean) * inv_std
@@ -596,7 +608,17 @@ def normalization_decomposition(reference_raw, candidate_raw, reference_features
     terms = {"pointwise_raw": pointwise, "statistics": own - counterfactual,
         "reference_rounding": reference_reconstruction - expected.astype(np.float64),
         "candidate_rounding": actual.astype(np.float64) - own}
-    terms["closure_residual"] = actual.astype(np.float64) - expected.astype(np.float64) - sum(terms.values())
+    if observed is not None:
+        mean_term, std_term = np.zeros_like(r), np.zeros_like(r)
+        cm, cs = (value.astype(np.float64)[:, :, None] for value in observed)
+        rm, rs = (value.astype(np.float64)[:, :, None] for value in (mean, std))
+        mean_term[:, :, :valid_length] = (rm - cm) / rs
+        std_term[:, :, :valid_length] = (c[:, :, :valid_length] - cm) * (1 / cs - 1 / rs)
+        # Keep statistics as a total, not another additive term alongside its parts.
+        terms["statistics_mean"] = mean_term
+        terms["statistics_std"] = std_term
+    terms["closure_residual"] = actual.astype(np.float64) - expected.astype(np.float64) - sum(
+        terms[key] for key in ("pointwise_raw", "statistics", "reference_rounding", "candidate_rounding"))
     mismatched = ~np.isclose(actual.astype(np.float64), expected.astype(np.float64), atol=atol, rtol=rtol)
     points = []
     for coordinate in np.argwhere(mismatched):
@@ -612,7 +634,7 @@ def normalization_decomposition(reference_raw, candidate_raw, reference_features
             "reference_std_with_guard": float(std[0, mel]),
             "reference_inverse_std": 1 / float(std[0, mel]),
             "candidate_mean": candidate_means[mel], "candidate_std_with_guard": candidate_stds[mel],
-            "candidate_inverse_std": 1 / candidate_stds[mel] if valid_length > 1 else 0,
+            "candidate_inverse_std": 1 / candidate_stds[mel] if observed is not None or valid_length > 1 else 0,
             "reference_raw_min": float(r[0, mel, :valid_length].min()),
             "raw_max_abs_error": float(np.abs(delta).max()), "raw_rms_error": float(np.sqrt(np.mean(delta ** 2))),
             "mismatch_frames": np.flatnonzero(mismatched[0, mel]).tolist(),
@@ -620,6 +642,7 @@ def normalization_decomposition(reference_raw, candidate_raw, reference_features
             **{f"{key}_max_abs": float(np.abs(value[0, mel]).max()) for key, value in terms.items()}})
     return {"shape": list(raw.shape), "valid_length": valid_length,
         "scope": "Diagnostic f64 counterfactuals only; not production normalization or port acceptance",
+        "candidate_statistics_source": "Observed f32 boundaries" if observed is not None else "Recomputed JS-order f64 scalar reduction",
         "statistics_term_scope": "Raw-dependent statistics plus JS/official statistic arithmetic differences",
         "reference_rounding_scope": "F64 reconstruction minus official feature boundary includes reduction/operation rounding",
         "actual_features": feature_metrics,
@@ -859,6 +882,14 @@ def main():
             "features_vs_python_exact": compare_tensors(candidate, observed_features, atol=0, rtol=0),
             "mean_vs_python_exact": compare_tensors(mean, np.asarray(observation["mean"], dtype=np.float32), atol=0, rtol=0),
             "std_vs_python_exact": compare_tensors(std, np.asarray(observation["std"], dtype=np.float32), atol=0, rtol=0)}
+    cascade_decomposition = {}
+    for name, input_values in normalization_input_keys.items():
+        observation = js["normalizationControls"][name]
+        cascade_decomposition[name] = normalization_decomposition(raw.numpy(), input_values[None, :, :],
+            normalized.numpy(), reshape(observation["features"]), reference_mean.numpy(), reference_std.numpy(),
+            valid_length=int(valid_length[0]), atol=1e-5, rtol=1e-4,
+            observed_statistics={key: np.asarray(observation[key], dtype=np.float32).reshape(1, -1)
+                for key in ("mean", "std")})
     metrics = {
         "official_processor_vs_capture": control,
         "raw_log_mel": compare_tensors(raw.numpy(), reshape(js["raw"]), atol=1e-5, rtol=1e-4),
@@ -1029,6 +1060,7 @@ def main():
             "rounded_control": "fp32 component squares and sum, fp32 sqrt, fp32 square",
             "scope": "Only isolated diagnostic module power buffer is overwritten; production is unchanged"},
         "normalization_decomposition": decomposition,
+        "cascade_normalization_decomposition": cascade_decomposition,
         "mel_power_attribution": attribution,
         "selected_bin_dft": dft_diagnostic,
         "cascade_normalized_failure_power_attribution": cascade_attribution,

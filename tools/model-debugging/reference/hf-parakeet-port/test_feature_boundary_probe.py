@@ -557,6 +557,58 @@ class SelectedDftTests(unittest.TestCase):
 
 
 class NormalizationDecompositionTests(unittest.TestCase):
+    def observed_control(self, *, mean=1.25, std=2):
+        import numpy as np
+        raw = np.asarray([[[0, 1, 2, 999]]], dtype=np.float32)
+        candidate = np.asarray([[[0.25, 1.25, 2.25, -999]]], dtype=np.float32)
+        expected = np.asarray([[[-1, 0, 1, 0]]], dtype=np.float32)
+        actual = np.zeros_like(candidate)
+        actual[:, :, :3] = (candidate[:, :, :3] - np.float32(mean)) / np.float32(std)
+        args = [raw, candidate, expected, actual, np.ones((1, 1), dtype=np.float32),
+            np.ones((1, 1), dtype=np.float32)]
+        stats = {"mean": np.asarray([[mean]], dtype=np.float32), "std": np.asarray([[std]], dtype=np.float32)}
+        return args, stats
+
+    def test_observed_statistics_separate_mean_std_and_pointwise_terms(self):
+        args, stats = self.observed_control()
+        before = [value.tobytes() for value in args] + [value.tobytes() for value in stats.values()]
+        result = probe_module.normalization_decomposition(*args, observed_statistics=stats,
+            valid_length=3, atol=1e-5, rtol=1e-4)
+        self.assertEqual(result['candidate_statistics_source'], 'Observed f32 boundaries')
+        self.assertEqual(result['per_mel'][0]['candidate_mean'], 1.25)
+        self.assertEqual(result['per_mel'][0]['candidate_std_with_guard'], 2)
+        for point in result['mismatches']:
+            self.assertAlmostEqual(point['statistics_mean'] + point['statistics_std'], point['statistics'], places=12)
+            self.assertAlmostEqual(sum(point[key] for key in ('pointwise_raw', 'statistics',
+                'reference_rounding', 'candidate_rounding')), point['candidate_feature'] - point['reference_feature'], places=12)
+        self.assertEqual(result['terms_max_abs']['candidate_rounding'], 0)
+        self.assertEqual(before, [value.tobytes() for value in args] + [value.tobytes() for value in stats.values()])
+
+    def test_observed_statistics_fail_closed_on_missing_wrong_or_nonfinite_values(self):
+        import numpy as np
+        args, stats = self.observed_control()
+        for invalid in ({'mean': stats['mean']}, {'mean': stats['mean'], 'std': stats['std'], 'extra': 1},
+                {'mean': stats['mean'].astype(np.float64), 'std': stats['std']},
+                {'mean': stats['mean'], 'std': np.zeros_like(stats['std'])},
+                {'mean': np.full_like(stats['mean'], np.nan), 'std': stats['std']},
+                {'mean': stats['mean'][0], 'std': stats['std']}):
+            with self.subTest(stats=invalid), self.assertRaises(ValueError):
+                probe_module.normalization_decomposition(*args, observed_statistics=invalid,
+                    valid_length=3, atol=1e-5, rtol=1e-4)
+
+    def test_observed_singleton_preserves_guarded_inverse_and_zero_tail(self):
+        import numpy as np
+        raw = np.asarray([[[4, 999]]], dtype=np.float32)
+        candidate = np.asarray([[[5, -999]]], dtype=np.float32)
+        features = np.zeros_like(raw)
+        mean, std = np.asarray([[4]], dtype=np.float32), np.asarray([[1e-5]], dtype=np.float32)
+        result = probe_module.normalization_decomposition(raw, candidate, features, features, mean, std,
+            observed_statistics={'mean': np.asarray([[5]], dtype=np.float32), 'std': std},
+            valid_length=1, atol=1e-5, rtol=1e-4)
+        self.assertEqual(result['mismatches'], [])
+        self.assertEqual(result['per_mel'][0]['candidate_inverse_std'], 1 / float(std[0, 0]))
+        self.assertEqual(result['terms_max_abs']['closure_residual'], 0)
+
     def run_control(self, raw, candidate, *, valid_length=3, atol=1e-6, rtol=1e-6):
         import numpy as np
         raw, candidate = np.asarray(raw, dtype=np.float32), np.asarray(candidate, dtype=np.float32)
