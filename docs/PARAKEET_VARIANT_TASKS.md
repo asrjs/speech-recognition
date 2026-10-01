@@ -101,6 +101,20 @@ at the unchanged production gates. Small receipt: `reference-power-mel-log-hando
 Next: evaluate JS log on identical official guarded inputs, separately from
 the float32 matmul accumulation and still-open FFT rounding mismatch.
 
+Identical official log-input control: `identical-log-input-jfk-2026-10-01.json.gz`
+confirms all guarded input bits match NeMo and compares JS `Math.log` followed
+by f32 storage, without FFT or mel accumulation. Only 6 / 140,800 valid raw
+cells differ exactly (max `9.53674e-7`); zero fail the original tolerances.
+Mel 0/frame 346 and mel 127/frame 551 raw logs are exact on identical inputs.
+The separately checked diagnostic width-8 normalization also has zero tolerance
+failures (max `6.85453e-7`); this is not production normalization or a port PASS.
+69 probe tests pass, and the real run exits 1 with unchanged production's
+313 feature failures. Receipt: `identical-log-input-handoff-2026-10-01.json`.
+Next discriminate mel product/add/reduction arithmetic on identical official
+powers and filterbank before revisiting the upstream FFT rounding mismatch.
+Do not hardcode corrections for the six log cells or infer active GEMM kernel
+dispatch from installed MKL availability.
+
 ## Ordered tasks
 
 - [x] **P01 — Audit and acquire official assets.** Pin source revision and

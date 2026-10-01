@@ -33,6 +33,17 @@ if (data.powerOverrides !== undefined && !Array.isArray(data.powerOverrides))
 const pcm = Float32Array.from(data.pcm);
 const options = { nMels: data.bins, validLengthMode: 'onnx' };
 const raw = new JSMelProcessor({ ...options, normalization: 'none' }).process(pcm);
+let officialLogInputControl = null;
+if (Object.hasOwn(data, 'referenceLogInput')) {
+  const values = data.referenceLogInput;
+  if (!Array.isArray(values) || values.length !== data.bins * raw.frameCount ||
+      values.some(value => typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || Math.fround(value) !== value))
+    throw new Error('Official log input must be a full positive finite float32 mel boundary');
+  const logRaw = Float32Array.from(values, value => Math.log(value));
+  const result = normalizeCandidate(logRaw, raw.frameCount, raw.length, 8);
+  officialLogInputControl = { input: values, raw: Array.from(logRaw),
+    features: Array.from(result.features), mean: Array.from(result.mean), std: Array.from(result.std) };
+}
 const normalized = new JSMelProcessor({ ...options, normalization: 'per_feature' }).process(pcm);
 const processor = new JSMelProcessor(options);
 const sameRawNormalized = processor.normalizeFeatures(Float32Array.from(data.referenceRaw),
@@ -338,7 +349,7 @@ for (const [name, values] of Object.entries(normalizationInputs)) {
   normalizationControls[name] = { features: Array.from(result.features), mean: Array.from(result.mean), std: Array.from(result.std) };
 }
 console.log(JSON.stringify({ raw: Array.from(raw.features), normalized: Array.from(normalized.features),
-  referencePowerCapture,
+  referencePowerCapture, officialLogInputControl,
   powerOverrideCapture, powerOverrideNormalization: powerOverrideNormalization ? Object.fromEntries(
     ['features', 'mean', 'std'].map(key => [key, Array.from(powerOverrideNormalization[key])])) : null,
   sameRawNormalized: Array.from(sameRawNormalized), normalizationControls, frameCount: raw.frameCount, validLength: raw.length,
@@ -974,6 +985,7 @@ def main():
         input=json.dumps({"pcm": pcm.tolist(), "bins": config["features"], "referenceRaw": raw.flatten().tolist(),
             "referenceWindow": processor.window.tolist(), "referenceFilterbank": processor.fb.flatten().tolist(),
             "referencePower": power.flatten().tolist(), "referenceComplex": complex_boundary,
+            "referenceLogInput": official_log_input.flatten().tolist(),
             "powerOverrides": args.power_override}),
         text=True, encoding="utf-8", capture_output=True, check=True, timeout=60)
     js = json.loads(probe.stdout)
@@ -1001,6 +1013,26 @@ def main():
         'capture': capture,
         'official_linear_mel': official_linear_mel.flatten().tolist(),
         'official_log_input': official_log_input.flatten().tolist()}
+    log_control = js['officialLogInputControl']
+    if not log_control or not np.array_equal(np.asarray(log_control['input'], dtype='<f4').view('<u4'),
+            official_log_input.numpy().astype('<f4').ravel().view('<u4')):
+        raise ValueError('JS log control did not preserve identical official guarded input bits')
+    log_raw = reshape(log_control['raw'])
+    candidate, mean, std = normalize_candidate(log_raw[0], int(valid_length[0]), 8)
+    for key, expected in (('features', candidate), ('mean', mean), ('std', std)):
+        actual = np.asarray(log_control[key], dtype='<f4').reshape(expected.shape)
+        if not np.isfinite(actual).all() or actual.tobytes() != expected.astype('<f4').tobytes():
+            raise ValueError(f'Official-input JS log normalization differs from independent control: {key}')
+    if not np.isfinite(log_raw).all():
+        raise ValueError('Official-input JS log output is nonfinite')
+    reference_power_mel_log['identical_official_input_js_log'] = {
+        'scope': 'JS Math.log then float32 store on identical official float32 guarded inputs; diagnostic only',
+        'input_bits_exact': True,
+        'input_sha256_f32le': hashlib.sha256(official_log_input.numpy().astype('<f4').tobytes()).hexdigest(),
+        'raw_valid_prefix_vs_official': compare_raw_valid_prefix(raw.numpy()[0], log_raw[0], int(valid_length[0])),
+        'cascade_normalization_python_exact': True,
+        'features_vs_official': compare_tensors(normalized.numpy()[0], candidate, atol=1e-5, rtol=1e-4),
+        'capture': log_control}
     normalization_input_keys = {
         "officialRaw": raw.numpy()[0], "productionRaw": reshape(js["productionCapture"]["raw"])[0],
         "alignedWindowProducts": reshape(js["frameArithmeticCaptures"]["windowProduct"]["raw"])[0],

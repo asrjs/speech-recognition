@@ -1,0 +1,22 @@
+{
+  "status": "DIAGNOSTIC_IDENTICAL_LOG_INPUT_CONTROL_PASS_PRODUCTION_FEATURES_FAIL",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "receipt": "identical-log-input-jfk-2026-10-01.json.gz",
+  "receipt_sha256": "8bfb50cd2015aa77ea025827f71ba962ac5c21367d8e8bcfe1c23a29a1174d5a",
+  "diagnostic_sha256": "cf87af6c6373ec02e2007919babbe7924cc7ee4d7b4beaa57303b388fe027c87",
+  "official_guarded_input_sha256_f32le": "ea27f08654e305c267fc1fa1b85fddaadef670117cae032b87896818ce620ac6",
+  "official_input_bits_exact": true,
+  "valid_prefix_cells": 140800,
+  "raw_log_exact_mismatches": 6,
+  "raw_log_tolerance_failures": 0,
+  "raw_log_max_abs_error": 9.5367431640625e-7,
+  "raw_log_mean_abs_error": 2.4023889140649275e-11,
+  "exact_mismatch_coordinates": [[29, 44], [45, 107], [49, 1073], [100, 894], [112, 414], [118, 768]],
+  "targets": [{"mel": 0, "frame": 346, "js_raw_log": -14.250529289245605, "official_exact": true}, {"mel": 127, "frame": 551, "js_raw_log": -15.953251838684082, "official_exact": true}],
+  "diagnostic_width8_normalization": {"python_byte_exact": true, "feature_tolerance_failures": 0, "feature_max_abs_error": 6.854534149169922e-7},
+  "production_feature_failures": 313,
+  "validation": {"probe_tests": 69, "real_exit_code": 1, "full_suite": "NOT_RUN"},
+  "limits": ["Official guarded input bypasses upstream FFT and mel arithmetic", "Width-8 normalization is diagnostic, not production", "No model or browser/WASM acceptance claim", "No active GEMM kernel dispatch claim"],
+  "next": "Compare mel product/add/reduction arithmetic on identical official powers and filterbank, keeping upstream FFT rounding separate."
+}

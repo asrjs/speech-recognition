@@ -32,6 +32,39 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_official_log_input_control_preserves_inputs_and_uses_js_log(self):
+        import numpy as np
+        data = inputs()
+        data['referenceLogInput'] = [1, 2, 2 ** -24, 0.5] * 22
+        completed = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30, check=True)
+        result = json.loads(completed.stdout)
+        control = result['officialLogInputControl']
+        self.assertEqual(control['input'], data['referenceLogInput'])
+        expected_raw = np.asarray([math.log(value) for value in data['referenceLogInput']], dtype=np.float32)
+        np.testing.assert_array_equal(control['raw'], expected_raw)
+        from normalization_reduction import normalize_candidate
+        expected = normalize_candidate(expected_raw.reshape(8, 11), 10, 8)
+        for key, values in zip(('features', 'mean', 'std'), expected):
+            self.assertEqual(np.asarray(control[key], dtype='<f4').tobytes(), values.astype('<f4').tobytes())
+        self.assertEqual(result['productionCapture']['features'], self.result['productionCapture']['features'])
+
+    def test_official_log_input_control_rejects_malformed_inputs(self):
+        for invalid in ('short', None, True, 0, -1, 0.1):
+            with self.subTest(invalid=invalid):
+                data = inputs()
+                data['referenceLogInput'] = [1] * 88
+                if invalid == 'short':
+                    data['referenceLogInput'].pop()
+                else:
+                    data['referenceLogInput'][0] = invalid
+                completed = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+                    cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+                    capture_output=True, timeout=30)
+                self.assertNotEqual(completed.returncode, 0)
+                self.assertIn('Official log input', completed.stderr)
+
     def test_reference_power_capture_records_actual_mel_and_log_boundaries(self):
         import numpy as np
         data = inputs()
