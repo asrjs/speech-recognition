@@ -720,3 +720,27 @@ cleanup, backend identity, fixture hashes and first failed stage.
 The acceptance criteria from `docs/AGENT_SAFETY_RULES.md` apply to every task.
 Record PASS / FAIL / BLOCKED / UNTESTED per parity rung; task completion does
 not imply full-model promotion.
+
+### Recorded LSTM tap localization (2026-10-02)
+
+The reusable `tools/onnx_graph_taps.py` appends inferred intermediate outputs
+without changing any original graph fields, rejects external weights, pins
+the source hash and refuses existing destinations. Six tests include real CPU
+ORT output equality. This diagnostic transformation is not a production export.
+
+On recorded bindings 139 and 173, twice each, native CPU ORT and real browser
+WASM/WebGPU tap runs preserve all four original outputs exactly against their
+untapped controls. WASM passes all eight native tap comparisons. WebGPU fails
+only the second LSTM cell output at local coordinates 462/497 (the original
+concatenated cell coordinates 1102/1137). Embedding transpose and layer-2
+initial hidden/cell match native exactly; layer-1 outputs and layer-2 X pass
+the unchanged tolerances but are not exact. Thus layer-2 arithmetic versus
+amplified upstream error remains unresolved. Actual per-node provider is not
+proven by the 29 observed compute dispatches.
+
+Next use matched-input layer-2 controls to separate those hypotheses; do not
+change tolerances or promote the port. The browser experiment was an inline
+probe reusing the existing session bridge, not a new persistent CLI. Raw local
+receipts retain all tap values; the small tracked evidence pointer is
+`browser-lstm-taps-handoff-2026-10-02.json`. Production feature and full WebGPU
+head failures remain open independently.

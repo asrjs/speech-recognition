@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "status": "PARTIAL_LOCALIZATION_SECOND_LSTM_CELL",
+  "scope": "Selected recorded head inputs; diagnostic graph only; not public ASR acceptance",
+  "step_indices": [139, 173],
+  "repeats": 2,
+  "source_sha256": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90",
+  "diagnostic_sha256": "2c3f8694ed51d2d33686ac0853756bfa6d8f2a32a8e4be8d8d91ef487b36a268",
+  "native_control_sha256": "c6e5d7b90dd1238deb69f9a12c60885d7b3d123dca60799c752fa5883f71ad5d",
+  "results": [
+    {"path": "browser-lstm-taps-wasm-2026-10-02.json", "sha256": "6998c4a77717aa9abee2d9eeb7d87dcd01ceae3045d9682316889ee19f741db9", "original_outputs_exact": true, "all_native_taps_allclose": true},
+    {"path": "browser-lstm-taps-webgpu-2026-10-02.json", "sha256": "b48f00b2b4d4b85eb43184aeae91ec6acc0db730bf1667866e300bb2d85b1be4", "original_outputs_exact": true, "failed_tap": "/decoder/dec_rnn/lstm/LSTM_1_output_2", "failed_flat_indices": [462, 497]}
+  ],
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "native_reference": "CPU ORT 1.29.0 diagnostic taps; official oracle remains independent",
+  "webgpu_second_cell_max_abs_error": [0.00005054473876953125, 0.000028133392333984375],
+  "upstream_taps": "Embedding transpose and layer-2 initial hidden/cell exactly match native; layer-1 hidden/cell and layer-2 X pass tolerance, not bit exact",
+  "execution": "One-off inline Python probe reused existing browser replay MJS and library session bridge; no persistent diagnostic browser CLI yet",
+  "controls": "Source and diagnostic hashes checked; diagnostic reconstructed byte-exact from add_graph_taps; fixture hash and binding identity match original browser receipts; four original outputs exact per backend",
+  "errors": [],
+  "provider_attribution": "UNPROVEN; 29 compute dispatches per WebGPU call do not establish LSTM provider",
+  "next": "Separate accumulated layer-1 hidden-input error from layer-2 arithmetic using matched-input layer-2 controls before proposing a production fix",
+  "remaining": ["Production features FAIL", "Full original WebGPU head matrix FAIL", "Browser encoder/live sequence/public API not certified", "Performance unmeasured"]
+}
