@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "tools"))
 from tensor_parity import compare_tensors
 from artifact_outputs import require_new_outputs, write_new_text
+from normalization_reduction import normalize_candidate
 
 
 NODE_PROBE = r'''
@@ -768,6 +769,14 @@ def main():
     control = compare_tensors(expected_tensor, normalized.numpy(), atol=1e-5, rtol=1e-4)
     if not control["allclose"] or int(valid_length[0]) != official["stages"]["features_length"]["data"][0]:
         raise ValueError(f"Official processor reproduction failed: {control}")
+    normalization_candidates = {}
+    for width in (8, 16):
+        candidate, mean, std = normalize_candidate(raw.numpy()[0], int(valid_length[0]), width)
+        normalization_candidates[str(width)] = {
+            "scope": "Diagnostic contiguous f32 cascade reduction on identical official raw mel; not production or active-dispatch proof",
+            "normalized_features": compare_tensors(normalized.numpy()[0], candidate, atol=1e-5, rtol=1e-4),
+            "mean_exact": compare_tensors(reference_mean.numpy()[0], mean, atol=0, rtol=0),
+            "guarded_std_exact": compare_tensors(reference_std.numpy()[0], std, atol=0, rtol=0)}
     complex_boundary = encode_complex_boundary(official_complex.numpy())
     probe = subprocess.run(["node", "--input-type=module", "-e", NODE_PROBE], cwd=ROOT,
         input=json.dumps({"pcm": pcm.tolist(), "bins": config["features"], "referenceRaw": raw.flatten().tolist(),
@@ -929,6 +938,8 @@ def main():
         "selected_bin_dft": dft_diagnostic,
         "production_input_diagnostic": production_diagnostic,
         "frame_arithmetic_controls": frame_arithmetic_controls,
+        "normalization_reduction_candidates": normalization_candidates,
+        "normalization_candidate_sha256": hashlib.sha256(Path(__file__).with_name("normalization_reduction.py").read_bytes()).hexdigest(),
         "diagnostic_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "comparisons": metrics}
     write_diagnostic_report(args.output, report)

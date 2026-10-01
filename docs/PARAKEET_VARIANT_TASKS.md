@@ -55,9 +55,14 @@ differences, not proof that these alone cause all 313 feature mismatches.
 Forty-nine probe tests pass; the f64 reader rejects coerced mirrors, empty
 frames and boolean/float metadata dimensions. Full suite was not rerun for this
 tool-only slice. Small receipt: `production-frames-handoff-2026-10-01.json`.
-Next bounded P03 experiment: isolate preemphasis-only and window-only frame
-deltas using the same observations; test a reference-aligned arithmetic
-candidate across the fixture matrix before any production processor change.
+The cumulative preemphasis/window controls and pure-silence capture are now
+recorded below. The contiguous f32 cascade diagnostic's width-8 candidate
+matches normalization of the same official raw mel on JFK and pure silence;
+width 16 fails silence. This does not yet change the production JS processor.
+Next bounded P03 experiment: implement the observed reduction order in a
+temporary JS normalization control, compare mean/std/features across physical
+and valid lengths and on actual speech/silence raw mel, then combine it with
+aligned arithmetic controls before proposing any production processor change.
 Keep the aligned control's residual reference complex64 differences and
 mel/log/statistics amplification separate. Existing P02–P08 gates remain open.
 
@@ -401,6 +406,26 @@ Lossless gzip reports and opt-in `--summary-only` keep full numerical evidence
 while reducing output overhead. 53 focused probe/output tests and eight output
 safety tests pass; core typecheck passes. Full suite was not rerun for this
 checkpoint. Receipt: `tools/data/results/orukeet/frame-arithmetic-and-silence-handoff-2026-10-01.json`.
+
+### Contiguous cascade normalization diagnostic (2026-10-01)
+
+The generic `Reduce.h` four-by-sixteen hypothesis fails the key 101/100 silence
+case. The actual floating sum algorithm in upstream PyTorch v2.6.0
+`SumKernel.cpp` uses cascade partials and accumulates scalar tails before vector
+lanes. An independent width-8 model matches all 20 constant masked-prefix sum
+controls; width 16 matches 12. CPU AVX512 capability alone does not prove the
+compiled sum dispatch. Width is an explicit diagnostic parameter, not a
+model-ID branch or automatic host selection.
+
+On identical official raw mel, width-8 normalization has zero silence error,
+including exact mean/std, and JFK max error `2.384185791015625e-7` with zero
+failed feature coordinates at unchanged `1e-5/1e-4` tolerances. JFK mean matches
+exactly; three std values differ at exact comparison (max `2.384185791015625e-7`).
+Width 16 fails all 12,800 valid silence coordinates. Production feature failures
+remain unchanged: these are Python numeric diagnostics, not a JS fix or accepted
+port. Five new weight-free reduction tests, 53 existing probe tests and eight
+output safety tests pass. Full suite/native/browser acceptance was not rerun.
+Small receipt: `normalization-cascade-handoff-2026-10-01.json`.
 
 ## Upstream recipes to inspect during export
 

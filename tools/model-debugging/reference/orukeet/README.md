@@ -386,3 +386,26 @@ only shortens console output, not evidence or exit criteria. Final local
 silence/JFK compressed receipts preserve full diagnostics in approximately
 1.53 MB / 0.72 MB. Both exit 1 because feature acceptance fails. 53 focused
 tests pass. Hashes and next steps are in the frame-arithmetic-and-silence handoff.
+
+### Reference-shaped f32 cascade reduction control
+
+`normalization_reduction.py` models the contiguous floating sum algorithm in
+[PyTorch v2.6.0 SumKernel.cpp](https://github.com/pytorch/pytorch/blob/v2.6.0/aten/src/ATen/native/cpu/SumKernel.cpp).
+The earlier generic `Reduce.h` four-by-sixteen candidate missed silence and is
+not used. Widths 8 and 16 are explicit diagnostic experiments, not claims about
+the active CPU dispatch and not new production processor options.
+
+`compare_js_feature_boundaries.py` now compares these candidates with actual
+NeMo mean/std/normalized outputs on identical official raw mel. The local
+`normalization-cascade-jfk-2026-10-01.json.gz` and
+`normalization-cascade-silence-2026-10-01.json.gz` retain full evidence. Width 8
+matches silence exactly and JFK features at the existing tolerance (max
+`2.384185791015625e-7`, zero failed coordinates). JFK mean is exact; three std
+entries differ at exact zero tolerance. Width 16 fails silence by up to
+`0.3201066553592682`. Both complete diagnostic commands still exit 1 because
+unchanged production feature acceptance fails.
+
+Run `test_normalization_reduction.py` with unittest discovery for five small
+contracts, including physical masked tails, immutable inputs, singleton valid
+prefix and invalid metadata. Next port this arithmetic into a temporary JS
+control and test broader lengths/fixtures before changing shared runtime math.

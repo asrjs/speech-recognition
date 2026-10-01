@@ -1,0 +1,33 @@
+{
+  "status": "PARTIAL_PASS_SAME_OFFICIAL_RAW_NORMALIZATION_ONLY",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "algorithm_reference": "https://github.com/pytorch/pytorch/blob/v2.6.0/aten/src/ATen/native/cpu/SumKernel.cpp",
+  "diagnostic_sha256": "c496109ec15d60f034d502f13311579d13b151075a3e560c6ac3422717398133",
+  "candidate_sha256": "0c16ba756976ec60adfb7f5daa91a673a35e5ed0d188b6f0a5b8cd0c516fe72e",
+  "candidate_width": 8,
+  "active_cpu_dispatch": "NOT_PROVEN",
+  "synthetic_constant_masked_prefix_grid": {"cases": 20, "width_8_exact_sum_matches": 20, "width_16_exact_sum_matches": 12},
+  "additional_parent_torch_sum_grid": {"torch": "2.6.0+cu118", "row_cases": 87, "width_8_exact_matches": 87, "width_16_exact_matches": 76, "lengths": [1, 2, 15, 16, 17, 63, 64, 65, 100, 101, 128, 129, 257, 1101, 4097], "inputs": ["constant log-zero guard", "deterministic signed multiples of 1/32", "repeated 1e6/-1e6/0.125 cancellation"], "valid_prefixes": "N and max(1,N-1), deduplicated; invalid physical tail zero"},
+  "jfk": {
+    "receipt": "normalization-cascade-jfk-2026-10-01.json.gz",
+    "sha256": "1fa7f9ad1eccde3d392cbba50781f332a138dd93e155c09d7a76b069c81fa4bb",
+    "features": {"atol": 0.00001, "rtol": 0.0001, "max_abs_error": 2.384185791015625e-7, "mean_abs_error": 1.4678312584970704e-9, "mismatch_count": 0},
+    "mean_exact": true,
+    "guarded_std_exact_mismatches": 3,
+    "guarded_std_max_abs_error": 2.384185791015625e-7
+  },
+  "silence": {
+    "receipt": "normalization-cascade-silence-2026-10-01.json.gz",
+    "sha256": "16f25a6dac0014276e722ddf94640306c558a7a0be244b09e25bb5e95699a268",
+    "features_max_abs_error": 0,
+    "features_mismatches": 0,
+    "mean_exact": true,
+    "guarded_std_exact": true,
+    "width_16_negative_control_mismatches": 12800,
+    "width_16_negative_control_max_abs_error": 0.3201066553592682
+  },
+  "tests": {"new_reduction_contracts_pass": 5, "existing_probe_contracts_pass": 53, "artifact_output_safety_pass": 8, "full_suite": "NOT_RUN"},
+  "limits": ["Identical official raw mel only, not candidate JS raw mel", "Python diagnostic arithmetic, no production or JS normalization change", "Both full diagnostic runs exit 1 due to unchanged feature failures", "Native/WASM/browser end-to-end acceptance remains incomplete"],
+  "next": "Temporary JS cascade normalization control over variable physical/valid lengths and actual speech/silence raw mel, then combine with aligned arithmetic experiments before any production change."
+}
