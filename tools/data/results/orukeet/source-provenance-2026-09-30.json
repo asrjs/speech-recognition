@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-30T20:12:00.536476+00:00",
+  "repo_id": "oruk/orukeet",
+  "revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+  "status": "SOURCE_VERIFIED",
+  "source_dir": "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\source",
+  "files": [
+    {
+      "filename": "config.json",
+      "bytes": 1149,
+      "sha256": "a0075728c5f206b298006343ffa01db0016230832f1e4022f541887d3d27ac32"
+    },
+    {
+      "filename": "processor_config.json",
+      "bytes": 417,
+      "sha256": "7d1787398cffb800fa2cb58750781a78fe668dc02469750ee290840bd54cd8f1"
+    },
+    {
+      "filename": "tokenizer.json",
+      "bytes": 1159960,
+      "sha256": "45a7f44c5e012cfd09e72b333274370ba7785740d27fb1486364e0bb7bbf8b1a"
+    },
+    {
+      "filename": "LICENSE-WEIGHTS",
+      "bytes": 20137,
+      "sha256": "23ee78c8bae49cf08ea2f0c84945c66b987ebe4520881fb51b3dad4fb43d07c2"
+    },
+    {
+      "filename": "NOTICE.md",
+      "bytes": 4765,
+      "sha256": "f1cf43822e52f0a2e5aa3c0b1252d34a17d30cd29303a12eb2f0b151e7433132"
+    },
+    {
+      "filename": "ARTIFACTS.json",
+      "bytes": 25066,
+      "sha256": "67c416cde030eac926f49b565f9b35abec0bc3e3484f7eaab15b52502e2f73b2"
+    },
+    {
+      "filename": "README.md",
+      "bytes": 14368,
+      "sha256": "ef88364dd2cf6fe5971ede7cedf2a75b0f6a7cf05698ac6a7116b460a6ec2376"
+    },
+    {
+      "filename": "orukeet-v0.1.0.nemo",
+      "bytes": 2509342720,
+      "sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
+    }
+  ],
+  "parity_status": "UNTESTED",
+  "license": "cc-by-sa-4.0",
+  "languages": [
+    "bg",
+    "hr",
+    "cs",
+    "da",
+    "nl",
+    "en",
+    "et",
+    "fi",
+    "fr",
+    "de",
+    "el",
+    "hu",
+    "it",
+    "lv",
+    "lt",
+    "mt",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sk",
+    "sl",
+    "es",
+    "sv",
+    "uk"
+  ],
+  "original_weight": {
+    "filename": "orukeet-v0.1.0.nemo",
+    "bytes": 2509342720,
+    "expected_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56",
+    "downloaded": true,
+    "sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56",
+    "verified": true
+  },
+  "converted_config_audit": {
+    "architecture": [
+      "ParakeetForTDT"
+    ],
+    "vocab_size": 8193,
+    "blank_token_id": 8192,
+    "durations": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "mel_bins": 128,
+    "subsampling_factor": 8,
+    "prediction_hidden_size": 640,
+    "prediction_layers": 2,
+    "note": "Converted metadata only; inspect original .nemo config before declaring compatibility."
+  }
+}

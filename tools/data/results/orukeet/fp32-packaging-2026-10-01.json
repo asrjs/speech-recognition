@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "status": "REPACKED_BYTE_IDENTICAL_UNVALIDATED",
+  "source_artifact_directory": "models/orukeet/onnx/fp32-nemo-2026-10-01",
+  "candidate_artifact_directory": "models/orukeet/onnx/fp32-packed-2026-10-01",
+  "source_graph_sha256": "325c9405923f670eea47405806b02f64167723f36b745f5ddf62e776259aa7b8",
+  "candidate_graph_bytes": 2151530,
+  "candidate_graph_sha256": "9924d5c30da5d54454dd3de6dbfc177aa771205eaac5da55d8f05ec813036f17",
+  "external_tensor_count": 295,
+  "source_external_file_count": 295,
+  "candidate_external_file_count": 1,
+  "candidate_external_bytes": 2475088896,
+  "candidate_external_sha256": "f7a19051cc2913d99635d70a856bfe82795cab1f4af3670433e9fc1eb101e00f",
+  "copy_block_bytes": 8388608,
+  "source_destination_range_hashes": "PASS",
+  "original_graph_unchanged": true,
+  "independent_metadata_only_graph_equality": "PASS after normalizing only external references",
+  "onnx_checker": "PASS",
+  "detailed_receipt": "models/orukeet/onnx/fp32-packed-2026-10-01/repack-receipt.json",
+  "tool_validation": {
+    "exporter_tests_passed": 8,
+    "artifact_tests_passed": 9,
+    "tensor_metric_tests_passed": 5,
+    "replay_contract_tests_passed": 7,
+    "constant_attribute_regression_failed_before_fix": true,
+    "int64_float_rounding_regression_failed_before_fix": true,
+    "python_syntax": "PASS",
+    "simulation_is_model_parity": false
+  },
+  "separate_native_validation": {
+    "receipt": "tools/data/results/orukeet/native-fp32-stage-replay-2026-10-01.json",
+    "status": "RECORDED_BOUNDARIES_PASS",
+    "engine": "onnxruntime-python 1.23.2 CPUExecutionProvider",
+    "numeric_comparisons": 916,
+    "joint_calls_with_exact_token_duration_argmax": 228,
+    "atol": 0.00001,
+    "rtol": 0.0001,
+    "full_library_transcript": "UNTESTED",
+    "node_bun_native_inference": "UNTESTED",
+    "browser_webgpu": "UNTESTED",
+    "fp16": "NOT_STARTED"
+  }
+}

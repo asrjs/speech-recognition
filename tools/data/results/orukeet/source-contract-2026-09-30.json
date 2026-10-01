@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-30T20:23:18.757199+00:00",
+  "status": "COMPATIBLE_CONFIG_TOKENIZER",
+  "original_weight_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56",
+  "v3_vocab": {
+    "path": "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx\\vocab.txt",
+    "sha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742"
+  },
+  "config_checks": {
+    "model_class": {
+      "actual": "nemo.collections.asr.models.rnnt_bpe_models.EncDecRNNTBPEModel",
+      "expected": "nemo.collections.asr.models.rnnt_bpe_models.EncDecRNNTBPEModel",
+      "pass": true
+    },
+    "loss_name": {
+      "actual": "tdt",
+      "expected": "tdt",
+      "pass": true
+    },
+    "sample_rate": {
+      "actual": 16000,
+      "expected": 16000,
+      "pass": true
+    },
+    "mel_bins": {
+      "actual": 128,
+      "expected": 128,
+      "pass": true
+    },
+    "window_size": {
+      "actual": 0.025,
+      "expected": 0.025,
+      "pass": true
+    },
+    "window_stride": {
+      "actual": 0.01,
+      "expected": 0.01,
+      "pass": true
+    },
+    "normalize": {
+      "actual": "per_feature",
+      "expected": "per_feature",
+      "pass": true
+    },
+    "n_fft": {
+      "actual": 512,
+      "expected": 512,
+      "pass": true
+    },
+    "subsampling_factor": {
+      "actual": 8,
+      "expected": 8,
+      "pass": true
+    },
+    "encoder_hidden": {
+      "actual": 1024,
+      "expected": 1024,
+      "pass": true
+    },
+    "prediction_hidden": {
+      "actual": 640,
+      "expected": 640,
+      "pass": true
+    },
+    "prediction_layers": {
+      "actual": 2,
+      "expected": 2,
+      "pass": true
+    },
+    "vocabulary_size_with_blank": {
+      "actual": 8193,
+      "expected": 8193,
+      "pass": true
+    },
+    "blank_id": {
+      "actual": 8192,
+      "expected": 8192,
+      "pass": true
+    },
+    "duration_values": {
+      "actual": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "expected": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "pass": true
+    },
+    "duration_channels": {
+      "actual": 5,
+      "expected": 5,
+      "pass": true
+    }
+  },
+  "tokenizer": {
+    "pass": true,
+    "original_count": 8193,
+    "v3_count": 8193,
+    "mismatch_count": 0,
+    "first_mismatches": []
+  },
+  "runtime_config": {
+    "sampleRate": 16000,
+    "melBins": 128,
+    "frameShiftSeconds": 0.01,
+    "subsamplingFactor": 8,
+    "predictionHiddenSize": 640,
+    "predictionLayers": 2,
+    "vocabularySize": 8193,
+    "tokenizer": {
+      "kind": "sentencepiece",
+      "blankTokenId": 8192
+    }
+  },
+  "numerical_parity": "UNTESTED",
+  "browser_parity": "UNTESTED"
+}

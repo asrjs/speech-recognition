@@ -68,7 +68,7 @@ npx vitest run tests/gigaam-ctc-frontend-diagnose.test.ts
 $PY = 'N:\github\salute-developers\GigaAM\.venv\Scripts\python.exe'
 & $PY tools/model-debugging/reference/gigaam-multilingual-ctc/compare_gigaam_js_onnx.py `
   --reference tools/data/results/gigaam/multilingual-ctc-jfk-short-reference.json `
-  --js-features N:\models\gigaam\multilingual-ctc\captures\jfk-short.js-features.npy `
+  --js-features tools/data/results/gigaam/jfk-short.js-features.npy `
   --onnx-dir N:\models\onnx\gigaam\multilingual-ctc `
   --output tools/data/results/gigaam/multilingual-ctc-jfk-short-js-onnx-cpu.json
 ```
@@ -77,6 +77,8 @@ $PY = 'N:\github\salute-developers\GigaAM\.venv\Scripts\python.exe'
 
 ```powershell
 $env:GIGAAM_CTC_ONNX_SMOKE = '1'
+$env:GIGAAM_CTC_ONNX_DIR = 'N:\models\onnx\gigaam\multilingual-ctc'
+$env:GIGAAM_CTC_FP16_ONNX_DIR = 'N:\models\onnx\gigaam\multilingual-ctc-fp16'
 $env:NODE_OPTIONS = '--max-old-space-size=8192'
 npx vitest run tests/gigaam-ctc-onnx-backends.test.ts
 ```

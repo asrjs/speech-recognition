@@ -41,6 +41,8 @@ Before touching decoder logic:
 
 If Node deterministic prep is correct and browser output is not, the issue is
 probably in audio preparation, not the model implementation.
+Confirm the effective PCM before drawing that conclusion: matching source WAV
+hashes or a deterministic resampler do not establish equal model inputs.
 
 ### 2.5. Match the scoring pipeline before calling it a regression
 
@@ -102,8 +104,12 @@ For Parakeet/NeMo quality work:
 
 - reproduce in Node first
 - use local direct artifacts when possible
-- use simple linear resampling when validating parity
-- do not assume a shared `nemo128` frontend is correct without checking the
+- freeze and hash the official engine's effective float32 PCM when isolating
+  model parity; do not assume linear resampling matches the official resampler
+- record rate, channels, sample/valid lengths, padding and f32le identity; avoid
+  a PCM16 roundtrip that changes the captured input
+- validate normal source decoding/resampling independently of frozen-PCM runs
+- do not assume a shared `nemo128` processor is correct without checking the
   saved native preprocessor outputs first
 - treat the shared pure-JS NeMo frontend as the expected implementation path
   for new ports
@@ -111,6 +117,10 @@ For Parakeet/NeMo quality work:
   exporting `nemo80.onnx` or `nemo128.onnx` preprocessors
 
 Then move the same case into the browser demo.
+See the Orukeet same-input control in `playbooks/librivox-domain-parity.md`:
+69 versus 76 tokens became 69 exact tokens in both native Node and Bun when
+given the unchanged official PCM. This is output-only evidence, not feature
+numerical parity or an accepted replacement resampler.
 
 ### 6. Treat recurrent-state placement as a model-specific experiment
 

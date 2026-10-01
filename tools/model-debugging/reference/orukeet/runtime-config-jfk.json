@@ -1,0 +1,17 @@
+{
+  "sampleRate": 16000,
+  "frameShiftSeconds": 0.01,
+  "subsamplingFactor": 8,
+  "melBins": 128,
+  "preprocessorValidLengthMode": "onnx",
+  "preprocessorNormalization": "per_feature",
+  "predictionHiddenSize": 640,
+  "predictionLayers": 2,
+  "maxSymbolsPerStep": 10,
+  "vocabularySize": 8193,
+  "languages": ["en"],
+  "tokenizer": {
+    "kind": "sentencepiece",
+    "blankTokenId": 8192
+  }
+}

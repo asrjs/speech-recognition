@@ -43,6 +43,22 @@ describe('NeMo inspector artifact prerequisites (not numerical parity)', () => {
 });
 
 describe('NeMo inspector explicit selection (not model acceptance)', () => {
+  it('refuses an existing receipt before acquiring model resources', (context) => {
+    const { modelDir } = fixture(context);
+    const receipt = path.join(modelDir, 'prior.json');
+    fs.writeFileSync(receipt, '{"prior":true}');
+    const options = parseArgs([
+      '--model-id',
+      'parakeet-tdt-multilingual',
+      '--model-dir',
+      modelDir,
+      '--output',
+      receipt,
+    ]);
+    expect(() => validateInspectorOptions(options)).toThrow('existing output');
+    expect(fs.readFileSync(receipt, 'utf8')).toBe('{"prior":true}');
+  });
+
   it('accepts the catalogued multilingual TDT alias without an ID pattern', () => {
     const options = parseArgs(['--model-id', 'parakeet-tdt-multilingual', '--model-dir', '.']);
     expect(() => validateInspectorOptions(options)).not.toThrow();

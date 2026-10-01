@@ -88,3 +88,28 @@ When transcript quality looks suspicious:
 2. validate with pre-resampled shared audio
 3. only then blame model execution or decoding
 
+## 2026-10-01: Orukeet same-input control
+
+The original 22.05 kHz speech/silence fixture produced 69 official tokens versus
+76 library tokens when the inspector used linear resampling. Official NeMo file
+inference uses Lhotse's windowed-sinc preparation; the same raw WAV hash did not
+establish the same effective input. Preserve the original failed receipt rather
+than attributing it to the decoder or removing the fixture.
+
+The official preprocessor-input capture now records 649,600 mono float32 samples
+at 16 kHz, valid length 649,600, no right padding, f32le SHA-256
+`8f4293517daf07f433b307a4a971f7c17dc9ed348b5f72999945b217331ec3df`.
+Instrumentation left all six output controls unchanged. The public library in
+native Node and native Bun, using `--input-mode oracle-pcm`, matched the complete
+69-token sequence, frames, TDT durations and text, with successful awaited
+cleanup. Receipts under `tools/data/results/orukeet/`:
+
+- `official-speech-silence-waveform-summary-2026-10-01.json`
+- `library-node-native-fp32-speech-silence-same-pcm-2026-10-01.json`
+- `library-bun-native-fp32-speech-silence-same-pcm-2026-10-01.json`
+
+These remain `PARTIAL_PASS_OUTPUT_ONLY`. They isolate input preparation for this
+fixture; they do not pass feature numerics, prove a production resampling fix,
+or certify Orukeet WebGPU. The existing inspector rejects mismatched effective
+PCM metadata/hash and unsupported padded captures; legacy input captures remain
+UNVERIFIED. Keep ordinary source-audio/resampling tests as a separate lane.

@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "status": "EXPORTED_UNVALIDATED",
+  "model_id": "oruk/orukeet",
+  "model_revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+  "source_weight_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56",
+  "local_artifact_directory": "models/orukeet/onnx/fp32-nemo-2026-10-01",
+  "detailed_receipt": "models/orukeet/onnx/fp32-nemo-2026-10-01/export-receipt.json",
+  "exporter": "tools/nemo-tdt-onnx-export/export_nemo_fp32.py",
+  "export_exit_code": 0,
+  "dtype": "fp32",
+  "opset": 17,
+  "device": "cpu",
+  "cpu_threads": 4,
+  "encoder": {
+    "graph_bytes": 2138699,
+    "graph_sha256": "325c9405923f670eea47405806b02f64167723f36b745f5ddf62e776259aa7b8",
+    "external_file_count": 295,
+    "external_bytes": 2475088896
+  },
+  "decoder_joint": {
+    "graph_bytes": 72520893,
+    "graph_sha256": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90"
+  },
+  "vocab": {
+    "count_with_blank": 8193,
+    "blank_id": 8192,
+    "sha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742"
+  },
+  "acceptance": {
+    "graph_names_dtypes_ranks": "PASS",
+    "onnx_checker": "PASS",
+    "external_data_ranges_hashes": "PASS",
+    "library_sidecar_packaging": "UNTESTED",
+    "native_numerical_parity": "UNTESTED",
+    "fp32_token_text_parity": "UNTESTED",
+    "wasm_library_parity": "UNTESTED",
+    "browser_webgpu_parity": "UNTESTED",
+    "fp16": "NOT_STARTED"
+  },
+  "tool_validation": {
+    "python_syntax": "PASS",
+    "exporter_safety_unit_tests_passed": 7,
+    "js_no_onnx_processor_regression_failed_before_fix": true,
+    "inspector_artifact_tests_passed_after_fix": 3,
+    "inspector_test_strict_types": "PASS",
+    "nemo_inspector_executor_grid_stage_tests_passed": 38,
+    "core_typecheck": "PASS",
+    "simulation_is_model_parity": false
+  },
+  "audit_correction": {
+    "initial_initializer_only_file_count": 294,
+    "initial_initializer_only_bytes": 2434132992,
+    "missed_constant_attribute_bytes": 40955904,
+    "reason": "Initial audit walked graph initializers only; shared traversal now includes Constant attribute and nested tensors.",
+    "original_graph_unchanged": true,
+    "followup_repack_receipt": "models/orukeet/onnx/fp32-packed-2026-10-01/repack-receipt.json",
+    "followup_native_receipt": "tools/data/results/orukeet/native-fp32-stage-replay-2026-10-01.json",
+    "followup_scope": "Byte-identical repack and recorded-boundary native Python CPU PASS; export-time UNTESTED labels above remain historical, not current whole-port completion."
+  },
+  "next": "Complete pure-silence/long-audio oracles and explicit-family public-library processor/token/text parity on packed fp32 assets; native recorded-boundary replay has passed, but library/browser parity and fp16 remain open."
+}

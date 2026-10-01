@@ -128,9 +128,14 @@ list is one workstream, not the complete web/Node/Bun library backlog.
   remains 313 mismatches; counterfactual official-statistics normalization gives 314. Full-FFT controls remain 129/120 versus counterfactual 131/121; official-
   complex controls remain zero. Closure is below `8.51e-16`; reference/candidate
   reconstruction passes. Production processor and tolerances are unchanged.
-  Next: correlate signed filterbank-weighted power error and active FFT bins at
-  failing coordinates in both low and high mel bands, not another stats-only
-  or unproven production replacement. Existing P02-P08 gates remain open.
+  Follow-up weighted-power attribution is complete in
+  `library-feature-weighted-power-jfk-2026-10-01.json`: all four controls
+  reconstruct every valid raw-mel value exactly; power/log deltas dominate
+  reference projection rounding at failed coordinates in low and high bands.
+  Full-FFT controls remain 129/120; production remains 313. Next: an independent
+  direct DFT on identical canonical windowed bytes at these coordinates,
+  compared with official float32 and both JS FFT controls. No production FFT
+  replacement is justified yet. Existing P02-P08 gates remain open.
 - G2/G3/P09 production lifecycle slice (2026-10-01): NeMo TDT and Whisper
   now reject creation after model disposal and disposal-raced initialization
   with `model-disposed`; session/model repeated disposal awaits the ongoing

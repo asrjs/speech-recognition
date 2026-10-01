@@ -87,6 +87,8 @@ export function parseArgs(args = process.argv.slice(2)) {
 }
 
 export function validateInspectorOptions(options) {
+  if (options.output && fs.lstatSync(options.output, { throwIfNoEntry: false }))
+    throw new Error(`Refusing existing output: ${options.output}`);
   if (!options.modelDir)
     throw new Error(
       'Provide --model-dir or ASRJS_NEMO_MODEL_DIR; no machine-specific model directory is assumed.',
@@ -734,7 +736,7 @@ async function main() {
   const encoded = JSON.stringify(payload, null, 2);
   if (options.output) {
     fs.mkdirSync(path.dirname(options.output), { recursive: true });
-    fs.writeFileSync(options.output, encoded, 'utf8');
+    fs.writeFileSync(options.output, encoded, { encoding: 'utf8', flag: 'wx' });
   } else {
     console.log(encoded);
   }
