@@ -306,9 +306,23 @@ Reproduce with a fresh output, after building:
 Nine additional weight-free regressions cover analytic DFT sign/bin/frame
 values, cancellation, immutable canonical inputs, invalid inputs, support union,
 engine-error separation, signed-zero byte differences, and unknown empty
-support. Next capture the actual packed-real FFT's complex components before
-rounding/power on identical aligned frame bytes; compare against this control
-without speculative production edits or tolerance changes.
+support.
+
+The packed follow-up `library-feature-packed-dft-jfk-2026-10-01.json` captures
+raw complex components before rounding/power, preserving the existing aligned
+control's power formula. Upper paired bins and the quarter bin are conjugated
+for the negative-exponent DFT convention; power remains unchanged. Canonical
+frame bytes match the full-FFT controls exactly. At all 1,003 selected pairs,
+maximum component error to DFT is `2.47e-15` and every f32-rounded component
+matches. The aligned packed control still fails at 120 feature coordinates;
+unmodified production still fails at 313. Forty-four probe tests pass, including
+signed complex agreement with full FFT and exact rounded-power reconstruction.
+The first integration run stopped on a missing normalization entry before
+writing a receipt; after reverting that edit, shared control-key lists now keep
+normalization, attribution and DFT analysis synchronized. The successful run
+exits 1 because feature acceptance still fails, not because the harness broke.
+Next isolate unmodified production frame/product deltas. This is not a
+production FFT replacement, a tolerance change, or accepted model parity.
 
 All reference/diagnostic commands now require fresh receipt paths and reject
 output/input aliases before work. Source acquisition updates only the new

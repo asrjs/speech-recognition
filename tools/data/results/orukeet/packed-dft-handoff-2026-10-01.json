@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE",
+  "sample_id": "jfk-short",
+  "receipt": "tools/data/results/orukeet/library-feature-packed-dft-jfk-2026-10-01.json",
+  "receipt_sha256": "884733faee052dae8dda1dd9c4b15c9326a5eac7e6d8ab71a59045074494f49f",
+  "diagnostic_sha256": "c0fcce7cf13f0d50be16492837bd6651dea7703b127a140c9cad7a84ab2dde7c",
+  "frame_sha256_f32le": "e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30",
+  "selected_frame_bin_count": 1003,
+  "component_count": 2006,
+  "packed_max_abs_component_error_to_dft": 2.470205572209505e-15,
+  "packed_mean_abs_component_error_to_dft": 2.4703514562168684e-16,
+  "packed_rounded_dft_equal_bins": 1003,
+  "official_max_abs_component_error_to_dft": 8.215078953299846e-7,
+  "normalized_feature_mismatches": {
+    "unmodified_production": 313,
+    "aligned_packed_rounded_power": 120,
+    "full_fft_float32": 129,
+    "full_fft_float64": 120,
+    "official_complex_library_power": 0,
+    "official_complex_rounded_power": 0
+  },
+  "feature_atol": 1e-5,
+  "feature_rtol": 1e-4,
+  "official_processor_reproduction_max_abs_error": 0,
+  "packed_valid_raw_projection_reconstruction_max_abs_error": 0,
+  "probe_unit_tests_passed": 44,
+  "successful_diagnostic_exit_code": 1,
+  "first_run": "Stopped before receipt write: packed control absent from normalization decomposition. Integration edit reverted; shared control-key lists used for corrected run.",
+  "limitations": [
+    "Packed capture uses official-aligned float32 frame products and rounded power, not unchanged production audio preparation.",
+    "Independent sin/cos float64 DFT is an approximation on selected support, not exact arithmetic or all-input certification.",
+    "Legacy JFK capture has no original effective PCM bytes; canonical frames come from independently reproduced official processor.",
+    "No production math, acceptance tolerances, weights or native/browser backends changed. Model parity remains incomplete."
+  ],
+  "next_experiment": "Capture unmodified production windowed frames and complex components; isolate preemphasis/window-product deltas from aligned control's remaining reference arithmetic differences."
+}

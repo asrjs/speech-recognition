@@ -120,6 +120,12 @@ async function experiment(name, { window = false, windowProduct = false, filterb
     ` + candidateSource.slice(stop + end.length);
   }
   if (complexPower) {
+    const fftBoundary = 'fft(this.fftRe, this.fftIm, halfN, this.twiddlesHalf);';
+    if (candidateSource.split(fftBoundary).length !== 2) throw new Error('Packed FFT input capture contract changed');
+    candidateSource = candidateSource.replace(fftBoundary, `for (let sample = 0; sample < N_FFT; sample++) {
+      capturedFrames[frameIndex * N_FFT + sample] = sample % 2 === 0
+        ? this.fftRe[sample >> 1] : this.fftIm[sample >> 1];
+    }\n` + fftBoundary);
     for (const [before, after] of [
       ['this.powerBuf[0] = (z0r + z0i) * (z0r + z0i);', 'this.powerBuf[0] = diagnosticComplexPower(z0r + z0i, 0);'],
       ['this.powerBuf[halfN] = (z0r - z0i) * (z0r - z0i);', 'this.powerBuf[halfN] = diagnosticComplexPower(z0r - z0i, 0);'],
@@ -129,6 +135,19 @@ async function experiment(name, { window = false, windowProduct = false, filterb
     ]) {
       if (candidateSource.split(before).length !== 2) throw new Error('Complex power contract changed');
       candidateSource = candidateSource.replace(before, after);
+    }
+    for (const [bin, re, im] of [
+      ['0', 'z0r + z0i', '0'], ['halfN', 'z0r - z0i', '0'],
+      ['k', 'xkR', 'xkI'], ['halfN - k', 'xnkR', '-xnkI'],
+      ['quarterN', 'quarterRe', '-quarterIm'],
+    ]) {
+      const boundary = `this.powerBuf[${bin}] = diagnosticComplexPower(`;
+      if (candidateSource.split(boundary).length !== 2) throw new Error('Packed complex capture contract changed');
+      // Paired upper/quarter bins require conjugation for the negative-exponent
+      // DFT convention. The original power expression remains unchanged.
+      candidateSource = candidateSource.replace(boundary,
+        `capturedReal[(${bin}) * nFrames + frameIndex] = ${re};
+         capturedImag[(${bin}) * nFrames + frameIndex] = ${im};\n` + boundary);
     }
   }
   if (complexPower || fullFft || referenceComplexPower === 'fp32-rounded') {
@@ -194,12 +213,12 @@ async function experiment(name, { window = false, windowProduct = false, filterb
     };
   }
   const result = processor.process(pcm);
-  const frameBytes = fullFft ? Buffer.alloc(variant.capturedFrames.length * 4) : null;
+  const frameBytes = fullFft || complexPower ? Buffer.alloc(variant.capturedFrames.length * 4) : null;
   if (frameBytes) variant.capturedFrames.forEach((value, index) => frameBytes.writeFloatLE(value, index * 4));
   return capturePower ? { features: Array.from(result.features), raw: capturedRaw, power: variant.capturedPower,
     shape: [1, (variant.MEL_CONSTANTS.N_FFT >> 1) + 1, result.frameCount],
     ...(referenceComplexPower ? { real: variant.capturedReal, imag: variant.capturedImag } : {}),
-    ...(fullFft ? { real: variant.capturedReal, imag: variant.capturedImag,
+    ...(fullFft || complexPower ? { real: variant.capturedReal, imag: variant.capturedImag,
       frames: variant.capturedFrames, frameShape: [1, result.frameCount, variant.MEL_CONSTANTS.N_FFT],
       frameDtype: 'float32', frameLayout: 'batch-frame-sample',
       frameBytesEncoding: 'base64-f32le', frameBytesF32LE: frameBytes.toString('base64') } : {}) } : Array.from(result.features);
@@ -729,18 +748,18 @@ def main():
             "layout": "batch-frame-sample", "encoding": "base64-f32le", "sha256_f32le": hashlib.sha256(
                 frames.astype("<f4", copy=False).tobytes()).hexdigest(),
             "scratch_dtype": "float32" if name == "f32" else "float64"}
+    fft_control_keys = ("complexPowerCapture", "fullFftF32Capture", "fullFftF64Capture")
+    attribution_keys = (*fft_control_keys, "referenceComplexLibraryCapture", "referenceComplexRoundedCapture")
     decomposition = {}
     for name, candidate_raw, candidate_features in [
         ("production", js["raw"], js["normalized"]),
-        *[(key, js[key]["raw"], js[key]["features"]) for key in (
-            "fullFftF32Capture", "fullFftF64Capture", "referenceComplexLibraryCapture", "referenceComplexRoundedCapture")],
+        *[(key, js[key]["raw"], js[key]["features"]) for key in attribution_keys],
     ]:
         decomposition[name] = normalization_decomposition(raw.numpy(), reshape(candidate_raw),
             normalized.numpy(), reshape(candidate_features), reference_mean.numpy(), reference_std.numpy(),
             valid_length=int(valid_length[0]), atol=1e-5, rtol=1e-4)
     attribution = {}
-    for key in ("fullFftF32Capture", "fullFftF64Capture",
-            "referenceComplexLibraryCapture", "referenceComplexRoundedCapture"):
+    for key in attribution_keys:
         capture = js[key]
         attribution[key] = power_error_attribution(power.numpy(),
             np.asarray(capture["power"], dtype=np.float32).reshape(power.shape),
@@ -749,7 +768,7 @@ def main():
             mismatch_coordinates=[point["coordinate"] for point in decomposition[key]["mismatches"]],
             valid_length=int(valid_length[0]), log_zero_guard=js["logZeroGuard"])
         metrics[f"{key}_raw_power_projection"] = attribution[key]["candidate_raw_reconstruction"]
-    fft_controls = {key: js[key] for key in ("fullFftF32Capture", "fullFftF64Capture")}
+    fft_controls = {key: js[key] for key in fft_control_keys}
     dft_diagnostic = fft_dft_diagnostic(official_frames_array, official_complex_array,
         power.numpy(), fft_controls, {key: [{"coordinate": point["coordinate"],
             "active_bins": point["active_bins"]} for point in attribution[key]["mismatches"]]

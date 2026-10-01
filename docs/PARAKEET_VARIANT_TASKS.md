@@ -36,11 +36,18 @@ are `8.22e-7` and `5.14e-7`. This weakens an incorrect full-Float64 FFT algorith
 hypothesis, not every possible production processor defect. Production still
 has 313 feature mismatches at unchanged tolerances. See the small
 `tools/data/results/orukeet/selected-dft-and-commit-handoff-2026-10-01.json`.
-Next bounded P03 experiment: capture the actual packed-real FFT's complex
-components before rounding/power, using the same canonical aligned frame bytes,
-and compare its failed-coordinate support against this DFT control. Keep
-reference complex64 rounding and mel/log/statistics amplification separate;
-do not replace production math or relax the oracle from this diagnostic alone.
+The follow-up packed-real control is now captured in
+`tools/data/results/orukeet/library-feature-packed-dft-jfk-2026-10-01.json`.
+Its raw complex components agree with independent DFT within `2.47e-15` at
+all 1,003 selected frame/bin pairs; all rounded components match. This control
+uses official-aligned float32 preemphasis/window products and rounded power,
+not the unmodified production pipeline. Its 120 feature mismatches persist;
+production still has 313. Forty-four weight-free probe tests pass.
+Next bounded P03 experiment: capture unmodified production windowed frames
+and complex components, then isolate its preemphasis/window-product deltas
+from the aligned control's remaining reference complex64 arithmetic deltas.
+Keep mel/log/statistics amplification separate; do not replace production
+math or relax the oracle from this diagnostic alone.
 
 ## Ordered tasks
 

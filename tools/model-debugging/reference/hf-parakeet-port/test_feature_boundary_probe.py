@@ -88,6 +88,26 @@ class FeatureBoundaryProbeTests(unittest.TestCase):
         self.assertEqual(len(capture["power"]), 257 * 11)
         self.assertTrue(all(math.isfinite(value) and value >= 0 for value in capture["power"]))
 
+    def test_packed_complex_capture_matches_full_fft_on_identical_frame_bytes(self):
+        import numpy as np
+        packed = self.result["complexPowerCapture"]
+        full = self.result["fullFftF64Capture"]
+        self.assertEqual(packed["frameBytesF32LE"], full["frameBytesF32LE"])
+        for component in ("real", "imag"):
+            np.testing.assert_allclose(packed[component], full[component], atol=1e-12, rtol=1e-12)
+        # Upper paired bins and N/4 need the conjugate imaginary sign;
+        # equal powers alone would conceal a sign error in instrumentation.
+        self.assertGreater(max(abs(value) for value in packed["imag"][129 * 11:256 * 11]), 0)
+
+    def test_packed_complex_capture_reconstructs_unchanged_rounded_power(self):
+        import numpy as np
+        capture = self.result["complexPowerCapture"]
+        real = np.asarray(capture["real"], dtype=np.float32)
+        imag = np.asarray(capture["imag"], dtype=np.float32)
+        squared = np.float32(np.float32(real * real) + np.float32(imag * imag))
+        magnitude = np.asarray([np.float32(math.sqrt(float(value))) for value in squared])
+        np.testing.assert_array_equal(capture["power"], np.float32(magnitude * magnitude))
+
     def test_official_complex_injection_preserves_layout_and_library_power_arithmetic(self):
         import numpy as np
         boundary = inputs()["referenceComplex"]
