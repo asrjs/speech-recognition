@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "status": "UPSTREAM_INPUT_ERROR_AMPLIFICATION_SUPPORTED",
+  "scope": "Second LSTM selected recorded inputs; diagnostic only, no production change",
+  "graph_sha256": "d5261164f3341f9aac5ac044172473843ccffa9c09283908a0b86ada3fc51ca7",
+  "native_control": {"path": "layer2-matched-input-2026-10-02/native-control.json", "sha256": "75c9a7de9673fdfc3d42b6f06bd654fb2d027e7e52ff2ed0c5614704207af936"},
+  "browser_results": [
+    {"path": "layer2-matched-input-2026-10-02/browser-wasm.json", "sha256": "47abbf33c0089a356c4960ce5740b511078d512fd866831243b5590301db8735", "calls": 12, "same_input_cpu_comparisons": "PASS", "dispatches_per_call": 0},
+    {"path": "layer2-matched-input-2026-10-02/browser-webgpu.json", "sha256": "5220b92501a78790655d4fe6deb302dfaa31e59109bdfd7c20e622a48fa4a020", "calls": 12, "same_input_cpu_comparisons": "PASS", "dispatches_per_call": 5}
+  ],
+  "extraction_control": "One unchanged LSTM node and three byte-identical embedded initializers; ONNX checker PASS; native-input CPU outputs exactly reproduce full native taps",
+  "input_matrix": "Two bindings each with native, WASM and WebGPU recorded X/h0/c0; browser repeats twice",
+  "same_origin_full_graph_output_exact": true,
+  "repeat_outputs_exact": true,
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "failed_coordinates": [
+    {"step": 139, "cell_index": 462, "native": 0.0010277926921844482, "cpu_on_webgpu_input": 0.0010392069816589355, "full_webgpu": 0.0010398328304290771, "upstream_delta": 0.000011414289474487305, "remaining_delta": 0.0000006258487701416016},
+    {"step": 173, "cell_index": 497, "native": 0.02978471666574478, "cpu_on_webgpu_input": 0.029798474162817, "full_webgpu": 0.029798440635204315, "upstream_delta": 0.000013757497072219849, "remaining_delta": -0.000000033527612686157227}
+  ],
+  "conclusion": "Changing only X to captured WebGPU upstream values on CPU reproduces the cell tolerance failures; layer-2 backend comparisons with identical inputs pass. Investigate layer-1 output arithmetic before changing layer-2 implementation",
+  "limitations": "Two selected bindings only; CPU ORT diagnostic reference is not the independent official oracle; per-node provider unproven; browser probes were inline, not a persistent CLI",
+  "errors": [],
+  "next": "Matched-input first-LSTM comparison and gate/linear boundary localization; retain full official oracle and production feature gates"
+}

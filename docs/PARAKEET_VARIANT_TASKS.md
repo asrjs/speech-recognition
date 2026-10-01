@@ -744,3 +744,25 @@ probe reusing the existing session bridge, not a new persistent CLI. Raw local
 receipts retain all tap values; the small tracked evidence pointer is
 `browser-lstm-taps-handoff-2026-10-02.json`. Production feature and full WebGPU
 head failures remain open independently.
+
+### Matched-input second-LSTM control (2026-10-02)
+
+A checker-valid extracted diagnostic preserves the second LSTM node and its
+three embedded weight tensors byte-for-byte. CPU on native captured inputs
+exactly reproduces full native taps. Six input cases (two bindings, each with
+native/WASM/WebGPU upstream X and initial h/c) run twice per browser backend.
+All 24 browser calls pass same-input CPU comparisons at unchanged tolerances;
+each backend's own captured-input case reproduces full-graph hidden/cell outputs
+exactly, and repeat outputs are exact. Initial h/c were already bit-identical,
+so the input-origin difference here is X from the first LSTM.
+
+CPU on the recorded WebGPU X reproduces the cell failures. At cell coordinates
+462/497 its upstream-induced deltas are `1.14143e-5` / `1.37575e-5`, versus
+remaining full-WebGPU deltas of `6.25849e-7` / `-3.35276e-8`. This supports
+upstream-error amplification, not a second-LSTM-only arithmetic fix. Investigate
+first-LSTM output arithmetic next. The isolated WebGPU session submits five
+compute dispatches/call; per-node provider still is not proven. This is selected
+diagnostic evidence, not whole-model parity or performance acceptance.
+
+Small receipt: `layer2-matched-input-handoff-2026-10-02.json`; raw local cases
+and graph: `tools/data/results/orukeet/layer2-matched-input-2026-10-02/`.
