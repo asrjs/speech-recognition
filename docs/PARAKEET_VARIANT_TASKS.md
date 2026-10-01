@@ -59,10 +59,12 @@ The cumulative preemphasis/window controls and pure-silence capture are now
 recorded below. The contiguous f32 cascade diagnostic's width-8 candidate
 matches normalization of the same official raw mel on JFK and pure silence;
 width 16 fails silence. This does not yet change the production JS processor.
-Next bounded P03 experiment: implement the observed reduction order in a
-temporary JS normalization control, compare mean/std/features across physical
-and valid lengths and on actual speech/silence raw mel, then combine it with
-aligned arithmetic controls before proposing any production processor change.
+The temporary JS control now matches Python across 58 size/valid-prefix/width
+cases and nine real raw-mel boundaries. All silence controls are exact; JFK
+still fails for production/aligned FFT raw inputs, while official complex
+injections pass. Next bounded P03 experiment: localize the remaining valid-prefix
+raw-mel/complex64 rounding differences on actual failure support; distinguish
+FFT rounding from mel/log accumulation before any production processor change.
 Keep the aligned control's residual reference complex64 differences and
 mel/log/statistics amplification separate. Existing P02–P08 gates remain open.
 
@@ -426,6 +428,36 @@ remain unchanged: these are Python numeric diagnostics, not a JS fix or accepted
 port. Five new weight-free reduction tests, 53 existing probe tests and eight
 output safety tests pass. Full suite/native/browser acceptance was not rerun.
 Small receipt: `normalization-cascade-handoff-2026-10-01.json`.
+
+### Temporary JS normalization and raw-boundary discrimination (2026-10-01)
+
+The diagnostic-only `normalization-reduction.mjs` has five small Node tests;
+Python has six reduction tests (including byte-exact cross-language feature,
+mean and std across 58 layouts) plus 56 probe tests. Eight output safety tests
+pass. Neither the public package nor shared processor changed.
+
+On nine named real raw-mel boundaries, JS/Python features/mean/std match exactly
+for JFK and pure silence. With width 8, all silence normalized outputs match the
+official capture exactly. JFK official-raw normalization max error is `2.38e-7`;
+official-complex library/rounded-power controls pass at max `2.74e-6` / `2.98e-6`.
+However production raw still fails at 315 coordinates; aligned window-products,
+complex-power, magnitude round-trip, full-f32/full-f64 FFT controls fail at
+122 / 121 / 122 / 129 / 121. Thus fixing normalization alone is insufficient.
+
+Raw-mel comparisons must use equivalent valid prefixes: official feature
+extraction masks its invalid physical tail, whereas captured JS raw buffers
+remain unmasked. Initial full-buffer raw comparisons produced a misleading
+128-coordinate failure and are superseded by fresh `*-prefix` receipts; no
+earlier evidence is overwritten. A regression now proves invalid tails are
+excluded without hiding valid-prefix errors. Raw input hashes bind complete
+buffers; prefix metrics explicitly report both exact and original tolerances.
+All corrected JFK valid raw prefixes pass the original tolerance, but exact
+differences remain (production max `3.55e-4`; aligned complex-power `2.71e-4`;
+official-complex controls `1.91e-6`). Normalization amplifies some small raw
+differences beyond normalized-feature acceptance; raw tolerant PASS alone must
+not promote this port. Silence raw valid prefixes are exact on every control.
+The overall diagnostic still exits 1. Browser/WASM and complete model acceptance
+remain open. Receipt: `js-normalization-cascade-handoff-2026-10-01.json`.
 
 ## Upstream recipes to inspect during export
 

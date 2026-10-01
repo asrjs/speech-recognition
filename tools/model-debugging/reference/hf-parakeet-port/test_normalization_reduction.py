@@ -1,10 +1,44 @@
 """Weight-free contracts for the diagnostic-only float32 reduction candidate."""
 import unittest
+import json
+import subprocess
+from pathlib import Path
 import numpy as np
 from normalization_reduction import cascade_sum_rows, normalize_candidate
 
 
 class ReductionTests(unittest.TestCase):
+    def test_js_candidate_matches_python_on_varied_masked_row_lengths(self):
+        cases = []
+        for frames in (1, 2, 15, 16, 17, 63, 64, 65, 100, 101, 128, 129, 257, 1101, 4097):
+            indexes = np.arange(frames)
+            rows = np.stack([np.full(frames, -16.63553237915039, dtype=np.float32),
+                (((indexes*17)%83)-41).astype(np.float32)/32,
+                np.where(indexes%3 == 0, 1e6, np.where(indexes%3 == 1, -1e6, 0.125)).astype(np.float32)])
+            for valid in sorted({frames, max(1, frames-1)}):
+                for width in (8, 16):
+                    cases.append({"frames": frames, "valid": valid, "width": width, "values": rows.ravel().tolist()})
+        code = '''
+import {normalizeCandidate} from './tools/model-debugging/reference/hf-parakeet-port/normalization-reduction.mjs';
+let input=''; for await (const chunk of process.stdin) input+=chunk;
+const results=JSON.parse(input).map(c=>{
+ const r=normalizeCandidate(Float32Array.from(c.values),c.frames,c.valid,c.width);
+ return Object.fromEntries(Object.entries(r).map(([k,v])=>[k,Array.from(v)]));
+}); console.log(JSON.stringify(results));
+'''
+        completed = subprocess.run(['node', '--input-type=module', '-e', code],
+            cwd=Path(__file__).resolve().parents[4], input=json.dumps(cases), text=True,
+            capture_output=True, timeout=30, check=True)
+        observations = json.loads(completed.stdout)
+        self.assertEqual(len(observations), len(cases))
+        for case, observed in zip(cases, observations):
+            with self.subTest(frames=case['frames'], valid=case['valid'], width=case['width']):
+                raw = np.asarray(case['values'], dtype=np.float32).reshape(3, case['frames'])
+                features, mean, std = normalize_candidate(raw, case['valid'], case['width'])
+                for key, expected in (('features', features.ravel()), ('mean', mean), ('std', std)):
+                    actual = np.asarray(observed[key], dtype=np.float32)
+                    self.assertEqual(actual.astype('<f4').tobytes(), expected.astype('<f4').tobytes())
+
     def test_exact_integer_sums_across_vector_and_cascade_boundaries(self):
         for width in (8, 16):
             for size in (1, 2, 15, 16, 17, 63, 64, 65, 100, 101, 128, 129, 257, 1101):

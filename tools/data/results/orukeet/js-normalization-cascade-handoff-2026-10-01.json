@@ -1,0 +1,30 @@
+{
+  "status": "PARTIAL_PASS_NORMALIZATION_CONTROL_PRODUCTION_FEATURES_FAIL",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "diagnostic_sha256": "b17c3a872cb1e68351ff97355f5ba41464635d212b85a4e8271549dd87688c33",
+  "js_candidate_sha256": "080df42ecbed65b1f5f876490059660b963f13bbad3281b240d75537a6e973be",
+  "width": 8,
+  "cross_language_synthetic_layouts": 58,
+  "cross_language_exact": "features, mean and std bytes match in synthetic layouts and all nine real named raw boundaries",
+  "jfk": {
+    "receipt": "js-normalization-cascade-jfk-prefix-2026-10-01.json.gz",
+    "sha256": "bc06a1abfc5956fa4079f467517887c932d196e98f634acc85485b35692a7e8e",
+    "normalized_failures": {"officialRaw": 0, "productionRaw": 315, "alignedWindowProducts": 122, "alignedComplexPower": 121, "magnitudeRoundTrip": 122, "fullFftF32": 129, "fullFftF64": 121, "officialComplexLibrary": 0, "officialComplexRounded": 0},
+    "raw_valid_prefix_tolerant_failures_all_controls": 0,
+    "raw_exact_mismatches": {"officialRaw": 0, "productionRaw": 67780, "alignedWindowProducts": 50515, "alignedComplexPower": 49521, "magnitudeRoundTrip": 49614, "fullFftF32": 50635, "fullFftF64": 49521, "officialComplexLibrary": 13013, "officialComplexRounded": 7379},
+    "official_raw_normalization_max_abs_error": 2.384185791015625e-7,
+    "official_complex_library_normalization_max_abs_error": 2.7418136596679688e-6,
+    "official_complex_rounded_normalization_max_abs_error": 2.9802322387695312e-6
+  },
+  "silence": {
+    "receipt": "js-normalization-cascade-silence-prefix-2026-10-01.json.gz",
+    "sha256": "99c494cdd6dfbe95c8f6522c868a03a8da7647a6225f45b27e277e00130f6384",
+    "raw_valid_prefix_exact_failures_all_controls": 0,
+    "normalized_exact_failures_all_controls": 0
+  },
+  "superseded_raw_metrics": "Earlier js-normalization-cascade-*-final receipts compared official masked physical tails with unmasked JS raw buffers; only those full-buffer raw metrics are not equivalent. Prefix receipts are authoritative for raw attribution. Earlier receipts preserved.",
+  "validation": {"node_tests_pass": 5, "python_reduction_tests_pass": 6, "probe_tests_pass": 56, "artifact_output_tests_pass": 8, "syntax_and_diff": "PASS", "full_suite": "NOT_RUN"},
+  "limits": ["Temporary diagnostic JS module is not exported in the runtime package", "Original production features and tolerance gates remain unchanged", "Both full diagnostic runs exit 1 due to feature failures", "Orukeet full native/WASM/browser acceptance remains incomplete"],
+  "next": "Localize valid-prefix raw-mel and complex64 rounding differences on actual normalized-feature failure support; distinguish FFT rounding from mel/log accumulation before a production processor patch."
+}

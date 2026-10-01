@@ -32,6 +32,26 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_named_raw_normalization_controls_match_python_candidate(self):
+        import numpy as np
+        from normalization_reduction import normalize_candidate
+        sources = {'officialRaw': inputs()['referenceRaw'],
+            'productionRaw': self.result['productionCapture']['raw'],
+            'alignedWindowProducts': self.result['frameArithmeticCaptures']['windowProduct']['raw'],
+            'alignedComplexPower': self.result['complexPowerCapture']['raw'],
+            'magnitudeRoundTrip': self.result['powerCapture']['raw'],
+            'fullFftF32': self.result['fullFftF32Capture']['raw'],
+            'fullFftF64': self.result['fullFftF64Capture']['raw'],
+            'officialComplexLibrary': self.result['referenceComplexLibraryCapture']['raw'],
+            'officialComplexRounded': self.result['referenceComplexRoundedCapture']['raw']}
+        self.assertEqual(set(sources), set(self.result['normalizationControls']))
+        for name, values in sources.items():
+            with self.subTest(boundary=name):
+                features, mean, std = normalize_candidate(np.asarray(values, dtype=np.float32).reshape(8, 11), 10, 8)
+                observed = self.result['normalizationControls'][name]
+                for key, expected in (('features', features.ravel()), ('mean', mean), ('std', std)):
+                    self.assertEqual(np.asarray(observed[key], dtype='<f4').tobytes(), expected.astype('<f4').tobytes())
+
     @classmethod
     def setUpClass(cls):
         processor = probe_module.ROOT / "dist/audio/js-mel.js"
@@ -728,6 +748,23 @@ class PowerErrorAttributionTests(unittest.TestCase):
 
 
 class DiagnosticOutputTests(unittest.TestCase):
+    def test_raw_prefix_comparator_excludes_only_invalid_tail(self):
+        import numpy as np
+        reference = np.asarray([[1, 2, 0]], dtype=np.float32)
+        candidate = np.asarray([[1, 2, 999]], dtype=np.float32)
+        before = candidate.tobytes()
+        self.assertTrue(probe_module.compare_raw_valid_prefix(reference, candidate, 2)['exact']['allclose'])
+        self.assertEqual(candidate.tobytes(), before)
+        candidate[0, 1] = 3
+        self.assertEqual(probe_module.compare_raw_valid_prefix(reference, candidate, 2)['exact']['mismatch_count'], 1)
+
+    def test_raw_prefix_comparator_refuses_invalid_length_or_shape(self):
+        import numpy as np
+        reference = np.ones((1, 3), dtype=np.float32)
+        for length in (True, 0, 4, 1.5):
+            with self.assertRaises(ValueError): probe_module.compare_raw_valid_prefix(reference, reference, length)
+        with self.assertRaises(ValueError): probe_module.compare_raw_valid_prefix(reference, reference[:, :2], 2)
+
     def test_gzip_report_preserves_complete_payload_and_refuses_existing_output(self):
         report = {"status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE", "values": [0, -0.0, 1.5], "text": "Türkçe"}
         with tempfile.TemporaryDirectory() as directory:

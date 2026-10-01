@@ -24,6 +24,7 @@ from normalization_reduction import normalize_candidate
 NODE_PROBE = r'''
 import { JSMelProcessor, MEL_CONSTANTS } from './dist/audio/js-mel.js';
 import { readFileSync } from 'node:fs';
+import { normalizeCandidate } from './tools/model-debugging/reference/hf-parakeet-port/normalization-reduction.mjs';
 let input = ''; for await (const chunk of process.stdin) input += chunk;
 const data = JSON.parse(input);
 const pcm = Float32Array.from(data.pcm);
@@ -265,8 +266,21 @@ const referenceComplexLibraryCapture = await experiment('reference-complex-libra
   windowProduct: true, filterbank: true, referenceComplexPower: 'library', capturePower: true });
 const referenceComplexRoundedCapture = await experiment('reference-complex-rounded', { window: true,
   windowProduct: true, filterbank: true, referenceComplexPower: 'fp32-rounded', capturePower: true });
+const normalizationInputs = {
+  officialRaw: data.referenceRaw, productionRaw: productionCapture.raw,
+  alignedWindowProducts: frameArithmeticCaptures.windowProduct.raw,
+  alignedComplexPower: complexPowerCapture.raw,
+  magnitudeRoundTrip: powerCapture.raw, fullFftF32: fullFftF32Capture.raw,
+  fullFftF64: fullFftF64Capture.raw, officialComplexLibrary: referenceComplexLibraryCapture.raw,
+  officialComplexRounded: referenceComplexRoundedCapture.raw,
+};
+const normalizationControls = {};
+for (const [name, values] of Object.entries(normalizationInputs)) {
+  const result = normalizeCandidate(Float32Array.from(values), raw.frameCount, raw.length, 8);
+  normalizationControls[name] = { features: Array.from(result.features), mean: Array.from(result.mean), std: Array.from(result.std) };
+}
 console.log(JSON.stringify({ raw: Array.from(raw.features), normalized: Array.from(normalized.features),
-  sameRawNormalized: Array.from(sameRawNormalized), frameCount: raw.frameCount, validLength: raw.length,
+  sameRawNormalized: Array.from(sameRawNormalized), normalizationControls, frameCount: raw.frameCount, validLength: raw.length,
   experiments, powerCapture, productionCapture, frameArithmeticCaptures, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
   referenceComplexLibraryCapture, referenceComplexRoundedCapture,
   logZeroGuard: MEL_CONSTANTS.LOG_ZERO_GUARD, nodeVersion: process.version }));
@@ -690,6 +704,16 @@ def power_error_attribution(reference_power, candidate_power, filterbank,
         "per_mel": per_mel, "mismatches": points}
 
 
+def compare_raw_valid_prefix(reference, candidate, valid_length):
+    """Compare equivalent raw samples, excluding differently masked physical tails."""
+    if (type(valid_length) is not int or reference.ndim != 2 or candidate.shape != reference.shape
+            or not 1 <= valid_length <= reference.shape[1]):
+        raise ValueError("Raw-mel valid-prefix shape/length contract differs")
+    left, right = reference[:, :valid_length], candidate[:, :valid_length]
+    return {"tolerant": compare_tensors(left, right, atol=1e-5, rtol=1e-4),
+        "exact": compare_tensors(left, right, atol=0, rtol=0)}
+
+
 def write_diagnostic_report(path, report):
     """Preserve full evidence with optional gzip, never overwrite an earlier run."""
     if path.suffix == ".gz":
@@ -787,6 +811,31 @@ def main():
     if js["frameCount"] != raw.shape[2] or js["validLength"] != int(valid_length[0]):
         raise ValueError("JS/reference frame or valid-length mismatch")
     reshape = lambda values: np.asarray(values, dtype=np.float32).reshape(raw.shape)
+    normalization_input_keys = {
+        "officialRaw": raw.numpy()[0], "productionRaw": reshape(js["productionCapture"]["raw"])[0],
+        "alignedWindowProducts": reshape(js["frameArithmeticCaptures"]["windowProduct"]["raw"])[0],
+        "alignedComplexPower": reshape(js["complexPowerCapture"]["raw"])[0],
+        "magnitudeRoundTrip": reshape(js["powerCapture"]["raw"])[0],
+        "fullFftF32": reshape(js["fullFftF32Capture"]["raw"])[0],
+        "fullFftF64": reshape(js["fullFftF64Capture"]["raw"])[0],
+        "officialComplexLibrary": reshape(js["referenceComplexLibraryCapture"]["raw"])[0],
+        "officialComplexRounded": reshape(js["referenceComplexRoundedCapture"]["raw"])[0]}
+    if set(js["normalizationControls"]) != set(normalization_input_keys):
+        raise ValueError("JS normalization control boundaries differ")
+    js_normalization_controls = {}
+    for name, input_values in normalization_input_keys.items():
+        candidate, mean, std = normalize_candidate(input_values, int(valid_length[0]), 8)
+        observation = js["normalizationControls"][name]
+        observed_features = reshape(observation["features"])[0]
+        js_normalization_controls[name] = {
+            "scope": "Temporary JS f32 normalization on named raw-mel boundary; not changed production",
+            "width": 8, "valid_length": int(valid_length[0]),
+            "raw_sha256_f32le": hashlib.sha256(input_values.astype("<f4").tobytes()).hexdigest(),
+            "raw_valid_prefix_vs_official": compare_raw_valid_prefix(raw.numpy()[0], input_values, int(valid_length[0])),
+            "features_vs_official": compare_tensors(normalized.numpy()[0], observed_features, atol=1e-5, rtol=1e-4),
+            "features_vs_python_exact": compare_tensors(candidate, observed_features, atol=0, rtol=0),
+            "mean_vs_python_exact": compare_tensors(mean, np.asarray(observation["mean"], dtype=np.float32), atol=0, rtol=0),
+            "std_vs_python_exact": compare_tensors(std, np.asarray(observation["std"], dtype=np.float32), atol=0, rtol=0)}
     metrics = {
         "official_processor_vs_capture": control,
         "raw_log_mel": compare_tensors(raw.numpy(), reshape(js["raw"]), atol=1e-5, rtol=1e-4),
@@ -939,6 +988,8 @@ def main():
         "production_input_diagnostic": production_diagnostic,
         "frame_arithmetic_controls": frame_arithmetic_controls,
         "normalization_reduction_candidates": normalization_candidates,
+        "js_normalization_reduction_controls": js_normalization_controls,
+        "js_normalization_candidate_sha256": hashlib.sha256(Path(__file__).with_name("normalization-reduction.mjs").read_bytes()).hexdigest(),
         "normalization_candidate_sha256": hashlib.sha256(Path(__file__).with_name("normalization_reduction.py").read_bytes()).hexdigest(),
         "diagnostic_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "comparisons": metrics}

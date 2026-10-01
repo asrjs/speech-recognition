@@ -405,7 +405,22 @@ entries differ at exact zero tolerance. Width 16 fails silence by up to
 `0.3201066553592682`. Both complete diagnostic commands still exit 1 because
 unchanged production feature acceptance fails.
 
-Run `test_normalization_reduction.py` with unittest discovery for five small
+Run `test_normalization_reduction.py` with unittest discovery for six small
 contracts, including physical masked tails, immutable inputs, singleton valid
-prefix and invalid metadata. Next port this arithmetic into a temporary JS
-control and test broader lengths/fixtures before changing shared runtime math.
+prefix and invalid metadata, plus byte-exact Python/JS controls across 58 layouts.
+
+The temporary JS candidate is now `normalization-reduction.mjs`; run its five
+tests with `node --test tools/model-debugging/reference/hf-parakeet-port/normalization-reduction.test.mjs`.
+The feature probe renormalizes nine named raw boundaries without replacing any
+production methods. Real JFK/silence controls have exact cross-language feature,
+mean/std agreement. All silence candidates match official normalized output;
+JFK only passes for official raw and official-complex injections. Production
+and aligned FFT raw still fail, so normalization alone cannot justify a shared
+processor patch.
+
+Use fresh `js-normalization-cascade-*-prefix-2026-10-01.json.gz` receipts for raw
+attribution. Their raw metrics compare valid prefixes, not differently masked
+physical tails. Earlier `*-final` raw full-buffer comparisons are superseded
+and must not be treated as an equivalent-boundary regression. 56 feature-probe
+tests include a regression for this distinction. Tolerances and old acceptance
+gates remain unchanged; full diagnostics still exit 1.
