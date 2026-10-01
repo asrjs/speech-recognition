@@ -25,6 +25,7 @@ NODE_PROBE = r'''
 import { JSMelProcessor, MEL_CONSTANTS } from './dist/audio/js-mel.js';
 import { readFileSync } from 'node:fs';
 import { normalizeCandidate } from './tools/model-debugging/reference/hf-parakeet-port/normalization-reduction.mjs';
+import { packedF32Source } from './tools/model-debugging/reference/hf-parakeet-port/packed-f32-source.mjs';
 let input = ''; for await (const chunk of process.stdin) input += chunk;
 const data = JSON.parse(input);
 const pcm = Float32Array.from(data.pcm);
@@ -65,7 +66,10 @@ for (const [before, after] of [
 }
 async function experiment(name, { window = false, windowProduct = false, filterbank = false,
   referencePower = false, magnitudeRoundTrip = false, capturePower = false, complexPower = false,
-  fullFft = null, referenceComplexPower = null, production = false, capturePacked = false } = {}) {
+  fullFft = null, referenceComplexPower = null, production = false, capturePacked = false, packedF32 = false } = {}) {
+  if (packedF32 && (!complexPower || !window || !windowProduct || !filterbank || !capturePower ||
+      fullFft || referencePower || referenceComplexPower || production || capturePacked))
+    throw new Error('Packed f32 control requires the identical aligned complex-power boundary');
   if (capturePacked && (!capturePower || referencePower || magnitudeRoundTrip || complexPower ||
       fullFft || referenceComplexPower || production))
     throw new Error('Packed arithmetic capture must retain original power expressions');
@@ -73,6 +77,7 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       magnitudeRoundTrip || complexPower || fullFft || referenceComplexPower))
     throw new Error('Production capture must preserve unmodified arithmetic');
   let candidateSource = production ? productionSource : source;
+  if (packedF32) candidateSource = packedF32Source(candidateSource);
   if (referenceComplexPower !== null && !['library', 'fp32-rounded'].includes(referenceComplexPower))
     throw new Error('Invalid reference complex power control');
   if (referenceComplexPower && (fullFft || referencePower || magnitudeRoundTrip || complexPower || !capturePower))
@@ -155,8 +160,8 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       // Paired upper/quarter bins require conjugation for the negative-exponent
       // DFT convention. The original power expression remains unchanged.
       candidateSource = candidateSource.replace(boundary,
-        `capturedReal[(${bin}) * nFrames + frameIndex] = ${re};
-         capturedImag[(${bin}) * nFrames + frameIndex] = ${im};\n` + boundary);
+        `capturedReal[(${bin}) * nFrames + frameIndex] = ${packedF32 ? `Math.fround(${re})` : re};
+         capturedImag[(${bin}) * nFrames + frameIndex] = ${packedF32 ? `Math.fround(${im})` : im};\n` + boundary);
     }
   }
   if (complexPower || fullFft || referenceComplexPower === 'fp32-rounded') {
@@ -258,6 +263,8 @@ const frameArithmeticCaptures = {
 };
 const complexPowerCapture = await experiment('complex-power-capture', { window: true,
   windowProduct: true, filterbank: true, complexPower: true, capturePower: true });
+const packedF32Capture = await experiment('packed-f32-stage', { window: true,
+  windowProduct: true, filterbank: true, complexPower: true, capturePower: true, packedF32: true });
 const fullFftF32Capture = await experiment('full-fft-f32', { window: true,
   windowProduct: true, filterbank: true, fullFft: 'float32', capturePower: true });
 const fullFftF64Capture = await experiment('full-fft-f64', { window: true,
@@ -270,6 +277,7 @@ const normalizationInputs = {
   officialRaw: data.referenceRaw, productionRaw: productionCapture.raw,
   alignedWindowProducts: frameArithmeticCaptures.windowProduct.raw,
   alignedComplexPower: complexPowerCapture.raw,
+  packedF32: packedF32Capture.raw,
   magnitudeRoundTrip: powerCapture.raw, fullFftF32: fullFftF32Capture.raw,
   fullFftF64: fullFftF64Capture.raw, officialComplexLibrary: referenceComplexLibraryCapture.raw,
   officialComplexRounded: referenceComplexRoundedCapture.raw,
@@ -282,7 +290,7 @@ for (const [name, values] of Object.entries(normalizationInputs)) {
 console.log(JSON.stringify({ raw: Array.from(raw.features), normalized: Array.from(normalized.features),
   sameRawNormalized: Array.from(sameRawNormalized), normalizationControls, frameCount: raw.frameCount, validLength: raw.length,
   experiments, powerCapture, productionCapture, frameArithmeticCaptures, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
-  referenceComplexLibraryCapture, referenceComplexRoundedCapture,
+  referenceComplexLibraryCapture, referenceComplexRoundedCapture, packedF32Capture,
   logZeroGuard: MEL_CONSTANTS.LOG_ZERO_GUARD, nodeVersion: process.version }));
 '''
 
@@ -739,6 +747,7 @@ def write_diagnostic_report(path, report):
 
 
 def main():
+    diagnostic_bytes = Path(__file__).read_bytes()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--audio", type=Path, required=True)
     parser.add_argument("--source-config", type=Path, required=True)
@@ -828,6 +837,7 @@ def main():
         "officialRaw": raw.numpy()[0], "productionRaw": reshape(js["productionCapture"]["raw"])[0],
         "alignedWindowProducts": reshape(js["frameArithmeticCaptures"]["windowProduct"]["raw"])[0],
         "alignedComplexPower": reshape(js["complexPowerCapture"]["raw"])[0],
+        "packedF32": reshape(js["packedF32Capture"]["raw"])[0],
         "magnitudeRoundTrip": reshape(js["powerCapture"]["raw"])[0],
         "fullFftF32": reshape(js["fullFftF32Capture"]["raw"])[0],
         "fullFftF64": reshape(js["fullFftF64Capture"]["raw"])[0],
@@ -949,7 +959,7 @@ def main():
             "layout": "batch-frame-sample", "encoding": "base64-f32le", "sha256_f32le": hashlib.sha256(
                 frames.astype("<f4", copy=False).tobytes()).hexdigest(),
             "scratch_dtype": "float32" if name == "f32" else "float64"}
-    fft_control_keys = ("complexPowerCapture", "fullFftF32Capture", "fullFftF64Capture")
+    fft_control_keys = ("complexPowerCapture", "fullFftF32Capture", "fullFftF64Capture", "packedF32Capture")
     attribution_keys = (*fft_control_keys, "referenceComplexLibraryCapture", "referenceComplexRoundedCapture")
     decomposition = {}
     for name, candidate_raw, candidate_features in [
@@ -970,13 +980,21 @@ def main():
             valid_length=int(valid_length[0]), log_zero_guard=js["logZeroGuard"])
         metrics[f"{key}_raw_power_projection"] = attribution[key]["candidate_raw_reconstruction"]
     fft_controls = {key: js[key] for key in fft_control_keys}
+    packed_frames = read_windowed_frames(js["packedF32Capture"], processor.n_fft, raw.shape[2])
+    packed_control = {
+        "scope": "Packed f32 FFT intermediate experiment against alignedComplexPower; identical downstream diagnostic power/mel, not changed production",
+        "windowed_input_exact": compare_tensors(official_frames_array, packed_frames, atol=0, rtol=0),
+        "complex_vs_official": compare_fft_components(js["packedF32Capture"], official_complex_array, atol=1e-5, rtol=1e-4),
+        "power_vs_official": compare_tensors(power.numpy(),
+            np.asarray(js["packedF32Capture"]["power"], dtype=np.float32).reshape(power.shape), atol=1e-5, rtol=1e-4)}
     dft_diagnostic = fft_dft_diagnostic(official_frames_array, official_complex_array,
         power.numpy(), fft_controls, {key: [{"coordinate": point["coordinate"],
             "active_bins": point["active_bins"]} for point in attribution[key]["mismatches"]]
             for key in fft_controls})
     cascade_attribution = {}
     for key, name in (("complexPowerCapture", "alignedComplexPower"),
-            ("fullFftF32Capture", "fullFftF32"), ("fullFftF64Capture", "fullFftF64")):
+            ("fullFftF32Capture", "fullFftF32"), ("fullFftF64Capture", "fullFftF64"),
+            ("packedF32Capture", "packedF32")):
         capture = js[key]
         coordinates = normalized_failure_coordinates(normalized.numpy(),
             reshape(js["normalizationControls"][name]["features"]), int(valid_length[0]))
@@ -1015,14 +1033,18 @@ def main():
         "selected_bin_dft": dft_diagnostic,
         "cascade_normalized_failure_power_attribution": cascade_attribution,
         "cascade_normalized_failure_dft": cascade_dft,
+        "packed_f32_stage_control": packed_control,
         "production_input_diagnostic": production_diagnostic,
         "frame_arithmetic_controls": frame_arithmetic_controls,
         "normalization_reduction_candidates": normalization_candidates,
         "js_normalization_reduction_controls": js_normalization_controls,
         "js_normalization_candidate_sha256": hashlib.sha256(Path(__file__).with_name("normalization-reduction.mjs").read_bytes()).hexdigest(),
+        "packed_f32_source_sha256": hashlib.sha256(Path(__file__).with_name("packed-f32-source.mjs").read_bytes()).hexdigest(),
         "normalization_candidate_sha256": hashlib.sha256(Path(__file__).with_name("normalization_reduction.py").read_bytes()).hexdigest(),
-        "diagnostic_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "diagnostic_sha256": hashlib.sha256(diagnostic_bytes).hexdigest(),
         "comparisons": metrics}
+    if Path(__file__).read_bytes() != diagnostic_bytes:
+        raise ValueError("Diagnostic source changed during the run; refusing misleading provenance")
     write_diagnostic_report(args.output, report)
     print(json.dumps({"status": report["status"], "output": str(args.output),
         "all_comparisons_pass": all(metric["allclose"] for metric in metrics.values())}

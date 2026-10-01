@@ -461,6 +461,23 @@ remain open. Receipt: `js-normalization-cascade-handoff-2026-10-01.json`.
 
 ## Upstream recipes to inspect during export
 
+### Packed f32 FFT precision hypothesis — rejected (2026-10-01)
+
+The diagnostic preserves the packed 256-point algorithm, exact official f32
+windowed input bytes and aligned complex-power/mel arithmetic. It rounds
+twiddles, butterfly products/stores and real-spectrum recombination, without
+touching production. The candidate's JFK normalized-feature failures increase
+from 121 to 215 at the original tolerances. Raw/power/complex tolerant PASS
+does not outweigh this feature FAIL. Pure silence matches the temporary
+normalization control; unchanged production still fails 12,800 coordinates.
+Do not promote this candidate or infer that f32 alone reproduces MKL.
+
+Continue with a cascade-aware normalization decomposition at the actual failed
+coordinates: separate pointwise raw differences from raw-dependent mean/std
+differences. The old decomposition uses double JS statistics and cannot isolate
+those terms for the new cascade. Keep the official output oracle and all gates.
+Small receipt: `packed-f32-stage-handoff-2026-10-01.json`.
+
 - [Orukeet sherpa export](https://github.com/Oruk-AI/orukeet/blob/main/export/onnx/README.md):
   rebuildable source-to-ONNX graphs, boundary metadata and validation receipts.
   Study its fp32 path for our own encoder + combined decoder/joint export.

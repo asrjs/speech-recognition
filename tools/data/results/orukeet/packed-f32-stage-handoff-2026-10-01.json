@@ -1,0 +1,29 @@
+{
+  "status": "REJECTED_PRECISION_HYPOTHESIS_PRODUCTION_FEATURES_FAIL",
+  "production_changed": false,
+  "tolerances_changed": false,
+  "diagnostic_sha256": "a767e3eaab51e668b4322012a336ed41ad6f0fa530923f8e558bbcc172607b33",
+  "candidate_sha256": "42645f49eadffdedce7eef91d6e307bd8bb64ef8ea3782d39beb4435b5c9e66b",
+  "scope": "Only packed FFT intermediate arithmetic differs from alignedComplexPower; downstream diagnostic power/mel and width-8 normalization held fixed",
+  "jfk": {
+    "receipt": "packed-f32-stage-jfk-final-2026-10-01.json.gz",
+    "sha256": "d1ac6294b75c59973980357e699c7050de2e9af8da436524f67eab9687ccd659",
+    "input_frames_exact": true,
+    "baseline_feature_failures": 121,
+    "candidate_feature_failures": 215,
+    "candidate_feature_max_abs_error": 0.0003078877925872803,
+    "complex_real_imag_max_abs_error": 1.9073486328125e-6,
+    "power_max_abs_error": 0.0001220703125,
+    "production_feature_failures_unchanged": 313
+  },
+  "silence": {
+    "receipt": "packed-f32-stage-silence-final-2026-10-01.json.gz",
+    "sha256": "752fd1a59975194efd7b17a82ba8f62cc9877fed13cf91d1fc1724128248fc74",
+    "input_frames_exact": true,
+    "candidate_feature_failures": 0,
+    "production_feature_failures_unchanged": 12800
+  },
+  "superseded": "First packed-f32-stage-jfk receipt overlapped an edit to the diagnostic source; it cannot certify executed source provenance. Only fresh final receipts are authoritative. Earlier receipt preserved.",
+  "validation": {"probe_tests": 59, "packed_fft_node_tests": 3, "normalization_node_tests": 5, "full_suite": "NOT_RUN", "real_exit_codes": [1, 1]},
+  "next": "Add cascade-aware normalization decomposition with actual candidate f32 mean/std to distinguish pointwise raw error from statistics drift; do not patch shared processor or lower tolerances."
+}

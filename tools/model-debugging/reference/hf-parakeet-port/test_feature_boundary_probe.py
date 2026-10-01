@@ -32,6 +32,15 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_packed_f32_control_preserves_aligned_input_bytes_and_f32_components(self):
+        import numpy as np
+        capture = self.result['packedF32Capture']
+        self.assertEqual(capture['frameBytesF32LE'], self.result['complexPowerCapture']['frameBytesF32LE'])
+        for component in ('real', 'imag'):
+            values = np.asarray(capture[component], dtype=np.float64)
+            self.assertTrue(np.isfinite(values).all())
+            np.testing.assert_array_equal(values, values.astype(np.float32).astype(np.float64))
+
     def test_named_raw_normalization_controls_match_python_candidate(self):
         import numpy as np
         from normalization_reduction import normalize_candidate
@@ -39,6 +48,7 @@ class FeatureBoundaryProbeTests(unittest.TestCase):
             'productionRaw': self.result['productionCapture']['raw'],
             'alignedWindowProducts': self.result['frameArithmeticCaptures']['windowProduct']['raw'],
             'alignedComplexPower': self.result['complexPowerCapture']['raw'],
+            'packedF32': self.result['packedF32Capture']['raw'],
             'magnitudeRoundTrip': self.result['powerCapture']['raw'],
             'fullFftF32': self.result['fullFftF32Capture']['raw'],
             'fullFftF64': self.result['fullFftF64Capture']['raw'],
