@@ -158,6 +158,7 @@
     "test:package": "npm run build && node tests/smoke/package-tarball-smoke.mjs",
     "test:node-smoke": "npm run build && node tests/smoke/node-import-smoke.mjs",
     "test:native-optional-peer": "npm run build && node tests/smoke/native-optional-peer-smoke.mjs",
+    "test:packed-native-absent": "npm run build && node tests/smoke/packed-native-absent-smoke.mjs",
     "test:browser-root": "npm run build && node tests/smoke/browser-root-import-graph.mjs",
     "test:offline-output-smoke": "npm run build && node tests/smoke/offline-output-smoke.mjs",
     "test:fixture-smoke": "npm run build && node tests/smoke/transcribe-fixture.mjs",

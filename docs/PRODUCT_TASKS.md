@@ -5,8 +5,9 @@ Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.
 
 ## C01 — Opt-in native ORT installation
 
-Status: PARTIAL PASS — optional-peer metadata and resolution-isolated smoke.
-Real packed-consumer installation and footprint comparison remain UNTESTED.
+Status: PARTIAL PASS — optional-peer metadata, resolution-isolated smoke and
+actual packed-archive consumption. Package-manager installation and footprint
+comparison remain UNTESTED.
 
 Purpose: browser-only consumers should not need to install a native engine
 that the runtime does not automatically register.
@@ -26,8 +27,15 @@ with exact native package resolution blocked, unavailable probe, typed rejection
 without fallback, and an installed CPU binding positive control. This process-local
 simulation is not proof of a real packed-consumer installation or model inference.
 
-Next bounded step: test isolated packed consumers (runtime imports and TypeScript
-declarations), compare actual install footprints, and repeat native Node/Bun local
+Packed consumer control (2026-10-01): `npm run test:packed-native-absent`
+creates a real local archive with scripts disabled, extracts it outside the
+checkout and links only existing browser dependencies/type helpers. With native
+ORT physically absent, actual package root/browser imports, explicit native
+unavailable rejection and strict NodeNext public declarations passed (no
+`skipLibCheck`). No model inference or browser GPU execution is certified.
+Fixtures are retained in the printed temporary directory for inspection.
+
+Next bounded step: compare actual package-manager install footprints and repeat native Node/Bun local
 example/resource inference controls before marking this task complete.
 Do not silently install an engine on a missing-binding failure. Do not change
 the public API or fork model executors by host.

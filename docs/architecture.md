@@ -482,5 +482,10 @@ do not automatically register it. NeMo TDT's family-owned ORT bridge selects
 native CPU sessions without copying decoding into a host-specific executor.
 `examples/nemo-tdt-native-local.mjs` demonstrates public API composition and
 awaited runtime ownership in Node/Bun. Backend precision capability checks are
-not ONNX graph-dtype audits. The native engine is currently a regular package
-dependency; lazy browser-safe imports do not eliminate its installation cost.
+not ONNX graph-dtype audits. The native engine is an optional peer, explicitly
+installed by native consumers, and a pinned development dependency for this
+repository. Lazy browser-safe imports alone do not eliminate installation cost.
+`tests/smoke/packed-native-absent-smoke.mjs` consumes the actual archive in an
+isolated directory without native ORT and checks root/browser imports, explicit
+native failure and strict public TypeScript declarations. It links existing
+browser dependencies locally; it is not a package-manager install-size benchmark.
