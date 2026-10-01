@@ -29,6 +29,17 @@ Next isolate those two predictor bindings on a fresh WebGPU session, then
 compare actual graph arithmetic/provider partitioning with the passing WASM
 control. Keep shared-feature work and compact-runtime tasks in the queue.
 
+Fresh-session isolation on the same date: explicit bindings 139 and 173 ran
+twice on each backend (eight calls). WASM still PASS; WebGPU still FAIL on the
+same two cell-state coordinates. All outputs on both backends are bit-identical
+to their earlier full-matrix outputs. No fetch/cleanup errors; WebGPU records
+29 dispatches per call. Thus preceding-call count/session accumulation is not
+supported as the cause for these recorded inputs. The source graph concatenates
+two LSTM cell-state outputs; failing flat indices 1102/1137 lie in layer 2.
+Next localize the LSTM provider arithmetic, including the first-layer hidden
+input to layer 2. This does not prove the underlying shader/operator cause.
+Receipt: `browser-head-isolated-cells-handoff-2026-10-02.json`.
+
 Task P01 is complete; P02 and P03 are partial. Existing Nemotron changes on `main` are preserved.
 Orukeet remains an experimental candidate until P08 passes. Resume the first
 unfinished task and record commands, result files, and blockers here.

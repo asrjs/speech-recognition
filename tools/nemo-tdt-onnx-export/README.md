@@ -142,3 +142,12 @@ labels and recurrent states: it is not a state-propagating decode sequence.
 The comparator rejects missing or reordered calls. Ten focused weight-free
 tests cover both selection modes and missing-call rejection; they are not GPU
 or model parity evidence. Raw result receipts grow with the complete call count.
+
+For a bounded fresh-session diagnostic, repeat `--step-index N` in strictly
+increasing order (zero-based recorded joint binding index). It is mutually
+exclusive with `--all-steps`; empty, duplicate, reordered and out-of-range
+selections fail before browser creation. The fixture still validates the full
+capture's source/control/call contract, but compares only the named bindings.
+Receipts label this `explicit-indices`, never complete-matrix acceptance.
+Example: `--step-index 139 --step-index 173` isolates the two speech/silence
+cell-state failures. Eleven weight-free browser-tool tests cover these rules.

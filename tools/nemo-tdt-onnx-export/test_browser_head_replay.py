@@ -89,6 +89,18 @@ class BrowserHeadTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 make_fixture(*documents, "audio")
 
+    def test_explicit_indices_preserve_binding_and_reject_invalid_selection(self):
+        selected = make_fixture(*self.documents, "audio", step_indices=[1])
+        self.assertEqual(selected["selection"], "explicit-indices")
+        self.assertEqual(selected["recorded_joint_calls"], 2)
+        self.assertEqual(selected["steps"], [self.fixture["steps"][1]])
+        self.assertTrue(evaluate_result(result_fixture(selected), selected))
+        for indices in ([], [-1], [2], [True], [0.0], [0, 0], [1, 0]):
+            with self.subTest(indices=indices), self.assertRaises(ValueError):
+                make_fixture(*self.documents, "audio", step_indices=indices)
+        with self.assertRaises(ValueError):
+            make_fixture(*self.documents, "audio", all_steps=True, step_indices=[1])
+
     def test_raw_or_nonfinite_reference_scores_fail(self):
         for values in ([2, 1, 0, 3, 4], [float("nan")] * 5):
             documents = copy.deepcopy(self.documents)

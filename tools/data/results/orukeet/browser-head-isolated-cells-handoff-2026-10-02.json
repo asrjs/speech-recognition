@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "status": "ISOLATED_CELL_STATE_DIVERGENCE_REPRODUCED",
+  "scope": "Explicit recorded inputs in fresh browser sessions; not live sequence acceptance",
+  "tool_sha256": "5a8909c3407ebc0b6a6d0b6b67a87a0b2a7ddd4a20038e2a9d8ee2f5ff4f64cd",
+  "step_indices": [139, 173],
+  "recorded_joint_calls": 182,
+  "results": [
+    {"path": "browser-head-webgpu-isolated-cells-2026-10-02.json", "sha256": "03c41238608d753725bc73b22ef7b107c621913512a65c12d154f20babd447e0", "calls": 4, "status": "FAIL", "dispatches_per_call": 29},
+    {"path": "browser-head-wasm-isolated-cells-2026-10-02.json", "sha256": "7f726c10fd186778b0f62fc424f55b3c01c4d8c6cdafaae236bae368a8b6a257", "calls": 4, "status": "PASS"}
+  ],
+  "all_outputs_bit_identical_to_full_matrix": true,
+  "browser_and_cleanup_errors": [],
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "failed_output": "output_states_2",
+  "failed_flat_indices": [1102, 1137],
+  "graph_boundary": "Concat of two LSTM cell states; failed coordinates are in layer 2",
+  "conclusion": "Preceding-call count/session accumulation hypothesis not supported for these inputs",
+  "root_cause": "UNPROVEN",
+  "next": "Localize LSTM/provider arithmetic and layer-1 hidden input; no tolerance change or fallback",
+  "tests": {"family_python": 26, "shared_python": 23, "status": "PASS"},
+  "remaining": ["Full WebGPU head matrix FAIL", "Production features FAIL", "Browser encoder/live sequence/public API not certified", "Performance unmeasured"]
+}

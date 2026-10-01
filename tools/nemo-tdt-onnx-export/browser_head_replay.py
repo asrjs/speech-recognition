@@ -28,7 +28,7 @@ def tensor(value):
     return {"dtype": str(value.dtype), "shape": list(value.shape), "data": value.ravel().tolist()}
 
 
-def make_fixture(reference, summary, cfg, identity, audio_hash, *, all_steps=False):
+def make_fixture(reference, summary, cfg, identity, audio_hash, *, all_steps=False, step_indices=None):
     if reference["schema_version"] != 1 or len(reference["samples"]) != 1:
         raise ValueError("Single schema-v1 official capture required")
     for item in (reference, summary["stage_capture"]):
@@ -60,7 +60,13 @@ def make_fixture(reference, summary, cfg, identity, audio_hash, *, all_steps=Fal
         raise ValueError("Official call counts differ")
     stages, steps = sample["stages"], []
     channels = cfg["joint"]["num_classes"] + 1 + cfg["joint"]["num_extra_outputs"]
-    indices = range(len(bindings)) if all_steps else sorted({0, len(bindings) // 2, len(bindings) - 1})
+    if step_indices is not None:
+        if (all_steps or not step_indices or any(type(i) is not int or i < 0 or i >= len(bindings) for i in step_indices)
+                or list(step_indices) != sorted(set(step_indices))):
+            raise ValueError("Explicit step indices must be nonempty, unique, increasing and in range; cannot combine with all steps")
+        indices = step_indices
+    else:
+        indices = range(len(bindings)) if all_steps else sorted({0, len(bindings) // 2, len(bindings) - 1})
     for index in indices:
         binding = bindings[index]
         joint, predictor, frame = binding["joint"], binding["predictor"], binding["frame"]
@@ -78,7 +84,7 @@ def make_fixture(reference, summary, cfg, identity, audio_hash, *, all_steps=Fal
                 "output_states_2": tensor(stage(stages, predictor + "/output_state_c", "float32")),
                 "prednet_lengths": tensor(np.ones(1, dtype=np.int32))}})
     return {"sample_id": sample["sample_id"], "blank_id": cfg["decoder"]["vocab_size"], "steps": steps,
-            "selection": "all-recorded" if all_steps else "first-middle-last",
+            "selection": "explicit-indices" if step_indices is not None else "all-recorded" if all_steps else "first-middle-last",
             "recorded_joint_calls": len(bindings)}
 
 
@@ -198,7 +204,9 @@ def main():
     for name in ("capture", "summary", "audio", "artifact-dir", "export-receipt", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--backend", choices=("wasm", "webgpu"), required=True)
-    parser.add_argument("--all-steps", action="store_true", help="Replay every recorded joint binding, not only first/middle/last")
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--all-steps", action="store_true", help="Replay every recorded joint binding, not only first/middle/last")
+    selection.add_argument("--step-index", type=int, action="append", help="Zero-based recorded binding index; repeat in increasing order for isolated replay")
     parser.add_argument("--timeout-ms", type=int, default=180000)
     args = parser.parse_args()
     if args.timeout_ms < 1000:
@@ -216,7 +224,7 @@ def main():
     if sha256(config) != expected_config["sha256"] or config.stat().st_size != expected_config["bytes"]:
         raise ValueError("Packed source config identity differs")
     identity = {"model": exported["model_id"], "model_revision": exported["model_revision"], "weight_sha256": exported["source"]["sha256"]}
-    fixture = make_fixture(read_json(args.capture), read_json(args.summary), read_json(config), identity, sha256(args.audio), all_steps=args.all_steps)
+    fixture = make_fixture(read_json(args.capture), read_json(args.summary), read_json(config), identity, sha256(args.audio), all_steps=args.all_steps, step_indices=args.step_index)
     receipt = {"schema_version": 1, "scope": "RECORDED_HEAD_COMPONENT_ONLY", "status": "IN_PROGRESS",
                "identity": identity, "capture_sha256": sha256(args.capture), "graph": artifact,
                "bridge_sha256": sha256(ROOT / "dist/models/nemo-tdt/ort.js"), "sample_id": fixture["sample_id"],
