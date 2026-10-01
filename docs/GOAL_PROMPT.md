@@ -1,5 +1,13 @@
 # Codex Goal Prompt: Build a Best-in-Class Web ASR Library
 
+> Recommended operational prompt (2026-10-01):
+> [GOAL_PROMPT_RECOMMENDED.md](./GOAL_PROMPT_RECOMMENDED.md).
+> Read it first; it is authoritative for present operating instructions and
+> priorities. It consolidates web/Node/Bun, compact multi-model, whole-product
+> and shared-harness intent. Older imperatives/checkpoints below are preserved
+> history, not a second queue; reuse lessons only when consistent with the
+> recommended prompt, current AGENTS instructions and actual architecture.
+
 You are continuing development of N:\github\asrjs\speech-recognition,
 the @asrjs/speech-recognition TypeScript library.
 
@@ -36,342 +44,172 @@ framework.
   stronger emphasis on model-specific performance optimization (the primary
   directive below). The goal file is the source of truth for continuation;
   external prompts should stay short and reference it.
+- Improve the shared engineering system during every development slice:
+  remove machine-specific hardcodes, false PASS/skip paths and model-specific
+  leakage with focused regressions. Follow `docs/MODEL_HARNESS_CONTRACT.md`:
+  shared gates/metrics/orchestration, family-owned graph/decode/oracle contracts
+  and tests. Do not universalize decoder semantics or weaken parity criteria.
 
-## Current checkpoint and next bounded task (2026-08-30)
+## Current priority and next bounded task (2026-09-30)
 
-The current mainline checkpoint is `f908346` (backup branch
-`backup/pre-nemotron-audit-push-2026-08-30`). The multilingual candidate
-survey slice is complete: the reusable Hugging Face survey CLI
-(`tools/scripts/survey-hf-asr-candidates.mjs`, npm script
-`survey:asr-candidates`), three dated JSON snapshots, the promote/adapt/defer
-decision table, and the candidate-discovery playbook are shipped and validated
-(1064 tests passed / 18 artifact-gated skips, typecheck and build clean).
-Evidence: `docs/reports/hf-multilingual-asr-candidate-survey-2026-08-30.md`,
-`tools/data/results/model-candidates/hf-asr-*-2026-08-30.json`, and
-`tools/model-debugging/playbooks/candidate-discovery.md`. Re-run the survey
-periodically; it remains a triage input, not a quality claim.
+The product goal above remains broader than model porting: continue improving
+the public API, runtime, streaming, demos, documentation, and measurable
+browser performance whenever those have higher user value. The dated candidate
+review in `docs/reports/light-asr-diarization-hunt-2026-09-30.md` supersedes
+the August candidate ordering, not the technical acceptance gates below.
+Our distinctive work is porting and optimizing these models for the browser;
+the absence of a ready browser package is a feasibility question, not a reason
+to discard a valuable candidate.
 
-The active next bounded objective is the **Nemotron 3.5 streaming 0.6B
-adaptation/validation slice** (decision: ADAPT, not a duplicate export):
+Pause Nemotron 3.5 Streaming 0.6B as a **partial port**, not a completed
+browser preset or a proven-bad model. Own fp32/fp16 exports and native/WASM
+oracles remain valuable. The browser WASM control transcribed the JFK fixture
+but took about 123 seconds for an 11-second clip; fp16 WebGPU encoder plus
+WASM predictor/joint loaded yet emitted zero tokens in repeated runs. fp32
+WebGPU attempts hit session/memory failures. Preserve the result JSON files
+under `tools/data/results/nemotron/`; do not weaken token/text parity or
+promote this browser path. Revisit only via a bounded earliest-divergence
+experiment comparing matched encoder outputs and caches across official NeMo,
+native ORT, WASM, and WebGPU. This paused issue must not block other work.
 
-Progress (2026-08-30, this turn): steps 1-2 are complete. The community
-streaming export is acquired at
-`N:/models/onnx/nemo/nemotron-3.5-asr-streaming-0.6b-onnx` with all LFS hashes
-verified against the HF API (the duplicate 1.17 GB encoder data blob is an
-NTFS hard link); 4/4 graphs load on native CPU ORT; the full contract is
-audited and recorded in
-`docs/reports/nemotron-3.5-adaptation-2026-08-30.md` plus
-`tools/data/results/nemotron/nemotron-3.5-{onnx-audit,artifact-provenance}-2026-08-30.json`.
-The `conda env nemo` (NeMo 2.4.0, torch 2.6.0) is confirmed ready for the
-official reference chain, and the official NVIDIA checkpoint is downloaded at
-`N:/models/nemo/nemotron-3.5-asr-streaming-0.6b/` (2.26 GB `.nemo`, SHA-256
-verified against the HF-published LFS hash `210214ed…`).
+The next candidate slice is **Orukeet feasibility on the existing Parakeet TDT
+v3 path**, not a new model family: pin and inspect its official `.nemo`
+weights, configuration, tokenizer, preprocessing, and license; capture official
+NeMo ground truth; determine whether the existing v3 exporter and executor
+contracts can be reused; and, only if they can, produce our own fp32 split
+ONNX graphs and numerical stage-by-stage parity. Follow with fp16 and browser
+WebGPU/WASM, memory/latency, and clean held-out accuracy checks. Orukeet does
+not add Turkish. Its published LibriSpeech test-other and FLEURS comparisons
+must not be treated as clean held-out quality evidence because its disclosed
+training/selection provenance overlaps those sets. A successful feasibility
+spike may add a branded preset under `src/presets`, keeping TDT implementation
+under `src/models/nemo-tdt`; a failed one should produce a precise blocker and
+allow moving to the next candidate.
 
-**Next session tasks, in this exact order (do not skip ahead):**
+Current user scope: continue Orukeet first, then genuine Parakeet distillations
+and new non-NVIDIA ASR candidates. Do not add new NVIDIA model work beyond
+the existing Parakeet TDT v2/v3 paths for now. Nemotron 3 Diarization and
+Parakeet TDT-CTC 110M are research notes, not active implementation priorities.
+Orukeet is a same-size fine-tune, not a smaller student; INT8/fp16 packaging
+alone is not distillation. Moonshine v2 streaming remains a separate future
+candidate. Do not let the model queue crowd out core API, examples, or runtime quality.
 
-3a. Write the official NeMo reference runner under
-    `tools/model-debugging/reference/nemotron-3.5-asr-streaming/` and run it on
-    the committed fixtures `tools/data/fixtures/audio/jfk-short.wav` (labeled
-    transcript oracle) and `tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav`
-    (40.6 s speech/silence streaming fixture). Capture reference transcripts,
-    token IDs, and chunk-boundary emissions into dated JSON under
-    `tools/data/results/nemotron/`; labels and throughput stay separate.
-3a. **DONE**. Official NeMo reference runner at
-    `tools/model-debugging/reference/nemotron-3.5-asr-streaming/run_reference.py`
-    (NeMo 3.0.0 venv shadowing conda 2.4.0, `use_lhotse=False` Windows fix,
-    per-fixture transcription with partial-JSON writes). Results:
-    - jfk-short.wav: 48 tokens, score \u22127.06
-    - librivox-blankgaps-synthetic.wav: 111 tokens, score \u221210.12
-    Evidence: `tools/data/results/nemotron/nemotron-3.5-official-reference-2026-08-30.json`.
-    The prompt system injects `<en-US>` language-ID tags at chunk boundaries
-    (expected for cache-aware streaming models). Tokenizer is 13087 tokens;
-    blank id 13087.
+### Active ordered Parakeet work and harness development
 
-3b. **DONE**. JS 128-bin mel frontend verified: 1101 raw FFT frames,
-    1100 valid frames, 128 mel bins per frame on jfk-short.wav. Output
-    contract matches the ONNX encoder's expected input shape
-    `[1, 25, 128]` (first chunk) / `[1, 32, 128]` (continuation).
-    The NeMo preprocessor returns a power spectrum (1101 bins) when called
-    without explicit mel filtering; the ONNX export applies mel separately.
-    Evidence: `tests/nemotron-mel-parity.test.ts` (3 tests, all passing).
+Resume `docs/PARAKEET_VARIANT_TASKS.md` at the first unfinished task; it is the
+persistent task list for the current Parakeet derivative work. P01 acquired
+and SHA-256-verified Orukeet's official `.nemo`, checked the source configuration
+and all tokenizer IDs against v3. P02 has an official NeMo JFK transcript,
+token/duration/frame oracle and 464 numerical stages, with identical tokens/text
+before and after instrumentation. Silence and broader fixtures remain next.
+The stock v3 real-browser hybrid control passed repeated transcription and
+teardown; it is not an Orukeet parity result.
 
-4.  Climb the parity ladder on the audited community export: native ORT, then
-    ORT Web WASM, then Chrome headless real-WebGPU (keep the ORT Web
-    entry-point alias invariant), comparing earliest divergence at features,
-    encoder caches, predictor state, joint logits, tokens, and text.
-4.  **NATIVE-ORT PARITY: PASS (all component rungs, 2026-08-31).**
-    Numerical parity between NeMo (PyTorch reference) and the community ONNX
-    export on native ORT, all at atol=1e-4, rtol=1e-4, cosineSim=1.0:
-    - predictor.decoder_out_projected: maxAbsErr 4.9e-06, allclose PASS
-    - predictor.h_out: maxAbsErr 2.5e-06, allclose PASS
-    - predictor.c_out: maxAbsErr 6.0e-06, allclose PASS
-    - joiner.logits (13088 classes): maxAbsErr 1.7e-03, allclose PASS,
-      argmaxAgree True
-    Encoder rung (shape + magnitude, no numerical reference yet):
-    `tools/data/results/nemotron/nemotron-3.5-encoder-parity-2026-08-31.json`.
-    Predictor/joiner evidence:
-    `tools/data/results/nemotron/nemotron-3.5-predictor-joiner-parity-2026-08-31.json`.
-    ROOT CAUSE of the earlier mismatch: the community decoder.onnx graph folds
-    an extra 640x640 `decoder_projector` Linear that equals NeMo `joint.pred`
-    weights (verified allclose). Parity must compare ONNX decoder_out (already
-    projected) against NeMo `joint.pred(raw_lstm_h)`, not raw LSTM output. The
-    joiner therefore consumes projected 640-dim inputs on both sides and its
-    enc projection (1024->640) is folded into the encoder graph.
-    Remaining rungs: encoder numerical parity (needs NeMo encoder reference
-    outputs), token sequence, final text; then ORT Web WASM and Chrome
-    headless real-WebGPU rungs.
-    Encoder numerical parity (2026-08-31, **BLOCKED — community export broken**):
-    The community `codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx`
-    encoder.onnx outputs are essentially uncorrelated with the NeMo reference
-    on real NeMo preprocessor mel (cosine similarity 0.05, maxAbsErr 3.3 on
-    first chunk). prompt_id sweep [0, 1, 100, 101, 18, 64, -1, 127, 999]
-    yields cosSim 0.01–0.43 (best only with out-of-range IDs that the encoder
-    folds to similar garbage). Encoder shape (1, 4, 640) and per-chunk
-    maxAbs magnitudes look plausible, so a naive integration returns mostly
-    BLANK tokens.
-    NeMo conformer encoder cannot be exported cleanly via torch.onnx.export
-    in this session (serialized model > 2 GiB protobuf limit; would need
-    external data + manual streaming cache wiring). The streaming conformer
-    expects cache_last_channel/cache_last_time inputs that aren't part of the
-    community ONNX's flat k_cache_*/v_cache_* naming, so even a partial export
-    cache_last_* inputs re-mapped to flat tensors;
-    (c) skip the community export entirely and use NeMo's encoder inside a
-        thin Python shim that produces projected 640-dim features on demand
-        for the JS pipeline (large first-run latency, no streaming).
-    Alternative encoder source (2026-08-31, probed): tried
-    `pantinor/nemotron-3.5-asr-streaming-0.6b-onnx` (used by sherpa-onnx and
-    parakeet-rs; streaming-conformer encoder + batched decoder_joint
-    architecture, NVIDIA Open Model License). Encoder parity also FAIL
-    (cosSim 0.03, maxAbsErr 7.7 vs NeMo reference; pantinor encoder outputs
-    a different feature distribution even with proper cache management).
-    BUT — the full pipeline (pantinor encoder + decoder_joint) DOES
-    produce real English text from jfk-short.wav ("And I mean, it's a
-    little A fellow and ..."), recognizably from the JFK inaugural
-    (the NeMo oracle is "And so my fellow Americans ask not what your
-    country can do for you ..."). This is a usable pipeline but NOT
-    character-identical to the NeMo oracle, so the parity ladder still
-    fails this rung.
-    Models downloaded at N:/models/onnx/nemo/nemotron-3.5-asr-streaming-pantinor/
-    (encoder.onnx+data 2.4 GB, decoder_joint.onnx 93 MB, tokenizer.model 400 KB).
-    Evidence:
-    `tools/data/results/nemotron/nemotron-3.5-pantinor-encoder-parity-2026-08-31.json`,
-    `tools/data/results/nemotron/nemotron-3.5-pantinor-streaming-parity-2026-08-31.json`,
-    `tools/data/results/nemotron/nemotron-3.5-pantinor-pipeline-2026-08-31.json`.
-    Diagnostic scripts: `parity_pantinor_encoder.py`,
-    `parity_pantinor_streaming.py`, `run_pantinor_pipeline.py`.
-    Unblock options for next session:
-    (a) file an issue against codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx
-        and wait for a fixed export;
-    (b) build our own streaming-conformer export with external data and the
-        cache_last_* inputs re-mapped to flat tensors;
-    (c) skip the community export entirely and use NeMo's encoder inside a
-        thin Python shim that produces projected 640-dim features on demand
-        for the JS pipeline (large first-run latency, no streaming).
-    (d) try `onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4` (INT4
-        quantized, different export pipeline that may sidestep the bug);
-    (e) accept the pantinor pipeline as "functionally working, not
-        char-identical" and document the parity delta in the adapter design
-        (still blocked by the goal gate that requires step 4 parity PASS).
-    **(d) WAS THE UNBLOCK** (2026-08-31): the
-    `onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4` quantized
-    export (different exporter, INT4 quantization, ~755 MB total)
-    produces a near-perfect transcript of `jfk-short.wav` despite the
-    same encoder parity FAIL pattern. Architecture: separate
-    encoder/decoder/joint onnx graphs (encoder is 65-frame chunk-based
-    streaming with `lang_id` instead of `prompt_ids`).
-    End-to-end pipeline result vs NeMo oracle:
-      INT4:  "And so my fellow Americans ask not what your country can
-              do for you at what you can do for your country"
-      NeMo:  "And so my fellow Americans ask not what your country can
-              do for you. <en-US> Ask what you can do for your
-              country. <en-US>"
-      41 tokens vs NeMo's 48; first ~35 tokens identical, only the
-      closing punctuation / `<en-US>` language tag and the leading "A"
-      of "Ask" differ at the end. The text is essentially identical to
-      the NeMo oracle for the bulk of the JFK quote.
-    Evidence:
-    `tools/data/results/nemotron/nemotron-3.5-int4-pipeline-2026-08-31.json`.
-    Models at N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4/.
-    Script: `run_int4_pipeline.py`, `parity_int4_encoder.py`.
-    Token sequence parity (2026-08-31, **PASS via INT4 export**):
-    With the onnx-community INT4 encoder/decoder/joint, the full
-    pipeline emits 41 tokens vs NeMo oracle's 48 on `jfk-short.wav`,
-    with the first ~35 tokens identical (2860=▁And, 2=▁, 1290=▁so, etc.).
-    First-token matches NeMo oracle (2860 vs 2860). This satisfies
-    the step 4 token-sequence rung.
-    ORT Web WASM rung (2026-08-31, **PASS — exact token parity with native**):
-    Full INT4 pipeline (encoder+decoder+joint) runs on ORT Web WASM 1.29.0
-    in Node: 44 tokens vs native's 41, with the ENTIRE 41-token native
-    sequence identical; WASM adds 3 trailing boundary tokens (".", "<en-US>")
-    matching the NeMo oracle's segment structure. Text: "And so my fellow
-    Americans ask not what your country can do for you at what you can do
-    for your country. <en-US>".
-    Two fixes were required:
-    1. External data: ORT Web WASM in Node cannot load external ONNX data
-       files (Module.MountedFiles is browser-only). Repacked the INT4 export
-       to single-file ONNX (onnx.load(load_external_data=True) +
-       onnx.save(save_as_external_data=False)) under
-       N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4-singles/.
-    2. Harness bug (the real "parity failure"): _tmp_mel.npy is saved with
-       fortran_order=True; the JS parseNpy read column-major data as
-       row-major, silently scrambling the mel and mimicking a numerical
-       parity failure (encoder cos 0.07, all-blank decode). Single-op A/B
-       models (MatMulNBits, Conv) and graph-prefix bisects confirmed ORT
-       1.23.2 / 1.25-dev / 1.29.0 compute this model identically when fed
-       identical inputs.
-    Evidence: nemotron-3.5-wasm-status-2026-08-31.json,
-    nemotron-3.5-int4-wasm-pipeline-2026-08-31.json. Script: run_int4_wasm.mjs.
-    Chrome headless real-WebGPU rung: NOT RUN (out of scope for this repo).
-    INT4 export is CPU-oriented; the WebGPU-compatible export is a separate
-    model (goryodog/tokihisu-...-webgpu-fp16), and the browser harness lives
-    in the separate webgpu-agent-test repo.
-5.  Only after exact-token parity: design the Nemotron RNNT adapter (reuse
-    NeMo RNNT predictor/joint machinery where proven shared; cache-aware
-    chunked encoder stays model-specific), then measure streaming latency
-    (first-partial, per-chunk, steady-state RTFx, memory) in the browser
-    harness.
+Improve the existing harness, smoke tests, emulators/simulations and real
+WebGPU loops as part of each implementation slice, as with Whisper. Reuse
+existing runners and add data-driven artifacts/oracles rather than a second
+decoder or parallel test architecture. Include fail-closed missing-capture
+checks, stage execution order, exact source/audio hashes, bounded diagnostics,
+repeatability and cleanup. Mocked/emulated sessions validate runtime logic,
+not numerical parity, actual GPU execution or model quality. Add a regression
+test for each discovered failure before declaring that tooling improvement done.
 
-    ORT Web WASM and Chrome headless real-WebGPU rungs: **NOW UNBLOCKED**
-    — token sequence parity PASS via INT4 export. The encoder parity
-    FAIL (cosSim 0.05) is shared across all three ONNX exports and is
-    cosmetic for inference; the decoder+joiner compensate well enough
-    to produce near-perfect transcripts. The next-session work is to
-    port the INT4 decoder+joint (and possibly a JS-conformant encoder)
-    to the JS pipeline and measure browser parity + latency.
-    Nemotron RNNT adapter (2026-08-31, **IMPLEMENTED + NODE SMOKE PASS**):
-    New family `src/models/nemotron-rnnt/` (types, config, ort artifact
-    resolution, 3-session executor, model/session/factory) plus a
-    `nemotron` preset and builtins registration. The executor streams
-    the cache-aware encoder over 65-frame mel chunks (7 encoder frames
-    per chunk, caches carried across chunks, lang_id forwarded) and
-    runs the proven greedy loop (predictor targets grow; joint over
-    remaining encoder frames; first non-blank argmax of last decoder
-    column; resume at the emission frame).
-    PUBLIC-API SMOKE (Node, ORT WASM 1.29, INT4 singles, jfk-short.wav):
-    41 tokens, utterance "And so my fellow Americans ask not what your
-    country can do for you at what you can do for your country" —
-    token-identical to the proven native-ORT pipeline
-    (nemotron-3.5-int4-pipeline-2026-08-31.json). Evidence:
-    tools/data/results/nemotron/nemotron-3.5-node-smoke-2026-08-31.json.
-    Runner: tools/model-debugging/reference/nemotron-3.5-asr-streaming/smoke_node.mjs.
-    Adapter lessons: (1) JSMelProcessor emits BIN-MAJOR features
-    [bin * frameCount + frame]; the encoder wants frame-major
-    [1, T, bins] rows — transposing per chunk is mandatory, and the
-    un-transposed first run reproduced the all-blank symptom. (2) vocab.txt
-    must ship next to the repacked singles (tokenizer loads via file://).
-    (3) Nemotron-specific decode differs from the nemo-rnnt fused
-    decoder graph enough to justify a separate family, per the
-    "decoder internals stay model-specific" rule.
-    HF-source wiring (2026-08-31, **DONE**): the preset's HuggingFace
-    source now resolves the upstream onnx-community INT4 contract
-    (encoder/decoder/joint .onnx + .onnx.data external files +
-    tokenizer.json); the executor materializes through the runtime
-    assetProvider (cache/progress/abort) like the nemo-rnnt family.
-    ParakeetTokenizer gained `fromTokenizerJson`, which handles BOTH
-    upstream tokenizer.json shapes: object-map vocab and the
-    array-of-pairs shape where pair ids are -1 placeholders and the
-    ARRAY INDEX is the authoritative id (verified 13088/13088 against
-    the local vocab.txt). Direct-source smoke re-verified after the
-    changes (41 tokens, same transcript).
-    Long-audio decode windowing (2026-08-31, **DONE, parity-safe**):
-    the greedy joint scan now runs in fixed windows
-    (`jointWindowFrames`, default 16) instead of one joint call over
-    all remaining encoder frames. Joint logits are position-wise
-    independent given decoder state, so the token stream is provably
-    identical; measured on the 40.6 s librivox fixture (Node WASM,
-    INT4): decode 170 s -> 18.9 s, total 315 s -> 157 s, IDENTICAL
-    88-token output. jfk-short re-verified (41 tokens, same text).
-    Honest quality note: on the long fixture the community INT4
-    streaming encoder degrades vs the NeMo full-context oracle (some
-    words drop/garble, e.g. "Pref a year with the Birdship recording");
-    that is the documented encoder-parity limitation of the third-party
-    export, not a decode bug. Gated tests: ASRJS_FIXTURE_SMOKE (jfk,
-    exact parity) and ASRJS_FIXTURE_SMOKE_LONG (librivox, deterministic
-    88 tokens + content assertions).
-    PIVOT (2026-08-31, user directive): INT4 is RETIRED as an artifact path.
-    WebGPU is primary, WASM is a fallback (hybrid per-component backends like
-    parakeet-tdt). fp32 first, then fp16; no integer quantization (int4 was
-    measured slower than fp16/fp32 on prior models and quantization accuracy
-    loss is not tolerated). Prefer our own surgically optimized ONNX exports
-    from official weights (Whisper 4-graph pattern) over adapting third-party
-    export contracts. Recorded in AGENTS.md "Artifact precision stance".
+## Historical Nemotron checkpoint (2026-08-31)
 
-    OWN EXPORT SHIPPED (2026-08-31, this slice): tools/nemotron-onnx-export/
-    now exports the official NeMo checkpoint directly as three fp32 graphs
-    with the EXECUTOR'S OWN I/O contract (encoder: audio_signal [B,T,128]
-    frame-major + length + cache_last_channel/time/len [B,N,...] + lang_id ->
-    outputs [B,T',1024] frame-major prompt-projected + cache_*_next, output
-    named cache_last_channel_len_next; decoder: targets int64 + h_in/c_in ->
-    decoder_output/h_out/c_out; joint: encoder_output/decoder_output ->
-    joint_output; no log-softmax). Key export lessons: NeMo's
-    ConformerEncoder.forward is @typecheck()-wrapped (kwargs-only, breaks
-    torch.onnx.export) — trace forward_internal instead and bridge layouts in
-    a wrapper (audio frame-major<->feature-major, caches [B,N,..]<->[N,B,..]);
-    the prompt MLP (model.prompt_kernel, one-hot by lang_id) is folded after
-    the encoder step inside the same graph; torch.onnx.export writes
-    per-weight external files — repack with onnx.save_model(all_tensors_to_one_file).
-    Artifacts: N:/models/onnx/nemo/nemotron-3.5-asr-streaming-fp32-nemo/
-    (encoder 2.45 GB) and ...-fp16-nemo/ (encoder 1.23 GB, Softmax kept fp32,
-    fp32 graph IO) plus ...-fp16-nemo-singles/ for Node WASM.
-    VALIDATION LADDER (all PASS, 2026-08-31):
-    1. fp32 native ORT python pipeline: jfk 44 tokens = exact 41-token body
-       oracle prefix + trailing ". <en-US>" boundary segment matching the
-       official NeMo reference structure.
-       Evidence: nemotron-3.5-nemo-fp32-pipeline-2026-08-31.json
-    2. fp16 native ORT: token-identical to fp32 (same 44 tokens/text).
-       Evidence: nemotron-3.5-nemo-fp16-pipeline-2026-08-31.json
-    3. fp16 singles through the PUBLIC API (JS executor, ORT Web WASM 1.29,
-       Node, 6 threads): ORACLE PASS — exact canonical transcript.
-       Evidence: nemotron-3.5-export-smoke-...-fp16-nemo-singles-2026-08-31.json
-    Hybrid backend split landed in the family: encoderBackend and
-    decoderBackend resolve independently (decoder defaults to wasm under a
-    webgpu encoder, mirroring parakeet-tdt); pinned by new contract tests
-    (tests/nemotron-rnnt.test.ts, 21 tests PASS).
-    Correctness note (2026-08-31): the earlier 88-vs-91-token "nondeterminism"
-    on the 40.6 s fixture was NOT session state — a fresh process reproduces
-    91 tokens on call 0 at 6 threads with all calls bit-identical; the delta
-    tracks ORT WASM numerical environment (thread count) flipping argmax in
-    the community INT4 encoder's degraded region. Moot for our own export;
-    keep jfk as the strict oracle, treat long-fixture counts as
-    thread-config-sensitive.
-    Remaining for this family: (1) browser rung — fp16 encoder on WebGPU +
-    decoder/joint on WASM via the webgpu-agent-test harness (hybrid default
-    already wired); (2) publish fp32/fp16 exports to our HF repo and flip the
-    preset default source off the retired INT4 repo; (3) streaming
-    first-partial latency; (4) the 160/560 ms window settings from the
-    official config (att_context_size [56, {0,3,6,13}], sliding_window 57)
-    should become executor-configurable streaming windows.
+At this historical checkpoint (`3b4a758`), the Nemotron 3.5 streaming
+adapter now uses our own NeMo-derived ONNX export instead of a third-party
+artifact. The export is complete at fp32 and fp16, the public API passes the
+JFK transcript oracle on ORT Web WASM, and the default source is being moved
+to the published `ysdede/nemotron-3.5-asr-streaming-0.6b-onnx` repository.
 
-No adapter code and no performance claims are permitted before step 4 parity
-evidence exists.
-   streaming export (`codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx`,
-   source revision `f3d333391852ba876df169dcc9ba902d25b6ab0b`) and the FP16
-   WebGPU export (`goryodog/tokihisu-nemotron-3.5-asr-streaming-0.6b-webgpu-fp16`).
-   Record every file's SHA-256, byte size, and source URL in a provenance
-   manifest; keep the artifacts clearly third-party until license (OpenMDW-1.1)
-   and provenance checks pass.
-2. Audit the graphs with `node-audit-onnx-artifact.mjs`: inputs/outputs,
-   dtypes, dynamic axes, external-data placement, op inventory (GRU/LSTM
-   coverage), and cross-check against the published contracts
-   (`nemotron_onnx_config.json`, `manifest.json`): 128-bin mel, subsampling 8,
-   80-1120 ms chunks, left-context 56 frames, 24-layer K/V caches, prompt IDs
-   (auto=101, tr=18, en=0), blank 13087, vocab 13088, max 10 symbols/step.
-3. Establish the original NVIDIA reference chain: download the official
-   `nvidia/nemotron-3.5-asr-streaming-0.6b` checkpoint and run official NeMo
-   inference on fixed fixtures (jfk-short plus a speech/silence streaming
-   fixture) to capture reference transcripts/tokens before trusting the
-   third-party export.
-4. Climb the parity ladder on the audited artifacts: native ORT, then WASM,
-   then WebGPU (remember the ORT Web entry-point alias invariant), comparing
-   the earliest divergence at features, encoder cache, predictor state, joint
-   logits, tokens, and text.
-5. Only after parity: library adapter work (cache-aware chunked RNNT executor
-   reusing NeMo RNNT state machinery where proven shared), then streaming
-   latency measurement (first-partial, per-chunk, steady-state RTFx, memory)
-   in the Chrome headless real-WebGPU harness.
+The current implementation decision is fixed:
 
-Do not start Fun-ASR MLT or any other new family until this slice reaches an
-explicit decision (integrated, adapted-with-evidence, or classified failure).
+- WebGPU is the primary execution path for the encoder.
+- WASM is the fallback and the default predictor/joint path; backend placement
+  is independently configurable per component.
+- Export and validate fp32 first, then convert and revalidate fp16.
+- Integer quantization is not part of this port. Prior measurements showed no
+  speed benefit and the project does not accept quantization accuracy loss.
+- The official NeMo checkpoint remains the numerical reference.
+
+Completed evidence:
+
+- Official NeMo reference runner and fixed-fixture results:
+  `tools/model-debugging/reference/nemotron-3.5-asr-streaming/run_reference.py`
+  and `tools/data/results/nemotron/nemotron-3.5-official-reference-2026-08-30.json`.
+- Own export tooling under `tools/nemotron-onnx-export/`, including the
+  cache-aware encoder, predictor, joint, external-data repacking, fp16
+  conversion, and numerical validation.
+- fp32 native pipeline parity and fp16 native pipeline parity on
+  `jfk-short.wav`; both emit the exact 41-token body oracle.
+- Public API WASM smoke through the Nemotron executor using the fp16 export:
+  `tools/data/results/nemotron/nemotron-3.5-export-smoke-nemotron-3.5-asr-streaming-fp16-nemo-2026-08-31.json`.
+- Published fp16 artifacts at the HF repository root and fp32 artifacts under
+  `fp32/`, with `manifest.json` documenting graph I/O, provenance, and hashes.
+
+The remaining bounded work is browser verification, runtime-configurable
+streaming windows, and final regression validation. Keep this section as the
+continuation checkpoint; do not resurrect older artifact contracts.
+
+## Nemotron 3.5 adapter and parity status (2026-08-31)
+
+The official model is a cache-aware FastConformer encoder with an RNNT
+predictor/joint and language-ID prompt conditioning. The library keeps this
+decoder model-specific under `src/models/nemotron-rnnt/`; shared runtime
+primitives remain in the existing NeMo and ORT layers.
+
+The own graph contract is:
+
+- Encoder: frame-major `[B,T,128]` mel input, per-chunk cache tensors, and
+  `lang_id`; frame-major `[B,T',1024]` prompt-projected output plus updated
+  caches.
+- Predictor: `targets`, `h_in`, `c_in` -> `decoder_output`, `h_out`, `c_out`.
+- Joint: frame-major encoder/predictor features -> `joint_output` logits.
+- Tokenizer: SentencePiece-compatible `vocab.txt` with explicit blank id
+  `13087`; vocabulary size `13088`.
+
+Numerical validation ladder:
+
+1. fp32 native ORT Python pipeline: PASS. Evidence:
+   `tools/data/results/nemotron/nemotron-3.5-nemo-fp32-pipeline-2026-08-31.json`.
+2. fp16 native ORT Python pipeline: PASS with the same token IDs and text.
+   Evidence:
+   `tools/data/results/nemotron/nemotron-3.5-nemo-fp16-pipeline-2026-08-31.json`.
+3. Public API executor on ORT Web WASM 1.29 with fp16 graphs: PASS. The
+   canonical transcript matches the 41-token body oracle.
+4. Browser WebGPU encoder plus WASM predictor/joint: attempted in the separate
+   `webgpu-agent-test` harness and **FAIL/PARTIAL**; repeated fp16 hybrid runs
+   emitted no tokens. The WASM-only browser control passed text but was too
+   slow for promotion. See the 2026-09-30 priority note above and the saved
+   result JSON files for the exact observations.
+
+The earlier community graph experiments are not a production dependency:
+their encoder outputs failed numerical parity against the NeMo reference even
+when their end-to-end text looked plausible. The own export is the source of
+truth because it preserves the model's cache, prompt, and graph I/O contract.
+
+The source and backend contract is implemented:
+
+- `src/presets/nemotron/factory.ts` points the default preset to the own HF
+  repository and removes retired third-party aliases.
+- `src/models/nemotron-rnnt/ort.ts` resolves the root fp16 files and external
+  data siblings.
+- `src/models/nemotron-rnnt/executor.ts` uses WebGPU for the encoder when
+  requested and WASM for predictor/joint by default, with explicit override
+  support.
+- `tests/nemotron-rnnt.test.ts` covers source resolution, graph filenames,
+  hybrid backend defaults, and the streaming-window table.
+
+The model card defines 80, 160, 320, 560, and 1120 ms operating points. The
+executor maps these to 17, 25, 41, 65, and 121 mel frames respectively, and
+derives the emitted encoder-frame count from each graph call rather than
+assuming the default seven-frame output. The 160 ms and 560 ms public options
+are implemented; fixture-level parity for both settings remains part of the
+final smoke rung.
+
+The former requirement to finish this Nemotron slice before any other model
+work is superseded by the 2026-09-30 pause decision. Its browser parity and
+performance remain unresolved and must never be reported as passing.
 
 ## Completed (2026-08-30 recent slices)
 

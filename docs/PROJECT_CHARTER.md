@@ -2,9 +2,11 @@
 
 ## Mission
 
-Make `@asrjs/speech-recognition` a best-in-class web ASR library: accurate,
-fast, memory-efficient, reliable, easy to integrate, and pleasant to use in
-browser and local Node.js applications.
+Make `@asrjs/speech-recognition` a best-in-class, compact, multi-model speech
+runtime: accurate, fast, memory-efficient, reliable, highly capable, easy to
+integrate, and pleasant to use in browsers and local Node.js/Bun applications.
+Native inference is a target capability, not a synonym for browser WASM on Node;
+support and acceptance must be recorded per environment and actual engine.
 
 Model porting is one important workstream. The project also owns the quality of
 its public API, runtime lifecycle, realtime and long-audio behavior, browser
@@ -12,16 +14,19 @@ integration, asset system, examples, documentation, tests, and benchmarks.
 
 This charter complements [architecture.md](./architecture.md). The architecture
 document defines the code boundaries; this document defines the project-level
-priorities and evidence standards.
+priorities and evidence standards. The current operational goal is
+[GOAL_PROMPT_RECOMMENDED.md](./GOAL_PROMPT_RECOMMENDED.md); older goal checkpoints
+remain history rather than a competing implementation queue.
 
 ## In Scope
 
 - A coherent, stable, typed public API and canonical transcript contract.
-- Browser and Node.js runtime composition, lifecycle, workers, and backends.
+- Browser and Node.js/Bun runtime composition, lifecycle, workers, and backends,
+  including separately verified native inference where supported.
 - Asset loading, external data, caching, progress, cancellation, and recovery.
 - Realtime capture, resampling, buffering, VAD, chunking, partial/final state,
   transcript merging, and long-audio orchestration.
-- Timestamps, alignment, language detection, confidence, quality controls, and
+- Timestamps, alignment, diarization, language detection, confidence, quality controls, and
   capability metadata where supported and verified.
 - Technical model families under `src/models`.
 - Thin branded presets under `src/presets`.
@@ -76,7 +81,7 @@ support, quantization potential, licensing, and engineering effort.
 
 1. **API:** coherent types, stable transcript semantics, clear capability
    boundaries, useful errors, progress, cancellation, and disposal.
-2. **Runtime:** reliable browser/Node execution, workers, assets, caching,
+2. **Runtime:** reliable browser/Node/Bun execution, workers, assets, caching,
    backend selection, memory safety, and repeated-use behavior.
 3. **ASR behavior:** accurate decoding, language handling, timestamps,
    alignment, confidence, realtime, streaming, and long-audio composition.
@@ -89,6 +94,23 @@ support, quantization potential, licensing, and engineering effort.
 
 Work should be selected by expected measurable user value across these pillars,
 not by model novelty alone.
+
+### Compact multi-model design
+
+One coherent API must support several families without making every consumer
+load every model or backend. Preserve narrow root imports, intentional subpaths,
+tree-shaking and lazy environment-specific engines. Measure bundle/install size
+and startup cost. Browser-only APIs and native Node bindings must not leak across
+environment boundaries. Capabilities, precision and component placement are
+explicit; unsupported features must not be fabricated or silently substituted.
+
+Share asset handling, lifecycle, orchestration, identity, metrics and fixture
+gates where actual reuse exists. Keep graph contracts, model mathematics,
+decoding/cache rules and their tests family-owned. Follow
+[MODEL_HARNESS_CONTRACT.md](./MODEL_HARNESS_CONTRACT.md); improve existing tools
+incrementally with regressions rather than building a universal decoder or a
+second inference pipeline. Compatibility claims need actual Node/Bun/browser
+checks; an installed runtime or an import-only test is not model acceptance.
 
 ## First-Class Companion Projects
 
@@ -108,11 +130,20 @@ development and acceptance system even though they remain separate packages:
   parity/profiling reference;
 - `webgpu-agent-test` validates exact WebGPU artifacts, precision combinations,
   cache behavior, browser parity, memory, and performance.
+- `parakeet-ui-webgpu` provides a Parakeet application and legacy compatibility
+  reference; inspect its actual API and wiring before choosing integration work.
 
 These projects are first-class consumers and executable examples, not the
 architectural source of truth. Reusable logic belongs in
 `@asrjs/speech-recognition`; framework state and application-specific UI remain
 outside it.
+
+Inspect each project's dependency and alias configuration. Some applications
+consume the library directly; others are independent implementation references.
+In particular, `firered-vad-web` is a separate VAD reference, not proof of a
+completed FireRed ASR integration. Required consumer validation is selected by
+the changed public workflow, not by an assumption that all siblings use the
+same entry point or model.
 
 Important compositions implemented by these consumers are library requirements.
 This includes Parakeet v3 hybrid execution with a WebGPU encoder and WASM
@@ -246,7 +277,7 @@ Track where practical:
 ## Definition of Success
 
 The project succeeds when users can integrate dependable, fast, high-quality
-ASR into web applications through a coherent API and verified examples, while
+ASR into web and local Node.js/Bun applications through a coherent API and verified examples, while
 the repository continually improves its models, runtime, realtime behavior,
 performance, tests, diagnostics, and porting system.
 
