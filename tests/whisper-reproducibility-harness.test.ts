@@ -1,6 +1,7 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { tmpdir } from 'node:os';
 import type * as OrtNode from 'onnxruntime-node';
 import { parseWhisperManifest } from '../src/models/whisper-seq2seq/manifest.js';
 import { parseWhisperGenerationConfig } from '../src/models/whisper-seq2seq/generation-config.js';
@@ -9,11 +10,21 @@ import { WhisperMelProcessor } from '../src/audio/whisper-mel.js';
 import { WhisperTimestampLogitProcessor } from '../src/models/whisper-seq2seq/processors.js';
 import { processSplitGraphAlignment } from '../src/models/whisper-seq2seq/executor.js';
 import { decodeAudioSourceToMonoPcm } from '../src/runtime/media.js';
+import { requireFixtureFiles, requireFixtureOptIn } from './support/fixture-gates.js';
+import {
+  createFixtureSessionGroup,
+  type FixtureSessionGroup,
+  type FixtureSessionOwner,
+} from './support/fixture-sessions.js';
 
 function argmax(arr: Float32Array): number {
-  let maxIdx = 0, maxVal = arr[0] ?? -Infinity;
+  let maxIdx = 0,
+    maxVal = arr[0] ?? -Infinity;
   for (let i = 1; i < arr.length; i++) {
-    if ((arr[i] ?? -Infinity) > maxVal) { maxVal = arr[i]!; maxIdx = i; }
+    if ((arr[i] ?? -Infinity) > maxVal) {
+      maxVal = arr[i]!;
+      maxIdx = i;
+    }
   }
   return maxIdx;
 }
@@ -75,7 +86,7 @@ function compareTokens(
   return {
     matches,
     minLen,
-    matchPct: maxLen > 0 ? (100 * matches / maxLen) : 0,
+    matchPct: maxLen > 0 ? (100 * matches) / maxLen : 0,
     mismatches,
   };
 }
@@ -101,7 +112,13 @@ interface ReferenceJson {
     tokens: number[];
     generated: number[];
     eos_stopped?: boolean;
-    alignment: { shape: number[]; text_shape: number[]; row_sum_min: number; row_sum_max: number; row_sum_mean: number } | null;
+    alignment: {
+      shape: number[];
+      text_shape: number[];
+      row_sum_min: number;
+      row_sum_max: number;
+      row_sum_mean: number;
+    } | null;
   };
   decode?: { max_new_tokens?: number; language?: string; task?: string; no_timestamps?: boolean };
   mel_features_path?: string;
@@ -117,37 +134,48 @@ interface WhisperGraphDimensions {
 }
 
 type ReproSessions = Awaited<ReturnType<typeof createSessions>>;
-let sharedSessions: Promise<ReproSessions> | undefined;
+let sharedSessions: Promise<FixtureSessionGroup<ReproSessions>> | undefined;
 
 afterAll(async () => {
   if (!sharedSessions) return;
-  const { encSess, initSess, stepSess, alignSess } = await sharedSessions;
-  await Promise.all([
-    encSess.release(),
-    initSess.release(),
-    stepSess.release(),
-    alignSess?.release(),
-  ]);
+  await (await sharedSessions).release();
+  sharedSessions = undefined;
 });
 
 describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () => {
-  it('feature-input: 100% token match using Python/HF mel features (no TS frontend tolerance)', async () => {
-    const refPath = process.env.WHISPER_REFERENCE_JSON;
-    if (!refPath) { console.warn('Skipping: set WHISPER_REFERENCE_JSON'); return; }
-    if (!fs.existsSync(refPath)) { console.warn(`Skipping: ${refPath} not found`); return; }
+  it('feature-input: 100% token match using Python/HF mel features (no TS frontend tolerance)', async (context) => {
+    const refPath = process.env.WHISPER_REFERENCE_JSON ?? '';
+    requireFixtureOptIn(
+      context,
+      Boolean(refPath),
+      'Set WHISPER_REFERENCE_JSON to run real reference inference',
+    );
+    requireFixtureFiles({ WHISPER_REFERENCE_JSON: refPath });
 
     const ref: ReferenceJson = JSON.parse(fs.readFileSync(refPath, 'utf-8'));
-    const melPath = process.env.WHISPER_REFERENCE_MEL ?? ref.mel_features_path;
-    if (!melPath || !fs.existsSync(melPath)) {
-      console.warn('Skipping feature-input mode: no mel_features_path in reference (use --export-mel)');
-      return;
-    }
+    const melPath = process.env.WHISPER_REFERENCE_MEL ?? ref.mel_features_path ?? '';
+    requireFixtureFiles({ WHISPER_REFERENCE_MEL: melPath });
 
-    const { encSess, initSess, stepSess, alignSess, tokenizer, manifest, generationConfig, dimensions }
-      = await setupSessions(ref);
+    const {
+      encSess,
+      initSess,
+      stepSess,
+      alignSess,
+      tokenizer,
+      manifest,
+      generationConfig,
+      dimensions,
+    } = await setupSessions(ref);
 
     const { decoderLayers } = manifest.modelConfig;
-    const { encoderInputType, inputFeatureFrames, encoderSequenceLength, numMelBins, dModel, vocabSize } = dimensions;
+    const {
+      encoderInputType,
+      inputFeatureFrames,
+      encoderSequenceLength,
+      numMelBins,
+      dModel,
+      vocabSize,
+    } = dimensions;
 
     // ── Load Python mel features directly (bypass TS mel processor) ──
     const melNpy = fs.readFileSync(melPath);
@@ -157,7 +185,10 @@ describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () =
     // Extract shape from header like: {'descr': '<f4', 'fortran_order': False, 'shape': (1, 80, 3000)}
     const shapeMatch = headerStr.match(/shape':\s*\(([^)]+)\)/);
     if (!shapeMatch) throw new Error('Failed to parse NPY shape header');
-    const npyShape = shapeMatch[1]!.split(',').map((value) => Number.parseInt(value.trim(), 10)).filter(Number.isFinite);
+    const npyShape = shapeMatch[1]!
+      .split(',')
+      .map((value) => Number.parseInt(value.trim(), 10))
+      .filter(Number.isFinite);
     expect(npyShape).toEqual([1, numMelBins, inputFeatureFrames]);
     const dataOffset = 10 + headerLen;
     const melData = new Float32Array(
@@ -170,9 +201,19 @@ describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () =
     console.log(`Loaded Python mel features: ${melData.length} floats, shape ${shapeMatch[1]}`);
 
     const { allTokens, generated, encOut, eosStopped } = await runDecodeLoop({
-      encSess, initSess, stepSess, tokenizer,
-      melData, encoderInputType, numMelBins, inputFeatureFrames, encoderSequenceLength, dModel, vocabSize,
-      promptIds: ref.prompt_ids, decoderLayers,
+      encSess,
+      initSess,
+      stepSess,
+      tokenizer,
+      melData,
+      encoderInputType,
+      numMelBins,
+      inputFeatureFrames,
+      encoderSequenceLength,
+      dModel,
+      vocabSize,
+      promptIds: ref.prompt_ids,
+      decoderLayers,
       suppressTokens: [...(generationConfig.suppressTokens ?? [])],
       beginSuppressTokens: [...(generationConfig.beginSuppressTokens ?? [])],
       maxNewTokens: ref.decode?.max_new_tokens ?? 128,
@@ -192,8 +233,12 @@ describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () =
     const cmp = compareTokens(allTokens, refTokens, eosId, eosStopped, refEosStop);
 
     console.log('\n=== Feature-Input Reproducibility (Python mel) ===');
-    console.log(`TypeScript tokens (${allTokens.length}): ${allTokens.slice(0, 20)}${allTokens.length > 20 ? '...' : ''}`);
-    console.log(`Ref tokens       (${refTokens.length}): ${refTokens.slice(0, 20)}${refTokens.length > 20 ? '...' : ''}`);
+    console.log(
+      `TypeScript tokens (${allTokens.length}): ${allTokens.slice(0, 20)}${allTokens.length > 20 ? '...' : ''}`,
+    );
+    console.log(
+      `Ref tokens       (${refTokens.length}): ${refTokens.slice(0, 20)}${refTokens.length > 20 ? '...' : ''}`,
+    );
     console.log(`Token match: ${cmp.matches}/${cmp.minLen} (${cmp.matchPct.toFixed(1)}%)`);
     console.log(`TS text:  "${decoded.substring(0, 100)}"`);
     console.log(`Ref text: "${refDecoded.substring(0, 100)}"`);
@@ -217,20 +262,39 @@ describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () =
     console.log('\nFeature-input reproducibility PASSED (100% token match)');
   }, 180000);
 
-  it('wav-input: >=80% token match using TS mel frontend (tolerance for HF frontend differences, will tighten)', async () => {
-    const refPath = process.env.WHISPER_REFERENCE_JSON;
-    if (!refPath) { console.warn('Skipping: set WHISPER_REFERENCE_JSON'); return; }
-    if (!fs.existsSync(refPath)) { console.warn(`Skipping: ${refPath} not found`); return; }
+  it('wav-input: >=80% token match using TS mel frontend (tolerance for HF frontend differences, will tighten)', async (context) => {
+    const refPath = process.env.WHISPER_REFERENCE_JSON ?? '';
+    requireFixtureOptIn(
+      context,
+      Boolean(refPath),
+      'Set WHISPER_REFERENCE_JSON to run real reference inference',
+    );
+    requireFixtureFiles({ WHISPER_REFERENCE_JSON: refPath });
 
     const ref: ReferenceJson = JSON.parse(fs.readFileSync(refPath, 'utf-8'));
     const audioPath = process.env.WHISPER_REFERENCE_AUDIO ?? ref.audio.path;
-    if (!fs.existsSync(audioPath)) { console.warn(`Skipping: audio not found at ${audioPath}`); return; }
+    requireFixtureFiles({ WHISPER_REFERENCE_AUDIO: audioPath });
 
-    const { encSess, initSess, stepSess, alignSess, tokenizer, manifest, generationConfig, dimensions }
-      = await setupSessions(ref);
+    const {
+      encSess,
+      initSess,
+      stepSess,
+      alignSess,
+      tokenizer,
+      manifest,
+      generationConfig,
+      dimensions,
+    } = await setupSessions(ref);
 
     const { decoderLayers } = manifest.modelConfig;
-    const { encoderInputType, inputFeatureFrames, encoderSequenceLength, numMelBins, dModel, vocabSize } = dimensions;
+    const {
+      encoderInputType,
+      inputFeatureFrames,
+      encoderSequenceLength,
+      numMelBins,
+      dModel,
+      vocabSize,
+    } = dimensions;
 
     // ── Load audio and run TS mel processor ──
     const audioBuf = fs.readFileSync(audioPath);
@@ -246,9 +310,19 @@ describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () =
     const paddedMel = WhisperMelProcessor.padToFrames(melResult, inputFeatureFrames);
 
     const { allTokens, generated, encOut, eosStopped } = await runDecodeLoop({
-      encSess, initSess, stepSess, tokenizer,
-      melData: paddedMel, encoderInputType, numMelBins, inputFeatureFrames, encoderSequenceLength, dModel, vocabSize,
-      promptIds: ref.prompt_ids, decoderLayers,
+      encSess,
+      initSess,
+      stepSess,
+      tokenizer,
+      melData: paddedMel,
+      encoderInputType,
+      numMelBins,
+      inputFeatureFrames,
+      encoderSequenceLength,
+      dModel,
+      vocabSize,
+      promptIds: ref.prompt_ids,
+      decoderLayers,
       suppressTokens: [...(generationConfig.suppressTokens ?? [])],
       beginSuppressTokens: [...(generationConfig.beginSuppressTokens ?? [])],
       maxNewTokens: ref.decode?.max_new_tokens ?? 128,
@@ -268,8 +342,12 @@ describe('Whisper splitgraph reproducibility harness (vs HF Transformers)', () =
     const cmp = compareTokens(allTokens, refTokens, eosId, eosStopped, refEosStop);
 
     console.log('\n=== WAV-Input Reproducibility (TS mel) ===');
-    console.log(`TypeScript tokens (${allTokens.length}): ${allTokens.slice(0, 20)}${allTokens.length > 20 ? '...' : ''}`);
-    console.log(`Ref tokens       (${refTokens.length}): ${refTokens.slice(0, 20)}${refTokens.length > 20 ? '...' : ''}`);
+    console.log(
+      `TypeScript tokens (${allTokens.length}): ${allTokens.slice(0, 20)}${allTokens.length > 20 ? '...' : ''}`,
+    );
+    console.log(
+      `Ref tokens       (${refTokens.length}): ${refTokens.slice(0, 20)}${refTokens.length > 20 ? '...' : ''}`,
+    );
     console.log(`Token match: ${cmp.matches}/${cmp.minLen} (${cmp.matchPct.toFixed(1)}%)`);
     console.log(`TS text:  "${decoded.substring(0, 100)}"`);
     console.log(`Ref text: "${refDecoded.substring(0, 100)}"`);
@@ -306,8 +384,9 @@ function getReferenceDecode(
   if (ref.onnx_python) {
     return {
       tokens: ref.onnx_python.tokens,
-      eosStopped: ref.onnx_python.eos_stopped
-        ?? ref.onnx_python.tokens[ref.onnx_python.tokens.length - 1] === eosTokenId,
+      eosStopped:
+        ref.onnx_python.eos_stopped ??
+        ref.onnx_python.tokens[ref.onnx_python.tokens.length - 1] === eosTokenId,
     };
   }
   const tokens = ref.pytorch.no_timestamps.tokens;
@@ -315,37 +394,50 @@ function getReferenceDecode(
 }
 
 async function setupSessions(ref: ReferenceJson) {
-  sharedSessions ??= createSessions(ref);
-  return sharedSessions;
+  sharedSessions ??= createFixtureSessionGroup((own) => createSessions(ref, own)).catch((error) => {
+    sharedSessions = undefined;
+    throw error;
+  });
+  return (await sharedSessions).value;
 }
 
-async function createSessions(ref: ReferenceJson) {
+async function createSessions(ref: ReferenceJson, own: FixtureSessionOwner) {
   const modelDirOverride = process.env.WHISPER_REFERENCE_MODEL_DIR;
   const modelDir = modelDirOverride ?? ref.model.export_dir;
-  const encoderDir = process.env.WHISPER_REFERENCE_ENCODER_DIR
-    ?? modelDirOverride
-    ?? ref.model.encoder_dir
-    ?? modelDir;
-  const decoderDir = process.env.WHISPER_REFERENCE_DECODER_DIR
-    ?? modelDirOverride
-    ?? ref.model.decoder_dir
-    ?? modelDir;
+  const encoderDir =
+    process.env.WHISPER_REFERENCE_ENCODER_DIR ??
+    modelDirOverride ??
+    ref.model.encoder_dir ??
+    modelDir;
+  const decoderDir =
+    process.env.WHISPER_REFERENCE_DECODER_DIR ??
+    modelDirOverride ??
+    ref.model.decoder_dir ??
+    modelDir;
   const encoderFile = (...parts: string[]) => path.join(encoderDir, ...parts);
   const decoderFile = (...parts: string[]) => path.join(decoderDir, ...parts);
   if (!fs.existsSync(encoderFile('encoder_model.onnx'))) {
     throw new Error(`Missing encoder_model.onnx in ${encoderDir}`);
   }
-  const requiredDecoderFiles = ['decoder_init.onnx', 'decoder_step.onnx', 'tokenizer.json', 'manifest.json'];
+  const requiredDecoderFiles = [
+    'decoder_init.onnx',
+    'decoder_step.onnx',
+    'tokenizer.json',
+    'manifest.json',
+  ];
   if (!requiredDecoderFiles.every((name) => fs.existsSync(decoderFile(name)))) {
     throw new Error(`Missing decoder model files in ${decoderDir}`);
   }
 
-  const manifestRaw = JSON.parse(fs.readFileSync(decoderFile('manifest.json'), 'utf-8')) as Record<string, unknown>;
+  const manifestRaw = JSON.parse(fs.readFileSync(decoderFile('manifest.json'), 'utf-8')) as Record<
+    string,
+    unknown
+  >;
   const manifest = parseWhisperManifest(manifestRaw);
   const specialTokens = (manifestRaw.special_tokens ?? {}) as Record<string, unknown>;
   const generationConfigPath = decoderFile('generation_config.json');
   const generationConfigRaw = fs.existsSync(generationConfigPath)
-    ? JSON.parse(fs.readFileSync(generationConfigPath, 'utf-8')) as Record<string, unknown>
+    ? (JSON.parse(fs.readFileSync(generationConfigPath, 'utf-8')) as Record<string, unknown>)
     : {};
   const generationConfig = parseWhisperGenerationConfig({
     alignment_heads: manifestRaw.alignment_heads,
@@ -361,19 +453,39 @@ async function createSessions(ref: ReferenceJson) {
   expect(manifest.modelConfig.decoderAttentionHeads).toBe(ref.model.decoder_attention_heads);
 
   await ensureOrt();
-  const sessionOpts = { graphOptimizationLevel: 'all' as const, executionMode: 'parallel' as const };
-  const encSess = await ort.InferenceSession.create(encoderFile('encoder_model.onnx'), sessionOpts);
-  const initSess = await ort.InferenceSession.create(decoderFile('decoder_init.onnx'), sessionOpts);
-  const stepSess = await ort.InferenceSession.create(decoderFile('decoder_step.onnx'), sessionOpts);
+  const sessionOpts = {
+    graphOptimizationLevel: 'all' as const,
+    executionMode: 'parallel' as const,
+  };
+  const encSess = own(
+    await ort.InferenceSession.create(encoderFile('encoder_model.onnx'), sessionOpts),
+  );
+  const initSess = own(
+    await ort.InferenceSession.create(decoderFile('decoder_init.onnx'), sessionOpts),
+  );
+  const stepSess = own(
+    await ort.InferenceSession.create(decoderFile('decoder_step.onnx'), sessionOpts),
+  );
   const hasAlign = fs.existsSync(decoderFile('decoder_align.onnx'));
-  const alignSess = hasAlign ? await ort.InferenceSession.create(decoderFile('decoder_align.onnx'), sessionOpts) : null;
+  const alignSess = hasAlign
+    ? own(await ort.InferenceSession.create(decoderFile('decoder_align.onnx'), sessionOpts))
+    : null;
   const tokenizer = await WhisperTokenizer.fromUrl(`file://${decoderFile('tokenizer.json')}`);
   const dimensions = readWhisperGraphDimensions(encSess, initSess);
 
   expect(dimensions.dModel).toBe(manifest.modelConfig.dModel);
   expect(dimensions.numMelBins).toBe(manifest.modelConfig.numMelBins);
 
-  return { encSess, initSess, stepSess, alignSess, tokenizer, manifest, generationConfig, dimensions };
+  return {
+    encSess,
+    initSess,
+    stepSess,
+    alignSess,
+    tokenizer,
+    manifest,
+    generationConfig,
+    dimensions,
+  };
 }
 
 function readWhisperGraphDimensions(
@@ -381,10 +493,19 @@ function readWhisperGraphDimensions(
   initSess: OrtNode.InferenceSession,
 ): WhisperGraphDimensions {
   const encoderInput = encSess.inputMetadata.find((entry) => entry.name === 'input_features');
-  const encoderOutput = encSess.outputMetadata.find((entry) => entry.name.startsWith('last_hidden_state'));
+  const encoderOutput = encSess.outputMetadata.find((entry) =>
+    entry.name.startsWith('last_hidden_state'),
+  );
   const logitsOutput = initSess.outputMetadata.find((entry) => entry.name.includes('logits'));
   if (!encoderInput || !encoderOutput || !logitsOutput) {
-    throw new Error('Whisper graph metadata is missing input_features, last_hidden_state, or logits.');
+    throw new Error(
+      'Whisper graph metadata is missing input_features, last_hidden_state, or logits.',
+    );
+  }
+  if (!encoderInput.isTensor || !encoderOutput.isTensor || !logitsOutput.isTensor) {
+    throw new Error(
+      'Whisper encoder input/output and decoder logits metadata must describe tensors.',
+    );
   }
   if (encoderInput.type !== 'float16' && encoderInput.type !== 'float32') {
     throw new Error(`Unsupported Whisper encoder input type: ${encoderInput.type}.`);
@@ -394,7 +515,11 @@ function readWhisperGraphDimensions(
     encoderInputType: encoderInput.type,
     numMelBins: requireStaticDimension(encoderInput.shape, 1, 'encoder input mel bins'),
     inputFeatureFrames: requireStaticDimension(encoderInput.shape, 2, 'encoder input frames'),
-    encoderSequenceLength: requireStaticDimension(encoderOutput.shape, 1, 'encoder output positions'),
+    encoderSequenceLength: requireStaticDimension(
+      encoderOutput.shape,
+      1,
+      'encoder output positions',
+    ),
     dModel: requireStaticDimension(encoderOutput.shape, 2, 'encoder output width'),
     vocabSize: requireStaticDimension(logitsOutput.shape, 2, 'decoder vocabulary'),
   };
@@ -431,17 +556,36 @@ async function runDecodeLoop(params: {
   maxNewTokens: number;
 }) {
   const {
-    encSess, initSess, stepSess, tokenizer, melData, encoderInputType, numMelBins,
-    inputFeatureFrames, encoderSequenceLength, dModel, vocabSize,
-    promptIds, decoderLayers, suppressTokens, beginSuppressTokens, maxNewTokens,
+    encSess,
+    initSess,
+    stepSess,
+    tokenizer,
+    melData,
+    encoderInputType,
+    numMelBins,
+    inputFeatureFrames,
+    encoderSequenceLength,
+    dModel,
+    vocabSize,
+    promptIds,
+    decoderLayers,
+    suppressTokens,
+    beginSuppressTokens,
+    maxNewTokens,
   } = params;
 
-  const melTensor = encoderInputType === 'float16'
-    ? new ort.Tensor('float16', float32ToFloat16Bits(melData), [1, numMelBins, inputFeatureFrames])
-    : new ort.Tensor('float32', melData, [1, numMelBins, inputFeatureFrames]);
+  const melTensor =
+    encoderInputType === 'float16'
+      ? new ort.Tensor('float16', float32ToFloat16Bits(melData), [
+          1,
+          numMelBins,
+          inputFeatureFrames,
+        ])
+      : new ort.Tensor('float32', melData, [1, numMelBins, inputFeatureFrames]);
   const encoderOutputs = await encSess.run({ input_features: melTensor });
-  const encoderOutputName = Object.keys(encoderOutputs).find((name) => name.startsWith('last_hidden_state'))
-    ?? Object.keys(encoderOutputs)[0]!;
+  const encoderOutputName =
+    Object.keys(encoderOutputs).find((name) => name.startsWith('last_hidden_state')) ??
+    Object.keys(encoderOutputs)[0]!;
   const encOut = encoderOutputs[encoderOutputName] as OrtNode.Tensor;
   expect(encOut.dims).toEqual([1, encoderSequenceLength, dModel]);
 
@@ -450,8 +594,11 @@ async function runDecodeLoop(params: {
   const tsBegin = tokenizer.getTokenId('<|0.00|>') ?? 50364;
 
   const processor = new WhisperTimestampLogitProcessor({
-    eosTokenId: eosId, noTimestampsTokenId: noTsId, timestampBegin: tsBegin,
-    suppressTokens, beginSuppressTokens,
+    eosTokenId: eosId,
+    noTimestampsTokenId: noTsId,
+    timestampBegin: tsBegin,
+    suppressTokens,
+    beginSuppressTokens,
   });
 
   // Init
@@ -467,7 +614,8 @@ async function runDecodeLoop(params: {
 
   const pastKv: Record<string, OrtNode.Tensor> = {};
   for (const [k, v] of Object.entries(initOut)) {
-    if (k.startsWith('present')) pastKv[k.replace('present.', 'past_key_values.')] = v as OrtNode.Tensor;
+    if (k.startsWith('present'))
+      pastKv[k.replace('present.', 'past_key_values.')] = v as OrtNode.Tensor;
   }
   expect(Object.keys(pastKv).length).toBe(4 * decoderLayers);
 
@@ -482,7 +630,9 @@ async function runDecodeLoop(params: {
   // Step loop
   while (!eosStopped && generated.length < maxNewTokens) {
     const stepIn = new BigInt64Array([BigInt(nextToken)]);
-    const stepFeeds: Record<string, unknown> = { input_ids: new ort.Tensor('int64', stepIn, [1, 1]) };
+    const stepFeeds: Record<string, OrtNode.Tensor> = {
+      input_ids: new ort.Tensor('int64', stepIn, [1, 1]),
+    };
     for (const [k, v] of Object.entries(pastKv)) stepFeeds[k] = v;
     const stepOut = await stepSess.run(stepFeeds);
     const sLogitsKey = Object.keys(stepOut).find((k) => k.includes('logits'))!;
@@ -495,7 +645,8 @@ async function runDecodeLoop(params: {
     }
     generated.push(nextToken);
     for (const [k, v] of Object.entries(stepOut)) {
-      if (k.startsWith('present')) pastKv[k.replace('present.', 'past_key_values.')] = v as OrtNode.Tensor;
+      if (k.startsWith('present'))
+        pastKv[k.replace('present.', 'past_key_values.')] = v as OrtNode.Tensor;
     }
   }
 
@@ -549,9 +700,7 @@ function float32ToFloat16Bits(values: Float32Array): Uint16Array {
         halfExponent += 1;
       }
     }
-    output[i] = halfExponent >= 0x1f
-      ? sign | 0x7c00
-      : sign | (halfExponent << 10) | halfMantissa;
+    output[i] = halfExponent >= 0x1f ? sign | 0x7c00 : sign | (halfExponent << 10) | halfMantissa;
   }
 
   return output;
@@ -574,25 +723,104 @@ describe('Whisper reference mel dtype conversion', () => {
     ]);
 
     expect(Array.from(float32ToFloat16Bits(values))).toEqual([
-      0xc000,
-      0xbc00,
-      0x8000,
-      0x0000,
-      0x3c00,
-      0x4000,
-      0x0001,
-      0x0000,
-      0x7c00,
-      0xfc00,
-      0x7e00,
+      0xc000, 0xbc00, 0x8000, 0x0000, 0x3c00, 0x4000, 0x0001, 0x0000, 0x7c00, 0xfc00, 0x7e00,
     ]);
   });
 });
 
+describe('Whisper reproducibility setup ownership (simulated sessions)', () => {
+  it.each([1, 2])(
+    'rolls back %i acquired sessions and retries after a rejected setup',
+    async (failAfter) => {
+      const directory = fs.mkdtempSync(path.join(tmpdir(), 'asr-whisper-setup-'));
+      const previousOrt = ort;
+      const previousSessions = sharedSessions;
+      const settings = [
+        'WHISPER_REFERENCE_MODEL_DIR',
+        'WHISPER_REFERENCE_ENCODER_DIR',
+        'WHISPER_REFERENCE_DECODER_DIR',
+      ];
+      const previousSettings = settings.map((key) => process.env[key]);
+      const created: Array<{ release: ReturnType<typeof vi.fn> }> = [];
+      const failure = new Error('simulated native session creation failed');
+      let failed = false;
+      const create = vi.fn(async () => {
+        if (!failed && created.length === failAfter) {
+          failed = true;
+          throw failure;
+        }
+        const session = {
+          release: vi.fn(async () => {}),
+          inputMetadata: [
+            { name: 'input_features', isTensor: true, type: 'float32', shape: [1, 80, 3000] },
+          ],
+          outputMetadata: [
+            { name: 'last_hidden_state', isTensor: true, type: 'float32', shape: [1, 1500, 8] },
+            { name: 'logits', isTensor: true, type: 'float32', shape: [1, 1, 16] },
+          ],
+        };
+        created.push(session);
+        return session;
+      });
+      const tokenizer = vi
+        .spyOn(WhisperTokenizer, 'fromUrl')
+        .mockResolvedValue({} as WhisperTokenizer);
+      try {
+        for (const key of settings) delete process.env[key];
+        for (const name of [
+          'encoder_model.onnx',
+          'decoder_init.onnx',
+          'decoder_step.onnx',
+          'tokenizer.json',
+        ])
+          fs.writeFileSync(path.join(directory, name), 'simulated fixture, not a model');
+        fs.writeFileSync(
+          path.join(directory, 'manifest.json'),
+          JSON.stringify({
+            format: 'whisper-browser-self-export-v1',
+            d_model: 8,
+            decoder_layers: 2,
+            decoder_attention_heads: 2,
+            num_mel_bins: 80,
+          }),
+        );
+        ort = { InferenceSession: { create } } as unknown as typeof OrtNode;
+        sharedSessions = undefined;
+        const ref = {
+          model: {
+            export_dir: directory,
+            d_model: 8,
+            decoder_layers: 2,
+            decoder_attention_heads: 2,
+          },
+        } as ReferenceJson;
+        await expect(setupSessions(ref)).rejects.toBe(failure);
+        for (const session of created) expect(session.release).toHaveBeenCalledTimes(1);
+        await expect(setupSessions(ref)).resolves.toHaveProperty('dimensions.dModel', 8);
+        expect(create).toHaveBeenCalledTimes(failAfter + 4);
+      } finally {
+        if (sharedSessions && sharedSessions !== previousSessions)
+          await (await sharedSessions).release();
+        sharedSessions = previousSessions;
+        ort = previousOrt;
+        tokenizer.mockRestore();
+        settings.forEach((key, index) => {
+          if (previousSettings[index] === undefined) delete process.env[key];
+          else process.env[key] = previousSettings[index];
+        });
+        fs.rmSync(directory, { recursive: true });
+      }
+    },
+  );
+});
+
 async function validateAlignment(
   alignSess: OrtNode.InferenceSession | null,
-  allTokens: number[], encOut: OrtNode.Tensor,
-  generated: number[], ref: ReferenceJson, maxSrcPos: number,
+  allTokens: number[],
+  encOut: OrtNode.Tensor,
+  generated: number[],
+  ref: ReferenceJson,
+  maxSrcPos: number,
 ) {
   if (!alignSess || generated.length === 0) return;
 
@@ -620,9 +848,12 @@ async function validateAlignment(
   }
 
   const dtwTs = processSplitGraphAlignment({
-    alignmentData: data, totalTokens: allTokens.length,
-    promptLen: ref.prompt_ids.length, textTokenCount: generated.length,
-    frameCount: aS, timePrecisionSeconds: 0.02,
+    alignmentData: data,
+    totalTokens: allTokens.length,
+    promptLen: ref.prompt_ids.length,
+    textTokenCount: generated.length,
+    frameCount: aS,
+    timePrecisionSeconds: 0.02,
   });
   expect(dtwTs).toHaveLength(generated.length + 1);
   for (let i = 1; i < dtwTs.length; i++) {

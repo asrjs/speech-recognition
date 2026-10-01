@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 import { WhisperOnnxExecutor } from '../src/models/whisper-seq2seq/executor.js';
@@ -7,13 +6,19 @@ import type {
   WhisperArtifactSource,
   WhisperSeq2SeqModelConfig,
 } from '../src/models/whisper-seq2seq/types.js';
+import {
+  requireFixtureDirectory,
+  requireFixtureFiles,
+  requireFixtureOptIn,
+} from './support/fixture-gates.js';
 
 describe('Whisper ONNX end-to-end smoke', () => {
-  it('runs real ONNX inference and does not return stub output', async () => {
-    if (!process.env.ASRJS_FIXTURE_SMOKE && !process.env.ASRJS_FIXTURE_SMOKE_FORCE) {
-      console.warn('Skipping: set ASRJS_FIXTURE_SMOKE=1 to run ONNX fixture smoke test');
-      return;
-    }
+  it('runs real ONNX inference and does not return stub output', async (context) => {
+    requireFixtureOptIn(
+      context,
+      process.env.ASRJS_FIXTURE_SMOKE === '1' || process.env.ASRJS_FIXTURE_SMOKE_FORCE === '1',
+      'Set ASRJS_FIXTURE_SMOKE=1 to run ONNX fixture smoke test',
+    );
 
     const config: WhisperSeq2SeqModelConfig = {
       ecosystem: 'openai',
@@ -30,11 +35,10 @@ describe('Whisper ONNX end-to-end smoke', () => {
       tokenizer: { kind: 'tiktoken', vocabSize: 51865 },
     };
 
-    const fixtureDir = process.env.WHISPER_MERGED_FIXTURE_DIR;
-    if (!fixtureDir) {
-      console.warn('Skipping: set WHISPER_MERGED_FIXTURE_DIR to a local merged Whisper fixture');
-      return;
-    }
+    const fixtureDir = requireFixtureDirectory(
+      process.env.WHISPER_MERGED_FIXTURE_DIR,
+      'WHISPER_MERGED_FIXTURE_DIR',
+    );
     const encoderPath = path.join(
       fixtureDir,
       process.env.WHISPER_MERGED_ENCODER ?? 'onnx/encoder_model.onnx',
@@ -47,10 +51,7 @@ describe('Whisper ONNX end-to-end smoke', () => {
       fixtureDir,
       process.env.WHISPER_MERGED_TOKENIZER ?? 'tokenizer.json',
     );
-    if (![encoderPath, decoderPath, tokenizerPath].every((file) => fs.existsSync(file))) {
-      console.warn(`Skipping: Whisper ONNX fixture files not found under ${fixtureDir}`);
-      return;
-    }
+    requireFixtureFiles({ encoder: encoderPath, decoder: decoderPath, tokenizer: tokenizerPath });
 
     const source: WhisperArtifactSource = {
       kind: 'direct',
@@ -66,8 +67,9 @@ describe('Whisper ONNX end-to-end smoke', () => {
       { ecosystem: 'openai', family: 'whisper-seq2seq', task: 'transcribe' },
       config,
       'wasm',
-      { source }
+      { source },
     );
+    context.onTestFinished(() => executor.dispose());
 
     // 1 second of 440 Hz sine at 16 kHz
     const sampleRate = 16000;
@@ -88,15 +90,11 @@ describe('Whisper ONNX end-to-end smoke', () => {
     const result = await executor.transcribe(
       audio,
       { language: 'tr', noTimestamps: true, maxNewTokens: 50 },
-      { modelId: 'whisper-tiny', config }
+      { modelId: 'whisper-tiny', config },
     );
-
-    await executor.dispose();
 
     // Assert: no stub warning
-    const stubWarning = result.warnings?.find(
-      (w) => w.code === 'whisper-seq2seq.stubbed-decoder'
-    );
+    const stubWarning = result.warnings?.find((w) => w.code === 'whisper-seq2seq.stubbed-decoder');
     expect(stubWarning).toBeUndefined();
 
     // Assert: tokens array is populated (even if EOS immediately)

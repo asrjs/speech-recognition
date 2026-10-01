@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { WhisperMelProcessor } from '../src/audio/whisper-mel.js';
 import * as fs from 'fs';
+import { requireFixtureFiles, requireFixtureOptIn } from './support/fixture-gates.js';
 
 /**
  * Validate WhisperMelProcessor against OpenAI reference output.
@@ -9,7 +10,8 @@ import * as fs from 'fs';
  * at 16kHz. The fixture file must be present; if absent, the test skips.
  */
 
-const REF_PATH = '/tmp/whisper_mel_ref_440hz_1s.json';
+const REF_PATH =
+  process.env.WHISPER_MEL_REFERENCE_JSON ?? 'tests/fixtures/whisper_mel_ref_440hz_1s.json';
 const SAMPLE_RATE = 16000;
 const N_FFT = 400;
 const HOP_LENGTH = 160;
@@ -19,13 +21,9 @@ interface RefData {
   data: number[][];
 }
 
-function loadRef(): RefData | null {
-  try {
-    const raw = fs.readFileSync(REF_PATH, 'utf-8');
-    return JSON.parse(raw) as RefData;
-  } catch {
-    return null;
-  }
+function loadRef(): RefData {
+  requireFixtureFiles({ WHISPER_MEL_REFERENCE_JSON: REF_PATH });
+  return JSON.parse(fs.readFileSync(REF_PATH, 'utf-8')) as RefData;
 }
 
 function hzToMelSlaney(hz: number): number {
@@ -211,11 +209,20 @@ describe('WhisperMelProcessor vs OpenAI reference', () => {
     expect(experimentalMaxDiff).toBeGreaterThan(1e-3);
   });
 
-  it('produces mel features matching OpenAI within tolerance', () => {
+  it('produces mel features matching OpenAI within tolerance', (context) => {
+    requireFixtureOptIn(
+      context,
+      process.env.WHISPER_MEL_REFERENCE_JSON !== undefined || fs.existsSync(REF_PATH),
+      'Set WHISPER_MEL_REFERENCE_JSON or provide the default local reference fixture',
+    );
     const ref = loadRef();
-    if (!ref) {
-      console.warn(`Skipping: reference fixture not found at ${REF_PATH}`);
-      return;
+    const referenceFrames = ref.shape[1];
+    if (
+      referenceFrames === undefined ||
+      referenceFrames <= 0 ||
+      !Number.isInteger(referenceFrames)
+    ) {
+      throw new Error('Whisper mel reference must declare a positive integer frame count');
     }
 
     const sampleRate = 16000;
@@ -228,16 +235,19 @@ describe('WhisperMelProcessor vs OpenAI reference', () => {
     const result = processor.process(samples);
 
     expect(result.nMels).toBe(80);
-    expect(result.frameCount).toBe(ref.shape[1]);
-    expect(result.features.length).toBe(80 * ref.shape[1]);
+    expect(result.frameCount).toBe(referenceFrames);
+    expect(result.features.length).toBe(80 * referenceFrames);
 
-    const nFrames = Math.min(result.frameCount, ref.shape[1]);
+    const nFrames = Math.min(result.frameCount, referenceFrames);
     let maxDiff = 0;
     let totalDiff = 0;
     for (let mel = 0; mel < 80; mel++) {
       for (let frame = 0; frame < nFrames; frame++) {
         const ours = result.features[mel * result.frameCount + frame] as number;
-        const theirs = ref.data[mel][frame];
+        const theirs = ref.data[mel]?.[frame];
+        if (theirs === undefined || !Number.isFinite(theirs)) {
+          throw new Error(`Whisper mel reference has an invalid value at [${mel}, ${frame}]`);
+        }
         const diff = Math.abs(ours - theirs);
         totalDiff += diff;
         if (diff > maxDiff) maxDiff = diff;

@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 const DEFAULT_ABS_TOLERANCE = 1e-5;
 const DEFAULT_REL_TOLERANCE = 1e-4;
@@ -64,12 +65,15 @@ function printUsage() {
 }
 
 function loadJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const bytes = fs.readFileSync(filePath);
+  return JSON.parse((filePath.endsWith('.gz') ? gunzipSync(bytes) : bytes).toString('utf8'));
 }
 
 function sampleList(capture, label) {
   if (!capture || !Array.isArray(capture.samples))
     throw new Error(`${label} must contain a samples array`);
+  if (capture.samples.length === 0)
+    throw new Error(`${label} must contain at least one captured sample`);
   const byId = new Map();
   for (const sample of capture.samples) {
     const id = String(sample?.sample_id ?? '').trim();
@@ -89,13 +93,25 @@ function stageMap(sample, label, sampleId) {
 function numericData(stage, label) {
   if (!Array.isArray(stage?.data))
     throw new Error(`${label} stage must contain a flat numeric data array`);
+  if (stage.data.length === 0)
+    throw new Error(`${label} stage must contain at least one captured value`);
   if (stage.data.some((value) => typeof value !== 'number' || !Number.isFinite(value)))
     throw new Error(`${label} stage contains non-finite or non-numeric data`);
   return stage.data;
 }
 
 function shapeOf(stage) {
-  return Array.isArray(stage?.shape) ? stage.shape.map(Number) : null;
+  const shape = stage?.shape;
+  return Array.isArray(shape) &&
+    shape.every(
+      (dimension) =>
+        typeof dimension === 'number' && Number.isSafeInteger(dimension) && dimension >= 0,
+    )
+    ? shape
+    : null;
+}
+function dtypeOf(stage) {
+  return typeof stage?.dtype === 'string' && stage.dtype.trim() ? stage.dtype.trim() : null;
 }
 function argmax(values) {
   if (!values.length) return null;
@@ -142,8 +158,17 @@ function compareStage(referenceStage, candidateStage, options) {
     }
   }
   const lengthMatch = reference.length === candidate.length;
+  const referenceShape = shapeOf(referenceStage);
+  const candidateShape = shapeOf(candidateStage);
   const shapeMatch =
-    JSON.stringify(shapeOf(referenceStage)) === JSON.stringify(shapeOf(candidateStage));
+    referenceShape !== null &&
+    candidateShape !== null &&
+    JSON.stringify(referenceShape) === JSON.stringify(candidateShape) &&
+    referenceShape.reduce((count, dimension) => count * dimension, 1) === reference.length &&
+    candidateShape.reduce((count, dimension) => count * dimension, 1) === candidate.length;
+  const referenceDtype = dtypeOf(referenceStage);
+  const candidateDtype = dtypeOf(candidateStage);
+  const dtypeMatch = referenceDtype !== null && referenceDtype === candidateDtype;
   const cosine =
     refNorm && candidateNorm
       ? dot / Math.sqrt(refNorm * candidateNorm)
@@ -153,13 +178,13 @@ function compareStage(referenceStage, candidateStage, options) {
   const argmaxReference = argmax(reference);
   const argmaxCandidate = argmax(candidate);
   return {
-    pass: lengthMatch && shapeMatch && mismatches === 0,
+    pass: lengthMatch && shapeMatch && dtypeMatch && mismatches === 0,
     shape: {
-      reference: shapeOf(referenceStage),
-      candidate: shapeOf(candidateStage),
+      reference: referenceShape,
+      candidate: candidateShape,
       match: shapeMatch,
     },
-    dtype: { reference: referenceStage?.dtype ?? null, candidate: candidateStage?.dtype ?? null },
+    dtype: { reference: referenceDtype, candidate: candidateDtype, match: dtypeMatch },
     count: {
       reference: reference.length,
       candidate: candidate.length,
@@ -199,15 +224,27 @@ function optionalTokenIds(sample, label) {
   return ids;
 }
 
-function compareTokenIds(referenceSample, candidateSample, sampleId) {
-  const reference = optionalTokenIds(referenceSample, `reference sample ${sampleId}`);
-  const candidate = optionalTokenIds(candidateSample, `candidate sample ${sampleId}`);
+export function compareTokenIds(referenceSample, candidateSample, sampleId, field = 'tokens') {
+  const values = (sample, label) => {
+    const ids = optionalTokenIds(
+      field === 'tokens' ? sample : { tokens: sample?.[field] },
+      `${label} sample ${sampleId} ${field}`,
+    );
+    if (field !== 'tokens' && ids != null) {
+      const tokens = optionalTokenIds(sample, `${label} sample ${sampleId}`);
+      if (tokens == null || tokens.length !== ids.length)
+        throw new Error(`${label} ${field} length must match the token count`);
+    }
+    return ids;
+  };
+  const reference = values(referenceSample, 'reference');
+  const candidate = values(candidateSample, 'candidate');
   if (reference == null && candidate == null) return { pass: true, present: false };
   if (reference == null || candidate == null) {
     return {
       pass: false,
       present: true,
-      failure: reference == null ? 'missing_reference_tokens' : 'missing_candidate_tokens',
+      failure: reference == null ? `missing_reference_${field}` : `missing_candidate_${field}`,
     };
   }
   const compared = Math.min(reference.length, candidate.length);
@@ -254,6 +291,13 @@ export function compareStageCaptures(referenceCapture, candidateCapture, options
   };
   const referenceSamples = sampleList(referenceCapture, 'reference');
   const candidateSamples = sampleList(candidateCapture, 'candidate');
+  const stageOrder = referenceCapture.stage_order ?? [];
+  if (
+    !Array.isArray(stageOrder) ||
+    stageOrder.some((name) => typeof name !== 'string' || !name.trim()) ||
+    new Set(stageOrder).size !== stageOrder.length
+  )
+    throw new Error('reference stage_order must be an array of unique non-empty stage names');
   const referenceIds = [...referenceSamples.keys()].sort();
   const referenceOnly = referenceIds.filter((id) => !candidateSamples.has(id));
   const candidateOnly = [...candidateSamples.keys()]
@@ -270,12 +314,13 @@ export function compareStageCaptures(referenceCapture, candidateCapture, options
     const referenceAudio = audioIdentity(referenceSample);
     const candidateAudio = audioIdentity(candidateSample);
     const audioMatch =
-      referenceAudio == null || candidateAudio == null || referenceAudio === candidateAudio;
+      referenceAudio != null && candidateAudio != null && referenceAudio === candidateAudio;
     const referenceStages = stageMap(referenceSample, 'reference', sampleId);
     const candidateStages = stageMap(candidateSample, 'candidate', sampleId);
     const stageNames = [
-      ...new Set([...Object.keys(referenceStages), ...Object.keys(candidateStages)]),
-    ].sort();
+      ...new Set([...stageOrder, ...Object.keys(referenceStages), ...Object.keys(candidateStages)]),
+    ];
+    if (stageNames.length === 0) throw new Error(`sample ${sampleId} has no captured stages`);
     const stages = {};
     for (const stageName of stageNames) {
       if (!(stageName in referenceStages))
@@ -291,6 +336,13 @@ export function compareStageCaptures(referenceCapture, candidateCapture, options
     }
     const failedStage = stageNames.find((stageName) => stages[stageName].pass !== true);
     const tokens = compareTokenIds(referenceSample, candidateSample, sampleId);
+    const tokenDuration = compareTokenIds(
+      referenceSample,
+      candidateSample,
+      sampleId,
+      'token_duration',
+    );
+    const tokenFrames = compareTokenIds(referenceSample, candidateSample, sampleId, 'token_frames');
     const transcript = compareOptionalText(referenceSample, candidateSample);
     const referenceEos = optionalEos(referenceSample);
     const candidateEos = optionalEos(candidateSample);
@@ -303,7 +355,17 @@ export function compareStageCaptures(referenceCapture, candidateCapture, options
     const firstFailedStage = !audioMatch
       ? 'audio_identity'
       : (failedStage ??
-        (!tokens.pass ? 'tokens' : !transcript.pass ? 'transcript' : !eos.match ? 'eos' : null));
+        (!tokens.pass
+          ? 'tokens'
+          : !tokenDuration.pass
+            ? 'token_duration'
+            : !tokenFrames.pass
+              ? 'token_frames'
+              : !transcript.pass
+                ? 'transcript'
+                : !eos.match
+                  ? 'eos'
+                  : null));
     samples.push({
       sample_id: sampleId,
       pass: audioMatch && firstFailedStage == null,
@@ -311,7 +373,13 @@ export function compareStageCaptures(referenceCapture, candidateCapture, options
       audio: { reference: referenceAudio, candidate: candidateAudio, match: audioMatch },
       first_failed_stage: firstFailedStage,
       stages,
-      outputs: { tokens, transcript, eos },
+      outputs: {
+        tokens,
+        token_duration: tokenDuration,
+        token_frames: tokenFrames,
+        transcript,
+        eos,
+      },
     });
   }
   return {

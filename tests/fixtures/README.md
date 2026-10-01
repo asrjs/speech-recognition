@@ -20,3 +20,35 @@ Notes:
 - If model assets are unavailable and `--force` is not set, the command also skips cleanly.
 - Use `--force` or `ASRJS_FIXTURE_SMOKE_FORCE=1` when you want unavailable assets or failed expectations to fail CI.
 - Keep fixtures short and do not commit large/private audio files unless explicitly intended.
+
+## Vitest model fixtures
+
+The CLI smoke behavior above is separate from Vitest integration tests. In
+Vitest, a disabled integration test is a real SKIP; an explicitly requested
+test with missing/empty/malformed required artifacts FAILS. Shared prerequisites
+live in `tests/support/fixture-gates.ts`; graph names and assertions stay in the
+model-specific tests. See `docs/MODEL_HARNESS_CONTRACT.md`.
+
+- Merged Whisper: set `ASRJS_FIXTURE_SMOKE=1` (or
+  `ASRJS_FIXTURE_SMOKE_FORCE=1`) and `WHISPER_MERGED_FIXTURE_DIR`. Optional
+  `WHISPER_MERGED_ENCODER`, `WHISPER_MERGED_DECODER` and
+  `WHISPER_MERGED_TOKENIZER` override the existing relative filenames.
+- Timestamped Whisper tiny: use the same opt-in and
+  `WHISPER_TIMESTAMPED_FIXTURE_DIR`; `WHISPER_TIMESTAMPED_DECODER` overrides
+  the existing `decoder_model_merged_int8.onnx` filename. This legacy tiny
+  contract does not require integer quantization for other model ports.
+- Split-graph Whisper: setting `WHISPER_SPLITGRAPH_FIXTURE_DIR` requests its
+  tests. An unset value skips; an empty or invalid configured value fails.
+- Whisper mel oracle: set `WHISPER_MEL_REFERENCE_JSON`, or supply
+  `tests/fixtures/whisper_mel_ref_440hz_1s.json`. Missing configured files and
+  JSON parsing failures must not be swallowed as skips.
+- GigaAM CTC: set `GIGAAM_CTC_ONNX_SMOKE=1`. `GIGAAM_CTC_ONNX_DIR` defaults
+  to `models/gigaam/multilingual-ctc`; `GIGAAM_CTC_FP16_ONNX_DIR` defaults to
+  that directory plus `-fp16`. `GIGAAM_CTC_REFERENCE_JSON` overrides
+  `tools/data/results/gigaam/multilingual-ctc-jfk-short-reference.json`.
+
+- Whisper reproducibility: a non-empty `WHISPER_REFERENCE_JSON` requests the
+  reference-backed tests; an unset or empty value skips them. Once requested,
+  missing/empty/malformed reference JSON, missing audio, and invalid required
+  mel values fail. `WHISPER_REFERENCE_AUDIO` overrides the reference audio path.
+  A prerequisite failure or skip is not executed numerical evidence.

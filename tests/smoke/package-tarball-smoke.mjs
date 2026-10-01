@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repositoryRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const packageJsonPath = resolve(repositoryRoot, 'package.json');
@@ -32,15 +32,59 @@ function collectExportTargets(value, targets = []) {
   return targets;
 }
 
+export function parsePackDryRun(output, metadata = packageJson) {
+  const result = JSON.parse(output);
+  let packed;
+  if (Array.isArray(result)) {
+    assert.equal(result.length, 1, 'npm pack should describe exactly one package');
+    packed = result[0];
+  } else {
+    assert.ok(
+      result && typeof result === 'object',
+      'npm pack output must be an array or package map',
+    );
+    assert.deepEqual(
+      Object.keys(result),
+      [metadata.name],
+      'npm pack must contain exactly the requested package',
+    );
+    packed = result[metadata.name];
+  }
+  assert.ok(
+    packed && typeof packed === 'object' && !Array.isArray(packed),
+    'npm pack package must be an object',
+  );
+  assert.equal(packed.name, metadata.name, 'npm pack package name differs');
+  assert.equal(packed.version, metadata.version, 'npm pack package version differs');
+  assert.ok(
+    Array.isArray(packed.files) && packed.files.length > 0,
+    'npm pack files must be a non-empty array',
+  );
+  for (const entry of packed.files) {
+    assert.ok(
+      entry && typeof entry.path === 'string' && entry.path.length > 0,
+      'npm pack file path must be present',
+    );
+    assert.ok(
+      Number.isSafeInteger(entry.size) && entry.size >= 0,
+      'npm pack file size must be non-negative bytes',
+    );
+  }
+  assert.equal(
+    packed.entryCount,
+    packed.files.length,
+    'npm pack entryCount differs from its file list',
+  );
+  return packed;
+}
+
 function runPackDryRun() {
   const output = execFileSync(npmCommand, npmArgs, {
     cwd: repositoryRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
   });
-  const result = JSON.parse(output);
-  assert.equal(result.length, 1, 'npm pack should describe exactly one package');
-  return result[0];
+  return parsePackDryRun(output);
 }
 
 function assertPublishedFile(fileMap, target, reason) {
@@ -111,9 +155,11 @@ function main() {
   );
 }
 
-try {
-  main();
-} catch (error) {
-  console.error('[package-tarball-smoke] failed:', error);
-  process.exitCode = 1;
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  try {
+    main();
+  } catch (error) {
+    console.error('[package-tarball-smoke] failed:', error);
+    process.exitCode = 1;
+  }
 }

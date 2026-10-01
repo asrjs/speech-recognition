@@ -48,7 +48,7 @@ Unlike `reference/`, this folder should trend toward:
   - useful when two stacks appear to disagree on WER, and you want to prove whether the transcript text actually changed
 - [node-compare-stage-captures.mjs](./node-compare-stage-captures.mjs)
   - compares reference and implementation captures by stable `sample_id`,
-    optionally checking `audio.sha256` identity
+    requiring matching audio identity on both sides
   - reports shape/length/dtype metadata, max/mean absolute error, RMSE,
     cosine similarity, argmax agreement, top-k values, token/EOS/text parity,
     and the first mismatch
@@ -66,6 +66,7 @@ The generic comparator expects a small JSON envelope:
 ```json
 {
   "schema_version": 1,
+  "stage_order": ["features", "logits"],
   "samples": [
     {
       "sample_id": "stable-clip-id",
@@ -94,6 +95,22 @@ node node-compare-stage-captures.mjs `
 This is a diagnostic report, not a quality score. The upstream/reference
 capture remains an implementation oracle, while human or benchmark labels
 remain separate quality evidence.
+
+Plain JSON and `.json.gz` inputs are supported. `samples` and numerical stage
+data must be nonempty; a sample with no stages is rejected. Both captures must
+declare matching audio identity (`audio.sha256` is preferred). Missing identity
+fails, even when both captures omit it. Optional reference `stage_order`
+declares unique required stage names in processing order: a stage absent from
+both captures still fails. Additional stages follow reference insertion order,
+then candidate-only stages; the earliest failure is not selected alphabetically.
+Use this to report the real first divergence (features before encoder before
+decoder/joint), with explicit numerical tolerances. Unit tests and emulated
+sessions cannot replace native/WASM/real-browser numerical and token/text parity.
+
+When supplied, `token_duration` and `token_frames` are exact integer arrays
+with one value per token; changed or one-sided missing metadata fails. A valid
+silence hypothesis may have empty token/duration/frame arrays, but still needs
+nonempty captured features/encoder stages and the same audio identity.
 
 ## Candidate artifact audit
 

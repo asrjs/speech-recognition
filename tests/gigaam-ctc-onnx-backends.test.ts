@@ -2,15 +2,17 @@ import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { OrtGigaAmCtcExecutor } from '../src/models/gigaam-ctc/executor.js';
 import type { GigaAmModelConfig } from '../src/models/gigaam-ctc/types.js';
+import { requireFixtureFiles } from './support/fixture-gates.js';
 
 const REFERENCE = path.resolve(
-  'tools/data/results/gigaam/multilingual-ctc-jfk-short-reference.json',
+  process.env.GIGAAM_CTC_REFERENCE_JSON ??
+    'tools/data/results/gigaam/multilingual-ctc-jfk-short-reference.json',
 );
-const ONNX_DIR = path.resolve('N:/models/onnx/gigaam/multilingual-ctc');
+const ONNX_DIR = path.resolve(process.env.GIGAAM_CTC_ONNX_DIR ?? 'models/gigaam/multilingual-ctc');
 const ONNX_PATH = path.join(ONNX_DIR, 'multilingual_ctc.onnx');
 const VOCAB_PATH = path.join(ONNX_DIR, 'multilingual_vocab.txt');
 const ENABLED = process.env.GIGAAM_CTC_ONNX_SMOKE === '1';
@@ -67,7 +69,14 @@ function webgpuEngineLabel(): 'onnxruntime-node' | 'onnxruntime-web' {
   }
 }
 
-function classifyOrtFailure(error: unknown, backend: 'wasm' | 'webgpu'): Record<string, unknown> {
+function classifyOrtFailure(
+  error: unknown,
+  backend: 'wasm' | 'webgpu',
+): {
+  backend: 'wasm' | 'webgpu';
+  failureClass: string;
+  message: string;
+} {
   const message = error instanceof Error ? error.message : String(error);
   const lowered = message.toLowerCase();
   let failureClass = 'ORT_SESSION_FAILED';
@@ -85,9 +94,10 @@ function classifyOrtFailure(error: unknown, backend: 'wasm' | 'webgpu'): Record<
   return { backend, failureClass, message };
 }
 
-describe.skipIf(
-  !ENABLED || !fs.existsSync(REFERENCE) || !fs.existsSync(ONNX_PATH) || !fs.existsSync(VOCAB_PATH),
-)('GigaAM CTC official ONNX wasm/webgpu smoke', () => {
+describe.skipIf(!ENABLED)('GigaAM CTC official ONNX wasm/webgpu smoke', () => {
+  beforeEach(() => {
+    requireFixtureFiles({ reference: REFERENCE, encoder: ONNX_PATH, vocabulary: VOCAB_PATH });
+  });
   it(
     'transcribes jfk-short from JS frontend through onnxruntime-web WASM',
     { timeout: 600_000 },
@@ -100,21 +110,16 @@ describe.skipIf(
       };
       const sample = capture.samples[0]!;
       const waveform = loadNpyFloat32(sample.audio.waveform_npy);
-      const executor = new OrtGigaAmCtcExecutor(
-        'gigaam-multilingual-ctc',
-        'wasm',
-        CONFIG,
-        {
-          source: {
-            kind: 'direct',
-            cpuThreads: 1,
-            artifacts: {
-              modelUrl: pathToFileURL(ONNX_PATH).href,
-              tokenizerUrl: pathToFileURL(VOCAB_PATH).href,
-            },
+      const executor = new OrtGigaAmCtcExecutor('gigaam-multilingual-ctc', 'wasm', CONFIG, {
+        source: {
+          kind: 'direct',
+          cpuThreads: 1,
+          artifacts: {
+            modelUrl: pathToFileURL(ONNX_PATH).href,
+            tokenizerUrl: pathToFileURL(VOCAB_PATH).href,
           },
         },
-      );
+      });
       try {
         await executor.ready();
         const result = await executor.transcribe({
@@ -166,21 +171,16 @@ describe.skipIf(
       };
       const sample = capture.samples[0]!;
       const waveform = loadNpyFloat32(sample.audio.waveform_npy);
-      const executor = new OrtGigaAmCtcExecutor(
-        'gigaam-multilingual-ctc',
-        'webgpu',
-        CONFIG,
-        {
-          source: {
-            kind: 'direct',
-            cpuThreads: 1,
-            artifacts: {
-              modelUrl: pathToFileURL(ONNX_PATH).href,
-              tokenizerUrl: pathToFileURL(VOCAB_PATH).href,
-            },
+      const executor = new OrtGigaAmCtcExecutor('gigaam-multilingual-ctc', 'webgpu', CONFIG, {
+        source: {
+          kind: 'direct',
+          cpuThreads: 1,
+          artifacts: {
+            modelUrl: pathToFileURL(ONNX_PATH).href,
+            tokenizerUrl: pathToFileURL(VOCAB_PATH).href,
           },
         },
-      );
+      });
       const outPath = path.resolve(
         'tools/data/results/gigaam/multilingual-ctc-jfk-short-webgpu.json',
       );
@@ -233,21 +233,16 @@ describe.skipIf(
       const sample = capture.samples[0]!;
       const waveform = loadNpyFloat32(sample.audio.waveform_npy);
       const shorterWaveform = waveform.subarray(0, Math.floor(waveform.length * 0.6));
-      const executor = new OrtGigaAmCtcExecutor(
-        'gigaam-multilingual-ctc',
-        'wasm',
-        CONFIG,
-        {
-          source: {
-            kind: 'direct',
-            cpuThreads: 1,
-            artifacts: {
-              modelUrl: pathToFileURL(ONNX_PATH).href,
-              tokenizerUrl: pathToFileURL(VOCAB_PATH).href,
-            },
+      const executor = new OrtGigaAmCtcExecutor('gigaam-multilingual-ctc', 'wasm', CONFIG, {
+        source: {
+          kind: 'direct',
+          cpuThreads: 1,
+          artifacts: {
+            modelUrl: pathToFileURL(ONNX_PATH).href,
+            tokenizerUrl: pathToFileURL(VOCAB_PATH).href,
           },
         },
-      );
+      });
       const outPath = path.resolve(
         'tools/data/results/gigaam/multilingual-ctc-jfk-short-batch-wasm.json',
       );
@@ -291,31 +286,25 @@ describe.skipIf(
     'transcribes jfk-short from JS frontend through official fp16 WASM',
     { timeout: 600_000 },
     async () => {
-      const fp16Onnx = path.resolve('N:/models/onnx/gigaam/multilingual-ctc-fp16/multilingual_ctc.onnx');
-      const fp16Vocab = path.resolve('N:/models/onnx/gigaam/multilingual-ctc-fp16/multilingual_vocab.txt');
-      if (!fs.existsSync(fp16Onnx) || !fs.existsSync(fp16Vocab)) {
-        return;
-      }
+      const fp16Dir = path.resolve(process.env.GIGAAM_CTC_FP16_ONNX_DIR ?? `${ONNX_DIR}-fp16`);
+      const fp16Onnx = path.join(fp16Dir, 'multilingual_ctc.onnx');
+      const fp16Vocab = path.join(fp16Dir, 'multilingual_vocab.txt');
+      requireFixtureFiles({ fp16Encoder: fp16Onnx, vocabulary: fp16Vocab });
       const capture = JSON.parse(fs.readFileSync(REFERENCE, 'utf8')) as {
         samples: Array<{ text: string; audio: { waveform_npy: string } }>;
       };
       const sample = capture.samples[0]!;
       const waveform = loadNpyFloat32(sample.audio.waveform_npy);
-      const executor = new OrtGigaAmCtcExecutor(
-        'gigaam-multilingual-ctc',
-        'wasm',
-        CONFIG,
-        {
-          source: {
-            kind: 'direct',
-            cpuThreads: 1,
-            artifacts: {
-              modelUrl: pathToFileURL(fp16Onnx).href,
-              tokenizerUrl: pathToFileURL(fp16Vocab).href,
-            },
+      const executor = new OrtGigaAmCtcExecutor('gigaam-multilingual-ctc', 'wasm', CONFIG, {
+        source: {
+          kind: 'direct',
+          cpuThreads: 1,
+          artifacts: {
+            modelUrl: pathToFileURL(fp16Onnx).href,
+            tokenizerUrl: pathToFileURL(fp16Vocab).href,
           },
         },
-      );
+      });
       const outPath = path.resolve(
         'tools/data/results/gigaam/multilingual-ctc-jfk-short-wasm-fp16.json',
       );

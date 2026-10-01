@@ -94,7 +94,10 @@ function writeNpyFloat32(filePath: string, data: Float32Array, shape: readonly n
   payload[7] = 0;
   payload.writeUInt16LE(header.length, 8);
   payload.write(header, prefixLen, 'ascii');
-  Buffer.from(data.buffer, data.byteOffset, data.byteLength).copy(payload, prefixLen + header.length);
+  Buffer.from(data.buffer, data.byteOffset, data.byteLength).copy(
+    payload,
+    prefixLen + header.length,
+  );
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, payload);
 }
@@ -182,8 +185,7 @@ describe.skipIf(!fs.existsSync(REFERENCE) || !fs.existsSync(path.join(STAGES, 's
           let value = 0;
           for (let bin = 0; bin < nFreqBins; bin += 1) {
             value +=
-              (jsStft[bin * frameCount + frame] ?? 0) *
-              (officialFb.data[bin * nMels + mel] ?? 0);
+              (jsStft[bin * frameCount + frame] ?? 0) * (officialFb.data[bin * nMels + mel] ?? 0);
           }
           jsPreLogOfficialFb[mel * frameCount + frame] = value;
           jsLogAdd[mel * frameCount + frame] = Math.log(value + 1e-9);
@@ -205,7 +207,7 @@ describe.skipIf(!fs.existsSync(REFERENCE) || !fs.existsSync(path.join(STAGES, 's
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
       fs.writeFileSync(outPath, `${JSON.stringify(report, null, 2)}\n`);
       writeNpyFloat32(
-        path.resolve('N:/models/gigaam/multilingual-ctc/captures/jfk-short.js-features.npy'),
+        path.resolve('tools/data/results/gigaam/jfk-short.js-features.npy'),
         processed.features,
         [1, nMels, frameCount],
       );

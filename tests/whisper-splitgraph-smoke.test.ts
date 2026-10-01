@@ -1,50 +1,75 @@
 import { describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { resolveWhisperArtifacts, initWhisperOrt, createWhisperOrtSession } from '../src/models/whisper-seq2seq/ort.js';
+import {
+  resolveWhisperArtifacts,
+  initWhisperOrt,
+  createWhisperOrtSession,
+} from '../src/models/whisper-seq2seq/ort.js';
 import { parseWhisperManifest } from '../src/models/whisper-seq2seq/manifest.js';
 import { WhisperTokenizer } from '../src/models/whisper-seq2seq/tokenizer.js';
 import { WhisperMelProcessor } from '../src/audio/whisper-mel.js';
 import { WhisperTimestampLogitProcessor } from '../src/models/whisper-seq2seq/processors.js';
 import { processSplitGraphAlignment } from '../src/models/whisper-seq2seq/executor.js';
 import type { OrtTensorLike } from '../src/models/whisper-seq2seq/ort.js';
-import type { WhisperArtifactSource, WhisperExecutionBackend } from '../src/models/whisper-seq2seq/types.js';
+import type {
+  WhisperArtifactSource,
+  WhisperExecutionBackend,
+} from '../src/models/whisper-seq2seq/types.js';
+import {
+  requireFixtureDirectory,
+  requireFixtureFiles,
+  requireFixtureOptIn,
+} from './support/fixture-gates.js';
 
 function argmax(arr: Float32Array): number {
   let maxIdx = 0;
   let maxVal = arr[0] ?? -Infinity;
   for (let i = 1; i < arr.length; i++) {
-    if ((arr[i] ?? -Infinity) > maxVal) { maxVal = arr[i]!; maxIdx = i; }
+    if ((arr[i] ?? -Infinity) > maxVal) {
+      maxVal = arr[i]!;
+      maxIdx = i;
+    }
   }
   return maxIdx;
 }
 
 describe('Whisper 4-graph low-level ONNX fixture test', () => {
-  it('encoder → init → step loop → align: verifies all tensor shapes via manifest-driven dimensions', async () => {
-    const fixtureDir = process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR;
-    if (!fixtureDir) {
-      console.warn('Skipping: set WHISPER_SPLITGRAPH_FIXTURE_DIR=/path/to/exported/whisper-tiny');
-      return;
-    }
+  it('encoder → init → step loop → align: verifies all tensor shapes via manifest-driven dimensions', async (context) => {
+    requireFixtureOptIn(
+      context,
+      process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR !== undefined,
+      'Set WHISPER_SPLITGRAPH_FIXTURE_DIR to request this integration test',
+    );
+    const fixtureDir = requireFixtureDirectory(
+      process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR,
+      'WHISPER_SPLITGRAPH_FIXTURE_DIR',
+    );
 
     // ── File existence check ──────────────────────────────────
     const f = (...parts: string[]) => path.join(fixtureDir, ...parts);
-    const required = ['encoder_model.onnx', 'decoder_init.onnx', 'decoder_step.onnx', 'tokenizer.json', 'manifest.json'];
-    if (!required.every((name) => fs.existsSync(f(name)))) {
-      console.warn(`Skipping: missing splitgraph fixtures in ${fixtureDir}.`);
-      return;
-    }
+    const required = [
+      'encoder_model.onnx',
+      'decoder_init.onnx',
+      'decoder_step.onnx',
+      'tokenizer.json',
+      'manifest.json',
+    ];
+    requireFixtureFiles(Object.fromEntries(required.map((name) => [name, f(name)])));
     const hasAlign = fs.existsSync(f('decoder_align.onnx'));
 
     // ── 1. Parse manifest → all dimensions from manifest, zero hardcoded ──
-    const manifestRaw = JSON.parse(fs.readFileSync(f('manifest.json'), 'utf-8')) as Record<string, unknown>;
+    const manifestRaw = JSON.parse(fs.readFileSync(f('manifest.json'), 'utf-8')) as Record<
+      string,
+      unknown
+    >;
     const manifest = parseWhisperManifest(manifestRaw);
     const { decoderLayers, decoderAttentionHeads, dModel, headDim } = manifest.modelConfig;
-    const numMelBins   = (manifestRaw.num_mel_bins   as number) ?? 80;
+    const numMelBins = (manifestRaw.num_mel_bins as number) ?? 80;
     const manifestMaxSrcPos = (manifestRaw.max_source_positions as number) ?? 3000;
     const maxSrcPos = manifestMaxSrcPos <= 1500 ? manifestMaxSrcPos * 2 : manifestMaxSrcPos;
-    const maxTgtPos    = (manifestRaw.max_target_positions  as number) ?? 448;
-    const vocabSize    = (manifestRaw.vocab_size     as number) ?? 51865;
+    const maxTgtPos = (manifestRaw.max_target_positions as number) ?? 448;
+    const vocabSize = (manifestRaw.vocab_size as number) ?? 51865;
 
     // Verify nothing is hardcoded — all values come from manifest
     expect(decoderLayers).toBeGreaterThan(0);
@@ -58,12 +83,12 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
     const source: WhisperArtifactSource = {
       kind: 'splitgraph',
       artifacts: {
-        encoderUrl:     `file://${f('encoder_model.onnx')}`,
+        encoderUrl: `file://${f('encoder_model.onnx')}`,
         decoderInitUrl: `file://${f('decoder_init.onnx')}`,
         decoderStepUrl: `file://${f('decoder_step.onnx')}`,
         decoderAlignUrl: hasAlign ? `file://${f('decoder_align.onnx')}` : undefined,
-        tokenizerUrl:   `file://${f('tokenizer.json')}`,
-        manifestUrl:    `file://${f('manifest.json')}`,
+        tokenizerUrl: `file://${f('tokenizer.json')}`,
+        manifestUrl: `file://${f('manifest.json')}`,
       },
     };
     const resolved = resolveWhisperArtifacts(source, 'wasm');
@@ -75,12 +100,23 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
     const ort = await initWhisperOrt('wasm');
     const backend: WhisperExecutionBackend = 'wasm';
 
-    const encSess = await createWhisperOrtSession(ort, resolved.artifacts.encoderUrl, { backendId: backend });
-    const initSess = await createWhisperOrtSession(ort, resolved.decoderInitUrl!, { backendId: backend });
-    const stepSess = await createWhisperOrtSession(ort, resolved.decoderStepUrl!, { backendId: backend });
-    const alignSess = hasAlign && resolved.decoderAlignUrl
-      ? await createWhisperOrtSession(ort, resolved.decoderAlignUrl, { backendId: backend })
-      : null;
+    const encSess = await createWhisperOrtSession(ort, resolved.artifacts.encoderUrl, {
+      backendId: backend,
+    });
+    context.onTestFinished(() => encSess.release?.());
+    const initSess = await createWhisperOrtSession(ort, resolved.decoderInitUrl!, {
+      backendId: backend,
+    });
+    context.onTestFinished(() => initSess.release?.());
+    const stepSess = await createWhisperOrtSession(ort, resolved.decoderStepUrl!, {
+      backendId: backend,
+    });
+    context.onTestFinished(() => stepSess.release?.());
+    const alignSess =
+      hasAlign && resolved.decoderAlignUrl
+        ? await createWhisperOrtSession(ort, resolved.decoderAlignUrl, { backendId: backend })
+        : null;
+    context.onTestFinished(() => alignSess?.release?.());
 
     const tokenizer = await WhisperTokenizer.fromUrl(resolved.artifacts.tokenizerUrl);
 
@@ -201,6 +237,9 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
       const alignKey = Object.keys(alignOut)[0]!;
       const alignment = alignOut[alignKey] as OrtTensorLike<Float32Array>;
       const [aB, aT, aS] = alignment.dims;
+      if (alignment.dims.length !== 3 || aT === undefined || aS === undefined) {
+        throw new Error('Alignment must have exactly three dimensions');
+      }
 
       // Verify alignment shape: text_token_count × encoder_seq
       // (prompt tokens excluded from alignment output)
@@ -226,31 +265,59 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
     }
 
     console.log('4-graph smoke test PASSED', {
-      dModel, decoderLayers, heads: decoderAttentionHeads, headDim,
+      dModel,
+      decoderLayers,
+      heads: decoderAttentionHeads,
+      headDim,
       tokens: generatedTokens.length,
       alignOk: alignSess !== null,
     });
   }, 240000);
 
-  it('reproduces PyTorch token sequence for 1s 440Hz sine (no_timestamps)', async () => {
-    const fixtureDir = process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR;
-    if (!fixtureDir) {
-      console.warn('Skipping: set WHISPER_SPLITGRAPH_FIXTURE_DIR');
-      return;
-    }
+  it('reproduces PyTorch token sequence for 1s 440Hz sine (no_timestamps)', async (context) => {
+    requireFixtureOptIn(
+      context,
+      process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR !== undefined,
+      'Set WHISPER_SPLITGRAPH_FIXTURE_DIR to request this integration test',
+    );
+    const fixtureDir = requireFixtureDirectory(
+      process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR,
+      'WHISPER_SPLITGRAPH_FIXTURE_DIR',
+    );
     const f = (...parts: string[]) => path.join(fixtureDir, ...parts);
-    const required = ['encoder_model.onnx', 'decoder_init.onnx', 'decoder_step.onnx', 'tokenizer.json', 'manifest.json'];
-    if (!required.every((n) => fs.existsSync(f(n)))) return;
+    const required = [
+      'encoder_model.onnx',
+      'decoder_init.onnx',
+      'decoder_step.onnx',
+      'tokenizer.json',
+      'manifest.json',
+    ];
+    requireFixtureFiles(Object.fromEntries(required.map((name) => [name, f(name)])));
 
     const ort = await initWhisperOrt('wasm');
     const be: WhisperExecutionBackend = 'wasm';
-    const encSess = await createWhisperOrtSession(ort, `file://${f('encoder_model.onnx')}`, { backendId: be });
-    const initSess = await createWhisperOrtSession(ort, `file://${f('decoder_init.onnx')}`, { backendId: be });
-    const stepSess = await createWhisperOrtSession(ort, `file://${f('decoder_step.onnx')}`, { backendId: be });
+    const encSess = await createWhisperOrtSession(ort, `file://${f('encoder_model.onnx')}`, {
+      backendId: be,
+    });
+    context.onTestFinished(() => encSess.release?.());
+    const initSess = await createWhisperOrtSession(ort, `file://${f('decoder_init.onnx')}`, {
+      backendId: be,
+    });
+    context.onTestFinished(() => initSess.release?.());
+    const stepSess = await createWhisperOrtSession(ort, `file://${f('decoder_step.onnx')}`, {
+      backendId: be,
+    });
+    context.onTestFinished(() => stepSess.release?.());
     const hasAlign = fs.existsSync(f('decoder_align.onnx'));
-    const alignSess = hasAlign ? await createWhisperOrtSession(ort, `file://${f('decoder_align.onnx')}`, { backendId: be }) : null;
+    const alignSess = hasAlign
+      ? await createWhisperOrtSession(ort, `file://${f('decoder_align.onnx')}`, { backendId: be })
+      : null;
+    context.onTestFinished(() => alignSess?.release?.());
 
-    const manifestRaw = JSON.parse(fs.readFileSync(f('manifest.json'), 'utf-8')) as Record<string, unknown>;
+    const manifestRaw = JSON.parse(fs.readFileSync(f('manifest.json'), 'utf-8')) as Record<
+      string,
+      unknown
+    >;
     const manifest = parseWhisperManifest(manifestRaw);
     const isTinyFixture = String(manifestRaw.model_id ?? '').includes('whisper-tiny');
     const tokenizer = await WhisperTokenizer.fromUrl(`file://${f('tokenizer.json')}`);
@@ -265,7 +332,7 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
     const totalSamples = Math.floor(sampleRate * duration);
     const samples = new Float32Array(totalSamples);
     for (let i = 0; i < totalSamples; i++) {
-      samples[i] = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.3;
+      samples[i] = Math.sin((2 * Math.PI * 440 * i) / sampleRate) * 0.3;
     }
 
     const melProc = new WhisperMelProcessor({ nMels: numMelBins });
@@ -273,7 +340,9 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
     const paddedMel = WhisperMelProcessor.padToFrames(melResult, maxSrcPos);
     const melTensor = new ort.Tensor('float32', paddedMel, [1, numMelBins, maxSrcPos]);
 
-    const encOut = (await encSess.run({ input_features: melTensor }))['last_hidden_state'] as OrtTensorLike<Float32Array>;
+    const encOut = (await encSess.run({ input_features: melTensor }))[
+      'last_hidden_state'
+    ] as OrtTensorLike<Float32Array>;
     expect(encOut.dims).toEqual([1, manifestMaxSrcPos, dModel]);
 
     // ── Same prompt as Python test: SOT, en, transcribe, notimestamps ──
@@ -310,7 +379,8 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
     // Collect KV
     const pastKv: Record<string, OrtTensorLike<Float32Array>> = {};
     for (const [k, v] of Object.entries(initOut)) {
-      if (k.startsWith('present')) pastKv[k.replace('present.', 'past_key_values.')] = v as OrtTensorLike<Float32Array>;
+      if (k.startsWith('present'))
+        pastKv[k.replace('present.', 'past_key_values.')] = v as OrtTensorLike<Float32Array>;
     }
     expect(Object.keys(pastKv).length).toBe(4 * decoderLayers);
 
@@ -324,7 +394,9 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
     // ── Step loop ──
     for (let s = 1; s < 20; s++) {
       const stepIn = new BigInt64Array([BigInt(nextToken)]);
-      const stepFeeds: Record<string, unknown> = { input_ids: new ort.Tensor('int64', stepIn, [1, 1]) };
+      const stepFeeds: Record<string, unknown> = {
+        input_ids: new ort.Tensor('int64', stepIn, [1, 1]),
+      };
       for (const [k, v] of Object.entries(pastKv)) stepFeeds[k] = v;
       const stepOut = await stepSess.run(stepFeeds);
       const sLogitsKey = Object.keys(stepOut).find((k) => k.includes('logits'))!;
@@ -334,7 +406,8 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
       if (nextToken === eosId) break;
       generated.push(nextToken);
       for (const [k, v] of Object.entries(stepOut)) {
-        if (k.startsWith('present')) pastKv[k.replace('present.', 'past_key_values.')] = v as OrtTensorLike<Float32Array>;
+        if (k.startsWith('present'))
+          pastKv[k.replace('present.', 'past_key_values.')] = v as OrtTensorLike<Float32Array>;
       }
     }
 
@@ -379,6 +452,9 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
       const alignKey = Object.keys(alignOut)[0]!;
       const alignTensor = alignOut[alignKey] as OrtTensorLike<Float32Array>;
       const [aB, aT, aS] = alignTensor.dims;
+      if (alignTensor.dims.length !== 3 || aT === undefined || aS === undefined) {
+        throw new Error('Alignment must have exactly three dimensions');
+      }
 
       // Verify alignment shape
       expect(aB).toBe(1);
@@ -415,12 +491,16 @@ describe('Whisper 4-graph low-level ONNX fixture test', () => {
 });
 
 describe('Node local-file co-located external data smoke', () => {
-  it('loads splitgraph model from disk with co-located .data files', async () => {
-    const fixtureDir = process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR;
-    if (!fixtureDir) {
-      console.warn('Skipping: set WHISPER_SPLITGRAPH_FIXTURE_DIR');
-      return;
-    }
+  it('loads splitgraph model from disk with co-located .data files', async (context) => {
+    requireFixtureOptIn(
+      context,
+      process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR !== undefined,
+      'Set WHISPER_SPLITGRAPH_FIXTURE_DIR to request this integration test',
+    );
+    const fixtureDir = requireFixtureDirectory(
+      process.env.WHISPER_SPLITGRAPH_FIXTURE_DIR,
+      'WHISPER_SPLITGRAPH_FIXTURE_DIR',
+    );
 
     // Verify external data files exist alongside .onnx files
     const onnxFiles = [
@@ -441,25 +521,33 @@ describe('Node local-file co-located external data smoke', () => {
         if (hasConsolidated) {
           const stat = fs.statSync(dataFile);
           expect(stat.size).toBeGreaterThan(0);
-          console.log(`  ${name}: consolidated .data OK (${(stat.size / 1024 / 1024).toFixed(1)} MB)`);
+          console.log(
+            `  ${name}: consolidated .data OK (${(stat.size / 1024 / 1024).toFixed(1)} MB)`,
+          );
         } else {
           // For encoder, check that at least one external weight file exists
           const dir = path.dirname(onnxPath);
           const files = fs.readdirSync(dir);
-          const weightFiles = files.filter(f =>
-            f !== name && !f.endsWith('.json') && !f.endsWith('.txt') &&
-            !f.endsWith('.md') && !f.endsWith('.py') && !f.startsWith('.')
+          const weightFiles = files.filter(
+            (f) =>
+              f !== name &&
+              !f.endsWith('.json') &&
+              !f.endsWith('.txt') &&
+              !f.endsWith('.md') &&
+              !f.endsWith('.py') &&
+              !f.startsWith('.'),
           );
-          console.log(`  ${name}: ${weightFiles.length} external weight files (no consolidated .data)`);
+          console.log(
+            `  ${name}: ${weightFiles.length} external weight files (no consolidated .data)`,
+          );
           expect(weightFiles.length).toBeGreaterThan(0);
         }
       }
     }
 
     // Import and test via loadSplitGraphLocalModel
-    const { loadSplitGraphLocalModel } = await import(
-      '../src/models/whisper-seq2seq/local-file.js'
-    );
+    const { loadSplitGraphLocalModel } =
+      await import('../src/models/whisper-seq2seq/local-file.js');
     const loaded = loadSplitGraphLocalModel(fixtureDir);
     expect(loaded.source.kind).toBe('splitgraph');
     expect(loaded.config.ecosystem).toBe('openai');
