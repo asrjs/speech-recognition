@@ -1375,3 +1375,35 @@ Next compare the candidate complex256 bins2/254 against a discriminating
 factorization control on the cancellation frame. The full portable feature,
 ASR and browser/WebGPU gates remain open; do not promote this Torch-only recipe
 or repeat already-rejected broad FFT arithmetic sweeps.
+
+### Fixed split128 cancellation-frame control (2026-10-02)
+
+Added `probe_fft_factorization.py`: a bounded single-frame diagnostic accepting
+an explicit capture/hash/sample/frame/bin and new receipt path. It reuses the
+frozen capture validator, verifies selected Torch real512 output byte-exactly
+against the original STFT, then compares complex256 with a fixed even/odd
+complex128 factorization. Both use the existing unchanged real512 recombination.
+Twiddles are f32 and complex products have one final f32 rounding. There is no
+model/bin correction, factorization sweep, weight loading or production edit.
+
+Actual speech-silence frame1027/bin2 run:
+`tools/data/results/orukeet/split128-cancellation-frame-2026-10-02.json`.
+Frame SHA-256 matches `d25846d1b1a3764b4cd67e36ef448b1168920b16b20a7eb21f131a7fabd2d2a7`.
+Splitting changes packed bins2/254 real components by one f32 ULP in opposite
+directions, but recombined real stays `-0.0012302398681640625`: error remains
+`2.60770320892334e-8`. Imaginary error grows from `7.101334631443024e-9` to
+`3.6903657019138336e-8`. This excludes this specific split128 recipe as a repair
+for the selected cancellation, not all FFT128 factorizations or MKL internals.
+
+Syntax, imports, help, actual frozen-frame control and exclusive-output negative
+check pass; attempted overwrite rejects before reading a deliberately missing
+capture and leaves the receipt unchanged. Existing replay's 12 unittest checks
+pass. An initial pytest invocation failed because pytest is not installed in
+the existing environment; no dependency was installed. This new diagnostic has
+not run full-feature replay and does not close the known one-feature mismatch.
+The receipt binds the direct script, replay helper and output helper; imported
+transitive helper hashes are not independently enumerated by this small probe.
+
+Next: inspect a distinct real even/odd FFT256 factorization control rather than
+extending this rejected complex split or changing feature tolerances. Keep
+portable feature, full ASR and actual-browser recurrent gates open.
