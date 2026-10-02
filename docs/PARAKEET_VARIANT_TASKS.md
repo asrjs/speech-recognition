@@ -1166,3 +1166,15 @@ composition; the standalone FFT and tests are reusable, not a complete saved
 end-to-end replay CLI. Next investigate original complex256 sub-boundaries or
 a genuinely discriminating operation-order control; do not keep sweeping
 rounding modes based only on improved mean spectrum error.
+
+### Radix4 diagnostic cardinal-root correction (2026-10-02)
+
+Review exposed nonzero trig residue at exact quarter-turn roots: a size16
+impulse at index2 produced real bin2 `6.123234262925839e-17` instead of zero.
+A new regression failed before the fix, then passed for both product modes
+and amplitudes 1 and f32(1e38). Cardinal roots now use exact sign/swap rotations;
+other twiddles and arithmetic are unchanged. All six radix4 tests pass.
+This is a diagnostic-only correction, not production feature parity.
+The preceding JFK receipt remains bound to the old candidate source hash;
+its numbers must not be attributed to the corrected module. A fresh full
+feature replay is still required before judging the corrected candidate.

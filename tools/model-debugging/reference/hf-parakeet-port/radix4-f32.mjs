@@ -21,6 +21,12 @@ export function fftRadix4F32(real, imag, options = {}) {
   }
   function multiply(r, i, branch, j, length) {
     if (j === 0) return [r, i];
+    // Cardinal roots are exact; trig approximations retain spurious residues.
+    const phase = (branch * j) % length;
+    if (phase === 0) return [r, i];
+    if (phase === length / 4) return [i, -r];
+    if (phase === length / 2) return [-r, -i];
+    if (phase === 3 * length / 4) return [-i, r];
     const angle = -2 * Math.PI * branch * j / length;
     const c = f(Math.cos(angle)), s = f(Math.sin(angle));
     return products === 'single-round'

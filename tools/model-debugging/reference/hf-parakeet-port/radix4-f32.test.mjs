@@ -32,6 +32,20 @@ test('radix4 impulse preserves all bins and owns its outputs', () => {
   assert.equal(re[1], 0);
 });
 
+test('radix4 cardinal rotations do not introduce spurious components', () => {
+  for (const products of ['separate', 'single-round']) {
+    for (const amplitude of [1, Math.fround(1e38)]) {
+      const re = new Float32Array(16);
+      re[2] = amplitude;
+      const result = fftRadix4F32(re, new Float32Array(16), { products });
+      for (const k of [2, 6, 10, 14]) {
+        assert.ok(result.real[k] === 0, `${products}/${amplitude}/bin${k}`);
+        assert.equal(result.imag[k], (k % 8 === 2 ? -1 : 1) * amplitude);
+      }
+    }
+  }
+});
+
 test('radix4 has negative exponent and natural output order', () => {
   const re = Float32Array.from({ length: 64 }, (_, j) => Math.cos(2 * Math.PI * 5 * j / 64));
   const im = Float32Array.from({ length: 64 }, (_, j) => Math.sin(2 * Math.PI * 5 * j / 64));
