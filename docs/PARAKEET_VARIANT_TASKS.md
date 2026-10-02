@@ -1517,3 +1517,35 @@ locally with explicit Buffer import and globalThis.AbortController, not by
 changing global lint policy. Sibling execution and live browser recurrence are
 still untested for this slice. Next: retain the earlier feature gate and develop
 the candidate-head live recurrent browser control without claiming feature parity.
+
+### Frozen encoder fixture prerequisite (2026-10-02)
+
+Prepared a family-scoped diagnostic tool, `frozen_encoder_replay.py`, with no
+Orukeet-specific runtime branching or production changes. It preserves the own
+encoder ONNX boundary but deliberately ignores feature/length inputs and returns
+the frozen official encoder tensor and length. This avoids extracting or copying
+the library's decoder loop solely to inject an oracle boundary. It is not a new
+model export, an encoder optimization or a completed recurrence test.
+
+The original .nemo, detailed export, packed graph, config, official capture,
+summary and audio identities are checked before artifact creation. The initial
+command mistakenly used the compact export handoff; it failed closed before
+writing. Using the detailed export receipt passed. The existing speech/silence
+capture produced a 2,081,417-byte diagnostic graph (SHA-256
+`34c622506781fd57660fbe9b6601add2030b7e7397f2729b68837baf3a52c7ab`).
+Native ORT 1.29.0 delivered the [1,1024,508] fp32 tensor and int64 length bitwise
+exactly with both captured and zero features. Nine new weight-free tests and all
+45 family export/replay tests pass. No tolerances were changed.
+
+Receipt: `tools/data/results/orukeet/diagnostic-frozen-speech-silence-2026-10-02/frozen-boundary-receipt.json`.
+The binary remains local and reproducible with the README command. This receipt
+proves only frozen native delivery, not source external-weight validation,
+features, real encoder, candidate decoder, browser or complete model acceptance.
+
+Next: public-library conditional browser recurrence with exact captured PCM,
+this frozen encoder on WASM, reproduced candidate head on WASM then WebGPU,
+grid batching disabled, token/frame/duration/text checks and numerical state
+checks. JS preprocessing will execute but its output will be ignored; explicitly
+label it unaccepted and the real encoder bypassed. Retain full production feature
+and real-encoder gates. Do not add the diagnostic graph to presets or distribute
+it as production weights.

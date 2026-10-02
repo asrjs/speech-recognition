@@ -194,3 +194,40 @@ capture's source/control/call contract, but compares only the named bindings.
 Receipts label this `explicit-indices`, never complete-matrix acceptance.
 Example: `--step-index 139 --step-index 173` isolates the two speech/silence
 cell-state failures. Eleven weight-free browser-tool tests cover these rules.
+
+## Diagnostic frozen encoder boundary
+
+`frozen_encoder_replay.py` prepares a small **diagnostic fixture, not a model
+export**. It preserves the own encoder graph's input/output contracts, but
+replaces computation with two Constant nodes holding the exact official captured
+encoder tensor and length. Inputs are deliberately ignored; no external model
+weights are embedded. This prepares an isolated test of the library's real
+recurrent decoder without copying its search loop or changing production code.
+Generating this fixture does not run or certify that decoder.
+
+```powershell
+python tools/nemo-tdt-onnx-export/frozen_encoder_replay.py `
+  --capture tools/data/results/orukeet/official-speech-silence-stft-stages-2026-10-02.json.gz `
+  --summary tools/data/results/orukeet/official-speech-silence-stft-summary-2026-10-02.json `
+  --audio tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav `
+  --artifact-dir models/orukeet/onnx/fp32-packed-2026-10-01 `
+  --export-receipt models/orukeet/onnx/fp32-nemo-2026-10-01/export-receipt.json `
+  --nemo models/orukeet/source/orukeet-v0.1.0.nemo `
+  --output-dir tools/data/results/orukeet/diagnostic-frozen-new-run
+```
+
+Use a fresh output directory. The detailed export receipt is required, not its
+compact handoff summary. Original weight/export/packed graph/config hashes and
+official instrumentation/source/audio/call guards must pass before writing.
+Native ORT verifies both output tensors bitwise, including signed zero, first
+with captured features and again with zero features. Receipts explicitly label
+features and the real encoder bypassed/unproven, recurrence and browser untested,
+and model acceptance not proven. No external-weight bytes are used by this tool;
+it binds the source graph contract, not a new validation of its external weights.
+
+Nine weight-free tests exercise deterministic serialization, source-contract
+preservation, malformed contracts/shapes/lengths/data, and native exact delivery.
+Next: use the fixture only in an explicitly conditional public-library browser
+runner, exact captured PCM, audited candidate decoder, encoder WASM/decoder
+WASM or WebGPU, grid batching disabled, awaited cleanup and full provenance.
+Keep the production feature gate and full real-encoder ASR gate separate.

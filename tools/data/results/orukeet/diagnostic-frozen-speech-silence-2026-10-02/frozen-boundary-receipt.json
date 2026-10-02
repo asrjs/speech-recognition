@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "scope": "DIAGNOSTIC_FROZEN_ENCODER_BOUNDARY_ONLY",
+  "status": "FROZEN_BOUNDARY_NATIVE_DELIVERY_PASS",
+  "sample_id": "speech-silence",
+  "identity": {
+    "model": "oruk/orukeet",
+    "model_revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+    "weight_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
+  },
+  "inputs_ignored": true,
+  "real_features": "BYPASSED_UNPROVEN",
+  "real_encoder": "BYPASSED_UNPROVEN",
+  "decoder_recurrence": "UNTESTED",
+  "browser": "UNTESTED",
+  "model_acceptance": "NOT_PROVEN",
+  "graph_sha256": "34c622506781fd57660fbe9b6601add2030b7e7397f2729b68837baf3a52c7ab",
+  "graph_bytes": 2081417,
+  "source_graph_sha256": "9924d5c30da5d54454dd3de6dbfc177aa771205eaac5da55d8f05ec813036f17",
+  "config_sha256": "344297eaf9e28d7f849e099c06535fbb0df978926e1b5f753b6aa836d05acdb3",
+  "capture_sha256": "07ae6f00dcab69eb3425566af7b5690a85dc2bee91e7510ddf27cca7b4370809",
+  "summary_sha256": "d3f0139b431a767fa454fa138b1ea1f9142406a96655d322c0f932b45fb66aab",
+  "audio_sha256": "3479a461cfca404165c71905e9b66a77faaee685434134786e8fed5161e60ba7",
+  "export_receipt_sha256": "ee81614c4cfccafc916afa6a5a66d3350fc58f5b0e7f1c68e2212bf2ff719f53",
+  "repack_receipt_sha256": "20648ca2de28116817ef296e2b59e7f7d6e685af0079b250265e7d7904c3ab2a",
+  "tool_sha256": "ca1b14532fbcc083e032b1262874b5bf402bda7bdde9937b491ae5bf61af517f",
+  "numpy": "1.24.4",
+  "onnx": "1.20.1",
+  "onnxruntime": "1.29.0",
+  "checks": [
+    {
+      "input": "captured_features",
+      "outputs": {
+        "outputs": {
+          "shape": [1, 1024, 508],
+          "dtype": "float32",
+          "bitwise_exact": true,
+          "sha256": "e8992d988ac9835fadc8ee881846fa1fd145565baf6fc2e30d84822e84467b31"
+        },
+        "encoded_lengths": {
+          "shape": [1],
+          "dtype": "int64",
+          "bitwise_exact": true,
+          "sha256": "03c0927efc42ea4ae556d6a7c013bf70cdea0ef0492cbf366e9637366277f1eb"
+        }
+      }
+    },
+    {
+      "input": "zero_features",
+      "outputs": {
+        "outputs": {
+          "shape": [1, 1024, 508],
+          "dtype": "float32",
+          "bitwise_exact": true,
+          "sha256": "e8992d988ac9835fadc8ee881846fa1fd145565baf6fc2e30d84822e84467b31"
+        },
+        "encoded_lengths": {
+          "shape": [1],
+          "dtype": "int64",
+          "bitwise_exact": true,
+          "sha256": "03c0927efc42ea4ae556d6a7c013bf70cdea0ef0492cbf366e9637366277f1eb"
+        }
+      }
+    }
+  ]
+}
