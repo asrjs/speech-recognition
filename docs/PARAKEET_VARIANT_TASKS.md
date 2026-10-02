@@ -14,6 +14,16 @@ Orukeet retains 627M parameters; it is not a small student model.
 
 ## Current checkpoint
 
+Latest public-library browser control (2026-10-02): the reproduced single-step
+head now passes live recurrence with frozen official encoder outputs for JFK,
+pure silence and speech/silence on both WASM and WebGPU. Each fixture/backend
+runs twice on one public model handle; tokens/frames/durations/text are exact
+and equivalent final committed h/c states pass unchanged numerical tolerances.
+This is CONDITIONAL_RECURRENCE_PASS, not production feature, real-encoder or
+full-ASR acceptance. Intermediate live logits/states, grid execution and matched
+memory/performance remain open. Next: trustworthy live-call observation and
+intermediate numerical comparison, alongside whole-product lifecycle work.
+
 Latest 2026-10-02: the opt-in single-step fp32 head transformation is now a
 persistent tested family tool, not an inline-only recipe. The original
 production graph still fails its WebGPU speech/silence cell-state gate; the
@@ -1590,3 +1600,21 @@ An initial WebGPU command had an export-path typo and failed before writing;
 the corrected command passed without source edits or tolerance changes.
 Compact receipt: `tools/data/results/orukeet/browser-silence-recurrence-handoff-2026-10-02.json`.
 Next: JFK conditional browser control, then intermediate live-state coverage.
+
+### Conditional browser JFK control (2026-10-02)
+
+Reused the unchanged harness and candidate for the official JFK fixture. WASM
+and WebGPU pass two same-handle repetitions with exact 38 tokens, frames,
+durations and canonical text. Equivalent final committed h/c cache has zero
+tolerance mismatches; maximum h/c absolute errors are 5.4240e-6/1.7166e-5 on
+WASM and 3.6620e-6/1.5259e-5 on WebGPU. Each WebGPU repetition observes 2,162
+dispatches. Each backend delivers 244 artifacts exactly, with no browser or
+cleanup errors. No downloads, source math edits or tolerance changes occurred.
+
+Compact receipt: `tools/data/results/orukeet/browser-jfk-recurrence-handoff-2026-10-02.json`.
+This completes the three-fixture conditional recurrence matrix only. Features,
+real encoder, all intermediate states/logits, stateful continuation, grid
+execution, performance/memory and real companion applications remain unproven.
+Next bounded model step: observe live head calls without another decoder and
+compare equivalent inputs/outputs against official bindings, with an observer
+non-perturbation control. Whole-product lifecycle/API work remains in scope.

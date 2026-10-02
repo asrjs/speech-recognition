@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "status": "CONDITIONAL_RECURRENCE_PASS",
+  "scope": "CONDITIONAL_FROZEN_ENCODER_LIBRARY_RECURRENCE",
+  "sample": "jfk-short",
+  "pcm_sha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+  "same_handle_repeats_per_backend": 2,
+  "tokens_per_repeat": 38,
+  "token_frame_duration_text_exact": true,
+  "state_boundary": "LIBRARY_COMMITTED_PREDICTOR_BEFORE_LAST_EMITTED_TOKEN",
+  "state_mismatches": 0,
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "controls": [
+    {
+      "backend": "wasm",
+      "receipt": "tools/data/results/orukeet/browser-recurrent-wasm-jfk-reviewed-2026-10-02.json",
+      "receipt_bytes": 399462,
+      "receipt_sha256": "004f03b87f821a9da734d3315f22fa10699d9ea8474748c9b2fa88e82cd6b842",
+      "h_max_abs_error": 0.000005424022674560547,
+      "c_max_abs_error": 0.0000171661376953125
+    },
+    {
+      "backend": "webgpu",
+      "receipt": "tools/data/results/orukeet/browser-recurrent-webgpu-jfk-reviewed-2026-10-02.json",
+      "receipt_bytes": 399792,
+      "receipt_sha256": "b7433971795db84874e35b7e73a0390a2d590b31d27084416dfd7e9eaba4c4f8",
+      "h_max_abs_error": 0.0000036619603633880615,
+      "c_max_abs_error": 0.0000152587890625,
+      "gpu_dispatches_per_repeat": 2162
+    }
+  ],
+  "served_artifacts_exact_per_backend": 244,
+  "browser_cleanup_errors": 0,
+  "features": "EXECUTED_NOT_ACCEPTED",
+  "real_encoder": "BYPASSED_FROZEN_ORACLE",
+  "intermediate_states_logits": "UNTESTED",
+  "full_asr": "NOT_PROVEN",
+  "next": "Observe every live head call without copying the decoder, validate observer non-perturbation and numerical intermediate boundaries. Retain earlier production feature and real-encoder gates."
+}
