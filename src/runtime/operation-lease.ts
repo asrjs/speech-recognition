@@ -7,6 +7,7 @@ import type {
   TranscriptResponse,
   TranscriptResponseFlavor,
 } from '../types/index.js';
+import { disposeOwnedResources } from './owned-session.js';
 
 /**
  * Tracks asynchronous work which must finish before an owning resource can be
@@ -121,9 +122,35 @@ export function createTrackedStreamingTranscriberFactory(
   return {
     create,
     async disposeAll(): Promise<void> {
-      await Promise.all([...owned].map((transcriber) => transcriber.dispose?.()));
+      await disposeOwnedResources(
+        Array.from(owned, (transcriber) => ({ dispose: () => transcriber.dispose?.() })),
+      );
     },
   };
+}
+
+/** Drain every transcriber before releasing its owner, retaining both failures. */
+export async function disposeStreamingTranscribersAndOwner(
+  transcribers: TrackedStreamingTranscriberFactory,
+  disposeOwner: () => void | Promise<void>,
+): Promise<void> {
+  const failures: unknown[] = [];
+  try {
+    await transcribers.disposeAll();
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    await disposeOwner();
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1) {
+    throw new AggregateError(failures, 'Streaming transcriber and owner cleanup failed.', {
+      cause: failures[0],
+    });
+  }
 }
 
 export function createGuardedSpeechSession<

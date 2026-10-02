@@ -58,6 +58,7 @@ import {
   createActiveOperationLease,
   createGuardedSpeechSession,
   createTrackedStreamingTranscriberFactory,
+  disposeStreamingTranscribersAndOwner,
 } from './operation-lease.js';
 
 export interface CreateBuiltInSpeechRuntimeOptions {
@@ -557,12 +558,9 @@ export async function loadBuiltInSpeechModel<
         if (!disposePromise) {
           disposePromise = (async () => {
             await operationLease.closeAndWait();
-            await streamingTranscribers.disposeAll();
-            if (ownsRuntime) {
-              await activeRuntime.dispose();
-              return;
-            }
-            await loadedModel.dispose();
+            await disposeStreamingTranscribersAndOwner(streamingTranscribers, () =>
+              ownsRuntime ? activeRuntime.dispose() : loadedModel.dispose(),
+            );
           })();
         }
         await disposePromise;

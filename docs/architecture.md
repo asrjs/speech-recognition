@@ -330,6 +330,12 @@ and actual partial engine-resource cleanup require their own coverage.
 
 `Symbol.asyncDispose` may be implemented as optional sugar, but it is not the primary or required API.
 
+High-level handles close their operation lease, settle every tracked streaming
+transcriber's cleanup, then attempt and await the owning model/runtime cleanup
+even if a transcriber failed. A single cleanup error retains its identity;
+multiple cleanup stages report an AggregateError. Repeated handle disposal
+shares the settled cleanup result. This ownership policy has no model math.
+
 ## Canonical Transcript Boundary
 
 `@asrjs/speech-recognition` keeps transcript semantics stable across model families and backends.

@@ -29,6 +29,7 @@ import {
   createActiveOperationLease,
   createGuardedSpeechSession,
   createTrackedStreamingTranscriberFactory,
+  disposeStreamingTranscribersAndOwner,
 } from './operation-lease.js';
 import type { DefaultSpeechRuntime } from './session.js';
 
@@ -427,8 +428,7 @@ export function createLoadedSpeechModelHandle<
       if (!disposePromise) {
         disposePromise = (async () => {
           await operationLease.closeAndWait();
-          await streamingTranscribers.disposeAll();
-          await handle.dispose();
+          await disposeStreamingTranscribersAndOwner(streamingTranscribers, () => handle.dispose());
         })();
       }
       await disposePromise;

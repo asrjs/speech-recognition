@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "scope": "GENERIC_STREAMING_OWNER_CLEANUP_SIMULATION",
+  "original_regressions": "Two public handle cases failed early-settlement before the fix",
+  "new_regressions_passed": 5,
+  "cleanup_order": "settle every transcriber, then attempt and await owner, then report errors",
+  "single_error_identity": "PRESERVED",
+  "multiple_stage_errors": "AGGREGATED",
+  "repeated_dispose": "SHARED_SETTLEMENT",
+  "full_suite": {
+    "receipt": "tools/data/results/harness/streaming-owner-cleanup-clean-env-full-suite-2026-10-02.json",
+    "sha256": "bd763f2c85d61d95a6b85c1ddfe5cd34c783cc0ec652bee432bdf053d9d33dba",
+    "bytes": 457306,
+    "passed": 1351,
+    "skipped": 33,
+    "failed": 0,
+    "inherited_tls_disable": "REMOVED_ONLY_IN_TEST_CHILD"
+  },
+  "production_types": "PASS",
+  "strict_new_test_types": "PASS_WITH_CONSISTENT_PUBLIC_ENTRYPOINTS",
+  "browser_root_import_smoke": "PASS_297_MODULES_27_ENTRIES",
+  "scoped_lint": "ZERO_ERRORS_EXISTING_LOAD_FILE_SIZE_WARNING",
+  "independent_review": "APPROVE",
+  "real_engine_sibling_acceptance": "NOT_RUN_FOR_THIS_SLICE",
+  "implicit_owned_runtime_new_test": "UNTESTED"
+}

@@ -1618,3 +1618,25 @@ execution, performance/memory and real companion applications remain unproven.
 Next bounded model step: observe live head calls without another decoder and
 compare equivalent inputs/outputs against official bindings, with an observer
 non-perturbation control. Whole-product lifecycle/API work remains in scope.
+
+### Generic streaming-owner cleanup recovery (2026-10-02)
+
+The whole-product pass reproduced early dispose rejection on both loaded and
+built-in public handles when one tracked transcriber failed while another was
+still releasing. The owning model cleanup was skipped. Reused the existing
+all-settled resource helper and added a small internal ordered cleanup boundary:
+drain every transcriber, then attempt/await the owner even after failure.
+Single errors retain identity; combined errors retain both stages. No public
+API, model-ID branch, decoder or backend policy changed.
+
+Five new regressions cover both handle paths, pending sibling/owner cleanup,
+single and combined errors, synchronous/asynchronous failures, closed handles
+and repeated disposal. Fresh clean-child-environment full suite: 1,351 PASS /
+33 SKIP / 0 FAIL; production and strict new-test types plus browser-root import
+smoke pass. Scoped lint has zero errors and an existing load.ts size warning.
+The first ad-hoc test compile mixed source and dist runtime identities; using
+consistent public entrypoints fixed test typing without altering production
+families. TLS-disable inheritance was removed only in the rerun child process.
+These are lifecycle simulations, not fresh real engine or sibling application
+acceptance. The implicit owned-runtime branch remains untested by the new cases.
+Receipt: `tools/data/results/harness/streaming-owner-cleanup-handoff-2026-10-02.json`.
