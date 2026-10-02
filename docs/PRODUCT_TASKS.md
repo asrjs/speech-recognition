@@ -262,3 +262,37 @@ Next product gate: current-source real-browser capture lifecycle, then cleanup
 of controller-owned resources when capture stop itself rejects (C05 only proves
 the capture owner's independent releases). Keep these separate from Orukeet's
 unresolved feature and recurrent WebGPU parity gates; no model promotion.
+
+## C07 — Real Chromium capture owner lifecycle
+
+Status: PASS — real browser/fake WAV device, capture owner only. Controller,
+VAD/ASR, physical device, soak and cleanup-failure browser gates remain open.
+
+Added a root-owned Python Playwright runner and small JS probe importing the
+built public `dist/browser.js` entry. No sibling Vite/cache writes or server
+are required: page HTTP requests are locally fulfilled from `dist` plus the
+explicit existing `pako` ESM dependency; unexpected requests fail. The initial
+attempt stopped before capture because bare `pako` lacked an import map. Adding
+the verified local package entry fixed harness resolution, without core edits.
+Python/Playwright/Chrome were already installed; nothing was downloaded.
+
+After refreshing the library build, Chrome 154.0.8037.93 passed two independent
+capture sessions: four contiguous 256-frame chunks each, finite nonzero PCM,
+48 kHz device/context and 16 kHz output, one actual AudioWorklet module load,
+shared concurrent stop, context `closed` and owned track `ended`. No extra
+chunks arrived during each 150 ms post-stop observation. This uses real browser
+media/audio APIs, not injected fake audio nodes. WAV content may be changed by
+browser capture processing; no exact PCM or speech-quality claim is made.
+
+Evidence: `tools/data/results/harness/real-browser-capture-owner-reviewed-2026-10-02.json`
+hashes the probe, runner, capture source, fixture and all 269 served resources
+(267 library modules, probe and pako). Inputs were stable before/after the run.
+Python/JS syntax and help checks pass. Existing-output preflight rejects before
+browser launch and preserves the receipt hash. README provides build/replay
+commands and requires a fresh build; source-to-build equivalence is not
+automatically certified by the runner. The receipt is exclusively created.
+
+Next: extend this actual-browser path to the public microphone controller's
+stop/restart/dispose and pending-handoff lifecycle, preserving capture-owner
+controls. Independently cover controller cleanup when capture stop rejects.
+Orukeet feature/recurrent parity and model promotion are still unresolved.
