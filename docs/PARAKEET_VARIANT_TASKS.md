@@ -1282,3 +1282,21 @@ Next: turn this frozen-stage replay into a bounded reusable tool with explicit
 physical/valid length and source/fixture checks, then compare packed256 bins2
 and254 before recombination on this cancellation frame. Do not add a special
 case for the failing model/bin/frame or repeat broad FFT rounding sweeps.
+
+### Replay mask guard foundation (2026-10-02)
+
+Added `complex_intervention.py` beside the family diagnostics. It validates
+nonempty finite batch-one complex64 spectra, matching shapes, explicit unique
+bin/frame coordinates inside the valid prefix, exact oracle components inside
+the mask and unchanged component bits everywhere outside it (including padding
+and signed zero). Canonical hashes bind the mask and all three input spectra;
+noncontiguous STFT layouts are supported without mutating inputs.
+
+Seven weight-free tests pass, including negative controls for one-ULP selected
+errors, out-of-mask/padding edits, signed zero, malformed coordinates, dtype,
+shape and nonfinite input. This is only the tested guard foundation: it has not
+yet been connected to the saved JFK/speech-silence replay or composed Node probe.
+It does not retrospectively certify the older receipt, reproduce model
+inference, fix the FFT, or close any production/browser parity gate.
+Next wire this guard into the bounded replay CLI and save the exact composed
+probe bytes with capture/source hashes before rerunning both frozen fixtures.
