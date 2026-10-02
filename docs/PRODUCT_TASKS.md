@@ -380,3 +380,20 @@ acceptance. Sibling consumer execution remains untested; no sibling edits.
 
 Next: bounded package/runtime acceptance and cancellation/repeated-session
 checks, while Orukeet's portable feature and recurrent browser gates stay open.
+
+## C11 — Cached pipeline reuse after cancellation
+
+Status: PARTIAL PASS — generic controlled-model regression; real-model host
+reuse remains untested.
+
+The existing cancellation test now also proves a fresh-signal transcription
+succeeds after an aborted call, using one cached model and disposing it once.
+Both calls use an explicit stable cacheKey: an AbortSignal-bearing request is
+not automatically serializable, so expecting automatic cache reuse would test
+the wrong contract. No production implementation changed.
+
+Verification: 28 high-level API/lifecycle tests, scoped lint, formatting and
+diff checks pass. Standalone strict test compilation reports a generic
+TranscriptResponse mismatch in the unchanged createProbeRuntime mock at line
+60; that mock typing remains open and this is not a clean typecheck claim.
+This test does not certify real ONNX session recovery or browser GPU reuse.

@@ -404,7 +404,7 @@ describe('SpeechPipeline lifecycle races', () => {
     await runtime.dispose();
   });
 
-  it('propagates pipeline cancellation into an in-flight cached transcription', async () => {
+  it('reuses the cached model after cancelling an in-flight transcription', async () => {
     let releaseTranscribe!: () => void;
     const transcribeGate = new Promise<void>((resolve) => {
       releaseTranscribe = resolve;
@@ -414,10 +414,18 @@ describe('SpeechPipeline lifecycle races', () => {
       transcribeStarted = resolve;
     });
     const controller = new AbortController();
+    let createCount = 0;
+    let disposeCount = 0;
+    let transcribeCount = 0;
     const runtime = createProbeRuntime({
-      onCreateModel: async () => undefined,
-      onDisposeModel: () => undefined,
+      onCreateModel: async () => {
+        createCount += 1;
+      },
+      onDisposeModel: () => {
+        disposeCount += 1;
+      },
       onTranscribe: async (signal) => {
+        transcribeCount += 1;
         transcribeStarted();
         await transcribeGate;
         if (signal?.aborted) {
@@ -429,15 +437,29 @@ describe('SpeechPipeline lifecycle races', () => {
 
     const transcribing = pipeline.transcribe(new Float32Array(16000), {
       ...REQUEST,
+      cacheKey: 'cancel-reuse-probe',
       signal: controller.signal,
     });
     await started;
     controller.abort();
     releaseTranscribe();
 
-    await expect(transcribing).rejects.toBeInstanceOf(PipelineAbortedError);
-    await pipeline.dispose();
-    await runtime.dispose();
+    try {
+      await expect(transcribing).rejects.toBeInstanceOf(PipelineAbortedError);
+      const result = await pipeline.transcribe(new Float32Array(16000), {
+        ...REQUEST,
+        cacheKey: 'cancel-reuse-probe',
+        signal: new AbortController().signal,
+      });
+      expect(result.text).toBe('probe');
+      expect(transcribeCount).toBe(2);
+      expect(createCount).toBe(1);
+      expect(disposeCount).toBe(0);
+    } finally {
+      await pipeline.dispose();
+      await runtime.dispose();
+    }
+    expect(disposeCount).toBe(1);
   });
 
   it('propagates pipeline cancellation into an in-flight batch transcription', async () => {
