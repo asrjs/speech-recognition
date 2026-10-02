@@ -181,3 +181,29 @@ audit. Sibling build and real browser/microphone execution are UNTESTED here:
 streaming-demo's build writes to its read-only checkout. No sibling edits were
 made. Continue the Orukeet FFT boundary work alongside broader resource and
 application gates; this lifecycle slice does not close those workstreams.
+
+## C04 — Disposal during browser microphone/VAD startup
+
+Status: PASS — deterministic lifecycle coverage only; no production fix was
+needed for these paths. Real browser microphone/model acceptance stays open.
+
+Added `tests/browser-controller-dispose.test.ts` through the public browser API.
+Controlled Promise gates verify disposal while microphone acquisition is
+pending and while VAD initialization is pending (both late success and late
+rejection). Tests require immediate inactive state, VAD abort, exactly-once
+capture stop, starter stop with `flush:false`, subscription cleanup, monitor
+and starter disposal, and rejection of a subsequent start. The manual case
+also verifies late chunk/error callbacks cannot mutate state or emit an
+utterance, plus repeated disposal does not stop/dispose resources again.
+No new model-specific branch, framework binding, dependency or API is added.
+
+Verification: all three cases pass; strict standalone changed-test compilation
+with `skipLibCheck=false` passes; the browser controller, browser realtime
+starter and transcription controller suites together pass 27 tests. These use
+injected capture/starter/monitor resources, not a real device, VAD model, ASR
+or WebGPU. Source implementation is unchanged, so no companion migration is
+required; sibling/browser hardware integration remains UNTESTED.
+
+Next product gate: exercise the same lifecycle under the existing browser
+loop with real capture/model resources where available. Keep Orukeet's open
+mel2/frame1027 numerical investigation separate from these lifecycle checks.
