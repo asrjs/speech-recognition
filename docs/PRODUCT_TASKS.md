@@ -140,3 +140,44 @@ with real Blob objects passes two successful reads and four cancelled reads
 on Node v26.2.0 and Bun 1.3.14 separately. Real browser/app cancellation and
 full model inference were not run for this slice. Companion source/API changes
 are unnecessary; broader cancellation integration remains a separate gate.
+
+## C03 — Segmented transcription respects explicit finalization
+
+Status: PASS — bounded controller lifecycle fix; live microphone/model and
+sibling application acceptance remain separate.
+
+`transcribeUtterance()` previously bypassed the finalized guard used by
+`pushAudio()` and `flush()`. After explicit `finalize()` it could call the model
+and reset/mutate merger and latency state. Two regressions failed before the
+fix: submission after completed finalization and submission queued behind
+finalization. The existing guard now runs inside the serialized operation,
+after stale-generation rejection and before any utterance state changes.
+Reset restores use; repeated segmented utterances before explicit finalization
+remain supported. A segment's `reason: 'stop'` does not itself finalize the
+whole controller. No public types, model mathematics or framework glue changed.
+
+Verification: all 11 controller tests and 39 related realtime/browser-controller
+simulation tests pass. Source and TS-example compilation, strict changed-test
+compilation with `skipLibCheck=false`, built browser import closure (297 modules /
+27 entries), and built public realtime API checks under Node v26.2.0 and Bun
+1.3.14 pass. Those public checks use deterministic callbacks, not ASR inference.
+The existing abort test had a narrower-than-public callback parameter; it now
+accepts `AbortSignalLike` and asserts/narrows the actual controller-owned native
+signal before listening. Runtime cancellation semantics are unchanged.
+
+Full suite: 1,317 PASS / 33 SKIP / 0 FAIL in
+`tools/data/results/harness/realtime-finalized-guard-full-suite-tls-2026-10-02.json`.
+This run explicitly sets `NODE_TLS_REJECT_UNAUTHORIZED=1` only in the test child
+environment; the first run inherited a disabled-TLS setting and is retained
+separately. No process-wide or user environment setting was changed.
+
+Affected consumer audit: streaming-demo routes detected segments through this
+controller, resets it on capture start, and normally uses stop/flush rather
+than explicit transcription-controller finalization. Its ordinary flow needs
+no source migration. Direct consumers that call explicit `finalize()` must call
+`reset()` before submitting another utterance, consistently with push/flush.
+Playground and benchmark-demo have no matching source calls in the scoped
+audit. Sibling build and real browser/microphone execution are UNTESTED here:
+streaming-demo's build writes to its read-only checkout. No sibling edits were
+made. Continue the Orukeet FFT boundary work alongside broader resource and
+application gates; this lifecycle slice does not close those workstreams.

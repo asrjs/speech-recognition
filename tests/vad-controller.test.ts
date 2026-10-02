@@ -3,7 +3,7 @@ import {
   VoiceActivityProbabilityBuffer,
   VoiceActivityTimeline,
 } from '@asrjs/speech-recognition/realtime';
-import { type TranscriptResult } from '@asrjs/speech-recognition';
+import { type AbortSignalLike, type TranscriptResult } from '@asrjs/speech-recognition';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('voice activity timeline', () => {
@@ -92,6 +92,57 @@ describe('voice activity probability buffer', () => {
 });
 
 describe('realtime transcription controller', () => {
+  it('rejects segmented transcription after finalization without changing state, until reset', async () => {
+    const transcribe = vi.fn(
+      async (): Promise<TranscriptResult> => ({
+        text: 'segmented',
+        warnings: [],
+        meta: { detailLevel: 'text', isFinal: true },
+      }),
+    );
+    const controller = new RealtimeTranscriptionController({ sampleRate: 4, transcribe });
+    const pcm = new Float32Array([1, 1, 1, 1]);
+    const options = { startFrame: 0, endFrame: 4, reason: 'stop' as const };
+    await controller.transcribeUtterance(pcm, options);
+    await controller.transcribeUtterance(pcm, options);
+    await controller.finalize();
+    const finalizedState = structuredClone(controller.getState());
+
+    await expect(controller.transcribeUtterance(pcm, options)).rejects.toThrow(
+      'RealtimeTranscriptionController is finalized. Call reset()',
+    );
+    expect(transcribe).toHaveBeenCalledTimes(2);
+    expect(controller.getState()).toEqual(finalizedState);
+
+    controller.reset();
+    expect((await controller.transcribeUtterance(pcm, options))?.canonical.text).toBe('segmented');
+    expect(transcribe).toHaveBeenCalledTimes(3);
+    expect(controller.getState().isFinalized).toBe(false);
+  });
+
+  it('rejects an utterance queued behind finalize before calling transcription', async () => {
+    const transcribe = vi.fn(
+      async (): Promise<TranscriptResult> => ({
+        text: 'unexpected',
+        warnings: [],
+        meta: { detailLevel: 'text', isFinal: true },
+      }),
+    );
+    const controller = new RealtimeTranscriptionController({ sampleRate: 4, transcribe });
+    const finalizing = controller.finalize();
+    const utterance = controller.transcribeUtterance(new Float32Array([1, 1, 1, 1]), {
+      startFrame: 0,
+      endFrame: 4,
+      reason: 'stop',
+    });
+    const rejection = expect(utterance).rejects.toThrow('Call reset()');
+    await finalizing;
+    await rejection;
+    expect(transcribe).not.toHaveBeenCalled();
+    expect(controller.getState()).toMatchObject({ isFinalized: true, lastWindow: null });
+    expect(controller.getState().snapshot.fullText).toBe('');
+  });
+
   it('coordinates ring buffering, windows, VAD, and transcript finalization', async () => {
     const transcribe = vi.fn(
       async (): Promise<TranscriptResult> => ({
@@ -211,7 +262,7 @@ describe('realtime transcription controller', () => {
   it('aborts an in-flight callback on reset and allows a fresh session', async () => {
     let callCount = 0;
     const transcribe = vi.fn(
-      (request: { readonly signal: AbortSignal }): Promise<TranscriptResult> =>
+      (request: { readonly signal: AbortSignalLike }): Promise<TranscriptResult> =>
         new Promise<TranscriptResult>((resolve, reject) => {
           callCount += 1;
           if (callCount > 1) {
@@ -226,9 +277,17 @@ describe('realtime transcription controller', () => {
             reject(new Error('transcription aborted'));
             return;
           }
-          request.signal.addEventListener('abort', () => reject(new Error('transcription aborted')), {
-            once: true,
-          });
+          if (!(request.signal instanceof AbortSignal)) {
+            reject(new Error('Expected controller-owned AbortSignal'));
+            return;
+          }
+          request.signal.addEventListener(
+            'abort',
+            () => reject(new Error('transcription aborted')),
+            {
+              once: true,
+            },
+          );
         }),
     );
     const controller = new RealtimeTranscriptionController({

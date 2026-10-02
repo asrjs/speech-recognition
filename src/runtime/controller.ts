@@ -309,6 +309,7 @@ export class RealtimeTranscriptionController {
     if (generation !== this.stateGeneration) {
       return null;
     }
+    this.assertNotFinalized();
     if (!(pcm instanceof Float32Array) || pcm.length === 0) {
       return null;
     }
