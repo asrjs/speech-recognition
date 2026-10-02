@@ -1,4 +1,4 @@
-"""One frozen FFT512 frame: complex256 versus two complex128 transforms.
+"""One frozen FFT512 frame: packed complex FFTs versus real even/odd halves.
 
 Diagnostic only. No weight loading, production changes or accepted feature port.
 """
@@ -66,6 +66,43 @@ def main():
                 abs(recombined.real - reference[0, args.bin, 0].real),
                 abs(recombined.imag - reference[0, args.bin, 0].imag))),
         }
+    half_even = torch.fft.rfft(torch.from_numpy(frame[..., ::2].copy()), dim=-1).numpy()[0, 0]
+    half_odd = torch.fft.rfft(torch.from_numpy(frame[..., 1::2].copy()), dim=-1).numpy()[0, 0]
+    half_results = {}
+    f32 = np.float32
+    for index in (args.bin, 256 - args.bin):
+        z = parent[0, 0]
+        er = f32(f32(z[index].real + z[256-index].real) * f32(.5))
+        ei = f32(f32(z[index].imag - z[256-index].imag) * f32(.5))
+        oddr = f32(f32(z[index].imag + z[256-index].imag) * f32(.5))
+        oddi = f32(f32(z[index].real - z[256-index].real) * f32(-.5))
+        even_value = half_even[index] if index <= 128 else np.conj(half_even[256-index])
+        odd_value = half_odd[index] if index <= 128 else np.conj(half_odd[256-index])
+
+        def combine(real, imag, odd_real, odd_imag):
+            cosine = f32(np.cos(-2 * np.pi * index / 512))
+            sine = f32(np.sin(-2 * np.pi * index / 512))
+            rotated_real = f32(float(odd_real) * float(cosine) - float(odd_imag) * float(sine))
+            rotated_imag = f32(float(odd_real) * float(sine) + float(odd_imag) * float(cosine))
+            return complex(f32(real + rotated_real), f32(imag + rotated_imag))
+
+        packed_value = combine(er, ei, oddr, oddi)
+        direct_value = combine(even_value.real, even_value.imag, odd_value.real, odd_value.imag)
+        expected_packed = recombine_packed(parent)[0, index, 0]
+        if pair(packed_value) != pair(expected_packed):
+            raise ValueError('Component recombination differs from existing packed recipe')
+        target = reference[0, index, 0]
+        half_results[str(index)] = {
+            'packed_even': pair(complex(er, ei)),
+            'packed_odd': pair(complex(oddr, oddi)),
+            'real_half_even': pair(even_value), 'real_half_odd': pair(odd_value),
+            'oracle': pair(target), 'packed_recombined': pair(packed_value),
+            'half_recombined': pair(direct_value),
+            'packed_absolute_component_errors': [abs(packed_value.real - float(target.real)),
+                                                  abs(packed_value.imag - float(target.imag))],
+            'half_absolute_component_errors': [abs(direct_value.real - float(target.real)),
+                                                abs(direct_value.imag - float(target.imag))],
+        }
     if hashes != {str(path.relative_to(ROOT)): digest(path.read_bytes()) for path in sources}:
         raise ValueError('Sources changed during diagnostic')
     if digest(args.capture.read_bytes()) != args.expected_capture_sha256:
@@ -79,7 +116,8 @@ def main():
         'oracle_bin': pair(reference[0, args.bin, 0]),
         'torch': torch.__version__, 'cpu_threads': torch.get_num_threads(),
         'results': results,
-        'scope': 'One frozen frame and fixed split128 factorization; no full-feature, portable FFT, ASR or browser acceptance',
+        'real_half_control': half_results,
+        'scope': 'One frozen frame, fixed split128 and real even/odd FFT256 controls; no full-feature, portable FFT, ASR or browser acceptance',
     }
     write_new_text(args.output, json.dumps(receipt, indent=2, allow_nan=False) + '\n')
     print(json.dumps(receipt, allow_nan=False))

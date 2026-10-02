@@ -1,0 +1,141 @@
+{
+  "status": "DIAGNOSTIC_ONLY",
+  "sample_id": "speech-silence",
+  "capture_sha256": "07ae6f00dcab69eb3425566af7b5690a85dc2bee91e7510ddf27cca7b4370809",
+  "sources_sha256": {
+    "tools\\model-debugging\\reference\\hf-parakeet-port\\probe_fft_factorization.py": "e2bea994f4be275ce3fa0acfe973ec26a7c7aeb5f029076907a25726e1b7ce48",
+    "tools\\model-debugging\\reference\\hf-parakeet-port\\replay_packed_fft.py": "d83416ea96d98de898aca9c423615dd8e11e71c90d2c563cd8446865209a2800",
+    "tools\\artifact_outputs.py": "499b497c2c3701e325c37cc9980ff179eda64c4ea80a0820951be9f6baa695eb"
+  },
+  "frame": 1027,
+  "bin": 2,
+  "frame_f32le_sha256": "d25846d1b1a3764b4cd67e36ef448b1168920b16b20a7eb21f131a7fabd2d2a7",
+  "selected_real512_capture_bits_exact": true,
+  "oracle_bin": [
+    -0.0012302659451961517,
+    0.00014171784278005362
+  ],
+  "torch": "2.6.0+cu118",
+  "cpu_threads": 4,
+  "results": {
+    "complex256": {
+      "packed_bins": {
+        "2": [
+          -0.2536996603012085,
+          0.5028291940689087
+        ],
+        "254": [
+          -0.49172887206077576,
+          0.24620598554611206
+        ]
+      },
+      "recombined": [
+        -0.0012302398681640625,
+        0.00014172494411468506
+      ],
+      "absolute_component_errors": [
+        2.60770320892334e-08,
+        7.101334631443024e-09
+      ]
+    },
+    "split128": {
+      "packed_bins": {
+        "2": [
+          -0.2536996901035309,
+          0.5028291940689087
+        ],
+        "254": [
+          -0.49172884225845337,
+          0.24620598554611206
+        ]
+      },
+      "recombined": [
+        -0.0012302398681640625,
+        0.00014175474643707275
+      ],
+      "absolute_component_errors": [
+        2.60770320892334e-08,
+        3.6903657019138336e-08
+      ]
+    }
+  },
+  "real_half_control": {
+    "2": {
+      "packed_even": [
+        -0.3727142810821533,
+        0.12831160426139832
+      ],
+      "packed_odd": [
+        0.3745175898075104,
+        -0.11901460587978363
+      ],
+      "real_half_even": [
+        -0.37271425127983093,
+        0.12831160426139832
+      ],
+      "real_half_odd": [
+        0.3745175898075104,
+        -0.11901456117630005
+      ],
+      "oracle": [
+        -0.0012302659451961517,
+        0.00014171784278005362
+      ],
+      "packed_recombined": [
+        -0.0012302398681640625,
+        0.00014172494411468506
+      ],
+      "half_recombined": [
+        -0.0012302100658416748,
+        0.0001417696475982666
+      ],
+      "packed_absolute_component_errors": [
+        2.60770320892334e-08,
+        7.101334631443024e-09
+      ],
+      "half_absolute_component_errors": [
+        5.587935447692871e-08,
+        5.180481821298599e-08
+      ]
+    },
+    "254": {
+      "packed_even": [
+        -0.3727142810821533,
+        -0.12831160426139832
+      ],
+      "packed_odd": [
+        0.3745175898075104,
+        0.11901460587978363
+      ],
+      "real_half_even": [
+        -0.37271425127983093,
+        -0.12831160426139832
+      ],
+      "real_half_odd": [
+        0.3745175898075104,
+        0.11901456117630005
+      ],
+      "oracle": [
+        -0.7441983222961426,
+        -0.25648146867752075
+      ],
+      "packed_recombined": [
+        -0.7441983222961426,
+        -0.25648146867752075
+      ],
+      "half_recombined": [
+        -0.7441983222961426,
+        -0.25648143887519836
+      ],
+      "packed_absolute_component_errors": [
+        0.0,
+        0.0
+      ],
+      "half_absolute_component_errors": [
+        0.0,
+        2.9802322387695312e-08
+      ]
+    }
+  },
+  "scope": "One frozen frame, fixed split128 and real even/odd FFT256 controls; no full-feature, portable FFT, ASR or browser acceptance"
+}

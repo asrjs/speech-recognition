@@ -1407,3 +1407,33 @@ transitive helper hashes are not independently enumerated by this small probe.
 Next: inspect a distinct real even/odd FFT256 factorization control rather than
 extending this rejected complex split or changing feature tolerances. Keep
 portable feature, full ASR and actual-browser recurrent gates open.
+
+### Real even/odd FFT256 cancellation control (2026-10-02)
+
+Extended the same single-frame probe with independent real FFT256 transforms
+of even and odd input samples. It compares their terms with packed-complex
+deinterleaving, using identical f32 twiddles/single-round products and final
+addition. Both selected bin2 and reciprocal bin254 are checked; half-spectrum
+conjugation applies to the FFT256 halves, not to the final FFT512 bin254.
+A fail-closed guard requires this component recombination to reproduce the
+existing packed recipe at both coordinates before writing the receipt.
+
+Actual evidence: `tools/data/results/orukeet/real-half256-cancellation-control-2026-10-02.json`.
+Original selected-frame FFT512 bytes and frame hash still match. At bin2,
+the direct-half real error grows from `2.60770320892334e-8` to
+`5.587935447692871e-8`; imaginary error grows from `7.101334631443024e-9` to
+`5.180481821298599e-8`. The packed method matches captured bin254 exactly;
+direct halves introduce `2.9802322387695312e-8` imaginary error there. This
+specific factorization therefore does not repair the selected cancellation.
+It does not establish which internal MKL plan produced the reference.
+
+Syntax, actual frozen-frame/recipe guards and existing replay's 12 tests pass.
+The receipt binds the updated direct script/helper hashes; the prior split128
+receipt remains bound to commit `18e3f6f`, not the updated script. No production
+processor, weights, tolerances or public model status changed. Full-feature
+replay and browser/model acceptance are not claimed by this single-frame tool.
+
+Next: use the now-compared even/odd terms to distinguish twiddle/product and
+final-add contributions with exact per-operation residuals, not another broad
+factorization or precision sweep. Keep the one-feature failure open until a
+portable implementation passes both complete frozen fixtures unchanged.
