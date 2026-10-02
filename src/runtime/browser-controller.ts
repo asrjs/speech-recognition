@@ -509,40 +509,62 @@ export function createBrowserRealtimeMicrophoneController(
         if (generation !== lifecycleGeneration && !captureHandle && !manualChunks.length) {
           return;
         }
-
+        const errors: unknown[] = [];
+        const attempt = async (operation: () => void | Promise<void>): Promise<void> => {
+          try {
+            await operation();
+          } catch (error) {
+            errors.push(error);
+          }
+        };
         const handle = captureHandle;
         captureHandle = null;
         if (handle) {
-          await handle.stop();
+          await attempt(() => handle.stop());
+        }
+        if (disposed) {
+          manualChunks = [];
+          manualIngestFrame = 0;
+          if (errors.length) throw errors[0];
+          return;
         }
 
-        updateCaptureInfo({
-          inputSampleRate: null,
-          contextSampleRate: null,
-          deviceLabel: '',
+        await attempt(() => {
+          updateCaptureInfo({
+            inputSampleRate: null,
+            contextSampleRate: null,
+            deviceLabel: '',
+          });
         });
 
-        if (micMode === 'speech-detect') {
-          await starter.stop({ flush });
-        } else if (flush && manualChunks.length > 0) {
-          const pcm = concatFloat32Chunks(manualChunks);
-          const endFrame = manualIngestFrame;
-          manualChunks = [];
-          manualIngestFrame = 0;
-          publishCapturedAudio(pcm, {
-            sampleRate,
-            reason: 'stop',
-            startFrame: Math.max(0, endFrame - pcm.length),
-            endFrame: Math.max(pcm.length, endFrame),
-            metadata: null,
-          });
-        } else {
-          manualChunks = [];
-          manualIngestFrame = 0;
-        }
+        await attempt(async () => {
+          if (micMode === 'speech-detect') {
+            await starter.stop({ flush: flush && !disposed });
+          } else if (flush && !disposed && manualChunks.length > 0) {
+            const pcm = concatFloat32Chunks(manualChunks);
+            const endFrame = manualIngestFrame;
+            manualChunks = [];
+            manualIngestFrame = 0;
+            publishCapturedAudio(pcm, {
+              sampleRate,
+              reason: 'stop',
+              startFrame: Math.max(0, endFrame - pcm.length),
+              endFrame: Math.max(pcm.length, endFrame),
+              metadata: null,
+            });
+          } else {
+            manualChunks = [];
+            manualIngestFrame = 0;
+          }
+        });
 
-        updateStatus('Microphone stopped', 'Model ready');
-        monitor.flush();
+        if (!disposed) {
+          await attempt(() => updateStatus('Microphone stopped', 'Model ready'));
+          if (!disposed) await attempt(() => monitor.flush());
+        }
+        if (errors.length === 1) throw errors[0];
+        if (errors.length > 1)
+          throw new AggregateError(errors, 'Microphone controller stop failed.');
       });
     },
     flush(reason = 'manual'): void {

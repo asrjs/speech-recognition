@@ -350,3 +350,33 @@ That browser receipt does not certify injected cleanup failures, VAD or ASR.
 
 Next: separately specify and test normal stop when capture stop rejects; return
 to Orukeet's earliest feature divergence without relaxing numerical acceptance.
+
+## C10 — Logical stop after capture cleanup failure
+
+Status: PASS — simulated failure matrix and real-browser healthy manual control.
+
+Previously a rejected capture stop skipped capture-info reset, speech-detect
+starter stop/manual flush, stopped status and monitor finalization. Four new
+manual/speech-detect × flush true/false regressions failed before the fix.
+Stop now independently attempts those operations, preserving the existing
+flush option and surfacing errors afterward: single errors retain identity,
+multiple failures are aggregated in operation order. Buffered manual PCM is
+delivered once only when requested; flush false discards it. Speech-detect
+still delivers the final starter segment when flushing despite capture failure.
+
+Six focused cases cover that matrix, capture/starter/monitor simultaneous
+failure, and disposal overtaking a pending failing stop. Review caught late
+manual publication in the first implementation; that source edit was reverted
+before adding the race guard. Disposal now suppresses buffered publication and
+late status/monitor updates while queued disposal owns remaining cleanup.
+The revised implementation passed independent review (20 focused tests).
+Monitor mocks are cleared after startup to ensure stop finalization is
+actually observed. All 52 related capture/browser/realtime tests pass. Source
+and example compilation, strict changed-test types, scoped lint, format and diff
+checks pass. Current-build Chromium healthy manual lifecycle passed three real
+sessions: `tools/data/results/harness/real-browser-controller-stop-reviewed-2026-10-02.json`.
+This is not browser cleanup-failure injection, physical-device, VAD-model or ASR
+acceptance. Sibling consumer execution remains untested; no sibling edits.
+
+Next: bounded package/runtime acceptance and cancellation/repeated-session
+checks, while Orukeet's portable feature and recurrent browser gates stay open.

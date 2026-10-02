@@ -98,6 +98,145 @@ function segment(readPcm = vi.fn(() => Float32Array.of(0.25))) {
   };
 }
 
+describe('browser controller stop after capture failure', () => {
+  it('does not publish manual audio when disposal overtakes a failing stop', async () => {
+    const r = resources();
+    const failure = new Error('late capture shutdown failure');
+    const entered = deferred<void>();
+    let rejectStop!: (error: Error) => void;
+    r.handle.stop = vi.fn(() => {
+      entered.resolve();
+      return new Promise<void>((_, reject) => {
+        rejectStop = reject;
+      });
+    });
+    let captureOptions!: CaptureOptions;
+    const onUtterance = vi.fn();
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'manual',
+      createStarter: () => r.starter,
+      createMonitor: () => r.monitor,
+      startCapture: async (options) => {
+        captureOptions = options;
+        return r.handle;
+      },
+      onUtterance,
+    });
+    await controller.start();
+    captureOptions.onChunk({
+      pcm: Float32Array.of(0.25),
+      sampleRate: 16000,
+      deviceSampleRate: 48000,
+      contextSampleRate: 48000,
+      startFrame: 0,
+      endFrame: 1,
+      startTimeSeconds: 0,
+      endTimeSeconds: 1 / 16000,
+    });
+    const stopping = controller.stop({ flush: true }).catch((error: unknown) => error);
+    await entered.promise;
+    const disposing = controller.dispose();
+    rejectStop(failure);
+    expect(await stopping).toBe(failure);
+    await disposing;
+    expect(onUtterance).not.toHaveBeenCalled();
+    expect(r.unsubscribe).toHaveBeenCalledOnce();
+    expect(r.monitor.dispose).toHaveBeenCalledOnce();
+    expect(r.starter.dispose).toHaveBeenCalledOnce();
+  });
+
+  it('reports all stop failures after attempting monitor finalization', async () => {
+    const r = resources();
+    const failures = [new Error('capture'), new Error('starter'), new Error('monitor')];
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'speech-detect',
+      createStarter: () => r.starter,
+      createMonitor: () => r.monitor,
+      startCapture: async () => r.handle,
+    });
+    await controller.start();
+    r.stopCapture.mockRejectedValue(failures[0]);
+    vi.mocked(r.starter.stop).mockRejectedValue(failures[1]);
+    vi.mocked(r.monitor.flush)
+      .mockClear()
+      .mockImplementation(() => {
+        throw failures[2];
+      });
+    try {
+      const failure = await controller.stop({ flush: false }).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(AggregateError);
+      expect((failure as AggregateError).errors).toEqual(failures);
+      expect(r.starter.stop).toHaveBeenCalledWith({ flush: false });
+      expect(r.monitor.flush).toHaveBeenCalledOnce();
+      expect(controller.getState().captureInfo.inputSampleRate).toBeNull();
+      expect(controller.getState().micStatus).toBe('Microphone stopped');
+    } finally {
+      await controller.dispose();
+    }
+  });
+
+  it.each([
+    ['manual', true],
+    ['manual', false],
+    ['speech-detect', true],
+    ['speech-detect', false],
+  ] as const)('preserves %s flush=%s and reports capture failure', async (micMode, flush) => {
+    const r = resources();
+    const failure = new Error('capture shutdown failed');
+    r.stopCapture.mockRejectedValue(failure);
+    let captureOptions!: CaptureOptions;
+    const onUtterance = vi.fn();
+    r.starter.stop = vi.fn(async (options) => {
+      if (options?.flush) r.emit(segment());
+      return null;
+    });
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode,
+      createStarter: () => r.starter,
+      createMonitor: () => r.monitor,
+      startCapture: async (options) => {
+        captureOptions = options;
+        return r.handle;
+      },
+      onUtterance,
+    });
+    await controller.start();
+    captureOptions.onChunk({
+      pcm: Float32Array.of(0.25),
+      sampleRate: 16000,
+      deviceSampleRate: 48000,
+      contextSampleRate: 48000,
+      startFrame: 0,
+      endFrame: 1,
+      startTimeSeconds: 0,
+      endTimeSeconds: 1 / 16000,
+    });
+    vi.mocked(r.monitor.flush).mockClear();
+    try {
+      await expect(controller.stop({ flush })).rejects.toBe(failure);
+      expect(controller.getState().isMicActive).toBe(false);
+      expect(controller.getState().captureInfo).toMatchObject({
+        inputSampleRate: null,
+        contextSampleRate: null,
+        deviceLabel: '',
+      });
+      expect(controller.getState().micStatus).toBe('Microphone stopped');
+      expect(r.stopCapture).toHaveBeenCalledOnce();
+      expect(r.monitor.flush).toHaveBeenCalledOnce();
+      if (micMode === 'speech-detect') {
+        expect(r.starter.stop).toHaveBeenCalledWith({ flush });
+      } else {
+        expect(r.starter.stop).not.toHaveBeenCalled();
+        controller.flush();
+      }
+      expect(onUtterance).toHaveBeenCalledTimes(flush ? 1 : 0);
+      if (flush) expect(onUtterance.mock.calls[0][0].pcm).toEqual(Float32Array.of(0.25));
+    } finally {
+      await controller.dispose();
+    }
+  });
+});
+
 describe('browser controller disposal during startup', () => {
   it('attempts every release and preserves multiple disposal failures', async () => {
     const r = resources();
