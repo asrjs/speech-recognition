@@ -32,6 +32,32 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_packed_product_options_are_isolated_to_the_named_control(self):
+        for butterfly, recombination in (("single-round", "separate"), ("separate", "single-round"),
+                                         ("single-round", "single-round")):
+            data = inputs()
+            data["packedProductRounding"] = {"butterflyProducts": butterfly, "recombinationProducts": recombination}
+            result = json.loads(subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+                cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+                capture_output=True, timeout=30, check=True).stdout)
+            self.assertNotEqual(result['packedF32Capture']['real'], self.result['packedF32Capture']['real'])
+            self.assertEqual(result['packedF32Capture']['frameBytesF32LE'], self.result['packedF32Capture']['frameBytesF32LE'])
+            for key in result:
+                if key not in ('packedF32Capture', 'normalizationControls'):
+                    self.assertEqual(result[key], self.result[key], key)
+            for key in result['normalizationControls']:
+                if key != 'packedF32':
+                    self.assertEqual(result['normalizationControls'][key], self.result['normalizationControls'][key])
+
+    def test_packed_product_options_fail_closed_in_actual_probe(self):
+        data = inputs()
+        data['packedProductRounding'] = {'butterflyProducts': 'hardware-fma'}
+        result = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Invalid packed f32 product rounding', result.stderr)
+
     def test_aligned_packed_mel_controls_do_not_inject_reference_spectra(self):
         import numpy as np
         data = inputs()

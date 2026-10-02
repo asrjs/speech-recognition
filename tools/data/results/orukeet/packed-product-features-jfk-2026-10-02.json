@@ -1,0 +1,79 @@
+{
+  "status": "DIAGNOSTIC_FEATURE_MATRIX_FAIL",
+  "scope": "Frozen original waveform/window and captured features; original NeMo-source librosa Slaney filterbank recipe, fixed diagnostic power/production mel accumulation/width8 normalization. No original-engine re-execution or production fix",
+  "capture_sha256": "4328840597d82b6942e640c2d9a4f810ca6c589588fb833009d02d8b14178508",
+  "source_config_sha256": "344297eaf9e28d7f849e099c06535fbb0df978926e1b5f753b6aa836d05acdb3",
+  "filterbank_sha256_f32le": "f5608e00763a20a191022fbb00a43346db5f1ec06828a97a6f4157f7d02b76c8",
+  "frame_sha256_f32le": "e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30",
+  "transform_sha256": "c561cbb81c9729fe421befa659fc0dce87deb8cae8b51736d893600bc4e99c2c",
+  "results": {
+    "separate/separate": {
+      "shape": [
+        128,
+        1101
+      ],
+      "dtype": "float32",
+      "count": 140928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": false,
+      "max_abs_error": 0.0003078877925872803,
+      "mean_abs_error": 9.183716196508551e-07,
+      "max_relative_error": 0.333333250504428,
+      "cosine_similarity": 0.999999999988837,
+      "mismatch_count": 215,
+      "first_divergent_index": 33
+    },
+    "separate/single-round": {
+      "shape": [
+        128,
+        1101
+      ],
+      "dtype": "float32",
+      "count": 140928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": false,
+      "max_abs_error": 0.0003078877925872803,
+      "mean_abs_error": 9.150031823199947e-07,
+      "max_relative_error": 0.3374230252811424,
+      "cosine_similarity": 0.9999999999889686,
+      "mismatch_count": 220,
+      "first_divergent_index": 33
+    },
+    "single-round/separate": {
+      "shape": [
+        128,
+        1101
+      ],
+      "dtype": "float32",
+      "count": 140928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": false,
+      "max_abs_error": 0.00036260485649108887,
+      "mean_abs_error": 8.691318206499366e-07,
+      "max_relative_error": 0.333333250504428,
+      "cosine_similarity": 0.9999999999907798,
+      "mismatch_count": 179,
+      "first_divergent_index": 48
+    },
+    "single-round/single-round": {
+      "shape": [
+        128,
+        1101
+      ],
+      "dtype": "float32",
+      "count": 140928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": false,
+      "max_abs_error": 0.00036260485649108887,
+      "mean_abs_error": 8.539245392656352e-07,
+      "max_relative_error": 0.333333250504428,
+      "cosine_similarity": 0.9999999999908303,
+      "mismatch_count": 187,
+      "first_divergent_index": 48
+    }
+  }
+}

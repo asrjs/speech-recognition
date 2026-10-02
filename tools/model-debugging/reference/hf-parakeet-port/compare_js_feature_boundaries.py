@@ -128,7 +128,7 @@ async function experiment(name, { window = false, windowProduct = false, filterb
       ? `melValue = Math.fround(melValue + ${term});` : `melValue += ${term};`;
     candidateSource = candidateSource.replace(boundary, replacement);
   }
-  if (packedF32) candidateSource = packedF32Source(candidateSource);
+  if (packedF32) candidateSource = packedF32Source(candidateSource, data.packedProductRounding);
   if (referenceComplexPower !== null && !['library', 'fp32-rounded'].includes(referenceComplexPower))
     throw new Error('Invalid reference complex power control');
   if (referenceComplexPower && (fullFft || referencePower || magnitudeRoundTrip || complexPower || !capturePower))
@@ -1056,6 +1056,10 @@ def main():
     parser.add_argument("--summary-only", action="store_true", help="Print only receipt path/status; full evidence remains in output")
     parser.add_argument("--require-actual-stft", action="store_true",
         help="Fail unless the frozen original-model input/window/complex STFT capture matches exactly")
+    parser.add_argument("--packed-butterfly-products", choices=("separate", "single-round"), default="separate",
+        help="Diagnostic-only packed FFT product rounding; not hardware FMA")
+    parser.add_argument("--packed-recombination-products", choices=("separate", "single-round"), default="separate",
+        help="Diagnostic-only real-recombination product rounding; not production")
     parser.add_argument("--power-override", nargs=2, type=int, action="append", default=[],
         metavar=("FRAME", "BIN"), help="Diagnostic-only selected official-power substitution; repeat for each coordinate")
     args = parser.parse_args()
@@ -1146,7 +1150,9 @@ def main():
             "referenceWindow": processor.window.tolist(), "referenceFilterbank": processor.fb.flatten().tolist(),
             "referencePower": power.flatten().tolist(), "referenceComplex": complex_boundary,
             "referenceLogInput": official_log_input.flatten().tolist(),
-            "powerOverrides": args.power_override}),
+            "powerOverrides": args.power_override,
+            "packedProductRounding": {"butterflyProducts": args.packed_butterfly_products,
+                "recombinationProducts": args.packed_recombination_products}}),
         text=True, encoding="utf-8", capture_output=True, check=True, timeout=60)
     js = json.loads(probe.stdout)
     if js["frameCount"] != raw.shape[2] or js["validLength"] != int(valid_length[0]):
@@ -1427,6 +1433,8 @@ def main():
         "cascade_normalized_failure_power_attribution": cascade_attribution,
         "cascade_normalized_failure_dft": cascade_dft,
         "packed_f32_stage_control": packed_control,
+        "packed_f32_product_rounding": {"butterflyProducts": args.packed_butterfly_products,
+            "recombinationProducts": args.packed_recombination_products},
         "production_input_diagnostic": production_diagnostic,
         "frame_arithmetic_controls": frame_arithmetic_controls,
         "normalization_reduction_candidates": normalization_candidates,

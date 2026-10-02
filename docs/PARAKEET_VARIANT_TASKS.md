@@ -1035,3 +1035,35 @@ Torch or identify hardware FMA/MKL dispatch. An earlier full-feature attempt
 was interrupted before writing a receipt; its results are UNTESTED, not PASS.
 Next integrate these options into the existing feature probe and compare the
 same downstream mel/log/width8 normalization; production features remain FAIL.
+
+### Packed-product feature rejection and reproducible probe options (2026-10-02)
+
+Completed the frozen-input feature matrix without full NeMo import: rebuild
+the filterbank with the exact installed NeMo-source librosa Slaney recipe,
+use captured waveform/window, and require every captured f32 FFT frame byte to
+match the prior spectrum run. Diagnostic power, production mel accumulation
+and width8 normalization are identical across branches. Against actual captured
+features at unchanged `atol=1e-5, rtol=1e-4`, mismatch counts are:
+
+| Butterfly / recombination | Feature mismatches | Max abs error |
+| --- | ---: | ---: |
+| separate / separate | 215 | 3.078877925872803e-4 |
+| separate / single-round | 220 | 3.078877925872803e-4 |
+| single-round / separate | 179 | 3.626048564910889e-4 |
+| single-round / single-round | 187 | 3.626048564910889e-4 |
+
+All FAIL. The best branch is still worse than the earlier 121-mismatch aligned
+control and increases peak error. Reject these as production fixes; lower mean
+spectrum error did not establish feature parity. No new original-engine run,
+token/text, browser or performance acceptance is implied. Small receipt:
+`packed-product-features-jfk-2026-10-02.json`, SHA-256
+`c9ee5badbf22cc6e10baf65cde80b3eab59102a3afe2ed7ae9c98ad136cd2d5b`.
+
+The existing full feature probe now accepts `--packed-butterfly-products` and
+`--packed-recombination-products` (`separate` default / `single-round`) and
+records both in its receipt. Only its named packed-f32 control changes; all
+other branches and frame bytes are preserved. Two actual-probe regressions
+failed before wiring and pass after; all 81 boundary tests and 11 Node tests
+pass, with Python compilation and CLI help verified. Full original-engine CLI
+execution with these flags remains UNTESTED. Do not repeat these modes seeking
+another mean-error gain; next isolate algorithm/order rather than weaken gates.
