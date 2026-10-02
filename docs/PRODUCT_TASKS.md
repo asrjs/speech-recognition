@@ -6,8 +6,9 @@ Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.
 ## C01 — Opt-in native ORT installation
 
 Status: PARTIAL PASS — optional-peer metadata, resolution-isolated smoke and
-actual packed-archive consumption. Package-manager installation and footprint
-comparison remain UNTESTED.
+actual packed-archive consumption. The offline package-manager comparison has
+been attempted but fails on missing cached dependencies; completed installation
+footprints remain UNVERIFIED.
 
 Purpose: browser-only consumers should not need to install a native engine
 that the runtime does not automatically register.
@@ -90,3 +91,29 @@ control passes; shared gate regression gives 8 PASS / 1 intentional SKIP.
 See `tests/fixtures/README.md` for build prerequisite and opt-in commands.
 This closes the automatic resource-fixture gap, not C01 install-footprint or
 full model/native/browser acceptance.
+
+### C01 offline install comparison harness (2026-10-02)
+
+`tests/smoke/install-footprint.mjs` packs one actual built archive and installs
+it into two fresh temporary consumers: package alone versus the same package
+plus its exact optional native peer. npm is invoked without a shell, offline,
+with install scripts disabled. Receipts hash tool/metadata/archive, preserve
+both consumers, bind lockfile versions and require actual native resolution
+identity. A failed install produces no footprint delta; existing receipts are
+refused before npm runs. Seven tests (including actual CLI negative controls)
+pass; strict changed-test compilation and build pass. Related gates give
+38 PASS / 6 intentional SKIP; browser import graph and 1,401-file package
+tarball contracts pass. This is not native/model/browser execution acceptance.
+
+Actual Node v26.2.0/npm 11.13.0 offline runs fail both consumers with
+`ENOTCACHED` for `@types/node@26.4.0`; partial module trees and npm cleanup
+warnings are retained, not measured as successful installs. The packed archive
+is 1,093,345 bytes compressed / 5,152,384 bytes unpacked. These archive sizes
+are not installed footprint savings. See
+`tools/data/results/harness/offline-install-footprint-handoff-2026-10-02.json`.
+
+Next obtain an authorized cache-complete environment and rerun with a new
+receipt. Do not switch to network fetching or lower success checks silently.
+Even a future PASS measures script-disabled logical file bytes only: native
+assets generated/downloaded by the native install script and allocated disk
+blocks remain a separate footprint/runtime gate. C01 stays PARTIAL.

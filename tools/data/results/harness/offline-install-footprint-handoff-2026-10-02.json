@@ -1,0 +1,25 @@
+{
+  "status": "PARTIAL_PASS_HARNESS_INSTALL_COMPARISON_CACHE_BLOCKED",
+  "scope": "Offline script-disabled installation controls, not model or native runtime acceptance",
+  "tool": "tests/smoke/install-footprint.mjs",
+  "tool_sha256": "1d8d656dbb12e94faf93348b5bdaa3de89c6e32ccb5775c55a3d86f8e67f175c",
+  "receipt": "tools/data/results/harness/offline-install-footprint-final-2026-10-02.json",
+  "receipt_sha256": "e9cf53c6c45a7874bcdcf702675a27547b27e8377ff3ee30bf6ca6065c6b7405",
+  "actual_result": "FAIL_INSTALL_COMPARISON; browser and native consumers both ENOTCACHED @types/node@26.4.0; no delta",
+  "node": "v26.2.0",
+  "npm": "11.13.0",
+  "archive_sha256": "ad0c35cadf77a29004e6d94da3934fc584edbde88e9f3408f668d0743e36b25a",
+  "archive_bytes": 1093345,
+  "archive_unpacked_bytes": 5152384,
+  "archive_files": 1401,
+  "validation": {
+    "focused_tests_pass": 38,
+    "optional_native_tests_skip": 6,
+    "strict_changed_test_compilation": "PASS",
+    "build": "PASS",
+    "browser_import_graph": "PASS",
+    "package_tarball": "PASS",
+    "full_suite": "NOT_RUN"
+  },
+  "next": "Rerun in an authorized cache-complete environment using a fresh receipt; separately measure script-generated native assets and actual runtime footprint"
+}

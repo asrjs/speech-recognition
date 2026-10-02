@@ -79,3 +79,28 @@ executor using CPU and verify success plus partial-acquisition rollback and
 repeated disposal. The fixture integrity/overwrite unit test runs without
 native bindings. Test environment settings above apply only to that shell;
 do not set global environment variables or install a missing engine silently.
+
+## Offline consumer install footprint
+
+Build first, then explicitly request the measurement with a fresh output path:
+
+```powershell
+node tests/smoke/install-footprint.mjs --output tools/data/results/harness/install-footprint-new.json
+```
+
+This creates and retains two isolated temporary npm consumers, uses the same
+actual package archive and adds the pinned optional native peer only to the
+second consumer. It never runs inference. All npm commands are offline and
+install scripts are disabled; cached dependencies must already be available.
+Missing cache data is FAIL (exit 1), not SKIP, zero bytes, or a network fallback.
+No receipt is overwritten. `ASRJS_NPM_CLI` can explicitly select an installed
+`npm-cli.js` when it is not adjacent to Node; the CLI is launched without a
+shell. npm uses its configured cache; this can require normal cache write access.
+
+Successful comparisons record logical regular-file bytes/counts and exact
+dependency/lock/archive identity. Linked module trees are deliberately rejected
+rather than measuring another project's dependencies. Install-script-generated
+native assets, allocated disk blocks, registry publication and native runtime
+functionality are not certified. Seven default unit/negative CLI tests run with
+`node node_modules/vitest/vitest.mjs run tests/install-footprint.test.ts` and
+do not install packages.
