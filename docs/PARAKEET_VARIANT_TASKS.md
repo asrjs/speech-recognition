@@ -919,3 +919,23 @@ source hash, not this later metadata-only tightening.
 Next use this verified spectrum to discriminate JS FFT/mel rounding rather
 than rerunning unbound reference reconstructions. Full fixture/live model gates
 remain open; no preset promotion or precision change is justified.
+
+### Full FFT complex-product rounding discriminator (2026-10-02)
+
+A bounded CPU/Node control uses exact captured STFT input/window values and
+float32 frame products over all 1,101 JFK frames. It runs the actual compiled
+library's 512-point `fft()` with guarded temporary source transforms, not the
+production 256-point packed/recombination path. Across 565,914 real/imag values,
+f64-final-f32 has 489,809 bit mismatches and mean error `2.096496679017805e-8`;
+separate-f32-products has 496,113 / `2.631569987115098e-8`. Rounding only the
+right product, only the left product, or neither product before final f32
+rounding gives 494,427 / `2.548069699147843e-8`, 494,517 /
+`2.546677179117999e-8`, and 492,784 / `2.457823876104226e-8`, respectively.
+Max component error is `1.9073486328125e-6` except rounded-left-product control
+at `2.86102294921875e-6`. None closes the reference boundary or improves mean
+error over f64. Binary64 product-sum controls are not hardware-FMA proof.
+
+Reject these full-FFT variants as production fixes. This does not rule out
+different packed/radix/recombination arithmetic and does not measure feature,
+token/text, browser GPU or speed acceptance. Production stays unchanged; do
+not repeat the already completed selected-bin DFT to rediscover this seam.
