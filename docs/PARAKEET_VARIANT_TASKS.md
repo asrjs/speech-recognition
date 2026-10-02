@@ -1098,3 +1098,40 @@ obtain a closer intermediate spectrum. The result supports investigating the
 original FFT arithmetic/dispatch boundary, but does not identify an MKL plan
 or instruction. Next distinguish a reproducible original FFT operation order
 from unsupported backend-specific assumptions before changing library math.
+
+### Conditional packed256 factorization feature PASS (2026-10-02)
+
+Discriminating experiment: pack the exact original f32 frame's even samples
+into complex real components and odd samples into imaginary components, execute
+Torch/MKL complex256 `fft`, then independently reconstruct the real512 spectrum
+using the library's even/odd factorization. The original real512 framed Torch
+control remains byte exact against the actual STFT. No weights or model were
+rerun. Three explicit recombination modes share the same complex256 output;
+none identifies MKL's internal implementation.
+
+| Recombination | Spectrum mean abs error | Feature mismatches |
+| --- | ---: | ---: |
+| f64 intermediates, final f32 | 4.414092749510645e-9 | 3 |
+| f32, separately rounded products | 4.259244081299885e-9 | 1 |
+| f32, single-round product sums | 3.6958557846953095e-9 | 0 |
+
+All feature comparisons retain `atol=1e-5, rtol=1e-4`, diagnostic rounded
+power, mixed mel accumulation, f32 log guard and width8 normalization. The
+official-spectrum control has 0 mismatches. The single-round branch passes
+all 140,928 features (max abs 5.340576171875e-5, mean abs
+1.1230153506610368e-7); the relative tolerance remains relevant. Its spectrum
+still differs in 304,569 component bits. Single-round means binary64 product
+intermediates followed by f32 rounding, not hardware FMA emulation.
+
+Receipts: `mkl-packed256-factorization-jfk-2026-10-02.json`, SHA-256
+`04ca352a604fc0c18197f7d7ed3268bed64c26b354dbe7fc5c57aa6ba1c9ad8c`,
+and `mkl-packed256-features-jfk-2026-10-02.json`, SHA-256
+`9009394dad032491a6b3fef4527a675683ea3b3e5361770904858c3caf1dacf7`.
+These are one-off diagnostic controls, not a deployable processor or reusable
+export recipe. **CONDITIONAL PASS ONLY:** the complex256 FFT comes from Torch,
+not JS/browser/WASM. Production feature parity, additional fixtures, live ASR,
+token/text and promotion remain open. This supports isolating the packed256
+FFT arithmetic/order rather than replacing preprocessing with ONNX or changing
+tolerances. Next reproduce that complex256 boundary in portable arithmetic,
+then re-run the same downstream control and fixture matrix before production
+changes. Do not claim that MKL necessarily implements real512 this way.

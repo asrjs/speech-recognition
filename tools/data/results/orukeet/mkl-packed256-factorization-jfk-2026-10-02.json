@@ -1,0 +1,60 @@
+{
+  "status": "DIAGNOSTIC_FACTORIZATION_NOT_EXACT",
+  "scope": "Original captured f32 frames, Torch/MKL complex256 FFT plus explicit real512 recombination; original real512 framed FFT byte exact. No identified MKL internal algorithm, no feature or ASR acceptance",
+  "capture_sha256": "4328840597d82b6942e640c2d9a4f810ca6c589588fb833009d02d8b14178508",
+  "frame_sha256": "e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30",
+  "torch_version": "2.6.0+cu118",
+  "results": {
+    "f64": {
+      "shape": [
+        565914
+      ],
+      "dtype": "float32",
+      "count": 565914,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": true,
+      "max_abs_error": 1.9073486328125e-06,
+      "mean_abs_error": 4.414092749510645e-09,
+      "max_relative_error": 2.4805153149344776,
+      "cosine_similarity": 0.9999999999999986,
+      "mismatch_count": 0,
+      "first_divergent_index": null,
+      "bit_mismatches": 318782
+    },
+    "f32-separate-products": {
+      "shape": [
+        565914
+      ],
+      "dtype": "float32",
+      "count": 565914,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": true,
+      "max_abs_error": 1.9073486328125e-06,
+      "mean_abs_error": 4.259244081299885e-09,
+      "max_relative_error": 1.455012407332779,
+      "cosine_similarity": 0.9999999999999984,
+      "mismatch_count": 0,
+      "first_divergent_index": null,
+      "bit_mismatches": 319595
+    },
+    "f32-single-round-products": {
+      "shape": [
+        565914
+      ],
+      "dtype": "float32",
+      "count": 565914,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": true,
+      "max_abs_error": 1.9073486328125e-06,
+      "mean_abs_error": 3.6958557846953095e-09,
+      "max_relative_error": 1.0,
+      "cosine_similarity": 0.9999999999999988,
+      "mismatch_count": 0,
+      "first_divergent_index": null,
+      "bit_mismatches": 304569
+    }
+  }
+}
