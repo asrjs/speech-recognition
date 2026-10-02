@@ -866,3 +866,22 @@ acceptance. Production features remain FAIL; full encoder/live library and
 long-reference gates remain open. Do not promote or quantize the candidate.
 No sibling/runtime API changes occurred. Large graphs/traces stay local;
 small receipt: `persistent-single-step-head-handoff-2026-10-02.json`.
+
+### Reference FFT layout control (2026-10-02)
+
+A bounded JFK CPU control reproduces the current NeMo STFT contract with
+float32 preemphasis, symmetric Hann(400), centered constant padding and
+FFT512/hop160; it does not rerun original model weights or replace the frozen
+oracle. Torch 2.6.0+cu118 reports Intel oneAPI MKL 2025.0.1 and AVX512 support.
+On identical windowed frame values, contiguous rFFT matches STFT bit-exactly
+over all 1,101 frames. A sample-stride-2 view changes 487,607 real/imag component
+values, max absolute difference `1.90735e-6`. At frames 346/551, the stride-2
+views differ at 469/457 components (max `1.90735e-6` / `4.76837e-7`); their
+contiguous clones match STFT exactly, as do contiguous single-frame calls.
+
+This demonstrates layout-sensitive reference FFT arithmetic, not that layout
+causes our JS feature failure, nor which MKL plan/kernel executes. Source/capture
+tensor clones currently erase stride information; retain actual input layout
+provenance in a future reproducible probe before choosing an FFT implementation
+change. Production arithmetic, oracle and tolerances are untouched. Existing
+feature FAIL and candidate/live encoder/token/text gates remain open.
