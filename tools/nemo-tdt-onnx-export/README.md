@@ -82,6 +82,49 @@ the additional small tooling contracts; they require no ASR weights and are
 not real inference evidence. Follow `docs/PARAKEET_VARIANT_TASKS.md` for remaining
 original-engine, native, WASM and real-browser acceptance.
 
+## Opt-in one-token fp32 head candidate
+
+`expand_single_step_lstm.py` is a family-owned post-export transformation,
+not a change to the default exporter or a public model preset. It replaces
+two supported default forward LSTMs with explicit IOFC fp32 equations while
+preserving all other operators, weights and metadata. Hidden/input widths come
+from the config and graph, not a brand or a 640 constant. Only `targets` axis 1
+is fixed to one token. Fresh shape inference must prove each ONNX LSTM input
+sequence axis 0 is consequently one; it does not assume these are the same axis.
+Batch/encoder-grid input axes are unchanged, not automatically certified.
+
+```powershell
+python tools/nemo-tdt-onnx-export/test_expand_single_step_lstm.py -v
+python tools/nemo-tdt-onnx-export/expand_single_step_lstm.py `
+  --source models/orukeet/onnx/fp32-packed-2026-10-01/decoder_joint-model.onnx `
+  --expected-sha256 89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90 `
+  --config models/orukeet/onnx/fp32-packed-2026-10-01/source-config.json `
+  --expected-config-sha256 344297eaf9e28d7f849e099c06535fbb0df978926e1b5f753b6aa836d05acdb3 `
+  --output-dir tools/data/results/orukeet/my-fresh-head-candidate
+```
+
+Both source buffers are hashed before parsing. Existing output directories,
+including empty ones, are refused. Source files remain immutable; transpose
+and bias splitting are byte-reversible. Nondefault activations/direction/layout,
+clipping, coupled input/forget gates, sequence lengths/peepholes, missing states,
+shared W/R/B consumers, unknown sequence axes, external weights, name collisions
+and incompatible family I/O/configuration are rejected. Output includes only
+the candidate head, unchanged config and `transformation-receipt.json` with
+`CANDIDATE_GRAPH_CREATED_UNVALIDATED`. It is not a complete loadable model bundle.
+Keep large candidate graphs/raw traces local, not in Git.
+
+The existing `browser_head_replay.py` accepts `--candidate-dir` in addition to
+its unchanged required original `--artifact-dir` and `--export-receipt` gates.
+It validates the candidate source/config/tool identity, reproduces the entire
+transformation in memory and requires an exact candidate graph hash. Do not
+forge an export receipt for the transformed head. Add `--all-steps` to replay
+every recorded binding twice; candidate receipts use a separate
+`RECORDED_CANDIDATE_HEAD_COMPONENT_*` status. Numerical tolerances and exact
+token/duration/length checks are unchanged. Recorded states are independent
+oracle inputs, not a candidate-fed ASR search loop. Full library recurrence,
+text/timestamps, real grid/batch execution per backend, features/encoder and
+matched memory/performance remain distinct promotion gates. No fp16 promotion.
+
 ## Recorded browser head gate
 
 `browser_head_replay.py` runs three captured first/middle/last joint calls twice

@@ -199,11 +199,40 @@ def evaluate_result(result, fixture, atol=1e-5, rtol=1e-4):
     return good
 
 
+def validate_candidate(source_graph, config, candidate_dir, source_hash, config_hash):
+    """Bind an opt-in candidate to the already audited original export/config.
+
+    Reproduce the pure transformation in memory instead of trusting a claimed
+    receipt or manufacturing an export receipt for a different graph.
+    """
+    import onnx
+    from expand_single_step_lstm import digest, expand_head
+    candidate_dir = Path(candidate_dir).resolve()
+    graph = candidate_dir / 'decoder_joint-model.onnx'
+    receipt = read_json(candidate_dir / 'transformation-receipt.json')
+    source_bytes, config_bytes = Path(source_graph).read_bytes(), Path(config).read_bytes()
+    if (receipt['schema_version'] != 1 or receipt['status'] != 'CANDIDATE_GRAPH_CREATED_UNVALIDATED'
+            or receipt['source_sha256'] != source_hash or digest(source_bytes) != source_hash
+            or receipt['source_config_sha256'] != config_hash or digest(config_bytes) != config_hash
+            or sha256(candidate_dir / 'source-config.json') != config_hash
+            or receipt['tool_sha256'] != sha256(Path(__file__).with_name('expand_single_step_lstm.py'))):
+        raise ValueError('Candidate source/config/tool identity differs')
+    reproduced, contracts = expand_head(onnx.load_model_from_string(source_bytes), json.loads(config_bytes))
+    expected_hash = digest(reproduced.SerializeToString())
+    artifact = audit_graph(graph, DECODER_INPUTS, DECODER_OUTPUTS)
+    if (artifact['sha256'] != receipt['graph_sha256'] or artifact['sha256'] != expected_hash
+            or receipt['layers'] != contracts or artifact['external_tensor_count']):
+        raise ValueError('Candidate graph differs from reproducible transformation')
+    return graph, artifact, {'receipt_sha256': sha256(candidate_dir / 'transformation-receipt.json'),
+                             'transformation': receipt, 'reproduced_graph_hash_exact': True}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("capture", "summary", "audio", "artifact-dir", "export-receipt", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--backend", choices=("wasm", "webgpu"), required=True)
+    parser.add_argument("--candidate-dir", type=Path, help="Opt-in reproducible head transformation; original export gates remain required")
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--all-steps", action="store_true", help="Replay every recorded joint binding, not only first/middle/last")
     selection.add_argument("--step-index", type=int, action="append", help="Zero-based recorded binding index; repeat in increasing order for isolated replay")
@@ -223,6 +252,10 @@ def main():
     expected_config = next(item for item in packed["companions"] if item["name"] == config.name)
     if sha256(config) != expected_config["sha256"] or config.stat().st_size != expected_config["bytes"]:
         raise ValueError("Packed source config identity differs")
+    source_artifact, candidate = artifact, None
+    if args.candidate_dir is not None:
+        graph, artifact, candidate = validate_candidate(graph, config, args.candidate_dir,
+                                                       artifact['sha256'], expected_config['sha256'])
     identity = {"model": exported["model_id"], "model_revision": exported["model_revision"], "weight_sha256": exported["source"]["sha256"]}
     fixture = make_fixture(read_json(args.capture), read_json(args.summary), read_json(config), identity, sha256(args.audio), all_steps=args.all_steps, step_indices=args.step_index)
     receipt = {"schema_version": 1, "scope": "RECORDED_HEAD_COMPONENT_ONLY", "status": "IN_PROGRESS",
@@ -235,6 +268,8 @@ def main():
                "bindings": [step["binding"] for step in fixture["steps"]], "atol": 1e-5, "rtol": 1e-4,
                "selection": fixture["selection"], "recorded_joint_calls": fixture["recorded_joint_calls"],
                "features_encoder_sequence_public_api": "UNTESTED", "gpu_scope": "compute dispatch observed, not proof of every node on GPU"}
+    if candidate is not None:
+        receipt.update(scope="RECORDED_CANDIDATE_HEAD_COMPONENT_ONLY", source_graph=source_artifact, candidate=candidate)
     with args.output.open("x", encoding="utf-8") as output:
         server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         server.graph, server.backend = graph, args.backend
@@ -265,7 +300,8 @@ def main():
                     receipt["result"] = result
                     if result["backendRequested"] != args.backend:
                         raise ValueError("Requested/returned backend differs")
-                    receipt["status"] = "RECORDED_HEAD_COMPONENT_PASS" if evaluate_result(result, fixture) else "RECORDED_HEAD_COMPONENT_FAIL"
+                    prefix = "RECORDED_CANDIDATE_HEAD_COMPONENT" if candidate is not None else "RECORDED_HEAD_COMPONENT"
+                    receipt["status"] = prefix + ("_PASS" if evaluate_result(result, fixture) else "_FAIL")
                 finally:
                     browser.close()
         except Exception as error:
@@ -277,7 +313,7 @@ def main():
             json.dump(receipt, output, indent=2, allow_nan=False)
             output.write("\n")
     print(json.dumps({"status": receipt["status"], "output": str(args.output)}), flush=True)
-    return 0 if receipt["status"] == "RECORDED_HEAD_COMPONENT_PASS" else 1
+    return 0 if receipt["status"] in {"RECORDED_HEAD_COMPONENT_PASS", "RECORDED_CANDIDATE_HEAD_COMPONENT_PASS"} else 1
 
 
 if __name__ == "__main__":
