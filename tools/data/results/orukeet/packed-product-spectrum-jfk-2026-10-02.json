@@ -1,0 +1,42 @@
+{
+  "status": "DIAGNOSTIC_SPECTRUM_ONLY_NOT_PORT_ACCEPTANCE",
+  "scope": "Actual captured STFT input/window generates identical f32 frames for four packed arithmetic modes; no new Torch re-execution, mel/feature, tokens/text or performance claim",
+  "capture_sha256": "4328840597d82b6942e640c2d9a4f810ca6c589588fb833009d02d8b14178508",
+  "source_sha256": "067a902ceea1f260ce811f2bc04a7112e1a3a0e0cc17b99c6da9aa15a1a6a32f",
+  "transform_sha256": "c561cbb81c9729fe421befa659fc0dce87deb8cae8b51736d893600bc4e99c2c",
+  "frame_shape": [
+    1101,
+    512
+  ],
+  "frame_sha256_f32le": "e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30",
+  "results": {
+    "separate/separate": {
+      "max_abs_error": 1.9073486328125e-06,
+      "mean_abs_error": 2.6667971262710457e-08,
+      "bit_mismatches": 494612,
+      "real_sha256": "c83aeb42e66867a409e57a52d0255ca08f0bacbb37741d2471c1326e879a7c71",
+      "imag_sha256": "b52b7012cffa5c01f6c4b624793c593cc6561d4fb7eea86034dfd939c96b5a29"
+    },
+    "separate/single-round": {
+      "max_abs_error": 1.9073486328125e-06,
+      "mean_abs_error": 2.6484949320305885e-08,
+      "bit_mismatches": 493956,
+      "real_sha256": "a2ab0b891beac2401a763a215dcc46da10aee7c52846bd8b3640112f90adb3cc",
+      "imag_sha256": "1a2b0ba7015fcc3ba659f85f841c83935978fb398f52296dd6bcb859fec5d4b0"
+    },
+    "single-round/separate": {
+      "max_abs_error": 2.029875759035349e-06,
+      "mean_abs_error": 2.522761948865524e-08,
+      "bit_mismatches": 491337,
+      "real_sha256": "c93aad0e28126c9be1e4cf4df206101ad89854365e7b4e47048c61fe7c9c332c",
+      "imag_sha256": "a416b420487e62ad1f029fb1c48a91363ab01d19db3ca1cab66fbc6bfcb44524"
+    },
+    "single-round/single-round": {
+      "max_abs_error": 1.9106664694845676e-06,
+      "mean_abs_error": 2.5031335696156946e-08,
+      "bit_mismatches": 490278,
+      "real_sha256": "283c871b64f1b28a373ced501be4b3498421fd2d239dac77f5d3ce251e070a8c",
+      "imag_sha256": "ea00e8f5804d77a22a770d379b36178e543236ed319cdcb7537c99f166efa4e5"
+    }
+  }
+}

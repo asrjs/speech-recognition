@@ -1003,3 +1003,35 @@ STFT input/window/complex bytes and fixed downstream power/mel/normalization.
 Guard source drift and cancellation/half-ULP cases first; retain original feature
 tolerances. JavaScript binary64 products with one final f32 rounding are only
 FMA-like controls, not hardware FMA evidence. Do not repeat full-512 FFT or DFT.
+
+### Factorized packed-product rounding diagnostic (2026-10-02)
+
+`packed-f32-source.mjs` now exposes independently guarded butterfly and real
+recombination product modes (`separate` / `single-round`). No options preserves
+the prior source transform. Six focused Node tests pass, including source-drift,
+mode isolation, cancellation/ties-to-even and actual generated FFT versus an
+independent negative-exponent DFT. Eleven combined normalization/transform tests
+pass. A mistaken half-ULP test expectation was removed before correcting the
+fixture; no runtime or oracle was changed to satisfy a test.
+
+Weight-free spectrum-only run: use the actual captured pre-STFT input and Hann
+window, zero-center pad, stride 160, f32 frame products, then the transformed
+production 256-point complex FFT and real recombination source. All modes use
+the same 1,101 x 512 canonical frame bytes, SHA-256
+`e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30`.
+Compare f32 real/imag components against the frozen actual model STFT, not DFT.
+
+| Butterfly / recombination | Mean component abs error | Bit mismatches |
+| --- | ---: | ---: |
+| separate / separate | 2.6667971262710457e-8 | 494,612 |
+| separate / single-round | 2.6484949320305885e-8 | 493,956 |
+| single-round / separate | 2.522761948865524e-8 | 491,337 |
+| single-round / single-round | 2.5031335696156946e-8 | 490,278 |
+
+Neither branch reproduces actual complex bytes. Lower mean error alone is not
+feature or ASR acceptance. Receipt `packed-product-spectrum-jfk-2026-10-02.json`
+binds capture/source/transform/component hashes. This run does not re-execute
+Torch or identify hardware FMA/MKL dispatch. An earlier full-feature attempt
+was interrupted before writing a receipt; its results are UNTESTED, not PASS.
+Next integrate these options into the existing feature probe and compare the
+same downstream mel/log/width8 normalization; production features remain FAIL.

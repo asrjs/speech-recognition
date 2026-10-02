@@ -1,5 +1,16 @@
 // Diagnostic source transform only. Never writes or imports published runtime code.
-export function packedF32Source(source) {
+export function packedF32Source(source, options = {}) {
+  if (!options || typeof options !== 'object' || Array.isArray(options) ||
+      Object.keys(options).some(key => !['butterflyProducts', 'recombinationProducts'].includes(key)))
+    throw new Error('Invalid packed f32 product options');
+  const { butterflyProducts = 'separate', recombinationProducts = 'separate' } = options;
+  if (![butterflyProducts, recombinationProducts].every(value => ['separate', 'single-round'].includes(value)))
+    throw new Error('Invalid packed f32 product rounding');
+  // Binary64 products with one final f32 rounding: not a hardware FMA emulator.
+  function productSum(mode, a, b, op, c, d) {
+    return mode === 'single-round' ? `Math.fround(${a} * ${b} ${op} ${c} * ${d})`
+      : `Math.fround(Math.fround(${a} * ${b}) ${op} Math.fround(${c} * ${d}))`;
+  }
   function once(text, before, after) {
     if (text.split(before).length !== 2) throw new Error('Packed f32 source contract changed: ' + before);
     return text.replace(before, after);
@@ -17,7 +28,7 @@ export function packedF32Source(source) {
   }
   rounded(/const (wCos|wSin) = ([^;]+);/g, 6, (_, name, expression) => `const ${name} = Math.fround(${expression});`);
   rounded(/const (tRe|tIm) = (re\[q\]|im\[q\]) \* (wCos|wSin) ([+-]) (re\[q\]|im\[q\]) \* (wCos|wSin);/g,
-    6, (_, name, a, b, op, c, d) => `const ${name} = Math.fround(Math.fround(${a} * ${b}) ${op} Math.fround(${c} * ${d}));`);
+    6, (_, name, a, b, op, c, d) => `const ${name} = ${productSum(butterflyProducts, a, b, op, c, d)};`);
   rounded(/((?:re|im)\[[^\]]+\]) = ([^;]+);/g, 36,
     (_, target, expression) => `${target} = Math.fround(${expression});`);
   source = source.slice(0, start) + body + source.slice(stop);
@@ -33,7 +44,7 @@ export function packedF32Source(source) {
   for (const [name, a, b, op, c, d] of [
     ['tr', 'xoR', 'wc', '-', 'xoI', 'ws'], ['ti', 'xoR', 'ws', '+', 'xoI', 'wc'],
   ]) source = once(source, `const ${name} = ${a} * ${b} ${op} ${c} * ${d};`,
-    `const ${name} = Math.fround(Math.fround(${a} * ${b}) ${op} Math.fround(${c} * ${d}));`);
+    `const ${name} = ${productSum(recombinationProducts, a, b, op, c, d)};`);
   for (const [name, expression] of [['xkR', 'xeR + tr'], ['xkI', 'xeI + ti'],
     ['xnkR', 'xeR - tr'], ['xnkI', 'xeI - ti']])
     source = once(source, `const ${name} = ${expression};`, `const ${name} = Math.fround(${expression});`);
