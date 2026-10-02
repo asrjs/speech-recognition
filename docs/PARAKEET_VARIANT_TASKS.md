@@ -1067,3 +1067,34 @@ failed before wiring and pass after; all 81 boundary tests and 11 Node tests
 pass, with Python compilation and CLI help verified. Full original-engine CLI
 execution with these flags remains UNTESTED. Do not repeat these modes seeking
 another mean-error gain; next isolate algorithm/order rather than weaken gates.
+
+### Independent PocketFFT rejection (2026-10-02)
+
+Weight-free frozen-input control used SciPy 1.15.3 `scipy.fft.rfft`, workers=1,
+on the same canonical 1,101 x 512 f32 frames (hash above). Repeated PocketFFT
+output is byte exact. Torch 2.6.0+cu118 framed `rfft` re-execution reproduces
+both captured actual STFT components byte exactly; no NeMo model was rerun.
+Complex arrays must be populated through separate `.real` / `.imag` assignments:
+the initial `real + 1j * imag` reconstruction erased some signed-zero bits and
+invalidated that attempted control. Direct component checks resolved this;
+neither the capture nor production code was changed.
+
+Inject each spectrum through the existing canonical complex-byte decoder and
+the same diagnostic rounded-power, mixed mel accumulation, f32 log guard and
+width8 normalization. Frozen PCM and the installed NeMo-source Slaney
+filterbank recipe are unchanged. The official-spectrum downstream control has
+0 feature mismatches (max abs 1.430511474609375e-6), while PocketFFT has 177
+(max abs 3.260374069213867e-4, mean abs 8.493264467229297e-7), at unchanged
+`atol=1e-5, rtol=1e-4`. Its 565,914 spectrum components pass that numerical
+tolerance, but 493,469 differ in bits; mean spectrum abs error is
+2.522016293103963e-8. Spectrum allclose is therefore not feature acceptance.
+
+Receipt: `pocketfft-frozen-jfk-2026-10-02.json`, SHA-256
+`9002aa4976df4f7aed1ce64670d2df2074336b95f2c0877c1150881ddce8fcb4`.
+This is a one-off frozen-input diagnostic, not a reusable export recipe,
+production fix, original-model rerun, token/text or browser acceptance.
+Reject PocketFFT as a parity solution; do not port its algorithm merely to
+obtain a closer intermediate spectrum. The result supports investigating the
+original FFT arithmetic/dispatch boundary, but does not identify an MKL plan
+or instruction. Next distinguish a reproducible original FFT operation order
+from unsupported backend-specific assumptions before changing library math.
