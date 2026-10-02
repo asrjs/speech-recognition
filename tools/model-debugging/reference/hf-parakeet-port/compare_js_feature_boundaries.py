@@ -995,6 +995,45 @@ def mel_spectrum_diagnostic(js, reference_raw, reference_features, valid_length)
     return report
 
 
+def validate_actual_stft(sample, reproduced, contract, *, required=False, capture_marker=None):
+    """Bind a reconstructed processor to frozen actual-model STFT values, not just features."""
+    names = ("input", "window", "real", "imag")
+    stages = sample["stages"]
+    present = {name for name in names if "feature_stft/" + name in stages}
+    captured_contract = sample.get("feature_stft_contract", {})
+    if not present and not captured_contract and not required and capture_marker is not True:
+        return {"status": "UNTESTED", "reason": "Actual-model STFT boundaries were not captured"}
+    if capture_marker is not True:
+        raise ValueError("Actual-model STFT evidence requires an explicit true capture marker")
+    if present != set(names) or not captured_contract:
+        raise ValueError("Incomplete required actual-model STFT capture")
+    for key, expected in contract.items():
+        actual = captured_contract.get(key)
+        if type(actual) is not type(expected) or actual != expected:
+            raise ValueError(f"Actual-model STFT contract differs: {key}")
+    boundaries = {}
+    for name in names:
+        stage = stages["feature_stft/" + name]
+        candidate = np.asarray(reproduced[name])
+        shape = stage.get("shape")
+        if (stage.get("dtype") != "float32" or not isinstance(shape, list)
+                or any(type(size) is not int or size < 1 for size in shape)
+                or shape != list(candidate.shape) or candidate.dtype != np.float32
+                or not candidate.size or not np.isfinite(candidate).all()):
+            raise ValueError(f"Invalid actual-model STFT boundary: {name}")
+        reference = np.asarray(stage["data"], dtype=np.float32)
+        if reference.ndim != 1 or reference.size != candidate.size or not np.isfinite(reference).all():
+            raise ValueError(f"Invalid actual-model STFT boundary data: {name}")
+        reference = reference.reshape(shape)
+        metrics = compare_tensors(reference, candidate, atol=0, rtol=0)
+        metrics["bits_exact"] = reference.astype("<f4").tobytes() == candidate.astype("<f4").tobytes()
+        if not metrics["bits_exact"]:
+            raise ValueError(f"Actual-model STFT reproduction differs: {name}: {metrics}")
+        boundaries[name] = metrics
+    return {"status": "PASS_ACTUAL_STFT_REPRODUCTION", "boundaries": boundaries,
+            "scope": "Exact input/window/complex values; not FFT kernel identity or library parity"}
+
+
 def write_diagnostic_report(path, report):
     """Preserve full evidence with optional gzip, never overwrite an earlier run."""
     if path.suffix == ".gz":
@@ -1015,6 +1054,8 @@ def main():
     parser.add_argument("--sample-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--summary-only", action="store_true", help="Print only receipt path/status; full evidence remains in output")
+    parser.add_argument("--require-actual-stft", action="store_true",
+        help="Fail unless the frozen original-model input/window/complex STFT capture matches exactly")
     parser.add_argument("--power-override", nargs=2, type=int, action="append", default=[],
         metavar=("FRAME", "BIN"), help="Diagnostic-only selected official-power substitution; repeat for each coordinate")
     args = parser.parse_args()
@@ -1084,6 +1125,13 @@ def main():
     control = compare_tensors(expected_tensor, normalized.numpy(), atol=1e-5, rtol=1e-4)
     if not control["allclose"] or int(valid_length[0]) != official["stages"]["features_length"]["data"][0]:
         raise ValueError(f"Official processor reproduction failed: {control}")
+    actual_stft_control = validate_actual_stft(official, {
+        "input": preemphasized.numpy(), "window": processor.window.numpy(),
+        "real": official_complex.real.numpy(), "imag": official_complex.imag.numpy()}, {
+        "n_fft": processor.n_fft, "hop_length": processor.hop_length,
+        "win_length": processor.win_length, "exact_pad": processor.exact_pad},
+        required=args.require_actual_stft,
+        capture_marker=captured.get("meta", {}).get("capture_feature_stft"))
     normalization_candidates = {}
     for width in (8, 16):
         candidate, mean, std = normalize_candidate(raw.numpy()[0], int(valid_length[0]), width)
@@ -1387,11 +1435,13 @@ def main():
         "packed_f32_source_sha256": hashlib.sha256(Path(__file__).with_name("packed-f32-source.mjs").read_bytes()).hexdigest(),
         "normalization_candidate_sha256": hashlib.sha256(Path(__file__).with_name("normalization_reduction.py").read_bytes()).hexdigest(),
         "diagnostic_sha256": hashlib.sha256(diagnostic_bytes).hexdigest(),
+        "actual_model_stft_reproduction": actual_stft_control,
         "comparisons": metrics}
     if Path(__file__).read_bytes() != diagnostic_bytes:
         raise ValueError("Diagnostic source changed during the run; refusing misleading provenance")
     write_diagnostic_report(args.output, report)
     print(json.dumps({"status": report["status"], "output": str(args.output),
+        "actual_model_stft_status": actual_stft_control["status"],
         "all_comparisons_pass": all(metric["allclose"] for metric in metrics.values())}
         if args.summary_only else report, indent=2))
     return 0 if all(metric["allclose"] for metric in metrics.values()) else 1

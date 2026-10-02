@@ -885,3 +885,37 @@ tensor clones currently erase stride information; retain actual input layout
 provenance in a future reproducible probe before choosing an FFT implementation
 change. Production arithmetic, oracle and tolerances are untouched. Existing
 feature FAIL and candidate/live encoder/token/text gates remain open.
+
+### Actual-model STFT binding (2026-10-02)
+
+The opt-in NeMo capture now retains pre-snapshot source layout and records
+the actual instance-local featurizer STFT input/window/real/imag boundaries.
+Original-weight JFK capture has all six before/captured/after controls true;
+464 common stages, tokens and text match the older frozen capture exactly.
+The method returns the original output object and restores hooks on failure.
+
+`compare_js_feature_boundaries.py --require-actual-stft` now requires exact
+float32 bits for all four captured boundaries and matching FFT parameters.
+Partial, malformed or contradictory required captures fail; legacy captures
+without this evidence remain explicitly UNTESTED. Source strides are provenance,
+not a physical layout to apply to flattened JSON data. Production is unchanged.
+Eight new weight-free gate tests, 79 existing boundary tests, six normalization
+tests and 20 capture tests pass.
+
+The real JFK run passes all four reproduction boundaries at zero max/mean
+error. Production features still FAIL with 313 mismatches at `1e-5/1e-4`, max
+absolute error `0.00034236907958984375`; the diagnostic exits 1 as expected.
+This binds the diagnostic spectrum to the original model, not library parity,
+an FFT kernel identity, or completion. The large local receipt is
+`actual-stft-bound-feature-jfk-final-2026-10-02.json.gz`, SHA-256
+`6ecf1fab598fd0fc5f5058d05f775d1e90a908a4798a9543d0ecd873c53bf4dc`.
+Capture SHA-256 is `4328840597d82b6942e640c2d9a4f810ca6c589588fb833009d02d8b14178508`;
+diagnostic source SHA-256 is `67c4e19288c1f7c8b9e3b6ed4caf98122bc9c5bca8972c4511230e683a23ad78`.
+After that full run, review added an exact-true capture-marker guard and made
+the STFT status visible in summary-only output. Eight tests and a fresh direct
+Torch replay from WAV/preemphasis/symmetric Hann pass the current guard with
+all four boundaries bit-exact; the full receipt above identifies the earlier
+source hash, not this later metadata-only tightening.
+Next use this verified spectrum to discriminate JS FFT/mel rounding rather
+than rerunning unbound reference reconstructions. Full fixture/live model gates
+remain open; no preset promotion or precision change is justified.
