@@ -381,30 +381,54 @@ export async function startMicrophoneCapture(
   let scriptProcessor: ScriptProcessorAudioNodeLike | null = null;
   let processor: AudioWorkletNodeLike | ScriptProcessorAudioNodeLike | null = null;
   let stopped = false;
+  let stopPromise: Promise<void> | null = null;
 
-  const stopResources = async (): Promise<void> => {
-    if (stopped) {
-      return;
+  const stopResources = (): Promise<void> => {
+    if (stopPromise) {
+      return stopPromise;
     }
     stopped = true;
-    if (scriptProcessor) {
-      scriptProcessor.onaudioprocess = null;
-    }
-    if (workletNode) {
-      workletNode.port.onmessage = null;
-      workletNode.onprocessorerror = null;
-    }
-    processor?.disconnect();
-    source?.disconnect();
-    if (audioContext) {
-      await audioContext.close();
-    }
-
-    if (options.stopTracksOnStop ?? ownsStream) {
-      for (const track of stream.getTracks()) {
-        track.stop();
+    // Assign the shared promise before invoking potentially reentrant releases.
+    stopPromise = Promise.resolve().then(async () => {
+      const errors: unknown[] = [];
+      const attempt = (release: () => void) => {
+        try {
+          release();
+        } catch (error) {
+          errors.push(error);
+        }
+      };
+      if (scriptProcessor) {
+        attempt(() => {
+          scriptProcessor!.onaudioprocess = null;
+        });
       }
-    }
+      if (workletNode) {
+        attempt(() => {
+          workletNode!.port.onmessage = null;
+        });
+        attempt(() => {
+          workletNode!.onprocessorerror = null;
+        });
+      }
+      attempt(() => processor?.disconnect());
+      attempt(() => source?.disconnect());
+      try {
+        await audioContext?.close();
+      } catch (error) {
+        errors.push(error);
+      }
+      if (options.stopTracksOnStop ?? ownsStream) {
+        attempt(() => {
+          for (const track of stream.getTracks()) {
+            attempt(() => track.stop());
+          }
+        });
+      }
+      if (errors.length === 1) throw errors[0];
+      if (errors.length > 1) throw new AggregateError(errors, 'Microphone capture cleanup failed.');
+    });
+    return stopPromise;
   };
 
   let currentFrame = 0;
@@ -483,7 +507,14 @@ export async function startMicrophoneCapture(
     source.connect(processor);
     processor.connect(audioContext.destination);
   } catch (error) {
-    await stopResources().catch(() => undefined);
+    try {
+      await stopResources();
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        'Microphone capture initialization and cleanup failed.',
+      );
+    }
     throw error;
   }
 

@@ -207,3 +207,32 @@ required; sibling/browser hardware integration remains UNTESTED.
 Next product gate: exercise the same lifecycle under the existing browser
 loop with real capture/model resources where available. Keep Orukeet's open
 mel2/frame1027 numerical investigation separate from these lifecycle checks.
+
+## C05 — Capture cleanup survives release failures
+
+Status: PASS — bounded resource-owner fix with deterministic injected resources;
+real microphone/browser failure integration remains UNTESTED.
+
+Four new regressions failed before the fix: an early disconnect skipped later
+releases, a rejected context close skipped owned tracks, a concurrent stop
+returned before cleanup completed, and startup cleanup swallowed its own failure.
+Capture now shares one cleanup promise, attempts every independent release,
+preserves a single original cleanup error, and aggregates multiple errors.
+Startup failures retain both initialization and cleanup errors. Repeated stop
+observes the same completed or rejected cleanup rather than rerunning releases.
+Borrowed streams remain untouched unless track ownership is explicitly opted in.
+PCM, sample-rate, resampling and model behavior are unchanged.
+
+Verification: seven new cases and all 41 related capture/browser/realtime tests
+pass; source/example compilation, strict changed-test compilation with
+`skipLibCheck=false`, and built browser import closure (297 modules / 27 entries)
+pass. These checks use injected resources, not live capture or model inference.
+No companion edits or new dependencies were made. Callers must still handle
+`stop()` rejection; broader controller disposal after a capture cleanup failure
+is a separate acceptance gate, not proven by this owner-level fix.
+
+Next: test late starter events during pending browser-controller disposal
+(subscription callbacks currently lack the capture callback's disposed guard),
+then run current-source real-browser capture lifecycle using a root-owned server
+or separately authorized sibling cache writes. Do not validate against the
+stale sibling build or claim mocked tests as microphone/WebGPU acceptance.
