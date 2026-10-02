@@ -1,0 +1,84 @@
+{
+  "status": "DIAGNOSTIC_EXACT_ARITHMETIC_ONLY",
+  "input_sha256": "69c2df6d8142eabe17c9461ee8db096d457b1d3168d1fa2037918a1d7de2ac26",
+  "sources_sha256": {
+    "tools\\model-debugging\\reference\\hf-parakeet-port\\probe_fft_residuals.py": "bdce389562492c01cbba51bed2681718086a28865902a41822953b0cac95dac9",
+    "tools\\artifact_outputs.py": "499b497c2c3701e325c37cc9980ff179eda64c4ea80a0820951be9f6baa695eb"
+  },
+  "input_canonical_json_sha256": "fb7a2f0abe765d226d2900fe5f18be8486d27b2326cdc29f9d4be127ddccbe9f",
+  "results": {
+    "2/packed": {
+      "product_round_error_exact": [
+        "31891649/2251799813685248",
+        "960655/281474976710656"
+      ],
+      "final_add_round_error_exact": [
+        "0",
+        "0"
+      ],
+      "required_oracle_rotated_exact": [
+        "99719481/268435456",
+        "-1100970941/8589934592"
+      ],
+      "required_oracle_rotated_f32_exact": [
+        false,
+        false
+      ]
+    },
+    "2/real_half": {
+      "product_round_error_exact": [
+        "459707/35184372088832",
+        "3857779/1125899906842624"
+      ],
+      "final_add_round_error_exact": [
+        "0",
+        "0"
+      ],
+      "required_oracle_rotated_exact": [
+        "99719473/268435456",
+        "-1100970941/8589934592"
+      ],
+      "required_oracle_rotated_f32_exact": [
+        false,
+        false
+      ]
+    },
+    "254/packed": {
+      "product_round_error_exact": [
+        "-31891649/2251799813685248",
+        "960655/281474976710656"
+      ],
+      "final_add_round_error_exact": [
+        "0",
+        "1/67108864"
+      ],
+      "required_oracle_rotated_exact": [
+        "-1558117/4194304",
+        "-4300667/33554432"
+      ],
+      "required_oracle_rotated_f32_exact": [
+        true,
+        true
+      ]
+    },
+    "254/real_half": {
+      "product_round_error_exact": [
+        "-459707/35184372088832",
+        "3857779/1125899906842624"
+      ],
+      "final_add_round_error_exact": [
+        "-1/33554432",
+        "0"
+      ],
+      "required_oracle_rotated_exact": [
+        "-12464937/33554432",
+        "-4300667/33554432"
+      ],
+      "required_oracle_rotated_f32_exact": [
+        true,
+        true
+      ]
+    }
+  },
+  "scope": "Exact recorded f32 arithmetic, not MKL internals or feature/model parity"
+}

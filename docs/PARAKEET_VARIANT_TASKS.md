@@ -1437,3 +1437,37 @@ Next: use the now-compared even/odd terms to distinguish twiddle/product and
 final-add contributions with exact per-operation residuals, not another broad
 factorization or precision sweep. Keep the one-feature failure open until a
 portable implementation passes both complete frozen fixtures unchanged.
+
+### Exact operation residual boundary (2026-10-02)
+
+Added dependency-light `probe_fft_residuals.py`, using Python Fraction and f32
+struct conversion on the pinned real-half receipt, without rerunning FFT/model
+inference. It verifies exact finite f32 inputs, recreates both recorded outputs
+and writes exact rational product/add residuals. New outputs are exclusive;
+input/source bytes are checked before/after. A canonical JSON hash separately
+binds content across Git LF/CRLF conversion; the byte hash still identifies the
+actual local input used. Receipts do not assert transitive original-model parity.
+
+Evidence: `tools/data/results/orukeet/exact-fft-operation-residuals-final-2026-10-02.json`.
+For bin2, both packed and real-half paths have **zero final-add rounding error**
+in both components. Packed real twiddle-product rounding contributes exactly
+`31891649/2251799813685248` (about `1.416273720522554e-8`), while the required
+rotated real term for the oracle with fixed packed even term is
+`99719481/268435456`, not representable in f32. The cancellation add of these
+near-equal opposite-sign f32 terms is exact; changing only that final add cannot
+repair this decomposition. This does not attribute all oracle difference to
+the product: transform terms and f32 twiddles can already differ upstream.
+Bin254 is explicitly separate: its packed imaginary add has nonzero rounding
+error despite the final recorded value matching the oracle. Zero final-add
+error is therefore a bin2 observation, not a universal FFT claim.
+
+Syntax, help, actual recorded-output guards and five malformed-pair checks pass
+(boolean, non-f32, nonfinite, wrong count, missing pair), with a valid control.
+The earlier preliminary residual receipt remains local and binds the earlier
+script; only the final version is the checkpoint. No runtime/model/tolerance
+changes or completed feature acceptance are claimed.
+
+Next: stop final-add/rounding sweeps. Any new FFT implementation must avoid the
+demonstrated early rounded cancellation or identify the reference plan, then
+pass full JFK and speech/silence features at unchanged thresholds. Keep this
+model gate open while continuing independent whole-product tasks.
