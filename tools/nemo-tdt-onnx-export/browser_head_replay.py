@@ -88,8 +88,13 @@ def make_fixture(reference, summary, cfg, identity, audio_hash, *, all_steps=Fal
             "recorded_joint_calls": len(bindings)}
 
 
-def resolve_route(url, graph):
+def resolve_route(url, graph, extra_routes=None):
     route = unquote(urlsplit(url).path)
+    if route in (extra_routes or {}):
+        path = Path(extra_routes[route])
+        if path.is_file():
+            return path
+        raise ValueError("Configured artifact missing")
     if route == "/graph.onnx":
         return graph
     if route == "/replay.mjs":
@@ -135,8 +140,11 @@ class Handler(BaseHTTPRequestHandler):
     def serve_get(self):
         if self.path == "/":
             module = "ort.webgpu.min.mjs" if self.server.backend == "webgpu" else "ort.all.bundle.min.mjs"
-            data = ('<!doctype html><script type="importmap">' + json.dumps({"imports": {
-                "onnxruntime-web": "/ort-dist/" + module}}) + '</script><script type="module" src="/replay.mjs"></script>').encode()
+            imports = {"onnxruntime-web": "/ort-dist/" + module,
+                       **getattr(self.server, "extra_imports", {})}
+            entrypoint = getattr(self.server, "entrypoint", "/replay.mjs")
+            data = ('<!doctype html><script type="importmap">' + json.dumps({"imports": imports})
+                    + f'</script><script type="module" src="{entrypoint}"></script>').encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
             self.send_header("Content-Length", str(len(data)))
@@ -144,7 +152,7 @@ class Handler(BaseHTTPRequestHandler):
             self.write_body(data)
             return
         try:
-            path = resolve_route(self.path, self.server.graph)
+            path = resolve_route(self.path, self.server.graph, getattr(self.server, "extra_routes", None))
         except ValueError:
             self.send_error(404)
             return

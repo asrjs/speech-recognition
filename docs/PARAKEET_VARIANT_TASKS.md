@@ -1549,3 +1549,31 @@ checks. JS preprocessing will execute but its output will be ignored; explicitly
 label it unaccepted and the real encoder bypassed. Retain full production feature
 and real-encoder gates. Do not add the diagnostic graph to presets or distribute
 it as production weights.
+
+### Conditional browser recurrence checkpoint (2026-10-02)
+
+The public-library loop now passes the frozen speech/silence encoder control in
+actual Chrome 154 on both WASM and WebGPU, twice on the same loaded handle.
+All 69 token IDs, frame indices, TDT durations and canonical text match exactly.
+The exposed committed h/c cache has zero tolerance mismatches at the unchanged
+atol=1e-5, rtol=1e-4. Maximum h/c absolute errors are 2.3842e-6/2.2888e-5 on
+WASM and 2.5928e-6/1.9073e-5 on WebGPU. Each WebGPU repetition observes 8,554
+compute dispatches; this is not every-node placement or a VRAM/performance claim.
+
+This cache boundary is before consuming the last emitted token, not NeMo's later
+retained post-last-label state. Tokenless runs instead expose pre-SOS zero state.
+Intermediate live states/logits and continuation remain untested. Features run
+but are ignored by the frozen graph; production features, real encoder and full
+ASR acceptance remain open. No candidate promotion or runtime math change occurs.
+
+The reusable harness pins tools, compiled source, input and ORT artifacts before
+execution, rechecks them afterward and verifies served bytes. Exact PCM uses
+base64 f32le transport: the installed Playwright numeric serializer changed
+positive zero to negative zero, caught by the PCM hash before inference. A
+preliminary run also caught concurrent harness formatting and was rejected.
+Eight new synthetic guard tests and all 53 family Python tests pass.
+
+Compact evidence: `tools/data/results/orukeet/browser-recurrence-handoff-2026-10-02.json`.
+Full hash-bound receipts and binary graphs remain local. Next: extend this
+conditional control to pure silence/JFK, then intermediate live-state coverage;
+keep the earlier production feature divergence visible throughout.

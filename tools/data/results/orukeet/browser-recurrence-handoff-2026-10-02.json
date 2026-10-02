@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "status": "CONDITIONAL_RECURRENCE_PASS",
+  "scope": "CONDITIONAL_FROZEN_ENCODER_LIBRARY_RECURRENCE",
+  "model": "oruk/orukeet",
+  "revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+  "browser_version": "154.0.8037.93",
+  "pcm_sha256": "8f4293517daf07f433b307a4a971f7c17dc9ed348b5f72999945b217331ec3df",
+  "frozen_graph_sha256": "34c622506781fd57660fbe9b6601add2030b7e7397f2729b68837baf3a52c7ab",
+  "candidate_head_sha256": "fbdf8b7c141d0a999aa71c4edb0ed9cfac1aa762d68b8d1bf7b006acb71f8718",
+  "tool_sha256": "1aaf1e074fc1dd5e24ec0f46eb7b7d46ebdc1a89fa5bb3bd35d51048cdcda3af",
+  "browser_module_sha256": "512e978d6436a44c00bd93ec942647b31409ba6f1404454bcdd464e205f7aab6",
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "state_boundary": "LIBRARY_COMMITTED_PREDICTOR_BEFORE_LAST_EMITTED_TOKEN_OR_PRE_SOS_ZERO",
+  "official_post_last_label_retained_state": "DIFFERENT_BOUNDARY_NOT_COMPARED",
+  "features": "EXECUTED_NOT_ACCEPTED",
+  "real_encoder": "BYPASSED_FROZEN_ORACLE",
+  "intermediate_states_logits": "UNTESTED",
+  "full_asr": "NOT_PROVEN",
+  "controls": [
+    {
+      "backend": "wasm",
+      "receipt": "tools/data/results/orukeet/browser-recurrent-wasm-speech-silence-reviewed-2026-10-02.json",
+      "receipt_bytes": 402699,
+      "receipt_sha256": "ae8ee002e018d1567c27662793dd9ab8e80bb5dfa8c28a25f90abc15082ff223",
+      "same_handle_repeats": 2,
+      "tokens_per_repeat": 69,
+      "token_frame_duration_text_exact": true,
+      "state_mismatches": 0,
+      "h_max_abs_error": 0.000002384185791015625,
+      "c_max_abs_error": 0.00002288818359375,
+      "served_artifacts_exact": 244
+    },
+    {
+      "backend": "webgpu",
+      "receipt": "tools/data/results/orukeet/browser-recurrent-webgpu-speech-silence-reviewed-2026-10-02.json",
+      "receipt_bytes": 403262,
+      "receipt_sha256": "5548b67a38978db0eb39fe03a3cddc26359dda9bd73639af2e3cbc95cef4874d",
+      "same_handle_repeats": 2,
+      "tokens_per_repeat": 69,
+      "token_frame_duration_text_exact": true,
+      "state_mismatches": 0,
+      "h_max_abs_error": 0.000002592802047729492,
+      "c_max_abs_error": 0.000019073486328125,
+      "served_artifacts_exact": 244,
+      "gpu_dispatches_per_repeat": 8554,
+      "adapter_vendor": "nvidia",
+      "adapter_architecture": "blackwell"
+    }
+  ],
+  "validation": {
+    "family_python_tests_passed": 53,
+    "production_typecheck": "PASS",
+    "scoped_module_lint_syntax_format": "PASS",
+    "gpu_node_placement_memory_performance": "UNTESTED"
+  },
+  "next": "Expand fixture matrix, then intermediate live-state coverage; retain production feature and real-encoder gates. Do not promote diagnostic artifacts to presets."
+}

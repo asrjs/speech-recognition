@@ -231,3 +231,59 @@ Next: use the fixture only in an explicitly conditional public-library browser
 runner, exact captured PCM, audited candidate decoder, encoder WASM/decoder
 WASM or WebGPU, grid batching disabled, awaited cleanup and full provenance.
 Keep the production feature gate and full real-encoder ASR gate separate.
+
+## Conditional public-library browser recurrence
+
+`browser_recurrent_replay.py` loads the diagnostic frozen encoder on WASM and
+the reproduced single-step candidate head on the explicitly requested WASM or
+WebGPU backend. It calls the compiled public `loadSpeechModel` / `transcribe`
+API twice on the same model handle with exact official PCM, no grid batching
+or windowing. The production library owns all token, blank, duration and state
+recurrence; the page contains no alternate decoder.
+
+```powershell
+python tools/nemo-tdt-onnx-export/browser_recurrent_replay.py `
+  --capture tools/data/results/orukeet/official-speech-silence-stft-stages-2026-10-02.json.gz `
+  --summary tools/data/results/orukeet/official-speech-silence-stft-summary-2026-10-02.json `
+  --audio tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav `
+  --artifact-dir models/orukeet/onnx/fp32-packed-2026-10-01 `
+  --export-receipt models/orukeet/onnx/fp32-nemo-2026-10-01/export-receipt.json `
+  --nemo models/orukeet/source/orukeet-v0.1.0.nemo `
+  --frozen-dir tools/data/results/orukeet/diagnostic-frozen-speech-silence-2026-10-02 `
+  --candidate-dir tools/data/results/orukeet/persistent-single-step-head-2026-10-02 `
+  --runtime-config tools/model-debugging/reference/orukeet/runtime-config-jfk.json `
+  --backend webgpu --output tools/data/results/orukeet/browser-recurrent-new-run.json
+```
+
+Run `--help` and compile current source/copy runtime assets before use. Use a
+fresh output file and run `--backend wasm` as a separate control. No model
+downloads, installs or sibling server edits occur. The loopback server reuses
+the recorded-head handler, with exact additional fixture/module/tokenizer/pako
+routes and required cross-origin isolation headers. Requests outside the local
+origin are blocked. Tool, input, compiled JS and local ORT artifact hashes are
+pinned before the run, rechecked afterward, and checked against bytes actually
+served. Required graph and tokenizer routes must actually be delivered. Cleanup
+errors, wrong placement/family/PCM, missing repeats, divergent outputs, malformed
+state tensors and zero WebGPU dispatch fail closed. Dispatch counts do not prove
+every-node GPU placement or measure VRAM.
+
+PCM travels as base64 f32le **bytes**, not a Python numeric list: the currently
+installed Playwright serializer converts Python +0.0 to JS -0. The old numeric
+transport altered 410,339 speech/silence sample bit patterns and failed the hash
+guard before inference. Byte transport preserves positive/negative zero without
+patching dependencies or altering model input. The rejected preliminary receipt
+also caught a concurrent harness formatting change and is not acceptance evidence.
+
+Token IDs, frames, TDT durations and text must be exact. The exposed final cache
+is compared numerically at `atol=1e-5, rtol=1e-4` to the predictor output associated
+with the last **nonblank joint**. This is the library's committed state **before
+consuming its last emitted token**, not NeMo's later retained post-last-label
+state. For a tokenless result it is zero pre-SOS, not NeMo's retained SOS output.
+Receipts name this boundary explicitly; they do not claim those different states
+are equal. Intermediate live logits/states and stateful continuation remain open.
+
+JS feature extraction executes but its results are ignored by the frozen graph.
+`CONDITIONAL_RECURRENCE_PASS` is therefore not feature/real-encoder/full-ASR
+acceptance. Keep the earlier feature failures and full-model gates open. Eight
+synthetic tests validate receipt/PCM/selection/route guards; actual Chrome runs
+are separate numerical evidence, not a consequence of those tests passing.
