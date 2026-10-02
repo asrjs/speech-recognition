@@ -987,6 +987,19 @@ Actual native CPU fp32 JFK replay also passes: 186 numerical comparisons and
 46 exact decisions. Its entire case result equals the prior receipt exactly.
 Receipt: `native-fp32-jfk-encoder-reuse-2026-10-02.json`, SHA-256
 `7cc3b6cf37b7172251cf1d0123b014d6993fcce531e7358d9a133992ca0f2878`.
-Long-sequence replay of this modified tool and wall-time/RSS A/B measurements
-remain UNTESTED; conversion-count reduction is not a measured end-to-end speedup.
+The modified tool's real 149.7125-second synthetic long-sequence replay also
+passes all 3,226 numerical comparisons and 806 exact decisions. Its entire case
+equals the pre-change receipt exactly. New local receipt:
+`native-fp32-long-repeat8-encoder-reuse-2026-10-02.json`, SHA-256
+`311c8b967c6eeb0b5e5342ba3c587af87b76640d623486962c5a3f90d38da309`.
+Wall-time/RSS A/B measurements remain UNTESTED; conversion-count reduction is
+not a measured end-to-end speedup.
 Production feature and accumulated library/browser acceptance gates remain open.
+
+Next earliest-divergence experiment: split the existing diagnostic-only packed
+256-point f32 transform into butterfly-only, real-recombination-only, combined
+single-round product sums and unchanged packed-f32 control. Use actual captured
+STFT input/window/complex bytes and fixed downstream power/mel/normalization.
+Guard source drift and cancellation/half-ULP cases first; retain original feature
+tolerances. JavaScript binary64 products with one final f32 rounding are only
+FMA-like controls, not hardware FMA evidence. Do not repeat full-512 FFT or DFT.
