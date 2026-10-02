@@ -231,8 +231,34 @@ No companion edits or new dependencies were made. Callers must still handle
 `stop()` rejection; broader controller disposal after a capture cleanup failure
 is a separate acceptance gate, not proven by this owner-level fix.
 
-Next: test late starter events during pending browser-controller disposal
-(subscription callbacks currently lack the capture callback's disposed guard),
-then run current-source real-browser capture lifecycle using a root-owned server
+The late starter-event gate is now covered by C06 below. Next run current-source
+real-browser capture lifecycle using a root-owned server
 or separately authorized sibling cache writes. Do not validate against the
 stale sibling build or claim mocked tests as microphone/WebGPU acceptance.
+
+## C06 — Ignore starter events once disposal begins
+
+Status: PASS — bounded event-delivery lifecycle fix; actual VAD/browser and
+model inference acceptance remain separate.
+
+Two regressions failed before the fix: retained starter events changed status
+and error state while disposal waited for VAD startup or capture shutdown.
+The subscription callback now returns immediately when disposed, before reading
+segment PCM, publishing an utterance, calling transcription or changing state.
+Tests also invoke the retained callback after cleanup has completed. The guard
+does not depend on microphone-active state: ordinary speech-detect stop sets
+the mic inactive before flushing its last segment, which must still be delivered.
+A positive flushed-stop test and existing active-segment transcription coverage
+remain passing. No decoder, framework state or public contract changes.
+
+Verification: two RED-to-GREEN regressions and one positive stop-flush case;
+all 44 related capture/browser/realtime tests pass. Source/example compilation,
+strict changed-test compilation with `skipLibCheck=false`, scoped lint and built
+browser import closure (297 modules / 27 entries) pass. Tests use controlled
+starter/capture resources and a real transcription-controller instance, not a
+VAD model, physical microphone, ASR inference or WebGPU. No sibling writes.
+
+Next product gate: current-source real-browser capture lifecycle, then cleanup
+of controller-owned resources when capture stop itself rejects (C05 only proves
+the capture owner's independent releases). Keep these separate from Orukeet's
+unresolved feature and recurrent WebGPU parity gates; no model promotion.

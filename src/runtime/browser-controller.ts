@@ -299,6 +299,9 @@ export function createBrowserRealtimeMicrophoneController(
   };
 
   const starterUnsubscribe = starter.subscribe((event) => {
+    if (disposed) {
+      return;
+    }
     if (event.type === 'metrics') {
       const tenVadState = event.payload?.tenVad?.state;
       if (state.isMicActive && tenVadState === 'degraded') {
