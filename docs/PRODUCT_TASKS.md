@@ -117,3 +117,26 @@ receipt. Do not switch to network fetching or lower success checks silently.
 Even a future PASS measures script-disabled logical file bytes only: native
 assets generated/downloaded by the native install script and allocated disk
 blocks remain a separate footprint/runtime gate. C01 stays PARTIAL.
+
+## C02 — Local text/JSON cancellation consistency
+
+Status: PASS — bounded Blob read checkpoint fix; not universal load cancellation.
+
+`BlobAssetHandle.readText()` previously ignored its request signal, unlike
+`readBytes()`. Pre-aborted text reads returned success; abort during text reads
+returned late success, and JSON reads could report a parse error instead of
+cancellation. Three focused regression cases reproduced these failures.
+
+Text reads now check the existing model-neutral abort helper before and after
+`Blob.text()`. JSON reads inherit the same checks before parsing. Successful
+reads and genuine Blob read errors retain their original semantics. This does
+not interrupt the platform's Blob materialization or add a new public API,
+model branch, native dependency, timer or framework state.
+
+Verification: strict changed-test compilation, five Blob cases and all 39
+related IO/provider/tokenizer/ORT-abort tests pass; build and browser root
+import graph pass (297 modules / 27 entries). The built public IO provider
+with real Blob objects passes two successful reads and four cancelled reads
+on Node v26.2.0 and Bun 1.3.14 separately. Real browser/app cancellation and
+full model inference were not run for this slice. Companion source/API changes
+are unnecessary; broader cancellation integration remains a separate gate.

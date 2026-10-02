@@ -505,6 +505,59 @@ describe('UrlAssetHandle', () => {
 });
 
 describe('BlobAssetHandle', () => {
+  it('rejects pre-aborted text reads before materializing the Blob', async () => {
+    const blob = new Blob(['text']);
+    const text = vi.spyOn(blob, 'text');
+    const handle = new BlobAssetHandle(
+      { id: 'blob:aborted-text', signal: { aborted: true } },
+      blob,
+    );
+    await expect(handle.readText()).rejects.toMatchObject({
+      code: 'asset-load-aborted',
+      stageId: 'download',
+    });
+    expect(text).not.toHaveBeenCalled();
+  });
+
+  it.each(['readText', 'readJson'] as const)(
+    'rejects %s when aborted during Blob materialization',
+    async (method) => {
+      const controller = new AbortController();
+      const blob = new Blob(['{"value":1}']);
+      let finish!: (value: string) => void;
+      vi.spyOn(blob, 'text').mockImplementation(
+        () =>
+          new Promise<string>((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const handle = new BlobAssetHandle(
+        { id: 'blob:pending-text', signal: controller.signal },
+        blob,
+      );
+      const pending = handle[method]();
+      const assertion = expect(pending).rejects.toMatchObject({
+        code: 'asset-load-aborted',
+        stageId: 'download',
+      });
+      controller.abort();
+      // Invalid JSON also proves cancellation takes precedence over parsing.
+      finish(method === 'readJson' ? 'invalid-json' : 'late text');
+      await assertion;
+    },
+  );
+
+  it('preserves successful text/JSON reads and genuine read errors', async () => {
+    const signal = { aborted: false };
+    const blob = new Blob(['{"value":1}']);
+    const handle = new BlobAssetHandle({ id: 'blob:text-success', signal }, blob);
+    expect(await handle.readText()).toBe('{"value":1}');
+    expect(await handle.readJson()).toEqual({ value: 1 });
+    const failure = new Error('Blob read failed');
+    vi.spyOn(blob, 'text').mockRejectedValueOnce(failure);
+    await expect(handle.readText()).rejects.toBe(failure);
+  });
+
   it('revokes the blob URL on dispose and refuses later locators', async () => {
     const created: string[] = [];
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

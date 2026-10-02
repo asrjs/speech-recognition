@@ -372,7 +372,10 @@ export class BlobAssetHandle implements ResolvedAssetHandle {
   }
 
   async readText(): Promise<string> {
-    return await this.blob.text();
+    throwIfAssetAborted(this.request.signal, 'download');
+    const text = await this.blob.text();
+    throwIfAssetAborted(this.request.signal, 'download');
+    return text;
   }
 
   async readJson<T>(): Promise<T> {
