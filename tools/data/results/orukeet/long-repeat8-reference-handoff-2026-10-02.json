@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "status": "PARTIAL_PASS_REFERENCE_AND_NATIVE_RECORDED_BOUNDARIES",
+  "scope": "Synthetic long-sequence stress, not natural long-speech quality or accumulated library ASR acceptance",
+  "model": "oruk/orukeet",
+  "revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+  "weight_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56",
+  "fixture": {
+    "source": "tools/data/fixtures/audio/librivox.org.16k.pcm16.wav",
+    "source_sha256": "ab27bd101385c5e78fad1207a46b079723ccafa76fb6b2c8047ea54aabebd6b9",
+    "recipe": "Read original mono PCM16 16k WAV frames; concatenate the identical PCM payload eight times; write a new WAV with unchanged encoding. No resampling, gain or gaps.",
+    "repeat_count": 8,
+    "audio": "tools/data/results/orukeet/librivox-repeat8-16k-pcm16-2026-10-02.wav",
+    "audio_sha256": "88f56304a0ee7843cab203ac23ebeaad37aadf93aeb92fa164095c476b0c5893",
+    "samples": 2395400,
+    "sample_rate": 16000,
+    "duration_seconds": 149.7125,
+    "effective_pcm_sha256_f32le": "caf86c6b47b9e82ea81202df6912366802bed190272485db2329c30e27ea4b46",
+    "effective_pcm_verified": true,
+    "right_padding_samples": 0
+  },
+  "official_reference": {
+    "capture": "tools/data/results/orukeet/official-long-repeat8-stages-2026-10-02.json.gz",
+    "capture_sha256": "135d9fdcff3a272261c1483c22a4c01b3886aa26028f6e8bf50da8d096a8dc6a",
+    "capture_bytes": 257147974,
+    "summary": "tools/data/results/orukeet/official-long-repeat8-summary-2026-10-02.json",
+    "summary_sha256": "29c5c2723bbe59f4fc1178b18d4162a28468653f0a1928b5a315b0aea14bdecd",
+    "stage_count": 8222,
+    "predictor_calls": 724,
+    "joint_calls": 806,
+    "tokens": 722,
+    "all_six_instrumentation_controls": true,
+    "actual_stft_captured": true
+  },
+  "native_replay": {
+    "receipt": "tools/data/results/orukeet/native-fp32-long-repeat8-stage-replay-2026-10-02.json",
+    "receipt_sha256": "83ee857dcfb3a81d9c4eb357cfb88ac751f61b9588f83550b3908d1e4a0008f1",
+    "tool_sha256": "7c9a4844ce30ce6c09fd0f068a35abf110fa319099b66dd00c7ac5d89802107d",
+    "status": "RECORDED_BOUNDARIES_PASS",
+    "provider": "CPUExecutionProvider",
+    "atol": 0.00001,
+    "rtol": 0.0001,
+    "numerical_comparisons": 3226,
+    "exact_decision_comparisons": 806,
+    "encoder_shape": [1, 1024, 1872],
+    "encoder_max_abs_error": 0.000004410743713378906,
+    "encoder_mean_abs_error": 0.000000019678874604167998,
+    "all_comparisons_pass": true
+  },
+  "remaining": {
+    "production_js_features": "FAIL_EXISTING",
+    "long_browser_wasm_webgpu": "UNTESTED",
+    "long_library_native_node_bun": "UNTESTED",
+    "accumulated_tokens_text": "UNTESTED",
+    "natural_long_audio_quality_and_soak": "UNTESTED",
+    "fp16_and_promotion": "NOT_AUTHORIZED_BY_PARITY"
+  }
+}

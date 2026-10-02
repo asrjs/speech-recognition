@@ -939,3 +939,34 @@ Reject these full-FFT variants as production fixes. This does not rule out
 different packed/radix/recombination arithmetic and does not measure feature,
 token/text, browser GPU or speed acceptance. Production stays unchanged; do
 not repeat the already completed selected-bin DFT to rediscover this seam.
+
+### Long-sequence original reference and native replay (2026-10-02)
+
+Added a separately identified synthetic stress fixture: original mono 16 kHz
+PCM16 LibriVox payload concatenated eight times without resampling/gain/gaps,
+2,395,400 samples / 149.7125 seconds. It is not natural long-speech quality gold.
+The source remains immutable; WAV and effective float32 PCM hashes are recorded
+and independently verified against the actual model-input boundary.
+
+Original pinned Orukeet weights with official NeMo CPU yield 8,222 stages,
+724 predictor calls, 806 joint calls and 722 tokens. All six before/captured/
+after token/text/frame/duration controls pass. Actual STFT input/window/complex
+components and source layouts are captured. The 257 MB compressed trace stays
+local; do not commit the WAV, original weights or large stage artifacts.
+
+Existing own fp32 graphs pass the unchanged native CPU recorded-boundary
+validator: 3,226 numerical comparisons at `atol=1e-5, rtol=1e-4` and all 806
+exact token/duration decisions. Encoder shape is `[1,1024,1872]`, max/mean
+absolute error `4.410743713378906e-6` / `1.9678874604167998e-8`.
+Seven weight-free replay-contract tests also pass. No runtime math or export
+changes were made. Hashes, fixture recipe and result pointers are in
+`long-repeat8-reference-handoff-2026-10-02.json`.
+
+P02 now has a real original-engine synthetic long-sequence reference, not a
+completed natural long-recording/quality/soak matrix. Long library Node/Bun,
+browser WASM/WebGPU, candidate-fed recurrence and accumulated tokens/text remain
+UNTESTED; production features remain FAIL. Next reuse this reference with the
+existing head/browser/library adapters, preserving those independent gates.
+The long replay also exposed repeated full encoder-list conversion inside
+each joint binding; hoist only after a focused feed-identity/count regression,
+and measure before claiming a speedup. Do not add another decoder.
