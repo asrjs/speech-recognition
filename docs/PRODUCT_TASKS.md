@@ -296,3 +296,31 @@ Next: extend this actual-browser path to the public microphone controller's
 stop/restart/dispose and pending-handoff lifecycle, preserving capture-owner
 controls. Independently cover controller cleanup when capture stop rejects.
 Orukeet feature/recurrent parity and model promotion are still unresolved.
+
+## C08 — Real Chromium manual microphone controller lifecycle
+
+Status: PASS — real browser/fake WAV device, explicit manual mode only.
+
+Extended the offline runner with a separate controller scenario, preserving the
+capture-owner control. The public controller, default starter and monitor are
+real library instances. Instrumentation wraps actual capture handles and actual
+AudioContext/AudioWorklet resources; it does not substitute fake audio nodes.
+
+Chrome 154.0.8037.93 passed stop/flush with exact delivery of accepted captured
+PCM, restart, active disposal without an extra utterance, stable disposed state
+and rejection of start after disposal. A separate controlled handoff delays the
+return of an already-live capture handle: disposal accepts no PCM and closes
+the context and owned track after handoff. All three sessions loaded one actual
+worklet, stopped through the controller once, ended tracks and closed contexts.
+This is not a microphone permission-dialog race or exact source-WAV parity.
+
+Evidence: `tools/data/results/harness/real-browser-manual-controller-2026-10-02.json`.
+The separate capture-owner regression also passed:
+`tools/data/results/harness/real-browser-capture-controller-control-2026-10-02.json`.
+Receipts bind source/probe/runner/audio and served-module hashes. Fresh source
+build, JS/Python syntax, CLI help and diff checks pass. No downloads or sibling
+writes. Speech-detect/VAD, ASR, WebGPU, physical-device and cleanup-failure
+acceptance remain open; no Orukeet/model promotion follows from these checks.
+
+Next: prove controller-owned cleanup when capture stop rejects, independently
+of capture-owner cleanup and model-parity work.

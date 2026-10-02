@@ -1,4 +1,4 @@
-"""Offline real-Chromium capture owner smoke; no sibling server or model loads."""
+"""Offline real-Chromium capture/controller smokes; no sibling server or model loads."""
 import argparse
 import hashlib
 import json
@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--browser", type=Path, required=True, help="Installed Chromium/Chrome/Edge executable")
     parser.add_argument("--audio", type=Path, required=True, help="Local fake-device WAV fixture")
     parser.add_argument("--output", type=Path, required=True, help="New receipt path; existing files are never overwritten")
+    parser.add_argument("--scenario", choices=["capture-owner", "microphone-controller"], default="capture-owner")
     args = parser.parse_args()
     output = args.output.resolve()
     if output.exists() or not output.parent.is_dir():
@@ -34,6 +35,8 @@ def main():
     blocked = []
     page_errors = []
     source_paths = [PROBE, Path(__file__).resolve(), ROOT / "src/runtime/capture.ts", args.audio.resolve()]
+    if args.scenario == "microphone-controller":
+        source_paths.extend(ROOT / f"src/runtime/{name}.ts" for name in ["browser-controller", "browser-realtime", "browser-monitor"])
     initial = {str(path): digest(path) for path in source_paths}
 
     def serve(route):
@@ -75,7 +78,8 @@ def main():
             page.on("pageerror", lambda error: page_errors.append(str(error)))
             page.goto(ORIGIN, wait_until="networkidle", timeout=15000)
             # Start without awaiting evaluation so Playwright can enforce a wall-clock bound.
-            page.evaluate("window.probeResult = null; window.probeError = null; void import('/probe.mjs').then(m => m.runCaptureLifecycle()).then(r => window.probeResult = r).catch(e => window.probeError = String(e.stack || e))")
+            probe_function = "runCaptureLifecycle" if args.scenario == "capture-owner" else "runControllerLifecycle"
+            page.evaluate("fn => { window.probeResult = null; window.probeError = null; void import('/probe.mjs').then(m => m[fn]()).then(r => window.probeResult = r).catch(e => window.probeError = String(e.stack || e)); }", probe_function)
             page.wait_for_function("window.probeResult !== null || window.probeError !== null", timeout=30000)
             error = page.evaluate("window.probeError")
             if error:
@@ -93,7 +97,8 @@ def main():
     receipt = {**result, "browserVersion": version, "browserPath": str(args.browser.resolve()),
                "network": "PAGE_HTTP_REQUESTS_LOCALLY_FULFILLED_OR_REJECTED", "blockedRequests": blocked,
                "pageErrors": page_errors, "inputs": initial, "servedModules": served,
-               "notValidated": ["physical microphone", "browser controller", "VAD", "ASR", "WebGPU parity", "cleanup failure injection"]}
+               "scenario": args.scenario,
+               "notValidated": ["physical microphone", "speech-detect controller", "VAD", "ASR", "WebGPU parity", "cleanup failure injection", "permission-dialog race"] + (["browser controller"] if args.scenario == "capture-owner" else [])}
     with output.open("x", encoding="utf-8", newline="\n") as target:
         json.dump(receipt, target, indent=2)
         target.write("\n")

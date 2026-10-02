@@ -36,6 +36,27 @@ capture-owner evidence, not controller, VAD/ASR, physical microphone, arbitrary
 device-rate resampling, cleanup-failure injection, soak or WebGPU acceptance.
 The browser's capture processing may alter the WAV; this is not exact PCM parity.
 
+## Offline manual microphone controller lifecycle
+
+Use the same fresh build and installed browser prerequisites above:
+
+```powershell
+python tools/browser-validation/capture-lifecycle-smoke.py `
+  --scenario microphone-controller `
+  --browser "C:/Program Files/Google/Chrome/Application/chrome.exe" `
+  --audio tests/fixtures/ItsLifeJim.en.wav `
+  --output tools/data/results/harness/manual-controller-new-run.json
+```
+
+The public controller uses its real default starter and monitor in explicit
+manual mode, with real capture resources. The probe verifies exact captured-PCM
+delivery on stop/flush, restart, active disposal without an extra utterance,
+stable disposed state and rejection of restart after disposal. A controlled
+Promise gate delays delivery of an already-live real capture handle and verifies
+disposal closes its context and tracks. This is not a permission-dialog race,
+speech-detect/VAD, ASR, WebGPU or cleanup-failure test. Capture-owner controls
+remain separately runnable using `--scenario capture-owner` (the default).
+
 ## Streaming microphone smoke
 
 Run the capture/controller/HUD path without loading a model:
