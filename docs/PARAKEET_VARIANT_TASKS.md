@@ -1135,3 +1135,34 @@ FFT arithmetic/order rather than replacing preprocessing with ONNX or changing
 tolerances. Next reproduce that complex256 boundary in portable arithmetic,
 then re-run the same downstream control and fixture matrix before production
 changes. Do not claim that MKL necessarily implements real512 this way.
+
+### Portable radix4 DIT candidate rejected (2026-10-02)
+
+Added a diagnostic-only `radix4-f32.mjs` under the existing reference tooling,
+not `src/`: base4 digit reversal, negative-exponent radix4 DIT stages, explicit
+f32 butterfly stores/twiddles, and separately rounded versus single-round
+binary64 product sums. Five small tests pass: exact four-point signs/bin order,
+impulse/output ownership, complex-tone direction, independent complex DFT at
+4/16/64/256, and malformed input/options. DFT sanity uses its own stated error
+bound; it does not replace model tolerances or certify MKL arithmetic.
+
+Frozen JFK: replace only the diagnostic packed256 FFT with this candidate,
+retain the prior single-round f32 real recombination and exact frame hash, then
+inject its complex spectrum through the existing rounded-power/mixed-mel/f32-
+guard/width8 path. The official-spectrum control still has 0 mismatches.
+Separate products give 214 feature mismatches (max abs
+3.4669041633605957e-4); single-round gives 174 (max abs
+2.02178955078125e-4). Both FAIL unchanged `atol=1e-5, rtol=1e-4`, although
+their spectrum components pass those tolerances. Receipt
+`radix4-packed-features-jfk-2026-10-02.json`, SHA-256
+`ff7a29cf41079ff343ef97cde4d40a704b8f2aa5efb470187fa025586cd492ba`,
+binds actual capture, compiled processor, existing probe and candidate hashes.
+
+Reject this basic radix4 DIT as a production solution. The earlier conditional
+Torch-complex256 feature PASS remains valid, but neither ordinary radix2 nor
+this radix4 order reproduces it portably. No MKL-plan identity, browser/model
+acceptance or speedup is claimed. This run used a one-off guarded probe
+composition; the standalone FFT and tests are reusable, not a complete saved
+end-to-end replay CLI. Next investigate original complex256 sub-boundaries or
+a genuinely discriminating operation-order control; do not keep sweeping
+rounding modes based only on improved mean spectrum error.

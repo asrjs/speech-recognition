@@ -1,0 +1,103 @@
+{
+  "status": "DIAGNOSTIC_RADIX4_MATRIX",
+  "scope": "Portable radix4 complex256 candidate, f32 single-round real recombination, frozen original frame bytes, existing diagnostic rounded-power/mixedmel/f32guard/width8 normalization. Not production, MKL identity or ASR acceptance",
+  "capture_sha256": "4328840597d82b6942e640c2d9a4f810ca6c589588fb833009d02d8b14178508",
+  "radix4_source_sha256": "c7cde528ec5869dfeba669da3a61634ae3d2e9004f7841657bef0f639d7551de",
+  "compiled_processor_sha256": "067a902ceea1f260ce811f2bc04a7112e1a3a0e0cc17b99c6da9aa15a1a6a32f",
+  "probe_sha256": "d557a5d6eabee10bf9bc741713862fd8dddab4dd2edf75bb43cef9c2784de11a",
+  "results": {
+    "official-control": {
+      "features": {
+        "shape": [
+          128,
+          1101
+        ],
+        "dtype": "float32",
+        "count": 140928,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "allclose": true,
+        "max_abs_error": 1.430511474609375e-06,
+        "mean_abs_error": 5.325197369754322e-09,
+        "max_relative_error": 0.00011918009327746565,
+        "cosine_similarity": 0.9999999999999992,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      }
+    },
+    "separate": {
+      "features": {
+        "shape": [
+          128,
+          1101
+        ],
+        "dtype": "float32",
+        "count": 140928,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "allclose": false,
+        "max_abs_error": 0.00034669041633605957,
+        "mean_abs_error": 8.650074021046226e-07,
+        "max_relative_error": 0.333333250504428,
+        "cosine_similarity": 0.999999999989056,
+        "mismatch_count": 214,
+        "first_divergent_index": 36
+      },
+      "spectrum": {
+        "shape": [
+          565914
+        ],
+        "dtype": "float32",
+        "count": 565914,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "allclose": true,
+        "max_abs_error": 1.9073486328125e-06,
+        "mean_abs_error": 2.515658633009397e-08,
+        "max_relative_error": 31.52284226095721,
+        "cosine_similarity": 0.9999999999999906,
+        "mismatch_count": 0,
+        "first_divergent_index": null,
+        "bit_mismatches": 489338
+      },
+      "frame_sha256": "e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30"
+    },
+    "single-round": {
+      "features": {
+        "shape": [
+          128,
+          1101
+        ],
+        "dtype": "float32",
+        "count": 140928,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "allclose": false,
+        "max_abs_error": 0.000202178955078125,
+        "mean_abs_error": 8.104973941054607e-07,
+        "max_relative_error": 0.17177895359001105,
+        "cosine_similarity": 0.9999999999914795,
+        "mismatch_count": 174,
+        "first_divergent_index": 39
+      },
+      "spectrum": {
+        "shape": [
+          565914
+        ],
+        "dtype": "float32",
+        "count": 565914,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "allclose": true,
+        "max_abs_error": 2.86102294921875e-06,
+        "mean_abs_error": 2.402190418386996e-08,
+        "max_relative_error": 5.073650863332983,
+        "cosine_similarity": 0.9999999999999912,
+        "mismatch_count": 0,
+        "first_divergent_index": null,
+        "bit_mismatches": 486086
+      },
+      "frame_sha256": "e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30"
+    }
+  }
+}
