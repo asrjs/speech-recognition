@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "status": "CONDITIONAL_RECURRENCE_PASS",
+  "scope": "CONDITIONAL_FROZEN_ENCODER_LIBRARY_RECURRENCE",
+  "sample": "pure-silence-1s-16k",
+  "same_handle_repeats_per_backend": 2,
+  "tokens": 0,
+  "text": "",
+  "committed_cache_boundary": "PRE_SOS_ZERO",
+  "h_c_max_abs_error": 0,
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "controls": [
+    {
+      "backend": "wasm",
+      "receipt": "tools/data/results/orukeet/browser-recurrent-wasm-pure-silence-reviewed-2026-10-02.json",
+      "receipt_bytes": 299394,
+      "receipt_sha256": "5a5727e750c16ffd9f93a4bd416a4c1befe346960c56d11d788a975864e9a9df"
+    },
+    {
+      "backend": "webgpu",
+      "receipt": "tools/data/results/orukeet/browser-recurrent-webgpu-pure-silence-reviewed-2026-10-02.json",
+      "receipt_bytes": 299683,
+      "receipt_sha256": "167a609b2e1d47b4d98e5fd93adc8b2032cace2c400aa65fd9ed1203a319424a",
+      "gpu_dispatches_per_repeat": 564
+    }
+  ],
+  "served_artifacts_exact_per_backend": 244,
+  "browser_cleanup_errors": 0,
+  "features": "EXECUTED_NOT_ACCEPTED",
+  "real_encoder": "BYPASSED_FROZEN_ORACLE",
+  "intermediate_states_logits": "UNTESTED",
+  "full_asr": "NOT_PROVEN",
+  "next": "JFK browser recurrence, then intermediate live-state coverage; retain earlier feature failures and real-encoder gates."
+}

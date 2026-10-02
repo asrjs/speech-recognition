@@ -1577,3 +1577,16 @@ Compact evidence: `tools/data/results/orukeet/browser-recurrence-handoff-2026-10
 Full hash-bound receipts and binary graphs remain local. Next: extend this
 conditional control to pure silence/JFK, then intermediate live-state coverage;
 keep the earlier production feature divergence visible throughout.
+
+### Conditional browser pure-silence control (2026-10-02)
+
+After the speech/silence checkpoint, reused the unchanged harness for the
+official one-second pure-silence fixture. WASM and WebGPU each pass two
+same-handle transcriptions: zero tokens, empty text, exact zero exposed pre-SOS
+h/c cache, 244 exact served artifacts and no browser/cleanup errors. WebGPU
+observes 564 dispatches per repetition. This does not compare NeMo's different
+retained SOS state or accept production features/real encoder/full ASR.
+An initial WebGPU command had an export-path typo and failed before writing;
+the corrected command passed without source edits or tolerance changes.
+Compact receipt: `tools/data/results/orukeet/browser-silence-recurrence-handoff-2026-10-02.json`.
+Next: JFK conditional browser control, then intermediate live-state coverage.
