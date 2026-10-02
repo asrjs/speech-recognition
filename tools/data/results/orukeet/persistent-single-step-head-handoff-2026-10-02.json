@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "status": "PARTIAL_PASS_REPRODUCIBLE_RECORDED_HEAD_CANDIDATE",
+  "scope": "Recorded official head inputs, not live library recurrence or full ASR",
+  "directory": "persistent-single-step-head-2026-10-02",
+  "source_sha256": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90",
+  "source_config_sha256": "344297eaf9e28d7f849e099c06535fbb0df978926e1b5f753b6aa836d05acdb3",
+  "graph_sha256": "fbdf8b7c141d0a999aa71c4edb0ed9cfac1aa762d68b8d1bf7b006acb71f8718",
+  "transformation_receipt_sha256": "8063f75bacbefd38058b37fb5c862a90269252b6d44e096f8280ff8586ea19fc",
+  "native": {"path": "native-matrix.json", "sha256": "eea7b35535fd06bcbad737f1dde2b0ec39955eeb9950e023a0a47edc6738c235", "calls": 240, "status": "PASS", "grid_scope": "Native source-graph comparison, not official multi-frame oracle or browser grid acceptance"},
+  "browser": [
+    {"path": "browser-wasm-jfk.json", "sha256": "5454c9a75b129f71e747d02c656f3548ecd48b6abfa333eaae993e041c8c857f", "calls": 92},
+    {"path": "browser-webgpu-jfk.json", "sha256": "8758f00d48cdc38c544a47e3d6501db1eef1cfea8d5b1ff7195cd3b45bcecf11", "calls": 92},
+    {"path": "browser-wasm-pure-silence.json", "sha256": "0e3669fc0b5a6fe10620c75c33b6ecc001aea09a8aa13121e20bb9c642b14d8a", "calls": 24},
+    {"path": "browser-webgpu-pure-silence.json", "sha256": "5772580fcc33b183d1dbc7842ed728f47beb0729b065a6ae75d89c7957e3eef9", "calls": 24},
+    {"path": "browser-wasm-speech-silence.json", "sha256": "8b4c6a8881579e1eb289cda5bb562daa68d4aceabcefef7c097c556c99533953", "calls": 364},
+    {"path": "browser-webgpu-speech-silence.json", "sha256": "f03115f74433ef9b1f8189945943fea92b46d6ba5a4fea09d58999cb53631beb", "calls": 364}
+  ],
+  "browser_all": {"status": "PASS", "repeat_outputs_exact": true, "graph_delivery_hash_exact": true, "fixture_hashes_match_original_matrices": true, "errors": [], "webgpu_dispatches_per_call": 47},
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "tests": {"targeted_transform": 9, "family_suite_pass": 35, "shared_suite_pass": 35},
+  "remaining": ["Original production graph WebGPU cell-state gate FAIL", "Production features FAIL", "Candidate-fed live library recurrence/token/text UNTESTED", "Real browser grid/batch UNTESTED", "Matched performance/memory UNTESTED", "No fp16 or public promotion"],
+  "next": "Return to earliest production-feature divergence while retaining candidate library recurrence/grid and matched profiling gates"
+}

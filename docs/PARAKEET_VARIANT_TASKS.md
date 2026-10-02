@@ -14,6 +14,16 @@ Orukeet retains 627M parameters; it is not a small student model.
 
 ## Current checkpoint
 
+Latest 2026-10-02: the opt-in single-step fp32 head transformation is now a
+persistent tested family tool, not an inline-only recipe. The original
+production graph still fails its WebGPU speech/silence cell-state gate; the
+separate reproducible candidate passes all recorded JFK/pure-silence/speech-
+silence inputs on native CPU (240 calls), WASM (480) and WebGPU (480). This is
+not a promoted model or live recurrent ASR acceptance. See the latest section
+below and `persistent-single-step-head-handoff-2026-10-02.json`. Next return to
+the earlier production-feature divergence; retain candidate-fed library
+recurrence, real browser grid execution and matched memory/performance gates.
+
 2026-10-02 all-recorded browser head follow-up: `--all-steps` now selects every
 validated joint binding, with selection/count metadata and missing-call tests.
 JFK (46), pure silence (12) and speech/silence (182) ran twice per backend:
@@ -820,3 +830,39 @@ measure matched performance/memory. Forty-seven WebGPU dispatches/call are
 observed, not a speedup claim. Production features, encoder and live public
 API acceptance remain open. Large candidate/traces stay local. Small receipt:
 `linear-gate-head-candidate-handoff-2026-10-02.json`.
+
+### Persistent single-step candidate and full head matrix (2026-10-02)
+
+`tools/nemo-tdt-onnx-export/expand_single_step_lstm.py` now hash-pins source
+graph/config buffers, derives dimensions from the actual family contract,
+requires fresh output and emits an explicitly unvalidated transformation
+receipt. It rejects unsupported LSTM options/inputs, external weights, name
+collisions, nonshared-contract shapes and mismatched config. It proves the
+one-token target constraint propagates to both LSTM sequence axes, preserves
+retained fields and byte-reversible weights, and does not touch default export
+or runtime/preset behavior. Nine tests cover CPU math over two small widths,
+candidate-fed synthetic recurrence, batch/grid controls, hash/overwrite and
+forged candidate receipts. Family/shared Python suites each have 35 PASS.
+
+`browser_head_replay.py --candidate-dir` retains all original export/repack/
+config audits and reproduces the transformation in memory before accepting
+the candidate graph hash. It reuses the existing library session bridge and
+evaluator, not a new decoder. The persisted candidate has graph SHA
+`fbdf8b7c141d0a999aa71c4edb0ed9cfac1aa762d68b8d1bf7b006acb71f8718`.
+
+Actual native recorded inputs pass 46 JFK + 12 pure-silence + 182 speech/
+silence calls. Each browser backend passes two repeats of all 240 calls:
+480 WASM and 480 WebGPU, with original `atol=1e-5, rtol=1e-4`, exact length
+and token/duration decisions. Independent raw-array re-evaluation passes;
+fixtures hash-match the original matrices, all repeats are bit-exact, no
+browser/cleanup errors exist and graph HTTP delivery hashes match. WebGPU
+records 47 dispatches/call, not proof of every node's provider or a speedup.
+
+Native source-graph controls also pass encoder-grid widths 1/2/8/32 for JFK
+and speech/silence, and 1/2/8/13 (available length) for silence. These are
+source-graph controls, not a new official multi-frame oracle or browser-grid
+acceptance. Synthetic candidate-fed recurrence is not actual model token/text
+acceptance. Production features remain FAIL; full encoder/live library and
+long-reference gates remain open. Do not promote or quantize the candidate.
+No sibling/runtime API changes occurred. Large graphs/traces stay local;
+small receipt: `persistent-single-step-head-handoff-2026-10-02.json`.
