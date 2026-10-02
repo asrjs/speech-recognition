@@ -99,6 +99,59 @@ function segment(readPcm = vi.fn(() => Float32Array.of(0.25))) {
 }
 
 describe('browser controller disposal during startup', () => {
+  it('attempts every release and preserves multiple disposal failures', async () => {
+    const r = resources();
+    const failures = ['capture', 'unsubscribe', 'monitor', 'starter'].map(
+      (stage) => new Error(`${stage} cleanup failed`),
+    );
+    r.stopCapture.mockRejectedValue(failures[0]);
+    r.unsubscribe.mockImplementation(() => {
+      throw failures[1];
+    });
+    vi.mocked(r.monitor.dispose).mockImplementation(() => {
+      throw failures[2];
+    });
+    vi.mocked(r.starter.dispose).mockRejectedValue(failures[3]);
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'manual',
+      createStarter: () => r.starter,
+      createMonitor: () => r.monitor,
+      startCapture: async () => r.handle,
+    });
+    await controller.start();
+    const failure = await controller.dispose().catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect((failure as AggregateError).errors).toEqual(failures);
+    expect(r.stopCapture).toHaveBeenCalledOnce();
+    expect(r.unsubscribe).toHaveBeenCalledOnce();
+    expect(r.monitor.dispose).toHaveBeenCalledOnce();
+    expect(r.starter.dispose).toHaveBeenCalledOnce();
+    await controller.dispose();
+    expect(r.starter.dispose).toHaveBeenCalledOnce();
+  });
+
+  it('releases controller resources even when capture stop rejects', async () => {
+    const r = resources();
+    const failure = new Error('capture close failed');
+    r.stopCapture.mockRejectedValue(failure);
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'manual',
+      createStarter: () => r.starter,
+      createMonitor: () => r.monitor,
+      startCapture: async () => r.handle,
+    });
+    await controller.start();
+    await expect(controller.dispose()).rejects.toBe(failure);
+    expect(controller.getState().isMicActive).toBe(false);
+    expect(r.stopCapture).toHaveBeenCalledOnce();
+    expect(r.unsubscribe).toHaveBeenCalledOnce();
+    expect(r.monitor.dispose).toHaveBeenCalledOnce();
+    expect(r.starter.dispose).toHaveBeenCalledOnce();
+    await controller.dispose();
+    expect(r.stopCapture).toHaveBeenCalledOnce();
+    expect(r.starter.dispose).toHaveBeenCalledOnce();
+  });
+
   it.each(['startup', 'capture-stop'] as const)(
     'ignores retained starter events during pending %s disposal',
     async (phase) => {

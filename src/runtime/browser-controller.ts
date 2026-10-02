@@ -575,17 +575,29 @@ export function createBrowserRealtimeMicrophoneController(
       startAbort?.abort();
       setState({ isMicActive: false });
       return enqueueLifecycleOperation(async () => {
+        const errors: unknown[] = [];
+        const attempt = async (release: () => void | Promise<void>): Promise<void> => {
+          try {
+            await release();
+          } catch (error) {
+            errors.push(error);
+          }
+        };
         const handle = captureHandle;
         captureHandle = null;
         if (handle) {
-          await handle.stop();
+          await attempt(() => handle.stop());
         }
         manualChunks = [];
         manualIngestFrame = 0;
-        starterUnsubscribe();
-        monitor.dispose();
-        await starter.dispose();
+        await attempt(starterUnsubscribe);
+        await attempt(() => monitor.dispose());
+        await attempt(() => starter.dispose());
         listeners.clear();
+        if (errors.length === 1) throw errors[0];
+        if (errors.length > 1) {
+          throw new AggregateError(errors, 'Microphone controller disposal failed.');
+        }
       });
     },
   };

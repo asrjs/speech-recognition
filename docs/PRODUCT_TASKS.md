@@ -324,3 +324,29 @@ acceptance remain open; no Orukeet/model promotion follows from these checks.
 
 Next: prove controller-owned cleanup when capture stop rejects, independently
 of capture-owner cleanup and model-parity work.
+
+## C09 — Controller disposal after release failures
+
+Status: PASS — controlled resource-failure regressions; real-browser healthy
+manual lifecycle control also passes. Browser failure injection is untested.
+
+A rejecting capture stop previously skipped starter unsubscription, monitor
+disposal and starter disposal. Since the controller was already marked disposed,
+a second dispose could not complete those releases. The new single-failure
+regression failed at the missing unsubscription before the implementation fix.
+
+Dispose now attempts each owned release independently in the original order,
+clears buffered manual PCM and listeners, preserves a single error by identity,
+and aggregates multiple failures in release order. Two tests cover a capture
+failure and simultaneous capture/unsubscribe/monitor/starter failures, including
+safe repeated disposal. Normal stop/flush behavior is deliberately unchanged.
+
+Verification: 46 related capture/browser/realtime tests pass; independent review
+reran all eight disposal tests. Source and example compilation, strict changed-
+test compilation, scoped lint, formatting and diff checks pass. Fresh-build
+Chromium manual-controller healthy control passed all three real capture sessions:
+`tools/data/results/harness/real-browser-controller-disposal-control-2026-10-02.json`.
+That browser receipt does not certify injected cleanup failures, VAD or ASR.
+
+Next: separately specify and test normal stop when capture stop rejects; return
+to Orukeet's earliest feature divergence without relaxing numerical acceptance.
