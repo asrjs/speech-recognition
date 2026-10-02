@@ -1300,3 +1300,78 @@ It does not retrospectively certify the older receipt, reproduce model
 inference, fix the FFT, or close any production/browser parity gate.
 Next wire this guard into the bounded replay CLI and save the exact composed
 probe bytes with capture/source hashes before rerunning both frozen fixtures.
+
+### Frozen packed256 replay CLI verified on both captures (2026-10-02)
+
+`tools/model-debugging/reference/hf-parakeet-port/replay_packed_fft.py` now
+connects the mask guard to the saved original-engine STFT and existing JS
+diagnostic probe. It requires capture SHA-256 and an exact sample ID, validates
+instrumentation/PCM/tensor contracts, recreates centered f32 frames, and rejects
+a Torch real512 control unless its complex bytes reproduce the capture exactly.
+It uses one fixed packed256/f32-single-round recipe, not a mode sweep or new
+production FFT. Librosa regenerates the Slaney filterbank; its bytes are hashed.
+
+Explicit physical/valid lengths are checked by both Python and Node. Optional
+`--coordinate MEL FRAME` replaces only that mel row's active spectrum bins at
+the requested valid frame, with exact selected/oracle and outside-mask guards.
+Full-prefix width8 diagnostic normalization is retained. The exact composed
+Node probe is saved separately, hashed in the small receipt, and the original
+complex downstream control must pass before interpreting the candidate.
+Output paths are distinct, protected and exclusively created; an existing
+output is rejected before capture or heavy imports. `--timeout` bounds the
+Node subprocess, not the entire Python invocation.
+
+Invocation (existing Python environment, built `dist/audio/js-mel.js`):
+
+```powershell
+& tools/model-debugging/reference/nemotron-3.5-asr-streaming/.venv/Scripts/python.exe -u tools/model-debugging/reference/hf-parakeet-port/replay_packed_fft.py --capture tools/data/results/orukeet/official-speech-silence-stft-stages-2026-10-02.json.gz --expected-capture-sha256 07ae6f00dcab69eb3425566af7b5690a85dc2bee91e7510ddf27cca7b4370809 --sample-id speech-silence --coordinate 2 1027 --output tools/data/results/orukeet/NEW-replay.json --probe-output tools/data/results/orukeet/NEW-replay.mjs --cpu-threads 4 --timeout 60
+```
+
+For JFK, use `official-jfk-stft-layout-stages-2026-10-02.json.gz`, SHA-256
+`4328840597d82b6942e640c2d9a4f810ca6c589588fb833009d02d8b14178508`, sample
+`jfk-short`, no coordinate, and fresh output paths.
+
+Actual CLI receipts `packed256-replay-cli-jfk-final-2026-10-02.json` and
+`packed256-replay-cli-speech-silence-final-2026-10-02.json`, each with the matching
+`.mjs` sidecar, reproduce the prior results at unchanged `1e-5/1e-4`:
+
+- JFK physical1101/valid1100: official control 0 mismatches, packed256 0;
+  candidate max abs `5.340576171875e-5` (mixed absolute/relative tolerance).
+- Speech/silence physical4061/valid4060: official control 0, candidate 1 at
+  flattened9149 (mel2/frame1027), max abs `1.4750286936759949e-5`.
+- Selected bin2/frame1027 intervention: 0 feature mismatches, exact oracle
+  components selected and every unselected component bit unchanged. This is
+  causal injection evidence, not a deployable correction.
+
+Twelve focused unit/negative tests pass. Review found that incomplete Node
+results could write a control-only receipt before a later missing-candidate
+error. The CLI now requires exactly every expected result, strict finite f32
+feature/statistic counts, positive standard deviations and complete finite
+point fields consistent with full-prefix output. Negative regressions cover
+missing/extra results, boolean/lossy values, counts/statistics and points.
+All imported helper/source hashes are captured before execution and checked
+again before the receipt, which also binds packed256 and each spectrum hash.
+Final disk verification also caught Windows LF-to-CRLF translation by the text
+writer: preliminary/reviewed probe files did not match the executed probe hash.
+A binary exclusive UTF-8 probe writer and byte-exact/overwrite regression now
+preserve execution bytes. Final receipts use fresh paths; all nine source hashes,
+actual probe file hashes and both known canonical frame hashes were independently
+checked against disk. Prior preliminary/reviewed files remain local diagnostics,
+not accepted provenance or committed evidence, and were not overwritten.
+The initial wrong JFK sample ID was
+rejected before writing outputs. Two first actual replays were stopped after
+unexpected CPU-consuming delay with no artifacts. A capture-only control took
+1.28s; real512/complex256/recombination took milliseconds. A bounded stack
+probe localized delay to Numba `ensure_cache_path`/`NamedTemporaryFile` while
+Librosa lazily imports filters. Using the existing child-local
+`.cache/nemo-reference/numba` produced the exact expected filterbank hash in
+1.95s; the CLI now sets that child-only cache before import. Corrected JFK
+finished in 9.36s (final version: 9.21s) and both final replay processes exited0.
+The complete nearby Python diagnostic suite passes 134 tests. No global
+environment settings, model weights, production processor or sibling examples
+were changed. The failed/diagnostic probe processes are terminal.
+
+Next compare the candidate complex256 bins2/254 against a discriminating
+factorization control on the cancellation frame. The full portable feature,
+ASR and browser/WebGPU gates remain open; do not promote this Torch-only recipe
+or repeat already-rejected broad FFT arithmetic sweeps.

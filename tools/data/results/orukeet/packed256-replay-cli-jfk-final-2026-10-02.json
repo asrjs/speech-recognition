@@ -1,0 +1,103 @@
+{
+  "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE",
+  "sample_id": "jfk-short",
+  "capture_sha256": "4328840597d82b6942e640c2d9a4f810ca6c589588fb833009d02d8b14178508",
+  "capture_meta": {
+    "python": "3.10.12",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "torch": "2.6.0+cu118",
+    "nemo_toolkit": "3.0.0",
+    "audio": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+    "model": "oruk/orukeet",
+    "model_revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+    "restore_path": "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\source\\orukeet-v0.1.0.nemo",
+    "device": "cpu",
+    "cuda_available": true,
+    "batch_size": 1,
+    "cpu_threads": 4,
+    "numba_cache": "N:\\github\\asrjs\\speech-recognition\\.cache\\nemo-reference\\numba",
+    "timestamps": false,
+    "capture_feature_stft": true,
+    "audio_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "weight_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56",
+    "torch_build_config": "PyTorch built with:\n  - C++ Version: 201703\n  - MSVC 192930157\n  - Intel(R) oneAPI Math Kernel Library Version 2025.0.1-Product Build 20241031 for Intel(R) 64 architecture applications\n  - Intel(R) MKL-DNN v3.5.3 (Git Hash 66f0cb9eb66affd2da3bf5f8d897376f04aae6af)\n  - OpenMP 2019\n  - LAPACK is enabled (usually provided by MKL)\n  - CPU capability usage: AVX512\n  - CUDA Runtime 11.8\n  - NVCC architecture flags: -gencode;arch=compute_37,code=sm_37;-gencode;arch=compute_50,code=sm_50;-gencode;arch=compute_60,code=sm_60;-gencode;arch=compute_61,code=sm_61;-gencode;arch=compute_70,code=sm_70;-gencode;arch=compute_75,code=sm_75;-gencode;arch=compute_80,code=sm_80;-gencode;arch=compute_86,code=sm_86;-gencode;arch=compute_90,code=sm_90;-gencode;arch=compute_37,code=compute_37\n  - CuDNN 90.1\n  - Magma 2.5.4\n  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, COMMIT_SHA=2236df1770800ffea5697b11b0bb0d910b2e59e1, CUDA_VERSION=11.8, CUDNN_VERSION=9.1.0, CXX_COMPILER=C:/actions-runner/_work/pytorch/pytorch/pytorch/.ci/pytorch/windows/tmp_bin/sccache-cl.exe, CXX_FLAGS=/DWIN32 /D_WINDOWS /GR /EHsc /Zc:__cplusplus /bigobj /FS /utf-8 -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DLIBKINETO_NOROCTRACER -DLIBKINETO_NOXPUPTI=ON -DUSE_FBGEMM -DUSE_XNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE /wd4624 /wd4068 /wd4067 /wd4267 /wd4661 /wd4717 /wd4244 /wd4804 /wd4273, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, TORCH_VERSION=2.6.0, USE_CUDA=ON, USE_CUDNN=ON, USE_CUSPARSELT=OFF, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_GLOO=ON, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=OFF, USE_OPENMP=ON, USE_ROCM=OFF, USE_ROCM_KERNEL_ASSERT=OFF, \n",
+    "capture_tool_sha256": "da07141bec54d9d2f5db81a31d0a4020a0eb12f5066a267f3443280fac837b61",
+    "inspect_tool_sha256": "3aa41f51355ff4d9e89fab5635ac1cf8f0b64599707a485ea28bbc8d21874586"
+  },
+  "physical_frames": 1101,
+  "valid_length": 1100,
+  "windowed_frames_f32le_sha256": "e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30",
+  "filterbank_f32le_sha256": "f5608e00763a20a191022fbb00a43346db5f1ec06828a97a6f4157f7d02b76c8",
+  "probe_path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\packed256-replay-cli-jfk-final-2026-10-02.mjs",
+  "probe_sha256": "64d7f7e78eb5f7aa07df7576d65bd26a50b11414ccd133af88c5b08c580a2a3b",
+  "sources_sha256": {
+    "tools\\model-debugging\\reference\\hf-parakeet-port\\replay_packed_fft.py": "d83416ea96d98de898aca9c423615dd8e11e71c90d2c563cd8446865209a2800",
+    "tools\\model-debugging\\reference\\hf-parakeet-port\\compare_js_feature_boundaries.py": "d557a5d6eabee10bf9bc741713862fd8dddab4dd2edf75bb43cef9c2784de11a",
+    "tools\\model-debugging\\reference\\hf-parakeet-port\\complex_intervention.py": "1e23ec59b1ddbe09c6b105cd49e5f8e3f2794dfcf3b153d0813279b9f26314b0",
+    "tools\\model-debugging\\reference\\hf-parakeet-port\\normalization_reduction.py": "0c16ba756976ec60adfb7f5daa91a673a35e5ed0d188b6f0a5b8cd0c516fe72e",
+    "tools\\model-debugging\\reference\\hf-parakeet-port\\normalization-reduction.mjs": "080df42ecbed65b1f5f876490059660b963f13bbad3281b240d75537a6e973be",
+    "tools\\model-debugging\\reference\\hf-parakeet-port\\packed-f32-source.mjs": "c561cbb81c9729fe421befa659fc0dce87deb8cae8b51736d893600bc4e99c2c",
+    "dist\\audio\\js-mel.js": "067a902ceea1f260ce811f2bc04a7112e1a3a0e0cc17b99c6da9aa15a1a6a32f",
+    "tools\\tensor_parity.py": "2aff64ee87ab58817ccca4e76c9944064c78779beb0d6a7bee1fa2a18d6bcec4",
+    "tools\\artifact_outputs.py": "499b497c2c3701e325c37cc9980ff179eda64c4ea80a0820951be9f6baa695eb"
+  },
+  "torch_real512_actual_stft_bits_exact": true,
+  "packed256_complex64_le_sha256": "23024d8b9f099b9a2a3a93c0700027b32eeb16a1740d1433fa4e5d480502ed08",
+  "spectra_complex64_le_sha256": {
+    "official_complex_control": "a392c631ff912c5e5145f5c11bf236a85e9dd8dd25336856191874b1cf57af95",
+    "packed256_candidate": "9840d595b47af236ac0d223e7708227e669c7d4ddb24ac24e85b5b3867358237"
+  },
+  "filterbank_recipe": {
+    "sample_rate": 16000,
+    "n_fft": 512,
+    "n_mels": 128,
+    "fmin": 0,
+    "fmax": 8000,
+    "norm": "slaney"
+  },
+  "torch": "2.6.0+cu118",
+  "torch_build_config": "PyTorch built with:\n  - C++ Version: 201703\n  - MSVC 192930157\n  - Intel(R) oneAPI Math Kernel Library Version 2025.0.1-Product Build 20241031 for Intel(R) 64 architecture applications\n  - Intel(R) MKL-DNN v3.5.3 (Git Hash 66f0cb9eb66affd2da3bf5f8d897376f04aae6af)\n  - OpenMP 2019\n  - LAPACK is enabled (usually provided by MKL)\n  - CPU capability usage: AVX512\n  - CUDA Runtime 11.8\n  - NVCC architecture flags: -gencode;arch=compute_37,code=sm_37;-gencode;arch=compute_50,code=sm_50;-gencode;arch=compute_60,code=sm_60;-gencode;arch=compute_61,code=sm_61;-gencode;arch=compute_70,code=sm_70;-gencode;arch=compute_75,code=sm_75;-gencode;arch=compute_80,code=sm_80;-gencode;arch=compute_86,code=sm_86;-gencode;arch=compute_90,code=sm_90;-gencode;arch=compute_37,code=compute_37\n  - CuDNN 90.1\n  - Magma 2.5.4\n  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, COMMIT_SHA=2236df1770800ffea5697b11b0bb0d910b2e59e1, CUDA_VERSION=11.8, CUDNN_VERSION=9.1.0, CXX_COMPILER=C:/actions-runner/_work/pytorch/pytorch/pytorch/.ci/pytorch/windows/tmp_bin/sccache-cl.exe, CXX_FLAGS=/DWIN32 /D_WINDOWS /GR /EHsc /Zc:__cplusplus /bigobj /FS /utf-8 -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DLIBKINETO_NOROCTRACER -DLIBKINETO_NOXPUPTI=ON -DUSE_FBGEMM -DUSE_XNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE /wd4624 /wd4068 /wd4067 /wd4267 /wd4661 /wd4717 /wd4244 /wd4804 /wd4273, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, TORCH_VERSION=2.6.0, USE_CUDA=ON, USE_CUDNN=ON, USE_CUSPARSELT=OFF, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_GLOO=ON, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=OFF, USE_OPENMP=ON, USE_ROCM=OFF, USE_ROCM_KERNEL_ASSERT=OFF, \n",
+  "cpu_threads": 4,
+  "librosa": "0.11.0",
+  "numba_cache": "N:\\github\\asrjs\\speech-recognition\\.cache\\nemo-reference\\numba",
+  "comparisons": {
+    "official_complex_control": {
+      "shape": [
+        1,
+        128,
+        1101
+      ],
+      "dtype": "float32",
+      "count": 140928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": true,
+      "max_abs_error": 1.430511474609375e-06,
+      "mean_abs_error": 5.325197369754322e-09,
+      "max_relative_error": 0.00011918009327746565,
+      "cosine_similarity": 0.9999999999999992,
+      "mismatch_count": 0,
+      "first_divergent_index": null
+    },
+    "packed256_candidate": {
+      "shape": [
+        1,
+        128,
+        1101
+      ],
+      "dtype": "float32",
+      "count": 140928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": true,
+      "max_abs_error": 5.340576171875e-05,
+      "mean_abs_error": 1.1230153506610368e-07,
+      "max_relative_error": 0.03680978278923025,
+      "cosine_similarity": 0.9999999999998599,
+      "mismatch_count": 0,
+      "first_divergent_index": null
+    }
+  },
+  "intervention": null,
+  "scope": "Frozen original-engine FFT control and diagnostic mel/normalization only; no portable FFT, ASR or browser gate"
+}
