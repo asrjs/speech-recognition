@@ -1,0 +1,65 @@
+{
+  "status": "CONDITIONAL_TORCH_COMPLEX256_SECOND_FIXTURE",
+  "scope": "Actual original NeMo speech/silence STFT; Torch complex256 with f32 single-round real recombination and diagnostic downstream; not portable implementation, production or ASR acceptance",
+  "capture_sha256": "07ae6f00dcab69eb3425566af7b5690a85dc2bee91e7510ddf27cca7b4370809",
+  "frame_sha256": "f6d9996ff874003c84efd270f8558681a5c16303a913c185ea68a6553d3e1810",
+  "torch_version": "2.6.0+cu118",
+  "cpu_threads": 4,
+  "original_real512_control_byte_exact": true,
+  "compiled_processor_sha256": "067a902ceea1f260ce811f2bc04a7112e1a3a0e0cc17b99c6da9aa15a1a6a32f",
+  "probe_sha256": "d557a5d6eabee10bf9bc741713862fd8dddab4dd2edf75bb43cef9c2784de11a",
+  "composed_probe_sha256": "24cf0705693313a2cbdfd9a8321187574b9f02fd67708dec52af590a275ce46f",
+  "feature_metrics": {
+    "official-control": {
+      "shape": [
+        128,
+        4061
+      ],
+      "dtype": "float32",
+      "count": 519808,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": true,
+      "max_abs_error": 9.5367431640625e-07,
+      "mean_abs_error": 1.2514252929767785e-10,
+      "max_relative_error": 4.5061914195115464e-05,
+      "cosine_similarity": 1.0,
+      "mismatch_count": 0,
+      "first_divergent_index": null
+    },
+    "f32-single-round": {
+      "shape": [
+        128,
+        4061
+      ],
+      "dtype": "float32",
+      "count": 519808,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": false,
+      "max_abs_error": 1.4750286936759949e-05,
+      "mean_abs_error": 2.3716362878875184e-08,
+      "max_relative_error": 0.013888932654373118,
+      "cosine_similarity": 0.9999999999999927,
+      "mismatch_count": 1,
+      "first_divergent_index": 9149
+    }
+  },
+  "spectrum_metrics": {
+    "shape": [
+      2087354
+    ],
+    "dtype": "float32",
+    "count": 2087354,
+    "atol": 1e-05,
+    "rtol": 0.0001,
+    "allclose": true,
+    "max_abs_error": 2.384185791015625e-07,
+    "mean_abs_error": 4.4456054201135355e-10,
+    "max_relative_error": 0.8556549740635268,
+    "cosine_similarity": 0.9999999999999986,
+    "mismatch_count": 0,
+    "first_divergent_index": null,
+    "bit_mismatches": 998729
+  }
+}

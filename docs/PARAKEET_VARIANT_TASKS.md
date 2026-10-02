@@ -1206,3 +1206,39 @@ A bounded read-only Torch recreation did not finish and was terminated;
 no reconstruction result is claimed. Next capture a real second STFT boundary
 through the existing original-engine instrumentation before generalizing the
 conditional Torch-complex256 result; avoid another unbounded reconstruction.
+
+### Second actual STFT capture and conditional feature failure (2026-10-02)
+
+Completed the existing original-engine CLI on the local pinned Orukeet `.nemo`
+with `librivox-blankgaps-synthetic.wav`, CPU, four threads, and
+`--capture-feature-stft`. The process exited 0 and saved 1,126 stages. All six
+before/after instrumentation controls pass. PCM remains byte-identical to the
+prior speech/silence capture (649,600 samples, hash `8f4293517daf07f4...`);
+features have 4061 frames with valid length 4060. The actual STFT complex output
+is CPU noncontiguous with stride `[1043677,1,257]`. This replaces the missing
+second STFT boundary, not the old capture or its evidence.
+
+Capture: `official-speech-silence-stft-stages-2026-10-02.json.gz` (43,509,936
+bytes, kept out of Git), SHA-256
+`07ae6f00dcab69eb3425566af7b5690a85dc2bee91e7510ddf27cca7b4370809`.
+Its small provenance/result summary is
+`official-speech-silence-stft-summary-2026-10-02.json`. The original weights
+and audio hashes match the prior capture; no downloads or production edits.
+
+Weight-free downstream control using those actual frames: Torch real512 is
+byte-exact with the captured STFT. Official complex injection has zero feature
+mismatches across 519,808 values, max abs `9.5367431640625e-7`. The prior
+Torch-complex256/f32-single-round recombination recipe instead has **one
+mismatch**, first flattened index 9149 (mel2/frame1027), max abs
+`1.4750286936759949e-5`, mean abs `2.3716362878875184e-8`. It FAILS unchanged
+`atol=1e-5, rtol=1e-4`. The conditional JFK PASS does not generalize to this
+fixture. No portable FFT, processor, ASR or browser acceptance is claimed.
+
+Receipt: `mkl-packed256-features-speech-silence-2026-10-02.json`, SHA-256
+`bd0b00ea0ca50a454657874849c62c214a282c2db8ab4ddf58e4fe4d68d01abc`.
+The first diagnostic attempt failed on a noncontiguous complex dtype view
+before writing a receipt; the successful run compares canonical component
+bytes without altering original values. Four-thread child-local Torch setup
+keeps this recreation bounded; both successful processes are terminal.
+Next isolate the single divergent feature's complex/power/mel/log/normalization
+dependencies rather than promoting a one-fixture PASS or sweeping FFT modes.
