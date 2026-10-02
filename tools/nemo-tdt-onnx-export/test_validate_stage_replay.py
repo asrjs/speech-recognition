@@ -4,10 +4,13 @@ import copy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import numpy as np
 
 from validate_stage_replay import log_softmax, replay_bindings, stage, unique_frame
+import validate_stage_replay as replay
 
 
 def sample_fixture():
@@ -39,6 +42,65 @@ def sample_fixture():
 
 
 class ReplayTests(unittest.TestCase):
+    def test_case_materializes_encoder_once_after_binding_validation(self):
+        sample, cfg = sample_fixture()
+        cfg["joint"].update(num_classes=2, num_extra_outputs=1)
+        stages = sample["stages"]
+
+        def put(name, value, dtype="float32"):
+            array = np.asarray(value, dtype=dtype)
+            stages[name] = {"shape": list(array.shape), "dtype": dtype,
+                            "data": array.ravel().tolist()}
+
+        put("features", [[[1, 2]]])
+        put("features_length", [2], "int64")
+        put("encoder_length", [2], "int64")
+        scores = log_softmax(np.array([[[[1, 2, 3, 4]]]], dtype=np.float32))
+        for index in range(2):
+            put(f"joint/{index:04d}/output", scores)
+        sample.update(sample_id="synthetic", audio={"sha256": "audio"},
+                      tokens=[1], transcript="test", token_frames=[0], token_duration=[1])
+        identity = {"model": "synthetic", "model_revision": "revision", "weight_sha256": "weight"}
+        flags = dict.fromkeys(replay.CONTROL_KEYS, True)
+        meta = {**identity, "audio_sha256": "audio", "device": "cpu", "batch_size": 1}
+        _, counts = replay_bindings(sample, cfg)
+        reference = {"schema_version": 1, "meta": meta, "samples": [sample],
+                     "instrumentation_control": flags, "stage_order": list(stages)}
+        control = {"meta": meta, "stage_capture": {"instrumentation_control": flags,
+                   "stage_count": len(stages), "call_counts": counts},
+                   "result": {"token_ids": [1], "text": "test", "timestamp": [0], "token_duration": [1]}}
+        encoder = Mock()
+        encoder.get_outputs.return_value = [SimpleNamespace(name=name) for name in ("outputs", "encoded_lengths")]
+        encoder.run.return_value = [stage(stages, "encoder"), np.array([2], dtype=np.int64)]
+        head = Mock()
+        head.get_outputs.return_value = [SimpleNamespace(name=name) for name in
+                                        ("outputs", "output_states_1", "output_states_2", "prednet_lengths")]
+        head.run.side_effect = lambda _, feeds: [scores.copy(), feeds["input_states_1"].copy(),
+                                                feeds["input_states_2"].copy(), np.ones(1, dtype=np.int32)]
+        with patch.object(replay, "read_json", side_effect=[reference, control]), \
+                patch.object(replay, "range_hash", return_value="audio"), \
+                patch.object(replay, "stage", wraps=stage) as materialize:
+            result = replay.validate_case(Path("capture"), Path("summary"), Path("audio"),
+                                          cfg, identity, (encoder, head), 1e-5, 1e-4)
+        self.assertEqual(result["status"], "RECORDED_BOUNDARIES_PASS")
+        self.assertEqual(result["end_to_end_tokens_text"], "UNTESTED")
+        self.assertEqual(head.run.call_count, 2)
+        raw = stage(stages, "encoder")
+        for index, call in enumerate(head.run.call_args_list):
+            feeds = call.args[1]
+            expected = {"encoder_outputs": raw[:, :, index:index+1],
+                        "targets": np.array([[2]], dtype=np.int32),
+                        "target_length": np.ones(1, dtype=np.int32),
+                        "input_states_1": np.zeros((1, 1, 2), dtype=np.float32),
+                        "input_states_2": np.zeros((1, 1, 2), dtype=np.float32)}
+            self.assertEqual(set(feeds), set(expected))
+            for name, value in expected.items():
+                np.testing.assert_array_equal(feeds[name], value)
+                self.assertEqual(feeds[name].dtype, value.dtype)
+            self.assertTrue(feeds["encoder_outputs"].flags.c_contiguous)
+        # One chronology check plus one reusable array in validate_case, not one per joint.
+        self.assertEqual(sum(call.args[1] == "encoder" for call in materialize.call_args_list), 2)
+
     def test_multiple_joints_reuse_the_latest_predictor_not_a_new_search(self):
         sample, cfg = sample_fixture()
         bindings, counts = replay_bindings(sample, cfg)

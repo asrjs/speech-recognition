@@ -154,7 +154,8 @@ def validate_case(capture, summary, audio, cfg, identity, sessions, atol, rtol):
     outputs = sessions[0].run(None, {"audio_signal": stage(stages, "features", "float32"),
                                      "length": stage(stages, "features_length", "int64", (1,))})
     encoder = dict(zip([item.name for item in sessions[0].get_outputs()], outputs))
-    good = compare("encoder", stage(stages, "encoder", "float32"), encoder["outputs"])
+    raw_encoder = stage(stages, "encoder", "float32")
+    good = compare("encoder", raw_encoder, encoder["outputs"])
     good = compare("encoder_length", stage(stages, "encoder_length", "int64", (1,)), encoder["encoded_lengths"]) and good
     if not good:
         result["status"] = "ENCODER_NUMERICAL_FAIL_HEAD_UNTESTED"
@@ -163,7 +164,7 @@ def validate_case(capture, summary, audio, cfg, identity, sessions, atol, rtol):
     blank = cfg["decoder"]["vocab_size"]
     for binding in bindings:
         joint, predictor, frame = binding["joint"], binding["predictor"], binding["frame"]
-        feeds = {"encoder_outputs": np.ascontiguousarray(stage(stages, "encoder", "float32")[:, :, frame:frame+1]),
+        feeds = {"encoder_outputs": np.ascontiguousarray(raw_encoder[:, :, frame:frame+1]),
                  "targets": stage(stages, predictor + "/labels", "int64", (1, 1)).astype(np.int32),
                  "target_length": np.ones(1, dtype=np.int32),
                  "input_states_1": stage(stages, predictor + "/input_state_h", "float32"),

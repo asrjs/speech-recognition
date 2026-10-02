@@ -970,3 +970,23 @@ existing head/browser/library adapters, preserving those independent gates.
 The long replay also exposed repeated full encoder-list conversion inside
 each joint binding; hoist only after a focused feed-identity/count regression,
 and measure before claiming a speedup. Do not add another decoder.
+
+### Replay encoder materialization reuse (2026-10-02)
+
+The family-owned recorded-boundary validator now materializes the captured raw
+encoder once after chronology validation and reuses it for comparison and
+contiguous frame slices. Chronology retains its independent validation; no
+decoder, score normalization, tolerance or runtime source changed.
+
+A two-frame fake-session regression failed before the change (four full encoder
+conversions instead of two), then passed with all head feed keys, values,
+dtypes and contiguous frame slices preserved. All eight replay-contract tests
+and Python compilation pass. This is synthetic harness evidence, not ASR parity.
+
+Actual native CPU fp32 JFK replay also passes: 186 numerical comparisons and
+46 exact decisions. Its entire case result equals the prior receipt exactly.
+Receipt: `native-fp32-jfk-encoder-reuse-2026-10-02.json`, SHA-256
+`7cc3b6cf37b7172251cf1d0123b014d6993fcce531e7358d9a133992ca0f2878`.
+Long-sequence replay of this modified tool and wall-time/RSS A/B measurements
+remain UNTESTED; conversion-count reduction is not a measured end-to-end speedup.
+Production feature and accumulated library/browser acceptance gates remain open.
