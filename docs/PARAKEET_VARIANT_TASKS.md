@@ -1178,3 +1178,31 @@ This is a diagnostic-only correction, not production feature parity.
 The preceding JFK receipt remains bound to the old candidate source hash;
 its numbers must not be attributed to the corrected module. A fresh full
 feature replay is still required before judging the corrected candidate.
+
+### Corrected radix4 replay remains rejected (2026-10-02)
+
+Fresh frozen-JFK replay after the cardinal-root fix completed successfully.
+The official-spectrum downstream control again has zero mismatches across
+140,928 features. Separate and single-round products still give 214 and 174
+mismatches respectively, with the same feature metrics as the prior source.
+Both FAIL unchanged `atol=1e-5, rtol=1e-4`; the canonical windowed-frame hash
+is unchanged. Thus cardinal trig residue was a real diagnostic defect but
+does not explain this feature divergence. Do not promote the corrected FFT.
+
+Receipt: `radix4-cardinal-packed-features-jfk-2026-10-02.json`, SHA-256
+`31e9439014e3d821817639e63d3519090d6ef47c145f357128ff2566777330d4`;
+candidate source SHA-256
+`f742a645cf8eb4192683d01700f10815481b51391500eda7726133717c50c06c`.
+The guarded one-off composition also records its own hash; this is not a
+saved replay CLI, original-engine rerun, browser execution or ASR acceptance.
+Two initial composition attempts failed before writing any receipt (newline
+escaping, then incorrect option names); the actual source contract was
+re-inspected before the successful run. No production files were changed.
+
+The second speech/silence waveform capture has 649,600 samples and final
+features `[1,128,4061]` with valid length 4060, but no captured STFT/window/
+complex boundary. It cannot independently certify the original FFT order.
+A bounded read-only Torch recreation did not finish and was terminated;
+no reconstruction result is claimed. Next capture a real second STFT boundary
+through the existing original-engine instrumentation before generalizing the
+conditional Torch-complex256 result; avoid another unbounded reconstruction.
