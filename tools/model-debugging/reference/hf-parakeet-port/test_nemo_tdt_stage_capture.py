@@ -31,6 +31,26 @@ class Joint(torch.nn.Module):
         return encoder + predictor
 
 
+class SimulatedFeaturizer(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.window = torch.ones(2)
+        self.n_fft, self.hop_length, self.win_length, self.exact_pad = 2, 1, 2, False
+
+    def stft(self, x):
+        self.last_output = torch.complex(x, x * 0.5)
+        return self.last_output
+
+
+class StftPairModule(PairModule):
+    def __init__(self):
+        super().__init__()
+        self.featurizer = SimulatedFeaturizer()
+
+    def forward(self, input_signal, length):
+        return self.featurizer.stft(input_signal).real + 1, length
+
+
 def make_model():
     return SimpleNamespace(
         cfg=SimpleNamespace(decoding=SimpleNamespace(strategy="greedy_batch", model_type="tdt")),
@@ -122,6 +142,101 @@ class CaptureTests(unittest.TestCase):
         capture.record("original", value)
         value.fill_(99)
         self.assertEqual(capture.stages["original"]["data"], [1.0, 2.0])
+
+    def test_source_layout_survives_contiguous_snapshot(self):
+        value = torch.arange(24, dtype=torch.float32).reshape(4, 6).transpose(0, 1)[1:5, ::2]
+        expected = value.reshape(-1).tolist()
+        capture = NemoTdtStageCapture(self.model)
+        capture.record("view", value)
+        self.assertEqual(capture.stages["view"]["source_layout"], {
+            "layout": "strided", "stride": [1, 12], "storage_offset": 1,
+            "is_contiguous": False, "device": "cpu",
+        })
+        value.fill_(99)
+        self.assertEqual(capture.stages["view"]["data"], expected)
+
+    def test_source_layout_preserves_broadcast_zero_strides(self):
+        capture = NemoTdtStageCapture(self.model)
+        capture.record("broadcast", torch.tensor([[2.0]]).expand(2, 3))
+        self.assertEqual(capture.stages["broadcast"]["source_layout"]["stride"], [0, 0])
+        self.assertFalse(capture.stages["broadcast"]["source_layout"]["is_contiguous"])
+        self.assertEqual(capture.stages["broadcast"]["data"], [2.0] * 6)
+
+    def test_opt_in_stft_captures_actual_components_without_replacing_output(self):
+        self.model.preprocessor = StftPairModule()
+        expected, _ = run(self.model)
+        owner = self.model.preprocessor.featurizer
+        with NemoTdtStageCapture(self.model, capture_feature_stft=True) as capture:
+            actual, _ = run(self.model)
+        capture.validate_complete()
+        self.assertTrue(torch.equal(expected, actual))
+        self.assertEqual(capture.stages["feature_stft/input"]["data"], [1.0, 1.0])
+        self.assertEqual(capture.stages["feature_stft/real"]["data"], [1.0, 1.0])
+        self.assertEqual(capture.stages["feature_stft/imag"]["data"], [0.5, 0.5])
+        self.assertEqual(capture.stages["feature_stft/real"]["source_layout"]["stride"], [4, 2])
+        self.assertEqual(capture.feature_stft_contract["output_layout"]["stride"], [2, 1])
+        self.assertEqual(capture.feature_stft_contract["n_fft"], 2)
+        self.assertNotIn("stft", owner.__dict__)
+
+    def test_opt_in_stft_missing_contract_rolls_back_partial_setup(self):
+        with self.assertRaises((AttributeError, TypeError, RuntimeError)):
+            with NemoTdtStageCapture(self.model, capture_feature_stft=True):
+                self.fail("Requested STFT capture must not silently disappear")
+        self.assertFalse(self.model.preprocessor._forward_pre_hooks)
+        self.assertFalse(self.model.encoder._forward_hooks)
+        self.assertNotIn("predict", self.model.decoder.__dict__)
+
+    def test_opt_in_stft_restores_original_override_after_failure(self):
+        self.model.preprocessor = StftPairModule()
+        owner = self.model.preprocessor.featurizer
+        def failure(x):
+            raise RuntimeError("original STFT failure")
+        owner.stft = failure
+        with self.assertRaisesRegex(RuntimeError, "original STFT failure"):
+            with NemoTdtStageCapture(self.model, capture_feature_stft=True):
+                run(self.model)
+        self.assertIs(owner.stft, failure)
+        self.assertFalse(self.model.preprocessor._forward_pre_hooks)
+
+    def test_requested_stft_never_called_is_incomplete(self):
+        self.model.preprocessor = StftPairModule()
+        capture = NemoTdtStageCapture(self.model, capture_feature_stft=True)
+        # Deliberately bypass the featurizer but execute all normal family boundaries.
+        self.model.preprocessor.forward = lambda input_signal, length: (input_signal + 1, length)
+        with capture:
+            run(self.model)
+        with self.assertRaisesRegex(RuntimeError, "Incomplete"):
+            capture.validate_complete()
+
+    def test_stft_returns_same_object_and_retains_strided_input_layout(self):
+        self.model.preprocessor = StftPairModule()
+        owner = self.model.preprocessor.featurizer
+        value = torch.ones(1, 4)[:, ::2]
+        with NemoTdtStageCapture(self.model, capture_feature_stft=True) as capture:
+            output = owner.stft(x=value)
+            self.assertIs(output, owner.last_output)
+            self.assertEqual(capture.stages["feature_stft/input"]["source_layout"]["stride"], [4, 2])
+        output.real.fill_(99)
+        self.assertEqual(capture.stages["feature_stft/real"]["data"], [1.0, 1.0])
+        self.assertNotIn("stft", owner.__dict__)
+
+    def test_stft_rejects_wrong_dtype_nonfinite_or_duplicate_calls(self):
+        for mode in ("input-double", "output-real", "output-nan", "duplicate"):
+            with self.subTest(mode=mode):
+                self.model.preprocessor = StftPairModule()
+                owner = self.model.preprocessor.featurizer
+                if mode == "output-real":
+                    owner.stft = lambda x: x
+                if mode == "output-nan":
+                    owner.stft = lambda x: torch.complex(x * float("nan"), x)
+                original_override = owner.__dict__.get("stft")
+                with self.assertRaises(RuntimeError):
+                    with NemoTdtStageCapture(self.model, capture_feature_stft=True):
+                        owner.stft(torch.ones(1, 2, dtype=torch.float64 if mode == "input-double" else torch.float32))
+                        if mode == "duplicate":
+                            owner.stft(torch.ones(1, 2))
+                self.assertIs(owner.__dict__.get("stft"), original_override)
+                self.assertFalse(self.model.preprocessor._forward_pre_hooks)
 
     def test_methods_restored_on_exception(self):
         def failing_joint(encoder, predictor):

@@ -15,12 +15,22 @@ import numpy as np
 import torch
 
 
+def _source_layout(value: torch.Tensor) -> dict:
+    return {
+        "layout": str(value.layout).removeprefix("torch."),
+        "stride": list(value.stride()), "storage_offset": value.storage_offset(),
+        "is_contiguous": value.is_contiguous(), "device": str(value.device),
+    }
+
+
 class NemoTdtStageCapture:
-    def __init__(self, model: Any, max_calls: int = 4096):
+    def __init__(self, model: Any, max_calls: int = 4096, *, capture_feature_stft: bool = False):
         if max_calls < 1:
             raise ValueError("max_calls must be positive")
         self.model = model
         self.max_calls = max_calls
+        self.capture_feature_stft = capture_feature_stft
+        self.feature_stft_contract: dict = {}
         self.stages: dict[str, dict] = {}
         self.calls: list[dict] = []
         self.counts = {"predictor": 0, "joint": 0, "encoder_projection": 0, "predictor_projection": 0}
@@ -35,11 +45,13 @@ class NemoTdtStageCapture:
             raise RuntimeError("Stage capture requires CPU reference execution (no CUDA graph hooks)")
         if not torch.isfinite(value).all():
             raise RuntimeError(f"Non-finite capture stage: {name}")
+        source_layout = _source_layout(value)
         snapshot = value.detach().contiguous().clone()
         self.stages[name] = {
             "shape": list(snapshot.shape),
             "dtype": str(snapshot.dtype).removeprefix("torch."),
             "data": snapshot.reshape(-1).tolist(),
+            "source_layout": source_layout,
         }
 
     def record_state(self, prefix: str, state: Any) -> None:
@@ -94,6 +106,42 @@ class NemoTdtStageCapture:
         handle = module.register_forward_hook(capture_output)
         self._cleanup.callback(handle.remove)
 
+    def _wrap_feature_stft(self) -> None:
+        owner = self.model.preprocessor.featurizer
+        original = owner.stft
+        signature = inspect.signature(original)
+        had_override = "stft" in owner.__dict__
+        previous_override = owner.__dict__.get("stft")
+
+        def restore():
+            if had_override:
+                owner.stft = previous_override
+            else:
+                delattr(owner, "stft")
+
+        def capture_stft(*args, **kwargs):
+            value = signature.bind(*args, **kwargs).arguments["x"]
+            if not isinstance(value, torch.Tensor) or value.dtype != torch.float32:
+                raise RuntimeError("Feature STFT capture requires actual float32 input")
+            self.record("feature_stft/input", value)
+            self.record("feature_stft/window", owner.window)
+            self.feature_stft_contract = {
+                "n_fft": owner.n_fft, "hop_length": owner.hop_length,
+                "win_length": owner.win_length, "exact_pad": owner.exact_pad,
+                "scope": "Actual NeMo featurizer.stft call; not an internal FFT kernel/plan capture",
+            }
+            output = original(*args, **kwargs)
+            if (not isinstance(output, torch.Tensor) or output.dtype != torch.complex64
+                    or output.device.type != "cpu"):
+                raise RuntimeError("Feature STFT capture requires actual CPU complex64 output")
+            self.feature_stft_contract["output_layout"] = _source_layout(output)
+            self.record("feature_stft/real", output.real)
+            self.record("feature_stft/imag", output.imag)
+            return output
+
+        owner.stft = capture_stft
+        self._cleanup.callback(restore)
+
     def _wrap(self, owner: Any, name: str, kind: str) -> None:
         original = getattr(owner, name)
         signature = inspect.signature(original)
@@ -146,6 +194,8 @@ class NemoTdtStageCapture:
             self._hook_waveform(self.model.preprocessor)
             self._hook(self.model.preprocessor, "features")
             self._hook(self.model.encoder, "encoder")
+            if self.capture_feature_stft:
+                self._wrap_feature_stft()
             self._wrap(self.model.decoder, "predict", "predictor")
             self._wrap(self.model.joint, "project_encoder", "encoder_projection")
             self._wrap(self.model.joint, "project_prednet", "predictor_projection")
@@ -161,5 +211,7 @@ class NemoTdtStageCapture:
 
     def validate_complete(self) -> None:
         required = ("waveform", "waveform_length", "features", "features_length", "encoder", "encoder_length")
+        if self.capture_feature_stft:
+            required += ("feature_stft/input", "feature_stft/window", "feature_stft/real", "feature_stft/imag")
         if any(name not in self.stages for name in required) or any(count == 0 for count in self.counts.values()):
             raise RuntimeError("Incomplete official TDT capture; no numerical reference produced")

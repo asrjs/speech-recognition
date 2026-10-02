@@ -38,6 +38,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cache-dir", type=Path, default=Path(".cache/nemo-reference"))
     parser.add_argument("--stack-timeout", type=int, default=60)
     parser.add_argument("--stage-output", type=Path, help="Optional CPU TDT capture JSON or JSON.gz")
+    parser.add_argument("--capture-feature-stft", action="store_true",
+                        help="With --stage-output, capture actual pre-STFT input/window/complex components and layouts")
     parser.add_argument("--sample-id", default=None)
     parser.add_argument("--model-revision", default=None)
     parser.add_argument("--capture-max-calls", type=int, default=4096)
@@ -151,6 +153,8 @@ def call_transcribe(model: Any, audio_path: Path, args: argparse.Namespace) -> A
 def main() -> None:
     args = parse_args()
     require_new_outputs([args.output, args.stage_output], protected_inputs=[args.audio, args.restore_path])
+    if args.capture_feature_stft and not args.stage_output:
+        raise ValueError("--capture-feature-stft requires --stage-output")
     if args.cpu_threads < 1 or args.stack_timeout < 0:
         raise ValueError("--cpu-threads must be positive; --stack-timeout must be non-negative")
     numba_cache = args.cache_dir.resolve() / "numba"
@@ -185,7 +189,8 @@ def main() -> None:
         decoding_cfg = OmegaConf.create(OmegaConf.to_container(model.cfg.decoding, resolve=True))
         decoding_cfg.tdt_include_token_duration = True
         model.change_decoding_strategy(decoding_cfg, verbose=False)
-        with NemoTdtStageCapture(model, max_calls=args.capture_max_calls) as capture:
+        with NemoTdtStageCapture(model, max_calls=args.capture_max_calls,
+                                 capture_feature_stft=args.capture_feature_stft) as capture:
             results = call_transcribe(model, audio_path, args)
         capture.validate_complete()
         model_input = capture.model_input_contract(int(model.preprocessor._sample_rate))
@@ -226,6 +231,7 @@ def main() -> None:
             "cpu_threads": args.cpu_threads,
             "numba_cache": str(numba_cache),
             "timestamps": bool(args.timestamps),
+            "capture_feature_stft": args.capture_feature_stft,
         },
         "result": {
             "text": getattr(hypothesis, "text", None),
@@ -251,10 +257,16 @@ def main() -> None:
 
         payload["meta"]["audio_sha256"] = sha256_file(audio_path)
         payload["meta"]["weight_sha256"] = sha256_file(args.restore_path) if args.restore_path else None
+        if args.capture_feature_stft:
+            import nemo_tdt_stage_capture
+            payload["meta"]["torch_build_config"] = torch.__config__.show()
+            payload["meta"]["capture_tool_sha256"] = sha256_file(Path(nemo_tdt_stage_capture.__file__))
+            payload["meta"]["inspect_tool_sha256"] = sha256_file(Path(__file__))
         payload["stage_capture"] = {
             "path": str(args.stage_output.resolve()), "stage_count": len(capture.stages),
             "call_counts": capture.counts, "instrumentation_control": capture_control,
             "model_input": model_input,
+            "feature_stft_contract": capture.feature_stft_contract,
             "numerical_export_parity": "UNTESTED", "browser_parity": "UNTESTED",
         }
         stage_payload = {
@@ -264,6 +276,7 @@ def main() -> None:
                 "sample_id": args.sample_id or audio_path.stem,
                 "audio": {"sha256": payload["meta"]["audio_sha256"]},
                 "model_input": model_input,
+                "feature_stft_contract": capture.feature_stft_contract,
                 "tokens": token_ids, "transcript": hypothesis.text,
                 "token_duration": payload["result"]["token_duration"],
                 "token_frames": payload["result"]["timestamp"],
