@@ -1,0 +1,57 @@
+{
+  "status": "DIAGNOSTIC_BIN2_SUBBOUNDARY",
+  "scope": "Single actual windowedframe1027; same Torch complex256outputs, recombination terms and secondary f64 DFT sanity. Not oracle replacement, fullfeature/model parity or portable implementation",
+  "capture_sha256": "07ae6f00dcab69eb3425566af7b5690a85dc2bee91e7510ddf27cca7b4370809",
+  "coordinate": [
+    0,
+    2,
+    1027
+  ],
+  "frame_sha256": "d25846d1b1a3764b4cd67e36ef448b1168920b16b20a7eb21f131a7fabd2d2a7",
+  "packed256_bins": {
+    "2": [
+      -0.2536996603012085,
+      0.5028291940689087
+    ],
+    "254": [
+      -0.49172887206077576,
+      0.24620598554611206
+    ]
+  },
+  "f32_terms": {
+    "er": -0.3727142810821533,
+    "ei": 0.12831160426139832,
+    "oddr": 0.3745175898075104,
+    "oddi": -0.11901460587978363,
+    "wc": 0.99969881772995,
+    "ws": -0.024541229009628296,
+    "tr": 0.37148404121398926,
+    "ti": -0.12816987931728363
+  },
+  "original_real512": [
+    -0.0012302659451961517,
+    0.00014171784278005362
+  ],
+  "f32_single_round": [
+    -0.0012302398681640625,
+    0.00014172494411468506
+  ],
+  "f64_recombination_same_f32_fft": [
+    -0.0012302387040108442,
+    0.00014172159717418253
+  ],
+  "secondary_dft_f64_fsum": [
+    -0.0012302533106599725,
+    0.00014177642249816312
+  ],
+  "absolute_errors": {
+    "f32_single_round": [
+      2.60770320892334e-08,
+      7.101334631443024e-09
+    ],
+    "f64_recombination": [
+      2.7241185307502747e-08,
+      3.754394128918648e-09
+    ]
+  }
+}

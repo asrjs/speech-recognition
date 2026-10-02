@@ -1242,3 +1242,43 @@ bytes without altering original values. Four-thread child-local Torch setup
 keeps this recreation bounded; both successful processes are terminal.
 Next isolate the single divergent feature's complex/power/mel/log/normalization
 dependencies rather than promoting a one-fixture PASS or sweeping FFT modes.
+
+### Single failure localized to bin2/frame1027 (2026-10-02)
+
+Replay of the same actual second STFT reproduces the one feature failure.
+Mel2 has exactly one nonzero filterbank bin, FFT bin2. Original-complex
+downstream control versus Torch-packed256 candidate at frame1027:
+
+- mean and std are identical: `-16.046541213989258`, `1.1639012098312378`;
+- raw log mel: `-16.08138084411621` versus `-16.081398010253906`;
+- power: `1.5336382830355433e-6` versus `1.5335759826484718e-6`;
+- normalized feature: `-0.029933493584394455` versus `-0.029948243871331215`.
+
+Replacing only candidate complex bin2 at frame1027 with the original captured
+complex value removes all feature mismatches (0/519808), while full-prefix
+normalization still uses valid4060 within physical4061. This is a causal oracle
+injection diagnostic, never a production correction or accepted FFT. Raw mel
+here is the injected-spectrum diagnostic output, not a captured NeMo raw stage.
+Receipt `packed256-single-feature-attribution-2026-10-02.json`, SHA-256
+`2a799a3a88db43c99fe0c06713f6f09129e4ca6895367674528107cb20d04bf5`.
+The one-off terminal code copies the candidate spectrum and assigns only that
+coordinate, but the receipt does not save composed probe bytes or explicit
+outside-mask identity assertions. Independent verification from the receipt
+alone is therefore limited; add those guards to the reusable replay tool.
+
+Single-frame subboundary control reveals cancellation: real output combines
+`er=-0.3727142810821533` with `tr=0.37148404121398926` to produce about
+`-0.00123024`. The candidate real error is `2.60770320892334e-8`.
+Using f64 recombination of the *same f32 complex256 outputs* does not repair
+that real error (`2.7241185307502747e-8`); it is not enough to simply switch
+the final recombination to double precision. Secondary f64/`math.fsum` DFT is
+only a mathematical sanity control, not the original implementation oracle.
+Receipt `packed256-bin2-subboundary-2026-10-02.json`, SHA-256
+`88675e921a351b4284df99fd91b2251876565a4ae4e8b2807ffea2853269cfed`.
+Both diagnostic processes exited 0; no original-model rerun, portable FFT,
+production edit, browser acceptance or tolerance change is claimed.
+
+Next: turn this frozen-stage replay into a bounded reusable tool with explicit
+physical/valid length and source/fixture checks, then compare packed256 bins2
+and254 before recombination on this cancellation frame. Do not add a special
+case for the failing model/bin/frame or repeat broad FFT rounding sweeps.
