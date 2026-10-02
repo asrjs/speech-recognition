@@ -1471,3 +1471,49 @@ Next: stop final-add/rounding sweeps. Any new FFT implementation must avoid the
 demonstrated early rounded cancellation or identify the reference plan, then
 pass full JFK and speech/silence features at unchanged thresholds. Keep this
 model gate open while continuing independent whole-product tasks.
+
+### Public native cancellation/reuse and silence controls (2026-10-02)
+
+Extended the existing public-library NeMo inspector with opt-in `--cancel-reuse`,
+not another ASR decoder. It requires an official oracle, aborts only at positive
+unfinished decode progress, requires PipelineAbortedError, then transcribes twice
+with fresh signals through the same public model/session handles. Both repeats
+must match all official token IDs, frames, TDT durations and text. Missing decode
+progress, ignored cancellation, wrong errors or divergent recovery fail closed.
+The existing awaited cleanup still owns releases. The opt-in receipt pins the
+inspector's exact source bytes before/after; it is not a full compiled-build hash.
+
+Fresh source compilation/runtime-asset copy preceded real native CPU runs using
+the existing own packed fp32 graphs and original-weight-bound official PCM.
+Node 26.2.0 and Bun each aborted speech/silence at encoder frame 1/508, then
+matched all 69 tokens/frames/durations and text in both recovered transcriptions.
+Final source-bound receipts (preliminary pre-lint versions remain local only):
+
+- `tools/data/results/orukeet/library-node-native-cancel-reuse-reviewed-2026-10-02.json`
+- `tools/data/results/orukeet/library-bun-native-cancel-reuse-reviewed-2026-10-02.json`
+
+The same public inspector also ran the existing original pure-silence oracle on
+both hosts, without the lifecycle option: empty tokens/frames/durations/text and
+effective captured PCM match. Receipts:
+
+- `tools/data/results/orukeet/library-node-native-pure-silence-reviewed-2026-10-02.json`
+- `tools/data/results/orukeet/library-bun-native-pure-silence-reviewed-2026-10-02.json`
+
+Full receipts stay local. The committed compact checkpoint is
+`tools/data/results/orukeet/native-cancel-silence-handoff-2026-10-02.json`,
+binding all four receipt byte hashes and 11 distinct rechecked provenance files.
+For --cancel-reuse, transcribeMs covers the aborted call plus both repeats;
+it is not a single-transcription latency measurement.
+
+All four runs exit0 and remain PARTIAL_PASS_OUTPUT_ONLY. There are no new weights,
+downloads, production-math edits or tolerance changes. Public handle identity is
+not a measured engine-allocation/memory bound, and these native CPU controls do
+not prove WASM/WebGPU, intermediate-state parity or complete Orukeet acceptance.
+Eight simulated failure/recovery tests plus related inspector/family lifecycle
+and native-bridge regressions pass (67 total). Strict new-test compilation uses
+allowJs with checkJs false for the existing imported mjs harness; syntax, scoped
+lint, formatting and diff checks pass. The JS lint host-global gap was fixed
+locally with explicit Buffer import and globalThis.AbortController, not by
+changing global lint policy. Sibling execution and live browser recurrence are
+still untested for this slice. Next: retain the earlier feature gate and develop
+the candidate-head live recurrent browser control without claiming feature parity.

@@ -17,6 +17,13 @@ Unlike `reference/`, this folder should trend toward:
   - accepts a local model directory and audio fixture
   - writes detailed JSON for parity/debugging
   - useful for transcript, token, timing, and audio-prep investigations
+  - opt-in `--cancel-reuse` requires an official oracle: cancel at an unfinished
+    decode progress event, require `PipelineAbortedError`, then compare two
+    fresh-signal transcriptions on the same public model/session handles
+  - use `--input-mode oracle-pcm` to isolate model lifecycle on exact captured
+    PCM; Node/Bun native CPU and WASM are separate runs, not interchangeable
+  - receipts label output-only acceptance; this does not certify intermediate
+    features/states, memory stability or browser execution
 - [node-asrjs-parakeet-realtime-parity.mjs](./node-asrjs-parakeet-realtime-parity.mjs)
   - runs the Parakeet realtime RNNT preset through `@asrjs/speech-recognition` in Node/WASM
   - compares the runtime output against `parakeet-realtime-eou-120m-v1-reference.json`

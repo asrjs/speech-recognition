@@ -2,9 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { performance } from 'node:perf_hooks';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { compareTokenIds } from './node-compare-stage-captures.mjs';
 
 import {
@@ -13,6 +14,7 @@ import {
   createWasmBackend,
   createNativeCpuBackend,
   loadSpeechModel,
+  PipelineAbortedError,
 } from '@asrjs/speech-recognition';
 import { createDefaultNodeAssetProvider } from '@asrjs/speech-recognition/io/node';
 import { createNemoTdtModelFamily } from '@asrjs/speech-recognition/models/nemo-tdt';
@@ -58,6 +60,7 @@ export function parseArgs(args = process.argv.slice(2)) {
     sampleId: null,
     originalWeights: null,
     inputMode: 'source-wav',
+    cancelReuse: false,
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -67,6 +70,7 @@ export function parseArgs(args = process.argv.slice(2)) {
     else if (arg === '--config') options.config = path.resolve(args[++index]);
     else if (arg === '--backend') options.backend = args[++index];
     else if (arg === '--no-grid-batching') options.gridBatching = false;
+    else if (arg === '--cancel-reuse') options.cancelReuse = true;
     else if (arg === '--model-dir') options.modelDir = path.resolve(args[++index]);
     else if (arg === '--audio') options.audio = path.resolve(args[++index]);
     else if (arg === '--target-sample-rate') options.targetSampleRate = Number(args[++index]);
@@ -105,6 +109,8 @@ export function validateInspectorOptions(options) {
     throw new Error(
       '--oracle requires --sample-id and --original-weights to bind the official reference.',
     );
+  if (options.cancelReuse && !options.oracle)
+    throw new Error('--cancel-reuse requires an official --oracle.');
   if (!['source-wav', 'oracle-pcm'].includes(options.inputMode))
     throw new Error('--input-mode must be source-wav or oracle-pcm.');
   if (options.inputMode === 'oracle-pcm' && !options.oracle)
@@ -361,6 +367,80 @@ export function compareNemoTdtOutput(reference, payload, sampleId) {
   };
 }
 
+/** Scheduling assertions are not numerical feature/state or browser acceptance. */
+export async function runInspectorCancelReuse(loaded, input, options, reference, sampleId) {
+  const model = loaded.model;
+  const session = loaded.session;
+  const controller = new globalThis.AbortController();
+  let abortedAt = null;
+  let abortedError = null;
+  try {
+    await loaded.transcribe(input, {
+      ...options,
+      windowing: 'disabled',
+      signal: controller.signal,
+      onProgress(event) {
+        options.onProgress?.(event);
+        if (
+          event.stage === 'decode' &&
+          !abortedAt &&
+          Number.isSafeInteger(event.completedUnits) &&
+          event.completedUnits > 0 &&
+          Number.isSafeInteger(event.totalUnits) &&
+          event.completedUnits < event.totalUnits
+        ) {
+          abortedAt = {
+            stage: event.stage,
+            completedUnits: event.completedUnits,
+            totalUnits: event.totalUnits,
+          };
+          controller.abort();
+        }
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof PipelineAbortedError)) throw error;
+    abortedError = { name: error.name, message: error.message };
+  }
+  if (!abortedAt || !abortedError)
+    throw new Error('Requested mid-decode cancellation was not observed and rejected.');
+  const comparisons = [];
+  let result;
+  for (let repeat = 0; repeat < 2; repeat++) {
+    result = await loaded.transcribe(input, {
+      ...options,
+      windowing: 'disabled',
+      signal: new globalThis.AbortController().signal,
+    });
+    const comparison = compareNemoTdtOutput(
+      reference,
+      {
+        output: { text: result.canonical.text ?? result.native?.utteranceText ?? '' },
+        native: result.native,
+      },
+      sampleId,
+    );
+    if (!comparison.pass)
+      throw new Error(
+        'Post-cancellation output differs from the oracle: ' + comparison.firstDivergentField,
+      );
+    comparisons.push(comparison);
+  }
+  if (loaded.model !== model || loaded.session !== session)
+    throw new Error('Public model/session handle changed during cancellation reuse.');
+  return {
+    result,
+    lifecycle: {
+      scope: 'MID_DECODE_ABORT_AND_TWO_ORACLE_OUTPUT_REPEATS',
+      abortedAt,
+      abortedError,
+      publicHandleIdentityUnchanged: true,
+      comparisons,
+      limitations: 'Output/lifecycle only; no intermediate-state, memory or browser acceptance',
+    },
+  };
+}
+
 export function validateOracleAudioPreparation(sourceAudio, targetSampleRate) {
   if (sourceAudio.sampleRate !== targetSampleRate || sourceAudio.numberOfChannels !== 1) {
     throw new Error(
@@ -539,6 +619,7 @@ async function main() {
     config: options.config,
     originalWeights: options.originalWeights,
     oracle: options.oracle,
+    ...(options.cancelReuse ? { inspectorTool: fileURLToPath(import.meta.url) } : {}),
   };
   const provenance = {};
   for (const [key, file] of Object.entries(inputs)) {
@@ -629,7 +710,7 @@ async function main() {
       const publicInput = describeModelInputPcm(pcmInput.channels[0], pcmInput.sampleRate);
       if (publicInput.sha256 !== preparedAudio.modelInput.sha256)
         throw new Error('INPUT_CONTRACT_MISMATCH: public PCM container changed effective samples.');
-      const result = await loaded.transcribe(pcmInput, {
+      const transcriptionOptions = {
         detail: 'detailed',
         responseFlavor: 'canonical+native',
         returnTokenIds: true,
@@ -637,7 +718,17 @@ async function main() {
         returnLogProbs: true,
         returnTdtSteps: true,
         gridBatching: options.gridBatching,
-      });
+      };
+      const reuse = options.cancelReuse
+        ? await runInspectorCancelReuse(
+            loaded,
+            pcmInput,
+            transcriptionOptions,
+            oracle.sample,
+            options.sampleId,
+          )
+        : null;
+      const result = reuse?.result ?? (await loaded.transcribe(pcmInput, transcriptionOptions));
       const transcribeMs = performance.now() - transcribeStart;
 
       const text = result.canonical.text ?? result.native?.utteranceText ?? '';
@@ -710,6 +801,7 @@ async function main() {
         canonical: result.canonical,
         native: result.native,
         waveformComparison: preparedAudio.waveformComparison,
+        ...(reuse ? { lifecycle: reuse.lifecycle } : {}),
       };
       payload.oracleComparison = oracle
         ? compareNemoTdtOutput(oracle.sample, payload, options.sampleId)
@@ -733,6 +825,11 @@ async function main() {
     },
   );
 
+  if (
+    options.cancelReuse &&
+    (await describeLocalArtifact(inputs.inspectorTool)).sha256 !== provenance.inspectorTool.sha256
+  )
+    throw new Error('Inspector source changed during cancellation/reuse; receipt rejected.');
   const encoded = JSON.stringify(payload, null, 2);
   if (options.output) {
     fs.mkdirSync(path.dirname(options.output), { recursive: true });

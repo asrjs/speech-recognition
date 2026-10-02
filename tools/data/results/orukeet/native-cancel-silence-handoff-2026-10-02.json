@@ -1,0 +1,64 @@
+{
+  "status": "PARTIAL_PASS_OUTPUT_AND_LIFECYCLE_ONLY",
+  "model_id": "oruk/orukeet",
+  "engine": "onnxruntime-node",
+  "provider": "cpu",
+  "precision": "fp32",
+  "hosts": { "node": "26.2.0", "bun": "1.3.14" },
+  "inspector_sha256": "e321c17227509c1f512dff24712df35ce11208f25df16e66e06c4d214605890a",
+  "original_weights_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56",
+  "distinct_provenance_files_verified_against_disk": 11,
+  "cancel_reuse": {
+    "sample_id": "speech-silence",
+    "aborted_decode_units": 1,
+    "total_decode_units": 508,
+    "required_error": "PipelineAbortedError",
+    "recovered_transcriptions_per_host": 2,
+    "exact_token_frame_duration_counts_per_transcription": 69,
+    "exact_oracle_text": true,
+    "same_public_model_session_handles": true
+  },
+  "pure_silence": {
+    "sample_id": "pure-silence-1s-16k",
+    "exact_tokens_frames_durations": [],
+    "exact_text": "",
+    "effective_official_pcm_match": true
+  },
+  "local_receipts": [
+    {
+      "path": "tools/data/results/orukeet/library-node-native-cancel-reuse-reviewed-2026-10-02.json",
+      "sha256": "67ae4d9423257a4256a1bb179397c51edd521c16d6739619a97675e647fcb402",
+      "exit_code": 0
+    },
+    {
+      "path": "tools/data/results/orukeet/library-bun-native-cancel-reuse-reviewed-2026-10-02.json",
+      "sha256": "c3a36ebe6387089316e5b408088e4a354ec854eb7e9b379539dc64efb4080c19",
+      "exit_code": 0
+    },
+    {
+      "path": "tools/data/results/orukeet/library-node-native-pure-silence-reviewed-2026-10-02.json",
+      "sha256": "a0d0f522f603a9c8b815fee4217da27a77c89ff4104a74825b731f359f9169c4",
+      "exit_code": 0
+    },
+    {
+      "path": "tools/data/results/orukeet/library-bun-native-pure-silence-reviewed-2026-10-02.json",
+      "sha256": "ef66bbafc588351cbfb4b6307d8691cc319e415dc5bc2f950f7e4faa0e832154",
+      "exit_code": 0
+    }
+  ],
+  "validation": {
+    "focused_tests_passed": 67,
+    "independent_review": "APPROVE",
+    "source_compilation": "PASS",
+    "new_test_strict_compilation": "PASS_WITH_ALLOW_JS_CHECK_JS_FALSE",
+    "syntax_lint_format_diff": "PASS"
+  },
+  "limits": [
+    "Full local receipts are retained outside Git; hashes identify their actual disk bytes.",
+    "Fresh source build preceded runs, but a full compiled-build hash is not recorded.",
+    "Handle identity is not engine-allocation or bounded-memory evidence.",
+    "No feature, intermediate-state, WASM, WebGPU, sibling or overall model acceptance.",
+    "Preliminary cancellation receipts bind older inspector bytes and are not accepted checkpoints."
+  ],
+  "next": "Keep production feature parity open; develop candidate-head live recurrent browser control separately."
+}
