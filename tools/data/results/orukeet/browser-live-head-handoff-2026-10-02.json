@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "status": "LIVE_HEAD_NUMERICAL_PASS",
+  "scope": "CONDITIONAL_FROZEN_ENCODER_LIBRARY_RECURRENCE",
+  "browser_version": "154.0.8037.93",
+  "observed_calls_total": 480,
+  "same_handle_repeats_per_backend": 2,
+  "atol": 0.00001,
+  "rtol": 0.0001,
+  "numerical_mismatches": 0,
+  "exact_frozen_frame_target_lengths_and_decisions": true,
+  "observation_output_and_final_cache_bitwise_unchanged": true,
+  "observer_removed_before_second_run": true,
+  "state_boundary": "PROSPECTIVE_CALL_OUTPUTS_NOT_ALL_COMMITTED",
+  "final_state_boundary": "LIBRARY_COMMITTED_PREDICTOR_BEFORE_LAST_EMITTED_TOKEN_OR_PRE_SOS_ZERO",
+  "browser_cleanup_errors": 0,
+  "post_run_inputs_and_pins_rehashed": true,
+  "controls": [
+    {
+      "backend": "wasm",
+      "sample": "jfk",
+      "receipt": "tools/data/results/orukeet/browser-live-head-wasm-jfk-2026-10-02.json",
+      "receipt_bytes": 26309393,
+      "receipt_sha256": "b96a866cc32025ad33f22b8fb9337bf002cd4aa482c897b0b6ad60ed69b3245e",
+      "observed_calls": 46,
+      "tokens_per_repeat": 38,
+      "max_output_h_abs_error": 0.000006139278411865234,
+      "max_output_c_abs_error": 0.0000171661376953125,
+      "max_normalized_scores_abs_error": 0.00005340576171875,
+      "gpu_dispatches_per_repeat": [
+        0,
+        0
+      ],
+      "served_artifacts_exact": 245,
+      "pinned_files_rehashed": 396,
+      "tool_sha256": "3b8605bc03cf7d3f706f80b066323969cede2392d6c329fda0c507d2a4355ba4",
+      "browser_module_sha256": "40d5b78ba95281470aac6240e9dbbcfe6348bc806d4d2d5d2f4a0e080e74c38c"
+    },
+    {
+      "backend": "wasm",
+      "sample": "pure-silence",
+      "receipt": "tools/data/results/orukeet/browser-live-head-wasm-pure-silence-2026-10-02.json",
+      "receipt_bytes": 6550225,
+      "receipt_sha256": "f45f1fba9ea097aed5fb518bb2b4af4056782433ae1fc4f737485cdb3e89d13a",
+      "observed_calls": 12,
+      "tokens_per_repeat": 0,
+      "max_output_h_abs_error": 3.8743019104003906e-7,
+      "max_output_c_abs_error": 4.6193599700927734e-7,
+      "max_normalized_scores_abs_error": 0.000030517578125,
+      "gpu_dispatches_per_repeat": [
+        0,
+        0
+      ],
+      "served_artifacts_exact": 245,
+      "pinned_files_rehashed": 396,
+      "tool_sha256": "3b8605bc03cf7d3f706f80b066323969cede2392d6c329fda0c507d2a4355ba4",
+      "browser_module_sha256": "40d5b78ba95281470aac6240e9dbbcfe6348bc806d4d2d5d2f4a0e080e74c38c"
+    },
+    {
+      "backend": "wasm",
+      "sample": "speech-silence",
+      "receipt": "tools/data/results/orukeet/browser-live-head-wasm-speech-silence-2026-10-02.json",
+      "receipt_bytes": 103295101,
+      "receipt_sha256": "99ffad41f1680d3286497a1460bce132fb3a389fdc357d1187a80d1edfd60985",
+      "observed_calls": 182,
+      "tokens_per_repeat": 69,
+      "max_output_h_abs_error": 0.000007830560207366943,
+      "max_output_c_abs_error": 0.000023365020751953125,
+      "max_normalized_scores_abs_error": 0.0000457763671875,
+      "gpu_dispatches_per_repeat": [
+        0,
+        0
+      ],
+      "served_artifacts_exact": 245,
+      "pinned_files_rehashed": 396,
+      "tool_sha256": "3b8605bc03cf7d3f706f80b066323969cede2392d6c329fda0c507d2a4355ba4",
+      "browser_module_sha256": "40d5b78ba95281470aac6240e9dbbcfe6348bc806d4d2d5d2f4a0e080e74c38c"
+    },
+    {
+      "backend": "webgpu",
+      "sample": "jfk",
+      "receipt": "tools/data/results/orukeet/browser-live-head-webgpu-jfk-2026-10-02.json",
+      "receipt_bytes": 26326970,
+      "receipt_sha256": "479f59bee901d66f7558a276995a37dd70fa6f6bb34c5a13baf62add44645525",
+      "observed_calls": 46,
+      "tokens_per_repeat": 38,
+      "max_output_h_abs_error": 0.0000064820051193237305,
+      "max_output_c_abs_error": 0.0000209808349609375,
+      "max_normalized_scores_abs_error": 0.00009918212890625,
+      "gpu_dispatches_per_repeat": [
+        2162,
+        2162
+      ],
+      "served_artifacts_exact": 245,
+      "pinned_files_rehashed": 396,
+      "tool_sha256": "3b8605bc03cf7d3f706f80b066323969cede2392d6c329fda0c507d2a4355ba4",
+      "browser_module_sha256": "40d5b78ba95281470aac6240e9dbbcfe6348bc806d4d2d5d2f4a0e080e74c38c"
+    },
+    {
+      "backend": "webgpu",
+      "sample": "pure-silence",
+      "receipt": "tools/data/results/orukeet/browser-live-head-webgpu-pure-silence-2026-10-02.json",
+      "receipt_bytes": 6549835,
+      "receipt_sha256": "376ad53c314abc49783edc1a01c1044ffaeaa2f77285b809c1cd81379b1f521c",
+      "observed_calls": 12,
+      "tokens_per_repeat": 0,
+      "max_output_h_abs_error": 1.1920928955078125e-7,
+      "max_output_c_abs_error": 4.172325134277344e-7,
+      "max_normalized_scores_abs_error": 0.00005340576171875,
+      "gpu_dispatches_per_repeat": [
+        564,
+        564
+      ],
+      "served_artifacts_exact": 245,
+      "pinned_files_rehashed": 396,
+      "tool_sha256": "3b8605bc03cf7d3f706f80b066323969cede2392d6c329fda0c507d2a4355ba4",
+      "browser_module_sha256": "40d5b78ba95281470aac6240e9dbbcfe6348bc806d4d2d5d2f4a0e080e74c38c"
+    },
+    {
+      "backend": "webgpu",
+      "sample": "speech-silence",
+      "receipt": "tools/data/results/orukeet/browser-live-head-webgpu-speech-silence-2026-10-02.json",
+      "receipt_bytes": 103367752,
+      "receipt_sha256": "852fd8e0bf6c7b41920ef944aaf7b68f78dcd483bd43f53becfcf384b9ba53e7",
+      "observed_calls": 182,
+      "tokens_per_repeat": 69,
+      "max_output_h_abs_error": 0.0000061318278312683105,
+      "max_output_c_abs_error": 0.00002574920654296875,
+      "max_normalized_scores_abs_error": 0.0000762939453125,
+      "gpu_dispatches_per_repeat": [
+        8554,
+        8554
+      ],
+      "served_artifacts_exact": 245,
+      "pinned_files_rehashed": 396,
+      "tool_sha256": "3b8605bc03cf7d3f706f80b066323969cede2392d6c329fda0c507d2a4355ba4",
+      "browser_module_sha256": "40d5b78ba95281470aac6240e9dbbcfe6348bc806d4d2d5d2f4a0e080e74c38c"
+    }
+  ],
+  "tests": {
+    "python_family_pass": 60,
+    "observer_node_pass": 4,
+    "typescript_build": "PASS",
+    "scoped_eslint": "PASS",
+    "browser_root_import_guard": "PASS"
+  },
+  "features": "EXECUTED_NOT_ACCEPTED",
+  "real_encoder": "BYPASSED_FROZEN_ORACLE",
+  "full_asr": "NOT_PROVEN",
+  "performance_memory": "UNTESTED_NOT_INFERRED_FROM_TRACE_TIMINGS",
+  "next": "Retain production feature and real encoder gates. Balance a bounded source-backed feature experiment with implicit owned-runtime cleanup coverage; do not promote candidate."
+}

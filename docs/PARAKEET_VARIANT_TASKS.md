@@ -1640,3 +1640,31 @@ families. TLS-disable inheritance was removed only in the rerun child process.
 These are lifecycle simulations, not fresh real engine or sibling application
 acceptance. The implicit owned-runtime branch remains untested by the new cases.
 Receipt: `tools/data/results/harness/streaming-owner-cleanup-handoff-2026-10-02.json`.
+
+### Conditional live head tensor matrix (2026-10-02)
+
+The actual public-library decoder now has opt-in bounded session observation,
+not another decoder or a production hook. Pure silence (12 calls), JFK (46)
+and speech/silence (182) pass on both actual Chrome WASM and WebGPU: 480 live
+calls in total. Every ordered call matches the official binding, exact frozen
+frame/target/length and token/duration decision, and numerical incoming h/c,
+prospective outgoing h/c and normalized scores at unchanged atol=1e-5,
+rtol=1e-4, with zero tolerance mismatches. Blank-call prospective state is
+separate from committed cache. Each observer is removed before run two; token,
+frame, duration, text and final cache remain bitwise unchanged. No source
+model mathematics, precision, download or sibling application edits occurred.
+
+Seven comparator guard tests and four observer tests cover malformed/missing/
+extra observations, exact storage, output changes, limits, restoration and
+concurrency. All 60 family Python tests, scoped JS lint, TypeScript build and
+browser-root import guard pass. Full raw tensors stay local; compact evidence:
+`tools/data/results/orukeet/browser-live-head-handoff-2026-10-02.json`.
+
+This closes intermediate live-head coverage only for these frozen-encoder
+controls. The production feature divergence, real encoder, stateful
+continuation, grid execution, fp16, performance/memory and companion app gates
+remain open; the candidate is not promoted and full ASR is NOT_PROVEN.
+Next model step: return to the earliest production feature divergence using
+one source-backed discriminating experiment, not downstream head changes or
+another speculative FFT rewrite. Balance with the explicit whole-product
+implicit-owned-runtime cleanup coverage gap before further model-only work.

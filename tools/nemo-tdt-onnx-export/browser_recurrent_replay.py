@@ -17,6 +17,7 @@ import onnx
 
 from browser_head_replay import ROOT, Handler, ThreadingHTTPServer, make_fixture, validate_candidate, resolve_route
 from export_nemo_fp32 import sha256
+from live_head_parity import compare_live_head
 from frozen_encoder_replay import make_graph, verify_delivery, SCOPE
 from validate_stage_replay import read_json, stage
 from tensor_parity import compare_tensors
@@ -116,6 +117,7 @@ def main():
                  "frozen-dir", "candidate-dir", "runtime-config", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--backend", choices=("wasm", "webgpu"), required=True)
+    parser.add_argument("--trace-head", action="store_true")
     parser.add_argument("--timeout-ms", type=int, default=180000)
     args = parser.parse_args()
     if args.timeout_ms < 1000 or args.output.exists():
@@ -156,12 +158,17 @@ def main():
     if sha256(tokenizer) != token_binding["sha256"]:
         raise ValueError("Tokenizer identity differs")
     fixture = {**pcm_fixture(sample, runtime_config["sampleRate"]), "modelId": identity["model"], "config": runtime_config}
+    if args.trace_head and not 0 < len(head["steps"]) <= 2000:
+        raise ValueError("Live head trace requires 1..2000 official calls")
+    fixture.update(traceHead=args.trace_head, maxTraceCalls=len(head["steps"]))
     expected = {**fixture, "tokenIds": sample["tokens"], "frameIndices": sample["token_frames"],
                 "tdtSteps": sample["token_duration"], "text": sample["transcript"], "decoderState": final_state_fixture(sample, head, cfg)}
     module = Path(__file__).with_suffix(".mjs")
     routes = {"/recurrent.mjs": module, "/frozen-encoder.onnx": frozen_graph, "/vocab.txt": tokenizer,
+              "/observe-session.mjs": Path(__file__).with_name("observe_session.mjs"),
               "/vendor/pako.esm.mjs": ROOT / "node_modules/pako/dist/pako.esm.mjs"}
     bound_paths = {*routes.values(), graph, source_graph, config, Path(__file__),
+                   Path(__file__).with_name("live_head_parity.py"),
                    args.artifact_dir / "repack-receipt.json", args.frozen_dir / "frozen-boundary-receipt.json",
                    args.candidate_dir / "transformation-receipt.json",
                    *[Path(__file__).with_name(name) for name in (
@@ -212,6 +219,10 @@ def main():
                 finally:
                     browser.close()
             good = evaluate_result(receipt["result"], expected, args.backend)
+            if args.trace_head:
+                receipt["live_head"] = compare_live_head(receipt["result"], head)
+                receipt["intermediate_states_logits"] = receipt["live_head"]["status"]
+                good = good and receipt["live_head"]["allclose"]
             receipt["status"] = "CONDITIONAL_RECURRENCE_PASS" if good and not receipt["browser_errors"] else "CONDITIONAL_RECURRENCE_FAIL"
         except Exception as error:
             receipt["status"], receipt["error"] = "BROWSER_RECURRENCE_FAILED", str(error)
@@ -230,7 +241,7 @@ def main():
                 receipt["served_artifacts"].append({"route": event["path"], "path": str(path), "sha256": digest, "delivered_exact": bool(exact)})
                 if not exact:
                     receipt["status"] = "BROWSER_DELIVERY_FAILED"
-            required = {"/recurrent.mjs", "/graph.onnx", "/frozen-encoder.onnx", "/vocab.txt"}
+            required = {"/recurrent.mjs", "/observe-session.mjs", "/graph.onnx", "/frozen-encoder.onnx", "/vocab.txt"}
             if receipt["status"] == "CONDITIONAL_RECURRENCE_PASS" and not required.issubset({item["route"] for item in receipt["served_artifacts"] if item["delivered_exact"]}):
                 receipt["status"] = "REQUIRED_ARTIFACT_NOT_DELIVERED"
             for path, digest in pinned.items():

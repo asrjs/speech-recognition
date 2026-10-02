@@ -287,3 +287,27 @@ JS feature extraction executes but its results are ignored by the frozen graph.
 acceptance. Keep the earlier feature failures and full-model gates open. Eight
 synthetic tests validate receipt/PCM/selection/route guards; actual Chrome runs
 are separate numerical evidence, not a consequence of those tests passing.
+
+### Opt-in live head tensor observation
+
+Add `--trace-head` to the recurrence command above to compare every real
+library decoder call with the ordered official head bindings. The first run
+observes the actual ORT `InferenceSession.run`; the second run has the original
+method restored. The observer forwards the original call and result, copies
+existing CPU tensor views, performs no GPU readback and contains no decoder.
+Requested traces must contain exactly 1..2000 expected calls, not a truncated
+prefix. Missing/extra calls, malformed tensors, restoration failure and changed
+unobserved repeat outputs fail closed.
+
+Frozen encoder frames, targets, input/output lengths and decisions must match
+exactly. Incoming and prospective outgoing h/c and normalized scores use the
+unchanged `atol=1e-5, rtol=1e-4`. Prospective blank-call output state is not
+necessarily committed by the library. Final committed cache retains the
+separate boundary described above. Traced/unobserved outputs and final cache
+must be bitwise unchanged. Per-call numerical metrics and official bindings
+are retained in the local receipt; they are not a performance measurement.
+
+`LIVE_HEAD_NUMERICAL_PASS` remains conditional on the frozen encoder. Production
+feature extraction, real encoder, stateful continuation, grid execution and
+full-model acceptance still require their own evidence. Do not promote the
+candidate or claim a complete Orukeet port from this diagnostic control.

@@ -8,6 +8,7 @@ import {
 } from '/dist/index.js';
 import { createNemoTdtModelFamily } from '/dist/models/nemo-tdt/index.js';
 import { initOrt } from '/dist/models/nemo-tdt/ort.js';
+import { observeSessionRuns } from '/observe-session.mjs';
 
 globalThis.replayLibraryRecurrence = async (fixture, backend) => {
   if (!['wasm', 'webgpu'].includes(backend)) throw new Error('Explicit browser backend required');
@@ -23,7 +24,7 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
     crossOriginIsolated: globalThis.crossOriginIsolated,
   };
   const originals = [];
-  let runtime, loaded;
+  let runtime, loaded, observer;
   try {
     if (backend === 'webgpu') {
       const adapter = await navigator.gpu?.requestAdapter({ powerPreference: 'high-performance' });
@@ -47,9 +48,11 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
         };
       }
     }
-    receipt.ortVersions = (
-      await initOrt(backend, { wasmPaths: `${location.origin}/ort-dist/`, cpuThreads: 1 })
-    ).env.versions;
+    const ort = await initOrt(backend, {
+      wasmPaths: `${location.origin}/ort-dist/`,
+      cpuThreads: 1,
+    });
+    receipt.ortVersions = ort.env.versions;
     runtime = createSpeechRuntime();
     runtime.registerBackend(createWasmBackend());
     if (backend === 'webgpu') runtime.registerBackend(createWebGpuBackend());
@@ -97,19 +100,40 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
     for (let repeat = 0; repeat < 2; repeat++) {
       const before = receipt.gpuDispatches,
         start = performance.now();
-      const result = await loaded.transcribe(pcm, {
-        detail: 'detailed',
-        responseFlavor: 'canonical+native',
-        returnTokenIds: true,
-        returnFrameIndices: true,
-        returnTdtSteps: true,
-        returnDecoderState: true,
-        gridBatching: false,
-        disableWindowing: true,
-      });
+      const traceEnabled = fixture.traceHead === true && repeat === 0;
+      if (traceEnabled)
+        observer = observeSessionRuns(
+          ort.InferenceSession,
+          ['encoder_outputs', 'targets', 'target_length', 'input_states_1', 'input_states_2'],
+          ['outputs', 'output_states_1', 'output_states_2', 'prednet_lengths'],
+          fixture.maxTraceCalls,
+        );
+      let result,
+        headCalls = [];
+      try {
+        result = await loaded.transcribe(pcm, {
+          detail: 'detailed',
+          responseFlavor: 'canonical+native',
+          returnTokenIds: true,
+          returnFrameIndices: true,
+          returnTdtSteps: true,
+          returnDecoderState: true,
+          gridBatching: false,
+          disableWindowing: true,
+        });
+      } finally {
+        if (observer) {
+          observer.restore();
+          headCalls = observer.calls;
+          observer = undefined;
+        }
+      }
       const state = result.native?.decoderState;
       receipt.runs.push({
         repeat,
+        traceEnabled,
+        headCalls,
+        observerRestored: !observer,
         transcribeMs: performance.now() - start,
         gpuDispatches: receipt.gpuDispatches - before,
         text: result.canonical.text,
@@ -127,6 +151,11 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
   } catch (error) {
     receipt.error = String(error?.stack ?? error);
   } finally {
+    try {
+      observer?.restore();
+    } catch (error) {
+      receipt.cleanupErrors.push(String(error));
+    }
     try {
       await loaded?.dispose();
     } catch (error) {
