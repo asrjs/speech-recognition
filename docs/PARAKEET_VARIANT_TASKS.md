@@ -14,6 +14,22 @@ Orukeet retains 627M parameters; it is not a small student model.
 
 ## Current checkpoint
 
+Real browser encoder component (2026-10-03): the new family-owned
+`tools/nemo-tdt-onnx-export/browser_encoder_replay.py` loads the actual packed
+fp32 encoder plus 2,475,088,896-byte external data through the library session
+bridge on Chrome 154 / NVIDIA Blackwell WebGPU. Official captured features
+feed two runs on one real session, not a constant-output graph. JFK max error
+`1.005828e-6` and speech/silence `4.611909e-6`; zero mismatches at unchanged
+`atol=1e-5, rtol=1e-4`, exact encoded lengths, 1,347 dispatches per call.
+Both graph and data HTTP bodies match pinned SHA-256 and byte counts; sources
+unchanged, no blocked requests/page errors/cleanup errors, owned server stopped.
+Receipts: `browser-real-encoder-jfk-2026-10-03.json` and
+`browser-real-encoder-speech-silence-2026-10-03.json` in the Orukeet results.
+This is official-feature encoder component acceptance, not production-feature
+browser acceptance, every-node GPU placement or complete ASR. Feature gates
+remain failed. Next pair the same browser encoder control with actual JS
+features as a separate sensitivity diagnostic; preserve official-feature control.
+
 Production-feature sensitivity (2026-10-03): the new family-owned
 `probe_feature_encoder_sensitivity.py` runs the unchanged built JS processor
 on exact captured PCM and feeds its actual features through the own packed

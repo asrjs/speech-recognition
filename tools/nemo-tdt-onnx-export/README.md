@@ -1,5 +1,18 @@
 # Official NeMo TDT fp32 export
 
+`browser_encoder_replay.py --help` provides a real packed fp32 encoder
+component control through the built library ORT bridge, with explicit
+`--backend webgpu|wasm`, pinned capture/graph/data hashes and a fresh receipt.
+It reuses the family head replay's bounded local streaming HTTP server instead
+of buffering multi-GB external data in a companion bundle server. Only official
+captured features are fed to two encoder calls; no second ASR decoder or frozen
+constant-output graph is used. Full numerical outputs and exact lengths gate
+PASS, together with GPU dispatch observation (WebGPU), actual graph/data body
+hashes, cleanup and unchanged sources. This does not prove production feature,
+full ASR, performance/VRAM, public loader or every-node GPU placement acceptance.
+Seven synthetic/preflight checks are in `test_browser_encoder_replay.py`; they
+are distinct from the real Chrome receipts tracked in the task checkpoint.
+
 Family-owned tooling for offline TDT encoder + combined predictor/joint graphs.
 The source model supplies dimensions, vocabulary and export preparation; no
 Orukeet/Parakeet-specific size or weight path is hardcoded in the exporter.
