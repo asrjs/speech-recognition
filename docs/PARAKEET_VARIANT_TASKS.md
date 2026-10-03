@@ -1668,3 +1668,23 @@ Next model step: return to the earliest production feature divergence using
 one source-backed discriminating experiment, not downstream head changes or
 another speculative FFT rewrite. Balance with the explicit whole-product
 implicit-owned-runtime cleanup coverage gap before further model-only work.
+
+### Implicit runtime streaming-owner control (2026-10-03)
+
+Closed the simulated ownership coverage gap without changing production code.
+Two public built-in loads omit `runtime`, then attach controlled transcribers
+to the existing weight-free TDT scaffold. The ownership route must drain both
+transcribers before calling the actual owned runtime/model cleanup, await a
+delayed model release even after transcriber failure, preserve single or
+combined errors, and memoize repeated handle disposal. Spies forward original
+cleanup; the test seam does not advertise scaffold streaming capability.
+
+Both new cases, all 24 targeted tests, strict test types and scoped lint pass.
+Full clean-child suite: 1,353 PASS / 33 SKIP / 0 FAIL; browser-root guard passes.
+The initial test edit failed strict typing by directly calling an optional
+method; it was reverted and re-added using the existing capability guard.
+No API, model math, package dependency, precision or sibling app change occurs.
+These are lifecycle simulations, not native/WebGPU streaming acceptance.
+Receipt: `tools/data/results/harness/implicit-runtime-streaming-cleanup-handoff-2026-10-03.json`.
+Next: the earliest Orukeet production feature divergence, with existing source
+captures and one discriminating experiment; retain all full-model gates.

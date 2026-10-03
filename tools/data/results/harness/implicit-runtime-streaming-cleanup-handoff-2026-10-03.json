@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "status": "SIMULATED_OWNERSHIP_PASS",
+  "scope": "PUBLIC_BUILTIN_HANDLE_IMPLICIT_RUNTIME_STREAMING_CLEANUP",
+  "production_code_changed": false,
+  "new_cases": 2,
+  "targeted_tests_pass": 24,
+  "strict_test_types": "PASS",
+  "scoped_eslint": "PASS",
+  "browser_root_import_guard": "PASS",
+  "full_suite": {
+    "receipt": "tools/data/results/harness/implicit-runtime-streaming-cleanup-full-suite-2026-10-03.json",
+    "sha256": "3be3b59247fe12c0ee2be1e3175138590da107d4cb947f08153f67abe41d3bf6",
+    "pass": 1353,
+    "skip": 33,
+    "fail": 0
+  },
+  "checks": [
+    "all transcribers settle before owned runtime disposal",
+    "actual runtime/model cleanup awaited after transcriber failure",
+    "single error identity and ordered combined errors preserved",
+    "repeated handle disposal retains settled outcome and single cleanup",
+    "closed handle rejects new streaming resource creation"
+  ],
+  "fixture": "weight-free scaffold with controlled streaming resources; no capability promotion",
+  "actual_model_streaming": "UNTESTED",
+  "native_webgpu_acceptance": "NOT_PROVEN",
+  "companion_apps": "NOT_RERUN_NO_PUBLIC_OR_PRODUCTION_CHANGE"
+}

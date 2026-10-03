@@ -39,6 +39,91 @@ function streaming(dispose: () => Promise<void>): StreamingTranscriber {
 }
 
 describe('streaming owner failure cleanup', () => {
+  it.each([false, true])(
+    'implicit runtime drains transcribers before owned runtime/model (model fails: %s)',
+    async (modelFails) => {
+      const handle = await loadBuiltInSpeechModel({
+        family: 'nemo-tdt',
+        modelId: 'nemo-fastconformer-tdt-scaffold',
+        backend: 'wasm',
+      });
+      const failure = new Error('transcriber release failed');
+      const modelFailure = new Error('owned model release failed');
+      const secondGate = deferred(),
+        modelGate = deferred();
+      const firstStarted = deferred(),
+        secondStarted = deferred(),
+        modelStarted = deferred();
+      const firstDispose = vi.fn(async () => {
+        firstStarted.resolve();
+        throw failure;
+      });
+      const secondDispose = vi.fn(async () => {
+        secondStarted.resolve();
+        await secondGate.promise;
+      });
+      // Controlled resources test ownership only, not scaffold streaming support.
+      const sources = [streaming(firstDispose), streaming(secondDispose)];
+      const originalCreate = handle.model.createStreamingTranscriber;
+      handle.model.createStreamingTranscriber = async () => sources.shift()!;
+      const originalModelDispose = handle.model.dispose.bind(handle.model);
+      const modelDispose = vi.spyOn(handle.model, 'dispose').mockImplementation(async () => {
+        modelStarted.resolve();
+        await modelGate.promise;
+        await originalModelDispose();
+        if (modelFails) throw modelFailure;
+      });
+      const runtimeDispose = vi.spyOn(handle.runtime, 'dispose');
+      let disposal: Promise<unknown> | undefined;
+      try {
+        const create = handle.createStreamingTranscriber;
+        if (!create) throw new Error('Test handle must expose streaming factory');
+        await create.call(handle);
+        await create.call(handle);
+        let settled = false;
+        disposal = handle.dispose().then(
+          () => {
+            settled = true;
+          },
+          (error: unknown) => {
+            settled = true;
+            return error;
+          },
+        );
+        await Promise.all([firstStarted.promise, secondStarted.promise]);
+        for (let tick = 0; tick < 20; tick++) await Promise.resolve();
+        expect(settled).toBe(false);
+        expect(runtimeDispose).not.toHaveBeenCalled();
+        expect(modelDispose).not.toHaveBeenCalled();
+        secondGate.resolve();
+        await modelStarted.promise;
+        expect(runtimeDispose).toHaveBeenCalledTimes(1);
+        expect(settled).toBe(false);
+        modelGate.resolve();
+        const result = await disposal;
+        if (modelFails) {
+          expect(result).toMatchObject({ errors: [failure, modelFailure], cause: failure });
+        } else {
+          expect(result).toBe(failure);
+        }
+        await expect(handle.dispose()).rejects.toBe(result);
+        expect(runtimeDispose).toHaveBeenCalledTimes(1);
+        expect(modelDispose).toHaveBeenCalledTimes(1);
+        expect(firstDispose).toHaveBeenCalledTimes(1);
+        expect(secondDispose).toHaveBeenCalledTimes(1);
+        await expect(create.call(handle)).rejects.toThrow('disposed');
+      } finally {
+        secondGate.resolve();
+        modelGate.resolve();
+        await disposal;
+        await handle.dispose().catch(() => undefined);
+        runtimeDispose.mockRestore();
+        modelDispose.mockRestore();
+        handle.model.createStreamingTranscriber = originalCreate;
+      }
+    },
+  );
+
   it.each([
     ['loaded', false],
     ['built-in', false],
