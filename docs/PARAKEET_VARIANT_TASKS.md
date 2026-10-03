@@ -14,6 +14,23 @@ Orukeet retains 627M parameters; it is not a small student model.
 
 ## Current checkpoint
 
+Production-feature sensitivity (2026-10-03): the new family-owned
+`probe_feature_encoder_sensitivity.py` runs the unchanged built JS processor
+on exact captured PCM and feeds its actual features through the own packed
+fp32 encoder. Both JFK and speech/silence native CPU controls have a passing
+official-feature baseline and passing production-feature encoder outputs at
+unchanged `atol=1e-5, rtol=1e-4`; lengths are exact. Production-feature encoder
+max error versus official outputs: JFK `4.917383e-7`, speech/silence
+`3.226101e-6`. Feature gates still FAIL (313 and 74 coordinates respectively).
+This is sensitivity evidence, not permission to waive preprocessing parity or
+promote Orukeet. Native ORT 1.29.0, four CPU threads; graphs, external data,
+capture and processor bytes were hashed before/after. Receipts:
+`production-feature-encoder-sensitivity-jfk-2026-10-03.json` and
+`production-feature-encoder-sensitivity-speech-silence-2026-10-03.json`
+under `tools/data/results/orukeet/`. Decoder, browser and full-ASR gates remain
+open. Next source-grounded preprocessing work must preserve the feature gate;
+this control can quantify downstream effects without substituting for it.
+
 Public lifecycle control (2026-10-03): the owned local browser smoke now offers
 `--verify-cancellation`. Stock v3 fp16 WebGPU encoder / fp32 WASM decoder passes
 baseline transcription, progress-triggered in-flight decode cancellation,
