@@ -32,6 +32,17 @@ earlier 7.40 measurement used a contract the model does not consume. The correct
 reference is therefore the preemphasis path (1101x80), and against it the current
 frontend measures max abs `18.02` / mean `9.25` over 88,080 coordinates.
 
+**Stage-wise localization.** With preemphasis disabled our frontend matches the
+official extractor to max abs `4.08e-4` / mean `1.92e-6` across 88,080
+coordinates, so the STFT, window, power spectra, librosa bank, log guard and
+centered padding are all correct. Enabling preemphasis is the sole break
+(`18.02`), and applying the same preemphasis formula in JS before the
+preprocessor reproduces that same error, so our arithmetic is not at fault: the
+extra transform lives inside `ParakeetFeatureExtractor.__call__`, which
+`ParakeetProcessor` only delegates to. Next: diff the tensor `__call__` hands to
+`_torch_extract_fbank_features` against our own, then compare per-frame power
+spectra before mel.
+
 **Frontend parity BLOCKED, localized.** `src/models/parakeet-ctc/frontend.ts`
 encodes the official contract (80 bins, n_fft 512, hop 160, win 400, 0.97
 preemphasis, hann-symmetric, centered STFT, HTK mel with slaney norm, power

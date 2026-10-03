@@ -1,0 +1,28 @@
+{
+  "status": "STAGE_LOCALIZED_PREEMPHASIS_PATH_ONLY",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "frames_compared": 1101,
+  "coordinates_compared": 88080,
+  "measurements": {
+    "ours_preemphasis_off_vs_official_no_preemphasis": {
+      "max_abs": 0.000408172607421875,
+      "mean_abs": 1.9228148519953232e-06,
+      "conclusion": "The STFT, window placement and flavor, power spectra, librosa filterbank, log guard and centered padding are all correct: the whole feature pipeline matches the official extractor to about 4e-4 with preemphasis disabled."
+    },
+    "ours_preemphasis_on_vs_official_preemphasis": {
+      "max_abs": 18.02479076385498,
+      "mean_abs": 9.245373943027364
+    },
+    "js_preemphasis_applied_externally_then_preprocessor_off_vs_official_preemphasis": {
+      "max_abs": 18.02479076385498,
+      "mean_abs": 9.245373943027364,
+      "conclusion": "Applying the identical preemphasis formula in JS before the preprocessor yields exactly the same error, so our preemphasis arithmetic is not the break."
+    }
+  },
+  "verified_upstream": "The preemphasized signal itself matches the official one sample for sample (max abs 0.0 when compared in Python).",
+  "narrowed_to": "Something ParakeetFeatureExtractor.__call__ does between padding/preemphasis and _torch_extract_fbank_features, which ParakeetProcessor only delegates to. Our pipeline reproduces the extractor exactly when that extra step is absent.",
+  "next_step": "Diff the preemphasized tensor that __call__ hands to _torch_extract_fbank_features against the raw-and-preemphasized signal, then compare per-frame power spectra before mel, to isolate the remaining transform in one pass.",
+  "evidence_chain": "Official __call__ features feed the locally exported ONNX graph and decode to the oracle transcript exactly; the no-preemphasis path decodes to \".\" only. So the contract is known even though our frontend does not yet reproduce it.",
+  "shipped": "No preset, adapter or manifest registered for this model."
+}
