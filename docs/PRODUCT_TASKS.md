@@ -25,12 +25,21 @@ manifest receipt.
 Executed through the manifest, the three Node/Bun cases pass with exact oracle
 match and the browser case passes its warm-up gate:
 
-| case                           | backend                       | result                                        |
-| ------------------------------ | ----------------------------- | --------------------------------------------- |
-| `node-native-jfk`              | native-cpu                    | 38/38 tokens, exact text, RTFx 10.80          |
-| `node-native-librivox-repeat8` | native-cpu                    | 722/722 tokens, exact text, RTFx 7.22         |
-| `bun-native-librivox-repeat8`  | native-cpu                    | 722/722 tokens, exact text, RTFx 7.37         |
-| `companion-ui-webgpu-hybrid`   | WebGPU encoder + WASM decoder | load + warm-up verified, Chrome 154.0.8037.93 |
+Two fail-closed gaps found in review were closed before this was called done: a
+native run with a missing or empty `compare` list reported a pass without
+comparing anything, and artifact/oracle digests were recorded but not enforced.
+Every consumed file is now bound by declared SHA-256 before execution, including
+the 2.4 GB external-data sidecar, and `tests/test_port_manifest.py` covers
+missing/empty/unknown comparison fields, a missing fixture, mismatched output, a
+changed sidecar, changed graphs and a changed oracle (10 regressions, 0.5 s
+against a synthetic bundle with the real file names).
+
+| case                                | backend                       | result                                                                                                           |
+| ----------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `node-native-jfk`                   | native-cpu                    | 38/38 tokens, exact text, RTFx 10.80                                                                             |
+| `node-native-librivox-repeat8`      | native-cpu                    | 722/722 tokens, exact text, RTFx 7.22                                                                            |
+| `bun-native-librivox-repeat8`       | native-cpu                    | 722/722 tokens, exact text, RTFx 7.37                                                                            |
+| `companion-ui-warmup-webgpu-hybrid` | WebGPU encoder + WASM decoder | `PASS_WARMUP`: load + warm-up on Chrome 154.0.8037.93, no oracle comparison (the UI uses its own warm-up sample) |
 
 Receipts: `tools/data/results/orukeet/port-manifest-*-2026-10-03.json` plus the
 paired `.browser.json` for the UI case. Full suite unchanged at 1,468 passed /
