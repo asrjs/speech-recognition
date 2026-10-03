@@ -32,8 +32,16 @@ architecture stay unverified, so it is not yet a defensible alternative.
 
 ## C31 — Parakeet distillation and new-model survey
 
-Status: VERIFIED CANDIDATES, porting BLOCKED on download authority. Metadata
-only: no weights downloaded, no installs, no model runs.
+Status: SUPERSEDED BY C32 — read C32 for the live verdict. Kept for the survey
+method and the exclusion reasons. Do not resume the parakeet-redux target from
+this record.
+
+Correction carried into C32: `moondream/parakeet-redux` is a 1.58-bit ternary
+TDT v3 repack, so it is excluded by the standing integer-quantization rule
+rather than blocked on a download, and the strongest portable candidate is
+`ctaguchi/parakeet-hf-ctc-110m-en`, whose weights were subsequently fetched and
+exported under C32. This record predates both facts and its "no weights
+downloaded" line describes only this survey pass.
 
 Scope is Parakeet-line distillations and new models; NVIDIA-originated and
 Nemotron models are excluded. Surveyed 62 `parakeet` records and verified the
