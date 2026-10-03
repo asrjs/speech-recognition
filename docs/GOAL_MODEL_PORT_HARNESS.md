@@ -156,15 +156,16 @@ models cover it, while `Qwen/Qwen3-ASR-0.6B-hf` does (782,426,112 parameters,
 30 languages, Apache-2.0). Discovery evidence only; it is an autoregressive
 speech-LLM, so it needs a new family and download authority not granted here.
 
-Nothing in the numerical gates is closed, but the browser gate's `1.1316e-6`
-discrepancy is now **attributed by direct observation** rather than unexplained.
-A hybrid browser run that records its own encoder inputs and outputs shows:
-features byte-identical to the replay's, the head feed bitwise equal to its own
-run's encoder output column (so the handoff is exact, as source inspection
-predicted), and encoder outputs differing by `1.131557e-6` between two runs with
-identical inputs, graph, options and length. The difference is therefore
-cross-run encoder variation, not a handoff or feature artifact. The cause of
-that run-to-run variation is not established, and the gate stays FAIL.
+Nothing in the numerical gates is closed. The browser gate's `1.1316e-6`
+discrepancy is **unexplained**, and a candidate explanation was tested and
+falsified: four separate browser launches of the standalone encoder replay
+produce bitwise identical output, so cross-run encoder variation is not the
+cause. Direct observation did establish two facts: the hybrid feeds features
+byte-identical to the replay's, and the hybrid's head feed is bitwise equal to
+its own run's encoder output, so the encoder-to-head handoff is exact. The
+difference is therefore specific to the hybrid execution versus the standalone
+encoder execution, with features, length, frame binding, session options,
+cross-session, cross-run, co-residency and transfer precision each excluded.
 
 ## Measured acceptance against the Orukeet baseline
 
@@ -193,9 +194,10 @@ is tested, and replaced duplicated code that existed a few hours ago. Item 6's
 reuse rule is therefore partially satisfied: it holds within this
 investigation, and is untested across families.
 
-Attribution is therefore resolved for the browser gate. The next bounded slice
-is the cause of cross-run encoder variation, if it is to be pursued at all.
-Selecting a candidate needs new weight-download authority.
+Attribution is therefore still open. The next bounded slice is capturing the
+resolved ORT session options handed to `InferenceSession.create` in both the
+hybrid and standalone paths, in-browser, which needs a runner-side wrapper and
+no library change. Selecting a candidate needs new weight-download authority.
 
 ## Authority constraints unchanged
 

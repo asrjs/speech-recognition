@@ -3495,7 +3495,7 @@ tensor, valid length, resolved session options, and the raw encoder output
 alongside the recorded head feed. Only that observation can separate them. The
 browser gate stays FAIL.
 
-### Encoder-to-head handoff: inspected, and the observation is blocked (2026-10-03)
+### Encoder-to-head handoff: source inspection, and a retracted blocker (2026-10-03)
 
 That observation was attempted and is **blocked by harness design**, not by
 missing authority. Recorded here so the next attempt starts from the constraint
@@ -3533,10 +3533,10 @@ requirements, not a flag on an existing runner.
 **Status unchanged.** The hybrid's encoder tensors on the real WebGPU path
 remain unobserved; the `1.1316e-6` difference is not attributed. Gate FAIL.
 
-### Hybrid encoder observed: the discrepancy is cross-run, handoff is exact (2026-10-03)
+### Hybrid encoder observed: handoff is exact, cross-run claim later refuted (2026-10-03)
 
 The blocker above was wrong, and the previous diagnosis is retracted. The
-failures were two bounded integration bugs, not a GPU-readback limitation:
+failures were three bounded integration bugs, not a GPU-readback limitation:
 
 - The observer rejects `int64` at its first check, before inspecting storage.
   This graph's encoder `length` input and `encoded_lengths` output are int64.
@@ -3581,3 +3581,51 @@ Scope: measured for this pair of runs, this graph and this adapter. It does not
 establish the cause of the run-to-run variation, and it does not by itself close
 the score gate. The gate stays FAIL; the difference is now attributed rather
 than unexplained.
+
+### Refuted: cross-run encoder variation is NOT the explanation (2026-10-03)
+
+The attribution above was tested and **falsified**. Four separate browser
+launches of the encoder-sensitivity replay produce **bitwise identical** encoder
+output on both feature sources:
+
+| pair | bitwise | maxAbs | mismatch |
+| --- | --- | ---: | ---: |
+| launch 1 vs 2, official | `true` | `0.0` | 0 |
+| launch 1 vs 3, official | `true` | `0.0` | 0 |
+| launch 1 vs prior, official | `true` | `0.0` | 0 |
+| launch 2 vs 3 / 2 vs prior / 3 vs prior, official | `true` | `0.0` | 0 |
+| all six pairs, production-JS | `true` | `0.0` | 0 |
+
+Tool: `tools/nemo-tdt-onnx-export/cross_run_variation.py`, over the three new
+launches plus the earlier production-feature receipt. The three receipts are
+24.2 MB each and are kept locally at
+`tools/data/results/orukeet/browser-run-variation-{1,2,3}-jfk-2026-10-03.json`;
+they are deliberately not committed at that size. The tracked evidence is the
+tool plus the recorded measurement above.
+
+So the WebGPU encoder **is** reproducible across browser processes, and
+"cross-run variation" is withdrawn as the explanation for `1.1316e-6`. Any
+previous statement that the discrepancy is cross-run variation is wrong.
+
+What this leaves is narrower and sharper. The hybrid's encoder output differs
+from the encoder-sensitivity replay's by `1.1316e-6`, while that replay is
+bitwise reproducible across launches, and the hybrid's own inputs are
+byte-identical to the replay's. So the difference is caused by something that
+distinguishes **the hybrid execution** from **the standalone encoder
+execution**, and the following are already excluded:
+
+- feature tensor — byte-identical, directly observed
+- valid length — 1100 in both, directly observed
+- frame binding — frame 69 on both sides
+- session options — deterministic from the same effective arguments by source
+- cross-session, cross-run, co-residency, transfer precision — each measured
+  and bitwise-exact
+
+Not yet captured: the hybrid's actually resolved ORT session options as
+constructed, and any encoder-session configuration the library applies that the
+standalone path does not. Capturing the options object handed to
+`InferenceSession.create` in both paths, in-browser, is the next bounded
+experiment; it needs no library change, only a runner-side wrapper.
+
+The gate stays FAIL, and `1.1316e-6` is **unexplained** again — this entry
+removes a wrong explanation rather than adding a right one.
