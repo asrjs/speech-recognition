@@ -46,6 +46,23 @@ Next: inspect the earliest remaining power/log/normalization boundary against
 the existing negative controls before selecting another source-grounded test.
 Do not repeat rejected FFT/reduction variants or change tolerances.
 
+Pure-silence actual-boundary control (2026-10-03): fresh official execution
+captures 65 stages including the actual STFT/filterbank buffers, with all six
+before/after instrumentation checks true. Original empty tokens/text remain
+unchanged. Real/imaginary STFT components are entirely zero; actual filterbank
+hash matches JFK (`f5608e00763a20a191022fbb00a43346db5f1ec06828a97a6f4157f7d02b76c8`).
+The matrix-feature probe's three conditions have identical all-zero production
+power (verified against the expected zero-buffer hash), raw log-mel and features.
+All still fail the official feature gate at 12,800 valid coordinates, max error
+`0.1600533276796341`: official valid values are `-0.1600533276796341`, whereas
+production gives zero. This directly excludes FFT/filterbank differences as
+the remedy for this silence fixture; normalization arithmetic remains separate
+from the nonzero-spectrum speech failure. Do not invent a silence correction
+or hardcode this value. New receipts: `official-pure-silence-filterbank-summary-2026-10-03.json`,
+`official-pure-silence-filterbank-stages-2026-10-03.json.gz` and
+`filterbank-feature-pure-silence-2026-10-03.json` under Orukeet results.
+No runtime, weights or acceptance tolerances changed; full ASR remains open.
+
 Browser production-feature sensitivity (2026-10-03): opt-in
 `browser_encoder_replay.py --production-features` processes byte-hashed captured
 PCM through the actual built JS processor in Chrome and runs two official-feature
