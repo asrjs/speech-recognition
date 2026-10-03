@@ -3193,23 +3193,36 @@ shows the execution residual (`1.326203e-6`) exceeds the feature effect
 (`9.797513e-7`), and all controls pass the unchanged gate.
 
 The remaining `1.1316e-6` discrepancy between the live hybrid feed and the
-encoder-sensitivity run has been bounded as far as recorded artifacts allow.
-Verified identical across both runs: PCM hash
+encoder-sensitivity run is **UNVERIFIED in three dimensions**, not bounded:
+
+- **UNVERIFIED — the encoder feature tensor itself.** Equal PCM and equal
+  static processor options do not prove equal features. The replay records its
+  production features; the hybrid run does not record what it fed the encoder.
+- **UNVERIFIED — the resolved session options.** The hybrid passes
+  `signal`, `enableProfiling: resolved.enableProfiling` and
+  `webgpuOptions: resolved.webgpuOptions` into `createOrtSession`. Those
+  resolved values were never captured in either receipt, so the two option
+  objects are not proven equal.
+- **UNVERIFIED — cross-session variability.** Each run repeats bitwise-exactly
+  *within itself*, which rules out its own nondeterminism but says nothing
+  about variation between two separately created sessions.
+
+Verified identical: PCM hash
 `ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`; encoder
 graph SHA-256 `9924d5c30da5d54454dd3de6dbfc177aa771205eaac5da55d8f05ec813036f17`
-and external data SHA-256 `f7a19051cc2913d99635d70a856bfe82795cab1f4af3670433e9fc1eb101e00f`;
-processor options (`validLengthMode: onnx`, `normalization: per_feature`);
-`onnxruntime-web` 1.29.0; NVIDIA Blackwell adapter; and the `createOrtSession`
-encoder option object (`backendId` webgpu, `cpuThreads` 1, same external data
-URL and path). Both runs also produce bitwise-exact repeats on an identical
-feature source, so neither is nondeterministic.
+and external data SHA-256
+`f7a19051cc2913d99635d70a856bfe82795cab1f4af3670433e9fc1eb101e00f`; static
+processor option values (`validLengthMode: onnx`, `normalization:
+per_feature`); `onnxruntime-web` 1.29.0; NVIDIA Blackwell adapter; and the
+statically-declared `createOrtSession` encoder options.
 
-Identical inputs and identical session configuration still differ in output,
-so the cause is not in any bound dimension. The discriminating experiment is a
-single browser process that runs **both** paths on the same PCM and compares
-encoder outputs directly, removing the cross-receipt comparison entirely. That
-is a new browser run, not a re-analysis of existing receipts. Until it runs,
-live-source attribution stays open and the gate stays FAIL.
+The discriminating experiment is therefore a single browser process running
+**both** paths on the same PCM, which must first capture and hash the actual
+encoder feeds, the encoder valid length, and the fully resolved session options
+for each path, before comparing any outputs. Comparing outputs without those
+captures cannot settle the question. That is a new browser run, not a
+re-analysis. Until it runs, live-source attribution stays open and the gate
+stays FAIL.
 
 **Production feature parity — deferred with named exclusions.** FAIL on
 unchanged `atol=1e-5, rtol=1e-4`: JFK 313/140,928, speech/silence 74/519,808,
@@ -3221,3 +3234,56 @@ identified by the official-power control: the official engine's own power/mel
 arithmetic versus ours, now isolated. Closing it needs a new hypothesis about
 that boundary, not another FFT swap. Until then the gate is deferred, not
 closed, and no tolerance moves.
+
+### Candidate audit: smaller Parakeet students and non-NVIDIA ranking (2026-10-03)
+
+Goal item 4 audited against verified Hugging Face metadata using the existing
+`tools/scripts/survey-hf-asr-candidates.mjs`. No weights were downloaded and no
+model was run. Receipts:
+`tools/data/results/model-candidates/hf-parakeet-family-2026-10-03.json` (42
+records) and `hf-nonnvidia-2026-10-03.json` (64 records), both fetched with TLS
+verification enabled for the child process only.
+
+**No smaller Parakeet student was identified in this survey.** The query was a
+top-40, downloads-sorted `search=parakeet` plus six included IDs. That is not
+an exhaustive catalogue and not a community-distillation audit, so it does not
+establish that none exists; it bounds what was actually checked. Among the
+official models checked, every NVIDIA Parakeet is ~600M or larger:
+
+| model | parameters | languages | Turkish | license |
+| --- | ---: | ---: | --- | --- |
+| nvidia/parakeet-tdt-0.6b-v3 | 627,057,286 | 25 | no | cc-by-4.0 |
+| nvidia/parakeet-tdt-0.6b-v2 | not declared | 1 | no | cc-by-4.0 |
+| nvidia/parakeet-ctc-0.6b | 608,848,897 | 1 | no | cc-by-4.0 |
+| nvidia/parakeet-rnnt-1.1b | 1,070,518,785 | 1 | no | cc-by-4.0 |
+| oruk/orukeet | 627,057,286 | 25 | no | cc-by-sa-4.0 |
+
+The only sub-300M record returned by this query is
+`moondream/parakeet-redux` at 148,923,399 parameters, and it is **not** a
+student: it is a 1.58-bit ternary quantization of `parakeet-tdt-0.6b-v3`, with
+every encoder weight in {-1, 0, +1}, same architecture and same tokenizer. Its
+parameter count reflects ternary encoding density, not fewer parameters. That is
+exactly the "fewer file bytes is not fewer parameters" case, and it is excluded
+by the standing rule that integer quantization is not the default because prior
+measurements showed int4 slower than fp16/fp32 and accuracy loss is not
+tolerated. It is also NVIDIA Parakeet TDT v3 lineage, which is out of scope.
+
+**Turkish is the discriminator among the candidates checked.** No Parakeet
+model in the table above covers Turkish, including Orukeet. None of the
+previously ranked non-NVIDIA candidates does either: Fun-ASR Nano (13),
+Fun-ASR MLT Nano (31), ARK-ASR 0.6B (19) and Cohere Transcribe 03-2026
+(2.07B, 14) all exclude Turkish by their own published language lists. This is
+an observation about the models inspected, not a claim that Turkish-capable
+models do not exist beyond this query.
+
+The strongest new candidate on verified metadata is **Qwen/Qwen3-ASR-0.6B-hf**:
+782,426,112 parameters, 30 languages including Turkish, Apache-2.0,
+non-NVIDIA. Qwen3-ASR-1.7B-hf (2,038,052,480, 30 languages, Apache-2.0) is the
+larger sibling. `microsoft/VibeVoice-ASR` also covers Turkish at 51 languages
+but is 8.67B and impractical for browser VRAM.
+
+This is discovery evidence, not a port decision and not a quality claim. Qwen3
+ASR is an autoregressive speech-LLM rather than a Parakeet transducer, so it
+does not reuse the TDT decode path and would be a new family under
+`src/models`. Selecting it requires download authority, which is not granted
+here.

@@ -145,8 +145,20 @@ gate-failure-only rule would misattribute. Applied to the real Orukeet case it
 localizes the failure to `encoder_outputs` after three binding gates pass. The
 next port inherits this instead of re-deriving it.
 
-The next bounded slice is that binding. The candidate audit that follows needs
-new weight-download authority.
+Item 4 is audited: no smaller Parakeet student was **identified in this
+survey** (a top-40 downloads-sorted query plus six included IDs, not an
+exhaustive catalogue). Every official NVIDIA Parakeet checked is ~600M or
+larger, and the only sub-300M record, `moondream/parakeet-redux` (148.9M), is a
+1.58-bit ternary quantization of TDT v3 rather than a student, excluded by the
+standing integer-quantization rule. Turkish is the discriminator among the
+candidates checked: no Parakeet and none of the previously ranked non-NVIDIA
+models cover it, while `Qwen/Qwen3-ASR-0.6B-hf` does (782,426,112 parameters,
+30 languages, Apache-2.0). Discovery evidence only; it is an autoregressive
+speech-LLM, so it needs a new family and download authority not granted here.
+
+The next bounded slice remains the paired single-process browser run, which
+must capture encoder feeds, valid length and resolved session options for both
+paths. Selecting a candidate needs new weight-download authority.
 
 ## Authority constraints unchanged
 
