@@ -2727,3 +2727,17 @@ that inappropriate frozen requirement will not remove the independently failed
 three score coordinates. Overall real-path and feature acceptance remain FAIL.
 Next return to the earliest unresolved feature/encoder boundary, preserving
 these same-input head controls and all existing tolerances.
+
+### Explicit live encoder comparison scope (2026-10-03)
+
+Implemented the boundary correction above: `compare_live_head` defaults to
+`encoder_boundary='frozen'`; the real-encoder browser mode explicitly selects
+`'real'`. Both record frame byte equality and require unchanged numerical
+atol1e-5/rtol1e-4. Frozen mode additionally requires frame byte equality;
+targets/lengths and traced-versus-unobserved state controls stay exact in both.
+Unknown scopes fail closed. Three new regressions failed before implementation
+and now pass;43 live-head/browser replay tests and Python syntax checks pass.
+This is a comparator repair, not new browser inference or model acceptance.
+The prior trace's score failure and unresolved feature gate are not waived.
+An attempted offline full-trace re-evaluation did not yield observable command
+output, so its result is UNVERIFIED and no old receipt was overwritten.

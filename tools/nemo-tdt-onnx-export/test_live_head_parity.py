@@ -26,6 +26,31 @@ def fixture():
 
 
 class LiveHeadTests(unittest.TestCase):
+    def test_real_encoder_scope_preserves_numeric_and_frozen_exact_gates(self):
+        result, head = fixture()
+        result["runs"][0]["headCalls"][0]["feeds"]["encoder_outputs"]["data"][0] = float(np.float32(1e-6))
+        self.assertFalse(compare_live_head(result, head)["allclose"])
+        proof = compare_live_head(result, head, encoder_boundary="real")
+        self.assertTrue(proof["allclose"])
+        self.assertEqual(proof["encoder_boundary"], "real")
+        self.assertFalse(proof["comparisons"][0]["metrics"]["input/encoder_outputs"]["bitwise_exact"])
+
+    def test_real_scope_does_not_hide_bad_inputs_scores_or_observer_changes(self):
+        for group, name in (("feeds", "encoder_outputs"), ("feeds", "targets"),
+                            ("feeds", "target_length"), ("outputs", "outputs")):
+            result, head = fixture()
+            result["runs"][0]["headCalls"][0][group][name]["data"][0] += 2
+            self.assertFalse(compare_live_head(result, head, encoder_boundary="real")["allclose"])
+        result, head = fixture()
+        result["runs"][1]["text"] = "changed"
+        self.assertFalse(compare_live_head(result, head, encoder_boundary="real")["allclose"])
+
+    def test_unknown_encoder_boundary_fails_closed(self):
+        result, head = fixture()
+        for boundary in (None, True, "REAL", "auto"):
+            with self.assertRaises(ValueError):
+                compare_live_head(result, head, encoder_boundary=boundary)
+
     def test_live_boundaries_and_nonperturbation_pass(self):
         result, head = fixture()
         proof = compare_live_head(result, head)

@@ -19,7 +19,9 @@ def tensor(value):
     return np.asarray(data, dtype=dtype).reshape(shape)
 
 
-def compare_live_head(result, head):
+def compare_live_head(result, head, *, encoder_boundary="frozen"):
+    if encoder_boundary not in ("frozen", "real"):
+        raise ValueError("Unknown encoder comparison boundary")
     runs = result["runs"]
     if (len(runs) != 2 or runs[0].get("traceEnabled") is not True
             or runs[1].get("traceEnabled") is not False or runs[1].get("headCalls") != []
@@ -39,10 +41,11 @@ def compare_live_head(result, head):
         for name, reference in expected["feeds"].items():
             left, right = tensor(reference), tensor(call["feeds"][name])
             metrics = compare_tensors(left, right, atol=1e-5, rtol=1e-4)
-            # Frozen frames, targets and lengths must be exact, not allclose.
+            # Record exactness in both scopes; only frozen frames require it.
             if name in {"encoder_outputs", "targets", "target_length"}:
                 metrics["bitwise_exact"] = left.tobytes() == right.tobytes()
-                good = metrics["bitwise_exact"] and good
+                if name != "encoder_outputs" or encoder_boundary == "frozen":
+                    good = metrics["bitwise_exact"] and good
             entry["metrics"]["input/" + name] = metrics
             good = metrics["allclose"] and good
         scores = tensor(call["outputs"]["outputs"])
@@ -70,4 +73,5 @@ def compare_live_head(result, head):
     good = control["output_exact"] and all(m["bitwise_exact"] for m in control["state"].values()) and good
     return {"status": "LIVE_HEAD_NUMERICAL_PASS" if good else "LIVE_HEAD_NUMERICAL_FAIL",
             "observed_calls": len(calls), "comparisons": comparisons, "observation_control": control,
+            "encoder_boundary": encoder_boundary,
             "boundary": "PROSPECTIVE_CALL_OUTPUTS_NOT_ALL_COMMITTED", "allclose": bool(good)}

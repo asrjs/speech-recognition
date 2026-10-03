@@ -245,7 +245,9 @@ def main():
                     browser.close()
             good = evaluate_result(receipt["result"], expected, args.backend)
             if args.trace_head:
-                receipt["live_head"] = compare_live_head(receipt["result"], head)
+                receipt["live_head"] = compare_live_head(
+                    receipt["result"], head,
+                    encoder_boundary="real" if args.real_encoder_backend else "frozen")
                 receipt["intermediate_states_logits"] = receipt["live_head"]["status"]
                 good = good and receipt["live_head"]["allclose"]
             receipt["status"] = success_status if good and not receipt["browser_errors"] else ('REAL_ENCODER_OUTPUT_DIAGNOSTIC_FAIL' if args.real_encoder_backend else 'CONDITIONAL_RECURRENCE_FAIL')
