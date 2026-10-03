@@ -26,9 +26,31 @@ usable ONNX export exists via `onnx-community`, worth revisiting), the 114.6M
 `nvidia/parakeet-tdt_ctc-110m` student, its fine-tunes, and the Nemotron
 families.
 
-Receipts: `tools/data/results/model-candidates/hf-parakeet-distil-2026-10-04.json`
-(62 records) and `parakeet-distil-verification-2026-10-04.json` (per-candidate
-verdicts).
+**Corrections after identity and architecture verification.** The unqualified
+ids `parakeet-redux` and `parakeet-tdt-0.6b-v3-distill` return HTTP 401: they
+are not public repositories and were search artifacts of my own include list, so
+they were never candidates. `moondream/parakeet-redux` is **not** a distilled
+student at all: upstream documents it as a 1.58-bit ternary TDT v3, an
+integer-quantized repack, which the standing rule excludes outright rather than
+merely gating on a download.
+
+That leaves two real keepers and no already-portable model:
+
+- **`ctaguchi/parakeet-hf-ctc-110m-en` — keep, strongest portable.** Verified
+  `ParakeetForCTC` / `parakeet_ctc`, 109,305,345 parameters, cc-by-4.0,
+  sentencepiece tokenizer, safetensors weights, non-NVIDIA repository. Its
+  safetensors-plus-config shape gives the shortest export path. Porting needs a
+  new transformers-based ONNX export plus a ParakeetForCTC emission path; this
+  repository has CTC runtimes (gigaam-ctc, wav2vec2, lasr-ctc) but no
+  ParakeetForCTC family and no parakeet-ctc exporter. Verify tokenizer and
+  emission layout before writing the family.
+- **`primeline/parakeet-primeline` — keep as a future export task.** A genuine
+  non-NVIDIA English distillation, but it publishes `.nemo` weights only, so it
+  needs our existing `tools/nemo-tdt-onnx-export` path.
+
+Receipts: `hf-parakeet-distil-2026-10-04.json` (62 records),
+`parakeet-distil-verification-2026-10-04.json` and its corrected
+`parakeet-distil-verification-v2-2026-10-04.json`.
 
 ## C30 — Orukeet preset contract and in-repo demo
 

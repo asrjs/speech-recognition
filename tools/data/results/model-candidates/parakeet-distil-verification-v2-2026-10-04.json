@@ -1,0 +1,79 @@
+{
+  "status": "PARAKEET_DISTIL_SURVEY_VERIFIED_V2",
+  "supersedes": "tools/data/results/model-candidates/parakeet-distil-verification-2026-10-04.json",
+  "scope": "Corrected identity and architecture-family verification for Parakeet-line distillation and new-model candidates under the no-NVIDIA / no-Nemotron scope. Metadata only: no weights downloaded, no model runs.",
+  "corrections": [
+    {
+      "modelId": "parakeet-redux",
+      "identity": "HTTP 401 on the Hugging Face API: not a public repository. It was a search artifact from my own --include list and is not a candidate."
+    },
+    {
+      "modelId": "parakeet-tdt-0.6b-v3-distill",
+      "identity": "HTTP 401: not a public repository, same artifact."
+    },
+    {
+      "modelId": "moondream/parakeet-redux",
+      "correction": "148,923,399 parameters but NOT a distilled student: upstream documents it as a 1.58-bit ternary TDT v3, i.e. an integer-quantized repack. Excluded by the standing integer-quantization rule, not merely gated on a download."
+    }
+  ],
+  "candidates": [
+    {
+      "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+      "architecture": "ParakeetForCTC (verified in config.json)",
+      "model_type": "parakeet_ctc",
+      "parameters": 109305345,
+      "license": "cc-by-4.0",
+      "downloads": 734,
+      "files": [
+        "model.safetensors",
+        "tokenizer.json",
+        "processor_config.json",
+        "tokenizer_config.json"
+      ],
+      "architecture_family": "third-party fine-tune of the NVIDIA 110M CTC line, non-NVIDIA repository",
+      "onnx_files": 0,
+      "verdict": "KEEP_STRONGEST_PORTABLE",
+      "reason": "Only verified non-NVIDIA-originated Parakeet-line model that is a genuine smaller student with a portable export format: 109,305,345 parameters, sentencepiece tokenizer, safetensors weights and a transformers-style config.",
+      "port_path": "Requires a new transformers-based ONNX export for ParakeetForCTC and a CTC emission path. This repository has CTC runtimes (gigaam-ctc, wav2vec2, lasr-ctc) but no ParakeetForCTC family and no parakeet-ctc ONNX exporter, so the port is real work rather than configuration.",
+      "must_verify_before_porting": "Tokenizer and emission layout: whether the exported graph emits per-frame logits plus a vocabulary mapping compatible with the existing CTC decoding path."
+    },
+    {
+      "modelId": "primeline/parakeet-primeline",
+      "architecture": "Parakeet distillation line (English)",
+      "parameters": null,
+      "license": "cc-by-4.0",
+      "downloads": 1089,
+      "files": null,
+      "onnx_files": 0,
+      "verdict": "KEEP_FUTURE_EXPORT_TASK",
+      "reason": "Genuine non-NVIDIA distillation candidate, but the repository publishes .nemo weights only, so porting means running our own NeMo TDT ONNX export over the existing tools/nemo-tdt-onnx-export path. Parameter count is not published in the metadata record."
+    },
+    {
+      "modelId": "moondream/parakeet-ultra",
+      "parameters": 627270663,
+      "license": "cc-by-4.0",
+      "onnx_files": 0,
+      "verdict": "DEFER_SIZE_UNCHANGED",
+      "reason": "627,270,663 parameters, the same size class as Parakeet TDT v3, so it is not a student or size win."
+    },
+    {
+      "modelId": "istupakov/parakeet-tdt-0.6b-v3-onnx",
+      "parameters": null,
+      "license": "cc-by-4.0",
+      "onnx_files": 5,
+      "base_model": "nvidia/parakeet-tdt-0.6b-v3",
+      "verdict": "SUPPLY_CHAIN_OPTION_NOT_A_NEW_MODEL",
+      "reason": "Third-party ONNX export of the stock v3 line. Could replace our own local v3 export; not a new port target."
+    },
+    {
+      "modelId": "handy-computer/parakeet-primeline-gguf",
+      "license": "cc-by-4.0",
+      "onnx_files": 0,
+      "verdict": "DEFER_FORMAT_UNSUPPORTED",
+      "reason": "GGUF is not an executable runtime format here and integer quantization is a separate evidence-gated decision."
+    }
+  ],
+  "no_family_verified_portable_yet": "No Parakeet-line model is yet verified portable under the no-NVIDIA / no-Nemotron scope: the two keepers publish no ONNX, so both require our own export before any port claim.",
+  "next_step": "Start with ctaguchi/parakeet-hf-ctc-110m-en because safetensors plus a transformers config give the shortest export path; verify tokenizer and CTC emission layout before writing the family.",
+  "no_authority_used": "No weights were downloaded and no model was run for this verification."
+}
