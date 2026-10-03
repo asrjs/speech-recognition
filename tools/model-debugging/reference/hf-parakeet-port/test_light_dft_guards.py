@@ -101,6 +101,17 @@ class LightDftGuardTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertFalse(probe.exists())
 
+    def test_torch_fp64_rejected_before_capture_or_outputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output, probe = root / 'receipt.json', root / 'probe.mjs'
+            result = self.run_cli(root / 'missing.gz', output, probe,
+                                  ['--fft-engine', 'torch-rfft', '--dft-precision', 'fp64'])
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Torch oracle reproduction supports fp32 only', result.stderr)
+            self.assertFalse(output.exists())
+            self.assertFalse(probe.exists())
+
     def run_cli(self, capture, output, probe, extra=()):
         return subprocess.run([sys.executable, str(TOOL), '--capture', str(capture),
             '--expected-capture-sha256', '0' * 64, '--expected-bank-sha256', '0' * 64,

@@ -95,12 +95,14 @@ def main():
     parser.add_argument('--power', choices=['fp32-rounded', 'library'], default='fp32-rounded')
     parser.add_argument('--coordinate', type=int, nargs=2, metavar=('MEL', 'FRAME'))
     parser.add_argument('--dft-precision', choices=list(DFT_TYPES), default='fp32')
-    parser.add_argument('--fft-engine', choices=['ort-dft', 'scipy-pocketfft', 'pffft-native'], default='ort-dft')
+    parser.add_argument('--fft-engine', choices=['ort-dft', 'scipy-pocketfft', 'pffft-native', 'torch-rfft'], default='ort-dft')
     parser.add_argument('--pffft-library', type=Path)
     parser.add_argument('--expected-pffft-sha256')
     args = parser.parse_args()
     if args.fft_engine == 'scipy-pocketfft' and args.dft_precision != 'fp32':
         parser.error('PocketFFT control supports fp32 only')
+    if args.fft_engine == 'torch-rfft' and args.dft_precision != 'fp32':
+        parser.error('Torch oracle reproduction supports fp32 only')
     if args.fft_engine == 'pffft-native' and (args.dft_precision != 'fp32'
             or args.pffft_library is None or args.expected_pffft_sha256 is None):
         parser.error('PFFFT requires fp32, explicit trusted library and expected SHA256')
@@ -130,7 +132,20 @@ def main():
     dft_frames = frames.astype(dft_dtype, copy=False)
     engine_metadata = None
     session = None
-    if args.fft_engine == 'pffft-native':
+    if args.fft_engine == 'torch-rfft':
+        import torch
+        torch.set_num_threads(4)
+        candidate = torch.fft.rfft(torch.from_numpy(dft_frames), dim=-1,
+                                    norm='backward').numpy().transpose(0, 2, 1).copy()
+        if (candidate.shape != oracle.shape or candidate.dtype != np.complex64
+                or not np.isfinite(candidate).all()):
+            raise ValueError('Torch real FFT output contract differs')
+        engine_metadata = {'torch': torch.__version__, 'cpu_threads': torch.get_num_threads(),
+                           'build_config': torch.__config__.show(),
+                           'mkl_available': torch.backends.mkl.is_available(),
+                           'scope': 'Native oracle reproduction, not a portable implementation'}
+        candidate_name = 'torch_rfft_control'
+    elif args.fft_engine == 'pffft-native':
         from pffft_native_control import pffft_control
         candidate, engine_metadata = pffft_control(dft_frames, args.pffft_library,
                                                   args.expected_pffft_sha256)
@@ -193,6 +208,7 @@ def main():
         'providers': session.get_providers() if session is not None else None,
         'onnx': onnx.__version__, 'onnxruntime': ort.__version__, 'numpy': np.__version__,
         'spectrum_comparison': spectrum, 'feature_comparisons': features,
+        'spectrum_capture_bytes_exact': candidate.tobytes() == oracle.tobytes(),
         'scope': 'Native CPU DFT on reconstructed captured frames + existing diagnostic JS mel/normalization; not production feature, encoder, token/text, browser or performance acceptance'}
     if coordinate is not None:
         mel, frame = coordinate

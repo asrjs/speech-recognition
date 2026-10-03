@@ -2019,3 +2019,33 @@ its actual arithmetic boundary (captured-frame reproduction already passes),
 or a reproducible family-owned export path for that processor. Keep the same
 feature acceptance and do not skip encoder/token/text gates. Whole-product
 API/example acceptance work may proceed independently while this gate is open.
+
+Full native oracle reproduction (2026-10-03): opt-in `--fft-engine torch-rfft`
+now runs fp32 real FFT512 on every reconstructed frozen frame, with backward
+normalization, four CPU threads, installed Torch version/build configuration
+and explicit native-only scope. Torch is imported only on this selected route;
+default ORT/PocketFFT/PFFFT branches remain unchanged. Receipts now independently
+report spectrum byte equality, not merely allclose. fp64 is rejected before
+capture/output creation; ten light diagnostic tests and syntax/diff checks pass.
+
+Final-source receipt and adjacent probe:
+`tools/data/results/orukeet/torch-rfft-features-bound-speech-silence-2026-10-03.json`.
+Same pinned capture/bank/frame/probe hashes as the previous controls, library
+power and coordinate0/98. Torch2.7.1+cu128 reports MKL2025.1 support. All
+2,087,354 spectrum components are bit-exact to capture (zero numerical error),
+not only the previously selected frames. The same diagnostic JS downstream
+features pass with zero mismatches / 519,808 values, max abs
+2.3543834686279297e-6, identical to official-complex injection. Tolerances remain
+atol=1e-5/rtol=1e-4. This strengthens the frame reconstruction/control chain,
+not a production/browser implementation or end-to-end port.
+
+Primary route inspection:
+[PyTorch2.7.1 CPU spectral implementation](https://github.com/pytorch/pytorch/blob/v2.7.1/aten/src/ATen/native/mkl/SpectralOps.cpp).
+Its MKL branch uses separate REAL versus COMPLEX descriptors, batched strides,
+out-of-place execution and complex-complex conjugate-even storage for real
+transforms. Source plus installed build configuration supports that route;
+neither exposes MKL's internal radix/twiddle instruction order. Do not invent
+a portable MKL-equivalent butterfly from the wrapper. Next: inspect feasible
+family-owned processor graph/export controls and retain this complete native
+oracle reproduction as the numerical gate. Binary provenance is version/build
+metadata, not exhaustive hashes of Torch's loaded DLLs.
