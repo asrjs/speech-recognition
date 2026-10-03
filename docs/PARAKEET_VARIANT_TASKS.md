@@ -3430,18 +3430,15 @@ the official features gives `1.326203e-6` at frame 69 for length 1100 and
 `1.480912e-2` for length 1101. The observed live difference is `1.1316e-6`, four
 orders of magnitude below the 1101 case, so the hybrid used the correct length.
 
-One candidate remains, and it is the only one not yet excluded: the hybrid holds
-an encoder session and a WASM decoder session together and runs the full
-pipeline, while the replay holds only the encoder session. GPU allocation or
-buffer placement in that co-resident context is the remaining explanation.
-Separating it needs a paired run that also creates the decoder session in the
-replay. That control is now implemented and has eliminated the hypothesis.
+The remaining candidates at that point were the hybrid's co-resident decoder
+session and cross-run variability. A paired control for the decoder session is
+below; it bounds one of them without reaching the question.
 
-### Session co-residency eliminated (2026-10-03)
+### Bounded session controls (2026-10-03)
 
-The last controlled hypothesis was tested in a real browser. An opt-in
-`--co-resident-decoder` holds a decoder session alongside the encoder and
-re-runs it, matching the hybrid's encoder-plus-decoder context. Receipt
+An opt-in `--co-resident-decoder` holds a decoder session alongside the
+encoder and re-runs it, so the encoder output is measured a second time with a
+decoder session present. Receipt
 `tools/data/results/orukeet/browser-co-resident-jfk-2026-10-03.json`.
 
 | control | result |
@@ -3451,8 +3448,10 @@ re-runs it, matching the hybrid's encoder-plus-decoder context. Receipt
 | `inputs_unchanged` | `true` |
 | decoder graph served and hash-bound | `true` (9 bound sources) |
 
-**Session co-residency is eliminated.** Holding a decoder session does not change
-the encoder's output by a single bit.
+**For this pair of runs, session co-residency does not change the encoder
+output by a single bit.** The decoder session is created after the first
+measured encoder run, so this does not reproduce hybrid initialization context;
+see the scope note below.
 
 The first attempt at this receipt reported `BROWSER_ENCODER_COMPONENT_FAIL`
 while both encoder gates passed. That was a defect in the new control, not a
@@ -3463,22 +3462,73 @@ FAIL. The decoder is now resolved before hashing, so it is genuinely bound by
 The failed receipt was deleted rather than kept as evidence of a non-existent
 failure; the harness defect is recorded here instead.
 
-**Where gate 2 now stands.** Every controlled variation tried leaves the encoder
-output bitwise identical, yet the two runs' encoder outputs differ by
-`1.1316e-6`:
+**Where gate 2 now stands.** No controlled variation tried here reproduces the
+`1.1316e-6` difference:
 
-- differing feature tensors — eliminated, byte-identical
+- differing feature tensors — not reproduced for the observed pair, but the
+  hybrid's own fed tensor is unobserved
 - wrong frame binding — eliminated, frame 69 is the closest of all 138
 - output-transfer precision — eliminated, the tensor is already float32
 - encoder valid length — eliminated, 1101 would give `1.48e-2`
-- cross-session variability — eliminated, bitwise identical
-- session co-residency — eliminated, bitwise identical
+- cross-session variability — bounded within one page, bitwise identical
+- session co-residency — bounded within one page, created after the first run
 - resolved session options — equivalent by source, both `undefined`
 
-That inversion is itself the finding: the difference is **not reproducible by
-any controlled variation of the encoder's execution context**. The leading
-remaining explanation is no longer the encoder, but that the value the hybrid
-records as a head feed is not the encoder's raw output — something in the
-runtime path between encoder and head alters it. That is testable by
-instrumenting the encoder-to-head handoff in the library, not by further
-encoder-side experiments. The browser gate stays FAIL.
+These are useful bounded negative controls, not proof that only the runtime
+handoff remains. Two of them do not reach the question:
+
+- `library_feature_identity.mjs` recomputes the library's features in Node from
+  the PCM. It shows the library pipeline and the replay produce the same tensor.
+  It never observes what the **hybrid** actually fed its encoder, so equality
+  for that pair does not exclude cross-run difference.
+- The co-resident decoder is created **after** the encoder has already run its
+  measured outputs, so it does not reproduce hybrid initialization or execution
+  context.
+- Two bitwise-identical direct sessions establish determinism for that pair,
+  not the absence of variation between separately launched browser runs.
+
+The honest status is that no controlled variation tried here reproduces the
+`1.1316e-6` difference, and the actual hybrid-side inputs remain unobserved.
+Attributing it to the encoder-to-head handoff is premature. The discriminating
+run must capture, **in the hybrid browser run itself**, the actual feature
+tensor, valid length, resolved session options, and the raw encoder output
+alongside the recorded head feed. Only that observation can separate them. The
+browser gate stays FAIL.
+
+### Encoder-to-head handoff: inspected, and the observation is blocked (2026-10-03)
+
+That observation was attempted and is **blocked by harness design**, not by
+missing authority. Recorded here so the next attempt starts from the constraint
+instead of rediscovering it.
+
+**What inspection shows.** Reading `src/models/nemo-tdt/executor.ts`, the path
+from encoder output to head feed contains no precision-altering step:
+`encoderData = new Float32Array(encoderTensor.data)` copies the tensor exactly,
+and the per-frame feed is `encoderFrameBuffer.set(encoderData.subarray(offset,
+offset + featureSize))`, also exact. The encoder input is
+`new Tensor('float32', processed.features, [...])`, taken directly from the
+processor. On inspection the handoff cannot introduce `1.1316e-6`. That is
+inspection-level evidence, weaker than observation, and does not close the
+question.
+
+**Why observation is blocked.** The shared test-only observer,
+`tools/nemo-tdt-onnx-export/observe_session.mjs`, refuses every tensor shape
+this graph needs:
+
+- It accepts CPU `float32`/`int32` only and explicitly performs no GPU readback,
+  so the hybrid's WebGPU encoder tensors are not observable at all.
+- It refuses `int64`. This graph's encoder `length` input and `encoded_lengths`
+  output are both `BigInt64Array`, so even a WASM encoder cannot be captured.
+- It requires the session's input-name count to equal the requested count, so
+  one observer cannot cover both the 2-input encoder graph and the 5-input
+  decoder graph.
+- Its fixed call cap interacts with any second observer on the same prototype.
+
+Five attempts to trace the hybrid encoder through a flag were reverted rather
+than left non-functional. Observing the hybrid's actual encoder inputs and
+outputs therefore requires **extending the observer with explicit GPU readback
+and int64 support** — a deliberate harness change with its own evidence
+requirements, not a flag on an existing runner.
+
+**Status unchanged.** The hybrid's encoder tensors on the real WebGPU path
+remain unobserved; the `1.1316e-6` difference is not attributed. Gate FAIL.

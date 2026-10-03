@@ -156,6 +156,15 @@ models cover it, while `Qwen/Qwen3-ASR-0.6B-hf` does (782,426,112 parameters,
 30 languages, Apache-2.0). Discovery evidence only; it is an autoregressive
 speech-LLM, so it needs a new family and download authority not granted here.
 
+Nothing in the numerical gates is closed. Attribution of the browser gate's
+`1.1316e-6` difference is now bounded by harness capability rather than by
+authority: observing the hybrid's own encoder tensors needs an observer that
+supports GPU readback and int64, which
+`tools/nemo-tdt-onnx-export/observe_session.mjs` deliberately does not provide.
+Library source inspection shows the encoder-to-head handoff is exact float32
+copies with no precision step, which is inspection-level evidence and not a
+closure.
+
 ## Measured acceptance against the Orukeet baseline
 
 The focus criterion is measurable: a port is cheaper when a second candidate
@@ -183,9 +192,9 @@ is tested, and replaced duplicated code that existed a few hours ago. Item 6's
 reuse rule is therefore partially satisfied: it holds within this
 investigation, and is untested across families.
 
-The next bounded slice remains the paired single-process browser run, which
-must capture encoder feeds, valid length and resolved session options for both
-paths. Selecting a candidate needs new weight-download authority.
+Attribution is therefore still open. The next bounded slice is the observer
+extension named above. Selecting a candidate needs new weight-download
+authority.
 
 ## Authority constraints unchanged
 
