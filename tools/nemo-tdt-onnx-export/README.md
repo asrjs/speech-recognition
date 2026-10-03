@@ -10,7 +10,14 @@ constant-output graph is used. Full numerical outputs and exact lengths gate
 PASS, together with GPU dispatch observation (WebGPU), actual graph/data body
 hashes, cleanup and unchanged sources. This does not prove production feature,
 full ASR, performance/VRAM, public loader or every-node GPU placement acceptance.
-Seven synthetic/preflight checks are in `test_browser_encoder_replay.py`; they
+Optional `--production-features` hashes exact captured PCM bytes in the browser,
+imports the built `JSMelProcessor`, and adds two real encoder calls on those
+features to the same session. The official-feature baseline stays separate.
+`BROWSER_ENCODER_SENSITIVITY_MEASURED` means a valid diagnostic with a passing
+official control, not feature or model acceptance: feature and production
+encoder comparisons can still FAIL and remain explicit in the receipt.
+The default without this option remains two official-feature calls only.
+Thirteen synthetic/preflight checks are in `test_browser_encoder_replay.py`; they
 are distinct from the real Chrome receipts tracked in the task checkpoint.
 
 Family-owned tooling for offline TDT encoder + combined predictor/joint graphs.

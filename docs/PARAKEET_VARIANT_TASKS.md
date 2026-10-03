@@ -14,6 +14,25 @@ Orukeet retains 627M parameters; it is not a small student model.
 
 ## Current checkpoint
 
+Browser production-feature sensitivity (2026-10-03): opt-in
+`browser_encoder_replay.py --production-features` processes byte-hashed captured
+PCM through the actual built JS processor in Chrome and runs two official-feature
+and two production-feature calls on one real fp32 WebGPU encoder session.
+JFK and speech/silence official controls pass; production encoder outputs also
+pass unchanged `atol=1e-5, rtol=1e-4` with zero mismatches, exact lengths and
+max errors `3.427267e-7` / `5.595386e-6`. Every call records 1,347 dispatches.
+Feature comparisons still FAIL at 313 / 74 coordinates, respectively. Status
+is deliberately `BROWSER_ENCODER_SENSITIVITY_MEASURED`, not model acceptance.
+PCM identity, graph/data body hashes, unchanged sources and owned cleanup
+passed; no blocked requests or browser/cleanup errors. Receipts under
+`tools/data/results/orukeet/`:
+`browser-production-feature-encoder-jfk-2026-10-03.json` and
+`browser-production-feature-encoder-speech-silence-2026-10-03.json`.
+Thirteen synthetic/preflight regression checks include failed feature gates,
+failed official/production outputs, requested missing data and PCM/length identity.
+Full decoder/token/text and public Orukeet browser acceptance remain open;
+continue source-grounded preprocessing work without waiving its numerical gate.
+
 Real browser encoder component (2026-10-03): the new family-owned
 `tools/nemo-tdt-onnx-export/browser_encoder_replay.py` loads the actual packed
 fp32 encoder plus 2,475,088,896-byte external data through the library session
@@ -27,8 +46,8 @@ Receipts: `browser-real-encoder-jfk-2026-10-03.json` and
 `browser-real-encoder-speech-silence-2026-10-03.json` in the Orukeet results.
 This is official-feature encoder component acceptance, not production-feature
 browser acceptance, every-node GPU placement or complete ASR. Feature gates
-remain failed. Next pair the same browser encoder control with actual JS
-features as a separate sensitivity diagnostic; preserve official-feature control.
+remain failed. The paired JS-feature diagnostic is now recorded above and
+preserves this official-feature control.
 
 Production-feature sensitivity (2026-10-03): the new family-owned
 `probe_feature_encoder_sensitivity.py` runs the unchanged built JS processor

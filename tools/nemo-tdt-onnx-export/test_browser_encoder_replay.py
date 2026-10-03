@@ -75,6 +75,65 @@ class EncoderResultTests(unittest.TestCase):
             result[key] = value
             self.assertFalse(evaluate(result, sample, 'webgpu'))
 
+    def sensitivity_fixture(self):
+        result, sample = self.fixture()
+        sample['model_input'] = {'sha256': 'a' * 64}
+        sample['stages']['features'] = copy.deepcopy(sample['stages']['encoder'])
+        sample['stages']['features_length'] = copy.deepcopy(sample['stages']['encoder_length'])
+        result.update(pcmSha256='a' * 64, productionLength=2,
+                      productionFeatures=copy.deepcopy(sample['stages']['features']))
+        official = result['runs']
+        production = copy.deepcopy(official)
+        for run in official:
+            run['featureSource'] = 'official'
+        for run in production:
+            run['featureSource'] = 'production-js'
+        result['runs'] = official + production
+        return result, sample
+
+    def test_failed_features_remain_failed_in_successful_measurement(self):
+        result, sample = self.sensitivity_fixture()
+        result['productionFeatures']['data'][0] = 1.1
+        self.assertTrue(replay.evaluate_sensitivity(result, sample, 'webgpu'))
+        self.assertFalse(result['feature_comparison']['allclose'])
+        self.assertTrue(result['official_encoder_pass'])
+        self.assertTrue(result['production_encoder_pass'])
+
+    def test_failed_production_encoder_is_reported_not_promoted(self):
+        result, sample = self.sensitivity_fixture()
+        result['runs'][2]['outputs']['outputs']['data'][0] = 1.1
+        self.assertTrue(replay.evaluate_sensitivity(result, sample, 'webgpu'))
+        self.assertFalse(result['production_encoder_pass'])
+
+    def test_failed_official_control_invalidates_measurement(self):
+        result, sample = self.sensitivity_fixture()
+        result['runs'][0]['outputs']['outputs']['data'][0] = 1.1
+        self.assertFalse(replay.evaluate_sensitivity(result, sample, 'webgpu'))
+
+    def test_missing_or_reordered_sensitivity_calls_rejected(self):
+        for missing in (True, False):
+            result, sample = self.sensitivity_fixture()
+            if missing:
+                result['runs'].pop()
+            else:
+                result['runs'].reverse()
+            with self.assertRaisesRegex(ValueError, 'missing or reordered'):
+                replay.evaluate_sensitivity(result, sample, 'webgpu')
+
+    def test_pcm_identity_and_production_length_rejected(self):
+        for key, value in [('pcmSha256', 'b' * 64), ('productionLength', 3),
+                           ('productionLength', 2.0), ('productionLength', True)]:
+            result, sample = self.sensitivity_fixture()
+            result[key] = value
+            with self.assertRaises(ValueError):
+                replay.evaluate_sensitivity(result, sample, 'webgpu')
+
+    def test_requested_missing_production_features_rejected(self):
+        result, sample = self.sensitivity_fixture()
+        del result['productionFeatures']
+        with self.assertRaises(KeyError):
+            replay.evaluate_sensitivity(result, sample, 'webgpu')
+
 
 if __name__ == '__main__':
     unittest.main()

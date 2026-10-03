@@ -34,8 +34,25 @@ globalThis.replayEncoder = async (fixture, backend) => {
     const bytes = Uint8Array.from(atob(fixture.featuresF32le), c => c.charCodeAt(0));
     if (bytes.byteLength !== fixture.shape.reduce((a, b) => a * b, 1) * 4)
       throw new Error('Feature byte count differs');
-    for (let repeat = 0; repeat < 2; repeat++) {
-      const feeds = { audio_signal: new ort.Tensor('float32', new Float32Array(bytes.buffer), fixture.shape),
+    const inputs = [{ featureSource: 'official', values: new Float32Array(bytes.buffer) }];
+    if (fixture.pcmF32le !== undefined) {
+      const pcmBytes = Uint8Array.from(atob(fixture.pcmF32le), c => c.charCodeAt(0));
+      const hash = await crypto.subtle.digest('SHA-256', pcmBytes);
+      receipt.pcmSha256 = [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+      if (receipt.pcmSha256 !== fixture.pcmSha256) throw new Error('Captured PCM byte identity differs');
+      const { JSMelProcessor } = await import('/dist/audio/js-mel.js');
+      const production = new JSMelProcessor({ nMels: fixture.shape[1],
+        normalization: 'per_feature', validLengthMode: 'onnx' }).process(new Float32Array(pcmBytes.buffer));
+      if (production.frameCount !== fixture.shape[2] || production.length !== fixture.length ||
+          production.features.length !== inputs[0].values.length)
+        throw new Error('Production feature shape/length differs');
+      receipt.productionFeatures = { dtype: 'float32', shape: fixture.shape,
+        data: Array.from(production.features) };
+      receipt.productionLength = production.length;
+      inputs.push({ featureSource: 'production-js', values: production.features });
+    }
+    for (const input of inputs) for (let repeat = 0; repeat < 2; repeat++) {
+      const feeds = { audio_signal: new ort.Tensor('float32', input.values, fixture.shape),
         length: new ort.Tensor('int64', BigInt64Array.from([BigInt(fixture.length)]), [1]) };
       let outputs;
       try {
@@ -44,7 +61,7 @@ globalThis.replayEncoder = async (fixture, backend) => {
         const values = {};
         for (const [name, tensor] of Object.entries(outputs))
           values[name] = { dtype: tensor.type, shape: [...tensor.dims], data: Array.from(tensor.data, Number) };
-        receipt.runs.push({ repeat, outputs: values, runAndReadbackMs: performance.now() - began,
+        receipt.runs.push({ repeat, featureSource: input.featureSource, outputs: values, runAndReadbackMs: performance.now() - began,
           gpuDispatches: receipt.gpuDispatches - before });
       } finally {
         disposeOrtOutputs(outputs);

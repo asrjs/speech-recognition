@@ -38,6 +38,22 @@ def evaluate(result, sample, backend):
     return good
 
 
+def evaluate_sensitivity(result, sample, backend):
+    """Measured downstream effect never waives a failed preprocessing gate."""
+    runs = result.get('runs', [])
+    if len(runs) != 4 or [run.get('featureSource') for run in runs] != ['official'] * 2 + ['production-js'] * 2:
+        raise ValueError('Requested official/production repeated calls missing or reordered')
+    if result.get('pcmSha256') != sample['model_input']['sha256']:
+        raise ValueError('Actual browser PCM identity differs')
+    if type(result.get('productionLength')) is not int or result['productionLength'] != sample['stages']['features_length']['data'][0]:
+        raise ValueError('Production feature length differs')
+    result['feature_comparison'] = compare_tensors(stage(sample['stages'], 'features', 'float32'),
+        stage({'production': result['productionFeatures']}, 'production', 'float32'), atol=1e-5, rtol=1e-4)
+    result['official_encoder_pass'] = evaluate({**result, 'runs': runs[:2]}, sample, backend)
+    result['production_encoder_pass'] = evaluate({**result, 'runs': runs[2:]}, sample, backend)
+    return result['official_encoder_pass']
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('capture', 'encoder', 'output'):
@@ -45,6 +61,7 @@ def main():
     for name in ('capture-sha256', 'encoder-sha256', 'encoder-data-sha256', 'sample-id'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--backend', choices=['webgpu', 'wasm'], required=True)
+    parser.add_argument('--production-features', action='store_true', help='Measure actual JS feature sensitivity alongside the unchanged official-feature control')
     parser.add_argument('--timeout-ms', type=int, default=240000)
     args = parser.parse_args()
     if not 1000 <= args.timeout_ms <= 600000:
@@ -53,6 +70,8 @@ def main():
     module = Path(__file__).with_suffix('.mjs')
     sources = [args.capture, args.encoder, data, Path(__file__), module,
         Path(__file__).with_name('browser_head_replay.py'), ROOT / 'dist/models/nemo-tdt/ort.js']
+    if args.production_features:
+        sources.append(ROOT / 'dist/audio/js-mel.js')
     require_new_outputs([args.output], protected_inputs=sources,
                         protected_directories=[ROOT / 'models', ROOT / 'src', ROOT / 'dist'])
     hashes = {str(path.resolve()): sha256(path) for path in sources}
@@ -63,12 +82,18 @@ def main():
     artifact = audit_graph(args.encoder, ENCODER_INPUTS, ENCODER_OUTPUTS)
     if len(artifact['external_data']) != 1 or artifact['external_data'][0]['location'] != 'encoder-model.onnx.data':
         raise ValueError('Only own packed encoder-model.onnx.data contract supported')
-    meta, sample, _, _, _, features, valid = read_capture(args.capture, args.capture_sha256, args.sample_id)
+    meta, sample, pcm, _, _, features, valid = read_capture(args.capture, args.capture_sha256, args.sample_id)
     fixture = {'featuresF32le': base64.b64encode(features.astype('<f4').tobytes()).decode('ascii'),
                'shape': list(features.shape), 'length': valid}
+    if args.production_features:
+        fixture.update(pcmF32le=base64.b64encode(pcm.astype('<f4').tobytes()).decode('ascii'),
+                       pcmSha256=sample['model_input']['sha256'])
     receipt = {'status': 'BROWSER_ENCODER_COMPONENT_FAIL', 'scope': 'Official frozen features through real fp32 encoder/library session bridge; preprocessing, decoder, public ASR and every-node GPU placement untested',
         'sources_sha256': hashes, 'identity': meta, 'graph': artifact, 'sample_id': args.sample_id,
         'backend': args.backend, 'browser_errors': [], 'blocked_requests': []}
+    receipt['production_features_requested'] = args.production_features
+    if args.production_features:
+        receipt['scope'] = 'Actual browser JS feature -> real fp32 encoder sensitivity with official-feature baseline; failed feature gate remains failed, decoder/full ASR untested'
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     server.graph, server.backend = args.encoder, args.backend
     server.entrypoint = '/encoder-replay.mjs'
@@ -106,8 +131,9 @@ def main():
                 page.evaluate("args => {globalThis.done=false; replayEncoder(...args).then(r=>{globalThis.result=r;globalThis.done=true;}).catch(e=>{globalThis.result={error:String(e)};globalThis.done=true;});}", [fixture, args.backend])
                 page.wait_for_function('done === true')
                 result = receipt['result'] = page.evaluate('result')
-                if evaluate(result, sample, args.backend) and not receipt['browser_errors'] and not receipt['blocked_requests']:
-                    receipt['status'] = 'BROWSER_ENCODER_COMPONENT_PASS'
+                measured = evaluate_sensitivity(result, sample, args.backend) if args.production_features else evaluate(result, sample, args.backend)
+                if measured and not receipt['browser_errors'] and not receipt['blocked_requests']:
+                    receipt['status'] = 'BROWSER_ENCODER_SENSITIVITY_MEASURED' if args.production_features else 'BROWSER_ENCODER_COMPONENT_PASS'
                 context.close()
             finally:
                 browser.close()
@@ -131,7 +157,7 @@ def main():
         write_new_text(args.output, json.dumps(receipt, indent=2, allow_nan=False) + '\n')
     print(json.dumps({'status': receipt['status'], 'output': str(args.output), 'error': receipt.get('error'),
                       'browser_error': receipt.get('result', {}).get('error')}))
-    return 0 if receipt['status'] == 'BROWSER_ENCODER_COMPONENT_PASS' else 1
+    return 0 if receipt['status'] in {'BROWSER_ENCODER_COMPONENT_PASS', 'BROWSER_ENCODER_SENSITIVITY_MEASURED'} else 1
 
 
 if __name__ == '__main__':
