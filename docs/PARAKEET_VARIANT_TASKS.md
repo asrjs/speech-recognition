@@ -3135,3 +3135,36 @@ unexplained `1.1316e-6` difference between the live feed and that run's
 production-JS frame remains unresolved. Per-frame and run-to-run composition
 are open. No tolerance, normalization or production math changed, and the
 browser gate stays FAIL and honest.
+
+### Shared fail-closed attribution control (2026-10-03)
+
+Goal item 3 delivered rather than described: the technique is now
+model-neutral, tested tooling in `tools/stage_attribution.py`, with
+`tools/test_stage_attribution.py` (10 tests) alongside the existing
+model-neutral suites — 33 tests pass together.
+
+`attribute_input_source` replays a component on reference inputs, on candidate
+inputs, and once per input with that single input replaced, then implicates an
+input **only when the single-input replay both fails the gate and reproduces
+the candidate output**. Failing the gate alone is not attribution: for
+`f(x, y) = x + 100*x*y` with reference `(0, 0)` and candidate `(2, 0.5)` the
+x-only replay yields 2 against an observed 102. That case is a test. The
+control returns `ATTRIBUTION_UNRESOLVED` rather than naming whichever input
+moved the metric most, and `sweep_input_scale` reports a directional bracket
+with that limitation attached.
+
+Applied to the real recorded case, `tools/nemo-tdt-onnx-export/
+head_attribution_control.py`, three binding gates run first: the
+reference-input replay must reproduce the official scores (`2.288818e-5`, 0
+mismatch), the native replay must reproduce the browser's own head output
+(`1.907349e-5`, 0 mismatch), and the failing coordinate set must equal the
+recorded one (`[8195, 8196, 8197]` on both sides). All three pass, then the
+control reports `ATTRIBUTED_TO_SINGLE_INPUT` implicating `encoder_outputs`
+(`1.456589e-6`), with `input_states_1` and `input_states_2` exonerated. The
+directional sweep passes at 0.25x and fails from 0.5x.
+
+This automates the localization that previously took bespoke investigation,
+which is the goal's acceptance criterion for a cheaper next port. It is a
+scheduling and replay control: not numerical feature parity, not a per-frame
+budget, and not a reason to reopen any closed gate. The browser gate stays
+FAIL.

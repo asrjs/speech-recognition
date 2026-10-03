@@ -136,6 +136,15 @@ call-20 feed and that run's production-JS frame 69 remains. Live-source
 attribution is therefore still open, with a concrete next discriminator: bind
 the two runs' session options, graph build and run configuration.
 
+Goal item 3 is now implemented, not just described:
+`tools/stage_attribution.py` is model-neutral, fail-closed tooling that
+implicates an input only when its single-input replay both fails the gate and
+reproduces the candidate output, returning `ATTRIBUTION_UNRESOLVED` otherwise.
+Ten tests cover it, including an interaction counterexample that a
+gate-failure-only rule would misattribute. Applied to the real Orukeet case it
+localizes the failure to `encoder_outputs` after three binding gates pass. The
+next port inherits this instead of re-deriving it.
+
 The next bounded slice is that binding. The candidate audit that follows needs
 new weight-download authority.
 
