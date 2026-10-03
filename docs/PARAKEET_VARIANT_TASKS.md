@@ -1899,3 +1899,24 @@ are recorded. No thresholds, weights, dist or live DFT sources changed.
 Next: investigate a materially different, source-grounded portable real-FFT
 factorization before another full-feature run. Do not repeat higher-precision
 or zero-imaginary full-FFT variants as if they were untested fixes.
+
+Portable real-FFT research (2026-10-03): next bounded candidate is PFFFT's
+FFTPACK-derived real-transform flow, not another arbitrary radix2 rounding
+variant. Upstream documents fp32 real transforms and WASM SIMD support:
+[PFFFT README](https://github.com/marton78/pffft/blob/master/README.md).
+Its [implementation](https://github.com/marton78/pffft/blob/master/src/pffft_priv_impl.h)
+contains distinct real passes/preprocessing/finalization; this suggests a
+different operation order, not guaranteed MKL equivalence. Length512 still
+uses power-of-two factors; do not call it a new prime-factor family.
+Record the exact revision/compiler/flags before executing any future control;
+compare the same captured frame bytes and all downstream feature values.
+Do not use a wrapper that inserts another window or changes scaling/layout.
+
+PocketFFT is a secondary real-codelet comparison:
+[upstream README](https://github.com/mreineck/pocketfft/blob/cpp/README.md).
+Neither candidate has been installed, compiled, measured or promoted here.
+Read and preserve upstream license notices before incorporating source.
+The local PATH check finds cmake but not emcc/clang; this is not an exhaustive
+toolchain inventory or authorization to install one. First check reusable local
+assets/toolchains and a dependency-light native real-FFT control; browser build
+and feature gates remain separately open. No new model weights are needed.
