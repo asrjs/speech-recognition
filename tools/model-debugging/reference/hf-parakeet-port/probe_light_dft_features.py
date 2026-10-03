@@ -18,6 +18,24 @@ from tensor_parity import compare_tensors
 from artifact_outputs import require_new_outputs, write_new_text
 
 
+def build_power_probe(power):
+    probe = build_probe()
+    if power == 'fp32-rounded':
+        return probe
+    if power != 'library':
+        raise ValueError('Unsupported injected-spectrum power arithmetic')
+    for before, after in (
+        ("referenceComplexPower !== 'fp32-rounded'", "referenceComplexPower !== 'library'"),
+        ("referenceComplexPower: 'fp32-rounded'", "referenceComplexPower: 'library'"),
+    ):
+        if probe.count(before) != 1:
+            raise ValueError('Re-inspect named spectrum probe power contract')
+        probe = probe.replace(before, after)
+    if "'official-complex-rounded'" not in probe:
+        raise ValueError('Named spectrum probe is missing')
+    return probe.replace("'official-complex-rounded'", "'official-complex-library'")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--capture', type=Path, required=True)
@@ -26,6 +44,7 @@ def main():
     parser.add_argument('--sample-id', required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--probe-output', type=Path, required=True)
+    parser.add_argument('--power', choices=['fp32-rounded', 'library'], default='fp32-rounded')
     args = parser.parse_args()
     sources = [Path(__file__), *[Path(__file__).with_name(name) for name in (
         'replay_packed_fft.py', 'diagnostic_mel_bank.py', 'compare_js_feature_boundaries.py',
@@ -60,7 +79,7 @@ def main():
     spectrum = compare_tensors(oracle.view(np.float32), candidate.copy().view(np.float32),
                                atol=1e-5, rtol=1e-4)
     spectra = {'official_complex_control': oracle, 'ort_dft_candidate': candidate}
-    probe = build_probe()
+    probe = build_power_probe(args.power)
     write_probe(args.probe_output, probe)
     payload = {'pcm': pcm.ravel().tolist(), 'bins': 128, 'referenceRaw': [0] * reference.size,
         'referenceWindow': read_stage(sample, 'feature_stft/window', 'float32').tolist(),
@@ -79,6 +98,7 @@ def main():
     if digest(args.capture.read_bytes()) != args.expected_capture_sha256:
         raise ValueError('Capture changed during execution')
     receipt = {'status': 'DIAGNOSTIC_FROZEN_DFT_FEATURES', 'sample_id': args.sample_id,
+        'injected_spectrum_power': args.power,
         'capture_sha256': args.expected_capture_sha256, 'bank_sha256': args.expected_bank_sha256,
         'bank_recipe': {'sample_rate': 16000, 'n_fft': 512, 'n_mels': 128,
                         'fmin': 0, 'fmax': 8000, 'norm': 'slaney', 'dtype': 'float32'},

@@ -4,11 +4,26 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from probe_light_dft_features import build_power_probe
+from replay_packed_fft import build_probe
 
 TOOL = Path(__file__).with_name('probe_light_dft_features.py')
 
 
 class LightDftGuardTests(unittest.TestCase):
+    def test_power_probe_preserves_baseline_and_changes_only_named_contract(self):
+        baseline = build_probe()
+        self.assertEqual(build_power_probe('fp32-rounded'), baseline)
+        library = build_power_probe('library')
+        restored = library.replace("'official-complex-library'", "'official-complex-rounded'")
+        restored = restored.replace("referenceComplexPower !== 'library'",
+                                    "referenceComplexPower !== 'fp32-rounded'")
+        restored = restored.replace("referenceComplexPower: 'library'",
+                                    "referenceComplexPower: 'fp32-rounded'")
+        self.assertEqual(restored, baseline)
+        with self.assertRaises(ValueError):
+            build_power_probe('unsupported')
+
     def test_invalid_bank_fails_without_outputs(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

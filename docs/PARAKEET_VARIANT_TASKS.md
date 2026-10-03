@@ -1817,3 +1817,17 @@ Next: investigate the remaining FFT/power arithmetic seam with equivalent
 captured inputs and final-feature controls; retain this negative DFT candidate.
 Do not escalate to fp16/preset promotion or use a coordinate-specific patch.
 The older broad-dependency run remains independently pending while live.
+
+Power-boundary A/B (2026-10-03): `--power library` changes only the globally
+injected complex-to-power expression to production-style JS `re*re + im*im`
+followed by the float32 store. The named probe guard changes with that boundary;
+a regression proves reversing these named substitutions restores the baseline
+probe bytes exactly, and invalid options fail. Four light CLI/probe tests pass.
+Actual run exits zero with an explicitly diagnostic receipt:
+`tools/data/results/orukeet/light-dft-library-power-speech-silence-2026-10-03.json`.
+PCM, window, bank, graph and oracle hashes match the rounded control. Official
+complex features still have zero tolerance mismatches, while DFT features still
+have 78, the same max absolute error and first divergent index. Thus changing
+this global power rounding boundary does not resolve the DFT feature failure.
+Retain both controls; next inspect spectrum/power contributions before selecting
+another FFT algorithm. No production code or acceptance threshold changed.
