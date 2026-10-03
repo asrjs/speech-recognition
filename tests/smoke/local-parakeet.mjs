@@ -62,10 +62,11 @@ field('run').addEventListener('click', async () => {
     let transcriptionOptions;
     let expectedTranscript = expected;
     if (field('window-tokens').checked) {
-      const fixture = createWindowTokenFixture(pcm);
+      const overlap = field('window-overlap').checked;
+      const fixture = createWindowTokenFixture(pcm, overlap);
       transcriptionPcm = fixture.pcm;
       transcriptionOptions = fixture.options;
-      expectedTranscript = `${expected} ${expected}`;
+      expectedTranscript = overlap ? expected : `${expected} ${expected}`;
       receipt.windowing = fixture.windowing;
     }
     for (let iteration = 0; iteration < 2; iteration++) {

@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from artifact_outputs import require_new_outputs, write_new_text
 
 
-def validate_result(result, verify_cancellation, verify_window_tokens=False):
+def validate_result(result, verify_cancellation, verify_window_tokens=False, window_token_overlap=False):
     """Validate lifecycle evidence, not just the page's PASS label or ASR parity."""
     if not isinstance(result, dict) or result.get('status') != 'PASS_LOCAL_HYBRID_SMOKE':
         raise ValueError('Public API smoke failed')
@@ -43,11 +43,21 @@ def validate_result(result, verify_cancellation, verify_window_tokens=False):
     if verify_window_tokens:
         policy = result.get('windowing', {})
         boundary, duration = policy.get('windowSeconds'), policy.get('durationSeconds')
-        if type(boundary) not in (int, float) or not math.isfinite(boundary) or boundary < 20 or duration != 2 * boundary:
+        expected_duration = 34 if window_token_overlap else 2 * boundary if type(boundary) in (int, float) else None
+        if type(boundary) not in (int, float) or not math.isfinite(boundary) or boundary < 20 or duration != expected_duration:
             raise ValueError('Two-window input evidence missing')
+        if window_token_overlap and (boundary != 20 or policy.get('overlapSeconds') != 6):
+            raise ValueError('Shared-speech overlap policy missing')
         for item in results:
             if item['meta'].get('detailLevel') != 'detailed' or item['meta']['metrics'].get('windowCount') != 2:
                 raise ValueError('Detailed two-window execution required')
+            if window_token_overlap:
+                # This diagnostic intentionally exercises the captured ambiguous
+                # overlap, not a general gate for all future reconciled outputs.
+                warnings = item.get('warnings')
+                if not isinstance(warnings, list) or not any(isinstance(warning, dict) and
+                        warning.get('code') == 'pipeline.windowing.token-overlap-unresolved' for warning in warnings):
+                    raise ValueError('Expected ambiguous overlap processing evidence missing')
             tokens, words = item.get('tokens'), item.get('words')
             if not isinstance(tokens, list) or not tokens or not isinstance(words, list) or not words:
                 raise ValueError('Real token and word detail required')
@@ -59,10 +69,10 @@ def validate_result(result, verify_cancellation, verify_window_tokens=False):
                     start, end = entry.get('startTime'), entry.get('endTime')
                     if any(type(value) not in (int, float) or not math.isfinite(value) for value in (start, end)) or not 0 <= start <= end <= duration:
                         raise ValueError('Finite global timestamps required')
-                    if start < boundary < end:
+                    if not window_token_overlap and start < boundary < end:
                         raise ValueError('Window-local timestamp leaked across boundary')
                     halves.add(start >= boundary)
-                if halves != {False, True}:
+                if not window_token_overlap and halves != {False, True}:
                     raise ValueError('Detail from both windows required')
             for word in words:
                 refs = word.get('tokenIndices')
@@ -97,8 +107,11 @@ def main():
     parser.add_argument('--encoder-precision', choices=['fp32', 'fp16'], default='fp32')
     parser.add_argument('--verify-cancellation', action='store_true')
     parser.add_argument('--verify-window-tokens', action='store_true')
+    parser.add_argument('--window-token-overlap', action='store_true')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if args.window_token_overlap and not args.verify_window_tokens:
+        parser.error('--window-token-overlap requires --verify-window-tokens')
     if not args.expected_phrase.strip():
         parser.error('Expected smoke phrase must not be empty')
     consumer, model_root = args.consumer_root.resolve(), args.model_root.resolve()
@@ -125,6 +138,7 @@ def main():
         'scope': 'Stock-v3 repeated public local inference, selected session providers and awaited disposal; optional cooperative decode cancellation/reuse, not GPU kernel interruption, per-node GPU placement, numerical parity, Orukeet or soak acceptance',
         'cancellation_requested': args.verify_cancellation,
         'window_tokens_requested': args.verify_window_tokens,
+        'window_token_overlap_requested': args.window_token_overlap,
         'expected_phrase': args.expected_phrase, 'encoder_precision': args.encoder_precision,
         'blocked_requests': [], 'page_errors': [], 'console': []}
     process, ready = None, None
@@ -175,10 +189,11 @@ def main():
                     page.get_by_label('Expected smoke phrase', exact=True).fill(args.expected_phrase)
                     page.get_by_label('Verify decode cancellation and reuse', exact=True).set_checked(args.verify_cancellation)
                     page.get_by_label('Verify windowed token detail', exact=True).set_checked(args.verify_window_tokens)
+                    page.get_by_label('Use shared-speech overlap fixture', exact=True).set_checked(args.window_token_overlap)
                     page.get_by_role('button').click()
                     expect(page.get_by_role('status')).to_have_text(re.compile('^(PASS_|FAIL_)'), timeout=240000)
                     receipt['result'] = json.loads(page.locator('#result').inner_text())
-                    validate_result(receipt['result'], args.verify_cancellation, args.verify_window_tokens)
+                    validate_result(receipt['result'], args.verify_cancellation, args.verify_window_tokens, args.window_token_overlap)
                     served = set()
                     for response in tuple(responses):
                         path = urlparse(response.url).path

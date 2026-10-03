@@ -46,6 +46,23 @@ class LocalParakeetResultTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'timing'):
             runner.validate_result(value, False, True)
 
+    def test_shared_speech_overlap_requires_explicit_policy(self):
+        value = self.window_result()
+        value['windowing'] = {'windowSeconds': 20, 'durationSeconds': 34, 'overlapSeconds': 6}
+        for item in value['results']:
+            item['tokens'] = [{'index': 0, 'id': 1, 'text': 'Test', 'startTime': 15, 'endTime': 16}]
+            item['words'] = [{'index': 0, 'text': 'Test', 'startTime': 15, 'endTime': 16, 'tokenIndices': [0]}]
+            item['warnings'] = [{'code': 'pipeline.windowing.token-overlap-unresolved'}]
+        runner.validate_result(value, False, True, True)
+        without_overlap = copy.deepcopy(value)
+        for item in without_overlap['results']:
+            item['warnings'] = []
+        with self.assertRaisesRegex(ValueError, 'overlap processing'):
+            runner.validate_result(without_overlap, False, True, True)
+        value['windowing']['overlapSeconds'] = 0
+        with self.assertRaisesRegex(ValueError, 'overlap policy'):
+            runner.validate_result(value, False, True, True)
+
     def result(self):
         item = {'text': 'Test phrase.', 'meta': {'metrics': {
             'encoderBackend': 'webgpu', 'decoderBackend': 'wasm'}}}

@@ -622,6 +622,37 @@ blocked requests, unchanged input hashes, awaited disposal and ECONNREFUSED
 preview closure. This remains stock-v3 no-overlap smoke, not Orukeet parity,
 overlap reconciliation, timestamp accuracy or a long-session memory benchmark.
 
+Actual shared-speech overlap diagnostic (2026-10-03): opt-in
+`--verify-window-tokens --window-token-overlap` places the short speech once at
+15 seconds in a bounded 34-second PCM fixture. Two 20-second windows overlap
+by six seconds, sharing the complete speech; source PCM must be at most five
+seconds. A failing-first Node fixture test now passes, together with all three
+fixture tests and 13 Python runner tests. CLI rejects overlap without requested
+token detail; the validator requires the explicit overlap policy and still
+checks canonical indices, timing/reference associations and repeated detail.
+Receipt `tools/data/results/harness/local-window-tokens-v3-overlap-2026-10-03.json`
+exits 0: both actual Chrome hybrid results contain the single expected phrase,
+eight words and 15 tokens, with unchanged inputs and successful cleanup.
+Status is PARTIAL PASS: word/text duplication control passes, but token overlap
+remains unresolved. Four context-shifted occurrences remain beyond the 11-token
+phrase; both runs emit `pipeline.windowing.token-overlap-unresolved`. Global
+token indices therefore do not imply a unique chronologically ordered token
+sequence. Do not hide this evidence by fuzzy timing deduplication or call it
+complete reconciliation. Next: review this diagnostic, then determine a safe
+canonical token ownership contract using the captured real ambiguity before
+changing generic merging; long-session memory measurements remain separate.
+
+Review correction: two windows alone did not prove overlap was applied. A
+failing-first negative removes the overlap warning from an otherwise valid
+two-window result; the diagnostic now requires the captured ambiguous-overlap
+warning in both repeats. All 13 Python tests pass. The existing real receipt
+passes the tightened validator by offline post-processing; this is not a new
+browser run with the updated runner hash. This fixture deliberately certifies
+the unresolved-overlap diagnostic, not all future successfully reconciled output.
+Public transcript JSDoc now explains token-array indices, known word references
+and why retained ambiguous tokens must not be joined to reconstruct final text.
+No token selection/deduplication behavior or model mathematics was changed.
+
 Added word and segment-only cases through root-exported
 `transcribeWithWindowing`. Four seconds of synthetic PCM produce two explicit
 two-second windows without overlap: local times 0.25..1.25 become
