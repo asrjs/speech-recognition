@@ -2,7 +2,7 @@
 import {
   createSpeechModelLocalEntries,
   loadSpeechModelFromLocalEntries,
-} from '@asrjs/speech-recognition/browser';
+} from '../../../src/runtime/local-browser.ts';
 
 const MODEL_ID = 'oruk/orukeet';
 const field = (id) => document.getElementById(id);
@@ -59,6 +59,8 @@ field('run').addEventListener('click', async () => {
       backend: field('backend').value,
       encoderQuant: field('precision').value,
       preprocessorBackend: 'js',
+      // ORT_ASSET_PATH_NOTE: this Vite demo still needs an ORT runtime asset
+      // path that bypasses Vite's module transform; see C30 in PRODUCT_TASKS.
       signal: null,
     });
     result.loadMs = performance.now() - started;
@@ -69,7 +71,7 @@ field('run').addEventListener('click', async () => {
 
     for (let index = 0; index < repeat; index += 1) {
       status(`Transcribing ${index + 1}/${repeat}…`);
-      const transcription = await model.transcribe(pcm, 16000, { returnTokenIds: true });
+      const transcription = await model.transcribeMonoPcm(pcm, 16000, { returnTokenIds: true });
       result.transcripts.push({
         text: transcription.text,
         tokens: transcription.tokens?.length ?? 0,
