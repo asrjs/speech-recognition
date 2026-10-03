@@ -2697,3 +2697,33 @@ in `probe_light_dft_features.py` and has32 failed downstream feature cells.
 The redundant uncommitted probe/test additions were reverted rather than
 rerunning them or adding another inference path. Preserve those earlier
 negative receipts and the bounded algorithm-search rule above.
+
+### Real browser call 20 same-input head control (2026-10-03)
+
+Replayed only captured call 20 through the existing persistent fp32 head with
+native ORT 1.29.0 CPUExecutionProvider; no alternate decoder, model restore,
+browser rerun or acceptance change. Inputs came from
+`browser-real-public-hybrid-jfk-2026-10-03.json` and the frozen control
+`browser-live-head-wasm-jfk-2026-10-02.json` under
+`tools/data/results/orukeet/`. The graph was
+`persistent-single-step-head-2026-10-02/decoder_joint-model.onnx`.
+
+For each capture independently, native versus WASM scores pass unchanged
+atol1e-5/rtol1e-4: real-input raw and normalized max1.52587890625e-5;
+frozen-input raw max1.9073486328125e-5, normalized max1.52587890625e-5;
+all four comparisons have zero mismatches across8198 values. Comparing the
+two WASM normalized outputs instead fails three coordinates, first8195,
+max0.0005776882171630859. Their targets, lengths and both input recurrent
+states are byte-identical; only encoder frame differs (max1.4565885066986084e-6,
+mean3.285514083017915e-7; its numerical input gate passes). This isolates this
+control's score sensitivity to the changed encoder input, not evidence of a
+same-input WASM head defect. It does not prove all head calls or full ASR.
+
+Separately, `compare_live_head` still requires frozen encoder bytes even in
+real-encoder mode: all46 real frames pass numerical gates but fail this exact
+check. Keep frozen byte-exact acceptance intact; add an explicit real-input
+comparison scope with regressions before using that diagnostic again. Removing
+that inappropriate frozen requirement will not remove the independently failed
+three score coordinates. Overall real-path and feature acceptance remain FAIL.
+Next return to the earliest unresolved feature/encoder boundary, preserving
+these same-input head controls and all existing tolerances.
