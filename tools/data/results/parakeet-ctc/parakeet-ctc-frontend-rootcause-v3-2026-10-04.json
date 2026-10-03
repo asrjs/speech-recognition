@@ -1,0 +1,29 @@
+{
+  "status": "STILL_FAIL_ROOT_CAUSE_NARROWED_NOT_CLOSED",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "established": {
+    "filterbank": "A librosa-compatible bank was reconstructed and verified elementwise against a dumped librosa.filters.mel(sr=16000,n_fft=512,n_mels=80,fmin=0,fmax=8000,norm=slaney): max abs 1.59e-9 over 20,560 weights, all 80 bands. Key correction: librosa scales weights by 2/(f[i+2]-f[i]) with the band edges in Hz, not mel units.",
+    "frame_count": "includeCenteredTailFrame moves the family frontend from the clamped 1100 to the official 1101 centered frames.",
+    "window_and_padding": "Verified correct: window centered at leftPad=(512-400)>>1=56, hann with winLength-1 denominator (periodic=false), 256 zero samples padded on both sides of the signal.",
+    "log_guard": "log(mel + 2^-24) matches transformers LOG_ZERO_GUARD_VALUE; both sides share the -16.63553237915039 floor."
+  },
+  "decisive_negative_result": {
+    "finding": "Supplying the verified librosa bank changed feature parity not at all: max abs stayed 7.401313781738281 and mean 1.6993922893811946 across 88,080 coordinates (all 1101 frames now compared). The filterbank was not the dominant error.",
+    "measured": {
+      "max_abs_error": 7.401313781738281,
+      "mean_abs_error": 1.6993922893811946,
+      "compared": 88080,
+      "gate_failing_at_atol_1e-5_rtol_1e-4": 87685
+    }
+  },
+  "open_contradiction": {
+    "what": "Two official extraction paths disagree strongly, and the frontend matches neither.",
+    "path_a": "_torch_extract_fbank_features on the raw waveform (STFT, mel, log; no preemphasis), which is the dump used for the 7.40 measurement.",
+    "path_b": "ParakeetProcessor.__call__ (the documented model-card path, which applies preemphasis), against which the current frontend measures max abs 18.02 and mean 9.25.",
+    "why_it_matters": "Until it is settled which path the exported graph expects, the feature contract is undefined and parity cannot be claimed in either direction.",
+    "next_step": "Determine what __call__ does beyond preemphasis (padding, truncation, scaling) and compare it against our signal-level preemphasis, which currently keeps x[0] and applies x[i]-0.97*x[i-1]."
+  },
+  "shipped": "nothing beyond two inert additive mel options (melFilterbank, includeCenteredTailFrame), both covered by tests/lasr-ctc-mel-filterbank-override.test.ts; no preset, adapter or manifest registered.",
+  "oracle_transcript": "And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country."
+}

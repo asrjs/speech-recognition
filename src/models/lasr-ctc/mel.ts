@@ -41,7 +41,9 @@ export interface MedAsrJsPreprocessorOptions {
    * Family-supplied mel matrix, row-major `[nMels, nFreqBins]`, used instead of
    * the built-in filterbank. For families whose official extractor ships its own
    * bank (for example librosa's `filters.mel`), building the bank here avoids
-   * changing the shared NeMo-style default.
+   * changing the shared NeMo-style default. Its length must equal
+   * `nMels * (nFft / 2 + 1)`; anything else is rejected rather than silently
+   * read as zeros by the per-band bounds scan.
    */
   readonly melFilterbank?: Float64Array;
   /** Emit the trailing centered frame instead of clamping to `floor(samples / hop)`. */
@@ -603,8 +605,15 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     this.melFilterbankOverride = options.melFilterbank;
     this.includeCenteredTailFrame = options.includeCenteredTailFrame ?? false;
 
-    this.melFilterbank = this.melFilterbankOverride
-      ? new Float32Array(this.melFilterbankOverride)
+    const override = this.melFilterbankOverride;
+    if (override && override.length !== this.nMels * this.nFreqBins) {
+      throw new RangeError(
+        `melFilterbank must hold nMels * (nFft / 2 + 1) = ${this.nMels * this.nFreqBins} values, received ${override.length}.`,
+      );
+    }
+
+    this.melFilterbank = override
+      ? new Float32Array(override)
       : getCachedMelFilterbank(
           this.nMels,
           this.melScale,
