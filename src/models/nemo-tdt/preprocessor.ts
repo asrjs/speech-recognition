@@ -1,7 +1,7 @@
 import type { AudioBufferLike } from '../../types/index.js';
 import { JSMelProcessor } from '../../audio/js-mel.js';
 import type { OrtModuleLike, OrtSessionLike, OrtTensorLike } from './ort.js';
-import { disposeOrtOutputs, releaseOrtSession } from './ort.js';
+import { releaseOrtSession } from './ort.js';
 import { honorAbortAfterCreate, withNativeAbortSignalOption } from '../../io/abort.js';
 import { importNodeModule, isNodeLikeRuntime } from '../../io/node-compat.js';
 
@@ -94,6 +94,8 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
     let waveformTensor: OrtTensorLike<Float32Array> | undefined;
     let lengthTensor: OrtTensorLike<BigInt64Array> | undefined;
     let outputs: Record<string, OrtTensorLike> | undefined;
+    let operationFailed = false;
+    let operationFailure: unknown;
     try {
       waveformTensor = new this.ort.Tensor('float32', mono, [1, mono.length]);
       lengthTensor = new this.ort.Tensor('int64', BigInt64Array.from([BigInt(mono.length)]), [1]);
@@ -153,10 +155,31 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
         frameCount,
         validLength,
       };
+    } catch (error) {
+      operationFailed = true;
+      operationFailure = error;
+      throw error;
     } finally {
-      disposeOrtOutputs(outputs);
-      waveformTensor?.dispose?.();
-      lengthTensor?.dispose?.();
+      const cleanupFailures: unknown[] = [];
+      // Every transient tensor is owned here, even if an earlier disposer fails.
+      for (const tensor of new Set([
+        ...Object.values(outputs ?? {}),
+        waveformTensor,
+        lengthTensor,
+      ])) {
+        try {
+          tensor?.dispose?.();
+        } catch (error) {
+          cleanupFailures.push(error);
+        }
+      }
+      if (cleanupFailures.length) {
+        const failures = operationFailed ? [operationFailure, ...cleanupFailures] : cleanupFailures;
+        if (failures.length === 1) throw failures[0];
+        throw new AggregateError(failures, 'NeMo preprocessor processing or cleanup failed.', {
+          cause: failures[0],
+        });
+      }
     }
   }
 }

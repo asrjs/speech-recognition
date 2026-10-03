@@ -3,6 +3,29 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C19 — Preprocessor cleanup failure isolation
+
+Status: PASS — injected tensor-disposal failures and session reuse;
+not real native/browser memory-leak or concurrent-run certification.
+
+Following C18, a throwing output disposer still skipped later outputs and both
+inputs; a throwing input disposer skipped the next input. Cleanup could also
+mask an inference or validation error. Eight new regression cases reproduced
+the failures before the production fix; one cleanup control already passed.
+The processor now attempts each unique transient tensor once despite earlier
+disposal failures. Single errors preserve identity; multiple errors are reported
+in an AggregateError, with the original operation failure first and as cause
+when present (including a thrown undefined). Aliased outputs are not disposed
+twice. No shared helper, decoder, feature mathematics or public API changed.
+
+Twenty-five processor tests and fifty processor/native-bridge/RNNT/lifecycle
+tests pass. TypeScript, scoped ESLint, formatting and independent review pass.
+Full regression: 1,442 PASS / 33 SKIP / 0 FAIL; receipt:
+`tools/data/results/harness/nemo-preprocessor-disposal-cleanup-full-suite-2026-10-03.json`.
+TLS verification/system CA were enabled only for that test child. These are
+mocked fault-injection regressions, not actual ORT allocation/disposal failures
+or measured GPU/CPU memory recovery. Concurrent process/dispose remains open.
+
 ## C18 — Preprocessor partial input allocation cleanup
 
 Status: PASS — injected ORT input-allocation failure/reuse ownership;

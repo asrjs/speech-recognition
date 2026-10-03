@@ -45,6 +45,122 @@ const audio = {
 };
 
 describe('NeMo ONNX processor output contract', () => {
+  it.each(['features', 'features_lens', 'waveform', 'length'] as const)(
+    'attempts every tensor cleanup after %s disposal fails and remains reusable',
+    async (target) => {
+      const f = fixture();
+      const error = new Error('Tensor cleanup failed');
+      f.run.mockImplementationOnce(async () => {
+        const tensor =
+          target === 'waveform'
+            ? f.inputs[0]!
+            : target === 'length'
+              ? f.inputs[1]!
+              : f.outputs[target]!;
+        vi.mocked(tensor.dispose!).mockImplementationOnce(() => {
+          throw error;
+        });
+        return f.outputs;
+      });
+      try {
+        await expect(f.processor.process(audio)).rejects.toBe(error);
+        for (const tensor of [...f.inputs, ...Object.values(f.outputs)])
+          expect(tensor.dispose).toHaveBeenCalledOnce();
+        const result = await f.processor.process(audio);
+        expect(result.features).toEqual(Float32Array.from([1, 2, 3, 4, 5, 6]));
+        for (const tensor of f.inputs) expect(tensor.dispose).toHaveBeenCalledOnce();
+        for (const tensor of Object.values(f.outputs))
+          expect(tensor.dispose).toHaveBeenCalledTimes(2);
+      } finally {
+        await f.processor.dispose();
+      }
+      expect(f.release).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([new Error('Inference failed'), undefined])(
+    'retains an inference failure alongside all input cleanup failures (%s)',
+    async (primary) => {
+      const f = fixture();
+      const cleanup = [new Error('Waveform cleanup failed'), new Error('Length cleanup failed')];
+      f.run.mockImplementationOnce(async () => {
+        f.inputs.forEach((tensor, index) =>
+          vi.mocked(tensor.dispose!).mockImplementationOnce(() => {
+            throw cleanup[index];
+          }),
+        );
+        throw primary;
+      });
+      try {
+        await expect(f.processor.process(audio)).rejects.toMatchObject({
+          cause: primary,
+          errors: [primary, ...cleanup],
+        });
+        for (const tensor of f.inputs) expect(tensor.dispose).toHaveBeenCalledOnce();
+        for (const tensor of Object.values(f.outputs))
+          expect(tensor.dispose).not.toHaveBeenCalled();
+      } finally {
+        await f.processor.dispose();
+      }
+    },
+  );
+
+  it('retains validation failure and all output cleanup failures', async () => {
+    const f = fixture();
+    (f.outputs.features!.data as Float32Array)[0] = NaN;
+    const cleanup = [new Error('Features cleanup failed'), new Error('Length cleanup failed')];
+    Object.values(f.outputs).forEach((tensor, index) =>
+      vi.mocked(tensor.dispose!).mockImplementationOnce(() => {
+        throw cleanup[index];
+      }),
+    );
+    try {
+      const failure = await f.processor.process(audio).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(AggregateError);
+      const aggregate = failure as AggregateError;
+      expect(aggregate.errors).toHaveLength(3);
+      expect(aggregate.errors[0]).toBe(aggregate.cause);
+      expect(aggregate.errors[0].message).toMatch(/NeMo preprocessor output contract/);
+      expect(aggregate.errors.slice(1)).toEqual(cleanup);
+      for (const tensor of [...f.inputs, ...Object.values(f.outputs)])
+        expect(tensor.dispose).toHaveBeenCalledOnce();
+    } finally {
+      await f.processor.dispose();
+    }
+  });
+
+  it('reports multiple cleanup failures after successful inference', async () => {
+    const f = fixture();
+    const cleanup = [new Error('Features cleanup failed'), new Error('Length cleanup failed')];
+    Object.values(f.outputs).forEach((tensor, index) =>
+      vi.mocked(tensor.dispose!).mockImplementationOnce(() => {
+        throw cleanup[index];
+      }),
+    );
+    try {
+      await expect(f.processor.process(audio)).rejects.toMatchObject({
+        cause: cleanup[0],
+        errors: cleanup,
+      });
+      for (const tensor of [...f.inputs, ...Object.values(f.outputs)])
+        expect(tensor.dispose).toHaveBeenCalledOnce();
+    } finally {
+      await f.processor.dispose();
+    }
+  });
+
+  it('disposes aliased output tensors once', async () => {
+    const f = fixture();
+    f.outputs.extra = f.outputs.features!;
+    try {
+      await f.processor.process(audio);
+      for (const tensor of [...f.inputs, ...Object.values(f.outputs)])
+        expect(tensor.dispose).toHaveBeenCalledOnce();
+    } finally {
+      await f.processor.dispose();
+    }
+  });
+
   it.each([1, 2])(
     'cleans partial inputs after allocation %i fails and remains reusable',
     async (at) => {
