@@ -3179,3 +3179,45 @@ replay also ran the component twice per input; it now runs once. Both are
 regression-tested, including the cancelling magnitudes as a precondition
 assertion. 12 control tests and 35 model-neutral tests pass, and the real case
 still resolves to `encoder_outputs`.
+
+### Bounded disposition for the two open gates (2026-10-03)
+
+Goal item 1 asks for a close or a bounded, evidence-backed deferral. Neither
+gate can be closed with what is recorded, and neither can honestly be abandoned
+silently. Both are dispositioned here.
+
+**Browser real-hybrid score gate — attributed, deferred with a named next
+experiment.** The shared attribution control resolves the failure to
+`encoder_outputs` after three binding gates pass. The encoder-side decomposition
+shows the execution residual (`1.326203e-6`) exceeds the feature effect
+(`9.797513e-7`), and all controls pass the unchanged gate.
+
+The remaining `1.1316e-6` discrepancy between the live hybrid feed and the
+encoder-sensitivity run has been bounded as far as recorded artifacts allow.
+Verified identical across both runs: PCM hash
+`ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`; encoder
+graph SHA-256 `9924d5c30da5d54454dd3de6dbfc177aa771205eaac5da55d8f05ec813036f17`
+and external data SHA-256 `f7a19051cc2913d99635d70a856bfe82795cab1f4af3670433e9fc1eb101e00f`;
+processor options (`validLengthMode: onnx`, `normalization: per_feature`);
+`onnxruntime-web` 1.29.0; NVIDIA Blackwell adapter; and the `createOrtSession`
+encoder option object (`backendId` webgpu, `cpuThreads` 1, same external data
+URL and path). Both runs also produce bitwise-exact repeats on an identical
+feature source, so neither is nondeterministic.
+
+Identical inputs and identical session configuration still differ in output,
+so the cause is not in any bound dimension. The discriminating experiment is a
+single browser process that runs **both** paths on the same PCM and compares
+encoder outputs directly, removing the cross-receipt comparison entirely. That
+is a new browser run, not a re-analysis of existing receipts. Until it runs,
+live-source attribution stays open and the gate stays FAIL.
+
+**Production feature parity — deferred with named exclusions.** FAIL on
+unchanged `atol=1e-5, rtol=1e-4`: JFK 313/140,928, speech/silence 74/519,808,
+pure silence 12,800/12,928. Eight FFT families are already recorded and
+rejected (fp32/fp64 direct DFT, PocketFFT, PFFFT SSE and scalar, radix4 DIT,
+ORT DFT/STFT, packed-product factorization). Continuing those lines is
+exhausted. What remains genuinely un-attempted is the upstream boundary
+identified by the official-power control: the official engine's own power/mel
+arithmetic versus ours, now isolated. Closing it needs a new hypothesis about
+that boundary, not another FFT swap. Until then the gate is deferred, not
+closed, and no tolerance moves.
