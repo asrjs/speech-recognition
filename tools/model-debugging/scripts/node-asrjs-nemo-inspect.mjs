@@ -61,6 +61,7 @@ export function parseArgs(args = process.argv.slice(2)) {
     originalWeights: null,
     inputMode: 'source-wav',
     cancelReuse: false,
+    disposeDrain: false,
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -71,6 +72,7 @@ export function parseArgs(args = process.argv.slice(2)) {
     else if (arg === '--backend') options.backend = args[++index];
     else if (arg === '--no-grid-batching') options.gridBatching = false;
     else if (arg === '--cancel-reuse') options.cancelReuse = true;
+    else if (arg === '--dispose-drain') options.disposeDrain = true;
     else if (arg === '--model-dir') options.modelDir = path.resolve(args[++index]);
     else if (arg === '--audio') options.audio = path.resolve(args[++index]);
     else if (arg === '--target-sample-rate') options.targetSampleRate = Number(args[++index]);
@@ -111,6 +113,8 @@ export function validateInspectorOptions(options) {
     );
   if (options.cancelReuse && !options.oracle)
     throw new Error('--cancel-reuse requires an official --oracle.');
+  if (options.disposeDrain && !options.oracle)
+    throw new Error('--dispose-drain requires an official --oracle.');
   if (!['source-wav', 'oracle-pcm'].includes(options.inputMode))
     throw new Error('--input-mode must be source-wav or oracle-pcm.');
   if (options.inputMode === 'oracle-pcm' && !options.oracle)
@@ -129,6 +133,11 @@ export function validateInspectorOptions(options) {
   ) {
     throw new Error(
       'Unknown models require explicit --family nemo-tdt and --config; Parakeet defaults are not generic.',
+    );
+  }
+  if (options.cancelReuse && options.disposeDrain) {
+    throw new Error(
+      '--cancel-reuse and --dispose-drain both consume the loaded session; request only one.',
     );
   }
 }
@@ -441,6 +450,166 @@ export async function runInspectorCancelReuse(loaded, input, options, reference,
   };
 }
 
+/**
+ * Real-provider disposal control for C20/C21 ownership claims.
+ *
+ * Starts a transcription, requests disposal only after that call is accepted,
+ * then requires the accepted call to settle with its oracle-matching output
+ * before disposal resolves, and requires the next call to reject. Disposal is
+ * only ever requested once per loaded handle, so this control consumes the
+ * session it runs on and cannot be combined with cancellation reuse.
+ *
+ * Scheduling assertions are not numerical feature/state, memory or browser
+ * acceptance; a provider that never settles still delays disposal.
+ */
+export async function runDisposalDrainAgainstSession(
+  target,
+  transcribe,
+  options,
+  reference,
+  sampleId,
+  scope,
+) {
+  let acceptedAt = null;
+  let acceptedSettled = false;
+  const accepted = transcribe({
+    ...options,
+    windowing: 'disabled',
+    onProgress(event) {
+      options.onProgress?.(event);
+      if (
+        !acceptedAt &&
+        event.stage === 'decode' &&
+        Number.isSafeInteger(event.completedUnits) &&
+        event.completedUnits > 0
+      ) {
+        acceptedAt = { stage: event.stage, completedUnits: event.completedUnits };
+      }
+    },
+  });
+  const disposeStartedMs = performance.now();
+  let disposeError = null;
+  let disposedBeforeAcceptance = false;
+  const disposalOutcome = target.dispose().then(
+    () => {
+      // A settled disposal while the accepted call is still running means the
+      // owner's drain did not actually wait for in-flight work.
+      disposedBeforeAcceptance = !acceptedSettled;
+    },
+    (error) => (disposeError = error),
+  );
+  const settled = accepted.then(
+    (value) => {
+      acceptedSettled = true;
+      return value;
+    },
+    (error) => {
+      acceptedSettled = true;
+      throw error;
+    },
+  );
+  const [acceptedOutcome] = await Promise.allSettled([settled]);
+  await disposalOutcome;
+  if (disposedBeforeAcceptance) {
+    throw new Error('Disposal settled before the accepted call finished draining.');
+  }
+  if (!acceptedAt) {
+    throw new Error('Disposal control never observed an accepted decoding call.');
+  }
+  if (acceptedOutcome.status !== 'fulfilled') {
+    throw acceptedOutcome.reason;
+  }
+  if (disposeError) throw disposeError;
+  const result = acceptedOutcome.value;
+  const comparison = compareNemoTdtOutput(
+    reference,
+    {
+      output: { text: result.canonical.text ?? result.native?.utteranceText ?? '' },
+      native: result.native,
+    },
+    sampleId,
+  );
+  if (!comparison.pass) {
+    throw new Error(
+      'Call accepted before disposal changed its output: ' + comparison.firstDivergentField,
+    );
+  }
+  let postDisposeRejection = null;
+  try {
+    await transcribe({ ...options, windowing: 'disabled' });
+  } catch (error) {
+    postDisposeRejection = error instanceof Error ? error.message : String(error);
+  }
+  if (!postDisposeRejection) {
+    throw new Error('Transcription after disposal was not rejected.');
+  }
+  return {
+    result,
+    record: {
+      scope,
+      acceptedAt,
+      acceptedCallSettledBeforeDisposal: true,
+      disposeError: disposeError ? String(disposeError) : null,
+      disposeWallMs: +(performance.now() - disposeStartedMs).toFixed(2),
+      postDisposeRejection,
+      comparison,
+    },
+  };
+}
+
+/**
+ * Real-provider disposal control for the C20/C21 ownership claims.
+ *
+ * The loaded public handle drains an accepted call, and a directly created
+ * family session repeats the same check against its own executor. Disposal is
+ * only ever requested once per handle, so this control consumes the sessions it
+ * runs on and cannot be combined with cancellation reuse.
+ *
+ * Scheduling assertions are not numerical feature/state, memory or browser
+ * acceptance; a provider that never settles still delays disposal.
+ */
+export async function runInspectorDisposalDrain(loaded, input, options, reference, sampleId) {
+  // The handle phase disposes the whole model, so the directly created session
+  // must run first; afterwards creating one must be rejected as owned-closed.
+  const directSession = await loaded.model.createSession();
+  const direct = await runDisposalDrainAgainstSession(
+    directSession,
+    (next) => directSession.transcribe(input, next),
+    options,
+    reference,
+    sampleId,
+    'DIRECT_SESSION_DISPOSE_DURING_ACCEPTED_CALL',
+  );
+  const loadedHandle = await runDisposalDrainAgainstSession(
+    loaded,
+    (next) => loaded.transcribe(input, next),
+    options,
+    reference,
+    sampleId,
+    'LOADED_HANDLE_DISPOSE_DURING_ACCEPTED_CALL',
+  );
+  let createSessionAfterDisposal = null;
+  try {
+    await loaded.model.createSession();
+  } catch (error) {
+    createSessionAfterDisposal = error instanceof Error ? error.message : String(error);
+  }
+  if (!createSessionAfterDisposal) {
+    throw new Error('Session creation after disposal was not rejected.');
+  }
+  return {
+    result: direct.result,
+    lifecycle: {
+      scope: 'DIRECT_SESSION_AND_LOADED_HANDLE_DISPOSAL_DRAIN',
+      directSession: direct.record,
+      loadedHandle: loadedHandle.record,
+      createSessionAfterDisposal,
+      limitations:
+        'Real-provider lifecycle/output control; not numerical feature parity, measured memory recovery, engine-level teardown or browser acceptance.',
+    },
+  };
+}
+
 export function validateOracleAudioPreparation(sourceAudio, targetSampleRate) {
   if (sourceAudio.sampleRate !== targetSampleRate || sourceAudio.numberOfChannels !== 1) {
     throw new Error(
@@ -619,7 +788,9 @@ async function main() {
     config: options.config,
     originalWeights: options.originalWeights,
     oracle: options.oracle,
-    ...(options.cancelReuse ? { inspectorTool: fileURLToPath(import.meta.url) } : {}),
+    ...(options.cancelReuse || options.disposeDrain
+      ? { inspectorTool: fileURLToPath(import.meta.url) }
+      : {}),
   };
   const provenance = {};
   for (const [key, file] of Object.entries(inputs)) {
@@ -728,7 +899,17 @@ async function main() {
             options.sampleId,
           )
         : null;
-      const result = reuse?.result ?? (await loaded.transcribe(pcmInput, transcriptionOptions));
+      const drain = options.disposeDrain
+        ? await runInspectorDisposalDrain(
+            loaded,
+            pcmInput,
+            transcriptionOptions,
+            oracle.sample,
+            options.sampleId,
+          )
+        : null;
+      const result =
+        (reuse ?? drain)?.result ?? (await loaded.transcribe(pcmInput, transcriptionOptions));
       const transcribeMs = performance.now() - transcribeStart;
 
       const text = result.canonical.text ?? result.native?.utteranceText ?? '';
@@ -801,7 +982,7 @@ async function main() {
         canonical: result.canonical,
         native: result.native,
         waveformComparison: preparedAudio.waveformComparison,
-        ...(reuse ? { lifecycle: reuse.lifecycle } : {}),
+        ...((reuse ?? drain) ? { lifecycle: (reuse ?? drain).lifecycle } : {}),
       };
       payload.oracleComparison = oracle
         ? compareNemoTdtOutput(oracle.sample, payload, options.sampleId)
@@ -826,10 +1007,12 @@ async function main() {
   );
 
   if (
-    options.cancelReuse &&
+    (options.cancelReuse || options.disposeDrain) &&
     (await describeLocalArtifact(inputs.inspectorTool)).sha256 !== provenance.inspectorTool.sha256
   )
-    throw new Error('Inspector source changed during cancellation/reuse; receipt rejected.');
+    throw new Error(
+      'Inspector source changed during cancellation/reuse or disposal drain; receipt rejected.',
+    );
   const encoded = JSON.stringify(payload, null, 2);
   if (options.output) {
     fs.mkdirSync(path.dirname(options.output), { recursive: true });

@@ -3,6 +3,58 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C22 — Real-provider disposal drain and post-C21 native refresh
+
+Status: PASS — actual onnxruntime-node inference through the public example
+CLI and inspector; not feature-parity, browser, fp16 or measured-memory
+acceptance.
+
+C18-C21 shipped with simulated/deferred-call evidence and explicitly left real
+provider shutdown open. This slice records actual native inference at the
+current HEAD and closes the "accepted work during disposal" question with the
+real executor rather than an injected one.
+
+Refreshed public-consumer output on a freshly source-bound build (rebuilt
+`dist`, build snapshot hash `1d74ddfc3b463007`, 1403 files, identical across
+all four runs). All four public example CLI runs exit 0 with awaited cleanup
+PASS, actual `native-cpu`/`onnxruntime-node`/`cpu` identity, `fp32` precision
+and pinned node ORT `1.25.0-dev.20260228-6e72d31970`: Node 26.2.0 and Bun
+1.3.14 each match the official oracle on JFK (38 tokens) and on the
+same-captured-PCM speech/silence control (69 tokens, waveform comparison PASS).
+Receipts under `tools/data/results/orukeet/`:
+`public-example-node-jfk-post-c21-2026-10-03.json`,
+`public-example-bun-jfk-post-c21-2026-10-03.json`,
+`public-example-node-speech-silence-post-c21-2026-10-03.json`,
+`public-example-bun-speech-silence-post-c21-2026-10-03.json`. All remain
+**PARTIAL_PASS_OUTPUT_ONLY**.
+
+Lifecycle: real mid-decode abort plus two oracle repeats pass again
+(`native-cancel-reuse-post-c21-2026-10-03.json`; abort observed at decode
+1/508, handle identity unchanged). New `--dispose-drain` control
+(`native-disposal-drain-post-c21-2026-10-03.json`) requests disposal while a
+call is in flight, on a directly created family session first and then on the
+loaded public handle. Both phases settle with oracle-matching output before
+disposal resolves (dispose 3341.73ms / 3373.48ms), the next call on each is
+rejected, and `createSession()` after disposal is rejected. The control fails
+closed if disposal settles before the accepted call, if the accepted output
+diverges, if disposal itself fails, or if a post-disposal call is accepted.
+Seven new simulated regressions cover those behaviors and the exclusive
+loaded-session requirement (`tests/nemo-inspector-disposal-drain.test.ts`);
+they are not real provider acceptance.
+
+Full regression: 1,462 PASS / 33 SKIP / 0 FAIL; receipt:
+`tools/data/results/harness/post-c21-disposal-drain-full-suite-2026-10-03.json`.
+TypeScript (library and examples) and scoped ESLint pass; the only lint output
+is pre-existing `max-lines` warnings. TLS verification/system CA were enabled
+only for that test child.
+
+No runtime, decoder, family math, tolerance or public API changed: the new
+control lives in the existing inspector adapter. Still open: production feature
+parity remains FAIL (JFK 313/140,928), browser real hybrid score failure at
+head call 20, source-audio resampling acceptance, held-out quality, fp16
+promotion, a hung provider still delaying disposal, and measured
+memory/VRAM recovery after teardown.
+
 ## C21 — Direct public TDT session shutdown
 
 Status: PASS — public runtime/model/session lifecycle with injected executor;

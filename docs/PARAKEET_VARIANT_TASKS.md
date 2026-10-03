@@ -2887,3 +2887,43 @@ still fails 73 feature coordinates;
 the remaining complete processor work must resolve upstream FFT/power behavior
 and revalidate this downstream contract without per-model correction constants
 or tolerance changes. No production implementation or public preset promotion.
+
+### Post-C21 native refresh and real disposal drain (2026-10-03)
+
+Refreshed the public consumer path at current HEAD on a freshly rebuilt,
+source-bound `dist` (build snapshot hash `1d74ddfc3b463007`, 1403 files,
+identical across all four runs). Node 26.2.0 and Bun 1.3.14 both match the
+official oracle through `examples/nemo-tdt-native-local.mjs` under actual
+`onnxruntime-node` CPU identity: JFK 38 tokens, speech/silence 69 tokens on the
+exact captured PCM (waveform comparison PASS). All four exit 0 with awaited
+cleanup PASS and remain **PARTIAL_PASS_OUTPUT_ONLY**. Receipts:
+`public-example-node-jfk-post-c21-2026-10-03.json`,
+`public-example-bun-jfk-post-c21-2026-10-03.json`,
+`public-example-node-speech-silence-post-c21-2026-10-03.json`,
+`public-example-bun-speech-silence-post-c21-2026-10-03.json`.
+
+Real-provider lifecycle now covers the C20/C21 claims that previously had only
+simulated evidence. The existing inspector cancel/reuse control passes again
+(`native-cancel-reuse-post-c21-2026-10-03.json`; abort at decode 1/508, handle
+identity unchanged, two exact oracle repeats). A new `--dispose-drain` control
+requests disposal while a call is in flight, first on a directly created
+family session and then on the loaded public handle:
+`native-disposal-drain-post-c21-2026-10-03.json`. Both phases settle with
+oracle-matching output before disposal resolves, the next call on each is
+rejected (`NeMo TDT session is disposed.` / `Loaded speech model handle is
+disposed.`), and `createSession()` after disposal is rejected.
+
+The control is fail-closed: disposal settling before the accepted call,
+divergent accepted output, a disposal failure, or a silently accepted
+post-disposal call all fail. Seven simulated regressions cover those branches
+(`tests/nemo-inspector-disposal-drain.test.ts`), plus 24 focused inspector
+tests and the full suite at 1,462 PASS / 33 SKIP / 0 FAIL
+(`tools/data/results/harness/post-c21-disposal-drain-full-suite-2026-10-03.json`).
+No runtime, decoder, family math, tolerance or preset changed.
+
+Unchanged failed gates: production feature parity is still FAIL (JFK
+313/140,928 mismatches, speech/silence 74/519,808, silence 12,800) and the
+real public browser hybrid still fails normalized scores at head call 20,
+frame 69 despite exact text/tokens/state. Source-resampling acceptance,
+held-out quality, fp16 promotion and measured teardown memory recovery remain
+open. A provider that never settles still delays disposal; nothing was forced.

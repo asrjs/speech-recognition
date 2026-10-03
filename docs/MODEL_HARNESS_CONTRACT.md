@@ -99,6 +99,11 @@ Remaining work, in order as relevant to the active Orukeet port:
    The inspector validates captured PCM with `--input-mode oracle-pcm`; do not
    confuse this frozen-input control with source-resampling acceptance. Extend
    the existing family adapter rather than adding another inference pipeline.
+   The inspector also exposes a real-provider `--dispose-drain` control which
+   requests disposal while a call is in flight, on a directly created session
+   and on the loaded handle, and fails closed unless the accepted call settles
+   with oracle-matching output first. It consumes the loaded session and is
+   mutually exclusive with `--cancel-reuse`.
 3. Make the sibling Parakeet browser runner accept candidate artifacts and an
    audio/token/text oracle rather than only v2/v3 names and a fixed transcript.
    Keep preprocessing and inference in the library; preserve each sibling repo's
