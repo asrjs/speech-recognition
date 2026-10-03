@@ -30,7 +30,11 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--onnx-probe', action='store_true',
                         help='Compare explicit real-pair adapter and in-memory fp32 ONNX on CPU')
+    parser.add_argument('--stage-probe', action='store_true',
+                        help='Also observe intermediate outputs and verify instrumentation controls')
     args = parser.parse_args()
+    if args.stage_probe and not args.onnx_probe:
+        parser.error('--stage-probe requires --onnx-probe')
     sources = [Path(__file__), ROOT / 'tools/artifact_outputs.py',
                ROOT / 'tools/tensor_parity.py']
     sources += [Path(__file__).with_name(name) for name in (
@@ -38,6 +42,8 @@ def main():
         'complex_intervention.py', 'normalization_reduction.py')]
     if args.onnx_probe:
         sources.append(ROOT / 'tools/nemo-tdt-onnx-export/processor_real_pair.py')
+    if args.stage_probe:
+        sources.append(Path(__file__).with_name('processor_export_stages.py'))
     require_new_outputs([args.output], protected_inputs=[args.config, args.capture, *sources],
                         protected_directories=[ROOT / 'src', ROOT / 'models'])
     if digest(args.config) != args.expected_config_sha256:
@@ -60,7 +66,7 @@ def main():
     hashes.update({str(path.resolve()): digest(path) for path in installed_sources})
     torch.set_num_threads(4)
     processor = AudioToMelSpectrogramPreprocessor(**config).eval()
-    _, _, pcm, _, _, expected, valid = read_capture(
+    _, _, pcm, oracle_spectrum, _, expected, valid = read_capture(
         args.capture, args.expected_capture_sha256, args.sample_id)
     with torch.no_grad():
         values, lengths = processor(input_signal=torch.from_numpy(pcm),
@@ -107,6 +113,10 @@ def main():
             'graph_sha256': hashlib.sha256(graph_bytes).hexdigest(), 'graph_bytes': len(graph_bytes),
             'onnx': onnx.__version__, 'onnxruntime': ort.__version__, 'providers': session.get_providers(),
             'scope': 'In-memory real-pair fp32 processor, dynamic sample axis, batch1 native CPU only'}
+        if args.stage_probe:
+            from processor_export_stages import run_stage_control
+            export_control['stages'] = run_stage_control(processor, waveform, length,
+                oracle_spectrum, expected, ort_features, ort_length)
     if hashes != {str(path.resolve()): digest(path) for path in sources}:
         raise ValueError('Processor diagnostic sources changed during execution')
     if digest(args.config) != args.expected_config_sha256 or digest(args.capture) != args.expected_capture_sha256:

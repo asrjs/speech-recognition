@@ -36,7 +36,7 @@ import torch
 
 
 class RealPairProcessor(torch.nn.Module):
-    def __init__(self, processor):
+    def __init__(self, processor, *, include_stages=False):
         super().__init__()
         f = processor.featurizer
         if f.training or f.use_grads or f.exact_pad or f.stft_pad_amount is not None:
@@ -44,6 +44,7 @@ class RealPairProcessor(torch.nn.Module):
         if f.frame_splicing != 1 or f.pad_to != 0 or f.normalize != 'per_feature':
             raise ValueError('Real-pair export requires no splicing/padding and per_feature normalization')
         self.featurizer = f
+        self.include_stages = include_stages
 
     def forward(self, waveform, length):
         from nemo.collections.asr.parts.preprocessing.features import normalize_batch
@@ -61,7 +62,9 @@ class RealPairProcessor(torch.nn.Module):
         x = torch.sqrt(pairs.pow(2).sum(-1))
         if f.mag_power != 1.0:
             x = x.pow(f.mag_power)
+        power = x
         x = torch.matmul(f.fb.to(x.dtype), x)
+        mel = x
         if f.log:
             if f.log_zero_guard_type == 'add':
                 x = torch.log(x + f.log_zero_guard_value_fn(x))
@@ -69,6 +72,10 @@ class RealPairProcessor(torch.nn.Module):
                 x = torch.log(torch.clamp(x, min=f.log_zero_guard_value_fn(x)))
             else:
                 raise ValueError('Unsupported log guard')
-        x, _, _ = normalize_batch(x, valid, normalize_type=f.normalize)
+        log_mel = x
+        x, mean, std = normalize_batch(x, valid, normalize_type=f.normalize)
         mask = torch.arange(x.size(-1), device=x.device).repeat(x.size(0), 1) >= valid.unsqueeze(1)
-        return x.masked_fill(mask.unsqueeze(1), f.pad_value), valid
+        features = x.masked_fill(mask.unsqueeze(1), f.pad_value)
+        if self.include_stages:
+            return features, valid, pairs, power, mel, log_mel, mean, std
+        return features, valid

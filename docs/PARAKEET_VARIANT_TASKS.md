@@ -2177,3 +2177,40 @@ Next add bounded intermediate STFT/power/mel/log/normalization comparisons,
 including identical-input downstream controls, to locate the earliest ONNX
 arithmetic divergence. Do not treat graph feasibility as numerical acceptance
 or adjust tolerances to accept the candidate. Browser/WASM gates remain open.
+
+### Processor taps and identical-input normalization (2026-10-03)
+
+`--onnx-probe --stage-probe` adds a separate eight-output graph through the
+explicit family adapter: features/length, spectrum, power, mel, log-mel, mean,
+std. Default two-output graph is unchanged (same SHA256 above). Captured native
+features and all2,087,354 native spectrum components remain bit-exact. The
+tapped ONNX graph's final features/length are bit-exact to the untapped graph:
+DIAGNOSTIC_TAPS_UNCHANGED, not numerical port acceptance. Tap graph SHA256
+`205e89268b329870ee8b59638024cf96a86780a34b9d371caea99f5a11b102e1`.
+
+Every measured intermediate stage passes unchanged atol1e-5/rtol1e-4 but is
+not bit-identical. First measured nonidentical stage is spectrum; first measured
+tolerance failure is final features (10,575 cells, unchanged). This does not
+prove a specific STFT kernel defect: preemphasis is upstream of this first tap.
+Log-mel max error0.00010395050048828125, mean max error0.000064849853515625,
+std max error0.000008344650268554688. Relative acceptance at these boundaries
+does not imply acceptance after subtracting/dividing near-zero feature values.
+
+A second in-memory graph reuses the official normalization helper on exactly
+the native log-mel/length input, excluding FFT/mel/log differences. Its native
+features/mean/std match the full native adapter bit-exactly. CPU ORT normalization
+still FAILS:10,615 final feature mismatches, max0.00007557868957519531,
+mean0.000018362965904706375, first index0. Mean/std pass their own tolerances,
+but mean differs up to0.0000629425048828125. Normalization-path arithmetic is
+therefore independently insufficient; this is not attribution of every full-
+processor mismatch to reduction alone. Graph8270 bytes SHA256
+`40a5174860b03f726dc9b77070dabc8e1976848a57f60d1a0ddfb1a4821dc399`;
+input log-mel f32le SHA256
+`abc571bd5da089c75d5c2ab07cb607eb02a4f2c29d27d26849a9defb57a518b3`.
+
+Receipt: `nemo-processor-stage-normalization-speech-silence-2026-10-03.json`.
+Seven CLI preflight, five stage comparator and two adapter contract tests pass;
+the existing two actual STFT export tests remain independent feasibility checks.
+Next inspect the proven native reduction-order controls and ONNX reduction
+boundary on identical input, then validate any explicit arithmetic candidate
+against the full oracle. No tolerance, production processor or preset changes.
