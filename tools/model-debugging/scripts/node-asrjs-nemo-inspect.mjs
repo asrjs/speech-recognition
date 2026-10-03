@@ -489,22 +489,29 @@ export async function runDisposalDrainAgainstSession(
   });
   const disposeStartedMs = performance.now();
   let disposeError = null;
+  // Observed settle order is the evidence; the derived flag cannot be asserted
+  // without it.
+  const settleOrder = [];
   let disposedBeforeAcceptance = false;
   const disposalOutcome = target.dispose().then(
     () => {
-      // A settled disposal while the accepted call is still running means the
-      // owner's drain did not actually wait for in-flight work.
       disposedBeforeAcceptance = !acceptedSettled;
+      settleOrder.push('dispose');
     },
-    (error) => (disposeError = error),
+    (error) => {
+      settleOrder.push('disposeFailed');
+      disposeError = error;
+    },
   );
   const settled = accepted.then(
     (value) => {
       acceptedSettled = true;
+      settleOrder.push('acceptedCall');
       return value;
     },
     (error) => {
       acceptedSettled = true;
+      settleOrder.push('acceptedCallFailed');
       throw error;
     },
   );
@@ -548,7 +555,8 @@ export async function runDisposalDrainAgainstSession(
     record: {
       scope,
       acceptedAt,
-      acceptedCallSettledBeforeDisposal: true,
+      acceptedCallSettledBeforeDisposal: settleOrder[0] === 'acceptedCall',
+      settleOrder,
       disposeError: disposeError ? String(disposeError) : null,
       disposeWallMs: +(performance.now() - disposeStartedMs).toFixed(2),
       postDisposeRejection,

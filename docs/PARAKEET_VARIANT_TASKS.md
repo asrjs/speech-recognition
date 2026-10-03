@@ -2931,3 +2931,45 @@ real public browser hybrid still fails normalized scores at head call 20,
 frame 69 despite exact text/tokens/state. Source-resampling acceptance,
 held-out quality, fp16 promotion and measured teardown memory recovery remain
 open. A provider that never settles still delays disposal; nothing was forced.
+
+### Head call 20 attribution: encoder-feed driven, not head defect (2026-10-03)
+
+The real public hybrid gate stays FAIL, but its cause is now attributed rather
+than open. Only one of 46 head calls fails (index 20, `joint/0020` bound to
+`predictor/0015` at encoder frame 69): 3 normalized-score coordinates at the
+unchanged `atol=1e-5, rtol=1e-4`, max `5.7887e-4`, first channel 8195. Tokens,
+frames, durations, text and final h/c still match exactly.
+
+The recorded failure was reproduced independently from the immutable official
+capture and the recorded browser feeds (not read back out of the browser
+receipt), including its exact 3 mismatches and first index. Two new read-only
+probes run the fp32 joint graph on native CPU with real feeds:
+`tools/nemo-tdt-onnx-export/head_call20_sensitivity_probe.py` and
+`head_sensitivity_scale.py`.
+
+Attribution, at unchanged tolerances: feeding the official reference inputs
+perturbed by **only the recorded encoder delta** (`1.4566e-6`) reproduces the
+whole gap at `5.8079e-4` with the same 3 mismatches — 99.96% of the recorded
+error. Perturbing by only the predictor-state deltas (`3.7849e-6` /
+6.6757e-6`) changes nothing (`2.2888e-5`, 0 mismatches, the same as the
+unperturbed reference). Scaling the encoder delta gives a linear response:
+0.25x -> `1.44e-4`/0, 0.5x -> `2.90e-4`/1, 1x -> `5.81e-4`/3, 2x ->
+`1.16e-3`/3, 8x -> `4.64e-3`/5. The head is therefore linear and faithful with a
+gain of about 399x; it is not the divergent component.
+
+Consequence: passing the unchanged score gate at this call would require the
+live WebGPU encoder feed to be accurate to roughly `2.5e-8` absolute, which is
+about two orders of magnitude tighter than fp32 accumulation noise on a feed
+that already passes its own `1e-5/1e-4` encoder gate. This also explains why
+call 40, with a 2x larger encoder delta, shows a larger score error yet zero
+mismatches: at that frame the top log-probabilities sit near saturation, so the
+same absolute gate admits them.
+
+This does not waive the gate and is not feature or ASR acceptance. The gate
+stays FAIL and no normalization, tolerance or production math changed. It
+locates the earliest divergence upstream in the real-encoder path and rules
+out the WASM head and predictor-state drift as causes. The productive next step
+is encoder-side: establish the live WebGPU encoder's own accuracy budget
+against the official encoder output, rather than continuing head-side or
+normalization experiments. Production feature parity (JFK 313/140,928) remains
+the earlier, separate upstream FFT/power failure.

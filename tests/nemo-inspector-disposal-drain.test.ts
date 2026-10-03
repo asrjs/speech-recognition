@@ -165,6 +165,7 @@ describe('NeMo inspector disposal-drain controls (simulated)', () => {
     );
     for (const record of [result.lifecycle.directSession, result.lifecycle.loadedHandle]) {
       expect(record.acceptedAt).toEqual({ stage: 'decode', completedUnits: 1 });
+      expect(record.settleOrder).toEqual(['acceptedCall', 'dispose']);
       expect(record.acceptedCallSettledBeforeDisposal).toBe(true);
       expect(record.postDisposeRejection).toBe('Speech model handle is disposed.');
       expect(record.comparison.pass).toBe(true);

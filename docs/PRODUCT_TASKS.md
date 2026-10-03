@@ -51,6 +51,19 @@ only for that test child.
 No runtime, decoder internals, family math, tolerance or public API changed: the
 new control lives in the existing inspector adapter.
 
+The disposal record now carries the observed settle order
+(`["acceptedCall","dispose"]` on both real-provider phases in
+`native-disposal-drain-settle-order-post-c21-2026-10-03.json`) instead of an
+asserted boolean; the derived flag is computed from that observation.
+
+Follow-up on the open browser gate: the head call 20 normalized-score failure
+is now attributed to the real-encoder feed, not the WASM head. Perturbing only
+the recorded encoder delta (`1.4566e-6`) on official reference inputs
+reproduces the failure exactly (`5.8079e-4`, same 3 mismatches, same first
+channel); predictor-state deltas contribute nothing, and the head response is
+linear at about 399x gain. Details and the two read-only probes are in
+`PARAKEET_VARIANT_TASKS.md`. The gate remains FAIL at unchanged tolerances.
+
 Still open, with the unchanged failing gates cited by receipt: production
 feature parity remains FAIL at the unchanged `atol=1e-5, rtol=1e-4`
 (JFK 313/140,928, `filterbank-feature-jfk-2026-10-03.json`; speech/silence
