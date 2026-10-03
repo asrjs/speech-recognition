@@ -4,6 +4,7 @@ import {
   loadSpeechModelFromLocalEntries,
 } from '@asrjs/speech-recognition/browser';
 import { matchesSmokeTranscript } from './smoke-transcript.mjs';
+import { createWindowTokenFixture } from './window-token-fixture.mjs';
 
 const field = (id) => document.getElementById(id);
 field('run').addEventListener('click', async () => {
@@ -57,6 +58,16 @@ field('run').addEventListener('click', async () => {
       sampleRate: decoded.sampleRate,
       pcmSha256: [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join(''),
     };
+    let transcriptionPcm = pcm;
+    let transcriptionOptions;
+    let expectedTranscript = expected;
+    if (field('window-tokens').checked) {
+      const fixture = createWindowTokenFixture(pcm);
+      transcriptionPcm = fixture.pcm;
+      transcriptionOptions = fixture.options;
+      expectedTranscript = `${expected} ${expected}`;
+      receipt.windowing = fixture.windowing;
+    }
     for (let iteration = 0; iteration < 2; iteration++) {
       if (iteration === 1 && field('cancel').checked) {
         const controller = new AbortController();
@@ -88,10 +99,11 @@ field('run').addEventListener('click', async () => {
           throw new Error('Requested in-flight decode cancellation did not reject without completion');
       }
       const start = performance.now();
-      const result = await model.transcribeMonoPcm(pcm, 16000);
+      const result = await model.transcribeMonoPcm(transcriptionPcm, 16000, transcriptionOptions);
       receipt.results.push({
         text: result.text,
         meta: result.meta,
+        ...(transcriptionOptions ? { tokens: result.tokens, words: result.words, warnings: result.warnings } : {}),
         wallMs: performance.now() - start,
       });
       if (
@@ -100,7 +112,7 @@ field('run').addEventListener('click', async () => {
       ) {
         throw new Error('Actual component providers do not match requested hybrid placement');
       }
-      if (!matchesSmokeTranscript(result.text, expected))
+      if (!matchesSmokeTranscript(result.text, expectedTranscript))
         throw new Error('Full normalized transcript differs from expected smoke phrase');
     }
     if (receipt.results[0].text !== receipt.results[1].text)

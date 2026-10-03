@@ -577,6 +577,51 @@ unrelated formatting and paused Nemotron changes were preserved.
 Next: real model/browser token-detail acceptance and bounded long-audio memory
 measurement. This conservative merge is not numerical ASR parity acceptance.
 
+Real stock-v3 token-detail control (2026-10-03): the existing local Chrome
+public API harness now has opt-in `--verify-window-tokens`. The same decoded
+short speech fixture is placed in two disjoint, silence-padded 20-second windows.
+Independent validation requires detailed output, two actual windows, contiguous
+global token/word indices, finite global seconds in both windows, valid word-token
+references and repeated identical detail. This is no-overlap real-model control,
+not overlap reconciliation, numerical parity, Orukeet or long-session acceptance.
+
+The first real run correctly failed: windowed metrics discarded actual component
+backend identity. A failing-first regression exposed the same generic defect;
+the shared string accumulator now retains encoder/decoder/joint backend identity
+and emits `mixed` when windows disagree. Source typecheck, scoped lint and 23
+windowing tests pass;11 Python harness tests and JS/Python syntax checks pass.
+The second real Chrome154 run exited0 with two repeated 40-second results, each
+22 tokens and16 words, WebGPU encoder/WASM decoder, awaited disposal, unchanged
+inputs, no page errors/blocked requests and explicit ECONNREFUSED cleanup proof.
+Receipts (preserved separately):
+`tools/data/results/harness/local-window-tokens-v3-2026-10-03.json` (FAIL),
+`tools/data/results/harness/local-window-tokens-v3-providers-2026-10-03.json` (PASS).
+Next: finish independent harness review, full regression/static checks and
+scoped commit, then actual overlap and bounded-memory controls.
+
+Review checkpoint: runtime provider telemetry is committed separately as
+`2641f9e`, with 1,428 full-suite PASS /33 SKIP,23 targeted tests, typecheck and
+scoped lint. The harness extension remains uncommitted pending two regressions:
+reject oversized decoded fixtures before allocating the doubled window buffer;
+reject in-range word-token references whose token timing belongs to the wrong
+window. Existing successful real receipt is preserved, but these validation
+holes must close before accepting/committing the harness extension.
+
+Resolved checkpoint (2026-10-03): both review regressions now pass. The fixture
+rejects empty or over-19-second mono PCM before allocating a fixed 40-second
+repeated buffer (2,560,000 bytes); this does not bound the original media decode
+allocation or certify VRAM/soak behavior. Word-token references must also match
+the word's timing interval, rejecting an in-range reference into another window.
+Independent read-only review approved the corrected code. Twelve Python runner
+tests and two Node fixture tests pass. The corrected actual Chrome hybrid run
+exits 0 with receipt
+`tools/data/results/harness/local-window-tokens-v3-bounded-2026-10-03.json`:
+two repeat transcriptions each retain 22 tokens, 16 words and two windows, with
+identical canonical detail, WebGPU encoder/WASM decoder, no page errors or
+blocked requests, unchanged input hashes, awaited disposal and ECONNREFUSED
+preview closure. This remains stock-v3 no-overlap smoke, not Orukeet parity,
+overlap reconciliation, timestamp accuracy or a long-session memory benchmark.
+
 Added word and segment-only cases through root-exported
 `transcribeWithWindowing`. Four seconds of synthetic PCM produce two explicit
 two-second windows without overlap: local times 0.25..1.25 become

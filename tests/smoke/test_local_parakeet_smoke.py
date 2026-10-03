@@ -14,6 +14,38 @@ runner = importlib.import_module('local-parakeet-smoke')
 
 
 class LocalParakeetResultTests(unittest.TestCase):
+    def window_result(self):
+        value = self.result()
+        value['windowing'] = {'windowSeconds': 20, 'durationSeconds': 40}
+        for item in value['results']:
+            item['meta'].update(detailLevel='detailed', durationSeconds=40)
+            item['meta']['metrics']['windowCount'] = 2
+            item['tokens'] = [{'index': 0, 'id': 1, 'text': 'Test', 'startTime': 1, 'endTime': 2},
+                {'index': 1, 'id': 1, 'text': 'Test', 'startTime': 21, 'endTime': 22}]
+            item['words'] = [{'index': 0, 'text': 'Test', 'startTime': 1, 'endTime': 2, 'tokenIndices': [0]},
+                {'index': 1, 'text': 'Test', 'startTime': 21, 'endTime': 22, 'tokenIndices': [1]}]
+        return value
+
+    def test_requested_window_tokens_requires_real_structure(self):
+        runner.validate_result(self.window_result(), False, True)
+        for change in ['absent', 'local-index', 'local-time', 'bad-reference', 'one-window']:
+            value = self.window_result()
+            item = value['results'][0]
+            if change == 'absent': item.pop('tokens')
+            elif change == 'local-index': item['tokens'][1]['index'] = 0
+            elif change == 'local-time': item['tokens'][1]['startTime'] = 1
+            elif change == 'bad-reference': item['words'][1]['tokenIndices'] = [99]
+            else: item['meta']['metrics']['windowCount'] = 1
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                runner.validate_result(value, False, True)
+
+    def test_in_range_reference_to_wrong_window_rejects(self):
+        value = self.window_result()
+        for item in value['results']:
+            item['words'][1]['tokenIndices'] = [0]
+        with self.assertRaisesRegex(ValueError, 'timing'):
+            runner.validate_result(value, False, True)
+
     def result(self):
         item = {'text': 'Test phrase.', 'meta': {'metrics': {
             'encoderBackend': 'webgpu', 'decoderBackend': 'wasm'}}}

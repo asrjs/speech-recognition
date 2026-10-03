@@ -2,6 +2,7 @@
 import argparse
 import importlib
 import json
+import math
 import os
 from pathlib import Path
 import queue
@@ -19,7 +20,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from artifact_outputs import require_new_outputs, write_new_text
 
 
-def validate_result(result, verify_cancellation):
+def validate_result(result, verify_cancellation, verify_window_tokens=False):
     """Validate lifecycle evidence, not just the page's PASS label or ASR parity."""
     if not isinstance(result, dict) or result.get('status') != 'PASS_LOCAL_HYBRID_SMOKE':
         raise ValueError('Public API smoke failed')
@@ -39,6 +40,40 @@ def validate_result(result, verify_cancellation):
             raise ValueError('Actual hybrid provider evidence differs')
     if results[0]['text'] != results[1]['text']:
         raise ValueError('Repeated transcript differs')
+    if verify_window_tokens:
+        policy = result.get('windowing', {})
+        boundary, duration = policy.get('windowSeconds'), policy.get('durationSeconds')
+        if type(boundary) not in (int, float) or not math.isfinite(boundary) or boundary < 20 or duration != 2 * boundary:
+            raise ValueError('Two-window input evidence missing')
+        for item in results:
+            if item['meta'].get('detailLevel') != 'detailed' or item['meta']['metrics'].get('windowCount') != 2:
+                raise ValueError('Detailed two-window execution required')
+            tokens, words = item.get('tokens'), item.get('words')
+            if not isinstance(tokens, list) or not tokens or not isinstance(words, list) or not words:
+                raise ValueError('Real token and word detail required')
+            for collection in (tokens, words):
+                halves = set()
+                for index, entry in enumerate(collection):
+                    if not isinstance(entry, dict) or type(entry.get('index')) is not int or entry['index'] != index:
+                        raise ValueError('Global contiguous indices required')
+                    start, end = entry.get('startTime'), entry.get('endTime')
+                    if any(type(value) not in (int, float) or not math.isfinite(value) for value in (start, end)) or not 0 <= start <= end <= duration:
+                        raise ValueError('Finite global timestamps required')
+                    if start < boundary < end:
+                        raise ValueError('Window-local timestamp leaked across boundary')
+                    halves.add(start >= boundary)
+                if halves != {False, True}:
+                    raise ValueError('Detail from both windows required')
+            for word in words:
+                refs = word.get('tokenIndices')
+                if not isinstance(refs, list) or not refs or any(type(index) is not int or not 0 <= index < len(tokens) for index in refs):
+                    raise ValueError('Valid global word-token references required')
+                for index in refs:
+                    token = tokens[index]
+                    if token['startTime'] < word['startTime'] - 1e-6 or token['endTime'] > word['endTime'] + 1e-6:
+                        raise ValueError('Word-token timing association differs')
+        if any(results[0][key] != results[1][key] for key in ('tokens', 'words')):
+            raise ValueError('Repeated canonical detail differs')
     if verify_cancellation:
         cancellation = result.get('cancellation')
         if not isinstance(cancellation, dict) or any(cancellation.get(key) is not value
@@ -61,6 +96,7 @@ def main():
     parser.add_argument('--expected-phrase', required=True)
     parser.add_argument('--encoder-precision', choices=['fp32', 'fp16'], default='fp32')
     parser.add_argument('--verify-cancellation', action='store_true')
+    parser.add_argument('--verify-window-tokens', action='store_true')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     if not args.expected_phrase.strip():
@@ -71,7 +107,7 @@ def main():
     inputs = graphs + [args.audio.resolve(), Path(__file__), Path(shared.__file__), preview,
         preview.with_name('local-ort-assets.mjs'), preview.with_name('local-parakeet.mjs'),
         preview.with_name('local-parakeet.html'), ROOT / 'tools/artifact_outputs.py',
-        preview.with_name('smoke-transcript.mjs'),
+        preview.with_name('smoke-transcript.mjs'), preview.with_name('window-token-fixture.mjs'),
         consumer / 'vite.config.js', consumer / 'package.json',
         ROOT / 'src/models/nemo-tdt/executor.ts', ROOT / 'src/models/nemo-tdt/model.ts',
         ROOT / 'src/models/nemo-common/types.ts']
@@ -88,6 +124,7 @@ def main():
     receipt = {'status': 'FAIL_LOCAL_PUBLIC_API_SMOKE', 'sources_sha256': hashes,
         'scope': 'Stock-v3 repeated public local inference, selected session providers and awaited disposal; optional cooperative decode cancellation/reuse, not GPU kernel interruption, per-node GPU placement, numerical parity, Orukeet or soak acceptance',
         'cancellation_requested': args.verify_cancellation,
+        'window_tokens_requested': args.verify_window_tokens,
         'expected_phrase': args.expected_phrase, 'encoder_precision': args.encoder_precision,
         'blocked_requests': [], 'page_errors': [], 'console': []}
     process, ready = None, None
@@ -137,10 +174,11 @@ def main():
                     page.get_by_label('Encoder precision', exact=True).select_option(args.encoder_precision)
                     page.get_by_label('Expected smoke phrase', exact=True).fill(args.expected_phrase)
                     page.get_by_label('Verify decode cancellation and reuse', exact=True).set_checked(args.verify_cancellation)
+                    page.get_by_label('Verify windowed token detail', exact=True).set_checked(args.verify_window_tokens)
                     page.get_by_role('button').click()
                     expect(page.get_by_role('status')).to_have_text(re.compile('^(PASS_|FAIL_)'), timeout=240000)
                     receipt['result'] = json.loads(page.locator('#result').inner_text())
-                    validate_result(receipt['result'], args.verify_cancellation)
+                    validate_result(receipt['result'], args.verify_cancellation, args.verify_window_tokens)
                     served = set()
                     for response in tuple(responses):
                         path = urlparse(response.url).path
