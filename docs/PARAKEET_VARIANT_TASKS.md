@@ -2327,3 +2327,42 @@ execution, and missing-folder validation is not model loading or inference.
 Actual local artifact load/transcribe/cancel/dispose and Orukeet browser parity
 remain open. Next add real local-model acceptance without remote downloads or
 duplicating the library decoder in the harness.
+
+### Stock-v3 real local companion gate (2026-10-03)
+
+The same runner now has an explicit `--local-model-root` opt-in for stock-v3
+local hybrid loading and the demo's existing warm-up transcription. It selects
+the real directory input, requires a WebGPU adapter, records bounded application
+console output, and requires both Model Loaded and Model ready. The encoder
+precision is explicit (`--encoder-precision fp32|fp16`, default fp32); decoder
+remains fp32/WASM. Existing fp16 stock-v3 artifacts are a companion control, not
+permission to quantize or promote Orukeet before its fp32 parity gate passes.
+
+Selected graph/tokenizer and colocated external-data inputs are required,
+nonempty and SHA-bound before/after. Hashing uses one-MiB chunks rather than a
+complete multi-gigabyte file copy. Six Python preflight/parser/hash tests and
+eight local browser-loader unit tests pass; neither suite runs actual inference.
+The first opt-in browser attempt failed in the harness before model load:
+Runtime Backend's visible WebGPU label has value `webgpu-hybrid`, not `webgpu`.
+That selector was corrected after inspecting App.jsx; the failed receipt is
+preserved as `browser-demo-real-local-v3-2026-10-03.json`.
+
+The corrected real run detects all86 local files and a physical NVIDIA
+Blackwell adapter (fallback=false), but FAILS before inference: NeMo ORT Web
+initialization requests `onnxruntime-web@1.29.0/dist/ort-wasm-simd-threaded.jsep.mjs`
+from jsDelivr. The no-network policy correctly aborts that dependency. The
+in-memory bundle's emitted WASM assets alone are not a self-contained runtime;
+`src/models/nemo-tdt/ort.ts` defaults to a CDN prefix, and the local-browser
+options/Parakeet adapter do not currently forward an explicit engine-asset path.
+Receipt: `browser-demo-real-local-v3-network-2026-10-03.json`; CLI exit1, owned
+preview stopped and port closed. Do not infer that the model or WebGPU kernel
+is incompatible from this engine-bootstrap failure. Failure receipts now retain
+blocked URLs, and the runner detects the visible terminal app error immediately
+instead of waiting three minutes for a success that will not arrive.
+
+Next implement a supported caller-supplied local ORT asset configuration through
+the existing public loader boundary, package/serve the pinned matching engine
+assets, then rerun this same local control without a CDN interception workaround.
+This gate does not implement app cancellation or certify session disposal;
+closing the owned browser is process cleanup, not proof of awaited library
+disposal. Orukeet feature/encoder/token/text parity remains independently open.

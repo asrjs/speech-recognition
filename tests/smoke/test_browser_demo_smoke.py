@@ -14,6 +14,26 @@ spec.loader.exec_module(module)
 
 
 class CompanionSmokeTests(unittest.TestCase):
+    def test_local_model_requires_nonempty_selected_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaises(ValueError):
+                module.local_model_inputs(root, 'fp16')
+            for name in ('encoder-model.fp16.onnx', 'decoder_joint-model.onnx', 'vocab.txt'):
+                (root / name).write_bytes(b'fixture-not-a-model')
+            self.assertEqual(len(module.local_model_inputs(root, 'fp16')), 3)
+            (root / 'encoder-model.fp16.onnx.data').write_bytes(b'')
+            with self.assertRaises(ValueError):
+                module.local_model_inputs(root, 'fp16')
+
+    def test_streamed_digest_matches_full_digest(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'fixture'
+            data = b'abcd' * (1024 * 1024)
+            path.write_bytes(data)
+            self.assertEqual(module.digest(path), hashlib.sha256(data).hexdigest())
+
     def test_build_receipt_parses_amid_logs(self):
         receipt = {'status': 'PASS_IN_MEMORY_COMPANION_BUILD', 'outputs': [{'fileName': 'index.html'}]}
         self.assertEqual(module.parse_build('vite log\n' + json.dumps(receipt, indent=2) + '\nready'), receipt)
