@@ -2805,3 +2805,27 @@ all CPU vector widths, long audio or ASR acceptance. The earlier upstream FFT
 and raw-feature failures remain FAIL. Next use this proven isolated boundary
 as a control while evaluating a complete family-owned processor candidate;
 do not silently install fixed width8 in the shared processor or relax gates.
+
+### Production-raw speech/silence normalization composition (2026-10-03)
+
+The missing complete composition control is now measured: unchanged built JS
+PCM-to-raw-log-mel followed by the existing diagnostic width8 normalizer.
+The existing matrix probe is restricted in memory to its baseline condition;
+its unmodified production-output instrumentation control still passes before
+the additional normalization. No filterbank/FFT or production source changes.
+
+Across all 519,808 feature cells, the default path fails 74 coordinates
+(max error 8.17328691482544e-5); width8 still fails 73
+(max error 7.938221096992493e-5). Both first diverge at flat index 98 under
+unchanged atol 1e-5 / rtol 1e-4. Thus the byte-exact official-log-mel width8
+control does not imply complete production feature acceptance. Mean/std
+hashes are retained, but their oracle comparison is UNTESTED because this
+capture does not contain those stages. No ASR/browser acceptance is inferred.
+
+Receipt: `tools/data/results/orukeet/production-raw-width8-speech-silence-2026-10-03.json`.
+It binds the original-weight/capture identities, unchanged diagnostic/built
+source hashes, raw/power hashes, executed Python and Node snippets and metrics.
+Owned process exited 0 (measurement completed, not parity PASS); four matrix
+probe guards and five JavaScript reduction guards pass. Next investigate the
+upstream power/mel/log boundary using existing source-grounded controls; do not
+repeat rejected FFT sweeps or install a fixed-width production workaround.
