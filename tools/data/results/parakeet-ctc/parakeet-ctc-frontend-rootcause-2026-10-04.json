@@ -1,0 +1,23 @@
+{
+  "status": "FRONTEND_PARITY_FAIL_ROOT_CAUSE_CONFIRMED",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "compared_coordinates": 88000,
+  "max_abs_error": 16.634673297405243,
+  "mean_abs_error": 2.2467289652786837,
+  "confirmed_cause": {
+    "what": "filterbank shape mismatch",
+    "evidence": "Per-mel-band linear ratio official/ours varies by orders of magnitude (mel0 0.001, mel5 0.007, mel10 0.206, mel20 14.16, mel30 0.639, mel40 3.729, mel60 2.042), so this is a different filterbank, not a missing constant scale factor.",
+    "detail": "The shared lasr-ctc mel builds the NeMo/Kaldi-style HTK filterbank; ParakeetForCTC needs librosa.filters.mel(sr=16000, n_fft=512, n_mels=80, fmin=0, fmax=8000, norm=slaney) on the default HTK scale."
+  },
+  "verified_matching": [
+    "Window placement: createPaddedWindow centers the window with leftPad=(nFft-winLength)>>1=56, matching torch.stft centering the 400-sample window inside the 512 frame.",
+    "Window flavor: windowKind hann divides by winLength-1, i.e. periodic=false, matching torch.hann_window(400, periodic=False).",
+    "Power spectra: powerBuffer stores re^2+im^2, matching the official squared magnitudes.",
+    "Log guard: log(mel + 2^-24) matches transformers LOG_ZERO_GUARD_VALUE 5.960464477539063e-08; both sides share the same floor -16.63553237915039."
+  ],
+  "secondary_open_item": "validFrameCount clamps to 1100 frames while the official centered STFT yields 1101 for this fixture; the final centered frame is dropped.",
+  "why_not_patched_here": "Both the filterbank construction and the frame-count clamp live in src/models/lasr-ctc/mel.ts, shared with the LASR and GigaAM CTC frontends. Changing them is a cross-family change that needs its own regressions for those families; patching it silently under a new family would risk shipped ports.",
+  "oracle_transcript": "And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+  "shipped": "nothing: no preset, adapter or manifest registered for this model"
+}

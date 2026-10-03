@@ -32,18 +32,28 @@ numpy extractor on JFK it does not yet agree: max abs `16.63`, mean abs `2.25`
 over 88,000 coordinates, with no frame shift improving it (shift 0/±1 all
 similar), so this is arithmetic scale, not alignment.
 
-Two localized causes:
+**Root cause confirmed: the filterbank shape, not a scale factor.** The
+per-mel-band linear ratio official/ours varies by orders of magnitude (mel 0
+`0.001`, mel 5 `0.007`, mel 10 `0.206`, mel 20 `14.16`, mel 30 `0.639`, mel 40
+`3.729`), which rules out a single missing normalization factor. The shared
+`src/models/lasr-ctc/mel.ts` builds the NeMo/Kaldi-style HTK filterbank, while
+ParakeetForCTC needs librosa's `filters.mel(..., norm='slaney')` on the default
+HTK scale.
 
-1. **Slaney filterbank scale.** Both sides log power spectra and hit the same
-   floor (`-16.6355`), but ours is uniformly lower: official frame 500 mel 0 is
-   `-6.402` versus `-13.652` here, a roughly constant ~7 log-unit offset
-   (about 1100x). The shared HTK+slaney filterbank in `src/models/lasr-ctc/mel.ts`
-   most likely omits or mis-scales librosa's slaney area normalization. This is
-   shared code used by the LASR and GigaAM CTC frontends, so changing it needs
-   its own scoped change with regressions for those families.
-2. **Frame count clamp.** The official centered STFT yields 1101 frames for the
-   JFK fixture; our `validFrameCount` clamps to 1100 and discards the final
-   centered frame. Same shared-code caveat.
+Verified as already correct, so they are not causes: window placement (our
+`createPaddedWindow` centers the 400-sample window with `leftPad = 56`, matching
+`torch.stft`), window flavor (`hann` divides by `winLength - 1`, i.e.
+`periodic=False`, matching `torch.hann_window(400, periodic=False)`), power
+spectra (`re^2 + im^2`), and the log guard (`log(mel + 2^-24)`, both sides at
+the same `-16.6355` floor).
+
+The filterbank is shared code used by the LASR and GigaAM CTC frontends, so
+changing it is a cross-family change that needs its own regressions for those
+families rather than a silent edit under a new family. 2. **Frame count clamp.** The official centered STFT yields 1101 frames for the
+JFK fixture; our `validFrameCount` clamps to 1100 and discards the final
+centered frame. Same shared-code caveat; lower priority than the filterbank.
+
+Receipt: `tools/data/results/parakeet-ctc/parakeet-ctc-frontend-rootcause-2026-10-04.json`.
 
 The oracle transcript for this model is
 `And so, my fellow Americans, askk not what your country can do for you. Ask
