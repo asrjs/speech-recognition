@@ -156,6 +156,33 @@ models cover it, while `Qwen/Qwen3-ASR-0.6B-hf` does (782,426,112 parameters,
 30 languages, Apache-2.0). Discovery evidence only; it is an autoregressive
 speech-LLM, so it needs a new family and download authority not granted here.
 
+## Measured acceptance against the Orukeet baseline
+
+The focus criterion is measurable: a port is cheaper when a second candidate
+reaches real output with the existing harness and no new per-model inference
+loop, and a failure is localized by a shared control rather than bespoke
+investigation. Measured so far:
+
+- **Harness changes made:** 1 model-neutral module (`tools/stage_attribution.py`)
+  and 1 test module, 592 lines total, replacing 154 lines of duplicated probe
+  code that was removed. Net reduction in runner code.
+- **Scripts avoided:** the same investigation that produced five bespoke probes
+  now needs one family adapter (`head_attribution_control.py`) over the shared
+  control. A second port using this contract writes one adapter, not a sweep or
+  an attribution implementation.
+- **Attribution cost:** the head call 20 failure was localized to
+  `encoder_outputs` in one shared-control invocation with three binding gates,
+  replacing bespoke per-input replay scripts.
+- **Gates closed or honestly deferred:** 0 closed, 2 deferred with named
+  exclusions and one named next experiment each.
+
+Honest limits on this measurement. No second candidate has been ported, so the
+primary acceptance signal — a cheaper second port — is **not yet
+demonstrated**. What is demonstrated is that the harness capability exists,
+is tested, and replaced duplicated code that existed a few hours ago. Item 6's
+reuse rule is therefore partially satisfied: it holds within this
+investigation, and is untested across families.
+
 The next bounded slice remains the paired single-process browser run, which
 must capture encoder feeds, valid length and resolved session options for both
 paths. Selecting a candidate needs new weight-download authority.
