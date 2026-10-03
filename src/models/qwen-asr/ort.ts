@@ -1,3 +1,4 @@
+import { resolveWasmThreads } from '../../inference/backends/wasm-threads.js';
 import {
   honorAbortAfterCreate,
   withNativeAbortSignalOption,
@@ -221,11 +222,7 @@ export async function initQwenOrt(
   };
   const ort = imported.default ?? imported;
   if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads =
-      options.cpuThreads ??
-      (typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number'
-        ? navigator.hardwareConcurrency
-        : 4);
+    ort.env.wasm.numThreads = resolveWasmThreads(options.cpuThreads);
     ort.env.wasm.simd = true;
   } else {
     ort.env.wasm.numThreads = 1;

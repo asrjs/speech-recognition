@@ -483,6 +483,14 @@ executors continue to own ORT sessions, tensors, and model-specific lifecycle
 because Whisper split graphs, CTC encoders, and stateful transducers have
 different resource boundaries.
 
+ORT Web initializers share the browser-safe `wasm-threads` resolver. WASM
+threads (including explicit requests) are capped at
+`floor(navigator.hardwareConcurrency / 2) + 2`; missing/invalid hardware counts
+use four as the count fallback. Smaller requests remain smaller. Whisper and
+FireRed VAD retain their single-thread defaults, and existing family guards
+retain one thread when SharedArrayBuffer is unavailable. This does not change
+native ORT intra-op/inter-op thread settings or claim a measured speedup.
+
 The experimental `native-cpu` factory is explicitly composed; built-in runtimes
 do not automatically register it. NeMo TDT's family-owned ORT bridge selects
 native CPU sessions without copying decoding into a host-specific executor.

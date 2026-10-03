@@ -1,4 +1,5 @@
 import * as ort from 'onnxruntime-web';
+import { resolveWasmThreads } from '../../../inference/backends/wasm-threads.js';
 import type { FireRedRuntimeOptions } from '../types.js';
 import {
   honorAbortAfterCreate,
@@ -54,7 +55,7 @@ function resolveViteDevOrtWasmPath(): string | null {
 }
 
 function configureOrtEnvironment(options: FireRedRuntimeOptions): void {
-  ort.env.wasm.numThreads = options.wasmNumThreads ?? 1;
+  ort.env.wasm.numThreads = resolveWasmThreads(options.wasmNumThreads, 1);
   if (options.wasmPaths) {
     ort.env.wasm.wasmPaths = options.wasmPaths;
   } else if (!ort.env.wasm.wasmPaths && typeof window !== 'undefined') {

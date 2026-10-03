@@ -1,3 +1,4 @@
+import { resolveWasmThreads } from '../../inference/backends/wasm-threads.js';
 import type { Wav2Vec2ArtifactSource, Wav2Vec2DirectArtifacts } from './types.js';
 import {
   honorAbortAfterCreate,
@@ -186,11 +187,7 @@ export async function initOrt(
   }
 
   if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads =
-      options.cpuThreads ??
-      (typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number'
-        ? navigator.hardwareConcurrency
-        : 4);
+    ort.env.wasm.numThreads = resolveWasmThreads(options.cpuThreads);
     ort.env.wasm.simd = true;
   } else {
     ort.env.wasm.numThreads = 1;

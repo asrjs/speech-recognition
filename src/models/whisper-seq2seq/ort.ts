@@ -1,3 +1,4 @@
+import { resolveWasmThreads } from '../../inference/backends/wasm-threads.js';
 import type {
   WhisperArtifactSource,
   WhisperDirectArtifactSource,
@@ -399,7 +400,7 @@ export async function initWhisperOrt(
   const ort = imported.default ?? imported;
 
   if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads = options.cpuThreads ?? 1;
+    ort.env.wasm.numThreads = resolveWasmThreads(options.cpuThreads, 1);
     ort.env.wasm.simd = true;
   } else {
     ort.env.wasm.numThreads = 1;
