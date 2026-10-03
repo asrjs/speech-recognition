@@ -50,6 +50,20 @@ function segmentOnlyResult(text: string): TranscriptResult {
 }
 
 describe('pipeline windowing primitives', () => {
+  it('preserves actual component providers and reports mixed window placement', () => {
+    const accumulator = createWindowedMetricsAccumulator(40);
+    const hybrid = { encoderBackend: 'webgpu', decoderBackend: 'wasm', jointBackend: 'wasm' };
+    addWindowMetrics(accumulator, hybrid);
+    addWindowMetrics(accumulator, hybrid);
+    expect(buildWindowedMetrics(accumulator)).toMatchObject(hybrid);
+    addWindowMetrics(accumulator, {
+      encoderBackend: 'wasm', decoderBackend: 'webgpu', jointBackend: 'webgpu',
+    });
+    expect(buildWindowedMetrics(accumulator)).toMatchObject({
+      encoderBackend: 'mixed', decoderBackend: 'mixed', jointBackend: 'mixed',
+    });
+  });
+
   it('resolves token aliases at the public windowing boundary while honoring explicit detail', () => {
     const input = new Float32Array(16000);
     expect(planWindowedTranscription(input, { returnTokens: true }, undefined).options.detail).toBe(

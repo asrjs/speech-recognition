@@ -52,6 +52,9 @@ export interface WindowedMetricsAccumulator {
   wallMs: number;
   emittedTokenCount: number;
   emittedWordCount: number;
+  encoderBackend?: string;
+  decoderBackend?: string;
+  jointBackend?: string;
   decoderKvCacheLocation?: string;
   encoderOutputLocation?: string;
   encoderOutputDtype?: string;
@@ -196,6 +199,9 @@ function addStringMetric(
     | 'wordAlignmentSource'
     | 'resampler'
     | 'resamplerQuality'
+    | 'encoderBackend'
+    | 'decoderBackend'
+    | 'jointBackend'
   >,
   value: string | null | undefined,
 ): void {
@@ -279,6 +285,9 @@ export function addWindowMetrics(
   addStringMetric(accumulator, 'wordAlignmentSource', metrics.wordAlignmentSource);
   addStringMetric(accumulator, 'resampler', metrics.resampler);
   addStringMetric(accumulator, 'resamplerQuality', metrics.resamplerQuality);
+  addStringMetric(accumulator, 'encoderBackend', metrics.encoderBackend);
+  addStringMetric(accumulator, 'decoderBackend', metrics.decoderBackend);
+  addStringMetric(accumulator, 'jointBackend', metrics.jointBackend);
 }
 
 export function buildWindowedMetrics(
@@ -357,5 +366,8 @@ export function buildWindowedMetrics(
     decodeIterations: accumulator.decodeIterations || undefined,
     emittedTokenCount: accumulator.emittedTokenCount || undefined,
     emittedWordCount: accumulator.emittedWordCount || undefined,
+    encoderBackend: accumulator.encoderBackend,
+    decoderBackend: accumulator.decoderBackend,
+    jointBackend: accumulator.jointBackend,
   };
 }
