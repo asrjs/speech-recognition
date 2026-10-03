@@ -1,0 +1,36 @@
+{
+  "status": "MEASUREMENT_REPRODUCED_ON_RAW_DUMP",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "why": "A stale helper script still read the numpy .npy, whose 128-byte header produced the earlier 1e37 garbage. The recorded parity numbers came from inline runs that read the raw dump; this run reproduces them from the raw dump through the repaired script.",
+  "raw_dump": {
+    "file": ".cache/parakeet-ctc-official-features.bin",
+    "bytes": 352320,
+    "shape": [
+      1101,
+      80
+    ],
+    "numpy_file_bytes": 352448,
+    "header_bytes": 128
+  },
+  "measurement": {
+    "our_frames": 1100,
+    "official_frames": 1101,
+    "compared_coordinates": 88000,
+    "max_abs_error": 7.401313781738281,
+    "mean_abs_error": 1.6994708794156947,
+    "mismatch_over_1e4": 87671,
+    "frontend_mel_scale": "slaney"
+  },
+  "dropped_frame": {
+    "index": 1100,
+    "official_mels_0_to_4": [
+      -8.927,
+      -8.854,
+      -6.957,
+      -5.179,
+      -4.424
+    ],
+    "note": "A real frame our validFrameCount clamp discards; it is part of the official 1101-frame centered STFT."
+  },
+  "verdict": "Parity still FAIL after the slaney mel-scale fix; the residual is a band-edge/normalization construction difference plus the dropped trailing frame."
+}
