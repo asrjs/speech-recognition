@@ -2960,10 +2960,17 @@ gain of about 399x; it is not the divergent component.
 Consequence: passing the unchanged score gate at this call would require the
 live WebGPU encoder feed to be accurate to roughly `2.5e-8` absolute, which is
 about two orders of magnitude tighter than fp32 accumulation noise on a feed
-that already passes its own `1e-5/1e-4` encoder gate. This also explains why
-call 40, with a 2x larger encoder delta, shows a larger score error yet zero
-mismatches: at that frame the top log-probabilities sit near saturation, so the
-same absolute gate admits them.
+that already passes its own `1e-5/1e-4` encoder gate.
+
+Call 40 is the instructive contrast and is not explained by feed size: its
+encoder delta is *smaller* (`8.9034e-7` versus `1.4566e-6`) yet its score
+error is *larger* (`1.1559e-3` versus `5.7888e-4`) with zero mismatches. So
+per-call amplification is not constant: at call 40 the top log-probabilities
+are near saturation (`pmax` 0.999936, top log-prob `-0.000064`), where a given
+absolute logit error produces a much smaller log-probability shift, while call
+20 is unsaturated (`pmax` 0.821443). A feed-delta magnitude therefore cannot be
+read as a pass/fail predictor on its own, and the earlier ranking of calls by
+feed error is not a proxy for the gate.
 
 This does not waive the gate and is not feature or ASR acceptance. The gate
 stays FAIL and no normalization, tolerance or production math changed. It

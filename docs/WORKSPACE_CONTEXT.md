@@ -126,3 +126,14 @@ Treat it as reference material until its current contents are rechecked.
 Remote model loading resilience is documented in [HUGGINGFACE_DOWNLOAD_RESILIENCE.md](./HUGGINGFACE_DOWNLOAD_RESILIENCE.md). FireRed diagnostic fallback behavior is documented in [FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md](./FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md).
 
 The Windows-to-WSL2 maintenance handoff is documented in [WSL2_PROJECT_HANDOFF.md](./WSL2_PROJECT_HANDOFF.md).
+
+## Delegating to OMP subagents in this workspace
+
+The default subagent model resolved to `deepseek/deepseek-v4-flash` and failed
+immediately with HTTP 402 `Insufficient Balance`. This is a provider balance
+limit, not a missing package, a repository problem or a code defect. Delegation
+works by pinning the spawn to the parent's live model with the per-task
+`model: "@default"` selector; a scout then completed normally. When a subagent
+fails with 402, diagnose the provider first and retry with `@default` or another
+explicitly available model rather than editing repository code or repeating the
+same failing spawn.
