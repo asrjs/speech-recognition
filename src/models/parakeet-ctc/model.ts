@@ -2,6 +2,15 @@ import { normalizePcmInput } from '../../audio/index.js';
 import { CtcDecoder } from '../../ctc/index.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
 import { createExperimentalArtifactMissingError } from '../../runtime/experimental-families.js';
+import { mapLasrCtcNativeToCanonical } from '../lasr-ctc/mapping.js';
+import type {
+  AudioInputLike,
+  SpeechModel,
+  SpeechModelFactory,
+  SpeechSession,
+  TranscriptResponse,
+  TranscriptResponseFlavor,
+} from '../../types/index.js';
 import {
   createOrtSession,
   disposeOrtOutputs,
@@ -10,7 +19,7 @@ import {
   type OrtModuleLike,
   type OrtTensorLike,
 } from '../lasr-ctc/ort.js';
-import type { LasrCtcNativeTranscript } from '../lasr-ctc/types.js';
+import type { LasrCtcNativeTranscript, LasrCtcTranscriptionOptions } from '../lasr-ctc/types.js';
 import { ParakeetCtcJsPreprocessor } from './frontend.js';
 import { ParakeetCtcTokenizer } from './tokenizer.js';
 import type { ParakeetCtcModelConfig, ParakeetCtcModelOptions } from './types.js';
@@ -174,4 +183,103 @@ export interface ParakeetCtcLoadedModel {
   readonly backendId: string;
   transcribe(audio: Float32Array): Promise<LasrCtcNativeTranscript>;
   dispose(): void;
+}
+
+const CLASSIFICATION = {
+  family: 'parakeet-ctc',
+  ecosystem: 'nemo',
+  processor: 'parakeet-mel-80',
+  encoder: 'parakeet-ctc-encoder',
+  decoder: 'ctc',
+  topology: 'ctc',
+  task: 'asr',
+} as const;
+
+/** Registers the family so built-in loads resolve `parakeet-ctc` requests. */
+export function createParakeetCtcModelFamily(): SpeechModelFactory<
+  ParakeetCtcModelOptions,
+  LasrCtcTranscriptionOptions,
+  LasrCtcNativeTranscript
+> {
+  return {
+    family: 'parakeet-ctc',
+    classification: CLASSIFICATION,
+    supportedBackendIds: ['wasm', 'webgpu', 'native-cpu'],
+    supports(modelId: string): boolean {
+      const value = modelId.toLowerCase();
+      return value.includes('parakeet-ctc') || value.includes('ctc-110m');
+    },
+    async createModel(
+      request,
+      context,
+    ): Promise<
+      SpeechModel<ParakeetCtcModelOptions, LasrCtcTranscriptionOptions, LasrCtcNativeTranscript>
+    > {
+      let loaded: ParakeetCtcLoadedModel | undefined;
+      let disposed = false;
+
+      return {
+        info: {
+          modelId: request.modelId,
+          family: 'parakeet-ctc',
+          displayName: request.modelId,
+          languages: DEFAULT_PARAKEET_CTC_CONFIG.languages,
+          backendId: context.backend.id,
+        } as never,
+        backend: context.backend,
+        loadOptions: request.options,
+        async createSession(): Promise<
+          SpeechSession<LasrCtcTranscriptionOptions, LasrCtcNativeTranscript>
+        > {
+          loaded ??= await loadParakeetCtcFromOptions(
+            (request.options ?? {}) as ParakeetCtcModelOptions,
+          );
+
+          return {
+            async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+              input: AudioInputLike,
+              options?: LasrCtcTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+            ): Promise<TranscriptResponse<LasrCtcNativeTranscript, TFlavor>> {
+              const pcm = normalizePcmInput(input, {
+                sampleRate: DEFAULT_PARAKEET_CTC_CONFIG.sampleRate,
+              });
+              const mono = pcm.channels[0];
+              if (!mono) {
+                throw new Error('Parakeet CTC transcription requires mono audio.');
+              }
+              const native = await loaded!.transcribe(mono);
+              const canonical = mapLasrCtcNativeToCanonical(native, CLASSIFICATION, {
+                detail: options?.detail ?? 'segments',
+                detailLevel: options?.detail ?? 'segments',
+                isFinal: native.isFinal,
+              } as never);
+
+              if (options?.responseFlavor === 'canonical+native') {
+                return { canonical, native } as TranscriptResponse<
+                  LasrCtcNativeTranscript,
+                  TFlavor
+                >;
+              }
+
+              return canonical as TranscriptResponse<LasrCtcNativeTranscript, TFlavor>;
+            },
+            dispose(): void {
+              if (!disposed) {
+                disposed = true;
+                loaded?.dispose();
+                loaded = undefined;
+              }
+            },
+          };
+        },
+        async dispose(): Promise<void> {
+          if (!disposed) {
+            disposed = true;
+            loaded?.dispose();
+            loaded = undefined;
+          }
+        },
+      };
+    },
+  };
 }

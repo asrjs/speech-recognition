@@ -15,6 +15,7 @@ import {
 import { isAssetLoadAbortedError } from '../io/abort.js';
 import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
 import { createGigaAmCtcModelFamily } from '../models/gigaam-ctc/index.js';
+import { createParakeetCtcModelFamily } from '../models/parakeet-ctc/index.js';
 import { createGigaAmRnntModelFamily } from '../models/gigaam-rnnt/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
@@ -28,6 +29,7 @@ import { createWav2Vec2ModelFamily } from '../models/wav2vec2/index.js';
 import { createCanaryPresetFactory } from '../presets/canary/factory.js';
 import { createMedAsrPresetFactory } from '../presets/medasr/factory.js';
 import { createParakeetPresetFactory } from '../presets/parakeet/factory.js';
+import { createParakeetCtcPresetFactory } from '../presets/parakeet/ctc-factory.js';
 import { createNemotronPresetFactory } from '../presets/nemotron/factory.js';
 import { createWhisperPresetFactory } from '../presets/whisper/factory.js';
 import { createWav2Vec2PresetFactory } from '../presets/wav2vec2/factory.js';
@@ -304,6 +306,7 @@ export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): Def
   runtime.registerModelFamily(createNemotronRnntModelFamily());
   runtime.registerModelFamily(createNemoTdtModelFamily());
   runtime.registerModelFamily(createGigaAmCtcModelFamily());
+  runtime.registerModelFamily(createParakeetCtcModelFamily());
   runtime.registerModelFamily(createGigaAmRnntModelFamily());
   runtime.registerModelFamily(createLasrCtcModelFamily());
   runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());
@@ -334,6 +337,7 @@ export function registerBuiltInPresets(
       useManifestSource: options.useManifestSources ?? false,
     }),
   );
+  runtime.registerPreset(createParakeetCtcPresetFactory());
   runtime.registerPreset(createMedAsrPresetFactory());
   runtime.registerPreset(createWhisperPresetFactory());
   runtime.registerPreset(
@@ -400,26 +404,32 @@ export async function loadBuiltInSpeechModel<
       message: 'Resolving model request.',
     });
     const resolved = resolveBuiltInModelRequest(activeRuntime, options);
-  throwIfLoadAborted(options.signal);
-  const resolvedDescriptor = resolved.modelId ? getBuiltInModelDescriptor(resolved.modelId) : undefined;
-  emitProgress(options, {
-    phase: 'resolve:complete',
-    modelId: resolved.modelId,
-    message: resolved.preset
-      ? `Resolved preset "${resolved.preset}".`
-      : `Resolved model family "${resolved.family}".`,
-  });
+    throwIfLoadAborted(options.signal);
+    const resolvedDescriptor = resolved.modelId
+      ? getBuiltInModelDescriptor(resolved.modelId)
+      : undefined;
+    emitProgress(options, {
+      phase: 'resolve:complete',
+      modelId: resolved.modelId,
+      message: resolved.preset
+        ? `Resolved preset "${resolved.preset}".`
+        : `Resolved model family "${resolved.family}".`,
+    });
 
-  const experimentalFamily = isFamilyBuiltInModelRequest(resolved)
-    ? getExperimentalSpeechFamily(resolved.family) ?? getExperimentalSpeechFamily(resolved.modelId)
-    : resolved.modelId
-      ? getExperimentalSpeechFamily(resolved.modelId)
-      : null;
-  if (experimentalFamily && !hasExperimentalArtifactSource(options.options)) {
-    throw createExperimentalArtifactMissingError(experimentalFamily.family, resolved.modelId);
-  }
+    const experimentalFamily = isFamilyBuiltInModelRequest(resolved)
+      ? (getExperimentalSpeechFamily(resolved.family) ??
+        getExperimentalSpeechFamily(resolved.modelId))
+      : resolved.modelId
+        ? getExperimentalSpeechFamily(resolved.modelId)
+        : null;
+    if (experimentalFamily && !hasExperimentalArtifactSource(options.options)) {
+      throw createExperimentalArtifactMissingError(experimentalFamily.family, resolved.modelId);
+    }
 
-  const resolvedBackend = resolveBuiltInBackendRequest(options.backend, options.selectionCriteria);
+    const resolvedBackend = resolveBuiltInBackendRequest(
+      options.backend,
+      options.selectionCriteria,
+    );
 
     if (options.runtime) {
       emitProgress(options, {
@@ -531,16 +541,18 @@ export async function loadBuiltInSpeechModel<
 
           const canonical = await transcribeWithWindowing({
             input: decision.audio,
-            options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
+            options: {
+              ...(resolvedOptions ?? {}),
+              responseFlavor: 'canonical',
+            } as TTranscriptionOptions,
             inference,
             transcribeWindow: async (windowInput, windowOptions) =>
               (await guardedSession.transcribe(windowInput, {
                 ...windowOptions,
                 responseFlavor: 'canonical',
-              } as TTranscriptionOptions & { readonly responseFlavor: 'canonical' })) as TranscriptResponse<
-                TNative,
-                'canonical'
-              >,
+              } as TTranscriptionOptions & {
+                readonly responseFlavor: 'canonical';
+              })) as TranscriptResponse<TNative, 'canonical'>,
           });
 
           if (resolvedOptions?.responseFlavor === 'canonical+native') {
@@ -573,11 +585,7 @@ export async function loadBuiltInSpeechModel<
       await model.dispose();
     }
     if (error instanceof PipelineAbortedError || isAssetLoadAbortedError(error)) {
-      emitLoadCancelled(
-        options,
-        options.modelId ?? model?.info.modelId,
-        model?.backend.id,
-      );
+      emitLoadCancelled(options, options.modelId ?? model?.info.modelId, model?.backend.id);
       throw error instanceof PipelineAbortedError ? error : new PipelineAbortedError('load');
     }
     throw error;

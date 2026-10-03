@@ -1,0 +1,180 @@
+{
+  "status": "FAIL_COMPANION_UI_SMOKE",
+  "sources_sha256": {
+    "N:\\github\\asrjs\\speech-recognition\\tests\\smoke\\browser-demo-smoke.py": "cbc578d4b1dfa4f7ef951a5118c204a7538803268f0d51b0908387cd46e9f417",
+    "N:\\github\\asrjs\\speech-recognition\\tests\\smoke\\companion-build.mjs": "5c085f28420831a9b18a11b695cacff3bd9963b67ceb24c0b1285bfe9e3d9c98",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\artifact_outputs.py": "499b497c2c3701e325c37cc9980ff179eda64c4ea80a0820951be9f6baa695eb",
+    "N:\\github\\asrjs\\browser-demo\\vite.config.js": "05b797e775018c124b38ca310802453e5bb72854bcc7aebf68d525ffbd0dbbcb",
+    "N:\\github\\asrjs\\browser-demo\\package.json": "5862e26a4eadbec3cc2115df7da36961bf6cdd22a989905c386c7b4f8391a106",
+    "N:\\github\\asrjs\\browser-demo\\src\\App.jsx": "669601d87bf6c6277f9619235defb537aabc135d918ce72dc901ae0f26d76804",
+    "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\parakeet-ctc-110m-en\\model.onnx": "c261d58ef199e2b2c365ada9d8812ab603ea37066be514e8a34c6bced487f787",
+    "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\parakeet-ctc-110m-en\\tokenizer.json": "5512c7db80d6b1144c58192d0d6435728b250edcf6a7bbb7abe7c2c269a34aea"
+  },
+  "scope": "Local parakeet-ctc load and existing app warm-up for ctaguchi/parakeet-hf-ctc-110m-en; not numerical oracle, cancellation or disposal acceptance",
+  "local_model_root": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\parakeet-ctc-110m-en",
+  "artifact_layout": "parakeet-ctc",
+  "model_id": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "runtime_backend": "webgpu-hybrid",
+  "encoder_precision": "fp32",
+  "build": {
+    "status": "PASS_IN_MEMORY_COMPANION_BUILD",
+    "root": "N:\\github\\asrjs\\browser-demo",
+    "viteVersion": "7.3.1",
+    "configSha256": "05b797e775018c124b38ca310802453e5bb72854bcc7aebf68d525ffbd0dbbcb",
+    "packageSha256": "5862e26a4eadbec3cc2115df7da36961bf6cdd22a989905c386c7b4f8391a106",
+    "toolSha256": "5c085f28420831a9b18a11b695cacff3bd9963b67ceb24c0b1285bfe9e3d9c98",
+    "configEvaluation": "In-memory esbuild ESM with original dirname and consumer package resolution",
+    "scope": "Build only; not normal npm build, exhaustive source provenance, browser inference or parity",
+    "outputs": [
+      {
+        "fileName": "assets/index-zsLDvwB7.js",
+        "type": "chunk",
+        "bytes": 763829,
+        "sha256": "ceaeaab426c6d5d234b16c912baa4cc600c43c04e375b0961f89a78376106ed0"
+      },
+      {
+        "fileName": "assets/ort.bundle.min-BdsNfDLz.js",
+        "type": "chunk",
+        "bytes": 410273,
+        "sha256": "9550d43524741a8a15b495b94607af1d6310c446656775f948d8f2d853102a79"
+      },
+      {
+        "fileName": "assets/ort.webgpu.bundle.min-DIS4kVGb.js",
+        "type": "chunk",
+        "bytes": 115354,
+        "sha256": "be81e177dd2702c876c31a388bd047eb0af8a9909d053459bc15229ee9ee8217"
+      },
+      {
+        "fileName": "assets/Harvard-L2-1-B6X4PDwP.ogg",
+        "type": "asset",
+        "bytes": 18235,
+        "sha256": "6e8379d6a016c3b9606f952d2ef5049740476dc98f2050e9bf30769af610935c"
+      },
+      {
+        "fileName": "assets/ten_vad-BWj8dcPJ.js",
+        "type": "asset",
+        "bytes": 5818,
+        "sha256": "aef64f79af72c278512695285b3c933adb070e64f9a594fa4424750ee1f11ee9"
+      },
+      {
+        "fileName": "assets/ten_vad-DpmpZqYN.wasm",
+        "type": "asset",
+        "bytes": 283349,
+        "sha256": "1ec0b9640683987e15a4e54e4ce5642b2447c6e5d82b1be889b5099c75434fc3"
+      },
+      {
+        "fileName": "assets/ort-wasm-simd-threaded.asyncify-CsxMlmQ8.wasm",
+        "type": "asset",
+        "bytes": 25749873,
+        "sha256": "503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549"
+      },
+      {
+        "fileName": "assets/ort-wasm-simd-threaded.jsep-D-icqfN-.wasm",
+        "type": "asset",
+        "bytes": 27797172,
+        "sha256": "db816fadbab47a755170c08f933961e231412ac17f5981f9a62e519708a44dea"
+      },
+      {
+        "fileName": "assets/index-DZDSm4OQ.css",
+        "type": "asset",
+        "bytes": 29900,
+        "sha256": "f8703031d7d8f97c8f0085b02bf8b791081f4d43396709d55f99dfba44001959"
+      },
+      {
+        "fileName": "assets/ten-vad-worker-BhDqQlif.js",
+        "type": "asset",
+        "bytes": 4212,
+        "sha256": "eaf1077831449541462edb9aa5acc96219d2ddefc71b4f071e133a5ab45e3c9a"
+      },
+      {
+        "fileName": "assets/firered-vad-worker-B2xmQqOJ.js",
+        "type": "asset",
+        "bytes": 429123,
+        "sha256": "d1c26cd5ea6d1efba80ce378fd45c5a66ac08919494df12647f893014803140f"
+      },
+      {
+        "fileName": "assets/browser-transcription-worker-thread-BqRL-CjX.js",
+        "type": "asset",
+        "bytes": 540504,
+        "sha256": "1f853fbd2dbe5079cc6353940b2a84693aa721e49226047600e0574af2fb4bac"
+      },
+      {
+        "fileName": "index.html",
+        "type": "asset",
+        "bytes": 754,
+        "sha256": "c09b4259d4ed01e2570a48381976291194f54521706170612a7a5eeec499b037"
+      }
+    ]
+  },
+  "preview": {
+    "status": "PREVIEW_READY",
+    "url": "http://127.0.0.1:8130",
+    "publicAssets": [
+      {
+        "fileName": "coi-serviceworker.js",
+        "bytes": 6174,
+        "sha256": "5ef973565b54093e76a803b55434f99cbb11446e10ac8cb3f21958089cfa19ad"
+      },
+      {
+        "fileName": "favicon.ico",
+        "bytes": 3870,
+        "sha256": "3d10f7da6c603178340081668c4ac5b3ae9743ca9a262ab0fcd312fbb9f48bdd"
+      }
+    ],
+    "scope": "In-memory build, top-level public files and explicitly opted-in JSEP pair; no inference certification"
+  },
+  "preview_pid": 34304,
+  "blocked_requests": [
+    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+    "https://fonts.googleapis.com/icon?family=Material+Icons+Outlined",
+    "https://img.shields.io/github/stars/asrjs/speech-recognition?style=social",
+    "https://huggingface.co/api/models/ysdede/parakeet-tdt-0.6b-v2-onnx/tree/main?recursive=1",
+    "https://huggingface.co/api/models/ysdede/parakeet-tdt-0.6b-v2-onnx?revision=main"
+  ],
+  "page_errors": [],
+  "ort_web_version": "1.29.0",
+  "served_sidecars": [],
+  "local_load": {
+    "status": "STARTED",
+    "console": [
+      {
+        "type": "log",
+        "text": "[LocalFolder] Folder input fallback selected files {count: 3}"
+      },
+      {
+        "type": "log",
+        "text": "[LocalFolder] Parsing selected local folder entries\u2026 {count: 3, folderName: parakeet-ctc-110m-en}"
+      },
+      {
+        "type": "log",
+        "text": "[LocalFolder] Detected artifacts {encoder: Array(1), decoder: Array(1), tokenizers: Array(1), preprocessors: Array(0)}"
+      },
+      {
+        "type": "warning",
+        "text": "Timer 'LoadModel' already exists"
+      },
+      {
+        "type": "log",
+        "text": "[LocalFolder] Starting model load from local artifacts"
+      },
+      {
+        "type": "error",
+        "text": "Yr: Preset \"parakeet-ctc\" is not registered.\n    at mC.resolvePresetRequest (http://127.0.0.1:8130/assets/index-zsLDvwB7.js:13:99590)\n    at mC.resolveLoadRequest (http://127.0.0.1:8130/assets/index-zsLDvwB7.js:13:99487)\n    at mC.loadModelInternal (http://127.0.0.1:8130/assets/index-zsLDvwB7.js:13:97001)\n    at mC.loadModel (http://127.0.0.1:8130/assets/index-zsLDvwB7.js:13:96769)\n    at gk (http://127.0.0.1:8130/assets/index-zsLDvwB7.js:13:104732)\n    at cE (http://127.0.0.1:8130/assets/index-zsLDvwB7.js:18:14185)\n    at async an (http://127.0.0.1:8130/assets/index-zsLDvwB7.js:18:35756)"
+      }
+    ],
+    "adapter": {
+      "vendor": "nvidia",
+      "architecture": "blackwell",
+      "device": "",
+      "description": "",
+      "fallback": false
+    }
+  },
+  "error": "App local load rejected: Failed: Preset \"parakeet-ctc\" is not registered.",
+  "preview_process_stopped": true,
+  "preview_closure_probe": {
+    "closed": true,
+    "code": "ECONNREFUSED"
+  },
+  "preview_port_closed": true
+}

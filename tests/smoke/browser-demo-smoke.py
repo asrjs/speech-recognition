@@ -66,6 +66,7 @@ ARTIFACT_LAYOUTS = {
     'nemo-aed': ('encoder-model', 'decoder-model', 'tokenizer.json'),
     'nemotron-rnnt': ('encoder_320ms_fp16', 'decoder', 'tokens.txt'),
     'wav2vec2': ('model', None, 'vocab.json'),
+    'parakeet-ctc': ('model', None, 'tokenizer.json'),
 }
 
 

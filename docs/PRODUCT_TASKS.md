@@ -32,6 +32,13 @@ earlier 7.40 measurement used a contract the model does not consume. The correct
 reference is therefore the preemphasis path (1101x80), and against it the current
 frontend measures max abs `18.02` / mean `9.25` over 88,080 coordinates.
 
+**BROWSER VERIFIED.** The companion UI loads `ctaguchi/parakeet-hf-ctc-110m-en`
+from a local folder in Chrome on a real NVIDIA Blackwell adapter and completes
+warm-up with zero page errors (`PASS_COMPANION_LOCAL_WARMUP`, 5.1 s), served
+offline through the pinned ORT sidecars. Reaching that needed a preset factory
+and a `SpeechModelFactory` whose `createSession` owns the model lifecycle, which
+is the shape the other CTC families use.
+
 **REGISTERED AND VERIFIED THROUGH THE SHARED HARNESS.** `ctaguchi/parakeet-hf-ctc-110m-en`
 is now a built-in descriptor (preset `parakeet-ctc`, local-folder only, no Hub
 source because the repository ships no ONNX) with a local-folder adapter, and it
