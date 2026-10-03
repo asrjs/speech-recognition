@@ -2269,3 +2269,31 @@ precision policy or tolerance change; WASM/WebGPU and ASR acceptance stay open.
 Next isolate the earliest remaining waveform/preemphasis/STFT boundary with
 identical-input controls, rather than tuning normalization to hide upstream
 errors. Expand the official fixture matrix after a candidate passes this gate.
+
+### Captured STFT input and preemphasis controls (2026-10-03)
+
+The stage probe now adds separate eval preemphasis and identical-input STFT
+graphs. Both use config-derived settings and captured inputs; neither changes
+the full processor graph. Native preemphasis reproduces all649,600 captured
+STFT-input values byte-for-byte. CPU ONNX preemphasis is also byte-exact.
+The separate native real-pair STFT reproduces all2,087,354 captured spectrum
+components byte-for-byte, while ONNX on the exact same captured STFT input
+retains max2.086162567138672e-6/mean6.686923942797314e-9 error. Spectrum itself
+passes atol1e-5/rtol1e-4, but is not identical; downstream full pairwise features
+still FAIL with76 mismatches. This isolates an arithmetic difference within
+the STFT execution boundary for this fixture, not preemphasis. It does not
+identify a particular internal FFT, windowing or framing kernel as the cause.
+
+Preemphasis graph2862 bytes SHA256
+`9616e160d88d0cf27ca6318b76332c305bc375a59afb26f09120de71b5300109`;
+STFT graph6048 bytes SHA256
+`5188032dddc8226eff219ff7effa765cfe01e1555cfa09d84b60b882ead5b865`.
+Captured STFT-input f32le SHA256
+`47bb4059b5531cfe79b5daa77a17d78473cff6754716ed8fe037dc5ad0eb331f`.
+Receipt: `nemo-processor-stft-input-control-speech-silence-2026-10-03.json`.
+Five comparator and nine CLI preflight tests pass; real graph execution is
+separate measured evidence. Baseline/full-candidate hashes remain unchanged,
+overall export FAIL/exit1 preserved. Next inspect windowed frame/FFT execution
+with this identical input; do not add per-model numerical correction constants.
+Also keep the companion browser acceptance runner on the whole-product queue;
+this model diagnostic does not certify examples, WASM or WebGPU execution.

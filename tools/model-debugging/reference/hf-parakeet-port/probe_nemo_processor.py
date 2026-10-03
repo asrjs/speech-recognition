@@ -64,7 +64,7 @@ def main():
     import torch
     from nemo.collections.asr.modules.audio_preprocessing import AudioToMelSpectrogramPreprocessor
     from nemo.collections.asr.parts.preprocessing import features as nemo_features
-    from replay_packed_fft import read_capture
+    from replay_packed_fft import read_capture, read_stage
     from tensor_parity import compare_tensors
     installed_sources = [Path(inspect.getfile(AudioToMelSpectrogramPreprocessor)),
                          Path(nemo_features.__file__)]
@@ -72,7 +72,7 @@ def main():
     hashes.update({str(path.resolve()): digest(path) for path in installed_sources})
     torch.set_num_threads(4)
     processor = AudioToMelSpectrogramPreprocessor(**config).eval()
-    _, _, pcm, oracle_spectrum, _, expected, valid = read_capture(
+    _, captured_sample, pcm, oracle_spectrum, _, expected, valid = read_capture(
         args.capture, args.expected_capture_sha256, args.sample_id)
     with torch.no_grad():
         values, lengths = processor(input_signal=torch.from_numpy(pcm),
@@ -120,9 +120,12 @@ def main():
             'onnx': onnx.__version__, 'onnxruntime': ort.__version__, 'providers': session.get_providers(),
             'scope': 'In-memory real-pair fp32 processor, dynamic sample axis, batch1 native CPU only'}
         if args.stage_probe:
-            from processor_export_stages import run_stage_control
+            from processor_export_stages import run_stage_control, run_stft_input_control
             export_control['stages'] = run_stage_control(processor, waveform, length,
                 oracle_spectrum, expected, ort_features, ort_length, pairwise=args.pairwise_normalization)
+            export_control['stages']['stft_input_control'] = run_stft_input_control(
+                processor, waveform, length, read_stage(captured_sample, 'feature_stft/input', 'float32'),
+                oracle_spectrum)
     if hashes != {str(path.resolve()): digest(path) for path in sources}:
         raise ValueError('Processor diagnostic sources changed during execution')
     if digest(args.config) != args.expected_config_sha256 or digest(args.capture) != args.expected_capture_sha256:

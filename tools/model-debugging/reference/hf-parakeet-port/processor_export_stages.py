@@ -12,6 +12,75 @@ NAMES = ('features', 'features_lens', 'spectrum', 'power', 'mel', 'log_mel', 'me
 ORDER = ('spectrum', 'power', 'mel', 'log_mel', 'mean', 'std', 'features')
 
 
+def run_stft_input_control(processor, waveform, length, oracle_signal, oracle_spectrum):
+    """Isolate eval preemphasis and STFT with captured, identical inputs."""
+    import numpy as np
+    import onnx
+    import onnxruntime as ort
+    import torch
+    f = processor.featurizer
+
+    class PreemphasisBoundary(torch.nn.Module):
+        def forward(self, pcm, valid):
+            if f.preemph is None:
+                return pcm
+            mask = torch.arange(pcm.size(1), device=pcm.device)[None, :] < valid[:, None]
+            signal = torch.cat((pcm[:, :1], pcm[:, 1:] - f.preemph * pcm[:, :-1]), dim=1)
+            return signal.masked_fill(~mask, 0.0)
+
+    class StftBoundary(torch.nn.Module):
+        def forward(self, signal):
+            return torch.stft(signal, n_fft=f.n_fft, hop_length=f.hop_length,
+                win_length=f.win_length, center=True, window=f.window.to(dtype=torch.float),
+                return_complex=False, pad_mode='constant')
+
+    def execute(module, example, feeds, input_names, axes):
+        buffer = io.BytesIO()
+        torch.onnx.export(module.eval(), example, buffer, opset_version=17, dynamo=False,
+            input_names=input_names, output_names=['output'], dynamic_axes=axes)
+        graph_bytes = buffer.getvalue()
+        onnx.checker.check_model(onnx.load_model_from_string(graph_bytes))
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = 1
+        session = ort.InferenceSession(graph_bytes, options, providers=['CPUExecutionProvider'])
+        if session.get_providers() != ['CPUExecutionProvider']:
+            raise ValueError('Unexpected input/STFT control execution provider')
+        return session.run(None, feeds)[0], {
+            'graph_sha256': hashlib.sha256(graph_bytes).hexdigest(), 'graph_bytes': len(graph_bytes),
+            'providers': session.get_providers()}
+
+    module = PreemphasisBoundary().eval()
+    with torch.no_grad():
+        native_signal = module(waveform, length).numpy()
+    native_metric = compare_tensors(oracle_signal, native_signal, atol=1e-5, rtol=1e-4)
+    native_metric['bytes_exact'] = oracle_signal.tobytes() == native_signal.tobytes()
+    if not native_metric['bytes_exact']:
+        raise ValueError('Native eval preemphasis does not reproduce captured STFT input')
+    actual_signal, input_graph = execute(module,
+        (waveform[:, :1600], torch.tensor([1600], dtype=torch.long)),
+        {'pcm': waveform.numpy(), 'valid': length.numpy()}, ['pcm', 'valid'],
+        {'pcm': {1: 'samples'}, 'output': {1: 'samples'}})
+    ort_metric = compare_tensors(oracle_signal, actual_signal, atol=1e-5, rtol=1e-4)
+    ort_metric['bytes_exact'] = oracle_signal.tobytes() == actual_signal.tobytes()
+    packed_oracle = np.stack((oracle_spectrum.real, oracle_spectrum.imag), axis=-1)
+    stft = StftBoundary().eval()
+    with torch.no_grad():
+        native_spectrum = stft(torch.from_numpy(oracle_signal)).numpy()
+    spectrum_metric = compare_tensors(packed_oracle, native_spectrum, atol=1e-5, rtol=1e-4)
+    spectrum_metric['bytes_exact'] = packed_oracle.tobytes() == native_spectrum.tobytes()
+    if not spectrum_metric['bytes_exact']:
+        raise ValueError('Native identical-input STFT does not reproduce captured spectrum')
+    actual_spectrum, stft_graph = execute(stft, (torch.from_numpy(oracle_signal[:, :1600]),),
+        {'signal': oracle_signal}, ['signal'], {'signal': {1: 'samples'}, 'output': {2: 'frames'}})
+    ort_spectrum_metric = compare_tensors(packed_oracle, actual_spectrum, atol=1e-5, rtol=1e-4)
+    ort_spectrum_metric['bytes_exact'] = packed_oracle.tobytes() == actual_spectrum.tobytes()
+    return {'native_preemphasis': native_metric, 'onnx_preemphasis': ort_metric,
+        'native_identical_input_stft': spectrum_metric, 'onnx_identical_input_stft': ort_spectrum_metric,
+        'input_graph': input_graph, 'stft_graph': stft_graph,
+        'stft_input_sha256_f32le': hashlib.sha256(oracle_signal.astype('<f4').tobytes()).hexdigest(),
+        'scope': 'Separate eval preemphasis and identical-input real-pair STFT on CPU; no full processor acceptance'}
+
+
 def compare_stages(reference, candidate):
     if len(reference) != len(NAMES) or len(candidate) != len(NAMES):
         raise ValueError('Processor stage count differs')
