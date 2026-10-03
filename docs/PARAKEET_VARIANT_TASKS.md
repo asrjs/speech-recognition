@@ -1750,3 +1750,41 @@ The raw receipt remains bound to the source before the semantic-boundary guard
 addition; it is not mislabeled as executing the later helper version. Next:
 record a compact hash-bound metrics handoff and commit the validated harness,
 then investigate the FFT/power seam without coordinate-specific corrections.
+
+Post-commit real-input guard control: loaded the hash-pinned actual speech/silence
+capture through `replay_packed_fft.read_capture`, then the committed
+`captured_pcm` helper including semantic boundary validation. All 649,600 samples
+are byte-identical; computed SHA is
+`8f4293517daf07f433b307a4a971f7c17dc9ed348b5f72999945b217331ec3df`.
+Command exits zero. This validates the later input guard, not a rerun of the
+full feature receipt or a new model acceptance result.
+
+### Own ONNX DFT component feasibility (2026-10-03)
+
+Ran a new tiny own fp32 opset-17 DFT graph on all exact captured speech/silence
+windowed frames via native ORT 1.29 CPU. Graph checker and output shape/dtype/
+finite guards pass. Spectrum has zero tolerance mismatches at unchanged
+atol=1e-5/rtol=1e-4, max absolute error 2.086162567138672e-6, but 1,050,800
+component bit differences. This is DIAGNOSTIC_DFT_COMPONENT_ONLY, not feature
+or model parity. No production export, browser DFT support, speed or memory
+claim. Receipt: `tools/data/results/orukeet/ort-dft-speech-silence-2026-10-03.json`.
+Next: feed this candidate spectrum through the existing downstream feature
+control; component allclose cannot promote it. Tool syntax and actual run pass;
+focused helper/negative tests and review are still needed before committing it.
+
+Downstream preparation control: a standalone NumPy-only reconstruction of the
+Slaney 16 kHz / FFT512 / 128-bin float32 filterbank produces SHA-256
+`f5608e00763a20a191022fbb00a43346db5f1ec06828a97a6f4157f7d02b76c8`, exactly
+matching the recorded librosa bank in `packed256-thread1-speech-silence-2026-10-03.json`.
+The command exits zero without importing librosa. This permits a separately
+tested dependency-light diagnostic helper after the live downstream run ends;
+it does not establish the cause of that run's delay or feature/model parity.
+Session 18933 remains live and has not been restarted or modified.
+
+Implemented the dependency-light bank and four weight-free regression tests in
+commit `b95b52c` (pinned recipe identity, wrong identity, invalid recipe inputs,
+independent allocations). It remains diagnostic-only and is not integrated
+into the live DFT run. A read-only Windows module inventory for PID 14664
+confirms SciPy, llvmlite and Numba DLLs are loaded; this supports that the broad
+dependency path has been entered, but is not a stack trace or proof of the
+current instruction/cause of delay. Final downstream metrics remain pending.
