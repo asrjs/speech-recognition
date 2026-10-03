@@ -2094,3 +2094,25 @@ Next: reconstruct the official family processor from pinned source config,
 verify its frozen features first, then use a local export-only real-pair
 adapter and compare the full processor output. Do not assume that STFT export
 transfers MKL arithmetic or repairs the known near-silence feature failures.
+
+Config-only processor reconstruction checkpoint (2026-10-03): streamed
+SHA256 of the original `.nemo` again matches
+`031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56`.
+Read only its regular `./model_config.yaml` archive member (bounded below
+1 MiB), without extraction or weight loading. Its full `preprocessor` mapping
+equals the packed `source-config.json` mapping exactly; packed config SHA256
+remains `344297eaf9e28d7f849e099c06535fbb0df978926e1b5f753b6aa836d05acdb3`.
+This is verified configuration identity, not numerical processor acceptance.
+
+Started session74451 using the existing NeMo venv: official
+`AudioToMelSpectrogramPreprocessor`, known target checked then removed from a
+copied mapping for the inspected direct constructor, `.eval()`, four Torch CPU
+threads, and the existing hash-bound `read_capture`/tensor comparator. It uses
+the full speech/silence frozen PCM and unchanged atol=1e-5/rtol=1e-4; exact
+valid length is required. No full model restore, source monkeypatch, installs
+or graph writes. Official processor import completed; construction/comparison
+has not reported a result. Subsequent handle polls confirm it still running.
+Do not duplicate/restart on observation timeout or call the gate passed.
+The older session18933 is also still live and its dependency closure remains
+protected. Current reconstruction output is terminal-only; a successful result
+will still need a reproducible source-bound receipt before export promotion.
