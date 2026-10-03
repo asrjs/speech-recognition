@@ -22,7 +22,7 @@ def compare_stages(reference, candidate):
     return metrics
 
 
-def run_normalization_control(processor, native):
+def run_normalization_control(processor, native, *, pairwise=False):
     import numpy as np
     import onnx
     import onnxruntime as ort
@@ -58,14 +58,47 @@ def run_normalization_control(processor, native):
     actual = session.run(None, {'log_mel': native[5], 'valid': native[1]})
     metrics = {name: compare_tensors(left, right, atol=1e-5, rtol=1e-4)
                for name, left, right in zip(('features', 'mean', 'std'), expected, actual)}
-    return {'status': 'PASS' if all(value['allclose'] for value in metrics.values()) else 'FAIL',
+    receipt = {'status': 'PASS' if all(value['allclose'] for value in metrics.values()) else 'FAIL',
         'comparisons': metrics, 'graph_sha256': hashlib.sha256(graph_bytes).hexdigest(),
         'graph_bytes': len(graph_bytes), 'input_log_mel_sha256_f32le': hashlib.sha256(native[5].astype('<f4').tobytes()).hexdigest(),
         'scope': 'Identical native log-mel/length input, CPU normalization only; excludes FFT/mel/log differences'}
+    if pairwise:
+        from processor_pairwise_normalization import PairwiseNormalization
+        if (x.dtype != torch.float32 or x.ndim != 3 or not torch.isfinite(x).all()
+                or length.dtype != torch.int64 or length.shape != (x.shape[0],)
+                or not torch.all((length >= 1) & (length <= x.shape[-1]))):
+            raise ValueError('Invalid pairwise normalization diagnostic input')
+        candidate = PairwiseNormalization(processor.featurizer.pad_value).eval()
+        with torch.no_grad():
+            candidate_native = [value.numpy() for value in candidate(x, length)]
+        buffer = io.BytesIO()
+        torch.onnx.export(candidate, (x[:, :, :11], torch.tensor([10], dtype=torch.long)), buffer,
+            opset_version=17, dynamo=False, input_names=['log_mel', 'valid'],
+            output_names=['features', 'mean', 'std'],
+            dynamic_axes={'log_mel': {2: 'frames'}, 'features': {2: 'frames'}})
+        graph_bytes = buffer.getvalue()
+        onnx.checker.check_model(onnx.load_model_from_string(graph_bytes))
+        session = ort.InferenceSession(graph_bytes, options, providers=['CPUExecutionProvider'])
+        if session.get_providers() != ['CPUExecutionProvider']:
+            raise ValueError('Unexpected pairwise execution provider')
+        actual = session.run(None, {'log_mel': native[5], 'valid': native[1]})
+        comparisons = {name: compare_tensors(left, right, atol=1e-5, rtol=1e-4)
+                       for name, left, right in zip(('features', 'mean', 'std'), expected, actual)}
+        receipt['pairwise_candidate'] = {
+            'status': 'PASS' if all(value['allclose'] for value in comparisons.values()) else 'FAIL',
+            'official_vs_onnx': comparisons,
+            'official_vs_candidate_native': {name: compare_tensors(left, right, atol=1e-5, rtol=1e-4)
+                for name, left, right in zip(('features', 'mean', 'std'), expected, candidate_native)},
+            'candidate_native_vs_onnx': {name: compare_tensors(left, right, atol=1e-5, rtol=1e-4)
+                for name, left, right in zip(('features', 'mean', 'std'), candidate_native, actual)},
+            'graph_sha256': hashlib.sha256(graph_bytes).hexdigest(), 'graph_bytes': len(graph_bytes),
+            'providers': session.get_providers(),
+            'scope': 'Same-input normalization diagnostic only; no full processor or WebGPU acceptance'}
+    return receipt
 
 
 def run_stage_control(processor, waveform, length, oracle_spectrum, expected_features,
-                      baseline_features, baseline_length):
+                      baseline_features, baseline_length, *, pairwise=False):
     import numpy as np
     import onnx
     import onnxruntime as ort
@@ -108,6 +141,6 @@ def run_stage_control(processor, waveform, length, oracle_spectrum, expected_fea
         'first_nonidentical_stage': next((name for name in ORDER if not output_control[name]['bytes_exact']), None),
         'baseline_feature_comparison': unchanged_features, 'baseline_length_comparison': unchanged_lengths,
         'final_output_bytes_unchanged': unchanged,
-        'identical_input_normalization': run_normalization_control(processor, native),
+        'identical_input_normalization': run_normalization_control(processor, native, pairwise=pairwise),
         'graph_sha256': hashlib.sha256(graph_bytes).hexdigest(), 'graph_bytes': len(graph_bytes),
         'scope': 'Native adapter versus tapped ONNX CPU, not isolated identical-input operator or browser acceptance'}

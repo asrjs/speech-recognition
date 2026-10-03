@@ -10,7 +10,7 @@ TOOL = Path(__file__).with_name('probe_nemo_processor.py')
 
 
 class ProcessorPreflightTests(unittest.TestCase):
-    def run_cli(self, config, capture, output, config_hash='0' * 64, onnx=False, stages=False):
+    def run_cli(self, config, capture, output, config_hash='0' * 64, onnx=False, stages=False, pairwise=False):
         command = [sys.executable, str(TOOL), '--config', str(config),
             '--expected-config-sha256', config_hash, '--capture', str(capture),
             '--expected-capture-sha256', '0' * 64, '--sample-id', 'test',
@@ -19,7 +19,25 @@ class ProcessorPreflightTests(unittest.TestCase):
             command.append('--onnx-probe')
         if stages:
             command.append('--stage-probe')
+        if pairwise:
+            command.append('--pairwise-normalization')
         return subprocess.run(command, capture_output=True, text=True, timeout=10)
+
+    def test_pairwise_requires_stages_before_inputs_or_imports(self):
+        result = self.run_cli(Path('missing.json'), Path('missing.gz'), Path('missing-output.json'), pairwise=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('--pairwise-normalization requires --stage-probe', result.stderr)
+
+    def test_requested_pairwise_preserves_existing_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / 'receipt.json'
+            output.write_bytes(b'original')
+            result = self.run_cli(root / 'missing.json', root / 'missing.gz', output,
+                                  onnx=True, stages=True, pairwise=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Refusing existing output', result.stderr)
+            self.assertEqual(output.read_bytes(), b'original')
 
     def test_stage_probe_requires_export_before_inputs_or_imports(self):
         result = self.run_cli(Path('missing.json'), Path('missing.gz'), Path('missing-output.json'), stages=True)

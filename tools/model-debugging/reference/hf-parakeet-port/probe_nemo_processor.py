@@ -32,9 +32,13 @@ def main():
                         help='Compare explicit real-pair adapter and in-memory fp32 ONNX on CPU')
     parser.add_argument('--stage-probe', action='store_true',
                         help='Also observe intermediate outputs and verify instrumentation controls')
+    parser.add_argument('--pairwise-normalization', action='store_true',
+                        help='Test dynamic fp32 pairwise normalization on identical native log-mel')
     args = parser.parse_args()
     if args.stage_probe and not args.onnx_probe:
         parser.error('--stage-probe requires --onnx-probe')
+    if args.pairwise_normalization and not args.stage_probe:
+        parser.error('--pairwise-normalization requires --stage-probe')
     sources = [Path(__file__), ROOT / 'tools/artifact_outputs.py',
                ROOT / 'tools/tensor_parity.py']
     sources += [Path(__file__).with_name(name) for name in (
@@ -44,6 +48,8 @@ def main():
         sources.append(ROOT / 'tools/nemo-tdt-onnx-export/processor_real_pair.py')
     if args.stage_probe:
         sources.append(Path(__file__).with_name('processor_export_stages.py'))
+    if args.pairwise_normalization:
+        sources.append(ROOT / 'tools/nemo-tdt-onnx-export/processor_pairwise_normalization.py')
     require_new_outputs([args.output], protected_inputs=[args.config, args.capture, *sources],
                         protected_directories=[ROOT / 'src', ROOT / 'models'])
     if digest(args.config) != args.expected_config_sha256:
@@ -116,7 +122,7 @@ def main():
         if args.stage_probe:
             from processor_export_stages import run_stage_control
             export_control['stages'] = run_stage_control(processor, waveform, length,
-                oracle_spectrum, expected, ort_features, ort_length)
+                oracle_spectrum, expected, ort_features, ort_length, pairwise=args.pairwise_normalization)
     if hashes != {str(path.resolve()): digest(path) for path in sources}:
         raise ValueError('Processor diagnostic sources changed during execution')
     if digest(args.config) != args.expected_config_sha256 or digest(args.capture) != args.expected_capture_sha256:

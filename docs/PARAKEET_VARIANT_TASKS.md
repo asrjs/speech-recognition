@@ -2214,3 +2214,29 @@ the existing two actual STFT export tests remain independent feasibility checks.
 Next inspect the proven native reduction-order controls and ONNX reduction
 boundary on identical input, then validate any explicit arithmetic candidate
 against the full oracle. No tolerance, production processor or preset changes.
+
+### Dynamic fp32 pairwise normalization control (2026-10-03)
+
+`--onnx-probe --stage-probe --pairwise-normalization` now tests an opt-in
+family diagnostic using a scripted dynamic ONNX Loop, preserving odd tails,
+valid-prefix masking, sample variance and the normalization epsilon. No fp64,
+quantization, installed-source patch or production runtime change. Three
+weight-free tests cover odd/even lengths 1 through 4061, single-frame handling,
+masked padding and explicit CPU ONNX execution; nine CLI preflight tests and
+five comparator tests pass. These are not model/browser acceptance tests.
+
+Same native log-mel input as the prior control: all 519,808 candidate ONNX
+features pass unchanged atol1e-5/rtol1e-4 against official normalization.
+Mismatch count falls from baseline 10,615 to zero; max error
+0.000003337860107421875, mean 0.0000005418963173514237. Mean/std also pass.
+Candidate native versus ONNX has zero numerical error for all three outputs.
+Graph 17,086 bytes, SHA256
+`c92caa8c639db6947bc3801a0981a801d6d5246864632f87bb7e9a729d59b19a`.
+Receipt: `nemo-processor-pairwise-normalization-speech-silence-2026-10-03.json`.
+
+The unmodified full processor still has 10,575 mismatches and the receipt/CLI
+correctly retain PROCESSOR_EXPORT_FAIL/exit1. This is PARTIAL PASS for isolated
+normalization only, not proof of a particular native/ORT kernel algorithm.
+Next test this explicit candidate inside a separate full-processor diagnostic
+against the same oracle, then expand fixtures and WASM/browser checks before
+any promotion. No backend, speed or whole-port claim follows from this result.
