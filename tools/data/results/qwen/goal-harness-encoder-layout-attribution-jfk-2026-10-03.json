@@ -1,0 +1,154 @@
+{
+  "status": "REAL_ENCODER_CONTROLLED_LAYOUT_ATTRIBUTION_PASS",
+  "scope": "Deliberate frame-major-as-mel-major feed corruption on real Qwen encoder. Reference feed is current library preparation, not a fresh original-engine capture. Not a production bug, original-engine numerical acceptance, browser acceptance or performance benchmark.",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "onnxruntime": "1.29.0",
+  "providers": [
+    "CPUExecutionProvider"
+  ],
+  "sources_sha256": {
+    "N:\\models\\onnx\\qwen3-asr-0.6b-official\\audio-encoder-dynamic.onnx": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6",
+    "N:\\github\\asrjs\\speech-recognition\\dist\\models\\qwen-asr\\processor.js": "292f756c86a013f34d5d515b3f88b20bd72a902750a00b73ca074dabdeab5fc9",
+    "N:\\github\\asrjs\\speech-recognition\\dist\\audio\\whisper-mel.js": "ceff76fbb1633113112e73443d971e54940ba8a28c49514c3cd733e06ad88d7a",
+    "N:\\github\\asrjs\\speech-recognition\\dist\\audio\\js-mel.js": "067a902ceea1f260ce811f2bc04a7112e1a3a0e0cc17b99c6da9aa15a1a6a32f",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\stage_attribution.py": "aefd345d9d5806f8d28a23938e2fc7852388ae2b793beb2e51f473f363e45246",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\tensor_parity.py": "2aff64ee87ab58817ccca4e76c9944064c78779beb0d6a7bee1fa2a18d6bcec4",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e"
+  },
+  "sources_unchanged": true,
+  "audio_pcm_f32le_sha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+  "feature_contract": {
+    "frameCount": 1100,
+    "validFrameCount": 1100,
+    "nMels": 128,
+    "featuresSha256": "615927e6c9eb1686f6ec19c319e9f5245ed4fbe81dd8ab4937002ec70b5f886d"
+  },
+  "candidate_features_sha256": "21ae39edcc78a01331c477a27d759e0d91bee0e54325e7a29baa8791601ab55e",
+  "candidate_construction": "np.ascontiguousarray(reference_features.T).reshape(reference_features.shape)",
+  "feature_preparation_node_source": "\nimport {readFileSync} from 'node:fs';\nimport {createHash} from 'node:crypto';\nimport {Qwen3AsrFeatureProcessor} from './dist/models/qwen-asr/processor.js';\nconst b=readFileSync(0);\nconst pcm=new Float32Array(b.buffer,b.byteOffset,b.byteLength/4);\nconst p=new Qwen3AsrFeatureProcessor({melBins:128,sampleRate:16000,minInputSamples:16000,hopLength:160,graph:{audioFramesMultiple:100}});\nconst f=p.process({data:pcm,sampleRate:16000});\nconst bytes=Buffer.from(f.features.buffer,f.features.byteOffset,f.features.byteLength);\nconsole.log(JSON.stringify({frameCount:f.frameCount,validFrameCount:f.validFrameCount,nMels:f.nMels,featuresSha256:createHash('sha256').update(bytes).digest('hex'),featuresBase64:bytes.toString('base64')}));\n",
+  "run_stage_python_recipe": "def qwen_encoder_stage(feeds):\n    t=time.perf_counter()\n    output=qwen_encoder_session.run(['audio_embeddings'],dict(feeds))[0]\n    qwen_stage_runs.append({'seconds':time.perf_counter()-t,'output_shape':list(output.shape)})\n    return {'audio_embeddings':output}\n",
+  "attribution": {
+    "status": "ATTRIBUTED_TO_SINGLE_INPUT",
+    "resolved": true,
+    "implicated_inputs": [
+      "input_features"
+    ],
+    "observed": {
+      "allclose": false,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "outputs": {
+        "audio_embeddings": {
+          "shape": [
+            143,
+            1024
+          ],
+          "dtype": "float32",
+          "count": 146432,
+          "atol": 1e-05,
+          "rtol": 0.0001,
+          "allclose": false,
+          "max_abs_error": 0.13310008496046066,
+          "mean_abs_error": 0.016474160914386807,
+          "max_relative_error": 183505.94864048337,
+          "cosine_similarity": 0.3539227275885918,
+          "mismatch_count": 146357,
+          "first_divergent_index": 0
+        }
+      }
+    },
+    "per_input": {
+      "input_features": {
+        "input_delta_max_abs_error": 1.9943046569824219,
+        "fails_gate_against_reference": true,
+        "reproduces_observed_output": true,
+        "reproduces_observed_failure": true,
+        "comparison": {
+          "allclose": false,
+          "atol": 1e-05,
+          "rtol": 0.0001,
+          "outputs": {
+            "audio_embeddings": {
+              "shape": [
+                143,
+                1024
+              ],
+              "dtype": "float32",
+              "count": 146432,
+              "atol": 1e-05,
+              "rtol": 0.0001,
+              "allclose": false,
+              "max_abs_error": 0.13310008496046066,
+              "mean_abs_error": 0.016474160914386807,
+              "max_relative_error": 183505.94864048337,
+              "cosine_similarity": 0.3539227275885918,
+              "mismatch_count": 146357,
+              "first_divergent_index": 0
+            }
+          }
+        },
+        "agreement_with_candidate": {
+          "allclose": true,
+          "atol": 1e-05,
+          "rtol": 0.0001,
+          "outputs": {
+            "audio_embeddings": {
+              "shape": [
+                143,
+                1024
+              ],
+              "dtype": "float32",
+              "count": 146432,
+              "atol": 1e-05,
+              "rtol": 0.0001,
+              "allclose": true,
+              "max_abs_error": 0.0,
+              "mean_abs_error": 0.0,
+              "max_relative_error": 0.0,
+              "cosine_similarity": 1.0,
+              "mismatch_count": 0,
+              "first_divergent_index": null
+            }
+          }
+        }
+      }
+    },
+    "inputs_tested": [
+      "input_features"
+    ],
+    "outputs_tested": [
+      "audio_embeddings"
+    ],
+    "limitations": "Scheduling and single-input replay attribution only. Not numerical feature parity, not a per-frame budget, and not evidence that any component is correct in general."
+  },
+  "runs": [
+    {
+      "seconds": 0.2329852000111714,
+      "output_shape": [
+        143,
+        1024
+      ]
+    },
+    {
+      "seconds": 0.25099209998734295,
+      "output_shape": [
+        143,
+        1024
+      ]
+    },
+    {
+      "seconds": 0.24763410002924502,
+      "output_shape": [
+        143,
+        1024
+      ]
+    }
+  ],
+  "reuse_cost": {
+    "new_inference_loops": 0,
+    "new_exporters": 0,
+    "new_weight_downloads": 0,
+    "shared_attribution_changes": 0,
+    "permanent_adapter_scripts": 0
+  }
+}

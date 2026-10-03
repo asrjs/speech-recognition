@@ -3236,11 +3236,15 @@ unchanged `atol=1e-5, rtol=1e-4`: JFK 313/140,928, speech/silence 74/519,808,
 pure silence 12,800/12,928. Eight FFT families are already recorded and
 rejected (fp32/fp64 direct DFT, PocketFFT, PFFFT SSE and scalar, radix4 DIT,
 ORT DFT/STFT, packed-product factorization). Continuing those lines is
-exhausted. What remains genuinely un-attempted is the upstream boundary
-identified by the official-power control: the official engine's own power/mel
-arithmetic versus ours, now isolated. Closing it needs a new hypothesis about
-that boundary, not another FFT swap. Until then the gate is deferred, not
-closed, and no tolerance moves.
+exhausted. Later official-complex injection controls pass the downstream JFK
+feature gate, and a native real-512 FFT reproduces the frozen speech/silence
+spectrum exactly before passing its feature gate. Passing a power-spectrum
+tolerance alone does not establish final feature parity: full-512 fp32/fp64
+already fail 129/120 JFK feature coordinates. Pure-silence normalization has
+a separate, measured fp32 reduction mismatch. See the
+[bounded numerical disposition](GOAL_MODEL_PORT_HARNESS.md#bounded-orukeet-numerical-disposition)
+for evidence and reopening criteria. The production gate remains deferred,
+not closed; no tolerance moves and no claim of portable impossibility.
 
 ### Candidate audit: smaller Parakeet students and non-NVIDIA ranking (2026-10-03)
 

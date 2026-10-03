@@ -196,6 +196,45 @@ the official CPU engine on this fixture (`3.427267e-7`) than the all-bundle does
 `3.64e-7`. Which build the browser path loads therefore matters for the gate
 itself, and is under test.
 
+## Bounded Orukeet numerical disposition
+
+**DEFERRED_NUMERICAL_CONFORMANCE**, not PASS. The production-feature gate keeps
+`atol=1e-5, rtol=1e-4`: JFK 313/140,928, speech/silence 74/519,808 and pure
+silence 12,800/12,928 mismatches. No production arithmetic or tolerance changed.
+The browser real-hybrid score gate remains PASS only on its documented JFK
+configuration; neither result establishes full ASR acceptance.
+
+The boundary evidence is stronger than "FFT variants exhausted":
+
+- Injecting the official complex spectrum into the library downstream path
+  yields zero failing JFK feature coordinates, max `3.576279e-6`
+  (`library-feature-official-complex-injection-jfk-2026-10-01.json`). Its
+  power values are not bitwise identical; allclose is not equality.
+- Native Torch real-512 FFT reproduces the frozen speech/silence spectrum
+  exactly. Both the official-complex and native-real-FFT controls then pass
+  the feature gate, max `2.354383e-6`
+  (`torch-rfft-features-bound-speech-silence-2026-10-03.json`).
+- Full-512 portable FFT already failed end-to-end: fp32 129 and fp64 120
+  JFK feature mismatches, although their power spectra passed their own gate
+  (`library-feature-full-fft-control-jfk-2026-10-01.json`). The fp64 power
+  control reaches relative error `0.264608` in low-magnitude coordinates:
+  a passing standalone power tolerance does not establish feature equivalence
+  after mel/log/normalization.
+- Pure silence is a separate fp32 reduction issue, not dither or a log-floor
+  mismatch. Official and JS raw log-mel agree, but the official rounded mean
+  produces normalized `-0.160053` while production JS produces zero.
+  Width-eight normalization reproduces this diagnostically; it does not close
+  the production speech feature gate. See the
+  [Orukeet normalization record](../tools/model-debugging/reference/orukeet/README.md).
+
+Do not repeat full-512 FFT/DFT swaps or the recorded packed-product sweeps.
+Reopen this lane only with a new discriminating arithmetic control on the
+bound original frames/complex boundary, then require complete feature gates
+on JFK, speech/silence and silence before a production cutover. The measurements
+do not prove that a portable implementation is impossible or identify MKL's
+internal instruction dispatch. This is a bounded deferral of numerical
+conformance, not a request for a user-supplied research direction.
+
 ## Measured acceptance against the Orukeet baseline
 
 The focus criterion is measurable: a port is cheaper when a second candidate
@@ -214,13 +253,45 @@ investigation. Measured so far:
   `encoder_outputs` in one shared-control invocation with three binding gates,
   replacing bespoke per-input replay scripts.
 - **Gates closed or honestly deferred:** browser real-hybrid scores pass on
-  the documented JFK configuration; production feature parity remains FAIL.
+  the documented JFK configuration; production feature parity is explicitly
+  deferred above and remains FAIL at unchanged gates.
 
-The cheaper-second-port acceptance signal is **not yet demonstrated for this
-focus**. Existing Qwen, GigaAM, SenseVoice and X-ASR implementations and their
-reference tools predate this investigation. Reuse them rather than claiming
-that no second model has been ported. Historical output receipts do not establish
-current-build parity or cross-family reuse of the new attribution control.
+### Existing Qwen port: real output and cross-family control
+
+The focused reuse signal is now exercised on the existing official
+`Qwen/Qwen3-ASR-0.6B` port, not a newly implemented `-hf` port.
+`tests/smoke/qwen3-asr-node-wasm-benchmark.mjs` ran the local dynamic encoder
+and fp16 decoder on JFK: 25 emitted tokens, normalized exact match, WER/CER
+zero against the saved native-inference reference. Cold elapsed time was
+`111899.6057 ms` for 11 seconds of audio; this is not performance acceptance.
+Receipt: `tools/data/results/qwen/goal-harness-existing-port-jfk-2026-10-03.json`.
+The CLI exited successfully after its awaited disposal path. It did not
+rebuild the library, refresh the original PyTorch capture or measure reclamation.
+
+The unchanged `tools/stage_attribution.py` also ran against the real Qwen
+dynamic ONNX encoder through a six-line stage callback. The reference input
+was current library-prepared mel-major float32 `[128,1100]`, bound to the same
+JFK PCM; it was **not** a fresh official feature capture. Deliberately
+reinterpreting frame-major storage as mel-major was the negative control.
+At `atol=1e-5, rtol=1e-4`, the shared control localized the injected failure to
+`input_features` and reproduced the candidate encoder output with zero error.
+This establishes cross-family use on a real component, not a newly discovered
+Qwen production bug or official-engine feature parity.
+
+Receipt: `tools/data/results/qwen/goal-harness-encoder-layout-attribution-jfk-2026-10-03.json`.
+It records feature/input hashes, WAV/PCM identity, tested preparation and
+adapter recipes, and seven code/artifact hashes unchanged across execution.
+The attribution uses three actual encoder calls. A one-input encoder does
+not exercise multi-input interactions; those remain covered by the existing
+shared-control tests and the Orukeet case, not this experiment.
+
+Incremental cost for this reuse exercise: **zero** new inference loops,
+exporters, weight downloads, shared-attribution changes or permanent adapter
+scripts. One existing output CLI plus one shared-control invocation replaced
+writing a new output runner and attribution sweep. This is a measured reuse
+cost, not a claim that a complete new port took less wall-clock time.
+The focus acceptance signal is demonstrated with these limits; model/browser
+acceptance and provisioning isolated Python stacks remain separate work.
 
 The ORT-build discrepancy and session-options controls above are already
 resolved; do not repeat them as the next experiment. For continued work, start

@@ -1,0 +1,819 @@
+{
+  "scope": "Read-only installed-environment inventory, package provenance, actual imports, CPU Torch arithmetic and pip check. No model loading, CUDA inference, installs or environment edits.",
+  "project_env_isolation": {
+    "project-nemo-overlay": {
+      "include_system_site_packages": true,
+      "base": "C:/Users/steam/anaconda3/envs/nemo",
+      "local_nemo": "3.0.0",
+      "base_nemo": "2.4.0"
+    },
+    "project-qwen": {
+      "include_system_site_packages": false
+    },
+    "sibling-gigaam": {
+      "include_system_site_packages": true,
+      "base": "C:/Python311"
+    }
+  },
+  "uv": {
+    "managed_python": "3.13.15",
+    "managed_root": "C:/Users/steam/AppData/Roaming/uv/python",
+    "tool_environments": "No tools installed",
+    "project_pyproject_and_uv_lock_found": false,
+    "warning": "uv python list includes system interpreters; user-site NumPy in the managed interpreter is not an isolated project stack."
+  },
+  "metadata": {
+    "project-nemo-overlay": {
+      "exit_code": 0,
+      "data": {
+        "executable": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\nemotron-3.5-asr-streaming\\.venv\\Scripts\\python.exe",
+        "python": "3.10.12",
+        "prefix": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\nemotron-3.5-asr-streaming\\.venv",
+        "base_prefix": "C:\\Users\\steam\\anaconda3\\envs\\nemo",
+        "user_site_enabled": true,
+        "packages": {
+          "nemo_toolkit": {
+            "version": "3.0.0",
+            "location": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\nemotron-3.5-asr-streaming\\.venv\\lib\\site-packages"
+          },
+          "torch": {
+            "version": "2.6.0+cu118",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "torchaudio": {
+            "version": "2.6.0+cu118",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "transformers": {
+            "version": "4.51.3",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "onnx": {
+            "version": "1.20.1",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "onnxruntime": {
+            "version": "1.23.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "onnxruntime-gpu": {
+            "version": "1.23.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "librosa": {
+            "version": "0.11.0",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "numpy": {
+            "version": "1.26.4",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.13.1",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "onnx-asr": {
+            "version": "0.10.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "project-qwen": {
+      "exit_code": 0,
+      "data": {
+        "executable": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Scripts\\python.exe",
+        "python": "3.11.4",
+        "prefix": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv",
+        "base_prefix": "C:\\Python311",
+        "user_site_enabled": false,
+        "packages": {
+          "torch": {
+            "version": "2.13.0",
+            "location": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages"
+          },
+          "transformers": {
+            "version": "4.57.6",
+            "location": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages"
+          },
+          "onnx": {
+            "version": "1.22.0",
+            "location": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages"
+          },
+          "onnxruntime": {
+            "version": "1.29.0",
+            "location": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages"
+          },
+          "qwen-asr": {
+            "version": "0.0.6",
+            "location": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages"
+          },
+          "librosa": {
+            "version": "0.11.0",
+            "location": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages"
+          },
+          "numpy": {
+            "version": "2.4.6",
+            "location": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.14.0",
+            "location": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "conda-nemo": {
+      "exit_code": 0,
+      "data": {
+        "executable": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\python.exe",
+        "python": "3.10.12",
+        "prefix": "C:\\Users\\steam\\anaconda3\\envs\\nemo",
+        "base_prefix": "C:\\Users\\steam\\anaconda3\\envs\\nemo",
+        "user_site_enabled": true,
+        "packages": {
+          "nemo_toolkit": {
+            "version": "2.4.0",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "torch": {
+            "version": "2.6.0+cu118",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "torchaudio": {
+            "version": "2.6.0+cu118",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "transformers": {
+            "version": "4.51.3",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "onnx": {
+            "version": "1.20.1",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "onnxruntime": {
+            "version": "1.23.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "onnxruntime-gpu": {
+            "version": "1.23.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "librosa": {
+            "version": "0.11.0",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "numpy": {
+            "version": "1.26.4",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.13.1",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          },
+          "onnx-asr": {
+            "version": "0.10.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "conda-medasr": {
+      "exit_code": 0,
+      "data": {
+        "executable": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\python.exe",
+        "python": "3.11.14",
+        "prefix": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env",
+        "base_prefix": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env",
+        "user_site_enabled": true,
+        "packages": {
+          "torch": {
+            "version": "2.10.0",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages"
+          },
+          "transformers": {
+            "version": "5.3.0.dev0",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages"
+          },
+          "onnx": {
+            "version": "1.20.1",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages"
+          },
+          "onnxruntime": {
+            "version": "1.24.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages"
+          },
+          "librosa": {
+            "version": "0.11.0",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages"
+          },
+          "numpy": {
+            "version": "2.4.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.13.1",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "conda-asrds": {
+      "exit_code": 0,
+      "data": {
+        "executable": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\python.exe",
+        "python": "3.11.14",
+        "prefix": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311",
+        "base_prefix": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311",
+        "user_site_enabled": true,
+        "packages": {
+          "torch": {
+            "version": "2.9.1+cu126",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages"
+          },
+          "torchaudio": {
+            "version": "2.9.1+cu126",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages"
+          },
+          "transformers": {
+            "version": "4.48.0",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages"
+          },
+          "onnxruntime": {
+            "version": "1.23.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages"
+          },
+          "onnxruntime-gpu": {
+            "version": "1.24.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages"
+          },
+          "librosa": {
+            "version": "0.11.0",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages"
+          },
+          "numpy": {
+            "version": "1.26.0",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.13.1",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages"
+          },
+          "onnx-asr": {
+            "version": "0.10.3.dev8+g55d59284c",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "conda-vgtts": {
+      "exit_code": 0,
+      "data": {
+        "executable": "C:\\Users\\steam\\anaconda3\\envs\\vgtts\\python.exe",
+        "python": "3.10.12",
+        "prefix": "C:\\Users\\steam\\anaconda3\\envs\\vgtts",
+        "base_prefix": "C:\\Users\\steam\\anaconda3\\envs\\vgtts",
+        "user_site_enabled": true,
+        "packages": {
+          "torch": {
+            "version": "2.10.0+cu126",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\vgtts\\lib\\site-packages"
+          },
+          "torchaudio": {
+            "version": "2.10.0+cu126",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\vgtts\\lib\\site-packages"
+          },
+          "transformers": {
+            "version": "4.57.6",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\vgtts\\lib\\site-packages"
+          },
+          "onnxruntime": {
+            "version": "1.23.2",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\vgtts\\lib\\site-packages"
+          },
+          "numpy": {
+            "version": "2.2.6",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\vgtts\\lib\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.13.1",
+            "location": "C:\\Users\\steam\\anaconda3\\envs\\vgtts\\lib\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "conda-base": {
+      "exit_code": 0,
+      "data": {
+        "executable": "C:\\Users\\steam\\anaconda3\\python.exe",
+        "python": "3.13.5",
+        "prefix": "C:\\Users\\steam\\anaconda3",
+        "base_prefix": "C:\\Users\\steam\\anaconda3",
+        "user_site_enabled": true,
+        "packages": {
+          "torch": {
+            "version": "2.9.1",
+            "location": "C:\\Users\\steam\\anaconda3\\Lib\\site-packages"
+          },
+          "torchaudio": {
+            "version": "2.9.1",
+            "location": "C:\\Users\\steam\\anaconda3\\Lib\\site-packages"
+          },
+          "transformers": {
+            "version": "4.57.3",
+            "location": "C:\\Users\\steam\\anaconda3\\Lib\\site-packages"
+          },
+          "onnx": {
+            "version": "1.20.1",
+            "location": "C:\\Users\\steam\\anaconda3\\Lib\\site-packages"
+          },
+          "onnxruntime": {
+            "version": "1.24.1",
+            "location": "C:\\Users\\steam\\anaconda3\\Lib\\site-packages"
+          },
+          "numpy": {
+            "version": "2.3.2",
+            "location": "C:\\Users\\steam\\AppData\\Roaming\\Python\\Python313\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.13.1",
+            "location": "C:\\Users\\steam\\AppData\\Roaming\\Python\\Python313\\site-packages"
+          },
+          "onnx-asr": {
+            "version": "0.10.2",
+            "location": "C:\\Users\\steam\\anaconda3\\Lib\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "system-py311": {
+      "exit_code": 0,
+      "data": {
+        "executable": "C:\\Python311\\python.exe",
+        "python": "3.11.4",
+        "prefix": "C:\\Python311",
+        "base_prefix": "C:\\Python311",
+        "user_site_enabled": true,
+        "packages": {
+          "torch": {
+            "version": "2.7.1+cu128",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "torchaudio": {
+            "version": "2.7.1+cu128",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "transformers": {
+            "version": "4.41.2",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "onnx": {
+            "version": "1.20.1",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "onnxruntime": {
+            "version": "1.29.0",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "onnxruntime-gpu": {
+            "version": "1.22.0",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "funasr": {
+            "version": "1.4.4",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "librosa": {
+            "version": "0.10.1",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "numpy": {
+            "version": "1.24.4",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.13.1",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "onnx-asr": {
+            "version": "0.10.2",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "system-py312": {
+      "exit_code": 0,
+      "data": {
+        "executable": "C:\\Python312\\python.exe",
+        "python": "3.12.7",
+        "prefix": "C:\\Python312",
+        "base_prefix": "C:\\Python312",
+        "user_site_enabled": true,
+        "packages": {}
+      },
+      "stderr": ""
+    },
+    "uv-managed-py313": {
+      "exit_code": 0,
+      "data": {
+        "executable": "C:\\Users\\steam\\AppData\\Roaming\\uv\\python\\cpython-3.13.15-windows-x86_64-none\\python.exe",
+        "python": "3.13.15",
+        "prefix": "C:\\Users\\steam\\AppData\\Roaming\\uv\\python\\cpython-3.13.15-windows-x86_64-none",
+        "base_prefix": "C:\\Users\\steam\\AppData\\Roaming\\uv\\python\\cpython-3.13.15-windows-x86_64-none",
+        "user_site_enabled": true,
+        "packages": {
+          "numpy": {
+            "version": "2.3.2",
+            "location": "C:\\Users\\steam\\AppData\\Roaming\\Python\\Python313\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.13.1",
+            "location": "C:\\Users\\steam\\AppData\\Roaming\\Python\\Python313\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "sibling-gigaam": {
+      "exit_code": 0,
+      "data": {
+        "executable": "N:\\github\\salute-developers\\GigaAM\\.venv\\Scripts\\python.exe",
+        "python": "3.11.4",
+        "prefix": "N:\\github\\salute-developers\\GigaAM\\.venv",
+        "base_prefix": "C:\\Python311",
+        "user_site_enabled": true,
+        "packages": {
+          "torch": {
+            "version": "2.7.1+cu128",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "torchaudio": {
+            "version": "2.7.1+cu128",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "transformers": {
+            "version": "4.41.2",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "onnx": {
+            "version": "1.20.1",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "onnxruntime": {
+            "version": "1.29.0",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "onnxruntime-gpu": {
+            "version": "1.22.0",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "sherpa-onnx": {
+            "version": "1.13.6",
+            "location": "N:\\github\\salute-developers\\GigaAM\\.venv\\Lib\\site-packages"
+          },
+          "funasr": {
+            "version": "1.4.4",
+            "location": "N:\\github\\salute-developers\\GigaAM\\.venv\\Lib\\site-packages"
+          },
+          "librosa": {
+            "version": "0.10.1",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "numpy": {
+            "version": "1.24.4",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "soundfile": {
+            "version": "0.13.1",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          },
+          "onnx-asr": {
+            "version": "0.10.2",
+            "location": "C:\\Python311\\Lib\\site-packages"
+          }
+        }
+      },
+      "stderr": ""
+    }
+  },
+  "smoke": {
+    "project-nemo-overlay": {
+      "exit_code": 0,
+      "imports": {
+        "nemo.collections.asr": {
+          "ok": true,
+          "file": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\nemotron-3.5-asr-streaming\\.venv\\lib\\site-packages\\nemo\\collections\\asr\\__init__.py",
+          "version": "3.0.0"
+        },
+        "torch": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\torch\\__init__.py",
+          "version": "2.6.0+cu118"
+        },
+        "onnx": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\onnx\\__init__.py",
+          "version": "1.20.1"
+        },
+        "onnxruntime": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\onnxruntime\\__init__.py",
+          "version": "1.23.2"
+        },
+        "librosa": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\librosa\\__init__.py",
+          "version": "0.11.0"
+        },
+        "soundfile": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\soundfile.py",
+          "version": "0.13.1"
+        },
+        "torch_cpu_arithmetic": {
+          "ok": true,
+          "cuda_build": "11.8"
+        },
+        "ort_providers": [
+          "AzureExecutionProvider",
+          "CPUExecutionProvider"
+        ]
+      },
+      "stderr": "OneLogger: Setting error_handling_strategy to DISABLE_QUIETLY_AND_REPORT_METRIC_ERROR for rank (rank=0) with OneLogger disabled. To override: explicitly set error_handling_strategy parameter.\r\nNo exporters were provided. This means that no telemetry data will be collected.\r\n",
+      "other_stdout": ""
+    },
+    "project-qwen": {
+      "exit_code": 0,
+      "imports": {
+        "qwen_asr": {
+          "ok": true,
+          "file": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\qwen_asr\\__init__.py",
+          "version": null
+        },
+        "torch": {
+          "ok": true,
+          "file": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\torch\\__init__.py",
+          "version": "2.13.0+cpu"
+        },
+        "transformers": {
+          "ok": true,
+          "file": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\transformers\\__init__.py",
+          "version": "4.57.6"
+        },
+        "onnx": {
+          "ok": true,
+          "file": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\onnx\\__init__.py",
+          "version": "1.22.0"
+        },
+        "onnxruntime": {
+          "ok": true,
+          "file": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\onnxruntime\\__init__.py",
+          "version": "1.29.0"
+        },
+        "librosa": {
+          "ok": true,
+          "file": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\librosa\\__init__.py",
+          "version": "0.11.0"
+        },
+        "soundfile": {
+          "ok": true,
+          "file": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\qwen3-asr-0.6b\\.venv\\Lib\\site-packages\\soundfile.py",
+          "version": "0.14.0"
+        },
+        "torch_cpu_arithmetic": {
+          "ok": true,
+          "cuda_build": null
+        },
+        "ort_providers": [
+          "AzureExecutionProvider",
+          "CPUExecutionProvider"
+        ]
+      },
+      "stderr": "",
+      "other_stdout": ""
+    },
+    "conda-nemo": {
+      "exit_code": 0,
+      "imports": {
+        "nemo.collections.asr": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\nemo\\collections\\asr\\__init__.py",
+          "version": "2.4.0"
+        },
+        "torch": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\torch\\__init__.py",
+          "version": "2.6.0+cu118"
+        },
+        "onnx": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\onnx\\__init__.py",
+          "version": "1.20.1"
+        },
+        "onnxruntime": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\onnxruntime\\__init__.py",
+          "version": "1.23.2"
+        },
+        "soundfile": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\nemo\\lib\\site-packages\\soundfile.py",
+          "version": "0.13.1"
+        },
+        "torch_cpu_arithmetic": {
+          "ok": true,
+          "cuda_build": "11.8"
+        },
+        "ort_providers": [
+          "AzureExecutionProvider",
+          "CPUExecutionProvider"
+        ]
+      },
+      "stderr": "",
+      "other_stdout": ""
+    },
+    "conda-medasr": {
+      "exit_code": 0,
+      "imports": {
+        "transformers": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages\\transformers\\__init__.py",
+          "version": "5.3.0.dev0"
+        },
+        "torch": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages\\torch\\__init__.py",
+          "version": "2.10.0+cpu"
+        },
+        "onnx": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages\\onnx\\__init__.py",
+          "version": "1.20.1"
+        },
+        "onnxruntime": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages\\onnxruntime\\__init__.py",
+          "version": "1.24.2"
+        },
+        "librosa": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages\\librosa\\__init__.py",
+          "version": "0.11.0"
+        },
+        "soundfile": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\medasr_env\\Lib\\site-packages\\soundfile.py",
+          "version": "0.13.1"
+        },
+        "torch_cpu_arithmetic": {
+          "ok": true,
+          "cuda_build": null
+        },
+        "ort_providers": [
+          "AzureExecutionProvider",
+          "CPUExecutionProvider"
+        ]
+      },
+      "stderr": "",
+      "other_stdout": ""
+    },
+    "conda-asrds": {
+      "exit_code": 0,
+      "imports": {
+        "onnx_asr": {
+          "ok": true,
+          "file": "N:\\github\\ysdede\\onnx-asr\\src\\onnx_asr\\__init__.py",
+          "version": "0.10.3.dev8+g55d59284c"
+        },
+        "torch": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages\\torch\\__init__.py",
+          "version": "2.9.1+cu126"
+        },
+        "torchaudio": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages\\torchaudio\\__init__.py",
+          "version": "2.9.1+cu126"
+        },
+        "onnxruntime": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages\\onnxruntime\\__init__.py",
+          "version": "1.24.2"
+        },
+        "librosa": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages\\librosa\\__init__.py",
+          "version": "0.11.0"
+        },
+        "soundfile": {
+          "ok": true,
+          "file": "C:\\Users\\steam\\anaconda3\\envs\\asrds_py311\\Lib\\site-packages\\soundfile.py",
+          "version": "0.13.1"
+        },
+        "torch_cpu_arithmetic": {
+          "ok": true,
+          "cuda_build": "12.6"
+        },
+        "ort_providers": [
+          "TensorrtExecutionProvider",
+          "CUDAExecutionProvider",
+          "CPUExecutionProvider"
+        ]
+      },
+      "stderr": "",
+      "other_stdout": ""
+    },
+    "sibling-gigaam": {
+      "exit_code": 0,
+      "imports": {
+        "sherpa_onnx": {
+          "ok": true,
+          "file": "N:\\github\\salute-developers\\GigaAM\\.venv\\Lib\\site-packages\\sherpa_onnx\\__init__.py",
+          "version": "1.13.6"
+        },
+        "funasr": {
+          "ok": true,
+          "file": "N:\\github\\salute-developers\\GigaAM\\.venv\\Lib\\site-packages\\funasr\\__init__.py",
+          "version": "1.4.4"
+        },
+        "torch": {
+          "ok": true,
+          "file": "C:\\Python311\\Lib\\site-packages\\torch\\__init__.py",
+          "version": "2.7.1+cu128"
+        },
+        "torchaudio": {
+          "ok": true,
+          "file": "C:\\Python311\\Lib\\site-packages\\torchaudio\\__init__.py",
+          "version": "2.7.1+cu128"
+        },
+        "onnxruntime": {
+          "ok": true,
+          "file": "C:\\Python311\\Lib\\site-packages\\onnxruntime\\__init__.py",
+          "version": "1.29.0"
+        },
+        "librosa": {
+          "ok": true,
+          "file": "C:\\Python311\\Lib\\site-packages\\librosa\\__init__.py",
+          "version": "0.10.1"
+        },
+        "soundfile": {
+          "ok": true,
+          "file": "C:\\Python311\\Lib\\site-packages\\soundfile.py",
+          "version": "0.13.1"
+        },
+        "torch_cpu_arithmetic": {
+          "ok": true,
+          "cuda_build": "12.8"
+        },
+        "ort_providers": [
+          "AzureExecutionProvider",
+          "CPUExecutionProvider"
+        ]
+      },
+      "stderr": "",
+      "other_stdout": ""
+    }
+  },
+  "pip_check": {
+    "project-nemo-overlay": {
+      "exit_code": 1,
+      "stdout": "nemo-toolkit 3.0.0 requires aistore, which is not installed.\r\nnemo-toolkit 3.0.0 requires smart-open, which is not installed.\r\nportalocker 2.8.2 requires pywin32, which is not installed.\r\nnemo-toolkit 3.0.0 has requirement setuptools>=70.0.0, but you have setuptools 65.5.0.\r\nqdrant-client 1.7.0 has requirement urllib3<2.0.0,>=1.26.14, but you have urllib3 2.6.3.\r\ngrpcio-tools 1.60.0 has requirement protobuf<5.0dev,>=4.21.6, but you have protobuf 5.29.6.\r\nnv-one-logger-pytorch-lightning-integration 2.3.1 has requirement setuptools>=79.0.0, but you have setuptools 65.5.0.",
+      "stderr": ""
+    },
+    "project-qwen": {
+      "exit_code": 0,
+      "stdout": "No broken requirements found.",
+      "stderr": ""
+    },
+    "conda-nemo": {
+      "exit_code": 1,
+      "stdout": "portalocker 2.8.2 requires pywin32, which is not installed.\r\ngrpcio-tools 1.60.0 has requirement protobuf<5.0dev,>=4.21.6, but you have protobuf 5.29.6.\r\nqdrant-client 1.7.0 has requirement urllib3<2.0.0,>=1.26.14, but you have urllib3 2.6.3.",
+      "stderr": ""
+    },
+    "conda-medasr": {
+      "exit_code": 1,
+      "stdout": "ipykernel 6.26.0 requires psutil, which is not installed.\r\nipykernel 6.26.0 requires tornado, which is not installed.\r\nipython 8.18.1 requires prompt-toolkit, which is not installed.\r\njupyter-client 8.6.0 requires tornado, which is not installed.\r\njupyter-core 5.5.0 requires pywin32, which is not installed.",
+      "stderr": ""
+    },
+    "conda-asrds": {
+      "exit_code": 1,
+      "stdout": "google-genai 1.52.0 has requirement websockets<15.1.0,>=13.0.0, but you have websockets 11.0.3.",
+      "stderr": ""
+    },
+    "sibling-gigaam": {
+      "exit_code": 1,
+      "stdout": "cookietemple 1.4.2 has requirement cryptography<40.0.0,>=3.4.7, but you have cryptography 45.0.4.\r\ncookietemple 1.4.2 has requirement packaging<22.0,>=20.9, but you have packaging 24.2.\r\ncookietemple 1.4.2 has requirement rich<13.0.0,>=10.2.2, but you have rich 15.0.0.\r\nfastapi 0.115.7 has requirement starlette<0.46.0,>=0.40.0, but you have starlette 1.7.0.\r\nfinetuner-commons 0.13.10 has requirement torch~=2.0.1, but you have torch 2.7.1+cu128.\r\nfinetuner-commons 0.13.10 has requirement torchvision~=0.15.2, but you have torchvision 0.22.1+cu128.\r\nfinetuner-commons 0.13.10 has requirement transformers==4.20.1, but you have transformers 4.41.2.\r\nfinetuner-stubs 0.13.10 has requirement pydantic~=1.10.11, but you have pydantic 2.13.5.\r\ngoogleapis-common-protos 1.63.2 has requirement protobuf!=3.20.0,!=3.20.1,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<6.0.0.dev0,>=3.20.2, but you have protobuf 7.35.1.\r\ngoogle-ai-generativelanguage 0.6.6 has requirement protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0dev,>=3.19.5, but you have protobuf 7.35.1.\r\ngoogle-api-core 2.15.0 has requirement protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0.dev0,>=3.19.5, but you have protobuf 7.35.1.\r\ngoogle-cloud-aiplatform 1.38.1 has requirement protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0dev,>=3.19.5, but you have protobuf 7.35.1.\r\ngoogle-cloud-resource-manager 1.11.0 has requirement protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0dev,>=3.19.5, but you have protobuf 7.35.1.\r\ngradio 5.9.1 has requirement starlette<1.0,>=0.40.0; sys_platform != \"emscripten\", but you have starlette 1.7.0.\r\ngrpcio-tools 1.62.3 has requirement protobuf<5.0dev,>=4.21.6, but you have protobuf 7.35.1.\r\ngrpc-google-iam-v1 0.13.0 has requirement protobuf!=3.20.0,!=3.20.1,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0dev,>=3.19.5, but you have protobuf 7.35.1.\r\nimageio 2.32.0 has requirement pillow<10.1.0,>=8.3.2, but you have pillow 11.2.1.\r\ninsanely-fast-whisper 0.0.8 has requirement setuptools>=68.2.2, but you have setuptools 65.5.0.\r\nlangchain 0.3.19 has requirement numpy<2,>=1.26.4; python_version < \"3.12\", but you have numpy 1.24.4.\r\nlangchain-chroma 0.1.1 has requirement chromadb<0.6.0,>=0.4.0, but you have chromadb 0.6.2.\r\nlangchain-chroma 0.1.1 has requirement langchain-core<0.3,>=0.1.40, but you have langchain-core 0.3.51.\r\nlangchain-community 0.3.18 has requirement numpy<2,>=1.26.4; python_version < \"3.12\", but you have numpy 1.24.4.\r\nlangfuse 2.44.0 has requirement packaging<24.0,>=23.2, but you have packaging 24.2.\r\nopentelemetry-proto 1.25.0 has requirement protobuf<5.0,>=3.19, but you have protobuf 7.35.1.\r\nopen-clip-torch 2.20.0 has requirement protobuf<4, but you have protobuf 7.35.1.\r\nopen-webui 0.6.0 has requirement faster-whisper==1.1.1, but you have faster-whisper 1.1.0.\r\nopen-webui 0.6.0 has requirement firecrawl-py==1.12.0, but you have firecrawl-py 4.17.0.\r\nopen-webui 0.6.0 has requirement pillow==11.1.0, but you have pillow 11.2.1.\r\nopen-webui 0.6.0 has requirement pydantic==2.10.6, but you have pydantic 2.13.5.\r\nprettymaps 1.0.0 has requirement pyyaml==6.0.0, but you have pyyaml 6.0.2.\r\nproto-plus 1.23.0 has requirement protobuf<5.0.0dev,>=3.19.0, but you have protobuf 7.35.1.\r\npymilvus 2.5.0 has requirement setuptools>69, but you have setuptools 65.5.0.\r\nspacy 3.4.4 has requirement pydantic!=1.8,!=1.8.1,<1.11.0,>=1.7.4, but you have pydantic 2.13.5.\r\nspacy 3.4.4 has requirement typer<0.8.0,>=0.3.0, but you have typer 0.27.2.\r\nspacy-transformers 1.1.9 has requirement transformers<4.26.0,>=3.4.0, but you have transformers 4.41.2.\r\ntensorboard 2.15.1 has requirement protobuf<4.24,>=3.19.6, but you have protobuf 7.35.1.\r\ntensorflow-intel 2.15.0 has requirement ml-dtypes~=0.2.0, but you have ml-dtypes 0.5.0.\r\ntensorflow-intel 2.15.0 has requirement protobuf!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0dev,>=3.20.3, but you have protobuf 7.35.1.\r\ntts 0.21.1 has requirement pandas<2.0,>=1.4, but you have pandas 2.2.3.\r\nwandb 0.16.0 has requirement protobuf!=4.21.0,<5,>=3.19.0; sys_platform != \"linux\", but you have protobuf 7.35.1.\r\nweasel 0.3.4 has requirement typer<0.10.0,>=0.3.0, but you have typer 0.27.2.\r\nwhisper-live 0.4.1 has requirement faster-whisper==1.0.1, but you have faster-whisper 1.1.0.\r\nwhisper-live 0.4.1 has requirement onnxruntime==1.16.0, but you have onnxruntime 1.29.0.\r\nzemberek-python 0.2.3 has requirement antlr4-python3-runtime==4.8, but you have antlr4-python3-runtime 4.9.3.",
+      "stderr": ""
+    }
+  }
+}

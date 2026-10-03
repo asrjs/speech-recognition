@@ -112,6 +112,36 @@ download weights or establish feature/encoder/cache numerical parity.
 Use the [stage comparator](../../scripts/README.md#stage-capture-contract)
 for recorded stage evidence.
 
+## Shared encoder-boundary control
+
+Reuse [`tools/stage_attribution.py`](../../../stage_attribution.py) through a
+callback that runs the existing encoder, not through another decoding loop.
+Keep preparation model-owned: `Qwen3AsrFeatureProcessor` produces mel-major
+float32 `input_features` shaped `[128,T]`. The dynamic graph returns
+`audio_embeddings` shaped `[audio_tokens,1024]`.
+
+A real CPU encoder exercise is recorded in
+`tools/data/results/qwen/goal-harness-encoder-layout-attribution-jfk-2026-10-03.json`.
+The receipt contains the tested Node preparation and six-line Python stage
+callback. Its prepared JFK input is `[128,1100]`, bound to PCM SHA-256
+`ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`.
+Seven source/artifact hashes were unchanged across execution.
+
+This is a **controlled layout-negative**, not a production frontend finding:
+the reference is current library preparation, not original-engine features.
+The candidate uses `np.ascontiguousarray(reference_features.T).reshape(reference_features.shape)`,
+preserving shape/dtype while corrupting layout. One
+`attribute_input_source(..., atol=1e-5, rtol=1e-4)` invocation performs three
+actual encoder calls, attributes the failure to `input_features`, and reproduces
+the candidate output with zero numerical error. This one-input case does not
+demonstrate multi-input discrimination.
+
+The existing library CLI also produced saved-reference-matching JFK output in
+`goal-harness-existing-port-jfk-2026-10-03.json`: WER/CER zero, 25 tokens,
+dynamic encoder and fp16 decoder on WASM. Cold execution took 111.9 seconds;
+do not treat this as performance, browser or fresh official-engine numerical
+acceptance. See the [measured reuse scope](../../../../docs/GOAL_MODEL_PORT_HARNESS.md#existing-qwen-port-real-output-and-cross-family-control).
+
 ## Optional decoder graph surgery
 
 `append_argmax_output.py` creates a copy of an explicit-KV decoder graph with

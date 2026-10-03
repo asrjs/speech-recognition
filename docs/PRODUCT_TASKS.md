@@ -3,6 +3,44 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C25 — Existing Qwen harness reuse and bounded numerical disposition
+
+Status: PASS for the focused reuse exercise; Orukeet production-feature
+conformance remains **DEFERRED / FAIL**, not model acceptance. No runtime,
+family math, tolerance, exporter or shared-control implementation changed.
+
+The existing Qwen Node/WASM CLI ran local official-export artifacts on JFK
+with dynamic encoder/fp16 decoder and produced 25 tokens, WER/CER zero and
+normalized exact match against the saved native reference. Cold elapsed time
+was 111899.6057 ms. It exited successfully through its awaited disposal path.
+This did not rebuild the library, refresh official features or prove browser,
+performance or resource-reclamation acceptance.
+
+The unchanged shared attribution control also ran the real Qwen dynamic
+encoder. Reference features came from the current library processor, not a
+fresh official-engine capture. A deliberate same-shape frame-major/mel-major
+misinterpretation was localized to `input_features`; replay reproduced the
+candidate output with zero numerical error. The receipt binds the waveform,
+prepared feed and seven unchanged source/artifact hashes. Three actual
+encoder calls, one six-line callback; zero new inference loops, exporters,
+weight downloads, shared-attribution changes or permanent adapter scripts.
+The one-input diagnostic proves real cross-family reuse, not a production bug
+or multi-input discrimination.
+
+Receipts under `tools/data/results/qwen/`:
+`goal-harness-existing-port-jfk-2026-10-03.json` and
+`goal-harness-encoder-layout-attribution-jfk-2026-10-03.json`.
+The existing [Qwen guide](../tools/model-debugging/reference/qwen3-asr-0.6b/README.md#shared-encoder-boundary-control)
+now exposes the tested control recipe and its limits.
+
+The [focus goal](GOAL_MODEL_PORT_HARNESS.md#bounded-orukeet-numerical-disposition)
+records the bounded Orukeet disposition: official-complex/native-real-FFT
+controls pass downstream feature gates, portable full-512 FFT already fails
+end-to-end, and pure silence has a separate measured reduction mismatch.
+No rejected FFT experiment was repeated or numerical gate relaxed. Browser
+real-hybrid scores retain their existing fixture-specific PASS. Complete
+Orukeet feature and full ASR acceptance remain unproven.
+
 ## C24 — Python reference environment inventory
 
 Status: AUDITED — read-only environment discovery, real import/CPU smoke and

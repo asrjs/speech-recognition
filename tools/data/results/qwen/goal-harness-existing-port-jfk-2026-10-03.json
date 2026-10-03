@@ -1,0 +1,57 @@
+{
+  "model": "Qwen3-ASR-0.6B",
+  "backend": "wasm",
+  "encoder": "dynamic",
+  "dtype": "fp16",
+  "audio": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+  "audioSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "durationSeconds": 11,
+  "warmup": 0,
+  "runs": 1,
+  "elapsedMs": {
+    "mean": 111899.6057,
+    "p50": 111899.6057,
+    "p95": 111899.6057
+  },
+  "rtfx": 0.09830240179300292,
+  "windowing": null,
+  "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+  "language": "English",
+  "quality": {
+    "referenceKind": "qwen3-asr-0.6b-native-inference",
+    "referencePath": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\qwen\\qwen3-asr-0.6b-jfk-short-reference.json",
+    "referenceField": "samples[0].text",
+    "referenceSampleId": "0000-jfk-short",
+    "runs": [
+      {
+        "wordErrorRate": 0,
+        "characterErrorRate": 0,
+        "normalizedExactMatch": true
+      }
+    ]
+  },
+  "metrics": {
+    "preprocessMs": 155.172,
+    "encodeMs": 10381.971,
+    "decodeMs": 54414.296,
+    "decoderInitMs": 27538.139,
+    "decoderInitInputMs": 23.564,
+    "decoderInitRunMs": 27496.111,
+    "decoderInitOutputMs": 18.456,
+    "decoderStepMs": 26876.157,
+    "decoderStepFeedBuildMs": 0.88,
+    "decoderStepRunMs": 26666.974,
+    "decoderStepOutputMs": 209.012,
+    "decoderStepAvgMs": 1075.046,
+    "decoderStepCount": 25,
+    "decoderKvCacheLocation": "cpu",
+    "totalMs": 111884.175,
+    "wallMs": 111884.175,
+    "audioDurationSec": 11,
+    "rtf": 10.171288636363636,
+    "rtfx": 0.09831595933920056,
+    "encoderFrameCount": 1100,
+    "emittedTokenCount": 25,
+    "decodeIterations": 25
+  }
+}
