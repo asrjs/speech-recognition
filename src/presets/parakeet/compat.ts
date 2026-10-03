@@ -51,6 +51,8 @@ export interface ParakeetLocalInspection {
 
 /** Options for resolving or loading a Parakeet model from a local folder. */
 export interface ResolveParakeetLocalEntriesOptions {
+  /** ORT Web engine asset URL prefix; independent of the model artifact folder. */
+  readonly wasmPaths?: string;
   readonly modelId?: string;
   readonly encoderBackend?: ParakeetExecutionBackend;
   readonly decoderBackend?: ParakeetExecutionBackend;
@@ -131,6 +133,8 @@ export interface GetParakeetModelOptions {
 
 /** Direct-artifact configuration accepted by `ParakeetModel.fromUrls()`. */
 export interface ParakeetFromUrlsConfig {
+  /** ORT Web engine asset URL prefix; match the installed ORT version. */
+  readonly wasmPaths?: string;
   readonly modelId?: string;
   readonly encoderBackend?: ParakeetExecutionBackend;
   readonly decoderBackend?: ParakeetExecutionBackend;
@@ -888,6 +892,7 @@ export async function resolveParakeetLocalEntries(
       backend: options.backend,
       verbose: options.verbose,
       cpuThreads: options.cpuThreads,
+      wasmPaths: options.wasmPaths,
       enableProfiling: options.enableProfiling,
       runtime: options.runtime,
       signal: options.signal,
@@ -989,6 +994,7 @@ export class ParakeetModel {
             },
             preprocessorBackend: config.preprocessorBackend,
             cpuThreads: config.cpuThreads,
+            wasmPaths: config.wasmPaths,
             enableProfiling: config.enableProfiling,
           },
         },

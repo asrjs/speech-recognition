@@ -491,6 +491,17 @@ FireRed VAD retain their single-thread defaults, and existing family guards
 retain one thread when SharedArrayBuffer is unavailable. This does not change
 native ORT intra-op/inter-op thread settings or claim a measured speedup.
 
+Browser local loading accepts `wasmPaths`, an explicit ORT Web engine-asset
+URL prefix with a trailing slash, separate from the model artifact folder.
+The generic `loadSpeechModelFromLocalEntries` path and Parakeet's legacy
+local/direct helpers forward it to the existing family ORT source options.
+For example, use `wasmPaths: '/engines/ort-1.29.0/'` when the application serves
+matching installed-version `.mjs` and `.wasm` engine files there. This option
+does not copy, bundle, download or verify those files. ORT Web configuration is
+module-wide, not session-isolated: choose one consistent engine location before
+initializing sessions. Omission retains existing defaults, including the browser
+CDN fallback; local model weights alone do not imply offline operation.
+
 The experimental `native-cpu` factory is explicitly composed; built-in runtimes
 do not automatically register it. NeMo TDT's family-owned ORT bridge selects
 native CPU sessions without copying decoding into a host-specific executor.

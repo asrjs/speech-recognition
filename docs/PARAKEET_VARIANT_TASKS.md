@@ -2366,3 +2366,28 @@ assets, then rerun this same local control without a CDN interception workaround
 This gate does not implement app cancellation or certify session disposal;
 closing the owned browser is process cleanup, not proof of awaited library
 disposal. Orukeet feature/encoder/token/text parity remains independently open.
+
+### Explicit local ORT engine prefix API (2026-10-03)
+
+`LoadSpeechModelFromLocalEntriesOptions`, `ResolveParakeetLocalEntriesOptions`
+and `ParakeetFromUrlsConfig` now expose the existing family `wasmPaths` string
+prefix. Real local resolution preserves it, and both the generic adapter and
+legacy direct loader forward it into NeMo TDT source options. No model math,
+decoder, backend selection, default engine URL or native settings changed.
+Applications must serve matching ORT engine `.mjs`/`.wasm` files themselves;
+the setting is ORT module-wide and should be chosen before session creation.
+
+Six focused simulations cover v2/v3 through real File-to-blob resolution,
+both legacy local-folder entry points and legacy direct explicit/omitted
+prefixes, with disposal. Together with existing browser-local and Parakeet-helper
+tests: 41 passed (63 including WASM thread regressions). TypeScript source compilation
+passes; focused lint has zero errors and the existing compat.ts max-lines warning.
+The current-source browser-demo in-memory build passes (307 modules); main
+bundle752181 bytes SHA256
+`ac815e9837f91bfc6b6d3d2b7f15520b19894bd8699ca36c9b73f75df1b83162`.
+This is API forwarding/build evidence, not fresh engine or model inference.
+The sibling demo still does not pass this new option; its source was preserved.
+Next package/serve matching engine assets and exercise this public API in the
+owned browser harness, then integrate the companion option within its writable
+authority. The earlier real offline model-loading failure is not yet resolved
+end to end, and no Orukeet promotion follows from this additive API change.

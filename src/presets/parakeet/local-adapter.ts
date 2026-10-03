@@ -45,6 +45,7 @@ function toBuiltInDirectLoadOptions(
       },
       preprocessorBackend: resolved.config.preprocessorBackend,
       cpuThreads: resolved.config.cpuThreads,
+      wasmPaths: resolved.config.wasmPaths,
       enableProfiling: resolved.config.enableProfiling,
     },
   };
@@ -79,6 +80,7 @@ export const parakeetBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
       backend: options.backend,
       verbose: options.verbose,
       cpuThreads: options.cpuThreads,
+      wasmPaths: options.wasmPaths,
       enableProfiling: options.enableProfiling,
       signal: options.signal,
     });

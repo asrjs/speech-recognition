@@ -55,6 +55,8 @@ export interface LoadSpeechModelFromLocalEntriesOptions
   readonly preprocessorBackend?: 'js' | 'onnx';
   readonly verbose?: boolean;
   readonly cpuThreads?: number;
+  /** ORT Web engine asset URL prefix (include trailing slash); match the installed ORT version. */
+  readonly wasmPaths?: string;
   readonly enableProfiling?: boolean;
   readonly sessionOptions?: BaseSessionOptions;
   readonly onProgress?: (event: RuntimeProgressEvent) => void;
