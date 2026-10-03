@@ -2461,3 +2461,40 @@ promotion, numerical parity, cancellation, memory/VRAM or soak acceptance.
 The sibling app source remains untouched and still needs authorized integration
 of its local `wasmPaths` option. Next model task remains the earliest Orukeet
 fp32 feature divergence, followed by encoder/token/text and browser gates.
+
+### Identical windowed-frame FFT control (2026-10-03)
+
+`processor_export_stages.py` now separates centered constant padding, frame
+gathering and window multiplication from FFT execution. Native frames agree
+byte-for-byte with independent NumPy reconstruction; native `torch.fft.rfft`
+on these exact frames reproduces the captured official STFT bytes. The ONNX
+framing graph reproduces all2,079,232 windowed-frame values byte-for-byte.
+ONNX DFT on those identical frames reproduces ONNX STFT bytes exactly, but
+differs from native FFT: max2.086162567138672e-6, mean6.686923942797317e-9.
+This isolates the observed difference to FFT/backend arithmetic for this
+fixture, rather than preemphasis, frame gathering or window multiplication.
+It does not identify a particular FFT implementation instruction as defective.
+
+Receipt: `tools/data/results/orukeet/nemo-processor-windowed-frame-control-2026-10-03.json`.
+Frame f32le SHA256 remains
+`f6d9996ff874003c84efd270f8558681a5c16303a913c185ea68a6553d3e1810`;
+framing graph9255 bytes SHA256
+`642ab73f89eeec902c75f41a7f72ca5ee0ea93b7dad0785b64735ce0e8acd536`;
+DFT graph204 bytes SHA256
+`8708de7e907aca3e811bb1b7f440dd0efbe4aa90c0d78d13e62c71cd5f079cba`.
+Run the existing `probe_nemo_processor.py` with pinned packed config/capture
+hashes, `--onnx-probe --stage-probe --pairwise-normalization` and a fresh output.
+No model weights are loaded by this config-only diagnostic.
+
+Two actual CPU synthetic operator tests pass (aligned1600 and uneven1773
+samples; changed oracle rejected), plus5 stage-comparator regressions.
+The first synthetic fixture used no preemphasis, which pruned ONNX's `valid`
+input and failed before the new control. That fixture was reverted and rebuilt
+with the actual preemphasis contract; it was not a production numerical defect.
+
+Full pairwise processor remains FAIL/CLI exit1 with76 feature mismatches,
+max0.00012484192848205566 at unchanged atol1e-5/rtol1e-4. No production processor,
+preset, precision or tolerance changed. Next evaluate a portable FFT arithmetic
+candidate on these same frames, retaining native-oracle and full-feature gates;
+do not compensate with per-model correction constants. Encoder/token/text and
+WASM/WebGPU Orukeet acceptance remain open.

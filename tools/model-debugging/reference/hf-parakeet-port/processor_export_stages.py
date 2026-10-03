@@ -74,9 +74,64 @@ def run_stft_input_control(processor, waveform, length, oracle_signal, oracle_sp
         {'signal': oracle_signal}, ['signal'], {'signal': {1: 'samples'}, 'output': {2: 'frames'}})
     ort_spectrum_metric = compare_tensors(packed_oracle, actual_spectrum, atol=1e-5, rtol=1e-4)
     ort_spectrum_metric['bytes_exact'] = packed_oracle.tobytes() == actual_spectrum.tobytes()
+    # Split the STFT boundary without changing the full processor candidate.
+    class WindowedFrames(torch.nn.Module):
+        def forward(self, signal):
+            padded = torch.nn.functional.pad(signal, (f.n_fft // 2, f.n_fft // 2))
+            starts = torch.arange(signal.size(1) // f.hop_length + 1) * f.hop_length
+            indices = starts[:, None] + torch.arange(f.n_fft)[None, :]
+            left = (f.n_fft - f.win_length) // 2
+            window = torch.nn.functional.pad(f.window.to(dtype=torch.float),
+                (left, f.n_fft - f.win_length - left))
+            return padded[:, indices] * window
+
+    framing = WindowedFrames().eval()
+    with torch.no_grad():
+        native_frames = framing(torch.from_numpy(oracle_signal)).numpy()
+        native_fft = torch.view_as_real(torch.fft.rfft(torch.from_numpy(native_frames), dim=-1)).numpy()
+    expected_frames = np.ascontiguousarray(np.lib.stride_tricks.sliding_window_view(
+        np.pad(oracle_signal, ((0, 0), (f.n_fft // 2, f.n_fft // 2))), f.n_fft, axis=-1)
+        [:, ::f.hop_length, :] * np.pad(f.window.numpy(),
+            ((f.n_fft - f.win_length) // 2, (f.n_fft - f.win_length + 1) // 2)), dtype=np.float32)
+    if expected_frames.tobytes() != native_frames.tobytes():
+        raise ValueError('Native windowed frames differ from independent reconstruction')
+    fft_oracle = packed_oracle.transpose(0, 2, 1, 3).copy()
+    if fft_oracle.tobytes() != native_fft.tobytes():
+        raise ValueError('Native FFT on windowed frames does not reproduce captured STFT')
+    ort_frames, frame_graph = execute(framing, (torch.from_numpy(oracle_signal[:, :1600]),),
+        {'signal': oracle_signal}, ['signal'], {'signal': {1: 'samples'}, 'output': {1: 'frames'}})
+    frame_metric = compare_tensors(native_frames, ort_frames, atol=1e-5, rtol=1e-4)
+    frame_metric['bytes_exact'] = native_frames.tobytes() == ort_frames.tobytes()
+    from onnx import helper, TensorProto
+    graph = helper.make_graph([
+        helper.make_node('DFT', ['frames'], ['spectrum'], axis=2, inverse=0, onesided=1),
+    ], 'identical-windowed-frame-fft-control', [
+        helper.make_tensor_value_info('frames', TensorProto.FLOAT, [1, 'frames', f.n_fft, 1]),
+    ], [helper.make_tensor_value_info('spectrum', TensorProto.FLOAT, [1, 'frames', f.n_fft // 2 + 1, 2])])
+    model = helper.make_model(graph, opset_imports=[helper.make_opsetid('', 17)], ir_version=9)
+    onnx.checker.check_model(model)
+    fft_bytes = model.SerializeToString()
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 1
+    session = ort.InferenceSession(fft_bytes, options, providers=['CPUExecutionProvider'])
+    if session.get_providers() != ['CPUExecutionProvider']:
+        raise ValueError('Unexpected identical-frame FFT provider')
+    ort_fft = session.run(None, {'frames': native_frames[..., None]})[0]
+    fft_metric = compare_tensors(fft_oracle, ort_fft, atol=1e-5, rtol=1e-4)
+    fft_metric['bytes_exact'] = fft_oracle.tobytes() == ort_fft.tobytes()
+    stft_vs_fft = compare_tensors(actual_spectrum.transpose(0, 2, 1, 3).copy(), ort_fft,
+        atol=1e-5, rtol=1e-4)
+    stft_vs_fft['bytes_exact'] = actual_spectrum.transpose(0, 2, 1, 3).copy().tobytes() == ort_fft.tobytes()
     return {'native_preemphasis': native_metric, 'onnx_preemphasis': ort_metric,
         'native_identical_input_stft': spectrum_metric, 'onnx_identical_input_stft': ort_spectrum_metric,
         'input_graph': input_graph, 'stft_graph': stft_graph,
+        'window_fft_control': {'native_frames_independent_bytes_exact': True,
+            'native_fft_oracle_bytes_exact': True, 'onnx_windowed_frames': frame_metric,
+            'onnx_identical_frame_fft': fft_metric, 'onnx_stft_vs_identical_frame_fft': stft_vs_fft,
+            'frames_sha256_f32le': hashlib.sha256(native_frames.astype('<f4').tobytes()).hexdigest(),
+            'frame_graph': frame_graph, 'fft_graph_sha256': hashlib.sha256(fft_bytes).hexdigest(),
+            'fft_graph_bytes': len(fft_bytes), 'providers': session.get_providers(),
+            'scope': 'Separate framing/window multiply and identical-input FFT; not full feature acceptance'},
         'stft_input_sha256_f32le': hashlib.sha256(oracle_signal.astype('<f4').tobytes()).hexdigest(),
         'scope': 'Separate eval preemphasis and identical-input real-pair STFT on CPU; no full processor acceptance'}
 
