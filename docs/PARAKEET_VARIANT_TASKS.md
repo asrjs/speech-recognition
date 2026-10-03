@@ -14,6 +14,17 @@ Orukeet retains 627M parameters; it is not a small student model.
 
 ## Current checkpoint
 
+Latest model/harness checkpoint (2026-10-03): identical windowed-frame controls
+isolate the observed native/ONNX spectrum difference to FFT/backend arithmetic.
+Preemphasis, frame gathering and window multiplication are byte-exact for the
+speech/silence fixture; full pairwise ONNX features still FAIL at76 coordinates.
+Do not repeat fp64 DFT, zero-imaginary complex FFT, PocketFFT or PFFFT variants
+as new untested fixes: their failed downstream controls are recorded below.
+The general processor diagnostic now supports exporter-pruned optional inputs
+without dropping required inputs; this is harness reliability, not model parity.
+Next model experiment must have a materially new, source-grounded hypothesis;
+whole-product API, lifecycle, example and native acceptance work stays active.
+
 Latest public-library browser control (2026-10-02): the reproduced single-step
 head now passes live recurrence with frozen official encoder outputs for JFK,
 pure silence and speech/silence on both WASM and WebGPU. Each fixture/backend
@@ -2498,3 +2509,27 @@ preset, precision or tolerance changed. Next evaluate a portable FFT arithmetic
 candidate on these same frames, retaining native-oracle and full-feature gates;
 do not compensate with per-model correction constants. Encoder/token/text and
 WASM/WebGPU Orukeet acceptance remain open.
+
+### Exporter-pruned processor input fix (2026-10-03)
+
+Disabled preemphasis exports an identity graph without the unused declared
+`valid` input. The previous diagnostic sent `valid` anyway and failed with
+`Invalid input name: valid`. A regression reproduced that error before the fix.
+The session now receives only actual graph inputs, after verifying that caller
+feeds exactly match declared input names and contain every required graph input.
+Receipts list the actual retained names. This is not a missing-input fallback.
+
+Three actual synthetic operator tests now pass, including disabled preemphasis
+(`inputs=['pcm']`) and enabled preemphasis (`inputs=['pcm','valid']`), aligned
+and uneven lengths, and corrupted-oracle rejection. Five comparator and9 CLI
+preflight tests also pass. The fresh full fixture receipt
+`nemo-processor-pruned-input-control-2026-10-03.json` retains native byte-exact
+PASS and full pairwise ONNX FAIL:76 mismatches, max0.00012484192848205566;
+baseline and pairwise graph hashes are unchanged. Production math and numerical
+tolerances were not edited.
+
+Experiment audit also found that the proposed fp64 DFT control already exists
+in `probe_light_dft_features.py` and has32 failed downstream feature cells.
+The redundant uncommitted probe/test additions were reverted rather than
+rerunning them or adding another inference path. Preserve those earlier
+negative receipts and the bounded algorithm-search rule above.

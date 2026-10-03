@@ -45,9 +45,14 @@ def run_stft_input_control(processor, waveform, length, oracle_signal, oracle_sp
         session = ort.InferenceSession(graph_bytes, options, providers=['CPUExecutionProvider'])
         if session.get_providers() != ['CPUExecutionProvider']:
             raise ValueError('Unexpected input/STFT control execution provider')
-        return session.run(None, feeds)[0], {
+        required = {value.name for value in session.get_inputs()}
+        if set(feeds) != set(input_names) or not required.issubset(feeds):
+            raise ValueError('Exported input/STFT control feed contract differs')
+        # Export can prune unused declared inputs (e.g. valid with no preemphasis).
+        # Only omit those; missing required or unexpected caller feeds still fail.
+        return session.run(None, {name: feeds[name] for name in required})[0], {
             'graph_sha256': hashlib.sha256(graph_bytes).hexdigest(), 'graph_bytes': len(graph_bytes),
-            'providers': session.get_providers()}
+            'providers': session.get_providers(), 'inputs': sorted(required)}
 
     module = PreemphasisBoundary().eval()
     with torch.no_grad():

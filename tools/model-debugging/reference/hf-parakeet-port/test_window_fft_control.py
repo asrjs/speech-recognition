@@ -25,6 +25,7 @@ class WindowFftControlTests(unittest.TestCase):
                 receipt = run_stft_input_control(processor, waveform,
                     torch.tensor([samples]), signal, spectrum)
                 control = receipt['window_fft_control']
+                self.assertEqual(receipt['input_graph']['inputs'], ['pcm', 'valid'])
                 self.assertTrue(control['native_frames_independent_bytes_exact'])
                 self.assertTrue(control['native_fft_oracle_bytes_exact'])
                 self.assertTrue(control['onnx_windowed_frames']['bytes_exact'])
@@ -37,6 +38,18 @@ class WindowFftControlTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'does not reproduce captured spectrum'):
             run_stft_input_control(processor, waveform,
                 torch.tensor([1600]), signal, spectrum)
+
+    def test_disabled_preemphasis_accepts_exporter_pruned_valid_input(self):
+        processor, waveform, _, _ = self.fixture(1773)
+        processor.featurizer.preemph = None
+        spectrum = torch.stft(waveform, n_fft=512, hop_length=160, win_length=400,
+            window=processor.featurizer.window, center=True, pad_mode='constant',
+            return_complex=True).numpy()
+        receipt = run_stft_input_control(processor, waveform, torch.tensor([1773]),
+            waveform.numpy(), spectrum)
+        self.assertTrue(receipt['onnx_preemphasis']['bytes_exact'])
+        self.assertEqual(receipt['input_graph']['inputs'], ['pcm'])
+        self.assertTrue(receipt['window_fft_control']['onnx_windowed_frames']['bytes_exact'])
 
 
 if __name__ == '__main__':
