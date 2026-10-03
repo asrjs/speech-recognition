@@ -416,6 +416,15 @@ Subpath separation is the primary bundling boundary. Lazy imports inside built-i
 
 ## Realtime and Browser Helpers
 
+Pipeline model-cache cancellation is caller-aware: an aborted caller cannot
+receive a cached handle or initiate a forced reload. A caller joining an
+in-flight load checks cancellation after the shared wait without cancelling
+the creator or disposing its handle. The creator owns the actual load signal;
+if it cancels, joined callers also receive the load failure and may retry
+explicitly. `AbortSignalLike` guarantees only a boolean `aborted` property,
+so these are cooperative checks at await boundaries, not immediate pending
+promise interruption or automatic ownership transfer.
+
 `@asrjs/speech-recognition` includes library-grade helpers extracted from real apps:
 
 - `AudioRingBuffer`

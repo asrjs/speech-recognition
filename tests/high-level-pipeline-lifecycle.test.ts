@@ -121,6 +121,187 @@ const REQUEST = {
 };
 
 describe('SpeechPipeline lifecycle races', () => {
+  it('rejects an aborted joined load without cancelling the owner or evicting its handle', async () => {
+    let releaseCreate!: () => void;
+    let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      releaseCreate = resolve;
+    });
+    let createCount = 0;
+    let disposeCount = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => {
+        createCount += 1;
+        markStarted();
+        await gate;
+      },
+      onDisposeModel: () => {
+        disposeCount += 1;
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime });
+    const signal = { aborted: false };
+    const request = { ...REQUEST, cacheKey: 'shared-cancellation-probe' };
+    const owner = pipeline.loadModel(request);
+    await started;
+    const joined = pipeline.loadModel({ ...request, signal });
+    const joinedOutcome = joined.then(
+      () => 'returned-model',
+      (error: unknown) => error,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    signal.aborted = true;
+    releaseCreate();
+    try {
+      const handle = await owner;
+      expect(await joinedOutcome).toBeInstanceOf(PipelineAbortedError);
+      expect(await pipeline.loadModel(request)).toBe(handle);
+      expect(createCount).toBe(1);
+      expect(disposeCount).toBe(0);
+      expect(await handle.transcribe(new Float32Array(16000))).toMatchObject({ text: 'probe' });
+    } finally {
+      releaseCreate();
+      await pipeline.dispose();
+      await runtime.dispose();
+    }
+    expect(disposeCount).toBe(1);
+  });
+
+  it('does not return or force-reload a cached handle for an already aborted caller', async () => {
+    let createCount = 0;
+    let disposeCount = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => {
+        createCount += 1;
+      },
+      onDisposeModel: () => {
+        disposeCount += 1;
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime });
+    const request = { ...REQUEST, cacheKey: 'cached-cancellation-probe' };
+    try {
+      const handle = await pipeline.loadModel(request);
+      for (const forceReload of [false, true]) {
+        await expect(
+          pipeline.loadModel({ ...request, forceReload, signal: { aborted: true } }),
+        ).rejects.toBeInstanceOf(PipelineAbortedError);
+      }
+      expect(await pipeline.loadModel(request)).toBe(handle);
+      expect(createCount).toBe(1);
+      expect(disposeCount).toBe(0);
+    } finally {
+      await pipeline.dispose();
+      await runtime.dispose();
+    }
+  });
+
+  it('propagates owner load cancellation to a live joiner and allows an explicit retry', async () => {
+    let releaseCreate!: () => void;
+    let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      releaseCreate = resolve;
+    });
+    let createCount = 0;
+    let disposeCount = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => {
+        createCount += 1;
+        markStarted();
+        await gate;
+      },
+      onDisposeModel: () => {
+        disposeCount += 1;
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime });
+    const request = { ...REQUEST, cacheKey: 'owner-cancellation-probe' };
+    const ownerSignal = { aborted: false };
+    const owner = pipeline.loadModel({ ...request, signal: ownerSignal });
+    const ownerOutcome = owner.then(
+      () => 'returned-model',
+      (error: unknown) => error,
+    );
+    await started;
+    const joined = pipeline.loadModel(request);
+    const joinedOutcome = joined.then(
+      () => 'returned-model',
+      (error: unknown) => error,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    ownerSignal.aborted = true;
+    releaseCreate();
+    try {
+      expect(await ownerOutcome).toBeInstanceOf(PipelineAbortedError);
+      expect(await joinedOutcome).toBeInstanceOf(PipelineAbortedError);
+      expect(pipeline.listLoadedModels()).toEqual([]);
+      expect(disposeCount).toBe(1);
+      const retry = await pipeline.loadModel(request);
+      expect(createCount).toBe(2);
+      expect(await retry.transcribe(new Float32Array(16000))).toMatchObject({ text: 'probe' });
+    } finally {
+      releaseCreate();
+      await pipeline.dispose();
+      await runtime.dispose();
+    }
+    expect(disposeCount).toBe(2);
+  });
+
+  it('does not create a replacement when forceReload is aborted during active-operation disposal', async () => {
+    let releaseOperation!: () => void;
+    let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      releaseOperation = resolve;
+    });
+    let createCount = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => {
+        createCount += 1;
+      },
+      onDisposeModel: () => undefined,
+      onTranscribe: async () => {
+        markStarted();
+        await gate;
+      },
+    });
+    const pipeline = createSpeechPipeline({ runtime });
+    const request = { ...REQUEST, cacheKey: 'force-reload-cancel-probe' };
+    await pipeline.loadModel(request);
+    const active = pipeline.transcribe(new Float32Array(16000), request);
+    await started;
+    const signal = { aborted: false };
+    const replacement = pipeline.loadModel({ ...request, forceReload: true, signal });
+    const outcome = replacement.then(
+      () => 'returned-model',
+      (error: unknown) => error,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    signal.aborted = true;
+    releaseOperation();
+    try {
+      await active;
+      expect(await outcome).toBeInstanceOf(PipelineAbortedError);
+      expect(createCount).toBe(1);
+      expect(pipeline.listLoadedModels()).toEqual([]);
+    } finally {
+      releaseOperation();
+      await pipeline.dispose();
+      await runtime.dispose();
+    }
+  });
+
   it.each(['canonical', 'canonical+native', 'native'] as const)(
     'preserves %s response shape for single and batch calls',
     async (responseFlavor) => {

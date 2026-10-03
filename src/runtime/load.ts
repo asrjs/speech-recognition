@@ -11,6 +11,7 @@ import {
   planWindowedTranscription,
   transcribeWithWindowing,
   withResolvedTranscriptDetail,
+  PipelineAbortedError,
 } from '../pipeline/index.js';
 import type {
   AudioInputLike,
@@ -549,6 +550,9 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     expectedGeneration?: number,
   ): Promise<LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>> {
     this.assertNotDisposed();
+    if (request.signal?.aborted) {
+      throw new PipelineAbortedError('load');
+    }
 
     const cacheKey = this.cacheModels
       ? resolveAutomaticCacheKey(request as SpeechPipelineModelRequest<unknown>)
@@ -573,6 +577,10 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       throw this.createInvalidationError();
     }
 
+    if (request.signal?.aborted) {
+      throw new PipelineAbortedError('load');
+    }
+
     if (!cacheKey) {
       const handle = await this.createModelHandle(request);
       if (this.disposed) {
@@ -589,6 +597,9 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     if (request.forceReload) {
       await this.disposeModel(cacheKey);
       this.assertNotDisposed();
+      if (request.signal?.aborted) {
+        throw new PipelineAbortedError('load');
+      }
     }
 
     const generation = this.getGeneration(cacheKey);
@@ -603,6 +614,10 @@ class DefaultSpeechPipeline implements SpeechPipeline {
       if (!this.isGenerationCurrent(cacheKey, generation)) {
         await this.disposeHandle(handle);
         throw this.createInvalidationError();
+      }
+      // A joiner owns its wait, not the shared load or cached handle.
+      if (request.signal?.aborted) {
+        throw new PipelineAbortedError('load');
       }
       return handle as LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
     }

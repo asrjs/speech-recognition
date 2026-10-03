@@ -21,13 +21,26 @@ documented in `architecture.md`; no cache entries or sibling files were deleted.
 
 ## C16 — Caller cancellation during a coalesced model load
 
-Status: UNTESTED — next bounded lifecycle slice, not implemented.
+Status: PASS — cooperative pipeline wait/cache cancellation contract;
+prompt cancellation and real browser integration are not certified here.
 
-Inspect `src/runtime/load.ts` in-flight explicit-cache-key reuse. Add controlled
-two-caller load tests: aborting a joined waiter must not return it a model, and
-must not cancel a live owner. Define/test creator-abort behavior for a still-live
-waiter before changing ownership. Preserve load generation, forced reload and
-disposal semantics; no model-family-specific branches.
+Two deterministic tests reproduced aborted joined/cached callers receiving
+handles before the fix. `src/runtime/load.ts` now checks the caller signal
+before mutation/cache access, after mutation/disposal waits and after a joined load.
+A cancelled joiner rejects without cancelling the live owner or disposing its
+shared handle. Pre-aborted forced reload does not evict an existing handle.
+The creator still owns the underlying load signal: its cancellation rejects
+live joiners too; explicit retry creates a fresh usable handle. A third test
+records that ownership/cleanup contract, without silent retries or transfers.
+40 focused lifecycle/API/builtin tests passed; TypeScript passed. ESLint has
+zero errors and two max-lines warnings. These are simulated generic runtime
+tests, not real model/browser acceptance. Boolean-only `AbortSignalLike` is
+checked cooperatively at await boundaries, not immediately during a pending
+promise. Generation/forced-reload/disposal regressions stay in the same suite.
+Final full regression: 1,418 passed / 33 skipped / zero failed; independent
+read-only review passed after adding the post-forceReload-disposal guard.
+The test environment emitted an existing TLS-disabled warning; no global TLS
+settings were changed, and these results do not certify secure remote loading.
 
 ## C14 — Companion in-memory browser preview
 
