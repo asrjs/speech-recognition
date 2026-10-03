@@ -35,6 +35,19 @@ Receipt: `tools/data/results/harness/local-lifecycle-npm-2026-10-03.json`.
 Existing ORT node-placement warnings remain; session provider metrics are not
 proof that every graph node ran on GPU. No production runtime code changed.
 
+Post shared-cleanup refresh (2026-10-03): the same npm opt-in with fresh receipt
+`tools/data/results/harness/local-lifecycle-shared-closure-2026-10-03.json`
+passes real Chrome154/ORT Web1.29.0 stock-v3 fp16-encoder/fp32-head inference.
+Decode cancellation rejects at5/55 units with PipelineAbortedError, without a
+complete event. Both successful results are exactly
+"The boy was there when the sun rose." with WebGPU encoder/WASM decoder metrics;
+awaited disposal, unchanged protected inputs, served build/engine byte hashes,
+zero blocked requests/page errors and stopped preview all pass. Shared closure
+probe explicitly reports ECONNREFUSED. Single-run times2223.65ms and339.79ms
+are cold/reused observations, not a matched optimization benchmark or soak.
+This closes real lifecycle revalidation of the helper reuse, not app UI model
+loading, Orukeet numerical parity or every-node GPU placement.
+
 ## C15 — Preserve requested remote artifact revisions
 
 Status: PASS — network fetch revision contract; existing cache authentication
