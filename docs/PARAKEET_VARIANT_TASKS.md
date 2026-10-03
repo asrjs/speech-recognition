@@ -1914,9 +1914,33 @@ Do not use a wrapper that inserts another window or changes scaling/layout.
 
 PocketFFT is a secondary real-codelet comparison:
 [upstream README](https://github.com/mreineck/pocketfft/blob/cpp/README.md).
-Neither candidate has been installed, compiled, measured or promoted here.
+At that research checkpoint neither candidate had been compiled, measured or
+promoted here; the installed SciPy control below now measures PocketFFT only.
 Read and preserve upstream license notices before incorporating source.
 The local PATH check finds cmake but not emcc/clang; this is not an exhaustive
 toolchain inventory or authorization to install one. First check reusable local
 assets/toolchains and a dependency-light native real-FFT control; browser build
 and feature gates remain separately open. No new model weights are needed.
+
+PocketFFT native control (2026-10-03): the light feature tool now accepts
+`--fft-engine scipy-pocketfft --dft-precision fp32 --power library --coordinate 0 98`.
+Use the same speech/silence capture, sample ID and pinned capture/bank SHA256
+as the preceding light DFT controls, with new exclusive output paths.
+The final-source run is recorded in
+`tools/data/results/orukeet/pocketfft-features-bound-speech-silence-2026-10-03.json`
+and its adjacent `.mjs` probe. SciPy 1.11.3's private `basic.rfft` is called
+directly with axis=-1, backward normalization and one worker, bypassing backend
+dispatch. The receipt hashes its Python wrappers and installed Windows binding;
+ORT provider and graph fields are null because this candidate is not ORT.
+
+Same captured fp32 frame SHA256, same downstream JS probe, unchanged atol=1e-5
+and rtol=1e-4: all 2,087,354 spectrum components pass (max abs 4.76837158203125e-7),
+but final features FAIL with 56 mismatches / 519,808 values, max abs
+0.00010156631469726562, first index98 (mel0/frame98). Official-complex downstream
+control passes with zero mismatches. This rules out promoting this installed
+PocketFFT control as the feature fix, not every possible portable FFT build.
+No production FFT, tolerances, weights or live broad-DFT dependencies changed.
+Nine lightweight tests pass, including native impulse/silence, input immutability,
+shape/dtype/nonfinite rejection and fp64 option rejection before output creation.
+PFFFT's independently compiled real flow remains the next algorithm candidate;
+browser feature/encoder/token/text acceptance remains open.

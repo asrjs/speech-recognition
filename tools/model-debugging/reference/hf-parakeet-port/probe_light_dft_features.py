@@ -20,6 +20,29 @@ from artifact_outputs import require_new_outputs, write_new_text
 DFT_TYPES = {'fp32': (np.float32, TensorProto.FLOAT), 'fp64': (np.float64, TensorProto.DOUBLE)}
 
 
+def pocketfft_control(frames):
+    """Installed native SciPy control, not a portable/browser implementation."""
+    if (frames.ndim != 3 or frames.shape[0] != 1 or frames.shape[1] < 1
+            or frames.shape[2] != 512 or frames.dtype != np.float32
+            or not np.isfinite(frames).all()):
+        raise ValueError('PocketFFT requires finite fp32 [1, frames, 512] input')
+    import scipy
+    from scipy.fft._pocketfft import basic, helper as pocket_helper
+    paths = [Path(module.__file__) for module in (basic, pocket_helper, basic.pfft)]
+    hashes = {str(path): digest(path.read_bytes()) for path in paths}
+    values = basic.rfft(frames, axis=-1, norm='backward', workers=1)
+    if (values.shape != (1, frames.shape[1], 257) or values.dtype != np.complex64
+            or not np.isfinite(values).all()):
+        raise ValueError('PocketFFT output contract differs')
+    if hashes != {str(path): digest(path.read_bytes()) for path in paths}:
+        raise ValueError('PocketFFT sources changed during execution')
+    return values.transpose(0, 2, 1), {
+        'scipy': scipy.__version__, 'sources_sha256': hashes,
+        'entrypoint': 'scipy.fft._pocketfft.basic.rfft',
+        'axis': -1, 'norm': 'backward', 'workers': 1,
+        'scope': 'Installed native binding only; no browser/compiler equivalence claim'}
+
+
 def build_dft_graph(precision):
     if precision not in DFT_TYPES:
         raise ValueError('Unsupported diagnostic DFT precision')
@@ -72,7 +95,10 @@ def main():
     parser.add_argument('--power', choices=['fp32-rounded', 'library'], default='fp32-rounded')
     parser.add_argument('--coordinate', type=int, nargs=2, metavar=('MEL', 'FRAME'))
     parser.add_argument('--dft-precision', choices=list(DFT_TYPES), default='fp32')
+    parser.add_argument('--fft-engine', choices=['ort-dft', 'scipy-pocketfft'], default='ort-dft')
     args = parser.parse_args()
+    if args.fft_engine == 'scipy-pocketfft' and args.dft_precision != 'fp32':
+        parser.error('PocketFFT control supports fp32 only')
     sources = [Path(__file__), *[Path(__file__).with_name(name) for name in (
         'replay_packed_fft.py', 'diagnostic_mel_bank.py', 'compare_js_feature_boundaries.py',
         'complex_intervention.py', 'normalization_reduction.py', 'normalization-reduction.mjs',
@@ -86,22 +112,29 @@ def main():
     _, sample, pcm, oracle, frames, reference, valid = read_capture(
         args.capture, args.expected_capture_sha256, args.sample_id)
     coordinate = checked_coordinate(args.coordinate, bank.shape[0], valid)
-    graph_bytes = build_dft_graph(args.dft_precision)
+    graph_bytes = build_dft_graph(args.dft_precision) if args.fft_engine == 'ort-dft' else None
     dft_dtype, _ = DFT_TYPES[args.dft_precision]
     dft_frames = frames.astype(dft_dtype, copy=False)
-    options = ort.SessionOptions()
-    options.intra_op_num_threads = 1
-    session = ort.InferenceSession(graph_bytes, options, providers=['CPUExecutionProvider'])
-    values = session.run(['spectrum'], {'frames': dft_frames[..., None]})[0]
-    if (values.shape != (1, frames.shape[1], 257, 2) or values.dtype != dft_dtype
-            or not np.isfinite(values).all()):
-        raise ValueError('ORT DFT output contract differs')
-    candidate = np.empty(values.shape[:-1], dtype=np.complex64)
-    candidate.real, candidate.imag = values[..., 0], values[..., 1]
-    candidate = candidate.transpose(0, 2, 1)
+    engine_metadata = None
+    session = None
+    if args.fft_engine == 'scipy-pocketfft':
+        candidate, engine_metadata = pocketfft_control(dft_frames)
+        candidate_name = 'pocketfft_candidate'
+    else:
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = 1
+        session = ort.InferenceSession(graph_bytes, options, providers=['CPUExecutionProvider'])
+        values = session.run(['spectrum'], {'frames': dft_frames[..., None]})[0]
+        if (values.shape != (1, frames.shape[1], 257, 2) or values.dtype != dft_dtype
+                or not np.isfinite(values).all()):
+            raise ValueError('ORT DFT output contract differs')
+        candidate = np.empty(values.shape[:-1], dtype=np.complex64)
+        candidate.real, candidate.imag = values[..., 0], values[..., 1]
+        candidate = candidate.transpose(0, 2, 1)
+        candidate_name = 'ort_dft_candidate'
     spectrum = compare_tensors(oracle.view(np.float32), candidate.copy().view(np.float32),
                                atol=1e-5, rtol=1e-4)
-    spectra = {'official_complex_control': oracle, 'ort_dft_candidate': candidate}
+    spectra = {'official_complex_control': oracle, candidate_name: candidate}
     probe = build_power_probe(args.power)
     write_probe(args.probe_output, probe)
     payload = {'pcm': pcm.ravel().tolist(), 'bins': 128, 'referenceRaw': [0] * reference.size,
@@ -122,6 +155,7 @@ def main():
         raise ValueError('Capture changed during execution')
     receipt = {'status': 'DIAGNOSTIC_FROZEN_DFT_FEATURES', 'sample_id': args.sample_id,
         'injected_spectrum_power': args.power,
+        'fft_engine': args.fft_engine, 'engine_metadata': engine_metadata,
         'dft_precision': args.dft_precision, 'candidate_boundary_dtype': 'complex64',
         'dft_input_sha256': digest(dft_frames.astype(np.dtype(dft_dtype).newbyteorder('<')).tobytes()),
         'coordinate': coordinate,
@@ -129,14 +163,16 @@ def main():
         'bank_recipe': {'sample_rate': 16000, 'n_fft': 512, 'n_mels': 128,
                         'fmin': 0, 'fmax': 8000, 'norm': 'slaney', 'dtype': 'float32'},
         'sources_sha256': hashes, 'frames_sha256_f32le': digest(frames.astype('<f4').tobytes()),
-        'pcm_sha256_f32le': digest(pcm.astype('<f4').tobytes()), 'graph_sha256': digest(graph_bytes),
+        'pcm_sha256_f32le': digest(pcm.astype('<f4').tobytes()),
+        'graph_sha256': digest(graph_bytes) if graph_bytes is not None else None,
         'window_sha256_f32le': digest(read_stage(sample, 'feature_stft/window', 'float32').astype('<f4').tobytes()),
         'oracle_real_sha256_f32le': digest(oracle.real.astype('<f4').tobytes()),
         'oracle_imag_sha256_f32le': digest(oracle.imag.astype('<f4').tobytes()),
         'physical_frames': oracle.shape[2], 'valid_frames': valid,
         'frame_reconstruction': 'Empirical centered zero-padding with captured window, not independently captured FFT-input frames',
         'node': subprocess.check_output(['node', '--version'], text=True).strip(),
-        'probe_sha256': digest(probe.encode()), 'providers': session.get_providers(),
+        'probe_sha256': digest(probe.encode()),
+        'providers': session.get_providers() if session is not None else None,
         'onnx': onnx.__version__, 'onnxruntime': ort.__version__, 'numpy': np.__version__,
         'spectrum_comparison': spectrum, 'feature_comparisons': features,
         'scope': 'Native CPU DFT on reconstructed captured frames + existing diagnostic JS mel/normalization; not production feature, encoder, token/text, browser or performance acceptance'}
