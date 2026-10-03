@@ -112,6 +112,7 @@ def main():
     parser.add_argument('--production-features', action='store_true', help='Measure actual JS feature sensitivity alongside the unchanged official-feature control')
     parser.add_argument('--cross-session', action='store_true', help='Opt-in: create a second identical encoder session and compare, testing cross-session variability that within-session repeats cannot cover')
     parser.add_argument('--co-resident-decoder', action='store_true', help='Opt-in: hold a decoder session alongside the encoder and re-run it, testing whether session co-residency changes encoder output')
+    parser.add_argument('--create-as-encoder-name', action='store_true', help='Opt-in: create the encoder session from /encoder-model.onnx instead of /graph.onnx, the same bytes under the library artifact name, to test whether the create-URL name affects the result')
     parser.add_argument('--timeout-ms', type=int, default=240000)
     args = parser.parse_args()
     if not 1000 <= args.timeout_ms <= 600000:
@@ -145,6 +146,8 @@ def main():
                'shape': list(features.shape), 'length': valid}
     if args.cross_session:
         fixture['crossSession'] = True
+    if args.create_as_encoder_name:
+        fixture['createAsEncoderName'] = True
     if args.co_resident_decoder:
         fixture['coResidentDecoder'] = True
     if args.production_features:
@@ -161,6 +164,9 @@ def main():
     server.entrypoint = '/encoder-replay.mjs'
     server.extra_routes = {'/encoder-replay.mjs': module, '/encoder-model.onnx.data': data,
                            '/observe-session.mjs': Path(__file__).with_name('observe_session.mjs')}
+    # The same graph bytes are also served under the library's own artifact name,
+    # so the effect of the create-URL name can be measured on identical bytes.
+    server.extra_routes['/encoder-model.onnx'] = args.encoder
     if decoder_path is not None:
         server.extra_routes['/decoder-graph.onnx'] = decoder_path
         receipt['scope'] += '; co-resident decoder session requested'
@@ -217,7 +223,9 @@ def main():
             and event.get('bytes_written') == path.stat().st_size
             and event.get('body_sha256') == hashes[str(path.resolve())]
             for event in receipt['http_events'])
-            for route, path in (('/graph.onnx', args.encoder), ('/encoder-model.onnx.data', data)))
+            for route, path in (
+                (('/encoder-model.onnx' if args.create_as_encoder_name else '/graph.onnx'), args.encoder),
+                ('/encoder-model.onnx.data', data)))
         if not receipt['inputs_unchanged'] or not receipt['server_stopped'] or not receipt['artifact_delivery_verified']:
             receipt['status'] = 'BROWSER_ENCODER_COMPONENT_FAIL'
         write_new_text(args.output, json.dumps(receipt, indent=2, allow_nan=False) + '\n')

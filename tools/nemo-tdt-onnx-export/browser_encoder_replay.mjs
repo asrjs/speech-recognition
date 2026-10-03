@@ -33,7 +33,7 @@ globalThis.replayEncoder = async (fixture, backend) => {
     receipt.sessionCreates = createObserver.creates;
     receipt.crossOriginIsolated = crossOriginIsolated;
     const start = performance.now();
-    session = await createOrtSession(ort, `${location.origin}/graph.onnx`, {
+    session = await createOrtSession(ort, `${location.origin}/${fixture.createAsEncoderName ? 'encoder-model.onnx' : 'graph.onnx'}`, {
       backendId: backend, cpuThreads: 1, externalDataUrl: `${location.origin}/encoder-model.onnx.data`,
       externalDataPath: 'encoder-model.onnx.data',
     });

@@ -3705,6 +3705,41 @@ own buffer — or make the library mimic the standalone. Whichever change moves
 the output identifies the cause. Until then the gate stays FAIL and the
 difference is unexplained.
 
+Both candidates were then tested directly, and **both are eliminated**:
+
+1. **Create URL name — eliminated.** The standalone replay now serves the same
+   graph bytes at `/encoder-model.onnx` as well and can create from that name
+   (`--create-as-encoder-name`). Output is **bitwise identical** to creating
+   from `/graph.onnx` on both feature sources. The name has no numerical effect.
+2. **Input tensor materialisation — eliminated.** The library's processor
+   returns a plain `Float32Array` with `byteOffset 0` whose `byteLength` equals
+   its whole `ArrayBuffer`, so there is no view or offset to mishandle. The
+   standalone decodes a plain `Float32Array` the same way. Contents were already
+   proven byte-identical by the observer.
+
+So the `1.1316e-6` now survives with the **entire measurable configuration
+surface held equal**: features byte-identical, valid length 1100 in both, graph
+bytes and external data identical and hash-validated, all seven session options
+identical, create-URL name irrelevant, input arrays structurally identical, the
+encoder-to-head handoff bitwise exact, and cross-session, cross-run and
+co-residency each bitwise identical. Each exclusion is a measurement, not an
+inference.
+
+That is a stronger statement than "unexplained". Two deterministic executions
+that agree on every measurable input and option still produce systematically
+different outputs. The remaining difference is therefore in something this
+instrumentation does not capture, and the next discriminating experiment is to
+reproduce the hybrid's **sequence** in the standalone runner: create the encoder
+session, then create a WASM decoder session, then run the encoder for the first
+time. The hybrid's encoder session first executes only after the decoder session
+exists; the existing co-residency control created the decoder only after the
+encoder had already run, so the sequence is not yet matched. If that reproduces
+the hybrid value, the cause is session-creation sequence or WebGPU device state;
+if it does not, the instrumentation itself is missing a variable and should be
+extended rather than trusted further.
+
+Gate stays FAIL.
+
 A clue, stated only as far as it goes. Placed on the same axis, the encoder
 outputs differ in how far each sits from the recorded official encoder tensor:
 
