@@ -1,5 +1,10 @@
 # WSL2 Project Handoff
 
+> Historical record, not the current startup/branch/task instructions. Start at
+> [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) for the active whole-product goal,
+> latest handover and authoritative task files. Preserve this record's evidence;
+> reconcile its claims with live source/build/artifacts before reuse.
+
 This note records the local state recovered on 2026-05-28 before moving regular maintenance to WSL2.
 
 ## Current Git State

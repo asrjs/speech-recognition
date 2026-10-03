@@ -1,6 +1,8 @@
 # Parakeet variants: ordered implementation tasks
 
-Updated: 2026-10-01. Owner: current speech-recognition development chat.
+Started: 2026-10-01; dated updates below retain their own evidence scope.
+Resume through [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) and the latest handover;
+later appended receipts supersede earlier next-step wording, not failed gates.
 Active candidate: `oruk/orukeet`, a Parakeet TDT v3 fine-tune. Smaller distilled
 models and locale fine-tunes enter the same queue after their exact architecture
 and tokenizer are audited. The user owns `parakeet.js`; reuse its verified

@@ -1,5 +1,10 @@
 # Whisper WebGPU Optimization — Handover Report
 
+> Historical record, not the current startup/branch/task instructions. Start at
+> [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) for the active whole-product goal,
+> latest handover and authoritative task files. Preserve this record's evidence;
+> reconcile its claims with live source/build/artifacts before reuse.
+
 **Date:** 2026-06-19 (updated)
 **Active branch:** `main`
 **Agent:** Bev (P520, Windows 11, RTX 5060 Ti)

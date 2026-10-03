@@ -1,5 +1,9 @@
 # Project Charter
 
+For current startup, handover and task-file routing, use
+[AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md). This charter states durable product
+principles; dated evidence lives in the handover and existing task records.
+
 ## Mission
 
 Make `@asrjs/speech-recognition` a best-in-class, compact, multi-model speech

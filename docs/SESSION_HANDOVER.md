@@ -1,5 +1,10 @@
 # ASR.js Whisper Engine — Session Handover
 
+> Historical record, not the current startup/branch/task instructions. Start at
+> [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) for the active whole-product goal,
+> latest handover and authoritative task files. Preserve this record's evidence;
+> reconcile its claims with live source/build/artifacts before reuse.
+
 **Branch**: `main`
 **Date**: 2026-05-31 (Flexo, evening)
 **Machine**: P520 (WSL2, RTX 5060 Ti 8GB)

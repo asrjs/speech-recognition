@@ -1,5 +1,10 @@
 # Agent status review
 
+> Historical record, not the current startup/branch/task instructions. Start at
+> [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) for the active whole-product goal,
+> latest handover and authoritative task files. Preserve this record's evidence;
+> reconcile its claims with live source/build/artifacts before reuse.
+
 - **Date:** 2026-08-27 (review window ~01:58–02:15 Europe/Istanbul)
 - **Branch:** `main` (tracks `origin/main`)
 - **HEAD:** `9f587f7` — `ci: run build, typecheck, lint, tests, and node smoke on push and PRs`

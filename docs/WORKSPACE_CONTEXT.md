@@ -1,14 +1,18 @@
 # Workspace Context
 
+Start with [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) for current goal/handover
+routing. App descriptions below are a workspace map, not fresh acceptance
+claims; inspect each sibling's current wiring and Git state before using it.
+
 This document is a short memory map for the local ASR workspace around `@asrjs/speech-recognition`. Use it when returning to the project after a break or when an agent needs to understand which sibling repo/app is the right place to inspect.
 
 ## Core Project
 
 ### `speech-recognition`
 
-This is the new `asr.js` core library: a single-package, speech-first TypeScript runtime for browser and local Node.js inference.
+This is the `asr.js` core library: a single-package, speech-first TypeScript runtime for browser and native Node.js/Bun inference where independently verified.
 
-The source of truth is here. Keep it headless, framework-neutral, ESM-first, and runtime-oriented. The public API is exported from `src/index.ts`; internal boundaries are preserved through `src/` folders such as `runtime`, `processors`, `inference`, `models`, `presets`, `tokenizers`, and `types`.
+The source of truth is here. Keep it headless, framework-neutral, ESM-first, and runtime-oriented. The public API is exported from `src/index.ts` with intentional narrow subpaths; internal boundaries use the actual `runtime`, `audio`, `io`, `inference`, `models`, `presets`, `tokenizers` and `types` folders, plus existing speech-composition modules. There is no `src/processors` folder to revive.
 
 The core package may own reusable browser/runtime primitives such as capture, resampling, ring buffers, chunking, VAD, rough gate, detector/controller logic, waveform renderers, canvas utilities, and snapshot-style monitor APIs. React/Vue/Svelte/Solid wrappers should stay in thin sibling packages if they are needed.
 

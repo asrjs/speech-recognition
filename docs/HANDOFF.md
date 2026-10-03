@@ -1,5 +1,10 @@
 # ASR.js Whisper Engine — Complete Handoff
 
+> Historical record, not the current startup/branch/task instructions. Start at
+> [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) for the active whole-product goal,
+> latest handover and authoritative task files. Preserve this record's evidence;
+> reconcile its claims with live source/build/artifacts before reuse.
+
 **Branch**: `feat/whisper-cleanup-beam-temperature`
 **Date**: 2026-08-23
 **Source machine**: P520 (WSL2, RTX 5060 Ti 8GB) → **Target**: P520 (Windows native, RTX 5060 Ti)
