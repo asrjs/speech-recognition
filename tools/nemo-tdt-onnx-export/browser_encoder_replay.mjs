@@ -3,7 +3,8 @@ import { initOrt, createOrtSession, releaseOrtSession, disposeOrtOutputs } from 
 
 globalThis.replayEncoder = async (fixture, backend) => {
   const receipt = { backendRequested: backend, runs: [], cleanupErrors: [], gpuDispatches: 0,
-    crossSessionRuns: [], crossSessionRequested: Boolean(fixture.crossSession) };
+    crossSessionRuns: [], crossSessionRequested: Boolean(fixture.crossSession),
+    coResidentRuns: [], coResidentRequested: Boolean(fixture.coResidentDecoder) };
   let session;
   const originals = [];
   try {
@@ -106,6 +107,38 @@ globalThis.replayEncoder = async (fixture, backend) => {
           try { await releaseOrtSession(second); } catch (error) { receipt.cleanupErrors.push(String(error)); }
         }
       } catch (error) { receipt.crossSessionError = String(error?.stack ?? error); }
+    }
+
+    // Opt-in co-residency control. The hybrid run holds an encoder session and
+    // a WASM decoder session together; this holds a decoder session alongside
+    // the encoder and re-runs it, testing whether co-residency alone changes
+    // encoder output. The decoder session is created, never executed.
+    if (fixture.coResidentDecoder) {
+      try {
+        const decoderSession = await createOrtSession(ort, `${location.origin}/decoder-graph.onnx`, {
+          backendId: 'wasm', cpuThreads: 1,
+        });
+        try {
+          for (const input of inputs) {
+            const feeds = { audio_signal: new ort.Tensor('float32', input.values, fixture.shape),
+              length: new ort.Tensor('int64', BigInt64Array.from([BigInt(fixture.length)]), [1]) };
+            let outputs;
+            try {
+              outputs = await session.run(feeds);
+              const values = {};
+              for (const [name, tensor] of Object.entries(outputs))
+                values[name] = { dtype: tensor.type, shape: [...tensor.dims], data: Array.from(tensor.data, Number) };
+              receipt.coResidentRuns.push({ featureSource: input.featureSource, outputs: values });
+            } finally {
+              disposeOrtOutputs(outputs);
+              for (const tensor of Object.values(feeds)) tensor.dispose?.();
+            }
+          }
+        } finally {
+          try { await releaseOrtSession(decoderSession); }
+          catch (error) { receipt.cleanupErrors.push(String(error)); }
+        }
+      } catch (error) { receipt.coResidentError = String(error?.stack ?? error); }
     }
   } catch (error) { receipt.error = String(error?.stack ?? error); }
   finally {

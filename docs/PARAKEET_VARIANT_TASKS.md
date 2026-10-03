@@ -3435,4 +3435,50 @@ an encoder session and a WASM decoder session together and runs the full
 pipeline, while the replay holds only the encoder session. GPU allocation or
 buffer placement in that co-resident context is the remaining explanation.
 Separating it needs a paired run that also creates the decoder session in the
-replay.
+replay. That control is now implemented and has eliminated the hypothesis.
+
+### Session co-residency eliminated (2026-10-03)
+
+The last controlled hypothesis was tested in a real browser. An opt-in
+`--co-resident-decoder` holds a decoder session alongside the encoder and
+re-runs it, matching the hybrid's encoder-plus-decoder context. Receipt
+`tools/data/results/orukeet/browser-co-resident-jfk-2026-10-03.json`.
+
+| control | result |
+| --- | --- |
+| cross-session (two encoder sessions) | bitwise identical, max `0.0` |
+| co-resident decoder session | bitwise identical, max `0.0` |
+| `inputs_unchanged` | `true` |
+| decoder graph served and hash-bound | `true` (9 bound sources) |
+
+**Session co-residency is eliminated.** Holding a decoder session does not change
+the encoder's output by a single bit.
+
+The first attempt at this receipt reported `BROWSER_ENCODER_COMPONENT_FAIL`
+while both encoder gates passed. That was a defect in the new control, not a
+model finding: the decoder was appended to the source list *after* the source
+hashes were computed, so `inputs_unchanged` went false and the finalizer forced
+FAIL. The decoder is now resolved before hashing, so it is genuinely bound by
+`sources_sha256`, and the rerun reports `BROWSER_ENCODER_SENSITIVITY_MEASURED`.
+The failed receipt was deleted rather than kept as evidence of a non-existent
+failure; the harness defect is recorded here instead.
+
+**Where gate 2 now stands.** Every controlled variation tried leaves the encoder
+output bitwise identical, yet the two runs' encoder outputs differ by
+`1.1316e-6`:
+
+- differing feature tensors — eliminated, byte-identical
+- wrong frame binding — eliminated, frame 69 is the closest of all 138
+- output-transfer precision — eliminated, the tensor is already float32
+- encoder valid length — eliminated, 1101 would give `1.48e-2`
+- cross-session variability — eliminated, bitwise identical
+- session co-residency — eliminated, bitwise identical
+- resolved session options — equivalent by source, both `undefined`
+
+That inversion is itself the finding: the difference is **not reproducible by
+any controlled variation of the encoder's execution context**. The leading
+remaining explanation is no longer the encoder, but that the value the hybrid
+records as a head feed is not the encoder's raw output — something in the
+runtime path between encoder and head alters it. That is testable by
+instrumenting the encoder-to-head handoff in the library, not by further
+encoder-side experiments. The browser gate stays FAIL.

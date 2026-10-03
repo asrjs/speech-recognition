@@ -76,6 +76,30 @@ def evaluate_sensitivity(result, sample, backend):
             for _, first, second in pairs
             for name in first['outputs']
         )
+    resident = result.get('coResidentRuns') or []
+    if resident:
+        # Session co-residency: same encoder session, same graph, same options,
+        # but a decoder session now exists alongside it.
+        if [row.get('featureSource') for row in resident] != ['official', 'production-js']:
+            raise ValueError('Co-resident feature sources differ from the main runs')
+        resident_pairs = (('official', runs[0], resident[0]), ('production-js', runs[2], resident[1]))
+        resident_comparisons = {}
+        for label, first, second in resident_pairs:
+            if set(first['outputs']) != set(second['outputs']):
+                raise ValueError('Co-resident output sets differ')
+            resident_comparisons[label] = {
+                name: compare_tensors(np.asarray(first['outputs'][name]['data'], dtype=np.float32),
+                                      np.asarray(second['outputs'][name]['data'], dtype=np.float32),
+                                      atol=1e-5, rtol=1e-4)
+                for name in first['outputs']
+            }
+        result['co_resident_comparison'] = resident_comparisons
+        result['co_resident_bitwise_identical'] = all(
+            np.asarray(first['outputs'][name]['data'], dtype=np.float32).tobytes()
+            == np.asarray(second['outputs'][name]['data'], dtype=np.float32).tobytes()
+            for _, first, second in resident_pairs
+            for name in first['outputs']
+        )
     return result['official_encoder_pass']
 
 def main():
@@ -87,6 +111,7 @@ def main():
     parser.add_argument('--backend', choices=['webgpu', 'wasm'], required=True)
     parser.add_argument('--production-features', action='store_true', help='Measure actual JS feature sensitivity alongside the unchanged official-feature control')
     parser.add_argument('--cross-session', action='store_true', help='Opt-in: create a second identical encoder session and compare, testing cross-session variability that within-session repeats cannot cover')
+    parser.add_argument('--co-resident-decoder', action='store_true', help='Opt-in: hold a decoder session alongside the encoder and re-run it, testing whether session co-residency changes encoder output')
     parser.add_argument('--timeout-ms', type=int, default=240000)
     args = parser.parse_args()
     if not 1000 <= args.timeout_ms <= 600000:
@@ -97,6 +122,14 @@ def main():
         Path(__file__).with_name('browser_head_replay.py'), ROOT / 'dist/models/nemo-tdt/ort.js']
     if args.production_features:
         sources.append(ROOT / 'dist/audio/js-mel.js')
+    decoder_path = None
+    if args.co_resident_decoder:
+        # Resolved before hashing so the served graph is bound by sources_sha256
+        # and inputs_unchanged, not added after the fact.
+        decoder_path = ROOT / 'models/orukeet/onnx/fp32-packed-2026-10-01/decoder_joint-model.onnx'
+        if not decoder_path.is_file():
+            raise ValueError('Requested co-resident decoder graph is missing')
+        sources.append(decoder_path)
     require_new_outputs([args.output], protected_inputs=sources,
                         protected_directories=[ROOT / 'models', ROOT / 'src', ROOT / 'dist'])
     hashes = {str(path.resolve()): sha256(path) for path in sources}
@@ -112,6 +145,8 @@ def main():
                'shape': list(features.shape), 'length': valid}
     if args.cross_session:
         fixture['crossSession'] = True
+    if args.co_resident_decoder:
+        fixture['coResidentDecoder'] = True
     if args.production_features:
         fixture.update(pcmF32le=base64.b64encode(pcm.astype('<f4').tobytes()).decode('ascii'),
                        pcmSha256=sample['model_input']['sha256'])
@@ -125,6 +160,9 @@ def main():
     server.graph, server.backend = args.encoder, args.backend
     server.entrypoint = '/encoder-replay.mjs'
     server.extra_routes = {'/encoder-replay.mjs': module, '/encoder-model.onnx.data': data}
+    if decoder_path is not None:
+        server.extra_routes['/decoder-graph.onnx'] = decoder_path
+        receipt['scope'] += '; co-resident decoder session requested'
     server.http_events = receipt['http_events'] = []
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
