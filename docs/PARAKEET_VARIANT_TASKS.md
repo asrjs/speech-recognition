@@ -2240,3 +2240,32 @@ normalization only, not proof of a particular native/ORT kernel algorithm.
 Next test this explicit candidate inside a separate full-processor diagnostic
 against the same oracle, then expand fixtures and WASM/browser checks before
 any promotion. No backend, speed or whole-port claim follows from this result.
+
+### Full processor with explicit pairwise diagnostic (2026-10-03)
+
+The existing opt-in pairwise probe now also exports a separate full eight-output
+processor graph. `RealPairProcessor` accepts an explicit registered diagnostic
+normalizer module; its default remains the official helper. Four constructor
+tests cover default preservation, module registration, invalid injection and
+the existing unsupported processor contracts. This changes tools only.
+
+On the same pinned speech/silence PCM, the native pairwise full processor passes
+all stages against the native oracle; spectrum/power/mel/log-mel remain byte
+identical. Its features have zero tolerance mismatches, max3.337860107e-6.
+The full pairwise ONNX graph reduces official-oracle feature failures from
+10,575 to76, but remains FAIL at unchanged atol1e-5/rtol1e-4. Max error
+0.00012484192848205566, mean0.0000005949233135658844, first flattened index98;
+valid length4060 is exact. Candidate-native versus candidate-ONNX features
+also FAIL (80 mismatches). Spectrum/power/mel/log boundaries retain the same
+small errors as the baseline; improved normalization does not repair them.
+No particular FFT kernel or preemphasis cause is established by these taps.
+
+Graph165,766 bytes SHA256
+`59634de7379cba818dbb373594cae3ebab9d34c98cff276da2e044273bcc3d95`.
+Receipt: `nemo-processor-full-pairwise-speech-silence-2026-10-03.json`.
+Baseline graph hash and DIAGNOSTIC_TAPS_UNCHANGED are preserved; overall CLI
+still exits1 with PROCESSOR_EXPORT_FAIL. No production preset, processor,
+precision policy or tolerance change; WASM/WebGPU and ASR acceptance stay open.
+Next isolate the earliest remaining waveform/preemphasis/STFT boundary with
+identical-input controls, rather than tuning normalization to hide upstream
+errors. Expand the official fixture matrix after a candidate passes this gate.

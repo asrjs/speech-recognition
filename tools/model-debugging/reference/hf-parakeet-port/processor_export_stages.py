@@ -97,6 +97,45 @@ def run_normalization_control(processor, native, *, pairwise=False):
     return receipt
 
 
+def run_pairwise_processor_control(processor, waveform, length, native):
+    """Full candidate graph against the unchanged native processor, not promotion."""
+    import onnx
+    import onnxruntime as ort
+    import torch
+    from processor_real_pair import RealPairProcessor
+    from processor_pairwise_normalization import PairwiseNormalization
+
+    adapter = RealPairProcessor(processor, include_stages=True,
+        diagnostic_normalizer=PairwiseNormalization(processor.featurizer.pad_value)).eval()
+    with torch.no_grad():
+        candidate_native = [value.numpy() for value in adapter(waveform, length)]
+    native_metrics = compare_stages(native, candidate_native)
+    buffer = io.BytesIO()
+    axes = {'waveforms': {1: 'samples'}}
+    axes.update({name: {2: 'frames'} for name in ('features', 'spectrum', 'power', 'mel', 'log_mel')})
+    torch.onnx.export(adapter, (waveform[:, :1600], torch.tensor([1600], dtype=torch.long)),
+        buffer, opset_version=17, dynamo=False, input_names=['waveforms', 'waveforms_lens'],
+        output_names=list(NAMES), dynamic_axes=axes)
+    graph_bytes = buffer.getvalue()
+    onnx.checker.check_model(onnx.load_model_from_string(graph_bytes))
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 1
+    session = ort.InferenceSession(graph_bytes, options, providers=['CPUExecutionProvider'])
+    if session.get_providers() != ['CPUExecutionProvider']:
+        raise ValueError('Unexpected full pairwise processor execution provider')
+    actual = session.run(list(NAMES), {'waveforms': waveform.numpy(), 'waveforms_lens': length.numpy()})
+    metrics = compare_stages(native, actual)
+    passed = all(value['allclose'] for value in metrics.values())
+    return {'status': 'PASS' if passed else 'FAIL',
+        'official_native_vs_candidate_native': native_metrics,
+        'official_native_vs_onnx': metrics,
+        'candidate_native_vs_onnx': compare_stages(candidate_native, actual),
+        'first_tolerance_failure': next((name for name in ORDER if not metrics[name]['allclose']), None),
+        'graph_sha256': hashlib.sha256(graph_bytes).hexdigest(), 'graph_bytes': len(graph_bytes),
+        'providers': session.get_providers(),
+        'scope': 'Full fp32 processor on captured PCM, CPU only; excludes encoder/tokens/text/WASM/WebGPU'}
+
+
 def run_stage_control(processor, waveform, length, oracle_spectrum, expected_features,
                       baseline_features, baseline_length, *, pairwise=False):
     import numpy as np
@@ -134,7 +173,7 @@ def run_stage_control(processor, waveform, length, oracle_spectrum, expected_fea
     unchanged_lengths = compare_tensors(baseline_length, candidate[1], atol=0, rtol=0)
     unchanged = (baseline_features.tobytes() == candidate[0].tobytes()
                  and baseline_length.tobytes() == candidate[1].tobytes())
-    return {'status': 'DIAGNOSTIC_TAPS_UNCHANGED' if unchanged else 'DIAGNOSTIC_TAPS_CHANGED_OUTPUT',
+    receipt = {'status': 'DIAGNOSTIC_TAPS_UNCHANGED' if unchanged else 'DIAGNOSTIC_TAPS_CHANGED_OUTPUT',
         'native_spectrum_oracle': spectrum_control,
         'stage_comparisons': output_control,
         'first_tolerance_failure': next((name for name in ORDER if not output_control[name]['allclose']), None),
@@ -144,3 +183,6 @@ def run_stage_control(processor, waveform, length, oracle_spectrum, expected_fea
         'identical_input_normalization': run_normalization_control(processor, native, pairwise=pairwise),
         'graph_sha256': hashlib.sha256(graph_bytes).hexdigest(), 'graph_bytes': len(graph_bytes),
         'scope': 'Native adapter versus tapped ONNX CPU, not isolated identical-input operator or browser acceptance'}
+    if pairwise:
+        receipt['full_pairwise_processor'] = run_pairwise_processor_control(processor, waveform, length, native)
+    return receipt

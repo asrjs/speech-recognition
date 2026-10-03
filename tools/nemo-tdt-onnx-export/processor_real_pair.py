@@ -29,14 +29,15 @@
 """Explicit eval-only NeMo real-pair STFT export adapter.
 
 Arithmetic follows NeMo FilterbankFeatures (NVIDIA, Apache-2.0); official
-normalization and length helpers are reused, not substituted. No installed
+normalization and length helpers are reused by default. An explicit diagnostic
+normalizer can be injected for isolated export experiments. No installed
 source monkeypatch. This candidate must pass a captured oracle before use.
 """
 import torch
 
 
 class RealPairProcessor(torch.nn.Module):
-    def __init__(self, processor, *, include_stages=False):
+    def __init__(self, processor, *, include_stages=False, diagnostic_normalizer=None):
         super().__init__()
         f = processor.featurizer
         if f.training or f.use_grads or f.exact_pad or f.stft_pad_amount is not None:
@@ -45,6 +46,9 @@ class RealPairProcessor(torch.nn.Module):
             raise ValueError('Real-pair export requires no splicing/padding and per_feature normalization')
         self.featurizer = f
         self.include_stages = include_stages
+        if diagnostic_normalizer is not None and not isinstance(diagnostic_normalizer, torch.nn.Module):
+            raise TypeError('Diagnostic normalizer must be a torch module')
+        self.diagnostic_normalizer = diagnostic_normalizer
 
     def forward(self, waveform, length):
         from nemo.collections.asr.parts.preprocessing.features import normalize_batch
@@ -73,7 +77,10 @@ class RealPairProcessor(torch.nn.Module):
             else:
                 raise ValueError('Unsupported log guard')
         log_mel = x
-        x, mean, std = normalize_batch(x, valid, normalize_type=f.normalize)
+        if self.diagnostic_normalizer is None:
+            x, mean, std = normalize_batch(x, valid, normalize_type=f.normalize)
+        else:
+            x, mean, std = self.diagnostic_normalizer(x, valid)
         mask = torch.arange(x.size(-1), device=x.device).repeat(x.size(0), 1) >= valid.unsqueeze(1)
         features = x.masked_fill(mask.unsqueeze(1), f.pad_value)
         if self.include_stages:
