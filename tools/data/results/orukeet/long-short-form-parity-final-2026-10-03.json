@@ -1,0 +1,110 @@
+{
+  "status": "LONG_AND_SHORT_FORM_PARITY_PASS_FINAL",
+  "scope": "Final verified state after the encoder-layout ordering correction. Supersedes the resolution ordering in the first fix receipt, which is preserved as evidence. Native CPU fp32 library path on JFK and the 149.7 s fixture; no new weights, no tolerance change, no production-feature claim.",
+  "ordering_correction": {
+    "defect": "The first fix tested a padded time axis before the dims[1] equality case, so a time-major [1, frames, features] output with frames below the feature count would be read as padded feature-major.",
+    "rule_order": [
+      "dims[2] === encoded_lengths -> feature-major",
+      "dims[1] === encoded_lengths -> time-major",
+      "dims[2] > encoded_lengths and dims[1] <= encoded_lengths -> padded feature-major",
+      "dims[1] > encoded_lengths and dims[2] < encoded_lengths -> padded time-major",
+      "otherwise fail closed"
+    ],
+    "discriminating_test": "Removing both padded branches fails \"crops a padded feature-major encoder output to encoded_lengths\" (1 failed / 17 passed); with them 18 pass.",
+    "ambiguous_shapes_fail_closed": "A tensor whose axes cannot be resolved against encoded_lengths raises instead of guessing."
+  },
+  "fixture_verification": [
+    {
+      "name": "jfk-short",
+      "audio": "tools/data/fixtures/audio/jfk-short.wav",
+      "audio_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "official": "tools/data/results/orukeet/official-jfk-stage-summary-2026-09-30.json",
+      "official_sha256": "ea57573ce72df4577c8a507d36e25cea6379d4137a8f86299a757754b228b494",
+      "runtime": "node",
+      "version": "26.2.0",
+      "exit_code": 0,
+      "encoder_frames": 138,
+      "decode_iterations": 46,
+      "tokens": 38,
+      "total_ms": 931.808,
+      "token_ids_exact_match": true,
+      "transcript_exact_match": true,
+      "warnings": []
+    },
+    {
+      "name": "librivox-repeat8",
+      "audio": "tools/data/results/orukeet/librivox-repeat8-16k-pcm16-2026-10-02.wav",
+      "audio_sha256": "88f56304a0ee7843cab203ac23ebeaad37aadf93aeb92fa164095c476b0c5893",
+      "official": "tools/data/results/orukeet/official-long-repeat8-summary-2026-10-02.json",
+      "official_sha256": "29c5c2723bbe59f4fc1178b18d4162a28468653f0a1928b5a315b0aea14bdecd",
+      "runtime": "node",
+      "version": "26.2.0",
+      "exit_code": 0,
+      "encoder_frames": 1872,
+      "decode_iterations": 806,
+      "tokens": 722,
+      "total_ms": 17493.516,
+      "token_ids_exact_match": true,
+      "transcript_exact_match": true,
+      "warnings": [],
+      "official_joint_calls": 806
+    },
+    {
+      "name": "librivox-repeat8",
+      "audio": "tools/data/results/orukeet/librivox-repeat8-16k-pcm16-2026-10-02.wav",
+      "audio_sha256": "88f56304a0ee7843cab203ac23ebeaad37aadf93aeb92fa164095c476b0c5893",
+      "official": "tools/data/results/orukeet/official-long-repeat8-summary-2026-10-02.json",
+      "official_sha256": "29c5c2723bbe59f4fc1178b18d4162a28468653f0a1928b5a315b0aea14bdecd",
+      "runtime": "bun",
+      "version": "1.3.14",
+      "exit_code": 0,
+      "encoder_frames": 1872,
+      "decode_iterations": 806,
+      "tokens": 722,
+      "total_ms": 23179.795,
+      "token_ids_exact_match": true,
+      "transcript_exact_match": true,
+      "warnings": []
+    }
+  ],
+  "transcripts": {
+    "jfk_short": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+    "librivox_repeat8_characters": 1899
+  },
+  "regression_suite": {
+    "file": "tests/nemo-tdt-executor.test.ts",
+    "tests": 18,
+    "status": "PASS",
+    "layout_cases": [
+      "frames above features [1,3,6]",
+      "time-major below features [1,3,5]",
+      "padded feature-major [1,4,8] with encoded_lengths 5",
+      "ambiguous shape fails closed"
+    ]
+  },
+  "full_suite": {
+    "command": "npx vitest run",
+    "tests_passed": 1464,
+    "tests_skipped": 33,
+    "tests_failed": 0,
+    "files_passed": 189,
+    "files_skipped": 6
+  },
+  "limits": [
+    "Native CPU fp32 only; WASM and WebGPU long-form decoding remain UNTESTED.",
+    "The deferred production-feature gate is unchanged: library features still differ from the official engine at 313/140,928 JFK coordinates.",
+    "Timings are single runs and are not benchmarks."
+  ],
+  "provenance_sha256": {
+    "examples/nemo-tdt-native-local.mjs": "f8e28966d7d5a2210758eeb53cd6bfee0646b104cf6cd911f861aecc8a5ac9ab",
+    "src/models/nemo-tdt/executor.ts": "9a8b2ca789e2f51bae48d9ade343993be902d90d71a9738f6ff88dbe4809050f",
+    "tests/nemo-tdt-executor.test.ts": "2e929f8c18b5dc31fb5397678c25c479653b52d7d5832ecea20904d609fff06e",
+    "src/audio/js-mel.ts": "81f29b27f40a3ae8a5a4d4ab3387b4ec19b233d41efa4c89d7ee36d7755a1514",
+    "src/models/nemo-tdt/preprocessor.ts": "ea835fd18acba86fc08e99430b4da28d877a92592461cbd6b25b54f4a9478b9b",
+    "tools/model-debugging/reference/orukeet/runtime-config-jfk.json": "86a37498c6997ac14becffb21d1aef61a61420ec91d2f95a73f46d09d06b5aac",
+    "models/orukeet/onnx/fp32-packed-2026-10-01/encoder-model.onnx": "9924d5c30da5d54454dd3de6dbfc177aa771205eaac5da55d8f05ec813036f17",
+    "models/orukeet/onnx/fp32-packed-2026-10-01/decoder_joint-model.onnx": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90",
+    "models/orukeet/onnx/fp32-packed-2026-10-01/vocab.txt": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742"
+  },
+  "supersedes": "tools/data/results/orukeet/long-repeat8-end-to-end-parity-2026-10-03.json"
+}

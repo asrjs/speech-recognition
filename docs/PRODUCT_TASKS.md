@@ -37,6 +37,20 @@ Reusable lesson recorded as step 8 of the
 verify a port on a clip longer than the encoder feature dimension, not only a
 short fixture.
 
+Follow-up: the first fix tested a padded time axis before the
+`dims[1] === encoded_lengths` equality case, so a time-major output whose frames
+stay below the feature count could be read as padded feature-major. The final
+order is equality-first, then the two padded cases, then fail closed. Layout
+regressions now cover frames-above-features, time-major-below-features,
+padded-crop and ambiguity; removing the padded branches fails the padded test
+(1 failed / 17 passed) and the file passes 18.
+
+Final verified state on the corrected ordering: JFK 38/38 tokens and exact text;
+the 149.7 s fixture 722/722 tokens, exact text, 1872 frames and 806 decode
+iterations on both Node and Bun. Receipt
+`tools/data/results/orukeet/long-short-form-parity-final-2026-10-03.json`
+supersedes the first-fix receipt, which is preserved.
+
 ## C26 — Frontend conformance gate policy for future ports
 
 Status: EVIDENCE RECORDED from existing receipts, decision left open. No new

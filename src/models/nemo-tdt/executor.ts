@@ -684,6 +684,9 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     // feature dimension (1024 frames, about 82 s at the 10 ms/8x NeMo stride)
     // otherwise flips the inference and feeds a transposed tensor to the
     // decoder, which rejects it as "Got: <frames> Expected: <features>".
+    // Equality is tested before the padded-axis cases so that a time-major
+    // [1, frames, features] output whose frames stay under the feature count
+    // is not mistaken for a padded feature-major tensor.
     let encoderIsBdt: boolean;
     let featureSize: number;
     let frameCount: number;
@@ -691,11 +694,19 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       encoderIsBdt = (dims[1] ?? 0) > (dims[2] ?? 0);
       featureSize = encoderIsBdt ? dims[1]! : dims[2]!;
       frameCount = encoderIsBdt ? dims[2]! : dims[1]!;
-    } else if (dims[2] === encodedFrameCount || dims[2]! > encodedFrameCount) {
+    } else if (dims[2] === encodedFrameCount) {
       encoderIsBdt = true;
       featureSize = dims[1]!;
       frameCount = encodedFrameCount;
-    } else if (dims[1] === encodedFrameCount || dims[1]! > encodedFrameCount) {
+    } else if (dims[1] === encodedFrameCount) {
+      encoderIsBdt = false;
+      featureSize = dims[2]!;
+      frameCount = encodedFrameCount;
+    } else if ((dims[1] ?? 0) <= encodedFrameCount && (dims[2] ?? 0) > encodedFrameCount) {
+      encoderIsBdt = true;
+      featureSize = dims[1]!;
+      frameCount = encodedFrameCount;
+    } else if ((dims[2] ?? 0) < encodedFrameCount && (dims[1] ?? 0) > encodedFrameCount) {
       encoderIsBdt = false;
       featureSize = dims[2]!;
       frameCount = encodedFrameCount;

@@ -81,11 +81,14 @@ Aggregation receipt:
 
 None of these ports met `atol=1e-5, rtol=1e-4` per coordinate against the
 official engine, and all of them ship. Orukeet's frontend deviation is the
-smallest recorded here. Treat the per-coordinate gate as informational
-conformance data; port acceptance is transcript, token, decoder and end-to-end
-parity plus the browser gates. A failing coordinate gate on a constant-input
-silence fixture points at reduction arithmetic, not spectrum fidelity — report
-it separately rather than opening an FFT investigation.
+smallest recorded here. Report the coordinate gate as recorded conformance data
+and keep its status honest, but do not silently drop it: whether that gate
+binds for a specific port is an explicit decision, not a side effect of how a
+metric reads. The default port acceptance evidence used by the shipped ports is
+transcript, token, decoder and end-to-end parity plus the browser gates. A
+failing coordinate gate on a constant-input silence fixture points at reduction
+arithmetic, not spectrum fidelity — report it separately rather than opening an
+FFT investigation.
 
 ### 4. Only then run end-to-end Node parity
 

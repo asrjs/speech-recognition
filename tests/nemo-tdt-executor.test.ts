@@ -186,6 +186,8 @@ function createExecutorHarness(options: {
   readonly batching?: boolean;
   readonly sessionProviders?: { readonly encoder: string; readonly decoder: string };
   readonly encodedLengths?: readonly number[];
+  readonly encoderLayout?: 'bdt' | 'btd';
+  readonly paddedFrames?: number;
 }) {
   const config = parseNemoTdtConfig('test-nemo-tdt', {
     subsamplingFactor: 4,
@@ -199,15 +201,23 @@ function createExecutorHarness(options: {
   const tokenizer = new ParakeetTokenizer(options.vocab ?? ['<blk>', '▁hello', '▁world']);
   const frameCount = options.frameCount ?? 3;
   const featureSize = options.featureSize ?? 4;
-  const encoderData = new Float32Array(featureSize * frameCount);
+  const layout = options.encoderLayout ?? 'bdt';
+  const paddedFrames = options.paddedFrames ?? frameCount;
+  const encoderDims =
+    layout === 'bdt' ? [1, featureSize, paddedFrames] : [1, paddedFrames, featureSize];
+  const encoderData = new Float32Array(featureSize * paddedFrames);
   for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
     for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
-      encoderData[featureIndex * frameCount + frameIndex] = frameIndex + featureIndex / 10;
+      const value = frameIndex + featureIndex / 10;
+      if (layout === 'bdt') {
+        encoderData[featureIndex * paddedFrames + frameIndex] = value;
+      } else {
+        encoderData[frameIndex * featureSize + featureIndex] = value;
+      }
     }
   }
-
   const encoderSession = new MockEncoderSession(
-    new MockTensor(encoderData, [1, featureSize, frameCount]),
+    new MockTensor(encoderData, encoderDims),
     options.encodedLengths
       ? new MockTensor(
           BigInt64Array.from(options.encodedLengths.map((value) => BigInt(value))),
@@ -350,6 +360,64 @@ describe('nemo-tdt executor decode loop', () => {
       expect(observedFeedDims).toEqual(['1,3,1']);
       expect(result.utteranceText).toBe('hello');
       expect(result.debug?.tokenIds).toEqual([1]);
+    } finally {
+      await harness.executor.dispose();
+    }
+  });
+  it('keeps the feature axis for a time-major encoder output with fewer frames than features', async () => {
+    const harness = createExecutorHarness({
+      frameCount: 3,
+      featureSize: 5,
+      encoderLayout: 'btd',
+      encodedLengths: [3],
+      logits: [
+        { logits: [0.1, 10.0, 0.0, 8.0, 1.0, 0.5] },
+        ...Array.from({ length: 4 }, () => ({ logits: [9.0, 0.0, 0.0, 8.0, 1.0, 0.0] })),
+      ],
+    });
+
+    try {
+      const result = await harness.executor.transcribe(
+        createAudio(),
+        { returnTokenIds: true },
+        {} as never,
+      );
+
+      // [1, 3, 5] with encoded_lengths 3 must not be read as a padded
+      // feature-major tensor, which would feed the 3-frame axis as features.
+      const observedFeedDims = [
+        ...new Set(harness.decoderSession.encoderFeedDims.map((dims) => dims.join(','))),
+      ];
+      expect(observedFeedDims).toEqual(['1,5,1']);
+      expect(result.utteranceText).toBe('hello');
+    } finally {
+      await harness.executor.dispose();
+    }
+  });
+
+  it('crops a padded feature-major encoder output to encoded_lengths', async () => {
+    const harness = createExecutorHarness({
+      frameCount: 5,
+      featureSize: 4,
+      paddedFrames: 8,
+      encodedLengths: [5],
+      logits: [
+        { logits: [0.1, 10.0, 0.0, 8.0, 1.0, 0.5] },
+        ...Array.from({ length: 6 }, () => ({ logits: [9.0, 0.0, 0.0, 8.0, 1.0, 0.0] })),
+      ],
+    });
+
+    try {
+      const result = await harness.executor.transcribe(
+        createAudio(),
+        { returnTokenIds: true, returnFrameIndices: true },
+        {} as never,
+      );
+
+      expect([
+        ...new Set(harness.decoderSession.encoderFeedDims.map((dims) => dims.join(','))),
+      ]).toEqual(['1,4,1']);
+      expect(result.debug?.frameIndices).toEqual([0]);
     } finally {
       await harness.executor.dispose();
     }
