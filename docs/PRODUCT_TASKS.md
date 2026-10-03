@@ -91,6 +91,20 @@ were verified. Baseline formatting warnings outside new test hunks remain
 unchanged. Built-in key isolation is accepted; real browser persistence remains
 an explicit next integration rung, not implied by injected cache tests.
 
+Real Chrome persistence rung (2026-10-03): PASS using
+`python tests/smoke/hf-cache-browser-smoke.py --output <new-receipt.json>`.
+Chrome154 fresh context seeds legacy wrong pinned bytes and compatible main
+bytes, intercepts one tiny pinned response, then reloads the same origin with
+all remote requests blocked. Pinned text persists in real IndexedDB, main text
+is reused, and both old entries remain unchanged. No blocked request/page error;
+owned preview closure confirms ECONNREFUSED. Receipt:
+`tools/data/results/harness/hf-cache-real-chrome-bound-2026-10-03.json`.
+Source, tool and in-memory bundle hashes are bound; no model download or sibling
+mutation. This exercises internal production helpers, not published imports,
+real HF/TLS, model inference, cross-browser or browser-restart persistence.
+Existing-output preflight rejects before build/browser; optimized Python is
+rejected because it would disable assertions.
+
 ## C16 — Caller cancellation during a coalesced model load
 
 Status: PASS — cooperative pipeline wait/cache cancellation contract;
