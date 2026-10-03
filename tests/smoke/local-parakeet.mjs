@@ -1,0 +1,109 @@
+/** Family-owned browser smoke: all inference and decoding stay in the public library API. */
+import {
+  createSpeechModelLocalEntries,
+  loadSpeechModelFromLocalEntries,
+} from '@asrjs/speech-recognition/browser';
+import { matchesSmokeTranscript } from './smoke-transcript.mjs';
+
+const field = (id) => document.getElementById(id);
+field('run').addEventListener('click', async () => {
+  const receipt = { status: 'FAIL_LOCAL_HYBRID_SMOKE', disposed: false, results: [] };
+  let model;
+  let audioContext;
+  field('run').disabled = true;
+  field('status').textContent = 'Running';
+  try {
+    const files = [...field('model').files];
+    const audio = field('audio').files[0];
+    const expected = field('expected').value.trim();
+    if (!files.length || !audio || !expected)
+      throw new Error('Model, audio and expected phrase required');
+    if (!crossOriginIsolated) throw new Error('Cross-origin isolation required');
+    const adapter = await navigator.gpu?.requestAdapter();
+    if (!adapter) throw new Error('WebGPU adapter required');
+    receipt.adapter = {
+      vendor: adapter.info.vendor,
+      architecture: adapter.info.architecture,
+      device: adapter.info.device,
+      fallback: adapter.info.isFallbackAdapter,
+    };
+    const configResponse = await fetch('/harness/local-engine.json');
+    if (!configResponse.ok) throw new Error('Local engine configuration unavailable');
+    const engine = await configResponse.json();
+    receipt.engine = engine;
+    const loadStart = performance.now();
+    model = await loadSpeechModelFromLocalEntries({
+      modelId: 'parakeet-tdt-0.6b-v3',
+      entries: createSpeechModelLocalEntries(files),
+      backend: 'webgpu-hybrid',
+      encoderBackend: 'webgpu',
+      decoderBackend: 'wasm',
+      encoderQuant: field('precision').value,
+      decoderQuant: 'fp32',
+      preprocessorBackend: 'js',
+      wasmPaths: engine.wasmPaths,
+    });
+    receipt.loadMs = performance.now() - loadStart;
+    receipt.selection = model.selection;
+    audioContext = new AudioContext({ sampleRate: 16000 });
+    const decoded = await audioContext.decodeAudioData(await audio.arrayBuffer());
+    if (decoded.numberOfChannels !== 1 || decoded.sampleRate !== 16000) {
+      throw new Error('Smoke fixture must decode to mono 16kHz');
+    }
+    const pcm = decoded.getChannelData(0);
+    const digest = await crypto.subtle.digest('SHA-256', pcm);
+    receipt.audio = {
+      samples: pcm.length,
+      sampleRate: decoded.sampleRate,
+      pcmSha256: [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join(''),
+    };
+    for (let iteration = 0; iteration < 2; iteration++) {
+      const start = performance.now();
+      const result = await model.transcribeMonoPcm(pcm, 16000);
+      receipt.results.push({
+        text: result.text,
+        meta: result.meta,
+        wallMs: performance.now() - start,
+      });
+      if (
+        result.meta.metrics?.encoderBackend !== 'webgpu' ||
+        result.meta.metrics?.decoderBackend !== 'wasm'
+      ) {
+        throw new Error('Actual component providers do not match requested hybrid placement');
+      }
+      if (!matchesSmokeTranscript(result.text, expected))
+        throw new Error('Full normalized transcript differs from expected smoke phrase');
+    }
+    if (receipt.results[0].text !== receipt.results[1].text)
+      throw new Error('Repeated transcript differs');
+    receipt.inferencePassed = true;
+  } catch (error) {
+    receipt.error = String(error);
+  } finally {
+    try {
+      if (model) {
+        await model.dispose();
+        receipt.disposed = true;
+      }
+    } catch (error) {
+      receipt.cleanupError = String(error);
+    }
+    try {
+      if (audioContext) await audioContext.close();
+    } catch (error) {
+      receipt.audioCleanupError = String(error);
+    }
+    if (
+      receipt.inferencePassed &&
+      receipt.disposed &&
+      !receipt.error &&
+      !receipt.cleanupError &&
+      !receipt.audioCleanupError
+    ) {
+      receipt.status = 'PASS_LOCAL_HYBRID_SMOKE';
+    }
+    field('result').textContent = JSON.stringify(receipt, null, 2);
+    field('status').textContent = receipt.status;
+    field('run').disabled = false;
+  }
+});

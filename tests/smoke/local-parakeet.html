@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>Local Parakeet public API smoke</title>
+  <h1>Local Parakeet public API smoke</h1>
+  <p>Real local hybrid inference and awaited disposal, not numerical model parity.</p>
+  <label for="model">Model files</label
+  ><input id="model" type="file" multiple />
+  <label for="audio">Audio fixture</label
+  ><input id="audio" type="file" accept="audio/*" />
+  <label for="precision">Encoder precision</label>
+  <select id="precision">
+    <option value="fp32">fp32</option>
+    <option value="fp16">fp16</option>
+  </select>
+  <label for="expected">Expected smoke phrase</label
+  ><input id="expected" type="text" />
+  <button id="run">Load, transcribe twice and dispose</button>
+  <p id="status" role="status">Ready</p>
+  <pre id="result"></pre>
+  <script type="module" src="/harness/local-parakeet.js"></script>
+</html>

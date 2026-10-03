@@ -2418,3 +2418,46 @@ inference, numerical parity or performance claim. The companion still does not
 pass `wasmPaths`. Next connect the public local-loader API to this prefix in an
 owned harness page and run stock-v3 real hybrid inference, preserving the
 separate Orukeet fp32 feature/encoder/token/text gates.
+
+### Public local hybrid inference checkpoint (2026-10-03)
+
+The owned `tests/smoke/local-parakeet.html` page now uses only public browser
+local-loader and transcription APIs, not a duplicate decoder. The opt-in
+companion preview bundles it in memory with separate worker asset names.
+NeMo TDT preserves initialized encoder/decoder/joint session providers through
+the canonical transcript metrics. These describe selected session providers,
+not per-node GPU placement; WebGPU shape nodes can still run on CPU.
+
+Reproduce with existing local stock-v3 assets (no downloads):
+
+```powershell
+C:/Python311/python.exe tests/smoke/local-parakeet-smoke.py --consumer-root N:/github/asrjs/browser-demo --model-root N:/models/onnx/nemo/parakeet-tdt-0.6b-v3-onnx --audio N:/github/asrjs/browser-demo/src/assets/Harvard-L2-1.ogg --expected-phrase 'The boy was there when the sun rose' --encoder-precision fp16 --output tools/data/results/harness/local-public-hybrid-v3-final-2026-10-03.json
+```
+
+Choose a fresh output filename for every rerun: existing receipts are never
+overwritten. Expected text must match the whole normalized transcript, not a
+substring. Normalization ignores case/punctuation only; this is a smoke check,
+not WER normalization or original-engine numerical parity.
+
+Final receipt `local-public-hybrid-v3-final-2026-10-03.json`: PASS in Chrome
+154.0.8037.93; two identical transcripts, WebGPU encoder + WASM decoder/joint,
+awaited disposal, no blocked requests/page errors, inputs unchanged, owned
+preview process stopped and listener refused connections. Observed engine and
+bundle paths were re-fetched from the immutable server snapshot and checked
+against byte counts/SHA-256 (not CDP capture of every original response body).
+Model identity is caller-selected with recorded file hashes, not certification
+against an upstream stock-v3 manifest. Load7482ms; first2068ms/second261ms wall
+times are observations, not matched performance optimization evidence.
+
+TypeScript check,69 targeted simulated/component tests,7 Node harness guards
+and5 Python preflight/probe tests pass. Earlier negative receipts are retained:
+missing canonical provider forwarding, unavailable pthread CDP body IDs and an
+inconclusive Python socket closure probe were harness/API issues, not evidence
+of model parity failure. Cleanup now requires Node ECONNREFUSED; unknown probe
+errors fail closed.
+
+Scope remains stock-v3 control with existing fp16 assets: no Orukeet fp16
+promotion, numerical parity, cancellation, memory/VRAM or soak acceptance.
+The sibling app source remains untouched and still needs authorized integration
+of its local `wasmPaths` option. Next model task remains the earliest Orukeet
+fp32 feature divergence, followed by encoder/token/text and browser gates.

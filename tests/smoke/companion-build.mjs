@@ -126,6 +126,51 @@ if (serve) {
       assets.set(path, bytes);
     }
     publicAssets.push(...engine.receipt);
+    const harness = await build({
+      ...config,
+      root: repository,
+      configFile: false,
+      publicDir: false,
+      worker: {
+        ...config.worker,
+        rollupOptions: {
+          output: {
+            entryFileNames: 'harness-workers/[name]-[hash].js',
+            chunkFileNames: 'harness-workers/[name]-[hash].js',
+            assetFileNames: 'harness-workers/[name]-[hash][extname]',
+          },
+        },
+      },
+      cacheDir: resolve(repository, 'tools/data/results/harness/companion-build-cache'),
+      build: {
+        write: false,
+        emptyOutDir: false,
+        rollupOptions: {
+          input: resolve(repository, 'tests/smoke/local-parakeet.mjs'),
+          output: {
+            entryFileNames: 'harness/local-parakeet.js',
+            chunkFileNames: 'harness/[name]-[hash].js',
+            assetFileNames: 'harness/[name]-[hash][extname]',
+          },
+        },
+      },
+    });
+    const addHarnessAsset = (fileName, bytes) => {
+      assert(!assets.has(`/${fileName}`), `Preview harness asset collision: ${fileName}`);
+      assets.set(`/${fileName}`, bytes);
+      publicAssets.push({ fileName, bytes: bytes.length, sha256: hash(bytes) });
+    };
+    for (const { fileName, code, source } of harness.output) {
+      addHarnessAsset(fileName, Buffer.from(code ?? source ?? ''));
+    }
+    addHarnessAsset(
+      'harness/local-parakeet.html',
+      await readFile(resolve(repository, 'tests/smoke/local-parakeet.html')),
+    );
+    addHarnessAsset(
+      'harness/local-engine.json',
+      Buffer.from(JSON.stringify({ version: engine.version, wasmPaths: engine.prefix })),
+    );
   }
   if (publicRoot) {
     const entries = await readdir(publicRoot, { withFileTypes: true }).catch((error) => {
@@ -187,7 +232,8 @@ if (serve) {
       url: `http://127.0.0.1:${address.port}`,
       publicAssets,
       ...(engine ? { engine: { version: engine.version, wasmPaths: engine.prefix } } : {}),
-      scope: 'In-memory build, top-level public files and explicitly opted-in JSEP pair; no inference certification',
+      scope:
+        'In-memory build, top-level public files and explicitly opted-in JSEP pair; no inference certification',
     }),
   );
   for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => server.close());
