@@ -3193,11 +3193,14 @@ shows the execution residual (`1.326203e-6`) exceeds the feature effect
 (`9.797513e-7`), and all controls pass the unchanged gate.
 
 The remaining `1.1316e-6` discrepancy between the live hybrid feed and the
-encoder-sensitivity run is **UNVERIFIED in three dimensions**, not bounded:
+encoder-sensitivity run was tracked as **UNVERIFIED in three dimensions**.
+Subsequent evidence closed two of them and ruled out a fourth candidate:
 
-- **UNVERIFIED — the encoder feature tensor itself.** Equal PCM and equal
-  static processor options do not prove equal features. The replay records its
-  production features; the hybrid run does not record what it fed the encoder.
+- **CLOSED — the encoder feature tensor itself.** Equal PCM and equal static
+  options do not prove equal features, so the library's own production
+  features were computed from the PCM both runs hashed and compared against the
+  replay's recorded tensor: **byte-identical**, 140,928 cells, max absolute
+  error 0, identical valid length. See the feature-identity entry below.
 - **UNVERIFIED — the resolved session options.** The hybrid passes
   `signal`, `enableProfiling: resolved.enableProfiling` and
   `webgpuOptions: resolved.webgpuOptions` into `createOrtSession`. Those
@@ -3206,6 +3209,10 @@ encoder-sensitivity run is **UNVERIFIED in three dimensions**, not bounded:
 - **UNVERIFIED — cross-session variability.** Each run repeats bitwise-exactly
   *within itself*, which rules out its own nondeterminism but says nothing
   about variation between two separately created sessions.
+- **RULED OUT — output-transfer precision.** The recorded encoder tensor is
+  already float32, so a float32 transfer cannot introduce `1.1316e-6`. The
+  frame binding is also re-confirmed: the closest of all 138 recorded frames
+  to the live feed is frame 69, not an off-by-one.
 
 Verified identical: PCM hash
 `ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`; encoder
@@ -3326,3 +3333,66 @@ mismatch count and gate verdict matches. This is rounding, not parity, and is
 recorded as such.
 37 model-neutral tests pass, including two new ones for the oracle-baseline
 contract.
+
+### Feature-tensor identity eliminated (2026-10-03)
+
+One of the three UNVERIFIED dimensions for the browser gate is now closed by
+evidence rather than left open: the two real-browser runs **fed the encoder
+identical feature tensors**.
+
+`tools/nemo-tdt-onnx-export/library_feature_identity.mjs` computes the
+library's own production features from the local `jfk-short.wav` — whose
+decoded f32le PCM hashes to `ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`,
+the exact `pcmSha256` both browser runs recorded — and compares them element by
+element against the tensor the encoder-sensitivity replay stored in
+`browser-production-feature-encoder-jfk-2026-10-03.json`.
+
+Result: **byte-identical**, 140,928 cells, max absolute error 0, no divergent
+index, and identical valid length 1100. The library pipeline and the replay's
+inline `JSMelProcessor` produce the same tensor, so "the two runs fed different
+features" is ruled out as an explanation for the `1.1316e-6` encoder-output
+difference.
+
+What remains, in order of testability:
+
+1. **Resolved session options.** The hybrid passes `enableProfiling` and
+   `webgpuOptions` into `createOrtSession`; neither resolved value was ever
+   captured in either receipt.
+2. **Cross-session GPU variability.** The hybrid creates an encoder session
+   and a WASM decoder session together; the replay creates only the encoder
+   session. Within-run repeats are bitwise exact, which does not cover
+   variation between separately created sessions.
+3. **Output transfer path.** The replay reads encoder outputs directly; the
+   hybrid routes them through the runtime into the WASM decoder before the head
+   consumes them.
+
+Only item 1 and 2 require a new browser run; item 3 may be testable from
+recorded data. No tolerance moved, and the browser gate stays FAIL.
+
+### Transfer-path hypothesis also eliminated (2026-10-03)
+
+Of the three remaining candidates, the third is now ruled out from recorded
+data alone. The encoder-output transfer cannot explain a `1.1316e-6` difference,
+because the recorded tensor is **already float32**: a float32 to float32 copy
+is exact and cannot introduce that error. Reading
+`browser-production-feature-encoder-jfk-2026-10-03.json`, the production-JS run's
+`outputs.outputs` is `dtype: float32`, so any downstream readback is a no-op on
+precision.
+
+The frame binding is also re-confirmed independently: searching all 138
+recorded production-run frames for the one closest to the live call-20 feed
+returns **frame 69** at `1.1316e-6`, so the live feed is the same frame and not
+an off-by-one.
+
+That leaves exactly two candidates, and both need a new browser run:
+
+1. **Resolved session options** — `enableProfiling` and `webgpuOptions` values
+   were never captured in either receipt.
+2. **Cross-session GPU variability** — the hybrid holds an encoder session and
+   a WASM decoder session together; the replay holds only the encoder session.
+   Within-run bitwise-exact repeats do not cover variation between separately
+   created sessions.
+
+Three of the five candidate explanations for the browser-gate discrepancy are
+now eliminated by evidence: differing feature tensors, a wrong frame binding,
+ and output-transfer precision. The gate stays FAIL and no tolerance moved.
