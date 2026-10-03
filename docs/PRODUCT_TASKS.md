@@ -451,3 +451,28 @@ external shell-based helper and route.fetch interception proved unsuitable;
 response hashing now observes original browser requests, not proxy requests.
 This certifies synthetic windowing in a real browser only, not model accuracy,
 GPU execution, token detail or sibling consumers. Those gates remain open.
+
+## C13 — Compact public-root consumer bundles
+
+Status: PARTIAL PASS — source consumer bundle closure, not inference acceptance.
+
+Run `node tests/smoke/compact-browser-bundle.mjs` for a stdout-only receipt and
+`node --test tests/smoke/compact-browser-bundle.test.mjs` for four regressions.
+Installed esbuild (through the existing development toolchain) bundles two
+public-root imports in memory: createSpeechRuntime is 22,074 bytes and
+transcribeWithWindowing is 17,971 bytes, minified browser ESM. Each has a
+32,768-byte regression budget; this is not a universal application size target.
+Both retain no model/preset, ORT engine or native backend code and no external
+imports. Metafile visited inputs are not confused with retained bytes.
+
+The tool hashes JS/TS bytes supplied to esbuild and rechecks them after both
+builds, plus root package metadata and its own source. Receipts include actual
+esbuild version and bundle hashes. This is not exhaustive dependency-resolution
+metadata provenance. Nothing is emitted to dist, and no dependency is installed.
+Negative tests reject family/engine/native retention, Windows path variants,
+external imports, exceeded budgets and missing/malformed output evidence.
+Syntax, four tests and formatting pass. These tests use Node's test runner;
+the existing Vitest glob does not include them.
+
+Still open: published-package consumer bundles, startup cost and application
+integration. No production optimization, model inference or WebGPU claim.
