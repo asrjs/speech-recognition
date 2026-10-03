@@ -24,7 +24,34 @@ So the remaining work is real: a ParakeetForCTC feature extractor, a CTC decodin
 family for this vocabulary/tokenizer, then a preset, local adapter and port
 manifest so it gets the same digest-bound oracle checks as Orukeet.
 
+**Frontend parity BLOCKED, localized.** `src/models/parakeet-ctc/frontend.ts`
+encodes the official contract (80 bins, n_fft 512, hop 160, win 400, 0.97
+preemphasis, hann-symmetric, centered STFT, HTK mel with slaney norm, power
+spectra, `log(mel + 2^-24)`, `[frames, mels]`). Measured against the official
+numpy extractor on JFK it does not yet agree: max abs `16.63`, mean abs `2.25`
+over 88,000 coordinates, with no frame shift improving it (shift 0/±1 all
+similar), so this is arithmetic scale, not alignment.
+
+Two localized causes:
+
+1. **Slaney filterbank scale.** Both sides log power spectra and hit the same
+   floor (`-16.6355`), but ours is uniformly lower: official frame 500 mel 0 is
+   `-6.402` versus `-13.652` here, a roughly constant ~7 log-unit offset
+   (about 1100x). The shared HTK+slaney filterbank in `src/models/lasr-ctc/mel.ts`
+   most likely omits or mis-scales librosa's slaney area normalization. This is
+   shared code used by the LASR and GigaAM CTC frontends, so changing it needs
+   its own scoped change with regressions for those families.
+2. **Frame count clamp.** The official centered STFT yields 1101 frames for the
+   JFK fixture; our `validFrameCount` clamps to 1100 and discards the final
+   centered frame. Same shared-code caveat.
+
+The oracle transcript for this model is
+`And so, my fellow Americans, askk not what your country can do for you. Ask
+what you can do for your country.` ("askk" is the model's own output). No preset,
+adapter or manifest is registered, so nothing ships on unverified features.
+
 Receipt: `tools/data/results/parakeet-ctc/parakeet-ctc-110m-en-export-2026-10-04.json`.
+Feature measurements: `parakeet-ctc-frontend-parity-2026-10-04.json`.
 
 Note on `primeline/parakeet-primeline`: verified it has **no config.json at all**,
 only a `2_95_WER.nemo` checkpoint and a README. Its distillation status and

@@ -1,0 +1,30 @@
+{
+  "status": "FRONTEND_PARITY_FAIL_LOCALIZED",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "compared_coordinates": 88000,
+  "max_abs_error": 16.634673297405243,
+  "mean_abs_error": 2.2467289652786837,
+  "frame_shift_probe": {
+    "0": 16.634673297405243,
+    "+1": 16.7274831533432,
+    "-1": 16.204923570156097,
+    "conclusion": "no shift helps, so arithmetic scale not alignment"
+  },
+  "sample_frame_500": {
+    "official_mel0": -6.402,
+    "ours_mel0": -13.652,
+    "note": "roughly constant ~7 log-unit offset, about 1100x"
+  },
+  "shared_floor": {
+    "official_min": -16.63553237915039,
+    "ours_min": -16.63553237915039,
+    "conclusion": "log guard semantics agree; both use log(mel + 2^-24)"
+  },
+  "localized_causes": [
+    "Slaney filterbank scale in src/models/lasr-ctc/mel.ts likely omits or mis-scales the librosa slaney area normalization; shared with LASR and GigaAM CTC frontends.",
+    "validFrameCount clamps to 1100 frames while the official centered STFT yields 1101 for this fixture."
+  ],
+  "oracle_transcript": "And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+  "shipped": "nothing: no preset, adapter or manifest registered for this model"
+}
