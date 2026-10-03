@@ -3617,18 +3617,26 @@ execution**, and the following are already excluded:
 - feature tensor — byte-identical, directly observed
 - valid length — 1100 in both, directly observed
 - frame binding — frame 69 on both sides
-- session options — deterministic from the same effective arguments by source
+- graph and weight bytes — same artifact-dir files, hash-validated before serving
 - cross-session, cross-run, co-residency, transfer precision — each measured
   and bitwise-exact
+- session options — **unverified**, not excluded. Source reading suggests they
+  are identical, but they have never been captured in either path.
 
-Not yet captured: the hybrid's actually resolved ORT session options as
-constructed, and any encoder-session configuration the library applies that the
-standalone path does not. Capturing the options object handed to
-`InferenceSession.create` in both paths, in-browser, is the next bounded
-experiment; it needs no library change, only a runner-side wrapper.
+Capturing the resolved options object handed to `InferenceSession.create` in both
+paths, in-browser, is the next bounded experiment; it needs no library change,
+only a runner-side wrapper.
 
-A clue narrows that experiment. Placed on the same axis, the encoder outputs
-differ in how far each sits from the recorded official encoder tensor:
+Confirmed by inspection rather than left open: the hybrid serves the same
+encoder graph and the same external-data file the standalone path binds.
+`browser_recurrent_replay.py` routes `/encoder-model.onnx` to the artifact-dir
+graph and `/encoder-model.onnx.data` to the artifact-dir data, and validates
+that file against the repack receipt's name, size and SHA-256 before serving.
+The standalone replay serves `--encoder` plus its `.data` sibling. Both are the
+same bytes, so "different weights or graph" is excluded.
+
+A clue, stated only as far as it goes. Placed on the same axis, the encoder
+outputs differ in how far each sits from the recorded official encoder tensor:
 
 | execution | vs official encoder |
 | --- | ---: |
@@ -3637,13 +3645,19 @@ differ in how far each sits from the recorded official encoder tensor:
 | native CPU, production-JS features | `4.917383e-7` |
 | **hybrid browser run, frame 69** | `1.4566e-6` |
 
-The hybrid sits about four times farther from the official encoder than the
-standalone WebGPU replay does. That is the opposite of what a merely noisy
-extra allocation would produce, and it means the hybrid path is not the
-standalone path plus noise — something in the hybrid execution changes the
-encoder result systematically. Whatever the session-options capture returns, the
-next attempt should also verify that the hybrid serves and loads the same
-encoder graph bytes the standalone path binds.
+An earlier revision of this entry claimed the hybrid "changes the encoder result
+systematically" because its residual is about four times the standalone
+replay's. **That inference was wrong and is withdrawn.** Comparing two error
+magnitudes distinguishes nothing: a larger residual is entirely compatible with
+additive noise on an otherwise identical path. Three deterministic executions
+are separated by a factor of a few in distance-from-official, and that fact
+alone carries no information about whether the mechanism is noise, a session
+option, or something else.
+
+What the table does establish is only the ordering of the measurements
+themselves, which is why the next experiments remain: capture the resolved ORT
+session options in each path, and confirm the served graph bytes are identical.
+Both were done after this entry and are recorded below.
 
 The gate stays FAIL, and `1.1316e-6` is **unexplained** again — this entry
 removes a wrong explanation rather than adding a right one.
