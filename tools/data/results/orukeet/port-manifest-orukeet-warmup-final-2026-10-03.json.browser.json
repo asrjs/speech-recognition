@@ -29,10 +29,10 @@
     "scope": "Build only; not normal npm build, exhaustive source provenance, browser inference or parity",
     "outputs": [
       {
-        "fileName": "assets/index-CIA8QKWn.js",
+        "fileName": "assets/index-DVlEjcc-.js",
         "type": "chunk",
         "bytes": 759312,
-        "sha256": "7bc1a313d4a5e2285e317a5f9042e35b98bb61e444e49d946016ddb4384ec100"
+        "sha256": "1c46ba4f1f5a7b5b971bbbbac7036dcad657ff52edc7c24bade7a1681d5ccdaa"
       },
       {
         "fileName": "assets/ort.bundle.min-BdsNfDLz.js",
@@ -104,13 +104,13 @@
         "fileName": "index.html",
         "type": "asset",
         "bytes": 754,
-        "sha256": "96379c84ed578a9dcf59a97589c25f3869db635a78a04f1256260b99741593af"
+        "sha256": "e1b60a616b96906d6ea6cfbea376514c0f38618be681a596c7fcb2b86569a0c1"
       }
     ]
   },
   "preview": {
     "status": "PREVIEW_READY",
-    "url": "http://127.0.0.1:3832",
+    "url": "http://127.0.0.1:4091",
     "publicAssets": [
       {
         "fileName": "coi-serviceworker.js",
@@ -125,7 +125,7 @@
     ],
     "scope": "In-memory build, top-level public files and explicitly opted-in JSEP pair; no inference certification"
   },
-  "preview_pid": 18656,
+  "preview_pid": 32532,
   "blocked_requests": [
     "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
     "https://fonts.googleapis.com/icon?family=Material+Icons+Outlined",
@@ -178,11 +178,11 @@
       },
       {
         "type": "error",
-        "text": "\u001b[0;93m2026-10-04 00:34:42.598375 [W:onnxruntime:, session_state.cc:1398 VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.\u001b[m"
+        "text": "\u001b[0;93m2026-10-04 00:40:19.378343 [W:onnxruntime:, session_state.cc:1398 VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.\u001b[m"
       },
       {
         "type": "error",
-        "text": "\u001b[0;93m2026-10-04 00:34:42.601529 [W:onnxruntime:, session_state.cc:1400 VerifyEachNodeIsAssignedToAnEp] Rerunning with verbose output on a non-minimal build will show node assignments.\u001b[m"
+        "text": "\u001b[0;93m2026-10-04 00:40:19.380258 [W:onnxruntime:, session_state.cc:1400 VerifyEachNodeIsAssignedToAnEp] Rerunning with verbose output on a non-minimal build will show node assignments.\u001b[m"
       },
       {
         "type": "log",
@@ -210,7 +210,7 @@
       },
       {
         "type": "timeEnd",
-        "text": "LoadModel: 15062.076904296875 ms"
+        "text": "LoadModel: 11925.941162109375 ms"
       }
     ],
     "adapter": {
@@ -228,7 +228,7 @@
   "browser_version": "154.0.8037.93",
   "served_resources": [
     "/assets/Harvard-L2-1-B6X4PDwP.ogg",
-    "/assets/index-CIA8QKWn.js",
+    "/assets/index-DVlEjcc-.js",
     "/assets/index-DZDSm4OQ.css",
     "/assets/ort.bundle.min-BdsNfDLz.js",
     "/coi-serviceworker.js",

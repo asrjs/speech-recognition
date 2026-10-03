@@ -114,13 +114,15 @@ def oracle_fields(path: Path, field: str) -> tuple[list[int], str]:
 
 def run_case(manifest: dict[str, Any], run: dict[str, Any], output: Path | None) -> dict[str, Any]:
     fixtures = {fixture['id']: fixture for fixture in manifest['fixtures']}
-    fixture = fixtures[run['fixture']]
+    # Browser warm-up cases transcribe their own harness sample and declare no
+    # repository fixture, so fixture-scoped context stays empty for them.
+    fixture = fixtures.get(run.get('fixture', ''))
     context = {
         'consumerRoot': run.get('consumerRoot', ''),
         'modelId': manifest['modelId'],
         'localArtifacts.root': manifest['localArtifacts']['root'],
         'runtimeConfig.path': manifest.get('runtimeConfig', {}).get('path', ''),
-        'fixture.path': fixture['path'],
+        'fixture.path': fixture['path'] if fixture else '',
         'output': str(output) if output else '',
         # Browser runs own a separate receipt so the manifest and the browser
         # harness never race for the same new-output path.
@@ -151,12 +153,15 @@ def run_case(manifest: dict[str, Any], run: dict[str, Any], output: Path | None)
         }
         return {
             'id': run['id'],
-            'status': 'PASS_ORACLE_MATCH' if all(checks.values()) else 'FAILED_ORACLE',
+            # The companion UI transcribes its own bundled warm-up sample, so it
+            # proves load and warm-up only. Never report an oracle match here.
+            'status': 'PASS_WARMUP' if all(checks.values()) else 'FAILED_WARMUP',
+            'comparesOracle': False,
+            'verifiedInput': 'companion harness warm-up sample (Harvard-L2-1.ogg)',
             'checks': checks,
             'command': command,
             'runner': 'browser',
             'backend': run['backend'],
-            'fixture': run['fixture'],
             'browserVersion': browser.get('browser_version'),
             'adapter': local.get('adapter'),
             'loadStatus': local.get('status'),
@@ -207,7 +212,7 @@ def main() -> int:
 
     results = [run_case(manifest, case, args.output) for case in selected]
     receipt: dict[str, Any] = {
-        'status': 'PASS' if all(item['status'] in ('PASS_ORACLE_MATCH', 'LISTED') for item in results)
+        'status': 'PASS' if all(item['status'] in ('PASS_ORACLE_MATCH', 'PASS_WARMUP', 'LISTED') for item in results)
         else 'FAIL',
         'scope': 'Manifest-bound port run; identity digests recorded, oracle compared',
         'manifest': str(args.manifest.resolve().relative_to(ROOT)).replace('\\', '/'),

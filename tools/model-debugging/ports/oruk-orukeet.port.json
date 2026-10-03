@@ -46,10 +46,7 @@
       "runner": "node",
       "backend": "native-cpu",
       "fixture": "jfk-short",
-      "compare": [
-        "token_ids",
-        "text"
-      ],
+      "compare": ["token_ids", "text"],
       "command": [
         "node",
         "examples/nemo-tdt-native-local.mjs",
@@ -70,10 +67,7 @@
       "runner": "node",
       "backend": "native-cpu",
       "fixture": "librivox-repeat8",
-      "compare": [
-        "token_ids",
-        "text"
-      ],
+      "compare": ["token_ids", "text"],
       "command": [
         "node",
         "examples/nemo-tdt-native-local.mjs",
@@ -94,10 +88,7 @@
       "runner": "bun",
       "backend": "native-cpu",
       "fixture": "librivox-repeat8",
-      "compare": [
-        "token_ids",
-        "text"
-      ],
+      "compare": ["token_ids", "text"],
       "command": [
         "bun",
         "examples/nemo-tdt-native-local.mjs",
@@ -116,10 +107,9 @@
   ],
   "browserRuns": [
     {
-      "id": "companion-ui-webgpu-hybrid",
+      "id": "companion-ui-warmup-webgpu-hybrid",
       "consumerRoot": "N:/github/asrjs/browser-demo",
       "backend": "webgpu-hybrid",
-      "fixture": "jfk-short",
       "command": [
         "python",
         "tests/smoke/browser-demo-smoke.py",
@@ -137,7 +127,8 @@
         "webgpu-hybrid"
       ],
       "passStatus": "PASS_COMPANION_LOCAL_WARMUP",
-      "runner": "browser"
+      "runner": "browser",
+      "verifies": "load and warm-up on the companion harness sample; no fixture oracle comparison"
     }
   ],
   "notes": [

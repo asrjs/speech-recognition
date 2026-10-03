@@ -66,8 +66,10 @@
   },
   "results": [
     {
-      "id": "companion-ui-webgpu-hybrid",
-      "status": "PASS_ORACLE_MATCH",
+      "id": "companion-ui-warmup-webgpu-hybrid",
+      "status": "PASS_WARMUP",
+      "comparesOracle": false,
+      "verifiedInput": "companion harness warm-up sample (Harvard-L2-1.ogg)",
       "checks": {
         "harness_status": true,
         "model_load_and_warmup": true,
@@ -80,7 +82,7 @@
         "--consumer-root",
         "N:/github/asrjs/browser-demo",
         "--output",
-        "tools\\data\\results\\orukeet\\port-manifest-orukeet-browser3-2026-10-03.json.browser.json",
+        "tools\\data\\results\\orukeet\\port-manifest-orukeet-warmup-final-2026-10-03.json.browser.json",
         "--model-id",
         "oruk/orukeet",
         "--local-model-root",
@@ -92,7 +94,6 @@
       ],
       "runner": "browser",
       "backend": "webgpu-hybrid",
-      "fixture": "jfk-short",
       "browserVersion": "154.0.8037.93",
       "adapter": {
         "vendor": "nvidia",
@@ -102,7 +103,7 @@
         "fallback": false
       },
       "loadStatus": "PASS_APP_LOCAL_LOAD_AND_WARMUP",
-      "browserReceipt": "tools/data/results/orukeet/port-manifest-orukeet-browser3-2026-10-03.json.browser.json"
+      "browserReceipt": "tools/data/results/orukeet/port-manifest-orukeet-warmup-final-2026-10-03.json.browser.json"
     }
   ]
 }

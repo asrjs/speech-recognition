@@ -22,7 +22,8 @@ first use it rejected a runtime-config digest that had been copied from an older
 receipt, and a browser case writes its own receipt instead of racing the
 manifest receipt.
 
-Executed through the manifest, all four Orukeet cases pass with oracle match:
+Executed through the manifest, the three Node/Bun cases pass with exact oracle
+match and the browser case passes its warm-up gate:
 
 | case                           | backend                       | result                                        |
 | ------------------------------ | ----------------------------- | --------------------------------------------- |
