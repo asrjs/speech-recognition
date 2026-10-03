@@ -48,12 +48,19 @@ TypeScript (library and examples) and scoped ESLint pass; the only lint output
 is pre-existing `max-lines` warnings. TLS verification/system CA were enabled
 only for that test child.
 
-No runtime, decoder, family math, tolerance or public API changed: the new
-control lives in the existing inspector adapter. Still open: production feature
-parity remains FAIL (JFK 313/140,928), browser real hybrid score failure at
-head call 20, source-audio resampling acceptance, held-out quality, fp16
-promotion, a hung provider still delaying disposal, and measured
-memory/VRAM recovery after teardown.
+No runtime, decoder internals, family math, tolerance or public API changed: the
+new control lives in the existing inspector adapter.
+
+Still open, with the unchanged failing gates cited by receipt: production
+feature parity remains FAIL at the unchanged `atol=1e-5, rtol=1e-4`
+(JFK 313/140,928, `filterbank-feature-jfk-2026-10-03.json`; speech/silence
+74/519,808 on the default path versus 73 under the diagnostic width-8
+normalizer, `production-raw-width8-speech-silence-2026-10-03.json`; pure
+silence 12,800/12,928, `filterbank-feature-pure-silence-2026-10-03.json`).
+Also open: the browser real-hybrid normalized-score failure at head call 20,
+source-audio resampling acceptance, held-out quality, fp16 promotion, a hung
+provider still delaying disposal, and measured memory/VRAM recovery after
+teardown.
 
 ## C21 — Direct public TDT session shutdown
 

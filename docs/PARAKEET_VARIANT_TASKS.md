@@ -2921,8 +2921,12 @@ tests and the full suite at 1,462 PASS / 33 SKIP / 0 FAIL
 (`tools/data/results/harness/post-c21-disposal-drain-full-suite-2026-10-03.json`).
 No runtime, decoder, family math, tolerance or preset changed.
 
-Unchanged failed gates: production feature parity is still FAIL (JFK
-313/140,928 mismatches, speech/silence 74/519,808, silence 12,800) and the
+Unchanged failed gates: production feature parity is still FAIL at the
+unchanged `atol=1e-5, rtol=1e-4` — JFK 313/140,928
+(`filterbank-feature-jfk-2026-10-03.json`), speech/silence 74/519,808 on the
+default path and 73 under the diagnostic width-8 normalizer
+(`production-raw-width8-speech-silence-2026-10-03.json`), pure silence
+12,800/12,928 (`filterbank-feature-pure-silence-2026-10-03.json`) — and the
 real public browser hybrid still fails normalized scores at head call 20,
 frame 69 despite exact text/tokens/state. Source-resampling acceptance,
 held-out quality, fp16 promotion and measured teardown memory recovery remain
