@@ -12,7 +12,29 @@
     "layout": "nemo-tdt",
     "encoder": "encoder-model.onnx",
     "decoder": "decoder_joint-model.onnx",
-    "tokenizer": "vocab.txt"
+    "tokenizer": "vocab.txt",
+    "files": [
+      {
+        "path": "models/orukeet/onnx/fp32-packed-2026-10-01/encoder-model.onnx",
+        "sha256": "9924d5c30da5d54454dd3de6dbfc177aa771205eaac5da55d8f05ec813036f17"
+      },
+      {
+        "path": "models/orukeet/onnx/fp32-packed-2026-10-01/encoder-model.onnx.data",
+        "sha256": "f7a19051cc2913d99635d70a856bfe82795cab1f4af3670433e9fc1eb101e00f"
+      },
+      {
+        "path": "models/orukeet/onnx/fp32-packed-2026-10-01/decoder_joint-model.onnx",
+        "sha256": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90"
+      },
+      {
+        "path": "models/orukeet/onnx/fp32-packed-2026-10-01/vocab.txt",
+        "sha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742"
+      },
+      {
+        "path": "models/orukeet/onnx/fp32-packed-2026-10-01/source-config.json",
+        "sha256": "344297eaf9e28d7f849e099c06535fbb0df978926e1b5f753b6aa836d05acdb3"
+      }
+    ]
   },
   "runtimeConfig": {
     "path": "tools/model-debugging/reference/orukeet/runtime-config-jfk.json",
@@ -26,7 +48,8 @@
       "durationSeconds": 11,
       "oracle": {
         "path": "tools/data/results/orukeet/official-jfk-stage-summary-2026-09-30.json",
-        "field": "result"
+        "field": "result",
+        "sha256": "ea57573ce72df4577c8a507d36e25cea6379d4137a8f86299a757754b228b494"
       }
     },
     {
@@ -36,7 +59,8 @@
       "durationSeconds": 149.7125,
       "oracle": {
         "path": "tools/data/results/orukeet/official-long-repeat8-summary-2026-10-02.json",
-        "field": "result"
+        "field": "result",
+        "sha256": "29c5c2723bbe59f4fc1178b18d4162a28468653f0a1928b5a315b0aea14bdecd"
       }
     }
   ],

@@ -42,7 +42,12 @@ def require_file(relative: str, expected_sha256: str | None, role: str) -> dict[
     actual = digest(path)
     if expected_sha256 and actual != expected_sha256:
         raise ValueError(f'SHA-256 mismatch for {role} {relative}: {actual} != {expected_sha256}')
-    return {'path': relative, 'bytes': path.stat().st_size, 'sha256': actual}
+    try:
+        display = str(path.relative_to(ROOT)).replace('\\', '/')
+    except ValueError:
+        # Artifact roots may legitimately live outside the repository.
+        display = str(path)
+    return {'path': display, 'bytes': path.stat().st_size, 'sha256': actual}
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -67,13 +72,11 @@ def check_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         'localArtifacts': {
             'root': manifest['localArtifacts']['root'],
             'layout': manifest['localArtifacts']['layout'],
+            # Every consumed file, including external-data sidecars, bound to its
+            # declared digest: identical names with different weights must fail.
             'files': [
-                require_file(f"{manifest['localArtifacts']['root']}/{name}", None, 'local artifact')
-                for name in (
-                    manifest['localArtifacts']['encoder'],
-                    manifest['localArtifacts']['decoder'],
-                    manifest['localArtifacts']['tokenizer'],
-                )
+                require_file(item['path'], item.get('sha256'), 'local artifact')
+                for item in manifest['localArtifacts']['files']
             ],
         },
         'fixtures': [],
@@ -86,7 +89,9 @@ def check_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         bound = require_file(fixture['path'], fixture.get('sha256'), 'fixture')
         bound['id'] = fixture['id']
         bound['durationSeconds'] = fixture.get('durationSeconds')
-        bound['oracle'] = require_file(fixture['oracle']['path'], None, 'oracle')
+        bound['oracle'] = require_file(
+            fixture['oracle']['path'], fixture['oracle'].get('sha256'), 'oracle'
+        )
         identity['fixtures'].append(bound)
     return identity
 
@@ -112,7 +117,28 @@ def oracle_fields(path: Path, field: str) -> tuple[list[int], str]:
     return list(document['token_ids']), str(document['text'])
 
 
+ORACLE_FIELDS = ('token_ids', 'text')
+
+
+def validate_comparison(run: dict[str, Any]) -> list[str]:
+    """A native run must declare what it compares, or it cannot claim a match.
+
+    Missing, empty or unknown comparison entries fail before any runner starts;
+    without this an empty list silently skipped the loop and reported a pass.
+    """
+    compare = run.get('compare')
+    if not isinstance(compare, list) or not compare:
+        raise ValueError(f'Run {run.get("id")!r} declares no comparison fields')
+    unknown = [field for field in compare if field not in ORACLE_FIELDS]
+    if unknown:
+        raise ValueError(f'Run {run.get("id")!r} has unknown comparison fields: {unknown}')
+    if 'fixture' not in run or not run.get('fixture'):
+        raise ValueError(f'Run {run.get("id")!r} declares no fixture')
+    return list(compare)
+
+
 def run_case(manifest: dict[str, Any], run: dict[str, Any], output: Path | None) -> dict[str, Any]:
+    compare = [] if run['runner'] == 'browser' else validate_comparison(run)
     fixtures = {fixture['id']: fixture for fixture in manifest['fixtures']}
     # Browser warm-up cases transcribe their own harness sample and declare no
     # repository fixture, so fixture-scoped context stays empty for them.
@@ -179,7 +205,7 @@ def run_case(manifest: dict[str, Any], run: dict[str, Any], output: Path | None)
         'token_ids': observed_tokens == expected_tokens,
         'text': observed_text == expected_text.strip(),
     }
-    for field in run.get('compare', []):
+    for field in compare:
         if not checks.get(field, False):
             return {'id': run['id'], 'status': 'FAILED_ORACLE', 'checks': checks, 'command': command,
                     'observed': {'tokens': len(observed_tokens), 'text': observed_text[:400]},
