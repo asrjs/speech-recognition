@@ -7,6 +7,7 @@ import {
 } from '@asrjs/speech-recognition/browser';
 import { loadBuiltInSpeechModel } from '../src/runtime/builtins.js';
 import { resolveParakeetLocalEntries } from '../src/presets/parakeet/compat.js';
+import { resolveBuiltInLocalModelAdapter } from '../src/runtime/local-adapter-registry.js';
 import { PipelineAbortedError } from '../src/pipeline/composition.js';
 
 vi.mock('../src/runtime/builtins.js', () => ({
@@ -47,6 +48,85 @@ describe('browser local model helpers', () => {
     expect(() =>
       inspectSpeechModelLocalEntries('google/medasr', createSpeechModelLocalEntries([])),
     ).toThrow('does not support local folder loading');
+  });
+
+  it('inspects and resolves Nemotron local folders with encoder, decoder and joint graphs', async () => {
+    const entries = createSpeechModelLocalEntries([
+      new File(['enc'], 'encoder_320ms.fp16.onnx'),
+      new File(['encData'], 'encoder_320ms.fp16.onnx.data'),
+      new File(['dec'], 'decoder.onnx'),
+      new File(['joint'], 'joint.onnx'),
+      new File(['tokens'], 'tokens.txt'),
+    ]);
+
+    expect(
+      inspectSpeechModelLocalEntries('nemotron-3.5-asr-streaming-0.6b', entries),
+    ).toMatchObject({
+      encoderQuantizations: ['fp16'],
+      decoderQuantizations: ['fp32'],
+      tokenizerNames: ['tokens.txt'],
+    });
+
+    const resolved = await resolveBuiltInLocalModelAdapter(
+      'nemotron-3.5-asr-streaming-0.6b',
+    ).adapter.resolveEntries({
+      modelId: 'nemotron-3.5-asr-streaming-0.6b',
+      entries,
+      preprocessorBackend: 'js',
+    } as never);
+
+    try {
+      expect(resolved.preset).toBe('nemotron');
+      expect(resolved.selection).toMatchObject({
+        encoderName: 'encoder_320ms.fp16.onnx',
+        decoderName: 'decoder.onnx',
+        tokenizerName: 'tokens.txt',
+      });
+      const builtInLoadOptions = resolved.builtInLoadOptions;
+      if (
+        typeof builtInLoadOptions !== 'object' ||
+        builtInLoadOptions === null ||
+        !('source' in builtInLoadOptions)
+      ) {
+        throw new Error('Expected a direct local source');
+      }
+
+      const source = builtInLoadOptions.source;
+      if (typeof source !== 'object' || source === null || !('artifacts' in source)) {
+        throw new Error('Expected direct local artifacts');
+      }
+
+      expect(Object.keys(source.artifacts).sort()).toEqual([
+        'decoderDataUrl',
+        'decoderFilename',
+        'decoderUrl',
+        'encoderDataUrl',
+        'encoderFilename',
+        'encoderUrl',
+        'jointDataUrl',
+        'jointFilename',
+        'jointUrl',
+        'tokenizerUrl',
+      ]);
+      expect(resolved.assetHandles.length).toBe(5);
+    } finally {
+      await Promise.all(resolved.assetHandles.map((handle) => handle.dispose()));
+    }
+  });
+
+  it('fails closed when a Nemotron local folder is missing its joint graph', async () => {
+    const entries = createSpeechModelLocalEntries([
+      new File(['enc'], 'encoder_320ms.onnx'),
+      new File(['dec'], 'decoder.onnx'),
+      new File(['tokens'], 'tokens.txt'),
+    ]);
+
+    await expect(
+      resolveBuiltInLocalModelAdapter('nemotron-3.5-asr-streaming-0.6b').adapter.resolveEntries({
+        modelId: 'nemotron-3.5-asr-streaming-0.6b',
+        entries,
+      } as never),
+    ).rejects.toThrow('Missing joint file: joint.onnx');
   });
 
   it('loads built-in speech models from local entries and disposes owned asset handles', async () => {

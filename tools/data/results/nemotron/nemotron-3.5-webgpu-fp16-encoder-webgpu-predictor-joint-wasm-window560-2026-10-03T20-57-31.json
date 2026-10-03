@@ -1,0 +1,86 @@
+{
+  "preset": "nemotron-3.5-asr-streaming-0.6b-fp16-webgpu-encoder-webgpu-predictor-joint-wasm",
+  "composition": "encoder-webgpu-predictor-joint-wasm",
+  "precision": "fp16",
+  "streamingWindowMs": 560,
+  "cpuThreads": 12,
+  "timestamp": "2026-10-03T20:57:28.095Z",
+  "status": "fail",
+  "transcript": "",
+  "expected": "And so my fellow Americans ask not what your country can do for you at what you can do for your country.",
+  "baselineMatch": false,
+  "qualityOracle": "fixed",
+  "transcriptAvailable": false,
+  "deterministic": true,
+  "tokenCount": 0,
+  "audio": {
+    "audioUrl": "/parakeet-audio/jfk-short.wav",
+    "sourceDurationSec": 11,
+    "requestedClipSec": null,
+    "clippedFromDurationSec": null,
+    "audioDurationSec": 11,
+    "maxClipSec": 29.9,
+    "warmupRuns": [
+      {
+        "run": 1,
+        "transcribeMs": 6994.185000002384,
+        "rtfx": 1.5729
+      }
+    ]
+  },
+  "warmupRuns": [
+    {
+      "run": 1,
+      "transcribeMs": 6994.185000002384,
+      "rtfx": 1.5729
+    }
+  ],
+  "webgpu": true,
+  "backend": "webgpu",
+  "metrics": {
+    "loadMs": 11662.700000017881,
+    "transcribeMs": 3620.8050000071526,
+    "totalMs": 29959.72499999404,
+    "rtf": 0.32916409090974114,
+    "rtfx": 3.0379984561384195,
+    "preprocessMs": 18.655,
+    "encodeMs": 3501.06,
+    "decodeMs": 68.465,
+    "encoderFrameCount": 119,
+    "decodeIterations": 9,
+    "repeat": 3,
+    "runs": [
+      {
+        "runIndex": 1,
+        "transcribeMs": 3724.6650000214577,
+        "rtfx": 2.9533,
+        "tokens": 0
+      },
+      {
+        "runIndex": 2,
+        "transcribeMs": 3620.8050000071526,
+        "rtfx": 3.038,
+        "tokens": 0
+      },
+      {
+        "runIndex": 3,
+        "transcribeMs": 3588.3650000095367,
+        "rtfx": 3.0655,
+        "tokens": 0
+      }
+    ]
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "ort-shader-patch: installed (fp16 erf_v f32 fix)",
+    "session ready in 11663ms (fp16, encoder-webgpu-predictor-joint-wasm)"
+  ]
+}

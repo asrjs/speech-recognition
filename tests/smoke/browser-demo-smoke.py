@@ -61,18 +61,56 @@ def probe_preview_closed(node, url):
     return proof
 
 
-def local_model_inputs(root, precision):
-    suffix = '' if precision == 'fp32' else '.' + precision
-    paths = [root / ('encoder-model' + suffix + '.onnx'),
-             root / 'decoder_joint-model.onnx', root / 'vocab.txt']
-    for path in paths:
+ARTIFACT_LAYOUTS = {
+    'nemo-tdt': ('encoder-model', 'decoder_joint-model', 'vocab.txt'),
+    'nemo-aed': ('encoder-model', 'decoder-model', 'tokenizer.json'),
+    'nemotron-rnnt': ('encoder_320ms_fp16', 'decoder', 'tokens.txt'),
+    'wav2vec2': ('model', None, 'vocab.json'),
+}
+
+
+def detect_layout(root):
+    """Select the artifact layout from real files, never from the model name."""
+    present = {path.name for path in Path(root).iterdir() if path.is_file()}
+    for layout, (encoder, decoder, tokenizer) in ARTIFACT_LAYOUTS.items():
+        decoder_variants = [decoder] if decoder else []
+        encoder_hit = any(
+            name.startswith(encoder + '.') or name == encoder + '.onnx' for name in present
+        )
+        if not encoder_hit:
+            continue
+        if any(not any(name.startswith(item + '.') for name in present) for item in decoder_variants):
+            continue
+        if any(name.startswith(tokenizer.rsplit('.', 1)[0]) for name in present):
+            return layout
+    raise ValueError('Unrecognized local artifact layout under: ' + str(root))
+
+
+def local_model_inputs(root, precision, layout):
+    encoder, decoder, tokenizer = ARTIFACT_LAYOUTS[layout]
+    encoder_suffix = '' if precision == 'fp32' else '.' + precision
+    names = [encoder + encoder_suffix + '.onnx']
+    if decoder:
+        names.append(decoder + '.onnx')
+    paths = []
+    for name in names:
+        path = Path(root) / name
         if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
             raise ValueError('Missing/empty/symlink local model input: ' + str(path))
-        external = Path(str(path) + '.data')
-        if external.exists():
-            if external.is_symlink() or not external.is_file() or not external.stat().st_size:
-                raise ValueError('Invalid external data: ' + str(external))
-    return paths + [Path(str(path) + '.data') for path in paths if Path(str(path) + '.data').exists()]
+        paths.append(path)
+    tokenizer_path = next(
+        (path for path in Path(root).iterdir()
+         if path.is_file() and path.name.startswith(tokenizer.rsplit('.', 1)[0])),
+        None,
+    )
+    if tokenizer_path is None:
+        raise ValueError('Missing tokenizer in local model root: ' + str(root))
+    paths.append(tokenizer_path)
+    sidecars = [Path(str(path) + '.data') for path in paths]
+    for sidecar in sidecars:
+        if sidecar.exists() and (sidecar.is_symlink() or not sidecar.is_file() or not sidecar.stat().st_size):
+            raise ValueError('Invalid external data: ' + str(sidecar))
+    return paths + [sidecar for sidecar in sidecars if sidecar.exists()]
 
 ORT_WEB_CDN = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@{version}/dist/{name}'
 
@@ -131,16 +169,22 @@ def main():
     parser.add_argument('--consumer-root', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--local-model-root', type=Path,
-                        help='Opt in to real stock-v3 local hybrid loading and app warm-up')
+                        help='Opt in to real local hybrid loading and app warm-up')
     parser.add_argument('--encoder-precision', choices=['fp32', 'fp16'], default='fp32')
+    parser.add_argument('--model-id', default='parakeet-tdt-0.6b-v3',
+                        help='Model option to select in the companion UI')
+    parser.add_argument('--runtime-backend', choices=['webgpu-hybrid', 'wasm'], default='webgpu-hybrid',
+                        help='Runtime backend to select before loading a local model')
     args = parser.parse_args()
     consumer = args.consumer_root.resolve()
     preview = Path(__file__).with_name('companion-build.mjs')
     inputs = [Path(__file__), preview, ROOT / 'tools/artifact_outputs.py',
               consumer / 'vite.config.js', consumer / 'package.json', consumer / 'src/App.jsx']
     model_root = args.local_model_root.resolve() if args.local_model_root else None
+    layout = None
     if model_root:
-        inputs += local_model_inputs(model_root, args.encoder_precision)
+        layout = detect_layout(model_root)
+        inputs += local_model_inputs(model_root, args.encoder_precision, layout)
     require_new_outputs([args.output], protected_inputs=inputs,
                         protected_directories=[consumer, ROOT / 'src', ROOT / 'models'] + ([model_root] if model_root else []))
     hashes = {str(path.resolve()): digest(path) for path in inputs}
@@ -151,8 +195,12 @@ def main():
     receipt = {'status': 'FAIL_COMPANION_UI_SMOKE', 'sources_sha256': hashes,
                'scope': 'Fresh-context no-download UI/build smoke; not model loading, inference or GPU acceptance'}
     if model_root:
-        receipt['scope'] = 'Stock-v3 local hybrid load and existing app warm-up; not Orukeet parity, numerical oracle, cancellation or disposal acceptance'
+        receipt['scope'] = ('Local ' + layout + ' load and existing app warm-up for ' + args.model_id
+                            + '; not numerical oracle, cancellation or disposal acceptance')
         receipt['local_model_root'] = str(model_root)
+        receipt['artifact_layout'] = layout
+        receipt['model_id'] = args.model_id
+        receipt['runtime_backend'] = args.runtime_backend
         receipt['encoder_precision'] = args.encoder_precision
     process = None
     ready = None
@@ -210,9 +258,11 @@ def main():
                 def select(label):
                     # Existing labels are not associated via for/id; scope by exact rendered label.
                     return page.locator('label').filter(has_text=re.compile('^' + re.escape(label) + '$')).locator('..').locator('select')
-                select('Model').select_option('parakeet-tdt-0.6b-v3')
-                expect(select('Encoder Backend')).to_have_value('webgpu')
-                expect(select('Decoder Backend')).to_have_value('wasm')
+                select('Model').select_option(args.model_id)
+                split_backends = bool(select('Encoder Backend').count() and select('Decoder Backend').count())
+                if split_backends and args.runtime_backend == 'webgpu-hybrid':
+                    expect(select('Encoder Backend')).to_have_value('webgpu')
+                    expect(select('Decoder Backend')).to_have_value('wasm')
                 select('Runtime Backend').select_option('wasm')
                 expect(select('Runtime Backend')).to_have_value('wasm')
                 select('Model Source').select_option('local')
@@ -227,15 +277,21 @@ def main():
                         if len(logs) < 200:
                             logs.append({'type': message.type, 'text': message.text[:4000]})
                     page.on('console', record_console)
-                    adapter = page.evaluate('async () => { const a = await navigator.gpu?.requestAdapter(); return a ? {vendor:a.info?.vendor, architecture:a.info?.architecture, device:a.info?.device, description:a.info?.description, fallback:a.info?.isFallbackAdapter} : null; }')
-                    if not adapter:
-                        raise ValueError('Requested local hybrid run has no WebGPU adapter')
-                    receipt['local_load']['adapter'] = adapter
-                    select('Runtime Backend').select_option('webgpu-hybrid')
-                    select('Encoder Backend').select_option('webgpu')
+                    if args.runtime_backend == 'webgpu-hybrid':
+                        adapter = page.evaluate('async () => { const a = await navigator.gpu?.requestAdapter(); return a ? {vendor:a.info?.vendor, architecture:a.info?.architecture, device:a.info?.device, description:a.info?.description, fallback:a.info?.isFallbackAdapter} : null; }')
+                        if not adapter:
+                            raise ValueError('Requested local hybrid run has no WebGPU adapter')
+                        receipt['local_load']['adapter'] = adapter
+                        select('Runtime Backend').select_option('webgpu-hybrid')
+                        if split_backends:
+                            select('Encoder Backend').select_option('webgpu')
+                    else:
+                        select('Runtime Backend').select_option('wasm')
                     page.locator('input[webkitdirectory]').set_input_files(str(model_root), timeout=30000)
-                    select('Encoder').select_option(args.encoder_precision)
-                    select('Decoder').select_option('fp32')
+                    if select('Encoder').count():
+                        select('Encoder').select_option(args.encoder_precision)
+                    if select('Decoder').count():
+                        select('Decoder').select_option('fp32')
                     load.click()
                     terminal = page.get_by_text(re.compile(r'^(Model ready$|Failed:|Verification failed$|Warm-up failed$)')).first
                     expect(terminal).to_be_visible(timeout=180000)

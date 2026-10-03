@@ -3,6 +3,52 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C28 — Automated browser gates: fixed, parameterized, and honest limits
+
+Status: MIXED — Parakeet v2/v3 companion-UI browser gates PASS with real
+inference; the Nemotron 3.5 browser path is PARTIAL/BLOCKED. No production
+acceptance is claimed for any browser lane.
+
+The companion UI smoke (`tests/smoke/browser-demo-smoke.py`) never passed with a
+real model. The root cause was not the model: the app resolved the ORT runtime
+sidecar from `cdn.jsdelivr.net`, which the no-download route aborted, so every
+run died with "no available backend found". The smoke now fulfills those exact
+URLs from the installed, version-pinned `onnxruntime-web` package, records URL,
+path and sha256 for each, and fails closed unless a model load consumed both.
+
+Parameterized the gate on `--model-id`, `--runtime-backend` and real-file
+artifact-layout detection, then ran it on a real Blackwell adapter:
+
+| model                             | layout        | backend       | result                 |
+| --------------------------------- | ------------- | ------------- | ---------------------- |
+| `parakeet-tdt-0.6b-v3`            | nemo-tdt      | webgpu-hybrid | PASS, warm-up verified |
+| `parakeet-tdt-0.6b-v2`            | nemo-tdt      | webgpu-hybrid | PASS, warm-up verified |
+| `parakeet-tdt-0.6b-v3`            | nemo-tdt      | wasm          | PASS, warm-up verified |
+| `nemotron-3.5-asr-streaming-0.6b` | nemotron-rnnt | webgpu-hybrid | FAIL, see below        |
+
+Two blocking findings for the newest port, both recorded with receipts:
+
+1. **No browser local-folder loader existed** for Nemotron 3.5; the registry
+   raised "does not yet have a browser local-folder loader". Added
+   `src/presets/nemotron/local-adapter.ts` plus the shared, model-neutral
+   `src/runtime/local-entry-files.ts` helpers, with two unit regressions. Two
+   further gaps surfaced from real files and are handled by the adapter: the
+   on-disk naming has two generations (`encoder_320ms_fp16.onnx` with
+   `joiner.onnx` versus `encoder.onnx`/`joint.onnx`), and external-data
+   filenames must be forwarded or ORT cannot resolve `.data` beside a blob URL.
+2. **Browser decode still fails.** Through the established
+   `webgpu-agent-test` harness, fp32 fails at session creation with
+   `WebAssembly.Memory(): Property 'initial': value 74903 is above the upper
+bound 65536` in both hybrid and all-WebGPU compositions — a WASM32 memory
+   ceiling, not a model-math result. fp16 clears it (session 11.7 s, 119 frames,
+   RTFx 3.04) but emits **zero tokens**, so the transcript is empty.
+
+So the adapter is unit-tested and reaches real browser inference, but Nemotron 3.5
+browser decoding is **not** verified and is not claimed. Next: localize the
+empty decode in the existing `nemotron-rnnt-webgpu.js` runner before touching
+the family, and record the WASM memory ceiling as a composition constraint for
+any future fp32 browser run.
+
 ## C27 — Long-form port fix: encoder layout beyond 82 seconds
 
 Status: PASS — real public-API inference, exact oracle parity, regression tests.

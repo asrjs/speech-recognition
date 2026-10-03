@@ -1,0 +1,29 @@
+{
+  "preset": "nemotron-3.5-asr-streaming-0.6b-fp32-webgpu-encoder-webgpu-predictor-joint-webgpu",
+  "composition": "encoder-webgpu-predictor-joint-webgpu",
+  "precision": "fp32",
+  "streamingWindowMs": 560,
+  "timestamp": "2026-10-03T20:56:33.844Z",
+  "status": "error",
+  "failureClass": "WEBGPU_MEMORY_LIMIT",
+  "message": "WebAssembly.Memory(): Property 'initial': value 74903 is above the upper bound 65536",
+  "transcript": "",
+  "expected": "And so my fellow Americans ask not what your country can do for you at what you can do for your country.",
+  "baselineMatch": false,
+  "webgpu": false,
+  "metrics": {
+    "totalMs": 993.3449999988079
+  },
+  "adapter": {
+    "available": true,
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "log": [
+    "navigator.gpu: true",
+    "adapter: {\"available\":true,\"vendor\":\"nvidia\",\"architecture\":\"blackwell\",\"device\":\"\",\"description\":\"\"}",
+    "ort-shader-patch: installed (fp16 erf_v f32 fix)"
+  ]
+}
