@@ -1,0 +1,250 @@
+{
+  "status": "PASS_COMPANION_LOCAL_WARMUP",
+  "sources_sha256": {
+    "N:\\github\\asrjs\\speech-recognition\\tests\\smoke\\browser-demo-smoke.py": "d9ed006abc5a9208923580d2d58a7ea58672165882dbd514138487efe50bfbde",
+    "N:\\github\\asrjs\\speech-recognition\\tests\\smoke\\companion-build.mjs": "5c085f28420831a9b18a11b695cacff3bd9963b67ceb24c0b1285bfe9e3d9c98",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\artifact_outputs.py": "499b497c2c3701e325c37cc9980ff179eda64c4ea80a0820951be9f6baa695eb",
+    "N:\\github\\asrjs\\browser-demo\\vite.config.js": "05b797e775018c124b38ca310802453e5bb72854bcc7aebf68d525ffbd0dbbcb",
+    "N:\\github\\asrjs\\browser-demo\\package.json": "5862e26a4eadbec3cc2115df7da36961bf6cdd22a989905c386c7b4f8391a106",
+    "N:\\github\\asrjs\\browser-demo\\src\\App.jsx": "669601d87bf6c6277f9619235defb537aabc135d918ce72dc901ae0f26d76804",
+    "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\onnx\\fp32-packed-2026-10-01\\encoder-model.onnx": "9924d5c30da5d54454dd3de6dbfc177aa771205eaac5da55d8f05ec813036f17",
+    "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\onnx\\fp32-packed-2026-10-01\\decoder_joint-model.onnx": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90",
+    "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\onnx\\fp32-packed-2026-10-01\\vocab.txt": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742",
+    "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\onnx\\fp32-packed-2026-10-01\\encoder-model.onnx.data": "f7a19051cc2913d99635d70a856bfe82795cab1f4af3670433e9fc1eb101e00f"
+  },
+  "scope": "Local nemo-tdt load and existing app warm-up for oruk/orukeet; not numerical oracle, cancellation or disposal acceptance",
+  "local_model_root": "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\onnx\\fp32-packed-2026-10-01",
+  "artifact_layout": "nemo-tdt",
+  "model_id": "oruk/orukeet",
+  "runtime_backend": "webgpu-hybrid",
+  "encoder_precision": "fp32",
+  "build": {
+    "status": "PASS_IN_MEMORY_COMPANION_BUILD",
+    "root": "N:\\github\\asrjs\\browser-demo",
+    "viteVersion": "7.3.1",
+    "configSha256": "05b797e775018c124b38ca310802453e5bb72854bcc7aebf68d525ffbd0dbbcb",
+    "packageSha256": "5862e26a4eadbec3cc2115df7da36961bf6cdd22a989905c386c7b4f8391a106",
+    "toolSha256": "5c085f28420831a9b18a11b695cacff3bd9963b67ceb24c0b1285bfe9e3d9c98",
+    "configEvaluation": "In-memory esbuild ESM with original dirname and consumer package resolution",
+    "scope": "Build only; not normal npm build, exhaustive source provenance, browser inference or parity",
+    "outputs": [
+      {
+        "fileName": "assets/index-CIA8QKWn.js",
+        "type": "chunk",
+        "bytes": 759312,
+        "sha256": "7bc1a313d4a5e2285e317a5f9042e35b98bb61e444e49d946016ddb4384ec100"
+      },
+      {
+        "fileName": "assets/ort.bundle.min-BdsNfDLz.js",
+        "type": "chunk",
+        "bytes": 410273,
+        "sha256": "9550d43524741a8a15b495b94607af1d6310c446656775f948d8f2d853102a79"
+      },
+      {
+        "fileName": "assets/ort.webgpu.bundle.min-DIS4kVGb.js",
+        "type": "chunk",
+        "bytes": 115354,
+        "sha256": "be81e177dd2702c876c31a388bd047eb0af8a9909d053459bc15229ee9ee8217"
+      },
+      {
+        "fileName": "assets/Harvard-L2-1-B6X4PDwP.ogg",
+        "type": "asset",
+        "bytes": 18235,
+        "sha256": "6e8379d6a016c3b9606f952d2ef5049740476dc98f2050e9bf30769af610935c"
+      },
+      {
+        "fileName": "assets/ten_vad-BWj8dcPJ.js",
+        "type": "asset",
+        "bytes": 5818,
+        "sha256": "aef64f79af72c278512695285b3c933adb070e64f9a594fa4424750ee1f11ee9"
+      },
+      {
+        "fileName": "assets/ten_vad-DpmpZqYN.wasm",
+        "type": "asset",
+        "bytes": 283349,
+        "sha256": "1ec0b9640683987e15a4e54e4ce5642b2447c6e5d82b1be889b5099c75434fc3"
+      },
+      {
+        "fileName": "assets/ort-wasm-simd-threaded.asyncify-CsxMlmQ8.wasm",
+        "type": "asset",
+        "bytes": 25749873,
+        "sha256": "503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549"
+      },
+      {
+        "fileName": "assets/ort-wasm-simd-threaded.jsep-D-icqfN-.wasm",
+        "type": "asset",
+        "bytes": 27797172,
+        "sha256": "db816fadbab47a755170c08f933961e231412ac17f5981f9a62e519708a44dea"
+      },
+      {
+        "fileName": "assets/index-DZDSm4OQ.css",
+        "type": "asset",
+        "bytes": 29900,
+        "sha256": "f8703031d7d8f97c8f0085b02bf8b791081f4d43396709d55f99dfba44001959"
+      },
+      {
+        "fileName": "assets/ten-vad-worker-BhDqQlif.js",
+        "type": "asset",
+        "bytes": 4212,
+        "sha256": "eaf1077831449541462edb9aa5acc96219d2ddefc71b4f071e133a5ab45e3c9a"
+      },
+      {
+        "fileName": "assets/firered-vad-worker-B2xmQqOJ.js",
+        "type": "asset",
+        "bytes": 429123,
+        "sha256": "d1c26cd5ea6d1efba80ce378fd45c5a66ac08919494df12647f893014803140f"
+      },
+      {
+        "fileName": "assets/browser-transcription-worker-thread-tfDr6yQL.js",
+        "type": "asset",
+        "bytes": 535987,
+        "sha256": "cfacdb17f5dc43e40359629842984824a7ada26b024c17b24cff03d09535f89a"
+      },
+      {
+        "fileName": "index.html",
+        "type": "asset",
+        "bytes": 754,
+        "sha256": "96379c84ed578a9dcf59a97589c25f3869db635a78a04f1256260b99741593af"
+      }
+    ]
+  },
+  "preview": {
+    "status": "PREVIEW_READY",
+    "url": "http://127.0.0.1:28318",
+    "publicAssets": [
+      {
+        "fileName": "coi-serviceworker.js",
+        "bytes": 6174,
+        "sha256": "5ef973565b54093e76a803b55434f99cbb11446e10ac8cb3f21958089cfa19ad"
+      },
+      {
+        "fileName": "favicon.ico",
+        "bytes": 3870,
+        "sha256": "3d10f7da6c603178340081668c4ac5b3ae9743ca9a262ab0fcd312fbb9f48bdd"
+      }
+    ],
+    "scope": "In-memory build, top-level public files and explicitly opted-in JSEP pair; no inference certification"
+  },
+  "preview_pid": 35340,
+  "blocked_requests": [
+    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+    "https://fonts.googleapis.com/icon?family=Material+Icons+Outlined",
+    "https://img.shields.io/github/stars/asrjs/speech-recognition?style=social",
+    "https://huggingface.co/api/models/ysdede/parakeet-tdt-0.6b-v2-onnx/tree/main?recursive=1",
+    "https://huggingface.co/api/models/ysdede/parakeet-tdt-0.6b-v2-onnx?revision=main",
+    "https://huggingface.co/api/models/oruk/orukeet/tree/b59c13a733fce5cf193230d0fa317ee7f145a108?recursive=1",
+    "https://huggingface.co/api/models/oruk/orukeet?revision=b59c13a733fce5cf193230d0fa317ee7f145a108"
+  ],
+  "page_errors": [],
+  "ort_web_version": "1.29.0",
+  "served_sidecars": [
+    {
+      "url": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/ort-wasm-simd-threaded.jsep.mjs",
+      "path": "N:\\github\\asrjs\\speech-recognition\\node_modules\\onnxruntime-web\\dist\\ort-wasm-simd-threaded.jsep.mjs",
+      "sha256": "3d68fa7af88c48894d4b0c8629de12018ab73b77519bc0b05dc8d908ad82749f"
+    },
+    {
+      "url": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/ort-wasm-simd-threaded.jsep.wasm",
+      "path": "N:\\github\\asrjs\\speech-recognition\\node_modules\\onnxruntime-web\\dist\\ort-wasm-simd-threaded.jsep.wasm",
+      "sha256": "db816fadbab47a755170c08f933961e231412ac17f5981f9a62e519708a44dea"
+    }
+  ],
+  "local_load": {
+    "status": "PASS_APP_LOCAL_LOAD_AND_WARMUP",
+    "console": [
+      {
+        "type": "log",
+        "text": "[LocalFolder] Folder input fallback selected files {count: 6}"
+      },
+      {
+        "type": "log",
+        "text": "[LocalFolder] Parsing selected local folder entries\u2026 {count: 6, folderName: fp32-packed-2026-10-01}"
+      },
+      {
+        "type": "log",
+        "text": "[LocalFolder] Detected artifacts {encoder: Array(1), decoder: Array(1), tokenizers: Array(1), preprocessors: Array(0)}"
+      },
+      {
+        "type": "warning",
+        "text": "Timer 'LoadModel' already exists"
+      },
+      {
+        "type": "log",
+        "text": "[LocalFolder] Starting model load from local artifacts"
+      },
+      {
+        "type": "warning",
+        "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+      },
+      {
+        "type": "error",
+        "text": "\u001b[0;93m2026-10-04 00:22:24.477419 [W:onnxruntime:, session_state.cc:1398 VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.\u001b[m"
+      },
+      {
+        "type": "error",
+        "text": "\u001b[0;93m2026-10-04 00:22:24.481328 [W:onnxruntime:, session_state.cc:1400 VerifyEachNodeIsAssignedToAnEp] Rerunning with verbose output on a non-minimal build will show node assignments.\u001b[m"
+      },
+      {
+        "type": "log",
+        "text": "[LocalFolder] Selected artifacts {encoder: encoder-model.onnx, decoder: decoder_joint-model.onnx, tokenizer: vocab.txt, preprocessorBackend: js, preprocessor: null}"
+      },
+      {
+        "type": "log",
+        "text": "[LocalFolder] Model sessions created from local artifacts"
+      },
+      {
+        "type": "log",
+        "text": "[LoadModel] Running warm-up verification transcription"
+      },
+      {
+        "type": "log",
+        "text": "[Cache] Fetching audio from: /assets/Harvard-L2-1-B6X4PDwP.ogg"
+      },
+      {
+        "type": "log",
+        "text": "[Cache] Cached audio: Harvard-L2-1.ogg"
+      },
+      {
+        "type": "log",
+        "text": "[App] Model verification successful."
+      },
+      {
+        "type": "timeEnd",
+        "text": "LoadModel: 15770.177001953125 ms"
+      }
+    ],
+    "adapter": {
+      "vendor": "nvidia",
+      "architecture": "blackwell",
+      "device": "",
+      "description": "",
+      "fallback": false
+    }
+  },
+  "verified_sidecars": [
+    "ort-wasm-simd-threaded.jsep.mjs",
+    "ort-wasm-simd-threaded.jsep.wasm"
+  ],
+  "browser_version": "154.0.8037.93",
+  "served_resources": [
+    "/assets/Harvard-L2-1-B6X4PDwP.ogg",
+    "/assets/index-CIA8QKWn.js",
+    "/assets/index-DZDSm4OQ.css",
+    "/assets/ort.bundle.min-BdsNfDLz.js",
+    "/coi-serviceworker.js",
+    "/index.html"
+  ],
+  "checks": [
+    "boot",
+    "v3-hybrid-selection",
+    "wasm-selection",
+    "local-source-panel",
+    "missing-local-folder-error"
+  ],
+  "preview_process_stopped": true,
+  "preview_closure_probe": {
+    "closed": true,
+    "code": "ECONNREFUSED"
+  },
+  "preview_port_closed": true
+}

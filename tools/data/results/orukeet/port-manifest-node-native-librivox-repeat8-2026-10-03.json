@@ -1,0 +1,110 @@
+{
+  "status": "PASS",
+  "scope": "Manifest-bound port run; identity digests recorded, oracle compared",
+  "manifest": "tools/model-debugging/ports/oruk-orukeet.port.json",
+  "identity": {
+    "modelId": "oruk/orukeet",
+    "family": "nemo-tdt",
+    "preset": "parakeet",
+    "originalWeights": {
+      "path": "models/orukeet/source/orukeet-v0.1.0.nemo",
+      "bytes": 2509342720,
+      "sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
+    },
+    "localArtifacts": {
+      "root": "models/orukeet/onnx/fp32-packed-2026-10-01",
+      "layout": "nemo-tdt",
+      "files": [
+        {
+          "path": "models/orukeet/onnx/fp32-packed-2026-10-01/encoder-model.onnx",
+          "bytes": 2151530,
+          "sha256": "9924d5c30da5d54454dd3de6dbfc177aa771205eaac5da55d8f05ec813036f17"
+        },
+        {
+          "path": "models/orukeet/onnx/fp32-packed-2026-10-01/decoder_joint-model.onnx",
+          "bytes": 72520893,
+          "sha256": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90"
+        },
+        {
+          "path": "models/orukeet/onnx/fp32-packed-2026-10-01/vocab.txt",
+          "bytes": 102132,
+          "sha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742"
+        }
+      ]
+    },
+    "fixtures": [
+      {
+        "path": "tools/data/fixtures/audio/jfk-short.wav",
+        "bytes": 352078,
+        "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+        "id": "jfk-short",
+        "durationSeconds": 11,
+        "oracle": {
+          "path": "tools/data/results/orukeet/official-jfk-stage-summary-2026-09-30.json",
+          "bytes": 3873,
+          "sha256": "ea57573ce72df4577c8a507d36e25cea6379d4137a8f86299a757754b228b494"
+        }
+      },
+      {
+        "path": "tools/data/results/orukeet/librivox-repeat8-16k-pcm16-2026-10-02.wav",
+        "bytes": 4790844,
+        "sha256": "88f56304a0ee7843cab203ac23ebeaad37aadf93aeb92fa164095c476b0c5893",
+        "id": "librivox-repeat8",
+        "durationSeconds": 149.7125,
+        "oracle": {
+          "path": "tools/data/results/orukeet/official-long-repeat8-summary-2026-10-02.json",
+          "bytes": 44424,
+          "sha256": "29c5c2723bbe59f4fc1178b18d4162a28468653f0a1928b5a315b0aea14bdecd"
+        }
+      }
+    ],
+    "runtimeConfig": {
+      "path": "tools/model-debugging/reference/orukeet/runtime-config-jfk.json",
+      "bytes": 394,
+      "sha256": "86a37498c6997ac14becffb21d1aef61a61420ec91d2f95a73f46d09d06b5aac"
+    }
+  },
+  "results": [
+    {
+      "id": "node-native-librivox-repeat8",
+      "status": "PASS_ORACLE_MATCH",
+      "checks": {
+        "token_ids": true,
+        "text": true
+      },
+      "command": [
+        "node",
+        "examples/nemo-tdt-native-local.mjs",
+        "--model-dir",
+        "models/orukeet/onnx/fp32-packed-2026-10-01",
+        "--config",
+        "tools/model-debugging/reference/orukeet/runtime-config-jfk.json",
+        "--model-id",
+        "oruk/orukeet",
+        "--audio",
+        "tools/data/results/orukeet/librivox-repeat8-16k-pcm16-2026-10-02.wav",
+        "--threads",
+        "4"
+      ],
+      "runner": "node",
+      "backend": "native-cpu",
+      "fixture": "librivox-repeat8",
+      "host": {
+        "runtime": "node",
+        "version": "26.2.0"
+      },
+      "ort": {
+        "common": "1.24.0-dev.20251116-b39e144322",
+        "node": "1.25.0-dev.20260228-6e72d31970"
+      },
+      "metrics": {
+        "totalMs": 20744.577,
+        "rtf": 0.1386,
+        "rtfx": 7.2169,
+        "encoderFrameCount": 1872,
+        "decodeIterations": 806
+      },
+      "warnings": []
+    }
+  ]
+}

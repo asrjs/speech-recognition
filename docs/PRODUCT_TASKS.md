@@ -1,3 +1,40 @@
+## C29 — Port manifests and Orukeet as a built-in model
+
+Status: PASS — one manifest drives four real runs (Node/Bun long and short,
+companion UI) against the official oracles. Not feature-parity, fp16 or
+performance acceptance.
+
+Orukeet had **no built-in descriptor at all**, so it could not be selected in the
+companion demo, had no local-folder loader, and could not be exercised by any
+UI-driven gate. Registering `oruk/orukeet` in the Parakeet catalog (25
+languages, 627,057,286 parameters, revision
+`b59c13a733fce5cf193230d0fa317ee7f145a108`) reuses the `parakeet` preset key, so
+the existing local adapter, demo selection and browser gates apply with no new
+family code. The companion UI now loads Orukeet from a local folder and verifies
+warm-up on a real NVIDIA Blackwell adapter (15.8 s, no page errors).
+
+Added the reusable port harness: `tools/model-debugging/ports/*.port.json` plus
+`tools/model-debugging/scripts/port_manifest.py`. A manifest declares original
+weights, local artifacts, fixtures, oracles and the Node/Bun/browser cases;
+the runner binds every file to its recorded SHA-256 **before** any execution,
+then compares token ids and text per case. It is fail-closed by construction: on
+first use it rejected a runtime-config digest that had been copied from an older
+receipt, and a browser case writes its own receipt instead of racing the
+manifest receipt.
+
+Executed through the manifest, all four Orukeet cases pass with oracle match:
+
+| case                           | backend                       | result                                        |
+| ------------------------------ | ----------------------------- | --------------------------------------------- |
+| `node-native-jfk`              | native-cpu                    | 38/38 tokens, exact text, RTFx 10.80          |
+| `node-native-librivox-repeat8` | native-cpu                    | 722/722 tokens, exact text, RTFx 7.22         |
+| `bun-native-librivox-repeat8`  | native-cpu                    | 722/722 tokens, exact text, RTFx 7.37         |
+| `companion-ui-webgpu-hybrid`   | WebGPU encoder + WASM decoder | load + warm-up verified, Chrome 154.0.8037.93 |
+
+Receipts: `tools/data/results/orukeet/port-manifest-*-2026-10-03.json` plus the
+paired `.browser.json` for the UI case. Full suite unchanged at 1,468 passed /
+33 skipped. The deferred production-feature coordinate gate is untouched.
+
 # Product improvement queue
 
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the

@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "modelId": "oruk/orukeet",
+  "family": "nemo-tdt",
+  "preset": "parakeet",
+  "originalWeights": {
+    "path": "models/orukeet/source/orukeet-v0.1.0.nemo",
+    "sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
+  },
+  "localArtifacts": {
+    "root": "models/orukeet/onnx/fp32-packed-2026-10-01",
+    "layout": "nemo-tdt",
+    "encoder": "encoder-model.onnx",
+    "decoder": "decoder_joint-model.onnx",
+    "tokenizer": "vocab.txt"
+  },
+  "runtimeConfig": {
+    "path": "tools/model-debugging/reference/orukeet/runtime-config-jfk.json",
+    "sha256": "86a37498c6997ac14becffb21d1aef61a61420ec91d2f95a73f46d09d06b5aac"
+  },
+  "fixtures": [
+    {
+      "id": "jfk-short",
+      "path": "tools/data/fixtures/audio/jfk-short.wav",
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "durationSeconds": 11,
+      "oracle": {
+        "path": "tools/data/results/orukeet/official-jfk-stage-summary-2026-09-30.json",
+        "field": "result"
+      }
+    },
+    {
+      "id": "librivox-repeat8",
+      "path": "tools/data/results/orukeet/librivox-repeat8-16k-pcm16-2026-10-02.wav",
+      "sha256": "88f56304a0ee7843cab203ac23ebeaad37aadf93aeb92fa164095c476b0c5893",
+      "durationSeconds": 149.7125,
+      "oracle": {
+        "path": "tools/data/results/orukeet/official-long-repeat8-summary-2026-10-02.json",
+        "field": "result"
+      }
+    }
+  ],
+  "runs": [
+    {
+      "id": "node-native-jfk",
+      "runner": "node",
+      "backend": "native-cpu",
+      "fixture": "jfk-short",
+      "compare": [
+        "token_ids",
+        "text"
+      ],
+      "command": [
+        "node",
+        "examples/nemo-tdt-native-local.mjs",
+        "--model-dir",
+        "{localArtifacts.root}",
+        "--config",
+        "{runtimeConfig.path}",
+        "--model-id",
+        "{modelId}",
+        "--audio",
+        "{fixture.path}",
+        "--threads",
+        "4"
+      ]
+    },
+    {
+      "id": "node-native-librivox-repeat8",
+      "runner": "node",
+      "backend": "native-cpu",
+      "fixture": "librivox-repeat8",
+      "compare": [
+        "token_ids",
+        "text"
+      ],
+      "command": [
+        "node",
+        "examples/nemo-tdt-native-local.mjs",
+        "--model-dir",
+        "{localArtifacts.root}",
+        "--config",
+        "{runtimeConfig.path}",
+        "--model-id",
+        "{modelId}",
+        "--audio",
+        "{fixture.path}",
+        "--threads",
+        "4"
+      ]
+    },
+    {
+      "id": "bun-native-librivox-repeat8",
+      "runner": "bun",
+      "backend": "native-cpu",
+      "fixture": "librivox-repeat8",
+      "compare": [
+        "token_ids",
+        "text"
+      ],
+      "command": [
+        "bun",
+        "examples/nemo-tdt-native-local.mjs",
+        "--model-dir",
+        "{localArtifacts.root}",
+        "--config",
+        "{runtimeConfig.path}",
+        "--model-id",
+        "{modelId}",
+        "--audio",
+        "{fixture.path}",
+        "--threads",
+        "4"
+      ]
+    }
+  ],
+  "browserRuns": [
+    {
+      "id": "companion-ui-webgpu-hybrid",
+      "consumerRoot": "N:/github/asrjs/browser-demo",
+      "backend": "webgpu-hybrid",
+      "fixture": "jfk-short",
+      "command": [
+        "python",
+        "tests/smoke/browser-demo-smoke.py",
+        "--consumer-root",
+        "{consumerRoot}",
+        "--output",
+        "{browserOutput}",
+        "--model-id",
+        "{modelId}",
+        "--local-model-root",
+        "{localArtifacts.root}",
+        "--encoder-precision",
+        "fp32",
+        "--runtime-backend",
+        "webgpu-hybrid"
+      ],
+      "passStatus": "PASS_COMPANION_LOCAL_WARMUP",
+      "runner": "browser"
+    }
+  ],
+  "notes": [
+    "Orukeet shares the parakeet preset, so its local-folder loader, demo selection and browser gates are the parakeet ones.",
+    "The production-feature coordinate gate stays FAIL/DEFERRED and is not part of this harness."
+  ]
+}
