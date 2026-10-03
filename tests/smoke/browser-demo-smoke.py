@@ -74,6 +74,31 @@ def local_model_inputs(root, precision):
                 raise ValueError('Invalid external data: ' + str(external))
     return paths + [Path(str(path) + '.data') for path in paths if Path(str(path) + '.data').exists()]
 
+ORT_WEB_CDN = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@{version}/dist/{name}'
+
+
+def ort_web_sidecars(root):
+    """Resolve the ORT runtime sidecars the browser asks a CDN for.
+
+    The demo bundles onnxruntime-web through Vite but the loader module still
+    resolves its wasm sidecar from a CDN URL, so an offline gate sees a blocked
+    request and the app reports "no available backend found". Serve those exact
+    files from the installed package instead, pinned to the version in the URL.
+    """
+    package = Path(root) / 'node_modules/onnxruntime-web/package.json'
+    if not package.is_file():
+        raise ValueError('Installed onnxruntime-web package is required for sidecar fulfillment')
+    version = json.loads(package.read_text(encoding='utf-8'))['version']
+    dist = package.with_name('dist')
+    sidecars = {}
+    for name, content_type in (('ort-wasm-simd-threaded.jsep.mjs', 'text/javascript'),
+                               ('ort-wasm-simd-threaded.jsep.wasm', 'application/wasm')):
+        path = dist / name
+        if not path.is_file() or path.is_symlink():
+            raise ValueError('Missing ORT sidecar: ' + str(path))
+        sidecars[ORT_WEB_CDN.format(version=version, name=name)] = (path, content_type)
+    return version, sidecars
+
 
 def wait_preview(process, lines, timeout=120):
     output = []
@@ -149,7 +174,10 @@ def main():
         known = {'/' + item['fileName']: item for item in build['outputs'] + ready['publicAssets']}
         origin = ready['url']
         blocked, errors, responses = [], [], []
-        receipt.update(blocked_requests=blocked, page_errors=errors)
+        served_sidecars = []
+        ort_version, sidecars = ort_web_sidecars(ROOT)
+        receipt.update(blocked_requests=blocked, page_errors=errors,
+                       ort_web_version=ort_version, served_sidecars=served_sidecars)
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(channel='chrome', headless=True,
                 args=['--enable-unsafe-webgpu'] if model_root else [])
@@ -159,7 +187,13 @@ def main():
                     request = route.request
                     parsed = urlparse(request.url)
                     path = '/index.html' if parsed.path == '/' else parsed.path
-                    if request.url.startswith(origin + '/') and path in known and request.method == 'GET':
+                    sidecar = sidecars.get(request.url)
+                    if sidecar is not None and request.method == 'GET':
+                        source, content_type = sidecar
+                        served_sidecars.append({'url': request.url, 'path': str(source),
+                                                'sha256': digest(source)})
+                        route.fulfill(status=200, path=str(source), content_type=content_type)
+                    elif request.url.startswith(origin + '/') and path in known and request.method == 'GET':
                         route.continue_()
                     else:
                         blocked.append(request.url)
@@ -210,8 +244,16 @@ def main():
                     expect(page.get_by_role('button', name='Model Loaded', exact=False)).to_be_visible(timeout=180000)
                     expect(page.get_by_text('Model ready', exact=True)).to_be_visible()
                     receipt['local_load']['status'] = 'PASS_APP_LOCAL_LOAD_AND_WARMUP'
-                served = []
+                served, verified_sidecars = [], []
                 for response in responses:
+                    sidecar = sidecars.get(response.url)
+                    if sidecar is not None:
+                        # Playwright exposes an empty body for fulfilled
+                        # cross-origin routes, so the receipt binds what was
+                        # served (URL, local path, sha256) rather than reading
+                        # the response back.
+                        verified_sidecars.append(urlparse(response.url).path.rsplit('/', 1)[-1])
+                        continue
                     parsed = urlparse(response.url)
                     path = '/index.html' if parsed.path == '/' else parsed.path
                     if not response.url.startswith(origin + '/') or path not in known:
@@ -220,6 +262,11 @@ def main():
                     if response.status != 200 or hashlib.sha256(body).hexdigest() != known[path]['sha256']:
                         raise ValueError('Browser bytes differ from build receipt: ' + path)
                     served.append(path)
+                expected_sidecars = {url.rsplit('/', 1)[-1] for url in sidecars}
+                if model_root and set(verified_sidecars) != expected_sidecars:
+                    raise ValueError('Model load did not consume both offline ORT sidecars: '
+                                     + repr(sorted(set(verified_sidecars))))
+                receipt['verified_sidecars'] = sorted(set(verified_sidecars))
                 if '/index.html' not in served or not any(path.endswith('.js') and path.startswith('/assets/') for path in served):
                     raise ValueError('HTML and application bundle were not observed')
                 if errors:
