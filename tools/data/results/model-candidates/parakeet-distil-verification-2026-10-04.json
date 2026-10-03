@@ -1,0 +1,86 @@
+{
+  "status": "PARAKEET_DISTIL_SURVEY_VERIFIED",
+  "scope": "Hugging Face API metadata verification of Parakeet-line distillation and new-model candidates. Metadata only: no weights downloaded, no model run, no port attempt. Excludes NVIDIA-originated and Nemotron models per current scope.",
+  "method": "tools/scripts/survey-hf-asr-candidates.mjs --search parakeet --limit 60 (62 records) plus per-model API verification of the strongest candidates.",
+  "survey_receipt": "tools/data/results/model-candidates/hf-parakeet-distil-2026-10-04.json",
+  "candidates": [
+    {
+      "modelId": "moondream/parakeet-redux",
+      "parameters": 148923399,
+      "license": "cc-by-4.0",
+      "downloads": 8804,
+      "likes": 177,
+      "onnx_files": 0,
+      "verdict": "STRONGEST_CANDIDATE_NEEDS_AUTHORITY",
+      "reason": "Only verified sub-300M Parakeet-line model: 148,923,399 parameters, about 4.2x smaller than the 627M TDT v3 line (and smaller than Orukeet). No ONNX graphs are published, so porting requires our own export.",
+      "next_step": "Requires authority for a weight download plus an ONNX export from safetensors. Quantization character must be re-checked against the standing rule before promotion."
+    },
+    {
+      "modelId": "moondream/parakeet-ultra",
+      "parameters": 627270663,
+      "license": "cc-by-4.0",
+      "downloads": 7184,
+      "likes": 64,
+      "onnx_files": 0,
+      "verdict": "DEFER_SIZE_UNCHANGED",
+      "reason": "Same 627M parameter class as Parakeet TDT v3, so it is not a student or size win; no ONNX published."
+    },
+    {
+      "modelId": "istupakov/parakeet-tdt-0.6b-v3-onnx",
+      "parameters": null,
+      "license": "cc-by-4.0",
+      "downloads": 58463,
+      "likes": 70,
+      "onnx_files": 5,
+      "onnx_examples": [
+        "encoder-model.onnx",
+        "decoder_joint-model.int8.onnx",
+        "decoder_joint-model.onnx",
+        "encoder-model.int8.onnx",
+        "nemo128.onnx"
+      ],
+      "base_model": "nvidia/parakeet-tdt-0.6b-v3",
+      "verdict": "USEFUL_THIRD_PARTY_EXPORT_NOT_A_NEW_MODEL",
+      "reason": "A third-party ONNX export of the stock v3 line, not a distillation. Could replace our own local v3 export, so it is a supply-chain option rather than a new port; our existing local export already works."
+    },
+    {
+      "modelId": "primeline/parakeet-primeline",
+      "parameters": null,
+      "license": "cc-by-4.0",
+      "downloads": 1089,
+      "likes": 21,
+      "onnx_files": 0,
+      "verdict": "DEFER_UNVERIFIABLE",
+      "reason": "No parameter metadata and no ONNX in the repository record; architecture and size are unverified."
+    },
+    {
+      "modelId": "handy-computer/parakeet-primeline-gguf",
+      "parameters": null,
+      "license": "cc-by-4.0",
+      "downloads": 27488,
+      "onnx_files": 0,
+      "verdict": "DEFER_FORMAT_UNSUPPORTED",
+      "reason": "GGUF quantization of primeline; not a runtime format this library executes, and the standing rule treats integer quantization as a separate evidence-gated decision."
+    }
+  ],
+  "excluded_by_scope": [
+    {
+      "modelId": "nvidia/parakeet-ctc-0.6b",
+      "reason": "NVIDIA-originated; verified ONNX exists (onnx-community/parakeet-ctc-0.6b-ONNX with fp32/fp16/int8/q4) but out of the current scope."
+    },
+    {
+      "modelId": "nvidia/parakeet-tdt_ctc-110m",
+      "reason": "NVIDIA-originated 114,639,495-parameter student. A genuine small student, but out of scope for now."
+    },
+    {
+      "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+      "reason": "Fine-tune of an NVIDIA 110M CTC line; out of scope."
+    },
+    {
+      "modelId": "nemotron families",
+      "reason": "Explicitly out of scope."
+    }
+  ],
+  "decision_needed": "Authority to download moondream/parakeet-redux weights and run our own ONNX export. Without it the strongest verified candidate cannot be ported.",
+  "no_authority_used": "No weights, downloads, installs or model runs were performed for this survey."
+}

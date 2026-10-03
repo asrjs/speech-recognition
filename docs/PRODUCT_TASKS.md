@@ -1,3 +1,35 @@
+## C31 — Parakeet distillation and new-model survey
+
+Status: VERIFIED CANDIDATES, porting BLOCKED on download authority. Metadata
+only: no weights downloaded, no installs, no model runs.
+
+Scope is Parakeet-line distillations and new models; NVIDIA-originated and
+Nemotron models are excluded. Surveyed 62 `parakeet` records and verified the
+strongest candidates against the Hugging Face API.
+
+| candidate                                |      params | license   |    ONNX | verdict                                                 |
+| ---------------------------------------- | ----------: | --------- | ------: | ------------------------------------------------------- |
+| `moondream/parakeet-redux`               | 148,923,399 | cc-by-4.0 |    none | strongest; about 4.2x smaller than the 627M line        |
+| `moondream/parakeet-ultra`               | 627,270,663 | cc-by-4.0 |    none | deferred: same size class, not a student                |
+| `istupakov/parakeet-tdt-0.6b-v3-onnx`    |         n/a | cc-by-4.0 | 5 files | third-party export of stock v3, not a new model         |
+| `primeline/parakeet-primeline`           |  unverified | cc-by-4.0 |    none | deferred: architecture and size unverified              |
+| `handy-computer/parakeet-primeline-gguf` |         n/a | cc-by-4.0 |    none | deferred: GGUF is not an executable runtime format here |
+
+`parakeet-redux` is the only verified sub-300M model on the Parakeet line and
+the only candidate that is a real size win. It publishes no ONNX graphs, so
+porting it means downloading weights and running our own export; both are
+authority-gated. Its quantization character must also be re-checked against the
+standing rule before any promotion, rather than assumed from its size.
+
+Excluded by scope and recorded with reasons: `nvidia/parakeet-ctc-0.6b` (a
+usable ONNX export exists via `onnx-community`, worth revisiting), the 114.6M
+`nvidia/parakeet-tdt_ctc-110m` student, its fine-tunes, and the Nemotron
+families.
+
+Receipts: `tools/data/results/model-candidates/hf-parakeet-distil-2026-10-04.json`
+(62 records) and `parakeet-distil-verification-2026-10-04.json` (per-candidate
+verdicts).
+
 ## C30 — Orukeet preset contract and in-repo demo
 
 Status: PASS for the preset contract and demo wiring; the demo page itself is
