@@ -36,6 +36,15 @@ def build_power_probe(power):
     return probe.replace("'official-complex-rounded'", "'official-complex-library'")
 
 
+def checked_coordinate(coordinate, mel_count, valid_frames):
+    if coordinate is None:
+        return None
+    if (len(coordinate) != 2 or any(type(value) is not int for value in coordinate)
+            or not 0 <= coordinate[0] < mel_count or not 0 <= coordinate[1] < valid_frames):
+        raise ValueError('Diagnostic coordinate is outside the valid feature prefix')
+    return list(coordinate)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--capture', type=Path, required=True)
@@ -45,6 +54,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--probe-output', type=Path, required=True)
     parser.add_argument('--power', choices=['fp32-rounded', 'library'], default='fp32-rounded')
+    parser.add_argument('--coordinate', type=int, nargs=2, metavar=('MEL', 'FRAME'))
     args = parser.parse_args()
     sources = [Path(__file__), *[Path(__file__).with_name(name) for name in (
         'replay_packed_fft.py', 'diagnostic_mel_bank.py', 'compare_js_feature_boundaries.py',
@@ -58,6 +68,7 @@ def main():
                        expected_sha256=args.expected_bank_sha256)
     _, sample, pcm, oracle, frames, reference, valid = read_capture(
         args.capture, args.expected_capture_sha256, args.sample_id)
+    coordinate = checked_coordinate(args.coordinate, bank.shape[0], valid)
     graph = helper.make_graph([
         helper.make_node('DFT', ['frames'], ['spectrum'], axis=2, inverse=0, onesided=1)
     ], 'frozen-real512-dft-control', [
@@ -84,13 +95,13 @@ def main():
     payload = {'pcm': pcm.ravel().tolist(), 'bins': 128, 'referenceRaw': [0] * reference.size,
         'referenceWindow': read_stage(sample, 'feature_stft/window', 'float32').tolist(),
         'referenceFilterbank': bank.ravel().tolist(), 'physicalFrames': oracle.shape[2],
-        'validLength': valid, 'coordinate': None,
+        'validLength': valid, 'coordinate': coordinate,
         'spectra': {name: encode_complex_boundary(value) for name, value in spectra.items()}}
     process = subprocess.run(['node', '--input-type=module', '-e', probe], cwd=ROOT,
         input=json.dumps(payload, allow_nan=False), text=True, capture_output=True, timeout=60)
     if process.returncode:
         raise RuntimeError('Node feature probe failed: ' + process.stderr[-1500:])
-    features = validate_probe_output(json.loads(process.stdout), set(spectra), reference, valid, None)
+    features = validate_probe_output(json.loads(process.stdout), set(spectra), reference, valid, coordinate)
     if not features['official_complex_control']['allclose']:
         raise ValueError('Official-complex downstream control failed')
     if hashes != {str(path.relative_to(ROOT)): digest(path.read_bytes()) for path in sources}:
@@ -99,6 +110,7 @@ def main():
         raise ValueError('Capture changed during execution')
     receipt = {'status': 'DIAGNOSTIC_FROZEN_DFT_FEATURES', 'sample_id': args.sample_id,
         'injected_spectrum_power': args.power,
+        'coordinate': coordinate,
         'capture_sha256': args.expected_capture_sha256, 'bank_sha256': args.expected_bank_sha256,
         'bank_recipe': {'sample_rate': 16000, 'n_fft': 512, 'n_mels': 128,
                         'fmin': 0, 'fmax': 8000, 'norm': 'slaney', 'dtype': 'float32'},
@@ -114,6 +126,15 @@ def main():
         'onnx': onnx.__version__, 'onnxruntime': ort.__version__, 'numpy': np.__version__,
         'spectrum_comparison': spectrum, 'feature_comparisons': features,
         'scope': 'Native CPU DFT on reconstructed captured frames + existing diagnostic JS mel/normalization; not production feature, encoder, token/text, browser or performance acceptance'}
+    if coordinate is not None:
+        mel, frame = coordinate
+        receipt['coordinate_reference_feature'] = float(reference[0, mel, frame])
+        receipt['coordinate_active_bins'] = [
+            {'bin': int(index), 'weight': float(bank[mel, index]),
+             'components': {name: {'real': float(value[0, index, frame].real),
+                                  'imag': float(value[0, index, frame].imag)}
+                            for name, value in spectra.items()}}
+            for index in np.flatnonzero(bank[mel])]
     write_new_text(args.output, json.dumps(receipt, indent=2, allow_nan=False) + '\n')
     print(json.dumps(receipt, allow_nan=False))
 

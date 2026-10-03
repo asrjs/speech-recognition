@@ -1831,3 +1831,23 @@ have 78, the same max absolute error and first divergent index. Thus changing
 this global power rounding boundary does not resolve the DFT feature failure.
 Retain both controls; next inspect spectrum/power contributions before selecting
 another FFT algorithm. No production code or acceptance threshold changed.
+
+Read-only coordinate trace (2026-10-03): optional `--coordinate MEL FRAME`
+uses the existing verified JS point capture, checks the valid prefix, and
+records active bank weights and the unchanged oracle/candidate components.
+It performs no injection override or coordinate correction. Five CLI/probe
+guard tests pass, including bounds, booleans/nonintegers and independent lists.
+Actual library-power trace at mel0/frame98 is recorded in
+`tools/data/results/orukeet/light-dft-first-point-speech-silence-2026-10-03.json`.
+It retains the same 78 mismatches and graph/input/probe identities.
+
+This mel row has only bin1, weight 0.02837754227221012. Oracle real/imag are
+(-0.00010862957424251363, -0.0006376661476679146), versus DFT
+(-0.00010868882236536592, -0.0006375877419486642). Observed linear mel changes
+1.1873688698926799e-8 -> 1.1871216898384773e-8; raw log mel changes
+-16.45387077331543 -> -16.453907012939453. Mean -16.235523223876953 and std
+0.8171498775482178 are identical. Thus at this first coordinate the candidate
+spectrum difference reaches the feature through power/mel/log; mean/std do not
+cause the local difference. This point does not prove the cause of all 78
+mismatches or certify an FFT replacement. Next compare valid-frame spectral
+error/energy distributions before choosing a global, portable arithmetic fix.

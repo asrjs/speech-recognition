@@ -4,13 +4,23 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from probe_light_dft_features import build_power_probe
+from probe_light_dft_features import build_power_probe, checked_coordinate
 from replay_packed_fft import build_probe
 
 TOOL = Path(__file__).with_name('probe_light_dft_features.py')
 
 
 class LightDftGuardTests(unittest.TestCase):
+    def test_coordinate_selects_only_valid_prefix_without_mutation(self):
+        self.assertIsNone(checked_coordinate(None, 3, 7))
+        source = [2, 6]
+        selected = checked_coordinate(source, 3, 7)
+        self.assertEqual(selected, [2, 6])
+        self.assertIsNot(selected, source)
+        for invalid in ([3, 0], [0, 7], [-1, 0], [0, -1], [True, 0], [0.0, 1], [0], [0, 1, 2]):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                checked_coordinate(invalid, 3, 7)
+
     def test_power_probe_preserves_baseline_and_changes_only_named_contract(self):
         baseline = build_probe()
         self.assertEqual(build_power_probe('fp32-rounded'), baseline)
