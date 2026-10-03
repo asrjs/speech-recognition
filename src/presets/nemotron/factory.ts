@@ -18,10 +18,7 @@ export const NEMOTRON_PRESET_MANIFESTS: readonly NemotronPresetManifest[] = [
     modelId: DEFAULT_NEMOTRON_PRESET_MODEL,
     aliases: [
       'nvidia/nemotron-3.5-asr-streaming-0.6b',
-      'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4',
-      'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx',
-      'codavidgarcia/nemotron-3.5-asr-streaming-0.6b-onnx',
-      'pantinor/nemotron-3.5-asr-streaming-0.6b-onnx',
+      'ysdede/nemotron-3.5-asr-streaming-0.6b-onnx',
     ],
     description:
       'Nemotron 3.5 ASR Streaming 0.6B over the cache-aware encoder + predictor + joint layout.',
@@ -36,7 +33,9 @@ export const NEMOTRON_PRESET_MANIFESTS: readonly NemotronPresetManifest[] = [
     },
     source: {
       kind: 'huggingface',
-      repoId: 'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4',
+      repoId: 'ysdede/nemotron-3.5-asr-streaming-0.6b-onnx',
+      encoderBackend: 'webgpu',
+      decoderBackend: 'wasm',
       preprocessorBackend: 'js',
     },
   },

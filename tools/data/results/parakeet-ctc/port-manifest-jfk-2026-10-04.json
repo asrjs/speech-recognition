@@ -1,0 +1,76 @@
+{
+  "status": "PASS",
+  "scope": "Manifest-bound port run; identity digests recorded, oracle compared",
+  "manifest": "tools/model-debugging/ports/ctaguchi-parakeet-ctc-110m-en.port.json",
+  "identity": {
+    "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+    "family": "parakeet-ctc",
+    "preset": "parakeet-ctc",
+    "originalWeights": {
+      "path": ".cache/parakeet-ctc-110m/model.safetensors",
+      "bytes": 437298244,
+      "sha256": "928d40a16a729e2afaacdacc13627252c891d0ccfe6b99da8c7dd8df66b92cc5"
+    },
+    "localArtifacts": {
+      "root": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\parakeet-ctc-110m-en",
+      "layout": "parakeet-ctc",
+      "files": [
+        {
+          "path": "models/onnx/parakeet-ctc-110m-en/model.onnx",
+          "bytes": 437740665,
+          "sha256": "c261d58ef199e2b2c365ada9d8812ab603ea37066be514e8a34c6bced487f787"
+        },
+        {
+          "path": "models/onnx/parakeet-ctc-110m-en/tokenizer.json",
+          "bytes": 400141,
+          "sha256": "5512c7db80d6b1144c58192d0d6435728b250edcf6a7bbb7abe7c2c269a34aea"
+        }
+      ]
+    },
+    "fixtures": [
+      {
+        "path": "tools/data/fixtures/audio/jfk-short.wav",
+        "bytes": 352078,
+        "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+        "id": "jfk-short",
+        "durationSeconds": 11,
+        "oracle": {
+          "path": "tools/data/results/parakeet-ctc/parakeet-ctc-110m-en-oracle-2026-10-04.json",
+          "bytes": 786,
+          "sha256": "2950d5afd7129d4dcac4ce1818f8eed4d0cd280684678cc0b7c3bc1cb34e5b5d"
+        }
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "node-native-ctc-jfk",
+      "status": "PASS_ORACLE_MATCH",
+      "checks": {
+        "token_ids": true,
+        "text": true
+      },
+      "command": [
+        "node",
+        "tools/model-debugging/scripts/transcribe_parakeet_ctc_local.mjs",
+        "--model-dir=N:\\github\\asrjs\\speech-recognition\\models\\onnx\\parakeet-ctc-110m-en",
+        "--audio=N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+        "--vocab-size=1025",
+        "--blank-id=1024"
+      ],
+      "runner": "node",
+      "backend": "wasm",
+      "fixture": "jfk-short",
+      "host": {
+        "runtime": "node",
+        "version": "26.2.0"
+      },
+      "ort": null,
+      "metrics": {
+        "totalMs": 119.579,
+        "encoderFrameCount": 138
+      },
+      "warnings": []
+    }
+  ]
+}

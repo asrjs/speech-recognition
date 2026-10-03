@@ -32,6 +32,15 @@ earlier 7.40 measurement used a contract the model does not consume. The correct
 reference is therefore the preemphasis path (1101x80), and against it the current
 frontend measures max abs `18.02` / mean `9.25` over 88,080 coordinates.
 
+**REGISTERED AND VERIFIED THROUGH THE SHARED HARNESS.** `ctaguchi/parakeet-hf-ctc-110m-en`
+is now a built-in descriptor (preset `parakeet-ctc`, local-folder only, no Hub
+source because the repository ships no ONNX) with a local-folder adapter, and it
+runs through `tools/model-debugging/scripts/port_manifest.py`:
+`PASS_ORACLE_MATCH` on both token ids and text, with the graph, tokenizer,
+original safetensors and oracle all bound by declared SHA-256 before execution.
+Runner: `tools/model-debugging/scripts/transcribe_parakeet_ctc_local.mjs`.
+Manifest: `tools/model-debugging/ports/ctaguchi-parakeet-ctc-110m-en.port.json`.
+
 **THE PORTED FAMILY NOW TRANSCRIBES.** Running the new `src/models/parakeet-ctc`
 family on JFK through the exported graph yields 34 tokens and the text "And so,
 my fellow Americans, askk not what your country can do for you. Ask what you can

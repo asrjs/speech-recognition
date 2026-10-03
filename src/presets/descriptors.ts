@@ -35,7 +35,8 @@ export type BuiltInPresetId =
   | 'medasr'
   | 'nemotron'
   | 'whisper'
-  | 'wav2vec2';
+  | 'wav2vec2'
+  | 'parakeet-ctc';
 export type BuiltInModelTask = 'asr' | 'speech-translation';
 export type BuiltInWarmupMode = 'expected-text' | 'non-empty';
 export type BuiltInControlType = 'boolean' | 'enum' | 'language';
@@ -518,6 +519,80 @@ function createMedAsrDescriptors(): BuiltInModelDescriptor[] {
   ];
 }
 
+function createParakeetCtcDescriptors(): BuiltInModelDescriptor[] {
+  return [
+    {
+      modelId: 'ctaguchi/parakeet-hf-ctc-110m-en',
+      aliases: ['parakeet-ctc-110m-en'],
+      preset: 'parakeet-ctc',
+      displayName: 'Parakeet HF CTC 110M (English)',
+      description:
+        'ParakeetForCTC student over the NeMo CTC boundary; local folder only because no validated Hub export exists.',
+      classification: {
+        ecosystem: 'nemo',
+        processor: 'parakeet-mel-80',
+        encoder: 'parakeet-ctc-encoder',
+        decoder: 'ctc',
+        topology: 'ctc',
+        family: 'parakeet-ctc',
+        task: 'asr',
+      },
+      languages: ['en'],
+      defaultSourceLanguage: 'en',
+      defaultTargetLanguage: 'en',
+      capabilities: {
+        supportedTasks: ['asr'],
+        supportsTranslation: false,
+        supportsPunctuationCapitalization: false,
+        supportsInverseTextNormalization: false,
+        supportsWordTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsPromptControls: false,
+      },
+      inference: {
+        ...createCtcInferenceLimits(),
+        supportsWordTimestamps: true,
+        supportsTokenTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsConfidence: true,
+      },
+      loading: {
+        repoId: 'ctaguchi/parakeet-hf-ctc-110m-en',
+        // Verified 2026-10-04: the repository publishes safetensors and a
+        // tokenizer, no ONNX export, so Hub loading would 404.
+        supportsHubSource: false,
+        supportsLocalSource: true,
+        supportsSplitQuantization: false,
+        supportsSplitBackends: false,
+        availableEncoderBackends: ['wasm', 'webgpu'],
+        availableDecoderBackends: ['wasm'],
+        defaultEncoderBackend: 'wasm',
+        defaultDecoderBackend: 'wasm',
+        availableEncoderQuantizations: ['fp32'],
+        availableDecoderQuantizations: ['fp32'],
+        defaultEncoderQuantization: 'fp32',
+        defaultDecoderQuantization: 'fp32',
+        supportsPreprocessorBackend: true,
+        preprocessorBackends: ['js'],
+        defaultPreprocessorBackend: 'js',
+        defaultPreprocessorName: 'parakeet-mel-80',
+        encoderArtifactBaseName: 'model',
+        decoderArtifactBaseName: 'model',
+        defaultRevision: 'main',
+      },
+      controls: [],
+      warmup: {
+        mode: 'non-empty',
+      },
+      docs: {
+        modelCardUrl: 'https://huggingface.co/ctaguchi/parakeet-hf-ctc-110m-en',
+        architectureSummary:
+          '16 kHz PCM → 80-bin Parakeet mel with 0.97 preemphasis and per-band normalization → ParakeetForCTC encoder → CTC greedy decode.',
+      },
+    },
+  ];
+}
+
 function createWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
   const manifest = resolveWav2Vec2PresetManifest('facebook/wav2vec2-base-960h');
   return [
@@ -717,6 +792,7 @@ const BUILT_IN_MODEL_DESCRIPTORS = [
   ...createMedAsrDescriptors(),
   ...createNemotronDescriptors(),
   ...createWav2Vec2Descriptors(),
+  ...createParakeetCtcDescriptors(),
   ...createWhisperDescriptors(),
 ] as const;
 

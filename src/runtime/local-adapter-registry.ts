@@ -11,6 +11,7 @@ import type { SpeechModelLocalDirectoryHandleLike, SpeechModelLocalEntry } from 
 import { getBuiltInModelDescriptor } from '../presets/descriptors.js';
 import { parakeetBuiltInLocalModelAdapter } from '../presets/parakeet/local-adapter.js';
 import { nemotronBuiltInLocalModelAdapter } from '../presets/nemotron/local-adapter.js';
+import { parakeetCtcBuiltInLocalModelAdapter } from '../presets/parakeet/ctc-local-adapter.js';
 
 export interface SpeechModelLocalInspection {
   readonly encoderQuantizations: readonly QuantizationMode[];
@@ -85,6 +86,7 @@ export interface BuiltInLocalModelAdapter {
 const BUILT_IN_LOCAL_MODEL_ADAPTERS = new Map<string, BuiltInLocalModelAdapter>([
   [parakeetBuiltInLocalModelAdapter.preset, parakeetBuiltInLocalModelAdapter],
   [nemotronBuiltInLocalModelAdapter.preset, nemotronBuiltInLocalModelAdapter],
+  [parakeetCtcBuiltInLocalModelAdapter.preset, parakeetCtcBuiltInLocalModelAdapter],
 ]);
 
 export function listBuiltInLocalModelAdapters(): readonly BuiltInLocalModelAdapter[] {

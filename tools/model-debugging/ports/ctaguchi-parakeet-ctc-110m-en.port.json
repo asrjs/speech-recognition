@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "family": "parakeet-ctc",
+  "preset": "parakeet-ctc",
+  "originalWeights": {
+    "path": "N:\\github\\asrjs\\speech-recognition\\.cache\\parakeet-ctc-110m\\model.safetensors",
+    "sha256": "928d40a16a729e2afaacdacc13627252c891d0ccfe6b99da8c7dd8df66b92cc5"
+  },
+  "localArtifacts": {
+    "root": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\parakeet-ctc-110m-en",
+    "layout": "parakeet-ctc",
+    "files": [
+      {
+        "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\parakeet-ctc-110m-en\\model.onnx",
+        "sha256": "c261d58ef199e2b2c365ada9d8812ab603ea37066be514e8a34c6bced487f787"
+      },
+      {
+        "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\parakeet-ctc-110m-en\\tokenizer.json",
+        "sha256": "5512c7db80d6b1144c58192d0d6435728b250edcf6a7bbb7abe7c2c269a34aea"
+      }
+    ]
+  },
+  "sourceIdentity": {
+    "configPath": "N:\\github\\asrjs\\speech-recognition\\.cache\\parakeet-ctc-110m\\config.json",
+    "configSha256": "c6fca53c73fd1378d3ec49a21b87de402032fc2e0bc1ca2eed457428c5d15d54"
+  },
+  "fixtures": [
+    {
+      "id": "jfk-short",
+      "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "durationSeconds": 11,
+      "oracle": {
+        "path": "tools/data/results/parakeet-ctc/parakeet-ctc-110m-en-oracle-2026-10-04.json",
+        "field": "result",
+        "sha256": "2950d5afd7129d4dcac4ce1818f8eed4d0cd280684678cc0b7c3bc1cb34e5b5d"
+      }
+    }
+  ],
+  "runs": [
+    {
+      "id": "node-native-ctc-jfk",
+      "runner": "node",
+      "backend": "wasm",
+      "fixture": "jfk-short",
+      "compare": [
+        "token_ids",
+        "text"
+      ],
+      "command": [
+        "node",
+        "tools/model-debugging/scripts/transcribe_parakeet_ctc_local.mjs",
+        "--model-dir={localArtifacts.root}",
+        "--audio={fixture.path}",
+        "--vocab-size=1025",
+        "--blank-id=1024"
+      ]
+    }
+  ],
+  "browserRuns": [],
+  "notes": [
+    "No Hub source: the repository publishes safetensors and a tokenizer, not ONNX.",
+    "The family frontend is verified to max abs 2.04e-4 against the official __call__ features."
+  ]
+}
