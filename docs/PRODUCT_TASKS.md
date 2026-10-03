@@ -26,28 +26,39 @@ artifact-layout detection, then ran it on a real Blackwell adapter:
 | `parakeet-tdt-0.6b-v3`            | nemo-tdt      | wasm          | PASS, warm-up verified |
 | `nemotron-3.5-asr-streaming-0.6b` | nemotron-rnnt | webgpu-hybrid | FAIL, see below        |
 
-Two blocking findings for the newest port, both recorded with receipts:
+Three findings for the newest port, each recorded with receipts:
 
 1. **No browser local-folder loader existed** for Nemotron 3.5; the registry
    raised "does not yet have a browser local-folder loader". Added
    `src/presets/nemotron/local-adapter.ts` plus the shared, model-neutral
-   `src/runtime/local-entry-files.ts` helpers, with two unit regressions. Two
-   further gaps surfaced from real files and are handled by the adapter: the
-   on-disk naming has two generations (`encoder_320ms_fp16.onnx` with
-   `joiner.onnx` versus `encoder.onnx`/`joint.onnx`), and external-data
-   filenames must be forwarded or ORT cannot resolve `.data` beside a blob URL.
-2. **Browser decode still fails.** Through the established
-   `webgpu-agent-test` harness, fp32 fails at session creation with
-   `WebAssembly.Memory(): Property 'initial': value 74903 is above the upper
-bound 65536` in both hybrid and all-WebGPU compositions — a WASM32 memory
-   ceiling, not a model-math result. fp16 clears it (session 11.7 s, 119 frames,
-   RTFx 3.04) but emits **zero tokens**, so the transcript is empty.
+   `src/runtime/local-entry-files.ts` helpers, with two unit regressions. The
+   adapter also forwards `encoderFilename`/`decoderFilename`/`jointFilename`,
+   without which ORT cannot resolve `.data` beside a blob URL.
+2. **Matching-contract local-folder browser inference is UNTESTED.** The adapter
+   is unit-tested only. Its one exercised browser path used
+   `nemotron-3.5-asr-streaming-0.6b-onnx`, whose encoder is a _different export
+   contract_ (`input_features`, `prompt_ids`, `cache_mask`, per-layer KV and
+   conv caches, separate first/continuation encoders) than the executor's
+   six-input `audio_signal`/conformer-cache contract. The two naming generations
+   are **not interchangeable filenames**; supporting the two-encoder export is a
+   separate contract adaptation, not quantization-suffix detection. The
+   matching-contract folder run stopped at smoke layout detection and has not
+   been re-run.
+3. **Direct-URL harness inference FAILS.** The established
+   `webgpu-agent-test` runner builds the executor from artifact URLs directly
+   and never touches the new adapter, so this is separate evidence. fp32 fails
+   at session creation with `WebAssembly.Memory(): Property 'initial': value
+74903 is above the upper bound 65536` in both hybrid and all-WebGPU
+   compositions — a WASM32 memory ceiling. fp16 clears it (session 11.7 s, 119
+   frames, RTFx 3.04) but emits **zero tokens**, so the transcript is empty and
+   baselineMatch is false.
 
-So the adapter is unit-tested and reaches real browser inference, but Nemotron 3.5
-browser decoding is **not** verified and is not claimed. Next: localize the
-empty decode in the existing `nemotron-rnnt-webgpu.js` runner before touching
-the family, and record the WASM memory ceiling as a composition constraint for
-any future fp32 browser run.
+So: Parakeet v2/v3 companion-UI browser gates pass; Nemotron 3.5 browser
+decoding is **not** verified on either path. Next: run the local-folder adapter
+against a matching-contract export, and localize the zero-token decode in the
+`nemotron-rnnt-webgpu.js` runner before touching the family. The inherited dirty
+`src/models/nemotron-rnnt/*` and `src/presets/descriptors.ts` work stayed
+untouched, so this adapter is deliberately unlanded on top of it.
 
 ## C27 — Long-form port fix: encoder layout beyond 82 seconds
 

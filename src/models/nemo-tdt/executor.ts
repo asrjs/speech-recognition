@@ -715,6 +715,10 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         `NeMo TDT encoder output shape [${dims.join(', ')}] matches neither axis of encoded_lengths=${encodedFrameCount}.`,
       );
     }
+    // Physical length of the encoder time axis. When the encoder pads its time
+    // dimension, feature rows are this far apart in the flat buffer, so the
+    // valid frameCount above must not be used as a stride.
+    const encoderTimeStride = encoderIsBdt ? (dims[2] ?? frameCount) : (dims[1] ?? frameCount);
     const frameTime = this.config.frameShiftSeconds * this.config.subsamplingFactor;
     const vocabSize = loaded.tokenizer.vocabSize;
     const blankId = loaded.tokenizer.blankId ?? this.config.tokenizer.blankTokenId ?? 0;
@@ -815,7 +819,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
             // (width 1 is layout-invariant, which is why the sequential path
             // never hits this and layout-blind unit mocks pass).
             for (let fIdx = 0; fIdx < featureSize; fIdx += 1) {
-              const sourceRow = fIdx * frameCount + frameIndex;
+              const sourceRow = fIdx * encoderTimeStride + frameIndex;
               batchData.set(encoderData.subarray(sourceRow, sourceRow + width), fIdx * width);
             }
           } else {
@@ -1000,7 +1004,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         if (encoderIsBdt) {
           for (let featureIndex = 0; featureIndex < featureSize; featureIndex += 1) {
             encoderFrameBuffer[featureIndex] =
-              encoderData[featureIndex * frameCount + frameIndex] ?? 0;
+              encoderData[featureIndex * encoderTimeStride + frameIndex] ?? 0;
           }
         } else {
           const offset = frameIndex * featureSize;

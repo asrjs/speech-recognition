@@ -61,6 +61,7 @@ class MockDecoderSession implements OrtSessionLike {
   readonly emittedStates: MockTensor<Float32Array>[] = [];
   readonly emittedLogits: MockTensor<Float32Array>[] = [];
   readonly encoderFeedDims: number[][] = [];
+  readonly encoderFeedValues: number[][] = [];
   private callIndex = 0;
 
   constructor(
@@ -74,6 +75,7 @@ class MockDecoderSession implements OrtSessionLike {
     this.emittedStates.length = 0;
     this.emittedLogits.length = 0;
     this.encoderFeedDims.length = 0;
+    this.encoderFeedValues.length = 0;
   }
 
   async run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>> {
@@ -85,7 +87,9 @@ class MockDecoderSession implements OrtSessionLike {
 
     const targetTensor = feeds.targets as OrtTensorLike<Int32Array>;
     this.targetHistory.push(Number(targetTensor.data[0] ?? -1));
-    this.encoderFeedDims.push([...(feeds.encoder_outputs as OrtTensorLike).dims]);
+    const encoderFeed = feeds.encoder_outputs as OrtTensorLike<Float32Array>;
+    this.encoderFeedDims.push([...encoderFeed.dims]);
+    this.encoderFeedValues.push(Array.from(encoderFeed.data).slice(0, 8));
     const outputLogits = new MockTensor(new Float32Array(step.logits), [1, step.logits.length]);
     const outputState1 = new MockTensor(
       new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
@@ -417,6 +421,11 @@ describe('nemo-tdt executor decode loop', () => {
       expect([
         ...new Set(harness.decoderSession.encoderFeedDims.map((dims) => dims.join(','))),
       ]).toEqual(['1,4,1']);
+      // Feature rows are paddedFrames apart in the flat buffer, not the valid
+      // frameCount; reading them frameCount apart silently corrupts the feed.
+      expect(harness.decoderSession.encoderFeedValues[0]).toEqual(
+        Array.from(Float32Array.from([0, 0.1, 0.2, 0.3])),
+      );
       expect(result.debug?.frameIndices).toEqual([0]);
     } finally {
       await harness.executor.dispose();
