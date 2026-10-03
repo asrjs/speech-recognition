@@ -2066,3 +2066,31 @@ numerical processor parity or real ONNX/browser inference. The original
 processor graph/export and feature/encoder/token/text gates remain open.
 The live broad DFT session18933 was polled and remains running without new
 output; its source/dist closure was preserved.
+
+STFT export feasibility (2026-10-03): inspected installed NeMo
+`FilterbankFeatures.stft/forward`: constant centered padding, nonperiodic Hann,
+complex STFT followed by real-pair magnitude are the actual source boundary.
+Own TDT exports currently contain no processor graph. A weight-free Torch2.7.1
+opset17 legacy-export control rejects `return_complex=True` with
+`SymbolicValueError: STFT does not currently support complex types`, zero graph
+bytes written. This is exporter/operator scope, not failure of the model.
+
+Changing only the bounded control's output representation to
+`return_complex=False` preserves native spectrum bytes at 1600/3200 samples
+and exports a 6014-byte ONNX graph containing STFT. Native ORT1.29 CPU runs both
+dynamic lengths: spectrum allclose passes at unchanged atol=1e-5/rtol=1e-4,
+max abs 1.564621925354004e-7 / 1.825392246246338e-7 in the initial seeded run;
+ORT spectra are not bit-exact. No graph was saved/promoted and no NeMo source
+was monkeypatched. The representation is deprecated in installed Torch.
+
+Repeatable weight-free controls:
+`python tools/nemo-tdt-onnx-export/test_processor_stft_export.py -v`.
+Two tests pass; syntax/diff checks pass. These fixtures intentionally describe
+FFT512/window400/hop160, not a generic processor implementation. The Python
+tests preserve process thread count and use a local seeded generator. They
+prove operator feasibility only: preemphasis, mel/log/normalization, official
+full PCM feature parity, browser STFT support and complete ASR remain open.
+Next: reconstruct the official family processor from pinned source config,
+verify its frozen features first, then use a local export-only real-pair
+adapter and compare the full processor output. Do not assume that STFT export
+transfers MKL arithmetic or repairs the known near-silence feature failures.
