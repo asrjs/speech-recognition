@@ -63,3 +63,10 @@ bounded slice in the existing task files, validate it, then commit only owned
 changes. Do not resume Nemotron, relax parity gates, repeat completed controls,
 push/publish/upload, install globally or download large weights without authority.
 ```
+
+## Current focus overlay
+
+[GOAL_MODEL_PORT_HARNESS.md](GOAL_MODEL_PORT_HARNESS.md) is derived from that
+goal and is the current emphasis: making the next model port cheaper and
+compounding harness value. It narrows focus; it does not replace the
+whole-product goal, waive any gate or change the confirmed model order.
