@@ -118,6 +118,24 @@ def evaluate_result(result, expected, backend):
     return good
 
 
+def select_ort_module(backend, real_encoder_backend, override):
+    """Pick the onnxruntime-web build the page's import map should resolve.
+
+    The build must follow the execution providers actually needed, not the
+    decoder backend alone: a WebGPU encoder with a WASM decoder previously
+    resolved to the all-bundle, which is a different ORT build and measures
+    differently. ``auto`` therefore selects the webgpu build whenever any
+    component uses WebGPU.
+    """
+    if override == 'all':
+        return '/ort-dist/ort.all.bundle.min.mjs'
+    if override == 'webgpu':
+        return '/ort-dist/ort.webgpu.min.mjs'
+    if backend == 'webgpu' or real_encoder_backend == 'webgpu':
+        return '/ort-dist/ort.webgpu.min.mjs'
+    return '/ort-dist/ort.all.bundle.min.mjs'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("capture", "summary", "audio", "artifact-dir", "export-receipt", "nemo",
@@ -229,13 +247,9 @@ def main():
         # decoder backend alone. A webgpu decoder already selects the webgpu
         # build; a webgpu ENCODER with a wasm decoder previously selected the
         # all-bundle, which is a different ORT build and measures differently.
-        if args.ort_bundle == "webgpu" or (
-            args.ort_bundle == "auto"
-            and (args.backend == "webgpu" or args.real_encoder_backend == "webgpu")
-        ):
-            server.extra_imports["onnxruntime-web"] = "/ort-dist/ort.webgpu.min.mjs"
-        elif args.ort_bundle == "all":
-            server.extra_imports["onnxruntime-web"] = "/ort-dist/ort.all.bundle.min.mjs"
+        selected = select_ort_module(args.backend, args.real_encoder_backend, args.ort_bundle)
+        if selected is not None:
+            server.extra_imports["onnxruntime-web"] = selected
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:

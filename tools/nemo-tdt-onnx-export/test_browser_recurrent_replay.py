@@ -9,7 +9,7 @@ import unittest
 import numpy as np
 
 from browser_head_replay import tensor, resolve_route
-from browser_recurrent_replay import pcm_fixture, final_state_fixture, evaluate_result
+from browser_recurrent_replay import pcm_fixture, final_state_fixture, evaluate_result, select_ort_module
 
 
 def state(value):
@@ -137,6 +137,40 @@ class RecurrentBrowserTests(unittest.TestCase):
                     resolve_route(url, Path("graph.onnx"), {"/vocab.txt": path})
             with self.assertRaises(ValueError):
                 resolve_route("/missing", Path("graph.onnx"), {"/missing": path.with_name("missing")})
+
+
+class OrtBundleSelectionTests(unittest.TestCase):
+    """The import-map build must follow the providers actually needed."""
+
+    def test_webgpu_encoder_with_wasm_decoder_selects_the_webgpu_build(self):
+        # The regression: this combination previously selected the all-bundle,
+        # a different ORT build, and every cross-run comparison then differed by
+        # a constant 1.1316e-6.
+        self.assertEqual(
+            select_ort_module('wasm', 'webgpu', 'auto'), '/ort-dist/ort.webgpu.min.mjs')
+
+    def test_webgpu_decoder_selects_the_webgpu_build(self):
+        self.assertEqual(
+            select_ort_module('webgpu', None, 'auto'), '/ort-dist/ort.webgpu.min.mjs')
+
+    def test_pure_wasm_selects_the_all_bundle(self):
+        self.assertEqual(
+            select_ort_module('wasm', None, 'auto'), '/ort-dist/ort.all.bundle.min.mjs')
+
+    def test_explicit_overrides_win_in_both_directions(self):
+        self.assertEqual(
+            select_ort_module('wasm', 'webgpu', 'all'), '/ort-dist/ort.all.bundle.min.mjs')
+        self.assertEqual(
+            select_ort_module('wasm', None, 'webgpu'), '/ort-dist/ort.webgpu.min.mjs')
+
+    def test_selection_is_never_none_and_always_a_served_route(self):
+        for backend, encoder, override in (
+            ('wasm', None, 'auto'), ('wasm', 'webgpu', 'auto'), ('webgpu', None, 'auto'),
+            ('wasm', 'webgpu', 'all'), ('wasm', None, 'webgpu'),
+        ):
+            with self.subTest(backend=backend, encoder=encoder, override=override):
+                self.assertTrue(
+                    select_ort_module(backend, encoder, override).startswith('/ort-dist/ort.'))
 
 
 if __name__ == "__main__":

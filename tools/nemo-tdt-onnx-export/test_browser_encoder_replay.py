@@ -135,5 +135,69 @@ class EncoderResultTests(unittest.TestCase):
             replay.evaluate_sensitivity(result, sample, 'webgpu')
 
 
+class OrtRuntimeBindingTests(unittest.TestCase):
+    """The runtime-binding guard must fail, not only pass."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.module = 'ort.webgpu.min.mjs'
+        (self.root / self.module).write_bytes(b'probe runtime bytes')
+        self.sha = replay.sha256(self.root / self.module)
+        self.size = (self.root / self.module).stat().st_size
+        self.addCleanup(self.tmp.cleanup)
+
+    def event(self, path=None, **overrides):
+        row = {'path': path or f'/ort-dist/{self.module}', 'status': 200,
+               'bytes_written': self.size, 'body_sha256': self.sha, 'body_complete': True}
+        row.update(overrides)
+        return row
+
+    def test_matching_runtime_binds_and_verifies(self):
+        result = replay.evaluate_ort_runtime([self.event()], self.root, f'/ort-dist/{self.module}')
+        self.assertTrue(result['ort_runtime_bound'])
+        self.assertTrue(result['ort_module_verified'])
+        self.assertTrue(result['ort_runtime'][0]['matches_disk'])
+
+    def test_wrong_selected_module_is_not_verified(self):
+        result = replay.evaluate_ort_runtime(
+            [self.event()], self.root, '/ort-dist/ort.all.bundle.min.mjs')
+        self.assertTrue(result['ort_runtime_bound'])
+        self.assertFalse(result['ort_module_verified'])
+
+    def test_truncated_body_fails_the_binding(self):
+        result = replay.evaluate_ort_runtime(
+            [self.event(bytes_written=self.size - 1)], self.root, f'/ort-dist/{self.module}')
+        self.assertFalse(result['ort_runtime_bound'])
+        self.assertFalse(result['ort_runtime'][0]['matches_disk'])
+
+    def test_mismatched_body_hash_fails_the_binding(self):
+        result = replay.evaluate_ort_runtime(
+            [self.event(body_sha256='0' * 64)], self.root, f'/ort-dist/{self.module}')
+        self.assertFalse(result['ort_runtime_bound'])
+        self.assertFalse(result['ort_module_verified'])
+
+    def test_incomplete_or_failed_delivery_fails_the_binding(self):
+        for overrides in ({'body_complete': False}, {'status': 404}):
+            with self.subTest(overrides=overrides):
+                result = replay.evaluate_ort_runtime(
+                    [self.event(**overrides)], self.root, f'/ort-dist/{self.module}')
+                self.assertFalse(result['ort_runtime_bound'])
+
+    def test_missing_runtime_events_fail_the_binding(self):
+        for events in ([], [{'path': '/graph.onnx', 'status': 200}]):
+            with self.subTest(events=events):
+                result = replay.evaluate_ort_runtime(events, self.root, f'/ort-dist/{self.module}')
+                self.assertFalse(result['ort_runtime_bound'])
+                self.assertFalse(result['ort_module_verified'])
+                self.assertEqual(result['ort_runtime'], [])
+
+    def test_unknown_sidecar_on_disk_fails_the_binding(self):
+        result = replay.evaluate_ort_runtime(
+            [self.event(), self.event(path='/ort-dist/absent.wasm')],
+            self.root, f'/ort-dist/{self.module}')
+        self.assertFalse(result['ort_runtime_bound'])
+
+
 if __name__ == '__main__':
     unittest.main()

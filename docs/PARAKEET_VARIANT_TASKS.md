@@ -3904,6 +3904,17 @@ artifact matches disk and the selected module is among them. Verified:
 (25,749,873) all matching.
 
 The lesson is now enforced by the harness rather than written down as advice.
+Both guards are extracted into pure, testable functions —
+`evaluate_ort_runtime` and `select_ort_module` — and covered in **both
+directions**, since a guard that cannot fail is not enforcement. Twelve new
+regressions assert: a wrong selected module is not verified; a truncated body,
+a mismatched body hash, an incomplete or non-200 delivery, an absent on-disk
+sidecar and a receipt with no runtime events all fail the binding; and the
+bundle rule selects the webgpu build for a WebGPU encoder with a WASM decoder,
+the webgpu build for a WebGPU decoder, the all-bundle for pure WASM, and obeys
+explicit overrides in both directions. 34 runner tests pass, and a live run
+confirms `ort_module_verified: true` and `ort_runtime_bound: true` after the
+refactor.
 
 A clue, stated only as far as it goes. Placed on the same axis, the encoder
 outputs differ in how far each sits from the recorded official encoder tensor:
