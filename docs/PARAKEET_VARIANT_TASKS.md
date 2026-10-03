@@ -2778,3 +2778,30 @@ pairwise normalization uses a different algorithm). Avoid broad parsing of the
 257MB compressed long trace or repeating rejected FFT sweeps. Local inspected
 fixtures are English/silence; multilingual original-engine acceptance remains
 open until a provenance-backed local fixture is available.
+
+### Same-input speech/silence cascade normalization (2026-10-03)
+
+Measured the missing normalization control without model weights or export.
+The pinned original config recreates the installed official CPU processor;
+both its ordinary output and existing RealPairProcessor stage taps reproduce
+the captured features byte-for-byte, with exact valid length4060. Using that
+same `[1,128,4061]` native log-mel, Python width8 and the existing JavaScript
+width8 diagnostic each reproduce all519,808 features plus128 means/128 standard
+deviations byte-for-byte (zero error). Python width16 passes unchanged
+atol1e-5/rtol1e-4, but is not byte-exact; feature max error2.86102294921875e-6.
+
+Receipts under Orukeet results:
+`same-log-mel-cascade-speech-silence-2026-10-03.json` and
+`same-log-mel-js-cascade-speech-silence-2026-10-03.json`.
+They preserve executed one-off snippets and hashes, source/config/capture
+identities, native-output controls, input log-mel hash and every comparison.
+Both owned processes exited0. Six Python and five Node reduction guards pass.
+Only the diagnostic child sets its writable NUMBA_CACHE_DIR; no user setting,
+installed source, production math, dist or model artifact changed.
+
+This extends the earlier JFK/silence arithmetic evidence to speech transitions.
+It is same-input normalization, not production PCM-to-features, actual browser,
+all CPU vector widths, long audio or ASR acceptance. The earlier upstream FFT
+and raw-feature failures remain FAIL. Next use this proven isolated boundary
+as a control while evaluating a complete family-owned processor candidate;
+do not silently install fixed width8 in the shared processor or relax gates.
