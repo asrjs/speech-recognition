@@ -3627,5 +3627,23 @@ standalone path does not. Capturing the options object handed to
 `InferenceSession.create` in both paths, in-browser, is the next bounded
 experiment; it needs no library change, only a runner-side wrapper.
 
+A clue narrows that experiment. Placed on the same axis, the encoder outputs
+differ in how far each sits from the recorded official encoder tensor:
+
+| execution | vs official encoder |
+| --- | ---: |
+| standalone replay, production-JS features | `3.427267e-7` |
+| standalone replay, official features | `1.005828e-6` |
+| native CPU, production-JS features | `4.917383e-7` |
+| **hybrid browser run, frame 69** | `1.4566e-6` |
+
+The hybrid sits about four times farther from the official encoder than the
+standalone WebGPU replay does. That is the opposite of what a merely noisy
+extra allocation would produce, and it means the hybrid path is not the
+standalone path plus noise — something in the hybrid execution changes the
+encoder result systematically. Whatever the session-options capture returns, the
+next attempt should also verify that the hybrid serves and loads the same
+encoder graph bytes the standalone path binds.
+
 The gate stays FAIL, and `1.1316e-6` is **unexplained** again — this entry
 removes a wrong explanation rather than adding a right one.
