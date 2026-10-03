@@ -1851,3 +1851,22 @@ spectrum difference reaches the feature through power/mel/log; mean/std do not
 cause the local difference. This point does not prove the cause of all 78
 mismatches or certify an FFT replacement. Next compare valid-frame spectral
 error/energy distributions before choosing a global, portable arithmetic fix.
+
+Native ORT dtype control (2026-10-03): `--dft-precision fp64` exactly widens the
+same reconstructed fp32 frame values on the host, uses a checked DOUBLE DFT
+graph, and casts real/imag components to the same complex64 boundary before
+unchanged library-power/mel/log/normalization. Input dtype-specific bytes and
+graph identity are recorded separately. This is a distinct ORT kernel/dtype
+control, not a new Fourier algorithm or proposed fp64 browser production path.
+Both native precisions pass exact impulse/silence controls; six tool tests pass,
+including a hash assertion that the default fp32 graph remains unchanged.
+
+Actual full speech/silence result:
+`tools/data/results/orukeet/light-dft-fp64-boundary-speech-silence-2026-10-03.json`.
+The official-complex control still passes. Candidate spectrum max abs improves
+to 4.76837158203125e-7 and features have 32 mismatches versus 78 in fp32
+(max abs 5.131959915161133e-5, first index still 98). At that first point the
+fp64-to-fp32 candidate normalized value is -0.26725757122039795 versus reference
+-0.26720625162124634, so higher FFT precision does not reproduce the official
+fp32 kernel there. It remains a failed feature-parity candidate, with no
+production, browser support, speed/memory or model-completion claim.

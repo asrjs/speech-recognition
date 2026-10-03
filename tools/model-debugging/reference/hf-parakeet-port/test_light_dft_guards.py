@@ -4,13 +4,35 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from probe_light_dft_features import build_power_probe, checked_coordinate
-from replay_packed_fft import build_probe
+import numpy as np
+import onnxruntime as ort
+from probe_light_dft_features import build_power_probe, checked_coordinate, build_dft_graph, DFT_TYPES
+from replay_packed_fft import build_probe, digest
 
 TOOL = Path(__file__).with_name('probe_light_dft_features.py')
 
 
 class LightDftGuardTests(unittest.TestCase):
+    def test_both_dft_precisions_run_real_impulse_and_silence(self):
+        self.assertEqual(digest(build_dft_graph('fp32')),
+                         '6d657e99a8f911a6caf20eab3547294b0003d17cb1b868f18d722d55aaede898')
+        for precision, (dtype, _) in DFT_TYPES.items():
+            with self.subTest(precision=precision):
+                options = ort.SessionOptions()
+                options.intra_op_num_threads = 1
+                session = ort.InferenceSession(build_dft_graph(precision), options,
+                                               providers=['CPUExecutionProvider'])
+                frames = np.zeros((1, 2, 512, 1), dtype=dtype)
+                frames[0, 0, 0, 0] = 1
+                values = session.run(['spectrum'], {'frames': frames})[0]
+                self.assertEqual(values.shape, (1, 2, 257, 2))
+                self.assertEqual(values.dtype, dtype)
+                np.testing.assert_array_equal(values[0, 0, :, 0], np.ones(257, dtype=dtype))
+                np.testing.assert_array_equal(values[0, 0, :, 1], np.zeros(257, dtype=dtype))
+                np.testing.assert_array_equal(values[0, 1], np.zeros((257, 2), dtype=dtype))
+        with self.assertRaises(ValueError):
+            build_dft_graph('fp16')
+
     def test_coordinate_selects_only_valid_prefix_without_mutation(self):
         self.assertIsNone(checked_coordinate(None, 3, 7))
         source = [2, 6]

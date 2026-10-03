@@ -17,6 +17,22 @@ from diagnostic_mel_bank import slaney_bank
 from tensor_parity import compare_tensors
 from artifact_outputs import require_new_outputs, write_new_text
 
+DFT_TYPES = {'fp32': (np.float32, TensorProto.FLOAT), 'fp64': (np.float64, TensorProto.DOUBLE)}
+
+
+def build_dft_graph(precision):
+    if precision not in DFT_TYPES:
+        raise ValueError('Unsupported diagnostic DFT precision')
+    _, tensor_type = DFT_TYPES[precision]
+    graph = helper.make_graph([
+        helper.make_node('DFT', ['frames'], ['spectrum'], axis=2, inverse=0, onesided=1)
+    ], 'frozen-real512-dft-control', [
+        helper.make_tensor_value_info('frames', tensor_type, [1, 'frames', 512, 1])
+    ], [helper.make_tensor_value_info('spectrum', tensor_type, [1, 'frames', 257, 2])])
+    model = helper.make_model(graph, opset_imports=[helper.make_opsetid('', 17)], ir_version=9)
+    onnx.checker.check_model(model)
+    return model.SerializeToString()
+
 
 def build_power_probe(power):
     probe = build_probe()
@@ -55,6 +71,7 @@ def main():
     parser.add_argument('--probe-output', type=Path, required=True)
     parser.add_argument('--power', choices=['fp32-rounded', 'library'], default='fp32-rounded')
     parser.add_argument('--coordinate', type=int, nargs=2, metavar=('MEL', 'FRAME'))
+    parser.add_argument('--dft-precision', choices=list(DFT_TYPES), default='fp32')
     args = parser.parse_args()
     sources = [Path(__file__), *[Path(__file__).with_name(name) for name in (
         'replay_packed_fft.py', 'diagnostic_mel_bank.py', 'compare_js_feature_boundaries.py',
@@ -69,19 +86,14 @@ def main():
     _, sample, pcm, oracle, frames, reference, valid = read_capture(
         args.capture, args.expected_capture_sha256, args.sample_id)
     coordinate = checked_coordinate(args.coordinate, bank.shape[0], valid)
-    graph = helper.make_graph([
-        helper.make_node('DFT', ['frames'], ['spectrum'], axis=2, inverse=0, onesided=1)
-    ], 'frozen-real512-dft-control', [
-        helper.make_tensor_value_info('frames', TensorProto.FLOAT, [1, 'frames', 512, 1])
-    ], [helper.make_tensor_value_info('spectrum', TensorProto.FLOAT, [1, 'frames', 257, 2])])
-    model = helper.make_model(graph, opset_imports=[helper.make_opsetid('', 17)], ir_version=9)
-    onnx.checker.check_model(model)
-    graph_bytes = model.SerializeToString()
+    graph_bytes = build_dft_graph(args.dft_precision)
+    dft_dtype, _ = DFT_TYPES[args.dft_precision]
+    dft_frames = frames.astype(dft_dtype, copy=False)
     options = ort.SessionOptions()
     options.intra_op_num_threads = 1
     session = ort.InferenceSession(graph_bytes, options, providers=['CPUExecutionProvider'])
-    values = session.run(['spectrum'], {'frames': frames[..., None]})[0]
-    if (values.shape != (1, frames.shape[1], 257, 2) or values.dtype != np.float32
+    values = session.run(['spectrum'], {'frames': dft_frames[..., None]})[0]
+    if (values.shape != (1, frames.shape[1], 257, 2) or values.dtype != dft_dtype
             or not np.isfinite(values).all()):
         raise ValueError('ORT DFT output contract differs')
     candidate = np.empty(values.shape[:-1], dtype=np.complex64)
@@ -110,6 +122,8 @@ def main():
         raise ValueError('Capture changed during execution')
     receipt = {'status': 'DIAGNOSTIC_FROZEN_DFT_FEATURES', 'sample_id': args.sample_id,
         'injected_spectrum_power': args.power,
+        'dft_precision': args.dft_precision, 'candidate_boundary_dtype': 'complex64',
+        'dft_input_sha256': digest(dft_frames.astype(np.dtype(dft_dtype).newbyteorder('<')).tobytes()),
         'coordinate': coordinate,
         'capture_sha256': args.expected_capture_sha256, 'bank_sha256': args.expected_bank_sha256,
         'bank_recipe': {'sample_rate': 16000, 'n_fft': 512, 'n_mels': 128,
