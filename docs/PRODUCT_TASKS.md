@@ -30,6 +30,16 @@ fp32 selection, two identical transcripts that **exactly match the official
 oracle**, clean disposal and zero page errors. Receipt:
 `tools/data/results/orukeet/orukeet-demo-jfk-browser-2026-10-03.json`.
 
+**Hub source removed.** Verified against the Hugging Face API at revision
+`b59c13a7`: the repo has no root-level `encoder-model*.onnx`,
+`decoder_joint-model*.onnx` or `vocab.txt`; graphs live under
+`onnx/combined-v0.1.0-int8/` and `onnx/sherpa-v0.1.0-int8/` with a
+`tokenizer.json`. Advertising a Hub source would 404 on the application's
+default load, so the manifest entry no longer declares one, the catalog entry
+sets `supportsHubSource: false`, and a regression asserts it. Orukeet is
+local-folder only until a matching validated export source exists; the audited
+fp32 local preset and config are unchanged.
+
 Demo: `examples/demo/public/orukeet-smoke.html` with
 `examples/demo/src/orukeet-smoke.js`, following the existing canary smoke page.
 It loads `oruk/orukeet` from a local folder through the public browser API,

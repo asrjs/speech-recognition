@@ -26,6 +26,8 @@ export interface ParakeetModelConfig {
   readonly predHidden: number;
   readonly predLayers: number;
   readonly topology?: 'tdt' | 'rnnt';
+  /** Defaults to true; set false when no validated Hub export source exists. */
+  readonly supportsHubSource?: boolean;
   readonly supportsWordTimestamps?: boolean;
   readonly defaultRevision?: string;
   readonly cacheKeyFallbackRevisions?: readonly string[];
@@ -41,7 +43,7 @@ export interface ParakeetDefaultWeightSetup {
   readonly decoderPreferred: readonly ('fp16' | 'fp32' | 'int8')[];
 }
 
-export const MODELS = {
+export const MODELS: Record<string, ParakeetModelConfig> = {
   'parakeet-tdt-0.6b-v2': {
     repoId: 'ysdede/parakeet-tdt-0.6b-v2-onnx',
     displayName: 'Parakeet TDT 0.6B v2 (English)',
@@ -136,15 +138,18 @@ export const MODELS = {
     predLayers: 2,
     topology: 'tdt',
     supportsWordTimestamps: true,
+    // Verified 2026-10-03: the upstream repo has no root-level encoder-model/
+    // decoder_joint-model/vocab.txt, so Hub loading would 404.
+    supportsHubSource: false,
     defaultRevision: 'b59c13a733fce5cf193230d0fa317ee7f145a108',
   },
-} satisfies Record<string, ParakeetModelConfig>;
+};
 
 export const DEFAULT_MODEL = 'parakeet-tdt-0.6b-v2' as const;
 
 export function getModelConfig(modelKeyOrRepoId: string): ParakeetModelConfig | null {
   if (Object.prototype.hasOwnProperty.call(MODELS, modelKeyOrRepoId)) {
-    return MODELS[modelKeyOrRepoId as keyof typeof MODELS];
+    return MODELS[modelKeyOrRepoId] ?? null;
   }
 
   for (const config of Object.values(MODELS)) {

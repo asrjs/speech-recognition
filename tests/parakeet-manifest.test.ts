@@ -6,6 +6,7 @@ import {
   resolveParakeetPresetManifest,
 } from '../src/presets/parakeet/manifest.js';
 import { createParakeetPresetFactory } from '../src/presets/parakeet/factory.js';
+import { getBuiltInModelDescriptor } from '../src/presets/descriptors.js';
 
 describe('Parakeet preset manifests', () => {
   it('lists Parakeet preset manifests', () => {
@@ -53,6 +54,16 @@ describe('Parakeet preset manifests', () => {
       tokenizer: { kind: 'sentencepiece', blankTokenId: 8192 },
     });
     expect(request.options.config.languages).toHaveLength(25);
+  });
+
+  it('does not advertise a Hub source for Orukeet', () => {
+    // Upstream revision b59c13a7 publishes graphs under onnx/combined-v0.1.0-int8/
+    // and a tokenizer.json, so the root-level layout this preset resolves would
+    // 404. Orukeet stays local-folder only until a validated export source exists.
+    expect(resolveParakeetArtifactSource('oruk/orukeet')).toBeUndefined();
+    const descriptor = getBuiltInModelDescriptor('oruk/orukeet');
+    expect(descriptor?.loading.supportsHubSource).toBe(false);
+    expect(descriptor?.loading.supportsLocalSource).toBe(true);
   });
 
   it('returns undefined for unknown Parakeet model ids', () => {

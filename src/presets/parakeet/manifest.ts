@@ -168,12 +168,11 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
         blankTokenId: 8192,
       },
     },
-    source: {
-      kind: 'huggingface',
-      repoId: 'oruk/orukeet',
-      preprocessorName: 'nemo128',
-      preprocessorBackend: 'js',
-    },
+    // No Hub source: at revision b59c13a7 the upstream repo publishes graphs
+    // under onnx/combined-v0.1.0-int8/ and a tokenizer.json, not the root
+    // encoder-model/decoder_joint-model/vocab.txt layout this preset resolves.
+    // Advertising one would 404, so Orukeet is local-folder only until a
+    // matching validated export source exists.
     quirks: {
       preprocessorBackend: 'js',
     },

@@ -335,7 +335,7 @@ function createParakeetDescriptors(): BuiltInModelDescriptor[] {
       inference: createParakeetInferenceLimits(config),
       loading: {
         repoId: config.repoId,
-        supportsHubSource: true,
+        supportsHubSource: config.supportsHubSource ?? true,
         supportsLocalSource: true,
         supportsSplitQuantization: true,
         supportsSplitBackends: true,
@@ -679,21 +679,19 @@ function createNemotronDescriptors(): BuiltInModelDescriptor[] {
       },
       inference: createNemotronInferenceLimits(),
       loading: {
-        repoId:
-          source?.kind === 'huggingface' ? source.repoId : undefined,
+        repoId: source?.kind === 'huggingface' ? source.repoId : undefined,
         supportsHubSource: true,
         supportsLocalSource: true,
-        // Single-file INT4 repack; no int8/fp16 variant selection yet.
         supportsSplitQuantization: false,
-        supportsSplitBackends: false,
-        availableEncoderBackends: ['wasm'],
-        availableDecoderBackends: ['wasm'],
-        defaultEncoderBackend: 'wasm',
+        supportsSplitBackends: true,
+        availableEncoderBackends: ['webgpu', 'wasm'],
+        availableDecoderBackends: ['wasm', 'webgpu'],
+        defaultEncoderBackend: 'webgpu',
         defaultDecoderBackend: 'wasm',
-        availableEncoderQuantizations: ['fp32'],
-        availableDecoderQuantizations: ['fp32'],
-        defaultEncoderQuantization: 'fp32',
-        defaultDecoderQuantization: 'fp32',
+        availableEncoderQuantizations: ['fp16', 'fp32'],
+        availableDecoderQuantizations: ['fp16', 'fp32'],
+        defaultEncoderQuantization: 'fp16',
+        defaultDecoderQuantization: 'fp16',
         supportsPreprocessorBackend: true,
         preprocessorBackends: ['js'],
         defaultPreprocessorBackend: 'js',
@@ -707,7 +705,7 @@ function createNemotronDescriptors(): BuiltInModelDescriptor[] {
       docs: {
         modelCardUrl: 'https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b',
         architectureSummary:
-          'FastConformer cache-aware streaming encoder (24 layers, 65-frame chunks -> 7 frames) + LSTM predictor + joint; prompt ids auto=101/en=0/tr=18.',
+          'FastConformer cache-aware streaming encoder (80/160/320/560/1120 ms windows) + LSTM predictor + joint; own fp16 ONNX is the default, with fp32 export parity; prompt ids auto=101/en=0/tr=18.',
       },
     },
   ];
@@ -721,7 +719,6 @@ const BUILT_IN_MODEL_DESCRIPTORS = [
   ...createWav2Vec2Descriptors(),
   ...createWhisperDescriptors(),
 ] as const;
-
 
 const LANGUAGE_NAME_RESOLVERS = [getParakeetLanguageName, getCanaryLanguageName] as const;
 
