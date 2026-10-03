@@ -3,6 +3,39 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C26 — Frontend conformance gate policy for future ports
+
+Status: POLICY RECORDED from existing receipts. No new inference, no weight
+downloads, no official-capture refresh, no runtime or tolerance change.
+
+The `atol=1e-5, rtol=1e-4` feature-coordinate gate on Orukeet was never met by
+any NeMo port shipped from this repository. Recorded official-versus-library
+frontend comparisons: `parakeet-realtime-eou-120m-v1` max `4.0801039` /
+mean `9.019221e-4` with exact token and text parity, `canary-180m-flash`
+asrjs `2.1461394` / `8.918627e-4`, meljs `0.7285282` / `9.190078e-4`, and
+Orukeet `3.4236908e-4` / `1.226810e-6` with oracle-matching 38-token output.
+
+Orukeet's frontend is the closest to its official oracle of any port here:
+6268x, 2128x and 11917x smaller maximum absolute error than those three, and
+727x, 749x and 735x smaller mean absolute error. `3.42e-4` therefore is not a
+port defect and Orukeet is not harder to port than the models already shipping.
+The gate stays recorded as FAIL and no tolerance moves; it is informational
+conformance data, not port acceptance.
+
+Port acceptance for the next family is transcript, token, decoder and
+end-to-end parity plus the browser gates, with frontend deviation reported on
+the same max-abs/mean-abs/rmse scale. The [focus goal](GOAL_MODEL_PORT_HARNESS.md#the-coordinate-gate-is-not-a-port-acceptance-criterion)
+and the [NeMo porting playbook](../tools/model-debugging/playbooks/nemo-rnnt-porting.md#what-the-frontend-metric-means-for-a-port)
+carry the table so the next port does not open another FFT lane.
+
+Pure silence remains a separate recorded divergence: an official masked fp32
+mean reduction on a constant row, not spectrum fidelity.
+
+Receipt: `tools/data/results/orukeet/frontend-conformance-family-comparison-2026-10-03.json`
+(aggregation of six existing receipts with their SHA-256). Contracts differ
+between rows and no official stock v2/v3 feature capture is stored locally, so
+this compares magnitude classes rather than identical contracts.
+
 ## C25 — Existing Qwen harness reuse and bounded numerical disposition
 
 Status: PASS for the focused reuse exercise; Orukeet production-feature

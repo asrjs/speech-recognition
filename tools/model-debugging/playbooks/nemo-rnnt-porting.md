@@ -63,6 +63,30 @@ Current helper:
 This script now auto-selects the in-repo `asrjs` frontend contract from the
 reference model id, including both valid-length mode and normalization mode.
 
+#### What the frontend metric means for a port
+
+Record max-abs, mean-abs and rmse against the saved official features and
+compare them to the already-shipped ports, not to a coordinate gate. Recorded
+shipped-port values on JFK:
+
+| port                                 |        max abs |      mean abs |       rmse |
+| ------------------------------------ | -------------: | ------------: | ---------: |
+| `parakeet-realtime-eou-120m-v1`      |    `4.0801039` | `9.019221e-4` | `0.034805` |
+| `canary-180m-flash` (asrjs frontend) |    `2.1461394` | `8.918627e-4` | `0.016711` |
+| `canary-180m-flash` (meljs frontend) |    `0.7285282` | `9.190078e-4` | `0.003282` |
+| `oruk/orukeet` TDT v3                | `3.4236908e-4` | `1.226810e-6` |        n/a |
+
+Aggregation receipt:
+`tools/data/results/orukeet/frontend-conformance-family-comparison-2026-10-03.json`.
+
+None of these ports met `atol=1e-5, rtol=1e-4` per coordinate against the
+official engine, and all of them ship. Orukeet's frontend deviation is the
+smallest recorded here. Treat the per-coordinate gate as informational
+conformance data; port acceptance is transcript, token, decoder and end-to-end
+parity plus the browser gates. A failing coordinate gate on a constant-input
+silence fixture points at reduction arithmetic, not spectrum fidelity — report
+it separately rather than opening an FFT investigation.
+
 ### 4. Only then run end-to-end Node parity
 
 Once frontend parity is credible, run the full local Node/WASM stack against

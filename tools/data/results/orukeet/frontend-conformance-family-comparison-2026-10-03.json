@@ -1,0 +1,184 @@
+{
+  "status": "CROSS_PORT_FRONTEND_CONFORMANCE_COMPARISON",
+  "scope": "Aggregation of existing recorded official-vs-library frontend comparisons. No new inference, no weight downloads, no official capture refresh, no code or tolerance change. Not new model acceptance.",
+  "question": "Is the Orukeet production-feature delta of 3.4236907958984375e-4 a port problem relative to ports this repository already shipped?",
+  "finding": "No. Every previously shipped NeMo-family frontend comparison recorded in this repository has a maximum absolute feature deviation between 0.7285282015800476 and 4.080103874206543 with mean absolute deviation near 9e-4, and those ports are accepted at transcript level. The Orukeet delta is the smallest recorded frontend deviation here: maximum absolute error is 6268x smaller than the Canary asrjs frontend, 2128x smaller than the meljs frontend and 11917x smaller than the shipped Parakeet v1 port; mean absolute error is 727.0x, 749.1x and 735.2x smaller respectively.",
+  "consequence": "The atol=1e-5, rtol=1e-4 coordinate gate was never met by any shipped NeMo port in this repository. It is an informational tensor-conformance metric, not a port acceptance criterion. Orukeet keeps FAIL at that gate and no tolerance moves.",
+  "coordinate_gate_status_by_port": {
+    "canary-asrjs": {
+      "applied": false
+    },
+    "canary-meljs": {
+      "applied": false
+    },
+    "parakeet-realtime-eou-120m-v1": {
+      "applied": false
+    },
+    "orukeet-v3": {
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "mismatch_count": 313,
+      "count": 140928,
+      "passed": false
+    }
+  },
+  "ports": [
+    {
+      "port": "canary-asrjs",
+      "model": "nvidia/canary-180m-flash",
+      "frontend": "asrjs JSMelProcessor",
+      "official_vs_library_features": {
+        "compared_values": 140928,
+        "max_abs": 2.146139442920685,
+        "mean_abs": 0.0008918627375390161,
+        "rmse": 0.016710857064999748,
+        "feature_layout_compatible": true,
+        "reference_valid_length": 1101,
+        "frontend_valid_length": 1101,
+        "contract": {
+          "valid_length_mode": "centered",
+          "normalization": null
+        }
+      },
+      "coordinate_gate": {
+        "applied": false
+      },
+      "transcript_parity": {
+        "evidence": "canary-180m-flash-onnx-verify.json",
+        "note": "official PyTorch reference verification receipt"
+      },
+      "source_receipt": "tools/data/results/canary/canary-180m-flash-js-frontend-parity-asrjs.json",
+      "source_receipt_sha256": "af5779942ee92f219a28f5df3b9ac10c8cd4449faca6e81bddf8d3f67943365a",
+      "max_abs_ratio_vs_orukeet": 6268.496692200557,
+      "mean_abs_ratio_vs_orukeet": 726.9770800438149
+    },
+    {
+      "port": "canary-meljs",
+      "model": "nvidia/canary-180m-flash",
+      "frontend": "meljs",
+      "official_vs_library_features": {
+        "compared_values": 140800,
+        "max_abs": 0.7285282015800476,
+        "mean_abs": 0.0009190077980645524,
+        "rmse": 0.0032820549533088402,
+        "feature_layout_compatible": true,
+        "reference_valid_length": 1101,
+        "frontend_valid_length": 1100,
+        "contract": {
+          "valid_length_mode": "centered",
+          "normalization": "none"
+        }
+      },
+      "coordinate_gate": {
+        "applied": false
+      },
+      "transcript_parity": {
+        "evidence": "canary-180m-flash-onnx-verify.json"
+      },
+      "source_receipt": "tools/data/results/canary/canary-180m-flash-js-frontend-parity-meljs.json",
+      "source_receipt_sha256": "d1898201d11248320b37a08d783237a8434b0cc0a717e710d3a0774c4faaa7d5",
+      "max_abs_ratio_vs_orukeet": 2127.903029247911,
+      "mean_abs_ratio_vs_orukeet": 749.1036203822083
+    },
+    {
+      "port": "parakeet-realtime-eou-120m-v1",
+      "model": "nvidia/parakeet_realtime_eou_120m-v1",
+      "frontend": "asrjs JSMelProcessor",
+      "official_vs_library_features": {
+        "compared_values": 140928,
+        "max_abs": 4.080103874206543,
+        "mean_abs": 0.0009019221011595758,
+        "rmse": 0.03480533515201417,
+        "feature_layout_compatible": true,
+        "reference_valid_length": 1101,
+        "frontend_valid_length": 1101,
+        "contract": {
+          "valid_length_mode": "centered",
+          "normalization": "none"
+        }
+      },
+      "coordinate_gate": {
+        "applied": false
+      },
+      "transcript_parity": {
+        "evidence": "tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-asrjs-parity.json",
+        "token_ids_match": true,
+        "visible_text_match": true,
+        "raw_text_match": true,
+        "transcript": "and so my fellow americans ask not what your country can do for you ask what"
+      },
+      "source_receipt": "tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-js-frontend-parity-asrjs.json",
+      "source_receipt_sha256": "d5d83ec3263853df9a9b445ef86f3237155e9ba4ea0e1dd32dfe8caf32aec536",
+      "max_abs_ratio_vs_orukeet": 11917.267409470753,
+      "mean_abs_ratio_vs_orukeet": 735.1766902351237
+    },
+    {
+      "port": "orukeet-v3",
+      "model": "oruk/orukeet (NeMo TDT v3 architecture, 627,057,286 parameters)",
+      "frontend": "asrjs JSMelProcessor, per_feature, validLengthMode onnx",
+      "official_vs_library_features": {
+        "compared_values": 140928,
+        "max_abs": 0.00034236907958984375,
+        "mean_abs": 1.2268099807015422e-06,
+        "rmse": null,
+        "feature_layout_compatible": true,
+        "reference_valid_length": 1100,
+        "frontend_valid_length": 1100,
+        "contract": {
+          "valid_length_mode": "onnx",
+          "normalization": "per_feature"
+        }
+      },
+      "coordinate_gate": {
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "mismatch_count": 313,
+        "count": 140928,
+        "passed": false
+      },
+      "transcript_parity": {
+        "evidence": "public-example-node-jfk-post-c21-2026-10-03.json and bun equivalent",
+        "oracle": "official NeMo PyTorch",
+        "note": "oracle-matching 38-token output on Node and Bun; browser real-hybrid scores pass on the documented JFK configuration"
+      },
+      "source_receipt": "tools/data/results/orukeet/filterbank-feature-jfk-2026-10-03.json",
+      "source_receipt_sha256": "393efd797ec9088fde4c67c840e3ae5d2e213f4cf61f8e3e0fba1fd0316aa24a",
+      "degenerate_input_row": {
+        "sample": "pure silence",
+        "max_abs": 0.1600533276796341,
+        "mean_abs": 0.15846864126696444,
+        "mismatch_count": 12800,
+        "count": 12928,
+        "mechanism": "official masked fp32 reduction yields mean -16.635530471801758/std 1.1916957191715483e-5 on a constant raw row; production JS yields -16.63553237915039/std 1e-5, so normalized output is -0.160053 vs 0"
+      }
+    }
+  ],
+  "distinct_mechanism_silence": "Pure silence is a separate measured divergence with a different cause: an official masked fp32 mean reduction, not spectrum fidelity. It affects a degenerate constant-input case and is not the JFK speech delta.",
+  "limits": [
+    "Different models, fixtures and preprocessing contracts: the Parakeet v1 and Canary receipts use validLengthMode centered with normalization none and 140,928 or 140,800 compared values, while Orukeet uses validLengthMode onnx with per_feature and 140,928 values. Magnitudes are comparable in class, not identical contracts.",
+    "Official v2/v3 full feature captures are not stored in this repository, so no same-contract official stock v3 frontend comparison exists. Generating one needs original weights and the reference environment, which is separate authority.",
+    "This comparison cannot make a family-correct frontend. It only establishes that the Orukeet frontend is closer to its official oracle than the frontends this repository shipped before."
+  ],
+  "sources_sha256": {
+    "tools/data/results/canary/canary-180m-flash-js-frontend-parity-asrjs.json": "af5779942ee92f219a28f5df3b9ac10c8cd4449faca6e81bddf8d3f67943365a",
+    "tools/data/results/canary/canary-180m-flash-js-frontend-parity-meljs.json": "d1898201d11248320b37a08d783237a8434b0cc0a717e710d3a0774c4faaa7d5",
+    "tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-js-frontend-parity-asrjs.json": "d5d83ec3263853df9a9b445ef86f3237155e9ba4ea0e1dd32dfe8caf32aec536",
+    "tools/data/results/parakeet/parakeet-realtime-eou-120m-v1-asrjs-parity.json": "6db38c0285389897f16e57e23c6e897e74984b510decfe9eb95abc23ac95b4d7",
+    "tools/data/results/orukeet/filterbank-feature-jfk-2026-10-03.json": "393efd797ec9088fde4c67c840e3ae5d2e213f4cf61f8e3e0fba1fd0316aa24a",
+    "tools/data/results/orukeet/filterbank-feature-pure-silence-2026-10-03.json": "733ac3164f1802436f02a7504a420a02fef078a12bfba8482178a4b62b186bfb"
+  },
+  "derived_ratios_vs_orukeet": {
+    "canary-asrjs": {
+      "max_abs_factor": 6268,
+      "mean_abs_factor": 727.0
+    },
+    "canary-meljs": {
+      "max_abs_factor": 2128,
+      "mean_abs_factor": 749.1
+    },
+    "parakeet-realtime-eou-120m-v1": {
+      "max_abs_factor": 11917,
+      "mean_abs_factor": 735.2
+    }
+  }
+}
