@@ -162,6 +162,8 @@
     "test:browser-root": "npm run build && node tests/smoke/browser-root-import-graph.mjs",
     "test:offline-output-smoke": "npm run build && node tests/smoke/offline-output-smoke.mjs",
     "test:fixture-smoke": "npm run build && node tests/smoke/transcribe-fixture.mjs",
+    "test:browser-local-lifecycle": "python tests/smoke/local-parakeet-smoke.py --verify-cancellation",
+    "test:browser-local-lifecycle:unit": "python -m unittest discover -s tests/smoke -p test_local_parakeet_smoke.py",
     "benchmark:whisper-mel": "npm run build && node tests/smoke/benchmark-whisper-mel.mjs",
     "benchmark:gigaam-mel": "npm run build && node tests/smoke/benchmark-gigaam-mel.mjs",
     "benchmark:x-asr-frontend": "npm run build && node tests/smoke/benchmark-x-asr-frontend.mjs",

@@ -3,6 +3,38 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C17 — Repeatable real-browser local lifecycle smoke
+
+Status: PASS — bounded stock-v3 hybrid cancellation/reuse/disposal smoke;
+not Orukeet parity, GPU-kernel interruption or long-session soak acceptance.
+
+`npm run test:browser-local-lifecycle -- --consumer-root <browser-demo-root> --model-root <stock-v3-model-root> --audio <fixture> --expected-phrase "<full phrase>" --encoder-precision fp16 --output <new-receipt.json>`
+uses the existing family-owned browser page and public library inference API,
+with cooperative decode cancellation enabled. Paths and expected text are
+required, never guessed or downloaded. Requires existing Python/Playwright,
+Chrome, Node, the sibling's installed Vite toolchain and local model files.
+It builds the harness in memory from the current source aliases; no dist
+rebuild, sibling edit, dependency installation or public model promotion.
+Use the direct Python entry point if selecting a particular interpreter.
+
+The runner now independently requires two matching nonempty results, actual
+WebGPU encoder/WASM decoder metrics, inference/disposal evidence and no
+execution/cleanup errors. Requested cancellation must reject with
+`PipelineAbortedError` at a partially completed decode, without completion.
+Full expected-transcript normalization stays in the existing shared browser
+smoke comparator, not a second Python decoder or ASR quality metric.
+`npm run test:browser-local-lifecycle:unit` runs ten fast preflight/receipt tests;
+they do not launch model inference. Invalid PASS labels and partial lifecycle
+evidence are rejected. The real browser command is opt-in, not part of Vitest.
+
+Fresh Chrome 154 / ORT Web 1.29.0 run through the npm command passed:
+two identical Harvard transcripts, decode aborted at 5 / 55 units, successful
+reuse, awaited disposal, no blocked requests/page errors, verified engine/build
+bytes, unchanged inputs, preview process stopped and port closed.
+Receipt: `tools/data/results/harness/local-lifecycle-npm-2026-10-03.json`.
+Existing ORT node-placement warnings remain; session provider metrics are not
+proof that every graph node ran on GPU. No production runtime code changed.
+
 ## C15 — Preserve requested remote artifact revisions
 
 Status: PASS — network fetch revision contract; existing cache authentication

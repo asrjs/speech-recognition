@@ -1,5 +1,6 @@
 """Fast preflight/probe checks; no model or browser inference claims."""
 import importlib
+import copy
 from pathlib import Path
 import shutil
 import subprocess
@@ -10,6 +11,64 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 runner = importlib.import_module('local-parakeet-smoke')
+
+
+class LocalParakeetResultTests(unittest.TestCase):
+    def result(self):
+        item = {'text': 'Test phrase.', 'meta': {'metrics': {
+            'encoderBackend': 'webgpu', 'decoderBackend': 'wasm'}}}
+        return {'status': 'PASS_LOCAL_HYBRID_SMOKE', 'disposed': True,
+            'inferencePassed': True, 'results': [item, copy.deepcopy(item)],
+            'cancellation': {'requested': True, 'rejected': True,
+                'completeEmitted': False, 'errorName': 'PipelineAbortedError',
+                'stageId': 'decode', 'completedUnits': 1, 'totalUnits': 10}}
+
+    def test_complete_result_accepts_with_or_without_requested_cancel(self):
+        runner.validate_result(self.result(), True)
+        result = self.result()
+        del result['cancellation']
+        runner.validate_result(result, False)
+
+    def test_pass_label_does_not_replace_lifecycle_evidence(self):
+        for key in ['disposed', 'inferencePassed']:
+            with self.subTest(key=key):
+                result = self.result()
+                result[key] = False
+                with self.assertRaises(ValueError):
+                    runner.validate_result(result, True)
+
+    def test_missing_repeated_result_or_changed_transcript_rejects(self):
+        for change in ['missing', 'changed', 'empty']:
+            with self.subTest(change=change):
+                result = self.result()
+                if change == 'missing':
+                    result['results'].pop()
+                else:
+                    result['results'][1]['text'] = '' if change == 'empty' else 'Different'
+                with self.assertRaises(ValueError):
+                    runner.validate_result(result, True)
+
+    def test_wrong_provider_or_cleanup_error_rejects(self):
+        result = self.result()
+        result['results'][1]['meta']['metrics']['encoderBackend'] = 'wasm'
+        with self.assertRaises(ValueError):
+            runner.validate_result(result, True)
+        for key in ['error', 'cleanupError', 'audioCleanupError']:
+            result = self.result()
+            result[key] = 'failure'
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                runner.validate_result(result, True)
+
+    def test_requested_cancel_requires_decode_rejection_and_partial_progress(self):
+        for key, value in [('requested', False), ('rejected', False),
+                ('completeEmitted', True), ('errorName', 'Error'),
+                ('stageId', 'encoder'), ('completedUnits', 0),
+                ('completedUnits', 10), ('totalUnits', True)]:
+            with self.subTest(key=key, value=value):
+                result = self.result()
+                result['cancellation'][key] = value
+                with self.assertRaises(ValueError):
+                    runner.validate_result(result, True)
 
 
 class LocalParakeetPreflightTests(unittest.TestCase):

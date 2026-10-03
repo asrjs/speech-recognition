@@ -19,6 +19,36 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from artifact_outputs import require_new_outputs, write_new_text
 
 
+def validate_result(result, verify_cancellation):
+    """Validate lifecycle evidence, not just the page's PASS label or ASR parity."""
+    if not isinstance(result, dict) or result.get('status') != 'PASS_LOCAL_HYBRID_SMOKE':
+        raise ValueError('Public API smoke failed')
+    if result.get('disposed') is not True or result.get('inferencePassed') is not True:
+        raise ValueError('Inference/disposal evidence missing')
+    if any(result.get(key) for key in ['error', 'cleanupError', 'audioCleanupError']):
+        raise ValueError('Public API smoke reports execution/cleanup errors')
+    results = result.get('results')
+    if not isinstance(results, list) or len(results) != 2:
+        raise ValueError('Exactly two successful repeated transcriptions required')
+    for item in results:
+        if not isinstance(item, dict) or not isinstance(item.get('text'), str) or not item['text'].strip():
+            raise ValueError('Nonempty transcript evidence required')
+        meta = item.get('meta')
+        metrics = meta.get('metrics') if isinstance(meta, dict) else None
+        if not isinstance(metrics, dict) or metrics.get('encoderBackend') != 'webgpu' or metrics.get('decoderBackend') != 'wasm':
+            raise ValueError('Actual hybrid provider evidence differs')
+    if results[0]['text'] != results[1]['text']:
+        raise ValueError('Repeated transcript differs')
+    if verify_cancellation:
+        cancellation = result.get('cancellation')
+        if not isinstance(cancellation, dict) or any(cancellation.get(key) is not value
+                for key, value in [('requested', True), ('rejected', True), ('completeEmitted', False)]):
+            raise ValueError('Requested cancellation evidence missing or failed')
+        done, total = cancellation.get('completedUnits'), cancellation.get('totalUnits')
+        if cancellation.get('errorName') != 'PipelineAbortedError' or cancellation.get('stageId') != 'decode' or type(done) is not int or type(total) is not int or not 0 < done < total:
+            raise ValueError('Cancellation must reject during partially completed decode')
+
+
 def probe_preview_closed(node, url):
     # Python's socket probe returned WSAEWOULDBLOCK on this host even when Node
     # proved ECONNREFUSED. Use the preview's own runtime and fail on unknown errors.
@@ -121,12 +151,7 @@ def main():
                     page.get_by_role('button').click()
                     expect(page.get_by_role('status')).to_have_text(re.compile('^(PASS_|FAIL_)'), timeout=240000)
                     receipt['result'] = json.loads(page.locator('#result').inner_text())
-                    if receipt['result']['status'] != 'PASS_LOCAL_HYBRID_SMOKE':
-                        raise ValueError('Public API smoke failed: ' + json.dumps(receipt['result']))
-                    if args.verify_cancellation:
-                        cancellation = receipt['result'].get('cancellation', {})
-                        if cancellation.get('requested') is not True or cancellation.get('rejected') is not True or cancellation.get('completeEmitted') is not False:
-                            raise ValueError('Requested cancellation evidence missing or failed')
+                    validate_result(receipt['result'], args.verify_cancellation)
                     served = set()
                     for response in tuple(responses):
                         path = urlparse(response.url).path
