@@ -3885,6 +3885,26 @@ on this result.
    That rule is the thing to change, and for embedders the guidance is to map
    `onnxruntime-web` to the webgpu build when using WebGPU.
 
+**Both fixes are in.** The harness bundle rule now follows the ORT builds
+actually needed rather than the decoder backend alone: `--ort-bundle auto`
+selects the webgpu build when **any** component uses WebGPU, and `all`/`webgpu`
+remain available to force either for diagnostics. A hybrid run with no override
+now fetches `ort.webgpu.min.mjs` and reports
+`REAL_ENCODER_OUTPUT_DIAGNOSTIC_PASS` with `LIVE_HEAD_NUMERICAL_PASS`, 46 calls,
+`allclose: true` and zero failing calls on a default invocation.
+
+The receipts also now **bind the runtime that executed**, which is the gap that
+let this confound survive ten eliminations. `browser_encoder_replay.py` records
+`ort_module_selected` plus an `ort_runtime` block listing every fetched
+`/ort-dist/` artifact with status, completeness, byte count, the served body
+hash and the on-disk hash, and fails the run unless every fetched runtime
+artifact matches disk and the selected module is among them. Verified:
+`ort_module_verified: true`, `ort_runtime_bound: true`, with
+`ort.webgpu.min.mjs` (66,348 bytes), the asyncify module (51,407) and its WASM
+(25,749,873) all matching.
+
+The lesson is now enforced by the harness rather than written down as advice.
+
 A clue, stated only as far as it goes. Placed on the same axis, the encoder
 outputs differ in how far each sits from the recorded official encoder tensor:
 

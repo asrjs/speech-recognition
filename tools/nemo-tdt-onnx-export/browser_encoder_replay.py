@@ -234,6 +234,47 @@ def main():
         thread.join(timeout=5)
         receipt['server_stopped'] = not thread.is_alive()
         receipt['inputs_unchanged'] = hashes == {str(path.resolve()): sha256(path) for path in sources}
+        # Bind the ORT runtime artifacts actually fetched. Neither this receipt nor
+        # the recurrent one previously identified which onnxruntime-web build ran,
+        # and that unbound artifact was the entire cause of a 1.1316e-6 cross-run
+        # discrepancy, so the fetched module and sidecars are recorded and checked
+        # against the served files on disk.
+        ort_root = (ROOT / 'node_modules/onnxruntime-web/dist').resolve()
+        ort_runtime = []
+        for event in receipt['http_events']:
+            route = str(event.get('path') or '')
+            if not route.startswith('/ort-dist/'):
+                continue
+            disk = (ort_root / route[len('/ort-dist/'):]).resolve()
+            row = {'path': route, 'status': event.get('status'),
+                   'bytes_written': event.get('bytes_written'),
+                   'body_sha256': event.get('body_sha256'),
+                   'body_complete': event.get('body_complete')}
+            if disk.is_file() and disk.parent == ort_root:
+                row['disk_sha256'] = sha256(disk)
+                row['disk_bytes'] = disk.stat().st_size
+                row['matches_disk'] = (row['body_sha256'] == row['disk_sha256']
+                                       and row['bytes_written'] == row['disk_bytes'])
+            else:
+                row['matches_disk'] = False
+            ort_runtime.append(row)
+        receipt['ort_runtime'] = ort_runtime
+        receipt['ort_runtime_bound'] = bool(ort_runtime) and all(
+            row['status'] == 200 and row['body_complete'] is True and row['matches_disk'] is True
+            for row in ort_runtime)
+        effective_module = getattr(server, 'extra_imports', {}).get('onnxruntime-web')
+        if effective_module is None:
+            effective_module = ('/ort-dist/ort.webgpu.min.mjs' if server.backend == 'webgpu'
+                                else '/ort-dist/ort.all.bundle.min.mjs')
+        receipt['ort_module_selected'] = effective_module
+        # The selected build must be among the artifacts actually fetched and
+        # verified against disk; otherwise the receipt does not identify the
+        # runtime that executed.
+        receipt['ort_module_verified'] = any(
+            row['path'] == effective_module and row['matches_disk'] is True
+            for row in ort_runtime)
+        if not receipt['ort_runtime_bound'] or not receipt['ort_module_verified']:
+            receipt['status'] = 'BROWSER_ENCODER_COMPONENT_FAIL'
         receipt['artifact_delivery_verified'] = all(any(
             event.get('path') == route and event.get('status') == 200 and event.get('body_complete') is True
             and event.get('bytes_written') == path.stat().st_size

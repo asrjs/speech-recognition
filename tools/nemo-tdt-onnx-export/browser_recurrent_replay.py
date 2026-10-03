@@ -127,8 +127,8 @@ def main():
     parser.add_argument('--real-encoder-backend', choices=('wasm', 'webgpu'),
                         help='Opt-in real encoder output diagnostic; never full feature/ASR acceptance')
     parser.add_argument("--trace-head", action="store_true")
-    parser.add_argument("--ort-bundle", choices=("auto", "webgpu"), default="auto",
-                        help="Opt-in: load ort.webgpu.min.mjs instead of the all-bundle the wasm backend selects")
+    parser.add_argument("--ort-bundle", choices=("auto", "webgpu", "all"), default="auto",
+                        help="Opt-in ORT bundle override. auto selects the webgpu build when any component uses webgpu, otherwise the all-bundle")
     parser.add_argument("--trace-encoder", action="store_true",
                         help="Opt-in: record the encoder's actual inputs and outputs in the same run as the head trace")
     parser.add_argument("--timeout-ms", type=int, default=180000)
@@ -225,11 +225,17 @@ def main():
         server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         server.graph, server.backend, server.http_events = graph, args.backend, receipt["http_events"]
         server.extra_routes, server.extra_imports, server.entrypoint = routes, {"pako": "/vendor/pako.esm.mjs"}, "/recurrent.mjs"
-        if args.ort_bundle == "webgpu":
-            # The import map normally picks the bundle from the server backend, so
-            # a wasm decoder selects the all-bundle. This overrides only the
-            # entrypoint, keeping the same execution providers.
+        # Bundle choice must follow the ORT builds actually needed, not the
+        # decoder backend alone. A webgpu decoder already selects the webgpu
+        # build; a webgpu ENCODER with a wasm decoder previously selected the
+        # all-bundle, which is a different ORT build and measures differently.
+        if args.ort_bundle == "webgpu" or (
+            args.ort_bundle == "auto"
+            and (args.backend == "webgpu" or args.real_encoder_backend == "webgpu")
+        ):
             server.extra_imports["onnxruntime-web"] = "/ort-dist/ort.webgpu.min.mjs"
+        elif args.ort_bundle == "all":
+            server.extra_imports["onnxruntime-web"] = "/ort-dist/ort.all.bundle.min.mjs"
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
