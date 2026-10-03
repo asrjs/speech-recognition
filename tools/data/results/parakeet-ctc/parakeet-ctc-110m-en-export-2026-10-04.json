@@ -1,0 +1,68 @@
+{
+  "status": "EXPORT_AND_GRAPH_RUNTIME_VERIFIED_RUNTIME_PORT_PENDING",
+  "scope": "ctaguchi/parakeet-hf-ctc-110m-en ONNX export plus a real-audio ORT run. The library-side port is NOT done: no preset, no feature extractor and no decoding family exist yet.",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "architecture": "ParakeetForCTC",
+  "model_type": "parakeet_ctc",
+  "license": "cc-by-4.0",
+  "parameters": 109287937,
+  "identity": {
+    "model_safetensors_sha256": "928d40a16a729e2afaacdacc13627252c891d0ccfe6b99da8c7dd8df66b92cc5",
+    "config_sha256": "c6fca53c73fd1378d3ec49a21b87de402032fc2e0bc1ca2eed457428c5d15d54",
+    "onnx_graph_sha256": "c261d58ef199e2b2c365ada9d8812ab603ea37066be514e8a34c6bced487f787",
+    "onnx_graph_bytes": 437740665
+  },
+  "export": {
+    "tool": "tools/parakeet-ctc-onnx-export/export_parakeet_ctc_onnx.py",
+    "opset": 17,
+    "legacy_exporter": true,
+    "legacy_reason": "torch 2.13 defaults to the dynamo exporter, which needs onnxscript; the legacy TorchScript exporter avoids an unapproved install",
+    "receipt": {
+      "opset": 17,
+      "tracedFrames": 1400,
+      "graph": "models/onnx/parakeet-ctc-110m-en/model.onnx",
+      "graphSha256": "c261d58ef199e2b2c365ada9d8812ab603ea37066be514e8a34c6bced487f787",
+      "graphBytes": 437740665
+    }
+  },
+  "feature_contract": {
+    "mel_bins": 80,
+    "n_fft": 512,
+    "hop_length": 160,
+    "win_length": 400,
+    "preemphasis": 0.97,
+    "sampling_rate": 16000,
+    "padding_side": "right",
+    "attention_mask": true,
+    "note": "Differs from the nemo128 processor: 80 bins and 0.97 preemphasis, so this family needs its own feature extractor."
+  },
+  "graph_runtime_check": {
+    "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+    "engine": "onnxruntime-python",
+    "provider": "CPUExecutionProvider",
+    "input_features_shape": [
+      1,
+      1101,
+      80
+    ],
+    "attention_mask_shape": [
+      1,
+      1101
+    ],
+    "logits_shape": [
+      1,
+      138,
+      1025
+    ],
+    "frame_subsampling_observed": 8,
+    "vocab_size": 1025,
+    "pad_token_id": 1024,
+    "note": "Shape evidence only; no transcript or oracle comparison yet."
+  },
+  "remaining_port_work": [
+    "A ParakeetForCTC feature extractor in this repository (80 mel bins, 0.97 preemphasis, n_fft 512 / hop 160 / win 400).",
+    "A CTC decoding family that accepts this vocabulary and tokenizer.",
+    "A preset entry, local-folder adapter and port manifest so the run gets digest-bound oracle checks."
+  ],
+  "no_authority_used": "No installs; only the candidate weights already fetched for this port."
+}

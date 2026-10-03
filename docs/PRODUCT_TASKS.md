@@ -1,3 +1,35 @@
+## C32 — Parakeet CTC 110M candidate: export verified, runtime port pending
+
+Status: PARTIAL — the ONNX export exists and runs on real audio. The library
+side is not implemented: no preset, no feature extractor, no decoding family,
+no oracle comparison.
+
+`ctaguchi/parakeet-hf-ctc-110m-en` is the only verified non-NVIDIA-originated
+Parakeet-line student: `ParakeetForCTC` / `parakeet_ctc`, 109,287,937
+parameters, cc-by-4.0, safetensors plus a sentencepiece tokenizer. It loads under
+the installed transformers 4.57.6 despite being saved by 5.4.0.
+
+Export: new `tools/parakeet-ctc-onnx-export/export_parakeet_ctc_onnx.py`
+produces a 437,740,665-byte opset-17 graph with dynamic frame axes, using the
+legacy TorchScript exporter because torch 2.13 defaults to the dynamo exporter
+that requires `onnxscript`, and installing that was not authorized.
+
+Verified on real audio: JFK mel features `(1, 1101, 80)` produce logits
+`(1, 138, 1025)` in ONNX Runtime, the 138 frames matching the encoder's 8x
+subsampling and the 1025 vocabulary. That is shape evidence, not a transcript.
+
+The feature contract differs from the NeMo 128-bin processor this library shares
+elsewhere: **80 mel bins with 0.97 preemphasis** (n_fft 512, hop 160, win 400).
+So the remaining work is real: a ParakeetForCTC feature extractor, a CTC decoding
+family for this vocabulary/tokenizer, then a preset, local adapter and port
+manifest so it gets the same digest-bound oracle checks as Orukeet.
+
+Receipt: `tools/data/results/parakeet-ctc/parakeet-ctc-110m-en-export-2026-10-04.json`.
+
+Note on `primeline/parakeet-primeline`: verified it has **no config.json at all**,
+only a `2_95_WER.nemo` checkpoint and a README. Its distillation status and
+architecture stay unverified, so it is not yet a defensible alternative.
+
 ## C31 — Parakeet distillation and new-model survey
 
 Status: VERIFIED CANDIDATES, porting BLOCKED on download authority. Metadata
