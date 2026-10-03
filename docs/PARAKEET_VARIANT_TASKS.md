@@ -2965,18 +2965,85 @@ that already passes its own `1e-5/1e-4` encoder gate.
 Call 40 is the instructive contrast and is not explained by feed size: its
 encoder delta is *smaller* (`8.9034e-7` versus `1.4566e-6`) yet its score
 error is *larger* (`1.1559e-3` versus `5.7888e-4`) with zero mismatches. So
-per-call amplification is not constant: at call 40 the top log-probabilities
-are near saturation (`pmax` 0.999936, top log-prob `-0.000064`), where a given
-absolute logit error produces a much smaller log-probability shift, while call
-20 is unsaturated (`pmax` 0.821443). A feed-delta magnitude therefore cannot be
-read as a pass/fail predictor on its own, and the earlier ranking of calls by
-feed error is not a proxy for the gate.
+per-call amplification is not constant. The score error at coordinate *i* is
+the raw-logit error `d[i]` minus its probability-weighted mean
+`sum_j p_ref[j]*d[j]`, verified exactly at both calls (model residual
+`2.5e-8` at call 20, `1.4e-12` at call 40). Call 40's single near-zero-|ref|
+coordinate therefore carries only `1.076e-8` error — the projection cancels
+there — while its large error sits on deep channels (`|ref|` 51.03 at
+channel 8196) where `rtol*|ref|` covers it (`5.10e-3` against `1.157e-3`).
+Call 20 is unsaturated (`pmax` 0.821443) and its worst coordinate has small
+`|ref|` 2.9052, so `rtol` leaves only `2.905e-4` against a `5.789e-4` error.
+A feed-delta magnitude therefore cannot be read as a pass/fail predictor on
+its own, and the earlier ranking of calls by feed error is not a proxy for the
+gate.
 
 This does not waive the gate and is not feature or ASR acceptance. The gate
 stays FAIL and no normalization, tolerance or production math changed. It
 locates the earliest divergence upstream in the real-encoder path and rules
-out the WASM head and predictor-state drift as causes. The productive next step
-is encoder-side: establish the live WebGPU encoder's own accuracy budget
-against the official encoder output, rather than continuing head-side or
-normalization experiments. Production feature parity (JFK 313/140,928) remains
-the earlier, separate upstream FFT/power failure.
+out the WASM head and predictor-state drift as causes. The encoder-side budget
+this pointed to is measured in the next entry; head-side and normalization
+experiments are exhausted. Production feature parity (JFK 313/140,928) remains
+the earlier, separate upstream FFT/power failure, and whether the browser feed
+error originates in feature-vs-kernel attribution was not decomposed here.
+
+### Live WebGPU encoder accuracy budget (2026-10-03)
+
+The encoder-side budget the head result implies is now measured from existing
+receipts, with no new browser run.
+`tools/nemo-tdt-onnx-export/encoder_accuracy_budget.py` reads the recorded
+real-browser encoder runs and the live-hybrid head comparisons.
+
+The live WebGPU encoder **passes its own unchanged `atol=1e-5, rtol=1e-4` gate**
+on both recorded feature sources. Compared against the full official captured
+encoder tensor with official features, the real WebGPU encoder output is
+`1.005828e-6` max / `3.148541e-8` mean absolute error with **0 of 141,312**
+coordinates failing the unchanged gate. The upstream production-feature gate
+remains FAIL at 313/140,928 mismatches (max `3.423691e-4`) — the unchanged,
+separate FFT/power failure. The encoder kernel is therefore accurate against
+the official encoder on this evidence; it is not the feature-lane cause.
+
+Repeats on an identical feature source are **bitwise exact** for both sources,
+so the residual is not nondeterministic dispatch.
+
+The call-20 sweep below perturbs official reference inputs along that call's
+recorded encoder delta and applies the full per-coordinate
+`atol + rtol*|ref|` gate:
+
+| encoder delta scale | feed maxAbs | score maxAbsError | mismatch |
+| ---: | ---: | ---: | ---: |
+| 0.000 | 0 | `2.2888e-5` | 0 |
+| 0.100 | `1.457e-7` | `6.0320e-5` | 0 |
+| 0.250 | `3.641e-7` | `1.4424e-4` | 0 |
+| 0.500 | `7.283e-7` | `2.9039e-4` | 1 |
+| 1.000 | `1.457e-6` | `5.8079e-4` | 3 |
+
+Read this as a **directional bracket for one call and one error direction
+only**: along the call-20 delta, the gate first fails between 0.25x and 0.5x.
+`3.64e-7` is the largest tested *passing* perturbation on that specific
+direction, not the actual boundary and not a criterion for the other 45 calls.
+Directly contradicting any global reading, live call 40 passes the same
+unchanged score gate while carrying a larger feed error (`8.9034e-7`) than
+call 20's 0.25x passing point (`3.641e-7`) and only 1.6x smaller than call 20's
+own failing `1.4566e-6` — so feed magnitude alone does not order pass/fail
+across calls.
+Per-call sensitivity depends on the error direction and the frame's score
+distribution, as the saturation analysis above shows.
+
+An earlier note in this session claimed a required bound near `2.5e-8`; that
+was derived from a single hardcoded gain divided by `atol` alone, ignoring the
+`rtol*|ref|` term, and it is wrong — the 0.25x run passes with a `3.64e-7`
+feed error.
+
+What is established without ambiguity is the full-tensor encoder result above:
+against the official encoder, the real WebGPU encoder is `1.005828e-6` max
+absolute with 0 of 141,312 coordinates failing the unchanged gate. The live
+per-call feed errors are `8.48e-8` min, `1.49e-7` median, `1.4566e-6` max, and
+46/46 calls pass the unchanged encoder gate. Nothing measured here shows the
+encoder is defective or that improvement is impossible; what remains open is
+per-frame sensitivity of the head's score gate to encoder feed error.
+
+This is one call, one delta direction and one native-CPU head; it is not a
+per-frame budget for the other 45 calls. No tolerance, normalization or
+production math was changed, and this is not feature or ASR acceptance. The
+browser gate stays FAIL and honest.
