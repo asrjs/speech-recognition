@@ -1,0 +1,28 @@
+{
+  "status": "FEATURE_CONTRACT_RESOLVED_FRONTEND_STILL_UNMATCHED",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "contract_now_verified_end_to_end": {
+    "which_path": "ParakeetProcessor.__call__, i.e. signal-level preemphasis 0.97 applied before the STFT, then mel, then log.",
+    "proof": "Feeding the official __call__ features into the locally exported ONNX graph and greedily decoding with the model tokenizer reproduces the oracle transcript exactly: \"And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.\"",
+    "control": "The no-preemphasis path (_torch_extract_fbank_features) fed to the same graph decodes to \".\" only, so the earlier 7.40 measurement was against a contract the model does not consume.",
+    "preemphasis_semantics": "torch.cat([x[:, :1], x[:, 1:] - preemphasis * x[:, :-1]]) with positions past audio_length zeroed, which matches our signal-level implementation (x[0] kept, x[i]-0.97*x[i-1])."
+  },
+  "official_preemphasis_features": {
+    "file": ".cache/parakeet-ctc-official-features-preemph.bin",
+    "shape": [
+      1101,
+      80
+    ],
+    "dtype": "float32"
+  },
+  "frontend_state": {
+    "measured_max_abs_error_vs_correct_reference": 18.02479076385498,
+    "measured_mean_abs_error_vs_correct_reference": 9.245373943027364,
+    "compared_coordinates": 88080,
+    "frames_ours": 1101,
+    "frames_official": 1101,
+    "note": "Window placement, window flavor, power spectra, log guard, center padding and the librosa filterbank are all verified individually; the residual is therefore upstream of mel, in the preemphasized signal or the STFT frame itself."
+  },
+  "remaining_work": "Compare our preemphasized float32 signal against the official one sample by sample, then compare the per-frame power spectra before mel. Stage-wise comparison localizes the break in one pass instead of inferring it from log-space feature deltas.",
+  "shipped": "No preset, adapter or manifest registered. Two inert additive mel options remain, covered by tests/lasr-ctc-mel-filterbank-override.test.ts."
+}

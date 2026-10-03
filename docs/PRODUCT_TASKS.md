@@ -24,6 +24,14 @@ So the remaining work is real: a ParakeetForCTC feature extractor, a CTC decodin
 family for this vocabulary/tokenizer, then a preset, local adapter and port
 manifest so it gets the same digest-bound oracle checks as Orukeet.
 
+**Feature contract now resolved.** Feeding the official `ParakeetProcessor.__call__`
+features into the locally exported ONNX graph and greedily decoding with the
+model's tokenizer reproduces the oracle transcript exactly. Feeding the
+no-preemphasis path to the same graph decodes to `.` alone, which proves the
+earlier 7.40 measurement used a contract the model does not consume. The correct
+reference is therefore the preemphasis path (1101x80), and against it the current
+frontend measures max abs `18.02` / mean `9.25` over 88,080 coordinates.
+
 **Frontend parity BLOCKED, localized.** `src/models/parakeet-ctc/frontend.ts`
 encodes the official contract (80 bins, n_fft 512, hop 160, win 400, 0.97
 preemphasis, hann-symmetric, centered STFT, HTK mel with slaney norm, power
