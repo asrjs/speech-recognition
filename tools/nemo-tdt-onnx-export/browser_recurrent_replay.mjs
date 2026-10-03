@@ -8,7 +8,7 @@ import {
 } from '/dist/index.js';
 import { createNemoTdtModelFamily } from '/dist/models/nemo-tdt/index.js';
 import { initOrt } from '/dist/models/nemo-tdt/ort.js';
-import { observeSessionRuns } from '/observe-session.mjs';
+import { observeSessionCreate, observeSessionRuns } from '/observe-session.mjs';
 
 globalThis.replayLibraryRecurrence = async (fixture, backend) => {
   if (!['wasm', 'webgpu'].includes(backend)) throw new Error('Explicit browser backend required');
@@ -28,7 +28,7 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
     crossOriginIsolated: globalThis.crossOriginIsolated,
   };
   const originals = [];
-  let runtime, loaded, observer, encoderObserver;
+  let runtime, loaded, observer, encoderObserver, createObserver;
   try {
     if (usesWebGpu) {
       const adapter = await navigator.gpu?.requestAdapter({ powerPreference: 'high-performance' });
@@ -57,6 +57,10 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
       cpuThreads: 1,
     });
     receipt.ortVersions = ort.env.versions;
+    // Record the options actually handed to InferenceSession.create in the
+    // library path, so they are measured rather than inferred from source.
+    createObserver = observeSessionCreate(ort.InferenceSession, 8);
+    receipt.sessionCreates = createObserver.creates;
     runtime = createSpeechRuntime();
     runtime.registerBackend(createWasmBackend());
     if (usesWebGpu) runtime.registerBackend(createWebGpuBackend());
@@ -201,6 +205,7 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
       receipt.cleanupErrors.push(String(error));
     }
     for (const [prototype, name, original] of originals) prototype[name] = original;
+    createObserver?.restore();
   }
   return receipt;
 };

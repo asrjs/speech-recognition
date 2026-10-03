@@ -3635,6 +3635,76 @@ that file against the repack receipt's name, size and SHA-256 before serving.
 The standalone replay serves `--encoder` plus its `.data` sibling. Both are the
 same bytes, so "different weights or graph" is excluded.
 
+### Session options measured equal, and a false PASS found (2026-10-03)
+
+The option capture ran. A new observer, `observeSessionCreate` in
+`observe_session.mjs`, wraps `InferenceSession.create` and records the argument
+object actually handed to ORT in each path, marking unserializable values rather
+than dropping them. Installed in both runners with the route added to the
+standalone replay.
+
+The encoder session options are **identical**, measured rather than inferred:
+
+| key | standalone replay | hybrid library path |
+| --- | --- | --- |
+| `enableCpuMemArena` | `true` | `true` |
+| `enableMemPattern` | `true` | `true` |
+| `enableProfiling` | `false` | `false` |
+| `executionMode` | `"parallel"` | `"parallel"` |
+| `executionProviders` | webgpu, gpu, high-performance | webgpu, gpu, high-performance |
+| `externalData` | `.data`, path `encoder-model.onnx.data` | same file |
+| `graphOptimizationLevel` | `"all"` | `"all"` |
+
+The hybrid additionally creates a second session for the decoder
+(`executionProviders: ["wasm"]`), which is expected and is not the encoder.
+Session options are therefore excluded **by measurement**, closing the last item
+the previous entry listed as unverified.
+
+**Separately, a harness defect was found.** Running the hybrid without
+`--trace-head` reports `REAL_ENCODER_OUTPUT_DIAGNOSTIC_PASS`, but the receipt
+contains no `live_head` block at all: the head gate was never evaluated, so
+there is nothing to pass. The status means "no gate failed", not "the gate
+passed", and it is reachable by omitting a flag. Any prior reading of that
+status as evidence must be rejected, and it is recorded here rather than fixed
+silently, because changing it alters what existing receipts assert.
+
+Consequence: with options excluded and the graph, weights, features, length and
+handoff all excluded, the `1.1316e-6` difference still has no identified cause.
+The traced hybrid run below supplies options and encoder output in one receipt so
+the comparison no longer spans two configurations.
+
+The traced hybrid run is now measured against the standalone replay from the
+same session, both with their options captured in-receipt:
+
+- encoder session options: **all seven keys EQUAL** (verified key by key)
+- encoder output: `maxAbs 1.131557e-6`, `meanAbs 2.306771e-8`, **not bitwise equal**
+
+So the difference survives with every configurable input held equal and
+measured: features byte-identical, valid length 1100, graph bytes and weights
+identical and hash-validated, all seven session options equal, and the handoff
+bitwise exact. That is the strongest form this negative result has taken, and it
+means the remaining cause is **not** in the configuration surface of the encoder
+session.
+
+Two candidates remain, and neither is measured yet:
+
+1. **The `modelUrl` string passed to `InferenceSession.create` differs.**
+   Standalone creates from `/graph.onnx`; the hybrid creates from
+   `/encoder-model.onnx`. Both routes serve the same bytes on disk, so this
+   should not matter numerically — but it is a real, observable difference in the
+   create call and ORT-Web may treat the graph name as a cache or sidecar key.
+2. **How the input tensor is materialised.** The hybrid passes the processor's
+   own `Float32Array` directly; the standalone passes a `Float32Array` decoded
+   from base64. Contents are byte-identical by the observer, but they are
+   different JS objects with potentially different `byteOffset` and backing
+   buffers, and the tensor constructor's handling of that is unverified.
+
+The discriminating experiment is to make the standalone path mimic the library
+exactly — same create URL name, same tensor construction from the processor's
+own buffer — or make the library mimic the standalone. Whichever change moves
+the output identifies the cause. Until then the gate stays FAIL and the
+difference is unexplained.
+
 A clue, stated only as far as it goes. Placed on the same axis, the encoder
 outputs differ in how far each sits from the recorded official encoder tensor:
 

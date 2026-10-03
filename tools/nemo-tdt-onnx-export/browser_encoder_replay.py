@@ -159,7 +159,8 @@ def main():
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     server.graph, server.backend = args.encoder, args.backend
     server.entrypoint = '/encoder-replay.mjs'
-    server.extra_routes = {'/encoder-replay.mjs': module, '/encoder-model.onnx.data': data}
+    server.extra_routes = {'/encoder-replay.mjs': module, '/encoder-model.onnx.data': data,
+                           '/observe-session.mjs': Path(__file__).with_name('observe_session.mjs')}
     if decoder_path is not None:
         server.extra_routes['/decoder-graph.onnx'] = decoder_path
         receipt['scope'] += '; co-resident decoder session requested'

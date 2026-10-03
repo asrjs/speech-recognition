@@ -1,11 +1,12 @@
 // Real encoder component replay through the library bridge, no ASR decoder.
 import { initOrt, createOrtSession, releaseOrtSession, disposeOrtOutputs } from '/dist/models/nemo-tdt/ort.js';
+import { observeSessionCreate } from '/observe-session.mjs';
 
 globalThis.replayEncoder = async (fixture, backend) => {
   const receipt = { backendRequested: backend, runs: [], cleanupErrors: [], gpuDispatches: 0,
     crossSessionRuns: [], crossSessionRequested: Boolean(fixture.crossSession),
     coResidentRuns: [], coResidentRequested: Boolean(fixture.coResidentDecoder) };
-  let session;
+  let session, createObserver;
   const originals = [];
   try {
     if (!['wasm', 'webgpu'].includes(backend)) throw new Error('Explicit backend required');
@@ -26,6 +27,10 @@ globalThis.replayEncoder = async (fixture, backend) => {
     }
     const ort = await initOrt(backend, { wasmPaths: `${location.origin}/ort-dist/`, cpuThreads: 1 });
     receipt.versions = ort.env.versions;
+    // Record the options actually handed to InferenceSession.create, so the
+    // standalone options are measured rather than inferred from source.
+    createObserver = observeSessionCreate(ort.InferenceSession, 8);
+    receipt.sessionCreates = createObserver.creates;
     receipt.crossOriginIsolated = crossOriginIsolated;
     const start = performance.now();
     session = await createOrtSession(ort, `${location.origin}/graph.onnx`, {
@@ -142,6 +147,7 @@ globalThis.replayEncoder = async (fixture, backend) => {
     }
   } catch (error) { receipt.error = String(error?.stack ?? error); }
   finally {
+    createObserver?.restore();
     try { await releaseOrtSession(session); } catch (error) { receipt.cleanupErrors.push(String(error)); }
     for (const [name, original] of originals) GPUComputePassEncoder.prototype[name] = original;
   }

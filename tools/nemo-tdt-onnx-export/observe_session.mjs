@@ -82,3 +82,44 @@ export function observeSessionRuns(InferenceSession, inputNames, outputNames, ma
     },
   };
 }
+
+/**
+ * Record the arguments actually handed to InferenceSession.create.
+ *
+ * Session options are the last unobserved difference between the library
+ * encoder path and a direct session path, so capture what each really passes
+ * rather than inferring it from source. Values that cannot be serialized are
+ * reported as an opaque marker, never silently dropped.
+ */
+export function observeSessionCreate(InferenceSession, maxCreates = 8) {
+  if (!Number.isSafeInteger(maxCreates) || maxCreates < 1 || maxCreates > 64)
+    throw new Error('Session-create observer requires a bounded positive count');
+  const original = InferenceSession?.create;
+  if (typeof original !== 'function') throw new Error('InferenceSession.create required');
+  const creates = [];
+  InferenceSession.create = async function (modelUrl, options) {
+    if (creates.length >= maxCreates)
+      throw new Error('Excessive observed session creates');
+    const safe = {};
+    for (const [key, value] of Object.entries(options ?? {})) {
+      if (value === undefined) continue;
+      if (typeof value === 'function' || typeof value === 'symbol') {
+        safe[key] = '[opaque]';
+      } else {
+        try {
+          safe[key] = JSON.parse(JSON.stringify(value));
+        } catch {
+          safe[key] = '[unserializable]';
+        }
+      }
+    }
+    creates.push({ modelUrl: String(modelUrl), options: safe });
+    return original.call(this, modelUrl, options);
+  };
+  return {
+    creates,
+    restore() {
+      InferenceSession.create = original;
+    },
+  };
+}
