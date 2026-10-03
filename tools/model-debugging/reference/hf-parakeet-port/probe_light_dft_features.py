@@ -95,16 +95,29 @@ def main():
     parser.add_argument('--power', choices=['fp32-rounded', 'library'], default='fp32-rounded')
     parser.add_argument('--coordinate', type=int, nargs=2, metavar=('MEL', 'FRAME'))
     parser.add_argument('--dft-precision', choices=list(DFT_TYPES), default='fp32')
-    parser.add_argument('--fft-engine', choices=['ort-dft', 'scipy-pocketfft'], default='ort-dft')
+    parser.add_argument('--fft-engine', choices=['ort-dft', 'scipy-pocketfft', 'pffft-native'], default='ort-dft')
+    parser.add_argument('--pffft-library', type=Path)
+    parser.add_argument('--expected-pffft-sha256')
     args = parser.parse_args()
     if args.fft_engine == 'scipy-pocketfft' and args.dft_precision != 'fp32':
         parser.error('PocketFFT control supports fp32 only')
+    if args.fft_engine == 'pffft-native' and (args.dft_precision != 'fp32'
+            or args.pffft_library is None or args.expected_pffft_sha256 is None):
+        parser.error('PFFFT requires fp32, explicit trusted library and expected SHA256')
+    if args.fft_engine != 'pffft-native' and (args.pffft_library is not None
+                                            or args.expected_pffft_sha256 is not None):
+        parser.error('PFFFT options require pffft-native engine')
     sources = [Path(__file__), *[Path(__file__).with_name(name) for name in (
         'replay_packed_fft.py', 'diagnostic_mel_bank.py', 'compare_js_feature_boundaries.py',
         'complex_intervention.py', 'normalization_reduction.py', 'normalization-reduction.mjs',
         'packed-f32-source.mjs')], ROOT / 'dist/audio/js-mel.js',
         ROOT / 'tools/tensor_parity.py', ROOT / 'tools/artifact_outputs.py']
-    require_new_outputs([args.output, args.probe_output], protected_inputs=[args.capture, *sources],
+    if args.fft_engine == 'pffft-native':
+        sources.append(Path(__file__).with_name('pffft_native_control.py'))
+    protected = [args.capture, *sources]
+    if args.pffft_library is not None:
+        protected.append(args.pffft_library)
+    require_new_outputs([args.output, args.probe_output], protected_inputs=protected,
                         protected_directories=[ROOT / 'src', ROOT / 'models'])
     hashes = {str(path.relative_to(ROOT)): digest(path.read_bytes()) for path in sources}
     bank = slaney_bank(sample_rate=16000, n_fft=512, n_mels=128,
@@ -117,7 +130,12 @@ def main():
     dft_frames = frames.astype(dft_dtype, copy=False)
     engine_metadata = None
     session = None
-    if args.fft_engine == 'scipy-pocketfft':
+    if args.fft_engine == 'pffft-native':
+        from pffft_native_control import pffft_control
+        candidate, engine_metadata = pffft_control(dft_frames, args.pffft_library,
+                                                  args.expected_pffft_sha256)
+        candidate_name = 'pffft_candidate'
+    elif args.fft_engine == 'scipy-pocketfft':
         candidate, engine_metadata = pocketfft_control(dft_frames)
         candidate_name = 'pocketfft_candidate'
     else:

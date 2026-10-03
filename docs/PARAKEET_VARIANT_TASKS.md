@@ -1944,3 +1944,53 @@ Nine lightweight tests pass, including native impulse/silence, input immutabilit
 shape/dtype/nonfinite rejection and fp64 option rejection before output creation.
 PFFFT's independently compiled real flow remains the next algorithm candidate;
 browser feature/encoder/token/text acceptance remains open.
+
+PFFFT native preparation (2026-10-03): acquired the small upstream source repo
+at exact revision `aa16fd3db58de4ba5dae8b0438440bb9da46b6fa` under
+`tools/data/results/orukeet/pffft-native-control-source-2026-10-03`.
+Source license notices remain intact; no upstream source modifications or
+toolchain installation. Existing MinGW GCC13.1 builds `pffft.c` together with
+`pffft_common.c`, include directory `include/pffft`, flags
+`-shared -O2 -ffp-contract=off -DPFFFT_EXPORTS`, and `-lm`, producing the local
+`pffft-sse-control.dll`. Initial missing-export/common-source linker failures
+were resolved by inspecting the header and upstream CMake target, not by
+patching source. Actual binding reports SSE1, SIMD width4.
+
+An aligned-buffer ctypes FFT512 REAL/FORWARD ordered-output sanity control
+passes exact impulse and silence checks. DC and Nyquist are unpacked from
+ordered values0/1; middle bins are interleaved. This is preparation only:
+full captured-spectrum and downstream-feature comparisons are UNTESTED,
+and browser/WASM equivalence, performance and model acceptance are UNTESTED.
+Next: add a hash-bound optional adapter with resource cleanup and malformed
+input guards, then run the same pinned frames through the existing JS feature
+probe. Do not promote on this native sanity result.
+
+PFFFT SSE feature control (2026-10-03): implemented opt-in `pffft-native`
+in the existing light feature tool, with explicit trusted library path and
+`--expected-pffft-sha256`. Native code loading is not a sandbox; only locally
+trusted builds may be requested. The adapter validates finite fp32 FFT512
+frames, verifies binary SHA256 before loading and after execution, uses aligned
+buffers, cleans buffers/setup in `finally`, and unpacks DC/Nyquist explicitly.
+Its source enters the same pre/post diagnostic hash closure. Default ORT
+graphs and candidate behavior remain unchanged; no binary is committed.
+
+Final-source receipt:
+`tools/data/results/orukeet/pffft-sse-features-bound-speech-silence-2026-10-03.json`
+with adjacent `.mjs` probe; binary SHA256
+`5209587996e8edf345491c84bc322b7a452e1ff21dfa4542a49f07acd294d97e`.
+Use the same pinned capture/bank/sample and library-power/coordinate options
+as PocketFFT, adding `--fft-engine pffft-native --pffft-library <local-dll>`
+and the explicit binary hash. Spectrum passes allclose with zero mismatches,
+max abs 5.140900611877441e-7; features FAIL with 65/519,808 mismatches,
+max abs 8.402019739151001e-5, first index98. Official-complex control passes.
+Same frame/probe hashes and unchanged atol=1e-5/rtol=1e-4; no promotion.
+
+Twelve tests pass with the real local DLL, including shifted-impulse phase,
+silence, input immutability and identity/input rejection. Without a requested
+DLL, only the native execution test SKIPs; requested missing/hash-mismatched
+inputs do not silently skip. Syntax and diff checks pass. Native compiler/source
+provenance remains the preceding preparation record, separate from binary-bound
+execution receipt. Browser/WASM and end-to-end gates remain UNTESTED.
+Next discriminating step: scalar PFFFT build of the same revision with the same
+non-contracted arithmetic flags; then reassess real-kernel versus official
+engine rounding rather than relaxing feature tolerance.
