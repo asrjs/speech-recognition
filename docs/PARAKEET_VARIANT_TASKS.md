@@ -2147,3 +2147,33 @@ Receipt: `ort-dft-features-speech-silence-2026-10-03.json`.
 Next use the reproducible official processor as the full-output control for a
 real-pair STFT export; compare its full processor output without relaxing gates.
 Portable DFT feasibility alone does not repair the known near-silence mismatch.
+
+### Full real-pair processor export control (2026-10-03)
+
+`probe_nemo_processor.py --onnx-probe` now compares the official config-only
+processor, an explicit eval-only family adapter, and its in-memory fp32 ONNX
+graph against the same captured PCM/features. No installed source monkeypatch,
+weight restore, production change, graph publication or browser claim. The
+adapter reuses official length/normalization helpers and config-derived window,
+filterbank, preemphasis and log settings. Unsupported exact padding, training,
+gradient mode, splicing, frame padding and normalization modes fail closed.
+Five preflight tests, two adapter contract tests (eight rejected variants), and
+the two existing actual STFT export tests pass. These tests do not prove ASR parity.
+
+Speech/silence native adapter: all519,808 values bit-exact to the captured
+official features; valid length4060. Full ONNX graph:150,416 bytes, SHA256
+`66184fc8b4dd381d2de6f4bb939bd3c3c8c177ee8a6bdd127f1951555caf735b`;
+dynamic sample axis traced at1600 samples and executed at649600. Explicit CPU
+ORT1.23.2 (existing NeMo venv), Torch2.6.0+cu118, ONNX1.20.1. Length is exact,
+but features FAIL unchanged atol1e-5/rtol1e-4:10,575 mismatches, first index0,
+max0.00013090670108795166, mean0.00001838071101380855. Native byte identity
+shows the real-pair adapter itself preserves this fixture; it does not prove
+equivalence after ONNX export/operator execution. No optimized graph is promoted.
+
+Receipt: `nemo-processor-real-pair-export-final-speech-silence-2026-10-03.json`.
+Overall export status is FAIL and CLI exits1, separately retaining native PASS.
+Earlier receipts identify earlier diagnostic hashes; they are not rewritten.
+Next add bounded intermediate STFT/power/mel/log/normalization comparisons,
+including identical-input downstream controls, to locate the earliest ONNX
+arithmetic divergence. Do not treat graph feasibility as numerical acceptance
+or adjust tolerances to accept the candidate. Browser/WASM gates remain open.
