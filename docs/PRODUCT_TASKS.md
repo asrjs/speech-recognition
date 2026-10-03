@@ -32,7 +32,22 @@ earlier 7.40 measurement used a contract the model does not consume. The correct
 reference is therefore the preemphasis path (1101x80), and against it the current
 frontend measures max abs `18.02` / mean `9.25` over 88,080 coordinates.
 
-**Stage-wise localization.** With preemphasis disabled our frontend matches the
+**ROOT CAUSE FIXED.** `ParakeetFeatureExtractor.__call__` normalizes mel features
+per band after the log (mean over valid frames, unbiased variance, then
+`(x - mean) / (std + 1e-5)`, masked). The private `_torch_extract_fbank_features`
+method I had been comparing against does not. Enabling that normalization drops
+feature error from max abs `18.02` / mean `9.25` to **max abs `2.04e-4` / mean
+`9.76e-7`** over 88,080 coordinates, leaving **137 failing coordinates (0.16%)**
+at `atol=1e-5, rtol=1e-4`, concentrated in 12 mel bands. That residual is a
+per-band reduction precision difference, the same class as the Orukeet
+pure-silence divergence, not a spectral or filterbank error.
+
+Frame counts settled too: the official centered STFT yields 1101 frames, but
+`features_lengths` and the official mask cover 1100, so the existing clamp is
+correct; enabling `includeCenteredTailFrame` regressed parity to max `3.28` and
+was reverted.
+
+**Stage-wise localization (superseded by the fix above).** With preemphasis disabled our frontend matches the
 official extractor to max abs `4.08e-4` / mean `1.92e-6` across 88,080
 coordinates, so the STFT, window, power spectra, librosa bank, log guard and
 centered padding are all correct. Enabling preemphasis is the sole break

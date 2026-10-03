@@ -37,7 +37,9 @@ export class ParakeetCtcJsPreprocessor implements LasrCtcFeaturePreprocessor {
       // its norm is 'slaney'. Using the HTK scale here builds a different bank.
       melScale: 'slaney',
       slaneyNorm: true,
-      normalizeFeatures: false,
+      // ParakeetForCTC normalizes mel features per band over the valid frames
+      // after the log, as transformers' __call__ does.
+      normalizeFeatures: true,
       logZeroGuard: LOG_ZERO_GUARD,
       logCombine: 'add',
       windowKind: 'hann',

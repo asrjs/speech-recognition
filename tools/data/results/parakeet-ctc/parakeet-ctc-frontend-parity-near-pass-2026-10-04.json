@@ -1,0 +1,32 @@
+{
+  "status": "FRONTEND_PARITY_NEAR_PASS",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "root_cause_fixed": "ParakeetFeatureExtractor.__call__ normalizes mel features per band after the log: mean over valid frames, variance with the unbiased (features_lengths - 1) denominator, then (x - mean) / (std + 1e-5), masked. _torch_extract_fbank_features does not, which is why our earlier comparisons diverged by ~18 log units.",
+  "before_after": {
+    "max_abs_error": {
+      "before": 18.02479076385498,
+      "after": 0.0002043992280960083
+    },
+    "mean_abs_error": {
+      "before": 9.245373943027364,
+      "after": 9.760450702122564e-07
+    }
+  },
+  "residual": {
+    "gate": "atol=1e-5, rtol=1e-4",
+    "failing_coordinates": 137,
+    "compared": 88000,
+    "share": "0.16 percent",
+    "max_abs_error": 0.0002043992280960083,
+    "pattern": "Concentrated in 12 mel bands (0,1,2,71-75 and others) across 111 frames, consistent with a per-band mean/variance reduction precision difference rather than a spectral or filterbank error.",
+    "precedent": "The same class of divergence exists in the Orukeet pure-silence case, where the official masked float32 reduction was the identified cause."
+  },
+  "frames": {
+    "ours": 1100,
+    "official_stft": 1101,
+    "official_mask": 1100,
+    "note": "The official centered STFT yields 1101 frames but features_lengths = floor((audio_length + n_fft - n_fft)/hop) = 1100, so the official mask and normalization cover 1100. Enabling includeCenteredTailFrame was tested and regressed parity to max 3.28, so the clamp is correct."
+  },
+  "shipped": "Still no preset, adapter or manifest; this is frontend parity evidence only."
+}
