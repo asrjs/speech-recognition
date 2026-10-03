@@ -1,0 +1,50 @@
+{
+  "status": "FRONTEND_PARITY_STILL_FAIL_IMPROVED",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "compared_coordinates": 88000,
+  "before_slaney_scale": {
+    "frontend_mel_scale": "htk",
+    "max_abs_error": 16.634673297405243,
+    "mean_abs_error": 2.2467289652786837,
+    "band_ratios_official_over_ours": {
+      "mel0": 0.001,
+      "mel5": 0.007,
+      "mel10": 0.206,
+      "mel20": 14.16,
+      "mel30": 0.639,
+      "mel40": 3.729,
+      "mel60": 2.042
+    },
+    "interpretation": "ratios scattered over orders of magnitude: a different filterbank shape"
+  },
+  "after_slaney_scale": {
+    "frontend_mel_scale": "slaney",
+    "max_abs_error": 7.401313781738281,
+    "mean_abs_error": 1.6994708794156947,
+    "band_ratios_official_over_ours": {
+      "mel0": 0.002,
+      "mel5": 0.008,
+      "mel10": 0.027,
+      "mel20": 0.091,
+      "mel30": 0.202,
+      "mel40": 0.429,
+      "mel60": 1.708
+    },
+    "interpretation": "ratios now trend smoothly with band index, the signature of a band-edge or normalization construction difference rather than a wrong scale"
+  },
+  "fix_applied": "The frontend passed melScale 'htk', but librosa.filters.mel defaults to the Slaney mel scale (f_sp=200/3, 1000 Hz breakpoint, log(6.4)/27). Switching to 'slaney' with slaneyNorm true halved the maximum error.",
+  "remaining_breaks": [
+    "Filterbank band edges and slaney area normalization still differ from librosa; the per-band ratio is a smooth monotone function of band index.",
+    "validFrameCount clamps to 1100 frames while the official centered STFT yields 1101; the delegate already computes all 1101, so emitting the trailing frame is a family-local change."
+  ],
+  "verified_matching": [
+    "Window placement: padded window at leftPad=(512-400)>>1=56, matching torch.stft centering.",
+    "Window flavor: hann divides by winLength-1, matching torch.hann_window(400, periodic=False).",
+    "Power spectra: re^2+im^2.",
+    "Log guard: log(mel + 2^-24); both sides share the -16.63553237915039 floor.",
+    "Center semantics: 256 zero samples padded on both sides of the preemphasized signal, matching torch pad_mode=constant."
+  ],
+  "parity_verdict": "FAIL at atol=1e-5/rtol=1e-4 with 87,671 of 88,000 coordinates outside 1e-4. Not shipped: no preset, adapter or manifest registered.",
+  "oracle_transcript": "And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country."
+}

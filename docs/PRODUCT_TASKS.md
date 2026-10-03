@@ -32,7 +32,17 @@ numpy extractor on JFK it does not yet agree: max abs `16.63`, mean abs `2.25`
 over 88,000 coordinates, with no frame shift improving it (shift 0/±1 all
 similar), so this is arithmetic scale, not alignment.
 
-**Root cause confirmed: the filterbank shape, not a scale factor.** The
+**Progress: the mel scale was wrong and is now fixed.** The frontend passed
+`melScale: 'htk'`, but `librosa.filters.mel` defaults to the **Slaney** mel
+scale (f_sp 200/3, 1000 Hz breakpoint, log(6.4)/27). Switching to `'slaney'` with
+`slaneyNorm: true` cut max abs error from `16.63` to `7.40` and mean from `2.25`
+to `1.70`. Parity still FAILS (87,671 of 88,000 coordinates outside 1e-4), and
+the per-band ratio is now a smooth monotone function of band index
+(`0.002, 0.008, 0.027, 0.091, 0.202, 0.429, 1.708`) instead of scattering,
+which points at band-edge or slaney-area-normalization construction rather than
+the mel scale.
+
+Root cause history: the filterbank shape, not a scale factor. The
 per-mel-band linear ratio official/ours varies by orders of magnitude (mel 0
 `0.001`, mel 5 `0.007`, mel 10 `0.206`, mel 20 `14.16`, mel 30 `0.639`, mel 40
 `3.729`), which rules out a single missing normalization factor. The shared

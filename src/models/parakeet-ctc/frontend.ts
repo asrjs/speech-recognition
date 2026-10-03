@@ -33,7 +33,9 @@ export class ParakeetCtcJsPreprocessor implements LasrCtcFeaturePreprocessor {
       hopLength: options.hopLength ?? 160,
       center: true,
       preemphasis: options.preemphasis ?? 0.97,
-      melScale: 'htk',
+      // librosa.filters.mel defaults to the Slaney mel scale, not HTK; only
+      // its norm is 'slaney'. Using the HTK scale here builds a different bank.
+      melScale: 'slaney',
       slaneyNorm: true,
       normalizeFeatures: false,
       logZeroGuard: LOG_ZERO_GUARD,
