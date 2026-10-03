@@ -1,0 +1,49 @@
+{
+  "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE",
+  "sample_id": "speech-silence",
+  "capture_sha256": "07ae6f00dcab69eb3425566af7b5690a85dc2bee91e7510ddf27cca7b4370809",
+  "hypothesis": "Torch CPU thread count changes packed FFT residual for this fixed capture and build",
+  "result": "REJECTED_FOR_THIS_CONTROL",
+  "controls": [
+    {
+      "cpu_threads": 4,
+      "receipt": "tools/data/results/orukeet/packed256-replay-cli-speech-silence-reviewed-2026-10-02.json",
+      "sha256": "3ebb3e3a905129e370ff6224799df926f94d13b97091f6958ce0d640eea34aef",
+      "frames_sha256": "f6d9996ff874003c84efd270f8558681a5c16303a913c185ea68a6553d3e1810",
+      "packed_sha256": "e753afc6b03a175fa86402752db15df551f12dfcad290cbe7a105c44594e0d3f",
+      "candidate_sha256": "389a6ef16a8bba5c8aec7603c66dd6d8db7f1276df873154681213d904b8c413",
+      "mismatch_count": 1,
+      "first_divergent_index": 9149,
+      "max_abs_error": 0.000014750286936759949,
+      "official_complex_mismatches": 0,
+      "patched_mismatches": 0
+    },
+    {
+      "cpu_threads": 1,
+      "receipt": "tools/data/results/orukeet/packed256-thread1-speech-silence-2026-10-03.json",
+      "sha256": "d6a29d24301cf49431d808a842dc010ff34f76e39d965f38f72b8d611311ef70",
+      "frames_sha256": "f6d9996ff874003c84efd270f8558681a5c16303a913c185ea68a6553d3e1810",
+      "packed_sha256": "e753afc6b03a175fa86402752db15df551f12dfcad290cbe7a105c44594e0d3f",
+      "candidate_sha256": "389a6ef16a8bba5c8aec7603c66dd6d8db7f1276df873154681213d904b8c413",
+      "mismatch_count": 1,
+      "first_divergent_index": 9149,
+      "max_abs_error": 0.000014750286936759949,
+      "official_complex_mismatches": 0,
+      "patched_mismatches": 0
+    },
+    {
+      "cpu_threads": 8,
+      "receipt": "tools/data/results/orukeet/packed256-thread8-speech-silence-2026-10-03.json",
+      "sha256": "3b03118b8417c4bdab2092977dd75a4a897d964cdbaab261ca080d9c9349a448",
+      "frames_sha256": "f6d9996ff874003c84efd270f8558681a5c16303a913c185ea68a6553d3e1810",
+      "packed_sha256": "e753afc6b03a175fa86402752db15df551f12dfcad290cbe7a105c44594e0d3f",
+      "candidate_sha256": "389a6ef16a8bba5c8aec7603c66dd6d8db7f1276df873154681213d904b8c413",
+      "mismatch_count": 1,
+      "first_divergent_index": 9149,
+      "max_abs_error": 0.000014750286936759949,
+      "official_complex_mismatches": 0,
+      "patched_mismatches": 0
+    }
+  ],
+  "scope": "Torch diagnostic replay only; not production feature parity or browser WASM performance. No tolerance changes or candidate promotion."
+}

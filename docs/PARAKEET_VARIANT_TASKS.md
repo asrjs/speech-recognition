@@ -1688,3 +1688,22 @@ These are lifecycle simulations, not native/WebGPU streaming acceptance.
 Receipt: `tools/data/results/harness/implicit-runtime-streaming-cleanup-handoff-2026-10-03.json`.
 Next: the earliest Orukeet production feature divergence, with existing source
 captures and one discriminating experiment; retain all full-model gates.
+
+### FFT thread-count discrimination (2026-10-03)
+
+The existing guarded packed-FFT replay ran against the identical official
+speech/silence capture with Torch CPU threads 1 and 8, compared with the recorded
+4-thread control. All three preserve the exact captured real FFT, identical
+windowed-frame, packed-complex and recombined-candidate hashes, and the same
+single final-feature mismatch at mel 2 / frame 1027 (flat index 9149; max absolute
+error 1.4750286936759949e-5). Official complex injection and the diagnostic
+selected-bin patch each retain zero mismatches. Both fresh commands exit zero.
+
+Thread count does not explain this residual for this fixed build and fixture.
+This is DIAGNOSTIC_NOT_PORT_ACCEPTANCE: it neither fixes production features
+nor proves browser performance. The independently committed WASM worker cap
+is runtime policy, not a numerical workaround. No tolerance or production
+mathematics changed; the Torch-dependent candidate remains unpromoted.
+Receipt: `tools/data/results/orukeet/fft-thread-control-handoff-2026-10-03.json`.
+Next: inspect the actual FFT operation boundary for a source-backed distinction;
+retain production-feature, real-encoder and full-model acceptance gates.
