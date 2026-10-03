@@ -3,6 +3,41 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C21 — Direct public TDT session shutdown
+
+Status: PASS — public runtime/model/session lifecycle with injected executor;
+not real ORT/WebGPU teardown, raw executor or cross-family certification.
+
+High-level model handles already used an operation lease, but sessions returned
+by direct model.createSession() could dispose their executor during transcription.
+Two new deferred-call regressions reproduced premature executor disposal for
+session and model owners. The TDT session now consumes the existing shared
+runtime operation lease: accepted transcription (including canonical mapping)
+settles before executor teardown, new calls reject once session disposal enters,
+and errors release their lease. No decoder internals or shared helper changed.
+Dependency direction remains shared runtime ownership primitive -> family session.
+
+Seven new lifecycle cases include the public root runtime.loadModel().createSession()
+path: session/model/runtime shutdown with successful or failing inference, plus
+multiple active calls and an executor cleanup failure. Runtime disposal first
+settles inflight loads and reaches model/session cleanup asynchronously; tests
+observe actual session-dispose entry, not a fixed microtask count or an instant
+closure guarantee for all runtime-owned models. A faulty timing-assumption test
+extension was reverted before rebuilding that synchronization. Direct session
+disposal closes its own lease synchronously. Repeated cleanup retains the same
+failure and disposes the executor once; callers retain their inference error.
+
+Eight session tests and seventy-five related executor/initialization/high-level/
+streaming-owner tests pass with TLS verification enabled. TypeScript, scoped
+ESLint and formatting pass. Full suite: 1,455 PASS / 33 SKIP / 0 FAIL; receipt:
+`tools/data/results/harness/nemo-tdt-public-session-disposal-full-suite-2026-10-03.json`.
+TLS verification/system CA are test-child-only settings.
+
+Real provider shutdown and resource recovery still need an actual inference
+check. Raw OrtNemoTdtExecutor callers and other family sessions are not covered
+by this change; a never-settling inference still delays disposal. Orukeet parity
+remains FAIL and no model promotion, tolerance change or speed claim follows.
+
 ## C20 — Preprocessor active-run disposal ownership
 
 Status: PASS — deterministic deferred-run/session-creation simulations;

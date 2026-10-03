@@ -38,6 +38,7 @@ import {
 } from './config.js';
 import { OrtNemoTdtExecutor } from './executor.js';
 import { ExperimentalArtifactMissingError } from '../../runtime/errors.js';
+import { createActiveOperationLease } from '../../runtime/operation-lease.js';
 import {
   assertSessionOwnerActive,
   disposeOwnedResources,
@@ -189,6 +190,7 @@ export class NemoTdtSpeechSession implements SpeechSession<
   private readonly confidenceReconstructor: NemoConfidenceReconstructor<NemoTdtNativeTranscript>;
   private readonly tokenizer: NemoTokenizer;
   private disposePromise: Promise<void> | undefined;
+  private readonly operationLease = createActiveOperationLease();
 
   constructor(
     private readonly modelId: string,
@@ -223,6 +225,19 @@ export class NemoTdtSpeechSession implements SpeechSession<
   async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
     input: AudioInputLike,
     options: NemoTdtTranscriptionOptions & { readonly responseFlavor?: TFlavor } = {},
+  ): Promise<TranscriptResponse<NemoTdtNativeTranscript, TFlavor>> {
+    const releaseOperation = this.operationLease.enter();
+    if (!releaseOperation) throw new Error('NeMo TDT session is disposed.');
+    try {
+      return await this.transcribeAudio<TFlavor>(input, options);
+    } finally {
+      releaseOperation();
+    }
+  }
+
+  private async transcribeAudio<TFlavor extends TranscriptResponseFlavor>(
+    input: AudioInputLike,
+    options: NemoTdtTranscriptionOptions & { readonly responseFlavor?: TFlavor },
   ): Promise<TranscriptResponse<NemoTdtNativeTranscript, TFlavor>> {
     const audio = normalizePcmInput(input).toMono();
     const startMs = performance.now();
@@ -357,8 +372,10 @@ export class NemoTdtSpeechSession implements SpeechSession<
 
   async dispose(): Promise<void> {
     if (!this.disposePromise) {
+      const pending = this.operationLease.closeAndWait();
       this.disposePromise = Promise.resolve().then(async () => {
         try {
+          await pending;
           await this.executor?.dispose();
         } finally {
           this.onDispose?.();
