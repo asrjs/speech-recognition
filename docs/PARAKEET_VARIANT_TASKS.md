@@ -31,8 +31,19 @@ Receipts under `tools/data/results/orukeet/`:
 `captured-filterbank-js-jfk-final-2026-10-03.json` and
 `captured-filterbank-js-triangle-jfk-final-2026-10-03.json`.
 Twenty-six capture/probe regression tests pass, with independent read-only
-review. Next: substitute only the actual matrix over identical captured power
-to isolate downstream mel/log-mel effects before considering a runtime fix.
+review. Follow-up `probe_filterbank_features.py` changes only the matrix on
+identical byte-hashed JS production power (not captured original NeMo power).
+An unmodified production-output control passes. Actual-buffer and triangle
+conditions produce numerically identical raw log-mel and normalized features;
+their change from baseline is at most `1.907349e-6` / `1.549721e-6` respectively.
+All three JFK conditions still fail the unchanged official feature gate at
+313 coordinates, with identical max error `0.00034236907958984375`.
+Receipt: `filterbank-feature-jfk-2026-10-03.json`. Four new result/Node synthetic
+guards pass; independent read-only review of this follow-up passed.
+This rejects matrix rounding as a solution to the observed JFK feature failure;
+no runtime fix or tolerance change is justified by this diagnostic alone.
+Next: inspect the earliest remaining power/log/normalization boundary against
+the existing negative controls before selecting another source-grounded test.
 Do not repeat rejected FFT/reduction variants or change tolerances.
 
 Browser production-feature sensitivity (2026-10-03): opt-in
