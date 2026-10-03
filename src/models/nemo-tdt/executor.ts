@@ -46,6 +46,8 @@ interface LoadedExecutorState {
   readonly decoderSession: OrtSessionLike;
   readonly preprocessor: NemoPreprocessor;
   readonly preprocessorBackend: string;
+  readonly encoderBackend: string;
+  readonly decoderBackend: string;
   readonly warnings: readonly TranscriptWarning[];
 }
 
@@ -493,6 +495,10 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         decoderSession,
         preprocessor,
         preprocessorBackend: resolved.preprocessorBackend,
+        encoderBackend:
+          resolved.encoderBackendForOrt === 'native-cpu' ? 'cpu' : resolved.encoderBackendForOrt,
+        decoderBackend:
+          resolved.decoderBackendForOrt === 'native-cpu' ? 'cpu' : resolved.decoderBackendForOrt,
         warnings,
       };
     } catch (error) {
@@ -1154,6 +1160,9 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       rtfx: rtfx !== undefined ? roundMetric(rtfx, 4) : undefined,
       requestedPreprocessorBackend: this.sourceOptions?.preprocessorBackend ?? 'onnx',
       preprocessorBackend: loaded.preprocessorBackend,
+      encoderBackend: loaded.encoderBackend,
+      decoderBackend: loaded.decoderBackend,
+      jointBackend: loaded.decoderBackend,
       encoderFrameCount: frameCount,
       decodeIterations,
       decoderGridBatchRuns,
@@ -1194,6 +1203,9 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
         rtfx: totalMetrics.rtfx,
         requestedPreprocessorBackend: totalMetrics.requestedPreprocessorBackend,
         preprocessorBackend: totalMetrics.preprocessorBackend,
+        encoderBackend: totalMetrics.encoderBackend,
+        decoderBackend: totalMetrics.decoderBackend,
+        jointBackend: totalMetrics.jointBackend,
         encoderFrameCount: totalMetrics.encoderFrameCount,
         decodeIterations: totalMetrics.decodeIterations,
         decoderGridBatchRuns: totalMetrics.decoderGridBatchRuns,

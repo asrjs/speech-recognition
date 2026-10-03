@@ -295,6 +295,9 @@ export class NemoTdtSpeechSession implements SpeechSession<
         modelId: this.modelId,
         metrics: nativeTranscript.metrics
           ? {
+              encoderBackend: nativeTranscript.metrics.encoderBackend,
+              decoderBackend: nativeTranscript.metrics.decoderBackend,
+              jointBackend: nativeTranscript.metrics.jointBackend,
               preprocessMs: nativeTranscript.metrics.preprocessMs,
               encodeMs: nativeTranscript.metrics.encodeMs,
               decodeMs: nativeTranscript.metrics.decodeMs,

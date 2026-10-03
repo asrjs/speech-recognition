@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PcmAudioBuffer } from '../src/audio/index.js';
 import type { ExecutionBackend } from '../src/types/index.js';
 import {
   NemoTdtSpeechModel,
@@ -68,6 +69,7 @@ function createTranscript(): NemoTdtNativeTranscript {
     isFinal: true,
     words: [],
     tokens: [],
+    metrics: { encoderBackend: 'webgpu', decoderBackend: 'wasm', jointBackend: 'wasm' },
   };
 }
 
@@ -120,6 +122,15 @@ describe('NemoTdtSpeechModel session lifecycle', () => {
     releaseReady?.();
     const session = await sessionPromise;
     expect(resolved).toBe(true);
+
+    const transcript = await session.transcribe(
+      PcmAudioBuffer.fromMono(new Float32Array(1600), 16000),
+    );
+    expect(transcript.meta.metrics).toMatchObject({
+      encoderBackend: 'webgpu',
+      decoderBackend: 'wasm',
+      jointBackend: 'wasm',
+    });
 
     await session.dispose();
     await model.dispose();

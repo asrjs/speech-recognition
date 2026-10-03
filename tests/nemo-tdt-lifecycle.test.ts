@@ -17,12 +17,12 @@ function session(release = vi.fn<() => void | Promise<void>>()) {
   return { run: vi.fn(async () => ({})), release };
 }
 
-function executor() {
+function executor(backend: 'native-cpu' | 'wasm' | 'webgpu' = 'native-cpu') {
   return new OrtNemoTdtExecutor(
     'test/native-tdt',
     DEFAULT_NEMO_TDT_CLASSIFICATION,
     parseNemoTdtConfig('test/native-tdt'),
-    'native-cpu',
+    backend,
     {
       source: {
         kind: 'direct',
@@ -46,6 +46,33 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('NeMo TDT resource ownership (simulated, not model parity)', () => {
+  it.each([
+    ['native-cpu', 'cpu', 'cpu'],
+    ['wasm', 'wasm', 'wasm'],
+    ['webgpu', 'webgpu', 'wasm'],
+  ] as const)(
+    'retains initialized %s component providers for telemetry',
+    async (backend, encoder, decoder) => {
+      mocks.create.mockResolvedValueOnce(session()).mockResolvedValueOnce(session());
+      const model = executor(backend);
+      try {
+        await model.ready();
+        const loaded = await (
+          model as unknown as {
+            loadStatePromise: Promise<{ encoderBackend: string; decoderBackend: string }>;
+          }
+        ).loadStatePromise;
+        expect(loaded).toMatchObject({ encoderBackend: encoder, decoderBackend: decoder });
+        expect(mocks.create.mock.calls[0]?.[2]).toMatchObject({ backendId: backend });
+        expect(mocks.create.mock.calls[1]?.[2]).toMatchObject({
+          backendId: backend === 'webgpu' ? 'wasm' : backend,
+        });
+      } finally {
+        await model.dispose();
+      }
+    },
+  );
+
   it('releases a created encoder when decoder initialization fails', async () => {
     const encoder = session();
     const failure = new Error('decoder initialization failed');

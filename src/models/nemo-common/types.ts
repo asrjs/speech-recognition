@@ -77,6 +77,10 @@ export interface NemoNativeTranscriptMetrics {
   readonly rtfx?: number;
   readonly requestedPreprocessorBackend?: string;
   readonly preprocessorBackend?: string;
+  /** Selected session provider; WebGPU sessions may still assign shape nodes to CPU. */
+  readonly encoderBackend?: string;
+  readonly decoderBackend?: string;
+  readonly jointBackend?: string;
   readonly decodeAudioMs?: number;
   readonly downmixMs?: number;
   readonly resampleMs?: number;

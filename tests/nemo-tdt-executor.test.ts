@@ -179,6 +179,7 @@ function createExecutorHarness(options: {
   readonly vocab?: readonly string[];
   readonly source?: NemoTdtArtifactSource;
   readonly batching?: boolean;
+  readonly sessionProviders?: { readonly encoder: string; readonly decoder: string };
 }) {
   const config = parseNemoTdtConfig('test-nemo-tdt', {
     subsamplingFactor: 4,
@@ -217,8 +218,7 @@ function createExecutorHarness(options: {
   // The script-driven mock decoder above cannot serve speculative grid
   // shapes, so the harness pins the executor to the sequential decode
   // path unless a test opts into the batched path explicitly.
-  (executor as unknown as { tdtBatchAllowed: boolean }).tdtBatchAllowed =
-    options.batching === true;
+  (executor as unknown as { tdtBatchAllowed: boolean }).tdtBatchAllowed = options.batching === true;
 
   executor.loadStatePromise = Promise.resolve({
     ort: createMockOrt(),
@@ -226,6 +226,8 @@ function createExecutorHarness(options: {
     encoderSession,
     decoderSession,
     preprocessorBackend: options.source?.preprocessorBackend ?? 'onnx',
+    encoderBackend: options.sessionProviders?.encoder ?? 'wasm',
+    decoderBackend: options.sessionProviders?.decoder ?? 'wasm',
     preprocessor: {
       async process() {
         return {
@@ -309,6 +311,31 @@ describe('nemo-tdt Hugging Face artifact materialization', () => {
 });
 
 describe('nemo-tdt executor decode loop', () => {
+  it.each([
+    ['webgpu', 'wasm'],
+    ['wasm', 'wasm'],
+    ['cpu', 'cpu'],
+  ])(
+    'preserves initialized %s/%s providers in output metrics (simulation)',
+    async (encoder, decoder) => {
+      const harness = createExecutorHarness({
+        frameCount: 1,
+        logits: [{ logits: [10, 0, 0, 0, 10, 0] }],
+        sessionProviders: { encoder, decoder },
+      });
+      try {
+        const result = await harness.executor.transcribe(createAudio(), {}, {} as never);
+        expect(result.metrics).toMatchObject({
+          encoderBackend: encoder,
+          decoderBackend: decoder,
+          jointBackend: decoder,
+        });
+      } finally {
+        await harness.executor.dispose();
+      }
+    },
+  );
+
   it('handles token duration steps and clamps timestamps to remaining frames', async () => {
     const harness = createExecutorHarness({
       frameCount: 3,
@@ -621,7 +648,8 @@ describe('nemo-tdt executor decode loop', () => {
     const originalRun = harness.decoderSession.run.bind(harness.decoderSession);
     harness.decoderSession.run = async (feeds: Record<string, unknown>) => {
       const result = await originalRun(feeds);
-      if (abortAfterFirst && harness.decoderSession.targetHistory.length === 1) signal.aborted = true;
+      if (abortAfterFirst && harness.decoderSession.targetHistory.length === 1)
+        signal.aborted = true;
       return result;
     };
 
