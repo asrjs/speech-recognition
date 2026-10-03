@@ -1,5 +1,7 @@
 """Actual NeMo buffer versus built JS coefficients; diagnostic, not ASR acceptance."""
 import argparse
+import base64
+import binascii
 import hashlib
 import json
 from pathlib import Path
@@ -26,6 +28,22 @@ def captured_filterbank(sample):
     return values
 
 
+def decode_filterbank_bytes(encoded):
+    """Canonical base64 little-endian float32, including signed zero."""
+    if not isinstance(encoded, str):
+        raise ValueError('Expected base64 filterbank bytes')
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (ValueError, binascii.Error) as error:
+        raise ValueError('Invalid filterbank encoding') from error
+    if len(raw) != 128 * 257 * 4 or base64.b64encode(raw).decode('ascii') != encoded:
+        raise ValueError('Filterbank byte count or canonical encoding differs')
+    values = np.frombuffer(raw, dtype='<f4').reshape(1, 128, 257)
+    if not np.isfinite(values).all():
+        raise ValueError('Nonfinite filterbank bytes')
+    return values
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('capture', 'output'):
@@ -45,7 +63,8 @@ def main():
             or not isinstance(meta.get('preprocessor_config'), dict)):
         raise ValueError('Original weight/config identity missing or differs')
     official = captured_filterbank(sample)
-    probe = "import {createMelFilterbank} from './dist/audio/js-mel.js'; console.log(JSON.stringify(Array.from(createMelFilterbank(128))));"
+    serialize = "const values=createMelFilterbank(128); const bytes=Buffer.alloc(values.length*4); for(let i=0;i<values.length;i++)bytes.writeFloatLE(values[i],i*4); console.log(bytes.toString('base64'));"
+    probe = "import {createMelFilterbank} from './dist/audio/js-mel.js'; " + serialize
     if args.triangle_rounding:
         probe = """
 import {readFileSync} from 'node:fs';
@@ -54,12 +73,10 @@ const before='Math.max(0, Math.min(downSlope, upSlope)) * enorm';
 if(source.split(before).length!==2) throw new Error('Triangle source contract differs');
 source=source.replace(before,'Math.fround(Math.max(0, Math.min(downSlope, upSlope))) * enorm');
 const {createMelFilterbank}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
-console.log(JSON.stringify(Array.from(createMelFilterbank(128))));
-"""
+""" + serialize
     process = subprocess.run(['node', '--input-type=module', '-e', probe], cwd=ROOT,
                              text=True, capture_output=True, check=True, timeout=30)
-    js = read_stage({'stages': {'js': {'dtype': 'float32', 'shape': [1, 128, 257],
-                                     'data': json.loads(process.stdout)}}}, 'js', 'float32')
+    js = decode_filterbank_bytes(process.stdout.strip())
     metrics = compare_tensors(official, js, atol=0, rtol=0)
     unchanged = hashes == {str(path.resolve()): digest(path) for path in sources}
     if not unchanged:
@@ -72,7 +89,7 @@ console.log(JSON.stringify(Array.from(createMelFilterbank(128))));
         'filterbank_contract': sample['feature_stft_contract'], 'comparison': metrics,
         'support_mismatch_count': int(np.count_nonzero((official != 0) != (js != 0))),
         'serialized_js_bit_mismatch_count': int(np.count_nonzero(official.view(np.uint32) != js.view(np.uint32))),
-        'serialization_note': 'Node JSON cannot preserve negative-zero signs; numerical equality and serialized bit equality are reported separately',
+        'serialization_note': 'Canonical base64 f32le bytes preserve signed zero; numerical and bit equality are reported separately',
         'js_filterbank_f32le_sha256': hashlib.sha256(js.astype('<f4').tobytes()).hexdigest()}
     write_new_text(args.output, json.dumps(receipt, indent=2, allow_nan=False) + '\n')
     print(json.dumps({'status': receipt['status'], 'comparison': metrics,

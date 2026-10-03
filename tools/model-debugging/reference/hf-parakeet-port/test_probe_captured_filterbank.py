@@ -1,5 +1,6 @@
 """Synthetic evidence guards; not real model parity."""
 import hashlib
+import base64
 import tempfile
 from pathlib import Path
 import unittest
@@ -10,6 +11,22 @@ import probe_captured_filterbank as probe
 
 
 class FilterbankTests(unittest.TestCase):
+    def test_binary_transport_preserves_negative_zero(self):
+        values = np.zeros((1, 128, 257), dtype='<f4')
+        values[0, 0, 0] = -0.0
+        encoded = base64.b64encode(values.tobytes()).decode('ascii')
+        actual = probe.decode_filterbank_bytes(encoded)
+        self.assertEqual(actual.tobytes(), values.tobytes())
+        self.assertTrue(np.signbit(actual[0, 0, 0]))
+
+    def test_binary_transport_rejects_invalid_size_encoding_nonfinite(self):
+        values = np.zeros((1, 128, 257), dtype='<f4')
+        values[0, 0, 0] = np.nan
+        for encoded in ['!', '', base64.b64encode(b'1234').decode('ascii'),
+                        base64.b64encode(values.tobytes()).decode('ascii')]:
+            with self.assertRaises(ValueError):
+                probe.decode_filterbank_bytes(encoded)
+
     def sample(self):
         values = np.ones((1, 128, 257), dtype=np.float32)
         return {'stages': {'feature_stft/filterbank': {

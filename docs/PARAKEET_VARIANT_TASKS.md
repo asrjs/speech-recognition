@@ -2753,3 +2753,28 @@ pass. Its width dependence and remaining upstream raw-feature failures do not
 justify adding a fixed-width reduction to the shared production processor.
 Keep the current production math unchanged until a family/backend arithmetic
 contract and complete feature controls justify a specific implementation.
+
+### Filterbank binary transport control (2026-10-03)
+
+The coefficient probe now transports canonical base64 little-endian float32
+bytes instead of JSON numbers. A signed-zero regression failed before the
+decoder existed; six guards now pass, including invalid encoding, byte count
+and nonfinite rejection. Explicit Node writeFloatLE preserves coefficient bits.
+No production processor or dist rebuild was changed.
+
+Fresh `captured-filterbank-binary-baseline-jfk-2026-10-03.json` and
+`captured-filterbank-binary-triangle-jfk-2026-10-03.json` under Orukeet results
+bind the same original capture/weight and built processor identities. Baseline:
+157 numerical mismatches, max3.725290298461914e-9,158 bit mismatches. In-memory
+triangle rounding: zero numerical mismatches across32,896 values at atol0/rtol0,
+but still one bit mismatch despite lossless transport. The captured buffer has
+negative zero at flat index0. The earlier JSON explanation was insufficient:
+lossless delivery does not turn this candidate into bit-exact acceptance.
+Feature/encoder/ASR gates are unchanged; this is coefficient evidence only.
+
+Next bounded normalization control: width8 on the existing speech/silence raw
+log-mel boundary has not been directly measured (the passing isolated ONNX
+pairwise normalization uses a different algorithm). Avoid broad parsing of the
+257MB compressed long trace or repeating rejected FFT sweeps. Local inspected
+fixtures are English/silence; multilingual original-engine acceptance remains
+open until a provenance-backed local fixture is available.
