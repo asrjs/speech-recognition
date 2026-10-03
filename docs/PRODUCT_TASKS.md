@@ -426,3 +426,18 @@ The full suite before the third-window extension passes 1,378 / 33 SKIP,
 including a repeat with inherited TLS-disable removed only in that child.
 Build/browser/real-model/companion acceptance is not claimed; dist is untouched
 while the live DFT diagnostic binds compiled asset hashes.
+
+Browser control (2026-10-03): Chrome 154.0.8037.93 passed all four synthetic
+public-root cases (two/three overlap windows and word/segment-only offsets).
+`tests/smoke/window-timestamps-browser.py` bounds the asynchronous probe to
+60 seconds and checks served JS bytes against the requested local build,
+with build/tool hashes before and after execution. Wrong-build and existing
+receipt negative controls fail without writing a success receipt. Evidence:
+`tools/data/results/harness/window-timestamps-browser-bundled-2026-10-03.json`.
+The isolated tsc output was bundled with installed esbuild for browser package
+resolution; raw ESM correctly fails to resolve bare `pako`. Main dist remains
+untouched. A directly owned, quiet loopback HTTP server was used after the
+external shell-based helper and route.fetch interception proved unsuitable;
+response hashing now observes original browser requests, not proxy requests.
+This certifies synthetic windowing in a real browser only, not model accuracy,
+GPU execution, token detail or sibling consumers. Those gates remain open.
