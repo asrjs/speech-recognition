@@ -5,6 +5,7 @@ import {
   resolveParakeetArtifactSource,
   resolveParakeetPresetManifest,
 } from '../src/presets/parakeet/manifest.js';
+import { createParakeetPresetFactory } from '../src/presets/parakeet/factory.js';
 
 describe('Parakeet preset manifests', () => {
   it('lists Parakeet preset manifests', () => {
@@ -22,6 +23,36 @@ describe('Parakeet preset manifests', () => {
     expect(source?.kind).toBe('huggingface');
     expect(source?.repoId).toBe('ysdede/parakeet-tdt-0.6b-v2-onnx');
     expect(source?.revision).toBe('main');
+  });
+
+  it('resolves the audited Orukeet preset contract through the factory', async () => {
+    const manifest = resolveParakeetPresetManifest('oruk/orukeet');
+
+    expect(manifest?.preset).toBe('parakeet');
+    expect(manifest?.config.vocabularySize).toBe(8193);
+    expect(manifest?.config.tokenizer?.blankTokenId).toBe(8192);
+    expect(manifest?.config.melBins).toBe(128);
+    expect(manifest?.config.languages).toHaveLength(25);
+    expect(manifest?.config.languages).toContain('lt');
+
+    // Registration is only real when the preset factory resolves the same
+    // audited config; the native CLI passed an explicit runtime config and
+    // would have masked an empty merge here.
+    const factory = createParakeetPresetFactory();
+    expect(factory.supports('oruk/orukeet')).toBe(true);
+
+    const request = await factory.resolveModelRequest(
+      { modelId: 'oruk/orukeet' },
+      undefined as never,
+    );
+
+    expect(request.family).toBe('nemo-tdt');
+    expect(request.options.config).toMatchObject({
+      vocabularySize: 8193,
+      melBins: 128,
+      tokenizer: { kind: 'sentencepiece', blankTokenId: 8192 },
+    });
+    expect(request.options.config.languages).toHaveLength(25);
   });
 
   it('returns undefined for unknown Parakeet model ids', () => {

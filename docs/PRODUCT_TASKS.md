@@ -1,3 +1,31 @@
+## C30 — Orukeet preset contract and in-repo demo
+
+Status: PASS for the preset contract and demo wiring; the demo page itself is
+browser-UI work verified by build and API-shape checks, not by an automated
+browser run yet.
+
+Registering Orukeet in the catalog was not sufficient on its own. The preset
+factory resolves configuration from
+`src/presets/parakeet/manifest.ts`, so without a manifest
+`supports('oruk/orukeet')` stayed false and the config merge was empty. The
+native CLI hid this because it takes an explicit runtime config. Added the
+audited Orukeet manifest (vocabulary 8193, blank token 8192, mel 128, the 25
+supported languages, sentencepiece tokenizer, pinned HF repo) plus a regression
+that asserts both the manifest and the factory-resolved request, so this gap
+cannot reopen behind an explicit config.
+
+Demo: `examples/demo/public/orukeet-smoke.html` with
+`examples/demo/src/orukeet-smoke.js`, following the existing canary smoke page.
+It loads `oruk/orukeet` from a local folder through the public browser API,
+transcribes a chosen 16 kHz mono WAV, repeats for determinism, and awaits
+disposal. The script uses only real exported API (`text`, `tokens`, `metrics`,
+`warnings`); an invented `disposeSpeechModelLocalEntries` call was removed when
+the export list proved it does not exist.
+
+Full suite 1,469 passed / 33 skipped. Automated browser verification of this page
+is the next step; the companion-UI gate already covers Orukeet browser loading
+and warm-up.
+
 ## C29 — Port manifests and Orukeet as a built-in model
 
 Status: PASS — one manifest drives four real runs (Node/Bun long and short,

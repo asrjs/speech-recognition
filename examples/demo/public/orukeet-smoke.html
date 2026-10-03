@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>asr.js Orukeet local smoke</title>
+  </head>
+  <body>
+    <main>
+      <h1>Orukeet local-folder smoke</h1>
+      <p>
+        Loads <code>oruk/orukeet</code> from a local folder through the public library API,
+        transcribes a chosen WAV twice and disposes. Real local inference and awaited disposal, not
+        numerical parity against the original NeMo engine.
+      </p>
+      <label for="model">Model folder files</label>
+      <input id="model" type="file" multiple webkitdirectory />
+      <label for="audio">Audio fixture (16 kHz mono WAV)</label>
+      <input id="audio" type="file" accept="audio/wav" />
+      <label for="backend">Runtime backend</label>
+      <select id="backend">
+        <option value="webgpu-hybrid">WebGPU encoder + WASM decoder</option>
+        <option value="wasm">WASM</option>
+      </select>
+      <label for="precision">Encoder precision</label>
+      <select id="precision">
+        <option value="fp32">fp32</option>
+        <option value="fp16">fp16</option>
+      </select>
+      <label for="repeat">Repeat transcriptions</label>
+      <input id="repeat" type="number" min="1" max="5" value="2" />
+      <button id="run" type="button">Load, transcribe and dispose</button>
+      <p id="status" role="status">Ready</p>
+      <pre id="result"></pre>
+    </main>
+    <script type="module" src="/src/orukeet-smoke.js"></script>
+  </body>
+</html>

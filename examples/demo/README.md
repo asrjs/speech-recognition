@@ -31,3 +31,14 @@ http://localhost:8767/canary-smoke.html
 It uses the approved local smoke bundle under `N:/models` and the fixed
 `jfk-short.wav` fixture. The Vite filesystem allow-list is intentionally
 limited to this repository and `N:/models`.
+
+Orukeet local-folder smoke page:
+
+```text
+http://localhost:8767/orukeet-smoke.html
+```
+
+Pick an Orukeet ONNX folder, a 16 kHz mono WAV, a runtime backend and an
+encoder precision. It loads through the public browser API, transcribes the
+fixture repeatedly, awaits disposal, and prints the receipt as JSON. Real local
+inference only; it is not numerical parity against the original NeMo engine.
