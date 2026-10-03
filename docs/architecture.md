@@ -143,8 +143,15 @@ defaults to `main`; a missing explicit revision/file fails instead of silently
 retrying `main`. This keeps graph/external-data identity and cache keys coherent.
 Migration: callers that deliberately want `main` must request it explicitly or
 omit the revision. Older caches populated by the former fallback cannot be
-authenticated retroactively; remove the affected cache entries explicitly and
-reload the pinned revision (no automatic broad cache deletion).
+authenticated retroactively. Built-in `getModelAssetHandle`/`getModelText`/
+`getModelFile` helpers now use a separate strict-revision cache namespace for
+non-`main` revisions, keyed by repository, revision, subfolder and filename.
+They do not migrate legacy entries: the first materialized pinned read may
+need a fresh download and is not guaranteed to work offline. Old entries are
+preserved, not deleted; existing `main` cache keys remain compatible. Custom
+asset providers/requests keep their caller-owned cache keys and equivalence
+contract; explicitly evict/reload any affected custom entries. This namespace
+is legacy-fallback isolation, not cryptographic authentication of cache bytes.
 
 Built-in providers and caches currently cover:
 

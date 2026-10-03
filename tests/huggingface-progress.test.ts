@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getModelFile, getModelText } from '../src/runtime/huggingface.js';
+import * as io from '../src/io/index.js';
 
 function createChunkedResponse(totalBytes: number, chunkBytes: number): Response {
   const stream = new ReadableStream<Uint8Array>({
@@ -26,6 +27,43 @@ function createChunkedResponse(totalBytes: number, chunkBytes: number): Response
 describe('Hugging Face progress reporting', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('isolates built-in pinned reads from legacy fallback bytes without deleting them', async () => {
+    const legacyKey = 'hf-test/model-pinned--vocab.txt';
+    const entries = new Map([[legacyKey, { bytes: new TextEncoder().encode('wrong main bytes') }]]);
+    const cache = new io.IndexedDbAssetCache();
+    vi.spyOn(io, 'getDefaultIndexedDbAssetCache').mockReturnValue(cache);
+    vi.spyOn(cache, 'get').mockImplementation(async (key) => entries.get(key) ?? null);
+    vi.spyOn(cache, 'set').mockImplementation(async (key, value) => {
+      entries.set(key, value);
+    });
+    const deleting = vi.spyOn(cache, 'delete');
+    const fetching = vi.fn(async () => new Response('correct pinned bytes'));
+    vi.stubGlobal('fetch', fetching);
+
+    expect(await getModelText('test/model', 'vocab.txt', { revision: 'pinned' })).toBe(
+      'correct pinned bytes',
+    );
+    expect(await getModelText('test/model', 'vocab.txt', { revision: 'pinned' })).toBe(
+      'correct pinned bytes',
+    );
+    expect(fetching).toHaveBeenCalledTimes(1);
+    expect(entries.get(legacyKey)?.bytes).toEqual(new TextEncoder().encode('wrong main bytes'));
+    expect(deleting).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, 'main'])('preserves existing main cache entries (%s)', async (revision) => {
+    const cache = new io.IndexedDbAssetCache();
+    vi.spyOn(io, 'getDefaultIndexedDbAssetCache').mockReturnValue(cache);
+    const reading = vi
+      .spyOn(cache, 'get')
+      .mockResolvedValue({ bytes: new TextEncoder().encode('cached main') });
+    const fetching = vi.fn();
+    vi.stubGlobal('fetch', fetching);
+    expect(await getModelText('test/model', 'vocab.txt', { revision })).toBe('cached main');
+    expect(reading).toHaveBeenCalledWith('hf-test/model-main--vocab.txt');
+    expect(fetching).not.toHaveBeenCalled();
   });
 
   it('coalesces chunk-level downloads into integer percent milestones', async () => {

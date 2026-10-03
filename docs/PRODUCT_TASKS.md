@@ -64,6 +64,33 @@ passed, 33 skipped, zero failed. Receipt:
 TypeScript and scoped ESLint passed. Migration and old-cache limitations are
 documented in `architecture.md`; no cache entries or sibling files were deleted.
 
+Legacy built-in cache isolation (2026-10-03): a prepopulated wrong-main entry
+under a pinned key reproduced the old-cache hole before implementation. The
+built-in HF helper now uses a versioned JSON-tuple key for non-main revisions;
+main/default keys and all caller-owned provider keys are untouched. A network
+read populates the new key and the second read reuses it; tests prove the old
+entry remains and no delete occurs. All 35 targeted HF/IO/IndexedDB tests and
+source typecheck pass. Status: PARTIAL PASS pending independent review and wider
+regression. This uses injected cache/network controls, not an actual remote
+download or persistent browser migration; first materialized pinned reads may
+require downloading again. No handle-level override of custom cache keys was
+retained. Namespace isolation does not authenticate arbitrary cache contents.
+
+Wider regression checkpoint: fresh full suite with TLS verification enabled in
+the test child process passes 1,431 tests /33 SKIP /0 FAIL. Receipt:
+`tools/data/results/harness/hf-legacy-cache-isolation-full-suite-tls-2026-10-03.json`.
+The preceding run inherited an environment TLS-disable flag and is not used as
+TLS-enabled evidence; no persistent environment setting was changed. Scoped
+ESLint passes. New TS hunks were formatted; unrelated baseline test formatting
+was restored and eight HF tests re-passed. Independent final review and commit
+remain next; actual remote/browser cache migration is not certified here.
+
+Independent final review: PASS, no correctness findings. Reviewer reran the
+32 HF/handle tests and source/examples typechecks; recorded full-suite counts
+were verified. Baseline formatting warnings outside new test hunks remain
+unchanged. Built-in key isolation is accepted; real browser persistence remains
+an explicit next integration rung, not implied by injected cache tests.
+
 ## C16 — Caller cancellation during a coalesced model load
 
 Status: PASS — cooperative pipeline wait/cache cancellation contract;

@@ -171,7 +171,12 @@ function createModelAssetRequest(
     revision,
     filename,
     subfolder,
-    cacheKey: `hf-${repoId}-${revision}-${subfolder}-${filename}`,
+    // Older non-main entries may hold main fallback bytes without provenance.
+    // Do not migrate them; keep main and caller-owned provider keys unchanged.
+    cacheKey:
+      revision === 'main'
+        ? `hf-${repoId}-${revision}-${subfolder}-${filename}`
+        : `hf-strict-revision-v1:${JSON.stringify([repoId, revision, subfolder, filename])}`,
     preferBlobUrl,
     signal: signal ?? undefined,
     onProgress: reportProgress,
