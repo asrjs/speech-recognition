@@ -49,6 +49,54 @@ function segmentOnlyResult(text: string): TranscriptResult {
 }
 
 describe('pipeline windowing primitives', () => {
+  it.each(['words', 'segments'] as const)(
+    'globalizes %s timestamps without mutating window-local results',
+    async (detail) => {
+      const locals: TranscriptResult[] = [];
+      const transcript = await transcribeWithWindowing({
+        input: new Float32Array(4 * 16000),
+        inference: {
+          sampleRate: 16000,
+          maxInputDurationSec: 2,
+          recommendedWindowDurationSec: 2,
+          minWindowDurationSec: 1,
+          maxWindowDurationSec: 2,
+          autoWindowThresholdSec: 2,
+          defaultOverlapSec: 0,
+          supportsWordTimestamps: detail === 'words',
+          supportsSegmentTimestamps: true,
+          defaultSegmentationStrategy: 'word-punctuation',
+          defaultMergeStrategy: 'concat',
+        },
+        options: { detail },
+        async transcribeWindow(audio) {
+          expect(audio.durationSeconds).toBe(2);
+          const text = locals.length === 0 ? 'First.' : 'Second.';
+          const local: TranscriptResult = {
+            ...result(detail === 'words' ? [word(0, text, 0.25, 1.25)] : [], text),
+            segments: [{ index: 0, text, startTime: 0.25, endTime: 1.25 }],
+          };
+          locals.push(local);
+          return local;
+        },
+      });
+
+      expect(locals).toHaveLength(2);
+      expect(transcript.segments?.map(({ startTime, endTime }) => [startTime, endTime])).toEqual([
+        [0.25, 1.25], [2.25, 3.25],
+      ]);
+      if (detail === 'words') {
+        expect(transcript.words?.map(({ startTime, endTime }) => [startTime, endTime])).toEqual([
+          [0.25, 1.25], [2.25, 3.25],
+        ]);
+      } else {
+        expect(transcript.words).toBeUndefined();
+      }
+      expect(locals[1]?.segments?.[0]?.startTime).toBe(0.25);
+      expect(locals[1]?.words?.[0]?.startTime).toBe(detail === 'words' ? 0.25 : undefined);
+    },
+  );
+
   it('preserves additive decoder and encoder telemetry across windows', () => {
     const accumulator = createWindowedMetricsAccumulator(20);
     accumulator.windowCount = 2;

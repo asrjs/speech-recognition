@@ -397,3 +397,20 @@ diff checks pass. Standalone strict test compilation reports a generic
 TranscriptResponse mismatch in the unchanged createProbeRuntime mock at line
 60; that mock typing remains open and this is not a clean typecheck claim.
 This test does not certify real ONNX session recovery or browser GPU reuse.
+
+## C12 — Global window timestamp contract
+
+Status: PARTIAL PASS — controlled two-window public API regression.
+
+Added word and segment-only cases through root-exported
+`transcribeWithWindowing`. Four seconds of synthetic PCM produce two explicit
+two-second windows without overlap: local times 0.25..1.25 become
+0.25..1.25 and 2.25..3.25 in the final canonical result. The model-local
+result objects retain their original times. Segment-only detail does not
+invent words. No production mathematics, API or model code changed.
+
+Verification: 16 windowing/stage tests, scoped ESLint, diff check and strict
+standalone NodeNext test compilation with skipLibCheck disabled pass.
+Still open: overlap-retained timestamp checks, token-detail behavior and
+real supported-model/browser/companion-demo acceptance. This bounded
+simulation does not complete P08 or certify timestamp quality of any model.
