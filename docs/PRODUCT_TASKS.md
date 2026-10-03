@@ -514,3 +514,29 @@ arguments and requested missing config fail without a PASS receipt.
 These Node tests are separate from the existing Vitest glob.
 Next: real browser model management/capture/hybrid workflows and other affected
 companions. These builds do not complete those integration gates.
+
+Additional consumer builds (2026-10-03): the same reviewed-config in-memory
+harness passes for playground (304 modules, main JS720,714 bytes, CSS33,392),
+vad-demo (344 modules, main JS936,946 bytes, CSS30,915), and benchmark-demo
+(288 modules, main JS692,208 bytes, CSS4,428). Installed Vite7.3.1, same tool
+SHA25649635ee0d807c15573bf8cae968739cba1ef1e4fab9c29624a56d90fb4173357.
+Actual config SHA256s respectively:
+`518e81c022fb9d320ad8e9683a0bb998292a919c10d3cda38e176b2efe4396d8`,
+`a044208026c577751638462eb785194ba25366023d2f0d2a9bace8a3fd2d0f89`,
+`9a4242d6740dcaec1f2154f0e5b86bdf87d6eb22605a02a8589537ab5838f197`.
+Each command exits0 and binds config/package/tool/output identities in stdout;
+no sibling output files or source edits. Stale Browserslist warnings persist
+where reported, benchmark retains the classic coi-serviceworker warning.
+These broaden source consumer build coverage, not browser app acceptance.
+
+Independent actual-Chrome manual-controller check (2026-10-03): existing
+`capture-lifecycle-smoke.py --scenario microphone-controller` passes against
+the current untouched dist with the pinned ItsLifeJim WAV fake device.
+Receipt: `tools/data/results/harness/manual-controller-current-dist-2026-10-03.json`.
+Two stop/flush sessions each accept4 chunks; the active-disposal session accepts0.
+All three close their AudioContexts and end owned tracks, with one stop call
+and one worklet load each. The runner also checks delayed-handle disposal.
+This is REAL_BROWSER_FAKE_DEVICE_MANUAL_CONTROLLER, not a sibling app, physical
+microphone, ASR/VAD/WebGPU, or fresh source-to-build equivalence certification.
+Dist was deliberately not rebuilt while the live DFT run binds compiled bytes.
+Actual sibling model-management/capture/hybrid workflows remain open.
