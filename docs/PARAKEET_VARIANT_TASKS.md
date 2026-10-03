@@ -1870,3 +1870,32 @@ fp64-to-fp32 candidate normalized value is -0.26725757122039795 versus reference
 -0.26720625162124634, so higher FFT precision does not reproduce the official
 fp32 kernel there. It remains a failed feature-parity candidate, with no
 production, browser support, speed/memory or model-completion claim.
+
+Direct complex512 kernel control (2026-10-03): extended the existing frozen
+factorization probe, without modifying its packed256/split128 comparisons.
+Real512 must still reproduce the captured frame bytes before any comparison.
+The new route assigns captured fp32 values and zero imaginary components
+separately, runs Torch complex512, and reports component counts/errors on all
+257 positive bins. It does not replace the production FFT.
+
+Both final-source commands exit zero with diagnostic receipts:
+`tools/data/results/orukeet/fft-direct-complex512-frame98-2026-10-03.json`
+and `fft-direct-complex512-frame1027-2026-10-03.json`. Default Python's actual
+Torch is 2.7.1+cu128, four CPU threads, not the prior 2.6.0 environment.
+Real512 reproduces both captured frames byte-for-byte. Direct complex512 has
+435/437 numerically unequal components, max abs 3.5762786865234375e-7 /
+2.384185791015625e-7. These are exact-inequality counts, not allclose failures.
+Frame98/bin1 is (-0.00010865181684494019, -0.0006376001983880997), versus
+oracle (-0.00010862957424251363, -0.0006376661476679146).
+
+This rules out assuming Torch real512 and zero-imaginary complex512 have the
+same fp32 arithmetic at these frames. It does not rule out every full-complex
+algorithm or establish final-feature parity. Existing portable JS full-complex
+controls remain negative; no new production algorithm is justified by this
+control. Syntax passes; the existing-output negative control fails before
+capture/FFT and preserves the receipt hash. Source/capture/frame identities
+are recorded. No thresholds, weights, dist or live DFT sources changed.
+
+Next: investigate a materially different, source-grounded portable real-FFT
+factorization before another full-feature run. Do not repeat higher-precision
+or zero-imaginary full-FFT variants as if they were untested fixes.

@@ -56,6 +56,20 @@ def main():
         return [float(value.real), float(value.imag)]
 
     results = {}
+    complex_frame = np.empty(frame.shape, np.complex64)
+    complex_frame.real, complex_frame.imag = frame, 0
+    direct = torch.fft.fft(torch.from_numpy(complex_frame), dim=-1).numpy()
+    direct = direct[..., :257].transpose(0, 2, 1).copy()
+    if direct.dtype != np.complex64 or direct.shape != reference.shape or not np.isfinite(direct).all():
+        raise ValueError('Direct complex512 output contract differs')
+    component_error = np.abs(direct.view(np.float32) - reference.copy().view(np.float32))
+    results['direct_complex512'] = {
+        'bin': pair(direct[0, args.bin, 0]),
+        'capture_bytes_exact': direct.tobytes() == reference.tobytes(),
+        'component_unequal_count': int(np.count_nonzero(component_error)),
+        'max_absolute_component_error': float(component_error.max()),
+        'mean_absolute_component_error': float(component_error.mean()),
+    }
     for name, value in [('complex256', parent), ('split128', split)]:
         recombined = recombine_packed(value)[0, args.bin, 0]
         results[name] = {
@@ -117,7 +131,7 @@ def main():
         'torch': torch.__version__, 'cpu_threads': torch.get_num_threads(),
         'results': results,
         'real_half_control': half_results,
-        'scope': 'One frozen frame, fixed split128 and real even/odd FFT256 controls; no full-feature, portable FFT, ASR or browser acceptance',
+        'scope': 'One frozen frame, direct complex512, split128 and real even/odd FFT256 controls; no full-feature, portable FFT, ASR or browser acceptance',
     }
     write_new_text(args.output, json.dumps(receipt, indent=2, allow_nan=False) + '\n')
     print(json.dumps(receipt, allow_nan=False))
