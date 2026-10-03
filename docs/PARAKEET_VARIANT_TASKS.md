@@ -2829,3 +2829,30 @@ Owned process exited 0 (measurement completed, not parity PASS); four matrix
 probe guards and five JavaScript reduction guards pass. Next investigate the
 upstream power/mel/log boundary using existing source-grounded controls; do not
 repeat rejected FFT sweeps or install a fixed-width production workaround.
+
+### Identical guarded-log speech/silence boundary (2026-10-03)
+
+Config-only official CPU processing reproduces the original captured features
+byte-for-byte, both ordinarily and through existing real-pair stage taps.
+The float32 native guard input reconstructs the native log-mel exactly; its
+transport to the existing JS log control is byte-exact. No weights or ASR loop
+are loaded. The older large speech/silence feature receipt was checked by a
+bounded-memory gzip scan and contains no `officialLogInputControl` field.
+
+JS Math.log with float32 storage on this identical input passes all 519,808
+raw cells at unchanged atol 1e-5 / rtol 1e-4. Two cells are not bit-identical,
+max error 1.9073486328125e-6. Following existing diagnostic width8 normalization,
+all feature cells pass (two not bit-identical, max error 5.960464477539062e-7);
+all 128 means and 128 standard deviations are byte-exact. This isolates the
+guard/log/normalization control from production upstream arithmetic. It does
+not certify production PCM-to-features or eliminate all possible interactions;
+the complete production width8 composition still has 73 failed coordinates.
+
+Receipt: `tools/data/results/orukeet/identical-log-input-speech-silence-2026-10-03.json`.
+Executed Python/Node snippets, source/config/capture hashes, original identity,
+native controls, guard input hash and metrics are preserved; owned process
+exited 0. Independent receipt/hash verification passes; 81 Python boundary
+tests and five JavaScript reduction tests pass. No production source,
+tolerance, installed tool or model artifact
+changed. Next compare the remaining upstream power/mel boundaries, using
+the native guarded-input control as an independent downstream check.
