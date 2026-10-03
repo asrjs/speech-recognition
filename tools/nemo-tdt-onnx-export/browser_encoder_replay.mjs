@@ -2,7 +2,8 @@
 import { initOrt, createOrtSession, releaseOrtSession, disposeOrtOutputs } from '/dist/models/nemo-tdt/ort.js';
 
 globalThis.replayEncoder = async (fixture, backend) => {
-  const receipt = { backendRequested: backend, runs: [], cleanupErrors: [], gpuDispatches: 0 };
+  const receipt = { backendRequested: backend, runs: [], cleanupErrors: [], gpuDispatches: 0,
+    crossSessionRuns: [], crossSessionRequested: Boolean(fixture.crossSession) };
   let session;
   const originals = [];
   try {
@@ -67,6 +68,44 @@ globalThis.replayEncoder = async (fixture, backend) => {
         disposeOrtOutputs(outputs);
         for (const tensor of Object.values(feeds)) tensor.dispose?.();
       }
+    }
+
+    // Opt-in cross-session control. Within-session repeats are bitwise exact,
+    // which says nothing about variation between two separately created
+    // sessions. The hybrid run holds an encoder session and a decoder session
+    // together; this creates a second identical encoder session and compares.
+    if (fixture.crossSession) {
+      try {
+        const second = await createOrtSession(ort, `${location.origin}/graph.onnx`, {
+          backendId: backend, cpuThreads: 1,
+          externalDataUrl: `${location.origin}/encoder-model.onnx.data`,
+          externalDataPath: 'encoder-model.onnx.data',
+        });
+        try {
+          receipt.resolvedEncoderSessionOptions = {
+            backendId: backend, cpuThreads: 1,
+            externalDataPath: 'encoder-model.onnx.data',
+            graph: 'graph.onnx',
+          };
+          for (const input of inputs) {
+            const feeds = { audio_signal: new ort.Tensor('float32', input.values, fixture.shape),
+              length: new ort.Tensor('int64', BigInt64Array.from([BigInt(fixture.length)]), [1]) };
+            let outputs;
+            try {
+              outputs = await second.run(feeds);
+              const values = {};
+              for (const [name, tensor] of Object.entries(outputs))
+                values[name] = { dtype: tensor.type, shape: [...tensor.dims], data: Array.from(tensor.data, Number) };
+              receipt.crossSessionRuns.push({ featureSource: input.featureSource, outputs: values });
+            } finally {
+              disposeOrtOutputs(outputs);
+              for (const tensor of Object.values(feeds)) tensor.dispose?.();
+            }
+          }
+        } finally {
+          try { await releaseOrtSession(second); } catch (error) { receipt.cleanupErrors.push(String(error)); }
+        }
+      } catch (error) { receipt.crossSessionError = String(error?.stack ?? error); }
     }
   } catch (error) { receipt.error = String(error?.stack ?? error); }
   finally {

@@ -51,8 +51,32 @@ def evaluate_sensitivity(result, sample, backend):
         stage({'production': result['productionFeatures']}, 'production', 'float32'), atol=1e-5, rtol=1e-4)
     result['official_encoder_pass'] = evaluate({**result, 'runs': runs[:2]}, sample, backend)
     result['production_encoder_pass'] = evaluate({**result, 'runs': runs[2:]}, sample, backend)
+    cross = result.get('crossSessionRuns') or []
+    if cross:
+        # Cross-session variability: same graph, same options, same features,
+        # but a separately created session. Within-session repeats are bitwise
+        # exact and cannot answer this.
+        if [row.get('featureSource') for row in cross] != ['official', 'production-js']:
+            raise ValueError('Cross-session feature sources differ from the main runs')
+        pairs = (('official', runs[0], cross[0]), ('production-js', runs[2], cross[1]))
+        comparisons = {}
+        for label, first, second in pairs:
+            if set(first['outputs']) != set(second['outputs']):
+                raise ValueError('Cross-session output sets differ')
+            comparisons[label] = {
+                name: compare_tensors(np.asarray(first['outputs'][name]['data'], dtype=np.float32),
+                                      np.asarray(second['outputs'][name]['data'], dtype=np.float32),
+                                      atol=1e-5, rtol=1e-4)
+                for name in first['outputs']
+            }
+        result['cross_session_comparison'] = comparisons
+        result['cross_session_bitwise_identical'] = all(
+            np.asarray(first['outputs'][name]['data'], dtype=np.float32).tobytes()
+            == np.asarray(second['outputs'][name]['data'], dtype=np.float32).tobytes()
+            for _, first, second in pairs
+            for name in first['outputs']
+        )
     return result['official_encoder_pass']
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -62,6 +86,7 @@ def main():
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--backend', choices=['webgpu', 'wasm'], required=True)
     parser.add_argument('--production-features', action='store_true', help='Measure actual JS feature sensitivity alongside the unchanged official-feature control')
+    parser.add_argument('--cross-session', action='store_true', help='Opt-in: create a second identical encoder session and compare, testing cross-session variability that within-session repeats cannot cover')
     parser.add_argument('--timeout-ms', type=int, default=240000)
     args = parser.parse_args()
     if not 1000 <= args.timeout_ms <= 600000:
@@ -85,6 +110,8 @@ def main():
     meta, sample, pcm, _, _, features, valid = read_capture(args.capture, args.capture_sha256, args.sample_id)
     fixture = {'featuresF32le': base64.b64encode(features.astype('<f4').tobytes()).decode('ascii'),
                'shape': list(features.shape), 'length': valid}
+    if args.cross_session:
+        fixture['crossSession'] = True
     if args.production_features:
         fixture.update(pcmF32le=base64.b64encode(pcm.astype('<f4').tobytes()).decode('ascii'),
                        pcmSha256=sample['model_input']['sha256'])

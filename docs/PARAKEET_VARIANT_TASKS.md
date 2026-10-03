@@ -3394,5 +3394,45 @@ That leaves exactly two candidates, and both need a new browser run:
    created sessions.
 
 Three of the five candidate explanations for the browser-gate discrepancy are
-now eliminated by evidence: differing feature tensors, a wrong frame binding,
- and output-transfer precision. The gate stays FAIL and no tolerance moved.
+now eliminated by evidence: differing feature tensors, a wrong frame binding, and
+output-transfer precision. The gate stays FAIL and no tolerance moved.
+
+### Browser cross-session control (2026-10-03)
+
+The remaining hypotheses were tested with a real browser run rather than by
+re-reasoning. `browser_encoder_replay` gained an opt-in `--cross-session` flag
+that creates a second, identically configured encoder session and compares.
+Default behavior is unchanged, so existing receipts keep their meaning, and the
+13 existing runner tests still pass.
+
+Receipt `tools/data/results/orukeet/browser-cross-session-jfk-2026-10-03.json`,
+real Chrome on the NVIDIA Blackwell adapter, `onnxruntime-web` 1.29.0:
+
+| comparison | result |
+| --- | --- |
+| official features, session 1 vs session 2 | bitwise identical, max `0.0` |
+| production-JS features, session 1 vs session 2 | bitwise identical, max `0.0` |
+| `cross_session_bitwise_identical` | `true` |
+
+**Cross-session GPU variability is eliminated.** Two separately created sessions
+produce byte-identical encoder output on both feature sources, so the
+`1.1316e-6` difference is not session-to-session variation.
+
+**Resolved session options are equivalent by source.** The hybrid passes
+`webgpuOptions: source.webgpuOptions` and `enableProfiling: source.enableProfiling`
+into `createOrtSession` (`src/models/nemo-tdt/ort.ts`), and
+`browser_recurrent_replay.mjs` sets neither, so both resolve to `undefined`.
+The replay passes neither either. Same `backendId` `webgpu`, same `cpuThreads`
+1, same external data path.
+
+**Encoder valid length is eliminated.** Running the fp32 encoder natively on
+the official features gives `1.326203e-6` at frame 69 for length 1100 and
+`1.480912e-2` for length 1101. The observed live difference is `1.1316e-6`, four
+orders of magnitude below the 1101 case, so the hybrid used the correct length.
+
+One candidate remains, and it is the only one not yet excluded: the hybrid holds
+an encoder session and a WASM decoder session together and runs the full
+pipeline, while the replay holds only the encoder session. GPU allocation or
+buffer placement in that co-resident context is the remaining explanation.
+Separating it needs a paired run that also creates the decoder session in the
+replay.
