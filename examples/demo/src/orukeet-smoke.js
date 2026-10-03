@@ -59,8 +59,10 @@ field('run').addEventListener('click', async () => {
       backend: field('backend').value,
       encoderQuant: field('precision').value,
       preprocessorBackend: 'js',
-      // ORT_ASSET_PATH_NOTE: this Vite demo still needs an ORT runtime asset
-      // path that bypasses Vite's module transform; see C30 in PRODUCT_TASKS.
+      // Serve the ORT runtime from the repository's installed package through
+      // Vite's /@fs/ route, which serves files untransformed. Without this the
+      // loader resolves its wasm sidecar from a CDN and fails offline.
+      wasmPaths: '/@fs/N:/github/asrjs/speech-recognition/node_modules/onnxruntime-web/dist/',
       signal: null,
     });
     result.loadMs = performance.now() - started;

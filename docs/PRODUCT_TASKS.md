@@ -21,14 +21,14 @@ package specifier the demo cannot resolve, unlike the working canary page which
 imports `../../../src/runtime/load.ts`. Both are fixed; the page now uses the
 relative public-API import and `transcribeMonoPcm`.
 
-**Open blocker:** the page still cannot complete a run under this Vite demo. ORT
-resolves its loader module from a CDN by default, and pointing `wasmPaths` at
-`/node_modules/onnxruntime-web/dist/` fails because Vite transforms that module
-(`...?import`) instead of serving it verbatim. The fix is to serve the ORT dist
-files from a path the dev server passes through untransformed — the sibling
-`webgpu-agent-test` harness already solves this with its own ORT alias — rather
-than committing a multi-megabyte copy. Until then the companion-UI gate remains
-the verified Orukeet browser evidence (load and warm-up, `PASS_WARMUP`).
+**Resolved and verified.** Serving the ORT runtime through Vite's `/@fs/` route
+to the repository's installed `onnxruntime-web/dist/` (already permitted by
+`server.fs.allow`) makes the page work with no copy, symlink or new dependency.
+Driving the page with real Chrome, the Orukeet local folder and the JFK fixture
+gives `PASS_ORUKEET_SMOKE`: 7.6 s load, NVIDIA Blackwell adapter, encoder/decoder
+fp32 selection, two identical transcripts that **exactly match the official
+oracle**, clean disposal and zero page errors. Receipt:
+`tools/data/results/orukeet/orukeet-demo-jfk-browser-2026-10-03.json`.
 
 Demo: `examples/demo/public/orukeet-smoke.html` with
 `examples/demo/src/orukeet-smoke.js`, following the existing canary smoke page.

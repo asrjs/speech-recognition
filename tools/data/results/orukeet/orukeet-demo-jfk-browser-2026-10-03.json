@@ -1,0 +1,33 @@
+{
+  "status": "PASS_ORUKEET_DEMO",
+  "title": "asr.js Orukeet local smoke",
+  "demoStatus": "PASS_ORUKEET_SMOKE",
+  "loadMs": 7435.120000004768,
+  "adapter": {
+    "vendor": "nvidia",
+    "architecture": "blackwell"
+  },
+  "selection": {
+    "encoderName": "encoder-model.onnx",
+    "decoderName": "decoder_joint-model.onnx",
+    "tokenizerName": "vocab.txt",
+    "encoderQuant": "fp32",
+    "decoderQuant": "fp32"
+  },
+  "transcripts": [
+    {
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "tokens": 0,
+      "warnings": []
+    },
+    {
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "tokens": 0,
+      "warnings": []
+    }
+  ],
+  "disposed": true,
+  "error": null,
+  "pageErrors": [],
+  "transcript_matches_oracle": true
+}
