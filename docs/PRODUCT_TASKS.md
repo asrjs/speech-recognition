@@ -3,6 +3,28 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C18 — Preprocessor partial input allocation cleanup
+
+Status: PASS — injected ORT input-allocation failure/reuse ownership;
+not actual out-of-memory, browser/native VRAM or full lifecycle certification.
+
+NeMo TDT's ONNX processor allocated both inputs before its cleanup scope.
+If the second Tensor constructor threw, the first input was never disposed;
+the executor's session teardown did not own those per-call tensors. A regression
+reproduced the missing dispose call. Both allocations now occur inside the
+existing try/finally; optional references release whichever inputs succeeded.
+Original error identity is preserved, inference does not start on allocation
+failure, later calls reuse the session, and repeated disposal releases it once.
+No model mathematics, public API, backend selection or generic runtime changed.
+
+Forty-one processor/native-bridge/RNNT/lifecycle tests (including 16 processor
+tests) pass; TypeScript, scoped ESLint, formatting and diff checks pass.
+Full regression: 1,433 PASS / 33 SKIP / 0 FAIL. Full regression
+receipt: `tools/data/results/harness/nemo-preprocessor-allocation-cleanup-full-suite-2026-10-03.json`.
+TLS verification/system CA were enabled only for that test child. Real native
+allocation-failure injection, cleanup errors during tensor disposal and
+concurrent processor-run/disposal behavior remain separate acceptance work.
+
 ## C17 — Repeatable real-browser local lifecycle smoke
 
 Status: PASS — bounded stock-v3 hybrid cancellation/reuse/disposal smoke;

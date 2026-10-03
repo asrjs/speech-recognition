@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { OnnxNemoPreprocessor } from '../src/models/nemo-tdt/preprocessor.js';
 import type { OrtModuleLike, OrtTensorLike } from '../src/models/nemo-tdt/ort.js';
 
-function fixture() {
+function fixture(allocationFailure?: { readonly at: number; readonly error: Error }) {
   const inputs: OrtTensorLike[] = [];
+  let allocationCount = 0;
   class Tensor<TData extends ArrayBufferView> implements OrtTensorLike<TData> {
     readonly dispose = vi.fn();
     constructor(
@@ -11,6 +12,7 @@ function fixture() {
       readonly data: TData,
       readonly dims: readonly number[],
     ) {
+      if (++allocationCount === allocationFailure?.at) throw allocationFailure.error;
       inputs.push(this);
     }
   }
@@ -25,7 +27,13 @@ function fixture() {
     Tensor,
     InferenceSession: { create: vi.fn(async () => ({ run, release })) },
   };
-  return { outputs, inputs, release, processor: new OnnxNemoPreprocessor(ort, 'processor.onnx') };
+  return {
+    outputs,
+    inputs,
+    run,
+    release,
+    processor: new OnnxNemoPreprocessor(ort, 'processor.onnx'),
+  };
 }
 
 const audio = {
@@ -37,6 +45,28 @@ const audio = {
 };
 
 describe('NeMo ONNX processor output contract', () => {
+  it.each([1, 2])(
+    'cleans partial inputs after allocation %i fails and remains reusable',
+    async (at) => {
+      const error = new Error('Input allocation failed');
+      const f = fixture({ at, error });
+      try {
+        await expect(f.processor.process(audio)).rejects.toBe(error);
+        expect(f.run).not.toHaveBeenCalled();
+        expect(f.inputs).toHaveLength(at - 1);
+        for (const tensor of f.inputs) expect(tensor.dispose).toHaveBeenCalledOnce();
+        const result = await f.processor.process(audio);
+        expect(result.features).toEqual(Float32Array.from([1, 2, 3, 4, 5, 6]));
+        expect(f.run).toHaveBeenCalledOnce();
+        for (const tensor of f.inputs) expect(tensor.dispose).toHaveBeenCalledOnce();
+      } finally {
+        await f.processor.dispose();
+        await f.processor.dispose();
+      }
+      expect(f.release).toHaveBeenCalledOnce();
+    },
+  );
+
   it.each(['int64', 'int32'])(
     'accepts %s lengths and owns the returned feature copy',
     async (dtype) => {

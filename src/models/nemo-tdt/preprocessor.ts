@@ -91,15 +91,12 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
     }
 
     const session = await this.getSession();
-    const waveformTensor = new this.ort.Tensor('float32', mono, [1, mono.length]);
-    const lengthTensor = new this.ort.Tensor(
-      'int64',
-      BigInt64Array.from([BigInt(mono.length)]),
-      [1],
-    );
-
+    let waveformTensor: OrtTensorLike<Float32Array> | undefined;
+    let lengthTensor: OrtTensorLike<BigInt64Array> | undefined;
     let outputs: Record<string, OrtTensorLike> | undefined;
     try {
+      waveformTensor = new this.ort.Tensor('float32', mono, [1, mono.length]);
+      lengthTensor = new this.ort.Tensor('int64', BigInt64Array.from([BigInt(mono.length)]), [1]);
       outputs = await session.run({
         waveforms: waveformTensor,
         waveforms_lens: lengthTensor,
@@ -158,8 +155,8 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
       };
     } finally {
       disposeOrtOutputs(outputs);
-      waveformTensor.dispose?.();
-      lengthTensor.dispose?.();
+      waveformTensor?.dispose?.();
+      lengthTensor?.dispose?.();
     }
   }
 }
