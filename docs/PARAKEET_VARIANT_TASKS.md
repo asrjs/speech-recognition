@@ -1994,3 +1994,28 @@ execution receipt. Browser/WASM and end-to-end gates remain UNTESTED.
 Next discriminating step: scalar PFFFT build of the same revision with the same
 non-contracted arithmetic flags; then reassess real-kernel versus official
 engine rounding rather than relaxing feature tolerance.
+
+PFFFT scalar control (2026-10-03): same pinned revision and GCC13.1 flags,
+adding only `-DPFFFT_SIMD_DISABLE`, produces `pffft-scalar-control.dll` with
+SHA256 `7044f871b33946a428c544c2daf78224651bfc86186657a1985975f0cea62ce8`.
+Actual adapter reports Scalar / width1; all three real-binary/input/identity
+tests pass. No upstream source or diagnostic-source changes. Same full capture,
+bank, reconstructed frames, probe and library-power contract are used in
+`tools/data/results/orukeet/pffft-scalar-features-bound-speech-silence-2026-10-03.json`
+and its `.mjs` probe, via the existing explicit DLL/hash CLI options.
+
+Spectrum allclose passes, zero mismatches, max abs 4.76837158203125e-7.
+Features FAIL: 64/519,808 mismatches, max abs 9.34600830078125e-5, mean abs
+1.1415412756377583e-7, first index98. Official-complex control passes unchanged.
+Compared with SSE's 65 mismatches, scalar operation order is different but
+disabling SIMD does not solve the feature gate. Native controls do not prove
+browser equivalence, performance or end-to-end model acceptance.
+
+Bound the algorithm search here: PocketFFT, PFFFT SSE and scalar are measured
+negative candidates, not production fixes. Do not rerun arbitrary compiler,
+precision or rounding permutations without a new discriminating hypothesis.
+Next model work should inspect the official real-FFT kernel/factorization and
+its actual arithmetic boundary (captured-frame reproduction already passes),
+or a reproducible family-owned export path for that processor. Keep the same
+feature acceptance and do not skip encoder/token/text gates. Whole-product
+API/example acceptance work may proceed independently while this gate is open.
