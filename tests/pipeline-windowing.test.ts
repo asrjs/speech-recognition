@@ -49,6 +49,43 @@ function segmentOnlyResult(text: string): TranscriptResult {
 }
 
 describe('pipeline windowing primitives', () => {
+  it.each([2, 3])('retains overlap timestamps and history across %i windows', async (count) => {
+    const windows = [
+      result([word(0, 'alpha', 0.1, 0.4), word(1, 'shared', 1.6, 1.9)]),
+      result([word(0, 'shared', 0.1, 0.5), word(1, 'omega', 0.8, 1.2)]),
+      result([word(0, 'tail', 0.1, 0.5)]),
+    ];
+    let calls = 0;
+    const transcript = await transcribeWithWindowing({
+      input: new Float32Array((count === 2 ? 3.5 : 5) * 16000),
+      inference: {
+        sampleRate: 16000,
+        maxInputDurationSec: 2,
+        recommendedWindowDurationSec: 2,
+        minWindowDurationSec: 1,
+        maxWindowDurationSec: 2,
+        autoWindowThresholdSec: 2,
+        defaultOverlapSec: 0.5,
+        supportsWordTimestamps: true,
+        supportsSegmentTimestamps: true,
+        defaultSegmentationStrategy: 'word-punctuation',
+        defaultMergeStrategy: 'word-dedupe',
+      },
+      options: { detail: 'words' },
+      async transcribeWindow() {
+        return windows[calls++]!;
+      },
+    });
+    expect(calls).toBe(count);
+    expect(transcript.words?.map(({ text, startTime, endTime }) => [text, startTime, endTime])).toEqual([
+      ['alpha', 0.1, 0.4], ['shared', 1.6, 2], ['omega', 2.3, 2.7],
+      ...(count === 3 ? [['tail', 3.1, 3.5]] : []),
+    ]);
+    expect(transcript.words?.map(({ index }) => index)).toEqual(count === 2 ? [0, 1, 2] : [0, 1, 2, 3]);
+    expect(transcript.segments?.[0]).toMatchObject({ startTime: 0.1, endTime: count === 2 ? 2.7 : 3.5 });
+    expect(windows[1]?.words?.[0]).toMatchObject({ startTime: 0.1, endTime: 0.5 });
+  });
+
   it.each(['words', 'segments'] as const)(
     'globalizes %s timestamps without mutating window-local results',
     async (detail) => {

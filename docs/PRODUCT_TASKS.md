@@ -414,3 +414,15 @@ standalone NodeNext test compilation with skipLibCheck disabled pass.
 Still open: overlap-retained timestamp checks, token-detail behavior and
 real supported-model/browser/companion-demo acceptance. This bounded
 simulation does not complete P08 or certify timestamp quality of any model.
+
+Overlap regression (2026-10-03): a two-window case initially failed with
+`alpha shared alpha shared omega` and a timestamp rollback. `windowWords`
+already included pending words, but both accumulation sites concatenated that
+history again. Reused the existing interval-aware merge at those two sites;
+the unchanged acceptance now retains the longer shared word at 1.6..2.0 s,
+and a three-window extension retains earlier history and final tail times.
+Source typecheck, strict test typecheck, scoped lint and 18 targeted tests pass.
+The full suite before the third-window extension passes 1,378 / 33 SKIP,
+including a repeat with inherited TLS-disable removed only in that child.
+Build/browser/real-model/companion acceptance is not claimed; dist is untouched
+while the live DFT diagnostic binds compiled asset hashes.

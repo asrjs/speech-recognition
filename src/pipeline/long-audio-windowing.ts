@@ -374,7 +374,7 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
         appendFinalizedSegment(finalizedSegments, segment);
       }
       pendingWords = [];
-      allWords = dedupeWindowWords([...allWords, ...windowWords]);
+      allWords = mergePendingAndCurrentWords(allWords, windowWords);
       break;
     }
 
@@ -406,7 +406,7 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
     );
     pendingWords = dedupeWindowWords(windowWords);
     shouldMergePending = true;
-    allWords = dedupeWindowWords([...allWords, ...windowWords]);
+    allWords = mergePendingAndCurrentWords(allWords, windowWords);
     if (fallbackStartSeconds <= startSeconds + EPSILON_SECONDS) {
       warnings = addWarning(
         warnings,
