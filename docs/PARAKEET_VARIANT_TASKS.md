@@ -3287,3 +3287,42 @@ ASR is an autoregressive speech-LLM rather than a Parakeet transducer, so it
 does not reuse the TDT decode path and would be a new family under
 `src/models`. Selecting it requires download authority, which is not granted
 here.
+
+### Harness consolidation: the shared control absorbs its own copies (2026-10-03)
+
+Goal item 6 audited against this session's own work, and it failed initially:
+four of the five probes added during this investigation each reimplemented the
+same scale sweep inline, which is precisely the sprawl the item warns against.
+The shared control now owns it.
+
+`head_call20_sensitivity_probe.py` and `head_sensitivity_scale.py` are removed.
+Their content is superseded: per-input attribution is
+`attribute_input_source`, and the sweep is `sweep_input_scale`. The surviving
+`head_attribution_control.py` covers both.
+
+`encoder_accuracy_budget.py` now calls the shared sweep instead of a local
+copy. That consolidation initially **broke its numerical contract** in two ways,
+both caught and fixed:
+
+- The shared sweep gated each row against the reference-input replay, which
+  makes scale 0 exactly zero. The original gated against the recorded official
+  scores, where scale 0 is `2.288818e-5` — the native execution residual. The
+  shared sweep gained an explicit `compare_against` option and reports which
+  baseline it used (`REFERENCE_INPUT_REPLAY` or `SUPPLIED_ORACLE`), because
+  these are different contracts, not interchangeable ones.
+- Passing the whole recorded feed map made the sweep vary both predictor-state
+  tensors and interpolate integer feeds. The sweep now varies
+  `encoder_outputs` only, with every other feed pinned to the reference,
+  matching the original measurement.
+
+After consolidation the oracle contract and every pass/fail verdict are
+preserved, but the numbers are **not** bit-identical across the whole sweep.
+Convex float32 interpolation rounds differently from the previous
+`reference + delta*scale` form, so intermediate scales shift in the last few
+digits: scale 0.05 goes `3.051758e-5` to `2.980232e-5`, and scale 0.125 goes
+`7.367134e-5` to `7.319450e-5`. The selected rows are unchanged (scale 0
+`2.288818e-5`, 0.25 `1.442432e-4`, 0.5 `2.903938e-4`, 1.0 `5.807877e-4`) and every
+mismatch count and gate verdict matches. This is rounding, not parity, and is
+recorded as such.
+37 model-neutral tests pass, including two new ones for the oracle-baseline
+contract.

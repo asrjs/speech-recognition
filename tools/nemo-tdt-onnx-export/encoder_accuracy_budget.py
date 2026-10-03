@@ -16,8 +16,10 @@ import sys
 import numpy as np
 import onnxruntime as ort
 
+sys.path.insert(0, "tools")
 sys.path.insert(0, "tools/nemo-tdt-onnx-export")
 from validate_stage_replay import log_softmax
+from stage_attribution import sweep_input_scale
 
 ENCODER_RECEIPT = "tools/data/results/orukeet/browser-production-feature-encoder-jfk-2026-10-03.json"
 HYBRID = "tools/data/results/orukeet/browser-real-public-hybrid-jfk-2026-10-03.json"
@@ -101,20 +103,37 @@ sess = ort.InferenceSession(GRAPH, sess_options=options, providers=["CPUExecutio
 names = [o.name for o in sess.get_outputs()]
 print(f"  actual providers: {sess.get_providers()}")
 print(f"  recorded encoder delta maxAbs={np.abs(delta).max():.6e}")
+
+
+def run_head(feeds):
+    """Vary only encoder_outputs; every other feed stays on the reference."""
+    complete = {**reference_feeds, **feeds}
+    outputs = dict(zip(names, sess.run(None, complete)))
+    return {"normalized_scores": log_softmax(outputs["outputs"])}
+
+
+# The sweep uses the shared model-neutral control rather than a local copy.
+# Only encoder_outputs is varied, matching the original measurement. The
+# oracle is supplied explicitly so each row is gated against the recorded
+# official scores, which keeps the native execution residual visible at scale
+# 0 instead of collapsing it to zero.
+sweep = sweep_input_scale(
+    {"encoder_outputs": reference_feeds["encoder_outputs"]},
+    {"encoder_outputs": recorded["encoder_outputs"]},
+    run_head,
+    scales=[0.0, 0.05, 0.1, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0],
+    atol=ATOL,
+    rtol=RTOL,
+    output_names=["normalized_scores"],
+    compare_against={"normalized_scores": official_scores},
+)
 print("  scale   feedMaxAbs     scoreMaxAbsError  mismatch")
-passing_scales = []
-for scale in (0.0, 0.05, 0.1, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0):
-    feeds = dict(reference_feeds)
-    feeds["encoder_outputs"] = np.ascontiguousarray(
-        reference_feeds["encoder_outputs"] + delta * scale, dtype=np.float32)
-    scores = log_softmax(dict(zip(names, sess.run(None, feeds)))["outputs"])
-    err = np.abs(official_scores - scores)
-    bad = np.flatnonzero(err > ATOL + RTOL * np.abs(official_scores))
-    feed = np.abs(delta * scale).max()
-    if bad.size == 0:
-        passing_scales.append((scale, feed))
-    print(f"  {scale:5.3f}  {feed:.6e}  {err.max():.6e}       {bad.size:3d}")
+for scale, row in zip(sweep["scales"], sweep["rows"]):
+    feed = float(np.abs(delta * scale).max())
+    metrics = row["max_abs_error"]["normalized_scores"]
+    count = row["mismatch_count"]["normalized_scores"]
+    print(f"  {scale:5.3f}  {feed:.6e}  {metrics:.6e}       {count:3d}")
 print()
-print("  largest tested feed error that still passes this gate: "
-      f"{max(f for _, f in passing_scales):.6e}")
+print(f"  largest passing scale: {sweep['largest_passing_scale']}")
 print(f"  observed live feed error (median/max): {np.median(enc):.6e} / {enc.max():.6e}")
+print(f"  {sweep['limitations']}")

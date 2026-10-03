@@ -219,12 +219,21 @@ def sweep_input_scale(
     atol: float,
     rtol: float,
     output_names: Sequence[str] | None = None,
+    compare_against: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Replay along a recorded input delta at several scales.
 
     Reports the largest tested scale that still passes. This is a directional
     bracket for one recorded direction only: it is not a boundary, and it is
     not a criterion for other frames or call directions.
+
+    ``compare_against`` selects the numerical contract. By default each replay
+    is gated against the reference-input replay of this same runner, which
+    isolates the sweep. Supplying ``compare_against`` gates against an
+    external oracle instead, which keeps the runner's own execution residual
+    visible: at scale 0 the oracle comparison then reports the reference
+    replay's distance from the oracle rather than exactly zero. The two are
+    different contracts, not interchangeable.
     """
     _validate_feeds(reference_feeds, delta_feeds)
     if not scales:
@@ -237,7 +246,17 @@ def sweep_input_scale(
         raise ValueError(
             f"output_names must be a subset of {sorted(available)}, got {sorted(selected)}"
         )
-
+    if compare_against is None:
+        baseline = {n: reference_run[n] for n in selected}
+        baseline_kind = "REFERENCE_INPUT_REPLAY"
+    else:
+        if set(compare_against) != set(reference_run):
+            raise ValueError(
+                f"compare_against must cover {sorted(reference_run)}, "
+                f"got {sorted(compare_against)}"
+            )
+        baseline = {n: compare_against[n] for n in selected}
+        baseline_kind = "SUPPLIED_ORACLE"
     rows: list[dict[str, Any]] = []
     passing_scales: list[float] = []
     for scale in scales:
@@ -252,7 +271,7 @@ def sweep_input_scale(
         }
         replay = dict(run_stage(feeds))
         result = compare_stage_outputs(
-            {n: reference_run[n] for n in selected},
+            baseline,
             {n: replay[n] for n in selected},
             atol=atol,
             rtol=rtol,
@@ -281,7 +300,9 @@ def sweep_input_scale(
     largest_passing = max(passing_scales) if passing_scales else None
     return {
         "rows": rows,
+        "scales": [float(s) for s in scales],
         "largest_passing_scale": largest_passing,
+        "baseline": baseline_kind,
         "atol": atol,
         "rtol": rtol,
         "limitations": (

@@ -74,6 +74,47 @@ class StageAttributionTests(unittest.TestCase):
         # reference + candidate + one replay per input, exactly once each.
         self.assertEqual(len(calls), 2 + len(feeds))
 
+    def test_supplied_oracle_baseline_keeps_the_execution_residual_visible(self):
+        # Against the reference replay, scale 0 is exactly 0. Against a
+        # supplied oracle it reports the runner's own distance from that
+        # oracle. These are different contracts and must not be conflated.
+        reference = {"x": np.array([0.0], dtype=np.float32)}
+        recorded = {"x": np.array([3e-8], dtype=np.float32)}
+
+        def oracle(feeds):
+            return {"out": (np.asarray(feeds["x"], dtype=np.float32) * 1000.0).astype(np.float32)}
+
+        against_replay = sweep_input_scale(
+            reference, recorded, oracle, scales=[0.0], atol=1e-5, rtol=1e-4
+        )
+        self.assertEqual(against_replay["baseline"], "REFERENCE_INPUT_REPLAY")
+        self.assertEqual(against_replay["rows"][0]["max_abs_error"]["out"], 0.0)
+
+        supplied = sweep_input_scale(
+            reference,
+            recorded,
+            oracle,
+            scales=[0.0],
+            atol=1e-5,
+            rtol=1e-4,
+            compare_against={"out": np.array([2.5e-5], dtype=np.float32)},
+        )
+        self.assertEqual(supplied["baseline"], "SUPPLIED_ORACLE")
+        self.assertGreater(supplied["rows"][0]["max_abs_error"]["out"], 0.0)
+
+    def test_supplied_oracle_must_cover_every_output(self):
+        base = {"x": np.array([0.0], dtype=np.float32)}
+        with self.assertRaises(ValueError):
+            sweep_input_scale(
+                base,
+                base,
+                gain_runner(1.0),
+                scales=[1.0],
+                atol=1e-5,
+                rtol=1e-4,
+                compare_against={"other": np.array([0.0], dtype=np.float32)},
+            )
+
     def test_an_unrelated_input_is_not_implicated(self):
         reference = {"x": np.array([0.0], dtype=np.float32)}
         candidate = {"x": np.array([1e-9], dtype=np.float32)}
