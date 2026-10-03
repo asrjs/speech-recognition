@@ -3,6 +3,37 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C14 — Companion in-memory browser preview
+
+Status: PARTIAL PASS — actual browser-demo UI boot/settings; model inference,
+local file-picker/load, service-worker behavior and other companion UI remain open.
+
+`node tests/smoke/companion-build.mjs <consumer-root> --serve` now serves the
+existing in-memory build on an ephemeral 127.0.0.1 port. It writes no sibling
+build/config/cache files. Only the explicit build outputs and bounded top-level
+public files enter its immutable route map; directories and symlinks are not
+recursively traversed, individual public files above 10 MiB fail. COOP/COEP,
+exact Content-Length, WASM MIME and no-store headers support browser checks.
+This is not a general Vite preview replacement or a file/model directory server.
+Default build-only behavior is unchanged; three existing CLI negatives pass.
+Syntax, focused diff checks and actual browser-demo source-alias build pass.
+
+Actual Chrome154.0.8037.93 control (2026-10-03): fresh context, service workers
+blocked and external requests rejected; title/Load Model/Idle state render,
+Parakeet v3 selection keeps WebGPU encoder + WASM decoder, and Local folder
+selection exposes the local-model panel. No page errors or ONNX weight fetches.
+Four HTTP missing/traversal/source/malformed-path negatives return 400/404;
+the main JS served bytes match build SHA256
+`314ec796f0bdb0bb159778ec933a7ce42d83ee2aa0848c30c1e9a3d7cae4be53`.
+Config SHA256 remains `05b797e775018c124b38ca310802453e5bb72854bcc7aebf68d525ffbd0dbbcb`.
+The app attempts font/badge and Hugging Face metadata requests at startup/model
+selection; this bounded control blocks them rather than claiming offline support.
+Evidence is terminal output, not an automated persisted browser receipt.
+
+Next automate this UI scenario and bind browser results to the build receipt;
+then cover real local artifact loading/cancellation and transcription separately.
+UI-selected hybrid settings do not prove graph placement or ASR correctness.
+
 ## C01 — Opt-in native ORT installation
 
 Status: PARTIAL PASS — optional-peer metadata, resolution-isolated smoke and
