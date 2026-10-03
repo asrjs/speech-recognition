@@ -34,6 +34,46 @@ class StageAttributionTests(unittest.TestCase):
         self.assertEqual(result["implicated_inputs"], ["x"])
         self.assertFalse(result["observed"]["allclose"])
 
+    def test_candidate_value_is_not_rebuilt_by_subtraction(self):
+        # reference + (candidate - reference) cancels to 0 in float32 for
+        # these magnitudes, which would fabricate an UNRESOLVED result.
+        reference = {"x": np.array([1e10], dtype=np.float32)}
+        candidate = {"x": np.array([1.0], dtype=np.float32)}
+        self.assertEqual(
+            float(
+                np.asarray(reference["x"])
+                + (np.asarray(candidate["x"]) - np.asarray(reference["x"]))
+            ),
+            0.0,
+            "precondition: the naive reconstruction cancels to zero",
+        )
+        result = attribute_input_source(
+            reference, candidate, scaled_runner(), atol=1e-5, rtol=1e-4
+        )
+        self.assertEqual(result["status"], "ATTRIBUTED_TO_SINGLE_INPUT")
+        self.assertEqual(result["implicated_inputs"], ["x"])
+
+    def test_runs_the_component_once_per_replay_and_no_more(self):
+        calls = []
+
+        def counting(feeds):
+            calls.append(float(np.asarray(feeds["a"], dtype=np.float32)[0]))
+            return {"out": np.asarray(feeds["a"], dtype=np.float32).copy()}
+
+        feeds = {
+            "a": np.array([0.0], dtype=np.float32),
+            "b": np.array([0.0], dtype=np.float32),
+        }
+        attribute_input_source(
+            feeds,
+            {k: v + 1.0 for k, v in feeds.items()},
+            counting,
+            atol=1e-5,
+            rtol=1e-4,
+        )
+        # reference + candidate + one replay per input, exactly once each.
+        self.assertEqual(len(calls), 2 + len(feeds))
+
     def test_an_unrelated_input_is_not_implicated(self):
         reference = {"x": np.array([0.0], dtype=np.float32)}
         candidate = {"x": np.array([1e-9], dtype=np.float32)}

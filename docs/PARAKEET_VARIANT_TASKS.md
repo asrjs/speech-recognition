@@ -3168,3 +3168,14 @@ which is the goal's acceptance criterion for a cheaper next port. It is a
 scheduling and replay control: not numerical feature parity, not a per-frame
 budget, and not a reason to reopen any closed gate. The browser gate stays
 FAIL.
+
+Correction to the shared control: the single-input replay originally rebuilt
+the candidate as `reference + (candidate - reference)`, which cancels
+catastrophically in float32 (reference `1e10`, candidate `1` yields `0`). That
+would fabricate an `ATTRIBUTION_UNRESOLVED` result and hide a real
+attribution. The replay now substitutes the candidate value directly, and the
+scale sweep interpolates in convex form, which is exact at both endpoints. The
+replay also ran the component twice per input; it now runs once. Both are
+regression-tested, including the cancelling magnitudes as a precondition
+assertion. 12 control tests and 35 model-neutral tests pass, and the real case
+still resolves to `encoder_outputs`.

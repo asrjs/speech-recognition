@@ -149,9 +149,12 @@ def attribute_input_source(
     per_input: dict[str, Any] = {}
     implicated: list[str] = []
     for name in reference_feeds:
+        # Substitute the candidate value directly. Rebuilding it as
+        # reference + (candidate - reference) cancels catastrophically in
+        # float32 (reference 1e10 with candidate 1 yields 0), which would
+        # fabricate an UNRESOLVED result and hide a real attribution.
         perturbed = dict(reference_feeds)
-        perturbed[name] = np.asarray(reference_feeds[name]) + deltas[name]
-        replay = dict(run_stage(perturbed))
+        perturbed[name] = np.array(candidate_feeds[name], copy=True)
         replay = dict(run_stage(perturbed))
         single = compare_stage_outputs(
             {n: reference_run[n] for n in selected},
@@ -238,9 +241,13 @@ def sweep_input_scale(
     rows: list[dict[str, Any]] = []
     passing_scales: list[float] = []
     for scale in scales:
+        # Convex form rather than reference + (delta - reference)*scale. The
+        # latter cancels catastrophically in float32: with reference 1e10 and
+        # delta 1, scale 1.0 yields 0 instead of 1. This form is exact at both
+        # endpoints.
         feeds = {
-            name: np.asarray(reference_feeds[name])
-            + (np.asarray(delta_feeds[name]) - np.asarray(reference_feeds[name])) * float(scale)
+            name: np.asarray(reference_feeds[name], dtype=np.float32) * (1.0 - float(scale))
+            + np.asarray(delta_feeds[name], dtype=np.float32) * float(scale)
             for name in reference_feeds
         }
         replay = dict(run_stage(feeds))
