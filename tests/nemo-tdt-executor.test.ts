@@ -44,12 +44,15 @@ interface MockDecoderStep {
 }
 
 class MockEncoderSession implements OrtSessionLike {
-  constructor(private readonly encoderTensor: OrtTensorLike<Float32Array>) {}
+  constructor(
+    private readonly encoderTensor: OrtTensorLike<Float32Array>,
+    private readonly encodedLengths?: OrtTensorLike<BigInt64Array>,
+  ) {}
 
   async run(): Promise<Record<string, OrtTensorLike>> {
-    return {
-      outputs: this.encoderTensor,
-    };
+    return this.encodedLengths
+      ? { outputs: this.encoderTensor, encoded_lengths: this.encodedLengths }
+      : { outputs: this.encoderTensor };
   }
 }
 
@@ -57,6 +60,7 @@ class MockDecoderSession implements OrtSessionLike {
   readonly targetHistory: number[] = [];
   readonly emittedStates: MockTensor<Float32Array>[] = [];
   readonly emittedLogits: MockTensor<Float32Array>[] = [];
+  readonly encoderFeedDims: number[][] = [];
   private callIndex = 0;
 
   constructor(
@@ -69,6 +73,7 @@ class MockDecoderSession implements OrtSessionLike {
     this.targetHistory.length = 0;
     this.emittedStates.length = 0;
     this.emittedLogits.length = 0;
+    this.encoderFeedDims.length = 0;
   }
 
   async run(feeds: Record<string, unknown>): Promise<Record<string, OrtTensorLike>> {
@@ -80,7 +85,7 @@ class MockDecoderSession implements OrtSessionLike {
 
     const targetTensor = feeds.targets as OrtTensorLike<Int32Array>;
     this.targetHistory.push(Number(targetTensor.data[0] ?? -1));
-
+    this.encoderFeedDims.push([...(feeds.encoder_outputs as OrtTensorLike).dims]);
     const outputLogits = new MockTensor(new Float32Array(step.logits), [1, step.logits.length]);
     const outputState1 = new MockTensor(
       new Float32Array(this.stateDims.reduce((size, dim) => size * dim, 1)),
@@ -180,6 +185,7 @@ function createExecutorHarness(options: {
   readonly source?: NemoTdtArtifactSource;
   readonly batching?: boolean;
   readonly sessionProviders?: { readonly encoder: string; readonly decoder: string };
+  readonly encodedLengths?: readonly number[];
 }) {
   const config = parseNemoTdtConfig('test-nemo-tdt', {
     subsamplingFactor: 4,
@@ -202,6 +208,12 @@ function createExecutorHarness(options: {
 
   const encoderSession = new MockEncoderSession(
     new MockTensor(encoderData, [1, featureSize, frameCount]),
+    options.encodedLengths
+      ? new MockTensor(
+          BigInt64Array.from(options.encodedLengths.map((value) => BigInt(value))),
+          [1],
+        )
+      : undefined,
   );
   const decoderSession = new MockDecoderSession(options.logits, [
     config.predictionLayers ?? 1,
@@ -311,6 +323,55 @@ describe('nemo-tdt Hugging Face artifact materialization', () => {
 });
 
 describe('nemo-tdt executor decode loop', () => {
+  it('keeps the feature axis when the encoder returns more frames than features', async () => {
+    const harness = createExecutorHarness({
+      frameCount: 6,
+      featureSize: 3,
+      encodedLengths: [6],
+      logits: [
+        { logits: [0.1, 10.0, 0.0, 8.0, 1.0, 0.5] },
+        ...Array.from({ length: 6 }, () => ({ logits: [9.0, 0.0, 0.0, 8.0, 1.0, 0.0] })),
+      ],
+    });
+
+    try {
+      const result = await harness.executor.transcribe(
+        createAudio(),
+        { returnTokenIds: true },
+        {} as never,
+      );
+
+      // A magnitude-based layout guess reads 6 as the feature size here and
+      // feeds [1, 6, 1]; the exported graph is [1, 3, 1] and rejects 6.
+      expect(harness.decoderSession.encoderFeedDims.length).toBe(7);
+      const observedFeedDims = [
+        ...new Set(harness.decoderSession.encoderFeedDims.map((dims) => dims.join(','))),
+      ];
+      expect(observedFeedDims).toEqual(['1,3,1']);
+      expect(result.utteranceText).toBe('hello');
+      expect(result.debug?.tokenIds).toEqual([1]);
+    } finally {
+      await harness.executor.dispose();
+    }
+  });
+
+  it('fails closed when encoded_lengths matches neither encoder output axis', async () => {
+    const harness = createExecutorHarness({
+      frameCount: 4,
+      featureSize: 4,
+      encodedLengths: [9],
+      logits: [{ logits: [10, 0, 0, 8, 1, 0] }],
+    });
+
+    try {
+      await expect(harness.executor.transcribe(createAudio(), {}, {} as never)).rejects.toThrow(
+        /encoded_lengths=9/,
+      );
+    } finally {
+      await harness.executor.dispose();
+    }
+  });
+
   it.each([
     ['webgpu', 'wasm'],
     ['wasm', 'wasm'],

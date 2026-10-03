@@ -345,8 +345,7 @@ frames to f32 still gives 365,586 bit differences; this is not same-input proof.
 Independent NumPy FFT on the captured production f64 frames agrees with packed
 components within `7.11e-15` real / `6.22e-15` imaginary across all 282,957 bins.
 NumPy is a same-input arithmetic diagnostic, not a replacement official oracle.
-Production features still fail at 313 coordinates, aligned packed features at
-120. The successful diagnostic exits 1 because acceptance remains incomplete.
+Production features still fail at 313 coordinates, aligned packed features at 120. The successful diagnostic exits 1 because acceptance remains incomplete.
 Forty-nine probe tests pass, including source/output immutability, exact original
 power reconstruction, f64 byte/mirror checks and malformed shape/coercion
 refusal. The cumulative controls below now separate preemphasis and window deltas.
@@ -370,8 +369,28 @@ The WAV SHA-256 is `57d8dd674034eb744bd8dfa71344ee02e1a8e709563cef10108eda636636
 `official-pure-silence-1s-summary-2026-10-01.json` binds the original-weight
 NeMo capture (empty transcript/tokens, 60 stages, six exact instrumentation
 controls). Own fp32 native stage replay passes 50 numerical comparisons and
-12 exact decoding decisions; accumulated library decoding and browser remain
-UNTESTED by this replay.
+12 exact decoding decisions. Accumulated library decoding on long audio was
+UNTESTED by this replay and has now been recorded separately: see
+`long-repeat8-end-to-end-parity-2026-10-03.json`.
+
+### Long-form library decoding (2026-10-03)
+
+The `librivox-repeat8-16k-pcm16-2026-10-02.wav` fixture (149.7125 s, 2,395,400
+samples, PCM SHA-256 `caf86c6b47b9e82ea81202df6912366802bed190272485db2329c30e27ea4b46`)
+broke the library on the first attempt. The executor inferred the encoder-output
+layout by comparing axis magnitudes, so more encoder frames than features
+flipped it and the decoder received `[1, 1872, 1024]` against a graph declared
+`[1, 1024, T]`; ORT rejected it. Every earlier library run used an 11 s fixture,
+so the defect was invisible.
+
+Fixed by resolving the layout from the encoder graph's `encoded_lengths` output,
+with a padded-time crop and a fail-closed error when the length matches neither
+axis. Post-fix Node and Bun both match the original-engine reference exactly:
+722/722 token ids, identical 1899-character transcripts, 1872 encoder frames,
+806 decode iterations against the official 806 joint calls.
+
+Use this fixture for any future decoder-path change. Long-form WASM/WebGPU
+decoding and streaming-controller behavior at this length remain UNTESTED.
 
 All silence frame controls and raw mel match the reference exactly, but
 normalization fails at 12,800 coordinates (max `0.1600533276796341`). For the

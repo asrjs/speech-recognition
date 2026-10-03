@@ -235,11 +235,18 @@ do not prove that a portable implementation is impossible or identify MKL's
 internal instruction dispatch. This is a bounded deferral of numerical
 conformance, not a request for a user-supplied research direction.
 
-### The coordinate gate is not a port acceptance criterion
+### Two standards: what shipped, and what this lane gates on
 
-The `atol=1e-5, rtol=1e-4` feature-coordinate gate was never met by any NeMo
-port this repository shipped. Every recorded official-versus-library frontend
-comparison from a shipped port has a far larger deviation:
+This section is **evidence for a decision, not a reclassification.** The
+`atol=1e-5, rtol=1e-4` feature-coordinate gate stays Orukeet's production-feature
+gate and stays **FAIL / DEFERRED** at unchanged tolerances. AGENTS.md forbids
+lowering an acceptance criterion because a step is difficult, and nothing here
+does that: the gate is neither relaxed nor removed, and no numerical work is
+declared done.
+
+What the evidence shows is that this gate is far stricter than the standard every
+port this repository actually shipped against, and that Orukeet's frontend error
+is far below every one of them.
 
 | port                            | frontend contract   |            max abs |          mean abs |       rmse | transcript parity                       |
 | ------------------------------- | ------------------- | -----------------: | ----------------: | ---------: | --------------------------------------- |
@@ -248,29 +255,41 @@ comparison from a shipped port has a far larger deviation:
 | `canary-180m-flash`             | meljs frontend      |        `0.7285282` |     `9.190078e-4` | `0.003282` | official-reference verification         |
 | **Orukeet (this lane)**         | onnx, `per_feature` | **`3.4236908e-4`** | **`1.226810e-6`** |        n/a | oracle-matching 38 tokens, Node and Bun |
 
-Orukeet's frontend deviation is the **smallest recorded in this repository**:
-6268x smaller than the Canary asrjs frontend, 2128x smaller than meljs and
-11917x smaller than the shipped Parakeet v1 port on maximum absolute error; mean
-absolute error is 727x, 749x and 735x smaller. `3.4236908e-4` is therefore not a
-port defect and does not make Orukeet harder to port than the models that
-already ship. It is a stricter self-imposed conformance metric that no shipped
-port met.
+No shipped NeMo port in this repository was held to that coordinate gate; none
+met it. Their acceptance was transcript and official-reference parity with
+frontend deviation recorded on the max-abs/mean-abs/rmse scale above. Orukeet's
+deviation is the smallest recorded here: 6268x smaller than the Canary asrjs
+frontend, 2128x smaller than meljs and 11917x smaller than the shipped Parakeet
+v1 port on maximum absolute error; 727x, 749x and 735x smaller on mean absolute
+error.
+
+Do not over-read the ratios. The rows are **different contracts**: the Parakeet
+v1 and Canary receipts use `validLengthMode: centered` with `normalization:
+none`, against Orukeet's `onnx` with `per_feature`; meljs compared 140,800
+values instead of 140,928. The Parakeet v1 maximum is also concentrated entirely
+at boundary frame 1100 of 1101, a padding-frame artifact rather than
+mid-signal FFT divergence. So these are magnitude classes, not interchangeable
+gates, and the Parakeet v1 contract is not a strict superset of Orukeet's.
 
 Receipt: `tools/data/results/orukeet/frontend-conformance-family-comparison-2026-10-03.json`.
 It aggregates existing receipts only: no new inference, no weight downloads, no
-official-capture refresh, no tolerance or code change. Contracts differ between
-rows (valid-length mode and normalization above; meljs compared 140,800 values),
-so this compares magnitude classes, not identical contracts. No official stock
-v2/v3 full feature capture is stored locally, so a same-contract stock v3
-frontend comparison does not exist yet; producing one needs original weights
-and the reference environment.
+official-capture refresh, no tolerance or code change. No official stock v2/v3
+full feature capture is stored locally, so a same-contract stock v3 frontend
+comparison does not exist; producing one needs original weights and the
+reference environment.
 
-**Port acceptance for the next family** is therefore transcript, token, decoder
-and end-to-end parity plus the browser gates, with official-versus-library
-frontend deviation recorded as an informational metric on the same
-max-abs/mean-abs/rmse scale as the shipped ports. Record the coordinate gate as
-well, but do not treat failing it as a port blocker and do not open a numerical
-lane to close it.
+**Open decision for the user.** Either (a) keep the strict per-coordinate gate
+binding for Orukeet, in which case `full_asr` stays
+`NOT_PROVEN_FEATURE_GATE_UNACCEPTED` and the deferred numerical lane stays open,
+or (b) adopt the historical functional standard the shipped ports used
+(transcript/token/decoder/end-to-end parity plus browser gates, frontend
+deviation reported as informational), which Orukeet already meets on its
+recorded fixtures. This repository does not choose (b) on its own, and this
+section does not record that choice as taken.
+
+Until that decision, treat the strict gate as still binding, keep the deferral,
+and do not open a numerical lane to close the coordinate gate on the strength of
+this comparison alone.
 
 Pure silence stays a separate, honestly recorded divergence: it is an official
 masked fp32 mean reduction (`-16.635530471801758` official versus

@@ -3,10 +3,45 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C27 — Long-form port fix: encoder layout beyond 82 seconds
+
+Status: PASS — real public-API inference, exact oracle parity, regression tests.
+The production-feature gate is untouched and still deferred.
+
+Resuming the recorded P02 gap (`long_library_native_node_bun` and
+`accumulated_tokens_text` were UNTESTED) exposed a genuine library defect. The
+first 149.7 s run failed with `Got invalid dimensions for input: encoder_outputs
+... index: 1 Got: 1872 Expected: 1024`. The NeMo TDT executor inferred the
+encoder-output layout by comparing axis magnitudes, so any clip with more
+encoder frames than the 1024-feature dimension flipped it and fed a transposed
+tensor to the decoder — about 82 seconds of audio at the 10 ms / 8x stride. Every
+previously recorded library run used an 11 s fixture, which hid it.
+
+The executor now resolves the layout from the encoder graph's own
+`encoded_lengths` output, crops a padded time axis, and fails closed when the
+length matches neither axis. Two regression tests cover both cases and fail
+against the previous implementation (2 failed / 14 passed) while the full file
+passes after it (16 passed).
+
+With the fix, Node 26.2.0 and Bun 1.3.14 both reproduce the original-engine
+reference **exactly** on the 149.7 s fixture: 722/722 identical token ids,
+byte-identical 1899-character transcripts, 1872 encoder frames, 806 decode
+iterations matching the official 806 joint calls, zero warnings. This closes the
+P02 long-decoding gap for the native CPU fp32 path. WASM/WebGPU long-form
+decoding, streaming-controller behavior at this length, and multi-fixture
+soak remain UNTESTED.
+
+Receipt: `tools/data/results/orukeet/long-repeat8-end-to-end-parity-2026-10-03.json`.
+Reusable lesson recorded as step 8 of the
+[porting parity playbook](../tools/model-debugging/playbooks/model-porting-parity.md#recommended-flow):
+verify a port on a clip longer than the encoder feature dimension, not only a
+short fixture.
+
 ## C26 — Frontend conformance gate policy for future ports
 
-Status: POLICY RECORDED from existing receipts. No new inference, no weight
-downloads, no official-capture refresh, no runtime or tolerance change.
+Status: EVIDENCE RECORDED from existing receipts, decision left open. No new
+inference, no weight downloads, no official-capture refresh, no runtime or
+tolerance change.
 
 The `atol=1e-5, rtol=1e-4` feature-coordinate gate on Orukeet was never met by
 any NeMo port shipped from this repository. Recorded official-versus-library
@@ -17,24 +52,31 @@ Orukeet `3.4236908e-4` / `1.226810e-6` with oracle-matching 38-token output.
 
 Orukeet's frontend is the closest to its official oracle of any port here:
 6268x, 2128x and 11917x smaller maximum absolute error than those three, and
-727x, 749x and 735x smaller mean absolute error. `3.42e-4` therefore is not a
-port defect and Orukeet is not harder to port than the models already shipping.
-The gate stays recorded as FAIL and no tolerance moves; it is informational
-conformance data, not port acceptance.
+727x, 749x and 735x smaller mean absolute error. `3.42e-4` is not a port
+defect on this evidence, and Orukeet is not harder to port than the models
+already shipping.
 
-Port acceptance for the next family is transcript, token, decoder and
-end-to-end parity plus the browser gates, with frontend deviation reported on
-the same max-abs/mean-abs/rmse scale. The [focus goal](GOAL_MODEL_PORT_HARNESS.md#the-coordinate-gate-is-not-a-port-acceptance-criterion)
-and the [NeMo porting playbook](../tools/model-debugging/playbooks/nemo-rnnt-porting.md#what-the-frontend-metric-means-for-a-port)
-carry the table so the next port does not open another FFT lane.
+This is **evidence, not a reclassification**. The coordinate gate remains
+Orukeet's production-feature gate and stays FAIL / DEFERRED at unchanged
+tolerances; nothing here relaxes or removes it, and no numerical work is called
+done. Contracts differ between the rows (the Parakeet v1 and Canary receipts use
+`validLengthMode: centered` with `normalization: none`, meljs compared 140,800
+values, and the Parakeet v1 maximum sits entirely on boundary frame 1100 of
+1101), so the ratios compare magnitude classes, not interchangeable gates.
+
+Whether the strict per-coordinate gate keeps binding for Orukeet is the user's
+call. Either it stays binding and `full_asr` stays unproven, or the historical
+functional standard the shipped ports used is adopted. The
+[focus goal](GOAL_MODEL_PORT_HARNESS.md#two-standards-what-shipped-and-what-this-lane-gates-on)
+records both options; this repository does not pick (b) on its own.
 
 Pure silence remains a separate recorded divergence: an official masked fp32
 mean reduction on a constant row, not spectrum fidelity.
 
 Receipt: `tools/data/results/orukeet/frontend-conformance-family-comparison-2026-10-03.json`
-(aggregation of six existing receipts with their SHA-256). Contracts differ
-between rows and no official stock v2/v3 feature capture is stored locally, so
-this compares magnitude classes rather than identical contracts.
+(aggregation of six existing receipts with their SHA-256). No official stock
+v2/v3 feature capture is stored locally, so a same-contract stock v3
+comparison remains unavailable without original weights.
 
 ## C25 — Existing Qwen harness reuse and bounded numerical disposition
 

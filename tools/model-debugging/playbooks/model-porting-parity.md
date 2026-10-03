@@ -25,6 +25,15 @@ Use this playbook when adding a new model family and you need reproducible parit
    - `tools/model-debugging/README.md`
    - `tools/model-debugging/reference/README.md`
    - model-specific `README.md` under that reference folder
+8. Before declaring a port verified, run at least one end-to-end clip that is
+   **longer than the encoder's feature dimension in frames**, on the same code
+   path as the shipped configuration. NeMo TDT exports carry 1024 features with
+   a 10 ms frame shift and 8x subsampling, so the threshold is about 82 seconds
+   of audio: a longer clip makes `encoder_outputs` `[1, 1024, T]` with `T > 1024`,
+   which is where layout, slicing and lifetime defects surface. Short fixtures
+   hide them; the recorded Orukeet library runs that missed this all used an 11 s
+   clip. A repeated-fixture WAV built from an existing 16 kHz PCM source is
+   enough, and needs no new weights.
 
 ## MedASR Example
 

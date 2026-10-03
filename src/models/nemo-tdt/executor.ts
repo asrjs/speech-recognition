@@ -654,12 +654,22 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
 
     let encoderData: Float32Array;
     let dims: number[];
+    let encodedFrameCount: number | undefined;
     try {
       const encoderTensor = (encoderOutputs.outputs ??
         Object.values(encoderOutputs)[0]) as OrtTensorLike<Float32Array>;
       dims = [...encoderTensor.dims];
       if (dims.length !== 3 || dims[0] !== 1) {
         throw new Error(`Unexpected NeMo TDT encoder output shape: [${dims.join(', ')}].`);
+      }
+      const encodedLengths = Object.entries(encoderOutputs).find(
+        ([name]) => name !== 'outputs' && /encoded_?lengths?$/i.test(name),
+      )?.[1];
+      const encodedLengthValue = (
+        encodedLengths?.data as ArrayLike<number | bigint> | undefined
+      )?.[0];
+      if (encodedLengthValue !== undefined && Number.isFinite(Number(encodedLengthValue))) {
+        encodedFrameCount = Number(encodedLengthValue);
       }
       encoderData =
         encoderTensor.data instanceof Float32Array
@@ -669,9 +679,31 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       disposeOrtOutputs(encoderOutputs);
     }
 
-    const encoderIsBdt = (dims[1] ?? 0) > (dims[2] ?? 0);
-    const featureSize = encoderIsBdt ? dims[1]! : dims[2]!;
-    const frameCount = encoderIsBdt ? dims[2]! : dims[1]!;
+    // Resolve the encoder-output layout from the encoder graph's own length
+    // output, not from comparing axis magnitudes: a clip longer than the
+    // feature dimension (1024 frames, about 82 s at the 10 ms/8x NeMo stride)
+    // otherwise flips the inference and feeds a transposed tensor to the
+    // decoder, which rejects it as "Got: <frames> Expected: <features>".
+    let encoderIsBdt: boolean;
+    let featureSize: number;
+    let frameCount: number;
+    if (encodedFrameCount === undefined) {
+      encoderIsBdt = (dims[1] ?? 0) > (dims[2] ?? 0);
+      featureSize = encoderIsBdt ? dims[1]! : dims[2]!;
+      frameCount = encoderIsBdt ? dims[2]! : dims[1]!;
+    } else if (dims[2] === encodedFrameCount || dims[2]! > encodedFrameCount) {
+      encoderIsBdt = true;
+      featureSize = dims[1]!;
+      frameCount = encodedFrameCount;
+    } else if (dims[1] === encodedFrameCount || dims[1]! > encodedFrameCount) {
+      encoderIsBdt = false;
+      featureSize = dims[2]!;
+      frameCount = encodedFrameCount;
+    } else {
+      throw new Error(
+        `NeMo TDT encoder output shape [${dims.join(', ')}] matches neither axis of encoded_lengths=${encodedFrameCount}.`,
+      );
+    }
     const frameTime = this.config.frameShiftSeconds * this.config.subsamplingFactor;
     const vocabSize = loaded.tokenizer.vocabSize;
     const blankId = loaded.tokenizer.blankId ?? this.config.tokenizer.blankTokenId ?? 0;
