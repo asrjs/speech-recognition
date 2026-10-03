@@ -2297,3 +2297,33 @@ overall export FAIL/exit1 preserved. Next inspect windowed frame/FFT execution
 with this identical input; do not add per-model numerical correction constants.
 Also keep the companion browser acceptance runner on the whole-product queue;
 this model diagnostic does not certify examples, WASM or WebGPU execution.
+
+### Owned browser-demo no-download UI smoke (2026-10-03)
+
+`tests/smoke/browser-demo-smoke.py` builds the explicit sibling consumer in
+memory, starts its own loopback preview and opens a fresh headless Chrome
+context. It verifies served HTML/JS/CSS/public asset hashes against the build
+receipt and protects the diagnostic and selected consumer inputs against
+changes. It never writes to the sibling checkout or installs dependencies.
+
+Run with existing Python Playwright, Chrome and Node:
+
+```powershell
+C:/Python311/python.exe tests/smoke/browser-demo-smoke.py --consumer-root N:/github/asrjs/browser-demo --output tools/data/results/harness/browser-demo-owned-ui-smoke-2026-10-03.json
+```
+
+Use a new output path on each run; existing outputs are refused. Four independent
+preflight/parser tests pass via `test_browser_demo_smoke.py`. The real Chrome
+154.0.8037.93 run passes five UI checks: boot, stock v3 hybrid selection
+(WebGPU encoder/WASM decoder), WASM selection, local source panel, and actionable
+missing-folder validation with Load Model becoming enabled again. Seven remote
+font/badge/model-metadata requests were aborted; no model-weight request or
+page error occurred. The owned preview process stopped and its port was no
+longer reachable after cleanup.
+
+Receipt: `browser-demo-owned-ui-smoke-2026-10-03.json` under the harness result
+directory. This is PASS_COMPANION_UI_SMOKE only: selection is not proof of GPU
+execution, and missing-folder validation is not model loading or inference.
+Actual local artifact load/transcribe/cancel/dispose and Orukeet browser parity
+remain open. Next add real local-model acceptance without remote downloads or
+duplicating the library decoder in the harness.
