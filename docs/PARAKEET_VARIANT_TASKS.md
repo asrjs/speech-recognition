@@ -2049,3 +2049,20 @@ a portable MKL-equivalent butterfly from the wrapper. Next: inspect feasible
 family-owned processor graph/export controls and retain this complete native
 oracle reproduction as the numerical gate. Binary provenance is version/build
 metadata, not exhaustive hashes of Torch's loaded DLLs.
+
+Processor artifact boundary hardening (2026-10-03): the family-owned
+`OnnxNemoPreprocessor` now rejects missing outputs, wrong feature dtype/rank,
+batch sizes other than one, invalid dimensions/counts, nonfinite features,
+and malformed or out-of-range integer lengths before returning features.
+Mel-bin count remains artifact-derived, not a Parakeet/Orukeet hardcode.
+Valid int64/int32 lengths and owned feature copies retain their behavior;
+input/output tensors are released on these contract failures.
+
+`tests/nemo-preprocessor-contract.test.ts`: 14 controlled tests pass (12
+negative cases reproduced the missing guards before the fix). Source typecheck,
+focused lint and diff checks pass, as do 40 existing NeMo TDT/RNNT/AED tests
+and nine WASM bridge tests. This is mocked contract/lifecycle evidence, not
+numerical processor parity or real ONNX/browser inference. The original
+processor graph/export and feature/encoder/token/text gates remain open.
+The live broad DFT session18933 was polled and remains running without new
+output; its source/dist closure was preserved.

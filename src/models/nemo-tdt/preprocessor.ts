@@ -104,15 +104,57 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
         waveforms: waveformTensor,
         waveforms_lens: lengthTensor,
       });
-      const featuresTensor = outputs.features as OrtTensorLike<Float32Array>;
-      const lengthsTensor = outputs.features_lens as OrtTensorLike<BigInt64Array | Int32Array>;
-      const melBins = Number(featuresTensor.dims[1] ?? 0);
+      const featuresTensor = outputs.features;
+      const lengthsTensor = outputs.features_lens;
+      const melBins = featuresTensor?.dims[1];
+      const frameCount = featuresTensor?.dims[2];
+      if (
+        !featuresTensor ||
+        !(featuresTensor.data instanceof Float32Array) ||
+        featuresTensor.dims.length !== 3 ||
+        featuresTensor.dims[0] !== 1 ||
+        !Number.isSafeInteger(melBins) ||
+        !Number.isSafeInteger(frameCount) ||
+        melBins === undefined ||
+        melBins <= 0 ||
+        frameCount === undefined ||
+        frameCount < 0 ||
+        featuresTensor.data.length !== melBins * frameCount
+      ) {
+        throw new Error(
+          'NeMo preprocessor output contract: expected float32 features [1, melBins, frames].',
+        );
+      }
+      if (
+        !lengthsTensor ||
+        !(
+          lengthsTensor.data instanceof BigInt64Array || lengthsTensor.data instanceof Int32Array
+        ) ||
+        lengthsTensor.dims.length !== 1 ||
+        lengthsTensor.dims[0] !== 1 ||
+        lengthsTensor.data.length !== 1
+      ) {
+        throw new Error(
+          'NeMo preprocessor output contract: expected int64/int32 features_lens [1].',
+        );
+      }
+      const validLength = Number(lengthsTensor.data[0]);
+      if (!Number.isSafeInteger(validLength) || validLength < 0 || validLength > frameCount) {
+        throw new Error(
+          'NeMo preprocessor output contract: features_lens must be within the frame count.',
+        );
+      }
+      for (const value of featuresTensor.data) {
+        if (!Number.isFinite(value)) {
+          throw new Error('NeMo preprocessor output contract: features contain nonfinite values.');
+        }
+      }
       const features = new Float32Array(featuresTensor.data);
 
       return {
         features,
-        frameCount: melBins > 0 ? Math.floor(features.length / melBins) : 0,
-        validLength: Number(lengthsTensor.data[0] ?? 0),
+        frameCount,
+        validLength,
       };
     } finally {
       disposeOrtOutputs(outputs);
