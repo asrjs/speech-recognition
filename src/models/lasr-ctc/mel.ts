@@ -37,6 +37,15 @@ export interface MedAsrJsPreprocessorOptions {
   readonly framePreemphasis?: boolean;
   /** Kaldi mel lower edge in Hz; existing callers retain 125 Hz. */
   readonly melLowHz?: number;
+  /**
+   * Family-supplied mel matrix, row-major `[nMels, nFreqBins]`, used instead of
+   * the built-in filterbank. For families whose official extractor ships its own
+   * bank (for example librosa's `filters.mel`), building the bank here avoids
+   * changing the shared NeMo-style default.
+   */
+  readonly melFilterbank?: Float64Array;
+  /** Emit the trailing centered frame instead of clamping to `floor(samples / hop)`. */
+  readonly includeCenteredTailFrame?: boolean;
   /** Kaldi mel upper edge in Hz; negative values are relative to Nyquist. */
   readonly melHighHz?: number;
 }
@@ -83,7 +92,7 @@ function createMelFilterbank(
   melLowHz?: number,
   melHighHz?: number,
 ): Float32Array {
-  const frequencyMin = melScale === 'kaldi' ? melLowHz ?? 125 : 0;
+  const frequencyMin = melScale === 'kaldi' ? (melLowHz ?? 125) : 0;
   const requestedMax = melHighHz ?? 7500;
   const frequencyMax =
     melScale === 'kaldi'
@@ -175,14 +184,21 @@ function createPaddedWindow(
   const leftPad = centerWindow ? (nFft - winLength) >> 1 : 0;
 
   for (let index = 0; index < winLength; index += 1) {
-    const cosine = Math.cos((2 * Math.PI * index) / (windowKind === 'hann-periodic' ? winLength : winLength - 1));
+    const cosine = Math.cos(
+      (2 * Math.PI * index) / (windowKind === 'hann-periodic' ? winLength : winLength - 1),
+    );
     window[leftPad + index] = windowKind === 'hamming' ? 0.54 - 0.46 * cosine : 0.5 * (1 - cosine);
   }
 
   return window;
 }
 
-function getCachedWindow(centerWindow: boolean, windowKind: WindowKind, nFft: number, winLength: number): Float64Array {
+function getCachedWindow(
+  centerWindow: boolean,
+  windowKind: WindowKind,
+  nFft: number,
+  winLength: number,
+): Float64Array {
   const key = `${centerWindow ? 'center' : 'left'}:${windowKind}:${nFft}:${winLength}`;
   const cached = WINDOW_CACHE.get(key);
   if (cached) {
@@ -421,7 +437,9 @@ export class RadixFivePowerOfTwoFft {
   constructor(readonly size: number) {
     const n2 = size / 5;
     if (!Number.isInteger(n2) || (n2 & (n2 - 1)) !== 0) {
-      throw new RangeError('RadixFivePowerOfTwoFft requires size = 5 * 2^m. Received ' + String(size) + '.');
+      throw new RangeError(
+        'RadixFivePowerOfTwoFft requires size = 5 * 2^m. Received ' + String(size) + '.',
+      );
     }
     this.n2 = n2;
     this.pow2Twiddles = precomputeFftTwiddles(n2);
@@ -479,7 +497,8 @@ export class RadixFivePowerOfTwoFft {
           const sine = this.phaseSin[phaseOffset]!;
           const fiveOffset = n1 * 5 + k1;
           const twiddleReal = cosine * this.partCos[fiveOffset]! - sine * this.partSin[fiveOffset]!;
-          const twiddleImaginary = cosine * this.partSin[fiveOffset]! + sine * this.partCos[fiveOffset]!;
+          const twiddleImaginary =
+            cosine * this.partSin[fiveOffset]! + sine * this.partCos[fiveOffset]!;
           const partIndex = n1 * n2 + k2;
           const partValueReal = this.partReal[partIndex]!;
           const partValueImaginary = this.partImaginary[partIndex]!;
@@ -538,6 +557,8 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
   private readonly removeDcOffset: boolean;
   private readonly framePreemphasis: boolean;
   private readonly melLowHz?: number;
+  private readonly melFilterbankOverride?: Float64Array;
+  private readonly includeCenteredTailFrame: boolean;
   private readonly melHighHz?: number;
   private readonly melFilterbank: Float32Array;
   private readonly hannWindow: Float64Array;
@@ -579,22 +600,27 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     this.framePreemphasis = options.framePreemphasis ?? false;
     this.melLowHz = options.melLowHz;
     this.melHighHz = options.melHighHz;
+    this.melFilterbankOverride = options.melFilterbank;
+    this.includeCenteredTailFrame = options.includeCenteredTailFrame ?? false;
 
-    this.melFilterbank = getCachedMelFilterbank(
-      this.nMels,
-      this.melScale,
-      this.slaneyNorm,
-      this.nFreqBins,
-      this.melLowHz,
-      this.melHighHz,
-    );
+    this.melFilterbank = this.melFilterbankOverride
+      ? new Float32Array(this.melFilterbankOverride)
+      : getCachedMelFilterbank(
+          this.nMels,
+          this.melScale,
+          this.slaneyNorm,
+          this.nFreqBins,
+          this.melLowHz,
+          this.melHighHz,
+        );
     this.hannWindow = getCachedWindow(this.center, this.windowKind, this.nFft, this.winLength);
     const isPowerOfTwo = (this.nFft & (this.nFft - 1)) === 0;
     this.fftTwiddles = isPowerOfTwo ? precomputeFftTwiddles(this.nFft) : null;
     const nFftDiv5 = this.nFft / 5;
     const isFiveTimesPowerOfTwo = Number.isInteger(nFftDiv5) && (nFftDiv5 & (nFftDiv5 - 1)) === 0;
     this.compositeFft = isPowerOfTwo || isFiveTimesPowerOfTwo ? null : new CompositeFft(this.nFft);
-    this.radixFiveFft = !isPowerOfTwo && isFiveTimesPowerOfTwo ? new RadixFivePowerOfTwoFft(this.nFft) : null;
+    this.radixFiveFft =
+      !isPowerOfTwo && isFiveTimesPowerOfTwo ? new RadixFivePowerOfTwoFft(this.nFft) : null;
     this.fftReal = new Float64Array(this.nFft);
     this.fftImaginary = new Float64Array(this.nFft);
     this.powerBuffer = new Float32Array(this.nFreqBins);
@@ -674,7 +700,10 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
     }
 
     const frameCount = Math.floor((paddedLength - this.winLength) / this.hopLength) + 1;
-    const validFrameCount = this.center ? Math.floor(sampleCount / this.hopLength) : frameCount;
+    const validFrameCount =
+      this.center && !this.includeCenteredTailFrame
+        ? Math.floor(sampleCount / this.hopLength)
+        : frameCount;
     if (validFrameCount <= 0 || frameCount <= 0) {
       return {
         rawMel: new Float32Array(0),
@@ -723,7 +752,8 @@ export class MedAsrJsPreprocessor implements LasrCtcFeaturePreprocessor {
           if (fftIndex < this.winLength && this.removeDcOffset) sample -= frameMean;
           if (fftIndex < this.winLength && this.framePreemphasis && this.preemphasis > 0) {
             sample -= this.preemphasis * (fftIndex === 0 ? sample : previousSample);
-            previousSample = sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) - frameMean : -frameMean;
+            previousSample =
+              sourceIndex < paddedLength ? (padded[sourceIndex] ?? 0) - frameMean : -frameMean;
           }
           this.fftReal[fftIndex] = sample * (this.hannWindow[fftIndex] ?? 0);
           this.fftImaginary[fftIndex] = 0;

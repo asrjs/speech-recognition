@@ -57,9 +57,14 @@ Verified as already correct, so they are not causes: window placement (our
 spectra (`re^2 + im^2`), and the log guard (`log(mel + 2^-24)`, both sides at
 the same `-16.6355` floor).
 
-The filterbank is shared code used by the LASR and GigaAM CTC frontends, so
-changing it is a cross-family change that needs its own regressions for those
-families rather than a silent edit under a new family. 2. **Frame count clamp.** The official centered STFT yields 1101 frames for the
+The filterbank is shared code used by the LASR and GigaAM CTC frontends. A
+family-local reconstruction of librosa's bank was attempted and reverted: it
+produced obviously wrong magnitudes and is not committed. What landed instead
+are two additive, backward-compatible options in `src/models/lasr-ctc/mel.ts` —
+`melFilterbank` (family-supplied matrix) and `includeCenteredTailFrame` — which
+are inert until a family opts in. The tail-frame option was verified to move the
+family frontend from 1100 to the official 1101 frames. Full suite: 1,470
+passed / 33 skipped. 2. **Frame count clamp.** The official centered STFT yields 1101 frames for the
 JFK fixture; our `validFrameCount` clamps to 1100 and discards the final
 centered frame. Same shared-code caveat; lower priority than the filterbank.
 
