@@ -2391,3 +2391,30 @@ Next package/serve matching engine assets and exercise this public API in the
 owned browser harness, then integrate the companion option within its writable
 authority. The earlier real offline model-loading failure is not yet resolved
 end to end, and no Orukeet promotion follows from this additive API change.
+
+### Owned local engine serving checkpoint (2026-10-03)
+
+`node tests/smoke/companion-build.mjs <consumer-root> --serve-local-ort`
+now snapshots only the installed ORT Web JSEP `.mjs`/`.wasm` pair under
+`/engines/ort-<installed-version>/`. Readiness reports `engine.wasmPaths`,
+version, sizes and SHA-256; no arbitrary filesystem/node_modules route,
+weight copy, CDN interception or sibling write is introduced. The ordinary
+`--serve` path remains unchanged. This opt-in is for the current hybrid JSEP
+path, not a promise to serve asyncify/JSPI or every ORT build variant.
+
+Six Node tests pass (three CLI guards and three snapshot/identity guards).
+The actual browser-demo current-source in-memory build passes with307 modules.
+On the owned preview, Node HTTP reads both engine bodies successfully;
+Chrome imports the actual module in a cross-origin-isolated context and
+validates the WASM binary. Browser WASM SHA256
+`db816fadbab47a755170c08f933961e231412ac17f5981f9a62e519708a44dea`
+matches the installed bytes, with no blocked requests or page errors.
+An earlier Python urllib body read timed out; Node and browser transfer controls
+passed without changing the server. Its underlying transient cause is unknown.
+The owned preview session was interrupted and its listener on15993 verified gone.
+
+Scope is engine serving/import/binary validity only: no engine session, model
+inference, numerical parity or performance claim. The companion still does not
+pass `wasmPaths`. Next connect the public local-loader API to this prefix in an
+owned harness page and run stock-v3 real hybrid inference, preserving the
+separate Orukeet fp32 feature/encoder/token/text gates.

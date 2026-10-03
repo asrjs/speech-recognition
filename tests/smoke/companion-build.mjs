@@ -7,14 +7,16 @@ import { builtinModules, createRequire } from 'node:module';
 import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build as bundle } from 'esbuild';
+import { snapshotLocalOrtAssets } from './local-ort-assets.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const requestedRoot = process.argv[2];
-const serve = process.argv[3] === '--serve';
+const localOrt = process.argv[3] === '--serve-local-ort';
+const serve = process.argv[3] === '--serve' || localOrt;
 assert(
   (process.argv.length === 3 || (process.argv.length === 4 && serve)) && requestedRoot,
-  'Usage: node companion-build.mjs <consumer-root> [--serve]',
+  'Usage: node companion-build.mjs <consumer-root> [--serve|--serve-local-ort]',
 );
 const root = resolve(requestedRoot);
 const configPath = resolve(root, 'vite.config.js');
@@ -114,6 +116,17 @@ if (serve) {
   const publicRoot =
     config.publicDir === false ? null : resolve(root, config.publicDir ?? 'public');
   const publicAssets = [];
+  let engine;
+  if (localOrt) {
+    const requireFromRepository = createRequire(import.meta.url);
+    const packageRoot = resolve(dirname(requireFromRepository.resolve('onnxruntime-web')), '..');
+    engine = await snapshotLocalOrtAssets(packageRoot);
+    for (const [path, bytes] of engine.assets) {
+      assert(!assets.has(path), 'Preview engine/build asset collision');
+      assets.set(path, bytes);
+    }
+    publicAssets.push(...engine.receipt);
+  }
   if (publicRoot) {
     const entries = await readdir(publicRoot, { withFileTypes: true }).catch((error) => {
       if (error.code === 'ENOENT') return [];
@@ -133,6 +146,7 @@ if (serve) {
   const contentTypes = {
     '.html': 'text/html',
     '.js': 'text/javascript',
+    '.mjs': 'text/javascript',
     '.css': 'text/css',
     '.wasm': 'application/wasm',
     '.ico': 'image/x-icon',
@@ -172,7 +186,8 @@ if (serve) {
       status: 'PREVIEW_READY',
       url: `http://127.0.0.1:${address.port}`,
       publicAssets,
-      scope: 'In-memory build and top-level public files only; no inference certification',
+      ...(engine ? { engine: { version: engine.version, wasmPaths: engine.prefix } } : {}),
+      scope: 'In-memory build, top-level public files and explicitly opted-in JSEP pair; no inference certification',
     }),
   );
   for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => server.close());
