@@ -476,3 +476,41 @@ the existing Vitest glob does not include them.
 
 Still open: published-package consumer bundles, startup cost and application
 integration. No production optimization, model inference or WebGPU claim.
+
+## C14 — Sibling consumer build acceptance
+
+Status: PARTIAL PASS — actual in-memory Vite builds; browser workflows remain open.
+
+`node tests/smoke/companion-build.mjs N:\github\asrjs\browser-demo` and the
+same command for `streaming-demo` pass with their installed Vite 7.3.1 and
+current public aliases into this checkout's src. Browser-demo transforms 307
+modules, streaming-demo 344; transcription and VAD worker bundles are included.
+Browser-demo CSS is 29,900 bytes with the correct consumer working directory,
+not the earlier 5,852-byte wrong-cwd diagnostic. Streaming-demo CSS is 30,915
+bytes. These are build measurements, not rendering or performance acceptance.
+
+The normal Vite config bundler writes a temporary module into the sibling's
+node_modules; its diskless runner instead fails on these configs' \_\_dirname.
+The new probe compiles captured config bytes into in-memory ESM, supplies the
+original absolute dirname, resolves packages from the consumer, and disables
+Vite config reloading/build writes. Its process working directory is restored.
+Only object configs with a vite.config.js entry are covered. Arbitrary custom
+config/plugins are executable code: review them before using this probe; the
+write:false option is not a security sandbox for plugins.
+
+Stdout receipts bind config/package/tool hashes, actual Vite version and all
+in-memory output byte counts/hashes, not exhaustive application source identity.
+No dependency installation, sibling source edit or dist rewrite was performed.
+Current checkout includes preserved paused Nemotron changes; this is not a
+clean-commit release build. Browser-demo's existing config hash stays
+05b797e775018c124b38ca310802453e5bb72854bcc7aebf68d525ffbd0dbbcb;
+streaming-demo's stays ec887bf5b4c056e8a4181dd37b771ee422ebbde6cbb3df551087df414d4744de.
+Browser-demo retains its classic coi-serviceworker script warning, and both
+report stale Browserslist data; no package update was made to silence warnings.
+
+Syntax, formatting and three prerequisite negatives pass using
+`node --test tests/smoke/companion-build.test.mjs`: missing root, surplus
+arguments and requested missing config fail without a PASS receipt.
+These Node tests are separate from the existing Vitest glob.
+Next: real browser model management/capture/hybrid workflows and other affected
+companions. These builds do not complete those integration gates.
