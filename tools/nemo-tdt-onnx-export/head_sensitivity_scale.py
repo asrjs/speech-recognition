@@ -34,5 +34,5 @@ for scale in (0.0,0.25,0.5,1.0,2.0,4.0,8.0):
     f=dict(ref)
     f["encoder_outputs"]=np.ascontiguousarray(ref["encoder_outputs"]+delta*scale,dtype=np.float32)
     ls=log_softmax(dict(zip(names,sess.run(None,f)))["outputs"])
-    err=np.abs(official-ls); bad=np.nonzero(err>1e-5+1e-4*np.abs(official))[0]
+    err=np.abs(official-ls); bad=np.flatnonzero(err>1e-5+1e-4*np.abs(official))
     print(f"{scale:5.2f}   {err.max():.6e}       {bad.size:3d}      {bad[0] if bad.size else '-'}")

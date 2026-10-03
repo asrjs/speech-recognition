@@ -2965,15 +2965,13 @@ that already passes its own `1e-5/1e-4` encoder gate.
 Call 40 is the instructive contrast and is not explained by feed size: its
 encoder delta is *smaller* (`8.9034e-7` versus `1.4566e-6`) yet its score
 error is *larger* (`1.1559e-3` versus `5.7888e-4`) with zero mismatches. So
-per-call amplification is not constant. The score error at coordinate *i* is
-the raw-logit error `d[i]` minus its probability-weighted mean
-`sum_j p_ref[j]*d[j]`, verified exactly at both calls (model residual
-`2.5e-8` at call 20, `1.4e-12` at call 40). Call 40's single near-zero-|ref|
-coordinate therefore carries only `1.076e-8` error — the projection cancels
-there — while its large error sits on deep channels (`|ref|` 51.03 at
-channel 8196) where `rtol*|ref|` covers it (`5.10e-3` against `1.157e-3`).
-Call 20 is unsaturated (`pmax` 0.821443) and its worst coordinate has small
-`|ref|` 2.9052, so `rtol` leaves only `2.905e-4` against a `5.789e-4` error.
+per-call amplification is not constant. Directly observed, per coordinate:
+call 40's only near-zero-|ref| coordinate carries just `1.076e-8` error,
+while its large error sits on deep channels (`|ref|` 51.03 at channel 8196)
+where `rtol*|ref|` covers it (`5.10e-3` allowance against a `1.157e-3`
+error). Call 20 is unsaturated (`pmax` 0.821443) and its worst coordinate has
+small `|ref|` 2.9052, so `rtol` leaves only `2.905e-4` against a `5.789e-4`
+error, and the first failing coordinate is 8195.
 A feed-delta magnitude therefore cannot be read as a pass/fail predictor on
 its own, and the earlier ranking of calls by feed error is not a proxy for the
 gate.
@@ -3029,6 +3027,14 @@ own failing `1.4566e-6` — so feed magnitude alone does not order pass/fail
 across calls.
 Per-call sensitivity depends on the error direction and the frame's score
 distribution, as the saturation analysis above shows.
+
+Gate crossing is not exclusive to one channel: at 0.5x the single failing
+coordinate is 8195, at 1x through 2x the failing set is still led by 8195, and
+at 4x and 8x it widens to 8194 and 8192 as the error grows. The failing
+coordinates are all in the top-logit region, and their identity moves with
+error size. (These are true channel indices from `np.flatnonzero` on the
+flattened `[1,1,1,8198]` axis; an earlier revision reported `first=0`, which
+was a batch-axis index from `np.nonzero(...)[0]` and named no channel.)
 
 An earlier note in this session claimed a required bound near `2.5e-8`; that
 was derived from a single hardcoded gain divided by `atol` alone, ignoring the

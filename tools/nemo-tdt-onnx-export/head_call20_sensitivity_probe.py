@@ -72,7 +72,7 @@ print("== like-for-like against the official captured normalized scores ==")
 def report(label, scores):
     ls = log_softmax(scores)
     err = np.abs(official_ls - ls)
-    bad = np.nonzero(err > 1e-5 + 1e-4 * np.abs(official_ls))[0]
+    bad = np.flatnonzero(err > 1e-5 + 1e-4 * np.abs(official_ls))
     print(f"  {label}: maxAbsError={err.max():.6e} meanAbsError={err.mean():.6e} "
           f"mismatch={bad.size} first={bad[0] if bad.size else None}")
     return err

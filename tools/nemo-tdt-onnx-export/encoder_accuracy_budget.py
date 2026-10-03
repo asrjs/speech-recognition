@@ -109,7 +109,7 @@ for scale in (0.0, 0.05, 0.1, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0):
         reference_feeds["encoder_outputs"] + delta * scale, dtype=np.float32)
     scores = log_softmax(dict(zip(names, sess.run(None, feeds)))["outputs"])
     err = np.abs(official_scores - scores)
-    bad = np.nonzero(err > ATOL + RTOL * np.abs(official_scores))[0]
+    bad = np.flatnonzero(err > ATOL + RTOL * np.abs(official_scores))
     feed = np.abs(delta * scale).max()
     if bad.size == 0:
         passing_scales.append((scale, feed))
