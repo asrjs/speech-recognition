@@ -122,6 +122,44 @@ Reading reference code does not authorize sibling edits or environment installs.
 
 Use the [tool map](../tools/README.md#task-to-tool-map) for the family workflow.
 
+### Python reference environment inventory
+
+Read-only audit on 2026-10-03: eleven interpreters inspected; six reference
+stacks passed their required imports and a small Torch CPU arithmetic check.
+Receipt: `tools/data/results/python-runtime-environments-2026-10-03.json`.
+No model or CUDA inference was run for this inventory. No environment was
+installed, moved, upgraded or deleted.
+
+| Environment / interpreter                                                                            | Observed stack                                                                                               | Isolation and verification                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project `tools/model-debugging/reference/nemotron-3.5-asr-streaming/.venv/Scripts/python.exe`        | Python 3.10.12; local NeMo 3.0.0; Torch 2.6.0+cu118; Transformers 4.51.3                                     | **Overlay**, not standalone: inherits Torch, ONNX, ORT and NumPy from Conda `nemo`; user site enabled. ASR imports pass; `pip check` fails with seven missing/incompatible requirements.                 |
+| Project `tools/model-debugging/reference/qwen3-asr-0.6b/.venv/Scripts/python.exe`                    | Python 3.11.4; qwen-asr 0.0.6; Torch 2.13.0+cpu; Transformers 4.57.6; NumPy 2.4.6                            | Isolated from system/user sites. Qwen imports and `pip check` pass.                                                                                                                                      |
+| `C:\Users\steam\anaconda3\envs\nemo\python.exe`                                                      | Python 3.10.12; NeMo **2.4.0**; Torch 2.6.0+cu118                                                            | Different oracle from the project NeMo 3.0.0 overlay. ASR imports pass; `pip check` fails with three missing/incompatible requirements.                                                                  |
+| `C:\Users\steam\anaconda3\envs\medasr_env\python.exe`                                                | Python 3.11.14; Torch 2.10.0+cpu; Transformers 5.3.0.dev0                                                    | Core imports pass; `pip check` fails on missing notebook dependencies. Do not merge this development Transformers stack into Qwen's stack.                                                               |
+| `C:\Users\steam\anaconda3\envs\asrds_py311\python.exe`                                               | Python 3.11.14; Torch 2.9.1+cu126; editable onnx-asr 0.10.3.dev8+g55d59284c from `N:\github\ysdede\onnx-asr` | Core imports pass; ORT 1.24.2 advertises CUDA/TensorRT/CPU. GPU inference untested. `pip check` reports a google-genai/websockets conflict.                                                              |
+| `N:\github\salute-developers\GigaAM\.venv\Scripts\python.exe`                                        | Python 3.11.4; local sherpa-onnx 1.13.6; FunASR 1.4.4 and Torch 2.7.1+cu128 from `C:\Python311`              | **Sibling overlay**, not project-owned or isolated. Sherpa/FunASR imports pass; `pip check` fails on inherited dependency conflicts. Existing GigaAM, SenseVoice and X-ASR recipes use this interpreter. |
+| uv-managed `C:\Users\steam\AppData\Roaming\uv\python\cpython-3.13.15-windows-x86_64-none\python.exe` | Python 3.13.15; NumPy 2.3.2 and SoundFile supplied by the user site                                          | Interpreter only, not a project reference stack. No uv tool environments, project `uv.lock` or project dependency `pyproject.toml` found.                                                                |
+
+Other metadata-only checks: Conda `vgtts` has Torch 2.10.0+cu126 and
+Transformers 4.57.6; Conda base is Python 3.13.5; system Python 3.11.4 has
+Torch 2.7.1+cu128 and FunASR 1.4.4; system Python 3.12.7 has none of the
+surveyed ASR/runtime packages. These were not import-smoked as reference stacks.
+
+Conda is installed at `C:\Users\steam\anaconda3\Scripts\conda.exe` but was
+not found by `Get-Command conda`. Its registry contains duplicate path-case
+entries, not additional environments. uv is installed and lists both its
+managed Python and system interpreters.
+
+CPU and GPU ORT distributions coexist in several environments. The imported
+ORT in NeMo and the sibling GigaAM overlay exposes only Azure/CPU providers;
+installed GPU distribution metadata alone does not prove GPU availability.
+
+For future provisioning, follow
+[Python reference environment rules](../tools/README.md#python-reference-environments):
+own an isolated, version-pinned stack per reference library ecosystem, with a
+separate stack where reference versions conflict. Keep the current captures
+bound to their original interpreter; do not relabel NeMo 2.4 output as NeMo 3.0.
+
 ### `keet`
 
 Experimental or older Parakeet-related scratch work.

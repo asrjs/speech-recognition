@@ -3,6 +3,40 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C24 — Python reference environment inventory
+
+Status: AUDITED — read-only environment discovery, real import/CPU smoke and
+dependency checks. Not model parity, CUDA acceptance or environment migration.
+User requested project-owned environments per runtime/reference library and
+inspection of venv, Conda and uv installations.
+
+Eleven interpreters were inspected. Six reference stacks passed actual imports
+and Torch CPU arithmetic. Only the isolated project Qwen environment passed
+`pip check` among those six. The project NeMo environment is an overlay:
+NeMo 3.0.0 is local, while Torch/ONNX/ORT/NumPy come from Conda `nemo`, whose
+own NeMo version is 2.4.0. Both import ASR successfully but have dependency
+conflicts; they are not interchangeable oracle identities. The sibling
+GigaAM environment also inherits from system Python and is not project-owned.
+
+Conda is installed but absent from `PATH`; explicit invocation locates `nemo`,
+`medasr_env`, `asrds_py311`, `vgtts` and base. uv supplies a managed Python
+3.13.15 interpreter, but no uv tool environment or project uv manifest/lockfile
+was found. Its visible NumPy comes from the user site, not an isolated ASR stack.
+
+The [tool map](../tools/README.md#python-reference-environments), local skill
+and [workstation inventory](WORKSPACE_CONTEXT.md#python-reference-environment-inventory)
+now expose interpreter selection, package provenance, isolation and actual
+dependency-check outcomes. The recommended unit is a version-pinned reference
+dependency stack, shared across compatible models, with separate environments
+for incompatible reference versions. No package was installed or upgraded;
+no environment or inherited Nemotron change was edited.
+
+Receipt: `tools/data/results/python-runtime-environments-2026-10-03.json`.
+Imports/CPU arithmetic passed for project NeMo, project Qwen, Conda NeMo,
+Conda MedASR, Conda onnx-asr and sibling sherpa/FunASR. Dependency-check failures
+are preserved, not suppressed. Provisioning isolated replacements remains
+separate from this completed inventory.
+
 ## C23 — Project-local skill and tool discovery
 
 Status: PASS — documentation discovery and CLI-help smoke; not model inference

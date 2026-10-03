@@ -19,20 +19,21 @@ relative to this checkout. The [Model Debugging Skill](model-debugging/SKILL.md)
 is a project-local playbook; it does not need global installation or harness
 registration. Read it before model-porting or parity work.
 
-| Task or symptom                                                   | Read first                                                                                                                                             | Existing tool or reference                                                                                                                                                  |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| New model port, or an apparently missing port                     | [End-to-end parity workflow](model-debugging/playbooks/model-porting-parity.md), then the [family playbook index](model-debugging/playbooks/README.md) | [Reference sets](model-debugging/reference/README.md); inspect `src/models`, `models` and local receipts before writing code or downloading weights                         |
-| NeMo/Parakeet raw log-mel, normalization or valid-length mismatch | [NeMo feature-contract workflow](model-debugging/playbooks/nemo-rnnt-porting.md)                                                                       | [JS feature parity](model-debugging/scripts/node-canary-js-frontend-parity.mjs), [official NeMo capture](model-debugging/reference/hf-parakeet-port/python-nemo-inspect.py) |
-| Orukeet original weights, export or numerical replay              | [Orukeet reference guide](model-debugging/reference/orukeet/README.md), [TDT export/replay guide](nemo-tdt-onnx-export/README.md)                      | [Source audit](model-debugging/reference/orukeet/audit_source.py), existing `hf-parakeet-port` probes and `nemo-tdt-onnx-export` runners                                    |
-| Qwen3-ASR encoder, explicit KV decoder, WASM or WebGPU            | [Existing Qwen port](model-debugging/playbooks/qwen3-asr-porting.md)                                                                                   | [Official capture/export helpers and local artifact paths](model-debugging/reference/qwen3-asr-0.6b/README.md); do not assume this port or its weights are absent           |
-| Kaldi fbank or streaming encoder caches                           | [X-ASR/sherpa workflow](model-debugging/playbooks/x-asr-porting.md)                                                                                    | [Official sherpa capture and fbank dump](model-debugging/reference/x-asr/README.md)                                                                                         |
-| Browser and Node disagree on input preparation                    | [Audio preparation parity](model-debugging/playbooks/audio-prep-parity.md)                                                                             | [Effective-PCM control](model-debugging/playbooks/librivox-domain-parity.md), [NeMo library inspector](model-debugging/scripts/node-asrjs-nemo-inspect.mjs)                 |
-| Find the first divergent captured stage                           | [Stage-capture CLI contract](model-debugging/scripts/README.md#stage-capture-contract)                                                                 | [Stage comparator](model-debugging/scripts/node-compare-stage-captures.mjs), [numerical metrics](tensor_parity.py)                                                          |
-| Attribute a failing stage to one input                            | [Shared harness boundary](../docs/MODEL_HARNESS_CONTRACT.md)                                                                                           | [Fail-closed attribution API](stage_attribution.py); reuse it through a family adapter, not a second inference loop                                                         |
-| ONNX graph, external-data or packaging failure                    | [Artifact audit CLI](model-debugging/scripts/README.md#candidate-artifact-audit)                                                                       | [Local audit](model-debugging/scripts/node-audit-onnx-artifact.mjs), [external-data inspector](onnx_artifacts.py), [bounded repacker](repack_onnx_external_data.py)         |
-| ORT WebGPU module, provider or numerical discrepancy              | [ORT entrypoint control](model-debugging/playbooks/ort-webgpu-entrypoint.md)                                                                           | TDT browser runners record selected-module identity and fetched-artifact hashes; inspect actual receipt fields, not only package versions                                   |
-| Real browser capture/controller behavior                          | [Browser validation guide](browser-validation/README.md)                                                                                               | Existing browser probes; model inference and fake-device capture are separate acceptance scopes                                                                             |
-| Whisper export or alignment graphs                                | [Whisper exporter](whisper-onnx-export/README.md), [export workflow](../docs/whisper-export-workflow.md)                                               | Existing four-graph export tools and model-owned parity checks                                                                                                              |
+| Task or symptom                                                         | Read first                                                                                                                                             | Existing tool or reference                                                                                                                                                  |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New model port, or an apparently missing port                           | [End-to-end parity workflow](model-debugging/playbooks/model-porting-parity.md), then the [family playbook index](model-debugging/playbooks/README.md) | [Reference sets](model-debugging/reference/README.md); inspect `src/models`, `models` and local receipts before writing code or downloading weights                         |
+| Missing Python import, wrong reference version or environment selection | [Python reference environments](#python-reference-environments)                                                                                        | [Verified workstation inventory](../docs/WORKSPACE_CONTEXT.md#python-reference-environment-inventory); check venv provenance, Conda and uv before installing                |
+| NeMo/Parakeet raw log-mel, normalization or valid-length mismatch       | [NeMo feature-contract workflow](model-debugging/playbooks/nemo-rnnt-porting.md)                                                                       | [JS feature parity](model-debugging/scripts/node-canary-js-frontend-parity.mjs), [official NeMo capture](model-debugging/reference/hf-parakeet-port/python-nemo-inspect.py) |
+| Orukeet original weights, export or numerical replay                    | [Orukeet reference guide](model-debugging/reference/orukeet/README.md), [TDT export/replay guide](nemo-tdt-onnx-export/README.md)                      | [Source audit](model-debugging/reference/orukeet/audit_source.py), existing `hf-parakeet-port` probes and `nemo-tdt-onnx-export` runners                                    |
+| Qwen3-ASR encoder, explicit KV decoder, WASM or WebGPU                  | [Existing Qwen port](model-debugging/playbooks/qwen3-asr-porting.md)                                                                                   | [Official capture/export helpers and local artifact paths](model-debugging/reference/qwen3-asr-0.6b/README.md); do not assume this port or its weights are absent           |
+| Kaldi fbank or streaming encoder caches                                 | [X-ASR/sherpa workflow](model-debugging/playbooks/x-asr-porting.md)                                                                                    | [Official sherpa capture and fbank dump](model-debugging/reference/x-asr/README.md)                                                                                         |
+| Browser and Node disagree on input preparation                          | [Audio preparation parity](model-debugging/playbooks/audio-prep-parity.md)                                                                             | [Effective-PCM control](model-debugging/playbooks/librivox-domain-parity.md), [NeMo library inspector](model-debugging/scripts/node-asrjs-nemo-inspect.mjs)                 |
+| Find the first divergent captured stage                                 | [Stage-capture CLI contract](model-debugging/scripts/README.md#stage-capture-contract)                                                                 | [Stage comparator](model-debugging/scripts/node-compare-stage-captures.mjs), [numerical metrics](tensor_parity.py)                                                          |
+| Attribute a failing stage to one input                                  | [Shared harness boundary](../docs/MODEL_HARNESS_CONTRACT.md)                                                                                           | [Fail-closed attribution API](stage_attribution.py); reuse it through a family adapter, not a second inference loop                                                         |
+| ONNX graph, external-data or packaging failure                          | [Artifact audit CLI](model-debugging/scripts/README.md#candidate-artifact-audit)                                                                       | [Local audit](model-debugging/scripts/node-audit-onnx-artifact.mjs), [external-data inspector](onnx_artifacts.py), [bounded repacker](repack_onnx_external_data.py)         |
+| ORT WebGPU module, provider or numerical discrepancy                    | [ORT entrypoint control](model-debugging/playbooks/ort-webgpu-entrypoint.md)                                                                           | TDT browser runners record selected-module identity and fetched-artifact hashes; inspect actual receipt fields, not only package versions                                   |
+| Real browser capture/controller behavior                                | [Browser validation guide](browser-validation/README.md)                                                                                               | Existing browser probes; model inference and fake-device capture are separate acceptance scopes                                                                             |
+| Whisper export or alignment graphs                                      | [Whisper exporter](whisper-onnx-export/README.md), [export workflow](../docs/whisper-export-workflow.md)                                               | Existing four-graph export tools and model-owned parity checks                                                                                                              |
 
 ### Before adding tools or reporting BLOCKED
 
@@ -55,6 +56,45 @@ Tool discovery grants no extra authority. Preserve unrelated changes and failed
 receipts. New large downloads, installs, uploads and sibling edits still need
 approval. Do not search site-packages or backup copies when the active toolkit
 already supplies the route.
+
+## Python reference environments
+
+Use a project-owned environment per **reference dependency stack**, not per
+model and not one global Python environment for every tool. NeMo, Qwen and
+MedASR have incompatible version requirements; NeMo 2.x and 3.x also need
+distinct identities when reproducing existing captures. Compatible model
+families can share one verified stack.
+
+The current checkout is only partly isolated. See the
+[workstation inventory](../docs/WORKSPACE_CONTEXT.md#python-reference-environment-inventory)
+for actual interpreters, package provenance and dependency-check results.
+Those existing environments are discovery leads, not reproducible installation
+manifests. Do not replace an environment during a numerical-parity investigation.
+
+Before choosing an interpreter:
+
+1. Inspect repository `pyvenv.cfg`, dependency manifests and lockfiles. A
+   `.venv` with `include-system-site-packages = true` inherits packages from its
+   base interpreter and can also expose the user site.
+2. Check Conda registrations, even if `conda` is absent from `PATH`. On Windows,
+   `$HOME/.conda/environments.txt` supplies registered paths; invoke the installed
+   Conda executable explicitly for `env list --json`.
+3. Run `uv python list --only-installed` and `uv tool list` if uv is available.
+   The Python list includes system interpreters as well as uv-managed ones.
+   A downloaded interpreter or cache is not a project environment.
+4. Invoke the selected Python directly. Record `sys.executable`, `sys.prefix`,
+   `sys.base_prefix`, package versions and imported module `__file__` paths.
+   Run the needed imports and `-m pip check`. Successful imports do not imply
+   dependency consistency or model parity.
+5. Record actual ORT providers, not merely installed CPU/GPU distribution names.
+   Provider enumeration is not proof that a CUDA session runs.
+
+When provisioning is approved, keep each stack's dependency specification and
+lockfile in the repository and its installed environment out of version control.
+Use isolated environments without system/user-site inheritance, explicit
+interpreter routes in family guides, and an import/model smoke before changing
+those routes. Pin reference-engine versions; do not silently upgrade an oracle.
+This inventory does not install, migrate or delete environments.
 
 ## Layout
 

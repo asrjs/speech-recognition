@@ -27,6 +27,11 @@ Use those ports as references, not replacements for the official oracle.
 Check captured tensor shapes and layouts before reshaping arrays. Keep raw
 log-mel separate from normalized features. A failed import in the default
 Python interpreter does not prove that a model's local environment is absent.
+Check the [Python environment inventory](../../docs/WORKSPACE_CONTEXT.md#python-reference-environment-inventory)
+and [environment-selection rules](../README.md#python-reference-environments).
+Inspect Conda and uv as well as project venvs. Record the imported module path:
+the project NeMo venv overlays NeMo 3.0.0 on Conda's NeMo 2.4.0 stack, and a
+`.venv` directory does not establish isolation or dependency consistency.
 
 ## Goals
 
