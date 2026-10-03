@@ -1788,3 +1788,32 @@ into the live DFT run. A read-only Windows module inventory for PID 14664
 confirms SciPy, llvmlite and Numba DLLs are loaded; this supports that the broad
 dependency path has been entered, but is not a stack trace or proof of the
 current instruction/cause of delay. Final downstream metrics remain pending.
+
+### Dependency-light frozen DFT feature result (2026-10-03)
+
+An independent control in `probe_light_dft_features.py` reuses the captured-input,
+probe-composition and numerical validation helpers plus the hash-bound NumPy
+bank. It does not modify/restart live session 18933 or import librosa/Torch.
+The new final-source run exits zero and records a negative candidate result in
+`tools/data/results/orukeet/light-dft-features-speech-silence-bound-2026-10-03.json`.
+At unchanged atol=1e-5/rtol=1e-4: official-complex downstream control has zero
+mismatches (max abs 9.5367431640625e-7); ORT DFT spectrum has zero tolerance
+mismatches, but its downstream features have 78 (max abs 0.0001283884048461914,
+first flattened index 98). Thus component allclose does not qualify this DFT
+path for feature parity or production promotion. This is not a speed comparison
+against the packed-FFT candidate or browser DFT feasibility evidence.
+
+Receipt binds PCM, window, oracle components, empirical reconstructed frames,
+bank recipe/identity, graph, executed JS probe and full source closure; records
+4061 physical/4060 valid frames and actual CPU provider/engine versions.
+Complex components are assigned separately to preserve signed zeros. Frame
+padding is explicitly empirical, not claimed as independently captured FFT
+input. Three CLI guard tests (four cases), four bank tests, syntax and actual
+full diagnostic runs pass. Guards preserve existing outputs, reject input
+aliases and reject a wrong bank before capture/probe execution. No model
+weights, production code, acceptance thresholds or dist changed.
+
+Next: investigate the remaining FFT/power arithmetic seam with equivalent
+captured inputs and final-feature controls; retain this negative DFT candidate.
+Do not escalate to fp16/preset promotion or use a coordinate-specific patch.
+The older broad-dependency run remains independently pending while live.
