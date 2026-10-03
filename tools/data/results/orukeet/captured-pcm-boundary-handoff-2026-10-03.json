@@ -1,0 +1,22 @@
+{
+  "status": "DIAGNOSTIC_NOT_PORT_ACCEPTANCE",
+  "sample_id": "speech-silence",
+  "raw_receipt": "tools/data/results/orukeet/feature-boundary-captured-pcm-speech-silence-2026-10-03.json.gz",
+  "raw_receipt_sha256": "ddbdb20269e3952213d1e88370ab7bb0cf3682836534cba609fbc86a904ad4af",
+  "process_exit_code": 1,
+  "actual_model_stft_status": "PASS_ACTUAL_STFT_REPRODUCTION",
+  "pcm_source": "captured-waveform",
+  "pcm_sha256_f32le": "8f4293517daf07f433b307a4a971f7c17dc9ed348b5f72999945b217331ec3df",
+  "comparison_tolerance": { "atol": 0.00001, "rtol": 0.0001 },
+  "mismatch_counts": {
+    "complete_js_features": 74,
+    "normalization_of_same_official_raw_mel": 0,
+    "captured_power_features": 30,
+    "official_complex_library_features": 0,
+    "official_complex_rounded_features": 0
+  },
+  "scope": "Oracle-complex controls bypass local FFT. Production features and full ASR remain unaccepted. Full numerical metrics are in the raw receipt.",
+  "source_version_note": "Executed before semantic preprocessor_input_signal boundary guard was added; raw receipt preserves its actual executed diagnostic SHA.",
+  "validation": { "captured_pcm_guard_tests": 3, "existing_boundary_tests": 81, "existing_stft_tests": 8 },
+  "next": "Investigate portable FFT/power seam without selected-coordinate production corrections or tolerance changes."
+}

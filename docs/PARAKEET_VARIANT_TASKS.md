@@ -1707,3 +1707,46 @@ mathematics changed; the Torch-dependent candidate remains unpromoted.
 Receipt: `tools/data/results/orukeet/fft-thread-control-handoff-2026-10-03.json`.
 Next: inspect the actual FFT operation boundary for a source-backed distinction;
 retain production-feature, real-encoder and full-model acceptance gates.
+
+### Speech/silence FFT operation control (2026-10-03)
+
+Ran `probe_fft_factorization.py` on the captured frame 1027 / bin 2 with
+real512 byte identity required, then the hash-pinned exact-rational operation
+probe. Complex256, split128 and real even/odd halves do not reproduce both
+oracle components. The recorded final bin-2 additions are exact, while the
+required oracle rotated terms are not representable as f32 for these fixed
+even terms. This rejects a simple final-add-rounding explanation for this
+recorded arithmetic; it does not identify MKL internals or validate features.
+Local receipts: `fft-factorization-speech-silence-2026-10-03.json` and
+`fft-operation-residuals-speech-silence-2026-10-03.json` under the Orukeet results.
+
+The proposed current-production boundary command was also executed, but
+`compare_js_feature_boundaries.py` rejected the original canonical audio before
+computation because its input loader requires same-rate mono PCM16. No output
+receipt or model PASS was produced. Next: extend that diagnostic to consume
+the exact captured PCM with original audio/capture identity checks, not hidden
+resampling, then compare oracle-complex injection through production reduction.
+
+### Exact captured-PCM production boundary (2026-10-03)
+
+Added explicit `--captured-pcm` to the boundary diagnostic: source audio SHA
+is still checked, and exact finite float32 waveform, shape/rate/count/padding
+and model-input SHA are required. Receipt records both identities. Three new
+guard tests plus 89 existing boundary/STFT tests pass. Independent inspection
+found missing semantic boundary validation; after the live process completed,
+added `preprocessor_input_signal` validation and wrong/missing-boundary cases.
+
+The actual 40.6s run completed with diagnostic exit 1 and wrote
+`feature-boundary-captured-pcm-speech-silence-2026-10-03.json.gz`. Official
+processor and actual STFT reproduction pass; effective PCM SHA matches the
+capture. Current production features have 74 tolerance mismatches. Normalizing
+the identical official raw mel has zero; oracle-complex library-power and
+rounded-power feature controls each have zero. This localizes the remaining
+production issue upstream of normalization for this fixture; power allclose
+alone still does not imply feature parity. No production arithmetic or
+tolerance changed and full-model acceptance remains open.
+
+The raw receipt remains bound to the source before the semantic-boundary guard
+addition; it is not mislabeled as executing the later helper version. Next:
+record a compact hash-bound metrics handoff and commit the validated harness,
+then investigate the FFT/power seam without coordinate-specific corrections.

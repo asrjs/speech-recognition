@@ -1045,6 +1045,32 @@ def write_diagnostic_report(path, report):
         write_new_text(path, json.dumps(report, indent=2) + "\n")
 
 
+def captured_pcm(sample, sample_rate):
+    """Use only the exact, hash-bound mono model input; never decode/resample."""
+    stage = sample['stages']['waveform']
+    identity = sample['model_input']
+    shape, data = stage.get('shape'), stage.get('data')
+    if (stage.get('dtype') != 'float32' or not isinstance(shape, list)
+            or len(shape) != 2 or type(shape[0]) is not int or shape[0] != 1
+            or type(shape[1]) is not int or shape[1] < 1
+            or not isinstance(data, list) or len(data) != shape[1]
+            or any(type(value) not in (int, float) for value in data)):
+        raise ValueError('Invalid captured PCM tensor')
+    values = np.asarray(data, dtype=np.float64)
+    pcm = values.astype(np.float32)
+    if not np.isfinite(values).all() or not np.array_equal(values, pcm.astype(np.float64)):
+        raise ValueError('Captured PCM must contain exact finite float32 values')
+    expected = {'boundary': 'preprocessor_input_signal',
+        'sample_rate': sample_rate, 'channels': 1, 'dtype': 'float32',
+        'encoding': 'f32le', 'shape': shape, 'samples': pcm.size,
+        'valid_samples': pcm.size, 'right_padding_samples': 0,
+        'sha256': hashlib.sha256(pcm.astype('<f4').tobytes()).hexdigest()}
+    if any(type(identity.get(key)) is not type(value) or identity[key] != value
+           for key, value in expected.items()):
+        raise ValueError('Captured PCM identity differs')
+    return pcm
+
+
 def main():
     diagnostic_bytes = Path(__file__).read_bytes()
     parser = argparse.ArgumentParser(description=__doc__)
@@ -1054,6 +1080,8 @@ def main():
     parser.add_argument("--sample-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--summary-only", action="store_true", help="Print only receipt path/status; full evidence remains in output")
+    parser.add_argument('--captured-pcm', action='store_true',
+        help='Use hash-bound captured waveform, not audio decoding or resampling')
     parser.add_argument("--require-actual-stft", action="store_true",
         help="Fail unless the frozen original-model input/window/complex STFT capture matches exactly")
     parser.add_argument("--packed-butterfly-products", choices=("separate", "single-round"), default="separate",
@@ -1065,10 +1093,6 @@ def main():
     args = parser.parse_args()
     require_new_outputs([args.output], protected_inputs=[args.audio, args.source_config, args.official_capture])
     config = json.loads(args.source_config.read_text(encoding="utf-8"))["preprocessor"]
-    with wave.open(str(args.audio), "rb") as audio:
-        if audio.getnchannels() != 1 or audio.getsampwidth() != 2 or audio.getframerate() != config["sample_rate"]:
-            raise ValueError("This diagnostic requires same-rate mono PCM16; no hidden resampling")
-        pcm = np.frombuffer(audio.readframes(audio.getnframes()), dtype="<i2").astype(np.float32) / 32768
     captured_bytes = args.official_capture.read_bytes()
     captured = json.loads(gzip.decompress(captured_bytes) if args.official_capture.suffix == ".gz" else captured_bytes)
     matches = [sample for sample in captured["samples"] if sample["sample_id"] == args.sample_id]
@@ -1078,6 +1102,13 @@ def main():
     audio_sha = hashlib.sha256(args.audio.read_bytes()).hexdigest()
     if official["audio"]["sha256"] != audio_sha:
         raise ValueError("Official/candidate audio identity differs")
+    if args.captured_pcm:
+        pcm = captured_pcm(official, config['sample_rate'])
+    else:
+        with wave.open(str(args.audio), 'rb') as audio:
+            if audio.getnchannels() != 1 or audio.getsampwidth() != 2 or audio.getframerate() != config['sample_rate']:
+                raise ValueError('This diagnostic requires same-rate mono PCM16; no hidden resampling')
+            pcm = np.frombuffer(audio.readframes(audio.getnframes()), dtype='<i2').astype(np.float32) / 32768
     cache = ROOT / ".cache" / "nemo-reference" / "numba"
     cache.mkdir(parents=True, exist_ok=True)
     os.environ["NUMBA_CACHE_DIR"] = str(cache)
@@ -1407,6 +1438,8 @@ def main():
         "selected_power_intervention": selected_power_intervention(js, power.numpy(), raw.numpy(),
             normalized.numpy(), int(valid_length[0])) if args.power_override else None,
         "audio_sha256": audio_sha, "source_config_sha256": hashlib.sha256(args.source_config.read_bytes()).hexdigest(),
+        'pcm_source': 'captured-waveform' if args.captured_pcm else 'mono-pcm16-audio',
+        'pcm_sha256_f32le': hashlib.sha256(pcm.astype('<f4').tobytes()).hexdigest(),
         "official_capture_sha256": hashlib.sha256(captured_bytes).hexdigest(),
         "library_processor_sha256": hashlib.sha256((ROOT / "dist/audio/js-mel.js").read_bytes()).hexdigest(),
         "environment": {"python": sys.version, "torch": torch.__version__, "node": js["nodeVersion"]},
