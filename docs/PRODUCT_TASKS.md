@@ -398,6 +398,16 @@ TranscriptResponse mismatch in the unchanged createProbeRuntime mock at line
 60; that mock typing remains open and this is not a clean typecheck claim.
 This test does not certify real ONNX session recovery or browser GPU reuse.
 
+Typing follow-up (2026-10-03): reproduced the line-60 factory error. The mock
+session returned canonical output for every generic response flavor. It now
+uses actual public input/options/conditional response types and returns native,
+canonical or envelope output as requested. Three public loaded-handle cases
+independently assert exact single/batch response shapes and once-only disposal.
+Strict standalone NodeNext compilation with skipLibCheck disabled now passes;
+31 high-level API/lifecycle tests, scoped lint, format and diff checks pass.
+No production API or type was weakened. Cancellation reuse remains a controlled
+model result, not real ONNX recovery acceptance.
+
 ## C12 — Global window timestamp contract
 
 Status: PARTIAL PASS — controlled two-window public API regression.

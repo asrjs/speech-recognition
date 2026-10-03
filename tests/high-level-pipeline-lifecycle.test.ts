@@ -7,6 +7,10 @@ import {
   PipelineAbortedError,
   type BackendCapabilities,
   type ExecutionBackend,
+  type AudioInputLike,
+  type BaseTranscriptionOptions,
+  type TranscriptResponse,
+  type TranscriptResponseFlavor,
 } from '@asrjs/speech-recognition';
 import { loadBuiltInSpeechModel } from '@asrjs/speech-recognition/builtins';
 import { describe, expect, it } from 'vitest';
@@ -26,6 +30,22 @@ function createStaticBackend(capabilities: BackendCapabilities): ExecutionBacken
       };
     },
   };
+}
+
+type ProbeNative = { readonly utterance: string };
+
+function probeResponse<TFlavor extends TranscriptResponseFlavor>(
+  flavor?: TFlavor,
+): TranscriptResponse<ProbeNative, TFlavor> {
+  const canonical = {
+    text: 'probe',
+    warnings: [],
+    meta: { detailLevel: 'text' as const, isFinal: true },
+  };
+  const native: ProbeNative = { utterance: 'probe' };
+  return (
+    flavor === 'native' ? native : flavor === 'canonical+native' ? { canonical, native } : canonical
+  ) as TranscriptResponse<ProbeNative, TFlavor>;
 }
 
 function createProbeRuntime(options: {
@@ -68,27 +88,19 @@ function createProbeRuntime(options: {
         backend: context.backend,
         async createSession() {
           return {
-            async transcribe(
-              _input: Float32Array,
-              transcribeOptions?: { readonly signal?: { readonly aborted: boolean } | null },
-            ) {
+            async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+              _input: AudioInputLike,
+              transcribeOptions?: BaseTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+            ): Promise<TranscriptResponse<ProbeNative, TFlavor>> {
               await options.onTranscribe?.(transcribeOptions?.signal);
-              return {
-                text: 'probe',
-                warnings: [],
-                meta: { detailLevel: 'text' as const, isFinal: true },
-              };
+              return probeResponse(transcribeOptions?.responseFlavor);
             },
-            async transcribeBatch(
-              inputs: readonly Float32Array[],
-              transcribeOptions?: { readonly signal?: { readonly aborted: boolean } | null },
-            ) {
+            async transcribeBatch<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
+              inputs: readonly AudioInputLike[],
+              transcribeOptions?: BaseTranscriptionOptions & { readonly responseFlavor?: TFlavor },
+            ): Promise<readonly TranscriptResponse<ProbeNative, TFlavor>[]> {
               await options.onTranscribeBatch?.(transcribeOptions?.signal);
-              return inputs.map(() => ({
-                text: 'probe',
-                warnings: [],
-                meta: { detailLevel: 'text' as const, isFinal: true },
-              }));
+              return inputs.map(() => probeResponse(transcribeOptions?.responseFlavor));
             },
             dispose() {},
           };
@@ -109,6 +121,47 @@ const REQUEST = {
 };
 
 describe('SpeechPipeline lifecycle races', () => {
+  it.each(['canonical', 'canonical+native', 'native'] as const)(
+    'preserves %s response shape for single and batch calls',
+    async (responseFlavor) => {
+      let disposeCount = 0;
+      const runtime = createProbeRuntime({
+        onCreateModel: async () => undefined,
+        onDisposeModel: () => {
+          disposeCount += 1;
+        },
+      });
+      const loaded = await loadSpeechModel({ ...REQUEST, runtime });
+      try {
+        const expected =
+          responseFlavor === 'native'
+            ? { utterance: 'probe' }
+            : responseFlavor === 'canonical+native'
+              ? {
+                  canonical: {
+                    text: 'probe',
+                    warnings: [],
+                    meta: { detailLevel: 'text', isFinal: true },
+                  },
+                  native: { utterance: 'probe' },
+                }
+              : { text: 'probe', warnings: [], meta: { detailLevel: 'text', isFinal: true } };
+        expect(await loaded.transcribe(new Float32Array(16000), { responseFlavor })).toEqual(
+          expected,
+        );
+        expect(
+          await loaded.transcribeBatch([new Float32Array(16000), new Float32Array(8000)], {
+            responseFlavor,
+          }),
+        ).toEqual([expected, expected]);
+      } finally {
+        await loaded.dispose();
+        await runtime.dispose();
+      }
+      expect(disposeCount).toBe(1);
+    },
+  );
+
   it('does not cache a handle invalidated by disposeModel during load', async () => {
     let releaseCreate!: () => void;
     const createGate = new Promise<void>((resolve) => {
