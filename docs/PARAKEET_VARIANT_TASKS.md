@@ -2739,5 +2739,17 @@ Unknown scopes fail closed. Three new regressions failed before implementation
 and now pass;43 live-head/browser replay tests and Python syntax checks pass.
 This is a comparator repair, not new browser inference or model acceptance.
 The prior trace's score failure and unresolved feature gate are not waived.
-An attempted offline full-trace re-evaluation did not yield observable command
-output, so its result is UNVERIFIED and no old receipt was overwritten.
+The first offline full-trace re-evaluation yielded no observable command output.
+A subsequent explicitly observed run completed with exit0: all46 calls in the
+real scope retain LIVE_HEAD_NUMERICAL_FAIL, with only call20 normalized scores
+failing (three coordinates); the frozen WASM scope is LIVE_HEAD_NUMERICAL_PASS
+with no numerical failures. This is post-processing of captured runs, not a
+new browser run. No old receipt was overwritten. Source receipt SHA256:
+real `0ea1f1637d4588fad081f8240fc2c6f241ff175e422bc8072ae6ed99203873da`,
+frozen `b96a866cc32025ad33f22b8fb9337bf002cd4aa482c897b0b6ad60ed69b3245e`.
+
+Normalization follow-up: the existing width8/16 diagnostic's five Node tests
+pass. Its width dependence and remaining upstream raw-feature failures do not
+justify adding a fixed-width reduction to the shared production processor.
+Keep the current production math unchanged until a family/backend arithmetic
+contract and complete feature controls justify a specific implementation.
