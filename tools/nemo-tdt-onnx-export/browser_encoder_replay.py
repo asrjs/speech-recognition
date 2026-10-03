@@ -41,24 +41,28 @@ def evaluate(result, sample, backend):
 def evaluate_sensitivity(result, sample, backend):
     """Measured downstream effect never waives a failed preprocessing gate."""
     runs = result.get('runs', [])
-    if len(runs) != 4 or [run.get('featureSource') for run in runs] != ['official'] * 2 + ['production-js'] * 2:
+    production_first = bool(result.get('productionFirst'))
+    expected = (['production-js'] * 2 + ['official'] * 2) if production_first else (['official'] * 2 + ['production-js'] * 2)
+    if len(runs) != 4 or [run.get('featureSource') for run in runs] != expected:
         raise ValueError('Requested official/production repeated calls missing or reordered')
+    official_at, production_at = (2, 0) if production_first else (0, 2)
     if result.get('pcmSha256') != sample['model_input']['sha256']:
         raise ValueError('Actual browser PCM identity differs')
     if type(result.get('productionLength')) is not int or result['productionLength'] != sample['stages']['features_length']['data'][0]:
         raise ValueError('Production feature length differs')
     result['feature_comparison'] = compare_tensors(stage(sample['stages'], 'features', 'float32'),
         stage({'production': result['productionFeatures']}, 'production', 'float32'), atol=1e-5, rtol=1e-4)
-    result['official_encoder_pass'] = evaluate({**result, 'runs': runs[:2]}, sample, backend)
-    result['production_encoder_pass'] = evaluate({**result, 'runs': runs[2:]}, sample, backend)
+    result['official_encoder_pass'] = evaluate({**result, 'runs': runs[official_at:official_at + 2]}, sample, backend)
+    result['production_encoder_pass'] = evaluate({**result, 'runs': runs[production_at:production_at + 2]}, sample, backend)
     cross = result.get('crossSessionRuns') or []
     if cross:
         # Cross-session variability: same graph, same options, same features,
         # but a separately created session. Within-session repeats are bitwise
         # exact and cannot answer this.
-        if [row.get('featureSource') for row in cross] != ['official', 'production-js']:
+        if [row.get('featureSource') for row in cross] != (['production-js', 'official'] if production_first else ['official', 'production-js']):
             raise ValueError('Cross-session feature sources differ from the main runs')
-        pairs = (('official', runs[0], cross[0]), ('production-js', runs[2], cross[1]))
+        pairs = (('official', runs[official_at], cross[-1] if production_first else cross[0]),
+                 ('production-js', runs[production_at], cross[0] if production_first else cross[1]))
         comparisons = {}
         for label, first, second in pairs:
             if set(first['outputs']) != set(second['outputs']):
@@ -80,9 +84,10 @@ def evaluate_sensitivity(result, sample, backend):
     if resident:
         # Session co-residency: same encoder session, same graph, same options,
         # but a decoder session now exists alongside it.
-        if [row.get('featureSource') for row in resident] != ['official', 'production-js']:
+        if [row.get('featureSource') for row in resident] != (['production-js', 'official'] if production_first else ['official', 'production-js']):
             raise ValueError('Co-resident feature sources differ from the main runs')
-        resident_pairs = (('official', runs[0], resident[0]), ('production-js', runs[2], resident[1]))
+        resident_pairs = (('official', runs[official_at], resident[-1] if production_first else resident[0]),
+                          ('production-js', runs[production_at], resident[0] if production_first else resident[1]))
         resident_comparisons = {}
         for label, first, second in resident_pairs:
             if set(first['outputs']) != set(second['outputs']):
@@ -113,6 +118,8 @@ def main():
     parser.add_argument('--cross-session', action='store_true', help='Opt-in: create a second identical encoder session and compare, testing cross-session variability that within-session repeats cannot cover')
     parser.add_argument('--co-resident-decoder', action='store_true', help='Opt-in: hold a decoder session alongside the encoder and re-run it, testing whether session co-residency changes encoder output')
     parser.add_argument('--create-as-encoder-name', action='store_true', help='Opt-in: create the encoder session from /encoder-model.onnx instead of /graph.onnx, the same bytes under the library artifact name, to test whether the create-URL name affects the result')
+    parser.add_argument('--decoder-before-runs', action='store_true', help='Opt-in: create a WASM decoder session before the encoder first runs, matching the hybrid session-creation sequence')
+    parser.add_argument('--production-first', action='store_true', help='Opt-in: run production-JS features before the official control, matching the hybrid whose encoder first run uses production-JS features')
     parser.add_argument('--timeout-ms', type=int, default=240000)
     args = parser.parse_args()
     if not 1000 <= args.timeout_ms <= 600000:
@@ -124,9 +131,7 @@ def main():
     if args.production_features:
         sources.append(ROOT / 'dist/audio/js-mel.js')
     decoder_path = None
-    if args.co_resident_decoder:
-        # Resolved before hashing so the served graph is bound by sources_sha256
-        # and inputs_unchanged, not added after the fact.
+    if args.co_resident_decoder or args.decoder_before_runs:
         decoder_path = ROOT / 'models/orukeet/onnx/fp32-packed-2026-10-01/decoder_joint-model.onnx'
         if not decoder_path.is_file():
             raise ValueError('Requested co-resident decoder graph is missing')
@@ -148,6 +153,10 @@ def main():
         fixture['crossSession'] = True
     if args.create_as_encoder_name:
         fixture['createAsEncoderName'] = True
+    if args.production_first:
+        fixture['productionFirst'] = True
+    if args.decoder_before_runs:
+        fixture['decoderBeforeRuns'] = True
     if args.co_resident_decoder:
         fixture['coResidentDecoder'] = True
     if args.production_features:

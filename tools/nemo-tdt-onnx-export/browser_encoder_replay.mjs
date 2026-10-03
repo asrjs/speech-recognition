@@ -6,7 +6,7 @@ globalThis.replayEncoder = async (fixture, backend) => {
   const receipt = { backendRequested: backend, runs: [], cleanupErrors: [], gpuDispatches: 0,
     crossSessionRuns: [], crossSessionRequested: Boolean(fixture.crossSession),
     coResidentRuns: [], coResidentRequested: Boolean(fixture.coResidentDecoder) };
-  let session, createObserver;
+  let session, createObserver, earlyDecoder;
   const originals = [];
   try {
     if (!['wasm', 'webgpu'].includes(backend)) throw new Error('Explicit backend required');
@@ -38,6 +38,14 @@ globalThis.replayEncoder = async (fixture, backend) => {
       externalDataPath: 'encoder-model.onnx.data',
     });
     receipt.sessionCreateMs = performance.now() - start;
+    // Opt-in sequence match: the hybrid creates its WASM decoder session before
+    // the encoder's first run. The co-residency control created it only after,
+    // so this reproduces the actual ordering on identical bytes.
+    if (fixture.decoderBeforeRuns) {
+      earlyDecoder = await createOrtSession(ort, `${location.origin}/decoder-graph.onnx`, {
+        backendId: 'wasm', cpuThreads: 1,
+      });
+    }
     const bytes = Uint8Array.from(atob(fixture.featuresF32le), c => c.charCodeAt(0));
     if (bytes.byteLength !== fixture.shape.reduce((a, b) => a * b, 1) * 4)
       throw new Error('Feature byte count differs');
@@ -58,6 +66,11 @@ globalThis.replayEncoder = async (fixture, backend) => {
       receipt.productionLength = production.length;
       inputs.push({ featureSource: 'production-js', values: production.features });
     }
+    // Opt-in order match: the hybrid's encoder first run uses production-JS
+    // features, while the standalone default runs official features first. The
+    // order is a real uncontrolled variable, so it can be reversed explicitly.
+    receipt.productionFirst = Boolean(fixture.productionFirst);
+    if (fixture.productionFirst && inputs.length === 2) inputs.reverse();
     for (const input of inputs) for (let repeat = 0; repeat < 2; repeat++) {
       const feeds = { audio_signal: new ort.Tensor('float32', input.values, fixture.shape),
         length: new ort.Tensor('int64', BigInt64Array.from([BigInt(fixture.length)]), [1]) };
@@ -148,6 +161,7 @@ globalThis.replayEncoder = async (fixture, backend) => {
   } catch (error) { receipt.error = String(error?.stack ?? error); }
   finally {
     createObserver?.restore();
+    try { await releaseOrtSession(earlyDecoder); } catch (error) { receipt.cleanupErrors.push(String(error)); }
     try { await releaseOrtSession(session); } catch (error) { receipt.cleanupErrors.push(String(error)); }
     for (const [name, original] of originals) GPUComputePassEncoder.prototype[name] = original;
   }

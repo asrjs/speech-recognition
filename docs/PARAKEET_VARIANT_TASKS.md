@@ -3711,14 +3711,21 @@ Both candidates were then tested directly, and **both are eliminated**:
    graph bytes at `/encoder-model.onnx` as well and can create from that name
    (`--create-as-encoder-name`). Output is **bitwise identical** to creating
    from `/graph.onnx` on both feature sources. The name has no numerical effect.
-2. **Input tensor materialisation — eliminated.** The library's processor
+2. **Input tensor materialisation — eliminated, and the premise was partly
+   wrong.** An earlier revision described the standalone as feeding a
+   base64-decoded array. That is true only of its **official** control: the
+   standalone's production-JS path builds `production.features` from its own
+   `JSMelProcessor` and feeds that directly, exactly as the library does. So for
+   the hybrid-versus-production comparison the two arrays come from the same
+   kind of source, not different ones. Independently, the library's processor
    returns a plain `Float32Array` with `byteOffset 0` whose `byteLength` equals
-   its whole `ArrayBuffer`, so there is no view or offset to mishandle. The
-   standalone decodes a plain `Float32Array` the same way. Contents were already
-   proven byte-identical by the observer.
+   its whole `ArrayBuffer`, so there is no view or offset to mishandle, and the
+   observer already proved the contents byte-identical.
 
 So the `1.1316e-6` now survives with the **entire measurable configuration
-surface held equal**: features byte-identical, valid length 1100 in both, graph
+surface held equal** (two further variables, input order and session-creation
+sequence, were identified and eliminated afterwards — see the next entry, which
+supersedes this claim): features byte-identical, valid length 1100 in both, graph
 bytes and external data identical and hash-validated, all seven session options
 identical, create-URL name irrelevant, input arrays structurally identical, the
 encoder-to-head handoff bitwise exact, and cross-session, cross-run and
@@ -3739,6 +3746,44 @@ if it does not, the instrumentation itself is missing a variable and should be
 extended rather than trusted further.
 
 Gate stays FAIL.
+
+### Input order and session-creation sequence also eliminated (2026-10-03)
+
+Two more uncontrolled variables were identified and tested. Both are excluded.
+
+**Input order — eliminated.** The hybrid's encoder first run uses production-JS
+features, while the standalone default still runs the official control first, so
+the production comparison was originally between the hybrid's *first* execution
+and the standalone's *third*. `--production-first` reverses the standalone order
+so production-JS is the first execution. Result: output is **bitwise identical**
+to the default order, on both sources, and its first run equals its own second
+run bitwise. Execution position has no effect.
+
+**Session-creation sequence — eliminated.** The hybrid creates its WASM decoder
+session before the encoder's first run; the earlier co-residency control created
+the decoder only after the encoder had already run, so the ordering was never
+matched. `--decoder-before-runs` creates the decoder immediately after the
+encoder session and before any run, reproducing the hybrid's create order
+(`[encoder, decoder]`, confirmed in `sessionCreates`). Result: output is again
+**bitwise identical** to the default.
+
+With both, the hybrid still differs by exactly `1.131557e-06` — the same value
+as before either experiment. The measurable surface is now matched on: features,
+valid length, graph and weight bytes, all seven session options, create-URL name,
+input array structure, input order, decoder-created-before-first-run, and the
+bitwise-exact handoff, with cross-session, cross-run and co-residency each
+bitwise identical.
+
+**That constancy is itself the notable result.** Every controlled variation
+leaves the standalone output bitwise unchanged while the hybrid sits a fixed
+`1.131557e-06` away. A fixed offset is not the signature of sampling or
+scheduling noise; it means the hybrid's encoder execution differs
+deterministically in a way this instrumentation does not expose. Further
+parameter-hunting on the session surface has low expected value, and the honest
+position is that the cause is unidentified rather than nearly found.
+
+Gate stays FAIL. Recorded so the next attempt does not re-run these eight
+eliminations.
 
 A clue, stated only as far as it goes. Placed on the same axis, the encoder
 outputs differ in how far each sits from the recorded official encoder tensor:
