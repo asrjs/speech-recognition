@@ -3098,22 +3098,40 @@ as the live encoder output.
 | production-JS features -> native CPU encoder | `4.917383e-7` | 0 |
 | production-JS features -> native CPU vs WebGPU | `5.885959e-7` | 0 |
 
-None of the controls is individually out of tolerance. The feature tensor
-differs from the official one by `3.423691e-4` max with 313 failing
+The second row is **not** a feature-only effect. It is
+`native(production)` against the official encoder, so it mixes the feature
+input with the native-versus-official execution residual. Adding
+`native(official features)` on the same session, with the recorded valid
+length 1100 on both sides, separates them:
+
+| separated effect | maxAbsError |
+| --- | ---: |
+| execution residual `native(official)` - official encoder | `1.326203e-6` |
+| feature effect `native(production)` - `native(official)` | `9.797513e-7` |
+
+The execution residual is **larger** than the feature effect, at 0.74x the
+other way. That reverses the feature-driven reading implied by the earlier
+label: on this evidence the encoder's own execution path contributes more
+feed error than the production-feature change does.
+
+The feature tensor differs from the official one by `3.423691e-4` max with 313
 coordinates — its own known, unchanged FAIL — yet the encoder's response to
 that change is only `1.069158e-6`, an **attenuation of 0.0031x (about 320x
 smaller)**. That production-feature run sits `3.427267e-7` max from the
 official encoder, *smaller* than the same encoder's official-feature error.
 That run is a separate browser execution, not the hybrid run's encoder output.
 
-Conclusion, scoped to what was measured: none of the three controls is
-individually out of tolerance at the unchanged gate. The feature delta is
-attenuated by the encoder by roughly three orders of magnitude, and the
-WebGPU-versus-native gap on identical features is `5.9e-7`. That closes the
-feature-versus-kernel question *for the recorded runs*, but it does **not**
-decompose the `1.4566e-6` live frame-69 feed error: these are full-tensor
-statistics from a different browser execution than the failing one, and an
-unexplained `1.1316e-6` discrepancy between the live feed and that run's
-production-JS frame is itself unresolved. Per-frame and run-to-run composition
-remain open. No tolerance, normalization or production math changed, and the
+Conclusion, scoped to what was measured: every control passes the unchanged
+`atol=1e-5, rtol=1e-4` gate, and the three feed-error sources are the same
+order of magnitude (`1.326203e-6` execution residual, `9.797513e-7` feature
+effect, `1.4566e-6` observed live feed). None is individually out of tolerance,
+so the failing score gate is not explained by any single failing component.
+
+Feature versus kernel is now separated for the recorded runs, and the
+execution residual dominates the feature effect — the opposite of the earlier
+feature-driven reading. This still does **not** decompose the live frame-69
+feed: the controls come from a different browser execution, and the
+unexplained `1.1316e-6` difference between the live feed and that run's
+production-JS frame remains unresolved. Per-frame and run-to-run composition
+are open. No tolerance, normalization or production math changed, and the
 browser gate stays FAIL and honest.

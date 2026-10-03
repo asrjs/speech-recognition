@@ -84,13 +84,18 @@ options.intra_op_num_threads = 4
 session = ort.InferenceSession(
     f"{ARTIFACTS}/encoder-model.onnx", sess_options=options,
     providers=["CPUExecutionProvider"])
-outputs = dict(zip(
-    [o.name for o in session.get_outputs()],
-    session.run(None, {
-        "audio_signal": np.ascontiguousarray(pf),
-        "length": np.asarray([length], dtype=np.int64),
-    })))
-native = np.asarray(outputs["outputs"], dtype=np.float32)
+
+
+def run_encoder(session, features, valid_length):
+    """Run the fp32 encoder on one session with an explicit int64 length."""
+    outputs = dict(zip(
+        [o.name for o in session.get_outputs()],
+        session.run(None, {
+            "audio_signal": np.ascontiguousarray(features),
+            "length": np.asarray([valid_length], dtype=np.int64),
+        })))
+    return np.asarray(outputs["outputs"], dtype=np.float32)
+native = run_encoder(session, pf, length)
 err_native = np.abs(native - official_encoder)
 print(f"  actual providers: {session.get_providers()}")
 print(f"  vs official encoder: maxAbs={err_native.max():.6e} "
@@ -98,6 +103,30 @@ print(f"  vs official encoder: maxAbs={err_native.max():.6e} "
 err_webgpu = np.abs(b - native)
 print(f"  vs real WebGPU encoder (identical features): maxAbs={err_webgpu.max():.6e} "
       f"meanAbs={err_webgpu.mean():.6e} failing={gate(err_webgpu, native)}")
+
 print()
-print("  => kernel-only and feature-only error are separated above;")
-print("     neither tolerance nor normalization is altered by this probe.")
+print("== native CPU on the official features (separates execution from feature) ==")
+official_length = int(np.asarray(stages["features_length"]["data"]).reshape(-1)[0])
+print(f"  recorded official features_length={official_length} "
+      f"(production length={length})")
+native_official = run_encoder(session, official_features, official_length)
+err_native_official = np.abs(native_official - official_encoder)
+print(f"  native(official) vs official encoder: maxAbs={err_native_official.max():.6e} "
+      f"meanAbs={err_native_official.mean():.6e} "
+      f"failing={gate(err_native_official, official_encoder)}")
+print("  (this is the native-versus-official execution residual, with no feature change)")
+
+print()
+print("== separated effects, same session ==")
+feature_effect = np.abs(native - native_official)
+print(f"  feature effect   native(production) - native(official): maxAbs="
+      f"{feature_effect.max():.6e} meanAbs={feature_effect.mean():.6e}")
+print(f"  execution residual native(official) - official encoder: maxAbs="
+      f"{err_native_official.max():.6e} meanAbs={err_native_official.mean():.6e}")
+print(f"  ratio feature effect / execution residual: "
+      f"{feature_effect.max() / max(err_native_official.max(), 1e-30):.2f}x")
+print()
+print("  => the earlier 'feature-only 4.917383e-7' figure mixed both effects;")
+print("     it is native(production) versus the official encoder. The two")
+print("     quantities above are the separated ones. Neither tolerance nor")
+print("     normalization is altered by this probe.")

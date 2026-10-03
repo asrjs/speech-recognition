@@ -124,11 +124,14 @@ measured at only one call and one error direction. That bracket is not a
 per-frame budget and does not establish any necessary accuracy bound.
 
 Encoder-side decomposition added a native CPU control on the recorded
-production-JS features: kernel-only `1.005828e-6` (official features),
-feature-only `4.917383e-7`, WebGPU-versus-native `5.885959e-7`, all passing the
-unchanged gate, with the encoder attenuating the `3.423691e-4` feature delta by
-about 320x. Those controls come from a **different** browser execution than the
-failing hybrid run, and an unexplained `1.1316e-6` difference between the live
+production-JS features plus a same-session `native(official features)` control.
+Separated at the unchanged gate: execution residual `1.326203e-6`, feature
+effect `9.797513e-7`, WebGPU-versus-native `5.885959e-7`, official-feature
+WebGPU `1.005828e-6` — all passing, with the encoder attenuating the
+`3.423691e-4` feature delta by about 320x. The execution residual is larger
+than the feature effect, so the earlier feature-driven reading was wrong.
+Those controls come from a **different** browser execution than the failing
+hybrid run, and an unexplained `1.1316e-6` difference between the live
 call-20 feed and that run's production-JS frame 69 remains. Live-source
 attribution is therefore still open, with a concrete next discriminator: bind
 the two runs' session options, graph build and run configuration.
