@@ -2856,3 +2856,32 @@ tests and five JavaScript reduction tests pass. No production source,
 tolerance, installed tool or model artifact
 changed. Next compare the remaining upstream power/mel boundaries, using
 the native guarded-input control as an independent downstream check.
+
+### Identical native-power speech/silence mel composition (2026-10-03)
+
+Config-only official processing again reproduces captured features exactly.
+The singular existing `f64-product-f32-sum` experiment now receives identical
+native power and actual filterbank: hashes verify both controlled buffers;
+canonical float32 filterbank transport retains negative zero. Existing support
+and frame contracts are retained. Only the in-memory experiment permits f32
+guard rounding on the reference-power branch; installed/built sources are
+unchanged. A bounded-memory scan of the earlier large speech/silence receipt
+found no `melArithmeticCaptures`/`melSpectrumControls`/`referencePowerCapture`.
+
+All 519,808 linear-mel and rounded guarded-input cells are byte-exact.
+Following JS log and diagnostic width8 normalization, raw/features have two
+bit-different cells but zero failures at unchanged atol 1e-5 / rtol 1e-4;
+max errors are 1.9073486328125e-6 / 5.960464477539062e-7. Means and standard
+deviations are byte-exact. This extends the JFK/silence mel arithmetic evidence
+to speech transitions and establishes a conditional native-power-to-features
+control, not complete production PCM-to-features or browser/ASR acceptance.
+
+Receipt: `tools/data/results/orukeet/identical-power-mel-speech-silence-2026-10-03.json`.
+It preserves executed Python/Node snippets, unchanged source/config/capture
+hashes, original identity, controlled input hashes and all numerical metrics.
+Owned process exited 0; independent receipt/hash verification, 81 Python
+boundary tests and five JavaScript reduction tests pass. Production width8
+still fails 73 feature coordinates;
+the remaining complete processor work must resolve upstream FFT/power behavior
+and revalidate this downstream contract without per-model correction constants
+or tolerance changes. No production implementation or public preset promotion.
