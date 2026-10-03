@@ -249,90 +249,23 @@ async function migrateCacheHit(
   await writeCache(cache, primaryKey, hit.value);
 }
 
-function formatRepoPath(repoId: string): string {
-  return String(repoId || '')
-    .split('/')
-    .map((part) => encodeURIComponent(part))
-    .join('/');
-}
-
-function buildHuggingFaceResolveUrl(
-  request: AssetRequest,
-  revisionOverride?: string,
-): string | null {
-  if (!request.repoId || !request.filename) {
-    return null;
-  }
-
-  const revision = revisionOverride ?? request.revision ?? 'main';
-  const encodedRevision = encodeURIComponent(revision);
-  const encodedSubfolder = request.subfolder
-    ? request.subfolder
-        .split('/')
-        .map((part) => encodeURIComponent(part))
-        .join('/')
-    : '';
-  const encodedFilename = request.filename
-    .split('/')
-    .map((part) => encodeURIComponent(part))
-    .join('/');
-
-  const pathParts = [formatRepoPath(request.repoId), 'resolve', encodedRevision];
-  if (encodedSubfolder) {
-    pathParts.push(encodedSubfolder);
-  }
-  pathParts.push(encodedFilename);
-  return `https://huggingface.co/${pathParts.join('/')}`;
-}
-
-function getFetchCandidateUrls(request: AssetRequest, primaryUrl: string): readonly string[] {
-  const urls = [primaryUrl];
-  if (request.provider !== 'huggingface') {
-    return urls;
-  }
-
-  const revision = request.revision ?? 'main';
-  if (revision === 'main') {
-    return urls;
-  }
-
-  const fallbackUrl = buildHuggingFaceResolveUrl(request, 'main');
-  if (fallbackUrl && fallbackUrl !== primaryUrl) {
-    urls.push(fallbackUrl);
-  }
-  return urls;
-}
-
-async function fetchWithCandidates(request: AssetRequest, primaryUrl: string): Promise<Response> {
-  const candidateUrls = getFetchCandidateUrls(request, primaryUrl);
-  let lastStatus: number | null = null;
-  let lastStatusText = '';
+async function fetchAssetResponse(request: AssetRequest, url: string): Promise<Response> {
   const fetchSignal = toFetchAbortSignal(request.signal);
   const fetchInit = fetchSignal ? { signal: fetchSignal } : undefined;
-
-  for (let index = 0; index < candidateUrls.length; index += 1) {
-    throwIfAssetAborted(request.signal, 'download');
-    const candidateUrl = candidateUrls[index]!;
-    let response: Response;
-    try {
-      response = await fetch(candidateUrl, fetchInit);
-    } catch (error) {
-      throwAssetLoadAborted(error, 'download');
-    }
-    if (response.ok) {
-      return response;
-    }
-
-    lastStatus = response.status;
-    lastStatusText = response.statusText;
-    const hasNext = index < candidateUrls.length - 1;
-    if (!hasNext || response.status !== 404) {
-      break;
-    }
+  throwIfAssetAborted(request.signal, 'download');
+  let response: Response;
+  try {
+    // Never replace a requested revision: that would cache different weights
+    // under the original identity and could mix graph/external-data revisions.
+    response = await fetch(url, fetchInit);
+  } catch (error) {
+    throwAssetLoadAborted(error, 'download');
   }
-
+  if (response.ok) {
+    return response;
+  }
   throw new Error(
-    `Failed to fetch asset "${request.id}": ${lastStatus ?? 0} ${lastStatusText}`.trim(),
+    `Failed to fetch asset "${request.id}": ${response.status} ${response.statusText}`.trim(),
   );
 }
 
@@ -443,7 +376,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
     }
 
     try {
-      const response = await fetchWithCandidates(this.request, this.url);
+      const response = await fetchAssetResponse(this.request, this.url);
 
       const totalHeader = response.headers.get('content-length');
       const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
@@ -535,7 +468,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         }
 
         try {
-          const response = await fetchWithCandidates(this.request, this.url);
+          const response = await fetchAssetResponse(this.request, this.url);
 
           const totalHeader = response.headers.get('content-length');
           const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;
@@ -644,7 +577,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         }
 
         try {
-          const response = await fetchWithCandidates(this.request, this.url);
+          const response = await fetchAssetResponse(this.request, this.url);
           const contentType = response.headers.get('content-type') || this.request.contentType;
           const totalHeader = response.headers.get('content-length');
           const total = totalHeader ? Number.parseInt(totalHeader, 10) : undefined;

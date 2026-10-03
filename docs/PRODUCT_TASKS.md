@@ -3,6 +3,32 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C15 — Preserve requested remote artifact revisions
+
+Status: PASS — network fetch revision contract; existing cache authentication
+and real remote/browser downloads are not certified by these simulated tests.
+
+Removed the shared asset handle's silent HF revision-404 fallback to `main`.
+Byte reads, streamed reads and blob locators now reject the requested missing
+artifact without fetching or caching a different revision. Provider controls
+preserve successful branch/commit reads and the omitted-revision `main` default.
+The original failure was reproduced on all three paths before the fix.
+54 focused IO/external-data/runtime/builtin tests passed; full suite: 1,414
+passed, 33 skipped, zero failed. Receipt:
+`tools/data/results/harness/hf-revision-strict-full-suite-2026-10-03.json`.
+TypeScript and scoped ESLint passed. Migration and old-cache limitations are
+documented in `architecture.md`; no cache entries or sibling files were deleted.
+
+## C16 — Caller cancellation during a coalesced model load
+
+Status: UNTESTED — next bounded lifecycle slice, not implemented.
+
+Inspect `src/runtime/load.ts` in-flight explicit-cache-key reuse. Add controlled
+two-caller load tests: aborting a joined waiter must not return it a model, and
+must not cancel a live owner. Define/test creator-abort behavior for a still-live
+waiter before changing ownership. Preserve load generation, forced reload and
+disposal semantics; no model-family-specific branches.
+
 ## C14 — Companion in-memory browser preview
 
 Status: PARTIAL PASS — actual browser-demo UI boot/settings; model inference,

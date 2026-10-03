@@ -138,6 +138,14 @@ Core contracts:
 - `getLocator('url' | 'path')` supports runtimes like ORT that still need a concrete locator
 - `dispose()` cleans up temporary URLs, paths, or cache-owned resources
 
+Hugging Face asset reads preserve the requested revision. An omitted revision
+defaults to `main`; a missing explicit revision/file fails instead of silently
+retrying `main`. This keeps graph/external-data identity and cache keys coherent.
+Migration: callers that deliberately want `main` must request it explicitly or
+omit the revision. Older caches populated by the former fallback cannot be
+authenticated retroactively; remove the affected cache entries explicitly and
+reload the pinned revision (no automatic broad cache deletion).
+
 Built-in providers and caches currently cover:
 
 - browser fetch

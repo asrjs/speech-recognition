@@ -33,6 +33,7 @@ export interface AssetRequest {
   readonly url?: string;
   readonly path?: string;
   readonly repoId?: string;
+  /** Hugging Face revision; defaults to main only when omitted. Missing revisions fail, never silently substitute main. */
   readonly revision?: string;
   readonly filename?: string;
   readonly subfolder?: string;

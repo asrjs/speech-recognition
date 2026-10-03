@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { BlobAssetHandle, UrlAssetHandle } from '../src/io/handles.js';
+import { createHuggingFaceAssetProvider } from '../src/io/providers.js';
 import type { AssetCache, AssetProgressEvent } from '../src/types/index.js';
 
 const originalFetch = globalThis.fetch;
@@ -11,38 +12,85 @@ afterEach(() => {
 });
 
 describe('UrlAssetHandle', () => {
-  it('falls back to main revision when a Hugging Face revision returns 404', async () => {
-    const calls: string[] = [];
-    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      calls.push(url);
-      if (calls.length === 1) {
-        return new Response('missing', { status: 404, statusText: 'Not Found' });
-      }
-      return new Response(new Uint8Array([1, 2, 3]), {
-        status: 200,
-        headers: { 'content-type': 'application/octet-stream' },
-      });
-    }) as typeof fetch;
-
-    const handle = new UrlAssetHandle(
-      {
-        id: 'hf:test',
+  it.each([undefined, 'main', 'feature/pinned', 'a'.repeat(40)])(
+    'loads only the requested/default Hugging Face revision (%s)',
+    async (revision) => {
+      const fetching = vi.fn(async () => new Response(new Uint8Array([1, 2, 3])));
+      globalThis.fetch = fetching as typeof fetch;
+      const provider = createHuggingFaceAssetProvider();
+      const handle = await provider.resolve({
+        id: 'hf:identity',
         provider: 'huggingface',
-        repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
-        revision: 'feature/missing',
-        filename: 'encoder-model.fp16.onnx',
-        cacheKey: 'hf:test',
-      },
-      'https://huggingface.co/ysdede/parakeet-tdt-0.6b-v3-onnx/resolve/feature%2Fmissing/encoder-model.fp16.onnx',
-    );
+        repoId: 'test/model',
+        filename: 'encoder.onnx',
+        revision,
+      });
+      try {
+        expect(Array.from(await handle.readBytes())).toEqual([1, 2, 3]);
+        expect(fetching).toHaveBeenCalledTimes(1);
+        expect(fetching.mock.calls[0]).toEqual([
+          `https://huggingface.co/test/model/resolve/${encodeURIComponent(revision ?? 'main')}/encoder.onnx`,
+          undefined,
+        ]);
+        expect(handle.request.revision).toBe(revision);
+      } finally {
+        handle.dispose();
+      }
+    },
+  );
+  it.each(['bytes', 'stream', 'blob-locator'] as const)(
+    'rejects a missing pinned Hugging Face revision without substituting main (%s)',
+    async (mode) => {
+      const calls: string[] = [];
+      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (calls.length === 1) {
+          return new Response('missing', { status: 404, statusText: 'Not Found' });
+        }
+        return new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { 'content-type': 'application/octet-stream' },
+        });
+      }) as typeof fetch;
 
-    const bytes = await handle.readBytes();
-    expect(Array.from(bytes)).toEqual([1, 2, 3]);
-    expect(calls).toHaveLength(2);
-    expect(calls[0]).toContain('/resolve/feature%2Fmissing/');
-    expect(calls[1]).toContain('/resolve/main/');
-  });
+      const cache: AssetCache = {
+        get: vi.fn(async () => null),
+        set: vi.fn(async () => undefined),
+        getBlob: vi.fn(async () => null),
+        setBlob: vi.fn(async () => undefined),
+      };
+      const handle = new UrlAssetHandle(
+        {
+          id: 'hf:test',
+          provider: 'huggingface',
+          repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+          revision: 'feature/missing',
+          filename: 'encoder-model.fp16.onnx',
+          cacheKey: 'hf:test',
+          preferBlobUrl: mode === 'blob-locator',
+        },
+        'https://huggingface.co/ysdede/parakeet-tdt-0.6b-v3-onnx/resolve/feature%2Fmissing/encoder-model.fp16.onnx',
+        cache,
+      );
+
+      const reading =
+        mode === 'bytes'
+          ? handle.readBytes()
+          : mode === 'blob-locator'
+            ? handle.getLocator('url')
+            : (async () => {
+                for await (const _chunk of handle.openStream()) {
+                }
+              })();
+      await expect(reading).rejects.toThrow('404 Not Found');
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toContain('/resolve/feature%2Fmissing/');
+      expect(cache.set).not.toHaveBeenCalled();
+      expect(cache.setBlob).not.toHaveBeenCalled();
+      handle.dispose();
+    },
+  );
 
   it('returns a single streamed response chunk without an extra materialization copy', async () => {
     const payload = new Uint8Array([11, 22, 33, 44]);
