@@ -63,6 +63,23 @@ or hardcode this value. New receipts: `official-pure-silence-filterbank-summary-
 `filterbank-feature-pure-silence-2026-10-03.json` under Orukeet results.
 No runtime, weights or acceptance tolerances changed; full ASR remains open.
 
+Alternate official-backend control (2026-10-03): config-only NeMo
+`FilterbankFeatures.eval()` on the captured JFK float32 PCM, CPU threads 4,
+without restoring weights or running ASR. Config matches the pinned export's
+preprocessor; eval disables dithering on both devices. CPU features reproduce
+the captured original features exactly (max/mean error 0). CUDA features fail
+the unchanged `atol=1e-5, rtol=1e-4` gate at 1,028 / 140,928 coordinates,
+max error `0.0007370710372924805`, mean `2.513591626575393e-6`.
+Preemphasis is exact across devices. STFT real/imaginary, power, linear mel,
+guarded log input and raw log-mel pass their numerical gates, but are not
+byte-exact; normalized features fail. Repeated CPU and CUDA features are each
+exact within that device. This is alternate-backend evidence, not a new oracle
+or a tolerance waiver, and does not isolate normalization from upstream error.
+Environment: Torch `2.6.0+cu118`, RTX 5060 Ti (sm_120); Torch warns this GPU is
+outside its compiled architecture list despite these operations completing.
+Evidence is terminal output from owned session 72134 (exit 0), not a persisted
+stage capture. Existing CPU oracle and full ASR acceptance remain unchanged.
+
 Browser production-feature sensitivity (2026-10-03): opt-in
 `browser_encoder_replay.py --production-features` processes byte-hashed captured
 PCM through the actual built JS processor in Chrome and runs two official-feature
