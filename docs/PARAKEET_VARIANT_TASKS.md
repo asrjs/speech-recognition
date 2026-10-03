@@ -2116,3 +2116,34 @@ Do not duplicate/restart on observation timeout or call the gate passed.
 The older session18933 is also still live and its dependency closure remains
 protected. Current reconstruction output is terminal-only; a successful result
 will still need a reproducible source-bound receipt before export promotion.
+
+Follow-up: both stalled runs are now terminal (2026-10-03). `py-spy dump`
+identified both main threads in Librosa import -> Numba cache writability probe
+-> Windows `tempfile._mkstemp_inner`. The inspected implementation retries
+PermissionError when the directory-level W_OK check succeeds; this is a bounded
+retry loop, not evidence of model computation. Owned sessions74451/18933 were
+interrupted after this diagnosis, not merely because an observation expired.
+Setting NUMBA_CACHE_DIR only in each child launch to a writable results directory
+made the minimal Librosa filterbank control finish in 5.6 seconds. No global
+environment, installed dependency or production processor was changed.
+
+`probe_nemo_processor.py` now persists this config-only native control with
+config/capture hashes, diagnostic source pre/post hashes, installed NeMo source
+hashes after import/pre/post execution, Torch version/thread count, length and
+numerical metrics. Four CLI preflight tests pass without optional imports.
+Existing outputs and source/config/capture aliases fail before inference;
+receipt writes are exclusive. Run in the existing NeMo venv with process-local
+NUMBA_CACHE_DIR and explicit --config/--expected-config-sha256,
+--capture/--expected-capture-sha256, --sample-id and a new --output path.
+
+Actual `nemo-processor-reconstruction-speech-silence-2026-10-03.json`:
+Torch2.6.0+cu118 CPU/four threads, all 519,808 feature values bit-exact,
+max/mean error zero, valid length4060 (physical4061), unchanged atol1e-5/rtol1e-4.
+This proves native processor reconstruction from the verified configuration,
+not an exported processor, browser feature parity or full Orukeet acceptance.
+The recovered ORT DFT run also completed: spectrum allclose, downstream features
+still FAIL at78 cells, max0.0001283884048461914; official-complex control passes.
+Receipt: `ort-dft-features-speech-silence-2026-10-03.json`.
+Next use the reproducible official processor as the full-output control for a
+real-pair STFT export; compare its full processor output without relaxing gates.
+Portable DFT feasibility alone does not repair the known near-silence mismatch.
