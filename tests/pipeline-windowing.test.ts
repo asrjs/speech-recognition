@@ -5,6 +5,7 @@ import {
   createWindowedMetricsAccumulator,
   dedupeWindowWords,
   partitionWordsIntoSegments,
+  planWindowedTranscription,
   resolveWindowPolicy,
   resolveTranscriptDetail,
   transcribeWithWindowing,
@@ -49,6 +50,193 @@ function segmentOnlyResult(text: string): TranscriptResult {
 }
 
 describe('pipeline windowing primitives', () => {
+  it('resolves token aliases at the public windowing boundary while honoring explicit detail', () => {
+    const input = new Float32Array(16000);
+    expect(planWindowedTranscription(input, { returnTokens: true }, undefined).options.detail).toBe(
+      'detailed',
+    );
+    expect(
+      planWindowedTranscription(input, { returnTokens: true, detail: 'text' }, undefined).options
+        .detail,
+    ).toBe('text');
+  });
+
+  it.each(['id', 'rawText', 'interval'] as const)(
+    'does not collapse tokens with different %s',
+    async (difference) => {
+      let calls = 0;
+      const transcript = await transcribeWithWindowing({
+        input: new Float32Array(3.5 * 16000),
+        inference: {
+          ...createDefaultModelInferenceLimits({ family: 'nemo-tdt' }),
+          maxInputDurationSec: 2,
+          recommendedWindowDurationSec: 2,
+          minWindowDurationSec: 1,
+          maxWindowDurationSec: 2,
+          autoWindowThresholdSec: 2,
+          defaultOverlapSec: 0.5,
+        },
+        options: { detail: 'detailed' },
+        async transcribeWindow() {
+          const first = calls++ === 0;
+          return {
+            ...result([]),
+            tokens: [
+              {
+                index: 0,
+                text: 'same',
+                id: !first && difference === 'id' ? 2 : 1,
+                rawText: !first && difference === 'rawText' ? '▁same' : 'same',
+                startTime: first ? 1.6 : 0.1,
+                endTime: first ? 1.9 : difference === 'interval' ? 0.5 : 0.4,
+              },
+            ],
+          };
+        },
+      });
+      expect(calls).toBe(2);
+      expect(transcript.tokens).toHaveLength(2);
+      expect(transcript.tokens?.map(({ index }) => index)).toEqual([0, 1]);
+      expect(transcript.warnings.map(({ code }) => code)).toContain(
+        'pipeline.windowing.token-overlap-unresolved',
+      );
+    },
+  );
+
+  it.each(['words', 'detailed'] as const)(
+    'does not invent token references for %s windows',
+    async (detail) => {
+      let calls = 0;
+      const transcript = await transcribeWithWindowing({
+        input: new Float32Array(4 * 16000),
+        inference: {
+          ...createDefaultModelInferenceLimits({ family: 'nemo-tdt' }),
+          maxInputDurationSec: 2,
+          recommendedWindowDurationSec: 2,
+          minWindowDurationSec: 1,
+          maxWindowDurationSec: 2,
+          autoWindowThresholdSec: 2,
+          defaultOverlapSec: 0,
+        },
+        options: { detail },
+        async transcribeWindow() {
+          calls++;
+          return { ...result([]), words: [{ ...word(0, 'hello', 0.1, 0.4), tokenIndices: [99] }] };
+        },
+      });
+      expect(calls).toBe(2);
+      expect(transcript.tokens).toBeUndefined();
+      if (detail === 'detailed') {
+        expect(transcript.words?.every((item) => item.tokenIndices === undefined)).toBe(true);
+        expect(transcript.warnings.map(({ code }) => code)).toContain(
+          'pipeline.windowing.token-overlap-unresolved',
+        );
+      }
+    },
+  );
+
+  it.each([0, 0.5])(
+    'preserves detailed tokens and word references with overlap %s',
+    async (overlap) => {
+      const locals = [
+        {
+          ...result([word(0, 'alpha', 0.1, 0.4), word(1, 'shared', 1.6, 1.9)]),
+          tokens: [
+            { index: 7, id: 11, text: 'alpha', startTime: 0.1, endTime: 0.4, confidence: 0.9 },
+            { index: 8, id: 12, text: 'shared', startTime: 1.6, endTime: 1.9 },
+          ],
+        },
+        {
+          ...result([word(0, 'shared', 0.1, 0.4), word(1, 'omega', 0.8, 1.2)]),
+          tokens: [
+            { index: 7, id: 12, text: 'shared', startTime: 0.1, endTime: 0.4 },
+            { index: 8, id: 13, text: 'omega', startTime: 0.8, endTime: 1.2 },
+          ],
+        },
+      ].map((local) => ({
+        ...local,
+        words: local.words!.map((item, index) => ({ ...item, tokenIndices: [7 + index] })),
+      }));
+      let calls = 0;
+      const transcript = await transcribeWithWindowing({
+        input: new Float32Array((4 - overlap) * 16000),
+        inference: {
+          ...createDefaultModelInferenceLimits({ family: 'nemo-tdt' }),
+          maxInputDurationSec: 2,
+          recommendedWindowDurationSec: 2,
+          minWindowDurationSec: 1,
+          maxWindowDurationSec: 2,
+          autoWindowThresholdSec: 2,
+          defaultOverlapSec: overlap,
+        },
+        options: { detail: 'detailed' },
+        async transcribeWindow(_audio, options) {
+          expect(options.detail).toBe('detailed');
+          return locals[calls++]!;
+        },
+      });
+      expect(calls).toBe(2);
+      expect(
+        transcript.tokens?.map(({ index, id, startTime, endTime }) => [
+          index,
+          id,
+          startTime,
+          endTime,
+        ]),
+      ).toEqual(
+        overlap
+          ? [
+              [0, 11, 0.1, 0.4],
+              [1, 12, 1.6, 1.9],
+              [2, 13, 2.3, 2.7],
+            ]
+          : [
+              [0, 11, 0.1, 0.4],
+              [1, 12, 1.6, 1.9],
+              [2, 12, 2.1, 2.4],
+              [3, 13, 2.8, 3.2],
+            ],
+      );
+      expect(transcript.words?.map(({ tokenIndices }) => tokenIndices)).toEqual(
+        overlap ? [[0], [1], [2]] : [[0], [1], [2], [3]],
+      );
+      expect(transcript.tokens?.[0]?.confidence).toBe(0.9);
+      expect(locals[1]?.tokens[0]).toMatchObject({ index: 7, startTime: 0.1 });
+    },
+  );
+
+  it('retains untimed overlapping tokens with an explicit ambiguity warning', async () => {
+    let calls = 0;
+    const transcript = await transcribeWithWindowing({
+      input: new Float32Array(3.5 * 16000),
+      inference: {
+        ...createDefaultModelInferenceLimits({ family: 'nemo-tdt' }),
+        maxInputDurationSec: 2,
+        recommendedWindowDurationSec: 2,
+        minWindowDurationSec: 1,
+        maxWindowDurationSec: 2,
+        autoWindowThresholdSec: 2,
+        defaultOverlapSec: 0.5,
+      },
+      options: { detail: 'detailed' },
+      async transcribeWindow() {
+        calls++;
+        return {
+          ...result([word(0, 'repeat', 0.1, 0.4)]),
+          tokens: [{ index: 0, id: 1, text: 'repeat' }],
+        };
+      },
+    });
+    expect(calls).toBe(2);
+    expect(transcript.tokens).toEqual([
+      { index: 0, id: 1, text: 'repeat' },
+      { index: 1, id: 1, text: 'repeat' },
+    ]);
+    expect(transcript.warnings.map(({ code }) => code)).toContain(
+      'pipeline.windowing.token-overlap-unresolved',
+    );
+  });
+
   it.each([2, 3])('retains overlap timestamps and history across %i windows', async (count) => {
     const windows = [
       result([word(0, 'alpha', 0.1, 0.4), word(1, 'shared', 1.6, 1.9)]),

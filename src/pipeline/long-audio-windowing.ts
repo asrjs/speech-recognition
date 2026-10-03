@@ -1,5 +1,6 @@
 import { PcmAudioBuffer, normalizePcmInput } from '../audio/index.js';
 import { PipelineAbortedError } from './composition.js';
+import { resolveTranscriptDetail } from './output-options.js';
 import type {
   AbortSignalLike,
   AudioInputLike,
@@ -7,6 +8,7 @@ import type {
   ModelInferenceLimits,
   TranscriptResult,
   TranscriptSegment,
+  TranscriptToken,
   TranscriptWarning,
   TranscriptWord,
 } from '../types/index.js';
@@ -110,6 +112,70 @@ function withTimeOffset(result: TranscriptResult, offsetSeconds: number): Transc
     ...(words ? { words } : {}),
     ...(tokens ? { tokens } : {}),
   };
+}
+
+function appendWindowTokens(
+  accumulated: TranscriptToken[],
+  result: TranscriptResult,
+  windowStartSeconds: number,
+  previousEndSeconds: number,
+): { words: readonly TranscriptWord[]; unresolved: boolean } {
+  const overlapsPrevious = windowStartSeconds < previousEndSeconds - EPSILON_SECONDS;
+  const previousCount = accumulated.length;
+  const used = new Set<number>();
+  const indices = new Map<number, number>();
+  const hasInterval = (token: TranscriptToken): boolean =>
+    Number.isFinite(token.startTime) &&
+    Number.isFinite(token.endTime) &&
+    token.endTime! > token.startTime!;
+  let unresolved = false;
+  for (const token of result.tokens ?? []) {
+    // Text similarity or intersecting spans alone cannot identify a subword occurrence.
+    const duplicate =
+      overlapsPrevious && token.id !== undefined && hasInterval(token)
+        ? accumulated.findIndex(
+            (previous, index) =>
+              index < previousCount &&
+              !used.has(index) &&
+              previous.id === token.id &&
+              previous.text === token.text &&
+              previous.rawText === token.rawText &&
+              hasInterval(previous) &&
+              Math.abs(previous.startTime! - token.startTime!) <= EPSILON_SECONDS &&
+              Math.abs(previous.endTime! - token.endTime!) <= EPSILON_SECONDS,
+          )
+        : -1;
+    const index = duplicate >= 0 ? duplicate : accumulated.length;
+    if (duplicate >= 0) used.add(duplicate);
+    else accumulated.push({ ...token, index });
+    indices.set(token.index, index);
+    if (overlapsPrevious && (!hasInterval(token) || token.id === undefined)) unresolved = true;
+    if (
+      overlapsPrevious &&
+      duplicate < 0 &&
+      hasInterval(token) &&
+      token.startTime! < previousEndSeconds - EPSILON_SECONDS &&
+      token.endTime! > windowStartSeconds + EPSILON_SECONDS
+    )
+      unresolved = true;
+  }
+  if (
+    overlapsPrevious &&
+    accumulated.slice(0, previousCount).some((token) => !hasInterval(token))
+  ) {
+    unresolved = true;
+  }
+  const words = (result.words ?? []).map((word) => {
+    if (!word.tokenIndices) return word;
+    const tokenIndices = word.tokenIndices.map((index) => indices.get(index));
+    if (tokenIndices.some((index) => index === undefined)) {
+      unresolved = true;
+      const { tokenIndices: _localIndices, ...withoutReferences } = word;
+      return withoutReferences;
+    }
+    return { ...word, tokenIndices: tokenIndices as number[] };
+  });
+  return { words, unresolved };
 }
 
 function mergePendingAndCurrentWords(
@@ -301,7 +367,7 @@ export function planWindowedTranscription<TOptions extends BaseTranscriptionOpti
     shouldWindow,
     audio,
     policy,
-    options: { ...(options ?? {}), detail: options?.detail ?? 'words' } as TOptions,
+    options: { ...(options ?? {}), detail: resolveTranscriptDetail(options) ?? 'words' } as TOptions,
   };
 }
 
@@ -326,6 +392,8 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
   let startSeconds = 0;
   let shouldMergePending = false;
   let warnings: readonly TranscriptWarning[] = [];
+  const tokens: TranscriptToken[] = [];
+  let previousEndSeconds = 0;
   const maxWindows = Math.max(
     4,
     Math.ceil(Math.max(0, audio.durationSeconds - policy.windowDurationSec) / CURSOR_MIN_ADVANCE_SECONDS) +
@@ -346,7 +414,7 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
     const windowResult = withTimeOffset(
       await context.transcribeWindow(windowAudio, {
         ...decision.options,
-        detail: 'words',
+        detail: decision.options.detail === 'detailed' ? 'detailed' : 'words',
       }),
       startSeconds,
     );
@@ -357,7 +425,22 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
     warnings = [...warnings, ...windowResult.warnings];
     lastTextFallback = windowResult.text || lastTextFallback;
 
-    const currentWords = windowResult.words ?? [];
+    let currentWords = windowResult.words ?? [];
+    if (decision.options.detail === 'detailed') {
+      const appended = appendWindowTokens(tokens, windowResult, startSeconds, previousEndSeconds);
+      currentWords = [...appended.words];
+      if (
+        appended.unresolved &&
+        !warnings.some((warning) => warning.code === 'pipeline.windowing.token-overlap-unresolved')
+      ) {
+        warnings = addWarning(
+          warnings,
+          'pipeline.windowing.token-overlap-unresolved',
+          'Token overlap could not be resolved without inventing timing or identity; tokens are retained and unavailable word-token references omitted.',
+        );
+      }
+    }
+    previousEndSeconds = endSeconds;
     const currentSegments = windowResult.segments ?? [];
     if (currentWords.length === 0 && currentSegments.length > 0) {
       for (const segment of currentSegments) {
@@ -454,6 +537,7 @@ export async function transcribeWithWindowing<TOptions extends BaseTranscription
       metrics,
     },
     ...(segments.length > 0 && decision.options.detail !== 'text' ? { segments } : {}),
+    ...(decision.options.detail === 'detailed' && tokens.length > 0 ? { tokens } : {}),
     ...((decision.options.detail === 'words' || decision.options.detail === 'detailed') &&
     mergedWords.length > 0
       ? { words: mergedWords }

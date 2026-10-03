@@ -557,6 +557,26 @@ model result, not real ONNX recovery acceptance.
 
 Status: PARTIAL PASS — controlled two-window public API regression.
 
+Token-detail work in progress (2026-10-03): detailed window requests now retain
+tokens, offset available seconds, assign global token indices and remap word
+references without mutating window-local outputs. Only matching ID, text,
+raw text and positive time intervals (within 1e-6 seconds) identify duplicates;
+matching is one-to-one. Untimed or unmatched tokens inside audio overlap are
+retained with `pipeline.windowing.token-overlap-unresolved`, not guessed away.
+Missing word references are omitted with the same warning. Tokens can therefore
+contain unresolved window evidence rather than a fully reconciled final sequence.
+Model-local frame/step metadata is preserved, not converted to global indices.
+The direct planner also resolves `returnTokens` via the existing canonical
+detail resolver, preserving explicit detail precedence.
+
+Current source typecheck, scoped ESLint, diff check and 22 focused windowing
+tests pass. Final independent review approved the corrected ambiguity behavior.
+The final full suite passed 1,427 tests with 33 skips, with TLS verification
+enabled only in the child process. Formatting was confined to new code; existing
+unrelated formatting and paused Nemotron changes were preserved.
+Next: real model/browser token-detail acceptance and bounded long-audio memory
+measurement. This conservative merge is not numerical ASR parity acceptance.
+
 Added word and segment-only cases through root-exported
 `transcribeWithWindowing`. Four seconds of synthetic PCM produce two explicit
 two-second windows without overlap: local times 0.25..1.25 become
