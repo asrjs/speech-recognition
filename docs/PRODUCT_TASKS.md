@@ -42,6 +42,19 @@ read-only review passed after adding the post-forceReload-disposal guard.
 The test environment emitted an existing TLS-disabled warning; no global TLS
 settings were changed, and these results do not certify secure remote loading.
 
+Post-commit package verification (2026-10-03): `npm run build`,
+`node tests/smoke/node-import-smoke.mjs`,
+`node tests/smoke/browser-root-import-graph.mjs` and
+`node tests/smoke/packed-native-absent-smoke.mjs` passed on the current working
+tree (including preserved paused Nemotron edits; not a clean-commit artifact).
+The browser static closure covers 298 modules / 27 entry points. The isolated
+offline packed consumer imports without native ORT, passes strict public
+declaration checks and rejects an explicitly unavailable native backend before
+asset/model creation, without silently substituting available WASM.
+The retained fixture is `C:\Users\steam\AppData\Local\Temp\asrjs-packed-consumer-kZkUuL`.
+These are packaging/import and unavailable-backend controls, not actual browser
+inference, ASR parity, native execution or a packed-consumer cancellation test.
+
 ## C14 — Companion in-memory browser preview
 
 Status: PARTIAL PASS — actual browser-demo UI boot/settings; model inference,
