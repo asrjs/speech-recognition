@@ -114,8 +114,25 @@ The app attempts font/badge and Hugging Face metadata requests at startup/model
 selection; this bounded control blocks them rather than claiming offline support.
 Evidence is terminal output, not an automated persisted browser receipt.
 
-Next automate this UI scenario and bind browser results to the build receipt;
-then cover real local artifact loading/cancellation and transcription separately.
+Automation refresh (2026-10-03): the existing
+`python tests/smoke/browser-demo-smoke.py --consumer-root <browser-demo-root> --output <new-receipt.json>`
+already implements this scenario and verifies served HTML/application bytes
+against its in-memory build receipt. Fresh Chrome154 run passed boot, v3 hybrid
+selection, WASM selection, local-source panel and missing-folder recovery with
+no page errors or weight requests. Font/badge/HF metadata requests remain
+blocked and recorded; this is not a claim that the app is fully offline.
+Receipt: `tools/data/results/harness/browser-demo-ui-closure-2026-10-03.json`.
+
+Fixed a cleanup evidence defect: socket errors of any kind no longer count as
+closed-port proof. UI and local inference smoke runners share a bounded Node
+probe that accepts only explicit ECONNREFUSED; reachable ports, timeouts,
+unknown errors and malformed/contradictory evidence cannot pass cleanup.
+Two new regressions failed before implementation;8 UI-runner and10 local
+lifecycle tests now pass, with Python syntax checks. The real UI receipt records
+the stopped preview and `{closed:true, code:'ECONNREFUSED'}`. No sibling source
+or published runtime changed; local inference was not rerun for this tool-only
+helper reuse. Next cover real app-local artifact loading/cancellation and
+transcription separately from the existing public-library lifecycle harness.
 UI-selected hybrid settings do not prove graph placement or ASR correctness.
 
 ## C01 — Opt-in native ORT installation

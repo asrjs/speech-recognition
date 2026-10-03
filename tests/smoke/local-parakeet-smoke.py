@@ -50,18 +50,7 @@ def validate_result(result, verify_cancellation):
 
 
 def probe_preview_closed(node, url):
-    # Python's socket probe returned WSAEWOULDBLOCK on this host even when Node
-    # proved ECONNREFUSED. Use the preview's own runtime and fail on unknown errors.
-    script = """try {
-      await fetch(process.argv[1], {signal: AbortSignal.timeout(2000)});
-      console.log(JSON.stringify({closed:false, code:'REACHABLE'}));
-    } catch (error) {
-      const code = error.cause?.code ?? error.name;
-      console.log(JSON.stringify({closed:code === 'ECONNREFUSED', code}));
-    }"""
-    result = subprocess.run([node, '-e', script, url], capture_output=True,
-        text=True, encoding='utf-8', timeout=10, check=True)
-    return json.loads(result.stdout)
+    return shared.probe_preview_closed(node, url)
 
 
 def main():

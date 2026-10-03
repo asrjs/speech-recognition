@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 TOOL = Path(__file__).with_name('browser-demo-smoke.py')
 spec = importlib.util.spec_from_file_location('companion_smoke', TOOL)
@@ -14,6 +15,21 @@ spec.loader.exec_module(module)
 
 
 class CompanionSmokeTests(unittest.TestCase):
+    def test_preview_closure_requires_explicit_refusal_not_unknown_failure(self):
+        for code, closed in [('ECONNREFUSED', True), ('REACHABLE', False),
+                             ('TimeoutError', False), ('WSAEWOULDBLOCK', False)]:
+            completed = subprocess.CompletedProcess([], 0, json.dumps({'closed': closed, 'code': code}))
+            with self.subTest(code=code), patch.object(module.subprocess, 'run', return_value=completed):
+                self.assertEqual(module.probe_preview_closed('node', 'http://127.0.0.1:12345')['closed'], closed)
+
+    def test_contradictory_or_malformed_closure_evidence_rejects(self):
+        for data in ({'closed': True, 'code': 'TimeoutError'}, {'closed': False, 'code': 'ECONNREFUSED'},
+                     {'closed': 1, 'code': 'ECONNREFUSED'}, {}, []):
+            completed = subprocess.CompletedProcess([], 0, json.dumps(data))
+            with self.subTest(data=data), patch.object(module.subprocess, 'run', return_value=completed):
+                with self.assertRaises(ValueError):
+                    module.probe_preview_closed('node', 'http://127.0.0.1:12345')
+
     def test_local_model_requires_nonempty_selected_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -12,7 +12,6 @@ from pathlib import Path
 import queue
 import re
 import shutil
-import socket
 import subprocess
 import sys
 import threading
@@ -41,6 +40,25 @@ def digest(path):
         for chunk in iter(lambda: source.read(1024 * 1024), b''):
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+def probe_preview_closed(node, url):
+    """Unknown connection errors are not evidence that an owned port closed."""
+    script = """try {
+      await fetch(process.argv[1], {signal: AbortSignal.timeout(2000)});
+      console.log(JSON.stringify({closed:false, code:'REACHABLE'}));
+    } catch (error) {
+      const code = error.cause?.code ?? error.name;
+      console.log(JSON.stringify({closed:code === 'ECONNREFUSED', code}));
+    }"""
+    result = subprocess.run([node, '-e', script, url], capture_output=True,
+        text=True, encoding='utf-8', timeout=10, check=True)
+    proof = json.loads(result.stdout)
+    if (not isinstance(proof, dict) or type(proof.get('closed')) is not bool
+            or not isinstance(proof.get('code'), str)
+            or proof['closed'] != (proof['code'] == 'ECONNREFUSED')):
+        raise ValueError('Invalid preview closure evidence')
+    return proof
 
 
 def local_model_inputs(root, precision):
@@ -228,10 +246,12 @@ def main():
                 process.wait(timeout=10)
             receipt['preview_process_stopped'] = process.poll() is not None
             if ready:
-                address = urlparse(ready['url'])
-                with socket.socket() as probe:
-                    probe.settimeout(2)
-                    receipt['preview_port_closed'] = probe.connect_ex((address.hostname, address.port)) != 0
+                try:
+                    receipt['preview_closure_probe'] = probe_preview_closed(node, ready['url'])
+                    receipt['preview_port_closed'] = receipt['preview_closure_probe']['closed'] is True
+                except Exception as error:
+                    receipt['preview_port_closed'] = False
+                    receipt['cleanup_error'] = str(error)
                 if not receipt['preview_port_closed']:
                     receipt['status'] = 'FAIL_COMPANION_UI_SMOKE'
                     receipt['error'] = 'Owned preview port remains reachable'
