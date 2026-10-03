@@ -39,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stack-timeout", type=int, default=60)
     parser.add_argument("--stage-output", type=Path, help="Optional CPU TDT capture JSON or JSON.gz")
     parser.add_argument("--capture-feature-stft", action="store_true",
-                        help="With --stage-output, capture actual pre-STFT input/window/complex components and layouts")
+                        help="With --stage-output, capture actual input/window/filterbank/complex components and layouts")
     parser.add_argument("--sample-id", default=None)
     parser.add_argument("--model-revision", default=None)
     parser.add_argument("--capture-max-calls", type=int, default=4096)
@@ -259,6 +259,7 @@ def main() -> None:
         payload["meta"]["weight_sha256"] = sha256_file(args.restore_path) if args.restore_path else None
         if args.capture_feature_stft:
             import nemo_tdt_stage_capture
+            payload["meta"]["preprocessor_config"] = OmegaConf.to_container(model.cfg.preprocessor, resolve=True)
             payload["meta"]["torch_build_config"] = torch.__config__.show()
             payload["meta"]["capture_tool_sha256"] = sha256_file(Path(nemo_tdt_stage_capture.__file__))
             payload["meta"]["inspect_tool_sha256"] = sha256_file(Path(__file__))

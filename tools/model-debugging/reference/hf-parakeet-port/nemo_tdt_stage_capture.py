@@ -125,10 +125,19 @@ class NemoTdtStageCapture:
                 raise RuntimeError("Feature STFT capture requires actual float32 input")
             self.record("feature_stft/input", value)
             self.record("feature_stft/window", owner.window)
+            filterbank = owner.fb
+            if (not isinstance(filterbank, torch.Tensor) or filterbank.dtype != torch.float32
+                    or list(filterbank.shape) != [1, owner.nfilt, owner.n_fft // 2 + 1]):
+                raise RuntimeError("Feature STFT capture requires actual float32 filterbank buffer")
+            self.record("feature_stft/filterbank", filterbank)
             self.feature_stft_contract = {
                 "n_fft": owner.n_fft, "hop_length": owner.hop_length,
                 "win_length": owner.win_length, "exact_pad": owner.exact_pad,
                 "scope": "Actual NeMo featurizer.stft call; not an internal FFT kernel/plan capture",
+                "filterbank_boundary": "model.preprocessor.featurizer.fb",
+                "filterbank_f32le_sha256": hashlib.sha256(
+                    np.asarray(self.stages["feature_stft/filterbank"]["data"], dtype="<f4").tobytes(),
+                ).hexdigest(),
             }
             output = original(*args, **kwargs)
             if (not isinstance(output, torch.Tensor) or output.dtype != torch.complex64
@@ -212,6 +221,7 @@ class NemoTdtStageCapture:
     def validate_complete(self) -> None:
         required = ("waveform", "waveform_length", "features", "features_length", "encoder", "encoder_length")
         if self.capture_feature_stft:
-            required += ("feature_stft/input", "feature_stft/window", "feature_stft/real", "feature_stft/imag")
+            required += ("feature_stft/input", "feature_stft/window", "feature_stft/filterbank",
+                         "feature_stft/real", "feature_stft/imag")
         if any(name not in self.stages for name in required) or any(count == 0 for count in self.counts.values()):
             raise RuntimeError("Incomplete official TDT capture; no numerical reference produced")

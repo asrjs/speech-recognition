@@ -36,6 +36,8 @@ class SimulatedFeaturizer(torch.nn.Module):
         super().__init__()
         self.window = torch.ones(2)
         self.n_fft, self.hop_length, self.win_length, self.exact_pad = 2, 1, 2, False
+        self.nfilt = 2
+        self.register_buffer("fb", torch.tensor([[[0.0, 0.5], [0.25, 0.0]]]))
 
     def stft(self, x):
         self.last_output = torch.complex(x, x * 0.5)
@@ -185,6 +187,44 @@ class CaptureTests(unittest.TestCase):
         self.assertFalse(self.model.preprocessor._forward_pre_hooks)
         self.assertFalse(self.model.encoder._forward_hooks)
         self.assertNotIn("predict", self.model.decoder.__dict__)
+
+    def test_actual_filterbank_snapshot_hash_and_completeness(self):
+        self.model.preprocessor = StftPairModule()
+        owner = self.model.preprocessor.featurizer
+        with NemoTdtStageCapture(self.model, capture_feature_stft=True) as capture:
+            run(self.model)
+        capture.validate_complete()
+        owner.fb.fill_(99)
+        snapshot = capture.stages["feature_stft/filterbank"]
+        self.assertEqual(snapshot["shape"], [1, 2, 2])
+        self.assertEqual(snapshot["dtype"], "float32")
+        self.assertEqual(snapshot["data"], [0.0, 0.5, 0.25, 0.0])
+        self.assertEqual(capture.feature_stft_contract["filterbank_f32le_sha256"],
+            hashlib.sha256(bytes.fromhex("000000000000003f0000803e00000000")).hexdigest())
+        self.assertEqual(capture.feature_stft_contract["filterbank_boundary"],
+                         "model.preprocessor.featurizer.fb")
+        del capture.stages["feature_stft/filterbank"]
+        with self.assertRaisesRegex(RuntimeError, "Incomplete"):
+            capture.validate_complete()
+
+    def test_requested_filterbank_rejects_missing_wrong_dtype_shape_or_nonfinite(self):
+        for mode in ("missing", "double", "shape", "nan"):
+            with self.subTest(mode=mode):
+                self.model.preprocessor = StftPairModule()
+                owner = self.model.preprocessor.featurizer
+                if mode == "missing":
+                    del owner.fb
+                elif mode == "double":
+                    owner.fb = owner.fb.double()
+                elif mode == "shape":
+                    owner.fb = torch.ones(2, 2)
+                else:
+                    owner.fb.fill_(float("nan"))
+                with self.assertRaises((AttributeError, RuntimeError)):
+                    with NemoTdtStageCapture(self.model, capture_feature_stft=True):
+                        run(self.model)
+                self.assertNotIn("stft", owner.__dict__)
+                self.assertFalse(self.model.preprocessor._forward_pre_hooks)
 
     def test_opt_in_stft_restores_original_override_after_failure(self):
         self.model.preprocessor = StftPairModule()
