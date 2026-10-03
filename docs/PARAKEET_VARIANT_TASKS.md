@@ -3785,6 +3785,106 @@ position is that the cause is unidentified rather than nearly found.
 Gate stays FAIL. Recorded so the next attempt does not re-run these eight
 eliminations.
 
+### ROOT CAUSE FOUND: the two paths loaded different ORT-Web builds (2026-10-03)
+
+The gap is fully explained, and it was never a numerical or library defect.
+The two runners loaded **different `onnxruntime-web` entrypoints**, and
+`browser_head_replay.py`'s import map selects the bundle from the server's
+backend: `ort.webgpu.min.mjs` when `server.backend == 'webgpu'`, otherwise
+`ort.all.bundle.min.mjs`. `initOrt()` imports the bare specifier, so the map
+decides which build runs.
+
+Confirmed from the receipts' own HTTP events:
+
+| run | ORT module | WASM sidecar |
+| --- | --- | --- |
+| standalone replay | `ort.webgpu.min.mjs` | `ort-wasm-simd-threaded.asyncify.wasm` |
+| hybrid library path | `ort.all.bundle.min.mjs` | `ort-wasm-simd-threaded.jsep.wasm` |
+
+Same declared version `1.29.0`, different build and a different WASM sidecar.
+`--ort-bundle all` was added to the standalone replay, which overrides only the
+import-map entrypoint through the existing `extra_imports` hook, leaving the
+WebGPU encoder provider unchanged. Result:
+
+| comparison | maxAbs |
+| --- | ---: |
+| all-bundle standalone vs webgpu-bundle standalone | `1.131557e-6` |
+| **hybrid vs all-bundle standalone** | **`0.000000e+00`** |
+| hybrid vs webgpu-bundle standalone | `1.131557e-6` |
+
+**The hybrid's encoder output is bitwise identical to the standalone's once both
+load the same ORT build.** The whole `1.1316e-6` was the build difference, and
+nothing else.
+
+Consequences:
+
+- The library's encoder path and a direct session path are **bitwise equally
+  accurate** when given the same ORT build. There is no library defect, and the
+  encoder-to-head handoff, session options and creation sequence were never
+  implicated — those eliminations were correct, they simply sat behind a
+  confound that made every comparison disagree by a constant.
+- The constant offset is now explained: a fixed `1.131557e-06` difference is the
+  signature of two different builds, which is exactly what the earlier entries
+  observed but could not attribute.
+- The lesson is recorded for the next port: **compare the loaded ORT artifact
+  identity, not the version string**, before attributing any cross-run numerical
+  difference. Ten session-surface eliminations were spent behind this confound.
+- Also actionable: the webgpu-only build sits closer to the official CPU engine
+  on this fixture (`3.427267e-7`) than the all-bundle does (`1.4566e-6`). Since
+  the earlier feed-error bracket put the passing threshold near `3.64e-7`, which
+  build the browser hybrid loads is a **product-relevant** choice, not a
+  diagnostic detail. That is now the next experiment.
+
+Gate stays FAIL: the hybrid still differs from the official CPU capture, and the
+score comparison at head call 20 is still the gate. What changed is that its
+cause is identified and the lever is known.
+
+### The lever works: the browser score gate passes with the webgpu-only build (2026-10-03)
+
+The lever identified above was tested, with `--trace-head` requested so the head
+gate was genuinely evaluated. The hybrid library path, real fp32 WebGPU encoder,
+WASM decoder, loading `ort.webgpu.min.mjs`:
+
+| field | value |
+| --- | --- |
+| status | `REAL_ENCODER_OUTPUT_DIAGNOSTIC_PASS` |
+| `live_head.status` | **`LIVE_HEAD_NUMERICAL_PASS`** |
+| `live_head.observed_calls` | 46 |
+| `live_head.allclose` | **`true`** |
+| failing calls | **none** |
+| `encoder_boundary` | `real` |
+| cleanup errors | none |
+| ORT fetched | `ort.webgpu.min.mjs` + asyncify sidecar |
+
+Head call 20 — the coordinate pair that has failed at every previous real hybrid
+run — passes. This is the **first numerical pass of the browser real-hybrid score
+comparison** on this fixture, and it was reached by changing which ORT-Web build
+the library path loads, with no tolerance change and no production math change.
+
+**What this does not mean.** `full_asr` remains
+`NOT_PROVEN_FEATURE_GATE_UNACCEPTED`, and that is the runner's own scope
+statement, not a formality: the upstream production-feature gate is still FAIL
+(313/140,928 mismatches), so the features entering the encoder are still not
+accepted, and **full ASR is not accepted**. The pass is one fixture, one
+adapter, one machine, and one configuration. The gate as a whole does not close
+on this result.
+
+**What it does mean.** Two things, both product-relevant:
+
+1. The real-hybrid score failure was caused by the ORT-Web **build selection**,
+   not by the library's encoder path, decoding, state or the handoff. Every one
+   of those was measured exact.
+2. The webgpu-only build is both smaller and numerically closer to the official
+   CPU engine here (`3.427267e-7` versus `1.4566e-6`). Which bundle is loaded is
+   therefore a correctness-adjacent decision, not a packaging detail. The library
+   itself is bundle-agnostic — `src/models/nemo-tdt/ort.ts` imports the bare
+   specifier `onnxruntime-web`, so the host's import map decides. The harness's
+   rule keys on the **decoder** backend (`browser_head_replay.py`), so the hybrid
+   configuration our own docs call the differentiator — WebGPU encoder with a
+   WASM decoder — receives the all-bundle and the less accurate build by default.
+   That rule is the thing to change, and for embedders the guidance is to map
+   `onnxruntime-web` to the webgpu build when using WebGPU.
+
 A clue, stated only as far as it goes. Placed on the same axis, the encoder
 outputs differ in how far each sits from the recorded official encoder tensor:
 

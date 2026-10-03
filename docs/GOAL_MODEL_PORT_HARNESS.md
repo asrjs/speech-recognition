@@ -109,15 +109,25 @@ Two gates are open and bounded; nothing here is accepted:
 - Production feature parity: FAIL, JFK 313/140,928 mismatches at the
   unchanged `atol=1e-5, rtol=1e-4` (`filterbank-feature-jfk-2026-10-03.json`,
   max `3.423691e-4`). Upstream FFT/power arithmetic.
-- Browser real-hybrid scores: FAIL at head call 20 / frame 69, 3 coordinates
-  failing at max `5.789e-4`. The WASM head and predictor-state drift are
-  **exonerated** by controlled perturbation on official reference inputs.
-  The error is **inherited from the live WebGPU encoder feed**, which is
-  localized but **not fully attributed**: encoder-side decomposition
-  (feature-input delta versus accumulation versus kernel placement) is still
-  open. Full-tensor accuracy of the real WebGPU encoder against the official
-  encoder is 0 of 141,312 coordinates failing the unchanged gate, with
-  `1.005828e-6` max absolute error and bitwise-exact repeats.
+- Browser real-hybrid scores: **PASS on this fixture** with the webgpu-only ORT
+  build — `LIVE_HEAD_NUMERICAL_PASS`, 46 calls, `allclose: true`, zero failing
+  calls, including head call 20 which failed at every previous real hybrid run.
+  Reached by changing which ORT-Web build is loaded, with no tolerance or
+  production-math change. This is **not** full ASR acceptance:
+  `full_asr` remains `NOT_PROVEN_FEATURE_GATE_UNACCEPTED` because the
+  production-feature gate is still FAIL, and it is one fixture, one adapter, one
+  configuration.
+
+The root cause of the long-standing `1.1316e-6` gap was the ORT-Web build, and
+the library is bundle-agnostic: it imports the bare specifier
+`onnxruntime-web`, so the host's import map decides. The harness's rule keys on
+the decoder backend, so a WebGPU-encoder/WASM-decoder hybrid received the
+all-bundle and the less accurate build. The webgpu-only build is both smaller and
+measurably closer to the official CPU engine (`3.427267e-7` versus `1.4566e-6`),
+and the passing feed-error bracket was near `3.64e-7`.
+
+The lesson recorded for the next port: compare the loaded ORT artifact identity,
+not the version string, before attributing any cross-run numerical difference.
 
 Per-frame sensitivity of the head's score gate to encoder feed error is
 measured at only one call and one error direction. That bracket is not a
@@ -128,13 +138,11 @@ production-JS features plus a same-session `native(official features)` control.
 Separated at the unchanged gate: execution residual `1.326203e-6`, feature
 effect `9.797513e-7`, WebGPU-versus-native `5.885959e-7`, official-feature
 WebGPU `1.005828e-6` — all passing, with the encoder attenuating the
-`3.423691e-4` feature delta by about 320x. The execution residual is larger
-than the feature effect, so the earlier feature-driven reading was wrong.
-Those controls come from a **different** browser execution than the failing
-hybrid run, and an unexplained `1.1316e-6` difference between the live
-call-20 feed and that run's production-JS frame 69 remains. Live-source
-attribution is therefore still open, with a concrete next discriminator: bind
-the two runs' session options, graph build and run configuration.
+`3.423691e-4` feature delta by about 320x. Those controls were later shown to
+sit behind an ORT-build confound: every cross-run comparison in that phase
+disagreed by a constant `1.1316e-6` because the two runners loaded different
+`onnxruntime-web` builds. The decomposition values themselves remain valid as
+measurements of their own runs.
 
 Goal item 3 is now implemented, not just described:
 `tools/stage_attribution.py` is model-neutral, fail-closed tooling that
@@ -156,16 +164,28 @@ models cover it, while `Qwen/Qwen3-ASR-0.6B-hf` does (782,426,112 parameters,
 30 languages, Apache-2.0). Discovery evidence only; it is an autoregressive
 speech-LLM, so it needs a new family and download authority not granted here.
 
-Nothing in the numerical gates is closed. The browser gate's `1.1316e-6`
-discrepancy is **unexplained**, and a candidate explanation was tested and
-falsified: four separate browser launches of the standalone encoder replay
-produce bitwise identical output, so cross-run encoder variation is not the
-cause. Direct observation did establish two facts: the hybrid feeds features
-byte-identical to the replay's, and the hybrid's head feed is bitwise equal to
-its own run's encoder output, so the encoder-to-head handoff is exact. The
-difference is therefore specific to the hybrid execution versus the standalone
-encoder execution, with features, length, frame binding, session options,
-cross-session, cross-run, co-residency and transfer precision each excluded.
+The production-feature gate is not closed. The browser real-hybrid score
+comparison, which had failed at every previous run, now passes on this fixture —
+and its long-standing `1.1316e-6` discrepancy is **fully explained**: the two
+runners loaded different `onnxruntime-web` builds. `browser_head_replay.py`'s
+import map selects `ort.webgpu.min.mjs` when the server backend is `webgpu` and
+`ort.all.bundle.min.mjs` otherwise, and `initOrt()` imports that bare specifier.
+Same declared version `1.29.0`, different build and a different WASM sidecar.
+With both paths forced onto the same build, the hybrid's encoder output is
+**bitwise identical** (`0.000000e+00`) to a direct session path, so there is no
+library defect. Direct observation had already established that the hybrid feeds
+features byte-identical to the replay's and that its head feed is bitwise equal
+to its own encoder output, so the handoff is exact.
+
+The lesson for the next port is recorded: compare the loaded ORT artifact
+identity, not the version string, before attributing any cross-run numerical
+difference.
+
+A product-relevant lever follows from this. The webgpu-only build sits closer to
+the official CPU engine on this fixture (`3.427267e-7`) than the all-bundle does
+(`1.4566e-6`), and the measured feed-error bracket put the passing threshold near
+`3.64e-7`. Which build the browser path loads therefore matters for the gate
+itself, and is under test.
 
 ## Measured acceptance against the Orukeet baseline
 

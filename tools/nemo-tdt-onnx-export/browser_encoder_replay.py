@@ -120,6 +120,7 @@ def main():
     parser.add_argument('--create-as-encoder-name', action='store_true', help='Opt-in: create the encoder session from /encoder-model.onnx instead of /graph.onnx, the same bytes under the library artifact name, to test whether the create-URL name affects the result')
     parser.add_argument('--decoder-before-runs', action='store_true', help='Opt-in: create a WASM decoder session before the encoder first runs, matching the hybrid session-creation sequence')
     parser.add_argument('--production-first', action='store_true', help='Opt-in: run production-JS features before the official control, matching the hybrid whose encoder first run uses production-JS features')
+    parser.add_argument('--ort-bundle', choices=('auto', 'all'), default='auto', help='Opt-in: load ort.all.bundle.min.mjs instead of the webgpu-only build, matching the ORT entrypoint the hybrid loads')
     parser.add_argument('--timeout-ms', type=int, default=240000)
     args = parser.parse_args()
     if not 1000 <= args.timeout_ms <= 600000:
@@ -179,6 +180,12 @@ def main():
     if decoder_path is not None:
         server.extra_routes['/decoder-graph.onnx'] = decoder_path
         receipt['scope'] += '; co-resident decoder session requested'
+    if args.ort_bundle == 'all':
+        # The hybrid loads ort.all.bundle.min.mjs; this standalone default loads
+        # ort.webgpu.min.mjs. Same version string, different build and a
+        # different WASM sidecar (jsep vs asyncify). extra_imports is spread
+        # after the default map, so this overrides the entrypoint only.
+        server.extra_imports = {'onnxruntime-web': '/ort-dist/ort.all.bundle.min.mjs'}
     server.http_events = receipt['http_events'] = []
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
