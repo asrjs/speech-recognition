@@ -32,6 +32,16 @@ earlier 7.40 measurement used a contract the model does not consume. The correct
 reference is therefore the preemphasis path (1101x80), and against it the current
 frontend measures max abs `18.02` / mean `9.25` over 88,080 coordinates.
 
+**THE PORTED FAMILY NOW TRANSCRIBES.** Running the new `src/models/parakeet-ctc`
+family on JFK through the exported graph yields 34 tokens and the text "And so,
+my fellow Americans, askk not what your country can do for you. Ask what you can
+do for your country." — the oracle, apart from one leading space from the
+sentencepiece word marker. Three wiring defects surfaced and were fixed: the
+attention mask must be rank 2 `[batch, frames]`; the frontend is mel-major while
+the graph is `[batch, frames, mels]`, so without a transpose the graph emits
+zero tokens; and the pad id 1024 lives in `tokenizer.json` `added_tokens`, not
+`model.vocab`, so a vocab-only tokenizer mis-resolves the blank.
+
 **ROOT CAUSE FIXED.** `ParakeetFeatureExtractor.__call__` normalizes mel features
 per band after the log (mean over valid frames, unbiased variance, then
 `(x - mean) / (std + 1e-5)`, masked). The private `_torch_extract_fbank_features`

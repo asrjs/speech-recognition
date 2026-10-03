@@ -1,0 +1,35 @@
+{
+  "status": "FAMILY_TRANSCRIBES_ORACLE_MATCHING",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "architecture": "ParakeetForCTC",
+  "parameters": 109287937,
+  "license": "cc-by-4.0",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "backend": "onnxruntime-node CPUExecutionProvider",
+  "result": {
+    "tokens": 34,
+    "out_frames": 138,
+    "text": " And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+    "oracle": "And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+    "match": "exact apart from one leading space produced by the sentencepiece word marker"
+  },
+  "pipeline": [
+    "src/models/parakeet-ctc/frontend.ts: official ParakeetFeatureExtractor contract, verified to max abs 2.04e-4 / mean 9.76e-7 against the official __call__ features.",
+    "src/models/parakeet-ctc/model.ts: mel-major to frame-major transpose for the graph feed, rank-2 attention mask, shared CtcDecoder.",
+    "src/models/parakeet-ctc/tokenizer.ts: tokenizer.json model.vocab plus added_tokens (the pad id 1024 lives in added_tokens, not model.vocab), sentencepiece normalization via the base decodeTokenPiece."
+  ],
+  "defects_found_and_fixed_while_wiring": [
+    "attention_mask was fed as rank 1; the graph declares rank 2 [batch, frames].",
+    "frontend output is mel-major but the graph is [batch, frames, mels]; without the transpose the graph emitted zero tokens.",
+    "tokenizer built from model.vocab alone stopped at 1024 and mis-resolved the blank id 1024."
+  ],
+  "not_yet_done": [
+    "No preset, descriptor or local-folder adapter registered, so the model is not selectable in the demo or harness.",
+    "Browser/WASM and WebGPU execution unverified for this family.",
+    "The 137 of 88,000 coordinates outside atol=1e-5/rtol=1e-4 remain a per-band reduction precision question, but they do not change this transcript."
+  ],
+  "full_suite": {
+    "tests_passed": 1474,
+    "tests_skipped": 33
+  }
+}
