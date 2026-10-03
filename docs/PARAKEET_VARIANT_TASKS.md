@@ -14,6 +14,16 @@ Orukeet retains 627M parameters; it is not a small student model.
 
 ## Current checkpoint
 
+Public lifecycle control (2026-10-03): the owned local browser smoke now offers
+`--verify-cancellation`. Stock v3 fp16 WebGPU encoder / fp32 WASM decoder passes
+baseline transcription, progress-triggered in-flight decode cancellation,
+same-handle transcription reuse with exact repeated text, and awaited disposal.
+Receipt: `tools/data/results/harness/local-public-hybrid-v3-cancel-2026-10-03.json`.
+Chrome 154 used the pinned local ORT 1.29.0 engine assets; no blocked requests
+or page errors, inputs unchanged, owned preview stopped and port closed.
+This proves cooperative cancellation between decoder iterations, not GPU kernel
+interruption, worker cancellation, long-session memory or Orukeet parity.
+
 Latest model/harness checkpoint (2026-10-03): identical windowed-frame controls
 isolate the observed native/ONNX spectrum difference to FFT/backend arithmetic.
 Preemphasis, frame gathering and window multiplication are byte-exact for the

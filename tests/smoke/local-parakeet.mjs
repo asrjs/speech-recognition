@@ -58,6 +58,35 @@ field('run').addEventListener('click', async () => {
       pcmSha256: [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join(''),
     };
     for (let iteration = 0; iteration < 2; iteration++) {
+      if (iteration === 1 && field('cancel').checked) {
+        const controller = new AbortController();
+        const cancellation = { requested: false, rejected: false, completeEmitted: false };
+        receipt.cancellation = cancellation;
+        try {
+          await model.transcribeMonoPcm(pcm, 16000, {
+            signal: controller.signal,
+            onProgress(event) {
+              if (event.stage === 'complete') cancellation.completeEmitted = true;
+              if (
+                event.stage === 'decode' && event.completedUnits > 0 &&
+                event.completedUnits < event.totalUnits && !cancellation.requested
+              ) {
+                cancellation.requested = true;
+                cancellation.completedUnits = event.completedUnits;
+                cancellation.totalUnits = event.totalUnits;
+                controller.abort();
+              }
+            },
+          });
+        } catch (error) {
+          cancellation.errorName = error.name;
+          cancellation.stageId = error.stageId;
+          cancellation.rejected = error.name === 'PipelineAbortedError' && error.stageId === 'decode';
+          if (!cancellation.rejected) throw error;
+        }
+        if (!cancellation.requested || !cancellation.rejected || cancellation.completeEmitted)
+          throw new Error('Requested in-flight decode cancellation did not reject without completion');
+      }
       const start = performance.now();
       const result = await model.transcribeMonoPcm(pcm, 16000);
       receipt.results.push({

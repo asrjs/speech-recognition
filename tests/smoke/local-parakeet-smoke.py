@@ -41,6 +41,7 @@ def main():
     parser.add_argument('--audio', type=Path, required=True)
     parser.add_argument('--expected-phrase', required=True)
     parser.add_argument('--encoder-precision', choices=['fp32', 'fp16'], default='fp32')
+    parser.add_argument('--verify-cancellation', action='store_true')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     if not args.expected_phrase.strip():
@@ -66,7 +67,8 @@ def main():
         raise RuntimeError('Existing Node required')
     from playwright.sync_api import sync_playwright, expect
     receipt = {'status': 'FAIL_LOCAL_PUBLIC_API_SMOKE', 'sources_sha256': hashes,
-        'scope': 'Stock-v3 repeated public local inference, selected session providers and awaited disposal; not per-node GPU placement, numerical parity, Orukeet, cancellation or soak acceptance',
+        'scope': 'Stock-v3 repeated public local inference, selected session providers and awaited disposal; optional cooperative decode cancellation/reuse, not GPU kernel interruption, per-node GPU placement, numerical parity, Orukeet or soak acceptance',
+        'cancellation_requested': args.verify_cancellation,
         'expected_phrase': args.expected_phrase, 'encoder_precision': args.encoder_precision,
         'blocked_requests': [], 'page_errors': [], 'console': []}
     process, ready = None, None
@@ -115,11 +117,16 @@ def main():
                     page.get_by_label('Audio fixture', exact=True).set_input_files(str(args.audio.resolve()))
                     page.get_by_label('Encoder precision', exact=True).select_option(args.encoder_precision)
                     page.get_by_label('Expected smoke phrase', exact=True).fill(args.expected_phrase)
+                    page.get_by_label('Verify decode cancellation and reuse', exact=True).set_checked(args.verify_cancellation)
                     page.get_by_role('button').click()
                     expect(page.get_by_role('status')).to_have_text(re.compile('^(PASS_|FAIL_)'), timeout=240000)
                     receipt['result'] = json.loads(page.locator('#result').inner_text())
                     if receipt['result']['status'] != 'PASS_LOCAL_HYBRID_SMOKE':
                         raise ValueError('Public API smoke failed: ' + json.dumps(receipt['result']))
+                    if args.verify_cancellation:
+                        cancellation = receipt['result'].get('cancellation', {})
+                        if cancellation.get('requested') is not True or cancellation.get('rejected') is not True or cancellation.get('completeEmitted') is not False:
+                            raise ValueError('Requested cancellation evidence missing or failed')
                     served = set()
                     for response in tuple(responses):
                         path = urlparse(response.url).path
