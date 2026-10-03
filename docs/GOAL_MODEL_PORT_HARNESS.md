@@ -156,14 +156,15 @@ models cover it, while `Qwen/Qwen3-ASR-0.6B-hf` does (782,426,112 parameters,
 30 languages, Apache-2.0). Discovery evidence only; it is an autoregressive
 speech-LLM, so it needs a new family and download authority not granted here.
 
-Nothing in the numerical gates is closed. Attribution of the browser gate's
-`1.1316e-6` difference is now bounded by harness capability rather than by
-authority: observing the hybrid's own encoder tensors needs an observer that
-supports GPU readback and int64, which
-`tools/nemo-tdt-onnx-export/observe_session.mjs` deliberately does not provide.
-Library source inspection shows the encoder-to-head handoff is exact float32
-copies with no precision step, which is inspection-level evidence and not a
-closure.
+Nothing in the numerical gates is closed, but the browser gate's `1.1316e-6`
+discrepancy is now **attributed by direct observation** rather than unexplained.
+A hybrid browser run that records its own encoder inputs and outputs shows:
+features byte-identical to the replay's, the head feed bitwise equal to its own
+run's encoder output column (so the handoff is exact, as source inspection
+predicted), and encoder outputs differing by `1.131557e-6` between two runs with
+identical inputs, graph, options and length. The difference is therefore
+cross-run encoder variation, not a handoff or feature artifact. The cause of
+that run-to-run variation is not established, and the gate stays FAIL.
 
 ## Measured acceptance against the Orukeet baseline
 
@@ -192,9 +193,9 @@ is tested, and replaced duplicated code that existed a few hours ago. Item 6's
 reuse rule is therefore partially satisfied: it holds within this
 investigation, and is untested across families.
 
-Attribution is therefore still open. The next bounded slice is the observer
-extension named above. Selecting a candidate needs new weight-download
-authority.
+Attribution is therefore resolved for the browser gate. The next bounded slice
+is the cause of cross-run encoder variation, if it is to be pursued at all.
+Selecting a candidate needs new weight-download authority.
 
 ## Authority constraints unchanged
 

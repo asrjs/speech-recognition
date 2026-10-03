@@ -3532,3 +3532,52 @@ requirements, not a flag on an existing runner.
 
 **Status unchanged.** The hybrid's encoder tensors on the real WebGPU path
 remain unobserved; the `1.1316e-6` difference is not attributed. Gate FAIL.
+
+### Hybrid encoder observed: the discrepancy is cross-run, handoff is exact (2026-10-03)
+
+The blocker above was wrong, and the previous diagnosis is retracted. The
+failures were two bounded integration bugs, not a GPU-readback limitation:
+
+- The observer rejects `int64` at its first check, before inspecting storage.
+  This graph's encoder `length` input and `encoded_lengths` output are int64.
+- A request for one input name can never match the encoder session, because the
+  helper requires the requested name count to equal the session's. The earlier
+  `['audio_signal']` request therefore matched nothing.
+- Chained observers each save the wrapper installed before them, so restoring in
+  installation order reinstalls the inner wrapper permanently. The head wrapper
+  then kept observing into the uninstrumented repeat and exhausted its call cap.
+
+Fixed: `observe_session.mjs` now snapshots int64 with a checked
+BigInt-to-Number conversion that rejects any value outside the exact range, and
+`restore()` refuses to run out of reverse installation order instead of
+silently reinstalling a wrapper. The runner supplies the full encoder
+signature and restores encoder-first. Three observer regressions cover int64
+exactness, out-of-range rejection, and chained restore order; 7 observer tests
+and 9 runner tests pass. No GPU readback was needed: the encoder input is built
+from `processed.features` and is already CPU float32.
+
+`tools/nemo-tdt-onnx-export/hybrid_handoff_comparison.py` then answers the three
+questions from the hybrid's own recorded run
+(`browser-hybrid-encoder-trace-jfk-2026-10-03.json`, 1 encoder call, 46 head
+calls, both observers restored, uninstrumented repeat clean):
+
+| question | measured |
+| --- | --- |
+| Q1 features the hybrid fed vs replay's recorded features | **byte-identical**, `maxAbs 0.0`, length 1100 both |
+| Q2 hybrid encoder output vs replay encoder output | `maxAbs 1.131557e-6`, `mismatch 0` |
+| Q3 hybrid head feed vs its own encoder output column | **frame 69, `maxAbs 0.0`** |
+
+**Q3 closes the handoff question by observation.** The head feed is bitwise
+equal to its own run's encoder output, so nothing between encoder and head
+alters the value. The source inspection is now confirmed empirically.
+
+**Therefore the `1.1316e-6` is not a handoff artifact.** It is the difference
+between two browser runs' encoder outputs, with identical features, graph,
+options and valid length. Q2 measures it directly. Cross-run encoder variation
+at this magnitude is the explanation, and the earlier "unexplained discrepancy"
+is fully accounted for.
+
+Scope: measured for this pair of runs, this graph and this adapter. It does not
+establish the cause of the run-to-run variation, and it does not by itself close
+the score gate. The gate stays FAIL; the difference is now attributed rather
+than unexplained.

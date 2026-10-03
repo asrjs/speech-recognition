@@ -94,3 +94,74 @@ test('rejects concurrent calls and in-flight restoration without changing output
     observer.restore();
   }
 });
+
+test('observes int64 tensors when every value is exactly representable', async () => {
+  const int64 = (value) => ({
+    type: 'int64',
+    dims: [1],
+    data: BigInt64Array.from([BigInt(value)]),
+  });
+  class Session {
+    inputNames = ['audio_signal', 'length'];
+    async run() {
+      return { outputs: tensor(2), encoded_lengths: int64(1100) };
+    }
+  }
+  const observer = observeSessionRuns(
+    Session,
+    ['audio_signal', 'length'],
+    ['outputs', 'encoded_lengths'],
+    2,
+  );
+  try {
+    await new Session().run({ audio_signal: tensor(1), length: int64(1100) });
+    assert.deepEqual(observer.calls[0].feeds.length, {
+      dtype: 'int64',
+      shape: [1],
+      data: [1100],
+    });
+    assert.deepEqual(observer.calls[0].outputs.encoded_lengths.data, [1100]);
+  } finally {
+    observer.restore();
+  }
+});
+
+test('rejects int64 values outside the exact Number range instead of rounding', async () => {
+  class Session {
+    inputNames = ['x'];
+    async run() {
+      return { y: { type: 'int64', dims: [1], data: BigInt64Array.from([2n ** 60n]) } };
+    }
+  }
+  const observer = observeSessionRuns(Session, ['x'], ['y'], 2);
+  try {
+    await assert.rejects(new Session().run({ x: tensor(1) }), /exact Number range/);
+    assert.equal(observer.calls.length, 0);
+  } finally {
+    observer.restore();
+  }
+});
+
+test('chained observers must restore in reverse installation order', async () => {
+  const output = { y: tensor(2) };
+  class Session {
+    inputNames = ['x'];
+    async run() {
+      return output;
+    }
+  }
+  const original = Object.getOwnPropertyDescriptor(Session.prototype, 'run');
+  const inner = observeSessionRuns(Session, ['x'], ['y'], 4);
+  const outer = observeSessionRuns(Session, ['x'], ['y'], 4);
+  try {
+    // Restoring the inner observer first would silently reinstall it forever.
+    assert.throws(() => inner.restore(), /reverse installation order/);
+    assert.equal(await new Session().run({ x: tensor(1) }), output);
+    assert.equal(outer.calls.length, 1);
+    assert.equal(inner.calls.length, 1);
+  } finally {
+    outer.restore();
+    inner.restore();
+  }
+  assert.deepEqual(Object.getOwnPropertyDescriptor(Session.prototype, 'run'), original);
+});

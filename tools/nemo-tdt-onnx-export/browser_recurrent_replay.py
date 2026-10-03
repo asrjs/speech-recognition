@@ -127,6 +127,8 @@ def main():
     parser.add_argument('--real-encoder-backend', choices=('wasm', 'webgpu'),
                         help='Opt-in real encoder output diagnostic; never full feature/ASR acceptance')
     parser.add_argument("--trace-head", action="store_true")
+    parser.add_argument("--trace-encoder", action="store_true",
+                        help="Opt-in: record the encoder's actual inputs and outputs in the same run as the head trace")
     parser.add_argument("--timeout-ms", type=int, default=180000)
     args = parser.parse_args()
     if args.timeout_ms < 1000 or args.output.exists():
@@ -170,6 +172,7 @@ def main():
     if args.trace_head and not 0 < len(head["steps"]) <= 2000:
         raise ValueError("Live head trace requires 1..2000 official calls")
     fixture.update(traceHead=args.trace_head, maxTraceCalls=len(head["steps"]),
+                   traceEncoder=args.trace_encoder,
                    realEncoder=args.real_encoder_backend is not None,
                    encoderBackend=args.real_encoder_backend or 'wasm')
     expected = {**fixture, "tokenIds": sample["tokens"], "frameIndices": sample["token_frames"],

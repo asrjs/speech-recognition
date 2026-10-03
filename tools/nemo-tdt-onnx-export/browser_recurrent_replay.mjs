@@ -28,7 +28,7 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
     crossOriginIsolated: globalThis.crossOriginIsolated,
   };
   const originals = [];
-  let runtime, loaded, observer;
+  let runtime, loaded, observer, encoderObserver;
   try {
     if (usesWebGpu) {
       const adapter = await navigator.gpu?.requestAdapter({ powerPreference: 'high-performance' });
@@ -107,6 +107,13 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
       const before = receipt.gpuDispatches,
         start = performance.now();
       const traceEnabled = fixture.traceHead === true && repeat === 0;
+      // Opt-in encoder observation. The head trace records what the decoder
+      // received; this records what the encoder was actually given and what it
+      // produced, in the same run, so the encoder-to-head handoff can be
+      // compared against a standalone encoder run. The full encoder signature
+      // is required: the observer only matches a session whose input-name count
+      // equals the requested count.
+      const encoderTraceEnabled = fixture.traceEncoder === true && repeat === 0;
       if (traceEnabled)
         observer = observeSessionRuns(
           ort.InferenceSession,
@@ -114,8 +121,16 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
           ['outputs', 'output_states_1', 'output_states_2', 'prednet_lengths'],
           fixture.maxTraceCalls,
         );
+      if (encoderTraceEnabled)
+        encoderObserver = observeSessionRuns(
+          ort.InferenceSession,
+          ['audio_signal', 'length'],
+          ['outputs', 'encoded_lengths'],
+          4,
+        );
       let result,
-        headCalls = [];
+        headCalls = [],
+        encoderCalls = [];
       try {
         result = await loaded.transcribe(pcm, {
           detail: 'detailed',
@@ -128,6 +143,15 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
           disableWindowing: true,
         });
       } finally {
+        // Reverse installation order: the encoder observer wraps the head
+        // observer, so it must be removed first. Restoring out of order would
+        // reinstall the head wrapper and let it exceed its call cap on the
+        // uninstrumented repeat.
+        if (encoderObserver) {
+          encoderObserver.restore();
+          encoderCalls = encoderObserver.calls;
+          encoderObserver = undefined;
+        }
         if (observer) {
           observer.restore();
           headCalls = observer.calls;
@@ -138,8 +162,11 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
       receipt.runs.push({
         repeat,
         traceEnabled,
+        encoderTraceEnabled,
         headCalls,
+        encoderCalls,
         observerRestored: !observer,
+        encoderObserverRestored: !encoderObserver,
         transcribeMs: performance.now() - start,
         gpuDispatches: receipt.gpuDispatches - before,
         text: result.canonical.text,
