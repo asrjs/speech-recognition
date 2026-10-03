@@ -78,7 +78,8 @@ def final_state_fixture(sample, head, cfg):
 
 
 def evaluate_result(result, expected, backend):
-    if (result["backendRequested"] != backend or result["encoderBackend"] != "wasm"
+    encoder_backend = expected.get('encoderBackend', 'wasm')
+    if (result["backendRequested"] != backend or result["encoderBackend"] != encoder_backend
             or result["decoderBackend"] != backend or result.get("loaded") != {"backend": backend, "family": "nemo-tdt"}
             or result.get("pcmSha256") != expected["pcmSha256"] or not result["crossOriginIsolated"]):
         raise ValueError("Actual backend/family/PCM/isolation differs")
@@ -90,6 +91,12 @@ def evaluate_result(result, expected, backend):
     for repeat, run in enumerate(result["runs"]):
         if type(run["repeat"]) is not int or run["repeat"] != repeat:
             raise ValueError("Repeat chronology differs")
+        if expected.get('realEncoder') is True:
+            metrics = run.get('metrics', {})
+            if (result.get('realEncoder') != 'EXECUTED_NOT_COMPONENT_ACCEPTED'
+                    or metrics.get('encoderBackend') != encoder_backend
+                    or metrics.get('decoderBackend') != backend):
+                raise ValueError('Real encoder component execution evidence differs')
         run["output_checks"] = {}
         for key in ("tokenIds", "frameIndices", "tdtSteps"):
             value = run[key]
@@ -106,7 +113,7 @@ def evaluate_result(result, expected, backend):
             stage(run["decoderState"], key, "float32", value["shape"]), atol=1e-5, rtol=1e-4)
             for key, value in expected["decoderState"].items()}
         good = all(run["output_checks"].values()) and all(item["allclose"] for item in run["state_comparisons"].values()) and good
-        if backend == "webgpu":
+        if backend == "webgpu" or encoder_backend == 'webgpu':
             good = type(run["gpuDispatches"]) is int and run["gpuDispatches"] > 0 and good
     return good
 
@@ -117,6 +124,8 @@ def main():
                  "frozen-dir", "candidate-dir", "runtime-config", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--backend", choices=("wasm", "webgpu"), required=True)
+    parser.add_argument('--real-encoder-backend', choices=('wasm', 'webgpu'),
+                        help='Opt-in real encoder output diagnostic; never full feature/ASR acceptance')
     parser.add_argument("--trace-head", action="store_true")
     parser.add_argument("--timeout-ms", type=int, default=180000)
     args = parser.parse_args()
@@ -160,13 +169,22 @@ def main():
     fixture = {**pcm_fixture(sample, runtime_config["sampleRate"]), "modelId": identity["model"], "config": runtime_config}
     if args.trace_head and not 0 < len(head["steps"]) <= 2000:
         raise ValueError("Live head trace requires 1..2000 official calls")
-    fixture.update(traceHead=args.trace_head, maxTraceCalls=len(head["steps"]))
+    fixture.update(traceHead=args.trace_head, maxTraceCalls=len(head["steps"]),
+                   realEncoder=args.real_encoder_backend is not None,
+                   encoderBackend=args.real_encoder_backend or 'wasm')
     expected = {**fixture, "tokenIds": sample["tokens"], "frameIndices": sample["token_frames"],
                 "tdtSteps": sample["token_duration"], "text": sample["transcript"], "decoderState": final_state_fixture(sample, head, cfg)}
     module = Path(__file__).with_suffix(".mjs")
     routes = {"/recurrent.mjs": module, "/frozen-encoder.onnx": frozen_graph, "/vocab.txt": tokenizer,
               "/observe-session.mjs": Path(__file__).with_name("observe_session.mjs"),
               "/vendor/pako.esm.mjs": ROOT / "node_modules/pako/dist/pako.esm.mjs"}
+    if args.real_encoder_backend:
+        data_binding = packed['external_data']
+        data = args.artifact_dir / 'encoder-model.onnx.data'
+        if (data_binding['name'] != data.name or data.is_symlink() or not data.is_file()
+                or data.stat().st_size != data_binding['bytes'] or sha256(data) != data_binding['sha256']):
+            raise ValueError('Real encoder external-data identity differs')
+        routes.update({'/encoder-model.onnx': source_graph, '/encoder-model.onnx.data': data})
     bound_paths = {*routes.values(), graph, source_graph, config, Path(__file__),
                    Path(__file__).with_name("live_head_parity.py"),
                    args.artifact_dir / "repack-receipt.json", args.frozen_dir / "frozen-boundary-receipt.json",
@@ -191,6 +209,13 @@ def main():
                "intermediate_states_logits": "UNTESTED", "atol": 1e-5, "rtol": 1e-4,
                "gpu_scope": "head compute dispatch observed, not every-node GPU placement or VRAM measurement",
                "browser_errors": [], "http_events": []}
+    success_status = 'CONDITIONAL_RECURRENCE_PASS'
+    if args.real_encoder_backend:
+        success_status = 'REAL_ENCODER_OUTPUT_DIAGNOSTIC_PASS'
+        receipt.update(scope='REAL_ENCODER_PUBLIC_LIBRARY_OUTPUT_DIAGNOSTIC',
+                       real_encoder='EXECUTED_NOT_COMPONENT_ACCEPTED',
+                       encoder_backend=args.real_encoder_backend,
+                       full_asr='NOT_PROVEN_FEATURE_GATE_UNACCEPTED')
     with args.output.open("x", encoding="utf-8", newline="\n") as output:
         server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         server.graph, server.backend, server.http_events = graph, args.backend, receipt["http_events"]
@@ -223,7 +248,7 @@ def main():
                 receipt["live_head"] = compare_live_head(receipt["result"], head)
                 receipt["intermediate_states_logits"] = receipt["live_head"]["status"]
                 good = good and receipt["live_head"]["allclose"]
-            receipt["status"] = "CONDITIONAL_RECURRENCE_PASS" if good and not receipt["browser_errors"] else "CONDITIONAL_RECURRENCE_FAIL"
+            receipt["status"] = success_status if good and not receipt["browser_errors"] else ('REAL_ENCODER_OUTPUT_DIAGNOSTIC_FAIL' if args.real_encoder_backend else 'CONDITIONAL_RECURRENCE_FAIL')
         except Exception as error:
             receipt["status"], receipt["error"] = "BROWSER_RECURRENCE_FAILED", str(error)
         finally:
@@ -242,7 +267,10 @@ def main():
                 if not exact:
                     receipt["status"] = "BROWSER_DELIVERY_FAILED"
             required = {"/recurrent.mjs", "/observe-session.mjs", "/graph.onnx", "/frozen-encoder.onnx", "/vocab.txt"}
-            if receipt["status"] == "CONDITIONAL_RECURRENCE_PASS" and not required.issubset({item["route"] for item in receipt["served_artifacts"] if item["delivered_exact"]}):
+            if args.real_encoder_backend:
+                required.remove('/frozen-encoder.onnx')
+                required.update({'/encoder-model.onnx', '/encoder-model.onnx.data'})
+            if receipt["status"] == success_status and not required.issubset({item["route"] for item in receipt["served_artifacts"] if item["delivered_exact"]}):
                 receipt["status"] = "REQUIRED_ARTIFACT_NOT_DELIVERED"
             for path, digest in pinned.items():
                 if sha256(Path(path)) != digest:
@@ -253,7 +281,7 @@ def main():
             json.dump(receipt, output, indent=2, allow_nan=False)
             output.write("\n")
     print(json.dumps({"status": receipt["status"], "output": str(args.output)}), flush=True)
-    return 0 if receipt["status"] == "CONDITIONAL_RECURRENCE_PASS" else 1
+    return 0 if receipt["status"] == success_status else 1
 
 
 if __name__ == "__main__":

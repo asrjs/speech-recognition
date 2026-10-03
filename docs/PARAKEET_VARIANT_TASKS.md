@@ -14,6 +14,42 @@ Orukeet retains 627M parameters; it is not a small student model.
 
 ## Current checkpoint
 
+Next integration gap (audited 2026-10-03): no receipt proves Orukeet's public
+end-to-end browser path with the real encoder and live recurrent head together.
+The current browser encoder probe uses official features; public recurrence
+uses frozen encoder output. Stock-v3 local lifecycle smoke hardcodes its preset
+ID and file-role selection, so it cannot certify arbitrary compatible weights.
+Do not relabel that smoke as Orukeet. Next bounded implementation: an opt-in
+NeMo-TDT family browser diagnostic with explicit candidate identity/config,
+byte-bound real encoder plus external data, validated head and tokenizer, exact
+captured PCM, repeated public transcriptions and awaited cleanup. Preserve
+separate feature/encoder/head/token/text gates; a failed feature gate must stay
+FAIL even if full tokens/text match. No preset promotion or tolerance waiver.
+Pure-silence width-8 normalization is already measured and regression-tested;
+do not repeat it as a new hypothesis. Six current reduction tests pass.
+
+Implemented follow-up (2026-10-03): `browser_recurrent_replay.py` now accepts
+`--real-encoder-backend wasm|webgpu`, retaining the frozen default and existing
+frozen-native delivery control. Real mode binds the packed encoder/data to the
+repack receipt, checks exact HTTP delivery and actual per-run component metrics,
+and uses the public technical-family API without registering/promoting a brand.
+It never reports full feature/ASR acceptance. Thirty-three encoder/head/recurrence
+harness tests pass, including real-mode/provider/dispatch negative controls.
+
+First actual JFK hybrid run (fp32 WebGPU encoder + WASM persistent head,
+`--trace-head`) completes two transcriptions with all 38 tokens, frames,
+durations and text exact. Final committed h/c states pass unchanged tolerances.
+All 247 delivered artifacts verify, with no browser/cleanup errors. The trace
+observer preserves outputs and final state exactly versus the unobserved repeat.
+Overall status remains `REAL_ENCODER_OUTPUT_DIAGNOSTIC_FAIL`: at head call 20,
+frame 69, normalized scores have three failing coordinates (first 8195), max
+error `0.0005788803100585938`, mean `9.097685666164557e-5` at `1e-5/1e-4`.
+All recorded head inputs/states and other score calls pass their respective
+gates. This does not waive the earlier feature failure or establish full ASR
+parity. Receipt: `browser-real-public-hybrid-jfk-2026-10-03.json` under Orukeet
+results. Next isolate the failing score boundary using the already captured
+actual head feeds; do not change score normalization or acceptance tolerances.
+
 Actual filterbank diagnostic (2026-10-03): opt-in STFT capture now snapshots
 the instantiated NeMo `model.preprocessor.featurizer.fb` float32 buffer, its
 shape/hash and preprocessor config rather than regenerating reference weights.

@@ -85,6 +85,25 @@ class RecurrentBrowserTests(unittest.TestCase):
         result["runs"][1]["decoderState"]["c"]["data"][0] = 4
         self.assertFalse(evaluate_result(result, expected, "webgpu"))
 
+    def test_real_encoder_requires_actual_hybrid_metrics_and_mode(self):
+        result, expected = self.result()
+        expected.update(realEncoder=True, encoderBackend='webgpu')
+        result.update(encoderBackend='webgpu', decoderBackend='wasm',
+                      backendRequested='wasm', loaded={'backend': 'wasm', 'family': 'nemo-tdt'},
+                      realEncoder='EXECUTED_NOT_COMPONENT_ACCEPTED')
+        for run in result['runs']:
+            run['metrics'] = {'encoderBackend': 'webgpu', 'decoderBackend': 'wasm'}
+        self.assertTrue(evaluate_result(copy.deepcopy(result), expected, 'wasm'))
+        for mutate in (lambda r: r.update(realEncoder='BYPASSED_FROZEN_ORACLE'),
+                       lambda r: r['runs'][0].update(metrics={}),
+                       lambda r: r['runs'][1]['metrics'].update(encoderBackend='wasm')):
+            changed = copy.deepcopy(result)
+            mutate(changed)
+            with self.assertRaises(ValueError):
+                evaluate_result(changed, expected, 'wasm')
+        result['runs'][0]['gpuDispatches'] = 0
+        self.assertFalse(evaluate_result(result, expected, 'wasm'))
+
     def test_failure_cleanup_zero_dispatch_and_divergent_output_never_pass(self):
         for mutate in (lambda r: r.update(cleanupErrors=["failed"]),
                        lambda r: r.update(error="failed"),

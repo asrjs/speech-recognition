@@ -12,12 +12,16 @@ import { observeSessionRuns } from '/observe-session.mjs';
 
 globalThis.replayLibraryRecurrence = async (fixture, backend) => {
   if (!['wasm', 'webgpu'].includes(backend)) throw new Error('Explicit browser backend required');
+  const realEncoder = fixture.realEncoder === true;
+  const encoderBackend = realEncoder ? fixture.encoderBackend : 'wasm';
+  if (!['wasm', 'webgpu'].includes(encoderBackend)) throw new Error('Explicit encoder backend required');
+  const usesWebGpu = backend === 'webgpu' || encoderBackend === 'webgpu';
   const receipt = {
     backendRequested: backend,
-    encoderBackend: 'wasm',
+    encoderBackend,
     decoderBackend: backend,
     features: 'EXECUTED_NOT_ACCEPTED',
-    realEncoder: 'BYPASSED_FROZEN_ORACLE',
+    realEncoder: realEncoder ? 'EXECUTED_NOT_COMPONENT_ACCEPTED' : 'BYPASSED_FROZEN_ORACLE',
     runs: [],
     cleanupErrors: [],
     gpuDispatches: 0,
@@ -26,7 +30,7 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
   const originals = [];
   let runtime, loaded, observer;
   try {
-    if (backend === 'webgpu') {
+    if (usesWebGpu) {
       const adapter = await navigator.gpu?.requestAdapter({ powerPreference: 'high-performance' });
       if (!adapter) throw new Error('WEBGPU_NO_ADAPTER');
       receipt.adapter = Object.fromEntries(
@@ -48,24 +52,26 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
         };
       }
     }
-    const ort = await initOrt(backend, {
+    const ort = await initOrt(usesWebGpu ? 'webgpu' : 'wasm', {
       wasmPaths: `${location.origin}/ort-dist/`,
       cpuThreads: 1,
     });
     receipt.ortVersions = ort.env.versions;
     runtime = createSpeechRuntime();
     runtime.registerBackend(createWasmBackend());
-    if (backend === 'webgpu') runtime.registerBackend(createWebGpuBackend());
+    if (usesWebGpu) runtime.registerBackend(createWebGpuBackend());
     runtime.registerModelFamily(createNemoTdtModelFamily());
     const source = {
       kind: 'direct',
-      encoderBackend: 'wasm',
+      encoderBackend,
       decoderBackend: backend,
       preprocessorBackend: 'js',
       cpuThreads: 1,
       wasmPaths: `${location.origin}/ort-dist/`,
       artifacts: {
-        encoderUrl: `${location.origin}/frozen-encoder.onnx`,
+        encoderUrl: `${location.origin}/${realEncoder ? 'encoder-model.onnx' : 'frozen-encoder.onnx'}`,
+        ...(realEncoder ? { encoderFilename: 'encoder-model.onnx',
+          encoderDataUrl: `${location.origin}/encoder-model.onnx.data` } : {}),
         decoderUrl: `${location.origin}/graph.onnx`,
         tokenizerUrl: `${location.origin}/vocab.txt`,
       },
@@ -137,6 +143,7 @@ globalThis.replayLibraryRecurrence = async (fixture, backend) => {
         transcribeMs: performance.now() - start,
         gpuDispatches: receipt.gpuDispatches - before,
         text: result.canonical.text,
+        metrics: result.canonical.meta.metrics,
         tokenIds: result.native?.debug?.tokenIds,
         frameIndices: result.native?.debug?.frameIndices,
         tdtSteps: result.native?.debug?.tdtSteps,
