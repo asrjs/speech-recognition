@@ -20,6 +20,7 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
   private sessionPromise?: Promise<OrtSessionLike>;
   private disposePromise?: Promise<void>;
   private disposed = false;
+  private readonly activeProcesses = new Set<Promise<void>>();
 
   constructor(
     private readonly ort: OrtModuleLike,
@@ -74,6 +75,8 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
   }
 
   private async flushDispose(): Promise<void> {
+    // New calls are already rejected; let existing calls finish tensor cleanup.
+    await Promise.all(this.activeProcesses);
     let session: OrtSessionLike | undefined;
     try {
       session = await this.sessionPromise;
@@ -85,12 +88,28 @@ export class OnnxNemoPreprocessor implements NemoPreprocessor {
   }
 
   async process(audio: AudioBufferLike): Promise<NemoPreprocessorResult> {
+    if (this.disposed) throw new Error('NeMo preprocessor is disposed.');
+    let finish!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    this.activeProcesses.add(pending);
+    try {
+      return await this.processAudio(audio);
+    } finally {
+      this.activeProcesses.delete(pending);
+      finish();
+    }
+  }
+
+  private async processAudio(audio: AudioBufferLike): Promise<NemoPreprocessorResult> {
     const mono = audio.channels?.[0];
     if (!mono) {
       throw new Error('OnnxNemoPreprocessor expected mono planar audio.');
     }
 
     const session = await this.getSession();
+    if (this.disposed) throw new Error('NeMo preprocessor is disposed.');
     let waveformTensor: OrtTensorLike<Float32Array> | undefined;
     let lengthTensor: OrtTensorLike<BigInt64Array> | undefined;
     let outputs: Record<string, OrtTensorLike> | undefined;

@@ -28,6 +28,7 @@ function fixture(allocationFailure?: { readonly at: number; readonly error: Erro
     InferenceSession: { create: vi.fn(async () => ({ run, release })) },
   };
   return {
+    ort,
     outputs,
     inputs,
     run,
@@ -45,6 +46,138 @@ const audio = {
 };
 
 describe('NeMo ONNX processor output contract', () => {
+  it('does not start a warm-session run after disposal begins', async () => {
+    const f = fixture();
+    await f.processor.process(audio);
+    f.run.mockClear();
+    const process = f.processor.process(audio);
+    const rejected = expect(process).rejects.toThrow(/disposed/);
+    const disposal = f.processor.dispose();
+    await rejected;
+    await disposal;
+    expect(f.run).not.toHaveBeenCalled();
+    expect(f.release).toHaveBeenCalledOnce();
+  });
+
+  it('drains every active run, not just the first one', async () => {
+    const f = fixture();
+    const finishes: Array<() => void> = [];
+    let started = () => {};
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.run.mockImplementation(async () => {
+      const gate = new Promise<void>((resolve) => {
+        finishes.push(resolve);
+      });
+      if (finishes.length === 2) started();
+      await gate;
+      return f.outputs;
+    });
+    const first = f.processor.process(audio);
+    const second = f.processor.process(audio);
+    await entered;
+    const disposal = f.processor.dispose();
+    try {
+      finishes[0]!();
+      await first;
+      expect(f.release).not.toHaveBeenCalled();
+      finishes[1]!();
+      await second;
+      await disposal;
+      expect(f.release).toHaveBeenCalledOnce();
+      for (const tensor of f.inputs) expect(tensor.dispose).toHaveBeenCalledOnce();
+    } finally {
+      finishes.forEach((finish) => finish());
+      await Promise.allSettled([first, second, disposal]);
+    }
+  });
+
+  it.each([false, true])(
+    'settles pending creation during disposal (load failure: %s)',
+    async (fails) => {
+      const f = fixture();
+      let finish = () => {};
+      const gate = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const error = new Error('Create failed');
+      vi.mocked(f.ort.InferenceSession.create).mockImplementationOnce(async () => {
+        await gate;
+        if (fails) throw error;
+        return { run: f.run, release: f.release };
+      });
+      const process = f.processor.process(audio);
+      const observed = process.catch((failure: unknown) => failure);
+      const disposal = f.processor.dispose();
+      finish();
+      const failure = await observed;
+      if (fails) expect(failure).toBe(error);
+      else expect(failure).toMatchObject({ message: 'NeMo preprocessor is disposed.' });
+      await disposal;
+      expect(f.run).not.toHaveBeenCalled();
+      expect(f.inputs).toHaveLength(0);
+      expect(f.release).toHaveBeenCalledTimes(fails ? 0 : 1);
+    },
+  );
+
+  it.each([false, true])(
+    'drains an active run before disposal (run failure: %s)',
+    async (fails) => {
+      const f = fixture();
+      let finish = () => {};
+      let started = () => {};
+      const gate = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const entered = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      const error = new Error('Run failed');
+      f.release.mockImplementation(() => {
+        for (const tensor of f.inputs) expect(tensor.dispose).toHaveBeenCalledOnce();
+        if (!fails)
+          for (const tensor of Object.values(f.outputs))
+            expect(tensor.dispose).toHaveBeenCalledOnce();
+      });
+      f.run.mockImplementationOnce(async () => {
+        started();
+        await gate;
+        if (fails) throw error;
+        return f.outputs;
+      });
+      const process = f.processor.process(audio);
+      const observed = process.then(
+        (value) => ({ value }),
+        (failure) => ({ failure }),
+      );
+      await entered;
+      let disposed = false;
+      const disposal = f.processor.dispose().then(() => {
+        disposed = true;
+      });
+      try {
+        await expect(f.processor.process(audio)).rejects.toThrow(/disposed/);
+        await Promise.resolve();
+        expect(disposed).toBe(false);
+        expect(f.release).not.toHaveBeenCalled();
+        finish();
+        const result = await observed;
+        if (fails) expect(result).toEqual({ failure: error });
+        else expect(result).toMatchObject({ value: { frameCount: 3, validLength: 2 } });
+        await disposal;
+        for (const tensor of f.inputs) expect(tensor.dispose).toHaveBeenCalledOnce();
+        expect(f.release).toHaveBeenCalledOnce();
+        await f.processor.dispose();
+        expect(f.release).toHaveBeenCalledOnce();
+      } finally {
+        finish();
+        await observed;
+        await disposal;
+      }
+    },
+  );
+
   it.each(['features', 'features_lens', 'waveform', 'length'] as const)(
     'attempts every tensor cleanup after %s disposal fails and remains reusable',
     async (target) => {

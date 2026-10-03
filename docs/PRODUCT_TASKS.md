@@ -3,6 +3,33 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C20 — Preprocessor active-run disposal ownership
+
+Status: PASS — deterministic deferred-run/session-creation simulations;
+not real provider teardown, whole executor or long-session certification.
+
+Two regressions reproduced disposal completing while a preprocessor run was
+still pending, for both successful and failing inference. Active calls are now
+registered synchronously and drained through their tensor cleanup before the
+processor releases its session. New calls reject once disposal begins, and a
+post-acquisition check prevents a warm-session run from starting after disposal.
+Accepted runs already executing retain their result/error; disposal waits, it
+does not interrupt the provider. A never-settling provider run still prevents
+disposal completion; no unsafe forced release or timeout was added.
+
+Six new tests cover success/failure, cleanup-before-release, multiple active
+runs, pending creation success/failure, warm acquisition and repeated disposal.
+Thirty-one processor and fifty-six processor/native-bridge/RNNT/lifecycle tests
+pass; TypeScript, scoped ESLint, formatting and independent review pass.
+Full regression: 1,448 PASS / 33 SKIP / 0 FAIL; receipt:
+`tools/data/results/harness/nemo-preprocessor-run-disposal-full-suite-2026-10-03.json`.
+TLS verification/system CA were enabled only for that test child.
+
+Ownership remains local to the NeMo processor; no model math, shared runtime,
+decoder or public API changed. Broader executor encoder/decoder disposal during
+active transcription remains open and must be checked through public sessions
+before claiming whole-model shutdown safety. Orukeet feature parity remains FAIL.
+
 ## C19 — Preprocessor cleanup failure isolation
 
 Status: PASS — injected tensor-disposal failures and session reuse;
