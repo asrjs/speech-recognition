@@ -26,6 +26,7 @@ export interface TranscriptWarning {
 
 /** Canonical token-level detail for models that can expose token timing or confidence. */
 export interface TranscriptToken {
+  /** Position in the containing result's `tokens` array, not a model vocabulary ID. */
   readonly index: number;
   readonly text: string;
   readonly rawText?: string;
@@ -46,6 +47,7 @@ export interface TranscriptWord {
   readonly startTime: number;
   readonly endTime: number;
   readonly confidence?: number;
+  /** Known associations into the containing result's `tokens` array; omitted when unavailable. */
   readonly tokenIndices?: readonly number[];
 }
 
@@ -211,6 +213,12 @@ export interface TranscriptResult {
   readonly segments?: readonly TranscriptSegment[];
   readonly sentences?: readonly TranscriptSentence[];
   readonly words?: readonly TranscriptWord[];
+  /**
+   * Model-emitted token detail. When windowing reports
+   * `pipeline.windowing.token-overlap-unresolved`, retained overlap records may
+   * be unreferenced by final words and are not guaranteed to form a unique,
+   * chronological token sequence. Do not reconstruct final text by joining them.
+   */
   readonly tokens?: readonly TranscriptToken[];
 }
 
