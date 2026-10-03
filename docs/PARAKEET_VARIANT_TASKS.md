@@ -3053,3 +3053,67 @@ This is one call, one delta direction and one native-CPU head; it is not a
 per-frame budget for the other 45 calls. No tolerance, normalization or
 production math was changed, and this is not feature or ASR acceptance. The
 browser gate stays FAIL and honest.
+
+### Encoder-side feed-error decomposition (2026-10-03)
+
+Goal item 3 (cheap attribution) applied one stage upstream. The live hybrid
+run feeds the real WebGPU encoder production JS features
+(`preprocessorBackend: js`), so the decoder-input feed error could be either
+feature-driven or kernel-driven. `tools/nemo-tdt-onnx-export/
+encoder_error_decomposition.py` separates them offline from the recorded runs
+plus one real native-CPU encoder control, at unchanged `atol=1e-5, rtol=1e-4`:
+
+Binding is verified before attributing anything: the recorded live call-20 feed
+matches this same capture's official `encoder[:,:,69:70]` to `1.4566e-6`, so
+the controls below and the failing live feed share one reference tensor. The
+encoder receipt binds `official-jfk-stft-layout-stages-2026-10-02.json.gz`, and
+its `features` and `encoder` stages are byte-identical to the 2026-09-30
+capture used here (max difference 0.0, bitwise equal). Both receipts share
+`pcmSha256` `ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`.
+
+Cross-receipt binding, compared directly rather than assumed from shared PCM.
+Against this capture's official `encoder[:,:,69:70]`, and against each recorded
+real-browser run's own frame 69:
+
+| comparison | maxAbsError |
+| --- | ---: |
+| live call-20 feed vs official `encoder[:,:,69:70]` | `1.4566e-6` |
+| live call-20 feed vs official-feature run `[:,:,69:70]` | `4.5449e-7` |
+| live call-20 feed vs production-JS run `[:,:,69:70]` | `1.1316e-6` |
+
+These are two **different real-browser executions**, not one. Both share the
+same PCM (`ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`),
+the same `onnxruntime-web` 1.29.0 and the same NVIDIA Blackwell adapter. The
+live-vs-production-JS-replay difference of `1.1316e-6` is a **measured
+discrepancy whose cause is not established here**; differing session options,
+graph build or run configuration are hypotheses, not findings. Both feature
+sources are exercised in the encoder replay, so feature labelling alone does not
+explain it. **Live-source attribution stays open**: these controls do not
+reproduce the failing live feed, and the replay outputs must not be described
+as the live encoder output.
+
+| control | vs official encoder | failing |
+| --- | ---: | ---: |
+| official features -> real WebGPU encoder | `1.005828e-6` | 0/141,312 |
+| production-JS features -> native CPU encoder | `4.917383e-7` | 0 |
+| production-JS features -> native CPU vs WebGPU | `5.885959e-7` | 0 |
+
+None of the controls is individually out of tolerance. The feature tensor
+differs from the official one by `3.423691e-4` max with 313 failing
+coordinates — its own known, unchanged FAIL — yet the encoder's response to
+that change is only `1.069158e-6`, an **attenuation of 0.0031x (about 320x
+smaller)**. That production-feature run sits `3.427267e-7` max from the
+official encoder, *smaller* than the same encoder's official-feature error.
+That run is a separate browser execution, not the hybrid run's encoder output.
+
+Conclusion, scoped to what was measured: none of the three controls is
+individually out of tolerance at the unchanged gate. The feature delta is
+attenuated by the encoder by roughly three orders of magnitude, and the
+WebGPU-versus-native gap on identical features is `5.9e-7`. That closes the
+feature-versus-kernel question *for the recorded runs*, but it does **not**
+decompose the `1.4566e-6` live frame-69 feed error: these are full-tensor
+statistics from a different browser execution than the failing one, and an
+unexplained `1.1316e-6` discrepancy between the live feed and that run's
+production-JS frame is itself unresolved. Per-frame and run-to-run composition
+remain open. No tolerance, normalization or production math changed, and the
+browser gate stays FAIL and honest.

@@ -104,17 +104,37 @@ manual steps avoided, and gates closed or honestly deferred.
 
 ## Current measured state
 
-Two gates are open and attributed; nothing here is accepted:
+Two gates are open and bounded; nothing here is accepted:
 
-- Production feature parity: FAIL, JFK 313/140,928 mismatches
-  (`filterbank-feature-jfk-2026-10-03.json`), upstream FFT/power arithmetic.
-- Browser real-hybrid scores: FAIL at head call 20 / frame 69, attributed to
-  real-encoder feed error; the WASM head and predictor-state drift are
-  exonerated by controlled perturbation. Full-tensor encoder accuracy against
-  the official encoder is 0 of 141,312 coordinates failing the unchanged gate.
+- Production feature parity: FAIL, JFK 313/140,928 mismatches at the
+  unchanged `atol=1e-5, rtol=1e-4` (`filterbank-feature-jfk-2026-10-03.json`,
+  max `3.423691e-4`). Upstream FFT/power arithmetic.
+- Browser real-hybrid scores: FAIL at head call 20 / frame 69, 3 coordinates
+  failing at max `5.789e-4`. The WASM head and predictor-state drift are
+  **exonerated** by controlled perturbation on official reference inputs.
+  The error is **inherited from the live WebGPU encoder feed**, which is
+  localized but **not fully attributed**: encoder-side decomposition
+  (feature-input delta versus accumulation versus kernel placement) is still
+  open. Full-tensor accuracy of the real WebGPU encoder against the official
+  encoder is 0 of 141,312 coordinates failing the unchanged gate, with
+  `1.005828e-6` max absolute error and bitwise-exact repeats.
 
-The next model-port candidate audit is the natural first slice once the
-user's authority is confirmed for any new weight download.
+Per-frame sensitivity of the head's score gate to encoder feed error is
+measured at only one call and one error direction. That bracket is not a
+per-frame budget and does not establish any necessary accuracy bound.
+
+Encoder-side decomposition added a native CPU control on the recorded
+production-JS features: kernel-only `1.005828e-6` (official features),
+feature-only `4.917383e-7`, WebGPU-versus-native `5.885959e-7`, all passing the
+unchanged gate, with the encoder attenuating the `3.423691e-4` feature delta by
+about 320x. Those controls come from a **different** browser execution than the
+failing hybrid run, and an unexplained `1.1316e-6` difference between the live
+call-20 feed and that run's production-JS frame 69 remains. Live-source
+attribution is therefore still open, with a concrete next discriminator: bind
+the two runs' session options, graph build and run configuration.
+
+The next bounded slice is that binding. The candidate audit that follows needs
+new weight-download authority.
 
 ## Authority constraints unchanged
 
