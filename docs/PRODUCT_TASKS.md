@@ -3,6 +3,50 @@
 This queue complements `PARAKEET_VARIANT_TASKS.md`; it does not replace the
 Orukeet-first model queue or the whole-product goal in `GOAL_PROMPT_RECOMMENDED.md`.
 
+## C23 — Project-local skill and tool discovery
+
+Status: PASS — documentation discovery and CLI-help smoke; not model inference
+or numerical acceptance. User requested easier discovery after agents missed
+existing model-porting skills, reference engines and local artifacts.
+
+The tracked startup now exposes the project-local Model Debugging Skill and
+the [task-to-tool map](../tools/README.md#task-to-tool-map) before long task
+records. The map routes ports, feature contracts, original captures, stage
+comparison, attribution, artifact audits and browser checks to existing tools.
+No registry, second runner, inference loop or global skill install was added.
+Core runtime and the twelve inherited Nemotron changes remain untouched.
+
+Toolkit startup links and the family-playbook index now use relative paths.
+The script index exposes the existing offline Qwen library CLI and correctly
+groups frontend options with the frontend tool, not the artifact packer.
+It warns about the legacy frontend's sibling default, missing help handler and
+different reference schema. The Qwen guide's PowerShell capture command is
+repaired; its offline runner section names actual supported arguments.
+The workspace map supplies exact local NeMo, onnx-asr and sherpa-helper paths.
+Local environments and paths are discovery leads, not fresh-clone guarantees.
+
+Two fresh-agent, read-only exercises started at `docs/AGENT_ENTRYPOINT.md`.
+Both located the local skill, family workflow, original reference helpers and
+existing runners. Qwen discovery also located local ONNX artifacts and the
+already implemented `qwen-asr` family. NeMo discovery found the project-local
+reference interpreter instead of treating a default-Python import failure as
+missing tooling. Their CLI/schema findings were checked against source.
+The Qwen guide was rechecked after its command and runner-route corrections.
+
+Validation: 122 local Markdown file/heading links resolve across the ten edited
+discovery/goal guides. `node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs --help`
+exits successfully with the documented flags. The stage comparator's `--help`
+also exits successfully. The discovered reference interpreter imports NeMo
+3.0.0 and Torch 2.6.0+cu118. Formatting and whitespace checks pass.
+No real model inference was run for this documentation-only change.
+
+The focus goal record retracts the unsupported claim that Qwen needs a new
+family/download merely to run local ONNX artifacts. Its historical original
+PyTorch snapshot path is absent, which is a separate prerequisite for fresh
+official-engine capture. Existing ports do not automatically demonstrate the
+focus goal's cheaper-port/cross-family-attribution criterion. Orukeet feature
+parity remains FAIL; all original tolerances and model ordering stay unchanged.
+
 ## C22 — Real-provider disposal drain and post-C21 native refresh
 
 Status: PASS — actual onnxruntime-node inference through the public example

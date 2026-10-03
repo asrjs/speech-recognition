@@ -24,7 +24,9 @@ Use this for the official `qwen-asr` 0.0.6 chain. Do not start from
     data locations, and benchmark an ArgMax-only candidate in the real browser
     before changing artifact defaults. A scalar readback can still lose if the
     provider's reduction kernel or graph plan costs more than the transfer.
-12. Preset only after a product decision; family stays experimental. Dynamic encoder is exported but JFK harness still loads the static T=1100 graph.
+12. Preset only after a product decision; family stays experimental. The existing
+    [offline library runner](../reference/qwen3-asr-0.6b/README.md#reuse-the-existing-offline-library-runner)
+    defaults to the dynamic encoder; static T=1100 is an explicit option.
 
 ## Failure classes seen
 

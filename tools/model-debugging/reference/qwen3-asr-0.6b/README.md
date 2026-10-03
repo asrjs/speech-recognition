@@ -16,18 +16,14 @@ files; third-party graphs are not the oracle.
 $PYTHON = 'N:\github\asrjs\speech-recognition\tools\model-debugging\reference\qwen3-asr-0.6b\.venv\Scripts\python.exe'
 $MODEL = 'N:\models\Qwen3-ASR-0.6B'
 
-~~~powershell
-$PYTHON = 'C:\path\to\qwen3-asr\python.exe'
-$MODEL = 'N:\models\Qwen3-ASR-0.6B'
-
-& $PYTHON tools/model-debugging/reference/qwen3-asr-0.6b/capture_qwen_reference.py ~
-  --model-dir $MODEL ~
-  --audio tools/data/fixtures/audio/jfk-short.wav ~
-  --output tools/data/results/qwen/qwen3-asr-0.6b-reference.json ~
-  --device-map cpu ~
-  --dtype float32 ~
-  --batch-size 1 ~
-  --max-inference-batch-size 1 ~
+& $PYTHON tools/model-debugging/reference/qwen3-asr-0.6b/capture_qwen_reference.py `
+  --model-dir $MODEL `
+  --audio tools/data/fixtures/audio/jfk-short.wav `
+  --output tools/data/results/qwen/qwen3-asr-0.6b-reference.json `
+  --device-map cpu `
+  --dtype float32 `
+  --batch-size 1 `
+  --max-inference-batch-size 1 `
   --max-new-tokens 256
 ```
 
@@ -86,6 +82,35 @@ The family stays experimental. WASM and WebGPU match on JFK. Official-graph
 loads default to `audio-encoder-dynamic.onnx` (pad leftover frames to 100,
 then crop tokens). Static T=1100 is opt-in (`encoder=static-t1100`). No
 weights in git.
+
+## Reuse the existing offline library runner
+
+The `qwen-asr` family already exists under `src/models/qwen-asr`. Do not write
+another decoder loop to exercise local artifacts. Use the existing
+[Node/WASM benchmark CLI](../../../../tests/smoke/qwen3-asr-node-wasm-benchmark.mjs).
+
+Check that the local graphs, external-data shards and tokenizer are present.
+The historical original-snapshot path above is not proof that the PyTorch
+weights still exist. ONNX output can be exercised without that snapshot; a
+fresh official-engine capture requires the original weights and reference
+environment. Neither an old receipt nor `--help` proves current inference.
+
+From the repository root, after building the current library:
+
+```powershell
+node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs --help
+node tests/smoke/qwen3-asr-node-wasm-benchmark.mjs `
+  --model-dir N:\models\onnx\qwen3-asr-0.6b-official `
+  --audio tools/data/fixtures/audio/jfk-short.wav `
+  --backend wasm --encoder dynamic --dtype fp16 `
+  --warmup 0 --runs 1 --language English `
+  --reference tools/data/results/qwen/qwen3-asr-0.6b-jfk-short-reference.json
+```
+
+This command uses local artifacts and the library's executor. It does not
+download weights or establish feature/encoder/cache numerical parity.
+Use the [stage comparator](../../scripts/README.md#stage-capture-contract)
+for recorded stage evidence.
 
 ## Optional decoder graph surgery
 

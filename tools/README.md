@@ -12,6 +12,50 @@ the published runtime. They exist to help us:
 - benchmark exported models and runtime configurations
 - troubleshoot long-form and realtime transcript assembly
 
+## Task-to-tool map
+
+This is the discovery entrypoint for humans and coding agents. Paths below are
+relative to this checkout. The [Model Debugging Skill](model-debugging/SKILL.md)
+is a project-local playbook; it does not need global installation or harness
+registration. Read it before model-porting or parity work.
+
+| Task or symptom                                                   | Read first                                                                                                                                             | Existing tool or reference                                                                                                                                                  |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New model port, or an apparently missing port                     | [End-to-end parity workflow](model-debugging/playbooks/model-porting-parity.md), then the [family playbook index](model-debugging/playbooks/README.md) | [Reference sets](model-debugging/reference/README.md); inspect `src/models`, `models` and local receipts before writing code or downloading weights                         |
+| NeMo/Parakeet raw log-mel, normalization or valid-length mismatch | [NeMo feature-contract workflow](model-debugging/playbooks/nemo-rnnt-porting.md)                                                                       | [JS feature parity](model-debugging/scripts/node-canary-js-frontend-parity.mjs), [official NeMo capture](model-debugging/reference/hf-parakeet-port/python-nemo-inspect.py) |
+| Orukeet original weights, export or numerical replay              | [Orukeet reference guide](model-debugging/reference/orukeet/README.md), [TDT export/replay guide](nemo-tdt-onnx-export/README.md)                      | [Source audit](model-debugging/reference/orukeet/audit_source.py), existing `hf-parakeet-port` probes and `nemo-tdt-onnx-export` runners                                    |
+| Qwen3-ASR encoder, explicit KV decoder, WASM or WebGPU            | [Existing Qwen port](model-debugging/playbooks/qwen3-asr-porting.md)                                                                                   | [Official capture/export helpers and local artifact paths](model-debugging/reference/qwen3-asr-0.6b/README.md); do not assume this port or its weights are absent           |
+| Kaldi fbank or streaming encoder caches                           | [X-ASR/sherpa workflow](model-debugging/playbooks/x-asr-porting.md)                                                                                    | [Official sherpa capture and fbank dump](model-debugging/reference/x-asr/README.md)                                                                                         |
+| Browser and Node disagree on input preparation                    | [Audio preparation parity](model-debugging/playbooks/audio-prep-parity.md)                                                                             | [Effective-PCM control](model-debugging/playbooks/librivox-domain-parity.md), [NeMo library inspector](model-debugging/scripts/node-asrjs-nemo-inspect.mjs)                 |
+| Find the first divergent captured stage                           | [Stage-capture CLI contract](model-debugging/scripts/README.md#stage-capture-contract)                                                                 | [Stage comparator](model-debugging/scripts/node-compare-stage-captures.mjs), [numerical metrics](tensor_parity.py)                                                          |
+| Attribute a failing stage to one input                            | [Shared harness boundary](../docs/MODEL_HARNESS_CONTRACT.md)                                                                                           | [Fail-closed attribution API](stage_attribution.py); reuse it through a family adapter, not a second inference loop                                                         |
+| ONNX graph, external-data or packaging failure                    | [Artifact audit CLI](model-debugging/scripts/README.md#candidate-artifact-audit)                                                                       | [Local audit](model-debugging/scripts/node-audit-onnx-artifact.mjs), [external-data inspector](onnx_artifacts.py), [bounded repacker](repack_onnx_external_data.py)         |
+| ORT WebGPU module, provider or numerical discrepancy              | [ORT entrypoint control](model-debugging/playbooks/ort-webgpu-entrypoint.md)                                                                           | TDT browser runners record selected-module identity and fetched-artifact hashes; inspect actual receipt fields, not only package versions                                   |
+| Real browser capture/controller behavior                          | [Browser validation guide](browser-validation/README.md)                                                                                               | Existing browser probes; model inference and fake-device capture are separate acceptance scopes                                                                             |
+| Whisper export or alignment graphs                                | [Whisper exporter](whisper-onnx-export/README.md), [export workflow](../docs/whisper-export-workflow.md)                                               | Existing four-graph export tools and model-owned parity checks                                                                                                              |
+
+### Before adding tools or reporting BLOCKED
+
+1. Open the matching family playbook and reference README. Read the runner's
+   argument parser before choosing a command. Use `--help` where supported.
+2. Inspect existing family code, original weights, converted graphs, tokenizer,
+   local Python environments and result receipts. A default-Python import
+   failure does not establish that the reference environment is unavailable.
+3. Read official inference source and the pinned model configuration. Compare
+   onnx-asr, sherpa-onnx and prior working ports through the
+   [workspace reference map](../docs/WORKSPACE_CONTEXT.md#reference-repos).
+   These implementations inform the port; the official engine remains the oracle.
+4. Verify effective PCM identity, tensor shape/layout, valid length, normalization
+   and runtime artifact identity before attributing numerical differences.
+5. Reuse the nearest existing runner and shared comparison/control. Report
+   missing prerequisites with the exact paths and environments checked.
+   Old PASS receipts are leads, not proof for the current build.
+
+Tool discovery grants no extra authority. Preserve unrelated changes and failed
+receipts. New large downloads, installs, uploads and sibling edits still need
+approval. Do not search site-packages or backup copies when the active toolkit
+already supplies the route.
+
 ## Layout
 
 ```text
@@ -57,10 +101,10 @@ This is broader than “porting”:
 
 Start with:
 
-- [README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\README.md)
-- [SKILL.md](N:\github\asrjs\speech-recognition\tools\model-debugging\SKILL.md)
-- [playbooks/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\README.md)
-- [scripts/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\README.md)
+- [README.md](model-debugging/README.md)
+- [SKILL.md](model-debugging/SKILL.md)
+- [playbooks/README.md](model-debugging/playbooks/README.md)
+- [scripts/README.md](model-debugging/scripts/README.md)
 
 ### `tools/browser-validation`
 
@@ -86,7 +130,7 @@ For most debugging or parity tasks:
 5. save useful output under `tools/data/results`
 
 Before opening a new model-port branch, run the dated candidate survey and
-read [candidate-discovery.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\candidate-discovery.md).
+read [candidate-discovery.md](model-debugging/playbooks/candidate-discovery.md).
 It separates Hugging Face popularity from verified ONNX/WebGPU evidence and
 helps avoid duplicating an existing browser implementation.
 
@@ -102,5 +146,5 @@ Parakeet/NeMo troubleshooting:
 
 That exact workflow is documented in:
 
-- [audio-prep-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\audio-prep-parity.md)
-- [librivox-domain-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\librivox-domain-parity.md)
+- [audio-prep-parity.md](model-debugging/playbooks/audio-prep-parity.md)
+- [librivox-domain-parity.md](model-debugging/playbooks/librivox-domain-parity.md)

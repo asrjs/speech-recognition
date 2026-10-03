@@ -24,6 +24,14 @@ Unlike `reference/`, this folder should trend toward:
     PCM; Node/Bun native CPU and WASM are separate runs, not interchangeable
   - receipts label output-only acceptance; this does not certify intermediate
     features/states, memory stability or browser execution
+- [qwen3-asr-node-wasm-benchmark.mjs](../../../tests/smoke/qwen3-asr-node-wasm-benchmark.mjs)
+  - existing offline Qwen library CLI under `tests/smoke/`, not a second decoder
+  - accepts `--model-dir`, `--audio`, `--backend wasm|webgpu`, `--encoder dynamic|static-t1100`,
+    `--dtype fp16|fp32`, `--warmup`, `--runs`, `--language` and `--reference`
+  - starts from local graphs/tokenizer and calls the library; no weight download
+  - use `--help` to inspect the current CLI, then follow the
+    [Qwen reference guide](../reference/qwen3-asr-0.6b/README.md#reuse-the-existing-offline-library-runner)
+  - historical output receipts and CLI help are not current model acceptance
 - [node-asrjs-parakeet-realtime-parity.mjs](./node-asrjs-parakeet-realtime-parity.mjs)
   - runs the Parakeet realtime RNNT preset through `@asrjs/speech-recognition` in Node/WASM
   - compares the runtime output against `parakeet-realtime-eou-120m-v1-reference.json`
@@ -40,15 +48,19 @@ Unlike `reference/`, this folder should trend toward:
   - compares a JS mel frontend against `tools/data/results/canary/canary-180m-flash-reference.json`
   - automatically falls back to `canary-180m-flash-reference.json.gz` if the raw JSON has been packed out of the repo
   - auto-selects the in-repo `asrjs` valid-length and normalization contract from the reference model id
+  - pass `--frontend asrjs` explicitly; the CLI defaults to the sibling `meljs` implementation
+  - read the parser rather than invoking `--help`, which this legacy CLI does not implement
+  - consumes RNNT/Canary `audio.waveform` and `preprocessor.features` references,
+    not the generic TDT inspector's `samples/stages` capture envelope
   - use this when extending the shared pure-JS NeMo frontend for a new model port
-- [node-reference-artifacts.mjs](./node-reference-artifacts.mjs)
-  - packs large debugging/reference JSON files into `.json.gz`
-  - restores them on demand for deep parity work
-  - supports `status`, `pack`, and `unpack` commands for the current heavy Canary, MedASR, and Parakeet artifact sets
   - supports `asrjs`, `meljs`, and `parakeet.js`
   - accepts `--valid-length-mode onnx|centered` and `--normalization per_feature|none` when you want to override the auto-detected `asrjs` frontend contract explicitly
   - reports feature-length deltas, max/mean absolute difference, RMSE, and the largest mismatching bins/frames
   - useful before extending the shared pure-JS NeMo frontend for a future NeMo-family port
+- [node-reference-artifacts.mjs](./node-reference-artifacts.mjs)
+  - packs large debugging/reference JSON files into `.json.gz`
+  - restores them on demand for deep parity work
+  - supports `status`, `pack`, and `unpack` commands for the current heavy Canary, MedASR, and Parakeet artifact sets
 - [node-compare-transcript-jsons.mjs](./node-compare-transcript-jsons.mjs)
   - compares two transcript JSON outputs by shared `file` key
   - supports `*.rows[]` debug JSON or plain benchmark arrays

@@ -98,6 +98,30 @@ ONNX ASR reference/conversion work.
 
 Use it when checking ONNX file layout, external data conventions, browser-compatible exports, and older artifact naming patterns.
 
+### Local reference locations
+
+These are discovery leads for this workstation, not required paths in a fresh
+clone. Verify that each path exists and record its actual version before use.
+Reading reference code does not authorize sibling edits or environment installs.
+
+- Original NeMo checkout:
+  `N:\github\ysdede\NeMo\nemo\collections\asr\parts\preprocessing\features.py`.
+- The installed source used by recent Orukeet captures is under
+  `tools/model-debugging/reference/nemotron-3.5-asr-streaming/.venv/Lib/site-packages/nemo/`.
+  Its interpreter is `.venv/Scripts/python.exe` in that same reference folder.
+  Reusing this environment for Orukeet does not resume paused Nemotron model work.
+  Compare installed source with the checkout; they can differ.
+- Established onnx-asr references:
+  `N:\github\ysdede\onnx-asr\preprocessors\nemo.py`,
+  `N:\github\ysdede\onnx-asr\src\onnx_asr\preprocessors\numpy_preprocessor.py`,
+  and `N:\github\ysdede\onnx-asr\tests\preprocessors\test_nemo.py`.
+- Its sherpa adapter is `N:\github\ysdede\onnx-asr\wrappers\sherpa.py`.
+  The project-local [X-ASR reference helpers](../tools/model-debugging/reference/x-asr/README.md)
+  capture sherpa streaming output and Kaldi fbank. That feature contract is not
+  interchangeable with Orukeet's NeMo contract.
+
+Use the [tool map](../tools/README.md#task-to-tool-map) for the family workflow.
+
 ### `keet`
 
 Experimental or older Parakeet-related scratch work.

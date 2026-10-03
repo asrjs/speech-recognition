@@ -42,10 +42,10 @@ EARLIEST divergence, fail-closed controls, and receipts bound to the code and
 artifacts that actually executed. Reuse that pattern; do not re-derive it.
 
 1. Close the two known Orukeet numerical gates or reclassify them honestly.
-   Production feature parity remains FAIL on upstream FFT/power arithmetic;
-   the browser real-hybrid score gate remains FAIL and is now attributed to
-   real-encoder feed error rather than head or normalization. Both are stated
-   with their real causes. Do not relax tolerances to close them, and do not
+   Production feature parity remains FAIL on upstream FFT/power arithmetic.
+   Browser real-hybrid scores now PASS on the documented JFK configuration
+   after fixing an ORT-build confound; this is not full ASR acceptance.
+   Preserve both gates and their actual scope. Do not relax tolerances, and do not
    keep re-running rejected FFT variants. Finish them only with a genuinely new
    discriminating hypothesis, or record a bounded, evidence-backed deferral.
 
@@ -104,7 +104,7 @@ manual steps avoided, and gates closed or honestly deferred.
 
 ## Current measured state
 
-Two gates are open and bounded; nothing here is accepted:
+One numerical gate remains open; full ASR acceptance is not established:
 
 - Production feature parity: FAIL, JFK 313/140,928 mismatches at the
   unchanged `atol=1e-5, rtol=1e-4` (`filterbank-feature-jfk-2026-10-03.json`,
@@ -120,9 +120,10 @@ Two gates are open and bounded; nothing here is accepted:
 
 The root cause of the long-standing `1.1316e-6` gap was the ORT-Web build, and
 the library is bundle-agnostic: it imports the bare specifier
-`onnxruntime-web`, so the host's import map decides. The harness's rule keys on
-the decoder backend, so a WebGPU-encoder/WASM-decoder hybrid received the
-all-bundle and the less accurate build. The webgpu-only build is both smaller and
+`onnxruntime-web`, so the host's import map decides. The old harness rule keyed
+on the decoder backend alone, so a WebGPU-encoder/WASM-decoder hybrid received
+the all-bundle. The fixed rule selects the webgpu build when either component
+uses WebGPU, unless explicitly overridden. That build is both smaller and
 measurably closer to the official CPU engine (`3.427267e-7` versus `1.4566e-6`),
 and the passing feed-error bracket was near `3.64e-7`.
 
@@ -161,8 +162,16 @@ larger, and the only sub-300M record, `moondream/parakeet-redux` (148.9M), is a
 standing integer-quantization rule. Turkish is the discriminator among the
 candidates checked: no Parakeet and none of the previously ranked non-NVIDIA
 models cover it, while `Qwen/Qwen3-ASR-0.6B-hf` does (782,426,112 parameters,
-30 languages, Apache-2.0). Discovery evidence only; it is an autoregressive
-speech-LLM, so it needs a new family and download authority not granted here.
+30 languages, Apache-2.0). Discovery evidence only for that `-hf` candidate.
+The earlier claim that Qwen needs a new family was incorrect: this repository
+already implements `qwen-asr` for the official `Qwen/Qwen3-ASR-0.6B` export
+chain. Its [porting playbook](../tools/model-debugging/playbooks/qwen3-asr-porting.md)
+and [reference guide](../tools/model-debugging/reference/qwen3-asr-0.6b/README.md)
+describe existing local ONNX artifacts and an offline library runner.
+This is not proof that the `-hf` candidate has the same export contract.
+Reconcile those local assets before requesting downloads. The original
+PyTorch snapshot recorded in older receipts is currently absent at its
+documented path; a fresh official-engine capture remains a separate prerequisite.
 
 The production-feature gate is not closed. The browser real-hybrid score
 comparison, which had failed at every previous run, now passes on this fixture —
@@ -204,20 +213,21 @@ investigation. Measured so far:
 - **Attribution cost:** the head call 20 failure was localized to
   `encoder_outputs` in one shared-control invocation with three binding gates,
   replacing bespoke per-input replay scripts.
-- **Gates closed or honestly deferred:** 0 closed, 2 deferred with named
-  exclusions and one named next experiment each.
+- **Gates closed or honestly deferred:** browser real-hybrid scores pass on
+  the documented JFK configuration; production feature parity remains FAIL.
 
-Honest limits on this measurement. No second candidate has been ported, so the
-primary acceptance signal — a cheaper second port — is **not yet
-demonstrated**. What is demonstrated is that the harness capability exists,
-is tested, and replaced duplicated code that existed a few hours ago. Item 6's
-reuse rule is therefore partially satisfied: it holds within this
-investigation, and is untested across families.
+The cheaper-second-port acceptance signal is **not yet demonstrated for this
+focus**. Existing Qwen, GigaAM, SenseVoice and X-ASR implementations and their
+reference tools predate this investigation. Reuse them rather than claiming
+that no second model has been ported. Historical output receipts do not establish
+current-build parity or cross-family reuse of the new attribution control.
 
-Attribution is therefore still open. The next bounded slice is capturing the
-resolved ORT session options handed to `InferenceSession.create` in both the
-hybrid and standalone paths, in-browser, which needs a runner-side wrapper and
-no library change. Selecting a candidate needs new weight-download authority.
+The ORT-build discrepancy and session-options controls above are already
+resolved; do not repeat them as the next experiment. For continued work, start
+with the [engineering tool map](../tools/README.md#task-to-tool-map) and
+project-local [Model Debugging Skill](../tools/model-debugging/SKILL.md).
+Check existing original source, reference environments, local graphs and
+family runners before selecting the next numerical control or declaring BLOCKED.
 
 ## Authority constraints unchanged
 

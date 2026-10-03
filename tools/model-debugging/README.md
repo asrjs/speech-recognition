@@ -15,6 +15,14 @@ This folder is intentionally broader than "model porting". We use it to:
 These files are not published runtime code. They exist to help us understand
 why a model works, fails, regresses, or behaves differently across runtimes.
 
+## Agent entrypoint
+
+Use the [task-to-tool map](../README.md#task-to-tool-map) to choose a workflow.
+The [Model Debugging Skill](SKILL.md) is project-local and must be read for model
+ports and parity debugging. It is not limited to globally registered skills.
+Check the existing family playbook, reference code, local artifacts and receipts
+before claiming that a model needs a new port or download.
+
 ## Layout
 
 ```text
@@ -48,9 +56,9 @@ tools/model-debugging/
 
 For day-to-day debugging, open these in order:
 
-1. [SKILL.md](N:\github\asrjs\speech-recognition\tools\model-debugging\SKILL.md)
-2. [playbooks/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\README.md)
-3. [scripts/README.md](N:\github\asrjs\speech-recognition\tools\model-debugging\scripts\README.md)
+1. [SKILL.md](SKILL.md)
+2. [playbooks/README.md](playbooks/README.md)
+3. [scripts/README.md](scripts/README.md)
 
 If the problem is related to the `LibriVox.org` split or browser audio prep,
 start directly with:

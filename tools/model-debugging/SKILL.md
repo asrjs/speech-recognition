@@ -11,6 +11,23 @@ Use it when working on:
 - resampler, tokenizer, preprocessor, or decoder-loop issues
 - long-form and realtime transcript-merging regressions
 
+## Discovery prerequisite
+
+Start at the [task-to-tool map](../README.md#task-to-tool-map), then read the
+matching [family playbook](playbooks/README.md) and [reference guide](reference/README.md).
+This file is available in the repository even when the harness lists no matching
+global skill. Do not install another skill to discover these tools.
+
+Before a new port or a blocker claim, inspect existing family implementations,
+local original weights, ONNX exports, reference environments and receipts.
+Qwen3-ASR, X-ASR, GigaAM and NeMo already have family-specific porting helpers.
+Read the official inference source and compare existing onnx-asr/sherpa ports.
+Use those ports as references, not replacements for the official oracle.
+
+Check captured tensor shapes and layouts before reshaping arrays. Keep raw
+log-mel separate from normalized features. A failed import in the default
+Python interpreter does not prove that a model's local environment is absent.
+
 ## Goals
 
 Keep debugging disciplined and reproducible:

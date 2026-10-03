@@ -7,12 +7,16 @@ Use it with Codex, OMP or another repository-aware harness.
 
 1. Read the project-root `AGENTS.md` when present, and
    [AGENT_SAFETY_RULES.md](AGENT_SAFETY_RULES.md) completely before editing.
-2. Read [architecture.md](architecture.md),
+2. Read the [engineering tool map](../tools/README.md#task-to-tool-map).
+   For model ports, feature extraction, inference or parity work, read the
+   project-local [Model Debugging Skill](../tools/model-debugging/SKILL.md).
+   These resources live in this checkout, not in the harness's global skill list.
+3. Read [architecture.md](architecture.md),
    [PROJECT_CHARTER.md](PROJECT_CHARTER.md) and
    [GOAL_PROMPT_RECOMMENDED.md](GOAL_PROMPT_RECOMMENDED.md).
-3. Read the current [OMP handover](OMP_HANDOVER_2026-10-03.md).
+4. Read the current [OMP handover](OMP_HANDOVER_2026-10-03.md).
    Reconcile its snapshot against live Git, source, build and receipts.
-4. Read [PRODUCT_TASKS.md](PRODUCT_TASKS.md),
+5. Read [PRODUCT_TASKS.md](PRODUCT_TASKS.md),
    [PARAKEET_VARIANT_TASKS.md](PARAKEET_VARIANT_TASKS.md),
    [MODEL_HARNESS_CONTRACT.md](MODEL_HARNESS_CONTRACT.md) and
    [WORKSPACE_CONTEXT.md](WORKSPACE_CONTEXT.md); then inspect the actual APIs,
@@ -23,6 +27,25 @@ architecture govern implementation. The goal defines durable outcomes; existing
 task files hold the work records; the dated handover is evidence, not permanent
 certification. Resolve contradictory records against actual source/artifacts and
 ask before materially changing the model order or required acceptance gates.
+
+## Before declaring a model or tooling blocker
+
+Use the [task-to-tool map](../tools/README.md#task-to-tool-map) to select an
+existing playbook and runner. Check the family source, local original weights,
+exports, reference environments and receipts before requesting a download or
+writing a new exporter, feature extractor or inference loop.
+
+Read the original model's inference code. Compare established ports such as
+onnx-asr and sherpa-onnx as implementation references; they do not replace the
+official oracle. [WORKSPACE_CONTEXT.md](WORKSPACE_CONTEXT.md#reference-repos)
+maps sibling references. Inspect their actual paths and versions before use;
+sibling writes and new large downloads still require authority.
+
+Missing global skill registration, one failed interpreter import, or no new
+numerical hypothesis is not evidence that project tooling is absent. Record
+the paths, environments and existing controls checked before reporting BLOCKED.
+
+## Architecture boundary
 
 This is one speech-first, ESM-first, headless TypeScript package, not a
 Transformers.js clone. Public contracts are coherent and root-exported with
@@ -55,7 +78,9 @@ configuration files or change global provider settings.
 Give the harness this prompt:
 
 ```text
-Read docs/AGENT_ENTRYPOINT.md and its required documents completely. Use
+Read docs/AGENT_ENTRYPOINT.md and its required documents completely. Start
+tool discovery at tools/README.md; for model work read
+tools/model-debugging/SKILL.md and the matching porting playbook. Use
 docs/GOAL_PROMPT_RECOMMENDED.md as the whole-product goal and reconcile
 docs/OMP_HANDOVER_2026-10-03.md with live Git/source/build/artifacts. Preserve
 protected dirty work and failed evidence. Resume the first safely actionable

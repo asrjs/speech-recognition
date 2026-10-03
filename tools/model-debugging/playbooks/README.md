@@ -7,31 +7,31 @@ from a proven path instead of rediscovering the workflow.
 
 ## Current Playbooks
 
-- [audio-prep-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\audio-prep-parity.md)
+- [audio-prep-parity.md](audio-prep-parity.md)
   - use when browser and Node disagree, or when resampling seems to change text quality
-- [canary-aed-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\canary-aed-porting.md)
+- [canary-aed-porting.md](canary-aed-porting.md)
   - step-by-step NeMo AED porting flow for Canary-style models, including reference generation, ONNX export, FP16/INT8 variants, and JS frontend guidance
-- [librivox-domain-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\librivox-domain-parity.md)
+- [librivox-domain-parity.md](librivox-domain-parity.md)
   - the concrete `LibriVox.org` case that drove recent WAV and Node-path fixes
-- [model-porting-parity.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\model-porting-parity.md)
+- [model-porting-parity.md](model-porting-parity.md)
   - workflow for merging reference test suites and keeping CI-safe parity helpers
-- [nemo-rnnt-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\nemo-rnnt-porting.md)
+- [nemo-rnnt-porting.md](nemo-rnnt-porting.md)
   - step-by-step NeMo RNNT porting flow, including frontend-contract checks for raw-log vs normalized mel features
-- [gigaam-ctc-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\gigaam-ctc-porting.md)
+- [gigaam-ctc-porting.md](gigaam-ctc-porting.md)
   - official GigaAM multilingual CTC chain: checkpoint, PyTorch reference, `to_onnx`, native ORT, JS frontend
-- [gigaam-rnnt-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\gigaam-rnnt-porting.md)
+- [gigaam-rnnt-porting.md](gigaam-rnnt-porting.md)
   - official GigaAM v3 E2E RNN-T chain: checkpoint, PyTorch reference, encoder/decoder/joint `to_onnx`, native ORT, WASM, Chrome WebGPU
-- [sensevoice-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\sensevoice-porting.md)
+- [sensevoice-porting.md](sensevoice-porting.md)
   - official FunAudioLLM SenseVoiceSmall chain: FunASR inference, `model.export`, native ORT; OpenVoiceOS ONNX is not the oracle
-- [x-asr-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\x-asr-porting.md)
+- [x-asr-porting.md](x-asr-porting.md)
   - official X-ASR-zh-en sherpa-onnx Zipformer2 streaming chain; true encoder-cache streaming
-- [qwen3-asr-porting.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\qwen3-asr-porting.md)
+- [qwen3-asr-porting.md](qwen3-asr-porting.md)
   - official Qwen3-ASR-0.6B chain: qwen-asr capture, static encoder, explicit KV decoder, sequential WASM, Chrome WebGPU
-- [ort-webgpu-entrypoint.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\ort-webgpu-entrypoint.md)
+- [ort-webgpu-entrypoint.md](ort-webgpu-entrypoint.md)
   - keep `onnxruntime-web/webgpu` on the WebGPU bundle; diagnose provider-alias regressions before changing model code
-- [huggingface-model-publishing.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\huggingface-model-publishing.md)
+- [huggingface-model-publishing.md](huggingface-model-publishing.md)
   - adapt a validated local model folder into our ONNX repo card format and publish it with `hf` CLI
-- [candidate-discovery.md](N:\github\asrjs\speech-recognition\tools\model-debugging\playbooks\candidate-discovery.md)
+- [candidate-discovery.md](candidate-discovery.md)
   - snapshot Hugging Face ASR popularity and artifact signals, then choose promote/adapt/defer before a new port
 
 ## When To Create A New Playbook
