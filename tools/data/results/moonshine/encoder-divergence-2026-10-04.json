@@ -55,5 +55,26 @@
       "Suspicion: cross_past must stay constant across steps rather than being fed back from cross_present, because cross-attention memory is a fixed projection. Not yet tested.",
       "The tokenizer decode path returns empty text; tokenizer.json vocab is keyed differently than assumed."
     ]
+  },
+  "decoder_root_cause": {
+    "status": "ROOT_CAUSE_CONFIRMED_MEASURED",
+    "measurement": {
+      "test": "run the exported decoder on identical inputs, varying only cross_past (real, all zeros, halved)",
+      "logits_length": 32768,
+      "max_abs_diff_base_vs_zero_cross": 0.0,
+      "max_abs_diff_base_vs_scaled_cross": 0.0,
+      "argmax": "19314 in all three cases",
+      "conclusion": "the exported decoder graph ignores cross_past entirely; cross-attention is a dead input"
+    },
+    "cause": "the export wrapper passes encoder_hidden_states=None, and MoonshineAttention.forward gates the whole cross-attention block on that argument, so every layer traces the self-attention branch",
+    "fix_named": "pass encoder states into the decoder wrapper as a fourth input; the graph then computes cross-attention key and value internally, which also makes the separate cross-KV graph and the BOS self-attention seed unnecessary",
+    "falsified_hypotheses": [
+      "cross_past reassigned from cross_present each step (constant cross_past changes nothing)",
+      "self_past seeded with zeros (repeating token loop)",
+      "self_past seeded empty (repeating token loop)",
+      "self_past seeded from the shipped seed cache (token loop)",
+      "self_past recomputed from a true empty PyTorch cache (repeating token loop)"
+    ],
+    "lesson": "every seed variant produced the same first token, which is the signature of an ignored input rather than a wrong value. Testing input sensitivity settles that in one run."
   }
 }

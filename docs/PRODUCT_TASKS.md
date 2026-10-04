@@ -1,3 +1,42 @@
+## C45 — Exported decoder ignores cross-attention; root cause measured
+
+Status: root cause confirmed by measurement. The exported decoder graph is
+unsound and is not wired into the runtime.
+
+The export wrapper passed `encoder_hidden_states=None`. Moonshine's attention
+gates the entire cross-attention block on that argument, so every one of the six
+decoder layers traced the self-attention branch and `cross_past` became a dead
+input. Probing the graph settles it in one run:
+
+| cross_past | max abs logit difference | argmax |
+| ---------- | -----------------------: | -----: |
+| all zeros  |                  **0.0** |  19314 |
+| halved     |                  **0.0** |  19314 |
+
+The logits are bit-identical. The decode was running a decoder with no audio
+memory at all, which is why the output was locally plausible English word salad.
+
+Five hypotheses were tried and falsified before this was found, and every one
+produced the **same first token**: keeping cross-attention constant, seeding
+self-attention with zeros, seeding it empty, seeding it from the shipped cache,
+and recomputing it from a true empty PyTorch cache. An identical first token
+across all of them is the signature of an ignored input rather than a wrong
+value, and testing input sensitivity is cheaper than another seed variant.
+
+The fix is named and small: pass encoder states into the wrapper, which makes
+the graph compute cross-attention key and value internally. That also retires
+the separate cross-attention graph and the self-attention seed, since the
+decoder can then start from an empty self-attention cache. It has not been
+implemented or measured here.
+
+The runtime stays on the previous configuration, which still produces the JFK
+transcript exactly. The export tool keeps both graphs because the encoder is
+verified at 4.447e-04 and remains the fix for the original drift; the decoder
+graph is recorded as unsound rather than deleted, since deleting it would lose
+the encoder path that ships with the same receipt.
+
+Receipt: `moonshine/encoder-divergence-2026-10-04.json`.
+
 ## C44 — Encoder drift fixed by re-export; decoder now exports too
 
 Status: the encoder is faithful and verified. The self-exported pair does not
