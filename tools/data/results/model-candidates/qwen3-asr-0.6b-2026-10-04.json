@@ -1,5 +1,5 @@
 {
-  "status": "AUDIO_FRONT_EXPORT_BLOCKED",
+  "status": "AUDIO_FRONT_EXPORTED_FIXED_LENGTH",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -48,7 +48,7 @@
   ],
   "not_done": [
     "the 28-layer language model decoder graph is not exported",
-    "no ONNX parity measurement exists",
+    "no variable-length audio front exists",
     "no Node runner, no oracle gate, no library registration, and no accuracy claim exists for this model"
   ],
   "unblock": {
@@ -105,6 +105,11 @@
         "2_cu_seqlens_override": "solves the schedule by making it a graph input, then fails one level deeper with GuardOnDataDependentSymNode on u1 > 1 inside sdpa_attention_forward",
         "3_legacy_trace": "does not reach the attention at all; fails in torchscript dynamic-axis inference, which is a local exporter fix",
         "conclusion": "two of the three are model-side data-dependence and one is exporter-side. The exporter-side one is the cheapest next attempt."
+      },
+      "resolved_for_legacy_tracing": {
+        "root_cause_of_the_third_failure": "input_features_mask is 2-D [batch, frames] while input_features is 3-D [batch, bins, frames]; the exporter declared a frames axis on dim 2 of the mask, which does not exist",
+        "fix": "declare the mask frames axis on dim 1",
+        "result": "the legacy tracer completes the export and the attention branch is never reached, because the window schedule is baked rather than traced"
       }
     },
     "candidate_remedies": [
@@ -112,7 +117,34 @@
       "patching get_audio_cu_seqlens so the chunk schedule is computed from the declared frame axis instead of the mask, which changes model code and would need its own justification",
       "an existing ONNX export of this architecture from a trusted source, which the roadmap forbids in place of our own"
     ],
-    "decision": "still not forced. Two successive blockers were diagnosed precisely rather than shipped around.",
-    "artifacts": "the exporter is kept and runs up to the export call, so the blocker is one command away from being revisited"
+    "decision": "Accepted as a measured intermediate, not as a shippable artifact. The graph is numerically faithful at the exported length and the limits are recorded rather than hidden, but a library port cannot ship a model that only works on one audio length.",
+    "artifacts": "the exporter is kept and runs up to the export call, so the blocker is one command away from being revisited",
+    "graphs": {
+      "audio_front_model.onnx": {
+        "inputs": [
+          "input_features",
+          "input_features_mask"
+        ],
+        "output": "audio_embeds",
+        "exportedShape": {
+          "audio_embeds": [
+            143,
+            1024
+          ]
+        },
+        "parity_vs_pytorch": {
+          "max_abs_error": 8.10716301202774e-07,
+          "mean_abs_error": 1.765485002636069e-08,
+          "allclose_atol_1e-4_rtol_1e-3": true
+        },
+        "exporter": "torch.onnx.export(dynamo=False)"
+      }
+    },
+    "verified_limitations": [
+      "The graph is fixed to the length it was exported at. torch emitted three TracerWarnings stating the trace may not generalize, covering the window split sizes, the padding check and the causal-attention test.",
+      "The exported output is 2-D [frames, hidden] rather than carrying a batch axis, because the trace was taken at batch 1.",
+      "cu_seqlens does not survive as a graph input under legacy tracing; the schedule is internal, so a runtime cannot reschedule windows.",
+      "Parity is therefore evidence for this frame count only. It is not evidence for other audio lengths."
+    ]
   }
 }

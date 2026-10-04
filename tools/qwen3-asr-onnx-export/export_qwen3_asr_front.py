@@ -127,7 +127,8 @@ def main(argv: list[str] | None = None) -> int:
         output_names=["audio_embeds"],
         dynamic_axes={
             "input_features": {0: "batch", 2: "frames"},
-            "input_features_mask": {0: "batch", 2: "frames"},
+            # The mask is 2-D [batch, frames]; features are 3-D [batch, bins, frames].
+            "input_features_mask": {0: "batch", 1: "frames"},
             "audio_embeds": {0: "batch", 1: "frames"},
         },
         opset_version=OPSET,
@@ -137,14 +138,13 @@ def main(argv: list[str] | None = None) -> int:
     import onnxruntime as ort
 
     session = ort.InferenceSession(str(output), providers=["CPUExecutionProvider"])
-    produced = session.run(
-        None,
-        {
-            "input_features": features.numpy(),
-            "input_features_mask": mask.numpy(),
-            "cu_seqlens": cu_seqlens.numpy(),
-        },
-    )[0]
+    # The legacy tracer bakes the window schedule in, so the graph's real inputs
+    # are only those it still declares.
+    graph_inputs = {entry.name for entry in session.get_inputs()}
+    feed = {"input_features": features.numpy(), "input_features_mask": mask.numpy()}
+    if "cu_seqlens" in graph_inputs:
+        feed["cu_seqlens"] = cu_seqlens.numpy()
+    produced = session.run(None, feed)[0]
     difference = np.abs(reference - produced)
     receipt = {
         "artifact": output.name,
@@ -168,6 +168,10 @@ def main(argv: list[str] | None = None) -> int:
             ),
         },
         "note": "mel contract: 128 bins, n_fft 400, hop 160, 16 kHz, matching the repository's JSMelProcessor",
+        "graphInputs": sorted(graph_inputs),
+        "bakedSchedule": sorted(set(graph_inputs) - {"input_features", "input_features_mask"}),
+        "generalisesBeyondExportedLength": False if args.legacy_trace else None,
+        "tracerWarning": "torch emitted three TracerWarnings stating the trace may not generalize to other inputs; with legacy tracing these are the window split sizes, the padding check and the causal-attention test",
     }
     (args.output_dir / "audio-front-receipt.json").write_text(
         json.dumps(receipt, indent=2) + "\n", encoding="utf-8"
