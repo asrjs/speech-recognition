@@ -1,5 +1,5 @@
 {
-  "status": "AUDIO_FRONT_AND_DECODER_STEP_EXPORTED_NEITHER_GENERAL",
+  "status": "DECODER_STEP_EXPORTED_CACHE_PATH_UNVERIFIED",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -47,10 +47,10 @@
     "then export our own fp32 graphs and gate against a PyTorch reference"
   ],
   "not_done": [
-    "no cache-carrying decoder step interface exists yet",
-    "no variable-length audio front exists yet",
-    "the two graphs have not been composed into a single decode path",
-    "no Node runner, no oracle gate, no library registration, and no accuracy claim exists for this model"
+    "the cache round-trip must reach the same tolerance as the first step before this graph is usable",
+    "no variable-length audio front exists",
+    "the two graphs have not been composed into a decode path",
+    "no Node runner, no oracle gate, no library registration, and no accuracy claim exists"
   ],
   "unblock": {
     "done": "a separate venv at tools/model-debugging/reference/transformers5 now carries torch 2.14.1+cpu and transformers 5.18.0",
@@ -118,7 +118,7 @@
       "patching get_audio_cu_seqlens so the chunk schedule is computed from the declared frame axis instead of the mask, which changes model code and would need its own justification",
       "an existing ONNX export of this architecture from a trusted source, which the roadmap forbids in place of our own"
     ],
-    "decision": "Both graphs are accepted as measured intermediates. Neither is shippable on its own: the audio front is fixed to one length, and the decoder step carries no cache. A library port needs a variable-length audio front and a cache-carrying decoder, then an end-to-end Node gate against the recorded oracle.",
+    "decision": "Not accepted as a decoder. The interface exists and first-step parity is excellent, but a decoder whose cache round-trip is wrong by 2.6 is not a decoder, and shipping it would produce a model that transcribes one token and then drifts.",
     "artifacts": "the exporter is kept and runs up to the export call, so the blocker is one command away from being revisited",
     "graphs": {
       "audio_front_model.onnx": {
@@ -143,7 +143,9 @@
       "decoder_step_model.onnx": {
         "tool": "tools/qwen3-asr-onnx-export/export_qwen3_asr_decoder.py --legacy-trace",
         "inputs": [
-          "inputs_embeds"
+          "inputs_embeds",
+          "past_key",
+          "past_value"
         ],
         "outputs": [
           "logits",
@@ -166,10 +168,10 @@
         "opset": 20,
         "exporter": "torch.onnx.export(dynamo=False), external data sidecar",
         "parity_vs_pytorch": {
-          "max_abs_error": 2.3365020751953125e-05,
-          "mean_abs_error": 4.3728882701543625e-06,
+          "max_abs_error": 3.337860107421875e-05,
+          "mean_abs_error": 5.495293407875579e-06,
           "allclose_atol_1e-4_rtol_1e-3": true,
-          "note": "measured on the consolidated graph, which is the one that ships"
+          "scope": "first step, past state empty"
         },
         "attention": "eager",
         "why_eager": "fused scaled_dot_product_attention does not support grouped-query attention in the tracer's symbolic conversion at any opset; this model runs 16 query heads over 8 key-value heads. Eager attention is the same maths with a different kernel.",
@@ -189,7 +191,20 @@
           "verification": "copied the graph and its sidecar alone into an empty directory and ran it through onnxruntime-node: inputs_embeds in, logits [1,1,151936], present_key [28,1,8,1,128] out",
           "bug_that_was_fixed": "the first consolidation loaded the graph with load_external_data=False, so the tensors were empty and the sidecar came out at 233 KB with the graph still pointing at hundreds of per-tensor files. Loading with load_external_data=True inlines the real weights into one file.",
           "directory_size": "5.2 GB for the audio front plus the decoder step"
-        }
+        },
+        "cache_parity": {
+          "status": "FAIL",
+          "max_abs_error_second_step": 2.603008270263672,
+          "allclose_atol_1e-4_rtol_1e-3": false,
+          "what_was_measured": "the first step's present_key and present_value are fed back into the graph as past state and the resulting logits are compared with a PyTorch second step over the same embeds",
+          "reading": "the graph accepts past state and returns present state, but the state it returns does not reproduce the reference when fed back, so autoregressive decoding through this graph would drift immediately",
+          "likely_causes": [
+            "cache position and rotary offsets for cached steps are not reproduced by the exported step",
+            "the empty-past export shape may have specialised the attention mask for a single position"
+          ],
+          "why_this_matters": "first-step parity alone passed at 3.3e-05 and would have looked like a working decoder. Only feeding the state back exposes it. This is the same class of silent success this project keeps removing."
+        },
+        "open_problem": "The cache path is wired but not correct. The step cannot be used for multi-token decoding until the second-step parity passes at the same tolerance as the first."
       }
     },
     "verified_limitations": [
