@@ -1,0 +1,25 @@
+{
+  "status": "BROWSER_PARITY_PASS_WEBGPU_AND_WASM",
+  "model": "UsefulSensors/moonshine-tiny",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "oracle": "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country.",
+  "pcm_sha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+  "runs": [
+    {"backend": "webgpu", "status": "pass", "baseline_match": true, "load_ms": 2932.0, "transcribe_ms": 4176.7, "rtfx": 2.63, "adapter": "nvidia blackwell"},
+    {"backend": "wasm", "status": "pass", "baseline_match": true, "load_ms": 2000.7, "transcribe_ms": 739.2, "rtfx": 14.88}
+  ],
+  "placement_verdict": "WASM wins for this model on the JFK fixture: 14.88 RTFx against 2.63 on WebGPU, about 5.6x. The encoder is a small conv subsampler plus Conformer and does not benefit from the GPU; the autoregressive decoder is launch-bound.",
+  "frontend_note": "Raw 16 kHz samples. The model config declares feature_size 1 and do_normalize false, so there is no mel frontend and no normalization.",
+  "decoder_contract": [
+    "The graph returns self-attention history only: 13 outputs for 6 layers.",
+    "Cross-attention key and value are computed once from the encoder states and stay constant for the utterance.",
+    "The checkpoint EncoderDecoderCache order differs from the graph input names, so the seed is mapped by name."
+  ],
+  "export_note": "The PyTorch encoder does not trace under the available exporter, and torch 2.13 defaults to the dynamo exporter which needs onnxscript. The browser fp32 pair is validated by tools/moonshine-onnx-export/export_moonshine_onnx.py rather than re-exported.",
+  "scope": "Local artifact source only. No validated Hub export, so supportsHubSource is false.",
+  "not_covered": [
+    "Streaming or partial-result behaviour is not measured; the model runs here as whole-utterance decode.",
+    "Long-form windowing is not measured.",
+    "One fixture and one configuration each; no repeat-stability sweep beyond the recorded runs."
+  ]
+}

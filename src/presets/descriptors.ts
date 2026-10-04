@@ -37,6 +37,7 @@ export type BuiltInPresetId =
   | 'whisper'
   | 'wav2vec2'
   | 'wav2vec2-tr'
+  | 'moonshine'
   | 'parakeet-ctc'
   | 'omnilingual-ctc';
 export type BuiltInModelTask = 'asr' | 'speech-translation';
@@ -737,6 +738,78 @@ function createTurkishWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
   ];
 }
 
+
+function createMoonshineDescriptors(): BuiltInModelDescriptor[] {
+  return [
+    {
+      modelId: 'UsefulSensors/moonshine-tiny',
+      aliases: ['moonshine-tiny'],
+      preset: 'moonshine',
+      displayName: 'Moonshine Tiny (English streaming-capable AED)',
+      description:
+        'English AED model over raw 16 kHz audio; conv subsampler plus Conformer encoder with rotary embeddings and an autoregressive decoder.',
+      classification: {
+        ecosystem: 'moonshine',
+        processor: 'raw-waveform-conv',
+        encoder: 'moonshine-conformer',
+        decoder: 'aed',
+        topology: 'aed',
+        family: 'moonshine',
+        task: 'asr',
+      },
+      languages: ['en'],
+      defaultSourceLanguage: 'en',
+      defaultTargetLanguage: 'en',
+      capabilities: {
+        supportedTasks: ['asr'],
+        supportsTranslation: false,
+        supportsPunctuationCapitalization: false,
+        supportsInverseTextNormalization: false,
+        supportsWordTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsPromptControls: false,
+      },
+      inference: {
+        ...createCtcInferenceLimits(),
+        supportsWordTimestamps: true,
+        supportsTokenTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsConfidence: true,
+      },
+      loading: {
+        repoId: 'UsefulSensors/moonshine-tiny',
+        // The validated browser pair is a local artifact, not a Hub export.
+        supportsHubSource: false,
+        supportsLocalSource: true,
+        supportsSplitQuantization: false,
+        supportsSplitBackends: false,
+        availableEncoderBackends: ['wasm', 'webgpu'],
+        availableDecoderBackends: ['wasm'],
+        defaultEncoderBackend: 'wasm',
+        defaultDecoderBackend: 'wasm',
+        availableEncoderQuantizations: ['fp32'],
+        availableDecoderQuantizations: ['fp32'],
+        defaultEncoderQuantization: 'fp32',
+        defaultDecoderQuantization: 'fp32',
+        supportsPreprocessorBackend: false,
+        preprocessorBackends: [],
+        defaultPreprocessorBackend: null,
+        defaultPreprocessorName: null,
+        encoderArtifactBaseName: 'encoder_model',
+        decoderArtifactBaseName: 'decoder_with_past_model',
+        defaultRevision: 'main',
+      },
+      controls: [],
+      warmup: { mode: 'expected-text' },
+      docs: {
+        modelCardUrl: 'https://huggingface.co/UsefulSensors/moonshine-tiny',
+        architectureSummary:
+          'Raw 16 kHz samples, conv subsampler in graph, Conformer encoder with rotary embeddings, autoregressive Transformer decoder with self-attention history.',
+      },
+    },
+  ];
+}
+
 function createWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
   const manifest = resolveWav2Vec2PresetManifest('facebook/wav2vec2-base-960h');
   return [
@@ -939,6 +1012,7 @@ const BUILT_IN_MODEL_DESCRIPTORS = [
   ...createParakeetCtcDescriptors(),
   ...createOmnilingualCtcDescriptors(),
   ...createTurkishWav2Vec2Descriptors(),
+  ...createMoonshineDescriptors(),
   ...createWhisperDescriptors(),
 ] as const;
 

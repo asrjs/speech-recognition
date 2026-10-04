@@ -14,6 +14,7 @@ import { nemotronBuiltInLocalModelAdapter } from '../presets/nemotron/local-adap
 import { parakeetCtcBuiltInLocalModelAdapter } from '../presets/parakeet/ctc-local-adapter.js';
 import { omnilingualCtcBuiltInLocalModelAdapter } from '../presets/omnilingual-ctc-local-adapter.js';
 import { wav2vec2TurkishBuiltInLocalModelAdapter } from '../presets/wav2vec2-tr-local-adapter.js';
+import { moonshineBuiltInLocalModelAdapter } from '../presets/moonshine-local-adapter.js';
 
 export interface SpeechModelLocalInspection {
   readonly encoderQuantizations: readonly QuantizationMode[];
@@ -91,6 +92,7 @@ const BUILT_IN_LOCAL_MODEL_ADAPTERS = new Map<string, BuiltInLocalModelAdapter>(
   [parakeetCtcBuiltInLocalModelAdapter.preset, parakeetCtcBuiltInLocalModelAdapter],
   [omnilingualCtcBuiltInLocalModelAdapter.preset, omnilingualCtcBuiltInLocalModelAdapter],
   [wav2vec2TurkishBuiltInLocalModelAdapter.preset, wav2vec2TurkishBuiltInLocalModelAdapter],
+  [moonshineBuiltInLocalModelAdapter.preset, moonshineBuiltInLocalModelAdapter],
 ]);
 
 export function listBuiltInLocalModelAdapters(): readonly BuiltInLocalModelAdapter[] {

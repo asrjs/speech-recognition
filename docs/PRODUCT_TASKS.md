@@ -1,3 +1,34 @@
+## C41 — Moonshine registered and measured in the browser
+
+Status: PASS with transcript parity on both backends. WASM is the better placement.
+
+`UsefulSensors/moonshine-tiny` is now a built-in preset (`moonshine`) with a
+local-folder adapter, a descriptor, and a browser case. Measured on the JFK
+fixture against the recorded oracle, with the same PCM digest on both sides:
+
+| backend                   | result                |      load | transcribe |      RTFx |
+| ------------------------- | --------------------- | --------: | ---------: | --------: |
+| WebGPU (NVIDIA Blackwell) | `baselineMatch: true` | 2932.0 ms |  4176.7 ms |      2.63 |
+| WASM                      | `baselineMatch: true` | 2000.7 ms |   739.2 ms | **14.88** |
+
+**WASM wins by about 5.6x on this fixture.** The encoder is a small conv
+subsampler plus Conformer and gains nothing from the GPU, while the
+autoregressive decoder is launch-bound. This is a placement measurement for one
+model and one fixture, not a general rule.
+
+Registered wiring: `src/models/moonshine/session.ts` and its tokenizer,
+`src/presets/moonshine-factory.ts`, `src/presets/moonshine-local-adapter.ts`, the
+descriptor, and the browser `MODELS` entry. The family reuses the shared CTC
+collapse only for reporting; decoding is autoregressive, so no CTC collapse is
+applied to the emitted tokens.
+
+Named limits: local artifact source only, because no validated Hub export exists;
+streaming and partial-result behaviour are unmeasured; long-form windowing is
+unmeasured; one fixture per backend.
+
+Receipt: `tools/data/results/moonshine/moonshine-browser-parity-2026-10-04.json`.
+Full suite: 1,477 passed / 33 skipped.
+
 ## C40 — Moonshine tiny ported; omnilingual divergence resolved
 
 Status: PASS for the Node gate. Browser registration for Moonshine is next.
