@@ -47,10 +47,9 @@
     "then export our own fp32 graphs and gate against a PyTorch reference"
   ],
   "not_done": [
-    "the model is not registered in the library: no preset, descriptor or local adapter",
-    "no second fixture has been gated",
     "no browser measurement exists",
-    "the front is still fixed-length, so anything but this frame count is unproven"
+    "no variable-length audio front exists",
+    "the decoder step has not been gated against a second fixture either, since the front blocks it"
   ],
   "unblock": {
     "done": "a separate venv at tools/model-debugging/reference/transformers5 now carries torch 2.14.1+cpu and transformers 5.18.0",
@@ -277,8 +276,27 @@
     }
   },
   "verified_limits": [
-    "The audio front is fixed to the frame count it was exported at, so this decode path handles only audio of that length. The model's own window is 30 s, which is where this bites least.",
-    "One fixture and one configuration were measured.",
-    "No browser run exists."
-  ]
+    "The audio front is fixed to the frame count it was exported at: 1100 raw frames, 143 windows. A 2600-frame input needs 335 windows and fails loudly.",
+    "One fixture and one length were validated. The JFK match is real but does not generalise.",
+    "No browser run exists.",
+    "The model directory is 5.2 GB, which is the practical constraint for shipping this in a browser."
+  ],
+  "multi_fixture": {
+    "status": "GENERALIZATION_REFUTED_AT_OTHER_LENGTHS",
+    "fixture_1": {
+      "audio": "tools/data/fixtures/audio/jfk-short.wav",
+      "frames": 1100,
+      "result": "matches the recorded oracle exactly"
+    },
+    "fixture_2": {
+      "audio": "tools/data/fixtures/audio/librivox.org.wav",
+      "frames": 2600,
+      "result": "fails",
+      "error": "Cannot split using values in 'split' attribute. Axis=1 Input shape={1,335,14,64}, Sum of sizes in 'split' was 143",
+      "reading": "the graph carries a baked window split of 143 and this input produces 335 windows after the convolutional downsampling, so the audio front cannot serve it",
+      "note": "the failure is an exception with the exact numbers in it, not a wrong transcript, which is the correct behaviour for a baked schedule"
+    },
+    "conclusion": "The port reproduces the oracle at the length it was exported at and does not generalise. One fixture and one length were validated; the fixed-length limitation is now measured rather than asserted.",
+    "remedy": "a variable-length audio front, blocked on the data-dependent branch in sdpa_attention_forward during export"
+  }
 }
