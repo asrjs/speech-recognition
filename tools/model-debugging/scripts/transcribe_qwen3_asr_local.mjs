@@ -79,9 +79,18 @@ const prefix = readNpy(`${MODEL_DIR}/prompt_prefix_embeds.npy`);
 const suffix = readNpy(`${MODEL_DIR}/prompt_suffix_embeds.npy`);
 
 const started = performance.now();
+// The window schedule is a graph input on the dynamo-exported front, so it is
+// baked per fixture rather than recomputed here.
+const cuSeqlensPath = argValue('cu-seqlens', FEATURES.replace('_features.npy', '_cu_seqlens.bin'));
+const cuSeqlensRaw = readFileSync(cuSeqlensPath);
+const cuSeqlens = new Int32Array(
+  cuSeqlensRaw.buffer.slice(cuSeqlensRaw.byteOffset, cuSeqlensRaw.byteOffset + cuSeqlensRaw.byteLength),
+);
+
 const audio = await front.run({
   input_features: new ort.Tensor('float32', features.data, features.dims),
   input_features_mask: new ort.Tensor('float32', mask.data, mask.dims),
+  cu_seqlens: new ort.Tensor('int32', cuSeqlens, [cuSeqlens.length]),
 });
 const audioEmbeds = audio.audio_embeds;
 const frames = audioEmbeds.dims[0];

@@ -95,8 +95,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="use the legacy tracer; the window schedule becomes a baked constant")
     args = parser.parse_args(argv)
 
+    # Eager attention avoids the fused scaled_dot_product_attention path, whose
+    # causal test is a data-dependent expression that torch.export cannot guard.
+    # This is the same lever that made the decoder step export.
     model = transformers.AutoModelForMultimodalLM.from_pretrained(
-        args.model_dir, dtype=torch.float32
+        args.model_dir, dtype=torch.float32, attn_implementation="eager"
     ).eval()
     processor = transformers.AutoProcessor.from_pretrained(args.model_dir)
 
@@ -152,6 +155,7 @@ def main(argv: list[str] | None = None) -> int:
         "sha256": _digest(output),
         "opset": OPSET,
         "exporter": "torch.onnx.export(dynamo=False)" if args.legacy_trace else "torch.onnx.export(dynamo=True)",
+        "attention": "eager, so the fused SDPA causal test does not become a data-dependent guard",
         "legacyTrace": bool(args.legacy_trace),
         "legacyTraceLimit": "the window schedule is baked as a constant, so this graph handles only the frame count it was exported at" if args.legacy_trace else None,
         "input": {

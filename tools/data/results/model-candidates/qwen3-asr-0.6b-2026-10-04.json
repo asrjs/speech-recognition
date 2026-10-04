@@ -1,5 +1,5 @@
 {
-  "status": "NODE_ORACLE_MATCH",
+  "status": "VARIABLE_LENGTH_FRONT_EXPORTED_CU_SEQLENS_MUST_BE_CAPTURED",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -121,23 +121,22 @@
     "artifacts": "the exporter is kept and runs up to the export call, so the blocker is one command away from being revisited",
     "graphs": {
       "audio_front_model.onnx": {
+        "tool": "tools/qwen3-asr-onnx-export/export_qwen3_asr_front.py",
+        "exporter": "torch.onnx.export(dynamo=True)",
+        "attention": "eager",
+        "why_eager": "the fused scaled_dot_product_attention path computes its causal test from a data-dependent expression that torch.export cannot guard. Eager attention avoids it, which is the same lever that unblocked the decoder step.",
         "inputs": [
           "input_features",
-          "input_features_mask"
+          "input_features_mask",
+          "cu_seqlens"
         ],
-        "output": "audio_embeds",
-        "exportedShape": {
-          "audio_embeds": [
-            143,
-            1024
-          ]
-        },
         "parity_vs_pytorch": {
-          "max_abs_error": 8.10716301202774e-07,
-          "mean_abs_error": 1.765485002636069e-08,
+          "max_abs_error": 3.264e-07,
+          "mean_abs_error": 1.665e-08,
           "allclose_atol_1e-4_rtol_1e-3": true
         },
-        "exporter": "torch.onnx.export(dynamo=False)"
+        "improvement": "the window schedule is a graph input rather than baked, and parity improved from 8.107e-07 on the legacy trace",
+        "open_problem": "cu_seqlens must be captured from the encoder, not reconstructed"
       },
       "decoder_step_model.onnx": {
         "tool": "tools/qwen3-asr-onnx-export/export_qwen3_asr_decoder.py --legacy-trace",
@@ -282,21 +281,40 @@
     "The model directory is 5.2 GB, which is the practical constraint for shipping this in a browser."
   ],
   "multi_fixture": {
-    "status": "GENERALIZATION_REFUTED_AT_OTHER_LENGTHS",
+    "status": "JFK_MATCHES_OTHER_LENGTHS_STILL_BLOCKED",
     "fixture_1": {
-      "audio": "tools/data/fixtures/audio/jfk-short.wav",
+      "audio": "jfk-short.wav",
       "frames": 1100,
-      "result": "matches the recorded oracle exactly"
+      "cu_seqlens": [
+        0,
+        143
+      ],
+      "result": "matches the oracle"
     },
     "fixture_2": {
-      "audio": "tools/data/fixtures/audio/librivox.org.wav",
+      "audio": "librivox.org.wav",
       "frames": 2600,
-      "result": "fails",
-      "error": "Cannot split using values in 'split' attribute. Axis=1 Input shape={1,335,14,64}, Sum of sizes in 'split' was 143",
-      "reading": "the graph carries a baked window split of 143 and this input produces 335 windows after the convolutional downsampling, so the audio front cannot serve it",
-      "note": "the failure is an exception with the exact numbers in it, not a wrong transcript, which is the correct behaviour for a baked schedule"
+      "cu_seqlens": [
+        0,
+        338
+      ],
+      "result": "fails until the schedule is captured correctly"
     },
-    "conclusion": "The port reproduces the oracle at the length it was exported at and does not generalise. One fixture and one length were validated; the fixed-length limitation is now measured rather than asserted.",
-    "remedy": "a variable-length audio front, blocked on the data-dependent branch in sdpa_attention_forward during export"
+    "change_since_last_measurement": "the front is no longer baked to 143 windows, so the limit moved from the graph to the schedule computation"
+  },
+  "cu_seqlens_requirement": {
+    "finding": "a reconstruction of the schedule disagrees with the encoder by three frames",
+    "measured": {
+      "fixture": "tools/data/fixtures/audio/librivox.org.wav",
+      "reconstructed": [
+        0,
+        338
+      ],
+      "encoder_actual": 335,
+      "error": "Cannot split using values in 'split' attribute. Sum of sizes in 'split' was 338, while the post-convolution input is 335"
+    },
+    "why_the_reconstruction_is_wrong": "the encoder derives chunk_lengths by reshaping the feature mask into chunks before calling get_audio_cu_seqlens; the helper in the exporter passed the whole feature length as a single chunk, which only coincides at one length",
+    "correct_fix": "capture cu_seqlens from the encoder's own get_audio_cu_seqlens during a real forward, by intercepting the call, rather than recomputing it",
+    "status": "not yet done"
   }
 }
