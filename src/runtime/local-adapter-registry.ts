@@ -15,6 +15,7 @@ import { parakeetCtcBuiltInLocalModelAdapter } from '../presets/parakeet/ctc-loc
 import { omnilingualCtcBuiltInLocalModelAdapter } from '../presets/omnilingual-ctc-local-adapter.js';
 import { wav2vec2TurkishBuiltInLocalModelAdapter } from '../presets/wav2vec2-tr-local-adapter.js';
 import { moonshineBuiltInLocalModelAdapter } from '../presets/moonshine-local-adapter.js';
+import { qwen3AsrBuiltInLocalModelAdapter } from '../presets/qwen3-asr-local-adapter.js';
 
 export interface SpeechModelLocalInspection {
   readonly encoderQuantizations: readonly QuantizationMode[];
@@ -93,6 +94,7 @@ const BUILT_IN_LOCAL_MODEL_ADAPTERS = new Map<string, BuiltInLocalModelAdapter>(
   [omnilingualCtcBuiltInLocalModelAdapter.preset, omnilingualCtcBuiltInLocalModelAdapter],
   [wav2vec2TurkishBuiltInLocalModelAdapter.preset, wav2vec2TurkishBuiltInLocalModelAdapter],
   [moonshineBuiltInLocalModelAdapter.preset, moonshineBuiltInLocalModelAdapter],
+  [qwen3AsrBuiltInLocalModelAdapter.preset, qwen3AsrBuiltInLocalModelAdapter],
 ]);
 
 export function listBuiltInLocalModelAdapters(): readonly BuiltInLocalModelAdapter[] {
