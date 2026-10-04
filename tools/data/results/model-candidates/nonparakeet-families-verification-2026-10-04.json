@@ -1,0 +1,53 @@
+{
+  "status": "WIDENED_SCOPE_CANDIDATES_VERIFIED",
+  "scope": "Non-NVIDIA ASR families beyond Parakeet derivatives, verified by primary-source config and license rather than file-size estimates.",
+  "verdicts": [
+    {
+      "modelId": "OpenVoiceOS/omnilingual-asr-ctc-300m-onnx",
+      "base": "facebook/omniASR-CTC-300M",
+      "base_license": "apache-2.0 (verified on the base repo, ungated)",
+      "repack_license": "apache-2.0",
+      "license_verdict": "CLEAR",
+      "contract": "raw 16 kHz waveform [batch, num_samples]; conv feature frontend inside the graph; blank id 0; 10288 tokens with real spaces; 320 samples per frame; no length input",
+      "verdict": "PORT_NEXT",
+      "reuse": "normalizeWav2Vec2Waveform plus the shared CtcDecoder; no mel frontend parity work.",
+      "artifacts": {
+        "int8_bytes": 328094283,
+        "fp32_bytes": 1304579963
+      },
+      "oracle": "The repack ships four test clips (de/en/es/fr) whose audio is downloadable. The model card spot check uses different por/swh clips that are not obtainable, so the gate uses the shipped clips with a recorded baseline hypothesis, labeled self-consistency rather than upstream-oracle parity.",
+      "known_limits": [
+        "No length input means batching and long-form need external windowing through the library windowing machinery.",
+        "Per-utterance zero-mean unit-variance normalization is a caller responsibility, as in the wav2vec2 family."
+      ]
+    },
+    {
+      "modelId": "Edge0/ark-asr-0.6b-int8-onnx",
+      "verdict": "REPACK_OF_PORTED_FAMILY",
+      "reason": "Ships audio_encoder_whisper_int8.onnx, so it is a Whisper export rather than a new family."
+    },
+    {
+      "modelId": "ai4bharat/bhili-asr-conformer-600m-onnx",
+      "base": "ai4bharat/indic-conformer-600m-multilingual",
+      "license": "MIT",
+      "verdict": "DEFER_VERIFY_CONTRACT",
+      "reason": "Indic conformer CTC with real Indic coverage, but the repository layout is messy and the graph input contract is unverified. Worth a pass after omnilingual CTC."
+    },
+    {
+      "modelId": "akkikiki/VibeVoice-ASR-onnx",
+      "base": "microsoft/VibeVoice-ASR",
+      "license": "MIT",
+      "verdict": "DEFER_LARGE_SEQ2SEQ_SCOPE",
+      "reason": "Decoder-only seq2seq export requiring a separate encoder; substantially larger family work than a CTC port."
+    },
+    {
+      "modelId": "Masterx/vibevoice-asr-bitnet-onnx",
+      "base": "microsoft/VibeVoice-ASR-BitNet",
+      "license": "MIT",
+      "verdict": "DEFER_CUSTOM_KERNEL",
+      "reason": "BitNet weights need a custom kernel that no execution provider here provides, the same wall parakeet-redux hits."
+    }
+  ],
+  "qwen3_asr_note": "Every qwen3-asr-* record in the widened survey is a repack of the already-ported qwen-asr family, so they are supply-chain options, not new ports.",
+  "filter_lesson_applied": "Parameter counts and sizes are read from each model config, never inferred from download size; that mistake produced the parakeet-redux error."
+}
