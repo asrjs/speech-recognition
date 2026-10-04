@@ -1,0 +1,53 @@
+{
+  "status": "BLOCKED_TOOLCHAIN_VERSION",
+  "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
+  "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
+  "download": {
+    "status": "complete",
+    "bytes": 1564928088,
+    "license": "Apache-2.0",
+    "files": [
+      "model.safetensors",
+      "config.json",
+      "processor_config.json",
+      "generation_config.json",
+      "tokenizer.json",
+      "tokenizer_config.json"
+    ]
+  },
+  "contract": {
+    "feature_extractor": "Qwen3ASRFeatureExtractor",
+    "feature_size": 128,
+    "n_fft": 400,
+    "hop_length": 160,
+    "sampling_rate": 16000,
+    "chunk_length_seconds": 30,
+    "n_samples": 480000,
+    "dither": 0.0,
+    "timestamp_segment_time": 80,
+    "frontend_note": "a 128-bin mel frontend at n_fft 400 and hop 160, which the repository's existing JSMelProcessor covers",
+    "architecture": {
+      "class": "Qwen3ASRForConditionalGeneration",
+      "hidden_size": 1024,
+      "layers": 28,
+      "attention_heads": 16,
+      "key_value_heads": 8,
+      "vocab_size": 151936,
+      "max_position_embeddings": 65536
+    }
+  },
+  "blocker": {
+    "error": "transformers 4.57.6 exposes neither Qwen3ASRForConditionalGeneration nor Qwen3ASRProcessor",
+    "remote_code_path": "unavailable; the repository ships no modeling .py files, so trust_remote_code has nothing to load",
+    "checkpoint_hint": "generation_config records transformers_version 5.0.0.dev0, above the installed version"
+  },
+  "unifying_finding": "Moonshine streaming is blocked for the same reason: its checkpoint declares transformers 5.0.0.dev0. Both open non-NVIDIA candidates need transformers 5.x.",
+  "prerequisites": [
+    "install a transformers 5.x release in the reference venv; this is a dependency change needing new authority",
+    "then export our own fp32 graphs and gate against a PyTorch reference"
+  ],
+  "not_done": [
+    "no export was attempted, because the architecture cannot be instantiated",
+    "no parity measurement, no oracle, no registration, and no accuracy claim exists for this model"
+  ]
+}
