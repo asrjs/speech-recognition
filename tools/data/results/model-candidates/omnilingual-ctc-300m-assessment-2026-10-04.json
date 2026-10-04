@@ -1,0 +1,39 @@
+{
+  "status": "CANDIDATE_VERIFIED_AWAITING_DOWNLOAD_AUTHORITY",
+  "model": "OpenVoiceOS/omnilingual-asr-ctc-300m-onnx",
+  "lineage": {
+    "base_model": "facebook/omniASR-CTC-300M",
+    "in_scope": true,
+    "reason": "Derived from Meta facebook/omniASR, not from any NVIDIA line, so it satisfies the stated exclusion."
+  },
+  "license": "apache-2.0",
+  "contract": {
+    "graph_input": "x float32 [batch, num_samples], raw 16 kHz waveform",
+    "frontend": "none required; the wav2vec2 convolutional extractor is inside the graph",
+    "subsampling_samples_per_frame": 320,
+    "blank_id": 0,
+    "blank_token": "<s>",
+    "vocabulary": 10288,
+    "vocab_format": "tokens.txt, one token per line with an id, containing real spaces rather than the U+2581 marker",
+    "length_input": "none; decode one waveform at a time",
+    "coverage": "more than 1600 languages, not language-conditioned"
+  },
+  "artifacts": {
+    "model.onnx_bytes": 1304579963,
+    "model.int8.onnx_bytes": 328094283,
+    "note": "The INT8 build is dynamically quantized for this repository and is a quarter of the FP32 size."
+  },
+  "oracle": {
+    "available_without_extra_download": true,
+    "source": "Model card spot check: four Common Voice 17 clips (por_0, por_1, swh_0, swh_1) with reference, hypothesis and CER/WER",
+    "use": "Provides an independent reference transcript to score a port against, not merely self-consistency of the same graph.",
+    "caveat": "Those four clips are not in the repository, so scoring requires the upstream clips or substituting an equivalent oracle such as the upstream model."
+  },
+  "why_worth_porting": [
+    "Raw-waveform input removes any feature-extractor parity work, unlike the 80-bin Parakeet frontend.",
+    "CTC decoding reuses the shared CtcDecoder and the tokenizer pattern just proven with parakeet-ctc.",
+    "Breadth over 1600 languages is a differentiator from the 25-language Orukeet and single-language ctaguchi ports."
+  ],
+  "blocking_prerequisite": "Authority to download a 328 MB INT8 graph (or 1.3 GB FP32). The AGENTS.md rule requires approval for new large weight downloads; the user authorized scope but not this specific download.",
+  "already_delivered_this_session": "ctaguchi/parakeet-hf-ctc-110m-en is ported, harness-verified and browser-warm-up verified; this is the next candidate, not a prerequisite for it."
+}
