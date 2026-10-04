@@ -1,0 +1,27 @@
+{
+  "status": "PASS_ORACLE_MATCH_SELF_EXPORTED_PAIR",
+  "graphs": "models/onnx/moonshine-tiny-fp32 (own fp32 export from the validated checkpoint)",
+  "runner": "tools/model-debugging/scripts/transcribe_moonshine_pair.mjs",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "token_ids_match": true,
+  "text_match": true,
+  "text": "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country.",
+  "token_count": 24,
+  "decode_steps": 25,
+  "encoder_frames": 457,
+  "total_ms": 446.0,
+  "root_cause_fixed": "the export wrapper passed encoder_hidden_states=None, and MoonshineAttention gates the whole cross-attention block on that argument, so every layer traced the self-attention branch. Sensitivity probe after the fix: max abs logit difference against a zeroed cross_past is 27.01 (was 0.0), and the first-step argmax became 1126, matching the oracle.",
+  "long_form": {
+    "status": "EXECUTES_BUT_QUALITY_UNPROVEN",
+    "fixture": "tools/data/fixtures/audio/librivox.org.16k.wav",
+    "encoder_frames": 1558,
+    "decode_steps": 9,
+    "total_ms": 580,
+    "text": "<0xE2><0x99><0xAA> <0xE2><0x99><0xAA>",
+    "reading": "the seed-cache shape blocker is gone and any length now runs, but the transcript is junk on a 31 s clip. The emitted ids are byte-fallback tokens, which points at input outside the model's training window rather than a graph fault. Long-form quality is NOT claimed."
+  },
+  "artifacts_dropped": "no seed cache and no per-utterance seed file; self-attention starts from one exported BOS-step block (13824 bytes) and cross-attention memory is computed in-graph.",
+  "still_open": [
+    "streaming and partial-result behaviour is unmeasured"
+  ]
+}

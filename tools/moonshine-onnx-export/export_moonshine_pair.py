@@ -115,10 +115,14 @@ def export_decoder(model, output_dir: Path, frames: int) -> dict:
             # the vocabulary projection is a separate module.
             self.projection = projection
 
-        def forward(self, input_ids, self_past, cross_past):
+        def forward(self, input_ids, self_past, cross_past, encoder_states):
+            # encoder_hidden_states must be real: MoonshineAttention gates the
+            # whole cross-attention block on it, and passing None traces every
+            # layer down the self-attention branch, which yields a decoder that
+            # silently ignores its cross-attention memory.
             outputs = self.decoder(
                 input_ids=input_ids,
-                encoder_hidden_states=None,
+                encoder_hidden_states=encoder_states,
                 encoder_attention_mask=None,
                 use_cache=True,
                 past_key_values=EncoderDecoderCache.from_legacy_cache(
@@ -162,17 +166,19 @@ def export_decoder(model, output_dir: Path, frames: int) -> dict:
         torch.tensor([[1]], dtype=torch.int64),
         torch.zeros(slots, 1, heads, 1, head_dim),
         torch.zeros(slots, 1, heads, frames, head_dim),
+        torch.zeros(1, frames, model.config.hidden_size),
     )
     dynamic_shapes = (
         {1: tokens},
         {0: Dim("slots"), 3: past_length},
         {0: Dim("slots"), 3: encoder_length},
+        {1: encoder_length},
     )
     torch.onnx.export(
         wrapper,
         example,
         output,
-        input_names=["input_ids", "self_past", "cross_past"],
+        input_names=["input_ids", "self_past", "cross_past", "encoder_states"],
         output_names=["logits", "self_present", "cross_present"],
         dynamic_shapes=dynamic_shapes,
         opset_version=OPSET,

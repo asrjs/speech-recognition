@@ -1,3 +1,36 @@
+## C46 — Self-exported Moonshine pair matches the oracle
+
+Status: `PASS_ORACLE_MATCH` on the JFK fixture with our own fp32 graphs.
+
+C45 named the fix and this closes it. Passing real encoder states into the
+decoder wrapper makes the graph compute cross-attention internally. The
+sensitivity probe that proved the fix:
+
+| probe                                           | before |     after |
+| ----------------------------------------------- | -----: | --------: |
+| max abs logit difference vs zeroed `cross_past` |    0.0 | **27.01** |
+| first-step argmax                               |  19314 |  **1126** |
+
+1126 is the oracle's first token. JFK now decodes to
+`And so my fellow Americans ask not what your country can do for you, ask what
+you can do for your country.` in 24 tokens, 25 steps and 446 ms, matching both
+token ids and text.
+
+The port also gets smaller and more general. **The 32 MB seed cache is gone**:
+cross-attention memory is computed in-graph, and self-attention starts from one
+exported BOS-step block of 13,824 bytes. Utterance length is no longer pinned to
+an exported seed.
+
+Long-form now **executes** where it previously failed with a tensor size error:
+`librivox.org.16k.wav` at 1558 frames runs in 580 ms. Its transcript is junk
+(two byte-fallback tokens), and the emitted ids indicate input outside the
+model's training window rather than a graph fault, so long-form quality is
+explicitly **not** claimed. Streaming and partial-result behaviour remain
+unmeasured.
+
+Receipts: `moonshine/pair-oracle-match-2026-10-04.json`,
+`moonshine/encoder-divergence-2026-10-04.json`.
+
 ## C45 — Exported decoder ignores cross-attention; root cause measured
 
 Status: root cause confirmed by measurement. The exported decoder graph is

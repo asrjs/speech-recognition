@@ -80,7 +80,9 @@ function buildVocab(tokenizer) {
 
 /** Reads the exported BOS-step self-attention seed: a fixed [slots, 1, heads, 1, headDim] block. */
 function readBosSelfPast() {
-  const raw = readFileSync(`${argValue('model-dir', 'models/onnx/moonshine-tiny-fp32')}/bos_self_past.bin`);
+  const raw = readFileSync(
+    `${argValue('model-dir', 'models/onnx/moonshine-tiny-fp32')}/bos_self_past.bin`,
+  );
   return new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
 }
 
@@ -142,6 +144,7 @@ for (; steps < maxTokens; steps += 1) {
     input_ids: new ort.Tensor('int64', BigInt64Array.from([BigInt(nextToken)]), [1, 1]),
     self_past: selfPast,
     cross_past: crossPast,
+    encoder_states: states,
   });
   const logits = result.logits ?? result[decoder.outputNames[0]];
   let bestId = 0;
