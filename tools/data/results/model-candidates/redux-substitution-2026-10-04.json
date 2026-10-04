@@ -1,20 +1,15 @@
 {
   "status": "SUBSTITUTED_0.897_HYBRID_REMAINDER",
   "model": "moondream/parakeet-redux",
-  "what_works": {
-    "download": "177774490 bytes, sha256 78ec25733ee0d0c1586d1346fc86db9d0c2e436e3a8ab1d32a82d1bb8f848d21, matching the layout arithmetic computed before any download",
-    "decode": "264 quantized modules, 603979776 parameters, exact by construction",
-    "mapping": "217 of 217 MatMul constants and 44 of 48 Conv constants matched to redux modules by correlation, mean correlation 0.798",
-    "patched_external": "237 anonymous constants plus 240 named external tensors replaced"
-  },
   "what_is_wrong": {
-    "kept": 375,
-    "reasons": [
-      "inline initializer, not rewritten",
-      "no match above the correlation threshold"
-    ],
-    "inline_problem": "the teacher pack reports 295 external tensors out of 612 initializers, so roughly 317 are baked into the .onnx protobuf. The external-data write path can never reach them, so replacing them needs TensorProto.raw_data assignment and a protobuf re-save.",
-    "consequence": "the artifact mixes redux and teacher weights. A gate result on it would be ambiguous in both directions, so no oracle gate was run."
+    "kept": 63,
+    "inline_problem": "RESOLVED: the inline initializers are now rewritten through TensorProto.raw_data and the graph is re-saved with external data, which took coverage from 0.387 to 0.819.",
+    "suffix_problem": "RESOLVED: the teacher carries a .weight suffix on names that redux stores as bare quantized module names, which took coverage from 0.819 to 0.897.",
+    "structural_gap": "layers.N.self_attn.pos_bias_u and pos_bias_v, 48 tensors, do not exist anywhere in the redux archive. redux parameterises relative position differently, so the teacher values are retained and the attention path stays a hybrid. This is an architectural difference in the repack, not a mapping failure.",
+    "remaining_reasons": [
+      "inline initializer with no redux match",
+      "no redux tensor above the correlation threshold"
+    ]
   },
   "next_steps": [
     "rewrite the inline initializers through TensorProto.raw_data and re-save the graph",
@@ -39,13 +34,21 @@
     }
   ],
   "remaining_teacher_tensors": {
-    "count": null,
-    "known_gap": "layers.N.self_attn.pos_bias_u and pos_bias_v, 48 tensors, are absent from the redux archive entirely, so redux parameterises relative position differently. They stay teacher-valued, which makes the artifact a hybrid in the attention path specifically."
+    "count": 63,
+    "breakdown": {
+      "pos_bias_u_v": 48,
+      "conv_map_below_threshold": 4,
+      "other_unmatched": 11
+    },
+    "note": "counts are from the substitution receipt; the other_unmatched bucket was not enumerated individually"
   },
   "still_open": [
     "no oracle gate has been run; an accuracy claim for redux does not exist",
     "a redux JFK baseline must be recorded from a reference decode before any gate is meaningful",
     "the relative-position parameterisation mismatch needs resolution before the attention path is faithful",
     "the decoder_joint weights are not in the teacher encoder graph and still need their own export path"
-  ]
+  ],
+  "what_works": {
+    "substitution": "549 of 612 tensors carry redux weights; see coverage_progression"
+  }
 }
