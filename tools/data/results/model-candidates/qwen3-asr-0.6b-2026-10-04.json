@@ -90,6 +90,21 @@
           "patch sdpa_attention_forward to a data-dependent friendly path, which changes execution semantics and needs its own justification",
           "export the encoder window by window with a fixed window count per call so the runtime loops and the graph stays shape-stable"
         ]
+      },
+      "legacy_trace_attempted": {
+        "idea": "the legacy tracer bakes the window schedule as a constant instead of tracing through it, which would give a fixed-window-count graph",
+        "flag_added": "--legacy-trace on tools/qwen3-asr-onnx-export/export_qwen3_asr_front.py",
+        "result": "fails before tracing, in torchscript shape inference, not on the attention branch",
+        "error": "RuntimeError: Dynamic shape axis should be no more than the shape dimension for frames",
+        "diagnosis": "the declared dynamic axes no longer match the traced shapes; the mask tensor is converted to the feature dtype and its frame axis does not line up with input_features, and audio_embeds may not place frames on axis 1",
+        "note": "this is a fixable exporter-side problem rather than a model limit, and it is the cheapest remaining lead because legacy tracing would sidestep the attention branch entirely",
+        "not_shipped": "no graph was produced, so nothing was measured and no limitation was accepted"
+      },
+      "summary_of_three_attempts": {
+        "1_dynamo": "GuardOnDataDependentSymNode in get_audio_cu_seqlens: the window schedule is computed in Python from the mask",
+        "2_cu_seqlens_override": "solves the schedule by making it a graph input, then fails one level deeper with GuardOnDataDependentSymNode on u1 > 1 inside sdpa_attention_forward",
+        "3_legacy_trace": "does not reach the attention at all; fails in torchscript dynamic-axis inference, which is a local exporter fix",
+        "conclusion": "two of the three are model-side data-dependence and one is exporter-side. The exporter-side one is the cheapest next attempt."
       }
     },
     "candidate_remedies": [

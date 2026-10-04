@@ -91,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model-dir", type=Path, default=Path(".cache/qwen3-asr-0.6b"))
     parser.add_argument("--audio", default="tools/data/fixtures/audio/jfk-short.wav")
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--legacy-trace", action="store_true",
+                        help="use the legacy tracer; the window schedule becomes a baked constant")
     args = parser.parse_args(argv)
 
     model = transformers.AutoModelForMultimodalLM.from_pretrained(
@@ -126,11 +128,10 @@ def main(argv: list[str] | None = None) -> int:
         dynamic_axes={
             "input_features": {0: "batch", 2: "frames"},
             "input_features_mask": {0: "batch", 2: "frames"},
-            "cu_seqlens": {0: "windows"},
             "audio_embeds": {0: "batch", 1: "frames"},
         },
         opset_version=OPSET,
-        dynamo=True,
+        dynamo=not args.legacy_trace,
     )
 
     import onnxruntime as ort
@@ -150,7 +151,9 @@ def main(argv: list[str] | None = None) -> int:
         "bytes": output.stat().st_size,
         "sha256": _digest(output),
         "opset": OPSET,
-        "exporter": "torch.onnx.export(dynamo=True)",
+        "exporter": "torch.onnx.export(dynamo=False)" if args.legacy_trace else "torch.onnx.export(dynamo=True)",
+        "legacyTrace": bool(args.legacy_trace),
+        "legacyTraceLimit": "the window schedule is baked as a constant, so this graph handles only the frame count it was exported at" if args.legacy_trace else None,
         "input": {
             "input_features": list(features.shape),
             "input_features_mask": list(mask.shape),
