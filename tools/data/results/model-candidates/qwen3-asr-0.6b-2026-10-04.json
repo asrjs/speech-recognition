@@ -1,5 +1,5 @@
 {
-  "status": "LEGACY_FRONT_RESTORED_VARIABLE_LENGTH_PATH_PROVEN_BUT_NOT_WIRED",
+  "status": "LEGACY_FRONT_IN_USE_DYNAMO_PATH_PROVEN_BUT_BLOCKED_ON_DYNAMIC_SHAPES",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -368,7 +368,7 @@
       "parity improves from 8.107e-07 on the legacy trace to 3.264e-07"
     ],
     "not_wired_because": [
-      "cu_seqlens axis 0 stays fixed to the traced length: Got 5 Expected 2. dynamic_axes does not reach the dynamo exporter; it needs dynamic_shapes built from torch.export.Dim, traced with a multi-window example so the axis is provably non-unit.",
+      "cu_seqlens axis 0 stays fixed to the traced length: Got 5 Expected 2. dynamic_axes does not reach the dynamo exporter, so dynamic_shapes is required. Two forms were tried and both conflicted with tracing: naming batch and frame dims explicitly gives \"conflicts between user-specified ranges and inferred ranges\", and Dim.DYNAMIC on every axis conflicts too, because tracing already fixed the batch axis as static at 1. The remaining approach is to trace with a multi-window example so the schedule axis is provably non-unit, then state only that axis.",
       "the registered session would need a cu_seqlens input, sourced per input from the capture tool rather than recomputed."
     ],
     "schedule_capture_is_done": "tools/qwen3-asr-onnx-export/capture_cu_seqlens.py takes the schedule from the encoder's own get_audio_cu_seqlens during a real forward, giving [0,143] for the 1100-frame fixture and [0,104,208,312,335] for the 2600-frame one"
