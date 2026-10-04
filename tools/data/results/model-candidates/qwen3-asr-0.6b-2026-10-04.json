@@ -1,5 +1,5 @@
 {
-  "status": "VARIABLE_LENGTH_FRONT_EXPORTED_SCHEDULE_CAPTURED_AXIS_STILL_FIXED",
+  "status": "LEGACY_FRONT_RESTORED_VARIABLE_LENGTH_PATH_PROVEN_BUT_NOT_WIRED",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -275,8 +275,8 @@
     }
   },
   "verified_limits": [
-    "The audio front is fixed to the frame count it was exported at: 1100 raw frames, 143 windows. A 2600-frame input needs 335 windows and fails loudly.",
-    "One fixture and one length were validated. The JFK match is real but does not generalise.",
+    "The shipped front is the legacy trace and is fixed to the frame count it was exported at: 1100 raw frames, 143 windows. A 2600-frame input needs 335 windows and fails loudly.",
+    "One fixture and one length are validated. The JFK match is real but does not generalise.",
     "No browser run exists.",
     "The model directory is 5.2 GB, which is the practical constraint for shipping this in a browser."
   ],
@@ -354,5 +354,23 @@
       "fix": "pass dynamic_shapes with a Dim for cu_seqlens axis 0 instead of dynamic_axes, tracing with an example of several windows so the axis is provably non-unit",
       "status_note": "not yet applied"
     }
+  },
+  "revert": {
+    "reason": "the dynamo front takes cu_seqlens as an input, which the registered session does not yet supply, so swapping the graph broke a passing oracle gate",
+    "action": "the audio front was re-exported with the legacy tracer, which bakes the schedule and takes only input_features and input_features_mask; the session and its test were reverted unchanged",
+    "suite_after_revert": "1479 passed, 33 skipped, 0 failed",
+    "rule_followed": "a working gate is worth more than an unwired improvement; the dynamo path is recorded rather than half-shipped"
+  },
+  "dynamo_front_findings": {
+    "proves": [
+      "the audio front does export with dynamo=True once eager attention avoids the fused SDPA causal test, the same lever that unblocked the decoder",
+      "the window schedule survives as a graph input rather than being baked",
+      "parity improves from 8.107e-07 on the legacy trace to 3.264e-07"
+    ],
+    "not_wired_because": [
+      "cu_seqlens axis 0 stays fixed to the traced length: Got 5 Expected 2. dynamic_axes does not reach the dynamo exporter; it needs dynamic_shapes built from torch.export.Dim, traced with a multi-window example so the axis is provably non-unit.",
+      "the registered session would need a cu_seqlens input, sourced per input from the capture tool rather than recomputed."
+    ],
+    "schedule_capture_is_done": "tools/qwen3-asr-onnx-export/capture_cu_seqlens.py takes the schedule from the encoder's own get_audio_cu_seqlens during a real forward, giving [0,143] for the 1100-frame fixture and [0,104,208,312,335] for the 2600-frame one"
   }
 }
