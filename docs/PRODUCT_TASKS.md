@@ -13,6 +13,15 @@ The load listed `model.encoder.conv1.weight`, `conv2`, `conv3`, `groupnorm`,
 initialized. Greedy decode then emitted `"I, I, I, ..."` — plausible output from
 random weights.
 
+A state-dict rename was then written and tested, and it failed with a shape
+mismatch that settles the question: the checkpoint's `conv1` is `[640, 320, 5]`
+where the installed model expects `[320, 1, 127]`. This encoder consumes
+**320-dimensional mel features through a 5-tap kernel**, while the non-streaming
+one consumes raw 16 kHz waveform through one channel with a 127-tap kernel. No
+key mapping can bridge a different subsampler, and the published
+`preprocessor_config.json` describes a `Wav2Vec2FeatureExtractor`, which does not
+match a mel encoder either.
+
 That makes the graphs exported earlier in this session invalid: they encode the
 randomly initialized encoder, not the checkpoint. The receipt now says
 `EXPORT_INVALID_RANDOMLY_INITIALIZED_ENCODER`, and the artifacts are retained

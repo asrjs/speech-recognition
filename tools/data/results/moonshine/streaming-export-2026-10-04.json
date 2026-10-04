@@ -47,17 +47,23 @@
     "evidence": "load reported newly initialized model.encoder.conv1.weight, conv2, conv3, groupnorm, layer_norm and every layer's input_layernorm and post_attention_layernorm; the checkpoint key census shows model.encoder.embedder.* and model.model.encoder.conv1.* for the non-streaming model",
     "oracle_consequence": "no reference transcript can be produced with this toolchain, so nothing can be gated",
     "silent_success_class": "a load that succeeds, produces plausible-shaped output and only warns. The same class as the dead cross-attention input and the data-section-relative offsets earlier in this session.",
-    "architecture_difference": {
-      "finding": "the difference is not only key naming. The streaming encoder layer holds mlp, self_attn and layernorms only, with no conv module and no relative_k_proj, and its embedder uses a linear projection where the non-streaming one uses conv3 plus groupnorm.",
-      "comparison": "streaming-only layer keys: none beyond the gamma suffix; non-streaming-only: conv.depthwise_conv, conv.norm, conv.pointwise_conv1/2 and self_attn.relative_k_proj",
-      "consequence": "a state-dict rename cannot fix this. The module graph itself differs, so the installed MoonshineEncoder cannot represent this checkpoint even after renaming.",
-      "correct_prerequisite": "the streaming Moonshine model class itself, which the installed transformers does not provide. Renaming keys is not a shortcut and should not be attempted.",
-      "correction": "an earlier framing of this blocker as a key-embedding mismatch would have sent a session down a rename attempt that cannot succeed"
+    "definitive_finding": {
+      "measured": "loading the remapped state dict fails hard with a shape mismatch: checkpoint conv1 is [640, 320, 5] while the installed model expects [320, 1, 127]",
+      "meaning": "the streaming encoder consumes 320-dimensional features with a 5-tap convolution kernel, where the non-streaming encoder consumes raw 16 kHz waveform through a single channel with a 127-tap kernel",
+      "frontend_consequence": "this checkpoint needs a mel frontend that the non-streaming port does not have. The published preprocessor_config.json describes a Wav2Vec2FeatureExtractor with do_normalize false, which does not match a 320-bin mel encoder, so the repository's own processor config does not describe this model's input either",
+      "conclusion": "the streaming checkpoint is a different model, not a renamed one. No key mapping can bridge a different subsampler, and the installed transformers has no class for it.",
+      "prerequisite": "the streaming Moonshine architecture together with its mel frontend, from a transformers version that ships it, or hand-written support",
+      "corrections_made": [
+        "an intermediate reading claimed the encoder lacked conv modules and relative_k_proj, so a rename could not work; a full key comparison refuted that",
+        "the follow-up claim that a rename was sufficient was then refuted by the shape mismatch above",
+        "the recorded finding is the measured shape mismatch, which is what survives"
+      ]
     }
   },
   "prerequisites": [
-    "a transformers version whose Moonshine streaming class expects model.encoder.embedder.*, or a state-dict remap into the expected layout",
-    "then re-export, then produce the reference transcript, then gate"
+    "the streaming Moonshine architecture and its 320-bin mel frontend; the installed transformers has no class for it",
+    "then re-export, then produce a reference transcript, then gate"
   ],
-  "runner_fix_still_valid": "the pair runner now reads slots, heads and headDim from the export receipt rather than constants; that fix stands independently of this checkpoint"
+  "runner_fix_still_valid": "the pair runner now reads slots, heads and headDim from the export receipt rather than constants; that fix stands independently of this checkpoint",
+  "artifacts": "the remap tool is kept at tools/moonshine-onnx-export/remap_streaming_state_dict.py because the 19 key renames it performs are real and would be needed for any future streaming class, but it does not and cannot fix this checkpoint"
 }
