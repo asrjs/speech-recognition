@@ -198,14 +198,19 @@ export class Qwen3AsrSession {
     }
     const markerIndex = tokenIds.indexOf(ASR_TEXT_MARKER);
     const words = markerIndex >= 0 ? tokenIds.slice(markerIndex + 1) : tokenIds;
-    const language =
+    // The reference parses this as just the language name, dropping the literal
+    // "language" tag that precedes it.
+    const tagged =
       markerIndex >= 2
         ? tokenIds
             .slice(0, markerIndex)
             .map((id) => tokenizer.tokenText(id))
             .join('')
-            .trim()
         : '';
+    const language = tagged
+      .trim()
+      .replace(/^language\s*/i, '')
+      .trim();
 
     return {
       text: words
