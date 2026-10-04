@@ -1,0 +1,26 @@
+{
+  "status": "SHARED_PREREQUISITE_MISSING",
+  "finding": "every remaining queue item needs the NeMo toolkit, and it is not installed",
+  "checked": "importlib.util.find_spec for nemo_toolkit, nemo.collections.asr, lightning and omegaconf in the reference venv: nemo_toolkit MISSING, nemo MISSING",
+  "affected": [
+    {
+      "item": "parakeet-redux export from its own weights",
+      "blocked_by": "no NeMo to load the safetensors into an exportable module graph"
+    },
+    {
+      "item": "parakeet-ultra",
+      "blocked_by": "no NeMo; 1.2 GB bf16 safetensors with no ready-made ONNX, so it cannot even be converted"
+    },
+    {
+      "item": "parakeet-primeline",
+      "blocked_by": "no NeMo; ships a .nemo archive that only NeMo can open"
+    }
+  ],
+  "existing_tooling": "tools/nemo-tdt-onnx-export holds replay and head-replay tooling that consumes already-exported graphs and captured features; it does not export from NeMo weights. No exporter in this repository performs a NeMo to ONNX export.",
+  "why_no_download": "downloading 1.2 GB or 2.5 GB before establishing that no toolchain can consume it would produce artifacts with no path to a port. The prerequisite check came first, deliberately.",
+  "prerequisite": "install NeMo (nemo_toolkit) into a project reference venv; that is a large dependency install and needs new authority",
+  "not_done": [
+    "no ultra or primeline weights were downloaded",
+    "no redux NeMo export was attempted"
+  ]
+}
