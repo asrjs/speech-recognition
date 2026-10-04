@@ -1,3 +1,49 @@
+## C44 — Encoder drift fixed by re-export; decoder now exports too
+
+Status: the encoder is faithful and verified. The self-exported pair does not
+yet decode to the oracle, so the runtime stays on the previous configuration.
+
+The `onnxscript` prerequisite resolved the export blocker from C43. With
+`onnxscript` 0.7.2 installed in the reference venv, `torch.onnx.export(dynamo=True)`
+traces the encoder that the legacy tracer rejected:
+
+| encoder input                    | shipped graph |    our export |
+| -------------------------------- | ------------: | ------------: |
+| max abs error                    |         1.609 | **4.447e-04** |
+| mean abs error                   |         0.032 | **4.229e-06** |
+| cosine                           |             — |  0.9999998808 |
+| `allclose(atol=1e-4, rtol=1e-3)` |         false |      **true** |
+
+That is roughly a 3600x improvement and it settles the C42 question: the shipped
+browser graphs carry weights from a different checkpoint revision, not a frontend
+difference. Two advisor hypotheses were tested and rejected on measurement. The
+weights are fp32, not fp16, and fp16-rounding the checkpoint does not reproduce
+them, so this is not a precision artefact. The drift is structured, with a 0.50
+sign balance and a -0.46 correlation against the weights themselves.
+
+The decoder exports too, with past state as two stacked tensors
+(`self_past`, `cross_past`, 12 slots, 8 heads, 36 head dimensions) rather than
+24 named ones. The dynamo exporter traces a `*args` wrapper as a single argument,
+and per-tensor names contain dots that are not valid Python identifiers. Logits
+need `proj_out`, which lives at model level, not on the decoder.
+
+**The pair is not yet usable.** Its decode does not match the oracle, so the
+runtime stays on the previous configuration, which still produces the JFK
+transcript exactly. Two leads are recorded, both unverified: cross-attention
+memory is a fixed projection, so feeding `cross_present` back on every step may
+be wrong, and the tokenizer vocab lookup returns empty text.
+
+One correction to an earlier receipt. The cross-attention parity result reported
+`PASS` at 6.68e-06, but the comparison reshaped both sides identically and so
+could not detect a layout error. It proves the graph reproduces `k_proj` and
+`v_proj`; it does not prove the cache layout. The layout bug is real and was
+found later: reinterpreting `[batch, frames, heads * headDim]` as
+`[batch, heads, frames, headDim]` preserves the element count without permuting
+the data. The symptom is a repeating token loop rather than an error.
+
+Receipts: `moonshine/encoder-divergence-2026-10-04.json`,
+`moonshine/cross-kv-parity-v2-2026-10-04.json`.
+
 ## C43 — Moonshine encoder root cause found; re-export is a bounded blocker
 
 Status: root cause identified and reproducible. The fix needs one prerequisite

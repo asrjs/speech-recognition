@@ -37,5 +37,23 @@
     "cause": "Moonshine's third conv yields a rank-4 tensor and the legacy tracer rejects the mixed-rank stack. Flattening the rotary input does not remove the mismatch, because the rank-4 tensor originates upstream in the conv stack.",
     "missing_prerequisite": "onnxscript, required by the torch 2.13 dynamo exporter that this model does trace with; or a graph rewrite that eliminates the rank-4 conv output. Neither can be installed or written without new authority.",
     "consequence": "Moonshine cross-attention cannot be projected from this encoder, so long-form windowing, streaming and per-fixture seeds stay blocked. The port keeps the checkpoint seed cache and therefore keeps passing."
+  },
+  "resolution": {
+    "status": "ENCODER_FIXED_DECODER_EXPORTED_PAIR_NOT_YET_VALID",
+    "onnxscript_installed": "onnxscript 0.7.2 and onnx_ir 1.0.0 in the moonshine reference venv",
+    "encoder_parity_vs_pytorch": {
+      "max_abs_error": 0.0004447,
+      "mean_abs_error": 4.229e-06,
+      "cosine": 0.9999998808,
+      "allclose_atol_1e-4_rtol_1e-3": true,
+      "improvement": "3600x against the shipped graph"
+    },
+    "decoder_exported": true,
+    "decoder_interface": "stacked self_past and cross_past, slots 12, heads 8, headDim 36",
+    "open_work": [
+      "The self-exported pair decodes to a different token sequence than the oracle, so it is not yet usable.",
+      "Suspicion: cross_past must stay constant across steps rather than being fed back from cross_present, because cross-attention memory is a fixed projection. Not yet tested.",
+      "The tokenizer decode path returns empty text; tokenizer.json vocab is keyed differently than assumed."
+    ]
   }
 }
