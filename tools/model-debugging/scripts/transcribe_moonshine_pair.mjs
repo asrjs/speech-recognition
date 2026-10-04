@@ -97,6 +97,9 @@ const maxTokens = Number(argValue('max-tokens', '256'));
 // Greedy decoding repeats on long input; a repetition penalty is the cheapest
 // thing to try before windowing.
 const penalty = Number(argValue('repetition-penalty', '0'));
+// A hard ban on the last N emitted tokens is the decisive test for whether the
+// long-form loop is a selection artifact or the model's own window.
+const banWindow = Number(argValue('ban-window', '0'));
 const slots = 12;
 const heads = 8;
 const headDim = 36;
@@ -159,6 +162,9 @@ for (; steps < maxTokens; steps += 1) {
   let best = Number.NEGATIVE_INFINITY;
   for (let index = 0; index < logits.data.length; index += 1) {
     let value = logits.data[index];
+    if (banWindow > 0 && tokenIds.slice(-banWindow).includes(index)) {
+      continue;
+    }
     if (penalty > 0 && tokenIds.includes(index)) {
       value = value < 0 ? value * penalty : value / penalty;
     }

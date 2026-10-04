@@ -16,12 +16,21 @@ never seen during export or tuning:
 > Preface of A Year with the Birds, this is a LibriVox recording. All LibriVox
 > recordings are in the public domain.
 
-Long-form executes but degenerates. On `librivox-blankgaps-synthetic.wav`,
-2329 frames and about 56 s, the opening is right and then greedy decoding
-repeats: _"Daughter of a year with the birds of a year with the birds of a year
-with..."_ No EOS arrives within a 160-token cap. That is a decoding-policy limit
-on long input rather than a graph fault, since the 31 s and 35 s runs decode
-cleanly.
+Long-form needs a repetition guard, and the model window is not the limit. On
+`librivox-blankgaps-synthetic.wav`, 2329 frames and about 56 s, plain greedy
+decoding opens correctly and then loops: _"of a year with the birds of a year
+with the birds of a year with..."_, 7 distinct tokens out of 120. A soft
+repetition penalty of 1.1 changes nothing. Banning the last 40 emitted tokens
+breaks the loop outright: 46 steps, 45 distinct tokens of 45, and
+
+> of a year with the birds. ... This is a LibriVox recording. All LibriVox
+> recordings are in the public domain. For more information ...
+
+So the loop is a selection artifact, not a model window. An earlier reading of
+this fixture blamed greedy decoding and then blamed the window; both were wrong,
+and the record is corrected here because the soft penalty alone does not
+exonerate greedy selection. The guard improves selection but does not recover
+punctuation or casing, so a sampling or beam policy is still unmeasured.
 
 Streaming is re-scoped, not deferred. It needs the `moonshine-streaming`
 checkpoint, which ships safetensors only, so it is a separate port with its own
