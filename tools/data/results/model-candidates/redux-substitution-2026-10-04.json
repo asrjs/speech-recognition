@@ -53,7 +53,7 @@
     "substitution": "549 of 612 tensors carry redux weights; see coverage_progression"
   },
   "encoder_adjacency_probe": {
-    "status": "FAILURE_SIGNAL_NEEDS_LOCALISATION",
+    "status": "INCONCLUSIVE_DIAGNOSTIC",
     "method": "identical synthetic [1,128,150] features through the substituted and the teacher encoder; the graph takes features, not raw audio, so no fixture is needed",
     "result": {
       "cosine": 0.033858,
@@ -62,9 +62,8 @@
       "nonfinite": 0,
       "elements": 19456
     },
-    "reading": "the two encoders are essentially uncorrelated on the same input. This does NOT prove the substitution is wrong. Per-tensor correlation is 0.798 and a 1.58-bit quantization compounded over 24 Conformer layers is enough to destroy output correlation. It also does not prove the substitution is right.",
     "consequence": "encoder-output adjacency is not a usable gate for this candidate. The only meaningful gate is the transcript oracle against a redux reference decode, which needs NeMo and is still open.",
-    "note": "the probe is cheap and worth rerunning once the pos_bias gap closes, but it should not gate the work either way",
+    "note": "This number is a diagnostic, never a pass or fail. Output-level divergence does not preclude transcript-level correctness: the Moonshine port shipped browser graphs that diverged from PyTorch yet still produced correct transcripts.",
     "control": {
       "teacher_vs_teacher_cosine": 1.0,
       "teacher_vs_teacher_max_abs": 0.0,
@@ -75,6 +74,21 @@
       "redux_std": 0.0248,
       "ratio": 3.4
     },
-    "revised_reading": "With the control at cosine 1.0, the 0.0339 is a genuine divergence, and the 3.4x output scale difference is too large to attribute to quantization drift alone. Leading hypothesis: the 48 teacher-valued pos_bias_u/v tensors sit inside the attention path of a model that parameterises relative position differently, which would corrupt every layer. Second hypothesis: a mis-patched tensor. The discriminating test is to substitute weight classes incrementally and find the step where cosine collapses."
+    "revised_reading": "With the control at cosine 1.0, the 0.0339 is a genuine divergence, and the 3.4x output scale difference is too large to attribute to quantization drift alone. Leading hypothesis: the 48 teacher-valued pos_bias_u/v tensors sit inside the attention path of a model that parameterises relative position differently, which would corrupt every layer. Second hypothesis: a mis-patched tensor. The discriminating test is to substitute weight classes incrementally and find the step where cosine collapses.",
+    "candidates": [
+      {
+        "hypothesis": "the 48 teacher-valued pos_bias_u/v tensors corrupt every attention layer, because redux parameterises relative position differently",
+        "status": "live, untested"
+      },
+      {
+        "hypothesis": "one or more tensors were mis-patched by the correlation mapping",
+        "status": "live, untested"
+      },
+      {
+        "hypothesis": "quantization drift compounds chaotically through 24 Conformer layers and destroys output correlation on its own",
+        "status": "live, NOT independently verified; no layer-wise comparison has been run"
+      }
+    ],
+    "discriminating_test": "Substitute weight classes incrementally into copies of the teacher graph and measure cosine at each step: norms only, then norms plus MatMuls, then pos_bias. The step where cosine collapses identifies the disrupted class. This was not run and is the first task for a future session."
   }
 }
