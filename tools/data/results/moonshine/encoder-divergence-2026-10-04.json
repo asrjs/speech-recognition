@@ -20,5 +20,22 @@
     }
   ],
   "consequence": "Decoder cross-attention cannot be projected from this encoder output. The working port seeds cross-attention from the checkpoint instead, so the encoder result is computed but unused, and utterance length is pinned to the exported seed.",
-  "not_localised": "Input normalization is ruled out: the feature-extractor path and a raw path both drift by a similar amount. Further work has to compare per-layer encoder outputs inside the graph."
+  "not_localised": "Input normalization is ruled out: the feature-extractor path and a raw path both drift by a similar amount. Further work has to compare per-layer encoder outputs inside the graph.",
+  "weight_comparison": {
+    "method": "compare ONNX graph initializers against MoonshineForConditionalGeneration encoder parameters by name and shape",
+    "tensors_compared": 30,
+    "tensors_mismatched": 30,
+    "tensors_exact": 0,
+    "character": "values are close, not random: conv1.weight max abs 0.0461 with std 0.1927 (torch) against 0.1905 (onnx); conv2.weight max abs 0.0303",
+    "reading": "the shipped encoder graph carries weights from a different checkpoint revision of the same architecture, not random or corrupt weights"
+  },
+  "reexport_blocker": {
+    "status": "BLOCKED",
+    "attempts": 4,
+    "command": "torch.onnx.export(encoder, (torch.randn(1, 16000),), dynamo=False, opset_version=17)",
+    "error": "AssertionError: All tensors must have the same rank",
+    "cause": "Moonshine's third conv yields a rank-4 tensor and the legacy tracer rejects the mixed-rank stack. Flattening the rotary input does not remove the mismatch, because the rank-4 tensor originates upstream in the conv stack.",
+    "missing_prerequisite": "onnxscript, required by the torch 2.13 dynamo exporter that this model does trace with; or a graph rewrite that eliminates the rank-4 conv output. Neither can be installed or written without new authority.",
+    "consequence": "Moonshine cross-attention cannot be projected from this encoder, so long-form windowing, streaming and per-fixture seeds stay blocked. The port keeps the checkpoint seed cache and therefore keeps passing."
+  }
 }

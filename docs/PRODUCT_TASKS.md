@@ -1,3 +1,44 @@
+## C43 — Moonshine encoder root cause found; re-export is a bounded blocker
+
+Status: root cause identified and reproducible. The fix needs one prerequisite
+this session does not have.
+
+**The shipped encoder graph is not this checkpoint's weights.** Comparing graph
+initializers against `MoonshineForConditionalGeneration` by name and shape:
+**30 of 30 comparable tensors mismatch, 0 match exactly.** The values are close
+rather than random, which rules out a corrupt export:
+
+| tensor         | max abs diff | torch std | onnx std |
+| -------------- | -----------: | --------: | -------: |
+| `conv1.weight` |       0.0461 |    0.1927 |   0.1905 |
+| `conv2.weight` |       0.0303 |    0.1059 |   0.1052 |
+| `conv3.weight` |       0.0390 |    0.1296 |   0.1286 |
+
+Same architecture, same tensor names, a different checkpoint revision. That
+explains the encoder drift measured in C42 without needing any frontend theory,
+and it invalidates the normalization hypothesis for good.
+
+**The encoder cannot be re-exported with the available toolchain.**
+`torch.onnx.export(..., dynamo=False)` fails with `AssertionError: All tensors
+must have the same rank`. The third conv yields a rank-4 tensor and the legacy
+tracer rejects the mixed-rank stack. Flattening the rotary input does not help,
+because the rank-4 tensor originates upstream in the conv stack; four variants
+were tried and all reproduce the failure. The dynamo exporter that this model
+does trace with needs `onnxscript`, which is not installed.
+
+So the missing prerequisite is exactly one of:
+
+- `onnxscript` installed in the reference venv, which unlocks the dynamo
+  exporter, or
+- a graph rewrite that removes the rank-4 conv output.
+
+Until one lands, long-form windowing, streaming and per-fixture seeds stay
+blocked, and the port keeps the checkpoint seed cache it already passes with.
+This is a bounded blocker rather than an open question: the failure is
+reproducible and the fix is named.
+
+Receipt: `moonshine/encoder-divergence-2026-10-04.json`.
+
 ## C42 — Moonshine cross-attention graph exported; encoder drift found
 
 Status: the new graph is numerically exact. The port stays on the seed-cache
