@@ -75,20 +75,42 @@
       "ratio": 3.4
     },
     "revised_reading": "With the control at cosine 1.0, the 0.0339 is a genuine divergence, and the 3.4x output scale difference is too large to attribute to quantization drift alone. Leading hypothesis: the 48 teacher-valued pos_bias_u/v tensors sit inside the attention path of a model that parameterises relative position differently, which would corrupt every layer. Second hypothesis: a mis-patched tensor. The discriminating test is to substitute weight classes incrementally and find the step where cosine collapses.",
-    "candidates": [
+    "discriminating_test": "Substitute weight classes incrementally into copies of the teacher graph and measure cosine at each step: norms only, then norms plus MatMuls, then pos_bias. The step where cosine collapses identifies the disrupted class. This was not run and is the first task for a future session.",
+    "ladder": "see substitution_ladder",
+    "hypotheses_now": [
+      "mis-patched MatMul: weakened, norms alone reproduce the divergence",
+      "pos_bias hybrid: weakened, norms alone reproduce the divergence",
+      "amplification of small weight perturbations across 24 layers: consistent with all three rungs"
+    ]
+  },
+  "substitution_ladder": {
+    "purpose": "localize which weight class causes the encoder output divergence",
+    "method": "rebuild the substituted graph one weight class at a time and measure cosine against the teacher encoder on identical synthetic features",
+    "rungs": [
       {
-        "hypothesis": "the 48 teacher-valued pos_bias_u/v tensors corrupt every attention layer, because redux parameterises relative position differently",
-        "status": "live, untested"
+        "stage": "norms only",
+        "coverage": 0.471,
+        "cosine": 0.135511,
+        "output_std": 0.007925
       },
       {
-        "hypothesis": "one or more tensors were mis-patched by the correlation mapping",
-        "status": "live, untested"
+        "stage": "norms plus matched MatMuls",
+        "coverage": 0.825,
+        "cosine": 0.210698,
+        "output_std": 0.011899
       },
       {
-        "hypothesis": "quantization drift compounds chaotically through 24 Conformer layers and destroys output correlation on its own",
-        "status": "live, NOT independently verified; no layer-wise comparison has been run"
+        "stage": "full substitution",
+        "coverage": 0.897,
+        "cosine": 0.033858,
+        "output_std": 0.0248
       }
     ],
-    "discriminating_test": "Substitute weight classes incrementally into copies of the teacher graph and measure cosine at each step: norms only, then norms plus MatMuls, then pos_bias. The step where cosine collapses identifies the disrupted class. This was not run and is the first task for a future session."
+    "teacher_std": 0.007251,
+    "control": "teacher against itself gives cosine 1.000000 and max abs 0.0",
+    "localisation": "Substituting only the dense norm and bias tensors, with no MatMul at all, already drops cosine to 0.1355. The divergence therefore does not require a mis-patched MatMul and is not specific to the pos_bias hybrid.",
+    "std_growth": "output magnitude grows monotonically with each class added, 0.0079 to 0.0119 to 0.0248, so substituted tensors systematically inflate the encoder rather than mis-routing one layer",
+    "conclusion": "output cosine is not a usable gate for this candidate. The encoder amplifies small weight perturbations across 24 Conformer layers, so a repack at 1.58 bits decorrelates its output even when per-tensor correlation is 0.8 to 0.99. The only meaningful acceptance test is a transcript oracle against a redux reference decode.",
+    "does_not_prove": "this does not prove the substitution is correct either. It removes two candidate explanations and leaves the substitution unverified."
   }
 }

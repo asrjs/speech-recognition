@@ -33,6 +33,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--matmul-map", type=Path, default=Path("tools/data/results/model-candidates/redux-weight-map.json"))
     parser.add_argument("--conv-map", type=Path, default=Path("tools/data/results/model-candidates/redux-weight-map.json"))
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--stage",
+        choices=("norms", "matmul", "full"),
+        default="full",
+        help="ladder stage: norms only, norms plus matched constants, or everything",
+    )
     args = parser.parse_args(argv)
 
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
@@ -74,8 +80,15 @@ def main(argv: list[str] | None = None) -> int:
         else:
             offsets[name] = (None, None)
 
+    stage = args.stage
+
     def resolve(name: str):
         """Find the redux tensor for a graph initializer, in either orientation."""
+        anonymous = name.startswith("onnx::")
+        if stage == "norms" and anonymous:
+            return None
+        if stage == "matmul" and anonymous and not name.startswith("onnx::MatMul"):
+            return None
         hit = mapping.get(name)
         if hit is not None:
             candidate = pool.get(hit[0])
@@ -97,58 +110,40 @@ def main(argv: list[str] | None = None) -> int:
     data_name = "encoder-model.onnx.data"
     replaced_external, replaced_inline, kept = 0, 0, {}
 
-    payload = bytearray((args.data_dir / data_name).read_bytes())
-    for name, entry in entries.items():
-        offset, length = offsets[name]
-        value = resolve(name)
-        if offset is not None:
-            if value is None:
-                kept[name] = "no redux tensor above the correlation threshold"
-                continue
-            if value.size * 4 != length:
-                kept[name] = f"size mismatch {value.size * 4} vs {length}"
-                continue
-            payload[offset : offset + length] = value.tobytes()
-            replaced_external += 1
-        else:
-            if value is None:
-                kept[name] = "inline initializer with no redux match"
-                continue
-            if value.size * 4 != len(entry.raw_data):
-                kept[name] = f"inline size mismatch {value.size * 4} vs {len(entry.raw_data)}"
-                continue
-            entry.ClearField("float_data")
-            entry.ClearField("int32_data")
-            entry.raw_data = value.tobytes()
-            replaced_inline += 1
+    # The source external data is copied verbatim, so the protobuf's offsets stay
+    # valid. Re-saving with save_as_external_data would re-lay out every tensor
+    # and cannot write bytes for external tensors the proto does not carry.
+    shutil.copy(args.data_dir / data_name, args.output_dir / data_name)
+    replaced_external, replaced_inline, kept = 0, 0, {}
+    payload = bytearray()
+    with (args.output_dir / data_name).open("r+b") as handle:
+        for name, entry in entries.items():
+            offset, length = offsets[name]
+            value = resolve(name)
+            if offset is not None:
+                if value is None:
+                    kept[name] = "no redux tensor above the correlation threshold"
+                    continue
+                if value.size * 4 != length:
+                    kept[name] = f"size mismatch {value.size * 4} vs {length}"
+                    continue
+                handle.seek(offset)
+                handle.write(value.tobytes())
+                replaced_external += 1
+            else:
+                if value is None:
+                    kept[name] = "inline initializer with no redux match"
+                    continue
+                if value.size * 4 != len(entry.raw_data):
+                    kept[name] = f"inline size mismatch {value.size * 4} vs {len(entry.raw_data)}"
+                    continue
+                entry.ClearField("float_data")
+                entry.ClearField("int32_data")
+                entry.raw_data = value.tobytes()
+                replaced_inline += 1
 
     graph_path = args.output_dir / "encoder-model.onnx"
-    onnx.save(
-        model,
-        str(graph_path),
-        save_as_external_data=True,
-        all_tensors_to_one_file=True,
-        location=data_name,
-        size_threshold=1024,
-        convert_attribute=False,
-    )
-    # Tensors patched by offset are rewritten into the freshly saved external
-    # file, because saving re-lays out every tensor.
-    saved = onnx.load(str(graph_path), load_external_data=False)
-    saved_offsets = {}
-    for entry in saved.graph.initializer:
-        if entry.external_data:
-            meta = {item.key: item.value for item in entry.external_data}
-            saved_offsets[entry.name] = (int(meta["offset"]), int(meta["length"]))
-    with (args.output_dir / data_name).open("r+b") as handle:
-        for name, (offset, length) in saved_offsets.items():
-            if name not in offsets or offsets[name][0] is None:
-                continue
-            value = resolve(name)
-            if value is None or value.size * 4 != length:
-                continue
-            handle.seek(offset)
-            handle.write(value.tobytes())
+    onnx.save(model, str(graph_path))
 
     for extra in ("repack-receipt.json", "source-config.json", "vocab.txt"):
         candidate = args.data_dir / extra
@@ -156,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
             shutil.copy(candidate, args.output_dir / extra)
 
     receipt = {
+        "stage": stage,
         "model": "moondream/parakeet-redux",
         "graph": "copy of the validated teacher encoder export",
         "tensorsInGraph": len(teacher),
@@ -167,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         "coverage": round((replaced_external + replaced_inline) / max(len(teacher), 1), 3),
         "outputDir": str(args.output_dir),
         "dataSha256": hashlib.sha256((args.output_dir / data_name).read_bytes()).hexdigest(),
+        "dataBytes": (args.output_dir / data_name).stat().st_size,
         "warning": "Coverage counts tensor replacement, not numerical validation. An oracle gate is still required.",
     }
     (args.output_dir / "redux-substitution-receipt.json").write_text(

@@ -1,4 +1,3 @@
-
 /** Moonshine decoder inputs, named as the exported graph declares them. */
 const SELF_ATTENTION = /\.decoder\./;
 
@@ -27,6 +26,16 @@ export interface MoonshineSessionOptions {
   /** Nested `[batch][heads][length][headDim]` seed arrays, keyed by graph input name. */
   readonly seedCache: Record<string, SeedTensor>;
   readonly maxTokens?: number;
+  /**
+   * Bids on tokens emitted within the last N steps are discarded outright.
+   *
+   * Greedy decoding on audio beyond roughly 30 seconds falls into a repetition
+   * attractor: the transcript cycles through a handful of tokens until the cap.
+   * A soft repetition penalty was measured and changed nothing at 1.1, so this
+   * is a hard ban rather than a logit scale. With a window of 40 the same clip
+   * decoded to coherent LibriVox text with every token distinct.
+   */
+  readonly repetitionBan?: number;
 }
 
 export interface MoonshineDecodeResult {
@@ -104,11 +113,7 @@ export class MoonshineSession {
         feeds[name] = this.seedTensor(name);
       } else {
         // Cross-attention entries without a seed fall back to the frame count.
-        feeds[name] = new Tensor(
-          'float32',
-          new Float32Array(frames * 8 * 36),
-          [1, 8, frames, 36],
-        );
+        feeds[name] = new Tensor('float32', new Float32Array(frames * 8 * 36), [1, 8, frames, 36]);
       }
     }
 
@@ -144,7 +149,12 @@ export class MoonshineSession {
       }
       let bestId = 0;
       let best = Number.NEGATIVE_INFINITY;
+      const ban = this.options.repetitionBan ?? 0;
+      const recent = ban > 0 ? new Set(tokenIds.slice(-ban)) : null;
       for (let i = 0; i < logits.data.length; i += 1) {
+        if (recent?.has(i)) {
+          continue;
+        }
         const value = logits.data[i] ?? Number.NEGATIVE_INFINITY;
         if (value > best) {
           best = value;
@@ -196,7 +206,10 @@ export class MoonshineTokenizer {
   readonly vocabSize: number;
   private readonly idToToken: readonly string[];
 
-  constructor(idToToken: readonly string[], readonly unkTokenId: number) {
+  constructor(
+    idToToken: readonly string[],
+    readonly unkTokenId: number,
+  ) {
     this.idToToken = idToToken;
     this.vocabSize = idToToken.length;
   }
