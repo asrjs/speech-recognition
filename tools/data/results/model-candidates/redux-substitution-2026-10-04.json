@@ -12,8 +12,10 @@
     ]
   },
   "next_steps": [
-    "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate; this is the only remaining acceptance test",
-    "export a decoder_joint path, which the teacher encoder graph does not contain",
+    "localize the input_states_1 batch mismatch: compare how the library assembles the decoder feeds for the teacher artifact versus the substituted one",
+    "substitute redux's own prediction-network weights (decoder.lstm, decoder_projector, joint) so the pipeline stops being a hybrid",
+    "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate",
+    "export a decoder_joint path that consumes redux weights directly",
     "port moonshine-streaming as its own checkpoint: download safetensors, export, add a chunked decode loop",
     "evaluate parakeet-ultra and primeline within the download budget"
   ],
@@ -137,5 +139,18 @@
     "role_of_the_bias_fix": "hygiene, not the divergence explanation. Conv norm biases are small, roughly 0.1 to 1.0, so a wrong-but-plausible bias shifts activations slightly and cannot account for a 3.4x output-std inflation. The std growth of 1.09x, 1.64x, 3.4x tracks cumulative substitution, and the large inflation enters at the conv rung through the 2-D weight matrices.",
     "remaining_question": "whether the 44 conv weight-matrix matches at correlation 0.6 to 0.86 are functionally faithful despite quantization. Only a transcript oracle against a redux reference decode can answer that."
   },
-  "leading_lead": "resolved and recorded in conv_re_examination: the 44 conv matches were re-derived with per-tensor margins, which exposed that correlation matching is unsound for 1-D biases. The guard was applied and the bias matches were ruled out as the cause. What remains open is whether the 2-D conv weight matrices are functionally faithful despite quantization, which only the transcript oracle can answer."
+  "leading_lead": "resolved and recorded in conv_re_examination: the 44 conv matches were re-derived with per-tensor margins, which exposed that correlation matching is unsound for 1-D biases. The guard was applied and the bias matches were ruled out as the cause. What remains open is whether the 2-D conv weight matrices are functionally faithful despite quantization, which only the transcript oracle can answer.",
+  "full_pipeline_attempt": {
+    "status": "BLOCKED_AT_DECODER_INTERFACE",
+    "what_was_run": "the library Parakeet runner with --model-dir pointing at the substituted artifact and the teacher's decoder_joint and vocab copied alongside it",
+    "result": "the encoder loads and runs; the decoder call fails",
+    "error": "OrtRun ERROR_CODE 2, invalid dimensions for input input_states_1, index 0 Got 1 Expected 2",
+    "reading": "a fixed batch of 2 is expected on the decoder input axis but 1 arrives. The substituted graph is a structural copy of the teacher graph with different initializer values, so its output shape should be identical; the mismatch is therefore in how the library assembles the encoder output for the decoder, not in the substituted weights.",
+    "caveats": [
+      "this is a hybrid: the substituted redux encoder with the teacher's decoder_joint, since redux's own prediction-network weights are not in any exported graph",
+      "no redux transcript exists, so no gate has run",
+      "the mismatch is not yet localized; it may be a harness configuration issue rather than a model defect"
+    ],
+    "prerequisite": "localize why the library feeds batch 1 to input_states_1 with this artifact when it feeds 2 with the teacher artifact"
+  }
 }
