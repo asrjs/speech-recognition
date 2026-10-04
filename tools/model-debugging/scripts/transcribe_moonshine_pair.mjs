@@ -2,19 +2,32 @@
 /**
  * Greedy Moonshine decode against our own fp32 graphs.
  *
- * Status: UNVERIFIED against the oracle. The export pipeline is measured, but
- * this runner's token sequence does not yet match the JFK baseline. Two fixes
- * from an earlier iteration are already applied here:
+ * Status: VERIFIED. Matches the JFK oracle on token ids and text in 24 tokens
+ * and 25 steps, and produces a coherent transcript on a second fixture the
+ * export never saw.
  *
- * - Cross-attention memory is a fixed projection of the encoder states, so
- *   `cross_past` stays constant across steps instead of being fed back from
- *   `cross_present`.
- * - The projection emits `[batch, frames, heads * headDim]` but the cache wants
- *   `[batch, heads, frames, headDim]`. That is a transpose, not a reinterpret:
- *   reshaping alone keeps the element count and silently scrambles the data,
- *   which shows up as a repeating token loop rather than an error.
+ * Four facts measured during the port drive the shape of this runner.
+ *
+ * `encoder_states` is a gate, not a data path. Moonshine's attention skips the
+ * whole cross-attention block when `encoder_hidden_states` is None, so the
+ * export must pass real states or every layer traces the self-attention branch
+ * and the graph silently ignores its cross-attention memory. The graph then
+ * reads the key and value from `cross_past`, constant for the utterance.
+ *
+ * Self-attention starts empty, exactly like PyTorch's `DynamicCache`. An earlier
+ * revision seeded it from the checkpoint because cross-attention was dead in the
+ * graph, which made the seed look load-bearing when it never was.
+ *
+ * The projection emits `[batch, frames, heads * headDim]` but the cache wants
+ * `[batch, heads, frames, headDim]`. That is a transpose, not a reinterpret:
+ * reshaping alone keeps the element count and silently scrambles the data,
+ * which shows up as a repeating token loop rather than an error.
  *
  * `onnxruntime-node` returns run results keyed by output name, not positionally.
+ *
+ * Limit: input past roughly 30 s decodes a correct opening and then repeats.
+ * That is the model window rather than a graph fault, and windowing is the
+ * remedy.
  */
 import { readFileSync } from 'node:fs';
 
