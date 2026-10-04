@@ -39,14 +39,16 @@
     },
     {
       "modelId": "primeline/parakeet-primeline",
-      "architecture": "Parakeet distillation line (English)",
-      "parameters": null,
+      "architecture": "ConformerEncoder d_model=1024 n_layers=24 feat_in=128 + RNNTDecoder pred_hidden=640",
+      "parameters": 627000000,
       "license": "cc-by-4.0",
       "downloads": 1089,
       "files": null,
       "onnx_files": 0,
-      "verdict": "KEEP_FUTURE_EXPORT_TASK",
-      "reason": "Genuine non-NVIDIA distillation candidate, but the repository publishes .nemo weights only, so porting means running our own NeMo TDT ONNX export over the existing tools/nemo-tdt-onnx-export path. Parameter count is not published in the metadata record."
+      "verdict": "DEFER_SAME_SIZE_CLASS_NOT_A_DISTILL",
+      "reason": "Verified full-size fine-tune, not a distillation. An HTTP range read of the first 2 MB of the 2_95_WER.nemo tar (no weight download) shows model_weights.ckpt at 2,508,649,755 bytes, about 627M float32 parameters, and model_config.yaml declaring nemo.collections.asr.modules.ConformerEncoder with n_layers 24, d_model 1024, feat_in 128 plus RNNTDecoder pred_hidden 640. That is the Parakeet 0.6B FastConformer-RNNT topology at full scale, the same shape and size class as Parakeet v3 and Orukeet. Lineage: a fine-tune of the NVIDIA Parakeet line, so it is both same-size and NVIDIA-derived.",
+      "verified_by": "HTTP range read of the archive head; no 2.5 GB weight download",
+      "lineage": "fine-tune of the NVIDIA Parakeet line"
     },
     {
       "modelId": "moondream/parakeet-ultra",
