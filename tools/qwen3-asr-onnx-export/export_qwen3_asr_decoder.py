@@ -95,14 +95,24 @@ def main(argv: list[str] | None = None) -> int:
         # sidecar next to the graph, which is what the rest of this repository does.
         external_data=True,
     )
+    # The torch exporter writes one file per large tensor; consolidate into a
+    # single sidecar the way the rest of this repository stores its graphs.
+    import onnx as _onnx
+
+    reloaded = _onnx.load(str(output), load_external_data=False)
+    _onnx.save_model(
+        reloaded,
+        str(output),
+        save_as_external_data=True,
+        all_tensors_to_one_file=True,
+        location=output.with_suffix(".onnx.data").name,
+        size_threshold=1024,
+        convert_attribute=False,
+    )
 
     import onnxruntime as ort
 
     session = ort.InferenceSession(str(output), providers=["CPUExecutionProvider"])
-    sidecar = output.with_suffix(".onnx.data")
-    if sidecar.exists():
-        # ORT needs the sidecar beside the graph under its own name.
-        pass
     produced = session.run(None, {"inputs_embeds": embeds.numpy()})[0]
     difference = np.abs(logits.numpy() - produced)
 

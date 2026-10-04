@@ -166,9 +166,10 @@
         "opset": 20,
         "exporter": "torch.onnx.export(dynamo=False), external data sidecar",
         "parity_vs_pytorch": {
-          "max_abs_error": 0.00010144710540771484,
-          "mean_abs_error": 2.0081417460460216e-05,
-          "allclose_atol_1e-4_rtol_1e-3": true
+          "max_abs_error": 4.4345855712890625e-05,
+          "mean_abs_error": 6.858731012471253e-06,
+          "allclose_atol_1e-4_rtol_1e-3": true,
+          "note": "re-measured after consolidating external data; the earlier 1.014e-04 came from the un-consolidated graph"
         },
         "attention": "eager",
         "why_eager": "fused scaled_dot_product_attention does not support grouped-query attention in the tracer's symbolic conversion at any opset; this model runs 16 query heads over 8 key-value heads. Eager attention is the same maths with a different kernel.",
@@ -180,7 +181,15 @@
         "verified_limits": [
           "The step takes no past state, so it is a first step only. Autoregressive decoding over more than one token still needs a cache-carrying interface, which is the next piece of work.",
           "The graph was traced with eager attention, so it is not the same kernel the default configuration would select."
-        ]
+        ],
+        "artifact_state": {
+          "graph_bytes": 1592552,
+          "sidecar_bytes": 233472,
+          "problem": "the consolidated .onnx.data is far too small to hold a 28-layer, hidden-1024 fp32 model, so the saved graph still references the per-tensor onnx__MatMul_* files the torch exporter emitted",
+          "consequence": "the artifact is not self-contained and cannot be copied as a directory without those files",
+          "not_claimed": "no claim is made that this graph is portable or complete on its own",
+          "next_step": "either re-save with the external tensors actually inlined into one file, or keep the per-tensor layout and treat the model directory as a unit, which is what the library already does for the Orukeet encoder"
+        }
       }
     },
     "verified_limitations": [
