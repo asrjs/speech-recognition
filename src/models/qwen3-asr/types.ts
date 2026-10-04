@@ -12,6 +12,7 @@ export interface Qwen3AsrLoadOptions {
   readonly decoderUrl: string;
   readonly embedUrl: string;
   readonly tokenizerUrl: string;
+  readonly cuSeqlensUrl?: string;
   readonly prefixEmbedsUrl?: string;
   readonly suffixEmbedsUrl?: string;
   readonly sampleRate?: number;

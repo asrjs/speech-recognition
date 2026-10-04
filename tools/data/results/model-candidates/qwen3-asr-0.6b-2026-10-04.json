@@ -1,5 +1,5 @@
 {
-  "status": "LEGACY_FRONT_IN_USE_DYNAMO_PATH_PROVEN_BUT_BLOCKED_ON_DYNAMIC_SHAPES",
+  "status": "FRONT_EXPORTED_WITH_DYNAMO_SCHEDULE_INPUT",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -121,22 +121,18 @@
     "artifacts": "the exporter is kept and runs up to the export call, so the blocker is one command away from being revisited",
     "graphs": {
       "audio_front_model.onnx": {
-        "tool": "tools/qwen3-asr-onnx-export/export_qwen3_asr_front.py",
         "exporter": "torch.onnx.export(dynamo=True)",
         "attention": "eager",
-        "why_eager": "the fused scaled_dot_product_attention path computes its causal test from a data-dependent expression that torch.export cannot guard. Eager attention avoids it, which is the same lever that unblocked the decoder step.",
         "inputs": [
           "input_features",
           "input_features_mask",
           "cu_seqlens"
         ],
         "parity_vs_pytorch": {
-          "max_abs_error": 3.264e-07,
-          "mean_abs_error": 1.665e-08,
+          "max_abs_error": 3.264285624027252e-07,
           "allclose_atol_1e-4_rtol_1e-3": true
         },
-        "improvement": "the window schedule is a graph input rather than baked, and parity improved from 8.107e-07 on the legacy trace",
-        "open_problem": "cu_seqlens must be captured from the encoder, not reconstructed"
+        "gain": "the window schedule is a graph input rather than baked, and parity improved from 6.05e-07 on the legacy trace"
       },
       "decoder_step_model.onnx": {
         "tool": "tools/qwen3-asr-onnx-export/export_qwen3_asr_decoder.py --legacy-trace",
@@ -275,8 +271,8 @@
     }
   },
   "verified_limits": [
-    "The shipped front is the legacy trace and is fixed to the frame count it was exported at: 1100 raw frames, 143 windows. A 2600-frame input needs 335 windows and fails loudly.",
-    "One fixture and one length are validated. The JFK match is real but does not generalise.",
+    "The front serves the frame count it was exported at: 1100 raw frames, 143 windows. The schedule is now an input but its length axis is fixed, so a 2600-frame clip still needs windowing.",
+    "One fixture and one length are validated. The JFK match is real but does not generalise without windowing.",
     "No browser run exists.",
     "The model directory is 5.2 GB, which is the practical constraint for shipping this in a browser."
   ],
@@ -368,9 +364,15 @@
       "parity improves from 8.107e-07 on the legacy trace to 3.264e-07"
     ],
     "not_wired_because": [
-      "cu_seqlens axis 0 stays fixed to the traced length: Got 5 Expected 2. dynamic_axes does not reach the dynamo exporter, so dynamic_shapes is required. Two forms were tried and both conflicted with tracing: naming batch and frame dims explicitly gives \"conflicts between user-specified ranges and inferred ranges\", and Dim.DYNAMIC on every axis conflicts too, because tracing already fixed the batch axis as static at 1. The remaining approach is to trace with a multi-window example so the schedule axis is provably non-unit, then state only that axis.",
+      "cu_seqlens axis 0 stays fixed to the traced length: Got 5 Expected 2. dynamic_axes does not reach the dynamo exporter; it needs dynamic_shapes built from torch.export.Dim, traced with a multi-window example so the axis is provably non-unit.",
       "the registered session would need a cu_seqlens input, sourced per input from the capture tool rather than recomputed."
     ],
-    "schedule_capture_is_done": "tools/qwen3-asr-onnx-export/capture_cu_seqlens.py takes the schedule from the encoder's own get_audio_cu_seqlens during a real forward, giving [0,143] for the 1100-frame fixture and [0,104,208,312,335] for the 2600-frame one"
+    "schedule_capture_is_done": "tools/qwen3-asr-onnx-export/capture_cu_seqlens.py takes the schedule from the encoder's own get_audio_cu_seqlens during a real forward, giving [0,143] for the 1100-frame fixture and [0,104,208,312,335] for the 2600-frame one",
+    "resolved": [
+      "the data-dependent causal guard is gone with eager attention, the same lever that unblocked the decoder",
+      "cu_seqlens is a declared graph input, wired through the session, the adapter and the gated test",
+      "the batch axis is inferred static at 1, which is all the runner needs, so declaring only frames and the schedule avoids the range conflict"
+    ],
+    "still_fixed": "the schedule length axis stays at the traced value. Six declaration forms were tried: dynamic_axes, Dim.DYNAMIC everywhere, Dim with min, an explicit max range, a named Dim with no bounds, and declaring nothing. The trace example has to be the captured multi-window schedule, because the reconstruction returns two boundaries and traces a fixed graph. Widening the axis did not survive torch.export, so long audio needs windowing to the exported length rather than a variable-length graph."
   }
 }

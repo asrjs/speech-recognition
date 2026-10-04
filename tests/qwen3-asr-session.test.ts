@@ -23,11 +23,20 @@ const REQUIRED = [
   'embed_tokens_model.onnx',
   'tokenizer.json',
   'jfk_features.npy',
+  'jfk_cu_seqlens.bin',
   'jfk_features_mask.npy',
   'prompt_prefix_embeds.npy',
   'prompt_suffix_embeds.npy',
 ];
 const available = REQUIRED.every((name) => existsSync(resolve(MODEL_DIR, name)));
+
+/** Reads a raw int32 schedule file. */
+function readInt32(path: string): Int32Array {
+  const buffer = readFileSync(path);
+  return new Int32Array(
+    buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+  );
+}
 
 /** Reads a float32 .npy; its header is a Python dict literal, not JSON. */
 function readNpy(path: string): { data: Float32Array; dims: number[] } {
@@ -76,6 +85,7 @@ describe.skipIf(!available)('Qwen3AsrSession', () => {
       tokenizer: new Qwen3AsrTokenizer(
         JSON.parse(readFileSync(resolve(MODEL_DIR, 'tokenizer.json'), 'utf8')),
       ),
+      cuSeqlens: readInt32(resolve(MODEL_DIR, 'jfk_cu_seqlens.bin')),
       prefixEmbeds: prefix.data,
       suffixEmbeds: suffix.data,
       layers: 28,

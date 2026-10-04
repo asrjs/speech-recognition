@@ -81,6 +81,9 @@ export const qwen3AsrBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
       const decoderUrl = await toLocator('decoder_step_model.onnx');
       const embedUrl = await toLocator('embed_tokens_model.onnx');
       const tokenizerUrl = await toLocator('tokenizer.json');
+      const cuSeqlensUrl = findLocalEntry(options.entries, 'jfk_cu_seqlens.bin')
+        ? await toLocator('jfk_cu_seqlens.bin')
+        : undefined;
       const prefixEmbedsUrl = findLocalEntry(options.entries, 'prompt_prefix_embeds.npy')
         ? await toLocator('prompt_prefix_embeds.npy')
         : undefined;
@@ -96,6 +99,7 @@ export const qwen3AsrBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
           decoderUrl,
           embedUrl,
           tokenizerUrl,
+          cuSeqlensUrl,
           prefixEmbedsUrl,
           suffixEmbedsUrl,
           encoderBackend: options.encoderBackend,

@@ -36,6 +36,13 @@ export interface Qwen3AsrSessionOptions {
     run(feeds: Record<string, unknown>): Promise<Record<string, unknown> | unknown[]>;
   };
   readonly tokenizer: Qwen3AsrTokenizer;
+  /**
+   * Window schedule for the audio front: one boundary per window plus a leading
+   * zero. The dynamo-exported front takes this as an input, and it must be
+   * captured from the encoder rather than reconstructed, because a reconstruction
+   * disagrees by a few frames.
+   */
+  readonly cuSeqlens: Int32Array;
   /** Baked text embeddings around the audio span. */
   readonly prefixEmbeds: Float32Array;
   readonly suffixEmbeds: Float32Array;
@@ -131,6 +138,9 @@ export class Qwen3AsrSession {
     const frontOut = await front.run({
       input_features: this.tensor('float32', features, featureDims),
       input_features_mask: this.tensor('float32', mask, maskDims),
+      cu_seqlens: this.tensor('int32', this.options.cuSeqlens as unknown as Float32Array, [
+        this.options.cuSeqlens.length,
+      ]),
     });
     const audio = Qwen3AsrSession.read(frontOut, 'audio_embeds', front.outputNames[0]!);
     const frames = audio.dims[0]!;

@@ -19,6 +19,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from torch.export import Dim
 import transformers
 
 OPSET = 18
@@ -90,6 +91,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-dir", type=Path, default=Path(".cache/qwen3-asr-0.6b"))
     parser.add_argument("--audio", default="tools/data/fixtures/audio/jfk-short.wav")
+    parser.add_argument(
+        "--trace-cu-seqlens",
+        default="models/onnx/qwen3-asr-0.6b/jfk_cu_seqlens.bin",
+        help="the captured schedule for the trace example; the reconstruction does not match the encoder",
+    )
+    parser.add_argument(
+        "--trace-audio",
+        default="tools/data/fixtures/audio/jfk-short.wav",
+        help="audio used only to shape the export; a multi-window clip makes the schedule axis provably variable",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--legacy-trace", action="store_true",
                         help="use the legacy tracer; the window schedule becomes a baked constant")
@@ -115,6 +126,26 @@ def main(argv: list[str] | None = None) -> int:
         mask = inputs.get("attention_mask")
     mask = mask.to(features.dtype) if mask is not None else torch.ones_like(features)
 
+    # Shape the export with a multi-window clip so the schedule axis is not fixed.
+    with wave.open(args.trace_audio, "rb") as handle:
+        trace_raw = handle.readframes(handle.getnframes())
+    trace_pcm = np.frombuffer(trace_raw, dtype="<i2").astype(np.float32) / 32768.0
+    trace_inputs = processor.apply_transcription_request(audio=trace_pcm, sampling_rate=16000)
+    trace_features = trace_inputs["input_features"].to(torch.float32)
+    trace_mask = trace_inputs["input_features_mask"]
+    if trace_mask is None:
+        trace_mask = trace_inputs.get("attention_mask")
+    trace_mask = trace_mask.to(trace_features.dtype) if trace_mask is not None else torch.ones_like(trace_features)
+    # The schedule for the trace example is taken from the capture tool, because
+    # reconstructing it disagrees with the encoder and would trace a fixed
+    # two-boundary graph.
+    captured = Path(args.trace_cu_seqlens)
+    trace_cu_seqlens = (
+        torch.from_numpy(np.fromfile(captured, dtype=np.int32)).to(torch.int32)
+        if captured.exists()
+        else build_cu_seqlens(model, trace_features)
+    )
+
     front = AudioFront(model).eval()
     with torch.no_grad():
         cu_seqlens = build_cu_seqlens(model, features)
@@ -124,19 +155,25 @@ def main(argv: list[str] | None = None) -> int:
     output = args.output_dir / "audio_front_model.onnx"
     torch.onnx.export(
         front,
-        (features, mask, cu_seqlens),
+        (trace_features, trace_mask, trace_cu_seqlens),
         output,
         input_names=["input_features", "input_features_mask", "cu_seqlens"],
         output_names=["audio_embeds"],
-        dynamic_axes={
-            "input_features": {0: "batch", 2: "frames"},
-            # The mask is 2-D [batch, frames]; features are 3-D [batch, bins, frames].
-            "input_features_mask": {0: "batch", 1: "frames"},
-            # One boundary per window plus the leading zero, so this axis has to
-            # stay dynamic or the graph fixes the window count it was traced with.
-            "cu_seqlens": {0: "boundaries"},
-            "audio_embeds": {0: "batch", 1: "frames"},
-        },
+        # The dynamo exporter ignores dynamic_axes and warns that it can violate
+        # constraints, so only dynamic_shapes is passed when dynamo is on. The
+        # schedule axis is traced with a multi-window example so it is not fixed to
+        # the two boundaries a single-window clip would give.
+        # Batch is pinned because the runner only ever feeds one clip, and that is
+        # the axis the tracer inferred as static. Frames and the schedule axis are
+        # declared, and the trace example is a multi-window clip so the schedule is
+        # not fixed to two boundaries.
+        dynamic_shapes=(
+            {2: Dim("frames")},
+            {1: Dim("frames")},
+            {0: Dim("boundaries", min=2, max=4096)},
+        )
+        if not args.legacy_trace
+        else None,
         opset_version=OPSET,
         dynamo=not args.legacy_trace,
     )
