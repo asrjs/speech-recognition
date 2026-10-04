@@ -1,0 +1,35 @@
+{
+  "status": "BROWSER_TRANSCRIPT_DIVERGES_FROM_NODE",
+  "model": "OpenVoiceOS/omnilingual-asr-ctc-300m-onnx",
+  "graph": "released dynamic-int8",
+  "backend": "browser WebGPU (Chrome headless, NVIDIA Blackwell)",
+  "harness": "N:/github/asrjs/webgpu-agent-test — new ctc-asr.html + src/ctc-asr-webgpu.js + scripts/run-ctc-asr-webgpu.mjs; POST /__test_result__, polled via /__test_results__",
+  "browser_result": {
+    "loadMs": 4384.7,
+    "transcribeMs": 11574.4,
+    "totalMs": 17748.5,
+    "rtfx": 0.95,
+    "transcript": " م ل م            ",
+    "tokens": 0,
+    "adapter": {
+      "vendor": "nvidia",
+      "architecture": "blackwell"
+    }
+  },
+  "node_result_same_graph": {
+    "de": "alles hat ein ende nur die wurst hat zwei",
+    "en": "ask not what your country can do for you ask what you can do for your country",
+    "note": "All four clips PASS_ORACLE_MATCH in Node through the port manifest."
+  },
+  "finding": "The same released int8 graph decodes correctly under onnxruntime-node on the CPU EP and degenerates to stray Arabic-script tokens in Chrome. The companion-UI warm-up gate cannot catch this because it only checks non-empty output; this harness does.",
+  "candidate_causes": [
+    "Dynamic-quantization kernels differ between the ORT CPU EP and the WASM EP: the graph is 106 DynamicQuantizeLinear plus 146 MatMulInteger, so EP kernel differences are the leading hypothesis.",
+    "Audio preparation differs: the browser path decodes through decodeAudioSourceToMonoPcm with its browser resampler while Node parsed the WAV directly."
+  ],
+  "next_steps": [
+    "Re-run with backend=wasm to separate EP from the backend label.",
+    "Hash the decoded PCM in the page to prove both sides receive identical audio.",
+    "If the EP is the cause, an fp32 self-export is the fix, currently blocked on the omnilingual-asr install and the 1.3 GB checkpoint."
+  ],
+  "scope": "Browser timing evidence for this model is valid; browser transcript parity FAILED rather than being merely unverified."
+}
