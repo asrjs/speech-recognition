@@ -114,5 +114,25 @@
     "conclusion": "output cosine is not a usable gate for this candidate. The encoder amplifies small weight perturbations across 24 Conformer layers, so a repack at 1.58 bits decorrelates its output even when per-tensor correlation is 0.8 to 0.99. The only meaningful acceptance test is a transcript oracle against a redux reference decode.",
     "does_not_prove": "this does not prove the substitution is correct either. It removes two candidate explanations and leaves the substitution unverified.",
     "leading_lead": "conv class. Re-derive the 44 conv matches with per-tensor margin, and verify the pointwise [2048,1024,1] teacher shape against redux's 2-D [out,in] decoded form before trusting that substitution."
+  },
+  "conv_re_examination": {
+    "trigger": "the ladder showed the sharpest drop at the conv rung, 0.2107 to 0.0339",
+    "margin_measurement": {
+      "substituted": 44,
+      "margin_min": 0.478,
+      "margin_median": 0.753,
+      "margin_max": 2.541,
+      "below_threshold_kept": 4,
+      "weakest_substituted": "conv.norm.bias tensors at correlation 0.567 to 0.585 with margin near 0.5"
+    },
+    "methodological_finding": "correlation is not a sound criterion for 1-D biases: a bias vector has no correlation structure, so a match above threshold is chance rather than evidence. Weight matrices are fine, biases are not.",
+    "fix": "anonymous 1-D initializers are no longer matched by correlation and keep their teacher values",
+    "result_after_fix": {
+      "coverage": 0.858,
+      "cosine": 0.021536,
+      "output_std": 0.024578
+    },
+    "reading": "removing the guessed bias substitutions lowered coverage from 0.897 to 0.858 and made cosine slightly worse, 0.0339 to 0.0215. The guessed bias matches were not helping, so they were not the source of the divergence either.",
+    "conclusion": "no tested hypothesis explains the divergence. Mis-patched MatMuls are weakened, the pos_bias hybrid is weakened, and the guessed bias matches are ruled out. The substitution remains unverified and the transcript oracle against a redux reference decode is still the only acceptance test."
   }
 }
