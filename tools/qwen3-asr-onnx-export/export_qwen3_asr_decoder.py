@@ -99,7 +99,9 @@ def main(argv: list[str] | None = None) -> int:
     # single sidecar the way the rest of this repository stores its graphs.
     import onnx as _onnx
 
-    reloaded = _onnx.load(str(output), load_external_data=False)
+    # Load WITH the external data, otherwise the tensors are empty and the
+    # consolidated sidecar comes out with no weights in it.
+    reloaded = _onnx.load(str(output), load_external_data=True)
     _onnx.save_model(
         reloaded,
         str(output),
