@@ -1,5 +1,5 @@
 {
-  "status": "DECODER_STEP_EXPORTED_AND_CACHE_VERIFIED",
+  "status": "ALL_COMPOSITION_INPUTS_IDENTIFIED_NO_DECODE_PATH_YET",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -203,5 +203,44 @@
       "cu_seqlens does not survive as a graph input under legacy tracing; the schedule is internal, so a runtime cannot reschedule windows.",
       "Parity is therefore evidence for this frame count only. It is not evidence for other audio lengths."
     ]
+  },
+  "composition": {
+    "status": "every input the decode path needs is now measured; nothing is composed yet",
+    "prompt_shape": {
+      "total_prompt_ids": 158,
+      "text_prefix_ids": 9,
+      "audio_placeholder_ids": 143,
+      "text_suffix_ids": 6,
+      "audio_placeholder_id": 151676,
+      "note": "the placeholder id is not exposed by name; it was identified as the id filling the longest contiguous run in the prompt, which is exactly one entry per audio frame and matches the 143 frames the audio front produces"
+    },
+    "baked_embeddings": {
+      "tool": "tools/qwen3-asr-onnx-export/export_qwen3_asr_prefix.py",
+      "embedder": "model.language_model.embed_tokens",
+      "prefix_embeds": [
+        1,
+        9,
+        1024
+      ],
+      "suffix_embeds": [
+        1,
+        6,
+        1024
+      ],
+      "why_baked": "only the audio side changes between inputs, so the text embeddings are constant and are baked once instead of exported as a third graph",
+      "files": [
+        "prompt_prefix_embeds.npy",
+        "prompt_suffix_embeds.npy"
+      ]
+    },
+    "decode_path_still_required": [
+      "128-bin mel features through the repository's JSMelProcessor, matching n_fft 400 and hop 160",
+      "audio_front_model.onnx, input_features and input_features_mask in, audio_embeds out",
+      "concatenate prefix embeds, audio embeds and suffix embeds into the first inputs_embeds block",
+      "run decoder_step_model.onnx once for the prompt, then greedily for each emitted token with its KV cache",
+      "detokenize with the repository tokenizer and strip the language tag and asr_text marker, as the reference capture does",
+      "compare against the recorded JFK oracle"
+    ],
+    "known_constraint": "the audio front is fixed to the exported frame count, so the runner currently handles only audio of that length; the model's own window is 30 s, which is where this matters least"
   }
 }
