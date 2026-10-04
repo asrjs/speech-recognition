@@ -102,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
         base_norm = float(np.linalg.norm(base - base.mean()))
 
         best_name, best_corr, best_flip = None, -2.0, False
+        runner_up = -2.0
         # A folded MatMul constant may hold either orientation of the weight, so
         # both are tried; picking one up front mis-pairs the feed-forward blocks.
         for orientation in (False, True):
@@ -119,6 +120,10 @@ def main(argv: list[str] | None = None) -> int:
                     np.dot(base - base.mean(), sample - sample.mean()) / (base_norm * norm)
                 )
                 if value > best_corr:
+                    if best_name is not None and abs(best_corr - value) < 1e-12:
+                        pass
+                    elif value > runner_up and best_name is not None:
+                        runner_up = max(runner_up, best_corr)
                     best_corr, best_name, best_flip = value, candidate, orientation
 
         full = None
@@ -132,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
                 "match": best_name,
                 "transposed": best_flip,
                 "sample_correlation": round(best_corr, 4),
+                "margin": round(best_corr - runner_up, 4),
                 "full_correlation": None if full is None else round(full, 4),
             }
         )

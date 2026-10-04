@@ -89,6 +89,11 @@ def main(argv: list[str] | None = None) -> int:
             return None
         if stage == "matmul" and anonymous and not name.startswith("onnx::MatMul"):
             return None
+        # Correlation is only a sound criterion for 2-D weight matrices. A 1-D
+        # bias has no correlation structure, so a "match" above threshold there
+        # is chance rather than evidence; keep the teacher value instead.
+        if len(teacher[name].shape) == 1 and name.startswith("onnx::"):
+            return None
         hit = mapping.get(name)
         if hit is not None:
             candidate = pool.get(hit[0])
