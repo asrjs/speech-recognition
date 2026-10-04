@@ -61,27 +61,12 @@ export function createOmnilingualCtcModelFamily(): SpeechModelFactory<
     ): Promise<
       SpeechModel<OmnilingualCtcLoadOptions, LasrCtcTranscriptionOptions, LasrCtcNativeTranscript>
     > {
-      let loaded: OmnilingualCtcLoadedModel | undefined;
-      let disposed = false;
       const sampleRate = request.options?.sampleRate ?? 16000;
-
-      const ensureLoaded = async (): Promise<OmnilingualCtcLoadedModel> => {
-        loaded ??= await loadOmnilingualCtc({
-          ...request.options,
-          backendId:
-            request.options?.backendId ?? (context.backend.id === 'webgpu' ? 'webgpu' : 'wasm'),
-        } as OmnilingualCtcLoadOptions);
-
-        return loaded;
-      };
-
-      const release = (): void => {
-        if (!disposed) {
-          disposed = true;
-          loaded?.dispose();
-          loaded = undefined;
-        }
-      };
+      // Each session owns its own graph. Sharing one across sessions means a
+      // second createSession after the first is disposed transcribes through a
+      // disposed model, so loading is per-session and disposal is tracked.
+      const live = new Set<OmnilingualCtcLoadedModel>();
+      let disposed = false;
 
       return {
         info: {
@@ -99,7 +84,17 @@ export function createOmnilingualCtcModelFamily(): SpeechModelFactory<
             LasrCtcNativeTranscript
           >
         > {
-          const model = await ensureLoaded();
+          if (disposed) {
+            throw new Error('Omnilingual CTC model was disposed.');
+          }
+
+          const model = await loadOmnilingualCtc({
+            ...request.options,
+            backendId:
+              request.options?.backendId ?? (context.backend.id === 'webgpu' ? 'webgpu' : 'wasm'),
+          } as OmnilingualCtcLoadOptions);
+          live.add(model);
+          let sessionDisposed = false;
 
           return {
             async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
@@ -123,21 +118,32 @@ export function createOmnilingualCtcModelFamily(): SpeechModelFactory<
               );
 
               if (options?.responseFlavor === 'canonical+native') {
-                return {
-                  canonical,
-                  native,
-                } as TranscriptResponse<LasrCtcNativeTranscript, TFlavor>;
+                return { canonical, native } as TranscriptResponse<
+                  LasrCtcNativeTranscript,
+                  TFlavor
+                >;
               }
 
               return canonical as TranscriptResponse<LasrCtcNativeTranscript, TFlavor>;
             },
             dispose(): void {
-              release();
+              if (!sessionDisposed) {
+                sessionDisposed = true;
+                live.delete(model);
+                model.dispose();
+              }
             },
           };
         },
         dispose(): void {
-          release();
+          if (disposed) {
+            return;
+          }
+          disposed = true;
+          for (const model of live) {
+            model.dispose();
+          }
+          live.clear();
         },
       };
     },

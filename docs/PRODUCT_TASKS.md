@@ -36,6 +36,16 @@ would destroy the int8 behavior just validated. Upstream offers only
 therefore require installing that package, which is an authority question, so
 the released graph is this candidate's ceiling.
 
+Named limits for C36: four-clip `PASS_ORACLE_MATCH` through the Node harness
+against a Python self-consistency baseline of the same int8 graph; **browser
+gate not yet run for this family**; preset and local-folder adapter wiring is not
+registered yet (descriptor and family factory are, both compile and suite-test);
+fp32 self-export blocked on the `omnilingual-asr` install plus the 1.3 GB
+checkpoint; WebGPU unverified because the graph carries dynamic-quant ops that
+the CPU path executed. Session lifetime is per-session with a disposal test, after
+review caught a shared-cache bug where a second session transcribing through a
+disposed model.
+
 This is the same rule that produced the Parakeet v2/v3 and Whisper work: prefer
 our own export when the candidate exposes exportable source weights. It applies
 to candidates with NeMo `.nemo` or transformers checkpoints, as the ctaguchi
