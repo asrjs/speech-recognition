@@ -102,8 +102,11 @@ def main(argv: list[str] | None = None) -> int:
     step = DecoderStep(model.model.language_model, model.lm_head, config).eval()
 
     embeds = torch.randn(1, 1, config.hidden_size, dtype=torch.float32)
-    # The past inputs are exported as real zero-length tensors rather than None,
-    # so the tracer records those axes instead of dropping them.
+    # The past inputs are exported with a non-empty example. Tracing against an
+    # empty past specialises the attention mask to a single position, which is
+    # why the first version passed step one and then drifted by 2.6 when the
+    # cache was fed back.
+    trace_past = torch.zeros(layers, 1, config.num_key_value_heads, 4, head_dim, dtype=torch.float32)
     empty_past = torch.zeros(layers, 1, config.num_key_value_heads, 0, head_dim, dtype=torch.float32)
     with torch.no_grad():
         logits, present_key, present_value = step(embeds, empty_past, empty_past)
@@ -117,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     output = args.output_dir / "decoder_step_model.onnx"
     torch.onnx.export(
         step,
-        (embeds, empty_past, empty_past),
+        (embeds, trace_past, trace_past),
         str(output),
         input_names=["inputs_embeds", "past_key", "past_value"],
         output_names=["logits", "present_key", "present_value"],
