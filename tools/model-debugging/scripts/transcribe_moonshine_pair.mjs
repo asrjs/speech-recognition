@@ -6,7 +6,7 @@
  * and 25 steps, and produces a coherent transcript on a second fixture the
  * export never saw.
  *
- * Four facts measured during the port drive the shape of this runner.
+ * Five facts measured during the port drive the shape of this runner.
  *
  * `encoder_states` is a gate, not a data path. Moonshine's attention skips the
  * whole cross-attention block when `encoder_hidden_states` is None, so the
@@ -25,9 +25,9 @@
  *
  * `onnxruntime-node` returns run results keyed by output name, not positionally.
  *
- * Limit: input past roughly 30 s decodes a correct opening and then repeats.
- * That is the model window rather than a graph fault, and windowing is the
- * remedy.
+ * Input longer than about 30 s decodes a correct opening and then repeats.
+ * Greedy decoding is the first suspect, so try a repetition or minimum-length
+ * guard before treating that window as hard; windowing is the fallback remedy.
  */
 import { readFileSync } from 'node:fs';
 
