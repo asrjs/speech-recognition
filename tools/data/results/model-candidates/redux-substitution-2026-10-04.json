@@ -1,5 +1,5 @@
 {
-  "status": "SUBSTITUTED_0.897_HYBRID_REMAINDER",
+  "status": "SUBSTITUTED_0.858_PIPELINE_BLOCKED_BY_ARTIFACT_PAIRING_NOT_BY_SUBSTITUTION",
   "model": "moondream/parakeet-redux",
   "what_is_wrong": {
     "kept": 63,
@@ -12,7 +12,7 @@
     ]
   },
   "next_steps": [
-    "discriminate the batch-2 decoder input: run the same command against the untouched teacher artifact to separate a pairing mistake from a substitution-induced failure",
+    "pair the substituted encoder with a decoder whose prediction-network state batch matches the model id, or invoke the Orukeet v3 model id so batch 2 is derived, then run the JFK pipeline",
     "substitute redux's own prediction-network weights (decoder.lstm, decoder_projector, joint) so the pipeline stops being a hybrid",
     "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate",
     "export a decoder_joint path that consumes redux weights directly",
@@ -175,8 +175,14 @@
         "the library derives the initial state batch from the encoder output batch, so a batch-1 encoder run produces a batch-1 state the decoder cannot accept",
         "artifact mismatch on my side: the decoder, vocab and source-config were copied from the Orukeet v3 export while the run used the parakeet-realtime-eou-120m-v1 model id, so config-driven state dims may come from the wrong model"
       ],
-      "status": "not yet discriminated; both candidates remain open",
-      "cheap_next_step": "run the identical command against the untouched teacher artifact and compare whether it fails the same way; if it does, the cause is the pairing rather than the substitution"
+      "status": "resolved by control: cause 2, the pairing, not the substitution",
+      "cheap_next_step": "run the identical command against the untouched teacher artifact and compare whether it fails the same way; if it does, the cause is the pairing rather than the substitution",
+      "resolved_cause": "artifact/model-id pairing. The decoder export hard-codes batch 2; the realtime-120m model id derives batch 1. Both the teacher and the substituted artifact fail identically, so this says nothing about the substituted weights."
+    },
+    "control": {
+      "run": "the identical command against the untouched teacher artifact models/orukeet/onnx/fp32-packed-2026-10-01",
+      "result": "identical failure, input_states_1 index 0 Got 1 Expected 2",
+      "conclusion": "the pipeline failure is NOT caused by the substitution. It is my artifact pairing: the Orukeet v3 export bakes batch 2 into its prediction-network state inputs, while the invocation used the parakeet-realtime-eou-120m-v1 model id, which derives batch 1. The substituted encoder is exonerated by this control."
     }
   }
 }
