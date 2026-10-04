@@ -36,7 +36,8 @@ export type BuiltInPresetId =
   | 'nemotron'
   | 'whisper'
   | 'wav2vec2'
-  | 'parakeet-ctc';
+  | 'parakeet-ctc'
+  | 'omnilingual-ctc';
 export type BuiltInModelTask = 'asr' | 'speech-translation';
 export type BuiltInWarmupMode = 'expected-text' | 'non-empty';
 export type BuiltInControlType = 'boolean' | 'enum' | 'language';
@@ -593,6 +594,76 @@ function createParakeetCtcDescriptors(): BuiltInModelDescriptor[] {
   ];
 }
 
+function createOmnilingualCtcDescriptors(): BuiltInModelDescriptor[] {
+  return [
+    {
+      modelId: 'OpenVoiceOS/omnilingual-asr-ctc-300m-onnx',
+      aliases: ['omnilingual-ctc-300m', 'omni-asr-ctc-300m'],
+      preset: 'omnilingual-ctc',
+      displayName: 'Omnilingual ASR CTC 300M (1,600+ languages)',
+      description:
+        'Meta omniASR CTC line as an ONNX repack; raw-waveform wav2vec2-style CTC with no mel frontend.',
+      classification: {
+        ecosystem: 'wav2vec2',
+        processor: 'raw-waveform-conv',
+        encoder: 'wav2vec2-conv',
+        decoder: 'ctc',
+        topology: 'ctc',
+        family: 'omnilingual-ctc',
+        task: 'asr',
+      },
+      languages: ['mul'],
+      defaultSourceLanguage: 'en',
+      defaultTargetLanguage: 'en',
+      capabilities: {
+        supportedTasks: ['asr'],
+        supportsTranslation: false,
+        supportsPunctuationCapitalization: false,
+        supportsInverseTextNormalization: false,
+        supportsWordTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsPromptControls: false,
+      },
+      inference: {
+        ...createCtcInferenceLimits(),
+        supportsWordTimestamps: true,
+        supportsTokenTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsConfidence: true,
+      },
+      loading: {
+        repoId: 'OpenVoiceOS/omnilingual-asr-ctc-300m-onnx',
+        supportsHubSource: false,
+        supportsLocalSource: true,
+        supportsSplitQuantization: false,
+        supportsSplitBackends: false,
+        availableEncoderBackends: ['wasm', 'webgpu'],
+        availableDecoderBackends: ['wasm'],
+        defaultEncoderBackend: 'wasm',
+        defaultDecoderBackend: 'wasm',
+        availableEncoderQuantizations: ['int8'],
+        availableDecoderQuantizations: ['int8'],
+        defaultEncoderQuantization: 'int8',
+        defaultDecoderQuantization: 'int8',
+        supportsPreprocessorBackend: false,
+        preprocessorBackends: [],
+        defaultPreprocessorBackend: null,
+        defaultPreprocessorName: null,
+        encoderArtifactBaseName: 'model',
+        decoderArtifactBaseName: 'model',
+        defaultRevision: 'main',
+      },
+      controls: [],
+      warmup: { mode: 'non-empty' },
+      docs: {
+        modelCardUrl: 'https://huggingface.co/OpenVoiceOS/omnilingual-asr-ctc-300m-onnx',
+        architectureSummary:
+          'Raw 16 kHz waveform, zero-mean unit-variance, convolutional frontend inside the graph, CTC greedy decode over a 10288-token vocabulary.',
+      },
+    },
+  ];
+}
+
 function createWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
   const manifest = resolveWav2Vec2PresetManifest('facebook/wav2vec2-base-960h');
   return [
@@ -793,6 +864,7 @@ const BUILT_IN_MODEL_DESCRIPTORS = [
   ...createNemotronDescriptors(),
   ...createWav2Vec2Descriptors(),
   ...createParakeetCtcDescriptors(),
+  ...createOmnilingualCtcDescriptors(),
   ...createWhisperDescriptors(),
 ] as const;
 

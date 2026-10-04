@@ -66,8 +66,16 @@ def check_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         'modelId': manifest['modelId'],
         'family': manifest['family'],
         'preset': manifest.get('preset'),
-        'originalWeights': require_file(
-            manifest['originalWeights']['path'], manifest['originalWeights'].get('sha256'), 'original weights'
+        # Optional: ONNX-repack ports have no local source-weight file to bind.
+        'originalWeights': (
+            require_file(
+                manifest['originalWeights']['path'],
+                manifest['originalWeights'].get('sha256'),
+                'original weights',
+            )
+            if str(manifest.get('originalWeights', {}).get('path', '')).startswith(('http', 'hf:')) is False
+            and bool(manifest.get('originalWeights', {}).get('path'))
+            else manifest.get('originalWeights')
         ),
         'localArtifacts': {
             'root': manifest['localArtifacts']['root'],

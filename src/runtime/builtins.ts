@@ -16,6 +16,7 @@ import { isAssetLoadAbortedError } from '../io/abort.js';
 import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
 import { createGigaAmCtcModelFamily } from '../models/gigaam-ctc/index.js';
 import { createParakeetCtcModelFamily } from '../models/parakeet-ctc/index.js';
+import { createOmnilingualCtcModelFamily } from '../models/omnilingual-ctc/index.js';
 import { createGigaAmRnntModelFamily } from '../models/gigaam-rnnt/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
@@ -307,6 +308,7 @@ export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): Def
   runtime.registerModelFamily(createNemoTdtModelFamily());
   runtime.registerModelFamily(createGigaAmCtcModelFamily());
   runtime.registerModelFamily(createParakeetCtcModelFamily());
+  runtime.registerModelFamily(createOmnilingualCtcModelFamily());
   runtime.registerModelFamily(createGigaAmRnntModelFamily());
   runtime.registerModelFamily(createLasrCtcModelFamily());
   runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());

@@ -1,0 +1,109 @@
+{
+  "status": "PASS",
+  "scope": "Manifest-bound port run; identity digests recorded, oracle compared",
+  "manifest": "tools/model-debugging/ports/openvoiceos-omnilingual-ctc-300m.port.json",
+  "identity": {
+    "modelId": "OpenVoiceOS/omnilingual-asr-ctc-300m-onnx",
+    "family": "omnilingual-ctc",
+    "preset": null,
+    "originalWeights": {
+      "path": "https://huggingface.co/OpenVoiceOS/omnilingual-ctc-300m-onnx",
+      "note": "Released ONNX repack; upstream base facebook/omniASR-CTC-300M is apache-2.0 and ungated. No local source-weight file to hash."
+    },
+    "localArtifacts": {
+      "root": "models/onnx/omnilingual-ctc-300m",
+      "layout": "wav2vec2-ctc",
+      "files": [
+        {
+          "path": "models/onnx/omnilingual-ctc-300m/model.int8.onnx",
+          "bytes": 328094283,
+          "sha256": "38a6cc569d46eb382f27d85b3208b883e834ff281b2057a606ec79e4ae501545"
+        },
+        {
+          "path": "models/onnx/omnilingual-ctc-300m/tokens.txt",
+          "bytes": 90630,
+          "sha256": "7d99997ef207ff14c2cfe825f2aa037528ea250113cc3c6392bfe49326884ba6"
+        }
+      ]
+    },
+    "fixtures": [
+      {
+        "path": "tools/data/fixtures/audio/omnilingual/de.wav",
+        "bytes": 121388,
+        "sha256": "36d3c4845b9808a1656a2a2e92d884590e2db94389e6fe559643291ae0cd3710",
+        "id": "de",
+        "durationSeconds": null,
+        "oracle": {
+          "path": "tools/data/results/omnilingual-ctc/omnilingual-ctc-300m-baseline-2026-10-04.json",
+          "bytes": 6181,
+          "sha256": "16c9c1550bf13773a3fdf41510c03cbf29bee99306cefeac075713d1125cb9be"
+        }
+      },
+      {
+        "path": "tools/data/fixtures/audio/omnilingual/en.wav",
+        "bytes": 184608,
+        "sha256": "148b936b43ce7c546a866e64da059f0458aee2d65e617f16e9d94f06e8d99ed6",
+        "id": "en",
+        "durationSeconds": null,
+        "oracle": {
+          "path": "tools/data/results/omnilingual-ctc/omnilingual-ctc-300m-baseline-2026-10-04.json",
+          "bytes": 6181,
+          "sha256": "16c9c1550bf13773a3fdf41510c03cbf29bee99306cefeac075713d1125cb9be"
+        }
+      },
+      {
+        "path": "tools/data/fixtures/audio/omnilingual/es.wav",
+        "bytes": 235052,
+        "sha256": "49fd2cfa4b62db7068143c582b35de9d31ec2733495ece3611105131d21de06c",
+        "id": "es",
+        "durationSeconds": null,
+        "oracle": {
+          "path": "tools/data/results/omnilingual-ctc/omnilingual-ctc-300m-baseline-2026-10-04.json",
+          "bytes": 6181,
+          "sha256": "16c9c1550bf13773a3fdf41510c03cbf29bee99306cefeac075713d1125cb9be"
+        }
+      },
+      {
+        "path": "tools/data/fixtures/audio/omnilingual/fr.wav",
+        "bytes": 219180,
+        "sha256": "b59be4349b92d344fb903677165eaf4694025d1ab119c608726ecbcb3164b528",
+        "id": "fr",
+        "durationSeconds": null,
+        "oracle": {
+          "path": "tools/data/results/omnilingual-ctc/omnilingual-ctc-300m-baseline-2026-10-04.json",
+          "bytes": 6181,
+          "sha256": "16c9c1550bf13773a3fdf41510c03cbf29bee99306cefeac075713d1125cb9be"
+        }
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "node-native-es",
+      "status": "PASS_ORACLE_MATCH",
+      "checks": {
+        "token_ids": true,
+        "text": true
+      },
+      "command": [
+        "node",
+        "tools/model-debugging/scripts/transcribe_omnilingual_ctc_local.mjs",
+        "--model-dir=models/onnx/omnilingual-ctc-300m",
+        "--audio=tools/data/fixtures/audio/omnilingual/es.wav"
+      ],
+      "runner": "node",
+      "backend": "wasm",
+      "fixture": "es",
+      "host": {
+        "runtime": "node",
+        "version": "26.2.0"
+      },
+      "ort": null,
+      "metrics": {
+        "totalMs": 2538.882,
+        "encoderFrameCount": 366
+      },
+      "warnings": []
+    }
+  ]
+}

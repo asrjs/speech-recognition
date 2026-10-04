@@ -1,3 +1,47 @@
+## C36 — Omnilingual CTC 300M: second model ported, export path assessed
+
+Status: PORT VERIFIED through the harness; self-export path BLOCKED upstream.
+
+`OpenVoiceOS/omnilingual-asr-ctc-300m-onnx` (base `facebook/omniASR-CTC-300M`,
+apache-2.0 and ungated, non-NVIDIA) is ported and passes the shared harness on
+four languages with exact token-id and text match against a recorded baseline:
+
+| clip | result                                                                          |
+| ---- | ------------------------------------------------------------------------------- |
+| `de` | "alles hat ein ende nur die wurst hat zwei"                                     |
+| `en` | "ask not what your country can do for you ask what you can do for your country" |
+| `es` | "no preguntes que puede hacer tu pais por ti..."                                |
+| `fr` | "ne vous demandez pas ce que votre pay peut faire..."                           |
+
+The port is small because the contract is: raw 16 kHz waveform in
+`x [batch, num_samples]`, convolutional frontend inside the graph, blank id 0,
+10288-token vocabulary of real spaces, no mel parity work. It reuses
+`normalizeWav2Vec2Waveform` and the shared `CtcDecoder`. All four gates are
+`PASS_ORACLE_MATCH` with the graph, tokens, fixtures and baseline digest-bound.
+
+The baseline is **self-consistency** against a Python decode of the same released
+graph, not upstream-oracle parity: the model card spot check uses Portuguese and
+Swahili clips that are not obtainable, and the English clip is JFK but the model
+omits its opening clause.
+
+**Surgical ONNX export is blocked for this candidate, on measured evidence.**
+The released graph is dynamic int8: 106 `DynamicQuantizeLinear` plus 146
+`MatMulInteger` over 325,983,100 stored parameters (325.6M int8 plus 0.35M fp32,
+measured, not inferred). Activation scales are computed from live inputs, so the
+quantization cannot be stripped statically without a re-export, and stripping it
+would destroy the int8 behavior just validated. Upstream offers only
+`omniASR-CTC-300M.pt` (1.3 GB) plus a sentencepiece model, with no
+`config.json` and no transformers class; its README points at
+`pip install omnilingual-asr`, a custom Meta package. An fp32 self-export would
+therefore require installing that package, which is an authority question, so
+the released graph is this candidate's ceiling.
+
+This is the same rule that produced the Parakeet v2/v3 and Whisper work: prefer
+our own export when the candidate exposes exportable source weights. It applies
+to candidates with NeMo `.nemo` or transformers checkpoints, as the ctaguchi
+110M port demonstrates, where we exported our own ONNX rather than adopting a
+repack. The Omnilingual line is the counter-case: third-party ONNX only.
+
 ## C32 — Parakeet CTC 110M candidate: export verified, runtime port pending
 
 Status: PASS with named limits — superseded mid-port; the library side now
