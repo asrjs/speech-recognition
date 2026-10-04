@@ -152,7 +152,8 @@
   "withdrawn_claim": {
     "previous": "PASS, worst max abs error 6.68e-06",
     "why_withdrawn": "The comparison reshaped both sides with the same operation, so it compared like with like and could not detect a layout error. The graph computes k_proj/v_proj correctly, but the measurement does not prove the cache layout is right.",
-    "corrected_scope": "This proves the graph reproduces PyTorch's raw k_proj and v_proj outputs. It does not prove the [batch, frames, heads*headDim] to [batch, heads, frames, headDim] conversion."
+    "corrected_scope": "This proves the graph reproduces PyTorch's raw k_proj and v_proj outputs. It does not prove the [batch, frames, heads*headDim] to [batch, heads, frames, headDim] conversion.",
+    "precise_scope": "Two separate claims. (1) The graph reproduces PyTorch k_proj and v_proj faithfully: 1.43e-06, measured with identical inputs on both sides, and that part stands. (2) The cache-layout conversion from [batch, frames, heads*headDim] to [batch, heads, frames, headDim]: NOT proven by that run, because both sides were reshaped with the same operation. The transpose requirement was discovered later from the decode failure, and is now confirmed by the input-sensitivity probe."
   },
   "layout_bug_found_later": {
     "bug": "reinterpreting the projection buffer as the cache shape keeps the element count but does not permute the data; PyTorch uses view(batch, frames, heads, headDim).transpose(1, 2)",

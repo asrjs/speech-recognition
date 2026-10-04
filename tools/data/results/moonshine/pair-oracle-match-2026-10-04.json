@@ -20,8 +20,27 @@
     "text": "<0xE2><0x99><0xAA> <0xE2><0x99><0xAA>",
     "reading": "the seed-cache shape blocker is gone and any length now runs, but the transcript is junk on a 31 s clip. The emitted ids are byte-fallback tokens, which points at input outside the model's training window rather than a graph fault. Long-form quality is NOT claimed."
   },
-  "artifacts_dropped": "no seed cache and no per-utterance seed file; self-attention starts from one exported BOS-step block (13824 bytes) and cross-attention memory is computed in-graph.",
+  "artifacts_dropped": "the 32 MB seed cache AND the 13,824-byte BOS self-attention block are both gone. Cross-attention is computed in-graph and self-attention starts empty, matching PyTorch's DynamicCache. The earlier seed experiments all failed because cross-attention was dead, which made the seed look load-bearing.",
   "still_open": [
-    "streaming and partial-result behaviour is unmeasured"
-  ]
+    "streaming and partial-result behaviour is unmeasured; this needs the moonshine-streaming checkpoint, which ships safetensors only, so it is a separate port rather than a measurement",
+    "greedy decoding degenerates past roughly 30 s of audio"
+  ],
+  "multi_fixture": {
+    "status": "PASS_QUALITY",
+    "fixture": "tools/data/fixtures/audio/librivox.org.wav",
+    "encoder_frames": 1073,
+    "decode_steps": 69,
+    "total_ms": 1886,
+    "text": "Preface of A Year with the Birds, this is a LibriVox recording. All LibriVox recordings are in the public domain. For more information or to volunteer, please visit LibriVox.org. Read by Aluvia, a year with the birds by W. Ward F...",
+    "reading": "a correct transcript of audio never seen during export or tuning, so the pair generalizes beyond the oracle fixture."
+  },
+  "long_form_quality": {
+    "status": "EXECUTES_DEGENERATES",
+    "fixture": "tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav",
+    "encoder_frames": 2329,
+    "decode_steps": 160,
+    "total_ms": 7629,
+    "text": "Daughter of a year with the birds of a year with the birds of a year with the birds of a year with...",
+    "reading": "the opening is right and then greedy decoding repeats. No EOS is emitted within a 160-token cap on 56 s of audio. This is a decoding-policy limit on long input, not a graph fault: the shorter 31 s and 35 s runs decode cleanly."
+  }
 }

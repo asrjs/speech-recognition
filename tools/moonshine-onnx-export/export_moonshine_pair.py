@@ -166,7 +166,8 @@ def export_decoder(model, output_dir: Path, frames: int) -> dict:
         torch.tensor([[1]], dtype=torch.int64),
         torch.zeros(slots, 1, heads, 1, head_dim),
         torch.zeros(slots, 1, heads, frames, head_dim),
-        torch.zeros(1, frames, model.config.hidden_size),
+        # Random rather than zeros: an all-zero example is a degenerate trace.
+        torch.randn(1, frames, model.config.hidden_size),
     )
     dynamic_shapes = (
         {1: tokens},

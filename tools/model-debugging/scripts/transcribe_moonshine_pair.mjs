@@ -78,14 +78,6 @@ function buildVocab(tokenizer) {
   return entries.sort((a, b) => a[0] - b[0]).map(([, token]) => token);
 }
 
-/** Reads the exported BOS-step self-attention seed: a fixed [slots, 1, heads, 1, headDim] block. */
-function readBosSelfPast() {
-  const raw = readFileSync(
-    `${argValue('model-dir', 'models/onnx/moonshine-tiny-fp32')}/bos_self_past.bin`,
-  );
-  return new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
-}
-
 const artifactDir = argValue('model-dir', 'models/onnx/moonshine-tiny-fp32');
 const audioPath = argValue('audio', 'tools/data/fixtures/audio/jfk-short.wav');
 const maxTokens = Number(argValue('max-tokens', '256'));
@@ -130,11 +122,11 @@ for (let slot = 0; slot < slots; slot += 1) {
 
 // Cross-attention memory is constant for the whole utterance: never reassigned.
 const crossPast = new ort.Tensor('float32', crossData, [slots, 1, heads, frames, headDim]);
-// Self-attention history starts at the BOS step. The seed comes from the
-// checkpoint because self-attention keys carry rotary positions that are not
-// worth recomputing by hand, and zeros give a repeating token loop instead of a
-// decode.
-let selfPast = new ort.Tensor('float32', readBosSelfPast(), [slots, 1, heads, 1, headDim]);
+// Self-attention history starts empty, exactly like PyTorch's DynamicCache: the
+// decoder creates the BOS entry itself. An earlier revision seeded it from the
+// checkpoint because cross-attention was dead in the graph; that made the seed
+// look load-bearing when it never was.
+let selfPast = new ort.Tensor('float32', new Float32Array(0), [slots, 1, heads, 0, headDim]);
 
 const tokenIds = [];
 let steps = 0;

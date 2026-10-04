@@ -1,3 +1,32 @@
+## C47 — Pair verified on unseen audio; both seed artifacts retired
+
+Status: JFK oracle match plus a clean second fixture. Streaming re-scoped.
+
+The BOS self-attention block was cargo cult. With cross-attention alive, an
+**empty** self-attention cache reproduces the JFK oracle exactly, 24 tokens in
+25 steps, which is how PyTorch's `DynamicCache` starts. Every earlier seed
+variant "failed" only because it was compensating for dead cross-attention, so
+both the 32 MB seed cache and the 13,824-byte BOS block are gone. The runtime
+now starts from an empty cache, which also removes the dynamic-shape
+specialization question: the graph accepts length 0.
+
+Multi-fixture passes with quality. On `librivox.org.wav`, 1073 frames, audio
+never seen during export or tuning:
+
+> Preface of A Year with the Birds, this is a LibriVox recording. All LibriVox
+> recordings are in the public domain.
+
+Long-form executes but degenerates. On `librivox-blankgaps-synthetic.wav`,
+2329 frames and about 56 s, the opening is right and then greedy decoding
+repeats: _"Daughter of a year with the birds of a year with the birds of a year
+with..."_ No EOS arrives within a 160-token cap. That is a decoding-policy limit
+on long input rather than a graph fault, since the 31 s and 35 s runs decode
+cleanly.
+
+Streaming is re-scoped, not deferred. It needs the `moonshine-streaming`
+checkpoint, which ships safetensors only, so it is a separate port with its own
+export and chunked decode loop rather than a measurement of this pair.
+
 ## C46 — Self-exported Moonshine pair matches the oracle
 
 Status: `PASS_ORACLE_MATCH` on the JFK fixture with our own fp32 graphs.
