@@ -12,9 +12,10 @@
     ]
   },
   "next_steps": [
-    "rewrite the inline initializers through TensorProto.raw_data and re-save the graph",
-    "then run the JFK oracle gate for redux, which needs a redux baseline recorded from the reference decode",
-    "the decoder_joint weights are not in the teacher encoder graph and still need their own export path"
+    "smoke-test encoder adjacency: cosine and max abs error of the substituted encoder against the teacher encoder on the JFK fixture, before any oracle gate",
+    "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate",
+    "resolve the relative-position parameterisation difference so the attention path stops being a hybrid",
+    "export a decoder_joint path, which the teacher encoder graph does not contain"
   ],
   "honest_note": "Correlation 0.798 against the teacher originals is consistent with a ternary repack of the same checkpoint, but it is not accuracy evidence. No accuracy claim exists for redux in any form.",
   "coverage_progression": [
@@ -50,5 +51,19 @@
   ],
   "what_works": {
     "substitution": "549 of 612 tensors carry redux weights; see coverage_progression"
+  },
+  "encoder_adjacency_probe": {
+    "status": "INCONCLUSIVE_NEGATIVE",
+    "method": "identical synthetic [1,128,150] features through the substituted and the teacher encoder; the graph takes features, not raw audio, so no fixture is needed",
+    "result": {
+      "cosine": 0.033858,
+      "max_abs_error": 0.16395,
+      "mean_abs_error": 0.019716,
+      "nonfinite": 0,
+      "elements": 19456
+    },
+    "reading": "the two encoders are essentially uncorrelated on the same input. This does NOT prove the substitution is wrong. Per-tensor correlation is 0.798 and a 1.58-bit quantization compounded over 24 Conformer layers is enough to destroy output correlation. It also does not prove the substitution is right.",
+    "consequence": "encoder-output adjacency is not a usable gate for this candidate. The only meaningful gate is the transcript oracle against a redux reference decode, which needs NeMo and is still open.",
+    "note": "the probe is cheap and worth rerunning once the pos_bias gap closes, but it should not gate the work either way"
   }
 }
