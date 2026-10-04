@@ -13,15 +13,24 @@
       "transcribeMs": 1226.8,
       "rtfx": 9.0,
       "decodeIterations": 25,
-      "emittedTokenCount": 24
+      "emittedTokenCount": 24,
+      "note": "re-verified after the LayerNormalization bias patch; the Node gate also still passes"
     },
     {
       "model": "moonshine-tiny",
       "artifacts": "our own fp32 export, models/onnx/moonshine-tiny-fp32",
       "backend": "webgpu",
-      "status": "FAIL",
-      "error": "[WebGPU] Kernel \"[SkipLayerNormalization] SkipLayerNormalization\" failed. Error: Beta must be 1D",
-      "reading": "the graph loads and reaches kernel execution, so this is a kernel shape constraint rather than a loading failure. The exported encoder produces a SkipLayerNormalization whose beta is not 1-D under the WebGPU provider."
+      "status": "FAIL_NUMERIC_DIVERGENCE",
+      "error": "kernel error resolved by adding an explicit 1-D zero bias to every LayerNormalization; the session now runs",
+      "reading": "The graph executes on WebGPU but decodes to word salad while WASM in the same browser and CPU in Node both match the oracle exactly. This is a numerical divergence on the WebGPU execution provider, not a load or shape failure, and it is the same class of defect already recorded for another model in this repository.",
+      "transcript": "Garc Garc Garc Garc Garceded Thor,ebook Ciudadigneeli",
+      "loadMs": 1784.1,
+      "transcribeMs": 15816.6,
+      "rtfx": 0.7,
+      "decodeIterations": 256,
+      "emittedTokenCount": 256,
+      "fix_applied": "tools/moonshine-onnx-export/add_layernorm_bias.py adds an explicit zero bias so the WebGPU SkipLayerNormalization fusion binds a 1-D beta. Numerically neutral: an absent bias and a zero bias mean the same.",
+      "remaining": "the divergence itself is not fixed; it needs stage-level comparison to locate the first differing tensor"
     },
     {
       "model": "Qwen/Qwen3-ASR-0.6B-hf",
