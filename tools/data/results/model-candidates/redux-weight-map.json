@@ -1,0 +1,537 @@
+{
+  "graph": "models\\orukeet\\onnx\\fp32-packed-2026-10-01\\encoder-model.onnx",
+  "kind": "conv",
+  "tensors": 48,
+  "confidentMatches": 44,
+  "threshold": 0.5,
+  "rows": [
+    {
+      "tensor": "onnx::Conv_6774",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.0.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.5841,
+      "full_correlation": 0.4494
+    },
+    {
+      "tensor": "onnx::Conv_6775",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.0.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.5411,
+      "full_correlation": 0.5411
+    },
+    {
+      "tensor": "onnx::Conv_6777",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.1.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.0804,
+      "full_correlation": 0.072
+    },
+    {
+      "tensor": "onnx::Conv_6778",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.1.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7681,
+      "full_correlation": 0.7681
+    },
+    {
+      "tensor": "onnx::Conv_6780",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.2.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.1565,
+      "full_correlation": 0.118
+    },
+    {
+      "tensor": "onnx::Conv_6781",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.2.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7826,
+      "full_correlation": 0.7826
+    },
+    {
+      "tensor": "onnx::Conv_6783",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.3.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.7541,
+      "full_correlation": 0.7084
+    },
+    {
+      "tensor": "onnx::Conv_6784",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.3.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7339,
+      "full_correlation": 0.7339
+    },
+    {
+      "tensor": "onnx::Conv_6786",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.4.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8541,
+      "full_correlation": 0.8368
+    },
+    {
+      "tensor": "onnx::Conv_6787",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.4.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7883,
+      "full_correlation": 0.7883
+    },
+    {
+      "tensor": "onnx::Conv_6789",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.5.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8653,
+      "full_correlation": 0.8672
+    },
+    {
+      "tensor": "onnx::Conv_6790",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.5.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7387,
+      "full_correlation": 0.7387
+    },
+    {
+      "tensor": "onnx::Conv_6792",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.6.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.825,
+      "full_correlation": 0.6614
+    },
+    {
+      "tensor": "onnx::Conv_6793",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.6.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.885,
+      "full_correlation": 0.885
+    },
+    {
+      "tensor": "onnx::Conv_6795",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.7.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.924,
+      "full_correlation": 0.9156
+    },
+    {
+      "tensor": "onnx::Conv_6796",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.7.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.8567,
+      "full_correlation": 0.8567
+    },
+    {
+      "tensor": "onnx::Conv_6798",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.8.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.9072,
+      "full_correlation": 0.9098
+    },
+    {
+      "tensor": "onnx::Conv_6799",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.8.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7592,
+      "full_correlation": 0.7592
+    },
+    {
+      "tensor": "onnx::Conv_6801",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.9.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8564,
+      "full_correlation": 0.8576
+    },
+    {
+      "tensor": "onnx::Conv_6802",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.9.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.768,
+      "full_correlation": 0.768
+    },
+    {
+      "tensor": "onnx::Conv_6804",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.10.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.9251,
+      "full_correlation": 0.9176
+    },
+    {
+      "tensor": "onnx::Conv_6805",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.10.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7896,
+      "full_correlation": 0.7896
+    },
+    {
+      "tensor": "onnx::Conv_6807",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.11.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8886,
+      "full_correlation": 0.9054
+    },
+    {
+      "tensor": "onnx::Conv_6808",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.11.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.6376,
+      "full_correlation": 0.6376
+    },
+    {
+      "tensor": "onnx::Conv_6810",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.12.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8762,
+      "full_correlation": 0.8584
+    },
+    {
+      "tensor": "onnx::Conv_6811",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.12.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7211,
+      "full_correlation": 0.7211
+    },
+    {
+      "tensor": "onnx::Conv_6813",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.13.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.817,
+      "full_correlation": 0.8274
+    },
+    {
+      "tensor": "onnx::Conv_6814",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.13.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.6171,
+      "full_correlation": 0.6171
+    },
+    {
+      "tensor": "onnx::Conv_6816",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.14.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8625,
+      "full_correlation": 0.8561
+    },
+    {
+      "tensor": "onnx::Conv_6817",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.14.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.5669,
+      "full_correlation": 0.5669
+    },
+    {
+      "tensor": "onnx::Conv_6819",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.15.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.9201,
+      "full_correlation": 0.9137
+    },
+    {
+      "tensor": "onnx::Conv_6820",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.15.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7335,
+      "full_correlation": 0.7335
+    },
+    {
+      "tensor": "onnx::Conv_6822",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.16.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8808,
+      "full_correlation": 0.8858
+    },
+    {
+      "tensor": "onnx::Conv_6823",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.16.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.5771,
+      "full_correlation": 0.5771
+    },
+    {
+      "tensor": "onnx::Conv_6825",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.17.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8962,
+      "full_correlation": 0.8979
+    },
+    {
+      "tensor": "onnx::Conv_6826",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.17.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.8242,
+      "full_correlation": 0.8242
+    },
+    {
+      "tensor": "onnx::Conv_6828",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.18.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.9274,
+      "full_correlation": 0.9185
+    },
+    {
+      "tensor": "onnx::Conv_6829",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.18.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7138,
+      "full_correlation": 0.7138
+    },
+    {
+      "tensor": "onnx::Conv_6831",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.19.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.9245,
+      "full_correlation": 0.9171
+    },
+    {
+      "tensor": "onnx::Conv_6832",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.19.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7192,
+      "full_correlation": 0.7192
+    },
+    {
+      "tensor": "onnx::Conv_6834",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.20.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8701,
+      "full_correlation": 0.8854
+    },
+    {
+      "tensor": "onnx::Conv_6835",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.20.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7318,
+      "full_correlation": 0.7318
+    },
+    {
+      "tensor": "onnx::Conv_6837",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.21.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8431,
+      "full_correlation": 0.8571
+    },
+    {
+      "tensor": "onnx::Conv_6838",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.21.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.6144,
+      "full_correlation": 0.6144
+    },
+    {
+      "tensor": "onnx::Conv_6840",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.22.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.1901,
+      "full_correlation": 0.0554
+    },
+    {
+      "tensor": "onnx::Conv_6841",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.22.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.7698,
+      "full_correlation": 0.7698
+    },
+    {
+      "tensor": "onnx::Conv_6843",
+      "shape": [
+        1024,
+        1,
+        9
+      ],
+      "match": "encoder.layers.23.conv.depthwise_conv.weight",
+      "transposed": false,
+      "sample_correlation": 0.8987,
+      "full_correlation": 0.8936
+    },
+    {
+      "tensor": "onnx::Conv_6844",
+      "shape": [
+        1024
+      ],
+      "match": "encoder.layers.23.conv.norm.bias",
+      "transposed": false,
+      "sample_correlation": 0.5853,
+      "full_correlation": 0.5853
+    }
+  ]
+}

@@ -1,0 +1,2396 @@
+{
+  "graph": "models\\orukeet\\onnx\\fp32-packed-2026-10-01\\encoder-model.onnx",
+  "kind": "matmul",
+  "tensors": 217,
+  "confidentMatches": 217,
+  "threshold": 0.5,
+  "rows": [
+    {
+      "tensor": "onnx::MatMul_6846",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.subsampling.linear.weight",
+      "transposed": true,
+      "sample_correlation": 0.9999,
+      "full_correlation": 0.9999
+    },
+    {
+      "tensor": "onnx::MatMul_6862",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.0.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8122,
+      "full_correlation": 0.8092
+    },
+    {
+      "tensor": "onnx::MatMul_6863",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.0.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.793,
+      "full_correlation": 0.7753
+    },
+    {
+      "tensor": "onnx::MatMul_6864",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.0.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.5859,
+      "full_correlation": 0.5996
+    },
+    {
+      "tensor": "onnx::MatMul_6874",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.0.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7567,
+      "full_correlation": 0.7516
+    },
+    {
+      "tensor": "onnx::MatMul_6875",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.0.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.6737,
+      "full_correlation": 0.6833
+    },
+    {
+      "tensor": "onnx::MatMul_6876",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.0.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.6647,
+      "full_correlation": 0.6991
+    },
+    {
+      "tensor": "onnx::MatMul_6964",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.0.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.6295,
+      "full_correlation": 0.6395
+    },
+    {
+      "tensor": "onnx::MatMul_6970",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.0.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8229,
+      "full_correlation": 0.8169
+    },
+    {
+      "tensor": "onnx::MatMul_6971",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.0.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.7866,
+      "full_correlation": 0.7893
+    },
+    {
+      "tensor": "onnx::MatMul_6972",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.1.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8356,
+      "full_correlation": 0.8319
+    },
+    {
+      "tensor": "onnx::MatMul_6973",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.1.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8154,
+      "full_correlation": 0.8069
+    },
+    {
+      "tensor": "onnx::MatMul_6974",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.1.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7057,
+      "full_correlation": 0.7046
+    },
+    {
+      "tensor": "onnx::MatMul_6984",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.1.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8203,
+      "full_correlation": 0.8141
+    },
+    {
+      "tensor": "onnx::MatMul_6985",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.1.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8146,
+      "full_correlation": 0.8165
+    },
+    {
+      "tensor": "onnx::MatMul_6986",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.1.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7524,
+      "full_correlation": 0.7499
+    },
+    {
+      "tensor": "onnx::MatMul_7002",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.1.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8106,
+      "full_correlation": 0.7942
+    },
+    {
+      "tensor": "onnx::MatMul_7008",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.1.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8468,
+      "full_correlation": 0.8494
+    },
+    {
+      "tensor": "onnx::MatMul_7009",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.1.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.7942,
+      "full_correlation": 0.8023
+    },
+    {
+      "tensor": "onnx::MatMul_7010",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.2.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.858,
+      "full_correlation": 0.8565
+    },
+    {
+      "tensor": "onnx::MatMul_7011",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.2.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8219,
+      "full_correlation": 0.8193
+    },
+    {
+      "tensor": "onnx::MatMul_7012",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.2.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7352,
+      "full_correlation": 0.7349
+    },
+    {
+      "tensor": "onnx::MatMul_7022",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.2.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8392,
+      "full_correlation": 0.8374
+    },
+    {
+      "tensor": "onnx::MatMul_7023",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.2.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8344,
+      "full_correlation": 0.8305
+    },
+    {
+      "tensor": "onnx::MatMul_7024",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.2.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7904,
+      "full_correlation": 0.7719
+    },
+    {
+      "tensor": "onnx::MatMul_7040",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.2.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8074,
+      "full_correlation": 0.8187
+    },
+    {
+      "tensor": "onnx::MatMul_7046",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.2.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8501,
+      "full_correlation": 0.8514
+    },
+    {
+      "tensor": "onnx::MatMul_7047",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.2.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.7915,
+      "full_correlation": 0.8023
+    },
+    {
+      "tensor": "onnx::MatMul_7048",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.3.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8599,
+      "full_correlation": 0.8569
+    },
+    {
+      "tensor": "onnx::MatMul_7049",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.3.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8251,
+      "full_correlation": 0.8179
+    },
+    {
+      "tensor": "onnx::MatMul_7050",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.3.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7459,
+      "full_correlation": 0.7523
+    },
+    {
+      "tensor": "onnx::MatMul_7060",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.3.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8368,
+      "full_correlation": 0.8426
+    },
+    {
+      "tensor": "onnx::MatMul_7061",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.3.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8247,
+      "full_correlation": 0.8289
+    },
+    {
+      "tensor": "onnx::MatMul_7062",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.3.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7654,
+      "full_correlation": 0.7629
+    },
+    {
+      "tensor": "onnx::MatMul_7078",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.3.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.818,
+      "full_correlation": 0.8194
+    },
+    {
+      "tensor": "onnx::MatMul_7084",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.3.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8477,
+      "full_correlation": 0.8529
+    },
+    {
+      "tensor": "onnx::MatMul_7085",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.3.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8042,
+      "full_correlation": 0.8106
+    },
+    {
+      "tensor": "onnx::MatMul_7086",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.4.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8531,
+      "full_correlation": 0.8565
+    },
+    {
+      "tensor": "onnx::MatMul_7087",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.4.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8185,
+      "full_correlation": 0.8192
+    },
+    {
+      "tensor": "onnx::MatMul_7088",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.4.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7563,
+      "full_correlation": 0.7564
+    },
+    {
+      "tensor": "onnx::MatMul_7098",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.4.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8328,
+      "full_correlation": 0.8364
+    },
+    {
+      "tensor": "onnx::MatMul_7099",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.4.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8244,
+      "full_correlation": 0.8287
+    },
+    {
+      "tensor": "onnx::MatMul_7100",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.4.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7514,
+      "full_correlation": 0.7463
+    },
+    {
+      "tensor": "onnx::MatMul_7116",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.4.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8189,
+      "full_correlation": 0.8219
+    },
+    {
+      "tensor": "onnx::MatMul_7122",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.4.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8635,
+      "full_correlation": 0.8557
+    },
+    {
+      "tensor": "onnx::MatMul_7123",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.4.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8178,
+      "full_correlation": 0.8126
+    },
+    {
+      "tensor": "onnx::MatMul_7124",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.5.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8559,
+      "full_correlation": 0.8603
+    },
+    {
+      "tensor": "onnx::MatMul_7125",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.5.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8272,
+      "full_correlation": 0.8196
+    },
+    {
+      "tensor": "onnx::MatMul_7126",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.5.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7625,
+      "full_correlation": 0.7657
+    },
+    {
+      "tensor": "onnx::MatMul_7136",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.5.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8545,
+      "full_correlation": 0.8459
+    },
+    {
+      "tensor": "onnx::MatMul_7137",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.5.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8312,
+      "full_correlation": 0.8315
+    },
+    {
+      "tensor": "onnx::MatMul_7138",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.5.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7582,
+      "full_correlation": 0.7797
+    },
+    {
+      "tensor": "onnx::MatMul_7154",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.5.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8268,
+      "full_correlation": 0.8268
+    },
+    {
+      "tensor": "onnx::MatMul_7160",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.5.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8481,
+      "full_correlation": 0.8542
+    },
+    {
+      "tensor": "onnx::MatMul_7161",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.5.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8092,
+      "full_correlation": 0.8151
+    },
+    {
+      "tensor": "onnx::MatMul_7162",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.6.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8596,
+      "full_correlation": 0.8617
+    },
+    {
+      "tensor": "onnx::MatMul_7163",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.6.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8302,
+      "full_correlation": 0.821
+    },
+    {
+      "tensor": "onnx::MatMul_7164",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.6.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7518,
+      "full_correlation": 0.7575
+    },
+    {
+      "tensor": "onnx::MatMul_7174",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.6.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8527,
+      "full_correlation": 0.848
+    },
+    {
+      "tensor": "onnx::MatMul_7175",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.6.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8299,
+      "full_correlation": 0.8374
+    },
+    {
+      "tensor": "onnx::MatMul_7176",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.6.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7697,
+      "full_correlation": 0.7722
+    },
+    {
+      "tensor": "onnx::MatMul_7192",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.6.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8186,
+      "full_correlation": 0.8292
+    },
+    {
+      "tensor": "onnx::MatMul_7198",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.6.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8496,
+      "full_correlation": 0.8513
+    },
+    {
+      "tensor": "onnx::MatMul_7199",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.6.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8292,
+      "full_correlation": 0.8143
+    },
+    {
+      "tensor": "onnx::MatMul_7200",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.7.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8604,
+      "full_correlation": 0.8575
+    },
+    {
+      "tensor": "onnx::MatMul_7201",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.7.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8253,
+      "full_correlation": 0.8216
+    },
+    {
+      "tensor": "onnx::MatMul_7202",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.7.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7356,
+      "full_correlation": 0.7398
+    },
+    {
+      "tensor": "onnx::MatMul_7212",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.7.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.824,
+      "full_correlation": 0.8312
+    },
+    {
+      "tensor": "onnx::MatMul_7213",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.7.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8392,
+      "full_correlation": 0.8245
+    },
+    {
+      "tensor": "onnx::MatMul_7214",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.7.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7673,
+      "full_correlation": 0.7401
+    },
+    {
+      "tensor": "onnx::MatMul_7230",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.7.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8177,
+      "full_correlation": 0.8207
+    },
+    {
+      "tensor": "onnx::MatMul_7236",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.7.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.841,
+      "full_correlation": 0.8455
+    },
+    {
+      "tensor": "onnx::MatMul_7237",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.7.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.826,
+      "full_correlation": 0.8221
+    },
+    {
+      "tensor": "onnx::MatMul_7238",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.8.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8414,
+      "full_correlation": 0.8472
+    },
+    {
+      "tensor": "onnx::MatMul_7239",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.8.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8257,
+      "full_correlation": 0.8253
+    },
+    {
+      "tensor": "onnx::MatMul_7240",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.8.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.766,
+      "full_correlation": 0.7658
+    },
+    {
+      "tensor": "onnx::MatMul_7250",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.8.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8386,
+      "full_correlation": 0.8427
+    },
+    {
+      "tensor": "onnx::MatMul_7251",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.8.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8097,
+      "full_correlation": 0.8132
+    },
+    {
+      "tensor": "onnx::MatMul_7252",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.8.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7173,
+      "full_correlation": 0.7406
+    },
+    {
+      "tensor": "onnx::MatMul_7268",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.8.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8134,
+      "full_correlation": 0.8136
+    },
+    {
+      "tensor": "onnx::MatMul_7274",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.8.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8484,
+      "full_correlation": 0.8454
+    },
+    {
+      "tensor": "onnx::MatMul_7275",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.8.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8269,
+      "full_correlation": 0.8249
+    },
+    {
+      "tensor": "onnx::MatMul_7276",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.9.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8434,
+      "full_correlation": 0.8381
+    },
+    {
+      "tensor": "onnx::MatMul_7277",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.9.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8321,
+      "full_correlation": 0.8265
+    },
+    {
+      "tensor": "onnx::MatMul_7278",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.9.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7699,
+      "full_correlation": 0.7715
+    },
+    {
+      "tensor": "onnx::MatMul_7288",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.9.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8396,
+      "full_correlation": 0.8352
+    },
+    {
+      "tensor": "onnx::MatMul_7289",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.9.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8113,
+      "full_correlation": 0.819
+    },
+    {
+      "tensor": "onnx::MatMul_7290",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.9.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7356,
+      "full_correlation": 0.7683
+    },
+    {
+      "tensor": "onnx::MatMul_7306",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.9.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8133,
+      "full_correlation": 0.8138
+    },
+    {
+      "tensor": "onnx::MatMul_7312",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.9.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8429,
+      "full_correlation": 0.8422
+    },
+    {
+      "tensor": "onnx::MatMul_7313",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.9.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8287,
+      "full_correlation": 0.8316
+    },
+    {
+      "tensor": "onnx::MatMul_7314",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.10.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.82,
+      "full_correlation": 0.8187
+    },
+    {
+      "tensor": "onnx::MatMul_7315",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.10.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8348,
+      "full_correlation": 0.8315
+    },
+    {
+      "tensor": "onnx::MatMul_7316",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.10.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7581,
+      "full_correlation": 0.7688
+    },
+    {
+      "tensor": "onnx::MatMul_7326",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.10.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.784,
+      "full_correlation": 0.7966
+    },
+    {
+      "tensor": "onnx::MatMul_7327",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.10.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8172,
+      "full_correlation": 0.8184
+    },
+    {
+      "tensor": "onnx::MatMul_7328",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.10.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7669,
+      "full_correlation": 0.7534
+    },
+    {
+      "tensor": "onnx::MatMul_7344",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.10.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8174,
+      "full_correlation": 0.8162
+    },
+    {
+      "tensor": "onnx::MatMul_7350",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.10.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8366,
+      "full_correlation": 0.8368
+    },
+    {
+      "tensor": "onnx::MatMul_7351",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.10.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8092,
+      "full_correlation": 0.8205
+    },
+    {
+      "tensor": "onnx::MatMul_7352",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.11.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8132,
+      "full_correlation": 0.8278
+    },
+    {
+      "tensor": "onnx::MatMul_7353",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.11.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8434,
+      "full_correlation": 0.8336
+    },
+    {
+      "tensor": "onnx::MatMul_7354",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.11.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7525,
+      "full_correlation": 0.76
+    },
+    {
+      "tensor": "onnx::MatMul_7364",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.11.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8112,
+      "full_correlation": 0.8165
+    },
+    {
+      "tensor": "onnx::MatMul_7365",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.11.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8233,
+      "full_correlation": 0.8195
+    },
+    {
+      "tensor": "onnx::MatMul_7366",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.11.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7651,
+      "full_correlation": 0.7657
+    },
+    {
+      "tensor": "onnx::MatMul_7382",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.11.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8223,
+      "full_correlation": 0.8205
+    },
+    {
+      "tensor": "onnx::MatMul_7388",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.11.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8457,
+      "full_correlation": 0.8334
+    },
+    {
+      "tensor": "onnx::MatMul_7389",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.11.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8048,
+      "full_correlation": 0.8079
+    },
+    {
+      "tensor": "onnx::MatMul_7390",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.12.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8053,
+      "full_correlation": 0.8102
+    },
+    {
+      "tensor": "onnx::MatMul_7391",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.12.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8278,
+      "full_correlation": 0.8308
+    },
+    {
+      "tensor": "onnx::MatMul_7392",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.12.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7598,
+      "full_correlation": 0.761
+    },
+    {
+      "tensor": "onnx::MatMul_7402",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.12.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.835,
+      "full_correlation": 0.8364
+    },
+    {
+      "tensor": "onnx::MatMul_7403",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.12.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8329,
+      "full_correlation": 0.8286
+    },
+    {
+      "tensor": "onnx::MatMul_7404",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.12.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7665,
+      "full_correlation": 0.7569
+    },
+    {
+      "tensor": "onnx::MatMul_7420",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.12.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8269,
+      "full_correlation": 0.8304
+    },
+    {
+      "tensor": "onnx::MatMul_7426",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.12.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8337,
+      "full_correlation": 0.8337
+    },
+    {
+      "tensor": "onnx::MatMul_7427",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.12.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8075,
+      "full_correlation": 0.8137
+    },
+    {
+      "tensor": "onnx::MatMul_7428",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.13.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.7905,
+      "full_correlation": 0.7969
+    },
+    {
+      "tensor": "onnx::MatMul_7429",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.13.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8218,
+      "full_correlation": 0.826
+    },
+    {
+      "tensor": "onnx::MatMul_7430",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.13.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7791,
+      "full_correlation": 0.7764
+    },
+    {
+      "tensor": "onnx::MatMul_7440",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.13.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8365,
+      "full_correlation": 0.8404
+    },
+    {
+      "tensor": "onnx::MatMul_7441",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.13.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8308,
+      "full_correlation": 0.8243
+    },
+    {
+      "tensor": "onnx::MatMul_7442",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.13.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7303,
+      "full_correlation": 0.7615
+    },
+    {
+      "tensor": "onnx::MatMul_7458",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.13.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8246,
+      "full_correlation": 0.8281
+    },
+    {
+      "tensor": "onnx::MatMul_7464",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.13.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8216,
+      "full_correlation": 0.8288
+    },
+    {
+      "tensor": "onnx::MatMul_7465",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.13.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8231,
+      "full_correlation": 0.8243
+    },
+    {
+      "tensor": "onnx::MatMul_7466",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.14.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.7794,
+      "full_correlation": 0.7914
+    },
+    {
+      "tensor": "onnx::MatMul_7467",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.14.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8253,
+      "full_correlation": 0.824
+    },
+    {
+      "tensor": "onnx::MatMul_7468",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.14.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.782,
+      "full_correlation": 0.7814
+    },
+    {
+      "tensor": "onnx::MatMul_7478",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.14.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8366,
+      "full_correlation": 0.8355
+    },
+    {
+      "tensor": "onnx::MatMul_7479",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.14.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8247,
+      "full_correlation": 0.8232
+    },
+    {
+      "tensor": "onnx::MatMul_7480",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.14.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7888,
+      "full_correlation": 0.7624
+    },
+    {
+      "tensor": "onnx::MatMul_7496",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.14.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8282,
+      "full_correlation": 0.8219
+    },
+    {
+      "tensor": "onnx::MatMul_7502",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.14.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8261,
+      "full_correlation": 0.8229
+    },
+    {
+      "tensor": "onnx::MatMul_7503",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.14.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8145,
+      "full_correlation": 0.8233
+    },
+    {
+      "tensor": "onnx::MatMul_7504",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.15.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8005,
+      "full_correlation": 0.7921
+    },
+    {
+      "tensor": "onnx::MatMul_7505",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.15.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8051,
+      "full_correlation": 0.8196
+    },
+    {
+      "tensor": "onnx::MatMul_7506",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.15.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7902,
+      "full_correlation": 0.776
+    },
+    {
+      "tensor": "onnx::MatMul_7516",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.15.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8176,
+      "full_correlation": 0.8151
+    },
+    {
+      "tensor": "onnx::MatMul_7517",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.15.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8185,
+      "full_correlation": 0.8207
+    },
+    {
+      "tensor": "onnx::MatMul_7518",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.15.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7659,
+      "full_correlation": 0.7646
+    },
+    {
+      "tensor": "onnx::MatMul_7534",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.15.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8235,
+      "full_correlation": 0.8186
+    },
+    {
+      "tensor": "onnx::MatMul_7540",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.15.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8106,
+      "full_correlation": 0.8174
+    },
+    {
+      "tensor": "onnx::MatMul_7541",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.15.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8079,
+      "full_correlation": 0.8134
+    },
+    {
+      "tensor": "onnx::MatMul_7542",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.16.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.7935,
+      "full_correlation": 0.7803
+    },
+    {
+      "tensor": "onnx::MatMul_7543",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.16.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8133,
+      "full_correlation": 0.8142
+    },
+    {
+      "tensor": "onnx::MatMul_7544",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.16.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7953,
+      "full_correlation": 0.7861
+    },
+    {
+      "tensor": "onnx::MatMul_7554",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.16.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8378,
+      "full_correlation": 0.842
+    },
+    {
+      "tensor": "onnx::MatMul_7555",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.16.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8137,
+      "full_correlation": 0.8234
+    },
+    {
+      "tensor": "onnx::MatMul_7556",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.16.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7814,
+      "full_correlation": 0.7858
+    },
+    {
+      "tensor": "onnx::MatMul_7572",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.16.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8084,
+      "full_correlation": 0.8154
+    },
+    {
+      "tensor": "onnx::MatMul_7578",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.16.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8443,
+      "full_correlation": 0.8418
+    },
+    {
+      "tensor": "onnx::MatMul_7579",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.16.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8339,
+      "full_correlation": 0.8244
+    },
+    {
+      "tensor": "onnx::MatMul_7580",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.17.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.838,
+      "full_correlation": 0.8337
+    },
+    {
+      "tensor": "onnx::MatMul_7581",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.17.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8236,
+      "full_correlation": 0.8225
+    },
+    {
+      "tensor": "onnx::MatMul_7582",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.17.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7657,
+      "full_correlation": 0.7632
+    },
+    {
+      "tensor": "onnx::MatMul_7592",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.17.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7463,
+      "full_correlation": 0.7462
+    },
+    {
+      "tensor": "onnx::MatMul_7593",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.17.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.808,
+      "full_correlation": 0.8082
+    },
+    {
+      "tensor": "onnx::MatMul_7594",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.17.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8094,
+      "full_correlation": 0.8146
+    },
+    {
+      "tensor": "onnx::MatMul_7610",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.17.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.8065,
+      "full_correlation": 0.8011
+    },
+    {
+      "tensor": "onnx::MatMul_7616",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.17.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8561,
+      "full_correlation": 0.8546
+    },
+    {
+      "tensor": "onnx::MatMul_7617",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.17.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8111,
+      "full_correlation": 0.8182
+    },
+    {
+      "tensor": "onnx::MatMul_7618",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.18.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8404,
+      "full_correlation": 0.8477
+    },
+    {
+      "tensor": "onnx::MatMul_7619",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.18.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8258,
+      "full_correlation": 0.8212
+    },
+    {
+      "tensor": "onnx::MatMul_7620",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.18.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7618,
+      "full_correlation": 0.763
+    },
+    {
+      "tensor": "onnx::MatMul_7630",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.18.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8222,
+      "full_correlation": 0.8191
+    },
+    {
+      "tensor": "onnx::MatMul_7631",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.18.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8237,
+      "full_correlation": 0.8209
+    },
+    {
+      "tensor": "onnx::MatMul_7632",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.18.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7779,
+      "full_correlation": 0.7837
+    },
+    {
+      "tensor": "onnx::MatMul_7648",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.18.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.809,
+      "full_correlation": 0.8117
+    },
+    {
+      "tensor": "onnx::MatMul_7654",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.18.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8557,
+      "full_correlation": 0.8523
+    },
+    {
+      "tensor": "onnx::MatMul_7655",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.18.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8258,
+      "full_correlation": 0.8239
+    },
+    {
+      "tensor": "onnx::MatMul_7656",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.19.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8389,
+      "full_correlation": 0.8458
+    },
+    {
+      "tensor": "onnx::MatMul_7657",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.19.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8137,
+      "full_correlation": 0.8084
+    },
+    {
+      "tensor": "onnx::MatMul_7658",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.19.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.771,
+      "full_correlation": 0.7721
+    },
+    {
+      "tensor": "onnx::MatMul_7668",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.19.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7977,
+      "full_correlation": 0.8147
+    },
+    {
+      "tensor": "onnx::MatMul_7669",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.19.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.8072,
+      "full_correlation": 0.8133
+    },
+    {
+      "tensor": "onnx::MatMul_7670",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.19.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7673,
+      "full_correlation": 0.793
+    },
+    {
+      "tensor": "onnx::MatMul_7686",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.19.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.7982,
+      "full_correlation": 0.8082
+    },
+    {
+      "tensor": "onnx::MatMul_7692",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.19.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8509,
+      "full_correlation": 0.8523
+    },
+    {
+      "tensor": "onnx::MatMul_7693",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.19.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8172,
+      "full_correlation": 0.8193
+    },
+    {
+      "tensor": "onnx::MatMul_7694",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.20.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8295,
+      "full_correlation": 0.8236
+    },
+    {
+      "tensor": "onnx::MatMul_7695",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.20.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.7868,
+      "full_correlation": 0.7876
+    },
+    {
+      "tensor": "onnx::MatMul_7696",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.20.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.775,
+      "full_correlation": 0.7704
+    },
+    {
+      "tensor": "onnx::MatMul_7706",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.20.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8207,
+      "full_correlation": 0.8286
+    },
+    {
+      "tensor": "onnx::MatMul_7707",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.20.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.7979,
+      "full_correlation": 0.7977
+    },
+    {
+      "tensor": "onnx::MatMul_7708",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.20.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7659,
+      "full_correlation": 0.7629
+    },
+    {
+      "tensor": "onnx::MatMul_7724",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.20.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.7866,
+      "full_correlation": 0.7885
+    },
+    {
+      "tensor": "onnx::MatMul_7730",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.20.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.836,
+      "full_correlation": 0.8318
+    },
+    {
+      "tensor": "onnx::MatMul_7731",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.20.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.8078,
+      "full_correlation": 0.8003
+    },
+    {
+      "tensor": "onnx::MatMul_7732",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.21.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.7958,
+      "full_correlation": 0.7948
+    },
+    {
+      "tensor": "onnx::MatMul_7733",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.21.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.765,
+      "full_correlation": 0.7582
+    },
+    {
+      "tensor": "onnx::MatMul_7734",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.21.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7575,
+      "full_correlation": 0.7667
+    },
+    {
+      "tensor": "onnx::MatMul_7744",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.21.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8561,
+      "full_correlation": 0.8474
+    },
+    {
+      "tensor": "onnx::MatMul_7745",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.21.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.7914,
+      "full_correlation": 0.7922
+    },
+    {
+      "tensor": "onnx::MatMul_7746",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.21.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7588,
+      "full_correlation": 0.7509
+    },
+    {
+      "tensor": "onnx::MatMul_7762",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.21.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.7712,
+      "full_correlation": 0.7764
+    },
+    {
+      "tensor": "onnx::MatMul_7768",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.21.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.8038,
+      "full_correlation": 0.8016
+    },
+    {
+      "tensor": "onnx::MatMul_7769",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.21.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.779,
+      "full_correlation": 0.7721
+    },
+    {
+      "tensor": "onnx::MatMul_7770",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.22.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.7857,
+      "full_correlation": 0.7772
+    },
+    {
+      "tensor": "onnx::MatMul_7771",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.22.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.7283,
+      "full_correlation": 0.7258
+    },
+    {
+      "tensor": "onnx::MatMul_7772",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.22.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7248,
+      "full_correlation": 0.7409
+    },
+    {
+      "tensor": "onnx::MatMul_7782",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.22.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8209,
+      "full_correlation": 0.8141
+    },
+    {
+      "tensor": "onnx::MatMul_7783",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.22.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.7811,
+      "full_correlation": 0.7781
+    },
+    {
+      "tensor": "onnx::MatMul_7784",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.22.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.7755,
+      "full_correlation": 0.7751
+    },
+    {
+      "tensor": "onnx::MatMul_7800",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.22.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.7407,
+      "full_correlation": 0.7526
+    },
+    {
+      "tensor": "onnx::MatMul_7806",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.22.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.6883,
+      "full_correlation": 0.6808
+    },
+    {
+      "tensor": "onnx::MatMul_7807",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.22.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.7556,
+      "full_correlation": 0.7504
+    },
+    {
+      "tensor": "onnx::MatMul_7808",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.23.feed_forward1.linear1",
+      "transposed": true,
+      "sample_correlation": 0.7316,
+      "full_correlation": 0.7333
+    },
+    {
+      "tensor": "onnx::MatMul_7809",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.23.feed_forward1.linear2",
+      "transposed": true,
+      "sample_correlation": 0.7245,
+      "full_correlation": 0.7147
+    },
+    {
+      "tensor": "onnx::MatMul_7810",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.23.self_attn.q_proj",
+      "transposed": true,
+      "sample_correlation": 0.7335,
+      "full_correlation": 0.7305
+    },
+    {
+      "tensor": "onnx::MatMul_7820",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.23.self_attn.k_proj",
+      "transposed": true,
+      "sample_correlation": 0.8237,
+      "full_correlation": 0.825
+    },
+    {
+      "tensor": "onnx::MatMul_7821",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.23.self_attn.v_proj",
+      "transposed": true,
+      "sample_correlation": 0.7634,
+      "full_correlation": 0.7686
+    },
+    {
+      "tensor": "onnx::MatMul_7822",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.23.self_attn.relative_k_proj",
+      "transposed": true,
+      "sample_correlation": 0.785,
+      "full_correlation": 0.7766
+    },
+    {
+      "tensor": "onnx::MatMul_7838",
+      "shape": [
+        1024,
+        1024
+      ],
+      "match": "encoder.layers.23.self_attn.o_proj",
+      "transposed": true,
+      "sample_correlation": 0.7254,
+      "full_correlation": 0.7398
+    },
+    {
+      "tensor": "onnx::MatMul_7844",
+      "shape": [
+        1024,
+        4096
+      ],
+      "match": "encoder.layers.23.feed_forward2.linear1",
+      "transposed": true,
+      "sample_correlation": 0.7441,
+      "full_correlation": 0.7313
+    },
+    {
+      "tensor": "onnx::MatMul_7845",
+      "shape": [
+        4096,
+        1024
+      ],
+      "match": "encoder.layers.23.feed_forward2.linear2",
+      "transposed": true,
+      "sample_correlation": 0.7387,
+      "full_correlation": 0.721
+    }
+  ]
+}

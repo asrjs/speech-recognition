@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-04T10:27:44.472Z",
+  "query": {
+    "endpoint": "https://huggingface.co/api/models?pipeline_tag=automatic-speech-recognition&sort=downloads&direction=-1&limit=60&search=turkish+asr",
+    "includedIds": [],
+    "sort": "downloads descending",
+    "purpose": "candidate discovery; not quality or parity evidence"
+  },
+  "models": [
+    {
+      "id": "oguzhankarahan/asr-300m-turkish",
+      "url": "https://huggingface.co/oguzhankarahan/asr-300m-turkish",
+      "downloads": 20,
+      "likes": 0,
+      "lastModified": null,
+      "pipelineTag": "automatic-speech-recognition",
+      "library": "transformers",
+      "license": "apache-2.0",
+      "licenseName": null,
+      "languages": [],
+      "parameterCount": null,
+      "usedStorageBytes": 22716948118,
+      "tags": [
+        "transformers",
+        "pytorch",
+        "tensorboard",
+        "wav2vec2",
+        "automatic-speech-recognition",
+        "generated_from_trainer",
+        "dataset:common_voice",
+        "license:apache-2.0",
+        "model-index",
+        "endpoints_compatible",
+        "region:us"
+      ],
+      "multilingual": {
+        "tagged": false,
+        "languages": [],
+        "languageTags": []
+      },
+      "artifactSignals": {
+        "onnx": 0,
+        "onnxExternalData": 0,
+        "wasm": 0,
+        "gguf": 0,
+        "safetensors": 0,
+        "pytorch": 1,
+        "nemo": 0,
+        "fileCount": 13
+      },
+      "representativeFiles": [
+        ".gitattributes",
+        ".gitignore",
+        "README.md",
+        "added_tokens.json",
+        "config.json",
+        "preprocessor_config.json",
+        "pytorch_model.bin",
+        "runs/Jul02_20-47-15_1a4b7f314579/events.out.tfevents.1688330942.1a4b7f314579.6968.0",
+        "runs/Jul05_11-12-56_76806b09158c/events.out.tfevents.1688556005.76806b09158c.1999.0",
+        "special_tokens_map.json",
+        "tokenizer_config.json",
+        "training_args.bin",
+        "vocab.json"
+      ],
+      "metadataError": null
+    },
+    {
+      "id": "alpcansoydas/turkish-Qwen-Qwen3-ASR-0.6B-finetuned-colab-20260222-134828",
+      "url": "https://huggingface.co/alpcansoydas/turkish-Qwen-Qwen3-ASR-0.6B-finetuned-colab-20260222-134828",
+      "downloads": 9,
+      "likes": 0,
+      "lastModified": null,
+      "pipelineTag": "automatic-speech-recognition",
+      "library": "transformers",
+      "license": null,
+      "licenseName": null,
+      "languages": [],
+      "parameterCount": 782426112,
+      "usedStorageBytes": 1576355514,
+      "tags": [
+        "transformers",
+        "safetensors",
+        "qwen3_asr",
+        "automatic-speech-recognition",
+        "arxiv:1910.09700",
+        "endpoints_compatible",
+        "region:us"
+      ],
+      "multilingual": {
+        "tagged": false,
+        "languages": [],
+        "languageTags": []
+      },
+      "artifactSignals": {
+        "onnx": 0,
+        "onnxExternalData": 0,
+        "wasm": 0,
+        "gguf": 0,
+        "safetensors": 1,
+        "pytorch": 0,
+        "nemo": 0,
+        "fileCount": 13
+      },
+      "representativeFiles": [
+        ".gitattributes",
+        "README.md",
+        "added_tokens.json",
+        "chat_template.jinja",
+        "config.json",
+        "generation_config.json",
+        "merges.txt",
+        "model.safetensors",
+        "preprocessor_config.json",
+        "special_tokens_map.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "vocab.json"
+      ],
+      "metadataError": null
+    },
+    {
+      "id": "alpcansoydas/turkish-Qwen-Qwen3-ASR-0.6B-finetuned-colab-20260222-164918",
+      "url": "https://huggingface.co/alpcansoydas/turkish-Qwen-Qwen3-ASR-0.6B-finetuned-colab-20260222-164918",
+      "downloads": 9,
+      "likes": 0,
+      "lastModified": null,
+      "pipelineTag": "automatic-speech-recognition",
+      "library": "transformers",
+      "license": null,
+      "licenseName": null,
+      "languages": [],
+      "parameterCount": 782426112,
+      "usedStorageBytes": 1576355514,
+      "tags": [
+        "transformers",
+        "safetensors",
+        "qwen3_asr",
+        "automatic-speech-recognition",
+        "arxiv:1910.09700",
+        "endpoints_compatible",
+        "region:us"
+      ],
+      "multilingual": {
+        "tagged": false,
+        "languages": [],
+        "languageTags": []
+      },
+      "artifactSignals": {
+        "onnx": 0,
+        "onnxExternalData": 0,
+        "wasm": 0,
+        "gguf": 0,
+        "safetensors": 1,
+        "pytorch": 0,
+        "nemo": 0,
+        "fileCount": 13
+      },
+      "representativeFiles": [
+        ".gitattributes",
+        "README.md",
+        "added_tokens.json",
+        "chat_template.jinja",
+        "config.json",
+        "generation_config.json",
+        "merges.txt",
+        "model.safetensors",
+        "preprocessor_config.json",
+        "special_tokens_map.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "vocab.json"
+      ],
+      "metadataError": null
+    }
+  ]
+}

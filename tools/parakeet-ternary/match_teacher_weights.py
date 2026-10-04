@@ -51,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--archive", type=Path, default=Path(".cache/parakeet-redux/model.safetensors"))
     parser.add_argument("--manifest", type=Path, default=Path(".cache/parakeet-candidates/parakeet-redux-ternary.json"))
     parser.add_argument("--limit", type=int, default=0, help="stop after N tensors, 0 for all")
+    parser.add_argument("--kind", choices=("matmul", "conv"), default="matmul")
     parser.add_argument("--output", type=Path, default=Path("tools/data/results/model-candidates/redux-weight-map.json"))
     args = parser.parse_args(argv)
 
@@ -71,13 +72,22 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
 
+    # Depthwise convolutions and every bias stay dense in redux, so the candidate
+    # pool has to include them or those tensors can never be matched.
+    for name, tensor in raw.items():
+        if name.endswith(".scales") or name.endswith(".qweight"):
+            continue
+        decoded.setdefault(name, tensor.astype(np.float32))
+
     teacher = load_teacher(args.graph, args.data_dir)
     by_shape: dict[tuple, list[str]] = {}
     for name, tensor in decoded.items():
         by_shape.setdefault(tuple(tensor.shape), []).append(name)
 
     rng = np.random.default_rng(SEED)
-    targets = [n for n in teacher if n.startswith("onnx::MatMul")]
+    kind = args.kind
+    prefix = "onnx::MatMul" if kind == "matmul" else "onnx::Conv"
+    targets = [n for n in teacher if n.startswith(prefix)]
     targets.sort(key=lambda n: int(n.rsplit("_", 1)[1]))
     if args.limit:
         targets = targets[: args.limit]
@@ -130,6 +140,7 @@ def main(argv: list[str] | None = None) -> int:
     confident = [r for r in rows if r["full_correlation"] and r["full_correlation"] > 0.5]
     payload = {
         "graph": str(args.graph),
+        "kind": args.kind,
         "tensors": len(rows),
         "confidentMatches": len(confident),
         "threshold": 0.5,
