@@ -34,6 +34,13 @@ export interface MoonshineSessionOptions {
    * A soft repetition penalty was measured and changed nothing at 1.1, so this
    * is a hard ban rather than a logit scale. With a window of 40 the same clip
    * decoded to coherent LibriVox text with every token distinct.
+   *
+   * The evidence was measured on the seed-free cross-attention runner, not on
+   * this seed-cache session, which still ships the retired architecture. The
+   * ban semantics are identical; only the evidence trail is from the runner.
+   *
+   * End of sequence is never suppressed because it is never appended to
+   * `tokenIds`, so a ban can never trap the decoder in a non-terminating loop.
    */
   readonly repetitionBan?: number;
 }

@@ -160,9 +160,11 @@ for (; steps < maxTokens; steps += 1) {
   const logits = result.logits ?? result[decoder.outputNames[0]];
   let bestId = 0;
   let best = Number.NEGATIVE_INFINITY;
+  // Hoisted: slicing inside the vocab loop would allocate once per token id.
+  const banned = banWindow > 0 ? new Set(tokenIds.slice(-banWindow)) : null;
   for (let index = 0; index < logits.data.length; index += 1) {
     let value = logits.data[index];
-    if (banWindow > 0 && tokenIds.slice(-banWindow).includes(index)) {
+    if (banned?.has(index)) {
       continue;
     }
     if (penalty > 0 && tokenIds.includes(index)) {

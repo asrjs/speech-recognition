@@ -81,7 +81,8 @@
       "mis-patched MatMul: weakened, norms alone reproduce the divergence",
       "pos_bias hybrid: weakened, norms alone reproduce the divergence",
       "amplification of small weight perturbations across 24 layers: consistent with all three rungs"
-    ]
+    ],
+    "non_monotonic": true
   },
   "substitution_ladder": {
     "purpose": "localize which weight class causes the encoder output divergence",
@@ -108,9 +109,10 @@
     ],
     "teacher_std": 0.007251,
     "control": "teacher against itself gives cosine 1.000000 and max abs 0.0",
-    "localisation": "Substituting only the dense norm and bias tensors, with no MatMul at all, already drops cosine to 0.1355. The divergence therefore does not require a mis-patched MatMul and is not specific to the pos_bias hybrid.",
+    "localisation": "Substituting only the dense norm and bias tensors, with no MatMul at all, already drops cosine to 0.1355. The divergence therefore does not require a mis-patched MatMul and is not specific to the pos_bias hybrid. The response is non-monotonic: adding the matched MatMuls IMPROVED cosine from 0.1355 to 0.2107, and the sharpest single-class drop happens when the 44 matched Conv constants are added, 0.2107 to 0.0339. That points at the conv class as the leading lead for a re-examination: 4 conv constants matched below threshold and the pointwise shape squeeze was never independently verified.",
     "std_growth": "output magnitude grows monotonically with each class added, 0.0079 to 0.0119 to 0.0248, so substituted tensors systematically inflate the encoder rather than mis-routing one layer",
     "conclusion": "output cosine is not a usable gate for this candidate. The encoder amplifies small weight perturbations across 24 Conformer layers, so a repack at 1.58 bits decorrelates its output even when per-tensor correlation is 0.8 to 0.99. The only meaningful acceptance test is a transcript oracle against a redux reference decode.",
-    "does_not_prove": "this does not prove the substitution is correct either. It removes two candidate explanations and leaves the substitution unverified."
+    "does_not_prove": "this does not prove the substitution is correct either. It removes two candidate explanations and leaves the substitution unverified.",
+    "leading_lead": "conv class. Re-derive the 44 conv matches with per-tensor margin, and verify the pointwise [2048,1024,1] teacher shape against redux's 2-D [out,in] decoded form before trusting that substitution."
   }
 }
