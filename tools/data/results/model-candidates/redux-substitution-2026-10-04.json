@@ -1,5 +1,5 @@
 {
-  "status": "SUBSTITUTED_0.858_PIPELINE_BLOCKED_BY_ARTIFACT_PAIRING_NOT_BY_SUBSTITUTION",
+  "status": "SUBSTITUTED_0.858_BLOCKED_BY_LIBRARY_REGISTRATION_BUG",
   "model": "moondream/parakeet-redux",
   "what_is_wrong": {
     "kept": 63,
@@ -12,7 +12,7 @@
     ]
   },
   "next_steps": [
-    "find where the runtime resolves predictionLayers to 1 for the model id under test; every decoder export on disk declares the prediction-network state batch as 2",
+    "fix the manifest-to-descriptor wiring so oruk/orukeet resolves; this is a library defect independent of redux, and it also blocks every other Orukeet run",
     "substitute redux's own prediction-network weights (decoder.lstm, decoder_projector, joint) so the pipeline stops being a hybrid",
     "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate",
     "export a decoder_joint path that consumes redux weights directly",
@@ -228,7 +228,10 @@
       "so_the_layouts_agree_in_principle": "both are [2, 1, 640] on the first step",
       "yet_the_observed_error_is": "index 0 Got 1 Expected 2",
       "conclusion": "the runtime resolved predictionLayers to 1 from a source other than source-config.json, most likely a built-in preset or descriptor default for the realtime-120m model id. This is a library config-resolution question, not an export defect and not a redux question.",
-      "suggested_next_step": "instrument or log the resolved predictionLayers for the model id under test, then decide whether the descriptor default should be 2 to match every decoder export on disk"
+      "suggested_next_step": "instrument or log the resolved predictionLayers for the model id under test, then decide whether the descriptor default should be 2 to match every decoder export on disk",
+      "root_cause": "src/presets/parakeet/manifest.ts line 105 sets predictionLayers: 1 for parakeet-realtime-eou-120m-v1, which is an RNNT model. Invoking that id applies an RNNT state layout to a TDT decoder export, which is why the run produced predictionLayers 1 and the graph rejected it.",
+      "correct_invocation": "modelId oruk/orukeet, whose manifest declares decoder tdt and no predictionLayers, so the nemo-tdt default of 2 applies and matches the Orukeet v3 decoder export.",
+      "library_bug": "oruk/orukeet is present in the manifest table with aliases oruk/orukeet-v0.1.0 and orukeet, yet the loader rejects it with 'No model family is registered'. The manifest-to-descriptor wiring does not resolve it, so the shipped Orukeet artifact cannot be loaded through the library at all."
     }
   }
 }
