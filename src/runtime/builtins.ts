@@ -17,6 +17,8 @@ import { createLasrCtcModelFamily } from '../models/lasr-ctc/index.js';
 import { createGigaAmCtcModelFamily } from '../models/gigaam-ctc/index.js';
 import { createParakeetCtcModelFamily } from '../models/parakeet-ctc/index.js';
 import { createOmnilingualCtcModelFamily } from '../models/omnilingual-ctc/index.js';
+import { createOmnilingualCtcPresetFactory } from '../presets/omnilingual-ctc-factory.js';
+import { createWav2Vec2TurkishPresetFactory } from '../presets/wav2vec2-tr-factory.js';
 import { createGigaAmRnntModelFamily } from '../models/gigaam-rnnt/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
@@ -340,6 +342,8 @@ export function registerBuiltInPresets(
     }),
   );
   runtime.registerPreset(createParakeetCtcPresetFactory());
+  runtime.registerPreset(createOmnilingualCtcPresetFactory());
+  runtime.registerPreset(createWav2Vec2TurkishPresetFactory());
   runtime.registerPreset(createMedAsrPresetFactory());
   runtime.registerPreset(createWhisperPresetFactory());
   runtime.registerPreset(

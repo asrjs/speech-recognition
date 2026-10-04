@@ -240,9 +240,7 @@ function getRequiredPreprocessorFilename(
   return `${preprocessor}.onnx`;
 }
 
-function normalizeRequestedPreprocessorName(
-  value: unknown,
-): 'nemo80' | 'nemo128' | undefined {
+function normalizeRequestedPreprocessorName(value: unknown): 'nemo80' | 'nemo128' | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -445,7 +443,9 @@ function revokeBlobUrls(urls: Record<string, unknown>): void {
   }
 }
 
-async function disposeAssetHandles(handles: readonly ResolvedAssetHandle[] | undefined): Promise<void> {
+async function disposeAssetHandles(
+  handles: readonly ResolvedAssetHandle[] | undefined,
+): Promise<void> {
   if (!handles || handles.length === 0) {
     return;
   }
@@ -600,15 +600,11 @@ export async function getParakeetModel(
   const decoderAvailable = getAvailableQuantModes(repoFiles, 'decoder_joint-model');
   const encoderQuant =
     options.encoderQuant ??
-    encoderSetup.encoderPreferred.find((quantization) =>
-      encoderAvailable.includes(quantization),
-    ) ??
+    encoderSetup.encoderPreferred.find((quantization) => encoderAvailable.includes(quantization)) ??
     pickPreferredQuant(encoderAvailable, encoderBackend, 'encoder');
   const decoderQuant =
     options.decoderQuant ??
-    decoderSetup.decoderPreferred.find((quantization) =>
-      decoderAvailable.includes(quantization),
-    ) ??
+    decoderSetup.decoderPreferred.find((quantization) => decoderAvailable.includes(quantization)) ??
     pickPreferredQuant(decoderAvailable, decoderBackend, 'decoder');
   const encoderFilename = getQuantizedModelName('encoder-model', encoderQuant);
   const decoderFilename = getQuantizedModelName('decoder_joint-model', decoderQuant);
@@ -787,9 +783,7 @@ export async function resolveParakeetLocalEntries(
   options: ResolveParakeetLocalEntriesOptions = {},
 ): Promise<ResolvedParakeetLocalArtifacts> {
   throwIfAssetAborted(options.signal, 'download');
-  const requestedPreprocessorName = normalizeRequestedPreprocessorName(
-    options.preprocessorName,
-  );
+  const requestedPreprocessorName = normalizeRequestedPreprocessorName(options.preprocessorName);
   if (entries.length === 0) {
     throw new Error('Pick a local model folder first.');
   }
@@ -797,8 +791,14 @@ export async function resolveParakeetLocalEntries(
   const inspection = inspectParakeetLocalEntries(entries);
   const encoderBackend = resolveEncoderBackend(options);
   const decoderBackend = resolveDecoderBackend(options);
-  const encoderSetup = getParakeetDefaultWeightSetup(options.modelId ?? DEFAULT_MODEL, encoderBackend);
-  const decoderSetup = getParakeetDefaultWeightSetup(options.modelId ?? DEFAULT_MODEL, decoderBackend);
+  const encoderSetup = getParakeetDefaultWeightSetup(
+    options.modelId ?? DEFAULT_MODEL,
+    encoderBackend,
+  );
+  const decoderSetup = getParakeetDefaultWeightSetup(
+    options.modelId ?? DEFAULT_MODEL,
+    decoderBackend,
+  );
   const availableEncoderQuantizations: readonly QuantizationMode[] =
     inspection.encoderQuantizations.length > 0 ? inspection.encoderQuantizations : ['fp32'];
   const availableDecoderQuantizations: readonly QuantizationMode[] =
@@ -954,11 +954,9 @@ export class ParakeetModel {
   /** Creates a Parakeet model from explicitly provided artifact URLs. */
   static async fromUrls(config: ParakeetFromUrlsConfig): Promise<ParakeetModel> {
     const modelId = config.modelId ?? DEFAULT_MODEL;
-    let model: SpeechModel<
-      NemoTdtModelOptions,
-      NemoTdtTranscriptionOptions,
-      NemoTdtNativeTranscript
-    > | undefined;
+    let model:
+      | SpeechModel<NemoTdtModelOptions, NemoTdtTranscriptionOptions, NemoTdtNativeTranscript>
+      | undefined;
     let session: SpeechSession<NemoTdtTranscriptionOptions, NemoTdtNativeTranscript> | undefined;
     try {
       throwIfAssetAborted(config.signal, 'download');

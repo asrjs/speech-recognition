@@ -67,6 +67,8 @@ ARTIFACT_LAYOUTS = {
     'nemotron-rnnt': ('encoder_320ms_fp16', 'decoder', 'tokens.txt'),
     'wav2vec2': ('model', None, 'vocab.json'),
     'parakeet-ctc': ('model', None, 'tokenizer.json'),
+    'wav2vec2-ctc': ('model', None, 'vocab.json'),
+    'omnilingual-ctc': ('model', None, 'tokens.txt'),
 }
 
 
@@ -171,7 +173,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--local-model-root', type=Path,
                         help='Opt in to real local hybrid loading and app warm-up')
-    parser.add_argument('--encoder-precision', choices=['fp32', 'fp16'], default='fp32')
+    parser.add_argument('--encoder-precision', choices=['fp32', 'fp16', 'int8'], default='fp32')
     parser.add_argument('--model-id', default='parakeet-tdt-0.6b-v3',
                         help='Model option to select in the companion UI')
     parser.add_argument('--runtime-backend', choices=['webgpu-hybrid', 'wasm'], default='webgpu-hybrid',

@@ -36,6 +36,7 @@ export type BuiltInPresetId =
   | 'nemotron'
   | 'whisper'
   | 'wav2vec2'
+  | 'wav2vec2-tr'
   | 'parakeet-ctc'
   | 'omnilingual-ctc';
 export type BuiltInModelTask = 'asr' | 'speech-translation';
@@ -669,7 +670,9 @@ function createTurkishWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
     {
       modelId: 'mpoyraz/wav2vec2-xls-r-300m-cv7-turkish',
       aliases: ['wav2vec2-xls-r-300m-cv7-turkish', 'wav2vec2-turkish'],
-      preset: 'wav2vec2',
+      // Its own preset key so the Turkish local-folder adapter and preset
+      // factory resolve; the executor and tokenizer still come from wav2vec2.
+      preset: 'wav2vec2-tr',
       displayName: 'Wav2Vec2 XLS-R 300M (Turkish Common Voice v7)',
       description:
         'Turkish character CTC fine-tune of wav2vec2-large-xls-r, exported to ONNX from official weights.',

@@ -48,7 +48,8 @@ export interface OrtModuleLike {
     dims: readonly number[],
   ) => OrtTensorLike<TData>;
   readonly InferenceSession: {
-    create(url: string, options?: Record<string, unknown>): Promise<OrtSessionLike>;
+    // ORT Web also accepts in-memory bytes for blob-backed local models.
+    create(url: string | Uint8Array, options?: Record<string, unknown>): Promise<OrtSessionLike>;
   };
 }
 
@@ -253,7 +254,27 @@ export async function createOrtSession(
     ];
   }
 
-  const createOptions = withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
+  const createOptions =
+    withNativeAbortSignalOption(sessionOptions, options.signal) ?? sessionOptions;
+
+  // ORT Web rejects blob: URLs ("must be 'path' or 'buffer'"), so in-memory
+  // models from the local-folder loader are fetched to bytes first.
+  if (/^blob:/i.test(sessionModelUrl)) {
+    const response = await fetch(sessionModelUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to read local model bytes: ${response.status}.`);
+    }
+    return honorAbortAfterCreate(
+      async () =>
+        await ort.InferenceSession.create(
+          new Uint8Array(await response.arrayBuffer()),
+          createOptions,
+        ),
+      options.signal,
+      (session) => releaseOrtSession(session),
+    );
+  }
+
   return honorAbortAfterCreate(
     () => ort.InferenceSession.create(sessionModelUrl, createOptions),
     options.signal,

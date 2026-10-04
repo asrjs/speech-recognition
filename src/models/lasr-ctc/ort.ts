@@ -48,7 +48,9 @@ export interface OrtModuleLike {
     dims: readonly number[],
   ) => OrtTensorLike<TData>;
   readonly InferenceSession: {
-    create(url: string, options?: Record<string, unknown>): Promise<OrtSessionLike>;
+    // ORT Web also accepts in-memory bytes, which is how blob-backed local
+    // models are loaded.
+    create(url: string | Uint8Array, options?: Record<string, unknown>): Promise<OrtSessionLike>;
   };
 }
 
@@ -298,7 +300,12 @@ export async function createOrtSession(
   return honorAbortAfterCreate(
     () =>
       ort.InferenceSession.create(sessionModelUrl, createOptions).then((session) => {
-        console.info('[ort] session created', options.backendId, sessionModelUrl, `${Date.now() - createStarted}ms`);
+        console.info(
+          '[ort] session created',
+          options.backendId,
+          sessionModelUrl,
+          `${Date.now() - createStarted}ms`,
+        );
         return session;
       }),
     options.signal,

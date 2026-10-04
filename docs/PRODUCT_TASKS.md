@@ -1,3 +1,43 @@
+## C38 — All three candidate models now load and warm up in the browser
+
+Status: PASS (warm-up) for ctaguchi 110M, omnilingual CTC 300M and Turkish
+wav2vec2 XLS-R, on a real Chrome NVIDIA Blackwell adapter, offline through the
+pinned ORT sidecars. Transcript parity in the browser is still unverified.
+
+Following the established workflow, each candidate now has a descriptor, preset
+factory, local-folder adapter and a companion-UI browser gate:
+
+| model                                       | graph                 | browser gate |
+| ------------------------------------------- | --------------------- | ------------ |
+| `ctaguchi/parakeet-hf-ctc-110m-en`          | our own fp32 export   | PASS         |
+| `OpenVoiceOS/omnilingual-asr-ctc-300m-onnx` | released dynamic-int8 | PASS         |
+| `mpoyraz/wav2vec2-xls-r-300m-cv7-turkish`   | our own fp32 export   | PASS         |
+
+Three real defects surfaced while wiring the browser lane, each caught by
+running rather than by types:
+
+1. **Preset key mismatch.** The Turkish descriptor used `preset: 'wav2vec2'`,
+   which has no local-folder adapter, so the browser reported "does not yet have
+   a browser local-folder loader". It now has its own `wav2vec2-tr` preset key,
+   which resolves the adapter and the preset factory while still using the
+   wav2vec2 executor and tokenizer.
+2. **Wrong artifact field names.** The wav2vec2 executor reads
+   `artifacts.modelUrl` / `modelDataUrl` / `modelDataFilename`; the adapter
+   supplied `encoderUrl` / `encoderDataUrl` / `encoderFilename`, so ORT received
+   an undefined path and rejected it with "must be 'path' or 'buffer'".
+3. **ORT Web rejects blob URLs.** In-memory local models arrive as `blob:`
+   URLs, which ORT Web will not load. `createOrtSession` now fetches blob-backed
+   graphs to bytes first, and the shared `OrtModuleLike` signature was widened to
+   `string | Uint8Array` so the in-memory path typechecks.
+
+The browser gates are **warm-up only**: the demo verifies its own bundled
+sample, so these receipts prove the family loads, creates sessions and runs a
+transcription in Chrome, not that browser output matches an oracle. Node-side
+oracle gates are the ones that compare tokens and text.
+
+Receipts: `tools/data/results/omnilingual-ctc/` and
+`tools/data/results/wav2vec2-tr/`. Full suite: 1,477 passed / 33 skipped.
+
 ## C37 — Turkish wav2vec2 XLS-R: first self-exported candidate with Turkish coverage
 
 Status: PASS through the harness on two clips; browser gate and model-accuracy

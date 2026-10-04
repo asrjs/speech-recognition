@@ -107,7 +107,8 @@ export const WAV2VEC2_PRESET_MANIFESTS: readonly Wav2Vec2PresetManifest[] = [
     preset: 'wav2vec2',
     modelId: 'facebook/wav2vec2-base-960h-q8',
     aliases: ['wav2vec2-q8', 'wav2vec2-base-960h-q8', 'base-960h-q8'],
-    description: 'Facebook Wav2Vec2 Base 960h q8 — smallest (91 MB), but slower + WER 9.1% vs 4.5%. Use fp16 for best trade-off.',
+    description:
+      'Facebook Wav2Vec2 Base 960h q8 — smallest (91 MB), but slower + WER 9.1% vs 4.5%. Use fp16 for best trade-off.',
     classification: {
       ecosystem: 'meta',
       processor: 'wav2vec2-conv',
@@ -148,7 +149,8 @@ export const WAV2VEC2_PRESET_MANIFESTS: readonly Wav2Vec2PresetManifest[] = [
     preset: 'wav2vec2',
     modelId: 'm3hrdadfi/wav2vec2-large-xlsr-turkish',
     aliases: ['wav2vec2-turkish', 'xlsr-turkish', 'wav2vec2-tr'],
-    description: 'Wav2Vec2 Large XLSR-53 fine-tuned on Turkish Common Voice. 24-layer transformer, 40-char Turkish vocab.',
+    description:
+      'Wav2Vec2 Large XLSR-53 fine-tuned on Turkish Common Voice. 24-layer transformer, 40-char Turkish vocab.',
     classification: {
       ecosystem: 'meta',
       processor: 'wav2vec2-conv',
@@ -193,7 +195,8 @@ export const WAV2VEC2_PRESET_MANIFESTS: readonly Wav2Vec2PresetManifest[] = [
     preset: 'wav2vec2',
     modelId: 'm3hrdadfi/wav2vec2-large-xlsr-turkish-q8',
     aliases: ['wav2vec2-turkish-q8', 'xlsr-turkish-q8'],
-    description: 'Wav2Vec2 Large XLSR-53 Turkish — int8 dynamic quantized. 303 MB single file, no external data.',
+    description:
+      'Wav2Vec2 Large XLSR-53 Turkish — int8 dynamic quantized. 303 MB single file, no external data.',
     classification: {
       ecosystem: 'meta',
       processor: 'wav2vec2-conv',
@@ -237,7 +240,8 @@ export const WAV2VEC2_PRESET_MANIFESTS: readonly Wav2Vec2PresetManifest[] = [
     preset: 'wav2vec2',
     modelId: 'm3hrdadfi/wav2vec2-large-xlsr-turkish-fp16',
     aliases: ['wav2vec2-turkish-fp16', 'xlsr-turkish-fp16'],
-    description: 'Wav2Vec2 Large XLSR-53 Turkish — fp16. Best accuracy/speed trade-off: same WER as fp32, 32% faster.',
+    description:
+      'Wav2Vec2 Large XLSR-53 Turkish — fp16. Best accuracy/speed trade-off: same WER as fp32, 32% faster.',
     classification: {
       ecosystem: 'meta',
       processor: 'wav2vec2-conv',
@@ -284,9 +288,7 @@ function normalizePresetId(modelId: string): string {
   return modelId.trim().toLowerCase();
 }
 
-export function resolveWav2Vec2PresetManifest(
-  modelId: string,
-): Wav2Vec2PresetManifest | undefined {
+export function resolveWav2Vec2PresetManifest(modelId: string): Wav2Vec2PresetManifest | undefined {
   const normalizedModelId = normalizePresetId(modelId);
 
   return WAV2VEC2_PRESET_MANIFESTS.find((manifest) => {

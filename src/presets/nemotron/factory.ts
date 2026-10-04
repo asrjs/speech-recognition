@@ -1,5 +1,12 @@
-import type { NemotronRnntArtifactSource, NemotronRnntModelOptions } from '../../models/nemotron-rnnt/index.js';
-import type { FamilyModelLoadRequest, ModelClassification, SpeechPresetFactory } from '../../types/index.js';
+import type {
+  NemotronRnntArtifactSource,
+  NemotronRnntModelOptions,
+} from '../../models/nemotron-rnnt/index.js';
+import type {
+  FamilyModelLoadRequest,
+  ModelClassification,
+  SpeechPresetFactory,
+} from '../../types/index.js';
 
 export const DEFAULT_NEMOTRON_PRESET_MODEL = 'nemotron-3.5-asr-streaming-0.6b';
 
@@ -49,9 +56,7 @@ export function listNemotronPresetManifests(): readonly NemotronPresetManifest[]
   return NEMOTRON_PRESET_MANIFESTS;
 }
 
-export function resolveNemotronPresetManifest(
-  modelId: string,
-): NemotronPresetManifest | undefined {
+export function resolveNemotronPresetManifest(modelId: string): NemotronPresetManifest | undefined {
   const normalized = normalizePresetId(modelId);
   return NEMOTRON_PRESET_MANIFESTS.find(
     (manifest) =>
@@ -78,9 +83,7 @@ export function createNemotronPresetFactory(
     supports(modelId?: string): boolean {
       return modelId ? resolveNemotronPresetManifest(modelId) !== undefined : true;
     },
-    async resolveModelRequest(request): Promise<
-      FamilyModelLoadRequest<NemotronRnntModelOptions>
-    > {
+    async resolveModelRequest(request): Promise<FamilyModelLoadRequest<NemotronRnntModelOptions>> {
       const modelId = request.modelId ?? DEFAULT_NEMOTRON_PRESET_MODEL;
       const manifest = resolveNemotronPresetManifest(modelId);
       const manifestSource = options.useManifestSource

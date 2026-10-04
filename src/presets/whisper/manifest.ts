@@ -27,10 +27,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
   {
     preset: 'whisper',
     modelId: WHISPER_4GRAPH_REPO_ID,
-    aliases: [
-      'whisper-large-v3-turbo-onnx-4graph',
-      'whisper-large-v3-turbo-4graph',
-    ],
+    aliases: ['whisper-large-v3-turbo-onnx-4graph', 'whisper-large-v3-turbo-4graph'],
     description:
       'Whisper Large-v3 Turbo ONNX 4-graph split decoder port with KV-cache decode for WebGPU.',
     classification: {
@@ -194,8 +191,6 @@ export function resolveWhisperPresetManifest(modelId: string): WhisperPresetMani
   });
 }
 
-export function resolveWhisperArtifactSource(
-  modelId: string,
-): WhisperArtifactSource | undefined {
+export function resolveWhisperArtifactSource(modelId: string): WhisperArtifactSource | undefined {
   return resolveWhisperPresetManifest(modelId)?.source;
 }
