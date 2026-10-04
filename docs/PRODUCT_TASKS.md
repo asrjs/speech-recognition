@@ -1,3 +1,38 @@
+## C40 — Moonshine tiny ported; omnilingual divergence resolved
+
+Status: PASS for the Node gate. Browser registration for Moonshine is next.
+
+**Omnilingual browser divergence resolved.** The earlier record compared
+different fixtures: the Node passes ran on the four shipped language clips, the
+browser failure ran on `jfk-short`. Two probes settled it. First, a PCM digest
+showed the browser audio path was also wrong: the default `browser-target-rate`
+strategy round-trips through AudioContext and produced `584bb2fe...` while Node
+produced `ebd52851...` for the same file. The probe now reports `audio.pcmSha256`
+and decodes with `native-rate`, so the digests match. Second, with identical PCM
+the Node decode of the same int8 graph still returned garbage on `jfk-short`, so
+the graph was never the cause. On its own fixture
+`tools/data/fixtures/audio/omnilingual/en.wav` the WebGPU run reports
+`baselineMatch: true`. That model does not transcribe `jfk-short`; that fixture is
+outside its demonstrated domain and must not be read as a quality signal.
+
+**Moonshine tiny ported.** `UsefulSensors/moonshine-tiny` runs through
+`PASS_ORACLE_MATCH` on both token ids and text, 457 encoder frames, 25 decode
+steps, 360 ms on CPU. Contract verified from the checkpoint: `feature_size` 1 and
+`do_normalize` false, so raw 16 kHz samples with no mel frontend. The PyTorch
+encoder does not trace under the available exporter, so
+`tools/moonshine-onnx-export/export_moonshine_onnx.py` validates the browser fp32
+pair and records the decoder contract instead of emitting a new graph.
+
+Two decoder facts were measured, not assumed. The graph returns self-attention
+history only, 13 outputs for 6 layers, so cross-attention key and value are
+computed once from the encoder states and stay constant for the utterance. The
+`EncoderDecoderCache` layout also differs from the graph's input names, so the seed
+is mapped by name.
+
+Receipts: `tools/data/results/moonshine/`, `tools/model-debugging/ports/moonshine-tiny.port.json`,
+and `tools/data/results/omnilingual-ctc/browser-webgpu-divergence-resolved-2026-10-04.json`.
+Full suite: 1,477 passed / 33 skipped.
+
 ## C39 — Browser harness measures transcript parity and timings for all three candidates
 
 Status: TWO of three candidates pass real browser transcript parity on WebGPU;

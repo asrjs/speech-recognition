@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "modelId": "UsefulSensors/moonshine-tiny",
+  "family": "moonshine",
+  "preset": "moonshine",
+  "originalWeights": {
+    "path": ".cache/moonshine-tiny/model.safetensors",
+    "sha256": "867cd2215804859c55aa972d740bd5002be149b4e7526328c895d2408848c736"
+  },
+  "localArtifacts": {
+    "root": "models/onnx/moonshine-tiny",
+    "layout": "moonshine-aed-past",
+    "files": [
+      {
+        "path": "models/onnx/moonshine-tiny/encoder_model.onnx",
+        "sha256": "cbbf580f703b2af2137e0f6d14cd87f31cc67bd858bfd8715403a9489982d1a5"
+      },
+      {
+        "path": "models/onnx/moonshine-tiny/decoder_with_past_model.onnx",
+        "sha256": "ebbdfd5dacc138a78ca3904d2305335687dd5dbc4daae09b2a7affaac8149789"
+      },
+      {
+        "path": "models/onnx/moonshine-tiny/tokenizer.json",
+        "sha256": "7b913404bdd039af4756783218af4440bc07fb7d6d8258d677e34f95b3ec416f"
+      },
+      {
+        "path": "models/onnx/moonshine-tiny/generation_config.json",
+        "sha256": "a8e1437432c3ba7d0fca84ced5b3a254bf0c42b8e75fc336497cdcb56675e303"
+      }
+    ]
+  },
+  "fixtures": [
+    {
+      "id": "jfk-short",
+      "path": "tools/data/fixtures/audio/jfk-short.wav",
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "durationSeconds": 11,
+      "oracle": {
+        "path": "tools/data/results/moonshine/moonshine-tiny-baseline-2026-10-04.json",
+        "sha256": "d07bd69c88a8f3d1f4c3487628ffc4863588cfd5d76a27f7108c1f680cddc688",
+        "field": "clips.jfk-short"
+      }
+    }
+  ],
+  "runs": [
+    {
+      "id": "node-native-moonshine-tiny",
+      "runner": "node",
+      "backend": "wasm",
+      "fixture": "jfk-short",
+      "compare": [
+        "token_ids",
+        "text"
+      ],
+      "command": [
+        "node",
+        "tools/model-debugging/scripts/transcribe_moonshine_local.mjs",
+        "--model-dir={localArtifacts.root}",
+        "--audio={fixture.path}"
+      ]
+    }
+  ],
+  "browserRuns": [],
+  "notes": [
+    "Own fp32 browser pair validated by tools/moonshine-onnx-export/export_moonshine_onnx.py; the PyTorch encoder does not trace under the available exporter.",
+    "Raw 16 kHz samples: feature_size 1, do_normalize false, no mel frontend.",
+    "The decoder returns self-attention history only; cross-attention key/value are constant and seeded from the checkpoint.",
+    "Baseline is self-consistency against a reference decode of the same pair."
+  ]
+}

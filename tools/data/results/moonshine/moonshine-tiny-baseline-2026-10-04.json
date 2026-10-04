@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "status": "RECORDED_BASELINE_SELF_CONSISTENCY",
+  "model": "UsefulSensors/moonshine-tiny",
+  "engine": "onnx-community/moonshine-tiny-ONNX fp32 pair, greedy decode, self-attention history updated each step, cross-attention history constant",
+  "clip": "tools/data/fixtures/audio/jfk-short.wav",
+  "clips": {
+    "jfk-short": {
+      "samples": 176000,
+      "frames": 457,
+      "token_ids": [
+        1126,
+        577,
+        590,
+        10404,
+        23035,
+        2244,
+        451,
+        825,
+        596,
+        4234,
+        508,
+        437,
+        363,
+        366,
+        29892,
+        2244,
+        825,
+        366,
+        508,
+        437,
+        363,
+        596,
+        4234,
+        29889
+      ],
+      "text": "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country."
+    }
+  }
+}

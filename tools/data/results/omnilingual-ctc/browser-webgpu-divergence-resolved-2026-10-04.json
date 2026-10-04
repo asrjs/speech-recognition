@@ -1,0 +1,22 @@
+{
+  "status": "RESOLVED_OUT_OF_DOMAIN_FIXTURE_NOT_A_BACKEND_DEFECT",
+  "supersedes": "tools/data/results/omnilingual-ctc/browser-webgpu-divergence-2026-10-04.json",
+  "scope": "Root-cause record for the earlier omnilingual browser failure.",
+  "conclusion": "The int8 graph and the WebGPU provider are both correct. The failure came from the probe feeding jfk-short.wav, which is out of domain for this model.",
+  "evidence": [
+    "PCM digest proved the browser audio path was also wrong: the default browser-target-rate strategy round-trips through AudioContext and produced 584bb2fe... while Node produced ebd52851... for the same file. Switching the probe to native-rate made the digests identical.",
+    "With identical PCM, the Node decode of the same int8 graph still produced garbage on jfk-short, so the graph was never the cause.",
+    "On the model own fixture tools/data/fixtures/audio/omnilingual/en.wav, the Node greedy decode returns \"ask not what your country can do for you ask what you can do for your country\".",
+    "The browser WebGPU run on that same fixture reports status pass and baselineMatch true with the same text."
+  ],
+  "correction_to_earlier_record": "An earlier note said Node passed while the browser failed. Those runs used different fixtures: the Node passes were on the four shipped language clips, the browser failure was on jfk-short. The comparison was never fixture-matched.",
+  "probe_fixes": [
+    "src/ctc-asr-webgpu.js reports audio.pcmSha256, so a decode difference cannot be mistaken for a graph difference.",
+    "The probe decodes with strategy native-rate and therefore parses the WAV directly.",
+    "The probe accepts an absolute or root-relative audio path for custom fixtures."
+  ],
+  "remaining_limits": [
+    "The model does not transcribe jfk-short. It is a 1600+ language CTC model and that fixture is outside its demonstrated domain. Do not read a jfk-short result as a quality signal for it.",
+    "fp32 self-export stays blocked on the omnilingual-asr install plus the 1.3 GB checkpoint."
+  ]
+}
