@@ -1,3 +1,32 @@
+## C37 — Turkish wav2vec2 XLS-R: first self-exported candidate with Turkish coverage
+
+Status: PASS through the harness on two clips; browser gate and model-accuracy
+parity not covered.
+
+`mpoyraz/wav2vec2-xls-r-300m-cv7-turkish` (cc-by-4.0, language `tr`, 530k
+downloads) is the candidate the filter was looking for: non-NVIDIA, **Turkish**,
+and transformers-loadable, so we can export ONNX ourselves instead of adopting a
+third-party repack. That is exactly the Parakeet v2/v3 and Whisper discipline.
+
+Export: new `tools/wav2vec2-onnx-export/export_wav2vec2_ctc_onnx.py` produced a
+1,262,344,930-byte opset-17 graph with a dynamic sample axis from the official
+PyTorch checkpoint, input `input_values [batch, samples]` with the convolutional
+frontend inside. Contract matches the library's existing wav2vec2 and omnilingual
+CTC paths exactly, so the port is wiring plus a 38-token character vocabulary
+where `[PAD]` is the blank and `|` is the word separator.
+
+Both harness gates are `PASS_ORACLE_MATCH` on token ids and text, with the graph,
+vocabulary, fixtures and baseline digest-bound. Named limits: the baseline is
+self-consistency of our own export plus the decode path, since no Turkish
+reference transcript exists for the clips; the clips are English speech
+transcribed into Turkish orthography, which shows the graph performs real work
+but is not a Turkish accuracy claim; descriptor registration compiles and
+suite-tests, but the **browser gate has not been run** for this family, and no
+local-folder adapter or preset wiring is registered yet.
+
+Receipts: `tools/data/results/wav2vec2-tr/`. Manifest:
+`tools/model-debugging/ports/mpoyraz-wav2vec2-turkish.port.json`.
+
 ## C36 — Omnilingual CTC 300M: second model ported, export path assessed
 
 Status: PORT VERIFIED through the harness; self-export path BLOCKED upstream.

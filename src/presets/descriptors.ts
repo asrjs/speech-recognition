@@ -664,6 +664,76 @@ function createOmnilingualCtcDescriptors(): BuiltInModelDescriptor[] {
   ];
 }
 
+function createTurkishWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
+  return [
+    {
+      modelId: 'mpoyraz/wav2vec2-xls-r-300m-cv7-turkish',
+      aliases: ['wav2vec2-xls-r-300m-cv7-turkish', 'wav2vec2-turkish'],
+      preset: 'wav2vec2',
+      displayName: 'Wav2Vec2 XLS-R 300M (Turkish Common Voice v7)',
+      description:
+        'Turkish character CTC fine-tune of wav2vec2-large-xls-r, exported to ONNX from official weights.',
+      classification: {
+        ecosystem: 'wav2vec2',
+        processor: 'raw-waveform-conv',
+        encoder: 'wav2vec2-xls-r',
+        decoder: 'ctc',
+        topology: 'ctc',
+        family: 'wav2vec2',
+        task: 'asr',
+      },
+      languages: ['tr'],
+      defaultSourceLanguage: 'tr',
+      defaultTargetLanguage: 'tr',
+      capabilities: {
+        supportedTasks: ['asr'],
+        supportsTranslation: false,
+        supportsPunctuationCapitalization: false,
+        supportsInverseTextNormalization: false,
+        supportsWordTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsPromptControls: false,
+      },
+      inference: {
+        ...createCtcInferenceLimits(),
+        supportsWordTimestamps: true,
+        supportsTokenTimestamps: true,
+        supportsSegmentTimestamps: true,
+        supportsConfidence: true,
+      },
+      loading: {
+        repoId: 'mpoyraz/wav2vec2-xls-r-300m-cv7-turkish',
+        supportsHubSource: false,
+        supportsLocalSource: true,
+        supportsSplitQuantization: false,
+        supportsSplitBackends: false,
+        availableEncoderBackends: ['wasm', 'webgpu'],
+        availableDecoderBackends: ['wasm'],
+        defaultEncoderBackend: 'wasm',
+        defaultDecoderBackend: 'wasm',
+        availableEncoderQuantizations: ['fp32'],
+        availableDecoderQuantizations: ['fp32'],
+        defaultEncoderQuantization: 'fp32',
+        defaultDecoderQuantization: 'fp32',
+        supportsPreprocessorBackend: false,
+        preprocessorBackends: [],
+        defaultPreprocessorBackend: null,
+        defaultPreprocessorName: null,
+        encoderArtifactBaseName: 'model',
+        decoderArtifactBaseName: 'model',
+        defaultRevision: 'main',
+      },
+      controls: [],
+      warmup: { mode: 'non-empty' },
+      docs: {
+        modelCardUrl: 'https://huggingface.co/mpoyraz/wav2vec2-xls-r-300m-cv7-turkish',
+        architectureSummary:
+          'Raw 16 kHz waveform, zero-mean unit-variance, convolutional frontend in graph, character CTC greedy decode over a 38-token vocabulary with | as the word separator.',
+      },
+    },
+  ];
+}
+
 function createWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
   const manifest = resolveWav2Vec2PresetManifest('facebook/wav2vec2-base-960h');
   return [
@@ -865,6 +935,7 @@ const BUILT_IN_MODEL_DESCRIPTORS = [
   ...createWav2Vec2Descriptors(),
   ...createParakeetCtcDescriptors(),
   ...createOmnilingualCtcDescriptors(),
+  ...createTurkishWav2Vec2Descriptors(),
   ...createWhisperDescriptors(),
 ] as const;
 

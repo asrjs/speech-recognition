@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "modelId": "mpoyraz/wav2vec2-xls-r-300m-cv7-turkish",
+  "family": "wav2vec2",
+  "preset": "wav2vec2",
+  "language": "tr",
+  "originalWeights": {
+    "path": "https://huggingface.co/mpoyraz/wav2vec2-xls-r-300m-cv7-turkish",
+    "note": "Official PyTorch checkpoint exported to ONNX by tools/wav2vec2-onnx-export; weights are not retained in the repo."
+  },
+  "localArtifacts": {
+    "root": "models/onnx/wav2vec2-xls-r-300m-tr",
+    "layout": "wav2vec2-ctc",
+    "files": [
+      {
+        "path": "models/onnx/wav2vec2-xls-r-300m-tr/model.onnx",
+        "sha256": "d7b2152fcb8db548779ebb8f69946f371a23be30a7e038593e09a879be70ba11"
+      },
+      {
+        "path": "models/onnx/wav2vec2-xls-r-300m-tr/vocab.json",
+        "sha256": "6641ad4761f75bbba7ca2591b1eaef57d1ab444762bf6a51f2ddbd70bfe3ee2f"
+      }
+    ]
+  },
+  "fixtures": [
+    {
+      "id": "jfk-short",
+      "path": "tools/data/fixtures/audio/jfk-short.wav",
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "oracle": {
+        "path": "tools/data/results/wav2vec2-tr/turkish-baseline-2026-10-04.json",
+        "sha256": "7bbff343aefdcf512d5b1b2b3be4ded6a5a967582618dd4a4886bb19ce850257",
+        "field": "clips.jfk-short"
+      }
+    },
+    {
+      "id": "en-rep4",
+      "path": "tools/data/fixtures/audio/omnilingual/en.wav",
+      "sha256": "148b936b43ce7c546a866e64da059f0458aee2d65e617f16e9d94f06e8d99ed6",
+      "oracle": {
+        "path": "tools/data/results/wav2vec2-tr/turkish-baseline-2026-10-04.json",
+        "sha256": "7bbff343aefdcf512d5b1b2b3be4ded6a5a967582618dd4a4886bb19ce850257",
+        "field": "clips.en-rep4"
+      }
+    }
+  ],
+  "runs": [
+    {
+      "id": "node-native-w2v2-jfk-short",
+      "runner": "node",
+      "backend": "native-cpu",
+      "fixture": "jfk-short",
+      "compare": [
+        "token_ids",
+        "text"
+      ],
+      "command": [
+        "node",
+        "tools/model-debugging/scripts/transcribe_wav2vec2_ctc_local.mjs",
+        "--model-dir={localArtifacts.root}",
+        "--audio={fixture.path}"
+      ]
+    },
+    {
+      "id": "node-native-w2v2-en-rep4",
+      "runner": "node",
+      "backend": "native-cpu",
+      "fixture": "en-rep4",
+      "compare": [
+        "token_ids",
+        "text"
+      ],
+      "command": [
+        "node",
+        "tools/model-debugging/scripts/transcribe_wav2vec2_ctc_local.mjs",
+        "--model-dir={localArtifacts.root}",
+        "--audio={fixture.path}"
+      ]
+    }
+  ],
+  "browserRuns": [],
+  "notes": [
+    "Our own fp32 ONNX export from official weights, not a third-party repack.",
+    "Turkish character CTC, vocab 38, blank [PAD]=0, | is the word separator.",
+    "Baseline is self-consistency of the export and decode path; no Turkish reference transcript exists for these clips."
+  ]
+}
