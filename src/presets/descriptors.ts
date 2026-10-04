@@ -38,6 +38,7 @@ export type BuiltInPresetId =
   | 'wav2vec2'
   | 'wav2vec2-tr'
   | 'moonshine'
+  | 'qwen3-asr'
   | 'parakeet-ctc'
   | 'omnilingual-ctc';
 export type BuiltInModelTask = 'asr' | 'speech-translation';
@@ -738,6 +739,77 @@ function createTurkishWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
   ];
 }
 
+function createQwen3AsrDescriptors(): BuiltInModelDescriptor[] {
+  return [
+    {
+      modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
+      aliases: ['qwen3-asr-0.6b'],
+      preset: 'qwen3-asr',
+      displayName: 'Qwen3-ASR 0.6B (multilingual, language-tagged)',
+      description:
+        'Conditional speech recognizer over a 128-bin mel frontend, with a 28-layer autoregressive decoder and language identification.',
+      classification: {
+        ecosystem: 'qwen',
+        processor: 'mel-128',
+        encoder: 'qwen3-asr-audio-tower',
+        decoder: 'aed',
+        topology: 'aed',
+        family: 'qwen3-asr',
+        task: 'asr',
+      },
+      languages: ['multilingual'],
+      defaultSourceLanguage: 'en',
+      defaultTargetLanguage: 'en',
+      capabilities: {
+        supportedTasks: ['asr'],
+        supportsTranslation: false,
+        supportsPunctuationCapitalization: false,
+        supportsInverseTextNormalization: false,
+        supportsWordTimestamps: false,
+        supportsSegmentTimestamps: false,
+        supportsPromptControls: false,
+      },
+      inference: {
+        ...createCtcInferenceLimits(),
+        supportsWordTimestamps: false,
+        supportsTokenTimestamps: false,
+        supportsSegmentTimestamps: false,
+        supportsConfidence: false,
+      },
+      loading: {
+        repoId: 'Qwen/Qwen3-ASR-0.6B-hf',
+        // The graphs are our own fp32 export from the validated checkpoint, so
+        // there is no Hub artifact to resolve.
+        supportsHubSource: false,
+        supportsLocalSource: true,
+        supportsSplitQuantization: false,
+        supportsSplitBackends: false,
+        availableEncoderBackends: ['wasm', 'webgpu'],
+        availableDecoderBackends: ['wasm', 'webgpu'],
+        defaultEncoderBackend: 'wasm',
+        defaultDecoderBackend: 'wasm',
+        availableEncoderQuantizations: ['fp32'],
+        availableDecoderQuantizations: ['fp32'],
+        defaultEncoderQuantization: 'fp32',
+        defaultDecoderQuantization: 'fp32',
+        supportsPreprocessorBackend: false,
+        preprocessorBackends: [],
+        defaultPreprocessorBackend: null,
+        defaultPreprocessorName: null,
+        encoderArtifactBaseName: 'audio_front_model',
+        decoderArtifactBaseName: 'decoder_step_model',
+        defaultRevision: 'main',
+      },
+      controls: [],
+      warmup: { mode: 'expected-text' },
+      docs: {
+        modelCardUrl: 'https://huggingface.co/Qwen/Qwen3-ASR-0.6B-hf',
+        architectureSummary:
+          '128-bin mel at n_fft 400 and hop 160, an audio tower plus multimodal projector emitting one embedding per frame, then a 28-layer grouped-query decoder with a stacked KV cache. Output is a language tag, the language name, an asr_text marker, then the words.',
+      },
+    },
+  ];
+}
 
 function createMoonshineDescriptors(): BuiltInModelDescriptor[] {
   return [
@@ -1013,6 +1085,7 @@ const BUILT_IN_MODEL_DESCRIPTORS = [
   ...createOmnilingualCtcDescriptors(),
   ...createTurkishWav2Vec2Descriptors(),
   ...createMoonshineDescriptors(),
+  ...createQwen3AsrDescriptors(),
   ...createWhisperDescriptors(),
 ] as const;
 
