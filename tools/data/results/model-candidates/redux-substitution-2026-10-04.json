@@ -1,0 +1,25 @@
+{
+  "status": "HYBRID_ARTIFACT_NO_GATE_RUN",
+  "model": "moondream/parakeet-redux",
+  "what_works": {
+    "download": "177774490 bytes, sha256 78ec25733ee0d0c1586d1346fc86db9d0c2e436e3a8ab1d32a82d1bb8f848d21, matching the layout arithmetic computed before any download",
+    "decode": "264 quantized modules, 603979776 parameters, exact by construction",
+    "mapping": "217 of 217 MatMul constants and 44 of 48 Conv constants matched to redux modules by correlation, mean correlation 0.798",
+    "patched_external": "237 anonymous constants plus 240 named external tensors replaced"
+  },
+  "what_is_wrong": {
+    "kept": 375,
+    "reasons": [
+      "inline initializer, not rewritten",
+      "no match above the correlation threshold"
+    ],
+    "inline_problem": "the teacher pack reports 295 external tensors out of 612 initializers, so roughly 317 are baked into the .onnx protobuf. The external-data write path can never reach them, so replacing them needs TensorProto.raw_data assignment and a protobuf re-save.",
+    "consequence": "the artifact mixes redux and teacher weights. A gate result on it would be ambiguous in both directions, so no oracle gate was run."
+  },
+  "next_steps": [
+    "rewrite the inline initializers through TensorProto.raw_data and re-save the graph",
+    "then run the JFK oracle gate for redux, which needs a redux baseline recorded from the reference decode",
+    "the decoder_joint weights are not in the teacher encoder graph and still need their own export path"
+  ],
+  "honest_note": "Correlation 0.798 against the teacher originals is consistent with a ternary repack of the same checkpoint, but it is not accuracy evidence. No accuracy claim exists for redux in any form."
+}
