@@ -1,5 +1,5 @@
 {
-  "status": "ARCHITECTURE_RESOLVED_REFERENCE_DECODE_BLOCKED",
+  "status": "AUDIO_FRONT_EXPORT_BLOCKED",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -47,8 +47,9 @@
     "then export our own fp32 graphs and gate against a PyTorch reference"
   ],
   "not_done": [
-    "no export was attempted, because the architecture cannot be instantiated",
-    "no parity measurement, no oracle, no registration, and no accuracy claim exists for this model"
+    "the 28-layer language model decoder graph is not exported",
+    "no ONNX parity measurement exists",
+    "no Node runner, no oracle gate, no library registration, and no accuracy claim exists for this model"
   ],
   "unblock": {
     "done": "a separate venv at tools/model-debugging/reference/transformers5 now carries torch 2.14.1+cpu and transformers 5.18.0",
@@ -65,5 +66,24 @@
     "attempts": 6,
     "consequence": "no reference transcript exists yet, so no oracle and no accuracy claim",
     "next_step": "inspect Qwen3ASRProcessor's forward to build the exact input dict, including the feature mask and the decoder seed"
+  },
+  "export": {
+    "tool": "tools/qwen3-asr-onnx-export/export_qwen3_asr_front.py",
+    "scope": "audio_tower plus multi_modal_projector, exported separately from the 28-layer language model so the mel contract is testable on its own",
+    "forward_works": "yes; the PyTorch path computes reference outputs, so the module wiring, the feature mask and the pooled-output handling are all correct",
+    "blocker": {
+      "error": "GuardOnDataDependentSymNode: Could not extract specialized integer from data-dependent expression u1",
+      "site": "transformers/models/qwen3_asr/modeling_qwen3_asr.py line 310, get_audio_cu_seqlens",
+      "code": "cu_chunk_lens += [window_aftercnn] * (cnn_len // window_aftercnn)",
+      "meaning": "chunk lengths are derived from the feature mask in Python, so the export shape depends on the data rather than on the declared axes. The dynamo exporter cannot specialize it.",
+      "not_a_rank_problem": "this differs from the Moonshine encoder case, which needed dynamo for a rank mismatch; here the obstacle is data-dependent control flow"
+    },
+    "candidate_remedies": [
+      "legacy tracing with dynamo=False, which will bake the chunk boundaries as constants and give a fixed-length graph; this loses variable-length audio and must be recorded as such, not silently accepted",
+      "patching get_audio_cu_seqlens so the chunk schedule is computed from the declared frame axis instead of the mask, which changes model code and would need its own justification",
+      "an existing ONNX export of this architecture from a trusted source, which the roadmap forbids in place of our own"
+    ],
+    "decision": "not forced. No fixed-length graph was shipped, because a graph that silently cannot handle other audio lengths is exactly the class of defect this project has been removing all session.",
+    "artifacts": "the exporter is kept and runs up to the export call, so the blocker is one command away from being revisited"
   }
 }
