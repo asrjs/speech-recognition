@@ -12,10 +12,10 @@
     ]
   },
   "next_steps": [
-    "smoke-test encoder adjacency: cosine and max abs error of the substituted encoder against the teacher encoder on the JFK fixture, before any oracle gate",
-    "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate",
-    "resolve the relative-position parameterisation difference so the attention path stops being a hybrid",
-    "export a decoder_joint path, which the teacher encoder graph does not contain"
+    "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate; this is the only remaining acceptance test",
+    "export a decoder_joint path, which the teacher encoder graph does not contain",
+    "port moonshine-streaming as its own checkpoint: download safetensors, export, add a chunked decode loop",
+    "evaluate parakeet-ultra and primeline within the download budget"
   ],
   "honest_note": "Correlation 0.798 against the teacher originals is consistent with a ternary repack of the same checkpoint, but it is not accuracy evidence. No accuracy claim exists for redux in any form.",
   "coverage_progression": [
@@ -136,5 +136,6 @@
     "conclusion": "no tested hypothesis explains the divergence. Mis-patched MatMuls are weakened, the pos_bias hybrid is weakened, and the guessed bias matches are ruled out. The substitution remains unverified and the transcript oracle against a redux reference decode is still the only acceptance test.",
     "role_of_the_bias_fix": "hygiene, not the divergence explanation. Conv norm biases are small, roughly 0.1 to 1.0, so a wrong-but-plausible bias shifts activations slightly and cannot account for a 3.4x output-std inflation. The std growth of 1.09x, 1.64x, 3.4x tracks cumulative substitution, and the large inflation enters at the conv rung through the 2-D weight matrices.",
     "remaining_question": "whether the 44 conv weight-matrix matches at correlation 0.6 to 0.86 are functionally faithful despite quantization. Only a transcript oracle against a redux reference decode can answer that."
-  }
+  },
+  "leading_lead": "resolved and recorded in conv_re_examination: the 44 conv matches were re-derived with per-tensor margins, which exposed that correlation matching is unsound for 1-D biases. The guard was applied and the bias matches were ruled out as the cause. What remains open is whether the 2-D conv weight matrices are functionally faithful despite quantization, which only the transcript oracle can answer."
 }
