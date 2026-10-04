@@ -100,9 +100,13 @@ const penalty = Number(argValue('repetition-penalty', '0'));
 // A hard ban on the last N emitted tokens is the decisive test for whether the
 // long-form loop is a selection artifact or the model's own window.
 const banWindow = Number(argValue('ban-window', '0'));
-const slots = 12;
-const heads = 8;
-const headDim = 36;
+// Geometry comes from the export receipt, not from constants: hidden size
+// differs across Moonshine checkpoints and a hardcoded head dimension silently
+// overflows the cross-attention block.
+const receipt = JSON.parse(readFileSync(`${artifactDir}/export-receipt.json`, 'utf8'));
+const slots = receipt.graphs.decoder.interface.slots;
+const heads = receipt.graphs.decoder.interface.heads;
+const headDim = receipt.graphs.decoder.interface.headDim;
 
 const generation = JSON.parse(readFileSync(`${artifactDir}/generation_config.json`, 'utf8'));
 const vocab = buildVocab(JSON.parse(readFileSync(`${artifactDir}/tokenizer.json`, 'utf8')));

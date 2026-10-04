@@ -1,0 +1,43 @@
+{
+  "status": "EXPORTED_NOT_VALIDATED",
+  "model": "moonshine-ai/moonshine-streaming-tiny",
+  "license": "MIT",
+  "archive": {
+    "bytes": 176237308,
+    "declared_mb": 168.1
+  },
+  "contract": {
+    "sampling_rate": 16000,
+    "do_normalize": false,
+    "pad_to_multiple_of": 80,
+    "note": "identical raw-waveform contract to the non-streaming Moonshine port, so the frontend is reusable"
+  },
+  "export": {
+    "tool": "tools/moonshine-onnx-export/export_moonshine_pair.py, reused unchanged",
+    "graphs": "encoder, cross-attention projection and autoregressive decoder step",
+    "interface": {
+      "slots": 12,
+      "heads": 8,
+      "headDim": 40
+    },
+    "note": "headDim 40 against 36 on the non-streaming checkpoint, which exposed a hardcoded-geometry bug in the pair runner"
+  },
+  "runner_fix": "the runner now reads slots, heads and headDim from the export receipt instead of constants, so it is no longer pinned to one checkpoint",
+  "decode_result": {
+    "status": "FAIL",
+    "symptom": "256 tokens with a repeating pair and no EOS",
+    "reading": "a streaming-trained decoder fed whole-utterance encoder states is out of distribution; chunked decoding with the model's own right-context convention is required and was not built"
+  },
+  "oracle_blocked": {
+    "error": "ValueError: text input must be of type str, list[str] or list[list[str]]",
+    "stage": "inside model.generate, so the installed transformers cannot run generate for this checkpoint",
+    "attempts": 4,
+    "consequence": "no reference transcript exists, so the port cannot be gated"
+  },
+  "not_done": [
+    "chunked streaming decode loop with the model's context convention",
+    "a reference transcript, blocked on the transformers generate failure",
+    "Node oracle gate"
+  ],
+  "honest_note": "download and export succeeded and the graphs load and run; the model does not yet transcribe. Nothing here supports a claim about accuracy or streaming quality."
+}
