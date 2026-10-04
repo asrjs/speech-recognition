@@ -241,6 +241,21 @@
       "detokenize with the repository tokenizer and strip the language tag and asr_text marker, as the reference capture does",
       "compare against the recorded JFK oracle"
     ],
-    "known_constraint": "the audio front is fixed to the exported frame count, so the runner currently handles only audio of that length; the model's own window is 30 s, which is where this matters least"
+    "known_constraint": "the audio front is fixed to the exported frame count, so the runner currently handles only audio of that length; the model's own window is 30 s, which is where this matters least",
+    "runner": {
+      "tool": "tools/model-debugging/scripts/transcribe_qwen3_asr_local.mjs",
+      "status": "WRITTEN_BUT_NOT_RUNNING",
+      "reaches": "it loads both graphs, runs the audio front successfully, and fails constructing the first input tensor",
+      "error": "Tensor's size(140800) does not match data length(0), which is the input_features tensor at [1, 128, 1100]",
+      "diagnosis": "the numpy reader in the runner returns an empty array even though the headers are correct: descr <f4, shape (1, 128, 1100), 563328 bytes on disk for 140800 floats. The slice offsets around the Node Buffer are the suspect, since the same reader works for nothing yet and has not been verified against a known length.",
+      "verified_facts_about_the_arrays": {
+        "prompt_prefix_embeds": "(1, 9, 1024), 36992 bytes",
+        "prompt_suffix_embeds": "(1, 6, 1024), 24704 bytes",
+        "jfk_features": "(1, 128, 1100), 563328 bytes",
+        "jfk_features_mask": "(1, 1100), 4528 bytes, int32 so it is not read as float32"
+      },
+      "known_incomplete": "the loop cannot embed an emitted token without a graph for embed_tokens, so a --one-token mode was added as an interim; a full loop needs either that graph or the token embeddings resolved per step",
+      "not_done": "no transcript has been produced by the graphs, so no oracle comparison has run and no accuracy claim exists"
+    }
   }
 }
