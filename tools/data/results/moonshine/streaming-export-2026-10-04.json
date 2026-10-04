@@ -46,7 +46,14 @@
     "consequence": "the installed transformers maps none of the streaming encoder tensors, loads the model anyway, and randomly initializes the whole encoder. It reports this only as a warning, and generation then emits repeated filler.",
     "evidence": "load reported newly initialized model.encoder.conv1.weight, conv2, conv3, groupnorm, layer_norm and every layer's input_layernorm and post_attention_layernorm; the checkpoint key census shows model.encoder.embedder.* and model.model.encoder.conv1.* for the non-streaming model",
     "oracle_consequence": "no reference transcript can be produced with this toolchain, so nothing can be gated",
-    "silent_success_class": "a load that succeeds, produces plausible-shaped output and only warns. The same class as the dead cross-attention input and the data-section-relative offsets earlier in this session."
+    "silent_success_class": "a load that succeeds, produces plausible-shaped output and only warns. The same class as the dead cross-attention input and the data-section-relative offsets earlier in this session.",
+    "architecture_difference": {
+      "finding": "the difference is not only key naming. The streaming encoder layer holds mlp, self_attn and layernorms only, with no conv module and no relative_k_proj, and its embedder uses a linear projection where the non-streaming one uses conv3 plus groupnorm.",
+      "comparison": "streaming-only layer keys: none beyond the gamma suffix; non-streaming-only: conv.depthwise_conv, conv.norm, conv.pointwise_conv1/2 and self_attn.relative_k_proj",
+      "consequence": "a state-dict rename cannot fix this. The module graph itself differs, so the installed MoonshineEncoder cannot represent this checkpoint even after renaming.",
+      "correct_prerequisite": "the streaming Moonshine model class itself, which the installed transformers does not provide. Renaming keys is not a shortcut and should not be attempted.",
+      "correction": "an earlier framing of this blocker as a key-embedding mismatch would have sent a session down a rename attempt that cannot succeed"
+    }
   },
   "prerequisites": [
     "a transformers version whose Moonshine streaming class expects model.encoder.embedder.*, or a state-dict remap into the expected layout",
