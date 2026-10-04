@@ -12,7 +12,7 @@
     ]
   },
   "next_steps": [
-    "localize the input_states_1 batch mismatch: compare how the library assembles the decoder feeds for the teacher artifact versus the substituted one",
+    "discriminate the batch-2 decoder input: run the same command against the untouched teacher artifact to separate a pairing mistake from a substitution-induced failure",
     "substitute redux's own prediction-network weights (decoder.lstm, decoder_projector, joint) so the pipeline stops being a hybrid",
     "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate",
     "export a decoder_joint path that consumes redux weights directly",
@@ -151,6 +151,32 @@
       "no redux transcript exists, so no gate has run",
       "the mismatch is not yet localized; it may be a harness configuration issue rather than a model defect"
     ],
-    "prerequisite": "localize why the library feeds batch 1 to input_states_1 with this artifact when it feeds 2 with the teacher artifact"
+    "prerequisite": "localize why the library feeds batch 1 to input_states_1 with this artifact when it feeds 2 with the teacher artifact",
+    "localisation": {
+      "decoder_graph_declares": {
+        "input_states_1": [
+          2,
+          "seq",
+          640
+        ],
+        "input_states_2": [
+          2,
+          "seq",
+          640
+        ],
+        "encoder_outputs": [
+          "batch",
+          1024,
+          "time"
+        ]
+      },
+      "finding": "the decoder export bakes batch 2 into the prediction-network state inputs, while the run delivered batch 1",
+      "candidate_causes": [
+        "the library derives the initial state batch from the encoder output batch, so a batch-1 encoder run produces a batch-1 state the decoder cannot accept",
+        "artifact mismatch on my side: the decoder, vocab and source-config were copied from the Orukeet v3 export while the run used the parakeet-realtime-eou-120m-v1 model id, so config-driven state dims may come from the wrong model"
+      ],
+      "status": "not yet discriminated; both candidates remain open",
+      "cheap_next_step": "run the identical command against the untouched teacher artifact and compare whether it fails the same way; if it does, the cause is the pairing rather than the substitution"
+    }
   }
 }
