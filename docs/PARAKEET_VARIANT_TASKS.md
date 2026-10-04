@@ -506,10 +506,31 @@ public API rungs. Receipt: `browser-head-http11-handoff-2026-10-02.json`.
       improve existing smoke/parity/simulation/WebGPU automation and add a focused
       regression check; record it with the task, rather than postponing all tooling
       work until the model is complete.
-- [ ] **P10 — Choose the next Parakeet derivative.** Rank true smaller
-      distillations and locale fine-tunes by independent quality, browser speed,
-      memory and license. Keep Moonshine/diarization and broader product work in
+- [x] **P10 — Choose the next Parakeet derivative. Answered 2026-10-04.** No
+      non-NVIDIA Parakeet-line model smaller than 627M exists that this project
+      may port. Verified from primary sources, never from file size:
+
+      - `moondream/parakeet-redux` has 627,270,687 parameters, 24 more than its
+        teacher `nvidia/parakeet-tdt-0.6b-v3`. Upstream documents a 1.58-bit
+        ternary repack with every encoder weight in {-1, 0, +1}, same
+        architecture and same tokenizer. It is an integer-quantized repack
+        inside NVIDIA lineage, so the standing rule excludes it. Receipt:
+        `tools/data/results/model-candidates/parakeet-redux-size-correction-2026-10-04.json`.
+      - `primeline/parakeet-primeline` is a full-size 627M fine-tune, read from
+        the first 2 MB of its tar: `model_weights.ckpt` is 2,508,649,755 bytes and
+        `model_config.yaml` declares `ConformerEncoder` with `n_layers: 24`,
+        `d_model: 1024` plus an `RNNTDecoder`, which is the Parakeet v3 topology.
+        Reclassified `DEFER_FULL_SIZE_NOT_A_DISTILLATION`. Receipt:
+        `parakeet-distil-verification-v3-2026-10-04.json`.
+      - `moondream/parakeet-ultra` is 627,270,663 parameters, the same size class.
+      - Locale coverage does not come from Parakeet. The Turkish gap that P10
+        was tracking is now closed by the wav2vec2 XLS-R port
+        (`mpoyraz/wav2vec2-xls-r-300m-cv7-turkish`), which is a new
+        architecture rather than a Parakeet derivative.
+
+      Keep Moonshine/diarization and broader product work in
       `docs/GOAL_PROMPT_RECOMMENDED.md`; Nemotron 3.5 ASR remains paused.
+      P06, P07 and P09 stay open.
 
 ## Existing automation to reuse
 
@@ -1208,12 +1229,12 @@ the same 1,101 x 512 canonical frame bytes, SHA-256
 `e6a1dc984525ae456e0adc92085442b147ff62427581b30012ade46f4f8aaf30`.
 Compare f32 real/imag components against the frozen actual model STFT, not DFT.
 
-| Butterfly / recombination | Mean component abs error | Bit mismatches |
-| --- | ---: | ---: |
-| separate / separate | 2.6667971262710457e-8 | 494,612 |
-| separate / single-round | 2.6484949320305885e-8 | 493,956 |
-| single-round / separate | 2.522761948865524e-8 | 491,337 |
-| single-round / single-round | 2.5031335696156946e-8 | 490,278 |
+| Butterfly / recombination   | Mean component abs error | Bit mismatches |
+| --------------------------- | -----------------------: | -------------: |
+| separate / separate         |    2.6667971262710457e-8 |        494,612 |
+| separate / single-round     |    2.6484949320305885e-8 |        493,956 |
+| single-round / separate     |     2.522761948865524e-8 |        491,337 |
+| single-round / single-round |    2.5031335696156946e-8 |        490,278 |
 
 Neither branch reproduces actual complex bytes. Lower mean error alone is not
 feature or ASR acceptance. Receipt `packed-product-spectrum-jfk-2026-10-02.json`
@@ -1232,12 +1253,12 @@ match the prior spectrum run. Diagnostic power, production mel accumulation
 and width8 normalization are identical across branches. Against actual captured
 features at unchanged `atol=1e-5, rtol=1e-4`, mismatch counts are:
 
-| Butterfly / recombination | Feature mismatches | Max abs error |
-| --- | ---: | ---: |
-| separate / separate | 215 | 3.078877925872803e-4 |
-| separate / single-round | 220 | 3.078877925872803e-4 |
-| single-round / separate | 179 | 3.626048564910889e-4 |
-| single-round / single-round | 187 | 3.626048564910889e-4 |
+| Butterfly / recombination   | Feature mismatches |        Max abs error |
+| --------------------------- | -----------------: | -------------------: |
+| separate / separate         |                215 | 3.078877925872803e-4 |
+| separate / single-round     |                220 | 3.078877925872803e-4 |
+| single-round / separate     |                179 | 3.626048564910889e-4 |
+| single-round / single-round |                187 | 3.626048564910889e-4 |
 
 All FAIL. The best branch is still worse than the earlier 121-mismatch aligned
 control and increases peak error. Reject these as production fixes; lower mean
@@ -1296,11 +1317,11 @@ control remains byte exact against the actual STFT. No weights or model were
 rerun. Three explicit recombination modes share the same complex256 output;
 none identifies MKL's internal implementation.
 
-| Recombination | Spectrum mean abs error | Feature mismatches |
-| --- | ---: | ---: |
-| f64 intermediates, final f32 | 4.414092749510645e-9 | 3 |
-| f32, separately rounded products | 4.259244081299885e-9 | 1 |
-| f32, single-round product sums | 3.6958557846953095e-9 | 0 |
+| Recombination                    | Spectrum mean abs error | Feature mismatches |
+| -------------------------------- | ----------------------: | -----------------: |
+| f64 intermediates, final f32     |    4.414092749510645e-9 |                  3 |
+| f32, separately rounded products |    4.259244081299885e-9 |                  1 |
+| f32, single-round product sums   |   3.6958557846953095e-9 |                  0 |
 
 All feature comparisons retain `atol=1e-5, rtol=1e-4`, diagnostic rounded
 power, mixed mel accumulation, f32 log guard and width8 normalization. The
@@ -1456,7 +1477,7 @@ alone is therefore limited; add those guards to the reusable replay tool.
 Single-frame subboundary control reveals cancellation: real output combines
 `er=-0.3727142810821533` with `tr=0.37148404121398926` to produce about
 `-0.00123024`. The candidate real error is `2.60770320892334e-8`.
-Using f64 recombination of the *same f32 complex256 outputs* does not repair
+Using f64 recombination of the _same f32 complex256 outputs_ does not repair
 that real error (`2.7241185307502747e-8`); it is not enough to simply switch
 the final recombination to double precision. Secondary f64/`math.fsum` DFT is
 only a mathematical sanity control, not the original implementation oracle.
@@ -2963,8 +2984,8 @@ about two orders of magnitude tighter than fp32 accumulation noise on a feed
 that already passes its own `1e-5/1e-4` encoder gate.
 
 Call 40 is the instructive contrast and is not explained by feed size: its
-encoder delta is *smaller* (`8.9034e-7` versus `1.4566e-6`) yet its score
-error is *larger* (`1.1559e-3` versus `5.7888e-4`) with zero mismatches. So
+encoder delta is _smaller_ (`8.9034e-7` versus `1.4566e-6`) yet its score
+error is _larger_ (`1.1559e-3` versus `5.7888e-4`) with zero mismatches. So
 per-call amplification is not constant. Directly observed, per coordinate:
 call 40's only near-zero-|ref| coordinate carries just `1.076e-8` error,
 while its large error sits on deep channels (`|ref|` 51.03 at channel 8196)
@@ -3009,16 +3030,16 @@ recorded encoder delta and applies the full per-coordinate
 `atol + rtol*|ref|` gate:
 
 | encoder delta scale | feed maxAbs | score maxAbsError | mismatch |
-| ---: | ---: | ---: | ---: |
-| 0.000 | 0 | `2.2888e-5` | 0 |
-| 0.100 | `1.457e-7` | `6.0320e-5` | 0 |
-| 0.250 | `3.641e-7` | `1.4424e-4` | 0 |
-| 0.500 | `7.283e-7` | `2.9039e-4` | 1 |
-| 1.000 | `1.457e-6` | `5.8079e-4` | 3 |
+| ------------------: | ----------: | ----------------: | -------: |
+|               0.000 |           0 |       `2.2888e-5` |        0 |
+|               0.100 |  `1.457e-7` |       `6.0320e-5` |        0 |
+|               0.250 |  `3.641e-7` |       `1.4424e-4` |        0 |
+|               0.500 |  `7.283e-7` |       `2.9039e-4` |        1 |
+|               1.000 |  `1.457e-6` |       `5.8079e-4` |        3 |
 
 Read this as a **directional bracket for one call and one error direction
 only**: along the call-20 delta, the gate first fails between 0.25x and 0.5x.
-`3.64e-7` is the largest tested *passing* perturbation on that specific
+`3.64e-7` is the largest tested _passing_ perturbation on that specific
 direction, not the actual boundary and not a criterion for the other 45 calls.
 Directly contradicting any global reading, live call 40 passes the same
 unchanged score gate while carrying a larger feed error (`8.9034e-7`) than
@@ -3075,11 +3096,11 @@ Cross-receipt binding, compared directly rather than assumed from shared PCM.
 Against this capture's official `encoder[:,:,69:70]`, and against each recorded
 real-browser run's own frame 69:
 
-| comparison | maxAbsError |
-| --- | ---: |
-| live call-20 feed vs official `encoder[:,:,69:70]` | `1.4566e-6` |
+| comparison                                              | maxAbsError |
+| ------------------------------------------------------- | ----------: |
+| live call-20 feed vs official `encoder[:,:,69:70]`      | `1.4566e-6` |
 | live call-20 feed vs official-feature run `[:,:,69:70]` | `4.5449e-7` |
-| live call-20 feed vs production-JS run `[:,:,69:70]` | `1.1316e-6` |
+| live call-20 feed vs production-JS run `[:,:,69:70]`    | `1.1316e-6` |
 
 These are two **different real-browser executions**, not one. Both share the
 same PCM (`ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`),
@@ -3092,11 +3113,11 @@ explain it. **Live-source attribution stays open**: these controls do not
 reproduce the failing live feed, and the replay outputs must not be described
 as the live encoder output.
 
-| control | vs official encoder | failing |
-| --- | ---: | ---: |
-| official features -> real WebGPU encoder | `1.005828e-6` | 0/141,312 |
-| production-JS features -> native CPU encoder | `4.917383e-7` | 0 |
-| production-JS features -> native CPU vs WebGPU | `5.885959e-7` | 0 |
+| control                                        | vs official encoder |   failing |
+| ---------------------------------------------- | ------------------: | --------: |
+| official features -> real WebGPU encoder       |       `1.005828e-6` | 0/141,312 |
+| production-JS features -> native CPU encoder   |       `4.917383e-7` |         0 |
+| production-JS features -> native CPU vs WebGPU |       `5.885959e-7` |         0 |
 
 The second row is **not** a feature-only effect. It is
 `native(production)` against the official encoder, so it mixes the feature
@@ -3104,8 +3125,8 @@ input with the native-versus-official execution residual. Adding
 `native(official features)` on the same session, with the recorded valid
 length 1100 on both sides, separates them:
 
-| separated effect | maxAbsError |
-| --- | ---: |
+| separated effect                                         |   maxAbsError |
+| -------------------------------------------------------- | ------------: |
 | execution residual `native(official)` - official encoder | `1.326203e-6` |
 | feature effect `native(production)` - `native(official)` | `9.797513e-7` |
 
@@ -3118,7 +3139,7 @@ The feature tensor differs from the official one by `3.423691e-4` max with 313
 coordinates — its own known, unchanged FAIL — yet the encoder's response to
 that change is only `1.069158e-6`, an **attenuation of 0.0031x (about 320x
 smaller)**. That production-feature run sits `3.427267e-7` max from the
-official encoder, *smaller* than the same encoder's official-feature error.
+official encoder, _smaller_ than the same encoder's official-feature error.
 That run is a separate browser execution, not the hybrid run's encoder output.
 
 Conclusion, scoped to what was measured: every control passes the unchanged
@@ -3207,7 +3228,7 @@ Subsequent evidence closed two of them and ruled out a fourth candidate:
   resolved values were never captured in either receipt, so the two option
   objects are not proven equal.
 - **UNVERIFIED — cross-session variability.** Each run repeats bitwise-exactly
-  *within itself*, which rules out its own nondeterminism but says nothing
+  _within itself_, which rules out its own nondeterminism but says nothing
   about variation between two separately created sessions.
 - **RULED OUT — output-transfer precision.** The recorded encoder tensor is
   already float32, so a float32 transfer cannot introduce `1.1316e-6`. The
@@ -3261,13 +3282,13 @@ an exhaustive catalogue and not a community-distillation audit, so it does not
 establish that none exists; it bounds what was actually checked. Among the
 official models checked, every NVIDIA Parakeet is ~600M or larger:
 
-| model | parameters | languages | Turkish | license |
-| --- | ---: | ---: | --- | --- |
-| nvidia/parakeet-tdt-0.6b-v3 | 627,057,286 | 25 | no | cc-by-4.0 |
-| nvidia/parakeet-tdt-0.6b-v2 | not declared | 1 | no | cc-by-4.0 |
-| nvidia/parakeet-ctc-0.6b | 608,848,897 | 1 | no | cc-by-4.0 |
-| nvidia/parakeet-rnnt-1.1b | 1,070,518,785 | 1 | no | cc-by-4.0 |
-| oruk/orukeet | 627,057,286 | 25 | no | cc-by-sa-4.0 |
+| model                       |    parameters | languages | Turkish | license      |
+| --------------------------- | ------------: | --------: | ------- | ------------ |
+| nvidia/parakeet-tdt-0.6b-v3 |   627,057,286 |        25 | no      | cc-by-4.0    |
+| nvidia/parakeet-tdt-0.6b-v2 |  not declared |         1 | no      | cc-by-4.0    |
+| nvidia/parakeet-ctc-0.6b    |   608,848,897 |         1 | no      | cc-by-4.0    |
+| nvidia/parakeet-rnnt-1.1b   | 1,070,518,785 |         1 | no      | cc-by-4.0    |
+| oruk/orukeet                |   627,057,286 |        25 | no      | cc-by-sa-4.0 |
 
 The only sub-300M record returned by this query is
 `moondream/parakeet-redux` at 148,923,399 parameters, and it is **not** a
@@ -3412,11 +3433,11 @@ Default behavior is unchanged, so existing receipts keep their meaning, and the
 Receipt `tools/data/results/orukeet/browser-cross-session-jfk-2026-10-03.json`,
 real Chrome on the NVIDIA Blackwell adapter, `onnxruntime-web` 1.29.0:
 
-| comparison | result |
-| --- | --- |
-| official features, session 1 vs session 2 | bitwise identical, max `0.0` |
+| comparison                                     | result                       |
+| ---------------------------------------------- | ---------------------------- |
+| official features, session 1 vs session 2      | bitwise identical, max `0.0` |
 | production-JS features, session 1 vs session 2 | bitwise identical, max `0.0` |
-| `cross_session_bitwise_identical` | `true` |
+| `cross_session_bitwise_identical`              | `true`                       |
 
 **Cross-session GPU variability is eliminated.** Two separately created sessions
 produce byte-identical encoder output on both feature sources, so the
@@ -3445,12 +3466,12 @@ encoder and re-runs it, so the encoder output is measured a second time with a
 decoder session present. Receipt
 `tools/data/results/orukeet/browser-co-resident-jfk-2026-10-03.json`.
 
-| control | result |
-| --- | --- |
+| control                              | result                       |
+| ------------------------------------ | ---------------------------- |
 | cross-session (two encoder sessions) | bitwise identical, max `0.0` |
-| co-resident decoder session | bitwise identical, max `0.0` |
-| `inputs_unchanged` | `true` |
-| decoder graph served and hash-bound | `true` (9 bound sources) |
+| co-resident decoder session          | bitwise identical, max `0.0` |
+| `inputs_unchanged`                   | `true`                       |
+| decoder graph served and hash-bound  | `true` (9 bound sources)     |
 
 **For this pair of runs, session co-residency does not change the encoder
 output by a single bit.** The decoder session is created after the first
@@ -3459,7 +3480,7 @@ see the scope note below.
 
 The first attempt at this receipt reported `BROWSER_ENCODER_COMPONENT_FAIL`
 while both encoder gates passed. That was a defect in the new control, not a
-model finding: the decoder was appended to the source list *after* the source
+model finding: the decoder was appended to the source list _after_ the source
 hashes were computed, so `inputs_unchanged` went false and the finalizer forced
 FAIL. The decoder is now resolved before hashing, so it is genuinely bound by
 `sources_sha256`, and the rerun reports `BROWSER_ENCODER_SENSITIVITY_MEASURED`.
@@ -3565,11 +3586,11 @@ questions from the hybrid's own recorded run
 (`browser-hybrid-encoder-trace-jfk-2026-10-03.json`, 1 encoder call, 46 head
 calls, both observers restored, uninstrumented repeat clean):
 
-| question | measured |
-| --- | --- |
+| question                                                 | measured                                           |
+| -------------------------------------------------------- | -------------------------------------------------- |
 | Q1 features the hybrid fed vs replay's recorded features | **byte-identical**, `maxAbs 0.0`, length 1100 both |
-| Q2 hybrid encoder output vs replay encoder output | `maxAbs 1.131557e-6`, `mismatch 0` |
-| Q3 hybrid head feed vs its own encoder output column | **frame 69, `maxAbs 0.0`** |
+| Q2 hybrid encoder output vs replay encoder output        | `maxAbs 1.131557e-6`, `mismatch 0`                 |
+| Q3 hybrid head feed vs its own encoder output column     | **frame 69, `maxAbs 0.0`**                         |
 
 **Q3 closes the handoff question by observation.** The head feed is bitwise
 equal to its own run's encoder output, so nothing between encoder and head
@@ -3592,13 +3613,13 @@ The attribution above was tested and **falsified**. Four separate browser
 launches of the encoder-sensitivity replay produce **bitwise identical** encoder
 output on both feature sources:
 
-| pair | bitwise | maxAbs | mismatch |
-| --- | --- | ---: | ---: |
-| launch 1 vs 2, official | `true` | `0.0` | 0 |
-| launch 1 vs 3, official | `true` | `0.0` | 0 |
-| launch 1 vs prior, official | `true` | `0.0` | 0 |
-| launch 2 vs 3 / 2 vs prior / 3 vs prior, official | `true` | `0.0` | 0 |
-| all six pairs, production-JS | `true` | `0.0` | 0 |
+| pair                                              | bitwise | maxAbs | mismatch |
+| ------------------------------------------------- | ------- | -----: | -------: |
+| launch 1 vs 2, official                           | `true`  |  `0.0` |        0 |
+| launch 1 vs 3, official                           | `true`  |  `0.0` |        0 |
+| launch 1 vs prior, official                       | `true`  |  `0.0` |        0 |
+| launch 2 vs 3 / 2 vs prior / 3 vs prior, official | `true`  |  `0.0` |        0 |
+| all six pairs, production-JS                      | `true`  |  `0.0` |        0 |
 
 Tool: `tools/nemo-tdt-onnx-export/cross_run_variation.py`, over the three new
 launches plus the earlier production-feature receipt. The three receipts are
@@ -3649,15 +3670,15 @@ standalone replay.
 
 The encoder session options are **identical**, measured rather than inferred:
 
-| key | standalone replay | hybrid library path |
-| --- | --- | --- |
-| `enableCpuMemArena` | `true` | `true` |
-| `enableMemPattern` | `true` | `true` |
-| `enableProfiling` | `false` | `false` |
-| `executionMode` | `"parallel"` | `"parallel"` |
-| `executionProviders` | webgpu, gpu, high-performance | webgpu, gpu, high-performance |
-| `externalData` | `.data`, path `encoder-model.onnx.data` | same file |
-| `graphOptimizationLevel` | `"all"` | `"all"` |
+| key                      | standalone replay                       | hybrid library path           |
+| ------------------------ | --------------------------------------- | ----------------------------- |
+| `enableCpuMemArena`      | `true`                                  | `true`                        |
+| `enableMemPattern`       | `true`                                  | `true`                        |
+| `enableProfiling`        | `false`                                 | `false`                       |
+| `executionMode`          | `"parallel"`                            | `"parallel"`                  |
+| `executionProviders`     | webgpu, gpu, high-performance           | webgpu, gpu, high-performance |
+| `externalData`           | `.data`, path `encoder-model.onnx.data` | same file                     |
+| `graphOptimizationLevel` | `"all"`                                 | `"all"`                       |
 
 The hybrid additionally creates a second session for the decoder
 (`executionProviders: ["wasm"]`), which is expected and is not the encoder.
@@ -3757,8 +3778,8 @@ Two more uncontrolled variables were identified and tested. Both are excluded.
 
 **Input order — eliminated.** The hybrid's encoder first run uses production-JS
 features, while the standalone default still runs the official control first, so
-the production comparison was originally between the hybrid's *first* execution
-and the standalone's *third*. `--production-first` reverses the standalone order
+the production comparison was originally between the hybrid's _first_ execution
+and the standalone's _third_. `--production-first` reverses the standalone order
 so production-JS is the first execution. Result: output is **bitwise identical**
 to the default order, on both sources, and its first run equals its own second
 run bitwise. Execution position has no effect.
@@ -3800,21 +3821,21 @@ decides which build runs.
 
 Confirmed from the receipts' own HTTP events:
 
-| run | ORT module | WASM sidecar |
-| --- | --- | --- |
-| standalone replay | `ort.webgpu.min.mjs` | `ort-wasm-simd-threaded.asyncify.wasm` |
-| hybrid library path | `ort.all.bundle.min.mjs` | `ort-wasm-simd-threaded.jsep.wasm` |
+| run                 | ORT module               | WASM sidecar                           |
+| ------------------- | ------------------------ | -------------------------------------- |
+| standalone replay   | `ort.webgpu.min.mjs`     | `ort-wasm-simd-threaded.asyncify.wasm` |
+| hybrid library path | `ort.all.bundle.min.mjs` | `ort-wasm-simd-threaded.jsep.wasm`     |
 
 Same declared version `1.29.0`, different build and a different WASM sidecar.
 `--ort-bundle all` was added to the standalone replay, which overrides only the
 import-map entrypoint through the existing `extra_imports` hook, leaving the
 WebGPU encoder provider unchanged. Result:
 
-| comparison | maxAbs |
-| --- | ---: |
-| all-bundle standalone vs webgpu-bundle standalone | `1.131557e-6` |
-| **hybrid vs all-bundle standalone** | **`0.000000e+00`** |
-| hybrid vs webgpu-bundle standalone | `1.131557e-6` |
+| comparison                                        |             maxAbs |
+| ------------------------------------------------- | -----------------: |
+| all-bundle standalone vs webgpu-bundle standalone |      `1.131557e-6` |
+| **hybrid vs all-bundle standalone**               | **`0.000000e+00`** |
+| hybrid vs webgpu-bundle standalone                |      `1.131557e-6` |
 
 **The hybrid's encoder output is bitwise identical to the standalone's once both
 load the same ORT build.** The whole `1.1316e-6` was the build difference, and
@@ -3849,16 +3870,16 @@ The lever identified above was tested, with `--trace-head` requested so the head
 gate was genuinely evaluated. The hybrid library path, real fp32 WebGPU encoder,
 WASM decoder, loading `ort.webgpu.min.mjs`:
 
-| field | value |
-| --- | --- |
-| status | `REAL_ENCODER_OUTPUT_DIAGNOSTIC_PASS` |
-| `live_head.status` | **`LIVE_HEAD_NUMERICAL_PASS`** |
-| `live_head.observed_calls` | 46 |
-| `live_head.allclose` | **`true`** |
-| failing calls | **none** |
-| `encoder_boundary` | `real` |
-| cleanup errors | none |
-| ORT fetched | `ort.webgpu.min.mjs` + asyncify sidecar |
+| field                      | value                                   |
+| -------------------------- | --------------------------------------- |
+| status                     | `REAL_ENCODER_OUTPUT_DIAGNOSTIC_PASS`   |
+| `live_head.status`         | **`LIVE_HEAD_NUMERICAL_PASS`**          |
+| `live_head.observed_calls` | 46                                      |
+| `live_head.allclose`       | **`true`**                              |
+| failing calls              | **none**                                |
+| `encoder_boundary`         | `real`                                  |
+| cleanup errors             | none                                    |
+| ORT fetched                | `ort.webgpu.min.mjs` + asyncify sidecar |
 
 Head call 20 — the coordinate pair that has failed at every previous real hybrid
 run — passes. This is the **first numerical pass of the browser real-hybrid score
@@ -3923,12 +3944,12 @@ refactor.
 A clue, stated only as far as it goes. Placed on the same axis, the encoder
 outputs differ in how far each sits from the recorded official encoder tensor:
 
-| execution | vs official encoder |
-| --- | ---: |
-| standalone replay, production-JS features | `3.427267e-7` |
-| standalone replay, official features | `1.005828e-6` |
-| native CPU, production-JS features | `4.917383e-7` |
-| **hybrid browser run, frame 69** | `1.4566e-6` |
+| execution                                 | vs official encoder |
+| ----------------------------------------- | ------------------: |
+| standalone replay, production-JS features |       `3.427267e-7` |
+| standalone replay, official features      |       `1.005828e-6` |
+| native CPU, production-JS features        |       `4.917383e-7` |
+| **hybrid browser run, frame 69**          |         `1.4566e-6` |
 
 An earlier revision of this entry claimed the hybrid "changes the encoder result
 systematically" because its residual is about four times the standalone
