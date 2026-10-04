@@ -1,0 +1,76 @@
+{
+  "status": "BROWSER_HARNESS_MEASURED_ALL_THREE_CANDIDATES",
+  "harness": {
+    "repo": "N:/github/asrjs/webgpu-agent-test",
+    "page": "ctc-asr.html",
+    "module": "src/ctc-asr-webgpu.js",
+    "runner": "scripts/run-ctc-asr-webgpu.mjs",
+    "url_params": [
+      "model",
+      "backend",
+      "audio",
+      "oracle",
+      "repeat",
+      "warmup",
+      "clipSec"
+    ],
+    "capture": "POST /__test_result__, polled from /__test_results__, preset-keyed diff",
+    "imports": "relative ../../speech-recognition/src/... so the gate exercises live library source",
+    "model_serving": "/@fs/ under the existing server.fs.allow entry for the repository"
+  },
+  "environment": {
+    "browser": "Chrome headless WebGPU",
+    "adapter": {
+      "vendor": "nvidia",
+      "architecture": "blackwell"
+    }
+  },
+  "measurements": [
+    {
+      "model": "wav2vec2-tr",
+      "graph": "our own fp32 export",
+      "backend": "webgpu",
+      "status": "pass",
+      "baselineMatch": true,
+      "transcript": "en samahifrl ovamerrakateez nah bacyo kantrken dufiyu eaz pacyukin dufi yo kantri",
+      "note": "Turkish transliteration of the English JFK clip is the model's correct output for this audio; browser matches the Node baseline exactly.",
+      "loadMs": 5839.2,
+      "transcribeMs": 135.5,
+      "rtfx": 81.17
+    },
+    {
+      "model": "ctaguchi",
+      "graph": "our own fp32 export",
+      "backend": "webgpu",
+      "status": "pass",
+      "baselineMatch": true,
+      "transcript": "And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+      "note": "The model's own 'askk' output; matches the Node baseline exactly. The first run showed fail only because the oracle omitted that quirk.",
+      "loadMs": 3330.7,
+      "transcribeMs": 581.2,
+      "rtfx": 18.93
+    },
+    {
+      "model": "omnilingual",
+      "graph": "released dynamic-int8",
+      "backend": "webgpu",
+      "status": "pass-no-oracle",
+      "baselineMatch": null,
+      "transcript": " م ل م ",
+      "note": "Degenerate on this out-of-domain audio; see browser-webgpu-divergence-2026-10-04.json.",
+      "loadMs": 4384.7,
+      "transcribeMs": 11574.4,
+      "rtfx": 0.95
+    }
+  ],
+  "conclusions": [
+    "Two of three candidates now have real browser transcript parity with their Node baselines, on WebGPU, in the established harness.",
+    "Both passing graphs are our own fp32 exports; the one that fails is the third-party dynamic-int8 graph, which is consistent with the EP-kernel hypothesis for DynamicQuantizeLinear/MatMulInteger.",
+    "fp32 self-export, not the repacked int8, is the path that carries to the browser."
+  ],
+  "known_limitations": [
+    "Token ids are reported as an empty list: the page's returnTokenIds option does not populate tokens for these families, so per-frame token evidence is absent from the browser receipts.",
+    "The omnilingual run used the JFK fixture; its own four-language fixtures were not re-run in the browser yet.",
+    "One browser run per configuration; no repeat-stability or long-form browser evidence."
+  ]
+}

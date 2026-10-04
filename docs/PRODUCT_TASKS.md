@@ -1,3 +1,49 @@
+## C39 — Browser harness measures transcript parity and timings for all three candidates
+
+Status: TWO of three candidates pass real browser transcript parity on WebGPU;
+the third is a measured failure, not an unverified gap.
+
+New harness work in the established `webgpu-agent-test` loop: `ctc-asr.html`,
+`src/ctc-asr-webgpu.js` and `scripts/run-ctc-asr-webgpu.mjs`, driven by URL
+parameters (`model`, `backend`, `audio`, `oracle`, `repeat`, `warmup`, `clipSec`),
+posting to `/__test_result__` and read back through `/__test_results__` with a
+preset-keyed diff. The page imports the library through relative source paths so
+the gate exercises live source, and serves local graphs through `/@fs/` under
+the existing `server.fs.allow` entry. Building it surfaced three real harness
+defects: the POST endpoint is singular, `decodeAudioSourceToMonoPcm` takes a Blob
+rather than an ArrayBuffer, and the capture plugin expects `baselineMatch` and
+`tokens`.
+
+Measured on Chrome headless WebGPU with an NVIDIA Blackwell adapter:
+
+| model         | graph                 | result                       |      load | transcribe |  RTFx |
+| ------------- | --------------------- | ---------------------------- | --------: | ---------: | ----: |
+| `wav2vec2-tr` | our own fp32 export   | **pass**, baselineMatch true | 5839.2 ms |   135.5 ms | 81.17 |
+| `ctaguchi`    | our own fp32 export   | **pass**, baselineMatch true | 3330.7 ms |   581.2 ms | 18.93 |
+| `omnilingual` | released dynamic-int8 | **fail**, transcript garbage | 4384.7 ms | 11574.4 ms |  0.95 |
+
+For the two passing models the browser transcript is byte-identical to the Node
+baseline. The Turkish model's output is its correct Turkish transliteration of
+English audio. The ctaguchi run first reported fail only because the oracle
+omitted that model's own "askk" quirk; the browser output matched Node throughout.
+
+The one failure is informative: both graphs that survive the browser are **our
+own fp32 exports**, while the third-party dynamic-int8 graph, carrying 106
+`DynamicQuantizeLinear` and 146 `MatMulInteger`, degenerates in the browser while
+decoding correctly in Node. That is consistent with the execution-provider kernel
+hypothesis, and it argues that fp32 self-export, not a repacked int8 graph, is
+what carries a candidate to WebGPU.
+
+Named limits: token ids are reported empty because `returnTokenIds` does not
+populate them for these families, so browser receipts carry no per-frame token
+evidence; the omnilingual browser run used the JFK fixture rather than its own
+four-language set; and each configuration was run once, with no repeat-stability
+or long-form browser evidence.
+
+Receipt: `tools/data/results/candidates-browser-harness-2026-10-04.json`, with
+the int8 divergence detailed in
+`tools/data/results/omnilingual-ctc/browser-webgpu-divergence-2026-10-04.json`.
+
 ## C38 — All three candidate models now load and warm up in the browser
 
 Status: PASS (warm-up) for ctaguchi 110M, omnilingual CTC 300M and Turkish
