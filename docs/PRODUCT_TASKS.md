@@ -1,8 +1,10 @@
 ## C32 — Parakeet CTC 110M candidate: export verified, runtime port pending
 
-Status: PARTIAL — the ONNX export exists and runs on real audio. The library
-side is not implemented: no preset, no feature extractor, no decoding family,
-no oracle comparison.
+Status: PASS with named limits — superseded mid-port; the library side now
+exists (frontend, decoder family, preset, local adapter) and passes the port
+harness. Limits that remain: 137 of 88,080 feature coordinates outside
+`atol=1e-5, rtol=1e-4`; browser evidence is load + warm-up, not oracle parity;
+WebGPU inference for this family unverified; local-folder only, no Hub source.
 
 `ctaguchi/parakeet-hf-ctc-110m-en` is the only verified non-NVIDIA-originated
 Parakeet-line student: `ParakeetForCTC` / `parakeet_ctc`, 109,287,937
@@ -32,12 +34,21 @@ earlier 7.40 measurement used a contract the model does not consume. The correct
 reference is therefore the preemphasis path (1101x80), and against it the current
 frontend measures max abs `18.02` / mean `9.25` over 88,080 coordinates.
 
-**BROWSER VERIFIED.** The companion UI loads `ctaguchi/parakeet-hf-ctc-110m-en`
-from a local folder in Chrome on a real NVIDIA Blackwell adapter and completes
-warm-up with zero page errors (`PASS_COMPANION_LOCAL_WARMUP`, 5.1 s), served
-offline through the pinned ORT sidecars. Reaching that needed a preset factory
-and a `SpeechModelFactory` whose `createSession` owns the model lifecycle, which
-is the shape the other CTC families use.
+**BROWSER: LOAD AND WARM-UP, NOT AN ORACLE COMPARISON.** The companion UI loads
+`ctaguchi/parakeet-hf-ctc-110m-en` from a local folder in Chrome on a real NVIDIA
+Blackwell adapter (`PASS_COMPANION_LOCAL_WARMUP`, 5.1 s, zero page errors, offline
+through the pinned ORT sidecars). The receipt's console shows our adapter
+selecting `model.onnx` and `tokenizer.json`, sessions created, and the app's own
+verification transcription reporting success, so the family graph did run. It
+does **not** compare a browser transcript with the oracle: the demo's warm-up
+uses its own bundled sample, so browser oracle parity is still unverified.
+Reaching load at all needed a preset factory plus a `SpeechModelFactory` whose
+`createSession` owns the model lifecycle, matching the other CTC families.
+
+Post-refactor functional evidence: `PASS_FAMILY_ENTRY_ORACLE_MATCH` through the
+real `loadParakeetCtcFromOptions` entry (138 frames, 34 tokens, oracle text),
+because the `createSession` rewrite had to be proven to still infer rather than
+merely compile.
 
 **REGISTERED AND VERIFIED THROUGH THE SHARED HARNESS.** `ctaguchi/parakeet-hf-ctc-110m-en`
 is now a built-in descriptor (preset `parakeet-ctc`, local-folder only, no Hub
@@ -141,6 +152,30 @@ Feature measurements: `parakeet-ctc-frontend-parity-2026-10-04.json`.
 Note on `primeline/parakeet-primeline`: verified it has **no config.json at all**,
 only a `2_95_WER.nemo` checkpoint and a README. Its distillation status and
 architecture stay unverified, so it is not yet a defensible alternative.
+
+## C34 — Parakeet candidate survey is now conclusive
+
+Status: SURVEY COMPLETE — every candidate resolved; one port shipped, no smaller
+student exists in scope.
+
+Reading the first 2 MB of `primeline/parakeet-primeline` (a plain tar, not
+gzipped) settles the last open candidate without a 2.5 GB download:
+`model_weights.ckpt` is 2,508,649,755 bytes, about 627M float32 parameters, and
+`model_config.yaml` declares `ConformerEncoder` with `n_layers: 24`,
+`d_model: 1024`, `feat_in: 128` plus an `RNNTDecoder`. That is the same
+architecture and scale as Parakeet v3 and Orukeet, so the earlier
+"genuine distillation" label is disproved and it is reclassified
+`DEFER_FULL_SIZE_NOT_A_DISTILLATION`. The `2_95_WER` name indicates a full-size
+retrain, not a size reduction.
+
+Consequence: **no non-NVIDIA Parakeet-line model smaller than 627M exists that we
+may port.** The only sub-300M record is `moondream/parakeet-redux`, a 1.58-bit
+ternary repack of TDT v3, which the standing integer-quantization rule excludes.
+Whether quantization counts as a permitted path for it is a rule decision for
+the user, not a technical blocker; if permitted it is a separate evidence-gated
+port, not a distillation.
+
+Receipt: `tools/data/results/model-candidates/parakeet-distil-verification-v3-2026-10-04.json`.
 
 ## C31 — Parakeet distillation and new-model survey
 

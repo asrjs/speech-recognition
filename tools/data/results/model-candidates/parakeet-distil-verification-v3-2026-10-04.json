@@ -1,0 +1,109 @@
+{
+  "status": "SURVEY_CONCLUSIVE_ALL_CANDIDATES_RESOLVED",
+  "supersedes": "tools/data/results/model-candidates/parakeet-distil-verification-v2-2026-10-04.json",
+  "scope": "Corrected identity and architecture-family verification for Parakeet-line distillation and new-model candidates under the no-NVIDIA / no-Nemotron scope. Metadata only: no weights downloaded, no model runs.",
+  "corrections": [
+    {
+      "modelId": "parakeet-redux",
+      "identity": "HTTP 401 on the Hugging Face API: not a public repository. It was a search artifact from my own --include list and is not a candidate."
+    },
+    {
+      "modelId": "parakeet-tdt-0.6b-v3-distill",
+      "identity": "HTTP 401: not a public repository, same artifact."
+    },
+    {
+      "modelId": "moondream/parakeet-redux",
+      "correction": "148,923,399 parameters but NOT a distilled student: upstream documents it as a 1.58-bit ternary TDT v3, i.e. an integer-quantized repack. Excluded by the standing integer-quantization rule, not merely gated on a download."
+    }
+  ],
+  "candidates": [
+    {
+      "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+      "architecture": "ParakeetForCTC (verified in config.json)",
+      "model_type": "parakeet_ctc",
+      "parameters": 109305345,
+      "license": "cc-by-4.0",
+      "downloads": 734,
+      "files": [
+        "model.safetensors",
+        "tokenizer.json",
+        "processor_config.json",
+        "tokenizer_config.json"
+      ],
+      "architecture_family": "third-party fine-tune of the NVIDIA 110M CTC line, non-NVIDIA repository",
+      "onnx_files": 0,
+      "verdict": "KEEP_STRONGEST_PORTABLE",
+      "reason": "Only verified non-NVIDIA-originated Parakeet-line model that is a genuine smaller student with a portable export format: 109,305,345 parameters, sentencepiece tokenizer, safetensors weights and a transformers-style config.",
+      "port_path": "Requires a new transformers-based ONNX export for ParakeetForCTC and a CTC emission path. This repository has CTC runtimes (gigaam-ctc, wav2vec2, lasr-ctc) but no ParakeetForCTC family and no parakeet-ctc ONNX exporter, so the port is real work rather than configuration.",
+      "must_verify_before_porting": "Tokenizer and emission layout: whether the exported graph emits per-frame logits plus a vocabulary mapping compatible with the existing CTC decoding path."
+    },
+    {
+      "modelId": "primeline/parakeet-primeline",
+      "architecture": "Parakeet distillation line (English)",
+      "parameters": null,
+      "license": "cc-by-4.0",
+      "downloads": 1089,
+      "files": null,
+      "onnx_files": 0,
+      "verdict": "KEEP_FUTURE_EXPORT_TASK",
+      "reason": "Genuine non-NVIDIA distillation candidate, but the repository publishes .nemo weights only, so porting means running our own NeMo TDT ONNX export over the existing tools/nemo-tdt-onnx-export path. Parameter count is not published in the metadata record."
+    },
+    {
+      "modelId": "moondream/parakeet-ultra",
+      "parameters": 627270663,
+      "license": "cc-by-4.0",
+      "onnx_files": 0,
+      "verdict": "DEFER_SIZE_UNCHANGED",
+      "reason": "627,270,663 parameters, the same size class as Parakeet TDT v3, so it is not a student or size win."
+    },
+    {
+      "modelId": "istupakov/parakeet-tdt-0.6b-v3-onnx",
+      "parameters": null,
+      "license": "cc-by-4.0",
+      "onnx_files": 5,
+      "base_model": "nvidia/parakeet-tdt-0.6b-v3",
+      "verdict": "SUPPLY_CHAIN_OPTION_NOT_A_NEW_MODEL",
+      "reason": "Third-party ONNX export of the stock v3 line. Could replace our own local v3 export; not a new port target."
+    },
+    {
+      "modelId": "handy-computer/parakeet-primeline-gguf",
+      "license": "cc-by-4.0",
+      "onnx_files": 0,
+      "verdict": "DEFER_FORMAT_UNSUPPORTED",
+      "reason": "GGUF is not an executable runtime format here and integer quantization is a separate evidence-gated decision."
+    }
+  ],
+  "no_family_verified_portable_yet": "No Parakeet-line model is yet verified portable under the no-NVIDIA / no-Nemotron scope: the two keepers publish no ONNX, so both require our own export before any port claim.",
+  "next_step": "Start with ctaguchi/parakeet-hf-ctc-110m-en because safetensors plus a transformers config give the shortest export path; verify tokenizer and CTC emission layout before writing the family.",
+  "no_authority_used": "No weights were downloaded and no model was run for this verification.",
+  "new_resolution": {
+    "modelId": "primeline/parakeet-primeline",
+    "method": "HTTP range read of the first 2 MB of the .nemo tar; no 2.5 GB download.",
+    "archive_members": {
+      "model_weights.ckpt_bytes": 2508649755,
+      "model_config.yaml_bytes": 161830,
+      "tokenizer": [
+        "0ee587b5d4b94f48993dcccf9868ea77_tokenizer.vocab",
+        "902810505b78491d95378fa3000d1bc6_tokenizer.model",
+        "ddbad8f2a94d4186963950e53809d27f_vocab.txt"
+      ]
+    },
+    "architecture": {
+      "encoder": "nemo.collections.asr.modules.ConformerEncoder",
+      "n_layers": 24,
+      "d_model": 1024,
+      "feat_in": 128,
+      "decoder": "nemo.collections.asr.modules.RNNTDecoder",
+      "pred_hidden": 640
+    },
+    "inferred_parameters": 627000000,
+    "parameter_evidence": "2,508,649,755 bytes of float32 weights equals roughly 627M parameters.",
+    "verdict": "DEFER_FULL_SIZE_NOT_A_DISTILLATION",
+    "reason": "It is a full-size 627M Conformer-RNNT, the same architecture and scale as the already-ported Parakeet v3 and Orukeet. The earlier \"genuine distillation, future export task\" label was unverified and is now disproved; the 2_95_WER name indicates a full-size retrain or fine-tune, not a size reduction."
+  },
+  "survey_conclusion": {
+    "no_smaller_student_exists_in_scope": true,
+    "detail": "Across 62 surveyed records plus per-candidate verification, no non-NVIDIA Parakeet-line model smaller than 627M exists that this project may port. moondream/parakeet-redux is the only sub-300M record and it is a 1.58-bit ternary repack of TDT v3, excluded by the standing integer-quantization rule rather than by lack of evidence.",
+    "decision_left_to_user": "Whether integer/ternary quantization counts as a permitted path for parakeet-redux is a standing-rule decision, not a technical blocker. If it is permitted, it is a separate evidence-gated port, not a distillation."
+  }
+}
