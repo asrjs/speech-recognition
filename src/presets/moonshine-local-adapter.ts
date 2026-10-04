@@ -16,9 +16,17 @@ import type {
   SpeechModelLocalEntry,
 } from '../runtime/local-types.js';
 
-const REQUIRED = ['encoder_model.onnx', 'decoder_with_past_model.onnx', 'tokenizer.json', 'seed-cache.json'];
+const REQUIRED = [
+  'encoder_model.onnx',
+  'decoder_cross_kv_model.onnx',
+  'decoder_with_past_model.onnx',
+  'tokenizer.json',
+  'export-receipt.json',
+];
 
-function inspectMoonshineEntries(entries: readonly SpeechModelLocalEntry[]): SpeechModelLocalInspection {
+function inspectMoonshineEntries(
+  entries: readonly SpeechModelLocalEntry[],
+): SpeechModelLocalInspection {
   const present = REQUIRED.filter((name) => findLocalEntry(entries, name));
 
   return {
@@ -84,10 +92,11 @@ export const moonshineBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
         preset: 'moonshine',
         builtInLoadOptions: {
           encoderUrl: await toLocator('encoder_model.onnx'),
+          crossKvUrl: await toLocator('decoder_cross_kv_model.onnx'),
           decoderUrl: await toLocator('decoder_with_past_model.onnx'),
           tokenizerUrl: await toLocator('tokenizer.json'),
-          seedUrl: await toLocator('seed-cache.json'),
           generationUrl: await toLocator('generation_config.json'),
+          receiptUrl: await toLocator('export-receipt.json'),
           encoderBackend: options.encoderBackend,
           cpuThreads: options.cpuThreads,
         },
@@ -101,7 +110,11 @@ export const moonshineBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
         },
       };
     } catch (error) {
-      await Promise.all(assetHandles.map(async (handle) => { await handle.dispose(); }));
+      await Promise.all(
+        assetHandles.map(async (handle) => {
+          await handle.dispose();
+        }),
+      );
       throw error;
     }
   },

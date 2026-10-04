@@ -1,46 +1,61 @@
-/** Moonshine decoder inputs, named as the exported graph declares them. */
-const SELF_ATTENTION = /\.decoder\./;
+/**
+ * Moonshine decoder session.
+ *
+ * Architecture, as measured during the port:
+ *
+ * - Cross-attention key and value are a fixed projection of the encoder states,
+ *   so they are computed once by a small graph and stay constant for the whole
+ *   utterance. Utterance length is therefore not pinned to any exported seed.
+ * - Self-attention history starts empty, exactly like PyTorch's `DynamicCache`:
+ *   the decoder creates the BOS entry itself.
+ * - Past state crosses the graph boundary as two stacked tensors, `self_past`
+ *   and `cross_past`, each `[slots, batch, heads, length, headDim]`. Slots are
+ *   layer-major with key and value adjacent, so slot `2 * layer` is the key.
+ *
+ * The projection emits `[batch, frames, heads * headDim]` while the cache wants
+ * `[batch, heads, frames, headDim]`. That is a transpose, not a reinterpret:
+ * reshaping alone keeps the element count and silently scrambles the data, which
+ * surfaces as a repeating token loop rather than an error.
+ */
 
 export interface MoonshineSessionOptions {
   /** ORT module, used to build input tensors. */
   readonly ort: {
-    readonly Tensor: new (
-      type: string,
-      data: ArrayBufferView | BigInt64Array,
-      dims: readonly number[],
-    ) => unknown;
+    readonly Tensor: new (type: string, data: ArrayBufferView, dims: readonly number[]) => unknown;
   };
   readonly encoder: {
+    readonly outputNames: readonly string[];
     run(feeds: Record<string, unknown>): Promise<Record<string, unknown> | unknown[]>;
-    readonly outputNames?: readonly string[];
+  };
+  /** Projects encoder states into per-layer cross-attention key and value. */
+  readonly crossKv: {
+    readonly outputNames: readonly string[];
+    run(feeds: Record<string, unknown>): Promise<Record<string, unknown> | unknown[]>;
   };
   readonly decoder: {
     readonly inputNames: readonly string[];
     readonly outputNames: readonly string[];
-    readonly inputMetadata: unknown;
     run(feeds: Record<string, unknown>): Promise<Record<string, unknown> | unknown[]>;
   };
   readonly tokenizer: MoonshineTokenizer;
   readonly bosTokenId: number;
   readonly eosTokenId: number;
-  /** Nested `[batch][heads][length][headDim]` seed arrays, keyed by graph input name. */
-  readonly seedCache: Record<string, SeedTensor>;
+  /** Past-state geometry, read from the export receipt rather than hardcoded. */
+  readonly slots: number;
+  readonly heads: number;
+  readonly headDim: number;
   readonly maxTokens?: number;
   /**
    * Bids on tokens emitted within the last N steps are discarded outright.
    *
    * Greedy decoding on audio beyond roughly 30 seconds falls into a repetition
    * attractor: the transcript cycles through a handful of tokens until the cap.
-   * A soft repetition penalty was measured and changed nothing at 1.1, so this
-   * is a hard ban rather than a logit scale. With a window of 40 the same clip
+   * A soft repetition penalty was measured and changed nothing at 1.1, so this is
+   * a hard ban rather than a logit scale. With a window of 40 the same clip
    * decoded to coherent LibriVox text with every token distinct.
    *
-   * The evidence was measured on the seed-free cross-attention runner, not on
-   * this seed-cache session, which still ships the retired architecture. The
-   * ban semantics are identical; only the evidence trail is from the runner.
-   *
-   * End of sequence is never suppressed because it is never appended to
-   * `tokenIds`, so a ban can never trap the decoder in a non-terminating loop.
+   * End of sequence is never suppressed because it is never appended to the
+   * emitted ids, so a ban can never trap the decoder in a non-terminating loop.
    */
   readonly repetitionBan?: number;
 }
@@ -52,76 +67,89 @@ export interface MoonshineDecodeResult {
   readonly steps: number;
 }
 
-/** Nested `[batch][heads][length][headDim]` seed values. */
-export type SeedTensor = number[][][][];
-
 interface TensorLike {
-  readonly dims: readonly number[];
-  readonly data: ArrayLike<number>;
+  readonly dims: readonly [number, number, number, ...number[]];
+  readonly data: Float32Array;
 }
 
-/**
- * Moonshine runs an encoder once and then an autoregressive decoder over the
- * encoder states.
- *
- * Two facts were measured against the exported graph and drive this code. The
- * graph returns self-attention history only, so cross-attention key and value
- * stay constant for the utterance and come from the checkpoint seed cache. The
- * seed is mapped by input name because the checkpoint cache order differs from
- * the graph's own names.
- */
+/** Reorders `[batch, frames, heads * headDim]` into `[batch, heads, frames, headDim]`. */
+function toCacheLayout(tensor: TensorLike, heads: number): Float32Array {
+  const [batch, frames, hidden] = tensor.dims;
+  const headDim = hidden / heads;
+  const out = new Float32Array(batch * heads * frames * headDim);
+  let cursor = 0;
+  for (let b = 0; b < batch; b += 1) {
+    for (let h = 0; h < heads; h += 1) {
+      for (let f = 0; f < frames; f += 1) {
+        const base = b * frames * hidden + f * hidden + h * headDim;
+        for (let d = 0; d < headDim; d += 1) {
+          out[cursor] = tensor.data[base + d] ?? 0;
+          cursor += 1;
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
 export class MoonshineSession {
   private readonly options: MoonshineSessionOptions;
+
   constructor(options: MoonshineSessionOptions) {
     this.options = options;
   }
 
-  private seedTensor(name: string): unknown {
-    const seed = this.options.seedCache[name];
-    if (!seed) {
-      throw new Error(`Moonshine seed cache is missing ${name}.`);
-    }
-    const { Tensor } = this.options.ort;
-    const batch = seed.length > 0 ? seed.length : 1;
-    const heads = seed[0]?.length ?? 1;
-    const length = seed[0]?.[0]?.length ?? 1;
-    const headDim = seed[0]?.[0]?.[0]?.length ?? 36;
-    const flat = new Float32Array(batch * heads * length * headDim);
-    let offset = 0;
-    for (let b = 0; b < batch; b += 1) {
-      for (let h = 0; h < heads; h += 1) {
-        for (let t = 0; t < length; t += 1) {
-          for (let d = 0; d < headDim; d += 1) {
-            flat[offset] = seed[b]![h]![t]![d] ?? 0;
-            offset += 1;
-          }
-        }
-      }
+  private static asTensors(
+    result: Record<string, unknown> | unknown[] | Promise<Record<string, unknown> | unknown[]>,
+    names: readonly string[],
+  ): TensorLike[] {
+    const settled = result instanceof Promise ? undefined : result;
+    if (Array.isArray(settled)) {
+      return settled as TensorLike[];
     }
 
-    return new Tensor('float32', flat, [batch, heads, length, headDim]);
+    return names.map((name) => (settled as Record<string, unknown>)[name] as TensorLike);
   }
 
-  private initialFeeds(frames: number): Record<string, unknown> {
-    const { decoder, seedCache } = this.options;
-    const { Tensor } = this.options.ort;
-    const feeds: Record<string, unknown> = {};
-    for (const name of decoder.inputNames) {
-      if (name === 'input_ids') {
-        feeds[name] = new Tensor(
-          'int64',
-          BigInt64Array.from([BigInt(this.options.bosTokenId)]),
-          [1, 1],
-        );
-        continue;
-      }
-      const seed = seedCache[name];
-      if (seed) {
-        feeds[name] = this.seedTensor(name);
-      } else {
-        // Cross-attention entries without a seed fall back to the frame count.
-        feeds[name] = new Tensor('float32', new Float32Array(frames * 8 * 36), [1, 8, frames, 36]);
-      }
+  /** Cross-attention memory, constant for the whole utterance. */
+  private async crossPast(states: TensorLike): Promise<unknown> {
+    const { crossKv, slots, heads, headDim } = this.options;
+    const frames = states.dims[1];
+    const projected = MoonshineSession.asTensors(
+      await crossKv.run({ encoder_states: this.tensor('float32', states.data, states.dims) }),
+      crossKv.outputNames,
+    );
+    const block = frames * heads * headDim;
+    const data = new Float32Array(slots * block);
+    for (let slot = 0; slot < slots && slot < projected.length; slot += 1) {
+      data.set(toCacheLayout(projected[slot]!, heads), slot * block);
+    }
+
+    return this.tensor('float32', data, [slots, 1, heads, frames, headDim]);
+  }
+
+  private tensor(type: string, data: Float32Array, dims: readonly number[]): unknown {
+    return new this.options.ort.Tensor(type, data, dims);
+  }
+
+  private async initialFeeds(states: TensorLike): Promise<Record<string, unknown>> {
+    const { decoder, bosTokenId, slots, heads, headDim } = this.options;
+    const feeds: Record<string, unknown> = {
+      self_past: this.tensor('float32', new Float32Array(0), [slots, 1, heads, 0, headDim]),
+      cross_past: await this.crossPast(states),
+      // Moonshine's attention skips the whole cross-attention block when
+      // encoder_hidden_states is absent, so this input is what opens the branch.
+      // It is a gate rather than a data path: the graph reads key and value from
+      // cross_past, which stays constant for the utterance.
+      encoder_states: this.tensor('float32', states.data, states.dims),
+    };
+    if (decoder.inputNames.includes('input_ids')) {
+      feeds['input_ids'] = this.tensor(
+        'int64',
+        BigInt64Array.from([BigInt(bosTokenId)]) as unknown as Float32Array,
+        [1, 1],
+      );
     }
 
     return feeds;
@@ -130,42 +158,32 @@ export class MoonshineSession {
   async transcribe(pcm: Float32Array): Promise<MoonshineDecodeResult> {
     const { encoder, decoder } = this.options;
     const encoderOut = await encoder.run({
-      input_values: new this.options.ort.Tensor('float32', pcm, [1, pcm.length]),
+      input_values: this.tensor('float32', pcm, [1, pcm.length]),
     });
-    const states = (
-      Array.isArray(encoderOut)
-        ? encoderOut[0]
-        : (encoderOut as Record<string, unknown>)[encoder.outputNames?.[0] ?? 'last_hidden_state']
-    ) as TensorLike;
-    const frames = states.dims[1] ?? 0;
+    const states = MoonshineSession.asTensors(encoderOut, encoder.outputNames)[0]!;
+    const frames = states.dims[1];
 
-    const feeds = this.initialFeeds(frames);
+    let feeds = await this.initialFeeds(states);
     const tokenIds: number[] = [];
     const limit = this.options.maxTokens ?? 256;
+    const ban = this.options.repetitionBan ?? 0;
     let steps = 0;
-    let current: Record<string, unknown> = feeds;
 
     for (; steps < limit; steps += 1) {
-      const result = await decoder.run(current);
-      const mapped = Array.isArray(result)
-        ? { [decoder.outputNames[0] ?? 'logits']: result[0] }
-        : (result as Record<string, unknown>);
-      const logits = mapped.logits as TensorLike | undefined;
-      if (!logits) {
-        throw new Error('Moonshine decoder returned no logits.');
-      }
+      const result = await decoder.run(feeds);
+      const outputs = MoonshineSession.asTensors(result, decoder.outputNames);
+      const logits = outputs[0]!;
+      const banned = ban > 0 ? new Set(tokenIds.slice(-ban)) : null;
       let bestId = 0;
       let best = Number.NEGATIVE_INFINITY;
-      const ban = this.options.repetitionBan ?? 0;
-      const recent = ban > 0 ? new Set(tokenIds.slice(-ban)) : null;
-      for (let i = 0; i < logits.data.length; i += 1) {
-        if (recent?.has(i)) {
+      for (let index = 0; index < logits.data.length; index += 1) {
+        if (banned?.has(index)) {
           continue;
         }
-        const value = logits.data[i] ?? Number.NEGATIVE_INFINITY;
+        const value = logits.data[index] ?? Number.NEGATIVE_INFINITY;
         if (value > best) {
           best = value;
-          bestId = i;
+          bestId = index;
         }
       }
       if (bestId === this.options.eosTokenId) {
@@ -174,29 +192,18 @@ export class MoonshineSession {
       }
       tokenIds.push(bestId);
 
-      const present = Array.isArray(result)
-        ? new Map(decoder.outputNames.map((name, index) => [name, result[index]]))
-        : new Map(Object.entries(mapped));
-      const next: Record<string, unknown> = {};
-      for (const name of decoder.inputNames) {
-        if (name === 'input_ids') {
-          next[name] = new this.options.ort.Tensor(
-            'int64',
-            BigInt64Array.from([BigInt(bestId)]),
-            [1, 1],
-          );
-          continue;
-        }
-        if (SELF_ATTENTION.test(name)) {
-          const layer = name.split('.')[1];
-          const slot = name.split('.')[3];
-          next[name] = present.get(`present.${layer}.decoder.${slot}`) ?? current[name];
-          continue;
-        }
-        // Cross-attention history is constant; reuse the seeded tensor.
-        next[name] = current[name];
-      }
-      current = next;
+      const next: Record<string, unknown> = {
+        input_ids: this.tensor(
+          'int64',
+          BigInt64Array.from([BigInt(bestId)]) as unknown as Float32Array,
+          [1, 1],
+        ),
+        // Cross-attention memory stays constant; only self-attention grows.
+        cross_past: feeds['cross_past'],
+        encoder_states: feeds['encoder_states'],
+        self_past: outputs[1],
+      };
+      feeds = next;
     }
 
     return {
@@ -221,18 +228,22 @@ export class MoonshineTokenizer {
     this.vocabSize = idToToken.length;
   }
 
+  /** Accepts either a token-to-id list or an id-to-token map. */
   static fromTokenizerJson(
     tokenizer: { model?: { vocab?: Record<string, number> }; vocab?: Record<string, number> },
     unkTokenId: number,
   ): MoonshineTokenizer {
-    const vocab = tokenizer.model?.vocab ?? tokenizer.vocab ?? {};
-    const highest = Object.values(vocab).reduce((max, id) => (id > max ? id : max), 0);
-    const idToToken: string[] = new Array<string>(highest + 1).fill('');
-    for (const [token, id] of Object.entries(vocab)) {
-      idToToken[id] = token;
+    const source = tokenizer.model?.vocab ?? tokenizer.vocab ?? {};
+    if (Array.isArray(source)) {
+      return new MoonshineTokenizer(source as unknown as string[], unkTokenId);
     }
+    const entries = Object.entries(source).map(([token, id]) => [Number(id), token] as const);
+    entries.sort((a, b) => a[0] - b[0]);
 
-    return new MoonshineTokenizer(idToToken, unkTokenId);
+    return new MoonshineTokenizer(
+      entries.map(([, token]) => token),
+      unkTokenId,
+    );
   }
 
   decodeTokenPiece(tokenId: number): string {
@@ -250,6 +261,6 @@ export class MoonshineTokenizer {
       text += this.decodeTokenPiece(id);
     }
 
-    return text;
+    return text.trim();
   }
 }
