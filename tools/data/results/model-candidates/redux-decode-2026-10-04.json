@@ -1,0 +1,67 @@
+{
+  "status": "DECODE_VALIDATED_SUBSTITUTION_FEASIBLE",
+  "candidate": "moondream/parakeet-redux",
+  "archive": {
+    "bytes": 177774490,
+    "sha256": "78ec25733ee0d0c1586d1346fc86db9d0c2e436e3a8ab1d32a82d1bb8f848d21",
+    "declared_mb": 169.5,
+    "predicted_from_layout_mb": 170.9,
+    "note": "the file size matches the layout arithmetic computed before any download"
+  },
+  "decode": {
+    "quantizedModules": 264,
+    "decodedParams": 603979776,
+    "manifestParams": 603979776,
+    "groupSize": 128,
+    "format": "thrush-ternary-v2",
+    "exact": "weights are scales[row, col // group] * (code - 1); float32 adds no error",
+    "sanity": "packed qweight bytes span 0..242 with mean 119.9, exactly the base-3 five-digit distribution"
+  },
+  "reader_bug_found": {
+    "symptom": "the first decode reported the right parameter count but produced unusable weights",
+    "cause": "safetensors data_offsets are relative to the start of the data section, and the reader seeked to the absolute file position, discarding the section start",
+    "evidence": "LayerNorm weights read as 1.8e37 with the absolute seek; 0.103 mean and 0.032 std with the corrected seek; scales were negative before and are all positive after",
+    "lesson": "a parameter-count match validates shapes, not values. Byte-level sanity checks on decoded tensors are not optional."
+  },
+  "teacher_graph_correspondence": {
+    "method": "compare dense LayerNorm weights, which no quantization touches",
+    "rows": [
+      {
+        "tensor": "layers.0.norm_self_att.weight",
+        "teacher_std": 0.03121,
+        "redux_std": 0.03206,
+        "correlation": 0.9892,
+        "max_abs_diff": 0.03545
+      },
+      {
+        "tensor": "layers.1.norm_self_att.weight",
+        "teacher_std": 0.02044,
+        "redux_std": 0.02061,
+        "correlation": 0.9769,
+        "max_abs_diff": 0.02408
+      },
+      {
+        "tensor": "layers.2.norm_self_att.weight",
+        "teacher_std": 0.0191,
+        "redux_std": 0.01835,
+        "correlation": 0.97418,
+        "max_abs_diff": 0.01965
+      },
+      {
+        "tensor": "layers.3.norm_self_att.weight",
+        "teacher_std": 0.01707,
+        "redux_std": 0.0167,
+        "correlation": 0.96496,
+        "max_abs_diff": 0.01988
+      }
+    ],
+    "conclusion": "the validated teacher encoder graph is the same architecture and model family, so redux weights can be written into it. The two weight sets are close but not bit-equal, which matches a quantization-aware repack.",
+    "shape_mapping": "teacher exposes 217 anonymous MatMul constants shaped [4096,1024]x49, [1024,4096]x48, [1024,1024]x120, matching redux's linears and pointwise convolutions",
+    "risk": "the MatMul constants are anonymous, so the mapping is by graph order and must be verified numerically per tensor rather than assumed"
+  },
+  "not_done": [
+    "the substitution has not been performed; no oracle gate has been run for redux",
+    "the decoder and prediction-network weights live outside the encoder graph and still need an export path",
+    "no accuracy measurement exists for redux in any form"
+  ]
+}

@@ -47,7 +47,9 @@ def load(path: Path) -> dict[str, np.ndarray]:
                 continue
             dtype = _DTYPES[entry["dtype"]]
             count = int(np.prod(entry["shape"])) if entry["shape"] else 1
-            handle.seek(entry["data_offsets"][0])
+            # safetensors offsets are relative to the start of the data
+            # section, not to the start of the file.
+            handle.seek(start + entry["data_offsets"][0])
             raw = handle.read(count * np.dtype(dtype).itemsize)
             tensors[name] = np.frombuffer(raw, dtype=dtype).reshape(entry["shape"])
     return tensors
