@@ -12,7 +12,7 @@
     ]
   },
   "next_steps": [
-    "resolve the modelId registration for the Orukeet v3 export, or use the harness path from the 2026-10-02 receipts; the library's batch-1 state derivation against batch-2 decoder exports is a separate capability gap",
+    "find where the runtime resolves predictionLayers to 1 for the model id under test; every decoder export on disk declares the prediction-network state batch as 2",
     "substitute redux's own prediction-network weights (decoder.lstm, decoder_projector, joint) so the pipeline stops being a hybrid",
     "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate",
     "export a decoder_joint path that consumes redux weights directly",
@@ -199,6 +199,36 @@
       },
       "regression_found": "tools/data/results/orukeet/library-node-native-fp32-jfk-2026-10-02.json records a working run with modelId oruk/orukeet and modelDir models/orukeet/onnx/fp32-packed-2026-10-01. That id is no longer accepted by the library loader, so the pipeline cannot be reproduced through the current registry.",
       "prerequisite": "either restore the oruk/orukeet registration or drive the substitution through the harness path that produced the 2026-10-02 receipts; separately, the library derives a batch-1 decoder state while every available decoder export is batch 2, which is a capability gap independent of redux"
+    },
+    "state_layout_analysis": {
+      "graph_declares": {
+        "input_states_1": [
+          2,
+          "dynamic",
+          640
+        ],
+        "input_states_2": [
+          2,
+          "dynamic",
+          640
+        ],
+        "output_states_1": [
+          2,
+          "dynamic",
+          640
+        ],
+        "output_states_2": [
+          2,
+          "dynamic",
+          640
+        ]
+      },
+      "library_builds": "[predictionLayers, 1, predictionHiddenSize] at src/models/nemo-tdt/executor.ts, with predictionLayers defaulting to 2 and predictionHiddenSize to 640",
+      "config_checked": "source-config.json declares pred_hidden 640 and joint_hidden 640 but no predictionLayers key, so the library default applies",
+      "so_the_layouts_agree_in_principle": "both are [2, 1, 640] on the first step",
+      "yet_the_observed_error_is": "index 0 Got 1 Expected 2",
+      "conclusion": "the runtime resolved predictionLayers to 1 from a source other than source-config.json, most likely a built-in preset or descriptor default for the realtime-120m model id. This is a library config-resolution question, not an export defect and not a redux question.",
+      "suggested_next_step": "instrument or log the resolved predictionLayers for the model id under test, then decide whether the descriptor default should be 2 to match every decoder export on disk"
     }
   }
 }
