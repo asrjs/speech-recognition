@@ -231,7 +231,19 @@
       "suggested_next_step": "instrument or log the resolved predictionLayers for the model id under test, then decide whether the descriptor default should be 2 to match every decoder export on disk",
       "root_cause": "src/presets/parakeet/manifest.ts line 105 sets predictionLayers: 1 for parakeet-realtime-eou-120m-v1, which is an RNNT model. Invoking that id applies an RNNT state layout to a TDT decoder export, which is why the run produced predictionLayers 1 and the graph rejected it.",
       "correct_invocation": "modelId oruk/orukeet, whose manifest declares decoder tdt and no predictionLayers, so the nemo-tdt default of 2 applies and matches the Orukeet v3 decoder export.",
-      "library_bug": "oruk/orukeet is present in the manifest table with aliases oruk/orukeet-v0.1.0 and orukeet, yet the loader rejects it with 'No model family is registered'. The manifest-to-descriptor wiring does not resolve it, so the shipped Orukeet artifact cannot be loaded through the library at all."
+      "library_bug": "oruk/orukeet is present in the manifest table with aliases oruk/orukeet-v0.1.0 and orukeet, yet the loader rejects it with 'No model family is registered'. The manifest-to-descriptor wiring does not resolve it, so the shipped Orukeet artifact cannot be loaded through the library at all.",
+      "exact_location": {
+        "manifest_entry": "src/presets/parakeet/manifest.ts line 123, modelId oruk/orukeet, aliases oruk/orukeet-v0.1.0 and orukeet, classification.decoder tdt, no predictionLayers so the nemo-tdt default of 2 applies",
+        "resolver": "src/runtime/session.ts line 442 resolveModelFamily, reached from loadModelInternal at line 237",
+        "resolution_order": [
+          "this.modelFamilies.get(request.family)",
+          "classification match via matchesRequestedClassification",
+          "family.supports(request.modelId)"
+        ],
+        "observation": "none of the three resolves oruk/orukeet even though its manifest is present and declares decoder tdt, while parakeet-realtime-eou-120m-v1 resolves far enough to reach the decoder call",
+        "why_not_fixed_here": "changing a registry path without a runnable verification would be speculative; the manifest table, the resolver and the failure were located instead",
+        "why_it_matters": "this blocks the shipped Orukeet artifact entirely, independent of the redux experiment, and contradicts the passing receipt tools/data/results/orukeet/library-node-native-fp32-jfk-2026-10-02.json which used the same id and directory"
+      }
     }
   }
 }
