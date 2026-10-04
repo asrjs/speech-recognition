@@ -1,3 +1,27 @@
+## C50 — The shipped Moonshine library still uses the retired architecture
+
+Status: OPEN. Recorded rather than half-migrated.
+
+The validated runner needs no seed cache and starts self-attention from an empty
+cache. The shipped library does neither: `src/models/moonshine/session.ts` still
+declares `seedCache` and reads it in `initialFeeds`, and
+`src/presets/moonshine-local-adapter.ts` lists `seed-cache.json` as a required
+artifact and resolves it. The adapter also targets the shipped decoder
+interface with per-name `past_key_values.N.*` inputs, while our export takes
+stacked `self_past` and `cross_past` tensors.
+
+So every Moonshine load through the library still needs a **32 MB seed cache** and
+is pinned to the utterance length that cache encodes — both costs the runner
+proved unnecessary. Nothing in the code or the docs says which architecture is
+current, which is the actual risk.
+
+The migration is a coherent unit of work: retarget the adapter at the exported
+stacked interface, drop `seed-cache.json` from `REQUIRED`, seed self-attention
+empty as the runner does, then gate on the same JFK oracle match plus one unseen
+fixture before deleting the seed path. It was not started here because it needs
+its own gate, and shipping it unverified is the pattern this session has spent
+its whole length removing.
+
 ## C49 — Moonshine streaming: the toolchain silently randomizes its encoder
 
 Status: BLOCKED. The export that looked clean is invalid.

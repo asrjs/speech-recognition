@@ -60,5 +60,18 @@
       "conclusion": "the repetition loop is a selection artifact, not the model window. Long audio decodes correctly once the decoder cannot re-emit the last 40 tokens.",
       "withdrawn_claim": "the earlier model-window explanation is refuted by this run."
     }
+  },
+  "library_runner_architecture_mismatch": {
+    "status": "OPEN_PRODUCT_GAP",
+    "finding": "the shipped library still uses the retired seed-cache architecture while the validated runner uses the seed-free cross-attention one, and nothing in the code or docs makes that obvious",
+    "evidence": [
+      "src/models/moonshine/session.ts line 27 still declares seedCache and its initialFeeds reads it",
+      "src/presets/moonshine-local-adapter.ts line 19 lists seed-cache.json as a required artifact and line 89 resolves it",
+      "that adapter also targets the shipped decoder interface with per-name past_key_values.N.* inputs, whereas our export uses stacked self_past and cross_past tensors"
+    ],
+    "cost": "every Moonshine load through the library still requires a 32 MB seed cache and an utterance length it pins, both of which the validated runner proved unnecessary",
+    "why_not_changed_here": "migrating the session, the adapter and the browser wiring is a self-contained piece of work that needs its own JFK gate before it can be called done; starting it without budget to verify would repeat the pattern this session exists to prevent",
+    "recommended_first_step": "point the adapter at the exported stacked-interface decoder, drop seed-cache.json from REQUIRED, and let the session seed self-attention from an empty cache as the runner does",
+    "gate_required": "the same JFK oracle match the runner achieves, plus one unseen fixture, before the seed-cache path is deleted"
   }
 }
