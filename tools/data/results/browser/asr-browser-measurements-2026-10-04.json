@@ -30,7 +30,11 @@
       "decodeIterations": 256,
       "emittedTokenCount": 256,
       "fix_applied": "tools/moonshine-onnx-export/add_layernorm_bias.py adds an explicit zero bias so the WebGPU SkipLayerNormalization fusion binds a 1-D beta. Numerically neutral: an absent bias and a zero bias mean the same.",
-      "remaining": "the divergence itself is not fixed; it needs stage-level comparison to locate the first differing tensor"
+      "remaining": "The divergence is below the fusion layer. Localising it needs stage-level comparison of the encoder and decoder outputs between the WebGPU and WASM providers to find the first differing tensor.",
+      "hypotheses_refuted": [
+        "external data corrupted by the bias patch: the Node gate passes on the same patched graphs, so the sidecars are intact",
+        "ORT's fused SkipLayerNormalization is the cause: rerunning with graphOptimizationLevel 'basic' to skip the fusion produced byte-identical garbage, so the fusion is not responsible"
+      ]
     },
     {
       "model": "Qwen/Qwen3-ASR-0.6B-hf",

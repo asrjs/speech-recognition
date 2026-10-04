@@ -225,6 +225,12 @@ export async function createOrtSession(
   options: {
     readonly backendId: 'webgpu' | 'wasm';
     readonly enableProfiling?: boolean;
+    /**
+     * ORT graph optimisation level. 'basic' skips the fused LayerNormalization
+     * rewrites that the WebGPU provider rejects or diverges on, at some cost in
+     * graph speed.
+     */
+    readonly graphOptimizationLevel?: 'all' | 'basic' | 'disabled';
     readonly externalDataUrl?: string;
     readonly externalDataPath?: string;
     readonly preferredOutputLocation?:
@@ -251,7 +257,7 @@ export async function createOrtSession(
 
   const sessionOptions: Record<string, unknown> = {
     executionProviders,
-    graphOptimizationLevel: 'all',
+    graphOptimizationLevel: options.graphOptimizationLevel ?? 'all',
     executionMode: 'parallel',
     enableCpuMemArena: true,
     enableMemPattern: true,
