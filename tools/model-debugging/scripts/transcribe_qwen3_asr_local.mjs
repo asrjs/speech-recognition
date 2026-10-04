@@ -104,10 +104,25 @@ let result = await decoder.run({
 let presentKey = result.present_key;
 let presentValue = result.present_value;
 
+const embed = await ort.InferenceSession.create(`${MODEL_DIR}/embed_tokens_model.onnx`, {
+  executionProviders: ['cpu'],
+});
 const tokenizer = JSON.parse(readFileSync(`${MODEL_DIR}/tokenizer.json`, 'utf8'));
 const vocabSource = tokenizer.model?.vocab ?? tokenizer.vocab ?? {};
 const vocab = new Map(Object.entries(vocabSource).map(([token, id]) => [Number(id), token]));
+// The asr_text marker is an added token, so it is absent from model.vocab and would
+// otherwise decode to nothing, leaving the language tag glued to the transcript.
+const added = tokenizer.added_tokens ?? Object.values(tokenizer.added_tokens_decoder ?? {});
+for (const entry of added) {
+  const content = entry?.content ?? entry;
+  const id = entry?.id;
+  if (typeof content === 'string' && typeof id === 'number') {
+    vocab.set(id, content);
+  }
+}
 const eosIds = new Set([151643, 151645]);
+// Measured: 151704 is <asr_text>, the marker between the language tag and the words.
+const ASR_TEXT_MARKER = 151704;
 
 const tokenIds = [];
 const steps = [promptLength];
@@ -133,9 +148,13 @@ for (let step = 0; step < 256; step += 1) {
   if (argFlag('one-token')) {
     break;
   }
-  const embed = readNpy(`${MODEL_DIR}/token_embed_${bestId}.npy`);
+  // The reference emits a language tag then an <asr_text> marker before the
+  // transcription, so stopping there is what a library would do with that token.
+  const embedded = await embed.run({
+    input_ids: new ort.Tensor('int64', BigInt64Array.from([BigInt(bestId)]), [1, 1]),
+  });
   result = await decoder.run({
-    inputs_embeds: new ort.Tensor('float32', embed.data, embed.dims),
+    inputs_embeds: embedded.embeddings,
     past_key: presentKey,
     past_value: presentValue,
   });
@@ -143,10 +162,11 @@ for (let step = 0; step < 256; step += 1) {
   presentValue = result.present_value;
 }
 
-const text = tokenIds
-  .map((id) => (vocab.get(id) ?? '').replace(/▁/g, ' '))
-  .join('')
-  .trim();
+const raw = tokenIds.map((id) => vocab.get(id) ?? '').join('');
+// Qwen uses byte-level BPE, so the space marker is U+0120 rather than U+2581.
+const markerIndex = tokenIds.indexOf(ASR_TEXT_MARKER);
+const body = markerIndex >= 0 ? tokenIds.slice(markerIndex + 1) : tokenIds;
+const text = body.map((id) => (vocab.get(id) ?? '').replace(/\u0120/g, ' ')).join('').trim();
 
 console.log(
   JSON.stringify({

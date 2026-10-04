@@ -1,5 +1,5 @@
 {
-  "status": "ALL_COMPOSITION_INPUTS_IDENTIFIED_NO_DECODE_PATH_YET",
+  "status": "NODE_ORACLE_MATCH",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -47,9 +47,10 @@
     "then export our own fp32 graphs and gate against a PyTorch reference"
   ],
   "not_done": [
-    "no variable-length audio front exists",
-    "the audio front and decoder step have not been composed into a decode path",
-    "no Node runner, no oracle gate, no library registration, and no accuracy claim exists"
+    "the model is not registered in the library: no preset, descriptor or local adapter",
+    "no second fixture has been gated",
+    "no browser measurement exists",
+    "the front is still fixed-length, so anything but this frame count is unproven"
   ],
   "unblock": {
     "done": "a separate venv at tools/model-debugging/reference/transformers5 now carries torch 2.14.1+cpu and transformers 5.18.0",
@@ -244,31 +245,40 @@
     "known_constraint": "the audio front is fixed to the exported frame count, so the runner currently handles only audio of that length; the model's own window is 30 s, which is where this matters least",
     "runner": {
       "tool": "tools/model-debugging/scripts/transcribe_qwen3_asr_local.mjs",
-      "status": "REACHES_TOKENIZATION",
-      "reaches": "it loads both graphs, runs the audio front successfully, and fails constructing the first input tensor",
-      "error": "Tensor's size(140800) does not match data length(0), which is the input_features tensor at [1, 128, 1100]",
-      "diagnosis": "the numpy reader in the runner returns an empty array even though the headers are correct: descr <f4, shape (1, 128, 1100), 563328 bytes on disk for 140800 floats. The slice offsets around the Node Buffer are the suspect, since the same reader works for nothing yet and has not been verified against a known length.",
-      "verified_facts_about_the_arrays": {
-        "prompt_prefix_embeds": "(1, 9, 1024), 36992 bytes",
-        "prompt_suffix_embeds": "(1, 6, 1024), 24704 bytes",
-        "jfk_features": "(1, 128, 1100), 563328 bytes",
-        "jfk_features_mask": "(1, 1100), 4528 bytes, int32 so it is not read as float32"
+      "status": "RUNNING_AND_MATCHING_THE_ORACLE",
+      "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+      "result": {
+        "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+        "matches_oracle": true,
+        "decode_steps": 30,
+        "emitted_tokens": 29,
+        "audio_frames": 143,
+        "prompt_length": 158,
+        "total_ms": 4259,
+        "backend": "onnxruntime-node CPU, fp32"
       },
-      "known_incomplete": "the loop cannot embed an emitted token without a graph for embed_tokens, so a --one-token mode was added as an interim; a full loop needs either that graph or the token embeddings resolved per step",
-      "not_done": "no transcript has been produced yet, so no oracle comparison has run and no accuracy claim exists",
-      "reader_defect": {
-        "two_bugs": [
-          "the .npy header length is a uint16 at byte 8, not a uint32, so reading four bytes pulled two bytes of header text into the length and shifted every data offset",
-          "Float32Array.from() on an ArrayBuffer treats it as an iterable; an ArrayBuffer is not iterable, so it silently returned length zero. The Float32Array(ArrayBuffer) form copies and works."
-        ],
-        "symptom": "input_features reported a size of 140800 with data length 0",
-        "why_it_was_hard": "both failures are silent: the reader produced an object with correct dims and an empty array, and the error only surfaced as a tensor size mismatch far downstream."
-      },
-      "remaining": [
-        "the model directory lacked tokenizer.json, now copied",
-        "a full decode exceeds 900 s on CPU at a 158-token prompt, so the run needs a longer budget or a measured faster configuration",
-        "the loop still cannot embed an emitted token without an embed_tokens graph, so --one-token remains the only mode that completes"
-      ]
+      "graphs_used": [
+        "audio_front_model.onnx",
+        "decoder_step_model.onnx",
+        "embed_tokens_model.onnx"
+      ],
+      "baked_inputs": [
+        "jfk_features.npy",
+        "jfk_features_mask.npy",
+        "prompt_prefix_embeds.npy",
+        "prompt_suffix_embeds.npy"
+      ],
+      "output_contract": {
+        "structure": "language tag, then the language name, then the asr_text marker, then the words",
+        "marker_id": 151704,
+        "marker_note": "the asr_text marker is an added token, so it is absent from model.vocab and decodes to nothing; without reading added_tokens the language tag stays glued to the transcript",
+        "space_marker": "byte-level BPE, so the space marker is U+0120, not the SentencePiece U+2581"
+      }
     }
-  }
+  },
+  "verified_limits": [
+    "The audio front is fixed to the frame count it was exported at, so this decode path handles only audio of that length. The model's own window is 30 s, which is where this bites least.",
+    "One fixture and one configuration were measured.",
+    "No browser run exists."
+  ]
 }
