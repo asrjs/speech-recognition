@@ -64,67 +64,107 @@ def main(argv: list[str] | None = None) -> int:
                 mapping[row["tensor"]] = (row["match"], bool(row.get("transposed")))
 
     teacher = load_teacher(args.graph, args.data_dir)
-    # Parse the graph once: reloading per initializer would re-parse the model
-    # hundreds of times.
     model = onnx.load(str(args.graph), load_external_data=False)
+    entries = {entry.name: entry for entry in model.graph.initializer}
     offsets = {}
-    for entry in model.graph.initializer:
+    for name, entry in entries.items():
         if entry.external_data:
             meta = {item.key: item.value for item in entry.external_data}
-            offsets[entry.name] = (int(meta["offset"]), int(meta["length"]))
+            offsets[name] = (int(meta["offset"]), int(meta["length"]))
         else:
-            offsets[entry.name] = (None, None)
+            offsets[name] = (None, None)
+
+    def resolve(name: str):
+        """Find the redux tensor for a graph initializer, in either orientation."""
+        hit = mapping.get(name)
+        if hit is not None:
+            candidate = pool.get(hit[0])
+            if candidate is not None and candidate.size == teacher[name].size:
+                return (candidate.T if hit[1] else candidate).astype(np.float32)
+        if not name.startswith("onnx::"):
+            # Teacher names omit the "encoder." prefix that redux uses, and a
+            # quantized module is stored without the ".weight" suffix.
+            keys = [f"encoder.{name}"]
+            if name.endswith(".weight"):
+                keys.append(f"encoder.{name[: -len('.weight')]}")
+            for key in keys:
+                candidate = pool.get(key)
+                if candidate is not None and candidate.size == teacher[name].size:
+                    return candidate.astype(np.float32).reshape(teacher[name].shape)
+        return None
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     data_name = "encoder-model.onnx.data"
-    source_data = args.data_dir / data_name
-    shutil.copy(args.graph, args.output_dir / "encoder-model.onnx")
-    for extra in ("repack-receipt.json", "source-config.json", "vocab.txt"):
-        candidate = args.data_dir / extra
-        if candidate.exists():
-            shutil.copy(candidate, args.output_dir / extra)
+    replaced_external, replaced_inline, kept = 0, 0, {}
 
-    replaced, named_replaced = 0, 0
-    kept: dict[str, str] = {}
-    with source_data.open("rb") as source, (args.output_dir / data_name).open("wb") as target:
-        payload = bytearray(source.read())
-        for name, current in teacher.items():
-            value = None
-            hit = mapping.get(name)
-            if hit is not None:
-                candidate = pool.get(hit[0])
-                if candidate is not None and candidate.size == current.size:
-                    value = (candidate.T if hit[1] else candidate).astype(np.float32)
-            if value is None and not name.startswith("onnx::"):
-                # Teacher names omit the "encoder." prefix that redux uses.
-                candidate = pool.get(f"encoder.{name}")
-                if candidate is not None:
-                    value = candidate.astype(np.float32)
-                    named_replaced += 1
-            offset, length = offsets[name]
-            if offset is None:
-                kept[name] = "inline initializer, not rewritten"
-                continue
+    payload = bytearray((args.data_dir / data_name).read_bytes())
+    for name, entry in entries.items():
+        offset, length = offsets[name]
+        value = resolve(name)
+        if offset is not None:
             if value is None:
-                kept[name] = "no match above the correlation threshold"
+                kept[name] = "no redux tensor above the correlation threshold"
                 continue
             if value.size * 4 != length:
                 kept[name] = f"size mismatch {value.size * 4} vs {length}"
                 continue
             payload[offset : offset + length] = value.tobytes()
-            replaced += 1
-        target.write(bytes(payload))
+            replaced_external += 1
+        else:
+            if value is None:
+                kept[name] = "inline initializer with no redux match"
+                continue
+            if value.size * 4 != len(entry.raw_data):
+                kept[name] = f"inline size mismatch {value.size * 4} vs {len(entry.raw_data)}"
+                continue
+            entry.ClearField("float_data")
+            entry.ClearField("int32_data")
+            entry.raw_data = value.tobytes()
+            replaced_inline += 1
+
+    graph_path = args.output_dir / "encoder-model.onnx"
+    onnx.save(
+        model,
+        str(graph_path),
+        save_as_external_data=True,
+        all_tensors_to_one_file=True,
+        location=data_name,
+        size_threshold=1024,
+        convert_attribute=False,
+    )
+    # Tensors patched by offset are rewritten into the freshly saved external
+    # file, because saving re-lays out every tensor.
+    saved = onnx.load(str(graph_path), load_external_data=False)
+    saved_offsets = {}
+    for entry in saved.graph.initializer:
+        if entry.external_data:
+            meta = {item.key: item.value for item in entry.external_data}
+            saved_offsets[entry.name] = (int(meta["offset"]), int(meta["length"]))
+    with (args.output_dir / data_name).open("r+b") as handle:
+        for name, (offset, length) in saved_offsets.items():
+            if name not in offsets or offsets[name][0] is None:
+                continue
+            value = resolve(name)
+            if value is None or value.size * 4 != length:
+                continue
+            handle.seek(offset)
+            handle.write(value.tobytes())
+
+    for extra in ("repack-receipt.json", "source-config.json", "vocab.txt"):
+        candidate = args.data_dir / extra
+        if candidate.exists():
+            shutil.copy(candidate, args.output_dir / extra)
 
     receipt = {
         "model": "moondream/parakeet-redux",
         "graph": "copy of the validated teacher encoder export",
         "tensorsInGraph": len(teacher),
-        "replacedFromAnonymousConstants": replaced,
-        "replacedByName": named_replaced,
+        "replacedExternal": replaced_external,
+        "replacedInline": replaced_inline,
         "keptTeacherValues": len(kept),
         "keptReasons": sorted({reason for reason in kept.values()}),
         "keptExamples": sorted(kept)[:8],
-        "coverage": round((replaced) / max(len(teacher), 1), 3),
+        "coverage": round((replaced_external + replaced_inline) / max(len(teacher), 1), 3),
         "outputDir": str(args.output_dir),
         "dataSha256": hashlib.sha256((args.output_dir / data_name).read_bytes()).hexdigest(),
         "warning": "Coverage counts tensor replacement, not numerical validation. An oracle gate is still required.",

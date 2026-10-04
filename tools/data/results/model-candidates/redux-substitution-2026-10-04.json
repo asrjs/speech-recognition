@@ -1,5 +1,5 @@
 {
-  "status": "HYBRID_ARTIFACT_NO_GATE_RUN",
+  "status": "SUBSTITUTED_0.897_HYBRID_REMAINDER",
   "model": "moondream/parakeet-redux",
   "what_works": {
     "download": "177774490 bytes, sha256 78ec25733ee0d0c1586d1346fc86db9d0c2e436e3a8ab1d32a82d1bb8f848d21, matching the layout arithmetic computed before any download",
@@ -21,5 +21,31 @@
     "then run the JFK oracle gate for redux, which needs a redux baseline recorded from the reference decode",
     "the decoder_joint weights are not in the teacher encoder graph and still need their own export path"
   ],
-  "honest_note": "Correlation 0.798 against the teacher originals is consistent with a ternary repack of the same checkpoint, but it is not accuracy evidence. No accuracy claim exists for redux in any form."
+  "honest_note": "Correlation 0.798 against the teacher originals is consistent with a ternary repack of the same checkpoint, but it is not accuracy evidence. No accuracy claim exists for redux in any form.",
+  "coverage_progression": [
+    {
+      "stage": "external offsets only",
+      "coverage": 0.387,
+      "note": "inline initializers are baked into the .onnx protobuf and cannot be reached by the external-data path"
+    },
+    {
+      "stage": "inline rewritten via TensorProto.raw_data and graph re-saved with external data",
+      "coverage": 0.819
+    },
+    {
+      "stage": "quantized modules resolved without the .weight suffix",
+      "coverage": 0.897,
+      "note": "teacher keeps a .weight suffix on names that redux stores as bare quantized module names"
+    }
+  ],
+  "remaining_teacher_tensors": {
+    "count": null,
+    "known_gap": "layers.N.self_attn.pos_bias_u and pos_bias_v, 48 tensors, are absent from the redux archive entirely, so redux parameterises relative position differently. They stay teacher-valued, which makes the artifact a hybrid in the attention path specifically."
+  },
+  "still_open": [
+    "no oracle gate has been run; an accuracy claim for redux does not exist",
+    "a redux JFK baseline must be recorded from a reference decode before any gate is meaningful",
+    "the relative-position parameterisation mismatch needs resolution before the attention path is faithful",
+    "the decoder_joint weights are not in the teacher encoder graph and still need their own export path"
+  ]
 }
