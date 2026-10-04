@@ -1,3 +1,51 @@
+## C42 — Moonshine cross-attention graph exported; encoder drift found
+
+Status: the new graph is numerically exact. The port stays on the seed-cache
+path because the encoder graph is not faithful.
+
+**A 3.98 MB graph replaces a 32 MB seed cache, and it is exact.**
+`export_moonshine_cross_kv.py` exports the decoder's cross-attention key and
+value projections as a standalone graph with a dynamic frame axis. Verified
+against PyTorch hooks on all twelve tensors: **max abs error 6.68e-06**
+(`cross-kv-parity-v2-2026-10-04.json`). Two layout facts came out of the
+verification: the projection emits `[batch, frames, heads * headDim]` while the
+decoder cache wants `[batch, heads, frames, headDim]`, and
+`onnxruntime-node` returns run results **keyed by output name, not positionally**.
+That second one cost the most time: reading results positionally yields
+`undefined` silently, which fed a decoder with zeroed history and produced 256
+tokens of noise instead of an error.
+
+**The encoder graph drifts from PyTorch, and that blocks the switch.**
+`compare_encoder_parity.py` measures `last_hidden_state` on the JFK fixture:
+
+| encoder input           | max abs error | mean abs error |
+| ----------------------- | ------------: | -------------: |
+| raw PCM                 |         1.609 |          0.032 |
+| feature-extractor input |         4.878 |          0.067 |
+
+Gate is 1e-3. Input normalization is ruled out: both paths drift by a similar
+amount, and the graph takes only `input_values`, so no attention mask is
+involved. The drift is inside the graph and is not yet localised to a layer.
+
+The consequence is structural, and it is the reason the port still seeds
+cross-attention from the checkpoint: **the encoder output is computed but never
+reaches the decode.** Cross-attention key and value are a fixed projection, so
+the transcript comes out right regardless of what the encoder produces. That is
+why the earlier JFK and browser passes were clean while this was invisible, and
+why utterance length is pinned to the exported seed.
+
+Self-attention cannot substitute for the seed. Zeroed history yields 256 tokens
+with no EOS, and the blank pass's own `present` output is length 2 while the feed
+must be length 1, because the graph appends the token being decoded.
+
+So the runtime stays on the verified seed path. Cross-attention projection,
+long-form windowing and streaming remain blocked on fixing the encoder export,
+and the next step is per-layer comparison inside the graph.
+
+Receipts: `moonshine/cross-kv-parity-v2-2026-10-04.json`,
+`moonshine/encoder-divergence-2026-10-04.json`.
+Full suite: 1,477 passed / 33 skipped.
+
 ## C41 — Moonshine registered and measured in the browser
 
 Status: PASS with transcript parity on both backends. WASM is the better placement.

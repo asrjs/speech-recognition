@@ -1,0 +1,24 @@
+{
+  "status": "FAIL",
+  "gate": "encoder last_hidden_state must match PyTorch within 1e-3 max abs error",
+  "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+  "encoder_inputs": [
+    "input_values"
+  ],
+  "rows": [
+    {
+      "input": "raw_pcm",
+      "max_abs_error": 1.6088634729385376,
+      "mean_abs_error": 0.03220511972904205,
+      "frames": 457
+    },
+    {
+      "input": "feature_extractor_input",
+      "max_abs_error": 4.877727508544922,
+      "mean_abs_error": 0.06689760088920593,
+      "frames": 457
+    }
+  ],
+  "consequence": "Decoder cross-attention cannot be projected from this encoder output. The working port seeds cross-attention from the checkpoint instead, so the encoder result is computed but unused, and utterance length is pinned to the exported seed.",
+  "not_localised": "Input normalization is ruled out: the feature-extractor path and a raw path both drift by a similar amount. Further work has to compare per-layer encoder outputs inside the graph."
+}

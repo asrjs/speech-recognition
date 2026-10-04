@@ -1,0 +1,152 @@
+{
+  "status": "PASS",
+  "gate": "max_abs_error <= 1e-4 against PyTorch cross-attention",
+  "encoder_frames": 457,
+  "worst_max_abs_error": 6.67572021484375e-06,
+  "per_tensor": [
+    {
+      "layer": 0,
+      "role": "key",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 1.430511474609375e-06,
+      "mean_abs_error": 6.85055638882659e-08
+    },
+    {
+      "layer": 0,
+      "role": "value",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 5.960464477539062e-07,
+      "mean_abs_error": 2.8041704069892148e-08
+    },
+    {
+      "layer": 1,
+      "role": "key",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 2.384185791015625e-06,
+      "mean_abs_error": 9.794703714760544e-08
+    },
+    {
+      "layer": 1,
+      "role": "value",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 9.5367431640625e-07,
+      "mean_abs_error": 5.303893857444564e-08
+    },
+    {
+      "layer": 2,
+      "role": "key",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 5.7220458984375e-06,
+      "mean_abs_error": 1.8903637055700528e-07
+    },
+    {
+      "layer": 2,
+      "role": "value",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 1.430511474609375e-06,
+      "mean_abs_error": 6.867502122531732e-08
+    },
+    {
+      "layer": 3,
+      "role": "key",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 5.7220458984375e-06,
+      "mean_abs_error": 3.455305375155149e-07
+    },
+    {
+      "layer": 3,
+      "role": "value",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 1.9073486328125e-06,
+      "mean_abs_error": 8.532529705007619e-08
+    },
+    {
+      "layer": 4,
+      "role": "key",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 5.7220458984375e-06,
+      "mean_abs_error": 4.2194969296360796e-07
+    },
+    {
+      "layer": 4,
+      "role": "value",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 2.384185791015625e-06,
+      "mean_abs_error": 1.1183793446889467e-07
+    },
+    {
+      "layer": 5,
+      "role": "key",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 6.67572021484375e-06,
+      "mean_abs_error": 4.0566729353486153e-07
+    },
+    {
+      "layer": 5,
+      "role": "value",
+      "shape": [
+        1,
+        8,
+        457,
+        36
+      ],
+      "max_abs_error": 2.86102294921875e-06,
+      "mean_abs_error": 1.5431425026690704e-07
+    }
+  ]
+}
