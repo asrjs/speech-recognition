@@ -76,14 +76,28 @@
       "site": "transformers/models/qwen3_asr/modeling_qwen3_asr.py line 310, get_audio_cu_seqlens",
       "code": "cu_chunk_lens += [window_aftercnn] * (cnn_len // window_aftercnn)",
       "meaning": "chunk lengths are derived from the feature mask in Python, so the export shape depends on the data rather than on the declared axes. The dynamo exporter cannot specialize it.",
-      "not_a_rank_problem": "this differs from the Moonshine encoder case, which needed dynamo for a rank mismatch; here the obstacle is data-dependent control flow"
+      "not_a_rank_problem": "this differs from the Moonshine encoder case, which needed dynamo for a rank mismatch; here the obstacle is data-dependent control flow",
+      "remedy_attempted": {
+        "attempt": "use the documented cu_seqlens override on get_audio_cu_seqlens, which short-circuits the Python chunk loop",
+        "why_it_is_the_right_idea": "it turns a data-dependent schedule into a graph input without patching model code, which the implementation explicitly supports",
+        "implementation": "cu_seqlens is supplied in post-CNN units, not raw feature frames; the first attempt used raw frames and failed with split sizes of 1100 against a 143-frame tensor, which located the unit mismatch",
+        "result": "the Python schedule problem is solved and the export advances, but fails one level deeper",
+        "deeper_error": "GuardOnDataDependentSymNode: Could not guard on data-dependent expression u1 > 1, raised inside sdpa_attention_forward",
+        "conclusion": "Qwen3-ASR's windowed attention is data-dependent in a second place. The window count drives a branch in scaled-dot-product attention, and torch.export needs guard_or_false or guard_or_true style APIs that this path does not use.",
+        "what_this_rules_out": "neither the cu_seqlens override nor legacy tracing alone produces a general graph. A fixed-length export would still bake the window count as a constant and the attention branch would remain.",
+        "candidate_next_steps": [
+          "export with dynamo=False and check whether legacy tracing accepts the attention branch; if it does, the result is a fixed-window-count graph whose limit must be recorded rather than hidden",
+          "patch sdpa_attention_forward to a data-dependent friendly path, which changes execution semantics and needs its own justification",
+          "export the encoder window by window with a fixed window count per call so the runtime loops and the graph stays shape-stable"
+        ]
+      }
     },
     "candidate_remedies": [
       "legacy tracing with dynamo=False, which will bake the chunk boundaries as constants and give a fixed-length graph; this loses variable-length audio and must be recorded as such, not silently accepted",
       "patching get_audio_cu_seqlens so the chunk schedule is computed from the declared frame axis instead of the mask, which changes model code and would need its own justification",
       "an existing ONNX export of this architecture from a trusted source, which the roadmap forbids in place of our own"
     ],
-    "decision": "not forced. No fixed-length graph was shipped, because a graph that silently cannot handle other audio lengths is exactly the class of defect this project has been removing all session.",
+    "decision": "still not forced. Two successive blockers were diagnosed precisely rather than shipped around.",
     "artifacts": "the exporter is kept and runs up to the export call, so the blocker is one command away from being revisited"
   }
 }
