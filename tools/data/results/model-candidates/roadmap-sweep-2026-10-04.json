@@ -1,0 +1,86 @@
+{
+  "status": "ROADMAP_CANDIDATE_SWEEP",
+  "method": "every candidate named in docs/GOAL_PROMPT_RECOMMENDED.md section 5 checked against the installed transformers 4.57.6, the Hugging Face API and the local disk budget",
+  "installed_architecture_support": {
+    "available": [
+      "VoxtralForConditionalGeneration",
+      "Qwen2AudioForConditionalGeneration",
+      "Qwen2_5OmniForConditionalGeneration",
+      "GraniteSpeechForConditionalGeneration",
+      "Gemma3nForConditionalGeneration",
+      "MoshiForConditionalGeneration",
+      "WhisperForConditionalGeneration",
+      "SeamlessM4TTextToUnitForConditionalGeneration"
+    ],
+    "absent": [
+      "Qwen3ASR",
+      "SenseVoice",
+      "FunASR",
+      "FireRed",
+      "Phi4"
+    ]
+  },
+  "candidates": [
+    {
+      "name": "Qwen3-ASR-0.6B",
+      "roadmap": "named original interest",
+      "verdict": "BLOCKED",
+      "reason": "needs transformers 5.x; weights downloaded and contract recorded",
+      "weight_bytes": 1564928088
+    },
+    {
+      "name": "Moonshine streaming",
+      "roadmap": "named lead",
+      "verdict": "BLOCKED",
+      "reason": "needs transformers 5.x and a 320-bin mel frontend the installed Moonshine class cannot represent"
+    },
+    {
+      "name": "Voxtral-Mini-3B-2507",
+      "roadmap": "named lead",
+      "verdict": "TOO_LARGE_FOR_DISK",
+      "reason": "17839 MB of weights against 26 GB free, before any export copy; it is also a 3B decoder-only LLM, a far larger port than anything in the library",
+      "weight_mb": 17839
+    },
+    {
+      "name": "Voxtral-Small-24B",
+      "roadmap": "named lead",
+      "verdict": "TOO_LARGE_FOR_DISK",
+      "reason": "92552 MB",
+      "weight_mb": 92552
+    },
+    {
+      "name": "FireRed",
+      "roadmap": "named original interest",
+      "verdict": "UNREACHABLE",
+      "reason": "FireRedTeam/FireRed-ct2 returned HTTP 401; no accessible checkpoint"
+    },
+    {
+      "name": "SenseVoice / Fun-ASR",
+      "roadmap": "named lead",
+      "verdict": "UNREACHABLE",
+      "reason": "FunAudioLLM/SenseVoiceSmall reports no weight files and no SenseVoice class is installed"
+    },
+    {
+      "name": "GraniteSpeech 3.2 0B",
+      "roadmap": "not named",
+      "verdict": "GATED",
+      "reason": "ibm-granite/granite-speech-3.2-0b returned HTTP 401"
+    },
+    {
+      "name": "Parakeet students and derivatives",
+      "roadmap": "step 2 of the confirmed order",
+      "verdict": "BLOCKED",
+      "reason": "redux, ultra and primeline all need NeMo, which is not installed"
+    }
+  ],
+  "conclusion": "every registered candidate now fails on one of three walls: transformers 5.x, NeMo, or reachable-checkpoint size. No candidate in the current queue can be exported without a dependency decision first.",
+  "decisions_required": [
+    "upgrade the reference venv to transformers 5.x, which unblocks Qwen3-ASR and Moonshine streaming but must be regression-checked against the Moonshine, wav2vec2 and Parakeet ports that already pass",
+    "install NeMo, which unblocks the Parakeet student track",
+    "both are dependency changes needing new authority"
+  ],
+  "not_done": [
+    "no export attempted for any candidate",
+    "no parity, oracle or accuracy claim exists for any candidate in this sweep"
+  ]
+}
