@@ -1,3 +1,25 @@
+## C48 — Correlation matching is only valid for 2-D weight matrices
+
+Status: a methodological rule, extracted from the redux substitution work.
+
+Mapping one model's anonymous ONNX constants to another's modules by correlation
+works for weight matrices and is unsound for biases. A bias vector has no
+correlation structure, so a match above any threshold is chance rather than
+evidence. In the redux map the weakest substituted conv tensors were all
+`conv.norm.bias` at correlation 0.567 to 0.585 with margin near 0.5, while the
+weight matrices sat between 0.6 and 0.86 with margins up to 2.5.
+
+The guard is now in `substitute_weights.py`: anonymous 1-D initializers keep
+their teacher values instead of taking a correlation-derived assignment.
+
+This is recorded as **hygiene, not as a diagnosis**. The substitution ladder had
+already shown that cosine collapses at the gentlest weight class, and removing
+the guessed bias matches did not restore adjacency, it moved cosine from 0.0339
+to 0.0215. Biases of magnitude 0.1 to 1.0 cannot produce a 3.4x output-std
+inflation, so the large effect comes from the 2-D weight matrices.
+
+Receipt: `model-candidates/redux-substitution-2026-10-04.json`.
+
 ## C47 — Pair verified on unseen audio; both seed artifacts retired
 
 Status: JFK oracle match plus a clean second fixture. Streaming re-scoped.
