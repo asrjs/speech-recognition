@@ -1,5 +1,5 @@
 {
-  "status": "EXPORTED_NOT_VALIDATED",
+  "status": "EXPORT_INVALID_RANDOMLY_INITIALIZED_ENCODER",
   "model": "moonshine-ai/moonshine-streaming-tiny",
   "license": "MIT",
   "archive": {
@@ -20,7 +20,8 @@
       "heads": 8,
       "headDim": 40
     },
-    "note": "headDim 40 against 36 on the non-streaming checkpoint, which exposed a hardcoded-geometry bug in the pair runner"
+    "note": "headDim 40 against 36 on the non-streaming checkpoint, which exposed a hardcoded-geometry bug in the pair runner",
+    "validity": "INVALID. The exported streaming encoder was built from randomly initialized weights, so the graphs do not represent this checkpoint. They are retained only as evidence of what was attempted and must not be used."
   },
   "runner_fix": "the runner now reads slots, heads and headDim from the export receipt instead of constants, so it is no longer pinned to one checkpoint",
   "decode_result": {
@@ -39,5 +40,17 @@
     "a reference transcript, blocked on the transformers generate failure",
     "Node oracle gate"
   ],
-  "honest_note": "download and export succeeded and the graphs load and run; the model does not yet transcribe. Nothing here supports a claim about accuracy or streaming quality."
+  "honest_note": "download and export succeeded and the graphs load and run; the model does not yet transcribe. Nothing here supports a claim about accuracy or streaming quality.",
+  "root_cause": {
+    "finding": "the checkpoint stores the encoder under model.encoder.embedder.conv1.weight and siblings, while the non-streaming checkpoint stores model.encoder.conv1.weight directly",
+    "consequence": "the installed transformers maps none of the streaming encoder tensors, loads the model anyway, and randomly initializes the whole encoder. It reports this only as a warning, and generation then emits repeated filler.",
+    "evidence": "load reported newly initialized model.encoder.conv1.weight, conv2, conv3, groupnorm, layer_norm and every layer's input_layernorm and post_attention_layernorm; the checkpoint key census shows model.encoder.embedder.* and model.model.encoder.conv1.* for the non-streaming model",
+    "oracle_consequence": "no reference transcript can be produced with this toolchain, so nothing can be gated",
+    "silent_success_class": "a load that succeeds, produces plausible-shaped output and only warns. The same class as the dead cross-attention input and the data-section-relative offsets earlier in this session."
+  },
+  "prerequisites": [
+    "a transformers version whose Moonshine streaming class expects model.encoder.embedder.*, or a state-dict remap into the expected layout",
+    "then re-export, then produce the reference transcript, then gate"
+  ],
+  "runner_fix_still_valid": "the pair runner now reads slots, heads and headDim from the export receipt rather than constants; that fix stands independently of this checkpoint"
 }

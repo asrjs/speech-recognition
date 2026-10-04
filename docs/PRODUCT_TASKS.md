@@ -1,3 +1,35 @@
+## C49 — Moonshine streaming: the toolchain silently randomizes its encoder
+
+Status: BLOCKED. The export that looked clean is invalid.
+
+`moonshine-ai/moonshine-streaming-tiny` stores its encoder as
+`model.encoder.embedder.conv1.weight`, where the non-streaming checkpoint stores
+`model.encoder.conv1.weight` directly. The installed transformers maps none of
+the streaming tensors, loads the model anyway, and randomly initializes the
+entire encoder. It reports this only as a warning.
+
+The load listed `model.encoder.conv1.weight`, `conv2`, `conv3`, `groupnorm`,
+`layer_norm` and every layer's input and post-attention layernorms as newly
+initialized. Greedy decode then emitted `"I, I, I, ..."` — plausible output from
+random weights.
+
+That makes the graphs exported earlier in this session invalid: they encode the
+randomly initialized encoder, not the checkpoint. The receipt now says
+`EXPORT_INVALID_RANDOMLY_INITIALIZED_ENCODER`, and the artifacts are retained
+only as a record of the attempt.
+
+This is the same failure class that has already cost this session three times: a
+load or a decode that succeeds, produces the right shapes, and only warns. The
+lesson generalizes — a warning during model load is not a diagnostic, it is
+evidence that something was not loaded.
+
+Prerequisites, in order: a transformers version expecting
+`model.encoder.embedder.*` or a state-dict remap into the expected layout; then
+re-export; then a reference transcript; then a gate. Until the first is
+available nothing about this checkpoint can be gated.
+
+Receipt: `moonshine/streaming-export-2026-10-04.json`.
+
 ## C48 — Correlation matching is only valid for 2-D weight matrices
 
 Status: a methodological rule, extracted from the redux substitution work.
