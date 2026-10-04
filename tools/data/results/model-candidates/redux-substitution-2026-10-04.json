@@ -12,7 +12,7 @@
     ]
   },
   "next_steps": [
-    "pair the substituted encoder with a decoder whose prediction-network state batch matches the model id, or invoke the Orukeet v3 model id so batch 2 is derived, then run the JFK pipeline",
+    "resolve the modelId registration for the Orukeet v3 export, or use the harness path from the 2026-10-02 receipts; the library's batch-1 state derivation against batch-2 decoder exports is a separate capability gap",
     "substitute redux's own prediction-network weights (decoder.lstm, decoder_projector, joint) so the pipeline stops being a hybrid",
     "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate",
     "export a decoder_joint path that consumes redux weights directly",
@@ -183,6 +183,22 @@
       "run": "the identical command against the untouched teacher artifact models/orukeet/onnx/fp32-packed-2026-10-01",
       "result": "identical failure, input_states_1 index 0 Got 1 Expected 2",
       "conclusion": "the pipeline failure is NOT caused by the substitution. It is my artifact pairing: the Orukeet v3 export bakes batch 2 into its prediction-network state inputs, while the invocation used the parakeet-realtime-eou-120m-v1 model id, which derives batch 1. The substituted encoder is exonerated by this control."
+    },
+    "pairing_attempt": {
+      "what_was_tried": [
+        "modelId parakeet-realtime-eou-120m-v1 with the Orukeet v3 artifact: loads, then fails on the batch-2 decoder state",
+        "modelId oruk/orukeet with the same artifact: rejected, no model family registered",
+        "modelId orukeet (alias) and parakeet-tdt-0.6b-v3: both rejected, no model family registered",
+        "modelId parakeet-realtime-eou-120m-v1 with the untouched teacher artifact: identical failure, which is what exonerated the substitution"
+      ],
+      "decoders_on_disk": {
+        "batch": 2,
+        "hidden": 640,
+        "count": 3,
+        "note": "every decoder available locally bakes batch 2"
+      },
+      "regression_found": "tools/data/results/orukeet/library-node-native-fp32-jfk-2026-10-02.json records a working run with modelId oruk/orukeet and modelDir models/orukeet/onnx/fp32-packed-2026-10-01. That id is no longer accepted by the library loader, so the pipeline cannot be reproduced through the current registry.",
+      "prerequisite": "either restore the oruk/orukeet registration or drive the substitution through the harness path that produced the 2026-10-02 receipts; separately, the library derives a batch-1 decoder state while every available decoder export is batch 2, which is a capability gap independent of redux"
     }
   }
 }
