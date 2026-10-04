@@ -65,5 +65,16 @@
     "then re-export, then produce a reference transcript, then gate"
   ],
   "runner_fix_still_valid": "the pair runner now reads slots, heads and headDim from the export receipt rather than constants; that fix stands independently of this checkpoint",
-  "artifacts": "the remap tool is kept at tools/moonshine-onnx-export/remap_streaming_state_dict.py because the 19 key renames it performs are real and would be needed for any future streaming class, but it does not and cannot fix this checkpoint"
+  "artifacts": "the remap tool is kept at tools/moonshine-onnx-export/remap_streaming_state_dict.py because the 19 key renames it performs are real and would be needed for any future streaming class, but it does not and cannot fix this checkpoint",
+  "community_onnx_evaluated": {
+    "finding": "community ONNX exports of moonshine-streaming do exist: Mazino0/moonshine-streaming-small-onnx, Mazino0/moonshine-streaming-medium-onnx, Immortalizer/moonshine-streaming-small-onnx and felixem/moonshine-streaming-tiny-optimized",
+    "no_official_export": "onnx-community ships onnx exports for the non-streaming Moonshine models but none for the streaming ones; the three official-looking ids probed returned HTTP 401",
+    "decision": "rejected as a port path",
+    "reasons": [
+      "unknown provenance, and this project exports its own graphs from official weights",
+      "the same failure already cost this project once: the browser graphs shipped for non-streaming Moonshine carried a different checkpoint revision and drifted from PyTorch by more than 1.6 in encoder output while still producing a correct transcript on one fixture",
+      "a third-party graph would still need the mel frontend reverse-engineered from the graph, which is the unresolved blocker either way"
+    ],
+    "note": "this is a recorded decision, not an oversight; revisiting it means accepting unverified upstream weights"
+  }
 }
