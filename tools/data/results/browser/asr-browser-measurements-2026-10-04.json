@@ -26,12 +26,13 @@
     {
       "model": "Qwen/Qwen3-ASR-0.6B-hf",
       "artifacts": "our own fp32 export, models/onnx/qwen3-asr-0.6b",
-      "backend": "webgpu and wasm",
+      "backend": "webgpu and wasm, both tested",
       "status": "FAIL",
       "error": "RangeError: WebAssembly.Memory(): Property 'initial': value 109143 is above the upper bound 65536",
       "reading": "the graphs load once their external-data sidecars are mounted, but the session asks for 109143 WASM pages, about 6.99 GB, against a 65536 page ceiling of 4 GB.",
-      "conclusion": "this is a hard WASM32 address-space limit, not a tuning problem, so enabling memory growth does not help. A 0.6B fp32 model is not browser-shippable as fp32; a reduced-precision graph would be a separate evidence-gated decision under the standing quantization rule.",
-      "caveat": "the Qwen browser case feeds the captured mel features because the library frontend is not wired, so it would measure the graphs rather than the frontend even if it loaded."
+      "conclusion": "A 0.6B fp32 model is not browser-shippable. Both execution providers fail the same way, so this is not a provider choice. Enabling WASM memory growth cannot help because the initial allocation itself exceeds the 4 GB WASM32 address space.",
+      "caveat": "the Qwen browser case feeds the captured mel features because the library frontend is not wired, so it would measure the graphs rather than the frontend even if it loaded.",
+      "webgpu_check": "run separately and it fails identically, so GPU memory does not help: ORT allocates the graph linear memory for weights regardless of the execution provider"
     }
   ],
   "harness_changes": [
