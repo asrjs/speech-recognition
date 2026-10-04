@@ -94,6 +94,9 @@ function buildVocab(tokenizer) {
 const artifactDir = argValue('model-dir', 'models/onnx/moonshine-tiny-fp32');
 const audioPath = argValue('audio', 'tools/data/fixtures/audio/jfk-short.wav');
 const maxTokens = Number(argValue('max-tokens', '256'));
+// Greedy decoding repeats on long input; a repetition penalty is the cheapest
+// thing to try before windowing.
+const penalty = Number(argValue('repetition-penalty', '0'));
 const slots = 12;
 const heads = 8;
 const headDim = 36;
@@ -155,8 +158,12 @@ for (; steps < maxTokens; steps += 1) {
   let bestId = 0;
   let best = Number.NEGATIVE_INFINITY;
   for (let index = 0; index < logits.data.length; index += 1) {
-    if (logits.data[index] > best) {
-      best = logits.data[index];
+    let value = logits.data[index];
+    if (penalty > 0 && tokenIds.includes(index)) {
+      value = value < 0 ? value * penalty : value / penalty;
+    }
+    if (value > best) {
+      best = value;
       bestId = index;
     }
   }

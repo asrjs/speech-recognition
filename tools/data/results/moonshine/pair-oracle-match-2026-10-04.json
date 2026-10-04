@@ -23,7 +23,7 @@
   "artifacts_dropped": "the 32 MB seed cache AND the 13,824-byte BOS self-attention block are both gone. Cross-attention is computed in-graph and self-attention starts empty, matching PyTorch's DynamicCache. The earlier seed experiments all failed because cross-attention was dead, which made the seed look load-bearing.",
   "still_open": [
     "streaming and partial-result behaviour: needs the moonshine-streaming checkpoint, which ships safetensors only, so it is a separate port rather than a measurement",
-    "usable length past ~30 s under greedy decoding; try a repetition penalty before windowing"
+    "audio longer than about 30 s needs windowing; confirmed by measurement, not assumed"
   ],
   "multi_fixture": {
     "status": "PASS_QUALITY",
@@ -42,6 +42,13 @@
     "total_ms": 7629,
     "text": "Daughter of a year with the birds of a year with the birds of a year with the birds of a year with...",
     "reading": "the opening is right and then greedy decoding repeats. No EOS is emitted within a 160-token cap on 56 s of audio. This is a decoding-policy limit on long input, not a graph fault: the shorter 31 s and 35 s runs decode cleanly.",
-    "next_thing_to_try": "greedy decoding is the simplest suspect here, so a repetition penalty or a minimum-length guard is worth one run before treating the ~30 s window as a hard limit. Windowing is the fallback remedy."
+    "next_thing_to_try": "TESTED AND REFUTED: a repetition penalty of 1.1 on the 2329-frame fixture produced byte-identical output to greedy (7 distinct tokens out of 120 in both runs). Greedy decoding is therefore not the cause, and the ~30 s limit is the model window. Windowing is the remedy.",
+    "repetition_penalty_probe": {
+      "penalty": 1.1,
+      "distinct_tokens": 7,
+      "emitted": 120,
+      "identical_to_greedy": true,
+      "conclusion": "decoding policy is not the driver"
+    }
   }
 }
