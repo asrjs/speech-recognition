@@ -271,26 +271,31 @@
     }
   },
   "verified_limits": [
-    "The front serves the frame count it was exported at: 1100 raw frames, 143 windows. The schedule is now an input but its length axis is fixed, so a 2600-frame clip still needs windowing.",
-    "One fixture and one length are validated. The JFK match is real but does not generalise without windowing.",
+    "The front serves the frame count it was exported at: 1100 raw frames, 143 windows. Its schedule is a graph input but the axis is static, so a 2600-frame clip needs windowing.",
+    "One fixture and one length are validated.",
     "No browser run exists.",
     "The model directory is 5.2 GB, which is the practical constraint for shipping this in a browser."
   ],
   "multi_fixture": {
-    "status": "JFK_MATCHES_SECOND_FIXTURE_BLOCKED_ON_THE_SCHEDULE_AXIS",
+    "status": "JFK_MATCHES_SECOND_FIXTURE_REFUTED_WINDOWING_REQUIRED",
     "fixture_1": {
       "audio": "jfk-short.wav",
       "frames": 1100,
-      "windows": 1,
       "result": "matches the oracle"
     },
     "fixture_2": {
       "audio": "librivox.org.wav",
       "frames": 2600,
-      "windows": 4,
-      "result": "the schedule is correct but the graph still refuses a 5-entry boundary vector"
+      "schedule": "[0,104,208,312,335]",
+      "result": "refused"
     },
-    "progress": "the limit moved twice: from a baked window split, to a wrong schedule, to a fixed schedule axis. Each was found by running a second fixture rather than by reading the code."
+    "proof_from_the_graph": {
+      "cu_seqlens_dim": "static 3, not a symbolic dimension",
+      "other_axes": "input_features [1,128,frames] and input_features_mask [1,frames] are symbolic and correct"
+    },
+    "root_cause": "get_audio_cu_seqlens builds cu_chunk_lens as a Python list comprehension over concrete tensor values, so torch.export specialises the schedule axis to the traced length and no dynamic_shapes declaration widens it. Six forms were tried. This is a transformers-level limitation, not a local one.",
+    "remedy": "window long audio to the exported length rather than chase a variable-length graph",
+    "generalises_beyond_exported_length": false
   },
   "cu_seqlens_requirement": {
     "finding": "a reconstruction of the schedule disagrees with the encoder by three frames",
