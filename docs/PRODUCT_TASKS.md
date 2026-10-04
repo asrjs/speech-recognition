@@ -153,6 +153,29 @@ Note on `primeline/parakeet-primeline`: verified it has **no config.json at all*
 only a `2_95_WER.nemo` checkpoint and a README. Its distillation status and
 architecture stay unverified, so it is not yet a defensible alternative.
 
+## C35 — parakeet-redux is not smaller; quantization path collapses
+
+Status: CORRECTION — an earlier claim in this session was wrong.
+
+`moondream/parakeet-redux` was reported as "148,923,399 parameters, about 4.2x
+smaller than the 627M line". That number is the Hugging Face safetensors
+_file-size_ estimate. Ternary weights pack five elements per byte, so the file is
+small while the parameter count is unchanged.
+
+Verified from the repository's own `ternary.json`: `n_quantized_params`
+603,979,776 plus `n_dense_params` 23,290,911 equals **627,270,687** parameters,
+24 more than the teacher `nvidia/parakeet-tdt-0.6b-v3` (627,270,663). The
+architecture is `parakeet_tdt` with a 24-layer, 1024-hidden, 128-mel encoder,
+identical to Parakeet TDT v3.
+
+It therefore fails scope twice: it is NVIDIA-derived (`source.teacher` names the
+NVIDIA model) and it is the same size class, not a student. Exporting it to ONNX
+requires dequantizing ternary weights back to float32, which yields a full-size
+graph with no runtime saving, because ONNX Runtime has no ternary matmul
+operator. The authorized quantization path buys download and disk size only.
+
+Receipt: `tools/data/results/model-candidates/parakeet-redux-size-correction-2026-10-04.json`.
+
 ## C34 — Parakeet candidate survey is now conclusive
 
 Status: SURVEY COMPLETE — every candidate resolved; one port shipped, no smaller

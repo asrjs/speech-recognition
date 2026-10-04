@@ -1,0 +1,29 @@
+{
+  "status": "CORRECTION_PARAKEREDUX_IS_NOT_SMALLER",
+  "model": "moondream/parakeet-redux",
+  "previous_claim": "148,923,399 parameters, about 4.2x smaller than the 627M line. THIS WAS WRONG.",
+  "why_wrong": "The figure came from the Hugging Face safetensors metadata, which estimates from stored file bytes. Ternary weights pack five elements per byte, so the file is small while the parameter count is unchanged.",
+  "verified_from_primary_source": {
+    "source": "ternary.json shipped in the repository",
+    "n_quantized_params": 603979776,
+    "n_dense_params": 23290911,
+    "total_params": 627270687,
+    "teacher_params": 627270663,
+    "delta_vs_teacher": 24,
+    "teacher": "nvidia/parakeet-tdt-0.6b-v3 (stated in ternary.json source.teacher)",
+    "file_bytes": 177774490,
+    "packing": "base-3, five elements per byte, group_size 128"
+  },
+  "architecture": "parakeet_tdt, encoder 24 layers, hidden 1024, 128 mel bins, pred_hidden 640, identical to Parakeet TDT v3.",
+  "scope_verdict": "OUT_OF_SCOPE_TWO_WAYS",
+  "reasons": [
+    "NVIDIA-derived: ternary.json names nvidia/parakeet-tdt-0.6b-v3 as the teacher, so it fails the stated exclusion of NVIDIA models.",
+    "Not a distillation in the size sense: same 627M parameters as the teacher; only the on-disk encoding differs."
+  ],
+  "runtime_benefit_assessment": {
+    "export_to_onnx_requires_dequantization": true,
+    "dequantized_onnx_size": "approximately the full 627M fp32 size, that is about 2.5 GB, with no runtime saving",
+    "native_ternary_kernel": "ONNX Runtime has no ternary matmul operator, so keeping 1.58-bit weights would require a custom operator that no execution provider here supports",
+    "conclusion": "The authorized quantization path collapses on inspection: it buys download and disk size, not inference footprint, and the lineage excludes it anyway."
+  }
+}
