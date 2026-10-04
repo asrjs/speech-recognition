@@ -132,6 +132,9 @@ def main(argv: list[str] | None = None) -> int:
             "input_features": {0: "batch", 2: "frames"},
             # The mask is 2-D [batch, frames]; features are 3-D [batch, bins, frames].
             "input_features_mask": {0: "batch", 1: "frames"},
+            # One boundary per window plus the leading zero, so this axis has to
+            # stay dynamic or the graph fixes the window count it was traced with.
+            "cu_seqlens": {0: "boundaries"},
             "audio_embeds": {0: "batch", 1: "frames"},
         },
         opset_version=OPSET,

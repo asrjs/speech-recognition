@@ -1,5 +1,5 @@
 {
-  "status": "VARIABLE_LENGTH_FRONT_EXPORTED_CU_SEQLENS_MUST_BE_CAPTURED",
+  "status": "VARIABLE_LENGTH_FRONT_EXPORTED_SCHEDULE_CAPTURED_AXIS_STILL_FIXED",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -281,26 +281,20 @@
     "The model directory is 5.2 GB, which is the practical constraint for shipping this in a browser."
   ],
   "multi_fixture": {
-    "status": "JFK_MATCHES_OTHER_LENGTHS_STILL_BLOCKED",
+    "status": "JFK_MATCHES_SECOND_FIXTURE_BLOCKED_ON_THE_SCHEDULE_AXIS",
     "fixture_1": {
       "audio": "jfk-short.wav",
       "frames": 1100,
-      "cu_seqlens": [
-        0,
-        143
-      ],
+      "windows": 1,
       "result": "matches the oracle"
     },
     "fixture_2": {
       "audio": "librivox.org.wav",
       "frames": 2600,
-      "cu_seqlens": [
-        0,
-        338
-      ],
-      "result": "fails until the schedule is captured correctly"
+      "windows": 4,
+      "result": "the schedule is correct but the graph still refuses a 5-entry boundary vector"
     },
-    "change_since_last_measurement": "the front is no longer baked to 143 windows, so the limit moved from the graph to the schedule computation"
+    "progress": "the limit moved twice: from a baked window split, to a wrong schedule, to a fixed schedule axis. Each was found by running a second fixture rather than by reading the code."
   },
   "cu_seqlens_requirement": {
     "finding": "a reconstruction of the schedule disagrees with the encoder by three frames",
@@ -315,6 +309,50 @@
     },
     "why_the_reconstruction_is_wrong": "the encoder derives chunk_lengths by reshaping the feature mask into chunks before calling get_audio_cu_seqlens; the helper in the exporter passed the whole feature length as a single chunk, which only coincides at one length",
     "correct_fix": "capture cu_seqlens from the encoder's own get_audio_cu_seqlens during a real forward, by intercepting the call, rather than recomputing it",
-    "status": "not yet done"
+    "status": "not yet done",
+    "captured": {
+      "tool": "tools/qwen3-asr-onnx-export/capture_cu_seqlens.py",
+      "method": "the encoder's own get_audio_cu_seqlens is intercepted during a real forward, so the schedule is taken rather than recomputed",
+      "fixtures": [
+        {
+          "name": "jfk",
+          "frames": 1100,
+          "cuSeqlens": [
+            0,
+            143
+          ],
+          "windows": 1,
+          "audioEmbeds": [
+            143,
+            1024
+          ]
+        },
+        {
+          "name": "librivox",
+          "frames": 2600,
+          "cuSeqlens": [
+            0,
+            104,
+            208,
+            312,
+            335
+          ],
+          "windows": 4,
+          "audioEmbeds": [
+            335,
+            1024
+          ]
+        }
+      ],
+      "reconstruction_was_wrong_by": "the helper produced [0, 338] as a single window where the encoder uses four windows totalling 335"
+    },
+    "remaining": {
+      "status": "BLOCKED_ON_DYNAMIC_SHAPES",
+      "error": "Got invalid dimensions for input: cu_seqlens, index 0 Got 5 Expected 2",
+      "reading": "the graph accepts the schedule as an input but its boundary axis is still fixed to the two entries it was traced with",
+      "why_declaring_dynamic_axes_did_not_help": "the dynamo exporter does not consume dynamic_axes; it needs dynamic_shapes built from torch.export.Dim",
+      "fix": "pass dynamic_shapes with a Dim for cu_seqlens axis 0 instead of dynamic_axes, tracing with an example of several windows so the axis is provably non-unit",
+      "status_note": "not yet applied"
+    }
   }
 }
