@@ -13,6 +13,7 @@ import {
 } from '@asrjs/speech-recognition';
 import { createDefaultNodeAssetProvider } from '@asrjs/speech-recognition/io/node';
 import { createNemoRnntModelFamily } from '@asrjs/speech-recognition/models/nemo-rnnt';
+import { createNemoTdtModelFamily } from '@asrjs/speech-recognition/models/nemo-tdt';
 import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/parakeet';
 
 const DEFAULT_AUDIO = path.resolve(
@@ -267,6 +268,9 @@ async function main() {
   });
   runtime.registerBackend(createWasmBackend());
   runtime.registerModelFamily(createNemoRnntModelFamily());
+  // Parakeet TDT models, including oruk/orukeet, resolve to this family. Without it
+  // every TDT load fails with 'No model family is registered'.
+  runtime.registerModelFamily(createNemoTdtModelFamily());
   runtime.registerPreset(
     createParakeetPresetFactory({
       useManifestSource: false,

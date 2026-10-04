@@ -1,5 +1,5 @@
 {
-  "status": "SUBSTITUTED_0.858_BLOCKED_BY_LIBRARY_REGISTRATION_BUG",
+  "status": "SUBSTITUTION_PATH_FALSIFIED_ZERO_TOKENS",
   "model": "moondream/parakeet-redux",
   "what_is_wrong": {
     "kept": 63,
@@ -12,10 +12,8 @@
     ]
   },
   "next_steps": [
-    "fix the manifest-to-descriptor wiring so oruk/orukeet resolves; this is a library defect independent of redux, and it also blocks every other Orukeet run",
-    "substitute redux's own prediction-network weights (decoder.lstm, decoder_projector, joint) so the pipeline stops being a hybrid",
-    "record a redux JFK baseline from a NeMo reference decode, then run the oracle gate",
-    "export a decoder_joint path that consumes redux weights directly",
+    "drop the weight-substitution path for redux; it produces a graph that runs and emits nothing",
+    "export redux from its own weights with NeMo rather than substituting into a third-party export",
     "port moonshine-streaming as its own checkpoint: download safetensors, export, add a chunked decode loop",
     "evaluate parakeet-ultra and primeline within the download budget"
   ],
@@ -143,7 +141,26 @@
   "full_pipeline_attempt": {
     "status": "BLOCKED_AT_DECODER_INTERFACE",
     "what_was_run": "the library Parakeet runner with --model-dir pointing at the substituted artifact and the teacher's decoder_joint and vocab copied alongside it",
-    "result": "the encoder loads and runs; the decoder call fails",
+    "result": {
+      "status": "PIPELINE_RUNS_BUT_EMITS_ZERO_TOKENS",
+      "run": "substituted redux encoder at 0.858 coverage, modelId oruk/orukeet, JFK fixture",
+      "metrics": {
+        "preprocess_ms": 27.5,
+        "encode_ms": 2600.0,
+        "decode_ms": 75.8,
+        "total_ms": 2705.1,
+        "rtf": 0.2459
+      },
+      "output": {
+        "canonicalText": "",
+        "tokenIds": [],
+        "containsEou": false,
+        "containsEob": false
+      },
+      "reading": "the graph executes cleanly and fast but the TDT decoder never emits a symbol, so the substituted encoder does not drive a working recognizer. This is consistent with the 0.0215 encoder cosine and it is a decisive negative result for weight substitution as a port path.",
+      "caveat": "this remains a hybrid: the decoder and joint weights are the teacher's, since redux's own prediction network is in no exported graph",
+      "verdict": "weight substitution into the teacher export does not produce a usable redux model. A fresh NeMo to ONNX export from the redux weights is the remaining path, and the earlier adjacency ladder explains why: per-tensor correlation of 0.8 to 0.99 is not enough for a 1.58-bit repack to preserve behaviour through 24 Conformer layers."
+    },
     "error": "OrtRun ERROR_CODE 2, invalid dimensions for input input_states_1, index 0 Got 1 Expected 2",
     "reading": "a fixed batch of 2 is expected on the decoder input axis but 1 arrives. The substituted graph is a structural copy of the teacher graph with different initializer values, so its output shape should be identical; the mismatch is therefore in how the library assembles the encoder output for the decoder, not in the substituted weights.",
     "caveats": [
@@ -244,6 +261,12 @@
         "why_not_fixed_here": "changing a registry path without a runnable verification would be speculative; the manifest table, the resolver and the failure were located instead",
         "why_it_matters": "this blocks the shipped Orukeet artifact entirely, independent of the redux experiment, and contradicts the passing receipt tools/data/results/orukeet/library-node-native-fp32-jfk-2026-10-02.json which used the same id and directory"
       }
+    },
+    "harness_bug_found_and_fixed": {
+      "symptom": "every TDT load failed with 'No model family is registered for model oruk/orukeet'",
+      "cause": "tools/model-debugging/scripts/node-asrjs-parakeet-realtime-parity.mjs built a bare runtime and registered only createNemoRnntModelFamily, never createNemoTdtModelFamily. The library itself registers the TDT family in src/runtime/builtins.ts, so this was a harness gap, not a library regression.",
+      "fix": "register createNemoTdtModelFamily in the runner",
+      "verification": "the untouched teacher artifact then produced the full JFK transcript through the same runner, which also cleared the earlier input_states_1 batch error and showed it was a consequence of the RNNT manifest being applied to a TDT export"
     }
   }
 }
