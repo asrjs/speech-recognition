@@ -1,5 +1,5 @@
 {
-  "status": "AUDIO_FRONT_EXPORTED_FIXED_LENGTH",
+  "status": "AUDIO_FRONT_AND_DECODER_STEP_EXPORTED_NEITHER_GENERAL",
   "candidate": "Qwen/Qwen3-ASR-0.6B-hf",
   "why_this_candidate": "docs/GOAL_PROMPT_RECOMMENDED.md section 5 names Qwen ASR 0.6B as one of our original registered interests, in the non-NVIDIA track that the Parakeet track cannot currently advance",
   "download": {
@@ -47,8 +47,9 @@
     "then export our own fp32 graphs and gate against a PyTorch reference"
   ],
   "not_done": [
-    "the 28-layer language model decoder graph is not exported",
-    "no variable-length audio front exists",
+    "no cache-carrying decoder step interface exists yet",
+    "no variable-length audio front exists yet",
+    "the two graphs have not been composed into a single decode path",
     "no Node runner, no oracle gate, no library registration, and no accuracy claim exists for this model"
   ],
   "unblock": {
@@ -117,7 +118,7 @@
       "patching get_audio_cu_seqlens so the chunk schedule is computed from the declared frame axis instead of the mask, which changes model code and would need its own justification",
       "an existing ONNX export of this architecture from a trusted source, which the roadmap forbids in place of our own"
     ],
-    "decision": "Accepted as a measured intermediate, not as a shippable artifact. The graph is numerically faithful at the exported length and the limits are recorded rather than hidden, but a library port cannot ship a model that only works on one audio length.",
+    "decision": "Both graphs are accepted as measured intermediates. Neither is shippable on its own: the audio front is fixed to one length, and the decoder step carries no cache. A library port needs a variable-length audio front and a cache-carrying decoder, then an end-to-end Node gate against the recorded oracle.",
     "artifacts": "the exporter is kept and runs up to the export call, so the blocker is one command away from being revisited",
     "graphs": {
       "audio_front_model.onnx": {
@@ -138,6 +139,48 @@
           "allclose_atol_1e-4_rtol_1e-3": true
         },
         "exporter": "torch.onnx.export(dynamo=False)"
+      },
+      "decoder_step_model.onnx": {
+        "tool": "tools/qwen3-asr-onnx-export/export_qwen3_asr_decoder.py --legacy-trace",
+        "inputs": [
+          "inputs_embeds"
+        ],
+        "outputs": [
+          "logits",
+          "present_key",
+          "present_value"
+        ],
+        "cache_layout": "[layers, batch, kv_heads, past_length, head_dim], layer-major",
+        "geometry": {
+          "layers": 28,
+          "kv_heads": 8,
+          "head_dim": 128,
+          "present_key": [
+            28,
+            1,
+            8,
+            1,
+            128
+          ]
+        },
+        "opset": 20,
+        "exporter": "torch.onnx.export(dynamo=False), external data sidecar",
+        "parity_vs_pytorch": {
+          "max_abs_error": 0.00010144710540771484,
+          "mean_abs_error": 2.0081417460460216e-05,
+          "allclose_atol_1e-4_rtol_1e-3": true
+        },
+        "attention": "eager",
+        "why_eager": "fused scaled_dot_product_attention does not support grouped-query attention in the tracer's symbolic conversion at any opset; this model runs 16 query heads over 8 key-value heads. Eager attention is the same maths with a different kernel.",
+        "obstacles_cleared": [
+          "a DynamicCache object cannot cross the tracer boundary, so key and value are stacked per layer",
+          "the 28-layer model exceeds the 2 GiB protobuf limit, so weights are written to an external data sidecar",
+          "the export path must be passed as a string for the sidecar path to be accepted"
+        ],
+        "verified_limits": [
+          "The step takes no past state, so it is a first step only. Autoregressive decoding over more than one token still needs a cache-carrying interface, which is the next piece of work.",
+          "The graph was traced with eager attention, so it is not the same kernel the default configuration would select."
+        ]
       }
     },
     "verified_limitations": [
