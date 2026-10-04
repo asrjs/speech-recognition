@@ -244,7 +244,7 @@
     "known_constraint": "the audio front is fixed to the exported frame count, so the runner currently handles only audio of that length; the model's own window is 30 s, which is where this matters least",
     "runner": {
       "tool": "tools/model-debugging/scripts/transcribe_qwen3_asr_local.mjs",
-      "status": "WRITTEN_BUT_NOT_RUNNING",
+      "status": "REACHES_TOKENIZATION",
       "reaches": "it loads both graphs, runs the audio front successfully, and fails constructing the first input tensor",
       "error": "Tensor's size(140800) does not match data length(0), which is the input_features tensor at [1, 128, 1100]",
       "diagnosis": "the numpy reader in the runner returns an empty array even though the headers are correct: descr <f4, shape (1, 128, 1100), 563328 bytes on disk for 140800 floats. The slice offsets around the Node Buffer are the suspect, since the same reader works for nothing yet and has not been verified against a known length.",
@@ -255,7 +255,20 @@
         "jfk_features_mask": "(1, 1100), 4528 bytes, int32 so it is not read as float32"
       },
       "known_incomplete": "the loop cannot embed an emitted token without a graph for embed_tokens, so a --one-token mode was added as an interim; a full loop needs either that graph or the token embeddings resolved per step",
-      "not_done": "no transcript has been produced by the graphs, so no oracle comparison has run and no accuracy claim exists"
+      "not_done": "no transcript has been produced yet, so no oracle comparison has run and no accuracy claim exists",
+      "reader_defect": {
+        "two_bugs": [
+          "the .npy header length is a uint16 at byte 8, not a uint32, so reading four bytes pulled two bytes of header text into the length and shifted every data offset",
+          "Float32Array.from() on an ArrayBuffer treats it as an iterable; an ArrayBuffer is not iterable, so it silently returned length zero. The Float32Array(ArrayBuffer) form copies and works."
+        ],
+        "symptom": "input_features reported a size of 140800 with data length 0",
+        "why_it_was_hard": "both failures are silent: the reader produced an object with correct dims and an empty array, and the error only surfaced as a tensor size mismatch far downstream."
+      },
+      "remaining": [
+        "the model directory lacked tokenizer.json, now copied",
+        "a full decode exceeds 900 s on CPU at a 158-token prompt, so the run needs a longer budget or a measured faster configuration",
+        "the loop still cannot embed an emitted token without an embed_tokens graph, so --one-token remains the only mode that completes"
+      ]
     }
   }
 }

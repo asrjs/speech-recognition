@@ -35,7 +35,10 @@ function argFlag(name) {
 /** Reads a float32 .npy written by numpy; its header is a Python dict literal. */
 function readNpy(path) {
   const buffer = readFileSync(path);
-  const headerLength = buffer.readUInt32LE(8);
+  // .npy v1.0: 6-byte magic, 2-byte version, then a uint16 header length.
+  // Reading four bytes here pulls two bytes of header text into the length and
+  // shifts every data offset, which is what made this reader return nothing.
+  const headerLength = buffer.readUInt16LE(8);
   const header = buffer.toString('utf8', 10, 10 + headerLength);
   if (!header.includes("'descr': '<f4'")) {
     throw new Error(`${path} is not a float32 npy: ${header.trim()}`);
@@ -46,7 +49,10 @@ function readNpy(path) {
   const offset = 10 + headerLength;
   // Copy rather than view: a Node Buffer's memory need not be 4-byte aligned, so
   // constructing a Float32Array over it can fail on the byte offset.
-  const data = Float32Array.from(
+  // The Float32Array(ArrayBuffer) form copies and works; Float32Array.from() on an
+  // ArrayBuffer treats it as an iterable, and an ArrayBuffer is not iterable, so it
+  // silently yields length zero.
+  const data = new Float32Array(
     buffer.buffer.slice(buffer.byteOffset + offset, buffer.byteOffset + offset + count * 4),
   );
 
