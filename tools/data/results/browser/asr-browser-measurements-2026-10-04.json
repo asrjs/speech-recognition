@@ -1,0 +1,43 @@
+{
+  "status": "PARTIAL_MOONSHINE_WASM_PASS_WEBGPU_KERNEL_FAIL_QWEN_MEMORY_FAIL",
+  "harness": "N:/github/asrjs/webgpu-agent-test, run-ctc-asr-webgpu.mjs",
+  "runs": [
+    {
+      "model": "moonshine-tiny",
+      "artifacts": "our own fp32 export, models/onnx/moonshine-tiny-fp32",
+      "backend": "wasm",
+      "status": "PASS",
+      "baselineMatch": true,
+      "transcript": "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country.",
+      "loadMs": 1509.5,
+      "transcribeMs": 1226.8,
+      "rtfx": 9.0,
+      "decodeIterations": 25,
+      "emittedTokenCount": 24
+    },
+    {
+      "model": "moonshine-tiny",
+      "artifacts": "our own fp32 export, models/onnx/moonshine-tiny-fp32",
+      "backend": "webgpu",
+      "status": "FAIL",
+      "error": "[WebGPU] Kernel \"[SkipLayerNormalization] SkipLayerNormalization\" failed. Error: Beta must be 1D",
+      "reading": "the graph loads and reaches kernel execution, so this is a kernel shape constraint rather than a loading failure. The exported encoder produces a SkipLayerNormalization whose beta is not 1-D under the WebGPU provider."
+    },
+    {
+      "model": "Qwen/Qwen3-ASR-0.6B-hf",
+      "artifacts": "our own fp32 export, models/onnx/qwen3-asr-0.6b",
+      "backend": "webgpu and wasm",
+      "status": "FAIL",
+      "error": "RangeError: WebAssembly.Memory(): Property 'initial': value 109143 is above the upper bound 65536",
+      "reading": "the graphs load once their external-data sidecars are mounted, but the session asks for 109143 WASM pages, about 6.99 GB, against a 65536 page ceiling of 4 GB.",
+      "conclusion": "this is a hard WASM32 address-space limit, not a tuning problem, so enabling memory growth does not help. A 0.6B fp32 model is not browser-shippable as fp32; a reduced-precision graph would be a separate evidence-gated decision under the standing quantization rule.",
+      "caveat": "the Qwen browser case feeds the captured mel features because the library frontend is not wired, so it would measure the graphs rather than the frontend even if it loaded."
+    }
+  ],
+  "harness_changes": [
+    "Moonshine now points at the migrated artifact set and mounts each graph's external-data sidecar, because a blob URL gives ORT no directory to resolve them against.",
+    "A qwen3asr case was added with the same sidecar mounting and an explicit memory-growth attempt.",
+    "The Moonshine loader was still passing seedCache after the session migration retired that architecture; it now uses the cross-attention graph and reads the past-state geometry from the export receipt."
+  ],
+  "honest_note": "Only the Moonshine WASM run is a pass. The WebGPU kernel failure and the Qwen memory ceiling are real browser constraints, measured with exact numbers rather than inferred."
+}
