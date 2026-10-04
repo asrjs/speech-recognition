@@ -1,0 +1,33 @@
+{
+  "status": "DECODER_VALIDATED_WEIGHTS_NOT_FETCHED",
+  "candidate": "moondream/parakeet-redux",
+  "license": "cc-by-4.0",
+  "format": "thrush-ternary-v2",
+  "teacher": "nvidia/parakeet-tdt-0.6b-v3",
+  "validated_without_download": [
+    "Round-trip pack/unpack is exact for in_features in {1,5,6,128,130,1024}.",
+    "Least-significant-digit order matches the manifest, pad digits are discarded.",
+    "Weight rule reproduces w = scales[row, col//group] * (code - 1) exactly.",
+    "Parameter count from the manifest layout equals the manifest's own count."
+  ],
+  "arithmetic": {
+    "modules": 264,
+    "params": 603979776,
+    "params_recomputed_from_layout": 603979776,
+    "ternary_payload_mb": 115.31,
+    "fp16_scales_mb": 9.0,
+    "dense_fp16_mb": 44.42,
+    "projected_total_mb": 168.7,
+    "declared_safetensors_mb": 169.5,
+    "bits_per_weight_including_scales": 1.727,
+    "manifest_size_mb": 177.7
+  },
+  "integration_finding": {
+    "teacher_encoder_tensors": 299,
+    "redux_quantized_modules": 264,
+    "verdict": "Order-based weight substitution into the validated teacher graph does not work. The teacher graph is a surgically renamed and fused export with 299 weight/bias tensors, while redux declares 264 quantized modules plus roughly 205 dense norm tensors, so tensors were merged. A NeMo-name to graph-name mapping is required.",
+    "consequence": "redux needs its own export rather than substitution, so it does not reuse the validated Orukeet graph."
+  },
+  "blocked_on": "fetching model.safetensors (169.5 MB) for moondream/parakeet-redux",
+  "runtime_note": "Dequantizing to float32 is exact but yields no runtime size win, since the browser artifact would then match the teacher. The win is download size: 169.5 MB against roughly 2.4 GB for the fp32 teacher."
+}
