@@ -1,6 +1,6 @@
 # Recommended goal — whole-product speech runtime
 
-Updated: 2026-10-03. This is the durable, harness-independent goal, not a
+Updated: 2026-10-08. This is the durable, harness-independent goal, not a
 claim of current model acceptance. Read [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md)
 for startup order and the current handover. Task records remain
 [PRODUCT_TASKS.md](PRODUCT_TASKS.md) and
@@ -17,6 +17,31 @@ exists. On activation, reconcile live evidence and execute a bounded slice.
 The former combined goal/checkpoint is preserved verbatim in
 [the 2026-10-01 archive](archive/GOAL_PROMPT_RECOMMENDED_2026-10-01.md).
 Its historical next-step instructions are superseded by the current handover.
+
+## Resume emphasis — 2026-10-08
+
+Read [GOAL_MODEL_PORT_HARNESS.md](GOAL_MODEL_PORT_HARNESS.md) as the current
+engineering focus, not a replacement mission or permission to change model order.
+Start tool discovery at [tools/README.md](../tools/README.md); for model work read
+the project-local [Model Debugging Skill](../tools/model-debugging/SKILL.md).
+The 2026-10-03 handover is a historical baseline: reconcile later commits and
+dated receipts instead of replaying its next-step instructions literally.
+
+At this resume, implementation HEAD is `9a9fa4a`. Later evidence records a passing
+Orukeet JFK hybrid score control after correcting the loaded ORT bundle identity;
+production feature conformance remains FAIL / deferred at its unchanged gates.
+Do not repeat that resolved score attribution or relax the feature gate. Existing
+Moonshine WASM output controls and Qwen browser memory failures have narrower
+artifact/host scopes; neither supports universal family acceptance or a blanket
+claim that a model is unsuitable. Preserve all failed and legacy receipts.
+
+G6 resume slice C51 now requires valid recorded SHA-256 identities for local
+manifest inputs before a runner can execute; negative tests and existing adapter
+controls pass. Next return to the first actionable product/model gap in the
+existing task files, auditing current source before acting on an old OPEN entry.
+Numerical deferral does not mean
+model promotion, and harness progress must still enable usable library delivery.
+No new queue, downloads, provider repair or sibling-write authority is introduced.
 
 ## Copy-ready goal
 

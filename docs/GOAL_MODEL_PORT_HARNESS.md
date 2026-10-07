@@ -1,12 +1,33 @@
 # Goal — model-port scale and harness leverage
 
-Updated: 2026-10-03. Derived from the whole-product goal in
+Updated: 2026-10-08. Derived from the whole-product goal in
 [GOAL_PROMPT_RECOMMENDED.md](GOAL_PROMPT_RECOMMENDED.md) and this session's
 measured evidence. This is a focus overlay for **adapting more models and
 compounding harness value**, not a replacement for the whole-product goal and
 not a claim of current acceptance. Task records remain
 [PRODUCT_TASKS.md](PRODUCT_TASKS.md) and
 [PARAKEET_VARIANT_TASKS.md](PARAKEET_VARIANT_TASKS.md).
+
+## Resume checkpoint — 2026-10-08
+
+The measured sections below retain their dated scope; the 2026-10-03 handover
+is not the current implementation state. Resume baseline is `9a9fa4a`.
+The ORT-bundle Orukeet score discrepancy is already resolved on its documented
+JFK control. The strict production-feature gate remains FAIL / deferred and no
+change to the functional-vs-numerical acceptance standard is authorized.
+
+Later Moonshine controls record WASM output success but WebGPU numerical
+divergence after the kernel-load fix; changing graph optimization did not fix
+that configuration. The recorded Qwen fp32 browser memory failure concerns its
+specific export/host path, not every Qwen artifact or the existing port. Do not
+repeat those controls as new hypotheses or infer family-wide support/rejection.
+
+G6 resume slice C51 in the existing product queue is now complete: recorded
+local SHA-256 binding fails closed before any manifest runner starts, with
+14 passing manifest tests and existing adapter compatibility checks. This improves
+trust in the next port without changing model order, tolerances or decode logic.
+Next select the safely actionable recorded product/model gap;
+use current source and receipts before acting on older OPEN entries.
 
 ## Why this focus, from evidence
 
