@@ -1,4 +1,53 @@
+## C51 — Recorded identity is mandatory in port manifests
+
+Status: PASS — shared manifest preflight and synthetic CLI regression;
+not fresh model inference, numerical parity or browser acceptance.
+
+Resume date: 2026-10-08, implementation baseline `9a9fa4a`. The manifest
+runner promised SHA-bound inputs, but `require_file` accepted a missing/empty
+digest and merely recorded the current file hash. Every local weight, artifact,
+runtime config, fixture and oracle now requires a 64-hex-character recorded
+SHA-256 before its bytes are hashed. Uppercase/lowercase hex binds the same
+bytes; wrong digests still fail. No family routing, runner/decode logic,
+original-engine oracle, numerical tolerance or published runtime changed.
+
+Four new test methods (invalid-value/role subcases plus an actual CLI preflight)
+failed on the old implementation. All 14 manifest test methods now pass:
+`python -m unittest discover -s tests -p test_port_manifest.py`.
+Syntax checks: `python -m py_compile tools/model-debugging/scripts/port_manifest.py tests/test_port_manifest.py`.
+Neighboring controls also pass: eight `test_artifact_outputs.py` and fourteen
+`test_stage_attribution.py` tests under `python -m unittest discover -s tools`.
+An independent read-only checker reran all fourteen manifest tests and verified
+the full preflight-to-runner call path. No full model or TypeScript suite rerun
+is claimed for this Python-tool-only change.
+The CLI negative verifies no subprocess starts and no receipt is written when
+an artifact digest is absent. Temporary input fixtures are isolated and cleaned
+up; this does not certify an actual model or resource release.
+
+All five existing `.port.json` files retain syntactically valid recorded local
+digests under a read-only schema-field audit. That audit did not rehash model
+weights or prove those saved hashes match today's artifacts. Legacy unpinned
+local manifests must record independently verified identities; do not fill
+their hashes from an arbitrary current file and call it proven provenance.
+Remote source metadata handling is unchanged and is not local weight validation.
+
+Next: resume the existing model/product gap through its current adapter and
+fresh artifact gates. Keep Orukeet's strict feature failure/defer status and
+the resolved ORT-bundle score control distinct. Sibling candidate/oracle routing
+requires separate write authority; do not overwrite failed receipts or broaden
+this fix into another inference loop.
+
 ## C50 — The shipped Moonshine library still uses the retired architecture
+
+Resume audit (2026-10-08): the implementation portion below is historical.
+Current `session.ts` uses stacked `self_past` / `cross_past` and an empty
+self cache; the local adapter no longer requires `seed-cache.json`. Do not
+repeat that migration. The later browser receipt
+`tools/data/results/browser/asr-browser-measurements-2026-10-04.json` still
+records WebGPU numerical divergence and a passing WASM control on its own
+configuration. Source migration does not close that backend/quality gate.
+Next numerical step is a bound encoder/decoder stage comparison on identical
+inputs, not another seed-cache architecture rewrite or fusion toggle.
 
 Status: OPEN. Recorded rather than half-migrated.
 

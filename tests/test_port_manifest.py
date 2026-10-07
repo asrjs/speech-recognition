@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools' / 'model-debugging' / 'scripts'))
@@ -80,6 +81,58 @@ def oracle_tokens():
         .read_text(encoding='utf-8')
     )['result']
     return document['token_ids'], document['text']
+
+
+class PortManifestDigestContract(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix='manifest-digest-')
+        self.addCleanup(self.directory.cleanup)
+        self.input = Path(self.directory.name) / 'input.bin'
+        self.input.write_bytes(b'bound input')
+
+    def test_unbound_digest_fails_before_reading_file(self):
+        for expected in (None, '', ' ', 42, False, 'f' * 63, 'f' * 65, 'z' * 64):
+            with self.subTest(expected=expected), patch.object(port_manifest, 'digest') as digest:
+                with self.assertRaisesRegex(ValueError, 'Missing or invalid SHA-256'):
+                    port_manifest.require_file(str(self.input), expected, 'local artifact')
+                digest.assert_not_called()
+
+    def test_valid_uppercase_digest_binds_the_same_bytes(self):
+        expected = port_manifest.digest(self.input)
+        bound = port_manifest.require_file(str(self.input), expected.upper(), 'local artifact')
+        self.assertEqual(bound['sha256'], expected)
+
+    def test_each_local_manifest_role_requires_a_recorded_digest(self):
+        for role in ('weights', 'artifact', 'config', 'fixture', 'oracle'):
+            with self.subTest(role=role):
+                manifest = manifest_with([sys.executable, '-c', STUB_MATCH])
+                manifest['runtimeConfig'] = {
+                    'path': str(self.input), 'sha256': port_manifest.digest(self.input),
+                }
+                target = {
+                    'weights': manifest['originalWeights'],
+                    'artifact': manifest['localArtifacts']['files'][0],
+                    'config': manifest['runtimeConfig'],
+                    'fixture': manifest['fixtures'][0],
+                    'oracle': manifest['fixtures'][0]['oracle'],
+                }[role]
+                del target['sha256']
+                with self.assertRaisesRegex(ValueError, 'Missing or invalid SHA-256'):
+                    port_manifest.check_manifest(manifest)
+
+    def test_missing_artifact_digest_stops_cli_before_runner_or_receipt(self):
+        manifest = manifest_with([sys.executable, '-c', STUB_MATCH])
+        del manifest['localArtifacts']['files'][0]['sha256']
+        source = Path(self.directory.name) / 'manifest.json'
+        source.write_text(json.dumps(manifest), encoding='utf-8')
+        output = Path(self.directory.name) / 'receipt.json'
+        argv = ['port_manifest.py', '--manifest', str(source), '--run', 'stub',
+                '--output', str(output)]
+        with patch.object(sys, 'argv', argv), patch.object(port_manifest.subprocess, 'run') as run:
+            with self.assertRaisesRegex(ValueError, 'Missing or invalid SHA-256'):
+                port_manifest.main()
+            run.assert_not_called()
+        self.assertFalse(output.exists())
 
 
 class PortManifestComparisonContract(unittest.TestCase):

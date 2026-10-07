@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -34,13 +35,15 @@ def digest(path: Path) -> str:
 
 
 def require_file(relative: str, expected_sha256: str | None, role: str) -> dict[str, Any]:
+    if not isinstance(expected_sha256, str) or re.fullmatch(r'[0-9a-fA-F]{64}', expected_sha256) is None:
+        raise ValueError(f'Missing or invalid SHA-256 for {role}: {relative}')
     path = (ROOT / relative).resolve() if not Path(relative).is_absolute() else Path(relative)
     if not path.is_file() or path.is_symlink():
         raise ValueError(f'Missing or symlinked {role}: {relative}')
     if path.stat().st_size == 0:
         raise ValueError(f'Empty {role}: {relative}')
     actual = digest(path)
-    if expected_sha256 and actual != expected_sha256:
+    if actual != expected_sha256.lower():
         raise ValueError(f'SHA-256 mismatch for {role} {relative}: {actual} != {expected_sha256}')
     try:
         display = str(path.relative_to(ROOT)).replace('\\', '/')
