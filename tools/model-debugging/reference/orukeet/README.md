@@ -8,6 +8,40 @@ Commands referencing historical receipt names document past runs. Reuse verified
 local assets and choose fresh output names when reproducing; do not overwrite
 original weights, captures or existing receipts.
 
+## Current continuation overlay — 2026-10-08
+
+The dated sections below preserve the investigation history, not an executable
+queue. In particular, their final instruction to try f32 packed butterflies has
+already been executed. Read later receipts before repeating that experiment:
+
+- `packed-f32-stage-handoff-2026-10-01.json`: on identical input frames, the
+  candidate increased JFK feature mismatches from 121 to 215; unmodified
+  production remained at 313. Silence candidate passed, production did not.
+  This rejects that precision hypothesis for the recorded configuration.
+- `fft-thread-control-handoff-2026-10-03.json`: 1/4/8-thread Torch packed replay
+  retained the same single speech/silence mismatch and packed/candidate hashes.
+  Changing thread count did not resolve that control.
+- `pffft-scalar-features-bound-speech-silence-2026-10-03.json` and its `sse`
+  sibling: downstream feature comparisons failed at 64/65 coordinates.
+- `torch-rfft-features-bound-speech-silence-2026-10-03.json`: reconstructed-frame
+  native Torch rFFT reproduced captured spectrum bytes exactly and the diagnostic
+  JS feature control passed. This is not a deployable pure-JS feature extractor,
+  production acceptance, or proof that a different FFT backend should match.
+
+These are historical, configuration-bound receipts inspected on continuation;
+they do not certify the current compiled build. Do not rerun unchanged FFT,
+normalization or thread sweeps without a new discriminating hypothesis. Keep
+production feature conformance FAIL at its existing gates. Do not promote a
+constant offset, fixture-specific adjustment, injected official spectrum, native
+Torch callback, or tolerance relaxation as the library solution.
+
+Resume through `docs/AGENT_ENTRYPOINT.md`, active P10 and C52. Independent
+exact-checkpoint Redux oracle work currently needs authorization for a dedicated
+reference environment (see `redux-oracle-prerequisites-2026-10-08.json` under
+model-candidate results). Orukeet's recorded native long-form output controls do
+not close long-form browser/WASM or streaming-controller acceptance. Coordinate
+resource windows before a real model run; preserve failed and untested rows.
+
 Orukeet retains 627M parameters; it is a same-size Parakeet TDT v3 fine-tune,
 not a smaller student. Original checkpoint size is not deployment graph size.
 Source: [official model card](https://huggingface.co/oruk/orukeet).
