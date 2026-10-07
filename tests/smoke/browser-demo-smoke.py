@@ -84,7 +84,7 @@ def detect_layout(root):
             continue
         if any(not any(name.startswith(item + '.') for name in present) for item in decoder_variants):
             continue
-        if any(name.startswith(tokenizer.rsplit('.', 1)[0]) for name in present):
+        if tokenizer in present:
             return layout
     raise ValueError('Unrecognized local artifact layout under: ' + str(root))
 
@@ -95,20 +95,13 @@ def local_model_inputs(root, precision, layout):
     names = [encoder + encoder_suffix + '.onnx']
     if decoder:
         names.append(decoder + '.onnx')
+    names.append(tokenizer)
     paths = []
     for name in names:
         path = Path(root) / name
         if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
             raise ValueError('Missing/empty/symlink local model input: ' + str(path))
         paths.append(path)
-    tokenizer_path = next(
-        (path for path in Path(root).iterdir()
-         if path.is_file() and path.name.startswith(tokenizer.rsplit('.', 1)[0])),
-        None,
-    )
-    if tokenizer_path is None:
-        raise ValueError('Missing tokenizer in local model root: ' + str(root))
-    paths.append(tokenizer_path)
     sidecars = [Path(str(path) + '.data') for path in paths]
     for sidecar in sidecars:
         if sidecar.exists() and (sidecar.is_symlink() or not sidecar.is_file() or not sidecar.stat().st_size):

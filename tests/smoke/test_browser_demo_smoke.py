@@ -34,13 +34,35 @@ class CompanionSmokeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             with self.assertRaises(ValueError):
-                module.local_model_inputs(root, 'fp16')
+                module.local_model_inputs(root, 'fp16', 'nemo-tdt')
             for name in ('encoder-model.fp16.onnx', 'decoder_joint-model.onnx', 'vocab.txt'):
                 (root / name).write_bytes(b'fixture-not-a-model')
-            self.assertEqual(len(module.local_model_inputs(root, 'fp16')), 3)
+            self.assertEqual(len(module.local_model_inputs(root, 'fp16', 'nemo-tdt')), 3)
             (root / 'encoder-model.fp16.onnx.data').write_bytes(b'')
             with self.assertRaises(ValueError):
-                module.local_model_inputs(root, 'fp16')
+                module.local_model_inputs(root, 'fp16', 'nemo-tdt')
+
+    def test_tokenizer_requires_exact_nonempty_layout_file(self):
+        for layout, (encoder, decoder, tokenizer) in module.ARTIFACT_LAYOUTS.items():
+            with self.subTest(layout=layout), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                for name in (encoder, decoder):
+                    if name:
+                        (root / (name + '.onnx')).write_bytes(b'fixture-not-a-model')
+                backup = root / (tokenizer.rsplit('.', 1)[0] + '.backup')
+                backup.write_bytes(b'not-the-tokenizer')
+                with self.assertRaises(ValueError):
+                    module.local_model_inputs(root, 'fp32', layout)
+                with self.assertRaises(ValueError):
+                    module.detect_layout(root)
+                token_path = root / tokenizer
+                token_path.write_bytes(b'')
+                with self.assertRaises(ValueError):
+                    module.local_model_inputs(root, 'fp32', layout)
+                token_path.write_bytes(b'exact-layout-tokenizer')
+                paths = module.local_model_inputs(root, 'fp32', layout)
+                self.assertIn(token_path, paths)
+                self.assertNotIn(backup, paths)
 
     def test_streamed_digest_matches_full_digest(self):
         import hashlib

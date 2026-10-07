@@ -115,7 +115,7 @@ def main():
     if not args.expected_phrase.strip():
         parser.error('Expected smoke phrase must not be empty')
     consumer, model_root = args.consumer_root.resolve(), args.model_root.resolve()
-    graphs = shared.local_model_inputs(model_root, args.encoder_precision)
+    graphs = shared.local_model_inputs(model_root, args.encoder_precision, 'nemo-tdt')
     preview = Path(__file__).with_name('companion-build.mjs')
     inputs = graphs + [args.audio.resolve(), Path(__file__), Path(shared.__file__), preview,
         preview.with_name('local-ort-assets.mjs'), preview.with_name('local-parakeet.mjs'),

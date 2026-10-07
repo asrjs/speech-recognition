@@ -14,6 +14,15 @@ runner = importlib.import_module('local-parakeet-smoke')
 
 
 class LocalParakeetResultTests(unittest.TestCase):
+    def test_cli_passes_explicit_tdt_layout_to_shared_preflight(self):
+        args = ['local-parakeet-smoke.py', '--consumer-root', '.', '--model-root', '.',
+                '--audio', 'unused.wav', '--expected-phrase', 'fixture', '--output', 'unused.json']
+        with patch.object(sys, 'argv', args), patch.object(runner.shared, 'local_model_inputs',
+                autospec=True, side_effect=ValueError('preflight sentinel')) as preflight:
+            with self.assertRaisesRegex(ValueError, 'preflight sentinel'):
+                runner.main()
+            preflight.assert_called_once_with(Path('.').resolve(), 'fp32', 'nemo-tdt')
+
     def window_result(self):
         value = self.result()
         value['windowing'] = {'windowSeconds': 20, 'durationSeconds': 40}
