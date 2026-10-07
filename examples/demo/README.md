@@ -25,7 +25,7 @@ decoder preset is the current WebGPU target.
 Canary 180M Flash smoke page:
 
 ```text
-http://localhost:8767/canary-smoke.html
+https://localhost:8765/canary-smoke.html
 ```
 
 It uses the approved local smoke bundle under `N:/models` and the fixed
@@ -35,10 +35,48 @@ limited to this repository and `N:/models`.
 Orukeet local-folder smoke page:
 
 ```text
-http://localhost:8767/orukeet-smoke.html
+https://localhost:8765/orukeet-smoke.html
 ```
 
 Pick an Orukeet ONNX folder, a 16 kHz mono WAV, a runtime backend and an
 encoder precision. It loads through the public browser API, transcribes the
 fixture repeatedly, awaits disposal, and prints the receipt as JSON. Real local
 inference only; it is not numerical parity against the original NeMo engine.
+
+## Automatic Chrome model test and JSON capture
+
+The sibling `webgpu-agent-test` contains the historical `?auto=1` Chrome
+runner and `/__test_result__` JSON capture system. Stock Parakeet v3 was
+rechecked successfully on 2026-10-08. The tracked Orukeet demo now supports
+the same automatic URL workflow, using its existing public local-folder API.
+The runner selects local files, waits for two transcriptions and awaited
+disposal, compares token IDs and text with the official oracle, closes its
+Chrome instance, and saves a fresh PASS/FAIL JSON receipt. No model download.
+
+From the repository root, start the demo (8767 avoids an existing sibling
+server on 8765):
+
+```powershell
+node node_modules/vite/bin/vite.js examples/demo --host 127.0.0.1 --port 8767 --strictPort
+```
+
+In another terminal at the repository root:
+
+```powershell
+python tests/smoke/orukeet-auto-browser.py --url https://127.0.0.1:8767/orukeet-smoke.html --model-root models/orukeet/onnx/fp32-packed-2026-10-01 --audio tools/data/fixtures/audio/jfk-short.wav --oracle tools/data/results/orukeet/official-jfk-stage-summary-2026-09-30.json --output tools/data/results/orukeet/auto-browser-new-run.json
+```
+
+Use the server's printed scheme (`http` if local certificates are absent).
+Default runner URL uses 8765, matching `npm run dev`. Python Playwright and
+installed Chrome are prerequisites; the runner never installs them. Use a
+new output filename for each run; existing receipts are protected.
+`--backend wasm`, `--precision fp16`, and `--repeat 1` are explicit options,
+not automatic fallback policies.
+
+Verified receipt: `tools/data/results/orukeet/auto-browser-jfk-2026-10-08-03.json`:
+fp32 WebGPU hybrid, two runs, 38 oracle token IDs and exact text, awaited
+model disposal and browser closure. This is a short-fixture output smoke,
+not feature/encoder numerical parity, long-audio, streaming, or soak acceptance.
+The first receipt (`...-01.json`) remains a FAIL: text matched but the default
+canonical segment detail omitted tokens; the demo now uses the supported
+`canonical+native` envelope to capture native debug IDs and canonical metrics.

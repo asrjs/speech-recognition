@@ -6,6 +6,19 @@ import {
 
 const MODEL_ID = 'oruk/orukeet';
 const field = (id) => document.getElementById(id);
+const query = new URLSearchParams(location.search);
+for (const id of ['backend', 'precision', 'repeat']) {
+  if (query.has(id)) field(id).value = query.get(id);
+}
+let autoStarted = false;
+function maybeAutoRun() {
+  if (query.get('auto') === '1' && !autoStarted && field('model').files.length && field('audio').files.length) {
+    autoStarted = true;
+    field('run').click();
+  }
+}
+field('model').addEventListener('change', maybeAutoRun);
+field('audio').addEventListener('change', maybeAutoRun);
 const status = (message) => {
   field('status').textContent = message;
 };
@@ -73,11 +86,16 @@ field('run').addEventListener('click', async () => {
 
     for (let index = 0; index < repeat; index += 1) {
       status(`Transcribing ${index + 1}/${repeat}…`);
-      const transcription = await model.transcribeMonoPcm(pcm, 16000, { returnTokenIds: true });
+      const envelope = await model.transcribeMonoPcm(pcm, 16000, {
+        returnTokenIds: true,
+        responseFlavor: 'canonical+native',
+      });
+      const transcription = envelope.canonical;
       result.transcripts.push({
         text: transcription.text,
-        tokens: transcription.tokens?.length ?? 0,
-        metrics: transcription.metrics,
+        tokens: envelope.native.debug?.tokenIds?.length ?? 0,
+        tokenIds: envelope.native.debug?.tokenIds ?? [],
+        metrics: transcription.meta.metrics,
         warnings: transcription.warnings,
       });
     }
@@ -98,7 +116,15 @@ field('run').addEventListener('click', async () => {
     result.error = String(error);
     status(`Failed: ${error}`);
   } finally {
-    if (model) await model.dispose().catch(() => undefined);
+    if (model) {
+      try {
+        await model.dispose();
+        result.disposed = true;
+      } catch (error) {
+        result.cleanupError = String(error);
+        result.status = 'FAIL_ORUKEET_SMOKE';
+      }
+    }
     field('result').textContent = JSON.stringify(result, null, 2);
     field('run').disabled = false;
   }
