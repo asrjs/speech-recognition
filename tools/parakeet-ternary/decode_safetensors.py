@@ -55,6 +55,28 @@ def load(path: Path) -> dict[str, np.ndarray]:
     return tensors
 
 
+def load_snapshot(snapshot: bytes) -> dict[str, np.ndarray]:
+    """Read immutable, already SHA-verified bytes; tensors share the snapshot."""
+    length = struct.unpack("<Q", snapshot[:8])[0]
+    start = 8 + length
+    if start > len(snapshot):
+        raise ValueError("safetensors header exceeds snapshot")
+    header = json.loads(snapshot[8:start])
+    tensors = {}
+    for name, entry in header.items():
+        if name == "__metadata__":
+            continue
+        dtype = _DTYPES[entry["dtype"]]
+        count = int(np.prod(entry["shape"])) if entry["shape"] else 1
+        begin, end = entry["data_offsets"]
+        if begin < 0 or end < begin or start + end > len(snapshot):
+            raise ValueError(f"{name}: safetensors offsets exceed snapshot")
+        if end - begin != count * np.dtype(dtype).itemsize:
+            raise ValueError(f"{name}: safetensors byte span does not match shape/dtype")
+        tensors[name] = np.frombuffer(snapshot, dtype=dtype, count=count, offset=start + begin).reshape(entry["shape"])
+    return tensors
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path, default=Path(".cache/parakeet-redux/model.safetensors"))

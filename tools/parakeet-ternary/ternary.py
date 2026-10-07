@@ -52,6 +52,13 @@ def unpack_rows(packed: bytes, layout: TernaryLayout) -> np.ndarray:
         )
 
     raw = np.frombuffer(packed, dtype=np.uint8)
+    invalid = raw >= DIGITS_PER_CODE ** ELEMENTS_PER_BYTE
+    if invalid.any():
+        offset = int(invalid.argmax())
+        raise ValueError(
+            f"invalid packed ternary byte {int(raw[offset])} at offset {offset}; "
+            "five base-3 digits must encode a value below 243"
+        )
     grid = raw.reshape(layout.out_features, layout.row_bytes)
 
     # Digit i % 5 of byte i // 5, least significant first, pad digits 0.

@@ -1,0 +1,25 @@
+{
+  "status": "PASS_PACKED_BYTE_PREFLIGHT_ONLY",
+  "model": "moondream/parakeet-redux",
+  "date": "2026-10-08",
+  "archive": {
+    "path": ".cache/parakeet-redux/model.safetensors",
+    "bytes": 177774490,
+    "sha256": "78ec25733ee0d0c1586d1346fc86db9d0c2e436e3a8ab1d32a82d1bb8f848d21",
+    "upstreamRevisionBinding": "UNVERIFIED_BY_THIS_PREFLIGHT"
+  },
+  "scan": {
+    "qweightBlocks": 264,
+    "packedBytesScanned": 120913920,
+    "invalidBytes": 0,
+    "maxPackedByte": 242,
+    "legalPackedRange": [0, 242]
+  },
+  "regression": {
+    "before": "12 existing tests passed; new corruption regression failed for all 13 values 243..255",
+    "after": "14 tests passed, including invalid-byte rejection and byte-242 boundary",
+    "command": "python -m unittest discover -s tools/parakeet-ternary -p test_ternary.py"
+  },
+  "scope": "Local packed byte validation and reader regression only; no dequantized graph, original runtime inference, stage parity, speed or browser acceptance.",
+  "next": "Bind exact source revision and official/recommended runtime contract/oracle; investigate packed compute without repeating failed teacher-graph substitution."
+}

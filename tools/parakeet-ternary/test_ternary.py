@@ -37,6 +37,17 @@ class PackingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             unpack_rows(b"\x00" * 10, TernaryLayout(in_features=1024, out_features=4, group_size=128))
 
+    def test_rejects_bytes_outside_five_base_three_digits(self):
+        layout = TernaryLayout(in_features=5, out_features=1, group_size=128)
+        for value in range(243, 256):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "invalid packed ternary byte"):
+                    unpack_rows(bytes([value]), layout)
+
+    def test_accepts_largest_valid_packed_byte(self):
+        decoded = unpack_rows(bytes([242]), TernaryLayout(5, 1, 128))
+        np.testing.assert_array_equal(decoded, np.full((1, 5), 2, dtype=np.uint8))
+
 
 class RoundTripTests(unittest.TestCase):
     def _random_codes(self, out_features: int, in_features: int, seed: int) -> np.ndarray:

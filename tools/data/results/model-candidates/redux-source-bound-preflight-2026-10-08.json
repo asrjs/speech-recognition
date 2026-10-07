@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-08",
+  "model": "moondream/parakeet-redux",
+  "status": "PASS_PACKED_FORMAT_ONLY",
+  "sourceRevision": "2bf128600aac4b16946f7ed8372e56117fe5e23b",
+  "sourceBinding": {
+    "metadataApi": "https://huggingface.co/api/models/moondream/parakeet-redux?blobs=true",
+    "archive": {"bytes": 177774490, "sha256": "78ec25733ee0d0c1586d1346fc86db9d0c2e436e3a8ab1d32a82d1bb8f848d21", "matchesUpstreamLfs": true},
+    "config": {"sha256": "503c653b2e3bb788adbcb04f5abdee532d958686564081baeed133ff10143f6e", "localMatchesPinnedRemoteBytes": true},
+    "manifest": {"sha256": "1221c6d3ce901ffe09c089da758a8db8b76189f80cff41c5afc244fc61e2051d", "localMatchesPinnedRemoteBytes": true},
+    "earlierUnreachableRevision": "efec50629e2e690eb1dc58115d46a3dcdfd20442"
+  },
+  "runtimeSourceRevision": "8e6fb899bb8a076f3235b6a5ab832a78c031c77b",
+  "formatAudit": {
+    "quantizedModules": 264,
+    "quantizedParams": 603979776,
+    "qweightBytes": 120913920,
+    "scaleBytes": 9437184,
+    "estimatedTwoBitCodeBytes": 150994944,
+    "denseStoredElementsIncludingBuffersAndVAD": 23290911,
+    "rangePaddingShapeDtypeFiniteScalesAndManifestChecks": "PASS"
+  },
+  "validation": {
+    "python": "3.11.4",
+    "command": "python -m unittest discover -s tools/parakeet-ternary -p test_*.py",
+    "testsPassed": 28,
+    "snapshotRegression": "CLI path-reopen test failed before immutable snapshot fix and passed after; separate replacement test preserves verified bytes",
+    "auditScriptSha256": "144d2afe04169346cb70f0dcbe9ea6637107b7eb42c0da36e3f21006bf0efd6e",
+    "auditTestsSha256": "9a99a66397392a85903b81b70f7b0cd361a18d6cc21fe3e58e8b03cb2e768cca",
+    "snapshotLoaderScriptSha256": "40a5ed0f030bb7820683478aa93cad25e80579f2889764e8aa137f38a4f1e337"
+  },
+  "scope": "Source identity and packed input format only. No reference inference, kernel/repack equivalence, ONNX export, numerical/token/text parity, WebGPU/WASM port or speed/memory acceptance.",
+  "next": "Establish exact-weight recommended-runtime oracle and effective PCM/stage capture. Do not repeat failed teacher substitution or transfer Photon performance to ORT."
+}
