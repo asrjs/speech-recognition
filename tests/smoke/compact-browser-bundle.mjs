@@ -8,7 +8,7 @@ import { build, version } from 'esbuild';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
-// This budget guards two engine-free source consumers, not arbitrary ASR apps.
+// This budget guards two engine-free consumers, not arbitrary ASR apps.
 export function inspectCompactOutput(result, maxBytes = 32768) {
   assert(Number.isSafeInteger(maxBytes) && maxBytes > 0, 'Invalid bundle budget');
   assert.equal(result.outputFiles.length, 1, 'Expected one browser output');
@@ -24,7 +24,7 @@ export function inspectCompactOutput(result, maxBytes = 32768) {
     if (entry.bytesInOutput === 0) return [];
     const normalized = path.replaceAll('\\', '/');
     assert(
-      !/(?:^|\/)src\/(?:models|presets)\/|(?:^|\/)node_modules\/onnxruntime-|(?:^|\/)src\/io-node\.|(?:^|\/)src\/io\/node\.|(?:^|\/)src\/inference\/backends\/native/.test(
+      !/(?:^|\/)(?:src|dist)\/(?:models|presets)\/|(?:^|\/)node_modules\/onnxruntime-|(?:^|\/)(?:src|dist)\/io-node\.|(?:^|\/)(?:src|dist)\/io\/node\.|(?:^|\/)(?:src|dist)\/inference\/backends\/native/.test(
         normalized,
       ),
       `Unexpected retained model/engine/native module: ${path}`,
@@ -35,17 +35,28 @@ export function inspectCompactOutput(result, maxBytes = 32768) {
   return { bytes, maxBytes, sha256: sha256(result.outputFiles[0].contents), retained };
 }
 
-export async function measureCompactConsumers() {
+export async function measureCompactConsumers({ consumerRoot } = {}) {
+  const workingRoot = consumerRoot === undefined ? root : resolve(consumerRoot);
+  const packageRoot =
+    consumerRoot === undefined
+      ? root
+      : resolve(workingRoot, 'node_modules/@asrjs/speech-recognition');
+  const metadataPath = resolve(packageRoot, 'package.json');
   const loaded = new Map();
-  const metadata = await readFile(resolve(root, 'package.json'));
+  const metadata = await readFile(metadataPath);
+  assert.equal(
+    JSON.parse(metadata).name,
+    '@asrjs/speech-recognition',
+    'Unexpected package identity',
+  );
   const toolBytes = await readFile(fileURLToPath(import.meta.url));
   const cases = [];
   for (const name of ['createSpeechRuntime', 'transcribeWithWindowing']) {
     const result = await build({
-      absWorkingDir: root,
+      absWorkingDir: workingRoot,
       stdin: {
-        contents: `import {${name}} from './src/index.ts'; globalThis.__compactProbe=${name};`,
-        resolveDir: root,
+        contents: `import {${name}} from '${consumerRoot === undefined ? './src/index.ts' : '@asrjs/speech-recognition'}'; globalThis.__compactProbe=${name};`,
+        resolveDir: workingRoot,
         sourcefile: 'compact-entry.ts',
       },
       bundle: true,
@@ -77,12 +88,16 @@ export async function measureCompactConsumers() {
   for (const [path, hash] of loaded) {
     assert.equal(sha256(await readFile(path)), hash, `Source changed after build: ${path}`);
   }
-  assert.equal(sha256(await readFile(resolve(root, 'package.json'))), sha256(metadata));
+  assert.equal(sha256(await readFile(metadataPath)), sha256(metadata));
   assert.equal(sha256(await readFile(fileURLToPath(import.meta.url))), sha256(toolBytes));
   return {
-    status: 'PASS_SOURCE_CONSUMER_BUNDLE',
+    status:
+      consumerRoot === undefined ? 'PASS_SOURCE_CONSUMER_BUNDLE' : 'PASS_PACKAGE_CONSUMER_BUNDLE',
     scope:
-      'Minified browser-target source bundles only; no inference, startup, install or published-package acceptance',
+      consumerRoot === undefined
+        ? 'Minified browser-target source bundles only; no inference, startup, install or published-package acceptance'
+        : 'Minified browser-target isolated public-package consumers; no inference, startup or package-manager installation acceptance',
+    packageRoot,
     esbuildVersion: version,
     packageSha256: sha256(metadata),
     toolSha256: sha256(toolBytes),

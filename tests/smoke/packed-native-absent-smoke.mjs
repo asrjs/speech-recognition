@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, realpathSync, symlinkSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { URL, fileURLToPath } from 'node:url';
 import { parsePackDryRun } from './package-tarball-smoke.mjs';
+import { measureCompactConsumers } from './compact-browser-bundle.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const consumer = mkdtempSync(join(tmpdir(), 'asrjs-packed-consumer-'));
@@ -44,6 +54,38 @@ for (const name of ['onnxruntime-web', 'pako', '@types/pako', '@types/node', 'un
   mkdirSync(dirname(destination), { recursive: true });
   symlinkSync(realpathSync(join(repositoryRoot, 'node_modules', name)), destination, 'junction');
 }
+// Use the actual archive's public exports, not source aliases or a second pack.
+const archivePath = join(consumer, packed.filename);
+const archiveSha256 = createHash('sha256').update(readFileSync(archivePath)).digest('hex');
+const compact = await measureCompactConsumers({ consumerRoot: consumer });
+assert.equal(createHash('sha256').update(readFileSync(archivePath)).digest('hex'), archiveSha256);
+const compactReceipt = join(consumer, 'compact-browser-bundle.json');
+writeFileSync(
+  compactReceipt,
+  JSON.stringify(
+    {
+      ...compact,
+      archive: { path: archivePath, sha256: archiveSha256 },
+      scope:
+        'Two browser-target consumers of the extracted npm archive; local dependency links, not package-manager installation or browser inference',
+    },
+    null,
+    2,
+  ) + '\n',
+  { flag: 'wx' },
+);
+console.log(`[packed-native-absent] compact receipt: ${compactReceipt}`);
+console.log(
+  JSON.stringify({
+    status: compact.status,
+    cases: compact.cases.map(({ name, bytes, maxBytes, sha256 }) => ({
+      name,
+      bytes,
+      maxBytes,
+      sha256,
+    })),
+  }),
+);
 for (const name of ['native-absent.mjs', 'public-types.mts']) {
   copyFileSync(
     new URL(`./fixtures/package-consumer/${name}`, import.meta.url),

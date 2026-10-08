@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { inspectCompactOutput, measureCompactConsumers } from './compact-browser-bundle.mjs';
 
 function fixture(path = 'src/runtime/session.ts', bytesInOutput = 1) {
@@ -26,6 +29,11 @@ test('model, preset, engine and native paths fail closed', () => {
     'src/io-node.ts',
     'src/inference/backends/native-ort.ts',
     'src\\models\\example\\ort.ts',
+    'node_modules/@asrjs/speech-recognition/dist/models/example/ort.js',
+    'node_modules/@asrjs/speech-recognition/dist/presets/example/index.js',
+    'node_modules/@asrjs/speech-recognition/dist/io/node.js',
+    'node_modules/@asrjs/speech-recognition/dist/io-node.js',
+    'node_modules/@asrjs/speech-recognition/dist/inference/backends/native-ort.js',
   ])
     assert.throws(() => inspectCompactOutput(fixture(path)), /Unexpected retained/);
 });
@@ -54,4 +62,56 @@ test('actual public-root consumers remain engine-free within bounded budgets', a
     ['createSpeechRuntime', 'transcribeWithWindowing'],
   );
   assert(Object.keys(receipt.loadedSourceHashes).length > 0);
+});
+
+async function consumerFixture(
+  entry = 'export const createSpeechRuntime=()=>1; export const transcribeWithWindowing=()=>2;',
+) {
+  const consumerRoot = await mkdtemp(join(tmpdir(), 'asrjs-compact-contract-'));
+  const packageRoot = join(consumerRoot, 'node_modules/@asrjs/speech-recognition');
+  await mkdir(join(packageRoot, 'dist'), { recursive: true });
+  await writeFile(
+    join(packageRoot, 'package.json'),
+    JSON.stringify({
+      name: '@asrjs/speech-recognition',
+      type: 'module',
+      exports: { '.': './dist/public.js' },
+    }),
+  );
+  await writeFile(join(packageRoot, 'dist/public.js'), entry);
+  return { consumerRoot, packageRoot };
+}
+
+test('consumer mode resolves the public package export instead of source checkout', async () => {
+  const { consumerRoot, packageRoot } = await consumerFixture();
+  const receipt = await measureCompactConsumers({ consumerRoot });
+  assert.equal(receipt.status, 'PASS_PACKAGE_CONSUMER_BUNDLE');
+  assert.equal(receipt.packageRoot, packageRoot);
+  assert(receipt.cases.every(({ bytes }) => bytes < 200));
+  assert(Object.keys(receipt.loadedSourceHashes).every((path) => path.startsWith(packageRoot)));
+});
+
+test('consumer mode rejects missing package and wrong package identity', async () => {
+  const { consumerRoot, packageRoot } = await consumerFixture();
+  await writeFile(
+    join(packageRoot, 'package.json'),
+    JSON.stringify({ name: 'not-asrjs', type: 'module' }),
+  );
+  await assert.rejects(measureCompactConsumers({ consumerRoot }), /package identity/i);
+  await assert.rejects(
+    measureCompactConsumers({ consumerRoot: join(consumerRoot, 'missing') }),
+    /ENOENT/,
+  );
+});
+
+test('consumer mode rejects model code retained by an exported consumer', async () => {
+  const { consumerRoot, packageRoot } = await consumerFixture(
+    "export {createSpeechRuntime,transcribeWithWindowing} from './models/example/ort.js';",
+  );
+  await mkdir(join(packageRoot, 'dist/models/example'), { recursive: true });
+  await writeFile(
+    join(packageRoot, 'dist/models/example/ort.js'),
+    'export const createSpeechRuntime=()=>1; export const transcribeWithWindowing=()=>2;',
+  );
+  await assert.rejects(measureCompactConsumers({ consumerRoot }), /Unexpected retained/);
 });
