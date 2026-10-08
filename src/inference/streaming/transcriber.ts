@@ -36,6 +36,7 @@ export class DefaultStreamingTranscriber<
   private operationAbortController = new AbortController();
   private operationTail: Promise<void> = Promise.resolve();
   private disposed = false;
+  private disposePromise?: Promise<void>;
 
   constructor(
     private readonly session: SpeechSession<TOptions, TNative>,
@@ -116,12 +117,18 @@ export class DefaultStreamingTranscriber<
     this.isFinalized = false;
   }
 
-  /** Release the injected session; repeated disposal is harmless. */
-  async dispose(): Promise<void> {
-    if (this.disposed) return;
+  /** Release once; every caller awaits the same cleanup and observes its failure. */
+  dispose(): Promise<void> {
+    if (this.disposePromise) return this.disposePromise;
     this.disposed = true;
     this.stateGeneration += 1;
+    // Publish before abort dispatch, whose listeners may reenter dispose().
+    this.disposePromise = Promise.resolve().then(() => this.disposeInternal());
     this.operationAbortController.abort();
+    return this.disposePromise;
+  }
+
+  private async disposeInternal(): Promise<void> {
     await this.operationTail;
     await this.session.dispose();
   }
