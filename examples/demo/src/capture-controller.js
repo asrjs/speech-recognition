@@ -1,5 +1,4 @@
 /** Real capture -> public microphone controller -> caller-owned ASR. No decoder here. */
-import { createBrowserRealtimeMicrophoneController, startMicrophoneCapture } from '../../../src/browser.ts';
 
 function require(condition, message) {
   if (!condition) throw new Error(message);
@@ -13,21 +12,56 @@ async function pcmSha256(pcm) {
     (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function runCapturedController({ receipt, transcribe, onCapturedPcm, micMode = 'manual', workerUrl }) {
+/** Observe native worker construction without replacing the library's factory. */
+export function observeCaptureWorkers(expectedUrl) {
+  const NativeWorker = globalThis.Worker;
+  const target = new URL(expectedUrl, location.href);
+  const workers = [], acknowledgements = [];
+  class ObservedWorker extends NativeWorker {
+    constructor(url, options) {
+      super(url, options);
+      const actual = new URL(url, location.href);
+      if (actual.origin !== target.origin || actual.pathname !== target.pathname) return;
+      const owned = { worker: this, url: actual.href, terminated: false };
+      workers.push(owned);
+      this.addEventListener('message', ({ data }) => {
+        if (data.type !== 'RESULT') acknowledgements.push(data);
+      });
+      const terminate = this.terminate.bind(this);
+      this.terminate = () => { owned.terminated = true; terminate(); };
+    }
+  }
+  globalThis.Worker = ObservedWorker;
+  return { workers, acknowledgements, restore() {
+    require(globalThis.Worker === ObservedWorker || globalThis.Worker === NativeWorker,
+      'Worker observer ownership changed');
+    globalThis.Worker = NativeWorker;
+  } };
+}
+
+export async function runCapturedController({ receipt, transcribe, onCapturedPcm, micMode = 'manual',
+  workerUrl, library, workerObserver }) {
   require(micMode === 'manual' || micMode === 'speech-detect', 'Unsupported capture mode');
+  const { createBrowserRealtimeMicrophoneController, startMicrophoneCapture } =
+    library ?? await import('../../../src/browser.ts');
+  require(typeof createBrowserRealtimeMicrophoneController === 'function' && typeof startMicrophoneCapture === 'function',
+    'Public capture API required');
   const speechDetect = micMode === 'speech-detect';
-  require(!speechDetect || workerUrl, 'Source-checkout TEN worker URL required');
+  require(!speechDetect || workerUrl || workerObserver, 'TEN worker URL or default-worker observer required');
+  require(!workerObserver || (!workerUrl && Array.isArray(workerObserver.workers) &&
+    Array.isArray(workerObserver.acknowledgements)), 'Invalid default-worker observer');
   receipt.scope = `fake-device-${micMode}-capture-utterance-asr`;
   receipt.runs = [];
   receipt.disposed = false;
-  const sessions = [], errors = [], utterances = [], pending = [], workers = [], acknowledgements = [];
+  const sessions = [], errors = [], utterances = [], pending = [];
+  const workers = workerObserver?.workers ?? [], acknowledgements = workerObserver?.acknowledgements ?? [];
   let asrTail = Promise.resolve();
   const controller = createBrowserRealtimeMicrophoneController({
     micMode,
     ...(speechDetect ? {
       config: { vadBackend: 'ten-vad', tenVadEnabled: true, gateMode: 'rough-only' },
       tenVadConfig: { fallbackToBundledAssets: false },
-      tenVadOptions: { workerFactory() {
+      ...(workerUrl ? { tenVadOptions: { workerFactory() {
         // Supported injection: a real Vite-transformed TS worker, not a mock.
         const worker = new Worker(workerUrl, { type: 'module' });
         const owned = { worker, terminated: false };
@@ -38,7 +72,7 @@ export async function runCapturedController({ receipt, transcribe, onCapturedPcm
         const terminate = worker.terminate.bind(worker);
         worker.terminate = () => { owned.terminated = true; terminate(); };
         return worker;
-      } },
+      } } } : {}),
     } : {}),
     onUtterance(utterance) {
       const entry = { pcm: utterance.pcm.slice(), sampleRate: utterance.sampleRate, reason: utterance.reason,
@@ -227,6 +261,10 @@ export async function runCapturedController({ receipt, transcribe, onCapturedPcm
       receipt.terminatedWorkers = workers.length;
       receipt.workerResponses = acknowledgements;
       receipt.workerUrl = workerUrl;
+      if (workerObserver) {
+        receipt.workerFactory = 'library-default';
+        receipt.workerUrls = workers.map((owned) => owned.url);
+      }
     }
   } finally {
     try { await controller.dispose(); } finally {

@@ -365,6 +365,24 @@ def capture_code_route(route, receipt):
             response.dispose()
 
 
+def check_dist_capture(receipt):
+    """Built capture only; source file-oracle runs are a separate control."""
+    if receipt.get('capture_library', 'source') != 'dist':
+        return True
+    capture = receipt.get('result', {}).get('capture', {})
+    rows = receipt.get('capture_served_code', [])
+    prefix = '/@fs/' + ROOT.as_posix() + '/'
+    paths = {urlparse(row.get('url', '')).path for row in rows}
+    required = {prefix + 'dist/' + name for name in ('browser.js', 'runtime/ten-vad-browser.js',
+        'runtime/ten-vad-worker.js', 'runtime/assets/ten-vad/ten_vad.js', 'runtime/assets/ten-vad/ten_vad.wasm')}
+    urls = capture.get('workerUrls')
+    return (capture.get('runtimeSource') == 'dist' and capture.get('workerFactory') == 'library-default'
+            and capture.get('observerRestored') is True and isinstance(urls, list) and len(urls) == 1
+            and urlparse(urls[0]).path == prefix + 'dist/runtime/ten-vad-worker.js'
+            and required <= paths and not any(path.startswith(prefix + 'src/') for path in paths)
+            and bool(rows) and all(row.get('status') == 200 for row in rows))
+
+
 def check_code_bindings(receipt):
     code = receipt.get('served_code', [])
     # Type-only TS modules legitimately compile to empty ESM. Bind their empty
@@ -402,12 +420,16 @@ def main():
     parser.add_argument('--verify-capture', action='store_true', help='Also verify two real fake-device capture -> utterance -> ASR sessions; not original-engine capture parity')
     parser.add_argument('--capture-mode', choices=['manual', 'speech-detect'], default='manual',
                         help='Opt-in automatic rough-gate utterances with real TEN diagnostics; requires --verify-capture')
+    parser.add_argument('--capture-library', choices=['source', 'dist'], default='source',
+                        help='dist runs speech-detect capture on a separate built-API page with the default TEN worker')
     parser.add_argument('--save-capture-pcm', action='store_true', help='Save exact captured f32le sidecars for later original-engine comparison; requires --verify-capture')
     parser.add_argument('--require-controller-nonzero-origin', action='store_true',
                         help='Also require timestamped detail in controller windows starting after frame zero')
     args = parser.parse_args()
     if args.capture_mode != 'manual' and not args.verify_capture:
         parser.error('--capture-mode speech-detect requires --verify-capture')
+    if args.capture_library == 'dist' and (not args.verify_capture or args.capture_mode != 'speech-detect'):
+        parser.error('--capture-library dist requires --verify-capture --capture-mode speech-detect')
     if args.save_capture_pcm and not args.verify_capture:
         parser.error('--save-capture-pcm requires --verify-capture')
     if args.verify_cancellation and args.repeat < 2:
@@ -428,9 +450,16 @@ def main():
                    cancellation_requested=args.verify_cancellation, controller_requested=args.verify_controller,
                    capture_requested=args.verify_capture,
                    capture_mode=args.capture_mode,
+                   capture_library=args.capture_library,
                    capture_pcm_requested=args.save_capture_pcm,
                    controller_nonzero_required=args.require_controller_nonzero_origin)
     try:
+        if args.capture_library == 'dist':
+            build_files = [ROOT / 'dist' / name for name in ('browser.js', 'runtime/ten-vad-browser.js',
+                'runtime/ten-vad-worker.js', 'runtime/assets/ten-vad/ten_vad.js', 'runtime/assets/ten-vad/ten_vad.wasm')]
+            if any(not path.is_file() for path in build_files):
+                raise ValueError('Built capture requires fresh dist/browser.js and packaged TEN worker/assets')
+            receipt['capture_build_inputs'] = {str(path): helpers.digest(path) for path in build_files}
         inputs = helpers.local_model_inputs(args.model_root, args.precision, 'nemo-tdt')
         oracle = json.loads(args.oracle.read_text(encoding='utf-8'))
         audio_hash = helpers.digest(args.audio)
@@ -455,6 +484,13 @@ def main():
                 receipt['served_code'] = []
                 receipt['code_capture_errors'] = []
                 def route_request(route):
+                    if args.capture_library == 'dist' and route.request.url == origin + '/__capture_built__.html':
+                        body = b'<!doctype html><title>Built ASR capture</title><input id="model" type="file" webkitdirectory>'
+                        receipt['served_code'].append(dict(url=route.request.url, status=200, bytes=len(body),
+                            sha256=hashlib.sha256(body).hexdigest(), capture='route-fulfilled-body'))
+                        route.fulfill(content_type='text/html', body=body, headers={
+                            'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp'})
+                        return
                     if route.request.url.startswith(origin + '/'):
                         if is_code_response(route.request.url):
                             capture_code_route(route, receipt)
@@ -476,19 +512,28 @@ def main():
                 result = json.loads(page.locator('#result').inner_text())
                 receipt['result'] = result
                 if args.verify_capture and result.get('status') == 'PASS_ORUKEET_SMOKE':
-                    page.evaluate("""({libraryUrl, wasmPaths, backend, precision, savePcm, micMode, workerUrl}) => {
+                    capture_start = len(receipt['served_code'])
+                    if args.capture_library == 'dist':
+                        page.close()
+                        page = context.new_page()
+                        page.on('pageerror', lambda error: receipt['page_errors'].append(str(error)))
+                        page.goto(origin + '/__capture_built__.html', wait_until='networkidle')
+                        page.locator('#model').set_input_files(str(args.model_root.resolve()), timeout=60000)
+                    page.evaluate("""({libraryUrl, librarySource, wasmPaths, backend, precision, savePcm, micMode, workerUrl, defaultWorkerUrl}) => {
                         window.captureResult = null; window.captureError = null;
                         window.capturePcm = [];
                         void (async () => {
-                        const { runCapturedController } = await import('/src/capture-controller.js');
-                        const { createSpeechModelLocalEntries, loadSpeechModelFromLocalEntries } = await import(libraryUrl);
-                        const receipt = { modelDisposed: false };
-                        let model;
+                        const { runCapturedController, observeCaptureWorkers } = await import('/src/capture-controller.js');
+                        const library = await import(libraryUrl);
+                        const { createSpeechModelLocalEntries, loadSpeechModelFromLocalEntries } = library;
+                        const receipt = { modelDisposed: false, runtimeSource: librarySource, libraryUrl };
+                        let model, observer;
                         try {
                             model = await loadSpeechModelFromLocalEntries({ modelId: 'oruk/orukeet',
                                 entries: createSpeechModelLocalEntries([...document.getElementById('model').files]),
                                 backend, encoderQuant: precision, preprocessorBackend: 'js', wasmPaths });
-                            await runCapturedController({ receipt, micMode, workerUrl,
+                            if (defaultWorkerUrl) observer = observeCaptureWorkers(defaultWorkerUrl);
+                            await runCapturedController({ receipt, micMode, workerUrl, library, workerObserver: observer,
                               onCapturedPcm: savePcm ? (pcm) => {
                                 const bytes = new ArrayBuffer(pcm.length * 4), view = new DataView(bytes);
                                 pcm.forEach((sample, index) => view.setFloat32(index * 4, sample, true));
@@ -506,18 +551,27 @@ def main():
                                 try { await model.dispose(); receipt.modelDisposed = true; }
                                 catch (error) { receipt.cleanupError = String(error); }
                             }
+                            if (observer) {
+                                observer.restore(); receipt.observerRestored = true;
+                            }
                         }
                         return receipt;
                         })().then(value => window.captureResult = value).catch(error => window.captureError = String(error));
-                    }""", dict(libraryUrl='/@fs/' + ROOT.as_posix() + '/src/browser.ts',
+                    }""", dict(libraryUrl='/@fs/' + ROOT.as_posix() + ('/dist/browser.js' if args.capture_library == 'dist' else '/src/browser.ts'),
+                               librarySource=args.capture_library,
                                wasmPaths='/@fs/' + ROOT.as_posix() + '/node_modules/onnxruntime-web/dist/',
                                backend=args.backend, precision=args.precision, savePcm=args.save_capture_pcm,
-                               micMode=args.capture_mode, workerUrl='/@fs/' + ROOT.as_posix() + '/src/runtime/ten-vad-worker.ts'))
+                               micMode=args.capture_mode,
+                               workerUrl=None if args.capture_library == 'dist' else '/@fs/' + ROOT.as_posix() + '/src/runtime/ten-vad-worker.ts',
+                               defaultWorkerUrl='/@fs/' + ROOT.as_posix() + '/dist/runtime/ten-vad-worker.js' if args.capture_library == 'dist' else None))
                     page.wait_for_function('window.captureResult !== null || window.captureError !== null', timeout=args.timeout_ms)
                     if page.evaluate('window.captureError'):
                         raise ValueError(page.evaluate('window.captureError'))
                     result['capture'] = page.evaluate('window.captureResult')
+                    receipt['capture_served_code'] = receipt['served_code'][capture_start:]
                 receipt['capture_valid'] = check_capture(result, args.verify_capture, args.backend, args.capture_mode)
+                receipt['capture_build_valid'] = check_dist_capture(receipt)
+                receipt['capture_valid'] = receipt['capture_valid'] and receipt['capture_build_valid']
                 if args.save_capture_pcm:
                     if not receipt['capture_valid']:
                         raise ValueError('Capture failed; refusing unverified PCM sidecars')
@@ -543,6 +597,10 @@ def main():
     except Exception as error:
         receipt['error'] = str(error)
     finally:
+        if any(not Path(path).is_file() or helpers.digest(Path(path)) != sha
+               for path, sha in receipt.get('capture_build_inputs', {}).items()):
+            receipt['status'] = 'FAIL_AUTO_BROWSER'
+            receipt['error'] = 'Built capture inputs changed during execution'
         if 'runner_sha256' in receipt and helpers.digest(Path(__file__)) != receipt['runner_sha256']:
             receipt['status'] = 'FAIL_AUTO_BROWSER'
             receipt['error'] = 'Runner source changed during execution'

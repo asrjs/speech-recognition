@@ -16,6 +16,43 @@ spec.loader.exec_module(runner)
 
 
 class AutoReceiptTests(unittest.TestCase):
+    def dist_receipt(self):
+        prefix = 'https://127.0.0.1:8767/@fs/' + runner.ROOT.as_posix() + '/dist/'
+        names = ['browser.js', 'runtime/ten-vad-browser.js', 'runtime/ten-vad-worker.js',
+                 'runtime/assets/ten-vad/ten_vad.js', 'runtime/assets/ten-vad/ten_vad.wasm']
+        return dict(capture_library='dist', result=dict(capture=dict(runtimeSource='dist',
+            workerFactory='library-default', observerRestored=True,
+            workerUrls=[prefix + 'runtime/ten-vad-worker.js?worker_file&type=module'])),
+            capture_served_code=[dict(url=prefix + name, status=200) for name in names])
+
+    def test_dist_capture_requires_all_built_assets(self):
+        receipt = self.dist_receipt()
+        self.assertTrue(runner.check_dist_capture(receipt))
+        for index in range(len(receipt['capture_served_code'])):
+            with self.subTest(index=index):
+                changed = copy.deepcopy(receipt)
+                del changed['capture_served_code'][index]
+                self.assertFalse(runner.check_dist_capture(changed))
+
+    def test_dist_capture_rejects_source_leakage_and_failed_response(self):
+        receipt = self.dist_receipt()
+        source = 'https://127.0.0.1:8767/@fs/' + runner.ROOT.as_posix() + '/src/browser.ts'
+        receipt['capture_served_code'].append(dict(url=source, status=200))
+        self.assertFalse(runner.check_dist_capture(receipt))
+        receipt = self.dist_receipt()
+        receipt['capture_served_code'][0]['status'] = 404
+        self.assertFalse(runner.check_dist_capture(receipt))
+
+    def test_dist_capture_requires_default_worker_and_restored_observer(self):
+        for key, value in [('runtimeSource', 'source'), ('workerFactory', 'injected'),
+                           ('observerRestored', False), ('workerUrls', []),
+                           ('workerUrls', ['https://localhost/wrong-worker.js'])]:
+            with self.subTest(key=key, value=value):
+                receipt = self.dist_receipt()
+                receipt['result']['capture'][key] = value
+                self.assertFalse(runner.check_dist_capture(receipt))
+        self.assertTrue(runner.check_dist_capture(dict(capture_library='source')))
+
     def pcm_payload(self):
         raw = struct.pack('<4f', 0.0, -0.0, 0.25, -0.5)
         run = dict(capturedSamples=4, sampleRate=16000,
