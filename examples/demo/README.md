@@ -132,6 +132,23 @@ original fake-device WAV, for an independent same-input comparison.
 Both C91 original-engine outputs match the browser tokens/text; see
 [commands and scope](../../docs/reports/capture-original-oracle-2026-10-08.md).
 
+### Automatic speech-detect capture to ASR
+
+Use `--verify-capture --capture-mode speech-detect --save-capture-pcm` with
+the same JFK command and a fresh receipt filename. The existing model-neutral
+helper now accepts `micMode` and a source-checkout `workerUrl`; the Orukeet
+adapter still owns local model loading and token extraction. The helper uses
+real capture, the public controller, rough-gate natural pauses and real TEN
+diagnostics, serializes caller ASR and checks every extracted PCM window against
+actual capture and a second public API transcription. Manual remains default.
+
+TEN is diagnostics-only; this is utterance-based offline ASR, not native
+streaming or model-driven VAD accuracy acceptance. The real TS worker uses the
+supported worker factory injection for this Vite source checkout; packaged
+worker acceptance remains separate. Full capture sidecars and exact utterance
+frame/hash identities enable a later original-engine comparison.
+See [C92 reproduction and scope](../../docs/reports/speech-detect-capture-asr-2026-10-08.md).
+
 ### Long-input, same-PCM browser control
 
 The demo now defaults to the existing deterministic WAV decoder exposed by

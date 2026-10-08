@@ -197,10 +197,78 @@ def check_controller_timing(result, requested, require_nonzero=False):
             and (not require_nonzero or (nonzero and all(observed_nonzero.values()))))
 
 
-def check_capture(result, requested, backend):
+def check_speech_capture(result, backend):
+    """Actual rough-gate utterance ASR with real TEN diagnostics, not native streaming."""
+    capture = result.get('capture')
+    if (not isinstance(capture, dict) or capture.get('scope') != 'fake-device-speech-detect-capture-utterance-asr'
+            or any(capture.get(key) is not True for key in ('disposed', 'restartRejected', 'modelDisposed'))
+            or capture.get('error') or capture.get('cleanupError') or type(capture.get('terminatedWorkers')) is not int
+            or capture['terminatedWorkers'] != 1):
+        return False
+    responses = capture.get('workerResponses')
+    if (not isinstance(responses, list) or any(not isinstance(event, dict) or event.get('type') == 'ERROR' for event in responses)
+            or sum(event.get('type') == 'DISPOSE' and isinstance(event.get('payload'), dict)
+                   and event['payload'].get('success') is True for event in responses) != 1):
+        return False
+    runs = capture.get('runs')
+    if not isinstance(runs, list) or len(runs) != 2:
+        return False
+    def digest(value):
+        return isinstance(value, str) and re.fullmatch('[0-9a-f]{64}', value) is not None
+    for index, run in enumerate(runs):
+        if not isinstance(run, dict):
+            return False
+        samples, chunks, tracks, diagnostic = (run.get(key) for key in
+            ('capturedSamples', 'chunkCount', 'trackStates', 'diagnostics'))
+        if (type(run.get('iteration')) is not int or run['iteration'] != index or type(samples) is not int
+                or samples < 160000 or type(chunks) is not int or samples != chunks * 256
+                or run.get('sampleRate') != 16000 or not digest(run.get('capturedPcmSha256'))
+                or run.get('contextState') != 'closed' or not isinstance(tracks, list) or not tracks
+                or any(track != 'ended' for track in tracks) or type(run.get('workletLoads')) is not int
+                or run['workletLoads'] != 1 or type(run.get('stopCalls')) is not int or run['stopCalls'] != 1
+                or not isinstance(diagnostic, dict) or diagnostic.get('state') != 'ready'
+                or diagnostic.get('effectiveGate') != 'rough-only' or diagnostic.get('offsetExact') is not True
+                or type(diagnostic.get('hops')) is not int or diagnostic['hops'] != chunks
+                or not digest(diagnostic.get('probabilitySha256'))
+                or diagnostic.get('bufferProbabilitySha256') != diagnostic['probabilitySha256']
+                or type(diagnostic.get('speechHops')) is not int or not 0 < diagnostic['speechHops'] <= chunks):
+            return False
+        windows = run.get('utterances')
+        if not isinstance(windows, list) or not windows or any(not isinstance(window, dict) for window in windows):
+            return False
+        if not any(window.get('reason') == 'silence' and window.get('beforeStop') is True for window in windows):
+            return False
+        previous_start = -1
+        for window in windows:
+            start, end, tokens, replay = (window.get(key) for key in ('startFrame', 'endFrame', 'tokenIds', 'replayTokenIds'))
+            if (type(start) is not int or type(end) is not int or not 0 <= start < end <= samples or start < previous_start
+                    or type(window.get('samples')) is not int or window['samples'] != end - start
+                    or window.get('sampleRate') != 16000 or window.get('reason') not in ('silence', 'max-duration', 'stop')
+                    or window.get('beforeStop') is not (window['reason'] != 'stop')
+                    or window.get('source') != 'rough-fallback' or window.get('tenVadState') != 'ready'
+                    or window.get('pcmExact') is not True or not digest(window.get('capturedSliceSha256'))
+                    or window.get('segmentPcmSha256') != window['capturedSliceSha256']
+                    or window.get('utterancePcmSha256') != window['capturedSliceSha256']
+                    or not isinstance(window.get('text'), str) or not window['text'].strip()
+                    or not isinstance(tokens, list) or not tokens or any(type(token) is not int or token < 0 for token in tokens)
+                    or not isinstance(replay, list) or any(type(token) is not int or token < 0 for token in replay)
+                    or replay != tokens or window.get('replayText') != window['text']
+                    or not isinstance(window.get('metrics'), dict) or not isinstance(window.get('replayMetrics'), dict)
+                    or not check_execution(dict(transcripts=[window]), backend, 1)
+                    or not check_execution(dict(transcripts=[dict(metrics=window['replayMetrics'])]), backend, 1)):
+                return False
+            previous_start = start
+    return True
+
+
+def check_capture(result, requested, backend, mode='manual'):
     """Actual fake-device manual capture/ASR, not the file oracle or native streaming."""
     if not requested:
         return True
+    if mode == 'speech-detect':
+        return check_speech_capture(result, backend)
+    if mode != 'manual':
+        return False
     capture = result.get('capture')
     if (not isinstance(capture, dict) or capture.get('scope') != 'fake-device-manual-capture-utterance-asr'
             or capture.get('disposed') is not True or capture.get('restartRejected') is not True
@@ -255,6 +323,20 @@ def save_capture_pcm(result, payloads, paths):
         digest = hashlib.sha256(raw).hexdigest()
         if digest != run.get('capturedPcmSha256') or any(not math.isfinite(value[0]) for value in struct.iter_unpack('<f', raw)):
             raise ValueError('Captured PCM digest/finite-value mismatch')
+        if result.get('capture', {}).get('scope') == 'fake-device-speech-detect-capture-utterance-asr':
+            windows = run.get('utterances')
+            if not isinstance(windows, list) or not windows:
+                raise ValueError('Speech capture requires identified utterance slices')
+            for window in windows:
+                if not isinstance(window, dict):
+                    raise ValueError('Invalid captured utterance slice')
+                start, end = window.get('startFrame'), window.get('endFrame')
+                if type(start) is not int or type(end) is not int or not 0 <= start < end <= run['capturedSamples']:
+                    raise ValueError('Invalid captured utterance bounds')
+                slice_hash = hashlib.sha256(raw[start * 4:end * 4]).hexdigest()
+                if any(window.get(key) != slice_hash for key in
+                       ('capturedSliceSha256', 'segmentPcmSha256', 'utterancePcmSha256')):
+                    raise ValueError('Captured utterance slice digest mismatch')
         prepared.append((path, raw, dict(path=str(path.resolve()), bytes=len(raw), sha256=digest,
             encoding='f32le', sampleRate=16000, channels=1, samples=run['capturedSamples'],
             validSamples=run['capturedSamples'], rightPaddingSamples=0)))
@@ -317,11 +399,15 @@ def main():
     parser.add_argument('--audio-strategy', choices=['wav', 'audiocontext'], default='wav')
     parser.add_argument('--verify-cancellation', action='store_true', help='Abort partial decode between two oracle-matched runs')
     parser.add_argument('--verify-controller', action='store_true', help='Verify chunk-fed windowed offline ASR coverage, final text and reset')
-    parser.add_argument('--verify-capture', action='store_true', help='Also verify two real fake-device manual capture -> utterance -> ASR sessions; not original-engine capture parity')
+    parser.add_argument('--verify-capture', action='store_true', help='Also verify two real fake-device capture -> utterance -> ASR sessions; not original-engine capture parity')
+    parser.add_argument('--capture-mode', choices=['manual', 'speech-detect'], default='manual',
+                        help='Opt-in automatic rough-gate utterances with real TEN diagnostics; requires --verify-capture')
     parser.add_argument('--save-capture-pcm', action='store_true', help='Save exact captured f32le sidecars for later original-engine comparison; requires --verify-capture')
     parser.add_argument('--require-controller-nonzero-origin', action='store_true',
                         help='Also require timestamped detail in controller windows starting after frame zero')
     args = parser.parse_args()
+    if args.capture_mode != 'manual' and not args.verify_capture:
+        parser.error('--capture-mode speech-detect requires --verify-capture')
     if args.save_capture_pcm and not args.verify_capture:
         parser.error('--save-capture-pcm requires --verify-capture')
     if args.verify_cancellation and args.repeat < 2:
@@ -341,6 +427,7 @@ def main():
                    page_errors=[], console=[], blocked_requests=[], expected_pcm_sha256=args.expected_pcm_sha256,
                    cancellation_requested=args.verify_cancellation, controller_requested=args.verify_controller,
                    capture_requested=args.verify_capture,
+                   capture_mode=args.capture_mode,
                    capture_pcm_requested=args.save_capture_pcm,
                    controller_nonzero_required=args.require_controller_nonzero_origin)
     try:
@@ -389,7 +476,7 @@ def main():
                 result = json.loads(page.locator('#result').inner_text())
                 receipt['result'] = result
                 if args.verify_capture and result.get('status') == 'PASS_ORUKEET_SMOKE':
-                    page.evaluate("""({libraryUrl, wasmPaths, backend, precision, savePcm}) => {
+                    page.evaluate("""({libraryUrl, wasmPaths, backend, precision, savePcm, micMode, workerUrl}) => {
                         window.captureResult = null; window.captureError = null;
                         window.capturePcm = [];
                         void (async () => {
@@ -401,7 +488,7 @@ def main():
                             model = await loadSpeechModelFromLocalEntries({ modelId: 'oruk/orukeet',
                                 entries: createSpeechModelLocalEntries([...document.getElementById('model').files]),
                                 backend, encoderQuant: precision, preprocessorBackend: 'js', wasmPaths });
-                            await runCapturedController({ receipt,
+                            await runCapturedController({ receipt, micMode, workerUrl,
                               onCapturedPcm: savePcm ? (pcm) => {
                                 const bytes = new ArrayBuffer(pcm.length * 4), view = new DataView(bytes);
                                 pcm.forEach((sample, index) => view.setFloat32(index * 4, sample, true));
@@ -424,17 +511,18 @@ def main():
                         })().then(value => window.captureResult = value).catch(error => window.captureError = String(error));
                     }""", dict(libraryUrl='/@fs/' + ROOT.as_posix() + '/src/browser.ts',
                                wasmPaths='/@fs/' + ROOT.as_posix() + '/node_modules/onnxruntime-web/dist/',
-                               backend=args.backend, precision=args.precision, savePcm=args.save_capture_pcm))
+                               backend=args.backend, precision=args.precision, savePcm=args.save_capture_pcm,
+                               micMode=args.capture_mode, workerUrl='/@fs/' + ROOT.as_posix() + '/src/runtime/ten-vad-worker.ts'))
                     page.wait_for_function('window.captureResult !== null || window.captureError !== null', timeout=args.timeout_ms)
                     if page.evaluate('window.captureError'):
                         raise ValueError(page.evaluate('window.captureError'))
                     result['capture'] = page.evaluate('window.captureResult')
-                receipt['capture_valid'] = check_capture(result, args.verify_capture, args.backend)
+                receipt['capture_valid'] = check_capture(result, args.verify_capture, args.backend, args.capture_mode)
                 if args.save_capture_pcm:
                     if not receipt['capture_valid']:
                         raise ValueError('Capture failed; refusing unverified PCM sidecars')
                     receipt['capture_pcm_artifacts'] = save_capture_pcm(result, page.evaluate('window.capturePcm'), pcm_outputs)
-                receipt['capture_scope'] = 'fake-device-manual-capture-utterance-asr' if args.verify_capture else 'SKIP_NOT_REQUESTED'
+                receipt['capture_scope'] = f'fake-device-{args.capture_mode}-capture-utterance-asr' if args.verify_capture else 'SKIP_NOT_REQUESTED'
                 receipt['execution_valid'] = check_execution(result, args.backend, args.repeat)
                 receipt['cancellation_valid'] = check_cancellation(result, args.verify_cancellation)
                 receipt['controller_valid'] = check_controller(result, args.verify_controller, args.backend, oracle['result']['text'])

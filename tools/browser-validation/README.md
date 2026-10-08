@@ -62,6 +62,26 @@ recorded identity. [C91 recipe and evidence](../../docs/reports/capture-original
 records both actual original-weight comparisons. This optional flag saves input;
 it does not itself run NeMo or certify stage numerical parity.
 
+## Automatic speech-detect utterances to Orukeet ASR
+
+The same automatic Chrome runner accepts `--verify-capture --capture-mode
+speech-detect --save-capture-pcm` with the JFK command and a fresh output name.
+Manual capture remains the default. Two actual 10-second fake-device sessions
+must publish natural-pause utterances before stop, deliver exact captured PCM
+slices to caller-owned serialized ASR, match independent same-PCM public API
+replays and complete actual capture/controller/model/TEN-worker cleanup.
+Real TEN probabilities must cover the complete captured timeline and match the
+public probability buffer. The rough gate still owns segmentation; TEN is
+diagnostics-only, not model-driven VAD acceptance or native streaming.
+
+This source-checkout consumer supplies a real Vite-transformed TS worker through
+the supported `tenVadOptions.workerFactory` boundary. It does not certify the
+packaged default worker URL. Saved full-capture float32 sidecars retain utterance
+frame ranges and hashes, independently recomputed from their bytes before any
+sidecar is written. They enable a later original-engine comparison; the flag
+does not run NeMo on these utterances. File-oracle and manual controls remain
+separate. See [C92 recipe and evidence](../../docs/reports/speech-detect-capture-asr-2026-10-08.md).
+
 ## Packaged TEN-VAD model worker lifecycle
 
 The existing offline runner also accepts `--scenario ten-vad`. Build/copy the

@@ -157,7 +157,7 @@
       "compare": ["token_ids", "text"],
       "repeat": 2,
       "url": "https://127.0.0.1:8767/orukeet-smoke.html",
-      "runnerSha256": "e7e6c68506a9427e75d33a99e6962949001040963c028318a96ae3aff431dfbb",
+      "runnerSha256": "45101052f1ffcc741aed0618931450168fe6eadd34f4e2dac9bc8a16e512e219",
       "verifies": "same-PCM repeated original-oracle empty token/text browser smoke with code identity and awaited cleanup; not stage numerical parity or silence soak"
     },
     {
@@ -170,7 +170,7 @@
       "compare": ["token_ids", "text"],
       "repeat": 2,
       "url": "https://127.0.0.1:8767/orukeet-smoke.html",
-      "runnerSha256": "e7e6c68506a9427e75d33a99e6962949001040963c028318a96ae3aff431dfbb",
+      "runnerSha256": "45101052f1ffcc741aed0618931450168fe6eadd34f4e2dac9bc8a16e512e219",
       "verifies": "same-PCM repeated original-oracle token/text browser smoke with code identity and awaited cleanup; not stage numerical parity"
     },
     {

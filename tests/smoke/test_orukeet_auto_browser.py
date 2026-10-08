@@ -60,6 +60,33 @@ class AutoReceiptTests(unittest.TestCase):
             self.assertEqual(paths[1].read_bytes(), b'original')
             self.assertFalse(paths[0].exists())
 
+    def test_saved_speech_capture_recomputes_exact_slice_hashes(self):
+        result, payloads, raw = self.pcm_payload()
+        result['capture']['scope'] = 'fake-device-speech-detect-capture-utterance-asr'
+        digest = runner.hashlib.sha256(raw[4:12]).hexdigest()
+        for run in result['capture']['runs']:
+            run['utterances'] = [dict(startFrame=1, endFrame=3, capturedSliceSha256=digest,
+                                      segmentPcmSha256=digest, utterancePcmSha256=digest)]
+        with tempfile.TemporaryDirectory() as directory:
+            paths = runner.capture_pcm_paths(Path(directory) / 'receipt.json')
+            runner.save_capture_pcm(result, payloads, paths)
+            self.assertTrue(all(path.read_bytes() == raw for path in paths))
+
+    def test_saved_speech_capture_rejects_changed_slices_before_any_write(self):
+        for field, value in [('startFrame', True), ('endFrame', 5), ('capturedSliceSha256', 'a' * 64),
+                             ('segmentPcmSha256', 'a' * 64), ('utterancePcmSha256', 'a' * 64)]:
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                result, payloads, raw = self.pcm_payload()
+                result['capture']['scope'] = 'fake-device-speech-detect-capture-utterance-asr'
+                digest = runner.hashlib.sha256(raw[4:12]).hexdigest()
+                for run in result['capture']['runs']:
+                    run['utterances'] = [dict(startFrame=1, endFrame=3, capturedSliceSha256=digest,
+                                              segmentPcmSha256=digest, utterancePcmSha256=digest)]
+                result['capture']['runs'][1]['utterances'][0][field] = value
+                paths = runner.capture_pcm_paths(Path(directory) / 'receipt.json')
+                with self.assertRaises(ValueError): runner.save_capture_pcm(result, payloads, paths)
+                self.assertFalse(any(path.exists() for path in paths))
+
     def test_save_capture_option_requires_capture_verification(self):
         argv = ['auto', '--model-root', 'unused', '--audio', 'unused.wav', '--oracle', 'unused.json',
                 '--output', 'unused-output.json', '--save-capture-pcm']
@@ -110,6 +137,85 @@ class AutoReceiptTests(unittest.TestCase):
             changed = self.capture_result()
             changed['capture']['runs'][0][field]['encoderBackend'] = 'wasm'
             self.assertFalse(runner.check_capture(changed, True, 'webgpu-hybrid'))
+
+    def speech_capture_result(self):
+        result = self.capture_result()
+        capture = result['capture']
+        capture.update(scope='fake-device-speech-detect-capture-utterance-asr', terminatedWorkers=1,
+                       workerResponses=[dict(type='DISPOSE', payload=dict(success=True))])
+        for run in capture['runs']:
+            window = {key: copy.deepcopy(run[key]) for key in
+                ('text', 'tokenIds', 'metrics', 'replayText', 'replayTokenIds', 'replayMetrics')}
+            window.update(startFrame=256, endFrame=32256, samples=32000, sampleRate=16000,
+                          reason='silence', beforeStop=True, source='rough-fallback', tenVadState='ready',
+                          capturedSliceSha256='b' * 64, segmentPcmSha256='b' * 64,
+                          utterancePcmSha256='b' * 64, pcmExact=True)
+            run.update(capturedSamples=160000, chunkCount=625, utterances=[window],
+                       diagnostics=dict(state='ready', effectiveGate='rough-only', hops=625,
+                           offsetExact=True, speechHops=123, probabilitySha256='c' * 64,
+                           bufferProbabilitySha256='c' * 64))
+        return result
+
+    def test_speech_capture_is_explicit_and_separate_from_manual(self):
+        result = self.speech_capture_result()
+        self.assertTrue(runner.check_capture({}, False, 'webgpu-hybrid', 'speech-detect'))
+        self.assertFalse(runner.check_capture({}, True, 'webgpu-hybrid', 'speech-detect'))
+        self.assertTrue(runner.check_capture(result, True, 'webgpu-hybrid', 'speech-detect'))
+        self.assertFalse(runner.check_capture(result, True, 'webgpu-hybrid'))
+        self.assertFalse(runner.check_capture(self.capture_result(), True, 'webgpu-hybrid', 'speech-detect'))
+        self.assertFalse(runner.check_capture(result, True, 'webgpu-hybrid', 'unknown'))
+
+    def test_speech_capture_rejects_missing_natural_segments_asr_and_pcm(self):
+        fields = [('startFrame', True), ('startFrame', -1), ('endFrame', 160001), ('endFrame', 0),
+                  ('samples', 31999), ('sampleRate', 48000), ('reason', 'stop'), ('beforeStop', False),
+                  ('source', 'ten-vad'), ('tenVadState', 'degraded'), ('pcmExact', False),
+                  ('capturedSliceSha256', 'bad'), ('segmentPcmSha256', 'd' * 64),
+                  ('utterancePcmSha256', 'd' * 64), ('text', ''), ('tokenIds', []), ('tokenIds', [True]),
+                  ('replayTokenIds', [True]), ('replayTokenIds', [99]), ('replayText', 'wrong'),
+                  ('metrics', None), ('replayMetrics', None)]
+        for field, value in fields:
+            with self.subTest(field=field, value=value):
+                result = self.speech_capture_result()
+                result['capture']['runs'][0]['utterances'][0][field] = value
+                self.assertFalse(runner.check_speech_capture(result, 'webgpu-hybrid'))
+        for value in (None, [], [None]):
+            result = self.speech_capture_result()
+            result['capture']['runs'][0]['utterances'] = value
+            self.assertFalse(runner.check_speech_capture(result, 'webgpu-hybrid'))
+        for field in ('metrics', 'replayMetrics'):
+            result = self.speech_capture_result()
+            result['capture']['runs'][0]['utterances'][0][field]['encoderBackend'] = 'wasm'
+            self.assertFalse(runner.check_speech_capture(result, 'webgpu-hybrid'))
+
+    def test_speech_capture_rejects_missing_diagnostics_and_cleanup(self):
+        for field, value in [('state', 'degraded'), ('effectiveGate', 'ten-vad-only'), ('hops', 624),
+                             ('hops', True), ('offsetExact', False), ('speechHops', 0), ('speechHops', 626),
+                             ('probabilitySha256', 'bad'), ('bufferProbabilitySha256', 'd' * 64)]:
+            with self.subTest(field=field):
+                result = self.speech_capture_result()
+                result['capture']['runs'][0]['diagnostics'][field] = value
+                self.assertFalse(runner.check_speech_capture(result, 'webgpu-hybrid'))
+        for field, value in [('capturedSamples', True), ('chunkCount', 624), ('contextState', 'running'),
+                             ('trackStates', []), ('trackStates', ['live']), ('workletLoads', True), ('stopCalls', 2)]:
+            result = self.speech_capture_result()
+            result['capture']['runs'][0][field] = value
+            self.assertFalse(runner.check_speech_capture(result, 'webgpu-hybrid'))
+        for field, value in [('terminatedWorkers', 0), ('terminatedWorkers', True), ('workerResponses', []),
+                             ('workerResponses', [dict(type='ERROR')]), ('workerResponses', [None]),
+                             ('disposed', False), ('restartRejected', False), ('modelDisposed', False),
+                             ('error', 'ASR failed'), ('cleanupError', 'dispose failed')]:
+            result = self.speech_capture_result()
+            result['capture'][field] = value
+            self.assertFalse(runner.check_speech_capture(result, 'webgpu-hybrid'))
+
+    def test_speech_capture_option_requires_requested_capture(self):
+        argv = ['auto', '--model-root', 'unused', '--audio', 'unused.wav', '--oracle', 'unused.json',
+                '--output', 'unused-output.json', '--capture-mode', 'speech-detect']
+        stderr = io.StringIO()
+        with patch('sys.argv', argv), contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as error:
+            runner.main()
+        self.assertEqual(error.exception.code, 2)
+        self.assertIn('--capture-mode speech-detect requires --verify-capture', stderr.getvalue())
 
     def timing_result(self):
         sources, requests, updates = [], [], []
