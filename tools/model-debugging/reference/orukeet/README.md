@@ -18,8 +18,13 @@ requires both full token and text comparisons, at least two repeats, original
 oracle/model/audio binding, recorded effective PCM, manifest-bound consumed
 graphs/tokenizer/sidecars, runner SHA, actual component backends, disposal and
 Chrome closure. All delivered HTML/JS/TS/WASM paths, sizes and hashes must match
-the manifest-hashed `browser-code-contract-jfk.json`, including duplicate
+the manifest-hashed `browser-code-contract-jfk-c78.json`, including duplicate
 deliveries. An altered HTML page cannot silently inject unbound inline code.
+
+The pre-C78 `browser-code-contract-jfk.json` remains unchanged as historical
+evidence. The separate C78 snapshot records its predecessor, reviewed change
+commit and seed receipt. [Refresh evidence](../../../../docs/reports/browser-code-snapshot-c78-2026-10-08.md)
+documents the rejection before refresh and the fresh independent Chrome run.
 
 This code snapshot is specific to this reviewed local Vite consumer/dependency
 build and checkout paths. A source/dependency/server-build change should FAIL;

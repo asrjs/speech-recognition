@@ -4,8 +4,8 @@
   "family": "nemo-tdt",
   "preset": "parakeet",
   "browserCodeContract": {
-    "path": "tools/model-debugging/reference/orukeet/browser-code-contract-jfk.json",
-    "sha256": "9c736db33165dfcf01accf3c547f1c0bbdeb4efa95232c5a41d9fa8cb3d3d8d9"
+    "path": "tools/model-debugging/reference/orukeet/browser-code-contract-jfk-c78.json",
+    "sha256": "857c289a625d53f61047ad3ea618b7c09532aa2b3812f3a53eba5241fe522e35"
   },
   "originalWeights": {
     "path": "models/orukeet/source/orukeet-v0.1.0.nemo",
