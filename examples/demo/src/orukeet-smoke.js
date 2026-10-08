@@ -54,6 +54,8 @@ field('run').addEventListener('click', async () => {
     const files = [...field('model').files];
     const audioFile = field('audio').files[0];
     const repeat = Math.max(1, Number.parseInt(field('repeat').value, 10) || 1);
+    const verifyCancellation = query.get('cancel') === '1';
+    if (verifyCancellation && repeat < 2) throw new Error('Cancellation requires two successful repeats to prove reuse');
     if (!files.length || !audioFile) throw new Error('Model folder and audio fixture are required');
 
     if (field('backend').value === 'webgpu-hybrid' && !crossOriginIsolated) {
@@ -107,6 +109,35 @@ field('run').addEventListener('click', async () => {
     };
 
     for (let index = 0; index < repeat; index += 1) {
+      if (index === 1 && verifyCancellation) {
+        status('Cancelling partial decode…');
+        const controller = new AbortController();
+        const cancellation = { requested: false, rejected: false, completeEmitted: false };
+        result.cancellation = cancellation;
+        try {
+          await model.transcribeMonoPcm(pcm, 16000, {
+            signal: controller.signal,
+            onProgress(event) {
+              if (event.stage === 'complete') cancellation.completeEmitted = true;
+              if (event.stage === 'decode' && event.completedUnits > 0 &&
+                  event.completedUnits < event.totalUnits && !cancellation.requested) {
+                cancellation.requested = true;
+                cancellation.completedUnits = event.completedUnits;
+                cancellation.totalUnits = event.totalUnits;
+                controller.abort();
+              }
+            },
+          });
+        } catch (error) {
+          cancellation.errorName = error.name;
+          cancellation.stageId = error.stageId;
+          cancellation.rejected = error.name === 'PipelineAbortedError' && error.stageId === 'decode';
+          if (!cancellation.rejected) throw error;
+        }
+        if (!cancellation.requested || !cancellation.rejected || cancellation.completeEmitted) {
+          throw new Error('Requested partial-decode cancellation did not reject without completion');
+        }
+      }
       status(`Transcribing ${index + 1}/${repeat}…`);
       const envelope = await model.transcribeMonoPcm(pcm, 16000, {
         returnTokenIds: true,

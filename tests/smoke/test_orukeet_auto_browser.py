@@ -14,6 +14,28 @@ spec.loader.exec_module(runner)
 
 
 class AutoReceiptTests(unittest.TestCase):
+    def test_cancellation_requires_partial_decode_rejection_without_complete(self):
+        cancellation = dict(requested=True, rejected=True, completeEmitted=False,
+                            errorName='PipelineAbortedError', stageId='decode', completedUnits=1, totalUnits=10)
+        self.assertTrue(runner.check_cancellation(dict(cancellation=cancellation), True))
+        for key, value in [('requested', False), ('rejected', False), ('completeEmitted', True),
+                           ('errorName', 'OtherError'), ('stageId', 'encoder'),
+                           ('completedUnits', 0), ('completedUnits', 10), ('completedUnits', True),
+                           ('totalUnits', 0)]:
+            with self.subTest(key=key, value=value):
+                self.assertFalse(runner.check_cancellation(dict(cancellation=dict(cancellation, **{key: value})), True))
+        self.assertFalse(runner.check_cancellation({}, True))
+        self.assertTrue(runner.check_cancellation({}, False))
+
+    def test_cancel_option_requires_successful_reuse_repeat(self):
+        argv = ['auto', '--model-root', 'unused', '--audio', 'unused.wav', '--oracle', 'unused.json',
+                '--output', 'unused-output.json', '--verify-cancellation', '--repeat', '1']
+        stderr = io.StringIO()
+        with patch('sys.argv', argv), contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as error:
+            runner.main()
+        self.assertEqual(error.exception.code, 2)
+        self.assertIn('requires at least two successful repeats', stderr.getvalue())
+
     def test_code_binding_allows_empty_type_module_not_empty_runtime(self):
         code = [dict(url=url, status=200, bytes=size, sha256='a' * 64, capture='route-fulfilled-body')
                 for url, size in [('https://127.0.0.1/src/orukeet-smoke.js', 10),

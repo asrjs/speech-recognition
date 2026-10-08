@@ -6,3 +6,5 @@
 
 # Preserve the exact raw receipt bytes referenced by the C54 evidence hashes.
 tools/data/results/orukeet/auto-browser-long-repeat8-2026-10-08-*.json binary
+# Preserve raw C57 cancellation/reuse receipt bytes too.
+tools/data/results/orukeet/auto-browser-long-cancel-reuse-2026-10-08-*.json binary

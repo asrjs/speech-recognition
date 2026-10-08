@@ -101,3 +101,18 @@ All 722 tokens and text match, PCM identity matches, component backend labels
 match, code capture and awaited cleanup pass. See
 [the scoped report](../../docs/reports/orukeet-auto-browser-long-2026-10-08.md).
 This does not pass feature numerical, streaming, fp16, held-out quality or soak gates.
+
+### Cooperative decode cancellation and reuse
+
+Add `--verify-cancellation` to the long-input command and choose a fresh output
+filename. Keep `--repeat 2` or greater. The page uses `cancel=1` to request
+AbortController cancellation only after a nonzero, incomplete decode-progress
+event. It requires `PipelineAbortedError` at the decode stage without a complete
+event, then transcribes again on the same model and PCM before awaited disposal.
+The two normal results (one before and one after cancellation) must still match
+every original-engine token ID and full text; a successful abort alone cannot pass.
+Without the flag this optional lifecycle control is not exercised.
+
+Cancellation is cooperative at decoder boundaries, not hard interruption of an
+in-flight ORT/GPU call. This source-checkout example is separate from the classic
+sibling browser-demo's user cancellation/unload UI and from GPU reclamation/soak.
