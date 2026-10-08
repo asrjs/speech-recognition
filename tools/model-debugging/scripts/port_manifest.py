@@ -23,7 +23,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'tools'))
-from artifact_outputs import write_new_text  # noqa: E402
+from artifact_outputs import require_new_outputs, write_new_text  # noqa: E402
 
 
 def digest(path: Path) -> str:
@@ -246,6 +246,28 @@ def main() -> int:
             raise ValueError(f'Unknown run id: {args.run}')
     else:
         selected = cases
+
+    if args.output:
+        # Check every destination before the first expensive runner. Browser
+        # cases currently share this suffix, so multiple browser selections
+        # must fail rather than reusing another case's receipt.
+        outputs = [args.output, *[
+            Path(f'{args.output}.browser.json') for case in selected if case['runner'] == 'browser'
+        ]]
+        inputs = [args.manifest]
+        bound_files = [*identity['localArtifacts']['files']]
+        for role in ('originalWeights', 'runtimeConfig'):
+            bound = identity.get(role)
+            if isinstance(bound, dict) and 'bytes' in bound:
+                bound_files.append(bound)
+        for fixture in identity['fixtures']:
+            bound_files.extend((fixture, fixture['oracle']))
+        inputs.extend(ROOT / item['path'] for item in bound_files)
+        require_new_outputs(outputs, protected_inputs=inputs,
+                            protected_directories=[ROOT / identity['localArtifacts']['root']])
+        # Preserve original symlink checks above, then bind caller-relative
+        # destinations absolutely: child runners execute from ROOT.
+        args.output = args.output.resolve()
 
     results = [run_case(manifest, case, args.output) for case in selected]
     receipt: dict[str, Any] = {

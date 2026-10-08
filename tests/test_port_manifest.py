@@ -5,6 +5,8 @@ an external-data sidecar, so digest-binding behaviour is exercised without
 hashing multi-gigabyte graphs on every test.
 """
 import json
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -133,6 +135,115 @@ class PortManifestDigestContract(unittest.TestCase):
                 port_manifest.main()
             run.assert_not_called()
         self.assertFalse(output.exists())
+
+
+class PortManifestOutputPreflight(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix='manifest-output-', dir=ROOT / 'tests')
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.source = self.root / 'manifest.json'
+        self.output = self.root / 'receipt.json'
+        self.manifest = manifest_with([sys.executable, '-c', STUB_MATCH])
+
+    def assert_rejected_before_runner(self, output, exception, message, run_id='stub'):
+        self.source.write_text(json.dumps(self.manifest), encoding='utf-8')
+        argv = ['port_manifest.py', '--manifest', str(self.source), '--output', str(output)]
+        if run_id is not None:
+            argv += ['--run', run_id]
+        with patch.object(sys, 'argv', argv), patch.object(
+                port_manifest.subprocess, 'run', side_effect=AssertionError('Runner started before preflight')) as run:
+            with self.assertRaisesRegex(exception, message):
+                port_manifest.main()
+            run.assert_not_called()
+
+    def test_existing_receipt_rejected_before_native_inference(self):
+        self.output.write_text('preserved receipt', encoding='utf-8')
+        self.assert_rejected_before_runner(self.output, FileExistsError, 'existing output')
+        self.assertEqual(self.output.read_text(encoding='utf-8'), 'preserved receipt')
+
+    def test_new_output_under_model_root_rejected_before_inference(self):
+        output = BUNDLE / 'never-created-receipt.json'
+        self.assert_rejected_before_runner(output, ValueError, 'protected input or source directory')
+        self.assertFalse(output.exists())
+
+    def test_manifest_itself_is_protected(self):
+        self.assert_rejected_before_runner(self.source, ValueError, 'protected input')
+        self.assertEqual(json.loads(self.source.read_text(encoding='utf-8')), self.manifest)
+
+    def test_fixture_and_oracle_are_protected(self):
+        fixture = self.manifest['fixtures'][0]
+        for role in (fixture, fixture['oracle']):
+            with self.subTest(path=role['path']):
+                output = ROOT / role['path']
+                before = port_manifest.digest(output)
+                self.assert_rejected_before_runner(output, ValueError, 'protected input')
+                self.assertEqual(port_manifest.digest(output), before)
+
+    def test_weights_external_sidecar_and_runtime_config_are_protected(self):
+        config = self.root / 'runtime-config.json'
+        config.write_text('{}', encoding='utf-8')
+        self.manifest['runtimeConfig'] = {'path': str(config), 'sha256': port_manifest.digest(config)}
+        sidecar = self.manifest['localArtifacts']['files'][1]
+        for role in (self.manifest['originalWeights'], sidecar, self.manifest['runtimeConfig']):
+            with self.subTest(path=role['path']):
+                output = Path(role['path'])
+                before = port_manifest.digest(output)
+                self.assert_rejected_before_runner(output, ValueError, 'protected input')
+                self.assertEqual(port_manifest.digest(output), before)
+
+    def test_existing_browser_child_receipt_rejected_before_launch(self):
+        self.manifest['runs'][0]['runner'] = 'browser'
+        child = Path(f'{self.output}.browser.json')
+        child.write_text('preserved child', encoding='utf-8')
+        self.assert_rejected_before_runner(self.output, FileExistsError, 'existing output')
+        self.assertEqual(child.read_text(encoding='utf-8'), 'preserved child')
+        self.assertFalse(self.output.exists())
+
+    def test_multiple_browser_runs_cannot_share_one_child_receipt(self):
+        first = self.manifest['runs'][0]
+        first['runner'] = 'browser'
+        self.manifest['runs'].append(dict(first, id='second'))
+        self.assert_rejected_before_runner(self.output, ValueError, 'distinct', run_id=None)
+
+    def test_listing_does_not_need_new_output(self):
+        self.source.write_text(json.dumps(self.manifest), encoding='utf-8')
+        with patch.object(sys, 'argv', ['port_manifest.py', '--manifest', str(self.source)]), \
+                patch.object(port_manifest.subprocess, 'run') as run, patch('builtins.print'):
+            self.assertEqual(port_manifest.main(), 0)
+            run.assert_not_called()
+
+    def test_fresh_output_runs_and_preserves_failed_oracle_receipt(self):
+        self.source.write_text(json.dumps(self.manifest), encoding='utf-8')
+        argv = ['port_manifest.py', '--manifest', str(self.source), '--run', 'stub',
+                '--output', str(self.output)]
+        # Real tiny child process, no model/runtime/download: exercises the
+        # allowed path through comparison and exclusive final receipt write.
+        with patch.object(sys, 'argv', argv), patch('builtins.print'):
+            self.assertEqual(port_manifest.main(), 1)
+        receipt = json.loads(self.output.read_text(encoding='utf-8'))
+        self.assertEqual(receipt['status'], 'FAIL')
+        self.assertEqual(receipt['results'][0]['status'], 'FAILED_ORACLE')
+
+    def test_browser_child_output_is_absolute_from_callers_working_directory(self):
+        self.manifest['runs'][0]['runner'] = 'browser'
+        self.manifest['runs'][0]['command'] += ['--output', '{browserOutput}']
+        self.source.write_text(json.dumps(self.manifest), encoding='utf-8')
+        argv = ['port_manifest.py', '--manifest', str(self.source), '--run', 'stub',
+                '--output', 'receipt.json']
+        previous = Path.cwd()
+        try:
+            os.chdir(self.root)
+            with patch.object(sys, 'argv', argv), patch('builtins.print'), patch.object(
+                    port_manifest.subprocess, 'run',
+                    return_value=subprocess.CompletedProcess([], 1, '', 'controlled failure')) as run:
+                self.assertEqual(port_manifest.main(), 1)
+                self.assertEqual(Path(run.call_args.args[0][-1]),
+                                 self.root.resolve() / 'receipt.json.browser.json')
+                self.assertEqual(run.call_args.kwargs['cwd'], str(ROOT))
+        finally:
+            os.chdir(previous)
+        self.assertTrue(self.output.is_file())
 
 
 class PortManifestComparisonContract(unittest.TestCase):
