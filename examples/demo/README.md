@@ -80,3 +80,24 @@ not feature/encoder numerical parity, long-audio, streaming, or soak acceptance.
 The first receipt (`...-01.json`) remains a FAIL: text matched but the default
 canonical segment detail omitted tokens; the demo now uses the supported
 `canonical+native` envelope to capture native debug IDs and canonical metrics.
+
+### Long-input, same-PCM browser control
+
+The demo now defaults to the existing deterministic WAV decoder exposed by
+`browser/media` (using the public entrypoint's source in this source-checkout
+demo). It requires mono/16 kHz input and never silently resamples. The previous
+AudioContext path remains an explicit `--audio-strategy audiocontext` control.
+Supply `--expected-pcm-sha256` to require the official effective float32 PCM;
+without it the status explicitly says `PCM_UNBOUND`, even if tokens/text match.
+Served JS/TS/runtime response bytes are hashed at the fulfillment boundary,
+not taken from Chrome's evictable inspector cache. Runner source is also bound.
+
+```powershell
+python tests/smoke/orukeet-auto-browser.py --url https://127.0.0.1:8767/orukeet-smoke.html --model-root models/orukeet/onnx/fp32-packed-2026-10-01 --audio tools/data/results/orukeet/librivox-repeat8-16k-pcm16-2026-10-02.wav --oracle tools/data/results/orukeet/official-long-repeat8-summary-2026-10-02.json --expected-pcm-sha256 caf86c6b47b9e82ea81202df6912366802bed190272485db2329c30e27ea4b46 --output tools/data/results/orukeet/auto-browser-long-new-run.json
+```
+
+Verified two-repeat result: `auto-browser-long-repeat8-2026-10-08-06.json`.
+All 722 tokens and text match, PCM identity matches, component backend labels
+match, code capture and awaited cleanup pass. See
+[the scoped report](../../docs/reports/orukeet-auto-browser-long-2026-10-08.md).
+This does not pass feature numerical, streaming, fp16, held-out quality or soak gates.

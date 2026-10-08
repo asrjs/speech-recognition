@@ -3,6 +3,7 @@ import {
   createSpeechModelLocalEntries,
   loadSpeechModelFromLocalEntries,
 } from '../../../src/runtime/local-browser.ts';
+import { decodeWavToMonoPcm } from '../../../src/browser-media.ts';
 
 const MODEL_ID = 'oruk/orukeet';
 const field = (id) => document.getElementById(id);
@@ -24,6 +25,14 @@ const status = (message) => {
 };
 
 async function decodeFixture(file) {
+  if ((query.get('audioStrategy') ?? 'wav') === 'wav') {
+    const decoded = decodeWavToMonoPcm(await file.arrayBuffer());
+    if (decoded.numberOfChannels !== 1 || decoded.sampleRate !== 16000) {
+      throw new Error('Deterministic fixture must be mono WAV at 16000 Hz; no implicit resampling');
+    }
+    return decoded.pcm;
+  }
+  if (query.get('audioStrategy') !== 'audiocontext') throw new Error('Unknown audio strategy');
   const audioContext = new AudioContext({ sampleRate: 16000 });
   try {
     const decoded = await audioContext.decodeAudioData(await file.arrayBuffer());
@@ -83,6 +92,19 @@ field('run').addEventListener('click', async () => {
 
     const pcm = await decodeFixture(audioFile);
     result.audioSamples = pcm.length;
+    // Canonical bytes describe the exact waveform passed to the public API,
+    // independently of the input WAV container or the platform's endianness.
+    const pcmBytes = new ArrayBuffer(pcm.length * 4);
+    const pcmView = new DataView(pcmBytes);
+    for (let index = 0; index < pcm.length; index += 1) pcmView.setFloat32(index * 4, pcm[index], true);
+    const pcmDigest = new Uint8Array(await crypto.subtle.digest('SHA-256', pcmBytes));
+    result.effectivePcm = {
+      sampleRate: 16000, channels: 1, samples: pcm.length, validSamples: pcm.length,
+      rightPaddingSamples: 0, encoding: 'f32le',
+      preparation: (query.get('audioStrategy') ?? 'wav') === 'wav'
+        ? 'public decodeWavToMonoPcm; no resampling' : 'AudioContext decode at 16000 Hz',
+      sha256: [...pcmDigest].map((byte) => byte.toString(16).padStart(2, '0')).join(''),
+    };
 
     for (let index = 0; index < repeat; index += 1) {
       status(`Transcribing ${index + 1}/${repeat}…`);

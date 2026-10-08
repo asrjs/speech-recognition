@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 spec = importlib.util.spec_from_file_location('auto_browser', Path(__file__).with_name('orukeet-auto-browser.py'))
 runner = importlib.util.module_from_spec(spec)
@@ -14,6 +14,76 @@ spec.loader.exec_module(runner)
 
 
 class AutoReceiptTests(unittest.TestCase):
+    def test_code_binding_allows_empty_type_module_not_empty_runtime(self):
+        code = [dict(url=url, status=200, bytes=size, sha256='a' * 64, capture='route-fulfilled-body')
+                for url, size in [('https://127.0.0.1/src/orukeet-smoke.js', 10),
+                                  ('https://127.0.0.1/onnxruntime-web/dist/runtime.wasm', 10),
+                                  ('https://127.0.0.1/types.ts', 0)]]
+        receipt = dict(served_code=code, code_capture_errors=[])
+        self.assertTrue(runner.check_code_bindings(receipt))
+        for index in (0, 1):
+            with self.subTest(index=index):
+                changed = [dict(item) for item in code]
+                changed[index]['bytes'] = 0
+                self.assertFalse(runner.check_code_bindings(dict(receipt, served_code=changed)))
+        self.assertFalse(runner.check_code_bindings(dict(receipt, code_capture_errors=['missing body'])))
+        changed = [dict(item) for item in code]
+        changed[2]['status'] = 500
+        self.assertFalse(runner.check_code_bindings(dict(receipt, served_code=changed)))
+
+    def test_code_capture_binds_fulfilled_bytes_and_releases_response(self):
+        route = Mock()
+        route.request.url = 'https://127.0.0.1/runtime.wasm'
+        response = route.fetch.return_value
+        response.status = 200
+        response.body.return_value = b'actual runtime bytes'
+        receipt = dict(served_code=[], code_capture_errors=[])
+        runner.capture_code_route(route, receipt)
+        route.fulfill.assert_called_once_with(response=response, body=b'actual runtime bytes')
+        route.fetch.assert_called_once_with(max_redirects=0, timeout=30000)
+        response.dispose.assert_called_once_with()
+        self.assertEqual(receipt['served_code'][0]['sha256'], runner.hashlib.sha256(b'actual runtime bytes').hexdigest())
+        self.assertEqual(receipt['code_capture_errors'], [])
+
+    def test_failed_code_capture_aborts_and_records_failure(self):
+        route = Mock()
+        route.request.url = 'https://127.0.0.1/runtime.wasm'
+        route.fetch.side_effect = RuntimeError('network failed')
+        receipt = dict(served_code=[], code_capture_errors=[])
+        runner.capture_code_route(route, receipt)
+        route.abort.assert_called_once_with()
+        route.fulfill.assert_not_called()
+        self.assertEqual(receipt['served_code'], [])
+        self.assertIn('network failed', receipt['code_capture_errors'][0]['error'])
+
+    def test_execution_requires_requested_repeats_and_component_backends(self):
+        item = dict(metrics=dict(encoderBackend='webgpu', decoderBackend='wasm',
+                                 jointBackend='wasm', preprocessorBackend='js'))
+        result = dict(transcripts=[item, item])
+        self.assertTrue(runner.check_execution(result, 'webgpu-hybrid', 2))
+        self.assertFalse(runner.check_execution(result, 'webgpu-hybrid', 1))
+        self.assertFalse(runner.check_execution(result, 'wasm', 2))
+        for key in item['metrics']:
+            with self.subTest(key=key):
+                changed = dict(metrics=dict(item['metrics'], **{key: 'wrong'}))
+                self.assertFalse(runner.check_execution(dict(transcripts=[changed]), 'webgpu-hybrid', 1))
+        self.assertFalse(runner.check_execution(dict(transcripts=[{}]), 'webgpu-hybrid', 1))
+
+    def test_pcm_identity_requires_exact_hash_and_metadata(self):
+        result = dict(audioSamples=3, effectivePcm=dict(sha256='a' * 64, sampleRate=16000,
+            channels=1, samples=3, validSamples=3, rightPaddingSamples=0, encoding='f32le'))
+        self.assertTrue(runner.check_pcm(result, 'a' * 64))
+        self.assertFalse(runner.check_pcm(result, 'b' * 64))
+        for key, value in [('sha256', 'invalid'), ('sampleRate', 8000), ('channels', 2),
+                           ('samples', 4), ('validSamples', 2), ('rightPaddingSamples', 1),
+                           ('encoding', 'pcm16')]:
+            with self.subTest(key=key):
+                changed = dict(result, effectivePcm=dict(result['effectivePcm'], **{key: value}))
+                self.assertFalse(runner.check_pcm(changed, 'a' * 64))
+
+    def test_missing_pcm_identity_fails_closed(self):
+        self.assertFalse(runner.check_pcm(dict(audioSamples=3), None))
+
     def invoke(self, root, output):
         argv = ['auto', '--model-root', str(root / 'model'), '--audio', str(root / 'audio.wav'),
                 '--oracle', str(root / 'oracle.json'), '--output', str(output)]

@@ -3,3 +3,6 @@
 *.cmd text eol=crlf
 
 *.json.gz binary
+
+# Preserve the exact raw receipt bytes referenced by the C54 evidence hashes.
+tools/data/results/orukeet/auto-browser-long-repeat8-2026-10-08-*.json binary

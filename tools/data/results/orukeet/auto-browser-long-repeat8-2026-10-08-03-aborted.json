@@ -1,0 +1,10 @@
+{
+  "status": "FAIL_ABORTED_BROWSER_STARTUP",
+  "scope": "Supervisor failure record, not an automatic model inference receipt",
+  "attempted_output": "auto-browser-long-repeat8-2026-10-08-03.json",
+  "boundary": "Vite module import resolution",
+  "observed_error": "Failed to resolve import @asrjs/speech-recognition/browser/media from src/orukeet-smoke.js; HTTP 500",
+  "model_acceptance": "UNTESTED",
+  "cleanup": "Verified owned python PID 28160 and its Chrome descendants terminated via taskkill /T; no other browser or model process targeted",
+  "next_change": "Use the browser/media public entrypoint source, consistent with this source-checkout demo; fail early on non-200 code responses"
+}
