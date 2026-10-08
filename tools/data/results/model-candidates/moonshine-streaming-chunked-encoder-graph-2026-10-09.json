@@ -1,0 +1,200 @@
+{
+  "status": "PASS_CHUNKED_ENCODER_GRAPH",
+  "scope": "chunked state-in/state-out streaming encoder graph, fp32; torch-module and ONNX parity vs the whole-utterance official encoder plus end-to-end oracle tokens through the fp32 decoder graphs; not fp16, not library integration",
+  "snapshot": {
+    "path": ".cache\\moonshine-streaming-tiny",
+    "model_sha256": "0ab3443dabd95a4afb35f0a26155428c03b7c3c450fa6923ffdac4510ba3d040"
+  },
+  "contract": {
+    "inputs": [
+      "input_values",
+      "embedded_context",
+      "context_len",
+      "conv1_tail",
+      "conv2_tail",
+      "frames1",
+      "frames2"
+    ],
+    "outputs": [
+      "hidden",
+      "new_embedded_context",
+      "new_context_len",
+      "new_conv1_tail",
+      "new_conv2_tail",
+      "new_frames1",
+      "new_frames2"
+    ],
+    "context": 90,
+    "lookahead": 60,
+    "stateLayout": "right-aligned tails/context, zero-fill only before stream start; conv tails sit at the EMISSION boundary because the lookahead is re-fed and re-embedded each call",
+    "windowRules": [
+      "non-final call: emit_frames + 60 audio frames (emit_frames multiple of 4); hiddens valid for the first emit_frames frames; window advances by emit_frames",
+      "final call: all remaining frames zero-padded to a multiple of 4, valid_frames = real count, all real hiddens emitted",
+      "emission lags input by 60 frames (1.2 s at 20 ms/embedded frame)"
+    ],
+    "emission": "hidden covers every embedded frame of the window; the caller keeps the first emit_frames/4 (final: ceil(valid/4))"
+  },
+  "onnx": {
+    "path": ".cache\\moonshine-streaming-onnx\\encoder_chunked_model.onnx",
+    "sha256": "0d8111a8060f80ce525620cbca2d8470752f9843563e4e0b1a9c506ca939c4a8",
+    "bytes": 38433741,
+    "opset": 17,
+    "exporter": "torch dynamo",
+    "splitAttrsRemoved": 0
+  },
+  "torchModuleParity": [
+    {
+      "fixture": "jfk",
+      "emitFrames": 20,
+      "producedFrames": 550,
+      "expectedFrames": 550,
+      "maxAbs": 8.940696716308594e-06,
+      "meanAbs": 6.93352368138924e-07,
+      "cosine": 0.9999999999994149,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "jfk",
+      "emitFrames": 64,
+      "producedFrames": 550,
+      "expectedFrames": 550,
+      "maxAbs": 1.1801719665527344e-05,
+      "meanAbs": 7.120956294618902e-07,
+      "cosine": 0.9999999999993814,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "jfk",
+      "emitFrames": 256,
+      "producedFrames": 550,
+      "expectedFrames": 550,
+      "maxAbs": 1.138448715209961e-05,
+      "meanAbs": 7.032903898530921e-07,
+      "cosine": 0.9999999999993956,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "synthetic",
+      "emitFrames": 20,
+      "producedFrames": 3436,
+      "expectedFrames": 3436,
+      "maxAbs": 4.0531158447265625e-06,
+      "meanAbs": 4.5299656508530117e-07,
+      "cosine": 0.9999999999996813,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "synthetic",
+      "emitFrames": 64,
+      "producedFrames": 3436,
+      "expectedFrames": 3436,
+      "maxAbs": 3.337860107421875e-06,
+      "meanAbs": 4.5602181388446343e-07,
+      "cosine": 0.9999999999996733,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "synthetic",
+      "emitFrames": 256,
+      "producedFrames": 3436,
+      "expectedFrames": 3436,
+      "maxAbs": 4.0531158447265625e-06,
+      "meanAbs": 4.549679412014072e-07,
+      "cosine": 0.9999999999996774,
+      "allclose_1e_4": true
+    }
+  ],
+  "onnxParity": [
+    {
+      "fixture": "jfk",
+      "emitFrames": 20,
+      "maxAbs": 2.7358531951904297e-05,
+      "meanAbs": 1.0778568126594026e-06,
+      "cosine": 0.9999999999984222,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "jfk",
+      "emitFrames": 64,
+      "maxAbs": 2.950429916381836e-05,
+      "meanAbs": 1.0811462244594788e-06,
+      "cosine": 0.9999999999984047,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "jfk",
+      "emitFrames": 256,
+      "maxAbs": 3.860890865325928e-05,
+      "meanAbs": 1.024184485686419e-06,
+      "cosine": 0.9999999999984451,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "synthetic",
+      "emitFrames": 20,
+      "maxAbs": 1.6450881958007812e-05,
+      "meanAbs": 9.770205615667818e-07,
+      "cosine": 0.9999999999988295,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "synthetic",
+      "emitFrames": 64,
+      "maxAbs": 1.6450881958007812e-05,
+      "meanAbs": 9.782111278240818e-07,
+      "cosine": 0.9999999999988254,
+      "allclose_1e_4": true
+    },
+    {
+      "fixture": "synthetic",
+      "emitFrames": 256,
+      "maxAbs": 1.5893951058387756e-05,
+      "meanAbs": 9.503719800306368e-07,
+      "cosine": 0.9999999999988957,
+      "allclose_1e_4": true
+    }
+  ],
+  "tokens": {
+    "equalOracle": true,
+    "tokenIds": [
+      1,
+      1126,
+      577,
+      29892,
+      590,
+      10404,
+      23035,
+      29892,
+      2244,
+      451,
+      825,
+      596,
+      4234,
+      508,
+      437,
+      363,
+      366,
+      29892,
+      2244,
+      825,
+      366,
+      508,
+      437,
+      363,
+      596,
+      4234,
+      29889,
+      2
+    ],
+    "oracleTokenCount": 28
+  },
+  "timings": {
+    "exportSeconds": 10.48
+  },
+  "limits": [
+    "Full-valid audio; per-call masks handle only the final zero-padding case.",
+    "The layer stack re-runs over [context ++ window] (recompute, not per-layer KV state); splitting per-layer state is a later optimization.",
+    "Lookahead re-embedding recomputes <=6 embedded frames per call by design.",
+    "Single fixtures; CPU provider; no speed or memory measurement."
+  ]
+}

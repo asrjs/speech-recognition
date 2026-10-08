@@ -106,6 +106,38 @@ This is the correctness foundation for a chunked ONNX encoder graph
 (state-in/state-out); that export plus the library integration and the real
 WebGPU browser validation of both precision sets remain.
 
-**Remaining**: chunked ONNX encoder export, library integration into the
-moonshine family, real browser (WebGPU) validation. Invalid historical
-streaming graphs stay excluded.
+**Chunked encoder graph — `PASS_CHUNKED_ENCODER_GRAPH`**
+(`export_chunked_encoder.py`, receipt
+`tools/data/results/model-candidates/moonshine-streaming-chunked-encoder-graph-2026-10-09.json`):
+
+`.cache/moonshine-streaming-onnx/encoder_chunked_model.onnx` is a PURE
+FUNCTION: (audio window, explicit state) -> (hidden frames, new state). It
+keeps no memory; juniors can reason about each call in isolation.
+
+CONTRACT (read this before touching the runtime):
+- Inputs: `input_values [1, n, 80]` (n = emit+60; emit a multiple of 4,
+  emit >= 16), `embedded_context [1, 90, 320]`, `context_len` i64,
+  `conv1_tail [1, 320, 4]` (conv1-INPUT domain), `conv2_tail [1, 640, 4]`
+  (silu(conv1) domain), `frames1/frames2` i64 bookkeeping.
+- Outputs: `hidden [1, n/4, 320]` — VALID for the first `emit/4` embedded
+  frames; plus every state tensor mirrored (`new_*`).
+- All state is RIGHT-ALIGNED; zero-fill exists only before the stream start.
+- Window rule: a call's trailing 60 audio frames (15 embedded x 6 layers of
+  right context) are lookahead — RE-FED next call; the window advances by
+  `emit`, and the conv tails roll back to the emission cut, which is exact
+  because the convs are deterministic local ops.
+- FINAL FLUSH: do not use this graph. Run the whole-utterance encoder graph
+  on an audio tail (>= 480 frames before the cut) and keep the tail hiddens;
+  positions are relative, so the tail run equals the stream there.
+- Latency: emission lags input by 60 frames = 1.2 s (model-inherent, from the
+  4-frame per-layer right window).
+
+Parity: torch-module and ONNX chunked runs vs the whole-utterance official
+encoder on JFK + synthetic at emit 20/64/256 (max abs 1.2e-5 / 3.9e-5,
+allclose 1e-4), and the fully-ONNX chunked pipeline (chunked encoder +
+whole-encoder final flush + fp32 decoder graphs) reproduces the official
+oracle's 28 token ids exactly.
+
+**Remaining**: library integration into the moonshine family, real browser
+(WebGPU) validation of all graph sets, fp16 of the chunked graph. Invalid
+historical streaming graphs stay excluded.
