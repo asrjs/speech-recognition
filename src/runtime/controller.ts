@@ -420,9 +420,17 @@ export class RealtimeTranscriptionController {
     const endFrame = this.audio.getCurrentFrame();
     this.latencyTracker?.noteIngest(endFrame);
 
-    const activity = options.vadObservation
-      ? options.vadObservation
-      : await this.detectVoiceActivity(input, startFrame, endFrame);
+    let activity: VoiceActivityObservation | null;
+    try {
+      activity = options.vadObservation
+        ? options.vadObservation
+        : await this.detectVoiceActivity(input, startFrame, endFrame);
+    } catch (error) {
+      if (generation !== this.stateGeneration) {
+        return null;
+      }
+      throw error;
+    }
     if (generation !== this.stateGeneration) {
       return null;
     }
