@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as ort from 'onnxruntime-node';
 import { MoonshineStreamingSession, embeddedFrameCount } from '../src/models/moonshine/streaming-session.js';
+import { MoonshineStreamingTranscriber } from '../src/models/moonshine/streaming-transcriber.js';
 import { MoonshineTokenizer } from '../src/models/moonshine/session.js';
 
 const GRAPH_DIR = resolve('.cache/moonshine-streaming-onnx');
@@ -169,5 +170,20 @@ describe.skipIf(!graphsReady)('MoonshineStreamingSession on real fp32 graphs', (
     const result = await streaming.finalize();
     expect(result.text).toBe(EXPECTED_TEXT);
     expect(result.encoderFrames).toBe(embeddedFrameCount(pcm.length / 80));
+  }, 600000);
+
+  it('canonical transcriber publishes the oracle transcript as committed text', async () => {
+    const pcm = effectivePcm();
+    const api = new MoonshineStreamingTranscriber(session(64), { modelId: 'moonshine-streaming-tiny' });
+    const chunk = 32000; // two seconds per push
+    for (let offset = 0; offset + chunk <= pcm.length; offset += chunk) {
+      await api.pushAudio(pcm.subarray(offset, offset + chunk));
+    }
+    const final = await api.finalize();
+    expect(final.kind).toBe('final');
+    expect(final.committedText).toBe(EXPECTED_TEXT);
+    expect(final.meta.modelFamily).toBe('moonshine-streaming');
+    expect(final.meta.isFinal).toBe(true);
+    expect(api.getState().isFinalized).toBe(true);
   }, 600000);
 });

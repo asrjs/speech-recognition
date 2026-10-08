@@ -192,6 +192,18 @@ reason and activates automatically when a build that reads Float16Array
 lands. Export-level fp16 evidence comes from Python ORT, and the browser
 validation slice uses onnxruntime-web, whose tensor path is separate.
 
-**Remaining**: canonical `StreamingTranscriber`/PartialTranscript wrapper and
-asset routing in the presets lane, real browser (WebGPU) validation of all
-graph sets. Invalid historical streaming graphs stay excluded.
+**Canonical transcriber done**
+(`src/models/moonshine/streaming-transcriber.ts`):
+`MoonshineStreamingTranscriber` implements the core `StreamingTranscriber`
+contract over the session — pushAudio buffers (and preview-decodes when
+`emitPartials` is on), `previewText` mirrors the latest decode,
+`committedText` publishes at finalize, revisions advance per update,
+reset/dispose follow the contract and non-16 kHz input is rejected rather
+than silently resampled. Seven unit tests pin the contract mapping; one
+real-graph test pushes two-second chunks and asserts the final
+`committedText` equals the official oracle transcript with canonical meta
+(modelFamily moonshine-streaming, isFinal, sampleRate, durationSeconds).
+
+**Remaining**: preset asset routing (the four graphs plus tokenizer through
+the moonshine loader/adapter), real browser (WebGPU) validation of all graph
+sets. Invalid historical streaming graphs stay excluded.
