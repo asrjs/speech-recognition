@@ -14,7 +14,9 @@ import {
   type TranscriptResponseFlavor,
 } from '@asrjs/speech-recognition';
 import { loadBuiltInSpeechModel } from '@asrjs/speech-recognition/builtins';
-import { describe, expect, it } from 'vitest';
+import { AssetLoadAbortedError } from '../src/io/abort.js';
+import * as sessionRuntime from '../src/runtime/session.js';
+import { describe, expect, it, vi } from 'vitest';
 
 function createStaticBackend(capabilities: BackendCapabilities): ExecutionBackend {
   return {
@@ -52,6 +54,7 @@ function probeResponse<TFlavor extends TranscriptResponseFlavor>(
 function createProbeRuntime(options: {
   onCreateModel: () => Promise<void>;
   onDisposeModel: () => void | Promise<void>;
+  onCreateSession?: () => Promise<void>;
   onTranscribe?: (signal?: { readonly aborted: boolean } | null) => Promise<void>;
   onTranscribeBatch?: (signal?: { readonly aborted: boolean } | null) => Promise<void>;
 }) {
@@ -88,6 +91,7 @@ function createProbeRuntime(options: {
         },
         backend: context.backend,
         async createSession() {
+          await options.onCreateSession?.();
           return {
             async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
               _input: AudioInputLike,
@@ -120,6 +124,187 @@ const REQUEST = {
   modelId: 'pipeline-lifecycle-probe-1',
   backend: 'test',
 };
+
+describe.each([
+  { name: 'root / borrowed runtime', load: loadSpeechModel, ownsRuntime: false },
+  { name: 'builtins / borrowed runtime', load: loadBuiltInSpeechModel, ownsRuntime: false },
+  { name: 'root / owned runtime', load: loadSpeechModel, ownsRuntime: true },
+  { name: 'builtins / owned runtime', load: loadBuiltInSpeechModel, ownsRuntime: true },
+])('Load failure preservation: $name', ({ load, ownsRuntime }) => {
+  it.each([
+    ['session error', new Error('session creation failed')],
+    ['nested session error', new AggregateError([new Error('init failed')], 'session init')],
+    ['cancellation', new PipelineAbortedError('session-create')],
+    ['undefined', undefined],
+    ['null', null],
+  ])('retains %s and nested cleanup failure', async (_label, primary) => {
+    const cleanup = new AggregateError([new Error('resource release failed')], 'cleanup');
+    let releases = 0;
+    const phases: string[] = [];
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onCreateSession: async () => {
+        throw primary;
+      },
+      onDisposeModel: () => {
+        releases++;
+        throw cleanup;
+      },
+    });
+    // Only intercept allocation; registrations, model tracking and disposal are real.
+    const factory = ownsRuntime
+      ? vi.spyOn(sessionRuntime, 'createSpeechRuntime').mockReturnValueOnce(runtime)
+      : undefined;
+    try {
+      const result = await load({
+        ...REQUEST,
+        runtime: ownsRuntime ? undefined : runtime,
+        onProgress: (event) => phases.push(event.phase),
+      }).then(
+        () => {
+          throw new Error('Expected rejection');
+        },
+        (error: unknown) => error,
+      );
+      expect(result).toBeInstanceOf(AggregateError);
+      expect((result as AggregateError).errors[0]).toBe(primary);
+      expect((result as AggregateError).errors[1]).toBe(cleanup);
+      expect((result as AggregateError).cause).toBe(primary);
+      expect(releases).toBe(1);
+      expect(phases.includes('ready')).toBe(false);
+      expect(phases.includes('cancelled')).toBe(primary instanceof PipelineAbortedError);
+      if (ownsRuntime) await expect(runtime.dispose()).rejects.toBe(cleanup);
+      else await runtime.dispose();
+      expect(releases).toBe(1);
+    } finally {
+      factory?.mockRestore();
+      await runtime.dispose().catch(() => undefined);
+    }
+  });
+
+  it.each([false, true])(
+    'normalizes asset cancellation; cleanup failure=%s',
+    async (failsCleanup) => {
+      const primary = new AssetLoadAbortedError('session-create');
+      const cleanup = new Error('cleanup failed');
+      const phases: string[] = [];
+      const runtime = createProbeRuntime({
+        onCreateModel: async () => undefined,
+        onCreateSession: async () => {
+          throw primary;
+        },
+        onDisposeModel: () => {
+          if (failsCleanup) throw cleanup;
+        },
+      });
+      const factory = ownsRuntime
+        ? vi.spyOn(sessionRuntime, 'createSpeechRuntime').mockReturnValueOnce(runtime)
+        : undefined;
+      try {
+        const result = await load({
+          ...REQUEST,
+          runtime: ownsRuntime ? undefined : runtime,
+          onProgress: (event) => phases.push(event.phase),
+        }).then(
+          () => {
+            throw new Error('Expected rejection');
+          },
+          (error: unknown) => error,
+        );
+        const cancellation = failsCleanup ? (result as AggregateError).errors[0] : result;
+        expect(cancellation).toBeInstanceOf(PipelineAbortedError);
+        expect(cancellation).toMatchObject({ stageId: 'load', cause: primary });
+        expect(phases.filter((phase) => phase === 'cancelled')).toHaveLength(1);
+        if (failsCleanup) {
+          expect((result as AggregateError).errors[1]).toBe(cleanup);
+          expect((result as AggregateError).cause).toBe(cancellation);
+        }
+      } finally {
+        factory?.mockRestore();
+        await runtime.dispose().catch(() => undefined);
+      }
+    },
+  );
+
+  it('retains the primary error identity when cleanup succeeds', async () => {
+    const primary = new Error('session creation failed');
+    let releases = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onCreateSession: async () => {
+        throw primary;
+      },
+      onDisposeModel: () => {
+        releases++;
+      },
+    });
+    const factory = ownsRuntime
+      ? vi.spyOn(sessionRuntime, 'createSpeechRuntime').mockReturnValueOnce(runtime)
+      : undefined;
+    try {
+      await expect(load({ ...REQUEST, runtime: ownsRuntime ? undefined : runtime })).rejects.toBe(
+        primary,
+      );
+      expect(releases).toBe(1);
+    } finally {
+      factory?.mockRestore();
+      await runtime.dispose();
+    }
+  });
+
+  it.each([undefined, null, new Error('async cleanup failed')])(
+    'awaits asynchronous cleanup and retains its rejection value %s',
+    async (cleanup) => {
+      const primary = new Error('session creation failed');
+      let markStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        markStarted = resolve;
+      });
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const runtime = createProbeRuntime({
+        onCreateModel: async () => undefined,
+        onCreateSession: async () => {
+          throw primary;
+        },
+        onDisposeModel: async () => {
+          markStarted();
+          await gate;
+          throw cleanup;
+        },
+      });
+      const factory = ownsRuntime
+        ? vi.spyOn(sessionRuntime, 'createSpeechRuntime').mockReturnValueOnce(runtime)
+        : undefined;
+      try {
+        let settled = false;
+        const result = load({ ...REQUEST, runtime: ownsRuntime ? undefined : runtime }).then(
+          () => {
+            throw new Error('Expected rejection');
+          },
+          (error: unknown) => {
+            settled = true;
+            return error;
+          },
+        );
+        await started;
+        expect(settled).toBe(false);
+        release();
+        const error = await result;
+        expect(error).toBeInstanceOf(AggregateError);
+        expect((error as AggregateError).errors[0]).toBe(primary);
+        expect((error as AggregateError).errors[1]).toBe(cleanup);
+        expect((error as AggregateError).cause).toBe(primary);
+      } finally {
+        release();
+        factory?.mockRestore();
+        await runtime.dispose().catch(() => undefined);
+      }
+    },
+  );
+});
 
 const ONE_SHOT_CALLS = [
   {

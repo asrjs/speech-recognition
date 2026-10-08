@@ -382,6 +382,9 @@ export function createBuiltInSpeechRuntime(
  * It creates or reuses a built-in runtime, resolves a preset/model-family
  * request, loads the model, creates a ready session, and returns a small
  * session-backed handle with a single `transcribe()` entrypoint.
+ * Failed acquisition awaits cleanup. If both fail, the rejection is an
+ * `AggregateError` with the primary failure first and as its cause; nested
+ * cleanup failures are retained. Asset cancellation maps to `PipelineAbortedError`.
  */
 export async function loadBuiltInSpeechModel<
   TLoadOptions = unknown,
@@ -589,15 +592,31 @@ export async function loadBuiltInSpeechModel<
       },
     };
   } catch (error) {
-    if (ownsRuntime) {
-      await runtime?.dispose();
-    } else if (model) {
-      await model.dispose();
+    const cancelled = error instanceof PipelineAbortedError || isAssetLoadAbortedError(error);
+    const primary =
+      !(error instanceof PipelineAbortedError) && isAssetLoadAbortedError(error)
+        ? Object.assign(new PipelineAbortedError('load'), { cause: error })
+        : error;
+    let cleanupFailure: { readonly error: unknown } | undefined;
+    try {
+      if (ownsRuntime) {
+        await runtime?.dispose();
+      } else if (model) {
+        await model.dispose();
+      }
+    } catch (cleanupError) {
+      cleanupFailure = { error: cleanupError };
     }
-    if (error instanceof PipelineAbortedError || isAssetLoadAbortedError(error)) {
+    if (cancelled) {
       emitLoadCancelled(options, options.modelId ?? model?.info.modelId, model?.backend.id);
-      throw error instanceof PipelineAbortedError ? error : new PipelineAbortedError('load');
     }
-    throw error;
+    if (cleanupFailure) {
+      throw new AggregateError(
+        [primary, cleanupFailure.error],
+        'Speech model loading and cleanup both failed.',
+        { cause: primary },
+      );
+    }
+    throw primary;
   }
 }
