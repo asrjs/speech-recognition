@@ -121,3 +121,29 @@ installation. This recheck does not run a new original-engine oracle on the
 saved capture PCM and does not certify speech-detect ASR, native streaming,
 stage numerical parity or memory/soak. Use the C91 recipe for an independent
 capture oracle, and retain these narrower acceptance boundaries.
+
+## Latest automatic Chrome recheck
+
+The repeated user request was verified against the live checkout again. The
+existing 8767 page returned HTTP 200; a second server startup rejected the
+occupied port without stopping or replacing the existing server. No new
+automation defect was reproduced, so no inference or acceptance code was changed.
+
+- `auto-browser-user-latest-recheck-2026-10-08-01.json`: PASS; actual Chrome
+  154.0.8037.98 on NVIDIA Blackwell, two exact 38-token/text outputs, official
+  effective PCM, WebGPU encoder/WASM decoder-joint, controller and timing
+  checks, awaited model disposal and browser closure. SHA-256:
+  `17282aca0cc7481949776c69c2a580d8bf636f3b6f9699ebcb5ce1a16964b066`.
+- `manifest-chrome-user-latest-recheck-2026-10-08-01.json`: PASS; all 19
+  adapter checks, including the unchanged reviewed delivered-code contract.
+  Child receipt SHA-256:
+  `89d1d33472763c5003cb73f92f59b58446a80c99337aa07176146ebc07ec98c5`.
+- Existing automatic-runner unit suite: 31 tests PASS.
+
+Receipts are in `tools/data/results/orukeet/`. The direct process inherited
+the existing Node TLS-disabled environment warning; the manifest process set
+`NODE_TLS_REJECT_UNAUTHORIZED=1` locally, without changing global settings.
+This recheck does not rerun original NeMo or certify numerical stage parity,
+automatic capture, native streaming, fp16, broader quality or memory/soak.
+Use the reproduction command above with a fresh output name for the next port
+iteration. Other model families still require their own model-owned adapter.
