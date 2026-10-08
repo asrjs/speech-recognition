@@ -149,6 +149,14 @@ worker acceptance remains separate. Full capture sidecars and exact utterance
 frame/hash identities enable a later original-engine comparison.
 See [C92 reproduction and scope](../../docs/reports/speech-detect-capture-asr-2026-10-08.md).
 
+Sub-word stop-flush tails (below 16000 samples) may legitimately decode to zero
+tokens, so nonempty ASR output is only required from windows at least one
+second long; typing and same-PCM replay checks always apply. With
+`--capture-library dist`, the runner instead drives the same capture through
+`dist/browser.js` and the library-default packaged TEN worker on a separate
+page; this is Vite-served dist evidence, not npm/packed acceptance.
+See [C94 resolution](../../docs/reports/chrome-auto-runner-c94-dist-capture-2026-10-08.md).
+
 ### Long-input, same-PCM browser control
 
 The demo now defaults to the existing deterministic WAV decoder exposed by

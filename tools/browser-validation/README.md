@@ -82,6 +82,17 @@ sidecar is written. They enable a later original-engine comparison; the flag
 does not run NeMo on these utterances. File-oracle and manual controls remain
 separate. See [C92 recipe and evidence](../../docs/reports/speech-detect-capture-asr-2026-10-08.md).
 
+A real stop-flush tail can be shorter than a word: a measured 0.288 s remnant
+decodes to zero tokens with the official model. Utterance text/tokenIds must
+be a string/array for every window, but nonempty ASR output is only required
+from windows of at least 16000 samples (`ASR_MIN_WINDOW_SAMPLES`, mirrored by
+helper and receipt gate); same-PCM replay equality always applies. Add
+`--capture-library dist` to run the same speech-detect capture on a separate
+blank page through `dist/browser.js` and the library-default packaged TEN
+worker via a restore-checked constructor observer, rejecting any served `src/`
+leakage. That is Vite-served dist evidence, not installed/packed npm
+acceptance. See [C94 resolution](../../docs/reports/chrome-auto-runner-c94-dist-capture-2026-10-08.md).
+
 ## Packaged TEN-VAD model worker lifecycle
 
 The existing offline runner also accepts `--scenario ten-vad`. Build/copy the

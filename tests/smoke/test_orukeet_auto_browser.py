@@ -224,6 +224,25 @@ class AutoReceiptTests(unittest.TestCase):
             result['capture']['runs'][0]['utterances'][0][field]['encoderBackend'] = 'wasm'
             self.assertFalse(runner.check_speech_capture(result, 'webgpu-hybrid'))
 
+    def test_speech_capture_allows_empty_asr_only_for_short_windows(self):
+        result = self.speech_capture_result()
+        for run in result['capture']['runs']:
+            short = copy.deepcopy(run['utterances'][0])
+            short.update(startFrame=155392, endFrame=160000, samples=4608, reason='stop',
+                         beforeStop=False, text='', tokenIds=[], replayText='', replayTokenIds=[])
+            run['utterances'].append(short)
+        self.assertTrue(runner.check_capture(result, True, 'webgpu-hybrid', 'speech-detect'))
+        for field, value in [('text', 'mismatch'), ('text', None), ('tokenIds', [3]),
+                             ('tokenIds', None), ('replayText', 'wrong'), ('replayTokenIds', [4])]:
+            with self.subTest(field=field, value=value):
+                changed = copy.deepcopy(result)
+                changed['capture']['runs'][0]['utterances'][1][field] = value
+                self.assertFalse(runner.check_capture(changed, True, 'webgpu-hybrid', 'speech-detect'))
+        changed = copy.deepcopy(result)
+        changed['capture']['runs'][0]['utterances'][1].update(
+            startFrame=128000, endFrame=160000, samples=32000)
+        self.assertFalse(runner.check_capture(changed, True, 'webgpu-hybrid', 'speech-detect'))
+
     def test_speech_capture_rejects_missing_diagnostics_and_cleanup(self):
         for field, value in [('state', 'degraded'), ('effectiveGate', 'ten-vad-only'), ('hops', 624),
                              ('hops', True), ('offsetExact', False), ('speechHops', 0), ('speechHops', 626),

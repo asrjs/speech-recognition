@@ -4,8 +4,8 @@
   "family": "nemo-tdt",
   "preset": "parakeet",
   "browserCodeContract": {
-    "path": "tools/model-debugging/reference/orukeet/browser-code-contract-c83.json",
-    "sha256": "50a8ac2ab8bd234bf00e32ea43d1b3c415625604f039fb91dc421b30375d237f"
+    "path": "tools/model-debugging/reference/orukeet/browser-code-contract-c94.json",
+    "sha256": "088e0392d05334061cf61a7a4a59f9817551de3628d070e15ff46e8037727fd5"
   },
   "originalWeights": {
     "path": "models/orukeet/source/orukeet-v0.1.0.nemo",
@@ -157,7 +157,7 @@
       "compare": ["token_ids", "text"],
       "repeat": 2,
       "url": "https://127.0.0.1:8767/orukeet-smoke.html",
-      "runnerSha256": "45101052f1ffcc741aed0618931450168fe6eadd34f4e2dac9bc8a16e512e219",
+      "runnerSha256": "04cf682b7b0dcfd1d8d1a2e3d4aebf82578d8ed00d31d6f78de90f3a9dcc86a6",
       "verifies": "same-PCM repeated original-oracle empty token/text browser smoke with code identity and awaited cleanup; not stage numerical parity or silence soak"
     },
     {
@@ -170,7 +170,7 @@
       "compare": ["token_ids", "text"],
       "repeat": 2,
       "url": "https://127.0.0.1:8767/orukeet-smoke.html",
-      "runnerSha256": "45101052f1ffcc741aed0618931450168fe6eadd34f4e2dac9bc8a16e512e219",
+      "runnerSha256": "04cf682b7b0dcfd1d8d1a2e3d4aebf82578d8ed00d31d6f78de90f3a9dcc86a6",
       "verifies": "same-PCM repeated original-oracle token/text browser smoke with code identity and awaited cleanup; not stage numerical parity"
     },
     {

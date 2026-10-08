@@ -1,0 +1,199 @@
+{
+  "status": "PASS",
+  "scope": "Manifest-bound port run; identity digests recorded, oracle compared",
+  "manifest": "tools/model-debugging/ports/oruk-orukeet.port.json",
+  "identity": {
+    "modelId": "oruk/orukeet",
+    "family": "nemo-tdt",
+    "preset": "parakeet",
+    "originalWeights": {
+      "path": "models/orukeet/source/orukeet-v0.1.0.nemo",
+      "bytes": 2509342720,
+      "sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
+    },
+    "localArtifacts": {
+      "root": "models/orukeet/onnx/fp32-packed-2026-10-01",
+      "layout": "nemo-tdt",
+      "files": [
+        {
+          "path": "models/orukeet/onnx/fp32-packed-2026-10-01/encoder-model.onnx",
+          "bytes": 2151530,
+          "sha256": "9924d5c30da5d54454dd3de6dbfc177aa771205eaac5da55d8f05ec813036f17"
+        },
+        {
+          "path": "models/orukeet/onnx/fp32-packed-2026-10-01/encoder-model.onnx.data",
+          "bytes": 2475088896,
+          "sha256": "f7a19051cc2913d99635d70a856bfe82795cab1f4af3670433e9fc1eb101e00f"
+        },
+        {
+          "path": "models/orukeet/onnx/fp32-packed-2026-10-01/decoder_joint-model.onnx",
+          "bytes": 72520893,
+          "sha256": "89fb566d2f0cd339387582dec9753959c84d54a90272581e7f51ceecc5a8eb90"
+        },
+        {
+          "path": "models/orukeet/onnx/fp32-packed-2026-10-01/vocab.txt",
+          "bytes": 102132,
+          "sha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742"
+        },
+        {
+          "path": "models/orukeet/onnx/fp32-packed-2026-10-01/source-config.json",
+          "bytes": 260178,
+          "sha256": "344297eaf9e28d7f849e099c06535fbb0df978926e1b5f753b6aa836d05acdb3"
+        }
+      ]
+    },
+    "fixtures": [
+      {
+        "path": "tools/data/results/orukeet/pure-silence-1s-16k-pcm16.wav",
+        "bytes": 32078,
+        "sha256": "57d8dd674034eb744bd8dfa71344ee02e1a8e709563cef10108eda63663675c8",
+        "id": "pure-silence-1s",
+        "durationSeconds": 1,
+        "oracle": {
+          "path": "tools/data/results/orukeet/official-pure-silence-1s-summary-2026-10-01.json",
+          "bytes": 2210,
+          "sha256": "b26ec8256944cbb8dff8b55516e1d07f00f293538e515cca56707be3cafaff79"
+        }
+      },
+      {
+        "path": "tools/data/fixtures/audio/jfk-short.wav",
+        "bytes": 352078,
+        "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+        "id": "jfk-short",
+        "durationSeconds": 11,
+        "oracle": {
+          "path": "tools/data/results/orukeet/official-jfk-stage-summary-2026-09-30.json",
+          "bytes": 3873,
+          "sha256": "ea57573ce72df4577c8a507d36e25cea6379d4137a8f86299a757754b228b494"
+        }
+      },
+      {
+        "path": "tools/data/results/orukeet/librivox-repeat8-16k-pcm16-2026-10-02.wav",
+        "bytes": 4790844,
+        "sha256": "88f56304a0ee7843cab203ac23ebeaad37aadf93aeb92fa164095c476b0c5893",
+        "id": "librivox-repeat8",
+        "durationSeconds": 149.7125,
+        "oracle": {
+          "path": "tools/data/results/orukeet/official-long-repeat8-summary-2026-10-02.json",
+          "bytes": 44424,
+          "sha256": "29c5c2723bbe59f4fc1178b18d4162a28468653f0a1928b5a315b0aea14bdecd"
+        }
+      }
+    ],
+    "runtimeConfig": {
+      "path": "tools/model-debugging/reference/orukeet/runtime-config-jfk.json",
+      "bytes": 394,
+      "sha256": "86a37498c6997ac14becffb21d1aef61a61420ec91d2f95a73f46d09d06b5aac"
+    },
+    "browserCodeContract": {
+      "path": "tools/model-debugging/reference/orukeet/browser-code-contract-c94.json",
+      "bytes": 59872,
+      "sha256": "088e0392d05334061cf61a7a4a59f9817551de3628d070e15ff46e8037727fd5"
+    }
+  },
+  "results": [
+    {
+      "id": "chrome-oracle-pure-silence-webgpu-hybrid",
+      "status": "PASS_BROWSER_ORACLE_MATCH",
+      "scope": "same-PCM repeated token/text browser smoke; not stage numerical parity",
+      "comparesOracle": true,
+      "checks": {
+        "harness_status": true,
+        "page_status": true,
+        "artifact_identity": true,
+        "audio_identity": true,
+        "oracle_identity": true,
+        "runner_identity": true,
+        "adapter_identity": true,
+        "url_identity": true,
+        "selection": true,
+        "pcm_identity": true,
+        "execution": true,
+        "token_ids": true,
+        "text": true,
+        "code_binding": true,
+        "expected_code": true,
+        "no_page_errors": true,
+        "offline": true,
+        "disposed": true,
+        "browser_closed": true
+      },
+      "runner": "browser-oracle",
+      "adapter": "orukeet-auto-browser",
+      "backend": "webgpu-hybrid",
+      "fixture": "pure-silence-1s",
+      "browserVersion": "154.0.8037.98",
+      "gpuAdapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell"
+      },
+      "browserReceipt": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\manifest-chrome-c94-silence-2026-10-08-02.json.browser.json",
+      "browserReceiptSha256": "24e98a6aa08ff6300474ddb50d1ba114a9e30c4d561349f912a4b2897908e758",
+      "adapterSha256": "267b097a252c56c76793a5b68fc8fe5085266e4b2b180a001d9921b1aab2af96",
+      "metrics": [
+        {
+          "encoderBackend": "webgpu",
+          "decoderBackend": "wasm",
+          "jointBackend": "wasm",
+          "preprocessMs": 12.07,
+          "encodeMs": 1985.045,
+          "decodeMs": 26.91,
+          "tokenizeMs": 0.37,
+          "totalMs": 2025.26,
+          "wallMs": 2025.26,
+          "audioDurationSec": 1,
+          "rtf": 2.0253,
+          "rtfx": 0.4938,
+          "requestedPreprocessorBackend": "js",
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 13,
+          "decodeIterations": 13,
+          "emittedTokenCount": 0,
+          "emittedWordCount": 0
+        },
+        {
+          "encoderBackend": "webgpu",
+          "decoderBackend": "wasm",
+          "jointBackend": "wasm",
+          "preprocessMs": 15.12,
+          "encodeMs": 117.825,
+          "decodeMs": 7.59,
+          "tokenizeMs": 0.025,
+          "totalMs": 140.825,
+          "wallMs": 140.825,
+          "audioDurationSec": 1,
+          "rtf": 0.1408,
+          "rtfx": 7.101,
+          "requestedPreprocessorBackend": "js",
+          "preprocessorBackend": "js",
+          "encoderFrameCount": 13,
+          "decodeIterations": 13,
+          "emittedTokenCount": 0,
+          "emittedWordCount": 0
+        }
+      ],
+      "command": [
+        "C:\\Python311\\python.exe",
+        "N:\\github\\asrjs\\speech-recognition\\tests\\smoke\\orukeet-auto-browser.py",
+        "--url",
+        "https://127.0.0.1:8767/orukeet-smoke.html",
+        "--model-root",
+        "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\onnx\\fp32-packed-2026-10-01",
+        "--audio",
+        "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\pure-silence-1s-16k-pcm16.wav",
+        "--oracle",
+        "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\official-pure-silence-1s-summary-2026-10-01.json",
+        "--backend",
+        "webgpu-hybrid",
+        "--precision",
+        "fp32",
+        "--repeat",
+        "2",
+        "--expected-pcm-sha256",
+        "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+        "--output",
+        "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\manifest-chrome-c94-silence-2026-10-08-02.json.browser.json"
+      ]
+    }
+  ]
+}

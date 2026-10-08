@@ -1,5 +1,12 @@
 /** Real capture -> public microphone controller -> caller-owned ASR. No decoder here. */
 
+// A real stop-flush tail can be shorter than a word: a measured 0.288 s remnant
+// (4608 samples) decodes to zero tokens with the official model. Non-empty ASR
+// output is only required from windows at least this long; replay equality and
+// every lifecycle gate still apply to all windows. Mirrored by
+// ASR_MIN_WINDOW_SAMPLES in tests/smoke/orukeet-auto-browser.py.
+const ASR_MIN_WINDOW_SAMPLES = 16000;
+
 function require(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -185,8 +192,9 @@ export async function runCapturedController({ receipt, transcribe, onCapturedPcm
           require(segment.metadata.source === 'rough-fallback' && segment.metadata.tenVad.state === 'ready',
             'Unexpected segmentation provenance');
           const response = utterance.response;
-          require(response && typeof response.text === 'string' && response.text.trim() &&
-            Array.isArray(response.tokenIds) && response.tokenIds.length > 0, 'Speech ASR missing output');
+          require(response && typeof response.text === 'string' && Array.isArray(response.tokenIds) &&
+            (expected.length < ASR_MIN_WINDOW_SAMPLES ||
+              (response.text.trim() && response.tokenIds.length > 0)), 'Speech ASR missing output');
           const replay = await transcribe(expected, 16000);
           require(response.text === replay.text && JSON.stringify(response.tokenIds) === JSON.stringify(replay.tokenIds),
             'Speech ASR differs from same-PCM public replay');

@@ -1,0 +1,1420 @@
+{
+  "schemaVersion": 1,
+  "scope": "Pinned delivered code for local examples/demo Orukeet fp32 JFK and pure silence; not universal build equivalence. C94 refresh: the long-lived Vite dev server documented in HANDOFF-chrome-auto-runner-2026-10-08.md was replaced by a fresh server, so Vite HMR ?t= import stamps embedded in c83 rows are gone; preserved uncommitted nemotron-rnnt working-tree rows are frozen as served. No production source change is part of this refresh.",
+  "reviewedChangeCommits": [],
+  "predecessor": {
+    "path": "tools/model-debugging/reference/orukeet/browser-code-contract-c83.json",
+    "sha256": "50a8ac2ab8bd234bf00e32ea43d1b3c415625604f039fb91dc421b30375d237f"
+  },
+  "seedReceipt": {
+    "path": "tools/data/results/orukeet/manifest-chrome-c94-jfk-2026-10-08-01.json.browser.json",
+    "sha256": "f2b0963adadaca05807fadb680d6e5840c2675c2d40b7a6aee2ee390ebad6878"
+  },
+  "files": [
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs",
+      "bytes": 301424,
+      "sha256": "282d157be15e3daa5fb627681d66c00e5a511d3eaaf697a6dbfb8e0739deab85"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm",
+      "bytes": 27797172,
+      "sha256": "db816fadbab47a755170c08f933961e231412ac17f5981f9a62e519708a44dea"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/node_modules/vite/dist/client/env.mjs",
+      "bytes": 3478,
+      "sha256": "989a1a6b55bdf57842aa46c52fefdce50a16fbfdfbf643e682ac82ad73023401"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/alignment/cross-attention-dtw.ts",
+      "bytes": 15126,
+      "sha256": "814e3ac98b48018adb96d4d0109bb7c03686bb004c94db99b3d3cea24d57d1a2"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/alignment/ctc-viterbi.ts",
+      "bytes": 27218,
+      "sha256": "0db74f1683827fc178b27f35911d1471f3df65cd34dca876963fcc96e4f9cbed"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/alignment/index.ts",
+      "bytes": 1876,
+      "sha256": "e4596967db3fa618c2984d875ea7f5c7a8c1bf75c47a42bd7380c33824026b13"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/alignment/wav2vec2-aligner.ts",
+      "bytes": 18117,
+      "sha256": "93af46ae212054c3f26f0714e98b3716fd8f746d1220a859ebea3869b28655ff"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/audio.ts",
+      "bytes": 26993,
+      "sha256": "6c740f4ce12eb29a569acced316123945b32eb2834a4f4748e46806b44e9dc9b"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/base.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/index.ts",
+      "bytes": 1356,
+      "sha256": "18a5d60eb4ef26b85381e401df202a7dbab844082b62c0732f1a76cbf16a4c51"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/js-mel.ts",
+      "bytes": 69479,
+      "sha256": "a05a3f831fdc9ebdb01e3239883993b9e57b7a6b062f7e3e18283f1c49bdd860"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/kaldi-mel.ts",
+      "bytes": 525,
+      "sha256": "17ee254bd53b8081298aad38cec60f062dfab631cbc290b4b2b5c14708248870"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/mixed-radix-fft.ts",
+      "bytes": 30745,
+      "sha256": "2a999f9001368c878b992450cb226900681614f87206abd01472dcf34e6d568a"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/or-mel.ts",
+      "bytes": 449,
+      "sha256": "f6ead1f49868e13f87af040d0ae1c7c87ad14a7ad5ace83b0fab14ef3ca2ce02"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/specs.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/stub.ts",
+      "bytes": 2637,
+      "sha256": "e6e46794c17057041f70d46a8f9871248004fc9fccd425743d5ffcfe9b1e11e8"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/wav.ts",
+      "bytes": 14046,
+      "sha256": "d410bc6116f6a895a182f423d4d36e30bd10c3e9a6ba34083e5c50621f1b5211"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/wav2vec-conv.ts",
+      "bytes": 537,
+      "sha256": "bd27240c47f630d1f1cbfdc4fd3331178e0448289d36810242e2d293c6da0ed9"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/audio/whisper-mel.ts",
+      "bytes": 56169,
+      "sha256": "d10fe7ce19b30c14b032e02d678c759314a81a16045a1e8ec48267732345b9bb"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/browser-media.ts",
+      "bytes": 571,
+      "sha256": "f827903e86e223d2cec8b77143dd094ba1e80deb2bba8a6a7b9b41ac12b5aa4c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/chunking/drift-handler.ts",
+      "bytes": 3248,
+      "sha256": "c25e1540529559ba9d1ebee5b04f678f6ed636fcdd8cdd849c5df260177f67c3"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/chunking/fixed-window.ts",
+      "bytes": 5279,
+      "sha256": "b587938c85bede048f44247e0cc16f0637a7fefc9460ab8f04d0e038676da08f"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/chunking/index.ts",
+      "bytes": 1476,
+      "sha256": "dced83f25815b9651fe7fdfc8b8d4c9b386bf1b09bccd5272d8140d3ea4cbdb3"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/chunking/vad-segmenter.ts",
+      "bytes": 37419,
+      "sha256": "4db5bda38f14f9b23d49d1881f96c06fa0cab2ddd96584b4e86b446124019010"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/ctc/decoder.ts",
+      "bytes": 64424,
+      "sha256": "18a01941487eddd4e91c9c8008442c9e1b04d7f0b67633038c7ba0798f6580cf"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/ctc/index.ts",
+      "bytes": 1460,
+      "sha256": "33e3bdd46be8d1fee4ff4b0cd8def6c3fa566dba5835c9550b40a2d242186669"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/backends/execution-context.ts",
+      "bytes": 4914,
+      "sha256": "cf65447c7f8c1ef787fede9ef8dfe6d66fff2f29fc5aceef7f60706f080aed2d"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/backends/native-cpu/ort.ts",
+      "bytes": 2980,
+      "sha256": "78c495b5b21dab1120cca23b6d6fb179748b2731daa717181f674b431a6424c0"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/backends/wasm-threads.ts",
+      "bytes": 1923,
+      "sha256": "a7e25ef3d0bc03b60f71ae7fa1459cfdd01c80cfc207de37fbed473a4cd9e1df"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/backends/wasm/index.ts",
+      "bytes": 5786,
+      "sha256": "c48531641d13894367e48f62ab1909deb737c5a570d714d2a6f5954739bb1b83"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/backends/webgl/index.ts",
+      "bytes": 5637,
+      "sha256": "cf5eecd65d1c702381b8fa9d96d0c1b8426103537c8019e112870bbc268d99b7"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/backends/webgpu/index.ts",
+      "bytes": 10431,
+      "sha256": "5ad1e033e347959e5c8bf1750fe2fe8bd2e78d559ef845108c64b12bb4ad010f"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/backends/webnn/index.ts",
+      "bytes": 5393,
+      "sha256": "4e64d25f511df2effb8625ccff89c8759039355145087afd75b4b368786479ca"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/descriptors.ts",
+      "bytes": 11316,
+      "sha256": "c55c1a290ff772852e78a5ffdc06c416dcbfa007dfee3dc399f4a741b53f9e41"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/index.ts",
+      "bytes": 1262,
+      "sha256": "34856794d5bd8c1f19ae13d386e9fb90ff25768ff247552adca91e145c6cfe41"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/math.ts",
+      "bytes": 8126,
+      "sha256": "fdd59f724935c7fd6fe76ff9a2a4a836525e313623410d2246fad6fd1584a259"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/streaming/accumulator.ts",
+      "bytes": 4252,
+      "sha256": "9e10f124782c7c63c1adcb83ead493e661d8314e98f5b6d7feed362e890baec1"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/streaming/index.ts",
+      "bytes": 935,
+      "sha256": "23d70cd4f5d80a87a712cd23335e329c8aea2d82132a0e1f6209f9d9f3ad2e4c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/streaming/long-audio.ts",
+      "bytes": 4717,
+      "sha256": "b2039e28496269a201c8a37a0d36318b626cc35fce57ae32a1d24ae1e282e146"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/streaming/merge.ts",
+      "bytes": 44140,
+      "sha256": "618dbfc7e04a62a927b9caca370564ac54a79041f083cfc179d47844373884a1"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/streaming/rolling-window.ts",
+      "bytes": 7109,
+      "sha256": "22d5a5c7a279fd4fafdfd41bdf1b46226ea46c7167108a6910f08daba586835d"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/inference/streaming/transcriber.ts",
+      "bytes": 21395,
+      "sha256": "44264eb91f72dc156333ac2ca4e59561b9720534b073e26fcd8dc53b67155535"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/io/abort.ts",
+      "bytes": 20216,
+      "sha256": "a0282671fe67d535dd8e29b62fed03305ed9006e1926aab50540563e549612ef"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/io/cache.ts",
+      "bytes": 20444,
+      "sha256": "3a12f0e65957e4fc8da2225acb325b5fb7110deec2bca2434231fd5635c641c7"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/io/handles.ts",
+      "bytes": 52183,
+      "sha256": "49024d0cb61e55a5a97c0c4b6fec9360d67a3bd0a6271ec1ae94cf910de7f242"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/io/index.ts",
+      "bytes": 806,
+      "sha256": "9ef740edeb436cf098ea8f71111fd91d13583a1965fcf2da8732f781fd0e6e70"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/io/node-builtin.ts",
+      "bytes": 2114,
+      "sha256": "20c3f42ab6f023ad211d20d49f0664ba93254c5c337a793ce366809fae4b8138"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/io/node-compat.ts",
+      "bytes": 7634,
+      "sha256": "5aba6ac7b8368731eb49dfb98bdd8f06983c54d3a7dbfeb5bebcc794aef19a98"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/io/ort-external-data.ts",
+      "bytes": 4167,
+      "sha256": "ee6da6f1e3798a2b492b6d1c0d9dbbe0117377860cf94268e3f005057c1fadcd"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/io/providers.ts",
+      "bytes": 15855,
+      "sha256": "27bad2a9d42f715827497bf87a29946205eb38b78d1718ab97e14140320fcc1b"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-ctc/executor.ts",
+      "bytes": 58600,
+      "sha256": "42599dbe6143c53a49e991351aa13b5ac3f1b0d835dc6254ae855df39dc2f1e8"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-ctc/frontend.ts",
+      "bytes": 4150,
+      "sha256": "2673fc6bf17850b00e203c5e6a4d0d7f103f0882b491204209bde7477145fdcb"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-ctc/index.ts",
+      "bytes": 885,
+      "sha256": "25d2f2a2ae6dc69b8936c1b59d638cb5b60166c2711a33ff8581f4a36c12f578"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-ctc/model.ts",
+      "bytes": 24038,
+      "sha256": "5ff286491b49b13c12ce07e7d9c5279d2023af5e3d8a3b4f25ac58c666ea8ba0"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-ctc/tokenizer.ts",
+      "bytes": 5918,
+      "sha256": "abb9e222bd4d3a34fe2bbe33be00a38fc7f947b8d514644e57e101393e71ebe8"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-ctc/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-rnnt/executor.ts",
+      "bytes": 73773,
+      "sha256": "4e7cf16c43ed2b647fede3739c6bd73dd31347a53198bb47bf0e4648a0a42d12"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-rnnt/frontend.ts",
+      "bytes": 393,
+      "sha256": "d7e32ad733141ad11c1037e15d41071255111f4022066b228d8bfc1d4921b2ce"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-rnnt/index.ts",
+      "bytes": 890,
+      "sha256": "cdad5491a5679a933f2130d1070bec097fe3ebc5ca8e61991a5da77149dca315"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-rnnt/model.ts",
+      "bytes": 17826,
+      "sha256": "80f88dd4184a8ce43ecb046d7599996aee13b7b7347697e56a2c8589f7ff7c40"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-rnnt/tokenizer.ts",
+      "bytes": 5819,
+      "sha256": "f1d041370e5c0e6b4c20ec86d86b88f6c9e14e115a30b12111b2f85695cf1dcc"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/gigaam-rnnt/types.ts",
+      "bytes": 7244,
+      "sha256": "c9d33da06b1106f9a83a24c9aaf6fcde2db8ad2140446edbae780b6670ad4b57"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/lasr-ctc/config.ts",
+      "bytes": 4173,
+      "sha256": "27d85adcc9ab81cd4a591e905ba4d1598ab40f525dc7ab534c3b2f18d4af612e"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/lasr-ctc/executor.ts",
+      "bytes": 88927,
+      "sha256": "e16111d43ff175b8469a7e31bbf3de00cc39024525c12ac43ed85cd8b1ac52c2"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/lasr-ctc/index.ts",
+      "bytes": 734,
+      "sha256": "61617b7d9bc97413536f8e2e6c3996832c2752c342cd1efcf246d5f3c971a6b8"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/lasr-ctc/mapping.ts",
+      "bytes": 9653,
+      "sha256": "414cb99013b71927a8a969ffa6156ebe8a8e7d37659709d7aff3ba702c7c2c53"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/lasr-ctc/mel.ts",
+      "bytes": 92458,
+      "sha256": "c4e0fb6b8675acab3efeb2371e2884e992df36a51b595963b104b5b72649b1cf"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/lasr-ctc/model.ts",
+      "bytes": 34649,
+      "sha256": "dc6e5926cd69e9bd2ca9fcf801ed97332dcea825503fab7475782f3a481026a1"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/lasr-ctc/ort.ts",
+      "bytes": 27332,
+      "sha256": "db1e698773eed4761363593336cc1724e1a08ac4434607600fcfb9f86c3768c7"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/lasr-ctc/tokenizer.ts",
+      "bytes": 12248,
+      "sha256": "0f2ca0a5048a6718324e483f3420b44bd3bc2a313442bb9214f0876679676182"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/lasr-ctc/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-aed/config.ts",
+      "bytes": 7073,
+      "sha256": "49b8fb432c3cb19eb91b7862e15c84fda2232125ae9473cde1a08e829006fb16"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-aed/executor.ts",
+      "bytes": 81361,
+      "sha256": "0459411700934a66415d9d1201ae176a456d034000577ed00aea48468a1240f4"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-aed/index.ts",
+      "bytes": 1165,
+      "sha256": "02dc026820e0242291bc5568241e416d1fe9c1a92c5532264bc5ccfe145471d0"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-aed/model.ts",
+      "bytes": 56404,
+      "sha256": "0101029fe207ada921eeb4541d06b57a896e653f8cbbd747d10ad804c58715c0"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-aed/ort.ts",
+      "bytes": 15381,
+      "sha256": "dfca247efd9a75531c1545aa8d2b5143430de2684614744874bdc4b70e4e4b31"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-aed/tokenizer.ts",
+      "bytes": 27518,
+      "sha256": "9eb11ca450a49d3e21b4b04845334307fe9f2fc8e9af0247dc869e8fb36cf47e"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-aed/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-aed/weights.ts",
+      "bytes": 3485,
+      "sha256": "7d6bc8e0205f49f711714f4048b36e4dd6a535e735ef510d17f9c4a5f8b5fcc1"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-common/classification.ts",
+      "bytes": 2118,
+      "sha256": "d818fa9fb2479fd89431c1aa4d7bbb4001fed4ca60280f9dbab2975baec05270"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-common/index.ts",
+      "bytes": 749,
+      "sha256": "8dba1b6258265195e0bd0142d69a03139f2ebee00c2d64a3bb27d4aa8a74506c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-common/mapping.ts",
+      "bytes": 14855,
+      "sha256": "62e0a54f870c9fae37978913304499c308251be269c5081be8e49d244a11e190"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-common/stub.ts",
+      "bytes": 3945,
+      "sha256": "0cd87915ae935bbc4d83caa453409be803b2052b3b6fb4ce0da9ed709b267422"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-common/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-rnnt/config.ts",
+      "bytes": 4664,
+      "sha256": "7fd217a9139d71afe74b26d93a70dbe38d23e5e59507e6da1e2b65ff8efe5e3e"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-rnnt/executor.ts",
+      "bytes": 121359,
+      "sha256": "68bba0a6d85d7c326737a593dfaa20ce3f6087c8c4a9a922bba05d3531e17a17"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-rnnt/index.ts",
+      "bytes": 1415,
+      "sha256": "1ecab35d7d6259e646a88920b88914f7393c36a600ef3a48ec51b14c72f76b89"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-rnnt/model.ts",
+      "bytes": 47493,
+      "sha256": "31431f221bf1ce69a3894f5a2f4b78a1c527af6b223812ba5a627cdf0a11c77b"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-rnnt/ort.ts",
+      "bytes": 948,
+      "sha256": "83e584920d8318a2f9f8a8e1431b37189e088125250c572993d71df38e37bd72"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-rnnt/transcript-details.ts",
+      "bytes": 15775,
+      "sha256": "9e6e1c0d5d2a14b5e09d4be16acdaad64ba4fce8970ea4cccc7dcab13db93ec0"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-rnnt/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-rnnt/weights.ts",
+      "bytes": 2214,
+      "sha256": "8fec034d809e09ef8edfdc6f7b185e78e600d25942d83bd2ff3460846bee2977"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/config.ts",
+      "bytes": 4629,
+      "sha256": "c14fc754bd6c2166d3e7a6f0d3a8a8932851fc249272aa10cf5b173d1b5f0147"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/executor.ts",
+      "bytes": 147974,
+      "sha256": "1a2d5dc746caa0dced6784f451054f7c42cb440d0939a301309502bdd069ba74"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/index.ts",
+      "bytes": 1012,
+      "sha256": "229634e5d3d2abf137f17a24c93684f13d0d0b4ef987dae17e3e7bf5504475d4"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/mapping.ts",
+      "bytes": 912,
+      "sha256": "07d7488e5c3117c545827cd883b29f6879a3221ef4794b9df25d5e2d291aa067"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/model.ts",
+      "bytes": 56985,
+      "sha256": "e6f5ebbf7ecadf9237cb41f346f5e85d390d233630dedf36985ca80459563dd7"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/ort.ts",
+      "bytes": 37596,
+      "sha256": "8cdca10ace359c7980750347bf204c3f0b4330741f510fa757663f82c5c1c55d"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/preprocessor.ts",
+      "bytes": 23318,
+      "sha256": "43a9dce585ce55413b5ff280b6fa255b3d79495367fd60600eb97fa905950412"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/tokenizer.ts",
+      "bytes": 16623,
+      "sha256": "c43b13e3bbe299219b9e3c16c0d999749dcacdffd7293340a16abb0e2b1eed8a"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/transcript-details.ts",
+      "bytes": 10389,
+      "sha256": "35bc1936fb0e40f3890a4e976f962f8a712e171e74f1b5bb91677f67d25cff3e"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemo-tdt/weights.ts",
+      "bytes": 5508,
+      "sha256": "52b742a721fb3fb9ea9118892a5fe9413aa8ebf2d95b5e69f6175ce48c29b381"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemotron-rnnt/config.ts",
+      "bytes": 11038,
+      "sha256": "78de182de128293ca899be49a35417979302edc1f0027870b59b6e8119a7ffed"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemotron-rnnt/executor.ts",
+      "bytes": 98444,
+      "sha256": "0014913f6c3296a45d7ce39bdfb5026e8f219cbe2085063daf88eb4da1552598"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemotron-rnnt/index.ts",
+      "bytes": 1056,
+      "sha256": "2ec027cc3da92e65303ddf0c5ae1097aea685818240e09c9fc14cb207b5138bd"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemotron-rnnt/model.ts",
+      "bytes": 49036,
+      "sha256": "1e20b946fb8de3ae219af9a23d90fc4808467d801c9f8293cafa6d6e6afeea11"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemotron-rnnt/ort.ts",
+      "bytes": 14238,
+      "sha256": "9d37235712ec8f61720c8caad2819d8bb9609425661dae0be45dda234ca51eec"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemotron-rnnt/transcript-details.ts",
+      "bytes": 20139,
+      "sha256": "acbcb242e57cb1b2a272c2ea173c2e20e7101b2713657b2d25064c4cd65858cc"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/nemotron-rnnt/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/omnilingual-ctc/factory.ts",
+      "bytes": 12633,
+      "sha256": "03f827033e43829158136a2fdc75371acd26ec35262cba1ba257c37985f552dd"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/omnilingual-ctc/index.ts",
+      "bytes": 612,
+      "sha256": "26c76e3718492218b49199347057e4fc74576d3494191c391ffb4420c4122a07"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/omnilingual-ctc/model.ts",
+      "bytes": 11566,
+      "sha256": "daa36da18eee5c758f610cda0ecbf966904a000a24f4931a4a29055e787e613c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/omnilingual-ctc/tokenizer.ts",
+      "bytes": 8296,
+      "sha256": "462cd363bb9cf15574320a5ab7b0d2f72570a930d8aa1759adaecefc59e9b17c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/parakeet-ctc/frontend.ts",
+      "bytes": 4660,
+      "sha256": "9cdfc11faba5711702256b578810466f9c8e2f7608fce770a09350a7f3cd8b7e"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/parakeet-ctc/index.ts",
+      "bytes": 746,
+      "sha256": "8402dbae190069a91b5b9750d2ac7527b3fbf667968c13498c7c114cb84c1ebc"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/parakeet-ctc/model.ts",
+      "bytes": 26833,
+      "sha256": "5f50dcee1c08485a08269fcba8faf928132d68a919fbb7ab07f20d5b110f3a73"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/parakeet-ctc/tokenizer.ts",
+      "bytes": 8769,
+      "sha256": "30d0c039154373d773328e3ef52d08e8fd0f985784110630484166cbd1dfdcdd"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/parakeet-ctc/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/config.ts",
+      "bytes": 13312,
+      "sha256": "b75ac22e0cd8278a81af7c3c37225d1d0824ea6305799c95516cd88957ae6066"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/executor.ts",
+      "bytes": 165766,
+      "sha256": "f23a7269d925b8826c6a60142c094b279ad48bf5f6e8e1749b729b8ba376e3b7"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/index.ts",
+      "bytes": 1440,
+      "sha256": "be6d76bd14ef31dc58667d898d30ff260f04c22b66d1cdef0c3aef86d355b64c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/mapping.ts",
+      "bytes": 4573,
+      "sha256": "f2d8eba925415002fa6bb985842de0175f648110954fdfc072f83e644cbb1132"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/model.ts",
+      "bytes": 29120,
+      "sha256": "91c28c868a6576086bde95ae41cf3375a0486c8af6c047e950e86007470a6a58"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/official.ts",
+      "bytes": 8443,
+      "sha256": "9e69a031489da276d9849b70b51f0e6331828cddb2661077755d42244d4f08c8"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/ort.ts",
+      "bytes": 31647,
+      "sha256": "010c51915e3676110d1ebdd991b906c1494226232bdfb3e0a50f3d2a36ad36d1"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/processor.ts",
+      "bytes": 11532,
+      "sha256": "c442869fff8b84f20c1e35edcf8cc77d9d2abee9add5759281b2739dd2ab01f9"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/tokenizer.ts",
+      "bytes": 23321,
+      "sha256": "895ddda7e0e58df3f350f09faf84bbddb92a3ec98af8e8200215bb24c0f1677c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/qwen-asr/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/sensevoice/executor.ts",
+      "bytes": 88091,
+      "sha256": "18b4ccb3fc4263f6a473b07d8e6e85a1281228dfa6f8b2fba174652d32cf1037"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/sensevoice/frontend.ts",
+      "bytes": 14945,
+      "sha256": "43d9f6d353d45ba73f382c0932cc7b459c72fe6f73dbe93a4d85c0752aabc67e"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/sensevoice/index.ts",
+      "bytes": 1172,
+      "sha256": "d31820a3d7d5b7300c2694f03b373e3b43760bc9e5c62dd4905f41349c4a2987"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/sensevoice/mapping.ts",
+      "bytes": 6602,
+      "sha256": "63e8088b1711aace0ba91a9eb01529e1f64686baffb518966efc2229fb9883c5"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/sensevoice/model.ts",
+      "bytes": 28399,
+      "sha256": "87d3da74d0ee1615f71e0c3f82cc8589ef7170a2d187064320c493167f308608"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/sensevoice/prompt.ts",
+      "bytes": 2519,
+      "sha256": "cfe889b5978652bf582e002ec456bb750d2ba62fc9dcd2b052561ca81642337c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/sensevoice/tokenizer.ts",
+      "bytes": 3391,
+      "sha256": "79aa07b9bfda84403fa9212218f6a25ec6e9eba6339b43096bf6722126ae81bd"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/sensevoice/types.ts",
+      "bytes": 7437,
+      "sha256": "f913e73471dd2ddbb752ca8d6c07a4812477119b64b4db872863827bd6f0c242"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/wav2vec2/config.ts",
+      "bytes": 12055,
+      "sha256": "cd5d5bfd06eedea5ac9bf4a81a4795c228103b8d7753469c338be5de1980ff8e"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/wav2vec2/executor.ts",
+      "bytes": 79653,
+      "sha256": "b1d5f1403897cb8abe2a5a234348c1a6d82750ea0894be852245dcd4ea8dc162"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/wav2vec2/index.ts",
+      "bytes": 1149,
+      "sha256": "26c156dc5c7dca209ca5c247908449061cdfba3e92f33d8bd3741ccd99abbb04"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/wav2vec2/mapping.ts",
+      "bytes": 11727,
+      "sha256": "188ae814a0835f7535b4e3b9c6aec2fdac234c5a0aecf25a43405fe6cc92f1c0"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/wav2vec2/model.ts",
+      "bytes": 35922,
+      "sha256": "f1b0cf7f810512eb180680bdc8f1aa477d8f1b756a2033fbf5059cc34ee609f5"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/wav2vec2/ort.ts",
+      "bytes": 23104,
+      "sha256": "137ef58dfdab6768b4cd2657753f18ece31d952b8eecd953e13a56e5c3379159"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/wav2vec2/tokenizer.ts",
+      "bytes": 10442,
+      "sha256": "5e08c5bda973ed17dac9a3084d7d17f2ad917ac355cbcba2842ad6d2d5c4e84a"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/wav2vec2/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/attention-alignment.ts",
+      "bytes": 35921,
+      "sha256": "891ebe1919ae0fb812e4d20fce327cae4bbebd80ed470bdbfc7d5a000d660760"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/beam-search.ts",
+      "bytes": 19412,
+      "sha256": "d820f227ab84a0233bfe5f1f37d1bd9c8268ee09b6e2bc9b8ad789dee7c03f2f"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/chunk-context.ts",
+      "bytes": 6625,
+      "sha256": "517e7f41058648686ad998f3122bca133f36d69274f8a6f0f4ba9a6907c1020c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/chunking.ts",
+      "bytes": 20428,
+      "sha256": "99ffce3295c1ec7f2912ee94d13b4a1218c598d47a7903f61e5d20f3fd521751"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/config.ts",
+      "bytes": 4451,
+      "sha256": "2a3c80c423a17a8bc661d65a28177396f120b44a1772b05e1694079b65bd4361"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/core.ts",
+      "bytes": 66369,
+      "sha256": "73b2754ed1d1618287dd34f3efbaa9a59701298b2d285db0098355544096d568"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/drift-handler.ts",
+      "bytes": 541,
+      "sha256": "a62f54e25ff9a4f7f80ae86ff5567ddcf9de911d09a0dbdbd5df9e04663a71f7"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/enhanced-executor.ts",
+      "bytes": 31448,
+      "sha256": "55a362a2509c64f451ec6af8987618f2bd0d6049b96b00a2212b1e9a1c4db977"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/enhanced-types.ts",
+      "bytes": 8645,
+      "sha256": "a6322f6007c30efdcaf6285235bcd861c1cc2c691572ffdb9ef149dfb63abd8b"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/executor.ts",
+      "bytes": 527677,
+      "sha256": "47d8d83215abdaadad8f42c8f80716ef46065a76af9b61d3b0fbe68988dc80f5"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/generation-config.ts",
+      "bytes": 7360,
+      "sha256": "c9e762815324b69fb04ed289d2f1f352999172063c19d754a23cbb8c6c6c3c98"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/index.ts",
+      "bytes": 4035,
+      "sha256": "a42877f274bfb269b4812b35fc81dc341a4091a8e01c84fcada9ade7c07b4d15"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/language-detection.ts",
+      "bytes": 3864,
+      "sha256": "19c21e65006d5179938c48d4419e9e24ad7bf91e5e5fa5389a8fffa22b04b130"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/manifest.ts",
+      "bytes": 9084,
+      "sha256": "1a4a3bd692bf75aa307905eaa4cbe2c78d8b9501ca7eda8ecad79ed6e9ade2ad"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/mapping.ts",
+      "bytes": 6242,
+      "sha256": "aba85b53e1a3ea964cca79e3f0b45c6bbcaf728f9db60837e648510e26fe14f5"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/model.ts",
+      "bytes": 32710,
+      "sha256": "5035c6a284688b32aa6a750604fb0199449d50732542ee9b20ac59a60fe509c4"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/ort.ts",
+      "bytes": 46757,
+      "sha256": "58e7bd6ce7f53d5858fe271ce820a8f35e3ee5ab029c91d2cc546214e244393c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/processors.ts",
+      "bytes": 14069,
+      "sha256": "b76e5211e6a1ddb4e868fa9296a0d511205e12b888803a63a53a87cafa7b646a"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/quality-gates.ts",
+      "bytes": 1001,
+      "sha256": "99aa859db15dc5c8478211e34194b37f92d9a71f200cc4639b487a8664a884e3"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/segment-merger.ts",
+      "bytes": 681,
+      "sha256": "244b1a731bc83092bb40598fae6640f3e47d2265e7e883589b7eb4228b5ca558"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/temperature-fallback.ts",
+      "bytes": 737,
+      "sha256": "9aa16784f1120f7ad0bff67626e8d54d9faf117b8da4ef18eda0df5dff012125"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/tokenizer.ts",
+      "bytes": 25239,
+      "sha256": "4111956421e12582331eec2251efa5dee5028c01979ef5511dc1114663901ae2"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/vad-segmenter.ts",
+      "bytes": 10120,
+      "sha256": "5b99f1df1359e7c25c00fe6ffb5f4fec523bce272330e2ad172fbe1474723410"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/wav2vec2-word-aligner.ts",
+      "bytes": 4406,
+      "sha256": "c643b21914048169a3215d1ede245d0d4549e9737487f3f226647e20d464d80d"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/whisper-seq2seq/word-timestamps.ts",
+      "bytes": 57681,
+      "sha256": "31b7de2e12931222562f06599ee0838386d002b862d4aae8a9a55754dcbe5dae"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/x-asr/executor.ts",
+      "bytes": 89130,
+      "sha256": "c613f23c56971f16ed13bb58f6747b7ac2da5a62d9c741f961f67d9a81c21211"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/x-asr/frontend.ts",
+      "bytes": 25150,
+      "sha256": "d4c0be0f03173dcec937939da67ac7a73056baf25a3f686117b294a6f3bc19a9"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/x-asr/index.ts",
+      "bytes": 1001,
+      "sha256": "3ebbee9d34d3fc83cccb24e9f3d1d882b78a55ef953ba77ff4e898ff8039aca4"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/x-asr/mapping.ts",
+      "bytes": 9475,
+      "sha256": "7ebf770dc25369c71717a684967fc67c0e68ded2e77d9b162f29b905f1fba0ce"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/x-asr/model.ts",
+      "bytes": 44068,
+      "sha256": "e331156025bc97ffa553bc12994668a8555cffd347498c56d61c3e0c972889a6"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/x-asr/tokenizer.ts",
+      "bytes": 6829,
+      "sha256": "5ad1d75767e7525bec2e1444a611e69d6a21b68e13e97c2127c5a98cd3a812c4"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/models/x-asr/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/composition.ts",
+      "bytes": 10415,
+      "sha256": "cb8244395a95eb870b2613f6e8bc190b316efdc25e1dbe7304d1bd93ce8332a9"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/index.ts",
+      "bytes": 2472,
+      "sha256": "2d9e88fb86522ea9192bc5c4d91001a5aa1e162a6ce434288fbde2f75d35c2cd"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/long-audio-windowing.ts",
+      "bytes": 58411,
+      "sha256": "f93b151412f2895f8fac4c26ac964be68642de6e99be27144ffc79aa46450afc"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/output-options.ts",
+      "bytes": 3185,
+      "sha256": "b764017a5f9a081e802df4b1d92d3d45a36a0c96827a8cd615aad57f8b8a43d7"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/output-sidecars.ts",
+      "bytes": 3520,
+      "sha256": "21c0ba93c402ff9ced92ba2caa7bf145ce6a82e75ec3b04379452774cb46c722"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/sentence-segmenter.ts",
+      "bytes": 12186,
+      "sha256": "194da96481296d16c46027efadf955d4d92b7b762317be466696a3120d4dc1ed"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/sentence-stage.ts",
+      "bytes": 5868,
+      "sha256": "d229ea519a8cb0803cfa406ae0ac78a80344c19a754b929f210ec2e67d8b9905"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/subtitles.ts",
+      "bytes": 11194,
+      "sha256": "c88fa30ab8505f90d221acd83d58fe33f7a4a4e69a0d010dd8239915b96424ab"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/types.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/vad-segments.ts",
+      "bytes": 20373,
+      "sha256": "8181c834037c218500460cc7014e903ac36ef81354f08aa604d1c44764b3e340"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/whisper-chunking.ts",
+      "bytes": 11835,
+      "sha256": "4cc701649b8887a7ed9b9232096bcf3cafc44efa2f81c57d7120c4b72e3e6a1d"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/whisper-production-pipeline.ts",
+      "bytes": 20524,
+      "sha256": "1dabe21b4d1edc5fb692991ab1ef6195f178c17fd72f092987e43bc125c4611a"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/whisper-timestamps.ts",
+      "bytes": 28401,
+      "sha256": "8235362f4bccda2f0c215c823c1b23c481d01142f8a88f3537790c7eb6058265"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/window-policy.ts",
+      "bytes": 14317,
+      "sha256": "50d8692ee40a8cdbd66678ed9bf1927bd6198941094c33504f5105a8dcf14f8c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/windowed-metrics.ts",
+      "bytes": 39691,
+      "sha256": "2010acc7e7aab3f70e004bb3857f46165037177fce962f828968d658a0bad518"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/pipeline/windowing-stage.ts",
+      "bytes": 4776,
+      "sha256": "898cbd0a962e01b0775d82d9e2eb6c19ed1d6da1d6f21c2700d2a40026be54f8"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/post-processing/extras.ts",
+      "bytes": 11275,
+      "sha256": "ace674935c5e5ec2c3bfe3e7091e26d8374dc22ab4924be965656b95cefb2f22"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/post-processing/index.ts",
+      "bytes": 1137,
+      "sha256": "5be71332d3889b5639970da111876a9a2b9f66e73d066cc65348738767126a5e"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/post-processing/segment-merger.ts",
+      "bytes": 5525,
+      "sha256": "f39d7a471ddb9f17352229e506c8ed45b89707ac62b271add47003a50e5b5660"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/canary/catalog.ts",
+      "bytes": 5658,
+      "sha256": "b76fa9f9f87e250c908dfc109cb1a81c9a2056d012ae72699aeeada1b75a30f1"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/canary/factory.ts",
+      "bytes": 5196,
+      "sha256": "27d66d2d9a644ee5cb4e88f503abdeeccfd687dafe44b3ff42b98a9d27f8d5f5"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/canary/manifest.ts",
+      "bytes": 19691,
+      "sha256": "2b6159e00410c0d27e9b3cf5f4e9315f10ca472c2eb40f872e3ce9599297066f"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/descriptors.ts",
+      "bytes": 137561,
+      "sha256": "b8358c7b8b3f9348a124a4fe4f56411e11637eb5218a46c664efbedd6a9a60ed"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/medasr/factory.ts",
+      "bytes": 3848,
+      "sha256": "79f789661eba188643c34b4825515ee548c412016a9c42c7e85e3ffaf66abb05"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/medasr/manifest.ts",
+      "bytes": 5106,
+      "sha256": "95b182404a83486cf353db7193f97f5624ade669a35c2595b947fc0d148fbd3e"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/moonshine-factory.ts",
+      "bytes": 2777,
+      "sha256": "ff61cab4c60a77a9dbbe07bed19189d9ee436381a9aa6cfe5cb7ab79053ea4ca"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/moonshine-local-adapter.ts",
+      "bytes": 12124,
+      "sha256": "aa2845b03733d7cf8c4f8048c01719c1230cfb012c5ba1b9a559fd7598db005d"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/nemotron/factory.ts",
+      "bytes": 9329,
+      "sha256": "9597087461b642f9dec3701c261b3d70e2a23cf92a5f48735cbac45f0d832249"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/nemotron/local-adapter.ts",
+      "bytes": 24072,
+      "sha256": "d5cf075ddd7f1262f06493733b0a54dc8c241265d5c8fd60384d8d3a5272c18c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/omnilingual-ctc-factory.ts",
+      "bytes": 2792,
+      "sha256": "ef605d5634a423fae7dacbb39ba39aa90a5cc172b04f4d21fdde58f3c437613a"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/omnilingual-ctc-local-adapter.ts",
+      "bytes": 13229,
+      "sha256": "9fdb24b09a0bbd205d48baac269ea2fc51e9231b7227b54537de37223e0cddae"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/parakeet/catalog.ts",
+      "bytes": 16296,
+      "sha256": "263e0e02796f2545433c99d2d6ff01146869142353336c4ba70b6a8d23f773e1"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/parakeet/compat.ts",
+      "bytes": 97578,
+      "sha256": "8dbe970779145badfa87d3320d983f701a0ecd79ab8421a843124a1edb030183"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/parakeet/ctc-factory.ts",
+      "bytes": 4340,
+      "sha256": "575df75e1414407a003fe2baa858ecf4fe51f4d22cbd541ad11f52c0337d9bc2"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/parakeet/ctc-local-adapter.ts",
+      "bytes": 13250,
+      "sha256": "75ef90a4672419a192607fd59e92642b900e8912f85607eeb5961c9115136ac7"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/parakeet/factory.ts",
+      "bytes": 5311,
+      "sha256": "f0272b84a1b1a63d3c563cbf4d45a7b7411791b84a6e23fa4e5bfd4d9b44fb15"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/parakeet/local-adapter.ts",
+      "bytes": 10246,
+      "sha256": "97c76047b0e494875144f07d9a428abb0f08f8970d90160cc14a57c71501994a"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/parakeet/manifest.ts",
+      "bytes": 18533,
+      "sha256": "1313ecc5ca7ef54012df83af13e394adbf640aede1e02c4e624ba86a70f57382"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/qwen3-asr-factory.ts",
+      "bytes": 2927,
+      "sha256": "49f23a958176fdf160c930f366613eb8bbb42d923ad48a73ecf8cbc0bcee465a"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/qwen3-asr-local-adapter.ts",
+      "bytes": 12844,
+      "sha256": "3c333e51cfce5a04bff9eec23c78aa0bd9da6034cf53283dec1e805df252b0ac"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/wav2vec2-tr-factory.ts",
+      "bytes": 4062,
+      "sha256": "251a05ec5e15324406cd92c242aec7c938a3c98fc596c1b8a4b4c3cd35074499"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/wav2vec2-tr-local-adapter.ts",
+      "bytes": 12354,
+      "sha256": "485eb4e205603d3d8da7335cee8862ef981a795ec226dacf450c9eca278b9428"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/wav2vec2/factory.ts",
+      "bytes": 4876,
+      "sha256": "41284eb858ce382c15edadb3f905f41b445fc57bd1364b0552823850fe2e4c40"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/wav2vec2/manifest.ts",
+      "bytes": 27460,
+      "sha256": "534afe3f7ebb93e67c2d228220dbcbe0760b94a4630749eb1bc12a1a9b362877"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/whisper/factory.ts",
+      "bytes": 4349,
+      "sha256": "cf4d945c0f344fb96ba4c5acc2cbf5ee63f076aa357f727afa1fde9a55b1d5c2"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/presets/whisper/manifest.ts",
+      "bytes": 19628,
+      "sha256": "2c0f35a3648740207e9ff777a06371c038b687fe817c942604725e9558a97fcb"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/quality/compression-ratio.ts",
+      "bytes": 2781,
+      "sha256": "89b988641c72d007476dba2a376c569b569c9fd85561d8979b5cc17be2b89bf4"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/quality/entropy.ts",
+      "bytes": 5829,
+      "sha256": "9e5824db3488cb986a90de7ebdf25611b1b62dc8b277f106736fc94d0ce149b6"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/quality/index.ts",
+      "bytes": 3876,
+      "sha256": "8b0530cf0bc10c9df13871986ffde3701ae65e753cadbebd151fc4a9b10b8fed"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/quality/log-probability.ts",
+      "bytes": 6211,
+      "sha256": "76e11a7c75b850eb03acfa89202b052d36ec0b499c23c6b45ff47a7cdd5f914f"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/quality/no-speech.ts",
+      "bytes": 6609,
+      "sha256": "1c81cffa74b97126a1f93e9a6bac534c9bc8c4332c1db13dea55c132736e5ba2"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/quality/temperature-fallback.ts",
+      "bytes": 6966,
+      "sha256": "bb3e9a2840a47adbca8e5f94604fd75d403a7deccd355bbc13b8d561f06391a0"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/audio-timeline.ts",
+      "bytes": 9205,
+      "sha256": "3fbed50f3b0bef3d1ed8a9eaaace757074f200186f93fb2f95b2b808cdc5301d"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/backend.ts",
+      "bytes": 12726,
+      "sha256": "7480713759442d5192689a5af2e395de5dbae4be7573c242ad041ff5c6c3829c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/benchmark.ts",
+      "bytes": 48139,
+      "sha256": "ad8ea440a26e204e01515cf60a797f4e89eef357aab9d56cbc66b5dd9d7ed31c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/builtins.ts",
+      "bytes": 60569,
+      "sha256": "4988462771625bc3280ce54bc9814cf2db5cae97a8c6615f39c11eabbd4f8a82"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/cache.ts",
+      "bytes": 22966,
+      "sha256": "6d85dd7d2e90524b0925503fb2401f7a4affdc5890f73698a0c20f0f90e946f7"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/capture.ts",
+      "bytes": 48494,
+      "sha256": "07462bc0a02c2a118318f6013c9f52e5a36a9a974bb701f7cdc88fbbd134a0c8"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/chunking.ts",
+      "bytes": 14750,
+      "sha256": "a1354a565463a14268d2e7a7f5b91e8267f3027ca61efbf96547369e64db75f5"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/controller.ts",
+      "bytes": 55448,
+      "sha256": "3a420c38dc8ce66b9259ffc70f7dd0854476714aad9cfb84e260cfc8f2c06b02"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/datasets.ts",
+      "bytes": 31870,
+      "sha256": "66be944bc631685361e90cd7ecf0734287a1e659421aae4f10f01d9e80d9b3f0"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/errors.ts",
+      "bytes": 5870,
+      "sha256": "bf08fcba9bb5119abcf20d611078f2a97d002706305b99cca3922826a4c2292d"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/experimental-families.ts",
+      "bytes": 20988,
+      "sha256": "826d693049f9ce8938a22f924accb0a0386c8cd1330f2cc2be65cfa635ec6f4b"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/firered-vad/core/fft.ts",
+      "bytes": 8857,
+      "sha256": "32bbc86d59bce9fb246ada19fc40d3d4a29cc12326ee635551e77e73e5f3c699"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/huggingface.ts",
+      "bytes": 32664,
+      "sha256": "7c43a2b15571c21d553f058dd6e1c65922e2ffa95f44bf250a87bd6a43a0378a"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/index.ts",
+      "bytes": 2595,
+      "sha256": "3cc5ba1c7b73f5e05542f4734b8f08d26ee4b4f15661aba456e28f6be4922e16"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/load.ts",
+      "bytes": 101834,
+      "sha256": "061978cdff8326bd047f1a86aa4d5510be42839c7683f8f2225fd4d845feaac0"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/local-adapter-registry.ts",
+      "bytes": 11791,
+      "sha256": "59355b8c1812e4b60d71b53ba7a0a8972ab9f52cefe03a2e92ea5342b6165067"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/local-browser.ts",
+      "bytes": 16330,
+      "sha256": "8bbe41116838623d751d21dd34509e084228940aaa372c2c7ece54992b9ebd51"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/local-entry-files.ts",
+      "bytes": 9612,
+      "sha256": "5722077cdffdee1486355332dc804a1542a7d999b0c8fba194abb1ff153eb90f"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/logging.ts",
+      "bytes": 1370,
+      "sha256": "742b46486c3b72c1e0b7cb31f494d3067e19a0fb3c7d14563c72b16c586db478"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/media.ts",
+      "bytes": 27967,
+      "sha256": "15827fb03c6a3ce688eec596aa563df13b290b3beab12e5095889b184b024755"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/operation-lease.ts",
+      "bytes": 18233,
+      "sha256": "0b4be1379ddee8aa1e97db6e32fc97f097087908f245199b25987a3c92aa8b4c"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/owned-session.ts",
+      "bytes": 5557,
+      "sha256": "330733c12d1c2f30d42a481a6c5e3a538badaf0e030ab853d6aacbaadc1e16a5"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/realtime-latency.ts",
+      "bytes": 29787,
+      "sha256": "4078cf7b2de120d53565e9fdbfb55e213cdfd885449821f560dbc9d2985d249b"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/realtime.ts",
+      "bytes": 68267,
+      "sha256": "c4a8bd20055bcd37fc6b307e2c66bb3fb788999efd2e19b905b3119a59800d16"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/session.ts",
+      "bytes": 46370,
+      "sha256": "ca54db6e86130eb4c82e9858cdee0b21f7e0e832bd987a5e6b6018630db86ba6"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/timing.ts",
+      "bytes": 1443,
+      "sha256": "767fe988fc56e618324b0f8908d3e18ca1b81bbde268dd6c0af6ac19f07a2fb6"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/transcripts.ts",
+      "bytes": 48928,
+      "sha256": "c735559cfe2ce59655e7dd420cb3a7401dfceb096401ae040e4e8924df8d96a6"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/runtime/vad.ts",
+      "bytes": 54691,
+      "sha256": "014532427739430d2605e0ce3b88de1b70ceb3f31c558433f4a9e9c74f59ad0f"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/tokenizers/base.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/tokenizers/bpe.ts",
+      "bytes": 257,
+      "sha256": "8b5dcae729b742929e5de19d96013b84bfd8564688fe5fea1ea2864997b1b5d5"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/tokenizers/index.ts",
+      "bytes": 822,
+      "sha256": "37cf11606a8063e5c67242b858eeab71800e181f2d23d8ba0a1604c5be6d7dd1"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/tokenizers/stub.ts",
+      "bytes": 2335,
+      "sha256": "6a982516848a3e26c5cfd9c86ddafd7cf5115c9ce29783269c2a656d4438f6bd"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/tokenizers/tiktoken.ts",
+      "bytes": 265,
+      "sha256": "146c59bf9e0d5f15de56efc33bcc9ac5ebc6951a5675193a921f0c8b21bfa468"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/tokenizers/utf8.ts",
+      "bytes": 262,
+      "sha256": "0a15f4207c48fb3bf76f99b8133b3b5992cf6f6c8ffab341122366d86008fd2d"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/architecture.ts",
+      "bytes": 1320,
+      "sha256": "bf577bab00e634fd819d9b2a0f3f8cc099acf3cb3d766c7572f010e94f7578ff"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/audio.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/backend.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/classification.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/experimental.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/index.ts",
+      "bytes": 1654,
+      "sha256": "2daafd71e8ff345b63ac33ac9d24a8a6590b7cc17a04b2af128f9e15c5f9435b"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/io.ts",
+      "bytes": 5516,
+      "sha256": "87455dbfb67cd09098da837529b198b56b939f9137231e6e7019c7c6c77bfcfe"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/latency.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/model.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/runtime.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/streaming.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/@fs/N:/github/asrjs/speech-recognition/src/types/transcript.ts",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/node_modules/.vite/deps/chunk-DGUM43GV.js",
+      "bytes": 2401,
+      "sha256": "32d5881c17cceddf8f8880a8b6c94876dd99afba02b54698558132d6047f93aa"
+    },
+    {
+      "path": "/node_modules/.vite/deps/onnxruntime-web.js",
+      "bytes": 507065,
+      "sha256": "fd994907daacc73454fd25b41ed4b9c3e5cc0b8011c9dfd2ce92da4c6a1db3b6"
+    },
+    {
+      "path": "/node_modules/.vite/deps/pako.js",
+      "bytes": 114291,
+      "sha256": "3289f2e33da4e6432ff8e1b55720b9416acd07839f70814d41aa0af1220e7935"
+    },
+    {
+      "path": "/orukeet-smoke.html",
+      "bytes": 1547,
+      "sha256": "d6ec9d7be08878e59918001985309c24d848d21f6ab7287b6c2affceb7e9051b"
+    },
+    {
+      "path": "/src/orukeet-smoke.js",
+      "bytes": 50677,
+      "sha256": "ecaf4054de975a13ae6ef23321db6e5ba1c52bd7731d78fe5c784da71f10ec2a"
+    }
+  ]
+}

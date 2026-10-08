@@ -197,6 +197,12 @@ def check_controller_timing(result, requested, require_nonzero=False):
             and (not require_nonzero or (nonzero and all(observed_nonzero.values()))))
 
 
+# Mirror of ASR_MIN_WINDOW_SAMPLES in examples/demo/src/capture-controller.js:
+# a sub-second stop-flush tail can legitimately decode to zero tokens, so
+# non-empty utterance ASR output is only required for windows this long.
+ASR_MIN_WINDOW_SAMPLES = 16000
+
+
 def check_speech_capture(result, backend):
     """Actual rough-gate utterance ASR with real TEN diagnostics, not native streaming."""
     capture = result.get('capture')
@@ -249,8 +255,11 @@ def check_speech_capture(result, backend):
                     or window.get('pcmExact') is not True or not digest(window.get('capturedSliceSha256'))
                     or window.get('segmentPcmSha256') != window['capturedSliceSha256']
                     or window.get('utterancePcmSha256') != window['capturedSliceSha256']
-                    or not isinstance(window.get('text'), str) or not window['text'].strip()
-                    or not isinstance(tokens, list) or not tokens or any(type(token) is not int or token < 0 for token in tokens)
+                    or not isinstance(window.get('text'), str)
+                    or (window['samples'] >= ASR_MIN_WINDOW_SAMPLES and not window['text'].strip())
+                    or not isinstance(tokens, list)
+                    or (window['samples'] >= ASR_MIN_WINDOW_SAMPLES and not tokens)
+                    or any(type(token) is not int or token < 0 for token in tokens)
                     or not isinstance(replay, list) or any(type(token) is not int or token < 0 for token in replay)
                     or replay != tokens or window.get('replayText') != window['text']
                     or not isinstance(window.get('metrics'), dict) or not isinstance(window.get('replayMetrics'), dict)
