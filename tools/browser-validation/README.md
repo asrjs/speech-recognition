@@ -7,6 +7,11 @@ public API directly.
 
 ## Automatic Chrome URL, model load and saved ASR result
 
+Current post-C88 model/controller verification and the distinction between the
+microphone and windowed ASR controllers are recorded in
+[C89 evidence](../../docs/reports/chrome-current-controller-2026-10-08.md).
+The base C83 delivered-code pin still matches; it was not automatically refreshed.
+
 The existing runner is `tests/smoke/orukeet-auto-browser.py`, not a new
 inference implementation. See [the demo guide](../../examples/demo/README.md#automatic-chrome-model-test-and-json-capture)
 for server startup, long-input, cancellation and controller commands.

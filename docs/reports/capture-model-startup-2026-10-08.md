@@ -71,5 +71,8 @@ certify ASR, VAD accuracy, original-engine numerical parity, WebGPU, physical
 microphone, permission-dialog race, cleanup-failure injection or memory soak.
 For automatic URL/model load/ASR output use the separate existing
 `tests/smoke/orukeet-auto-browser.py` documented in `tools/browser-validation/README.md`.
-The reviewed Orukeet manifest's code snapshot must be separately reviewed before
-refreshing after runtime changes; never bypass or automatically regenerate its pin.
+If delivered code changes, the reviewed Orukeet manifest's code snapshot requires
+separate review before refresh; never bypass or automatically regenerate its pin.
+C89 verifies that this demo does not deliver the microphone controller changed
+here: the base C83 pin remains byte-identical and its independent oracle run passes.
+See [the current controller verification](chrome-current-controller-2026-10-08.md).
