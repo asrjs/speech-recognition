@@ -33,6 +33,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-pcm-f32le", type=Path, help="Frozen mono float32 input; audio is source provenance only")
     parser.add_argument("--input-pcm-sample-rate", type=int)
     parser.add_argument("--input-pcm-sha256")
+    parser.add_argument("--input-pcm-start-frame", type=int)
+    parser.add_argument("--input-pcm-end-frame", type=int)
+    parser.add_argument("--input-pcm-source-sha256", help="Whole f32le source digest; required with frame bounds")
     parser.add_argument("--model", default="nvidia/parakeet-tdt-0.6b-v2")
     parser.add_argument("--restore-path", type=Path, default=None)
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
@@ -138,21 +141,37 @@ def load_model(args: argparse.Namespace, device: str) -> Any:
     return model
 
 
-def read_frozen_pcm(path: Path, sample_rate: int, expected_sha256: str):
+def read_frozen_pcm(path: Path, sample_rate: int, expected_sha256: str, *,
+                    start_frame=None, end_frame=None, source_sha256=None):
     import numpy as np
 
     if (type(sample_rate) is not int or sample_rate < 1 or not isinstance(expected_sha256, str)
             or re.fullmatch('[0-9a-f]{64}', expected_sha256) is None):
         raise ValueError("Frozen PCM requires explicit positive sample rate and lowercase SHA-256")
     raw = path.read_bytes()
-    if not raw or len(raw) % 4 or hashlib.sha256(raw).hexdigest() != expected_sha256:
+    if not raw or len(raw) % 4:
+        raise ValueError("Frozen PCM byte length/digest mismatch")
+    source_slice = None
+    if any(value is not None for value in (start_frame, end_frame, source_sha256)):
+        if (type(start_frame) is not int or type(end_frame) is not int
+                or not 0 <= start_frame < end_frame <= len(raw) // 4
+                or not isinstance(source_sha256, str) or re.fullmatch('[0-9a-f]{64}', source_sha256) is None
+                or hashlib.sha256(raw).hexdigest() != source_sha256):
+            raise ValueError("Frozen PCM slice requires valid bounds and matching whole-source digest")
+        source_slice = dict(sha256=source_sha256, samples=len(raw) // 4,
+                            start_frame=start_frame, end_frame=end_frame)
+        raw = raw[start_frame * 4:end_frame * 4]
+    if hashlib.sha256(raw).hexdigest() != expected_sha256:
         raise ValueError("Frozen PCM byte length/digest mismatch")
     pcm = np.frombuffer(raw, dtype='<f4').copy()
     # NeMo's tensor dataset pads inputs shorter than one second; do not silently change input.
     if pcm.size < sample_rate or not np.isfinite(pcm).all():
         raise ValueError("Frozen PCM must be finite and at least one second (no implicit tensor padding)")
-    return pcm, dict(path=str(path.resolve()), encoding='f32le', dtype='float32', channels=1,
+    contract = dict(path=str(path.resolve()), encoding='f32le', dtype='float32', channels=1,
                     sample_rate=sample_rate, samples=int(pcm.size), sha256=expected_sha256)
+    if source_slice is not None:
+        contract['source_slice'] = source_slice
+    return pcm, contract
 
 
 def verify_frozen_model_input(actual: dict, frozen: dict) -> None:
@@ -186,8 +205,10 @@ def main() -> None:
     if args.input_pcm_f32le:
         if not args.stage_output or not args.restore_path or args.device != 'cpu' or args.batch_size != 1:
             raise ValueError("Frozen PCM requires local --restore-path, --stage-output, --device cpu and --batch-size 1")
-        frozen_pcm, frozen_contract = read_frozen_pcm(args.input_pcm_f32le, args.input_pcm_sample_rate, args.input_pcm_sha256)
-    elif args.input_pcm_sample_rate is not None or args.input_pcm_sha256 is not None:
+        frozen_pcm, frozen_contract = read_frozen_pcm(args.input_pcm_f32le, args.input_pcm_sample_rate, args.input_pcm_sha256,
+            start_frame=args.input_pcm_start_frame, end_frame=args.input_pcm_end_frame, source_sha256=args.input_pcm_source_sha256)
+    elif any(value is not None for value in (args.input_pcm_sample_rate, args.input_pcm_sha256,
+            args.input_pcm_start_frame, args.input_pcm_end_frame, args.input_pcm_source_sha256)):
         raise ValueError("PCM sample rate/digest require --input-pcm-f32le")
     if args.capture_feature_stft and not args.stage_output:
         raise ValueError("--capture-feature-stft requires --stage-output")

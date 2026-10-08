@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_AUTO_UTTERANCE_ORIGINAL_OUTPUT",
+  "scope": "seven saved C92 automatic rough-gate utterances; original-weight same-f32le token/text only; numerical/quality/native-streaming gates not certified",
+  "browser": {
+    "path": "tools/data/results/orukeet/auto-browser-c92-speech-capture-2026-10-08-02.json",
+    "bytes": 135073,
+    "sha256": "0fa5f6f1c45927480e6c4d8efee163054514aeacf8b77d81b59869b564589547"
+  },
+  "runner": {
+    "path": "tests/smoke/orukeet-auto-browser.py",
+    "bytes": 36209,
+    "sha256": "45101052f1ffcc741aed0618931450168fe6eadd34f4e2dac9bc8a16e512e219"
+  },
+  "adapter": {
+    "path": "tools/model-debugging/reference/orukeet/browser_manifest.py",
+    "bytes": 11078,
+    "sha256": "267b097a252c56c76793a5b68fc8fe5085266e4b2b180a001d9921b1aab2af96"
+  },
+  "inspector": {
+    "path": "tools/model-debugging/reference/hf-parakeet-port/python-nemo-inspect.py",
+    "bytes": 17860,
+    "sha256": "7f7b29db55232b34b465456d76c693b2a2d8c20d20ca8d57b2af49847f166743"
+  },
+  "stageCaptureTool": {
+    "path": "tools/model-debugging/reference/hf-parakeet-port/nemo_tdt_stage_capture.py",
+    "bytes": 10532,
+    "sha256": "eeb65576548caf18569fc958d9c3bc6d382e44a238f5f77501ca232a459c9c28"
+  },
+  "originalWeights": {
+    "path": "models/orukeet/source/orukeet-v0.1.0.nemo",
+    "sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
+  },
+  "modelRevision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+  "environment": {
+    "python": "3.10.12",
+    "torch": "2.6.0+cu118",
+    "nemo_toolkit": "3.0.0",
+    "device": "cpu",
+    "batch_size": 1,
+    "cpu_threads": 4
+  },
+  "sources": [
+    {
+      "session": 0,
+      "path": "tools/data/results/orukeet/auto-browser-c92-speech-capture-2026-10-08-02.json.capture-0.f32le",
+      "bytes": 640000,
+      "sha256": "d6128523c1405d62b2c2c90f75f8bd25afaea29830a71724017302fc8ec33639"
+    },
+    {
+      "session": 1,
+      "path": "tools/data/results/orukeet/auto-browser-c92-speech-capture-2026-10-08-02.json.capture-1.f32le",
+      "bytes": 640000,
+      "sha256": "afda7f61aaab28722bb90533156d0c56031e47c96bb2a5c3dfd42124a849faaa"
+    }
+  ],
+  "rows": [
+    {
+      "session": 0,
+      "window": 0,
+      "startFrame": 0,
+      "endFrame": 40960,
+      "samples": 40960,
+      "pcmSha256": "0380c57d28f52c845734779e1848a0f82333769301ae095548643606526db6f3",
+      "text": "And so, my fellow Americans.",
+      "summary": {
+        "path": "tools/data/results/orukeet/official-c93-capture-0-window-0-2026-10-08-01.json",
+        "bytes": 3616,
+        "sha256": "1f71d0423183a177dd846f5f4f064aa9c16b5887449ec2a4bb9870a82d3cf024"
+      },
+      "stages": {
+        "path": "tools/data/results/orukeet/official-c93-capture-0-window-0-2026-10-08-01.json.gz",
+        "bytes": 3104448,
+        "sha256": "8c2a8adab7815e0354f2ba290c41de92c1cb61985c3898ebbcbeee12463f3107"
+      },
+      "stageCount": 151,
+      "sourceSliceBound": true,
+      "stageSummaryBound": true,
+      "status": "PASS_CAPTURE_ORACLE_OUTPUT",
+      "scope": "exact-captured-PCM original-engine token/text; not numerical parity",
+      "checks": {
+        "original_model": true,
+        "original_weights": true,
+        "frozen_input": true,
+        "effective_pcm": true,
+        "instrumentation": true,
+        "token_ids": true,
+        "text": true
+      },
+      "tokenCount": 11
+    },
+    {
+      "session": 0,
+      "window": 1,
+      "startFrame": 39680,
+      "endFrame": 78080,
+      "samples": 38400,
+      "pcmSha256": "f7ad26ad637125a76b4219c385db4043e782ecddc81bfbcdb5340bdefcce287c",
+      "text": "Ask not.",
+      "summary": {
+        "path": "tools/data/results/orukeet/official-c93-capture-0-window-1-2026-10-08-01.json",
+        "bytes": 3242,
+        "sha256": "177d0e448112ae2ae2b03ec3244f8b02073af63bd2f99aca472e3bad5327a3d1"
+      },
+      "stages": {
+        "path": "tools/data/results/orukeet/official-c93-capture-0-window-1-2026-10-08-01.json.gz",
+        "bytes": 2500580,
+        "sha256": "c9b8445d1c1253f0edbdc478528cbe5bdaa3f13caa925fcb8f9858ecc21eff0c"
+      },
+      "stageCount": 89,
+      "sourceSliceBound": true,
+      "stageSummaryBound": true,
+      "status": "PASS_CAPTURE_ORACLE_OUTPUT",
+      "scope": "exact-captured-PCM original-engine token/text; not numerical parity",
+      "checks": {
+        "original_model": true,
+        "original_weights": true,
+        "frozen_input": true,
+        "effective_pcm": true,
+        "instrumentation": true,
+        "token_ids": true,
+        "text": true
+      },
+      "tokenCount": 4
+    },
+    {
+      "session": 0,
+      "window": 2,
+      "startFrame": 76800,
+      "endFrame": 128000,
+      "samples": 51200,
+      "pcmSha256": "2406499d77dee3fc9ed723389e1e1110504a12b276d60034045ee7c6424fc2dd",
+      "text": "What your country can do for you.",
+      "summary": {
+        "path": "tools/data/results/orukeet/official-c93-capture-0-window-2-2026-10-08-01.json",
+        "bytes": 3686,
+        "sha256": "0e0f9d6c9ab124f79359bf3076b6cc0ffca5e1ba7ec38864d8682d8efece7ea8"
+      },
+      "stages": {
+        "path": "tools/data/results/orukeet/official-c93-capture-0-window-2-2026-10-08-01.json.gz",
+        "bytes": 3679143,
+        "sha256": "8b7fd1ebf1609d692af9b09503f473ad3d5dfebf928587c3606a45f2206e2ea5"
+      },
+      "stageCount": 165,
+      "sourceSliceBound": true,
+      "stageSummaryBound": true,
+      "status": "PASS_CAPTURE_ORACLE_OUTPUT",
+      "scope": "exact-captured-PCM original-engine token/text; not numerical parity",
+      "checks": {
+        "original_model": true,
+        "original_weights": true,
+        "frozen_input": true,
+        "effective_pcm": true,
+        "instrumentation": true,
+        "token_ids": true,
+        "text": true
+      },
+      "tokenCount": 12
+    },
+    {
+      "session": 0,
+      "window": 3,
+      "startFrame": 124672,
+      "endFrame": 160000,
+      "samples": 35328,
+      "pcmSha256": "9fee18473d0395d0730da411502d0c8943fc5663146f8f3bf971bc851ccb89a1",
+      "text": "Ask what you can do for your country.",
+      "summary": {
+        "path": "tools/data/results/orukeet/official-c93-capture-0-window-3-2026-10-08-01.json",
+        "bytes": 3745,
+        "sha256": "c6dde207dfbda40d226ff8a9c697dd34d8c4c76aae0ae394f8c746645e657640"
+      },
+      "stages": {
+        "path": "tools/data/results/orukeet/official-c93-capture-0-window-3-2026-10-08-01.json.gz",
+        "bytes": 3227616,
+        "sha256": "c6318c31b2047a3fe3799cb7a17c5c2d2ab39f38f874c92f3c7f5fe286af981f"
+      },
+      "stageCount": 176,
+      "sourceSliceBound": true,
+      "stageSummaryBound": true,
+      "status": "PASS_CAPTURE_ORACLE_OUTPUT",
+      "scope": "exact-captured-PCM original-engine token/text; not numerical parity",
+      "checks": {
+        "original_model": true,
+        "original_weights": true,
+        "frozen_input": true,
+        "effective_pcm": true,
+        "instrumentation": true,
+        "token_ids": true,
+        "text": true
+      },
+      "tokenCount": 13
+    },
+    {
+      "session": 1,
+      "window": 0,
+      "startFrame": 0,
+      "endFrame": 42240,
+      "samples": 42240,
+      "pcmSha256": "d4bfb8c15b89223835a93339275e49babb06347a0c2188f3457b27dd2e6d48eb",
+      "text": "And so my fellow Americans.",
+      "summary": {
+        "path": "tools/data/results/orukeet/official-c93-capture-1-window-0-2026-10-08-01.json",
+        "bytes": 3570,
+        "sha256": "a54b87281132c0011a66e8a6ac4f634b8e9b638b8e3581d66ed0f2b32b2a52d2"
+      },
+      "stages": {
+        "path": "tools/data/results/orukeet/official-c93-capture-1-window-0-2026-10-08-01.json.gz",
+        "bytes": 3100681,
+        "sha256": "d220b95fba388d017d25eded6347a3f520a014ba53a29d717a4ef1e8079685b3"
+      },
+      "stageCount": 143,
+      "sourceSliceBound": true,
+      "stageSummaryBound": true,
+      "status": "PASS_CAPTURE_ORACLE_OUTPUT",
+      "scope": "exact-captured-PCM original-engine token/text; not numerical parity",
+      "checks": {
+        "original_model": true,
+        "original_weights": true,
+        "frozen_input": true,
+        "effective_pcm": true,
+        "instrumentation": true,
+        "token_ids": true,
+        "text": true
+      },
+      "tokenCount": 10
+    },
+    {
+      "session": 1,
+      "window": 1,
+      "startFrame": 40960,
+      "endFrame": 79360,
+      "samples": 38400,
+      "pcmSha256": "2c5aa32ad82349c4d18d2d89b14c3b834bfeceb46f05fe83d6d30f691f772bd1",
+      "text": "Ask not.",
+      "summary": {
+        "path": "tools/data/results/orukeet/official-c93-capture-1-window-1-2026-10-08-01.json",
+        "bytes": 3242,
+        "sha256": "d275503014af71acb4802af86b9810ee4dce5b4faca503594e8d390f0a7c9a6b"
+      },
+      "stages": {
+        "path": "tools/data/results/orukeet/official-c93-capture-1-window-1-2026-10-08-01.json.gz",
+        "bytes": 2501729,
+        "sha256": "c5acbde2b2ffa3e9b1b3654d50a2b40d127ec6bf172350fe7abed2a016c5f58a"
+      },
+      "stageCount": 89,
+      "sourceSliceBound": true,
+      "stageSummaryBound": true,
+      "status": "PASS_CAPTURE_ORACLE_OUTPUT",
+      "scope": "exact-captured-PCM original-engine token/text; not numerical parity",
+      "checks": {
+        "original_model": true,
+        "original_weights": true,
+        "frozen_input": true,
+        "effective_pcm": true,
+        "instrumentation": true,
+        "token_ids": true,
+        "text": true
+      },
+      "tokenCount": 4
+    },
+    {
+      "session": 1,
+      "window": 2,
+      "startFrame": 78080,
+      "endFrame": 160000,
+      "samples": 81920,
+      "pcmSha256": "45306c2701990a52ce54ad565c8bd5b4c0d6970b93c18e5116e0416528148caf",
+      "text": "What your country can do for you, ask what you can do for your",
+      "summary": {
+        "path": "tools/data/results/orukeet/official-c93-capture-1-window-2-2026-10-08-01.json",
+        "bytes": 4138,
+        "sha256": "732a8d43b38684932fd085568dc42c2e8387d1e35f848e57044b09d1794a8d9b"
+      },
+      "stages": {
+        "path": "tools/data/results/orukeet/official-c93-capture-1-window-2-2026-10-08-01.json.gz",
+        "bytes": 5990957,
+        "sha256": "31cbb96429fa496138703430df7590fdd52bb51029886e2496ca5f0f98aa0206"
+      },
+      "stageCount": 262,
+      "sourceSliceBound": true,
+      "stageSummaryBound": true,
+      "status": "PASS_CAPTURE_ORACLE_OUTPUT",
+      "scope": "exact-captured-PCM original-engine token/text; not numerical parity",
+      "checks": {
+        "original_model": true,
+        "original_weights": true,
+        "frozen_input": true,
+        "effective_pcm": true,
+        "instrumentation": true,
+        "token_ids": true,
+        "text": true
+      },
+      "tokenCount": 20
+    }
+  ]
+}

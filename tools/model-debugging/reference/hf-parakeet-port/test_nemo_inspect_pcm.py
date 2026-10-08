@@ -51,6 +51,55 @@ class FrozenPcmTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(RuntimeError):
                 runner.verify_frozen_model_input(changed, contract)
 
+    def test_slice_preserves_bytes_and_separate_source_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'pcm.f32le'
+            raw = struct.pack('<6f', 1, 0, -0.0, 0.25, -0.5, 2)
+            path.write_bytes(raw)
+            source = runner.hashlib.sha256(raw).hexdigest()
+            selected = raw[4:20]
+            digest = runner.hashlib.sha256(selected).hexdigest()
+            pcm, contract = runner.read_frozen_pcm(path, 4, digest,
+                start_frame=1, end_frame=5, source_sha256=source)
+            self.assertEqual(pcm.tobytes(), selected)
+            self.assertEqual(contract['sha256'], digest)
+            self.assertEqual(contract['samples'], 4)
+            self.assertEqual(contract['source_slice'], dict(sha256=source, samples=6,
+                start_frame=1, end_frame=5))
+            pcm[0] = 99
+            self.assertEqual(path.read_bytes(), raw)
+
+    def test_slice_rejects_missing_invalid_bounds_and_digests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'pcm.f32le'
+            raw = struct.pack('<6f', 1, 0, -0.0, 0.25, -0.5, 2)
+            path.write_bytes(raw)
+            source = runner.hashlib.sha256(raw).hexdigest()
+            selected = runner.hashlib.sha256(raw[4:20]).hexdigest()
+            cases = [(None, 5, source, selected), (1, None, source, selected),
+                (1, 5, None, selected), (True, 5, source, selected),
+                (1.0, 5, source, selected), (-1, 5, source, selected),
+                (1, 7, source, selected), (5, 1, source, selected),
+                (1, 1, source, selected), (1, 5, 'a' * 64, selected),
+                (1, 5, source.upper(), selected), (1, 5, source, source)]
+            for start, end, source_hash, window_hash in cases:
+                with self.subTest(start=start, end=end, source_hash=source_hash, window_hash=window_hash):
+                    with self.assertRaises(ValueError):
+                        runner.read_frozen_pcm(path, 4, window_hash, start_frame=start,
+                            end_frame=end, source_sha256=source_hash)
+            self.assertEqual(path.read_bytes(), raw)
+
+    def test_slice_retains_finite_and_one_second_guards(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'pcm.f32le'
+            for values, end in [([0, 1, 2, 3, 4, 5], 3),
+                    ([0, float('nan'), 2, 3, 4, 5], 5)]:
+                raw = struct.pack('<6f', *values)
+                path.write_bytes(raw)
+                with self.subTest(values=values), self.assertRaises(ValueError):
+                    runner.read_frozen_pcm(path, 4, runner.hashlib.sha256(raw[4:end * 4]).hexdigest(),
+                        start_frame=1, end_frame=end, source_sha256=runner.hashlib.sha256(raw).hexdigest())
+
     def test_official_transcribe_receives_owned_array_not_audio_path(self):
         import numpy as np
         pcm = np.array([0.0, -0.0, 0.25], dtype=np.float32)
