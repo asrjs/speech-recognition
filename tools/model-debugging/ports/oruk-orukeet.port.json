@@ -4,8 +4,8 @@
   "family": "nemo-tdt",
   "preset": "parakeet",
   "browserCodeContract": {
-    "path": "tools/model-debugging/reference/orukeet/browser-code-contract-jfk-c78.json",
-    "sha256": "857c289a625d53f61047ad3ea618b7c09532aa2b3812f3a53eba5241fe522e35"
+    "path": "tools/model-debugging/reference/orukeet/browser-code-contract-c81.json",
+    "sha256": "3505620091481a3e6695b207968e6d7b5c69a8cf9396349b3a242bf735c71ede"
   },
   "originalWeights": {
     "path": "models/orukeet/source/orukeet-v0.1.0.nemo",
@@ -45,6 +45,18 @@
     "sha256": "86a37498c6997ac14becffb21d1aef61a61420ec91d2f95a73f46d09d06b5aac"
   },
   "fixtures": [
+    {
+      "id": "pure-silence-1s",
+      "path": "tools/data/results/orukeet/pure-silence-1s-16k-pcm16.wav",
+      "sha256": "57d8dd674034eb744bd8dfa71344ee02e1a8e709563cef10108eda63663675c8",
+      "durationSeconds": 1,
+      "effectivePcmSha256": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74",
+      "oracle": {
+        "path": "tools/data/results/orukeet/official-pure-silence-1s-summary-2026-10-01.json",
+        "field": "result",
+        "sha256": "b26ec8256944cbb8dff8b55516e1d07f00f293538e515cca56707be3cafaff79"
+      }
+    },
     {
       "id": "jfk-short",
       "path": "tools/data/fixtures/audio/jfk-short.wav",
@@ -135,6 +147,19 @@
     }
   ],
   "browserRuns": [
+    {
+      "id": "chrome-oracle-pure-silence-webgpu-hybrid",
+      "runner": "browser-oracle",
+      "adapter": "orukeet-auto-browser",
+      "backend": "webgpu-hybrid",
+      "precision": "fp32",
+      "fixture": "pure-silence-1s",
+      "compare": ["token_ids", "text"],
+      "repeat": 2,
+      "url": "https://127.0.0.1:8767/orukeet-smoke.html",
+      "runnerSha256": "4e1f3af766fcf1108395693572cd3364cd77f6a1133bb6c94674911be7c1cff8",
+      "verifies": "same-PCM repeated original-oracle empty token/text browser smoke with code identity and awaited cleanup; not stage numerical parity or silence soak"
+    },
     {
       "id": "chrome-oracle-jfk-webgpu-hybrid",
       "runner": "browser-oracle",

@@ -45,6 +45,19 @@ inference only; it is not numerical parity against the original NeMo engine.
 
 ## Automatic Chrome model test and JSON capture
 
+The reviewed manifest also provides `chrome-oracle-jfk-webgpu-hybrid` and
+`chrome-oracle-pure-silence-webgpu-hybrid`. Each case checks two complete outputs,
+original effective PCM, pinned delivered code and awaited cleanup. With the
+server below running, choose one case and a fresh output filename:
+
+```powershell
+python tools/model-debugging/scripts/port_manifest.py --manifest tools/model-debugging/ports/oruk-orukeet.port.json --run chrome-oracle-pure-silence-webgpu-hybrid --output tools/data/results/orukeet/manifest-silence-new.json
+```
+
+Valid silence means explicit empty token IDs and text, not missing inference.
+Code-snapshot mismatches fail closed; refresh requires a separate source review,
+not automatic regeneration. These cases are output smokes, not numerical parity.
+
 The sibling `webgpu-agent-test` contains the historical `?auto=1` Chrome
 runner and `/__test_result__` JSON capture system. Stock Parakeet v3 was
 rechecked successfully on 2026-10-08. The tracked Orukeet demo now supports

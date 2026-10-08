@@ -74,6 +74,35 @@ class OrukeetBrowserManifestTests(unittest.TestCase):
         self.assertTrue(all(result['checks'].values()))
         self.assertEqual(result['browserReceiptSha256'], port_manifest.digest(self.output))
 
+    def test_explicit_empty_silence_outputs_still_require_every_gate(self):
+        oracle = json.loads((ROOT / self.fixture['oracle']['path']).read_text(encoding='utf-8'))
+        oracle['result'].update(token_ids=[], text='')
+        silence_oracle = Path(self.directory.name) / 'silence-oracle.json'
+        silence_oracle.write_text(json.dumps(oracle), encoding='utf-8')
+        self.fixture['oracle'].update(path=str(silence_oracle),
+                                     sha256=port_manifest.digest(silence_oracle))
+        self.receipt['oracle_sha256'] = self.fixture['oracle']['sha256']
+        for row in self.receipt['result']['transcripts']:
+            row.update(tokenIds=[], text='')
+        self.assertTrue(all(self.compare()['checks'].values()))
+
+        pristine = copy.deepcopy(self.receipt)
+        mutations = [
+            lambda r: r['result']['transcripts'].clear(),
+            lambda r: r['result']['transcripts'][1].pop('tokenIds'),
+            lambda r: r['result']['transcripts'][1].update(tokenIds=None),
+            lambda r: r['result']['transcripts'][1].update(tokenIds=[1]),
+            lambda r: r['result']['transcripts'][1].update(text='hallucination'),
+            lambda r: r.update(served_code=[]),
+            lambda r: r['served_code'][0].update(sha256='c' * 64),
+            lambda r: r['result'].update(disposed=False),
+        ]
+        for index, mutate in enumerate(mutations):
+            with self.subTest(index=index):
+                self.receipt = copy.deepcopy(pristine)
+                mutate(self.receipt)
+                self.assertEqual(self.compare()['status'], 'FAILED_BROWSER_ORACLE')
+
     def test_pass_label_cannot_hide_mismatches(self):
         pristine = copy.deepcopy(self.receipt)
         mutations = [

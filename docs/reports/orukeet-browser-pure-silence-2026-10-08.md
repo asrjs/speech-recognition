@@ -16,7 +16,7 @@ The original one-second zero PCM fixture and NeMo oracle already existed:
 effective 16 kHz mono, 16,000 float32 samples, no padding, f32le SHA-256
 `4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74`.
 Original oracle: `official-pure-silence-1s-summary-2026-10-01.json`, SHA-256
-`b26ec8256944cbb8dff8b55516e1d07f00f293538e515cca56707be3caffaff79`.
+`b26ec8256944cbb8dff8b55516e1d07f00f293538e515cca56707be3cafaff79`.
 Expected output is empty text and explicit empty token IDs, not missing inference.
 
 First fresh receipt `auto-browser-pure-silence-hybrid-2026-10-08-01.json`
