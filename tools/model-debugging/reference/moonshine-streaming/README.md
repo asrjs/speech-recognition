@@ -138,6 +138,32 @@ allclose 1e-4), and the fully-ONNX chunked pipeline (chunked encoder +
 whole-encoder final flush + fp32 decoder graphs) reproduces the official
 oracle's 28 token ids exactly.
 
-**Remaining**: library integration into the moonshine family, real browser
-(WebGPU) validation of all graph sets, fp16 of the chunked graph. Invalid
-historical streaming graphs stay excluded.
+**Library integration — `MoonshineStreamingSession`**
+(`src/models/moonshine/streaming-session.ts`, exported from the family index):
+the runtime-side consumer of the chunked contract, deliberately junior-scale —
+injected ORT-session runners (no I/O, no framework), explicit state, the
+geometry (context 90 / lookahead 60 / emit) as options, and plain text results
+(canonical PartialTranscript assembly stays a runtime-lane wrapper). Window
+bookkeeping lives in ~60 readable lines: buffer samples, run a chunked call per
+full `emit+60` window, keep the first `emit/4` hidden frames, advance by
+`emit`, retain the last 480 frames for the whole-encoder final flush. Verified
+twice:
+
+- `tests/moonshine-streaming-session.test.ts` (9): scripted index-tagged mocks
+  pin the window rules, state carry, retention bound, decoder past wiring,
+  preview repeatability and reset/dispose.
+- `tests/moonshine-streaming-graphs.test.ts` (3, real fp32 graphs in Node ORT,
+  skipped when graphs are absent): one-second pushAudio chunks finalize to the
+  exact official oracle transcript with whole-utterance framing; a mid-stream
+  preview decodes; reset/reuse at emit=64 reproduces identical tokens.
+
+Bugs the gates caught during integration: window advance/counters in samples
+vs frames, whole-window hiddens stored instead of the first emit/4, the
+chunked graph's rank-3 `[1, frames, 80]` input, the whole-encoder's required
+attention mask, spread-push stack overflow, and a naive 44-byte WAV parse in
+the test fixture loader.
+
+**Remaining**: canonical `StreamingTranscriber`/PartialTranscript wrapper and
+asset routing in the presets lane, real browser (WebGPU) validation of all
+graph sets, fp16 of the chunked graph. Invalid historical streaming graphs
+stay excluded.
