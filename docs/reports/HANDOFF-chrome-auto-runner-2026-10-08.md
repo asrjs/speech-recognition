@@ -1,5 +1,17 @@
 # Handoff: automated Chrome runner (C94, paused)
 
+> **RESOLVED 2026-10-08 (later the same day).** The C94-01 failure was root-caused
+> (a real 0.288 s stop-flush tail decodes to zero tokens; the every-window
+> non-empty ASR gate was over-strict, not a pipeline defect) and corrected with a
+> mirrored 16000-sample minimum. Dist and source speech-detect captures both pass
+> full acceptance in fresh real Chrome, all 14 new >=1 s windows match original
+> NeMo weights, and the manifest oracle runs pass all 19 checks after a reviewed
+> c94 code-contract refresh. Do not resume this handoff; read
+> [chrome-auto-runner-c94-dist-capture-2026-10-08.md](chrome-auto-runner-c94-dist-capture-2026-10-08.md)
+> and the model-lane resume notes at the top of
+> [PARAKEET_VARIANT_TASKS.md](../PARAKEET_VARIANT_TASKS.md). The text below is the
+> preserved pre-resolution record.
+
 User requested immediate handoff on 2026-10-08. Stop development until resumed.
 The Codex goal is already `paused`; do not mark it complete. This report is the
 latest resume overlay, not a replacement for `docs/AGENT_ENTRYPOINT.md`.

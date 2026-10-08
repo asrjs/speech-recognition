@@ -1,0 +1,96 @@
+{
+  "status": "PASS_CONTRACT_INSPECTION_ONLY",
+  "scope": "Read-only inspection of official Kestrel parakeet_tdt source at pinned commit; no local execution, no kernel equivalence, no oracle, no export",
+  "date": "2026-10-08",
+  "source": {
+    "repository": "github.com/m87-labs/kestrel",
+    "commit": "8e6fb899bb8a076f3235b6a5ab832a78c031c77b",
+    "module": "kestrel/models/parakeet_tdt",
+    "files_inspected": ["model.py", "features.py", "config.py", "vad.py", "segment.py", "registration.py", "metadata.py", "encoder_graph.py", "decode_graph.py", "../asr/features.py"],
+    "method": "Public GitHub source read at the pinned commit; summarized contracts, not byte-copied sources"
+  },
+  "registered_identities": {
+    "primary": {"model_id": "nvidia/parakeet-tdt-0.6b-v3", "revision": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b"},
+    "ternary": {"model_id": "moondream/parakeet-redux", "revision_pinned_in_registration": false},
+    "ultra": {"model_id": "moondream/parakeet-ultra", "revision_pinned_in_registration": false},
+    "note": "Redux and Ultra share ParakeetTdtRuntime and the same long-form orchestrator; Ultra verification can reuse this contract map."
+  },
+  "features_contract": {
+    "pre_emphasis": "first-order 0.97, first sample kept",
+    "window": "Hann 400 samples, periodic=False",
+    "stft": {"n_fft": 512, "hop": 160, "win": 400, "pad_mode": "constant", "power": "abs()**2"},
+    "mel": {"n_mels": 128, "scale": "slaney", "norm": "slaney area (2/(edges[2:]-edges[:-2]))", "fmin": 0, "fmax": "nyquist", "style": "whisper-style triangular, lru_cached"},
+    "log": "natural log with 2**-24 floor",
+    "normalization": "scalar per-utterance mean/std over valid frames only, eps 1e-5; NOT per-feature, NOT learned",
+    "dither": "none",
+    "frame_count": "samples // 160, no centering",
+    "minimum_input_samples": 320,
+    "output": "[batch, frames, 128] float32 plus [batch, frames] bool mask",
+    "nemo_deviations_to_verify": [
+      "pad_mode constant vs NeMo reflect default",
+      "natural-log + 2**-24 floor vs NeMo log handling",
+      "scalar mean/var normalization vs NeMo per-feature Normalize",
+      "kestrel-local mel filterbank vs NeMo FilterbankMelSpectrogram (slaney conformity of kestrel mel asserted by its own docstrings, not measured here)"
+    ]
+  },
+  "subsampler_contract": {
+    "stage1": "Conv2d 3x3 stride 2, 1 -> subsampling_conv_channels",
+    "stageN": "log2(subsampling_factor)-1 repeats of depthwise 3x3 stride-2 + pointwise 1x1 + ReLU",
+    "constraints": "subsampling_factor in {2,4,8}; kernel 3; stride 2; mel bins divisible by factor",
+    "redux_factor": 8,
+    "frame_time": "0.01 s * subsampling_factor (0.08 s at factor 8)"
+  },
+  "encoder_contract": {
+    "blocks": "conformer-style with fused ops delegated to runtime kernels (SiLU, GLU, depthwise conv+BN+SiLU, relative attention, fused residual-add+LayerNorm)",
+    "load_time_fusions": [
+      "per-layer q/k/v concatenated into one QKV GEMM",
+      "all 24 layers' relative-position projections concatenated into a single Linear(hidden, num_layers*hidden); forward views [B, 2L-1, 24, C] and permutes to per-block rel_k slices",
+      "ternary qweight/scales fused equivalently"
+    ],
+    "relative_position": "sinusoidal, inverse_frequency = 1/10000**(arange(0,C,2)/C), positions arange(L-1,-L,-1) => 2L-1 buckets, sincos stacked+flattened to dim C; activation-independent table",
+    "activation_constraint": "encoder hidden_act must be silu; top-level relu"
+  },
+  "decoder_joint_contract": {
+    "projector": "plain Linear(encoder.hidden_size -> decoder_hidden_size), no activation",
+    "decoder": "LSTM(Embedding(vocab, dec_hidden), dec_hidden, num_decoder_layers, batch_first); inference cells concatenate weight_ih/weight_hh and sum biases to avoid CuDNN repacking",
+    "joint": "Linear(dec_hidden, vocab_size + len(durations)) on relu(encoder_projected + decoder_hidden); token logits first, duration logits after; durations tuple strictly increasing from 0",
+    "tdt_state": ["decoder_hidden", "hidden", "cell", "carry"],
+    "blank_duration_zero": "coerced to advance one frame"
+  },
+  "vad_contract": {
+    "presence": "only checkpoints shipping vad_head.* tensors; attached before load",
+    "architecture": "Conv1d(hidden->128,k1) SiLU Conv1d(128->128,k5,pad2) SiLU Conv1d(128->1,k1)",
+    "input": "subampler output only (24 conformer blocks NOT run); per 0.08 s subsampled frame",
+    "output": "sigmoid(logits.float()) speech probabilities + validity mask; purely local, block-stable"
+  },
+  "segmentation_contract": {
+    "block_decode": "120 s blocks into a carry buffer, forward-only",
+    "speech_regions": "prob >= 0.5; bridge gaps < 0.1 s; drop runs < 0.1 s; clip < 320 samples returned whole",
+    "cut_rule": "midpoint of last usable pause before 30 s cap (prefer pause fully inside 1-30 s window, then pause midpoint in window, else exact 30 s cut)",
+    "overlap": "none; no context margins (measured worse for the transducer); segments strictly contiguous",
+    "state_between_segments": "none carried into the decoder",
+    "energy_fallback": "20 ms frame dB vs 2nd-percentile noise floor, +8 dB threshold; if p90 within 8 dB of floor the whole block is speech",
+    "remainders": "silent and sub-320-sample tails dropped"
+  },
+  "kestrel_internal_graphs": {
+    "kind": "CUDA graph replay, not torch.compile/dynamo, not ONNX",
+    "encoder": "capture model.encode_subsampled at buckets 48/80/128/224 subsampled steps, batch <= 16, eager fallback beyond; outputs cloned to caller",
+    "decode": "single exact TDT step captured at fixed addresses (encoded frame index, decoder hidden, LSTM state); device-side duration table; budgets max_symbols_per_step/max_tokens; stop-signal lag 2",
+    "port_note": "These are host-side performance structures; a faithful ONNX/WebGPU port maps the module contracts above, not these CUDA graphs."
+  },
+  "kernel_boundary": {
+    "delegation": "fused matmul/activation compute and packed two-bit kernel rows delegated to kestrel_kernels; exact bit-order and activation arithmetic are NOT established from loader geometry",
+    "open_reconciliation": "loader outer activation dtype vs docs/asr.md CPU int8 activation description requires an actual kernel/reference run"
+  },
+  "oracle_prerequisites_unchanged": {
+    "blocked_on": "user authority to install the pinned dedicated reference environment (kestrel-kernels==0.7.5, kestrel-native==0.1.9, x86 Torch>=2.8, Windows CPython 3.11 wheels exist on PyPI) without modifying existing NeMo/Qwen environments",
+    "first_approved_checks": ["small kernel packing/compute verification", "exact-weight official oracle with pinned effective PCM, using Kestrel's own features contract above"],
+    "see": "tools/data/results/model-candidates/redux-oracle-prerequisites-2026-10-08.json"
+  },
+  "limits": [
+    "Inspection is of public source text at one pinned commit; upstream may change after this pin.",
+    "No Redux/Ultra weight was executed; no numerical, kernel, memory or speed claim is made.",
+    "The features-contract deviations listed are candidates to verify against NeMo behavior by measurement, not proven divergences for Redux outputs.",
+    "Ultra weights are not present in local caches (config snapshot only); any Ultra verification beyond this map needs download approval."
+  ]
+}

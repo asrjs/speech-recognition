@@ -51,8 +51,11 @@ The loader's outer activation dtype statement and the
 need a kernel/reference run to reconcile. No kernel equivalence is established.
 
 Next: original recommended-runtime oracle, pinned effective PCM and stage
-captures before faithful graph export or a packed WebGPU experiment. Local
-Transformers5 environment has no `moondream`, `kestrel` or `kestrel_kernels` module;
+captures before faithful graph export or a packed WebGPU experiment. The full
+pinned-commit contract map (features/subsampler/relpos fusions/decoder/joint/
+VAD/segmentation) is recorded in
+`../data/results/model-candidates/redux-kestrel-contract-2026-10-08.json`.
+Local Transformers5 environment has no `moondream`, `kestrel` or `kestrel_kernels` module;
 that check applies only to this environment, not every workstation environment.
 No install or large download was performed. Coordinate heavy work with Qwen's
 separate CPU/RAM window. Receipt:
