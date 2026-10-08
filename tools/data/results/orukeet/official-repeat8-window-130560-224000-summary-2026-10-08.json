@@ -1,0 +1,537 @@
+{
+  "meta": {
+    "python": "3.10.12",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "torch": "2.6.0+cu118",
+    "nemo_toolkit": "3.0.0",
+    "audio": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\repeat8-window-130560-224000-2026-10-08.wav",
+    "model": "oruk/orukeet",
+    "model_revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+    "restore_path": "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\source\\orukeet-v0.1.0.nemo",
+    "device": "cpu",
+    "cuda_available": true,
+    "batch_size": 1,
+    "cpu_threads": 4,
+    "numba_cache": "N:\\github\\asrjs\\speech-recognition\\.cache\\nemo-reference\\numba",
+    "timestamps": true,
+    "capture_feature_stft": false,
+    "audio_sha256": "6aec6f5a47484c55b6d17d6bfeb108f6a0ccd2c22e570bec60db8f38681a2dd3",
+    "weight_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
+  },
+  "result": {
+    "text": "For more information, or to volunteer, please visit Libravox dot org. Read by",
+    "normalized_text": "For more information, or to volunteer, please visit Libravox dot org. Read by",
+    "token_ids": [
+      3108,
+      3486,
+      3136,
+      761,
+      7877,
+      839,
+      366,
+      971,
+      331,
+      315,
+      277,
+      7877,
+      4127,
+      1605,
+      854,
+      301,
+      439,
+      973,
+      5719,
+      7950,
+      3406,
+      839,
+      7881,
+      7883,
+      1990,
+      319,
+      652
+    ],
+    "token_pieces": [
+      "▁For",
+      "▁more",
+      "▁inform",
+      "ation",
+      ",",
+      "▁or",
+      "▁to",
+      "▁vol",
+      "un",
+      "te",
+      "er",
+      ",",
+      "▁ple",
+      "ase",
+      "▁vis",
+      "it",
+      "▁L",
+      "ib",
+      "ravo",
+      "x",
+      "▁dot",
+      "▁or",
+      "g",
+      ".",
+      "▁Re",
+      "ad",
+      "▁by"
+    ],
+    "score": -358.3840637207031,
+    "timestamp": {
+      "timestep": [
+        0,
+        4,
+        8,
+        11,
+        13,
+        16,
+        20,
+        22,
+        24,
+        26,
+        28,
+        31,
+        32,
+        35,
+        37,
+        39,
+        42,
+        44,
+        46,
+        50,
+        53,
+        56,
+        59,
+        61,
+        62,
+        64,
+        66
+      ],
+      "char": [
+        {
+          "char": [
+            "For"
+          ],
+          "start_offset": 0,
+          "end_offset": 4,
+          "start": 0.0,
+          "end": 0.32
+        },
+        {
+          "char": [
+            "more"
+          ],
+          "start_offset": 4,
+          "end_offset": 8,
+          "start": 0.32,
+          "end": 0.64
+        },
+        {
+          "char": [
+            "inform"
+          ],
+          "start_offset": 8,
+          "end_offset": 11,
+          "start": 0.64,
+          "end": 0.88
+        },
+        {
+          "char": [
+            "ation"
+          ],
+          "start_offset": 11,
+          "end_offset": 13,
+          "start": 0.88,
+          "end": 1.04
+        },
+        {
+          "char": [
+            ","
+          ],
+          "start_offset": 13,
+          "end_offset": 13,
+          "start": 1.04,
+          "end": 1.04
+        },
+        {
+          "char": [
+            "or"
+          ],
+          "start_offset": 16,
+          "end_offset": 20,
+          "start": 1.28,
+          "end": 1.6
+        },
+        {
+          "char": [
+            "to"
+          ],
+          "start_offset": 20,
+          "end_offset": 22,
+          "start": 1.6,
+          "end": 1.76
+        },
+        {
+          "char": [
+            "vol"
+          ],
+          "start_offset": 22,
+          "end_offset": 24,
+          "start": 1.76,
+          "end": 1.92
+        },
+        {
+          "char": [
+            "un"
+          ],
+          "start_offset": 24,
+          "end_offset": 26,
+          "start": 1.92,
+          "end": 2.08
+        },
+        {
+          "char": [
+            "te"
+          ],
+          "start_offset": 26,
+          "end_offset": 28,
+          "start": 2.08,
+          "end": 2.24
+        },
+        {
+          "char": [
+            "er"
+          ],
+          "start_offset": 28,
+          "end_offset": 31,
+          "start": 2.24,
+          "end": 2.48
+        },
+        {
+          "char": [
+            ","
+          ],
+          "start_offset": 31,
+          "end_offset": 31,
+          "start": 2.48,
+          "end": 2.48
+        },
+        {
+          "char": [
+            "ple"
+          ],
+          "start_offset": 32,
+          "end_offset": 35,
+          "start": 2.56,
+          "end": 2.8000000000000003
+        },
+        {
+          "char": [
+            "ase"
+          ],
+          "start_offset": 35,
+          "end_offset": 37,
+          "start": 2.8000000000000003,
+          "end": 2.96
+        },
+        {
+          "char": [
+            "vis"
+          ],
+          "start_offset": 37,
+          "end_offset": 39,
+          "start": 2.96,
+          "end": 3.12
+        },
+        {
+          "char": [
+            "it"
+          ],
+          "start_offset": 39,
+          "end_offset": 42,
+          "start": 3.12,
+          "end": 3.36
+        },
+        {
+          "char": [
+            "L"
+          ],
+          "start_offset": 42,
+          "end_offset": 44,
+          "start": 3.36,
+          "end": 3.52
+        },
+        {
+          "char": [
+            "ib"
+          ],
+          "start_offset": 44,
+          "end_offset": 46,
+          "start": 3.52,
+          "end": 3.68
+        },
+        {
+          "char": [
+            "ravo"
+          ],
+          "start_offset": 46,
+          "end_offset": 48,
+          "start": 3.68,
+          "end": 3.84
+        },
+        {
+          "char": [
+            "x"
+          ],
+          "start_offset": 50,
+          "end_offset": 52,
+          "start": 4.0,
+          "end": 4.16
+        },
+        {
+          "char": [
+            "dot"
+          ],
+          "start_offset": 53,
+          "end_offset": 56,
+          "start": 4.24,
+          "end": 4.48
+        },
+        {
+          "char": [
+            "or"
+          ],
+          "start_offset": 56,
+          "end_offset": 59,
+          "start": 4.48,
+          "end": 4.72
+        },
+        {
+          "char": [
+            "g"
+          ],
+          "start_offset": 59,
+          "end_offset": 61,
+          "start": 4.72,
+          "end": 4.88
+        },
+        {
+          "char": [
+            "."
+          ],
+          "start_offset": 61,
+          "end_offset": 61,
+          "start": 4.88,
+          "end": 4.88
+        },
+        {
+          "char": [
+            "Re"
+          ],
+          "start_offset": 62,
+          "end_offset": 64,
+          "start": 4.96,
+          "end": 5.12
+        },
+        {
+          "char": [
+            "ad"
+          ],
+          "start_offset": 64,
+          "end_offset": 66,
+          "start": 5.12,
+          "end": 5.28
+        },
+        {
+          "char": [
+            "by"
+          ],
+          "start_offset": 66,
+          "end_offset": 68,
+          "start": 5.28,
+          "end": 5.44
+        }
+      ],
+      "word": [
+        {
+          "word": "For",
+          "start_offset": 0,
+          "end_offset": 4,
+          "start": 0.0,
+          "end": 0.32
+        },
+        {
+          "word": "more",
+          "start_offset": 4,
+          "end_offset": 8,
+          "start": 0.32,
+          "end": 0.64
+        },
+        {
+          "word": "information,",
+          "start_offset": 8,
+          "end_offset": 13,
+          "start": 0.64,
+          "end": 1.04
+        },
+        {
+          "word": "or",
+          "start_offset": 16,
+          "end_offset": 20,
+          "start": 1.28,
+          "end": 1.6
+        },
+        {
+          "word": "to",
+          "start_offset": 20,
+          "end_offset": 22,
+          "start": 1.6,
+          "end": 1.76
+        },
+        {
+          "word": "volunteer,",
+          "start_offset": 22,
+          "end_offset": 31,
+          "start": 1.76,
+          "end": 2.48
+        },
+        {
+          "word": "please",
+          "start_offset": 32,
+          "end_offset": 37,
+          "start": 2.56,
+          "end": 2.96
+        },
+        {
+          "word": "visit",
+          "start_offset": 37,
+          "end_offset": 42,
+          "start": 2.96,
+          "end": 3.36
+        },
+        {
+          "word": "Libravox",
+          "start_offset": 42,
+          "end_offset": 52,
+          "start": 3.36,
+          "end": 4.16
+        },
+        {
+          "word": "dot",
+          "start_offset": 53,
+          "end_offset": 56,
+          "start": 4.24,
+          "end": 4.48
+        },
+        {
+          "word": "org.",
+          "start_offset": 56,
+          "end_offset": 61,
+          "start": 4.48,
+          "end": 4.88
+        },
+        {
+          "word": "Read",
+          "start_offset": 62,
+          "end_offset": 66,
+          "start": 4.96,
+          "end": 5.28
+        },
+        {
+          "word": "by",
+          "start_offset": 66,
+          "end_offset": 68,
+          "start": 5.28,
+          "end": 5.44
+        }
+      ],
+      "segment": [
+        {
+          "segment": "For more information, or to volunteer, please visit Libravox dot org.",
+          "start_offset": 0,
+          "end_offset": 61,
+          "start": 0.0,
+          "end": 4.88
+        },
+        {
+          "segment": "Read by",
+          "start_offset": 62,
+          "end_offset": 68,
+          "start": 4.96,
+          "end": 5.44
+        }
+      ]
+    },
+    "timestep": null,
+    "token_duration": [
+      4,
+      4,
+      3,
+      2,
+      3,
+      4,
+      2,
+      2,
+      2,
+      2,
+      3,
+      1,
+      3,
+      2,
+      2,
+      3,
+      2,
+      2,
+      2,
+      2,
+      3,
+      3,
+      2,
+      1,
+      2,
+      2,
+      2
+    ],
+    "context_librivox": null,
+    "context_domain": null
+  },
+  "stage_capture": {
+    "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\official-repeat8-window-130560-224000-stages-2026-10-08.json.gz",
+    "stage_count": 339,
+    "call_counts": {
+      "predictor": 29,
+      "joint": 33,
+      "encoder_projection": 1,
+      "predictor_projection": 29
+    },
+    "instrumentation_control": {
+      "baseline_tokens_match": true,
+      "baseline_text_match": true,
+      "baseline_frames_match": true,
+      "after_tokens_match": true,
+      "after_text_match": true,
+      "after_durations_match": true
+    },
+    "model_input": {
+      "boundary": "preprocessor_input_signal",
+      "sample_rate": 16000,
+      "channels": 1,
+      "dtype": "float32",
+      "encoding": "f32le",
+      "shape": [
+        1,
+        93440
+      ],
+      "samples": 93440,
+      "valid_samples": 93440,
+      "right_padding_samples": 0,
+      "sha256": "665df291b767d8ae37afd6e1ed6f6ea7b9a0e4ef2780ab09a908620ce78007fb"
+    },
+    "feature_stft_contract": {},
+    "numerical_export_parity": "UNTESTED",
+    "browser_parity": "UNTESTED"
+  }
+}
