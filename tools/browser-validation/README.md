@@ -36,6 +36,23 @@ an environment prerequisite, not evidence of a decoder bug. A smoke PASS is
 same-PCM token/text and requested lifecycle evidence, not full numerical parity,
 fp16 promotion, native streaming or broad quality acceptance.
 
+## Actual microphone capture to Orukeet ASR
+
+Add `--verify-capture` to the JFK command above (with a fresh output filename).
+It additionally runs two real getUserMedia/AudioWorklet sessions using Chrome's
+fake WAV microphone, the public manual microphone controller and a separately
+loaded local Orukeet model. Each session requires contiguous finite PCM, exact
+capture-to-utterance delivery, nonempty ASR, matching same-PCM public API replay,
+actual WebGPU encoder/WASM decoder execution and awaited resource cleanup.
+The original file-oracle checks remain required and separate.
+
+The generic example helper owns capture/controller evidence; the existing
+Orukeet adapter owns model loading and native token extraction. No additional
+decoder or core implementation is introduced. Capture processing can change
+PCM: this is not original-engine parity on the captured input, speech-detect
+ASR, native streaming, physical microphone or memory/soak acceptance.
+See [C90 commands and evidence](../../docs/reports/microphone-capture-asr-2026-10-08.md).
+
 ## Packaged TEN-VAD model worker lifecycle
 
 The existing offline runner also accepts `--scenario ten-vad`. Build/copy the

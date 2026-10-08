@@ -196,6 +196,44 @@ def check_controller_timing(result, requested, require_nonzero=False):
             and (not require_nonzero or (nonzero and all(observed_nonzero.values()))))
 
 
+def check_capture(result, requested, backend):
+    """Actual fake-device manual capture/ASR, not the file oracle or native streaming."""
+    if not requested:
+        return True
+    capture = result.get('capture')
+    if (not isinstance(capture, dict) or capture.get('scope') != 'fake-device-manual-capture-utterance-asr'
+            or capture.get('disposed') is not True or capture.get('restartRejected') is not True
+            or capture.get('modelDisposed') is not True or capture.get('error') or capture.get('cleanupError')):
+        return False
+    runs = capture.get('runs')
+    if not isinstance(runs, list) or len(runs) != 2:
+        return False
+    for index, run in enumerate(runs):
+        if not isinstance(run, dict):
+            return False
+        samples, chunks = run.get('capturedSamples'), run.get('chunkCount')
+        tokens, tracks = run.get('tokenIds'), run.get('trackStates')
+        replay_tokens = run.get('replayTokenIds')
+        if (type(run.get('iteration')) is not int or run['iteration'] != index
+                or type(samples) is not int or samples < 32000 or type(chunks) is not int or samples != chunks * 256
+                or run.get('sampleRate') != 16000 or run.get('utteranceSamples') != samples
+                or run.get('pcmExact') is not True
+                or not isinstance(run.get('capturedPcmSha256'), str)
+                or re.fullmatch('[0-9a-f]{64}', run['capturedPcmSha256']) is None
+                or run.get('utterancePcmSha256') != run['capturedPcmSha256']
+                or not isinstance(run.get('text'), str) or not run['text'].strip()
+                or not isinstance(tokens, list) or not tokens or any(type(token) is not int or token < 0 for token in tokens)
+                or not isinstance(replay_tokens, list) or any(type(token) is not int or token < 0 for token in replay_tokens)
+                or run.get('replayText') != run['text'] or run.get('replayTokenIds') != tokens
+                or run.get('contextState') != 'closed' or not isinstance(tracks, list) or not tracks
+                or any(state != 'ended' for state in tracks) or run.get('workletLoads') != 1 or run.get('stopCalls') != 1
+                or not isinstance(run.get('metrics'), dict) or not isinstance(run.get('replayMetrics'), dict)
+                or not check_execution(dict(transcripts=[run]), backend, 1)
+                or not check_execution(dict(transcripts=[dict(metrics=run.get('replayMetrics'))]), backend, 1)):
+            return False
+    return True
+
+
 def capture_code_route(route, receipt):
     """Bind the bytes actually fulfilled, without relying on Chrome inspector caches."""
     response = None
@@ -247,6 +285,7 @@ def main():
     parser.add_argument('--audio-strategy', choices=['wav', 'audiocontext'], default='wav')
     parser.add_argument('--verify-cancellation', action='store_true', help='Abort partial decode between two oracle-matched runs')
     parser.add_argument('--verify-controller', action='store_true', help='Verify chunk-fed windowed offline ASR coverage, final text and reset')
+    parser.add_argument('--verify-capture', action='store_true', help='Also verify two real fake-device manual capture -> utterance -> ASR sessions; not original-engine capture parity')
     parser.add_argument('--require-controller-nonzero-origin', action='store_true',
                         help='Also require timestamped detail in controller windows starting after frame zero')
     args = parser.parse_args()
@@ -265,6 +304,7 @@ def main():
     receipt = dict(status='FAIL_AUTO_BROWSER', url=url, scope='real-browser-smoke-and-oracle-output-only',
                    page_errors=[], console=[], blocked_requests=[], expected_pcm_sha256=args.expected_pcm_sha256,
                    cancellation_requested=args.verify_cancellation, controller_requested=args.verify_controller,
+                   capture_requested=args.verify_capture,
                    controller_nonzero_required=args.require_controller_nonzero_origin)
     try:
         inputs = helpers.local_model_inputs(args.model_root, args.precision, 'nemo-tdt')
@@ -277,12 +317,16 @@ def main():
                        runner_sha256=helpers.digest(Path(__file__)))
         from playwright.sync_api import sync_playwright
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(channel='chrome', headless=True,
-                args=['--enable-unsafe-webgpu', '--autoplay-policy=no-user-gesture-required'])
+            launch_args = ['--enable-unsafe-webgpu', '--autoplay-policy=no-user-gesture-required']
+            if args.verify_capture:
+                launch_args.extend(['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+                                    f'--use-file-for-fake-audio-capture={args.audio.resolve()}'])
+            browser = playwright.chromium.launch(channel='chrome', headless=True, args=launch_args)
             try:
                 receipt['browser_version'] = browser.version
                 # Only loopback URLs are allowed; the demo uses a local dev certificate.
-                context = browser.new_context(service_workers='block', ignore_https_errors=True)
+                context = browser.new_context(service_workers='block', ignore_https_errors=True,
+                                              permissions=['microphone'] if args.verify_capture else [])
                 origin = f'{parsed.scheme}://{parsed.netloc}'
                 receipt['served_code'] = []
                 receipt['code_capture_errors'] = []
@@ -307,6 +351,42 @@ def main():
                 page.wait_for_function("document.getElementById('result').textContent.trim().startsWith('{')", timeout=args.timeout_ms)
                 result = json.loads(page.locator('#result').inner_text())
                 receipt['result'] = result
+                if args.verify_capture and result.get('status') == 'PASS_ORUKEET_SMOKE':
+                    page.evaluate("""({libraryUrl, wasmPaths, backend, precision}) => {
+                        window.captureResult = null; window.captureError = null;
+                        void (async () => {
+                        const { runCapturedController } = await import('/src/capture-controller.js');
+                        const { createSpeechModelLocalEntries, loadSpeechModelFromLocalEntries } = await import(libraryUrl);
+                        const receipt = { modelDisposed: false };
+                        let model;
+                        try {
+                            model = await loadSpeechModelFromLocalEntries({ modelId: 'oruk/orukeet',
+                                entries: createSpeechModelLocalEntries([...document.getElementById('model').files]),
+                                backend, encoderQuant: precision, preprocessorBackend: 'js', wasmPaths });
+                            await runCapturedController({ receipt, async transcribe(pcm, sampleRate) {
+                                const envelope = await model.transcribeMonoPcm(pcm, sampleRate, {
+                                    returnTokenIds: true, responseFlavor: 'canonical+native' });
+                                return { text: envelope.canonical.text, tokenIds: envelope.native.debug.tokenIds,
+                                         metrics: envelope.canonical.meta.metrics };
+                            } });
+                        } catch (error) { receipt.error = String(error); }
+                        finally {
+                            if (model) {
+                                try { await model.dispose(); receipt.modelDisposed = true; }
+                                catch (error) { receipt.cleanupError = String(error); }
+                            }
+                        }
+                        return receipt;
+                        })().then(value => window.captureResult = value).catch(error => window.captureError = String(error));
+                    }""", dict(libraryUrl='/@fs/' + ROOT.as_posix() + '/src/browser.ts',
+                               wasmPaths='/@fs/' + ROOT.as_posix() + '/node_modules/onnxruntime-web/dist/',
+                               backend=args.backend, precision=args.precision))
+                    page.wait_for_function('window.captureResult !== null || window.captureError !== null', timeout=args.timeout_ms)
+                    if page.evaluate('window.captureError'):
+                        raise ValueError(page.evaluate('window.captureError'))
+                    result['capture'] = page.evaluate('window.captureResult')
+                receipt['capture_valid'] = check_capture(result, args.verify_capture, args.backend)
+                receipt['capture_scope'] = 'fake-device-manual-capture-utterance-asr' if args.verify_capture else 'SKIP_NOT_REQUESTED'
                 receipt['execution_valid'] = check_execution(result, args.backend, args.repeat)
                 receipt['cancellation_valid'] = check_cancellation(result, args.verify_cancellation)
                 receipt['controller_valid'] = check_controller(result, args.verify_controller, args.backend, oracle['result']['text'])
@@ -318,7 +398,7 @@ def main():
                 receipt['code_bound'] = check_code_bindings(receipt)
                 receipt['text_exact'] = all(t['text'] == oracle['result']['text'] for t in result['transcripts']) and bool(result['transcripts'])
                 receipt['tokens_exact'] = all(t['tokenIds'] == oracle['result']['token_ids'] for t in result['transcripts']) and bool(result['transcripts'])
-                if result['status'] == 'PASS_ORUKEET_SMOKE' and result['disposed'] is True and receipt['execution_valid'] and receipt['cancellation_valid'] and receipt['controller_valid'] and receipt['controller_timing_valid'] and receipt['text_exact'] and receipt['tokens_exact'] and receipt['pcm_identity_valid'] and receipt['code_bound'] and not receipt['page_errors'] and not receipt['blocked_requests']:
+                if result['status'] == 'PASS_ORUKEET_SMOKE' and result['disposed'] is True and receipt['execution_valid'] and receipt['cancellation_valid'] and receipt['controller_valid'] and receipt['controller_timing_valid'] and receipt['capture_valid'] and receipt['text_exact'] and receipt['tokens_exact'] and receipt['pcm_identity_valid'] and receipt['code_bound'] and not receipt['page_errors'] and not receipt['blocked_requests']:
                     receipt['status'] = ('PASS_AUTO_BROWSER_SAME_PCM_TOKEN_TEXT_SMOKE' if receipt['same_oracle_pcm']
                                          else 'PASS_AUTO_BROWSER_TOKEN_TEXT_SMOKE_PCM_UNBOUND')
             finally:

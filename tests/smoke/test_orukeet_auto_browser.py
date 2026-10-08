@@ -15,6 +15,48 @@ spec.loader.exec_module(runner)
 
 
 class AutoReceiptTests(unittest.TestCase):
+    def capture_result(self):
+        metrics = dict(encoderBackend='webgpu', decoderBackend='wasm', jointBackend='wasm', preprocessorBackend='js')
+        run = dict(iteration=0, capturedSamples=32000, sampleRate=16000, chunkCount=125,
+                   capturedPcmSha256='a' * 64, utteranceSamples=32000, utterancePcmSha256='a' * 64,
+                   pcmExact=True, text='hello', tokenIds=[1], metrics=metrics,
+                   replayText='hello', replayTokenIds=[1], replayMetrics=metrics,
+                   contextState='closed', trackStates=['ended'], workletLoads=1, stopCalls=1)
+        other = copy.deepcopy(run)
+        other['iteration'] = 1
+        return dict(capture=dict(scope='fake-device-manual-capture-utterance-asr', runs=[run, other],
+                                 disposed=True, restartRejected=True, modelDisposed=True))
+
+    def test_capture_gate_requires_actual_request_and_two_sessions(self):
+        self.assertTrue(runner.check_capture({}, False, 'webgpu-hybrid'))
+        self.assertFalse(runner.check_capture({}, True, 'webgpu-hybrid'))
+        self.assertTrue(runner.check_capture(self.capture_result(), True, 'webgpu-hybrid'))
+        changed = self.capture_result()
+        changed['capture']['runs'].pop()
+        self.assertFalse(runner.check_capture(changed, True, 'webgpu-hybrid'))
+
+    def test_capture_gate_rejects_missing_audio_output_replay_or_cleanup(self):
+        fields = [('capturedSamples', 0), ('capturedSamples', True), ('chunkCount', 1),
+                  ('sampleRate', 44100), ('utteranceSamples', 31999), ('pcmExact', False),
+                  ('capturedPcmSha256', 'bad'), ('utterancePcmSha256', 'b' * 64),
+                  ('text', ''), ('tokenIds', []), ('tokenIds', [True]), ('replayText', 'wrong'),
+                  ('replayTokenIds', [2]), ('replayTokenIds', [True]), ('metrics', None), ('replayMetrics', None),
+                  ('contextState', 'running'), ('trackStates', []),
+                  ('trackStates', ['live']), ('workletLoads', 0), ('stopCalls', 2)]
+        for field, value in fields:
+            with self.subTest(field=field, value=value):
+                changed = self.capture_result()
+                changed['capture']['runs'][0][field] = value
+                self.assertFalse(runner.check_capture(changed, True, 'webgpu-hybrid'))
+        for field in ('disposed', 'restartRejected', 'modelDisposed'):
+            changed = self.capture_result()
+            changed['capture'][field] = False
+            self.assertFalse(runner.check_capture(changed, True, 'webgpu-hybrid'))
+        for field in ('metrics', 'replayMetrics'):
+            changed = self.capture_result()
+            changed['capture']['runs'][0][field]['encoderBackend'] = 'wasm'
+            self.assertFalse(runner.check_capture(changed, True, 'webgpu-hybrid'))
+
     def timing_result(self):
         sources, requests, updates = [], [], []
         for index, start in enumerate((0, 32000)):

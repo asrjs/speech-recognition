@@ -104,6 +104,25 @@ The first receipt (`...-01.json`) remains a FAIL: text matched but the default
 canonical segment detail omitted tokens; the demo now uses the supported
 `canonical+native` envelope to capture native debug IDs and canonical metrics.
 
+### Optional actual microphone capture to ASR
+
+Add `--verify-capture` to the JFK command and choose a fresh output filename.
+Use `--expected-pcm-sha256 ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`
+to retain the separate official file-PCM gate. After normal oracle runs and
+disposal, the runner loads another local model and tests two real fake-device
+microphone sessions through the public manual controller. Exact captured PCM
+must reach each stop-flushed utterance; ASR must be nonempty and match another
+public API transcription of that same captured PCM. Contexts/tracks, controller,
+model and browser must close. Missing inference cannot pass as a HUD-only test.
+
+Verified capture receipt: `auto-browser-c90-capture-2026-10-08-01.json` under
+`tools/data/results/orukeet`. Both sessions delivered 32,000 samples and produced
+11 tokens, “And so, my fellow Americans.” The capture hashes differ because
+browser capture is not the deterministic file decoder. This proves combined
+manual capture/ASR and replay consistency, not official-engine capture parity,
+speech-detect ASR, native streaming, physical microphone or soak.
+See [C90 report](../../docs/reports/microphone-capture-asr-2026-10-08.md).
+
 ### Long-input, same-PCM browser control
 
 The demo now defaults to the existing deterministic WAV decoder exposed by
