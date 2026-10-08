@@ -49,6 +49,7 @@ describe('Parakeet preset manifests', () => {
 
     expect(request.family).toBe('nemo-tdt');
     expect(request.options.config).toMatchObject({
+      encoderOutputLayout: 'bdt',
       vocabularySize: 8193,
       melBins: 128,
       tokenizer: { kind: 'sentencepiece', blankTokenId: 8192 },

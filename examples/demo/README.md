@@ -140,3 +140,12 @@ physical encoder shape `[1, 1024, 26]` does not match valid `encoded_lengths=25`
 under the current layout resolver. Model disposal, controller reset and browser
 closure still complete. Do not use this optional mode as a passed streaming gate.
 See [the scoped report](../../docs/reports/orukeet-windowed-controller-2026-10-08.md).
+
+The subsequent `auto-browser-controller-jfk-2026-10-08-02.json` passes after
+the family-specific layout fix. Orukeet's audited export now declares BDT in
+its preset; decoder iteration uses valid lengths while tensor addressing uses
+physical padded stride. Six chunks / seven requests produce exact final oracle
+text and clean reset/disposal. Other presets retain their previous defaults;
+custom TDT exports may supply `config.encoderOutputLayout: 'bdt' | 'btd'`
+according to their actual graph contract. See
+[the fix report](../../docs/reports/orukeet-padded-layout-fix-2026-10-08.md).

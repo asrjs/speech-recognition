@@ -167,6 +167,8 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
         kind: 'sentencepiece',
         blankTokenId: 8192,
       },
+      // Audited own Orukeet export: encoder output and decoder input are [B, D, T].
+      encoderOutputLayout: 'bdt',
     },
     // No Hub source: at revision b59c13a7 the upstream repo publishes graphs
     // under onnx/combined-v0.1.0-int8/ and a tokenizer.json, not the root

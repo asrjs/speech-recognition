@@ -671,6 +671,10 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       if (encodedLengthValue !== undefined && Number.isFinite(Number(encodedLengthValue))) {
         encodedFrameCount = Number(encodedLengthValue);
       }
+      if (this.config.encoderOutputLayout !== undefined && encodedLengths !== undefined
+          && (encodedFrameCount === undefined || !Number.isSafeInteger(encodedFrameCount))) {
+        throw new Error(`Invalid NeMo TDT encoded_lengths=${String(encodedLengthValue)}.`);
+      }
       encoderData =
         encoderTensor.data instanceof Float32Array
           ? new Float32Array(encoderTensor.data)
@@ -690,7 +694,23 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
     let encoderIsBdt: boolean;
     let featureSize: number;
     let frameCount: number;
-    if (encodedFrameCount === undefined) {
+    if (this.config.encoderOutputLayout !== undefined) {
+      const layout = this.config.encoderOutputLayout;
+      if (layout !== 'bdt' && layout !== 'btd') {
+        throw new Error(`Invalid NeMo TDT encoderOutputLayout: ${layout}.`);
+      }
+      encoderIsBdt = layout === 'bdt';
+      featureSize = dims[encoderIsBdt ? 1 : 2]!;
+      const physicalFrames = dims[encoderIsBdt ? 2 : 1]!;
+      frameCount = encodedFrameCount ?? physicalFrames;
+      if (!Number.isSafeInteger(featureSize) || featureSize <= 0
+          || !Number.isSafeInteger(physicalFrames) || physicalFrames <= 0
+          || !Number.isSafeInteger(frameCount) || frameCount <= 0 || frameCount > physicalFrames) {
+        throw new Error(
+          `NeMo TDT encoded_lengths=${frameCount} exceeds or is invalid for ${layout} time axis ${physicalFrames}.`,
+        );
+      }
+    } else if (encodedFrameCount === undefined) {
       encoderIsBdt = (dims[1] ?? 0) > (dims[2] ?? 0);
       featureSize = encoderIsBdt ? dims[1]! : dims[2]!;
       frameCount = encoderIsBdt ? dims[2]! : dims[1]!;

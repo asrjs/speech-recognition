@@ -19,6 +19,8 @@ export interface NemoTdtModelConfig extends NemoModelConfig {
   readonly architecture: 'nemo-tdt';
   readonly decoderArchitecture: 'tdt';
   readonly encoderArchitecture: string;
+  /** Exported encoder axis contract; valid lengths may be shorter than its padded time axis. */
+  readonly encoderOutputLayout?: 'bdt' | 'btd';
   readonly predictionHiddenSize?: number;
   readonly predictionLayers?: number;
   readonly maxSymbolsPerStep?: number;

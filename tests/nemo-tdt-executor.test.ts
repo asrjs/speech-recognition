@@ -337,6 +337,57 @@ describe('nemo-tdt Hugging Face artifact materialization', () => {
 });
 
 describe('nemo-tdt executor decode loop', () => {
+  it.each(['bdt', 'btd'] as const)('uses explicit %s layout for a short padded time axis', async (layout) => {
+    const harness = createExecutorHarness({
+      config: { encoderOutputLayout: layout }, encoderLayout: layout,
+      frameCount: 3, featureSize: 8, paddedFrames: 4, encodedLengths: [3],
+      logits: Array.from({ length: 3 }, () => ({ logits: [10, 0, 0, 0, 10, 0] })),
+    });
+    try {
+      await harness.executor.transcribe(createAudio(), {}, {} as never);
+      expect(harness.decoderSession.encoderFeedDims).toEqual(Array.from({ length: 3 }, () => [1, 8, 1]));
+      expect(harness.decoderSession.encoderFeedValues).toEqual(Array.from({ length: 3 }, (_, frame) =>
+        Array.from(Float32Array.from({ length: 8 }, (_, feature) => frame + feature / 10))));
+    } finally {
+      await harness.executor.dispose();
+    }
+  });
+
+  it.each(['bdt', 'btd'] as const)('rejects %s valid length beyond the explicit physical time axis', async (layout) => {
+    const harness = createExecutorHarness({
+      config: { encoderOutputLayout: layout }, encoderLayout: layout,
+      frameCount: 3, featureSize: 8, paddedFrames: 4, encodedLengths: [8],
+      logits: [{ logits: [10, 0, 0, 0, 10, 0] }],
+    });
+    try {
+      await expect(harness.executor.transcribe(createAudio(), {}, {} as never)).rejects.toThrow(/encoded_lengths/);
+      expect(harness.decoderSession.encoderFeedDims).toEqual([]);
+    } finally {
+      await harness.executor.dispose();
+    }
+  });
+
+  it('keeps ambiguous short padded axes fail-closed without an explicit layout', async () => {
+    const harness = createExecutorHarness({ frameCount: 3, featureSize: 8, paddedFrames: 4,
+      encodedLengths: [3], logits: [] });
+    try {
+      await expect(harness.executor.transcribe(createAudio(), {}, {} as never)).rejects.toThrow(/encoded_lengths=3/);
+    } finally {
+      await harness.executor.dispose();
+    }
+  });
+
+  it.each([0, -1])('rejects explicit-layout encoded length %s before decoding', async (length) => {
+    const harness = createExecutorHarness({ config: { encoderOutputLayout: 'bdt' },
+      frameCount: 3, featureSize: 8, paddedFrames: 4, encodedLengths: [length], logits: [] });
+    try {
+      await expect(harness.executor.transcribe(createAudio(), {}, {} as never)).rejects.toThrow(/encoded_lengths/);
+      expect(harness.decoderSession.encoderFeedDims).toEqual([]);
+    } finally {
+      await harness.executor.dispose();
+    }
+  });
+
   it('keeps the feature axis when the encoder returns more frames than features', async () => {
     const harness = createExecutorHarness({
       frameCount: 6,

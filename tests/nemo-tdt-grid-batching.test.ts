@@ -126,6 +126,7 @@ function createFixture(options: {
   readonly script: DecoderScript;
   readonly config?: Partial<NemoTdtModelConfig>;
   readonly batching: boolean;
+  readonly paddedFrames?: number;
 }) {
   const config = parseNemoTdtConfig('test-grid', {
     subsamplingFactor: 4,
@@ -140,13 +141,24 @@ function createFixture(options: {
   // executor's [1,D,T]-vs-[1,T,D] heuristic unambiguously reads the
   // frame-major layout the mock emits.
   const featureSize = Math.max(16, options.frameCount + 4);
-  const encoderData = new Float32Array(featureSize * options.frameCount);
+  const physicalFrames = options.paddedFrames ?? options.frameCount;
+  const layout = config.encoderOutputLayout ?? 'btd';
+  const encoderData = new Float32Array(featureSize * physicalFrames);
   for (let frame = 0; frame < options.frameCount; frame += 1) {
-    encoderData[frame * featureSize] = frame; // frame-major layout
+    encoderData[layout === 'bdt' ? frame : frame * featureSize] = frame;
+  }
+  for (let frame = options.frameCount; frame < physicalFrames; frame += 1) {
+    encoderData[layout === 'bdt' ? frame : frame * featureSize] = -999;
   }
   const encoderSession = new (class implements OrtSessionLike {
     async run(): Promise<Record<string, OrtTensorLike>> {
-      return { outputs: new MockTensor(encoderData, [1, options.frameCount, featureSize]) };
+      return {
+        outputs: new MockTensor(encoderData, layout === 'bdt'
+          ? [1, featureSize, physicalFrames] : [1, physicalFrames, featureSize]),
+        ...(options.paddedFrames === undefined ? {} : {
+          encoded_lengths: new MockTensor(BigInt64Array.of(BigInt(options.frameCount)), [1]),
+        }),
+      };
     }
   })();
   const decoderSession = new GridDecoderSession(options.script);
@@ -206,6 +218,29 @@ const tokenShape = (result: Record<string, unknown>) =>
   ]);
 
 describe('nemo-tdt speculative grid batching', () => {
+  it.each(['bdt', 'btd'] as const)('crops explicit padded %s output in grid and sequential paths', async (layout) => {
+    const script: DecoderScript = (frame) => {
+      if (frame < 0 || frame >= 12) throw new Error('Padded frame reached the decoder');
+      return { token: BLANK, step: 0 };
+    };
+    const options = { frameCount: 12, paddedFrames: 13, script,
+      config: { encoderOutputLayout: layout } };
+    const sequential = createFixture({ ...options, batching: false });
+    const batched = createFixture({ ...options, batching: true });
+    try {
+      const seq = await sequential.executor.transcribe(createAudio(), {}, {} as never);
+      const batch = await batched.executor.transcribe(createAudio(), {}, {} as never);
+      expect(tokenShape(batch)).toEqual(tokenShape(seq));
+      expect(slimMetrics(batch.metrics)).toEqual(slimMetrics(seq.metrics));
+      expect((batch.metrics as Record<string, unknown>).decoderGridBatchRuns).toBeGreaterThan(0);
+      expect(batched.executor.tdtBatchAllowed).toBe(true);
+      expect(batched.decoderSession.calls.every(call => call.startFrame + call.width <= 12)).toBe(true);
+    } finally {
+      await sequential.executor.dispose();
+      await batched.executor.dispose();
+    }
+  });
+
   it('matches the forced-sequential transcript while collapsing blank runs', async () => {
     // Frames 0-5 are blank, frame 6 emits hello (duration 1), the rest
     // are blank. The sequential loop needs one dispatch per frame; the
