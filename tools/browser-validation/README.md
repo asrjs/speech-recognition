@@ -53,6 +53,15 @@ PCM: this is not original-engine parity on the captured input, speech-detect
 ASR, native streaming, physical microphone or memory/soak acceptance.
 See [C90 commands and evidence](../../docs/reports/microphone-capture-asr-2026-10-08.md).
 
+For an independent original-engine comparison, also add `--save-capture-pcm`.
+It requires capture verification, exclusively writes two exact little-endian
+float32 sidecars next to the receipt and records rate/length/hash metadata.
+No PCM16 conversion or resampling is performed. The existing NeMo inspector now
+accepts frozen arrays and checks its actual preprocessor input against that
+recorded identity. [C91 recipe and evidence](../../docs/reports/capture-original-oracle-2026-10-08.md)
+records both actual original-weight comparisons. This optional flag saves input;
+it does not itself run NeMo or certify stage numerical parity.
+
 ## Packaged TEN-VAD model worker lifecycle
 
 The existing offline runner also accepts `--scenario ten-vad`. Build/copy the

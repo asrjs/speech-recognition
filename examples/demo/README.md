@@ -123,6 +123,15 @@ manual capture/ASR and replay consistency, not official-engine capture parity,
 speech-detect ASR, native streaming, physical microphone or soak.
 See [C90 report](../../docs/reports/microphone-capture-asr-2026-10-08.md).
 
+`--save-capture-pcm` (requires `--verify-capture`) additionally preserves exact
+captured float32 PCM as two `.capture-0.f32le` / `.capture-1.f32le` sidecars
+appended to the JSON output name. Existing sidecars fail preflight; they are not
+overwritten. Their hashes must match capture and utterance evidence before
+writing. Use these inputs with the official NeMo array-input recipe, not the
+original fake-device WAV, for an independent same-input comparison.
+Both C91 original-engine outputs match the browser tokens/text; see
+[commands and scope](../../docs/reports/capture-original-oracle-2026-10-08.md).
+
 ### Long-input, same-PCM browser control
 
 The demo now defaults to the existing deterministic WAV decoder exposed by

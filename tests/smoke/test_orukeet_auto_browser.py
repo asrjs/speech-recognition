@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import io
 import json
+import struct
 from pathlib import Path
 import tempfile
 import unittest
@@ -15,6 +16,59 @@ spec.loader.exec_module(runner)
 
 
 class AutoReceiptTests(unittest.TestCase):
+    def pcm_payload(self):
+        raw = struct.pack('<4f', 0.0, -0.0, 0.25, -0.5)
+        run = dict(capturedSamples=4, sampleRate=16000,
+                   capturedPcmSha256=runner.hashlib.sha256(raw).hexdigest())
+        return dict(capture=dict(runs=[copy.deepcopy(run), copy.deepcopy(run)])), [list(raw), list(raw)], raw
+
+    def test_saved_capture_pcm_preserves_exact_float32_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, payloads, raw = self.pcm_payload()
+            paths = runner.capture_pcm_paths(Path(directory) / 'receipt.json')
+            artifacts = runner.save_capture_pcm(result, payloads, paths)
+            self.assertEqual(len(artifacts), 2)
+            for path, artifact in zip(paths, artifacts):
+                self.assertEqual(path.read_bytes(), raw)
+                self.assertEqual(artifact['encoding'], 'f32le')
+                self.assertEqual(artifact['samples'], artifact['validSamples'])
+                self.assertEqual(artifact['rightPaddingSamples'], 0)
+                self.assertEqual(artifact['sha256'], runner.hashlib.sha256(raw).hexdigest())
+
+    def test_saved_capture_pcm_rejects_corruption_before_any_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            paths = runner.capture_pcm_paths(Path(directory) / 'receipt.json')
+            for mutation in ('missing', 'length', 'boolean', 'hash', 'nonfinite'):
+                with self.subTest(mutation=mutation):
+                    result, payloads, raw = self.pcm_payload()
+                    if mutation == 'missing': payloads.pop()
+                    if mutation == 'length': payloads[1].pop()
+                    if mutation == 'boolean': payloads[1][0] = True
+                    if mutation == 'hash': result['capture']['runs'][1]['capturedPcmSha256'] = 'b' * 64
+                    if mutation == 'nonfinite':
+                        payloads[1] = list(struct.pack('<4f', float('nan'), 0, 0, 0))
+                        result['capture']['runs'][1]['capturedPcmSha256'] = runner.hashlib.sha256(bytes(payloads[1])).hexdigest()
+                    with self.assertRaises(ValueError): runner.save_capture_pcm(result, payloads, paths)
+                    self.assertFalse(any(path.exists() for path in paths))
+
+    def test_saved_capture_pcm_never_overwrites_existing_sidecar(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, payloads, raw = self.pcm_payload()
+            paths = runner.capture_pcm_paths(Path(directory) / 'receipt.json')
+            paths[1].write_bytes(b'original')
+            with self.assertRaises(FileExistsError): runner.save_capture_pcm(result, payloads, paths)
+            self.assertEqual(paths[1].read_bytes(), b'original')
+            self.assertFalse(paths[0].exists())
+
+    def test_save_capture_option_requires_capture_verification(self):
+        argv = ['auto', '--model-root', 'unused', '--audio', 'unused.wav', '--oracle', 'unused.json',
+                '--output', 'unused-output.json', '--save-capture-pcm']
+        stderr = io.StringIO()
+        with patch('sys.argv', argv), contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as error:
+            runner.main()
+        self.assertEqual(error.exception.code, 2)
+        self.assertIn('--save-capture-pcm requires --verify-capture', stderr.getvalue())
+
     def capture_result(self):
         metrics = dict(encoderBackend='webgpu', decoderBackend='wasm', jointBackend='wasm', preprocessorBackend='js')
         run = dict(iteration=0, capturedSamples=32000, sampleRate=16000, chunkCount=125,

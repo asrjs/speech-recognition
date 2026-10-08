@@ -30,6 +30,9 @@ def parse_args() -> argparse.Namespace:
         description="Run NeMo ASR inference and dump hypothesis/token details for debugging decode parity.",
     )
     parser.add_argument("--audio", type=Path, default=default_audio_path())
+    parser.add_argument("--input-pcm-f32le", type=Path, help="Frozen mono float32 input; audio is source provenance only")
+    parser.add_argument("--input-pcm-sample-rate", type=int)
+    parser.add_argument("--input-pcm-sha256")
     parser.add_argument("--model", default="nvidia/parakeet-tdt-0.6b-v2")
     parser.add_argument("--restore-path", type=Path, default=None)
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
@@ -135,7 +138,32 @@ def load_model(args: argparse.Namespace, device: str) -> Any:
     return model
 
 
-def call_transcribe(model: Any, audio_path: Path, args: argparse.Namespace) -> Any:
+def read_frozen_pcm(path: Path, sample_rate: int, expected_sha256: str):
+    import numpy as np
+
+    if (type(sample_rate) is not int or sample_rate < 1 or not isinstance(expected_sha256, str)
+            or re.fullmatch('[0-9a-f]{64}', expected_sha256) is None):
+        raise ValueError("Frozen PCM requires explicit positive sample rate and lowercase SHA-256")
+    raw = path.read_bytes()
+    if not raw or len(raw) % 4 or hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise ValueError("Frozen PCM byte length/digest mismatch")
+    pcm = np.frombuffer(raw, dtype='<f4').copy()
+    # NeMo's tensor dataset pads inputs shorter than one second; do not silently change input.
+    if pcm.size < sample_rate or not np.isfinite(pcm).all():
+        raise ValueError("Frozen PCM must be finite and at least one second (no implicit tensor padding)")
+    return pcm, dict(path=str(path.resolve()), encoding='f32le', dtype='float32', channels=1,
+                    sample_rate=sample_rate, samples=int(pcm.size), sha256=expected_sha256)
+
+
+def verify_frozen_model_input(actual: dict, frozen: dict) -> None:
+    expected = dict(sha256=frozen['sha256'], sample_rate=frozen['sample_rate'], samples=frozen['samples'],
+                    valid_samples=frozen['samples'], right_padding_samples=0, dtype='float32',
+                    encoding='f32le', channels=1, shape=[1, frozen['samples']])
+    if any(actual.get(key) != value for key, value in expected.items()):
+        raise RuntimeError(f"Official preprocessor input differs from frozen PCM: {actual}")
+
+
+def call_transcribe(model: Any, audio_path: Path, args: argparse.Namespace, frozen_pcm=None) -> Any:
     kwargs = {
         "batch_size": args.batch_size,
         "return_hypotheses": True,
@@ -147,12 +175,20 @@ def call_transcribe(model: Any, audio_path: Path, args: argparse.Namespace) -> A
     except Exception:  # noqa: BLE001
         accepted = set(kwargs)
     filtered_kwargs = {key: value for key, value in kwargs.items() if key in accepted}
-    return model.transcribe([str(audio_path)], **filtered_kwargs)
+    # Each official baseline/captured/after call owns a fresh array; model mutation cannot leak.
+    return model.transcribe([frozen_pcm.copy()] if frozen_pcm is not None else [str(audio_path)], **filtered_kwargs)
 
 
 def main() -> None:
     args = parse_args()
-    require_new_outputs([args.output, args.stage_output], protected_inputs=[args.audio, args.restore_path])
+    require_new_outputs([args.output, args.stage_output], protected_inputs=[args.audio, args.restore_path, args.input_pcm_f32le])
+    frozen_pcm = frozen_contract = None
+    if args.input_pcm_f32le:
+        if not args.stage_output or not args.restore_path or args.device != 'cpu' or args.batch_size != 1:
+            raise ValueError("Frozen PCM requires local --restore-path, --stage-output, --device cpu and --batch-size 1")
+        frozen_pcm, frozen_contract = read_frozen_pcm(args.input_pcm_f32le, args.input_pcm_sample_rate, args.input_pcm_sha256)
+    elif args.input_pcm_sample_rate is not None or args.input_pcm_sha256 is not None:
+        raise ValueError("PCM sample rate/digest require --input-pcm-f32le")
     if args.capture_feature_stft and not args.stage_output:
         raise ValueError("--capture-feature-stft requires --stage-output")
     if args.cpu_threads < 1 or args.stack_timeout < 0:
@@ -176,6 +212,11 @@ def main() -> None:
     device = resolve_device(args.device)
     print(f"Restoring {args.restore_path or args.model} on {device} ...", flush=True)
     model = load_model(args, device)
+    if frozen_contract is not None:
+        processor_rate = int(model.preprocessor._sample_rate)
+        tensor_rate = model.cfg.get('sample_rate', getattr(model, 'sample_rate', None))
+        if processor_rate != frozen_contract['sample_rate'] or tensor_rate != processor_rate:
+            raise ValueError(f"Frozen PCM rate differs from official processor/tensor loader: {processor_rate}/{tensor_rate}")
     print(f"Transcribing {audio_path.name} ...", flush=True)
     capture = None
     capture_control = None
@@ -185,16 +226,18 @@ def main() -> None:
         from nemo_tdt_stage_capture import NemoTdtStageCapture
         from omegaconf import OmegaConf
 
-        baseline = call_transcribe(model, audio_path, args)[0]
+        baseline = call_transcribe(model, audio_path, args, frozen_pcm)[0]
         decoding_cfg = OmegaConf.create(OmegaConf.to_container(model.cfg.decoding, resolve=True))
         decoding_cfg.tdt_include_token_duration = True
         model.change_decoding_strategy(decoding_cfg, verbose=False)
         with NemoTdtStageCapture(model, max_calls=args.capture_max_calls,
                                  capture_feature_stft=args.capture_feature_stft) as capture:
-            results = call_transcribe(model, audio_path, args)
+            results = call_transcribe(model, audio_path, args, frozen_pcm)
         capture.validate_complete()
         model_input = capture.model_input_contract(int(model.preprocessor._sample_rate))
-        after = call_transcribe(model, audio_path, args)[0]
+        if frozen_contract is not None:
+            verify_frozen_model_input(model_input, frozen_contract)
+        after = call_transcribe(model, audio_path, args, frozen_pcm)[0]
         captured = results[0]
         capture_control = {
             "baseline_tokens_match": hypothesis_token_ids(baseline) == hypothesis_token_ids(captured),
@@ -232,6 +275,8 @@ def main() -> None:
             "numba_cache": str(numba_cache),
             "timestamps": bool(args.timestamps),
             "capture_feature_stft": args.capture_feature_stft,
+            "input_mode": "frozen-pcm" if frozen_contract is not None else "audio-file",
+            "frozen_pcm": frozen_contract,
         },
         "result": {
             "text": getattr(hypothesis, "text", None),
@@ -257,6 +302,7 @@ def main() -> None:
 
         payload["meta"]["audio_sha256"] = sha256_file(audio_path)
         payload["meta"]["weight_sha256"] = sha256_file(args.restore_path) if args.restore_path else None
+        payload["meta"]["inspect_tool_sha256"] = sha256_file(Path(__file__))
         if args.capture_feature_stft:
             import nemo_tdt_stage_capture
             payload["meta"]["preprocessor_config"] = OmegaConf.to_container(model.cfg.preprocessor, resolve=True)

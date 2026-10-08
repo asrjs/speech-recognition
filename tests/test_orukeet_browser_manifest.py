@@ -20,6 +20,35 @@ PCM = 'ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0'
 
 
 class OrukeetBrowserManifestTests(unittest.TestCase):
+    def test_capture_original_oracle_requires_identical_input_and_output(self):
+        run = dict(capturedSamples=32000, capturedPcmSha256='a' * 64, tokenIds=[1], text='hello')
+        oracle = dict(meta=dict(model='oruk/orukeet', device='cpu', batch_size=1, input_mode='frozen-pcm',
+            weight_sha256='b' * 64, frozen_pcm=dict(sha256='a' * 64, samples=32000, sample_rate=16000,
+            channels=1, encoding='f32le', dtype='float32')), result=dict(token_ids=[1], text='hello'),
+            stage_capture=dict(model_input=dict(boundary='preprocessor_input_signal', sha256='a' * 64,
+            samples=32000, valid_samples=32000, right_padding_samples=0, sample_rate=16000,
+            channels=1, dtype='float32', encoding='f32le', shape=[1,32000]), instrumentation_control={
+            key: True for key in ('baseline_tokens_match', 'baseline_text_match', 'baseline_frames_match',
+                                 'after_tokens_match', 'after_text_match', 'after_durations_match')}))
+        self.assertEqual(adapter.compare_capture_oracle(run, oracle, 'b' * 64)['status'], 'PASS_CAPTURE_ORACLE_OUTPUT')
+        for section, key, value in [('meta', 'weight_sha256', 'c' * 64), ('meta', 'input_mode', 'audio-file'),
+                ('meta', 'model', 'other'), ('result', 'token_ids', []), ('result', 'token_ids', [True]),
+                ('result', 'text', 'wrong')]:
+            with self.subTest(section=section, key=key):
+                changed = copy.deepcopy(oracle)
+                changed[section][key] = value
+                self.assertEqual(adapter.compare_capture_oracle(run, changed, 'b' * 64)['status'], 'FAIL_CAPTURE_ORACLE_OUTPUT')
+        for key in oracle['stage_capture']['model_input']:
+            changed = copy.deepcopy(oracle)
+            changed['stage_capture']['model_input'].pop(key)
+            with self.subTest(missing=key):
+                self.assertEqual(adapter.compare_capture_oracle(run, changed, 'b' * 64)['status'], 'FAIL_CAPTURE_ORACLE_OUTPUT')
+        for key in oracle['stage_capture']['instrumentation_control']:
+            changed = copy.deepcopy(oracle)
+            changed['stage_capture']['instrumentation_control'][key] = False
+            with self.subTest(control=key):
+                self.assertEqual(adapter.compare_capture_oracle(run, changed, 'b' * 64)['status'], 'FAIL_CAPTURE_ORACLE_OUTPUT')
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory(prefix='browser-manifest-')
         self.addCleanup(self.directory.cleanup)

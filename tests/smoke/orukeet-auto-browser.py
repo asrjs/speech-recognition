@@ -9,6 +9,7 @@ import importlib.util
 import json
 import math
 import re
+import struct
 from pathlib import Path
 import sys
 from urllib.parse import urlencode, urlparse
@@ -234,6 +235,37 @@ def check_capture(result, requested, backend):
     return True
 
 
+def capture_pcm_paths(output):
+    return [Path(str(output) + f'.capture-{index}.f32le') for index in range(2)]
+
+
+def save_capture_pcm(result, payloads, paths):
+    """Preserve exact browser f32le bytes for an independent original-engine run."""
+    runs = result.get('capture', {}).get('runs')
+    if not isinstance(payloads, list) or len(payloads) != 2 or not isinstance(runs, list) or len(runs) != 2 or len(paths) != 2:
+        raise ValueError('Capture PCM requires both sessions')
+    require_new_outputs(paths)
+    prepared = []
+    for run, payload, path in zip(runs, payloads, paths):
+        if (not isinstance(payload, list) or any(type(value) is not int or not 0 <= value <= 255 for value in payload)
+                or type(run.get('capturedSamples')) is not int or run['capturedSamples'] <= 0
+                or run.get('sampleRate') != 16000 or len(payload) != run['capturedSamples'] * 4):
+            raise ValueError('Invalid captured f32le payload')
+        raw = bytes(payload)
+        digest = hashlib.sha256(raw).hexdigest()
+        if digest != run.get('capturedPcmSha256') or any(not math.isfinite(value[0]) for value in struct.iter_unpack('<f', raw)):
+            raise ValueError('Captured PCM digest/finite-value mismatch')
+        prepared.append((path, raw, dict(path=str(path.resolve()), bytes=len(raw), sha256=digest,
+            encoding='f32le', sampleRate=16000, channels=1, samples=run['capturedSamples'],
+            validSamples=run['capturedSamples'], rightPaddingSamples=0)))
+    # Validate every payload before creating any sidecar; retain partial output on write failure.
+    for path, raw, artifact in prepared:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open('xb') as handle:
+            handle.write(raw)
+    return [artifact for _, _, artifact in prepared]
+
+
 def capture_code_route(route, receipt):
     """Bind the bytes actually fulfilled, without relying on Chrome inspector caches."""
     response = None
@@ -286,9 +318,12 @@ def main():
     parser.add_argument('--verify-cancellation', action='store_true', help='Abort partial decode between two oracle-matched runs')
     parser.add_argument('--verify-controller', action='store_true', help='Verify chunk-fed windowed offline ASR coverage, final text and reset')
     parser.add_argument('--verify-capture', action='store_true', help='Also verify two real fake-device manual capture -> utterance -> ASR sessions; not original-engine capture parity')
+    parser.add_argument('--save-capture-pcm', action='store_true', help='Save exact captured f32le sidecars for later original-engine comparison; requires --verify-capture')
     parser.add_argument('--require-controller-nonzero-origin', action='store_true',
                         help='Also require timestamped detail in controller windows starting after frame zero')
     args = parser.parse_args()
+    if args.save_capture_pcm and not args.verify_capture:
+        parser.error('--save-capture-pcm requires --verify-capture')
     if args.verify_cancellation and args.repeat < 2:
         parser.error('--verify-cancellation requires at least two successful repeats to prove reuse')
     if args.require_controller_nonzero_origin and not args.verify_controller:
@@ -298,13 +333,15 @@ def main():
         parser.error('--url must be a plain loopback HTTP(S) page URL')
     if args.expected_pcm_sha256 is not None and re.fullmatch('[0-9a-f]{64}', args.expected_pcm_sha256) is None:
         parser.error('--expected-pcm-sha256 must be a lowercase SHA-256')
-    require_new_outputs([args.output], protected_inputs=[args.audio, args.oracle],
+    pcm_outputs = capture_pcm_paths(args.output) if args.save_capture_pcm else []
+    require_new_outputs([args.output, *pcm_outputs], protected_inputs=[args.audio, args.oracle],
                         protected_directories=[args.model_root])
     url = args.url + '?' + urlencode(dict(auto=1, backend=args.backend, precision=args.precision, repeat=args.repeat, audioStrategy=args.audio_strategy, cancel=int(args.verify_cancellation), controller=int(args.verify_controller)))
     receipt = dict(status='FAIL_AUTO_BROWSER', url=url, scope='real-browser-smoke-and-oracle-output-only',
                    page_errors=[], console=[], blocked_requests=[], expected_pcm_sha256=args.expected_pcm_sha256,
                    cancellation_requested=args.verify_cancellation, controller_requested=args.verify_controller,
                    capture_requested=args.verify_capture,
+                   capture_pcm_requested=args.save_capture_pcm,
                    controller_nonzero_required=args.require_controller_nonzero_origin)
     try:
         inputs = helpers.local_model_inputs(args.model_root, args.precision, 'nemo-tdt')
@@ -352,8 +389,9 @@ def main():
                 result = json.loads(page.locator('#result').inner_text())
                 receipt['result'] = result
                 if args.verify_capture and result.get('status') == 'PASS_ORUKEET_SMOKE':
-                    page.evaluate("""({libraryUrl, wasmPaths, backend, precision}) => {
+                    page.evaluate("""({libraryUrl, wasmPaths, backend, precision, savePcm}) => {
                         window.captureResult = null; window.captureError = null;
+                        window.capturePcm = [];
                         void (async () => {
                         const { runCapturedController } = await import('/src/capture-controller.js');
                         const { createSpeechModelLocalEntries, loadSpeechModelFromLocalEntries } = await import(libraryUrl);
@@ -363,7 +401,13 @@ def main():
                             model = await loadSpeechModelFromLocalEntries({ modelId: 'oruk/orukeet',
                                 entries: createSpeechModelLocalEntries([...document.getElementById('model').files]),
                                 backend, encoderQuant: precision, preprocessorBackend: 'js', wasmPaths });
-                            await runCapturedController({ receipt, async transcribe(pcm, sampleRate) {
+                            await runCapturedController({ receipt,
+                              onCapturedPcm: savePcm ? (pcm) => {
+                                const bytes = new ArrayBuffer(pcm.length * 4), view = new DataView(bytes);
+                                pcm.forEach((sample, index) => view.setFloat32(index * 4, sample, true));
+                                window.capturePcm.push(Array.from(new Uint8Array(bytes)));
+                              } : undefined,
+                              async transcribe(pcm, sampleRate) {
                                 const envelope = await model.transcribeMonoPcm(pcm, sampleRate, {
                                     returnTokenIds: true, responseFlavor: 'canonical+native' });
                                 return { text: envelope.canonical.text, tokenIds: envelope.native.debug.tokenIds,
@@ -380,12 +424,16 @@ def main():
                         })().then(value => window.captureResult = value).catch(error => window.captureError = String(error));
                     }""", dict(libraryUrl='/@fs/' + ROOT.as_posix() + '/src/browser.ts',
                                wasmPaths='/@fs/' + ROOT.as_posix() + '/node_modules/onnxruntime-web/dist/',
-                               backend=args.backend, precision=args.precision))
+                               backend=args.backend, precision=args.precision, savePcm=args.save_capture_pcm))
                     page.wait_for_function('window.captureResult !== null || window.captureError !== null', timeout=args.timeout_ms)
                     if page.evaluate('window.captureError'):
                         raise ValueError(page.evaluate('window.captureError'))
                     result['capture'] = page.evaluate('window.captureResult')
                 receipt['capture_valid'] = check_capture(result, args.verify_capture, args.backend)
+                if args.save_capture_pcm:
+                    if not receipt['capture_valid']:
+                        raise ValueError('Capture failed; refusing unverified PCM sidecars')
+                    receipt['capture_pcm_artifacts'] = save_capture_pcm(result, page.evaluate('window.capturePcm'), pcm_outputs)
                 receipt['capture_scope'] = 'fake-device-manual-capture-utterance-asr' if args.verify_capture else 'SKIP_NOT_REQUESTED'
                 receipt['execution_valid'] = check_execution(result, args.backend, args.repeat)
                 receipt['cancellation_valid'] = check_cancellation(result, args.verify_cancellation)

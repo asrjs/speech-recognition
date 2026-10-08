@@ -13,7 +13,7 @@ async function pcmSha256(pcm) {
     (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function runCapturedController({ receipt, transcribe }) {
+export async function runCapturedController({ receipt, transcribe, onCapturedPcm }) {
   receipt.scope = 'fake-device-manual-capture-utterance-asr';
   receipt.runs = [];
   receipt.disposed = false;
@@ -105,6 +105,8 @@ export async function runCapturedController({ receipt, transcribe }) {
         replayText: replay.text, replayTokenIds: replay.tokenIds, replayMetrics: replay.metrics,
         contextState: session.context.state, trackStates: session.handle.stream.getTracks().map((track) => track.readyState),
         workletLoads: session.workletLoads, stopCalls: session.stopCalls });
+      // Optional evidence consumer owns this copy; never quantize or resample it.
+      await onCapturedPcm?.(all.slice(), 16000, iteration);
     }
     await controller.dispose();
     receipt.disposed = true;

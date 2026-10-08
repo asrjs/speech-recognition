@@ -15,6 +15,48 @@ smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
 
 
+def compare_capture_oracle(run, oracle, original_weights_sha256):
+    """One saved capture session vs original NeMo output on that exact PCM.
+
+    This is output-only evidence, not stage numerical parity. File/receipt
+    digests and the parent capture lifecycle must be checked by the caller.
+    """
+    meta, output, capture = (oracle.get(key, {}) for key in ('meta', 'result', 'stage_capture'))
+    actual, frozen = capture.get('model_input', {}), meta.get('frozen_pcm') or {}
+    samples, digest = run.get('capturedSamples'), run.get('capturedPcmSha256')
+    tokens = output.get('token_ids')
+    controls = capture.get('instrumentation_control', {})
+    control_keys = ('baseline_tokens_match', 'baseline_text_match', 'baseline_frames_match',
+                    'after_tokens_match', 'after_text_match', 'after_durations_match')
+    checks = {
+        'original_model': meta.get('model') == 'oruk/orukeet' and meta.get('device') == 'cpu'
+            and meta.get('batch_size') == 1 and meta.get('input_mode') == 'frozen-pcm',
+        'original_weights': isinstance(original_weights_sha256, str)
+            and re.fullmatch('[0-9a-f]{64}', original_weights_sha256) is not None
+            and meta.get('weight_sha256') == original_weights_sha256,
+        'frozen_input': frozen.get('sha256') == digest and frozen.get('samples') == samples
+            and frozen.get('sample_rate') == 16000 and frozen.get('channels') == 1
+            and frozen.get('encoding') == 'f32le' and frozen.get('dtype') == 'float32',
+        'effective_pcm': type(samples) is int and samples >= 16000
+            and isinstance(digest, str) and re.fullmatch('[0-9a-f]{64}', digest) is not None
+            and actual.get('boundary') == 'preprocessor_input_signal'
+            and actual.get('sha256') == digest and actual.get('sample_rate') == 16000
+            and actual.get('channels') == 1 and actual.get('dtype') == 'float32'
+            and actual.get('encoding') == 'f32le' and actual.get('shape') == [1, samples]
+            and actual.get('samples') == samples and actual.get('valid_samples') == samples
+            and actual.get('right_padding_samples') == 0,
+        'instrumentation': all(controls.get(key) is True for key in control_keys),
+        'token_ids': isinstance(tokens, list) and bool(tokens)
+            and all(type(token) is int and token >= 0 for token in tokens)
+            and tokens == run.get('tokenIds'),
+        'text': isinstance(output.get('text'), str) and bool(output['text'].strip())
+            and output['text'] == run.get('text'),
+    }
+    return dict(status='PASS_CAPTURE_ORACLE_OUTPUT' if all(checks.values()) else 'FAIL_CAPTURE_ORACLE_OUTPUT',
+                scope='exact-captured-PCM original-engine token/text; not numerical parity', checks=checks,
+                tokenCount=len(tokens) if isinstance(tokens, list) else None)
+
+
 def code_contract(manifest):
     binding = manifest.get('browserCodeContract', {})
     path = (ROOT / binding.get('path', '')).resolve()
