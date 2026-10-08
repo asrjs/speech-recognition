@@ -5,6 +5,32 @@ automation to the published package. They run from the library checkout;
 application probes use a sibling demo, while owner-level probes use the built
 public API directly.
 
+## Automatic Chrome URL, model load and saved ASR result
+
+The existing runner is `tests/smoke/orukeet-auto-browser.py`, not a new
+inference implementation. See [the demo guide](../../examples/demo/README.md#automatic-chrome-model-test-and-json-capture)
+for server startup, long-input, cancellation and controller commands.
+It opens installed Chrome headlessly at an `auto=1` URL, selects local ONNX
+files and audio, transcribes twice by default, compares tokens/text against
+the supplied original-engine oracle, awaits disposal, closes its own Chrome,
+and exclusively creates a PASS/FAIL JSON receipt. It never downloads weights
+or installs Chrome. This adapter is Orukeet-specific, not a universal model
+runner; the historical generic app flow lives in sibling `webgpu-agent-test`.
+
+From the repository root, with the existing demo running on 8767:
+
+```powershell
+python tests/smoke/orukeet-auto-browser.py --help
+python -m unittest discover -s tests/smoke -p test_orukeet_auto_browser.py
+python tests/smoke/orukeet-auto-browser.py --url https://127.0.0.1:8767/orukeet-smoke.html --model-root models/orukeet/onnx/fp32-packed-2026-10-01 --audio tools/data/fixtures/audio/jfk-short.wav --oracle tools/data/results/orukeet/official-jfk-stage-summary-2026-09-30.json --expected-pcm-sha256 ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0 --verify-controller --output tools/data/results/orukeet/auto-browser-fresh-run.json
+```
+
+Choose a fresh output name every time. If 8767 is already occupied, verify its
+page before reusing it; do not stop another agent's server. A missing server is
+an environment prerequisite, not evidence of a decoder bug. A smoke PASS is
+same-PCM token/text and requested lifecycle evidence, not full numerical parity,
+fp16 promotion, native streaming or broad quality acceptance.
+
 ## Offline capture owner lifecycle
 
 This probe needs an already installed Python Playwright and Chromium executable;
