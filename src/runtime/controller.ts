@@ -111,6 +111,11 @@ function withTimeOffset(result: TranscriptResult, offsetSeconds: number): Transc
       startTime: segment.startTime + offsetSeconds,
       endTime: segment.endTime + offsetSeconds,
     })),
+    sentences: result.sentences?.map((sentence) => ({
+      ...sentence,
+      startTime: sentence.startTime + offsetSeconds,
+      endTime: sentence.endTime + offsetSeconds,
+    })),
     words: result.words?.map((word) => ({
       ...word,
       startTime: word.startTime + offsetSeconds,
@@ -144,6 +149,7 @@ function buildPartialTranscript(
     warnings,
     meta,
     segments: canonical.segments,
+    sentences: canonical.sentences,
     words: canonical.words,
     tokens: canonical.tokens,
   };
