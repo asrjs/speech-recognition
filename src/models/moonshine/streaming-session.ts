@@ -57,6 +57,8 @@ export interface MoonshineStreamingSessionOptions {
   readonly tailContextFrames?: number;
   readonly decoderLayers?: number;
   readonly maxTokens?: number;
+  /** Activation dtype of the graph set: 'float16' for the fp16 graphs. */
+  readonly dtype?: 'float32' | 'float16';
 }
 
 export interface MoonshineStreamingText {
@@ -86,6 +88,30 @@ export function embeddedFrameCount(audioFrames: number): number {
     return 0;
   }
   return Math.ceil(Math.ceil(audioFrames / 2) / 2);
+}
+
+/** IEEE-754 binary32 to binary16, round-to-nearest-even (ORT JS wants half bits). */
+function float32ToFloat16(input: Float32Array): Uint16Array {
+  const out = new Uint16Array(input.length);
+  const view = new DataView(new ArrayBuffer(4));
+  for (let index = 0; index < input.length; index += 1) {
+    view.setFloat32(0, input[index]!, true);
+    const bits = view.getUint32(0, true);
+    const sign = (bits >>> 16) & 0x8000;
+    const exponent = (bits >>> 23) & 0xff;
+    const mantissa = bits & 0x7fffff;
+    if (exponent === 0xff) {
+      out[index] = sign | 0x7c00 | (mantissa ? 0x200 : 0);
+    } else if (exponent > 112) {
+      out[index] = sign | ((exponent - 112) << 10) | (mantissa >> 13);
+    } else if (exponent > 102) {
+      const shift = 126 - exponent;
+      out[index] = sign | ((mantissa | 0x800000) >> (shift + 13));
+    } else {
+      out[index] = sign;
+    }
+  }
+  return out;
 }
 
 const FRAME_SAMPLES = 80;
@@ -306,6 +332,9 @@ export class MoonshineStreamingSession {
 
   private floatTensor(data: readonly number[] | Float32Array, dims: readonly number[]): unknown {
     const array = data instanceof Float32Array ? data : new Float32Array(data);
+    if ((this.options.dtype ?? 'float32') === 'float16') {
+      return new this.options.ort.Tensor('float16', float32ToFloat16(array), dims);
+    }
     return new this.options.ort.Tensor('float32', array, dims);
   }
 

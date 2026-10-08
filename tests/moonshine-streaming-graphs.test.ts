@@ -57,30 +57,57 @@ function tokenizer(): MoonshineTokenizer {
   return MoonshineTokenizer.fromTokenizerJson(json, 0);
 }
 
-function session(emit = 256) {
+function session(emit = 256, dtype: 'float32' | 'float16' = 'float32') {
+  const dir = dtype === 'float16' ? resolve('.cache/moonshine-streaming-onnx-fp16') : GRAPH_DIR;
   const options = {
     ort,
-    chunkedEncoder: { run: async (feeds) => (await sessionFor('encoder_chunked_model.onnx')).run(feeds) },
-    wholeEncoder: { run: async (feeds) => (await sessionFor('encoder_model.onnx')).run(feeds) },
-    prefill: { run: async (feeds) => (await sessionFor('decoder_prefill_model.onnx')).run(feeds) },
-    step: { run: async (feeds) => (await sessionFor('decoder_step_model.onnx')).run(feeds) },
+    chunkedEncoder: { run: async (feeds) => (await sessionFor(dir, 'encoder_chunked_model.onnx')).run(feeds) },
+    wholeEncoder: { run: async (feeds) => (await sessionFor(dir, 'encoder_model.onnx')).run(feeds) },
+    prefill: { run: async (feeds) => (await sessionFor(dir, 'decoder_prefill_model.onnx')).run(feeds) },
+    step: { run: async (feeds) => (await sessionFor(dir, 'decoder_step_model.onnx')).run(feeds) },
     tokenizer: tokenizer(),
     bosTokenId: 1,
     eosTokenId: 2,
     emitFrames: emit,
+    dtype,
   };
   return new MoonshineStreamingSession(options);
 }
 
 const sessionCache = new Map<string, Promise<any>>();
-function sessionFor(name: string) {
-  const key = resolve(GRAPH_DIR, name);
+function sessionFor(dir: string, name: string) {
+  const key = resolve(dir, name);
   let created = sessionCache.get(key);
   if (!created) {
     created = ort.InferenceSession.create(key, { executionProviders: ['cpu'] });
     sessionCache.set(key, created);
   }
   return created;
+}
+
+const fp16Ready = existsSync(resolve('.cache/moonshine-streaming-onnx-fp16', 'encoder_chunked_model.onnx'));
+
+/** Probes once whether the pinned onnxruntime-node build can feed float16 inputs. */
+let fp16Probe: Promise<boolean> | null = null;
+function fp16FeedsSupported(): Promise<boolean> {
+  fp16Probe = fp16Probe ?? (async () => {
+    try {
+      const probeSession = await sessionFor('.cache/moonshine-streaming-onnx-fp16', 'encoder_chunked_model.onnx');
+      await probeSession.run({
+        input_values: new ort.Tensor('float16', new Uint16Array(16 * 80), [1, 16, 80]),
+        embedded_context: new ort.Tensor('float16', new Uint16Array(90 * 320), [1, 90, 320]),
+        context_len: new ort.Tensor('int64', BigInt64Array.from([0n]), []),
+        conv1_tail: new ort.Tensor('float16', new Uint16Array(320 * 4), [1, 320, 4]),
+        conv2_tail: new ort.Tensor('float16', new Uint16Array(640 * 4), [1, 640, 4]),
+        frames1: new ort.Tensor('int64', BigInt64Array.from([0n]), []),
+        frames2: new ort.Tensor('int64', BigInt64Array.from([0n]), []),
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  return fp16Probe;
 }
 
 describe.skipIf(!graphsReady)('MoonshineStreamingSession on real fp32 graphs', () => {
@@ -119,5 +146,27 @@ describe.skipIf(!graphsReady)('MoonshineStreamingSession on real fp32 graphs', (
     const second = await streaming.finalize();
     expect(second.text).toBe(first.text);
     expect(second.tokenIds).toEqual(first.tokenIds);
+  }, 600000);
+
+  it('drives the fp16 graph set to the same oracle transcript when the Node ORT build can feed float16', async () => {
+    if (!fp16Ready) {
+      return;
+    }
+    if (!(await fp16FeedsSupported())) {
+      // Pinned onnxruntime-node 1.25.0-dev cannot feed ANY float16 input
+      // (minimal Relu repro: "not enough space: expected 8, got 0"). The fp16
+      // graphs are already export-level verified through Python ORT
+      // (moonshine-streaming-fp16-chunked-2026-10-09.json, chunked tokens ==
+      // oracle); the browser ORT (onnxruntime-web 1.29) is a different build
+      // and gets exercised by the WebGPU validation slice.
+      console.warn('[skip] pinned onnxruntime-node build cannot feed float16 tensors');
+      return;
+    }
+    const pcm = effectivePcm();
+    const streaming = session(64, 'float16');
+    await streaming.pushAudio(pcm);
+    const result = await streaming.finalize();
+    expect(result.text).toBe(EXPECTED_TEXT);
+    expect(result.encoderFrames).toBe(embeddedFrameCount(pcm.length / 80));
   }, 600000);
 });

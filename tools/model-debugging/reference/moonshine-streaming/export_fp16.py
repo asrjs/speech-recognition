@@ -61,6 +61,7 @@ def main() -> int:
 
     encoder_module = load_module('ms_encoder', HERE / 'export_streaming_encoder.py')
     decoder_module = load_module('ms_decoder', HERE / 'export_streaming_decoder.py')
+    chunked_module = load_module('ms_chunked', HERE / 'export_chunked_encoder.py')
 
     pcm = effective_pcm(args.audio)
     if hashlib.sha256(pcm.astype('<f4').tobytes()).hexdigest() != EXPECTED_PCM_SHA256:
@@ -80,14 +81,35 @@ def main() -> int:
     bos = model.generation_config.decoder_start_token_id
     eos = model.generation_config.eos_token_id
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    batch, frames, past_dim = (torch.export.Dim(name) for name in ('batch', 'frames', 'past'))
+    batch, frames, past_dim, time_dim = (
+        torch.export.Dim(name) for name in ('batch', 'frames', 'past', 'time'))
 
     started = time.time()
     encoder_path = args.output_dir / 'encoder_model.onnx'
     torch.onnx.export(
         encoder_module.EncoderWrapper(model), (input_values, attention_mask), str(encoder_path),
         input_names=['input_values', 'attention_mask'], output_names=['last_hidden_state'],
-        dynamic_shapes=({0: batch, 1: None}, {0: batch, 1: None}),
+        dynamic_shapes=({0: batch, 1: time_dim}, {0: batch, 1: time_dim}),
+        dynamo=True, opset_version=17)
+
+    chunked_path = args.output_dir / 'encoder_chunked_model.onnx'
+    chunked = chunked_module.ChunkedEncoderGraph(model)
+    chunked_state = chunked_module.initial_state()
+    n_chunk = torch.export.Dim('chunk_frames')
+    torch.onnx.export(
+        chunked,
+        (torch.zeros(1, 44, chunked_module.FRAME, dtype=torch.float16),
+         chunked_state['embedded_context'].to(torch.float16), chunked_state['context_len'],
+         chunked_state['conv1_tail'].to(torch.float16), chunked_state['conv2_tail'].to(torch.float16),
+         chunked_state['frames1'], chunked_state['frames2']),
+        str(chunked_path),
+        input_names=['input_values', 'embedded_context', 'context_len',
+                     'conv1_tail', 'conv2_tail', 'frames1', 'frames2'],
+        output_names=['hidden', 'new_embedded_context', 'new_context_len',
+                      'new_conv1_tail', 'new_conv2_tail', 'new_frames1', 'new_frames2'],
+        dynamic_shapes=({0: batch, 1: n_chunk}, {0: batch, 1: None, 2: None}, None,
+                        {0: batch, 1: None, 2: None}, {0: batch, 1: None, 2: None},
+                        None, None),
         dynamo=True, opset_version=17)
 
     with torch.no_grad():
@@ -126,7 +148,7 @@ def main() -> int:
     export_s = round(time.time() - started, 2)
 
     sanitized = {p.name: decoder_module.sanitize_split_nodes(p)
-                 for p in (encoder_path, prefill_path, step_path)}
+                 for p in (encoder_path, chunked_path, prefill_path, step_path)}
 
     # ---- sessions ----
     import onnxruntime as ort
@@ -218,6 +240,70 @@ def main() -> int:
         np.concatenate([s[0, -1] for s in logits_steps[:steps]]),
         np.concatenate([s[0, -1] for s in fp32_logits_steps[:steps]]))
 
+    # ---- fully-fp16 CHUNKED pipeline: chunked encoder + whole-encoder final
+    # flush + fp16 decoder graphs must also reproduce the oracle tokens ----
+    chunked_fp16 = session_for(chunked_path)
+    whole_fp16 = session_for(encoder_path)
+
+    def fp16_call_graph(block, embedded_context, context_len, conv1_tail, conv2_tail, f1, f2):
+        feed = feed_for(chunked_fp16, [block[None].numpy(), embedded_context, context_len,
+                                       conv1_tail, conv2_tail, f1, f2])
+        return dict(zip(['hidden', 'new_embedded_context', 'new_context_len', 'new_conv1_tail',
+                         'new_conv2_tail', 'new_frames1', 'new_frames2'],
+                        chunked_fp16.run(None, feed)))
+
+    def fp16_final_encoder(tail):
+        feed = feed_for(whole_fp16, [tail[None].numpy(), np.ones((1, tail.numel()), dtype=np.int32)])
+        return torch.from_numpy(whole_fp16.run(['last_hidden_state'], feed)[0][0])
+
+    def fp16_chunked_drive(pcm_t, emit):
+        frames = pcm_t.reshape(-1, chunked_module.FRAME)
+        total = frames.shape[0]
+        state = {k: v for k, v in chunked_module.initial_state().items()}
+        outs, a = [], 0
+        while a < total:
+            remaining = total - a
+            if remaining <= emit + chunked_module.LOOKAHEAD:
+                tail_start = max(0, a - chunked_module.TAIL_CONTEXT_FRAMES)
+                tail = pcm_t[tail_start * chunked_module.FRAME:]
+                hidden_tail = fp16_final_encoder(tail)
+                keep_tail = (chunked_module.embedded_count(tail.numel() // chunked_module.FRAME)
+                             - chunked_module.embedded_count(a - tail_start))
+                outs.append(hidden_tail[hidden_tail.shape[0] - keep_tail:])
+                break
+            window = frames[a:a + emit + chunked_module.LOOKAHEAD]
+            result = fp16_call_graph(window, state['embedded_context'], state['context_len'],
+                                     state['conv1_tail'], state['conv2_tail'],
+                                     state['frames1'], state['frames2'])
+            outs.append(result['hidden'][0, :emit // 4])
+            state = dict(embedded_context=result['new_embedded_context'],
+                         context_len=result['new_context_len'],
+                         conv1_tail=result['new_conv1_tail'], conv2_tail=result['new_conv2_tail'],
+                         frames1=result['new_frames1'], frames2=result['new_frames2'])
+            a += emit
+        return np.concatenate(outs, axis=0)
+
+    chunked_ehs = fp16_chunked_drive(torch.from_numpy(pcm), 64).astype(np.float16)[None]
+    prefill_out = dict(zip(out_names, prefill_session.run(
+        out_names, feed_for(prefill_session, [np.array([[bos]], dtype=np.int64), chunked_ehs]))))
+    chunked_logits = [prefill_out['logits'].astype(np.float32)]
+    past = {f'past_k_{i}': prefill_out[f'present_k_{i}'] for i in range(LAYERS)}
+    past.update({f'past_v_{i}': prefill_out[f'present_v_{i}'] for i in range(LAYERS)})
+    chunked_tokens = [bos]
+    for _ in range(127):
+        last = int(np.argmax(chunked_logits[-1][0, -1]))
+        chunked_tokens.append(last)
+        if last == eos:
+            break
+        prefill_out = dict(zip(out_names, step_session.run(out_names, feed_for(step_session, [
+            np.array([[last]], dtype=np.int64), chunked_ehs,
+            *[past[f'past_k_{i}'] for i in range(LAYERS)],
+            *[past[f'past_v_{i}'] for i in range(LAYERS)]]))))
+        chunked_logits.append(prefill_out['logits'].astype(np.float32))
+        past = {f'past_k_{i}': prefill_out[f'present_k_{i}'] for i in range(LAYERS)}
+        past.update({f'past_v_{i}': prefill_out[f'present_v_{i}'] for i in range(LAYERS)})
+    chunked_tokens_equal = chunked_tokens == oracle_tokens
+
     tokens_equal = tokens == oracle_tokens
     text = processor.decode(tokens, skip_special_tokens=True)
     tokens_equal_fp32 = tokens == fp32_tokens
@@ -233,7 +319,8 @@ def main() -> int:
         graphs.append(row)
 
     receipt = dict(
-        status='PASS_STREAMING_FP16' if tokens_equal and tokens_equal_fp32 else 'FAIL_STREAMING_FP16',
+        status='PASS_STREAMING_FP16' if tokens_equal and tokens_equal_fp32 and chunked_tokens_equal
+        else 'FAIL_STREAMING_FP16',
         scope='direct fp16 torch export of the streaming graph set; oracle token gate plus fp32-drift evidence; '
               'not browser WebGPU measurement, not mixed-precision, not library integration',
         snapshot=dict(path=str(args.snapshot),
@@ -245,6 +332,9 @@ def main() -> int:
         parity=dict(encoderHidden=encoder_metrics, perStepLogits=logits_metrics, stepsCompared=steps),
         tokens=dict(fp16=tokens, fp32=fp32_tokens, oracle=oracle_tokens,
                     equalOracle=tokens_equal, equalFp32=tokens_equal_fp32, text=text),
+        chunkedTokens=dict(fp16=chunked_tokens, equalOracle=chunked_tokens_equal,
+                           note='fully-fp16 chunked pipeline: fp16 chunked encoder at emit=64 plus '
+                                'fp16 whole-encoder final flush and fp16 decoder graphs'),
         timings=dict(exportSeconds=export_s),
         limits=[
             'CPU execution provider; fp16 graph IO accepted here as float16 tensors; no WebGPU run, no '
@@ -255,6 +345,7 @@ def main() -> int:
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
     args.receipt.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     print(json.dumps(dict(status=receipt['status'], equalOracle=tokens_equal, equalFp32=tokens_equal_fp32,
+                          chunkedEqualOracle=chunked_tokens_equal,
                           encoderMaxAbs=encoder_metrics['maxAbs'], logitsMaxAbs=logits_metrics['maxAbs'],
                           steps=steps, export_s=export_s)))
     return 0

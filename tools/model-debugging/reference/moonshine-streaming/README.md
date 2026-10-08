@@ -163,7 +163,23 @@ chunked graph's rank-3 `[1, frames, 80]` input, the whole-encoder's required
 attention mask, spread-push stack overflow, and a naive 44-byte WAV parse in
 the test fixture loader.
 
+**fp16 chunked graph done** (`export_fp16.py` extended; receipt
+`tools/data/results/model-candidates/moonshine-streaming-fp16-chunked-2026-10-09.json`,
+superseding the three-graph fp16 receipt): the fp16 set now includes
+`encoder_chunked_model.onnx` with the whole-encoder time dim dynamic (the
+final-flush tails need arbitrary lengths). Gates: the fully-fp16 chunked
+pipeline (chunked encoder at emit=64 + fp16 final flush + fp16 decoder graphs)
+reproduces the official oracle's 28 token ids exactly, alongside the existing
+whole-file and fp32-equality gates.
+
+The session's `dtype: 'float16'` option feeds fp16 graphs (raw half bits via a
+round-to-nearest-even converter). Node-side fp16 execution is blocked by the
+pinned onnxruntime-node 1.25.0-dev build, which cannot feed ANY float16 input
+(minimal Relu repro: "not enough space: expected 8, got 0"); the real-graph
+fp16 test probes once, logs the reason and activates automatically once the
+dependency is fixed. Export-level fp16 evidence comes from Python ORT, and the
+browser validation slice uses the separate onnxruntime-web 1.29 stack.
+
 **Remaining**: canonical `StreamingTranscriber`/PartialTranscript wrapper and
 asset routing in the presets lane, real browser (WebGPU) validation of all
-graph sets, fp16 of the chunked graph. Invalid historical streaming graphs
-stay excluded.
+graph sets. Invalid historical streaming graphs stay excluded.
