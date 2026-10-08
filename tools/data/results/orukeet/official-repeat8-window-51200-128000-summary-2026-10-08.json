@@ -1,0 +1,563 @@
+{
+  "meta": {
+    "python": "3.10.12",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "torch": "2.6.0+cu118",
+    "nemo_toolkit": "3.0.0",
+    "audio": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\repeat8-window-51200-128000-2026-10-08.wav",
+    "model": "oruk/orukeet",
+    "model_revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+    "restore_path": "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\source\\orukeet-v0.1.0.nemo",
+    "device": "cpu",
+    "cuda_available": true,
+    "batch_size": 1,
+    "cpu_threads": 4,
+    "numba_cache": "N:\\github\\asrjs\\speech-recognition\\.cache\\nemo-reference\\numba",
+    "timestamps": true,
+    "capture_feature_stft": false,
+    "audio_sha256": "7b0c5749a38cdb8c11caa6dd58a3e937ce6fd44698b6bafd083facc65c1a42ae",
+    "weight_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
+  },
+  "result": {
+    "text": "This is a LibriVox recording. All LibriVox recordings are in the public domain.",
+    "normalized_text": "This is a LibriVox recording. All LibriVox recordings are in the public domain.",
+    "token_ids": [
+      5831,
+      508,
+      279,
+      439,
+      973,
+      330,
+      7969,
+      6900,
+      1875,
+      711,
+      381,
+      7883,
+      6222,
+      439,
+      973,
+      330,
+      7969,
+      6900,
+      1875,
+      711,
+      2399,
+      1714,
+      334,
+      506,
+      6371,
+      1306,
+      7865,
+      281,
+      7883
+    ],
+    "token_pieces": [
+      "▁This",
+      "▁is",
+      "▁a",
+      "▁L",
+      "ib",
+      "ri",
+      "V",
+      "ox",
+      "▁rec",
+      "ord",
+      "ing",
+      ".",
+      "▁All",
+      "▁L",
+      "ib",
+      "ri",
+      "V",
+      "ox",
+      "▁rec",
+      "ord",
+      "ings",
+      "▁are",
+      "▁in",
+      "▁the",
+      "▁public",
+      "▁dom",
+      "a",
+      "in",
+      "."
+    ],
+    "score": -356.7757263183594,
+    "timestamp": {
+      "timestep": [
+        0,
+        4,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16,
+        18,
+        20,
+        22,
+        24,
+        26,
+        29,
+        31,
+        33,
+        35,
+        37,
+        39,
+        41,
+        43,
+        45,
+        47,
+        48,
+        50,
+        53,
+        54,
+        56,
+        58
+      ],
+      "char": [
+        {
+          "char": [
+            "This"
+          ],
+          "start_offset": 0,
+          "end_offset": 4,
+          "start": 0.0,
+          "end": 0.32
+        },
+        {
+          "char": [
+            "is"
+          ],
+          "start_offset": 4,
+          "end_offset": 6,
+          "start": 0.32,
+          "end": 0.48
+        },
+        {
+          "char": [
+            "a"
+          ],
+          "start_offset": 6,
+          "end_offset": 8,
+          "start": 0.48,
+          "end": 0.64
+        },
+        {
+          "char": [
+            "L"
+          ],
+          "start_offset": 8,
+          "end_offset": 10,
+          "start": 0.64,
+          "end": 0.8
+        },
+        {
+          "char": [
+            "ib"
+          ],
+          "start_offset": 10,
+          "end_offset": 12,
+          "start": 0.8,
+          "end": 0.96
+        },
+        {
+          "char": [
+            "ri"
+          ],
+          "start_offset": 12,
+          "end_offset": 14,
+          "start": 0.96,
+          "end": 1.12
+        },
+        {
+          "char": [
+            "V"
+          ],
+          "start_offset": 14,
+          "end_offset": 16,
+          "start": 1.12,
+          "end": 1.28
+        },
+        {
+          "char": [
+            "ox"
+          ],
+          "start_offset": 16,
+          "end_offset": 18,
+          "start": 1.28,
+          "end": 1.44
+        },
+        {
+          "char": [
+            "rec"
+          ],
+          "start_offset": 18,
+          "end_offset": 20,
+          "start": 1.44,
+          "end": 1.6
+        },
+        {
+          "char": [
+            "ord"
+          ],
+          "start_offset": 20,
+          "end_offset": 22,
+          "start": 1.6,
+          "end": 1.76
+        },
+        {
+          "char": [
+            "ing"
+          ],
+          "start_offset": 22,
+          "end_offset": 24,
+          "start": 1.76,
+          "end": 1.92
+        },
+        {
+          "char": [
+            "."
+          ],
+          "start_offset": 24,
+          "end_offset": 24,
+          "start": 1.92,
+          "end": 1.92
+        },
+        {
+          "char": [
+            "All"
+          ],
+          "start_offset": 26,
+          "end_offset": 29,
+          "start": 2.08,
+          "end": 2.32
+        },
+        {
+          "char": [
+            "L"
+          ],
+          "start_offset": 29,
+          "end_offset": 31,
+          "start": 2.32,
+          "end": 2.48
+        },
+        {
+          "char": [
+            "ib"
+          ],
+          "start_offset": 31,
+          "end_offset": 33,
+          "start": 2.48,
+          "end": 2.64
+        },
+        {
+          "char": [
+            "ri"
+          ],
+          "start_offset": 33,
+          "end_offset": 35,
+          "start": 2.64,
+          "end": 2.8000000000000003
+        },
+        {
+          "char": [
+            "V"
+          ],
+          "start_offset": 35,
+          "end_offset": 37,
+          "start": 2.8000000000000003,
+          "end": 2.96
+        },
+        {
+          "char": [
+            "ox"
+          ],
+          "start_offset": 37,
+          "end_offset": 38,
+          "start": 2.96,
+          "end": 3.04
+        },
+        {
+          "char": [
+            "rec"
+          ],
+          "start_offset": 39,
+          "end_offset": 41,
+          "start": 3.12,
+          "end": 3.2800000000000002
+        },
+        {
+          "char": [
+            "ord"
+          ],
+          "start_offset": 41,
+          "end_offset": 43,
+          "start": 3.2800000000000002,
+          "end": 3.44
+        },
+        {
+          "char": [
+            "ings"
+          ],
+          "start_offset": 43,
+          "end_offset": 45,
+          "start": 3.44,
+          "end": 3.6
+        },
+        {
+          "char": [
+            "are"
+          ],
+          "start_offset": 45,
+          "end_offset": 47,
+          "start": 3.6,
+          "end": 3.7600000000000002
+        },
+        {
+          "char": [
+            "in"
+          ],
+          "start_offset": 47,
+          "end_offset": 48,
+          "start": 3.7600000000000002,
+          "end": 3.84
+        },
+        {
+          "char": [
+            "the"
+          ],
+          "start_offset": 48,
+          "end_offset": 50,
+          "start": 3.84,
+          "end": 4.0
+        },
+        {
+          "char": [
+            "public"
+          ],
+          "start_offset": 50,
+          "end_offset": 53,
+          "start": 4.0,
+          "end": 4.24
+        },
+        {
+          "char": [
+            "dom"
+          ],
+          "start_offset": 53,
+          "end_offset": 54,
+          "start": 4.24,
+          "end": 4.32
+        },
+        {
+          "char": [
+            "a"
+          ],
+          "start_offset": 54,
+          "end_offset": 56,
+          "start": 4.32,
+          "end": 4.48
+        },
+        {
+          "char": [
+            "in"
+          ],
+          "start_offset": 56,
+          "end_offset": 58,
+          "start": 4.48,
+          "end": 4.64
+        },
+        {
+          "char": [
+            "."
+          ],
+          "start_offset": 58,
+          "end_offset": 58,
+          "start": 4.64,
+          "end": 4.64
+        }
+      ],
+      "word": [
+        {
+          "word": "This",
+          "start_offset": 0,
+          "end_offset": 4,
+          "start": 0.0,
+          "end": 0.32
+        },
+        {
+          "word": "is",
+          "start_offset": 4,
+          "end_offset": 6,
+          "start": 0.32,
+          "end": 0.48
+        },
+        {
+          "word": "a",
+          "start_offset": 6,
+          "end_offset": 8,
+          "start": 0.48,
+          "end": 0.64
+        },
+        {
+          "word": "LibriVox",
+          "start_offset": 8,
+          "end_offset": 18,
+          "start": 0.64,
+          "end": 1.44
+        },
+        {
+          "word": "recording.",
+          "start_offset": 18,
+          "end_offset": 24,
+          "start": 1.44,
+          "end": 1.92
+        },
+        {
+          "word": "All",
+          "start_offset": 26,
+          "end_offset": 29,
+          "start": 2.08,
+          "end": 2.32
+        },
+        {
+          "word": "LibriVox",
+          "start_offset": 29,
+          "end_offset": 38,
+          "start": 2.32,
+          "end": 3.04
+        },
+        {
+          "word": "recordings",
+          "start_offset": 39,
+          "end_offset": 45,
+          "start": 3.12,
+          "end": 3.6
+        },
+        {
+          "word": "are",
+          "start_offset": 45,
+          "end_offset": 47,
+          "start": 3.6,
+          "end": 3.7600000000000002
+        },
+        {
+          "word": "in",
+          "start_offset": 47,
+          "end_offset": 48,
+          "start": 3.7600000000000002,
+          "end": 3.84
+        },
+        {
+          "word": "the",
+          "start_offset": 48,
+          "end_offset": 50,
+          "start": 3.84,
+          "end": 4.0
+        },
+        {
+          "word": "public",
+          "start_offset": 50,
+          "end_offset": 53,
+          "start": 4.0,
+          "end": 4.24
+        },
+        {
+          "word": "domain.",
+          "start_offset": 53,
+          "end_offset": 58,
+          "start": 4.24,
+          "end": 4.64
+        }
+      ],
+      "segment": [
+        {
+          "segment": "This is a LibriVox recording.",
+          "start_offset": 0,
+          "end_offset": 24,
+          "start": 0.0,
+          "end": 1.92
+        },
+        {
+          "segment": "All LibriVox recordings are in the public domain.",
+          "start_offset": 26,
+          "end_offset": 58,
+          "start": 2.08,
+          "end": 4.64
+        }
+      ]
+    },
+    "timestep": null,
+    "token_duration": [
+      4,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      3,
+      2,
+      2,
+      2,
+      2,
+      1,
+      2,
+      2,
+      2,
+      2,
+      1,
+      2,
+      3,
+      1,
+      2,
+      2,
+      1
+    ],
+    "context_librivox": "This is a LibriVox recording. All LibriVox recordings are in the public domain.",
+    "context_domain": null
+  },
+  "stage_capture": {
+    "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\official-repeat8-window-51200-128000-stages-2026-10-08.json.gz",
+    "stage_count": 349,
+    "call_counts": {
+      "predictor": 31,
+      "joint": 31,
+      "encoder_projection": 1,
+      "predictor_projection": 31
+    },
+    "instrumentation_control": {
+      "baseline_tokens_match": true,
+      "baseline_text_match": true,
+      "baseline_frames_match": true,
+      "after_tokens_match": true,
+      "after_text_match": true,
+      "after_durations_match": true
+    },
+    "model_input": {
+      "boundary": "preprocessor_input_signal",
+      "sample_rate": 16000,
+      "channels": 1,
+      "dtype": "float32",
+      "encoding": "f32le",
+      "shape": [
+        1,
+        76800
+      ],
+      "samples": 76800,
+      "valid_samples": 76800,
+      "right_padding_samples": 0,
+      "sha256": "31497b359206a88e148279be1e8f7cd9b0373eab66b29014b67347b4d7b28868"
+    },
+    "feature_stft_contract": {},
+    "numerical_export_parity": "UNTESTED",
+    "browser_parity": "UNTESTED"
+  }
+}
