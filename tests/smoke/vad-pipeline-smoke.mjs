@@ -20,24 +20,16 @@
 
 import path from "node:path";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
+import { decodeWavToMonoPcm } from "../../dist/browser-media.js";
 
 // ──────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────
 
 function decodeWav(wavPath) {
-  const buf = fs.readFileSync(wavPath);
-  const channels = buf.readUInt16LE(22);
-  const sampleRate = buf.readUInt32LE(24);
-  const dataLen = Math.floor((buf.length - 44) / (2 * channels));
-  const pcm = new Float32Array(dataLen);
-  for (let i = 0; i < dataLen; i++) {
-    let sum = 0;
-    for (let ch = 0; ch < channels; ch++)
-      sum += buf.readInt16LE(44 + (i * channels + ch) * 2) / 32768;
-    pcm[i] = sum / channels;
-  }
-  return { pcm, sampleRate, duration: dataLen / sampleRate };
+  const { pcm, sampleRate } = decodeWavToMonoPcm(fs.readFileSync(wavPath));
+  return { pcm, sampleRate, duration: pcm.length / sampleRate };
 }
 
 let passed = 0;
@@ -66,6 +58,7 @@ async function main() {
   // ── Decode audio ──
   const { pcm, sampleRate, duration: audioDuration } = decodeWav(wavPath);
   console.log(`Sample rate: ${sampleRate} Hz, Duration: ${audioDuration.toFixed(1)}s, Frames: ${pcm.length}`);
+  console.log(`PCM SHA-256: ${createHash('sha256').update(new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength)).digest('hex')}`);
 
   // ── Load our modules from dist ──
   const {

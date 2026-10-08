@@ -14,6 +14,8 @@
  */
 import path from "node:path";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
+import { decodeWavToMonoPcm } from "../../dist/browser-media.js";
 
 async function main() {
   const wavPath = process.argv.find(a => a.endsWith(".wav") || a.endsWith(".mp3"))
@@ -24,19 +26,11 @@ async function main() {
   const { TenVadBackend } = await import("../../dist/chunking/backends/ten-vad.js");
   const { mergeVadSegments } = await import("../../dist/chunking/vad-segmenter.js");
 
-  // Decode WAV to Float32Array
-  const buffer = fs.readFileSync(wavPath);
-  const channels = buffer.readUInt16LE(22);
-  const sampleRate = buffer.readUInt32LE(24);
-  const frameCount = Math.floor((buffer.length - 44) / (2 * channels));
-  const pcm = new Float32Array(frameCount);
-  for (let i = 0; i < frameCount; i++) {
-    let sum = 0;
-    for (let ch = 0; ch < channels; ch++) sum += buffer.readInt16LE(44 + (i * channels + ch) * 2) / 32768;
-    pcm[i] = sum / channels;
-  }
+  const { pcm, sampleRate } = decodeWavToMonoPcm(fs.readFileSync(wavPath));
+  const frameCount = pcm.length;
   const audioDuration = frameCount / sampleRate;
   console.log(`  Sample rate: ${sampleRate} Hz, Duration: ${audioDuration.toFixed(1)}s, Frames: ${frameCount}`);
+  console.log(`  PCM SHA-256: ${createHash('sha256').update(new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength)).digest('hex')}`);
 
   // ── Test 1: TenVAD backend (energy-based, no model needed) ──
   console.log("\n── Test 1: TenVAD energy-based ──");
