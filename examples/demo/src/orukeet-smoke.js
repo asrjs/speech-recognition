@@ -86,7 +86,7 @@ field('run').addEventListener('click', async () => {
       // Serve the ORT runtime from the repository's installed package through
       // Vite's /@fs/ route, which serves files untransformed. Without this the
       // loader resolves its wasm sidecar from a CDN and fails offline.
-      wasmPaths: '/@fs/N:/github/asrjs/speech-recognition/node_modules/onnxruntime-web/dist/',
+      wasmPaths: import.meta.env.ASRJS_ORT_WASM_BASE,
       signal: null,
     });
     result.loadMs = performance.now() - started;

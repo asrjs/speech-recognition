@@ -70,6 +70,11 @@ Use the server's printed scheme (`http` if local certificates are absent).
 Default runner URL uses 8765, matching `npm run dev`. Python Playwright and
 installed Chrome are prerequisites; the runner never installs them. Use a
 new output filename for each run; existing receipts are protected.
+The Orukeet ORT sidecar prefix and repository allow-list now follow the Vite
+config's location, not a hardcoded checkout path. This is a source-checkout
+development workflow (`/@fs/`), not a deployable production asset URL. The
+separate Canary fixture still requires its approved `N:/models` directory;
+the allow-list has not been widened to an entire drive or workspace parent.
 `--backend wasm`, `--precision fp16`, and `--repeat 1` are explicit options,
 not automatic fallback policies.
 
