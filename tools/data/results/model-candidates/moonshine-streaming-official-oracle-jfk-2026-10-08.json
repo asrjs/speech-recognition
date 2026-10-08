@@ -1,0 +1,103 @@
+{
+  "status": "PASS_OFFICIAL_STREAMING_ORACLE",
+  "scope": "official streaming-Moonshine output oracle, output/stage-identity evidence only; not export parity, not incremental chunked decode, not a speed claim",
+  "snapshot": {
+    "path": ".cache\\moonshine-streaming-tiny",
+    "upstream": "moonshine-ai/moonshine-streaming-tiny",
+    "upstreamRevision": "f8e9dfd8c562",
+    "model_sha256": "0ab3443dabd95a4afb35f0a26155428c03b7c3c450fa6923ffdac4510ba3d040",
+    "config_sha256": "166861753adaf928ae99b3709bfb1da47cb76319be58f37c6f9b7a539ce371f0",
+    "preprocessor_sha256": "859e62520a4e44be5bf9559205898ec7adfd2952bdc4f4e62ea724ac6ba460eb",
+    "tokenizer_sha256": "28bbc54a47dfa33673affa26010f23ac452685b18c76e81451d9b3ea25a54d54",
+    "generationConfig_sha256": "ff376268d9f8176da72ae0a3ca993778eb972a2f13a4ba0a914dbc3d6c832abe",
+    "strictKeyReport": {
+      "archive": "model.safetensors",
+      "tensors": 161,
+      "missing": 0,
+      "unexpected": 0,
+      "shapeMismatch": 0,
+      "sampleMissing": [],
+      "sampleUnexpected": []
+    }
+  },
+  "input": {
+    "audio_wav_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "effectivePcmSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+    "samples": 176000,
+    "sampleRate": 16000,
+    "encoding": "f32le",
+    "attentionMaskSum": 176000,
+    "attentionMaskShape": [
+      1,
+      176000
+    ]
+  },
+  "runtime": {
+    "torch": "2.14.1+cpu",
+    "transformers": "5.18.0",
+    "dtype": "float32"
+  },
+  "generate": {
+    "tokens": [
+      1,
+      1126,
+      577,
+      29892,
+      590,
+      10404,
+      23035,
+      29892,
+      2244,
+      451,
+      825,
+      596,
+      4234,
+      508,
+      437,
+      363,
+      366,
+      29892,
+      2244,
+      825,
+      366,
+      508,
+      437,
+      363,
+      596,
+      4234,
+      29889,
+      2
+    ],
+    "tokenCount": 28,
+    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+    "seconds": 0.43,
+    "modelLoadSeconds": 0.44
+  },
+  "encoder": {
+    "inputShape": [
+      1,
+      176000
+    ],
+    "hiddenDtype": "torch.float32",
+    "hiddenShape": [
+      1,
+      550,
+      320
+    ],
+    "hiddenSha256": "c7584d54f9ed47f6db836271248aa22acac058495122286bbee0cd7e0d080ad5"
+  },
+  "decoder": {
+    "cacheStepwiseEqualsOneShot": true
+  },
+  "reset": {
+    "freshInstanceEquals": true
+  },
+  "contract": {
+    "attentionMaskRequired": true,
+    "note": "Without the processor attention/padding mask this whole-utterance path degenerates into repeated tokens; the offline moonshine model is mask-insensitive on the same fixture/stack. Exports must carry mask semantics."
+  },
+  "limits": [
+    "Chunked streaming decode (partial/final semantics with encoder conv/window state) is not exercised by this receipt; the HF class consumes whole-utterance input.",
+    "Greedy decode only; single fixture (JFK); no quality, language or speed claim."
+  ]
+}
