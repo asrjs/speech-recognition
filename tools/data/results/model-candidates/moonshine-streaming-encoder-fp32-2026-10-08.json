@@ -1,0 +1,74 @@
+{
+  "status": "PASS_STREAMING_ENCODER_FP32",
+  "scope": "own fp32 ONNX export of the official streaming encoder; parity + end-to-end token gate; not chunked-state export, not fp16, not library integration",
+  "gate_rationale": "Cross-process bit-exactness is not a property of this stack: the torch fp32 encoder itself does not reproduce its hidden-state digest across processes (oneDNN thread scheduling), so the gate is explicit fp32 tolerances (allclose atol/rtol 1e-4, cosine >= 0.999999; measured max abs 4.26e-5) plus exact official token/text equality. Digests remain recorded as identity evidence, not as the gate.",
+  "snapshot": {
+    "path": ".cache\\moonshine-streaming-tiny",
+    "model_sha256": "0ab3443dabd95a4afb35f0a26155428c03b7c3c450fa6923ffdac4510ba3d040"
+  },
+  "input": {
+    "effectivePcmSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+    "samples": 176000
+  },
+  "onnx": {
+    "path": ".cache\\moonshine-streaming-onnx\\encoder_model.onnx",
+    "sha256": "df3bcd863a959f5713a04747f17fc0abd76f30804cd0077471119f93cab8b12d",
+    "bytes": 841937,
+    "opset": 17,
+    "exporter": "torch dynamo (onnxscript)"
+  },
+  "parity": {
+    "torchHiddenSha256": "b7f103561114d6bdd9d1c4feda702b6ad84ff60d5b45cc772acc19893c8edb0b",
+    "oracleHiddenSha256": "c7584d54f9ed47f6db836271248aa22acac058495122286bbee0cd7e0d080ad5",
+    "torchInProcessBitStable": true,
+    "torchMatchesOracleSha": false,
+    "maxAbs": 4.260241985321045e-05,
+    "meanAbs": 1.0122251954902079e-06,
+    "cosine": 0.999999960635493,
+    "allclose_1e_4": true,
+    "allclose_1e_5": false,
+    "onnxSha256": "7d21aee9cf7dc9634d0fd90880f42ba5ec8f679eb91182a403c3d6f78efa1e25"
+  },
+  "tokens": {
+    "equal": true,
+    "tokenIds": [
+      1,
+      1126,
+      577,
+      29892,
+      590,
+      10404,
+      23035,
+      29892,
+      2244,
+      451,
+      825,
+      596,
+      4234,
+      508,
+      437,
+      363,
+      366,
+      29892,
+      2244,
+      825,
+      366,
+      508,
+      437,
+      363,
+      596,
+      4234,
+      29889,
+      2
+    ],
+    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+    "oracleTokenCount": 28
+  },
+  "timings": {
+    "exportSeconds": 20.76
+  },
+  "limits": [
+    "Whole-utterance encoder path; the streaming chunked-state graph (conv/window carries) is the next export step and is not covered by this gate.",
+    "Single fixture (JFK); CPU execution provider only; no memory or speed measurement."
+  ]
+}
