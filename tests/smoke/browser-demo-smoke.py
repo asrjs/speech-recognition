@@ -190,14 +190,24 @@ def main():
               consumer / 'vite.config.js', consumer / 'package.json', consumer / 'src/App.jsx']
     model_root = args.local_model_root.resolve() if args.local_model_root else None
     layout = None
-    if model_root:
-        layout = detect_layout(model_root)
-        inputs += local_model_inputs(model_root, args.encoder_precision, layout)
     if args.audio:
         inputs.append(args.audio.resolve())
     require_new_outputs([args.output], protected_inputs=inputs,
                         protected_directories=[consumer, ROOT / 'src', ROOT / 'models'] + ([model_root] if model_root else []))
-    hashes = {str(path.resolve()): digest(path) for path in inputs}
+    try:
+        if model_root:
+            layout = detect_layout(model_root)
+            inputs += local_model_inputs(model_root, args.encoder_precision, layout)
+        hashes = {str(path.resolve()): digest(path) for path in inputs}
+    except (OSError, ValueError) as error:
+        receipt = {'status': 'FAIL_COMPANION_INPUT_PREFLIGHT', 'phase': 'input-preflight',
+                   'browser_started': False, 'preview_started': False, 'error': str(error),
+                   'requested_inputs': [str(path.resolve()) for path in inputs],
+                   'local_model_root': str(model_root) if model_root else None,
+                   'scope': 'Input validation failure only; no build, browser or model execution'}
+        write_new_text(args.output, json.dumps(receipt, indent=2, allow_nan=False) + '\n')
+        print(json.dumps(receipt, allow_nan=False))
+        raise SystemExit(1)
     node = shutil.which('node')
     if not node:
         raise RuntimeError('Existing Node executable required')

@@ -115,15 +115,41 @@ class CompanionSmokeTests(unittest.TestCase):
             self.assertIn('Refusing existing output', result.stderr)
             self.assertEqual(output.read_bytes(), b'original')
 
-    def test_requested_missing_consumer_fails_without_receipt(self):
+    def test_requested_missing_consumer_saves_preflight_failure_without_browser(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             output = root / 'receipt.json'
             result = subprocess.run([sys.executable, str(TOOL), '--consumer-root', str(root / 'missing'),
                 '--output', str(output)], capture_output=True, text=True, timeout=10)
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn('vite.config.js', result.stderr)
-            self.assertFalse(output.exists())
+            receipt = json.loads(output.read_text())
+            self.assertIn('vite.config.js', receipt['error'])
+            self.assertEqual(receipt['status'], 'FAIL_COMPANION_INPUT_PREFLIGHT')
+            self.assertIs(receipt['browser_started'], False)
+
+    def test_requested_missing_model_or_audio_saves_failure_before_browser(self):
+        for missing in ('model', 'audio'):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                consumer = root / 'consumer'
+                (consumer / 'src').mkdir(parents=True)
+                for name in ('vite.config.js', 'package.json', 'src/App.jsx'):
+                    (consumer / name).write_text('fixture-not-executed')
+                model = root / 'model'
+                if missing == 'audio':
+                    model.mkdir()
+                    for name in ('encoder-model.onnx', 'decoder_joint-model.onnx', 'vocab.txt'):
+                        (model / name).write_bytes(b'fixture-not-executed')
+                output = root / 'receipt.json'
+                result = subprocess.run([sys.executable, str(TOOL), '--consumer-root', str(consumer),
+                    '--local-model-root', str(model), '--audio', str(root / 'missing.wav'),
+                    '--expected-text', 'Exact.', '--output', str(output)],
+                    capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 1)
+                receipt = json.loads(output.read_text())
+                self.assertEqual(receipt['status'], 'FAIL_COMPANION_INPUT_PREFLIGHT')
+                self.assertIs(receipt['browser_started'], False)
+                self.assertIn('error', receipt)
 
 
 if __name__ == '__main__':

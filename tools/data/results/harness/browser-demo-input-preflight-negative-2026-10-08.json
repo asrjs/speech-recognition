@@ -1,0 +1,21 @@
+{
+  "status": "FAIL_COMPANION_INPUT_PREFLIGHT",
+  "phase": "input-preflight",
+  "browser_started": false,
+  "preview_started": false,
+  "error": "[Errno 2] No such file or directory: 'N:\\\\github\\\\asrjs\\\\speech-recognition\\\\tools\\\\data\\\\fixtures\\\\audio\\\\INTENTIONAL-MISSING-C56.wav'",
+  "requested_inputs": [
+    "N:\\github\\asrjs\\speech-recognition\\tests\\smoke\\browser-demo-smoke.py",
+    "N:\\github\\asrjs\\speech-recognition\\tests\\smoke\\companion-build.mjs",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\artifact_outputs.py",
+    "N:\\github\\asrjs\\browser-demo\\vite.config.js",
+    "N:\\github\\asrjs\\browser-demo\\package.json",
+    "N:\\github\\asrjs\\browser-demo\\src\\App.jsx",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\INTENTIONAL-MISSING-C56.wav",
+    "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx\\encoder-model.fp16.onnx",
+    "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx\\decoder_joint-model.onnx",
+    "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx\\vocab.txt"
+  ],
+  "local_model_root": "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx",
+  "scope": "Input validation failure only; no build, browser or model execution"
+}
