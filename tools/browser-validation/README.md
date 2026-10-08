@@ -50,6 +50,24 @@ exit nonzero. It does not certify VAD accuracy, original-engine parity, physical
 capture, speech-detect controller integration or memory reclamation/soak.
 See [the failure, fix and final receipt](../../docs/reports/ten-vad-worker-lifecycle-2026-10-08.md).
 
+## Speech-detection controller: file PCM and real TEN diagnostics
+
+After the same build/copy steps above, run:
+
+```powershell
+python tools/browser-validation/capture-lifecycle-smoke.py --scenario ten-vad-controller --browser "C:/Program Files/Google/Chrome/Application/chrome.exe" --audio tests/fixtures/jfk2.en.wav --output tools/data/results/harness/ten-controller-FRESH.json
+```
+
+The public controller receives identified file PCM through its supported capture
+input boundary; the default starter, real model worker, probability buffer and
+utterance publication remain unchanged. It requires two identical speech runs,
+exact model-to-buffer values and segment-to-utterance PCM, silent restart,
+stale-callback rejection, actual worker disposal and rejected post-dispose start.
+TEN remains diagnostics-only; the rough gate determines boundaries. This is
+not microphone capture, ASR, original-engine parity or VAD accuracy acceptance.
+The required fixture must contain speech; an all-silence input correctly FAILs.
+See [receipt, scope and next gate](../../docs/reports/ten-vad-controller-pcm-2026-10-08.md).
+
 ## Offline capture owner lifecycle
 
 This probe needs an already installed Python Playwright and Chromium executable;
