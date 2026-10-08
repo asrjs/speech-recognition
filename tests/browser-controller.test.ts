@@ -54,6 +54,131 @@ function createFakeMonitor(): BrowserRealtimeMonitor {
 }
 
 describe('browser realtime microphone controller', () => {
+  function pendingStart(config: { ringBufferDurationMs?: number } = {}) {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const starter = createFakeStarter();
+    starter.start = vi.fn(async () => {
+      await gate;
+    });
+    let onChunk!: (chunk: any) => void;
+    const stopCapture = vi.fn(async () => undefined);
+    const earlyPcm = Float32Array.of(0.25, 0.5);
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'speech-detect',
+      config,
+      createStarter: () => starter,
+      createMonitor: createFakeMonitor,
+      startCapture: async (options) => {
+        onChunk = options.onChunk;
+        onChunk({ pcm: earlyPcm, sampleRate: 16000, startFrame: 0, endFrame: 2 });
+        return {
+          sampleRate: 16000,
+          deviceSampleRate: null,
+          contextSampleRate: 16000,
+          chunkFrames: 256,
+          chunkDurationMs: 16,
+          stream: {} as MediaStream,
+          stop: stopCapture,
+        };
+      },
+    });
+    return {
+      controller,
+      starter,
+      stopCapture,
+      earlyPcm,
+      release,
+      feed: (pcm: Float32Array, startFrame = 2) =>
+        onChunk({ pcm, sampleRate: 16000, startFrame, endFrame: startFrame + pcm.length }),
+    };
+  }
+
+  it('buffers owned PCM from acquisition through delayed model readiness in order', async () => {
+    const r = pendingStart();
+    const starting = r.controller.start();
+    await vi.waitFor(() => expect(r.starter.start).toHaveBeenCalledOnce());
+    const next = Float32Array.of(0.75);
+    r.feed(next);
+    r.earlyPcm.fill(9);
+    next.fill(9);
+    expect(r.starter.processChunk).not.toHaveBeenCalled();
+    r.release();
+    await starting;
+    expect(r.starter.processChunk).toHaveBeenNthCalledWith(1, Float32Array.of(0.25, 0.5), {
+      startFrame: 0,
+      endFrame: 2,
+    });
+    expect(r.starter.processChunk).toHaveBeenNthCalledWith(2, Float32Array.of(0.75), {
+      startFrame: 2,
+      endFrame: 3,
+    });
+    r.feed(Float32Array.of(1), 3);
+    expect(r.starter.processChunk).toHaveBeenCalledTimes(3);
+    await r.controller.dispose();
+  });
+
+  it('does not replay queued startup PCM if stop invalidates delayed initialization', async () => {
+    const r = pendingStart();
+    const starting = r.controller.start();
+    await vi.waitFor(() => expect(r.starter.start).toHaveBeenCalledOnce());
+    r.feed(Float32Array.of(0.75));
+    const stopping = r.controller.stop({ flush: false });
+    r.release();
+    await Promise.all([starting, stopping]);
+    expect(r.starter.processChunk).not.toHaveBeenCalled();
+    expect(r.stopCapture).toHaveBeenCalledOnce();
+    await r.controller.dispose();
+  });
+
+  it('fails instead of silently dropping PCM when the bounded startup buffer is exceeded', async () => {
+    const r = pendingStart({ ringBufferDurationMs: 16 });
+    const starting = r.controller.start();
+    const failure = expect(starting).rejects.toThrow(/startup PCM.*ring-buffer duration/);
+    await vi.waitFor(() => expect(r.starter.start).toHaveBeenCalledOnce());
+    r.feed(new Float32Array(256));
+    r.release();
+    await failure;
+    expect(r.starter.processChunk).not.toHaveBeenCalled();
+    expect(r.stopCapture).toHaveBeenCalledOnce();
+    expect(r.controller.getState().isMicActive).toBe(false);
+    await r.controller.dispose();
+  });
+
+  it('discards owned startup PCM when disposal overtakes initialization', async () => {
+    const r = pendingStart();
+    const starting = r.controller.start();
+    await vi.waitFor(() => expect(r.starter.start).toHaveBeenCalledOnce());
+    r.feed(Float32Array.of(0.75));
+    const disposing = r.controller.dispose();
+    r.release();
+    await Promise.all([starting, disposing]);
+    expect(r.starter.processChunk).not.toHaveBeenCalled();
+    expect(r.stopCapture).toHaveBeenCalledOnce();
+  });
+
+  it('releases capture without replay when initialization rejects', async () => {
+    const r = pendingStart();
+    const failure = new Error('model initialization failed');
+    const originalStart = r.starter.start;
+    r.starter.start = vi.fn(async () => {
+      await originalStart();
+      throw failure;
+    });
+    const starting = r.controller.start();
+    const rejected = expect(starting).rejects.toBe(failure);
+    await vi.waitFor(() => expect(r.starter.start).toHaveBeenCalledOnce());
+    r.feed(Float32Array.of(0.75));
+    r.release();
+    await rejected;
+    expect(r.starter.processChunk).not.toHaveBeenCalled();
+    expect(r.stopCapture).toHaveBeenCalledOnce();
+    expect(r.controller.getState().isMicActive).toBe(false);
+    await r.controller.dispose();
+  });
+
   it('captures manual microphone audio and emits a flushed utterance', async () => {
     const utterances: Array<{ pcm: Float32Array; sampleRate: number; reason: string }> = [];
     let onChunk: ((chunk: any) => void) | null = null;

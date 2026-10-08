@@ -68,6 +68,24 @@ not microphone capture, ASR, original-engine parity or VAD accuracy acceptance.
 The required fixture must contain speech; an all-silence input correctly FAILs.
 See [receipt, scope and next gate](../../docs/reports/ten-vad-controller-pcm-2026-10-08.md).
 
+## Real capture through delayed TEN model readiness
+
+After the build/copy steps above, use the existing runner with a fresh receipt:
+
+```powershell
+python tools/browser-validation/capture-lifecycle-smoke.py --scenario ten-vad-capture --browser "C:/Program Files/Google/Chrome/Application/chrome.exe" --audio tests/fixtures/jfk2.en.wav --output tools/data/results/harness/ten-capture-FRESH.json
+```
+
+This uses real getUserMedia, AudioWorklet, public capture/controller and packaged
+TEN worker, with a fake WAV device. Only delivery of the real worker INIT message
+is delayed by 250 ms. Two starts require complete captured-frame/model-hop
+coverage, contiguous offsets, exact captured-PCM slices in rough-gate utterances,
+closed contexts/tracks and actual worker disposal. The shared controller retains
+owned startup PCM until the starter is ready; exceeding the configured ring
+capacity fails rather than silently losing audio. TEN is still diagnostics-only.
+This does not establish ASR, physical microphone, WebGPU or original-engine parity.
+See [failure, fix and evidence](../../docs/reports/capture-model-startup-2026-10-08.md).
+
 ## Offline capture owner lifecycle
 
 This probe needs an already installed Python Playwright and Chromium executable;

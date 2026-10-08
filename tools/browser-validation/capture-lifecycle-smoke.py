@@ -21,13 +21,13 @@ def main():
     parser.add_argument("--browser", type=Path, required=True, help="Installed Chromium/Chrome/Edge executable")
     parser.add_argument("--audio", type=Path, required=True, help="Local fake-device WAV fixture")
     parser.add_argument("--output", type=Path, required=True, help="New receipt path; existing files are never overwritten")
-    parser.add_argument("--scenario", choices=["capture-owner", "microphone-controller", "ten-vad", "ten-vad-controller"], default="capture-owner")
+    parser.add_argument("--scenario", choices=["capture-owner", "microphone-controller", "ten-vad", "ten-vad-controller", "ten-vad-capture"], default="capture-owner")
     args = parser.parse_args()
     output = args.output.resolve()
     if output.exists() or not output.parent.is_dir():
         parser.error("output must be a new file with an existing parent")
-    ten_scenario = args.scenario in ("ten-vad", "ten-vad-controller")
-    probe_names = {"ten-vad": "ten-vad-lifecycle-probe.mjs", "ten-vad-controller": "ten-vad-controller-probe.mjs"}
+    ten_scenario = args.scenario in ("ten-vad", "ten-vad-controller", "ten-vad-capture")
+    probe_names = {"ten-vad": "ten-vad-lifecycle-probe.mjs", "ten-vad-controller": "ten-vad-controller-probe.mjs", "ten-vad-capture": "capture-lifecycle-probe.mjs"}
     probe = Path(__file__).with_name(probe_names[args.scenario]) if ten_scenario else PROBE
     assets = [ROOT / f"dist/runtime/assets/ten-vad/ten_vad.{suffix}" for suffix in ("js", "wasm")] if ten_scenario else []
     for path in (args.browser, args.audio, ROOT / "dist/browser.js", probe, PAKO, *assets):
@@ -42,9 +42,9 @@ def main():
     source_paths = [probe, Path(__file__).resolve(), ROOT / "src/runtime/capture.ts", args.audio.resolve(), *assets]
     if ten_scenario:
         source_paths.extend(ROOT / f"src/runtime/{name}.ts" for name in ["ten-vad-browser", "ten-vad-worker", "ten-vad-protocol"])
-    if args.scenario in ("microphone-controller", "ten-vad-controller"):
+    if args.scenario in ("microphone-controller", "ten-vad-controller", "ten-vad-capture"):
         source_paths.extend(ROOT / f"src/runtime/{name}.ts" for name in ["browser-controller", "browser-realtime", "browser-monitor"])
-    if args.scenario == "ten-vad-controller":
+    if args.scenario in ("ten-vad-controller", "ten-vad-capture"):
         source_paths.extend(ROOT / f"src/runtime/{name}.ts" for name in ["streaming-detector", "streaming-config", "vad"])
     initial = {str(path): digest(path) for path in source_paths}
 
@@ -94,7 +94,7 @@ def main():
             page.on("pageerror", lambda error: page_errors.append(str(error)))
             page.goto(ORIGIN, wait_until="networkidle", timeout=15000)
             # Start without awaiting evaluation so Playwright can enforce a wall-clock bound.
-            probe_function = {"capture-owner": "runCaptureLifecycle", "microphone-controller": "runControllerLifecycle", "ten-vad": "runTenVadLifecycle", "ten-vad-controller": "runTenVadController"}[args.scenario]
+            probe_function = {"capture-owner": "runCaptureLifecycle", "microphone-controller": "runControllerLifecycle", "ten-vad": "runTenVadLifecycle", "ten-vad-controller": "runTenVadController", "ten-vad-capture": "runTenVadCapture"}[args.scenario]
             page.evaluate("fn => { window.probeResult = null; window.probeError = null; void import('/probe.mjs').then(m => m[fn]()).then(r => window.probeResult = r).catch(e => window.probeError = String(e.stack || e)); }", probe_function)
             page.wait_for_function("window.probeResult !== null || window.probeError !== null", timeout=30000)
             error = page.evaluate("window.probeError")
@@ -122,7 +122,7 @@ def main():
                "network": "PAGE_HTTP_REQUESTS_LOCALLY_FULFILLED_OR_REJECTED", "blockedRequests": blocked,
                "pageErrors": page_errors, "inputs": initial, "servedModules": served,
                "scenario": args.scenario, "error": failure, "browserClosed": browser_closed,
-               "notValidated": ["physical microphone", "ASR", "WebGPU parity", "cleanup failure injection", "permission-dialog race"] + (["speech-detect controller"] if args.scenario != "ten-vad-controller" else ["microphone capture", "model-driven segment boundaries"]) + (["VAD accuracy", "original-engine parity"] if ten_scenario else ["VAD"]) + (["browser controller"] if args.scenario == "capture-owner" else [])}
+               "notValidated": ["physical microphone", "ASR", "WebGPU parity", "cleanup failure injection", "permission-dialog race"] + (["speech-detect controller"] if args.scenario not in ("ten-vad-controller", "ten-vad-capture") else ["model-driven segment boundaries"] + (["microphone capture"] if args.scenario == "ten-vad-controller" else [])) + (["VAD accuracy", "original-engine parity"] if ten_scenario else ["VAD"]) + (["browser controller"] if args.scenario == "capture-owner" else [])}
     with output.open("x", encoding="utf-8", newline="\n") as target:
         json.dump(receipt, target, indent=2)
         target.write("\n")
