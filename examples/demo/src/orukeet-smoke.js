@@ -175,7 +175,8 @@ field('run').addEventListener('click', async () => {
             pcmSha256: await pcmSha256(request.pcm) };
           receipt.requests.push(entry);
           const envelope = await model.transcribeMonoPcm(request.pcm, request.sampleRate, {
-            signal: request.signal, returnTokenIds: true, responseFlavor: 'canonical+native',
+            signal: request.signal, detail: 'detailed',
+            returnTokenIds: true, responseFlavor: 'canonical+native',
           });
           entry.text = envelope.canonical.text;
           entry.tokenIds = envelope.native.debug?.tokenIds ?? [];

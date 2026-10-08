@@ -42,3 +42,52 @@ it('rejects empty or invalid input before inference', async () => {
   }
   expect(transcribe).not.toHaveBeenCalled();
 });
+
+it('records immutable local and global timing payloads across nonzero window origins', async () => {
+  const originals: any[] = [];
+  const result = await runWindowedController({ pcm: new Float32Array(340), sampleRate: 10,
+    transcribe(request) {
+      const item = { index: 0, text: `call-${originals.length}.`, startTime: 0.25, endTime: 1 };
+      const canonical = { text: item.text, meta: { detailLevel: 'detailed', isFinal: false },
+        words: [item], segments: [item], sentences: [item],
+        tokens: [{ ...item, id: 1 }, { index: 1, text: 'untimed', id: 2 }] };
+      originals.push(canonical);
+      return canonical;
+    },
+  });
+  expect(result.updates.some((update) => update.window.startFrame > 0)).toBe(true);
+  for (const update of result.updates) {
+    const source = result.inferenceResults[update.inferenceIndex];
+    expect(source.startFrame).toBe(update.window.startFrame);
+    expect(source.endFrame).toBe(update.window.endFrame);
+    for (const field of ['words', 'segments', 'sentences', 'tokens']) {
+      const expected = source.localTiming[field].map((item) => ({ ...item,
+        ...(item.startTime === undefined ? {} : { startTime: item.startTime + source.startFrame / 10 }),
+        ...(item.endTime === undefined ? {} : { endTime: item.endTime + source.startFrame / 10 }),
+      }));
+      expect(update.canonicalTiming[field]).toEqual(expected);
+      expect(update.partialTiming[field]).toEqual(expected);
+    }
+  }
+  originals[0].words[0].startTime = 999;
+  expect(result.inferenceResults[0].localTiming.words[0].startTime).toBe(0.25);
+  expect(result.updates[0].canonicalTiming.words[0].startTime).toBe(0.25);
+});
+
+it('does not attribute a finalization-only update to the previous inference', async () => {
+  const result = await runWindowedController({ pcm: new Float32Array(40), sampleRate: 10,
+    transcribe(request) {
+      // A single sentence stays pending; two sentences advance the mature cursor
+      // and leave less than the minimum window for finalize (no new inference).
+      const duration = request.pcm.length / request.sampleRate;
+      const words = ['one', 'two', 'three.', 'tail'].map((text, index) => ({ index, text,
+        startTime: 0, endTime: index < 3 ? duration - 0.5 : duration }));
+      return { text: 'one two three. tail', meta: { detailLevel: 'detailed', isFinal: false },
+        words, segments: [], sentences: [], tokens: [] };
+    },
+  });
+  expect(result.updates.length).toBe(result.inferenceResults.length + 1);
+  expect(result.updates.at(-1).inferenceIndex).toBeNull();
+  expect(result.updates.at(-1).canonicalTiming).toEqual({ words: null, segments: null,
+    sentences: null, tokens: null });
+});

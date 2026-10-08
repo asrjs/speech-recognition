@@ -149,3 +149,20 @@ text and clean reset/disposal. Other presets retain their previous defaults;
 custom TDT exports may supply `config.encoderOutputLayout: 'bdt' | 'btd'`
 according to their actual graph contract. See
 [the fix report](../../docs/reports/orukeet-padded-layout-fix-2026-10-08.md).
+
+Controller inference now explicitly requests `detail: 'detailed'`. Receipts
+include cloned window-local timing in `controller.inferenceResults[].localTiming`
+and global canonical/partial timing in `controller.updates[]`. `inferenceIndex`
+links each inference-backed update to its input/result; `null` identifies a
+finalization-only update with no new inference. Missing timing fields remain
+`null`, not invented timestamps.
+
+The 149.7-second repeat fixture exercises nonzero window starts, but its first
+timestamp-capture run remains **FAIL**: two full-clip transcriptions match all
+722 original-engine token IDs/text, while the controller's accumulated windowed
+text differs from the full-clip oracle. Smaller windows change model context;
+do not normalize away the mismatch, call this a streaming PASS, or infer a
+decoder/merger defect from the full-clip comparison alone. Preserve this failed
+control and compare identical window PCM against the original engine to localize
+recognition versus merging. Timing capture itself is not a per-window
+original-engine timestamp or numerical parity check.
