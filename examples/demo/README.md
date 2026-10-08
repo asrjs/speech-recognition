@@ -178,3 +178,24 @@ decoder/merger defect from the full-clip comparison alone. Preserve this failed
 control and compare identical window PCM against the original engine to localize
 recognition versus merging. Timing capture itself is not a per-window
 original-engine timestamp or numerical parity check.
+
+### Replay recorded controller behavior without model inference
+
+From the repository root, the opt-in Vitest test reuses the actual controller
+example and shared WAV decoder, checks receipt/audio/full PCM/window PCM
+identities, then supplies captured local transcript payloads. It compares every
+window, update, final text and reset; no GPU, weights or network are used.
+
+```powershell
+$env:ASRJS_CONTROLLER_REPLAY_RECEIPT = 'tools/data/results/orukeet/auto-browser-controller-timing-gated-long-2026-10-08-01.json'
+$env:ASRJS_CONTROLLER_REPLAY_SHA256 = 'c058931a0fc94cba0c675b030c5813732778c2844e4ea7be31fd57eb11bfd916'
+$env:ASRJS_CONTROLLER_REPLAY_AUDIO = 'tools/data/results/orukeet/librivox-repeat8-16k-pcm16-2026-10-02.wav'
+node node_modules/vitest/vitest.mjs run tests/windowed-controller-replay.test.ts
+```
+
+Unset these task-specific variables afterward, or use a dedicated shell. With
+none supplied the test SKIPs; supplying any requests replay and incomplete,
+missing or corrupt inputs FAIL. Use a verified receipt digest, not an implicit
+latest-file lookup. PASS means recorded behavior is reproducible, including its
+known wrong/full-file-different text. It does not accept model quality, numerical
+parity or the original long controller smoke; those gates remain separate.
