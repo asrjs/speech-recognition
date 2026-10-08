@@ -1,0 +1,286 @@
+{
+  "status": "FILTERBANK_FEATURE_DIAGNOSTIC_MEASURED",
+  "scope": "Matrix-only effect on identical production power; no feature waiver or ASR acceptance",
+  "sample_id": "pure-silence-1s",
+  "identity": {
+    "python": "3.10.12",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "torch": "2.6.0+cu118",
+    "nemo_toolkit": "3.0.0",
+    "audio": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\pure-silence-1s-16k-pcm16.wav",
+    "model": "oruk/orukeet",
+    "model_revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+    "restore_path": "N:\\github\\asrjs\\speech-recognition\\models\\orukeet\\source\\orukeet-v0.1.0.nemo",
+    "device": "cpu",
+    "cuda_available": true,
+    "batch_size": 1,
+    "cpu_threads": 4,
+    "numba_cache": "N:\\github\\asrjs\\speech-recognition\\.cache\\nemo-reference\\numba",
+    "timestamps": false,
+    "capture_feature_stft": true,
+    "audio_sha256": "57d8dd674034eb744bd8dfa71344ee02e1a8e709563cef10108eda63663675c8",
+    "weight_sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56",
+    "preprocessor_config": {
+      "_target_": "nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor",
+      "sample_rate": 16000,
+      "normalize": "per_feature",
+      "window_size": 0.025,
+      "window_stride": 0.01,
+      "window": "hann",
+      "features": 128,
+      "n_fft": 512,
+      "log": true,
+      "frame_splicing": 1,
+      "dither": 1e-05,
+      "pad_to": 0,
+      "pad_value": 0.0
+    },
+    "torch_build_config": "PyTorch built with:\n  - C++ Version: 201703\n  - MSVC 192930157\n  - Intel(R) oneAPI Math Kernel Library Version 2025.0.1-Product Build 20241031 for Intel(R) 64 architecture applications\n  - Intel(R) MKL-DNN v3.5.3 (Git Hash 66f0cb9eb66affd2da3bf5f8d897376f04aae6af)\n  - OpenMP 2019\n  - LAPACK is enabled (usually provided by MKL)\n  - CPU capability usage: AVX512\n  - CUDA Runtime 11.8\n  - NVCC architecture flags: -gencode;arch=compute_37,code=sm_37;-gencode;arch=compute_50,code=sm_50;-gencode;arch=compute_60,code=sm_60;-gencode;arch=compute_61,code=sm_61;-gencode;arch=compute_70,code=sm_70;-gencode;arch=compute_75,code=sm_75;-gencode;arch=compute_80,code=sm_80;-gencode;arch=compute_86,code=sm_86;-gencode;arch=compute_90,code=sm_90;-gencode;arch=compute_37,code=compute_37\n  - CuDNN 90.1\n  - Magma 2.5.4\n  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, COMMIT_SHA=2236df1770800ffea5697b11b0bb0d910b2e59e1, CUDA_VERSION=11.8, CUDNN_VERSION=9.1.0, CXX_COMPILER=C:/actions-runner/_work/pytorch/pytorch/pytorch/.ci/pytorch/windows/tmp_bin/sccache-cl.exe, CXX_FLAGS=/DWIN32 /D_WINDOWS /GR /EHsc /Zc:__cplusplus /bigobj /FS /utf-8 -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DLIBKINETO_NOROCTRACER -DLIBKINETO_NOXPUPTI=ON -DUSE_FBGEMM -DUSE_XNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE /wd4624 /wd4068 /wd4067 /wd4267 /wd4661 /wd4717 /wd4244 /wd4804 /wd4273, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, TORCH_VERSION=2.6.0, USE_CUDA=ON, USE_CUDNN=ON, USE_CUSPARSELT=OFF, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_GLOO=ON, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=OFF, USE_OPENMP=ON, USE_ROCM=OFF, USE_ROCM_KERNEL_ASSERT=OFF, \n",
+    "capture_tool_sha256": "eeb65576548caf18569fc958d9c3bc6d382e44a238f5f77501ca232a459c9c28",
+    "inspect_tool_sha256": "838f9b6dc3fe9b34bdf62350e7134ccebc7e9cc269b15aed0d4ac0acf5730a6b"
+  },
+  "sources_sha256": {
+    "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\orukeet\\official-pure-silence-filterbank-stages-2026-10-03.json.gz": "d8116556e370b92494052d3c80bdf3c9e3b56e59a9c6e95da7d8d033082599cb",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\hf-parakeet-port\\probe_filterbank_features.py": "76aead819b2ca93fd04354004876afe2afef6600503b9b02475ee6767bbb6687",
+    "N:\\github\\asrjs\\speech-recognition\\dist\\audio\\js-mel.js": "067a902ceea1f260ce811f2bc04a7112e1a3a0e0cc17b99c6da9aa15a1a6a32f",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\hf-parakeet-port\\normalization-reduction.mjs": "080df42ecbed65b1f5f876490059660b963f13bbad3281b240d75537a6e973be",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\hf-parakeet-port\\probe_captured_filterbank.py": "ca5c67f51c45331bdfd85e3c9fca8eaaeb16447cff534e45fd625a5932819e10",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\hf-parakeet-port\\replay_packed_fft.py": "d83416ea96d98de898aca9c423615dd8e11e71c90d2c563cd8446865209a2800",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\tensor_parity.py": "2aff64ee87ab58817ccca4e76c9944064c78779beb0d6a7bee1fa2a18d6bcec4",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\artifact_outputs.py": "499b497c2c3701e325c37cc9980ff179eda64c4ea80a0820951be9f6baa695eb"
+  },
+  "power_scope": "Captured JS production power after packed FFT, not original NeMo power",
+  "cascade_scope": "Diagnostic width-8 f32 cascade on each unchanged raw boundary; not production normalization",
+  "production_instrumentation_control": true,
+  "node_probe_sha256": "8f12afcfa1ac0d184bc2f8a2d8607a73c38700951267a661bc4e1a902b3b5860",
+  "inputs_unchanged": true,
+  "power_sha256": "144fbedf9119d1ee5c668428a336d3b530db0c74e6d69fc29cfa15828962e152",
+  "feature_vs_official": {
+    "baseline": {
+      "shape": [
+        1,
+        128,
+        101
+      ],
+      "dtype": "float32",
+      "count": 12928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": false,
+      "max_abs_error": 0.1600533276796341,
+      "mean_abs_error": 0.15846864126696444,
+      "max_relative_error": 1.0,
+      "cosine_similarity": null,
+      "mismatch_count": 12800,
+      "first_divergent_index": 0
+    },
+    "actual_buffer": {
+      "shape": [
+        1,
+        128,
+        101
+      ],
+      "dtype": "float32",
+      "count": 12928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": false,
+      "max_abs_error": 0.1600533276796341,
+      "mean_abs_error": 0.15846864126696444,
+      "max_relative_error": 1.0,
+      "cosine_similarity": null,
+      "mismatch_count": 12800,
+      "first_divergent_index": 0
+    },
+    "triangle_rounding": {
+      "shape": [
+        1,
+        128,
+        101
+      ],
+      "dtype": "float32",
+      "count": 12928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": false,
+      "max_abs_error": 0.1600533276796341,
+      "mean_abs_error": 0.15846864126696444,
+      "max_relative_error": 1.0,
+      "cosine_similarity": null,
+      "mismatch_count": 12800,
+      "first_divergent_index": 0
+    }
+  },
+  "cascade_feature_vs_official": {
+    "baseline": {
+      "shape": [
+        1,
+        128,
+        101
+      ],
+      "dtype": "float32",
+      "count": 12928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": true,
+      "max_abs_error": 0.0,
+      "mean_abs_error": 0.0,
+      "max_relative_error": 0.0,
+      "cosine_similarity": 0.9999999999999998,
+      "mismatch_count": 0,
+      "first_divergent_index": null
+    },
+    "actual_buffer": {
+      "shape": [
+        1,
+        128,
+        101
+      ],
+      "dtype": "float32",
+      "count": 12928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": true,
+      "max_abs_error": 0.0,
+      "mean_abs_error": 0.0,
+      "max_relative_error": 0.0,
+      "cosine_similarity": 0.9999999999999998,
+      "mismatch_count": 0,
+      "first_divergent_index": null
+    },
+    "triangle_rounding": {
+      "shape": [
+        1,
+        128,
+        101
+      ],
+      "dtype": "float32",
+      "count": 12928,
+      "atol": 1e-05,
+      "rtol": 0.0001,
+      "allclose": true,
+      "max_abs_error": 0.0,
+      "mean_abs_error": 0.0,
+      "max_relative_error": 0.0,
+      "cosine_similarity": 0.9999999999999998,
+      "mismatch_count": 0,
+      "first_divergent_index": null
+    }
+  },
+  "matrix_effect": {
+    "actual_buffer": {
+      "raw": {
+        "shape": [
+          1,
+          128,
+          101
+        ],
+        "dtype": "float32",
+        "count": 12928,
+        "atol": 0,
+        "rtol": 0,
+        "allclose": true,
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "max_relative_error": 0.0,
+        "cosine_similarity": 1.0,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      },
+      "features": {
+        "shape": [
+          1,
+          128,
+          101
+        ],
+        "dtype": "float32",
+        "count": 12928,
+        "atol": 0,
+        "rtol": 0,
+        "allclose": true,
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "max_relative_error": 0.0,
+        "cosine_similarity": 1.0,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      }
+    },
+    "triangle_rounding": {
+      "raw": {
+        "shape": [
+          1,
+          128,
+          101
+        ],
+        "dtype": "float32",
+        "count": 12928,
+        "atol": 0,
+        "rtol": 0,
+        "allclose": true,
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "max_relative_error": 0.0,
+        "cosine_similarity": 1.0,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      },
+      "features": {
+        "shape": [
+          1,
+          128,
+          101
+        ],
+        "dtype": "float32",
+        "count": 12928,
+        "atol": 0,
+        "rtol": 0,
+        "allclose": true,
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "max_relative_error": 0.0,
+        "cosine_similarity": 1.0,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      }
+    }
+  },
+  "candidate_vs_actual": {
+    "raw": {
+      "shape": [
+        1,
+        128,
+        101
+      ],
+      "dtype": "float32",
+      "count": 12928,
+      "atol": 0,
+      "rtol": 0,
+      "allclose": true,
+      "max_abs_error": 0.0,
+      "mean_abs_error": 0.0,
+      "max_relative_error": 0.0,
+      "cosine_similarity": 1.0,
+      "mismatch_count": 0,
+      "first_divergent_index": null
+    },
+    "features": {
+      "shape": [
+        1,
+        128,
+        101
+      ],
+      "dtype": "float32",
+      "count": 12928,
+      "atol": 0,
+      "rtol": 0,
+      "allclose": true,
+      "max_abs_error": 0.0,
+      "mean_abs_error": 0.0,
+      "max_relative_error": 0.0,
+      "cosine_similarity": 1.0,
+      "mismatch_count": 0,
+      "first_divergent_index": null
+    }
+  }
+}

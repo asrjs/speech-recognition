@@ -9,12 +9,14 @@ import probe_filterbank_features as probe
 
 class FeatureMatrixTests(unittest.TestCase):
     def results(self):
-        return {name: {'raw': [0.0, 1.0], 'features': [0.0, 1.0], 'power_sha256': '1' * 64}
+        return {name: {'raw': [0.0, 1.0], 'features': [0.0, 1.0],
+                       'cascade_features': [1.0, 1.0], 'power_sha256': '1' * 64}
                 for name in ('baseline', 'actual_buffer', 'triangle_rounding')}
 
     def test_equal_matrices_keep_separate_feature_failure(self):
         result = probe.evaluate(self.results(), np.ones((1, 1, 2), dtype=np.float32))
         self.assertFalse(result['feature_vs_official']['triangle_rounding']['allclose'])
+        self.assertTrue(result['cascade_feature_vs_official']['triangle_rounding']['allclose'])
         self.assertTrue(result['candidate_vs_actual']['features']['allclose'])
 
     def test_changed_missing_or_invalid_power_identity_rejected(self):
@@ -35,6 +37,12 @@ class FeatureMatrixTests(unittest.TestCase):
                 results['baseline']['features'][0] = float('nan')
             with self.assertRaises(ValueError):
                 probe.evaluate(results, np.ones((1, 1, 2), dtype=np.float32))
+
+    def test_nonfinite_cascade_cannot_hide_behind_production_features(self):
+        results = self.results()
+        results['actual_buffer']['cascade_features'][0] = float('nan')
+        with self.assertRaises(ValueError):
+            probe.evaluate(results, np.ones((1, 1, 2), dtype=np.float32))
 
     def test_node_synthetic_same_matrix_exact_and_same_power(self):
         source = "import {createMelFilterbank} from './dist/audio/js-mel.js'; console.log(JSON.stringify(Array.from(createMelFilterbank(128))));"

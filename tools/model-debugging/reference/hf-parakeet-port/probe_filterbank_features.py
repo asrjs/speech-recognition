@@ -15,6 +15,7 @@ NODE_PROBE = r'''
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {JSMelProcessor as ProductionProcessor} from './dist/audio/js-mel.js';
+import {normalizeCandidate} from './tools/model-debugging/reference/hf-parakeet-port/normalization-reduction.mjs';
 let input=''; for await(const chunk of process.stdin) input+=chunk;
 const data=JSON.parse(input), original=readFileSync('./dist/audio/js-mel.js','utf8');
 function replaceOnce(source,before,after) {
@@ -40,6 +41,7 @@ for(const mode of ['baseline','actual_buffer','triangle_rounding']) {
   if(raw.nFrames!==data.frames || raw.validLength!==data.valid) throw new Error('Frame identity differs');
   results[mode]={raw:Array.from(raw.rawMel),
     features:Array.from(processor.normalizeFeatures(raw.rawMel,raw.nFrames,raw.validLength)),
+    cascade_features:Array.from(normalizeCandidate(raw.rawMel,raw.nFrames,raw.validLength,8).features),
     power_sha256:createHash('sha256').update(Buffer.from(module.capturedPower.buffer)).digest('hex')};
 }
 if(new Set(Object.values(results).map(value=>value.power_sha256)).size!==1)
@@ -66,9 +68,11 @@ def evaluate(results, reference):
         raise ValueError('Power identity missing or differs')
     tensors = {name: {key: read_stage({'stages': {key: {
         'dtype': 'float32', 'shape': list(reference.shape), 'data': results[name][key]}}}, key, 'float32')
-        for key in ('raw', 'features')} for name in names}
+        for key in ('raw', 'features', 'cascade_features')} for name in names}
     return {'power_sha256': hashes[0], 'feature_vs_official': {
         name: compare_tensors(reference, tensors[name]['features'], atol=1e-5, rtol=1e-4)
+        for name in names}, 'cascade_feature_vs_official': {
+        name: compare_tensors(reference, tensors[name]['cascade_features'], atol=1e-5, rtol=1e-4)
         for name in names}, 'matrix_effect': {
         name: {key: compare_tensors(tensors['baseline'][key], tensors[name][key], atol=0, rtol=0)
                for key in ('raw', 'features')} for name in names[1:]},
@@ -84,6 +88,7 @@ def main():
         parser.add_argument('--' + name, required=True)
     args = parser.parse_args()
     sources = [args.capture, Path(__file__), ROOT / 'dist/audio/js-mel.js',
+               Path(__file__).with_name('normalization-reduction.mjs'),
                Path(__file__).with_name('probe_captured_filterbank.py'),
                Path(__file__).with_name('replay_packed_fft.py'),
                ROOT / 'tools/tensor_parity.py', ROOT / 'tools/artifact_outputs.py']
@@ -106,6 +111,7 @@ def main():
         'scope': 'Matrix-only effect on identical production power; no feature waiver or ASR acceptance',
         'sample_id': args.sample_id, 'identity': meta, 'sources_sha256': hashes,
         'power_scope': 'Captured JS production power after packed FFT, not original NeMo power',
+        'cascade_scope': 'Diagnostic width-8 f32 cascade on each unchanged raw boundary; not production normalization',
         'production_instrumentation_control': True,
         'node_probe_sha256': hashlib.sha256(NODE_PROBE.encode()).hexdigest(),
         'inputs_unchanged': True, **metrics}
