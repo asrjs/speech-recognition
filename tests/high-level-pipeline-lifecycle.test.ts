@@ -131,6 +131,63 @@ describe.each([
   { name: 'root / owned runtime', load: loadSpeechModel, ownsRuntime: true },
   { name: 'builtins / owned runtime', load: loadBuiltInSpeechModel, ownsRuntime: true },
 ])('Load failure preservation: $name', ({ load, ownsRuntime }) => {
+  for (const callback of ['hooks', 'direct'] as const) {
+    for (const failsCleanup of [false, true]) {
+      it.each([new Error('notification failed'), undefined, null])(
+        `retains cancellation and ${callback} failure after cleanup (failure=${failsCleanup}): %s`,
+        async (notification) => {
+          const primary = new AssetLoadAbortedError('session-create');
+          const cleanup = new AggregateError([new Error('release failed')], 'cleanup');
+          const order: string[] = [];
+          const runtime = createProbeRuntime({
+            onCreateModel: async () => undefined,
+            onCreateSession: async () => {
+              throw primary;
+            },
+            onDisposeModel: async () => {
+              await Promise.resolve();
+              order.push('cleanup');
+              if (failsCleanup) throw cleanup;
+            },
+          });
+          const factory = ownsRuntime
+            ? vi.spyOn(sessionRuntime, 'createSpeechRuntime').mockReturnValueOnce(runtime)
+            : undefined;
+          const onProgress = (event: { readonly phase: string }) => {
+            if (event.phase === 'cancelled') {
+              order.push('cancelled');
+              throw notification;
+            }
+          };
+          try {
+            const result = await load({
+              ...REQUEST,
+              runtime: ownsRuntime ? undefined : runtime,
+              ...(callback === 'hooks' ? { hooks: { onProgress } } : { onProgress }),
+            }).then(
+              () => {
+                throw new Error('Expected rejection');
+              },
+              (error: unknown) => error,
+            );
+            expect(result).toBeInstanceOf(AggregateError);
+            const errors = (result as AggregateError).errors;
+            expect(errors).toHaveLength(failsCleanup ? 3 : 2);
+            expect(errors[0]).toBeInstanceOf(PipelineAbortedError);
+            expect(errors[0]).toMatchObject({ stageId: 'load', cause: primary });
+            expect((result as AggregateError).cause).toBe(errors[0]);
+            if (failsCleanup) expect(errors[1]).toBe(cleanup);
+            expect(errors.at(-1)).toBe(notification);
+            expect(order).toEqual(['cleanup', 'cancelled']);
+          } finally {
+            factory?.mockRestore();
+            await runtime.dispose().catch(() => undefined);
+          }
+        },
+      );
+    }
+  }
+
   it.each([
     ['session error', new Error('session creation failed')],
     ['nested session error', new AggregateError([new Error('init failed')], 'session init')],

@@ -384,7 +384,8 @@ export function createBuiltInSpeechRuntime(
  * session-backed handle with a single `transcribe()` entrypoint.
  * Failed acquisition awaits cleanup. If both fail, the rejection is an
  * `AggregateError` with the primary failure first and as its cause; nested
- * cleanup failures are retained. Asset cancellation maps to `PipelineAbortedError`.
+ * cleanup and cancellation-notification failures are retained in that order.
+ * Asset cancellation maps to `PipelineAbortedError`.
  */
 export async function loadBuiltInSpeechModel<
   TLoadOptions = unknown,
@@ -607,13 +608,22 @@ export async function loadBuiltInSpeechModel<
     } catch (cleanupError) {
       cleanupFailure = { error: cleanupError };
     }
+    let notificationFailure: { readonly error: unknown } | undefined;
     if (cancelled) {
-      emitLoadCancelled(options, options.modelId ?? model?.info.modelId, model?.backend.id);
+      try {
+        emitLoadCancelled(options, options.modelId ?? model?.info.modelId, model?.backend.id);
+      } catch (notificationError) {
+        notificationFailure = { error: notificationError };
+      }
     }
-    if (cleanupFailure) {
+    if (cleanupFailure || notificationFailure) {
       throw new AggregateError(
-        [primary, cleanupFailure.error],
-        'Speech model loading and cleanup both failed.',
+        [
+          primary,
+          ...(cleanupFailure ? [cleanupFailure.error] : []),
+          ...(notificationFailure ? [notificationFailure.error] : []),
+        ],
+        'Speech model loading and subsequent cleanup or cancellation notification failed.',
         { cause: primary },
       );
     }
