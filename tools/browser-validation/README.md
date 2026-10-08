@@ -31,6 +31,25 @@ an environment prerequisite, not evidence of a decoder bug. A smoke PASS is
 same-PCM token/text and requested lifecycle evidence, not full numerical parity,
 fp16 promotion, native streaming or broad quality acceptance.
 
+## Packaged TEN-VAD model worker lifecycle
+
+The existing offline runner also accepts `--scenario ten-vad`. Build/copy the
+runtime assets first, then choose a fresh output filename:
+
+```powershell
+node node_modules/typescript/bin/tsc -p tsconfig.json
+node scripts/copy-runtime-assets.mjs
+python tools/browser-validation/capture-lifecycle-smoke.py --scenario ten-vad --browser "C:/Program Files/Google/Chrome/Application/chrome.exe" --audio tests/fixtures/jfk2.en.wav --output tools/data/results/harness/ten-vad-FRESH.json
+```
+
+This calls the public adapter with its real packaged WASM worker, compares exact
+probability/flag bytes across reset/uneven chunks and reset-versus-fresh silence,
+and requires two actual disposal acknowledgements and worker termination.
+No downloads or sibling server. In-browser probe failures save FAIL JSON and
+exit nonzero. It does not certify VAD accuracy, original-engine parity, physical
+capture, speech-detect controller integration or memory reclamation/soak.
+See [the failure, fix and final receipt](../../docs/reports/ten-vad-worker-lifecycle-2026-10-08.md).
+
 ## Offline capture owner lifecycle
 
 This probe needs an already installed Python Playwright and Chromium executable;

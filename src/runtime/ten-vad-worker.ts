@@ -179,7 +179,11 @@ function handleReset(id: number) {
   }
 
   if (moduleInstance && vadHandle) {
-    moduleInstance._ten_vad_destroy(vadHandle);
+    // C ABI destroy takes ten_vad_handle_t*, unlike process's handle value.
+    const destroyStatus = moduleInstance._ten_vad_destroy(handlePtr);
+    if (destroyStatus !== 0) {
+      throw new Error(`ten_vad_destroy failed with code ${destroyStatus}`);
+    }
     const createStatus = moduleInstance._ten_vad_create(handlePtr, hopSize, threshold);
     if (createStatus === 0) {
       vadHandle = moduleInstance.HEAP32[handlePtr >> 2];
@@ -224,7 +228,10 @@ function handleUpdateConfig(id: number, config: TenVadUpdateConfigPayload) {
 
 function handleDispose(id: number) {
   if (moduleInstance && vadHandle) {
-    moduleInstance._ten_vad_destroy(vadHandle);
+    const destroyStatus = moduleInstance._ten_vad_destroy(handlePtr);
+    if (destroyStatus !== 0) {
+      throw new Error(`ten_vad_destroy failed with code ${destroyStatus}`);
+    }
     moduleInstance._free(audioPtr);
     moduleInstance._free(probPtr);
     moduleInstance._free(flagPtr);
