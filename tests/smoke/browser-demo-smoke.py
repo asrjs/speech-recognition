@@ -1,8 +1,9 @@
 """No-download companion UI smoke with owned preview/browser cleanup.
 
 Requires existing Node, Python Playwright and Chrome; never installs dependencies.
-Default is UI/build only. Explicit stock-v3 opt-in attempts app warm-up;
-neither mode establishes numerical parity or cancellation/disposal acceptance.
+Default is UI/build only. Local-model opt-in runs app warm-up; --audio plus
+--expected-text also checks the actual file-upload workflow. These checks do
+not establish numerical parity or cancellation/model-disposal acceptance.
 """
 import argparse
 import hashlib
@@ -160,10 +161,17 @@ def wait_preview(process, lines, timeout=120):
     raise TimeoutError('Preview readiness timeout')
 
 
+def check_file_text(actual, expected):
+    if not isinstance(expected, str) or not expected.strip() or actual != expected:
+        raise ValueError('File transcript differs from exact expected text')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--consumer-root', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--audio', type=Path, help='Opt in to the actual app file-upload workflow')
+    parser.add_argument('--expected-text', help='Exact complete visible transcript for --audio; no normalization')
     parser.add_argument('--local-model-root', type=Path,
                         help='Opt in to real local hybrid loading and app warm-up')
     parser.add_argument('--encoder-precision', choices=['fp32', 'fp16', 'int8'], default='fp32')
@@ -172,6 +180,10 @@ def main():
     parser.add_argument('--runtime-backend', choices=['webgpu-hybrid', 'wasm'], default='webgpu-hybrid',
                         help='Runtime backend to select before loading a local model')
     args = parser.parse_args()
+    if args.audio and (not args.local_model_root or not args.expected_text or not args.expected_text.strip()):
+        parser.error('--audio requires --local-model-root and nonempty --expected-text')
+    if args.expected_text is not None and not args.audio:
+        parser.error('--expected-text requires --audio')
     consumer = args.consumer_root.resolve()
     preview = Path(__file__).with_name('companion-build.mjs')
     inputs = [Path(__file__), preview, ROOT / 'tools/artifact_outputs.py',
@@ -181,6 +193,8 @@ def main():
     if model_root:
         layout = detect_layout(model_root)
         inputs += local_model_inputs(model_root, args.encoder_precision, layout)
+    if args.audio:
+        inputs.append(args.audio.resolve())
     require_new_outputs([args.output], protected_inputs=inputs,
                         protected_directories=[consumer, ROOT / 'src', ROOT / 'models'] + ([model_root] if model_root else []))
     hashes = {str(path.resolve()): digest(path) for path in inputs}
@@ -198,6 +212,8 @@ def main():
         receipt['model_id'] = args.model_id
         receipt['runtime_backend'] = args.runtime_backend
         receipt['encoder_precision'] = args.encoder_precision
+        if args.audio:
+            receipt['scope'] += '; additionally actual file-upload workflow with exact visible text'
     process = None
     ready = None
     try:
@@ -296,6 +312,26 @@ def main():
                     expect(page.get_by_role('button', name='Model Loaded', exact=False)).to_be_visible(timeout=180000)
                     expect(page.get_by_text('Model ready', exact=True)).to_be_visible()
                     receipt['local_load']['status'] = 'PASS_APP_LOCAL_LOAD_AND_WARMUP'
+                    if args.audio:
+                        audio = args.audio.resolve()
+                        receipt['file_transcription'] = {'status': 'STARTED', 'audio': str(audio),
+                            'audio_sha256': hashes[str(audio)], 'expected_text': args.expected_text,
+                            'scope': 'Actual app upload and exact visible text; not effective-PCM, token or numerical parity'}
+                        upload = page.locator('input[type=file][accept="audio/*"]')
+                        expect(upload).to_be_enabled()
+                        upload.set_input_files(str(audio))
+                        history = page.get_by_role('heading', name='Transcription History', exact=True)
+                        expect(history).to_be_visible(timeout=180000)
+                        transcript = page.locator('label').filter(has_text=re.compile('^Transcription$')).locator('../..').locator('p')
+                        actual = transcript.inner_text()
+                        receipt['file_transcription']['actual_text'] = actual
+                        check_file_text(actual, args.expected_text)
+                        history_panel = history.locator('../..')
+                        expect(history_panel.get_by_text(audio.name, exact=False)).to_be_visible()
+                        expect(history_panel.get_by_text(args.expected_text, exact=True)).to_be_visible()
+                        expect(page.get_by_text('Model ready', exact=True)).to_be_visible()
+                        expect(upload).to_be_enabled()
+                        receipt['file_transcription']['status'] = 'PASS_APP_FILE_TRANSCRIPTION'
                 served, verified_sidecars = [], []
                 for response in responses:
                     sidecar = sidecars.get(response.url)
@@ -328,10 +364,13 @@ def main():
                 receipt.update(browser_version=browser.version, served_resources=sorted(set(served)),
                     blocked_requests=blocked, page_errors=errors,
                     checks=['boot', 'v3-hybrid-selection', 'wasm-selection', 'local-source-panel', 'missing-local-folder-error'])
+                if args.audio:
+                    receipt['checks'] += ['file-upload', 'exact-visible-transcript', 'history-entry', 'file-workflow-ready']
                 context.close()
             finally:
                 browser.close()
-        receipt['status'] = 'PASS_COMPANION_LOCAL_WARMUP' if model_root else 'PASS_COMPANION_UI_SMOKE'
+        receipt['status'] = ('PASS_COMPANION_FILE_TRANSCRIPTION' if args.audio else
+                             'PASS_COMPANION_LOCAL_WARMUP' if model_root else 'PASS_COMPANION_UI_SMOKE')
     except Exception as error:
         receipt['error'] = str(error)
     finally:
@@ -359,7 +398,7 @@ def main():
             receipt['error'] = 'Diagnostic or consumer source changed during execution'
     write_new_text(args.output, json.dumps(receipt, indent=2, allow_nan=False) + '\n')
     print(json.dumps(receipt, allow_nan=False))
-    if receipt['status'] not in ('PASS_COMPANION_UI_SMOKE', 'PASS_COMPANION_LOCAL_WARMUP'):
+    if receipt['status'] not in ('PASS_COMPANION_UI_SMOKE', 'PASS_COMPANION_LOCAL_WARMUP', 'PASS_COMPANION_FILE_TRANSCRIPTION'):
         raise SystemExit(1)
 
 

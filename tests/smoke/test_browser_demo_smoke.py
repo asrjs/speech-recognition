@@ -15,6 +15,28 @@ spec.loader.exec_module(module)
 
 
 class CompanionSmokeTests(unittest.TestCase):
+    def test_file_text_rejects_partial_normalized_empty_or_wrong_results(self):
+        module.check_file_text('Exact sentence.', 'Exact sentence.')
+        for actual, expected in [('exact sentence.', 'Exact sentence.'),
+                                 ('Exact sentence', 'Exact sentence.'),
+                                 ('Exact', 'Exact sentence.'), ('', ''), (' ', ' '), (None, 'Exact')]:
+            with self.subTest(actual=actual, expected=expected), self.assertRaises(ValueError):
+                module.check_file_text(actual, expected)
+
+    def test_file_workflow_requires_model_and_exact_nonempty_text(self):
+        cases = [['--audio', 'missing.wav'],
+                 ['--audio', 'missing.wav', '--local-model-root', 'missing', '--expected-text', ' '],
+                 ['--expected-text', 'unexpected']]
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'receipt.json'
+            for extra in cases:
+                with self.subTest(extra=extra):
+                    result = subprocess.run([sys.executable, str(TOOL), '--consumer-root', directory,
+                        '--output', str(output)] + extra, capture_output=True, text=True, timeout=10)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn('requires', result.stderr)
+                    self.assertFalse(output.exists())
+
     def test_preview_closure_requires_explicit_refusal_not_unknown_failure(self):
         for code, closed in [('ECONNREFUSED', True), ('REACHABLE', False),
                              ('TimeoutError', False), ('WSAEWOULDBLOCK', False)]:
