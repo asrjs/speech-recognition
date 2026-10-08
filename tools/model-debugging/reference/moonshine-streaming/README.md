@@ -51,8 +51,25 @@ torch fp32 encoder is bit-stable in-process but not across processes (oneDNN
 thread scheduling), so digests are identity evidence while the gate is explicit
 fp32 tolerances plus exact token/text equality.
 
-**Next**: the streaming decoder graph (self+cross attention with cache, the
-prefill/step contract — reuse the offline cross-KV pattern from
-`tools/moonshine-onnx-export/`), then fp16 after this fp32 gate, then the
-chunked-state encoder refinement. Invalid historical streaming graphs stay out
-of production asset selection; keep their failure records.
+**Decoder done — `PASS_STREAMING_DECODER_FP32`**
+(`export_streaming_decoder.py`, receipt
+`tools/data/results/model-candidates/moonshine-streaming-decoder-fp32-2026-10-08.json`):
+two fp32 graphs at `.cache/moonshine-streaming-onnx/` with external data —
+`decoder_prefill_model.onnx` (seed: one BOS token, empty past) and
+`decoder_step_model.onnx` (one token + per-layer past K/V `[batch, 8, past>=1,
+40]`, positions from the cache length). Cross-attention K/V are computed inside
+each graph from `encoder_hidden_states`, so the pair is stateless across
+utterances. Both graphs take exactly one token: that keeps `q_len > 1` a Python
+bool so SDPA's `is_causal` never becomes symbolic, which is precisely greedy
+causal semantics — no library code is patched. The emitter's legacy
+`Split num_outputs` attributes (rejected by ORT under opset >= 13) are dropped
+by a recorded sanitizer, and the parity gates re-verify the pipeline after it.
+Gates: per-step final-position logits vs a torch reference greedy loop max abs
+2.67e-5 over 27 steps (atol 1e-4), and the fully-ONNX pipeline (exported
+encoder -> seed/step graphs) reproduces the official oracle's 28 token ids and
+canonical text exactly.
+
+**Next**: fp16 conversion of the three graphs with the same oracle re-pass
+(user precision preference), then the chunked-state encoder refinement for
+true incremental streaming, then library integration. Invalid historical
+streaming graphs stay excluded.

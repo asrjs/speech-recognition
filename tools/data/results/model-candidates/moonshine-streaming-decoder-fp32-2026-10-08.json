@@ -1,0 +1,147 @@
+{
+  "status": "PASS_STREAMING_DECODER_FP32",
+  "scope": "own fp32 ONNX decoder prefill+step graphs from the official checkpoint; logits/token parity; not fp16, not chunked-state encoder, not library integration",
+  "snapshot": {
+    "path": ".cache\\moonshine-streaming-tiny",
+    "model_sha256": "0ab3443dabd95a4afb35f0a26155428c03b7c3c450fa6923ffdac4510ba3d040"
+  },
+  "encoder": {
+    "path": ".cache\\moonshine-streaming-onnx\\encoder_model.onnx",
+    "sha256": "df3bcd863a959f5713a04747f17fc0abd76f30804cd0077471119f93cab8b12d"
+  },
+  "graphs": [
+    {
+      "name": "decoder_prefill_model.onnx",
+      "sha256": "4d8ec59834ba5e777aed82fa9bcdddfd1f6cf3a3ea1e201e92b08cc6357a8684",
+      "bytes": 138461619,
+      "externalDataSha256": "706c2c14ea7b82968111bfa7d8aa2d80a4f37c2bb35eaa1e0bfc7cd9873207e8",
+      "externalDataBytes": 138412032
+    },
+    {
+      "name": "decoder_step_model.onnx",
+      "sha256": "8a8bd7177aa2232090f74192266f649e8ac68bfdbfa5c5c37dd2f97ce30dcfeb",
+      "bytes": 138466052,
+      "externalDataSha256": "706c2c14ea7b82968111bfa7d8aa2d80a4f37c2bb35eaa1e0bfc7cd9873207e8",
+      "externalDataBytes": 138412032
+    }
+  ],
+  "sanitizer": {
+    "removedNumOutputsAttrs": {
+      "prefill": 6,
+      "step": 6
+    },
+    "note": "legacy Split num_outputs attributes dropped for opset>=13; pipeline parity gates re-verified afterwards"
+  },
+  "contract": {
+    "prefill": "seed: input_ids int64 [batch, 1] (BOS) + encoder_hidden_states f32 [batch, frames, 320] -> logits f32 [batch, 1, 32768] + 6x present_k/present_v [batch, 8, 1, 40]",
+    "step": "input_ids int64 [batch, 1] + encoder_hidden_states + 6x past_k/past_v [batch, 8, past>=1, 40] (positions from cache length) -> logits [batch, 1, 32768] + grown histories",
+    "staticTokenDim": "both graphs take exactly one token so `q_len > 1` stays a Python bool and SDPA is_causal never becomes symbolic; single-token attention over the full past is greedy causal semantics",
+    "cross": "cross-attention key/value are computed inside each graph from encoder_hidden_states; the graph set is stateless across utterances"
+  },
+  "parity": {
+    "stepsCompared": 27,
+    "perStepLogitsMaxAbs": 2.6702880859375e-05,
+    "tolerance": "atol 1e-4 on final-position logits per step"
+  },
+  "tokens": {
+    "onnx": [
+      1,
+      1126,
+      577,
+      29892,
+      590,
+      10404,
+      23035,
+      29892,
+      2244,
+      451,
+      825,
+      596,
+      4234,
+      508,
+      437,
+      363,
+      366,
+      29892,
+      2244,
+      825,
+      366,
+      508,
+      437,
+      363,
+      596,
+      4234,
+      29889,
+      2
+    ],
+    "reference": [
+      1,
+      1126,
+      577,
+      29892,
+      590,
+      10404,
+      23035,
+      29892,
+      2244,
+      451,
+      825,
+      596,
+      4234,
+      508,
+      437,
+      363,
+      366,
+      29892,
+      2244,
+      825,
+      366,
+      508,
+      437,
+      363,
+      596,
+      4234,
+      29889,
+      2
+    ],
+    "oracle": [
+      1,
+      1126,
+      577,
+      29892,
+      590,
+      10404,
+      23035,
+      29892,
+      2244,
+      451,
+      825,
+      596,
+      4234,
+      508,
+      437,
+      363,
+      366,
+      29892,
+      2244,
+      825,
+      366,
+      508,
+      437,
+      363,
+      596,
+      4234,
+      29889,
+      2
+    ],
+    "equal": true,
+    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+  },
+  "timings": {
+    "exportSeconds": 28.51
+  },
+  "limits": [
+    "Prefill graph covers the empty-past case; the step graph requires past >= 1 by design.",
+    "Single fixture (JFK), CPU execution provider, greedy decoding only; no memory or speed claim."
+  ]
+}
