@@ -173,12 +173,24 @@ reproduces the official oracle's 28 token ids exactly, alongside the existing
 whole-file and fp32-equality gates.
 
 The session's `dtype: 'float16'` option feeds fp16 graphs (raw half bits via a
-round-to-nearest-even converter). Node-side fp16 execution is blocked by the
-pinned onnxruntime-node 1.25.0-dev build, which cannot feed ANY float16 input
-(minimal Relu repro: "not enough space: expected 8, got 0"); the real-graph
-fp16 test probes once, logs the reason and activates automatically once the
-dependency is fixed. Export-level fp16 evidence comes from Python ORT, and the
-browser validation slice uses the separate onnxruntime-web 1.29 stack.
+round-to-nearest-even converter). Node-side fp16 execution is blocked by an
+ORT-vs-Node-26 interaction, root-caused 2026-10-09 with a minimal Relu graph:
+
+- feeding ANY float16 input fails with "not enough space: expected 8, got 0"
+  on onnxruntime-node 1.25.0-dev, 1.30.0 and 1.31.0-dev alike;
+- the JS wrapper converts Uint16Array to Node's Float16Array whenever the
+  global exists (Node >= 24) and the native NAPI bridge cannot read
+  Float16Array; hiding the global makes the same feed work (raw half bits
+  decode correctly), proving the diagnosis;
+- fp32-input/fp16-output works fine on the same builds, so only the input
+  transfer is affected.
+
+onnxruntime-node was therefore bumped from the 1.25.0-dev pin to stable
+1.30.0 (peer + dev; onnxruntime-web stays 1.29.0) with the ORT-dependent
+suites re-run for regressions. The real-graph fp16 test probes once, logs the
+reason and activates automatically when a build that reads Float16Array
+lands. Export-level fp16 evidence comes from Python ORT, and the browser
+validation slice uses onnxruntime-web, whose tensor path is separate.
 
 **Remaining**: canonical `StreamingTranscriber`/PartialTranscript wrapper and
 asset routing in the presets lane, real browser (WebGPU) validation of all

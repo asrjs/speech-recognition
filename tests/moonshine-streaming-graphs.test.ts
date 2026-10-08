@@ -153,12 +153,13 @@ describe.skipIf(!graphsReady)('MoonshineStreamingSession on real fp32 graphs', (
       return;
     }
     if (!(await fp16FeedsSupported())) {
-      // Pinned onnxruntime-node 1.25.0-dev cannot feed ANY float16 input
-      // (minimal Relu repro: "not enough space: expected 8, got 0"). The fp16
-      // graphs are already export-level verified through Python ORT
-      // (moonshine-streaming-fp16-chunked-2026-10-09.json, chunked tokens ==
-      // oracle); the browser ORT (onnxruntime-web 1.29) is a different build
-      // and gets exercised by the WebGPU validation slice.
+      // onnxruntime-node cannot read Node's Float16Array in the native bridge
+      // (minimal Relu repro: "not enough space: expected 8, got 0" on 1.25-dev,
+      // 1.30.0 and 1.31-dev; works when Float16Array is hidden, i.e. the JS
+      // wrapper's Uint16 fallback). The fp16 graphs are export-level verified
+      // through Python ORT (moonshine-streaming-fp16-chunked-2026-10-09.json,
+      // chunked tokens == oracle); onnxruntime-web uses a separate tensor path
+      // and is exercised by the browser validation slice.
       console.warn('[skip] pinned onnxruntime-node build cannot feed float16 tensors');
       return;
     }
