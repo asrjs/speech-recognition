@@ -68,6 +68,19 @@ already been executed. Read later receipts before repeating that experiment:
   native Torch rFFT reproduced captured spectrum bytes exactly and the diagnostic
   JS feature control passed. This is not a deployable pure-JS feature extractor,
   production acceptance, or proof that a different FFT backend should match.
+- `radix4-cardinal-packed-features-jfk-2026-10-02.json`: the existing
+  `hf-parakeet-port/radix4-f32.mjs` already tested radix-4 with exact cardinal
+  roots on frozen official JFK frames. Separate/single-round product modes
+  failed at 214/174 feature coordinates (`atol=1e-5, rtol=1e-4`); the
+  official-spectrum downstream control passed. Do not recreate this helper,
+  rename its export, or describe radix-4 as an untested hypothesis.
+- [C60 product-rounding investigation](../../../../docs/reports/orukeet-fft-product-rounding-2026-10-08.md)
+  rejects the isolated packed butterfly/recombination rounding experiments;
+  do not combine their knobs to chase fewer mismatches.
+- [C74 final-bin cast](../../../../docs/reports/orukeet-final-bin-cast-2026-10-08.md)
+  leaves the production JFK result unchanged at 313 failed coordinates.
+  Neither this cast nor a previously rejected FFT factorization is a new
+  discriminating experiment. Inspect the actual receipt before scheduling work.
 
 These are historical, configuration-bound receipts inspected on continuation;
 they do not certify the current compiled build. Do not rerun unchanged FFT,
