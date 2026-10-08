@@ -4,7 +4,8 @@
 
 The historical sibling `webgpu-agent-test` URL automation is preserved. The
 tracked candidate-capable path is `tests/smoke/orukeet-auto-browser.py` and
-`examples/demo/orukeet-smoke.html`. It opens installed Chrome headlessly with
+`examples/demo/public/orukeet-smoke.html` (served by Vite at
+`/orukeet-smoke.html`). It opens installed Chrome headlessly with
 `?auto=1`, selects local model/audio files, runs actual library inference twice,
 awaits model disposal and browser closure, and exclusively creates a fresh JSON
 receipt. The manifest runner wraps this path with artifact/oracle/code checks;
@@ -92,3 +93,31 @@ production feature numerical parity remains unresolved; fp16, native streaming,
 held-out quality, model-backed VAD and GPU memory/soak gates are not certified.
 Protected Nemotron/Qwen changes and the earlier VAD smoke work are not included
 in this repair.
+
+## Fresh user-requested recheck
+
+Rechecked the existing system without replacing its inference runner. The HTML
+entrypoint is tracked in `examples/demo/public/`, not the demo root; Vite serves
+it at `/orukeet-smoke.html`. HTTP 200 confirmed the existing 8767 server before
+reuse. A second startup rejected the occupied port; no server was stopped.
+
+- `auto-browser-user-recheck-2026-10-08-01.json`: PASS, two exact 38-token
+  file-oracle outputs, official effective PCM, actual WebGPU encoder/WASM
+  decoder/joint, controller/timing checks, two real fake-device manual capture
+  sessions, exact capture-to-utterance delivery and same-PCM ASR replay.
+  Each capture has 32,000 samples and 11 tokens; exact float32 sidecars were
+  exclusively saved. Model/controller/capture resources and Chrome closed.
+  Receipt SHA-256: `8ab8124b4f7f94374fd7b8b6a84894988e014c4792950a4728bb3480842be7f9`.
+- `manifest-chrome-user-recheck-2026-10-08-01.json`: PASS, all 19 adapter
+  checks including the unchanged C83 delivered-code contract. The subprocess
+  explicitly enabled Node TLS verification; no global setting changed.
+- 25 automatic-runner, 7 adapter and 24 manifest unit tests: PASS.
+
+Receipts are under `tools/data/results/orukeet/`. The direct run inherited a
+Node TLS-verification-disabled warning; the manifest subprocess did not.
+Console favicon/HMR connection warnings remain recorded; no page errors or
+blocked inference requests occurred. No new model download or dependency
+installation. This recheck does not run a new original-engine oracle on the
+saved capture PCM and does not certify speech-detect ASR, native streaming,
+stage numerical parity or memory/soak. Use the C91 recipe for an independent
+capture oracle, and retain these narrower acceptance boundaries.
