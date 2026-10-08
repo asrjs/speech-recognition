@@ -51,6 +51,16 @@ async function pcmSha256(pcm) {
   return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function readTranscript(envelope) {
+  const canonical = envelope?.canonical;
+  const tokenIds = envelope?.native?.debug?.tokenIds;
+  if (typeof canonical?.text !== 'string' || !Array.isArray(tokenIds) ||
+      !tokenIds.every((token) => Number.isSafeInteger(token) && token >= 0)) {
+    throw new Error('Malformed transcript payload: text and explicit native token IDs required');
+  }
+  return { canonical, tokenIds };
+}
+
 field('run').addEventListener('click', async () => {
   const result = { status: 'FAIL_ORUKEET_SMOKE', disposed: false, transcripts: [] };
   field('result').textContent = '';
@@ -147,11 +157,11 @@ field('run').addEventListener('click', async () => {
         returnTokenIds: true,
         responseFlavor: 'canonical+native',
       });
-      const transcription = envelope.canonical;
+      const { canonical: transcription, tokenIds } = readTranscript(envelope);
       result.transcripts.push({
         text: transcription.text,
-        tokens: envelope.native.debug?.tokenIds?.length ?? 0,
-        tokenIds: envelope.native.debug?.tokenIds ?? [],
+        tokens: tokenIds.length,
+        tokenIds,
         metrics: transcription.meta.metrics,
         warnings: transcription.warnings,
       });
@@ -161,7 +171,8 @@ field('run').addEventListener('click', async () => {
     if (rest.some((item) => item.text !== first.text)) {
       throw new Error('Repeated transcripts differ');
     }
-    if (!first.text.trim()) throw new Error('Empty transcript');
+    // Empty text and explicit [] IDs are valid silence, not missing inference.
+    // The external runner still compares every output with its bound oracle.
 
     if (query.get('controller') === '1') {
       status('Testing chunk-fed offline controller…');
@@ -178,10 +189,11 @@ field('run').addEventListener('click', async () => {
             signal: request.signal, detail: 'detailed',
             returnTokenIds: true, responseFlavor: 'canonical+native',
           });
-          entry.text = envelope.canonical.text;
-          entry.tokenIds = envelope.native.debug?.tokenIds ?? [];
-          entry.metrics = envelope.canonical.meta.metrics;
-          return envelope.canonical;
+          const { canonical, tokenIds } = readTranscript(envelope);
+          entry.text = canonical.text;
+          entry.tokenIds = tokenIds;
+          entry.metrics = canonical.meta.metrics;
+          return canonical;
         },
       });
     }
