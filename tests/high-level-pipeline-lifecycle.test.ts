@@ -3,6 +3,7 @@ import {
   createSpeechRuntime,
   loadSpeechModel,
   transcribeSpeech,
+  transcribeSpeechFromMonoPcm,
   transcribeSpeechBatch,
   PipelineAbortedError,
   type BackendCapabilities,
@@ -50,7 +51,7 @@ function probeResponse<TFlavor extends TranscriptResponseFlavor>(
 
 function createProbeRuntime(options: {
   onCreateModel: () => Promise<void>;
-  onDisposeModel: () => void;
+  onDisposeModel: () => void | Promise<void>;
   onTranscribe?: (signal?: { readonly aborted: boolean } | null) => Promise<void>;
   onTranscribeBatch?: (signal?: { readonly aborted: boolean } | null) => Promise<void>;
 }) {
@@ -106,7 +107,7 @@ function createProbeRuntime(options: {
           };
         },
         dispose() {
-          options.onDisposeModel();
+          return options.onDisposeModel();
         },
       };
     },
@@ -119,6 +120,126 @@ const REQUEST = {
   modelId: 'pipeline-lifecycle-probe-1',
   backend: 'test',
 };
+
+const ONE_SHOT_CALLS = [
+  {
+    name: 'single',
+    invoke: (runtime: ReturnType<typeof createProbeRuntime>) =>
+      transcribeSpeech(new Float32Array(160), { ...REQUEST, runtime }),
+  },
+  {
+    name: 'mono PCM',
+    invoke: (runtime: ReturnType<typeof createProbeRuntime>) =>
+      transcribeSpeechFromMonoPcm(new Float32Array(160), 16000, { ...REQUEST, runtime }),
+  },
+  {
+    name: 'batch',
+    invoke: (runtime: ReturnType<typeof createProbeRuntime>) =>
+      transcribeSpeechBatch([new Float32Array(160), new Float32Array(80)], {
+        ...REQUEST,
+        runtime,
+      }),
+  },
+];
+
+describe.each(ONE_SHOT_CALLS)('One-shot $name failure preservation', ({ invoke }) => {
+  it.each([
+    ['inference error', new Error('inference failed')],
+    ['cancellation', new PipelineAbortedError('probe')],
+    ['undefined', undefined],
+    ['null', null],
+  ])('retains %s and nested cleanup failure', async (_label, primary) => {
+    const cleanup = new AggregateError([new Error('resource release failed')], 'cleanup');
+    let releases = 0;
+    const fail = async () => {
+      throw primary;
+    };
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onTranscribe: fail,
+      onTranscribeBatch: fail,
+      onDisposeModel: () => {
+        if (++releases === 1) throw cleanup;
+      },
+    });
+    const outcome = await invoke(runtime).then(
+      () => {
+        throw new Error('Expected rejection');
+      },
+      (error: unknown) => error,
+    );
+    expect(outcome).toBeInstanceOf(AggregateError);
+    expect((outcome as AggregateError).errors).toEqual([primary, cleanup]);
+    expect((outcome as AggregateError).errors[0]).toBe(primary);
+    expect((outcome as AggregateError).errors[1]).toBe(cleanup);
+    expect((outcome as AggregateError).cause).toBe(primary);
+    expect(releases).toBe(1);
+    await runtime.dispose();
+  });
+
+  it.each([
+    ['inference error', new Error('inference failed')],
+    ['cancellation', new PipelineAbortedError('probe')],
+    ['undefined', undefined],
+    ['null', null],
+  ])('retains %s identity when cleanup succeeds', async (_label, primary) => {
+    let releases = 0;
+    const fail = async () => {
+      throw primary;
+    };
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onTranscribe: fail,
+      onTranscribeBatch: fail,
+      onDisposeModel: () => {
+        releases++;
+      },
+    });
+    await expect(invoke(runtime)).rejects.toBe(primary);
+    expect(releases).toBe(1);
+    await runtime.dispose();
+  });
+
+  it('awaits cleanup and retains its identity after successful inference', async () => {
+    const cleanup = new Error('release failed');
+    let started!: () => void;
+    const cleanupStarted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let releases = 0;
+    const runtime = createProbeRuntime({
+      onCreateModel: async () => undefined,
+      onDisposeModel: async () => {
+        if (++releases !== 1) return;
+        started();
+        await gate;
+        throw cleanup;
+      },
+    });
+    let settled = false;
+    const result = invoke(runtime);
+    const outcome = result.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    await cleanupStarted;
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    release();
+    await expect(result).rejects.toBe(cleanup);
+    await outcome;
+    expect(releases).toBe(1);
+    await runtime.dispose();
+  });
+});
 
 describe('SpeechPipeline lifecycle races', () => {
   it('rejects an aborted joined load without cancelling the owner or evicting its handle', async () => {

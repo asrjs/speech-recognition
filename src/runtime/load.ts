@@ -98,6 +98,8 @@ export interface TranscribeSpeechOptions<
  *
  * It automatically loads a built-in model, runs a single transcription, and
  * disposes model resources when done.
+ * If transcription and cleanup both fail, rejects with an AggregateError whose
+ * first error and cause are the transcription failure; cleanup remains observable.
  */
 export async function transcribeSpeech<
   TLoadOptions = unknown,
@@ -111,13 +113,26 @@ export async function transcribeSpeech<
   const { transcribeOptions, ...loadOptions } = options;
   const loaded = await loadSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(loadOptions);
 
+  let failure: { error: unknown } | undefined;
   try {
     return await loaded.transcribe(
       input,
       withInheritedTranscriptionSignal(transcribeOptions, options.signal),
     );
+  } catch (error) {
+    failure = { error };
+    throw error;
   } finally {
-    await loaded.dispose();
+    try {
+      await loaded.dispose();
+    } catch (cleanupError) {
+      if (!failure) throw cleanupError;
+      throw new AggregateError(
+        [failure.error, cleanupError],
+        'Speech transcription and cleanup failed.',
+        { cause: failure.error },
+      );
+    }
   }
 }
 
@@ -147,6 +162,7 @@ export async function transcribeSpeechFromMonoPcm<
  * One-shot batch helper for model families that expose a batch-capable
  * session. The helper preserves the same response-flavor contract as
  * `transcribeSpeech()` and disposes the loaded model after the batch.
+ * Simultaneous transcription/cleanup failures use the same AggregateError contract.
  */
 export async function transcribeSpeechBatch<
   TLoadOptions = unknown,
@@ -160,13 +176,26 @@ export async function transcribeSpeechBatch<
   const { transcribeOptions, ...loadOptions } = options;
   const loaded = await loadSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(loadOptions);
 
+  let failure: { error: unknown } | undefined;
   try {
     return await loaded.transcribeBatch(
       inputs,
       withInheritedTranscriptionSignal(transcribeOptions, options.signal),
     );
+  } catch (error) {
+    failure = { error };
+    throw error;
   } finally {
-    await loaded.dispose();
+    try {
+      await loaded.dispose();
+    } catch (cleanupError) {
+      if (!failure) throw cleanupError;
+      throw new AggregateError(
+        [failure.error, cleanupError],
+        'Speech batch transcription and cleanup failed.',
+        { cause: failure.error },
+      );
+    }
   }
 }
 
