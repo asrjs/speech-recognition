@@ -1,0 +1,65 @@
+{
+  "status": "PASS_OFFICIAL_ORACLE_OUTPUT",
+  "scope": "exact-weight official Kestrel Redux oracle, dense-oracle resident form, output-only; not packed-kernel evidence, not stage parity, not a speed/memory benchmark",
+  "weights": {
+    "model_id": "moondream/parakeet-redux",
+    "revision": "2bf128600aac4b16946f7ed8372e56117fe5e23b",
+    "archive_sha256": "78ec25733ee0d0c1586d1346fc86db9d0c2e436e3a8ab1d32a82d1bb8f848d21",
+    "config_sha256": "503c653b2e3bb788adbcb04f5abdee532d958686564081baeed133ff10143f6e",
+    "tokenizer_sha256": "bd321b096832a3f270bd3b2a88823957920f1a5c5ada71114a26ea729d0cbe91",
+    "ternary_manifest_sha256": "1221c6d3ce901ffe09c089da758a8db8b76189f80cff41c5afc244fc61e2051d"
+  },
+  "input": {
+    "audio_wav_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "effectivePcmSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+    "samples": 176000,
+    "sampleRate": 16000,
+    "encoding": "f32le",
+    "preparation": "python wave int16 -> float32 /32768, no resampling"
+  },
+  "runtime": {
+    "packages": {
+      "torch": "2.14.1+cpu",
+      "kestrel": "0.9.2",
+      "kestrel-kernels": "0.7.5",
+      "kestrel-native": "0.1.9"
+    },
+    "residentForm": "dense (oracle)",
+    "nativeCpuProbe": "scalar",
+    "torchThreads": 4
+  },
+  "timings": {
+    "loadAndTranscribeSeconds": 10.5,
+    "peakRssMb": 3556
+  },
+  "result": {
+    "request_id": 0,
+    "tokens": [],
+    "finish_reason": "stop",
+    "metrics": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "prefill_time_ms": 0.0,
+      "decode_time_ms": 0.0,
+      "ttft_ms": 0.0,
+      "cached_tokens": 0
+    },
+    "output": {
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "language": null,
+      "task": "transcribe",
+      "duration_seconds": 11.0,
+      "source_duration_seconds": 11.0,
+      "clip_start_seconds": 0.0,
+      "clip_end_seconds": 11.0,
+      "segments": [
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "start": 0.24,
+          "end": 10.88
+        }
+      ]
+    },
+    "logprobs": null
+  }
+}

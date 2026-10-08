@@ -1,0 +1,54 @@
+{
+  "status": "PASS_GRAPH_IDENTITY_AUDIT",
+  "scope": "Evidence-only audit of efederici/parakeet-tdt-0.6b-v3-onnx-int4 graph/tokenizer identity against our fp32 Orukeet family contract; no execution, no quality or speed claim, not a target format",
+  "date": "2026-10-08",
+  "precision_policy": "User direction 2026-10-08: fp16 weights are the default target; integer/fp8 only when unavoidable and accuracy-gated. int4/int8 artifacts are evidence, not promotion candidates.",
+  "download": {
+    "repo": "efederici/parakeet-tdt-0.6b-v3-onnx-int4",
+    "revision": "9828da0021d81df726b3d5ddb2d6d04354942749",
+    "files": {
+      "encoder-model.int4.onnx": {"bytes": 390929172, "sha256": "df4f1e5ff7a3af4e9d4b7078055164b11005e5d8a4c100e67f583c23975f7a31"},
+      "decoder_joint-model.int8.onnx": {"bytes": 18202004, "sha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70"},
+      "nemo128.onnx": {"bytes": 139764, "sha256": "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f"},
+      "nemo128.int8.onnx": {"bytes": 41788, "sha256": "cf0a9952dfd5e8343db736e574aca3ad069f7d89862f45eaf1ac664d03ce85f3"},
+      "vocab.txt": {"bytes": 93939, "sha256": "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d"},
+      "config.json": {"bytes": 97, "sha256": "666903c76b9798caf2c210afd4f6cd60b08a8dbf9800ec8d7a3bc0d2148ac466"}
+    }
+  },
+  "encoder_graph": {
+    "file": "encoder-model.int4.onnx",
+    "ir": 8, "opset": [["", 17], ["com.microsoft", 1]],
+    "inputs": [["audio_signal", "FLOAT", ["dyn", 128, "dyn"]], ["length", "INT64", ["dyn"]]],
+    "outputs": [["outputs", "FLOAT", ["dyn", 1024, "dyn"]], ["encoded_lengths", "INT64", ["dyn"]]],
+    "nodes_total": 4593,
+    "quantization": {"MatMulNBits": 267},
+    "initializers": 1146, "external_data": 0
+  },
+  "decoder_joint_graph": {
+    "file": "decoder_joint-model.int8.onnx",
+    "ir": 8, "opset": [["", 17], ["com.microsoft", 1]],
+    "inputs": [["encoder_outputs", "FLOAT", ["dyn", 1024, "dyn"]], ["targets", "INT32", ["dyn", "dyn"]],
+               ["target_length", "INT32", ["dyn"]],
+               ["input_states_1", "FLOAT", [2, "dyn", 640]], ["input_states_2", "FLOAT", [2, "dyn", 640]]],
+    "outputs": [["outputs", "FLOAT", ["dyn", "dyn", "dyn", 8198]], ["prednet_lengths", "INT32", ["dyn"]],
+                ["output_states_1", "FLOAT", [2, "dyn", 640]], ["output_states_2", "FLOAT", [2, "dyn", 640]]],
+    "nodes_total": 55,
+    "quantization": {"DynamicQuantizeLinear": 3, "MatMulInteger": 3, "DequantizeLinear": 1, "DynamicQuantizeLSTM": 2}
+  },
+  "family_contract_match": {
+    "ours_fp32_orukeet": "models/orukeet/onnx/fp32-packed-2026-10-01",
+    "io_names_dtypes": "identical for both graphs (audio_signal/length; encoder_outputs/targets/target_length/input_states_1/2; outputs/prednet_lengths/output_states_1/2)",
+    "opset": "ours 17 (no ms domain); int4 adds com.microsoft:1 for MatMulNBits and DynamicQuantizeLSTM",
+    "decoder_geometry": "640-hidden 2-layer LSTM states and 8198 output columns = vocab 8193 + 5 TDT durations [0..4], matching the pinned Kestrel contract map",
+    "vocab": "8193 lines; byte-identical to ours after CRLF->LF normalization (normalized sha256 d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d)"
+  },
+  "original_v3_binding": {
+    "note": "The encoder consumes in-graph log-mel (audio_signal 128 bins) exactly like our NeMo-family exports; the upstream teacher nvidia/parakeet-tdt-0.6b-v3 is present in the local HF cache. A v3-specific official oracle was not produced in this audit; reuse the existing NeMo inspector recipe before any future execution claim.",
+    "published_claim_context": "Upstream CPU ORT table compares int4 vs int8 vs fp32; aggregate int4 RTF 0.074 vs fp32 0.072 on their hardware. No WebGPU or browser-speed inference from this."
+  },
+  "limits": [
+    "No int4/int8 execution, no ORT session, no accuracy comparison, no memory measurement.",
+    "Weights not compared against the original v3 checkpoint; identity is file-level only.",
+    "MatMulNBits block size / zero-point / axis details were not decoded in this pass."
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "status": "PASS_PACK_PARITY_BIT_EXACT",
+  "scope": "kestrel dense-oracle dequantization vs independent ternary.py reference; packed int8 kernel not runnable on this CPU",
+  "cpu": {
+    "nativeProbe": "scalar",
+    "note": "auto probe 'scalar' (no VNNI on this Skylake-W); set_gemm_isa('avx2') accepted but the gemm raises 'no avx2 matrix-multiply path on this machine', so the packed compute half of the approved check cannot run on this workstation"
+  },
+  "archive": {
+    "path": "N:\\github\\asrjs\\speech-recognition\\.cache\\parakeet-redux-full\\model.safetensors",
+    "sha256": "78ec25733ee0d0c1586d1346fc86db9d0c2e436e3a8ab1d32a82d1bb8f848d21"
+  },
+  "manifest_sha256": "1221c6d3ce901ffe09c089da758a8db8b76189f80cff41c5afc244fc61e2051d",
+  "seed": 20261008,
+  "modelLoadSeconds": 7.7,
+  "rows": [
+    {
+      "module": "encoder.layers.0.feed_forward1.linear1",
+      "in_features": 1024,
+      "out_features": 4096,
+      "group_size": 128,
+      "residentMode": "dense",
+      "weightBitExact": true,
+      "weightMaxAbsDiff": 0.0,
+      "weightMeanAbsDiff": 0.0,
+      "forwardBitExact": true,
+      "forwardMaxAbsDiff": 0.0,
+      "repeatDeterministic": true,
+      "weightSha256": "0d2cd523537fcc620734294bf33b334c173da2c3e5b855c55c67eb1954049579"
+    },
+    {
+      "module": "encoder.layers.0.feed_forward1.linear2",
+      "in_features": 4096,
+      "out_features": 1024,
+      "group_size": 128,
+      "residentMode": "dense",
+      "weightBitExact": true,
+      "weightMaxAbsDiff": 0.0,
+      "weightMeanAbsDiff": 0.0,
+      "forwardBitExact": true,
+      "forwardMaxAbsDiff": 0.0,
+      "repeatDeterministic": true,
+      "weightSha256": "91d29ac3564f818faf0f7141ccef71fda290ae7e0c903ea6819a86d62762d097"
+    },
+    {
+      "module": "encoder.layers.11.self_attn.o_proj",
+      "in_features": 1024,
+      "out_features": 1024,
+      "group_size": 128,
+      "residentMode": "dense",
+      "weightBitExact": true,
+      "weightMaxAbsDiff": 0.0,
+      "weightMeanAbsDiff": 0.0,
+      "forwardBitExact": true,
+      "forwardMaxAbsDiff": 0.0,
+      "repeatDeterministic": true,
+      "weightSha256": "c3039c48d6fcfd42743c26947d28b9917927adb264ab534ab2a81fb4a0385f93"
+    },
+    {
+      "module": "encoder.layers.5.conv.pointwise_conv1",
+      "in_features": 1024,
+      "out_features": 2048,
+      "group_size": 128,
+      "residentMode": "dense",
+      "weightBitExact": true,
+      "weightMaxAbsDiff": 0.0,
+      "weightMeanAbsDiff": 0.0,
+      "forwardBitExact": true,
+      "forwardMaxAbsDiff": 0.0,
+      "repeatDeterministic": true,
+      "weightSha256": "33bdef78d82c96d0259cdfed4c90a9afec6a8fa360f108aed77b2a1d74d7e9ee"
+    }
+  ],
+  "limits": [
+    "Validates base-3 unpack, weight rule and scale math both ways; it does not execute the native int8 gemm8 kernel (impossible on this CPU) or quantized activations.",
+    "Fused qkv and encoder-level relative projections are excluded; their rows concatenate.",
+    "No decoder/joint/VAD execution, no audio, no tokens, no timing or memory claim."
+  ]
+}
