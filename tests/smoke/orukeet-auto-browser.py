@@ -58,6 +58,49 @@ def check_cancellation(result, requested):
             and 0 < done < total)
 
 
+def check_controller(result, requested, backend, expected_text):
+    """Windowed offline coverage/lifecycle gate, not native streaming parity."""
+    if not requested:
+        return True
+    event = result.get('controller')
+    if not isinstance(event, dict):
+        return False
+    total = result.get('audioSamples')
+    if (type(total) is not int or total <= 0 or event.get('scope') != 'chunk-fed-windowed-offline-asr'
+            or event.get('finalized') is not True or event.get('pushedSamples') != total
+            or not expected_text or event.get('finalText') != expected_text
+            or event.get('resetState') != dict(currentFrame=0, isFinalized=False, text='')):
+        return False
+    chunks, updates, requests = (event.get(key) for key in ('chunkRanges', 'updates', 'requests'))
+    if not all(isinstance(items, list) and len(items) >= 2 for items in (chunks, updates, requests)):
+        return False
+    cursor = 0
+    for chunk in chunks:
+        if (not isinstance(chunk, dict) or type(chunk.get('startFrame')) is not int
+                or type(chunk.get('endFrame')) is not int or chunk['startFrame'] != cursor
+                or not cursor < chunk['endFrame'] <= total):
+            return False
+        cursor = chunk['endFrame']
+    if (cursor != total or not all(isinstance(item, dict) for item in updates)
+            or not any(item.get('kind') == 'partial' for item in updates)
+            or updates[-1].get('kind') != 'final' or updates[-1].get('text') != expected_text):
+        return False
+    for request in requests:
+        if not isinstance(request, dict):
+            return False
+        start, end = request.get('startFrame'), request.get('endFrame')
+        if (type(start) is not int or type(end) is not int or not 0 <= start < end <= total
+                or request.get('samples') != end - start or request.get('sampleRate') != 16000
+                or not isinstance(request.get('pcmSha256'), str)
+                or re.fullmatch('[0-9a-f]{64}', request['pcmSha256']) is None
+                or not isinstance(request.get('text'), str)
+                or not isinstance(request.get('tokenIds'), list)
+                or not all(type(token) is int and token >= 0 for token in request['tokenIds'])
+                or not check_execution(dict(transcripts=[request]), backend, 1)):
+            return False
+    return True
+
+
 def capture_code_route(route, receipt):
     """Bind the bytes actually fulfilled, without relying on Chrome inspector caches."""
     response = None
@@ -102,6 +145,7 @@ def main():
     parser.add_argument('--expected-pcm-sha256', help='Require this official effective f32le PCM digest; no WAV-hash substitution')
     parser.add_argument('--audio-strategy', choices=['wav', 'audiocontext'], default='wav')
     parser.add_argument('--verify-cancellation', action='store_true', help='Abort partial decode between two oracle-matched runs')
+    parser.add_argument('--verify-controller', action='store_true', help='Verify chunk-fed windowed offline ASR coverage, final text and reset')
     args = parser.parse_args()
     if args.verify_cancellation and args.repeat < 2:
         parser.error('--verify-cancellation requires at least two successful repeats to prove reuse')
@@ -112,10 +156,10 @@ def main():
         parser.error('--expected-pcm-sha256 must be a lowercase SHA-256')
     require_new_outputs([args.output], protected_inputs=[args.audio, args.oracle],
                         protected_directories=[args.model_root])
-    url = args.url + '?' + urlencode(dict(auto=1, backend=args.backend, precision=args.precision, repeat=args.repeat, audioStrategy=args.audio_strategy, cancel=int(args.verify_cancellation)))
+    url = args.url + '?' + urlencode(dict(auto=1, backend=args.backend, precision=args.precision, repeat=args.repeat, audioStrategy=args.audio_strategy, cancel=int(args.verify_cancellation), controller=int(args.verify_controller)))
     receipt = dict(status='FAIL_AUTO_BROWSER', url=url, scope='real-browser-smoke-and-oracle-output-only',
                    page_errors=[], console=[], blocked_requests=[], expected_pcm_sha256=args.expected_pcm_sha256,
-                   cancellation_requested=args.verify_cancellation)
+                   cancellation_requested=args.verify_cancellation, controller_requested=args.verify_controller)
     try:
         inputs = helpers.local_model_inputs(args.model_root, args.precision, 'nemo-tdt')
         oracle = json.loads(args.oracle.read_text(encoding='utf-8'))
@@ -159,12 +203,14 @@ def main():
                 receipt['result'] = result
                 receipt['execution_valid'] = check_execution(result, args.backend, args.repeat)
                 receipt['cancellation_valid'] = check_cancellation(result, args.verify_cancellation)
+                receipt['controller_valid'] = check_controller(result, args.verify_controller, args.backend, oracle['result']['text'])
+                receipt['controller_scope'] = 'chunk-fed-windowed-offline-asr' if args.verify_controller else 'SKIP_NOT_REQUESTED'
                 receipt['pcm_identity_valid'] = check_pcm(result, args.expected_pcm_sha256)
                 receipt['same_oracle_pcm'] = bool(args.expected_pcm_sha256) and receipt['pcm_identity_valid']
                 receipt['code_bound'] = check_code_bindings(receipt)
                 receipt['text_exact'] = all(t['text'] == oracle['result']['text'] for t in result['transcripts']) and bool(result['transcripts'])
                 receipt['tokens_exact'] = all(t['tokenIds'] == oracle['result']['token_ids'] for t in result['transcripts']) and bool(result['transcripts'])
-                if result['status'] == 'PASS_ORUKEET_SMOKE' and result['disposed'] is True and receipt['execution_valid'] and receipt['cancellation_valid'] and receipt['text_exact'] and receipt['tokens_exact'] and receipt['pcm_identity_valid'] and receipt['code_bound'] and not receipt['page_errors'] and not receipt['blocked_requests']:
+                if result['status'] == 'PASS_ORUKEET_SMOKE' and result['disposed'] is True and receipt['execution_valid'] and receipt['cancellation_valid'] and receipt['controller_valid'] and receipt['text_exact'] and receipt['tokens_exact'] and receipt['pcm_identity_valid'] and receipt['code_bound'] and not receipt['page_errors'] and not receipt['blocked_requests']:
                     receipt['status'] = ('PASS_AUTO_BROWSER_SAME_PCM_TOKEN_TEXT_SMOKE' if receipt['same_oracle_pcm']
                                          else 'PASS_AUTO_BROWSER_TOKEN_TEXT_SMOKE_PCM_UNBOUND')
             finally:

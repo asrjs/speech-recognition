@@ -121,3 +121,22 @@ Without the flag this optional lifecycle control is not exercised.
 Cancellation is cooperative at decoder boundaries, not hard interruption of an
 in-flight ORT/GPU call. This source-checkout example is separate from the classic
 sibling browser-demo's user cancellation/unload UI and from GPU reclamation/soak.
+
+### Optional chunk-fed offline controller regression
+
+Add `--verify-controller` to the JFK command, with a fresh output filename and
+`--expected-pcm-sha256 ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0`.
+This feeds 2-second PCM chunks to the public `RealtimeTranscriptionController`
+and invokes the same loaded model through `transcribeMonoPcm`. Receipts preserve
+chunk coverage, window PCM hashes, native tokens, backend metrics, partial/final
+text and reset state. The final text must match the supplied official oracle.
+This is windowed offline inference, not microphone capture or native streaming;
+individual window token/feature parity is not certified by the full-clip oracle.
+
+The first real run is a preserved FAIL:
+`auto-browser-controller-jfk-2026-10-08-01.json`. Normal full-clip repeats match
+all 38 oracle tokens and text, but the first 2-second window is rejected because
+physical encoder shape `[1, 1024, 26]` does not match valid `encoded_lengths=25`
+under the current layout resolver. Model disposal, controller reset and browser
+closure still complete. Do not use this optional mode as a passed streaming gate.
+See [the scoped report](../../docs/reports/orukeet-windowed-controller-2026-10-08.md).

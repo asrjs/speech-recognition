@@ -1,5 +1,6 @@
 """No-browser regression checks for automatic receipt failure handling."""
 import contextlib
+import copy
 import importlib.util
 import io
 import json
@@ -14,6 +15,33 @@ spec.loader.exec_module(runner)
 
 
 class AutoReceiptTests(unittest.TestCase):
+    def test_controller_requires_coverage_final_reset_and_actual_backends(self):
+        metrics = dict(encoderBackend='webgpu', decoderBackend='wasm', jointBackend='wasm', preprocessorBackend='js')
+        controller = dict(scope='chunk-fed-windowed-offline-asr', finalized=True, pushedSamples=64000,
+            finalText='hello', resetState=dict(currentFrame=0, isFinalized=False, text=''),
+            chunkRanges=[dict(startFrame=0, endFrame=32000), dict(startFrame=32000, endFrame=64000)],
+            updates=[dict(kind='partial', text='hello'), dict(kind='final', text='hello')],
+            requests=[dict(startFrame=0, endFrame=end, samples=end, sampleRate=16000,
+                pcmSha256='a' * 64, text='hello', tokenIds=[1], metrics=metrics) for end in (32000, 64000)])
+        result = dict(audioSamples=64000, controller=controller)
+        self.assertTrue(runner.check_controller(result, True, 'webgpu-hybrid', 'hello'))
+        self.assertTrue(runner.check_controller({}, False, 'webgpu-hybrid', 'hello'))
+        self.assertFalse(runner.check_controller({}, True, 'webgpu-hybrid', 'hello'))
+        for field, value in [('finalText', 'wrong'), ('finalized', False), ('pushedSamples', 1),
+                             ('updates', []), ('requests', []), ('resetState', {})]:
+            changed = copy.deepcopy(result)
+            changed['controller'][field] = value
+            self.assertFalse(runner.check_controller(changed, True, 'webgpu-hybrid', 'hello'), field)
+        changed = copy.deepcopy(result)
+        changed['controller']['chunkRanges'][1]['startFrame'] += 1
+        self.assertFalse(runner.check_controller(changed, True, 'webgpu-hybrid', 'hello'))
+        changed = copy.deepcopy(result)
+        changed['controller']['requests'][0]['metrics'] = {}
+        self.assertFalse(runner.check_controller(changed, True, 'webgpu-hybrid', 'hello'))
+        changed = copy.deepcopy(result)
+        changed['controller']['updates'][-1]['text'] = 'wrong'
+        self.assertFalse(runner.check_controller(changed, True, 'webgpu-hybrid', 'hello'))
+
     def test_cancellation_requires_partial_decode_rejection_without_complete(self):
         cancellation = dict(requested=True, rejected=True, completeEmitted=False,
                             errorName='PipelineAbortedError', stageId='decode', completedUnits=1, totalUnits=10)

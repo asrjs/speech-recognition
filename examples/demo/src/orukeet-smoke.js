@@ -43,6 +43,14 @@ async function decodeFixture(file) {
   }
 }
 
+async function pcmSha256(pcm) {
+  const bytes = new ArrayBuffer(pcm.length * 4);
+  const view = new DataView(bytes);
+  for (let index = 0; index < pcm.length; index += 1) view.setFloat32(index * 4, pcm[index], true);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 field('run').addEventListener('click', async () => {
   const result = { status: 'FAIL_ORUKEET_SMOKE', disposed: false, transcripts: [] };
   field('result').textContent = '';
@@ -96,16 +104,12 @@ field('run').addEventListener('click', async () => {
     result.audioSamples = pcm.length;
     // Canonical bytes describe the exact waveform passed to the public API,
     // independently of the input WAV container or the platform's endianness.
-    const pcmBytes = new ArrayBuffer(pcm.length * 4);
-    const pcmView = new DataView(pcmBytes);
-    for (let index = 0; index < pcm.length; index += 1) pcmView.setFloat32(index * 4, pcm[index], true);
-    const pcmDigest = new Uint8Array(await crypto.subtle.digest('SHA-256', pcmBytes));
     result.effectivePcm = {
       sampleRate: 16000, channels: 1, samples: pcm.length, validSamples: pcm.length,
       rightPaddingSamples: 0, encoding: 'f32le',
       preparation: (query.get('audioStrategy') ?? 'wav') === 'wav'
         ? 'public decodeWavToMonoPcm; no resampling' : 'AudioContext decode at 16000 Hz',
-      sha256: [...pcmDigest].map((byte) => byte.toString(16).padStart(2, '0')).join(''),
+      sha256: await pcmSha256(pcm),
     };
 
     for (let index = 0; index < repeat; index += 1) {
@@ -158,6 +162,28 @@ field('run').addEventListener('click', async () => {
       throw new Error('Repeated transcripts differ');
     }
     if (!first.text.trim()) throw new Error('Empty transcript');
+
+    if (query.get('controller') === '1') {
+      status('Testing chunk-fed offline controller…');
+      const { runWindowedController } = await import('./windowed-controller.js');
+      const receipt = { requests: [] };
+      result.controller = receipt;
+      await runWindowedController({ pcm, sampleRate: 16000, receipt,
+        async transcribe(request) {
+          const entry = { startFrame: request.startFrame, endFrame: request.endFrame,
+            samples: request.pcm.length, sampleRate: request.sampleRate, reason: request.reason,
+            pcmSha256: await pcmSha256(request.pcm) };
+          receipt.requests.push(entry);
+          const envelope = await model.transcribeMonoPcm(request.pcm, request.sampleRate, {
+            signal: request.signal, returnTokenIds: true, responseFlavor: 'canonical+native',
+          });
+          entry.text = envelope.canonical.text;
+          entry.tokenIds = envelope.native.debug?.tokenIds ?? [];
+          entry.metrics = envelope.canonical.meta.metrics;
+          return envelope.canonical;
+        },
+      });
+    }
 
     status('Disposing…');
     await model.dispose();
