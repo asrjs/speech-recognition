@@ -45,6 +45,11 @@ inference only; it is not numerical parity against the original NeMo engine.
 
 ## Automatic Chrome model test and JSON capture
 
+Latest recovery and reviewed current-code pin:
+[Chrome automation recovery](../../docs/reports/chrome-auto-recovery-2026-10-08.md).
+The manifest uses the separately reviewed C83 snapshot; earlier snapshots are
+preserved. Source/server changes must still fail code identity until reviewed.
+
 The reviewed manifest also provides `chrome-oracle-jfk-webgpu-hybrid` and
 `chrome-oracle-pure-silence-webgpu-hybrid`. Each case checks two complete outputs,
 original effective PCM, pinned delivered code and awaited cleanup. With the
