@@ -15,6 +15,104 @@ spec.loader.exec_module(runner)
 
 
 class AutoReceiptTests(unittest.TestCase):
+    def timing_result(self):
+        sources, requests, updates = [], [], []
+        for index, start in enumerate((0, 32000)):
+            item = dict(index=0, text='hello', startTime=0.25, endTime=1.0)
+            local = dict(words=[dict(item)], segments=[dict(item)], sentences=[dict(item)],
+                         tokens=[dict(item, id=1), dict(index=1, text='untimed', id=2)])
+            shifted = copy.deepcopy(local)
+            for items in shifted.values():
+                for value in items:
+                    for key in ('startTime', 'endTime'):
+                        if key in value:
+                            value[key] += start / 16000
+            sources.append(dict(startFrame=start, endFrame=start + 32000,
+                                sampleRate=16000, localTiming=local))
+            requests.append(dict(startFrame=start, endFrame=start + 32000, sampleRate=16000))
+            updates.append(dict(kind='partial', inferenceIndex=index,
+                window=dict(startFrame=start, endFrame=start + 32000),
+                canonicalTiming=shifted, partialTiming=copy.deepcopy(shifted)))
+        empty = dict(words=None, segments=None, sentences=None, tokens=None)
+        updates.append(dict(kind='final', inferenceIndex=None,
+                            canonicalTiming=empty, partialTiming=copy.deepcopy(empty)))
+        return dict(controller=dict(inferenceResults=sources, requests=requests, updates=updates))
+
+    def test_timing_preserves_fields_and_nonzero_offsets_without_final_inference(self):
+        self.assertTrue(runner.check_controller_timing(self.timing_result(), True, True))
+        self.assertTrue(runner.check_controller_timing({}, False))
+        self.assertFalse(runner.check_controller_timing({}, True))
+
+    def test_timing_rejects_missing_corrupt_and_misattributed_records(self):
+        mutations = [
+            lambda c: c.pop('inferenceResults'),
+            lambda c: c['inferenceResults'].pop(),
+            lambda c: c['updates'][0].pop('inferenceIndex'),
+            lambda c: c['updates'][1].update(inferenceIndex=True),
+            lambda c: c['updates'][1].update(inferenceIndex=0),
+            lambda c: c['updates'][1]['window'].update(startFrame=0),
+            lambda c: c['updates'][0]['window'].update(startFrame=False),
+            lambda c: c['updates'][1]['window'].update(endFrame=64000.0),
+            lambda c: c['inferenceResults'][1].update(sampleRate=8000),
+            lambda c: c['updates'][-1].update(inferenceIndex=1),
+            lambda c: c['updates'][-1].update(kind='partial'),
+            lambda c: c['updates'][0]['canonicalTiming'].pop('words'),
+            lambda c: c['inferenceResults'][0]['localTiming']['tokens'][1].update(startTime=0),
+            lambda c: c['updates'][1]['canonicalTiming']['words'][0].update(startTime=4.25),
+            lambda c: c['updates'][1]['partialTiming']['sentences'][0].update(endTime=1),
+            lambda c: c['updates'][1]['canonicalTiming']['tokens'][1].update(startTime=2, endTime=2),
+            lambda c: c['updates'][1]['canonicalTiming']['tokens'][0].update(id=99),
+            lambda c: c['updates'][1]['partialTiming']['tokens'][0].update(id=True),
+            lambda c: c['inferenceResults'][0]['localTiming']['segments'][0].update(endTime=float('nan')),
+            lambda c: c['inferenceResults'][0]['localTiming']['segments'][0].update(startTime=True),
+        ]
+        for index, mutate in enumerate(mutations):
+            with self.subTest(index=index):
+                result = self.timing_result()
+                mutate(result['controller'])
+                self.assertFalse(runner.check_controller_timing(result, True, True))
+
+    def test_timing_requires_observed_detail_and_optional_nonzero_origin(self):
+        result = self.timing_result()
+        for source in result['controller']['inferenceResults']:
+            source['localTiming'] = dict(words=[], segments=[], sentences=[], tokens=[])
+        for update in result['controller']['updates'][:-1]:
+            update['canonicalTiming'] = update['partialTiming'] = dict(words=[], segments=[], sentences=[], tokens=[])
+        self.assertFalse(runner.check_controller_timing(result, True))
+        result = self.timing_result()
+        result['controller']['inferenceResults'] = result['controller']['inferenceResults'][:1]
+        result['controller']['requests'] = result['controller']['requests'][:1]
+        result['controller']['updates'] = [result['controller']['updates'][0], result['controller']['updates'][-1]]
+        self.assertTrue(runner.check_controller_timing(result, True))
+        self.assertFalse(runner.check_controller_timing(result, True, True))
+
+    def test_timing_accepts_json_integer_float_spelling_not_bool_substitution(self):
+        result = self.timing_result()
+        for key in ('canonicalTiming', 'partialTiming'):
+            result['controller']['updates'][0][key]['words'][0]['endTime'] = 1
+        self.assertTrue(runner.check_controller_timing(result, True))
+        for key in ('canonicalTiming', 'partialTiming'):
+            result['controller']['updates'][0][key]['tokens'][0]['id'] = True
+        self.assertFalse(runner.check_controller_timing(result, True))
+
+    def test_nonzero_timing_gate_rejects_untimed_nonzero_window(self):
+        result = self.timing_result()
+        empty = dict(words=[], segments=[], sentences=[], tokens=[])
+        result['controller']['inferenceResults'][1]['localTiming'] = copy.deepcopy(empty)
+        for key in ('canonicalTiming', 'partialTiming'):
+            result['controller']['updates'][1][key] = copy.deepcopy(empty)
+        self.assertTrue(runner.check_controller_timing(result, True))
+        self.assertFalse(runner.check_controller_timing(result, True, True))
+
+    def test_nonzero_option_requires_controller(self):
+        argv = ['auto', '--model-root', 'unused', '--audio', 'unused.wav', '--oracle', 'unused.json',
+                '--output', 'unused-output.json', '--require-controller-nonzero-origin']
+        stderr = io.StringIO()
+        with patch('sys.argv', argv), contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as error:
+            runner.main()
+        self.assertEqual(error.exception.code, 2)
+        self.assertIn('requires --verify-controller', stderr.getvalue())
+
     def test_controller_requires_coverage_final_reset_and_actual_backends(self):
         metrics = dict(encoderBackend='webgpu', decoderBackend='wasm', jointBackend='wasm', preprocessorBackend='js')
         controller = dict(scope='chunk-fed-windowed-offline-asr', finalized=True, pushedSamples=64000,

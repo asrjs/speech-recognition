@@ -157,6 +157,18 @@ links each inference-backed update to its input/result; `null` identifies a
 finalization-only update with no new inference. Missing timing fields remain
 `null`, not invented timestamps.
 
+`--verify-controller` also gates `controller_timing_valid`: local-to-global
+coordinate and unchanged-payload transfer for words, segments, sentences and
+tokens, matching partial detail and strict inference/window associations.
+It rejects missing records and nonfinite or fabricated timestamps. JSON `4`
+and `4.0` represent the same number; booleans are not numeric substitutes.
+For a long fixture add `--require-controller-nonzero-origin` (requires
+`--verify-controller`): all four fields must include observed timed detail at
+nonzero origins, not just empty shifted windows. Without controller verification
+the timing scope is `SKIP_NOT_REQUESTED`. These gates supplement, rather than
+replace, full token/text/oracle and cleanup checks; they are not model timestamp
+accuracy or original-engine numerical parity.
+
 The 149.7-second repeat fixture exercises nonzero window starts, but its first
 timestamp-capture run remains **FAIL**: two full-clip transcriptions match all
 722 original-engine token IDs/text, while the controller's accumulated windowed

@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import math
 import re
 from pathlib import Path
 import sys
@@ -101,6 +102,100 @@ def check_controller(result, requested, backend, expected_text):
     return True
 
 
+def check_controller_timing(result, requested, require_nonzero=False):
+    """Coordinate/payload transfer only; never an original-engine timing oracle."""
+    def json_value(value):
+        # JSON has one numeric type; preserve bool and reject nonfinite values.
+        if type(value) is float and value.is_integer():
+            return int(value)
+        if isinstance(value, dict):
+            return {key: json_value(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [json_value(item) for item in value]
+        return value
+
+    if not requested:
+        return not require_nonzero
+    event = result.get('controller')
+    if not isinstance(event, dict):
+        return False
+    sources, requests, updates = (event.get(key) for key in ('inferenceResults', 'requests', 'updates'))
+    if (not all(isinstance(items, list) and items for items in (sources, requests, updates))
+            or len(sources) != len(requests)):
+        return False
+    fields = ('words', 'segments', 'sentences', 'tokens')
+    observed = dict.fromkeys(fields, False)
+    observed_nonzero = dict.fromkeys(fields, False)
+    next_index, nonzero = 0, False
+    for position, update in enumerate(updates):
+        if not isinstance(update, dict) or 'inferenceIndex' not in update:
+            return False
+        canonical, partial = update.get('canonicalTiming'), update.get('partialTiming')
+        if (not isinstance(canonical, dict) or not isinstance(partial, dict)
+                or set(canonical) != set(fields) or set(partial) != set(fields)):
+            return False
+        try:
+            if json.dumps(json_value(canonical), sort_keys=True, allow_nan=False) != json.dumps(json_value(partial), sort_keys=True, allow_nan=False):
+                return False
+        except (TypeError, ValueError):
+            return False
+        index = update['inferenceIndex']
+        if index is None:
+            if (position != len(updates) - 1 or update.get('kind') != 'final'
+                    or any(value is not None for value in canonical.values())):
+                return False
+            continue
+        if type(index) is not int or index != next_index or index >= len(sources):
+            return False
+        next_index += 1
+        source, request, window = sources[index], requests[index], update.get('window')
+        if not all(isinstance(value, dict) for value in (source, request, window)):
+            return False
+        start, end = source.get('startFrame'), source.get('endFrame')
+        if (type(start) is not int or type(end) is not int or not 0 <= start < end
+                or source.get('sampleRate') != 16000 or request.get('sampleRate') != 16000
+                or any(type(value.get('startFrame')) is not int or type(value.get('endFrame')) is not int
+                       or value.get('startFrame') != start or value.get('endFrame') != end
+                       for value in (request, window))):
+            return False
+        nonzero |= start > 0
+        local = source.get('localTiming')
+        if not isinstance(local, dict) or set(local) != set(fields):
+            return False
+        for field in fields:
+            before, after = local[field], canonical[field]
+            if before is None:
+                if after is not None:
+                    return False
+                continue
+            if not isinstance(before, list) or not isinstance(after, list) or len(before) != len(after):
+                return False
+            for original, shifted in zip(before, after):
+                if not isinstance(original, dict) or not isinstance(shifted, dict):
+                    return False
+                has_times = 'startTime' in original or 'endTime' in original
+                if has_times:
+                    times = [original.get(key) for key in ('startTime', 'endTime')]
+                    if (any(type(value) not in (int, float) or not math.isfinite(value) for value in times)
+                            or not 0 <= times[0] <= times[1]):
+                        return False
+                    observed[field] = True
+                    observed_nonzero[field] |= start > 0
+                elif field != 'tokens':
+                    return False
+                expected = dict(original)
+                if has_times:
+                    expected.update(startTime=times[0] + start / 16000, endTime=times[1] + start / 16000)
+                try:
+                    # JSON comparison preserves bool/int distinctions and rejects NaN.
+                    if json.dumps(json_value(expected), sort_keys=True, allow_nan=False) != json.dumps(json_value(shifted), sort_keys=True, allow_nan=False):
+                        return False
+                except (TypeError, ValueError):
+                    return False
+    return (next_index == len(sources) and all(observed.values())
+            and (not require_nonzero or (nonzero and all(observed_nonzero.values()))))
+
+
 def capture_code_route(route, receipt):
     """Bind the bytes actually fulfilled, without relying on Chrome inspector caches."""
     response = None
@@ -146,9 +241,13 @@ def main():
     parser.add_argument('--audio-strategy', choices=['wav', 'audiocontext'], default='wav')
     parser.add_argument('--verify-cancellation', action='store_true', help='Abort partial decode between two oracle-matched runs')
     parser.add_argument('--verify-controller', action='store_true', help='Verify chunk-fed windowed offline ASR coverage, final text and reset')
+    parser.add_argument('--require-controller-nonzero-origin', action='store_true',
+                        help='Also require timestamped detail in controller windows starting after frame zero')
     args = parser.parse_args()
     if args.verify_cancellation and args.repeat < 2:
         parser.error('--verify-cancellation requires at least two successful repeats to prove reuse')
+    if args.require_controller_nonzero_origin and not args.verify_controller:
+        parser.error('--require-controller-nonzero-origin requires --verify-controller')
     parsed = urlparse(args.url)
     if parsed.scheme not in ('http', 'https') or parsed.hostname not in ('127.0.0.1', 'localhost') or parsed.query or parsed.fragment:
         parser.error('--url must be a plain loopback HTTP(S) page URL')
@@ -159,7 +258,8 @@ def main():
     url = args.url + '?' + urlencode(dict(auto=1, backend=args.backend, precision=args.precision, repeat=args.repeat, audioStrategy=args.audio_strategy, cancel=int(args.verify_cancellation), controller=int(args.verify_controller)))
     receipt = dict(status='FAIL_AUTO_BROWSER', url=url, scope='real-browser-smoke-and-oracle-output-only',
                    page_errors=[], console=[], blocked_requests=[], expected_pcm_sha256=args.expected_pcm_sha256,
-                   cancellation_requested=args.verify_cancellation, controller_requested=args.verify_controller)
+                   cancellation_requested=args.verify_cancellation, controller_requested=args.verify_controller,
+                   controller_nonzero_required=args.require_controller_nonzero_origin)
     try:
         inputs = helpers.local_model_inputs(args.model_root, args.precision, 'nemo-tdt')
         oracle = json.loads(args.oracle.read_text(encoding='utf-8'))
@@ -204,13 +304,15 @@ def main():
                 receipt['execution_valid'] = check_execution(result, args.backend, args.repeat)
                 receipt['cancellation_valid'] = check_cancellation(result, args.verify_cancellation)
                 receipt['controller_valid'] = check_controller(result, args.verify_controller, args.backend, oracle['result']['text'])
+                receipt['controller_timing_valid'] = check_controller_timing(result, args.verify_controller, args.require_controller_nonzero_origin)
+                receipt['controller_timing_scope'] = 'local-to-global-coordinate-transfer' if args.verify_controller else 'SKIP_NOT_REQUESTED'
                 receipt['controller_scope'] = 'chunk-fed-windowed-offline-asr' if args.verify_controller else 'SKIP_NOT_REQUESTED'
                 receipt['pcm_identity_valid'] = check_pcm(result, args.expected_pcm_sha256)
                 receipt['same_oracle_pcm'] = bool(args.expected_pcm_sha256) and receipt['pcm_identity_valid']
                 receipt['code_bound'] = check_code_bindings(receipt)
                 receipt['text_exact'] = all(t['text'] == oracle['result']['text'] for t in result['transcripts']) and bool(result['transcripts'])
                 receipt['tokens_exact'] = all(t['tokenIds'] == oracle['result']['token_ids'] for t in result['transcripts']) and bool(result['transcripts'])
-                if result['status'] == 'PASS_ORUKEET_SMOKE' and result['disposed'] is True and receipt['execution_valid'] and receipt['cancellation_valid'] and receipt['controller_valid'] and receipt['text_exact'] and receipt['tokens_exact'] and receipt['pcm_identity_valid'] and receipt['code_bound'] and not receipt['page_errors'] and not receipt['blocked_requests']:
+                if result['status'] == 'PASS_ORUKEET_SMOKE' and result['disposed'] is True and receipt['execution_valid'] and receipt['cancellation_valid'] and receipt['controller_valid'] and receipt['controller_timing_valid'] and receipt['text_exact'] and receipt['tokens_exact'] and receipt['pcm_identity_valid'] and receipt['code_bound'] and not receipt['page_errors'] and not receipt['blocked_requests']:
                     receipt['status'] = ('PASS_AUTO_BROWSER_SAME_PCM_TOKEN_TEXT_SMOKE' if receipt['same_oracle_pcm']
                                          else 'PASS_AUTO_BROWSER_TOKEN_TEXT_SMOKE_PCM_UNBOUND')
             finally:
