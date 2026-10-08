@@ -32,6 +32,49 @@ def inputs():
 
 
 class FeatureBoundaryProbeTests(unittest.TestCase):
+    def test_production_final_bin_cast_changes_only_power_boundary(self):
+        import numpy as np
+        self.assertIsNone(self.result['productionFinalBinF32Capture'])
+        data = inputs()
+        data['productionFinalBinF32'] = True
+        result = json.loads(subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30, check=True).stdout)
+        candidate = result['productionFinalBinF32Capture']
+        baseline = result['productionCapture']
+        for key in ('frameBytesF64LE', 'frames', 'real', 'imag', 'filterbank', 'filterbankBounds'):
+            self.assertEqual(candidate[key], baseline[key], key)
+        r = np.asarray(baseline['real'], dtype=np.float32).astype(np.float64)
+        i = np.asarray(baseline['imag'], dtype=np.float32).astype(np.float64)
+        np.testing.assert_array_equal(candidate['power'], (r * r + i * i).astype(np.float32))
+        self.assertNotEqual(candidate['power'], baseline['power'])
+        for key in self.result:
+            if key != 'productionFinalBinF32Capture':
+                self.assertEqual(result[key], self.result[key], key)
+
+    def test_production_final_bin_cast_rejects_non_boolean_request(self):
+        data = inputs()
+        data['productionFinalBinF32'] = 'true'
+        result = subprocess.run(['node', '--input-type=module', '-e', probe_module.NODE_PROBE],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Final bin rounding request must be boolean', result.stderr)
+
+    def test_production_final_bin_cast_refuses_changed_power_contract(self):
+        boundary = '  if (finalBinF32) {'
+        self.assertEqual(probe_module.NODE_PROBE.count(boundary), 1)
+        code = probe_module.NODE_PROBE.replace(boundary, boundary +
+            "\n candidateSource = candidateSource.replace('this.powerBuf[k] = xkR * xkR + xkI * xkI;', 'this.powerBuf[k] = 0;');")
+        data = inputs()
+        data['productionFinalBinF32'] = True
+        result = subprocess.run(['node', '--input-type=module', '-e', code],
+            cwd=probe_module.ROOT, input=json.dumps(data), text=True, encoding='utf-8',
+            capture_output=True, timeout=30)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Final bin power contract changed', result.stderr)
+        self.assertEqual(hashlib.sha256((probe_module.ROOT / 'dist/audio/js-mel.js').read_bytes()).hexdigest(), self.before_sha)
+
     def test_packed_product_options_are_isolated_to_the_named_control(self):
         for butterfly, recombination in (("single-round", "separate"), ("separate", "single-round"),
                                          ("single-round", "single-round")):

@@ -24,10 +24,13 @@ from normalization_reduction import normalize_candidate
 NODE_PROBE = r'''
 import { JSMelProcessor, MEL_CONSTANTS } from './dist/audio/js-mel.js';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { normalizeCandidate } from './tools/model-debugging/reference/hf-parakeet-port/normalization-reduction.mjs';
 import { packedF32Source } from './tools/model-debugging/reference/hf-parakeet-port/packed-f32-source.mjs';
 let input = ''; for await (const chunk of process.stdin) input += chunk;
 const data = JSON.parse(input);
+if (data.productionFinalBinF32 !== undefined && typeof data.productionFinalBinF32 !== 'boolean')
+  throw new Error('Final bin rounding request must be boolean');
 if (data.powerOverrides !== undefined && !Array.isArray(data.powerOverrides))
   throw new Error('Selected power overrides must be an array');
 const pcm = Float32Array.from(data.pcm);
@@ -80,7 +83,11 @@ for (const [before, after] of [
 async function experiment(name, { window = false, windowProduct = false, filterbank = false,
   referencePower = false, magnitudeRoundTrip = false, capturePower = false, complexPower = false,
   fullFft = null, referenceComplexPower = null, production = false, capturePacked = false, packedF32 = false,
-  powerOverrides = null, melArithmetic = null, melSpectrum = null, roundLogGuard = false } = {}) {
+  powerOverrides = null, melArithmetic = null, melSpectrum = null, roundLogGuard = false,
+  finalBinF32 = false } = {}) {
+  if (finalBinF32 && (!production || !capturePower || packedF32 || capturePacked ||
+      powerOverrides !== null || melArithmetic || melSpectrum || roundLogGuard))
+    throw new Error('Final bin rounding requires an isolated production capture');
   if (melSpectrum !== null && (!['production', 'official-complex-rounded', 'aligned-packed'].includes(melSpectrum) ||
       melArithmetic !== 'f64-product-f32-sum' || !capturePower || referencePower || production ||
       magnitudeRoundTrip || fullFft || packedF32 || capturePacked || powerOverrides !== null ||
@@ -279,6 +286,23 @@ async function experiment(name, { window = false, windowProduct = false, filterb
     }
   }
   // Separate module instances isolate private caches; production code stays unchanged.
+  if (finalBinF32) {
+    // Cast only the final complex components. Products and sum remain binary64,
+    // with the existing Float32Array assignment; no sqrt or FFT scratch change.
+    // Captured real/imag intentionally preserve PRE-cast values for auditing.
+    for (const [before, re, im] of [
+      ['this.powerBuf[0] = (z0r + z0i) * (z0r + z0i);', 'z0r + z0i', '0'],
+      ['this.powerBuf[halfN] = (z0r - z0i) * (z0r - z0i);', 'z0r - z0i', '0'],
+      ['this.powerBuf[k] = xkR * xkR + xkI * xkI;', 'xkR', 'xkI'],
+      ['this.powerBuf[halfN - k] = xnkR * xnkR + xnkI * xnkI;', 'xnkR', 'xnkI'],
+      ['this.powerBuf[quarterN] = quarterRe * quarterRe + quarterIm * quarterIm;', 'quarterRe', 'quarterIm'],
+    ]) {
+      if (candidateSource.split(before).length !== 2) throw new Error('Final bin power contract changed');
+      const target = before.slice(0, before.indexOf('='));
+      candidateSource = candidateSource.replace(before,
+        `${target}= Math.fround(${re}) * Math.fround(${re}) + Math.fround(${im}) * Math.fround(${im});`);
+    }
+  }
   const variant = await import('data:text/javascript;base64,' + Buffer.from(candidateSource).toString('base64') + '#' + name);
   const processor = new variant.JSMelProcessor(options);
   if (window) {
@@ -307,6 +331,7 @@ async function experiment(name, { window = false, windowProduct = false, filterb
   if (frameBytes) variant.capturedFrames.forEach((value, index) => unroundedFrames
     ? frameBytes.writeDoubleLE(value, index * 8) : frameBytes.writeFloatLE(value, index * 4));
   return capturePower ? { features: Array.from(result.features), raw: capturedRaw, power: variant.capturedPower,
+    ...(finalBinF32 ? { candidateSourceSha256: createHash('sha256').update(candidateSource).digest('hex') } : {}),
     filterbankBounds: Array.from(processor.fbBounds), filterbank: Array.from(processor.melFilterbank),
     ...(referencePower || melArithmetic ? { linearMel: variant.capturedMel, logInput: variant.capturedLogInput,
       f32LogInputRaw: Array.from(Float32Array.from(variant.capturedLogInput, value => Math.log(Math.fround(value)))) } : {}),
@@ -340,6 +365,8 @@ for (const melArithmetic of ['f32-product-f64-sum', 'f32-product-f32-sum', 'f64-
     windowProduct: true, filterbank: true, referencePower: true, capturePower: true, melArithmetic });
 }
 const productionCapture = await experiment('production-capture', { production: true, capturePower: true });
+const productionFinalBinF32Capture = data.productionFinalBinF32
+  ? await experiment('production-final-bin-f32', { production: true, capturePower: true, finalBinF32: true }) : null;
 const frameArithmeticCaptures = {
   preemphasis: await experiment('frame-preemphasis', { capturePacked: true, capturePower: true }),
   window: await experiment('frame-window', { window: true, capturePacked: true, capturePower: true }),
@@ -399,7 +426,7 @@ const output = { raw: Array.from(raw.features), normalized: Array.from(normalize
   powerOverrideCapture, powerOverrideNormalization: powerOverrideNormalization ? Object.fromEntries(
     ['features', 'mean', 'std'].map(key => [key, Array.from(powerOverrideNormalization[key])])) : null,
   sameRawNormalized: Array.from(sameRawNormalized), normalizationControls, frameCount: raw.frameCount, validLength: raw.length,
-  experiments, powerCapture, productionCapture, frameArithmeticCaptures, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
+  experiments, powerCapture, productionCapture, productionFinalBinF32Capture, frameArithmeticCaptures, complexPowerCapture, fullFftF32Capture, fullFftF64Capture,
   referenceComplexLibraryCapture, referenceComplexRoundedCapture, packedF32Capture,
   logZeroGuard: MEL_CONSTANTS.LOG_ZERO_GUARD, nodeVersion: process.version };
 // Keep full evidence, without constructing one V8-size-limited JSON string.
@@ -1084,6 +1111,8 @@ def main():
         help='Use hash-bound captured waveform, not audio decoding or resampling')
     parser.add_argument("--require-actual-stft", action="store_true",
         help="Fail unless the frozen original-model input/window/complex STFT capture matches exactly")
+    parser.add_argument("--production-final-bin-f32", action="store_true",
+        help="Diagnostic-only final complex-bin cast; preserve production FFT and direct power math")
     parser.add_argument("--packed-butterfly-products", choices=("separate", "single-round"), default="separate",
         help="Diagnostic-only packed FFT product rounding; not hardware FMA")
     parser.add_argument("--packed-recombination-products", choices=("separate", "single-round"), default="separate",
@@ -1182,6 +1211,7 @@ def main():
             "referencePower": power.flatten().tolist(), "referenceComplex": complex_boundary,
             "referenceLogInput": official_log_input.flatten().tolist(),
             "powerOverrides": args.power_override,
+            "productionFinalBinF32": args.production_final_bin_f32,
             "packedProductRounding": {"butterflyProducts": args.packed_butterfly_products,
                 "recombinationProducts": args.packed_recombination_products}}),
         text=True, encoding="utf-8", capture_output=True, check=True, timeout=60)
@@ -1337,6 +1367,32 @@ def main():
     production_diagnostic["unchanged_valid_raw_mel"] = production_raw_control
     production_diagnostic["official_stft_components"] = compare_fft_components(
         production_capture, official_complex_array, atol=1e-5, rtol=1e-4)
+    final_bin_control = None
+    if args.production_final_bin_f32:
+        candidate = js['productionFinalBinF32Capture']
+        for key in ('frameBytesF64LE', 'real', 'imag', 'filterbank', 'filterbankBounds'):
+            if candidate[key] != production_capture[key]:
+                raise ValueError('Final bin cast changed upstream production boundary: ' + key)
+        r = np.asarray(candidate['real'], dtype=np.float32).astype(np.float64)
+        i = np.asarray(candidate['imag'], dtype=np.float32).astype(np.float64)
+        expected_power = (r * r + i * i).astype('<f4')
+        candidate_power = np.asarray(candidate['power'], dtype='<f4')
+        if expected_power.tobytes() != candidate_power.tobytes():
+            raise ValueError('Final bin cast power differs from independent direct expression')
+        final_bin_control = {'scope': 'Only final production complex bins cast to f32 before direct power; diagnostic, not port acceptance',
+            'upstream_bytes_unchanged': True, 'independent_power_bits_exact': True,
+            'pre_cast_complex_capture': True,
+            'candidate_source_sha256': candidate['candidateSourceSha256'],
+            'frame_sha256_f64le': hashlib.sha256(base64.b64decode(candidate['frameBytesF64LE'], validate=True)).hexdigest(),
+            'power_sha256_f32le': hashlib.sha256(candidate_power.tobytes()).hexdigest(),
+            'raw_sha256_f32le': hashlib.sha256(np.asarray(candidate['raw'], dtype='<f4').tobytes()).hexdigest(),
+            'features_sha256_f32le': hashlib.sha256(np.asarray(candidate['features'], dtype='<f4').tobytes()).hexdigest(),
+            'power_vs_official': compare_tensors(power.numpy(), candidate_power.reshape(power.shape), atol=1e-5, rtol=1e-4),
+            'valid_raw_vs_official': compare_raw_valid_prefix(raw.numpy()[0], reshape(candidate['raw'])[0], int(valid_length[0])),
+            'features_vs_official': compare_tensors(expected_tensor, reshape(candidate['features']), atol=1e-5, rtol=1e-4)}
+        metrics['production_final_bin_f32_features'] = final_bin_control['features_vs_official']
+        metrics['production_final_bin_f32_power'] = final_bin_control['power_vs_official']
+        metrics['production_final_bin_f32_raw'] = final_bin_control['valid_raw_vs_official']['tolerant']
     frame_arithmetic_controls = {}
     previous_frames = read_production_frames(production_capture, processor.n_fft, raw.shape[2])
     for name, capture in js["frameArithmeticCaptures"].items():
@@ -1469,6 +1525,7 @@ def main():
         "packed_f32_product_rounding": {"butterflyProducts": args.packed_butterfly_products,
             "recombinationProducts": args.packed_recombination_products},
         "production_input_diagnostic": production_diagnostic,
+        "production_final_bin_f32_control": final_bin_control,
         "frame_arithmetic_controls": frame_arithmetic_controls,
         "normalization_reduction_candidates": normalization_candidates,
         "js_normalization_reduction_controls": js_normalization_controls,
