@@ -1,0 +1,210 @@
+{
+  "status": "PASS_CHUNKED_EQUIVALENCE",
+  "scope": "torch-level chunked-state equivalence of the streaming encoder (conv tails + per-layer window context); correctness foundation for a chunked ONNX graph; no export here",
+  "snapshot": {
+    "path": ".cache\\moonshine-streaming-tiny",
+    "model_sha256": "0ab3443dabd95a4afb35f0a26155428c03b7c3c450fa6923ffdac4510ba3d040"
+  },
+  "contract": {
+    "frameLen": 80,
+    "convKernel": 5,
+    "convStride": 2,
+    "attentionWindows": [
+      [
+        16,
+        4
+      ],
+      [
+        16,
+        4
+      ],
+      [
+        16,
+        0
+      ],
+      [
+        16,
+        0
+      ],
+      [
+        16,
+        4
+      ],
+      [
+        16,
+        4
+      ]
+    ],
+    "leftContext": 15,
+    "lookaheadFrames": 4,
+    "state": "conv input tails (<=4 frames each) + per-layer 15-frame hidden context; emission delayed by the 4-frame lookahead; no absolute positions in encoder attention so slices are position-invariant"
+  },
+  "fixtures": {
+    "jfk": {
+      "effectivePcmSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0"
+    },
+    "synthetic": {
+      "samples": 1099360,
+      "seconds": 68.71,
+      "generator": "numpy default_rng(20261009) standard normal * 0.05"
+    }
+  },
+  "rows": [
+    {
+      "fixture": "jfk",
+      "chunkFrames": 16,
+      "embedded": {
+        "maxAbs": 1.1920928955078125e-06,
+        "meanAbs": 3.559510001981504e-08,
+        "cosine": 0.9999999999999419,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "hidden": {
+        "maxAbs": 3.17990779876709e-05,
+        "meanAbs": 1.0415236359852482e-06,
+        "cosine": 0.9999999999985967,
+        "allclose_1e_4": true,
+        "allclose_1e_5": false
+      },
+      "frames": 550
+    },
+    {
+      "fixture": "jfk",
+      "chunkFrames": 64,
+      "embedded": {
+        "maxAbs": 4.76837158203125e-07,
+        "meanAbs": 4.1296979444186116e-10,
+        "cosine": 0.999999999999987,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "hidden": {
+        "maxAbs": 1.430511474609375e-05,
+        "meanAbs": 6.861274108638843e-07,
+        "cosine": 0.999999999999425,
+        "allclose_1e_4": true,
+        "allclose_1e_5": false
+      },
+      "frames": 550
+    },
+    {
+      "fixture": "jfk",
+      "chunkFrames": 137,
+      "embedded": {
+        "maxAbs": 4.76837158203125e-07,
+        "meanAbs": 1.1451993486844003e-10,
+        "cosine": 0.9999999999999875,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "hidden": {
+        "maxAbs": 1.633167266845703e-05,
+        "meanAbs": 6.758974207731296e-07,
+        "cosine": 0.9999999999994235,
+        "allclose_1e_4": true,
+        "allclose_1e_5": false
+      },
+      "frames": 550
+    },
+    {
+      "fixture": "jfk",
+      "chunkFrames": 512,
+      "embedded": {
+        "maxAbs": 1.4901161193847656e-08,
+        "meanAbs": 1.4320407486097378e-12,
+        "cosine": 0.9999999999999876,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "hidden": {
+        "maxAbs": 7.331371307373047e-06,
+        "meanAbs": 1.5770787822268838e-07,
+        "cosine": 0.9999999999998527,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "frames": 550
+    },
+    {
+      "fixture": "synthetic",
+      "chunkFrames": 16,
+      "embedded": {
+        "maxAbs": 1.430511474609375e-06,
+        "meanAbs": 3.582578002402862e-08,
+        "cosine": 0.9999999999999344,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "hidden": {
+        "maxAbs": 1.3113021850585938e-05,
+        "meanAbs": 8.589513389443161e-07,
+        "cosine": 0.9999999999990772,
+        "allclose_1e_4": true,
+        "allclose_1e_5": false
+      },
+      "frames": 3436
+    },
+    {
+      "fixture": "synthetic",
+      "chunkFrames": 64,
+      "embedded": {
+        "maxAbs": 7.152557373046875e-07,
+        "meanAbs": 1.20626777277253e-10,
+        "cosine": 0.9999999999999515,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "hidden": {
+        "maxAbs": 5.4836273193359375e-06,
+        "meanAbs": 4.549466577343491e-07,
+        "cosine": 0.9999999999996749,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "frames": 3436
+    },
+    {
+      "fixture": "synthetic",
+      "chunkFrames": 137,
+      "embedded": {
+        "maxAbs": 7.152557373046875e-07,
+        "meanAbs": 1.1034562258882372e-10,
+        "cosine": 0.9999999999999517,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "hidden": {
+        "maxAbs": 5.9604644775390625e-06,
+        "meanAbs": 4.273138307459187e-07,
+        "cosine": 0.9999999999996932,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "frames": 3436
+    },
+    {
+      "fixture": "synthetic",
+      "chunkFrames": 512,
+      "embedded": {
+        "maxAbs": 1.4901161193847656e-08,
+        "meanAbs": 3.218700690791271e-13,
+        "cosine": 0.9999999999999512,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "hidden": {
+        "maxAbs": 3.0994415283203125e-06,
+        "meanAbs": 3.7922572873045173e-07,
+        "cosine": 0.9999999999997147,
+        "allclose_1e_4": true,
+        "allclose_1e_5": true
+      },
+      "frames": 3436
+    }
+  ],
+  "limits": [
+    "Full-valid audio only (no intra-stream padding); mask-tail semantics at the final chunk rely on absent frames simply not existing, matching whole-utterance behaviour.",
+    "Torch reference reuse, not an exported graph; per-run float reordering may give tiny differences recorded in the metrics."
+  ]
+}

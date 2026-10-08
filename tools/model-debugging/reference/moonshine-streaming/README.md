@@ -83,7 +83,29 @@ norms/softmax; the controlled mixed-precision fallback was not needed on this
 fixture and stays documented, not silently applied. No WebGPU run yet: browser
 speed/memory and the fp16 WebGPU provider path are unmeasured.
 
-**Remaining**: chunked-state encoder refinement for true incremental
-streaming, library integration into the moonshine family, and real browser
-(WebGPU) validation of both precision sets. Invalid historical streaming
-graphs stay excluded.
+**Chunked-state equivalence proven — `PASS_CHUNKED_EQUIVALENCE`**
+(`chunked_encoder_probe.py`, receipt
+`tools/data/results/model-candidates/moonshine-streaming-chunked-equivalence-2026-10-09.json`):
+feeding audio in chunks with explicit state reproduces the whole-utterance
+encoder exactly — embedder stage max abs <= 1.4e-6, full encoder cosine 1.0
+with max abs <= 3.2e-5 (allclose atol/rtol 1e-4, the fp32 tolerance calibrated
+for this model's cross-run attention reordering) over chunk sizes 16/64/137/512
+on the JFK fixture and a synthetic odd-length waveform. Proven state contract:
+
+- per-frame CMVN/asinh/linear front-end is stateless per 5 ms frame;
+- both causal stride-2 convs carry only their last 4 input frames and an
+  output-phase counter (output j uses inputs [2j-4 .. 2j]; zeros only before
+  the stream start);
+- the six attention layers have no absolute positions (relative windows
+  (16,4)/(16,0)): each output frame needs 15 left and up to 3 right context
+  frames per layer — a runtime carries 15 hidden frames per layer, with
+  emission delayed by the lookahead; the proof re-runs slices with the
+  compounded 90-left/24-right context instead.
+
+This is the correctness foundation for a chunked ONNX encoder graph
+(state-in/state-out); that export plus the library integration and the real
+WebGPU browser validation of both precision sets remain.
+
+**Remaining**: chunked ONNX encoder export, library integration into the
+moonshine family, real browser (WebGPU) validation. Invalid historical
+streaming graphs stay excluded.
