@@ -1,5 +1,41 @@
 # Orukeet official-source reference and port handoff
 
+## Manifest-driven Chrome oracle smoke
+
+The `chrome-oracle-jfk-webgpu-hybrid` case in
+`tools/model-debugging/ports/oruk-orukeet.port.json` invokes the existing
+`tests/smoke/orukeet-auto-browser.py` through this directory's
+`browser_manifest.py` adapter. It does not add an inference or decoding loop.
+Start the loopback demo on 8767 as described in `examples/demo/README.md`, then:
+
+```powershell
+python tools/model-debugging/scripts/port_manifest.py --manifest tools/model-debugging/ports/oruk-orukeet.port.json --run chrome-oracle-jfk-webgpu-hybrid --output tools/data/results/orukeet/manifest-chrome-fresh-run.json
+```
+
+Use fresh output names. Parent and `.browser.json` child receipts are distinct,
+protected before execution and exclusively written. The explicit fp32 adapter
+requires both full token and text comparisons, at least two repeats, original
+oracle/model/audio binding, recorded effective PCM, manifest-bound consumed
+graphs/tokenizer/sidecars, runner SHA, actual component backends, disposal and
+Chrome closure. All delivered HTML/JS/TS/WASM paths, sizes and hashes must match
+the manifest-hashed `browser-code-contract-jfk.json`, including duplicate
+deliveries. An altered HTML page cannot silently inject unbound inline code.
+
+This code snapshot is specific to this reviewed local Vite consumer/dependency
+build and checkout paths. A source/dependency/server-build change should FAIL;
+review the change and refresh a separate evidence-backed code contract, never
+automatically regenerate it just to make a failing run pass. The snapshot
+proves reproduction of recorded delivered bytes, not universal source-to-build
+equivalence or npm-package usability. `source-config.json` and the native
+runtime configuration are manifest-bound auxiliary files, not browser-consumed
+inputs. The four actually consumed graph/tokenizer/sidecar files are compared
+as an exact set.
+
+`PASS_BROWSER_ORACLE_MATCH` means same-PCM repeated output smoke only. The
+existing `runner: browser` case remains `PASS_WARMUP`, `comparesOracle: false`.
+Production feature numerics, fp16 promotion, long/windowed/streaming quality and
+soak remain separate gates. No new model download or browser install.
+
 Run from the `speech-recognition` repository root. Original weights live under
 ignored `models/orukeet/source/`; small provenance/summary receipts live under
 `tools/data/results/orukeet/`. Full compressed numerical traces are ignored

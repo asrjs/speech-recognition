@@ -167,9 +167,11 @@ class AutoReceiptTests(unittest.TestCase):
                 for url, size in [('https://127.0.0.1/src/orukeet-smoke.js', 10),
                                   ('https://127.0.0.1/onnxruntime-web/dist/runtime.wasm', 10),
                                   ('https://127.0.0.1/types.ts', 0)]]
+        code.append(dict(url='https://127.0.0.1/orukeet-smoke.html', status=200,
+                         bytes=10, sha256='a' * 64, capture='route-fulfilled-body'))
         receipt = dict(served_code=code, code_capture_errors=[])
         self.assertTrue(runner.check_code_bindings(receipt))
-        for index in (0, 1):
+        for index in (0, 1, 3):
             with self.subTest(index=index):
                 changed = [dict(item) for item in code]
                 changed[index]['bytes'] = 0
@@ -192,6 +194,10 @@ class AutoReceiptTests(unittest.TestCase):
         response.dispose.assert_called_once_with()
         self.assertEqual(receipt['served_code'][0]['sha256'], runner.hashlib.sha256(b'actual runtime bytes').hexdigest())
         self.assertEqual(receipt['code_capture_errors'], [])
+
+    def test_html_is_captured_even_with_auto_query(self):
+        self.assertTrue(runner.is_code_response('https://127.0.0.1/orukeet-smoke.html?auto=1'))
+        self.assertFalse(runner.is_code_response('https://127.0.0.1/favicon.ico'))
 
     def test_failed_code_capture_aborts_and_records_failure(self):
         route = Mock()

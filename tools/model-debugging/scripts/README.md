@@ -12,6 +12,23 @@ Unlike `reference/`, this folder should trend toward:
 
 ## Current Scripts
 
+- [port_manifest.py](./port_manifest.py)
+  - one-command local artifact/fixture/oracle digest preflight and declared runs
+  - `runner: browser` is companion warm-up only (`comparesOracle: false`)
+  - explicit `runner: browser-oracle` delegates to a model-owned adapter; current
+    Orukeet fp32 adapter invokes the existing automatic Chrome runner, compares
+    two full token/text outputs, PCM/artifacts, pinned delivered HTML/JS/WASM
+    and awaited cleanup; it does not certify stage numerics or native streaming
+  - requires an already-running demo and installed Chrome/Playwright; no installs
+  - run from the repository root with a fresh output filename:
+
+    ```powershell
+    python tools/model-debugging/scripts/port_manifest.py --manifest tools/model-debugging/ports/oruk-orukeet.port.json --run chrome-oracle-jfk-webgpu-hybrid --output tools/data/results/orukeet/manifest-chrome-fresh-run.json
+    ```
+
+  - [demo startup](../../../examples/demo/README.md#automatic-chrome-model-test-and-json-capture)
+    and [model-owned contract](../reference/orukeet/README.md#manifest-driven-chrome-oracle-smoke)
+
 - [node-asrjs-nemo-inspect.mjs](./node-asrjs-nemo-inspect.mjs)
   - runs Parakeet/NeMo TDT through `@asrjs/speech-recognition` in Node
   - accepts a local model directory and audio fixture

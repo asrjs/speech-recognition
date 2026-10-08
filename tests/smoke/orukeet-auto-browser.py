@@ -218,12 +218,18 @@ def check_code_bindings(receipt):
     # Type-only TS modules legitimately compile to empty ESM. Bind their empty
     # bytes, but require actual executable entrypoint and ORT WASM bodies.
     return (not receipt.get('code_capture_errors')
+            and any(urlparse(item['url']).path.endswith('/orukeet-smoke.html') and item['bytes'] > 0 for item in code)
             and any(urlparse(item['url']).path.endswith('/src/orukeet-smoke.js') and item['bytes'] > 0 for item in code)
             and any('/onnxruntime-web/dist/' in urlparse(item['url']).path
                     and urlparse(item['url']).path.endswith('.wasm') and item['bytes'] > 0 for item in code)
             and all(item['status'] == 200 and type(item['bytes']) is int and item['bytes'] >= 0
                     and re.fullmatch('[0-9a-f]{64}', item['sha256']) is not None
                     and item['capture'] == 'route-fulfilled-body' for item in code))
+
+
+def is_code_response(url):
+    # HTML can execute inline scripts too; bind it alongside external modules.
+    return urlparse(url).path.endswith(('.html', '.js', '.ts', '.mjs', '.wasm'))
 
 
 def main():
@@ -282,7 +288,7 @@ def main():
                 receipt['code_capture_errors'] = []
                 def route_request(route):
                     if route.request.url.startswith(origin + '/'):
-                        if urlparse(route.request.url).path.endswith(('.js', '.ts', '.mjs', '.wasm')):
+                        if is_code_response(route.request.url):
                             capture_code_route(route, receipt)
                         else:
                             route.continue_()

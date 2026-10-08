@@ -3,6 +3,10 @@
   "modelId": "oruk/orukeet",
   "family": "nemo-tdt",
   "preset": "parakeet",
+  "browserCodeContract": {
+    "path": "tools/model-debugging/reference/orukeet/browser-code-contract-jfk.json",
+    "sha256": "9c736db33165dfcf01accf3c547f1c0bbdeb4efa95232c5a41d9fa8cb3d3d8d9"
+  },
   "originalWeights": {
     "path": "models/orukeet/source/orukeet-v0.1.0.nemo",
     "sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56"
@@ -46,6 +50,7 @@
       "path": "tools/data/fixtures/audio/jfk-short.wav",
       "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
       "durationSeconds": 11,
+      "effectivePcmSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
       "oracle": {
         "path": "tools/data/results/orukeet/official-jfk-stage-summary-2026-09-30.json",
         "field": "result",
@@ -130,6 +135,19 @@
     }
   ],
   "browserRuns": [
+    {
+      "id": "chrome-oracle-jfk-webgpu-hybrid",
+      "runner": "browser-oracle",
+      "adapter": "orukeet-auto-browser",
+      "backend": "webgpu-hybrid",
+      "precision": "fp32",
+      "fixture": "jfk-short",
+      "compare": ["token_ids", "text"],
+      "repeat": 2,
+      "url": "https://127.0.0.1:8767/orukeet-smoke.html",
+      "runnerSha256": "4e1f3af766fcf1108395693572cd3364cd77f6a1133bb6c94674911be7c1cff8",
+      "verifies": "same-PCM repeated original-oracle token/text browser smoke with code identity and awaited cleanup; not stage numerical parity"
+    },
     {
       "id": "companion-ui-warmup-webgpu-hybrid",
       "consumerRoot": "N:/github/asrjs/browser-demo",

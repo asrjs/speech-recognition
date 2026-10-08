@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import re
 import subprocess
@@ -96,6 +97,11 @@ def check_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         identity['runtimeConfig'] = require_file(
             manifest['runtimeConfig']['path'], manifest['runtimeConfig'].get('sha256'), 'runtime config'
         )
+    if 'browserCodeContract' in manifest:
+        identity['browserCodeContract'] = require_file(
+            manifest['browserCodeContract']['path'], manifest['browserCodeContract'].get('sha256'),
+            'browser code contract'
+        )
     for fixture in manifest['fixtures']:
         bound = require_file(fixture['path'], fixture.get('sha256'), 'fixture')
         bound['id'] = fixture['id']
@@ -129,6 +135,9 @@ def oracle_fields(path: Path, field: str) -> tuple[list[int], str]:
 
 
 ORACLE_FIELDS = ('token_ids', 'text')
+BROWSER_ORACLE_ADAPTERS = {
+    'orukeet-auto-browser': ROOT / 'tools/model-debugging/reference/orukeet/browser_manifest.py',
+}
 
 
 def validate_comparison(run: dict[str, Any]) -> list[str]:
@@ -154,6 +163,8 @@ def run_case(manifest: dict[str, Any], run: dict[str, Any], output: Path | None)
     # Browser warm-up cases transcribe their own harness sample and declare no
     # repository fixture, so fixture-scoped context stays empty for them.
     fixture = fixtures.get(run.get('fixture', ''))
+    if run['runner'] == 'browser-oracle' and fixture is None:
+        raise ValueError('Browser oracle fixture is not declared in the manifest')
     context = {
         'consumerRoot': run.get('consumerRoot', ''),
         'modelId': manifest['modelId'],
@@ -165,7 +176,18 @@ def run_case(manifest: dict[str, Any], run: dict[str, Any], output: Path | None)
         # harness never race for the same new-output path.
         'browserOutput': f'{output}.browser.json' if output else '',
     }
-    command = resolve_placeholders(run['command'], context)
+    adapter = None
+    consumed = None
+    if run['runner'] == 'browser-oracle':
+        path = BROWSER_ORACLE_ADAPTERS.get(run.get('adapter'))
+        if path is None:
+            raise ValueError('Unknown browser oracle adapter')
+        spec = importlib.util.spec_from_file_location('browser_oracle_adapter', path)
+        adapter = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(adapter)
+        command, consumed = adapter.prepare(manifest, run, fixture, context)
+    else:
+        command = resolve_placeholders(run['command'], context)
     if not output:
         return {'id': run['id'], 'status': 'LISTED', 'command': command}
 
@@ -174,6 +196,15 @@ def run_case(manifest: dict[str, Any], run: dict[str, Any], output: Path | None)
     if result.returncode != 0:
         return {'id': run['id'], 'status': 'FAILED_RUNNER_EXIT', 'exitCode': result.returncode,
                 'stderr': result.stderr[-4000:], 'command': command}
+
+    if adapter is not None:
+        receipt_path = Path(context['browserOutput'])
+        try:
+            compared = adapter.compare(manifest, run, fixture, receipt_path, consumed)
+            return {**compared, 'command': command}
+        except (ValueError, KeyError, TypeError, OSError) as error:
+            return {'id': run['id'], 'status': 'FAILED_BROWSER_RECEIPT',
+                    'error': str(error), 'command': command, 'browserReceipt': str(receipt_path)}
 
     if run['runner'] == 'browser':
         receipt_path = Path(context['browserOutput'])
@@ -252,11 +283,12 @@ def main() -> int:
         # cases currently share this suffix, so multiple browser selections
         # must fail rather than reusing another case's receipt.
         outputs = [args.output, *[
-            Path(f'{args.output}.browser.json') for case in selected if case['runner'] == 'browser'
+            Path(f'{args.output}.browser.json') for case in selected
+            if case['runner'] in ('browser', 'browser-oracle')
         ]]
         inputs = [args.manifest]
         bound_files = [*identity['localArtifacts']['files']]
-        for role in ('originalWeights', 'runtimeConfig'):
+        for role in ('originalWeights', 'runtimeConfig', 'browserCodeContract'):
             bound = identity.get(role)
             if isinstance(bound, dict) and 'bytes' in bound:
                 bound_files.append(bound)
@@ -271,7 +303,7 @@ def main() -> int:
 
     results = [run_case(manifest, case, args.output) for case in selected]
     receipt: dict[str, Any] = {
-        'status': 'PASS' if all(item['status'] in ('PASS_ORACLE_MATCH', 'PASS_WARMUP', 'LISTED') for item in results)
+        'status': 'PASS' if all(item['status'] in ('PASS_ORACLE_MATCH', 'PASS_BROWSER_ORACLE_MATCH', 'PASS_WARMUP', 'LISTED') for item in results)
         else 'FAIL',
         'scope': 'Manifest-bound port run; identity digests recorded, oracle compared',
         'manifest': str(args.manifest.resolve().relative_to(ROOT)).replace('\\', '/'),

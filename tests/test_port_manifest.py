@@ -105,18 +105,20 @@ class PortManifestDigestContract(unittest.TestCase):
         self.assertEqual(bound['sha256'], expected)
 
     def test_each_local_manifest_role_requires_a_recorded_digest(self):
-        for role in ('weights', 'artifact', 'config', 'fixture', 'oracle'):
+        for role in ('weights', 'artifact', 'config', 'fixture', 'oracle', 'browser-code'):
             with self.subTest(role=role):
                 manifest = manifest_with([sys.executable, '-c', STUB_MATCH])
                 manifest['runtimeConfig'] = {
                     'path': str(self.input), 'sha256': port_manifest.digest(self.input),
                 }
+                manifest['browserCodeContract'] = dict(manifest['runtimeConfig'])
                 target = {
                     'weights': manifest['originalWeights'],
                     'artifact': manifest['localArtifacts']['files'][0],
                     'config': manifest['runtimeConfig'],
                     'fixture': manifest['fixtures'][0],
                     'oracle': manifest['fixtures'][0]['oracle'],
+                    'browser-code': manifest['browserCodeContract'],
                 }[role]
                 del target['sha256']
                 with self.assertRaisesRegex(ValueError, 'Missing or invalid SHA-256'):
@@ -184,8 +186,10 @@ class PortManifestOutputPreflight(unittest.TestCase):
         config = self.root / 'runtime-config.json'
         config.write_text('{}', encoding='utf-8')
         self.manifest['runtimeConfig'] = {'path': str(config), 'sha256': port_manifest.digest(config)}
+        self.manifest['browserCodeContract'] = dict(self.manifest['runtimeConfig'])
         sidecar = self.manifest['localArtifacts']['files'][1]
-        for role in (self.manifest['originalWeights'], sidecar, self.manifest['runtimeConfig']):
+        for role in (self.manifest['originalWeights'], sidecar, self.manifest['runtimeConfig'],
+                     self.manifest['browserCodeContract']):
             with self.subTest(path=role['path']):
                 output = Path(role['path'])
                 before = port_manifest.digest(output)
@@ -193,17 +197,19 @@ class PortManifestOutputPreflight(unittest.TestCase):
                 self.assertEqual(port_manifest.digest(output), before)
 
     def test_existing_browser_child_receipt_rejected_before_launch(self):
-        self.manifest['runs'][0]['runner'] = 'browser'
         child = Path(f'{self.output}.browser.json')
         child.write_text('preserved child', encoding='utf-8')
-        self.assert_rejected_before_runner(self.output, FileExistsError, 'existing output')
+        for runner in ('browser', 'browser-oracle'):
+            with self.subTest(runner=runner):
+                self.manifest['runs'][0]['runner'] = runner
+                self.assert_rejected_before_runner(self.output, FileExistsError, 'existing output')
         self.assertEqual(child.read_text(encoding='utf-8'), 'preserved child')
         self.assertFalse(self.output.exists())
 
     def test_multiple_browser_runs_cannot_share_one_child_receipt(self):
         first = self.manifest['runs'][0]
         first['runner'] = 'browser'
-        self.manifest['runs'].append(dict(first, id='second'))
+        self.manifest['runs'].append(dict(first, id='second', runner='browser-oracle'))
         self.assert_rejected_before_runner(self.output, ValueError, 'distinct', run_id=None)
 
     def test_listing_does_not_need_new_output(self):
