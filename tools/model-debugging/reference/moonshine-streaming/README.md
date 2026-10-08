@@ -69,7 +69,21 @@ Gates: per-step final-position logits vs a torch reference greedy loop max abs
 encoder -> seed/step graphs) reproduces the official oracle's 28 token ids and
 canonical text exactly.
 
-**Next**: fp16 conversion of the three graphs with the same oracle re-pass
-(user precision preference), then the chunked-state encoder refinement for
-true incremental streaming, then library integration. Invalid historical
-streaming graphs stay excluded.
+**fp16 set done — `PASS_STREAMING_FP16`**
+(`export_fp16.py`, receipt
+`tools/data/results/model-candidates/moonshine-streaming-fp16-2026-10-09.json`):
+all three graphs re-exported directly from torch with `dtype=float16`
+(the measured Qwen lesson: ORT's float16 converter breaks graphs; never
+post-convert) into `.cache/moonshine-streaming-onnx-fp16/` (284 MB vs 566 MB
+fp32). The fully-fp16 pipeline reproduces the official oracle's 28 token ids
+and the fp32 pipeline's tokens exactly; drift evidence: encoder hidden cosine
+0.9999876 (max abs 5.8e-2), per-step final logits cosine 0.9999996 (max abs
+8.8e-2 on large-magnitude logits). Everything is fp16 in this pass including
+norms/softmax; the controlled mixed-precision fallback was not needed on this
+fixture and stays documented, not silently applied. No WebGPU run yet: browser
+speed/memory and the fp16 WebGPU provider path are unmeasured.
+
+**Remaining**: chunked-state encoder refinement for true incremental
+streaming, library integration into the moonshine family, and real browser
+(WebGPU) validation of both precision sets. Invalid historical streaming
+graphs stay excluded.

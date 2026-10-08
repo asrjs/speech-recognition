@@ -1,0 +1,154 @@
+{
+  "status": "PASS_STREAMING_FP16",
+  "scope": "direct fp16 torch export of the streaming graph set; oracle token gate plus fp32-drift evidence; not browser WebGPU measurement, not mixed-precision, not library integration",
+  "snapshot": {
+    "path": ".cache\\moonshine-streaming-tiny",
+    "model_sha256": "0ab3443dabd95a4afb35f0a26155428c03b7c3c450fa6923ffdac4510ba3d040"
+  },
+  "policy": "fp16 comes from direct torch export (dtype=float16), not ORT post-conversion, per the measured Qwen converter failure; every op including norms/softmax is fp16 in this pass — if tokens had diverged, the controlled fallback is fp32-sensitive-op mixed precision, not silently applied",
+  "graphs": [
+    {
+      "name": "encoder_model.onnx",
+      "sha256": "78f0f8c76e5982a3b9f653b6d873dfc3d8e7c676c52f3efdb1f19248e5ef75b1",
+      "bytes": 802243,
+      "externalDataSha256": "0c035e439ee932021bab263e33d35b92428031aaca915ab2085e2815661c3fa5",
+      "externalDataBytes": 19021824
+    },
+    {
+      "name": "decoder_prefill_model.onnx",
+      "sha256": "96fc65bac43409c6f8c4996cae7595a45b41c13297d52c2269ddf7d21a70e127",
+      "bytes": 69274297,
+      "externalDataSha256": "f1d8ee473d51aa88526ca013691d7e02e2f7ce28ccd38a9cf38bde9ba18849d5",
+      "externalDataBytes": 69206016
+    },
+    {
+      "name": "decoder_step_model.onnx",
+      "sha256": "fc3feb41fb2f7c8210abc2073e0c25a4e4f6ff2c5716ffed9f428d1defad0926",
+      "bytes": 69279022,
+      "externalDataSha256": "f1d8ee473d51aa88526ca013691d7e02e2f7ce28ccd38a9cf38bde9ba18849d5",
+      "externalDataBytes": 69206016
+    }
+  ],
+  "sanitizer": {
+    "removedNumOutputsAttrs": {
+      "encoder_model.onnx": 0,
+      "decoder_prefill_model.onnx": 6,
+      "decoder_step_model.onnx": 6
+    }
+  },
+  "parity": {
+    "encoderHidden": {
+      "maxAbs": 0.05752861499786377,
+      "meanAbs": 0.0030842165619857477,
+      "cosine": 0.999987562082346
+    },
+    "perStepLogits": {
+      "maxAbs": 0.08797931671142578,
+      "meanAbs": 0.012016193205088004,
+      "cosine": 0.9999995784977983
+    },
+    "stepsCompared": 27
+  },
+  "tokens": {
+    "fp16": [
+      1,
+      1126,
+      577,
+      29892,
+      590,
+      10404,
+      23035,
+      29892,
+      2244,
+      451,
+      825,
+      596,
+      4234,
+      508,
+      437,
+      363,
+      366,
+      29892,
+      2244,
+      825,
+      366,
+      508,
+      437,
+      363,
+      596,
+      4234,
+      29889,
+      2
+    ],
+    "fp32": [
+      1,
+      1126,
+      577,
+      29892,
+      590,
+      10404,
+      23035,
+      29892,
+      2244,
+      451,
+      825,
+      596,
+      4234,
+      508,
+      437,
+      363,
+      366,
+      29892,
+      2244,
+      825,
+      366,
+      508,
+      437,
+      363,
+      596,
+      4234,
+      29889,
+      2
+    ],
+    "oracle": [
+      1,
+      1126,
+      577,
+      29892,
+      590,
+      10404,
+      23035,
+      29892,
+      2244,
+      451,
+      825,
+      596,
+      4234,
+      508,
+      437,
+      363,
+      366,
+      29892,
+      2244,
+      825,
+      366,
+      508,
+      437,
+      363,
+      596,
+      4234,
+      29889,
+      2
+    ],
+    "equalOracle": true,
+    "equalFp32": true,
+    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+  },
+  "timings": {
+    "exportSeconds": 37.05
+  },
+  "limits": [
+    "CPU execution provider; fp16 graph IO accepted here as float16 tensors; no WebGPU run, no speed or memory measurement, no browser claim.",
+    "Single fixture (JFK), greedy decoding only."
+  ]
+}
