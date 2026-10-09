@@ -24,6 +24,13 @@ const REQUIRED = [
   'export-receipt.json',
 ];
 
+/** Streaming graph set; optional, resolved into loadOptions.streaming when present. */
+const STREAMING = [
+  'encoder_chunked_model.onnx',
+  'decoder_prefill_model.onnx',
+  'decoder_step_model.onnx',
+];
+
 function inspectMoonshineEntries(
   entries: readonly SpeechModelLocalEntry[],
 ): SpeechModelLocalInspection {
@@ -87,18 +94,33 @@ export const moonshineBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
     };
 
     try {
+      const tokenizerUrl = await toLocator('tokenizer.json');
+      // One locator per file: the whole-utterance encoder serves both the
+      // offline contract and the streaming final flush.
+      const encoderUrl = await toLocator('encoder_model.onnx');
+      const hasStreaming = STREAMING.every((name) => findLocalEntry(options.entries, name));
+      const streaming = hasStreaming
+        ? {
+            encoderUrl,
+            chunkedEncoderUrl: await toLocator('encoder_chunked_model.onnx'),
+            prefillUrl: await toLocator('decoder_prefill_model.onnx'),
+            stepUrl: await toLocator('decoder_step_model.onnx'),
+            tokenizerUrl,
+          }
+        : undefined;
       return {
         modelId: options.modelId,
         preset: 'moonshine',
         builtInLoadOptions: {
-          encoderUrl: await toLocator('encoder_model.onnx'),
+          encoderUrl,
           crossKvUrl: await toLocator('decoder_cross_kv_model.onnx'),
           decoderUrl: await toLocator('decoder_with_past_model.onnx'),
-          tokenizerUrl: await toLocator('tokenizer.json'),
+          tokenizerUrl,
           generationUrl: await toLocator('generation_config.json'),
           receiptUrl: await toLocator('export-receipt.json'),
           encoderBackend: options.encoderBackend,
           cpuThreads: options.cpuThreads,
+          ...(streaming ? { streaming } : {}),
         },
         assetHandles,
         selection: {

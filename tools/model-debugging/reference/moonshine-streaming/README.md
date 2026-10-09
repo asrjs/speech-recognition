@@ -204,6 +204,17 @@ real-graph test pushes two-second chunks and asserts the final
 `committedText` equals the official oracle transcript with canonical meta
 (modelFamily moonshine-streaming, isFinal, sampleRate, durationSeconds).
 
-**Remaining**: preset asset routing (the four graphs plus tokenizer through
-the moonshine loader/adapter), real browser (WebGPU) validation of all graph
-sets. Invalid historical streaming graphs stay excluded.
+**Preset asset routing done** (`src/models/moonshine/streaming-loader.ts`,
+adapter in `src/presets/moonshine-local-adapter.ts`): `loadMoonshineStreaming`
+creates the four ORT sessions (onnxruntime-web by default, injectable for
+tests and the browser demo), fetches the tokenizer and returns a
+transcriber + session + dispose that releases every session. The local
+adapter resolves `builtInLoadOptions.streaming` when a folder carries the
+streaming graphs (one locator per file; the whole-utterance encoder doubles
+as the final-flush graph) and omits it for offline-only folders. Five unit
+tests cover session creation/provider selection/tokenizer-failure release
+and both adapter routings; the full suite is 1705 passed / 0 failed.
+
+**Remaining**: real browser (WebGPU) validation of all graph sets — the
+first real fp16 execution, via onnxruntime-web's separate tensor path.
+Invalid historical streaming graphs stay excluded.
