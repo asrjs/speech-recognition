@@ -160,6 +160,61 @@ describe('normalizePcmInput', () => {
     expect(Array.from(result.channels[1]!)).toEqual([-0.5, -0.25]);
   });
 
+  it('handles empty 0-length Float32Array and Float64Array input', () => {
+    const emptyF32 = normalizePcmInput(new Float32Array(0));
+    expect(emptyF32.numberOfFrames).toBe(0);
+    expect(emptyF32.durationSeconds).toBe(0);
+    expect(emptyF32.numberOfChannels).toBe(1);
+    expect(emptyF32.channels[0]!.length).toBe(0);
+
+    const emptyF64 = normalizePcmInput(new Float64Array(0));
+    expect(emptyF64.numberOfFrames).toBe(0);
+    expect(emptyF64.durationSeconds).toBe(0);
+  });
+
+  it('handles empty planar channel arrays and zero-length channels', () => {
+    const emptyChannelData = normalizePcmInput({
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      numberOfFrames: 0,
+      durationSeconds: 0,
+      channels: [new Float32Array(0)],
+    });
+    expect(emptyChannelData.numberOfFrames).toBe(0);
+
+    expect(() => {
+      normalizePcmInput({
+        sampleRate: 16000,
+        numberOfChannels: 0,
+        numberOfFrames: 0,
+        durationSeconds: 0,
+        channels: [],
+      });
+    }).toThrow(TypeError);
+  });
+
+  it('handles empty interleaved data buffers', () => {
+    const emptyInt16 = normalizePcmInput({
+      sampleRate: 16000,
+      numberOfChannels: 2,
+      numberOfFrames: 0,
+      durationSeconds: 0,
+      data: new Int16Array(0),
+    });
+    expect(emptyInt16.numberOfFrames).toBe(0);
+    expect(emptyInt16.numberOfChannels).toBe(2);
+
+    const emptyFloat32 = normalizePcmInput({
+      sampleRate: 16000,
+      numberOfChannels: 2,
+      numberOfFrames: 0,
+      durationSeconds: 0,
+      data: new Float32Array(0),
+    });
+    expect(emptyFloat32.numberOfFrames).toBe(0);
+    expect(emptyFloat32.numberOfChannels).toBe(2);
+  });
+
   it('throws for invalid input', () => {
     expect(() => {
       // @ts-expect-error exercising runtime validation
