@@ -203,6 +203,15 @@ interface DecoderStepResult {
   readonly crossAttentions: readonly OrtTensorLike<Float32Array>[];
 }
 
+function getLogitsOutputKey(outputs: Record<string, unknown>): string {
+  let firstKey: string | undefined;
+  for (const key in outputs) {
+    if (firstKey === undefined) firstKey = key;
+    if (key.includes('logits')) return key;
+  }
+  return firstKey!;
+}
+
 function extractCrossAttentions(
   outputs: Record<string, unknown>,
 ): OrtTensorLike<Float32Array>[] {
@@ -2132,7 +2141,7 @@ export class WhisperOnnxExecutor {
       disposeOwnedDecoderFeeds(feeds, retain);
     }
     try {
-      const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+      const logitsKey = getLogitsOutputKey(outputs);
       const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
       const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
       const logitsDims = logitsTensor.dims;
@@ -2251,7 +2260,7 @@ export class WhisperOnnxExecutor {
     // Decoder logits at row i predict the token after input_ids[i]. The first
     // forced text token is therefore predicted at the final prompt row, not
     // at the row containing that text token.
-    const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+    const logitsKey = getLogitsOutputKey(outputs);
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
     const totalVocab = (logitsTensor.dims[logitsTensor.dims.length - 1] as number) ?? 51865;
     const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
@@ -2798,7 +2807,7 @@ export class WhisperOnnxExecutor {
     }
     const outputStart = nowMs();
     const outputLocations = countTensorLocations(Object.values(outputs));
-    const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+    const logitsKey = getLogitsOutputKey(outputs);
     const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
     const logitsReadStart = nowMs();
     const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
@@ -2904,7 +2913,7 @@ export class WhisperOnnxExecutor {
       outputs = await loaded.decoderStepSession.run(feeds);
       const outputStart = nowMs();
       const outputLocations = countTensorLocations(Object.values(outputs));
-      const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+      const logitsKey = getLogitsOutputKey(outputs);
       const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
       const logitReadStart = nowMs();
       const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
@@ -3464,7 +3473,7 @@ export class WhisperOnnxExecutor {
       };
       const outputs = await loaded.decoderInitSession.run(feeds);
       try {
-        const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+        const logitsKey = getLogitsOutputKey(outputs);
         const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
         const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
         const vocabSize = logitsTensor.dims[logitsTensor.dims.length - 1] ?? 0;
@@ -4297,7 +4306,7 @@ export class WhisperOnnxExecutor {
                 outputs = await splitLoaded.decoderStepSession.run(feeds);
                 const outputStart = nowMs();
                 const outputLocations = countTensorLocations(Object.values(outputs));
-                const logitsKey = Object.keys(outputs).find((k) => k.includes('logits')) ?? Object.keys(outputs)[0]!;
+                const logitsKey = getLogitsOutputKey(outputs);
                 const logitsTensor = outputs[logitsKey] as OrtTensorLike<Float32Array>;
                 const logitReadStart = nowMs();
                 const logitsData = await readOrtTensorData(logitsTensor, { releaseGpu: true });
