@@ -30,7 +30,7 @@ import {
   type VadSpeechSegment,
 } from '../../chunking/index.js';
 import { mergeWhisperChunkTranscripts } from './chunking.js';
-import { ChunkContextBuilder } from './chunk-context.js';
+import { ChunkContextBuilder, TIMESTAMP_0_TOKEN } from './chunk-context.js';
 import type {
   WhisperExecutor,
   WhisperNativeTranscript,
@@ -261,9 +261,9 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
       const chunkOpts = { ...options };
       if (conditionOnPrev) {
         const prevTokens = this.contextBuilder.getPreviousTokens();
-        // Note: actual prompt injection needs vanilla executor API
-        // For now, context tokens are tracked for future integration
-        void prevTokens; // suppress unused warning
+        if (prevTokens.length > 0) {
+          chunkOpts.extraPromptTokens = [TIMESTAMP_0_TOKEN, ...prevTokens];
+        }
       }
 
       // Transcribe with temperature fallback + full quality gates
@@ -285,8 +285,11 @@ export class EnhancedWhisperExecutor implements WhisperExecutor {
         chunkResult = await this.vanilla.transcribe(executorChunk, chunkOpts, context);
       }
 
-      // Feed context builder (tokens deferred until vanilla exposes them)
-      this.contextBuilder.addSegmentTokens([]);
+      // Feed context builder with chunk output tokens
+      const chunkTokens = chunkResult.tokenTraces?.map((trace) => trace.tokenId)
+        ?? chunkResult.tokens?.flatMap((t) => (t.id !== undefined ? [t.id] : []))
+        ?? [];
+      this.contextBuilder.addSegmentTokens(chunkTokens);
 
       // Drift correction
       const corrected = this.driftHandler.correctTimestamps(

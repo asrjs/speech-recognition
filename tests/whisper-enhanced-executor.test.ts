@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { EnhancedWhisperExecutor } from '../src/models/whisper-seq2seq/enhanced-executor.js';
+import { TIMESTAMP_0_TOKEN } from '../src/models/whisper-seq2seq/chunk-context.js';
 import type { VadSegmenterConfig } from '../src/models/whisper-seq2seq/enhanced-types.js';
 import type { WhisperVadBackend } from '../src/chunking/types.js';
 
@@ -229,5 +230,38 @@ describe('EnhancedWhisperExecutor', () => {
     );
     expect(r.utteranceText).toBe('trace native');
     expect(v.transcribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes previous chunk context tokens via extraPromptTokens when conditionOnPreviousText is enabled', async () => {
+    const v = mv();
+    v.transcribe
+      .mockResolvedValueOnce({
+        ...mt('first chunk'),
+        tokenTraces: [{ tokenId: 101, logProb: -0.1, entropy: 0.1 }, { tokenId: 102, logProb: -0.1, entropy: 0.1 }],
+      })
+      .mockResolvedValueOnce({
+        ...mt('second chunk'),
+        tokenTraces: [{ tokenId: 201, logProb: -0.1, entropy: 0.1 }],
+      });
+    const vad: WhisperVadBackend = {
+      async segment() {
+        return [
+          { startSeconds: 0, endSeconds: 2, durationSeconds: 2 },
+          { startSeconds: 2.5, endSeconds: 4.5, durationSeconds: 2 },
+        ];
+      },
+    };
+    const e = new EnhancedWhisperExecutor(v as any, { backend: 'ten-vad' }, vad);
+    await e.transcribe(
+      ma(5),
+      { language: 'en', task: 'transcribe' as const, temperatureFallback: false, conditionOnPreviousText: true } as any,
+      undefined as any,
+    );
+
+    expect(v.transcribe).toHaveBeenCalledTimes(2);
+    // First chunk should not have extraPromptTokens
+    expect(v.transcribe.mock.calls[0][1].extraPromptTokens).toBeUndefined();
+    // Second chunk should have extraPromptTokens containing [TIMESTAMP_0_TOKEN, 101, 102]
+    expect(v.transcribe.mock.calls[1][1].extraPromptTokens).toEqual([TIMESTAMP_0_TOKEN, 101, 102]);
   });
 });
