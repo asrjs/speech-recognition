@@ -197,7 +197,9 @@ describe('StreamingSpeechDetector', () => {
       tenVadFactory: () => fakeTenVad as any,
     });
 
-    await expect(detector.start({ sampleRate: 16000, signal: { aborted: true } })).rejects.toMatchObject({
+    await expect(
+      detector.start({ sampleRate: 16000, signal: { aborted: true } }),
+    ).rejects.toMatchObject({
       name: 'AssetLoadAbortedError',
       code: 'asset-load-aborted',
     });
@@ -424,5 +426,30 @@ describe('StreamingSpeechDetector', () => {
 
     expect(secondSegment.startFrame).toBeLessThan(secondSegment.metadata.logicalStartFrame);
     expect(secondSegment.endFrame).toBeGreaterThanOrEqual(secondSegment.metadata.logicalEndFrame);
+  });
+
+  it('generates valid UUIDs for recorded decision entries', async () => {
+    const detector = new StreamingSpeechDetector({
+      profileId: 'generic-streaming',
+      config: {
+        analysisWindowMs: 16,
+        energySmoothingWindows: 1,
+        energyThreshold: 0.08,
+        minSpeechDurationMs: 16,
+        minSilenceDurationMs: 16,
+        tenVadEnabled: false,
+      },
+    });
+
+    await detector.start({ sampleRate: 16000 });
+    detector.processChunk(createChunk(256, 0.12), { startFrame: 0 });
+
+    const recentDecisions = detector.getSnapshot().recentDecisions;
+    expect(recentDecisions.length).toBeGreaterThan(0);
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    for (const decision of recentDecisions) {
+      expect(decision.id).toMatch(uuidRegex);
+    }
   });
 });
