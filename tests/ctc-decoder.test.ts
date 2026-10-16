@@ -169,26 +169,67 @@ describe('CtcDecoder parity with lasr-ctc/ctc.ts', () => {
     expect(result.tokenSpans).toEqual([]);
   });
 
-  test('estimateSecondsPerOutputFrame: from audio duration', () => {
-    const result = estimateSecondsPerOutputFrame({
-      audioDurationSec: 5.0,
-      outFrames: 100,
+  describe('estimateSecondsPerOutputFrame', () => {
+    test('returns 0 when options is omitted (default argument)', () => {
+      expect(estimateSecondsPerOutputFrame()).toBe(0);
     });
-    expect(result).toBeCloseTo(0.05, 6);
-  });
 
-  test('estimateSecondsPerOutputFrame: from input frames', () => {
-    const result = estimateSecondsPerOutputFrame({
-      inputFrames: 80000,
-      inputFrameHopSeconds: 0.01,
-      outFrames: 100,
+    test('calculates seconds per frame from audio duration', () => {
+      const result = estimateSecondsPerOutputFrame({
+        audioDurationSec: 5.0,
+        outFrames: 100,
+      });
+      expect(result).toBeCloseTo(0.05, 6);
     });
-    expect(result).toBeCloseTo(8.0, 6);
-  });
 
-  test('estimateSecondsPerOutputFrame: zero out frames returns 0', () => {
-    const result = estimateSecondsPerOutputFrame({ outFrames: 0 });
-    expect(result).toBe(0);
+    test('calculates seconds per frame from input frames and hop seconds when audio duration is missing', () => {
+      const result = estimateSecondsPerOutputFrame({
+        inputFrames: 800,
+        inputFrameHopSeconds: 0.01,
+        outFrames: 100,
+      });
+      expect(result).toBeCloseTo(0.08, 6);
+    });
+
+    test('audioDurationSec takes precedence over inputFrames calculation', () => {
+      const result = estimateSecondsPerOutputFrame({
+        audioDurationSec: 5.0,
+        inputFrames: 800,
+        inputFrameHopSeconds: 0.01,
+        outFrames: 100,
+      });
+      expect(result).toBeCloseTo(0.05, 6);
+    });
+
+    test('returns 0 when outFrames is 0, negative, or non-finite', () => {
+      expect(estimateSecondsPerOutputFrame({ outFrames: 0, audioDurationSec: 5.0 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ outFrames: -10, audioDurationSec: 5.0 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ outFrames: NaN, audioDurationSec: 5.0 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ outFrames: Infinity, audioDurationSec: 5.0 })).toBe(0);
+    });
+
+    test('falls back to inputFrames calculation when audioDurationSec is zero, negative, or non-finite', () => {
+      const opts = {
+        inputFrames: 500,
+        inputFrameHopSeconds: 0.02,
+        outFrames: 100,
+      };
+      expect(estimateSecondsPerOutputFrame({ ...opts, audioDurationSec: 0 })).toBeCloseTo(0.1, 6);
+      expect(estimateSecondsPerOutputFrame({ ...opts, audioDurationSec: -5 })).toBeCloseTo(0.1, 6);
+      expect(estimateSecondsPerOutputFrame({ ...opts, audioDurationSec: NaN })).toBeCloseTo(0.1, 6);
+    });
+
+    test('returns 0 when inputFrames or inputFrameHopSeconds are missing, <= 0, or non-finite', () => {
+      const base = { outFrames: 100 };
+      expect(estimateSecondsPerOutputFrame({ ...base, inputFrames: 500 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ ...base, inputFrameHopSeconds: 0.02 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ ...base, inputFrames: 0, inputFrameHopSeconds: 0.02 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ ...base, inputFrames: -100, inputFrameHopSeconds: 0.02 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ ...base, inputFrames: 500, inputFrameHopSeconds: 0 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ ...base, inputFrames: 500, inputFrameHopSeconds: -0.01 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ ...base, inputFrames: NaN, inputFrameHopSeconds: 0.02 })).toBe(0);
+      expect(estimateSecondsPerOutputFrame({ ...base, inputFrames: 500, inputFrameHopSeconds: Infinity })).toBe(0);
+    });
   });
 
   test('addTimesToTokenSpans: adds correct timing', () => {
