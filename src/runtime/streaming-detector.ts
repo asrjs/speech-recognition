@@ -10,10 +10,7 @@ import {
   durationMsToAlignedFrameCount,
   resolveStreamingTimelineChunkFrames,
 } from './audio-timeline.js';
-import {
-  DEFAULT_ROUGH_GATE_CONFIG,
-  type RoughSpeechGateConfig,
-} from './rough-gate-config.js';
+import { DEFAULT_ROUGH_GATE_CONFIG, type RoughSpeechGateConfig } from './rough-gate-config.js';
 import {
   RoughSpeechGate,
   type RoughSpeechChunkSummary,
@@ -295,7 +292,9 @@ export class StreamingSpeechDetector {
     this.createTenVad =
       options.tenVadFactory ??
       (() => {
-        throw new Error('StreamingSpeechDetector requires a tenVadFactory when FireRed VAD is enabled.');
+        throw new Error(
+          'StreamingSpeechDetector requires a tenVadFactory when FireRed VAD is enabled.',
+        );
       });
     this.profileId =
       options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true);
@@ -345,10 +344,7 @@ export class StreamingSpeechDetector {
     return {
       vadBackend: this.config.vadBackend,
       sampleRate: this.sampleRate,
-      hopSize: resolveStreamingTimelineChunkFrames(
-        this.sampleRate,
-        this.config.vadHopDurationMs,
-      ),
+      hopSize: resolveStreamingTimelineChunkFrames(this.sampleRate, this.config.vadHopDurationMs),
       threshold: this.config.tenVadThreshold,
       confirmationWindowMs: this.config.tenVadConfirmationWindowMs,
       hangoverMs: this.config.tenVadHangoverMs,
@@ -432,7 +428,7 @@ export class StreamingSpeechDetector {
 
   private recordDecision(message: string, meta: Record<string, unknown> = {}): void {
     const entry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: globalThis.crypto.randomUUID(),
       at: new Date().toLocaleTimeString(),
       message,
       meta,
@@ -570,10 +566,7 @@ export class StreamingSpeechDetector {
     const baseFrame = this.ringBuffer.getBaseFrameOffset();
 
     if (!this.activeSegment && rough.speechStart) {
-      const logicalStartFrame = Math.max(
-        baseFrame,
-        rough.onsetFrame ?? rough.chunkStartFrame,
-      );
+      const logicalStartFrame = Math.max(baseFrame, rough.onsetFrame ?? rough.chunkStartFrame);
       this.activateSegment(logicalStartFrame, nowFrame, 'rough-fallback');
       this.recordDecision('Rough gate speech start', {
         startFrame: logicalStartFrame,
@@ -585,8 +578,8 @@ export class StreamingSpeechDetector {
 
     if (!this.activeSegment && !rough.speechStart) {
       const isNearThreshold =
-        rough.energy >= this.config.energyThreshold * 0.8
-        || rough.snr >= this.config.minSnrThreshold;
+        rough.energy >= this.config.energyThreshold * 0.8 ||
+        rough.snr >= this.config.minSnrThreshold;
       if (isNearThreshold && !rough.isSpeech) {
         this.debugTrace('Near-threshold audio stayed below live start trigger', {
           energy: Number(rough.energy.toFixed(3)),
@@ -698,7 +691,10 @@ export class StreamingSpeechDetector {
     let extractedStartFrame = Math.max(baseFrame, logicalStartFrame - prerollFrames);
     if (this.lastAcceptedLogicalEndFrame !== null) {
       const overlappedStartFrame = this.lastAcceptedLogicalEndFrame - overlapFrames;
-      extractedStartFrame = Math.max(baseFrame, Math.min(extractedStartFrame, overlappedStartFrame));
+      extractedStartFrame = Math.max(
+        baseFrame,
+        Math.min(extractedStartFrame, overlappedStartFrame),
+      );
     }
 
     const clampedLogicalStartFrame = Math.max(baseFrame, logicalStartFrame);
@@ -810,7 +806,9 @@ export class StreamingSpeechDetector {
       startFrame: segment.startFrame,
       endFrame: segment.endFrame,
       logicalEndFrame: bounds.logicalEndFrame,
-      durationSec: Number(((segment.endFrame - segment.startFrame) / segment.sampleRate).toFixed(2)),
+      durationSec: Number(
+        ((segment.endFrame - segment.startFrame) / segment.sampleRate).toFixed(2),
+      ),
       normalizedPowerAt16k: Number(filterResult.normalizedPowerAt16k.toFixed(2)),
     });
     this.emit({
@@ -855,14 +853,14 @@ export class StreamingSpeechDetector {
     };
     delete nextOverrides.profileId;
     if (
-      Object.prototype.hasOwnProperty.call(partial, 'vadBackend')
-      && !Object.prototype.hasOwnProperty.call(partial, 'vadHopDurationMs')
+      Object.prototype.hasOwnProperty.call(partial, 'vadBackend') &&
+      !Object.prototype.hasOwnProperty.call(partial, 'vadHopDurationMs')
     ) {
       delete nextOverrides.vadHopDurationMs;
     }
     if (
-      Object.prototype.hasOwnProperty.call(partial, 'vadBackend')
-      && !Object.prototype.hasOwnProperty.call(partial, 'vadVisualBucketDurationMs')
+      Object.prototype.hasOwnProperty.call(partial, 'vadBackend') &&
+      !Object.prototype.hasOwnProperty.call(partial, 'vadVisualBucketDurationMs')
     ) {
       delete nextOverrides.vadVisualBucketDurationMs;
     }
@@ -877,9 +875,9 @@ export class StreamingSpeechDetector {
       const nextTenVad = this.createTenVad(this.buildTenVadConfig(), this.tenVadOptions);
       this.replaceTenVad(nextTenVad);
     } else if (
-      previousTenVadEnabled
-      && this.config.tenVadEnabled
-      && previousVadBackend !== this.config.vadBackend
+      previousTenVadEnabled &&
+      this.config.tenVadEnabled &&
+      previousVadBackend !== this.config.vadBackend
     ) {
       const previousTenVad = this.tenVad;
       const nextTenVad = this.createTenVad(this.buildTenVadConfig(), this.tenVadOptions);
@@ -1025,9 +1023,7 @@ export class StreamingSpeechDetector {
     const tenVadStatus = this.tenVad?.getStatus();
 
     const backendName =
-      this.config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
-        ? 'FireRed VAD'
-        : 'TEN-VAD';
+      this.config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD ? 'FireRed VAD' : 'TEN-VAD';
 
     if (tenVadStatus?.state === 'degraded') {
       const detail =
@@ -1038,7 +1034,9 @@ export class StreamingSpeechDetector {
     }
 
     if (this.config.tenVadEnabled) {
-      warnings.push(`Speech segmentation is running on the rough gate. ${backendName} is diagnostics-only.`);
+      warnings.push(
+        `Speech segmentation is running on the rough gate. ${backendName} is diagnostics-only.`,
+      );
     }
 
     if (this.config.gateMode !== STREAMING_GATE_MODES.ROUGH_ONLY) {
@@ -1046,11 +1044,15 @@ export class StreamingSpeechDetector {
         this.config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
           ? 'FireRed-first'
           : 'TEN-VAD-first';
-      warnings.push(`Requested ${backendLabel} gating is ignored by this Parakeet-style detector port.`);
+      warnings.push(
+        `Requested ${backendLabel} gating is ignored by this Parakeet-style detector port.`,
+      );
     }
 
     if (!this.config.foregroundFilterEnabled) {
-      warnings.push('Final segment energy rejection is disabled. Quiet background audio may be accepted.');
+      warnings.push(
+        'Final segment energy rejection is disabled. Quiet background audio may be accepted.',
+      );
     }
 
     return warnings;
