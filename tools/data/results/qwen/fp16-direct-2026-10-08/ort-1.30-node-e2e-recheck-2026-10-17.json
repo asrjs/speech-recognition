@@ -1,0 +1,34 @@
+{
+  "status": "TOKEN_IDENTITY_PASS_NOT_NUMERICAL_ACCEPTANCE",
+  "date": "2026-10-17",
+  "purpose": "Rule out the onnxruntime-node 1.25-dev -> 1.30.0 bump for the Node e2e receipts. The encoder lowering receipt already used Python onnxruntime 1.30.0.",
+  "environment": {
+    "node": "v26.2.0",
+    "onnxruntime_node": "1.30.0",
+    "python_onnxruntime_for_lowering_receipt": "1.30.0",
+    "branch_head": "629e875d2adadbc15f10a0d16ca8062ef738eb8e",
+    "runner_sha256": "da33b38cb73d3948a34aafdd68f1c72418b831f4a6d37d2832ad436836daceef",
+    "front_sha256": "a808792b52381b45f2fae35fc33668e5ce89a0b7a165c075c6f87f06c66239d8"
+  },
+  "runs": [
+    {
+      "fixture": "jfk-full",
+      "command": "node tools/model-debugging/scripts/transcribe_qwen3_asr_local.mjs --model-dir=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/dynamic-front --opt-level=all",
+      "previous_receipt": "dynamic-front-node-jfk.json",
+      "emitted_tokens": 29,
+      "token_ids_equal_previous": true,
+      "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "totalMs": 4261.971
+    },
+    {
+      "fixture": "jfk-first5s",
+      "command": "node tools/model-debugging/scripts/transcribe_qwen3_asr_local.mjs --model-dir=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/dynamic-front --opt-level=all --features=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/dynamic-front/features-500.npy --features-mask=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/dynamic-front/mask-500.npy --cu-seqlens=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/dynamic-front/schedule-500.bin",
+      "previous_receipt": "dynamic-front-node-jfk-first5s.json",
+      "emitted_tokens": 13,
+      "token_ids_equal_previous": true,
+      "text": "And so, my fellow Americans, ask not.",
+      "totalMs": 2160.636
+    }
+  ],
+  "limits": "Token identity only. Encoder lowering and decoder numerical gates stay FAIL; browser UNTESTED. Single timing runs are not performance evidence."
+}

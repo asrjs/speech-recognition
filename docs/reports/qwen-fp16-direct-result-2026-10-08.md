@@ -281,6 +281,16 @@ Bu deneyde decoder'a geçme. Encoder numerical kapısı açıkken decoder yorumu
 
 Ön koşul: main `8a2e0242` ile `onnxruntime-node` sürümünü `1.25.0-dev` → `1.30.0` yaptı. U: worktree hâlâ `1.25.0-dev` pinliyor. Aynı üç girdilik lowering karşılaştırmasını 1.30.0 ile tekrarla; katman ikilemesinden önce sürüm farkını dışla. Main'in fp16 kök nedeni: Node >= 24'te JS wrapper `Uint16Array` girdisini `Float16Array`'e çeviriyor ve native NAPI köprüsü bunu okuyamıyor; fp32 girdi/fp16 çıktı aynı build'de çalışıyor. Qwen graph'ları fp32 girdi alıyor, bu yüzden hata doğrudan uygulanmıyor; yine de CPU kernel ve fusion davranışı değişebilir.
 
+### QWEN-011 — Commit, rebase ve ORT 1.30 yeniden kontrolü (2026-10-17)
+
+QWEN-010'daki "commit edilmemiş altı yol" durumu kapandı. Branch main `9a0322cb` üzerine rebase edildi: `7d30a909` main-lane taslak exporter'ı, `629e875d` bu lane'in builder/test/receipt/raporu. Rebase öncesi hal `backup/qwen-fp16-pre-rebase-2026-10-17` tag'inde. İki ortak dosya artık yalnız bu branch'te; N: main'de geri alındı.
+
+QWEN-010 ön koşulu düzeltmesi: encoder lowering receipt'i (`dynamic-front-input-bound-controls.json`) Node değil Python `onnxruntime` 1.30.0 ile ölçülmüş (`transformers5` venv; torch 2.14.1, transformers 5.18.0). Lowering FAIL'i ORT sürüm farkından gelmiyor; tekrarı gerekmez. Eski ORT'ye bağlı tek kanıt Node e2e receipt'leriydi.
+
+Node e2e, `onnxruntime-node` 1.30.0 ve Node v26.2.0 ile tekrarlandı. Tam JFK 29 token ve ilk 5 saniye 13 token, önceki receipt'lerle token ID olarak birebir aynı. Receipt: `ort-1.30-node-e2e-recheck-2026-10-17.json`. Bu yalnız token kimliğidir; encoder lowering ve decoder numerical FAIL, browser UNTESTED.
+
+Sıradaki en küçük deney değişmedi: QWEN-010'daki katman katman encoder karşılaştırması ve clamp sayımı.
+
 
 
 
