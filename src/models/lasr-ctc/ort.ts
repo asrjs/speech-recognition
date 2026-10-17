@@ -1,4 +1,3 @@
-import { resolveWasmThreads } from '../../inference/backends/wasm-threads.js';
 import type { LasrCtcArtifactSource, LasrCtcDirectArtifacts } from './types.js';
 import {
   honorAbortAfterCreate,
@@ -9,8 +8,11 @@ import {
   importNodeModule,
   importNodePackage,
   isNodeLikeRuntime,
-  resolveNodePackageSubpathUrl,
 } from '../../io/node-compat.js';
+import {
+  configureUnifiedOrtEnv,
+  releaseUnifiedOrtSession,
+} from '../../inference/ort/index.js';
 import { resolveOrtExternalDataMounts } from '../../io/ort-external-data.js';
 
 interface OrtEnv {
@@ -177,24 +179,11 @@ export async function initOrt(
   };
   const ort = imported.default ?? imported;
 
-  if (!ort.env.wasm.wasmPaths) {
-    ort.env.wasm.wasmPaths =
-      options.wasmPaths ??
-      (isNodeLikeRuntime()
-        ? await resolveNodePackageSubpathUrl('onnxruntime-web', 'dist')
-        : `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ort.env.versions?.common ?? '1.24.1'}/dist/`);
-  } else if (options.wasmPaths) {
-    ort.env.wasm.wasmPaths = options.wasmPaths;
-  }
-
-  if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads = resolveWasmThreads(options.cpuThreads);
-    ort.env.wasm.simd = true;
-  } else {
-    ort.env.wasm.numThreads = 1;
-  }
-
-  ort.env.wasm.proxy = false;
+  configureUnifiedOrtEnv(ort as any, {
+    wasmPaths: options.wasmPaths,
+    cpuThreads: options.cpuThreads,
+    signal: options.signal,
+  });
 
   return withOrtCreateAbort(ort, options.signal);
 }
@@ -321,7 +310,7 @@ export async function createOrtSession(
 
 /** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
 export function releaseOrtSession(session: OrtSessionLike | undefined): void {
-  void session?.release?.();
+  void releaseUnifiedOrtSession(session);
 }
 
 /** Drop `session.run()` output tensors after their JS data has been copied. */

@@ -36,6 +36,16 @@ import {
   type ResolvedWhisperArtifacts,
 } from './ort.js';
 import { WhisperTokenizer, fetchText } from './tokenizer.js';
+import {
+  resolveWhisperLanguageCode,
+  resolveWhisperLanguageTokenId,
+  buildWhisperForcedAlignmentTokenIds,
+  getWhisperForcedAlignmentTextRowStart,
+  tensorDataAsFloat32,
+  maybeCastEncoderHiddenStates,
+  maybeCastWhisperFeatureTensor,
+  runWhisperEncoderOnFeatures,
+} from './executor-utils.js';
 import { rethrowIfAssetAborted } from '../../io/abort.js';
 import { WhisperTimestampLogitProcessor } from './processors.js';
 import {
@@ -250,244 +260,18 @@ function emitTranscriptionProgress(
   options.onProgress?.(event);
 }
 
-export function resolveWhisperLanguageCode(
-  requestedLanguage: string | undefined,
-  configuredLanguages: readonly string[] | undefined,
-): string {
-  if (requestedLanguage && requestedLanguage !== 'auto') return requestedLanguage;
-  return configuredLanguages?.find((language) => language !== 'auto') ?? 'en';
-}
-
-export function resolveWhisperLanguageTokenId(
-  tokenizer: Pick<WhisperTokenizer, 'getTokenId'>,
-  language: string,
-): number {
-  return tokenizer.getTokenId(`<|${language}|>`)
-    ?? tokenizer.getTokenId('<|en|>')
-    ?? 50259;
-}
-
-/**
- * Build the teacher-forced sequence used by Whisper's reference word
- * alignment. OpenAI Whisper's `find_alignment` contract is
- * `sot_sequence + no_timestamps + text + eot`; the no-timestamps row is an
- * alignment anchor and must remain in the cross-attention matrix even though
- * it is not a text token.
- */
-export function buildWhisperForcedAlignmentTokenIds(
-  tokenizer: Pick<WhisperTokenizer, 'getTokenId'>,
-  language: string,
-  textTokenIds: readonly number[],
-  task: 'transcribe' | 'translate' = 'transcribe',
-  noTimestampsTokenId?: number,
-): number[] {
-  const taskToken = task === 'translate' ? '<|translate|>' : '<|transcribe|>';
-  const fallbackTaskId = task === 'translate' ? 50359 : 50360;
-  return [
-    tokenizer.getTokenId('<|startoftranscript|>') ?? 50258,
-    resolveWhisperLanguageTokenId(tokenizer, language),
-    tokenizer.getTokenId(taskToken) ?? fallbackTaskId,
-    tokenizer.getTokenId('<|notimestamps|>') ?? noTimestampsTokenId ?? 50363,
-    ...textTokenIds,
-    tokenizer.getTokenId('<|endoftext|>') ?? 50257,
-  ];
-}
-
-/**
- * Return the decoder row whose causal logits/cross-attention predict the first
- * text token in a forced-alignment sequence. Decoder row i predicts input
- * token i + 1, so alignment starts at the final prompt row.
- */
-export function getWhisperForcedAlignmentTextRowStart(promptLength: number): number {
-  return Math.max(0, Math.floor(promptLength) - 1);
-}
-
-/**
- * Convert a Float32Array to a Uint16Array of fp16 bits.
- * Uses round-to-nearest-even.
- */
-export function float32ToFloat16Bits(src: Float32Array): Uint16Array {
-  const dst = new Uint16Array(src.length);
-  // Whisper's padded mel tail contains values in the fp16 subnormal range.
-  // Read the source bits directly so this boundary conversion remains both
-  // correct for subnormals and cheaper than allocating a DataView per value.
-  const sourceBits = new Uint32Array(src.buffer, src.byteOffset, src.length);
-  for (let i = 0; i < src.length; i++) {
-    const uint32 = sourceBits[i]!;
-    const sign = (uint32 >>> 16) & 0x8000;
-    const exponent = (uint32 >>> 23) & 0xff;
-    const mantissa = uint32 & 0x7fffff;
-
-    if (exponent === 0xff) {
-      // Preserve infinities and use a quiet NaN payload for NaNs.
-      dst[i] = sign | (mantissa === 0 ? 0x7c00 : 0x7e00);
-      continue;
-    }
-
-    let halfExponent = exponent - 127 + 15;
-    if (halfExponent >= 0x1f) {
-      // Values above the largest finite fp16 value round to infinity.
-      dst[i] = sign | 0x7c00;
-      continue;
-    }
-
-    if (halfExponent <= 0) {
-      // A half subnormal has an effective exponent of -14 and a 10-bit
-      // fraction. Include the hidden float32 bit and round the shifted value
-      // to nearest-even; the shift is 14-halfExponent (up to 24).
-      if (halfExponent < -10) {
-        dst[i] = sign;
-        continue;
-      }
-      const significand = mantissa | 0x800000;
-      const shift = 14 - halfExponent;
-      let halfMantissa = significand >>> shift;
-      const remainder = significand & ((1 << shift) - 1);
-      const halfway = 1 << (shift - 1);
-      if (remainder > halfway || (remainder === halfway && (halfMantissa & 1) !== 0)) {
-        halfMantissa += 1;
-      }
-      // Rounding the largest subnormal can carry into the smallest normal.
-      dst[i] = sign | halfMantissa;
-      continue;
-    }
-
-    let halfMantissa = mantissa >>> 13;
-    const remainder = mantissa & 0x1fff;
-    if (remainder > 0x1000 || (remainder === 0x1000 && (halfMantissa & 1) !== 0)) {
-      halfMantissa += 1;
-      if (halfMantissa === 0x400) {
-        halfMantissa = 0;
-        halfExponent += 1;
-      }
-    }
-    dst[i] = halfExponent >= 0x1f
-      ? sign | 0x7c00
-      : sign | (halfExponent << 10) | halfMantissa;
-  }
-  return dst;
-}
-
-function float16BitsToFloat32(src: Uint16Array): Float32Array {
-  const dst = new Float32Array(src.length);
-  for (let i = 0; i < src.length; i++) {
-    const bits = src[i]!;
-    const sign = (bits >>> 15) & 0x1;
-    const exp = (bits >>> 10) & 0x1f;
-    const mant = bits & 0x3ff;
-    let value: number;
-    if (exp === 0) {
-      value = mant === 0 ? 0 : (mant / 1024) * 2 ** -14;
-    } else if (exp === 0x1f) {
-      value = mant === 0 ? Infinity : Number.NaN;
-    } else {
-      value = (1 + mant / 1024) * 2 ** (exp - 15);
-    }
-    dst[i] = sign ? -value : value;
-  }
-  return dst;
-}
-
-/** Convert ORT float32/float16 backing views to a stable Float32Array. */
-export function tensorDataAsFloat32(data: ArrayBufferView): Float32Array {
-  if (data instanceof Float32Array) return data;
-  if (data instanceof Uint16Array) return float16BitsToFloat32(data);
-  return Float32Array.from(data as unknown as ArrayLike<number>);
-}
-
-/**
- * Match encoder hidden states to a decoder graph's declared input dtype.
- *
- * Split-graph exports are allowed to use different precision at the graph
- * boundary. The optimized decoder_init usually accepts fp32 (and can keep a
- * GPU tensor), while decoder_align may be exported from the original fp32
- * Transformers module even when the runtime encoder emits fp16. ORT-WebGPU
- * does not insert this boundary cast for us, so an otherwise valid alignment
- * graph can fail and silently fall back to generated timestamp tokens.
- *
- * This is exported for the standalone/WhisperX-compatible runners too: a
- * runner that hand-rolls graph feeds must honor the same split-graph boundary
- * contract as the main executor.
- */
-export async function maybeCastEncoderHiddenStates(
-  encoderHiddenStates: OrtTensorLike<Float32Array>,
-  decoderSession: OrtSessionLike,
-  ort: OrtModuleLike,
-): Promise<OrtTensorLike<Float32Array>> {
-  const metadata = (decoderSession as unknown as { inputMetadata?: Array<{ name?: string; type?: string; shape?: number[] }> }).inputMetadata;
-  const encMeta = metadata?.find((m) => m.name === 'encoder_hidden_states');
-  const expectedType = encMeta?.type;
-  if (expectedType !== 'float16' && expectedType !== 'float32') {
-    return encoderHiddenStates;
-  }
-  if (encoderHiddenStates.type === expectedType) {
-    return encoderHiddenStates;
-  }
-  // A precision cast necessarily materializes the tensor on CPU. This is
-  // limited to graph boundaries whose declared element types differ.
-  const rawData = isGpuBufferTensor(encoderHiddenStates) && encoderHiddenStates.getData
-    ? await encoderHiddenStates.getData(true)
-    : encoderHiddenStates.data;
-  const dims = encoderHiddenStates.dims as number[];
-  const size = dims.reduce((a, b) => a * b, 1);
-  const f32Data = tensorDataAsFloat32(rawData as ArrayBufferView);
-  const boundedF32Data = f32Data.length === size ? f32Data : f32Data.subarray(0, size);
-  if (expectedType === 'float16') {
-    return new ort.Tensor('float16', float32ToFloat16Bits(boundedF32Data), dims) as unknown as OrtTensorLike<Float32Array>;
-  }
-  return new ort.Tensor('float32', boundedF32Data, dims) as unknown as OrtTensorLike<Float32Array>;
-}
-
-/**
- * Match Whisper mel features to the encoder input contract.
- *
- * Export-time fp16 graphs may require float16 mel input, while the historical
- * fp16-IO graph accepts float32. ORT-WebGPU does not insert this boundary cast
- * for us, so detect the declared input type instead of making the preprocessor
- * choose one dtype for every artifact.
- */
-export async function maybeCastWhisperFeatureTensor(
-  featureTensor: OrtTensorLike<Float32Array>,
-  encoderSession: OrtSessionLike,
-  ort: OrtModuleLike,
-): Promise<OrtTensorLike<Float32Array>> {
-  const metadata = (encoderSession as unknown as {
-    inputMetadata?: Array<{ name?: string; type?: string; shape?: number[] }>;
-  }).inputMetadata;
-  const featureMeta = metadata?.find((entry) => entry.name === 'input_features');
-  const expectedType = featureMeta?.type;
-  if (expectedType !== 'float16' && expectedType !== 'float32') {
-    return featureTensor;
-  }
-  if (featureTensor.type === expectedType) {
-    return featureTensor;
-  }
-
-  const rawData = isGpuBufferTensor(featureTensor) && featureTensor.getData
-    ? await featureTensor.getData(true)
-    : featureTensor.data;
-  const dims = featureTensor.dims as number[];
-  const size = dims.reduce((a, b) => a * b, 1);
-  const f32Data = tensorDataAsFloat32(rawData as ArrayBufferView);
-  const boundedF32Data = f32Data.length === size ? f32Data : f32Data.subarray(0, size);
-  const recast = expectedType === 'float16'
-    ? new ort.Tensor('float16', float32ToFloat16Bits(boundedF32Data), dims) as unknown as OrtTensorLike<Float32Array>
-    : new ort.Tensor('float32', boundedF32Data, dims) as unknown as OrtTensorLike<Float32Array>;
-  featureTensor.dispose?.();
-  return recast;
-}
-
-/** Run the Whisper encoder and free the mel feed tensor (ORT WASM/GPU heap). */
-export async function runWhisperEncoderOnFeatures(
-  encoderSession: OrtSessionLike,
-  featureTensor: OrtTensorLike<Float32Array>,
-): Promise<Record<string, OrtTensorLike>> {
-  try {
-    return await encoderSession.run({ input_features: featureTensor });
-  } finally {
-    featureTensor.dispose?.();
-  }
-}
+export {
+  resolveWhisperLanguageCode,
+  resolveWhisperLanguageTokenId,
+  buildWhisperForcedAlignmentTokenIds,
+  getWhisperForcedAlignmentTextRowStart,
+  float32ToFloat16Bits,
+  float16BitsToFloat32,
+  tensorDataAsFloat32,
+  maybeCastEncoderHiddenStates,
+  maybeCastWhisperFeatureTensor,
+  runWhisperEncoderOnFeatures,
+} from './executor-utils.js';
 
 function createWhisperGpuKvOutputLocation(
   config: WhisperModelConfig,

@@ -1,4 +1,3 @@
-import { resolveWasmThreads } from '../../inference/backends/wasm-threads.js';
 import {
   honorAbortAfterCreate,
   withNativeAbortSignalOption,
@@ -8,8 +7,11 @@ import {
   importNodeModule,
   importNodePackage,
   isNodeLikeRuntime,
-  resolveNodePackageSubpathUrl,
 } from '../../io/node-compat.js';
+import {
+  configureUnifiedOrtEnv,
+  releaseUnifiedOrtSession,
+} from '../../inference/ort/index.js';
 import { resolveOrtExternalDataMounts } from '../../io/ort-external-data.js';
 import type {
   Qwen3AsrArtifactSource,
@@ -221,28 +223,18 @@ export async function initQwenOrt(
     readonly default?: QwenOrtModuleLike;
   };
   const ort = imported.default ?? imported;
-  if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads = resolveWasmThreads(options.cpuThreads);
-    ort.env.wasm.simd = true;
-  } else {
-    ort.env.wasm.numThreads = 1;
-  }
-  ort.env.wasm.proxy = false;
-  ort.env.wasm.wasmPaths =
-    options.wasmPaths ??
-    (isNodeLikeRuntime()
-      ? await resolveNodePackageSubpathUrl('onnxruntime-web', 'dist')
-      : '/node_modules/onnxruntime-web/dist/');
-  if (backendId === 'webgpu' && options.enableProfiling) {
-    ort.env.webgpu ??= {};
-    ort.env.webgpu.profiling = { mode: 'default' };
-  }
+  configureUnifiedOrtEnv(ort as any, {
+    wasmPaths: options.wasmPaths,
+    cpuThreads: options.cpuThreads,
+    enableProfiling: options.enableProfiling,
+    signal: options.signal,
+  });
   return withOrtCreateAbort(ort, options.signal);
 }
 
 /** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
 export function releaseQwenOrtSession(session: QwenOrtSessionLike | undefined): void {
-  void session?.release?.();
+  void releaseUnifiedOrtSession(session as any);
 }
 
 export async function createQwenOrtSession(

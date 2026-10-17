@@ -1,4 +1,3 @@
-import { resolveWasmThreads } from '../../inference/backends/wasm-threads.js';
 import type {
   NemoTdtArtifactSource,
   NemoTdtDirectArtifacts,
@@ -21,8 +20,11 @@ import {
 import {
   importNodeModule,
   isNodeLikeRuntime,
-  resolveNodePackageSubpathUrl,
 } from '../../io/node-compat.js';
+import {
+  configureUnifiedOrtEnv,
+  releaseUnifiedOrtSession,
+} from '../../inference/ort/index.js';
 
 interface OrtEnv {
   wasm: {
@@ -258,24 +260,11 @@ export async function initOrt(
   };
   const ort = imported.default ?? imported;
 
-  if (!ort.env.wasm.wasmPaths) {
-    ort.env.wasm.wasmPaths =
-      options.wasmPaths ??
-      (isNodeLikeRuntime()
-        ? await resolveNodePackageSubpathUrl('onnxruntime-web', 'dist')
-        : `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ort.env.versions?.common ?? '1.24.1'}/dist/`);
-  } else if (options.wasmPaths) {
-    ort.env.wasm.wasmPaths = options.wasmPaths;
-  }
-
-  if (typeof SharedArrayBuffer !== 'undefined') {
-    ort.env.wasm.numThreads = resolveWasmThreads(options.cpuThreads);
-    ort.env.wasm.simd = true;
-  } else {
-    ort.env.wasm.numThreads = 1;
-  }
-
-  ort.env.wasm.proxy = false;
+  configureUnifiedOrtEnv(ort as any, {
+    wasmPaths: options.wasmPaths,
+    cpuThreads: options.cpuThreads,
+    signal: options.signal,
+  });
 
   if (
     normalizeNemoTdtWeightBackend(backendId) === 'webgpu' &&
@@ -410,7 +399,7 @@ export async function createOrtSession(
 
 /** Return ORT teardown so an owning lifecycle can await native/GPU/WASM release. */
 export function releaseOrtSession(session: OrtSessionLike | undefined): void | Promise<void> {
-  return session?.release?.();
+  return releaseUnifiedOrtSession(session);
 }
 
 /** Drop `session.run()` output tensors after their JS data has been copied. */
