@@ -27,7 +27,7 @@ import {
 } from './segment-foreground-filter.js';
 import {
   PARAKEET_SEGMENTATION_PRESETS,
-  STREAMING_GATE_MODES,
+  STREAMING_GATE_MODES as BASE_STREAMING_GATE_MODES,
   STREAMING_VAD_BACKENDS,
   STREAMING_PROFILE_IDS,
   STREAMING_PRESETS,
@@ -40,16 +40,27 @@ import {
   type StreamingDetectorConfig,
   type StreamingDetectorConfigOverrides,
   type StreamingDetectorPreset,
-  type StreamingGateMode,
+  type StreamingGateMode as BaseStreamingGateMode,
   type StreamingVadBackend,
   type StreamingProfileId,
 } from './streaming-config.js';
 import { amplitudeToDbfs } from './noise-floor.js';
 
+export const STREAMING_GATE_MODES = {
+  ...BASE_STREAMING_GATE_MODES,
+  HYBRID: 'hybrid' as const,
+  VAD_ONLY: 'vad-only' as const,
+} as const;
+
+export type StreamingGateMode =
+  | BaseStreamingGateMode
+  | 'rough-only'
+  | 'hybrid'
+  | 'vad-only';
+
 export {
   DEFAULT_ROUGH_GATE_CONFIG,
   PARAKEET_SEGMENTATION_PRESETS,
-  STREAMING_GATE_MODES,
   STREAMING_VAD_BACKENDS,
   STREAMING_PROFILE_IDS,
   STREAMING_PRESETS,
@@ -66,7 +77,6 @@ export type {
   StreamingDetectorConfig,
   StreamingDetectorConfigOverrides,
   StreamingDetectorPreset,
-  StreamingGateMode,
   StreamingVadBackend,
   StreamingProfileId,
 };
@@ -287,19 +297,29 @@ export class StreamingSpeechDetector {
   private tenVadUnsubscribe: (() => void) | null = null;
   private lastDebugTraceAt = 0;
   private lastAcceptedLogicalEndFrame: number | null = null;
+  private continuationAfterMaxDuration = false;
   private readonly initSignal?: { readonly aborted: boolean } | null;
   private startAbort: AbortController | null = null;
   private startCancelled = false;
+
+  private getVadBackendName(): string {
+    return this.config.vadBackend === STREAMING_VAD_BACKENDS.TEN_VAD
+      ? 'TEN-VAD'
+      : 'FireRed VAD';
+  }
 
   constructor(options: StreamingSpeechDetectorOptions = {}) {
     this.createTenVad =
       options.tenVadFactory ??
       (() => {
-        throw new Error('StreamingSpeechDetector requires a tenVadFactory when FireRed VAD is enabled.');
+        throw new Error(`StreamingSpeechDetector requires a tenVadFactory when ${this.getVadBackendName()} is enabled.`);
       });
     this.profileId =
       options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true);
     this.config = mergeStreamingConfig(this.profileId, options.config);
+    if ((options.config as unknown as Record<string, unknown> | undefined)?.vadMode !== undefined) {
+      (this.config as unknown as Record<string, unknown>).vadMode = (options.config as unknown as Record<string, unknown>).vadMode;
+    }
     this.sampleRate = this.config.sampleRate;
     this.ringBuffer = new AudioRingBuffer({
       sampleRate: this.sampleRate,
@@ -359,15 +379,22 @@ export class StreamingSpeechDetector {
   }
 
   private buildForegroundFilterConfig(): SegmentForegroundFilterConfig {
+    const minSpeechDurationMs = this.continuationAfterMaxDuration
+      ? Math.min(64, this.config.minSpeechDurationMs)
+      : this.config.minSpeechDurationMs;
+    const factor = this.continuationAfterMaxDuration
+      ? minSpeechDurationMs / Math.max(1, this.config.minSpeechDurationMs)
+      : 1;
+
     return {
       foregroundFilterEnabled: this.config.foregroundFilterEnabled,
-      minSpeechDurationMs: this.config.minSpeechDurationMs,
+      minSpeechDurationMs,
       minEnergyPerSecond: this.config.minEnergyPerSecond,
-      minEnergyIntegral: this.config.minEnergyIntegral,
+      minEnergyIntegral: this.config.minEnergyIntegral * factor,
       useAdaptiveEnergyThresholds: this.config.useAdaptiveEnergyThresholds,
-      adaptiveEnergyIntegralFactor: this.config.adaptiveEnergyIntegralFactor,
+      adaptiveEnergyIntegralFactor: this.config.adaptiveEnergyIntegralFactor * factor,
       adaptiveEnergyPerSecondFactor: this.config.adaptiveEnergyPerSecondFactor,
-      minAdaptiveEnergyIntegral: this.config.minAdaptiveEnergyIntegral,
+      minAdaptiveEnergyIntegral: this.config.minAdaptiveEnergyIntegral * factor,
       minAdaptiveEnergyPerSecond: this.config.minAdaptiveEnergyPerSecond,
     };
   }
@@ -399,7 +426,27 @@ export class StreamingSpeechDetector {
     return this.tenVad?.getStatus() ?? createDisabledTenVadStatus(this.config, this.lastError);
   }
 
+  private get tenVadState(): StreamingTenVadStatus['state'] {
+    return this.getTenVadStatus().state;
+  }
+
   private resolveEffectiveGateMode(): StreamingGateMode {
+    const isVadReady = this.tenVadState === 'ready';
+    const isVadEnabled =
+      this.tenVad !== null &&
+      this.config.tenVadEnabled &&
+      (this.config as { readonly vadMode?: string }).vadMode !== 'disabled';
+
+    if (isVadReady && isVadEnabled) {
+      if (
+        (this.config.gateMode as string) === 'hybrid' ||
+        (this.config.gateMode as string) === 'vad-only' ||
+        this.config.gateMode === STREAMING_GATE_MODES.ROUGH_ONLY
+      ) {
+        return this.config.gateMode;
+      }
+    }
+
     return STREAMING_GATE_MODES.ROUGH_ONLY;
   }
 
@@ -490,6 +537,7 @@ export class StreamingSpeechDetector {
       this.lastForegroundResult = null;
       this.lastError = null;
       this.lastAcceptedLogicalEndFrame = null;
+      this.continuationAfterMaxDuration = false;
       this.ringBuffer.reset();
       this.roughGate.reset();
 
@@ -505,8 +553,9 @@ export class StreamingSpeechDetector {
             throw createStreamingVadInitAbortedError();
           }
           await this.tenVad.reset();
+          const backendName = this.getVadBackendName();
           this.recordDecision(
-            'FireRed VAD ready for diagnostics',
+            `${backendName} ready for diagnostics`,
             this.tenVad.getStatus() as unknown as Record<string, unknown>,
           );
         } catch (error) {
@@ -519,7 +568,8 @@ export class StreamingSpeechDetector {
             throw createStreamingVadInitAbortedError();
           }
           this.lastError = error instanceof Error ? error : new Error(String(error));
-          this.recordDecision('FireRed VAD degraded; segmentation remains on rough gate', {
+          const backendName = this.getVadBackendName();
+          this.recordDecision(`${backendName} degraded; segmentation remains on rough gate`, {
             error: this.lastError.message,
           });
           this.emit({
@@ -569,21 +619,75 @@ export class StreamingSpeechDetector {
     const nowFrame = this.ringBuffer.getCurrentFrame();
     const baseFrame = this.ringBuffer.getBaseFrameOffset();
 
-    if (!this.activeSegment && rough.speechStart) {
-      const logicalStartFrame = Math.max(
-        baseFrame,
-        rough.onsetFrame ?? rough.chunkStartFrame,
-      );
-      this.activateSegment(logicalStartFrame, nowFrame, 'rough-fallback');
-      this.recordDecision('Rough gate speech start', {
-        startFrame: logicalStartFrame,
-        energy: Number(rough.energy.toFixed(3)),
-        noiseFloor: Number(rough.noiseFloor.toFixed(5)),
-        snr: Number(rough.snr.toFixed(2)),
-      });
+    const effectiveGateMode = this.resolveEffectiveGateMode();
+    const isHybrid = effectiveGateMode === 'hybrid';
+    const isVadOnly = (effectiveGateMode as string) === 'vad-only';
+
+    const vadOnsetSpeaking =
+      (isHybrid || isVadOnly) &&
+      this.tenVad !== null &&
+      (this.tenVad.getStatus().speaking ||
+        this.tenVad.hasRecentSpeech(
+          nowFrame,
+          this.config.tenVadConfirmationWindowMs,
+          this.sampleRate,
+        ));
+
+    if (!this.activeSegment) {
+      if (isVadOnly) {
+        if (vadOnsetSpeaking) {
+          const firstSpeechFrame =
+            this.tenVad?.findFirstSpeechFrame(baseFrame, nowFrame) ??
+            Math.max(
+              baseFrame,
+              nowFrame -
+                durationMsToAlignedFrameCount(
+                  this.config.tenVadConfirmationWindowMs,
+                  this.sampleRate,
+                  'ceil',
+                  this.config.chunkDurationMs,
+                ),
+            );
+          this.activateSegment(firstSpeechFrame, nowFrame, 'ten-vad');
+          this.recordDecision('Neural VAD speech start', {
+            startFrame: firstSpeechFrame,
+            gateMode: effectiveGateMode,
+          });
+        }
+      } else if (rough.speechStart) {
+        const logicalStartFrame = Math.max(
+          baseFrame,
+          rough.onsetFrame ?? rough.chunkStartFrame,
+        );
+        this.activateSegment(logicalStartFrame, nowFrame, 'rough-fallback');
+        this.recordDecision('Rough gate speech start', {
+          startFrame: logicalStartFrame,
+          energy: Number(rough.energy.toFixed(3)),
+          noiseFloor: Number(rough.noiseFloor.toFixed(5)),
+          snr: Number(rough.snr.toFixed(2)),
+        });
+      } else if (isHybrid && vadOnsetSpeaking) {
+        const firstSpeechFrame =
+          this.tenVad?.findFirstSpeechFrame(baseFrame, nowFrame) ??
+          Math.max(
+            baseFrame,
+            nowFrame -
+              durationMsToAlignedFrameCount(
+                this.config.tenVadConfirmationWindowMs,
+                this.sampleRate,
+                'ceil',
+                this.config.chunkDurationMs,
+              ),
+          );
+        this.activateSegment(firstSpeechFrame, nowFrame, 'ten-vad');
+        this.recordDecision('Hybrid neural VAD speech start', {
+          startFrame: firstSpeechFrame,
+          gateMode: effectiveGateMode,
+        });
+      }
     }
 
-    if (!this.activeSegment && !rough.speechStart) {
+    if (!this.activeSegment && !rough.speechStart && !vadOnsetSpeaking) {
       const isNearThreshold =
         rough.energy >= this.config.energyThreshold * 0.8
         || rough.snr >= this.config.minSnrThreshold;
@@ -606,13 +710,84 @@ export class StreamingSpeechDetector {
       const segmentDurationMs = (segmentFrames / this.sampleRate) * 1000;
       if (segmentDurationMs >= this.config.maxSegmentDurationMs) {
         const finalized = this.finalizeSegment('max-duration', nowFrame);
-        if (rough.isSpeech) {
+        const speechStillActive =
+          effectiveGateMode === STREAMING_GATE_MODES.ROUGH_ONLY
+            ? rough.isSpeech
+            : rough.isSpeech ||
+              (this.tenVad?.hasRecentSpeech(
+                nowFrame,
+                this.config.tenVadHangoverMs,
+                this.sampleRate,
+              ) ?? false);
+
+        if (speechStillActive) {
+          this.continuationAfterMaxDuration = true;
           const nextStartFrame = Math.max(baseFrame, rough.chunkStartFrame);
-          this.activateSegment(nextStartFrame, nowFrame, 'rough-fallback');
+          this.activateSegment(
+            nextStartFrame,
+            nowFrame,
+            isVadOnly ? 'ten-vad' : 'rough-fallback',
+          );
           this.recordDecision('Long speech split into a new rough segment', {
             previousAccepted: finalized?.metadata.filter?.accepted ?? false,
             nextStartFrame,
           });
+        }
+      } else if (isVadOnly) {
+        const vadSpeaking =
+          this.tenVad?.hasRecentSpeech(
+            nowFrame,
+            this.config.tenVadHangoverMs,
+            this.sampleRate,
+          ) ?? false;
+        if (vadSpeaking) {
+          this.state = 'speaking';
+          this.emitSpeechUpdate(nowFrame);
+        } else {
+          const vadSilence =
+            this.tenVad?.hasRecentSilence(
+              nowFrame,
+              this.config.minSilenceDurationMs,
+              this.sampleRate,
+            ) ?? true;
+          if (vadSilence) {
+            this.recordDecision('Neural VAD finalized speech after sustained silence', {
+              endFrame: nowFrame,
+            });
+            this.finalizeSegment('silence', nowFrame);
+          } else {
+            this.state = 'candidate';
+          }
+        }
+      } else if (isHybrid) {
+        const vadSpeaking =
+          this.tenVad?.hasRecentSpeech(
+            nowFrame,
+            this.config.tenVadHangoverMs,
+            this.sampleRate,
+          ) ?? false;
+        const isSpeaking = rough.isSpeech || vadSpeaking;
+
+        if (isSpeaking) {
+          this.state = 'speaking';
+          this.emitSpeechUpdate(nowFrame);
+        } else {
+          const vadSilence =
+            this.tenVad?.hasRecentSilence(
+              nowFrame,
+              this.config.minSilenceDurationMs,
+              this.sampleRate,
+            ) ?? true;
+          if ((rough.speechEnd || !rough.isSpeech) && vadSilence) {
+            this.recordDecision('Rough gate finalized speech after sustained silence', {
+              endFrame: nowFrame,
+              energy: Number(rough.energy.toFixed(3)),
+              noiseFloor: Number(rough.noiseFloor.toFixed(5)),
+            });
+            this.finalizeSegment('silence', nowFrame);
+          } else {
+            this.state = 'candidate';
+          }
         }
       } else if (rough.isSpeech) {
         this.state = 'speaking';
@@ -688,6 +863,15 @@ export class StreamingSpeechDetector {
       'ceil',
       this.config.chunkDurationMs,
     );
+    const continuationOverlapMs = Math.min(160, Math.max(this.config.overlapDurationMs, 80));
+    const effectiveOverlapFrames = this.continuationAfterMaxDuration
+      ? durationMsToAlignedFrameCount(
+          continuationOverlapMs,
+          this.sampleRate,
+          'ceil',
+          this.config.chunkDurationMs,
+        )
+      : overlapFrames;
     const hangoverFrames = durationMsToAlignedFrameCount(
       this.config.speechHangoverMs,
       this.sampleRate,
@@ -697,7 +881,7 @@ export class StreamingSpeechDetector {
 
     let extractedStartFrame = Math.max(baseFrame, logicalStartFrame - prerollFrames);
     if (this.lastAcceptedLogicalEndFrame !== null) {
-      const overlappedStartFrame = this.lastAcceptedLogicalEndFrame - overlapFrames;
+      const overlappedStartFrame = this.lastAcceptedLogicalEndFrame - effectiveOverlapFrames;
       extractedStartFrame = Math.max(baseFrame, Math.min(extractedStartFrame, overlappedStartFrame));
     }
 
@@ -775,6 +959,10 @@ export class StreamingSpeechDetector {
     this.pendingSegmentStartFrame = null;
     this.state = 'listening';
 
+    if (reason !== 'max-duration') {
+      this.continuationAfterMaxDuration = false;
+    }
+
     if (!filterResult.accepted) {
       this.recordDecision('Segment rejected by final energy gate', {
         reason: filterResult.reason,
@@ -839,6 +1027,7 @@ export class StreamingSpeechDetector {
       this.pendingSegmentStartFrame = null;
       this.state = 'listening';
     }
+    this.continuationAfterMaxDuration = false;
     this.state = 'idle';
     return segment;
   }
@@ -869,8 +1058,13 @@ export class StreamingSpeechDetector {
 
     const previousTenVadEnabled = this.config.tenVadEnabled;
     const previousVadBackend = this.config.vadBackend;
+    const previousVadMode = (this.config as unknown as Record<string, unknown>).vadMode;
     this.profileId = nextProfileId;
     this.config = mergeStreamingConfig(nextProfileId, nextOverrides);
+    const nextVadMode = (partial as unknown as Record<string, unknown> | undefined)?.vadMode ?? previousVadMode;
+    if (nextVadMode !== undefined) {
+      (this.config as unknown as Record<string, unknown>).vadMode = nextVadMode;
+    }
     this.roughGate.updateConfig(this.buildRoughGateConfig());
 
     if (!previousTenVadEnabled && this.config.tenVadEnabled) {
@@ -1023,11 +1217,7 @@ export class StreamingSpeechDetector {
   private buildWarnings(): string[] {
     const warnings: string[] = [];
     const tenVadStatus = this.tenVad?.getStatus();
-
-    const backendName =
-      this.config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
-        ? 'FireRed VAD'
-        : 'TEN-VAD';
+    const backendName = this.getVadBackendName();
 
     if (tenVadStatus?.state === 'degraded') {
       const detail =
@@ -1037,11 +1227,17 @@ export class StreamingSpeechDetector {
       warnings.push(`${backendName} is degraded. Runtime plots may be incomplete.${detail}`);
     }
 
-    if (this.config.tenVadEnabled) {
+    if (
+      this.config.tenVadEnabled &&
+      this.resolveEffectiveGateMode() === STREAMING_GATE_MODES.ROUGH_ONLY
+    ) {
       warnings.push(`Speech segmentation is running on the rough gate. ${backendName} is diagnostics-only.`);
     }
 
-    if (this.config.gateMode !== STREAMING_GATE_MODES.ROUGH_ONLY) {
+    if (
+      this.config.gateMode !== STREAMING_GATE_MODES.ROUGH_ONLY &&
+      this.resolveEffectiveGateMode() === STREAMING_GATE_MODES.ROUGH_ONLY
+    ) {
       const backendLabel =
         this.config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
           ? 'FireRed-first'

@@ -18,9 +18,8 @@ export function createParakeetCtcPresetFactory(
   return {
     preset: 'parakeet-ctc',
     supports(modelId?: string): boolean {
-      return (
-        modelId === undefined || modelId.includes('parakeet-ctc') || modelId.includes('ctc-110m')
-      );
+      if (!modelId) return false;
+      return modelId.includes('parakeet-ctc') || modelId.includes('ctc-110m');
     },
     async resolveModelRequest(
       request,

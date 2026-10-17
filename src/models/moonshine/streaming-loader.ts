@@ -48,6 +48,7 @@ export interface MoonshineStreamingLoadOptions extends MoonshineStreamingAssets 
 export interface LoadedMoonshineStreaming {
   readonly session: MoonshineStreamingSession;
   readonly transcriber: MoonshineStreamingTranscriber;
+  readonly resolvedEncoderBackend?: 'webgpu' | 'wasm';
   dispose(): Promise<void>;
 }
 
@@ -62,9 +63,12 @@ async function loadDefaultOrt(options: MoonshineStreamingLoadOptions): Promise<M
   return ort;
 }
 
-function sessionOptionsFor(options: MoonshineStreamingLoadOptions): Record<string, unknown> {
+function sessionOptionsFor(
+  options: MoonshineStreamingLoadOptions,
+  backend: 'webgpu' | 'wasm',
+): Record<string, unknown> {
   const executionProviders =
-    options.encoderBackend === 'webgpu' ? ['webgpu', 'wasm'] : ['wasm'];
+    backend === 'webgpu' ? ['webgpu', 'wasm'] : ['wasm'];
   const intraOpNumThreads = options.cpuThreads;
   return {
     executionProviders,
@@ -77,20 +81,61 @@ export async function loadMoonshineStreaming(
   options: MoonshineStreamingLoadOptions,
 ): Promise<LoadedMoonshineStreaming> {
   const ort = options.ort ?? (await loadDefaultOrt(options));
-  const sessionOptions = sessionOptionsFor(options);
-  const create = (url: string): Promise<OrtSessionLike> =>
-    ort.InferenceSession.create(url, sessionOptions);
 
-  const sessions: OrtSessionLike[] = [];
+  const createGraphSessions = async (
+    backend: 'webgpu' | 'wasm',
+  ): Promise<{
+    sessions: OrtSessionLike[];
+    chunkedEncoder: OrtSessionLike;
+    wholeEncoder: OrtSessionLike;
+    prefill: OrtSessionLike;
+    step: OrtSessionLike;
+  }> => {
+    const sessionOptions = sessionOptionsFor(options, backend);
+    const created: OrtSessionLike[] = [];
+    try {
+      const [chunkedEncoder, wholeEncoder, prefill, step] = await Promise.all([
+        ort.InferenceSession.create(options.chunkedEncoderUrl, sessionOptions),
+        ort.InferenceSession.create(options.encoderUrl, sessionOptions),
+        ort.InferenceSession.create(options.prefillUrl, sessionOptions),
+        ort.InferenceSession.create(options.stepUrl, sessionOptions),
+      ]);
+      created.push(chunkedEncoder, wholeEncoder, prefill, step);
+      return { sessions: created, chunkedEncoder, wholeEncoder, prefill, step };
+    } catch (err) {
+      await Promise.all(created.map(async (owned) => {
+        await owned.release?.();
+      }));
+      throw err;
+    }
+  };
+
+  let resolvedEncoderBackend: 'webgpu' | 'wasm' =
+    options.encoderBackend === 'webgpu' ? 'webgpu' : 'wasm';
+  let graphs: {
+    sessions: OrtSessionLike[];
+    chunkedEncoder: OrtSessionLike;
+    wholeEncoder: OrtSessionLike;
+    prefill: OrtSessionLike;
+    step: OrtSessionLike;
+  };
+
+  if (options.encoderBackend === 'webgpu') {
+    try {
+      graphs = await createGraphSessions('webgpu');
+      resolvedEncoderBackend = 'webgpu';
+    } catch {
+      graphs = await createGraphSessions('wasm');
+      resolvedEncoderBackend = 'wasm';
+    }
+  } else {
+    graphs = await createGraphSessions('wasm');
+    resolvedEncoderBackend = 'wasm';
+  }
+
+  const sessions = graphs.sessions;
+
   try {
-    const [chunkedEncoder, wholeEncoder, prefill, step] = await Promise.all([
-      create(options.chunkedEncoderUrl),
-      create(options.encoderUrl),
-      create(options.prefillUrl),
-      create(options.stepUrl),
-    ]);
-    sessions.push(chunkedEncoder, wholeEncoder, prefill, step);
-
     const tokenizerJson = options.fetchJson
       ? await options.fetchJson(options.tokenizerUrl)
       : await (await fetch(options.tokenizerUrl)).json();
@@ -101,10 +146,10 @@ export async function loadMoonshineStreaming(
 
     const session = new MoonshineStreamingSession({
       ort,
-      chunkedEncoder,
-      wholeEncoder,
-      prefill,
-      step,
+      chunkedEncoder: graphs.chunkedEncoder,
+      wholeEncoder: graphs.wholeEncoder,
+      prefill: graphs.prefill,
+      step: graphs.step,
       tokenizer,
       bosTokenId: 1,
       eosTokenId: 2,
@@ -119,6 +164,7 @@ export async function loadMoonshineStreaming(
     return {
       session,
       transcriber,
+      resolvedEncoderBackend,
       async dispose() {
         transcriber.dispose();
         await Promise.all(sessions.map(async (owned) => {

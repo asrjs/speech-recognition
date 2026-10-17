@@ -515,11 +515,25 @@ export function createBrowserRealtimeMicrophoneController(
             }
             if (startupError) throw startupError;
             releaseStartup(true);
-            const tenVadState = starter.getSnapshot()?.tenVad?.state;
+            const snapshot = starter.getSnapshot();
+            const tenVadState = snapshot?.tenVad?.state;
+            const effectiveGateMode = snapshot?.gate?.effectiveMode ?? 'rough-only';
+            const vadBackend = snapshot?.gate?.vadBackend;
+            let segmenterLabel: string;
+            if (tenVadState === 'degraded') {
+              segmenterLabel = 'rough fallback';
+            } else if (
+              effectiveGateMode === 'rough-only' ||
+              tenVadState === 'disabled' ||
+              tenVadState === 'idle' ||
+              !snapshot?.config?.tenVadEnabled
+            ) {
+              segmenterLabel = 'RoughSpeechGate';
+            } else {
+              segmenterLabel = vadBackend === 'ten-vad' ? 'TEN-VAD' : 'FireRed VAD';
+            }
             updateStatus(
-              tenVadState === 'degraded'
-                ? `Listening for speech at ${sampleRate} Hz with rough fallback…`
-                : `Listening for speech at ${sampleRate} Hz with FireRed VAD segmenter…`,
+              `Listening for speech at ${sampleRate} Hz with ${segmenterLabel}…`,
               'Microphone active',
             );
             return;

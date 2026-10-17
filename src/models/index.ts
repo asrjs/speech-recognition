@@ -10,4 +10,7 @@ export * from './nemo-tdt.js';
 export * from './nemotron-rnnt.js';
 export * from './whisper-seq2seq.js';
 export * from './qwen-asr.js';
-export * from './firered-llm.js';
+export { createQwen3AsrVerifyModelFamily } from './qwen3-asr.js';
+export * from './moonshine.js';
+export * from './parakeet-ctc.js';
+export * from './omnilingual-ctc.js';

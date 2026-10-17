@@ -69,8 +69,8 @@ function collectStaticImports(source) {
   return imports;
 }
 
-async function main() {
-  const queue = [...entryPoints];
+async function traverseGraph(startEntries) {
+  const queue = [...startEntries];
   const visited = new Set();
   const violations = [];
 
@@ -97,6 +97,26 @@ async function main() {
         continue;
       }
       queue.push(localTarget);
+    }
+  }
+
+  return { visited, violations };
+}
+
+async function main() {
+  const { visited, violations } = await traverseGraph(entryPoints);
+
+  // Card T1 / Root Bundle Boundary: index.js must never pull in any model executor or ort modules.
+  const rootIndex = resolve(distRoot, 'index.js');
+  if (entryPoints.includes(rootIndex)) {
+    const { visited: rootVisited } = await traverseGraph([rootIndex]);
+    const forbiddenModelRegex = /[/\\]models[/\\][^/\\]+[/\\](?:executor|ort)\.js$/;
+    for (const mod of rootVisited) {
+      if (forbiddenModelRegex.test(mod)) {
+        violations.push(
+          `Root bundle boundary violation: index.js transitively imports ${relative(repositoryRoot, mod)}`,
+        );
+      }
     }
   }
 

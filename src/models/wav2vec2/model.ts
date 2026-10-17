@@ -184,6 +184,7 @@ class Wav2Vec2SpeechSession implements SpeechSession<
       language: nativeTranscript.language ?? this.config.languages[0],
       sampleRate: audio.sampleRate,
       durationSeconds: audio.durationSeconds,
+      metrics: nativeTranscript.metrics,
     });
     const responseFlavor = options.responseFlavor ?? 'canonical';
 
@@ -383,6 +384,7 @@ export function createWav2Vec2ModelFamily(
   return {
     family,
     classification: factoryClassification,
+    supportedBackendIds: ['webgpu', 'wasm', 'native-cpu'],
     supports(modelId: string): boolean {
       if (options.supportsModel) {
         return options.supportsModel(modelId);

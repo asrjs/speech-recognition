@@ -61,6 +61,8 @@ export function mapLasrCtcNativeToCanonical(
         ]
       : undefined;
 
+  const { detail: _discardDetail, ...cleanMeta } = meta as typeof meta & { detail?: unknown };
+
   const result: TranscriptResult = {
     text: nativeTranscript.utteranceText,
     warnings: (nativeTranscript.warnings ?? []).map((warning) => ({
@@ -69,7 +71,7 @@ export function mapLasrCtcNativeToCanonical(
       recoverable: true,
     })),
     meta: {
-      ...meta,
+      ...cleanMeta,
       detailLevel: detail,
       isFinal: nativeTranscript.isFinal,
       modelFamily: classification.family ?? 'lasr-ctc',
@@ -87,7 +89,10 @@ export function mapLasrCtcNativeToCanonical(
   if (detail !== 'text' && segments) {
     Object.assign(result, { segments });
   }
-  if ((detail === 'words' || detail === 'detailed') && words.length > 0) {
+  if (
+    (detail === 'words' || detail === 'detailed' || detail === 'sentences+words') &&
+    words.length > 0
+  ) {
     Object.assign(result, { words });
   }
   if (detail === 'detailed' && tokens.length > 0) {

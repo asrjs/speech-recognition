@@ -84,6 +84,9 @@ export const qwen3AsrBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
       const cuSeqlensUrl = findLocalEntry(options.entries, 'jfk_cu_seqlens.bin')
         ? await toLocator('jfk_cu_seqlens.bin')
         : undefined;
+      const inputFeaturesUrl = findLocalEntry(options.entries, 'jfk_input_features.npy')
+        ? await toLocator('jfk_input_features.npy')
+        : undefined;
       const prefixEmbedsUrl = findLocalEntry(options.entries, 'prompt_prefix_embeds.npy')
         ? await toLocator('prompt_prefix_embeds.npy')
         : undefined;
@@ -100,6 +103,7 @@ export const qwen3AsrBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
           embedUrl,
           tokenizerUrl,
           cuSeqlensUrl,
+          inputFeaturesUrl,
           prefixEmbedsUrl,
           suffixEmbedsUrl,
           encoderBackend: options.encoderBackend,

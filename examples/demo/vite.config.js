@@ -33,7 +33,7 @@ export default defineConfig({
   },
   server: {
     fs: {
-      allow: [demoPaths.repoRoot, 'N:/models'],
+      allow: [demoPaths.repoRoot, process.env.ASRJS_MODELS_DIR ?? 'N:/models'],
     },
     https: fs.existsSync(`${certDir}/key.pem`)
       ? { key: fs.readFileSync(`${certDir}/key.pem`), cert: fs.readFileSync(`${certDir}/cert.pem`) }

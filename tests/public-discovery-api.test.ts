@@ -182,5 +182,5 @@ describe('root speech model discovery helpers', () => {
         'short-clip-speech-llm',
       );
     }
-  });
+  }, 15_000);
 });

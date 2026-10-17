@@ -444,7 +444,7 @@ try {
 Native CPU inference requires an explicitly installed optional peer:
 
 ```sh
-npm install onnxruntime-node@1.25.0-dev.20260228-6e72d31970
+npm install onnxruntime-node@1.30.0
 ```
 
 Browser/WebGPU/WASM consumers do not need this engine. The repository keeps
@@ -683,21 +683,34 @@ Ownership rules:
 Architecture-based implementation families currently present in the repo:
 
 - `nemo-tdt`
+- `nemo-rnnt`
+- `nemo-aed`
+- `nemotron-rnnt`
 - `lasr-ctc`
+- `parakeet-ctc`
+- `omnilingual-ctc`
 - `whisper-seq2seq`
-- `firered-llm`
-
-Built-in runtime registration currently includes:
-
-- `nemo-tdt`
-- `lasr-ctc`
-- `whisper-seq2seq`
+- `moonshine`
+- `qwen-asr`
+- `wav2vec2`
+- `sensevoice`
+- `gigaam-ctc`
+- `gigaam-rnnt`
+- `x-asr`
 
 Current branded presets include:
 
 - `parakeet`
-- `medasr`
+- `orukeet`
 - `whisper`
+- `canary`
+- `medasr`
+- `moonshine`
+- `qwen-asr`
+- `wav2vec2`
+- `sensevoice`
+- `gigaam`
+- `nemotron`
 
 ## Extending @asrjs/speech-recognition
 

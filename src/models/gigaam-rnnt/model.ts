@@ -38,6 +38,44 @@ class GigaAmRnntModel implements SpeechModel<GigaAmRnntModelOptions, GigaAmRnntT
   async dispose(): Promise<void> { if (this.disposed) return; this.disposed = true; await Promise.all([...this.sessions].map((session) => session.dispose())); this.sessions.clear(); }
 }
 
-export function createGigaAmRnntModelFamily(options: GigaAmRnntModelFamilyOptions = {}): SpeechModelFactory<GigaAmRnntModelOptions, GigaAmRnntTranscriptionOptions, GigaAmRnntNativeTranscript> {
-  return { family: 'gigaam-rnnt', classification: CLASSIFICATION, supports(modelId: string): boolean { const value = modelId.toLowerCase(); return value.includes('gigaam') && (value.includes('rnnt') || value.includes('rnn-t') || value.includes('e2e')); }, matchesClassification(classification): boolean { return Object.entries(classification).every(([key, value]) => CLASSIFICATION[key as keyof ModelClassification] === value); }, async createModel(request, context) { const dependencies = { ...(options.dependencies ?? {}), assetProvider: options.dependencies?.assetProvider ?? context.assetProvider, runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks, signal: options.dependencies?.signal ?? context.signal }; return new GigaAmRnntModel(context.backend, 'gigaam-rnnt', request.modelId, { ...DEFAULT_CONFIG, ...(request.options?.config ?? {}) }, request.options, dependencies); } };
+export function createGigaAmRnntModelFamily(
+  options: GigaAmRnntModelFamilyOptions = {},
+): SpeechModelFactory<
+  GigaAmRnntModelOptions,
+  GigaAmRnntTranscriptionOptions,
+  GigaAmRnntNativeTranscript
+> {
+  return {
+    family: 'gigaam-rnnt',
+    classification: CLASSIFICATION,
+    supportedBackendIds: ['webgpu', 'wasm', 'native-cpu'],
+    supports(modelId: string): boolean {
+      const value = modelId.toLowerCase();
+      return (
+        value.includes('gigaam') &&
+        (value.includes('rnnt') || value.includes('rnn-t') || value.includes('e2e'))
+      );
+    },
+    matchesClassification(classification): boolean {
+      return Object.entries(classification).every(
+        ([key, value]) => CLASSIFICATION[key as keyof ModelClassification] === value,
+      );
+    },
+    async createModel(request, context) {
+      const dependencies = {
+        ...(options.dependencies ?? {}),
+        assetProvider: options.dependencies?.assetProvider ?? context.assetProvider,
+        runtimeHooks: options.dependencies?.runtimeHooks ?? context.hooks,
+        signal: options.dependencies?.signal ?? context.signal,
+      };
+      return new GigaAmRnntModel(
+        context.backend,
+        'gigaam-rnnt',
+        request.modelId,
+        { ...DEFAULT_CONFIG, ...(request.options?.config ?? {}) },
+        request.options,
+        dependencies,
+      );
+    },
+  };
 }

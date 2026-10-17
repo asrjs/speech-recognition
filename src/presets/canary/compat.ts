@@ -380,6 +380,8 @@ export async function getCanaryModel(
 }
 
 export class CanaryModel {
+  private readonly ownsRuntime: boolean;
+
   constructor(
     private readonly runtime: DefaultSpeechRuntime,
     private readonly model: SpeechModel<
@@ -389,7 +391,10 @@ export class CanaryModel {
     >,
     private readonly session: SpeechSession<NemoAedTranscriptionOptions, NemoAedNativeTranscript>,
     private readonly onDispose?: () => void | Promise<void>,
-  ) {}
+    ownsRuntime: boolean = true,
+  ) {
+    this.ownsRuntime = ownsRuntime;
+  }
 
   static async fromUrls(config: CanaryFromUrlsConfig): Promise<CanaryModel> {
     const modelId = config.modelId ?? DEFAULT_MODEL;
@@ -439,7 +444,7 @@ export class CanaryModel {
       throwIfAssetAborted(config.signal, 'download');
       session = await model.createSession();
       throwIfAssetAborted(config.signal, 'download');
-      return new CanaryModel(runtime, model, session);
+      return new CanaryModel(runtime, model, session, undefined, !config.runtime);
     } catch (error) {
       await session?.dispose();
       await model?.dispose();
@@ -494,7 +499,7 @@ export class CanaryModel {
       throwIfAssetAborted(options.signal, 'download');
       session = await model.createSession();
       throwIfAssetAborted(options.signal, 'download');
-      return new CanaryModel(runtime, model, session);
+      return new CanaryModel(runtime, model, session, undefined, !options.runtime);
     } catch (error) {
       await session?.dispose();
       await model?.dispose();
@@ -525,7 +530,9 @@ export class CanaryModel {
     await this.session.dispose();
     await this.model.dispose();
     await this.onDispose?.();
-    void this.runtime;
+    if (this.ownsRuntime) {
+      await this.runtime.dispose?.();
+    }
   }
 }
 

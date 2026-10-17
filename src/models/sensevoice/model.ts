@@ -256,6 +256,7 @@ export function createSenseVoiceModelFamily(
   return {
     family: 'sensevoice',
     classification: DEFAULT_CLASSIFICATION,
+    supportedBackendIds: ['webgpu', 'wasm', 'native-cpu'],
     supports(modelId: string): boolean {
       const normalized = modelId.toLowerCase();
       return normalized.includes('sensevoice');

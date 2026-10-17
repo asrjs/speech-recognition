@@ -1,7 +1,5 @@
 import {
-  createWebGlBackend,
   createWebGpuBackend,
-  createWebNnBackend,
   createWasmBackend,
 } from '../inference/index.js';
 import type { AudioInputLike } from '../types/audio.js';
@@ -20,7 +18,9 @@ import { createOmnilingualCtcModelFamily } from '../models/omnilingual-ctc/index
 import { createOmnilingualCtcPresetFactory } from '../presets/omnilingual-ctc-factory.js';
 import { createWav2Vec2TurkishPresetFactory } from '../presets/wav2vec2-tr-factory.js';
 import { createMoonshinePresetFactory } from '../presets/moonshine-factory.js';
+import { createMoonshineModelFamily } from '../models/moonshine/index.js';
 import { createQwen3AsrPresetFactory } from '../presets/qwen3-asr-factory.js';
+import { createQwen3AsrVerifyModelFamily } from '../models/qwen3-asr/index.js';
 import { createGigaAmRnntModelFamily } from '../models/gigaam-rnnt/index.js';
 import { createNemoAedModelFamily } from '../models/nemo-aed/index.js';
 import { createNemoRnntModelFamily } from '../models/nemo-rnnt/index.js';
@@ -57,6 +57,7 @@ import type {
   StreamingTranscriber,
   TranscriptResponse,
   TranscriptResponseFlavor,
+  TranscriptResult,
   RuntimeProgressEvent,
 } from '../types/index.js';
 import { createSpeechRuntime, type DefaultSpeechRuntime } from './session.js';
@@ -299,8 +300,6 @@ function isFamilyBuiltInModelRequest(
 export function registerBuiltInBackends(runtime: DefaultSpeechRuntime): DefaultSpeechRuntime {
   runtime.registerBackend(createWebGpuBackend());
   runtime.registerBackend(createWasmBackend());
-  runtime.registerBackend(createWebNnBackend());
-  runtime.registerBackend(createWebGlBackend());
   return runtime;
 }
 
@@ -317,9 +316,11 @@ export function registerBuiltInModelFamilies(runtime: DefaultSpeechRuntime): Def
   runtime.registerModelFamily(createLasrCtcModelFamily());
   runtime.registerModelFamily(createWhisperSeq2SeqModelFamily());
   runtime.registerModelFamily(createQwen3AsrModelFamily());
+  runtime.registerModelFamily(createQwen3AsrVerifyModelFamily());
   runtime.registerModelFamily(createSenseVoiceModelFamily());
   runtime.registerModelFamily(createXAsrModelFamily());
   runtime.registerModelFamily(createWav2Vec2ModelFamily());
+  runtime.registerModelFamily(createMoonshineModelFamily());
   return runtime;
 }
 
@@ -340,7 +341,7 @@ export function registerBuiltInPresets(
   );
   runtime.registerPreset(
     createNemotronPresetFactory({
-      useManifestSource: options.useManifestSources ?? false,
+      useManifestSource: options.useManifestSources ?? true,
     }),
   );
   runtime.registerPreset(createParakeetCtcPresetFactory());
@@ -352,7 +353,7 @@ export function registerBuiltInPresets(
   runtime.registerPreset(createWhisperPresetFactory());
   runtime.registerPreset(
     createWav2Vec2PresetFactory({
-      useManifestSource: options.useManifestSources ?? false,
+      useManifestSource: options.useManifestSources ?? true,
     }),
   );
   return runtime;
@@ -553,6 +554,10 @@ export async function loadBuiltInSpeechModel<
             return await guardedSession.transcribe(input, resolvedOptions);
           }
 
+          let lastNative: TNative | undefined;
+          const nativeWindows: TNative[] = [];
+          const wantsNative = resolvedOptions?.responseFlavor === 'canonical+native';
+
           const canonical = await transcribeWithWindowing({
             input: decision.audio,
             options: {
@@ -560,17 +565,33 @@ export async function loadBuiltInSpeechModel<
               responseFlavor: 'canonical',
             } as TTranscriptionOptions,
             inference,
-            transcribeWindow: async (windowInput, windowOptions) =>
-              (await guardedSession.transcribe(windowInput, {
+            transcribeWindow: async (windowInput, windowOptions) => {
+              if (wantsNative) {
+                const response = await guardedSession.transcribe(windowInput, {
+                  ...windowOptions,
+                  responseFlavor: 'canonical+native',
+                } as TTranscriptionOptions & { readonly responseFlavor: 'canonical+native' });
+                const envelope = response as { canonical: TranscriptResult; native?: TNative };
+                if (envelope.native !== undefined) {
+                  lastNative = envelope.native;
+                  nativeWindows.push(envelope.native);
+                }
+                return envelope.canonical;
+              }
+              return (await guardedSession.transcribe(windowInput, {
                 ...windowOptions,
                 responseFlavor: 'canonical',
               } as TTranscriptionOptions & {
                 readonly responseFlavor: 'canonical';
-              })) as TranscriptResponse<TNative, 'canonical'>,
+              })) as TranscriptResponse<TNative, 'canonical'>;
+            },
           });
 
           if (resolvedOptions?.responseFlavor === 'canonical+native') {
-            return { canonical } as TranscriptResponse<TNative, TFlavor>;
+            return {
+              canonical,
+              native: (nativeWindows.length > 1 ? nativeWindows : lastNative) as TNative,
+            } as TranscriptResponse<TNative, TFlavor>;
           }
           return canonical as TranscriptResponse<TNative, TFlavor>;
         } finally {

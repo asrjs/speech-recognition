@@ -1,9 +1,7 @@
-import {
-  createBuiltInSpeechRuntime,
-  loadBuiltInSpeechModel,
-  type BuiltInSpeechModelHandle,
-  type CreateBuiltInSpeechRuntimeOptions,
-  type LoadBuiltInSpeechModelOptions,
+import type {
+  BuiltInSpeechModelHandle,
+  CreateBuiltInSpeechRuntimeOptions,
+  LoadBuiltInSpeechModelOptions,
 } from './builtins.js';
 import { PcmAudioBuffer } from '../audio/index.js';
 import {
@@ -24,6 +22,7 @@ import type {
   StreamingTranscriber,
   TranscriptResponse,
   TranscriptResponseFlavor,
+  TranscriptResult,
 } from '../types/index.js';
 import { NotImplementedSpeechFeatureError } from './errors.js';
 import {
@@ -32,7 +31,7 @@ import {
   createTrackedStreamingTranscriberFactory,
   disposeStreamingTranscribersAndOwner,
 } from './operation-lease.js';
-import type { DefaultSpeechRuntime } from './session.js';
+import { createSpeechRuntime, type DefaultSpeechRuntime } from './session.js';
 
 /**
  * App-facing convenience handle returned by `loadSpeechModel()`.
@@ -79,6 +78,7 @@ export async function loadSpeechModel<
 >(
   options: LoadSpeechModelOptions<TLoadOptions>,
 ): Promise<LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>> {
+  const { loadBuiltInSpeechModel } = await import('./builtins.js');
   const handle = await loadBuiltInSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(
     options,
   );
@@ -386,21 +386,41 @@ export function createLoadedSpeechModelHandle<
         return await handle.transcribe(input, resolvedOptions);
       }
 
+      let lastNative: TNative | undefined;
+      const nativeWindows: TNative[] = [];
+      const wantsNative = resolvedOptions?.responseFlavor === 'canonical+native';
+
       const canonical = await transcribeWithWindowing({
         input: decision.audio,
         options: { ...(resolvedOptions ?? {}), responseFlavor: 'canonical' } as TTranscriptionOptions,
         inference,
-        transcribeWindow: async (windowInput, windowOptions) =>
-          (await handle.transcribe(windowInput, {
+        transcribeWindow: async (windowInput, windowOptions) => {
+          if (wantsNative) {
+            const response = await handle.transcribe(windowInput, {
+              ...windowOptions,
+              responseFlavor: 'canonical+native',
+            } as TTranscriptionOptions & { readonly responseFlavor: 'canonical+native' });
+            const envelope = response as { canonical: TranscriptResult; native?: TNative };
+            if (envelope.native !== undefined) {
+              lastNative = envelope.native;
+              nativeWindows.push(envelope.native);
+            }
+            return envelope.canonical;
+          }
+          return (await handle.transcribe(windowInput, {
             ...windowOptions,
             responseFlavor: 'canonical',
           } as TTranscriptionOptions & {
             readonly responseFlavor: 'canonical';
-          })) as TranscriptResponse<TNative, 'canonical'>,
+          })) as TranscriptResponse<TNative, 'canonical'>;
+        },
       });
 
       if (resolvedOptions?.responseFlavor === 'canonical+native') {
-        return { canonical } as TranscriptResponse<TNative, TFlavor>;
+        return {
+          canonical,
+          native: (nativeWindows.length > 1 ? nativeWindows : lastNative) as TNative,
+        } as TranscriptResponse<TNative, TFlavor>;
       }
       return canonical as TranscriptResponse<TNative, TFlavor>;
     } finally {
@@ -541,6 +561,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
   private readonly ownsRuntime: boolean;
   private readonly hooks: CreateBuiltInSpeechRuntimeOptions['hooks'];
   private readonly useManifestSources: boolean;
+  private runtimeInitialized = false;
   private readonly handles = new Map<string, UnknownLoadedModelHandle>();
   private readonly inflight = new Map<string, Promise<UnknownLoadedModelHandle>>();
   private readonly generations = new Map<string, number>();
@@ -553,10 +574,24 @@ class DefaultSpeechPipeline implements SpeechPipeline {
 
   constructor(options: SpeechPipelineOptions = {}) {
     this.ownsRuntime = !options.runtime;
-    this.runtime = options.runtime ?? createBuiltInSpeechRuntime(options);
+    this.runtime = options.runtime ?? createSpeechRuntime({ hooks: options.hooks });
     this.cacheModels = options.cacheModels ?? true;
     this.hooks = options.hooks;
     this.useManifestSources = options.useManifestSources ?? true;
+  }
+
+  private async ensureBuiltInRuntime(): Promise<void> {
+    if (this.ownsRuntime && !this.runtimeInitialized) {
+      this.runtimeInitialized = true;
+      const { registerBuiltInBackends, registerBuiltInModelFamilies, registerBuiltInPresets } =
+        await import('./builtins.js');
+      registerBuiltInBackends(this.runtime);
+      registerBuiltInModelFamilies(this.runtime);
+      registerBuiltInPresets(this.runtime, {
+        hooks: this.hooks,
+        useManifestSources: this.useManifestSources,
+      });
+    }
   }
 
   async loadModel<
@@ -1140,6 +1175,8 @@ class DefaultSpeechPipeline implements SpeechPipeline {
     void cacheKey;
     void forceReload;
 
+    await this.ensureBuiltInRuntime();
+    const { loadBuiltInSpeechModel } = await import('./builtins.js');
     const handle = await loadBuiltInSpeechModel({
       ...loadOptions,
       runtime: this.runtime,

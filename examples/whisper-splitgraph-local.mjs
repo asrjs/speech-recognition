@@ -27,8 +27,8 @@
  *        npm test -- tests/whisper-splitgraph-smoke.test.ts
  */
 
-import { createWhisperSeq2SeqModelFamily } from '../src/models/whisper-seq2seq/model.js';
-import { loadSplitGraphLocalModel } from '../src/models/whisper-seq2seq/local-file.js';
+import { createWhisperSeq2SeqModelFamily } from '../dist/models/whisper-seq2seq/model.js';
+import { loadSplitGraphLocalModel } from '../dist/models/whisper-seq2seq/local-file.js';
 
 async function main() {
   const modelDir = process.env.WHISPER_MODEL_DIR;

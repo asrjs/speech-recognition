@@ -55,7 +55,10 @@ export function mapWhisperNativeToCanonical(
   if (detail !== 'text' && nativeTranscript.segments && nativeTranscript.segments.length > 0) {
     Object.assign(result, { segments: nativeTranscript.segments });
   }
-  if ((detail === 'words' || detail === 'detailed') && words.length > 0) {
+  if (
+    (detail === 'words' || detail === 'detailed' || detail === 'sentences+words') &&
+    words.length > 0
+  ) {
     Object.assign(result, { words });
   }
   if (detail === 'detailed' && tokens.length > 0) {

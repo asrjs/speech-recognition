@@ -30,3 +30,13 @@ tests/fixtures/
 # Reproducible local numerical traces and diagnostic tensors; keep small receipts in Git.
 tools/data/results/orukeet/*-stages-*.json.gz
 tools/data/results/gigaam/jfk-short.js-features.npy
+
+# Bulk harness and temporary test receipts
+tools/data/results/harness/
+tools/data/results/orukeet/
+tools/data/results/model-candidates/
+tools/data/results/nemotron/
+tools/data/results/*.json
+!tools/data/results/canonical/**
+tools/model-debugging/reference/
+

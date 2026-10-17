@@ -36,6 +36,28 @@ export const MODELS = {
     encoderLayers: CANARY_180M_FLASH_DOCS.architecture.encoderLayers,
     decoderLayers: CANARY_180M_FLASH_DOCS.architecture.decoderLayers,
   },
+  'nvidia/canary-1b': {
+    repoId: 'nvidia/canary-1b',
+    displayName: 'Canary 1B (Multilingual AED)',
+    languages: ['en', 'de', 'es', 'fr'],
+    defaultSourceLanguage: 'en',
+    defaultTargetLanguage: 'en',
+    vocabSize: 5248,
+    featuresSize: 128,
+    encoderLayers: 17,
+    decoderLayers: 4,
+  },
+  'nvidia/canary-1b-v2': {
+    repoId: 'nvidia/canary-1b-v2',
+    displayName: 'Canary 1B v2 (Multilingual AED)',
+    languages: ['en', 'de', 'es', 'fr'],
+    defaultSourceLanguage: 'en',
+    defaultTargetLanguage: 'en',
+    vocabSize: 5248,
+    featuresSize: 128,
+    encoderLayers: 17,
+    decoderLayers: 4,
+  },
 } satisfies Record<string, CanaryModelConfig>;
 
 export function getModelConfig(modelKeyOrRepoId: string): CanaryModelConfig | null {

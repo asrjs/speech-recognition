@@ -50,7 +50,7 @@ export function createOmnilingualCtcModelFamily(): SpeechModelFactory<
   return {
     family: 'omnilingual-ctc',
     classification: DEFAULT_OMNILINGUAL_CTC_CLASSIFICATION,
-    supportedBackendIds: ['wasm', 'webgpu', 'native-cpu'],
+    supportedBackendIds: ['webgpu', 'wasm', 'native-cpu'],
     supports(modelId: string): boolean {
       const value = modelId.toLowerCase();
       return value.includes('omnilingual') || value.includes('omni-asr');
@@ -107,16 +107,26 @@ export function createOmnilingualCtcModelFamily(): SpeechModelFactory<
                 throw new Error('Omnilingual CTC transcription requires mono audio.');
               }
               const native = await model.transcribe(mono);
+              const durationSeconds = mono.length / sampleRate;
               const canonical = mapLasrCtcNativeToCanonical(
                 native,
                 DEFAULT_OMNILINGUAL_CTC_CLASSIFICATION,
                 {
+                  modelId: request.modelId,
+                  backendId: context.backend.id,
+                  sampleRate,
+                  durationSeconds,
+                  language: 'mul',
                   detail: options?.detail ?? 'segments',
                   detailLevel: options?.detail ?? 'segments',
-                  isFinal: native.isFinal,
+                  isFinal: true,
+                  metrics: native.metrics,
                 } as never,
               );
 
+              if (options?.responseFlavor === 'native') {
+                return native as TranscriptResponse<LasrCtcNativeTranscript, TFlavor>;
+              }
               if (options?.responseFlavor === 'canonical+native') {
                 return { canonical, native } as TranscriptResponse<
                   LasrCtcNativeTranscript,

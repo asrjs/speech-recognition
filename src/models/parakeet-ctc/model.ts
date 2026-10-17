@@ -3,6 +3,17 @@ import { CtcDecoder } from '../../ctc/index.js';
 import { nowMs, roundMetric } from '../../runtime/timing.js';
 import { createExperimentalArtifactMissingError } from '../../runtime/experimental-families.js';
 import { mapLasrCtcNativeToCanonical } from '../lasr-ctc/mapping.js';
+import {
+  assertSessionOwnerActive,
+  disposeOwnedResources,
+  initializeOwnedSession,
+} from '../../runtime/owned-session.js';
+import * as ownedSessionModule from '../../runtime/owned-session.js';
+
+const registerOwnedSpeechSession =
+  (ownedSessionModule as { registerOwnedSpeechSession?: typeof initializeOwnedSession })
+    .registerOwnedSpeechSession ?? initializeOwnedSession;
+void registerOwnedSpeechSession;
 import type {
   AudioInputLike,
   SpeechModel,
@@ -204,7 +215,7 @@ export function createParakeetCtcModelFamily(): SpeechModelFactory<
   return {
     family: 'parakeet-ctc',
     classification: CLASSIFICATION,
-    supportedBackendIds: ['wasm', 'webgpu', 'native-cpu'],
+    supportedBackendIds: ['webgpu', 'wasm', 'native-cpu'],
     supports(modelId: string): boolean {
       const value = modelId.toLowerCase();
       return value.includes('parakeet-ctc') || value.includes('ctc-110m');
@@ -215,7 +226,7 @@ export function createParakeetCtcModelFamily(): SpeechModelFactory<
     ): Promise<
       SpeechModel<ParakeetCtcModelOptions, LasrCtcTranscriptionOptions, LasrCtcNativeTranscript>
     > {
-      let loaded: ParakeetCtcLoadedModel | undefined;
+      const sessions = new Set<{ dispose(): void | Promise<void> }>();
       let disposed = false;
 
       return {
@@ -231,11 +242,14 @@ export function createParakeetCtcModelFamily(): SpeechModelFactory<
         async createSession(): Promise<
           SpeechSession<LasrCtcTranscriptionOptions, LasrCtcNativeTranscript>
         > {
-          loaded ??= await loadParakeetCtcFromOptions(
+          assertSessionOwnerActive(disposed);
+
+          const loaded = await loadParakeetCtcFromOptions(
             (request.options ?? {}) as ParakeetCtcModelOptions,
           );
+          let sessionDisposed = false;
 
-          return {
+          const session: SpeechSession<LasrCtcTranscriptionOptions, LasrCtcNativeTranscript> = {
             async transcribe<TFlavor extends TranscriptResponseFlavor = 'canonical'>(
               input: AudioInputLike,
               options?: LasrCtcTranscriptionOptions & { readonly responseFlavor?: TFlavor },
@@ -247,13 +261,23 @@ export function createParakeetCtcModelFamily(): SpeechModelFactory<
               if (!mono) {
                 throw new Error('Parakeet CTC transcription requires mono audio.');
               }
-              const native = await loaded!.transcribe(mono);
+              const native = await loaded.transcribe(mono);
+              const durationSeconds = mono.length / DEFAULT_PARAKEET_CTC_CONFIG.sampleRate;
               const canonical = mapLasrCtcNativeToCanonical(native, CLASSIFICATION, {
+                modelId: request.modelId,
+                backendId: context.backend.id,
+                sampleRate: DEFAULT_PARAKEET_CTC_CONFIG.sampleRate,
+                durationSeconds,
+                language: DEFAULT_PARAKEET_CTC_CONFIG.languages[0] ?? 'en',
                 detail: options?.detail ?? 'segments',
                 detailLevel: options?.detail ?? 'segments',
-                isFinal: native.isFinal,
+                isFinal: true,
+                metrics: native.metrics,
               } as never);
 
+              if (options?.responseFlavor === 'native') {
+                return native as TranscriptResponse<LasrCtcNativeTranscript, TFlavor>;
+              }
               if (options?.responseFlavor === 'canonical+native') {
                 return { canonical, native } as TranscriptResponse<
                   LasrCtcNativeTranscript,
@@ -264,19 +288,23 @@ export function createParakeetCtcModelFamily(): SpeechModelFactory<
               return canonical as TranscriptResponse<LasrCtcNativeTranscript, TFlavor>;
             },
             dispose(): void {
-              if (!disposed) {
-                disposed = true;
-                loaded?.dispose();
-                loaded = undefined;
+              if (!sessionDisposed) {
+                sessionDisposed = true;
+                sessions.delete(session);
+                loaded.dispose();
               }
             },
           };
+
+          sessions.add(session);
+          return session;
         },
         async dispose(): Promise<void> {
           if (!disposed) {
             disposed = true;
-            loaded?.dispose();
-            loaded = undefined;
+            const toDispose = [...sessions];
+            sessions.clear();
+            await disposeOwnedResources(toDispose);
           }
         },
       };

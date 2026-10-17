@@ -102,9 +102,7 @@ describe('Parakeet helpers', () => {
 
   it('creates a built-in runtime with registered backends and presets', () => {
     const runtime = createBuiltInSpeechRuntime();
-    expect(runtime.listBackends().map((backend) => backend.id)).toEqual(
-      expect.arrayContaining(['webgpu', 'wasm', 'webnn', 'webgl']),
-    );
+    expect(runtime.listBackends().map((backend) => backend.id)).toEqual(['webgpu', 'wasm']);
     expect(runtime.listModelFamilies().map((family) => family.family)).toEqual(
       expect.arrayContaining(['nemo-aed', 'nemo-rnnt', 'nemo-tdt', 'lasr-ctc', 'whisper-seq2seq']),
     );

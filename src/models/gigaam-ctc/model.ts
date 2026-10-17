@@ -214,6 +214,7 @@ export function createGigaAmCtcModelFamily(
   return {
     family: 'gigaam-ctc',
     classification: CLASSIFICATION,
+    supportedBackendIds: ['webgpu', 'wasm', 'native-cpu'],
     supports(modelId: string): boolean {
       const value = modelId.toLowerCase();
       return value.includes('gigaam') && value.includes('ctc');

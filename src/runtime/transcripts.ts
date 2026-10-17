@@ -13,29 +13,19 @@ import {
   mapNemoNativeToCanonical,
   type NemoTimestampReconstructor,
 } from '../models/nemo-common/index.js';
-import {
-  DEFAULT_LASR_CTC_CLASSIFICATION,
-  type LasrCtcNativeTranscript,
-  mapLasrCtcNativeToCanonical,
-} from '../models/lasr-ctc/index.js';
-import {
-  DEFAULT_NEMO_AED_CLASSIFICATION,
-  type NemoAedNativeTranscript,
-} from '../models/nemo-aed/index.js';
-import {
-  DEFAULT_NEMO_RNNT_CLASSIFICATION,
-  type NemoRnntNativeTranscript,
-} from '../models/nemo-rnnt/index.js';
-import {
-  DEFAULT_NEMO_TDT_CLASSIFICATION,
-  type NemoTdtNativeTranscript,
-} from '../models/nemo-tdt/index.js';
-import {
-  DEFAULT_WHISPER_CLASSIFICATION,
-  type WhisperNativeTranscript,
-  mapWhisperNativeToCanonical,
-} from '../models/whisper-seq2seq/index.js';
-import type { LegacyParakeetTranscript } from '../presets/parakeet/index.js';
+import { DEFAULT_LASR_CTC_CLASSIFICATION } from '../models/lasr-ctc/config.js';
+import { mapLasrCtcNativeToCanonical } from '../models/lasr-ctc/mapping.js';
+import type { LasrCtcNativeTranscript } from '../models/lasr-ctc/types.js';
+import { DEFAULT_NEMO_AED_CLASSIFICATION } from '../models/nemo-aed/config.js';
+import type { NemoAedNativeTranscript } from '../models/nemo-aed/types.js';
+import { DEFAULT_NEMO_RNNT_CLASSIFICATION } from '../models/nemo-rnnt/config.js';
+import type { NemoRnntNativeTranscript } from '../models/nemo-rnnt/types.js';
+import { DEFAULT_NEMO_TDT_CLASSIFICATION } from '../models/nemo-tdt/config.js';
+import type { NemoTdtNativeTranscript } from '../models/nemo-tdt/types.js';
+import { DEFAULT_WHISPER_CLASSIFICATION } from '../models/whisper-seq2seq/config.js';
+import { mapWhisperNativeToCanonical } from '../models/whisper-seq2seq/mapping.js';
+import type { WhisperNativeTranscript } from '../models/whisper-seq2seq/types.js';
+import type { LegacyParakeetTranscript } from '../presets/parakeet/types.js';
 
 function withTranscriptDefaults(
   context: TranscriptNormalizationContext = {},

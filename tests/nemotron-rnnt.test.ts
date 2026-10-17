@@ -384,51 +384,44 @@ describe('Nemotron ONNX fixture smoke', () => {
       .every((file) => fs.existsSync(file));
   }
 
-  it('reproduces the parity transcript through the public API', async () => {
-    if (!process.env.ASRJS_FIXTURE_SMOKE) {
-      return; // Skipped unless explicitly requested; real weights required.
-    }
-    if (!weightsAvailable()) {
-      return;
-    }
-    const fixture = path.resolve('tools/data/fixtures/audio/jfk-short.wav');
-    if (!fs.existsSync(fixture)) {
-      return;
-    }
-    const { pcm } = readWavPcm16Mono(fixture);
-    const model = await loadNemotronDirect(modelDir);
-    const result = (await model.transcribe(pcm, { responseFlavor: 'native' })) as {
-      utteranceText: string;
-      tokens?: readonly unknown[];
-    };
-    await model.dispose();
+  const jfkFixture = path.resolve('tools/data/fixtures/audio/jfk-short.wav');
+  const librivoxFixture = path.resolve(
+    'tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav',
+  );
 
-    expect(result.utteranceText).toBe(
-      'And so my fellow Americans ask not what your country can do for you at what you can do for your country',
-    );
-    expect(result.tokens?.length).toBe(41);
-  }, 600_000);
+  it.skipIf(
+    !process.env.ASRJS_FIXTURE_SMOKE || !weightsAvailable() || !fs.existsSync(jfkFixture),
+  )(
+    'reproduces the parity transcript through the public API',
+    async () => {
+      const { pcm } = readWavPcm16Mono(jfkFixture);
+      const model = await loadNemotronDirect(modelDir);
+      const result = (await model.transcribe(pcm, { responseFlavor: 'native' })) as {
+        utteranceText: string;
+        tokens?: readonly unknown[];
+      };
+      await model.dispose();
 
-  it('decodes the 40.6 s speech/silence fixture with windowed joint scanning', async () => {
-    if (!process.env.ASRJS_FIXTURE_SMOKE_LONG) {
-      return; // Opt-in: real weights over ~160 s of WASM compute.
-    }
-    if (!weightsAvailable()) {
-      return;
-    }
-    const fixture = path.resolve(
-      'tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav',
-    );
-    if (!fs.existsSync(fixture)) {
-      return;
-    }
-    const { pcm } = readWavPcm16Mono(fixture);
-    const model = await loadNemotronDirect(modelDir);
-    const result = (await model.transcribe(pcm, { responseFlavor: 'native' })) as {
-      utteranceText: string;
-      tokens?: readonly unknown[];
-    };
-    await model.dispose();
+      expect(result.utteranceText).toBe(
+        'And so my fellow Americans ask not what your country can do for you at what you can do for your country',
+      );
+      expect(result.tokens?.length).toBe(41);
+    },
+    600_000,
+  );
+
+  it.skipIf(
+    !process.env.ASRJS_FIXTURE_SMOKE_LONG || !weightsAvailable() || !fs.existsSync(librivoxFixture),
+  )(
+    'decodes the 40.6 s speech/silence fixture with windowed joint scanning',
+    async () => {
+      const { pcm } = readWavPcm16Mono(librivoxFixture);
+      const model = await loadNemotronDirect(modelDir);
+      const result = (await model.transcribe(pcm, { responseFlavor: 'native' })) as {
+        utteranceText: string;
+        tokens?: readonly unknown[];
+      };
+      await model.dispose();
 
     // Deterministic on fixed weights. Note honestly: the community INT4
     // streaming encoder degrades on this fixture relative to the NeMo

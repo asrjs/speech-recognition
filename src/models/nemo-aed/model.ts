@@ -534,6 +534,7 @@ export function createNemoAedModelFamily(
   return {
     family,
     classification: factoryClassification,
+    supportedBackendIds: ['webgpu', 'wasm', 'native-cpu'],
     supports(modelId: string): boolean {
       if (options.supportsModel) {
         return options.supportsModel(modelId);

@@ -438,6 +438,7 @@ export function createXAsrModelFamily(
   return {
     family: 'x-asr',
     classification: CLASSIFICATION,
+    supportedBackendIds: ['webgpu', 'wasm', 'native-cpu'],
     supports(modelId) {
       const value = modelId.toLowerCase();
       return value.includes('x-asr') || value.includes('xasr');

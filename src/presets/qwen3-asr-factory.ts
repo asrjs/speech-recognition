@@ -14,7 +14,8 @@ export function createQwen3AsrPresetFactory(): SpeechPresetFactory<
   return {
     preset: 'qwen3-asr',
     supports(modelId?: string): boolean {
-      return modelId === undefined || modelId.toLowerCase().includes('qwen3-asr');
+      if (!modelId) return false;
+      return modelId.toLowerCase().includes('qwen3-asr');
     },
     async resolveModelRequest(request) {
       if (!request.options?.frontUrl) {
@@ -23,7 +24,7 @@ export function createQwen3AsrPresetFactory(): SpeechPresetFactory<
         );
       }
       return {
-        family: 'qwen3-asr',
+        family: 'qwen-asr',
         modelId: request.modelId ?? 'Qwen/Qwen3-ASR-0.6B-hf',
         classification: { family: 'qwen3-asr', ...request.classification },
         resolvedPreset: 'qwen3-asr',

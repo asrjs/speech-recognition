@@ -15,7 +15,9 @@ export function createWav2Vec2TurkishPresetFactory(): SpeechPresetFactory<
   return {
     preset: 'wav2vec2-tr',
     supports(modelId?: string): boolean {
-      return modelId === undefined || modelId.toLowerCase().includes('turkish');
+      if (!modelId) return false;
+      const lower = modelId.toLowerCase();
+      return lower === 'wav2vec2-tr' || lower === 'wav2vec2-large-xlsr-turkish';
     },
     async resolveModelRequest(request): Promise<FamilyModelLoadRequest<Wav2Vec2ModelOptions>> {
       if (!request.options?.source) {

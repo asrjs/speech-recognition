@@ -23,6 +23,6 @@ for (const directory of ['relocated-checkout', 'checkout with spaces', 'checkout
 test('Vite injects the installed ORT base and allows only the checkout plus existing Canary assets', () => {
   const paths = resolveDemoPaths(new URL('../../examples/demo/vite.config.js', import.meta.url));
   assert.equal(JSON.parse(config.define['import.meta.env.ASRJS_ORT_WASM_BASE']), paths.wasmBase);
-  assert.deepEqual(config.server.fs.allow, [paths.repoRoot, 'N:/models']);
+  assert.deepEqual(config.server.fs.allow, [paths.repoRoot, process.env.ASRJS_MODELS_DIR ?? 'N:/models']);
   assert.equal(resolve(paths.repoRoot), resolve(fileURLToPath(new URL('../../', import.meta.url))));
 });

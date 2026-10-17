@@ -28,4 +28,6 @@ export interface MoonshineLoadOptions {
   readonly sampleRate?: number;
   /** Present when the artifact source also carries the streaming graph set. */
   readonly streaming?: MoonshineStreamingAssets;
+  readonly wasmPaths?: string;
+  readonly cpuThreads?: number;
 }

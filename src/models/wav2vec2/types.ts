@@ -147,6 +147,7 @@ export interface Wav2Vec2NativeTranscript {
   readonly words?: readonly Wav2Vec2NativeWord[];
   readonly tokens?: readonly Wav2Vec2NativeToken[];
   readonly warnings?: readonly { readonly code: string; readonly message: string }[];
+  readonly metrics?: import('../../types/index.js').TranscriptMetrics;
 }
 
 // ---------------------------------------------------------------------------

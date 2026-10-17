@@ -7,20 +7,24 @@ Use it with Codex, OMP or another repository-aware harness.
 
 1. Read the project-root `AGENTS.md` when present, and
    [AGENT_SAFETY_RULES.md](AGENT_SAFETY_RULES.md) completely before editing.
-2. Read the [engineering tool map](../tools/README.md#task-to-tool-map).
+2. Read [ACTIVE_SPRINT.md](ACTIVE_SPRINT.md) and
+   [reports/deep-review-2026-10-17.md](reports/deep-review-2026-10-17.md) first.
+   These contain the active 7 task cards (T1–T7), current sprint roadmap, and
+   the required 3-tier verification gate (`Gate-A`, `Gate-B`, `Gate-C`).
+3. Read the [engineering tool map](../tools/README.md#task-to-tool-map).
    For model ports, feature extraction, inference or parity work, read the
    project-local [Model Debugging Skill](../tools/model-debugging/SKILL.md).
    These resources live in this checkout, not in the harness's global skill list.
-3. Read [architecture.md](architecture.md),
-   [PROJECT_CHARTER.md](PROJECT_CHARTER.md) and
-   [GOAL_PROMPT_RECOMMENDED.md](GOAL_PROMPT_RECOMMENDED.md).
-4. Read the current [OMP handover](OMP_HANDOVER_2026-10-03.md).
-   Reconcile its snapshot against live Git, source, build and receipts.
-5. Read [PRODUCT_TASKS.md](PRODUCT_TASKS.md),
-   [PARAKEET_VARIANT_TASKS.md](PARAKEET_VARIANT_TASKS.md),
+4. Read [architecture.md](architecture.md),
+   [PROJECT_CHARTER.md](PROJECT_CHARTER.md),
    [MODEL_HARNESS_CONTRACT.md](MODEL_HARNESS_CONTRACT.md) and
-   [WORKSPACE_CONTEXT.md](WORKSPACE_CONTEXT.md); then inspect the actual APIs,
-   relevant family tests and tool CLI before choosing the first bounded slice.
+   [WORKSPACE_CONTEXT.md](WORKSPACE_CONTEXT.md).
+5. For historical task logs (>7,000 lines of past porting/parity records), refer
+   to the summaries in [PRODUCT_TASKS.md](PRODUCT_TASKS.md) and
+   [PARAKEET_VARIANT_TASKS.md](PARAKEET_VARIANT_TASKS.md), or the archives under
+   `docs/archive/` ([PARAKEET_VARIANT_TASKS-2026-10-17.md](archive/PARAKEET_VARIANT_TASKS-2026-10-17.md)
+   and [PRODUCT_TASKS-2026-10-17.md](archive/PRODUCT_TASKS-2026-10-17.md)).
+   Do not load archived logs into context during standard startup.
 
 Latest direct user instructions define the scope. Repository safety and current
 architecture govern implementation. The goal defines durable outcomes; existing
@@ -92,9 +96,11 @@ push/publish/upload, install globally or download large weights without authorit
 
 ## Current focus overlay
 
-Sub-agent handoff (2026-10-17): read
-[HANDOFF-subagents-2026-10-17.md](reports/HANDOFF-subagents-2026-10-17.md)
-for the current snapshot, known risks, gate definitions and ordered task cards.
+Active sprint (2026-10-17): read
+[ACTIVE_SPRINT.md](ACTIVE_SPRINT.md) and
+[reports/deep-review-2026-10-17.md](reports/deep-review-2026-10-17.md)
+for the active 7 task cards (T1–T7), 3-tier verification gates, and strategic roadmap.
+Also refer to [HANDOFF-subagents-2026-10-17.md](reports/HANDOFF-subagents-2026-10-17.md).
 
 Latest user scope (2026-10-08): **do not work on Parakeet CTC now**. Resume
 Parakeet TDT distills, quantized/faster derivatives and the recorded 2026

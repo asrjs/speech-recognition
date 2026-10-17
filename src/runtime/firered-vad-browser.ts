@@ -53,6 +53,7 @@ export interface FireRedVadAdapterOptions {
   readonly workerFactory?: () => FireRedVadWorkerLike;
   readonly now?: () => number;
   readonly signal?: { readonly aborted: boolean } | null;
+  readonly modelUrl?: string;
 }
 
 export interface FireRedVadRecentResult {
@@ -71,7 +72,7 @@ interface PendingRequest {
 
 const FIRERED_VAD_INIT_TIMEOUT_MS = 30_000;
 const FIRERED_VAD_SUPPORTED_HOP_DURATIONS_MS = [10] as const;
-const DEFAULT_FIRERED_MODEL_URL =
+export const DEFAULT_FIRERED_MODEL_URL =
   'https://raw.githubusercontent.com/FireRedTeam/FireRedVAD/main/pretrained_models/onnx_models/fireredvad_stream_vad_with_cache.onnx';
 
 function resolveBundledFireRedCmvnJsonUrl(): string {
@@ -153,18 +154,26 @@ export function resolveDefaultFireRedVadModelUrls(): FireRedVadModelUrls {
 export function resolveFireRedVadModelUrls(
   config: Pick<
     FireRedVadAdapterConfig,
-    'assetBaseUrl' | 'scriptUrl' | 'wasmUrl' | 'fallbackToBundledAssets'
+    | 'assetBaseUrl'
+    | 'scriptUrl'
+    | 'wasmUrl'
+    | 'fallbackToBundledAssets'
+    | 'modelUrl'
+    | 'cmvnJsonUrl'
   > = {},
 ): ResolvedFireRedVadModelUrls {
   const defaults = resolveDefaultFireRedVadModelUrls();
   const assetBaseUrl = config.assetBaseUrl ?? null;
   const scriptUrl =
+    config.modelUrl ??
     config.scriptUrl ??
     (assetBaseUrl
       ? new URL('fireredvad_stream_vad_with_cache.onnx', assetBaseUrl).href
       : defaults.scriptUrl);
   const wasmUrl =
-    config.wasmUrl ?? (assetBaseUrl ? new URL('cmvn.json', assetBaseUrl).href : defaults.wasmUrl);
+    config.cmvnJsonUrl ??
+    config.wasmUrl ??
+    (assetBaseUrl ? new URL('cmvn.json', assetBaseUrl).href : defaults.wasmUrl);
 
   return {
     scriptUrl,
@@ -208,23 +217,32 @@ export class FireRedVadAdapter implements StreamingTenVadLike {
   private smoothedSpeechActive = false;
 
   constructor(config: FireRedVadAdapterConfig = {}, options: FireRedVadAdapterOptions = {}) {
+    const effectiveModelUrl = options.modelUrl ?? config.modelUrl;
+    const effectiveConfig: FireRedVadAdapterConfig = {
+      ...config,
+      ...(effectiveModelUrl ? { modelUrl: effectiveModelUrl } : {}),
+    };
     const defaults = resolveDefaultFireRedVadModelUrls();
-    const assetBaseUrl = config.assetBaseUrl ?? null;
-    const resolvedAssets = resolveFireRedVadModelUrls(config);
-    const resolvedWasmPaths = config.wasmPaths ?? '';
+    const assetBaseUrl = effectiveConfig.assetBaseUrl ?? null;
+    const resolvedAssets = resolveFireRedVadModelUrls(effectiveConfig);
+    const resolvedWasmPaths = effectiveConfig.wasmPaths ?? '';
     const sampleRate =
-      typeof config.sampleRate === 'number' &&
-      Number.isFinite(config.sampleRate) &&
-      config.sampleRate > 0
-        ? config.sampleRate
+      typeof effectiveConfig.sampleRate === 'number' &&
+      Number.isFinite(effectiveConfig.sampleRate) &&
+      effectiveConfig.sampleRate > 0
+        ? effectiveConfig.sampleRate
         : DEFAULT_FIRERED_VAD_CONFIG.sampleRate;
     this.config = {
       ...DEFAULT_FIRERED_VAD_CONFIG,
-      ...config,
+      ...effectiveConfig,
       sampleRate,
-      hopSize: resolveSupportedFireRedVadHopSize(sampleRate, config.hopSize),
+      hopSize: resolveSupportedFireRedVadHopSize(sampleRate, effectiveConfig.hopSize),
       assetBaseUrl:
-        assetBaseUrl ?? defaults.scriptUrl.replace(/fireredvad_stream_vad_with_cache\.onnx$/, ''),
+        assetBaseUrl ??
+        (effectiveConfig.modelUrl ?? defaults.scriptUrl).replace(
+          /fireredvad_stream_vad_with_cache\.onnx$/,
+          '',
+        ),
       scriptUrl: resolvedAssets.scriptUrl,
       wasmUrl: resolvedAssets.wasmUrl,
       wasmPaths: resolvedWasmPaths,

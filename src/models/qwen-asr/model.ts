@@ -263,6 +263,7 @@ export function createQwen3AsrModelFamily(
   return {
     family,
     classification: factoryClassification,
+    supportedBackendIds: ['webgpu', 'wasm', 'native-cpu'],
     supports(modelId: string): boolean {
       if (options.supportsModel) return options.supportsModel(modelId);
       return /qwen(?:3)?[-_]?asr/i.test(modelId);

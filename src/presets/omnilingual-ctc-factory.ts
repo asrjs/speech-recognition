@@ -9,7 +9,8 @@ export function createOmnilingualCtcPresetFactory(): SpeechPresetFactory<
   return {
     preset: 'omnilingual-ctc',
     supports(modelId?: string): boolean {
-      return modelId === undefined || modelId.toLowerCase().includes('omnilingual');
+      if (!modelId) return false;
+      return modelId.toLowerCase().includes('omnilingual');
     },
     async resolveModelRequest(request) {
       if (!request.options?.modelUrl) {

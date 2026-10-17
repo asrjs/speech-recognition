@@ -114,7 +114,7 @@ function assertWildcardCoverage(fileMap, prefix, extension, reason) {
   }
 }
 
-function main() {
+async function main() {
   const packed = runPackDryRun();
   assert.equal(packed.name, packageJson.name);
   assert.equal(packed.version, packageJson.version);
@@ -143,6 +143,51 @@ function main() {
   assertWildcardCoverage(fileMap, 'dist/models/', '.js', 'models wildcard');
   assertWildcardCoverage(fileMap, 'dist/presets/', '.js', 'presets wildcard');
 
+  const allModelFamilies = [
+    'lasr-ctc',
+    'gigaam-ctc',
+    'parakeet-ctc',
+    'omnilingual-ctc',
+    'gigaam-rnnt',
+    'nemo-aed',
+    'nemo-rnnt',
+    'nemo-tdt',
+    'nemotron-rnnt',
+    'whisper-seq2seq',
+    'qwen-asr',
+    'sensevoice',
+    'x-asr',
+    'wav2vec2',
+    'moonshine',
+    'qwen3-asr',
+  ];
+
+  const allPresets = [
+    'parakeet',
+    'canary',
+    'medasr',
+    'nemotron',
+    'whisper',
+    'wav2vec2',
+    'wav2vec2-tr',
+    'moonshine',
+    'qwen3-asr',
+    'parakeet-ctc',
+    'omnilingual-ctc',
+  ];
+
+  for (const family of allModelFamilies) {
+    const runtimePath = `dist/models/${family}.js`;
+    assertDeclarationPair(fileMap, runtimePath, `model family ${family}`);
+    await import(pathToFileURL(resolve(repositoryRoot, runtimePath)).href);
+  }
+
+  for (const preset of allPresets) {
+    const runtimePath = `dist/presets/${preset}.js`;
+    assertDeclarationPair(fileMap, runtimePath, `preset ${preset}`);
+    await import(pathToFileURL(resolve(repositoryRoot, runtimePath)).href);
+  }
+
   for (const modelRuntimePath of [
     'dist/models/whisper-seq2seq/index.js',
     'dist/models/gigaam-rnnt/index.js',
@@ -156,10 +201,8 @@ function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  try {
-    main();
-  } catch (error) {
+  main().catch((error) => {
     console.error('[package-tarball-smoke] failed:', error);
     process.exitCode = 1;
-  }
+  });
 }

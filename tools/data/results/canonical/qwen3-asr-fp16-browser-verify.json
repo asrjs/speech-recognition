@@ -1,0 +1,146 @@
+{
+  "status": "PASS_AUTO_BROWSER_WEBGPU_QWEN3_ASR_FP16",
+  "scope": "real-headless-chrome-webgpu-qwen3-asr-fp16-verified",
+  "model_id": "Qwen/Qwen3-ASR-0.6B",
+  "model_family": "qwen3-asr",
+  "precision": "fp16",
+  "browser_version": "155.0.8059.82",
+  "adapter": {
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "execution_providers": {
+    "audioFront": [
+      "webgpu",
+      "wasm"
+    ],
+    "embedTokens": [
+      "wasm"
+    ],
+    "decoderStep": [
+      "wasm"
+    ]
+  },
+  "inputs": [
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\audio_front_model.onnx",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/audio_front_model.onnx",
+      "bytes": 1672305,
+      "sha256": "c36c3e4e0de205ac6bdfbd422714059b0dd3f5aeadd3feb6ff8608c19ebadee4"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\audio_front_model.onnx.data",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/audio_front_model.onnx.data",
+      "bytes": 372772800,
+      "sha256": "e685f135fb6617286f95c866a127150b7484a53c0e9892495d85eb484e72ac3a"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\decoder_step_model.onnx",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/decoder_step_model.onnx",
+      "bytes": 1599009,
+      "sha256": "77d54c43500ee3d15144218055f882cbaf43bcc9da3930adc0457ffa15178fc4"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\decoder_step_model.onnx.data",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/decoder_step_model.onnx.data",
+      "bytes": 1192085504,
+      "sha256": "eb70ea155757cd0a0923e8ea576470449357d7ee985670870080622d7615e8b9"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\embed_tokens_model.onnx",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/embed_tokens_model.onnx",
+      "bytes": 407,
+      "sha256": "e8072f01f312c718911058e39077df0deb34bd7b3d79228b613266ecf58171d8"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\embed_tokens_model.onnx.data",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/embed_tokens_model.onnx.data",
+      "bytes": 311164928,
+      "sha256": "40a0a0a4c9958c990cb323c258d4cba06f4f6173eb3f3680603bd15bb48046aa"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\tokenizer.json",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/tokenizer.json",
+      "bytes": 11429653,
+      "sha256": "fe1fad59be22a41ee293363fcf95fdedbc7c93f3b49270b1d2e18bd1399a7a05"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\jfk_features.npy",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/jfk_features.npy",
+      "bytes": 563328,
+      "sha256": "1f633f05f6b41481b5d6faf4f8c855ee41907443aab2ea451a0fda646252de02"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\jfk_features_mask.npy",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/jfk_features_mask.npy",
+      "bytes": 4528,
+      "sha256": "65b2c8f59142515d6c8c301cbdfce85740ca9e18d96e3e5b373a54bc8adeb916"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\jfk_cu_seqlens.bin",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/jfk_cu_seqlens.bin",
+      "bytes": 12,
+      "sha256": "721416713a8a828cd2c4f27abbd3dae93e88f625a93414e08c52fcf72585e845"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\prompt_prefix_embeds.npy",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/prompt_prefix_embeds.npy",
+      "bytes": 36992,
+      "sha256": "080cb52ef318fa5368548f26840b544143939a35602d74a2d6cf260f8dbf335f"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\models\\onnx\\qwen3-asr-0.6b-fp16\\prompt_suffix_embeds.npy",
+      "relativePath": "models/onnx/qwen3-asr-0.6b-fp16/prompt_suffix_embeds.npy",
+      "bytes": 24704,
+      "sha256": "e7e882788fc96cf432ab4ba92a01d0f895a33ccb65943d8e0ac279368879e991"
+    }
+  ],
+  "result": {
+    "transcript": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+    "expected": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+    "matchExpected": true,
+    "language": "English",
+    "tokenIds": [
+      11528,
+      6364,
+      151704,
+      3036,
+      773,
+      11,
+      847,
+      12357,
+      8877,
+      11,
+      2548,
+      537,
+      1128,
+      697,
+      3146,
+      646,
+      653,
+      369,
+      498,
+      26,
+      2548,
+      1128,
+      498,
+      646,
+      653,
+      369,
+      697,
+      3146,
+      13
+    ],
+    "tokenCount": 29,
+    "steps": 30,
+    "audioFrames": 143,
+    "metrics": {
+      "sessionCreateMs": 17415.43499999866,
+      "inferenceTimeMs": 34315.074999999255,
+      "rtfx": 0.32055882145092907
+    }
+  },
+  "timestamp": "2026-10-17T18:55:46.262Z"
+}

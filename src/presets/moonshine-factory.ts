@@ -12,7 +12,8 @@ export function createMoonshinePresetFactory(): SpeechPresetFactory<
   return {
     preset: 'moonshine',
     supports(modelId?: string): boolean {
-      return modelId === undefined || modelId.toLowerCase().includes('moonshine');
+      if (!modelId) return false;
+      return modelId.toLowerCase().includes('moonshine');
     },
     async resolveModelRequest(request) {
       if (!request.options?.encoderUrl) {

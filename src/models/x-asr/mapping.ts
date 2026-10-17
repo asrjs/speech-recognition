@@ -88,7 +88,10 @@ export function mapXAsrNativeToCanonical(
   if (detail !== 'text' && segments) {
     Object.assign(result, { segments });
   }
-  if ((detail === 'words' || detail === 'detailed') && words.length > 0) {
+  if (
+    (detail === 'words' || detail === 'detailed' || detail === 'sentences+words') &&
+    words.length > 0
+  ) {
     Object.assign(result, { words });
   }
   if (detail === 'detailed' && tokens.length > 0) {
