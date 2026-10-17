@@ -20,6 +20,45 @@ Its historical next-step instructions are superseded by the current handover.
 
 ## Resume emphasis — 2026-10-08
 
+### Long-running goal activation text — 2026-10-08
+
+The user explicitly requested a long-running Codex goal. Initial replacement
+attempts were rejected while the previous goal was paused and unfinished;
+it was not falsely marked complete. Live `get_goal` now confirms an active goal
+referencing `C:/Users/steam/.codex/attachments/4be656a5-5cd9-446b-94f2-d08a4bc58c79/goal-objective.md`.
+That attachment contains the detailed whole-product goal. The summary below
+is a portable activation/resume prompt, not another queue. Recheck live goal
+state on continuation; do not create a duplicate goal.
+
+```text
+Build @asrjs/speech-recognition in N:\github\asrjs\speech-recognition into a compact, capable, accurate, fast, memory-efficient, easy-to-use multi-model speech runtime for browsers and native Node.js/Bun. Deliver verified library/API/runtime/example improvements, not only model research.
+
+Read docs/AGENT_ENTRYPOINT.md and docs/GOAL_PROMPT_RECOMMENDED.md, safety, architecture, charter, workspace context and harness contract. Reconcile live Git/worktrees, inherited edits, original weights, builds and receipts. Use existing PRODUCT_TASKS.md G0–G6/C records and PARAKEET_VARIANT_TASKS.md P01–P10; no competing queue. Old prompts are background.
+
+Preserve one speech-first, ESM-first, headless, framework-neutral TypeScript package with coherent public API and narrow exports. Shared orchestration/assets/audio/contracts stay generic; family math/decoding/state and tests stay model-specific; presets remain thin; UI/framework wrappers stay outside core. Improve model loading/management, cancellation/reset/disposal, streaming/long audio/VAD/timestamps, packaging and parent-workspace examples. WebGPU is browser-primary, with explicit per-component WASM/hybrid placement. Test native Node/Bun separately from browser WASM in Node. Reuse the WASM-thread helper: floor(hardwareConcurrency/2)+2, respecting lower requests and single-thread fallback.
+
+Model lane: Orukeet first; then Parakeet TDT distills and quantized/faster derivatives, including Redux, Ultra and efederici int4; then recorded 2026 non-NVIDIA candidates: Moonshine streaming, Fun-ASR MLT Nano, ARK-ASR, Cohere, Voxtral; preserve FireRed/Qwen, Phonon/GigaAM/alignment/diarization leads. Parakeet CTC is on hold; Nemotron/unrelated new NVIDIA work remain paused. Full-size derivatives can offer measured benefit; small files are not small students. Integer/ternary research is not default adoption.
+
+Ports require verified original weights/revision/config/tokenizer/license/hashes, official/recommended-engine oracle, effective PCM identity and stage captures. Model output is not human ground truth. Export own optimized fp32 graphs and prove numerical/token/text/state parity at unchanged explicit tolerances; then revalidate fp16 or separately justified quantization. Verify public API, lifecycle, actual native/WASM/WebGPU/hybrid, held-out quality and matched latency/memory. No load-only, simulation-only or one-transcript acceptance. Improve existing capture/export/smoke/simulation/browser tools and neutral identity/metrics/cleanup regressions; preserve family-specific rules and failed evidence.
+
+Redux source/format preflight commit d82f587: 28 local tests/264 blocks pass, not inference acceptance. Next establish exact-weight original-runtime oracle and kernel/export contract, without repeating failed teacher substitution or transferring Photon speed claims to ORT. Keep Orukeet's open numerical gates visible while independent product work progresses. Qwen uses isolated U:/parallel-agents/qwen-fp16-wt; coordinate via its docs/reports/qwen-fp16-direct-result-2026-10-08.md. Read the latest message for resource windows: MAIN-001 ended; MAIN-002 covers bounded schedule/precision diagnosis. Browser/GPU needs separate coordination.
+
+Define a finite first-delivery acceptance matrix in existing tasks: required Orukeet/public-API/native-browser/example workflows, measured compactness/lifecycle improvements, strengthened harness and audited next-model backlog. Future candidates need not all be ported. Record commands and PASS/FAIL/PARTIAL/UNTESTED; ask before changing required outcomes. Complete only when agreed delivery gates are satisfied.
+
+Continue safe bounded implementation, validation and scoped local commits. Preserve unrelated changes and immutable sources/oracles/gold. No broad staging/reset/clean, push/upload, large downloads, installs/upgrades, sibling writes or global settings changes without authority. Delegate edits only into isolated writable checkouts; coordinate heavy jobs. Request missing authority instead of weakening gates.
+```
+
+### Latest model scope and evidence
+
+Latest user clarification: Parakeet CTC is on hold. Resume the recorded 2026
+candidate list and Parakeet **TDT** distills, quantized variants and faster
+derivatives. Same-size derivatives remain eligible for investigation when they
+claim useful speed, memory or quality gains. Follow the active P10 checklist in
+[PARAKEET_VARIANT_TASKS.md](PARAKEET_VARIANT_TASKS.md), not CTC repair work or
+historical blanket exclusions based on NVIDIA teacher lineage. This does not
+authorize new unrelated NVIDIA models, integer defaults, weaker gates, large
+downloads or automatic promotion.
+
 Read [GOAL_MODEL_PORT_HARNESS.md](GOAL_MODEL_PORT_HARNESS.md) as the current
 engineering focus, not a replacement mission or permission to change model order.
 Start tool discovery at [tools/README.md](../tools/README.md); for model work read
@@ -27,7 +66,9 @@ the project-local [Model Debugging Skill](../tools/model-debugging/SKILL.md).
 The 2026-10-03 handover is a historical baseline: reconcile later commits and
 dated receipts instead of replaying its next-step instructions literally.
 
-At this resume, implementation HEAD is `9a9fa4a`. Later evidence records a passing
+The earlier resume baseline was `9a9fa4a`; current owned tooling checkpoint is
+`d82f587` (Redux SHA-bound packed preflight, 28 local tests, format-only acceptance).
+Reconcile live HEAD before execution. Later evidence records a passing
 Orukeet JFK hybrid score control after correcting the loaded ORT bundle identity;
 production feature conformance remains FAIL / deferred at its unchanged gates.
 Do not repeat that resolved score attribution or relax the feature gate. Existing
@@ -141,8 +182,14 @@ Bun versions and actual providers, not imply every host or model is supported.
 5. Follow the confirmed model order with bounded feasibility decisions.
 Continue Orukeet first through the existing NeMo TDT/Parakeet v3 family.
 Then audit and port genuine smaller Parakeet student/distilled checkpoints
-and useful derivatives; fewer file bytes from fp16/int8 packaging are not
-fewer parameters. Orukeet is a roughly 627M-parameter fine-tune, not a small
+and useful TDT derivatives, including separately evaluated quantized or faster
+variants. Parakeet CTC is on hold. Fewer file bytes from fp16/int8/ternary
+packaging are not fewer parameters, but unchanged parameter count alone is not
+a reason to exclude a measured speed/memory/quality candidate. Compare packed
+and expanded weight formats, actual engine/kernel requirements and matched
+browser/native performance separately. Investigation of integer/ternary
+candidates is authorized; default adoption and acceptance are not. Orukeet is
+a roughly 627M-parameter fine-tune, not a small
 distill. Next rank high-value non-NVIDIA ASR and related speech candidates,
 including our original FireRed and Qwen ASR 0.6B interests and the newer
 research leads. Verify exact upstream identities, licenses, architecture,

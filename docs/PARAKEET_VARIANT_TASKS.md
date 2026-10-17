@@ -3,18 +3,197 @@
 Started: 2026-10-01; dated updates below retain their own evidence scope.
 Resume through [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) and the latest handover;
 later appended receipts supersede earlier next-step wording, not failed gates.
-Active candidate: `oruk/orukeet`, a Parakeet TDT v3 fine-tune. Smaller distilled
-models and locale fine-tunes enter the same queue after their exact architecture
-and tokenizer are audited. The user owns `parakeet.js`; reuse its verified
+Active candidate: `oruk/orukeet`, a Parakeet TDT v3 fine-tune. TDT distilled,
+quantized/faster derivatives and locale fine-tunes enter the same queue after
+their exact architecture and tokenizer are audited. The user owns `parakeet.js`; reuse its verified
 export, preprocessing and decoding experience as well as this library's tools.
 
-User-confirmed scope: Orukeet first, then genuine Parakeet distillations and
-new non-NVIDIA ASR candidates. No new NVIDIA model work beyond existing TDT
-v2/v3 for now. TDT-CTC 110M and Nemotron 3 Diarization are not active tasks.
+User-confirmed scope (2026-10-08): Orukeet first, then Parakeet TDT distills
+and quantized/faster derivatives, then new non-NVIDIA ASR candidates. Full-size
+community v2/v3 derivatives remain eligible; unrelated new NVIDIA model work
+is paused. Parakeet CTC and Nemotron 3 Diarization are not active tasks.
 Keep parameter count separate from checkpoint/export/quantized file size:
 Orukeet retains 627M parameters; it is not a small student model.
+Precision preference (user, 2026-10-08): fp16 weights are the default target for
+every model where fp32 parity has passed; integer/fp8 formats only when a model
+cannot ship otherwise, and only with the same oracle re-passed. The efederici
+int4 artifact is evidence-gathering, not a target format.
 
-## Current checkpoint
+## Active P10 continuation — TDT speed/size candidates, 2026-10-08
+
+The user's latest clarification supersedes the older scope exclusions below:
+Parakeet CTC is **ON HOLD**, not the next repair or port. Preserve its code and
+review findings without starting CTC work. Continue Orukeet evidence, then
+Parakeet **TDT** distills, quantized/faster derivatives, then the dated 2026
+non-NVIDIA candidate list. A v3-derived community checkpoint is not excluded
+solely because its teacher is NVIDIA; unrelated new NVIDIA models remain out.
+Full-size is not a small student, but can still be a useful speed/memory/quality
+candidate. Integer/ternary feasibility is explicit research, not default adoption.
+
+- [x] Recover the existing [2026 candidate list](reports/light-asr-diarization-hunt-2026-09-30.md)
+      and distinguish distillation, quantization, conversion and fine-tuning.
+- [x] Reopen `moondream/parakeet-redux` for **packed-runtime feasibility**;
+      preserve the 627,270,687-parameter correction and failed teacher-graph
+      substitution. Current upstream claims 178 MB and 113x realtime on eight
+      x86 cores using **Photon**, not ORT/WebGPU. Never transfer that speed claim
+      to our runtime without measurement.
+- [x] Revalidate the existing Redux packed reader. Fourteen tests pass after
+      rejecting invalid base-3 bytes; 264 local qweight blocks / 120,913,920
+      packed bytes contain no invalid byte. This is input-format validation,
+      not reference inference or a successful port. C52 holds the commands.
+- [x] Bind cached Redux archive/config/manifest to live HF revision and add
+      offline SHA-bound packed preflight: 264 modules pass, 28 local tests pass.
+      See [packed tools](../tools/parakeet-ternary/README.md) and the source-bound
+      receipt. Historical `efec...` address is unreachable; no oracle is claimed.
+- [ ] Redux: inspect the recommended original runtime/source and relative-position,
+      subsampler, decoder/joint and VAD contracts; capture an exact-checkpoint
+      oracle before a faithful export. Do not repeat correlation-based weight
+      substitution or mix the teacher's decoder with Redux encoder weights.
+      2026-10-08 contract inspection PASS at the pinned Kestrel commit
+      (`8e6fb899…`): features/subsampler/relpos-fusion/decoder/joint/VAD/
+      segmentation contracts are mapped, including candidate deviations from
+      NeMo log-mel and the no-overlap 30 s pause-midpoint segmentation rule;
+      Ultra shares the same runtime registration. Receipt:
+      [redux-kestrel-contract-2026-10-08.json](../tools/data/results/model-candidates/redux-kestrel-contract-2026-10-08.json).
+      The exact-checkpoint oracle half remains blocked on user authority to
+      install the pinned kestrel reference environment; kernel bit-order and
+      activation arithmetic stay unestablished without a kernel/reference run.
+      2026-10-08 (later, user approved all installs/downloads): pinned venv
+      built (`parakeet-kestrel`), packing parity `PASS_PACK_PARITY_BIT_EXACT`
+      (official dense-oracle dequant vs our independent ternary reader), but
+      this Skylake-W CPU has no VNNI so the packed int8 kernel cannot run at
+      all here — `set_gemm_isa('avx2')` raises inside the gemm; oracle runs use
+      the official dense/oracle resident form. Exact-weight JFK oracle receipt:
+      [redux-official-oracle-jfk-2026-10-08.json](../tools/data/results/model-candidates/redux-official-oracle-jfk-2026-10-08.json);
+      environment and limits: [parakeet-kestrel README](../tools/model-debugging/reference/parakeet-kestrel/README.md).
+- [ ] Redux: choose a bounded packed compute experiment or a clearly labeled
+      dense baseline. Measure decode/repack cost, graph/working memory and kernel
+      support; expanding weights to fp32 does not preserve packed-runtime gains.
+      Custom WebGPU/WASM compute is a possible research route, not assumed ORT support.
+- [ ] `moondream/parakeet-ultra`: verify original engine/weights and architecture;
+      evaluate quality and matched speed/memory even though it remains full-size.
+      Check local assets before requesting a new large download.
+      2026-10-08 (user approved download): snapshot at the pinned revision,
+      627,270,663 parameters confirmed from tensor shapes, config matches the
+      Kestrel contract map (1024/24/8/4096, factor 8, vocab 8193, durations
+      [0..4], vad_head tensors present), and the official Kestrel oracle on the
+      pinned JFK effective PCM returns the canonical transcript. Receipt:
+      [ultra-official-oracle-jfk-2026-10-08.json](../tools/data/results/model-candidates/ultra-official-oracle-jfk-2026-10-08.json).
+      Dense-oracle CPU timings (6.2 s wall, ~4.3 GB peak) are machine context,
+      not matched speed/memory evaluation; that comparison stays open.
+- [ ] `efederici/parakeet-tdt-0.6b-v3-onnx-int4`: audit the 409 MB hybrid
+      int4 encoder/int8 head as a separate precision experiment, not a student.
+      Its published CPU ORT table compares against int8 and fp32; the aggregate
+      int4 RTF is 0.074 versus fp32 0.072. Do not infer a WebGPU speed win.
+      Bind the original v3 oracle and graph contracts, then use our existing
+      real-browser/provider/parity/performance loops. New large download needs approval.
+      2026-10-08 (user approved download): graph/tokenizer identity audit PASS —
+      I/O names/dtypes, opset and decoder geometry (8198 = vocab 8193 + 5
+      durations) are identical to our fp32 Orukeet family contract; vocab is
+      byte-identical after newline normalization. Evidence-only per the fp16
+      precision preference; no execution or accuracy claim. Receipt:
+      [int4-graph-audit-2026-10-08.json](../tools/data/results/model-candidates/int4-graph-audit-2026-10-08.json).
+- [ ] Audit other genuine TDT students and precision variants; pin exact IDs,
+      revisions and licenses. No smaller-student claim from file size alone.
+- [ ] Continue dated non-NVIDIA order: Moonshine streaming, Fun-ASR MLT Nano,
+      ARK-ASR, Cohere Transcribe, Voxtral Realtime. Preserve original FireRed/Qwen
+      interests, Phonon watch and GigaAM variant research; this is not a port claim.
+      2026-10-08 (Moonshine streaming first): official oracle captured — local
+      snapshot is byte-identical to `moonshine-ai/moonshine-streaming-tiny`
+      @f8e9dfd8, strict key/shape diff 0/0/0 against transformers 5.18, and the
+      pinned JFK effective PCM yields the canonical transcript (28 tokens) with
+      cache-continuity and reset controls plus an encoder-hidden hash for export
+      parity. Contract finding: the streaming encoder REQUIRES the processor
+      attention mask (without it the whole-utterance path degenerates; offline
+      moonshine is mask-insensitive). Old remapped/4.57-era layouts and the
+      invalid historical graphs stay excluded. Receipt:
+      [moonshine-streaming-official-oracle-jfk-2026-10-08.json](../tools/data/results/model-candidates/moonshine-streaming-official-oracle-jfk-2026-10-08.json);
+      environment and next export step: [moonshine-streaming README](../tools/model-debugging/reference/moonshine-streaming/README.md).
+      Same day, encoder re-export PASS: our own fp32 ONNX streaming encoder
+      (dynamo exporter; opset 18; dynamic batch/time; mask input carried) —
+      ORT-vs-torch hidden max abs 4.26e-5 / cosine 0.99999996, and greedy
+      tokens through the graph equal the oracle's ids/text. The torch fp32
+      encoder is bit-stable in-process but not across processes, so the gate is
+      explicit tolerances plus exact tokens (rationale in the receipt). Decoder
+      graph (cache/prefill-step contract) is next; invalid historical streaming
+      graphs remain excluded. Receipt:
+      [moonshine-streaming-encoder-fp32-2026-10-08.json](../tools/data/results/model-candidates/moonshine-streaming-encoder-fp32-2026-10-08.json).
+      Same day, decoder graphs PASS: fp32 seed (prefill) + step graphs with
+      per-layer past K/V and in-graph cross attention from encoder states;
+      static single-token dimension keeps SDPA is_causal non-symbolic without
+      patching; emitter's legacy Split num_outputs attrs dropped by a recorded
+      sanitizer. Per-step logits max abs 2.67e-5 vs torch reference over 27
+      steps; the fully-ONNX pipeline reproduces the oracle's 28 ids/text.
+      Receipt:
+      [moonshine-streaming-decoder-fp32-2026-10-08.json](../tools/data/results/model-candidates/moonshine-streaming-decoder-fp32-2026-10-08.json).
+      Remaining: fp16 re-gate, chunked-state encoder refinement, library
+      integration.
+      2026-10-09, fp16 set PASS: all three graphs re-exported directly from
+      torch dtype=float16 (no ORT post-conversion, per the measured Qwen
+      lesson); fully-fp16 pipeline reproduces the oracle's exact 28 ids and
+      the fp32 pipeline's tokens; drift cosine 0.9999876 (encoder) /
+      0.9999996 (logits); artifacts halve to 284 MB. No WebGPU run yet.
+      Receipt:
+      [moonshine-streaming-fp16-2026-10-09.json](../tools/data/results/model-candidates/moonshine-streaming-fp16-2026-10-09.json).
+      2026-10-09, chunked-state equivalence PASS: torch-level proof that the
+      streaming encoder with explicit state (conv tails <=4 frames + per-layer
+      15-frame window context, 4-frame lookahead) reproduces whole-utterance
+      hidden states across chunk sizes 16/64/137/512 on JFK and a synthetic
+      odd-length waveform (cosine 1.0, max abs <= 3.2e-5). The chunked ONNX
+      graph export, library integration and WebGPU validation remain. Receipt:
+      [moonshine-streaming-chunked-equivalence-2026-10-09.json](../tools/data/results/model-candidates/moonshine-streaming-chunked-equivalence-2026-10-09.json).
+      Same day, chunked graph export PASS (torch/ONNX parity 1.2e-5/3.9e-5,
+      fully-ONNX tokens == oracle) and library integration:
+      `src/models/moonshine/streaming-session.ts` consumes the contract with
+      injected runners; 9 scripted-mock tests pin the window rules and 3
+      real-graph Node-ORT tests finalize one-second-pushed audio to the exact
+      official oracle transcript (reset/reuse at emit=64 identical). Charts:
+      [moonshine-streaming-chunked-encoder-graph-2026-10-09.json](../tools/data/results/model-candidates/moonshine-streaming-chunked-encoder-graph-2026-10-09.json).
+      Same day, fp16 chunked graph PASS: `encoder_chunked_model.onnx` added to
+      the fp16 set (dynamic whole-encoder time dim), fully-fp16 chunked pipeline
+      tokens == oracle; session dtype option added; Node ORT fp16 feeds are
+      blocked by the pinned onnxruntime-node dev build (minimal Relu repro) and
+      the test probes/skips honestly until the dependency is fixed.
+      2026-10-09 later: canonical StreamingTranscriber wrapper PASS (committed
+      real-graph test publishes the oracle transcript as committedText) and
+      preset asset routing done (loadMoonshineStreaming + adapter
+      builtInLoadOptions.streaming; onnxruntime-node bumped to stable 1.30.0
+      after root-causing the fp16 feed issue as an ORT-vs-Node-26
+      Float16Array bridge gap; full suite 1705 passed). Remaining: real
+      browser WebGPU validation of all graph sets.
+
+For every candidate record the official speed claim's runtime/hardware, our
+source-weight identity, oracle, export contract, actual host/provider, full
+numerical/token/text gates and warmed performance/memory control. Keep source
+quality claims separate from library measurements. No new weights/install,
+sibling edits or promotion are authorized by this checklist.
+
+Pinned research identities (verify artifact hashes and access before execution):
+
+- [Redux](https://huggingface.co/moondream/parakeet-redux/tree/2bf128600aac4b16946f7ed8372e56117fe5e23b): `2bf128600aac4b16946f7ed8372e56117fe5e23b`; live API and cached archive/config/manifest hashes match. Earlier `efec50629e2e690eb1dc58115d46a3dcdfd20442` address returned 404; preserve old receipts but do not reuse that pin.
+- [Ultra](https://huggingface.co/moondream/parakeet-ultra/tree/73175eb7aeb0d82f1e2a6b53b3aabc10a90bcd0b): `73175eb7aeb0d82f1e2a6b53b3aabc10a90bcd0b`.
+- [efederici int4](https://huggingface.co/efederici/parakeet-tdt-0.6b-v3-onnx-int4/tree/9828da0021d81df726b3d5ddb2d6d04354942749): `9828da0021d81df726b3d5ddb2d6d04354942749` (live API refresh, weights not downloaded); [benchmark source](https://huggingface.co/efederici/parakeet-tdt-0.6b-v3-onnx-int4). Earlier research pin: `ad33394210850fd7be21523c88f9f0f83af51eb7`, not used for this new snapshot.
+
+### Earlier provenance correction (retained with its historical scope)
+
+Read the [status report and working guide](reports/model-port-status-and-guide-2026-10-08.md)
+with the current goal before following older next-step wording.
+Redux/ultra/primeline are not genuine smaller students. The implemented
+`ctaguchi/parakeet-hf-ctc-110m-en` path is small, but its
+[upstream model card](https://huggingface.co/ctaguchi/parakeet-hf-ctc-110m-en/raw/main/README.md)
+identifies a conversion from `nvidia/parakeet-tdt_ctc-110m`, not an independent
+non-NVIDIA distillation. Retain its code/evidence without treating repo ownership
+as model provenance or authorizing new NVIDIA work. P10's survey conclusion is
+limited to the inspected candidates; it does not prove global model absence.
+Orukeet has later native long-form and browser output/score controls. Its strict
+production-feature gate remains FAIL/deferred; none of those controls is universal
+acceptance. The historical checkpoints below retain their dated scope.
+
+## Historical checkpoint — 2026-10-03
+
+The next-step wording in this dated checkpoint records that session's work,
+not today's resume instruction. Later evidence and the active P10 continuation
+above govern current work; preserve this history without replaying completed steps.
 
 Next integration gap (audited 2026-10-03): no receipt proves Orukeet's public
 end-to-end browser path with the real encoder and live recurrent head together.
@@ -506,15 +685,18 @@ public API rungs. Receipt: `browser-head-http11-handoff-2026-10-02.json`.
       improve existing smoke/parity/simulation/WebGPU automation and add a focused
       regression check; record it with the task, rather than postponing all tooling
       work until the model is complete.
-- [x] **P10 — Choose the next Parakeet derivative. Answered 2026-10-04.** No
-      non-NVIDIA Parakeet-line model smaller than 627M exists that this project
-      may port. Verified from primary sources, never from file size:
+- [x] **P10 — Audit the recorded Parakeet derivatives. Survey completed 2026-10-04; provenance corrected 2026-10-08.**
+      Historical survey only. The active P10 continuation above reopens TDT
+      speed/quant candidates; its newer scope supersedes exclusion wording below.
+      The inspected candidates do not establish an eligible independent smaller
+      student. This is a bounded survey result, not a global absence claim:
 
       - `moondream/parakeet-redux` has 627,270,687 parameters, 24 more than its
         teacher `nvidia/parakeet-tdt-0.6b-v3`. Upstream documents a 1.58-bit
         ternary repack with every encoder weight in {-1, 0, +1}, same
         architecture and same tokenizer. It is an integer-quantized repack
-        inside NVIDIA lineage, so the standing rule excludes it. Receipt:
+        inside NVIDIA lineage, excluded by the older survey's scope but now
+        reopened by the active P10 continuation above. Receipt:
         `tools/data/results/model-candidates/parakeet-redux-size-correction-2026-10-04.json`.
       - `primeline/parakeet-primeline` is a full-size 627M fine-tune, read from
         the first 2 MB of its tar: `model_weights.ckpt` is 2,508,649,755 bytes and
@@ -523,6 +705,9 @@ public API rungs. Receipt: `browser-head-http11-handoff-2026-10-02.json`.
         Reclassified `DEFER_FULL_SIZE_NOT_A_DISTILLATION`. Receipt:
         `parakeet-distil-verification-v3-2026-10-04.json`.
       - `moondream/parakeet-ultra` is 627,270,663 parameters, the same size class.
+      - `ctaguchi/parakeet-hf-ctc-110m-en` has an implemented small CTC path under
+        C32, but the upstream card identifies a conversion of the NVIDIA 110M
+        checkpoint. The earlier non-NVIDIA-originated student label is withdrawn.
       - Locale coverage does not come from Parakeet. The Turkish gap that P10
         was tracking is now closed by the wav2vec2 XLS-R port
         (`mpoyraz/wav2vec2-xls-r-300m-cv7-turkish`), which is a new

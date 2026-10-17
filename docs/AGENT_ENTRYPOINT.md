@@ -1,6 +1,6 @@
 # Agent entrypoint — all coding harnesses
 
-Updated: 2026-10-03. This is the startup router, not another task queue.
+Updated: 2026-10-08. This is the startup router, not another task queue.
 Use it with Codex, OMP or another repository-aware harness.
 
 ## Read order and authority
@@ -64,8 +64,9 @@ names, resume prompts, queue entries and PASS claims do not direct current work.
 Follow them only when the user explicitly resumes that historical scope, after
 checking source/build/artifact freshness. Do not check out an old branch because
 a historical handoff says to do so. The current model order is Orukeet, then
-genuine smaller Parakeet students/distills, then ranked non-NVIDIA candidates;
-Nemotron remains paused.
+Parakeet TDT students/distills and quantized/faster derivatives, then ranked
+non-NVIDIA candidates. Full-size community TDT variants are eligible for measured
+speed/memory/quality benefit; Parakeet CTC is on hold and Nemotron remains paused.
 
 ## Portable startup
 
@@ -91,7 +92,22 @@ push/publish/upload, install globally or download large weights without authorit
 
 ## Current focus overlay
 
+Latest user scope (2026-10-08): **do not work on Parakeet CTC now**. Resume
+Parakeet TDT distills, quantized/faster derivatives and the recorded 2026
+non-NVIDIA speech candidates. Read the active P10 checklist at the top of
+[PARAKEET_VARIANT_TASKS.md](PARAKEET_VARIANT_TASKS.md) and C52 in
+[PRODUCT_TASKS.md](PRODUCT_TASKS.md). Same-size TDT derivatives can be useful;
+do not revive old exclusions solely for full parameter count or v3 teacher
+lineage. Preserve earlier failed controls and numerical gates. The dated list
+is [light-asr-diarization-hunt-2026-09-30.md](reports/light-asr-diarization-hunt-2026-09-30.md).
+
 [GOAL_MODEL_PORT_HARNESS.md](GOAL_MODEL_PORT_HARNESS.md) is derived from that
 goal and is the current emphasis: making the next model port cheaper and
 compounding harness value. It narrows focus; it does not replace the
 whole-product goal, waive any gate or change the confirmed model order.
+
+For the recovered model queue and source/provenance corrections, read the
+[2026-10-08 status report and working guide](reports/model-port-status-and-guide-2026-10-08.md).
+It distinguishes existing Qwen dynamic/fp16 support from the newer export's
+failure, and model parameter count/origin from packaging or repo ownership.
+Use it with the current goal and existing task files, not as a replacement queue.
