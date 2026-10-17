@@ -291,6 +291,28 @@ Node e2e, `onnxruntime-node` 1.30.0 ve Node v26.2.0 ile tekrarlandı. Tam JFK 29
 
 Sıradaki en küçük deney değişmedi: QWEN-010'daki katman katman encoder karşılaştırması ve clamp sayımı.
 
+### QWEN-012 — Encoder lowering FAIL'inin kaynağı: ORT CPU fp16 yürütme yolu (2026-10-17)
+
+Durum: encoder lowering kapısı hâlâ **FAIL**; eşik değişmedi. Bu kayıt kök nedeni ölçer, kabul vermez. Python ORT 1.30.0, torch 2.14.1, CPU EP.
+
+Clamp: 100/500/1100 frame'de hem native fp16 hem fp32 kontrolde eşik (`65504-1000`) aşan eleman **0**; pre-clamp max abs en çok ~94. fp32 kontrolü clamp yüzünden çarpıtılmamış; QWEN-010 madde 3 kapandı.
+
+Katman probe'u (`probe_front_layer_parity.py`, receipt `front-layer-probe-2026-10-17.json`): ilk ayrışan katman yok; fark katman 0'dan itibaren her katmanda. İzole karşılaştırmada (native alt blok, ONNX girdileriyle) LayerNorm, q/k/v ve out_proj her katmanda allclose PASS; attention context 18/18 katmanda, GELU, fc2 ve **saf fp16 residual Add** çoğu katmanda FAIL. Saf Add'in tutmaması ONNX'in o noktada fp16'ya yuvarlanmamış değer kullandığını gösterir. Tap'ler nihai çıktıyı bit düzeyinde değiştirdi (`tap_validity_bitwise_equal_untapped=false`); kümülatif katman sayıları bu yüzden yalnız yön gösterir.
+
+Optimize graph (`probe_front_precision_path.py`, receipt `front-precision-path-2026-10-17.json`): ORT CPU, opt `all` seviyesinde 134, `disabled` seviyesinde 460 `InsertedPrecisionFreeCast` ekliyor. Gemm, Add, Div, Mul, Clip ve LayerNormalization fp16 yerine fp32'de çalışıyor; ara fp16 yuvarlamaları atlanıyor. Native PyTorch her op sonrası fp16'ya yuvarlıyor. Sonuç: "ONNX vs native fp16" kapısı doğruluk değil, yuvarlama yolu eşitliği ölçüyor.
+
+Gerçek oracle'a karşı (bf16 checkpoint → fp32 ağırlık, fp32 compute; aynı comparator):
+
+| Frame | native fp16 max / mean | ONNX `all` max / mean | ONNX `all` allclose |
+|---|---:|---:|---|
+| 100 | 1.19e-4 / 1.66e-5 | 9.35e-5 / 1.04e-5 | PASS (native FAIL) |
+| 500 | 9.61e-4 / 2.64e-5 | 4.44e-4 / 1.42e-5 | FAIL (624 eleman; native 1861) |
+| 1100 | 6.46e-3 / 3.89e-5 | 1.04e-3 / 1.34e-5 | FAIL (898 eleman; native 6894) |
+
+ONNX fp16 front, fp32 oracle'a native fp16'dan her uzunlukta daha yakın. Eski receipt'in ONNX-vs-native değerleri (0.0001575, 0.0074988) bu ölçümde yeniden üretildi.
+
+Açık karar (kullanıcı): `atol=1e-4/rtol=1e-3` hiçbir fp16 yolunun uzun girdide fp32 oracle'a karşı geçemeyeceği bir eşik; native fp16 de geçmiyor. Kapıyı değiştirmedim. Önerilen fp16 kapısı: fp32 oracle'a karşı ONNX hatası ≤ native fp16 hatası, artı token/metin eşitliği. Bu bir kabul kriteri değişikliğidir; onay olmadan uygulanmaz. Decoder numerical FAIL'i büyük olasılıkla aynı yürütme yolundan geliyor (dört opt seviyesinde aynı sapma), ölçülmedi. WebGPU fp16'yı native çalıştırır; bu CPU bulgusu browser davranışını kanıtlamaz.
+
 
 
 

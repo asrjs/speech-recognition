@@ -1,0 +1,377 @@
+{
+  "status": "PRECISION_PATH_MEASURED_NOT_NUMERICAL_ACCEPTANCE",
+  "comparator": "tools/tensor_parity.py::compare_tensors(reference, candidate, atol=0.0001, rtol=0.001)",
+  "oracle": "original bf16 checkpoint weights loaded as fp32, fp32 compute, eager attention",
+  "artifact": {
+    "path": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08\\dynamic-front\\audio_front_model.onnx",
+    "sha256": "a808792b52381b45f2fae35fc33668e5ce89a0b7a165c075c6f87f06c66239d8"
+  },
+  "source_sha256": "adf7215b7a0c5d5d75c4d660b336257e403eeb8357638058e57e614f3cc21003",
+  "versions": {
+    "onnxruntime": "1.30.0",
+    "torch": "2.14.1+cpu",
+    "transformers": "5.18.0"
+  },
+  "optimized_graphs": {
+    "all": {
+      "node_count": 834,
+      "op_counts": {
+        "Cast": 138,
+        "Gemm": 110,
+        "Unsqueeze": 79,
+        "Reshape": 79,
+        "Add": 62,
+        "Transpose": 57,
+        "Mul": 46,
+        "Concat": 40,
+        "LayerNormalization": 37,
+        "Gather": 28,
+        "Shape": 26,
+        "Div": 26,
+        "Erf": 22,
+        "Loop": 18,
+        "ConcatFromSequence": 18,
+        "Clip": 18,
+        "Sub": 4,
+        "Conv": 3,
+        "ReorderOutput": 3,
+        "ConstantOfShape": 3,
+        "Greater": 3,
+        "Where": 3,
+        "ReorderInput": 2,
+        "Slice": 2,
+        "MatMul": 1,
+        "ReduceSum": 1,
+        "Range": 1,
+        "Less": 1,
+        "NonZero": 1,
+        "Squeeze": 1,
+        "SequenceEmpty": 1
+      },
+      "inserted_precision_casts": 134,
+      "ops_fed_by_inserted_casts": {
+        "Gemm": 73,
+        "Reshape": 55,
+        "Add": 40,
+        "Div": 22,
+        "Mul": 22,
+        "Clip": 18,
+        "Shape": 2,
+        "Conv": 1,
+        "Transpose": 1,
+        "MatMul": 1
+      }
+    },
+    "disabled": {
+      "node_count": 1276,
+      "op_counts": {
+        "Cast": 465,
+        "Unsqueeze": 139,
+        "Gemm": 110,
+        "Reshape": 79,
+        "Concat": 78,
+        "Add": 62,
+        "Transpose": 57,
+        "Mul": 46,
+        "LayerNormalization": 37,
+        "Shape": 31,
+        "Gather": 28,
+        "Div": 26,
+        "Erf": 22,
+        "SequenceEmpty": 18,
+        "Loop": 18,
+        "ConcatFromSequence": 18,
+        "Clip": 18,
+        "Sub": 4,
+        "Conv": 3,
+        "ConstantOfShape": 3,
+        "Greater": 3,
+        "Where": 3,
+        "Slice": 2,
+        "MatMul": 1,
+        "ReduceSum": 1,
+        "Range": 1,
+        "Less": 1,
+        "NonZero": 1,
+        "Squeeze": 1
+      },
+      "inserted_precision_casts": 460,
+      "ops_fed_by_inserted_casts": {
+        "Gemm": 110,
+        "Reshape": 55,
+        "Add": 40,
+        "Div": 22,
+        "Mul": 22,
+        "LayerNormalization": 18,
+        "Clip": 18,
+        "Shape": 5,
+        "Conv": 3,
+        "Transpose": 1,
+        "MatMul": 1
+      }
+    }
+  },
+  "lengths": {
+    "100": {
+      "native_fp16_vs_fp32_oracle": {
+        "shape": [
+          13,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 13312,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0001187426969408989,
+        "mean_abs_error": 1.6567318333762578e-05,
+        "max_relative_error": 70.77287475665152,
+        "cosine_similarity": 0.9999992914684904,
+        "mismatch_count": 5,
+        "first_divergent_index": 199
+      },
+      "onnx_all_vs_fp32_oracle": {
+        "shape": [
+          13,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 13312,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": true,
+        "max_abs_error": 9.352341294288635e-05,
+        "mean_abs_error": 1.0412758303875062e-05,
+        "max_relative_error": 42.21804855703161,
+        "cosine_similarity": 0.9999997099602546,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      },
+      "onnx_all_vs_native_fp16": {
+        "shape": [
+          13,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 13312,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.00015751272439956665,
+        "mean_abs_error": 1.98105386355853e-05,
+        "max_relative_error": 9.147600446428571,
+        "cosine_similarity": 0.9999989721110468,
+        "mismatch_count": 23,
+        "first_divergent_index": 80
+      },
+      "onnx_disabled_vs_fp32_oracle": {
+        "shape": [
+          13,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 13312,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": true,
+        "max_abs_error": 0.00011180341243743896,
+        "mean_abs_error": 1.1179769452623463e-05,
+        "max_relative_error": 49.47209604153147,
+        "cosine_similarity": 0.9999996585704565,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      },
+      "onnx_disabled_vs_native_fp16": {
+        "shape": [
+          13,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 13312,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.00016510114073753357,
+        "mean_abs_error": 2.0892040008828433e-05,
+        "max_relative_error": 14.509765625,
+        "cosine_similarity": 0.9999988320240654,
+        "mismatch_count": 35,
+        "first_divergent_index": 132
+      }
+    },
+    "500": {
+      "native_fp16_vs_fp32_oracle": {
+        "shape": [
+          65,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 66560,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0009607784450054169,
+        "mean_abs_error": 2.6416124046590995e-05,
+        "max_relative_error": 331.8474576271187,
+        "cosine_similarity": 0.9999969511258389,
+        "mismatch_count": 1861,
+        "first_divergent_index": 544
+      },
+      "onnx_all_vs_fp32_oracle": {
+        "shape": [
+          65,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 66560,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0004444494843482971,
+        "mean_abs_error": 1.4189788746786183e-05,
+        "max_relative_error": 188.23093220338984,
+        "cosine_similarity": 0.9999991301395984,
+        "mismatch_count": 624,
+        "first_divergent_index": 1243
+      },
+      "onnx_all_vs_native_fp16": {
+        "shape": [
+          65,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 66560,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0011659367009997368,
+        "mean_abs_error": 3.138662964872196e-05,
+        "max_relative_error": 45.77690972222222,
+        "cosine_similarity": 0.9999949622563242,
+        "mismatch_count": 2696,
+        "first_divergent_index": 229
+      },
+      "onnx_disabled_vs_fp32_oracle": {
+        "shape": [
+          65,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 66560,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.000188339501619339,
+        "mean_abs_error": 1.2349116434014955e-05,
+        "max_relative_error": 240.59957627118644,
+        "cosine_similarity": 0.9999995860400951,
+        "mismatch_count": 49,
+        "first_divergent_index": 33989
+      },
+      "onnx_disabled_vs_native_fp16": {
+        "shape": [
+          65,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 66560,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0009711431339383125,
+        "mean_abs_error": 2.9815808115785103e-05,
+        "max_relative_error": 52.013888888888886,
+        "cosine_similarity": 0.9999961928577642,
+        "mismatch_count": 2403,
+        "first_divergent_index": 816
+      }
+    },
+    "1100": {
+      "native_fp16_vs_fp32_oracle": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.00645853579044342,
+        "mean_abs_error": 3.8910612367466765e-05,
+        "max_relative_error": 107.37549836897426,
+        "cosine_similarity": 0.9999668784540339,
+        "mismatch_count": 6894,
+        "first_divergent_index": 87
+      },
+      "onnx_all_vs_fp32_oracle": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0010402407497167587,
+        "mean_abs_error": 1.3370160690509966e-05,
+        "max_relative_error": 136.6957230880754,
+        "cosine_similarity": 0.9999988421382631,
+        "mismatch_count": 898,
+        "first_divergent_index": 35846
+      },
+      "onnx_all_vs_native_fp16": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.007498776540160179,
+        "mean_abs_error": 4.411004750874799e-05,
+        "max_relative_error": 1234.534090909091,
+        "cosine_similarity": 0.9999559096695035,
+        "mismatch_count": 8066,
+        "first_divergent_index": 87
+      },
+      "onnx_disabled_vs_fp32_oracle": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.002963609993457794,
+        "mean_abs_error": 1.9241582643248787e-05,
+        "max_relative_error": 138.787966654585,
+        "cosine_similarity": 0.9999933144363422,
+        "mismatch_count": 2238,
+        "first_divergent_index": 3017
+      },
+      "onnx_disabled_vs_native_fp16": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.009422145783901215,
+        "mean_abs_error": 5.014386923676781e-05,
+        "max_relative_error": 1505.801669034091,
+        "cosine_similarity": 0.9999329713001587,
+        "mismatch_count": 9601,
+        "first_divergent_index": 87
+      }
+    }
+  }
+}
