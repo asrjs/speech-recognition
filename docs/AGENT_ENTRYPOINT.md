@@ -92,6 +92,10 @@ push/publish/upload, install globally or download large weights without authorit
 
 ## Current focus overlay
 
+Sub-agent handoff (2026-10-17): read
+[HANDOFF-subagents-2026-10-17.md](reports/HANDOFF-subagents-2026-10-17.md)
+for the current snapshot, known risks, gate definitions and ordered task cards.
+
 Latest user scope (2026-10-08): **do not work on Parakeet CTC now**. Resume
 Parakeet TDT distills, quantized/faster derivatives and the recorded 2026
 non-NVIDIA speech candidates. Read the active P10 checklist at the top of
