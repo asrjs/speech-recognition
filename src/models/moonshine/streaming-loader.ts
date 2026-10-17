@@ -72,6 +72,7 @@ function sessionOptionsFor(
   const intraOpNumThreads = options.cpuThreads;
   return {
     executionProviders,
+    ...(backend === 'webgpu' ? { graphOptimizationLevel: 'basic' } : {}),
     ...(intraOpNumThreads === undefined ? {} : { intraOpNumThreads }),
     ...(options.signal ? { signal: options.signal } : {}),
   };
@@ -92,13 +93,27 @@ export async function loadMoonshineStreaming(
     step: OrtSessionLike;
   }> => {
     const sessionOptions = sessionOptionsFor(options, backend);
+    const withData = (sidecarPath: string, dataUrl?: string): Record<string, unknown> =>
+      dataUrl ? { ...sessionOptions, externalData: [{ path: sidecarPath, data: dataUrl }] } : sessionOptions;
     const created: OrtSessionLike[] = [];
     try {
       const [chunkedEncoder, wholeEncoder, prefill, step] = await Promise.all([
-        ort.InferenceSession.create(options.chunkedEncoderUrl, sessionOptions),
-        ort.InferenceSession.create(options.encoderUrl, sessionOptions),
-        ort.InferenceSession.create(options.prefillUrl, sessionOptions),
-        ort.InferenceSession.create(options.stepUrl, sessionOptions),
+        ort.InferenceSession.create(
+          options.chunkedEncoderUrl,
+          withData('encoder_chunked_model.onnx.data', options.chunkedEncoderDataUrl),
+        ),
+        ort.InferenceSession.create(
+          options.encoderUrl,
+          withData('encoder_model.onnx.data', options.encoderDataUrl),
+        ),
+        ort.InferenceSession.create(
+          options.prefillUrl,
+          withData('decoder_prefill_model.onnx.data', options.prefillDataUrl),
+        ),
+        ort.InferenceSession.create(
+          options.stepUrl,
+          withData('decoder_step_model.onnx.data', options.stepDataUrl),
+        ),
       ]);
       created.push(chunkedEncoder, wholeEncoder, prefill, step);
       return { sessions: created, chunkedEncoder, wholeEncoder, prefill, step };

@@ -1,0 +1,891 @@
+{
+  "schema": "asrjs.browser-webgpu-matrix.v1",
+  "status": "PASS",
+  "adapter": {
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "limits": {
+    "maxBufferSize": 2147483648,
+    "maxStorageBufferBindingSize": 2147483644
+  },
+  "results": [
+    {
+      "folder": "models/onnx/parakeet-ctc-110m-en",
+      "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+      "status": "PASS",
+      "cold": {
+        "schema": "asrjs.browser-webgpu.v1",
+        "status": "PASS",
+        "mode": "offline",
+        "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+        "backendId": "webgpu",
+        "adapter": {
+          "vendor": "nvidia",
+          "architecture": "blackwell",
+          "device": "",
+          "description": ""
+        },
+        "limits": {
+          "maxBufferSize": 2147483648,
+          "maxStorageBufferBindingSize": 2147483644
+        },
+        "audio": {
+          "fixture": "jfk-short.wav",
+          "durationSeconds": 11,
+          "samples": 176000,
+          "sampleRate": 16000
+        },
+        "metrics": {
+          "loadMs": 4673.3,
+          "inferenceMs": 1667.9,
+          "totalMs": 6341.2,
+          "rtfx": 6.6,
+          "gpuDispatches": 0
+        },
+        "cached": false,
+        "transcript": " And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+        "words": [],
+        "timestamp": "2026-10-17T20:19:29.736Z"
+      },
+      "warm": {
+        "schema": "asrjs.browser-webgpu.v1",
+        "status": "PASS",
+        "mode": "offline",
+        "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+        "backendId": "webgpu",
+        "adapter": {
+          "vendor": "nvidia",
+          "architecture": "blackwell",
+          "device": "",
+          "description": ""
+        },
+        "limits": {
+          "maxBufferSize": 2147483648,
+          "maxStorageBufferBindingSize": 2147483644
+        },
+        "audio": {
+          "fixture": "jfk-short.wav",
+          "durationSeconds": 11,
+          "samples": 176000,
+          "sampleRate": 16000
+        },
+        "metrics": {
+          "loadMs": 0,
+          "inferenceMs": 1418.2,
+          "totalMs": 1418.2,
+          "rtfx": 7.8,
+          "gpuDispatches": 0
+        },
+        "cached": true,
+        "transcript": " And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+        "words": [],
+        "timestamp": "2026-10-17T20:19:31.179Z"
+      },
+      "error": null,
+      "metrics": {
+        "coldLoadMs": 4673.3,
+        "warmLoadMs": 0,
+        "coldInferenceMs": 1667.9,
+        "warmInferenceMs": 1418.2,
+        "rtfx": 7.8,
+        "gpuDispatches": 0
+      },
+      "transcript": " And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country."
+    },
+    {
+      "folder": "models/onnx/moonshine-tiny-fp32",
+      "modelId": "UsefulSensors/moonshine-tiny",
+      "status": "PASS",
+      "cold": {
+        "schema": "asrjs.browser-webgpu.v1",
+        "status": "PASS",
+        "mode": "offline",
+        "modelId": "UsefulSensors/moonshine-tiny",
+        "backendId": "webgpu",
+        "adapter": {
+          "vendor": "nvidia",
+          "architecture": "blackwell",
+          "device": "",
+          "description": ""
+        },
+        "limits": {
+          "maxBufferSize": 2147483648,
+          "maxStorageBufferBindingSize": 2147483644
+        },
+        "audio": {
+          "fixture": "jfk-short.wav",
+          "durationSeconds": 11,
+          "samples": 176000,
+          "sampleRate": 16000
+        },
+        "metrics": {
+          "loadMs": 1280.4,
+          "inferenceMs": 1010.3,
+          "totalMs": 2290.7,
+          "rtfx": 10.9,
+          "gpuDispatches": 0
+        },
+        "cached": false,
+        "transcript": "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country.",
+        "words": [
+          {
+            "index": 0,
+            "text": "And",
+            "startTime": 0,
+            "endTime": 0.5
+          },
+          {
+            "index": 1,
+            "text": "so",
+            "startTime": 0.5,
+            "endTime": 1
+          },
+          {
+            "index": 2,
+            "text": "my",
+            "startTime": 1,
+            "endTime": 1.5
+          },
+          {
+            "index": 3,
+            "text": "fellow",
+            "startTime": 1.5,
+            "endTime": 2
+          },
+          {
+            "index": 4,
+            "text": "Americans",
+            "startTime": 2,
+            "endTime": 2.5
+          },
+          {
+            "index": 5,
+            "text": "ask",
+            "startTime": 2.5,
+            "endTime": 3
+          },
+          {
+            "index": 6,
+            "text": "not",
+            "startTime": 3,
+            "endTime": 3.5
+          },
+          {
+            "index": 7,
+            "text": "what",
+            "startTime": 3.5,
+            "endTime": 4
+          },
+          {
+            "index": 8,
+            "text": "your",
+            "startTime": 4,
+            "endTime": 4.5
+          },
+          {
+            "index": 9,
+            "text": "country",
+            "startTime": 4.5,
+            "endTime": 5
+          },
+          {
+            "index": 10,
+            "text": "can",
+            "startTime": 5,
+            "endTime": 5.5
+          },
+          {
+            "index": 11,
+            "text": "do",
+            "startTime": 5.5,
+            "endTime": 6
+          },
+          {
+            "index": 12,
+            "text": "for",
+            "startTime": 6,
+            "endTime": 6.5
+          },
+          {
+            "index": 13,
+            "text": "you,",
+            "startTime": 6.5,
+            "endTime": 7
+          },
+          {
+            "index": 14,
+            "text": "ask",
+            "startTime": 7,
+            "endTime": 7.5
+          },
+          {
+            "index": 15,
+            "text": "what",
+            "startTime": 7.5,
+            "endTime": 8
+          },
+          {
+            "index": 16,
+            "text": "you",
+            "startTime": 8,
+            "endTime": 8.5
+          },
+          {
+            "index": 17,
+            "text": "can",
+            "startTime": 8.5,
+            "endTime": 9
+          },
+          {
+            "index": 18,
+            "text": "do",
+            "startTime": 9,
+            "endTime": 9.5
+          },
+          {
+            "index": 19,
+            "text": "for",
+            "startTime": 9.5,
+            "endTime": 10
+          },
+          {
+            "index": 20,
+            "text": "your",
+            "startTime": 10,
+            "endTime": 10.5
+          },
+          {
+            "index": 21,
+            "text": "country.",
+            "startTime": 10.5,
+            "endTime": 11
+          }
+        ],
+        "timestamp": "2026-10-17T20:19:33.541Z"
+      },
+      "warm": {
+        "schema": "asrjs.browser-webgpu.v1",
+        "status": "PASS",
+        "mode": "offline",
+        "modelId": "UsefulSensors/moonshine-tiny",
+        "backendId": "webgpu",
+        "adapter": {
+          "vendor": "nvidia",
+          "architecture": "blackwell",
+          "device": "",
+          "description": ""
+        },
+        "limits": {
+          "maxBufferSize": 2147483648,
+          "maxStorageBufferBindingSize": 2147483644
+        },
+        "audio": {
+          "fixture": "jfk-short.wav",
+          "durationSeconds": 11,
+          "samples": 176000,
+          "sampleRate": 16000
+        },
+        "metrics": {
+          "loadMs": 0,
+          "inferenceMs": 1095.9,
+          "totalMs": 1095.9,
+          "rtfx": 10,
+          "gpuDispatches": 0
+        },
+        "cached": true,
+        "transcript": "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country.",
+        "words": [
+          {
+            "index": 0,
+            "text": "And",
+            "startTime": 0,
+            "endTime": 0.5
+          },
+          {
+            "index": 1,
+            "text": "so",
+            "startTime": 0.5,
+            "endTime": 1
+          },
+          {
+            "index": 2,
+            "text": "my",
+            "startTime": 1,
+            "endTime": 1.5
+          },
+          {
+            "index": 3,
+            "text": "fellow",
+            "startTime": 1.5,
+            "endTime": 2
+          },
+          {
+            "index": 4,
+            "text": "Americans",
+            "startTime": 2,
+            "endTime": 2.5
+          },
+          {
+            "index": 5,
+            "text": "ask",
+            "startTime": 2.5,
+            "endTime": 3
+          },
+          {
+            "index": 6,
+            "text": "not",
+            "startTime": 3,
+            "endTime": 3.5
+          },
+          {
+            "index": 7,
+            "text": "what",
+            "startTime": 3.5,
+            "endTime": 4
+          },
+          {
+            "index": 8,
+            "text": "your",
+            "startTime": 4,
+            "endTime": 4.5
+          },
+          {
+            "index": 9,
+            "text": "country",
+            "startTime": 4.5,
+            "endTime": 5
+          },
+          {
+            "index": 10,
+            "text": "can",
+            "startTime": 5,
+            "endTime": 5.5
+          },
+          {
+            "index": 11,
+            "text": "do",
+            "startTime": 5.5,
+            "endTime": 6
+          },
+          {
+            "index": 12,
+            "text": "for",
+            "startTime": 6,
+            "endTime": 6.5
+          },
+          {
+            "index": 13,
+            "text": "you,",
+            "startTime": 6.5,
+            "endTime": 7
+          },
+          {
+            "index": 14,
+            "text": "ask",
+            "startTime": 7,
+            "endTime": 7.5
+          },
+          {
+            "index": 15,
+            "text": "what",
+            "startTime": 7.5,
+            "endTime": 8
+          },
+          {
+            "index": 16,
+            "text": "you",
+            "startTime": 8,
+            "endTime": 8.5
+          },
+          {
+            "index": 17,
+            "text": "can",
+            "startTime": 8.5,
+            "endTime": 9
+          },
+          {
+            "index": 18,
+            "text": "do",
+            "startTime": 9,
+            "endTime": 9.5
+          },
+          {
+            "index": 19,
+            "text": "for",
+            "startTime": 9.5,
+            "endTime": 10
+          },
+          {
+            "index": 20,
+            "text": "your",
+            "startTime": 10,
+            "endTime": 10.5
+          },
+          {
+            "index": 21,
+            "text": "country.",
+            "startTime": 10.5,
+            "endTime": 11
+          }
+        ],
+        "timestamp": "2026-10-17T20:19:34.697Z"
+      },
+      "error": null,
+      "metrics": {
+        "coldLoadMs": 1280.4,
+        "warmLoadMs": 0,
+        "coldInferenceMs": 1010.3,
+        "warmInferenceMs": 1095.9,
+        "rtfx": 10,
+        "gpuDispatches": 0
+      },
+      "transcript": "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country."
+    },
+    {
+      "folder": "models/onnx/wav2vec2-xls-r-300m-tr",
+      "modelId": "mpoyraz/wav2vec2-xls-r-300m-cv7-turkish",
+      "status": "PASS",
+      "cold": {
+        "schema": "asrjs.browser-webgpu.v1",
+        "status": "PASS",
+        "mode": "offline",
+        "modelId": "mpoyraz/wav2vec2-xls-r-300m-cv7-turkish",
+        "backendId": "webgpu",
+        "adapter": {
+          "vendor": "nvidia",
+          "architecture": "blackwell",
+          "device": "",
+          "description": ""
+        },
+        "limits": {
+          "maxBufferSize": 2147483648,
+          "maxStorageBufferBindingSize": 2147483644
+        },
+        "audio": {
+          "fixture": "jfk-short.wav",
+          "durationSeconds": 11,
+          "samples": 176000,
+          "sampleRate": 16000
+        },
+        "metrics": {
+          "loadMs": 9329.2,
+          "inferenceMs": 1534.8,
+          "totalMs": 10864,
+          "rtfx": 7.2,
+          "gpuDispatches": 792
+        },
+        "cached": false,
+        "transcript": "en samahifrl ovamerrakateez nah bacyo kantrken dufiyu eaz paçyukin dufı yo kantri",
+        "words": [
+          {
+            "index": 0,
+            "text": "en",
+            "startTime": 0.381,
+            "endTime": 0.501,
+            "confidence": 0.99585,
+            "tokenIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "index": 1,
+            "text": "samahifrl",
+            "startTime": 0.601,
+            "endTime": 1.483,
+            "confidence": 0.7746000000000001,
+            "tokenIndices": [
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11
+            ]
+          },
+          {
+            "index": 2,
+            "text": "ovamerrakateez",
+            "startTime": 1.523,
+            "endTime": 3.667,
+            "confidence": 0.7889428571428573,
+            "tokenIndices": [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26
+            ]
+          },
+          {
+            "index": 3,
+            "text": "nah",
+            "startTime": 4.007,
+            "endTime": 4.308,
+            "confidence": 0.7943333333333333,
+            "tokenIndices": [
+              28,
+              29,
+              30
+            ]
+          },
+          {
+            "index": 4,
+            "text": "bacyo",
+            "startTime": 5.41,
+            "endTime": 5.73,
+            "confidence": 0.7716800000000001,
+            "tokenIndices": [
+              32,
+              33,
+              34,
+              35,
+              36
+            ]
+          },
+          {
+            "index": 5,
+            "text": "kantrken",
+            "startTime": 5.891,
+            "endTime": 6.612,
+            "confidence": 0.9003625000000001,
+            "tokenIndices": [
+              38,
+              39,
+              40,
+              41,
+              42,
+              43,
+              44,
+              45
+            ]
+          },
+          {
+            "index": 6,
+            "text": "dufiyu",
+            "startTime": 6.692,
+            "endTime": 7.273,
+            "confidence": 0.7203666666666666,
+            "tokenIndices": [
+              47,
+              48,
+              49,
+              50,
+              51,
+              52
+            ]
+          },
+          {
+            "index": 7,
+            "text": "eaz",
+            "startTime": 8.255,
+            "endTime": 8.495,
+            "confidence": 0.8548666666666667,
+            "tokenIndices": [
+              54,
+              55,
+              56
+            ]
+          },
+          {
+            "index": 8,
+            "text": "paçyukin",
+            "startTime": 8.616,
+            "endTime": 9.357,
+            "confidence": 0.6829250000000001,
+            "tokenIndices": [
+              58,
+              59,
+              60,
+              61,
+              62,
+              63,
+              64,
+              65
+            ]
+          },
+          {
+            "index": 9,
+            "text": "dufı",
+            "startTime": 9.417,
+            "endTime": 9.778,
+            "confidence": 0.772625,
+            "tokenIndices": [
+              67,
+              68,
+              69,
+              70
+            ]
+          },
+          {
+            "index": 10,
+            "text": "yo",
+            "startTime": 9.838,
+            "endTime": 9.938,
+            "confidence": 0.86685,
+            "tokenIndices": [
+              72,
+              73
+            ]
+          },
+          {
+            "index": 11,
+            "text": "kantri",
+            "startTime": 10.038,
+            "endTime": 10.379,
+            "confidence": 0.8771833333333334,
+            "tokenIndices": [
+              75,
+              76,
+              77,
+              78,
+              79,
+              80
+            ]
+          }
+        ],
+        "timestamp": "2026-10-17T20:19:45.595Z"
+      },
+      "warm": {
+        "schema": "asrjs.browser-webgpu.v1",
+        "status": "PASS",
+        "mode": "offline",
+        "modelId": "mpoyraz/wav2vec2-xls-r-300m-cv7-turkish",
+        "backendId": "webgpu",
+        "adapter": {
+          "vendor": "nvidia",
+          "architecture": "blackwell",
+          "device": "",
+          "description": ""
+        },
+        "limits": {
+          "maxBufferSize": 2147483648,
+          "maxStorageBufferBindingSize": 2147483644
+        },
+        "audio": {
+          "fixture": "jfk-short.wav",
+          "durationSeconds": 11,
+          "samples": 176000,
+          "sampleRate": 16000
+        },
+        "metrics": {
+          "loadMs": 0,
+          "inferenceMs": 141.1,
+          "totalMs": 141.1,
+          "rtfx": 78,
+          "gpuDispatches": 792
+        },
+        "cached": true,
+        "transcript": "en samahifrl ovamerrakateez nah bacyo kantrken dufiyu eaz paçyukin dufı yo kantri",
+        "words": [
+          {
+            "index": 0,
+            "text": "en",
+            "startTime": 0.381,
+            "endTime": 0.501,
+            "confidence": 0.99585,
+            "tokenIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "index": 1,
+            "text": "samahifrl",
+            "startTime": 0.601,
+            "endTime": 1.483,
+            "confidence": 0.7746000000000001,
+            "tokenIndices": [
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11
+            ]
+          },
+          {
+            "index": 2,
+            "text": "ovamerrakateez",
+            "startTime": 1.523,
+            "endTime": 3.667,
+            "confidence": 0.7889428571428573,
+            "tokenIndices": [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26
+            ]
+          },
+          {
+            "index": 3,
+            "text": "nah",
+            "startTime": 4.007,
+            "endTime": 4.308,
+            "confidence": 0.7943333333333333,
+            "tokenIndices": [
+              28,
+              29,
+              30
+            ]
+          },
+          {
+            "index": 4,
+            "text": "bacyo",
+            "startTime": 5.41,
+            "endTime": 5.73,
+            "confidence": 0.7716800000000001,
+            "tokenIndices": [
+              32,
+              33,
+              34,
+              35,
+              36
+            ]
+          },
+          {
+            "index": 5,
+            "text": "kantrken",
+            "startTime": 5.891,
+            "endTime": 6.612,
+            "confidence": 0.9003625000000001,
+            "tokenIndices": [
+              38,
+              39,
+              40,
+              41,
+              42,
+              43,
+              44,
+              45
+            ]
+          },
+          {
+            "index": 6,
+            "text": "dufiyu",
+            "startTime": 6.692,
+            "endTime": 7.273,
+            "confidence": 0.7203666666666666,
+            "tokenIndices": [
+              47,
+              48,
+              49,
+              50,
+              51,
+              52
+            ]
+          },
+          {
+            "index": 7,
+            "text": "eaz",
+            "startTime": 8.255,
+            "endTime": 8.495,
+            "confidence": 0.8548666666666667,
+            "tokenIndices": [
+              54,
+              55,
+              56
+            ]
+          },
+          {
+            "index": 8,
+            "text": "paçyukin",
+            "startTime": 8.616,
+            "endTime": 9.357,
+            "confidence": 0.6829250000000001,
+            "tokenIndices": [
+              58,
+              59,
+              60,
+              61,
+              62,
+              63,
+              64,
+              65
+            ]
+          },
+          {
+            "index": 9,
+            "text": "dufı",
+            "startTime": 9.417,
+            "endTime": 9.778,
+            "confidence": 0.772625,
+            "tokenIndices": [
+              67,
+              68,
+              69,
+              70
+            ]
+          },
+          {
+            "index": 10,
+            "text": "yo",
+            "startTime": 9.838,
+            "endTime": 9.938,
+            "confidence": 0.86685,
+            "tokenIndices": [
+              72,
+              73
+            ]
+          },
+          {
+            "index": 11,
+            "text": "kantri",
+            "startTime": 10.038,
+            "endTime": 10.379,
+            "confidence": 0.8771833333333334,
+            "tokenIndices": [
+              75,
+              76,
+              77,
+              78,
+              79,
+              80
+            ]
+          }
+        ],
+        "timestamp": "2026-10-17T20:19:45.755Z"
+      },
+      "error": null,
+      "metrics": {
+        "coldLoadMs": 9329.2,
+        "warmLoadMs": 0,
+        "coldInferenceMs": 1534.8,
+        "warmInferenceMs": 141.1,
+        "rtfx": 78,
+        "gpuDispatches": 792
+      },
+      "transcript": "en samahifrl ovamerrakateez nah bacyo kantrken dufiyu eaz paçyukin dufı yo kantri"
+    }
+  ],
+  "timestamp": "2026-10-17T20:19:45.767Z",
+  "browser_version": "155.0.8059.82"
+}

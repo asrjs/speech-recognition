@@ -132,6 +132,77 @@ async () => {
 }
 """
 
+MATRIX_JS = """
+async () => {
+    const spec = __SPEC_JSON__;
+    const dirs = spec.dirs || [];
+    const results = [];
+
+    for (const localFolder of dirs) {
+        console.log(`[Matrix] Running model folder: ${localFolder}`);
+        const itemSpec = {
+            ...spec,
+            localFolder,
+            modelId: undefined,
+            forceReload: true
+        };
+
+        const modelResult = {
+            folder: localFolder,
+            modelId: null,
+            status: 'PENDING',
+            cold: null,
+            warm: null,
+            error: null
+        };
+
+        try {
+            // 1. Cold Run
+            console.log(`[Matrix] Cold Run for ${localFolder}...`);
+            const cold = await window.__ASR_HARNESS__.runOffline({ ...itemSpec, forceReload: true });
+            modelResult.cold = cold;
+            modelResult.modelId = cold.modelId;
+
+            // 2. Warm Run
+            console.log(`[Matrix] Warm Run for ${localFolder}...`);
+            const warm = await window.__ASR_HARNESS__.runOffline({ ...itemSpec, forceReload: false });
+            modelResult.warm = warm;
+
+            modelResult.status = 'PASS';
+            modelResult.metrics = {
+                coldLoadMs: cold.metrics.loadMs,
+                warmLoadMs: warm.metrics.loadMs,
+                coldInferenceMs: cold.metrics.inferenceMs,
+                warmInferenceMs: warm.metrics.inferenceMs,
+                rtfx: warm.metrics.rtfx,
+                gpuDispatches: warm.metrics.gpuDispatches,
+            };
+            modelResult.transcript = warm.transcript;
+        } catch (err) {
+            console.error(`[Matrix] Error on ${localFolder}:`, err.message || err);
+            modelResult.status = 'FAIL';
+            modelResult.error = String(err.message || err);
+        } finally {
+            try {
+                await window.__ASR_HARNESS__.disposeAll();
+            } catch (e) {}
+        }
+
+        results.push(modelResult);
+    }
+
+    const probe = await window.__ASR_HARNESS__.probeWebGpu();
+    return {
+        schema: 'asrjs.browser-webgpu-matrix.v1',
+        status: results.every(r => r.status === 'PASS') ? 'PASS' : (results.some(r => r.status === 'PASS') ? 'PARTIAL_PASS' : 'FAIL'),
+        adapter: probe.adapter,
+        limits: probe.limits,
+        results,
+        timestamp: new Date().toISOString()
+    };
+}
+"""
+
 def run_in_page(page, action, spec):
     # Wait for __ASR_HARNESS__ to be initialized on window
     page.wait_for_function('typeof window.__ASR_HARNESS__ !== "undefined"', timeout=60000)
@@ -158,6 +229,10 @@ def run_in_page(page, action, spec):
 
     elif action == 'cold_and_warm':
         code = COLD_AND_WARM_JS.replace('__SPEC_JSON__', spec_json)
+        return page.evaluate(code)
+
+    elif action == 'matrix':
+        code = MATRIX_JS.replace('__SPEC_JSON__', spec_json)
         return page.evaluate(code)
 
     elif action == 'dispose':

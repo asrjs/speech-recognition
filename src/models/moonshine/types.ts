@@ -7,18 +7,25 @@
 export interface MoonshineStreamingAssets {
   /** Pure-function chunked encoder graph URL. */
   readonly chunkedEncoderUrl: string;
+  readonly chunkedEncoderDataUrl?: string;
   /** Whole-utterance encoder used for the final flush (dynamic time dim). */
   readonly encoderUrl: string;
+  readonly encoderDataUrl?: string;
   readonly prefillUrl: string;
+  readonly prefillDataUrl?: string;
   readonly stepUrl: string;
+  readonly stepDataUrl?: string;
   readonly tokenizerUrl: string;
 }
 
 export interface MoonshineLoadOptions {
   readonly encoderUrl: string;
+  readonly encoderDataUrl?: string;
   /** Projects encoder states into per-layer cross-attention key and value. */
   readonly crossKvUrl: string;
+  readonly crossKvDataUrl?: string;
   readonly decoderUrl: string;
+  readonly decoderDataUrl?: string;
   readonly tokenizerUrl: string;
   readonly generationUrl?: string;
   /** Supplies past-state geometry, which differs across checkpoints. */

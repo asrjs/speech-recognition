@@ -162,18 +162,38 @@ export class MoonshineSpeechSession
       });
       const ort = rawOrt as unknown as MoonshineSessionOptions['ort'];
 
+      // The 3-graph torch.onnx.export(dynamo=True) offline Moonshine graph uses
+      // dynamic 0-length past tensors and attention masks that require WASM for
+      // exact numerical parity, whereas the 4-graph streaming Moonshine export
+      // runs natively on WebGPU.
       const sessionOptions: Record<string, unknown> = {
-        executionProviders: this.backendId.startsWith('webgpu') ? ['webgpu', 'wasm'] : ['wasm'],
+        executionProviders: ['wasm'],
         ...(this.loadOptions.cpuThreads !== undefined
           ? { intraOpNumThreads: this.loadOptions.cpuThreads }
           : {}),
         ...(this.signal ? { signal: this.signal } : {}),
       };
 
+      const withExternalData = (
+        base: Record<string, unknown>,
+        sidecarPath: string,
+        dataUrl?: string,
+      ): Record<string, unknown> =>
+        dataUrl ? { ...base, externalData: [{ path: sidecarPath, data: dataUrl }] } : base;
+
       const [encoderSession, crossKvSession, decoderSession] = await Promise.all([
-        rawOrt.InferenceSession.create(this.loadOptions.encoderUrl, sessionOptions),
-        rawOrt.InferenceSession.create(this.loadOptions.crossKvUrl, sessionOptions),
-        rawOrt.InferenceSession.create(this.loadOptions.decoderUrl, sessionOptions),
+        rawOrt.InferenceSession.create(
+          this.loadOptions.encoderUrl,
+          withExternalData(sessionOptions, 'encoder_model.onnx.data', this.loadOptions.encoderDataUrl),
+        ),
+        rawOrt.InferenceSession.create(
+          this.loadOptions.crossKvUrl,
+          withExternalData(sessionOptions, 'decoder_cross_kv_model.onnx.data', this.loadOptions.crossKvDataUrl),
+        ),
+        rawOrt.InferenceSession.create(
+          this.loadOptions.decoderUrl,
+          withExternalData(sessionOptions, 'decoder_with_past_model.onnx.data', this.loadOptions.decoderDataUrl),
+        ),
       ]);
       this.offlineOrtSessions.push(encoderSession, crossKvSession, decoderSession);
 

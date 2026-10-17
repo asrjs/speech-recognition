@@ -78,6 +78,8 @@ function parseCliArgs() {
     chunkMs: 160,
     expectJfk: false,
     warmRerun: true,
+    matrix: false,
+    localDirs: null,
     out: null,
     timeoutMs: 180000,
   };
@@ -88,6 +90,8 @@ function parseCliArgs() {
     else if (arg === '--daemon') options.daemon = true;
     else if (arg === '--probe') options.probe = true;
     else if (arg === '--catalog') options.catalog = true;
+    else if (arg === '--matrix') options.matrix = true;
+    else if (arg === '--local-dirs' && args[i + 1]) options.localDirs = args[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--expect-jfk') options.expectJfk = true;
     else if (arg === '--no-warm-rerun') options.warmRerun = false;
     else if (arg === '--warm-rerun') options.warmRerun = true;
@@ -103,6 +107,14 @@ function parseCliArgs() {
     else if (arg === '--chunk-ms' && args[i + 1]) options.chunkMs = parseInt(args[++i], 10);
     else if (arg === '--out' && args[i + 1]) options.out = args[++i];
     else if (arg === '--timeout-ms' && args[i + 1]) options.timeoutMs = parseInt(args[++i], 10);
+  }
+
+  if (options.matrix && !options.localDirs) {
+    options.localDirs = [
+      'models/onnx/parakeet-ctc-110m-en',
+      'models/onnx/moonshine-streaming-tiny-fp32',
+      'models/onnx/wav2vec2-xls-r-300m-tr',
+    ];
   }
 
   return options;
@@ -310,6 +322,52 @@ async function main() {
       for (const f of catalogResult.experimentalFamilies || []) {
         console.log(`  - ${f.family}`);
       }
+      return;
+    }
+
+    if (options.localDirs && options.localDirs.length > 0) {
+      console.log(`\n================================================================`);
+      console.log(`🚀 Executing WebGPU Test Matrix (${options.localDirs.length} models in single browser session)`);
+      console.log(`================================================================`);
+      for (const d of options.localDirs) {
+        console.log(`  - ${d}`);
+      }
+
+      const matrixSpec = {
+        dirs: options.localDirs,
+        backend: options.backend,
+        fixture: options.fixture,
+        mode: options.mode,
+      };
+
+      const matrixResult = await runBridge(runnerMode, targetUrl, 'matrix', matrixSpec, harnessUrl);
+
+      console.log(`\n================================================================`);
+      console.log(`📊 WebGPU Matrix Benchmark Results`);
+      console.log(`================================================================\n`);
+
+      console.log(`| Model | Cold Load (ms) | Warm Load (ms) | Offline Inference (ms) | RTFx | Transcript Preview |`);
+      console.log(`| :--- | :---: | :---: | :---: | :---: | :--- |`);
+
+      for (const item of matrixResult.results || []) {
+        const folderName = item.folder.split('/').pop();
+        if (item.status === 'PASS' && item.metrics) {
+          const coldL = `${item.metrics.coldLoadMs.toFixed(1)}`;
+          const warmL = `${item.metrics.warmLoadMs.toFixed(1)}${item.metrics.warmLoadMs === 0 ? ' (reused)' : ''}`;
+          const inf = `${item.metrics.warmInferenceMs.toFixed(1)}`;
+          const rtfx = `${item.metrics.rtfx.toFixed(1)}x`;
+          const preview = (item.transcript || '').replace(/\s+/g, ' ').substring(0, 45) + '...';
+          console.log(`| \`${folderName}\` | ${coldL} | ${warmL} | ${inf} | ${rtfx} | "${preview}" |`);
+        } else {
+          const errPreview = (item.error || 'Unknown error').replace(/\r?\n/g, ' ').substring(0, 45) + '...';
+          console.log(`| \`${folderName}\` | FAIL | FAIL | FAIL | FAIL | *${errPreview}* |`);
+        }
+      }
+
+      const outPath = path.resolve(REPO_ROOT, options.out || 'tools/data/results/canonical/webgpu-matrix-verify.json');
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.writeFileSync(outPath, JSON.stringify(matrixResult, null, 2) + '\n', 'utf-8');
+      console.log(`\n[Receipt] Matrix verification receipt written to:\n  ${outPath}`);
       return;
     }
 

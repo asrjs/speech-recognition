@@ -2,6 +2,7 @@ import {
   collectLocalEntriesFromDirectory,
   createLocalEntriesFromFiles,
   findLocalEntry,
+  findLocalSidecar,
   getLocalEntryFile,
 } from '../runtime/local-entry-files.js';
 import { createBlobAssetProvider } from '../io/index.js';
@@ -34,12 +35,16 @@ const STREAMING = [
 function inspectMoonshineEntries(
   entries: readonly SpeechModelLocalEntry[],
 ): SpeechModelLocalInspection {
-  const present = REQUIRED.filter((name) => findLocalEntry(entries, name));
+  const hasOffline = REQUIRED.every((name) => findLocalEntry(entries, name));
+  const hasStreaming =
+    Boolean(findLocalEntry(entries, 'encoder_model.onnx')) &&
+    Boolean(findLocalEntry(entries, 'tokenizer.json')) &&
+    STREAMING.every((name) => findLocalEntry(entries, name));
 
   return {
-    encoderQuantizations: present.includes('encoder_model.onnx') ? ['fp32'] : [],
-    decoderQuantizations: present.includes('decoder_with_past_model.onnx') ? ['fp32'] : [],
-    tokenizerNames: present.includes('tokenizer.json') ? ['tokenizer.json'] : [],
+    encoderQuantizations: hasOffline || hasStreaming ? ['fp32'] : [],
+    decoderQuantizations: hasOffline || hasStreaming ? ['fp32'] : [],
+    tokenizerNames: findLocalEntry(entries, 'tokenizer.json') ? ['tokenizer.json'] : [],
     preprocessorNames: [],
   };
 }
@@ -93,18 +98,47 @@ export const moonshineBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
       return locator;
     };
 
+    const toOptionalSidecarLocator = async (onnxName: string): Promise<string | undefined> => {
+      const sidecar = findLocalSidecar(options.entries, onnxName);
+      if (!sidecar) {
+        return undefined;
+      }
+      return await toLocator(sidecar.basename);
+    };
+
     try {
       const tokenizerUrl = await toLocator('tokenizer.json');
-      // One locator per file: the whole-utterance encoder serves both the
-      // offline contract and the streaming final flush.
       const encoderUrl = await toLocator('encoder_model.onnx');
+      const encoderDataUrl = await toOptionalSidecarLocator('encoder_model.onnx');
+      const hasOffline =
+        Boolean(findLocalEntry(options.entries, 'decoder_cross_kv_model.onnx')) &&
+        Boolean(findLocalEntry(options.entries, 'decoder_with_past_model.onnx'));
+      const crossKvDataUrl = hasOffline
+        ? await toOptionalSidecarLocator('decoder_cross_kv_model.onnx')
+        : undefined;
+      const decoderDataUrl = hasOffline
+        ? await toOptionalSidecarLocator('decoder_with_past_model.onnx')
+        : undefined;
       const hasStreaming = STREAMING.every((name) => findLocalEntry(options.entries, name));
+      const chunkedEncoderDataUrl = hasStreaming
+        ? await toOptionalSidecarLocator('encoder_chunked_model.onnx')
+        : undefined;
+      const prefillDataUrl = hasStreaming
+        ? await toOptionalSidecarLocator('decoder_prefill_model.onnx')
+        : undefined;
+      const stepDataUrl = hasStreaming
+        ? await toOptionalSidecarLocator('decoder_step_model.onnx')
+        : undefined;
       const streaming = hasStreaming
         ? {
             encoderUrl,
+            ...(encoderDataUrl ? { encoderDataUrl } : {}),
             chunkedEncoderUrl: await toLocator('encoder_chunked_model.onnx'),
+            ...(chunkedEncoderDataUrl ? { chunkedEncoderDataUrl } : {}),
             prefillUrl: await toLocator('decoder_prefill_model.onnx'),
+            ...(prefillDataUrl ? { prefillDataUrl } : {}),
             stepUrl: await toLocator('decoder_step_model.onnx'),
+            ...(stepDataUrl ? { stepDataUrl } : {}),
             tokenizerUrl,
           }
         : undefined;
@@ -113,11 +147,22 @@ export const moonshineBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
         preset: 'moonshine',
         builtInLoadOptions: {
           encoderUrl,
-          crossKvUrl: await toLocator('decoder_cross_kv_model.onnx'),
-          decoderUrl: await toLocator('decoder_with_past_model.onnx'),
+          ...(encoderDataUrl ? { encoderDataUrl } : {}),
+          ...(hasOffline
+            ? {
+                crossKvUrl: await toLocator('decoder_cross_kv_model.onnx'),
+                ...(crossKvDataUrl ? { crossKvDataUrl } : {}),
+                decoderUrl: await toLocator('decoder_with_past_model.onnx'),
+                ...(decoderDataUrl ? { decoderDataUrl } : {}),
+              }
+            : {}),
           tokenizerUrl,
-          generationUrl: await toLocator('generation_config.json'),
-          receiptUrl: await toLocator('export-receipt.json'),
+          generationUrl: findLocalEntry(options.entries, 'generation_config.json')
+            ? await toLocator('generation_config.json')
+            : undefined,
+          receiptUrl: findLocalEntry(options.entries, 'export-receipt.json')
+            ? await toLocator('export-receipt.json')
+            : undefined,
           encoderBackend: options.encoderBackend,
           cpuThreads: options.cpuThreads,
           ...(streaming ? { streaming } : {}),
@@ -125,7 +170,7 @@ export const moonshineBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
         assetHandles,
         selection: {
           encoderName: 'encoder_model.onnx',
-          decoderName: 'decoder_with_past_model.onnx',
+          decoderName: hasOffline ? 'decoder_with_past_model.onnx' : 'decoder_step_model.onnx',
           tokenizerName: 'tokenizer.json',
           encoderQuant: 'fp32',
           decoderQuant: 'fp32',
