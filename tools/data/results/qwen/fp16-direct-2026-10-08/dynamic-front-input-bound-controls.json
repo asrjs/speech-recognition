@@ -1,0 +1,272 @@
+{
+  "status": "DYNAMIC_SCHEDULE_MEASURED_NOT_NUMERICAL_ACCEPTANCE",
+  "artifact_dir": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08\\dynamic-front",
+  "artifact": {
+    "artifact": "audio_front_model.onnx",
+    "bytes": 379381,
+    "sha256": "a808792b52381b45f2fae35fc33668e5ce89a0b7a165c075c6f87f06c66239d8",
+    "external_data": {
+      "artifact": "audio_front_model.onnx.data",
+      "bytes": 372749504,
+      "sha256": "caf31d1d04a91f91aa2fbcc26decb35605a0f19b9ae880992d908b93357abf16"
+    }
+  },
+  "source_sha256": "fcd714b3259fd5cc398ae8902af50bbc17cbf026c54e8ab7cd12b917be72f806",
+  "loop_count": 18,
+  "inputs": [
+    {
+      "name": "input_features",
+      "dtype": "FLOAT",
+      "dims": [
+        1,
+        128,
+        "frames"
+      ]
+    },
+    {
+      "name": "input_features_mask",
+      "dtype": "FLOAT",
+      "dims": [
+        1,
+        "frames"
+      ]
+    },
+    {
+      "name": "cu_seqlens",
+      "dtype": "INT32",
+      "dims": [
+        "boundaries"
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "audio_embeds",
+      "dtype": "FLOAT",
+      "dims": [
+        "audio_frames",
+        1024
+      ]
+    }
+  ],
+  "optimization": "all",
+  "providers": [
+    "CPUExecutionProvider"
+  ],
+  "controls": {
+    "1100": {
+      "feature_shape": [
+        1,
+        128,
+        1100
+      ],
+      "schedule": [
+        0,
+        104,
+        143
+      ],
+      "output_shape": [
+        143,
+        1024
+      ],
+      "surgery_vs_original_pytorch_fp16": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": true,
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "max_relative_error": 0.0,
+        "cosine_similarity": 1.0000000000000002,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      },
+      "onnx_vs_pytorch_fp16": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.007498776540160179,
+        "mean_abs_error": 4.411004750874799e-05,
+        "max_relative_error": 1234.534090909091,
+        "cosine_similarity": 0.9999559096695035,
+        "mismatch_count": 8066,
+        "first_divergent_index": 87
+      },
+      "onnx_vs_fp32_arithmetic_fp16_rounded_weight_input_control": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.000262383371591568,
+        "mean_abs_error": 1.1435855292883336e-05,
+        "max_relative_error": 20.296797708929965,
+        "cosine_similarity": 0.9999996070372239,
+        "mismatch_count": 110,
+        "first_divergent_index": 33902
+      },
+      "input_sha256": "1f633f05f6b41481b5d6faf4f8c855ee41907443aab2ea451a0fda646252de02",
+      "mask_sha256": "65b2c8f59142515d6c8c301cbdfce85740ca9e18d96e3e5b373a54bc8adeb916",
+      "schedule_sha256": "721416713a8a828cd2c4f27abbd3dae93e88f625a93414e08c52fcf72585e845"
+    },
+    "500": {
+      "feature_shape": [
+        1,
+        128,
+        500
+      ],
+      "schedule": [
+        0,
+        65
+      ],
+      "output_shape": [
+        65,
+        1024
+      ],
+      "surgery_vs_original_pytorch_fp16": {
+        "shape": [
+          65,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 66560,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": true,
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "max_relative_error": 0.0,
+        "cosine_similarity": 1.0000000000000002,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      },
+      "onnx_vs_pytorch_fp16": {
+        "shape": [
+          65,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 66560,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0011659367009997368,
+        "mean_abs_error": 3.138662964872196e-05,
+        "max_relative_error": 45.77690972222222,
+        "cosine_similarity": 0.9999949622563242,
+        "mismatch_count": 2696,
+        "first_divergent_index": 229
+      },
+      "onnx_vs_fp32_arithmetic_fp16_rounded_weight_input_control": {
+        "shape": [
+          65,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 66560,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0004697926342487335,
+        "mean_abs_error": 1.4233084658107268e-05,
+        "max_relative_error": 169.26657566302652,
+        "cosine_similarity": 0.9999991034616819,
+        "mismatch_count": 638,
+        "first_divergent_index": 1243
+      },
+      "input_sha256": "8848db35c23036bcd8dcc649af26f1f3ca2d61a2d69a0d42a0e06075e5856ff6",
+      "mask_sha256": "fa7f7489086d9581b3c9297ef4b915c9c160308ed0b81099e10da9015bbb7c9a",
+      "schedule_sha256": "c53406705e3509e60e2f5ba53d550997b8c60e63b979b77364b804331a7c6d0d"
+    },
+    "100": {
+      "feature_shape": [
+        1,
+        128,
+        100
+      ],
+      "schedule": [
+        0,
+        13
+      ],
+      "output_shape": [
+        13,
+        1024
+      ],
+      "surgery_vs_original_pytorch_fp16": {
+        "shape": [
+          13,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 13312,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": true,
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "max_relative_error": 0.0,
+        "cosine_similarity": 1.0,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      },
+      "onnx_vs_pytorch_fp16": {
+        "shape": [
+          13,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 13312,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.00015751272439956665,
+        "mean_abs_error": 1.98105386355853e-05,
+        "max_relative_error": 9.147600446428571,
+        "cosine_similarity": 0.9999989721110468,
+        "mismatch_count": 23,
+        "first_divergent_index": 80
+      },
+      "onnx_vs_fp32_arithmetic_fp16_rounded_weight_input_control": {
+        "shape": [
+          13,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 13312,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": true,
+        "max_abs_error": 8.537247776985168e-05,
+        "mean_abs_error": 1.0628909077052658e-05,
+        "max_relative_error": 20.375310945273633,
+        "cosine_similarity": 0.9999997039116054,
+        "mismatch_count": 0,
+        "first_divergent_index": null
+      },
+      "input_sha256": "395864564fcbe65750b24e773703737350df7f790cc85938ca7cc5befe94aa85",
+      "mask_sha256": "05905ad62f9c3f2a56537ee0206ed50fb9a75a64e000694245fcce0b6cd4c3c3",
+      "schedule_sha256": "53dd18d822a4775654818d283434d29d339011017c7dfcfff2749b98ed93d116"
+    }
+  },
+  "hypothesis": "CPU ORT execution differs from native fp16 rounding; comparing the same half-rounded weights and inputs under fp32 arithmetic discriminates compute precision from weight changes.",
+  "command": [
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+    "-c",
+    "\nimport sys,json,gc,hashlib\nfrom pathlib import Path\nimport torch,numpy as np,onnx,onnxruntime as ort\nwt=Path('U:/parallel-agents/qwen-fp16-wt');main=Path('N:/github/asrjs/speech-recognition');base=wt/'models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08';out=base/'dynamic-front';out.mkdir(exist_ok=False)\nsys.path.insert(0,str(wt/'tools/qwen3-asr-onnx-export'));sys.path.insert(0,str(main/'tools'))\nfrom export_qwen3_asr_fp16 import load,request_for,export_front,DynamicWindowAttention,_digest\nfrom capture_cu_seqlens import capture_schedule\nfrom tensor_parity import compare_tensors\ndef metric(a,b):return compare_tensors(np.asarray(a,dtype=np.float32),np.asarray(b,dtype=np.float32),atol=1e-4,rtol=1e-3)\nm,p=load(main/'.cache/qwen3-asr-0.6b')\nfull=request_for(p,main/'tools/data/fixtures/audio/jfk-short.wav');short=request_for(p,base/'complete-set/diagnostic-tensors/jfk-first5s.wav')\ninputs={1100:(full['input_features'].float(),full['input_features_mask'].float()),500:(short['input_features'].float(),short['input_features_mask'].float()),100:(full['input_features'][:,:,:100].float().contiguous(),full['input_features_mask'][:,:100].float().contiguous())}\nschedules={n:capture_schedule(m,f.to(torch.float16),mask) for n,(f,mask) in inputs.items()}\noriginals=[layer.self_attn for layer in m.model.audio_tower.layers]\nartifact=export_front(m,*inputs[1100],schedules[1100],out)\nassert all(layer.self_attn is old for layer,old in zip(m.model.audio_tower.layers,originals))\ndef audio(f,mask,schedule):\n with torch.no_grad():return m.model.multi_modal_projector(m.model.audio_tower(f,mask,cu_seqlens=schedule).last_hidden_state).float().numpy()\nreference={n:audio(f.to(torch.float16),mask,schedules[n]) for n,(f,mask) in inputs.items()}\ntry:\n for layer,old in zip(m.model.audio_tower.layers,originals):layer.self_attn=DynamicWindowAttention(old).eval()\n surgery={n:audio(f.to(torch.float16),mask,schedules[n]) for n,(f,mask) in inputs.items()}\nfinally:\n for layer,old in zip(m.model.audio_tower.layers,originals):layer.self_attn=old\noptions=ort.SessionOptions();options.graph_optimization_level=ort.GraphOptimizationLevel.ORT_ENABLE_ALL\nsession=ort.InferenceSession(str(out/'audio_front_model.onnx'),options,providers=['CPUExecutionProvider'])\nproduced={n:session.run(None,{'input_features':f.numpy(),'input_features_mask':mask.numpy(),'cu_seqlens':schedules[n].numpy()})[0] for n,(f,mask) in inputs.items()}\n# Control only: retain exactly the fp16-rounded parameters, but use fp32 arithmetic.\n# This is not the original fp32 checkpoint oracle.\nm.float()\ncontrol={n:audio(f.half().float(),mask,schedules[n]) for n,(f,mask) in inputs.items()}\nrows={}\nfor n,(f,mask) in inputs.items():\n np.save(out/f'features-{n}.npy',f.numpy());np.save(out/f'mask-{n}.npy',mask.numpy());schedules[n].numpy().tofile(out/f'schedule-{n}.bin')\n rows[n]={'feature_shape':list(f.shape),'schedule':schedules[n].tolist(),'output_shape':list(produced[n].shape),'surgery_vs_original_pytorch_fp16':metric(reference[n],surgery[n]),'onnx_vs_pytorch_fp16':metric(reference[n],produced[n]),'onnx_vs_fp32_arithmetic_fp16_rounded_weight_input_control':metric(control[n],produced[n]),'input_sha256':_digest(out/f'features-{n}.npy'),'mask_sha256':_digest(out/f'mask-{n}.npy'),'schedule_sha256':_digest(out/f'schedule-{n}.bin')}\ngraph=onnx.load(str(out/'audio_front_model.onnx'),load_external_data=False)\ndef count_loops(g):return sum(int(node.op_type=='Loop')+sum(count_loops(a.g) for a in node.attribute if a.HasField('g')) for node in g.node)\ndef entry(v):return {'name':v.name,'dtype':onnx.TensorProto.DataType.Name(v.type.tensor_type.elem_type),'dims':[d.dim_param or d.dim_value for d in v.type.tensor_type.shape.dim]}\nprint(json.dumps({'status':'DYNAMIC_SCHEDULE_MEASURED_NOT_NUMERICAL_ACCEPTANCE','artifact_dir':str(out),'artifact':artifact,'source_sha256':_digest(wt/'tools/qwen3-asr-onnx-export/export_qwen3_asr_fp16.py'),'loop_count':count_loops(graph.graph),'inputs':[entry(v) for v in graph.graph.input],'outputs':[entry(v) for v in graph.graph.output],'optimization':'all','providers':session.get_providers(),'controls':rows,'hypothesis':'CPU ORT execution differs from native fp16 rounding; comparing the same half-rounded weights and inputs under fp32 arithmetic discriminates compute precision from weight changes.'},indent=2))\n"
+  ]
+}

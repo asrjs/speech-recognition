@@ -1,0 +1,77 @@
+{
+  "command": [
+    "node",
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/scripts/transcribe_qwen3_asr_local.mjs",
+    "--model-dir=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/dynamic-front",
+    "--opt-level=all",
+    "--features=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/dynamic-front/features-500.npy",
+    "--features-mask=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/dynamic-front/mask-500.npy",
+    "--cu-seqlens=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/dynamic-front/schedule-500.bin"
+  ],
+  "exit_code": 0,
+  "stdout": "{\"status\":\"RUN_COMPLETED_NOT_MODEL_ACCEPTANCE\",\"backend\":{\"id\":\"cpu\",\"engine\":\"onnxruntime-node\"},\"metrics\":{\"totalMs\":2214.455,\"audioFrames\":65,\"promptLength\":80,\"decodeSteps\":14,\"emittedTokenCount\":13},\"transcript\":{\"canonical\":{\"text\":\"And so, my fellow Americans, ask not.\",\"tokens\":[{\"id\":11528},{\"id\":6364},{\"id\":151704},{\"id\":3036},{\"id\":773},{\"id\":11},{\"id\":847},{\"id\":12357},{\"id\":8877},{\"id\":11},{\"id\":2548},{\"id\":537},{\"id\":13}]},\"warnings\":[]}}\n",
+  "stderr": "",
+  "result": {
+    "status": "RUN_COMPLETED_NOT_MODEL_ACCEPTANCE",
+    "backend": {
+      "id": "cpu",
+      "engine": "onnxruntime-node"
+    },
+    "metrics": {
+      "totalMs": 2214.455,
+      "audioFrames": 65,
+      "promptLength": 80,
+      "decodeSteps": 14,
+      "emittedTokenCount": 13
+    },
+    "transcript": {
+      "canonical": {
+        "text": "And so, my fellow Americans, ask not.",
+        "tokens": [
+          {
+            "id": 11528
+          },
+          {
+            "id": 6364
+          },
+          {
+            "id": 151704
+          },
+          {
+            "id": 3036
+          },
+          {
+            "id": 773
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 847
+          },
+          {
+            "id": 12357
+          },
+          {
+            "id": 8877
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 2548
+          },
+          {
+            "id": 537
+          },
+          {
+            "id": 13
+          }
+        ]
+      },
+      "warnings": []
+    }
+  },
+  "text_match": true,
+  "tokens_without_eos_match": true
+}

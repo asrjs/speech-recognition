@@ -1,0 +1,81 @@
+{
+  "environment": {
+    "python": "3.11.4 (tags/v3.11.4:d2340ef, Jun  7 2023, 05:45:37) [MSC v.1934 64 bit (AMD64)]",
+    "torch": "2.14.1+cpu",
+    "transformers": "5.18.0"
+  },
+  "checkpoint_files": {
+    "chat_template.jinja": {
+      "bytes": 1434,
+      "sha256": "f50e6b694fbf4a683206e37869990d68333fe95d285730f084c838a34b0d98c2"
+    },
+    "config.json": {
+      "bytes": 2398,
+      "sha256": "9eecf6f1b383e343889c2e6010e632590fa57d4bc678e151c7d6a160a0dfb04a"
+    },
+    "generation_config.json": {
+      "bytes": 165,
+      "sha256": "9939fc9388b79bd70757f938b87381e817173d6a6158f5af6506c0b73e775c3c"
+    },
+    "librivox_ref.json": {
+      "bytes": 4780,
+      "sha256": "3b8a77385999f9aa35e48f068bef61dc19e4496b3d654622a6a6d9cd2c9de625"
+    },
+    "model.safetensors": {
+      "bytes": 1564928088,
+      "sha256": "d3f212dd20abecd315d830bc54ae3865e56ebfc3276484e57b771288ba27fd35"
+    },
+    "processor_config.json": {
+      "bytes": 487,
+      "sha256": "bc0b230081b44e629dd5b9045b78495615c1831b4b9f4cffe97bd37e82a6156a"
+    },
+    "tokenizer.json": {
+      "bytes": 11429653,
+      "sha256": "fe1fad59be22a41ee293363fcf95fdedbc7c93f3b49270b1d2e18bd1399a7a05"
+    },
+    "tokenizer_config.json": {
+      "bytes": 998,
+      "sha256": "945e980986de2ca7768f3326bfdbb4fbea3406f972b8ae0be233089f2b253c11"
+    }
+  },
+  "embedding_module": "Conv2d",
+  "embedding_dtype": "torch.float16",
+  "has_conv1": false,
+  "controls": [
+    {
+      "features_dtype": "torch.float32",
+      "mask_dtype": "torch.float32",
+      "status": "FAIL",
+      "error": "RuntimeError('Input type (float) and bias type (struct c10::Half) should be the same')"
+    },
+    {
+      "features_dtype": "torch.float16",
+      "mask_dtype": "torch.float32",
+      "status": "PASS",
+      "shape": [
+        13,
+        1024
+      ],
+      "finite": true
+    },
+    {
+      "features_dtype": "torch.float16",
+      "mask_dtype": "torch.float16",
+      "status": "PASS",
+      "shape": [
+        13,
+        1024
+      ],
+      "finite": true
+    }
+  ],
+  "fp32_mask_vs_fp16_mask_max_abs": 0.0,
+  "execution": {
+    "command": [
+      "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+      "-c",
+      "\nimport torch, transformers, json, hashlib, sys\nfrom pathlib import Path\nroot=Path('N:/github/asrjs/speech-recognition/.cache/qwen3-asr-0.6b')\ndef sha(p):\n h=hashlib.sha256()\n with p.open('rb') as f:\n  for x in iter(lambda:f.read(8388608),b''):h.update(x)\n return h.hexdigest()\nm=transformers.AutoModelForMultimodalLM.from_pretrained(root,dtype=torch.float16,attn_implementation='eager',local_files_only=True).eval()\nt=m.model.audio_tower\nfeatures=torch.zeros(1,128,100,dtype=torch.float32); mask=torch.ones(1,100,dtype=torch.float32)\nrows=[]; outputs=[]\nfor fd,md in [(torch.float32,torch.float32),(torch.float16,torch.float32),(torch.float16,torch.float16)]:\n try:\n  with torch.no_grad(): out=m.model.multi_modal_projector(t(features.to(fd),mask.to(md)).last_hidden_state).float()\n  rows.append({'features_dtype':str(fd),'mask_dtype':str(md),'status':'PASS','shape':list(out.shape),'finite':bool(torch.isfinite(out).all())});outputs.append(out)\n except Exception as e: rows.append({'features_dtype':str(fd),'mask_dtype':str(md),'status':'FAIL','error':repr(e)})\nprint(json.dumps({'environment':{'python':sys.version,'torch':torch.__version__,'transformers':transformers.__version__},'checkpoint_files':{p.name:{'bytes':p.stat().st_size,'sha256':sha(p)} for p in root.iterdir() if p.is_file()},'embedding_module':type(t.get_input_embeddings()).__name__,'embedding_dtype':str(t.get_input_embeddings().weight.dtype),'has_conv1':hasattr(t,'conv1'),'controls':rows,'fp32_mask_vs_fp16_mask_max_abs':float((outputs[0]-outputs[1]).abs().max()) if len(outputs)==2 else None},indent=2))\n"
+    ],
+    "exit_code": 0
+  }
+}

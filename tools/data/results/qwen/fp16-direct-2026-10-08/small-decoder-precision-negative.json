@@ -1,0 +1,90 @@
+{
+  "status": "NUMERICAL_GATE_FAIL",
+  "command": [
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+    "-c",
+    "\nimport sys,json,tempfile, numpy as np,torch,onnxruntime as ort\nsys.path.insert(0,'U:/parallel-agents/qwen-fp16-wt/tools/qwen3-asr-onnx-export')\nfrom test_qwen3_asr_fp16_export import SmallQwen\nfrom export_qwen3_asr_fp16 import Float32DecoderStep,export_decoder\nfrom pathlib import Path\ntorch.manual_seed(17);m=SmallQwen().eval();step=Float32DecoderStep(m).eval()\nembeds=np.random.default_rng(91).normal(0,0.1,(1,2,64)).astype(np.float32);past=np.zeros((2,1,2,0,16),dtype=np.float32)\nwith torch.no_grad(): expected=step(torch.from_numpy(embeds),torch.from_numpy(past),torch.from_numpy(past))\nrows=[]\nwith tempfile.TemporaryDirectory() as d:\n export_decoder(m,Path(d))\n for name,level in [('disabled',ort.GraphOptimizationLevel.ORT_DISABLE_ALL),('basic',ort.GraphOptimizationLevel.ORT_ENABLE_BASIC),('extended',ort.GraphOptimizationLevel.ORT_ENABLE_EXTENDED),('all',ort.GraphOptimizationLevel.ORT_ENABLE_ALL)]:\n  options=ort.SessionOptions();options.graph_optimization_level=level\n  s=ort.InferenceSession(str(Path(d)/'decoder_step_model.onnx'),options,providers=['CPUExecutionProvider']);out=s.run(None,{'inputs_embeds':embeds,'past_key':past,'past_value':past})\n  rows.append({'optimization':name,'outputs':[{'max_abs':float(np.abs(a-b.numpy()).max()),'mean_abs':float(np.abs(a-b.numpy()).mean()),'allclose_atol_1e-4_rtol_1e-3':bool(np.allclose(a,b.numpy(),atol=1e-4,rtol=1e-3))} for a,b in zip(out,expected)]})\nprint(json.dumps(rows,indent=2))\n"
+  ],
+  "results": [
+    {
+      "optimization": "disabled",
+      "outputs": [
+        {
+          "max_abs": 0.0007531642913818359,
+          "mean_abs": 0.00024106141063384712,
+          "allclose_atol_1e-4_rtol_1e-3": false
+        },
+        {
+          "max_abs": 0.001953125,
+          "mean_abs": 0.0002484321594238281,
+          "allclose_atol_1e-4_rtol_1e-3": false
+        },
+        {
+          "max_abs": 0.000244140625,
+          "mean_abs": 4.424341022968292e-05,
+          "allclose_atol_1e-4_rtol_1e-3": true
+        }
+      ]
+    },
+    {
+      "optimization": "basic",
+      "outputs": [
+        {
+          "max_abs": 0.0007531642913818359,
+          "mean_abs": 0.00024105701595544815,
+          "allclose_atol_1e-4_rtol_1e-3": false
+        },
+        {
+          "max_abs": 0.001953125,
+          "mean_abs": 0.0002484321594238281,
+          "allclose_atol_1e-4_rtol_1e-3": false
+        },
+        {
+          "max_abs": 0.000244140625,
+          "mean_abs": 4.424341022968292e-05,
+          "allclose_atol_1e-4_rtol_1e-3": true
+        }
+      ]
+    },
+    {
+      "optimization": "extended",
+      "outputs": [
+        {
+          "max_abs": 0.0007531642913818359,
+          "mean_abs": 0.00024105701595544815,
+          "allclose_atol_1e-4_rtol_1e-3": false
+        },
+        {
+          "max_abs": 0.001953125,
+          "mean_abs": 0.0002484321594238281,
+          "allclose_atol_1e-4_rtol_1e-3": false
+        },
+        {
+          "max_abs": 0.000244140625,
+          "mean_abs": 4.424341022968292e-05,
+          "allclose_atol_1e-4_rtol_1e-3": true
+        }
+      ]
+    },
+    {
+      "optimization": "all",
+      "outputs": [
+        {
+          "max_abs": 0.0007531642913818359,
+          "mean_abs": 0.00024105844204314053,
+          "allclose_atol_1e-4_rtol_1e-3": false
+        },
+        {
+          "max_abs": 0.001953125,
+          "mean_abs": 0.0002484321594238281,
+          "allclose_atol_1e-4_rtol_1e-3": false
+        },
+        {
+          "max_abs": 0.000244140625,
+          "mean_abs": 4.424341022968292e-05,
+          "allclose_atol_1e-4_rtol_1e-3": true
+        }
+      ]
+    }
+  ]
+}

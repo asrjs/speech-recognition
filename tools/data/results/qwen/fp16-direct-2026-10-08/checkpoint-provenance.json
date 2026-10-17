@@ -1,0 +1,54 @@
+{
+  "status": "OFFICIAL_REVISION_CONTENT_MATCH",
+  "repository": "Qwen/Qwen3-ASR-0.6B-hf",
+  "revision": "7f1569a48a89f3e3f4dc3a5c9d28bddd903bc76c",
+  "source_url": "https://huggingface.co/api/models/Qwen/Qwen3-ASR-0.6B-hf?blobs=true",
+  "local_root": "N:/github/asrjs/speech-recognition/.cache/qwen3-asr-0.6b",
+  "config_git_blob_sha1": {
+    "config.json": "3b4221f651b59ec21f545e5852b4d6cb23420b09",
+    "processor_config.json": "a07dff48032bed341260501d6688036c6fd7f3ef",
+    "tokenizer_config.json": "aa62b6c06ab8a704dc0895420fb1d2515954a49c",
+    "generation_config.json": "3ed98c80087572bad932a83279c5602e58bbfc5c",
+    "chat_template.jinja": "491fff331513a97316daf53591c7b9b9da53ef8c"
+  },
+  "local_sha256": {
+    "chat_template.jinja": {
+      "bytes": 1434,
+      "sha256": "f50e6b694fbf4a683206e37869990d68333fe95d285730f084c838a34b0d98c2"
+    },
+    "config.json": {
+      "bytes": 2398,
+      "sha256": "9eecf6f1b383e343889c2e6010e632590fa57d4bc678e151c7d6a160a0dfb04a"
+    },
+    "generation_config.json": {
+      "bytes": 165,
+      "sha256": "9939fc9388b79bd70757f938b87381e817173d6a6158f5af6506c0b73e775c3c"
+    },
+    "librivox_ref.json": {
+      "bytes": 4780,
+      "sha256": "3b8a77385999f9aa35e48f068bef61dc19e4496b3d654622a6a6d9cd2c9de625"
+    },
+    "model.safetensors": {
+      "bytes": 1564928088,
+      "sha256": "d3f212dd20abecd315d830bc54ae3865e56ebfc3276484e57b771288ba27fd35"
+    },
+    "processor_config.json": {
+      "bytes": 487,
+      "sha256": "bc0b230081b44e629dd5b9045b78495615c1831b4b9f4cffe97bd37e82a6156a"
+    },
+    "tokenizer.json": {
+      "bytes": 11429653,
+      "sha256": "fe1fad59be22a41ee293363fcf95fdedbc7c93f3b49270b1d2e18bd1399a7a05"
+    },
+    "tokenizer_config.json": {
+      "bytes": 998,
+      "sha256": "945e980986de2ca7768f3326bfdbb4fbea3406f972b8ae0be233089f2b253c11"
+    }
+  },
+  "bound_lfs_files": [
+    "model.safetensors",
+    "tokenizer.json"
+  ],
+  "model_parameters": 782426112,
+  "note": "All local original checkpoint/config/processor/tokenizer files match the official revision by LFS SHA-256 or Git blob SHA-1; local librivox_ref.json is a diagnostic, not an upstream model file."
+}

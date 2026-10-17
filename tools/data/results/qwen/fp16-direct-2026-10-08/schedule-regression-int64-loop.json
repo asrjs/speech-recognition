@@ -1,0 +1,10 @@
+{
+  "command": [
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+    "U:/parallel-agents/qwen-fp16-wt/tools/qwen3-asr-onnx-export/test_qwen3_asr_fp16_export.py",
+    "EncoderScheduleTests"
+  ],
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\transformers5\\Lib\\site-packages\\torch\\jit\\_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.\n  warnings.warn(\nU:\\parallel-agents\\qwen-fp16-wt\\tools\\qwen3-asr-onnx-export\\export_qwen3_asr_fp16.py:187: DeprecationWarning: You are using the legacy TorchScript-based ONNX export. Starting in PyTorch 2.9, the new torch.export-based ONNX exporter has become the default. Learn more about the new export logic: https://docs.pytorch.org/docs/stable/onnx_export.html. For exporting control flow: https://pytorch.org/tutorials/beginner/onnx/export_control_flow_model_to_onnx_tutorial.html\n  torch.onnx.export(\nN:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\transformers5\\Lib\\site-packages\\torch\\onnx\\_internal\\torchscript_exporter\\utils.py:218: DeprecationWarning: The feature will be removed. Please remove usage of this function\n  setup_onnx_logging(verbose) as log_ctx,\nN:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\transformers5\\Lib\\site-packages\\transformers\\models\\qwen3_asr\\modeling_qwen3_asr.py:382: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!\n  if padded_feature_length % chunk_len != 0:\n.\n----------------------------------------------------------------------\nRan 1 test in 0.621s\n\nOK\n"
+}

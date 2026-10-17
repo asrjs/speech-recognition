@@ -1,0 +1,68 @@
+{
+  "command": [
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+    "-c",
+    "\nimport sys,json,torch\nfrom pathlib import Path\nsys.path.insert(0,'U:/parallel-agents/qwen-fp16-wt/tools/qwen3-asr-onnx-export')\nfrom export_qwen3_asr_fp16 import load,request_for\nm,p=load(Path('N:/github/asrjs/speech-recognition/.cache/qwen3-asr-0.6b'))\nrows=[]\nfor name,path in [('jfk','N:/github/asrjs/speech-recognition/tools/data/fixtures/audio/jfk-short.wav'),('jfk-first5s','U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/complete-set/diagnostic-tensors/jfk-first5s.wav')]:\n inputs=request_for(p,Path(path));inputs['input_features']=inputs['input_features'].to(torch.float16)\n with torch.no_grad(): out=m.generate(**inputs,max_new_tokens=256)\n ids=out[:,inputs['input_ids'].shape[1]:]\n rows.append({'fixture':name,'text':p.decode(ids,return_format='transcription_only')[0],'tokens_including_eos':ids[0].tolist()})\nprint(json.dumps(rows,indent=2))\n"
+  ],
+  "exit_code": 0,
+  "stdout": "[\n  {\n    \"fixture\": \"jfk\",\n    \"text\": \"And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.\",\n    \"tokens_including_eos\": [\n      11528,\n      6364,\n      151704,\n      3036,\n      773,\n      11,\n      847,\n      12357,\n      8877,\n      11,\n      2548,\n      537,\n      1128,\n      697,\n      3146,\n      646,\n      653,\n      369,\n      498,\n      26,\n      2548,\n      1128,\n      498,\n      646,\n      653,\n      369,\n      697,\n      3146,\n      13,\n      151645\n    ]\n  },\n  {\n    \"fixture\": \"jfk-first5s\",\n    \"text\": \"And so, my fellow Americans, ask not.\",\n    \"tokens_including_eos\": [\n      11528,\n      6364,\n      151704,\n      3036,\n      773,\n      11,\n      847,\n      12357,\n      8877,\n      11,\n      2548,\n      537,\n      13,\n      151645\n    ]\n  }\n]\n",
+  "stderr": "\nLoading weights:   0%|          | 0/611 [00:00<?, ?it/s]\nLoading weights:  14%|\u2588\u258d        | 86/611 [00:00<00:00, 855.02it/s]\nLoading weights:  28%|\u2588\u2588\u258a       | 172/611 [00:00<00:00, 665.13it/s]\nLoading weights:  40%|\u2588\u2588\u2588\u2589      | 242/611 [00:00<00:00, 611.15it/s]\nLoading weights:  50%|\u2588\u2588\u2588\u2588\u2589     | 305/611 [00:00<00:01, 263.27it/s]\nLoading weights:  57%|\u2588\u2588\u2588\u2588\u2588\u258b    | 348/611 [00:01<00:00, 277.52it/s]\nLoading weights:  64%|\u2588\u2588\u2588\u2588\u2588\u2588\u258e   | 388/611 [00:01<00:00, 278.75it/s]\nLoading weights:  69%|\u2588\u2588\u2588\u2588\u2588\u2588\u2589   | 424/611 [00:01<00:00, 276.34it/s]\nLoading weights:  75%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d  | 457/611 [00:01<00:00, 274.87it/s]\nLoading weights:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589  | 488/611 [00:01<00:00, 271.13it/s]\nLoading weights:  85%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d | 518/611 [00:01<00:00, 269.51it/s]\nLoading weights:  90%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589 | 547/611 [00:01<00:00, 268.37it/s]\nLoading weights:  94%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d| 576/611 [00:01<00:00, 268.46it/s]\nLoading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589| 610/611 [00:01<00:00, 286.84it/s]\nLoading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 611/611 [00:01<00:00, 312.24it/s]\n[transformers] Kwargs passed to `processor.__call__` have to be in `processor_kwargs` dict, not in `**kwargs`\n[transformers] Kwargs passed to `processor.__call__` have to be in `processor_kwargs` dict, not in `**kwargs`\n",
+  "results": [
+    {
+      "fixture": "jfk",
+      "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+      "tokens_including_eos": [
+        11528,
+        6364,
+        151704,
+        3036,
+        773,
+        11,
+        847,
+        12357,
+        8877,
+        11,
+        2548,
+        537,
+        1128,
+        697,
+        3146,
+        646,
+        653,
+        369,
+        498,
+        26,
+        2548,
+        1128,
+        498,
+        646,
+        653,
+        369,
+        697,
+        3146,
+        13,
+        151645
+      ]
+    },
+    {
+      "fixture": "jfk-first5s",
+      "text": "And so, my fellow Americans, ask not.",
+      "tokens_including_eos": [
+        11528,
+        6364,
+        151704,
+        3036,
+        773,
+        11,
+        847,
+        12357,
+        8877,
+        11,
+        2548,
+        537,
+        13,
+        151645
+      ]
+    }
+  ]
+}

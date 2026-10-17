@@ -1,0 +1,39 @@
+{
+  "command": [
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/scripts/qwen3_asr_reference.py",
+    "--model-dir=N:/github/asrjs/speech-recognition/.cache/qwen3-asr-0.6b",
+    "--audio=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/complete-set/diagnostic-tensors/jfk-first5s.wav"
+  ],
+  "exit_code": 0,
+  "stdout": "{\n  \"audio\": \"U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/complete-set/diagnostic-tensors/jfk-first5s.wav\",\n  \"samples\": 80000,\n  \"raw\": \"language English<asr_text>And so, my fellow Americans, ask not.<|im_end|>\",\n  \"parsed\": {\n    \"language\": \"English\",\n    \"transcription\": \"And so, my fellow Americans, ask not.\"\n  },\n  \"transcription\": \"And so, my fellow Americans, ask not.\",\n  \"token_ids\": [\n    11528,\n    6364,\n    151704,\n    3036,\n    773,\n    11,\n    847,\n    12357,\n    8877,\n    11,\n    2548,\n    537,\n    13,\n    151645\n  ],\n  \"encoderFrames\": 500,\n  \"note\": \"reference capture from the official implementation; not human ground truth\"\n}\n",
+  "stderr": "\nLoading weights:   0%|          | 0/611 [00:00<?, ?it/s]\nLoading weights:  14%|\u2588\u258d        | 85/611 [00:00<00:00, 836.99it/s]\nLoading weights:  28%|\u2588\u2588\u258a       | 169/611 [00:00<00:00, 610.10it/s]\nLoading weights:  38%|\u2588\u2588\u2588\u258a      | 234/611 [00:00<00:00, 585.04it/s]\nLoading weights:  48%|\u2588\u2588\u2588\u2588\u258a     | 295/611 [00:00<00:00, 320.90it/s]\nLoading weights:  55%|\u2588\u2588\u2588\u2588\u2588\u258c    | 339/611 [00:01<00:01, 238.11it/s]\nLoading weights:  61%|\u2588\u2588\u2588\u2588\u2588\u2588    | 372/611 [00:01<00:00, 240.68it/s]\nLoading weights:  66%|\u2588\u2588\u2588\u2588\u2588\u2588\u258c   | 403/611 [00:01<00:00, 244.01it/s]\nLoading weights:  71%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588   | 432/611 [00:01<00:00, 244.06it/s]\nLoading weights:  75%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c  | 460/611 [00:01<00:00, 242.04it/s]\nLoading weights:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589  | 487/611 [00:01<00:00, 243.23it/s]\nLoading weights:  84%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d | 513/611 [00:01<00:00, 246.67it/s]\nLoading weights:  88%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a | 539/611 [00:01<00:00, 234.95it/s]\nLoading weights:  92%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f| 564/611 [00:01<00:00, 229.02it/s]\nLoading weights:  96%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c| 588/611 [00:02<00:00, 216.91it/s]\nLoading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 611/611 [00:02<00:00, 279.29it/s]\n[transformers] Kwargs passed to `processor.__call__` have to be in `processor_kwargs` dict, not in `**kwargs`\n",
+  "oracle": {
+    "audio": "U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/complete-set/diagnostic-tensors/jfk-first5s.wav",
+    "samples": 80000,
+    "raw": "language English<asr_text>And so, my fellow Americans, ask not.<|im_end|>",
+    "parsed": {
+      "language": "English",
+      "transcription": "And so, my fellow Americans, ask not."
+    },
+    "transcription": "And so, my fellow Americans, ask not.",
+    "token_ids": [
+      11528,
+      6364,
+      151704,
+      3036,
+      773,
+      11,
+      847,
+      12357,
+      8877,
+      11,
+      2548,
+      537,
+      13,
+      151645
+    ],
+    "encoderFrames": 500,
+    "note": "reference capture from the official implementation; not human ground truth"
+  }
+}

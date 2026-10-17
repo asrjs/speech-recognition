@@ -1,0 +1,63 @@
+{
+  "status": "UNCHANGED_DECODER_EMBED_SUPPORT_REUSED_HASH_VERIFIED",
+  "source": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08\\complete-set",
+  "target": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08\\dynamic-front",
+  "files": [
+    {
+      "name": "decoder_step_model.onnx",
+      "bytes": 1566761,
+      "sha256": "d7156f8b8e2f353b1745144242315a531827fc6310d766195309394e2fd00cc6"
+    },
+    {
+      "name": "decoder_step_model.onnx.data",
+      "bytes": 1192085504,
+      "sha256": "97f4adc3944c10e1f72ffb60455d8ac53fac5b7c71ceab9887fbcc5cc79a0612"
+    },
+    {
+      "name": "embed_tokens_model.onnx",
+      "bytes": 333,
+      "sha256": "a03961b7b0295d4402c3ff31832d5f8ec21d54da416af185577057c2bca9ce4c"
+    },
+    {
+      "name": "embed_tokens_model.onnx.data",
+      "bytes": 311164928,
+      "sha256": "e80150119fa5f7e56e85aed64c3a02d5c78eb7a37cfdcb973d0987316f15bee2"
+    },
+    {
+      "name": "prompt_prefix_embeds.npy",
+      "bytes": 36992,
+      "sha256": "d4c560ae2138c19acd767f63af7a0cbd97ad74662b175901b4715666452abd26"
+    },
+    {
+      "name": "prompt_suffix_embeds.npy",
+      "bytes": 24704,
+      "sha256": "a2ae004ccf645e41b3ebc9c3c8cf4c55348197e5758c48a7056fb40d166c61d9"
+    },
+    {
+      "name": "jfk_features.npy",
+      "bytes": 563328,
+      "sha256": "1f633f05f6b41481b5d6faf4f8c855ee41907443aab2ea451a0fda646252de02"
+    },
+    {
+      "name": "jfk_features_mask.npy",
+      "bytes": 4528,
+      "sha256": "65b2c8f59142515d6c8c301cbdfce85740ca9e18d96e3e5b373a54bc8adeb916"
+    },
+    {
+      "name": "jfk_cu_seqlens.bin",
+      "bytes": 12,
+      "sha256": "721416713a8a828cd2c4f27abbd3dae93e88f625a93414e08c52fcf72585e845"
+    },
+    {
+      "name": "tokenizer.json",
+      "bytes": 11429653,
+      "sha256": "fe1fad59be22a41ee293363fcf95fdedbc7c93f3b49270b1d2e18bd1399a7a05"
+    }
+  ],
+  "note": "Only the frontend was re-exported. Copies make the existing unmodified Node runner consume the dynamic frontend with unchanged decoder/embed/support.",
+  "command": [
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+    "-c",
+    "\nimport shutil,json,hashlib\nfrom pathlib import Path\nbase=Path('U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08');source=base/'complete-set';target=base/'dynamic-front';r=json.loads((source/'fp16-export-receipt.json').read_text());expected={}\nfor name in ['decoder','embed']:\n g=r['graphs'][name]\n for entry in [g,g['external_data']]:expected[entry['artifact']]=entry['sha256']\nexpected.update({n:v['sha256'] for n,v in r['support']['files'].items()})\ndef sha(p):\n h=hashlib.sha256()\n with p.open('rb') as f:\n  for b in iter(lambda:f.read(8388608),b''):h.update(b)\n return h.hexdigest()\nrows=[]\nfor name,digest in expected.items():\n destination=target/name\n if destination.exists():raise ValueError('Refusing to overwrite '+str(destination))\n shutil.copyfile(source/name,destination)\n actual=sha(destination)\n assert actual==digest\n rows.append({'name':name,'bytes':destination.stat().st_size,'sha256':actual})\nprint(json.dumps({'status':'UNCHANGED_DECODER_EMBED_SUPPORT_REUSED_HASH_VERIFIED','source':str(source),'target':str(target),'files':rows,'note':'Only the frontend was re-exported. Copies make the existing unmodified Node runner consume the dynamic frontend with unchanged decoder/embed/support.'},indent=2))\n"
+  ]
+}

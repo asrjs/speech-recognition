@@ -1,0 +1,308 @@
+{
+  "status": "HASH_BOUND_NOT_MODEL_ACCEPTANCE",
+  "artifact_root": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08\\complete-set",
+  "files": {
+    "audio_front_model.onnx": {
+      "bytes": 1675021,
+      "sha256": "bd02a2c129ab6d0e00934e2178b5a1cea6aa8dbbc330ccd70b61adcd7c523d3a"
+    },
+    "audio_front_model.onnx.data": {
+      "bytes": 372796096,
+      "sha256": "5df227333d66d100223b290601f1f213026f1053ae83d63903f36467e7a00a84"
+    },
+    "decoder_step_model.onnx": {
+      "bytes": 1566761,
+      "sha256": "d7156f8b8e2f353b1745144242315a531827fc6310d766195309394e2fd00cc6"
+    },
+    "decoder_step_model.onnx.data": {
+      "bytes": 1192085504,
+      "sha256": "97f4adc3944c10e1f72ffb60455d8ac53fac5b7c71ceab9887fbcc5cc79a0612"
+    },
+    "embed_tokens_model.onnx": {
+      "bytes": 333,
+      "sha256": "a03961b7b0295d4402c3ff31832d5f8ec21d54da416af185577057c2bca9ce4c"
+    },
+    "embed_tokens_model.onnx.data": {
+      "bytes": 311164928,
+      "sha256": "e80150119fa5f7e56e85aed64c3a02d5c78eb7a37cfdcb973d0987316f15bee2"
+    },
+    "fp16-export-receipt.json": {
+      "bytes": 3137,
+      "sha256": "db57d74b2844c1660c11e25d5587d656700ed1f1332ca6a85f983bd8fa8abd19"
+    },
+    "jfk_cu_seqlens.bin": {
+      "bytes": 12,
+      "sha256": "721416713a8a828cd2c4f27abbd3dae93e88f625a93414e08c52fcf72585e845"
+    },
+    "jfk_features.npy": {
+      "bytes": 563328,
+      "sha256": "1f633f05f6b41481b5d6faf4f8c855ee41907443aab2ea451a0fda646252de02"
+    },
+    "jfk_features_mask.npy": {
+      "bytes": 4528,
+      "sha256": "65b2c8f59142515d6c8c301cbdfce85740ca9e18d96e3e5b373a54bc8adeb916"
+    },
+    "prompt_prefix_embeds.npy": {
+      "bytes": 36992,
+      "sha256": "d4c560ae2138c19acd767f63af7a0cbd97ad74662b175901b4715666452abd26"
+    },
+    "prompt_suffix_embeds.npy": {
+      "bytes": 24704,
+      "sha256": "a2ae004ccf645e41b3ebc9c3c8cf4c55348197e5758c48a7056fb40d166c61d9"
+    },
+    "tokenizer.json": {
+      "bytes": 11429653,
+      "sha256": "fe1fad59be22a41ee293363fcf95fdedbc7c93f3b49270b1d2e18bd1399a7a05"
+    }
+  },
+  "sources": {
+    "U:\\parallel-agents\\qwen-fp16-wt\\tools\\qwen3-asr-onnx-export\\export_qwen3_asr_fp16.py": "a441291db491427bd51149bedeba186dfbc106f01d6bac6b5439ece0b2728aa1",
+    "U:\\parallel-agents\\qwen-fp16-wt\\tools\\qwen3-asr-onnx-export\\test_qwen3_asr_fp16_export.py": "093caaba6638259ffa3d83dbc1ba8dd1ec77f79abb8289e169f1688fa19ebc44",
+    "U:\\parallel-agents\\qwen-fp16-wt\\tools\\qwen3-asr-onnx-export\\export_qwen3_asr_decoder.py": "6c060699ea08ac876820886ad1d6d466adaeabad3b4f64d0c04fb3c2f9ff5c66",
+    "U:\\parallel-agents\\qwen-fp16-wt\\tools\\qwen3-asr-onnx-export\\capture_cu_seqlens.py": "24f9878dcde5b7f18cee09a2ddd6ed886a4b7814894dc95f1c75870848e03e19",
+    "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\scripts\\transcribe_qwen3_asr_local.mjs": "4fe9ca893b4332d752eeae9a7d19841b6215a1035e279720d3f06777d6491c07"
+  },
+  "initializer_dtype_counts": {
+    "front": {
+      "FLOAT16": 307,
+      "FLOAT": 1,
+      "INT64": 15,
+      "BOOL": 1
+    },
+    "embed": {
+      "FLOAT16": 1
+    },
+    "decoder": {
+      "FLOAT16": 310
+    }
+  },
+  "graph_set_bytes": 1879288643,
+  "export_receipt": {
+    "dtype": "float16",
+    "builtFrom": "N:\\github\\asrjs\\speech-recognition\\.cache\\qwen3-asr-0.6b",
+    "reason": "Original-weight fp16 builder; fp32 floating I/O. Converted candidate /Concat_2 failed in Node ORT 1.25-dev and Python ORT 1.30 at past lengths 0 and 1. Node basic/extended loaded it; default all failed during fusion. Browser memory and provider acceptance remain unmeasured.",
+    "graphs": {
+      "front": {
+        "artifact": "audio_front_model.onnx",
+        "bytes": 1675021,
+        "sha256": "bd02a2c129ab6d0e00934e2178b5a1cea6aa8dbbc330ccd70b61adcd7c523d3a",
+        "external_data": {
+          "artifact": "audio_front_model.onnx.data",
+          "bytes": 372796096,
+          "sha256": "5df227333d66d100223b290601f1f213026f1053ae83d63903f36467e7a00a84"
+        }
+      },
+      "embed": {
+        "artifact": "embed_tokens_model.onnx",
+        "bytes": 333,
+        "sha256": "a03961b7b0295d4402c3ff31832d5f8ec21d54da416af185577057c2bca9ce4c",
+        "external_data": {
+          "artifact": "embed_tokens_model.onnx.data",
+          "bytes": 311164928,
+          "sha256": "e80150119fa5f7e56e85aed64c3a02d5c78eb7a37cfdcb973d0987316f15bee2"
+        }
+      },
+      "decoder": {
+        "artifact": "decoder_step_model.onnx",
+        "bytes": 1566761,
+        "sha256": "d7156f8b8e2f353b1745144242315a531827fc6310d766195309394e2fd00cc6",
+        "external_data": {
+          "artifact": "decoder_step_model.onnx.data",
+          "bytes": 1192085504,
+          "sha256": "97f4adc3944c10e1f72ffb60455d8ac53fac5b7c71ceab9887fbcc5cc79a0612"
+        }
+      }
+    },
+    "support": {
+      "prefix_token_ids": [
+        151644,
+        8948,
+        198,
+        151645,
+        198,
+        151644,
+        872,
+        198,
+        151669
+      ],
+      "suffix_token_ids": [
+        151670,
+        151645,
+        198,
+        151644,
+        77091,
+        198
+      ],
+      "audio_placeholder_id": 151676,
+      "note": "jfk_* names preserve the existing runner convention for the --audio fixture.",
+      "files": {
+        "prompt_prefix_embeds.npy": {
+          "bytes": 36992,
+          "sha256": "d4c560ae2138c19acd767f63af7a0cbd97ad74662b175901b4715666452abd26"
+        },
+        "prompt_suffix_embeds.npy": {
+          "bytes": 24704,
+          "sha256": "a2ae004ccf645e41b3ebc9c3c8cf4c55348197e5758c48a7056fb40d166c61d9"
+        },
+        "jfk_features.npy": {
+          "bytes": 563328,
+          "sha256": "1f633f05f6b41481b5d6faf4f8c855ee41907443aab2ea451a0fda646252de02"
+        },
+        "jfk_features_mask.npy": {
+          "bytes": 4528,
+          "sha256": "65b2c8f59142515d6c8c301cbdfce85740ca9e18d96e3e5b373a54bc8adeb916"
+        },
+        "jfk_cu_seqlens.bin": {
+          "bytes": 12,
+          "sha256": "721416713a8a828cd2c4f27abbd3dae93e88f625a93414e08c52fcf72585e845"
+        },
+        "tokenizer.json": {
+          "bytes": 11429653,
+          "sha256": "fe1fad59be22a41ee293363fcf95fdedbc7c93f3b49270b1d2e18bd1399a7a05"
+        }
+      }
+    },
+    "source_sha256": "a441291db491427bd51149bedeba186dfbc106f01d6bac6b5439ece0b2728aa1",
+    "floating_io": "float32",
+    "audio_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e"
+  },
+  "graph_io": {
+    "audio_front_model.onnx": {
+      "inputs": [
+        {
+          "name": "input_features",
+          "dtype": "FLOAT",
+          "dimensions": [
+            1,
+            128,
+            "frames"
+          ]
+        },
+        {
+          "name": "input_features_mask",
+          "dtype": "FLOAT",
+          "dimensions": [
+            1,
+            "frames"
+          ]
+        },
+        {
+          "name": "cu_seqlens",
+          "dtype": "INT32",
+          "dimensions": [
+            3
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio_embeds",
+          "dtype": "FLOAT",
+          "dimensions": [
+            "u0",
+            1024
+          ]
+        }
+      ],
+      "inserted_precision_free_cast_nodes": []
+    },
+    "decoder_step_model.onnx": {
+      "inputs": [
+        {
+          "name": "inputs_embeds",
+          "dtype": "FLOAT",
+          "dimensions": [
+            "batch",
+            "tokens",
+            1024
+          ]
+        },
+        {
+          "name": "past_key",
+          "dtype": "FLOAT",
+          "dimensions": [
+            28,
+            "batch",
+            8,
+            "past_length",
+            128
+          ]
+        },
+        {
+          "name": "past_value",
+          "dtype": "FLOAT",
+          "dimensions": [
+            28,
+            "batch",
+            8,
+            "past_length",
+            128
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "logits",
+          "dtype": "FLOAT",
+          "dimensions": [
+            "batch",
+            "tokens",
+            151936
+          ]
+        },
+        {
+          "name": "present_key",
+          "dtype": "FLOAT",
+          "dimensions": [
+            28,
+            "batch",
+            8,
+            "present_length",
+            128
+          ]
+        },
+        {
+          "name": "present_value",
+          "dtype": "FLOAT",
+          "dimensions": [
+            28,
+            "batch",
+            8,
+            "present_length",
+            128
+          ]
+        }
+      ],
+      "inserted_precision_free_cast_nodes": []
+    },
+    "embed_tokens_model.onnx": {
+      "inputs": [
+        {
+          "name": "input_ids",
+          "dtype": "INT64",
+          "dimensions": [
+            "batch",
+            "tokens"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "embeddings",
+          "dtype": "FLOAT",
+          "dimensions": [
+            "batch",
+            "tokens",
+            1024
+          ]
+        }
+      ],
+      "inserted_precision_free_cast_nodes": []
+    }
+  },
+  "command": [
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+    "-c",
+    "\nimport sys,json,hashlib,onnx\nfrom pathlib import Path\nwt=Path('U:/parallel-agents/qwen-fp16-wt');root=wt/'models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/complete-set'\ndef sha(p):\n h=hashlib.sha256()\n with p.open('rb') as f:\n  for b in iter(lambda:f.read(8388608),b''):h.update(b)\n return h.hexdigest()\nfiles={p.name:{'bytes':p.stat().st_size,'sha256':sha(p)} for p in root.iterdir() if p.is_file()}\nreceipt=json.loads((root/'fp16-export-receipt.json').read_text());script=wt/'tools/qwen3-asr-onnx-export/export_qwen3_asr_fp16.py'\nassert receipt['source_sha256']==sha(script)\nfor g in receipt['graphs'].values():\n for item in [g,g['external_data']]:assert files[item['artifact']]['sha256']==item['sha256']\nfor n,item in receipt['support']['files'].items():assert files[n]['sha256']==item['sha256']\nsources={str(p):sha(p) for p in [script,wt/'tools/qwen3-asr-onnx-export/test_qwen3_asr_fp16_export.py',wt/'tools/qwen3-asr-onnx-export/export_qwen3_asr_decoder.py',wt/'tools/qwen3-asr-onnx-export/capture_cu_seqlens.py',Path('N:/github/asrjs/speech-recognition/tools/model-debugging/scripts/transcribe_qwen3_asr_local.mjs')]}\ntypes={}\nfor name in receipt['graphs']:\n g=receipt['graphs'][name];m=onnx.load(str(root/g['artifact']),load_external_data=False)\n counts={}\n for t in m.graph.initializer:\n  dt=onnx.TensorProto.DataType.Name(t.data_type);counts[dt]=counts.get(dt,0)+1\n types[name]=counts\nprint(json.dumps({'status':'HASH_BOUND_NOT_MODEL_ACCEPTANCE','artifact_root':str(root),'files':files,'sources':sources,'initializer_dtype_counts':types,'graph_set_bytes':sum(v['bytes'] for n,v in files.items() if n.endswith('.onnx') or n.endswith('.onnx.data')),'export_receipt':receipt},indent=2))\n"
+  ]
+}

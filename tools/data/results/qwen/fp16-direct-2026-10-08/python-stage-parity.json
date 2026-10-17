@@ -1,0 +1,596 @@
+{
+  "status": "MEASURED_NOT_MODEL_ACCEPTANCE",
+  "optimization": "all",
+  "providers": [
+    "CPUExecutionProvider"
+  ],
+  "environment": {
+    "torch": "2.14.1+cpu",
+    "transformers": "5.18.0",
+    "ort": "1.30.0"
+  },
+  "graph_io": {
+    "audio_front_model.onnx": {
+      "inputs": [
+        {
+          "name": "input_features",
+          "dtype": "FLOAT",
+          "dimensions": [
+            1,
+            128,
+            "frames"
+          ]
+        },
+        {
+          "name": "input_features_mask",
+          "dtype": "FLOAT",
+          "dimensions": [
+            1,
+            "frames"
+          ]
+        },
+        {
+          "name": "cu_seqlens",
+          "dtype": "INT32",
+          "dimensions": [
+            3
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio_embeds",
+          "dtype": "FLOAT",
+          "dimensions": [
+            "u0",
+            1024
+          ]
+        }
+      ],
+      "inserted_precision_free_cast_nodes": []
+    },
+    "decoder_step_model.onnx": {
+      "inputs": [
+        {
+          "name": "inputs_embeds",
+          "dtype": "FLOAT",
+          "dimensions": [
+            "batch",
+            "tokens",
+            1024
+          ]
+        },
+        {
+          "name": "past_key",
+          "dtype": "FLOAT",
+          "dimensions": [
+            28,
+            "batch",
+            8,
+            "past_length",
+            128
+          ]
+        },
+        {
+          "name": "past_value",
+          "dtype": "FLOAT",
+          "dimensions": [
+            28,
+            "batch",
+            8,
+            "past_length",
+            128
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "logits",
+          "dtype": "FLOAT",
+          "dimensions": [
+            "batch",
+            "tokens",
+            151936
+          ]
+        },
+        {
+          "name": "present_key",
+          "dtype": "FLOAT",
+          "dimensions": [
+            28,
+            "batch",
+            8,
+            "present_length",
+            128
+          ]
+        },
+        {
+          "name": "present_value",
+          "dtype": "FLOAT",
+          "dimensions": [
+            28,
+            "batch",
+            8,
+            "present_length",
+            128
+          ]
+        }
+      ],
+      "inserted_precision_free_cast_nodes": []
+    },
+    "embed_tokens_model.onnx": {
+      "inputs": [
+        {
+          "name": "input_ids",
+          "dtype": "INT64",
+          "dimensions": [
+            "batch",
+            "tokens"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "embeddings",
+          "dtype": "FLOAT",
+          "dimensions": [
+            "batch",
+            "tokens",
+            1024
+          ]
+        }
+      ],
+      "inserted_precision_free_cast_nodes": []
+    }
+  },
+  "features_vs_fp32_baseline": {
+    "shape": [
+      1,
+      128,
+      1100
+    ],
+    "dtype": "float32",
+    "count": 140800,
+    "atol": 0.0001,
+    "rtol": 0.001,
+    "allclose": true,
+    "max_abs_error": 0.0,
+    "mean_abs_error": 0.0,
+    "max_relative_error": 0.0,
+    "cosine_similarity": 1.0000000000000002,
+    "mismatch_count": 0,
+    "first_divergent_index": null
+  },
+  "fixtures": {
+    "jfk": {
+      "audio": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+      "audio_sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "feature_shape": [
+        1,
+        128,
+        1100
+      ],
+      "fp16_schedule": [
+        0,
+        104,
+        143
+      ],
+      "audio_export_vs_pytorch_fp16": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.008804304525256157,
+        "mean_abs_error": 4.8451505875200176e-05,
+        "max_relative_error": 1416.8664772727273,
+        "cosine_similarity": 0.999940649059359,
+        "mismatch_count": 9108,
+        "first_divergent_index": 87
+      },
+      "fp32_schedule": [
+        0,
+        104,
+        143
+      ],
+      "logits_export_vs_pytorch_fp16": {
+        "shape": [
+          1,
+          158,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 24005888,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.3365662097930908,
+        "mean_abs_error": 0.020666352476460433,
+        "max_relative_error": 69820.05555555556,
+        "cosine_similarity": 0.9999905123770076,
+        "mismatch_count": 19142011,
+        "first_divergent_index": 0
+      },
+      "key_export_vs_pytorch_fp16": {
+        "shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ],
+        "dtype": "float32",
+        "count": 4530176,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 4.359375,
+        "mean_abs_error": 0.003302078052991972,
+        "max_relative_error": 61503931678720.0,
+        "cosine_similarity": 0.9999990032200561,
+        "mismatch_count": 2835394,
+        "first_divergent_index": 4
+      },
+      "value_export_vs_pytorch_fp16": {
+        "shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ],
+        "dtype": "float32",
+        "count": 4530176,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 2.1796875,
+        "mean_abs_error": 0.0068258330473353395,
+        "max_relative_error": 37044092928.0,
+        "cosine_similarity": 0.9999797770827131,
+        "mismatch_count": 3059102,
+        "first_divergent_index": 2057
+      },
+      "audio_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          143,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 146432,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.00645853579044342,
+        "mean_abs_error": 3.8910612367466765e-05,
+        "max_relative_error": 107.37549836897426,
+        "cosine_similarity": 0.9999668784540339,
+        "mismatch_count": 6894,
+        "first_divergent_index": 87
+      },
+      "prompt_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          1,
+          158,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 161792,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.00645853579044342,
+        "mean_abs_error": 3.5216567626348536e-05,
+        "max_relative_error": 107.37549836897426,
+        "cosine_similarity": 0.9999715939665722,
+        "mismatch_count": 6894,
+        "first_divergent_index": 9303
+      },
+      "logits_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          1,
+          158,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 24005888,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 1.6798429489135742,
+        "mean_abs_error": 0.0302303461675842,
+        "max_relative_error": 27297.0,
+        "cosine_similarity": 0.9999560857036514,
+        "mismatch_count": 19573559,
+        "first_divergent_index": 0
+      },
+      "key_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ],
+        "dtype": "float32",
+        "count": 4530176,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 7.8871307373046875,
+        "mean_abs_error": 0.00635860322900039,
+        "max_relative_error": 13144.302325581395,
+        "cosine_similarity": 0.9999921456602465,
+        "mismatch_count": 3123180,
+        "first_divergent_index": 4
+      },
+      "value_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          28,
+          1,
+          8,
+          158,
+          128
+        ],
+        "dtype": "float32",
+        "count": 4530176,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 3.5073184967041016,
+        "mean_abs_error": 0.011604659899339339,
+        "max_relative_error": 37967.769230769234,
+        "cosine_similarity": 0.9998850561511948,
+        "mismatch_count": 3345098,
+        "first_divergent_index": 1152
+      }
+    },
+    "jfk-first5s": {
+      "audio": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08\\complete-set\\diagnostic-tensors\\jfk-first5s.wav",
+      "audio_sha256": "6f7b022b4670ddcad48cf097e3cc60c8ba54bd15d6a73b3ea776cadbf0b8d610",
+      "feature_shape": [
+        1,
+        128,
+        500
+      ],
+      "fp16_schedule": [
+        0,
+        65
+      ],
+      "audio_export_error": "InvalidArgument('[ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Got invalid dimensions for input: cu_seqlens for the following indices\\n index: 0 Got: 2 Expected: 3\\n Please fix either the inputs/outputs or the model.')",
+      "fp32_schedule": [
+        0,
+        65
+      ],
+      "logits_export_vs_pytorch_fp16": {
+        "shape": [
+          1,
+          80,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 12154880,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.6517030000686646,
+        "mean_abs_error": 0.02686390445224614,
+        "max_relative_error": 169103.72727272726,
+        "cosine_similarity": 0.9999785054578887,
+        "mismatch_count": 10205673,
+        "first_divergent_index": 0
+      },
+      "key_export_vs_pytorch_fp16": {
+        "shape": [
+          28,
+          1,
+          8,
+          80,
+          128
+        ],
+        "dtype": "float32",
+        "count": 2293760,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.5,
+        "mean_abs_error": 0.003320207424076216,
+        "max_relative_error": 66726611910656.0,
+        "cosine_similarity": 0.9999994170929867,
+        "mismatch_count": 1459872,
+        "first_divergent_index": 4
+      },
+      "value_export_vs_pytorch_fp16": {
+        "shape": [
+          28,
+          1,
+          8,
+          80,
+          128
+        ],
+        "dtype": "float32",
+        "count": 2293760,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.671875,
+        "mean_abs_error": 0.007638628964611728,
+        "max_relative_error": 34123.8,
+        "cosine_similarity": 0.9999789869454607,
+        "mismatch_count": 1565739,
+        "first_divergent_index": 1520
+      },
+      "audio_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          65,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 66560,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0009607784450054169,
+        "mean_abs_error": 2.6416124046590995e-05,
+        "max_relative_error": 331.8474576271187,
+        "cosine_similarity": 0.9999969511258389,
+        "mismatch_count": 1861,
+        "first_divergent_index": 544
+      },
+      "prompt_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          1,
+          80,
+          1024
+        ],
+        "dtype": "float32",
+        "count": 81920,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0009607784450054169,
+        "mean_abs_error": 2.1463102243046706e-05,
+        "max_relative_error": 331.8474576271187,
+        "cosine_similarity": 0.9999977159543566,
+        "mismatch_count": 1861,
+        "first_divergent_index": 9760
+      },
+      "logits_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          1,
+          80,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 12154880,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 1.522794485092163,
+        "mean_abs_error": 0.03588658761599079,
+        "max_relative_error": 153703.4,
+        "cosine_similarity": 0.9999209621442527,
+        "mismatch_count": 10149977,
+        "first_divergent_index": 0
+      },
+      "key_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          28,
+          1,
+          8,
+          80,
+          128
+        ],
+        "dtype": "float32",
+        "count": 2293760,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 1.7940993309020996,
+        "mean_abs_error": 0.005188090887104797,
+        "max_relative_error": 21868.078260869566,
+        "cosine_similarity": 0.9999954633833154,
+        "mismatch_count": 1548211,
+        "first_divergent_index": 4
+      },
+      "value_pytorch_fp16_vs_original_fp32": {
+        "shape": [
+          28,
+          1,
+          8,
+          80,
+          128
+        ],
+        "dtype": "float32",
+        "count": 2293760,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 2.197977066040039,
+        "mean_abs_error": 0.010586531263183572,
+        "max_relative_error": 26200.6,
+        "cosine_similarity": 0.9999148825732995,
+        "mismatch_count": 1658209,
+        "first_divergent_index": 1155
+      }
+    }
+  },
+  "cache_geometry_checks": [
+    {
+      "initial_past": 0,
+      "past": 0,
+      "tokens": 2,
+      "present": 2,
+      "status": "GEOMETRY_FINITE_PASS_NOT_PARITY"
+    },
+    {
+      "initial_past": 0,
+      "past": 2,
+      "tokens": 1,
+      "present": 3,
+      "status": "GEOMETRY_FINITE_PASS_NOT_PARITY"
+    },
+    {
+      "initial_past": 0,
+      "past": 3,
+      "tokens": 3,
+      "present": 6,
+      "status": "GEOMETRY_FINITE_PASS_NOT_PARITY"
+    },
+    {
+      "initial_past": 1,
+      "past": 1,
+      "tokens": 2,
+      "present": 3,
+      "status": "GEOMETRY_FINITE_PASS_NOT_PARITY"
+    },
+    {
+      "initial_past": 1,
+      "past": 3,
+      "tokens": 1,
+      "present": 4,
+      "status": "GEOMETRY_FINITE_PASS_NOT_PARITY"
+    },
+    {
+      "initial_past": 1,
+      "past": 4,
+      "tokens": 3,
+      "present": 7,
+      "status": "GEOMETRY_FINITE_PASS_NOT_PARITY"
+    },
+    {
+      "initial_past": 4,
+      "past": 4,
+      "tokens": 2,
+      "present": 6,
+      "status": "GEOMETRY_FINITE_PASS_NOT_PARITY"
+    },
+    {
+      "initial_past": 4,
+      "past": 6,
+      "tokens": 1,
+      "present": 7,
+      "status": "GEOMETRY_FINITE_PASS_NOT_PARITY"
+    },
+    {
+      "initial_past": 4,
+      "past": 7,
+      "tokens": 3,
+      "present": 10,
+      "status": "GEOMETRY_FINITE_PASS_NOT_PARITY"
+    }
+  ],
+  "diagnostic_directory": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08\\complete-set\\diagnostic-tensors",
+  "execution": {
+    "command": [
+      "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+      "-c",
+      "\nimport sys,json,gc,wave,hashlib\nfrom pathlib import Path\nimport numpy as np,torch,transformers,onnxruntime as ort,onnx\nwt=Path('U:/parallel-agents/qwen-fp16-wt');main=Path('N:/github/asrjs/speech-recognition');root=wt/'models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/complete-set';diag=root/'diagnostic-tensors';diag.mkdir(exist_ok=True)\nsys.path.insert(0,str(wt/'tools/qwen3-asr-onnx-export'));sys.path.insert(0,str(main/'tools'))\nfrom export_qwen3_asr_fp16 import request_for,Float32DecoderStep\nfrom capture_cu_seqlens import capture_schedule\nfrom tensor_parity import compare_tensors\nATOL=1e-4;RTOL=1e-3\ndef metric(a,b):return compare_tensors(np.asarray(a,dtype=np.float32),np.asarray(b,dtype=np.float32),atol=ATOL,rtol=RTOL)\ndef sha(p):\n h=hashlib.sha256()\n with p.open('rb') as f:\n  for b in iter(lambda:f.read(8388608),b''):h.update(b)\n return h.hexdigest()\nwith wave.open(str(main/'tools/data/fixtures/audio/jfk-short.wav'),'rb') as f:\n params=f.getparams();raw=f.readframes(5*f.getframerate())\nshort=diag/'jfk-first5s.wav'\nwith wave.open(str(short),'wb') as f:f.setparams(params);f.writeframes(raw)\nfixtures={'jfk':main/'tools/data/fixtures/audio/jfk-short.wav','jfk-first5s':short}\noptions=ort.SessionOptions();options.graph_optimization_level=ort.GraphOptimizationLevel.ORT_ENABLE_ALL\nfront=ort.InferenceSession(str(root/'audio_front_model.onnx'),options,providers=['CPUExecutionProvider'])\nmetadata={}\nfor name in ['audio_front_model.onnx','decoder_step_model.onnx','embed_tokens_model.onnx']:\n g=onnx.load(str(root/name),load_external_data=False)\n def io(v):return {'name':v.name,'dtype':onnx.TensorProto.DataType.Name(v.type.tensor_type.elem_type),'dimensions':[d.dim_param or d.dim_value for d in v.type.tensor_type.shape.dim]}\n metadata[name]={'inputs':[io(v) for v in g.graph.input],'outputs':[io(v) for v in g.graph.output],'inserted_precision_free_cast_nodes':[n.name for n in g.graph.node if 'InsertedPrecisionFreeCast' in n.name]}\nprocessor=transformers.AutoProcessor.from_pretrained(main/'.cache/qwen3-asr-0.6b',local_files_only=True)\nrequests={name:request_for(processor,path) for name,path in fixtures.items()}\nrows={name:{'audio':str(path),'audio_sha256':sha(path),'feature_shape':list(requests[name]['input_features'].shape)} for name,path in fixtures.items()}\nfor dtype_name,dtype in [('fp16',torch.float16),('fp32',torch.float32)]:\n model=transformers.AutoModelForMultimodalLM.from_pretrained(main/'.cache/qwen3-asr-0.6b',dtype=dtype,attn_implementation='eager',local_files_only=True).eval()\n step=Float32DecoderStep(model).eval()\n for name,inputs in requests.items():\n  features=inputs['input_features'].float();mask=inputs['input_features_mask'].float()\n  schedule=capture_schedule(model,features.to(dtype),mask)\n  with torch.no_grad():audio=model.model.multi_modal_projector(model.model.audio_tower(features.to(dtype),mask,cu_seqlens=schedule).last_hidden_state).float().numpy()\n  np.save(diag/f'{name}-{dtype_name}-audio.npy',audio)\n  ids=inputs['input_ids'][0];positions=torch.nonzero(ids==model.config.audio_token_id).flatten();start=int(positions[0]);end=int(positions[-1])+1\n  with torch.no_grad():prefix=model.model.language_model.embed_tokens(ids[:start].unsqueeze(0)).float().numpy();suffix=model.model.language_model.embed_tokens(ids[end:].unsqueeze(0)).float().numpy()\n  prompt=np.concatenate([prefix,np.expand_dims(audio,0),suffix],axis=1)\n  np.save(diag/f'{name}-{dtype_name}-prompt.npy',prompt)\n  empty=np.zeros((28,1,8,0,128),dtype=np.float32)\n  with torch.no_grad():reference=step(torch.from_numpy(prompt),torch.from_numpy(empty),torch.from_numpy(empty))\n  for key,output in zip(['logits','key','value'],reference):np.save(diag/f'{name}-{dtype_name}-{key}.npy',output.numpy())\n  rows[name][f'{dtype_name}_schedule']=schedule.tolist()\n  if dtype_name=='fp16':\n   np.save(diag/f'{name}_features.npy',features.numpy());np.save(diag/f'{name}_features_mask.npy',mask.numpy());schedule.numpy().tofile(diag/f'{name}_cu_seqlens.bin')\n   try:\n    candidate=front.run(None,{'input_features':features.numpy(),'input_features_mask':mask.numpy(),'cu_seqlens':schedule.numpy()})[0]\n    np.save(diag/f'{name}-onnx-audio.npy',candidate)\n    rows[name]['audio_export_vs_pytorch_fp16']=metric(audio,candidate)\n   except Exception as e:rows[name]['audio_export_error']=repr(e)\n  del reference\n del model,step;gc.collect()\nfront=None;gc.collect()\ndecoder=ort.InferenceSession(str(root/'decoder_step_model.onnx'),options,providers=['CPUExecutionProvider'])\nfor name in fixtures:\n prompt=np.load(diag/f'{name}-fp16-prompt.npy');empty=np.zeros((28,1,8,0,128),dtype=np.float32)\n produced=decoder.run(None,{'inputs_embeds':prompt,'past_key':empty,'past_value':empty})\n for key,value in zip(['logits','key','value'],produced):\n  rows[name][f'{key}_export_vs_pytorch_fp16']=metric(np.load(diag/f'{name}-fp16-{key}.npy'),value)\n for key in ['audio','prompt','logits','key','value']:\n  rows[name][f'{key}_pytorch_fp16_vs_original_fp32']=metric(np.load(diag/f'{name}-fp32-{key}.npy'),np.load(diag/f'{name}-fp16-{key}.npy'))\ncache=[]\nfor past_len in [0,1,4]:\n past=np.zeros((28,1,8,past_len,128),dtype=np.float32)\n keys=values=past\n for tokens in [2,1,3]:\n  prompt=np.load(diag/'jfk-fp16-prompt.npy')[:,:tokens,:]\n  out=decoder.run(None,{'inputs_embeds':prompt,'past_key':keys,'past_value':values})\n  expected=keys.shape[3]+tokens\n  assert out[1].shape==(28,1,8,expected,128) and out[2].shape==out[1].shape\n  assert all(np.isfinite(x).all() for x in out)\n  cache.append({'initial_past':past_len,'past':keys.shape[3],'tokens':tokens,'present':expected,'status':'GEOMETRY_FINITE_PASS_NOT_PARITY'})\n  keys,values=out[1:]\nbase=main/'models/onnx/qwen3-asr-0.6b'\nfeatures_metric=metric(np.load(base/'jfk_features.npy'),requests['jfk']['input_features'].float().numpy())\nprint(json.dumps({'status':'MEASURED_NOT_MODEL_ACCEPTANCE','optimization':'all','providers':decoder.get_providers(),'environment':{'torch':torch.__version__,'transformers':transformers.__version__,'ort':ort.__version__},'graph_io':metadata,'features_vs_fp32_baseline':features_metric,'fixtures':rows,'cache_geometry_checks':cache,'diagnostic_directory':str(diag)},indent=2))\n"
+    ],
+    "exit_code": 0
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "status": "ADVISOR_NOTES_RECONCILED",
+  "support_only_disposition": "Not added: complete-set already contains complete same-builder support and passed the existing Node runner. Initial graph-only export is retained as a diagnostic, not selected by the runner.",
+  "directory_audits": [
+    {
+      "directory": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08",
+      "graph_sha256": {
+        "audio_front_model.onnx": "84ff9e8943ab816795a845f005e94485d83f19f642498ece95b45e7e370c0cb1",
+        "decoder_step_model.onnx": "d7156f8b8e2f353b1745144242315a531827fc6310d766195309394e2fd00cc6",
+        "embed_tokens_model.onnx": "a03961b7b0295d4402c3ff31832d5f8ec21d54da416af185577057c2bca9ce4c"
+      },
+      "external_files": {
+        "audio_front_model.onnx.data": {
+          "file_bytes": 372796096,
+          "union_bytes": 372796096,
+          "unreferenced_bytes": 0,
+          "sha256": "5df227333d66d100223b290601f1f213026f1053ae83d63903f36467e7a00a84",
+          "union": [
+            [
+              0,
+              372796096
+            ]
+          ]
+        },
+        "decoder_step_model.onnx.data": {
+          "file_bytes": 1192085504,
+          "union_bytes": 1192085504,
+          "unreferenced_bytes": 0,
+          "sha256": "97f4adc3944c10e1f72ffb60455d8ac53fac5b7c71ceab9887fbcc5cc79a0612",
+          "union": [
+            [
+              0,
+              1192085504
+            ]
+          ]
+        },
+        "embed_tokens_model.onnx.data": {
+          "file_bytes": 311164928,
+          "union_bytes": 311164928,
+          "unreferenced_bytes": 0,
+          "sha256": "e80150119fa5f7e56e85aed64c3a02d5c78eb7a37cfdcb973d0987316f15bee2",
+          "union": [
+            [
+              0,
+              311164928
+            ]
+          ]
+        }
+      },
+      "zero_reference_unrecognized_files": [],
+      "removed_files": [],
+      "excluded_subdirectories": [
+        "complete-set"
+      ],
+      "status": "NO_UNREFERENCED_FILE_CLEANUP_NEEDED"
+    },
+    {
+      "directory": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08\\complete-set",
+      "graph_sha256": {
+        "audio_front_model.onnx": "bd02a2c129ab6d0e00934e2178b5a1cea6aa8dbbc330ccd70b61adcd7c523d3a",
+        "decoder_step_model.onnx": "d7156f8b8e2f353b1745144242315a531827fc6310d766195309394e2fd00cc6",
+        "embed_tokens_model.onnx": "a03961b7b0295d4402c3ff31832d5f8ec21d54da416af185577057c2bca9ce4c"
+      },
+      "external_files": {
+        "audio_front_model.onnx.data": {
+          "file_bytes": 372796096,
+          "union_bytes": 372796096,
+          "unreferenced_bytes": 0,
+          "sha256": "5df227333d66d100223b290601f1f213026f1053ae83d63903f36467e7a00a84",
+          "union": [
+            [
+              0,
+              372796096
+            ]
+          ]
+        },
+        "decoder_step_model.onnx.data": {
+          "file_bytes": 1192085504,
+          "union_bytes": 1192085504,
+          "unreferenced_bytes": 0,
+          "sha256": "97f4adc3944c10e1f72ffb60455d8ac53fac5b7c71ceab9887fbcc5cc79a0612",
+          "union": [
+            [
+              0,
+              1192085504
+            ]
+          ]
+        },
+        "embed_tokens_model.onnx.data": {
+          "file_bytes": 311164928,
+          "union_bytes": 311164928,
+          "unreferenced_bytes": 0,
+          "sha256": "e80150119fa5f7e56e85aed64c3a02d5c78eb7a37cfdcb973d0987316f15bee2",
+          "union": [
+            [
+              0,
+              311164928
+            ]
+          ]
+        }
+      },
+      "zero_reference_unrecognized_files": [],
+      "removed_files": [],
+      "excluded_subdirectories": [
+        "diagnostic-tensors"
+      ],
+      "status": "NO_UNREFERENCED_FILE_CLEANUP_NEEDED"
+    }
+  ],
+  "prompt_embedding_fp16_vs_fp32": {
+    "prefix": {
+      "shape": [
+        1,
+        9,
+        1024
+      ],
+      "dtype": "float32",
+      "count": 9216,
+      "atol": 0.0001,
+      "rtol": 0.001,
+      "allclose": true,
+      "max_abs_error": 2.9802322387695312e-08,
+      "mean_abs_error": 9.701276818911234e-12,
+      "max_relative_error": 0.007407407407407408,
+      "cosine_similarity": 0.9999999999999999,
+      "mismatch_count": 0,
+      "first_divergent_index": null,
+      "reference_file_sha256": "080cb52ef318fa5368548f26840b544143939a35602d74a2d6cf260f8dbf335f",
+      "candidate_file_sha256": "d4c560ae2138c19acd767f63af7a0cbd97ad74662b175901b4715666452abd26"
+    },
+    "suffix": {
+      "shape": [
+        1,
+        6,
+        1024
+      ],
+      "dtype": "float32",
+      "count": 6144,
+      "atol": 0.0001,
+      "rtol": 0.001,
+      "allclose": true,
+      "max_abs_error": 2.9802322387695312e-08,
+      "mean_abs_error": 4.850638409455617e-12,
+      "max_relative_error": 0.007407407407407408,
+      "cosine_similarity": 1.0,
+      "mismatch_count": 0,
+      "first_divergent_index": null,
+      "reference_file_sha256": "e7e882788fc96cf432ab4ba92a01d0f895a33ccb65943d8e0ac279368879e991",
+      "candidate_file_sha256": "a2ae004ccf645e41b3ebc9c3c8cf4c55348197e5758c48a7056fb40d166c61d9"
+    }
+  },
+  "support_checks": {
+    "prompt_prefix_embeds.npy": {
+      "receipt_sha256_match": true,
+      "fp32_file_sha256_match": false
+    },
+    "prompt_suffix_embeds.npy": {
+      "receipt_sha256_match": true,
+      "fp32_file_sha256_match": false
+    },
+    "jfk_features.npy": {
+      "receipt_sha256_match": true,
+      "fp32_file_sha256_match": true
+    },
+    "jfk_features_mask.npy": {
+      "receipt_sha256_match": true,
+      "fp32_file_sha256_match": true
+    },
+    "jfk_cu_seqlens.bin": {
+      "receipt_sha256_match": true,
+      "fp32_file_sha256_match": true
+    },
+    "tokenizer.json": {
+      "receipt_sha256_match": true,
+      "fp32_file_sha256_match": true
+    }
+  },
+  "note": "No files were removed. Unknown files are never deleted based on extension alone. Diagnostic subdirectories are outside delivery graph/support closure.",
+  "command": [
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/reference/transformers5/Scripts/python.exe",
+    "-c",
+    "\nimport sys,json,hashlib\nfrom pathlib import Path\nimport onnx,numpy as np\nmain=Path('N:/github/asrjs/speech-recognition');root=Path('U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08');complete=root/'complete-set'\nsys.path.insert(0,str(main/'tools'))\nfrom onnx_artifacts import external_ranges\nfrom tensor_parity import compare_tensors\ndef sha(p):\n h=hashlib.sha256()\n with p.open('rb') as f:\n  for b in iter(lambda:f.read(8388608),b''):h.update(b)\n return h.hexdigest()\naudits=[]\nfor folder in [root,complete]:\n receipt=json.loads((folder/'fp16-export-receipt.json').read_text())\n recognized={'fp16-export-receipt.json'};references={};graph_hashes={}\n for graph in sorted(folder.glob('*.onnx')):\n  recognized.add(graph.name);graph_hashes[graph.name]=sha(graph)\n  for ref in external_ranges(onnx.load(str(graph),load_external_data=False),graph):\n   references.setdefault(ref.location,[]).append([ref.offset,ref.offset+ref.length]);recognized.add(ref.location)\n recognized.update(receipt.get('support',{}).get('files',{}))\n unknown=[p for p in folder.iterdir() if p.is_file() and p.name not in recognized]\n sidecars={}\n for name,intervals in references.items():\n  union=[]\n  for lo,hi in sorted(intervals):\n   if union and lo<=union[-1][1]:union[-1][1]=max(union[-1][1],hi)\n   else:union.append([lo,hi])\n  used=sum(hi-lo for lo,hi in union);p=folder/name\n  sidecars[name]={'file_bytes':p.stat().st_size,'union_bytes':used,'unreferenced_bytes':p.stat().st_size-used,'sha256':sha(p),'union':union}\n audits.append({'directory':str(folder),'graph_sha256':graph_hashes,'external_files':sidecars,'zero_reference_unrecognized_files':[{'name':p.name,'bytes':p.stat().st_size,'sha256':sha(p)} for p in unknown],'removed_files':[],'excluded_subdirectories':[p.name for p in folder.iterdir() if p.is_dir()],'status':'NO_UNREFERENCED_FILE_CLEANUP_NEEDED' if not unknown else 'REQUIRES_INSPECTION_NO_DELETION'})\nbase=main/'models/onnx/qwen3-asr-0.6b'\nmetrics={}\nfor part in ['prefix','suffix']:\n name='prompt_'+part+'_embeds.npy';reference=np.load(base/name);candidate=np.load(complete/name)\n metrics[part]=compare_tensors(reference,candidate,atol=1e-4,rtol=1e-3)\n metrics[part].update(reference_file_sha256=sha(base/name),candidate_file_sha256=sha(complete/name))\nsupport_checks={}\nreceipt=json.loads((complete/'fp16-export-receipt.json').read_text())\nfor name in receipt['support']['files']:\n actual=sha(complete/name)\n assert actual==receipt['support']['files'][name]['sha256']\n support_checks[name]={'receipt_sha256_match':True,'fp32_file_sha256_match':actual==sha(base/name)}\nprint(json.dumps({'status':'ADVISOR_NOTES_RECONCILED','support_only_disposition':'Not added: complete-set already contains complete same-builder support and passed the existing Node runner. Initial graph-only export is retained as a diagnostic, not selected by the runner.','directory_audits':audits,'prompt_embedding_fp16_vs_fp32':metrics,'support_checks':support_checks,'note':'No files were removed. Unknown files are never deleted based on extension alone. Diagnostic subdirectories are outside delivery graph/support closure.'},indent=2))\n"
+  ]
+}

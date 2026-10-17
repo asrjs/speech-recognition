@@ -1,0 +1,122 @@
+{
+  "command": [
+    "node",
+    "N:/github/asrjs/speech-recognition/tools/model-debugging/scripts/transcribe_qwen3_asr_local.mjs",
+    "--model-dir=U:/parallel-agents/qwen-fp16-wt/models/onnx/qwen3-asr-0.6b-fp16-direct-2026-10-08/complete-set",
+    "--opt-level=all"
+  ],
+  "exit_code": 0,
+  "stdout": "{\"status\":\"RUN_COMPLETED_NOT_MODEL_ACCEPTANCE\",\"backend\":{\"id\":\"cpu\",\"engine\":\"onnxruntime-node\"},\"metrics\":{\"totalMs\":4600.802,\"audioFrames\":143,\"promptLength\":158,\"decodeSteps\":30,\"emittedTokenCount\":29},\"transcript\":{\"canonical\":{\"text\":\"And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.\",\"tokens\":[{\"id\":11528},{\"id\":6364},{\"id\":151704},{\"id\":3036},{\"id\":773},{\"id\":11},{\"id\":847},{\"id\":12357},{\"id\":8877},{\"id\":11},{\"id\":2548},{\"id\":537},{\"id\":1128},{\"id\":697},{\"id\":3146},{\"id\":646},{\"id\":653},{\"id\":369},{\"id\":498},{\"id\":26},{\"id\":2548},{\"id\":1128},{\"id\":498},{\"id\":646},{\"id\":653},{\"id\":369},{\"id\":697},{\"id\":3146},{\"id\":13}]},\"warnings\":[]}}\n",
+  "stderr": "",
+  "result": {
+    "status": "RUN_COMPLETED_NOT_MODEL_ACCEPTANCE",
+    "backend": {
+      "id": "cpu",
+      "engine": "onnxruntime-node"
+    },
+    "metrics": {
+      "totalMs": 4600.802,
+      "audioFrames": 143,
+      "promptLength": 158,
+      "decodeSteps": 30,
+      "emittedTokenCount": 29
+    },
+    "transcript": {
+      "canonical": {
+        "text": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+        "tokens": [
+          {
+            "id": 11528
+          },
+          {
+            "id": 6364
+          },
+          {
+            "id": 151704
+          },
+          {
+            "id": 3036
+          },
+          {
+            "id": 773
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 847
+          },
+          {
+            "id": 12357
+          },
+          {
+            "id": 8877
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 2548
+          },
+          {
+            "id": 537
+          },
+          {
+            "id": 1128
+          },
+          {
+            "id": 697
+          },
+          {
+            "id": 3146
+          },
+          {
+            "id": 646
+          },
+          {
+            "id": 653
+          },
+          {
+            "id": 369
+          },
+          {
+            "id": 498
+          },
+          {
+            "id": 26
+          },
+          {
+            "id": 2548
+          },
+          {
+            "id": 1128
+          },
+          {
+            "id": 498
+          },
+          {
+            "id": 646
+          },
+          {
+            "id": 653
+          },
+          {
+            "id": 369
+          },
+          {
+            "id": 697
+          },
+          {
+            "id": 3146
+          },
+          {
+            "id": 13
+          }
+        ]
+      },
+      "warnings": []
+    }
+  },
+  "exact_text_match": true,
+  "exact_tokens_except_eos_match": true
+}

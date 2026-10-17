@@ -65,13 +65,25 @@ const MASK = argValue('features-mask', `${MODEL_DIR}/jfk_features_mask.npy`);
 const LAYERS = 28;
 const HEADS = 8;
 const HEAD_DIM = 128;
+// The float16-converted graphs do not initialise at the default optimisation
+// level in this onnxruntime-node build: its LayerNorm fusion binds a constant
+// that the converter did not write, and the session dies with GetIndexFromName.
+// 'basic' and 'extended' both load the same graphs, and the option is a plain
+// string, which is the documented session-option contract.
+const OPT_LEVEL = argValue('opt-level', 'all');
+const sessionOptions = {
+  executionProviders: ['cpu'],
+  graphOptimizationLevel: OPT_LEVEL,
+};
 
-const front = await ort.InferenceSession.create(`${MODEL_DIR}/audio_front_model.onnx`, {
-  executionProviders: ['cpu'],
-});
-const decoder = await ort.InferenceSession.create(`${MODEL_DIR}/decoder_step_model.onnx`, {
-  executionProviders: ['cpu'],
-});
+const front = await ort.InferenceSession.create(
+  `${MODEL_DIR}/audio_front_model.onnx`,
+  sessionOptions,
+);
+const decoder = await ort.InferenceSession.create(
+  `${MODEL_DIR}/decoder_step_model.onnx`,
+  sessionOptions,
+);
 
 const features = readNpy(FEATURES);
 const mask = readNpy(MASK);
@@ -113,9 +125,10 @@ let result = await decoder.run({
 let presentKey = result.present_key;
 let presentValue = result.present_value;
 
-const embed = await ort.InferenceSession.create(`${MODEL_DIR}/embed_tokens_model.onnx`, {
-  executionProviders: ['cpu'],
-});
+const embed = await ort.InferenceSession.create(
+  `${MODEL_DIR}/embed_tokens_model.onnx`,
+  sessionOptions,
+);
 const tokenizer = JSON.parse(readFileSync(`${MODEL_DIR}/tokenizer.json`, 'utf8'));
 const vocabSource = tokenizer.model?.vocab ?? tokenizer.vocab ?? {};
 const vocab = new Map(Object.entries(vocabSource).map(([token, id]) => [Number(id), token]));

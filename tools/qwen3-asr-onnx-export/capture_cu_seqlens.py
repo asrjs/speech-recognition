@@ -19,6 +19,36 @@ import transformers
 from transformers.models.qwen3_asr import modeling_qwen3_asr as modeling
 
 
+def capture_schedule(model, features, mask=None):
+    """Return the window schedule the encoder computes for these features.
+
+    The schedule has to be taken from the encoder's own function, because
+    reconstructing it disagrees by a few frames.
+    """
+    captured = []
+    original = modeling.get_audio_cu_seqlens
+
+    def spy(*call_args, **call_kwargs):
+        result = original(*call_args, **call_kwargs)
+        if not call_kwargs.get("cu_seqlens") is not None:
+            captured.append(result.detach().clone())
+        return result
+
+    modeling.get_audio_cu_seqlens = spy
+    try:
+        with torch.no_grad():
+            if mask is None:
+                mask = torch.ones(features.shape[0], features.shape[-1], dtype=features.dtype)
+            model.model.multi_modal_projector(
+                model.model.audio_tower(features, mask).last_hidden_state
+            )
+    finally:
+        modeling.get_audio_cu_seqlens = original
+    if not captured:
+        raise RuntimeError("the encoder did not compute a schedule")
+    return captured[0].to(torch.int32)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-dir", type=Path, default=Path(".cache/qwen3-asr-0.6b"))
