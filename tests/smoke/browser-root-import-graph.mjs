@@ -11,6 +11,7 @@ const defaultEntryPoints = [
   'inference.js',
   'browser.js',
   'browser-media.js',
+  'worker.js',
   'realtime.js',
   'bench.js',
   'bench-browser.js',
@@ -33,6 +34,10 @@ const defaultEntryPoints = [
   'models/nemo-tdt.js',
   'models/sensevoice.js',
   'models/qwen-asr.js',
+  'models/qwen3-asr.js',
+  'models/moonshine.js',
+  'models/parakeet-ctc.js',
+  'models/omnilingual-ctc.js',
   'models/wav2vec2.js',
   'models/whisper-seq2seq.js',
 ];

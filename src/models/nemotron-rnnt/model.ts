@@ -1,10 +1,10 @@
 import { normalizePcmInput } from '../../audio/index.js';
 import {
-  DefaultStreamingTranscriber,
   FASTCONFORMER_ENCODER,
   RNNT_GREEDY_DECODING,
   RNNT_TRANSDUCER_DECODER,
 } from '../../inference/index.js';
+import { NemotronStreamingTranscriber } from './streaming-transcriber.js';
 import {
   buildStubTimedWords,
   createModelClassification,
@@ -314,6 +314,7 @@ export class NemotronRnntSpeechModel implements SpeechModel<
   readonly info;
   readonly loadOptions?: NemotronRnntModelOptions;
   private readonly sessions = new Set<NemotronRnntSpeechSession>();
+  private readonly transcribers = new Set<NemotronStreamingTranscriber>();
   private disposed = false;
 
   constructor(
@@ -428,16 +429,37 @@ export class NemotronRnntSpeechModel implements SpeechModel<
   async createStreamingTranscriber(
     options: StreamingSessionOptions = {},
   ): Promise<StreamingTranscriber> {
+    if (this.disposed) {
+      throw new Error('Nemotron RNNT model is disposed.');
+    }
     const session = await this.createSession();
-    return new DefaultStreamingTranscriber(session, options);
+    const transcriber = new NemotronStreamingTranscriber(
+      session,
+      {
+        modelId: this.modelId,
+        modelFamily: this.family,
+        ...options,
+      },
+      async () => {
+        this.transcribers.delete(transcriber);
+        await session.dispose();
+      },
+    );
+    this.transcribers.add(transcriber);
+    return transcriber;
   }
 
   async dispose(): Promise<void> {
     if (this.disposed) return;
     this.disposed = true;
     const sessions = [...this.sessions];
+    const transcribers = [...this.transcribers];
     this.sessions.clear();
-    await Promise.all(sessions.map((session) => session.dispose()));
+    this.transcribers.clear();
+    await Promise.all([
+      ...sessions.map((session) => session.dispose()),
+      ...transcribers.map((transcriber) => transcriber.dispose()),
+    ]);
   }
 }
 

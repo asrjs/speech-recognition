@@ -5,3 +5,4 @@ export * from './backends/wasm/index.js';
 export * from './backends/webgpu/index.js';
 export * from './backends/webnn/index.js';
 export * from './backends/webgl/index.js';
+export * from './ort/index.js';

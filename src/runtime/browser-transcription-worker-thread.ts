@@ -2,6 +2,7 @@ import { loadSpeechModel } from './load.js';
 import { loadSpeechModelFromLocalEntries } from './local-browser.js';
 import type { LoadSpeechModelOptions } from './load.js';
 import type { LoadSpeechModelFromLocalEntriesOptions } from './local-browser.js';
+import type { StreamingSessionOptions, StreamingTranscriber } from '../types/index.js';
 
 interface WorkerScopeLike {
   onmessage: ((event: MessageEvent) => void) | null;
@@ -39,6 +40,31 @@ type WorkerRequestMessage =
     }
   | {
       readonly id: number;
+      readonly type: 'START_STREAM';
+      readonly payload: StreamingSessionOptions | undefined;
+    }
+  | {
+      readonly id: number;
+      readonly type: 'PUSH_STREAM_AUDIO';
+      readonly payload: { readonly pcm: Float32Array; readonly sampleRate?: number };
+    }
+  | {
+      readonly id: number;
+      readonly type: 'FLUSH_STREAM';
+      readonly payload: null;
+    }
+  | {
+      readonly id: number;
+      readonly type: 'FINALIZE_STREAM';
+      readonly payload: null;
+    }
+  | {
+      readonly id: number;
+      readonly type: 'RESET_STREAM';
+      readonly payload: null;
+    }
+  | {
+      readonly id: number;
       readonly type: 'DISPOSE_MODEL';
       readonly payload: null;
     };
@@ -65,12 +91,21 @@ type LoadedModelLike = {
     sampleRate: number,
     options?: Record<string, unknown> | null,
   ): Promise<unknown>;
+  createStreamingTranscriber?(
+    options?: StreamingSessionOptions,
+  ): Promise<StreamingTranscriber> | StreamingTranscriber;
   dispose(): Promise<void>;
 };
 
-const workerScope = self as unknown as WorkerScopeLike;
+const workerScope = (typeof self !== 'undefined'
+  ? self
+  : typeof globalThis !== 'undefined'
+    ? globalThis
+    : {}) as unknown as WorkerScopeLike;
 let loadedModel: LoadedModelLike | null = null;
 let loadSource: 'built-in' | 'local' | null = null;
+let activeStream: StreamingTranscriber | null = null;
+let streamCounter = 0;
 const activeTranscribes = new Map<number, AbortController>();
 const queuedTranscribes = new Set<number>();
 const canceledTranscribes = new Set<number>();
@@ -108,7 +143,15 @@ function getMeta(error: Error | null = null) {
   };
 }
 
-async function disposeLoadedModel(): Promise<void> {
+export async function disposeLoadedModel(): Promise<void> {
+  if (activeStream) {
+    try {
+      await activeStream.dispose?.();
+    } catch {
+      //
+    }
+    activeStream = null;
+  }
   const modelToDispose = loadedModel;
   if (!modelToDispose) {
     return;
@@ -120,7 +163,7 @@ async function disposeLoadedModel(): Promise<void> {
   }
 }
 
-async function handleRequest(message: WorkerRequestMessage): Promise<unknown> {
+export async function handleRequest(message: WorkerRequestMessage): Promise<unknown> {
   switch (message.type) {
     case 'LOAD_BUILT_IN_MODEL': {
       await disposeLoadedModel();
@@ -159,6 +202,49 @@ async function handleRequest(message: WorkerRequestMessage): Promise<unknown> {
     }
     case 'CANCEL_TRANSCRIBE': {
       activeTranscribes.get(message.payload.requestId)?.abort();
+      return null;
+    }
+    case 'START_STREAM': {
+      if (!loadedModel) {
+        throw new Error('No worker transcription model is loaded.');
+      }
+      if (activeStream) {
+        try {
+          await activeStream.dispose?.();
+        } catch {
+          //
+        }
+        activeStream = null;
+      }
+      if (typeof loadedModel.createStreamingTranscriber === 'function') {
+        activeStream = await loadedModel.createStreamingTranscriber(message.payload);
+        const streamId = `stream-${++streamCounter}`;
+        return { streamId, supportsStreaming: true };
+      }
+      return { streamId: '', supportsStreaming: false };
+    }
+    case 'PUSH_STREAM_AUDIO': {
+      if (!activeStream) {
+        return null;
+      }
+      return await activeStream.pushAudio(message.payload.pcm);
+    }
+    case 'FLUSH_STREAM': {
+      if (!activeStream) {
+        return null;
+      }
+      return await activeStream.flush();
+    }
+    case 'FINALIZE_STREAM': {
+      if (!activeStream) {
+        throw new Error('No active streaming transcription session in worker.');
+      }
+      return await activeStream.finalize();
+    }
+    case 'RESET_STREAM': {
+      if (activeStream) {
+        await activeStream.reset();
+      }
       return null;
     }
     case 'DISPOSE_MODEL': {

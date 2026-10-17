@@ -26,6 +26,7 @@ import type {
 } from './streaming-config.js';
 import { mergeStreamingConfig, resolveStreamingProfileId } from './streaming-config.js';
 import type { RealtimeLatencySummary } from './realtime-latency.js';
+import type { PartialTranscript, StreamingTranscriber } from '../types/index.js';
 
 export type BrowserRealtimeMicrophoneMode = 'manual' | 'speech-detect';
 
@@ -76,6 +77,13 @@ export interface BrowserRealtimeMicrophoneControllerOptions extends Omit<
   readonly startCapture?: (
     options: BrowserMicrophoneCaptureOptions,
   ) => Promise<BrowserMicrophoneCaptureHandle>;
+  readonly streamingTranscriber?: StreamingTranscriber;
+  readonly onPartialTranscript?: (partial: PartialTranscript) => void;
+  readonly transcribeMonoPcm?: (
+    pcm: Float32Array,
+    sampleRate: number,
+  ) => Promise<unknown>;
+  readonly onSegment?: (segment: unknown) => void;
 }
 
 export interface BrowserRealtimeMicrophoneController {
@@ -219,6 +227,34 @@ export function createBrowserRealtimeMicrophoneController(
       getConfiguredChunkDurationMs(),
     );
 
+  const streamingTranscriber = options.streamingTranscriber;
+  const onPartialTranscript = options.onPartialTranscript;
+  let isSpeechActive = false;
+  let streamingOperationTail: Promise<void> = Promise.resolve();
+
+  const enqueueStreamingChunk = (pcmChunk: Float32Array): void => {
+    if (!streamingTranscriber) {
+      return;
+    }
+    const run = async (): Promise<void> => {
+      if (disposed) {
+        return;
+      }
+      try {
+        const partial = await streamingTranscriber.pushAudio(pcmChunk);
+        if (partial) {
+          const text = partial.text?.trim() || partial.previewText?.trim();
+          if (text && onPartialTranscript) {
+            onPartialTranscript(partial);
+          }
+        }
+      } catch {
+        // Ignore chunk decode errors during active stream
+      }
+    };
+    streamingOperationTail = streamingOperationTail.then(run, run);
+  };
+
   const handleChunk = (input: MicrophoneAudioChunk, generation: number): void => {
     if (disposed || generation !== lifecycleGeneration || !state.isMicActive) {
       return;
@@ -238,10 +274,14 @@ export function createBrowserRealtimeMicrophoneController(
       sampleRate = nextSampleRate;
     }
 
+    const wasSpeaking = isSpeechActive;
     if (micMode === 'manual') {
       manualChunks.push(chunk);
       manualIngestFrame += chunk.length;
       starter.controller?.noteIngest(manualIngestFrame);
+      if (streamingTranscriber) {
+        enqueueStreamingChunk(chunk);
+      }
       updateStatus(`Recording microphone at ${sampleRate} Hz…`, 'Microphone active');
       return;
     }
@@ -250,6 +290,11 @@ export function createBrowserRealtimeMicrophoneController(
       startFrame: input.startFrame,
       endFrame: input.endFrame,
     });
+
+    const isSpeakingNow = isSpeechActive || starter.getSnapshot()?.state === 'speaking';
+    if (streamingTranscriber && (wasSpeaking || isSpeakingNow)) {
+      enqueueStreamingChunk(chunk);
+    }
   };
 
   const enqueueLifecycleOperation = <T>(operation: () => Promise<T>): Promise<T> => {
@@ -279,6 +324,25 @@ export function createBrowserRealtimeMicrophoneController(
       sourceLabel: `microphone-${details.reason}-${new Date().toLocaleTimeString()}`,
       metadata: details.metadata,
     });
+
+    if (streamingTranscriber) {
+      const finalizeStreaming = async (): Promise<void> => {
+        if (disposed) return;
+        try {
+          await streamingTranscriber.finalize();
+        } finally {
+          try {
+            await streamingTranscriber.reset();
+          } catch {
+            // Ignore reset error
+          }
+        }
+      };
+      streamingOperationTail = streamingOperationTail.then(finalizeStreaming, finalizeStreaming);
+    } else if (options.transcribeMonoPcm && pcm.length > 0) {
+      void options.transcribeMonoPcm(pcm, details.sampleRate).catch(() => undefined);
+    }
+
     const transcription = starter.controller;
     if (!transcription || pcm.length === 0) {
       return;
@@ -311,18 +375,23 @@ export function createBrowserRealtimeMicrophoneController(
     }
 
     if (event.type === 'speech-start') {
+      isSpeechActive = true;
       setState({ micStatus: 'Speech detected. Rewinding to onset…' });
       return;
     }
     if (event.type === 'speech-update') {
+      isSpeechActive = true;
       setState({ micStatus: 'Speech active. Waiting for a natural pause…' });
       return;
     }
     if (event.type === 'speech-end') {
+      isSpeechActive = false;
       setState({ micStatus: 'Detected a pause. Finalizing utterance…' });
       return;
     }
     if (event.type === 'segment-ready') {
+      isSpeechActive = false;
+      options.onSegment?.(event.payload);
       publishCapturedAudio(event.payload.readPcm(), {
         sampleRate: event.payload.sampleRate,
         reason: event.payload.reason,
@@ -618,6 +687,7 @@ export function createBrowserRealtimeMicrophoneController(
             manualChunks = [];
             manualIngestFrame = 0;
           }
+          await streamingOperationTail;
         });
 
         if (!disposed) {
@@ -675,6 +745,7 @@ export function createBrowserRealtimeMicrophoneController(
         manualChunks = [];
         manualIngestFrame = 0;
         await attempt(starterUnsubscribe);
+        await attempt(() => streamingOperationTail);
         await attempt(() => monitor.dispose());
         await attempt(() => starter.dispose());
         listeners.clear();

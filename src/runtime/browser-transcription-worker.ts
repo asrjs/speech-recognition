@@ -1,8 +1,11 @@
 import type {
   BaseTranscriptionOptions,
   MonoPcmInput,
+  PartialTranscript,
+  StreamingSessionOptions,
   TranscriptResponse,
   TranscriptResponseFlavor,
+  TranscriptResult,
 } from '../types/index.js';
 import type { LoadSpeechModelOptions } from './load.js';
 import type { LoadSpeechModelFromLocalEntriesOptions } from './local-browser.js';
@@ -25,6 +28,12 @@ type BrowserTranscriptionWorkerRequestType =
   | 'LOAD_BUILT_IN_MODEL'
   | 'LOAD_LOCAL_MODEL'
   | 'TRANSCRIBE_MONO_PCM'
+  | 'CANCEL_TRANSCRIBE'
+  | 'START_STREAM'
+  | 'PUSH_STREAM_AUDIO'
+  | 'FLUSH_STREAM'
+  | 'FINALIZE_STREAM'
+  | 'RESET_STREAM'
   | 'DISPOSE_MODEL';
 
 type BrowserTranscriptionWorkerState = 'idle' | 'loading' | 'ready' | 'error' | 'disposed';
@@ -102,6 +111,16 @@ export interface BrowserTranscriptionWorkerClient {
     sampleRate: number,
     options?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor },
   ): Promise<TranscriptResponse<TNative, TFlavor>>;
+  startStream(
+    options?: StreamingSessionOptions,
+  ): Promise<{ readonly streamId: string; readonly supportsStreaming: boolean }>;
+  pushStreamAudio(
+    pcm: Float32Array,
+    sampleRate?: number,
+  ): Promise<PartialTranscript | null>;
+  flushStream(): Promise<TranscriptResult | null>;
+  finalizeStream(): Promise<TranscriptResult>;
+  resetStream(): Promise<void>;
   disposeModel(): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -121,9 +140,9 @@ function createBrowserTranscriptionAbortedError(
 function abortStageFor(
   type: BrowserTranscriptionWorkerRequestType,
 ): 'browser-transcription-load' | 'browser-transcription-transcribe' {
-  return type === 'TRANSCRIBE_MONO_PCM'
-    ? 'browser-transcription-transcribe'
-    : 'browser-transcription-load';
+  return type === 'LOAD_BUILT_IN_MODEL' || type === 'LOAD_LOCAL_MODEL'
+    ? 'browser-transcription-load'
+    : 'browser-transcription-transcribe';
 }
 
 function omitSignal<T extends Record<string, unknown>>(value: T): Omit<T, 'signal'> {
@@ -153,6 +172,9 @@ function clonePayloadForWorker(
           ? omitSignal(options as Record<string, unknown>)
           : (options ?? null),
     };
+  }
+  if (type === 'PUSH_STREAM_AUDIO') {
+    return payload;
   }
   return omitSignal(payload as Record<string, unknown>);
 }
@@ -406,6 +428,41 @@ export function createBrowserTranscriptionWorkerClient(
         [chunk.buffer],
         abortSignal,
       )) as TranscriptResponse<TNative, TFlavor>;
+    },
+    async startStream(
+      options?: StreamingSessionOptions,
+    ): Promise<{ readonly streamId: string; readonly supportsStreaming: boolean }> {
+      return (await sendRequest(
+        'START_STREAM',
+        options ? omitSignal(options as Record<string, unknown>) : {},
+      )) as {
+        readonly streamId: string;
+        readonly supportsStreaming: boolean;
+      };
+    },
+    async pushStreamAudio(
+      pcm: Float32Array,
+      sampleRate = 16000,
+    ): Promise<PartialTranscript | null> {
+      const chunk = pcm.slice();
+      return (await sendRequest(
+        'PUSH_STREAM_AUDIO',
+        {
+          pcm: chunk,
+          sampleRate,
+        },
+        [chunk.buffer],
+        clientSignal,
+      )) as PartialTranscript | null;
+    },
+    async flushStream(): Promise<TranscriptResult | null> {
+      return (await sendRequest('FLUSH_STREAM', null, [], clientSignal)) as TranscriptResult | null;
+    },
+    async finalizeStream(): Promise<TranscriptResult> {
+      return (await sendRequest('FINALIZE_STREAM', null, [], clientSignal)) as TranscriptResult;
+    },
+    async resetStream(): Promise<void> {
+      await sendRequest('RESET_STREAM', null);
     },
     async disposeModel(): Promise<void> {
       if (!worker || disposed) {

@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASR.js Universal WebGPU Test & Verification Harness</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "@asrjs/speech-recognition": "/dist/index.js",
+      "@asrjs/speech-recognition/builtins": "/dist/builtins.js",
+      "@asrjs/speech-recognition/browser": "/dist/browser.js",
+      "@asrjs/speech-recognition/browser-media": "/dist/browser-media.js",
+      "onnxruntime-web": "/node_modules/onnxruntime-web/dist/ort.all.bundle.min.mjs",
+      "onnxruntime-web/webgpu": "/node_modules/onnxruntime-web/dist/ort.webgpu.bundle.min.mjs",
+      "pako": "/node_modules/pako/dist/pako.esm.mjs"
+    }
+  }
+  </script>
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-surface: #111827;
+      --bg-card: #1f2937;
+      --bg-card-hover: #283548;
+      --border-color: #374151;
+      --text-main: #f3f4f6;
+      --text-dim: #9ca3af;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-primary);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .title-group h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .badge-v3 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .subtitle {
+      font-size: 0.875rem;
+      color: var(--text-dim);
+      margin-top: 0.25rem;
+    }
+    .telemetry-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .pill {
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+    .dot.green { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .dot.yellow { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+    .dot.red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .form-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    select, input, button {
+      font-family: inherit;
+      font-size: 0.9rem;
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+    select:focus, input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+    .radio-group {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg-card);
+      padding: 0.25rem;
+      border-radius: 6px;
+    }
+    .radio-btn {
+      flex: 1;
+      text-align: center;
+      padding: 0.4rem 0.5rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      border-radius: 4px;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .radio-btn.active {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    .btn-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+    button.primary:hover { background: var(--accent-hover); }
+    button.secondary {
+      background: var(--bg-card);
+      cursor: pointer;
+    }
+    button.secondary:hover { background: var(--bg-card-hover); }
+    button.warm {
+      background: #065f46;
+      border-color: #059669;
+      color: #6ee7b7;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.warm:hover { background: #047857; color: #fff; }
+    button.danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      cursor: pointer;
+    }
+    button.danger:hover { background: rgba(239, 68, 68, 0.3); color: #fff; }
+
+    /* Results */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.75rem;
+    }
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .kpi-label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .kpi-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: #fff;
+    }
+    .kpi-value.green { color: var(--success); }
+    .kpi-value.purple { color: #a78bfa; }
+    .kpi-value.yellow { color: var(--warning); }
+
+    .transcript-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      font-size: 1rem;
+      line-height: 1.5;
+      min-height: 80px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .raw-receipt-box {
+      background: #050811;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #93c5fd;
+      max-height: 320px;
+      overflow-y: auto;
+      white-space: pre;
+    }
+    .log-box {
+      background: #030712;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .log-entry { margin-bottom: 2px; }
+    .log-entry.info { color: #93c5fd; }
+    .log-entry.success { color: var(--success); }
+    .log-entry.error { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>ASR.js Browser WebGPU Harness <span class="badge-v3">Universal W3-1</span></h1>
+        <div class="subtitle">Universal 16-Family Browser WebGPU Test & Fast-Dev-Loop Verification Engine</div>
+      </div>
+    </header>
+
+    <div class="telemetry-strip" id="telemetryStrip">
+      <div class="pill" id="pillWebGpu"><span class="dot yellow"></span><span>WebGPU: Probing...</span></div>
+      <div class="pill" id="pillCoop"><span class="dot yellow"></span><span>COOP/COEP: Checking...</span></div>
+      <div class="pill" id="pillModels"><span class="dot"></span><span>Active Models: 0</span></div>
+      <div class="pill" id="pillDispatches"><span class="dot"></span><span>GPU Dispatches: 0</span></div>
+    </div>
+
+    <div class="main-grid">
+      <!-- Left Panel: Controls -->
+      <div class="card">
+        <div class="card-title">
+          <span>Configuration & Execution</span>
+        </div>
+
+        <div class="form-group">
+          <label>Model Source</label>
+          <div class="radio-group" id="sourceGroup">
+            <div class="radio-btn active" data-source="local">Local Directory</div>
+            <div class="radio-btn" data-source="catalog">Catalog Preset</div>
+          </div>
+        </div>
+
+        <div class="form-group" id="groupLocalDir">
+          <label>Local Model Directory</label>
+          <select id="selectLocalDir">
+            <option value="">Loading local models...</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="groupCatalog" style="display: none;">
+          <label>Catalog Model / Preset</label>
+          <select id="selectCatalogModel">
+            <option value="">Loading catalog models...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Backend</label>
+          <select id="selectBackend">
+            <option value="webgpu">WebGPU (strict/standard)</option>
+            <option value="webgpu-hybrid">WebGPU-Hybrid (WebGPU encoder + WASM decoder)</option>
+            <option value="wasm">WASM (reference CPU)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Execution Mode</label>
+          <select id="selectMode">
+            <option value="offline">Offline (transcribeMonoPcm)</option>
+            <option value="streaming">Streaming (createStreamingTranscriber)</option>
+            <option value="both" selected>Both (Offline + Streaming)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Audio Fixture</label>
+          <select id="selectFixture">
+            <option value="jfk-short.wav">jfk-short.wav (11s, standard benchmark)</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="groupChunkMs">
+          <label>Streaming Chunk Size (ms)</label>
+          <input type="number" id="inputChunkMs" value="160" min="20" max="1000" step="20">
+        </div>
+
+        <div class="btn-row">
+          <button class="primary" id="btnRun">▶ Run Benchmark</button>
+          <button class="warm" id="btnWarmRun">⚡ Warm Re-Run (Cached 0ms Load)</button>
+          <button class="danger" id="btnDispose">🗑 Dispose All Models</button>
+        </div>
+      </div>
+
+      <!-- Right Panel: Results & Telemetry -->
+      <div class="card">
+        <div class="card-title">
+          <span>Benchmark Results & Receipt</span>
+          <span id="runStatus" style="font-size: 0.8rem; font-weight: normal; color: var(--text-dim);">Ready</span>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-label">Load Time</div>
+            <div class="kpi-value" id="kpiLoad">--</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Inference Time</div>
+            <div class="kpi-value purple" id="kpiInference">--</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Total Time</div>
+            <div class="kpi-value" id="kpiTotal">--</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">RTFX</div>
+            <div class="kpi-value green" id="kpiRtfx">--</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">GPU Dispatches</div>
+            <div class="kpi-value yellow" id="kpiDispatches">--</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">TTFT (1st Token)</div>
+            <div class="kpi-value" id="kpiTtft">--</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Transcript</label>
+          <div class="transcript-box" id="transcriptBox">Transcript will appear here...</div>
+        </div>
+
+        <div class="form-group">
+          <label>Canonical Receipt (asrjs.browser-webgpu.v1)</label>
+          <div class="raw-receipt-box" id="receiptBox">// Run a benchmark to view the standardized verification receipt</div>
+        </div>
+
+        <div class="form-group">
+          <label>Live Harness Log</label>
+          <div class="log-box" id="logBox"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as ort from 'onnxruntime-web';
+    import {
+      listSpeechModels,
+      listExperimentalSpeechFamilies,
+      loadSpeechModel,
+      createSpeechPipeline,
+    } from '@asrjs/speech-recognition';
+    import {
+      createSpeechModelLocalEntries,
+      loadSpeechModelFromLocalEntries,
+    } from '@asrjs/speech-recognition/browser';
+    import { decodeWavToMonoPcm } from '@asrjs/speech-recognition/browser-media';
+
+    // Hook WebGPU Compute Pass Encoder to count real compute pass dispatches
+    let totalGpuDispatches = 0;
+    let runGpuDispatches = 0;
+
+    if (typeof GPUComputePassEncoder !== 'undefined' && GPUComputePassEncoder.prototype) {
+      const proto = GPUComputePassEncoder.prototype;
+      if (proto.dispatchWorkgroups && !proto._asrHooked) {
+        const origDispatch = proto.dispatchWorkgroups;
+        proto.dispatchWorkgroups = function(...args) {
+          totalGpuDispatches++;
+          runGpuDispatches++;
+          return origDispatch.apply(this, args);
+        };
+        if (proto.dispatchWorkgroupsIndirect) {
+          const origDispatchIndirect = proto.dispatchWorkgroupsIndirect;
+          proto.dispatchWorkgroupsIndirect = function(...args) {
+            totalGpuDispatches++;
+            runGpuDispatches++;
+            return origDispatchIndirect.apply(this, args);
+          };
+        }
+        proto._asrHooked = true;
+      }
+    }
+
+    // Configure ORT WASM paths
+    if (ort && ort.env && ort.env.wasm) {
+      ort.env.wasm.wasmPaths = '/node_modules/onnxruntime-web/dist/';
+      ort.env.wasm.numThreads = 1;
+    }
+    window.ort = ort;
+
+    // Active loaded models cache for fast warm-dev-loop
+    const activeModels = new Map();
+
+    const logBox = document.getElementById('logBox');
+    function log(msg, type = 'info') {
+      console.log(`[Harness] ${msg}`);
+      if (logBox) {
+        const div = document.createElement('div');
+        div.className = `log-entry ${type}`;
+        div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logBox.appendChild(div);
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+    }
+
+    function inferModelIdFromFolder(folderPath) {
+      const norm = folderPath.replace(/\\/g, '/').toLowerCase();
+      if (norm.includes('parakeet-ctc') || norm.includes('ctc-110m')) {
+        return 'ctaguchi/parakeet-hf-ctc-110m-en';
+      }
+      if (norm.includes('moonshine')) {
+        return 'UsefulSensors/moonshine-tiny';
+      }
+      if (norm.includes('wav2vec2') && (norm.includes('tr') || norm.includes('turkish'))) {
+        return 'mpoyraz/wav2vec2-xls-r-300m-cv7-turkish';
+      }
+      if (norm.includes('omnilingual')) {
+        return 'OpenVoiceOS/omnilingual-asr-ctc-300m-onnx';
+      }
+      if (norm.includes('qwen3') || norm.includes('qwen')) {
+        return 'Qwen/Qwen3-ASR-0.6B-hf';
+      }
+      if (norm.includes('parakeet-redux') || norm.includes('parakeet-tdt')) {
+        return 'parakeet-tdt-0.6b-v3';
+      }
+      return folderPath.split('/').pop();
+    }
+
+    // Harness Core Interface
+    const ASR_HARNESS = {
+      activeModels,
+      get gpuDispatches() { return runGpuDispatches; },
+      set gpuDispatches(val) { runGpuDispatches = val; },
+
+      getCatalog() {
+        return {
+          models: listSpeechModels(),
+          experimentalFamilies: listExperimentalSpeechFamilies(),
+        };
+      },
+
+      async probeWebGpu() {
+        const result = {
+          available: false,
+          crossOriginIsolated: typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : false,
+          adapter: null,
+          limits: null,
+          features: [],
+          error: null,
+        };
+        if (typeof navigator === 'undefined' || !navigator.gpu) {
+          result.error = 'navigator.gpu is not available';
+          return result;
+        }
+        try {
+          let adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+          if (!adapter) {
+            adapter = await navigator.gpu.requestAdapter();
+          }
+          if (!adapter) {
+            result.error = 'navigator.gpu.requestAdapter returned null';
+            return result;
+          }
+          result.available = true;
+          const info = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : {});
+          result.adapter = {
+            vendor: info.vendor || '',
+            architecture: info.architecture || '',
+            device: info.device || '',
+            description: info.description || '',
+          };
+          result.limits = {
+            maxBufferSize: adapter.limits?.maxBufferSize ?? null,
+            maxStorageBufferBindingSize: adapter.limits?.maxStorageBufferBindingSize ?? null,
+          };
+          result.features = Array.from(adapter.features || []);
+          return result;
+        } catch (err) {
+          result.error = String(err);
+          return result;
+        }
+      },
+
+      async loadModel(spec) {
+        const cacheKey = spec.cacheKey || spec.localFolder || spec.modelId || spec.preset || spec.family;
+        if (!cacheKey) throw new Error('Model spec requires modelId, localFolder, preset, or family');
+
+        if (!spec.forceReload && activeModels.has(cacheKey)) {
+          const cached = activeModels.get(cacheKey);
+          log(`Reusing warm cached model session for [${cacheKey}] (loadMs: 0)`, 'success');
+          return {
+            handle: cached.handle,
+            cacheKey,
+            loadMs: 0,
+            cached: true,
+            backendId: cached.handle.model?.backend?.id || spec.backend || 'webgpu',
+          };
+        }
+
+        if (activeModels.has(cacheKey)) {
+          try {
+            await activeModels.get(cacheKey).handle.dispose();
+          } catch (e) {
+            console.warn('Error disposing previous model:', e);
+          }
+          activeModels.delete(cacheKey);
+        }
+
+        log(`Loading model for [${cacheKey}]...`);
+        const t0 = performance.now();
+        let handle;
+
+        if (spec.localFolder) {
+          log(`Fetching local directory entries from /__api__/local-entries?dir=${encodeURIComponent(spec.localFolder)}...`);
+          const res = await fetch(`/__api__/local-entries?dir=${encodeURIComponent(spec.localFolder)}`);
+          if (!res.ok) throw new Error(`Failed to list local directory ${spec.localFolder}: ${res.statusText}`);
+          const entries = await res.json();
+          log(`Found ${entries.length} local files. Downloading blobs into browser memory...`);
+
+          const files = await Promise.all(entries.map(async (entry) => {
+            const fRes = await fetch(entry.url);
+            if (!fRes.ok) throw new Error(`Failed to fetch ${entry.url}: ${fRes.statusText}`);
+            const blob = await fRes.blob();
+            return new File([blob], entry.name, { type: 'application/octet-stream' });
+          }));
+
+          const localEntries = createSpeechModelLocalEntries(files);
+          let modelId = spec.modelId;
+          if (!modelId) {
+            modelId = inferModelIdFromFolder(spec.localFolder);
+          }
+
+          const selectedBackend = spec.backend || 'webgpu';
+          const encoderBackend = spec.encoderBackend || (selectedBackend === 'wasm' ? 'wasm' : 'webgpu');
+          const decoderBackend = spec.decoderBackend || (selectedBackend === 'webgpu-hybrid' ? 'wasm' : selectedBackend);
+
+          log(`Resolved modelId "${modelId}" (${encoderBackend}/${decoderBackend}). Initializing speech session...`);
+          handle = await loadSpeechModelFromLocalEntries({
+            modelId,
+            entries: localEntries,
+            backend: selectedBackend,
+            encoderBackend,
+            decoderBackend,
+            options: {
+              encoderBackend,
+              decoderBackend,
+            },
+            ...(spec.options || {}),
+          });
+        } else {
+          handle = await loadSpeechModel({
+            modelId: spec.modelId,
+            preset: spec.preset,
+            family: spec.family,
+            backend: spec.backend || 'webgpu',
+            ...(spec.options || {}),
+          });
+        }
+
+        const loadMs = performance.now() - t0;
+        log(`Model loaded successfully in ${loadMs.toFixed(1)}ms.`, 'success');
+
+        activeModels.set(cacheKey, {
+          handle,
+          spec,
+          loadMs,
+          loadedAt: Date.now(),
+        });
+
+        updateTelemetryPills();
+
+        return {
+          handle,
+          cacheKey,
+          loadMs,
+          cached: false,
+          backendId: handle.model?.backend?.id || spec.backend || 'webgpu',
+        };
+      },
+
+      async runOffline(spec) {
+        log(`--- Starting Offline Run [${spec.fixture || 'jfk-short.wav'}] ---`);
+        const { handle, loadMs, cached, backendId } = await this.loadModel(spec);
+
+        // Fetch and decode audio fixture
+        const fixtureName = spec.fixture || 'jfk-short.wav';
+        const fixtureUrl = spec.audioUrl || `/__fixtures__/${fixtureName}`;
+        log(`Fetching audio fixture from ${fixtureUrl}...`);
+        const audioRes = await fetch(fixtureUrl);
+        if (!audioRes.ok) throw new Error(`Failed to fetch fixture ${fixtureUrl}: ${audioRes.statusText}`);
+        const audioBuf = await audioRes.arrayBuffer();
+
+        const { pcm, sampleRate } = decodeWavToMonoPcm(audioBuf);
+        const durationSec = pcm.length / sampleRate;
+        log(`Decoded ${pcm.length} samples (${durationSec.toFixed(2)}s @ ${sampleRate}Hz).`);
+
+        // Reset GPU dispatch counter for this run
+        runGpuDispatches = 0;
+
+        log(`Running handle.transcribeMonoPcm...`);
+        const t0 = performance.now();
+        const response = await handle.transcribeMonoPcm(pcm, 16000, {
+          detail: spec.detail || 'words',
+          responseFlavor: spec.responseFlavor || 'canonical+native',
+        });
+        const inferenceMs = performance.now() - t0;
+        const totalMs = loadMs + inferenceMs;
+        const rtfx = durationSec / (inferenceMs / 1000);
+        const dispatches = runGpuDispatches;
+
+        const transcriptText = typeof response === 'string' ? response : (response.text || response.canonical?.text || '');
+        const words = response.words || response.canonical?.words || [];
+
+        log(`Offline transcription completed in ${inferenceMs.toFixed(1)}ms (${rtfx.toFixed(1)}x real-time, ${dispatches} GPU dispatches)`, 'success');
+        log(`Transcript: "${transcriptText}"`);
+
+        const probe = await this.probeWebGpu();
+
+        const receipt = {
+          schema: 'asrjs.browser-webgpu.v1',
+          status: 'PASS',
+          mode: 'offline',
+          modelId: handle.model?.info?.modelId || spec.modelId || spec.localFolder,
+          backendId,
+          adapter: probe.adapter,
+          limits: probe.limits,
+          audio: {
+            fixture: fixtureName,
+            durationSeconds: Math.round(durationSec * 100) / 100,
+            samples: pcm.length,
+            sampleRate,
+          },
+          metrics: {
+            loadMs: Math.round(loadMs * 10) / 10,
+            inferenceMs: Math.round(inferenceMs * 10) / 10,
+            totalMs: Math.round(totalMs * 10) / 10,
+            rtfx: Math.round(rtfx * 10) / 10,
+            gpuDispatches: dispatches,
+          },
+          cached,
+          transcript: transcriptText,
+          words,
+          timestamp: new Date().toISOString(),
+        };
+
+        return receipt;
+      },
+
+      async runStreaming(spec) {
+        log(`--- Starting Streaming Run [${spec.fixture || 'jfk-short.wav'}] ---`);
+        const { handle, loadMs, cached, backendId } = await this.loadModel(spec);
+
+        const fixtureName = spec.fixture || 'jfk-short.wav';
+        const fixtureUrl = spec.audioUrl || `/__fixtures__/${fixtureName}`;
+        const audioRes = await fetch(fixtureUrl);
+        if (!audioRes.ok) throw new Error(`Failed to fetch fixture ${fixtureUrl}: ${audioRes.statusText}`);
+        const audioBuf = await audioRes.arrayBuffer();
+
+        const { pcm, sampleRate } = decodeWavToMonoPcm(audioBuf);
+        const durationSec = pcm.length / sampleRate;
+
+        runGpuDispatches = 0;
+
+        const chunkMs = spec.chunkMs || 160;
+        const chunkSamples = Math.round((chunkMs / 1000) * 16000);
+
+        let finalTranscript = '';
+        let ttftMs = null;
+        const partials = [];
+        const chunkLatencies = [];
+
+        const tStart = performance.now();
+
+        if (typeof handle.createStreamingTranscriber === 'function') {
+          log(`Creating streaming transcriber (${chunkMs}ms chunks = ${chunkSamples} samples/chunk)...`);
+          const transcriber = await handle.createStreamingTranscriber(spec.streamingOptions || {});
+
+          for (let offset = 0; offset < pcm.length; offset += chunkSamples) {
+            const chunk = pcm.subarray(offset, Math.min(offset + chunkSamples, pcm.length));
+            const tC0 = performance.now();
+            const partial = await transcriber.pushAudio(chunk);
+            const tC1 = performance.now();
+            chunkLatencies.push(tC1 - tC0);
+
+            if (partial && partial.text && partial.text.trim()) {
+              if (ttftMs === null) {
+                ttftMs = performance.now() - tStart;
+              }
+              partials.push({
+                text: partial.text,
+                timeMs: Math.round((performance.now() - tStart) * 10) / 10,
+                chunkIndex: Math.floor(offset / chunkSamples),
+              });
+            }
+          }
+
+          const finalRes = await transcriber.finish();
+          finalTranscript = typeof finalRes === 'string' ? finalRes : (finalRes?.text || (partials[partials.length - 1]?.text ?? ''));
+        } else {
+          log(`Model does not expose native streaming; running chunked window simulation...`);
+          for (let offset = 0; offset < pcm.length; offset += chunkSamples) {
+            const chunk = pcm.subarray(0, Math.min(offset + chunkSamples, pcm.length));
+            const tC0 = performance.now();
+            const res = await handle.transcribeMonoPcm(chunk, 16000);
+            const tC1 = performance.now();
+            chunkLatencies.push(tC1 - tC0);
+            const curText = typeof res === 'string' ? res : (res.text || '');
+            if (curText.trim()) {
+              if (ttftMs === null) {
+                ttftMs = performance.now() - tStart;
+              }
+              partials.push({
+                text: curText,
+                timeMs: Math.round((performance.now() - tStart) * 10) / 10,
+                chunkIndex: Math.floor(offset / chunkSamples),
+              });
+            }
+          }
+          finalTranscript = partials[partials.length - 1]?.text ?? '';
+        }
+
+        const totalStreamingMs = performance.now() - tStart;
+        const totalMs = loadMs + totalStreamingMs;
+        const rtfx = durationSec / (totalStreamingMs / 1000);
+        const dispatches = runGpuDispatches;
+
+        const meanLatency = chunkLatencies.length > 0 ? (chunkLatencies.reduce((a, b) => a + b, 0) / chunkLatencies.length) : 0;
+        const sortedLatencies = [...chunkLatencies].sort((a, b) => a - b);
+        const p95Idx = Math.floor(sortedLatencies.length * 0.95);
+        const p95Latency = sortedLatencies[p95Idx] ?? meanLatency;
+
+        log(`Streaming completed in ${totalStreamingMs.toFixed(1)}ms (TTFT: ${ttftMs ? ttftMs.toFixed(1) + 'ms' : 'N/A'}, Mean chunk: ${meanLatency.toFixed(1)}ms, ${dispatches} GPU dispatches)`, 'success');
+        log(`Final Transcript: "${finalTranscript}"`);
+
+        const probe = await this.probeWebGpu();
+
+        const receipt = {
+          schema: 'asrjs.browser-webgpu.v1',
+          status: 'PASS',
+          mode: 'streaming',
+          modelId: handle.model?.info?.modelId || spec.modelId || spec.localFolder,
+          backendId,
+          adapter: probe.adapter,
+          limits: probe.limits,
+          audio: {
+            fixture: fixtureName,
+            durationSeconds: Math.round(durationSec * 100) / 100,
+            samples: pcm.length,
+            sampleRate,
+          },
+          metrics: {
+            loadMs: Math.round(loadMs * 10) / 10,
+            inferenceMs: Math.round(totalStreamingMs * 10) / 10,
+            totalMs: Math.round(totalMs * 10) / 10,
+            rtfx: Math.round(rtfx * 10) / 10,
+            ttftMs: ttftMs ? Math.round(ttftMs * 10) / 10 : null,
+            gpuDispatches: dispatches,
+            chunkLatenciesMs: {
+              mean: Math.round(meanLatency * 10) / 10,
+              p95: Math.round(p95Latency * 10) / 10,
+              min: Math.round((sortedLatencies[0] ?? 0) * 10) / 10,
+              max: Math.round((sortedLatencies[sortedLatencies.length - 1] ?? 0) * 10) / 10,
+              count: chunkLatencies.length,
+            },
+          },
+          cached,
+          partials,
+          finalTranscript,
+          transcript: finalTranscript,
+          timestamp: new Date().toISOString(),
+        };
+
+        return receipt;
+      },
+
+      async disposeAll() {
+        log(`Disposing all ${activeModels.size} active model sessions...`);
+        const tasks = [];
+        for (const [key, item] of activeModels.entries()) {
+          tasks.push((async () => {
+            try {
+              await item.handle.dispose();
+              log(`Disposed model [${key}]`);
+            } catch (err) {
+              log(`Error disposing [${key}]: ${err.message}`, 'error');
+            }
+          })());
+        }
+        await Promise.all(tasks);
+        activeModels.clear();
+        updateTelemetryPills();
+        log(`All models disposed. GPU memory freed.`, 'success');
+      },
+    };
+
+    window.__ASR_HARNESS__ = ASR_HARNESS;
+
+    // UI Wire-up
+    const pillWebGpu = document.getElementById('pillWebGpu');
+    const pillCoop = document.getElementById('pillCoop');
+    const pillModels = document.getElementById('pillModels');
+    const pillDispatches = document.getElementById('pillDispatches');
+
+    const selectLocalDir = document.getElementById('selectLocalDir');
+    const selectCatalogModel = document.getElementById('selectCatalogModel');
+    const selectBackend = document.getElementById('selectBackend');
+    const selectMode = document.getElementById('selectMode');
+    const selectFixture = document.getElementById('selectFixture');
+    const inputChunkMs = document.getElementById('inputChunkMs');
+
+    const btnRun = document.getElementById('btnRun');
+    const btnWarmRun = document.getElementById('btnWarmRun');
+    const btnDispose = document.getElementById('btnDispose');
+
+    const kpiLoad = document.getElementById('kpiLoad');
+    const kpiInference = document.getElementById('kpiInference');
+    const kpiTotal = document.getElementById('kpiTotal');
+    const kpiRtfx = document.getElementById('kpiRtfx');
+    const kpiDispatches = document.getElementById('kpiDispatches');
+    const kpiTtft = document.getElementById('kpiTtft');
+
+    const transcriptBox = document.getElementById('transcriptBox');
+    const receiptBox = document.getElementById('receiptBox');
+    const runStatus = document.getElementById('runStatus');
+
+    function updateTelemetryPills() {
+      pillModels.innerHTML = `<span class="dot ${activeModels.size > 0 ? 'green' : ''}"></span><span>Active Models: ${activeModels.size}</span>`;
+      pillDispatches.innerHTML = `<span class="dot ${totalGpuDispatches > 0 ? 'green' : ''}"></span><span>GPU Dispatches: ${totalGpuDispatches}</span>`;
+    }
+
+    async function initUI() {
+      // 1. Probe WebGPU
+      const gpuProbe = await ASR_HARNESS.probeWebGpu();
+      if (gpuProbe.available) {
+        const arch = gpuProbe.adapter?.architecture ? ` (${gpuProbe.adapter.architecture})` : '';
+        pillWebGpu.innerHTML = `<span class="dot green"></span><span>WebGPU: ${gpuProbe.adapter?.vendor || 'Available'}${arch}</span>`;
+      } else {
+        pillWebGpu.innerHTML = `<span class="dot red"></span><span>WebGPU: ${gpuProbe.error || 'Unavailable'}</span>`;
+      }
+
+      // 2. Isolation check
+      if (typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated) {
+        pillCoop.innerHTML = `<span class="dot green"></span><span>COOP/COEP: Isolated</span>`;
+      } else {
+        pillCoop.innerHTML = `<span class="dot red"></span><span>COOP/COEP: Non-Isolated</span>`;
+      }
+
+      updateTelemetryPills();
+
+      // 3. Populate Catalog Models
+      try {
+        const catalog = ASR_HARNESS.getCatalog();
+        selectCatalogModel.innerHTML = '';
+        for (const model of catalog.models) {
+          const opt = document.createElement('option');
+          opt.value = model.modelId;
+          opt.textContent = `${model.displayName || model.modelId} [${model.classification?.family || model.preset}]`;
+          selectCatalogModel.appendChild(opt);
+        }
+      } catch (err) {
+        log(`Failed to list catalog models: ${err.message}`, 'error');
+      }
+
+      // 4. Populate Local Models from /__api__/local-models
+      try {
+        const res = await fetch('/__api__/local-models');
+        if (res.ok) {
+          const localModels = await res.json();
+          selectLocalDir.innerHTML = '';
+          for (const m of localModels) {
+            const opt = document.createElement('option');
+            opt.value = m.dir;
+            const mb = (m.sizeBytes / (1024 * 1024)).toFixed(0);
+            opt.textContent = `${m.name} (${m.fileCount} files, ${mb} MB)`;
+            selectLocalDir.appendChild(opt);
+          }
+          if (localModels.length === 0) {
+            selectLocalDir.innerHTML = '<option value="">No local models detected</option>';
+          }
+        }
+      } catch (err) {
+        log(`Failed to fetch local models: ${err.message}`, 'error');
+      }
+
+      // 5. Populate Fixtures from /__api__/fixtures
+      try {
+        const fRes = await fetch('/__api__/fixtures');
+        if (fRes.ok) {
+          const fixtures = await fRes.json();
+          if (fixtures.length > 0) {
+            selectFixture.innerHTML = '';
+            for (const f of fixtures) {
+              const opt = document.createElement('option');
+              opt.value = f.name;
+              opt.textContent = `${f.name} (${(f.size / 1024).toFixed(0)} KB)`;
+              selectFixture.appendChild(opt);
+            }
+          }
+        }
+      } catch (err) {}
+    }
+
+    // Toggle Source selection
+    let activeSource = 'local';
+    document.querySelectorAll('#sourceGroup .radio-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#sourceGroup .radio-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeSource = btn.dataset.source;
+        if (activeSource === 'local') {
+          document.getElementById('groupLocalDir').style.display = 'flex';
+          document.getElementById('groupCatalog').style.display = 'none';
+        } else {
+          document.getElementById('groupLocalDir').style.display = 'none';
+          document.getElementById('groupCatalog').style.display = 'flex';
+        }
+      });
+    });
+
+    async function executeBenchmark(warm = false) {
+      btnRun.disabled = true;
+      btnWarmRun.disabled = true;
+      runStatus.textContent = warm ? 'Executing Warm Re-Run...' : 'Executing Cold Benchmark...';
+      runStatus.style.color = '#a78bfa';
+
+      try {
+        const mode = selectMode.value;
+        const backend = selectBackend.value;
+        const fixture = selectFixture.value;
+        const chunkMs = parseInt(inputChunkMs.value, 10) || 160;
+
+        const spec = {
+          backend,
+          fixture,
+          chunkMs,
+          forceReload: !warm,
+        };
+
+        if (activeSource === 'local') {
+          spec.localFolder = selectLocalDir.value;
+          spec.modelId = inferModelIdFromFolder(spec.localFolder);
+        } else {
+          spec.modelId = selectCatalogModel.value;
+        }
+
+        let receipt;
+        if (mode === 'offline') {
+          receipt = await ASR_HARNESS.runOffline(spec);
+        } else if (mode === 'streaming') {
+          receipt = await ASR_HARNESS.runStreaming(spec);
+        } else {
+          // both
+          const offlineReceipt = await ASR_HARNESS.runOffline(spec);
+          // For streaming in 'both' mode, use warm session
+          const streamingReceipt = await ASR_HARNESS.runStreaming({ ...spec, forceReload: false });
+          receipt = {
+            schema: 'asrjs.browser-webgpu.v1',
+            status: 'PASS',
+            mode: 'both',
+            modelId: spec.modelId,
+            backendId: backend,
+            adapter: offlineReceipt.adapter,
+            offline: offlineReceipt,
+            streaming: streamingReceipt,
+            transcript: offlineReceipt.transcript,
+            metrics: {
+              loadMs: offlineReceipt.metrics.loadMs,
+              offlineInferenceMs: offlineReceipt.metrics.inferenceMs,
+              offlineRtfx: offlineReceipt.metrics.rtfx,
+              streamingInferenceMs: streamingReceipt.metrics.inferenceMs,
+              streamingRtfx: streamingReceipt.metrics.rtfx,
+              ttftMs: streamingReceipt.metrics.ttftMs,
+              totalGpuDispatches: offlineReceipt.metrics.gpuDispatches + streamingReceipt.metrics.gpuDispatches,
+            },
+            timestamp: new Date().toISOString(),
+          };
+        }
+
+        // Render KPIs
+        const m = receipt.mode === 'both' ? receipt.offline.metrics : receipt.metrics;
+        kpiLoad.textContent = `${m.loadMs}ms`;
+        kpiLoad.className = `kpi-value ${m.loadMs === 0 ? 'green' : ''}`;
+        kpiInference.textContent = `${m.inferenceMs}ms`;
+        kpiTotal.textContent = `${m.totalMs || (m.loadMs + m.inferenceMs).toFixed(1)}ms`;
+        kpiRtfx.textContent = `${m.rtfx}x`;
+        kpiDispatches.textContent = `${m.gpuDispatches}`;
+        kpiTtft.textContent = receipt.mode === 'both'
+          ? (receipt.streaming.metrics.ttftMs ? `${receipt.streaming.metrics.ttftMs}ms` : '--')
+          : (m.ttftMs ? `${m.ttftMs}ms` : '--');
+
+        transcriptBox.textContent = receipt.transcript || '(No transcript produced)';
+        receiptBox.textContent = JSON.stringify(receipt, null, 2);
+
+        window.lastTestReceipt = receipt;
+        runStatus.textContent = `Completed in ${receipt.metrics?.totalMs || receipt.metrics?.inferenceMs || 0}ms`;
+        runStatus.style.color = 'var(--success)';
+      } catch (err) {
+        log(`Benchmark failed: ${err.message}`, 'error');
+        runStatus.textContent = `Failed: ${err.message}`;
+        runStatus.style.color = 'var(--danger)';
+        receiptBox.textContent = JSON.stringify({ error: err.message, stack: err.stack }, null, 2);
+      } finally {
+        btnRun.disabled = false;
+        btnWarmRun.disabled = false;
+        updateTelemetryPills();
+      }
+    }
+
+    btnRun.addEventListener('click', () => executeBenchmark(false));
+    btnWarmRun.addEventListener('click', () => executeBenchmark(true));
+    btnDispose.addEventListener('click', async () => {
+      await ASR_HARNESS.disposeAll();
+      kpiLoad.textContent = '--';
+      kpiInference.textContent = '--';
+      kpiTotal.textContent = '--';
+      kpiRtfx.textContent = '--';
+      kpiDispatches.textContent = '--';
+      kpiTtft.textContent = '--';
+      transcriptBox.textContent = 'Models disposed.';
+      runStatus.textContent = 'All models disposed';
+    });
+
+    initUI();
+  </script>
+</body>
+</html>

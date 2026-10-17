@@ -1,3 +1,5 @@
+import { dynamicTimeWarpNegative } from '../../alignment/cross-attention-dtw.js';
+
 export interface WhisperAttentionHeadMatrix {
   /** Cross-attention values, laid out as token-major rows. */
   readonly values: Float32Array;
@@ -160,72 +162,6 @@ function averageHeads(heads: readonly Float32Array[], tokenCount: number, frameC
     for (let i = 0; i < output.length; i++) output[i] = (output[i] ?? 0) + (head[i] ?? 0) / heads.length;
   }
   return output;
-}
-
-function dynamicTimeWarpNegative(matrix: Float32Array, tokenCount: number, frameCount: number): {
-  readonly textIndices: readonly number[];
-  readonly timeIndices: readonly number[];
-} {
-  const rows = tokenCount;
-  const cols = frameCount;
-  // Match whisper.timing.dtw_cpu: the accumulated cost is float32 even
-  // though the normalized attention matrix is later consumed as a negative
-  // float64-like score by the reference implementation.
-  const cost = Array.from({ length: rows + 1 }, () => new Float32Array(cols + 1).fill(Infinity));
-  const trace = Array.from({ length: rows + 1 }, () => new Uint8Array(cols + 1).fill(255));
-  cost[0]![0] = 0;
-
-  for (let row = 1; row <= rows; row++) {
-    for (let col = 1; col <= cols; col++) {
-      const diagonal = cost[row - 1]![col - 1]!;
-      const up = cost[row - 1]![col]!;
-      const left = cost[row]![col - 1]!;
-      // Match OpenAI Whisper's dtw_cpu tie-breaking. In particular, a tie
-      // falls through to the horizontal move, which keeps this path aligned
-      // with the reference jump-time extraction on flat attention regions.
-      let best: number;
-      let direction: number;
-      if (diagonal < up && diagonal < left) {
-        best = diagonal;
-        direction = 0;
-      } else if (up < diagonal && up < left) {
-        best = up;
-        direction = 1;
-      } else {
-        best = left;
-        direction = 2;
-      }
-      cost[row]![col] = best - (matrix[(row - 1) * cols + (col - 1)] ?? 0);
-      trace[row]![col] = direction;
-    }
-  }
-
-  // The reference backtrace explicitly walks both zero-cost borders. Those
-  // dummy row indices are useful for finding the first real row's jump time;
-  // computeWhisperDtwTokenTimestamps ignores the negative row itself.
-  for (let col = 0; col <= cols; col++) trace[0]![col] = 2;
-  for (let row = 0; row <= rows; row++) trace[row]![0] = 1;
-
-  const textIndices: number[] = [];
-  const timeIndices: number[] = [];
-  let row = rows;
-  let col = cols;
-  while (row > 0 || col > 0) {
-    textIndices.push(row - 1);
-    timeIndices.push(col - 1);
-    const direction = trace[row]![col];
-    if (direction === 0) {
-      row--;
-      col--;
-    } else if (direction === 1) {
-      row--;
-    } else {
-      col--;
-    }
-  }
-  textIndices.reverse();
-  timeIndices.reverse();
-  return { textIndices, timeIndices };
 }
 
 export function computeWhisperDtwTokenTimestamps(

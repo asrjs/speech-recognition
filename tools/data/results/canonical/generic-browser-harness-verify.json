@@ -1,0 +1,105 @@
+{
+  "schema": "asrjs.browser-webgpu.v1",
+  "status": "PASS",
+  "scope": "real-headless-chrome-webgpu-harness-verified",
+  "model": {
+    "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+    "localFolder": "models/onnx/parakeet-ctc-110m-en",
+    "backendId": "webgpu"
+  },
+  "browser_version": "155.0.8059.82",
+  "adapter": {
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "limits": {
+    "maxBufferSize": 2147483648,
+    "maxStorageBufferBindingSize": 2147483644
+  },
+  "audio": {
+    "fixture": "jfk-short.wav",
+    "durationSeconds": 11,
+    "samples": 176000,
+    "sampleRate": 16000
+  },
+  "runs": {
+    "cold": {
+      "schema": "asrjs.browser-webgpu.v1",
+      "status": "PASS",
+      "mode": "offline",
+      "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+      "backendId": "webgpu",
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": ""
+      },
+      "limits": {
+        "maxBufferSize": 2147483648,
+        "maxStorageBufferBindingSize": 2147483644
+      },
+      "audio": {
+        "fixture": "jfk-short.wav",
+        "durationSeconds": 11,
+        "samples": 176000,
+        "sampleRate": 16000
+      },
+      "metrics": {
+        "loadMs": 5114.9,
+        "inferenceMs": 692.3,
+        "totalMs": 5807.2,
+        "rtfx": 15.9,
+        "gpuDispatches": 0
+      },
+      "cached": false,
+      "transcript": " And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+      "words": [],
+      "timestamp": "2026-10-17T19:44:56.456Z",
+      "browser_version": "155.0.8059.82"
+    },
+    "warm": {
+      "schema": "asrjs.browser-webgpu.v1",
+      "status": "PASS",
+      "mode": "offline",
+      "modelId": "ctaguchi/parakeet-hf-ctc-110m-en",
+      "backendId": "webgpu",
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": ""
+      },
+      "limits": {
+        "maxBufferSize": 2147483648,
+        "maxStorageBufferBindingSize": 2147483644
+      },
+      "audio": {
+        "fixture": "jfk-short.wav",
+        "durationSeconds": 11,
+        "samples": 176000,
+        "sampleRate": 16000
+      },
+      "metrics": {
+        "loadMs": 0,
+        "inferenceMs": 578.4,
+        "totalMs": 578.4,
+        "rtfx": 19,
+        "gpuDispatches": 0
+      },
+      "cached": true,
+      "transcript": " And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+      "words": [],
+      "timestamp": "2026-10-17T19:44:57.057Z",
+      "browser_version": "155.0.8059.82"
+    }
+  },
+  "verification": {
+    "warmSessionReused": true,
+    "expectJfk": true,
+    "matchExpected": true
+  },
+  "timestamp": "2026-10-17T19:44:57.441Z"
+}
