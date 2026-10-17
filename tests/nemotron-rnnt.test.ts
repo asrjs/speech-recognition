@@ -93,18 +93,18 @@ describe('Nemotron preset manifest', () => {
     ).toBeDefined();
     expect(
       resolveNemotronPresetManifest(
-        'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4',
+        'ysdede/nemotron-3.5-asr-streaming-0.6b-onnx',
       ),
     ).toBeDefined();
     expect(resolveNemotronPresetManifest('parakeet-tdt-0.6b-v2')).toBeUndefined();
   });
 
-  it('points the default source at the upstream INT4 export', () => {
+  it('points the default source at our fp16 export repository', () => {
     const source = resolveNemotronArtifactSource('nemotron-3.5-asr-streaming-0.6b');
     expect(source?.kind).toBe('huggingface');
     if (source?.kind === 'huggingface') {
       expect(source.repoId).toBe(
-        'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4',
+        'ysdede/nemotron-3.5-asr-streaming-0.6b-onnx',
       );
     }
   });
