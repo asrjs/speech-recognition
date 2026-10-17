@@ -313,6 +313,26 @@ ONNX fp16 front, fp32 oracle'a native fp16'dan her uzunlukta daha yakın. Eski r
 
 Açık karar (kullanıcı): `atol=1e-4/rtol=1e-3` hiçbir fp16 yolunun uzun girdide fp32 oracle'a karşı geçemeyeceği bir eşik; native fp16 de geçmiyor. Kapıyı değiştirmedim. Önerilen fp16 kapısı: fp32 oracle'a karşı ONNX hatası ≤ native fp16 hatası, artı token/metin eşitliği. Bu bir kabul kriteri değişikliğidir; onay olmadan uygulanmaz. Decoder numerical FAIL'i büyük olasılıkla aynı yürütme yolundan geliyor (dört opt seviyesinde aynı sapma), ölçülmedi. WebGPU fp16'yı native çalıştırır; bu CPU bulgusu browser davranışını kanıtlamaz.
 
+### QWEN-013 — fp16 göreli kapısı onaylandı; native encoder ve decoder PASS (2026-10-17)
+
+Kullanıcı kararı (2026-10-17): Qwen fp16 numerical kapısı, ONNX-vs-native-fp16 allclose yerine **göreli kapı** oldu. Tanım: aynı comparator ile fp32 oracle'a (bf16 checkpoint → fp32 ağırlık, fp32 compute) karşı ONNX max ve mean abs hatası, native PyTorch fp16'nın max ve mean abs hatasını aşmaz; ve greedy token/metin oracle ile aynıdır. fp32 graph'lar için mutlak `atol=1e-4/rtol=1e-3` kapısı değişmedi.
+
+Encoder front (`front-precision-path-2026-10-17.json`, opt `all`): 100/500/1100 frame'de ONNX max ve mean hatası native'den küçük → göreli kapı **PASS**.
+
+Decoder (`probe_decoder_precision_path.py`, receipt `decoder-precision-path-2026-10-17.json`): JFK, 158 prompt token, 30 adım; üç yol aynı fp32 girdi ve oracle greedy token'ları alıyor, her biri kendi cache'ini taşıyor.
+
+| Tensor | native fp16 max / mean | ONNX fp16 max / mean |
+|---|---:|---:|
+| logits (30 adım) | 0.1139 / 0.01247 | 0.0385 / 0.00508 |
+| present_key | 3.504 / 0.00321 | 0.492 / 0.00130 |
+| present_value | 2.646 / 0.00640 | 0.865 / 0.00233 |
+
+ONNX argmax 30/30 adımda oracle token'ına eşit; oracle metni doğru JFK metni. Göreli kapı **PASS**. Hiçbir fp16 yolu fp32'ye karşı mutlak allclose vermiyor; bu kapının parçası değil.
+
+Owned test `test_cache_zero_one_and_token_axis_roundtrip` aynı göreli kapıya geçirildi (fp32 oracle = aynı küçük ağırlıkların fp32 kopyası; shape/dtype kontrolleri korundu). `test_qwen3_asr_fp16_export`: 4/4 PASS.
+
+Güncel durum: native CPU kapıları (kaynak, feature, iki uzunluk e2e token, encoder ve decoder göreli numerical) PASS. Q1 hâlâ **PARTIAL**: browser/WebGPU UNTESTED; browser kapısı aynı göreli tanımı fp32 oracle receipt'lerine karşı kullanmalı. Sonraki adım: WebGPU oturumunda front+decoder çalıştırma ve aynı JFK token kontrolü.
+
 
 
 

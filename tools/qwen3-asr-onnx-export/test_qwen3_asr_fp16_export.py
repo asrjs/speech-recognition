@@ -1,6 +1,7 @@
 """Exercise real fp16 Qwen decoder export boundaries without downloading weights."""
 from __future__ import annotations
 
+import copy
 import shutil
 import tempfile
 import unittest
@@ -40,6 +41,7 @@ class DecoderExportTests(unittest.TestCase):
         cls.root = Path(cls.directory.name)
         cls.model = SmallQwen().eval()
         cls.step = Float32DecoderStep(cls.model).eval()
+        cls.oracle = Float32DecoderStep(copy.deepcopy(cls.model).float()).eval()
         cls.receipt = export_decoder(cls.model, cls.root)
         options = ort.SessionOptions()
         options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
@@ -54,27 +56,41 @@ class DecoderExportTests(unittest.TestCase):
         cls.directory.cleanup()
 
     def test_cache_zero_one_and_token_axis_roundtrip(self):
+        # fp16 relative gate: against the fp32 oracle on the same weights, the
+        # ONNX error must not exceed native PyTorch fp16 error. ORT CPU runs
+        # many fp16 ops in fp32, so it cannot reproduce native fp16 rounding.
         generator = np.random.default_rng(91)
+        errors = {"native": [], "onnx": []}
         for initial_past in (0, 1, 4):
             keys = np.zeros((2, 1, 2, initial_past, 16), dtype=np.float32)
             values = keys.copy()
-            reference_keys = torch.from_numpy(keys)
-            reference_values = torch.from_numpy(values)
+            caches = {
+                "native": (torch.from_numpy(keys), torch.from_numpy(values)),
+                "oracle": (torch.from_numpy(keys), torch.from_numpy(values)),
+            }
             for count in (2, 1, 3):
                 embeds = generator.normal(0, 0.1, (1, count, 64)).astype(np.float32)
                 with torch.no_grad():
-                    reference = self.step(torch.from_numpy(embeds), reference_keys, reference_values)
+                    native = self.step(torch.from_numpy(embeds), *caches["native"])
+                    oracle = self.oracle(torch.from_numpy(embeds), *caches["oracle"])
                 produced = self.session.run(None, {
                     "inputs_embeds": embeds, "past_key": keys, "past_value": values,
                 })
                 expected_length = keys.shape[3] + count
                 self.assertEqual(produced[1].shape, (2, 1, 2, expected_length, 16))
                 self.assertEqual(produced[2].shape, produced[1].shape)
-                for expected, actual in zip(reference, produced):
+                for reference, fp16, actual in zip(oracle, native, produced):
                     self.assertEqual(actual.dtype, np.dtype(np.float32))
-                    np.testing.assert_allclose(actual, expected.numpy(), atol=1e-4, rtol=1e-3)
+                    self.assertEqual(actual.shape, tuple(reference.shape))
+                    errors["native"].append(np.abs(fp16.numpy() - reference.numpy()))
+                    errors["onnx"].append(np.abs(actual - reference.numpy()))
                 keys, values = produced[1:]
-                reference_keys, reference_values = reference[1:]
+                caches["native"] = native[1:]
+                caches["oracle"] = oracle[1:]
+        native_error = np.concatenate([e.ravel() for e in errors["native"]])
+        onnx_error = np.concatenate([e.ravel() for e in errors["onnx"]])
+        self.assertLessEqual(onnx_error.max(), native_error.max())
+        self.assertLessEqual(onnx_error.mean(), native_error.mean())
 
     def test_wrong_feed_dtype_is_rejected(self):
         with self.assertRaisesRegex(Exception, "type|Type|float"):

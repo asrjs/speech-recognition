@@ -1,0 +1,1361 @@
+{
+  "status": "DECODER_RELATIVE_GATE_PASS",
+  "gate": {
+    "logits_relative": true,
+    "present_key_relative": true,
+    "present_value_relative": true,
+    "onnx_argmax_equals_oracle_every_step": true
+  },
+  "gate_definition": "for\nlogits and final present key/value, the ONNX max and mean absolute error to the\noracle must not exceed native fp16's, and every step's argmax must equal the\noracle token.",
+  "comparator": "tools/tensor_parity.py::compare_tensors(reference=fp32_oracle, candidate, atol=0.0001, rtol=0.001)",
+  "oracle": "original bf16 checkpoint weights loaded as fp32, fp32 compute, eager attention",
+  "artifact": {
+    "path": "U:\\parallel-agents\\qwen-fp16-wt\\models\\onnx\\qwen3-asr-0.6b-fp16-direct-2026-10-08\\dynamic-front\\decoder_step_model.onnx",
+    "sha256": "d7156f8b8e2f353b1745144242315a531827fc6310d766195309394e2fd00cc6"
+  },
+  "source_sha256": "e58eb3145ad6b7a17381ffca37c004ab6bede933b3324aef7c8669623498f999",
+  "versions": {
+    "onnxruntime": "1.30.0",
+    "torch": "2.14.1+cpu",
+    "transformers": "5.18.0"
+  },
+  "prompt_tokens": 158,
+  "decode_steps": 30,
+  "oracle_text": "language English<asr_text>And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+  "oracle_tokens": [
+    11528,
+    6364,
+    151704,
+    3036,
+    773,
+    11,
+    847,
+    12357,
+    8877,
+    11,
+    2548,
+    537,
+    1128,
+    697,
+    3146,
+    646,
+    653,
+    369,
+    498,
+    26,
+    2548,
+    1128,
+    498,
+    646,
+    653,
+    369,
+    697,
+    3146,
+    13,
+    151645
+  ],
+  "logits": {
+    "native": {
+      "max_abs_error": 0.11391592025756836,
+      "mean_abs_error": 0.012471009619329022,
+      "min_cosine": 0.9999887286178378,
+      "allclose_steps": 0,
+      "argmax_equal_steps": 30
+    },
+    "onnx": {
+      "max_abs_error": 0.038536787033081055,
+      "mean_abs_error": 0.005076952284023968,
+      "min_cosine": 0.9999982180636343,
+      "allclose_steps": 0,
+      "argmax_equal_steps": 30
+    }
+  },
+  "cache": {
+    "present_key": {
+      "native": {
+        "shape": [
+          28,
+          1,
+          8,
+          187,
+          128
+        ],
+        "dtype": "float32",
+        "count": 5361664,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 3.5041732788085938,
+        "mean_abs_error": 0.0032081939673054096,
+        "max_relative_error": 10235.491147915476,
+        "cosine_similarity": 0.9999991378382586,
+        "mismatch_count": 3303362,
+        "first_divergent_index": 4
+      },
+      "onnx": {
+        "shape": [
+          28,
+          1,
+          8,
+          187,
+          128
+        ],
+        "dtype": "float32",
+        "count": 5361664,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.49195170402526855,
+        "mean_abs_error": 0.0012978715116848233,
+        "max_relative_error": 4114.13493281697,
+        "cosine_similarity": 0.9999998780892884,
+        "mismatch_count": 1871851,
+        "first_divergent_index": 128
+      }
+    },
+    "present_value": {
+      "native": {
+        "shape": [
+          28,
+          1,
+          8,
+          187,
+          128
+        ],
+        "dtype": "float32",
+        "count": 5361664,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 2.6459484100341797,
+        "mean_abs_error": 0.006401295637142429,
+        "max_relative_error": 14763.666666666666,
+        "cosine_similarity": 0.9999797659896352,
+        "mismatch_count": 3614258,
+        "first_divergent_index": 1177
+      },
+      "onnx": {
+        "shape": [
+          28,
+          1,
+          8,
+          187,
+          128
+        ],
+        "dtype": "float32",
+        "count": 5361664,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.8646984100341797,
+        "mean_abs_error": 0.0023322734954418145,
+        "max_relative_error": 5649.0,
+        "cosine_similarity": 0.9999974632041091,
+        "mismatch_count": 2225017,
+        "first_divergent_index": 75634
+      }
+    }
+  },
+  "steps": [
+    {
+      "step": 0,
+      "oracle_token": 11528,
+      "native_argmax": 11528,
+      "onnx_argmax": 11528,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.11391592025756836,
+        "mean_abs_error": 0.016919495682427742,
+        "max_relative_error": 3645.3865546218485,
+        "cosine_similarity": 0.9999887286178378,
+        "mismatch_count": 131243,
+        "first_divergent_index": 0
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.038536787033081055,
+        "mean_abs_error": 0.006834375848694284,
+        "max_relative_error": 680.9789915966387,
+        "cosine_similarity": 0.9999982180636343,
+        "mismatch_count": 104339,
+        "first_divergent_index": 1
+      }
+    },
+    {
+      "step": 1,
+      "oracle_token": 6364,
+      "native_argmax": 6364,
+      "onnx_argmax": 6364,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.07646870613098145,
+        "mean_abs_error": 0.01403107751994892,
+        "max_relative_error": 131.0657060518732,
+        "cosine_similarity": 0.9999955242073438,
+        "mismatch_count": 120893,
+        "first_divergent_index": 0
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.03396320343017578,
+        "mean_abs_error": 0.0077101662935961345,
+        "max_relative_error": 75.0828177727784,
+        "cosine_similarity": 0.9999991275988401,
+        "mismatch_count": 104747,
+        "first_divergent_index": 0
+      }
+    },
+    {
+      "step": 2,
+      "oracle_token": 151704,
+      "native_argmax": 151704,
+      "onnx_argmax": 151704,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.062128543853759766,
+        "mean_abs_error": 0.010181271784237438,
+        "max_relative_error": 843.8955223880597,
+        "cosine_similarity": 0.9999967286502518,
+        "mismatch_count": 110686,
+        "first_divergent_index": 0
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.02477407455444336,
+        "mean_abs_error": 0.004955603013881392,
+        "max_relative_error": 460.775,
+        "cosine_similarity": 0.9999994087530991,
+        "mismatch_count": 80201,
+        "first_divergent_index": 7
+      }
+    },
+    {
+      "step": 3,
+      "oracle_token": 3036,
+      "native_argmax": 3036,
+      "onnx_argmax": 3036,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.060039520263671875,
+        "mean_abs_error": 0.008576816812913987,
+        "max_relative_error": 261.63157894736844,
+        "cosine_similarity": 0.9999973474238356,
+        "mismatch_count": 107939,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.02337479591369629,
+        "mean_abs_error": 0.004419408194430344,
+        "max_relative_error": 146.32401315789474,
+        "cosine_similarity": 0.9999993991029603,
+        "mismatch_count": 80639,
+        "first_divergent_index": 68
+      }
+    },
+    {
+      "step": 4,
+      "oracle_token": 773,
+      "native_argmax": 773,
+      "onnx_argmax": 773,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.05785083770751953,
+        "mean_abs_error": 0.009524985313064026,
+        "max_relative_error": 82.07656612529003,
+        "cosine_similarity": 0.9999989687788715,
+        "mismatch_count": 83680,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.022251009941101074,
+        "mean_abs_error": 0.003641972929098192,
+        "max_relative_error": 10.332250580046404,
+        "cosine_similarity": 0.9999998694272899,
+        "mismatch_count": 34283,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 5,
+      "oracle_token": 11,
+      "native_argmax": 11,
+      "onnx_argmax": 11,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.059805870056152344,
+        "mean_abs_error": 0.011303017621078444,
+        "max_relative_error": 618.598971722365,
+        "cosine_similarity": 0.9999963330510814,
+        "mismatch_count": 118539,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.024236202239990234,
+        "mean_abs_error": 0.0038188496218292435,
+        "max_relative_error": 180.13513513513513,
+        "cosine_similarity": 0.9999995663317558,
+        "mismatch_count": 69233,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 6,
+      "oracle_token": 847,
+      "native_argmax": 847,
+      "onnx_argmax": 847,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0596160888671875,
+        "mean_abs_error": 0.01011848566700997,
+        "max_relative_error": 49.57917261055635,
+        "cosine_similarity": 0.999998895602907,
+        "mismatch_count": 84846,
+        "first_divergent_index": 0
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.019539833068847656,
+        "mean_abs_error": 0.003309255322013262,
+        "max_relative_error": 42.76680384087791,
+        "cosine_similarity": 0.9999998873556286,
+        "mismatch_count": 28195,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 7,
+      "oracle_token": 12357,
+      "native_argmax": 12357,
+      "onnx_argmax": 12357,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.08505439758300781,
+        "mean_abs_error": 0.011085276518518414,
+        "max_relative_error": 18.66249861679761,
+        "cosine_similarity": 0.9999991845285795,
+        "mismatch_count": 72396,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.0201416015625,
+        "mean_abs_error": 0.003285548804221336,
+        "max_relative_error": 15.65883078994614,
+        "cosine_similarity": 0.9999999278136464,
+        "mismatch_count": 14077,
+        "first_divergent_index": 2
+      }
+    },
+    {
+      "step": 8,
+      "oracle_token": 8877,
+      "native_argmax": 8877,
+      "onnx_argmax": 8877,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.07458877563476562,
+        "mean_abs_error": 0.013181067422474086,
+        "max_relative_error": 59.72941176470588,
+        "cosine_similarity": 0.9999986140954001,
+        "mismatch_count": 99690,
+        "first_divergent_index": 2
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.027573108673095703,
+        "mean_abs_error": 0.00468831769932766,
+        "max_relative_error": 11.669248136091568,
+        "cosine_similarity": 0.9999998283154222,
+        "mismatch_count": 42425,
+        "first_divergent_index": 0
+      }
+    },
+    {
+      "step": 9,
+      "oracle_token": 11,
+      "native_argmax": 11,
+      "onnx_argmax": 11,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.06964588165283203,
+        "mean_abs_error": 0.008826807711905822,
+        "max_relative_error": 283.16901408450707,
+        "cosine_similarity": 0.9999981575224322,
+        "mismatch_count": 98702,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.026452064514160156,
+        "mean_abs_error": 0.003082540313966875,
+        "max_relative_error": 171.00352112676057,
+        "cosine_similarity": 0.999999793426173,
+        "mismatch_count": 43964,
+        "first_divergent_index": 98
+      }
+    },
+    {
+      "step": 10,
+      "oracle_token": 2548,
+      "native_argmax": 2548,
+      "onnx_argmax": 2548,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.04897606372833252,
+        "mean_abs_error": 0.008185990091975034,
+        "max_relative_error": 305.9901639344262,
+        "cosine_similarity": 0.9999995373406331,
+        "mismatch_count": 71501,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.022397756576538086,
+        "mean_abs_error": 0.003673892932355156,
+        "max_relative_error": 107.83934426229509,
+        "cosine_similarity": 0.9999998753763125,
+        "mismatch_count": 30694,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 11,
+      "oracle_token": 537,
+      "native_argmax": 537,
+      "onnx_argmax": 537,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.08769607543945312,
+        "mean_abs_error": 0.027585245749113647,
+        "max_relative_error": 525.8625592417062,
+        "cosine_similarity": 0.9999978069312698,
+        "mismatch_count": 142936,
+        "first_divergent_index": 0
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.02553081512451172,
+        "mean_abs_error": 0.0037868846945603683,
+        "max_relative_error": 113.18483412322274,
+        "cosine_similarity": 0.9999998624317376,
+        "mismatch_count": 31297,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 12,
+      "oracle_token": 1128,
+      "native_argmax": 1128,
+      "onnx_argmax": 1128,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.057865142822265625,
+        "mean_abs_error": 0.012956200258942868,
+        "max_relative_error": 82944408420352.0,
+        "cosine_similarity": 0.999994186368728,
+        "mismatch_count": 130906,
+        "first_divergent_index": 10
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.03323554992675781,
+        "mean_abs_error": 0.003861006307482294,
+        "max_relative_error": 29899414831104.0,
+        "cosine_similarity": 0.9999994001004482,
+        "mismatch_count": 82008,
+        "first_divergent_index": 97
+      }
+    },
+    {
+      "step": 13,
+      "oracle_token": 697,
+      "native_argmax": 697,
+      "onnx_argmax": 697,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.07916450500488281,
+        "mean_abs_error": 0.014134317401011193,
+        "max_relative_error": 159.8421052631579,
+        "cosine_similarity": 0.9999977747620642,
+        "mismatch_count": 115029,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.029786109924316406,
+        "mean_abs_error": 0.004141701124989049,
+        "max_relative_error": 53.45518092105263,
+        "cosine_similarity": 0.9999997230601706,
+        "mismatch_count": 51658,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 14,
+      "oracle_token": 3146,
+      "native_argmax": 3146,
+      "onnx_argmax": 3146,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.06454181671142578,
+        "mean_abs_error": 0.012279504629321987,
+        "max_relative_error": 381.5882352941176,
+        "cosine_similarity": 0.9999992622603797,
+        "mismatch_count": 93570,
+        "first_divergent_index": 4
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.021953582763671875,
+        "mean_abs_error": 0.004354993282284535,
+        "max_relative_error": 203.6726618705036,
+        "cosine_similarity": 0.9999998855748098,
+        "mismatch_count": 31539,
+        "first_divergent_index": 10
+      }
+    },
+    {
+      "step": 15,
+      "oracle_token": 646,
+      "native_argmax": 646,
+      "onnx_argmax": 646,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.07974720001220703,
+        "mean_abs_error": 0.014036308989229298,
+        "max_relative_error": 298.7551020408163,
+        "cosine_similarity": 0.9999982408352446,
+        "mismatch_count": 111084,
+        "first_divergent_index": 0
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.027167320251464844,
+        "mean_abs_error": 0.004850002895447225,
+        "max_relative_error": 214.7925170068027,
+        "cosine_similarity": 0.9999997495033693,
+        "mismatch_count": 53025,
+        "first_divergent_index": 7
+      }
+    },
+    {
+      "step": 16,
+      "oracle_token": 653,
+      "native_argmax": 653,
+      "onnx_argmax": 653,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.051989078521728516,
+        "mean_abs_error": 0.00890959687366228,
+        "max_relative_error": 617.5333333333333,
+        "cosine_similarity": 0.9999993031196952,
+        "mismatch_count": 73759,
+        "first_divergent_index": 4
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.03785562515258789,
+        "mean_abs_error": 0.007039235870327103,
+        "max_relative_error": 267.8666666666667,
+        "cosine_similarity": 0.9999996390381214,
+        "mismatch_count": 60540,
+        "first_divergent_index": 4
+      }
+    },
+    {
+      "step": 17,
+      "oracle_token": 369,
+      "native_argmax": 369,
+      "onnx_argmax": 369,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.06291866302490234,
+        "mean_abs_error": 0.00965714007417931,
+        "max_relative_error": 794.6901408450705,
+        "cosine_similarity": 0.9999986421016588,
+        "mismatch_count": 91962,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.028344154357910156,
+        "mean_abs_error": 0.004715622758011327,
+        "max_relative_error": 195.7112676056338,
+        "cosine_similarity": 0.9999996751337595,
+        "mismatch_count": 54560,
+        "first_divergent_index": 4
+      }
+    },
+    {
+      "step": 18,
+      "oracle_token": 498,
+      "native_argmax": 498,
+      "onnx_argmax": 498,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.05879998207092285,
+        "mean_abs_error": 0.009544665857532832,
+        "max_relative_error": 133.33502538071065,
+        "cosine_similarity": 0.9999987199863127,
+        "mismatch_count": 91068,
+        "first_divergent_index": 3
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.02244734764099121,
+        "mean_abs_error": 0.0038196053030138516,
+        "max_relative_error": 43.1763959390863,
+        "cosine_similarity": 0.9999997929949377,
+        "mismatch_count": 45074,
+        "first_divergent_index": 7
+      }
+    },
+    {
+      "step": 19,
+      "oracle_token": 26,
+      "native_argmax": 26,
+      "onnx_argmax": 26,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.05486488342285156,
+        "mean_abs_error": 0.0073156955391254904,
+        "max_relative_error": 68.97150997150997,
+        "cosine_similarity": 0.9999990726434979,
+        "mismatch_count": 83398,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.023471832275390625,
+        "mean_abs_error": 0.0037384626390556622,
+        "max_relative_error": 47.21153846153846,
+        "cosine_similarity": 0.9999997419259153,
+        "mismatch_count": 44020,
+        "first_divergent_index": 10
+      }
+    },
+    {
+      "step": 20,
+      "oracle_token": 2548,
+      "native_argmax": 2548,
+      "onnx_argmax": 2548,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.05571746826171875,
+        "mean_abs_error": 0.00918376751142266,
+        "max_relative_error": 28.54752589182969,
+        "cosine_similarity": 0.9999991253486809,
+        "mismatch_count": 86063,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.023797035217285156,
+        "mean_abs_error": 0.005814727722596446,
+        "max_relative_error": 36.5229637147932,
+        "cosine_similarity": 0.9999997915079677,
+        "mismatch_count": 62494,
+        "first_divergent_index": 4
+      }
+    },
+    {
+      "step": 21,
+      "oracle_token": 1128,
+      "native_argmax": 1128,
+      "onnx_argmax": 1128,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.06100749969482422,
+        "mean_abs_error": 0.00985477414233618,
+        "max_relative_error": 78.47022587268994,
+        "cosine_similarity": 0.9999988632513677,
+        "mismatch_count": 86648,
+        "first_divergent_index": 3
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.025089263916015625,
+        "mean_abs_error": 0.004047648925721367,
+        "max_relative_error": 30.133213552361397,
+        "cosine_similarity": 0.9999998101383373,
+        "mismatch_count": 39912,
+        "first_divergent_index": 5
+      }
+    },
+    {
+      "step": 22,
+      "oracle_token": 498,
+      "native_argmax": 498,
+      "onnx_argmax": 498,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.07453632354736328,
+        "mean_abs_error": 0.01640849651150145,
+        "max_relative_error": 50.28199791883455,
+        "cosine_similarity": 0.9999982808752258,
+        "mismatch_count": 118865,
+        "first_divergent_index": 2
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.025590896606445312,
+        "mean_abs_error": 0.004544472296313211,
+        "max_relative_error": 14.907385697538102,
+        "cosine_similarity": 0.9999997772225656,
+        "mismatch_count": 45992,
+        "first_divergent_index": 4
+      }
+    },
+    {
+      "step": 23,
+      "oracle_token": 646,
+      "native_argmax": 646,
+      "onnx_argmax": 646,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.06081247329711914,
+        "mean_abs_error": 0.012746491886654958,
+        "max_relative_error": 56.18405627198124,
+        "cosine_similarity": 0.9999986580003799,
+        "mismatch_count": 108234,
+        "first_divergent_index": 0
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.02828502655029297,
+        "mean_abs_error": 0.005106162516377268,
+        "max_relative_error": 31.354830005396654,
+        "cosine_similarity": 0.9999997486963249,
+        "mismatch_count": 56275,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 24,
+      "oracle_token": 653,
+      "native_argmax": 653,
+      "onnx_argmax": 653,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.06603622436523438,
+        "mean_abs_error": 0.01548447447941539,
+        "max_relative_error": 29.30749532157983,
+        "cosine_similarity": 0.9999992916161043,
+        "mismatch_count": 109719,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.025223731994628906,
+        "mean_abs_error": 0.0046953858925115844,
+        "max_relative_error": 7.4342926429157306,
+        "cosine_similarity": 0.9999998568691973,
+        "mismatch_count": 34846,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 25,
+      "oracle_token": 369,
+      "native_argmax": 369,
+      "onnx_argmax": 369,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.054729461669921875,
+        "mean_abs_error": 0.00987803680999181,
+        "max_relative_error": 708.6216216216217,
+        "cosine_similarity": 0.9999986540567288,
+        "mismatch_count": 96850,
+        "first_divergent_index": 2
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.035588860511779785,
+        "mean_abs_error": 0.010746498350810187,
+        "max_relative_error": 1022.0945945945946,
+        "cosine_similarity": 0.9999993716497951,
+        "mismatch_count": 118052,
+        "first_divergent_index": 5
+      }
+    },
+    {
+      "step": 26,
+      "oracle_token": 697,
+      "native_argmax": 697,
+      "onnx_argmax": 697,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.07189559936523438,
+        "mean_abs_error": 0.014675492250141645,
+        "max_relative_error": 2977.909090909091,
+        "cosine_similarity": 0.9999965657175519,
+        "mismatch_count": 120035,
+        "first_divergent_index": 2
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.029591083526611328,
+        "mean_abs_error": 0.007663808301748642,
+        "max_relative_error": 1476.6375,
+        "cosine_similarity": 0.9999993455900497,
+        "mismatch_count": 98039,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 27,
+      "oracle_token": 3146,
+      "native_argmax": 3146,
+      "onnx_argmax": 3146,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.07266426086425781,
+        "mean_abs_error": 0.022863889809599008,
+        "max_relative_error": 131.03174603174602,
+        "cosine_similarity": 0.9999978213599429,
+        "mismatch_count": 141243,
+        "first_divergent_index": 0
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.030648231506347656,
+        "mean_abs_error": 0.007688128763305498,
+        "max_relative_error": 24.55026455026455,
+        "cosine_similarity": 0.9999996621868474,
+        "mismatch_count": 81242,
+        "first_divergent_index": 3
+      }
+    },
+    {
+      "step": 28,
+      "oracle_token": 13,
+      "native_argmax": 13,
+      "onnx_argmax": 13,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.06745624542236328,
+        "mean_abs_error": 0.011338924004036459,
+        "max_relative_error": 112.86478873239436,
+        "cosine_similarity": 0.9999971235238518,
+        "mismatch_count": 109507,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.029638290405273438,
+        "mean_abs_error": 0.005594167316974558,
+        "max_relative_error": 62.73098591549296,
+        "cosine_similarity": 0.9999994968826053,
+        "mismatch_count": 75436,
+        "first_divergent_index": 8
+      }
+    },
+    {
+      "step": 29,
+      "oracle_token": 151645,
+      "native_argmax": 151645,
+      "onnx_argmax": 151645,
+      "native": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.09214127063751221,
+        "mean_abs_error": 0.013342973657098318,
+        "max_relative_error": 198.33483146067417,
+        "cosine_similarity": 0.9999964532577594,
+        "mismatch_count": 110886,
+        "first_divergent_index": 1
+      },
+      "onnx": {
+        "shape": [
+          1,
+          151936
+        ],
+        "dtype": "float32",
+        "count": 151936,
+        "atol": 0.0001,
+        "rtol": 0.001,
+        "allclose": false,
+        "max_abs_error": 0.031183600425720215,
+        "mean_abs_error": 0.006680122585774956,
+        "max_relative_error": 79.99101123595506,
+        "cosine_similarity": 0.9999995733245369,
+        "mismatch_count": 88018,
+        "first_divergent_index": 1
+      }
+    }
+  ]
+}
