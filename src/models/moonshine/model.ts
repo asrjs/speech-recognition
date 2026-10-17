@@ -197,41 +197,36 @@ export class MoonshineSpeechSession
       ]);
       this.offlineOrtSessions.push(encoderSession, crossKvSession, decoderSession);
 
-      let tokenizerJson: unknown;
-      if (this.loadOptions.tokenizerUrl.startsWith('file://')) {
-        try {
-          const fs = await import('node:fs/promises');
-          const { fileURLToPath } = await import('node:url');
-          const content = await fs.readFile(fileURLToPath(this.loadOptions.tokenizerUrl), 'utf-8');
-          tokenizerJson = JSON.parse(content);
-        } catch {
-          const res = await fetch(this.loadOptions.tokenizerUrl);
-          tokenizerJson = await res.json();
+      const readJsonFromUrl = async <T = unknown>(targetUrl: string): Promise<T> => {
+        if (targetUrl.startsWith('file://')) {
+          try {
+            const fsModuleId = 'node:fs/promises';
+            const urlModuleId = 'node:url';
+            const fs = await import(/* @vite-ignore */ fsModuleId);
+            const { fileURLToPath } = await import(/* @vite-ignore */ urlModuleId);
+            const content = await fs.readFile(fileURLToPath(targetUrl), 'utf-8');
+            return JSON.parse(content) as T;
+          } catch {
+            const res = await fetch(targetUrl);
+            return (await res.json()) as T;
+          }
         }
-      } else {
-        const res = await fetch(this.loadOptions.tokenizerUrl);
-        tokenizerJson = await res.json();
-      }
+        const res = await fetch(targetUrl);
+        return (await res.json()) as T;
+      };
+
+      const tokenizerJson = await readJsonFromUrl<unknown>(this.loadOptions.tokenizerUrl);
 
       let slots = 8;
       let heads = 8;
       let headDim = 64;
       if (this.loadOptions.receiptUrl) {
         try {
-          let receiptJson: {
+          const receiptJson = await readJsonFromUrl<{
             graphs?: {
               decoder?: { interface?: { slots?: number; heads?: number; headDim?: number } };
             };
-          } | null = null;
-          if (this.loadOptions.receiptUrl.startsWith('file://')) {
-            const fs = await import('node:fs/promises');
-            const { fileURLToPath } = await import('node:url');
-            receiptJson = JSON.parse(
-              await fs.readFile(fileURLToPath(this.loadOptions.receiptUrl), 'utf-8'),
-            );
-          } else {
-            receiptJson = (await (await fetch(this.loadOptions.receiptUrl)).json()) as typeof receiptJson;
-          }
+          }>(this.loadOptions.receiptUrl);
           if (receiptJson?.graphs?.decoder?.interface) {
             slots = receiptJson.graphs.decoder.interface.slots ?? slots;
             heads = receiptJson.graphs.decoder.interface.heads ?? heads;
@@ -246,16 +241,9 @@ export class MoonshineSpeechSession
       let eosTokenId = 2;
       if (this.loadOptions.generationUrl) {
         try {
-          let genJson: { bos_token_id?: number; eos_token_id?: number } | null = null;
-          if (this.loadOptions.generationUrl.startsWith('file://')) {
-            const fs = await import('node:fs/promises');
-            const { fileURLToPath } = await import('node:url');
-            genJson = JSON.parse(
-              await fs.readFile(fileURLToPath(this.loadOptions.generationUrl), 'utf-8'),
-            );
-          } else {
-            genJson = (await (await fetch(this.loadOptions.generationUrl)).json()) as typeof genJson;
-          }
+          const genJson = await readJsonFromUrl<{ bos_token_id?: number; eos_token_id?: number }>(
+            this.loadOptions.generationUrl,
+          );
           bosTokenId = genJson?.bos_token_id ?? bosTokenId;
           eosTokenId = genJson?.eos_token_id ?? eosTokenId;
         } catch {

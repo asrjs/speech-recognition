@@ -61,3 +61,6 @@ export async function initializeOwnedSession<TSession extends InitializableSessi
     throw initializationError;
   }
 }
+
+export const registerOwnedSpeechSession = initializeOwnedSession;
+
