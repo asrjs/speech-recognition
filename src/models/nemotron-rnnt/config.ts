@@ -1,6 +1,9 @@
 import type { ModelClassification } from '../../types/index.js';
 import { describeModelClassification } from '../nemo-common/index.js';
-import type { NemotronRnntModelConfig } from './types.js';
+import type {
+  NemotronRnntModelConfig,
+  NemotronRnntStreamingWindowMs,
+} from './types.js';
 
 export const DEFAULT_NEMOTRON_RNNT_CLASSIFICATION: ModelClassification = {
   ecosystem: 'nemo',
@@ -26,6 +29,49 @@ const DEFAULT_NEMOTRON_RNNT_ENCODER_CACHE = {
   timeFrames: 8,
   timeDim: 1024,
 };
+
+export const DEFAULT_NEMOTRON_RNNT_STREAMING_WINDOW_MS: NemotronRnntStreamingWindowMs = 560;
+
+export interface NemotronRnntStreamingWindow {
+  readonly durationMs: NemotronRnntStreamingWindowMs;
+  readonly chunkFrames: number;
+  readonly encoderOutputFrames: number;
+}
+
+/**
+ * The official Nemotron streaming operating points. `chunkFrames` is the
+ * mel-frame input size for the exported encoder; `encoderOutputFrames` is the
+ * resulting 80 ms encoder-frame count.
+ */
+export const NEMOTRON_RNNT_STREAMING_WINDOWS: Readonly<
+  Record<NemotronRnntStreamingWindowMs, NemotronRnntStreamingWindow>
+> = {
+  80: { durationMs: 80, chunkFrames: 17, encoderOutputFrames: 1 },
+  160: { durationMs: 160, chunkFrames: 25, encoderOutputFrames: 2 },
+  320: { durationMs: 320, chunkFrames: 41, encoderOutputFrames: 4 },
+  560: { durationMs: 560, chunkFrames: 65, encoderOutputFrames: 7 },
+  1120: { durationMs: 1120, chunkFrames: 121, encoderOutputFrames: 14 },
+};
+
+export function resolveNemotronRnntStreamingWindow(
+  durationMs: number | undefined,
+): NemotronRnntStreamingWindow | undefined {
+  if (durationMs === undefined) {
+    return undefined;
+  }
+  const window = Number.isInteger(durationMs)
+    ? NEMOTRON_RNNT_STREAMING_WINDOWS[
+        durationMs as NemotronRnntStreamingWindowMs
+      ]
+    : undefined;
+  if (!window) {
+    throw new Error(
+      `Unsupported Nemotron streaming window ${durationMs} ms. ` +
+        'Supported windows: 80, 160, 320, 560, 1120 ms.',
+    );
+  }
+  return window;
+}
 
 const BASE_NEMOTRON_RNNT_CONFIG: NemotronRnntModelConfig = {
   ecosystem: 'nemo',

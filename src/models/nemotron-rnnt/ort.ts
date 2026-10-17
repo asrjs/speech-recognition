@@ -1,8 +1,10 @@
 import type {
   NemotronRnntArtifactSource,
   NemotronRnntDirectArtifactSource,
+  NemotronRnntEncoderVariant,
   NemotronRnntExecutionBackend,
   NemotronRnntHuggingFaceSource,
+  NemotronRnntStreamingWindowMs,
 } from './types.js';
 
 /**
@@ -23,6 +25,9 @@ export interface ResolvedNemotronRnntArtifacts {
   readonly encoderFilename?: string;
   readonly decoderFilename?: string;
   readonly jointFilename?: string;
+  readonly encoderVariants?: Readonly<
+    Partial<Record<NemotronRnntStreamingWindowMs, NemotronRnntEncoderVariant>>
+  >;
 }
 
 export interface ResolvedNemotronRnntOptions {
@@ -53,19 +58,45 @@ function resolveHuggingFaceArtifacts(
   source: NemotronRnntHuggingFaceSource,
 ): ResolvedNemotronRnntArtifacts {
   const revision = source.revision ?? 'main';
-  // Upstream onnx-community INT4 layout: encoder.onnx(+.data),
-  // decoder.onnx(+.data), joint.onnx(+.data), tokenizer.json.
+  // Our repository keeps the default fp16 export at the root: encoder.onnx,
+  // decoder.onnx, joint.onnx, vocab.txt, and external-data siblings.
   return {
     encoderUrl: buildResolveUrl(source.repoId, revision, 'encoder.onnx'),
     decoderUrl: buildResolveUrl(source.repoId, revision, 'decoder.onnx'),
     jointUrl: buildResolveUrl(source.repoId, revision, 'joint.onnx'),
-    tokenizerUrl: buildResolveUrl(source.repoId, revision, 'tokenizer.json'),
+    tokenizerUrl: buildResolveUrl(source.repoId, revision, 'vocab.txt'),
     encoderDataUrl: buildResolveUrl(source.repoId, revision, 'encoder.onnx.data'),
     decoderDataUrl: buildResolveUrl(source.repoId, revision, 'decoder.onnx.data'),
     jointDataUrl: buildResolveUrl(source.repoId, revision, 'joint.onnx.data'),
     encoderFilename: 'encoder.onnx',
     decoderFilename: 'decoder.onnx',
     jointFilename: 'joint.onnx',
+    encoderVariants: {
+      80: {
+        url: buildResolveUrl(source.repoId, revision, 'windows/80/encoder.onnx'),
+        dataUrl: buildResolveUrl(source.repoId, revision, 'windows/80/encoder.onnx.data'),
+        filename: 'encoder.onnx',
+        sourceFilename: 'windows/80/encoder.onnx',
+      },
+      160: {
+        url: buildResolveUrl(source.repoId, revision, 'windows/160/encoder.onnx'),
+        dataUrl: buildResolveUrl(source.repoId, revision, 'windows/160/encoder.onnx.data'),
+        filename: 'encoder.onnx',
+        sourceFilename: 'windows/160/encoder.onnx',
+      },
+      320: {
+        url: buildResolveUrl(source.repoId, revision, 'windows/320/encoder.onnx'),
+        dataUrl: buildResolveUrl(source.repoId, revision, 'windows/320/encoder.onnx.data'),
+        filename: 'encoder.onnx',
+        sourceFilename: 'windows/320/encoder.onnx',
+      },
+      1120: {
+        url: buildResolveUrl(source.repoId, revision, 'windows/1120/encoder.onnx'),
+        dataUrl: buildResolveUrl(source.repoId, revision, 'windows/1120/encoder.onnx.data'),
+        filename: 'encoder.onnx',
+        sourceFilename: 'windows/1120/encoder.onnx',
+      },
+    },
   };
 }
 
@@ -83,6 +114,7 @@ function resolveDirectArtifacts(
     encoderFilename: source.artifacts.encoderFilename,
     decoderFilename: source.artifacts.decoderFilename,
     jointFilename: source.artifacts.jointFilename,
+    encoderVariants: source.artifacts.encoderVariants,
   };
 }
 

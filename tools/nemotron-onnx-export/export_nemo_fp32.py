@@ -31,6 +31,14 @@ drop-in for ``src/models/nemotron-rnnt``:
         inputs:  encoder_output [B, T, 1024] fp32 (frame-major)
                  decoder_output [B, U, 640] fp32 (frame-major)
         outputs: joint_output [B, T, U, 13088] fp32
+
+Streaming windows: ``--windows`` selects operating points. Each window uses
+the largest supported lookahead that fits its chunk (the trained model ships
+att_context_size_all = [[56, 0], [56, 3], [56, 6], [56, 13]] in 80 ms encoder
+frames): 80/160 ms use [56, 0], 320 ms [56, 3], 560 ms [56, 6], 1120 ms
+[56, 13]. The default window (560 ms) is written both to the root as
+``encoder.onnx`` (back-compat) and to ``windows/560/encoder.onnx``; other
+windows land in ``windows/<ms>/encoder.onnx``.
 """
 from __future__ import annotations
 
@@ -45,7 +53,13 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--nemo", default="N:/models/nemo/nemotron-3.5-asr-streaming-0.6b/nemotron-3.5-asr-streaming-0.6b.nemo")
     p.add_argument("--output-dir", default="N:/models/onnx/nemo/nemotron-3.5-asr-streaming-fp32-nemo")
-    p.add_argument("--chunk-size", type=int, default=65)
+    p.add_argument(
+        "--windows",
+        default="560",
+        help="Comma-separated streaming windows in ms (80,160,320,560,1120). "
+        "Each window gets windows/<ms>/encoder.onnx; the default window is "
+        "also written to the root as encoder.onnx.",
+    )
     p.add_argument("--language", default="en")
     return p.parse_args()
 
@@ -141,8 +155,11 @@ def _save_graph(graph, path: Path) -> None:
     )
 
 
-def export_encoder(model, args, output_dir: Path) -> None:
+def export_encoder(model, args, output_dir: Path, chunk_frames: int, out_path: Path, att_context_right: int) -> None:
     encoder = model.encoder
+    encoder.set_default_att_context_size(
+        att_context_size=[56, att_context_right],
+    )
     encoder.export_cache_support = True
     encoder.eval()
     wrapper = PromptedEncoderWrapper(encoder, model.prompt_kernel, int(model.num_prompts))
@@ -150,8 +167,8 @@ def export_encoder(model, args, output_dir: Path) -> None:
         batch_size=1, dtype=torch.float32, device="cpu", max_dim=0,
     )
     inputs = (
-        torch.randn((1, args.chunk_size, 128), dtype=torch.float32),
-        torch.tensor([args.chunk_size], dtype=torch.int64),
+        torch.randn((1, chunk_frames, 128), dtype=torch.float32),
+        torch.tensor([chunk_frames], dtype=torch.int64),
         cache_ch.transpose(0, 1).contiguous(),
         cache_t.transpose(0, 1).contiguous(),
         cache_ch_len,
@@ -179,9 +196,13 @@ def export_encoder(model, args, output_dir: Path) -> None:
         "cache_last_time_next": {1: "batch"},
         "cache_last_channel_len_next": {0: "batch"},
     }
-    print("Exporting encoder (cache-aware + prompt fused, fp32) ...", flush=True)
-    _save_graph(wrapper, output_dir / "encoder.onnx")
-    print(f"Wrote {output_dir / 'encoder.onnx'}", flush=True)
+    print(
+        f"Exporting encoder (cache-aware + prompt fused, fp32, {chunk_frames} frames, "
+        f"lookahead {att_context_right * 80} ms) ...",
+        flush=True,
+    )
+    _save_graph(wrapper, out_path)
+    print(f"Wrote {out_path}", flush=True)
 
 
 def export_decoder(model, args, output_dir: Path) -> None:
@@ -249,17 +270,50 @@ def main() -> None:
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Streaming operating points: window duration -> encoder chunk frames and
+    # right attention context (80 ms encoder frames). The trained model ships
+    # att_context_size_all = [[56, 0], [56, 3], [56, 6], [56, 13]]; the
+    # supported windows map onto the largest lookahead that fits the chunk
+    # (80/160 ms share [56, 0]).
+    window_geometry = {
+        80: {"chunk_frames": 17, "att_context_right": 0},
+        160: {"chunk_frames": 25, "att_context_right": 0},
+        320: {"chunk_frames": 41, "att_context_right": 3},
+        560: {"chunk_frames": 65, "att_context_right": 6},
+        1120: {"chunk_frames": 121, "att_context_right": 13},
+    }
+    windows = [int(w) for w in args.windows.split(",") if w.strip()]
+    for w in windows:
+        if w not in window_geometry:
+            raise SystemExit(f"Unsupported window {w} ms; choose from {sorted(window_geometry)}.")
+    default_window = windows[0] if 560 not in windows else 560
+
     print(f"Loading NeMo model from {args.nemo}", flush=True)
     model = EncDecRNNTBPEModelWithPrompt.restore_from(restore_path=args.nemo, map_location="cpu")
     model.eval()
     model.set_inference_prompt(args.language)
     print(f"Language prompt: '{args.language}'", flush=True)
 
-    export_encoder(model, args, out_dir)
+    for window in windows:
+        geometry = window_geometry[window]
+        variant_dir = out_dir / "windows" / str(window)
+        variant_dir.mkdir(parents=True, exist_ok=True)
+        export_encoder(
+            model, args, out_dir,
+            geometry["chunk_frames"], variant_dir / "encoder.onnx",
+            geometry["att_context_right"],
+        )
+        if window == default_window:
+            export_encoder(
+                model, args, out_dir,
+                geometry["chunk_frames"], out_dir / "encoder.onnx",
+                geometry["att_context_right"],
+            )
+
     export_decoder(model, args, out_dir)
     export_joint(model, args, out_dir)
     export_vocab(model, out_dir)
-    print("All three graphs exported.", flush=True)
+    print(f"All graphs exported for windows {windows} (root default: {default_window} ms).", flush=True)
 
 
 if __name__ == "__main__":

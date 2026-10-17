@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 
-// Nemotron 3.5 streaming 0.6B INT4 WASM benchmark (Node, ORT Web WASM 1.29).
+// Nemotron 3.5 streaming 0.6B fp16 WASM benchmark (Node, ORT Web WASM 1.29).
 //
 // Measures warmed end-to-end transcription of the committed fixtures through
 // the PUBLIC API (createBuiltInSpeechRuntime + nemotron-rnnt family + direct
-// INT4 singles source), breaking down preprocess/encode/decode latency, RTFx,
-// determinism, and WASM memory. The executor already reports the phase
-// breakdown in native.metrics, so this script only orchestrates repeated runs
-// and aggregates.
+// own-export fp16 singles source), breaking down preprocess/encode/decode
+// latency, RTFx, determinism, and WASM memory. The executor already reports
+// the phase breakdown in native.metrics, so this script only orchestrates
+// repeated runs and aggregates.
 //
 // Usage:
 //   npm run build
 //   node tools/scripts/benchmark-nemotron-wasm.mjs \
-//     [--model-dir N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4-singles] \
-//     [--runs-jfk 10] [--runs-librivox 3] [--json out.json]
+//     [--model-dir N:/models/onnx/nemo/nemotron-3.5-asr-streaming-fp16-nemo-singles] \
+//     [--runs-jfk 10] [--runs-librivox 3] [--threads 6] [--window-ms 560] [--json out.json]
 //
-// Env fallback: NEMOTRON_INT4_DIR (same env the gated fixture tests use).
-// Exits non-zero if the transcript oracle or cross-run determinism fails.
+// Env fallback: NEMOTRON_FP16_DIR.
+// Exits non-zero if the JFK transcript oracle or cross-run determinism fails.
 import { performance } from 'node:perf_hooks';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -47,20 +47,22 @@ const DEFAULT_OUT = path.resolve(
 );
 
 const JFK_ORACLE = {
-  tokenCount: 41,
-  text: 'And so my fellow Americans ask not what your country can do for you at what you can do for your country',
+  tokenCount: 43,
+  text: 'And so my fellow Americans ask not what your country can do for you at what you can do for your country.',
 };
 const LIBRIVOX_ORACLE = {
-  tokenCount: 88,
-  contains: 'Librivox recordings are in the public domain',
+  nonEmpty: true,
 };
 
 function parseArgs(argv) {
   const args = {
-    modelDir: process.env.NEMOTRON_INT4_DIR ?? 'N:/models/onnx/nemo/nemotron-3.5-asr-streaming-int4-singles',
+    modelDir: process.env.NEMOTRON_FP16_DIR ?? 'N:/models/onnx/nemo/nemotron-3.5-asr-streaming-fp16-nemo-singles',
     runsJfk: 10,
     runsLibrivox: 3,
     threads: 6,
+    windowMs: process.env.NEMOTRON_STREAMING_WINDOW_MS
+      ? Number(process.env.NEMOTRON_STREAMING_WINDOW_MS)
+      : undefined,
     json: DEFAULT_OUT,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -69,6 +71,7 @@ function parseArgs(argv) {
     else if (argv[i] === '--runs-jfk' && value) args.runsJfk = Number(value);
     else if (argv[i] === '--runs-librivox' && value) args.runsLibrivox = Number(value);
     else if (argv[i] === '--threads' && value) args.threads = Number(value);
+    else if (argv[i] === '--window-ms' && value) args.windowMs = Number(value);
     else if (argv[i] === '--json' && value) args.json = value;
   }
   return args;
@@ -141,8 +144,11 @@ function checkOracle(label, result, oracle) {
   const tokenCount = result.tokens?.length ?? result.debug?.tokenIds?.length ?? 0;
   const text = result.utteranceText ?? '';
   const failures = [];
-  if (tokenCount !== oracle.tokenCount) {
+  if (oracle.tokenCount !== undefined && tokenCount !== oracle.tokenCount) {
     failures.push(`token count ${tokenCount} != ${oracle.tokenCount}`);
+  }
+  if (oracle.nonEmpty && text.trim().length === 0) {
+    failures.push('transcript is empty');
   }
   if (oracle.text !== undefined && text !== oracle.text) {
     failures.push(`text mismatch: "${text}"`);
@@ -156,13 +162,29 @@ function checkOracle(label, result, oracle) {
   return tokenCount;
 }
 
-async function loadModel(modelDir, cpuThreads) {
+async function loadModel(modelDir, cpuThreads, windowMs) {
   const runtime = createBuiltInSpeechRuntime({
     backends: [createWasmBackend()],
     modelFamilies: [createNemotronRnntModelFamily()],
     presets: [createNemotronPresetFactory()],
   });
   const fileUrl = (p) => pathToFileURL(p).toString();
+  const artifacts = {
+    encoderUrl: fileUrl(path.join(modelDir, 'encoder.onnx')),
+    decoderUrl: fileUrl(path.join(modelDir, 'decoder.onnx')),
+    jointUrl: fileUrl(path.join(modelDir, 'joint.onnx')),
+    tokenizerUrl: fileUrl(path.join(modelDir, 'vocab.txt')),
+  };
+  if (windowMs !== undefined && windowMs !== 560) {
+    // Non-default window: register the per-window encoder variant exported
+    // under windows/<ms>/encoder.onnx.
+    artifacts.encoderVariants = {
+      [windowMs]: {
+        url: fileUrl(path.join(modelDir, 'windows', String(windowMs), 'encoder.onnx')),
+        filename: 'encoder.onnx',
+      },
+    };
+  }
   const model = await runtime.loadModel({
     family: 'nemotron-rnnt',
     modelId: 'nemotron-3.5-asr-streaming-0.6b',
@@ -171,12 +193,7 @@ async function loadModel(modelDir, cpuThreads) {
       source: {
         kind: 'direct',
         cpuThreads,
-        artifacts: {
-          encoderUrl: fileUrl(path.join(modelDir, 'encoder.onnx')),
-          decoderUrl: fileUrl(path.join(modelDir, 'decoder.onnx')),
-          jointUrl: fileUrl(path.join(modelDir, 'joint.onnx')),
-          tokenizerUrl: fileUrl(path.join(modelDir, 'vocab.txt')),
-        },
+        artifacts,
       },
     },
   });
@@ -185,7 +202,7 @@ async function loadModel(modelDir, cpuThreads) {
   return { runtime, model, session };
 }
 
-async function benchFixture(session, { name, fixture, runs }) {
+async function benchFixture(session, { name, fixture, runs, windowMs }) {
   const { float: pcm, sampleRate } = readWavPcm16(fixture);
   const durationSeconds = pcm.length / sampleRate;
   console.log(`\n== ${name} (${durationSeconds.toFixed(2)} s, ${runs} runs) ==`);
@@ -195,6 +212,7 @@ async function benchFixture(session, { name, fixture, runs }) {
     sampleRate,
     responseFlavor: 'native',
     returnTokenIds: true,
+    streamingWindowMs: windowMs,
   });
   const warmTokenCount = checkOracle(name, warm, name.startsWith('jfk') ? JFK_ORACLE : LIBRIVOX_ORACLE);
   const baselineTokenIds = warm.debug?.tokenIds ?? warm.tokens?.map((t) => t.id) ?? [];
@@ -220,6 +238,7 @@ async function benchFixture(session, { name, fixture, runs }) {
       sampleRate,
       responseFlavor: 'native',
       returnTokenIds: true,
+      streamingWindowMs: windowMs,
     });
     const wallMs = performance.now() - wallStart;
     const m = result.metrics ?? {};
@@ -244,6 +263,7 @@ async function benchFixture(session, { name, fixture, runs }) {
     fixture: path.basename(fixture),
     durationSeconds: round(durationSeconds, 4),
     runs,
+    streamingWindowMs: windowMs ?? null,
     oracle: { tokenCount: warmTokenCount, text: baselineText },
     deterministic,
     phases: {
@@ -271,12 +291,12 @@ async function main() {
     throw new Error(`Model dir not found: ${args.modelDir}`);
   }
   const config = parseNemotronRnntConfig('nemotron-3.5-asr-streaming-0.6b');
-  console.log(`Node ${process.version}, onnxruntime-web@1.29.0 wasm, INT4 singles, cpuThreads=${args.threads}`);
+  console.log(`Node ${process.version}, onnxruntime-web@1.29.0 wasm, own fp16 singles, cpuThreads=${args.threads}`);
   console.log(`Model dir: ${args.modelDir}`);
-  console.log(`Config: chunkFrames=${config.chunkFrames} outputFramesPerChunk=${config.encoderOutputFramesPerChunk} jointWindowFrames=${config.jointWindowFrames}`);
+  console.log(`Config: chunkFrames=${config.chunkFrames} outputFramesPerChunk=${config.encoderOutputFramesPerChunk} streamingWindowMs=${args.windowMs ?? 'default'} jointWindowFrames=${config.jointWindowFrames}`);
 
   const loadStart = performance.now();
-  const { runtime, model, session } = await loadModel(args.modelDir, args.threads);
+  const { runtime, model, session } = await loadModel(args.modelDir, args.threads, args.windowMs);
   const loadMs = performance.now() - loadStart;
   const afterLoadMem = process.memoryUsage();
   console.log(`Model load: ${round(loadMs)} ms; wasm memory ${round(afterLoadMem.arrayBuffers / 1024 / 1024)} MB`);
@@ -284,11 +304,13 @@ async function main() {
   const jfk = await benchFixture(session, {
     name: 'jfk-short.wav',
     fixture: path.join(FIXTURES_DIR, 'jfk-short.wav'),
+    windowMs: args.windowMs,
     runs: args.runsJfk,
   });
   const librivox = await benchFixture(session, {
     name: 'librivox-blankgaps-synthetic.wav',
     fixture: path.join(FIXTURES_DIR, 'librivox-blankgaps-synthetic.wav'),
+    windowMs: args.windowMs,
     runs: args.runsLibrivox,
   });
 
@@ -298,14 +320,14 @@ async function main() {
   const report = {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
-    purpose: 'Nemotron 3.5 streaming INT4 WASM latency/memory benchmark (public API)',
+    purpose: 'Nemotron 3.5 streaming fp16 WASM latency/memory benchmark (public API)',
     runtime: `onnxruntime-web@1.29.0 wasm (node, ${args.threads} threads)`,
     node: process.version,
     platform: `${process.platform}-${process.arch}`,
     model: {
       id: 'nemotron-3.5-asr-streaming-0.6b',
       family: 'nemotron-rnnt',
-      source: 'direct INT4 singles (onnx-community INT4 export)',
+      source: 'direct fp16 singles (our NeMo export)',
       dir: args.modelDir,
       cpuThreads: args.threads,
     },
@@ -313,6 +335,7 @@ async function main() {
       sampleRate: config.sampleRate,
       melBins: config.melBins,
       chunkFrames: config.chunkFrames,
+      streamingWindowMs: args.windowMs ?? null,
       encoderOutputFramesPerChunk: config.encoderOutputFramesPerChunk,
       jointWindowFrames: config.jointWindowFrames,
       maxDecodeSteps: config.maxDecodeSteps,

@@ -72,6 +72,13 @@ export interface NemotronRnntModelConfig extends NemoModelConfig {
 export type NemotronRnntPreprocessorBackend = NemoTdtPreprocessorBackend;
 export type NemotronRnntExecutionBackend = NemoTdtExecutionBackend;
 
+export interface NemotronRnntEncoderVariant {
+  readonly url: string;
+  readonly dataUrl?: string;
+  readonly filename?: string;
+  readonly sourceFilename?: string;
+}
+
 export interface NemotronRnntDirectArtifacts {
   readonly encoderUrl: string;
   readonly decoderUrl: string;
@@ -83,6 +90,9 @@ export interface NemotronRnntDirectArtifacts {
   readonly encoderFilename?: string;
   readonly decoderFilename?: string;
   readonly jointFilename?: string;
+  readonly encoderVariants?: Readonly<
+    Partial<Record<NemotronRnntStreamingWindowMs, NemotronRnntEncoderVariant>>
+  >;
 }
 
 export interface NemotronRnntHuggingFaceSource {
@@ -144,7 +154,15 @@ export interface NemotronRnntNativeTranscript
   };
 }
 
+export type NemotronRnntStreamingWindowMs = 80 | 160 | 320 | 560 | 1120;
+
 export interface NemotronRnntTranscriptionOptions extends BaseTranscriptionOptions {
+  /**
+   * Cache-aware streaming window in milliseconds. The export supports the
+   * model-card operating points 80, 160, 320, 560, and 1120 ms; when omitted,
+   * the configured model chunk size is used.
+   */
+  readonly streamingWindowMs?: NemotronRnntStreamingWindowMs;
   /**
    * Language ID forwarded to the encoder's `lang_id` input. Defaults to
    * the configured default prompt id (auto).

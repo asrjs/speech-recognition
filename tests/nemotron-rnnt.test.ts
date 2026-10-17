@@ -12,7 +12,11 @@ import {
   withNemotronRnntControl,
 } from '../src/models/nemotron-rnnt/transcript-details.js';
 import { resolveNemotronRnntArtifacts } from '../src/models/nemotron-rnnt/ort.js';
-import { parseNemotronRnntConfig } from '../src/models/nemotron-rnnt/config.js';
+import {
+  NEMOTRON_RNNT_STREAMING_WINDOWS,
+  parseNemotronRnntConfig,
+  resolveNemotronRnntStreamingWindow,
+} from '../src/models/nemotron-rnnt/config.js';
 import {
   createNemotronPresetFactory,
   resolveNemotronArtifactSource,
@@ -89,23 +93,22 @@ describe('Nemotron preset manifest', () => {
     const byId = resolveNemotronPresetManifest('nemotron-3.5-asr-streaming-0.6b');
     expect(byId?.preset).toBe('nemotron');
     expect(
-      resolveNemotronPresetManifest('nvidia/nemotron-3.5-asr-streaming-0.6b'),
-    ).toBeDefined();
-    expect(
       resolveNemotronPresetManifest(
-        'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4',
+        'ysdede/nemotron-3.5-asr-streaming-0.6b-onnx',
       ),
     ).toBeDefined();
     expect(resolveNemotronPresetManifest('parakeet-tdt-0.6b-v2')).toBeUndefined();
   });
 
-  it('points the default source at the upstream INT4 export', () => {
+  it('points the default source at our fp16 export repository', () => {
     const source = resolveNemotronArtifactSource('nemotron-3.5-asr-streaming-0.6b');
     expect(source?.kind).toBe('huggingface');
     if (source?.kind === 'huggingface') {
       expect(source.repoId).toBe(
-        'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4',
+        'ysdede/nemotron-3.5-asr-streaming-0.6b-onnx',
       );
+      expect(source.encoderBackend).toBe('webgpu');
+      expect(source.decoderBackend).toBe('wasm');
     }
   });
 
@@ -148,6 +151,30 @@ describe('Nemotron RNNT config and artifact contract', () => {
     expect(config.tokenizer.kind).toBe('bpe');
   });
 
+  it('maps supported streaming windows to encoder chunk geometry', () => {
+    expect(
+      Object.values(NEMOTRON_RNNT_STREAMING_WINDOWS).map((window) => [
+        window.durationMs,
+        window.chunkFrames,
+        window.encoderOutputFrames,
+      ]),
+    ).toEqual([
+      [80, 17, 1],
+      [160, 25, 2],
+      [320, 41, 4],
+      [560, 65, 7],
+      [1120, 121, 14],
+    ]);
+    expect(resolveNemotronRnntStreamingWindow(160)).toEqual({
+      durationMs: 160,
+      chunkFrames: 25,
+      encoderOutputFrames: 2,
+    });
+    expect(resolveNemotronRnntStreamingWindow(undefined)).toBeUndefined();
+    expect(() => resolveNemotronRnntStreamingWindow(240)).toThrow(
+      'Supported windows: 80, 160, 320, 560, 1120 ms.',
+    );
+  });
   it('deep-merges prompt/cache/tokenizer overrides', () => {
     const config = parseNemotronRnntConfig('test', {
       chunkFrames: 32,
@@ -163,19 +190,29 @@ describe('Nemotron RNNT config and artifact contract', () => {
     expect(config.tokenizer.blankTokenId).toBe(13087);
   });
 
-  it('resolves the upstream HF filename contract including external data', () => {
+  it('resolves our HF filename contract including external data', () => {
     const source: NemotronRnntArtifactSource = {
       kind: 'huggingface',
-      repoId: 'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4',
+      repoId: 'ysdede/nemotron-3.5-asr-streaming-0.6b-onnx',
     };
     const { artifacts } = resolveNemotronRnntArtifacts(source, 'wasm');
     expect(artifacts.encoderUrl).toContain('/resolve/main/encoder.onnx');
     expect(artifacts.decoderUrl).toContain('/resolve/main/decoder.onnx');
     expect(artifacts.jointUrl).toContain('/resolve/main/joint.onnx');
-    expect(artifacts.tokenizerUrl).toContain('/resolve/main/tokenizer.json');
+    expect(artifacts.tokenizerUrl).toContain('/resolve/main/vocab.txt');
     expect(artifacts.encoderDataUrl).toContain('/resolve/main/encoder.onnx.data');
     expect(artifacts.decoderDataUrl).toContain('/resolve/main/decoder.onnx.data');
     expect(artifacts.jointDataUrl).toContain('/resolve/main/joint.onnx.data');
+    // Window variants are published under windows/<ms>/; the default 560 ms
+    // window is the root encoder and has no variant entry.
+    expect(artifacts.encoderVariants?.[160]?.url).toContain(
+      '/resolve/main/windows/160/encoder.onnx',
+    );
+    expect(artifacts.encoderVariants?.[160]?.sourceFilename).toBe('windows/160/encoder.onnx');
+    expect(artifacts.encoderVariants?.[1120]?.dataUrl).toContain(
+      '/resolve/main/windows/1120/encoder.onnx.data',
+    );
+    expect(artifacts.encoderVariants?.[560]).toBeUndefined();
   });
 
   it('passes direct artifacts through untouched', () => {
@@ -194,10 +231,37 @@ describe('Nemotron RNNT config and artifact contract', () => {
     expect(artifacts.encoderDataUrl).toBeUndefined();
   });
 
+  it('passes per-window encoder variants through from direct sources', () => {
+    const source: NemotronRnntArtifactSource = {
+      kind: 'direct',
+      artifacts: {
+        encoderUrl: 'file:///m/encoder.onnx',
+        decoderUrl: 'file:///m/decoder.onnx',
+        jointUrl: 'file:///m/joint.onnx',
+        tokenizerUrl: 'file:///m/vocab.txt',
+        encoderVariants: {
+          160: {
+            url: 'file:///m/windows/160/encoder.onnx',
+            dataUrl: 'file:///m/windows/160/encoder.onnx.data',
+            filename: 'encoder.onnx',
+            sourceFilename: 'windows/160/encoder.onnx',
+          },
+        },
+      },
+    };
+    const { artifacts } = resolveNemotronRnntArtifacts(source, 'wasm');
+    expect(artifacts.encoderVariants?.[160]?.url).toBe(
+      'file:///m/windows/160/encoder.onnx',
+    );
+    expect(artifacts.encoderVariants?.[160]?.dataUrl).toBe(
+      'file:///m/windows/160/encoder.onnx.data',
+    );
+  });
+
   it('defaults to a hybrid split under a webgpu backend: webgpu encoder, wasm predictor/joint', () => {
     const source: NemotronRnntArtifactSource = {
       kind: 'huggingface',
-      repoId: 'onnx-community/nemotron-3.5-asr-streaming-0.6b-onnx-int4',
+      repoId: 'ysdede/nemotron-3.5-asr-streaming-0.6b-onnx',
     };
     const { options } = resolveNemotronRnntArtifacts(source, 'webgpu');
     expect(options.ortBackend).toBe('webgpu');

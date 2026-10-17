@@ -23,6 +23,10 @@ import {
   type OrtTensorLike,
 } from '../nemo-tdt/ort.js';
 import {
+  DEFAULT_NEMOTRON_RNNT_STREAMING_WINDOW_MS,
+  resolveNemotronRnntStreamingWindow,
+} from './config.js';
+import {
   resolveNemotronRnntArtifacts,
   type ResolvedNemotronRnntArtifacts,
   type ResolvedNemotronRnntOptions,
@@ -33,6 +37,7 @@ import type {
   NemotronRnntModelConfig,
   NemotronRnntNativeTranscript,
   NemotronRnntNativeWord,
+  NemotronRnntStreamingWindowMs,
   NemotronRnntTranscriptionOptions,
 } from './types.js';
 import type { NemoDecodeContext } from '../nemo-common/index.js';
@@ -48,6 +53,8 @@ interface LoadedNemotronExecutorState {
   readonly ort: OrtModuleLike;
   readonly tokenizer: ParakeetTokenizer;
   readonly encoderSession: OrtSessionLike;
+  readonly encoderSessions: Map<string, Promise<OrtSessionLike>>;
+  readonly encoderVariants: ResolvedNemotronRnntArtifacts['encoderVariants'];
   readonly predictorSession: OrtSessionLike;
   readonly jointSession: OrtSessionLike;
   readonly preprocessor: JsNemoPreprocessor;
@@ -168,53 +175,67 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     }
 
     const revision = source.revision ?? 'main';
-    const resolveFile = async (filename: string): Promise<string> => {
-      const cacheKey = `huggingface:${source.repoId}:${revision}:${filename}`;
-      const cacheKeyFallbacks = (source.cacheKeyFallbackRevisions ?? [])
-        .filter((fallbackRevision) => fallbackRevision !== revision)
-        .map(
-          (fallbackRevision) =>
-            `huggingface:${source.repoId}:${fallbackRevision}:${filename}`,
-        );
-      const handle = await this.dependencies.assetProvider!.resolve({
-        id: `huggingface:${source.repoId}:${revision}:${filename}`,
-        provider: 'huggingface',
-        repoId: source.repoId,
-        revision,
-        filename,
-        preferBlobUrl: true,
-        cacheKey,
-        cacheKeyFallbacks,
-        onProgress: (event) => {
-          this.dependencies.runtimeHooks?.onProgress?.({
-            phase: 'asset:progress',
-            modelId: this.modelId,
-            file: filename,
-            ...event,
-          } as RuntimeProgressEvent);
-        },
-      });
-      this.assetHandles.push(handle);
-      const locator = await handle.getLocator('url');
-      if (!locator) {
-        throw new Error(`Could not create a URL locator for "${filename}".`);
-      }
-      return locator;
-    };
+    const resolveFile = (filename: string): Promise<string> =>
+      this.resolveHuggingFaceFile(source, revision, filename);
 
     return {
       encoderUrl: await resolveFile('encoder.onnx'),
       decoderUrl: await resolveFile('decoder.onnx'),
       jointUrl: await resolveFile('joint.onnx'),
-      tokenizerUrl: await resolveFile('tokenizer.json'),
+      tokenizerUrl: await resolveFile('vocab.txt'),
       encoderDataUrl: await resolveFile('encoder.onnx.data'),
       decoderDataUrl: await resolveFile('decoder.onnx.data'),
       jointDataUrl: await resolveFile('joint.onnx.data'),
       encoderFilename: 'encoder.onnx',
       decoderFilename: 'decoder.onnx',
       jointFilename: 'joint.onnx',
+      // Window variants are NOT materialized eagerly: resolving all five
+      // would force a multi-gigabyte download at load time. Variants keep
+      // their sourceFilename and are resolved on first use (see
+      // getEncoderSession), while the raw HF resolve URLs remain valid for
+      // direct fetching when no asset provider is configured.
+      encoderVariants: artifacts.encoderVariants,
     };
   }
+
+  private async resolveHuggingFaceFile(
+    source: Extract<NemotronRnntArtifactSource, { kind: 'huggingface' }>,
+    revision: string,
+    filename: string,
+  ): Promise<string> {
+    const cacheKey = `huggingface:${source.repoId}:${revision}:${filename}`;
+    const cacheKeyFallbacks = (source.cacheKeyFallbackRevisions ?? [])
+      .filter((fallbackRevision) => fallbackRevision !== revision)
+      .map(
+        (fallbackRevision) =>
+          `huggingface:${source.repoId}:${fallbackRevision}:${filename}`,
+      );
+    const handle = await this.dependencies.assetProvider!.resolve({
+      id: `huggingface:${source.repoId}:${revision}:${filename}`,
+      provider: 'huggingface',
+      repoId: source.repoId,
+      revision,
+      filename,
+      preferBlobUrl: true,
+      cacheKey,
+      cacheKeyFallbacks,
+      onProgress: (event) => {
+        this.dependencies.runtimeHooks?.onProgress?.({
+          phase: 'asset:progress',
+          modelId: this.modelId,
+          file: filename,
+          ...event,
+        } as RuntimeProgressEvent);
+      },
+    });
+    this.assetHandles.push(handle);
+    const locator = await handle.getLocator('url');
+    if (!locator) {
+      throw new Error(`Could not create a URL locator for "${filename}".`);
+    }
+    return locator;
+  }
+
 
   private async initialize(
     signal: AbortSignalLike | null,
@@ -306,6 +327,8 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       ort,
       tokenizer,
       encoderSession,
+      encoderSessions: new Map([['default', Promise.resolve(encoderSession)]]),
+      encoderVariants: artifacts.encoderVariants,
       predictorSession,
       jointSession,
       preprocessor,
@@ -324,6 +347,61 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       throw new Error(`No artifact source is configured for "${this.modelId}".`);
     }
     return this.loadStatePromise;
+  }
+  private async getEncoderSession(
+    loaded: LoadedNemotronExecutorState,
+    streamingWindowMs: NemotronRnntStreamingWindowMs | undefined,
+  ): Promise<OrtSessionLike> {
+    if (
+      streamingWindowMs === undefined ||
+      streamingWindowMs === DEFAULT_NEMOTRON_RNNT_STREAMING_WINDOW_MS
+    ) {
+      return loaded.encoderSession;
+    }
+
+    const variant = loaded.encoderVariants?.[streamingWindowMs];
+    if (!variant) {
+      throw new Error(
+        `No Nemotron encoder artifact is configured for the ${streamingWindowMs} ms streaming window.`,
+      );
+    }
+
+    const key = String(streamingWindowMs);
+    const existing = loaded.encoderSessions.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    // Lazy materialization for HuggingFace variants: resolve through the
+    // asset provider on first use instead of at load time.
+    let url = variant.url;
+    let dataUrl = variant.dataUrl;
+    const source = this.sourceOptions;
+    if (
+      variant.sourceFilename &&
+      this.dependencies.assetProvider &&
+      source?.kind === 'huggingface'
+    ) {
+      const revision = source.revision ?? 'main';
+      url = await this.resolveHuggingFaceFile(source, revision, variant.sourceFilename);
+      dataUrl = variant.dataUrl
+        ? await this.resolveHuggingFaceFile(source, revision, `${variant.sourceFilename}.data`)
+        : undefined;
+    }
+
+    const sessionPromise = createOrtSession(loaded.ort, url, {
+      backendId: loaded.options.encoderBackend,
+      enableProfiling: loaded.options.enableProfiling,
+      externalDataUrl: dataUrl,
+      externalDataPath: variant.filename ? `${variant.filename}.data` : undefined,
+    });
+    loaded.encoderSessions.set(key, sessionPromise);
+    try {
+      return await sessionPromise;
+    } catch (error) {
+      loaded.encoderSessions.delete(key);
+      throw error;
+    }
   }
 
   async ready(): Promise<void> {
@@ -360,7 +438,6 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     const processed = loaded.preprocessor.process(audio);
     const preprocessMs = nowMs() - preprocessStart;
     const frameCount = processed.frameCount;
-    const validLength = processed.validLength;
 
     emitTranscriptionProgress(options, {
       stage: 'preprocess',
@@ -394,13 +471,16 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       blankId + 1,
     );
 
+    const streamingWindow = resolveNemotronRnntStreamingWindow(options.streamingWindowMs);
+    const encoderSession = await this.getEncoderSession(loaded, streamingWindow?.durationMs);
     const encodeStart = nowMs();
     const encFlat = await this.runStreamingEncoder(
+      encoderSession,
       loaded,
       processed.features,
       frameCount,
-      validLength,
       promptId,
+      streamingWindow?.chunkFrames ?? this.config.chunkFrames,
       options.signal ?? null,
     );
     const encodeMs = nowMs() - encodeStart;
@@ -548,15 +628,14 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
   }
 
   private async runStreamingEncoder(
+    encoderSession: OrtSessionLike,
     loaded: LoadedNemotronExecutorState,
     features: Float32Array,
     frameCount: number,
-    validLength: number,
     promptId: number,
+    chunkFrames: number,
     signal: AbortSignalLike | null,
   ): Promise<Float32Buffer> {
-    const chunkFrames = this.config.chunkFrames;
-    const framesPerChunk = this.config.encoderOutputFramesPerChunk;
     const featureDim = this.config.melBins;
     const hiddenDim = 1024;
     const { channelLayers, channelFrames, channelDim, timeFrames, timeDim } =
@@ -575,15 +654,9 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     const flatChunk = new Float32Array(
       new ArrayBuffer(chunkFrames * featureDim * 4),
     );
-    const totalFrames =
-      Math.ceil(frameCount / chunkFrames) * framesPerChunk;
-    const encFlat = new Float32Array(new ArrayBuffer(totalFrames * hiddenDim * 4));
+    const outputChunks: Float32Buffer[] = [];
+    let outputFrames = 0;
 
-    const melLengthTensor = new loaded.ort.Tensor(
-      'int64',
-      BigInt64Array.from([BigInt(validLength)]),
-      [1],
-    );
     const langIdTensor = new loaded.ort.Tensor(
       'int64',
       BigInt64Array.from([BigInt(promptId)]),
@@ -591,7 +664,6 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     );
 
     try {
-      let chunkIndex = 0;
       for (let melIdx = 0; melIdx < frameCount; melIdx += chunkFrames) {
         throwIfDecodeAborted(signal);
 
@@ -625,10 +697,15 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
           timeFrames,
         ]);
         const cacheChLenTensor = new loaded.ort.Tensor('int64', liveChLen, [1]);
+        const melLengthTensor = new loaded.ort.Tensor(
+          'int64',
+          BigInt64Array.from([BigInt(take)]),
+          [1],
+        );
 
         let encoderOut: Record<string, OrtTensorLike> | undefined;
         try {
-          encoderOut = await loaded.encoderSession.run({
+          encoderOut = await encoderSession.run({
             audio_signal: audioTensor,
             length: melLengthTensor,
             cache_last_channel: cacheChTensor,
@@ -640,16 +717,19 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
           const encoderTensor = (encoderOut.outputs ??
             Object.values(encoderOut)[0]) as OrtTensorLike<Float32Array>;
           const data = copyTensorData(encoderTensor);
-          // Cache-aware encoder emits framesPerChunk rows per chunk;
-          // write them contiguously into the flat encoder buffer.
-          const chunkOutOffset = chunkIndex * framesPerChunk * hiddenDim;
-          for (let f = 0; f < framesPerChunk; f += 1) {
-            for (let d = 0; d < hiddenDim; d += 1) {
-              encFlat[chunkOutOffset + f * hiddenDim + d] =
-                data[f * hiddenDim + d] ?? 0;
-            }
+          const chunkFramesOut = Number(encoderTensor.dims[1] ?? 0);
+          const chunkValues = chunkFramesOut * hiddenDim;
+          if (
+            !Number.isInteger(chunkFramesOut) ||
+            chunkFramesOut <= 0 ||
+            data.length < chunkValues
+          ) {
+            throw new Error(
+              `Nemotron encoder returned invalid output shape ${encoderTensor.dims.join('x')}.`,
+            );
           }
-          chunkIndex += 1;
+          outputChunks.push(data.subarray(0, chunkValues));
+          outputFrames += chunkFramesOut;
 
           const nextCh = encoderOut.cache_last_channel_next as OrtTensorLike | undefined;
           const nextT = encoderOut.cache_last_time_next as OrtTensorLike | undefined;
@@ -670,14 +750,20 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
           cacheChTensor.dispose?.();
           cacheTTensor.dispose?.();
           cacheChLenTensor.dispose?.();
+          melLengthTensor.dispose?.();
           disposeOrtOutputs(encoderOut);
         }
       }
     } finally {
-      melLengthTensor.dispose?.();
       langIdTensor.dispose?.();
     }
 
+    const encFlat = new Float32Array(new ArrayBuffer(outputFrames * hiddenDim * 4));
+    let offset = 0;
+    for (const chunk of outputChunks) {
+      encFlat.set(chunk, offset);
+      offset += chunk.length;
+    }
     return encFlat;
   }
 
@@ -894,7 +980,13 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     if (this.loadStatePromise) {
       try {
         const loaded = await this.loadStatePromise;
-        releaseOrtSession(loaded.encoderSession);
+        for (const encoderSessionPromise of loaded.encoderSessions.values()) {
+          try {
+            releaseOrtSession(await encoderSessionPromise);
+          } catch {
+            // A failed lazy variant has no session to release.
+          }
+        }
         releaseOrtSession(loaded.predictorSession);
         releaseOrtSession(loaded.jointSession);
       } catch {

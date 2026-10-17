@@ -18,13 +18,17 @@ const FIXTURE = path.resolve(REPO_ROOT, 'tools', 'data', 'fixtures', 'audio', 'j
 const EXPORT_DIR = process.env.NEMOTRON_EXPORT_DIR
   ?? 'N:/models/onnx/nemo/nemotron-3.5-asr-streaming-fp16-nemo';
 const THREADS = Number(process.env.NEMOTRON_THREADS ?? 6);
+const WINDOW_MS = process.env.NEMOTRON_STREAMING_WINDOW_MS
+  ? Number(process.env.NEMOTRON_STREAMING_WINDOW_MS)
+  : undefined;
+const WINDOW_SUFFIX = WINDOW_MS === undefined ? '' : `-window-${WINDOW_MS}ms`;
 const OUT = path.resolve(
   REPO_ROOT,
   'tools',
   'data',
   'results',
   'nemotron',
-  `nemotron-3.5-export-smoke-${path.basename(EXPORT_DIR)}-2026-08-31.json`,
+  `nemotron-3.5-export-smoke-${path.basename(EXPORT_DIR)}${WINDOW_SUFFIX}-2026-08-31.json`,
 );
 
 // The established body oracle; the export may append a boundary tail
@@ -74,6 +78,12 @@ async function main() {
           decoderUrl: fileUrl(path.join(EXPORT_DIR, 'decoder.onnx')),
           jointUrl: fileUrl(path.join(EXPORT_DIR, 'joint.onnx')),
           tokenizerUrl: fileUrl(path.join(EXPORT_DIR, 'vocab.txt')),
+          encoderDataUrl: fileUrl(path.join(EXPORT_DIR, 'encoder.onnx.data')),
+          decoderDataUrl: fileUrl(path.join(EXPORT_DIR, 'decoder.onnx.data')),
+          jointDataUrl: fileUrl(path.join(EXPORT_DIR, 'joint.onnx.data')),
+          encoderFilename: 'encoder.onnx',
+          decoderFilename: 'decoder.onnx',
+          jointFilename: 'joint.onnx',
         },
       },
     },
@@ -87,6 +97,7 @@ async function main() {
     responseFlavor: 'native',
     returnTokenIds: true,
     promptId: 0,
+    streamingWindowMs: WINDOW_MS,
   });
   const elapsed = Date.now() - start;
   const native = result;
@@ -107,6 +118,7 @@ async function main() {
     purpose: 'public-API WASM smoke against our NeMo-exported graphs',
     exportDir: EXPORT_DIR,
     cpuThreads: THREADS,
+    streamingWindowMs: WINDOW_MS ?? null,
     fixture: 'jfk-short.wav',
     tokenCount: ids.length,
     tokenIds: ids,
