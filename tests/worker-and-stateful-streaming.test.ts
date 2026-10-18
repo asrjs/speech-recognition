@@ -164,14 +164,14 @@ describe('worker-and-stateful-streaming suite', () => {
       expect(streamInfo.streamId).toBe('stream-123');
       expect(streamInfo.supportsStreaming).toBe(true);
 
-      // 3. Push stream audio with zero-copy transferable check
+      // 3. Push stream audio and check transfer of the client-owned copy.
       const inputPcm = new Float32Array([0.1, 0.2, 0.3, 0.4]);
       const partial = await client.pushStreamAudio(inputPcm, 16000);
       expect(partial).not.toBeNull();
       expect(partial?.text).toBe('hello');
       expect(partial?.kind).toBe('partial');
 
-      // Verify zero-copy transferable was passed
+      // Verify the transfer list contains the owned message buffer.
       const pushCall = postedMessages.find((call) => (call.message as MockMessage).type === 'PUSH_STREAM_AUDIO');
       expect(pushCall).toBeDefined();
       expect(pushCall?.transfer).toHaveLength(1);
@@ -456,6 +456,60 @@ describe('worker-and-stateful-streaming suite', () => {
       await expect(transcriber2.pushAudio(new Float32Array(100))).rejects.toThrow('disposed');
     });
 
+    it('routes production-style sessions through cumulative stateful transcribe and finalizes the tail', async () => {
+      const transcribe = vi.fn(async () => { throw new Error('offline chunk transcription must not run'); });
+      const streamCalls: Array<{ samples: number; finalize: boolean }> = [];
+      const transcribeStreaming = vi.fn(async (input: Float32Array, _options: unknown, finalize = false) => {
+        streamCalls.push({ samples: input.length, finalize });
+        return {
+          text: `samples-${input.length}`,
+          warnings: [],
+          meta: { isFinal: finalize, sampleRate: 16000, durationSeconds: input.length / 16000 },
+        } satisfies TranscriptResult;
+      });
+      const resetStreaming = vi.fn();
+      const session = { transcribe, transcribeStreaming, resetStreaming } as unknown as NemotronRnntSpeechSession;
+      const transcriber = new NemotronStreamingTranscriber(session, {
+        stepSamples: 1600,
+        emitPartials: false,
+        sampleRate: 16000,
+      });
+
+      await transcriber.pushAudio(new Float32Array(800));
+      await transcriber.pushAudio(new Float32Array(800));
+      expect(transcriber.getState().committedText).toBe('samples-1600');
+      await transcriber.pushAudio(new Float32Array(1600));
+      expect(transcriber.getState().committedText).toBe('samples-3200');
+      const final = await transcriber.finalize();
+      expect(final.text).toBe('samples-3200');
+      expect(streamCalls).toEqual([
+        { samples: 1600, finalize: false },
+        { samples: 3200, finalize: false },
+        { samples: 3200, finalize: true },
+      ]);
+      expect(transcribe).not.toHaveBeenCalled();
+      await transcriber.reset();
+      expect(resetStreaming).toHaveBeenCalledOnce();
+      await transcriber.dispose();
+    });
+
+    it('warns when a session falls back to independent offline chunk transcription', async () => {
+      const session = createMockSession();
+      const transcriber = new NemotronStreamingTranscriber(session, {
+        stepSamples: 1000,
+        emitPartials: false,
+      });
+      await transcriber.pushAudio(new Float32Array(1000));
+      const partial = await transcriber.pushAudio(new Float32Array(1000));
+      expect(partial.warnings).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'nemotron-rnnt.streaming-fallback-offline-chunks',
+          recoverable: true,
+        }),
+      ]));
+      await transcriber.dispose();
+    });
+
     it('supports onPartial method subscription and unsubscription', async () => {
       const session = createMockSession();
       const transcriber = new NemotronStreamingTranscriber(session, {
@@ -599,6 +653,8 @@ describe('worker-and-stateful-streaming suite', () => {
 
       await controller.start();
 
+      expect(mockTranscriber.reset).toHaveBeenCalledOnce();
+      vi.mocked(mockTranscriber.reset).mockClear();
       // 1. Silence chunk: speech is not active yet, so streamingTranscriber.pushAudio is NOT called
       const silenceChunk = new Float32Array([0.01, 0.02]);
       captureOnChunk({ pcm: silenceChunk, sampleRate: 16000, startFrame: 0, endFrame: 2 });
@@ -620,7 +676,10 @@ describe('worker-and-stateful-streaming suite', () => {
       expect(partialsEmitted[1]?.text).toBe('partial-2');
       expect(pushedChunks).toHaveLength(2);
 
-      // 4. Speech finishes and pause/silence causes segment-ready
+      // 4. The detector emits speech-end before the accepted segment-ready event.
+      listeners.forEach((l) => l({ type: 'speech-end', payload: {
+        startFrame: 2, endFrame: 8, sampleRate: 16000,
+      } }));
       listeners.forEach((l) =>
         l({
           type: 'segment-ready',

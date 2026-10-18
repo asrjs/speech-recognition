@@ -409,7 +409,7 @@
         </div>
 
         <div class="form-group">
-          <label>Canonical Receipt (asrjs.browser-webgpu.v1)</label>
+          <label>Verification Receipt (asrjs.browser-execution.v2)</label>
           <div class="raw-receipt-box" id="receiptBox">// Run a benchmark to view the standardized verification receipt</div>
         </div>
 
@@ -422,12 +422,15 @@
   </div>
 
   <script type="module">
+    import { runMode } from '/tools/browser-harness/runner.mjs';
+    import { JFK_ORACLE, verifyRuns } from '/tools/browser-harness/verification.mjs';
     import * as ort from 'onnxruntime-web';
     import {
       listSpeechModels,
       listExperimentalSpeechFamilies,
       loadSpeechModel,
       createSpeechPipeline,
+      PcmAudioBuffer,
     } from '@asrjs/speech-recognition';
     import {
       createSpeechModelLocalEntries,
@@ -438,6 +441,8 @@
     // Hook WebGPU Compute Pass Encoder to count real compute pass dispatches
     let totalGpuDispatches = 0;
     let runGpuDispatches = 0;
+    let gpuDispatchInstrumentationInstalled = false;
+    let nextInstanceId = 0;
 
     if (typeof GPUComputePassEncoder !== 'undefined' && GPUComputePassEncoder.prototype) {
       const proto = GPUComputePassEncoder.prototype;
@@ -457,6 +462,7 @@
           };
         }
         proto._asrHooked = true;
+        gpuDispatchInstrumentationInstalled = true;
       }
     }
 
@@ -503,6 +509,11 @@
         return 'parakeet-tdt-0.6b-v3';
       }
       return folderPath.split('/').pop();
+    }
+
+    async function sha256Hex(buffer) {
+      const digest = await crypto.subtle.digest('SHA-256', buffer);
+      return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
     }
 
     // Harness Core Interface
@@ -561,9 +572,26 @@
       },
 
       async loadModel(spec) {
-        const cacheKey = spec.cacheKey || spec.localFolder || spec.modelId || spec.preset || spec.family;
-        if (!cacheKey) throw new Error('Model spec requires modelId, localFolder, preset, or family');
-
+        if (!spec.cacheKey && !spec.localFolder && !spec.modelId && !spec.preset && !spec.family) {
+          throw new Error('Model spec requires modelId, localFolder, preset, or family');
+        }
+        const cacheKey = JSON.stringify({
+          callerKey: spec.cacheKey || null,
+          localFolder: spec.localFolder || null,
+          modelId: spec.modelId || null,
+          preset: spec.preset || null,
+          family: spec.family || null,
+          backend: spec.backend || 'webgpu',
+          encoderBackend: spec.encoderBackend || null,
+          decoderBackend: spec.decoderBackend || null,
+          options: spec.options || {},
+          localEntries: Array.isArray(spec.localEntries) ? spec.localEntries.map((entry) => ({
+            path: entry.path,
+            size: entry.size ?? null,
+            lastModified: entry.lastModified ?? null,
+          })) : null,
+        });
+        const loadFingerprint = await sha256Hex(new TextEncoder().encode(cacheKey).buffer);
         if (!spec.forceReload && activeModels.has(cacheKey)) {
           const cached = activeModels.get(cacheKey);
           log(`Reusing warm cached model session for [${cacheKey}] (loadMs: 0)`, 'success');
@@ -572,16 +600,14 @@
             cacheKey,
             loadMs: 0,
             cached: true,
-            backendId: cached.handle.model?.backend?.id || spec.backend || 'webgpu',
+            instanceId: cached.instanceId,
+            loadFingerprint,
+            backendId: cached.handle.model?.backend?.id ?? null,
           };
         }
 
         if (activeModels.has(cacheKey)) {
-          try {
-            await activeModels.get(cacheKey).handle.dispose();
-          } catch (e) {
-            console.warn('Error disposing previous model:', e);
-          }
+          await activeModels.get(cacheKey).handle.dispose();
           activeModels.delete(cacheKey);
         }
 
@@ -590,20 +616,28 @@
         let handle;
 
         if (spec.localFolder) {
-          log(`Fetching local directory entries from /__api__/local-entries?dir=${encodeURIComponent(spec.localFolder)}...`);
-          const res = await fetch(`/__api__/local-entries?dir=${encodeURIComponent(spec.localFolder)}`);
-          if (!res.ok) throw new Error(`Failed to list local directory ${spec.localFolder}: ${res.statusText}`);
-          const entries = await res.json();
-          log(`Found ${entries.length} local files. Downloading blobs into browser memory...`);
-
-          const files = await Promise.all(entries.map(async (entry) => {
-            const fRes = await fetch(entry.url);
-            if (!fRes.ok) throw new Error(`Failed to fetch ${entry.url}: ${fRes.statusText}`);
-            const blob = await fRes.blob();
-            return new File([blob], entry.name, { type: 'application/octet-stream' });
-          }));
-
-          const localEntries = createSpeechModelLocalEntries(files);
+          let localEntries = spec.localEntries;
+          if (Array.isArray(localEntries)) {
+            log(`Using ${localEntries.length} caller-supplied local File entries...`);
+          } else {
+            log(`Fetching local directory entries from /__api__/local-entries?dir=${encodeURIComponent(spec.localFolder)}...`);
+            const res = await fetch(`/__api__/local-entries?dir=${encodeURIComponent(spec.localFolder)}`);
+            if (!res.ok) throw new Error(`Failed to list local directory ${spec.localFolder}: ${res.statusText}`);
+            const entries = await res.json();
+            log(`Found ${entries.length} local files. Loading selected artifacts on demand...`);
+            localEntries = entries.map((entry) => ({
+              path: entry.relativePath,
+              basename: entry.name,
+              handle: {
+                kind: 'file',
+                async getFile() {
+                  const fRes = await fetch(entry.url);
+                  if (!fRes.ok) throw new Error(`Failed to fetch ${entry.url}: ${fRes.statusText}`);
+                  return await fRes.blob();
+                },
+              },
+            }));
+          }
           let modelId = spec.modelId;
           if (!modelId) {
             modelId = inferModelIdFromFolder(spec.localFolder);
@@ -615,16 +649,13 @@
 
           log(`Resolved modelId "${modelId}" (${encoderBackend}/${decoderBackend}). Initializing speech session...`);
           handle = await loadSpeechModelFromLocalEntries({
+            ...(spec.options || {}),
             modelId,
             entries: localEntries,
             backend: selectedBackend,
-            encoderBackend,
-            decoderBackend,
-            options: {
-              encoderBackend,
-              decoderBackend,
-            },
-            ...(spec.options || {}),
+            encoderBackend: spec.encoderBackend || spec.options?.encoderBackend || encoderBackend,
+            decoderBackend: spec.decoderBackend || spec.options?.decoderBackend || decoderBackend,
+            // The local-entries API accepts model options at the top level.
           });
         } else {
           handle = await loadSpeechModel({
@@ -632,7 +663,7 @@
             preset: spec.preset,
             family: spec.family,
             backend: spec.backend || 'webgpu',
-            ...(spec.options || {}),
+            options: spec.options || {},
           });
         }
 
@@ -644,6 +675,7 @@
           spec,
           loadMs,
           loadedAt: Date.now(),
+          instanceId: `browser-session-${++nextInstanceId}`,
         });
 
         updateTelemetryPills();
@@ -653,13 +685,15 @@
           cacheKey,
           loadMs,
           cached: false,
-          backendId: handle.model?.backend?.id || spec.backend || 'webgpu',
+          instanceId: activeModels.get(cacheKey).instanceId,
+          loadFingerprint,
+          backendId: handle.model?.backend?.id ?? null,
         };
       },
 
       async runOffline(spec) {
         log(`--- Starting Offline Run [${spec.fixture || 'jfk-short.wav'}] ---`);
-        const { handle, loadMs, cached, backendId } = await this.loadModel(spec);
+        const { handle, loadMs, cached, backendId, instanceId, loadFingerprint } = await this.loadModel(spec);
 
         // Fetch and decode audio fixture
         const fixtureName = spec.fixture || 'jfk-short.wav';
@@ -668,6 +702,7 @@
         const audioRes = await fetch(fixtureUrl);
         if (!audioRes.ok) throw new Error(`Failed to fetch fixture ${fixtureUrl}: ${audioRes.statusText}`);
         const audioBuf = await audioRes.arrayBuffer();
+        const audioSha256 = await sha256Hex(audioBuf);
 
         const { pcm, sampleRate } = decodeWavToMonoPcm(audioBuf);
         const durationSec = pcm.length / sampleRate;
@@ -678,7 +713,7 @@
 
         log(`Running handle.transcribeMonoPcm...`);
         const t0 = performance.now();
-        const response = await handle.transcribeMonoPcm(pcm, 16000, {
+        const response = await handle.transcribeMonoPcm(pcm, sampleRate, {
           detail: spec.detail || 'words',
           responseFlavor: spec.responseFlavor || 'canonical+native',
         });
@@ -687,8 +722,9 @@
         const rtfx = durationSec / (inferenceMs / 1000);
         const dispatches = runGpuDispatches;
 
-        const transcriptText = typeof response === 'string' ? response : (response.text || response.canonical?.text || '');
-        const words = response.words || response.canonical?.words || [];
+        const canonical = response?.canonical || response;
+        const transcriptText = typeof response === 'string' ? response : (canonical?.text || '');
+        const words = canonical?.words || [];
 
         log(`Offline transcription completed in ${inferenceMs.toFixed(1)}ms (${rtfx.toFixed(1)}x real-time, ${dispatches} GPU dispatches)`, 'success');
         log(`Transcript: "${transcriptText}"`);
@@ -696,15 +732,24 @@
         const probe = await this.probeWebGpu();
 
         const receipt = {
-          schema: 'asrjs.browser-webgpu.v1',
-          status: 'PASS',
+          schema: 'asrjs.browser-execution.v2',
+          status: 'EXECUTED',
           mode: 'offline',
           modelId: handle.model?.info?.modelId || spec.modelId || spec.localFolder,
           backendId,
+          reportedBackendId: canonical?.meta?.backendId ?? null,
+          instanceId,
+          loadFingerprint,
+          supportsStreaming: handle.supportsStreaming === true,
+          gpuObservation: {
+            instrumented: gpuDispatchInstrumentationInstalled,
+            available: probe.available === true,
+          },
           adapter: probe.adapter,
           limits: probe.limits,
           audio: {
             fixture: fixtureName,
+            sha256: audioSha256,
             durationSeconds: Math.round(durationSec * 100) / 100,
             samples: pcm.length,
             sampleRate,
@@ -727,21 +772,25 @@
 
       async runStreaming(spec) {
         log(`--- Starting Streaming Run [${spec.fixture || 'jfk-short.wav'}] ---`);
-        const { handle, loadMs, cached, backendId } = await this.loadModel(spec);
+        const { handle, loadMs, cached, backendId, instanceId, loadFingerprint } = await this.loadModel(spec);
 
         const fixtureName = spec.fixture || 'jfk-short.wav';
         const fixtureUrl = spec.audioUrl || `/__fixtures__/${fixtureName}`;
         const audioRes = await fetch(fixtureUrl);
         if (!audioRes.ok) throw new Error(`Failed to fetch fixture ${fixtureUrl}: ${audioRes.statusText}`);
         const audioBuf = await audioRes.arrayBuffer();
+        const audioSha256 = await sha256Hex(audioBuf);
 
         const { pcm, sampleRate } = decodeWavToMonoPcm(audioBuf);
         const durationSec = pcm.length / sampleRate;
 
         runGpuDispatches = 0;
 
-        const chunkMs = spec.chunkMs || 160;
-        const chunkSamples = Math.round((chunkMs / 1000) * 16000);
+        const chunkMs = spec.chunkMs ?? 160;
+        if (!Number.isFinite(chunkMs) || chunkMs <= 0) {
+          throw new RangeError('chunkMs must be a finite positive number.');
+        }
+        const chunkSamples = Math.max(1, Math.round((chunkMs / 1000) * sampleRate));
 
         let finalTranscript = '';
         let ttftMs = null;
@@ -750,14 +799,17 @@
 
         const tStart = performance.now();
 
-        if (typeof handle.createStreamingTranscriber === 'function') {
-          log(`Creating streaming transcriber (${chunkMs}ms chunks = ${chunkSamples} samples/chunk)...`);
-          const transcriber = await handle.createStreamingTranscriber(spec.streamingOptions || {});
-
+        if (handle.supportsStreaming !== true) {
+          throw new Error(`Model "${handle.model?.info?.modelId || spec.modelId || spec.localFolder}" does not support native streaming.`);
+        }
+        log(`Creating streaming transcriber (${chunkMs}ms chunks = ${chunkSamples} samples/chunk)...`);
+        const transcriber = await handle.createStreamingTranscriber(spec.streamingOptions || {});
+        let finalRes;
+        try {
           for (let offset = 0; offset < pcm.length; offset += chunkSamples) {
             const chunk = pcm.subarray(offset, Math.min(offset + chunkSamples, pcm.length));
             const tC0 = performance.now();
-            const partial = await transcriber.pushAudio(chunk);
+            const partial = await transcriber.pushAudio(PcmAudioBuffer.fromMono(chunk, sampleRate));
             const tC1 = performance.now();
             chunkLatencies.push(tC1 - tC0);
 
@@ -773,29 +825,10 @@
             }
           }
 
-          const finalRes = await transcriber.finish();
-          finalTranscript = typeof finalRes === 'string' ? finalRes : (finalRes?.text || (partials[partials.length - 1]?.text ?? ''));
-        } else {
-          log(`Model does not expose native streaming; running chunked window simulation...`);
-          for (let offset = 0; offset < pcm.length; offset += chunkSamples) {
-            const chunk = pcm.subarray(0, Math.min(offset + chunkSamples, pcm.length));
-            const tC0 = performance.now();
-            const res = await handle.transcribeMonoPcm(chunk, 16000);
-            const tC1 = performance.now();
-            chunkLatencies.push(tC1 - tC0);
-            const curText = typeof res === 'string' ? res : (res.text || '');
-            if (curText.trim()) {
-              if (ttftMs === null) {
-                ttftMs = performance.now() - tStart;
-              }
-              partials.push({
-                text: curText,
-                timeMs: Math.round((performance.now() - tStart) * 10) / 10,
-                chunkIndex: Math.floor(offset / chunkSamples),
-              });
-            }
-          }
-          finalTranscript = partials[partials.length - 1]?.text ?? '';
+          finalRes = await transcriber.finalize();
+          finalTranscript = finalRes?.text || '';
+        } finally {
+          await transcriber.dispose?.();
         }
 
         const totalStreamingMs = performance.now() - tStart;
@@ -814,15 +847,24 @@
         const probe = await this.probeWebGpu();
 
         const receipt = {
-          schema: 'asrjs.browser-webgpu.v1',
-          status: 'PASS',
+          schema: 'asrjs.browser-execution.v2',
+          status: 'EXECUTED',
           mode: 'streaming',
           modelId: handle.model?.info?.modelId || spec.modelId || spec.localFolder,
           backendId,
+          reportedBackendId: finalRes?.meta?.backendId ?? null,
+          instanceId,
+          loadFingerprint,
+          supportsStreaming: handle.supportsStreaming === true,
+          gpuObservation: {
+            instrumented: gpuDispatchInstrumentationInstalled,
+            available: probe.available === true,
+          },
           adapter: probe.adapter,
           limits: probe.limits,
           audio: {
             fixture: fixtureName,
+            sha256: audioSha256,
             durationSeconds: Math.round(durationSec * 100) / 100,
             samples: pcm.length,
             sampleRate,
@@ -854,21 +896,20 @@
 
       async disposeAll() {
         log(`Disposing all ${activeModels.size} active model sessions...`);
-        const tasks = [];
+        const errors = [];
         for (const [key, item] of activeModels.entries()) {
-          tasks.push((async () => {
-            try {
-              await item.handle.dispose();
-              log(`Disposed model [${key}]`);
-            } catch (err) {
-              log(`Error disposing [${key}]: ${err.message}`, 'error');
-            }
-          })());
+          try {
+            await item.handle.dispose();
+            activeModels.delete(key);
+            log(`Disposed model [${key}]`);
+          } catch (err) {
+            errors.push(err);
+            log(`Error disposing [${key}]: ${err.message}`, 'error');
+          }
         }
-        await Promise.all(tasks);
-        activeModels.clear();
         updateTelemetryPills();
-        log(`All models disposed. GPU memory freed.`, 'success');
+        if (errors.length > 0) throw new AggregateError(errors, 'One or more model sessions failed to dispose.');
+        log(`All model sessions disposed.`, 'success');
       },
     };
 
@@ -1022,38 +1063,9 @@
           spec.modelId = selectCatalogModel.value;
         }
 
-        let receipt;
-        if (mode === 'offline') {
-          receipt = await ASR_HARNESS.runOffline(spec);
-        } else if (mode === 'streaming') {
-          receipt = await ASR_HARNESS.runStreaming(spec);
-        } else {
-          // both
-          const offlineReceipt = await ASR_HARNESS.runOffline(spec);
-          // For streaming in 'both' mode, use warm session
-          const streamingReceipt = await ASR_HARNESS.runStreaming({ ...spec, forceReload: false });
-          receipt = {
-            schema: 'asrjs.browser-webgpu.v1',
-            status: 'PASS',
-            mode: 'both',
-            modelId: spec.modelId,
-            backendId: backend,
-            adapter: offlineReceipt.adapter,
-            offline: offlineReceipt,
-            streaming: streamingReceipt,
-            transcript: offlineReceipt.transcript,
-            metrics: {
-              loadMs: offlineReceipt.metrics.loadMs,
-              offlineInferenceMs: offlineReceipt.metrics.inferenceMs,
-              offlineRtfx: offlineReceipt.metrics.rtfx,
-              streamingInferenceMs: streamingReceipt.metrics.inferenceMs,
-              streamingRtfx: streamingReceipt.metrics.rtfx,
-              ttftMs: streamingReceipt.metrics.ttftMs,
-              totalGpuDispatches: offlineReceipt.metrics.gpuDispatches + streamingReceipt.metrics.gpuDispatches,
-            },
-            timestamp: new Date().toISOString(),
-          };
-        }
+        const receipt = await runMode(ASR_HARNESS, mode, spec);
+        const oracle = fixture === JFK_ORACLE.fixture ? JFK_ORACLE : null;
+        receipt.verification = verifyRuns(receipt, null, { mode, backend, oracle });
 
         // Render KPIs
         const m = receipt.mode === 'both' ? receipt.offline.metrics : receipt.metrics;
@@ -1071,8 +1083,10 @@
         receiptBox.textContent = JSON.stringify(receipt, null, 2);
 
         window.lastTestReceipt = receipt;
-        runStatus.textContent = `Completed in ${receipt.metrics?.totalMs || receipt.metrics?.inferenceMs || 0}ms`;
-        runStatus.style.color = 'var(--success)';
+        runStatus.textContent = `${receipt.verification.status}: execution and configured checks completed`;
+        runStatus.style.color = receipt.verification.status === 'PASS'
+          ? 'var(--success)'
+          : receipt.verification.status === 'FAIL' ? 'var(--danger)' : '#fbbf24';
       } catch (err) {
         log(`Benchmark failed: ${err.message}`, 'error');
         runStatus.textContent = `Failed: ${err.message}`;

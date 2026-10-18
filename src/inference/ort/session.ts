@@ -215,9 +215,5 @@ export async function releaseUnifiedOrtSession(
   if (!session) {
     return;
   }
-  try {
-    await session.release?.();
-  } catch {
-    // Best-effort release: suppress errors during teardown
-  }
+  await session.release?.();
 }

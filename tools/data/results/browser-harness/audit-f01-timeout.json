@@ -1,0 +1,19 @@
+{
+  "schema": "asrjs.browser-verification.v2",
+  "status": "FAIL",
+  "requested": {
+    "localFolder": "models/onnx/__audit_missing_a",
+    "modelId": null,
+    "preset": null,
+    "family": null,
+    "backend": "webgpu",
+    "fixture": "jfk-short.wav",
+    "chunkMs": 160,
+    "forceReload": true,
+    "mode": "both",
+    "oracle": null,
+    "warmRerun": true
+  },
+  "error": "Bridge action timed out after 1ms",
+  "timestamp": "2026-10-18T19:18:41.365Z"
+}

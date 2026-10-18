@@ -27,7 +27,7 @@ import {
 } from './segment-foreground-filter.js';
 import {
   PARAKEET_SEGMENTATION_PRESETS,
-  STREAMING_GATE_MODES as BASE_STREAMING_GATE_MODES,
+  STREAMING_GATE_MODES,
   STREAMING_VAD_BACKENDS,
   STREAMING_PROFILE_IDS,
   STREAMING_PRESETS,
@@ -40,25 +40,14 @@ import {
   type StreamingDetectorConfig,
   type StreamingDetectorConfigOverrides,
   type StreamingDetectorPreset,
-  type StreamingGateMode as BaseStreamingGateMode,
+  type StreamingGateMode,
   type StreamingVadBackend,
   type StreamingProfileId,
 } from './streaming-config.js';
 import { amplitudeToDbfs } from './noise-floor.js';
 
-export const STREAMING_GATE_MODES = {
-  ...BASE_STREAMING_GATE_MODES,
-  HYBRID: 'hybrid' as const,
-  VAD_ONLY: 'vad-only' as const,
-} as const;
-
-export type StreamingGateMode =
-  | BaseStreamingGateMode
-  | 'rough-only'
-  | 'hybrid'
-  | 'vad-only';
-
 export {
+  STREAMING_GATE_MODES,
   DEFAULT_ROUGH_GATE_CONFIG,
   PARAKEET_SEGMENTATION_PRESETS,
   STREAMING_VAD_BACKENDS,
@@ -72,6 +61,7 @@ export {
   resolveStreamingProfileId,
 };
 export type {
+  StreamingGateMode,
   RoughSpeechGateConfig,
   RoughSpeechGateWindowResult,
   StreamingDetectorConfig,
@@ -438,9 +428,11 @@ export class StreamingSpeechDetector {
       (this.config as { readonly vadMode?: string }).vadMode !== 'disabled';
 
     if (isVadReady && isVadEnabled) {
+      if (this.config.gateMode === STREAMING_GATE_MODES.TEN_VAD_ONLY) return STREAMING_GATE_MODES.VAD_ONLY;
+      if (this.config.gateMode === STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD) return STREAMING_GATE_MODES.HYBRID;
       if (
-        (this.config.gateMode as string) === 'hybrid' ||
-        (this.config.gateMode as string) === 'vad-only' ||
+        this.config.gateMode === STREAMING_GATE_MODES.HYBRID ||
+        this.config.gateMode === STREAMING_GATE_MODES.VAD_ONLY ||
         this.config.gateMode === STREAMING_GATE_MODES.ROUGH_ONLY
       ) {
         return this.config.gateMode;
@@ -621,7 +613,7 @@ export class StreamingSpeechDetector {
 
     const effectiveGateMode = this.resolveEffectiveGateMode();
     const isHybrid = effectiveGateMode === 'hybrid';
-    const isVadOnly = (effectiveGateMode as string) === 'vad-only';
+    const isVadOnly = effectiveGateMode === STREAMING_GATE_MODES.VAD_ONLY;
 
     const vadOnsetSpeaking =
       (isHybrid || isVadOnly) &&
@@ -708,17 +700,34 @@ export class StreamingSpeechDetector {
 
       const segmentFrames = nowFrame - this.activeSegment.startFrame;
       const segmentDurationMs = (segmentFrames / this.sampleRate) * 1000;
-      if (segmentDurationMs >= this.config.maxSegmentDurationMs) {
+      // Prefer a quiet chunk shortly before the hard limit. Decide prospectively:
+      // already-delivered streaming audio must never be cut retroactively.
+      const softWindowMs = Math.min(160, this.config.maxSegmentDurationMs * 0.1);
+      let quietNearLimit = false;
+      if (segmentDurationMs >= this.config.maxSegmentDurationMs - softWindowMs &&
+          segmentDurationMs >= this.config.minSpeechDurationMs) {
+        let squareSum = 0;
+        for (const sample of chunk) squareSum += sample * sample;
+        const rms = Math.sqrt(squareSum / chunk.length);
+        quietNearLimit = rms <= Math.max(rough.noiseFloor * 2, this.config.energyThreshold * 0.5);
+      }
+      if (segmentDurationMs >= this.config.maxSegmentDurationMs || quietNearLimit) {
+        if (quietNearLimit && segmentDurationMs < this.config.maxSegmentDurationMs) {
+          this.recordDecision('Long speech split at a quiet chunk before the hard limit', {
+            endFrame: nowFrame,
+            segmentDurationMs,
+          });
+        }
         const finalized = this.finalizeSegment('max-duration', nowFrame);
         const speechStillActive =
-          effectiveGateMode === STREAMING_GATE_MODES.ROUGH_ONLY
+          quietNearLimit || (effectiveGateMode === STREAMING_GATE_MODES.ROUGH_ONLY
             ? rough.isSpeech
             : rough.isSpeech ||
               (this.tenVad?.hasRecentSpeech(
                 nowFrame,
                 this.config.tenVadHangoverMs,
                 this.sampleRate,
-              ) ?? false);
+              ) ?? false));
 
         if (speechStillActive) {
           this.continuationAfterMaxDuration = true;

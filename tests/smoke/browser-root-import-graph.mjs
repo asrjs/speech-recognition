@@ -46,6 +46,12 @@ const entryPoints = (
   requestedEntryPoints.length > 0 ? requestedEntryPoints : defaultEntryPoints
 ).map((entryPoint) => resolve(distRoot, entryPoint));
 
+// The public root currently exposes several independent API areas, so this
+// ceiling protects the measured regression baseline while the requested
+// <45-module acceptance target remains explicitly tracked below.
+const rootImportRegressionCeiling = 78;
+const rootImportBudgetTarget = 45;
+
 const staticModulePattern =
   /^(?:\s*)(?:import|export)\s+(?:(?!\bfrom\b)[^;\r\n])*?\bfrom\s+['"]([^'"]+)['"]\s*;?\s*$|^(?:\s*)import\s+['"]([^'"]+)['"]\s*;?\s*$/gm;
 
@@ -111,18 +117,38 @@ async function traverseGraph(startEntries) {
 async function main() {
   const { visited, violations } = await traverseGraph(entryPoints);
 
-  // Card T1 / Root Bundle Boundary: index.js must never pull in any model executor or ort modules.
+  // Card T1 / Root Bundle Boundary: shared public imports must not pull model
+  // implementations or the native ORT loader into the static browser graph.
   const rootIndex = resolve(distRoot, 'index.js');
-  if (entryPoints.includes(rootIndex)) {
-    const { visited: rootVisited } = await traverseGraph([rootIndex]);
-    const forbiddenModelRegex = /[/\\]models[/\\][^/\\]+[/\\](?:executor|ort)\.js$/;
-    for (const mod of rootVisited) {
-      if (forbiddenModelRegex.test(mod)) {
+  const { visited: rootVisited } = await traverseGraph([rootIndex]);
+  const forbiddenRootModuleRegex = /[/\\]models[/\\]|[/\\]backends[/\\]native-cpu[/\\]ort\.js$/;
+  for (const mod of rootVisited) {
+    if (forbiddenRootModuleRegex.test(mod)) {
+      violations.push(
+        `Root bundle boundary violation: index.js transitively imports ${relative(repositoryRoot, mod)}`,
+      );
+    }
+    const source = await readFile(mod, 'utf8');
+    for (const specifier of collectStaticImports(source)) {
+      if (/^onnxruntime(?:-node|-web)(?:\/|$)/.test(specifier)) {
         violations.push(
-          `Root bundle boundary violation: index.js transitively imports ${relative(repositoryRoot, mod)}`,
+          `Root bundle boundary violation: ${relative(repositoryRoot, mod)} statically imports ${specifier}`,
         );
       }
     }
+  }
+
+  if (rootVisited.size > rootImportRegressionCeiling) {
+    violations.push(
+      `Root import graph grew to ${rootVisited.size} modules; measured regression ceiling is ${rootImportRegressionCeiling}`,
+    );
+  }
+
+  const strictBudget = process.env.ASRJS_ROOT_IMPORT_STRICT_BUDGET === '1';
+  if (strictBudget && rootVisited.size >= rootImportBudgetTarget) {
+    violations.push(
+      `Root import budget target is UNMET: ${rootVisited.size} static modules; required <${rootImportBudgetTarget}`,
+    );
   }
 
   if (violations.length > 0) {
@@ -139,6 +165,14 @@ async function main() {
       entryPoints.length
     } browser-safe dist entries`,
   );
+  console.log(
+    `[browser-root-import-graph] root index: ${rootVisited.size} static modules (regression ceiling <=${rootImportRegressionCeiling}: PASS; requested <${rootImportBudgetTarget}: ${rootVisited.size < rootImportBudgetTarget ? 'PASS' : 'UNMET'})`,
+  );
+  // Passing the boundary/regression checks is not acceptance of the requested
+  // budget. Keep the default command non-successful until that target is met.
+  if (rootVisited.size >= rootImportBudgetTarget) {
+    process.exitCode = 2;
+  }
 }
 
 main().catch((error) => {

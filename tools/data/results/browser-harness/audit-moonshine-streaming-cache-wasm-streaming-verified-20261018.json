@@ -1,0 +1,780 @@
+{
+  "schema": "asrjs.browser-verification.v2",
+  "status": "PASS",
+  "scope": "public-api-execution-and-normalized-text",
+  "requested": {
+    "localFolder": "__external_models__/_moonshine-streaming-stage-20261018",
+    "modelId": null,
+    "preset": null,
+    "family": null,
+    "backend": "wasm",
+    "fixture": "jfk-short.wav",
+    "chunkMs": 160,
+    "forceReload": true,
+    "mode": "streaming",
+    "oracle": {
+      "fixture": "jfk-short.wav",
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+    },
+    "warmRerun": true
+  },
+  "browser_version": "155.0.8059.82",
+  "runs": {
+    "cold": {
+      "schema": "asrjs.browser-execution.v2",
+      "status": "EXECUTED",
+      "mode": "streaming",
+      "modelId": "UsefulSensors/moonshine-tiny",
+      "backendId": "wasm",
+      "reportedBackendId": "wasm",
+      "instanceId": "browser-session-1",
+      "loadFingerprint": "e5cbd51526a839fd7e48efb7acd2cdefd29fc9ec286c5dc4d7ad86184c82b601",
+      "supportsStreaming": true,
+      "gpuObservation": {
+        "instrumented": true,
+        "available": true
+      },
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": ""
+      },
+      "limits": {
+        "maxBufferSize": 2147483648,
+        "maxStorageBufferBindingSize": 2147483644
+      },
+      "audio": {
+        "fixture": "jfk-short.wav",
+        "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+        "durationSeconds": 11,
+        "samples": 176000,
+        "sampleRate": 16000
+      },
+      "metrics": {
+        "loadMs": 7341.8,
+        "inferenceMs": 38294.8,
+        "totalMs": 45636.6,
+        "rtfx": 0.3,
+        "ttftMs": 2583.2,
+        "gpuDispatches": 0,
+        "chunkLatenciesMs": {
+          "mean": 499.9,
+          "p95": 1437.6,
+          "min": 0.3,
+          "max": 1654.8,
+          "count": 69
+        }
+      },
+      "cached": false,
+      "partials": [
+        {
+          "text": "And so my",
+          "timeMs": 2583.2,
+          "chunkIndex": 9
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2673.3,
+          "chunkIndex": 10
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2747.8,
+          "chunkIndex": 11
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2825.7,
+          "chunkIndex": 12
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2897.2,
+          "chunkIndex": 13
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2968.8,
+          "chunkIndex": 14
+        },
+        {
+          "text": "And so my",
+          "timeMs": 3041.9,
+          "chunkIndex": 15
+        },
+        {
+          "text": "And so my",
+          "timeMs": 3113.5,
+          "chunkIndex": 16
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 3487.3,
+          "chunkIndex": 17
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 3735.7,
+          "chunkIndex": 18
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 4010,
+          "chunkIndex": 19
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 4268.7,
+          "chunkIndex": 20
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 4520.7,
+          "chunkIndex": 21
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 4795.8,
+          "chunkIndex": 22
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 5036.3,
+          "chunkIndex": 23
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 5313.1,
+          "chunkIndex": 24
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 5922.9,
+          "chunkIndex": 25
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 6238.1,
+          "chunkIndex": 26
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 6491,
+          "chunkIndex": 27
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 6753.2,
+          "chunkIndex": 28
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 6991.3,
+          "chunkIndex": 29
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 7242.4,
+          "chunkIndex": 30
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 7481.3,
+          "chunkIndex": 31
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 7738.7,
+          "chunkIndex": 32
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 8220.7,
+          "chunkIndex": 33
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 8545.4,
+          "chunkIndex": 34
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 8903.9,
+          "chunkIndex": 35
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 9283.7,
+          "chunkIndex": 36
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 9642.4,
+          "chunkIndex": 37
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 9998.9,
+          "chunkIndex": 38
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 10365.2,
+          "chunkIndex": 39
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 10687.5,
+          "chunkIndex": 40
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 11318.3,
+          "chunkIndex": 41
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 11855.9,
+          "chunkIndex": 42
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 12362.7,
+          "chunkIndex": 43
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 12896.4,
+          "chunkIndex": 44
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 13470.2,
+          "chunkIndex": 45
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 14033.7,
+          "chunkIndex": 46
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 14579,
+          "chunkIndex": 47
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 15272.9,
+          "chunkIndex": 48
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 16472.4,
+          "chunkIndex": 49
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 17306.7,
+          "chunkIndex": 50
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 18147.6,
+          "chunkIndex": 51
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 19004.1,
+          "chunkIndex": 52
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 19791.5,
+          "chunkIndex": 53
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 20571.7,
+          "chunkIndex": 54
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 21370.4,
+          "chunkIndex": 55
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 22181.1,
+          "chunkIndex": 56
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 23293.9,
+          "chunkIndex": 57
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 24263.4,
+          "chunkIndex": 58
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 25404.4,
+          "chunkIndex": 59
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 26434.4,
+          "chunkIndex": 60
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 27521.4,
+          "chunkIndex": 61
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 28597.2,
+          "chunkIndex": 62
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 29696.6,
+          "chunkIndex": 63
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 30676,
+          "chunkIndex": 64
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "timeMs": 32330.8,
+          "chunkIndex": 65
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "timeMs": 33826.7,
+          "chunkIndex": 66
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "timeMs": 35274.9,
+          "chunkIndex": 67
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "timeMs": 36712.4,
+          "chunkIndex": 68
+        }
+      ],
+      "finalTranscript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "timestamp": "2026-10-18T20:10:20.369Z"
+    },
+    "warm": {
+      "schema": "asrjs.browser-execution.v2",
+      "status": "EXECUTED",
+      "mode": "streaming",
+      "modelId": "UsefulSensors/moonshine-tiny",
+      "backendId": "wasm",
+      "reportedBackendId": "wasm",
+      "instanceId": "browser-session-1",
+      "loadFingerprint": "e5cbd51526a839fd7e48efb7acd2cdefd29fc9ec286c5dc4d7ad86184c82b601",
+      "supportsStreaming": true,
+      "gpuObservation": {
+        "instrumented": true,
+        "available": true
+      },
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": ""
+      },
+      "limits": {
+        "maxBufferSize": 2147483648,
+        "maxStorageBufferBindingSize": 2147483644
+      },
+      "audio": {
+        "fixture": "jfk-short.wav",
+        "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+        "durationSeconds": 11,
+        "samples": 176000,
+        "sampleRate": 16000
+      },
+      "metrics": {
+        "loadMs": 0,
+        "inferenceMs": 35096,
+        "totalMs": 35096,
+        "rtfx": 0.3,
+        "ttftMs": 1985.1,
+        "gpuDispatches": 0,
+        "chunkLatenciesMs": {
+          "mean": 458.4,
+          "p95": 1445.6,
+          "min": 0.1,
+          "max": 1711.9,
+          "count": 69
+        }
+      },
+      "cached": true,
+      "partials": [
+        {
+          "text": "And so my",
+          "timeMs": 1985.1,
+          "chunkIndex": 9
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2044.3,
+          "chunkIndex": 10
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2109.5,
+          "chunkIndex": 11
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2172.5,
+          "chunkIndex": 12
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2230.5,
+          "chunkIndex": 13
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2289.1,
+          "chunkIndex": 14
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2347.9,
+          "chunkIndex": 15
+        },
+        {
+          "text": "And so my",
+          "timeMs": 2407.1,
+          "chunkIndex": 16
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 2703.7,
+          "chunkIndex": 17
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 2866.6,
+          "chunkIndex": 18
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 3030,
+          "chunkIndex": 19
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 3192.3,
+          "chunkIndex": 20
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 3355.2,
+          "chunkIndex": 21
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 3517.1,
+          "chunkIndex": 22
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 3678.5,
+          "chunkIndex": 23
+        },
+        {
+          "text": "And so, my fellow Americans!",
+          "timeMs": 3841.9,
+          "chunkIndex": 24
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 4209.5,
+          "chunkIndex": 25
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 4442.9,
+          "chunkIndex": 26
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 4674.9,
+          "chunkIndex": 27
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 4907.7,
+          "chunkIndex": 28
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 5140.3,
+          "chunkIndex": 29
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 5372.7,
+          "chunkIndex": 30
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 5604.5,
+          "chunkIndex": 31
+        },
+        {
+          "text": "And so, my fellow Americans, ask",
+          "timeMs": 5836,
+          "chunkIndex": 32
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 6289.6,
+          "chunkIndex": 33
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 6601.2,
+          "chunkIndex": 34
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 6913.3,
+          "chunkIndex": 35
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 7228.3,
+          "chunkIndex": 36
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 7539.9,
+          "chunkIndex": 37
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 7853.2,
+          "chunkIndex": 38
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 8178,
+          "chunkIndex": 39
+        },
+        {
+          "text": "And so, my fellow Americans, ask not",
+          "timeMs": 8500,
+          "chunkIndex": 40
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 9125.2,
+          "chunkIndex": 41
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 9604.4,
+          "chunkIndex": 42
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 10114.8,
+          "chunkIndex": 43
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 10633.8,
+          "chunkIndex": 44
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 11128.1,
+          "chunkIndex": 45
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 11681.5,
+          "chunkIndex": 46
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 12177,
+          "chunkIndex": 47
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country",
+          "timeMs": 12666.3,
+          "chunkIndex": 48
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 13594.2,
+          "chunkIndex": 49
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 14419.8,
+          "chunkIndex": 50
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 15216.3,
+          "chunkIndex": 51
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 16029.9,
+          "chunkIndex": 52
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 16854,
+          "chunkIndex": 53
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 17655,
+          "chunkIndex": 54
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 18445.2,
+          "chunkIndex": 55
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you.",
+          "timeMs": 19239.4,
+          "chunkIndex": 56
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 20361,
+          "chunkIndex": 57
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 21354.7,
+          "chunkIndex": 58
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 22345,
+          "chunkIndex": 59
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 23307.8,
+          "chunkIndex": 60
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 24281.4,
+          "chunkIndex": 61
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 25244,
+          "chunkIndex": 62
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 26209.6,
+          "chunkIndex": 63
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you as what you",
+          "timeMs": 27211.9,
+          "chunkIndex": 64
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "timeMs": 28923.8,
+          "chunkIndex": 65
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "timeMs": 30369.4,
+          "chunkIndex": 66
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "timeMs": 31876.7,
+          "chunkIndex": 67
+        },
+        {
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "timeMs": 33418.6,
+          "chunkIndex": 68
+        }
+      ],
+      "finalTranscript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "timestamp": "2026-10-18T20:10:55.551Z"
+    }
+  },
+  "verification": {
+    "status": "PASS",
+    "warmSessionReused": true,
+    "runs": [
+      {
+        "phase": "cold",
+        "mode": "streaming",
+        "status": "PASS",
+        "execution": {
+          "status": "PASS",
+          "failures": []
+        },
+        "transcript": {
+          "status": "PASS",
+          "comparison": "normalized-text-exact",
+          "fixtureMatches": true,
+          "matchExpected": true
+        },
+        "provider": {
+          "status": "PASS",
+          "requested": "wasm",
+          "reported": "wasm",
+          "evidence": "reported-backend"
+        }
+      },
+      {
+        "phase": "warm",
+        "mode": "streaming",
+        "status": "PASS",
+        "execution": {
+          "status": "PASS",
+          "failures": []
+        },
+        "transcript": {
+          "status": "PASS",
+          "comparison": "normalized-text-exact",
+          "fixtureMatches": true,
+          "matchExpected": true
+        },
+        "provider": {
+          "status": "PASS",
+          "requested": "wasm",
+          "reported": "wasm",
+          "evidence": "reported-backend"
+        }
+      }
+    ]
+  },
+  "timestamp": "2026-10-18T20:10:55.965Z"
+}

@@ -16,20 +16,64 @@ import type {
   SpeechModelLocalEntry,
 } from '../runtime/local-types.js';
 
-const REQUIRED = [
-  'audio_front_model.onnx',
-  'decoder_step_model.onnx',
-  'embed_tokens_model.onnx',
-  'tokenizer.json',
-];
+const ENCODER = 'audio-encoder-dynamic.onnx';
+const TOKENIZER = 'tokenizer.json';
+
+type DecoderArtifacts = {
+  readonly quant: 'fp16' | 'fp32';
+  readonly prefill: string;
+  readonly step: string;
+  readonly prefillData: string;
+  readonly stepData: string;
+};
+
+function decoderArtifactCandidates(): readonly DecoderArtifacts[] {
+  return [
+    {
+      quant: 'fp16',
+      prefill: 'decoder-prefill-fp16.onnx',
+      step: 'decoder-step-fp16.onnx',
+      prefillData: 'decoder-fp16.onnx.data',
+      stepData: 'decoder-fp16.onnx.data',
+    },
+    {
+      quant: 'fp32',
+      prefill: 'decoder-prefill.onnx',
+      step: 'decoder-step.onnx',
+      prefillData: 'decoder-prefill.onnx.data',
+      stepData: 'decoder-step.onnx.data',
+    },
+  ];
+}
+
+function findDecoderArtifacts(
+  entries: readonly SpeechModelLocalEntry[],
+  requestedQuant?: DecoderArtifacts['quant'],
+): DecoderArtifacts | null {
+  for (const candidate of decoderArtifactCandidates()) {
+    if (requestedQuant && requestedQuant !== candidate.quant) continue;
+    if (
+      findLocalEntry(entries, candidate.prefill) &&
+      findLocalEntry(entries, candidate.step) &&
+      findLocalEntry(entries, candidate.prefillData) &&
+      findLocalEntry(entries, candidate.stepData)
+    ) {
+      return candidate;
+    }
+  }
+  return null;
+}
 
 function inspectQwen3AsrEntries(
   entries: readonly SpeechModelLocalEntry[],
 ): SpeechModelLocalInspection {
+  const decoders = decoderArtifactCandidates().filter((candidate) =>
+    findDecoderArtifacts(entries, candidate.quant),
+  );
   return {
-    encoderQuantizations: findLocalEntry(entries, 'audio_front_model.onnx') ? ['fp32'] : [],
-    decoderQuantizations: findLocalEntry(entries, 'decoder_step_model.onnx') ? ['fp32'] : [],
-    tokenizerNames: findLocalEntry(entries, 'tokenizer.json') ? ['tokenizer.json'] : [],
+    encoderQuantizations: findLocalEntry(entries, ENCODER) ? ['fp32'] : [],
+    decoderQuantizations: decoders.map((decoder) => decoder.quant),
+    tokenizerNames: findLocalEntry(entries, TOKENIZER) ? [TOKENIZER] : [],
     preprocessorNames: [],
   };
 }
@@ -51,10 +95,30 @@ export const qwen3AsrBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
     if (options.entries.length === 0) {
       throw new Error('Pick a local model folder first.');
     }
-    for (const name of REQUIRED) {
-      if (!findLocalEntry(options.entries, name)) {
-        throw new Error(`Missing ${name} for the qwen3-asr preset.`);
-      }
+    if (
+      findLocalEntry(options.entries, 'audio_front_model.onnx') &&
+      findLocalEntry(options.entries, 'decoder_step_model.onnx')
+    ) {
+      throw new Error(
+        'This Qwen folder contains the legacy audio_front/decoder_step/embed_tokens graph set, which is incompatible with the arbitrary-audio qwen-asr executor. Use the official audio-encoder-dynamic + decoder-prefill + decoder-step graph set.',
+      );
+    }
+    if (!findLocalEntry(options.entries, ENCODER)) {
+      throw new Error(`Missing ${ENCODER} for the official qwen3-asr preset.`);
+    }
+    const requestedQuant = options.decoderQuant;
+    const decoder = requestedQuant
+      ? requestedQuant === 'fp16' || requestedQuant === 'fp32'
+        ? findDecoderArtifacts(options.entries, requestedQuant)
+        : null
+      : findDecoderArtifacts(options.entries, 'fp32') ?? findDecoderArtifacts(options.entries, 'fp16');
+    if (!decoder) {
+      throw new Error(
+        `${requestedQuant ? `Missing the requested Qwen ${requestedQuant} decoder pair and external-data sidecar.` : 'No supported Qwen decoder pair and external-data sidecar was found.'} Use decoder-prefill-fp16.onnx + decoder-step-fp16.onnx + decoder-fp16.onnx.data for fp16, or the matching fp32 pair and sidecars.`,
+      );
+    }
+    if (!findLocalEntry(options.entries, TOKENIZER)) {
+      throw new Error(`Missing ${TOKENIZER} for the qwen3-asr preset.`);
     }
 
     const assetProvider = createBlobAssetProvider();
@@ -77,45 +141,45 @@ export const qwen3AsrBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
     };
 
     try {
-      const frontUrl = await toLocator('audio_front_model.onnx');
-      const decoderUrl = await toLocator('decoder_step_model.onnx');
-      const embedUrl = await toLocator('embed_tokens_model.onnx');
-      const tokenizerUrl = await toLocator('tokenizer.json');
-      const cuSeqlensUrl = findLocalEntry(options.entries, 'jfk_cu_seqlens.bin')
-        ? await toLocator('jfk_cu_seqlens.bin')
-        : undefined;
-      const inputFeaturesUrl = findLocalEntry(options.entries, 'jfk_input_features.npy')
-        ? await toLocator('jfk_input_features.npy')
-        : undefined;
-      const prefixEmbedsUrl = findLocalEntry(options.entries, 'prompt_prefix_embeds.npy')
-        ? await toLocator('prompt_prefix_embeds.npy')
-        : undefined;
-      const suffixEmbedsUrl = findLocalEntry(options.entries, 'prompt_suffix_embeds.npy')
-        ? await toLocator('prompt_suffix_embeds.npy')
-        : undefined;
+      const encoderUrl = await toLocator(ENCODER);
+      const decoderPrefillUrl = await toLocator(decoder.prefill);
+      const decoderStepUrl = await toLocator(decoder.step);
+      const decoderPrefillDataUrl = await toLocator(decoder.prefillData);
+      const decoderStepDataUrl = decoder.stepData === decoder.prefillData
+        ? decoderPrefillDataUrl
+        : await toLocator(decoder.stepData);
+      const tokenizerUrl = await toLocator(TOKENIZER);
 
       return {
         modelId: options.modelId,
         preset: 'qwen3-asr',
         builtInLoadOptions: {
-          frontUrl,
-          decoderUrl,
-          embedUrl,
-          tokenizerUrl,
-          cuSeqlensUrl,
-          inputFeaturesUrl,
-          prefixEmbedsUrl,
-          suffixEmbedsUrl,
-          encoderBackend: options.encoderBackend,
-          cpuThreads: options.cpuThreads,
+          source: {
+            kind: 'direct',
+            artifacts: {
+              encoderUrl,
+              decoderUrl: decoderPrefillUrl,
+              decoderStepUrl,
+              tokenizerUrl,
+              decoderPrefillDataUrl,
+              decoderPrefillDataPath: decoder.prefillData,
+              decoderStepDataUrl,
+              decoderStepDataPath: decoder.stepData,
+            },
+            encoderBackend: options.encoderBackend,
+            decoderBackend: options.decoderBackend,
+            cpuThreads: options.cpuThreads,
+            wasmPaths: options.wasmPaths,
+            enableProfiling: options.enableProfiling,
+          },
         },
         assetHandles,
         selection: {
-          encoderName: 'audio_front_model.onnx',
-          decoderName: 'decoder_step_model.onnx',
-          tokenizerName: 'tokenizer.json',
+          encoderName: ENCODER,
+          decoderName: decoder.step,
+          tokenizerName: TOKENIZER,
           encoderQuant: 'fp32',
-          decoderQuant: 'fp32',
+          decoderQuant: decoder.quant,
         },
       };
     } catch (error) {

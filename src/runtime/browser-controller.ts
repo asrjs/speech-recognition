@@ -27,6 +27,8 @@ import type {
 import { mergeStreamingConfig, resolveStreamingProfileId } from './streaming-config.js';
 import type { RealtimeLatencySummary } from './realtime-latency.js';
 import type { PartialTranscript, StreamingTranscriber } from '../types/index.js';
+import { AudioRingBuffer } from './realtime.js';
+import { PcmAudioBuffer } from '../audio/audio.js';
 
 export type BrowserRealtimeMicrophoneMode = 'manual' | 'speech-detect';
 
@@ -231,28 +233,58 @@ export function createBrowserRealtimeMicrophoneController(
   const onPartialTranscript = options.onPartialTranscript;
   let isSpeechActive = false;
   let streamingOperationTail: Promise<void> = Promise.resolve();
+  let streamingAudio: AudioRingBuffer | null = null;
+  let streamingCursor: number | null = null;
 
   const enqueueStreamingChunk = (pcmChunk: Float32Array): void => {
     if (!streamingTranscriber) {
       return;
     }
+    const audio = PcmAudioBuffer.fromMono(pcmChunk, sampleRate);
     const run = async (): Promise<void> => {
       if (disposed) {
         return;
       }
       try {
-        const partial = await streamingTranscriber.pushAudio(pcmChunk);
+        const partial = await streamingTranscriber.pushAudio(audio);
         if (partial) {
           const text = partial.text?.trim() || partial.previewText?.trim();
           if (text && onPartialTranscript) {
             onPartialTranscript(partial);
           }
         }
-      } catch {
-        // Ignore chunk decode errors during active stream
+      } catch (error) {
+        setState({ micError: error instanceof Error ? error.message : String(error) });
       }
     };
     streamingOperationTail = streamingOperationTail.then(run, run);
+  };
+
+  const feedStreamingThrough = (endFrame: number): void => {
+    if (!streamingAudio || streamingCursor === null || endFrame <= streamingCursor) return;
+    // A lost onset must be observable, never silently truncated to the ring's base.
+    const pcm = streamingAudio.read(streamingCursor, endFrame);
+    streamingCursor = endFrame;
+    enqueueStreamingChunk(pcm);
+  };
+
+  const finalizeStreaming = (): void => {
+    if (!streamingTranscriber) return;
+    const run = async (): Promise<void> => {
+      if (disposed) return;
+      try {
+        const final = await streamingTranscriber.finalize();
+        if (final.text?.trim() && onPartialTranscript) onPartialTranscript(final);
+      }
+      finally { await streamingTranscriber.reset(); }
+    };
+    streamingOperationTail = streamingOperationTail.then(run, run);
+    // Observe a rejected background boundary immediately, while keeping the
+    // original rejected tail available to stop()/dispose() callers.
+    void streamingOperationTail.catch((error) => {
+      setState({ micError: error instanceof Error ? error.message : String(error) });
+    });
+    streamingCursor = null;
   };
 
   const handleChunk = (input: MicrophoneAudioChunk, generation: number): void => {
@@ -274,7 +306,6 @@ export function createBrowserRealtimeMicrophoneController(
       sampleRate = nextSampleRate;
     }
 
-    const wasSpeaking = isSpeechActive;
     if (micMode === 'manual') {
       manualChunks.push(chunk);
       manualIngestFrame += chunk.length;
@@ -286,14 +317,17 @@ export function createBrowserRealtimeMicrophoneController(
       return;
     }
 
+    if (streamingTranscriber) {
+      streamingAudio ??= new AudioRingBuffer({ sampleRate, durationSeconds: resolvedConfig.ringBufferDurationMs / 1000 });
+      streamingAudio.write(chunk);
+    }
     starter.processChunk(chunk, {
       startFrame: input.startFrame,
       endFrame: input.endFrame,
     });
 
-    const isSpeakingNow = isSpeechActive || starter.getSnapshot()?.state === 'speaking';
-    if (streamingTranscriber && (wasSpeaking || isSpeakingNow)) {
-      enqueueStreamingChunk(chunk);
+    if (streamingTranscriber && isSpeechActive && streamingAudio) {
+      feedStreamingThrough(streamingAudio.getCurrentFrame());
     }
   };
 
@@ -326,19 +360,8 @@ export function createBrowserRealtimeMicrophoneController(
     });
 
     if (streamingTranscriber) {
-      const finalizeStreaming = async (): Promise<void> => {
-        if (disposed) return;
-        try {
-          await streamingTranscriber.finalize();
-        } finally {
-          try {
-            await streamingTranscriber.reset();
-          } catch {
-            // Ignore reset error
-          }
-        }
-      };
-      streamingOperationTail = streamingOperationTail.then(finalizeStreaming, finalizeStreaming);
+      // Detection finalizes at speech-end, before a continuation's audio is queued.
+      if (micMode === 'manual') finalizeStreaming();
     } else if (options.transcribeMonoPcm && pcm.length > 0) {
       void options.transcribeMonoPcm(pcm, details.sampleRate).catch(() => undefined);
     }
@@ -376,6 +399,7 @@ export function createBrowserRealtimeMicrophoneController(
 
     if (event.type === 'speech-start') {
       isSpeechActive = true;
+      streamingCursor = event.payload.startFrame;
       setState({ micStatus: 'Speech detected. Rewinding to onset…' });
       return;
     }
@@ -386,6 +410,8 @@ export function createBrowserRealtimeMicrophoneController(
     }
     if (event.type === 'speech-end') {
       isSpeechActive = false;
+      feedStreamingThrough(event.payload.endFrame);
+      finalizeStreaming();
       setState({ micStatus: 'Detected a pause. Finalizing utterance…' });
       return;
     }
@@ -466,6 +492,13 @@ export function createBrowserRealtimeMicrophoneController(
         }
         manualChunks = [];
         manualIngestFrame = 0;
+        streamingAudio = null;
+        streamingCursor = null;
+        isSpeechActive = false;
+        if (streamingTranscriber) {
+          await streamingOperationTail;
+          await streamingTranscriber.reset();
+        }
         setState({ micError: '' });
 
         // Capture can deliver PCM before the async starter/model has reset.

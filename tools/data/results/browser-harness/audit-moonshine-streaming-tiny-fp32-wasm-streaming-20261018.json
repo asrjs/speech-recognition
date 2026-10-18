@@ -1,0 +1,23 @@
+{
+  "schema": "asrjs.browser-verification.v2",
+  "status": "FAIL",
+  "requested": {
+    "localFolder": "models/onnx/moonshine-streaming-tiny-fp32",
+    "modelId": null,
+    "preset": null,
+    "family": null,
+    "backend": "wasm",
+    "fixture": "jfk-short.wav",
+    "chunkMs": 160,
+    "forceReload": true,
+    "mode": "streaming",
+    "oracle": {
+      "fixture": "jfk-short.wav",
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+    },
+    "warmRerun": false
+  },
+  "error": "Bridge execution failed with exit code 1:\n[Bridge Error] Page.evaluate: Error: Moonshine model does not have streaming assets configured.\r\n    at Object.createStreamingTranscriber (http://127.0.0.1:8995/dist/models/moonshine/model.js:382:31)\r\n    at http://127.0.0.1:8995/dist/runtime/load.js:132:29\r\n    at Object.create (http://127.0.0.1:8995/dist/runtime/operation-lease.js:50:39)\r\n    at Object.createStreamingTranscriber (http://127.0.0.1:8995/dist/runtime/load.js:225:42)\r\n    at Object.runStreaming (http://127.0.0.1:8995/harness.html:796:42)\r\n    at async runColdAndWarm (http://127.0.0.1:8995/tools/browser-harness/runner.mjs:19:16)\r\n    at async eval (eval at evaluate (:234:30), <anonymous>:5:20)\r\n    at async <anonymous>:260:30\r\n",
+  "timestamp": "2026-10-18T20:03:41.440Z"
+}

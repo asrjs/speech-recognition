@@ -85,6 +85,19 @@ class FakeNeuralVad {
 
 describe('StreamingSpeechDetector Neural VAD & Honest Controller', () => {
   describe('1. Effective Gate Mode Resolution', () => {
+    it.each([
+      ['rough-only', 'rough-only'], ['hybrid', 'hybrid'], ['vad-only', 'vad-only'],
+      ['ten-vad-only', 'vad-only'], ['rough-and-ten-vad', 'hybrid'],
+    ] as const)('resolves public mode %s to %s with a ready VAD', async (gateMode, expected) => {
+      const detector = new StreamingSpeechDetector({
+        config: { gateMode, tenVadEnabled: true },
+        tenVadFactory: () => new FakeNeuralVad() as any,
+      });
+      await detector.start({ sampleRate: 16000 });
+      expect(detector.getSnapshot().gate.requestedMode).toBe(gateMode);
+      expect(detector.getSnapshot().gate.effectiveMode).toBe(expected);
+      await detector.dispose();
+    });
     it('returns rough-only when VAD is disabled via config', async () => {
       const fakeVad = new FakeNeuralVad({ state: 'ready' });
       const detector = new StreamingSpeechDetector({
@@ -162,7 +175,6 @@ describe('StreamingSpeechDetector Neural VAD & Honest Controller', () => {
       const detector = new StreamingSpeechDetector({
         profileId: 'generic-streaming',
         config: {
-          // @ts-expect-error test vad-only gate mode
           gateMode: 'vad-only',
           tenVadEnabled: true,
         },

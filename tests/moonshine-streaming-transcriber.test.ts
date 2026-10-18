@@ -35,7 +35,9 @@ const oneSecond = () => new Float32Array(16000).fill(0.1);
 describe('MoonshineStreamingTranscriber', () => {
   it('publishes previews per push with canonical meta and growing revisions', async () => {
     const session = fakeSession();
-    const transcriber = new MoonshineStreamingTranscriber(session, { modelId: 'moonshine-streaming-tiny' });
+    const transcriber = new MoonshineStreamingTranscriber(session, {
+      modelId: 'moonshine-streaming-tiny',
+    });
     const first = await transcriber.pushAudio(oneSecond());
     const second = await transcriber.pushAudio(oneSecond());
     expect(first.kind).toBe('partial');
@@ -52,7 +54,7 @@ describe('MoonshineStreamingTranscriber', () => {
 
   it('finalize publishes the final transcript as committed and preview text', async () => {
     const session = fakeSession();
-    const transcriber = new MoonshineStreamingTranscriber(session);
+    const transcriber = new MoonshineStreamingTranscriber(session, { backendId: 'webgpu' });
     await transcriber.pushAudio(oneSecond());
     const final = await transcriber.finalize();
     expect(final.kind).toBe('final');
@@ -60,6 +62,7 @@ describe('MoonshineStreamingTranscriber', () => {
     expect(final.committedText).toBe('final text');
     expect(final.previewText).toBe('final text');
     expect(final.meta.isFinal).toBe(true);
+    expect(final.meta.backendId).toBe('webgpu');
     expect(transcriber.getState().isFinalized).toBe(true);
     expect(session.finalize).toHaveBeenCalledTimes(1);
   });
@@ -77,10 +80,14 @@ describe('MoonshineStreamingTranscriber', () => {
   it('rejects non-16k audio instead of resampling silently', async () => {
     const session = fakeSession();
     const transcriber = new MoonshineStreamingTranscriber(session);
-    await expect(transcriber.pushAudio({
-      sampleRate: 8000, numberOfChannels: 1, numberOfFrames: 8000,
-      channels: [new Float32Array(8000)],
-    } as never)).rejects.toThrow('16000 Hz');
+    await expect(
+      transcriber.pushAudio({
+        sampleRate: 8000,
+        numberOfChannels: 1,
+        numberOfFrames: 8000,
+        channels: [new Float32Array(8000)],
+      } as never),
+    ).rejects.toThrow('16000 Hz');
     expect(session.pushAudio).not.toHaveBeenCalled();
   });
 

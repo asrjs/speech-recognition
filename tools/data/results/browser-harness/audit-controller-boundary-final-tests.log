@@ -1,0 +1,13 @@
+npm notice run @asrjs/speech-recognition@0.2.0 npx
+npm notice run vitest run tests/browser-controller.test.ts tests/worker-and-stateful-streaming.test.ts
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ✓ tests/worker-and-stateful-streaming.test.ts (9 tests) 191ms
+ ✓ tests/browser-controller.test.ts (13 tests) 477ms
+
+ Test Files  2 passed (2)
+      Tests  22 passed (22)
+   Start at  23:06:48
+   Duration  4.46s (transform 6.00s, setup 0ms, import 7.29s, tests 668ms, environment 0ms)
+

@@ -1,0 +1,15 @@
+npm notice run @asrjs/speech-recognition@0.2.0 npx
+npm notice run vitest run tests/nemotron-rnnt.test.ts tests/worker-and-stateful-streaming.test.ts tests/js-mel.test.ts tests/nemotron-mel-parity.test.ts
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ✓ tests/nemotron-mel-parity.test.ts (3 tests) 89ms
+ ✓ tests/js-mel.test.ts (10 tests) 131ms
+ ✓ tests/nemotron-rnnt.test.ts (23 tests | 2 skipped) 315ms
+ ✓ tests/worker-and-stateful-streaming.test.ts (9 tests) 182ms
+
+ Test Files  4 passed (4)
+      Tests  43 passed | 2 skipped (45)
+   Start at  22:57:20
+   Duration  4.02s (transform 5.55s, setup 0ms, import 6.92s, tests 717ms, environment 1ms)
+

@@ -55,6 +55,10 @@ export async function resolveNodePackageSubpathUrl(
   packageName: string,
   subpath: string,
 ): Promise<string> {
+  return resolveNodePackageSubpathUrlSync(packageName, subpath);
+}
+
+export function resolveNodePackageSubpathUrlSync(packageName: string, subpath: string): string {
   const nodeModule = getNodeBuiltin<{
     createRequire(url: string): {
       resolve(id: string): string;

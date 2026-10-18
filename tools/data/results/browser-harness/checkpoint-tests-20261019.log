@@ -1,0 +1,319 @@
+npm notice run @asrjs/speech-recognition@0.2.0 test
+npm notice run vitest run --reporter=dot
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+·································------··················stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode rough-only to rough-only with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode hybrid to hybrid with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode vad-only to vad-only with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode ten-vad-only to vad-only with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode rough-and-ten-vad to hybrid with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > returns rough-only when vadMode is explicitly disabled
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > returns rough-only when VAD is degraded or fails init
+[StreamingSpeechDetector] FireRed VAD degraded; segmentation remains on rough gate { error: 'VAD model initialization failed' }
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > returns hybrid when VAD is ready and gateMode is hybrid
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > returns vad-only when VAD is ready and gateMode is vad-only
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > falls back to rough-only when requested gateMode is rough-only even if VAD is ready
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+·stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 2. Continuous Utterance Soft-Split & Trailing Short Segment Flush > flushes 5120ms max-duration segment and preserves trailing ~210ms word without dropping as too-short
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.15, noiseFloor: 0.005, snr: 14.77 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 81920,
+  logicalEndFrame: 81920,
+  durationSec: 5.12,
+  normalizedPowerAt16k: 360
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 81664 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 85504, energy: 0, noiseFloor: 0.005 }
+[StreamingSpeechDetector] Segment ready: silence {
+  startFrame: 80384,
+  endFrame: 85504,
+  logicalEndFrame: 85504,
+  durationSec: 0.32,
+  normalizedPowerAt16k: 342
+}
+
+··············stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 2. Continuous Utterance Soft-Split & Trailing Short Segment Flush > flushes trailing continuation segment on manual flush without dropping as too-short
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.15, noiseFloor: 0.005, snr: 14.77 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 81920,
+  logicalEndFrame: 81920,
+  durationSec: 5.12,
+  normalizedPowerAt16k: 360
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 81664 }
+[StreamingSpeechDetector] Segment ready: manual {
+  startFrame: 79616,
+  endFrame: 85248,
+  logicalEndFrame: 85248,
+  durationSec: 0.35,
+  normalizedPowerAt16k: 360
+}
+
+···stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 3. Honest Status Messages > StreamingSpeechDetector records honest backendName decision logs for TEN-VAD
+[StreamingSpeechDetector] TEN-VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 5. Hybrid Mode Speech Continuation with VAD > keeps active utterance alive in hybrid mode when neural VAD hasRecentSpeech even if energy drops
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 5. Hybrid Mode Speech Continuation with VAD > keeps active utterance alive in hybrid mode when neural VAD hasRecentSpeech even if energy drops
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.15, noiseFloor: 0.005, snr: 14.77 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 1536, energy: 0.001, noiseFloor: 0.00348 }
+[StreamingSpeechDetector] Segment ready: silence {
+  startFrame: 0,
+  endFrame: 1536,
+  logicalEndFrame: 1536,
+  durationSec: 0.1,
+  normalizedPowerAt16k: 120.01
+}
+
+stderr | tests/moonshine-streaming-graphs.test.ts > MoonshineStreamingSession on real fp32 graphs > drives the fp16 graph set to the same oracle transcript when the Node ORT build can feed float16
+[skip] pinned onnxruntime-node build cannot feed float16 tensors
+
+············································································stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > splits at a quiet chunk near the duration limit without rewinding delivered audio
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Long speech split at a quiet chunk before the hard limit { endFrame: 14848, segmentDurationMs: 928 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 14848,
+  logicalEndFrame: 14848,
+  durationSec: 0.93,
+  normalizedPowerAt16k: 226.43
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 14592 }
+
+···stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > splits long speech at max duration and immediately continues with a new active segment
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 768,
+  logicalEndFrame: 768,
+  durationSec: 0.05,
+  normalizedPowerAt16k: 230.4
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 512 }
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > reports degraded TEN-VAD status but still segments on the rough gate when init fails
+[StreamingSpeechDetector] FireRed VAD degraded; segmentation remains on rough gate { error: 'boom' }
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > reports degraded TEN-VAD status but still segments on the rough gate when init fails
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 512, energy: 0.001, noiseFloor: 0.005 }
+[StreamingSpeechDetector] Segment ready: silence {
+  startFrame: 0,
+  endFrame: 512,
+  logicalEndFrame: 512,
+  durationSec: 0.03,
+  normalizedPowerAt16k: 115.21
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > keeps the legacy requested label while letting ready VAD reject an energy-only onset
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0,
+  speaking: false,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > still updates TEN-VAD diagnostics config when the detector config changes
+[StreamingSpeechDetector] TEN-VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0,
+  speaking: false,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > updates the adaptive noise floor during silence and freezes it during speech
+[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger { energy: 0.004, threshold: 0.08, snr: 2.04 }
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 256, energy: 0.12, noiseFloor: 0.00325, snr: 15.67 }
+
+········stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > rejects segments that fail the final minimum-duration gate
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 512, energy: 0.001, noiseFloor: 0.005 }
+[StreamingSpeechDetector] Segment rejected by final energy gate {
+  reason: 'too-short',
+  durationMs: 32,
+  normalizedPowerAt16k: 115.21,
+  normalizedEnergyIntegralAt16k: 3.69
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > rejects strong but very short segments when total normalized energy is still too low
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 512, energy: 0.001, noiseFloor: 0.005 }
+[StreamingSpeechDetector] Segment rejected by final energy gate {
+  reason: 'low-energy-integral',
+  durationMs: 32,
+  normalizedPowerAt16k: 115.21,
+  normalizedEnergyIntegralAt16k: 3.69
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > stores extracted bounds separately from logical bounds after a forced split
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 1024,
+  logicalEndFrame: 1024,
+  durationSec: 0.06,
+  normalizedPowerAt16k: 230.4
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 768 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 1792,
+  logicalEndFrame: 1792,
+  durationSec: 0.11,
+  normalizedPowerAt16k: 197.49
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 1536 }
+
+stderr | tests/io-handles.test.ts > UrlAssetHandle > continues with network when cache read throws and evicts the broken key
+[assets] Cache read failed for "cache:broken". Falling back to network. Error: cache blob invalid
+    at Object.<anonymous> (N:/github/asrjs/speech-recognition/tests/io-handles.test.ts:129:15)
+    at Object.Mock [as get] (file:///N:/github/asrjs/speech-recognition/node_modules/@vitest/spy/dist/index.js:285:34)
+    at readCache (N:/github/asrjs/speech-recognition/src/io/handles.ts:144:33)
+    at N:/github/asrjs/speech-recognition/src/io/handles.ts:452:30
+    at UrlAssetHandle.readBytes (N:/github/asrjs/speech-recognition/src/io/handles.ts:510:7)
+    at N:/github/asrjs/speech-recognition/tests/io-handles.test.ts:153:32
+    at file:///N:/github/asrjs/speech-recognition/node_modules/@vitest/runner/dist/index.js:145:11
+    at file:///N:/github/asrjs/speech-recognition/node_modules/@vitest/runner/dist/index.js:915:26
+    at file:///N:/github/asrjs/speech-recognition/node_modules/@vitest/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+
+···································-········································································································································································································································--stdout | tests/ort-session-abort.test.ts > createOrtSession abort > releases the session when abort is observed after InferenceSession.create
+[ort] session create start wasm https://example.com/model.onnx
+
+stdout | tests/ort-session-abort.test.ts > createOrtSession abort > releases the session when abort is observed after InferenceSession.create
+[ort] session created wasm https://example.com/model.onnx 0ms
+
+stdout | tests/ort-session-abort.test.ts > createOrtSession abort > does not create a session when abort is already signaled
+[ort] session create start wasm https://example.com/model.onnx
+
+··············································································································stdout | tests/lasr-ctc-node-webgpu-ort.test.ts > lasr-ctc shared ORT selection in Node-like runtimes > passes a plain webgpu execution provider to the native session
+[ort] session create start webgpu C:/models/model.onnx
+
+stdout | tests/lasr-ctc-node-webgpu-ort.test.ts > lasr-ctc shared ORT selection in Node-like runtimes > passes a plain webgpu execution provider to the native session
+[ort] session created webgpu C:/models/model.onnx 1ms
+
+stdout | tests/lasr-ctc-node-webgpu-ort.test.ts > lasr-ctc shared ORT selection in Node-like runtimes > mounts colocated external data for Node-hosted ORT Web WASM
+[ort] session create start wasm N:\github\asrjs\speech-recognition\package.json
+
+stdout | tests/lasr-ctc-node-webgpu-ort.test.ts > lasr-ctc shared ORT selection in Node-like runtimes > mounts colocated external data for Node-hosted ORT Web WASM
+[ort] session created wasm N:\github\asrjs\speech-recognition\package.json 0ms
+
+············stdout | tests/browser-realtime.test.ts > browser realtime starter > aggregates FireRed 10ms VAD hops into the configured 20ms visual buckets
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0,
+  speaking: false,
+  threshold: 0.5
+}
+
+stdout | tests/browser-realtime.test.ts > browser realtime starter > aligns FireRed visual VAD buckets to absolute audio frame offsets
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0,
+  speaking: false,
+  threshold: 0.5
+}
+
+(node:27440) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25784) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+······································································································································································--·······································································································································································································································································································································································································································-················································································································································································································································································································································································································································································································································································································································································································---·---------------------·······
+
+ Test Files  216 passed | 7 skipped (223)
+      Tests  1830 passed | 36 skipped (1866)
+   Start at  00:30:43
+   Duration  49.61s (transform 114.83s, setup 0ms, import 139.59s, tests 148.15s, environment 55ms)
+

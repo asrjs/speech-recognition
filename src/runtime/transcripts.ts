@@ -7,25 +7,60 @@ import type {
   TranscriptionEnvelope,
 } from '../types/index.js';
 import {
-  createModelClassification,
   defaultNemoConfidenceReconstructor,
   defaultNemoTimestampReconstructor,
   mapNemoNativeToCanonical,
-  type NemoTimestampReconstructor,
-} from '../models/nemo-common/index.js';
-import { DEFAULT_LASR_CTC_CLASSIFICATION } from '../models/lasr-ctc/config.js';
-import { mapLasrCtcNativeToCanonical } from '../models/lasr-ctc/mapping.js';
+} from './transcript-nemo-mapping.js';
+import type { NemoTimestampReconstructor } from '../models/nemo-common/types.js';
+import { mapLasrCtcNativeToCanonical } from './transcript-lasr-mapping.js';
 import type { LasrCtcNativeTranscript } from '../models/lasr-ctc/types.js';
-import { DEFAULT_NEMO_AED_CLASSIFICATION } from '../models/nemo-aed/config.js';
 import type { NemoAedNativeTranscript } from '../models/nemo-aed/types.js';
-import { DEFAULT_NEMO_RNNT_CLASSIFICATION } from '../models/nemo-rnnt/config.js';
 import type { NemoRnntNativeTranscript } from '../models/nemo-rnnt/types.js';
-import { DEFAULT_NEMO_TDT_CLASSIFICATION } from '../models/nemo-tdt/config.js';
 import type { NemoTdtNativeTranscript } from '../models/nemo-tdt/types.js';
-import { DEFAULT_WHISPER_CLASSIFICATION } from '../models/whisper-seq2seq/config.js';
-import { mapWhisperNativeToCanonical } from '../models/whisper-seq2seq/mapping.js';
+import { mapWhisperNativeToCanonical } from './transcript-whisper-mapping.js';
 import type { WhisperNativeTranscript } from '../models/whisper-seq2seq/types.js';
 import type { LegacyParakeetTranscript } from '../presets/parakeet/types.js';
+
+const DEFAULT_LASR_CTC_CLASSIFICATION: ModelClassification = {
+  ecosystem: 'lasr',
+  processor: 'kaldi-mel',
+  encoder: 'conformer',
+  decoder: 'ctc',
+  topology: 'ctc',
+  task: 'asr',
+};
+const DEFAULT_NEMO_AED_CLASSIFICATION: ModelClassification = {
+  ecosystem: 'nemo',
+  processor: 'nemo-mel',
+  encoder: 'fastconformer',
+  decoder: 'transformer-decoder',
+  topology: 'aed',
+  task: 'multitask-asr-translation',
+};
+const DEFAULT_NEMO_RNNT_CLASSIFICATION: ModelClassification = {
+  ecosystem: 'nemo',
+  processor: 'nemo-mel',
+  encoder: 'fastconformer',
+  decoder: 'rnnt',
+  topology: 'rnnt',
+  task: 'asr',
+};
+const DEFAULT_NEMO_TDT_CLASSIFICATION: ModelClassification = {
+  ecosystem: 'nemo',
+  processor: 'nemo-mel',
+  encoder: 'fastconformer',
+  decoder: 'tdt',
+  topology: 'tdt',
+  task: 'asr',
+};
+const DEFAULT_WHISPER_CLASSIFICATION: ModelClassification = {
+  ecosystem: 'openai',
+  processor: 'whisper-mel',
+  encoder: 'whisper-transformer',
+  decoder: 'transformer-decoder',
+  topology: 'aed',
+  task: 'multitask-asr-translation',
+};
 
 function withTranscriptDefaults(
   context: TranscriptNormalizationContext = {},
@@ -58,7 +93,7 @@ function normalizeClassification(
   base: ModelClassification,
   override: Partial<ModelClassification> = {},
 ): ModelClassification {
-  return createModelClassification(base, override);
+  return { ...base, ...override };
 }
 
 const nemoAedTimestampReconstructor: NemoTimestampReconstructor<NemoAedNativeTranscript> = {

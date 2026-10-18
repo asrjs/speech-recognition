@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { normalizePcmInput } from '../src/audio/audio.js';
 
 type WorkerMessage = {
   readonly id: number;
@@ -37,6 +38,33 @@ describe('browser transcription worker thread cancellation', () => {
     } else {
       Reflect.deleteProperty(globalThis, 'self');
     }
+  });
+
+  it('preserves the duration and waveform frequency for 16kHz and 48kHz stream input', async () => {
+    const observed: Array<{ duration: number; frequency: number }> = [];
+    const pushAudio = vi.fn(async (input) => {
+      const audio = normalizePcmInput(input);
+      const pcm = audio.channels[0]!;
+      let crossings = 0;
+      for (let i = 1; i < pcm.length; i++) if (pcm[i - 1]! <= 0 && pcm[i]! > 0) crossings++;
+      observed.push({ duration: audio.durationSeconds, frequency: crossings / audio.durationSeconds });
+      return null;
+    });
+    vi.doMock('../src/runtime/load.js', () => ({ loadSpeechModel: async () => ({
+      supportsStreaming: true,
+      createStreamingTranscriber: () => ({ pushAudio, dispose() {} }), dispose() {},
+    }) }));
+    vi.doMock('../src/runtime/local-browser.js', () => ({ loadSpeechModelFromLocalEntries: vi.fn() }));
+    const { handleRequest, disposeLoadedModel } = await import('../src/runtime/browser-transcription-worker-thread.js');
+    await handleRequest({ id: 1, type: 'LOAD_BUILT_IN_MODEL', payload: { modelId: 'test' } });
+    await handleRequest({ id: 2, type: 'START_STREAM', payload: undefined });
+    for (const sampleRate of [16000, 48000]) {
+      const pcm = Float32Array.from({ length: sampleRate }, (_, i) => Math.sin(2 * Math.PI * 440 * i / sampleRate));
+      await handleRequest({ id: 3, type: 'PUSH_STREAM_AUDIO', payload: { pcm, sampleRate } });
+    }
+    expect(observed.map(({ duration }) => duration)).toEqual([1, 1]);
+    expect(observed[0]!.frequency).toBeCloseTo(observed[1]!.frequency, 0);
+    await disposeLoadedModel();
   });
 
   it('cancels a queued transcription before decode and keeps the loaded model reusable', async () => {

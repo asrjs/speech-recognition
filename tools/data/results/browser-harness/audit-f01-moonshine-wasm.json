@@ -1,0 +1,426 @@
+{
+  "schema": "asrjs.browser-verification.v2",
+  "status": "PASS",
+  "scope": "public-api-execution-and-normalized-text",
+  "requested": {
+    "localFolder": "models/onnx/moonshine-tiny-fp32",
+    "modelId": null,
+    "preset": null,
+    "family": null,
+    "backend": "wasm",
+    "fixture": "jfk-short.wav",
+    "chunkMs": 160,
+    "forceReload": true,
+    "mode": "offline",
+    "oracle": {
+      "fixture": "jfk-short.wav",
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+    },
+    "warmRerun": true
+  },
+  "browser_version": "155.0.8059.82",
+  "runs": {
+    "cold": {
+      "schema": "asrjs.browser-execution.v2",
+      "status": "EXECUTED",
+      "mode": "offline",
+      "modelId": "UsefulSensors/moonshine-tiny",
+      "backendId": "wasm",
+      "reportedBackendId": "wasm",
+      "instanceId": "browser-session-1",
+      "loadFingerprint": "4f5a01e2b8364a421f6fb866e1b2347fa2390c3d9f464fadf0a808d89ff6a780",
+      "supportsStreaming": true,
+      "gpuObservation": {
+        "instrumented": true,
+        "available": true
+      },
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": ""
+      },
+      "limits": {
+        "maxBufferSize": 2147483648,
+        "maxStorageBufferBindingSize": 2147483644
+      },
+      "audio": {
+        "fixture": "jfk-short.wav",
+        "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+        "durationSeconds": 11,
+        "samples": 176000,
+        "sampleRate": 16000
+      },
+      "metrics": {
+        "loadMs": 2577.6,
+        "inferenceMs": 1225.1,
+        "totalMs": 3802.7,
+        "rtfx": 9,
+        "gpuDispatches": 0
+      },
+      "cached": false,
+      "transcript": "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country.",
+      "words": [
+        {
+          "index": 0,
+          "text": "And",
+          "startTime": 0,
+          "endTime": 0.5
+        },
+        {
+          "index": 1,
+          "text": "so",
+          "startTime": 0.5,
+          "endTime": 1
+        },
+        {
+          "index": 2,
+          "text": "my",
+          "startTime": 1,
+          "endTime": 1.5
+        },
+        {
+          "index": 3,
+          "text": "fellow",
+          "startTime": 1.5,
+          "endTime": 2
+        },
+        {
+          "index": 4,
+          "text": "Americans",
+          "startTime": 2,
+          "endTime": 2.5
+        },
+        {
+          "index": 5,
+          "text": "ask",
+          "startTime": 2.5,
+          "endTime": 3
+        },
+        {
+          "index": 6,
+          "text": "not",
+          "startTime": 3,
+          "endTime": 3.5
+        },
+        {
+          "index": 7,
+          "text": "what",
+          "startTime": 3.5,
+          "endTime": 4
+        },
+        {
+          "index": 8,
+          "text": "your",
+          "startTime": 4,
+          "endTime": 4.5
+        },
+        {
+          "index": 9,
+          "text": "country",
+          "startTime": 4.5,
+          "endTime": 5
+        },
+        {
+          "index": 10,
+          "text": "can",
+          "startTime": 5,
+          "endTime": 5.5
+        },
+        {
+          "index": 11,
+          "text": "do",
+          "startTime": 5.5,
+          "endTime": 6
+        },
+        {
+          "index": 12,
+          "text": "for",
+          "startTime": 6,
+          "endTime": 6.5
+        },
+        {
+          "index": 13,
+          "text": "you,",
+          "startTime": 6.5,
+          "endTime": 7
+        },
+        {
+          "index": 14,
+          "text": "ask",
+          "startTime": 7,
+          "endTime": 7.5
+        },
+        {
+          "index": 15,
+          "text": "what",
+          "startTime": 7.5,
+          "endTime": 8
+        },
+        {
+          "index": 16,
+          "text": "you",
+          "startTime": 8,
+          "endTime": 8.5
+        },
+        {
+          "index": 17,
+          "text": "can",
+          "startTime": 8.5,
+          "endTime": 9
+        },
+        {
+          "index": 18,
+          "text": "do",
+          "startTime": 9,
+          "endTime": 9.5
+        },
+        {
+          "index": 19,
+          "text": "for",
+          "startTime": 9.5,
+          "endTime": 10
+        },
+        {
+          "index": 20,
+          "text": "your",
+          "startTime": 10,
+          "endTime": 10.5
+        },
+        {
+          "index": 21,
+          "text": "country.",
+          "startTime": 10.5,
+          "endTime": 11
+        }
+      ],
+      "timestamp": "2026-10-18T19:26:26.026Z"
+    },
+    "warm": {
+      "schema": "asrjs.browser-execution.v2",
+      "status": "EXECUTED",
+      "mode": "offline",
+      "modelId": "UsefulSensors/moonshine-tiny",
+      "backendId": "wasm",
+      "reportedBackendId": "wasm",
+      "instanceId": "browser-session-1",
+      "loadFingerprint": "4f5a01e2b8364a421f6fb866e1b2347fa2390c3d9f464fadf0a808d89ff6a780",
+      "supportsStreaming": true,
+      "gpuObservation": {
+        "instrumented": true,
+        "available": true
+      },
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": ""
+      },
+      "limits": {
+        "maxBufferSize": 2147483648,
+        "maxStorageBufferBindingSize": 2147483644
+      },
+      "audio": {
+        "fixture": "jfk-short.wav",
+        "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+        "durationSeconds": 11,
+        "samples": 176000,
+        "sampleRate": 16000
+      },
+      "metrics": {
+        "loadMs": 0,
+        "inferenceMs": 961.5,
+        "totalMs": 961.5,
+        "rtfx": 11.4,
+        "gpuDispatches": 0
+      },
+      "cached": true,
+      "transcript": "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country.",
+      "words": [
+        {
+          "index": 0,
+          "text": "And",
+          "startTime": 0,
+          "endTime": 0.5
+        },
+        {
+          "index": 1,
+          "text": "so",
+          "startTime": 0.5,
+          "endTime": 1
+        },
+        {
+          "index": 2,
+          "text": "my",
+          "startTime": 1,
+          "endTime": 1.5
+        },
+        {
+          "index": 3,
+          "text": "fellow",
+          "startTime": 1.5,
+          "endTime": 2
+        },
+        {
+          "index": 4,
+          "text": "Americans",
+          "startTime": 2,
+          "endTime": 2.5
+        },
+        {
+          "index": 5,
+          "text": "ask",
+          "startTime": 2.5,
+          "endTime": 3
+        },
+        {
+          "index": 6,
+          "text": "not",
+          "startTime": 3,
+          "endTime": 3.5
+        },
+        {
+          "index": 7,
+          "text": "what",
+          "startTime": 3.5,
+          "endTime": 4
+        },
+        {
+          "index": 8,
+          "text": "your",
+          "startTime": 4,
+          "endTime": 4.5
+        },
+        {
+          "index": 9,
+          "text": "country",
+          "startTime": 4.5,
+          "endTime": 5
+        },
+        {
+          "index": 10,
+          "text": "can",
+          "startTime": 5,
+          "endTime": 5.5
+        },
+        {
+          "index": 11,
+          "text": "do",
+          "startTime": 5.5,
+          "endTime": 6
+        },
+        {
+          "index": 12,
+          "text": "for",
+          "startTime": 6,
+          "endTime": 6.5
+        },
+        {
+          "index": 13,
+          "text": "you,",
+          "startTime": 6.5,
+          "endTime": 7
+        },
+        {
+          "index": 14,
+          "text": "ask",
+          "startTime": 7,
+          "endTime": 7.5
+        },
+        {
+          "index": 15,
+          "text": "what",
+          "startTime": 7.5,
+          "endTime": 8
+        },
+        {
+          "index": 16,
+          "text": "you",
+          "startTime": 8,
+          "endTime": 8.5
+        },
+        {
+          "index": 17,
+          "text": "can",
+          "startTime": 8.5,
+          "endTime": 9
+        },
+        {
+          "index": 18,
+          "text": "do",
+          "startTime": 9,
+          "endTime": 9.5
+        },
+        {
+          "index": 19,
+          "text": "for",
+          "startTime": 9.5,
+          "endTime": 10
+        },
+        {
+          "index": 20,
+          "text": "your",
+          "startTime": 10,
+          "endTime": 10.5
+        },
+        {
+          "index": 21,
+          "text": "country.",
+          "startTime": 10.5,
+          "endTime": 11
+        }
+      ],
+      "timestamp": "2026-10-18T19:26:27.011Z"
+    }
+  },
+  "verification": {
+    "status": "PASS",
+    "warmSessionReused": true,
+    "runs": [
+      {
+        "phase": "cold",
+        "mode": "offline",
+        "status": "PASS",
+        "execution": {
+          "status": "PASS",
+          "failures": []
+        },
+        "transcript": {
+          "status": "PASS",
+          "comparison": "normalized-text-exact",
+          "fixtureMatches": true,
+          "matchExpected": true
+        },
+        "provider": {
+          "status": "PASS",
+          "requested": "wasm",
+          "reported": "wasm",
+          "evidence": "reported-backend"
+        }
+      },
+      {
+        "phase": "warm",
+        "mode": "offline",
+        "status": "PASS",
+        "execution": {
+          "status": "PASS",
+          "failures": []
+        },
+        "transcript": {
+          "status": "PASS",
+          "comparison": "normalized-text-exact",
+          "fixtureMatches": true,
+          "matchExpected": true
+        },
+        "provider": {
+          "status": "PASS",
+          "requested": "wasm",
+          "reported": "wasm",
+          "evidence": "reported-backend"
+        }
+      }
+    ]
+  },
+  "timestamp": "2026-10-18T19:26:27.281Z"
+}

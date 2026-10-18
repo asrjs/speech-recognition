@@ -1,0 +1,176 @@
+{
+  "status": "EXECUTED",
+  "scope": "public local-entry load and offline decodes; numerical parity unverified",
+  "reuse": "single loaded handle across fixtures in one browser page",
+  "provenance": {
+    "sourceHead": "6e53c832a6e0837a117e187e383eaef51c1f6890",
+    "onnxruntimeWeb": "1.29.0",
+    "browserVersion": "155.0.8059.82",
+    "modelArtifacts": [
+      {
+        "name": "audio-encoder-dynamic.onnx",
+        "sha256": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6"
+      },
+      {
+        "name": "decoder-fp16.onnx.data",
+        "sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675"
+      }
+    ]
+  },
+  "filesSuppliedAsBrowserFile": [
+    {
+      "name": "audio-encoder-dynamic.onnx",
+      "size": 751103768
+    },
+    {
+      "name": "decoder-fp16.onnx.data",
+      "size": 1503250432
+    }
+  ],
+  "runs": [
+    {
+      "fixture": "jfk2.en.wav",
+      "audioUrl": "/tests/fixtures/jfk2.en.wav",
+      "status": "EXECUTED",
+      "run": {
+        "schema": "asrjs.browser-execution.v2",
+        "status": "EXECUTED",
+        "mode": "offline",
+        "modelId": "Qwen/Qwen3-ASR-0.6B-hf",
+        "backendId": "wasm",
+        "reportedBackendId": "wasm",
+        "instanceId": "browser-session-1",
+        "loadFingerprint": "8816ca9e6ceafaaaf0a6ad9452008d57a16e4e82fb1d44172acc56aa18e145a4",
+        "supportsStreaming": false,
+        "gpuObservation": {
+          "instrumented": true,
+          "available": true
+        },
+        "adapter": {
+          "vendor": "nvidia",
+          "architecture": "blackwell",
+          "device": "",
+          "description": ""
+        },
+        "limits": {
+          "maxBufferSize": 2147483648,
+          "maxStorageBufferBindingSize": 2147483644
+        },
+        "audio": {
+          "fixture": "jfk2.en.wav",
+          "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+          "durationSeconds": 11,
+          "samples": 176000,
+          "sampleRate": 16000
+        },
+        "metrics": {
+          "loadMs": 4607.6,
+          "inferenceMs": 43555.8,
+          "totalMs": 48163.3,
+          "rtfx": 0.3,
+          "gpuDispatches": 0
+        },
+        "cached": false,
+        "transcript": "And so, my fellow Americans, ask not what your country can do for you; ask what you can do for your country.",
+        "words": [],
+        "timestamp": "2026-10-18T19:59:10.452Z"
+      }
+    },
+    {
+      "fixture": "00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en.wav",
+      "audioUrl": "/tests/fixtures/00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en.wav",
+      "status": "EXECUTED",
+      "run": {
+        "schema": "asrjs.browser-execution.v2",
+        "status": "EXECUTED",
+        "mode": "offline",
+        "modelId": "Qwen/Qwen3-ASR-0.6B-hf",
+        "backendId": "wasm",
+        "reportedBackendId": "wasm",
+        "instanceId": "browser-session-1",
+        "loadFingerprint": "8816ca9e6ceafaaaf0a6ad9452008d57a16e4e82fb1d44172acc56aa18e145a4",
+        "supportsStreaming": false,
+        "gpuObservation": {
+          "instrumented": true,
+          "available": true
+        },
+        "adapter": {
+          "vendor": "nvidia",
+          "architecture": "blackwell",
+          "device": "",
+          "description": ""
+        },
+        "limits": {
+          "maxBufferSize": 2147483648,
+          "maxStorageBufferBindingSize": 2147483644
+        },
+        "audio": {
+          "fixture": "00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en.wav",
+          "sha256": "58ce74b97dfb2c459966baf899a98e217d14130f23dc431b8b86aba121da4335",
+          "durationSeconds": 26.45,
+          "samples": 423200,
+          "sampleRate": 16000
+        },
+        "metrics": {
+          "loadMs": 0,
+          "inferenceMs": 104121.7,
+          "totalMs": 104121.7,
+          "rtfx": 0.3,
+          "gpuDispatches": 0
+        },
+        "cached": true,
+        "transcript": "Functionally, the lower leg is supplied by two vessels: ITP and fibular artery. There is a significant delay in the flow of the ITI, but no narrowing or stenosis was detected along the vessel. The fibular artery terminates at the OSG. The ITP is patent and traceable up to the plantar arteries. The ITI is poorly contrasted.",
+        "words": [],
+        "timestamp": "2026-10-18T20:00:54.612Z"
+      }
+    },
+    {
+      "fixture": "019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav",
+      "audioUrl": "/tests/fixtures/019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav",
+      "status": "EXECUTED",
+      "run": {
+        "schema": "asrjs.browser-execution.v2",
+        "status": "EXECUTED",
+        "mode": "offline",
+        "modelId": "Qwen/Qwen3-ASR-0.6B-hf",
+        "backendId": "wasm",
+        "reportedBackendId": "wasm",
+        "instanceId": "browser-session-1",
+        "loadFingerprint": "8816ca9e6ceafaaaf0a6ad9452008d57a16e4e82fb1d44172acc56aa18e145a4",
+        "supportsStreaming": false,
+        "gpuObservation": {
+          "instrumented": true,
+          "available": true
+        },
+        "adapter": {
+          "vendor": "nvidia",
+          "architecture": "blackwell",
+          "device": "",
+          "description": ""
+        },
+        "limits": {
+          "maxBufferSize": 2147483648,
+          "maxStorageBufferBindingSize": 2147483644
+        },
+        "audio": {
+          "fixture": "019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav",
+          "sha256": "b2b2a48e917527bda2ba97f161e642943d63fbd1c703c6b51fae882857f9f363",
+          "durationSeconds": 18.64,
+          "samples": 298254,
+          "sampleRate": 16000
+        },
+        "metrics": {
+          "loadMs": 0,
+          "inferenceMs": 84142.5,
+          "totalMs": 84142.5,
+          "rtfx": 0.2,
+          "gpuDispatches": 0
+        },
+        "cached": true,
+        "transcript": "Bulaşık hastalıkların beklenmedik zamanlarda yaptıkları salgınlar, o kadar korkunç ve tahrip ediciydi ki bu salgınlar neticesinde cemiyet fonksiyonları altüst olmakta, ülkelerin sosyal ve ekonomik gelişmeleri yıllarca duraklamakta.",
+        "words": [],
+        "timestamp": "2026-10-18T20:02:18.850Z"
+      }
+    }
+  ]
+}

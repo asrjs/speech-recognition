@@ -22,6 +22,7 @@ import type { SpeechSession } from '../../types/index.js';
 
 const TARGET_SAMPLE_RATE = 16000;
 const DEFAULT_CHUNK_SAMPLES = 10400; // 65 mel frames * 160 samples (650ms at 16kHz)
+const MAX_CUMULATIVE_STREAM_SAMPLES = TARGET_SAMPLE_RATE * 60 * 5;
 
 export interface NemotronStreamingTranscriberOptions extends StreamingSessionOptions {
   readonly modelId?: string;
@@ -101,6 +102,8 @@ export class NemotronStreamingTranscriber implements StreamingTranscriber {
   private accumulatedWarnings: TranscriptWarning[] = [];
   private bufferedChunks: Float32Array[] = [];
   private bufferedSamplesCount = 0;
+  private cumulativeChunks: Float32Array[] = [];
+  private cumulativeSamplesCount = 0;
   private isFinalized = false;
   private isDisposed = false;
   private generation = 0;
@@ -111,6 +114,7 @@ export class NemotronStreamingTranscriber implements StreamingTranscriber {
   private readonly emitPartials: boolean;
   private readonly detailLevel: TranscriptDetailLevel;
   private readonly sampleRate: number;
+  private fallbackWarningReported = false;
 
   constructor(
     private readonly session: SpeechSession<
@@ -195,11 +199,59 @@ export class NemotronStreamingTranscriber implements StreamingTranscriber {
     return out;
   }
 
+  private async transcribeStateful(finalize: boolean): Promise<TranscriptResult | undefined> {
+    const statefulSession = this.session as typeof this.session & {
+      transcribeStreaming?: (
+        audio: Float32Array,
+        options: NemotronRnntTranscriptionOptions,
+        finalize?: boolean,
+      ) => Promise<TranscriptResult>;
+    };
+    if (!statefulSession.transcribeStreaming) {
+      if (!this.fallbackWarningReported) {
+        this.fallbackWarningReported = true;
+        this.accumulatedWarnings.push({
+          code: 'nemotron-rnnt.streaming-fallback-offline-chunks',
+          message: 'This session has no stateful streaming API; audio chunks are transcribed independently without persistent model state.',
+          recoverable: true,
+        });
+      }
+      return undefined;
+    }
+    const pcm = new Float32Array(this.cumulativeSamplesCount);
+    let offset = 0;
+    for (const chunk of this.cumulativeChunks) {
+      pcm.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return await statefulSession.transcribeStreaming(pcm, {
+      detail: this.detailLevel,
+      responseFlavor: 'canonical',
+      promptId: this.options.promptId,
+      signal: this.operationAbortController.signal,
+    }, finalize);
+  }
+
+  private replaceCommittedTranscript(canonical: TranscriptResult): void {
+    this.committedText = canonical.text?.trim() ?? '';
+    this.committedSegments = canonical.segments ? [...canonical.segments] : [];
+    this.committedWords = canonical.words ? [...canonical.words] : [];
+    this.committedTokens = canonical.tokens ? [...canonical.tokens] : [];
+    this.accumulatedWarnings = canonical.warnings ? [...canonical.warnings] : [];
+    this.committedDurationSeconds = this.cumulativeSamplesCount / this.sampleRate;
+    this.previewText = '';
+  }
+
   private async transcribeAndCommitChunk(
     pcm: Float32Array,
     generation: number,
   ): Promise<void> {
     if (pcm.length === 0 || generation !== this.generation) {
+      return;
+    }
+    const streamed = await this.transcribeStateful(false);
+    if (streamed) {
+      if (generation === this.generation) this.replaceCommittedTranscript(streamed);
       return;
     }
     const chunkDuration = pcm.length / this.sampleRate;
@@ -281,6 +333,9 @@ export class NemotronStreamingTranscriber implements StreamingTranscriber {
     if (pcm.length === 0 || generation !== this.generation) {
       return;
     }
+    if ((this.session as typeof this.session & { transcribeStreaming?: unknown }).transcribeStreaming) {
+      return;
+    }
     const signal = this.operationAbortController.signal;
     try {
       const response = await this.session.transcribe(pcm, {
@@ -320,8 +375,13 @@ export class NemotronStreamingTranscriber implements StreamingTranscriber {
         return this.buildPartialTranscript('partial');
       }
 
+      if (this.cumulativeSamplesCount + samples.length > MAX_CUMULATIVE_STREAM_SAMPLES) {
+        throw new Error('Nemotron streaming currently retains up to five minutes of cumulative PCM per session.');
+      }
       this.bufferedChunks.push(samples.slice());
       this.bufferedSamplesCount += samples.length;
+      this.cumulativeChunks.push(samples.slice());
+      this.cumulativeSamplesCount += samples.length;
       this.totalPushedDurationSeconds += samples.length / this.sampleRate;
 
       while (this.bufferedSamplesCount >= this.stepSamples && generation === this.generation) {
@@ -372,6 +432,8 @@ export class NemotronStreamingTranscriber implements StreamingTranscriber {
         const remainingPcm = this.consumeBufferedSamples(this.bufferedSamplesCount);
         await this.transcribeAndCommitChunk(remainingPcm, generation);
       }
+      const streamed = await this.transcribeStateful(true);
+      if (streamed && generation === this.generation) this.replaceCommittedTranscript(streamed);
       this.previewText = '';
       this.isFinalized = true;
       this.revision += 1;
@@ -392,12 +454,17 @@ export class NemotronStreamingTranscriber implements StreamingTranscriber {
     this.operationAbortController = new AbortController();
     this.bufferedChunks = [];
     this.bufferedSamplesCount = 0;
+    this.cumulativeChunks = [];
+    this.cumulativeSamplesCount = 0;
+    const resettable = this.session as typeof this.session & { resetStreaming?: () => void };
+    resettable.resetStreaming?.();
     this.committedText = '';
     this.previewText = '';
     this.committedSegments = [];
     this.committedWords = [];
     this.committedTokens = [];
     this.accumulatedWarnings = [];
+    this.fallbackWarningReported = false;
     this.committedDurationSeconds = 0;
     this.totalPushedDurationSeconds = 0;
     this.revision = 0;
@@ -413,6 +480,10 @@ export class NemotronStreamingTranscriber implements StreamingTranscriber {
     this.operationAbortController = new AbortController();
     this.bufferedChunks = [];
     this.bufferedSamplesCount = 0;
+    this.cumulativeChunks = [];
+    this.cumulativeSamplesCount = 0;
+    const resettable = this.session as typeof this.session & { resetStreaming?: () => void };
+    resettable.resetStreaming?.();
     this.previewText = '';
   }
 

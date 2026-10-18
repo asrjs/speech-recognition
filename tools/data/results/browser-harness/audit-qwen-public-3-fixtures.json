@@ -1,0 +1,32 @@
+{
+  "scope": "public local-entry API, real PCM feature extraction and WASM execution; numerical parity unverified",
+  "status": "FAIL",
+  "node": "v26.2.0",
+  "head": "6e53c832a6e0837a117e187e383eaef51c1f6890",
+  "trackedDiffSha256": "9220a4988833835a09d6b05f4fd2b6a68bf6c1f863971ac5b7bca771f26a04b3",
+  "ort": "1.29.0",
+  "artifacts": [
+    {
+      "path": "audio-encoder-dynamic.onnx",
+      "sha256": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6"
+    },
+    {
+      "path": "decoder-prefill-fp16.onnx",
+      "sha256": "b92c4f74b5ddd7a6a0bff2f931bf60805d03bba6a112ccbd3a0ebcb0a4b71029"
+    },
+    {
+      "path": "decoder-step-fp16.onnx",
+      "sha256": "ac8bf15321d8166043d0a05a88a6f7da56b42c271e4b05c2c74f12a36992119e"
+    },
+    {
+      "path": "decoder-fp16.onnx.data",
+      "sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675"
+    },
+    {
+      "path": "tokenizer/tokenizer.json",
+      "sha256": "765730b866a766806c9e61183cf3844357bec96a3b559eb466046316ed0029a4"
+    }
+  ],
+  "runs": [],
+  "error": "Error: ENOENT: no such file or directory, open 'N:\\github\\asrjs\\speech-recognition\\blob:nodedata:afe3900c-31ab-46b3-aead-a263370fe3c0'\n    at async open (node:internal/fs/promises:1281:25)\n    at async readFile (node:internal/fs/promises:1929:14)\n    at async ee (file:///N:/github/asrjs/speech-recognition/node_modules/onnxruntime-web/dist/ort.node.min.mjs:7:11707)\n    at async ce.loadModel (file:///N:/github/asrjs/speech-recognition/node_modules/onnxruntime-web/dist/ort.node.min.mjs:7:24559)\n    at async fe.createInferenceSessionHandler (file:///N:/github/asrjs/speech-recognition/node_modules/onnxruntime-web/dist/ort.node.min.mjs:7:26456)\n    at async InferenceSession.create (file:///N:/github/asrjs/speech-recognition/node_modules/onnxruntime-common/dist/esm/inference-session-impl.js:184:25)\n    at async honorAbortAfterCreate (file:///N:/github/asrjs/speech-recognition/dist/io/abort.js:150:21)\n    at async OrtQwen3AsrExecutor.initialize (file:///N:/github/asrjs/speech-recognition/dist/models/qwen-asr/executor.js:429:68)\n    at async OrtQwen3AsrExecutor.ready (file:///N:/github/asrjs/speech-recognition/dist/models/qwen-asr/executor.js:508:9)\n    at async Qwen3AsrSpeechSession.initialize (file:///N:/github/asrjs/speech-recognition/dist/models/qwen-asr/model.js:44:9)"
+}

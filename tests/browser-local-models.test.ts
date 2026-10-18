@@ -9,6 +9,16 @@ import { loadBuiltInSpeechModel } from '../src/runtime/builtins.js';
 import { resolveParakeetLocalEntries } from '../src/presets/parakeet/compat.js';
 import { resolveBuiltInLocalModelAdapter } from '../src/runtime/local-adapter-registry.js';
 import { PipelineAbortedError } from '../src/pipeline/composition.js';
+import { createQwen3AsrPresetFactory } from '../src/presets/qwen3-asr-factory.js';
+import { createQwen3AsrModelFamily, type Qwen3AsrExecutor } from '../src/models/qwen-asr/index.js';
+
+function qwenEntries(names: readonly string[]) {
+  return names.map((name) => ({
+    path: name,
+    basename: name.split('/').pop() ?? name,
+    file: new File(['artifact'], name.split('/').pop() ?? name),
+  }));
+}
 
 vi.mock('../src/runtime/builtins.js', () => ({
   loadBuiltInSpeechModel: vi.fn(),
@@ -42,6 +52,246 @@ describe('browser local model helpers', () => {
     expect(inspection.decoderQuantizations).toEqual(['int8']);
     expect(inspection.tokenizerNames).toEqual(['vocab.txt']);
     expect(inspection.preprocessorNames).toEqual(['nemo128']);
+  });
+
+  it('resolves the official Qwen graph set, including its shared fp16 external data', async () => {
+    const entries = qwenEntries([
+      'audio-encoder-dynamic.onnx',
+      'decoder-prefill-fp16.onnx',
+      'decoder-step-fp16.onnx',
+      'decoder-fp16.onnx.data',
+      'tokenizer/tokenizer.json',
+    ]);
+    const adapter = resolveBuiltInLocalModelAdapter('qwen3-asr-0.6b').adapter;
+
+    expect(adapter.inspectEntries(entries)).toMatchObject({
+      encoderQuantizations: ['fp32'],
+      decoderQuantizations: ['fp16'],
+      tokenizerNames: ['tokenizer.json'],
+    });
+
+    const resolved = await adapter.resolveEntries({
+      modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
+      entries,
+      backend: 'wasm',
+      decoderQuant: 'fp16',
+      cpuThreads: 2,
+    } as never);
+    try {
+      expect(resolved.selection).toMatchObject({
+        encoderName: 'audio-encoder-dynamic.onnx',
+        decoderName: 'decoder-step-fp16.onnx',
+        tokenizerName: 'tokenizer.json',
+        encoderQuant: 'fp32',
+        decoderQuant: 'fp16',
+      });
+      expect(resolved.assetHandles).toHaveLength(5);
+      expect(resolved.builtInLoadOptions).toMatchObject({
+        source: {
+          kind: 'direct',
+          encoderBackend: undefined,
+          decoderBackend: undefined,
+          cpuThreads: 2,
+          artifacts: {
+            encoderUrl: expect.stringMatching(/^blob:/),
+            decoderUrl: expect.stringMatching(/^blob:/),
+            decoderStepUrl: expect.stringMatching(/^blob:/),
+            tokenizerUrl: expect.stringMatching(/^blob:/),
+            decoderPrefillDataUrl: expect.stringMatching(/^blob:/),
+            decoderStepDataUrl: expect.any(String),
+            decoderPrefillDataPath: 'decoder-fp16.onnx.data',
+            decoderStepDataPath: 'decoder-fp16.onnx.data',
+          },
+        },
+      });
+      const options = resolved.builtInLoadOptions as {
+        source: { artifacts: { decoderPrefillDataUrl: string; decoderStepDataUrl: string } };
+      };
+      expect(options.source.artifacts.decoderStepDataUrl).toBe(
+        options.source.artifacts.decoderPrefillDataUrl,
+      );
+    } finally {
+      await Promise.all(resolved.assetHandles.map((handle) => handle.dispose()));
+    }
+  });
+
+  it('rejects the old three-graph Qwen export with a specific compatibility error', async () => {
+    const entries = qwenEntries([
+      'audio_front_model.onnx',
+      'decoder_step_model.onnx',
+      'embed_tokens_model.onnx',
+      'tokenizer.json',
+    ]);
+
+    await expect(
+      resolveBuiltInLocalModelAdapter('qwen3-asr-0.6b').adapter.resolveEntries({
+        modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
+        entries,
+      } as never),
+    ).rejects.toThrow(/legacy audio_front\/decoder_step\/embed_tokens.*incompatible/i);
+  });
+
+  it('uses the declared fp32 decoder default and requires its matching sidecars', async () => {
+    const entries = qwenEntries([
+      'audio-encoder-dynamic.onnx',
+      'decoder-prefill.onnx',
+      'decoder-prefill.onnx.data',
+      'decoder-step.onnx',
+      'decoder-step.onnx.data',
+      'tokenizer/tokenizer.json',
+    ]);
+    const adapter = resolveBuiltInLocalModelAdapter('qwen3-asr-0.6b').adapter;
+
+    expect(adapter.inspectEntries(entries).decoderQuantizations).toEqual(['fp32']);
+    const resolved = await adapter.resolveEntries({
+      modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
+      entries,
+      backend: 'wasm',
+    } as never);
+    try {
+      expect(resolved.selection.decoderQuant).toBe('fp32');
+      expect(resolved.assetHandles).toHaveLength(6);
+      expect(resolved.builtInLoadOptions).toMatchObject({
+        source: {
+          kind: 'direct',
+          artifacts: {
+            decoderPrefillDataPath: 'decoder-prefill.onnx.data',
+            decoderStepDataPath: 'decoder-step.onnx.data',
+          },
+        },
+      });
+    } finally {
+      await Promise.all(resolved.assetHandles.map((handle) => handle.dispose()));
+    }
+  });
+
+  it('selects fp16 by default when the local folder has only the fp16 decoder pair', async () => {
+    const entries = qwenEntries([
+      'audio-encoder-dynamic.onnx',
+      'decoder-prefill-fp16.onnx',
+      'decoder-step-fp16.onnx',
+      'decoder-fp16.onnx.data',
+      'tokenizer/tokenizer.json',
+    ]);
+    const adapter = resolveBuiltInLocalModelAdapter('qwen3-asr-0.6b').adapter;
+    const resolved = await adapter.resolveEntries({
+      modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
+      entries,
+    } as never);
+    try {
+      expect(resolved.selection.decoderQuant).toBe('fp16');
+    } finally {
+      await Promise.all(resolved.assetHandles.map((handle) => handle.dispose()));
+    }
+
+    await expect(adapter.resolveEntries({
+      modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
+      entries,
+      decoderQuant: 'fp32',
+    } as never)).rejects.toThrow(/requested Qwen fp32 decoder pair/i);
+  });
+
+  it('loads through the public local-entry API and passes arbitrary PCM into the Qwen family', async () => {
+    const entries = qwenEntries([
+      'audio-encoder-dynamic.onnx',
+      'decoder-prefill-fp16.onnx',
+      'decoder-step-fp16.onnx',
+      'decoder-fp16.onnx.data',
+      'tokenizer/tokenizer.json',
+    ]);
+    const receivedAudio: Array<{ sampleRate: number; numberOfFrames: number; channels: readonly Float32Array[] }> = [];
+    const executor: Qwen3AsrExecutor = {
+      async transcribe(audio) {
+        receivedAudio.push(audio);
+        return {
+          utteranceText: 'arbitrary clip',
+          language: 'English',
+          isFinal: true,
+          segments: [{ index: 0, text: 'arbitrary clip', startTime: 0, endTime: audio.durationSeconds }],
+        };
+      },
+      dispose() {},
+    };
+
+    vi.mocked(loadBuiltInSpeechModel).mockImplementation(async (loadOptions) => {
+      const preset = createQwen3AsrPresetFactory();
+      const resolvedRequest = await preset.resolveModelRequest(
+        {
+          modelId: loadOptions.modelId,
+          options: loadOptions.options as never,
+        } as never,
+        {} as never,
+      );
+      const family = createQwen3AsrModelFamily({ dependencies: { executor } });
+      const model = await family.createModel(resolvedRequest as never, {
+        runtime: {} as never,
+        backend: { id: loadOptions.backend ?? 'wasm' } as never,
+        hooks: {},
+      } as never);
+      const session = await model.createSession();
+      return {
+        runtime: {} as never,
+        model,
+        session,
+        transcribe: session.transcribe.bind(session),
+        dispose: () => model.dispose(),
+      } as never;
+    });
+
+    const loaded = await loadSpeechModelFromLocalEntries({
+      modelId: 'qwen3-asr-0.6b',
+      entries,
+      backend: 'wasm',
+      decoderQuant: 'fp16',
+    });
+    const pcm = Float32Array.from([0.1, -0.2, 0.3, -0.4, 0.5]);
+    try {
+      const result = await loaded.transcribeMonoPcm(pcm, 22_050);
+      expect(result.text).toBe('arbitrary clip');
+      expect(receivedAudio).toHaveLength(1);
+      expect(receivedAudio[0]).toMatchObject({ sampleRate: 22_050, numberOfFrames: pcm.length });
+      expect(Array.from(receivedAudio[0]!.channels[0]!)).toEqual(Array.from(pcm));
+      expect(loadBuiltInSpeechModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
+          preset: 'qwen3-asr',
+          backend: 'wasm',
+          options: { source: { kind: 'direct', artifacts: expect.objectContaining({
+            encoderUrl: expect.stringMatching(/^blob:/),
+            decoderUrl: expect.stringMatching(/^blob:/),
+            decoderStepUrl: expect.stringMatching(/^blob:/),
+            decoderPrefillDataUrl: expect.stringMatching(/^blob:/),
+            decoderStepDataUrl: expect.stringMatching(/^blob:/),
+            decoderPrefillDataPath: 'decoder-fp16.onnx.data',
+            decoderStepDataPath: 'decoder-fp16.onnx.data',
+          }) } },
+        }),
+      );
+    } finally {
+      await loaded.dispose();
+    }
+  });
+
+  it('rejects flat legacy Qwen preset options before model construction', async () => {
+    const preset = createQwen3AsrPresetFactory();
+    await expect(
+      preset.resolveModelRequest(
+        { modelId: 'Qwen/Qwen3-ASR-0.6B-hf', options: { frontUrl: 'blob:legacy' } } as never,
+        {} as never,
+      ),
+    ).rejects.toThrow(/source.kind="direct".*legacy frontUrl/i);
+
+    const directOptions = { source: { kind: 'direct', artifacts: {} } };
+    await expect(
+      preset.resolveModelRequest(
+        { modelId: 'Qwen/Qwen3-ASR-0.6B-hf', options: directOptions } as never,
+        {} as never,
+      ),
+    ).resolves.toMatchObject({
+      family: 'qwen-asr',
+      resolvedPreset: 'qwen3-asr',
+      options: directOptions,
+    });
   });
 
   it('rejects local inspection for built-in models without local-folder support', () => {

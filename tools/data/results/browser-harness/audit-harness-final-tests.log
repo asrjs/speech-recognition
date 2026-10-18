@@ -1,0 +1,15 @@
+npm notice run @asrjs/speech-recognition@0.2.0 npx
+npm notice run vitest run tests/browser-harness-page.test.ts tests/browser-harness-cli.test.ts tests/browser-harness-server.test.ts tests/browser-harness-verification.test.ts
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ✓ tests/browser-harness-verification.test.ts (22 tests) 17ms
+ ✓ tests/browser-harness-page.test.ts (5 tests) 27ms
+ ✓ tests/browser-harness-server.test.ts (2 tests) 11ms
+ ✓ tests/browser-harness-cli.test.ts (15 tests) 1797ms
+
+ Test Files  4 passed (4)
+      Tests  44 passed (44)
+   Start at  23:09:57
+   Duration  2.23s (transform 202ms, setup 0ms, import 387ms, tests 1.85s, environment 1ms)
+

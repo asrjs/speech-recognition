@@ -280,6 +280,37 @@ export class NemotronRnntSpeechSession implements SpeechSession<
     return canonical as TranscriptResponse<NemotronRnntNativeTranscript, TFlavor>;
   }
 
+  async transcribeStreaming(
+    input: AudioInputLike,
+    options: NemotronRnntTranscriptionOptions = {},
+    finalize = false,
+  ): Promise<TranscriptResponse<NemotronRnntNativeTranscript, 'canonical'>> {
+    const audio = normalizePcmInput(input).toMono();
+    if (!this.executor?.transcribeStreaming) {
+      throw new Error('Nemotron executor does not implement persistent streaming state.');
+    }
+    const nativeTranscript = await this.executor.transcribeStreaming(audio, options, {
+      modelId: this.modelId,
+      classification: this.classification,
+      config: this.config,
+      tokenizer: this.tokenizer,
+    }, finalize);
+    const canonical = mapNemoNativeToCanonical(nativeTranscript, this.classification, {
+      detailLevel: options.detail ?? 'segments',
+      backendId: this.backendId,
+      sampleRate: audio.sampleRate,
+      durationSeconds: audio.durationSeconds,
+      language: this.config.languages[0],
+      modelId: this.modelId,
+      metrics: nativeTranscript.metrics,
+    }, this.timestampReconstructor, this.confidenceReconstructor);
+    return canonical;
+  }
+
+  resetStreaming(): void {
+    this.executor?.resetStreaming?.();
+  }
+
   private async decodeWithStub(
     audio: ReturnType<typeof normalizePcmInput>,
     options: NemotronRnntTranscriptionOptions,

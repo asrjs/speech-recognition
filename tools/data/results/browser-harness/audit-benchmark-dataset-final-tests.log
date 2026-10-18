@@ -1,0 +1,14 @@
+npm notice run @asrjs/demos-monorepo@1.0.0 npx
+npm notice run vitest run --config apps/benchmark/vite.config.js apps/benchmark/src/dataset-selection.test.js apps/benchmark/src/benchmark-utils.test.jsx
+
+ RUN  v3.2.7 N:/github/asrjs/demos
+
+ ✓ apps/benchmark/src/benchmark-utils.test.jsx (2 tests) 5ms
+ ✓ apps/benchmark/src/dataset-selection.test.js (7 tests) 1215ms
+   ✓ dataset sampling public request/response contract > uses the full row population for seeded sampling, rather than defaulting to row zero  800ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  23:25:22
+   Duration  2.01s (transform 129ms, setup 0ms, collect 227ms, tests 1.22s, environment 1ms, prepare 600ms)
+

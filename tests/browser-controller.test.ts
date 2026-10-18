@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { normalizePcmInput } from '../src/audio/audio.js';
 import {
   createBrowserRealtimeMicrophoneController,
   type BrowserRealtimeMonitor,
@@ -54,6 +55,83 @@ function createFakeMonitor(): BrowserRealtimeMonitor {
 }
 
 describe('browser realtime microphone controller', () => {
+  it('publishes the final streaming text and immediately exposes boundary cleanup failures', async () => {
+    let capture!: (chunk: any) => void;
+    const onPartial = vi.fn();
+    const stream = {
+      pushAudio: vi.fn(async () => null),
+      finalize: vi.fn(async () => ({ text: 'last word', kind: 'final' })),
+      reset: vi.fn(async () => undefined),
+    };
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'manual', streamingTranscriber: stream as never, onPartialTranscript: onPartial,
+      createStarter: createFakeStarter, createMonitor: createFakeMonitor,
+      startCapture: async (options) => {
+        capture = options.onChunk;
+        return { sampleRate: 16000, deviceSampleRate: 16000, contextSampleRate: 16000,
+          chunkFrames: 256, chunkDurationMs: 16, stream: { getAudioTracks: () => [] },
+          stop: async () => undefined } as never;
+      },
+    });
+    await controller.start();
+    stream.reset.mockRejectedValueOnce(new Error('stream reset failed'));
+    capture({ pcm: new Float32Array(256), sampleRate: 16000, startFrame: 0, endFrame: 256 });
+    controller.flush();
+    await vi.waitFor(() => expect(controller.getState().micError).toBe('stream reset failed'));
+    expect(onPartial).toHaveBeenCalledWith({ text: 'last word', kind: 'final' });
+    await expect(controller.stop({ flush: false })).rejects.toThrow('stream reset failed');
+    await controller.dispose().catch(() => undefined);
+  });
+
+  it('replays a delayed onset once and queues the split tail before finalize/reset', async () => {
+    const listeners = new Set<(event: any) => void>();
+    const emit = (type: string, payload: unknown) => listeners.forEach(listener => listener({ type, payload }));
+    const starter = createFakeStarter();
+    starter.subscribe = (listener) => { listeners.add(listener); return () => listeners.delete(listener); };
+    let chunkIndex = 0;
+    starter.processChunk = () => {
+      chunkIndex++;
+      if (chunkIndex === 2) emit('speech-start', { startFrame: 0, sampleRate: 16000 });
+      if (chunkIndex === 3 || chunkIndex === 5) {
+        const startFrame = chunkIndex === 3 ? 0 : 8;
+        const endFrame = chunkIndex * 4;
+        emit('speech-end', { startFrame, endFrame, sampleRate: 16000 });
+        emit('segment-ready', { startFrame, endFrame, sampleRate: 16000, reason: 'max-duration',
+          readPcm: () => Float32Array.from({ length: endFrame - startFrame }, (_, i) => i + startFrame) });
+        if (chunkIndex === 3) emit('speech-start', { startFrame: 8, sampleRate: 16000 });
+      }
+    };
+    let samples: number[] = [];
+    const finalized: number[][] = [];
+    const stream = {
+      pushAudio: vi.fn(async (input) => { samples.push(...normalizePcmInput(input).channels[0]!); return null; }),
+      finalize: vi.fn(async () => { finalized.push([...samples]); return { text: 'fixture' }; }),
+      reset: vi.fn(() => { samples = []; }), flush: vi.fn(), dispose: vi.fn(),
+    };
+    let feed!: (chunk: any) => void;
+    const controller = createBrowserRealtimeMicrophoneController({
+      createStarter: () => starter, createMonitor: createFakeMonitor, streamingTranscriber: stream as never,
+      startCapture: async (options) => {
+        feed = options.onChunk;
+        return { sampleRate: 16000, deviceSampleRate: null, contextSampleRate: 16000,
+          chunkFrames: 4, chunkDurationMs: 0.25, stream: {} as MediaStream, stop: async () => undefined };
+      },
+    });
+    await controller.start();
+    for (let index = 0; index < 5; index++) {
+      const pcm = Float32Array.from({ length: 4 }, (_, i) => index * 4 + i);
+      feed({ pcm, sampleRate: 16000, startFrame: index * 4, endFrame: index * 4 + 4 });
+      pcm.fill(-1); // Capture buffer reuse must not corrupt queued audio.
+    }
+    await controller.stop({ flush: false });
+    expect(finalized).toEqual([
+      Array.from({ length: 12 }, (_, i) => i),
+      Array.from({ length: 12 }, (_, i) => i + 8),
+    ]);
+    expect(stream.finalize).toHaveBeenCalledTimes(2);
+    expect(controller.getState().micError).toBe('');
+    await controller.dispose();
+  });
   function pendingStart(config: { ringBufferDurationMs?: number } = {}) {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {

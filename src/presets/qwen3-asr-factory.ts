@@ -1,5 +1,5 @@
 import type { SpeechPresetFactory } from '../types/index.js';
-import type { Qwen3AsrLoadOptions } from '../models/qwen3-asr/types.js';
+import type { Qwen3AsrModelOptions } from '../models/qwen-asr/types.js';
 
 /**
  * Resolves `qwen3-asr` requests.
@@ -8,8 +8,8 @@ import type { Qwen3AsrLoadOptions } from '../models/qwen3-asr/types.js';
  * preset has no Hub source and requires a local artifact directory.
  */
 export function createQwen3AsrPresetFactory(): SpeechPresetFactory<
-  Qwen3AsrLoadOptions,
-  Qwen3AsrLoadOptions
+  Qwen3AsrModelOptions,
+  Qwen3AsrModelOptions
 > {
   return {
     preset: 'qwen3-asr',
@@ -18,9 +18,9 @@ export function createQwen3AsrPresetFactory(): SpeechPresetFactory<
       return modelId.toLowerCase().includes('qwen3-asr');
     },
     async resolveModelRequest(request) {
-      if (!request.options?.frontUrl) {
+      if (request.options?.source?.kind !== 'direct') {
         throw new Error(
-          'qwen3-asr needs a local artifact directory; no Hub export exists for our fp32 graphs.',
+          'qwen3-asr requires the official local ONNX graph set through source.kind="direct"; legacy frontUrl/decoderUrl folders are incompatible with the arbitrary-audio executor.',
         );
       }
       return {
