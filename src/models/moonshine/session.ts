@@ -62,7 +62,10 @@ export interface MoonshineSessionOptions {
 
 export interface MoonshineDecodeResult {
   readonly text: string;
-  readonly tokenIds: readonly number[];
+  /** Actual emitted token IDs when the execution path exposes them. */
+  readonly tokenIds?: readonly number[];
+  /** Actual token count when IDs are not exposed by a streaming decoder. */
+  readonly tokenCount?: number;
   readonly encoderFrames: number;
   readonly steps: number;
 }

@@ -34,6 +34,7 @@ import {
   type MoonshineSessionOptions,
 } from './session.js';
 import { loadMoonshineStreaming, type LoadedMoonshineStreaming } from './streaming-loader.js';
+import { releaseMoonshineSessions, settleMoonshineSessionCreates } from './session-resources.js';
 import type { MoonshineLoadOptions, MoonshineStreamingAssets } from './types.js';
 
 const registerOwnedSpeechSession =
@@ -77,18 +78,22 @@ export function mapMoonshineResultToCanonical(
     readonly metrics?: TranscriptMetrics;
   },
 ): TranscriptResult {
+  const tokenCount = decodeResult.tokenCount ?? decodeResult.tokenIds?.length;
   const words: TranscriptWord[] =
     decodeResult.text.trim().length === 0
       ? []
-      : decodeResult.text.trim().split(/\s+/).map((text, index, all) => {
-          const span = options.durationSeconds / Math.max(all.length, 1);
-          return {
-            index,
-            text,
-            startTime: Number((index * span).toFixed(3)),
-            endTime: Number(((index + 1) * span).toFixed(3)),
-          };
-        });
+      : decodeResult.text
+          .trim()
+          .split(/\s+/)
+          .map((text, index, all) => {
+            const span = options.durationSeconds / Math.max(all.length, 1);
+            return {
+              index,
+              text,
+              startTime: Number((index * span).toFixed(3)),
+              endTime: Number(((index + 1) * span).toFixed(3)),
+            };
+          });
 
   const segments: TranscriptSegment[] =
     decodeResult.text.trim().length === 0
@@ -108,9 +113,7 @@ export function mapMoonshineResultToCanonical(
     options.detailLevel === 'sentences+words' ||
     options.detailLevel === 'detailed';
 
-  const includeSegments =
-    options.detailLevel === 'segments' ||
-    options.detailLevel === 'detailed';
+  const includeSegments = options.detailLevel === 'segments' || options.detailLevel === 'detailed';
 
   return {
     text: decodeResult.text,
@@ -123,7 +126,7 @@ export function mapMoonshineResultToCanonical(
       durationSeconds: options.durationSeconds,
       detailLevel: options.detailLevel,
       isFinal: true,
-      tokenCount: decodeResult.tokenIds.length,
+      ...(tokenCount === undefined ? {} : { tokenCount }),
       wordCount: words.length,
       segmentCount: segments.length,
       ...(options.metrics ? { metrics: options.metrics } : {}),
@@ -133,8 +136,10 @@ export function mapMoonshineResultToCanonical(
   };
 }
 
-export class MoonshineSpeechSession
-  implements SpeechSession<BaseTranscriptionOptions, MoonshineDecodeResult> {
+export class MoonshineSpeechSession implements SpeechSession<
+  BaseTranscriptionOptions,
+  MoonshineDecodeResult
+> {
   private disposed = false;
   private offlineSession?: MoonshineSession;
   private streamingLoaded?: LoadedMoonshineStreaming;
@@ -155,7 +160,7 @@ export class MoonshineSpeechSession
       this.loadOptions?.encoderUrl &&
       this.loadOptions?.tokenizerUrl
     ) {
-      const rawOrt = await initOrt(this.backendId, {
+      const rawOrt = await initOrt('wasm', {
         wasmPaths: this.loadOptions.wasmPaths,
         cpuThreads: this.loadOptions.cpuThreads,
         signal: this.signal,
@@ -181,21 +186,45 @@ export class MoonshineSpeechSession
       ): Record<string, unknown> =>
         dataUrl ? { ...base, externalData: [{ path: sidecarPath, data: dataUrl }] } : base;
 
-      const [encoderSession, crossKvSession, decoderSession] = await Promise.all([
+      const [encoderSession, crossKvSession, decoderSession] = await settleMoonshineSessionCreates([
         rawOrt.InferenceSession.create(
           this.loadOptions.encoderUrl,
-          withExternalData(sessionOptions, 'encoder_model.onnx.data', this.loadOptions.encoderDataUrl),
+          withExternalData(
+            sessionOptions,
+            'encoder_model.onnx.data',
+            this.loadOptions.encoderDataUrl,
+          ),
         ),
         rawOrt.InferenceSession.create(
           this.loadOptions.crossKvUrl,
-          withExternalData(sessionOptions, 'decoder_cross_kv_model.onnx.data', this.loadOptions.crossKvDataUrl),
+          withExternalData(
+            sessionOptions,
+            'decoder_cross_kv_model.onnx.data',
+            this.loadOptions.crossKvDataUrl,
+          ),
         ),
         rawOrt.InferenceSession.create(
           this.loadOptions.decoderUrl,
-          withExternalData(sessionOptions, 'decoder_with_past_model.onnx.data', this.loadOptions.decoderDataUrl),
+          withExternalData(
+            sessionOptions,
+            'decoder_with_past_model.onnx.data',
+            this.loadOptions.decoderDataUrl,
+          ),
         ),
       ]);
-      this.offlineOrtSessions.push(encoderSession, crossKvSession, decoderSession);
+      const [encoderGraph, crossKvGraph, decoderGraph] = [
+        encoderSession,
+        crossKvSession,
+        decoderSession,
+      ] as const;
+      if (!encoderGraph || !crossKvGraph || !decoderGraph) {
+        throw new Error('Moonshine graph creation returned an incomplete session set.');
+      }
+      if (this.disposed) {
+        await releaseMoonshineSessions([encoderGraph, crossKvGraph, decoderGraph]);
+        throw new Error('Moonshine session was disposed during initialization.');
+      }
+      this.offlineOrtSessions.push(encoderGraph, crossKvGraph, decoderGraph);
 
       const readJsonFromUrl = async <T = unknown>(targetUrl: string): Promise<T> => {
         if (targetUrl.startsWith('file://')) {
@@ -258,9 +287,9 @@ export class MoonshineSpeechSession
 
       this.offlineSession = new MoonshineSession({
         ort,
-        encoder: encoderSession as unknown as MoonshineSessionOptions['encoder'],
-        crossKv: crossKvSession as unknown as MoonshineSessionOptions['crossKv'],
-        decoder: decoderSession as unknown as MoonshineSessionOptions['decoder'],
+        encoder: encoderGraph as unknown as MoonshineSessionOptions['encoder'],
+        crossKv: crossKvGraph as unknown as MoonshineSessionOptions['crossKv'],
+        decoder: decoderGraph as unknown as MoonshineSessionOptions['decoder'],
         tokenizer,
         bosTokenId,
         eosTokenId,
@@ -281,14 +310,21 @@ export class MoonshineSpeechSession
         : undefined);
 
     if (streamingAssets) {
-      this.streamingLoaded = await loadMoonshineStreaming({
+      const loaded = await loadMoonshineStreaming({
         ...streamingAssets,
         modelId: this.modelId,
-        encoderBackend: this.loadOptions?.encoderBackend,
+        encoderBackend:
+          this.loadOptions?.encoderBackend ??
+          (this.backendId.startsWith('webgpu') ? 'webgpu' : 'wasm'),
         wasmPaths: this.loadOptions?.wasmPaths,
         cpuThreads: this.loadOptions?.cpuThreads,
         signal: this.signal as AbortSignal | undefined,
       });
+      if (this.disposed) {
+        await loaded.dispose();
+        throw new Error('Moonshine session was disposed during initialization.');
+      }
+      this.streamingLoaded = loaded;
       return;
     }
 
@@ -319,7 +355,9 @@ export class MoonshineSpeechSession
       const finalized = await this.streamingLoaded.transcriber.finalize();
       decodeResult = {
         text: finalized.text,
-        tokenIds: [],
+        ...(finalized.meta.tokenCount === undefined
+          ? {}
+          : { tokenCount: finalized.meta.tokenCount }),
         encoderFrames: Math.round(durationSeconds * 25),
         steps: 0,
       };
@@ -330,7 +368,7 @@ export class MoonshineSpeechSession
     const detailLevel: TranscriptDetailLevel = options?.detail ?? 'segments';
     const canonical = mapMoonshineResultToCanonical(decodeResult, {
       modelId: this.modelId,
-      backendId: this.backendId,
+      backendId: this.offlineSession ? 'wasm' : (this.streamingLoaded?.resolvedBackend ?? 'wasm'),
       durationSeconds,
       sampleRate: 16000,
       detailLevel,
@@ -353,18 +391,28 @@ export class MoonshineSpeechSession
       return;
     }
     this.disposed = true;
+    const failures: unknown[] = [];
     if (this.streamingLoaded) {
-      await this.streamingLoaded.dispose();
+      try {
+        await this.streamingLoaded.dispose();
+      } catch (error) {
+        failures.push(error);
+      }
       this.streamingLoaded = undefined;
     }
-    await Promise.all(
-      this.offlineOrtSessions.map(async (s) => {
-        await s.release?.();
-      }),
-    );
+    try {
+      await releaseMoonshineSessions(this.offlineOrtSessions);
+    } catch (error) {
+      failures.push(error);
+    }
     this.offlineOrtSessions.length = 0;
     this.onDispose?.();
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1) {
+      throw new AggregateError(failures, 'Moonshine model cleanup failed.', { cause: failures[0] });
+    }
   }
+
 }
 
 export interface CreateMoonshineModelFamilyOptions {
@@ -408,6 +456,10 @@ export function createMoonshineModelFamily(
       let disposed = false;
 
       const classification = resolveClassification(factoryClassification, request.classification);
+      const streamingAssets = request.options?.streaming ??
+        (request.options && 'chunkedEncoderUrl' in request.options
+          ? (request.options as unknown as MoonshineStreamingAssets)
+          : undefined);
 
       return {
         info: {
@@ -466,24 +518,16 @@ export function createMoonshineModelFamily(
           );
           return await registerOwnedSpeechSession(session, sessions, () => disposed);
         },
-        async createStreamingTranscriber(
+        ...(streamingAssets ? { async createStreamingTranscriber(
           streamingOptions?: StreamingSessionOptions,
         ): Promise<StreamingTranscriber> {
           assertSessionOwnerActive(disposed);
-          const streamingAssets =
-            request.options?.streaming ??
-            (request.options && 'chunkedEncoderUrl' in request.options
-              ? (request.options as unknown as MoonshineStreamingAssets)
-              : undefined);
-
-          if (!streamingAssets) {
-            throw new Error('Moonshine model does not have streaming assets configured.');
-          }
-
           const loaded = await loadMoonshineStreaming({
             ...streamingAssets,
             modelId: request.modelId,
-            encoderBackend: request.options?.encoderBackend,
+            encoderBackend:
+              request.options?.encoderBackend ??
+              (context.backend.id.startsWith('webgpu') ? 'webgpu' : 'wasm'),
             wasmPaths: request.options?.wasmPaths,
             cpuThreads: request.options?.cpuThreads,
             emitPartials: streamingOptions?.emitPartials,
@@ -491,6 +535,10 @@ export function createMoonshineModelFamily(
           });
 
           const transcriber = loaded.transcriber;
+          if (disposed) {
+            await loaded.dispose();
+            assertSessionOwnerActive(disposed);
+          }
           let transcriberDisposed = false;
           const wrapper: StreamingTranscriber = {
             pushAudio(input: AudioInputLike) {
@@ -518,7 +566,7 @@ export function createMoonshineModelFamily(
           };
           transcribers.add(wrapper);
           return wrapper;
-        },
+        } } : {}),
         async dispose(): Promise<void> {
           if (disposed) {
             return;

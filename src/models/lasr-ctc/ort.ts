@@ -310,7 +310,9 @@ export async function createOrtSession(
 
 /** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
 export function releaseOrtSession(session: OrtSessionLike | undefined): void {
-  void releaseUnifiedOrtSession(session);
+  void releaseUnifiedOrtSession(session).catch((error: unknown) => {
+    console.warn('LASR best-effort session release failed:', error);
+  });
 }
 
 /** Drop `session.run()` output tensors after their JS data has been copied. */

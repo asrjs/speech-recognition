@@ -1,4 +1,5 @@
 import { loadSpeechModel } from './load.js';
+import { PcmAudioBuffer } from '../audio/audio.js';
 import { loadSpeechModelFromLocalEntries } from './local-browser.js';
 import type { LoadSpeechModelOptions } from './load.js';
 import type { LoadSpeechModelFromLocalEntriesOptions } from './local-browser.js';
@@ -227,7 +228,9 @@ export async function handleRequest(message: WorkerRequestMessage): Promise<unkn
       if (!activeStream) {
         return null;
       }
-      return await activeStream.pushAudio(message.payload.pcm);
+      return await activeStream.pushAudio(
+        PcmAudioBuffer.fromMono(message.payload.pcm, message.payload.sampleRate ?? 16000),
+      );
     }
     case 'FLUSH_STREAM': {
       if (!activeStream) {

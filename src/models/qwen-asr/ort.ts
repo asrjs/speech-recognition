@@ -234,7 +234,9 @@ export async function initQwenOrt(
 
 /** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
 export function releaseQwenOrtSession(session: QwenOrtSessionLike | undefined): void {
-  void releaseUnifiedOrtSession(session as any);
+  void releaseUnifiedOrtSession(session as any).catch((error: unknown) => {
+    console.warn('Qwen best-effort session release failed:', error);
+  });
 }
 
 export async function createQwenOrtSession(

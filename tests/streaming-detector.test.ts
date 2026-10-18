@@ -126,6 +126,27 @@ class FakeTenVad {
 }
 
 describe('StreamingSpeechDetector', () => {
+  it('splits at a quiet chunk near the duration limit without rewinding delivered audio', async () => {
+    const detector = new StreamingSpeechDetector({ profileId: 'generic-streaming', config: {
+      analysisWindowMs: 16, energySmoothingWindows: 1, energyThreshold: 0.08,
+      minSpeechDurationMs: 16, minSilenceDurationMs: 160, maxSegmentDurationMs: 1024,
+      minEnergyPerSecond: 0, minEnergyIntegral: 0, useAdaptiveEnergyThresholds: false,
+      tenVadEnabled: false,
+    } });
+    const events: Array<{ type: string; payload: any }> = [];
+    detector.subscribe((event) => events.push(event as any));
+    await detector.start({ sampleRate: 16000 });
+    for (let i = 0; i < 57; i++) detector.processChunk(createChunk(256, 0.12));
+    expect(events.filter((event) => event.type === 'speech-end')).toHaveLength(0);
+    detector.processChunk(createChunk(256, 0.001));
+    const ended = events.find((event) => event.type === 'speech-end');
+    expect(ended?.payload.endFrame).toBe(58 * 256);
+    expect(detector.getSnapshot().activeSegment).not.toBeNull();
+    const segment = events.find((event) => event.type === 'segment-ready');
+    expect(segment?.payload.reason).toBe('max-duration');
+    await detector.dispose();
+  });
+
   it('splits long speech at max duration and immediately continues with a new active segment', async () => {
     const detector = new StreamingSpeechDetector({
       profileId: 'generic-streaming',
@@ -250,7 +271,7 @@ describe('StreamingSpeechDetector', () => {
     expect(detector.getSnapshot().tenVad.state).toBe('idle');
   });
 
-  it('keeps requested TEN-VAD-only mode for UI state but runs detection in rough-only mode', async () => {
+  it('keeps the legacy requested label while letting ready VAD reject an energy-only onset', async () => {
     const detector = new StreamingSpeechDetector({
       profileId: 'generic-streaming',
       config: {
@@ -273,9 +294,9 @@ describe('StreamingSpeechDetector', () => {
 
     const snapshot = detector.getSnapshot();
     expect(snapshot.gate.requestedMode).toBe('ten-vad-only');
-    expect(snapshot.gate.effectiveMode).toBe('rough-only');
-    expect(snapshot.activeSegment).not.toBeNull();
-    expect(snapshot.warnings.some((warning) => warning.includes('ignored'))).toBe(true);
+    expect(snapshot.gate.effectiveMode).toBe('vad-only');
+    expect(snapshot.activeSegment).toBeNull();
+    expect(snapshot.warnings.some((warning) => warning.includes('ignored'))).toBe(false);
   });
 
   it('still updates TEN-VAD diagnostics config when the detector config changes', async () => {

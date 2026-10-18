@@ -13,9 +13,16 @@
  * fake. Session release happens in `dispose()`.
  */
 import type { MoonshineLoadOptions, MoonshineStreamingAssets } from './types.js';
+import { initOrt } from '../lasr-ctc/ort.js';
+import { throwIfAssetAborted } from '../../io/abort.js';
 import { MoonshineTokenizer } from './session.js';
 import { MoonshineStreamingSession } from './streaming-session.js';
 import { MoonshineStreamingTranscriber } from './streaming-transcriber.js';
+import {
+  MoonshineSessionBatchError,
+  releaseMoonshineSessions,
+  settleMoonshineSessionCreates,
+} from './session-resources.js';
 
 export interface MoonshineOrtLike {
   readonly Tensor: new (type: string, data: ArrayBufferView, dims: readonly number[]) => unknown;
@@ -48,27 +55,26 @@ export interface MoonshineStreamingLoadOptions extends MoonshineStreamingAssets 
 export interface LoadedMoonshineStreaming {
   readonly session: MoonshineStreamingSession;
   readonly transcriber: MoonshineStreamingTranscriber;
-  readonly resolvedEncoderBackend?: 'webgpu' | 'wasm';
+  readonly resolvedBackend: 'webgpu' | 'wasm';
+  /** @deprecated Use resolvedBackend; all four graphs use this provider. */
+  readonly resolvedEncoderBackend: 'webgpu' | 'wasm';
+  readonly backendFallbackReason?: string;
   dispose(): Promise<void>;
 }
 
 async function loadDefaultOrt(options: MoonshineStreamingLoadOptions): Promise<MoonshineOrtLike> {
-  const imported = (await import('onnxruntime-web')) as unknown as MoonshineOrtLike & {
-    readonly default?: MoonshineOrtLike;
-  };
-  const ort = imported.default ?? imported;
-  if (options.wasmPaths && ort.env?.wasm) {
-    ort.env.wasm.wasmPaths = options.wasmPaths;
-  }
-  return ort;
+  return await initOrt(options.encoderBackend ?? 'wasm', {
+    wasmPaths: options.wasmPaths,
+    cpuThreads: options.cpuThreads,
+    signal: options.signal,
+  }) as unknown as MoonshineOrtLike;
 }
 
 function sessionOptionsFor(
   options: MoonshineStreamingLoadOptions,
   backend: 'webgpu' | 'wasm',
 ): Record<string, unknown> {
-  const executionProviders =
-    backend === 'webgpu' ? ['webgpu', 'wasm'] : ['wasm'];
+  const executionProviders = [backend];
   const intraOpNumThreads = options.cpuThreads;
   return {
     executionProviders,
@@ -81,6 +87,7 @@ function sessionOptionsFor(
 export async function loadMoonshineStreaming(
   options: MoonshineStreamingLoadOptions,
 ): Promise<LoadedMoonshineStreaming> {
+  throwIfAssetAborted(options.signal, 'session-create');
   const ort = options.ort ?? (await loadDefaultOrt(options));
 
   const createGraphSessions = async (
@@ -94,39 +101,43 @@ export async function loadMoonshineStreaming(
   }> => {
     const sessionOptions = sessionOptionsFor(options, backend);
     const withData = (sidecarPath: string, dataUrl?: string): Record<string, unknown> =>
-      dataUrl ? { ...sessionOptions, externalData: [{ path: sidecarPath, data: dataUrl }] } : sessionOptions;
-    const created: OrtSessionLike[] = [];
-    try {
-      const [chunkedEncoder, wholeEncoder, prefill, step] = await Promise.all([
-        ort.InferenceSession.create(
-          options.chunkedEncoderUrl,
-          withData('encoder_chunked_model.onnx.data', options.chunkedEncoderDataUrl),
-        ),
-        ort.InferenceSession.create(
-          options.encoderUrl,
-          withData('encoder_model.onnx.data', options.encoderDataUrl),
-        ),
-        ort.InferenceSession.create(
-          options.prefillUrl,
-          withData('decoder_prefill_model.onnx.data', options.prefillDataUrl),
-        ),
-        ort.InferenceSession.create(
-          options.stepUrl,
-          withData('decoder_step_model.onnx.data', options.stepDataUrl),
-        ),
-      ]);
-      created.push(chunkedEncoder, wholeEncoder, prefill, step);
-      return { sessions: created, chunkedEncoder, wholeEncoder, prefill, step };
-    } catch (err) {
-      await Promise.all(created.map(async (owned) => {
-        await owned.release?.();
-      }));
-      throw err;
+      dataUrl
+        ? { ...sessionOptions, externalData: [{ path: sidecarPath, data: dataUrl }] }
+        : sessionOptions;
+    const sessions = await settleMoonshineSessionCreates([
+      ort.InferenceSession.create(
+        options.chunkedEncoderUrl,
+        withData('encoder_chunked_model.onnx.data', options.chunkedEncoderDataUrl),
+      ),
+      ort.InferenceSession.create(
+        options.encoderUrl,
+        withData('encoder_model.onnx.data', options.encoderDataUrl),
+      ),
+      ort.InferenceSession.create(
+        options.prefillUrl,
+        withData('decoder_prefill_model.onnx.data', options.prefillDataUrl),
+      ),
+      ort.InferenceSession.create(
+        options.stepUrl,
+        withData('decoder_step_model.onnx.data', options.stepDataUrl),
+      ),
+    ]);
+    const [chunkedEncoder, wholeEncoder, prefill, step] = sessions;
+    if (!chunkedEncoder || !wholeEncoder || !prefill || !step) {
+      await releaseMoonshineSessions(sessions);
+      throw new Error('Moonshine streaming graph creation returned an incomplete session set.');
     }
+    return {
+      sessions,
+      chunkedEncoder,
+      wholeEncoder,
+      prefill,
+      step,
+    };
   };
 
-  let resolvedEncoderBackend: 'webgpu' | 'wasm' =
-    options.encoderBackend === 'webgpu' ? 'webgpu' : 'wasm';
+  let resolvedBackend: 'webgpu' | 'wasm' = options.encoderBackend === 'webgpu' ? 'webgpu' : 'wasm';
+  let backendFallbackReason: string | undefined;
   let graphs: {
     sessions: OrtSessionLike[];
     chunkedEncoder: OrtSessionLike;
@@ -138,19 +149,25 @@ export async function loadMoonshineStreaming(
   if (options.encoderBackend === 'webgpu') {
     try {
       graphs = await createGraphSessions('webgpu');
-      resolvedEncoderBackend = 'webgpu';
-    } catch {
+      resolvedBackend = 'webgpu';
+    } catch (error) {
+      if (error instanceof MoonshineSessionBatchError && error.cleanupFailures.length > 0) {
+        throw error;
+      }
+      throwIfAssetAborted(options.signal, 'session-create');
+      backendFallbackReason = String(error instanceof Error ? error.message : error);
       graphs = await createGraphSessions('wasm');
-      resolvedEncoderBackend = 'wasm';
+      resolvedBackend = 'wasm';
     }
   } else {
     graphs = await createGraphSessions('wasm');
-    resolvedEncoderBackend = 'wasm';
+    resolvedBackend = 'wasm';
   }
 
   const sessions = graphs.sessions;
 
   try {
+    throwIfAssetAborted(options.signal, 'session-create');
     const tokenizerJson = options.fetchJson
       ? await options.fetchJson(options.tokenizerUrl)
       : await (await fetch(options.tokenizerUrl)).json();
@@ -158,6 +175,7 @@ export async function loadMoonshineStreaming(
       tokenizerJson as Parameters<typeof MoonshineTokenizer.fromTokenizerJson>[0],
       0,
     );
+    throwIfAssetAborted(options.signal, 'session-create');
 
     const session = new MoonshineStreamingSession({
       ort,
@@ -173,24 +191,46 @@ export async function loadMoonshineStreaming(
     });
     const transcriber = new MoonshineStreamingTranscriber(session, {
       ...(options.modelId === undefined ? {} : { modelId: options.modelId }),
+      backendId: resolvedBackend,
       ...(options.emitPartials === undefined ? {} : { emitPartials: options.emitPartials }),
     });
 
     return {
       session,
       transcriber,
-      resolvedEncoderBackend,
+      resolvedBackend,
+      resolvedEncoderBackend: resolvedBackend,
+      ...(backendFallbackReason === undefined ? {} : { backendFallbackReason }),
       async dispose() {
-        transcriber.dispose();
-        await Promise.all(sessions.map(async (owned) => {
-          await owned.release?.();
-        }));
+        const failures: unknown[] = [];
+        try {
+          transcriber.dispose();
+        } catch (error) {
+          failures.push(error);
+        }
+        try {
+          await releaseMoonshineSessions(sessions);
+        } catch (error) {
+          failures.push(error);
+        }
+        if (failures.length === 1) throw failures[0];
+        if (failures.length > 1) {
+          throw new AggregateError(failures, 'Moonshine streaming cleanup failed.', {
+            cause: failures[0],
+          });
+        }
       },
     };
   } catch (error) {
-    await Promise.all(sessions.map(async (owned) => {
-      await owned.release?.();
-    }));
+    try {
+      await releaseMoonshineSessions(sessions);
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        'Moonshine streaming initialization and cleanup failed.',
+        { cause: error },
+      );
+    }
     throw error;
   }
 }

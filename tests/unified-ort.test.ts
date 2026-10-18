@@ -33,12 +33,13 @@ describe('Unified ORT Runtime Layer', () => {
       expect(resolveUnifiedWasmPaths(custom)).toBe(custom);
     });
 
-    it('falls back to CDN dist URL in Node when no custom path is given', () => {
+    it('uses the installed runtime in Node without a network fallback', () => {
       const pathDefault = resolveUnifiedWasmPaths();
-      expect(pathDefault).toContain('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/');
+      expect(pathDefault).toMatch(/^file:/);
+      expect(pathDefault).toContain('/onnxruntime-web/dist/');
 
       const pathCustomVersion = resolveUnifiedWasmPaths(undefined, '1.24.1');
-      expect(pathCustomVersion).toContain('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.1/dist/');
+      expect(pathCustomVersion).toBe(pathDefault);
     });
   });
 
@@ -280,13 +281,13 @@ describe('Unified ORT Runtime Layer', () => {
       expect(releaseFn).toHaveBeenCalledTimes(1);
     });
 
-    it('suppresses release errors during teardown', async () => {
+    it('propagates release errors so owners can aggregate failed cleanup', async () => {
       const session: OrtSessionLike = {
         run: vi.fn(),
         release: vi.fn().mockRejectedValue(new Error('GPU context lost')),
       };
 
-      await expect(releaseUnifiedOrtSession(session)).resolves.toBeUndefined();
+      await expect(releaseUnifiedOrtSession(session)).rejects.toThrow('GPU context lost');
     });
   });
 });

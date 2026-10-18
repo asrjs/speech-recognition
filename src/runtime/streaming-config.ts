@@ -67,7 +67,11 @@ export type StreamingProfileId =
 
 export const STREAMING_GATE_MODES = {
   ROUGH_ONLY: 'rough-only',
+  HYBRID: 'hybrid',
+  VAD_ONLY: 'vad-only',
+  /** @deprecated Use VAD_ONLY. Kept for saved configurations. */
   TEN_VAD_ONLY: 'ten-vad-only',
+  /** @deprecated Use HYBRID. Kept for saved configurations. */
   ROUGH_AND_TEN_VAD: 'rough-and-ten-vad',
 } as const;
 

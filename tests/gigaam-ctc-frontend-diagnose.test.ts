@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { tmpdir } from 'node:os';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { GigaAmJsPreprocessor } from '../src/models/gigaam-ctc/frontend.js';
 import { CompositeFft } from '../src/models/lasr-ctc/mel.js';
@@ -9,6 +10,10 @@ const REFERENCE = path.resolve(
   'tools/data/results/gigaam/multilingual-ctc-jfk-short-reference.json',
 );
 const STAGES = path.resolve('N:/models/gigaam/multilingual-ctc/captures/frontend-stages');
+const diagnosticDirectories: string[] = [];
+afterEach(() => {
+  for (const directory of diagnosticDirectories.splice(0)) fs.rmSync(directory, { recursive: true });
+});
 
 function loadNpyFloat32(filePath: string): { shape: number[]; data: Float32Array } {
   const buffer = fs.readFileSync(filePath);
@@ -201,13 +206,13 @@ describe.skipIf(!fs.existsSync(REFERENCE) || !fs.existsSync(path.join(STAGES, 's
         logClamp: locateMax(officialLog.data, jsLogClamp, nMels, frameCount),
         preprocessor: locateMax(officialLog.data, processed.features, nMels, frameCount),
       };
-      const outPath = path.resolve(
-        'tools/data/results/gigaam/multilingual-ctc-jfk-short-frontend-diagnose.json',
-      );
+      const diagnosticDirectory = fs.mkdtempSync(path.join(tmpdir(), 'asrjs-gigaam-diagnose-'));
+      diagnosticDirectories.push(diagnosticDirectory);
+      const outPath = path.join(diagnosticDirectory, 'frontend-diagnose.json');
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
       fs.writeFileSync(outPath, `${JSON.stringify(report, null, 2)}\n`);
       writeNpyFloat32(
-        path.resolve('tools/data/results/gigaam/jfk-short.js-features.npy'),
+        path.join(diagnosticDirectory, 'js-features.npy'),
         processed.features,
         [1, nMels, frameCount],
       );

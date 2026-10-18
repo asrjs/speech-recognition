@@ -100,6 +100,26 @@ describe('js mel processor', () => {
     expect(second.features.length).toBe(128 * 21);
     expect(Array.from(second.features).every(Number.isFinite)).toBe(true);
   });
+
+  it('matches full centered features after stable-prefix updates with uneven sample partitions', () => {
+    const audio = createSineWave(20000);
+    const incremental = new IncrementalJSMelProcessor({
+      nMels: 128,
+      validLengthMode: 'centered',
+      normalization: 'none',
+    });
+    incremental.process(audio.slice(0, 5600));
+    incremental.process(audio.slice(0, 13300), 5600);
+    const finalIncremental = incremental.process(audio, 13300);
+    const full = new JSMelProcessor({
+      nMels: 128,
+      validLengthMode: 'centered',
+      normalization: 'none',
+    }).process(audio);
+
+    expect(finalIncremental.features).toEqual(full.features);
+    expect(finalIncremental.length).toBe(full.length);
+  });
 });
 
 describe('fft', () => {

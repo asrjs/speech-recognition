@@ -1,6 +1,5 @@
 import { resolveWasmThreads } from '../backends/wasm-threads.js';
-import { loadNativeCpuOrt } from '../backends/native-cpu/ort.js';
-import { importNodePackage, isNodeLikeRuntime } from '../../io/node-compat.js';
+import { importNodePackage, isNodeLikeRuntime, resolveNodePackageSubpathUrlSync } from '../../io/node-compat.js';
 import { throwIfAssetAborted } from '../../io/abort.js';
 import { CapabilityMismatchError } from '../../runtime/errors.js';
 import type { OrtModuleLike, UnifiedOrtInitOptions } from './types.js';
@@ -40,6 +39,9 @@ export function resolveUnifiedWasmPaths(customWasmPaths?: string, ortVersion?: s
   if (customWasmPaths) {
     return customWasmPaths;
   }
+  if (isNodeLikeRuntime()) {
+    return resolveNodePackageSubpathUrlSync('onnxruntime-web', 'dist');
+  }
   const version = ortVersion ?? '1.29.0';
   if (typeof window !== 'undefined') {
     const vitePath = resolveViteDevOrtWasmPath();
@@ -49,7 +51,7 @@ export function resolveUnifiedWasmPaths(customWasmPaths?: string, ortVersion?: s
     // Browser local dist
     return '/node_modules/onnxruntime-web/dist/';
   }
-  // Node / Server / CDN fallback
+  // Browser worker fallback; Node resolves the installed runtime above.
   return `https://cdn.jsdelivr.net/npm/onnxruntime-web@${version}/dist/`;
 }
 
@@ -116,6 +118,7 @@ export async function importUnifiedOrtModule(backendId: string): Promise<OrtModu
   if (normalized === 'native-cpu') {
     if (isNodeLikeRuntime()) {
       try {
+        const { loadNativeCpuOrt } = await import('../backends/native-cpu/ort.js');
         const nativeModule = loadNativeCpuOrt();
         return nativeModule as unknown as OrtModuleLike;
       } catch (error) {

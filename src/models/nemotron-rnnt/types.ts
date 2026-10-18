@@ -178,6 +178,22 @@ export interface NemotronRnntExecutor {
     options: NemotronRnntTranscriptionOptions,
     context: NemoDecodeContext<NemotronRnntModelConfig>,
   ): Promise<NemotronRnntNativeTranscript>;
+  /**
+   * Stateful stream call. `audio` must contain the full cumulative mono
+   * utterance on every call; pass `finalize=true` once to encode the padded
+   * tail. Call resetStreaming before starting another utterance.
+   */
+  transcribeStreaming?(
+    audio: {
+      readonly sampleRate: number;
+      readonly durationSeconds: number;
+      readonly channels?: ReadonlyArray<Float32Array>;
+    },
+    options: NemotronRnntTranscriptionOptions,
+    context: NemoDecodeContext<NemotronRnntModelConfig>,
+    finalize?: boolean,
+  ): Promise<NemotronRnntNativeTranscript>;
+  resetStreaming?(): void;
   dispose(): Promise<void> | void;
 }
 

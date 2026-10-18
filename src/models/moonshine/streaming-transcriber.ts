@@ -38,6 +38,7 @@ export interface MoonshineStreamingSessionLike {
 export interface MoonshineStreamingTranscriberOptions {
   readonly modelId?: string;
   readonly modelFamily?: string;
+  readonly backendId?: 'webgpu' | 'wasm';
   readonly detailLevel?: TranscriptDetailLevel;
   /** Decode a preview after each pushAudio; disable for lower CPU cost. */
   readonly emitPartials?: boolean;
@@ -144,6 +145,7 @@ export class MoonshineStreamingTranscriber implements StreamingTranscriber {
         isFinal: kind === 'final',
         modelFamily: this.options.modelFamily ?? 'moonshine-streaming',
         modelId: this.options.modelId ?? 'moonshine-streaming-tiny',
+        ...(this.options.backendId === undefined ? {} : { backendId: this.options.backendId }),
         sampleRate: TARGET_SAMPLE_RATE,
         durationSeconds: this.bufferedDurationSeconds,
         ...(this.previewTokens === undefined ? {} : { tokenCount: this.previewTokens }),

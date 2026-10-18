@@ -5,7 +5,6 @@ import type {
 } from '../../../types/index.js';
 import { isNodeLikeRuntime } from '../../../io/node-compat.js';
 import { createBackendExecutionContext } from '../execution-context.js';
-import { loadNativeCpuOrt } from './ort.js';
 
 export async function probeNativeCpuCapabilities(
   context: BackendProbeContext = {},
@@ -16,6 +15,7 @@ export async function probeNativeCpuCapabilities(
     notes.push('A Node-compatible host is required; browser WASM is not a native fallback.');
   } else {
     try {
+      const { loadNativeCpuOrt } = await import('./ort.js');
       loadNativeCpuOrt();
       available = true;
     } catch {
