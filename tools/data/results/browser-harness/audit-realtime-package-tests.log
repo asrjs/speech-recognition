@@ -1,0 +1,35 @@
+npm notice run @asrjs/streaming-demo@1.1.0 test
+npm notice run vitest run
+
+ RUN  v3.2.7 N:/github/asrjs/demos/apps/realtime
+
+ ✓ scripts/prepare-ort-assets.test.mjs (3 tests) 53ms
+ ✓ src/app/transcriptionRecord.test.js (2 tests) 31ms
+ ✓ src/shared/streaming/components/SignalMeter.test.js (2 tests) 3ms
+ ✓ src/shared/streaming/usePersistentStreamingSettings.test.jsx (5 tests) 34ms
+stdout | src/app/transcriptionFlows.test.js > loadModelFlow > uses the browser local-model handle shape so warm-up can call transcribeMonoPcm
+[LocalFolder] Starting model load from local artifacts
+
+stdout | src/app/transcriptionFlows.test.js > loadModelFlow > uses the browser local-model handle shape so warm-up can call transcribeMonoPcm
+[LocalFolder] Selected artifacts {
+  encoder: 'encoder-model.fp16.onnx',
+  decoder: 'decoder_joint-model.int8.onnx',
+  tokenizer: 'vocab.txt',
+  preprocessorBackend: 'js',
+  preprocessor: null
+}
+[LocalFolder] Model sessions created from local artifacts
+[LoadModel] Running warm-up verification transcription
+
+stdout | src/app/transcriptionFlows.test.js > loadModelFlow > uses the browser local-model handle shape so warm-up can call transcribeMonoPcm
+[App] Model verification successful.
+LoadModel: 2.246ms
+
+ ✓ src/app/transcriptionFlows.test.js (1 test) 14ms
+ ✓ src/app/localFolderHelpers.test.js (2 tests) 3ms
+
+ Test Files  6 passed (6)
+      Tests  15 passed (15)
+   Start at  23:04:40
+   Duration  3.97s (transform 257ms, setup 0ms, collect 2.17s, tests 138ms, environment 12.07s, prepare 1.93s)
+

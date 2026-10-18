@@ -1,0 +1,36 @@
+{
+  "schema": "asrjs.browser-verification-matrix.v2",
+  "scope": "public-api-execution-and-normalized-text",
+  "status": "FAIL",
+  "mode": "streaming",
+  "adapter": {
+    "vendor": "nvidia",
+    "architecture": "blackwell",
+    "device": "",
+    "description": ""
+  },
+  "limits": {
+    "maxBufferSize": 2147483648,
+    "maxStorageBufferBindingSize": 2147483644
+  },
+  "results": [
+    {
+      "folder": "models/onnx/__audit_missing_a",
+      "modelId": null,
+      "status": "FAIL",
+      "cold": null,
+      "warm": null,
+      "error": "Failed to list local directory models/onnx/__audit_missing_a: Not Found"
+    },
+    {
+      "folder": "models/onnx/__audit_missing_b",
+      "modelId": null,
+      "status": "FAIL",
+      "cold": null,
+      "warm": null,
+      "error": "Failed to list local directory models/onnx/__audit_missing_b: Not Found"
+    }
+  ],
+  "timestamp": "2026-10-18T19:18:18.944Z",
+  "browser_version": "155.0.8059.82"
+}

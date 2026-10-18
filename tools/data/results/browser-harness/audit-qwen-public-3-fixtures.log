@@ -1,0 +1,5 @@
+warning: in the working copy of 'src/models/lasr-ctc/ort.ts', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/runtime/streaming-config.ts', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tools/browser-harness/bridge.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tools/browser-harness/cli.mjs', CRLF will be replaced by LF the next time Git touches it
+Loading public local-entry API with fp16 decoder, WASM...

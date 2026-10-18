@@ -1,0 +1,13 @@
+npm notice run @asrjs/speech-recognition@0.2.0 npx
+npm notice run vitest run tests/moonshine-model-lifecycle.test.ts tests/moonshine-streaming-loader.test.ts tests/builtins.test.ts
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ✓ tests/moonshine-streaming-loader.test.ts (7 tests) 32ms
+ ✓ tests/moonshine-model-lifecycle.test.ts (5 tests) 18ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  23:08:08
+   Duration  1.18s (transform 1.04s, setup 0ms, import 1.25s, tests 50ms, environment 0ms)
+

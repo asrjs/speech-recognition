@@ -1,0 +1,589 @@
+npm notice run @asrjs/speech-recognition@0.2.0 npx
+npm notice run vitest run
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ✓ tests/fixture-smoke-cli.test.ts (3 tests) 1092ms
+     ✓ fails fast when required arguments are missing  418ms
+     ✓ skips gracefully when fixture smoke is not explicitly enabled  433ms
+ ✓ tests/whisper-timestamp-processor.test.ts (11 tests) 2114ms
+     ✓ suppresses text tokens after an unpaired timestamp (forces EOS)  917ms
+     ✓ on first generated token, suppresses all text tokens (only timestamps/EOS allowed)  1148ms
+ ✓ tests/moonshine-session.test.ts (1 test) 2658ms
+     ✓ decodes the JFK fixture to the recorded oracle with no seed artifact  2655ms
+ ✓ tests/install-footprint.test.ts (7 tests) 679ms
+     ✓ actual CLI rejects existing evidence before package-manager work  445ms
+ ✓ tests/native-resource-smoke.test.ts (10 tests | 6 skipped) 3152ms
+     ✓ fails missing required arguments instead of silently skipping  572ms
+     ✓ refuses an existing receipt before loading fixtures or native resources  1365ms
+     ✓ refuses a populated negative-control path rather than claiming partial failure  793ms
+     ✓ fails a requested missing fixture without writing a success receipt  418ms
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode rough-only to rough-only with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode hybrid to hybrid with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode vad-only to vad-only with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode ten-vad-only to vad-only with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > resolves public mode rough-and-ten-vad to hybrid with a ready VAD
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > returns rough-only when vadMode is explicitly disabled
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > returns rough-only when VAD is degraded or fails init
+[StreamingSpeechDetector] FireRed VAD degraded; segmentation remains on rough gate { error: 'VAD model initialization failed' }
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > returns hybrid when VAD is ready and gateMode is hybrid
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > returns vad-only when VAD is ready and gateMode is vad-only
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 1. Effective Gate Mode Resolution > falls back to rough-only when requested gateMode is rough-only even if VAD is ready
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 2. Continuous Utterance Soft-Split & Trailing Short Segment Flush > flushes 5120ms max-duration segment and preserves trailing ~210ms word without dropping as too-short
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.15, noiseFloor: 0.005, snr: 14.77 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 81920,
+  logicalEndFrame: 81920,
+  durationSec: 5.12,
+  normalizedPowerAt16k: 360
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 81664 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 85504, energy: 0, noiseFloor: 0.005 }
+[StreamingSpeechDetector] Segment ready: silence {
+  startFrame: 80384,
+  endFrame: 85504,
+  logicalEndFrame: 85504,
+  durationSec: 0.32,
+  normalizedPowerAt16k: 342
+}
+
+ ✓ tests/qwen-benchmark-cli.test.ts (3 tests) 1083ms
+     ✓ documents official graph and forced-window options  642ms
+     ✓ fails before loading when the local artifact directory is missing  378ms
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 2. Continuous Utterance Soft-Split & Trailing Short Segment Flush > flushes trailing continuation segment on manual flush without dropping as too-short
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.15, noiseFloor: 0.005, snr: 14.77 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 81920,
+  logicalEndFrame: 81920,
+  durationSec: 5.12,
+  normalizedPowerAt16k: 360
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 81664 }
+[StreamingSpeechDetector] Segment ready: manual {
+  startFrame: 79616,
+  endFrame: 85248,
+  logicalEndFrame: 85248,
+  durationSec: 0.35,
+  normalizedPowerAt16k: 360
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 3. Honest Status Messages > StreamingSpeechDetector records honest backendName decision logs for TEN-VAD
+[StreamingSpeechDetector] TEN-VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 5. Hybrid Mode Speech Continuation with VAD > keeps active utterance alive in hybrid mode when neural VAD hasRecentSpeech even if energy drops
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0.9,
+  speaking: true,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector-neural-vad.test.ts > StreamingSpeechDetector Neural VAD & Honest Controller > 5. Hybrid Mode Speech Continuation with VAD > keeps active utterance alive in hybrid mode when neural VAD hasRecentSpeech even if energy drops
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.15, noiseFloor: 0.005, snr: 14.77 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 1536, energy: 0.001, noiseFloor: 0.00348 }
+[StreamingSpeechDetector] Segment ready: silence {
+  startFrame: 0,
+  endFrame: 1536,
+  logicalEndFrame: 1536,
+  durationSec: 0.1,
+  normalizedPowerAt16k: 120.01
+}
+
+ ✓ tests/streaming-detector-neural-vad.test.ts (22 tests) 1708ms
+       ✓ flushes 5120ms max-duration segment and preserves trailing ~210ms word without dropping as too-short  1010ms
+       ✓ flushes trailing continuation segment on manual flush without dropping as too-short  589ms
+ ✓ tests/firered-ort-abort.test.ts (2 tests) 201ms
+ ✓ tests/mixed-radix-fft.test.ts (8 tests) 484ms
+ ✓ tests/model-session-initialization.test.ts (14 tests) 356ms
+ ✓ tests/browser-harness-cli.test.ts (15 tests) 7481ms
+     ✓ rejects malformed arguments "--mode" before launching  346ms
+     ✓ rejects malformed arguments "--unknown" before launching  535ms
+     ✓ rejects malformed arguments "--local-dir" before launching  624ms
+     ✓ rejects malformed arguments "--chunk-ms" before launching  640ms
+     ✓ rejects malformed arguments "--chunk-ms" before launching  548ms
+     ✓ rejects malformed arguments "--timeout-ms" before launching  589ms
+     ✓ rejects malformed arguments "--port" before launching  699ms
+     ✓ rejects malformed arguments "--backend" before launching  430ms
+     ✓ preserves the matrix mode, oracle and warm policy  500ms
+     ✓ returns a failing process status for invalid input  527ms
+     ✓ retains failing receipts without overwriting existing evidence  1023ms
+ ✓ tests/composite-fft.test.ts (8 tests) 478ms
+ ✓ tests/ten-vad-worker-abi.test.ts (4 tests) 69ms
+stderr | tests/moonshine-streaming-graphs.test.ts > MoonshineStreamingSession on real fp32 graphs > drives the fp16 graph set to the same oracle transcript when the Node ORT build can feed float16
+[skip] pinned onnxruntime-node build cannot feed float16 tensors
+
+ ✓ tests/hot-path-benchmark-cli.test.ts (1 test) 227ms
+ ✓ tests/native-local-example.test.ts (29 tests) 305ms
+ ✓ tests/qwen3-asr.test.ts (17 tests) 436ms
+ ✓ tests/detailed-native-example.test.ts (10 tests) 361ms
+   ✓ returns the unchanged detailed envelope only after owned cleanup is awaited  346ms
+ ✓ tests/gigaam-ctc-frontend-diagnose.test.ts (1 test) 411ms
+     ✓ reports the earliest diverging stage vs official torchaudio  409ms
+ ✓ tests/whisper-mel-validation.test.ts (3 tests | 1 skipped) 319ms
+ ✓ tests/moonshine-streaming-graphs.test.ts (5 tests) 11864ms
+     ✓ streams chunked audio and finalizes to the official oracle transcript  3386ms
+     ✓ emits a mid-stream preview before finalize  1404ms
+     ✓ reset allows a second stream with the same outcome  3129ms
+     ✓ drives the fp16 graph set to the same oracle transcript when the Node ORT build can feed float16  459ms
+     ✓ canonical transcriber publishes the oracle transcript as committed text  3483ms
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > splits at a quiet chunk near the duration limit without rewinding delivered audio
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Long speech split at a quiet chunk before the hard limit { endFrame: 14848, segmentDurationMs: 928 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 14848,
+  logicalEndFrame: 14848,
+  durationSec: 0.93,
+  normalizedPowerAt16k: 226.43
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 14592 }
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > splits long speech at max duration and immediately continues with a new active segment
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 768,
+  logicalEndFrame: 768,
+  durationSec: 0.05,
+  normalizedPowerAt16k: 230.4
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 512 }
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > reports degraded TEN-VAD status but still segments on the rough gate when init fails
+[StreamingSpeechDetector] FireRed VAD degraded; segmentation remains on rough gate { error: 'boom' }
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > reports degraded TEN-VAD status but still segments on the rough gate when init fails
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 512, energy: 0.001, noiseFloor: 0.005 }
+[StreamingSpeechDetector] Segment ready: silence {
+  startFrame: 0,
+  endFrame: 512,
+  logicalEndFrame: 512,
+  durationSec: 0.03,
+  normalizedPowerAt16k: 115.21
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > keeps the legacy requested label while letting ready VAD reject an energy-only onset
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0,
+  speaking: false,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > still updates TEN-VAD diagnostics config when the detector config changes
+[StreamingSpeechDetector] TEN-VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0,
+  speaking: false,
+  threshold: 0.5
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > updates the adaptive noise floor during silence and freezes it during speech
+[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger { energy: 0.004, threshold: 0.08, snr: 2.04 }
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 256, energy: 0.12, noiseFloor: 0.00325, snr: 15.67 }
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > rejects segments that fail the final minimum-duration gate
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 512, energy: 0.001, noiseFloor: 0.005 }
+[StreamingSpeechDetector] Segment rejected by final energy gate {
+  reason: 'too-short',
+  durationMs: 32,
+  normalizedPowerAt16k: 115.21,
+  normalizedEnergyIntegralAt16k: 3.69
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > rejects strong but very short segments when total normalized energy is still too low
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Rough gate finalized speech after sustained silence { endFrame: 512, energy: 0.001, noiseFloor: 0.005 }
+[StreamingSpeechDetector] Segment rejected by final energy gate {
+  reason: 'low-energy-integral',
+  durationMs: 32,
+  normalizedPowerAt16k: 115.21,
+  normalizedEnergyIntegralAt16k: 3.69
+}
+
+stdout | tests/streaming-detector.test.ts > StreamingSpeechDetector > stores extracted bounds separately from logical bounds after a forced split
+[StreamingSpeechDetector] Rough gate speech start { startFrame: 0, energy: 0.12, noiseFloor: 0.005, snr: 13.8 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 1024,
+  logicalEndFrame: 1024,
+  durationSec: 0.06,
+  normalizedPowerAt16k: 230.4
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 768 }
+[StreamingSpeechDetector] Segment ready: max-duration {
+  startFrame: 0,
+  endFrame: 1792,
+  logicalEndFrame: 1792,
+  durationSec: 0.11,
+  normalizedPowerAt16k: 197.49
+}
+[StreamingSpeechDetector] Long speech split into a new rough segment { previousAccepted: true, nextStartFrame: 1536 }
+
+ ✓ tests/moonshine-streaming-session.test.ts (9 tests) 200ms
+ ✓ tests/streaming-detector.test.ts (12 tests) 185ms
+ ✓ tests/vad-controller.test.ts (11 tests) 180ms
+ ✓ tests/js-mel.test.ts (10 tests) 171ms
+ ✓ tests/x-asr-joiner-batching.test.ts (4 tests) 230ms
+ ✓ tests/public-discovery-api.test.ts (6 tests) 7854ms
+     ✓ throws an actionable error when experimental artifacts are missing  7831ms
+ ✓ tests/nemo-tdt-lifecycle.test.ts (9 tests) 140ms
+ ✓ tests/high-level-pipeline-lifecycle.test.ts (142 tests) 216ms
+ ✓ tests/wav-decoder.test.ts (27 tests) 73ms
+ ✓ tests/nemotron-rnnt.test.ts (23 tests | 2 skipped) 774ms
+     ✓ keeps frontend, encoder caches, and RNNT state invariant across cumulative partitions  648ms
+ ✓ tests/ort-external-data.test.ts (4 tests) 67ms
+stdout | tests/ort-session-abort.test.ts > createOrtSession abort > releases the session when abort is observed after InferenceSession.create
+[ort] session create start wasm https://example.com/model.onnx
+
+stdout | tests/ort-session-abort.test.ts > createOrtSession abort > releases the session when abort is observed after InferenceSession.create
+[ort] session created wasm https://example.com/model.onnx 1ms
+
+stdout | tests/ort-session-abort.test.ts > createOrtSession abort > does not create a session when abort is already signaled
+[ort] session create start wasm https://example.com/model.onnx
+
+ ✓ tests/ort-session-abort.test.ts (7 tests) 274ms
+ ✓ tests/worker-and-stateful-streaming.test.ts (9 tests) 258ms
+ ✓ tests/windowed-controller-demo.test.ts (5 tests) 72ms
+ ✓ tests/sensevoice.test.ts (7 tests) 45ms
+ ✓ tests/browser-controller.test.ts (12 tests) 589ms
+ ✓ tests/owned-session.test.ts (6 tests) 152ms
+ ✓ tests/x-asr-frontend-parity.test.ts (2 tests) 163ms
+ ✓ tests/nemo-tdt-tokenizer.test.ts (2 tests) 118ms
+ ✓ tests/orukeet-smoke-demo.test.ts (13 tests) 286ms
+stdout | tests/lasr-ctc-node-webgpu-ort.test.ts > lasr-ctc shared ORT selection in Node-like runtimes > passes a plain webgpu execution provider to the native session
+[ort] session create start webgpu C:/models/model.onnx
+
+stdout | tests/lasr-ctc-node-webgpu-ort.test.ts > lasr-ctc shared ORT selection in Node-like runtimes > passes a plain webgpu execution provider to the native session
+[ort] session created webgpu C:/models/model.onnx 0ms
+
+stderr | tests/io-handles.test.ts > UrlAssetHandle > continues with network when cache read throws and evicts the broken key
+[assets] Cache read failed for "cache:broken". Falling back to network. Error: cache blob invalid
+    at Object.<anonymous> (N:/github/asrjs/speech-recognition/tests/io-handles.test.ts:129:15)
+    at Object.Mock [as get] (file:///N:/github/asrjs/speech-recognition/node_modules/@vitest/spy/dist/index.js:285:34)
+    at readCache (N:/github/asrjs/speech-recognition/src/io/handles.ts:144:33)
+    at N:/github/asrjs/speech-recognition/src/io/handles.ts:452:30
+    at UrlAssetHandle.readBytes (N:/github/asrjs/speech-recognition/src/io/handles.ts:510:7)
+    at N:/github/asrjs/speech-recognition/tests/io-handles.test.ts:153:32
+    at file:///N:/github/asrjs/speech-recognition/node_modules/@vitest/runner/dist/index.js:145:11
+    at file:///N:/github/asrjs/speech-recognition/node_modules/@vitest/runner/dist/index.js:915:26
+    at file:///N:/github/asrjs/speech-recognition/node_modules/@vitest/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+
+ ✓ tests/browser-transcription-worker-thread.test.ts (3 tests) 61ms
+ ✓ tests/io-handles.test.ts (24 tests) 195ms
+stdout | tests/lasr-ctc-node-webgpu-ort.test.ts > lasr-ctc shared ORT selection in Node-like runtimes > mounts colocated external data for Node-hosted ORT Web WASM
+[ort] session create start wasm N:\github\asrjs\speech-recognition\package.json
+
+stdout | tests/lasr-ctc-node-webgpu-ort.test.ts > lasr-ctc shared ORT selection in Node-like runtimes > mounts colocated external data for Node-hosted ORT Web WASM
+[ort] session created wasm N:\github\asrjs\speech-recognition\package.json 0ms
+
+ ✓ tests/lasr-ctc-node-webgpu-ort.test.ts (4 tests) 293ms
+ ✓ tests/ctc-transducer-output-dispose.test.ts (6 tests) 224ms
+ ✓ tests/nemo-inspector-receipts.test.ts (14 tests) 228ms
+ ✓ tests/gigaam-ctc.test.ts (10 tests) 197ms
+stdout | tests/browser-realtime.test.ts > browser realtime starter > aggregates FireRed 10ms VAD hops into the configured 20ms visual buckets
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0,
+  speaking: false,
+  threshold: 0.5
+}
+
+stdout | tests/browser-realtime.test.ts > browser realtime starter > aligns FireRed visual VAD buckets to absolute audio frame offsets
+[StreamingSpeechDetector] FireRed VAD ready for diagnostics {
+  state: 'ready',
+  error: null,
+  probability: 0,
+  speaking: false,
+  threshold: 0.5
+}
+
+ ✓ tests/browser-realtime.test.ts (7 tests) 168ms
+ ✓ tests/nemotron-mel-parity.test.ts (3 tests) 254ms
+ ✓ tests/gigaam-rnnt-joiner-batching.test.ts (6 tests) 95ms
+ ✓ tests/stage-capture-comparator.test.ts (19 tests) 49ms
+ ✓ tests/huggingface-progress.test.ts (8 tests) 152ms
+ ✓ tests/streaming-example.test.ts (14 tests) 145ms
+ ✓ tests/exports.test.ts (3 tests) 19070ms
+     ✓ keeps the root API focused on runtime-critical surfaces  5667ms
+     ✓ exposes layered helper, model, and preset subpaths  13399ms
+ ✓ tests/qwen-decoder-logits-dispose.test.ts (5 tests) 137ms
+ ✓ tests/gigaam-ctc-frontend-parity.test.ts (1 test) 84ms
+ ✓ tests/qwen-decode-abort.test.ts (2 tests) 82ms
+ ✓ tests/browser-ten-vad.test.ts (24 tests) 149ms
+ ✓ tests/browser-transcription-worker.test.ts (9 tests) 83ms
+ ✓ tests/browser-controller-dispose.test.ts (14 tests) 96ms
+ ✓ tests/x-asr-decode-abort.test.ts (3 tests) 114ms
+ ✓ tests/whisper-quality-gates.test.ts (18 tests) 143ms
+ ✓ tests/qwen3-asr-session.test.ts (1 test) 21170ms
+     ✓ decodes the JFK fixture to the recorded oracle  21166ms
+ ✓ tests/node-io-smoke.test.ts (2 tests) 108ms
+ ✓ tests/gigaam-rnnt.test.ts (5 tests) 61ms
+ ✓ tests/lasr-ctc-mel-filterbank-override.test.ts (4 tests) 53ms
+ ✓ tests/quality-gates.test.ts (21 tests) 56ms
+ ✓ tests/whisper-integration.test.ts (15 tests) 77ms
+ ✓ tests/builtins-loader.test.ts (5 tests) 37ms
+ ✓ tests/benchmark-dataset-helpers.test.ts (6 tests) 71ms
+ ✓ tests/media-helpers.test.ts (7 tests) 67ms
+ ✓ tests/whisper-reproducibility-harness.test.ts (5 tests | 2 skipped) 56ms
+ ✓ tests/pipeline-windowing.test.ts (23 tests) 59ms
+ ✓ tests/streaming.test.ts (5 tests) 29ms
+ ✓ tests/high-level-api.test.ts (12 tests) 53ms
+ ✓ tests/realtime-window-offsets.test.ts (1 test) 29ms
+ ✓ tests/nemo-tdt-grid-batching.test.ts (13 tests) 44ms
+ ✓ tests/nemo-preprocessor-contract.test.ts (31 tests) 43ms
+ ✓ tests/browser-harness-page.test.ts (4 tests) 51ms
+ ✓ tests/native-example-smoke.test.ts (10 tests) 74ms
+ ✓ tests/catalog-preset-resolution.test.ts (8 tests) 43ms
+ ✓ tests/whisper-enhanced-executor.test.ts (11 tests) 34ms
+ ✓ tests/native-resource-fixture.test.ts (1 test) 60ms
+ ✓ tests/nemo-rnnt-grid-batching.test.ts (10 tests) 33ms
+ ✓ tests/moonshine-streaming-loader.test.ts (7 tests) 33ms
+ ✓ tests/browser-local-models.test.ts (16 tests) 50ms
+ ✓ tests/nemo-inspector-artifacts.test.ts (9 tests) 47ms
+ ✓ tests/parakeet-helpers.test.ts (27 tests) 45ms
+(node:26524) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/nemo-tdt-executor.test.ts (25 tests) 52ms
+ ✓ tests/experimental-ort-session-release.test.ts (14 tests) 32ms
+ ✓ tests/lasr-ctc-medasr-port-helpers.test.ts (4 tests) 39ms
+ ✓ tests/wav2vec2-model.test.ts (8 tests) 35ms
+ ✓ tests/whisper-splitgraph-artifacts.test.ts (16 tests) 35ms
+ ✓ tests/realtime-helpers.test.ts (7 tests) 19ms
+ ✓ tests/package-tarball-contract.test.ts (15 tests) 28ms
+ ✓ tests/fixture-gates.test.ts (9 tests | 1 skipped) 35ms
+ ✓ tests/streaming-owner-cleanup.test.ts (7 tests) 34ms
+ ✓ tests/ctc-decoder-fp16.test.ts (5 tests) 27ms
+ ✓ tests/nemo-tdt-session.test.ts (8 tests) 26ms
+ ✓ tests/runtime.test.ts (12 tests) 30ms
+ ✓ tests/ctc-decoder.test.ts (25 tests) 24ms
+ ✓ tests/whisper-word-timestamps.test.ts (24 tests) 21ms
+ ✓ tests/x-asr.test.ts (6 tests) 27ms
+ ✓ tests/nemo-rnnt-executor.test.ts (6 tests) 25ms
+ ✓ tests/realtime-latency.test.ts (8 tests) 22ms
+ ✓ tests/whisper-beam-search-decode.test.ts (16 tests) 24ms
+ ✓ tests/browser-harness-verification.test.ts (22 tests) 20ms
+ ✓ tests/nemo-inspector-pcm-contract.test.ts (20 tests) 24ms
+ ✓ tests/canary-helpers.test.ts (10 tests) 24ms
+ ✓ tests/whisper-merged-alignment.test.ts (7 tests) 23ms
+ ✓ tests/realtime-vad-reset.test.ts (9 tests) 20ms
+ ✓ tests/chunking-backends.test.ts (7 tests) 21ms
+ ✓ tests/whisperx-runner-cli.test.ts (8 tests) 22ms
+(node:23952) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/nemo-aed-executor.test.ts (6 tests) 23ms
+ ✓ tests/moonshine-session-resources.test.ts (3 tests) 19ms
+ ✓ tests/whisper-language-detection.test.ts (7 tests) 14ms
+ ✓ tests/local-wasm-paths.test.ts (6 tests) 21ms
+ ✓ tests/wasm-thread-bridges.test.ts (9 tests) 18ms
+ ✓ tests/io-providers.test.ts (9 tests) 18ms
+ ✓ tests/pipeline-windowing-stage.test.ts (5 tests) 18ms
+ ✓ tests/moonshine-streaming-transcriber.test.ts (7 tests) 18ms
+ ✓ tests/unified-ort.test.ts (20 tests) 36ms
+ ✓ tests/nemo-inspector-cancel-reuse.test.ts (8 tests) 17ms
+ ✓ tests/nemo-tdt-native-ort.test.ts (10 tests) 19ms
+ ✓ tests/alignment-ctc-viterbi.test.ts (17 tests) 18ms
+ ✓ tests/audio.test.ts (23 tests) 18ms
+ ✓ tests/wav2vec2-alignment.test.ts (13 tests) 17ms
+ ✓ tests/whisper-splitgraph-alignment.test.ts (10 tests) 17ms
+ ✓ tests/helpers.test.ts (7 tests) 17ms
+ ✓ tests/moonshine-model-lifecycle.test.ts (4 tests) 20ms
+ ✓ tests/rough-speech-gate.test.ts (6 tests) 16ms
+ ✓ tests/sensevoice-executor.test.ts (1 test) 17ms
+ ✓ tests/nemo-aed-tokenizer.test.ts (3 tests) 9ms
+ ✓ tests/streaming-disposal.test.ts (7 tests) 17ms
+ ✓ tests/nemo-inspector-disposal-drain.test.ts (7 tests) 17ms
+ ✓ tests/capture-cleanup-failure.test.ts (7 tests) 16ms
+ ✓ tests/backends.test.ts (8 tests) 15ms
+ ✓ tests/browser-harness-server.test.ts (2 tests) 16ms
+ ✓ tests/chunking-post-extras.test.ts (9 tests) 14ms
+ ✓ tests/capture-demo-built-runtime.test.ts (4 tests) 14ms
+ ✓ tests/preset-descriptors.test.ts (12 tests) 16ms
+ ✓ tests/fixture-sessions.test.ts (9 tests) 16ms
+ ✓ tests/whisper-beam-search-benchmark.test.ts (3 tests) 15ms
+ ✓ tests/whisper-fp16-kv-input.test.ts (10 tests) 14ms
+ ✓ tests/backend-family-opt-in.test.ts (5 tests) 13ms
+ ✓ tests/omnilingual-ctc-session-lifecycle.test.ts (3 tests) 12ms
+ ✓ tests/whisper-decoder-step-dispose.test.ts (5 tests) 12ms
+ ✓ tests/capture-helpers.test.ts (3 tests) 14ms
+ ✓ tests/native-cpu-backend.test.ts (5 tests) 13ms
+ ✓ tests/tokenizer-abort.test.ts (3 tests) 11ms
+ ✓ tests/transcript-normalization.test.ts (3 tests) 13ms
+ ✓ tests/whisper-temperature-fallback.test.ts (9 tests) 12ms
+ ✓ tests/firered-indexeddb-cache.test.ts (2 tests) 8ms
+ ✓ tests/whisper-kv-cache-shapes.test.ts (5 tests) 10ms
+ ✓ tests/whisper-attention-alignment.test.ts (5 tests) 11ms
+ ✓ tests/indexeddb-cache.test.ts (3 tests) 7ms
+ ✓ tests/node-builtin.test.ts (2 tests) 9ms
+ ✓ tests/whisper-manifest-parsing.test.ts (9 tests) 11ms
+ ✓ tests/parakeet-manifest.test.ts (5 tests) 9ms
+ ✓ tests/whisper-generation-config.test.ts (14 tests) 11ms
+ ✓ tests/pipeline-composition.test.ts (5 tests) 15ms
+ ✓ tests/chunking.test.ts (11 tests) 10ms
+ ✓ tests/noise-floor.test.ts (10 tests) 13ms
+ ✓ tests/whisper-enhanced-types.test.ts (9 tests) 10ms
+ ✓ tests/whisper-vad-segmenter.test.ts (9 tests) 11ms
+ ✓ tests/whisper-chunk-context.test.ts (11 tests) 9ms
+ ✓ tests/alignment-dtw.test.ts (5 tests) 10ms
+ ✓ tests/whisper-graph-capture-fallback.test.ts (3 tests) 10ms
+ ✓ tests/browser-monitor.test.ts (2 tests) 11ms
+ ✓ tests/pipeline-whisper-timestamps.test.ts (5 tests) 10ms
+ ✓ tests/sensevoice-frontend-lfr.test.ts (3 tests) 7ms
+ ✓ tests/x-asr-artifact-contract.test.ts (1 test) 8ms
+ ✓ tests/pipeline-sentence-stage.test.ts (3 tests) 9ms
+ ✓ tests/pipeline-output-sidecars.test.ts (4 tests) 10ms
+ ✓ tests/streaming-config.test.ts (11 tests) 11ms
+ ✓ tests/parakeet-catalog.test.ts (6 tests) 9ms
+ ✓ tests/whisper-segment-merger.test.ts (6 tests) 9ms
+ ✓ tests/whisper-encoder-feature-dispose.test.ts (3 tests) 9ms
+ ✓ tests/pipeline-whisper-chunking.test.ts (5 tests) 14ms
+ ✓ tests/whisper-decode-abort.test.ts (3 tests) 11ms
+ ✓ tests/whisper-beam-reference.test.ts (2 tests) 9ms
+ ✓ tests/segment-foreground-filter.test.ts (5 tests) 9ms
+ ✓ tests/wasm-threads.test.ts (13 tests) 9ms
+ ✓ tests/whisper-beam-search.test.ts (3 tests) 8ms
+ ✓ tests/benchmark-browser.test.ts (3 tests) 11ms
+ ✓ tests/canary-catalog.test.ts (5 tests) 9ms
+ ✓ tests/whisper-long-audio.test.ts (2 tests) 9ms
+ ✓ tests/streaming-consumer.test.ts (5 tests) 8ms
+ ✓ tests/preset-factories.test.ts (3 tests) 8ms
+ ✓ tests/whisper-production-pipeline.test.ts (7 tests) 9ms
+ ✓ tests/datasets.test.ts (4 tests) 8ms
+ ✓ tests/browser-node-stub.test.ts (3 tests) 7ms
+ ✓ tests/whisper-drift-handler.test.ts (10 tests) 9ms
+ ✓ tests/whisper-splitgraph-decode.test.ts (3 tests) 9ms
+ ✓ tests/whisper-forced-alignment.test.ts (3 tests) 9ms
+ ✓ tests/whisper-artifact-contract.test.ts (3 tests) 6ms
+ ✓ tests/post-processing.test.ts (4 tests) 7ms
+ ✓ tests/pipeline-vad-segments.test.ts (4 tests) 8ms
+ ✓ tests/nemo-tdt-weights.test.ts (5 tests) 7ms
+ ✓ tests/transcript-output-formats.test.ts (4 tests) 8ms
+ ✓ tests/long-audio-coordinator.test.ts (2 tests) 6ms
+ ✓ tests/whisper-core-score.test.ts (3 tests) 7ms
+ ✓ tests/whisper-gpu-kv-policy.test.ts (5 tests) 7ms
+ ✓ tests/nemo-rnnt-weights.test.ts (4 tests) 7ms
+ ✓ tests/whisper-cross-attention-collection.test.ts (3 tests) 6ms
+ ✓ tests/architecture.test.ts (4 tests) 8ms
+ ✓ tests/nemo-tdt-transcript-details.test.ts (2 tests) 9ms
+ ✓ tests/streaming-controls.test.ts (3 tests) 6ms
+ ✓ tests/inference-math.test.ts (4 tests) 6ms
+ ✓ tests/whisper-splitgraph-smoke.test.ts (3 tests | 3 skipped) 6ms
+ ✓ tests/medasr-manifest.test.ts (3 tests) 5ms
+ ✓ tests/whisper-word-probability.test.ts (2 tests) 5ms
+ ✓ tests/nemo-aed-session.test.ts (1 test) 6ms
+ ✓ tests/onnx-audit-files.test.ts (2 tests) 4ms
+ ✓ tests/whisper-onnx-smoke.test.ts (1 test | 1 skipped) 4ms
+ ✓ tests/whisper-timestamped-decoder.test.ts (1 test | 1 skipped) 3ms
+ ↓ tests/gigaam-ctc-onnx-backends.test.ts (4 tests | 4 skipped)
+ ↓ tests/gigaam-rnnt-onnx-backends.test.ts (2 tests | 2 skipped)
+ ↓ tests/sensevoice-onnx-backends.test.ts (3 tests | 3 skipped)
+ ↓ tests/whisper-tokenizer-bpe.test.ts (4 tests | 4 skipped)
+ ↓ tests/qwen3-asr-onnx-backends.test.ts (2 tests | 2 skipped)
+ ↓ tests/windowed-controller-replay.test.ts (1 test | 1 skipped)
+ ↓ tests/x-asr-onnx-backends.test.ts (3 tests | 3 skipped)
+ ✓ tests/fixture-gates-integration.test.ts (11 tests) 49947ms
+     ✓ reports disabled Whisper reproducibility inference as SKIP while running the dtype unit test  7601ms
+     ✓ fails explicitly requested Whisper reproducibility with a missing reference  7846ms
+     ✓ fails an explicitly requested empty Whisper reproducibility reference  9025ms
+     ✓ fails an explicitly requested malformed Whisper reproducibility reference  8302ms
+     ✓ fails enabled Whisper reproducibility with absent mel and audio before native sessions  6588ms
+     ✓ reports disabled Whisper and GigaAM inference tests as SKIP, including flag=0  2088ms
+     ✓ fails a forced tests/whisper-onnx-smoke.test.ts run with absent configuration  2281ms
+     ✓ fails a forced tests/whisper-timestamped-decoder.test.ts run with absent configuration  1401ms
+     ✓ fails an explicitly requested split-graph run with an empty fixture directory  1916ms
+     ✓ fails an enabled GigaAM suite with a missing reference instead of skipping it  1540ms
+     ✓ fails a malformed Whisper mel reference instead of swallowing it as absent  1354ms
+
+ Test Files  216 passed | 7 skipped (223)
+      Tests  1824 passed | 36 skipped (1860)
+   Start at  23:00:09
+   Duration  50.72s (transform 82.19s, setup 0ms, import 115.14s, tests 143.85s, environment 67ms)
+

@@ -1,0 +1,32 @@
+{
+  "scope": "public local-entry API, real PCM feature extraction and WASM execution; numerical parity unverified",
+  "status": "FAIL",
+  "node": "v26.2.0",
+  "head": "6e53c832a6e0837a117e187e383eaef51c1f6890",
+  "trackedDiffSha256": "f09d3380e25ac46cfe97fdf0b17a272becde7a85046bceb9db34c29216b148ce",
+  "ort": "1.29.0",
+  "artifacts": [
+    {
+      "path": "audio-encoder-dynamic.onnx",
+      "sha256": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6"
+    },
+    {
+      "path": "decoder-prefill-fp16.onnx",
+      "sha256": "b92c4f74b5ddd7a6a0bff2f931bf60805d03bba6a112ccbd3a0ebcb0a4b71029"
+    },
+    {
+      "path": "decoder-step-fp16.onnx",
+      "sha256": "ac8bf15321d8166043d0a05a88a6f7da56b42c271e4b05c2c74f12a36992119e"
+    },
+    {
+      "path": "decoder-fp16.onnx.data",
+      "sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675"
+    },
+    {
+      "path": "tokenizer/tokenizer.json",
+      "sha256": "765730b866a766806c9e61183cf3844357bec96a3b559eb466046316ed0029a4"
+    }
+  ],
+  "runs": [],
+  "error": "Error: Bridge execution failed with exit code 1:\n[browser request failed] http://127.0.0.1:8997/__external_models__/qwen3-asr-0.6b-official/decoder-fp16.onnx.data: net::ERR_FAILED\r\n[Bridge Error] Page.evaluate: TypeError: Failed to fetch\r\n\n    at ChildProcess.<anonymous> (file:///N:/github/asrjs/speech-recognition/tools/browser-harness/cli.mjs:154:16)\n    at ChildProcess.emit (node:events:509:20)\n    at maybeClose (node:internal/child_process:1108:16)\n    at ChildProcess._handle.onexit (node:internal/child_process:305:5)"
+}

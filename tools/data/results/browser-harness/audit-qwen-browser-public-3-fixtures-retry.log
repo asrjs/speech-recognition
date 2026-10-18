@@ -1,0 +1,16 @@
+warning: in the working copy of 'src/models/lasr-ctc/ort.ts', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'src/runtime/streaming-config.ts', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tools/browser-harness/bridge.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tools/browser-harness/cli.mjs', CRLF will be replaced by LF the next time Git touches it
+[Bridge] Navigating to http://127.0.0.1:8997/harness.html...
+[browser console] The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127
+[Server 404] GET /favicon.ico
+[browser console] Failed to load resource: the server responded with a status of 404 (Not Found)
+[browser console] [Harness] --- Starting Offline Run [jfk2.en.wav] ---
+[browser console] [Harness] Loading model for [{"callerKey":null,"localFolder":"__external_models__/qwen3-asr-0.6b-official","modelId":"qwen3-asr-0.6b","preset":null,"family":null,"backend":"wasm","encoderBackend":null,"decoderBackend":null,"options":{"decoderQuant":"fp16","cpuThreads":1}}]...
+[browser console] [Harness] Fetching local directory entries from /__api__/local-entries?dir=__external_models__%2Fqwen3-asr-0.6b-official...
+[browser console] [Harness] Found 24 local files. Loading selected artifacts on demand...
+[browser console] [Harness] Resolved modelId "qwen3-asr-0.6b" (wasm/wasm). Initializing speech session...
+[browser request failed] http://127.0.0.1:8997/__external_models__/qwen3-asr-0.6b-official/decoder-fp16.onnx.data: net::ERR_FAILED
+[browser console] Failed to load resource: net::ERR_FAILED
+[Bridge Error] Page.evaluate: TypeError: Failed to fetch

@@ -1,0 +1,13 @@
+npm notice run @asrjs/demos-monorepo@1.0.0 npx
+npm notice run vitest run --config apps/benchmark/vite.config.js apps/benchmark/src/dataset-selection.test.js apps/benchmark/src/benchmark-utils.test.jsx
+
+ RUN  v3.2.7 N:/github/asrjs/demos
+
+ ✓ apps/benchmark/src/dataset-selection.test.js (3 tests) 3ms
+ ✓ apps/benchmark/src/benchmark-utils.test.jsx (2 tests) 3ms
+
+ Test Files  2 passed (2)
+      Tests  5 passed (5)
+   Start at  23:22:30
+   Duration  743ms (transform 89ms, setup 0ms, collect 193ms, tests 6ms, environment 0ms, prepare 453ms)
+

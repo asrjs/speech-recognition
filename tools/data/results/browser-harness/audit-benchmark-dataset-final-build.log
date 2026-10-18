@@ -1,0 +1,26 @@
+npm notice run @asrjs/benchmark-demo@1.0.0 build
+npm notice run vite build
+vite v7.3.7 building client environment for production...
+<script src="coi-serviceworker.js"> in "/index.html" can't be bundled without type="module" attribute
+transforming...
+✓ 363 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                   0.64 kB │ gzip:     0.38 kB
+dist/assets/ten-vad-worker-NejDulNG.js                            4.36 kB
+dist/assets/ten_vad-BWj8dcPJ.js                                   5.82 kB
+dist/assets/ten_vad-DpmpZqYN.wasm                               283.35 kB │ gzip:   201.27 kB
+dist/assets/firered-vad-worker-B2xmQqOJ.js                      429.12 kB
+dist/assets/browser-transcription-worker-thread-CGhnST1L.js     610.73 kB
+dist/assets/ort-wasm-simd-threaded.asyncify-CsxMlmQ8.wasm    25,749.87 kB │ gzip: 6,368.50 kB
+dist/assets/ort-wasm-simd-threaded.jsep-D-icqfN-.wasm        27,797.17 kB │ gzip: 6,576.65 kB
+dist/assets/index-ChsdWJvX.css                                   12.70 kB │ gzip:     3.16 kB
+dist/assets/ort.webgpu.bundle.min-DIS4kVGb.js                   115.35 kB │ gzip:    38.38 kB
+dist/assets/ort.bundle.min-BdsNfDLz.js                          410.27 kB │ gzip:   112.59 kB
+dist/assets/index-BxyP2JU7.js                                   833.36 kB │ gzip:   230.45 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 7.50s
