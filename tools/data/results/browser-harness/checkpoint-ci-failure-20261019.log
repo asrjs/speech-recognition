@@ -1,0 +1,140 @@
+test (24.x)	Lint	﻿2026-10-18T21:33:10.6488642Z ##[group]Run npm run lint
+test (24.x)	Lint	2026-10-18T21:33:10.6488949Z [36;1mnpm run lint[0m
+test (24.x)	Lint	2026-10-18T21:33:10.6552088Z shell: /usr/bin/bash -e {0}
+test (24.x)	Lint	2026-10-18T21:33:10.6552355Z ##[endgroup]
+test (24.x)	Lint	2026-10-18T21:33:10.7548484Z 
+test (24.x)	Lint	2026-10-18T21:33:10.7549242Z > @asrjs/speech-recognition@0.2.0 lint
+test (24.x)	Lint	2026-10-18T21:33:10.7549920Z > node ./node_modules/eslint/bin/eslint.js "src/**/*.ts" "tests/**/*.ts"
+test (24.x)	Lint	2026-10-18T21:33:10.7550264Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2054075Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2055576Z /home/runner/work/speech-recognition/speech-recognition/src/models/lasr-ctc/executor.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2089678Z ##[warning]  892:1  warning  File has too many lines (815). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2100206Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2100984Z /home/runner/work/speech-recognition/speech-recognition/src/models/nemo-rnnt/executor.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2102864Z ##[warning]  891:1  warning  File has too many lines (1014). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2104195Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2104931Z /home/runner/work/speech-recognition/speech-recognition/src/models/nemo-tdt/executor.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2106997Z ##[warning]  877:1  warning  File has too many lines (1238). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2108327Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2109069Z /home/runner/work/speech-recognition/speech-recognition/src/models/nemotron-rnnt/executor.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2110821Z ##[warning]  868:1  warning  File has too many lines (1068). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2112149Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2112833Z /home/runner/work/speech-recognition/speech-recognition/src/models/qwen-asr/executor.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2114654Z ##[warning]  863:1  warning  File has too many lines (1302). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2116262Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2117045Z /home/runner/work/speech-recognition/speech-recognition/src/models/whisper-seq2seq/executor.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2118750Z    93:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+test (24.x)	Lint	2026-10-18T21:33:17.2121048Z ##[warning]  947:1  warning  File has too many lines (3980). Maximum allowed is 800                                                 max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2122610Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2123334Z /home/runner/work/speech-recognition/speech-recognition/src/presets/descriptors-catalog.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2125299Z ##[warning]  820:1  warning  File has too many lines (878). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2126692Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2127376Z /home/runner/work/speech-recognition/speech-recognition/src/presets/parakeet/compat.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2129039Z ##[warning]  914:1  warning  File has too many lines (907). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2130395Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2131076Z /home/runner/work/speech-recognition/speech-recognition/src/runtime/browser-waveform.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2132747Z ##[warning]  864:1  warning  File has too many lines (954). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2134202Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2134793Z /home/runner/work/speech-recognition/speech-recognition/src/runtime/load.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2136525Z ##[warning]  931:1  warning  File has too many lines (1040). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2137940Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2138649Z /home/runner/work/speech-recognition/speech-recognition/src/runtime/streaming-detector.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2140212Z ##[warning]  864:1  warning  File has too many lines (1187). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2141805Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2142603Z /home/runner/work/speech-recognition/speech-recognition/tests/high-level-pipeline-lifecycle.test.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2144390Z ##[warning]  837:1  warning  File has too many lines (1256). Maximum allowed is 800  max-lines
+test (24.x)	Lint	2026-10-18T21:33:17.2146028Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2146859Z /home/runner/work/speech-recognition/speech-recognition/tests/moonshine-streaming-session.test.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2150054Z ##[error]  54:13  error  'keep' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+test (24.x)	Lint	2026-10-18T21:33:17.2151973Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2152812Z /home/runner/work/speech-recognition/speech-recognition/tests/moonshine-streaming-transcriber.test.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2154468Z ##[error]  7:7  error  'broken' is never reassigned. Use 'const' instead  prefer-const
+test (24.x)	Lint	2026-10-18T21:33:17.2156010Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2156491Z /home/runner/work/speech-recognition/speech-recognition/tests/streaming-detector-neural-vad.test.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2157782Z ##[error]  366:30  error  'options' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+test (24.x)	Lint	2026-10-18T21:33:17.2158756Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2159182Z /home/runner/work/speech-recognition/speech-recognition/tests/windowed-controller-demo.test.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2160329Z ##[error]  49:16  error  'request' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+test (24.x)	Lint	2026-10-18T21:33:17.2161260Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2161701Z /home/runner/work/speech-recognition/speech-recognition/tests/worker-and-stateful-streaming.test.ts
+test (24.x)	Lint	2026-10-18T21:33:17.2162980Z ##[error]    1:36  error  'afterEach' is defined but never used. Allowed unused vars must match /^_/u                            @typescript-eslint/no-unused-vars
+test (24.x)	Lint	2026-10-18T21:33:17.2165213Z ##[error]   11:8   error  'BrowserTranscriptionWorkerClient' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+test (24.x)	Lint	2026-10-18T21:33:17.2167490Z ##[error]   15:8   error  'NemotronStreamingTranscriberOptions' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+test (24.x)	Lint	2026-10-18T21:33:17.2169548Z ##[error]   24:3   error  'StreamingSessionOptions' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+test (24.x)	Lint	2026-10-18T21:33:17.2171420Z ##[error]  344:51  error  'options' is defined but never used. Allowed unused args must match /^_/u                              @typescript-eslint/no-unused-vars
+test (24.x)	Lint	2026-10-18T21:33:17.2173292Z ##[error]  708:11  error  'captureOnChunk' is assigned a value but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+test (24.x)	Lint	2026-10-18T21:33:17.2174320Z 
+test (24.x)	Lint	2026-10-18T21:33:17.2174733Z ✖ 23 problems (10 errors, 13 warnings)
+test (24.x)	Lint	2026-10-18T21:33:17.2175463Z   1 error and 1 warning potentially fixable with the `--fix` option.
+test (24.x)	Lint	2026-10-18T21:33:17.2175754Z 
+test (24.x)	Lint	2026-10-18T21:33:17.3566848Z ##[error]Process completed with exit code 1.
+test (22.x)	Lint	﻿2026-10-18T21:33:12.4538863Z ##[group]Run npm run lint
+test (22.x)	Lint	2026-10-18T21:33:12.4539182Z [36;1mnpm run lint[0m
+test (22.x)	Lint	2026-10-18T21:33:12.4601991Z shell: /usr/bin/bash -e {0}
+test (22.x)	Lint	2026-10-18T21:33:12.4602506Z ##[endgroup]
+test (22.x)	Lint	2026-10-18T21:33:12.5596654Z 
+test (22.x)	Lint	2026-10-18T21:33:12.5597419Z > @asrjs/speech-recognition@0.2.0 lint
+test (22.x)	Lint	2026-10-18T21:33:12.5598464Z > node ./node_modules/eslint/bin/eslint.js "src/**/*.ts" "tests/**/*.ts"
+test (22.x)	Lint	2026-10-18T21:33:12.5599104Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8451729Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8453005Z /home/runner/work/speech-recognition/speech-recognition/src/models/lasr-ctc/executor.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8498464Z ##[warning]  892:1  warning  File has too many lines (815). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8505578Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8506069Z /home/runner/work/speech-recognition/speech-recognition/src/models/nemo-rnnt/executor.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8507384Z ##[warning]  891:1  warning  File has too many lines (1014). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8508199Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8508604Z /home/runner/work/speech-recognition/speech-recognition/src/models/nemo-tdt/executor.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8509717Z ##[warning]  877:1  warning  File has too many lines (1238). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8510482Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8511220Z /home/runner/work/speech-recognition/speech-recognition/src/models/nemotron-rnnt/executor.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8512336Z ##[warning]  868:1  warning  File has too many lines (1068). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8513126Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8513521Z /home/runner/work/speech-recognition/speech-recognition/src/models/qwen-asr/executor.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8514540Z ##[warning]  863:1  warning  File has too many lines (1302). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8515291Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8515703Z /home/runner/work/speech-recognition/speech-recognition/src/models/whisper-seq2seq/executor.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8516656Z    93:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+test (22.x)	Lint	2026-10-18T21:33:19.8517980Z ##[warning]  947:1  warning  File has too many lines (3980). Maximum allowed is 800                                                 max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8518859Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8519271Z /home/runner/work/speech-recognition/speech-recognition/src/presets/descriptors-catalog.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8520255Z ##[warning]  820:1  warning  File has too many lines (878). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8521320Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8521719Z /home/runner/work/speech-recognition/speech-recognition/src/presets/parakeet/compat.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8522706Z ##[warning]  914:1  warning  File has too many lines (907). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8523481Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8523851Z /home/runner/work/speech-recognition/speech-recognition/src/runtime/browser-waveform.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8524877Z ##[warning]  864:1  warning  File has too many lines (954). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8525707Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8526044Z /home/runner/work/speech-recognition/speech-recognition/src/runtime/load.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8526881Z ##[warning]  931:1  warning  File has too many lines (1040). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8527669Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8528057Z /home/runner/work/speech-recognition/speech-recognition/src/runtime/streaming-detector.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8528922Z ##[warning]  864:1  warning  File has too many lines (1187). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8529676Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8530113Z /home/runner/work/speech-recognition/speech-recognition/tests/high-level-pipeline-lifecycle.test.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8531427Z ##[warning]  837:1  warning  File has too many lines (1256). Maximum allowed is 800  max-lines
+test (22.x)	Lint	2026-10-18T21:33:19.8532251Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8532743Z /home/runner/work/speech-recognition/speech-recognition/tests/moonshine-streaming-session.test.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8534528Z ##[error]  54:13  error  'keep' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+test (22.x)	Lint	2026-10-18T21:33:19.8535861Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8536352Z /home/runner/work/speech-recognition/speech-recognition/tests/moonshine-streaming-transcriber.test.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8537500Z ##[error]  7:7  error  'broken' is never reassigned. Use 'const' instead  prefer-const
+test (22.x)	Lint	2026-10-18T21:33:19.8538349Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8538808Z /home/runner/work/speech-recognition/speech-recognition/tests/streaming-detector-neural-vad.test.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8540013Z ##[error]  366:30  error  'options' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+test (22.x)	Lint	2026-10-18T21:33:19.8541315Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8541761Z /home/runner/work/speech-recognition/speech-recognition/tests/windowed-controller-demo.test.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8542918Z ##[error]  49:16  error  'request' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+test (22.x)	Lint	2026-10-18T21:33:19.8543874Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8544314Z /home/runner/work/speech-recognition/speech-recognition/tests/worker-and-stateful-streaming.test.ts
+test (22.x)	Lint	2026-10-18T21:33:19.8545643Z ##[error]    1:36  error  'afterEach' is defined but never used. Allowed unused vars must match /^_/u                            @typescript-eslint/no-unused-vars
+test (22.x)	Lint	2026-10-18T21:33:19.8547623Z ##[error]   11:8   error  'BrowserTranscriptionWorkerClient' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+test (22.x)	Lint	2026-10-18T21:33:19.8549742Z ##[error]   15:8   error  'NemotronStreamingTranscriberOptions' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+test (22.x)	Lint	2026-10-18T21:33:19.8552114Z ##[error]   24:3   error  'StreamingSessionOptions' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+test (22.x)	Lint	2026-10-18T21:33:19.8554106Z ##[error]  344:51  error  'options' is defined but never used. Allowed unused args must match /^_/u                              @typescript-eslint/no-unused-vars
+test (22.x)	Lint	2026-10-18T21:33:19.8556046Z ##[error]  708:11  error  'captureOnChunk' is assigned a value but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+test (22.x)	Lint	2026-10-18T21:33:19.8557111Z 
+test (22.x)	Lint	2026-10-18T21:33:19.8557513Z ✖ 23 problems (10 errors, 13 warnings)
+test (22.x)	Lint	2026-10-18T21:33:19.8557975Z   1 error and 1 warning potentially fixable with the `--fix` option.
+test (22.x)	Lint	2026-10-18T21:33:19.8558267Z 
+test (22.x)	Lint	2026-10-18T21:33:19.9736141Z ##[error]Process completed with exit code 1.
