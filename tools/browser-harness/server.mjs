@@ -35,12 +35,25 @@ const MIME_MAP = {
 };
 
 export function resolveSafePath(rootDir, relativePath) {
-  const normalized = path.normalize(decodeURIComponent(relativePath)).replace(/^(\.\.[/\\])+/, '');
+  const normalized = path.normalize(decodeURIComponent(relativePath));
   const resolved = path.resolve(rootDir, normalized);
-  if (!resolved.startsWith(path.resolve(rootDir))) {
+  const within = path.relative(path.resolve(rootDir), resolved);
+  if (within === '..' || within.startsWith(`..${path.sep}`) || path.isAbsolute(within)) {
     return null;
   }
   return resolved;
+}
+
+export function listLocalEntries(targetDir, urlPrefix, prefix = '') {
+  return fs.readdirSync(path.join(targetDir, prefix), { withFileTypes: true }).flatMap((entry) => {
+    if (entry.name === '.git' || entry.isSymbolicLink()) return [];
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) return listLocalEntries(targetDir, urlPrefix, relative);
+    if (!entry.isFile()) return [];
+    return [{ name: entry.name, path: relative, relativePath: relative,
+      size: fs.statSync(path.join(targetDir, relative)).size,
+      url: `${urlPrefix}/${relative.split('/').map(encodeURIComponent).join('/')}` }];
+  });
 }
 
 export function createHarnessServer(options = {}) {
@@ -174,21 +187,7 @@ export function createHarnessServer(options = {}) {
           return;
         }
 
-        const entries = [];
-        const files = fs.readdirSync(targetDir);
-        for (const file of files) {
-          const fullPath = path.join(targetDir, file);
-          const st = fs.statSync(fullPath);
-          if (st.isFile()) {
-            entries.push({
-              name: file,
-              path: file,
-              relativePath: file,
-              size: st.size,
-              url: `${urlPrefix}/${file}`.replace(/\/+/g, '/'),
-            });
-          }
-        }
+        const entries = listLocalEntries(targetDir, urlPrefix);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(entries, null, 2));
       } catch (err) {

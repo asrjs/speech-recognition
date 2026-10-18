@@ -7,7 +7,6 @@ and headless/headed Chrome WebGPU instances.
 """
 import sys
 import json
-import time
 from playwright.sync_api import sync_playwright
 
 CHROME_WEBGPU_ARGS = [
@@ -24,222 +23,19 @@ def log_console(msg):
 def log_pageerror(err):
     print(f'[browser pageerror] {err}', file=sys.stderr, flush=True)
 
-COLD_AND_WARM_JS = """
-async () => {
-    const spec = __SPEC_JSON__;
-    const mode = spec.mode || 'both';
-
-    // 1. Cold Run (forceReload: true)
-    let cold;
-    if (mode === 'offline') {
-        cold = await window.__ASR_HARNESS__.runOffline({ ...spec, forceReload: true });
-    } else if (mode === 'streaming') {
-        cold = await window.__ASR_HARNESS__.runStreaming({ ...spec, forceReload: true });
-    } else {
-        const off = await window.__ASR_HARNESS__.runOffline({ ...spec, forceReload: true });
-        const str = await window.__ASR_HARNESS__.runStreaming({ ...spec, forceReload: false });
-        cold = {
-            schema: 'asrjs.browser-webgpu.v1',
-            status: 'PASS',
-            mode: 'both',
-            modelId: off.modelId,
-            backendId: off.backendId,
-            adapter: off.adapter,
-            limits: off.limits,
-            transcript: off.transcript,
-            offline: off,
-            streaming: str,
-            metrics: {
-                loadMs: off.metrics.loadMs,
-                offlineInferenceMs: off.metrics.inferenceMs,
-                offlineRtfx: off.metrics.rtfx,
-                streamingInferenceMs: str.metrics.inferenceMs,
-                streamingRtfx: str.metrics.rtfx,
-                ttftMs: str.metrics.ttftMs,
-                totalGpuDispatches: (off.metrics.gpuDispatches ?? 0) + (str.metrics.gpuDispatches ?? 0)
-            },
-            timestamp: new Date().toISOString()
-        };
-    }
-
-    // 2. Warm Run (forceReload: false, reuses in-memory session, loadMs: 0)
-    let warm;
-    if (mode === 'offline') {
-        warm = await window.__ASR_HARNESS__.runOffline({ ...spec, forceReload: false });
-    } else if (mode === 'streaming') {
-        warm = await window.__ASR_HARNESS__.runStreaming({ ...spec, forceReload: false });
-    } else {
-        const off = await window.__ASR_HARNESS__.runOffline({ ...spec, forceReload: false });
-        const str = await window.__ASR_HARNESS__.runStreaming({ ...spec, forceReload: false });
-        warm = {
-            schema: 'asrjs.browser-webgpu.v1',
-            status: 'PASS',
-            mode: 'both',
-            modelId: off.modelId,
-            backendId: off.backendId,
-            adapter: off.adapter,
-            limits: off.limits,
-            transcript: off.transcript,
-            offline: off,
-            streaming: str,
-            metrics: {
-                loadMs: off.metrics.loadMs,
-                offlineInferenceMs: off.metrics.inferenceMs,
-                offlineRtfx: off.metrics.rtfx,
-                streamingInferenceMs: str.metrics.inferenceMs,
-                streamingRtfx: str.metrics.rtfx,
-                ttftMs: str.metrics.ttftMs,
-                totalGpuDispatches: (off.metrics.gpuDispatches ?? 0) + (str.metrics.gpuDispatches ?? 0)
-            },
-            timestamp: new Date().toISOString()
-        };
-    }
-
-    return {
-        cold,
-        warm
-    };
-}
-"""
-
-BOTH_JS = """
-async () => {
-    const spec = __SPEC_JSON__;
-    const offline = await window.__ASR_HARNESS__.runOffline(spec);
-    const streaming = await window.__ASR_HARNESS__.runStreaming({ ...spec, forceReload: false });
-    return {
-        schema: 'asrjs.browser-webgpu.v1',
-        status: 'PASS',
-        mode: 'both',
-        modelId: offline.modelId,
-        backendId: offline.backendId,
-        adapter: offline.adapter,
-        limits: offline.limits,
-        transcript: offline.transcript,
-        offline: offline,
-        streaming: streaming,
-        metrics: {
-            loadMs: offline.metrics.loadMs,
-            offlineInferenceMs: offline.metrics.inferenceMs,
-            offlineRtfx: offline.metrics.rtfx,
-            streamingInferenceMs: streaming.metrics.inferenceMs,
-            streamingRtfx: streaming.metrics.rtfx,
-            ttftMs: streaming.metrics.ttftMs,
-            totalGpuDispatches: (offline.metrics.gpuDispatches || 0) + (streaming.metrics.gpuDispatches || 0)
-        },
-        timestamp: new Date().toISOString()
-    };
-}
-"""
-
-MATRIX_JS = """
-async () => {
-    const spec = __SPEC_JSON__;
-    const dirs = spec.dirs || [];
-    const results = [];
-
-    for (const localFolder of dirs) {
-        console.log(`[Matrix] Running model folder: ${localFolder}`);
-        const itemSpec = {
-            ...spec,
-            localFolder,
-            modelId: undefined,
-            forceReload: true
-        };
-
-        const modelResult = {
-            folder: localFolder,
-            modelId: null,
-            status: 'PENDING',
-            cold: null,
-            warm: null,
-            error: null
-        };
-
-        try {
-            // 1. Cold Run
-            console.log(`[Matrix] Cold Run for ${localFolder}...`);
-            const cold = await window.__ASR_HARNESS__.runOffline({ ...itemSpec, forceReload: true });
-            modelResult.cold = cold;
-            modelResult.modelId = cold.modelId;
-
-            // 2. Warm Run
-            console.log(`[Matrix] Warm Run for ${localFolder}...`);
-            const warm = await window.__ASR_HARNESS__.runOffline({ ...itemSpec, forceReload: false });
-            modelResult.warm = warm;
-
-            modelResult.status = 'PASS';
-            modelResult.metrics = {
-                coldLoadMs: cold.metrics.loadMs,
-                warmLoadMs: warm.metrics.loadMs,
-                coldInferenceMs: cold.metrics.inferenceMs,
-                warmInferenceMs: warm.metrics.inferenceMs,
-                rtfx: warm.metrics.rtfx,
-                gpuDispatches: warm.metrics.gpuDispatches,
-            };
-            modelResult.transcript = warm.transcript;
-        } catch (err) {
-            console.error(`[Matrix] Error on ${localFolder}:`, err.message || err);
-            modelResult.status = 'FAIL';
-            modelResult.error = String(err.message || err);
-        } finally {
-            try {
-                await window.__ASR_HARNESS__.disposeAll();
-            } catch (e) {}
-        }
-
-        results.push(modelResult);
-    }
-
-    const probe = await window.__ASR_HARNESS__.probeWebGpu();
-    return {
-        schema: 'asrjs.browser-webgpu-matrix.v1',
-        status: results.every(r => r.status === 'PASS') ? 'PASS' : (results.some(r => r.status === 'PASS') ? 'PARTIAL_PASS' : 'FAIL'),
-        adapter: probe.adapter,
-        limits: probe.limits,
-        results,
-        timestamp: new Date().toISOString()
-    };
-}
-"""
-
 def run_in_page(page, action, spec):
-    # Wait for __ASR_HARNESS__ to be initialized on window
     page.wait_for_function('typeof window.__ASR_HARNESS__ !== "undefined"', timeout=60000)
+    return page.evaluate("""async ({action, spec}) => {
+        const {runAction} = await import('/tools/browser-harness/runner.mjs');
+        let timer;
+        try {
+            return await Promise.race([
+                runAction(window.__ASR_HARNESS__, action, spec),
+                new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Browser action timed out')), spec.timeoutMs || 180000); })
+            ]);
+        } finally { clearTimeout(timer); }
+    }""", {"action": action, "spec": spec})
 
-    spec_json = json.dumps(spec)
-
-    if action == 'probe':
-        return page.evaluate('() => window.__ASR_HARNESS__.probeWebGpu()')
-
-    elif action == 'catalog':
-        return page.evaluate('() => window.__ASR_HARNESS__.getCatalog()')
-
-    elif action == 'offline':
-        code = f'() => window.__ASR_HARNESS__.runOffline({spec_json})'
-        return page.evaluate(code)
-
-    elif action == 'streaming':
-        code = f'() => window.__ASR_HARNESS__.runStreaming({spec_json})'
-        return page.evaluate(code)
-
-    elif action == 'both':
-        code = BOTH_JS.replace('__SPEC_JSON__', spec_json)
-        return page.evaluate(code)
-
-    elif action == 'cold_and_warm':
-        code = COLD_AND_WARM_JS.replace('__SPEC_JSON__', spec_json)
-        return page.evaluate(code)
-
-    elif action == 'matrix':
-        code = MATRIX_JS.replace('__SPEC_JSON__', spec_json)
-        return page.evaluate(code)
-
-    elif action == 'dispose':
-        return page.evaluate('() => window.__ASR_HARNESS__.disposeAll()')
-
-    else:
-        raise ValueError(f'Unknown action: {action}')
 
 def oneshot(harness_url, action, spec, timeout_ms=180000):
     with sync_playwright() as p:
@@ -248,39 +44,43 @@ def oneshot(harness_url, action, spec, timeout_ms=180000):
             headless=True,
             args=CHROME_WEBGPU_ARGS
         )
-        version = browser.version
-        context = browser.new_context()
-        page = context.new_page()
-        page.on('console', log_console)
-        page.on('pageerror', log_pageerror)
+        try:
+            version = browser.version
+            context = browser.new_context()
+            page = context.new_page()
+            page.on('console', log_console)
+            page.on('pageerror', log_pageerror)
+            page.on('requestfailed', lambda request: print(f'[browser request failed] {request.url}: {request.failure}', file=sys.stderr, flush=True))
 
-        print(f'[Bridge] Navigating to {harness_url}...', flush=True)
-        page.goto(harness_url, timeout=60000)
+            print(f'[Bridge] Navigating to {harness_url}...', flush=True)
+            page.goto(harness_url, timeout=60000)
 
-        result = run_in_page(page, action, spec)
-        if isinstance(result, dict):
-            result['browser_version'] = version
+            result = run_in_page(page, action, spec)
+            if isinstance(result, dict):
+                result['browser_version'] = version
 
-        browser.close()
-        return result
+            return result
+        finally:
+            browser.close()
+
 
 def connect_cdp(cdp_url, harness_url, action, spec, timeout_ms=180000):
     with sync_playwright() as p:
         print(f'[Bridge] Connecting over CDP to {cdp_url}...', flush=True)
         browser = p.chromium.connect_over_cdp(cdp_url)
         context = browser.contexts[0] if browser.contexts else browser.new_context()
-        
+
         # Look for existing harness page
         target_page = None
         for page in context.pages:
-            if '/harness.html' in page.url or '127.0.0.1' in page.url:
+            if page.url == harness_url:
                 target_page = page
                 break
-        
+
         if not target_page:
             target_page = context.new_page()
             target_page.goto(harness_url, timeout=60000)
-            
+
         target_page.on('console', log_console)
         target_page.on('pageerror', log_pageerror)
 

@@ -12,32 +12,11 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createHarnessServer } from './server.mjs';
+import { JFK_ORACLE, validateOracle, verifyRuns, verificationExitCode } from './verification.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-
-const JFK_GROUND_TRUTH = 'And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.';
-
-function normalizeText(text) {
-  return String(text || '')
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-}
-
-function matchesJfkTranscript(actual) {
-  const normActual = normalizeText(actual);
-  const normExpected = normalizeText(JFK_GROUND_TRUTH);
-  if (!normActual) return false;
-  // Direct match or substring overlap for smoke verification
-  if (normActual === normExpected) return true;
-  // Key phrases check
-  const hasFellowAmericans = normActual.includes('fellow americans');
-  const hasAsk = normActual.includes('ask not') || normActual.includes('askk not') || normActual.includes('ask');
-  const hasCountry = normActual.includes('country');
-  return hasFellowAmericans && hasAsk && hasCountry;
-}
 
 async function isCdpAvailable(port) {
   try {
@@ -59,8 +38,7 @@ async function isServerAvailable(port) {
   }
 }
 
-function parseCliArgs() {
-  const args = process.argv.slice(2);
+export function parseCliArgs(args = process.argv.slice(2)) {
   const options = {
     port: 8999,
     cdpPort: 9223,
@@ -77,6 +55,7 @@ function parseCliArgs() {
     mode: 'both',
     chunkMs: 160,
     expectJfk: false,
+    oraclePath: null,
     warmRerun: true,
     matrix: false,
     localDirs: null,
@@ -86,17 +65,20 @@ function parseCliArgs() {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
+    const flags = ['--start-daemon', '--daemon', '--probe', '--catalog', '--matrix', '--expect-jfk', '--no-warm-rerun', '--warm-rerun'];
+    if (!flags.includes(arg) && (!args[i + 1] || args[i + 1].startsWith('--'))) throw new Error(`Missing value: ${arg}`);
     if (arg === '--start-daemon') options.startDaemon = true;
     else if (arg === '--daemon') options.daemon = true;
     else if (arg === '--probe') options.probe = true;
     else if (arg === '--catalog') options.catalog = true;
     else if (arg === '--matrix') options.matrix = true;
     else if (arg === '--local-dirs' && args[i + 1]) options.localDirs = args[++i].split(',').map((s) => s.trim()).filter(Boolean);
+    else if (arg === '--oracle' && args[i + 1]) options.oraclePath = args[++i];
     else if (arg === '--expect-jfk') options.expectJfk = true;
     else if (arg === '--no-warm-rerun') options.warmRerun = false;
     else if (arg === '--warm-rerun') options.warmRerun = true;
-    else if (arg === '--port' && args[i + 1]) options.port = parseInt(args[++i], 10);
-    else if (arg === '--cdp-port' && args[i + 1]) options.cdpPort = parseInt(args[++i], 10);
+    else if (arg === '--port' && args[i + 1]) options.port = Number(args[++i]);
+    else if (arg === '--cdp-port' && args[i + 1]) options.cdpPort = Number(args[++i]);
     else if (arg === '--local-dir' && args[i + 1]) options.localDir = args[++i];
     else if (arg === '--model-id' && args[i + 1]) options.modelId = args[++i];
     else if (arg === '--preset' && args[i + 1]) options.preset = args[++i];
@@ -104,9 +86,10 @@ function parseCliArgs() {
     else if (arg === '--backend' && args[i + 1]) options.backend = args[++i];
     else if (arg === '--fixture' && args[i + 1]) options.fixture = args[++i];
     else if (arg === '--mode' && args[i + 1]) options.mode = args[++i];
-    else if (arg === '--chunk-ms' && args[i + 1]) options.chunkMs = parseInt(args[++i], 10);
+    else if (arg === '--chunk-ms' && args[i + 1]) options.chunkMs = Number(args[++i]);
     else if (arg === '--out' && args[i + 1]) options.out = args[++i];
-    else if (arg === '--timeout-ms' && args[i + 1]) options.timeoutMs = parseInt(args[++i], 10);
+    else if (arg === '--timeout-ms' && args[i + 1]) options.timeoutMs = Number(args[++i]);
+    else throw new Error(`Unknown option or missing value: ${arg}`);
   }
 
   if (options.matrix && !options.localDirs) {
@@ -117,10 +100,20 @@ function parseCliArgs() {
     ];
   }
 
+  if (!['offline', 'streaming', 'both'].includes(options.mode)) throw new Error('Invalid --mode');
+  if (!['wasm', 'webgpu', 'webgpu-hybrid'].includes(options.backend)) throw new Error('Invalid --backend');
+  for (const key of ['port', 'cdpPort', 'chunkMs', 'timeoutMs']) {
+    if (!Number.isSafeInteger(options[key]) || options[key] <= 0) throw new Error(`Invalid ${key}: expected a positive integer`);
+  }
+  if (options.port > 65535 || options.cdpPort > 65535) throw new Error('Port exceeds 65535');
+  if (options.localDirs && options.localDirs.length === 0) throw new Error('Empty --local-dirs');
+  if (options.expectJfk && options.oraclePath) throw new Error('Use either --expect-jfk or --oracle');
+  options.oracle = options.expectJfk ? JFK_ORACLE : options.oraclePath
+    ? validateOracle(JSON.parse(fs.readFileSync(options.oraclePath, 'utf8'))) : null;
   return options;
 }
 
-function runBridge(mode, targetUrl, action, spec, harnessUrl = null) {
+export function runBridge(mode, targetUrl, action, spec, harnessUrl = null, timeoutMs = 180000) {
   return new Promise((resolve, reject) => {
     const bridgePath = path.join(__dirname, 'bridge.py');
     const bridgeArgs = [
@@ -128,13 +121,18 @@ function runBridge(mode, targetUrl, action, spec, harnessUrl = null) {
       mode,
       targetUrl,
       action,
-      JSON.stringify(spec),
+      JSON.stringify({ ...spec, timeoutMs }),
     ];
     if (harnessUrl) {
       bridgeArgs.push(harnessUrl);
     }
 
     const py = spawn('python', ['-u', ...bridgeArgs]);
+    const timer = setTimeout(() => {
+      py.kill();
+      reject(new Error(`Bridge action timed out after ${timeoutMs}ms`));
+    }, timeoutMs + 2000); // Allow the browser-side timeout to close the owned browser first.
+    py.once('error', (error) => { clearTimeout(timer); reject(error); });
     let stdout = '';
     let stderr = '';
 
@@ -151,6 +149,7 @@ function runBridge(mode, targetUrl, action, spec, harnessUrl = null) {
     });
 
     py.on('close', (code) => {
+      clearTimeout(timer);
       if (code !== 0) {
         reject(new Error(`Bridge execution failed with exit code ${code}:\n${stderr}`));
         return;
@@ -291,6 +290,9 @@ async function main() {
     fixture: options.fixture,
     chunkMs: options.chunkMs,
     forceReload: true,
+    mode: options.mode,
+    oracle: options.oracle,
+    warmRerun: options.warmRerun,
   };
 
   if (!spec.localFolder && !spec.modelId && !spec.preset && !spec.family) {
@@ -305,7 +307,7 @@ async function main() {
 
     if (options.probe) {
       console.log(`[Harness] Probing WebGPU capabilities in real browser...`);
-      const probeResult = await runBridge(runnerMode, targetUrl, 'probe', {}, harnessUrl);
+      const probeResult = await runBridge(runnerMode, targetUrl, 'probe', {}, harnessUrl, options.timeoutMs);
       console.log(`\n=== WebGPU Probe Results ===`);
       console.log(JSON.stringify(probeResult, null, 2));
       return;
@@ -313,7 +315,7 @@ async function main() {
 
     if (options.catalog) {
       console.log(`[Harness] Querying speech recognition catalog in real browser...`);
-      const catalogResult = await runBridge(runnerMode, targetUrl, 'catalog', {}, harnessUrl);
+      const catalogResult = await runBridge(runnerMode, targetUrl, 'catalog', {}, harnessUrl, options.timeoutMs);
       console.log(`\n=== Catalog Speech Models (${catalogResult.models?.length || 0}) ===`);
       for (const m of catalogResult.models || []) {
         console.log(`  - ${m.modelId.padEnd(42)} [${m.preset || m.classification?.family}] (${m.displayName || ''})`);
@@ -325,140 +327,33 @@ async function main() {
       return;
     }
 
-    if (options.localDirs && options.localDirs.length > 0) {
-      console.log(`\n================================================================`);
-      console.log(`🚀 Executing WebGPU Test Matrix (${options.localDirs.length} models in single browser session)`);
-      console.log(`================================================================`);
-      for (const d of options.localDirs) {
-        console.log(`  - ${d}`);
+    const requested = { ...spec };
+    let receipt;
+    try {
+      if (options.localDirs) {
+        receipt = await runBridge(runnerMode, targetUrl, 'matrix',
+          { ...spec, dirs: options.localDirs }, harnessUrl, options.timeoutMs);
+      } else {
+        const pair = await runBridge(runnerMode, targetUrl, 'cold_and_warm', spec, harnessUrl, options.timeoutMs);
+        const verification = verifyRuns(pair.cold, pair.warm, spec);
+        receipt = {
+          schema: 'asrjs.browser-verification.v2', status: verification.status,
+          scope: 'public-api-execution-and-normalized-text', requested,
+          browser_version: pair.browser_version,
+          runs: { cold: pair.cold, warm: pair.warm }, verification,
+          timestamp: new Date().toISOString(),
+        };
       }
-
-      const matrixSpec = {
-        dirs: options.localDirs,
-        backend: options.backend,
-        fixture: options.fixture,
-        mode: options.mode,
+    } catch (error) {
+      receipt = {
+        schema: 'asrjs.browser-verification.v2', status: 'FAIL', requested,
+        error: String(error.message ?? error), timestamp: new Date().toISOString(),
       };
-
-      const matrixResult = await runBridge(runnerMode, targetUrl, 'matrix', matrixSpec, harnessUrl);
-
-      console.log(`\n================================================================`);
-      console.log(`📊 WebGPU Matrix Benchmark Results`);
-      console.log(`================================================================\n`);
-
-      console.log(`| Model | Cold Load (ms) | Warm Load (ms) | Offline Inference (ms) | RTFx | Transcript Preview |`);
-      console.log(`| :--- | :---: | :---: | :---: | :---: | :--- |`);
-
-      for (const item of matrixResult.results || []) {
-        const folderName = item.folder.split('/').pop();
-        if (item.status === 'PASS' && item.metrics) {
-          const coldL = `${item.metrics.coldLoadMs.toFixed(1)}`;
-          const warmL = `${item.metrics.warmLoadMs.toFixed(1)}${item.metrics.warmLoadMs === 0 ? ' (reused)' : ''}`;
-          const inf = `${item.metrics.warmInferenceMs.toFixed(1)}`;
-          const rtfx = `${item.metrics.rtfx.toFixed(1)}x`;
-          const preview = (item.transcript || '').replace(/\s+/g, ' ').substring(0, 45) + '...';
-          console.log(`| \`${folderName}\` | ${coldL} | ${warmL} | ${inf} | ${rtfx} | "${preview}" |`);
-        } else {
-          const errPreview = (item.error || 'Unknown error').replace(/\r?\n/g, ' ').substring(0, 45) + '...';
-          console.log(`| \`${folderName}\` | FAIL | FAIL | FAIL | FAIL | *${errPreview}* |`);
-        }
-      }
-
-      const outPath = path.resolve(REPO_ROOT, options.out || 'tools/data/results/canonical/webgpu-matrix-verify.json');
-      fs.mkdirSync(path.dirname(outPath), { recursive: true });
-      fs.writeFileSync(outPath, JSON.stringify(matrixResult, null, 2) + '\n', 'utf-8');
-      console.log(`\n[Receipt] Matrix verification receipt written to:\n  ${outPath}`);
-      return;
     }
-
-    let coldReceipt = null;
-    let warmReceipt = null;
-
-    if (options.warmRerun) {
-      console.log(`\n--- Executing Benchmark Pipeline (Cold Load + Warm Cached In-Memory Re-Run) ---`);
-      const combined = await runBridge(runnerMode, targetUrl, 'cold_and_warm', { ...spec, mode: options.mode }, harnessUrl);
-      coldReceipt = combined.cold;
-      warmReceipt = combined.warm;
-      if (combined.browser_version) {
-        coldReceipt.browser_version = combined.browser_version;
-        warmReceipt.browser_version = combined.browser_version;
-      }
-
-      console.log(`\n[Cold Run Complete]`);
-      const coldMetrics = coldReceipt.mode === 'both' ? coldReceipt.offline.metrics : coldReceipt.metrics;
-      console.log(`  Load Time:      ${coldMetrics.loadMs} ms`);
-      console.log(`  Inference Time: ${coldMetrics.inferenceMs ?? coldMetrics.offlineInferenceMs ?? 0} ms`);
-      console.log(`  RTFX:           ${coldMetrics.rtfx ?? coldMetrics.offlineRtfx ?? 0}x real-time`);
-      console.log(`  GPU Dispatches: ${coldMetrics.gpuDispatches ?? coldMetrics.totalGpuDispatches ?? 0}`);
-      console.log(`  Transcript:     "${coldReceipt.transcript}"`);
-
-      console.log(`\n[Warm Re-Run Complete] (Reused In-Memory WebGPU/WASM Session)`);
-      const warmMetrics = warmReceipt.mode === 'both' ? warmReceipt.offline.metrics : warmReceipt.metrics;
-      console.log(`  Load Time:      ${warmMetrics.loadMs} ms ${warmMetrics.loadMs === 0 ? '(✅ CACHED SESSION REUSED - 0ms)' : ''}`);
-      console.log(`  Inference Time: ${warmMetrics.inferenceMs ?? warmMetrics.offlineInferenceMs ?? 0} ms`);
-      console.log(`  RTFX:           ${warmMetrics.rtfx ?? warmMetrics.offlineRtfx ?? 0}x real-time`);
-      console.log(`  GPU Dispatches: ${warmMetrics.gpuDispatches ?? warmMetrics.totalGpuDispatches ?? 0}`);
-      console.log(`  Transcript:     "${warmReceipt.transcript}"`);
-    } else {
-      console.log(`\n--- Executing Benchmark (Single Run: ${options.mode}) ---`);
-      coldReceipt = await runBridge(runnerMode, targetUrl, options.mode, spec, harnessUrl);
-      console.log(`\n[Run Complete]`);
-      const coldMetrics = coldReceipt.mode === 'both' ? coldReceipt.offline.metrics : coldReceipt.metrics;
-      console.log(`  Load Time:      ${coldMetrics.loadMs} ms`);
-      console.log(`  Inference Time: ${coldMetrics.inferenceMs ?? coldMetrics.offlineInferenceMs ?? 0} ms`);
-      console.log(`  RTFX:           ${coldMetrics.rtfx ?? coldMetrics.offlineRtfx ?? 0}x real-time`);
-      console.log(`  GPU Dispatches: ${coldMetrics.gpuDispatches ?? coldMetrics.totalGpuDispatches ?? 0}`);
-      console.log(`  Transcript:     "${coldReceipt.transcript}"`);
-    }
-
-    // Oracle Verification
-    let matchExpected = null;
-    if (options.expectJfk) {
-      const actualTranscript = warmReceipt ? warmReceipt.transcript : coldReceipt.transcript;
-      matchExpected = matchesJfkTranscript(actualTranscript);
-      console.log(`\n--- Oracle Transcript Verification (JFK Ground Truth) ---`);
-      console.log(`  Expected: "${JFK_GROUND_TRUTH}"`);
-      console.log(`  Actual:   "${actualTranscript}"`);
-      console.log(`  Match:    ${matchExpected ? '✅ PASS' : '❌ FAIL'}`);
-      if (!matchExpected) {
-        throw new Error(`Oracle verification failed! Transcript does not match JFK ground truth.`);
-      }
-    }
-
-    // Compose final canonical verification receipt
-    const canonicalReceipt = {
-      schema: 'asrjs.browser-webgpu.v1',
-      status: 'PASS',
-      scope: 'real-headless-chrome-webgpu-harness-verified',
-      model: {
-        modelId: coldReceipt.modelId || spec.modelId,
-        localFolder: spec.localFolder || null,
-        backendId: coldReceipt.backendId || spec.backend,
-      },
-      browser_version: coldReceipt.browser_version,
-      adapter: coldReceipt.adapter,
-      limits: coldReceipt.limits,
-      audio: coldReceipt.offline?.audio || coldReceipt.audio,
-      runs: {
-        cold: coldReceipt,
-        warm: warmReceipt,
-      },
-      verification: {
-        warmSessionReused: warmReceipt ? (warmReceipt.cached || warmReceipt.offline?.cached || (warmReceipt.mode === 'both' ? warmReceipt.offline.metrics.loadMs === 0 : warmReceipt.metrics.loadMs === 0)) : false,
-        expectJfk: options.expectJfk,
-        matchExpected: matchExpected ?? true,
-      },
-      timestamp: new Date().toISOString(),
-    };
-
-    if (options.out) {
-      const outPath = path.resolve(REPO_ROOT, options.out);
-      fs.mkdirSync(path.dirname(outPath), { recursive: true });
-      fs.writeFileSync(outPath, JSON.stringify(canonicalReceipt, null, 2) + '\n', 'utf-8');
-      console.log(`\n[Receipt] Canonical verification receipt written to:\n  ${outPath}`);
-    }
-
-    console.log(`\n✨ Benchmark & Verification PASSED Successfully!`);
+    const outPath = writeReceipt(receipt, options.out);
+    console.log(`\n[Verification] ${receipt.status}. Receipt: ${outPath}`);
+    for (const item of receipt.results ?? []) console.log(`  ${item.status}: ${item.folder} ${item.error ?? ''}`);
+    process.exitCode = verificationExitCode(receipt.status);
   } finally {
     if (localServer) {
       localServer.close();
@@ -466,7 +361,17 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('\n[Error] CLI Execution Failed:', err);
-  process.exit(1);
-});
+export function writeReceipt(receipt, destination) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const outPath = path.resolve(REPO_ROOT, destination || `tools/data/results/browser-harness/${stamp}.json`);
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, JSON.stringify(receipt, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' });
+  return outPath;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().catch((err) => {
+    console.error('\n[Error] CLI Execution Failed:', err);
+    process.exitCode = 1;
+  });
+}
