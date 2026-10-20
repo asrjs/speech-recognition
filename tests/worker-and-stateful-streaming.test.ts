@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const mockLoadSpeechModel = vi.fn();
 vi.mock('../src/runtime/load.js', () => ({
@@ -8,11 +8,9 @@ vi.mock('../src/runtime/load.js', () => ({
 import * as workerEntry from '../src/worker.js';
 import {
   createBrowserTranscriptionWorkerClient,
-  type BrowserTranscriptionWorkerClient,
 } from '../src/runtime/browser-transcription-worker.js';
 import {
   NemotronStreamingTranscriber,
-  type NemotronStreamingTranscriberOptions,
 } from '../src/models/nemotron-rnnt/streaming-transcriber.js';
 import {
   createBrowserRealtimeMicrophoneController,
@@ -21,7 +19,6 @@ import {
 } from '../src/runtime/browser-controller.js';
 import type {
   PartialTranscript,
-  StreamingSessionOptions,
   StreamingTranscriber,
   TranscriptResult,
 } from '../src/types/index.js';
@@ -341,7 +338,7 @@ describe('worker-and-stateful-streaming suite', () => {
   describe('2. NemotronStreamingTranscriber (pushAudio, onPartial, finalize, reset, cancel, dispose)', () => {
     function createMockSession() {
       let callCount = 0;
-      const transcribe = vi.fn(async (input: any, options: any) => {
+      const transcribe = vi.fn(async (input: any, _options: any) => {
         callCount += 1;
         const pcm = input instanceof Float32Array ? input : input.channels?.[0] ?? new Float32Array(0);
         const text = `chunk-${callCount}`;
@@ -579,7 +576,7 @@ describe('worker-and-stateful-streaming suite', () => {
     }
 
     it('feeds chunks to streamingTranscriber during speech and finalizes on silence (segment-ready)', async () => {
-      let captureOnChunk!: (chunk: any) => void;
+      let _captureOnChunk!: (chunk: any) => void;
       const stopCapture = vi.fn(async () => undefined);
 
       const pushedChunks: Float32Array[] = [];
@@ -638,7 +635,7 @@ describe('worker-and-stateful-streaming suite', () => {
         createStarter: () => starter,
         createMonitor: createMockMonitor,
         startCapture: async (opts) => {
-          captureOnChunk = opts.onChunk;
+          _captureOnChunk = opts.onChunk;
           return {
             sampleRate: 16000,
             deviceSampleRate: 16000,
@@ -657,7 +654,7 @@ describe('worker-and-stateful-streaming suite', () => {
       vi.mocked(mockTranscriber.reset).mockClear();
       // 1. Silence chunk: speech is not active yet, so streamingTranscriber.pushAudio is NOT called
       const silenceChunk = new Float32Array([0.01, 0.02]);
-      captureOnChunk({ pcm: silenceChunk, sampleRate: 16000, startFrame: 0, endFrame: 2 });
+      _captureOnChunk({ pcm: silenceChunk, sampleRate: 16000, startFrame: 0, endFrame: 2 });
       await new Promise((r) => setTimeout(r, 20));
       expect(mockTranscriber.pushAudio).not.toHaveBeenCalled();
 
@@ -666,10 +663,10 @@ describe('worker-and-stateful-streaming suite', () => {
 
       // 3. Speech chunks arrive during speech
       const speechChunk1 = new Float32Array([0.5, 0.6, 0.7]);
-      captureOnChunk({ pcm: speechChunk1, sampleRate: 16000, startFrame: 2, endFrame: 5 });
+      _captureOnChunk({ pcm: speechChunk1, sampleRate: 16000, startFrame: 2, endFrame: 5 });
 
       const speechChunk2 = new Float32Array([0.8, 0.9, 1.0]);
-      captureOnChunk({ pcm: speechChunk2, sampleRate: 16000, startFrame: 5, endFrame: 8 });
+      _captureOnChunk({ pcm: speechChunk2, sampleRate: 16000, startFrame: 5, endFrame: 8 });
 
       await vi.waitFor(() => expect(partialsEmitted.length).toBe(2));
       expect(partialsEmitted[0]?.text).toBe('partial-1');
@@ -705,7 +702,7 @@ describe('worker-and-stateful-streaming suite', () => {
     });
 
     it('falls back to transcribeMonoPcm when streamingTranscriber is not provided', async () => {
-      let captureOnChunk!: (chunk: any) => void;
+      let _captureOnChunk!: (chunk: any) => void;
       const transcribeMonoPcm = vi.fn(async () => ({ text: 'fallback' }));
       const { starter, listeners } = createMockStarter();
 
@@ -715,7 +712,7 @@ describe('worker-and-stateful-streaming suite', () => {
         createStarter: () => starter,
         createMonitor: createMockMonitor,
         startCapture: async (opts) => {
-          captureOnChunk = opts.onChunk;
+          _captureOnChunk = opts.onChunk;
           return {
             sampleRate: 16000,
             deviceSampleRate: 16000,

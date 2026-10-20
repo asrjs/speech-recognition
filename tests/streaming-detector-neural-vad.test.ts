@@ -363,7 +363,7 @@ describe('StreamingSpeechDetector Neural VAD & Honest Controller', () => {
         micMode: 'speech-detect',
         createStarter: () => starter as any,
         createMonitor: () => ({ subscribe: () => () => undefined, getSnapshot: () => null, flush: vi.fn(), dispose: vi.fn() }) as any,
-        startCapture: async (options) => ({
+        startCapture: async ( _options ) => ({
           sampleRate: 16000,
           deviceSampleRate: null,
           contextSampleRate: 16000,
