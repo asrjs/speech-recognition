@@ -14,6 +14,7 @@ export default defineConfig({
         find: /^asr\.js\/browser\/media$/,
         replacement: resolve(__dirname, 'src/browser-media.ts'),
       },
+      { find: /^asr\.js\/worker$/, replacement: resolve(__dirname, 'src/worker.ts') },
       { find: /^asr\.js\/realtime$/, replacement: resolve(__dirname, 'src/realtime.ts') },
       { find: /^asr\.js\/bench$/, replacement: resolve(__dirname, 'src/bench.ts') },
       {
@@ -31,6 +32,14 @@ export default defineConfig({
       { find: /^asr\.js\/pipeline$/, replacement: resolve(__dirname, 'src/pipeline.ts') },
       { find: /^asr\.js\/presets$/, replacement: resolve(__dirname, 'src/presets/index.ts') },
       { find: /^asr\.js\/tokenizers$/, replacement: resolve(__dirname, 'src/tokenizers.ts') },
+      {
+        find: /^asr\.js\/models\/whisper-seq2seq$/,
+        replacement: resolve(__dirname, 'src/models/whisper-seq2seq/index.ts'),
+      },
+      {
+        find: /^asr\.js\/models\/gigaam-rnnt$/,
+        replacement: resolve(__dirname, 'src/models/gigaam-rnnt/index.ts'),
+      },
       { find: /^asr\.js\/models\/(.+)$/, replacement: resolve(__dirname, 'src/models/$1.ts') },
       { find: /^asr\.js\/presets\/(.+)$/, replacement: resolve(__dirname, 'src/presets/$1.ts') },
       { find: /^@asrjs\/speech-recognition$/, replacement: resolve(__dirname, 'src/index.ts') },
@@ -54,6 +63,10 @@ export default defineConfig({
       {
         find: /^@asrjs\/speech-recognition\/browser\/media$/,
         replacement: resolve(__dirname, 'src/browser-media.ts'),
+      },
+      {
+        find: /^@asrjs\/speech-recognition\/worker$/,
+        replacement: resolve(__dirname, 'src/worker.ts'),
       },
       {
         find: /^@asrjs\/speech-recognition\/realtime$/,
@@ -98,6 +111,14 @@ export default defineConfig({
       {
         find: /^@asrjs\/speech-recognition\/tokenizers$/,
         replacement: resolve(__dirname, 'src/tokenizers.ts'),
+      },
+      {
+        find: /^@asrjs\/speech-recognition\/models\/whisper-seq2seq$/,
+        replacement: resolve(__dirname, 'src/models/whisper-seq2seq/index.ts'),
+      },
+      {
+        find: /^@asrjs\/speech-recognition\/models\/gigaam-rnnt$/,
+        replacement: resolve(__dirname, 'src/models/gigaam-rnnt/index.ts'),
       },
       {
         find: /^@asrjs\/speech-recognition\/models\/(.+)$/,
