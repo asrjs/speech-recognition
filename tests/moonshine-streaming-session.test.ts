@@ -51,7 +51,7 @@ function chunkedEncoderMock(calls: ChunkedCall[], emit: number) {
         data[index * 320] = embeddedSoFar + index; // tag: global embedded frame id
       }
       embeddedSoFar += frames;
-      const keep = emit / 4;
+      const _keep = emit / 4;
       calls.push({
         windowAudioFrames: audioFrames,
         contextLen: Number((feeds['context_len'] as FakeTensor).data[0]),
