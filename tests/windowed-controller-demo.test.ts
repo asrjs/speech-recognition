@@ -46,7 +46,7 @@ it('rejects empty or invalid input before inference', async () => {
 it('records immutable local and global timing payloads across nonzero window origins', async () => {
   const originals: any[] = [];
   const result = await runWindowedController({ pcm: new Float32Array(340), sampleRate: 10,
-    transcribe(request) {
+    transcribe(_request) {
       const item = { index: 0, text: `call-${originals.length}.`, startTime: 0.25, endTime: 1 };
       const canonical = { text: item.text, meta: { detailLevel: 'detailed', isFinal: false },
         words: [item], segments: [item], sentences: [item],
