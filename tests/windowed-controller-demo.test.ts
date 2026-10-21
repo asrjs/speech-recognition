@@ -46,7 +46,7 @@ it('rejects empty or invalid input before inference', async () => {
 it('records immutable local and global timing payloads across nonzero window origins', async () => {
   const originals: any[] = [];
   const result = await runWindowedController({ pcm: new Float32Array(340), sampleRate: 10,
-    transcribe(request) {
+    transcribe(_request) {
       const item = { index: 0, text: `call-${originals.length}.`, startTime: 0.25, endTime: 1 };
       const canonical = { text: item.text, meta: { detailLevel: 'detailed', isFinal: false },
         words: [item], segments: [item], sentences: [item],
@@ -76,10 +76,10 @@ it('records immutable local and global timing payloads across nonzero window ori
 
 it('does not attribute a finalization-only update to the previous inference', async () => {
   const result = await runWindowedController({ pcm: new Float32Array(40), sampleRate: 10,
-    transcribe(request) {
+    transcribe(_request) {
       // A single sentence stays pending; two sentences advance the mature cursor
       // and leave less than the minimum window for finalize (no new inference).
-      const duration = request.pcm.length / request.sampleRate;
+      const duration = _request.pcm.length / _request.sampleRate;
       const words = ['one', 'two', 'three.', 'tail'].map((text, index) => ({ index, text,
         startTime: 0, endTime: index < 3 ? duration - 0.5 : duration }));
       return { text: 'one two three. tail', meta: { detailLevel: 'detailed', isFinal: false },
