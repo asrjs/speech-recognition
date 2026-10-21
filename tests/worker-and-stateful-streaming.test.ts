@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const mockLoadSpeechModel = vi.fn();
 vi.mock('../src/runtime/load.js', () => ({
@@ -8,11 +8,9 @@ vi.mock('../src/runtime/load.js', () => ({
 import * as workerEntry from '../src/worker.js';
 import {
   createBrowserTranscriptionWorkerClient,
-  type BrowserTranscriptionWorkerClient,
 } from '../src/runtime/browser-transcription-worker.js';
 import {
   NemotronStreamingTranscriber,
-  type NemotronStreamingTranscriberOptions,
 } from '../src/models/nemotron-rnnt/streaming-transcriber.js';
 import {
   createBrowserRealtimeMicrophoneController,
@@ -21,7 +19,6 @@ import {
 } from '../src/runtime/browser-controller.js';
 import type {
   PartialTranscript,
-  StreamingSessionOptions,
   StreamingTranscriber,
   TranscriptResult,
 } from '../src/types/index.js';
@@ -341,7 +338,7 @@ describe('worker-and-stateful-streaming suite', () => {
   describe('2. NemotronStreamingTranscriber (pushAudio, onPartial, finalize, reset, cancel, dispose)', () => {
     function createMockSession() {
       let callCount = 0;
-      const transcribe = vi.fn(async (input: any, options: any) => {
+      const transcribe = vi.fn(async (input: any, _options: any) => {
         callCount += 1;
         const pcm = input instanceof Float32Array ? input : input.channels?.[0] ?? new Float32Array(0);
         const text = `chunk-${callCount}`;
@@ -705,7 +702,6 @@ describe('worker-and-stateful-streaming suite', () => {
     });
 
     it('falls back to transcribeMonoPcm when streamingTranscriber is not provided', async () => {
-      let captureOnChunk!: (chunk: any) => void;
       const transcribeMonoPcm = vi.fn(async () => ({ text: 'fallback' }));
       const { starter, listeners } = createMockStarter();
 
@@ -714,18 +710,15 @@ describe('worker-and-stateful-streaming suite', () => {
         transcribeMonoPcm,
         createStarter: () => starter,
         createMonitor: createMockMonitor,
-        startCapture: async (opts) => {
-          captureOnChunk = opts.onChunk;
-          return {
-            sampleRate: 16000,
-            deviceSampleRate: 16000,
-            contextSampleRate: 16000,
-            chunkFrames: 256,
-            chunkDurationMs: 16,
-            stream: { getAudioTracks: () => [] } as any,
-            stop: async () => undefined,
-          };
-        },
+        startCapture: async () => ({
+          sampleRate: 16000,
+          deviceSampleRate: 16000,
+          contextSampleRate: 16000,
+          chunkFrames: 256,
+          chunkDurationMs: 16,
+          stream: { getAudioTracks: () => [] } as any,
+          stop: async () => undefined,
+        }),
       });
 
       await controller.start();
