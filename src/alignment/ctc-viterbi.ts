@@ -351,8 +351,8 @@ function attachTokenSpans(
   return frames.map((frame, index) => {
     const next = index + 1 < frames.length ? frames[index + 1] : undefined;
     const nextStart = next ? next.frame : frameCount;
-    // Letters inside a word occupy frames until the next letter. Do not
-    // let the last letter absorb silence up to a following word separator.
+    // Letters inside a word occupy frames until the next letter. Prevent
+    // the final letter from absorbing silence up to a following word separator.
     // The final token still occupies frames through the end of the clip.
     const absorbUntilNext = next === undefined || !isAlignmentSeparator(next.char);
     const rawEndFrame = absorbUntilNext
