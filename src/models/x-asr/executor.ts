@@ -607,7 +607,7 @@ export class OrtXAsrExecutor implements XAsrExecutor {
         releaseOrtSession(loaded.encoder);
         releaseOrtSession(loaded.decoder);
         releaseOrtSession(loaded.joiner);
-      } catch {
+      } catch (_error) {
         // Keep the original load error; still drop asset handles.
       }
     }
