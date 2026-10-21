@@ -227,10 +227,12 @@ function handleUpdateConfig(id: number, config: TenVadUpdateConfigPayload) {
 }
 
 function handleDispose(id: number) {
-  if (moduleInstance && vadHandle) {
-    const destroyStatus = moduleInstance._ten_vad_destroy(handlePtr);
-    if (destroyStatus !== 0) {
-      throw new Error(`ten_vad_destroy failed with code ${destroyStatus}`);
+  if (moduleInstance) {
+    if (vadHandle) {
+      const destroyStatus = moduleInstance._ten_vad_destroy(handlePtr);
+      if (destroyStatus !== 0) {
+        throw new Error(`ten_vad_destroy failed with code ${destroyStatus}`);
+      }
     }
     moduleInstance._free(audioPtr);
     moduleInstance._free(probPtr);
