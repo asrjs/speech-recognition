@@ -39,7 +39,7 @@ interface ChunkedCall {
 }
 
 /** Chunked encoder mock: hidden frames are tagged with their global embedded index. */
-function chunkedEncoderMock(calls: ChunkedCall[], emit: number) {
+function chunkedEncoderMock(calls: ChunkedCall[], _emit: number) {
   let embeddedSoFar = 0;
   return {
     run: vi.fn(async (feeds: Record<string, unknown>) => {
@@ -51,7 +51,6 @@ function chunkedEncoderMock(calls: ChunkedCall[], emit: number) {
         data[index * 320] = embeddedSoFar + index; // tag: global embedded frame id
       }
       embeddedSoFar += frames;
-      const keep = emit / 4;
       calls.push({
         windowAudioFrames: audioFrames,
         contextLen: Number((feeds['context_len'] as FakeTensor).data[0]),
