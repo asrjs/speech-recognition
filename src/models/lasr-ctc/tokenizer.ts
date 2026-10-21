@@ -72,7 +72,7 @@ export class MedAsrTextTokenizer implements TextTokenizer {
     let resolvedBlankId = -1;
     let resolvedBlankToken = '<epsilon>';
     for (const candidate of BLANK_TOKEN_CANDIDATES) {
-      const candidateId = idToToken.findIndex((token) => token === candidate);
+      const candidateId = idToToken.indexOf(candidate);
       if (candidateId >= 0) {
         resolvedBlankId = candidateId;
         resolvedBlankToken = candidate;
