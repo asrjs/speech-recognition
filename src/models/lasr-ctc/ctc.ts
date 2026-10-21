@@ -8,7 +8,6 @@
  *
  * New code should import directly from '../../ctc/index.js' instead.
  *
- * @deprecated Import from 'src/ctc/' instead.
  * @module models/lasr-ctc/ctc
  */
 
