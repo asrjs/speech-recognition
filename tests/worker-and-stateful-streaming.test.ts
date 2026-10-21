@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const mockLoadSpeechModel = vi.fn();
 vi.mock('../src/runtime/load.js', () => ({
@@ -8,11 +8,9 @@ vi.mock('../src/runtime/load.js', () => ({
 import * as workerEntry from '../src/worker.js';
 import {
   createBrowserTranscriptionWorkerClient,
-  type BrowserTranscriptionWorkerClient,
 } from '../src/runtime/browser-transcription-worker.js';
 import {
   NemotronStreamingTranscriber,
-  type NemotronStreamingTranscriberOptions,
 } from '../src/models/nemotron-rnnt/streaming-transcriber.js';
 import {
   createBrowserRealtimeMicrophoneController,
@@ -21,7 +19,6 @@ import {
 } from '../src/runtime/browser-controller.js';
 import type {
   PartialTranscript,
-  StreamingSessionOptions,
   StreamingTranscriber,
   TranscriptResult,
 } from '../src/types/index.js';
@@ -341,7 +338,7 @@ describe('worker-and-stateful-streaming suite', () => {
   describe('2. NemotronStreamingTranscriber (pushAudio, onPartial, finalize, reset, cancel, dispose)', () => {
     function createMockSession() {
       let callCount = 0;
-      const transcribe = vi.fn(async (input: any, options: any) => {
+      const transcribe = vi.fn(async (input: any, _options: any) => {
         callCount += 1;
         const pcm = input instanceof Float32Array ? input : input.channels?.[0] ?? new Float32Array(0);
         const text = `chunk-${callCount}`;
@@ -730,11 +727,14 @@ describe('worker-and-stateful-streaming suite', () => {
 
       await controller.start();
 
+      const pcmChunk = new Float32Array([0.1, 0.2]);
+      captureOnChunk({ pcm: pcmChunk, sampleRate: 16000, startFrame: 0, endFrame: 2 });
+
       listeners.forEach((l) =>
         l({
           type: 'segment-ready',
           payload: {
-            readPcm: () => new Float32Array([0.1, 0.2]),
+            readPcm: () => pcmChunk,
             sampleRate: 16000,
             reason: 'silence',
             startFrame: 0,
