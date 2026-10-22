@@ -1,0 +1,14 @@
+npm notice run @asrjs/speech-recognition@0.2.0 npx
+npm notice run vitest run tests/exports.test.ts --reporter=verbose
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ✓ tests/exports.test.ts > public exports > keeps the root API focused on runtime-critical surfaces 466ms
+ ✓ tests/exports.test.ts > public exports > exposes layered helper, model, and preset subpaths 2859ms
+ ✓ tests/exports.test.ts > public exports > root-exports ExperimentalArtifactMissingError with a typed catchable code 1ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  00:04:42
+   Duration  3.66s (transform 2.88s, setup 0ms, import 71ms, tests 3.33s, environment 0ms)
+
