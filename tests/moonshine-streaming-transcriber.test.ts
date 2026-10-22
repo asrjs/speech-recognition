@@ -4,7 +4,7 @@ import type { MoonshineStreamingSessionLike } from '../src/models/moonshine/stre
 
 function fakeSession() {
   let committed = 0;
-  let broken = false;
+  const broken = false;
   const session: MoonshineStreamingSessionLike = {
     get committedEncoderFrames() {
       return committed;
