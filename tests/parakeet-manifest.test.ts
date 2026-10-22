@@ -72,3 +72,10 @@ describe('Parakeet preset manifests', () => {
     expect(resolveParakeetArtifactSource('unknown/model')).toBeUndefined();
   });
 });
+
+it('carries the v3 BDT export layout through preset aliases and factory resolution', async () => {
+  for (const modelId of ['parakeet-tdt-0.6b-v3', 'nvidia/parakeet-tdt-0.6b-v3', 'ysdede/parakeet-tdt-0.6b-v3-onnx']) {
+    const request = await createParakeetPresetFactory().resolveModelRequest({ modelId }, undefined as never);
+    expect(request.options.config).toMatchObject({ encoderOutputLayout: 'bdt' });
+  }
+});

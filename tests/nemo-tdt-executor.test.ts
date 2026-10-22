@@ -8,6 +8,7 @@ import {
   parseNemoTdtConfig,
 } from '../src/models/nemo-tdt/config.js';
 import { OrtNemoTdtExecutor } from '../src/models/nemo-tdt/executor.js';
+import { resolveParakeetPresetManifest } from '../src/presets/parakeet/manifest.js';
 import { ParakeetTokenizer } from '../src/models/nemo-tdt/tokenizer.js';
 import type { OrtModuleLike, OrtSessionLike, OrtTensorLike } from '../src/models/nemo-tdt/ort.js';
 import type { NemoTdtArtifactSource, NemoTdtModelConfig } from '../src/models/nemo-tdt/types.js';
@@ -337,6 +338,23 @@ describe('nemo-tdt Hugging Face artifact materialization', () => {
 });
 
 describe('nemo-tdt executor decode loop', () => {
+  it('uses the v3 export contract for 150 valid frames in a 151-frame output', async () => {
+    const preset = resolveParakeetPresetManifest('parakeet-tdt-0.6b-v3');
+    const harness = createExecutorHarness({
+      config: { ...preset?.config, vocabularySize: 3 },
+      frameCount: 150, featureSize: 1024, paddedFrames: 151, encodedLengths: [150],
+      logits: Array.from({ length: 150 }, () => ({ logits: [10, 0, 0, 0, 10, 0] })),
+    });
+    try {
+      await harness.executor.transcribe(createAudio(), {}, {} as never);
+      expect(harness.decoderSession.encoderFeedDims).toEqual(Array.from({ length: 150 }, () => [1, 1024, 1]));
+      expect(harness.decoderSession.encoderFeedValues).toEqual(Array.from({ length: 150 }, (_, frame) =>
+        Array.from(Float32Array.from({ length: 8 }, (_, feature) => frame + feature / 10))));
+    } finally {
+      await harness.executor.dispose();
+    }
+  });
+
   it.each(['bdt', 'btd'] as const)('uses explicit %s layout for a short padded time axis', async (layout) => {
     const harness = createExecutorHarness({
       config: { encoderOutputLayout: layout }, encoderLayout: layout,

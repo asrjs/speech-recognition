@@ -68,6 +68,8 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
       vocabularySize: 8193,
       languages: ['en', 'fr', 'de', 'es', 'it', 'pt', 'nl', 'pl', 'ru', 'uk', 'ja', 'ko', 'zh'],
       melBins: 128,
+      // v3 ONNX encoder output and decoder input are [batch, 1024, time].
+      encoderOutputLayout: 'bdt',
     },
     source: {
       kind: 'huggingface',
