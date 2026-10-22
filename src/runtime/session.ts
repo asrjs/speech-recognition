@@ -1,4 +1,4 @@
-import { createDefaultAssetProvider } from '../io/index.js';
+import { createDefaultAssetProvider } from '../io/providers.js';
 import {
   isAssetLoadAbortedError,
   throwIfAssetAborted,
@@ -31,7 +31,6 @@ import {
 } from './backend.js';
 import { BackendUnavailableError, CapabilityMismatchError, ModelLoadError } from './errors.js';
 import { createRuntimeHooks } from './logging.js';
-import { disposeOwnedResources } from './owned-session.js';
 
 function familyAllowsBackend(
   family: SpeechModelFactory<any, any, any>,
@@ -360,6 +359,7 @@ export class DefaultSpeechRuntime implements SpeechRuntime {
     const models = [...this.loadedModels];
     this.loadedModels.clear();
 
+    const { disposeOwnedResources } = await import('./owned-session.js');
     await disposeOwnedResources(models);
   }
 
