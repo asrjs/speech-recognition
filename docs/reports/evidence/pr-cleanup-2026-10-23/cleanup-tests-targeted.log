@@ -1,0 +1,13 @@
+npm notice run @asrjs/speech-recognition@0.2.0 npx
+npm notice run vitest run tests/pipeline-whisper-chunking.test.ts tests/pipeline-sentence-segmenter.test.ts tests/io-handles.test.ts
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ✓ tests/pipeline-sentence-segmenter.test.ts (4 tests) 3ms
+ ✓ tests/io-handles.test.ts (24 tests) 53ms
+ ✓ tests/pipeline-whisper-chunking.test.ts (9 tests) 8ms
+
+ Test Files  3 passed (3)
+      Tests  37 passed (37)
+   Start at  00:17:01
+   Duration  823ms (transform 543ms, setup 0ms, import 766ms, tests 64ms, environment 0ms)

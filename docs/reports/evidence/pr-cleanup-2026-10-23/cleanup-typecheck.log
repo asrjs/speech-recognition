@@ -1,0 +1,2 @@
+npm notice run @asrjs/speech-recognition@0.2.0 typecheck
+npm notice run tsc -p tsconfig.json --noEmit && tsc -p tsconfig.examples.json --noEmit

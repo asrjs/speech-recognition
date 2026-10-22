@@ -1,0 +1,578 @@
+[
+  {
+    "headRefOid": "2968c206b5360a79bf996d134a905c589d3668fa",
+    "number": 233,
+    "title": "\ud83e\uddf9 reword comment in ctc-viterbi.ts to avoid false-positive dead code detection",
+    "url": "https://github.com/asrjs/speech-recognition/pull/233",
+    "decision": "REJECT",
+    "reason": "Comment/deprecation/catch-binding changes are cosmetic or remove useful guidance; bundled lint cleanup already landed. No demonstrated runtime defect.",
+    "diffSha256": "53d563428ca1891c7f826196c8cdb3fdd328f476afe103eb11c1507de6c6cf15"
+  },
+  {
+    "headRefOid": "6c90eaa5f17c808c3a95e0c259073fd496cad1e1",
+    "number": 232,
+    "title": "\u26a1 perf(tokenizer): replace findIndex with indexOf in MedAsrTextTokenizer candidate resolution",
+    "url": "https://github.com/asrjs/speech-recognition/pull/232",
+    "decision": "REJECT",
+    "reason": "Optional loop/async/copy cleanup without demonstrated bug or measured benefit. Async-wrapper removal also changes exception collection semantics in general; no need to take mixed stale changes.",
+    "diffSha256": "19c2596a973eb72748d16b3d81cfd0aebfd33ac8f000046507969eec9dec00db"
+  },
+  {
+    "headRefOid": "414cec85e769041aae8337c1dbc48a1e0923eef8",
+    "number": 231,
+    "title": "\ud83e\uddf9 Remove deprecated comment from ctc.ts",
+    "url": "https://github.com/asrjs/speech-recognition/pull/231",
+    "decision": "REJECT",
+    "reason": "Comment/deprecation/catch-binding changes are cosmetic or remove useful guidance; bundled lint cleanup already landed. No demonstrated runtime defect.",
+    "diffSha256": "e76ee00f93bb7188f0a7b202e875d615971d1163731cabd929b5b7911e869ef5"
+  },
+  {
+    "headRefOid": "514820b529e8c00ae2e053b9bcf06de88ebb907b",
+    "number": 230,
+    "title": "\ud83e\uddf9 update empty catch block in x-asr executor",
+    "url": "https://github.com/asrjs/speech-recognition/pull/230",
+    "decision": "REJECT",
+    "reason": "Comment/deprecation/catch-binding changes are cosmetic or remove useful guidance; bundled lint cleanup already landed. No demonstrated runtime defect.",
+    "diffSha256": "6a1ed16cef0f8425143fa49dd3d1c2b3ceb29a3b675a2652eb1a2082030bdf69"
+  },
+  {
+    "headRefOid": "1d4d3bbd303f8c6fbdf2c8d9c69a9951634bca1c",
+    "number": 229,
+    "title": "\ud83e\uddea add edge case tests for whisper chunk planning",
+    "url": "https://github.com/asrjs/speech-recognition/pull/229",
+    "decision": "ADAPT",
+    "reason": "Take only chunk validation/boundary tests, not stale bundled lint edits.",
+    "diffSha256": "83c6a30ec36aef27d059705cfd3f7712418fb184d1eeb21e803091fcfad8f346"
+  },
+  {
+    "headRefOid": "84a377ff9fa2fbad1d24d8d6355a68c6f52b5db8",
+    "number": 228,
+    "title": "Bolt: fix ten-vad-worker memory leak on early destruction",
+    "url": "https://github.com/asrjs/speech-recognition/pull/228",
+    "decision": "INCORPORATED",
+    "reason": "Useful behavior or coverage is on main via PR235/5037c83a. TEN-VAD adaptation preserves pointer ABI and destruction failure checks; no claim of full init-path certification.",
+    "diffSha256": "4c02fb042d9ca82f90a1f030c643796a9419f3ffc4f22cf36677d1b77995418c"
+  },
+  {
+    "headRefOid": "79376151e02597577917b7124cf5a5788e426d2f",
+    "number": 220,
+    "title": "Bolt: fix memory leak in ten-vad worker when initialization fails",
+    "url": "https://github.com/asrjs/speech-recognition/pull/220",
+    "decision": "INCORPORATED",
+    "reason": "Useful behavior or coverage is on main via PR235/5037c83a. TEN-VAD adaptation preserves pointer ABI and destruction failure checks; no claim of full init-path certification.",
+    "diffSha256": "f4f6313e26a25bff304fcd5864bb6e3bc1d913ae587a33633caaf6a60d36ebb4"
+  },
+  {
+    "headRefOid": "450f151a1e4ace6cbb48dd8c71ba46585c413d3d",
+    "number": 219,
+    "title": "\ud83d\udd12 Security Fix: Replace Math.random with crypto.randomUUID in streaming detector",
+    "url": "https://github.com/asrjs/speech-recognition/pull/219",
+    "decision": "REJECT",
+    "reason": "Switches non-security stream IDs to crypto.randomUUID without portable fallback; host/secure-context availability differs.",
+    "diffSha256": "b6bf61ec6c8dd322e04b6df7e7833ae7fd99e6314c980766bf7d82f5a7313e05"
+  },
+  {
+    "headRefOid": "aa79558355d744209ac12dc1c285ce37c9d4b855",
+    "number": 218,
+    "title": "\u26a1 perf: replace redundant Object.keys().find for logits in Whisper executor",
+    "url": "https://github.com/asrjs/speech-recognition/pull/218",
+    "decision": "REJECT",
+    "reason": "for-in also sees inherited enumerable keys, unlike Object.keys; no semantic regression/ownership test or measured benefit.",
+    "diffSha256": "96cc745fb578f81227dc69669a6392230d76d905a5310de9211c371d2bc9eef8"
+  },
+  {
+    "headRefOid": "4bb7bb2e0722372671bb448c583169a07e6b3e13",
+    "number": 217,
+    "title": "test: add compressionRatioGate edge case coverage",
+    "url": "https://github.com/asrjs/speech-recognition/pull/217",
+    "decision": "INCORPORATED",
+    "reason": "Useful behavior or coverage is on main via PR235/5037c83a. TEN-VAD adaptation preserves pointer ABI and destruction failure checks; no claim of full init-path certification.",
+    "diffSha256": "612d395e59b2caf59c57985fc351ee735000b8cba225212b6dfd77ac9195e2b0"
+  },
+  {
+    "headRefOid": "03d139c5cc3001c06ca88993dbf04da8f8947399",
+    "number": 216,
+    "title": "\ud83e\uddf9 resolve unused variable suppression in EnhancedWhisperExecutor",
+    "url": "https://github.com/asrjs/speech-recognition/pull/216",
+    "decision": "REJECT",
+    "reason": "Actually enables prompt-token injection using shared mutable contextBuilder across awaits. Needs per-call state/concurrency and real-model quality proof; not just unused-variable cleanup.",
+    "diffSha256": "f0517b474a2c6d0c60c8a65e13912931d4109dd7c6850c941472b577176efea4"
+  },
+  {
+    "headRefOid": "98855f5e3ffe4a42a36562658ffc0c2f292ab5a8",
+    "number": 215,
+    "title": "\ud83e\uddea test: add edge case tests for normalizePcmInput",
+    "url": "https://github.com/asrjs/speech-recognition/pull/215",
+    "decision": "INCORPORATED",
+    "reason": "Useful behavior or coverage is on main via PR235/5037c83a. TEN-VAD adaptation preserves pointer ABI and destruction failure checks; no claim of full init-path certification.",
+    "diffSha256": "fce062ce74e69b352be0a45a365ac31fdc027eb021502fc9aed4a61e44cbd2a4"
+  },
+  {
+    "headRefOid": "9c045d760b77d2321923e712374ab195f29ca1ab",
+    "number": 214,
+    "title": "\ud83e\uddea test: add edge case test coverage for confidenceFromLogits",
+    "url": "https://github.com/asrjs/speech-recognition/pull/214",
+    "decision": "INCORPORATED",
+    "reason": "Useful behavior or coverage is on main via PR235/5037c83a. TEN-VAD adaptation preserves pointer ABI and destruction failure checks; no claim of full init-path certification.",
+    "diffSha256": "99110dd8bd8eb3a79c52c954322b955abc5124b628ba28d303b1467b90c8dd45"
+  },
+  {
+    "headRefOid": "7634d9344db30c152ddf664d6fcf8442b0241c64",
+    "number": 213,
+    "title": "\ud83e\uddea Add unit tests for estimateSecondsPerOutputFrame",
+    "url": "https://github.com/asrjs/speech-recognition/pull/213",
+    "decision": "INCORPORATED",
+    "reason": "Useful behavior or coverage is on main via PR235/5037c83a. TEN-VAD adaptation preserves pointer ABI and destruction failure checks; no claim of full init-path certification.",
+    "diffSha256": "ec09eec0e6fe1790afa45b00e7ee175cf3e2cbbd15bc88638bf1bdee87459e8f"
+  },
+  {
+    "headRefOid": "1ba2ab6cf5151b4d836bd159a0ed09d0c645b124",
+    "number": 212,
+    "title": "Bolt: Add fast paths to avoid typed-array copies for single chunks",
+    "url": "https://github.com/asrjs/speech-recognition/pull/212",
+    "decision": "REJECT",
+    "reason": "Single-chunk direct return changes internal ownership in browser/VAD helpers. NOT the stream-cache bug; ownership and performance acceptance unverified.",
+    "diffSha256": "ca35fa405300747f60684fd022276520922f7837043e5e748543da344f9c64f9"
+  },
+  {
+    "headRefOid": "20acd07eea323f56e9c7b25aebb6f284ee86d10d",
+    "number": 210,
+    "title": "Bolt: Improve type safety in production pipeline types",
+    "url": "https://github.com/asrjs/speech-recognition/pull/210",
+    "decision": "REJECT",
+    "reason": "Overlapping public output/option type rewrites narrow unknown executor contracts or reshape results without source-derived compatibility evidence.",
+    "diffSha256": "e518e8fc8d596ab312f37ed13765be98f97742f4a85edff75204e1c499c7b3e3"
+  },
+  {
+    "headRefOid": "561fee1dc1f2771b88057b3171b689013d53396c",
+    "number": 208,
+    "title": "Bolt: Fix memory leak in TEN-VAD worker initialization failures",
+    "url": "https://github.com/asrjs/speech-recognition/pull/208",
+    "decision": "INCORPORATED",
+    "reason": "Useful behavior or coverage is on main via PR235/5037c83a. TEN-VAD adaptation preserves pointer ABI and destruction failure checks; no claim of full init-path certification.",
+    "diffSha256": "f4f6313e26a25bff304fcd5864bb6e3bc1d913ae587a33633caaf6a60d36ebb4"
+  },
+  {
+    "headRefOid": "93a064875aa23f6e799ef98d4db5817071f5f3d5",
+    "number": 206,
+    "title": "Bolt: Improve type safety for pipeline transcript words and segments",
+    "url": "https://github.com/asrjs/speech-recognition/pull/206",
+    "decision": "REJECT",
+    "reason": "Overlapping public output/option type rewrites narrow unknown executor contracts or reshape results without source-derived compatibility evidence.",
+    "diffSha256": "e5abdd11f2aa1d21a2012a18a7a4e2965fc36a7f8ffa9fe06d4dcda9af0e2e04"
+  },
+  {
+    "headRefOid": "67892b545516d2a1583f5519b404f013ac4ece1c",
+    "number": 205,
+    "title": "Bolt: fix TEN-VAD worker handleDispose memory leak",
+    "url": "https://github.com/asrjs/speech-recognition/pull/205",
+    "decision": "INCORPORATED",
+    "reason": "Useful behavior or coverage is on main via PR235/5037c83a. TEN-VAD adaptation preserves pointer ABI and destruction failure checks; no claim of full init-path certification.",
+    "diffSha256": "6a91c0500a67a74f19046c34e395f3d4abfdea76d61857fe3b1cbfd49fcc47ae"
+  },
+  {
+    "headRefOid": "37686244ac6e6eed047bc9ea375e30e9c37d4e08",
+    "number": 204,
+    "title": "Bolt: optimize array copying in WhisperMelProcessor",
+    "url": "https://github.com/asrjs/speech-recognition/pull/204",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "7ed9a1e6bd4d20df14dd2091ef9a40a46f8bcedff4fdaa30de96b6cf69715151"
+  },
+  {
+    "headRefOid": "b4ed1ff3823374c398135d7e93436c4370446c19",
+    "number": 203,
+    "title": "Bolt: Inline getReflectPaddedSample in WhisperMelProcessor",
+    "url": "https://github.com/asrjs/speech-recognition/pull/203",
+    "decision": "REJECT",
+    "reason": "FFT/reflection/inner-loop rewrite lacks representative numerical equivalence and benchmark acceptance. No speed or parity PASS.",
+    "diffSha256": "46cdd5b4f7db25602bbb5b1d8dfc95ad3110a0bcd1a295481799338b805b6456"
+  },
+  {
+    "headRefOid": "47f6dbd3f348620bc9410c869548a4a82bf1dd4a",
+    "number": 201,
+    "title": "Bolt: improve type safety in pipeline output types",
+    "url": "https://github.com/asrjs/speech-recognition/pull/201",
+    "decision": "REJECT",
+    "reason": "Overlapping public output/option type rewrites narrow unknown executor contracts or reshape results without source-derived compatibility evidence.",
+    "diffSha256": "6bc240c230b6ceca8c6f39a7190654a28a7101722c167c147a373aff499a9de3"
+  },
+  {
+    "headRefOid": "deaa2f9a2865d8556b7476acb7b3b15b970b2b7e",
+    "number": 200,
+    "title": "Bolt: Optimize array copying in Whisper mel padding",
+    "url": "https://github.com/asrjs/speech-recognition/pull/200",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "7ed9a1e6bd4d20df14dd2091ef9a40a46f8bcedff4fdaa30de96b6cf69715151"
+  },
+  {
+    "headRefOid": "f1dca6351ae9f86e4c06ced11522f9289feb8b5d",
+    "number": 198,
+    "title": "Bolt: enforce strict typing for ProductionTranscript",
+    "url": "https://github.com/asrjs/speech-recognition/pull/198",
+    "decision": "REJECT",
+    "reason": "Overlapping public output/option type rewrites narrow unknown executor contracts or reshape results without source-derived compatibility evidence.",
+    "diffSha256": "6d7acc25c57e1424da1e1cc56f865ecb294f102434dd0732749eaf632c64b977"
+  },
+  {
+    "headRefOid": "36d729e79e023a504f088ba7162197226130b13b",
+    "number": 197,
+    "title": "Bolt: Improve Whisper mel padding performance with TypedArray.set",
+    "url": "https://github.com/asrjs/speech-recognition/pull/197",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "7ed9a1e6bd4d20df14dd2091ef9a40a46f8bcedff4fdaa30de96b6cf69715151"
+  },
+  {
+    "headRefOid": "9071c411130590cc92b9b1ec031a8195abc25fe0",
+    "number": 196,
+    "title": "Bolt: optimize TypedArray copying in padToFrames",
+    "url": "https://github.com/asrjs/speech-recognition/pull/196",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "7ed9a1e6bd4d20df14dd2091ef9a40a46f8bcedff4fdaa30de96b6cf69715151"
+  },
+  {
+    "headRefOid": "6cff0aaada0c45cbafc3977d57cf274f03d2b23d",
+    "number": 195,
+    "title": "Bolt: Optimize padToFrames and remove redundant async wrappers",
+    "url": "https://github.com/asrjs/speech-recognition/pull/195",
+    "decision": "REJECT",
+    "reason": "Optional loop/async/copy cleanup without demonstrated bug or measured benefit. Async-wrapper removal also changes exception collection semantics in general; no need to take mixed stale changes.",
+    "diffSha256": "d6bd04389bb333ab15ed28191df780656c75003eb40cbd21daa592377d087bdf"
+  },
+  {
+    "headRefOid": "70d843ba3affcb80a61702ec65bfb84439ebf147",
+    "number": 194,
+    "title": "Bolt: Improve type safety for production pipeline transcript words and segments",
+    "url": "https://github.com/asrjs/speech-recognition/pull/194",
+    "decision": "REJECT",
+    "reason": "Overlapping public output/option type rewrites narrow unknown executor contracts or reshape results without source-derived compatibility evidence.",
+    "diffSha256": "b2546b876db87097428a18f1c4e2413b8e8edea21dc2896e2628013ffc7bf741"
+  },
+  {
+    "headRefOid": "ca7004a2153a74028ff6a69fdf618c9f5bd6616b",
+    "number": 192,
+    "title": "Bolt: Optimize audio mel padding with TypedArray set()",
+    "url": "https://github.com/asrjs/speech-recognition/pull/192",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "7ed9a1e6bd4d20df14dd2091ef9a40a46f8bcedff4fdaa30de96b6cf69715151"
+  },
+  {
+    "headRefOid": "c3c37f8e723d114e45d22cd0b76c4ef2bedd3dd9",
+    "number": 191,
+    "title": "Bolt: Mock expected console.warn in cache fallback test",
+    "url": "https://github.com/asrjs/speech-recognition/pull/191",
+    "decision": "ADAPT",
+    "reason": "Take expected-warning assertion; existing afterEach restoreAllMocks supplies failure-safe spy cleanup.",
+    "diffSha256": "ac9736ce8fd12a9b53963c30a3ca0d3ee8f91e48f3a5df1f051f25fbaaa2d6fa"
+  },
+  {
+    "headRefOid": "3d1b2f73dbad47696bbd8b7b7b3c1f66d9a897eb",
+    "number": 190,
+    "title": "Bolt: Optimize TypedArray copy operations in audio preprocessing",
+    "url": "https://github.com/asrjs/speech-recognition/pull/190",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "4b358e154ba8bad0445370273b2db1d1710a70118ccb65945e364f4fd83b7c9a"
+  },
+  {
+    "headRefOid": "c9785a52416fda703cf129e74eb740434c341760",
+    "number": 189,
+    "title": "Bolt: reduce typed-array copies in padToFrames",
+    "url": "https://github.com/asrjs/speech-recognition/pull/189",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "8a9434cbf642a1fd13e7fa614d75e91c9d9f54bfaffa17f7e041a46bffc7c9fd"
+  },
+  {
+    "headRefOid": "6a5f9e515bca413c99f7def89817661f5c66c2fa",
+    "number": 188,
+    "title": "Bolt: optimize memory by returning single stream chunks directly",
+    "url": "https://github.com/asrjs/speech-recognition/pull/188",
+    "decision": "SUPERSEDED",
+    "reason": "Current streamToBytes has one-chunk path and X-ASR helper uses normalized path.posix.relative; no new fix needed.",
+    "diffSha256": "4d99e24b01d66765c166994c4d0b4b2f13ae6411cbcb3f7be572e8f85f4401de"
+  },
+  {
+    "headRefOid": "5ed1c11fc3eaa30c09f5f1961354f15b37f3e8bc",
+    "number": 187,
+    "title": "security: sanitize spawnSync input parameters in node-nemo-shared-audio-parity",
+    "url": "https://github.com/asrjs/speech-recognition/pull/187",
+    "decision": "REJECT",
+    "reason": "spawnSync uses executable/argv with no shell. No demonstrated shell injection; new broad guards and Windows path assumptions are not portable.",
+    "diffSha256": "856dc5e2f44f1c719739885fbfda6235b3eefe7baca4f242b1e3179c72e95b17"
+  },
+  {
+    "headRefOid": "ca9b7532f1b2a18d6da80cc4297345f9d16f80f7",
+    "number": 185,
+    "title": "Optimize smoothProb in VadPostprocessor",
+    "url": "https://github.com/asrjs/speech-recognition/pull/185",
+    "decision": "REJECT",
+    "reason": "Constructor only Math.max-clamps window size, permits2.5. Candidate probs[i-windowSize] can address fractional property ->NaN while old shift-based window stays finite.",
+    "diffSha256": "b11f8527164167b7cc0e2e9f0915e14e3faafee05d5dc3090d357269f7e1b8df"
+  },
+  {
+    "headRefOid": "6a4eaf8d09a3067d9df48fb629d8e4540a34220e",
+    "number": 184,
+    "title": "Verify ModelFileProgress usage in Parakeet compat",
+    "url": "https://github.com/asrjs/speech-recognition/pull/184",
+    "decision": "SUPERSEDED",
+    "reason": "Current X-ASR relative helper already normalizes both paths independent of host; prefix workaround unnecessary.",
+    "diffSha256": "cdc9fa392434f678ded3650e872a6920b07519ab8a57c58c20ec0a143b12688b"
+  },
+  {
+    "headRefOid": "2a89b3f802dcd329d9dd96b98961505bfe674aa2",
+    "number": 183,
+    "title": "Optimize Uint8Array chunk assembly in streamToBytes",
+    "url": "https://github.com/asrjs/speech-recognition/pull/183",
+    "decision": "REJECT",
+    "reason": "Actual diff includes stream-cache single-chunk alias, beyond lockfile/path edits: retained yielded buffer can mutate cache after completion.",
+    "diffSha256": "5956c4de5b5f43c18b39709c8d7579c1e7e55c2d6a5cef3cd106956f8297b6cd"
+  },
+  {
+    "headRefOid": "6c3bd82c55c608ad0516c2996ba7d4678f65dddb",
+    "number": 181,
+    "title": "Security Fix: Eliminate XSS risk in Browser Compact Stats Renderer",
+    "url": "https://github.com/asrjs/speech-recognition/pull/181",
+    "decision": "REJECT",
+    "reason": "Current compact renderer escapes dynamic labels/values before innerHTML. PR does not demonstrate current XSS; broad DOM rewrite declined.",
+    "diffSha256": "278306ca87b2dba68d3a4b75b4e2283c9ba3693437db927eebf2f92ed4bff0bb"
+  },
+  {
+    "headRefOid": "9571bf3d81a0d82f5edc713fdfb0d981d08c1bbc",
+    "number": 180,
+    "title": "Document sequential stage rationale in runPipelineStages",
+    "url": "https://github.com/asrjs/speech-recognition/pull/180",
+    "decision": "REJECT",
+    "reason": "Sequential pipeline/context behavior already implemented and covered. Duplicate benchmark-labelled test/comment is unnecessary.",
+    "diffSha256": "493f88c84ba2af7bd2318857ab56c4c0e4544c199788fa12d066b71f16cab411"
+  },
+  {
+    "headRefOid": "64d323d396f7f079a1d21a67854628278f8ca8c4",
+    "number": 167,
+    "title": "Bolt: Add missing vitest path aliases for pipeline and other modules",
+    "url": "https://github.com/asrjs/speech-recognition/pull/167",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "8edfb2bc9ab33cda7917f01743d46aac5f82d57ba8efbafdbf2b3e5b7c597b69"
+  },
+  {
+    "headRefOid": "74f7423ae1e219bdf69805fa90aa492b8e06b4f3",
+    "number": 166,
+    "title": "Bolt: fix missing path aliases for submodules in vitest.config.ts",
+    "url": "https://github.com/asrjs/speech-recognition/pull/166",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "f261a5bb60353037c7876d968966d46435684805ee45d5dc8c4442328eb9a6c3"
+  },
+  {
+    "headRefOid": "188c28a1e3e8e007ac7ee19d07510b952691681e",
+    "number": 165,
+    "title": "Bolt: add missing module resolution aliases to vitest.config.ts",
+    "url": "https://github.com/asrjs/speech-recognition/pull/165",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "089099856f324302aa91660aa446b59a31a0d356cf58cace7cd50cc9972d0b64"
+  },
+  {
+    "headRefOid": "dca8030da11a33ab57e1bed3ca80148c98a26deb",
+    "number": 164,
+    "title": "Bolt: add missing path aliases to vitest.config.ts",
+    "url": "https://github.com/asrjs/speech-recognition/pull/164",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "08215ee623777b5f5e177176119441558ae2ef1cb8afeab28d9d6ba49e3beaea"
+  },
+  {
+    "headRefOid": "9647932adef21da640c65746a03c056c7abf90dc",
+    "number": 163,
+    "title": "Bolt: optimize padToFrames allocation via native subarray memory set",
+    "url": "https://github.com/asrjs/speech-recognition/pull/163",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "f5fd55dd97f6927b35ec47073fe807423af6f1bd34ae7d2384072cb9c25b8e6c"
+  },
+  {
+    "headRefOid": "062d72fa48f2425f2f98d50b85d9895e5c413679",
+    "number": 162,
+    "title": "Bolt: Add missing vitest path aliases for pipeline and chunking",
+    "url": "https://github.com/asrjs/speech-recognition/pull/162",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "f261a5bb60353037c7876d968966d46435684805ee45d5dc8c4442328eb9a6c3"
+  },
+  {
+    "headRefOid": "e87efdfb6162ddd42a8b9c698782fc4a76c27f82",
+    "number": 161,
+    "title": "Bolt: Add missing vitest alias for pipeline module",
+    "url": "https://github.com/asrjs/speech-recognition/pull/161",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "f46d8e6aeb18108e0b08dc09406d53c92821ea2524b27f7fd7de7db7a63fa2e7"
+  },
+  {
+    "headRefOid": "e78b6fc15f467f6b3df13a4b0ec799888b8c9172",
+    "number": 160,
+    "title": "Bolt: optimize array copying in padToFrames using native set",
+    "url": "https://github.com/asrjs/speech-recognition/pull/160",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "873f8b6b1943e441e67c1935df669a9b1b2ccd7076144fe429f86476041cad2d"
+  },
+  {
+    "headRefOid": "06998808c755161715405957c3aa8a1f76062a06",
+    "number": 159,
+    "title": "Bolt: optimize typed array copy in WhisperMelProcessor",
+    "url": "https://github.com/asrjs/speech-recognition/pull/159",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "873f8b6b1943e441e67c1935df669a9b1b2ccd7076144fe429f86476041cad2d"
+  },
+  {
+    "headRefOid": "0adf4ec82124a3ffee4b8921a1d8515f608784d7",
+    "number": 158,
+    "title": "Bolt: Optimize Whisper mel padding with native TypedArray.set()",
+    "url": "https://github.com/asrjs/speech-recognition/pull/158",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "873f8b6b1943e441e67c1935df669a9b1b2ccd7076144fe429f86476041cad2d"
+  },
+  {
+    "headRefOid": "298b4c4e59b9a8087df702a02b093971dd0bbeac",
+    "number": 157,
+    "title": "Bolt: optimize token index mapping loops in post-processing",
+    "url": "https://github.com/asrjs/speech-recognition/pull/157",
+    "decision": "REJECT",
+    "reason": "Optional loop/async/copy cleanup without demonstrated bug or measured benefit. Async-wrapper removal also changes exception collection semantics in general; no need to take mixed stale changes.",
+    "diffSha256": "4725456cdda9f636a98130b35a7e439698cd458e08df71f49ab07ef64eb0cd03"
+  },
+  {
+    "headRefOid": "d3bf0356d936a75ebbb5785ba94f4513d4d40631",
+    "number": 156,
+    "title": "Bolt: Fix pipeline vitest aliases",
+    "url": "https://github.com/asrjs/speech-recognition/pull/156",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "4755f157112dcd87f4faa66f911f77737529db093cf6dc98d463dc17fdb28ef8"
+  },
+  {
+    "headRefOid": "93870b7150e57cfd2479d96d2c2e99d1adb4f028",
+    "number": 155,
+    "title": "Bolt: Add missing pipeline alias to vitest config",
+    "url": "https://github.com/asrjs/speech-recognition/pull/155",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "fb837187b67339a105ae0312e39822105cb9824d281f8565695187f1d0437fa0"
+  },
+  {
+    "headRefOid": "44e61f738d07ddacdc413e172a58cfe731429388",
+    "number": 154,
+    "title": "Bolt: Optimize array copying in WhisperMelProcessor",
+    "url": "https://github.com/asrjs/speech-recognition/pull/154",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "7376fb26ffac2418579d721fbbda3b1f7f1fc6068f0c67224ba54339fb71270d"
+  },
+  {
+    "headRefOid": "1311aadc4fc22b8a7515b0d6c66688c881e97b0e",
+    "number": 153,
+    "title": "Bolt: add missing vitest aliases for pipeline, quality, chunking, and post-processing modules",
+    "url": "https://github.com/asrjs/speech-recognition/pull/153",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "745ab1fc01db55067a371d2e2d271bc12346fd9b28522f40f180552769ade7b1"
+  },
+  {
+    "headRefOid": "02687d1d40b580e80e58ce4bafe1781232816747",
+    "number": 152,
+    "title": "Bolt: add missing test module aliases to vitest.config.ts",
+    "url": "https://github.com/asrjs/speech-recognition/pull/152",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "260ce82ea9ba10a436fbee89ac892bba0ba63d9a69c3f462781867f940767171"
+  },
+  {
+    "headRefOid": "be9a32589ad593d3276a510e10f284993cb30580",
+    "number": 151,
+    "title": "Bolt: add missing pipeline export aliases to vitest config",
+    "url": "https://github.com/asrjs/speech-recognition/pull/151",
+    "decision": "SUPERSEDED",
+    "reason": "Current vitest.config.ts already contains legacy and @asrjs pipeline/chunking/quality/post-processing aliases; current public-subpath tests and CI passed.",
+    "diffSha256": "a92a413d26f3b04804af9634898934fa4c82f56bc4ca7b7945dc2c3dc100b04a"
+  },
+  {
+    "headRefOid": "e8a704be04711aaab9539cf5c916375deb36bf01",
+    "number": 150,
+    "title": "Bolt: Optimize padToFrames array copying with TypedArray.set",
+    "url": "https://github.com/asrjs/speech-recognition/pull/150",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "reason": "Same TypedArray.set/subarray proposal in many PRs; no demonstrated correctness bug or measured benefit. Declined without declaring it unsafe or tested.",
+    "diffSha256": "38d7453813adfd6208ecfd8fa4f57b45218bf072e44be861c66d61a514bd4578"
+  },
+  {
+    "headRefOid": "1120e010f3afc24a65bf8047923b2c01cd405373",
+    "number": 149,
+    "title": "perf: optimize whisper mel real fft performance",
+    "url": "https://github.com/asrjs/speech-recognition/pull/149",
+    "decision": "REJECT",
+    "reason": "FFT/reflection/inner-loop rewrite lacks representative numerical equivalence and benchmark acceptance. No speed or parity PASS.",
+    "diffSha256": "cd305820f169c38c52ceb9864bb091120044850be39d8494534023d80f05b595"
+  },
+  {
+    "headRefOid": "e19521bd7b1e2a5c9cd3e1ef8e4a41aa6f29b834",
+    "number": 148,
+    "title": "Bolt: optimize whisper mel processor inner loops and fft",
+    "url": "https://github.com/asrjs/speech-recognition/pull/148",
+    "decision": "REJECT",
+    "reason": "FFT/reflection/inner-loop rewrite lacks representative numerical equivalence and benchmark acceptance. No speed or parity PASS.",
+    "diffSha256": "11b226b905061a750f43fc0b7fa766e57d0715ef71387a2c9e5443d1fdb03f9d"
+  },
+  {
+    "headRefOid": "2b944dffe1a1d6440c2c80989b1f69459e6f9cdd",
+    "number": 147,
+    "title": "Fix base names conversion for fp16 model variants",
+    "url": "https://github.com/asrjs/speech-recognition/pull/147",
+    "decision": "ADAPT",
+    "reason": "Canonical graph names must point to converted graphs. Adapt in-place naming only, reject /app fixture path; add stdlib orchestration tests and CI step. No numerical FP16 parity claim.",
+    "diffSha256": "a43728678d77344d2849e25a7aeade22ba173a45a8d0349b1660bef467a2c8a3"
+  },
+  {
+    "headRefOid": "12108694c083799e6e29e64271d30d6fb9e154b8",
+    "number": 146,
+    "title": "[Testing Improvement] Add unit tests for joinTranscriptWords",
+    "url": "https://github.com/asrjs/speech-recognition/pull/146",
+    "decision": "ADAPT",
+    "reason": "Take sentence join/punctuation/empty/missing-text tests; explicitly mark deliberate invalid runtime input.",
+    "diffSha256": "ea4c6aa207cddb3d9e4dd8690c0929ff42ff6d6f231e77ae6f1bdbe850c1800b"
+  },
+  {
+    "headRefOid": "621bc79464a9837d2bfbf8bb4e0f4097ce365db2",
+    "number": 144,
+    "title": "[Testing Improvement] Add tests for validatePositiveNumber",
+    "url": "https://github.com/asrjs/speech-recognition/pull/144",
+    "decision": "CONSOLIDATE",
+    "reason": "Validation cases included in the selected #229 adaptation; close after its tested replacement merges.",
+    "diffSha256": "4428337a6090df9d44ce8b96697bc811eb4104800fa29c69151beb58b9583ad9"
+  },
+  {
+    "headRefOid": "21affb0c74d8514af5fb95f14f221f88a52b89ff",
+    "number": 143,
+    "title": "[testing improvement] Add tests for validatePositiveInteger in whisper-chunking",
+    "url": "https://github.com/asrjs/speech-recognition/pull/143",
+    "decision": "CONSOLIDATE",
+    "reason": "Validation cases included in the selected #229 adaptation; close after its tested replacement merges.",
+    "diffSha256": "2147eed48fe712044310eb7471fdfb6fb03d0a262a5467f5cbf8894e205107b6"
+  },
+  {
+    "headRefOid": "daa06882664e5aa4c5384e27250744b0bf8e16aa",
+    "number": 142,
+    "title": "Remove redundant async wrapper in session dispose map",
+    "url": "https://github.com/asrjs/speech-recognition/pull/142",
+    "decision": "REJECT",
+    "reason": "Optional loop/async/copy cleanup without demonstrated bug or measured benefit. Async-wrapper removal also changes exception collection semantics in general; no need to take mixed stale changes.",
+    "diffSha256": "b0deb4f92a3803a730a1d524572511b42ccb6a787dedfdce5fc367341710b389"
+  }
+]
