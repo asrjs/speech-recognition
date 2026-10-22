@@ -1,0 +1,408 @@
+[
+  {
+    "number": 233,
+    "head": "2968c206b5360a79bf996d134a905c589d3668fa",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#233 (\ud83e\uddf9 reword comment in ctc-viterbi.ts to avoid false-positive dead code detection)\n"
+  },
+  {
+    "number": 232,
+    "head": "6c90eaa5f17c808c3a95e0c259073fd496cad1e1",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#232 (\u26a1 perf(tokenizer): replace findIndex with indexOf in MedAsrTextTokenizer candidate resolution)\n"
+  },
+  {
+    "number": 231,
+    "head": "414cec85e769041aae8337c1dbc48a1e0923eef8",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#231 (\ud83e\uddf9 Remove deprecated comment from ctc.ts)\n"
+  },
+  {
+    "number": 230,
+    "head": "514820b529e8c00ae2e053b9bcf06de88ebb907b",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#230 (\ud83e\uddf9 update empty catch block in x-asr executor)\n"
+  },
+  {
+    "number": 228,
+    "head": "84a377ff9fa2fbad1d24d8d6355a68c6f52b5db8",
+    "decision": "INCORPORATED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#228 (Bolt: fix ten-vad-worker memory leak on early destruction)\n"
+  },
+  {
+    "number": 220,
+    "head": "79376151e02597577917b7124cf5a5788e426d2f",
+    "decision": "INCORPORATED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#220 (Bolt: fix memory leak in ten-vad worker when initialization fails)\n"
+  },
+  {
+    "number": 219,
+    "head": "450f151a1e4ace6cbb48dd8c71ba46585c413d3d",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#219 (\ud83d\udd12 Security Fix: Replace Math.random with crypto.randomUUID in streaming detector)\n"
+  },
+  {
+    "number": 218,
+    "head": "aa79558355d744209ac12dc1c285ce37c9d4b855",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#218 (\u26a1 perf: replace redundant Object.keys().find for logits in Whisper executor)\n"
+  },
+  {
+    "number": 217,
+    "head": "4bb7bb2e0722372671bb448c583169a07e6b3e13",
+    "decision": "INCORPORATED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#217 (test: add compressionRatioGate edge case coverage)\n"
+  },
+  {
+    "number": 216,
+    "head": "03d139c5cc3001c06ca88993dbf04da8f8947399",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#216 (\ud83e\uddf9 resolve unused variable suppression in EnhancedWhisperExecutor)\n"
+  },
+  {
+    "number": 215,
+    "head": "98855f5e3ffe4a42a36562658ffc0c2f292ab5a8",
+    "decision": "INCORPORATED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#215 (\ud83e\uddea test: add edge case tests for normalizePcmInput)\n"
+  },
+  {
+    "number": 214,
+    "head": "9c045d760b77d2321923e712374ab195f29ca1ab",
+    "decision": "INCORPORATED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#214 (\ud83e\uddea test: add edge case test coverage for confidenceFromLogits)\n"
+  },
+  {
+    "number": 213,
+    "head": "7634d9344db30c152ddf664d6fcf8442b0241c64",
+    "decision": "INCORPORATED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#213 (\ud83e\uddea Add unit tests for estimateSecondsPerOutputFrame)\n"
+  },
+  {
+    "number": 212,
+    "head": "1ba2ab6cf5151b4d836bd159a0ed09d0c645b124",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#212 (Bolt: Add fast paths to avoid typed-array copies for single chunks)\n"
+  },
+  {
+    "number": 210,
+    "head": "20acd07eea323f56e9c7b25aebb6f284ee86d10d",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#210 (Bolt: Improve type safety in production pipeline types)\n"
+  },
+  {
+    "number": 208,
+    "head": "561fee1dc1f2771b88057b3171b689013d53396c",
+    "decision": "INCORPORATED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#208 (Bolt: Fix memory leak in TEN-VAD worker initialization failures)\n"
+  },
+  {
+    "number": 206,
+    "head": "93a064875aa23f6e799ef98d4db5817071f5f3d5",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#206 (Bolt: Improve type safety for pipeline transcript words and segments)\n"
+  },
+  {
+    "number": 205,
+    "head": "67892b545516d2a1583f5519b404f013ac4ece1c",
+    "decision": "INCORPORATED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#205 (Bolt: fix TEN-VAD worker handleDispose memory leak)\n"
+  },
+  {
+    "number": 204,
+    "head": "37686244ac6e6eed047bc9ea375e30e9c37d4e08",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#204 (Bolt: optimize array copying in WhisperMelProcessor)\n"
+  },
+  {
+    "number": 203,
+    "head": "b4ed1ff3823374c398135d7e93436c4370446c19",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#203 (Bolt: Inline getReflectPaddedSample in WhisperMelProcessor)\n"
+  },
+  {
+    "number": 201,
+    "head": "47f6dbd3f348620bc9410c869548a4a82bf1dd4a",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#201 (Bolt: improve type safety in pipeline output types)\n"
+  },
+  {
+    "number": 200,
+    "head": "deaa2f9a2865d8556b7476acb7b3b15b970b2b7e",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#200 (Bolt: Optimize array copying in Whisper mel padding)\n"
+  },
+  {
+    "number": 198,
+    "head": "f1dca6351ae9f86e4c06ced11522f9289feb8b5d",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#198 (Bolt: enforce strict typing for ProductionTranscript)\n"
+  },
+  {
+    "number": 197,
+    "head": "36d729e79e023a504f088ba7162197226130b13b",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#197 (Bolt: Improve Whisper mel padding performance with TypedArray.set)\n"
+  },
+  {
+    "number": 196,
+    "head": "9071c411130590cc92b9b1ec031a8195abc25fe0",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#196 (Bolt: optimize TypedArray copying in padToFrames)\n"
+  },
+  {
+    "number": 195,
+    "head": "6cff0aaada0c45cbafc3977d57cf274f03d2b23d",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#195 (Bolt: Optimize padToFrames and remove redundant async wrappers)\n"
+  },
+  {
+    "number": 194,
+    "head": "70d843ba3affcb80a61702ec65bfb84439ebf147",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#194 (Bolt: Improve type safety for production pipeline transcript words and segments)\n"
+  },
+  {
+    "number": 192,
+    "head": "ca7004a2153a74028ff6a69fdf618c9f5bd6616b",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#192 (Bolt: Optimize audio mel padding with TypedArray set())\n"
+  },
+  {
+    "number": 190,
+    "head": "3d1b2f73dbad47696bbd8b7b7b3c1f66d9a897eb",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#190 (Bolt: Optimize TypedArray copy operations in audio preprocessing)\n"
+  },
+  {
+    "number": 189,
+    "head": "c9785a52416fda703cf129e74eb740434c341760",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#189 (Bolt: reduce typed-array copies in padToFrames)\n"
+  },
+  {
+    "number": 188,
+    "head": "6a5f9e515bca413c99f7def89817661f5c66c2fa",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#188 (Bolt: optimize memory by returning single stream chunks directly)\n"
+  },
+  {
+    "number": 187,
+    "head": "5ed1c11fc3eaa30c09f5f1961354f15b37f3e8bc",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#187 (security: sanitize spawnSync input parameters in node-nemo-shared-audio-parity)\n"
+  },
+  {
+    "number": 185,
+    "head": "ca9b7532f1b2a18d6da80cc4297345f9d16f80f7",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#185 (Optimize smoothProb in VadPostprocessor)\n"
+  },
+  {
+    "number": 184,
+    "head": "6a4eaf8d09a3067d9df48fb629d8e4540a34220e",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#184 (Verify ModelFileProgress usage in Parakeet compat)\n"
+  },
+  {
+    "number": 183,
+    "head": "2a89b3f802dcd329d9dd96b98961505bfe674aa2",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#183 (Optimize Uint8Array chunk assembly in streamToBytes)\n"
+  },
+  {
+    "number": 181,
+    "head": "6c3bd82c55c608ad0516c2996ba7d4678f65dddb",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#181 (Security Fix: Eliminate XSS risk in Browser Compact Stats Renderer)\n"
+  },
+  {
+    "number": 180,
+    "head": "9571bf3d81a0d82f5edc713fdfb0d981d08c1bbc",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#180 (Document sequential stage rationale in runPipelineStages)\n"
+  },
+  {
+    "number": 167,
+    "head": "64d323d396f7f079a1d21a67854628278f8ca8c4",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#167 (Bolt: Add missing vitest path aliases for pipeline and other modules)\n"
+  },
+  {
+    "number": 166,
+    "head": "74f7423ae1e219bdf69805fa90aa492b8e06b4f3",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#166 (Bolt: fix missing path aliases for submodules in vitest.config.ts)\n"
+  },
+  {
+    "number": 165,
+    "head": "188c28a1e3e8e007ac7ee19d07510b952691681e",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#165 (Bolt: add missing module resolution aliases to vitest.config.ts)\n"
+  },
+  {
+    "number": 164,
+    "head": "dca8030da11a33ab57e1bed3ca80148c98a26deb",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#164 (Bolt: add missing path aliases to vitest.config.ts)\n"
+  },
+  {
+    "number": 163,
+    "head": "9647932adef21da640c65746a03c056c7abf90dc",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#163 (Bolt: optimize padToFrames allocation via native subarray memory set)\n"
+  },
+  {
+    "number": 162,
+    "head": "062d72fa48f2425f2f98d50b85d9895e5c413679",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#162 (Bolt: Add missing vitest path aliases for pipeline and chunking)\n"
+  },
+  {
+    "number": 161,
+    "head": "e87efdfb6162ddd42a8b9c698782fc4a76c27f82",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#161 (Bolt: Add missing vitest alias for pipeline module)\n"
+  },
+  {
+    "number": 160,
+    "head": "e78b6fc15f467f6b3df13a4b0ec799888b8c9172",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#160 (Bolt: optimize array copying in padToFrames using native set)\n"
+  },
+  {
+    "number": 159,
+    "head": "06998808c755161715405957c3aa8a1f76062a06",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#159 (Bolt: optimize typed array copy in WhisperMelProcessor)\n"
+  },
+  {
+    "number": 158,
+    "head": "0adf4ec82124a3ffee4b8921a1d8515f608784d7",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#158 (Bolt: Optimize Whisper mel padding with native TypedArray.set())\n"
+  },
+  {
+    "number": 157,
+    "head": "298b4c4e59b9a8087df702a02b093971dd0bbeac",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#157 (Bolt: optimize token index mapping loops in post-processing)\n"
+  },
+  {
+    "number": 156,
+    "head": "d3bf0356d936a75ebbb5785ba94f4513d4d40631",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#156 (Bolt: Fix pipeline vitest aliases)\n"
+  },
+  {
+    "number": 155,
+    "head": "93870b7150e57cfd2479d96d2c2e99d1adb4f028",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#155 (Bolt: Add missing pipeline alias to vitest config)\n"
+  },
+  {
+    "number": 154,
+    "head": "44e61f738d07ddacdc413e172a58cfe731429388",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#154 (Bolt: Optimize array copying in WhisperMelProcessor)\n"
+  },
+  {
+    "number": 153,
+    "head": "1311aadc4fc22b8a7515b0d6c66688c881e97b0e",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#153 (Bolt: add missing vitest aliases for pipeline, quality, chunking, and post-processing modules)\n"
+  },
+  {
+    "number": 152,
+    "head": "02687d1d40b580e80e58ce4bafe1781232816747",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#152 (Bolt: add missing test module aliases to vitest.config.ts)\n"
+  },
+  {
+    "number": 151,
+    "head": "be9a32589ad593d3276a510e10f284993cb30580",
+    "decision": "SUPERSEDED",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#151 (Bolt: add missing pipeline export aliases to vitest config)\n"
+  },
+  {
+    "number": 150,
+    "head": "e8a704be04711aaab9539cf5c916375deb36bf01",
+    "decision": "REJECT DUPLICATE OPTIMIZATION",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#150 (Bolt: Optimize padToFrames array copying with TypedArray.set)\n"
+  },
+  {
+    "number": 149,
+    "head": "1120e010f3afc24a65bf8047923b2c01cd405373",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#149 (perf: optimize whisper mel real fft performance)\n"
+  },
+  {
+    "number": 148,
+    "head": "e19521bd7b1e2a5c9cd3e1ef8e4a41aa6f29b834",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#148 (Bolt: optimize whisper mel processor inner loops and fft)\n"
+  },
+  {
+    "number": 142,
+    "head": "daa06882664e5aa4c5384e27250744b0bf8e16aa",
+    "decision": "REJECT",
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#142 (Remove redundant async wrapper in session dispose map)\n"
+  }
+]

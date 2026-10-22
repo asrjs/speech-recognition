@@ -1,0 +1,28 @@
+..F
+======================================================================
+FAIL: test_post_export_fp16_keeps_manifest_graph_names (test_variant_layout.VariantLayoutTests.test_post_export_fp16_keeps_manifest_graph_names)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "N:\github\asrjs\speech-recognition\tools\whisper-onnx-export\test_variant_layout.py", line 67, in test_post_export_fp16_keeps_manifest_graph_names
+    self.run_variant()
+  File "N:\github\asrjs\speech-recognition\tools\whisper-onnx-export\test_variant_layout.py", line 53, in run_variant
+    self.assertEqual(converted, [(graphs, {"use_external_data": True, "all_tensors_to_one_file": True,
+AssertionError: Lists differ: [(['encoder_model.fp16.onnx', 'decoder_step.fp16.onnx'], {'[102 chars]ue})] != [(['encoder_model.onnx', 'decoder_step.onnx'], {'use_extern[92 chars]ue})]
+
+First differing element 0:
+(['encoder_model.fp16.onnx', 'decoder_step.fp16.onnx'], {'[101 chars]rue})
+(['encoder_model.onnx', 'decoder_step.onnx'], {'use_extern[91 chars]rue})
+
+- [(['encoder_model.fp16.onnx', 'decoder_step.fp16.onnx'],
+?                   -----                     -----
+
++ [(['encoder_model.onnx', 'decoder_step.onnx'],
+    {'all_tensors_to_one_file': True,
+     'size_threshold': 1024,
+     'use_external_data': True,
+     'validate_path': True})]
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.095s
+
+FAILED (failures=1)

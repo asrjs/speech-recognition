@@ -1,0 +1,12 @@
+npm notice run @asrjs/speech-recognition@0.2.0 npx
+npm notice run vitest run tests/whisper-export-variant-layout.test.ts
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ✓ tests/whisper-export-variant-layout.test.ts (1 test) 504ms
+   ✓ keeps FP16 variant layout regressions in the standard CI test command  503ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  00:24:32
+   Duration  799ms (transform 27ms, setup 0ms, import 47ms, tests 504ms, environment 0ms)
