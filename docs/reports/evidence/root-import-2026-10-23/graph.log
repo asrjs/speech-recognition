@@ -1,0 +1,2 @@
+[browser-root-import-graph] ok: 333 local modules reachable from 32 browser-safe dist entries
+[browser-root-import-graph] root index: 44 static modules (regression ceiling <=78: PASS; requested <45: PASS)

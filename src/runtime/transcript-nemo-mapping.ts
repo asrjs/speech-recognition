@@ -1,4 +1,4 @@
-import { partitionWordsIntoSentences } from '../pipeline/index.js';
+import { partitionWordsIntoSentences } from '../pipeline/sentence-segmenter.js';
 import type {
   ModelClassification,
   TranscriptDetailLevel,

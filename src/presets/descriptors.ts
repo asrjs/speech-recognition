@@ -1,16 +1,6 @@
-import { getLanguageName as getCanaryLanguageName } from './canary/catalog.js';
 import type { ModelClassification, ModelInferenceLimits } from '../types/index.js';
-import {
-  fetchModelFiles,
-  getAvailableQuantModes,
-  type QuantizationMode,
-} from '../runtime/huggingface.js';
-import { resolveCanaryArtifactSource } from './canary/manifest.js';
-import { resolveMedAsrPresetManifest } from './medasr/manifest.js';
-import { getLanguageName as getParakeetLanguageName } from './parakeet/catalog.js';
-import { resolveParakeetArtifactSource } from './parakeet/manifest.js';
-import { resolveNemotronArtifactSource } from './nemotron/factory.js';
-import { BUILT_IN_MODEL_DESCRIPTORS } from './descriptors-catalog.js';
+import { getAvailableQuantModes, type QuantizationMode } from '../runtime/artifact-quantization.js';
+import { CATALOG_DESCRIPTORS as BUILT_IN_MODEL_DESCRIPTORS, CATALOG_LANGUAGES, getCatalogArtifactSource } from './catalog-data.generated.js';
 
 export { BUILT_IN_MODEL_DESCRIPTORS };
 
@@ -190,7 +180,7 @@ function pickBuiltInComponentBackend(
     : (availableBackends[0] ?? defaultBackend);
 }
 
-const LANGUAGE_NAME_RESOLVERS = [getParakeetLanguageName, getCanaryLanguageName] as const;
+
 
 export function listBuiltInModelDescriptors(): readonly BuiltInModelDescriptor[] {
   return BUILT_IN_MODEL_DESCRIPTORS;
@@ -293,6 +283,7 @@ export async function detectBuiltInModelRepoQuantizations(
     };
   }
 
+  const { fetchModelFiles } = await import('../runtime/huggingface.js');
   const files = await fetchModelFiles(repoId, revision);
   const detected = detectBuiltInModelQuantizationsFromFiles(modelId, files);
   return {
@@ -316,12 +307,8 @@ export function getBuiltInModelDescriptor(modelId: string): BuiltInModelDescript
 }
 
 export function getBuiltInModelLanguageName(languageCode: string): string {
-  for (const resolve of LANGUAGE_NAME_RESOLVERS) {
-    const label = resolve(languageCode);
-    if (label !== languageCode) {
-      return label;
-    }
-  }
+  const label = CATALOG_LANGUAGES[languageCode.toLowerCase()];
+  if (label !== undefined && label !== languageCode) return label;
   if (String(languageCode).toLowerCase() === 'auto') {
     return 'Auto-detect';
   }
@@ -350,7 +337,7 @@ export function buildBuiltInHubLoadOptions(
 
   switch (descriptor.preset) {
     case 'parakeet': {
-      const source = resolveParakeetArtifactSource(descriptor.modelId);
+      const source = getCatalogArtifactSource(descriptor.modelId);
       if (!source || source.kind !== 'huggingface') {
         throw new Error(`Could not resolve Parakeet artifact source for "${descriptor.modelId}".`);
       }
@@ -377,7 +364,7 @@ export function buildBuiltInHubLoadOptions(
       };
     }
     case 'canary': {
-      const source = resolveCanaryArtifactSource(descriptor.modelId);
+      const source = getCatalogArtifactSource(descriptor.modelId);
       if (!source || source.kind !== 'huggingface') {
         throw new Error(`Could not resolve Canary artifact source for "${descriptor.modelId}".`);
       }
@@ -404,8 +391,7 @@ export function buildBuiltInHubLoadOptions(
       };
     }
     case 'medasr': {
-      const manifest = resolveMedAsrPresetManifest(descriptor.modelId);
-      const source = manifest?.source;
+      const source = getCatalogArtifactSource(descriptor.modelId);
       if (!source || source.kind !== 'huggingface') {
         throw new Error(`Could not resolve MedASR artifact source for "${descriptor.modelId}".`);
       }
@@ -422,7 +408,7 @@ export function buildBuiltInHubLoadOptions(
       };
     }
     case 'nemotron': {
-      const source = resolveNemotronArtifactSource(descriptor.modelId);
+      const source = getCatalogArtifactSource(descriptor.modelId);
       if (!source || source.kind !== 'huggingface') {
         throw new Error(`Could not resolve Nemotron artifact source for "${descriptor.modelId}".`);
       }

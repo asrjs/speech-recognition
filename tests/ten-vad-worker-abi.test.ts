@@ -63,6 +63,18 @@ describe('TEN-VAD worker C ABI lifecycle', () => {
     vi.unstubAllGlobals();
   });
 
+  it('frees buffers after RESET recreation failure exactly once', async () => {
+    module._ten_vad_create.mockReturnValueOnce(-1);
+    await scope.onmessage({ data: { type: 'RESET', id: 2, payload: null } });
+    expect(responses[0].type).toBe('ERROR');
+    module._ten_vad_destroy.mockClear();
+    await scope.onmessage({ data: { type: 'DISPOSE', id: 3, payload: null } });
+    expect(module._ten_vad_destroy).not.toHaveBeenCalled();
+    expect(module._free.mock.calls.map(([ptr]) => ptr).sort()).toEqual([4, 8, 12, 16].sort());
+    await scope.onmessage({ data: { type: 'DISPOSE', id: 4, payload: null } });
+    expect(module._free).toHaveBeenCalledTimes(4);
+  });
+
   for (const type of ['RESET', 'DISPOSE']) {
     it(`${type} passes the handle pointer, not the handle value`, async () => {
       await scope.onmessage({ data: { type, id: 2, payload: null } });

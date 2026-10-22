@@ -1,14 +1,16 @@
+import { normalizePath, type QuantizationMode } from './artifact-quantization.js';
+export { QUANTIZATION_ORDER, getAvailableQuantModes, type QuantizationMode } from './artifact-quantization.js';
 import { createHuggingFaceAssetProvider, getDefaultIndexedDbAssetCache } from '../io/index.js';
 import { isAssetLoadAbortedError, isDomAbortError, throwAssetLoadAborted } from '../io/abort.js';
 import type { AbortSignalLike, AssetRequest, ResolvedAssetHandle } from '../types/index.js';
 
 export const DEFAULT_MODEL_REVISIONS = ['main'] as const;
-export const QUANTIZATION_ORDER = ['fp16', 'int8', 'fp32'] as const;
+
 
 const MODEL_REVISIONS_CACHE = new Map<string, readonly string[]>();
 const MODEL_FILES_CACHE = new Map<string, readonly string[]>();
 
-export type QuantizationMode = 'fp16' | 'int8' | 'fp32';
+
 
 export interface ModelFileProgress {
   readonly loaded: number;
@@ -115,11 +117,7 @@ export function formatRepoPath(repoId: string): string {
     .join('/');
 }
 
-function normalizePath(path: string): string {
-  return String(path || '')
-    .replace(/^\.\/+/, '')
-    .replace(/\\/g, '/');
-}
+
 
 function parseModelFiles(payload: unknown): string[] {
   if (Array.isArray(payload)) {
@@ -145,10 +143,7 @@ function parseModelFiles(payload: unknown): string[] {
   return [];
 }
 
-function hasFile(files: readonly string[], filename: string): boolean {
-  const target = normalizePath(filename);
-  return files.some((path) => path === target || path.endsWith(`/${target}`));
-}
+
 
 function createModelAssetRequest(
   repoId: string,
@@ -270,22 +265,7 @@ export async function fetchModelFiles(
   }
 }
 
-export function getAvailableQuantModes(
-  files: readonly string[],
-  baseName: string,
-): QuantizationMode[] {
-  const options = QUANTIZATION_ORDER.filter((quant) => {
-    if (quant === 'fp32') {
-      return hasFile(files, `${baseName}.onnx`);
-    }
-    if (quant === 'fp16') {
-      return hasFile(files, `${baseName}.fp16.onnx`);
-    }
-    return hasFile(files, `${baseName}.int8.onnx`);
-  });
 
-  return options.length > 0 ? [...options] : ['fp32'];
-}
 
 export function pickPreferredQuant(
   available: readonly QuantizationMode[],

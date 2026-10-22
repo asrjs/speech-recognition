@@ -12,10 +12,9 @@
  * @module pipeline/whisper-production-pipeline
  */
 
-import {
-  formatTranscript,
-  type FormattedTranscript,
-  type Sentence,
+import type {
+  FormattedTranscript,
+  Sentence,
 } from '../post-processing/extras.js';
 import type {
   ProductionTranscript,
@@ -123,6 +122,7 @@ export class ProductionWhisperPipeline {
     // 3. Format transcript (sentence boundary + normalization)
     let formatted: FormattedTranscript;
     if (words.length > 0) {
+      const { formatTranscript } = await import('../post-processing/extras.js');
       formatted = formatTranscript(words, audioDurationSeconds);
     } else {
       formatted = {

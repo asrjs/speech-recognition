@@ -3,14 +3,11 @@ import type {
   CreateBuiltInSpeechRuntimeOptions,
   LoadBuiltInSpeechModelOptions,
 } from './builtins.js';
-import { PcmAudioBuffer } from '../audio/index.js';
-import {
-  createDefaultModelInferenceLimits,
-  planWindowedTranscription,
-  transcribeWithWindowing,
-  withResolvedTranscriptDetail,
-  PipelineAbortedError,
-} from '../pipeline/index.js';
+import { PcmAudioBuffer } from '../audio/audio.js';
+import { createDefaultModelInferenceLimits } from '../pipeline/window-policy.js';
+import { planWindowedTranscription, transcribeWithWindowing } from '../pipeline/long-audio-windowing.js';
+import { withResolvedTranscriptDetail } from '../pipeline/output-options.js';
+import { PipelineAbortedError } from '../pipeline/composition.js';
 import type {
   AudioInputLike,
   AbortSignalLike,

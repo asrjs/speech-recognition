@@ -7,7 +7,6 @@ import type {
   TranscriptResponse,
   TranscriptResponseFlavor,
 } from '../types/index.js';
-import { disposeOwnedResources } from './owned-session.js';
 
 /**
  * Tracks asynchronous work which must finish before an owning resource can be
@@ -122,9 +121,9 @@ export function createTrackedStreamingTranscriberFactory(
   return {
     create,
     async disposeAll(): Promise<void> {
-      await disposeOwnedResources(
-        Array.from(owned, (transcriber) => ({ dispose: () => transcriber.dispose?.() })),
-      );
+      const resources = Array.from(owned, (transcriber) => ({ dispose: () => transcriber.dispose?.() }));
+      const { disposeOwnedResources } = await import('./owned-session.js');
+      await disposeOwnedResources(resources);
     },
   };
 }

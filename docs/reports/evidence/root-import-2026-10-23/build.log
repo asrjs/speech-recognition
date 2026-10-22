@@ -1,0 +1,2 @@
+npm notice run @asrjs/speech-recognition@0.2.0 build
+npm notice run node -e "require('fs').rmSync('dist', { recursive: true, force: true })" && tsc -p tsconfig.json && node ./scripts/generate-catalog-data.mjs && node ./scripts/copy-runtime-assets.mjs

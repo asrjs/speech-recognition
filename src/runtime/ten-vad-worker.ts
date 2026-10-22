@@ -227,20 +227,22 @@ function handleUpdateConfig(id: number, config: TenVadUpdateConfigPayload) {
 }
 
 function handleDispose(id: number) {
-  if (moduleInstance && vadHandle) {
-    const destroyStatus = moduleInstance._ten_vad_destroy(handlePtr);
-    if (destroyStatus !== 0) {
-      throw new Error(`ten_vad_destroy failed with code ${destroyStatus}`);
+  if (moduleInstance) {
+    if (vadHandle) {
+      const destroyStatus = moduleInstance._ten_vad_destroy(handlePtr);
+      if (destroyStatus !== 0) {
+        throw new Error(`ten_vad_destroy failed with code ${destroyStatus}`);
+      }
     }
-    moduleInstance._free(audioPtr);
-    moduleInstance._free(probPtr);
-    moduleInstance._free(flagPtr);
-    moduleInstance._free(handlePtr);
+    for (const ptr of [audioPtr, probPtr, flagPtr, handlePtr]) {
+      if (ptr) moduleInstance._free(ptr);
+    }
   }
-
+  audioPtr = probPtr = flagPtr = handlePtr = 0;
   moduleInstance = null;
   vadHandle = 0;
   accumulator = null;
+  accumulatorPos = 0;
   respond({ type: 'DISPOSE', id, payload: { success: true } });
 }
 

@@ -1,4 +1,4 @@
-import { PcmAudioBuffer, normalizePcmInput } from '../audio/index.js';
+import { PcmAudioBuffer, normalizePcmInput } from '../audio/audio.js';
 import { PipelineAbortedError } from './composition.js';
 import { resolveTranscriptDetail } from './output-options.js';
 import type {

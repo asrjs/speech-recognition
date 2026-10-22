@@ -1,6 +1,5 @@
 import { throwIfAssetAborted } from './abort.js';
 import { getDefaultIndexedDbAssetCache } from './cache.js';
-import { BlobAssetHandle, UrlAssetHandle } from './handles.js';
 import type {
   AssetCache,
   AssetProvider,
@@ -73,6 +72,8 @@ class BlobAssetProvider implements AssetProvider {
 
   async resolve(request: AssetRequest): Promise<ResolvedAssetHandle> {
     throwIfAssetAborted(request.signal, 'download');
+    const { BlobAssetHandle } = await import('./handles.js');
+    throwIfAssetAborted(request.signal, 'download');
     if (request.blob) {
       return this.finish(request, new BlobAssetHandle(request, request.blob));
     }
@@ -127,6 +128,7 @@ class UrlAssetProvider implements AssetProvider {
       throw new Error(`URL asset request "${request.id}" is missing a URL.`);
     }
 
+    const { UrlAssetHandle } = await import('./handles.js');
     return new UrlAssetHandle(request, request.url, this.cache);
   }
 }
@@ -139,7 +141,9 @@ class HuggingFaceAssetProvider implements AssetProvider {
   }
 
   async resolve(request: AssetRequest): Promise<ResolvedAssetHandle> {
-    return new UrlAssetHandle(request, buildHuggingFaceResolveUrl(request), this.cache);
+    const url = buildHuggingFaceResolveUrl(request);
+    const { UrlAssetHandle } = await import('./handles.js');
+    return new UrlAssetHandle(request, url, this.cache);
   }
 }
 

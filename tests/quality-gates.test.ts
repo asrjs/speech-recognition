@@ -49,6 +49,37 @@ describe('compressionRatioGate', () => {
     const result = gate(repeated, [], [], 0);
     expect(result.verdict).toBe('reject');
   });
+
+  it('handles empty string gracefully', () => {
+    const result = gate('', [], [], 0);
+    expect(result.verdict).toBe('accept');
+    expect(result.compressionRatio).toBe(0);
+  });
+
+  it('handles very large repetitive text gracefully', () => {
+    const largeRepetitive = 'repetitive phrase in transcription '.repeat(10000);
+    const result = gate(largeRepetitive, [], [], 0);
+    expect(result.verdict).toBe('reject');
+    expect(result.compressionRatio!).toBeGreaterThan(2.4);
+    expect(result.reason).toBeDefined();
+  });
+
+  it('handles very large non-repetitive text gracefully', () => {
+    let largeDiverse = '';
+    for (let i = 0; i < 1000; i++) {
+      largeDiverse += Math.sin(i).toString(36).substring(2) + ' ';
+    }
+    const result = gate(largeDiverse, [], [], 0);
+    expect(result.verdict).toBe('accept');
+    expect(result.compressionRatio!).toBeLessThan(2.4);
+  });
+
+  it('handles multibyte unicode characters gracefully', () => {
+    const unicodeText = '测试 语音 识别 '.repeat(50);
+    const result = gate(unicodeText, [], [], 0);
+    expect(result.verdict).toBe('reject');
+    expect(result.compressionRatio!).toBeGreaterThan(2.4);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -166,7 +197,10 @@ describe('temperature fallback', () => {
   it('returns first result when gate accepts', async () => {
     const fn = vi.fn(async () => ({
       result: { text: 'hello' },
-      text: 'hello', tokens: [1], logits: [] as Float32Array[], vocabSize: 100,
+      text: 'hello',
+      tokens: [1],
+      logits: [] as Float32Array[],
+      vocabSize: 100,
     }));
     const acceptGate: QualityGate = () => ({ verdict: 'accept' });
     const result = await withTemperatureFallback(fn, [acceptGate]);
@@ -176,7 +210,10 @@ describe('temperature fallback', () => {
   it('counts decode attempts, not gate evaluations', async () => {
     const fn = vi.fn(async () => ({
       result: { text: 'hello' },
-      text: 'hello', tokens: [1], logits: [] as Float32Array[], vocabSize: 100,
+      text: 'hello',
+      tokens: [1],
+      logits: [] as Float32Array[],
+      vocabSize: 100,
     }));
     const acceptGate: QualityGate = () => ({ verdict: 'accept' });
     const result = await withTemperatureFallback(fn, [acceptGate, acceptGate]);
@@ -216,7 +253,10 @@ describe('evaluateGates', () => {
   it('short-circuits on first reject', () => {
     let secondCalled = false;
     const gate1: QualityGate = () => ({ verdict: 'reject', reason: 'fail' });
-    const gate2: QualityGate = () => { secondCalled = true; return { verdict: 'accept' }; };
+    const gate2: QualityGate = () => {
+      secondCalled = true;
+      return { verdict: 'accept' };
+    };
     const result = evaluateGates('', [], [], 100, [gate1, gate2]);
     expect(result.verdict).toBe('reject');
     expect(secondCalled).toBe(false);
