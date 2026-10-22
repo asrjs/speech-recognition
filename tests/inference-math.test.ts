@@ -36,4 +36,45 @@ describe('inference math helpers', () => {
     expect(uniformQuality.entropy).toBeCloseTo(Math.log(3), 5);
     expect(peakedQuality.confidence).toBeCloseTo(Math.exp(peakedQuality.logProb), 10);
   });
+
+  it('handles edge cases in confidenceFromLogits cleanly', () => {
+    // 1. Non-finite / all -Infinity logits where expSum <= 0 or not finite
+    const allNegInf = new Float32Array([-Infinity, -Infinity, -Infinity]);
+    const negInfResult = confidenceFromLogits(allNegInf, 0, 3);
+    expect(negInfResult.confidence).toBe(0);
+    expect(negInfResult.logProb).toBe(Number.NEGATIVE_INFINITY);
+
+    const allNaN = new Float32Array([NaN, NaN, NaN]);
+    const nanResult = confidenceFromLogits(allNaN, 0, 3);
+    expect(nanResult.confidence).toBe(0);
+    expect(nanResult.logProb).toBe(Number.NEGATIVE_INFINITY);
+
+    // 2. Out of bounds tokenId
+    const normalLogits = new Float32Array([2.0, 1.0, 0.0]);
+    const outOfBoundsHigh = confidenceFromLogits(normalLogits, 99, 3);
+    expect(outOfBoundsHigh.confidence).toBe(0);
+    expect(outOfBoundsHigh.logProb).toBe(Number.NEGATIVE_INFINITY);
+
+    const outOfBoundsNeg = confidenceFromLogits(normalLogits, -1, 3);
+    expect(outOfBoundsNeg.confidence).toBe(0);
+    expect(outOfBoundsNeg.logProb).toBe(Number.NEGATIVE_INFINITY);
+
+    // 3. Logits shorter than vocabSize
+    const shortLogits = new Float32Array([5.0]);
+    const shortResult = confidenceFromLogits(shortLogits, 0, 3);
+    expect(shortResult.confidence).toBeGreaterThan(0);
+    expect(Number.isFinite(shortResult.confidence)).toBe(true);
+
+    // Empty array / vocabSize 0
+    const emptyLogits = new Float32Array([]);
+    const emptyResult = confidenceFromLogits(emptyLogits, 0, 0);
+    expect(emptyResult.confidence).toBe(0);
+    expect(emptyResult.logProb).toBe(Number.NEGATIVE_INFINITY);
+
+    // 4. Very large positive logits (numerical stability under softmax max subtraction)
+    const largeLogits = new Float32Array([1000, 1000, 1000]);
+    const largeResult = confidenceFromLogits(largeLogits, 1, 3);
+    expect(largeResult.confidence).toBeCloseTo(1 / 3, 5);
+    expect(largeResult.logProb).toBeCloseTo(-Math.log(3), 5);
+  });
 });
