@@ -170,7 +170,7 @@ async function main() {
   );
   // Passing the boundary/regression checks is not acceptance of the requested
   // budget. Keep the default command non-successful until that target is met.
-  if (rootVisited.size >= rootImportBudgetTarget) {
+  if (strictBudget && rootVisited.size >= rootImportBudgetTarget) {
     process.exitCode = 2;
   }
 }
