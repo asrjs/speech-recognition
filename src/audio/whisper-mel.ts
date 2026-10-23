@@ -384,6 +384,8 @@ export class WhisperMelProcessor {
     // Reflect padding is always based on the original 400-point window center,
     // even when the FFT is zero-padded to 512. This preserves frame alignment.
     const pad = WHISPER_N_FFT >> 1; // 200
+    const originalStart = pad;
+    const originalEnd = pad + sampleCount - 1;
 
     const features = new Float32Array(this.nMels * nFrames);
     const nFreqs = this.useFastFft ? WHISPER_FAST_N_FREQS : WHISPER_N_FREQS;
@@ -408,7 +410,14 @@ export class WhisperMelProcessor {
         const padOffset = (fftSize - winLen) >> 1; // 56
         for (let i = 0; i < winLen; i++) {
           const paddedIdx = offset + i;
-          const sample = this.getReflectPaddedSample(audio, paddedIdx, pad);
+          let sample: number;
+          if (paddedIdx < originalStart) {
+            sample = audio[originalStart - paddedIdx] as number;
+          } else if (paddedIdx > originalEnd) {
+            sample = audio[sampleCount - 1 - (paddedIdx - originalEnd)] as number;
+          } else {
+            sample = audio[paddedIdx - pad] as number;
+          }
           this.dftWindowed[padOffset + i] = sample * (paddedWin[padOffset + i] as number);
         }
 
@@ -455,7 +464,14 @@ export class WhisperMelProcessor {
         // Window samples with reflect padding
         for (let i = 0; i < winLen; i++) {
           const paddedIdx = offset + i;
-          const sample = this.getReflectPaddedSample(audio, paddedIdx, pad);
+          let sample: number;
+          if (paddedIdx < originalStart) {
+            sample = audio[originalStart - paddedIdx] as number;
+          } else if (paddedIdx > originalEnd) {
+            sample = audio[sampleCount - 1 - (paddedIdx - originalEnd)] as number;
+          } else {
+            sample = audio[paddedIdx - pad] as number;
+          }
           this.dftWindowed[i] = sample * (this.window[i] as number);
         }
 
@@ -511,22 +527,6 @@ export class WhisperMelProcessor {
     }
 
     return { features, frameCount: nFrames, nMels: this.nMels };
-  }
-
-  private getReflectPaddedSample(audio: Float32Array, paddedIdx: number, pad: number): number {
-    const sampleCount = audio.length;
-    const originalStart = pad;
-    const originalEnd = pad + sampleCount - 1;
-
-    if (paddedIdx < originalStart) {
-      const dist = originalStart - paddedIdx;
-      return audio[dist] as number;
-    } else if (paddedIdx > originalEnd) {
-      const dist = paddedIdx - originalEnd;
-      return audio[sampleCount - 1 - dist] as number;
-    } else {
-      return audio[paddedIdx - pad] as number;
-    }
   }
 
   /**
