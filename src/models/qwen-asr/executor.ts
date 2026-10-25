@@ -1368,6 +1368,6 @@ export class OrtQwen3AsrExecutor implements Qwen3AsrExecutor {
       }
     }
     const handles = this.assetHandles.splice(0);
-    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
+    await Promise.all(handles.map((handle) => handle.dispose()));
   }
 }

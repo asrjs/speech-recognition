@@ -389,7 +389,7 @@ async function disposeAssetHandles(
   if (!handles || handles.length === 0) {
     return;
   }
-  await Promise.all(handles.map(async (handle) => handle.dispose()));
+  await Promise.all(handles.map((handle) => handle.dispose()));
 }
 
 async function disposeResolvedModelAssets(modelUrls: ParakeetModelUrls): Promise<void> {
@@ -852,9 +852,7 @@ export async function resolveParakeetLocalEntries(
     };
   } catch (error) {
     await Promise.all(
-      assetHandles.map(async (handle) => {
-        await handle.dispose();
-      }),
+      assetHandles.map((handle) => handle.dispose()),
     );
     throw error;
   }

@@ -1024,9 +1024,7 @@ class DefaultSpeechPipeline implements SpeechPipeline {
         }
       }
       await Promise.all(
-        [...uniqueHandles].map(async (handle) => {
-          await this.disposeHandle(handle);
-        }),
+        [...uniqueHandles].map((handle) => this.disposeHandle(handle)),
       );
       return;
     }

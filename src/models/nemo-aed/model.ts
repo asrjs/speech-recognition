@@ -499,9 +499,7 @@ export class NemoAedSpeechModel implements SpeechModel<
     const sessions = [...this.sessions];
     this.sessions.clear();
     await Promise.all(
-      sessions.map(async (session) => {
-        await session.dispose();
-      }),
+      sessions.map((session) => session.dispose()),
     );
   }
 }

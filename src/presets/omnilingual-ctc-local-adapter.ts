@@ -113,9 +113,7 @@ export const omnilingualCtcBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = 
       };
     } catch (error) {
       await Promise.all(
-        assetHandles.map(async (handle) => {
-          await handle.dispose();
-        }),
+        assetHandles.map((handle) => handle.dispose()),
       );
       throw error;
     }

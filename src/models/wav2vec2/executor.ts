@@ -824,6 +824,6 @@ export class OrtWav2Vec2Executor implements Wav2Vec2Executor {
       }
     }
     const handles = this.assetHandles.splice(0);
-    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
+    await Promise.all(handles.map((handle) => handle.dispose()));
   }
 }

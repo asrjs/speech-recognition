@@ -544,6 +544,6 @@ export class OrtGigaAmRnntExecutor {
       }
     }
     const handles = this.handles.splice(0);
-    await Promise.all(handles.map((handle) => Promise.resolve(handle.dispose())));
+    await Promise.all(handles.map((handle) => handle.dispose()));
   }
 }

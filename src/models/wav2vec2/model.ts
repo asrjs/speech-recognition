@@ -349,9 +349,7 @@ class Wav2Vec2SpeechModel implements SpeechModel<
     this.sessions.clear();
 
     await Promise.all(
-      sessions.map(async (session) => {
-        await session.dispose();
-      }),
+      sessions.map((session) => session.dispose()),
     );
   }
 }
